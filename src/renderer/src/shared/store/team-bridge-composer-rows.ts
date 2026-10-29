@@ -56,8 +56,43 @@ export function teamBridgeComposerKey(
  * would also match `bridge:acct-12`, and the account id is the only thing standing
  * between two accounts' text.
  */
+/**
+ * What a row still holds that `clearComposer` would have to retire.
+ *
+ * WHY THE PRUNE ASKS THIS FIRST (review round 3, R3-1). `clearComposer` KEEPS the
+ * key - it empties the row and bumps `textRevision` - so a prune that cleared
+ * unconditionally rewrote every already-pruned row on every status read, and a
+ * status read happens on a poll. Empty is read from the row's own fields rather
+ * than from a flag, so the answer follows whatever a composer in this store can
+ * hold; `submittedMessages` and the history index are deliberately NOT counted,
+ * because `clearComposer` does not retire them and counting them would make the
+ * prune permanently non-idempotent.
+ */
+type DraftRow = {
+	currentInput?: string;
+	attachments?: readonly unknown[];
+	replies?: readonly unknown[];
+	pendingText?: unknown;
+	returned?: unknown;
+	inFlight?: unknown;
+	lateDelivered?: unknown;
+	lateDeliveredText?: unknown;
+	unredactedChars?: number;
+};
+
+const rowHoldsNothing = (row: DraftRow): boolean =>
+	!(row.currentInput ?? "").trim() &&
+	(row.attachments?.length ?? 0) === 0 &&
+	(row.replies?.length ?? 0) === 0 &&
+	!row.pendingText &&
+	!row.returned &&
+	!row.inFlight &&
+	!row.lateDelivered &&
+	!row.lateDeliveredText &&
+	!(row.unredactedChars ?? 0);
+
 export function forgetBridgeComposerRows(
-	store: { inputByConversation: Record<string, unknown> },
+	store: { inputByConversation: Record<string, DraftRow> },
 	clearComposer: (conversationId: string) => void,
 	accountId?: string,
 ): void {
@@ -66,7 +101,15 @@ export function forgetBridgeComposerRows(
 			? TEAM_BRIDGE_COMPOSER_PREFIX
 			: `${TEAM_BRIDGE_COMPOSER_PREFIX}${accountId}:`;
 	for (const key of Object.keys(store.inputByConversation))
-		if (key.startsWith(prefix)) clearComposer(key);
+		if (
+			key.startsWith(prefix) &&
+			// Silent here too: the sign-out path runs the segment prune FIRST and then
+			// notifies revocation, so a second unconditional clear would rewrite every
+			// row the prune had just emptied - the same churn R3-1 removed from the poll
+			// arm, for one persist more.
+			!rowHoldsNothing(store.inputByConversation[key])
+		)
+			clearComposer(key);
 }
 
 /**
@@ -85,6 +128,12 @@ export function forgetBridgeComposerRows(
  * It mirrors the journal's own rule one file over: `reconcileDraftAccount` prunes
  * every stored draft scope that is not the signed-in account's, and the composer's
  * rows are pruned beside them in the same pass.
+ *
+ * AND IT IS SILENT WHEN THERE IS NOTHING TO DO (review round 3, R3-1): a row that
+ * already holds nothing is left alone, so the second status read of a stale row - and
+ * every poll after it - writes and persists NOTHING. The emptied key itself stays,
+ * as it does after any `clearComposer` in this store; it carries no text, no chips
+ * and no payload, so what survives is a name rather than a draft.
  */
 export function pruneBridgeComposerRows(accountId: string | null): void {
 	const store = useConversationInputStore.getState();
@@ -93,6 +142,7 @@ export function pruneBridgeComposerRows(accountId: string | null): void {
 	for (const key of Object.keys(store.inputByConversation)) {
 		if (!key.startsWith(TEAM_BRIDGE_COMPOSER_PREFIX)) continue;
 		if (keep !== null && key.startsWith(keep)) continue;
+		if (rowHoldsNothing(store.inputByConversation[key])) continue;
 		store.clearComposer(key);
 	}
 }
