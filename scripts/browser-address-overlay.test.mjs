@@ -1756,6 +1756,75 @@ test("S2 projection: hostile strings are stripped and capped, never interpreted"
 	assert.equal(stripped.ok, false);
 });
 
+test("row isolate range: validated as display-only data, one range, strict keys", () => {
+	// WHY A RANGE AND NOT BIDI CONTROLS IN THE TEXT: the child is a separate
+	// document whose rows resolve their direction from the first strong character,
+	// and an RTL sentence around an LTR value with no Latin letter (192.168.1.1/)
+	// reorders the value. FSI/PDI would fix it but are stripped on purpose (a bidi
+	// control is how a row can be made to look like another), so the renderer names
+	// the value's span and the child wraps it in <bdi dir="ltr">.
+	const text = "\u201C192.168.1.1/\u201D open";
+	const withRows = (row) =>
+		sanitizeProjection(
+			projection({ active: -1, view: { kind: "rows", rows: [row] } }),
+		);
+	const ok = withRows({ text, title: "", isolate: { start: 1, end: 12 } });
+	assert.equal(ok.ok, true);
+	assert.deepEqual(ok.projection.view.rows[0].isolate, { start: 1, end: 12 });
+	assert.equal(
+		withRows({ text, title: "" }).projection.view.rows[0].isolate,
+		undefined,
+		"the range is optional and absent stays absent",
+	);
+	const refused = (isolate, extra = {}) => {
+		const result = withRows({ text, title: "", isolate, ...extra });
+		assert.equal(result.ok, false, JSON.stringify({ isolate, extra }));
+		return result.reason;
+	};
+	assert.equal(refused({ start: 5, end: 5 }), "bad_rows");
+	assert.equal(refused({ start: 6, end: 2 }), "bad_rows");
+	assert.equal(refused({ start: 0, end: text.length + 1 }), "bad_rows");
+	assert.equal(refused({ start: 0.5, end: 3 }), "bad_rows");
+	assert.equal(refused({ start: 0, end: 3.5 }), "bad_rows");
+	assert.equal(refused({ start: -1, end: 3 }), "bad_rows");
+	assert.equal(refused({ start: "1", end: 3 }), "bad_rows");
+	assert.equal(
+		refused({ start: 1, end: 3, second: { start: 4, end: 6 } }),
+		"bad_rows",
+	);
+	assert.equal(
+		refused([
+			{ start: 1, end: 3 },
+			{ start: 4, end: 6 },
+		]),
+		"bad_rows",
+	);
+	assert.equal(refused(null), "bad_rows");
+	assert.equal(refused({ start: 1 }), "bad_rows");
+	assert.equal(
+		refused({ start: 1, end: 3 }, { unknownKey: 1 }),
+		"bad_rows",
+		"unknown row keys stay refused",
+	);
+	// A bidi control in the text is still stripped, never allowed through.
+	const stripped = withRows({
+		text: "a\u2066b\u2067c\u2068d\u2069e",
+		title: "",
+	});
+	assert.equal(stripped.ok, true);
+	assert.equal(stripped.projection.view.rows[0].text, "abcde");
+	// Stripping or truncating shifts offsets, so the range is dropped (cosmetic
+	// fallback: the value is shown without its isolate) rather than pointing at the
+	// wrong bytes.
+	const shifted = withRows({
+		text: "x\u2068y\u2069 192.168.1.1/",
+		title: "",
+		isolate: { start: 5, end: 17 },
+	});
+	assert.equal(shifted.ok, true);
+	assert.equal(shifted.projection.view.rows[0].isolate, undefined);
+});
+
 test("S2 theme: opaque colours only; alpha or junk falls back to one neutral", () => {
 	const resolved = sanitizeProjection(
 		projection({

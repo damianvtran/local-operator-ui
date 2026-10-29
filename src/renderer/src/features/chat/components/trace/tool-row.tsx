@@ -1037,7 +1037,9 @@ export const ToolRow = ({
 						>
 							…
 						</span>
-						<span className={cn("sr-only")}>pending</span>
+						<span className={cn("sr-only")}>
+							{t("ui.chat.canonical.tool_row.pending")}
+						</span>
 					</>
 				) : (
 					/*

@@ -1,0 +1,263 @@
+{
+	"ui.updates.panel.dismiss.not_now": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: Not now"
+	},
+	"ui.updates.panel.seal.startup.heading": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: This copy of Local Operator needs replacing"
+	},
+	"ui.updates.panel.seal.startup.message": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: This copy of Local Operator did not pass its integrity check, so it can't repair itself."
+	},
+	"ui.updates.panel.seal.update.message": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: This install of Local Operator can't be updated in place, so the update was stopped before the app quit."
+	},
+	"ui.updates.panel.seal.update.message_version": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: This install of Local Operator can't be updated in place, so the update to version {version} was stopped before the app quit.",
+		"placeholder": "{version} is a release number written as the backend publishes it (for example 0.42.7) and stays verbatim."
+	},
+	"ui.updates.panel.seal.remedy": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: Quit Local Operator, then download a fresh copy and replace the app in Applications."
+	},
+	"ui.updates.panel.artifact.metadata_missing.message": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: The downloaded update isn't listed in the release metadata, so it wasn't installed."
+	},
+	"ui.updates.panel.artifact.metadata_missing.message_version": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: The downloaded update to version {version} isn't listed in the release metadata, so it wasn't installed.",
+		"placeholder": "{version} is a release number written as the backend publishes it (for example 0.42.7) and stays verbatim."
+	},
+	"ui.updates.panel.artifact.mismatch.message": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: The downloaded update doesn't match the published release, so it wasn't installed."
+	},
+	"ui.updates.panel.artifact.mismatch.message_version": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: The downloaded update to version {version} doesn't match the published release, so it wasn't installed.",
+		"placeholder": "{version} is a release number written as the backend publishes it (for example 0.42.7) and stays verbatim."
+	},
+	"ui.updates.panel.artifact.unreadable.message": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: The downloaded update could not be read, so it wasn't installed."
+	},
+	"ui.updates.panel.artifact.unreadable.message_version": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: The downloaded update to version {version} could not be read, so it wasn't installed.",
+		"placeholder": "{version} is a release number written as the backend publishes it (for example 0.42.7) and stays verbatim."
+	},
+	"ui.updates.panel.artifact.missing_on_disk.message": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: The downloaded update could not be found on disk, so it wasn't installed."
+	},
+	"ui.updates.panel.artifact.missing_on_disk.message_version": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: The downloaded update to version {version} could not be found on disk, so it wasn't installed.",
+		"placeholder": "{version} is a release number written as the backend publishes it (for example 0.42.7) and stays verbatim."
+	},
+	"ui.updates.panel.artifact.not_this_app.message": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: The downloaded update is not this application, so it wasn't installed."
+	},
+	"ui.updates.panel.artifact.not_this_app.message_version": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: The downloaded update to version {version} is not this application, so it wasn't installed.",
+		"placeholder": "{version} is a release number written as the backend publishes it (for example 0.42.7) and stays verbatim."
+	},
+	"ui.updates.panel.artifact.damaged.message": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: The downloaded update is damaged, so it wasn't installed."
+	},
+	"ui.updates.panel.artifact.damaged.message_version": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: The downloaded update to version {version} is damaged, so it wasn't installed.",
+		"placeholder": "{version} is a release number written as the backend publishes it (for example 0.42.7) and stays verbatim."
+	},
+	"ui.updates.panel.artifact.remedy": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: Check for updates again to re-download the release."
+	},
+	"ui.updates.panel.disk.message": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: There isn't enough free disk space to install the update, so it wasn't installed."
+	},
+	"ui.updates.panel.disk.message_version": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: There isn't enough free disk space to install the update to version {version}, so it wasn't installed.",
+		"placeholder": "{version} is a release number written as the backend publishes it (for example 0.42.7) and stays verbatim."
+	},
+	"ui.updates.panel.disk.remedy": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: Free up about {size}, then check for updates again.",
+		"placeholder": "{size} is a byte size already formatted for the locale (for example 1.2 GB) and is inserted unchanged."
+	},
+	"ui.updates.panel.launch.heading": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: The update couldn't be checked"
+	},
+	"ui.updates.panel.launch.check.message": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: The downloaded update can't be checked for launch, so it wasn't installed."
+	},
+	"ui.updates.panel.launch.check.message_version": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: The update to version {version} can't be checked for launch, so it wasn't installed.",
+		"placeholder": "{version} is a release number written as the backend publishes it (for example 0.42.7) and stays verbatim."
+	},
+	"ui.updates.panel.launch.open.message": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: The downloaded update can't be launched by macOS, so it wasn't installed."
+	},
+	"ui.updates.panel.launch.open.message_version": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: The update to version {version} can't be launched by macOS, so it wasn't installed.",
+		"placeholder": "{version} is a release number written as the backend publishes it (for example 0.42.7) and stays verbatim."
+	},
+	"ui.updates.panel.launch.keep.message": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: Keep using this copy; the next release will be offered here as usual."
+	},
+	"ui.updates.panel.launch.keep.message_version": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: Keep using this copy, and skip version {version} if you download one by hand — the next release will be offered here as usual.",
+		"placeholder": "{version} is a release number written as the backend publishes it (for example 0.42.7) and stays verbatim."
+	},
+	"ui.updates.panel.failure.cancelled.message": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: The update to version {target} was cancelled because Local Operator was opened while the update was installing. Version {running} is still running.",
+		"placeholder": "{target} is the version the install was moving to, as published. {running} is the version still running, as published."
+	},
+	"ui.updates.panel.failure.cancelled.remedy": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: Quit Local Operator and replace it in Applications with a fresh copy, or update again from the app — and leave it closed until the update finishes."
+	},
+	"ui.updates.panel.failure.unfinished.message": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: The update to version {target} didn't finish, so version {running} is still running.",
+		"placeholder": "{target} is the version the install was moving to, as published. {running} is the version still running, as published."
+	},
+	"ui.updates.panel.failure.unfinished.remedy": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: Quit Local Operator and replace it in Applications with a fresh copy, or update again from the app."
+	},
+	"ui.updates.panel.service.restart.message": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: The server restarted but did not report the updated version. See the update service log, then restart Local Operator."
+	},
+	"ui.updates.panel.service.restart.message_version": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: The server restarted but did not report version {version}. See the update service log, then restart Local Operator.",
+		"placeholder": "{version} is a release number written as the backend publishes it (for example 0.42.7) and stays verbatim."
+	},
+	"ui.updates.panel.service.no_backend.message": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: No backend service reference available, cannot update."
+	},
+	"ui.updates.panel.service.no_server.message": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: No python server is available, nothing to update."
+	},
+	"ui.updates.panel.service.check_unavailable.message": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: Unable to determine backend version."
+	},
+	"ui.updates.panel.server.behind.remedy": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: This checkout is behind its remote, which is what `lop-update` refused to build from: bring the checkout up to date, and the next press here will build it."
+	},
+	"ui.updates.panel.server.rebuild.remedy": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: A rebuild changes this install only once it succeeds, so nothing was restarted."
+	},
+	"ui.updates.panel.server.norestart.remedy": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: Nothing was restarted: the build that was serving is the build still serving."
+	}
+}

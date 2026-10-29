@@ -21,5 +21,11 @@
 	"ui.agents.upload.target.upgrade": "(upgrade needed)",
 	"ui.agents.upload.terms.lead": "I confirm that I have read and agree to the",
 	"ui.agents.upload.terms.link": "terms and conditions",
-	"ui.agents.upload.terms.tail": "and that this agent does not contain malicious content or violate usage policies."
+	"ui.agents.upload.terms.tail": "and that this agent does not contain malicious content or violate usage policies.",
+	"ui.agents.upload.title.publish_org": "Publish \"{name}\" to {destination}?",
+	"ui.agents.upload.title.publish_public": "Publish \"{name}\" to the Agent Hub?",
+	"ui.agents.upload.title.published_org": "Published \"{name}\" to {destination}",
+	"ui.agents.upload.title.published_public": "Published \"{name}\" to the Agent Hub",
+	"ui.agents.upload.title.republished": "Updated the Agent Hub listing for \"{name}\"",
+	"ui.agents.upload.title.update_listing": "Update the Agent Hub listing for \"{name}\"?"
 }

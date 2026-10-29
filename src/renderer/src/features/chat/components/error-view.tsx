@@ -1,4 +1,6 @@
 import { Alert, AlertDescription, AlertTitle } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
 
@@ -40,6 +42,7 @@ export const ErrorView: FC<ErrorViewProps> = ({
 	message,
 	serverUnreachable = false,
 }) => {
+	useI18nLocale();
 	const description = serverUnreachable
 		? message
 			? `${message} The agent's history is safe — try again once the local server is running.`
@@ -55,7 +58,7 @@ export const ErrorView: FC<ErrorViewProps> = ({
 			)}
 		>
 			<Alert variant="danger" role="alert" className={cn("max-w-[480px]")}>
-				<AlertTitle>Could not load this conversation</AlertTitle>
+				<AlertTitle>{t("ui.chat.canonical.transcript.load_failed")}</AlertTitle>
 				<AlertDescription>{description}</AlertDescription>
 			</Alert>
 		</div>

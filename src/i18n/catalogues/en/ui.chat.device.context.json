@@ -203,5 +203,10 @@
 		"length": "Twenty-two words, including two commands.",
 		"note": "Network CREATION is CLI-only, so the honest instruction is the command rather than a button. Keep both commands and their arguments verbatim inside backticks: `lop network init` creates one, `lop network join <token>` joins one. Never translate a command, a flag or `<token>`. The angle brackets are ICU-escaped in the English message (`'<token>'`) so the parser reads them as text rather than an unclosed tag; keep that quoting, or an escaped equivalent, in every translation.",
 		"placeholders": {}
+	},
+	"ui.chat.device.check_again": {
+		"role": "menu item",
+		"tone": "plain",
+		"note": "Re-reads the device list; nothing failed, so it is not 'Retry'."
 	}
 }

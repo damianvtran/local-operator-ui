@@ -1,4 +1,12 @@
 {
+	"ui.agents.pages.add_manual.agent": "Добавить агента вручную",
+	"ui.agents.pages.add_manual.team": "Добавить команду вручную",
+	"ui.agents.pages.ask.body_agent": "Агент — это набор инструкций, который можно использовать повторно: с ним можно начать чат, а можно позволить другим агентам обращаться к нему. Опишите, что нужно, и запуск конфигурации всё настроит.",
+	"ui.agents.pages.ask.body_team": "В команде есть один агент, который ведёт чат, и участники, которым он может поручать работу. Опишите, что нужно, и запуск конфигурации всё настроит.",
+	"ui.agents.pages.ask.heading_agent": "Запросите агента",
+	"ui.agents.pages.ask.heading_team": "Запросите команду",
+	"ui.agents.pages.ask.manual_agent": "Или добавьте его вручную",
+	"ui.agents.pages.ask.manual_team": "Или добавьте её вручную",
 	"ui.agents.pages.back_to_list": "Назад к списку",
 	"ui.agents.pages.browse_aria": "Просмотр агентов и команд по типу",
 	"ui.agents.pages.discard_bar.agent": "Сбросить несохранённые изменения этого агента?",

@@ -70,7 +70,8 @@ const result = await build({
 		contents: `
 import React from 'react';
 import { BrowserUrlBar } from './src/renderer/src/features/browser/components/browser-url-bar';
-export { BrowserUrlBar };`,
+import { useBrowserChrome } from './src/renderer/src/features/browser/hooks/use-browser-chrome';
+export { BrowserUrlBar, useBrowserChrome };`,
 		resolveDir: process.cwd(),
 		loader: "tsx",
 	},
@@ -96,7 +97,9 @@ export { BrowserUrlBar };`,
 });
 const bundlePath = join(scratch, "component.mjs");
 await writeFile(bundlePath, result.outputFiles[0].text);
-const { BrowserUrlBar } = await import(pathToFileURL(bundlePath).href);
+const { BrowserUrlBar, useBrowserChrome } = await import(
+	pathToFileURL(bundlePath).href
+);
 
 const ENTRIES = [
 	{
@@ -173,10 +176,20 @@ const SWAPPED_SIX = [
 }));
 
 const SUGGESTIONS = /Suggestions/;
-const ADDRESS_SUGGESTIONS_UNAVAILABLE = /Address suggestions are unavailable/;
+/* The history-read failure sentence. It used to read "Address suggestions are
+ * unavailable." for every cause, including a plain new tab; it now says what
+ * failed, and the standing/own-state wording is pinned in its own tests. */
+const ADDRESS_SUGGESTIONS_UNAVAILABLE = /Couldn't read your browsing history/;
+const OLD_UNAVAILABLE = /Address suggestions are unavailable/;
 const SEARCH_ROW_HELLO = /Search DuckDuckGo for "hello world"/;
 const BLOCKED_HINT = /Only web addresses can open here/;
 const NO_BROWSING_HISTORY = /No browsing history/;
+
+/* The row copy substitutes the user's text as an ISOLATED run (FSI/PDI, U+2068 and
+ * U+2069) so an RTL sentence cannot reorder an LTR address. Those two controls
+ * are display-only and invisible; assertions about what the row SAYS read it
+ * without them, and the isolation itself is pinned in its own test. */
+const visibleText = (node) => node.textContent.replace(/[\u2068\u2069]/g, "");
 
 const flush = async () => {
 	await act(async () => {
@@ -522,7 +535,7 @@ test("a search-intent Enter searches DuckDuckGo and the search row is the defaul
 		1,
 		"no suggestion matches, so only the search row exists",
 	);
-	assert.match(rows[0].textContent, SEARCH_ROW_HELLO);
+	assert.match(visibleText(rows[0]), SEARCH_ROW_HELLO);
 	assert.equal(
 		bundle.input.getAttribute("aria-activedescendant"),
 		rows[0].id,
@@ -1193,12 +1206,21 @@ test("focus with an empty history opens nothing, and a typed query still explain
 	assert.doesNotMatch(describedText(bundle), NO_BROWSING_HISTORY);
 	assert.equal(bundle.navigations.length, 0);
 
-	// A non-empty query is a fact worth explaining: no match is still a notice,
-	// and the combo says it is expanded so the sentence is reachable. A URL
-	// intent keeps the search row out of the answer, so the rows really are empty.
+	// A URL-shaped query with nothing behind it is no longer a dead end: the typed
+	// address is offered back (and a search), so there is something to press. The
+	// "no matching pages" notice is reached only by a refused input now.
 	await type(bundle, "https://nothing.example/");
 	assert.equal(bundle.input.getAttribute("aria-expanded"), "true");
-	assert.match(describedText(bundle), /No matching pages/);
+	assert.match(
+		visibleText(options(bundle)[0]),
+		/Open "https:\/\/nothing\.example\/"/,
+	);
+	await type(bundle, "file:///tmp/a.txt");
+	assert.equal(
+		options(bundle).length,
+		0,
+		"a refused file: input offers no row",
+	);
 	await bundle.cleanup();
 });
 
@@ -1558,5 +1580,699 @@ test("Enter on a blank draft hands focus back instead of dropping it on the body
 	assert.equal(bundle.input.value, "example.com/account");
 	assert.notEqual(document.activeElement, bundle.input);
 	assert.equal(bundle.navigations.length, 0);
+	await bundle.cleanup();
+});
+
+/*
+ * NEW TAB / OWN-STATE (operator report, 2026-10-26): typing `qa-app.qa.gominerva.com`
+ * into a fresh New tab painted "Address suggestions are unavailable." and opened
+ * no list. The history read was healthy (zero entries); the string came from the
+ * own-state flag, because main cannot show its native child while the start page
+ * is up. These pin the user-visible contract in the same configuration: own-state,
+ * the product popout placement, and a history that answers with NOTHING.
+ */
+const OWN_STATE_ADDRESS = "qa-app.qa.gominerva.com";
+const OPEN_TYPED_ROW = /Open "qa-app\.qa\.gominerva\.com"/;
+const SEARCH_TYPED_ROW = /Search DuckDuckGo for "qa-app\.qa\.gominerva\.com"/;
+
+const emptyHistory = async (request) => ({
+	requestId: request.requestId,
+	activeTabId: 1,
+	entries: [],
+});
+
+test("a new tab with no history still lists the typed address and a search", async () => {
+	const bundle = await renderBar({
+		url: "about:blank",
+		ownState: true,
+		addressHistory: emptyHistory,
+	});
+	await type(bundle, OWN_STATE_ADDRESS);
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 200));
+	});
+	await flush();
+
+	assert.doesNotMatch(
+		bundle.container.textContent,
+		/unavailable|stopped working|aren't shown/i,
+		"a start page is not an unavailable list",
+	);
+	assert.equal(
+		bundle.container.querySelector(
+			'[data-tour-tag="browser-address-unavailable"]',
+		),
+		null,
+		"no unavailable pill is painted over the field",
+	);
+	const box = listbox(bundle);
+	assert.ok(box, "a listbox exists for the typed address");
+	assert.equal(
+		box.closest(".sr-only"),
+		null,
+		"the own-state list is VISIBLE: it is the only presenter there",
+	);
+	const rows = options(bundle);
+	assert.equal(rows.length, 2, "the typed address and the search entry");
+	assert.match(visibleText(rows[0]), OPEN_TYPED_ROW);
+	assert.match(visibleText(rows[1]), SEARCH_TYPED_ROW);
+	assert.equal(
+		bundle.input.getAttribute("aria-activedescendant"),
+		rows[0].id,
+		"URL intent highlights the typed address",
+	);
+	assert.equal(bundle.input.getAttribute("aria-expanded"), "true");
+	await key(bundle, "Enter");
+	assert.deepEqual(bundle.navigations, [
+		{ url: OWN_STATE_ADDRESS, expectedTabId: 1 },
+	]);
+	await bundle.cleanup();
+});
+
+/*
+ * THE TYPED ROW'S OWN COMMIT PATH (review round 5, MINOR-1). The Enter
+ * assertion above does not discriminate: Enter with the typed row highlighted
+ * reaches the same destination as the no-row fallback (`usableRawAddress(raw)`,
+ * which IS this row's `targetUrl`), so deleting the row's branch from
+ * `rowTarget` would leave it green. A PRESS has no such fallback — only
+ * `rowTarget` on the painted row list can navigate — so a typed row whose
+ * commit branch is gone does nothing at all. This presses row 0 itself and pins
+ * the navigation it produces, which is what makes the branch load-bearing.
+ */
+test("a press on the typed own-state row commits it, with no Enter fallback behind it", async () => {
+	const bundle = await renderBar({
+		url: "about:blank",
+		ownState: true,
+		addressHistory: emptyHistory,
+	});
+	await type(bundle, OWN_STATE_ADDRESS);
+	const typed = options(bundle)[0];
+	assert.match(visibleText(typed), OPEN_TYPED_ROW, "row 0 is the Open row");
+	await pointerDown(typed);
+	assert.equal(
+		bundle.input.getAttribute("data-address-editing"),
+		"true",
+		"the typed row is inside the field's press region too (#1396)",
+	);
+	await act(async () => {
+		typed.dispatchEvent(
+			new dom.window.MouseEvent("click", { bubbles: true, cancelable: true }),
+		);
+	});
+	await flush();
+	assert.deepEqual(
+		bundle.navigations,
+		[{ url: OWN_STATE_ADDRESS, expectedTabId: 1 }],
+		"the row commits its own target; a removed branch would commit nothing",
+	);
+	await bundle.cleanup();
+});
+
+test("own-state: search intent keeps the search row first and highlighted", async () => {
+	const bundle = await renderBar({
+		url: "about:blank",
+		ownState: true,
+		addressHistory: emptyHistory,
+	});
+	await type(bundle, "what is a vpn");
+	const rows = options(bundle);
+	assert.equal(rows.length, 1, "a search is not also a typed address");
+	assert.match(visibleText(rows[0]), /Search DuckDuckGo for "what is a vpn"/);
+	assert.equal(bundle.input.getAttribute("aria-activedescendant"), rows[0].id);
+	await bundle.cleanup();
+});
+
+test("a typed-address row is offered only when nothing matched", async () => {
+	const bundle = await renderBar({
+		url: "about:blank",
+		ownState: true,
+	});
+	await type(bundle, "example.com/acc");
+	assert.ok(
+		options(bundle).every(
+			(row) => !row.hasAttribute("data-address-suggestion-typed"),
+		),
+		"history candidates exist, so there is no typed-address row above them",
+	);
+	await bundle.cleanup();
+});
+
+test("typed-address rows appear before the first history answer lands", async () => {
+	let release = () => {};
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const bundle = await renderBar({
+		url: "about:blank",
+		ownState: true,
+		addressHistory: async (request) => {
+			await gate;
+			return { requestId: request.requestId, activeTabId: 1, entries: [] };
+		},
+	});
+	await type(bundle, OWN_STATE_ADDRESS);
+	assert.equal(options(bundle).length, 2, "rows do not wait on IPC");
+	release();
+	await flush();
+	await bundle.cleanup();
+});
+
+test("own-state: a rejected history read says so and keeps the typed rows", async () => {
+	const bundle = await renderBar({
+		url: "about:blank",
+		ownState: true,
+		addressHistory: async () => {
+			throw new Error("proof: unavailable");
+		},
+	});
+	await type(bundle, OWN_STATE_ADDRESS);
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 200));
+	});
+	await flush();
+	assert.match(bundle.container.textContent, ADDRESS_SUGGESTIONS_UNAVAILABLE);
+	assert.doesNotMatch(bundle.container.textContent, OLD_UNAVAILABLE);
+	assert.equal(options(bundle).length, 2, "a typed address still works");
+	await bundle.cleanup();
+});
+
+test("a press on an own-state row commits it and is not an outside press", async () => {
+	const bundle = await renderBar({
+		url: "about:blank",
+		ownState: true,
+		addressHistory: emptyHistory,
+	});
+	await type(bundle, OWN_STATE_ADDRESS);
+	const search = options(bundle)[1];
+	await pointerDown(search);
+	assert.equal(
+		bundle.input.getAttribute("data-address-editing"),
+		"true",
+		"the list is inside the field's press region (#1396)",
+	);
+	await act(async () => {
+		search.dispatchEvent(
+			new dom.window.MouseEvent("click", { bubbles: true, cancelable: true }),
+		);
+	});
+	await flush();
+	assert.deepEqual(bundle.navigations, [
+		{
+			url: `https://duckduckgo.com/?q=${encodeURIComponent(OWN_STATE_ADDRESS)}`,
+			expectedTabId: 1,
+		},
+	]);
+	await bundle.cleanup();
+});
+
+test("Escape lowers the own-state list like the native one", async () => {
+	const bundle = await renderBar({
+		url: "about:blank",
+		ownState: true,
+		addressHistory: emptyHistory,
+	});
+	await type(bundle, OWN_STATE_ADDRESS);
+	assert.equal(options(bundle).length, 2);
+	await key(bundle, "Escape");
+	assert.equal(options(bundle).length, 0);
+	assert.equal(bundle.dismissals.at(-1), "dismiss");
+	await bundle.cleanup();
+});
+
+test("the standing hint names its cause and is never said for a plain new tab", async () => {
+	const platform = await renderBar({
+		overlayMode: "suspend",
+		overlayReason: "platform",
+	});
+	assert.match(
+		describedText(platform),
+		/Suggestions aren't shown on this system/,
+	);
+	await platform.cleanup();
+
+	const restart = await renderBar({
+		overlayMode: "suspend",
+		overlayReason: "child_crash",
+	});
+	assert.match(describedText(restart), /restart Local Operator/);
+	await restart.cleanup();
+
+	const blank = await renderBar({
+		overlayMode: "suspend",
+		overlayReason: null,
+	});
+	assert.doesNotMatch(describedText(blank), /Suggestions|restart/);
+	await blank.cleanup();
+
+	const ownState = await renderBar({
+		url: "about:blank",
+		ownState: true,
+		overlayMode: "suspend",
+		overlayReason: "platform",
+		addressHistory: emptyHistory,
+	});
+	await type(ownState, OWN_STATE_ADDRESS);
+	assert.doesNotMatch(
+		ownState.container.textContent,
+		/aren't shown|stopped working/,
+		"own-state has a DOM list, so a platform without the native one is irrelevant",
+	);
+	assert.equal(options(ownState).length, 2);
+	await ownState.cleanup();
+});
+
+test("typed and search rows isolate the user's text for RTL sentences, display only", async () => {
+	const bundle = await renderBar({
+		url: "about:blank",
+		ownState: true,
+		addressHistory: emptyHistory,
+	});
+	await type(bundle, "github.com/");
+	const rows = options(bundle);
+	assert.equal(
+		rows[0].textContent,
+		'Open "\u2068github.com/\u2069"',
+		"the typed value is wrapped in FSI/PDI inside the sentence, quotes outside",
+	);
+	assert.equal(
+		rows[1].textContent,
+		'Search DuckDuckGo for "\u2068github.com/\u2069"',
+	);
+	assert.equal(
+		rows[0].getAttribute("data-address-suggestion-url"),
+		null,
+		"a typed row carries no URL attribute: the isolates never reach a target",
+	);
+	// Enter commits the RAW text; the isolates are never part of a destination.
+	await key(bundle, "Enter");
+	assert.deepEqual(bundle.navigations, [
+		{ url: "github.com/", expectedTabId: 1 },
+	]);
+	await bundle.cleanup();
+});
+
+/**
+ * The native child's rows for the two embedded-value rows. The projection loop
+ * needs a delivered content rect (main refuses a projection without the page
+ * rect it echoes), so a tiny host mounts the real `useBrowserChrome` hook and
+ * sends one through the stubbed bridge - the same call the surface makes.
+ */
+test("mirror rows carry the value's isolate range and no bidi controls", async () => {
+	const projections = [];
+	const bridge = new Proxy(
+		{
+			addressOverlay: {
+				project: async (payload) => {
+					projections.push(payload);
+					return { accepted: true };
+				},
+				onEvent: () => () => {},
+			},
+			state: async () => null,
+			onStateChanged: () => () => {},
+			setContentRect: async () => undefined,
+		},
+		{
+			// Subscriptions (`on*`) return their unsubscribe; every other call is a
+			// resolved no-op, which is all the rect hook needs from the bridge.
+			get: (target, name) =>
+				target[name] ??
+				(String(name).startsWith("on")
+					? () => () => {}
+					: async () => undefined),
+		},
+	);
+	dom.window.api = { browser: bridge };
+	let bundle = null;
+	let hostRoot = null;
+	let host = null;
+	try {
+		host = document.createElement("div");
+		document.body.appendChild(host);
+		hostRoot = createRoot(host);
+		let sendRect = () => {};
+		const Rect = () => {
+			sendRect = useBrowserChrome().setContentRect;
+			return null;
+		};
+		await act(async () => {
+			hostRoot.render(React.createElement(Rect));
+		});
+		await act(async () => {
+			sendRect({ x: 0, y: 100, width: 800, height: 600 });
+			await new Promise((resolve) => setTimeout(resolve, 50));
+		});
+		bundle = await renderBar({ addressHistory: emptyHistory });
+		await type(bundle, "192.168.1.1/");
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 120));
+		});
+		const sent = projections
+			.filter((payload) => payload.visible && payload.view?.kind === "rows")
+			.at(-1);
+		assert.ok(sent, "the native child was sent a rows projection");
+		const [open, search] = sent.view.rows;
+		assert.equal(open.text, 'Open "192.168.1.1/"');
+		assert.equal(search.text, 'Search DuckDuckGo for "192.168.1.1/"');
+		for (const row of [open, search]) {
+			assert.equal(/[\u2066-\u2069]/.test(row.text), false, "no bidi controls");
+			assert.equal(
+				row.text.slice(row.isolate.start, row.isolate.end),
+				"192.168.1.1/",
+				"the range names exactly the value",
+			);
+		}
+	} finally {
+		// Cleanup must survive a failed assertion: a left-over projection loop keeps
+		// the process alive and turns a failure into a hang.
+		await bundle?.cleanup();
+		if (hostRoot) await act(async () => hostRoot.unmount());
+		host?.remove();
+		dom.window.api = undefined;
+	}
+});
+
+/*
+ * `enabled` follows own-state <-> presented page, so `request` changes identity
+ * on every such flip. The window-wide `onStateChanged` listener must not follow
+ * it: CI on this PR caught the start-page harness (whose fake bridge tracks ONE
+ * listener) losing the surface's own subscription, so a landed page never showed.
+ */
+test("flipping own-state does not churn the state-change subscription", async () => {
+	let subscribed = 0;
+	let unsubscribed = 0;
+	// `suspend` is where `enabled` really flips with own-state: the DOM list
+	// enables the read, a presented page without the native child does not.
+	const bundle = await renderBar({
+		url: "about:blank",
+		ownState: true,
+		overlayMode: "suspend",
+		overlayReason: "platform",
+		onStateChanged: () => {
+			subscribed += 1;
+			return () => {
+				unsubscribed += 1;
+			};
+		},
+	});
+	assert.equal(subscribed, 1);
+	await bundle.rerender({ ownState: false });
+	await bundle.rerender({ ownState: true });
+	await bundle.rerender({ ownState: false });
+	assert.equal(subscribed, 1, "one listener for the life of the bar");
+	assert.equal(unsubscribed, 0);
+	await bundle.cleanup();
+	assert.equal(unsubscribed, 1);
+});
+
+/*
+ * ROUND 1 REMEDIATION (design/UX/QA on PR #1434). Each case below was written
+ * and run against the previous head first; the failures are quoted in the PR's
+ * remediation comment.
+ */
+const visitedEntry = (url, title = "") => ({
+	url,
+	title,
+	visitCount: 3,
+	lastVisitedAt: 1,
+	source: "history",
+});
+
+test("U1: a completion on screen is the first, highlighted row and never 'no match'", async () => {
+	const bundle = await renderBar({
+		url: "about:blank",
+		ownState: true,
+		addressHistory: async (request) => ({
+			requestId: request.requestId,
+			activeTabId: 1,
+			entries: [visitedEntry("http://127.0.0.1:8080/docs/guide", "Guide")],
+		}),
+	});
+	await type(bundle, "127.0.0.1:8080/do");
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 200));
+	});
+	await flush();
+	assert.equal(
+		bundle.input.value,
+		"127.0.0.1:8080/docs/guide",
+		"the field is completing from history",
+	);
+	assert.doesNotMatch(
+		bundle.container.textContent,
+		/No matching pages/,
+		"the list must not say there is no match while the field completes",
+	);
+	assert.doesNotMatch(
+		bundle.container.querySelector('[role="status"]').textContent,
+		/No matching pages/,
+	);
+	const rows = options(bundle);
+	assert.equal(rows.length, 1, "the completion's destination is a real row");
+	assert.equal(
+		rows[0].getAttribute("data-address-suggestion-url"),
+		"http://127.0.0.1:8080/docs/guide",
+	);
+	assert.equal(rows[0].getAttribute("aria-selected"), "true");
+	assert.equal(bundle.input.getAttribute("aria-activedescendant"), rows[0].id);
+	await key(bundle, "Enter");
+	assert.deepEqual(bundle.navigations, [
+		{ url: "http://127.0.0.1:8080/docs/guide", expectedTabId: 1 },
+	]);
+	await bundle.cleanup();
+});
+
+test("U2: a title-only history match keeps the typed row, the search row and the highlight", async () => {
+	const bundle = await renderBar({
+		url: "about:blank",
+		ownState: true,
+		addressHistory: async (request) => ({
+			requestId: request.requestId,
+			activeTabId: 1,
+			entries: [
+				visitedEntry(
+					"https://duckduckgo.com/?q=qa-app.qa.gominerva.com",
+					"qa-app.qa.gominerva.com at DuckDuckGo",
+				),
+			],
+		}),
+	});
+	await type(bundle, OWN_STATE_ADDRESS);
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 200));
+	});
+	await flush();
+	const rows = options(bundle);
+	assert.equal(rows.length, 3, "typed, search, then the title-only match");
+	assert.match(visibleText(rows[0]), OPEN_TYPED_ROW);
+	assert.match(visibleText(rows[1]), SEARCH_TYPED_ROW);
+	assert.equal(
+		rows[2].getAttribute("data-address-suggestion-source"),
+		"history",
+	);
+	assert.equal(bundle.input.getAttribute("aria-activedescendant"), rows[0].id);
+	await bundle.cleanup();
+});
+
+test("Q2: a press on the own-state list's own chrome keeps focus and the draft", async () => {
+	const bundle = await renderBar({
+		url: "about:blank",
+		ownState: true,
+		addressHistory: emptyHistory,
+	});
+	await type(bundle, OWN_STATE_ADDRESS);
+	const panel = bundle.container.querySelector(
+		'[data-address-list-placement="dom"]',
+	);
+	assert.ok(panel);
+	const header = panel.firstElementChild;
+	for (const target of [header, panel]) {
+		const press = new dom.window.MouseEvent("mousedown", {
+			bubbles: true,
+			cancelable: true,
+		});
+		await act(async () => {
+			target.dispatchEvent(press);
+		});
+		assert.equal(
+			press.defaultPrevented,
+			true,
+			"mousedown on the list's header/edge must not move focus off the field",
+		);
+	}
+	assert.equal(bundle.input.value, OWN_STATE_ADDRESS);
+	await bundle.cleanup();
+});
+
+test("Q3: bidi controls in the typed value never reach the displayed row, and Enter navigates the raw text", async () => {
+	const raw = "ab\u2069\u202Ecd.example";
+	const bundle = await renderBar({
+		url: "about:blank",
+		ownState: true,
+		addressHistory: emptyHistory,
+	});
+	await type(bundle, raw);
+	const rows = options(bundle);
+	assert.ok(rows.length > 0);
+	// The ONE legitimate FSI/PDI pair is the isolate this row wraps around the
+	// value; take it off and no bidi control may remain, so the typed PDI + RLO
+	// cannot close the isolate and reorder the sentence.
+	for (const row of rows) {
+		const withoutIsolate = row.textContent.replace(
+			"\u2068abcd.example\u2069",
+			"abcd.example",
+		);
+		assert.notEqual(withoutIsolate, row.textContent, "the value is isolated");
+		assert.equal(
+			/[\u200E\u200F\u061C\u202A-\u202E\u2066-\u2069]/.test(withoutIsolate),
+			false,
+			`row text carries no stray bidi control: ${JSON.stringify(row.textContent)}`,
+		);
+	}
+	await key(bundle, "Enter");
+	assert.equal(
+		bundle.navigations.at(-1).url,
+		`https://duckduckgo.com/?q=${encodeURIComponent(raw)}`,
+		"the commit target stays the raw typed text",
+	);
+	await bundle.cleanup();
+});
+
+test("D2: the full unavailable sentence is the field's title for every standing cause, and the list header's for a failed read", async () => {
+	const cases = [
+		[
+			{ overlayMode: "suspend", overlayReason: "platform" },
+			/aren't shown on this system.*Press Enter/,
+		],
+		[
+			{ overlayMode: "suspend", overlayReason: "child_crash" },
+			/stopped working.*restart Local Operator/,
+		],
+	];
+	for (const [props, expected] of cases) {
+		const bundle = await renderBar(props);
+		assert.match(bundle.input.getAttribute("title") ?? "", expected);
+		assert.equal(
+			bundle.input.getAttribute("title"),
+			document.getElementById(
+				bundle.input
+					.getAttribute("aria-describedby")
+					.split(" ")
+					.find((id) => id.endsWith("-unavailable")),
+			).textContent,
+			"the title is exactly the sentence the pill paints and the field describes itself with",
+		);
+		await bundle.cleanup();
+	}
+	// A pane below the list's width floor: main refuses `anchor_too_narrow`,
+	// which the mirror reports through `onUnavailable`.
+	let refuse = false;
+	dom.window.api = {
+		browser: new Proxy(
+			{
+				addressOverlay: {
+					project: async () => ({
+						accepted: false,
+						reason: "anchor_too_narrow",
+					}),
+					onEvent: () => () => {},
+				},
+			},
+			{
+				// Subscriptions return their unsubscribe; everything else resolves.
+				get: (target, name) =>
+					target[name] ??
+					(String(name).startsWith("on")
+						? () => () => {}
+						: async () => undefined),
+			},
+		),
+	};
+	try {
+		const host = document.createElement("div");
+		document.body.appendChild(host);
+		const hostRoot = createRoot(host);
+		let sendRect = () => {};
+		const Rect = () => {
+			sendRect = useBrowserChrome().setContentRect;
+			return null;
+		};
+		await act(async () => hostRoot.render(React.createElement(Rect)));
+		await act(async () => {
+			sendRect({ x: 0, y: 100, width: 800, height: 600 });
+			await new Promise((resolve) => setTimeout(resolve, 50));
+		});
+		const bundle = await renderBar({ addressHistory: emptyHistory });
+		await type(bundle, OWN_STATE_ADDRESS.replace("qa-app.", "x."));
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 120));
+		});
+		refuse = /too narrow/.test(bundle.input.getAttribute("title") ?? "");
+		await bundle.cleanup();
+		await act(async () => hostRoot.unmount());
+		host.remove();
+	} finally {
+		dom.window.api = undefined;
+	}
+	assert.equal(refuse, true, "the narrow-pane sentence is the field's title");
+
+	const failed = await renderBar({
+		url: "about:blank",
+		ownState: true,
+		addressHistory: async () => {
+			throw new Error("proof");
+		},
+	});
+	await type(failed, OWN_STATE_ADDRESS);
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 200));
+	});
+	await flush();
+	const header = failed.container.querySelector(
+		'[data-address-list-placement="dom"]',
+	).firstElementChild;
+	assert.match(header.textContent, /Couldn't read your browsing history/);
+	assert.equal(
+		header.getAttribute("title"),
+		header.textContent,
+		"the truncated header carries its full sentence as a title",
+	);
+	await failed.cleanup();
+});
+
+test("U1: the completion row stays highlighted while the user keeps typing into it", async () => {
+	// Per-keystroke, with the history answer already in: the second keystroke
+	// leaves the row set unchanged, so only the keystroke handler can keep the
+	// highlight the first one set.
+	const bundle = await renderBar({
+		url: "about:blank",
+		ownState: true,
+		addressHistory: async (request) => ({
+			requestId: request.requestId,
+			activeTabId: 1,
+			entries: [visitedEntry("http://127.0.0.1:8080/docs/guide", "Guide")],
+		}),
+	});
+	await type(bundle, "127.0.0.1:8080/d");
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 200));
+	});
+	await flush();
+	await act(async () => {
+		setValue(bundle.input, "127.0.0.1:8080/do");
+	});
+	await flush();
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 200));
+	});
+	await flush();
+	assert.equal(bundle.input.value, "127.0.0.1:8080/docs/guide");
+	const rows = options(bundle);
+	assert.equal(rows.length, 1);
+	assert.equal(
+		bundle.input.getAttribute("aria-activedescendant"),
+		rows[0].id,
+		"the completion's row is highlighted after the second keystroke too",
+	);
 	await bundle.cleanup();
 });

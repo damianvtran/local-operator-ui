@@ -104,5 +104,13 @@
 		"length": "Four words.",
 		"note": "Screen-reader and pointer users only: it reports the busy state instead of offering an action, because the control no-ops while the write runs.",
 		"placeholders": {}
+	},
+	"ui.chat.header.session_model_connect": {
+		"role": "action",
+		"tone": "plain"
+	},
+	"ui.chat.header.session_model_switch": {
+		"role": "action",
+		"tone": "plain"
 	}
 }

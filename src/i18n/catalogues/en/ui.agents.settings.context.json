@@ -349,5 +349,26 @@
 		"tone": "Concise input constraint, without blame.",
 		"length_hint": "One short toast line, about 26 English characters.",
 		"note": "Shown when the trimmed name is empty; no save request is sent."
+	},
+	"ui.agents.settings.chat.generation_settings": {
+		"role": "section heading",
+		"tone": "plain"
+	},
+	"ui.agents.settings.chat.generation_tooltip": {
+		"role": "tooltip",
+		"tone": "plain"
+	},
+	"ui.agents.settings.chat.model_hosting_heading": {
+		"role": "section heading",
+		"tone": "plain"
+	},
+	"ui.agents.settings.chat.model_hosting_tooltip": {
+		"role": "tooltip",
+		"tone": "plain"
+	},
+	"ui.agents.settings.chat.set_custom_values_note": {
+		"role": "section note",
+		"tone": "plain, helpful",
+		"note": "Says that a blank option keeps the product's tested default."
 	}
 }

@@ -21,5 +21,11 @@
 	"ui.agents.upload.target.upgrade": "(нужен тариф выше)",
 	"ui.agents.upload.terms.lead": "Я принимаю",
 	"ui.agents.upload.terms.link": "условия использования",
-	"ui.agents.upload.terms.tail": "и подтверждаю, что этот агент не содержит вредоносного содержимого и не нарушает правила использования."
+	"ui.agents.upload.terms.tail": "и подтверждаю, что этот агент не содержит вредоносного содержимого и не нарушает правила использования.",
+	"ui.agents.upload.title.publish_org": "Опубликовать «{name}» в организации {destination}?",
+	"ui.agents.upload.title.publish_public": "Опубликовать «{name}» в Хаб агентов?",
+	"ui.agents.upload.title.published_org": "Опубликовано «{name}» в организации {destination}",
+	"ui.agents.upload.title.published_public": "Опубликовано «{name}» в Хаб агентов",
+	"ui.agents.upload.title.republished": "Обновлена публикация «{name}» в Хабе агентов",
+	"ui.agents.upload.title.update_listing": "Обновить публикацию «{name}» в Хабе агентов?"
 }

@@ -1182,6 +1182,26 @@
 	"ui.browser.browser_url_bar.address_suggestions_unavailable": {
 		"role": "status or explanatory text \u2014 address suggestions",
 		"tone": "plain, restrained; the field still works",
-		"note": "Shown when the local history read failed. It states the degradation and nothing more: typing and Enter still navigate normally, and no retry control is offered. No placeholders."
+		"note": "Shown ONLY when the local browsing-history read was rejected. Two short sentences: what failed, and that typed addresses still work. Not shown for a new tab, an empty history or a platform without the list. No placeholders."
+	},
+	"ui.browser.browser_url_bar.address_open_row": {
+		"role": "list row \u2014 address suggestions",
+		"tone": "plain imperative",
+		"note": "The first row when the typed text is a web address with no history or open-tab match: opens exactly what was typed. {address} is the user's own text, shown verbatim in quotes. Sits above the DuckDuckGo search row."
+	},
+	"ui.browser.browser_url_bar.address_suggestions_unavailable_platform": {
+		"role": "status text beside the address field",
+		"tone": "plain, restrained; the field still works",
+		"note": "Shown beside the field on a system where the native suggestions list does not exist (Windows and Linux today). States the situation and the action: Enter opens what was typed. 'This system' is the user's operating system. Keep it short enough to share the field with typed text. No placeholders."
+	},
+	"ui.browser.browser_url_bar.address_suggestions_unavailable_restart": {
+		"role": "status text beside the address field",
+		"tone": "plain, restrained; names the way out",
+		"note": "Shown beside the field when the suggestions list failed to start or crashed during this run. Names the action (Enter still opens what was typed) and the recovery (restart the app). Keep it short enough to share the field with typed text. No placeholders."
+	},
+	"ui.browser.browser_url_bar.address_suggestions_unavailable_narrow": {
+		"role": "status text beside the address field",
+		"tone": "plain, restrained",
+		"note": "Shown when the browser pane is too narrow to host the suggestions list. 'Pane' is the browser panel, not a window. States the action: Enter opens what was typed. Keep it short enough to share the field with typed text. No placeholders."
 	}
 }

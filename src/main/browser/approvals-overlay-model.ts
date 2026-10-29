@@ -185,8 +185,13 @@ export function approvalsCardModelFrom(
 	return sanitizeApprovalsCardModel(model) ?? emptyModel(model);
 }
 
-/** A palette name is a CSS token, not free text: letters, digits, `-` and `_`. */
-function paletteName(value: unknown): string | null {
+/**
+ * A palette name is a CSS token, not free text: letters, digits, `-` and `_`.
+ * Exported because the URL builder (`approvals-overlay.ts`) puts the same value
+ * on the document's query string, and one rule for "is this a palette name" is
+ * the only way the two carriers cannot disagree.
+ */
+export function paletteName(value: unknown): string | null {
 	if (typeof value !== "string") return null;
 	return /^[A-Za-z0-9_-]{1,40}$/.test(value) ? value : null;
 }

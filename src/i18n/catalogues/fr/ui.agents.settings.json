@@ -1,5 +1,10 @@
 {
+	"ui.agents.settings.chat.generation_settings": "Paramètres de génération",
+	"ui.agents.settings.chat.generation_tooltip": "Paramètres qui contrôlent la génération des réponses de l’agent",
+	"ui.agents.settings.chat.model_hosting_heading": "Modèle et hébergement",
+	"ui.agents.settings.chat.model_hosting_tooltip": "Configurer le modèle et le fournisseur d’hébergement à utiliser",
 	"ui.agents.settings.chat.not_set_yet": "Pas encore défini",
+	"ui.agents.settings.chat.set_custom_values_note": "Vous pouvez personnaliser ces paramètres à l’aide des options ci-dessous. Toute option non définie utilise une valeur par défaut optimisée à partir des tests utilisateurs.",
 	"ui.agents.settings.chat.set_to_default": "Défini à la valeur par défaut ({value})",
 	"ui.agents.settings.chat.advanced_chat_settings": "Paramètres de conversation avancés",
 	"ui.agents.settings.chat.advanced_settings_to_change_how_the_agent": "Paramètres avancés pour modifier la génération des réponses de l’agent",

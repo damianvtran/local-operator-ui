@@ -37,6 +37,12 @@
 		"note": "Attempts the failed action again; not navigation, sign-out or reload by definition.",
 		"length": "Two words."
 	},
+	"ui.common.actions.retrying": {
+		"role": "button label while the retry is in flight",
+		"tone": "Progress, same voice as retry_again; not a success or a failure.",
+		"note": "The in-flight arm of retry_again: the button is disabled and aria-busy while a second read is running, and this label says the press was taken. U+2026, not three periods.",
+		"length": "One word plus an ellipsis."
+	},
 	"ui.common.actions.date_time_picker.select_date": {
 		"role": "input placeholder",
 		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
@@ -286,5 +292,14 @@
 		"tone": "Concise, factual and actionable where the state has a next step.",
 		"length": "One compact status line, placeholder, button, or spoken suffix.",
 		"note": "English source: Clear"
+	},
+	"ui.common.actions.dismiss": {
+		"role": "action",
+		"tone": "plain"
+	},
+	"ui.common.actions.more_info": {
+		"role": "icon-button name",
+		"tone": "plain",
+		"note": "Opens a tooltip explaining the section beside it."
 	}
 }

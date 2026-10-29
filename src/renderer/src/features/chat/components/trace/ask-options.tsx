@@ -76,6 +76,8 @@
  * `:focus-visible` outline from `styles/index.css` rather than a local ring.
  */
 
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { KeyboardEvent } from "react";
 import type { PendingDesktopGate } from "../../../../../../shared/desktop-session-contract";
@@ -162,6 +164,7 @@ export const AskOptions = ({
 	onAnswer,
 	requestId,
 }: AskOptionsProps) => {
+	useI18nLocale();
 	if (options.length === 0) return null;
 
 	// A `secret` ask arrives with EMPTY options and is answered from the dock's
@@ -215,7 +218,7 @@ export const AskOptions = ({
 		 * stays 8px (`mt-1` 4px + `py-1` 4px).
 		 */
 		<fieldset
-			aria-label="Answer options"
+			aria-label={t("ui.chat.asks.answer_options")}
 			className="flex min-w-0 max-h-[380px] flex-col gap-0.5 overflow-y-auto border-0 p-1"
 			onKeyDown={(event) => {
 				const buttons = Array.from(
