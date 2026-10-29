@@ -547,7 +547,10 @@ export class TeamBridgeSendJournal<A = TeamBridgeSendAttachmentSnapshot> {
 			// only a stable error category; the view translates it for the user.
 			this.update(attempt, {
 				state: "failed",
-				error: { kind: phase, message: `Team Bridge send ${phase} failed` },
+				error: {
+					kind: phase,
+					message: `Team Bridge send ${phase} failed`, // i18n: ignore diagnostic only — the list draws ui.teamBridge.message.failed from `kind`, so this string is never rendered; exception text is withheld above since it can carry a body or an attachment URL.
+				},
 				settledAt: this.now(),
 			});
 		} finally {
