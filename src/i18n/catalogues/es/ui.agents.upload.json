@@ -21,5 +21,11 @@
 	"ui.agents.upload.target.upgrade": "(requiere plan superior)",
 	"ui.agents.upload.terms.lead": "Confirmo que he leído y acepto los",
 	"ui.agents.upload.terms.link": "términos y condiciones",
-	"ui.agents.upload.terms.tail": "y que este agente no contiene contenido malicioso ni incumple las políticas de uso."
+	"ui.agents.upload.terms.tail": "y que este agente no contiene contenido malicioso ni incumple las políticas de uso.",
+	"ui.agents.upload.title.publish_org": "¿Publicar “{name}” en {destination}?",
+	"ui.agents.upload.title.publish_public": "¿Publicar “{name}” en el Hub de agentes?",
+	"ui.agents.upload.title.published_org": "Publicado “{name}” en {destination}",
+	"ui.agents.upload.title.published_public": "Publicado “{name}” en el Hub de agentes",
+	"ui.agents.upload.title.republished": "Se actualizó la ficha de “{name}” en el Hub de agentes",
+	"ui.agents.upload.title.update_listing": "¿Actualizar la ficha de “{name}” en el Hub de agentes?"
 }

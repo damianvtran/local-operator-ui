@@ -1,0 +1,72 @@
+{
+  "audit_id": "alit2-abdb30734404",
+  "audit_kind": "independent-namespace-delta-translation-audit",
+  "audit_date": "2026-10-26",
+  "locale": "vi",
+  "namespace": "ui.hub.pages",
+  "key_count": 2,
+  "keys_audited": [
+    "ui.hub.pages.card.get",
+    "ui.hub.pages.card.updated"
+  ],
+  "audited_head": "a9e536bf892f48ed2a87772658055abfd10caa5e",
+  "english_keys_commit": "73af0b6855",
+  "branch": "i18n-agents-literals-2",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "cce11618efc2",
+    "instance": "abdb30734404",
+    "model": "radient/auto",
+    "actual_model_source": "harness session banner 'Model: radient/auto' plus this session's checkpoint (~/.local-operator/sessions/cce11618efc2/tail-anchor.v1.json) recording selected_model {selector: radient/auto, boot: radient/auto, effort: auto}",
+    "fallback": null,
+    "independent_from_translator_session": true,
+    "independence_basis": "Did not translate, remediate or author the audited values and read no translator reasoning; wrote only the receipt and these evidence records."
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.hub.pages.json",
+      "sha256": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.hub.pages.context.json",
+      "sha256": "d913efa6ea062fe5c04861c6db202d5bf303b7b0c1a6f9c7efbdaa4b5c095d10"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/vi/ui.hub.pages.json",
+      "sha256": "f470af3ef5e44c6ef8641b3227e3fe9d4826b1a32c3c32be1587d366e1ac16ef"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "i18n/receipts/vi-agents-literals-audit-abdb30734404.json",
+      "sha256": "0468afdef18df4ce6c8762b3a243db5da8a359470277409329d8385cf4e5a529"
+    },
+    {
+      "path": "i18n/audits/evidence/vi/ui.hub.pages/alit2-abdb30734404/record.json",
+      "sha256": null,
+      "note": "this record; its own hash is not self-referential"
+    },
+    {
+      "path": "i18n/audits/evidence/vi/ui.hub.pages/alit2-abdb30734404/audit.log",
+      "sha256": null,
+      "note": "execution log for this bundle; hashed separately when the bundle is reviewed"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [],
+    "result": "clean",
+    "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 0
+    }
+  },
+  "audit_notes_not_execution_log": "This record is provenance, not a log: it states what was audited and what the verdict is. The executed commands and their actual stdout live in audit.log beside it and in the receipt's checks block; no command output is asserted here.",
+  "execution_log": "i18n/audits/evidence/vi/ui.hub.pages/alit2-abdb30734404/audit.log",
+  "receipt": "i18n/receipts/vi-agents-literals-audit-abdb30734404.json",
+  "receipt_sha256": "0468afdef18df4ce6c8762b3a243db5da8a359470277409329d8385cf4e5a529",
+  "scope": "Independent audit of the 2 new vi keys in ui.hub.pages (English source plus its context sidecar), bound by sha256 before reading, in worktree ~/local-operator-ui/.worktrees/i18n-agents-literals-2 at head a9e536bf89. All 37 values of the file were read for consistency with already-shipped siblings; the flat 25-key batch report is the receipt named above."
+}

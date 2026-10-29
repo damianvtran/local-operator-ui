@@ -45,5 +45,7 @@
 	"ui.hub.teams.pull": "Télécharger",
 	"ui.hub.teams.pull_failed": "« {name} » n’a pas pu être téléchargée.",
 	"ui.hub.teams.pull_target": "Télécharger l’équipe {name}",
-	"ui.hub.teams.pulling": "Téléchargement…"
+	"ui.hub.teams.pulling": "Téléchargement…",
+	"ui.hub.teams.recency.created": "créée {when}",
+	"ui.hub.teams.recency.updated": "modifiée {when}"
 }

@@ -1,4 +1,12 @@
 {
+	"ui.agents.pages.add_manual.agent": "手动添加智能体",
+	"ui.agents.pages.add_manual.team": "手动添加团队",
+	"ui.agents.pages.ask.body_agent": "智能体是一套可复用的指令，你可以与它开始对话，也可以让其他智能体调用它。描述你的需求，配置运行便会把它建好。",
+	"ui.agents.pages.ask.body_team": "团队有一个主导对话的智能体，以及由它委派工作的成员。描述你的需求，配置运行便会把它建好。",
+	"ui.agents.pages.ask.heading_agent": "请求一个智能体",
+	"ui.agents.pages.ask.heading_team": "请求一个团队",
+	"ui.agents.pages.ask.manual_agent": "或手动添加智能体",
+	"ui.agents.pages.ask.manual_team": "或手动添加团队",
 	"ui.agents.pages.back_to_list": "返回列表",
 	"ui.agents.pages.browse_aria": "按类型浏览定义",
 	"ui.agents.pages.discard_bar.agent": "放弃对此智能体的未保存更改？",

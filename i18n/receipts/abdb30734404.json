@@ -1,0 +1,554 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "batch": "agents-literals",
+  "round": 1,
+  "locale": "vi",
+  "date": "2026-10-26",
+  "instance": "abdb30734404",
+  "model": "radient/auto",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "team": "lopdev",
+    "session": "cce11618efc2",
+    "instance": "abdb30734404",
+    "model": "radient/auto",
+    "date": "2026-10-26",
+    "independent_from_translator_session": true,
+    "actual_model_source": "Harness-reported route only: this session's checkpoint (~/.local-operator/sessions/cce11618efc2/tail-anchor.v1.json) records selected_model {selector: radient/auto, boot: radient/auto, effort: auto, fast: false}, and the transcript carries no model-switch card and no [session incident]. No fallback descent is disclosed because none was reported; if a later audit of this receipt finds a switch, this field is the claim to correct. The translations were authored in a different session (batch i18n-agents-literals-2), so independence holds by construction as well as by provenance."
+  },
+  "status": "passed",
+  "scope": "Independent round-1 audit of the 25 new vi keys (English-and-context pair) in worktree ~/local-operator-ui/.worktrees/i18n-agents-literals-2, branch i18n-agents-literals-2, HEAD a9e536bf89, bound by sha256 of all 7 en/vi namespace pairs BEFORE any content was read (each matched the task's expected prefix, and the full hashes are in namespaces.*.sha256). All 277 values of the seven vi files were read; the 25 source keys plus their en/*.context.json sidecars were read for role/tone/length/placeholder context; the locale style guide, the shared glossary and docs/I18N.md were read first. Method: mechanical pass (repo validators, key set/order, placeholder multisets, ICU parse and render, NFC, typography, byte-equality against the parent commit), then accuracy, idiom/register, terminology against the locale's shipped siblings, and fit. A second independent pass was run over the high-visibility subset (the four publish titles and the ask/onboarding paragraphs) with the direction reversed (vi -> en sense check plus a safety read of the permission copy); it produced no additional finding. This auditor did not translate or remediate any of it and made exactly one repository write: this receipt.",
+  "translation_provenance": "The translations were authored in another session for the i18n-translator lane and committed at a9e536bf89; this auditor did not write, remediate or edit any catalogue, ledger, generated file or test, and never ran git add/commit/stash/checkout/reset/merge.",
+  "binding": {
+    "manifest": "$LOCAL_OPERATOR_SCRATCHPAD/agents-literals-2-keys.json (manager scratchpad, session 3ef6295a5545; copy at <worktree>/agents-literals-2-keys.json, untracked)",
+    "verified": "sha256 recomputed from disk for all 7 en and 7 vi files before reading: vi prefixes 1a32b430 / 86fd10cd / 16b98fee / 09a98242 / f470af3e / 5c0c5877 / d95043e5 in the task's order (pages, config, detail, upload, hub.pages, hub.teams, common.actions) - all exact matches, so no mismatch stop was needed."
+  },
+  "required_sources": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+    },
+    "contributor_contract": {
+      "path": "docs/I18N.md (this worktree)",
+      "note": "Read for the receipt/ledger contract (§ Retain checkable audit records) before the byte pass."
+    }
+  },
+  "checks": {
+    "repo_validators_run": {
+      "environment": "Worktree root ~/local-operator-ui/.worktrees/i18n-agents-literals-2, Node v24.22.1. Each command ran on its own with stdout captured to a file and the exit code read from the command itself, not from a pipe.",
+      "commands": [
+        {
+          "command": "node --test scripts/i18n/locale-parity.test.mjs",
+          "exit_code": 0,
+          "stdout_tail": [
+            "ℹ pass 44",
+            "ℹ fail 0",
+            "ℹ cancelled 0",
+            "ℹ skipped 0",
+            "ℹ todo 0"
+          ],
+          "note": "the [vi] blocks inside that run assert: carries EVERY key of each namespace file it ships; names only keys the English source defines; preserves every ICU placeholder from the English source; is not an English stub"
+        },
+        {
+          "command": "node scripts/i18n/check-coverage.mjs",
+          "exit_code": 0,
+          "stdout": "coverage-check: ok — 7 gated language(s) over 94 namespace(s); 0 allowed key(s) remain across 0 pair(s) (shrink-only; see i18n/coverage-allowance.json)."
+        },
+        {
+          "command": "node scripts/i18n/generate.mjs",
+          "args": [
+            "--check"
+          ],
+          "exit_code": 0,
+          "stdout": "/Users/damian/local-operator-ui/.worktrees/i18n-agents-literals-2/src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+        },
+        {
+          "command": "node scripts/i18n/check-duplicates.mjs",
+          "exit_code": 0,
+          "stdout": "check-duplicates: ok — 844 file(s) scanned, 0 duplicate key(s)"
+        },
+        {
+          "command": "node scripts/i18n/context-parity.mjs",
+          "exit_code": 0,
+          "stdout": "context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json)."
+        }
+      ],
+      "ledger_derivation": "node scripts/i18n/ledger-rules.mjs deriveReceiptAudit was executed over these bytes for all seven namespaces with both hashes recomputed from disk: seven derivations, no ReceiptRefusal. Derived per namespace -> ui.agents.pages clean-with-findings {0,0,0,1}; ui.agents.config clean {0,0,0,0}; ui.agents.detail clean {0,0,0,0}; ui.agents.upload clean-with-findings {0,0,0,1}; ui.hub.pages clean {0,0,0,0}; ui.hub.teams clean {0,0,0,0}; ui.common.actions clean {0,0,0,0}. The receipt_sha256 each derivation returns is the digest of the bytes ledger-assemble will copy; it is not repeated inside the file because a file cannot carry its own digest."
+    },
+    "key_parity": "Independent JSON parse of the seven en/vi pairs: key sets equal in all seven; key order equal to en in 6/7. ui.common.actions differs in order (see vi-i13: identical divergence at 73af0b6855, key set equal, no value changed) and its new key is at index 6 in both files. No key added, dropped or empty in any of the seven.",
+    "placeholders": "Own multiset check of every key in all 7 files: placeholder argument multiset equal to en for every key (0 mismatches). The 25 new values keep {name}, {destination}, {when} exactly; no renames, no added or dropped arguments, no numbering/type changes.",
+    "icu": "All 277 vi values parsed with @formatjs/icu-messageformat-parser (requiresOtherClause): 0 parse failures. 5 plural/select messages, every plural exposes exactly [other], matching the vi CLDR rule and the style guide's other-only call; no select/plural structure was touched by this change (none of the 25 keys carries one).",
+    "nfc": "unicodedata.is_normalized('NFC', value) true for every value and for all seven files' bytes; no combining mark (Unicode category Mn via unicodedata.combining) anywhere in the seven vi files; no NFD sequence, so no decomposed Vietnamese diacritics and no width-counting hazard. Diacritics are complete: a scan of all seven files for ASCII-only values returns only one value, the numeric '{currentmatch, number, ::group-off} / {matchcount, number, ::group-off}' pattern in ui.common.actions.find_replace_widget.of.",
+    "typography": "Per the vi guide: no '...' (all ellipses are U+2026), no ASCII double or single quote inside any value (quotes are U+201C/U+201D), no double space, no leading/trailing space, no NBSP/narrow-NBSP in a catalogue value, no '!'.",
+    "diff_vs_parent": "git show 73af0b6855:<path> compared key by key: added keys per file = 8/3/3/6/2/2/1 (exactly the 25), removed = 0, changed pre-existing value = 0 in all seven. The commit diff for vi/ shows additions only (the sole '-/+' pair in ui.agents.upload is the trailing comma on terms.tail).",
+    "render": "The {when}/{name}/{destination} strings were composed with realistic values: Latin 'Research assistant', a 54-character Vietnamese name ('Trợ lý nghiên cứu thị trường Đông Nam Á và báo cáo quý'), a CJK name ('研究助手'), a Cyrillic name ('Исследователь'), a 59-character Vietnamese organisation name, and the shipped age phrases '3 ngày trước' / '5 phút trước'. Examples: 'Thay đổi Trợ lý nghiên cứu thị trường Đông Nam Á và báo cáo quý…', 'Xuất bản “研究助手” lên Trung tâm tác nhân?', 'Đã xuất bản “Исследователь” đến Acme Corporation', 'cập nhật 3 ngày trước'. Every composed sentence keeps the placeholder inside the locale's quotation marks and reads as one sentence; no RTL/bidi question applies to vi."
+  },
+  "second_pass": {
+    "subset": "ui.agents.upload.title.publish_org / publish_public / published_org / published_public / update_listing / republished, plus ui.agents.pages.ask.body_agent / body_team / heading_* / manual_* / add_manual.*",
+    "why": "High visibility: the publish titles carry a permission/consequence decision, and the ask block is the onboarding copy for the whole surface.",
+    "method": "Reverse sense check (vi -> en, asking what a user would think was about to happen) plus a safety read: does each title name its destination, distinguish public from private, and avoid reading as a completed action before the decision.",
+    "result": "No additional finding. The public variant names the shipped surface ('Trung tâm tác nhân') and the organisation variant names the recipient, so the two cannot be confused; the receipt forms use 'Đã …' with no question mark while the questions keep '?'; the ask paragraph states what an agent is and what the box does, in that order."
+  },
+  "rulings": [
+    {
+      "key": "ui.agents.pages.ask.body_agent",
+      "question": "is 'trực tiếp' an unlicensed addition?",
+      "ruling": "accepted",
+      "basis": "vi-i1"
+    },
+    {
+      "key": "ui.agents.upload.title.publish_org",
+      "question": "is 'đến {destination}' natural for publishing to an organisation, or should it be 'lên'?",
+      "ruling": "accepted; 'lên' would be the platform preposition and wrong for an org",
+      "basis": "vi-i7"
+    },
+    {
+      "key": "ui.agents.pages.add_manual.agent",
+      "question": "'Tự thêm' versus the locale's 'thủ công'",
+      "ruling": "accepted",
+      "basis": "vi-i2"
+    },
+    {
+      "key": "ui.agents.detail.meta.delegates",
+      "question": "'Ủy quyền' as a capability fact",
+      "ruling": "accepted",
+      "basis": "vi-i5"
+    },
+    {
+      "key": "ui.hub.pages.card.get",
+      "question": "'Tải' versus the literal 'Lấy'",
+      "ruling": "accepted",
+      "basis": "vi-i9"
+    },
+    {
+      "key": "ui.hub.pages.card.updated",
+      "question": "'cập nhật {when}' with an age phrase that already ends in 'trước'",
+      "ruling": "accepted; no second 'ago', no preposition",
+      "basis": "vi-i10 / vi-i11"
+    }
+  ],
+  "namespaces": {
+    "ui.agents.pages": {
+      "namespace": "ui.agents.pages",
+      "status": "passed",
+      "keys_audited": 30,
+      "keys_new": 8,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      },
+      "source_sha256": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781",
+      "target_sha256": "1a32b43038518753067d9f11a9bbba5bb4518df122b15d5d0d78a75119a8c0cb",
+      "sha256": {
+        "en": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781",
+        "vi": "1a32b43038518753067d9f11a9bbba5bb4518df122b15d5d0d78a75119a8c0cb",
+        "context": "f9690a17e6e7307df154bdc0d71ab8a0d002a07a052e11c0025d2ff874d3dfea"
+      },
+      "findings": [
+        {
+          "id": "vi-i1",
+          "severity": "info",
+          "key": "ui.agents.pages.ask.body_agent",
+          "observation": "RULING (asked): 'trực tiếp' is accepted; it is not an embellishment of the English. The product's own shipped sentence for this capability carries 'directly' in English and 'trực tiếp' in Vietnamese, and the paragraph reuses that sentence's two clauses.",
+          "evidence": "en ui.agents.detail.kind.role = 'You can chat with it directly'; shipped vi ui.agents.detail.kind.role = 'Bạn có thể trò chuyện trực tiếp với nó'; shipped vi ui.agents.detail.kind.specialist = 'Các tác nhân khác có thể gọi đến nó'. 'trực tiếp với nó' reads as direct conversation with the agent, not the 'live/in person' sense."
+        },
+        {
+          "id": "vi-i2",
+          "severity": "info",
+          "key": "ui.agents.pages.add_manual.agent",
+          "observation": "RULING (asked): 'Tự thêm' is accepted for 'manually' / 'by hand'. The locale's 'thủ công' marks manual operation instead of automation, which is a different contrast from this button (make it yourself instead of asking in words).",
+          "evidence": "shipped vi ui.agents.pages.empty.agents and empty.teams already render 'Ask for one below, or add one by hand' as 'Hãy yêu cầu bên dưới hoặc tự thêm.'. All 4 shipped 'thủ công' strings contrast with automation (actions.copy_failed, updates.update_notification.the_server_needs_updating_by_hand, subscriptions.subscribe_description, subscriptions.manual_available). 16 cells also fits the 288 px ghost button better than the 22-cell 'Thêm tác nhân thủ công'."
+        },
+        {
+          "id": "vi-i3",
+          "severity": "info",
+          "key": "ui.agents.pages.ask.heading_agent",
+          "observation": "RULING: 'Yêu cầu một tác nhân' / 'Yêu cầu một nhóm' use the verb this pane already ships for the action, stay at three Vietnamese words, and stay headings rather than sentences.",
+          "evidence": "shipped vi ui.agents.pages.empty.agents/teams ('Hãy yêu cầu bên dưới…'), ui.agents.config.composer.label ('Yêu cầu thay đổi tác nhân hoặc nhóm'). The sibling pair differs only in its object, as its sidecar requires."
+        },
+        {
+          "id": "vi-n1",
+          "severity": "nit",
+          "key": "ui.agents.pages.ask.body_agent",
+          "current": "Tác nhân là một bộ chỉ dẫn tái sử dụng: bạn có thể trò chuyện trực tiếp với nó, hoặc để tác nhân khác gọi đến. Mô tả điều bạn muốn và một lần chạy cấu hình sẽ thiết lập nó.",
+          "problem": "The second clause elides the object pronoun ('để tác nhân khác gọi đến') where the shipped sibling keeps it ('Các tác nhân khác có thể gọi đến nó'). It is grammatical here because the preceding 'với nó' supplies the referent and no reader is misled; only the parallelism with the shipped sentence is lost.",
+          "proposed": "…hoặc để tác nhân khác gọi đến nó. No slot budget is affected (the paragraph wraps at the 810 px measure); optional polish, not gating."
+        }
+      ]
+    },
+    "ui.agents.config": {
+      "namespace": "ui.agents.config",
+      "status": "passed",
+      "keys_audited": 31,
+      "keys_new": 3,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "source_sha256": "5338f6e229d67bf214a4741224470e82222bd2f04eba9bc9eda7324242393c32",
+      "target_sha256": "86fd10cdfc600b16c370d65d27c01c9f85a4718b5bbca7b56e81eaa5c6c3b058",
+      "sha256": {
+        "en": "5338f6e229d67bf214a4741224470e82222bd2f04eba9bc9eda7324242393c32",
+        "vi": "86fd10cdfc600b16c370d65d27c01c9f85a4718b5bbca7b56e81eaa5c6c3b058",
+        "context": "63a7879a771b5aa7732fcfc8848033ba207701aaf1452e2855e8ec2bd52821bf"
+      },
+      "findings": [
+        {
+          "id": "vi-i4",
+          "severity": "info",
+          "key": "ui.agents.config.placeholder.docked",
+          "observation": "Placeholders fit their slots: docked 38 cells vs the English 44, hero 20 vs 23, about 16 vs 14 around a data name that can be long. Nothing was lengthened, so no new wrap or clip is introduced: the docked box's own sidecar records that the 44-character English already wraps readably (301.1709 px unwrapped in a 304 px content area, scrollHeight == clientHeight == 55).",
+          "evidence": "byte and character counts of the three values; the docked sidecar's own measured note (EN unwrapped 301.1709 px in a 304 px content area) is the boundary this change stays inside. No rendered app check was run here; fit beyond character counts belongs to QA."
+        }
+      ]
+    },
+    "ui.agents.detail": {
+      "namespace": "ui.agents.detail",
+      "status": "passed",
+      "keys_audited": 50,
+      "keys_new": 3,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "source_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+      "target_sha256": "16b98fee171732fd0a77719ca2e9661687f055516e8ae52ed8eb442c0dd1c4f3",
+      "sha256": {
+        "en": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+        "vi": "16b98fee171732fd0a77719ca2e9661687f055516e8ae52ed8eb442c0dd1c4f3",
+        "context": "a0e40ba7fceccdf78da28d064fd4386cc48d8f1c80127a5721550e879c49b511"
+      },
+      "findings": [
+        {
+          "id": "vi-i5",
+          "severity": "info",
+          "key": "ui.agents.detail.meta.delegates",
+          "observation": "RULING (asked): 'Ủy quyền' is accepted as the Delegates fact. Vietnamese does not inflect, so the noun gloss is shared with the delegation section; in the dot-separated fact line it reads as the capability, not as a command, and it is deliberately shorter than the editable switch's full sentence.",
+          "evidence": "shipped vi ui.agents.detail.delegate.label and delegate.aria = 'Có thể ủy quyền cho tác nhân con'; detail.section.delegation = 'Ủy quyền và cấp năng lực'. The meta line renders sourceLabel + this key + a hard-coded 'Specialist' (src/renderer/src/features/agents/components/agent-detail.tsx:170-176), so the key lands in a translated sentence slot as a bare fact. Spelling 'ủy' (tone on the first vowel, NFC) is the guide's wave-2 call."
+        },
+        {
+          "id": "vi-i6",
+          "severity": "info",
+          "key": "ui.agents.detail.read.show_all",
+          "observation": "The expander pair is clearly opposed and terse: 'Hiện tất cả' / 'Thu gọn'. 'Hiện tất cả' matches the shipped short form for showing everything; 'Thu gọn' is the shipped collapse verb.",
+          "evidence": "shipped vi ui.browser.browser_surface.show_all_tabs = 'Hiện tất cả tab'; ui.shell.sidebar_navigation.collapse_sidebar = 'Thu gọn thanh bên'; ui.settings.configuration…collapse_all = 'Thu gọn tất cả'. Widths are 11 and 7 cells against an 8- and 9-character English pair; the sidecar's '48x17.4 px box measured at native' is read as the measured box of the English label itself, since a fixed 48 px clamp would also cut 'Show less'. The hint's own rule ('one short word or two') is met; if QA finds the box is a fixed 48 px clamp rather than measured text, the 11-cell 'Hiện tất cả' becomes a fit question."
+        },
+        {
+          "id": "vi-i14",
+          "severity": "info",
+          "key": "ui.agents.detail.meta.delegates",
+          "observation": "Out-of-audit observation (not a finding against this change): in the same metadata line the 'Specialist' fact is a hard-coded English literal, so the vi line reads 'Nguồn · Ủy quyền · Specialist' - the very concept this repository translates as 'Chuyên gia' in ui.hub.teams.kind.specialist. Pre-existing code, untouched by a9e536bf89, and a catalogue auditor cannot fix it.",
+          "evidence": "src/renderer/src/features/agents/components/agent-detail.tsx:174 (that file's last commit is 73af0b6855, the keying commit; a9e536bf89 touches no file under src/renderer). Flagged for the manager as a code-level follow-up outside this lane."
+        }
+      ]
+    },
+    "ui.agents.upload": {
+      "namespace": "ui.agents.upload",
+      "status": "passed",
+      "keys_audited": 29,
+      "keys_new": 6,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      },
+      "source_sha256": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949",
+      "target_sha256": "09a98242c9e7e04c0784013f60bfe7c095fb78359a3912e7d248579be60cb755",
+      "sha256": {
+        "en": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949",
+        "vi": "09a98242c9e7e04c0784013f60bfe7c095fb78359a3912e7d248579be60cb755",
+        "context": "3141f45c4b8fc17b96061a4556a66b3133bbfe27345ee7e4d929dfe21ee049f0"
+      },
+      "findings": [
+        {
+          "id": "vi-i7",
+          "severity": "info",
+          "key": "ui.agents.upload.title.publish_org",
+          "observation": "RULING (asked): 'đến {destination}' is natural and correct for publishing to an organisation, and the contrast with the public variant's 'lên' is the right one. 'lên' is the platform preposition (publish onto a surface such as the hub); a named recipient organisation takes 'đến'.",
+          "evidence": "shipped vi ui.agents.upload.target.label = 'Xuất bản đến' (the destination selector's own label, pre-existing); shipped vi ui.agents.upload.sign_in.needed = '…xuất bản tác nhân lên Trung tâm tác nhân'; ui.hub.pages.header.title = 'Trung tâm tác nhân'. Rendered: 'Xuất bản “Research assistant” đến Acme Corporation?' and with a 59-character Vietnamese organisation name ('Công ty Cổ phần Thương mại Dịch vụ Xuất nhập khẩu Bình Minh', 94 characters of sentence) it still reads as one sentence, because the destination is the last element before the question mark."
+        },
+        {
+          "id": "vi-i8",
+          "severity": "info",
+          "key": "ui.agents.upload.title.republished",
+          "observation": "Surface and listing vocabulary is the locale's shipped wording, not a second name: 'mục đăng' for listing and 'Trung tâm tác nhân' for the Agent Hub. The receipt forms ('Đã …', no question mark) are past-tense and do not read as fresh publications.",
+          "evidence": "7 pre-existing vi keys use 'mục đăng' (ui.agents.publication.action.publish_as_new, action.update_listing, agent_not_found.headline, name_taken.owned_body, not_owner.body, not_owner.headline, ui.agents.upload.action.open_listing); 5 pre-existing keys use 'Trung tâm tác nhân' (ui.hub.pages.header.title, ui.shell.sidebar_navigation.agent_hub, ui.command_palette…agent_hub, ui.agents.upload.sign_in.needed, ui.agents.dialogs.create.hub_link)."
+        },
+        {
+          "id": "vi-n2",
+          "severity": "nit",
+          "key": "ui.agents.upload.title.update_listing",
+          "current": "Cập nhật mục đăng của “{name}” trên Trung tâm tác nhân? (55 chars) / Đã cập nhật mục đăng của “{name}” trên Trung tâm tác nhân (57 chars)",
+          "problem": "The sidecars budget 'about 50' and 'about 55' English characters for one dialog-header line; the two Vietnamese templates sit 5 and 2 characters over that figure with the {name} token still to expand. publish_public's sidecar says the header wraps under the close control, so this is a wrap rather than a demonstrated clip — recorded because the budget is stated, not because truncation was observed.",
+          "proposed": "If the header truncates rather than wraps, dropping 'của' brings both under budget and stays idiomatic: 'Cập nhật mục đăng “{name}” trên Trung tâm tác nhân?' (51) and 'Đã cập nhật mục đăng “{name}” trên Trung tâm tác nhân' (53). No change required if it wraps; verify in the dialog."
+        }
+      ]
+    },
+    "ui.hub.pages": {
+      "namespace": "ui.hub.pages",
+      "status": "passed",
+      "keys_audited": 37,
+      "keys_new": 2,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "source_sha256": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6",
+      "target_sha256": "f470af3ef5e44c6ef8641b3227e3fe9d4826b1a32c3c32be1587d366e1ac16ef",
+      "sha256": {
+        "en": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6",
+        "vi": "f470af3ef5e44c6ef8641b3227e3fe9d4826b1a32c3c32be1587d366e1ac16ef",
+        "context": "d913efa6ea062fe5c04861c6db202d5bf303b7b0c1a6f9c7efbdaa4b5c095d10"
+      },
+      "findings": [
+        {
+          "id": "vi-i9",
+          "severity": "info",
+          "key": "ui.hub.pages.card.get",
+          "observation": "RULING (asked): 'Tải' is accepted for 'Get'. It is the shipped hub verb for downloading, it is three cells like the English budget, and it agrees with the download icon and with the button's separate accessible name.",
+          "evidence": "shipped vi ui.hub.pages.header.subtitle ('Khám phá và tải tác nhân, nhóm và kỹ năng…'), ui.hub.pages.sort.most_downloaded ('Tải nhiều nhất'), ui.agents.dialogs.create.hub_link ('…để tải tác nhân có sẵn'), ui.hub.teams.pull ('Tải về'). The literal 'Lấy' would contradict the icon and the download sense."
+        },
+        {
+          "id": "vi-i10",
+          "severity": "info",
+          "key": "ui.hub.pages.card.updated",
+          "observation": "RULING (asked): 'cập nhật {when}' joins naturally. Every shared age message ends in 'trước', so the fragment needs neither a second 'ago' nor a preposition, and the verb stays in the lower-case fragment register the sidecar asks for.",
+          "evidence": "rendered with the shipped vi age strings: 'cập nhật 3 ngày trước', 'cập nhật 5 phút trước', 'tạo 3 ngày trước'. ui.hub.comments.age.* all render '{count} <unit> trước'; fallback '{duration} trước'."
+        }
+      ]
+    },
+    "ui.hub.teams": {
+      "namespace": "ui.hub.teams",
+      "status": "passed",
+      "keys_audited": 49,
+      "keys_new": 2,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "source_sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+      "target_sha256": "5c0c58773fad3a2fcd35e9d269f74db4719df4a5abb41d6bca6a8052f0765ca8",
+      "sha256": {
+        "en": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+        "vi": "5c0c58773fad3a2fcd35e9d269f74db4719df4a5abb41d6bca6a8052f0765ca8",
+        "context": "b062f0ca8aed037084233730702e41c6f3ef09aa39bed405e007466716c711a0"
+      },
+      "findings": [
+        {
+          "id": "vi-i11",
+          "severity": "info",
+          "key": "ui.hub.teams.recency.updated",
+          "observation": "The two recency arms differ only in their verb, both stay lower-case fragments, and neither can be read as an imperative beside the age phrase. The creation arm says creation and never claims an update.",
+          "evidence": "vi ui.hub.teams.recency.created = 'tạo {when}', recency.updated = 'cập nhật {when}'; rendered 'tạo 3 ngày trước' / 'cập nhật 3 ngày trước'. This matches the same shape and wording as ui.hub.pages.card.updated, so the two hub surfaces agree."
+        }
+      ]
+    },
+    "ui.common.actions": {
+      "namespace": "ui.common.actions",
+      "status": "passed",
+      "keys_audited": 51,
+      "keys_new": 1,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "source_sha256": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9",
+      "target_sha256": "d95043e5fa14f4e6ddfb9ea512f979a2962728b72547b6b4c434eaa5d559d653",
+      "sha256": {
+        "en": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9",
+        "vi": "d95043e5fa14f4e6ddfb9ea512f979a2962728b72547b6b4c434eaa5d559d653",
+        "context": "48756cd31d4abbec5d56b3648ffb2fefe578c074645386480c91b4921accf321"
+      },
+      "findings": [
+        {
+          "id": "vi-i12",
+          "severity": "info",
+          "key": "ui.common.actions.retrying",
+          "observation": "RULING: 'Đang thử lại…' is accepted. It is the natural progressive of retry_again ('Thử lại') and is byte-identical to the shipped in-flight arm of the same retry pair.",
+          "evidence": "shipped vi ui.agents.navigation.updates.action.retrying = 'Đang thử lại…' with updates.action.retry = 'Thử lại'. The pre-existing ui.hub.teams.public.trying = 'Đang thử…' belongs to a different pair on the public teams list and is outside this change."
+        },
+        {
+          "id": "vi-i13",
+          "severity": "info",
+          "key": "ui.common.actions.retrying",
+          "observation": "Machine observation, pre-existing: this file's key ORDER differs from en at 28 positions, while its key SET is equal and every pre-existing value is byte-equal to the parent commit. The divergence is identical at 73af0b6855, so this change did not introduce it; the new key sits at index 6 in both files.",
+          "evidence": "list(en) vs list(vi): sets equal; first divergence at index 7 (en date_time_picker.select_date vs vi confirmation_modal.cancel); the same comparison restricted to the 50 shared keys at 73af0b6855 is also non-equal. locale-parity.test.mjs passes 44/44, so ordering is not a gate."
+        }
+      ]
+    }
+  },
+  "findings": [
+    {
+      "id": "vi-n1",
+      "severity": "nit",
+      "key": "ui.agents.pages.ask.body_agent",
+      "current": "Tác nhân là một bộ chỉ dẫn tái sử dụng: bạn có thể trò chuyện trực tiếp với nó, hoặc để tác nhân khác gọi đến. Mô tả điều bạn muốn và một lần chạy cấu hình sẽ thiết lập nó.",
+      "problem": "The second clause elides the object pronoun ('để tác nhân khác gọi đến') where the shipped sibling keeps it ('Các tác nhân khác có thể gọi đến nó'). It is grammatical here because the preceding 'với nó' supplies the referent and no reader is misled; only the parallelism with the shipped sentence is lost.",
+      "proposed": "…hoặc để tác nhân khác gọi đến nó. No slot budget is affected (the paragraph wraps at the 810 px measure); optional polish, not gating."
+    },
+    {
+      "id": "vi-n2",
+      "severity": "nit",
+      "key": "ui.agents.upload.title.update_listing",
+      "current": "Cập nhật mục đăng của “{name}” trên Trung tâm tác nhân? (55 chars) / Đã cập nhật mục đăng của “{name}” trên Trung tâm tác nhân (57 chars)",
+      "problem": "The sidecars budget 'about 50' and 'about 55' English characters for one dialog-header line; the two Vietnamese templates sit 5 and 2 characters over that figure with the {name} token still to expand. publish_public's sidecar says the header wraps under the close control, so this is a wrap rather than a demonstrated clip — recorded because the budget is stated, not because truncation was observed.",
+      "proposed": "If the header truncates rather than wraps, dropping 'của' brings both under budget and stays idiomatic: 'Cập nhật mục đăng “{name}” trên Trung tâm tác nhân?' (51) and 'Đã cập nhật mục đăng “{name}” trên Trung tâm tác nhân' (53). No change required if it wraps; verify in the dialog."
+    }
+  ],
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 2
+  },
+  "verdict": "clean-with-findings",
+  "ledger_note": "r1 vi agents/hub literals: 25 new keys over 7 ns; record i18n/receipts/vi-agents-literals-audit-abdb30734404.json; 0 blocker/major/minor, 2 nit; rulings asked for (trực tiếp, đến, Tự thêm, Ủy quyền, Tải, {when}) accepted on shipped sibling evidence.",
+  "evidence_kind": {
+    "checks": "actual command execution in this session; commands and their stdout/stderr are quoted verbatim above",
+    "judgements": "audit notes, not execution logs: the rulings, the idiom/terminology reasoning and the second pass are reasoning over the bytes, and are labelled as such rather than presented as tool output"
+  },
+  "record": {
+    "audit_date": "2026-10-26",
+    "key_count": 25,
+    "namespace_count": 7,
+    "input_hashes": [
+      {
+        "role": "en",
+        "path": "src/i18n/catalogues/en/ui.agents.pages.json",
+        "sha256": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781"
+      },
+      {
+        "role": "en",
+        "path": "src/i18n/catalogues/en/ui.agents.config.json",
+        "sha256": "5338f6e229d67bf214a4741224470e82222bd2f04eba9bc9eda7324242393c32"
+      },
+      {
+        "role": "en",
+        "path": "src/i18n/catalogues/en/ui.agents.detail.json",
+        "sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b"
+      },
+      {
+        "role": "en",
+        "path": "src/i18n/catalogues/en/ui.agents.upload.json",
+        "sha256": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949"
+      },
+      {
+        "role": "en",
+        "path": "src/i18n/catalogues/en/ui.hub.pages.json",
+        "sha256": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6"
+      },
+      {
+        "role": "en",
+        "path": "src/i18n/catalogues/en/ui.hub.teams.json",
+        "sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06"
+      },
+      {
+        "role": "en",
+        "path": "src/i18n/catalogues/en/ui.common.actions.json",
+        "sha256": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9"
+      },
+      {
+        "role": "context",
+        "path": "src/i18n/catalogues/en/ui.agents.pages.context.json",
+        "sha256": "f9690a17e6e7307df154bdc0d71ab8a0d002a07a052e11c0025d2ff874d3dfea"
+      },
+      {
+        "role": "context",
+        "path": "src/i18n/catalogues/en/ui.agents.config.context.json",
+        "sha256": "63a7879a771b5aa7732fcfc8848033ba207701aaf1452e2855e8ec2bd52821bf"
+      },
+      {
+        "role": "context",
+        "path": "src/i18n/catalogues/en/ui.agents.detail.context.json",
+        "sha256": "a0e40ba7fceccdf78da28d064fd4386cc48d8f1c80127a5721550e879c49b511"
+      },
+      {
+        "role": "context",
+        "path": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+        "sha256": "3141f45c4b8fc17b96061a4556a66b3133bbfe27345ee7e4d929dfe21ee049f0"
+      },
+      {
+        "role": "context",
+        "path": "src/i18n/catalogues/en/ui.hub.pages.context.json",
+        "sha256": "d913efa6ea062fe5c04861c6db202d5bf303b7b0c1a6f9c7efbdaa4b5c095d10"
+      },
+      {
+        "role": "context",
+        "path": "src/i18n/catalogues/en/ui.hub.teams.context.json",
+        "sha256": "b062f0ca8aed037084233730702e41c6f3ef09aa39bed405e007466716c711a0"
+      },
+      {
+        "role": "context",
+        "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+        "sha256": "48756cd31d4abbec5d56b3648ffb2fefe578c074645386480c91b4921accf321"
+      },
+      {
+        "role": "target",
+        "path": "src/i18n/catalogues/vi/ui.agents.pages.json",
+        "sha256": "1a32b43038518753067d9f11a9bbba5bb4518df122b15d5d0d78a75119a8c0cb"
+      },
+      {
+        "role": "target",
+        "path": "src/i18n/catalogues/vi/ui.agents.config.json",
+        "sha256": "86fd10cdfc600b16c370d65d27c01c9f85a4718b5bbca7b56e81eaa5c6c3b058"
+      },
+      {
+        "role": "target",
+        "path": "src/i18n/catalogues/vi/ui.agents.detail.json",
+        "sha256": "16b98fee171732fd0a77719ca2e9661687f055516e8ae52ed8eb442c0dd1c4f3"
+      },
+      {
+        "role": "target",
+        "path": "src/i18n/catalogues/vi/ui.agents.upload.json",
+        "sha256": "09a98242c9e7e04c0784013f60bfe7c095fb78359a3912e7d248579be60cb755"
+      },
+      {
+        "role": "target",
+        "path": "src/i18n/catalogues/vi/ui.hub.pages.json",
+        "sha256": "f470af3ef5e44c6ef8641b3227e3fe9d4826b1a32c3c32be1587d366e1ac16ef"
+      },
+      {
+        "role": "target",
+        "path": "src/i18n/catalogues/vi/ui.hub.teams.json",
+        "sha256": "5c0c58773fad3a2fcd35e9d269f74db4719df4a5abb41d6bca6a8052f0765ca8"
+      },
+      {
+        "role": "target",
+        "path": "src/i18n/catalogues/vi/ui.common.actions.json",
+        "sha256": "d95043e5fa14f4e6ddfb9ea512f979a2962728b72547b6b4c434eaa5d559d653"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "i18n/receipts/vi-agents-literals-audit-abdb30734404.json",
+        "note": "this receipt; a file cannot carry its own digest - the sha256 is reported to the manager and recorded by ledger-assemble in the row's receipt_sha256"
+      }
+    ],
+    "current_report_verdict": {
+      "status": "passed",
+      "unresolved_blocker_major_count": 0,
+      "finding_ids": [
+        "vi-n1",
+        "vi-n2"
+      ]
+    }
+  }
+}

@@ -1,0 +1,438 @@
+{
+	"schema": 1,
+	"kind": "translation-audit-receipt",
+	"audit_kind": "independent-translation-audit",
+	"instance": "4acffbcd1c3d",
+	"locale": "fr",
+	"locale_name": "French",
+	"namespaces": {
+		"ui.agents.pages": {
+			"namespace": "ui.agents.pages",
+			"locale": "fr",
+			"key_count": 30,
+			"new_key_count": 8,
+			"keys_audited": [
+				"ui.agents.pages.add_manual.agent",
+				"ui.agents.pages.add_manual.team",
+				"ui.agents.pages.ask.body_agent",
+				"ui.agents.pages.ask.body_team",
+				"ui.agents.pages.ask.heading_agent",
+				"ui.agents.pages.ask.heading_team",
+				"ui.agents.pages.ask.manual_agent",
+				"ui.agents.pages.ask.manual_team"
+			],
+			"source_sha256": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781",
+			"target_sha256": "916d7c33e8c3b9f8ae5bfd8e488d0686c23b0d137c77b8c1173651da65b347ea",
+			"context_sha256": "f9690a17e6e7307df154bdc0d71ab8a0d002a07a052e11c0025d2ff874d3dfea",
+			"status": "passed",
+			"result": "clean",
+			"findings": []
+		},
+		"ui.agents.config": {
+			"namespace": "ui.agents.config",
+			"locale": "fr",
+			"key_count": 31,
+			"new_key_count": 3,
+			"keys_audited": [
+				"ui.agents.config.placeholder.about",
+				"ui.agents.config.placeholder.docked",
+				"ui.agents.config.placeholder.hero"
+			],
+			"source_sha256": "5338f6e229d67bf214a4741224470e82222bd2f04eba9bc9eda7324242393c32",
+			"target_sha256": "2e326146462c3449b442849725dc03933a362d35059aa7e7fc54febbaf4bf3ef",
+			"context_sha256": "63a7879a771b5aa7732fcfc8848033ba207701aaf1452e2855e8ec2bd52821bf",
+			"status": "passed",
+			"result": "clean",
+			"findings": []
+		},
+		"ui.agents.detail": {
+			"namespace": "ui.agents.detail",
+			"locale": "fr",
+			"key_count": 50,
+			"new_key_count": 3,
+			"keys_audited": [
+				"ui.agents.detail.meta.delegates",
+				"ui.agents.detail.read.show_all",
+				"ui.agents.detail.read.show_less"
+			],
+			"source_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+			"target_sha256": "a095d5f6aea8467ff3d0a9c05d9aa7e93ee022ab780fdd18587d866a4e0a1f0b",
+			"context_sha256": "a0e40ba7fceccdf78da28d064fd4386cc48d8f1c80127a5721550e879c49b511",
+			"status": "passed",
+			"result": "clean",
+			"findings": []
+		},
+		"ui.agents.upload": {
+			"namespace": "ui.agents.upload",
+			"locale": "fr",
+			"key_count": 29,
+			"new_key_count": 6,
+			"keys_audited": [
+				"ui.agents.upload.title.publish_org",
+				"ui.agents.upload.title.publish_public",
+				"ui.agents.upload.title.published_org",
+				"ui.agents.upload.title.published_public",
+				"ui.agents.upload.title.republished",
+				"ui.agents.upload.title.update_listing"
+			],
+			"source_sha256": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949",
+			"target_sha256": "a5a75050ce1177e191e3a860a1cea55c6ac353cae981b2534360b59054f4613f",
+			"context_sha256": "3141f45c4b8fc17b96061a4556a66b3133bbfe27345ee7e4d929dfe21ee049f0",
+			"status": "passed",
+			"result": "clean",
+			"findings": []
+		},
+		"ui.hub.pages": {
+			"namespace": "ui.hub.pages",
+			"locale": "fr",
+			"key_count": 37,
+			"new_key_count": 2,
+			"keys_audited": [
+				"ui.hub.pages.card.get",
+				"ui.hub.pages.card.updated"
+			],
+			"source_sha256": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6",
+			"target_sha256": "224231b077e4d073d8a70a7ac3c8a69c4d8856e935eb9db88b738b8815c0a863",
+			"context_sha256": "d913efa6ea062fe5c04861c6db202d5bf303b7b0c1a6f9c7efbdaa4b5c095d10",
+			"status": "passed",
+			"result": "clean",
+			"findings": []
+		},
+		"ui.hub.teams": {
+			"namespace": "ui.hub.teams",
+			"locale": "fr",
+			"key_count": 49,
+			"new_key_count": 2,
+			"keys_audited": [
+				"ui.hub.teams.recency.created",
+				"ui.hub.teams.recency.updated"
+			],
+			"source_sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+			"target_sha256": "c24e2db54df54bf99673141ce02ec9f056d6c9e77ed63be4986ddf9264b38859",
+			"context_sha256": "b062f0ca8aed037084233730702e41c6f3ef09aa39bed405e007466716c711a0",
+			"status": "passed",
+			"result": "clean",
+			"findings": []
+		},
+		"ui.common.actions": {
+			"namespace": "ui.common.actions",
+			"locale": "fr",
+			"key_count": 51,
+			"new_key_count": 1,
+			"keys_audited": [
+				"ui.common.actions.retrying"
+			],
+			"source_sha256": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9",
+			"target_sha256": "12f505f7b66ba31c2fc3588790daa88d1e4012316ccc5085e51fc90b89061abe",
+			"context_sha256": "48756cd31d4abbec5d56b3648ffb2fefe578c074645386480c91b4921accf321",
+			"status": "passed",
+			"result": "clean",
+			"findings": []
+		}
+	},
+	"key_count": 25,
+	"keys_read": 25,
+	"scope": "fr catalogue audit of the 25 agents-literals-2 keys across the seven listed namespaces at head a9e536bf89: fidelity to the English and its context sidecar, native idiom/register, fr style guide and glossary, consistency with shipped fr siblings, placeholder/typography, and fit against the hints. Pre-existing keys were checked for byte equality to 73af0b6855, and the English catalogues are byte-identical to that commit (git diff empty), so the audited delta is exactly the 25 fr values.",
+	"branch": "i18n-agents-literals-2",
+	"worktree": "~/local-operator-ui/.worktrees/i18n-agents-literals-2",
+	"head": "a9e536bf89",
+	"base": "f1aca5935b",
+	"parent_for_byte_equality": "73af0b6855",
+	"date": "2026-10-26",
+	"audit_date": "2026-10-26",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"harness": "Local Operator",
+		"team": "lopdev",
+		"session": "9727f6733f25",
+		"instance": "4acffbcd1c3d",
+		"model": "radient/auto",
+		"actual_model_source": "harness session header 'Model: radient/auto'; upstream provider/model resolution is not visible to this agent and is not inferred",
+		"model_fallback": "none observed and none claimed: the only model identity visible to this run is the harness header 'Model: radient/auto'; no fallback model is asserted",
+		"independent_from_translator_session": true,
+		"independence": "Did not translate, remediate or edit any catalogue value, ledger, English source, generated file or test; read the clean working-tree bytes at the committed head (git status showed only the untracked context pack) and the English sidecars. Bound the task-supplied en/fr hashes before reading and audited the bytes at a9e536bf89. The translator's session and reasoning were not read.",
+		"second_pass": "A second careful pass over all 25 keys was made in this same instance (re-read the rendered compositions, re-checked agreement and the shipped siblings). It is not an independent second auditor; if a high-visibility group requires a separate instance, this receipt does not claim to be that pass."
+	},
+	"agent": "i18n-auditor",
+	"session": "9727f6733f25",
+	"model": "radient/auto",
+	"independent_from_translator_session": true,
+	"status": "passed",
+	"result": "clean",
+	"verdict": "clean: 0 blocker, 0 major, 0 minor, 0 nit over 25 keys in seven fr namespaces. The 25 values are faithful to the English and its sidecars, read as native French, follow the vous register and the fr typography, match the shipped terminology (Hub des agents, exécution de configuration, fiche, Délégation, Obtenir, Nouvelle tentative), and meet the fitting constraints measured against the real type steps. No catalogue change requested.",
+	"severity_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"findings": [],
+	"judgements": [
+		{
+			"id": "J1",
+			"key": "ui.agents.config.placeholder.docked",
+			"value": "Demandez une modification ou du nouveau…",
+			"verdict": "accepted, no finding",
+			"reason": "Natural French for 'Ask for a change, or describe something new…'; 'du nouveau' is an idiomatic partitive and the shared verb covers both arms. It names no single object and cannot read as messaging the open agent. The compression is required by the sidecar: it is 40 characters and measures 290.27 px at 14 px SF Pro, versus the English 301.17 px (the same method reproduces the recorded native 301.1709 px exactly), inside the 304 px content box; a more literal '…ou décrivez quelque chose de nouveau…' would lengthen it past the constraint."
+		},
+		{
+			"id": "J2",
+			"key": "ui.agents.upload.title.published_org, ui.agents.upload.title.published_public",
+			"value": "Publication de « {name} » vers {destination} / Publication de « {name} » sur le Hub des agents",
+			"verdict": "accepted, no finding",
+			"reason": "The nominal is a natural French status/receipt title; it carries no question mark and cannot be confused with the interrogative sibling ('Publier … ?'), and it does not read as a first-publication imperative. The org receipt names the destination and does not imply the public hub. If the manager prefers an explicit past participle, '« {name} » publié vers {destination}' is available, but it is not required for meaning or register."
+		},
+		{
+			"id": "J3",
+			"key": "ui.agents.upload.title.publish_org, ui.agents.upload.title.published_org",
+			"value": "… vers {destination}",
+			"verdict": "accepted, no finding",
+			"reason": "'vers' is the flow's shipped destination vocabulary: ui.agents.upload.target.label 'Publier vers' and ui.agents.upload.target.orgs_unread '…pour publier vers une organisation'. Changing it to 'dans' would diverge from the dialog's own target control for no gain."
+		},
+		{
+			"id": "J4",
+			"key": "ui.hub.pages.card.get",
+			"value": "Obtenir",
+			"verdict": "accepted, no finding",
+			"reason": "One short word, the standard fr rendering of a Get button and already shipped ('Obtenir {name}', 'Obtenir un code de connexion'). Measured 43.49 px versus 20.58 px for 'Get' at the sm button's 12 px medium step (+22.9 px). The footer is flex-wrap by design; a min-width card with single-digit counters sums to about 243.5 px of the 256 px content box (derived from the button/footer classes plus the measured text widths, not a DOM measurement), so it still fits at the common case, and the component drops the action to a second line rather than clipping when counters grow (the same behaviour the English has)."
+		},
+		{
+			"id": "J5",
+			"key": "ui.agents.detail.read.show_all, ui.agents.detail.read.show_less",
+			"value": "Tout afficher / Afficher moins",
+			"verdict": "accepted, no finding",
+			"reason": "A clear, idiomatic antonym pair; 'Afficher moins' is already shipped (ui.schedules.wake_conversation_row.show_fewer), and 'Tout afficher' is the common fr expander. Both are one or two short words and the link sizes to its content (73.75 px / 84.29 px at 12 px), so the 48 px English reference box is not a fixed slot."
+		},
+		{
+			"id": "J6",
+			"key": "ui.agents.detail.meta.delegates",
+			"value": "Délégation",
+			"verdict": "accepted, no finding",
+			"reason": "The note requires a fact, not a verb; 'Délégation' is the shipped noun for this capability (ui.agents.detail.section.delegation 'Délégation et effort') and one word, so it does not push the meta line to a second row. Read as a capability in a dot-separated facts line, not as a second feature."
+		},
+		{
+			"id": "J7",
+			"key": "ui.common.actions.retrying",
+			"value": "Nouvelle tentative…",
+			"verdict": "accepted, no finding",
+			"reason": "The in-flight arm is distinguished from the idle 'Réessayer' (shipped ui.common.actions.retry/retry_again) and the same phrase is already shipped for a retrying state (ui.chat.pickers.usage_view.retrying). Two words rather than the hint's one, but there is no idiomatic one-word French form; it sits in a flex-wrap status line and measures 123.20 px at 13 px, so it wraps rather than clips."
+		}
+	],
+	"observations": [
+		{
+			"id": "O1",
+			"severity": "info",
+			"scope": "out-of-scope source literal, not one of the 25 keys; not counted",
+			"key": "ui.hub.pages.card.get (adjacent accessible name)",
+			"evidence": "src/renderer/src/features/agent-hub/components/agent-card.tsx:410 uses aria-label={`Download ${displayName}`} — a hardcoded English template literal, while the context sidecar describes the accessible name as a separate message. A fr screen reader announces 'Download Aida'.",
+			"proposed_fix": "Add a catalogue message (e.g. ui.hub.pages.card.download_aria = 'Télécharger {name}') and use it; this needs a code change and a new key, outside this audit's writable scope."
+		},
+		{
+			"id": "O2",
+			"severity": "info",
+			"scope": "out-of-scope source literal in the same meta line; not counted",
+			"key": "ui.agents.detail.meta.delegates (adjacent fact)",
+			"evidence": "src/renderer/src/features/agents/components/agent-detail.tsx:173 appends the literal 'Specialist' for profile.kind === 'specialist'. The fr meta line therefore reads '… · Délégation · Specialist'.",
+			"proposed_fix": "Add a catalogue message (e.g. ui.agents.detail.meta.specialist = 'Spécialiste') and use it; a code change, outside this audit's scope."
+		}
+	],
+	"input_hashes": [
+		{
+			"namespace": "ui.agents.pages",
+			"en": {
+				"path": "src/i18n/catalogues/en/ui.agents.pages.json",
+				"sha256": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781"
+			},
+			"context": {
+				"path": "src/i18n/catalogues/en/ui.agents.pages.context.json",
+				"sha256": "f9690a17e6e7307df154bdc0d71ab8a0d002a07a052e11c0025d2ff874d3dfea"
+			},
+			"target": {
+				"path": "src/i18n/catalogues/fr/ui.agents.pages.json",
+				"sha256": "916d7c33e8c3b9f8ae5bfd8e488d0686c23b0d137c77b8c1173651da65b347ea"
+			}
+		},
+		{
+			"namespace": "ui.agents.config",
+			"en": {
+				"path": "src/i18n/catalogues/en/ui.agents.config.json",
+				"sha256": "5338f6e229d67bf214a4741224470e82222bd2f04eba9bc9eda7324242393c32"
+			},
+			"context": {
+				"path": "src/i18n/catalogues/en/ui.agents.config.context.json",
+				"sha256": "63a7879a771b5aa7732fcfc8848033ba207701aaf1452e2855e8ec2bd52821bf"
+			},
+			"target": {
+				"path": "src/i18n/catalogues/fr/ui.agents.config.json",
+				"sha256": "2e326146462c3449b442849725dc03933a362d35059aa7e7fc54febbaf4bf3ef"
+			}
+		},
+		{
+			"namespace": "ui.agents.detail",
+			"en": {
+				"path": "src/i18n/catalogues/en/ui.agents.detail.json",
+				"sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b"
+			},
+			"context": {
+				"path": "src/i18n/catalogues/en/ui.agents.detail.context.json",
+				"sha256": "a0e40ba7fceccdf78da28d064fd4386cc48d8f1c80127a5721550e879c49b511"
+			},
+			"target": {
+				"path": "src/i18n/catalogues/fr/ui.agents.detail.json",
+				"sha256": "a095d5f6aea8467ff3d0a9c05d9aa7e93ee022ab780fdd18587d866a4e0a1f0b"
+			}
+		},
+		{
+			"namespace": "ui.agents.upload",
+			"en": {
+				"path": "src/i18n/catalogues/en/ui.agents.upload.json",
+				"sha256": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949"
+			},
+			"context": {
+				"path": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+				"sha256": "3141f45c4b8fc17b96061a4556a66b3133bbfe27345ee7e4d929dfe21ee049f0"
+			},
+			"target": {
+				"path": "src/i18n/catalogues/fr/ui.agents.upload.json",
+				"sha256": "a5a75050ce1177e191e3a860a1cea55c6ac353cae981b2534360b59054f4613f"
+			}
+		},
+		{
+			"namespace": "ui.hub.pages",
+			"en": {
+				"path": "src/i18n/catalogues/en/ui.hub.pages.json",
+				"sha256": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6"
+			},
+			"context": {
+				"path": "src/i18n/catalogues/en/ui.hub.pages.context.json",
+				"sha256": "d913efa6ea062fe5c04861c6db202d5bf303b7b0c1a6f9c7efbdaa4b5c095d10"
+			},
+			"target": {
+				"path": "src/i18n/catalogues/fr/ui.hub.pages.json",
+				"sha256": "224231b077e4d073d8a70a7ac3c8a69c4d8856e935eb9db88b738b8815c0a863"
+			}
+		},
+		{
+			"namespace": "ui.hub.teams",
+			"en": {
+				"path": "src/i18n/catalogues/en/ui.hub.teams.json",
+				"sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06"
+			},
+			"context": {
+				"path": "src/i18n/catalogues/en/ui.hub.teams.context.json",
+				"sha256": "b062f0ca8aed037084233730702e41c6f3ef09aa39bed405e007466716c711a0"
+			},
+			"target": {
+				"path": "src/i18n/catalogues/fr/ui.hub.teams.json",
+				"sha256": "c24e2db54df54bf99673141ce02ec9f056d6c9e77ed63be4986ddf9264b38859"
+			}
+		},
+		{
+			"namespace": "ui.common.actions",
+			"en": {
+				"path": "src/i18n/catalogues/en/ui.common.actions.json",
+				"sha256": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9"
+			},
+			"context": {
+				"path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+				"sha256": "48756cd31d4abbec5d56b3648ffb2fefe578c074645386480c91b4921accf321"
+			},
+			"target": {
+				"path": "src/i18n/catalogues/fr/ui.common.actions.json",
+				"sha256": "12f505f7b66ba31c2fc3588790daa88d1e4012316ccc5085e51fc90b89061abe"
+			}
+		}
+	],
+	"standards": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/fr.md",
+			"sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+		},
+		"contract": {
+			"path": "docs/I18N.md",
+			"sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe"
+		}
+	},
+	"method": "Independent reading and reasoning only: no translation or MT service, no back-translation, no comparison service. Bound by hash first, then read the fr style guide and glossary, the English sidecars, the shipped fr siblings, the components' type steps and widths, and rendered every placeholder-bearing string with IntlMessageFormat and realistic sample values.",
+	"machine_checks": [
+		{
+			"command": "python3 <scratchpad>/agents-literals-fr-checks.py",
+			"exit_code": 0,
+			"output": "== HASHES (sha256) ==\nui.agents.pages en=e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781 fr=916d7c33e8c3b9f8ae5bfd8e488d0686c23b0d137c77b8c1173651da65b347ea ctx=f9690a17e6e7307df154bdc0d71ab8a0d002a07a052e11c0025d2ff874d3dfea\nui.agents.config en=5338f6e229d67bf214a4741224470e82222bd2f04eba9bc9eda7324242393c32 fr=2e326146462c3449b442849725dc03933a362d35059aa7e7fc54febbaf4bf3ef ctx=63a7879a771b5aa7732fcfc8848033ba207701aaf1452e2855e8ec2bd52821bf\nui.agents.detail en=80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b fr=a095d5f6aea8467ff3d0a9c05d9aa7e93ee022ab780fdd18587d866a4e0a1f0b ctx=a0e40ba7fceccdf78da28d064fd4386cc48d8f1c80127a5721550e879c49b511\nui.agents.upload en=52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949 fr=a5a75050ce1177e191e3a860a1cea55c6ac353cae981b2534360b59054f4613f ctx=3141f45c4b8fc17b96061a4556a66b3133bbfe27345ee7e4d929dfe21ee049f0\nui.hub.pages en=c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6 fr=224231b077e4d073d8a70a7ac3c8a69c4d8856e935eb9db88b738b8815c0a863 ctx=d913efa6ea062fe5c04861c6db202d5bf303b7b0c1a6f9c7efbdaa4b5c095d10\nui.hub.teams en=4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06 fr=c24e2db54df54bf99673141ce02ec9f056d6c9e77ed63be4986ddf9264b38859 ctx=b062f0ca8aed037084233730702e41c6f3ef09aa39bed405e007466716c711a0\nui.common.actions en=132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9 fr=12f505f7b66ba31c2fc3588790daa88d1e4012316ccc5085e51fc90b89061abe ctx=48756cd31d4abbec5d56b3648ffb2fefe578c074645386480c91b4921accf321\n== JSON + KEY SET + ORDER ==\nui.agents.pages: en_keys=30 fr_keys=30 set_equal=True order_equal=True json_parses=true\nui.agents.config: en_keys=31 fr_keys=31 set_equal=True order_equal=True json_parses=true\nui.agents.detail: en_keys=50 fr_keys=50 set_equal=True order_equal=True json_parses=true\nui.agents.upload: en_keys=29 fr_keys=29 set_equal=True order_equal=True json_parses=true\nui.hub.pages: en_keys=37 fr_keys=37 set_equal=True order_equal=True json_parses=true\nui.hub.teams: en_keys=49 fr_keys=49 set_equal=True order_equal=True json_parses=true\nui.common.actions: en_keys=51 fr_keys=51 set_equal=True order_equal=True json_parses=true\nall_seven_order_and_set_equal=True\n== PLACEHOLDERS ==\n25-key placeholder multiset mismatches=0\n== EMPTY VALUES ==\nempty_values_in_seven_files=0\n== TYPOGRAPHY (all values in the seven files) ==\nascii_apostrophe_U+0027: 0\nthree_dots_literal: 0\nascii_double_quote: 0\nnbsp_U+00A0: 0\nplain_space_before_?!;:: 1\nplain_space_inside_guillemets: 0\n== 25-KEY FRENCH SPACING CODEPOINTS ==\nui.agents.upload.title.publish_org: ? preceded by ['0x202f']\nui.agents.upload.title.publish_org: after « 0x202f, before » 0x202f\nui.agents.upload.title.publish_public: ? preceded by ['0x202f']\nui.agents.upload.title.publish_public: after « 0x202f, before » 0x202f\nui.agents.upload.title.published_org: after « 0x202f, before » 0x202f\nui.agents.upload.title.published_public: after « 0x202f, before » 0x202f\nui.agents.upload.title.republished: after « 0x202f, before » 0x202f\nui.agents.upload.title.update_listing: ? preceded by ['0x202f']\nui.agents.upload.title.update_listing: after « 0x202f, before » 0x202f\n== PLURAL / SELECT CATEGORIES (pre-existing messages in the seven files) ==\nui.agents.config ui.agents.config.definitions: categories=['one', 'many', 'other']\nui.hub.pages ui.hub.pages.status.count.agents: categories=['one', 'many', 'other']\nui.hub.pages ui.hub.pages.status.count.teams: categories=['one', 'many', 'other']\nui.hub.teams ui.hub.teams.member_count: categories=['one', 'many', 'other']\nui.hub.teams ui.hub.teams.public.match_line: categories=['one', 'many', 'other']\n== PRE-EXISTING KEYS BYTE-EQUAL TO PARENT ==\npre_existing_values_changed=0\nunexpected_new_keys=0\n25_key_list_size=25\nall_25_present_in_fr=True",
+			"note": "Local audit script (not shipped): JSON parse/key set/key order, placeholder multisets, empty values, typography codepoints, pre-existing byte equality vs 73af0b6855, plural categories. The one plain-space-before-punctuation hit is the pre-existing ICU skeleton '::group-off' in ui.common.actions.find_replace_widget.of, not one of the 25 keys."
+		},
+		{
+			"command": "node --test scripts/i18n/locale-parity.test.mjs",
+			"exit_code": 0,
+			"output": "✔ [fr] ships at least one message (not an empty claim) (8.465584ms)\n✔ [fr] defines each key in at most one namespace file (8.942042ms)\n✔ [fr] carries EVERY key of each namespace file it ships (81.722166ms)\n✔ [fr] names only keys the English source defines (14.753209ms)\n✔ [fr] preserves every ICU placeholder from the English source (102.525583ms)\n✔ [fr] is not an English stub (no value identical to the source) (28.600958ms)\nℹ tests 44\nℹ pass 44\nℹ fail 0\nℹ duration_ms 1697.981792",
+			"note": "Output filtered to the [fr] tests and the summary; the full run's 44 tests (all locales) passed."
+		},
+		{
+			"command": "node scripts/i18n/check-coverage.mjs",
+			"exit_code": 0,
+			"output": "coverage-check: ok — 7 gated language(s) over 94 namespace(s); 0 allowed key(s) remain across 0 pair(s) (shrink-only; see i18n/coverage-allowance.json)."
+		},
+		{
+			"command": "node scripts/i18n/generate.mjs --check && node scripts/i18n/check-duplicates.mjs && node scripts/i18n/context-parity.mjs",
+			"exit_code": 0,
+			"output": "/Users/damian/local-operator-ui/.worktrees/i18n-agents-literals-2/src/i18n/keys.gen.ts is byte-identical to a fresh generation.\ncheck-duplicates: ok — 844 file(s) scanned, 0 duplicate key(s)\ncontext-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json)."
+		},
+		{
+			"command": "node scripts/i18n/check-strings.mjs",
+			"exit_code": 0,
+			"output": "check-strings.mjs: ok — 1376 file(s) scanned, 76 literal(s) at or below the baseline"
+		},
+		{
+			"command": "node scripts/i18n/ledger-check.mjs",
+			"exit_code": 1,
+			"output": "ledger-check: fr/ui.common.actions: stale source_sha256 (ledger f942004d5e81…, file 132f60c9d401…) — the English source moved since translation\nledger-check: fr/ui.common.actions: stale target_sha256 (ledger bfb58cdc2fb7…, file 12f505f7b66b…) — the translated file changed since it was audited\nledger-check: fr/ui.common.actions: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file\nledger-check: fr/ui.agents.pages: stale source_sha256 (ledger 38a713b6cc4a…, file e85765ccb25a…) — the English source moved since translation\nledger-check: fr/ui.agents.pages: stale target_sha256 (ledger f47cf6722ca9…, file 916d7c33e8c3…) — the translated file changed since it was audited\nledger-check: fr/ui.agents.pages: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file\nledger-check: fr/ui.agents.detail: stale source_sha256 (ledger 9cf3c2f8cbd5…, file 80877db48543…) — the English source moved since translation\nledger-check: fr/ui.agents.detail: stale target_sha256 (ledger a03ae0619ff4…, file a095d5f6aea8…) — the translated file changed since it was audited\nledger-check: fr/ui.agents.detail: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file\nledger-check: fr/ui.hub.pages: stale source_sha256 (ledger ba970e165ed8…, file c54d0aca4e80…) — the English source moved since translation\nledger-check: fr/ui.hub.pages: stale target_sha256 (ledger 21fab8c093c0…, file 224231b077e4…) — the translated file changed since it was audited\nledger-check: fr/ui.hub.pages: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file\nledger-check: fr/ui.hub.teams: stale source_sha256 (ledger 32d6df8db5c9…, file 4121cd4fada8…) — the English source moved since translation\nledger-check: fr/ui.hub.teams: stale target_sha256 (ledger 8c73962ef3c1…, file c24e2db54df5…) — the translated file changed since it was audited\nledger-check: fr/ui.hub.teams: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file\nledger-check: fr/ui.agents.config: stale source_sha256 (ledger aa4fde04d7db…, file 5338f6e229d6…) — the English source moved since translation\nledger-check: fr/ui.agents.config: stale target_sha256 (ledger 0ac764e2ba05…, file 2e326146462c…) — the translated file changed since it was audited\nledger-check: fr/ui.agents.config: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file\nledger-check: fr/ui.agents.upload: stale source_sha256 (ledger 6f1242bae1dc…, file 52876ab5bfa8…) — the English source moved since translation\nledger-check: fr/ui.agents.upload: stale target_sha256 (ledger 6e24e5aee1f8…, file a5a75050ce11…) — the translated file changed since it was audited\nledger-check: fr/ui.agents.upload: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file\nledger-check: FAILED — 147 finding(s) across 658 ledger entr(ies)",
+			"note": "Read-only gate. Output filtered to the fr rows plus the final line. Exit 1 is the pre-assembly state: every locale's ledger row for these namespaces is stale because the English keys landed after the last audit; the full run reports 147 findings across 658 entries (21 per locale, all 7 locales). This audit's receipt is the input the manager assembles; ledger-check is expected to pass after assembly, not before."
+		},
+		{
+			"command": "node --input-type=module -e \"<scratchpad>/icu-check.mjs\"",
+			"exit_code": 0,
+			"output": "ICU parse: 277 fr messages parsed across 7 files; syntax errors: 0\nplural/select messages in these files: 5\nplaceholder AST mismatches (25 keys): 0\nui.agents.pages.add_manual.agent => Ajouter un agent à la main\nui.agents.pages.add_manual.team => Ajouter une équipe à la main\nui.agents.pages.ask.body_agent => Un agent est un jeu d’instructions réutilisable avec lequel vous pouvez démarrer une conversation, ou que d’autres agents peuvent solliciter. Décrivez ce que vous voulez et une exécution de configuration le met en place.\nui.agents.pages.ask.body_team => Une équipe comprend un agent qui dirige la conversation et des membres à qui elle peut confier du travail. Décrivez ce que vous voulez et une exécution de configuration la met en place.\nui.agents.pages.ask.heading_agent => Demander un agent\nui.agents.pages.ask.heading_team => Demander une équipe\nui.agents.pages.ask.manual_agent => Ou ajoutez un agent à la main\nui.agents.pages.ask.manual_team => Ou ajoutez une équipe à la main\nui.agents.config.placeholder.about => Modifier Aida…\nui.agents.config.placeholder.about#long => Modifier Assistant de recherche documentaire pour l’équipe produit…\nui.agents.config.placeholder.about#cyr => Modifier Ассистент поддержки…\nui.agents.config.placeholder.about#cjk => Modifier 研究助手…\nui.agents.config.placeholder.docked => Demandez une modification ou du nouveau…\nui.agents.config.placeholder.hero => Décrivez ce que vous voulez…\nui.agents.detail.meta.delegates => Délégation\nui.agents.detail.read.show_all => Tout afficher\nui.agents.detail.read.show_less => Afficher moins\nui.agents.upload.title.publish_org => Publier « Aida » vers Minerva Labs ?\nui.agents.upload.title.publish_org#long => Publier « Ассистент поддержки » vers Organisation européenne de recherche appliquée ?\nui.agents.upload.title.publish_public => Publier « 研究助手 » sur le Hub des agents ?\nui.agents.upload.title.published_org => Publication de « Aida » vers Minerva Labs\nui.agents.upload.title.published_public => Publication de « Aida » sur le Hub des agents\nui.agents.upload.title.republished => Fiche de « Aida » mise à jour sur le Hub des agents\nui.agents.upload.title.update_listing => Mettre à jour la fiche de « Aida » sur le Hub des agents ?\nui.agents.upload.title.update_listing#long => Mettre à jour la fiche de « Assistant de recherche documentaire pour l’équipe produit » sur le Hub des agents ?\nui.hub.pages.card.get => Obtenir\nui.hub.pages.card.updated => modifié il y a 4 jours\nui.hub.pages.card.updated#now => modifié il y a 1 seconde\nui.hub.teams.recency.created => créée il y a 3 jours\nui.hub.teams.recency.updated => modifiée il y a 2 jours\nui.hub.teams.recency.updated#months => modifiée il y a 6 mois\nui.common.actions.retrying => Nouvelle tentative…\nCOMPOSED card: Damian Tran · modifié il y a 4 jours\nCOMPOSED team updated: Projet Atlas · Minerva Labs · modifiée il y a 2 jours\nCOMPOSED team created: Projet Atlas · Minerva Labs · créée il y a 2 jours",
+			"note": "Parses every fr message in the seven files with @formatjs/icu-messageformat-parser and renders the 25 keys with IntlMessageFormat (fr) using realistic names (Latin, long, Cyrillic, CJK), an organization destination, and the shipped ui.hub.comments.age.* phrases."
+		},
+		{
+			"command": "swift -O <scratchpad>/measure.swift; swift -O <scratchpad>/measure2.swift; swift -O <scratchpad>/measure3.swift",
+			"exit_code": 0,
+			"output": "301.17 px  14pt  Ask for a change, or describe something new…\n290.27 px  14pt  Demandez une modification ou du nouveau…\n165.61 px  14pt  Describe what you want…\n194.91 px  14pt  Décrivez ce que vous voulez…\n20.58 px  12pt  Get\n43.49 px  12pt  Obtenir\n122.66 px  13pt  Add agent manually\n161.15 px  13pt  Ajouter un agent à la main\n118.38 px  13pt  Add team manually\n175.35 px  13pt  Ajouter une équipe à la main\n48.15 px  12pt  Show all\n73.75 px  12pt  Tout afficher\n57.95 px  12pt  Show less\n84.29 px  12pt  Afficher moins\n50.04 px  13pt  Trying…\n123.20 px  13pt  Nouvelle tentative…\n112.07 px  12pt  updated 4 days ago\n113.55 px  12pt  modifié il y a 4 jours\n\n980.03 px  14pt  An agent is a reusable set of instructions you can start a chat with, or let other agents call on. Describe what you want and a configuration run sets it up.\n1416.19 px  14pt  Un agent est un jeu d’instructions réutilisable avec lequel vous pouvez démarrer une conversation, ou que d’autres agents peuvent solliciter. Décrivez ce que vous voulez et une exécution de configuration le met en place.\n865.94 px  14pt  A team has one agent that leads the chat and members it can hand work to. Describe what you want and a configuration run sets it up.\n1199.31 px  14pt  Une équipe comprend un agent qui dirige la conversation et des membres à qui elle peut confier du travail. Décrivez ce que vous voulez et une exécution de configuration la met en place.\n65.12 px  13pt  Délégation\n173.08 px  20pt  Demander un agent\n193.37 px  20pt  Demander une équipe\n242.61 px  15pt  Publier « Aida » vers Minerva Labs ?\n397.05 px  15pt  Publier « Ассистент поддержки » sur le Hub des agents ?\n658.86 px  15pt  Publication de « Ассистент поддержки » vers Organisation européenne de recherche appliquée\n411.18 px  15pt  Mettre à jour la fiche de « 研究助手 » sur le Hub des agents ?\n\n418.82 px  16pt  Mettre à jour la fiche de « Aida » sur le Hub des agents ?\n294.08 px  16pt  Publier « Aida » sur le Hub des agents ?\n338.20 px  16pt  Publication de « Aida » sur le Hub des agents\n380.29 px  16pt  Fiche de « Aida » mise à jour sur le Hub des agents\n463.55 px  18pt  Mettre à jour la fiche de « Aida » sur le Hub des agents ?\n304.95 px  16pt  Update the Agent Hub listing for \"Aida\"?\n260.14 px  16pt  Published \"Aida\" to the Agent Hub\n",
+			"note": "SF Pro width measurements at the components' real type steps (14px regular composer; 12px medium sm button; 13px medium md button). The concatenated output of all three measure scripts (measure.swift, measure2.swift, measure3.swift) is in this entry."
+		}
+	],
+	"artifacts": [
+		{
+			"path": "agents-literals-2-keys.json",
+			"sha256": "ec602c83236ec67358370105c140880a55e134b68f872b0ba033446387cefada",
+			"role": "task context pack (untracked copy at the worktree root; identical to the session scratchpad copy)"
+		},
+		{
+			"path": "i18n/receipts/fr-agents-literals-audit-4acffbcd1c3d.json",
+			"role": "this receipt; its sha256 is recorded by ledger-assemble as receipt_sha256 (a file cannot embed its own hash)"
+		},
+		{
+			"path": "i18n/audits/evidence/fr/<namespace>/agents-literals2-20261026/",
+			"note": "per-namespace record.json + execution log; each record records this receipt's path and sha256"
+		}
+	],
+	"current_report_verdict": {
+		"status": "passed",
+		"unresolved_blocker_major_count": 0,
+		"finding_ids": []
+	},
+	"ledger_note": "fr agents-literals-2 audit passed (0 blocker/major); canonical records under i18n/audits/evidence/fr/<namespace>/agents-literals2-20261026/record.json; receipt i18n/receipts/fr-agents-literals-audit-4acffbcd1c3d.json; en+fr hashes bound.",
+	"ledger_notes": {
+		"ui.agents.pages": "i18n/audits/evidence/fr/ui.agents.pages/agents-literals2-20261026/record.json — fr agents-literals-2 audit, 30-key file / 8 new, 0 blocker/major, passed; receipt i18n/receipts/fr-agents-literals-audit-4acffbcd1c3d.json",
+		"ui.agents.config": "i18n/audits/evidence/fr/ui.agents.config/agents-literals2-20261026/record.json — fr agents-literals-2 audit, 31-key file / 3 new, 0 blocker/major, passed; receipt i18n/receipts/fr-agents-literals-audit-4acffbcd1c3d.json",
+		"ui.agents.detail": "i18n/audits/evidence/fr/ui.agents.detail/agents-literals2-20261026/record.json — fr agents-literals-2 audit, 50-key file / 3 new, 0 blocker/major, passed; receipt i18n/receipts/fr-agents-literals-audit-4acffbcd1c3d.json",
+		"ui.agents.upload": "i18n/audits/evidence/fr/ui.agents.upload/agents-literals2-20261026/record.json — fr agents-literals-2 audit, 29-key file / 6 new, 0 blocker/major, passed; receipt i18n/receipts/fr-agents-literals-audit-4acffbcd1c3d.json",
+		"ui.hub.pages": "i18n/audits/evidence/fr/ui.hub.pages/agents-literals2-20261026/record.json — fr agents-literals-2 audit, 37-key file / 2 new, 0 blocker/major, passed; receipt i18n/receipts/fr-agents-literals-audit-4acffbcd1c3d.json",
+		"ui.hub.teams": "i18n/audits/evidence/fr/ui.hub.teams/agents-literals2-20261026/record.json — fr agents-literals-2 audit, 49-key file / 2 new, 0 blocker/major, passed; receipt i18n/receipts/fr-agents-literals-audit-4acffbcd1c3d.json",
+		"ui.common.actions": "i18n/audits/evidence/fr/ui.common.actions/agents-literals2-20261026/record.json — fr agents-literals-2 audit, 51-key file / 1 new, 0 blocker/major, passed; receipt i18n/receipts/fr-agents-literals-audit-4acffbcd1c3d.json"
+	}
+}

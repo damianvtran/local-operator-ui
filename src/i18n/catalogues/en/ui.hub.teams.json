@@ -45,5 +45,7 @@
 	"ui.hub.teams.pull": "Pull",
 	"ui.hub.teams.pull_failed": "\"{name}\" could not be pulled.",
 	"ui.hub.teams.pull_target": "Pull team {name}",
-	"ui.hub.teams.pulling": "Pulling…"
+	"ui.hub.teams.pulling": "Pulling…",
+	"ui.hub.teams.recency.created": "created {when}",
+	"ui.hub.teams.recency.updated": "updated {when}"
 }

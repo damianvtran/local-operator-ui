@@ -1,0 +1,115 @@
+{
+ "locale": "hi",
+ "namespace": "ui.agents.config",
+ "key_count": 38,
+ "checkout": {
+  "path": "/Users/damian/lo-audit-1439c",
+  "head": "ae918aa12a724c9fd934723bef0333ff1bd538e4",
+  "pr": 1439
+ },
+ "audit_date": "2026-10-28",
+ "round": 3,
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "07b7f1b7c5cb",
+  "model": "anthropic/claude-sonnet-5-5",
+  "actual_model_source": "session header (no fallback)",
+  "independent_from_translator_session": true
+ },
+ "input_sha256": {
+  "src/i18n/catalogues/en/ui.agents.config.json": "5f06618661e942dd8dc61f2f40dc7894f2048855e624fdc58ffe1aa0f5fcb7a6",
+  "src/i18n/catalogues/en/ui.agents.config.context.json": "07de5b1c02c8c64c130da1cc532cf03c13f7ef462c9cdc27e34b1a5cf3215459",
+  "src/i18n/catalogues/hi/ui.agents.config.json": "d9d452f62fae38a8f9f075814fe9e9728a78e00bce90d40b8ae80dc3c8e791ce",
+  "~/local-operator/i18n/glossary.md": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "~/local-operator/i18n/style-guides/hi.md": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+ },
+ "read_provenance": {
+  "catalogue_copy_via_read_public_copy": [
+   {
+    "path": "src/i18n/catalogues/en/ui.agents.config.json",
+    "keys": "whole file, all 38 keys"
+   },
+   {
+    "path": "src/i18n/catalogues/hi/ui.agents.config.json",
+    "keys": "whole file, all 38 keys"
+   }
+  ],
+  "context_docs_via_filesystem_not_catalogue_copy": [
+   "src/i18n/catalogues/en/ui.agents.config.context.json",
+   "~/local-operator/i18n/glossary.md",
+   "~/local-operator/i18n/style-guides/hi.md"
+  ],
+  "origin_main_comparison": "git -C ~/local-operator-ui show origin/main:src/i18n/catalogues/hi/ui.agents.config.json (diffed against PR head; delta = +kind.agent, +kind.team, +placeholder.about/docked/hero, action.watch changed, result.configured trailing colon removed)",
+  "code_read": "src/renderer/src/features/agents/config-run/config-composer.tsx L820-835 (keyed kind word call sites) only",
+  "not_read": [
+   "~/qa/union-agents-config-*",
+   "~/qa/reaudit-1439",
+   "~/qa/reaudit3-1439 (other than writing here)",
+   "~/qa/fix-1439-*",
+   "~/qa/kind-1439"
+  ]
+ },
+ "checks": {
+  "keys_match_en_hi": "pass (38/38, same set)",
+  "placeholders_identical": "pass ({name},{kind},{topic},{count} per key)",
+  "icu_plural": "pass: definitions one/other; hi CLDR = one, other; one covers 0 and 1 per style guide",
+  "typography": "pass: danda for full stops, U+2026 kept on 4 ellipsis keys, no ASCII '...', Latin digits, no stray trailing colon",
+  "glossary": "pass: एजेंट, टीम, टूल, मॉडल, मैनेजर, कॉन्फ़िगर consistent; example data (release-crew, coder, shipping) kept Latin per context",
+  "about_with_kind": "pass: 'एजेंट {name} के बारे में' and 'टीम {name} के बारे में' both read naturally; bare nouns need no case ending (के बारे में attaches to the name); short enough for the 224 px truncating span",
+  "kind_nouns": "pass: bare, no article, glossary-exact",
+  "fit": "pass: no maxCells hints in sidecar; docked placeholder wraps readably, hi not longer than en",
+  "rtl": "n/a"
+ },
+ "findings": [
+  {
+   "id": "F1",
+   "severity": "MINOR",
+   "key": "ui.agents.config.action.watch",
+   "current": "रन चरण",
+   "suggestion": "रन के चरण",
+   "origin": "introduced-by-this-PR (origin/main had 'देखें'; en changed to 'Run steps')",
+   "note": "Bare juxtaposition is terse but understandable as a toggle label; genitive reads more natively."
+  },
+  {
+   "id": "F2",
+   "severity": "MINOR",
+   "key": "ui.agents.config.summary.you_asked",
+   "current": "आपने पूछा: {topic}",
+   "suggestion": "आपने कहा: {topic}",
+   "origin": "inherited from origin/main",
+   "note": "{topic} is a change request, often imperative, not a question; 'पूछा' mis-frames it (en 'asked' is looser)."
+  },
+  {
+   "id": "F3",
+   "severity": "MINOR",
+   "key": "ui.agents.config.banner.unavailable",
+   "current": "बैकएंड तक नहीं पहुँच सके",
+   "suggestion": "बैकएंड तक पहुँचा नहीं जा सका",
+   "origin": "inherited from origin/main",
+   "note": "Active plural 'पहुँच सके' lacks a subject; impersonal passive mirrors the en passive."
+  },
+  {
+   "id": "F4",
+   "severity": "MINOR",
+   "key": "ui.agents.config.stopped.kept",
+   "current": "अब तक किए गए बदलाव रखे गए।",
+   "suggestion": "अब तक किए गए बदलाव बने रहे।",
+   "origin": "inherited from origin/main",
+   "note": "'बने रहे' states more clearly that nothing was rolled back."
+  }
+ ],
+ "counts": {
+  "BLOCKER": 0,
+  "MAJOR": 0,
+  "MINOR": 4,
+  "NIT": 0
+ },
+ "verdict": "passed",
+ "instance": "07b7f1b7c5cb-hi",
+ "model": "anthropic/claude-sonnet-5-5",
+ "status": "passed",
+ "sha256": {
+  "hi": "d9d452f62fae38a8f9f075814fe9e9728a78e00bce90d40b8ae80dc3c8e791ce",
+  "en": "5f06618661e942dd8dc61f2f40dc7894f2048855e624fdc58ffe1aa0f5fcb7a6"
+ }
+}
