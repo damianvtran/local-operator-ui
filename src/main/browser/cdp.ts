@@ -566,18 +566,24 @@ export class CdpPool {
 	}
 
 	/**
-	 * End every capture this view owns, in one place.
+	 * End every capture this view owns, at one debugger boundary.
 	 *
-	 * WHY ONE HELPER. The log ring, the network buffer and a recording all die at
-	 * the same four debugger boundaries (`forget`, `detach`, the detach EVENT, and
-	 * `close` through `detach`), and each was hand-listed at each site. That is how
-	 * a fourth capture drifts: one boundary is missed, and a stale subscription or
-	 * a running encoder outlives the attachment that fed it. The detach event
-	 * passes `detachedReason`, which is what turns an abort into the tombstone a
-	 * later `record_stop` reads.
+	 * WHY ONE HELPER. The network buffer and a recording die at the same four
+	 * boundaries (`forget`, `detach`, the detach EVENT, and `close` through
+	 * `detach`), and each was hand-listed at each site. That is how a fourth capture
+	 * drifts: one boundary is missed, and a stale subscription or a running encoder
+	 * outlives the attachment that fed it.
+	 *
+	 * THE LOG RING IS THE EXCEPTION, and it is deliberate: the detach EVENT is a
+	 * DevTools hand-over of a view that stays open, and `logs` is defined as
+	 * "everything since the surface opened" — so the ring must survive it, which is
+	 * exactly what the re-attach case in `browser-host.test.mjs` asserts. `forget`
+	 * and `detach` end the view's drive and drop it. The detach event passes the
+	 * reason, which is what turns a recording's abort into the tombstone a later
+	 * `record_stop` reads.
 	 */
 	private dropCaptures(webContentsId: number, detachedReason?: string): void {
-		stopLogCapture(webContentsId);
+		if (detachedReason === undefined) stopLogCapture(webContentsId);
 		stopNetworkCapture(webContentsId);
 		abortRecording(webContentsId, detachedReason ?? "detached", {
 			tombstone: detachedReason !== undefined,
