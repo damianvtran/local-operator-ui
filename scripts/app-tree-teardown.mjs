@@ -94,8 +94,9 @@ export const STOP_DEADLINE_MS = 5000;
  * answer. `wait` is injectable so a test can drive the escalation without a real
  * 5 s grace.
  *
- * `userData` is optional: a caller that boots a plain server (no profile flag to scan
- * for) passes none and gets the group-signal-plus-pid verdict alone.
+ * `userData: null` (explicit - `undefined` still throws, so a caller that forgets the
+ * profile cannot silently degrade) means a plain server with no profile flag to scan
+ * for, and gets the group-signal-plus-pid verdict alone.
  *
  * The result carries what the caller prints as well as `clean`: `reaped` and
  * `reparented` are the difference between "the group kill worked" and "the
@@ -134,7 +135,7 @@ export async function stopAppTree({
 	// No profile to scan for: a server (Storybook, via `with-storybook.mjs`) carries
 	// no `--user-data-dir`, so the group signal is the whole mechanism and the pid
 	// answering is the whole verdict. The caller checks its port separately.
-	if (userData == null) {
+	if (userData === null) {
 		return {
 			groupSignalled,
 			groupExited,
@@ -198,15 +199,29 @@ export async function stopAppTree({
  * It skips the kill when the app's own pid is already gone, so an ordinary exit - and
  * a pid the OS has since recycled - is never signalled.
  */
-export function reapOnExit({ pid, userData }) {
+export function reapOnExit({ pid, userData, groupOutlivesLeader = false }) {
 	process.on("exit", () => {
-		if (alreadyGone(pid)) return;
+		if (alreadyGone(pid)) {
+			// Opt-in for a server whose leader can die first (a shell shim, `storybook`
+			// itself) while its children keep the port. The group id cannot be reused
+			// while any member lives (POSIX), so signalling it never reaches a stranger;
+			// ESRCH below means it really is empty. Off by default: the app rigs keep
+			// their exact prior behaviour.
+			if (groupOutlivesLeader) {
+				try {
+					process.kill(-pid, "SIGKILL");
+				} catch {
+					// Empty group.
+				}
+			}
+			return;
+		}
 		try {
 			process.kill(-pid, "SIGKILL");
 		} catch {
 			// The group has already gone away.
 		}
-		for (const entry of userData == null
+		for (const entry of userData === null
 			? []
 			: (thisRunProfile(userData) ?? [])) {
 			try {
@@ -219,16 +234,19 @@ export function reapOnExit({ pid, userData }) {
 }
 
 /**
- * Run `teardown` once per interruption, for the two signals a stopped run gets.
+ * Run `teardown` once per interruption, for the signals a stopped run gets.
+ * `signals` defaults to the two every rig has always handled; a server-owning caller
+ * adds SIGHUP (a closed terminal or dropped ssh), whose default action kills the
+ * process without running any teardown.
  *
  * Ctrl-C and `killpg` are the ordinary ways a rig is stopped by hand, and a run
  * stopped that way must leave the same tree behind as one that finishes - it is
  * exactly the case where a tree is otherwise abandoned. `teardown(signal)` returns
  * the exit code, which stays the caller's decision.
  */
-export function onInterrupted(teardown) {
+export function onInterrupted(teardown, signals = ["SIGINT", "SIGTERM"]) {
 	let running = false;
-	for (const signal of ["SIGINT", "SIGTERM"]) {
+	for (const signal of signals) {
 		process.on(signal, async () => {
 			if (running) return;
 			running = true;

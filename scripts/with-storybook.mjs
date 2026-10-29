@@ -25,7 +25,7 @@
  *      Signalling `-pgid` reaches all of them, and only them: the group is one this run
  *      created, so nothing a sibling session started can be in it.
  *   2. EVERY EXIT PATH TEARS DOWN: the command exiting, the command failing to spawn,
- *      a throw, readiness timing out, SIGINT/SIGTERM to the helper (forwarded to the
+ *      a throw, readiness timing out, SIGINT/SIGTERM/SIGHUP to the helper (forwarded to the
  *      command too), and - last resort - a synchronous `exit` handler. The teardown is
  *      `stopAppTree` from `app-tree-teardown.mjs` (SIGTERM the group, SIGKILL after 5 s,
  *      verify the pid answers no more), reused rather than copied so the three rigs that
@@ -67,6 +67,7 @@ export const EXIT_NOT_READY = 69;
 export const EXIT_LEAKED = 70;
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const SIGNAL_NUMBERS = { SIGHUP: 1, SIGINT: 2, SIGTERM: 15 };
 const DEFAULT_READY_TIMEOUT_S = 180; // a cold Vite pre-bundle is the slow case
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
@@ -179,7 +180,8 @@ export async function runLane(options, env = process.env) {
 
 	let command = null;
 	let interruptedBy = null;
-	reapOnExit({ pid, userData: null });
+	let interruptedExit = null;
+	reapOnExit({ pid, userData: null, groupOutlivesLeader: true });
 
 	/** Stop the server and say whether it is provably gone. */
 	const teardown = async () => {
@@ -216,18 +218,24 @@ export async function runLane(options, env = process.env) {
 		return clean;
 	};
 
-	onInterrupted(async (signal) => {
-		interruptedBy = signal;
-		if (command && command.exitCode === null && command.signalCode === null) {
-			try {
-				command.kill(signal);
-			} catch {
-				// Already exiting.
+	onInterrupted(
+		async (signal) => {
+			interruptedBy = signal;
+			if (command && command.exitCode === null && command.signalCode === null) {
+				try {
+					command.kill(signal);
+				} catch {
+					// Already exiting.
+				}
 			}
-		}
-		const clean = await teardown();
-		return clean ? 128 + (signal === "SIGINT" ? 2 : 15) : EXIT_LEAKED;
-	});
+			interruptedExit = (async () => {
+				const clean = await teardown();
+				return clean ? 128 + SIGNAL_NUMBERS[signal] : EXIT_LEAKED;
+			})();
+			return interruptedExit;
+		},
+		["SIGINT", "SIGTERM", "SIGHUP"],
+	);
 
 	let code;
 	try {
@@ -280,6 +288,10 @@ export async function runLane(options, env = process.env) {
 			if (!clean) code = EXIT_LEAKED;
 		}
 	}
+	// An interruption forwards the signal to the wrapped command, which then ends this
+	// body first with its own (signal) status; the interrupt handler's teardown is still
+	// running and owns the exit code, so wait for it rather than exit over it.
+	if (interruptedExit) return await interruptedExit;
 	return code;
 }
 

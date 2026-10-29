@@ -10,6 +10,7 @@ import {
 	mkdtempSync,
 	readdirSync,
 	rmSync,
+	statSync,
 	symlinkSync,
 	utimesSync,
 	writeFileSync,
@@ -89,6 +90,21 @@ describe("age cut-off", () => {
 		});
 		assert.deepEqual(result.removed, [key(2)]);
 		assert.deepEqual(names(root), [key(1)]);
+	});
+
+	test("the current run's entry is stamped fresh, but not on a dry run", () => {
+		const root = makeRoot();
+		const dir = entry(root, key(1), 500);
+		pruneStorybookCache({
+			root,
+			now: NOW,
+			protectKey: key(1),
+			dryRun: true,
+			env: {},
+		});
+		assert.equal(statSync(dir).mtimeMs, NOW - 500 * HOUR);
+		pruneStorybookCache({ root, now: NOW, protectKey: key(1), env: {} });
+		assert.equal(statSync(dir).mtimeMs, NOW);
 	});
 });
 

@@ -24,6 +24,8 @@ import { pruneStorybookCacheFromEnv } from "../scripts/storybook-cache-prune.mjs
  */
 try {
 	pruneStorybookCacheFromEnv({
+		// Both `""` are load-bearing: the second suppresses the `"default"` cache-key
+		// default, so this is the bare cache root rather than `<root>/default`.
 		root: resolvePathInStorybookCache("", ""),
 		protectKey: createHash("sha256")
 			.update("storybook-telemetry-salt")

@@ -1655,8 +1655,10 @@ pairing rather than to explain it.
 
 What follows for a run:
 
-- **Boot the Storybook through `scripts/with-storybook.mjs`** (`node scripts/with-storybook.mjs -- <command>`): it
-  owns the server's process group and tears it down on exit, failure and SIGINT/SIGTERM, so no dev server outlives its run.
+- **Boot the Storybook through `scripts/with-storybook.mjs`**
+  (`node scripts/with-storybook.mjs -- <command>`): it owns the server's process
+  group and tears it down on exit, failure and SIGINT/SIGTERM/SIGHUP, so no dev
+  server outlives its run.
 - **Open a story through the manager URL that carries the token**, never a bare
   `iframe.html?id=…` as the page's top-level URL: the bare form is the one the server
   channel refuses, and that refusal is what each reload was paired with.

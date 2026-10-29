@@ -58,6 +58,7 @@ import {
 	realpathSync,
 	rmSync,
 	statSync,
+	utimesSync,
 } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -69,8 +70,13 @@ export const DEFAULT_MIN_KEEP_AGE_MS = 6 * 60 * 60 * 1000;
 /** Storybook's cache key: a SHA-256 hex digest, so exactly 64 lowercase hex digits. */
 const ENTRY_NAME = /^[0-9a-f]{64}$/;
 
-/** Stop sizing a doomed entry after this many nodes: the figure is an estimate. */
-const SIZE_WALK_LIMIT = 50_000;
+/**
+ * Total `lstat` calls spent sizing ALL doomed entries in one prune. The first run on a
+ * long-neglected cache can doom 85 entries of tens of thousands of files each, and this
+ * runs synchronously at Storybook config load, so the figure is a bounded lower bound
+ * (printed as "at least") rather than a walk that could stat millions of files.
+ */
+const SIZE_WALK_BUDGET = 4_000;
 
 /** `CACHE_DIR` values Storybook treats as a flag rather than a path. */
 const CACHE_DIR_FLAGS = new Set(["true", "false", "1", "0"]);
@@ -124,11 +130,10 @@ function newestMtimeMs(entryPath) {
 }
 
 /** Bounded byte estimate of a tree about to go; logical size, so clones overcount. */
-function estimateBytes(path) {
+function estimateBytes(path, budget) {
 	let bytes = 0;
-	let budget = SIZE_WALK_LIMIT;
 	const stack = [path];
-	while (stack.length > 0 && budget > 0) {
+	while (stack.length > 0 && budget.left > 0) {
 		const current = stack.pop();
 		let stat;
 		try {
@@ -136,7 +141,7 @@ function estimateBytes(path) {
 		} catch {
 			continue;
 		}
-		budget -= 1;
+		budget.left -= 1;
 		bytes += stat.size;
 		if (stat.isDirectory()) {
 			try {
@@ -191,7 +196,27 @@ export function pruneStorybookCache({
 		}
 		entries.sort((a, b) => a.mtimeMs - b.mtimeMs); // oldest first
 
+		// Rule 1 judges liveness by mtime, but a dev server that has been up (or warm-
+		// restarted) for days rewrites nothing under the entry, so another worktree's
+		// start would delete a running server's deps ("outdated optimize dep"). Stamping
+		// the current run's entry fresh makes every started run count as live for the
+		// whole age window. Skipped on a dry run, which must change nothing.
+		if (protectKey && ENTRY_NAME.test(protectKey)) {
+			const current = entries.find((entry) => entry.name === protectKey);
+			if (current) {
+				if (!dryRun) {
+					try {
+						utimesSync(current.path, new Date(now), new Date(now));
+					} catch {
+						// Cannot stamp it: it is still exempt from removal below.
+					}
+				}
+				current.mtimeMs = now;
+			}
+		}
+
 		const doomed = new Set();
+		const sizeBudget = { left: SIZE_WALK_BUDGET };
 		const protectedEntry = (entry) => entry.name === protectKey;
 		for (const entry of entries) {
 			if (now - entry.mtimeMs > maxAgeMs && !protectedEntry(entry)) {
@@ -213,7 +238,7 @@ export function pruneStorybookCache({
 				result.kept.push(entry.name);
 				continue;
 			}
-			const bytes = estimateBytes(entry.path);
+			const bytes = estimateBytes(entry.path, sizeBudget);
 			if (!dryRun) {
 				try {
 					rm(entry.path);

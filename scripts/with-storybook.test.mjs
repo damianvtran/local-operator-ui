@@ -126,33 +126,41 @@ test("server that never becomes ready: exit 69 and nothing left behind", () => {
 	assert.equal(alive(Number(pid)), false);
 });
 
-test("SIGTERM to the helper mid-command stops the command and the server", async () => {
-	const pidfile = join(scratch, "sigterm.pids");
-	const child = spawn(
-		process.execPath,
-		[HELPER, "--", process.execPath, "-e", "setInterval(()=>{},1000)"],
-		{
-			env: cleanEnv({ STUB_PIDFILE: pidfile }),
-			stdio: ["ignore", "ignore", "pipe"],
-		},
-	);
-	let stderr = "";
-	child.stderr.on("data", (chunk) => {
-		stderr += chunk;
+// SIGHUP is the closed-terminal / dropped-ssh case: its default action kills the helper
+// without any teardown, which is how an abandoned dev server is born.
+for (const [signal, expected] of [
+	["SIGTERM", 143],
+	["SIGHUP", 129],
+	["SIGINT", 130],
+]) {
+	test(`${signal} to the helper mid-command stops the command and the server`, async () => {
+		const pidfile = join(scratch, `${signal}.pids`);
+		const child = spawn(
+			process.execPath,
+			[HELPER, "--", process.execPath, "-e", "setInterval(()=>{},1000)"],
+			{
+				env: cleanEnv({ STUB_PIDFILE: pidfile }),
+				stdio: ["ignore", "ignore", "pipe"],
+			},
+		);
+		let stderr = "";
+		child.stderr.on("data", (chunk) => {
+			stderr += chunk;
+		});
+		const deadline = Date.now() + 30_000;
+		while (!stderr.includes("storybook ready") && Date.now() < deadline) {
+			await new Promise((done) => setTimeout(done, 100));
+		}
+		assert.ok(stderr.includes("storybook ready"), stderr);
+		assert.ok(existsSync(pidfile));
+		const stubPids = pids(pidfile);
+		assert.ok(stubPids.every(alive), "stub should be up before the signal");
+		child.kill(signal);
+		const status = await new Promise((done) =>
+			child.once("exit", (code) => done(code)),
+		);
+		assert.equal(status, expected, stderr);
+		for (const pid of stubPids)
+			assert.equal(alive(pid), false, `pid ${pid} leaked`);
 	});
-	const deadline = Date.now() + 30_000;
-	while (!stderr.includes("storybook ready") && Date.now() < deadline) {
-		await new Promise((done) => setTimeout(done, 100));
-	}
-	assert.ok(stderr.includes("storybook ready"), stderr);
-	assert.ok(existsSync(pidfile));
-	const stubPids = pids(pidfile);
-	assert.ok(stubPids.every(alive), "stub should be up before the signal");
-	child.kill("SIGTERM");
-	const status = await new Promise((done) =>
-		child.once("exit", (code) => done(code)),
-	);
-	assert.equal(status, 143, stderr);
-	for (const pid of stubPids)
-		assert.equal(alive(pid), false, `pid ${pid} leaked`);
-});
+}
