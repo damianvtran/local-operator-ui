@@ -1,8 +1,11 @@
 {
 	"ui.common.actions.cancel": "रद्द करें",
+	"ui.common.actions.check_again": "फिर जाँचें",
 	"ui.common.actions.close": "बंद करें",
 	"ui.common.actions.copied": "कॉपी हुआ",
 	"ui.common.actions.copy_failed": "कॉपी नहीं हो सका। इसे चुनकर खुद कॉपी करें।",
+	"ui.common.actions.dismiss": "ख़ारिज करें",
+	"ui.common.actions.more_info": "और जानकारी",
 	"ui.common.actions.retry": "फिर कोशिश करें",
 	"ui.common.actions.retry_again": "फिर कोशिश करें",
 	"ui.common.actions.date_time_picker.select_date": "तारीख़ चुनें",

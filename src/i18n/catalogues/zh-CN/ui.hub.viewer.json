@@ -1,0 +1,12 @@
+{
+	"ui.hub.viewer.favourite": "收藏智能体",
+	"ui.hub.viewer.favourite_signed_out": "登录Radient以收藏智能体",
+	"ui.hub.viewer.favourite_unavailable": "收藏状态不可用",
+	"ui.hub.viewer.favourite_unknown": "无法读取你的收藏，因此不会将其显示为未收藏。",
+	"ui.hub.viewer.like": "点赞智能体",
+	"ui.hub.viewer.like_signed_out": "登录Radient以为智能体点赞",
+	"ui.hub.viewer.like_unavailable": "点赞状态不可用",
+	"ui.hub.viewer.like_unknown": "无法读取你的点赞，因此不会将其显示为未点赞。",
+	"ui.hub.viewer.unfavourite": "取消收藏智能体",
+	"ui.hub.viewer.unlike": "取消点赞智能体"
+}

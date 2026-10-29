@@ -1,5 +1,10 @@
 {
+	"ui.agents.settings.chat.generation_settings": "Cài đặt tạo phản hồi",
+	"ui.agents.settings.chat.generation_tooltip": "Các cài đặt điều khiển cách tác nhân tạo phản hồi",
+	"ui.agents.settings.chat.model_hosting_heading": "Mô hình và nhà cung cấp",
+	"ui.agents.settings.chat.model_hosting_tooltip": "Cấu hình mô hình và nhà cung cấp cần dùng",
 	"ui.agents.settings.chat.not_set_yet": "Chưa đặt",
+	"ui.agents.settings.chat.set_custom_values_note": "Bạn có thể đặt giá trị riêng cho các cài đặt này trong các tùy chọn bên dưới. Tùy chọn chưa đặt sẽ dùng giá trị mặc định được tối ưu qua thử nghiệm với người dùng.",
 	"ui.agents.settings.chat.set_to_default": "Đặt mặc định ({value})",
 	"ui.agents.settings.chat.advanced_chat_settings": "Cài đặt trò chuyện nâng cao",
 	"ui.agents.settings.chat.advanced_settings_to_change_how_the_agent": "Cài đặt nâng cao để thay đổi cách tác nhân tạo phản hồi",

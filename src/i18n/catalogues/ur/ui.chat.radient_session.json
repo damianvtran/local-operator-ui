@@ -1,0 +1,10 @@
+{
+	"ui.chat.radient_session.action.sign_in": "Radient میں سائن ان کریں",
+	"ui.chat.radient_session.pointer.sign_in_active": "اسے Settings میں Providers کے نیچے سے صاف کیا جا سکتا ہے۔",
+	"ui.chat.radient_session.prose.input_required": "{message} اس صفحے پر چسپاں کیا گیا کوڈ درج نہیں کیا جا سکتا، اس لیے Settings میں Providers کے نیچے سے سائن ان مکمل کریں۔",
+	"ui.chat.radient_session.prose.needs_sign_in": "Radient اب اس مشین پر محفوظ سائن ان تسلیم نہیں کرتا۔ دوبارہ سائن ان کرنے سے Radient ماڈل بحال ہو جائیں گے اور آپ کی رضامندی کے لیے براؤزر کھلے گا۔",
+	"ui.chat.radient_session.prose.signing_in": "اپنے براؤزر میں سائن ان مکمل کریں۔ سائن ان مکمل ہونے پر کنیکٹر خود دوبارہ شروع ہو جائے گا؛ ادھوری چھوڑی گئی کوشش چند منٹ بعد ختم ہو جائے گی۔",
+	"ui.chat.radient_session.title.input_required": "Radient سائن ان کے لیے چسپاں کیا گیا کوڈ درکار ہے",
+	"ui.chat.radient_session.title.needs_sign_in": "Radient کے لیے دوبارہ تصدیق درکار ہے",
+	"ui.chat.radient_session.title.signing_in": "Radient میں سائن ان ہو رہا ہے"
+}

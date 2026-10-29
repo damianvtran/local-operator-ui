@@ -159,6 +159,7 @@ import esUiChatHeader from "./catalogues/es/ui.chat.header.json";
 import esUiChat from "./catalogues/es/ui.chat.json";
 import esUiChatLiveUpdates from "./catalogues/es/ui.chat.live_updates.json";
 import esUiChatPickers from "./catalogues/es/ui.chat.pickers.json";
+import esUiChatRadientSession from "./catalogues/es/ui.chat.radient_session.json";
 import esUiChatResponseActions from "./catalogues/es/ui.chat.response_actions.json";
 import esUiChatRunDetails from "./catalogues/es/ui.chat.run_details.json";
 import esUiChatSidebar from "./catalogues/es/ui.chat.sidebar.json";
@@ -166,6 +167,7 @@ import esUiChatSidebarView from "./catalogues/es/ui.chat.sidebar_view.json";
 import esUiChatStatus from "./catalogues/es/ui.chat.status.json";
 import esUiChatTagDialogs from "./catalogues/es/ui.chat.tag_dialogs.json";
 import esUiChatTags from "./catalogues/es/ui.chat.tags.json";
+import esUiChatThreadSearch from "./catalogues/es/ui.chat.thread_search.json";
 import esUiChatTranscriptCopy from "./catalogues/es/ui.chat.transcript_copy.json";
 import esUiCodeReview from "./catalogues/es/ui.code_review.json";
 import esUiCommandPalette from "./catalogues/es/ui.command_palette.json";
@@ -185,12 +187,15 @@ import esUiCommonUpdates from "./catalogues/es/ui.common.updates.json";
 import esUiCommonViewer from "./catalogues/es/ui.common.viewer.json";
 import esUiConsoleErrors from "./catalogues/es/ui.console.errors.json";
 import esUiConsole from "./catalogues/es/ui.console.json";
+import esUiHubCard from "./catalogues/es/ui.hub.card.json";
 import esUiHubComments from "./catalogues/es/ui.hub.comments.json";
+import esUiHubDetail from "./catalogues/es/ui.hub.detail.json";
 import esUiHub from "./catalogues/es/ui.hub.json";
 import esUiHubPages from "./catalogues/es/ui.hub.pages.json";
 import esUiHubTaxonomy from "./catalogues/es/ui.hub.taxonomy.json";
 import esUiHubTeams from "./catalogues/es/ui.hub.teams.json";
 import esUiHubUpdates from "./catalogues/es/ui.hub.updates.json";
+import esUiHubViewer from "./catalogues/es/ui.hub.viewer.json";
 import esUiInstaller from "./catalogues/es/ui.installer.json";
 import esUiLibraryErrors from "./catalogues/es/ui.library.errors.json";
 import esUiLibrary from "./catalogues/es/ui.library.json";
@@ -258,6 +263,7 @@ import frUiChatHeader from "./catalogues/fr/ui.chat.header.json";
 import frUiChat from "./catalogues/fr/ui.chat.json";
 import frUiChatLiveUpdates from "./catalogues/fr/ui.chat.live_updates.json";
 import frUiChatPickers from "./catalogues/fr/ui.chat.pickers.json";
+import frUiChatRadientSession from "./catalogues/fr/ui.chat.radient_session.json";
 import frUiChatResponseActions from "./catalogues/fr/ui.chat.response_actions.json";
 import frUiChatRunDetails from "./catalogues/fr/ui.chat.run_details.json";
 import frUiChatSidebar from "./catalogues/fr/ui.chat.sidebar.json";
@@ -265,6 +271,7 @@ import frUiChatSidebarView from "./catalogues/fr/ui.chat.sidebar_view.json";
 import frUiChatStatus from "./catalogues/fr/ui.chat.status.json";
 import frUiChatTagDialogs from "./catalogues/fr/ui.chat.tag_dialogs.json";
 import frUiChatTags from "./catalogues/fr/ui.chat.tags.json";
+import frUiChatThreadSearch from "./catalogues/fr/ui.chat.thread_search.json";
 import frUiChatTranscriptCopy from "./catalogues/fr/ui.chat.transcript_copy.json";
 import frUiCodeReview from "./catalogues/fr/ui.code_review.json";
 import frUiCommandPalette from "./catalogues/fr/ui.command_palette.json";
@@ -284,12 +291,15 @@ import frUiCommonUpdates from "./catalogues/fr/ui.common.updates.json";
 import frUiCommonViewer from "./catalogues/fr/ui.common.viewer.json";
 import frUiConsoleErrors from "./catalogues/fr/ui.console.errors.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
+import frUiHubCard from "./catalogues/fr/ui.hub.card.json";
 import frUiHubComments from "./catalogues/fr/ui.hub.comments.json";
+import frUiHubDetail from "./catalogues/fr/ui.hub.detail.json";
 import frUiHub from "./catalogues/fr/ui.hub.json";
 import frUiHubPages from "./catalogues/fr/ui.hub.pages.json";
 import frUiHubTaxonomy from "./catalogues/fr/ui.hub.taxonomy.json";
 import frUiHubTeams from "./catalogues/fr/ui.hub.teams.json";
 import frUiHubUpdates from "./catalogues/fr/ui.hub.updates.json";
+import frUiHubViewer from "./catalogues/fr/ui.hub.viewer.json";
 import frUiInstaller from "./catalogues/fr/ui.installer.json";
 import frUiLibraryErrors from "./catalogues/fr/ui.library.errors.json";
 import frUiLibrary from "./catalogues/fr/ui.library.json";
@@ -357,6 +367,7 @@ import hiUiChatHeader from "./catalogues/hi/ui.chat.header.json";
 import hiUiChat from "./catalogues/hi/ui.chat.json";
 import hiUiChatLiveUpdates from "./catalogues/hi/ui.chat.live_updates.json";
 import hiUiChatPickers from "./catalogues/hi/ui.chat.pickers.json";
+import hiUiChatRadientSession from "./catalogues/hi/ui.chat.radient_session.json";
 import hiUiChatResponseActions from "./catalogues/hi/ui.chat.response_actions.json";
 import hiUiChatRunDetails from "./catalogues/hi/ui.chat.run_details.json";
 import hiUiChatSidebar from "./catalogues/hi/ui.chat.sidebar.json";
@@ -364,6 +375,7 @@ import hiUiChatSidebarView from "./catalogues/hi/ui.chat.sidebar_view.json";
 import hiUiChatStatus from "./catalogues/hi/ui.chat.status.json";
 import hiUiChatTagDialogs from "./catalogues/hi/ui.chat.tag_dialogs.json";
 import hiUiChatTags from "./catalogues/hi/ui.chat.tags.json";
+import hiUiChatThreadSearch from "./catalogues/hi/ui.chat.thread_search.json";
 import hiUiChatTranscriptCopy from "./catalogues/hi/ui.chat.transcript_copy.json";
 import hiUiCodeReview from "./catalogues/hi/ui.code_review.json";
 import hiUiCommandPalette from "./catalogues/hi/ui.command_palette.json";
@@ -383,12 +395,15 @@ import hiUiCommonUpdates from "./catalogues/hi/ui.common.updates.json";
 import hiUiCommonViewer from "./catalogues/hi/ui.common.viewer.json";
 import hiUiConsoleErrors from "./catalogues/hi/ui.console.errors.json";
 import hiUiConsole from "./catalogues/hi/ui.console.json";
+import hiUiHubCard from "./catalogues/hi/ui.hub.card.json";
 import hiUiHubComments from "./catalogues/hi/ui.hub.comments.json";
+import hiUiHubDetail from "./catalogues/hi/ui.hub.detail.json";
 import hiUiHub from "./catalogues/hi/ui.hub.json";
 import hiUiHubPages from "./catalogues/hi/ui.hub.pages.json";
 import hiUiHubTaxonomy from "./catalogues/hi/ui.hub.taxonomy.json";
 import hiUiHubTeams from "./catalogues/hi/ui.hub.teams.json";
 import hiUiHubUpdates from "./catalogues/hi/ui.hub.updates.json";
+import hiUiHubViewer from "./catalogues/hi/ui.hub.viewer.json";
 import hiUiInstaller from "./catalogues/hi/ui.installer.json";
 import hiUiLibraryErrors from "./catalogues/hi/ui.library.errors.json";
 import hiUiLibrary from "./catalogues/hi/ui.library.json";
@@ -456,6 +471,7 @@ import ruUiChatHeader from "./catalogues/ru/ui.chat.header.json";
 import ruUiChat from "./catalogues/ru/ui.chat.json";
 import ruUiChatLiveUpdates from "./catalogues/ru/ui.chat.live_updates.json";
 import ruUiChatPickers from "./catalogues/ru/ui.chat.pickers.json";
+import ruUiChatRadientSession from "./catalogues/ru/ui.chat.radient_session.json";
 import ruUiChatResponseActions from "./catalogues/ru/ui.chat.response_actions.json";
 import ruUiChatRunDetails from "./catalogues/ru/ui.chat.run_details.json";
 import ruUiChatSidebar from "./catalogues/ru/ui.chat.sidebar.json";
@@ -463,6 +479,7 @@ import ruUiChatSidebarView from "./catalogues/ru/ui.chat.sidebar_view.json";
 import ruUiChatStatus from "./catalogues/ru/ui.chat.status.json";
 import ruUiChatTagDialogs from "./catalogues/ru/ui.chat.tag_dialogs.json";
 import ruUiChatTags from "./catalogues/ru/ui.chat.tags.json";
+import ruUiChatThreadSearch from "./catalogues/ru/ui.chat.thread_search.json";
 import ruUiChatTranscriptCopy from "./catalogues/ru/ui.chat.transcript_copy.json";
 import ruUiCodeReview from "./catalogues/ru/ui.code_review.json";
 import ruUiCommandPalette from "./catalogues/ru/ui.command_palette.json";
@@ -482,12 +499,15 @@ import ruUiCommonUpdates from "./catalogues/ru/ui.common.updates.json";
 import ruUiCommonViewer from "./catalogues/ru/ui.common.viewer.json";
 import ruUiConsoleErrors from "./catalogues/ru/ui.console.errors.json";
 import ruUiConsole from "./catalogues/ru/ui.console.json";
+import ruUiHubCard from "./catalogues/ru/ui.hub.card.json";
 import ruUiHubComments from "./catalogues/ru/ui.hub.comments.json";
+import ruUiHubDetail from "./catalogues/ru/ui.hub.detail.json";
 import ruUiHub from "./catalogues/ru/ui.hub.json";
 import ruUiHubPages from "./catalogues/ru/ui.hub.pages.json";
 import ruUiHubTaxonomy from "./catalogues/ru/ui.hub.taxonomy.json";
 import ruUiHubTeams from "./catalogues/ru/ui.hub.teams.json";
 import ruUiHubUpdates from "./catalogues/ru/ui.hub.updates.json";
+import ruUiHubViewer from "./catalogues/ru/ui.hub.viewer.json";
 import ruUiInstaller from "./catalogues/ru/ui.installer.json";
 import ruUiLibraryErrors from "./catalogues/ru/ui.library.errors.json";
 import ruUiLibrary from "./catalogues/ru/ui.library.json";
@@ -555,6 +575,7 @@ import urUiChatHeader from "./catalogues/ur/ui.chat.header.json";
 import urUiChat from "./catalogues/ur/ui.chat.json";
 import urUiChatLiveUpdates from "./catalogues/ur/ui.chat.live_updates.json";
 import urUiChatPickers from "./catalogues/ur/ui.chat.pickers.json";
+import urUiChatRadientSession from "./catalogues/ur/ui.chat.radient_session.json";
 import urUiChatResponseActions from "./catalogues/ur/ui.chat.response_actions.json";
 import urUiChatRunDetails from "./catalogues/ur/ui.chat.run_details.json";
 import urUiChatSidebar from "./catalogues/ur/ui.chat.sidebar.json";
@@ -562,6 +583,7 @@ import urUiChatSidebarView from "./catalogues/ur/ui.chat.sidebar_view.json";
 import urUiChatStatus from "./catalogues/ur/ui.chat.status.json";
 import urUiChatTagDialogs from "./catalogues/ur/ui.chat.tag_dialogs.json";
 import urUiChatTags from "./catalogues/ur/ui.chat.tags.json";
+import urUiChatThreadSearch from "./catalogues/ur/ui.chat.thread_search.json";
 import urUiChatTranscriptCopy from "./catalogues/ur/ui.chat.transcript_copy.json";
 import urUiCodeReview from "./catalogues/ur/ui.code_review.json";
 import urUiCommandPalette from "./catalogues/ur/ui.command_palette.json";
@@ -581,12 +603,15 @@ import urUiCommonUpdates from "./catalogues/ur/ui.common.updates.json";
 import urUiCommonViewer from "./catalogues/ur/ui.common.viewer.json";
 import urUiConsoleErrors from "./catalogues/ur/ui.console.errors.json";
 import urUiConsole from "./catalogues/ur/ui.console.json";
+import urUiHubCard from "./catalogues/ur/ui.hub.card.json";
 import urUiHubComments from "./catalogues/ur/ui.hub.comments.json";
+import urUiHubDetail from "./catalogues/ur/ui.hub.detail.json";
 import urUiHub from "./catalogues/ur/ui.hub.json";
 import urUiHubPages from "./catalogues/ur/ui.hub.pages.json";
 import urUiHubTaxonomy from "./catalogues/ur/ui.hub.taxonomy.json";
 import urUiHubTeams from "./catalogues/ur/ui.hub.teams.json";
 import urUiHubUpdates from "./catalogues/ur/ui.hub.updates.json";
+import urUiHubViewer from "./catalogues/ur/ui.hub.viewer.json";
 import urUiInstaller from "./catalogues/ur/ui.installer.json";
 import urUiLibraryErrors from "./catalogues/ur/ui.library.errors.json";
 import urUiLibrary from "./catalogues/ur/ui.library.json";
@@ -654,6 +679,7 @@ import viUiChatHeader from "./catalogues/vi/ui.chat.header.json";
 import viUiChat from "./catalogues/vi/ui.chat.json";
 import viUiChatLiveUpdates from "./catalogues/vi/ui.chat.live_updates.json";
 import viUiChatPickers from "./catalogues/vi/ui.chat.pickers.json";
+import viUiChatRadientSession from "./catalogues/vi/ui.chat.radient_session.json";
 import viUiChatResponseActions from "./catalogues/vi/ui.chat.response_actions.json";
 import viUiChatRunDetails from "./catalogues/vi/ui.chat.run_details.json";
 import viUiChatSidebar from "./catalogues/vi/ui.chat.sidebar.json";
@@ -661,6 +687,7 @@ import viUiChatSidebarView from "./catalogues/vi/ui.chat.sidebar_view.json";
 import viUiChatStatus from "./catalogues/vi/ui.chat.status.json";
 import viUiChatTagDialogs from "./catalogues/vi/ui.chat.tag_dialogs.json";
 import viUiChatTags from "./catalogues/vi/ui.chat.tags.json";
+import viUiChatThreadSearch from "./catalogues/vi/ui.chat.thread_search.json";
 import viUiChatTranscriptCopy from "./catalogues/vi/ui.chat.transcript_copy.json";
 import viUiCodeReview from "./catalogues/vi/ui.code_review.json";
 import viUiCommandPalette from "./catalogues/vi/ui.command_palette.json";
@@ -680,12 +707,15 @@ import viUiCommonUpdates from "./catalogues/vi/ui.common.updates.json";
 import viUiCommonViewer from "./catalogues/vi/ui.common.viewer.json";
 import viUiConsoleErrors from "./catalogues/vi/ui.console.errors.json";
 import viUiConsole from "./catalogues/vi/ui.console.json";
+import viUiHubCard from "./catalogues/vi/ui.hub.card.json";
 import viUiHubComments from "./catalogues/vi/ui.hub.comments.json";
+import viUiHubDetail from "./catalogues/vi/ui.hub.detail.json";
 import viUiHub from "./catalogues/vi/ui.hub.json";
 import viUiHubPages from "./catalogues/vi/ui.hub.pages.json";
 import viUiHubTaxonomy from "./catalogues/vi/ui.hub.taxonomy.json";
 import viUiHubTeams from "./catalogues/vi/ui.hub.teams.json";
 import viUiHubUpdates from "./catalogues/vi/ui.hub.updates.json";
+import viUiHubViewer from "./catalogues/vi/ui.hub.viewer.json";
 import viUiInstaller from "./catalogues/vi/ui.installer.json";
 import viUiLibraryErrors from "./catalogues/vi/ui.library.errors.json";
 import viUiLibrary from "./catalogues/vi/ui.library.json";
@@ -753,6 +783,7 @@ import zhCNUiChatHeader from "./catalogues/zh-CN/ui.chat.header.json";
 import zhCNUiChat from "./catalogues/zh-CN/ui.chat.json";
 import zhCNUiChatLiveUpdates from "./catalogues/zh-CN/ui.chat.live_updates.json";
 import zhCNUiChatPickers from "./catalogues/zh-CN/ui.chat.pickers.json";
+import zhCNUiChatRadientSession from "./catalogues/zh-CN/ui.chat.radient_session.json";
 import zhCNUiChatResponseActions from "./catalogues/zh-CN/ui.chat.response_actions.json";
 import zhCNUiChatRunDetails from "./catalogues/zh-CN/ui.chat.run_details.json";
 import zhCNUiChatSidebar from "./catalogues/zh-CN/ui.chat.sidebar.json";
@@ -760,6 +791,7 @@ import zhCNUiChatSidebarView from "./catalogues/zh-CN/ui.chat.sidebar_view.json"
 import zhCNUiChatStatus from "./catalogues/zh-CN/ui.chat.status.json";
 import zhCNUiChatTagDialogs from "./catalogues/zh-CN/ui.chat.tag_dialogs.json";
 import zhCNUiChatTags from "./catalogues/zh-CN/ui.chat.tags.json";
+import zhCNUiChatThreadSearch from "./catalogues/zh-CN/ui.chat.thread_search.json";
 import zhCNUiChatTranscriptCopy from "./catalogues/zh-CN/ui.chat.transcript_copy.json";
 import zhCNUiCodeReview from "./catalogues/zh-CN/ui.code_review.json";
 import zhCNUiCommandPalette from "./catalogues/zh-CN/ui.command_palette.json";
@@ -779,12 +811,15 @@ import zhCNUiCommonUpdates from "./catalogues/zh-CN/ui.common.updates.json";
 import zhCNUiCommonViewer from "./catalogues/zh-CN/ui.common.viewer.json";
 import zhCNUiConsoleErrors from "./catalogues/zh-CN/ui.console.errors.json";
 import zhCNUiConsole from "./catalogues/zh-CN/ui.console.json";
+import zhCNUiHubCard from "./catalogues/zh-CN/ui.hub.card.json";
 import zhCNUiHubComments from "./catalogues/zh-CN/ui.hub.comments.json";
+import zhCNUiHubDetail from "./catalogues/zh-CN/ui.hub.detail.json";
 import zhCNUiHub from "./catalogues/zh-CN/ui.hub.json";
 import zhCNUiHubPages from "./catalogues/zh-CN/ui.hub.pages.json";
 import zhCNUiHubTaxonomy from "./catalogues/zh-CN/ui.hub.taxonomy.json";
 import zhCNUiHubTeams from "./catalogues/zh-CN/ui.hub.teams.json";
 import zhCNUiHubUpdates from "./catalogues/zh-CN/ui.hub.updates.json";
+import zhCNUiHubViewer from "./catalogues/zh-CN/ui.hub.viewer.json";
 import zhCNUiInstaller from "./catalogues/zh-CN/ui.installer.json";
 import zhCNUiLibraryErrors from "./catalogues/zh-CN/ui.library.errors.json";
 import zhCNUiLibrary from "./catalogues/zh-CN/ui.library.json";
@@ -967,6 +1002,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChat,
 		...esUiChatLiveUpdates,
 		...esUiChatPickers,
+		...esUiChatRadientSession,
 		...esUiChatResponseActions,
 		...esUiChatRunDetails,
 		...esUiChatSidebar,
@@ -974,6 +1010,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatStatus,
 		...esUiChatTagDialogs,
 		...esUiChatTags,
+		...esUiChatThreadSearch,
 		...esUiChatTranscriptCopy,
 		...esUiCodeReview,
 		...esUiCommandPalette,
@@ -993,12 +1030,15 @@ export const bundledCatalogues: Readonly<
 		...esUiCommonViewer,
 		...esUiConsoleErrors,
 		...esUiConsole,
+		...esUiHubCard,
 		...esUiHubComments,
+		...esUiHubDetail,
 		...esUiHub,
 		...esUiHubPages,
 		...esUiHubTaxonomy,
 		...esUiHubTeams,
 		...esUiHubUpdates,
+		...esUiHubViewer,
 		...esUiInstaller,
 		...esUiLibraryErrors,
 		...esUiLibrary,
@@ -1068,6 +1108,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChat,
 		...frUiChatLiveUpdates,
 		...frUiChatPickers,
+		...frUiChatRadientSession,
 		...frUiChatResponseActions,
 		...frUiChatRunDetails,
 		...frUiChatSidebar,
@@ -1075,6 +1116,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatStatus,
 		...frUiChatTagDialogs,
 		...frUiChatTags,
+		...frUiChatThreadSearch,
 		...frUiChatTranscriptCopy,
 		...frUiCodeReview,
 		...frUiCommandPalette,
@@ -1094,12 +1136,15 @@ export const bundledCatalogues: Readonly<
 		...frUiCommonViewer,
 		...frUiConsoleErrors,
 		...frUiConsole,
+		...frUiHubCard,
 		...frUiHubComments,
+		...frUiHubDetail,
 		...frUiHub,
 		...frUiHubPages,
 		...frUiHubTaxonomy,
 		...frUiHubTeams,
 		...frUiHubUpdates,
+		...frUiHubViewer,
 		...frUiInstaller,
 		...frUiLibraryErrors,
 		...frUiLibrary,
@@ -1169,6 +1214,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChat,
 		...hiUiChatLiveUpdates,
 		...hiUiChatPickers,
+		...hiUiChatRadientSession,
 		...hiUiChatResponseActions,
 		...hiUiChatRunDetails,
 		...hiUiChatSidebar,
@@ -1176,6 +1222,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChatStatus,
 		...hiUiChatTagDialogs,
 		...hiUiChatTags,
+		...hiUiChatThreadSearch,
 		...hiUiChatTranscriptCopy,
 		...hiUiCodeReview,
 		...hiUiCommandPalette,
@@ -1195,12 +1242,15 @@ export const bundledCatalogues: Readonly<
 		...hiUiCommonViewer,
 		...hiUiConsoleErrors,
 		...hiUiConsole,
+		...hiUiHubCard,
 		...hiUiHubComments,
+		...hiUiHubDetail,
 		...hiUiHub,
 		...hiUiHubPages,
 		...hiUiHubTaxonomy,
 		...hiUiHubTeams,
 		...hiUiHubUpdates,
+		...hiUiHubViewer,
 		...hiUiInstaller,
 		...hiUiLibraryErrors,
 		...hiUiLibrary,
@@ -1270,6 +1320,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChat,
 		...ruUiChatLiveUpdates,
 		...ruUiChatPickers,
+		...ruUiChatRadientSession,
 		...ruUiChatResponseActions,
 		...ruUiChatRunDetails,
 		...ruUiChatSidebar,
@@ -1277,6 +1328,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChatStatus,
 		...ruUiChatTagDialogs,
 		...ruUiChatTags,
+		...ruUiChatThreadSearch,
 		...ruUiChatTranscriptCopy,
 		...ruUiCodeReview,
 		...ruUiCommandPalette,
@@ -1296,12 +1348,15 @@ export const bundledCatalogues: Readonly<
 		...ruUiCommonViewer,
 		...ruUiConsoleErrors,
 		...ruUiConsole,
+		...ruUiHubCard,
 		...ruUiHubComments,
+		...ruUiHubDetail,
 		...ruUiHub,
 		...ruUiHubPages,
 		...ruUiHubTaxonomy,
 		...ruUiHubTeams,
 		...ruUiHubUpdates,
+		...ruUiHubViewer,
 		...ruUiInstaller,
 		...ruUiLibraryErrors,
 		...ruUiLibrary,
@@ -1371,6 +1426,7 @@ export const bundledCatalogues: Readonly<
 		...urUiChat,
 		...urUiChatLiveUpdates,
 		...urUiChatPickers,
+		...urUiChatRadientSession,
 		...urUiChatResponseActions,
 		...urUiChatRunDetails,
 		...urUiChatSidebar,
@@ -1378,6 +1434,7 @@ export const bundledCatalogues: Readonly<
 		...urUiChatStatus,
 		...urUiChatTagDialogs,
 		...urUiChatTags,
+		...urUiChatThreadSearch,
 		...urUiChatTranscriptCopy,
 		...urUiCodeReview,
 		...urUiCommandPalette,
@@ -1397,12 +1454,15 @@ export const bundledCatalogues: Readonly<
 		...urUiCommonViewer,
 		...urUiConsoleErrors,
 		...urUiConsole,
+		...urUiHubCard,
 		...urUiHubComments,
+		...urUiHubDetail,
 		...urUiHub,
 		...urUiHubPages,
 		...urUiHubTaxonomy,
 		...urUiHubTeams,
 		...urUiHubUpdates,
+		...urUiHubViewer,
 		...urUiInstaller,
 		...urUiLibraryErrors,
 		...urUiLibrary,
@@ -1472,6 +1532,7 @@ export const bundledCatalogues: Readonly<
 		...viUiChat,
 		...viUiChatLiveUpdates,
 		...viUiChatPickers,
+		...viUiChatRadientSession,
 		...viUiChatResponseActions,
 		...viUiChatRunDetails,
 		...viUiChatSidebar,
@@ -1479,6 +1540,7 @@ export const bundledCatalogues: Readonly<
 		...viUiChatStatus,
 		...viUiChatTagDialogs,
 		...viUiChatTags,
+		...viUiChatThreadSearch,
 		...viUiChatTranscriptCopy,
 		...viUiCodeReview,
 		...viUiCommandPalette,
@@ -1498,12 +1560,15 @@ export const bundledCatalogues: Readonly<
 		...viUiCommonViewer,
 		...viUiConsoleErrors,
 		...viUiConsole,
+		...viUiHubCard,
 		...viUiHubComments,
+		...viUiHubDetail,
 		...viUiHub,
 		...viUiHubPages,
 		...viUiHubTaxonomy,
 		...viUiHubTeams,
 		...viUiHubUpdates,
+		...viUiHubViewer,
 		...viUiInstaller,
 		...viUiLibraryErrors,
 		...viUiLibrary,
@@ -1573,6 +1638,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChat,
 		...zhCNUiChatLiveUpdates,
 		...zhCNUiChatPickers,
+		...zhCNUiChatRadientSession,
 		...zhCNUiChatResponseActions,
 		...zhCNUiChatRunDetails,
 		...zhCNUiChatSidebar,
@@ -1580,6 +1646,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatStatus,
 		...zhCNUiChatTagDialogs,
 		...zhCNUiChatTags,
+		...zhCNUiChatThreadSearch,
 		...zhCNUiChatTranscriptCopy,
 		...zhCNUiCodeReview,
 		...zhCNUiCommandPalette,
@@ -1599,12 +1666,15 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiCommonViewer,
 		...zhCNUiConsoleErrors,
 		...zhCNUiConsole,
+		...zhCNUiHubCard,
 		...zhCNUiHubComments,
+		...zhCNUiHubDetail,
 		...zhCNUiHub,
 		...zhCNUiHubPages,
 		...zhCNUiHubTaxonomy,
 		...zhCNUiHubTeams,
 		...zhCNUiHubUpdates,
+		...zhCNUiHubViewer,
 		...zhCNUiInstaller,
 		...zhCNUiLibraryErrors,
 		...zhCNUiLibrary,

@@ -1317,6 +1317,25 @@ const IDENTICAL_OK = new Map([
 		"fr:ui.common.layout.toasts.notifications",
 		"French plural « Notifications » has the same spelling; the toast region's own accessible name",
 	],
+	[
+		"ui.chat.attachments.playback_rate_option",
+		// `{rate}x`: a numeral and the letter x, no words to translate. Identical in
+		// every locale is the correct value; a differing one would be invented
+		// punctuation or a translated multiplication sign the format does not use.
+		"language-neutral format: only a {rate} placeholder and 'x', no words",
+	],
+	[
+		"fr:ui.chat.attachments.volume",
+		"French cognate: the French noun for this control is « Volume », same spelling; scoped to fr so other locales still translate it",
+	],
+	[
+		"fr:ui.chat.pickers.slash.action_kind",
+		"French cognate: « Action » is the French noun, same spelling; scoped to fr so other locales still translate it",
+	],
+	[
+		"fr:ui.chat.transcript_copy.role.assistant",
+		"French cognate: the French role name is « Assistant », same spelling; scoped to fr so other locales still translate it",
+	],
 ]);
 
 /*

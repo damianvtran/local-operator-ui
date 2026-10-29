@@ -1,0 +1,10 @@
+{
+	"ui.chat.radient_session.action.sign_in": "Войти в Radient",
+	"ui.chat.radient_session.pointer.sign_in_active": "Очистить его можно в Settings, в разделе Providers.",
+	"ui.chat.radient_session.prose.input_required": "{message} Здесь нельзя вставить код, поэтому завершите вход в Settings, в разделе Providers.",
+	"ui.chat.radient_session.prose.needs_sign_in": "Radient больше не принимает сохранённые на этом устройстве данные входа. Войдите снова, чтобы восстановить доступ к моделям Radient; браузер откроется для подтверждения доступа.",
+	"ui.chat.radient_session.prose.signing_in": "Завершите вход в браузере. После завершения входа коннектор перезапустится автоматически; незавершённая попытка будет прекращена через несколько минут.",
+	"ui.chat.radient_session.title.input_required": "Для входа в Radient нужно вставить код",
+	"ui.chat.radient_session.title.needs_sign_in": "Требуется повторный вход в Radient",
+	"ui.chat.radient_session.title.signing_in": "Вход в Radient"
+}

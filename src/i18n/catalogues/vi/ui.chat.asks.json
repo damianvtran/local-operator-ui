@@ -1,4 +1,5 @@
 {
+	"ui.chat.asks.answer_options": "Các lựa chọn trả lờI",
 	"ui.chat.asks.context.messages_since": "{count, plural, other {# tin nhắn của bạn kể từ khi câu hỏi này được đưa ra}} (tin nhắn gần nhất lúc {time})",
 	"ui.chat.asks.dismiss.answered_in_chat.note": "bạn đã trả lời trong cuộc trò chuyện",
 	"ui.chat.asks.dismiss.answered_in_chat.title": "Đã trả lời trong cuộc trò chuyện",
@@ -12,6 +13,7 @@
 	"ui.chat.asks.dismiss.refused": "Không thể bỏ qua câu hỏi này — không có gì được gửi đi.",
 	"ui.chat.asks.dismiss.trigger": "Bỏ qua…",
 	"ui.chat.asks.other_label": "Khác",
+	"ui.chat.asks.recommended": "Đề xuất",
 	"ui.chat.asks.urgent": "Khẩn cấp.",
 	"ui.chat.asks.no_answer": "Chưa trả lời",
 	"ui.chat.asks.changed_handoff": "Đã thay đổi — chưa chuyển cho tác nhân.",
