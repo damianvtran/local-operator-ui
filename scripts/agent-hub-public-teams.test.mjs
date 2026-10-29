@@ -965,12 +965,58 @@ test("the prose about a name paints the derived form too", async () => {
 		/const displayName = agent \? hubDisplayName\(agent\.name\) : ""/,
 		"the page derives the name once",
 	);
-	assert.match(details, /This takes "\{displayName\}" off the hub/);
+	assert.match(
+		details,
+		/t\("ui\.hub\.detail\.delist_body", \{ name: displayName \}\)/,
+		"the delist confirmation is composed from the derived name",
+	);
+	const detailCopy = JSON.parse(
+		read("src/i18n/catalogues/en/ui.hub.detail.json"),
+	);
+	assert.equal(
+		detailCopy["ui.hub.detail.delist_body"],
+		'This takes "{name}" off the hub straight away, and nobody will be able to download it. You can upload it again later.',
+	);
 	assert.match(
 		details,
 		/agentActionFailureMessage\(\s*failure\.action,\s*failure\.error,\s*displayName,/,
 	);
-	assert.doesNotMatch(details, /This takes "\{agent\.name\}"/);
+	for (const action of ["like", "favourite", "download"]) {
+		assert.match(
+			details,
+			new RegExp(`onError: \\(\\) => setFailedAction\\("${action}"\\)`),
+			`the ${action} failure reaches the shared alert`,
+		);
+		assert.match(
+			details,
+			new RegExp(`failedAction === "${action}"`),
+			`the ${action} failure selects its own action prose`,
+		);
+	}
+	/*
+	 * DELIST IS THE CHAIN'S TERMINAL ARM, not a compared branch: it is confirmed
+	 * through the dialog, so the failed attempt is reported and never retried from
+	 * here, and it falls out of the last else. Pinning `failedAction === "delist"`
+	 * would pin a branch that does not exist; the arm's own `"delist" as const` is
+	 * what proves the delist failure reaches the shared alert, which is the claim
+	 * this loop exists to make for every action.
+	 */
+	assert.match(details, /setFailedAction\("delist"\)/);
+	assert.match(details, /action: "delist" as const/);
+	// Every action's failure alert has its own title, delist included.
+	for (const action of ["like", "favourite", "download", "delist"]) {
+		assert.match(
+			details,
+			new RegExp(
+				`case "${action}":\\s*return t\\("ui\\.hub\\.detail\\.failure\\.${action}"\\)`,
+			),
+			`the ${action} failure has its own title`,
+		);
+	}
+	assert.doesNotMatch(
+		details,
+		/t\("ui\.hub\.detail\.delist_body", \{ name: agent\.name \}\)/,
+	);
 
 	const container = read(
 		"src/renderer/src/features/agent-hub/components/agent-card-container.tsx",
