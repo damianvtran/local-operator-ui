@@ -1649,6 +1649,45 @@ test("a new tab with no history still lists the typed address and a search", asy
 	await bundle.cleanup();
 });
 
+/*
+ * THE TYPED ROW'S OWN COMMIT PATH (review round 5, MINOR-1). The Enter
+ * assertion above does not discriminate: Enter with the typed row highlighted
+ * reaches the same destination as the no-row fallback (`usableRawAddress(raw)`,
+ * which IS this row's `targetUrl`), so deleting the row's branch from
+ * `rowTarget` would leave it green. A PRESS has no such fallback — only
+ * `rowTarget` on the painted row list can navigate — so a typed row whose
+ * commit branch is gone does nothing at all. This presses row 0 itself and pins
+ * the navigation it produces, which is what makes the branch load-bearing.
+ */
+test("a press on the typed own-state row commits it, with no Enter fallback behind it", async () => {
+	const bundle = await renderBar({
+		url: "about:blank",
+		ownState: true,
+		addressHistory: emptyHistory,
+	});
+	await type(bundle, OWN_STATE_ADDRESS);
+	const typed = options(bundle)[0];
+	assert.match(visibleText(typed), OPEN_TYPED_ROW, "row 0 is the Open row");
+	await pointerDown(typed);
+	assert.equal(
+		bundle.input.getAttribute("data-address-editing"),
+		"true",
+		"the typed row is inside the field's press region too (#1396)",
+	);
+	await act(async () => {
+		typed.dispatchEvent(
+			new dom.window.MouseEvent("click", { bubbles: true, cancelable: true }),
+		);
+	});
+	await flush();
+	assert.deepEqual(
+		bundle.navigations,
+		[{ url: OWN_STATE_ADDRESS, expectedTabId: 1 }],
+		"the row commits its own target; a removed branch would commit nothing",
+	);
+	await bundle.cleanup();
+});
+
 test("own-state: search intent keeps the search row first and highlighted", async () => {
 	const bundle = await renderBar({
 		url: "about:blank",
