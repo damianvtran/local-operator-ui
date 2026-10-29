@@ -1,5 +1,5 @@
 {
-	"ui.hub.detail.back_aria": "Назад в Agent Hub",
+	"ui.hub.detail.back_aria": "Назад в Хаб агентов",
 	"ui.hub.detail.created": "Создан: {ago} назад ({date})",
 	"ui.hub.detail.created_by": "Автор: {author}",
 	"ui.hub.detail.created_by_with_email": "Автор: {author} ({email})",
@@ -7,7 +7,7 @@
 	"ui.hub.detail.delist_body": "Агент «{name}» сразу исчезнет из хаба, и никто не сможет его скачать. Позже его можно будет опубликовать снова.",
 	"ui.hub.detail.delist_confirm": "Убрать из хаба",
 	"ui.hub.detail.delist_title": "Убрать этого агента из хаба?",
-	"ui.hub.detail.delist_tooltip": "Навсегда убрать этого агента из Agent Hub",
+	"ui.hub.detail.delist_tooltip": "Навсегда убрать этого агента из Хаба агентов",
 	"ui.hub.detail.delisting": "Удаление агента из хаба",
 	"ui.hub.detail.download_aria": "Скачать агента",
 	"ui.hub.detail.download_tooltip": "Скачать агента на компьютер",

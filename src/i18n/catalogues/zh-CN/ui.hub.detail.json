@@ -1,5 +1,5 @@
 {
-	"ui.hub.detail.back_aria": "返回Agent Hub",
+	"ui.hub.detail.back_aria": "返回智能体中心",
 	"ui.hub.detail.created": "创建时间：{ago}前（{date}）",
 	"ui.hub.detail.created_by": "创建者：{author}",
 	"ui.hub.detail.created_by_with_email": "创建者：{author}（{email}）",

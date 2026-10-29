@@ -1,5 +1,5 @@
 {
-	"ui.hub.detail.back_aria": "Retour à Agent Hub",
+	"ui.hub.detail.back_aria": "Retour au Hub des agents",
 	"ui.hub.detail.created": "Créé : il y a {ago} ({date})",
 	"ui.hub.detail.created_by": "Créé par : {author}",
 	"ui.hub.detail.created_by_with_email": "Créé par : {author} ({email})",
@@ -7,7 +7,7 @@
 	"ui.hub.detail.delist_body": "« {name} » sera immédiatement retiré du hub et personne ne pourra plus le télécharger. Vous pourrez le publier à nouveau plus tard.",
 	"ui.hub.detail.delist_confirm": "Retirer du hub",
 	"ui.hub.detail.delist_title": "Retirer cet agent du hub ?",
-	"ui.hub.detail.delist_tooltip": "Retirer définitivement cet agent d’Agent Hub",
+	"ui.hub.detail.delist_tooltip": "Retirer définitivement cet agent du Hub des agents",
 	"ui.hub.detail.delisting": "Retrait de l’agent du hub",
 	"ui.hub.detail.download_aria": "Télécharger l’agent",
 	"ui.hub.detail.download_tooltip": "Télécharger l’agent sur votre ordinateur",

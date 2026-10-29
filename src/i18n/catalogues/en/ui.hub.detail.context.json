@@ -2,7 +2,7 @@
 	"ui.hub.detail.back_aria": {
 		"role": "icon-button name",
 		"tone": "plain",
-		"note": "Returns to the hub's agent grid. Keep Agent Hub in Latin as the page's own title."
+		"note": "Returns to the hub's agent grid. Name that surface with the locale's OWN shipped title (zh-CN 智能体中心, es Hub de agentes, ...); 'Agent Hub' stays Latin only in the locales whose own navigation ships it that way (es/fr/hi/ru/ur/vi). Corrected 2026-10-29: the earlier note told every locale to keep the English title, which contradicted zh-CN's shipped 智能体中心."
 	},
 	"ui.hub.detail.created": {
 		"role": "metadata line",

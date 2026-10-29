@@ -1,5 +1,5 @@
 {
-	"ui.hub.detail.back_aria": "Agent Hub पर वापस जाएँ",
+	"ui.hub.detail.back_aria": "एजेंट हब पर वापस जाएँ",
 	"ui.hub.detail.created": "बनाया गया: {ago} पहले ({date})",
 	"ui.hub.detail.created_by": "बनाने वाले: {author}",
 	"ui.hub.detail.created_by_with_email": "बनाने वाले: {author} ({email})",
@@ -7,7 +7,7 @@
 	"ui.hub.detail.delist_body": "इससे “{name}” तुरंत हब से हटा दिया जाएगा और इसे कोई भी डाउनलोड नहीं कर सकेगा। आप इसे बाद में फिर से अपलोड कर सकते हैं।",
 	"ui.hub.detail.delist_confirm": "सूची से हटाएँ",
 	"ui.hub.detail.delist_title": "इस एजेंट को सूची से हटाएँ?",
-	"ui.hub.detail.delist_tooltip": "इस एजेंट को Agent Hub की सूची से स्थायी रूप से हटाएँ",
+	"ui.hub.detail.delist_tooltip": "एजेंट हब की सूची से इस एजेंट को स्थायी रूप से हटाएँ",
 	"ui.hub.detail.delisting": "एजेंट को सूची से हटाया जा रहा है",
 	"ui.hub.detail.download_aria": "एजेंट डाउनलोड करें",
 	"ui.hub.detail.download_tooltip": "एजेंट को अपने कंप्यूटर पर डाउनलोड करें",
