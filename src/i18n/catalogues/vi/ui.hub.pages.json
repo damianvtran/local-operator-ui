@@ -1,5 +1,7 @@
 {
 	"ui.hub.pages.browse_aria": "Duyệt trung tâm theo loại",
+	"ui.hub.pages.card.get": "Tải",
+	"ui.hub.pages.card.updated": "cập nhật {when}",
 	"ui.hub.pages.header.subtitle": "Khám phá và tải tác nhân, nhóm và kỹ năng trên Radient",
 	"ui.hub.pages.header.title": "Trung tâm tác nhân",
 	"ui.hub.pages.orgs_below_version": "Chia sẻ tác nhân với một tổ chức cần backend Local Operator mới hơn. Hãy cập nhật backend rồi thử lại.",

@@ -45,5 +45,7 @@
 	"ui.hub.teams.pull": "pull کریں",
 	"ui.hub.teams.pull_failed": "“{name}” کو pull نہیں کیا جا سکا۔",
 	"ui.hub.teams.pull_target": "ٹیم {name} کو pull کریں",
-	"ui.hub.teams.pulling": "pull ہو رہا ہے…"
+	"ui.hub.teams.pulling": "pull ہو رہا ہے…",
+	"ui.hub.teams.recency.created": "{when} بنایا گیا",
+	"ui.hub.teams.recency.updated": "{when} اپ ڈیٹ کیا گیا"
 }

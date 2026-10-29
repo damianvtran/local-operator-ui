@@ -23,6 +23,9 @@ export interface AddressOverlayRect {
 export interface AddressOverlayRow {
 	text: string;
 	title: string;
+	/** The span of `text` holding the user's own value, which the child isolates
+	 * as an LTR run (see `AddressListIsolate` in main). Display only. */
+	isolate?: { start: number; end: number };
 }
 
 export type AddressOverlayView =

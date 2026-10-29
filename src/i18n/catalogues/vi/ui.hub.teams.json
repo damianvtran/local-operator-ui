@@ -45,5 +45,7 @@
 	"ui.hub.teams.pull": "Tải về",
 	"ui.hub.teams.pull_failed": "Không thể tải “{name}” về.",
 	"ui.hub.teams.pull_target": "Tải về nhóm {name}",
-	"ui.hub.teams.pulling": "Đang tải về…"
+	"ui.hub.teams.pulling": "Đang tải về…",
+	"ui.hub.teams.recency.created": "tạo {when}",
+	"ui.hub.teams.recency.updated": "cập nhật {when}"
 }

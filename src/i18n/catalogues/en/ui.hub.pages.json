@@ -1,5 +1,7 @@
 {
 	"ui.hub.pages.browse_aria": "Browse the hub by type",
+	"ui.hub.pages.card.get": "Get",
+	"ui.hub.pages.card.updated": "updated {when}",
 	"ui.hub.pages.header.subtitle": "Discover and download agents, teams and skills on Radient",
 	"ui.hub.pages.header.title": "Agent Hub",
 	"ui.hub.pages.orgs_below_version": "Sharing agents with an organization needs a newer Local Operator backend. Update the backend and try again.",

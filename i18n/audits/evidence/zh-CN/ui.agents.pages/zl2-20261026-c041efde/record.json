@@ -1,0 +1,101 @@
+{
+  "audit_id": "zl2-20261026-c041efde",
+  "date": "2026-10-26",
+  "audit_date": "2026-10-26",
+  "key_count": 8,
+  "whole_file_keys": 30,
+  "locale": "zh-CN",
+  "namespace": "ui.agents.pages",
+  "source_commit": "a9e536bf89",
+  "byte_equality_base": "73af0b6855",
+  "keys_audited": [
+    "ui.agents.pages.add_manual.agent",
+    "ui.agents.pages.add_manual.team",
+    "ui.agents.pages.ask.body_agent",
+    "ui.agents.pages.ask.body_team",
+    "ui.agents.pages.ask.heading_agent",
+    "ui.agents.pages.ask.heading_team",
+    "ui.agents.pages.ask.manual_agent",
+    "ui.agents.pages.ask.manual_team"
+  ],
+  "translator": {
+    "agent": "translator (i18n-translator lane)",
+    "model": "unreported-by-delegating-agent",
+    "date": "2026-10-26",
+    "note": "Produced the zh-CN values in the translation lane; this auditor saw only the committed candidate catalogue and did not observe the translator's session or reasoning."
+  },
+  "auditors": [
+    {
+      "agent": "i18n-auditor",
+      "model": "radient/auto",
+      "model_source": "harness session header; no fallback observed (see receipt.model_fallback)",
+      "date": "2026-10-26",
+      "result": "clean-with-findings",
+      "instance": "c041efdee6f6",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "receipt": "i18n/receipts/zh-CN-agents-literals-audit-c041efdee6f6.json",
+      "receipt_sha256": "34ee57d4b890565cf6dfb31fdb321ec84f7ac0c2989f167cb6a1880210853f0a",
+      "scope": "25-key zh-CN delta, this namespace's 8 new key(s); the whole file (30 keys) also checked mechanically (key order, ICU signature, plural legality, typography of the delta).",
+      "note": "Independent auditor: did not translate or remediate; no MT service; no catalogue, ledger, English, generated-file or test edits."
+    }
+  ],
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.agents.pages.json",
+      "sha256": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.agents.pages.context.json",
+      "sha256": "f9690a17e6e7307df154bdc0d71ab8a0d002a07a052e11c0025d2ff874d3dfea"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/zh-CN/ui.agents.pages.json",
+      "sha256": "2b2e26580866cf9d91d339b97283b043d7da9352556cbab9c8c9ec0259cee9a0"
+    },
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    },
+    "delta_sidecar": {
+      "path": "agents-literals-2-keys.json",
+      "sha256": "ec602c83236ec67358370105c140880a55e134b68f872b0ba033446387cefada"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "i18n/receipts/zh-CN-agents-literals-audit-c041efdee6f6.json",
+      "sha256": "34ee57d4b890565cf6dfb31fdb321ec84f7ac0c2989f167cb6a1880210853f0a"
+    },
+    {
+      "path": "i18n/audits/evidence/zh-CN/ui.agents.pages/zl2-20261026-c041efde/audit.log",
+      "sha256": "f7f8eb684a95de165c2c0659ae55f9efbbaccfa752797ddb2aaf0aedc4b290c2"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "result": "clean-with-findings",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "ZH-F1"
+    ]
+  },
+  "auditor_identity": {
+    "agent": "i18n-auditor",
+    "session": "c041efdee6f6",
+    "model": "radient/auto",
+    "actual_model_source": "harness session header (Model: radient/auto); origin.json names the subagent lane and parent, no model id; upstream resolution not visible",
+    "independent_from_translator_session": true
+  },
+  "audit_notes_not_execution_log": true,
+  "evidence_note": "record.json is this bundle's record; audit.log is the captured command output for the whole seven-namespace run; both are companions of the receipt named above.",
+  "notes": "Findings and rulings live in the receipt (finding ids match). Execution output only: audit.log. Multi-namespace audit: the same 25-key delta is recorded under one audit_id per namespace, all seven pointing at one receipt."
+}
