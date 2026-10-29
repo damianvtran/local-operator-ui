@@ -7,66 +7,89 @@ import { test } from "node:test";
  *
  * WHY THIS EXISTS. A composer draws its ring OUTSIDE the box (`outline-2` at
  * `outline-offset-2`: 2px wide, 2px out = 4px beyond it), and an overflow
- * container clips at its PADDING box. The page's box used to sit in an
- * `overflow-y-auto` container that bounded its recovery alerts; that container
- * had `px-4 pb-4` and no top padding, so the ring drew on three sides and lost
- * its top edge - the operator's report. `pt-1` (4px) was the room.
+ * container clips at its PADDING box. The page's box used to sit in a bounded
+ * scroller (`min-h-0 max-h-[60%] overflow-y-auto`) that clipped the ring's top
+ * edge - the operator's report. `pt-1` (4px) was the room.
  *
  * WHAT CHANGED, AND WHY THIS FILE CHANGED WITH IT. The page no longer draws a
- * composer: it mounts the shared `MessageInput`, which draws its own box and
- * ring. The room is therefore no longer a padding question - it is a question of
- * whether ANY ancestor clips the band at all, and the answer this pins is NO
- * (design risk R3): the band that holds the composer has no `max-height` and no
- * `overflow`, so there is nothing to clip the ring and nothing that turns the
- * composer into a nested scroller. The recovery alerts that the old scroller
- * bounded sit above the box instead.
+ * composer: it mounts the shared `MessageInput`, which draws its own box and ring
+ * and BOUNDS ITS OWN growable parts, which is why hosting it inside a scroller is
+ * wrong rather than merely tight - a bounded ancestor re-introduces the clipped
+ * ring and nests a second scroller. So the assertion is about ANCESTORS: no
+ * element that encloses the composer mount may be a bounded scroller
+ * (`max-h-*` together with an `overflow-*` that actually clips y).
  *
- * WHAT THIS PINS, AND WHAT IT CANNOT: it reads the source, so it cannot tell
- * where the band lands on screen. The before/after frames and the geometry
- * readback in the PR are what answer that; this is what fails when someone
- * re-wraps the band in a scroller, which is how the ring loses an edge again
- * without anyone noticing (`integration-model.test.mjs` pins the same class for
- * the integration dialogs).
+ * FAIL-CLOSED, WHICH THE FIRST VERSION WAS NOT (review round 1, R1-5): it read
+ * only the nearest literal div before the mount, so re-wrapping the band in a NEW
+ * scroller (`max-h-[70%] overflow-y-auto`) left every test green while the header
+ * claimed to catch exactly that. This version walks EVERY div that is still open
+ * at the mount - an enclosing div is one with more `<div` than `</div>` between it
+ * and the mount - and the negative control runs the same predicate over the shape
+ * this change removed.
+ *
+ * WHAT THIS STILL CANNOT SEE: a component that renders a scroller (`<ScrollArea>`,
+ * a panel primitive) is not a literal div here. The before/after frames and the
+ * geometry readback in the PR are what answer the rendered question; this is what
+ * fails when the band is re-wrapped by hand.
  */
 const RING =
 	"has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-solid";
 
 const TOP_PADDING = /(?:^|\s)(?:pt|py|p)-(\d+(?:\.5)?)(?=\s|$)/g;
-const OVERFLOW_Y_AUTO = /\boverflow-y-auto\b/;
-const CX_4 = /\bpx-4\b/;
-const PB_4 = /\bpb-4\b/;
-const ANY_OVERFLOW = /\boverflow-/;
-const ANY_MAX_HEIGHT = /\bmax-h-/;
-const CONFLICTING_TOP_PADDING = /conflicting top padding utilities/;
-const LITERAL_DIV_CLASS = /<div\s+className="([^"]*)"/g;
-const IMPORT_MESSAGE_INPUT =
-	/import\s*\{[^}]*\bMessageInput\b[^}]*\}\s*from\s*"@shared\/components\/composer"/;
-const RENDER_MESSAGE_INPUT = /<MessageInput\b/;
+/** Utilities that actually clip the y axis. `overflow-hidden` on a panel root is
+ * the app's standard panel clip and is not what this rule is about: it only bites a
+ * box that is also bounded, which is the shape that clipped the ring. */
+const CLIPS_Y = /\boverflow-(?:y-auto|y-scroll|y-hidden|auto|scroll|hidden)\b/;
+const BOUNDED = /\bmax-h-/;
+const LITERAL_DIV_OPEN = /<div\s+className="([^"]*)"/g;
+const OPEN_DIV = /<div\b/g;
+const CLOSE_DIV = /<\/div>/g;
 
 const topPaddingPx = (className) => {
 	const values = [...className.matchAll(TOP_PADDING)].map(
 		(match) => Number(match[1]) * 4,
 	);
-	// Later Tailwind utilities can override earlier ones. Reading only the
-	// first would let `pt-1 ... pt-0` pass while the ring is still clipped.
-	assert.ok(
-		new Set(values).size <= 1,
-		`conflicting top padding utilities in (${className})`,
-	);
 	return values[0] ?? 0;
 };
 
-/** The className of the closest `overflow-*` element opened before `index`. */
-const enclosingScroller = (source, index) => {
-	const before = source.slice(0, index);
-	const opens = [...before.matchAll(/className="([^"]*\boverflow-[^"]*)"/g)];
-	return opens.at(-1)?.[1];
+const BOTTOM_PADDING = /(?:^|\s)(?:pb|py|p)-(\d+(?:\.5)?)(?=\s|$)/;
+const bottomPaddingPx = (className) => {
+	const match = BOTTOM_PADDING.exec(className);
+	return match ? Number(match[1]) * 4 : 0;
 };
+
+/**
+ * Every literal `<div className="…">` still OPEN at `index`, i.e. the ones that
+ * enclose that point. Counted textually because this is a source pin: a div with
+ * more opens than closes between its own tag and the index has not closed yet.
+ */
+const enclosingDivs = (source, index) => {
+	const before = source.slice(0, index);
+	const enclosing = [];
+	for (const match of before.matchAll(LITERAL_DIV_OPEN)) {
+		const body = before.slice(match.index);
+		const opens = (body.match(OPEN_DIV) ?? []).length;
+		const closes = (body.match(CLOSE_DIV) ?? []).length;
+		if (opens > closes) enclosing.push(match[1]);
+	}
+	return enclosing;
+};
+
+/** The rule under test, over a source and the index of a composer mount. */
+const boundedScrollersAround = (source, index) =>
+	enclosingDivs(source, index).filter(
+		(className) => BOUNDED.test(className) && CLIPS_Y.test(className),
+	);
 
 const page = readFileSync(
 	"src/renderer/src/features/team-bridge/team-bridge-page.tsx",
 	"utf8",
 );
+
+const IMPORT_MESSAGE_INPUT =
+	/import\s*\{[^}]*\bMessageInput\b[^}]*\}\s*from\s*"@shared\/components\/composer"/;
+const RENDER_MESSAGE_INPUT = /<MessageInput\b/;
+const PX_4 = /\bpx-4\b/;
 
 test("the page mounts the shared composer instead of drawing one", () => {
 	assert.match(
@@ -103,38 +126,80 @@ test("the page mounts the shared composer instead of drawing one", () => {
 	);
 });
 
-test("the composer's band clips nothing and pins no height (R3)", () => {
+test("no bounded scroller encloses the composer (R3)", () => {
 	const mount = page.indexOf("<MessageInput");
 	assert.notEqual(mount, -1);
+	const bounded = boundedScrollersAround(page, mount);
+	assert.deepEqual(
+		bounded,
+		[],
+		`a bounded scroller encloses the composer: ${bounded.join(" | ")}`,
+	);
+	// Some div must enclose the mount, or the walk found nothing and the assertion
+	// above would pass for the wrong reason.
+	assert.ok(
+		enclosingDivs(page, mount).length > 0,
+		"the walk finds the composer's own band",
+	);
+});
+
+test("the composer's band carries the ring room and adds no second bottom inset", () => {
+	const mount = page.indexOf("<MessageInput");
 	// The band is the literal div that opens the block the composer sits in; the
 	// alerts between the two are paragraphs, so this is that element.
-	const band = [...page.slice(0, mount).matchAll(LITERAL_DIV_CLASS)].at(
-		-1,
-	)?.[1];
+	const band = [...page.slice(0, mount).matchAll(LITERAL_DIV_OPEN)].at(-1)?.[1];
 	assert.ok(band, "the composer has a band");
-	assert.doesNotMatch(band, ANY_MAX_HEIGHT, `band pins a height (${band})`);
-	assert.doesNotMatch(band, ANY_OVERFLOW, `band clips (${band})`);
-	// Room is still owed: the ring paints 4px outside the box, and the band's own
-	// padding box is where a clip would bite if one were ever added back.
+	assert.doesNotMatch(band, BOUNDED, `band pins a height (${band})`);
+	assert.doesNotMatch(band, CLIPS_Y, `band clips (${band})`);
+	// Room is still owed: the ring paints 4px outside the box, into the band's own
+	// padding box.
 	assert.ok(
 		topPaddingPx(band) >= 4,
 		`the band pads its top ${topPaddingPx(band)}px but the ring paints 4px outside the box (${band})`,
 	);
-	assert.match(band, CX_4);
-	assert.match(band, PB_4);
-	// The bounded scroller this change removed must not come back: it was the only
-	// ancestor clipping at a height the composer did not control.
+	assert.match(band, PX_4);
+	// ONE bottom inset (review round 1, R1-8): the composer's own band supplies it,
+	// so the host band must not add a second.
 	assert.equal(
-		page.indexOf("max-h-[60%]"),
-		-1,
-		"the old max-height scroller around the composer is gone",
+		bottomPaddingPx(band),
+		0,
+		`the host band adds its own bottom padding on top of the composer's (${band})`,
 	);
+	assert.equal(page.indexOf("max-h-[60%]"), -1, "the old scroller is gone");
 });
 
-test("conflicting top-padding utilities fail the ring-room check", () => {
-	assert.throws(
-		() => topPaddingPx("overflow-y-auto px-4 pt-1 pb-4 pt-0"),
-		CONFLICTING_TOP_PADDING,
+test("the padding readers measure what the utilities say", () => {
+	assert.equal(topPaddingPx("px-4 pt-1 pb-4"), 4);
+	assert.equal(bottomPaddingPx("px-4 pt-1 pb-4"), 16);
+	assert.equal(bottomPaddingPx("px-4 py-2"), 8);
+	assert.equal(bottomPaddingPx("px-4 pt-1"), 0);
+});
+
+test("a re-wrapped band fails the ancestor rule (negative control)", () => {
+	// The exact regression R1-5 reproduced: the band itself is untouched and a NEW
+	// scroller is added around it. Both class strings below are the shapes this
+	// change removed and the re-wrap the review tried.
+	for (const wrapper of [
+		"min-h-0 max-h-[60%] shrink-0 overflow-y-auto px-4 pt-1 pb-4",
+		"min-h-0 max-h-[70%] shrink-0 overflow-y-auto",
+	]) {
+		const rewrapped = `<section>\n<div className="${wrapper}">\n<div className="flex min-w-0 shrink-0 flex-col gap-2 px-4 pt-1">\n<MessageInput />`;
+		const found = boundedScrollersAround(
+			rewrapped,
+			rewrapped.indexOf("<MessageInput"),
+		);
+		assert.deepEqual(
+			found,
+			[wrapper],
+			`the ancestor rule misses a band re-wrapped in (${wrapper})`,
+		);
+	}
+	// And it must not fire on a plain column, or every future cleanup would chase a
+	// false positive.
+	const plain = `<section>\n<div className="flex min-h-0 min-w-0 flex-1 flex-col">\n<div className="flex min-w-0 shrink-0 flex-col gap-2 px-4 pt-1">\n<MessageInput />`;
+	assert.deepEqual(
+		boundedScrollersAround(plain, plain.indexOf("<MessageInput")),
+		[],
 	);
 });
 
@@ -145,25 +210,15 @@ test("the thread pane composer keeps its own ring room if it clips", () => {
 	);
 	const ring = pane.indexOf(RING);
 	assert.notEqual(ring, -1, "the pane composer still draws the promoted ring");
-	// The wrapper is the `shrink-0 px-4 pb-4` div right above it; if it ever
-	// gains an overflow, it needs the same top room the page's band has.
-	const wrapper = [...pane.slice(0, ring).matchAll(LITERAL_DIV_CLASS)].at(
+	// The wrapper is the literal div right above it; if it ever gains a bounded
+	// scroll of its own, it needs the same top room the page's band has.
+	const wrapper = [...pane.slice(0, ring).matchAll(LITERAL_DIV_OPEN)].at(
 		-1,
 	)?.[1];
 	assert.ok(wrapper, "the pane composer has a wrapper");
-	if (ANY_OVERFLOW.test(wrapper))
+	if (CLIPS_Y.test(wrapper))
 		assert.ok(
 			topPaddingPx(wrapper) >= 2 + 2,
 			`the pane wrapper clips but pads its top only ${topPaddingPx(wrapper)}px (${wrapper})`,
 		);
-});
-
-test("an overflow band above the composer is caught", () => {
-	// Negative control for the assertion above: the same lookup, on a source shape
-	// this change removed, must find the scroller.
-	const removed = `<div className="min-h-0 max-h-[60%] shrink-0 overflow-y-auto px-4 pt-1 pb-4">
-	<MessageInput />`;
-	const found = enclosingScroller(removed, removed.indexOf("<MessageInput"));
-	assert.ok(found, "the lookup still detects a scroller above the composer");
-	assert.match(found, OVERFLOW_Y_AUTO);
 });

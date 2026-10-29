@@ -1,3 +1,5 @@
+import { dropBridgeComposerRows } from "./team-bridge-composer-rows";
+
 /** Authored drafts are deliberately separate from inbound-body metadata. This
  * shared lifecycle boundary is used by status clients even with no page mounted. */
 export const TEAM_BRIDGE_DRAFT_PREFIX = "team-bridge-authored-drafts:v1:";
@@ -18,6 +20,16 @@ export function onDraftRevocation(listener: () => void): () => void {
 const notifyRevocation = () => {
 	for (const listener of revocationListeners) listener();
 };
+/*
+ * THE COMPOSER'S OWN ROWS GO WITH THE AUTHORED DRAFTS (review round 1, R1-1).
+ * The draft body lives in `conversation-input-store` now, and that store persists
+ * to one unscoped key, so erasing the journal alone would leave the operator's
+ * unsent words on disk after a sign-out, a session expiry or a relaunch as another
+ * account. This module is the app-scoped lifecycle boundary - status clients use
+ * it with no page mounted - so registering here is what makes the erasure fire at
+ * all: the bridge page's own effect is defence in depth, never the only trigger.
+ */
+onDraftRevocation(dropBridgeComposerRows);
 export function draftAccountEpoch(accountId: string): number {
 	if (!epochs.has(accountId)) epochs.set(accountId, 0);
 	return epochs.get(accountId) ?? 0;

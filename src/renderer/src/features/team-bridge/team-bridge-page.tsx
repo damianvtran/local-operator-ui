@@ -19,6 +19,10 @@ import { formatRelativeTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
+import {
+	forgetBridgeComposerRows,
+	teamBridgeComposerKey,
+} from "@shared/store/team-bridge-composer-rows";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import {
 	Archive,
@@ -66,10 +70,6 @@ import {
 	sendAttachmentIds,
 } from "./team-bridge-attachments-model";
 import { TeamBridgeComposeBar } from "./team-bridge-compose-bar";
-import {
-	forgetBridgeDrafts,
-	teamBridgeComposerKey,
-} from "./team-bridge-composer-key";
 import { TeamBridgeConversationMenu } from "./team-bridge-conversation-menu";
 import { TeamBridgeCreateDialog } from "./team-bridge-create-dialog";
 import { TeamBridgeDefaultOnBanner } from "./team-bridge-default-on-banner";
@@ -791,11 +791,28 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			(previous && selfAccountId !== previous)
 		) {
 			const store = useConversationInputStore.getState();
-			forgetBridgeDrafts(store, store.clearComposer, previous);
+			forgetBridgeComposerRows(store, store.clearComposer, previous);
 		}
 		draftOwner.current =
 			eligibility === "signed_out" ? undefined : selfAccountId;
 	}, [selfAccountId, eligibility]);
+	/*
+	 * THE INDEX FOLLOWS THE BODY (review round 1, R1-2).
+	 *
+	 * The journal is no longer where the text lives, but it is still the index that
+	 * the rail's draft dot and the Drafts list enumerate - and the keystroke write
+	 * that used to create an entry for a conversation, a person or a chief went away
+	 * with the body. So an entry is created when there is something to index and none
+	 * exists yet. It holds the TARGET and the idempotency key, never the text: the
+	 * preview reads the store through `draftTextAt`, which is what keeps one owner
+	 * for the body rather than two.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the current entry is read, not watched.
+	useEffect(() => {
+		if (!draft.trim() || !target || draftState.current || !isDraftCurrent())
+			return;
+		draftState.update({});
+	}, [draft, target]);
 	const [imagesBlocked, setImagesBlocked] = useState(false);
 	/*
 	 * Text, or at least one staged file: an attachment-only message is allowed, and
@@ -1327,7 +1344,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			 */
 			if (draftJournal && draftJournal.body.trim() === body)
 				draftJournal.body = "";
-			useConversationInputStore.getState().clearComposer(composerKey);
+			/*
+			 * ONLY THE COPY THIS SCHEDULE RETIRED (review round 1, R1-4). A blanket clear
+			 * would eat text typed while the request was in flight, and `heldAttempt` is
+			 * false while `scheduling` is true, so nothing else stands between the reader
+			 * and that loss. Same rule the composer's own accepted send applies.
+			 */
+			const composerStore = useConversationInputStore.getState();
+			if (composerStore.getCurrentInput(composerKey).trim() === body)
+				composerStore.clearComposer(composerKey);
 			draftState.clearSent(entryKey, body, clientRef);
 			setScheduledSuccess(true);
 		} catch (error) {
@@ -2264,7 +2289,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									{t("ui.teamBridge.read_only.composer")}
 								</p>
 							) : (
-								<div className="flex min-w-0 shrink-0 flex-col gap-2 px-4 pt-1 pb-4">
+								<div className="flex min-w-0 shrink-0 flex-col gap-2 px-4 pt-1">
 									{scheduleFailed && (
 										<p role="alert" className="text-sm text-danger">
 											{t("ui.teamBridge.schedule.failed")}
@@ -2392,7 +2417,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									   target and a time, neither of which is typing, and the
 									   restored attempt above names the clock by id. */}
 									{onSchedule && (
-										<div className="flex items-center justify-end px-1">
+										<div className="flex items-center justify-end px-1 pb-4">
 											<Button
 												ref={clockRef}
 												variant="ghost"
