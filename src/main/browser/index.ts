@@ -99,6 +99,7 @@ import {
 	BACKGROUND_VIEWPORT,
 	type TabRecord,
 	TabRegistry,
+	parseSurface,
 	sessionMayAdopt,
 	surfaceToken,
 } from "./registry";
@@ -1061,6 +1062,12 @@ async function initializeBrowserHost(
 		 * three (R5).
 		 */
 		function releaseTab(tabId: number, webContentsId: number): void {
+			// Link tabs this tab's page opened die with it unless a session adopted
+			// them (R1-1): an agent's unadopted link tab is counted against
+			// MAX_AGENT_TABS and no scope will ever close it. `destroy` re-enters this
+			// function for each, so a chain of link tabs unwinds too.
+			for (const spawned of registry.unadoptedLinkTabs(tabId))
+				registry.destroy(spawned.tabId);
 			// Before the page's own release: the overlay's child is bound to this tab's
 			// geometry, and a later explicit show must lazily create a fresh one.
 			addressOverlay?.onTabReleased(tabId);
@@ -1084,6 +1091,18 @@ async function initializeBrowserHost(
 				// lists the new tab and `open tab=<handle>` is refused with "tab does
 				// not belong to allocation". Another session still cannot claim it.
 				return sessionMayAdopt(registry.requireSurface(token), requester);
+			},
+			// A scope ending closes the tabs it allocated; closing an opener closes its
+			// unadopted link tabs through `releaseTab`. This covers the opener that is
+			// NOT closed by the scope (a handed-over tab whose hand-over was revoked,
+			// which returns to the user) and a stale opener token.
+			closeSpawnedBy: (openerTokens) => {
+				for (const token of openerTokens) {
+					const parsed = parseSurface(token);
+					if (!parsed) continue;
+					for (const spawned of registry.unadoptedLinkTabs(parsed.tabId))
+						registry.destroy(spawned.tabId);
+				}
 			},
 			closeTab: async (token) => {
 				try {
@@ -1751,8 +1770,21 @@ async function initializeBrowserHost(
 			/** Who owns the opening tab NOW (a hand-over changes it). A tab already
 			 * gone reads as `user`; the link route then makes nothing (no opener
 			 * record), and a window dies with its destroyed opener. */
-			const openerOwner = (): PopupOpenerOwner =>
-				registry.get(tabId)?.owner ?? "user";
+			const openerOwner = (): PopupOpenerOwner | null =>
+				registry.get(tabId)?.owner ?? null;
+			/**
+			 * What only the open handler can see, carried to `did-create-window` for
+			 * the same child. `postBody` is NOT in the latter's details on Electron
+			 * 44.3.0 (measured: `"postBody" in details === false` for a form
+			 * `target=_blank`), so reading it there routed every form POST to the tab
+			 * route, which replays a POST body as a GET. Matched by url, oldest first;
+			 * bounded so a handler whose child never materialised cannot grow it.
+			 */
+			const pendingOpens: Array<{
+				url: string;
+				hasPostBody: boolean;
+				referrer: { url: string; policy: string } | null;
+			}> = [];
 			contents.setWindowOpenHandler((details) => {
 				const decision = decidePopup(
 					{ url: details.url, disposition: details.disposition },
@@ -1768,6 +1800,12 @@ async function initializeBrowserHost(
 					);
 					return { action: "deny" };
 				}
+				pendingOpens.push({
+					url: details.url,
+					hasPostBody: details.postBody != null,
+					referrer: details.referrer ?? null,
+				});
+				if (pendingOpens.length > 8) pendingOpens.shift();
 				// The "opened a popup" line is written by `did-create-window` below: the
 				// opener is only readable once the child exists, and the line has to say
 				// which way the popup went (a tab or a window).
@@ -1824,21 +1862,31 @@ async function initializeBrowserHost(
 				// until now, and not from `disposition`, which is `foreground-tab` for a
 				// link and a bare `window.open` alike (measured, Electron 44.3.0).
 				const hasOpener = child.webContents.opener !== null;
-				const owner = openerOwner();
+				const pendingAt = pendingOpens.findIndex(
+					(pending) => pending.url === details.url,
+				);
+				const pending =
+					pendingAt >= 0 ? pendingOpens.splice(pendingAt, 1)[0] : undefined;
+				// Checked before EVERY route (R1-2): a record that is gone must not fall
+				// back to `user`, whose `focus` would raise the app for a closed tab.
 				const record = registry.get(tabId);
 				const routed = routePopup(
 					{
 						url: details.url,
 						disposition: details.disposition,
 						hasOpener,
-						hasPostBody: details.postBody != null,
+						hasPostBody: pending?.hasPostBody ?? false,
+						// Chromium starts the navigation inside the child before this event
+						// for cmd/shift/middle clicks (measured 44.3.0): destroying it does
+						// not cancel the request, so a tab would fetch the link twice.
+						alreadyLoading: child.webContents.isLoading(),
 						openerActive: registry.activeTab?.tabId === tabId,
 						openedTabs: registry.openedTabCount(tabId),
 					},
 					{
 						mode: options.windowShow,
 						live: popupChildren.size,
-						openerOwner: owner,
+						openerOwner: record ? record.owner : null,
 					},
 				);
 				const seen = `${details.url} (disposition=${details.disposition}, opener=${hasOpener ? "yes" : "no"}`;
@@ -1846,7 +1894,13 @@ async function initializeBrowserHost(
 					log(
 						`[browser] tab ${tabId} opened a popup: ${seen}, route=tab, owner=${routed.owner})`,
 					);
-					openPopupAsTab(child, details, record, routed);
+					openPopupAsTab(
+						child,
+						details,
+						record,
+						routed,
+						pending?.referrer ?? details.referrer ?? null,
+					);
 					return;
 				}
 				if (routed.route === "window") {
@@ -1856,8 +1910,8 @@ async function initializeBrowserHost(
 					wirePopup(child, popupChildren, routed.presentation);
 					return;
 				}
-				// A refused tab route (the per-opener bound) or an opener that died
-				// between the handler and now: the child exists and nothing owns it.
+				// A refused route (the per-opener bound, an opener that died between the
+				// handler and now): the child exists and nothing owns it.
 				log(
 					`[browser] refused a popup from a driven page: ${details.url} (${routed.route === "deny" ? routed.reason : "opener_gone"})`,
 				);
@@ -2183,6 +2237,7 @@ async function initializeBrowserHost(
 			details: DidCreateWindowDetails,
 			opener: TabRecord,
 			routed: { owner: PopupOpenerOwner; activate: boolean },
+			referrer: { url: string; policy: string } | null,
 		): void {
 			child.destroy();
 			let created: TabRecord;
@@ -2203,18 +2258,44 @@ async function initializeBrowserHost(
 				return;
 			}
 			const contents = created.view.webContents;
-			// `createUserTab`'s order: load, then attach, then tell the chrome. A load
-			// that fails still leaves a tab (the user sees the failure state, the agent
-			// can read it) so the attach and the notification run either way.
+			// `createUserTab`'s order: load, then attach, then tell the chrome. The
+			// referrer is the opener's, as a browser sends it (R1-3).
 			void contents
-				.loadURL(details.url)
-				.catch((error: unknown) => {
-					log(
-						`[browser] popup tab ${created.tabId} did not finish loading ${details.url}: ${error instanceof Error ? error.message : String(error)}`,
-					);
+				.loadURL(details.url, referrer ? { httpReferrer: referrer } : undefined)
+				.then(
+					() => true,
+					(error: unknown) => {
+						const message =
+							error instanceof Error ? error.message : String(error);
+						// A link that is a DOWNLOAD (or a navigation the page cancelled) fails
+						// the load with ERR_ABORTED or, when the host's download policy
+						// refuses the file, ERR_FAILED (-2, measured) — and commits nothing:
+						// the view stays blank. There is no page to show or read, and an agent
+						// tab would stay attached and counted against the cap (R1-5). A real
+						// failure (DNS, refused, TLS) commits its error page and keeps the tab,
+						// because that page is the answer a user or an agent should read.
+						const committed = contents.isDestroyed() ? "" : contents.getURL();
+						if (committed === "" || committed === "about:blank") {
+							log(
+								`[browser] popup tab ${created.tabId} closed: ${details.url} produced no page (${message})`,
+							);
+							return false;
+						}
+						log(
+							`[browser] popup tab ${created.tabId} did not finish loading ${details.url}: ${message}`,
+						);
+						return true;
+					},
+				)
+				.then(async (keep) => {
+					// The opener (and with it this tab) may have closed during the load.
+					if (!registry.get(created.tabId) || contents.isDestroyed()) return;
+					if (!keep) {
+						registry.destroy(created.tabId);
+						return;
+					}
+					await cdp.attach(contents).catch(() => {});
 				})
-				.then(() => cdp.attach(contents))
-				.catch(() => {})
 				.finally(() => notifyChanged());
 		}
 	} catch (error) {

@@ -57,18 +57,23 @@ export interface PopupPolicy {
 	mode: WindowShow;
 	/** The view's live child count, the cap's input (see the constant below). */
 	live: number;
-	/** Who owns the opening tab: selects the presentation of a `normal` launch. */
-	openerOwner: PopupOpenerOwner;
+	/** Who owns the opening tab: selects the presentation of a `normal` launch.
+	 * `null` is an opener whose registry record is already gone (its view is
+	 * closing but still emitting events): nothing owns the popup, so it is refused
+	 * rather than defaulted to `user`, whose `focus` would raise the app for a tab
+	 * that no longer exists. */
+	openerOwner: PopupOpenerOwner | null;
 }
 
 /**
  * `reason` names WHY a popup was refused, as one token, so the caller's log line
  * is greppable and a test can assert the refusal class rather than the wording:
  * `scheme` — not `about:blank` and not http(s); `cap` — the view already holds
- * `MAX_POPUP_CHILDREN_PER_VIEW` live children.
+ * `MAX_POPUP_CHILDREN_PER_VIEW` live children; `opener_gone` — the opening tab
+ * no longer has a registry record.
  */
 export type PopupDecision =
-	| { allow: false; reason: "scheme" | "cap" }
+	| { allow: false; reason: "scheme" | "cap" | "opener_gone" }
 	| { allow: true; presentation: WindowShow };
 
 /**
@@ -138,6 +143,8 @@ export function decidePopup(
 	request: PopupRequest,
 	policy: PopupPolicy,
 ): PopupDecision {
+	if (policy.openerOwner === null)
+		return { allow: false, reason: "opener_gone" };
 	if (!isAllowedTarget(request.url)) return { allow: false, reason: "scheme" };
 	if (policy.live >= MAX_POPUP_CHILDREN_PER_VIEW) {
 		return { allow: false, reason: "cap" };
@@ -160,8 +167,17 @@ export interface PopupRouteRequest extends PopupRequest {
 	 * `window.open(url, n, "noopener")` all arrive with NO opener; a bare
 	 * `window.open`, a sized `window.open` and `rel=opener` arrive with one. */
 	hasOpener: boolean;
-	/** A `<form method=post target=_blank>`: Electron carries the body itself. */
+	/** A `<form method=post target=_blank>`. Read from the OPEN HANDLER's details
+	 * and carried to `did-create-window`: on Electron 44.3.0 `postBody` is absent
+	 * from the latter (measured), so reading it there routed every form POST to the
+	 * tab route, which replays it as a GET. */
 	hasPostBody: boolean;
+	/** The child already began its navigation when `did-create-window` fired
+	 * (`webContents.isLoading()`). Measured on 44.3.0: that is the case for
+	 * cmd/shift/middle clicks (`background-tab`/`new-window`) and never for a plain
+	 * click or a script. Destroying such a child does not cancel its request, so a
+	 * tab that reloads the URL would fetch it twice and burn a single-use link. */
+	alreadyLoading: boolean;
 	/** Whether the opening tab is the active one (only a user tab's link reads it). */
 	openerActive: boolean;
 	/** Tabs this opener has already spawned that are still open. */
@@ -181,14 +197,18 @@ export interface PopupRouteRequest extends PopupRequest {
  *   link opened from the tab being looked at comes to the front unless it is a
  *   background-tab request; an agent's tab never activates (design 11.4).
  * - `window` — an opener-bearing popup (MSAL `loginPopup`, Google `storagerelay`)
- *   keeps the real child window the opener/postMessage contract needs, and a form
- *   POST stays here too: replaying a POST body into a new view was measured flaky.
+ *   keeps the real child window the opener/postMessage contract needs. A form POST
+ *   stays here too (replaying a body into a new view was measured flaky), and so
+ *   does a child that is ALREADY LOADING (modifier clicks): its one fetch is the
+ *   child's own, and a window is the only place it can finish. That window is
+ *   shown `inactive` at most, as the browser contract says a background open
+ *   never takes focus.
  *
  * `about:blank` has an opener by construction (MSAL opens it from script), so
  * the exact-blank case can never be mistaken for a link.
  */
 export type PopupRoute =
-	| { route: "deny"; reason: "scheme" | "cap" }
+	| { route: "deny"; reason: "scheme" | "cap" | "opener_gone" | "opener_cap" }
 	| { route: "tab"; owner: PopupOpenerOwner; activate: boolean }
 	| { route: "window"; presentation: WindowShow };
 
@@ -205,6 +225,13 @@ export function routePopup(
 	) {
 		return { route: "window", presentation: decision.presentation };
 	}
+	if (request.alreadyLoading) {
+		return {
+			route: "window",
+			presentation:
+				decision.presentation === "focus" ? "inactive" : decision.presentation,
+		};
+	}
 	// The per-opener bound for tabs, for the same reason the window cap exists
 	// (no gesture signal reaches the main process, so a script can spam links) —
 	// but only for an AGENT's tab: user tabs are uncapped by design (6.5) and a
@@ -213,11 +240,15 @@ export function routePopup(
 		policy.openerOwner === "agent" &&
 		request.openedTabs >= MAX_POPUP_CHILDREN_PER_VIEW
 	) {
-		return { route: "deny", reason: "cap" };
+		// Its own token, not `cap`: the window cap counts LIVE windows and frees a
+		// slot when one closes, this one counts link tabs the opener has not had
+		// closed, and the operator reading a log should be able to tell which wall
+		// an agent hit.
+		return { route: "deny", reason: "opener_cap" };
 	}
 	return {
 		route: "tab",
-		owner: policy.openerOwner,
+		owner: policy.openerOwner as PopupOpenerOwner,
 		activate:
 			policy.openerOwner === "user" &&
 			request.openerActive &&

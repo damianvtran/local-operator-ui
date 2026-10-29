@@ -360,6 +360,30 @@ const POPUP_PAGE = `<!doctype html><html><head><meta charset="utf-8"><title>Popu
   }
 </script></body></html>`;
 
+/**
+ * The page for the click shapes the host's own `click` cannot make (modifier and
+ * middle clicks, dispatched over CDP at these fixed coordinates) and for the
+ * request-level facts the tab route must preserve: a single fetch per link, the
+ * opener's Referer, a form POST that must not be replayed as a GET, and a link
+ * that is a download. The server records every hit on the target routes, which is
+ * what "fetched exactly once" is read from. (No backticks in comments: this lives
+ * inside a template literal.)
+ */
+const MOD_PAGE = `<!doctype html><html><head><meta charset="utf-8"><title>Link shapes</title></head>
+<body style="margin:0">
+<a id="m-cmd" href="/link-target?which=mod-cmd" target="_blank" style="position:absolute;left:10px;top:10px;width:150px;height:30px;display:block">cmd link</a>
+<a id="m-shift" href="/link-target?which=mod-shift" target="_blank" style="position:absolute;left:10px;top:60px;width:150px;height:30px;display:block">shift link</a>
+<a id="m-middle" href="/link-target?which=mod-middle" target="_blank" style="position:absolute;left:10px;top:110px;width:150px;height:30px;display:block">middle link</a>
+<a id="m-ref" href="/link-target?which=referer" target="_blank" style="position:absolute;left:10px;top:160px;width:150px;height:30px;display:block">Referer link</a>
+<a id="m-dead" href="http://127.0.0.1:1/never" target="_blank" style="position:absolute;left:10px;top:260px;width:150px;height:30px;display:block">Dead link</a>
+<a id="m-dl" href="/download-target" target="_blank" style="position:absolute;left:10px;top:210px;width:150px;height:30px;display:block">Download link</a>
+<form method="post" action="/post-target" target="_blank"><input type="hidden" name="a" value="1"><button id="m-post" type="submit" style="position:absolute;left:200px;top:10px;width:120px;height:30px">Post form</button></form>
+</body></html>`;
+
+/** Every request the target routes received, in order: `{ method, key, referer }`. */
+const siteHits = [];
+const hitsFor = (needle) => siteHits.filter((hit) => hit.key.includes(needle));
+
 /** The page an ordinary link opens: it states whether it was given an opener. */
 const LINK_PAGE = `<!doctype html><html><head><meta charset="utf-8"><title>Link proof target</title></head>
 <body><h1>Link target</h1><p id="link-status">link: pending</p>
@@ -786,6 +810,35 @@ const held = [];
 function startSite(frameOrigin) {
 	const server = createServer((req, res) => {
 		const url = new URL(req.url ?? "/", "http://127.0.0.1");
+		if (
+			["/link-target", "/post-target", "/download-target"].includes(
+				url.pathname,
+			)
+		) {
+			siteHits.push({
+				method: req.method,
+				key: url.pathname + url.search,
+				referer: req.headers.referer ?? "",
+			});
+		}
+		if (url.pathname === "/mod-page") {
+			res.writeHead(200, { "Content-Type": "text/html" });
+			res.end(MOD_PAGE);
+			return;
+		}
+		if (url.pathname === "/post-target") {
+			res.writeHead(200, { "Content-Type": "text/html" });
+			res.end("<!doctype html><title>post target</title><p>posted</p>");
+			return;
+		}
+		if (url.pathname === "/download-target") {
+			res.writeHead(200, {
+				"Content-Type": "application/octet-stream",
+				"Content-Disposition": "attachment; filename=proof.bin",
+			});
+			res.end("proof");
+			return;
+		}
 		if (url.pathname === "/slow") {
 			// Accepts the connection and never answers — the input QA round 1 used to
 			// find the typed `nav_timeout` unreachable. Headers are sent so the client
@@ -2037,7 +2090,9 @@ async function main() {
 		const listed = after.tabs.find((t) => t.url.includes(`which=${row.which}`));
 		const targetCount = await targetCountFor(`which=${row.which}`);
 		const oneTarget = targetCount === 1;
+		const rowHits = hitsFor(`which=${row.which}`);
 		const ok =
+			rowHits.length === 1 &&
 			after.tabs.length === before + 1 &&
 			!!listed &&
 			/^ui:\d+:[A-Za-z0-9_-]{32}$/.test(listed.tab) &&
@@ -2047,7 +2102,7 @@ async function main() {
 			oneTarget;
 		linkOk &&= ok;
 		linkReport.push(
-			`${row.which}: tabs ${before}->${after.tabs.length} listed=${listed?.tab ?? "NO"} owner=${listed?.owner} active=${listed?.active} ${status} pageTargets=${targetCount}`,
+			`${row.which}: tabs ${before}->${after.tabs.length} listed=${listed?.tab ?? "NO"} owner=${listed?.owner} active=${listed?.active} ${status} pageTargets=${targetCount} fetches=${rowHits.length}`,
 		);
 		// Adopt it as the opener's session would, then drive it: `read` must work.
 		if (listed) {
@@ -2127,6 +2182,166 @@ async function main() {
 	await waitForTargetGone(
 		(t) => t.url.includes("which=relopener"),
 		"the rel=opener popup after it closed itself",
+	);
+
+	// --- 5a'. one fetch per link, and the shapes that must not become tabs ------
+	/*
+	 * Remediation round 1 (QA Q1/Q2, review R1-1/R1-3/R1-5). Each row reads the
+	 * server's own hit log, not the page: "fetched exactly once" is a property of
+	 * the REQUESTS. cmd/shift/middle clicks are dispatched over CDP at fixed
+	 * coordinates (the host's `click` makes plain clicks only); they arrive with the
+	 * child already loading, so the tab route would fetch twice and burn a
+	 * single-use link. A form POST must stay a window and POST exactly once.
+	 */
+	const settle = async (predicate, ms = 8000) => {
+		const started = Date.now();
+		while (Date.now() - started < ms) {
+			if (await predicate()) return true;
+			await sleep(250);
+		}
+		return false;
+	};
+	const modTab = await rpcOk(state, "open", {
+		url: `${siteOrigin}/mod-page`,
+		requester: "session:proof",
+	});
+	const modTarget = await waitForTarget(
+		(t) => t.url.endsWith("/mod-page"),
+		"the link-shapes opener page",
+	);
+	const mouse = async (x, y, { button = "left", modifiers = 0 } = {}) => {
+		const base = { x, y, button, clickCount: 1, modifiers };
+		await cdpOnTarget(modTarget, "Input.dispatchMouseEvent", {
+			...base,
+			type: "mousePressed",
+			buttons: button === "middle" ? 4 : 1,
+		});
+		await cdpOnTarget(modTarget, "Input.dispatchMouseEvent", {
+			...base,
+			type: "mouseReleased",
+			buttons: 0,
+		});
+	};
+	// These are real windows (the window route), so each row closes its own over CDP
+	// (`Page.close`): left open they fill the 4-window cap and the rows after them
+	// would be refused for the cap rather than tested.
+	const closeWindowFor = async (needle) => {
+		const target = (await targets()).find(
+			(t) => t.type === "page" && t.url.includes(needle),
+		);
+		if (target) await cdpOnTarget(target, "Page.close");
+		await waitForTargetGone((t) => t.url.includes(needle), `${needle} window`);
+	};
+	const tabsBeforeModifiers = (await listedTabs()).tabs.length;
+	const modifierRows = [
+		{ which: "mod-cmd", y: 25, opts: { modifiers: 4 } },
+		{ which: "mod-shift", y: 75, opts: { modifiers: 8 } },
+		{ which: "mod-middle", y: 125, opts: { button: "middle" } },
+	];
+	const modifierReport = [];
+	let modifierOk = true;
+	for (const row of modifierRows) {
+		await mouse(50, row.y, row.opts);
+		await settle(async () => hitsFor(`which=${row.which}`).length >= 1);
+		await sleep(1500); // a second fetch, if there is one, lands in this window
+		const fetches = hitsFor(`which=${row.which}`).length;
+		const listed = (await listedTabs()).tabs.some((t) =>
+			t.url.includes(`which=${row.which}`),
+		);
+		modifierOk &&= fetches === 1;
+		modifierReport.push(
+			`${row.which}: fetches=${fetches} listedAsTab=${listed}`,
+		);
+		await closeWindowFor(row.which);
+	}
+	check(
+		"cmd-click, shift-click and middle-click on a target=_blank link fetch the URL exactly once (the already-loading child is a window, not a reload)",
+		modifierOk,
+		modifierReport.join("\n        "),
+	);
+	check(
+		"those clicks did not leave a listed tab (the window route; tabs unchanged)",
+		(await listedTabs()).tabs.length === tabsBeforeModifiers,
+		`tabs ${tabsBeforeModifiers} -> ${(await listedTabs()).tabs.length}`,
+	);
+
+	// Q1: a form POST target=_blank stays a window and POSTs exactly once.
+	await clickControl(state, modTab.tab, "Post form", "button");
+	await settle(async () => hitsFor("/post-target").length >= 1);
+	await sleep(1500);
+	const postHits = hitsFor("/post-target");
+	const tabsAfterPost = (await listedTabs()).tabs.length;
+	await closeWindowFor("/post-target");
+	check(
+		"a form POST target=_blank is one POST and zero GETs, in a window and not a tab",
+		postHits.length === 1 &&
+			postHits[0].method === "POST" &&
+			tabsAfterPost === tabsBeforeModifiers,
+		`hits: ${JSON.stringify(postHits)}; tabs ${tabsAfterPost}`,
+	);
+
+	// R1-3: the tab load carries the opener's Referer, once.
+	const tabsBeforeRef = (await listedTabs()).tabs.length;
+	await clickControl(state, modTab.tab, "Referer link", "link");
+	await settle(async () => hitsFor("which=referer").length >= 1);
+	await sleep(1000);
+	const refHits = hitsFor("which=referer");
+	check(
+		"a link tab sends the opener's Referer, in one request",
+		refHits.length === 1 && refHits[0].referer.endsWith("/mod-page"),
+		`hits: ${JSON.stringify(refHits)}`,
+	);
+
+	// R1-5: a link that is a download leaves no blank tab behind.
+	const tabsBeforeDownload = (await listedTabs()).tabs.length;
+	await clickControl(state, modTab.tab, "Download link", "link");
+	await settle(async () => hitsFor("/download-target").length >= 1);
+	await sleep(2000);
+	const downloadTabs = (await listedTabs()).tabs;
+	check(
+		"a link that is a download leaves no blank tab: its tab is closed, the count is back, one request",
+		hitsFor("/download-target").length === 1 &&
+			downloadTabs.length === tabsBeforeDownload &&
+			!downloadTabs.some((t) => t.url.includes("download-target")),
+		`tabs ${tabsBeforeDownload} -> ${downloadTabs.length}; ${JSON.stringify(downloadTabs.map((t) => t.url))}`,
+	);
+
+	// The converse of R1-5: a link that FAILS (nothing listening) commits Chromium's
+	// error page, so its tab stays for the user or agent to read; only a load that
+	// produced no page at all is closed.
+	const tabsBeforeDead = (await listedTabs()).tabs.length;
+	await clickControl(state, modTab.tab, "Dead link", "link");
+	await settle(
+		async () => (await listedTabs()).tabs.length === tabsBeforeDead + 1,
+	);
+	await sleep(1500);
+	const deadTabs = (await listedTabs()).tabs;
+	check(
+		"a link whose load fails (connection refused) keeps its tab, with the error page",
+		deadTabs.length === tabsBeforeDead + 1 &&
+			deadTabs.some((t) => t.url.includes("127.0.0.1:1")),
+		`tabs ${tabsBeforeDead} -> ${deadTabs.length}; ${JSON.stringify(deadTabs.map((t) => t.url))}`,
+	);
+
+	// R1-1: closing the opener closes the link tabs nothing adopted (and its windows).
+	const refTabListed = (await listedTabs()).tabs.some((t) =>
+		t.url.includes("which=referer"),
+	);
+	await rpcOk(state, "close", { tab: modTab.tab });
+	const reclaimed = await settle(async () => {
+		const now = (await listedTabs()).tabs;
+		return !now.some((t) => t.url.includes("which=referer"));
+	});
+	await waitForTargetGone(
+		(t) => t.url.includes("/post-target") || t.url.includes("which=mod-"),
+		"the windows the closed opener had open",
+	);
+	check(
+		"opener closed => its unadopted link tabs are closed (and its windows with it)",
+		refTabListed &&
+			reclaimed &&
+			(await listedTabs()).tabs.length === tabsBeforeRef - 1,
+		`link tab listed before close: ${refTabListed}; reclaimed: ${reclaimed}; tabs now ${(await listedTabs()).tabs.length} (was ${tabsBeforeRef} with the opener)`,
 	);
 
 	// --- 5b. the popup policy, as a dance -------------------------------------

@@ -419,6 +419,22 @@ export class TabRegistry {
 		return count;
 	}
 
+	/**
+	 * The AGENT link tabs `openerTabId` spawned that nothing has taken over: no
+	 * allocation, so no ownership scope will ever close them. They are the tabs that
+	 * would leak (they count toward `MAX_AGENT_TABS`, and a later session sees only a
+	 * redacted handle), so they die with their opener. A tab a scope DID adopt is the
+	 * scope's to close, and a user's link tab stays, as in any browser.
+	 */
+	unadoptedLinkTabs(openerTabId: number): TabRecord[] {
+		return this.list().filter(
+			(record) =>
+				record.openedByTab === openerTabId &&
+				record.owner === "agent" &&
+				!record.allocationId,
+		);
+	}
+
 	/** Resolve a tab by its own id. */
 	get(tabId: number): TabRecord | undefined {
 		return this.tabs.get(tabId);

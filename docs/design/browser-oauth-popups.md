@@ -106,7 +106,20 @@ the open handler: **does the new page have an opener (`child.webContents.opener`
 | `window.open(url, n, "noopener")` | `foreground-tab` | none | **tab** |
 | `<a target=_blank rel=opener>` | `foreground-tab` | set | window |
 | `window.open(url)`, `window.open(url, n, "width=..")`, MSAL's `about:blank` first | `foreground-tab` / `new-window` | set | window |
-| `<form method=post target=_blank>` | `foreground-tab` + `postBody` | none | window (replaying the body into a new view was measured flaky: POST 1/1/0 over three runs) |
+| `<form method=post target=_blank>` | `foreground-tab` + `postBody` (open handler only) | none | window (replaying the body into a new view was measured flaky: POST 1/1/0 over three runs) |
+| cmd / shift / middle click on `<a target=_blank>` | `background-tab` / `new-window` | none, **already loading** | window, `inactive` at most (a tab would fetch the URL a second time) |
+
+Two facts the router needs are **not** where one would look (measured, Electron 44.3.0):
+`postBody` is present in the `setWindowOpenHandler` details and absent from the
+`did-create-window` details, so the handler records it and `did-create-window` reads that
+record (reading it later routed every form POST to a tab that replayed it as a GET); and a
+cmd/shift/middle click arrives with the child's navigation **already started**
+(`isLoading()` true), and destroying the child does not cancel that request, so loading the
+URL in a tab fetched it twice and spent a single-use link. A plain click and every script
+open arrive not loading. `alreadyLoading` therefore sends the child down the window route,
+where its own fetch is the only one. Adopting the child's `webContents` into a
+`WebContentsView` was tried and is not possible (`options.webContents is already attached
+to a window`; the child window's `contentView` holds no child view to move).
 
 Why the opener and not `disposition`, `features` or the URL: a bare `window.open(url)` and an
 anchor click are both `foreground-tab`; `rel=noopener` anchors arrive with empty `features`;
@@ -126,7 +139,21 @@ as a window. The opening session may adopt it with `open tab=<handle>` (`TabReco
 read by `sessionMayAdopt`); another session may not. Bounds: an agent's tab may spawn
 `MAX_POPUP_CHILDREN_PER_VIEW` link tabs and the agent-tab cap (`MAX_AGENT_TABS`) still
 applies; user tabs are uncapped as everywhere else. Scheme and window-cap refusals are
-unchanged. The log line names the route: `opener=yes|no route=tab|window`.
+unchanged; the per-opener tab bound logs `(opener_cap)` and a popup whose opener tab has no
+registry record logs `(opener_gone)` and is refused on every route. The log line names the
+route: `opener=yes|no route=tab|window`.
+
+An agent's link tab lives and dies with the tab that opened it unless a session adopts it:
+closing the opener (or ending the scope that allocated it) closes the link tabs nothing
+adopted, so a page that spams links cannot leave tabs behind that count against
+`MAX_AGENT_TABS` and that no later session can close. A user's link tab stays, as in a
+browser. A link whose load produces no page at all (a download, a cancelled navigation)
+closes its tab; a link that fails with an error page keeps it. The tab load sends the
+opener's `Referer`.
+
+**Behaviour change to know about:** a named target (`target="mail"`) used to reuse one
+window on every click; each click now opens a new tab, and the fifth click from one agent
+tab is refused with `opener_cap` until one of them is closed.
 
 Not verified: that Gmail's links are opener-less (inferred from its `google.com/url?q=`
 redirect anchors), real MSAL/Google sign-in through the new routing, modifier-click in the
@@ -232,20 +259,19 @@ Why the default child wins:
 ### 2.2 The exact options
 
 ```ts
-// wireView(view) — replaces src/main/browser/index.ts:868-881
+// wireView(view) — the shape shipped in src/main/browser/index.ts (abridged)
 contents.setWindowOpenHandler((details) => {
-  const decision = decidePopup(details, {
-    mode: plan.show,               // "focus" | "inactive" | "never" (already passed in)
-    live: popupCount(tabId),       // §1 cap
-  });
+  const decision = decidePopup(
+    { url: details.url, disposition: details.disposition },
+    { mode: plan.show, live: popupCount(tabId), openerOwner: openerOwner() }, // §1 cap
+  );
   if (!decision.allow) {
     log(`[browser] refused a popup from a driven page: ${details.url} (${decision.reason})`);
     return { action: "deny" };
   }
-  log(
-    `[browser] tab ${tabId} opened a popup: ${details.url} ` +
-    `(disposition=${details.disposition}, presentation=${decision.presentation})`,
-  );
+  // `postBody` exists HERE and not in did-create-window (§1.1): remember it for the child.
+  pendingOpens.push({ url: details.url, hasPostBody: details.postBody != null, referrer: details.referrer });
+  // The "opened a popup" line is written by did-create-window, which knows the route.
   return {
     action: "allow",
     overrideBrowserWindowOptions: {
@@ -269,7 +295,9 @@ contents.setWindowOpenHandler((details) => {
     },
   };
 });
-contents.on("did-create-window", (child, details) => wirePopup(child, details, ctx));
+// did-create-window runs `routePopup` (§1.1): opener-less GET => openPopupAsTab,
+// everything else => wirePopup(child, popupChildren, presentation).
+contents.on("did-create-window", (child, details) => { /* route */ });
 ```
 
 Notes:
@@ -573,11 +601,12 @@ that is its own small design (see §1.2).
    - that a child in the explicit partition keeps a live `window.opener` (the whole
      reason §2.3 exists).
 4. **Focus in `normal` mode.** `show()` activates the app (macOS; `window-raise.ts:9-11`).
-   For a user-visible popup that is correct; for a scripted popup on an agent-driven page
-   it is a window the operator did not ask for (bounded: `normal` only, cap, closable,
-   logged). Watch the first weeks via the log line; if it bites, the lever is a
-   user-gesture requirement that Electron does not currently expose — a platform
-   limitation to record, not to paper over.
+   Ordinary links no longer reach it (they are tabs, §1.1). What still can: an
+   opener-bearing popup from a **user-owned** tab, which is the browser contract (the person
+   who clicked is looking at the app). An **agent-owned** opener's window is shown
+   `inactive` (§2.4), so a scripted popup on an agent-driven page no longer raises the app.
+   Still bounded by `normal` only, the cap, closable, logged. The lever Electron does not
+   expose is a user-gesture requirement — a platform limitation to record, not to paper over.
 5. **Cap number (4) is a judgement**, not a measurement: MSAL uses one window per flow,
    retries reuse the same-named window, and the cap only exists to bound abuse. If a real
    provider needs more, raise it with the observed flow named in the commit.
