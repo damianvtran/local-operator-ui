@@ -8821,6 +8821,7 @@ export type MessageParams = {
 	"ui.settings.shortcuts.capture.needs_modifier_mac": undefined;
 	"ui.settings.shortcuts.capture.unbindable": undefined;
 	"ui.settings.shortcuts.category.panels": undefined;
+	"ui.settings.shortcuts.keyboard_shortcuts_section.browser_shortcuts_answer_only_while_the_browser_has_focus": undefined;
 	"ui.settings.shortcuts.keyboard_shortcuts_section.clear": undefined;
 	"ui.settings.shortcuts.keyboard_shortcuts_section.clear_label_s_shortcut": {
 		label: string;
