@@ -21,10 +21,11 @@
  *   a document. It is never derived from `innerText`: that loses fences and
  *   turns a list into prose.
  *
- * A `$skill` USER TURN IS READ THROUGH `skillRowOf` FIRST, exactly as the row
- * paints it. The persisted payload is the expanded header + SKILL.md body + the
- * typed request; both clipboard forms must be the typed line the reader sees,
- * not the wall of instructions the bubble already hides (`skill-row.ts`).
+ * A `$skill` USER TURN IS READ THROUGH `displayTextOf` FIRST, exactly as the
+ * row paints it. A payload is either the legacy expanded header + SKILL.md body
+ * + typed request, or the typed text in front of an `<operator-skills>` tail
+ * block; both clipboard forms must be the typed line the reader sees, not the
+ * wall of instructions the bubble already hides (`skill-row.ts`).
  *
  * TOOL ROWS have no markdown payload of their own, so both forms carry a fenced
  * block - the row's name, the call's identity/command, and its output - which
@@ -38,7 +39,7 @@ import { unified } from "unified";
 import { askResponseSummary, askTimeoutSummary } from "../ask-queue";
 import { summaryFromArgs } from "../components/trace/tool-row-model";
 import { parseReplies } from "../utils/reply-utils";
-import { skillRowOf } from "./skill-row";
+import { displayTextOf } from "./skill-row";
 import type { TranscriptRecord } from "./transcript-reducer";
 
 /** The row's output without the newline its transport always leaves. */
@@ -60,13 +61,15 @@ export function transcriptRowActions(record: TranscriptRecord): boolean {
 /**
  * The typed line a persisted user turn stands for, before `parseReplies`.
  *
- * A skill payload is read back to the line the composer sent (`skill-row.ts`);
- * every other record is its own text. The reply prefix is dropped later, so a
- * skill turn that was itself a reply keeps the same split every turn gets.
+ * A skill payload is read back to the line the composer sent (`skill-row.ts`),
+ * in either shape: the legacy tag's `invocation` attribute, or the new block
+ * that is stripped off the tail. Every other record is its own text. The reply
+ * prefix is dropped later, so a skill turn that was itself a reply keeps the
+ * same split every turn gets.
  */
 function visibleSourceFor(record: TranscriptRecord): string {
 	if (record.kind !== "user" && record.kind !== "assistant") return "";
-	return skillRowOf(record.text)?.text ?? record.text;
+	return displayTextOf(record.text);
 }
 
 /**
