@@ -48802,6 +48802,440 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.shell.menubar",
+			"source_sha256": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+			"target_sha256": "f8835b07014f9be10840aeb37db7aae6f2cfdc2d77760f05ed7279d31c223e76",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-29"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-29",
+					"result": "clean",
+					"instance": "1780a69363ee-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/1780a69363ee-fr.json",
+					"receipt_sha256": "872aed89558eda38d30db5218af22b574b6d934f9b83ec92214554055237ccd3",
+					"scope": "ui.shell.menubar, all keys, cold audit of PR #1464 (receipt head 57a725f020)",
+					"note": "PR #1464 first wave: translator model for fr/es/ru is the provider alias; actual model not captured."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.updates.panel",
+			"source_sha256": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+			"target_sha256": "391349575c954e5d1d3bd449348d06270d3aa4c7bd22549160643d0933c297fb",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-29"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "1780a69363ee-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 4,
+						"nit": 3
+					},
+					"receipt": "i18n/receipts/1780a69363ee-fr.json",
+					"receipt_sha256": "872aed89558eda38d30db5218af22b574b6d934f9b83ec92214554055237ccd3",
+					"scope": "ui.updates.panel, all keys, cold audit of PR #1464 (receipt head 57a725f020)",
+					"note": "PR #1464 first wave: translator model for fr/es/ru is the provider alias; actual model not captured."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.shell.menubar",
+			"source_sha256": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+			"target_sha256": "ea6d335dd6ef64cdf99a9ba90d7fd2289f3b48a9449a1edcc9c41525dd697cc7",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-10-29"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "61d68bbefe23-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/61d68bbefe23-hi.json",
+					"receipt_sha256": "7eabf93a33cdef570cadc2f19ebcffd935da58e1eceb54720c80febfa41e9f67",
+					"scope": "ui.shell.menubar, all keys, cold audit of PR #1464 (receipt head 57a725f020)",
+					"note": "PR #1464 first wave: translator model for fr/es/ru is the provider alias; actual model not captured."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.updates.panel",
+			"source_sha256": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+			"target_sha256": "46e743bb2c93ad9e360e32c0c8c5a18b2b52eed3990c1c35d5f3f6735cf4d1f1",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-10-29"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "61d68bbefe23-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 4,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/61d68bbefe23-hi.json",
+					"receipt_sha256": "7eabf93a33cdef570cadc2f19ebcffd935da58e1eceb54720c80febfa41e9f67",
+					"scope": "ui.updates.panel, all keys, cold audit of PR #1464 (receipt head 57a725f020)",
+					"note": "PR #1464 first wave: translator model for fr/es/ru is the provider alias; actual model not captured."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.shell.menubar",
+			"source_sha256": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+			"target_sha256": "2c8cb4289ddecdaf51bbf319fd92bc4a4b50356b5e902eeca94c595e83240ff5",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-29"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "7c4b17a57ee9-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/7c4b17a57ee9-ru.json",
+					"receipt_sha256": "65fcb1931a90d41879e2771623059e92f19a3885b7c68e953e46012f834e7a54",
+					"scope": "ui.shell.menubar, all keys, cold audit of PR #1464 (receipt head 57a725f020)",
+					"note": "PR #1464 first wave: translator model for fr/es/ru is the provider alias; actual model not captured."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.updates.panel",
+			"source_sha256": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+			"target_sha256": "639c34fd6b6511bb895cbfa0626a7569b491f48401110514f24c8a6628ec5c6a",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-29"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "7c4b17a57ee9-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/7c4b17a57ee9-ru.json",
+					"receipt_sha256": "65fcb1931a90d41879e2771623059e92f19a3885b7c68e953e46012f834e7a54",
+					"scope": "ui.updates.panel, all keys, cold audit of PR #1464 (receipt head 57a725f020)",
+					"note": "PR #1464 first wave: translator model for fr/es/ru is the provider alias; actual model not captured."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.shell.menubar",
+			"source_sha256": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+			"target_sha256": "256b0938a8c372cf3df13ae1ee8d495fa2829562cb01f629858e214af45a0cb4",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-10-29"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "8dc97dbcd247-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/8dc97dbcd247-ur.json",
+					"receipt_sha256": "e37d3da994ca8c9d53d27c525f707a8aa8a7d0e515cab4bc334fa876bcb0621f",
+					"scope": "ui.shell.menubar, all keys, cold audit of PR #1464 (receipt head 57a725f020)",
+					"note": "PR #1464 first wave: translator model for fr/es/ru is the provider alias; actual model not captured."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.updates.panel",
+			"source_sha256": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+			"target_sha256": "eb5b1bc66cc9764c660b788779e9477987ba966bf9e36c261f0846a1e2045109",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-10-29"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "8dc97dbcd247-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 4,
+						"nit": 4
+					},
+					"receipt": "i18n/receipts/8dc97dbcd247-ur.json",
+					"receipt_sha256": "e37d3da994ca8c9d53d27c525f707a8aa8a7d0e515cab4bc334fa876bcb0621f",
+					"scope": "ui.updates.panel, all keys, cold audit of PR #1464 (receipt head 57a725f020)",
+					"note": "PR #1464 first wave: translator model for fr/es/ru is the provider alias; actual model not captured."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.shell.menubar",
+			"source_sha256": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+			"target_sha256": "64883fe1252641ce469b34fda71123a757c9be14483f421c7beb8b4f42cc9f52",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-10-29"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "c49cc3830e62-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/c49cc3830e62-vi.json",
+					"receipt_sha256": "c5ee020339e5c5b8035f48a51b8e98978e6dbf47236e5c024a092b8b017cfa16",
+					"scope": "ui.shell.menubar, all keys, cold audit of PR #1464 (receipt head 57a725f020)",
+					"note": "PR #1464 first wave: translator model for fr/es/ru is the provider alias; actual model not captured."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.updates.panel",
+			"source_sha256": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+			"target_sha256": "e6e27e263633b274d72481739e1c304f5d090851269b1b33198a4db51f25024b",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-10-29"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "c49cc3830e62-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 4,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/c49cc3830e62-vi.json",
+					"receipt_sha256": "c5ee020339e5c5b8035f48a51b8e98978e6dbf47236e5c024a092b8b017cfa16",
+					"scope": "ui.updates.panel, all keys, cold audit of PR #1464 (receipt head 57a725f020)",
+					"note": "PR #1464 first wave: translator model for fr/es/ru is the provider alias; actual model not captured."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.shell.menubar",
+			"source_sha256": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+			"target_sha256": "9f2cd7dece537013e6c02a537596209869832c6eca834f9c957acf39f230e733",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-10-29"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-29",
+					"result": "clean",
+					"instance": "1c3aa4863a38-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/1c3aa4863a38-zh-cn.json",
+					"receipt_sha256": "6db488e6c4b8307e4b8e8a61e315d69e42dd44ad27514c8cd5f5f78349848b39",
+					"scope": "ui.shell.menubar, all keys, cold audit of PR #1464 (receipt head 41dae5a3d4)",
+					"note": "PR #1464 first wave: translator model for fr/es/ru is the provider alias; actual model not captured."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.updates.panel",
+			"source_sha256": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+			"target_sha256": "703a915fb02d490feeb286d85e10d5cd1c608d1f8e1529350c249ac1583b601a",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-10-29"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "1c3aa4863a38-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/1c3aa4863a38-zh-cn.json",
+					"receipt_sha256": "6db488e6c4b8307e4b8e8a61e315d69e42dd44ad27514c8cd5f5f78349848b39",
+					"scope": "ui.updates.panel, all keys, cold audit of PR #1464 (receipt head 41dae5a3d4)",
+					"note": "PR #1464 first wave: translator model for fr/es/ru is the provider alias; actual model not captured."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.shell.menubar",
+			"source_sha256": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+			"target_sha256": "999a2841533143a9a2467c13929a46cc604254ad6b18e24bbc14f00baeaaf856",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-29"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-29",
+					"result": "clean",
+					"instance": "0df635c53433-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/0df635c53433-es.json",
+					"receipt_sha256": "bfa2adf798a159171e9cc588625c248715db57d1b00de740881732616291a3bc",
+					"scope": "ui.shell.menubar, all keys, cold audit of PR #1464 (receipt head 00cc6d67e5)",
+					"note": "PR #1464 first wave: translator model for fr/es/ru is the provider alias; actual model not captured."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.updates.panel",
+			"source_sha256": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+			"target_sha256": "5f597e018174af50be6d26c0d0728a893fbc5f9cc698861cb577facbf57d757d",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-29"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "0df635c53433-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 4,
+						"nit": 4
+					},
+					"receipt": "i18n/receipts/0df635c53433-es.json",
+					"receipt_sha256": "bfa2adf798a159171e9cc588625c248715db57d1b00de740881732616291a3bc",
+					"scope": "ui.updates.panel, all keys, cold audit of PR #1464 (receipt head 00cc6d67e5)",
+					"note": "PR #1464 first wave: translator model for fr/es/ru is the provider alias; actual model not captured."
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
