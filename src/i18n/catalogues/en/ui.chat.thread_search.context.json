@@ -1,0 +1,17 @@
+{
+	"ui.chat.thread_search.hint.browse": {
+		"role": "keyboard hint",
+		"tone": "lowercase verb",
+		"note": "Stands beside the arrow keys in the panel footer, so it stays lowercase."
+	},
+	"ui.chat.thread_search.hint.close": {
+		"role": "keyboard hint",
+		"tone": "lowercase verb",
+		"note": "Stands beside Esc in the panel footer, so it stays lowercase."
+	},
+	"ui.chat.thread_search.hint.jump": {
+		"role": "keyboard hint",
+		"tone": "lowercase verb",
+		"note": "Stands beside Enter in the panel footer, so it stays lowercase."
+	}
+}

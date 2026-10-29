@@ -173,5 +173,20 @@
 		"status sentence in an output element",
 		"plain, explains an absence",
 		"One failed batched read means no card can show like/favourite state, so this says why once rather than letting every card read as 'not liked'. Full sentence; wraps."
+	],
+	"ui.hub.pages.pager.nav_aria": [
+		"landmark name",
+		"plain",
+		"The hub grid's page footer. Keep Agent Hub's vocabulary ('agents') so the landmark and the page agree."
+	],
+	"ui.hub.pages.pager.next": [
+		"button label",
+		"plain",
+		"Visible word beside the chevron; the accessible name is the button's own 'Next page'."
+	],
+	"ui.hub.pages.pager.previous": [
+		"button label",
+		"plain",
+		"Visible word beside the chevron; the accessible name is the button's own 'Previous page'."
 	]
 }

@@ -331,7 +331,7 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Quote"
+						aria-label={t("ui.chat.transcript_copy.selection.quote")}
 						className="text-ink-dim hover:bg-accent-wash hover:text-accent"
 						onClick={handleQuote}
 					>

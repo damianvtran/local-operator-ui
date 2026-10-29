@@ -1,8 +1,11 @@
 {
 	"ui.common.actions.cancel": "Cancel",
+	"ui.common.actions.check_again": "Check again",
 	"ui.common.actions.close": "Close",
 	"ui.common.actions.copied": "Copied",
 	"ui.common.actions.copy_failed": "Could not copy. Select and copy it manually.",
+	"ui.common.actions.dismiss": "Dismiss",
+	"ui.common.actions.more_info": "More info",
 	"ui.common.actions.retry": "Retry",
 	"ui.common.actions.retry_again": "Try again",
 	"ui.common.actions.date_time_picker.select_date": "Select date",

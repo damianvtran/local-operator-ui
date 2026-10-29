@@ -27,6 +27,7 @@
  */
 
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { ShieldAlert } from "lucide-react";
 import type { ReactNode } from "react";
@@ -46,7 +47,7 @@ export const SecurityNotice = ({
 	className,
 }: SecurityNoticeProps) => (
 	<section
-		aria-label="Security notice"
+		aria-label={t("ui.chat.canonical.security_notice.aria")}
 		className={cn(
 			"flex gap-3 border-warning border-s-2 py-0.5 ps-3",
 			className,
@@ -58,14 +59,18 @@ export const SecurityNotice = ({
 		/>
 		<div className="flex min-w-0 flex-1 flex-col gap-0.5">
 			<p className="font-medium text-body-sm text-warning">
-				Blocked a risky action
+				{t("ui.chat.canonical.security_notice.blocked")}
 			</p>
 			{content ? (
 				<p className="text-body-sm text-ink-muted">{content}</p>
 			) : null}
 			{details ? (
 				<Disclosure
-					summary={<span className="text-meta">Show the reviewed code</span>}
+					summary={
+						<span className="text-meta">
+							{t("ui.chat.canonical.security_notice.show_code")}
+						</span>
+					}
 				>
 					{details}
 				</Disclosure>

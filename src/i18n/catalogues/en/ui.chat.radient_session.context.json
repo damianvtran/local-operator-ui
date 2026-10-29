@@ -1,0 +1,40 @@
+{
+	"ui.chat.radient_session.action.sign_in": {
+		"role": "action",
+		"tone": "plain",
+		"note": "Starts the browser sign-in. Keep Radient in Latin."
+	},
+	"ui.chat.radient_session.pointer.sign_in_active": {
+		"role": "pointer line",
+		"tone": "plain",
+		"note": "Names the place, not the verb: the backend's sentence above it already carries the instruction. Keep Settings and Providers in Latin."
+	},
+	"ui.chat.radient_session.prose.input_required": {
+		"role": "alert body",
+		"tone": "plain",
+		"note": "{message} is the backend's own sentence and is passed through, not translated.",
+		"placeholders": {
+			"message": "The backend's sentence, already in the active language."
+		}
+	},
+	"ui.chat.radient_session.prose.needs_sign_in": {
+		"role": "alert body",
+		"tone": "plain, calm"
+	},
+	"ui.chat.radient_session.prose.signing_in": {
+		"role": "alert body",
+		"tone": "plain"
+	},
+	"ui.chat.radient_session.title.input_required": {
+		"role": "alert title",
+		"tone": "plain"
+	},
+	"ui.chat.radient_session.title.needs_sign_in": {
+		"role": "alert title",
+		"tone": "plain"
+	},
+	"ui.chat.radient_session.title.signing_in": {
+		"role": "alert title",
+		"tone": "plain"
+	}
+}

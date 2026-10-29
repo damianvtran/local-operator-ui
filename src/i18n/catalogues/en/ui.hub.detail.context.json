@@ -1,0 +1,135 @@
+{
+	"ui.hub.detail.back_aria": {
+		"role": "icon-button name",
+		"tone": "plain",
+		"note": "Returns to the hub's agent grid. Keep Agent Hub in Latin as the page's own title."
+	},
+	"ui.hub.detail.created": {
+		"role": "metadata line",
+		"tone": "plain",
+		"note": "When the listing was published. {ago} is a relative span ('3 days'), {date} the calendar date; both are formatted by the app, not translated.",
+		"placeholders": {
+			"ago": "Relative distance from now, already formatted.",
+			"date": "Calendar date, already formatted."
+		}
+	},
+	"ui.hub.detail.created_by": {
+		"role": "metadata line",
+		"tone": "plain",
+		"placeholders": {
+			"author": "The hub account's display name."
+		}
+	},
+	"ui.hub.detail.created_by_with_email": {
+		"role": "metadata line",
+		"tone": "plain",
+		"note": "Used only when the hub sent an email beside the name.",
+		"placeholders": {
+			"author": "The hub account's display name.",
+			"email": "The address the hub sent, verbatim."
+		}
+	},
+	"ui.hub.detail.delist_aria": {
+		"role": "icon-button name",
+		"tone": "plain"
+	},
+	"ui.hub.detail.delist_body": {
+		"role": "dialog body",
+		"tone": "calm, factual",
+		"note": "Says how bad it is: the delisting is immediate, and re-uploading undoes it. Keep the quoted {name} in quotation marks.",
+		"placeholders": {
+			"name": "The agent's display name, quoted in the sentence."
+		}
+	},
+	"ui.hub.detail.delist_confirm": {
+		"role": "confirm button",
+		"tone": "plain"
+	},
+	"ui.hub.detail.delist_title": {
+		"role": "dialog title",
+		"tone": "plain"
+	},
+	"ui.hub.detail.delist_tooltip": {
+		"role": "tooltip",
+		"tone": "plain"
+	},
+	"ui.hub.detail.delisting": {
+		"role": "spinner label",
+		"tone": "plain",
+		"note": "Announced while the delist request is in flight."
+	},
+	"ui.hub.detail.download_aria": {
+		"role": "icon-button name",
+		"tone": "plain"
+	},
+	"ui.hub.detail.download_tooltip": {
+		"role": "tooltip",
+		"tone": "plain"
+	},
+	"ui.hub.detail.failure.delist": {
+		"role": "alert title",
+		"tone": "plain",
+		"note": "Names the action that failed; the sentence under it carries the reason."
+	},
+	"ui.hub.detail.failure.download": {
+		"role": "alert title",
+		"tone": "plain"
+	},
+	"ui.hub.detail.failure.favourite": {
+		"role": "alert title",
+		"tone": "plain"
+	},
+	"ui.hub.detail.failure.like": {
+		"role": "alert title",
+		"tone": "plain"
+	},
+	"ui.hub.detail.last_modified": {
+		"role": "metadata line",
+		"tone": "plain",
+		"placeholders": {
+			"ago": "Relative distance from now, already formatted.",
+			"date": "Calendar date, already formatted."
+		}
+	},
+	"ui.hub.detail.load_failed_body": {
+		"role": "alert body",
+		"tone": "plain",
+		"note": "Prefixed to the transport's own reason. Keep Radient in Latin."
+	},
+	"ui.hub.detail.load_failed_title": {
+		"role": "alert title",
+		"tone": "plain"
+	},
+	"ui.hub.detail.loading": {
+		"role": "spinner label",
+		"tone": "plain"
+	},
+	"ui.hub.detail.no_description": {
+		"role": "empty body",
+		"tone": "plain"
+	},
+	"ui.hub.detail.not_found": {
+		"role": "empty body",
+		"tone": "plain",
+		"note": "The id loaded but the hub returned no row."
+	},
+	"ui.hub.detail.sign_in_tooltip": {
+		"role": "tooltip",
+		"tone": "plain"
+	},
+	"ui.hub.detail.trying": {
+		"role": "button and retry label",
+		"tone": "plain",
+		"note": "In-flight state of Try again."
+	},
+	"ui.hub.detail.unknown_author": {
+		"role": "metadata fallback",
+		"tone": "plain",
+		"note": "The hub sent no author name."
+	},
+	"ui.hub.detail.viewer_unknown": {
+		"role": "status line",
+		"tone": "plain",
+		"note": "The viewer's own like/favourite state failed to read; the two controls render unavailable rather than unfilled."
+	}
+}

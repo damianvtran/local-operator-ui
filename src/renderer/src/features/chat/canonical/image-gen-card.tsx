@@ -76,6 +76,8 @@
  */
 
 import { Button, Progress } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	useCallback,
@@ -504,6 +506,7 @@ function controlLabel(
 }
 
 export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
+	useI18nLocale();
 	const [confirmStop, setConfirmStop] = useState(false);
 	const keepWaiting = useCallback(() => setConfirmStop(false), []);
 	const root = useRef<HTMLDivElement>(null);
@@ -677,7 +680,7 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 				 * so the card's media column reads as one edge.
 				 */
 				<Progress
-					aria-label="Image generation progress"
+					aria-label={t("ui.chat.canonical.image_gen.progress")}
 					className={cn("max-w-[240px]")}
 					value={Math.round(
 						Math.min(1, Math.max(0, view.progress.fraction)) * 100,

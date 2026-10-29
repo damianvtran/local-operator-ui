@@ -1,5 +1,7 @@
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Search, X } from "lucide-react";
 import {
@@ -152,6 +154,7 @@ const ResultRow: FC<{
 	optionId: string;
 	onNavigate: (hit: ThreadFindHit) => void;
 }> = ({ hit, active, optionId, onNavigate }) => {
+	useI18nLocale();
 	const segments = splitThreadSearchRanges(hit.snippet, hit.ranges);
 	return (
 		/* biome-ignore lint/a11y/useFocusableInteractive: focus stays in the search box; the active option is announced through aria-activedescendant. */
@@ -179,7 +182,10 @@ const ResultRow: FC<{
 				<span>{THREAD_SEARCH_ROLE_LABELS[hit.role]}</span>
 				{hit.tier === "soft" && (
 					<>
-						<span aria-hidden="true">&middot;</span>
+						<span aria-hidden="true">
+							{/* i18n: ignore the separator before the tier hint - a bullet glyph, aria-hidden, with no words to translate */}
+							&middot;
+						</span>
 						<span className="text-ink-dim">{THREAD_SEARCH_TIER_HINT}</span>
 					</>
 				)}
@@ -216,6 +222,7 @@ export const ThreadSearchPanel: FC<ThreadSearchPanelProps> = ({
 	isMac,
 	jumping = false,
 }) => {
+	useI18nLocale();
 	const baseId = useId();
 	const listId = `${baseId}-list`;
 	const optionId = useCallback(
@@ -422,15 +429,15 @@ export const ThreadSearchPanel: FC<ThreadSearchPanelProps> = ({
 				<span className="flex items-center gap-1 text-ink-dim text-meta">
 					<KeyboardShortcut shortcut="↑" />
 					<KeyboardShortcut shortcut="↓" />
-					<span>browse</span>
+					<span>{t("ui.chat.thread_search.hint.browse")}</span>
 				</span>
 				<span className="flex items-center gap-1 text-ink-dim text-meta">
 					<KeyboardShortcut shortcut="↵" />
-					<span>jump</span>
+					<span>{t("ui.chat.thread_search.hint.jump")}</span>
 				</span>
 				<span className="flex items-center gap-1 text-ink-dim text-meta">
 					<KeyboardShortcut shortcut="esc" />
-					<span>close</span>
+					<span>{t("ui.chat.thread_search.hint.close")}</span>
 				</span>
 				<span className="ms-auto text-ink-dim text-meta">
 					{threadSearchCap(isMac)}
