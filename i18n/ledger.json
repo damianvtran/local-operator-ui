@@ -3885,8 +3885,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.hub",
-			"source_sha256": "5f64dc7ff1a23909a5adef9010f7aff5a1c6154d1cb9fd22635b42fd676b72cc",
-			"target_sha256": "2bc88c3b42b2997defce707a47c200b7335d40b62e5806369f497bf3af1f6286",
+			"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
+			"target_sha256": "fa629f8bea201bd32ecd5a979a3fa8c38a1802eb142a50d63039353e898c180f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -3894,20 +3894,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-28",
-					"result": "clean-with-findings",
-					"instance": "00e01e296fe8-hub-es",
+					"agent": "i18n-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-29",
+					"result": "clean",
+					"instance": "audit-1461-es-uihub-20261029a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/00e01e296fe8-hub-es.json",
-					"receipt_sha256": "f6f357c93d83344c59c85916ed519a46d9bd624c53f18dd5ed7383dc8d8e5493",
-					"scope": "ui.hub, delta audit at 12b2df28cd: 4 incoming-preview/ambiguous-name keys from dfbd75977a read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
+					"receipt": "i18n/receipts/audit-1461-es-uihub-20261029a.json",
+					"receipt_sha256": "b3dd95d468097d3380ba9a46eca24ffbf5ac7dd4e7db058450f2b4d57f784054"
 				}
 			],
 			"status": "audited",
@@ -4072,6 +4071,29 @@
 							"receipt": "i18n/receipts/a26b945b2ee1-hub-es.json",
 							"receipt_sha256": "3bf8d2c329b4e03a2da25f05ee9d7eccb38c1f08e63edfe9182bf3a6a140b818",
 							"scope": "ui.hub, delta audit at 9e3db68582: 1 check-failed key from 7cb42588d6 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5f64dc7ff1a23909a5adef9010f7aff5a1c6154d1cb9fd22635b42fd676b72cc",
+					"target_sha256": "2bc88c3b42b2997defce707a47c200b7335d40b62e5806369f497bf3af1f6286",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "00e01e296fe8-hub-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/00e01e296fe8-hub-es.json",
+							"receipt_sha256": "f6f357c93d83344c59c85916ed519a46d9bd624c53f18dd5ed7383dc8d8e5493",
+							"scope": "ui.hub, delta audit at 12b2df28cd: 4 incoming-preview/ambiguous-name keys from dfbd75977a read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 						}
 					],
 					"status": "audited"
@@ -10318,8 +10340,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.hub",
-			"source_sha256": "5f64dc7ff1a23909a5adef9010f7aff5a1c6154d1cb9fd22635b42fd676b72cc",
-			"target_sha256": "ad5a63d3c4a293ab814adcb665cc48c88ea51cfd9e83d1c207b7240e4538af48",
+			"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
+			"target_sha256": "3072f5ee4401aa982d8f0e18575900a7cd5fc43624c0c974ac63e968fba7f466",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -10328,20 +10350,19 @@
 			"status": "audited",
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-28",
-					"result": "clean",
-					"instance": "00e01e296fe8-hub-fr",
+					"agent": "i18n-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "audit-fr-uihub-20261029a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 2,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/00e01e296fe8-hub-fr.json",
-					"receipt_sha256": "eb78e2ff09c0e8f1d088863e5ba2cbc514784a965fea1290707e3692b7862aa6",
-					"scope": "ui.hub, delta audit at 12b2df28cd: 4 incoming-preview/ambiguous-name keys from dfbd75977a read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
+					"receipt": "i18n/receipts/audit-fr-uihub-20261029a.json",
+					"receipt_sha256": "a79701e145f270cee845ea5ff19b1f131a16f4e4e45c2ee21bdbb1b403197f31"
 				}
 			],
 			"superseded": [
@@ -10529,6 +10550,29 @@
 							"receipt": "i18n/receipts/a26b945b2ee1-hub-fr.json",
 							"receipt_sha256": "1a0fc72a68a72a30c5c21bf331d5b0486dcb23aed8aaf0d27ef82eba17cd15e6",
 							"scope": "ui.hub, delta audit at 9e3db68582: 1 check-failed key from 7cb42588d6 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5f64dc7ff1a23909a5adef9010f7aff5a1c6154d1cb9fd22635b42fd676b72cc",
+					"target_sha256": "ad5a63d3c4a293ab814adcb665cc48c88ea51cfd9e83d1c207b7240e4538af48",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "00e01e296fe8-hub-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/00e01e296fe8-hub-fr.json",
+							"receipt_sha256": "eb78e2ff09c0e8f1d088863e5ba2cbc514784a965fea1290707e3692b7862aa6",
+							"scope": "ui.hub, delta audit at 12b2df28cd: 4 incoming-preview/ambiguous-name keys from dfbd75977a read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 						}
 					],
 					"status": "audited"
@@ -17105,8 +17149,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.hub",
-			"source_sha256": "5f64dc7ff1a23909a5adef9010f7aff5a1c6154d1cb9fd22635b42fd676b72cc",
-			"target_sha256": "23ded75fab8b3dfb66061e5a5b9dcf51991473f5f92e71c13489ba352ac268f7",
+			"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
+			"target_sha256": "99cec8945de2d4a0f7e5db841ded53399f7b79d52e8f0bc51b0691440e468549",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -17114,20 +17158,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-28",
+					"agent": "i18n-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-29",
 					"result": "clean",
-					"instance": "00e01e296fe8-hub-hi",
+					"instance": "audit-1461-hi-uihub-20261029a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/00e01e296fe8-hub-hi.json",
-					"receipt_sha256": "ed2620bffc17d37ca8a8cb98e3da32d476df3bf7a21058712cb4e5e68647b50f",
-					"scope": "ui.hub, delta audit at 12b2df28cd: 4 incoming-preview/ambiguous-name keys from dfbd75977a read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
+					"receipt": "i18n/receipts/audit-1461-hi-uihub-20261029a.json",
+					"receipt_sha256": "241d9c45e67739e200cc48f6e0a3dcee7fcaf8dac1d7d19beb937acc42882295"
 				}
 			],
 			"status": "audited",
@@ -17293,6 +17336,29 @@
 							"receipt": "i18n/receipts/a26b945b2ee1-hub-hi.json",
 							"receipt_sha256": "de1490e27a1b9f5c38a29470b86c7b31101a7b356f62d72297b42dd08e03dfb9",
 							"scope": "ui.hub, delta audit at 9e3db68582: 1 check-failed key from 7cb42588d6 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5f64dc7ff1a23909a5adef9010f7aff5a1c6154d1cb9fd22635b42fd676b72cc",
+					"target_sha256": "23ded75fab8b3dfb66061e5a5b9dcf51991473f5f92e71c13489ba352ac268f7",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "00e01e296fe8-hub-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/00e01e296fe8-hub-hi.json",
+							"receipt_sha256": "ed2620bffc17d37ca8a8cb98e3da32d476df3bf7a21058712cb4e5e68647b50f",
+							"scope": "ui.hub, delta audit at 12b2df28cd: 4 incoming-preview/ambiguous-name keys from dfbd75977a read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 						}
 					],
 					"status": "audited"
@@ -23575,8 +23641,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.hub",
-			"source_sha256": "5f64dc7ff1a23909a5adef9010f7aff5a1c6154d1cb9fd22635b42fd676b72cc",
-			"target_sha256": "43a428d7a38d1cdbe2e4c9a80f0e1c13a5cdcd411612fcd89dfc26e2491cc891",
+			"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
+			"target_sha256": "ad72d96550882043869f3d842326b825148654302f0f09eb64c3339dd813a2fb",
 			"translator": {
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-10-18",
@@ -23584,20 +23650,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-28",
+					"agent": "i18n-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-29",
 					"result": "clean",
-					"instance": "00e01e296fe8-hub-ru",
+					"instance": "audit-1461-ru-uihub-20261029a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/00e01e296fe8-hub-ru.json",
-					"receipt_sha256": "c0d36078074dc7efc176e228aea0a416e76810d765b17d8a8e1f51421be9ace8",
-					"scope": "ui.hub, delta audit at 12b2df28cd: 4 incoming-preview/ambiguous-name keys from dfbd75977a read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
+					"receipt": "i18n/receipts/audit-1461-ru-uihub-20261029a.json",
+					"receipt_sha256": "3f3199f3f8b71a8d85a96841f94148be8714f1483eb857ac502116bfcb5017bc"
 				}
 			],
 			"status": "audited",
@@ -23762,6 +23827,29 @@
 							"receipt": "i18n/receipts/a26b945b2ee1-hub-ru.json",
 							"receipt_sha256": "e8b265dc5b807f03d10bf95ea90f36c45f3d151887b75ac3fef11cca2c1c9c5e",
 							"scope": "ui.hub, delta audit at 9e3db68582: 1 check-failed key from 7cb42588d6 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5f64dc7ff1a23909a5adef9010f7aff5a1c6154d1cb9fd22635b42fd676b72cc",
+					"target_sha256": "43a428d7a38d1cdbe2e4c9a80f0e1c13a5cdcd411612fcd89dfc26e2491cc891",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "00e01e296fe8-hub-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/00e01e296fe8-hub-ru.json",
+							"receipt_sha256": "c0d36078074dc7efc176e228aea0a416e76810d765b17d8a8e1f51421be9ace8",
+							"scope": "ui.hub, delta audit at 12b2df28cd: 4 incoming-preview/ambiguous-name keys from dfbd75977a read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 						}
 					],
 					"status": "audited"
@@ -30011,8 +30099,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.hub",
-			"source_sha256": "5f64dc7ff1a23909a5adef9010f7aff5a1c6154d1cb9fd22635b42fd676b72cc",
-			"target_sha256": "5c5d5d842160227c233c701dd1ad25c3845da513235a1b47376f4946c3c66b57",
+			"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
+			"target_sha256": "b31916b99da5d0d5d22cb8928be9494baaf5c5d095fccfee553d6cd94ec4c2d8",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -30020,20 +30108,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-28",
+					"agent": "i18n-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-29",
 					"result": "clean",
-					"instance": "00e01e296fe8-hub-ur",
+					"instance": "audit-1461-ur-uihub-20261029a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/00e01e296fe8-hub-ur.json",
-					"receipt_sha256": "eec95e51836d7e2a068f2a2940429726577fde14497252da80ee4106a8e32614",
-					"scope": "ui.hub, delta audit at 12b2df28cd: 4 incoming-preview/ambiguous-name keys from dfbd75977a read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
+					"receipt": "i18n/receipts/audit-1461-ur-uihub-20261029a.json",
+					"receipt_sha256": "adeeb5d1dbab28230eb381d08ce05977658f7aeecbec3b1f6d8fe81cc68bcc1e"
 				}
 			],
 			"status": "audited",
@@ -30223,6 +30310,29 @@
 							"receipt": "i18n/receipts/a26b945b2ee1-hub-ur.json",
 							"receipt_sha256": "3adb66d4273ee0b6a72de7299fa3f3cdc089fe1fd7c02c294959dba81f1f2b0b",
 							"scope": "ui.hub, delta audit at 9e3db68582: 1 check-failed key from 7cb42588d6 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5f64dc7ff1a23909a5adef9010f7aff5a1c6154d1cb9fd22635b42fd676b72cc",
+					"target_sha256": "5c5d5d842160227c233c701dd1ad25c3845da513235a1b47376f4946c3c66b57",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "00e01e296fe8-hub-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/00e01e296fe8-hub-ur.json",
+							"receipt_sha256": "eec95e51836d7e2a068f2a2940429726577fde14497252da80ee4106a8e32614",
+							"scope": "ui.hub, delta audit at 12b2df28cd: 4 incoming-preview/ambiguous-name keys from dfbd75977a read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 						}
 					],
 					"status": "audited"
@@ -36427,8 +36537,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.hub",
-			"source_sha256": "5f64dc7ff1a23909a5adef9010f7aff5a1c6154d1cb9fd22635b42fd676b72cc",
-			"target_sha256": "816f3ebda28622c1ad7c0c0fc2d271003eb5f84e4afb885bcc2e1e5ba2fe54c2",
+			"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
+			"target_sha256": "81eb5b832f6db2a9a88213dd307d1dcdc957a45bbc71e8b38ffa22697fbf9f46",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -36436,20 +36546,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-28",
-					"result": "clean-with-findings",
-					"instance": "00e01e296fe8-hub-vi",
+					"agent": "i18n-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-29",
+					"result": "clean",
+					"instance": "audit-1461-vi-uihub-20261029a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/00e01e296fe8-hub-vi.json",
-					"receipt_sha256": "0dc1243c62847bd75a7a300a8c8136b415b4a3b27bbbc68f1a3937479688f40b",
-					"scope": "ui.hub, delta audit at 12b2df28cd: 4 incoming-preview/ambiguous-name keys from dfbd75977a read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
+					"receipt": "i18n/receipts/audit-1461-vi-uihub-20261029a.json",
+					"receipt_sha256": "a31dbcbdf52a5c081c8b00d00fd4c3b006796bbb6c9a18f041b07515497c53b2"
 				}
 			],
 			"status": "audited",
@@ -36615,6 +36724,29 @@
 							"receipt": "i18n/receipts/a26b945b2ee1-hub-vi.json",
 							"receipt_sha256": "b4ef70b192355e4619642bb7789b183f96d1bfe8654c44b9278e2e3ac6336da2",
 							"scope": "ui.hub, delta audit at 9e3db68582: 1 check-failed key from 7cb42588d6 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5f64dc7ff1a23909a5adef9010f7aff5a1c6154d1cb9fd22635b42fd676b72cc",
+					"target_sha256": "816f3ebda28622c1ad7c0c0fc2d271003eb5f84e4afb885bcc2e1e5ba2fe54c2",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "00e01e296fe8-hub-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/00e01e296fe8-hub-vi.json",
+							"receipt_sha256": "0dc1243c62847bd75a7a300a8c8136b415b4a3b27bbbc68f1a3937479688f40b",
+							"scope": "ui.hub, delta audit at 12b2df28cd: 4 incoming-preview/ambiguous-name keys from dfbd75977a read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 						}
 					],
 					"status": "audited"
@@ -43411,8 +43543,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.hub",
-			"source_sha256": "5f64dc7ff1a23909a5adef9010f7aff5a1c6154d1cb9fd22635b42fd676b72cc",
-			"target_sha256": "d60bb9fe1d1f8ed0873b382366d24dd072b36c26642cd6486794501810150f0e",
+			"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
+			"target_sha256": "81d356c1f6904b030cbd701fa34c4abe37a54f59be7801bc39c183887cb8676c",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -43421,20 +43553,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-28",
+					"agent": "i18n-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-29",
 					"result": "clean",
-					"instance": "00e01e296fe8-hub-zh-cn",
+					"instance": "audit-1461-zhcn-uihub-20261029a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/00e01e296fe8-hub-zh-cn.json",
-					"receipt_sha256": "1650267463722c3d2c75f996a5913dbd20c92012ba007c7fe8a455cce2780ea7",
-					"scope": "ui.hub, delta audit at 12b2df28cd: 4 incoming-preview/ambiguous-name keys from dfbd75977a read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
+					"receipt": "i18n/receipts/audit-1461-zhcn-uihub-20261029a.json",
+					"receipt_sha256": "64339138bed17a817b20654bd007eb6415ea57ea33d0ab266dba0f6f98cf9281"
 				}
 			],
 			"status": "audited",
@@ -43624,6 +43755,29 @@
 							"receipt": "i18n/receipts/a26b945b2ee1-hub-zh-cn.json",
 							"receipt_sha256": "fdf12298f5b82eed5972e46d02241cf289a797825fa2743100a78aca134d6eb1",
 							"scope": "ui.hub, delta audit at 9e3db68582: 1 check-failed key from 7cb42588d6 read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5f64dc7ff1a23909a5adef9010f7aff5a1c6154d1cb9fd22635b42fd676b72cc",
+					"target_sha256": "d60bb9fe1d1f8ed0873b382366d24dd072b36c26642cd6486794501810150f0e",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "00e01e296fe8-hub-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/00e01e296fe8-hub-zh-cn.json",
+							"receipt_sha256": "1650267463722c3d2c75f996a5913dbd20c92012ba007c7fe8a455cce2780ea7",
+							"scope": "ui.hub, delta audit at 12b2df28cd: 4 incoming-preview/ambiguous-name keys from dfbd75977a read in full; carried keys byte-identical to the last audited row; translator deepseek, auditor anthropic/claude-opus-5-5 (cross-family)"
 						}
 					],
 					"status": "audited"
