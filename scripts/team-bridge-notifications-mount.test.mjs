@@ -64,6 +64,10 @@ export const fixture = {
 const tenantOf = (scope) =>
 	typeof scope === "string" ? scope : scope.tenantId;
 
+export const requireBridgeWriteAccount = (accountId) => {
+	if (!accountId) throw new Error("Team Bridge write account required");
+	return accountId;
+};
 export const TeamBridgeApi = {
 	async listMessages(id, options) {
 		fixture.calls.history.push({ id, ...options });

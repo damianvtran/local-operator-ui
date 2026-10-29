@@ -5,7 +5,10 @@ import {
 	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
-import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
+import {
+	TeamBridgeApi,
+	requireBridgeWriteAccount,
+} from "@shared/api/local-operator/team-bridge-api";
 import { Spinner } from "@shared/components/common/spinner";
 import { AttentionBadge } from "@shared/components/ui/attention-badge";
 import { Button } from "@shared/components/ui/button";
@@ -777,8 +780,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	const threadsAvailable =
 		teamBridgeThreadsAvailable(threadsCapabilityState) &&
 		selfAccountId !== undefined;
-	/* Reactions likewise require their captured account as well as the build
-	   and capability. Without that context no chip or toolbar toggle mounts. */
+	/* The reactions lane is gated by the build and the capability here; the
+	 * captured account is required one step later, where `reactionContext` is
+	 * built (`reactionsAvailable && selfAccountId`). Both terms have to hold: a
+	 * capability-only gate would mount chips under an unresolved account. */
 	const reactionsAvailable = teamBridgeReactionsAvailable(
 		reactionsCapabilityState,
 	);
@@ -2989,7 +2994,7 @@ const TeamBridgeOwnedPage: FC<{
 						throw new Error("Team Bridge write authority changed");
 					return TeamBridgeApi.send(id, {
 						...message,
-						expectedAccountId: accountId,
+						expectedAccountId: requireBridgeWriteAccount(accountId),
 						attachmentIds: await sendAttachmentIds(
 							attachments,
 							id,

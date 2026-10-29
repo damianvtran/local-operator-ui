@@ -25,7 +25,10 @@
  * mounted page, which is the renderer's own view state; nothing is written to
  * disk and no message body is included in the unread read at all.
  */
-import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
+import {
+	TeamBridgeApi,
+	requireBridgeWriteAccount,
+} from "@shared/api/local-operator/team-bridge-api";
 import { observedRadientAuthority } from "@shared/hooks/radient-account-authority";
 import {
 	type QueryClient,
@@ -479,7 +482,7 @@ export function useSendTeamBridgeMessage(
 			return TeamBridgeApi.send(target.conversationId, {
 				...input,
 				tenantId: target.tenantId,
-				expectedAccountId: target.accountId,
+				expectedAccountId: requireBridgeWriteAccount(target.accountId),
 			});
 		},
 		onSuccess: (_data, { target }) =>

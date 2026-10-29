@@ -90,6 +90,24 @@ export async function teamBridgeWriteOwner(
 	return { expected_account_id: accountId, tenant_id: tenantId };
 }
 
+/**
+ * The captured account a send must carry, or a loud refusal.
+ *
+ * `send` requires `expectedAccountId` because every send is owner-guarded: a
+ * top-level one is checked by `teamBridgeWriteOwner` and a threaded reply is
+ * refused by `desktopRequestSchema` without it. A caller holding a possibly
+ * unresolved account therefore fails here, before any request exists, instead
+ * of posting as whoever signs in next. Renderer call sites reach this through
+ * `useBridgeOwner`/`accountId`, both of which are optional until the account
+ * read answers.
+ */
+export function requireBridgeWriteAccount(
+	accountId: string | undefined,
+): string {
+	if (!accountId) throw new Error("Team Bridge write account required");
+	return accountId;
+}
+
 export const TeamBridgeApi = {
 	async scheduledList(tenantId: string) {
 		return teamBridgeScheduledListSchema.parse(
@@ -285,7 +303,12 @@ export const TeamBridgeApi = {
 		input: {
 			clientRef: string;
 			body: string;
-			expectedAccountId?: string;
+			/* REQUIRED, not optional. Every send is owner-guarded now, and a
+			 * threaded reply is refused by the request schema without it, so a
+			 * caller that dropped the receipt would ship a path that 422s. Making
+			 * it required at this boundary means deleting it fails `check-types`
+			 * instead of failing at runtime on the reply the user just typed. */
+			expectedAccountId: string;
 			tenantId?: string;
 			/* Set to reply in that root's thread; omitted for a channel-level post. */
 			threadRootId?: string;

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+
 import { after, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
@@ -6,7 +7,7 @@ import { JSDOM } from "jsdom";
 // Execute the shipped model and render the real pane, not a second state map.
 const bundle = await build({
 	stdin: {
-		contents: `export {TeamBridgeMessageList} from './src/renderer/src/features/team-bridge/team-bridge-message-list'; export {manageThreadFocus} from './src/renderer/src/features/team-bridge/team-bridge-thread-focus'; export * from './src/renderer/src/features/team-bridge/team-bridge-thread-read'; export {TeamBridgeApi} from './src/renderer/src/shared/api/local-operator/team-bridge-api'; export {teamBridgeOpenPath} from './src/shared/team-bridge-notify'; export {threadSummary} from './src/renderer/src/features/team-bridge/team-bridge-threads-model'; export {TeamBridgeThreadPane, TeamBridgeThreadPaneView} from './src/renderer/src/features/team-bridge/team-bridge-thread-pane'; export {teamBridgeMessageSchema} from './src/shared/team-bridge-contract'; export {QueryClient, QueryClientProvider} from '@tanstack/react-query'; export {createRoot} from 'react-dom/client'; export {act} from 'react'; export {createElement} from 'react'; export {renderToStaticMarkup} from 'react-dom/server';`,
+		contents: `export {TeamBridgeMessageList} from './src/renderer/src/features/team-bridge/team-bridge-message-list'; export {manageThreadFocus} from './src/renderer/src/features/team-bridge/team-bridge-thread-focus'; export * from './src/renderer/src/features/team-bridge/team-bridge-thread-read'; export {TeamBridgeApi, requireBridgeWriteAccount} from './src/renderer/src/shared/api/local-operator/team-bridge-api'; export {teamBridgeOpenPath} from './src/shared/team-bridge-notify'; export {threadSummary} from './src/renderer/src/features/team-bridge/team-bridge-threads-model'; export {TeamBridgeThreadPane, TeamBridgeThreadPaneView} from './src/renderer/src/features/team-bridge/team-bridge-thread-pane'; export {teamBridgeMessageSchema} from './src/shared/team-bridge-contract'; export {QueryClient, QueryClientProvider} from '@tanstack/react-query'; export {createRoot} from 'react-dom/client'; export {act} from 'react'; export {createElement} from 'react'; export {renderToStaticMarkup} from 'react-dom/server';`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -304,10 +305,6 @@ test("the shipped container reads and replies with the captured account", async 
 			calls.push(["listReplies", ...args]);
 			return { root, replies: [], has_more: false };
 		};
-		api.send = async (...args) => {
-			calls.push(["send", ...args]);
-			return {};
-		};
 		await mod.act(async () => {
 			app.render(
 				mod.createElement(
@@ -336,7 +333,16 @@ test("the shipped container reads and replies with the captured account", async 
 		assert.equal(replyCalls[0][3].tenantId, "tenant_a");
 		assert.match(document.body.textContent, /Root question/);
 	} finally {
+		/* ORDER MATTERS. The send invalidates the thread and feed keys, so a
+		 * refetch can still be in flight. Unmount, cancel and let those settle
+		 * BEFORE the real API is restored: restoring first points the in-flight
+		 * read at the live transport, which has no `window.api` in this process,
+		 * and the file then reports a promise that never settles. */
 		await mod.act(async () => app.unmount());
+		await mod.act(async () => client.cancelQueries());
+		await mod.act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 30));
+		});
 		client.clear();
 		api.markRead = originalRead;
 		api.listReplies = originalReplies;
@@ -352,6 +358,22 @@ test("the shipped container reads and replies with the captured account", async 
  * `onSend`: no query cache, no mutation — the draft, its idempotency key and
  * the ids it forwards are the pane's contract, and the receipt is added by the
  * container above and validated by `team-bridge-receipt-contract.test.mjs`. */
+/*
+ * THE RECEIPT IS REQUIRED AT THE API BOUNDARY, not merely at the wire. A send
+ * whose captured account has not resolved refuses before a request exists; the
+ * required parameter is what makes deleting a call site's `expectedAccountId`
+ * fail `check-types` instead of shipping a reply the guarded route 422s.
+ */
+test("a send cannot be attempted without a captured account", () => {
+	assert.equal(mod.requireBridgeWriteAccount("acct_captured"), "acct_captured");
+	for (const missing of [undefined, ""]) {
+		assert.throws(
+			() => mod.requireBridgeWriteAccount(missing),
+			/Team Bridge write account required/,
+		);
+	}
+});
+
 test("the shipped reply composer dispatches a threaded reply with a client ref", async () => {
 	const host = document.getElementById("app");
 	const sent = [];
