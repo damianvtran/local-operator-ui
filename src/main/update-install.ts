@@ -447,24 +447,31 @@ export function installedBundleSealBlock(
 	 * is running with the break, so it cannot know that, and the suite holds a
 	 * negative guard on exactly this copy.
 	 */
+	/*
+	 * TWO ARMS PER SENTENCE rather than a version clause concatenated into one:
+	 * ICU arguments carry values, not grammar, so the arm that cannot name a
+	 * release is its own key and a translator can put "{version}" where that
+	 * language's word order wants it (docs/I18N.md): a clause spliced into a
+	 * sentence cannot be reordered by the language receiving it.
+	 */
 	const message =
 		context === "startup"
-			? "This copy of Local Operator did not pass its integrity check, so it can't repair itself."
+			? t("ui.updates.panel.seal.startup.message")
 			: version
-				? `This install of Local Operator can't be updated in place, so the update to version ${version} was stopped before the app quit.`
-				: "This install of Local Operator can't be updated in place, so the update was stopped before the app quit.";
+				? t("ui.updates.panel.seal.update.message_version", { version })
+				: t("ui.updates.panel.seal.update.message");
 	return {
 		code: "installed-bundle-not-sealed",
 		message,
 		remedy: {
-			text: "Quit Local Operator, then download a fresh copy and replace the app in Applications.",
+			text: t("ui.updates.panel.seal.remedy"),
 			url: DOWNLOAD_PAGE_URL,
 		},
 		detail: `${appBundlePath}: ${detail}`,
 		...(context === "startup"
 			? {
-					heading: "This copy of Local Operator needs replacing",
-					dismissLabel: "Not now",
+					heading: t("ui.updates.panel.seal.startup.heading"),
+					dismissLabel: t("ui.updates.panel.dismiss.not_now"),
 				}
 			: {}),
 	};
@@ -916,11 +923,6 @@ export function measureDirectoryBytes(root: string): number | null {
 	}
 }
 
-/** The version clause every refusal carries, so the user can quote it. */
-function versionClause(version: string | null | undefined): string {
-	return version ? ` to version ${version}` : "";
-}
-
 /**
  * Check a staged artifact against the metadata the updater already parsed.
  *
@@ -951,9 +953,13 @@ export function verifyStagedArtifact(input: {
 			ok: false,
 			block: {
 				code: "artifact-metadata-missing",
-				message: `The downloaded update${versionClause(version)} isn't listed in the release metadata, so it wasn't installed.`,
+				message: version
+					? t("ui.updates.panel.artifact.metadata_missing.message_version", {
+							version,
+						})
+					: t("ui.updates.panel.artifact.metadata_missing.message"),
 				remedy: {
-					text: "Check for updates again to re-download the release.",
+					text: t("ui.updates.panel.artifact.remedy"),
 				},
 				detail: `${name} has no matching entry in the update metadata.`,
 			},
@@ -966,9 +972,13 @@ export function verifyStagedArtifact(input: {
 			ok: false,
 			block: {
 				code: "download-verification-failed",
-				message: `The downloaded update${versionClause(version)} doesn't match the published release, so it wasn't installed.`,
+				message: version
+					? t("ui.updates.panel.artifact.mismatch.message_version", {
+							version,
+						})
+					: t("ui.updates.panel.artifact.mismatch.message"),
 				remedy: {
-					text: "Check for updates again to re-download the release.",
+					text: t("ui.updates.panel.artifact.remedy"),
 				},
 				detail: `${name} is ${input.actualSize} bytes; the release lists ${expectedSize}.`,
 			},
@@ -981,9 +991,13 @@ export function verifyStagedArtifact(input: {
 			ok: false,
 			block: {
 				code: "download-verification-failed",
-				message: `The downloaded update${versionClause(version)} doesn't match the published release, so it wasn't installed.`,
+				message: version
+					? t("ui.updates.panel.artifact.mismatch.message_version", {
+							version,
+						})
+					: t("ui.updates.panel.artifact.mismatch.message"),
 				remedy: {
-					text: "Check for updates again to re-download the release.",
+					text: t("ui.updates.panel.artifact.remedy"),
 				},
 				detail: `${name} sha512 ${input.actualSha512} does not match the release's ${expectedSha}.`,
 			},
@@ -1007,9 +1021,15 @@ export function verifyStagedArtifact(input: {
 			ok: false,
 			block: {
 				code: "insufficient-disk-space",
-				message: `There isn't enough free disk space to install the update${versionClause(version)}, so it wasn't installed.`,
+				message: version
+					? t("ui.updates.panel.disk.message_version", { version })
+					: t("ui.updates.panel.disk.message"),
 				remedy: {
-					text: `Free up about ${formatGiB(needed - input.freeBytes)}, then check for updates again.`,
+					// The size is formatted for the locale here and passed as a value, so
+					// the sentence keeps its own word order around it.
+					text: t("ui.updates.panel.disk.remedy", {
+						size: formatGiB(needed - input.freeBytes),
+					}),
 				},
 				detail: `Install needs ${formatGiB(needed)} (${footprint}); ${formatGiB(input.freeBytes)} free.`,
 			},
@@ -1221,15 +1241,17 @@ export function stagedSignatureBlock(
 		if (facts.embeddedProfile) return null;
 		return {
 			code: "artifact-cannot-launch",
-			heading: "The update couldn't be checked",
+			heading: t("ui.updates.panel.launch.heading"),
 			message: facts.version
-				? `The update to version ${facts.version} can't be checked for launch, so it wasn't installed.`
-				: "The downloaded update can't be checked for launch, so it wasn't installed.",
+				? t("ui.updates.panel.launch.check.message_version", {
+						version: facts.version,
+					})
+				: t("ui.updates.panel.launch.check.message"),
 			remedy: {
-				text: "Check for updates again to re-download the release.",
+				text: t("ui.updates.panel.artifact.remedy"),
 			},
 			detail: `${facts.artifactName} carries no ${EMBEDDED_PROVISIONING_PROFILE_PATH} and its signature could not be read.`,
-			dismissLabel: "Not now",
+			dismissLabel: t("ui.updates.panel.dismiss.not_now"),
 		};
 	}
 	const claimed = profileBackedEntitlementKeys(facts.entitlementsPlist);
@@ -1238,12 +1260,16 @@ export function stagedSignatureBlock(
 	return {
 		code: "artifact-cannot-launch",
 		message: facts.version
-			? `The update to version ${facts.version} can't be launched by macOS, so it wasn't installed.`
-			: "The downloaded update can't be launched by macOS, so it wasn't installed.",
+			? t("ui.updates.panel.launch.open.message_version", {
+					version: facts.version,
+				})
+			: t("ui.updates.panel.launch.open.message"),
 		remedy: {
 			text: facts.version
-				? `Keep using this copy, and skip version ${facts.version} if you download one by hand — the next release will be offered here as usual.`
-				: "Keep using this copy; the next release will be offered here as usual.",
+				? t("ui.updates.panel.launch.keep.message_version", {
+						version: facts.version,
+					})
+				: t("ui.updates.panel.launch.keep.message"),
 		},
 		// The facts a reader can check, and nothing else: which archive, which
 		// claim, which file macOS found missing. TN3125's rule (a restricted
@@ -1252,7 +1278,7 @@ export function stagedSignatureBlock(
 		// it in a mono column made the details block 44% of the panel (design
 		// round 1, D4). It belongs in this comment, not in the card.
 		detail: `${facts.artifactName} claims ${claimed.join(", ")} and carries no ${EMBEDDED_PROVISIONING_PROFILE_PATH}.`,
-		dismissLabel: "Not now",
+		dismissLabel: t("ui.updates.panel.dismiss.not_now"),
 	};
 }
 
@@ -2475,9 +2501,12 @@ export function installFailurePayload(
 		: "";
 	if (options.cancelledByRelaunch === true) {
 		return {
-			message: `The update to version ${marker.targetVersion} was cancelled because Local Operator was opened while the update was installing. Version ${runningVersion} is still running.`,
+			message: t("ui.updates.panel.failure.cancelled.message", {
+				target: marker.targetVersion,
+				running: runningVersion,
+			}),
 			remedy: {
-				text: "Quit Local Operator and replace it in Applications with a fresh copy, or update again from the app — and leave it closed until the update finishes.",
+				text: t("ui.updates.panel.failure.cancelled.remedy"),
 				url: DOWNLOAD_PAGE_URL,
 			},
 			detail: `Install started ${startedText} from ${marker.artifactPath || "an unknown artifact"}. Squirrel cancels an install when an instance of the app is running.${logText}`,
@@ -2487,9 +2516,12 @@ export function installFailurePayload(
 		};
 	}
 	return {
-		message: `The update to version ${marker.targetVersion} didn't finish, so version ${runningVersion} is still running.`,
+		message: t("ui.updates.panel.failure.unfinished.message", {
+			target: marker.targetVersion,
+			running: runningVersion,
+		}),
 		remedy: {
-			text: "Quit Local Operator and replace it in Applications with a fresh copy, or update again from the app.",
+			text: t("ui.updates.panel.failure.unfinished.remedy"),
 			url: DOWNLOAD_PAGE_URL,
 		},
 		detail: `Install started ${startedText} from ${marker.artifactPath || "an unknown artifact"}.${logText}`,

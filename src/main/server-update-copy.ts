@@ -6,9 +6,18 @@
  * guard test both read: the sentence the panel shows for a failed attempt is composed
  * here, and nothing downstream may classify, truncate or replace it. Keeping them in
  * `update-service.ts` would put a module that imports Electron between the test and the
- * string it has to hold to that promise, so they live here, import nothing, and are
- * re-exported from the service for callers that already have it.
+ * string it has to hold to that promise, so they live here, and are re-exported from
+ * the service for callers that already have it.
+ *
+ * THE ONE IMPORT IS THE CATALOGUE RUNTIME, not Electron: `src/i18n/` is
+ * framework-free by design (RFC §3.2), so `t()` costs a test `intl-messageformat`
+ * and no window. The sentences are returned in whatever locale the main process
+ * resolved (see `main-locale.ts`), and each arm is its own key rather than a
+ * version clause spliced into one, so a translation can order "{version}" the
+ * way its own language needs.
  */
+
+import { t } from "../i18n";
 
 /**
  * What the reader can actually DO when an attempt failed, in the app's voice.
@@ -37,12 +46,12 @@ export function serverUpdateFailureRemedy(input: {
 		input.rebuildRoute &&
 		/REFUSING to release a stale ref/i.test(input.diagnosis)
 	) {
-		return "This checkout is behind its remote, which is what `lop-update` refused to build from: bring the checkout up to date, and the next press here will build it.";
+		return t("ui.updates.panel.server.behind.remedy");
 	}
 	if (input.rebuildRoute) {
-		return "A rebuild changes this install only once it succeeds, so nothing was restarted.";
+		return t("ui.updates.panel.server.rebuild.remedy");
 	}
-	return "Nothing was restarted: the build that was serving is the build still serving.";
+	return t("ui.updates.panel.server.norestart.remedy");
 }
 
 /**
