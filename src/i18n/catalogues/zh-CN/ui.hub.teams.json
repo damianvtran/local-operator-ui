@@ -45,5 +45,7 @@
 	"ui.hub.teams.pull": "拉取",
 	"ui.hub.teams.pull_failed": "无法拉取“{name}”。",
 	"ui.hub.teams.pull_target": "拉取团队{name}",
-	"ui.hub.teams.pulling": "正在拉取……"
+	"ui.hub.teams.pulling": "正在拉取……",
+	"ui.hub.teams.recency.created": "{when}创建",
+	"ui.hub.teams.recency.updated": "{when}更新"
 }

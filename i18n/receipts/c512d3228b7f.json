@@ -1,0 +1,348 @@
+{
+  "schema": 1,
+  "audit_kind": "independent-translation-audit",
+  "locale": "hi",
+  "locale_name": "Hindi",
+  "auditor": "i18n-auditor",
+  "agent": "i18n-auditor (lopdev team subagent; label 'Audit literals hi'; parent 3ef6295a5545)",
+  "session": "c512d3228b7f",
+  "instance": "c512d3228b7f",
+  "model": "radient/auto",
+  "model_fallback": "none observed. The harness session header for this run reads 'Model: radient/auto'; transcript.jsonl (159 records when measured during this audit) carries no per-entry model field, so no mid-run model switch is observable and none is claimed. The upstream provider/model behind that alias is not exposed to the agent and is not inferred.",
+  "actual_model_source": "harness session header ('Model: radient/auto') for session c512d3228b7f, plus ~/.local-operator/sessions/c512d3228b7f/origin.json {origin: subagent, agent: i18n-auditor, parent: 3ef6295a5545}. No per-entry model field exists in the transcript; upstream resolution is not visible to the agent.",
+  "independence": "Independent of the translator. This audit did not translate or remediate these catalogues, saw no translator report or reasoning, used no translation API/SDK/MT service and no back-translation, and edited no catalogue, ledger, generated file, test or git state. Only this receipt and the evidence records it names were written in the repo.",
+  "date": "2026-10-26",
+  "audit_date": "2026-10-26",
+  "scope": {
+    "worktree": "~/local-operator-ui/.worktrees/i18n-agents-literals-2",
+    "branch": "i18n-agents-literals-2",
+    "head": "a9e536bf89",
+    "delta": "the 25 new English-only keys reapplied for the translator lane, across 7 namespaces; sidecar agents-literals-2-keys.json (untracked copy in the worktree)",
+    "byte_equality_base": "73af0b6855",
+    "shared_worktree_note": "Seven locale auditors ran concurrently in this one worktree; this receipt covers hi only, and no other locale's files were read or written."
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    "ui_howto": {
+      "path": "docs/I18N.md",
+      "note": "UI contract: status 'audited' + auditors[], severity-count findings object, receipts under i18n/receipts/, evidence root i18n/audits/evidence/."
+    }
+  },
+  "namespace_count": 7,
+  "key_count": 25,
+  "keys_read": 277,
+  "keys_audited": 25,
+  "keys_read_note": "All 277 values in the seven files were read by the mechanical sweep; the 25-key delta was judged semantically against en, its context sidecars and the call sites. The other 252 values were verified byte-identical to parent 73af0b6855 (prior receipts back them) rather than re-judged.",
+  "source_sha256": {
+    "ui.agents.pages": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781",
+    "ui.agents.config": "5338f6e229d67bf214a4741224470e82222bd2f04eba9bc9eda7324242393c32",
+    "ui.agents.detail": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+    "ui.agents.upload": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949",
+    "ui.hub.pages": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6",
+    "ui.hub.teams": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+    "ui.common.actions": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9"
+  },
+  "target_sha256": {
+    "ui.agents.pages": "bfc7fc6bddba1e788cae049784256711390d38488c88a6544c7fa74fe5a18bb4",
+    "ui.agents.config": "8ff7bc8f8b56653db240c6215367dd9c6942d2a4ba7f166e00b3a56b0ac6050b",
+    "ui.agents.detail": "1c123f949bff4e8650697b24e24231fe09d32e5f6b3aa389b4a03038afd763b6",
+    "ui.agents.upload": "0953a228e646ee9c165ccfd8ed1f27b1e189a2bedc26537ca63bc0e5e8819dbe",
+    "ui.hub.pages": "829d55695b37c6e58b9689c7f4d436027ef861fd7c9b918bb3818e01219b1be8",
+    "ui.hub.teams": "693742d696271132acd44eb8d7217e0b43c9ed7772ce56e8d4211f73a48880a2",
+    "ui.common.actions": "5107a5f9b3abb12181a2ed3b22d053f950b931ea61f3845bf428de8c2c23192f"
+  },
+  "context_sha256": {
+    "ui.agents.pages": "f9690a17e6e7307df154bdc0d71ab8a0d002a07a052e11c0025d2ff874d3dfea",
+    "ui.agents.config": "63a7879a771b5aa7732fcfc8848033ba207701aaf1452e2855e8ec2bd52821bf",
+    "ui.agents.detail": "a0e40ba7fceccdf78da28d064fd4386cc48d8f1c80127a5721550e879c49b511",
+    "ui.agents.upload": "3141f45c4b8fc17b96061a4556a66b3133bbfe27345ee7e4d929dfe21ee049f0",
+    "ui.hub.pages": "d913efa6ea062fe5c04861c6db202d5bf303b7b0c1a6f9c7efbdaa4b5c095d10",
+    "ui.hub.teams": "b062f0ca8aed037084233730702e41c6f3ef09aa39bed405e007466716c711a0",
+    "ui.common.actions": "48756cd31d4abbec5d56b3648ffb2fefe578c074645386480c91b4921accf321"
+  },
+  "sidecar": {
+    "path": "agents-literals-2-keys.json",
+    "sha256": "ec602c83236ec67358370105c140880a55e134b68f872b0ba033446387cefada"
+  },
+  "machine_checks": [
+    {
+      "command": "python3 <scratch>/mech-hi.py (own sweep: key set/order, ICU args + CLDR categories, empties, typography, git-show byte equality)",
+      "exit": 0,
+      "observed": "MECHANICAL DIGEST (hi, 7 namespaces, 25 new keys)\n  ui.agents.pages    keys en= 30 hi= 30 set_equal=True order_equal=True\n  ui.agents.config   keys en= 31 hi= 31 set_equal=True order_equal=True\n  ui.agents.detail   keys en= 50 hi= 50 set_equal=True order_equal=True\n  ui.agents.upload   keys en= 29 hi= 29 set_equal=True order_equal=True\n  ui.hub.pages       keys en= 37 hi= 37 set_equal=True order_equal=True\n  ui.hub.teams       keys en= 49 hi= 49 set_equal=True order_equal=True\n  ui.common.actions  keys en= 51 hi= 51 set_equal=True order_equal=True\n  placeholder multiset mismatches: 0  (args compared as multisets; ICU type+categories compared per name)\n  empty values: 0\n  hi plural ui.agents.config.definitions: categories=['one', 'other']\n  hi plural ui.hub.pages.status.count.agents: categories=['one', 'other']\n  hi plural ui.hub.pages.status.count.teams: categories=['one', 'other']\n  hi plural ui.hub.teams.member_count: categories=['one', 'other']\n  hi plural ui.hub.teams.public.match_line: categories=['one', 'other']\n  25 new keys: typography breaches = 0 (ASCII \" / ASCII ' / ... ; U+2026 and “ ” required)\n  legacy breaches still present in these 7 files (pre-existing, byte-identical to 73af0b6855): 0 value(s) with ASCII double quote, 0 with '...'\n  vs parent 73af0b6855: keys now=277, new=25, pre-existing changed/removed=0\n\nFAILS: none"
+    },
+    {
+      "command": "node --test scripts/i18n/locale-parity.test.mjs",
+      "exit": 0,
+      "observed": "ℹ tests 44\nℹ suites 0\nℹ pass 44\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\n\n[per-test (x.xxms) durations and duration_ms stripped from this capture; counts and verdicts verbatim]\n[tail 9 of 53 lines; full output in audit.log]"
+    },
+    {
+      "command": "node scripts/i18n/check-coverage.mjs",
+      "exit": 0,
+      "observed": "coverage-check: ok — 7 gated language(s) over 94 namespace(s); 0 allowed key(s) remain across 0 pair(s) (shrink-only; see i18n/coverage-allowance.json)."
+    },
+    {
+      "command": "node -e 'JSON.parse(...)' over the 21 catalogue files (7 en + 7 hi + 7 en context)",
+      "exit": 0,
+      "observed": "JSON.parse ok: 21 files (7 en + 7 hi + 7 en context)"
+    },
+    {
+      "command": "node <scratch>/render-hi.mjs (intl-messageformat 12.1.3 — the renderer's own ICU runtime — formatting the hi catalogue with locale 'hi' and shipped ui.hub.comments.age.* phrases)",
+      "exit": 0,
+      "observed": "== age phrases the {when} slot receives (hi, ICU via intl-messageformat) ==\n  0 सेकंड    -> 0 सेकंड पहले\n  1 सेकंड    -> 1 सेकंड पहले\n  5 मिनट     -> 5 मिनट पहले\n  3 दिन      -> 3 दिन पहले\n  1 दिन      -> 1 दिन पहले\n  2 महीने    -> 2 महीने पहले\n  1 साल      -> 1 साल पहले\n\n== hub card provenance line:  {author} · t(card.updated, {when}) ==\ncard.updated  [0 सेकंड]\n    Damian Tran · 0 सेकंड पहले अपडेट किया गया\ncard.updated  [1 सेकंड]\n    Damian Tran · 1 सेकंड पहले अपडेट किया गया\ncard.updated  [5 मिनट]\n    Damian Tran · 5 मिनट पहले अपडेट किया गया\ncard.updated  [3 दिन]\n    Damian Tran · 3 दिन पहले अपडेट किया गया\ncard.updated  [1 दिन]\n    Damian Tran · 1 दिन पहले अपडेट किया गया\ncard.updated  [2 महीने]\n    Damian Tran · 2 महीने पहले अपडेट किया गया\ncard.updated  [1 साल]\n    Damian Tran · 1 साल पहले अपडेट किया गया\n…[105 more lines; full output in audit.log]"
+    }
+  ],
+  "second_pass": "No second INDEPENDENT pass was requested or available for this delta (the manager asked for a second pass only on high-visibility onboarding/error/settings groups; this group is agents/hub copy). I re-read all 25 keys a second time myself after the first pass, re-checking the two trimmed candidates (body_agent's instruction-set term and body_team's अगुवाई) against the shipped catalogue; that is one auditor reading twice, NOT independence, and is not claimed as such.",
+  "observations": [
+    "Rulings the task asked for, all accepted as shipped-consistent: काम सौंपना for Delegates (it matches the shipped section title ui.agents.detail.section.delegation = 'काम सौंपना और प्रयास', and the call site is a boolean capability fact — profile.delegate in agent-detail.tsx:173 — so the sidecar's 'no verb' rule holds); पाएँ for Get (shipped पाएँ in ui.hub.subscriptions.subscribe_description, ui.onboarding.search.row.get_your, ui.common.account.*); एजेंट हब (shipped ui.agents.dialogs.create.hub_link, ui.agents.navigation.*); कॉन्फ़िगरेशन रन (shipped ui.agents.config.status.attached, ui.agents.detail.alert.conflict_body); माँगें (shipped 13× incl. the sibling empty state 'नीचे एक माँगें, या खुद एक जोड़ें।').",
+    "{when} अपडेट किया गया without को is CORRECT: the shipped convention is को for an absolute date (ui.hub.teams.detail.updated = '{date} को अपडेट किया गया') and no postposition for a relative phrase, which is what the slot always carries. Composed through the real ICU runtime: '3 दिन पहले अपडेट किया गया', '0 सेकंड पहले अपडेट किया गया', '3 दिन पहले बनाया गया' — all natural and created/updated stay distinguishable.",
+    "Nasalisation matches the shipped catalogue exactly: ँ in पाएँ/दिखाएँ/बताएँ/माँगें (counts at parent 73af0b6855: 8/32/1/11 values; the delta adds 1/2/4/2) and ं in करें/जोड़ें. Zero ं spellings (पाएं/दिखाएं/बताएं/मांगें) exist at parent or now, and the new values add none. Nukta is the same decomposed फ + U+093C as shipped कॉन्फ़िगरेशन (code points compared). No ZWJ/ZWNJ in any new value.",
+    "The em dash in ask.body_agent is not a finding: the catalogue used U+2014 in 149 values at parent 73af0b6855 (150 now, +1 here), including adjacent ui.agents.config.status.attached and ui.agents.detail.alert.conflict_body.",
+    "Quotes “ ” around {name} follow the style guide (the English source's ASCII \" is correctly localized); English '...' is rendered as U+2026 in all three placeholders and in retrying. No ASCII quote or '...' breach exists anywhere in these seven files, new or pre-existing.",
+    "Tail-truncation judgement (not a finding): card.updated renders inside <p className=\"truncate\"> and the team recency inside <span className=\"block truncate\">, so Hindi's time-first order puts the verb where an ellipsis lands first. The sidecar explicitly sanctions time-first order ('One whole sentence, so a language that puts the time before the verb can reorder it'), the alternative verb-only tails (…अपडेट / …बना) would be more terse but less natural, and the created/updated pair already differs at the verb, so no change is requested.",
+    "Source gaps seen while checking call sites (NOT translation defects, and outside this delta): (1) ui.hub.pages.card.get's accessible name is a hardcoded English literal — aria-label={`Download ${displayName}`} at agent-card.tsx:414 — although its sidecar says the accessible name is 'a separate message'; no catalogue key for it exists, so the hi card's one localized visual label still sits on an English aria-label. (2) The agent meta line hardcodes the English literal 'Specialist' next to the newly translated काम सौंपना (agent-detail.tsx:174) — the same meta line.",
+    "काम सौंपना sits as the middle fact of 'हब · काम सौंपना · Specialist' (agent-detail.tsx:170-178; facts joined with ' · ' at line 178 inside a flex-wrap div at 177): two words instead of one, which the line absorbs by wrapping as the sidecar anticipated; the line is a wrapping <p> with no fixed width or height (agent-detail.tsx:178), so the extra word costs height at a wrap, never a clipped label.",
+    "Nothing in the repo was edited except this receipt and its evidence records; no catalogue, ledger, generated file, test or git state was touched, and no scratch artifact is referenced as the record of anything."
+  ],
+  "audit_notes_not_execution_log": true,
+  "evidence": [
+    {
+      "record": "i18n/audits/evidence/hi/ui.agents.pages/hl2-20261026-c512d322/record.json",
+      "audit_log": "i18n/audits/evidence/hi/ui.agents.pages/hl2-20261026-c512d322/audit.log"
+    },
+    {
+      "record": "i18n/audits/evidence/hi/ui.agents.config/hl2-20261026-c512d322/record.json",
+      "audit_log": "i18n/audits/evidence/hi/ui.agents.config/hl2-20261026-c512d322/audit.log"
+    },
+    {
+      "record": "i18n/audits/evidence/hi/ui.agents.detail/hl2-20261026-c512d322/record.json",
+      "audit_log": "i18n/audits/evidence/hi/ui.agents.detail/hl2-20261026-c512d322/audit.log"
+    },
+    {
+      "record": "i18n/audits/evidence/hi/ui.agents.upload/hl2-20261026-c512d322/record.json",
+      "audit_log": "i18n/audits/evidence/hi/ui.agents.upload/hl2-20261026-c512d322/audit.log"
+    },
+    {
+      "record": "i18n/audits/evidence/hi/ui.hub.pages/hl2-20261026-c512d322/record.json",
+      "audit_log": "i18n/audits/evidence/hi/ui.hub.pages/hl2-20261026-c512d322/audit.log"
+    },
+    {
+      "record": "i18n/audits/evidence/hi/ui.hub.teams/hl2-20261026-c512d322/record.json",
+      "audit_log": "i18n/audits/evidence/hi/ui.hub.teams/hl2-20261026-c512d322/audit.log"
+    },
+    {
+      "record": "i18n/audits/evidence/hi/ui.common.actions/hl2-20261026-c512d322/record.json",
+      "audit_log": "i18n/audits/evidence/hi/ui.common.actions/hl2-20261026-c512d322/audit.log"
+    }
+  ],
+  "evidence_note": "One namespace-scoped bundle per namespace, same audit_id, all pointing at this receipt. Receipt bytes were final before the bundles were written, so each record.json carries this receipt's sha256 and its own audit.log sha256; the receipt names the paths only, deliberately, to avoid a hash cycle.",
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "HI-L2-01",
+      "HI-L2-02",
+      "HI-L2-03"
+    ]
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "passed overall: 0 blocker, 0 major, 1 minor, 2 nit over the 25-key hi delta. Clean: ui.agents.config, ui.agents.detail, ui.agents.upload, ui.hub.pages, ui.hub.teams. Clean-with-findings: ui.agents.pages (1 minor + 1 nit), ui.common.actions (1 nit). Every key of all seven files verified for key set/order, ICU args, CLDR one/other, empties, typography and byte equality with parent 73af0b6855.",
+  "totals": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 2
+  },
+  "namespaces": {
+    "ui.agents.pages": {
+      "namespace": "ui.agents.pages",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "keys_audited": 8,
+      "verdict": "clean-with-findings: 0 blocker, 0 major, 1 minor, 1 nit over 8 new keys (whole file 30 keys checked mechanically)",
+      "findings": [
+        {
+          "id": "HI-L2-01",
+          "severity": "minor",
+          "category": "terminology-consistency",
+          "key": "ui.agents.pages.ask.body_agent",
+          "current": "एजेंट निर्देशों का एक सेट है जिसे आप बार-बार इस्तेमाल कर सकते हैं — इसके साथ आप चैट शुरू कर सकते हैं, या दूसरे एजेंट इसे बुला सकते हैं। जो चाहते हैं वह बताएँ, और एक कॉन्फ़िगरेशन रन उसे तैयार कर देता है।",
+          "problem": "The locale already ships निर्देश-सेट as the name of an agent's instruction set (6 values: ui.agents.publication.category.prompt_injection, ui.agents.publication.payload_too_large.body / .body_with_limit, ui.agents.upload.published.listed / .republished). This key is the only place that spells the same object as the periphrastic निर्देशों का एक सेट, i.e. a second name on the same flow; a reader meets both within one agent's pages. Meaning, em dash (150 shipped em dashes in the catalogue) and both sentences are otherwise accurate; निर्देश-सेट also trims 3 characters off a 202-character string against a 160-character English budget.",
+          "proposed": "एजेंट एक निर्देश-सेट है जिसे आप बार-बार इस्तेमाल कर सकते हैं — इसके साथ आप चैट शुरू कर सकते हैं, या दूसरे एजेंट इसे बुला सकते हैं। जो चाहते हैं वह बताएँ, और एक कॉन्फ़िगरेशन रन उसे तैयार कर देता है।"
+        },
+        {
+          "id": "HI-L2-02",
+          "severity": "nit",
+          "category": "idiom",
+          "key": "ui.agents.pages.ask.body_team",
+          "current": "टीम में एक एजेंट चैट की अगुवाई करता है, और सदस्य होते हैं जिन्हें वह काम सौंप सकता है। जो चाहते हैं वह बताएँ, और एक कॉन्फ़िगरेशन रन उसे तैयार कर देता है।",
+          "problem": "अगुवाई is grammatical and understandable, but it occurs 0 times in the 6,023 shipped Hindi values at parent 73af0b6855 (1 in the catalogue now: this key), so the shipped register never uses it: and the neutral register available to product copy is चैट संभालता है or चैट का नेतृत्व करता है. This is polish, not a register break — a native reader reads 'one agent leads the chat' correctly, and the second sentence is identical to the agent sibling as the sidecar requires.",
+          "proposed": "टीम में एक एजेंट चैट संभालता है, और सदस्य होते हैं जिन्हें वह काम सौंप सकता है। जो चाहते हैं वह बताएँ, और एक कॉन्फ़िगरेशन रन उसे तैयार कर देता है।"
+        }
+      ],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 1
+      },
+      "en_sha256": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781",
+      "hi_sha256": "bfc7fc6bddba1e788cae049784256711390d38488c88a6544c7fa74fe5a18bb4",
+      "context_sha256": "f9690a17e6e7307df154bdc0d71ab8a0d002a07a052e11c0025d2ff874d3dfea",
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.pages.json",
+        "target": "src/i18n/catalogues/hi/ui.agents.pages.json",
+        "context": "src/i18n/catalogues/en/ui.agents.pages.context.json"
+      }
+    },
+    "ui.agents.config": {
+      "namespace": "ui.agents.config",
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 3,
+      "verdict": "clean: 0 blocker, 0 major, 0 minor, 0 nit over 3 new keys (whole file 31 keys checked mechanically)",
+      "findings": [],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "en_sha256": "5338f6e229d67bf214a4741224470e82222bd2f04eba9bc9eda7324242393c32",
+      "hi_sha256": "8ff7bc8f8b56653db240c6215367dd9c6942d2a4ba7f166e00b3a56b0ac6050b",
+      "context_sha256": "63a7879a771b5aa7732fcfc8848033ba207701aaf1452e2855e8ec2bd52821bf",
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.config.json",
+        "target": "src/i18n/catalogues/hi/ui.agents.config.json",
+        "context": "src/i18n/catalogues/en/ui.agents.config.context.json"
+      }
+    },
+    "ui.agents.detail": {
+      "namespace": "ui.agents.detail",
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 3,
+      "verdict": "clean: 0 blocker, 0 major, 0 minor, 0 nit over 3 new keys (whole file 50 keys checked mechanically)",
+      "findings": [],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "en_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+      "hi_sha256": "1c123f949bff4e8650697b24e24231fe09d32e5f6b3aa389b4a03038afd763b6",
+      "context_sha256": "a0e40ba7fceccdf78da28d064fd4386cc48d8f1c80127a5721550e879c49b511",
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.detail.json",
+        "target": "src/i18n/catalogues/hi/ui.agents.detail.json",
+        "context": "src/i18n/catalogues/en/ui.agents.detail.context.json"
+      }
+    },
+    "ui.agents.upload": {
+      "namespace": "ui.agents.upload",
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 6,
+      "verdict": "clean: 0 blocker, 0 major, 0 minor, 0 nit over 6 new keys (whole file 29 keys checked mechanically)",
+      "findings": [],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "en_sha256": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949",
+      "hi_sha256": "0953a228e646ee9c165ccfd8ed1f27b1e189a2bedc26537ca63bc0e5e8819dbe",
+      "context_sha256": "3141f45c4b8fc17b96061a4556a66b3133bbfe27345ee7e4d929dfe21ee049f0",
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.upload.json",
+        "target": "src/i18n/catalogues/hi/ui.agents.upload.json",
+        "context": "src/i18n/catalogues/en/ui.agents.upload.context.json"
+      }
+    },
+    "ui.hub.pages": {
+      "namespace": "ui.hub.pages",
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 2,
+      "verdict": "clean: 0 blocker, 0 major, 0 minor, 0 nit over 2 new keys (whole file 37 keys checked mechanically)",
+      "findings": [],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "en_sha256": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6",
+      "hi_sha256": "829d55695b37c6e58b9689c7f4d436027ef861fd7c9b918bb3818e01219b1be8",
+      "context_sha256": "d913efa6ea062fe5c04861c6db202d5bf303b7b0c1a6f9c7efbdaa4b5c095d10",
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.hub.pages.json",
+        "target": "src/i18n/catalogues/hi/ui.hub.pages.json",
+        "context": "src/i18n/catalogues/en/ui.hub.pages.context.json"
+      }
+    },
+    "ui.hub.teams": {
+      "namespace": "ui.hub.teams",
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 2,
+      "verdict": "clean: 0 blocker, 0 major, 0 minor, 0 nit over 2 new keys (whole file 49 keys checked mechanically)",
+      "findings": [],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "en_sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+      "hi_sha256": "693742d696271132acd44eb8d7217e0b43c9ed7772ce56e8d4211f73a48880a2",
+      "context_sha256": "b062f0ca8aed037084233730702e41c6f3ef09aa39bed405e007466716c711a0",
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.hub.teams.json",
+        "target": "src/i18n/catalogues/hi/ui.hub.teams.json",
+        "context": "src/i18n/catalogues/en/ui.hub.teams.context.json"
+      }
+    },
+    "ui.common.actions": {
+      "namespace": "ui.common.actions",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "keys_audited": 1,
+      "verdict": "clean-with-findings: 0 blocker, 0 major, 0 minor, 1 nit over 1 new keys (whole file 51 keys checked mechanically)",
+      "findings": [
+        {
+          "id": "HI-L2-03",
+          "severity": "nit",
+          "category": "fit",
+          "key": "ui.common.actions.retrying",
+          "current": "कोशिश की जा रही है…",
+          "problem": "19 characters against a 7-character English label and the same button's idle label फिर कोशिश करें (15). The call site is an auto-width ghost Button inside a wrapping <output> (agent-hub-page.tsx:1183-1189), so pressing it widens the button by ~4 characters — visible, not clipping. The passive-progressive itself matches shipped in-flight copy (बनाई जा रही है..., लोड हो रहा है...) and U+2026 is correct.",
+          "proposed": "कोशिश हो रही है…"
+        }
+      ],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      },
+      "en_sha256": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9",
+      "hi_sha256": "5107a5f9b3abb12181a2ed3b22d053f950b931ea61f3845bf428de8c2c23192f",
+      "context_sha256": "48756cd31d4abbec5d56b3648ffb2fefe578c074645386480c91b4921accf321",
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.actions.json",
+        "target": "src/i18n/catalogues/hi/ui.common.actions.json",
+        "context": "src/i18n/catalogues/en/ui.common.actions.context.json"
+      }
+    }
+  }
+}

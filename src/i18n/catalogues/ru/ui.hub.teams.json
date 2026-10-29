@@ -45,5 +45,7 @@
 	"ui.hub.teams.pull": "Загрузить",
 	"ui.hub.teams.pull_failed": "Не удалось загрузить «{name}».",
 	"ui.hub.teams.pull_target": "Загрузить команду {name}",
-	"ui.hub.teams.pulling": "Загрузка…"
+	"ui.hub.teams.pulling": "Загрузка…",
+	"ui.hub.teams.recency.created": "создано {when}",
+	"ui.hub.teams.recency.updated": "обновлено {when}"
 }

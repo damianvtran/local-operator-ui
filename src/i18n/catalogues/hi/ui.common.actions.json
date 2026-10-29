@@ -5,6 +5,7 @@
 	"ui.common.actions.copy_failed": "कॉपी नहीं हो सका। इसे चुनकर खुद कॉपी करें।",
 	"ui.common.actions.retry": "फिर कोशिश करें",
 	"ui.common.actions.retry_again": "फिर कोशिश करें",
+	"ui.common.actions.retrying": "कोशिश की जा रही है…",
 	"ui.common.actions.date_time_picker.select_date": "तारीख़ चुनें",
 	"ui.common.actions.date_time_picker.choose_date": "{label} की तारीख़ चुनें",
 	"ui.common.actions.date_time_picker.select_time": "समय चुनें",
