@@ -132,6 +132,35 @@ test("the shipped pane renders its ready, loading and error states", () => {
  * the composer can send.
  */
 test("the empty thread states the reply count once and invites only when it can send", () => {
+	/*
+	 * THE POSITIVE HALF, and the reason it is here: absence-only assertions let the
+	 * whole count block be deleted and stay green (code round 2, F1). This renders a
+	 * thread that actually has replies, so the line has to exist AND say the right
+	 * number; the empty render below proves the zero is dropped without dropping
+	 * the line.
+	 */
+	const counted = mod.renderToStaticMarkup(
+		mod.createElement(mod.TeamBridgeThreadPaneView, {
+			root: { ...root, reply_count: 3 },
+			replies: [root, root, root],
+			state: "ready",
+			labelFor: (s) => s.display_label,
+			onClose() {},
+			onRetry() {},
+			onSend: async () => {},
+		}),
+	);
+	assert.match(
+		counted,
+		/3 replies/,
+		"a thread with replies states how many, above the rows",
+	);
+	assert.doesNotMatch(
+		counted,
+		/No replies yet/,
+		"a counted thread is not empty",
+	);
+
 	const writable = mod.renderToStaticMarkup(
 		mod.createElement(mod.TeamBridgeThreadPaneView, {
 			root,

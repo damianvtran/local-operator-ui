@@ -216,14 +216,16 @@ function TeamBridgeThreadPaneBody({
 		contentKey: `${replies.length}:${replies.at(-1)?.id ?? ""}`,
 	});
 	const hasContent = Boolean(draft.trim()) || images.count > 0;
-	/* CAN THIS PANE ACTUALLY SEND? The composer's own guards, stated once: a
-	 * read-only organization and a pane that is not `ready` both withhold the
-	 * composer, so an empty state must not INVITE a reply that has nowhere to go
-	 * (design round 1, D3). With no invitation to make, the empty state renders
-	 * nothing: the read-only note in the composer slot is the sentence that
-	 * explains the state, and minting a second "No replies yet." variant would
-	 * owe a translation round in seven locales to say what the pane already says. */
-	const canStartThread = !readOnly && state === "ready";
+	/* CAN THIS PANE ACTUALLY SEND? An empty state must not INVITE a reply that has
+	 * nowhere to go (design round 1, D3). Only `readOnly` can answer no here: the
+	 * render below dispatches `loading` and `error` before it ever reaches the
+	 * empty branch, so `state` is already `ready` at this use site, and carrying
+	 * it as a term would advertise a case the branch order owns (code round 2,
+	 * F2). With no invitation to make, the empty state renders nothing: the
+	 * read-only note in the composer slot is the sentence that explains the pane,
+	 * and minting a second "No replies yet." variant would owe a translation
+	 * round in seven locales to say what that note already says. */
+	const canStartThread = !readOnly;
 	const submit = async () => {
 		const body = draft.trim();
 		if (images.blocked) {
