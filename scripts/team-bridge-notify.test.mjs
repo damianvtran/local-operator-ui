@@ -2341,6 +2341,29 @@ for (const [label, next] of [
 	});
 }
 
+test("M1 an A to B to A same-epoch switch during the image wait posts nothing", async () => {
+	const { dir, file } = tempFile();
+	try {
+		const core = fakeCore(() => true);
+		const cache = imageCache({ request: core.request });
+		const clock = waitClock();
+		const h = harness({ file, images: cache, timers: clock });
+		const pending = h.notifier.notify(request({ sender: personSender() }));
+		assert.equal(core.calls.length, 1, "the post-wait path is in flight");
+		h.notifier.setAuthority({ accountId: "acct_b", epoch: 1 });
+		h.notifier.setAuthority({ accountId: "acct_a", epoch: 1 });
+		// The owner and epoch match again, but the withdrawal revision must still
+		// reject the wait's completion. A test that only checks admission would
+		// miss this exact A -> B -> A race.
+		clock.fireAll();
+		assert.deepEqual(await pending, { shown: false });
+		assert.equal(h.banners.length, 0);
+		assert.equal(h.store.notifiedSeq("acct_a", "bcv_abc123"), undefined);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
 test("M1 the window gaining focus during the wait suppresses the banner", async () => {
 	const { dir, file } = tempFile();
 	try {
@@ -2677,6 +2700,242 @@ test("Q-2 a banner for an uncached sender starts its own fetch while warming is 
 			"composite:initials/person/acc_zed/ZO",
 		);
 		core.releaseAll();
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("Q-3 a queued initials warm is promoted with the photo and wins the deadline", async () => {
+	const { dir, file } = tempFile();
+	try {
+		/*
+		 * Counted at the REQUEST boundary rather than at the fake core. The defect
+		 * is a request that was never made, and a fake core that holds a reply
+		 * would otherwise make "not requested" and "requested and pending" look
+		 * identical.
+		 */
+		const calls = [];
+		const held = [];
+		const cache = imageCache({
+			request: (input) => {
+				calls.push(`${input.accountId}/${input.avatar ? "photo" : "initials"}`);
+				return new Promise((done) =>
+					held.push({ input, done: () => done(coreBytes(input)) }),
+				);
+			},
+		});
+		const clock = waitClock();
+		const h = harness({ file, images: cache, timers: clock });
+		const avatar = photoOf("acc_zed", "0123456789abcdef");
+		const zed = personSender({
+			account_id: "acc_zed",
+			display_name: "Zed Ode",
+			avatar,
+		});
+		h.notifier.syncDirectory({
+			tenantId: "tnt_1",
+			members: [
+				...["acc_ben", "acc_cara"].map((account_id) =>
+					personSender({ account_id }),
+				),
+				zed,
+			],
+		});
+		assert.deepEqual(
+			calls,
+			["acc_ben/initials", "acc_cara/initials"],
+			"the warm lane is saturated, so zed's variants are still queued",
+		);
+		const pending = h.notifier.notify(
+			request({ conversationId: "bcv_zed", sender: zed }),
+		);
+		assert.deepEqual(
+			calls.slice(2),
+			["acc_zed/photo", "acc_zed/initials"],
+			"the queued initials is promoted to the post lane alongside the photo",
+		);
+		// The photo stays pending: the promoted initials answer first, well inside
+		// the deadline, so the banner never reaches the app icon.
+		for (const entry of held.filter(
+			({ input }) => input.accountId === "acc_zed" && !input.avatar,
+		))
+			entry.done();
+		await settle();
+		assert.deepEqual(await pending, { shown: true });
+		assert.equal(
+			h.banners[0].options.icon,
+			"composite:initials/person/acc_zed/ZO",
+			"initials, never the app icon, while the photo is still pending",
+		);
+		assert.equal(h.banners.length, 1, "the late photo never re-posts");
+		assert.equal(
+			calls.filter((call) => call === "acc_zed/initials").length,
+			1,
+			"the promotion is the queued warm's first and only initials request",
+		);
+		for (const { done } of held.splice(0)) done();
+		await settle();
+		assert.equal(
+			h.banners.length,
+			1,
+			"a late photo never posts a second banner",
+		);
+	} finally {
+		rmSync(dir, { force: true, recursive: true });
+	}
+});
+
+test("Q-3 the initials sweep is independent of warm pump timing, and the app icon needs both variants to miss", async () => {
+	/*
+	 * Q-2 c3's variable was how far the warm pump had got when the banner landed
+	 * (the QA sweep at +0/+100/+200/+300/+400/+600 ms). The three positions are:
+	 * zed's initials still queued (0 replies released), in flight (1), and warm
+	 * work moved on to the photo (2). All three must post initials.
+	 */
+	for (const released of [0, 1, 2]) {
+		const { dir, file } = tempFile();
+		try {
+			const calls = [];
+			const held = [];
+			const cache = imageCache({
+				request: (input) => {
+					calls.push(
+						`${input.accountId}/${input.avatar ? "photo" : "initials"}`,
+					);
+					return new Promise((done) =>
+						held.push({ input, done: () => done(coreBytes(input)) }),
+					);
+				},
+			});
+			const clock = waitClock();
+			const h = harness({ file, images: cache, timers: clock });
+			const avatar = photoOf("acc_zed", "0123456789abcdef");
+			const zed = personSender({
+				account_id: "acc_zed",
+				display_name: "Zed Ode",
+				avatar,
+			});
+			h.notifier.syncDirectory({
+				tenantId: "tnt_1",
+				members: [
+					...["acc_ben", "acc_cara"].map((account_id) =>
+						personSender({ account_id }),
+					),
+					zed,
+				],
+			});
+			// Freeing a warm reply is the fake-clock equivalent of the banner landing
+			// later: it is exactly how far the pump got before the notify.
+			for (let i = 0; i < released; i++) {
+				held.shift()?.done();
+				await settle();
+			}
+			const pending = h.notifier.notify(
+				request({ conversationId: "bcv_zed", sender: zed }),
+			);
+			const initialsCalls = () =>
+				calls.filter((call) => call === "acc_zed/initials");
+			assert.equal(
+				initialsCalls().length,
+				1,
+				`one initials request at warm position ${released}`,
+			);
+			// Only the initials answer in time. The photo stays over the deadline,
+			// exactly as in the QA reproduction (photo > 250 ms).
+			for (const { input, done } of held.filter(
+				({ input }) => input.accountId === "acc_zed",
+			))
+				if (!input.avatar) done();
+			await settle();
+			clock.fireAll();
+			assert.deepEqual(await pending, { shown: true });
+			assert.equal(
+				h.banners[0].options.icon,
+				"composite:initials/person/acc_zed/ZO",
+				`initials, never the app icon, at warm position ${released}`,
+			);
+			assert.equal(
+				initialsCalls().length,
+				1,
+				"no second initials request after the wait",
+			);
+			for (const { done } of held.splice(0)) done();
+			await settle();
+		} finally {
+			rmSync(dir, { force: true, recursive: true });
+		}
+	}
+
+	// Only a sender whose BOTH variants cannot resolve in time gets the app icon,
+	// and the 250 ms deadline still does not wait for them.
+	const { dir, file } = tempFile();
+	try {
+		const calls = [];
+		const cache = imageCache({
+			request: (input) => {
+				calls.push(`${input.accountId}/${input.avatar ? "photo" : "initials"}`);
+				return new Promise(() => {});
+			},
+		});
+		const clock = waitClock();
+		const h = harness({ file, images: cache, timers: clock });
+		const zed = personSender({
+			account_id: "acc_zed",
+			display_name: "Zed Ode",
+			avatar: photoOf("acc_zed", "0123456789abcdef"),
+		});
+		h.notifier.syncDirectory({ tenantId: "tnt_1", members: [zed] });
+		const pending = h.notifier.notify(
+			request({ conversationId: "bcv_zed", sender: zed }),
+		);
+		clock.fireAll();
+		assert.deepEqual(await pending, { shown: true });
+		assert.equal(h.banners[0].options.icon, "app-icon");
+		assert.deepEqual(
+			calls,
+			["acc_zed/initials", "acc_zed/photo"],
+			"both variants were tried exactly once",
+		);
+	} finally {
+		rmSync(dir, { force: true, recursive: true });
+	}
+});
+
+test("m2 capability replay restores initials after a backend clear and is bounded", async () => {
+	const { dir, file } = tempFile();
+	try {
+		const core = fakeCore();
+		let enabled = false;
+		const cache = imageCache({ enabled: () => enabled, request: core.request });
+		const h = harness({ file, images: cache });
+		const sender = personSender({
+			avatar: photoOf("acc_ben", "0123456789abcdef"),
+		});
+		h.notifier.syncDirectory({ tenantId: "tnt_1", members: [sender] });
+		await settle();
+		assert.equal(core.calls.length, 0, "capability delay stores no early work");
+		enabled = true;
+		h.notifier.replayDirectories();
+		await settle();
+		assert.equal(
+			cache.peek(request({ sender })),
+			"composite:photo/person/acc_ben/0123456789abcdef",
+		);
+		assert.equal(core.calls.filter((input) => !input.avatar).length, 1);
+		cache.clear();
+		h.notifier.replayDirectories();
+		await settle();
+		assert.equal(
+			cache.peek(request({ sender })),
+			"composite:photo/person/acc_ben/0123456789abcdef",
+		);
+		h.notifier.replayDirectories();
+		await settle();
+		assert.equal(
+			core.calls.length,
+			4,
+			"replays reconcile live entries without a loop",
+		);
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}

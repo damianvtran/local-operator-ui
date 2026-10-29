@@ -31,6 +31,8 @@ export interface TeamBridgeNotificationImageSource {
 	 * deadline wins, so the fallback never costs a network call. */
 	peek(request: TeamBridgeNotifyRequest): NativeImage | string | undefined;
 	syncDirectory(directory: TeamBridgeNotificationDirectory): void;
+	/** A true transition replays rosters once; repeats are zero-request no-ops. */
+	replayDirectory(directories: TeamBridgeNotificationDirectory[]): void;
 	clear(): void;
 }
 
@@ -57,6 +59,9 @@ export const TEAM_BRIDGE_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 /** The size the OS banner actually shows. Asking core for 256 px would decode
  * and retain 16x the bitmap only to have the platform scale it back down. */
 export const TEAM_BRIDGE_IMAGE_SIZE = 64;
+/** A capability flip replays only this many rosters, mirroring the bounded
+ * renderer fan-out. The cache's existing queue bound caps the queued work. */
+export const TEAM_BRIDGE_DIRECTORY_REPLAY_MAX = 16;
 /** Long enough to absorb a broken avatar across a burst, short enough that a
  * repaired hub/photo is tried again without waiting out the positive TTL. */
 export const TEAM_BRIDGE_IMAGE_NEGATIVE_TTL_MS = 30_000;
@@ -96,14 +101,17 @@ export type TeamBridgeNotificationDirectory = {
 	members: TeamBridgeNotificationSender[];
 };
 
+const WORD_SEPARATOR = /\s+/u;
+const INITIAL_CHARACTER = /^[\p{L}\p{N}]$/u;
+
 /** Initials are caller data, not private image bytes. Unicode letters/digits
  * only, at most two code points, matching core's closed query vocabulary. */
 export function teamBridgeSenderInitials(name: string): string {
-	const words = name.normalize("NFC").trim().split(/\s+/u);
+	const words = name.normalize("NFC").trim().split(WORD_SEPARATOR);
 	const selected =
 		words.length > 1 ? [words[0], words[words.length - 1]] : words;
 	return selected
-		.map((word) => [...word].find((ch) => /^[\p{L}\p{N}]$/u.test(ch)) ?? "")
+		.map((word) => [...word].find((ch) => INITIAL_CHARACTER.test(ch)) ?? "")
 		.join("");
 }
 
@@ -468,13 +476,24 @@ export class TeamBridgeNotificationImages
 	 * The icon for one banner, within `deadline` ms.
 	 *
 	 * Order: a cached primary (photo, or initials for a sender without one); else
-	 * at most ONE request for the primary on the banner lane - joining a warm
-	 * already in flight, or pulling a queued warm forward - raced against the
-	 * deadline; then the cached initials. The fallback never costs a request:
-	 * it was warmed at directory load. `undefined` (the app icon) therefore
-	 * means the sender is unknown to this cache - no sender descriptor, no core
-	 * capability, or a roster whose initials warm has not landed yet.
+	 * at most one request per variant on the banner lane. A queued initials warm
+	 * is PROMOTED, not duplicated, and runs alongside the photo so either can
+	 * answer before the shared deadline. The app icon is reserved for a sender
+	 * whose variants cannot resolve in time, not merely a warm queue not reached.
 	 */
+	/** A replay is initiated by the ONE capability transition false -> true, never
+	 * by cache completion, so eviction refills are finite and cannot loop. Missing
+	 * entries are deduped by syncDirectory; the last accepted tenant roster owns
+	 * revocation. */
+	replayDirectory(directories: TeamBridgeNotificationDirectory[]): void {
+		if (!this.options.enabled()) return;
+		for (const directory of directories.slice(
+			0,
+			TEAM_BRIDGE_DIRECTORY_REPLAY_MAX,
+		))
+			this.syncDirectory(directory);
+	}
+
 	async read(
 		request: TeamBridgeNotifyRequest,
 		deadline: number,
@@ -493,27 +512,32 @@ export class TeamBridgeNotificationImages
 			state === undefined && deadline > 0
 				? this.launch(primary, "post")
 				: undefined;
-		// Only an initials warm ALREADY in flight is worth joining; starting one
-		// here would be a second request in the post path.
-		const fallbackFlight = fallback
-			? this.pending.get(fallback.key)
-			: undefined;
-		if (flight || fallbackFlight) {
+		// This is the queued warm's first and ONLY request, moved to the post lane.
+		// Do not start a fallback that was never queued: that would be a new retry
+		// rather than promotion of work the roster had already authorized.
+		const fallbackFlight =
+			fallback && deadline > 0
+				? (this.pending.get(fallback.key) ??
+					(this.queue.has(fallback.key)
+						? this.launch(fallback, "post")
+						: undefined))
+				: undefined;
+		const flights = [flight, fallbackFlight].filter(
+			(candidate): candidate is Promise<void> => candidate !== undefined,
+		);
+		if (flights.length > 0) {
 			let timer: ReturnType<typeof setTimeout> | undefined;
 			try {
-				// Hard race: the deadline wins even if the hub/decode is pending.
-				// A late completion only fills the cache; it never re-posts.
-				await Promise.race([
-					(async () => {
-						await flight;
-						if (this.entry(primary.key)) return;
-						await fallbackFlight;
-					})(),
-					new Promise<void>((resolve) => {
-						timer = setTimeout(resolve, deadline);
-						timer.unref?.();
-					}),
-				]);
+				// Both variants race the SAME deadline. Check after the first settles:
+				// initials need not wait for a slow photo, nor a fast photo for initials.
+				const expired = new Promise<void>((resolve) => {
+					timer = setTimeout(resolve, deadline);
+					timer.unref?.();
+				});
+				await Promise.race([...flights, expired]);
+				const ready = this.peek(request);
+				if (ready) return ready;
+				await Promise.race([Promise.all(flights), expired]);
 			} finally {
 				if (timer) clearTimeout(timer);
 			}

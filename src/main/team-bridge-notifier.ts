@@ -263,6 +263,10 @@ export class TeamBridgeNotifier {
 	private settleTimer: unknown;
 	/** Bumped by every withdrawal. A notify that waited across one must not post. */
 	private revision = 0;
+	/** The last accepted roster per tenant, not raw hub data or a persisted copy.
+	 * Replayed once when core's capability returns after a backend restart; kept
+	 * across a renderer document reset, whose directoryVersion is not re-sent. */
+	private directories = new Map<string, TeamBridgeNotificationDirectory>();
 	/** Banners withdrawn on purpose: their clicks answer as stale, not as a route. */
 	private readonly revokedBanners = new WeakSet<TeamBridgeBanner>();
 	private readonly createBanner: (
@@ -293,6 +297,7 @@ export class TeamBridgeNotifier {
 			current.accountId !== next.accountId ||
 			current.settling !== next.settling
 		) {
+			this.directories.clear();
 			this.options.images?.clear();
 		}
 		/*
@@ -316,6 +321,7 @@ export class TeamBridgeNotifier {
 			next.accountId !== this.epochOwner
 		) {
 			if (!next.settling) {
+				this.directories.clear();
 				this.clearSettleDeadline();
 				this.settledOwner = next.accountId;
 				this.authority = { epoch: next.epoch, settling: false };
@@ -347,6 +353,15 @@ export class TeamBridgeNotifier {
 		if (!next.settling && this.pendingOpen) this.options.host.signalOpen();
 	}
 
+	/** Rebuild initials after core's avatar capability becomes available. The
+	 * renderer sends a roster only on content changes, so a backend restart must
+	 * replay the accepted snapshot here rather than wait for a name/photo edit.
+	 * A capability callback is one finite reconciliation, not a recurring retry.
+	 * syncDirectory de-duplicates live, queued and in-flight work. */
+	replayDirectories(): void {
+		this.options.images?.replayDirectory([...this.directories.values()]);
+	}
+
 	/** The renderer already fetched this roster; main revalidates its narrow
 	 * envelope and drops entries whose member/hash disappeared, then warms the
 	 * rest. Tenant scoping prevents one roster refreshing another tenant. */
@@ -368,14 +383,17 @@ export class TeamBridgeNotifier {
 			!Array.isArray(directory.members)
 		)
 			return;
-		this.options.images?.syncDirectory({
+		const accepted = {
 			owner: { accountId: authority.accountId, epoch: authority.epoch },
 			tenantId: directory.tenantId,
 			members: directory.members as TeamBridgeNotificationDirectory["members"],
-		});
+		};
+		this.directories.set(directory.tenantId, accepted);
+		this.options.images?.syncDirectory(accepted);
 	}
 
 	resetAuthority(): void {
+		this.directories.clear();
 		this.options.images?.clear();
 		this.clearSettleDeadline();
 		// A new document has a new epoch journal, not a new signed-in person.
@@ -442,6 +460,7 @@ export class TeamBridgeNotifier {
 	private revoke(): void {
 		// Fences every banner still inside its image wait: see `notify`.
 		this.revision += 1;
+		this.directories.clear();
 		this.options.images?.clear();
 		// Preserve only neutral stale feedback after a settled account change.
 		if (this.pendingOpen) this.pendingUnavailable = true;

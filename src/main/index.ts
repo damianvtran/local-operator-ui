@@ -2645,6 +2645,10 @@ app
 						Number(
 							body?.result?.features?.team_bridge_notification_avatar ?? 0,
 						) >= 1;
+					// A capability transition is the only trigger; replay is a one-shot
+					// reconciliation, not a recurring retry of a failed avatar request.
+					if (notificationAvatarAvailable)
+						teamBridgeNotifier.replayDirectories();
 				})
 				.catch(() => undefined);
 			/*

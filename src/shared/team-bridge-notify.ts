@@ -58,6 +58,7 @@ const MAX_SEQ = Number.MAX_SAFE_INTEGER;
 
 /** An id safe to put on the channel, in a URL query, and in a file key. */
 const SAFE_ID = /^[A-Za-z0-9_.:-]{1,128}$/;
+const AVATAR_HASH = /^[0-9a-f]{16}$/;
 
 /**
  * One unsafe-character policy for every banner line, at BOTH ends of IPC.
@@ -229,7 +230,7 @@ export function parseTeamBridgeNotificationSender(
 		typeof ref === "object" &&
 		ref.account_id === accountId &&
 		typeof ref.hash === "string" &&
-		/^[0-9a-f]{16}$/.test(ref.hash)
+		AVATAR_HASH.test(ref.hash)
 			? { account_id: accountId, hash: ref.hash }
 			: undefined;
 	return {
