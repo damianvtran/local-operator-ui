@@ -460,6 +460,28 @@ function OwnerAuditPanel({
 	);
 }
 
+/**
+ * The section's own header: what this list IS, in the rail.
+ *
+ * Extracted so the slot and the Storybook story render the SAME chrome. The
+ * story used to compose its own heading, which meant the frames showed a
+ * heading the app does not ship — invisible to every other check, and exactly
+ * the kind of drift a design review catches in one glance.
+ */
+export function OwnerAuditSectionHeader() {
+	useI18nLocale();
+	return (
+		<>
+			<h2 className="px-3 py-2 font-medium text-meta text-ink-dim tracking-wide">
+				{t("ui.ownerAudit.title")}
+			</h2>
+			<p className="px-3 pb-2 text-meta text-ink-dim">
+				{t("ui.ownerAudit.read_only")}
+			</p>
+		</>
+	);
+}
+
 export type OwnerAuditSlot = {
 	active: boolean;
 	clear: () => void;
@@ -507,12 +529,7 @@ export function useOwnerAuditSurface({
 		),
 		rail: (beforeSelect) => (
 			<section className="mt-4" aria-label={t("ui.ownerAudit.title")}>
-				<h2 className="px-3 py-2 font-medium text-meta text-ink-dim tracking-wide">
-					{t("ui.ownerAudit.title")}
-				</h2>
-				<p className="px-3 pb-2 text-meta text-ink-dim">
-					{t("ui.ownerAudit.read_only")}
-				</p>
+				<OwnerAuditSectionHeader />
 				{organizations.map((organization) => (
 					<div key={`${accountId}:${organization.tenantId}`}>
 						{organizations.length > 1 && (

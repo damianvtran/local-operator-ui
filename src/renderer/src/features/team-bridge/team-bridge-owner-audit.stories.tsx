@@ -1,4 +1,3 @@
-import { t } from "@shared/i18n";
 import type { Meta, StoryObj } from "@storybook/react";
 import type {
 	OwnerAuditConversation,
@@ -7,6 +6,7 @@ import type {
 import {
 	OwnerAuditPanelView,
 	OwnerAuditRailView,
+	OwnerAuditSectionHeader,
 } from "./team-bridge-owner-audit";
 
 /**
@@ -213,12 +213,9 @@ function Section({
 	return (
 		<div className="flex h-screen min-h-0 bg-canvas text-ink">
 			<aside className="flex w-[300px] shrink-0 flex-col overflow-hidden pe-2 ps-2 pt-8">
-				<h2 className="px-3 py-2 text-xs font-medium text-ink-muted">
-					{t("ui.ownerAudit.title")}
-				</h2>
-				<p className="px-3 pb-2 text-xs text-ink-muted">
-					{t("ui.ownerAudit.read_only")}
-				</p>
+				{/* The SLOT's own header, not a copy of it: a story that composes its
+				 * own chrome shows a heading the app does not ship. */}
+				<OwnerAuditSectionHeader />
 				<div className="min-h-0 flex-1 overflow-auto">
 					<OwnerAuditRailView
 						conversations={conversations}
