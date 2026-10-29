@@ -251,6 +251,14 @@ function exempt(file, name, index, why, site, noEnv) {
 
 const APP_SPAWN_SITES = [
 	guarded(
+		"scripts/browser-tab-menu-native-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app in an inactive window to prove the native tab-actions menu leaves the page visible; the build carries the live PostHog key, so this launch needs the telemetry switch",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
 		"scripts/browser-native-determination.mjs",
 		"spawn",
 		1,
@@ -280,6 +288,14 @@ const APP_SPAWN_SITES = [
 		1,
 		/(?:\{|,)\s*env\s*,/,
 		"boots a standalone Electron fixture for the S6b interactive approvals card, so the kill switch must ride the launch env like every app rig",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
+		"scripts/browser-approvals-s6d-capture.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless to capture the S6d approvals route; the build carries the live PostHog key, so this launch needs the telemetry switch",
 		/withTelemetryOff\(env\);/,
 	),
 	guarded(
@@ -409,14 +425,6 @@ const APP_SPAWN_SITES = [
 		/env,\s*detached:/,
 		"boots the built app headless against local fixture sites to exercise the address bar's local autocomplete with real input and real keys",
 		/const env = withTelemetryOff\(\s*withNotificationsOff\(\{/,
-	),
-	guarded(
-		"scripts/browser-tab-menu-turn-proof.mjs",
-		"spawn",
-		1,
-		/env:\s*spawnEnv,/,
-		"boots the built app headless against an isolated backend to open the tab-actions menu over a real running turn",
-		/withTelemetryOff\(spawnEnv\);/,
 	),
 	guarded(
 		"scripts/interrupt-esc-proof.mjs",

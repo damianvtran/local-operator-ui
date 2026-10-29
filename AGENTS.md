@@ -53,6 +53,9 @@ output. The short version of the parts most often got wrong:
   `box-shadow`** — this app is mostly scroll containers, and box-shadow rings
   get clipped by `overflow: hidden`.
 - **Nothing lifts, scales or translates on hover.** Hover is a colour step.
+- **Attention counts use the shared accent badge; totals use the subtle numeral.**
+  (`AttentionBadge` in `shared/components/ui/attention-badge.tsx`, operator
+  2026-10-28.)
 - **Agent output has a hierarchy** (§ 7): a question for the user is the most
   prominent thing on screen; internal reasoning is hidden by default. A
   completed action is one quiet line, not a card.

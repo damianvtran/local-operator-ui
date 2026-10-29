@@ -1,0 +1,275 @@
+{
+ "schema": 1,
+ "receipt_kind": "locale-audit (new-key delta round 2, PR #1444)",
+ "audit_id": "teambridge-pr1444-audit-c6f6f47ef39d-r2",
+ "date": "2026-10-28",
+ "instance": "c6f6f47ef39d-r2-hi",
+ "instance_note": "Auditor session c6f6f47ef39d with a round marker and per-locale suffix (precedent: e3a57e993d00-<locale>, 6d269032fdc7-r3-<locale>). One receipt per locale because findings are locale-specific. Uniqueness confirmed: 'grep -c c6f6f47ef39d i18n/ledger.json' returned 0 and no i18n/receipts/c6f6f47ef39d* existed before this run.",
+ "auditor": "i18n-auditor",
+ "agent": "i18n-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Harness session header: 'Model: anthropic/claude-opus-5-5', session c6f6f47ef39d. The translator recorded the same model; independence is by agent role and session, which is the ledger's rule.",
+ "model_fallback": {
+  "announced": false,
+  "observed": false
+ },
+ "independence": "Independent auditor (reviewer role, session c6f6f47ef39d). It authored none of the audited strings and edited no catalogue byte. The translator was the `translator` specialist (one subagent per locale, commit 27d9d0032c). This run wrote only these receipts (via ledger-assemble.mjs), the per-locale evidence records, and the ledger rows (via ledger-assemble.mjs).",
+ "status": "passed",
+ "result": "clean",
+ "translator": {
+  "agent": "translator",
+  "session": "not recorded in the commit (one translator subagent per locale)",
+  "model": "anthropic/claude-opus-5-5",
+  "fallback": "none recorded",
+  "commit": "27d9d0032cb5ef49a9b3ce4d107f4b022ff34a46",
+  "method": "LLM reasoning, no MT service (commit message of 27d9d0032c)"
+ },
+ "integration": {
+  "pr": 1444,
+  "branch": "fix/schedule-edit-conflict",
+  "base": "a46f236d6924e1480682e33ff198123140c7717d",
+  "origin_main_at_audit": "8e415fbab95563a9814c40cd295b7653579bcdfb",
+  "english_change_commit": "5c644cbf829c1945a0ed8066070163db21dba841",
+  "reviewed_head": "27d9d0032cb5ef49a9b3ce4d107f4b022ff34a46",
+  "worktree": "~/local-operator-ui/.worktrees/m1444"
+ },
+ "locale": "hi",
+ "namespace": "ui.teamBridge",
+ "scope": {
+  "keys_audited_linguistically": [
+   "ui.teamBridge.schedule.edit_failed",
+   "ui.teamBridge.schedule.edit_conflict",
+   "ui.teamBridge.schedule.edit_gone",
+   "ui.teamBridge.schedule.edit_gone_title",
+   "ui.teamBridge.schedule.conflict_body_replaced",
+   "ui.teamBridge.schedule.conflict_body_changed",
+   "ui.teamBridge.schedule.conflict_time_replaced",
+   "ui.teamBridge.schedule.conflict_time_changed",
+   "ui.teamBridge.schedule.conflict_images_added",
+   "ui.teamBridge.schedule.conflict_images_removed",
+   "ui.teamBridge.schedule.conflict_review",
+   "ui.teamBridge.schedule.conflict_nothing_left",
+   "ui.teamBridge.schedule.conflict_restore_body"
+  ],
+  "keys_read_for_consistency": [
+   "ui.teamBridge.schedule.title",
+   "ui.teamBridge.schedule.timezone",
+   "ui.teamBridge.schedule.when",
+   "ui.teamBridge.schedule.window",
+   "ui.teamBridge.schedule.invalid",
+   "ui.teamBridge.schedule.confirm",
+   "ui.teamBridge.schedule.failed",
+   "ui.teamBridge.schedule.confirm_action",
+   "ui.teamBridge.schedule.review",
+   "ui.teamBridge.schedule.list",
+   "ui.teamBridge.schedule.loading",
+   "ui.teamBridge.schedule.load_failed",
+   "ui.teamBridge.schedule.empty",
+   "ui.teamBridge.schedule.sending",
+   "ui.teamBridge.schedule.reschedule",
+   "ui.teamBridge.schedule.cancel",
+   "ui.teamBridge.schedule.cancel_failed",
+   "ui.teamBridge.schedule.success",
+   "ui.teamBridge.schedule.create_uncertain",
+   "ui.teamBridge.schedule.create_retry",
+   "ui.teamBridge.schedule.edit_body",
+   "ui.teamBridge.schedule.retry",
+   "ui.teamBridge.schedule.held",
+   "ui.teamBridge.schedule.discard_attempt",
+   "ui.teamBridge.attachments.add",
+   "ui.teamBridge.attachments.in_message",
+   "ui.teamBridge.attachments.remove_all",
+   "ui.teamBridge.attachments.error_upload",
+   "ui.teamBridge.attachments.limit",
+   "ui.teamBridge.attachments.failed_count",
+   "ui.teamBridge.attachments.expired_staged"
+  ],
+  "delta_kind": "new-key delta. Against origin/main 8e415fbab9 (whose en and target bytes equal this row's ledger source/target hashes), the only change in en and in this target is 13 added keys (254 keys, key-complete, 0 changed and 0 removed values). edit_failed/edit_conflict/edit_gone were removed from main by the rewrite in 5c644cbf82 and re-added with new English, so all 13 are audited fresh. The other 241 keys inherit the row's prior audit on byte identity."
+ },
+ "sha256": {
+  "en": "15702697617ce227e7fefe665077e28b3a26a7f9190beeb5884f252884ec9e04",
+  "hi": "a8c25fc63e15efe0abf7f35ee02abc717bb50ea377819008ff7b3cce00d6b918"
+ },
+ "context_sha256": "20a50fa1d840c1445aa4afe9320dbc911c47567aa742a51c95a2d695f1fade36",
+ "english": {
+  "ui.teamBridge.schedule.edit_failed": {
+   "value": "Couldn't save your changes. They're still here. Try again.",
+   "context_note": "Desktop Team Bridge, editing an existing scheduled message. The server did not save the change (not a conflict). The person's edits stay in the dialog and they can submit again."
+  },
+  "ui.teamBridge.schedule.edit_conflict": {
+   "value": "This message changed on another device.",
+   "context_note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. Headline of a warning notice; one or more detail sentences follow beneath it."
+  },
+  "ui.teamBridge.schedule.edit_gone": {
+   "value": "This message was cancelled or already sent, so it can't be changed.",
+   "context_note": "Desktop Team Bridge, editing an existing scheduled message. It is no longer pending (cancelled, or delivered, possibly from another device), so editing is impossible. The only action is Close; do not suggest retrying."
+  },
+  "ui.teamBridge.schedule.edit_gone_title": {
+   "value": "Message no longer scheduled",
+   "context_note": "Dialog title replacing 'Schedule message' when the edited scheduled message was cancelled or already sent and can no longer be changed."
+  },
+  "ui.teamBridge.schedule.conflict_body_replaced": {
+   "value": "Your text was replaced by the version from the other device.",
+   "context_note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. The person had edited the text, but the other device's text won and is now shown in the field. Pairs with the 'Use my text instead' button."
+  },
+  "ui.teamBridge.schedule.conflict_body_changed": {
+   "value": "The text was changed on the other device.",
+   "context_note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. The person had not edited the text; the other device changed it and the new text is shown."
+  },
+  "ui.teamBridge.schedule.conflict_time_replaced": {
+   "value": "Your new time was replaced by the time set on the other device.",
+   "context_note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. The person had picked a new send time, but the other device's time won and is now shown."
+  },
+  "ui.teamBridge.schedule.conflict_time_changed": {
+   "value": "The send time was changed on the other device.",
+   "context_note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. The person had not changed the send time; the other device changed it."
+  },
+  "ui.teamBridge.schedule.conflict_images_added": {
+   "value": "{count, plural, one {An image was added on the other device.} other {# images were added on the other device.}}",
+   "context_note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. Images attached on the other device now appear in the dialog. ICU plural on count."
+  },
+  "ui.teamBridge.schedule.conflict_images_removed": {
+   "value": "{count, plural, one {An image was removed on the other device.} other {# images were removed on the other device.}}",
+   "context_note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. Images the person could still see were removed on the other device. ICU plural on count."
+  },
+  "ui.teamBridge.schedule.conflict_review": {
+   "value": "The latest version is shown, with the rest of your changes kept. Review it and try again.",
+   "context_note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. Shown when some of the person's own changes survived and the Review button is enabled."
+  },
+  "ui.teamBridge.schedule.conflict_nothing_left": {
+   "value": "The latest version is shown. None of your changes are left to save.",
+   "context_note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. Shown when none of the person's changes remain; the only action offered is Close."
+  },
+  "ui.teamBridge.schedule.conflict_restore_body": {
+   "value": "Use my text instead",
+   "context_note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. Button that puts the person's own lost text back into the message field. First person ('my') is the person's own voice."
+  }
+ },
+ "audited_strings": {
+  "ui.teamBridge.schedule.edit_failed": "आपके बदलाव सहेजे नहीं जा सके। वे यहीं मौजूद हैं। फिर कोशिश करें।",
+  "ui.teamBridge.schedule.edit_conflict": "यह संदेश किसी दूसरे डिवाइस पर बदला गया है।",
+  "ui.teamBridge.schedule.edit_gone": "यह संदेश रद्द हो चुका है या पहले ही भेजा जा चुका है, इसलिए इसे बदला नहीं जा सकता।",
+  "ui.teamBridge.schedule.edit_gone_title": "संदेश अब शेड्यूल नहीं है",
+  "ui.teamBridge.schedule.conflict_body_replaced": "आपके टेक्स्ट की जगह दूसरे डिवाइस वाला संस्करण आ गया है।",
+  "ui.teamBridge.schedule.conflict_body_changed": "टेक्स्ट दूसरे डिवाइस पर बदला गया है।",
+  "ui.teamBridge.schedule.conflict_time_replaced": "आपके चुने गए नए समय की जगह दूसरे डिवाइस पर तय किया गया समय आ गया है।",
+  "ui.teamBridge.schedule.conflict_time_changed": "भेजने का समय दूसरे डिवाइस पर बदला गया है।",
+  "ui.teamBridge.schedule.conflict_images_added": "{count, plural, one {दूसरे डिवाइस पर # तस्वीर जोड़ी गई है।} other {दूसरे डिवाइस पर # तस्वीरें जोड़ी गई हैं।}}",
+  "ui.teamBridge.schedule.conflict_images_removed": "{count, plural, one {दूसरे डिवाइस पर # तस्वीर हटाई गई है।} other {दूसरे डिवाइस पर # तस्वीरें हटाई गई हैं।}}",
+  "ui.teamBridge.schedule.conflict_review": "सबसे नया संस्करण दिखाया गया है, और आपके बाकी बदलाव बनाए रखे गए हैं। इसे जाँचें और फिर कोशिश करें।",
+  "ui.teamBridge.schedule.conflict_nothing_left": "सबसे नया संस्करण दिखाया गया है। सहेजने के लिए आपका कोई बदलाव नहीं बचा है।",
+  "ui.teamBridge.schedule.conflict_restore_body": "मेरा टेक्स्ट ही इस्तेमाल करें"
+ },
+ "checks": {
+  "placeholders": "only conflict_images_added/removed carry ICU: {count, plural, …} kept byte-exact (variable 'count', no rename); # present in every branch where English uses it, and omitted only in a 1-only 'one' branch that spells the number out as English does. The other 11 keys have no { } # < > in en or target.",
+  "plurals": "one/other (0 and 1 are one). Target keeps # in one ('# तस्वीर जोड़ी गई है'), right because hi one covers 0; other '# तस्वीरें ... गई हैं' with plural agreement.",
+  "punctuation": "Every sentence ends with the danda । (no Latin full stop after Devanagari); nukta kept (ज़्यादा not needed here; बाकी spelled as the sibling schedule.empty spells it).",
+  "glossary": "device→डिवाइस (glossary row); schedule→शेड्यूल (glossary row); image→तस्वीर and remove→हटाना as in attachments.*; version→संस्करण as in 70 other app keys.",
+  "register": "आप throughout (आपके, polite imperatives करें/जाँचें); button keeps the first-person voice ('मेरा टेक्स्ट').",
+  "meaning": "replaced (the person's edit lost) vs changed (the person had not edited) distinction kept for body and time; another device (headline) vs the other device (details) kept; edit_gone suggests no retry; conflict_review asks to review then retry; conflict_nothing_left offers no retry; restore button in first person.",
+  "overflow": "Every key's sidecar length is 'Concise; permit wrapping.'; labels (edit_gone_title, conflict_restore_body) measured, see execution."
+ },
+ "notes": "Accuracy: 'की जगह … आ गया है' carries 'was replaced by' idiomatically; replaced/changed split preserved; edit_gone 'इसलिए इसे बदला नहीं जा सकता' with no retry hint (the earlier-round 'अब' is not kept, but 'रद्द हो चुका है … भेजा जा चुका है' carries the finality — not a finding). Overflow: Devanagari strings are shorter than English in cells. Clean: 13 keys read, 0 findings.",
+ "findings": [],
+ "prior_findings_rechecked": "none open on this row",
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide_es": {
+   "path": "~/local-operator/i18n/style-guides/es.md",
+   "revision": "95dea370856c5ab99309246b5e41869ea5c69d7a",
+   "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+  },
+  "style_guide_fr": {
+   "path": "~/local-operator/i18n/style-guides/fr.md",
+   "revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+   "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+  },
+  "style_guide_hi": {
+   "path": "~/local-operator/i18n/style-guides/hi.md",
+   "revision": "14f73c4dcce62d858508fb6313b7f0416999a63b",
+   "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  },
+  "style_guide_ru": {
+   "path": "~/local-operator/i18n/style-guides/ru.md",
+   "revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+   "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+  },
+  "style_guide_ur": {
+   "path": "~/local-operator/i18n/style-guides/ur.md",
+   "revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+   "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+  },
+  "style_guide_vi": {
+   "path": "~/local-operator/i18n/style-guides/vi.md",
+   "revision": "6c085b93b6ecc1a27a0daab552302687b059a911",
+   "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+  },
+  "style_guide_zh-CN": {
+   "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+   "revision": "ad1de332210d47cc01e62393c2d0cd4708e2312b",
+   "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  },
+  "core_ref": "dadf192382fbce7cb97d8cfbdc99ff1c931d97b6",
+  "docs/I18N.md": {
+   "path": "docs/I18N.md",
+   "sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+  },
+  "AGENTS.md": {
+   "path": "AGENTS.md",
+   "sha256": "b05f5fd1472fe1617783e51bc709df8e6f079a87ceda0f2ff97fff539be320af"
+  },
+  "scripts/i18n/ledger-rules.mjs": {
+   "path": "scripts/i18n/ledger-rules.mjs",
+   "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+  },
+  "scripts/i18n/ledger-assemble.mjs": {
+   "path": "scripts/i18n/ledger-assemble.mjs",
+   "sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+  }
+ },
+ "execution": [
+  {
+   "command": "git log -1 --format='%H %s' (worktree ~/local-operator-ui/.worktrees/m1444)",
+   "result": "27d9d0032cb5ef49a9b3ce4d107f4b022ff34a46 i18n(team-bridge): translate the schedule edit conflict copy into every supported locale"
+  },
+  {
+   "command": "git merge-base HEAD origin/main",
+   "result": "a46f236d6924e1480682e33ff198123140c7717d"
+  },
+  {
+   "command": "git diff origin/main --stat -- src/i18n/catalogues/<l>/ui.teamBridge.json (each of es fr hi ru ur vi zh-CN)",
+   "result": "1 file changed, 13 insertions(+) for every locale"
+  },
+  {
+   "command": "python: compare origin/main vs HEAD key/value sets for en and each target ui.teamBridge.json",
+   "result": "254 keys each, key set equals en; 13 added keys = exactly the audited 13; 0 removed; 0 changed values (en likewise: 13 added, 0 changed)"
+  },
+  {
+   "command": "git show origin/main:src/i18n/catalogues/<l>/ui.teamBridge.json | shasum -a 256",
+   "result": "en 08f949e79045…, matching the ledger row's source_sha256; each target matches its row's target_sha256 (es fafac4e8eb9c…, fr b75cfe24f398…, hi 6fc8d10b0ec6…, ru 13c4ae135e70…, ur c2e931879171…, vi 538c492eed7d…, zh-CN e614104042ec…)"
+  },
+  {
+   "command": "python code-point scans over the 13 keys: fr U+202F before : ; ! ?, U+2019 apostrophes; ur ۔ / ، / no danda / no bidi controls; hi danda; vi NFC; zh-CN full-width punctuation and 被; ICU skeleton extraction",
+   "result": "no defects; only hit was the ICU syntax comma in ur '{count, plural,' (not prose)"
+  },
+  {
+   "command": "python cell-width ratio (east-asian width aware) per key vs en",
+   "result": "max ratios es 1.63, fr 1.61, ru 2.05 (plural body sentences, wrapping), hi 1.11, ur 1.34, vi 1.36, zh-CN 0.73; labels: edit_gone_title en 27 / es 32 fr 30 hi 17 ru 33 ur 23 vi 33 zh 18; conflict_restore_body en 19 / es 25 fr 25 hi 21 ru 17 ur 24 vi 21 zh 12"
+  },
+  {
+   "command": "python: image/remove terminology across ui.teamBridge in each locale (attachments.*)",
+   "result": "es attachments use quitar for remove (5 keys); fr use retirer (5 keys); other locales match their attachments verbs"
+  },
+  {
+   "command": "NODE_OPTIONS=--max-old-space-size=1024 node scripts/i18n/ledger-check.mjs (pre-audit)",
+   "result": "exit 1, FAILED - 21 finding(s) across 693 ledger entr(ies): only the 7 ui.teamBridge rows (stale source/target hashes, receipts not naming on-disk bytes)"
+  }
+ ],
+ "audit_notes_not_execution_log": "The notes and findings are this auditor's linguistic judgement, not command output.",
+ "limitations": "No rendered-fit or screenshot evidence: this audit rendered nothing (no browser capture was run). Widths were measured in cells only; the sidecar allows wrapping for all 13 keys. The translator's per-locale subagent session ids are not in the commit, so translator.session is not recorded.",
+ "evidence_record": "i18n/audits/evidence/hi/ui.teamBridge/teambridge-pr1444-audit-c6f6f47ef39d-r2/record.json"
+}

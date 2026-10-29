@@ -216,18 +216,20 @@ test("one direction provider gives every portalled menu the locale direction", (
 	assert.match(menus, /className="ms-auto text-ink-dim rtl:-scale-x-100"/);
 	assert.match(menus, /<span className="absolute start-2 flex size-4/);
 	/*
-	 * The tab panel's collision padding is physical while the approvals pill sits
-	 * at the inline end, so the protected edge has to follow the locale - the
-	 * one physical number in the popover that the direction cannot move for it.
+	 * THE TAB MENU LEFT THIS LIST (LOH-13 operator report, 2026-10-25). It is a
+	 * native Electron menu now: the OS positions it and draws it above the page,
+	 * so there is no portalled panel and no physical `collisionPadding` for the
+	 * direction to correct. The pin is the absence - and the trigger's explicit
+	 * `aria-haspopup`, which no Radix trigger adds any more.
 	 */
 	const tabs = source(
 		"src/renderer/src/features/browser/components/browser-tab-strip.tsx",
 	);
-	assert.match(
-		tabs,
-		/direction === "rtl" \? \{ left: 120 \} : \{ right: 120 \}/,
-		"the collision padding follows the pill's edge, not LTR's",
+	assert.ok(
+		!tabs.includes('data-tour-tag="browser-tab-actions"'),
+		"a native menu has no renderer panel to position or pad",
 	);
+	assert.match(tabs, /aria-haspopup="menu"/);
 });
 
 test("technical runs are isolated inside RTL prose", () => {
@@ -317,10 +319,22 @@ test("the tab menu isolates a quoted title inside its sentence", () => {
 		tabs.includes("`\\u2068${tabLabel(title)}\\u2069`"),
 		"the value is wrapped in FSI/PDI, the inline equivalent of <bdi>",
 	);
+	assert.match(
+		tabs,
+		/label: isolatedTabLabel\(tab\.title\),/,
+		"the request's title is isolated once, at the strip's boundary",
+	);
+	const model = source(
+		"src/renderer/src/features/browser/model/tab-actions-menu-model.ts",
+	);
 	assert.equal(
-		tabs.match(/title: isolatedTabLabel\(tab\.title\),/g)?.length,
+		model.match(/title: label\s*[,}]/g)?.length,
 		5,
-		"every title in the tab-actions menu goes through the isolate",
+		"every title-bearing item in the menu rule uses the isolated label",
+	);
+	assert.ok(
+		!model.includes("tab.title"),
+		"the model never reaches past the isolated label for a title",
 	);
 });
 

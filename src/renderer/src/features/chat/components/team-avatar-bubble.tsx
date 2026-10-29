@@ -45,14 +45,17 @@ import type { FC } from "react";
  * The report, verbatim: the ringed `LD`/`RD` bubbles "should probably be more
  * similar to the borderless bubble of the sidebar notification counts — slight
  * contrast vs backdrop, smaller more subtle text, in the case there's no
- * picture. Currently it looks kind of ugly." That bubble is the sidebar rail's
- * `attentionQuiet` register (`shared/components/navigation/sidebar-navigation.tsx`),
- * itself the result of an identical earlier round (2026-09-30: "borderless ...
- * smaller font size ... subtler font treatment ... instead of the janky
- * bubble"). It is why this is a COMPOSITION rather than a set of literals: the
- * face is `badgeVariants({ variant: "attentionQuiet", shape: "pill",
- * size: "count" })` - the very call the rail makes - so the two read as one
- * family today and cannot drift apart the way a copied class string does.
+ * picture. Currently it looks kind of ugly." That bubble was then the sidebar
+ * rail's `attentionQuiet` register, itself the result of an identical earlier
+ * round (2026-09-30: "borderless ... smaller font size ... subtler font
+ * treatment ... instead of the janky bubble"). The rail's counts have since
+ * moved to the filled accent `AttentionBadge` (operator, 2026-10-28, #1465);
+ * `attentionQuiet` remains a shared Badge primitive, worn here and by the Team
+ * Bridge rail's "Preview" chip. It is why this is a COMPOSITION rather than a
+ * set of literals: the face is `badgeVariants({ variant: "attentionQuiet",
+ * shape: "pill", size: "count" })`, the primitive's own call, so this bubble
+ * and the chip read as one family and cannot drift apart the way a copied
+ * class string does.
  *
  * WHAT CARRIES THE MARK NOW THAT THE EDGE IS GONE, which is the argument
  * `badge.tsx` already made for this register: the mark's information is the
