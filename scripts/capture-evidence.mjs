@@ -12,6 +12,9 @@
  * `docs/evidence-frames/<feature>/<story>/<theme>.webp` - the IGNORED frames
  * tree (see `.gitignore`); the manifest it stamps stays in `docs/evidence/`.
  *
+ * To have the Storybook booted and reaped for you, wrap the run:
+ *     node scripts/with-storybook.mjs -- node scripts/capture-evidence.mjs "$STORYBOOK_ORIGIN"
+ *
  * Why this file exists. The review process for this app is visual: there is
  * no test runner, and the design contract (docs/branding.md) is judged by
  * looking at the surface in every theme, because a contrast or spacing defect

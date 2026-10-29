@@ -58,6 +58,7 @@ const MAX_SEQ = Number.MAX_SAFE_INTEGER;
 
 /** An id safe to put on the channel, in a URL query, and in a file key. */
 const SAFE_ID = /^[A-Za-z0-9_.:-]{1,128}$/;
+const AVATAR_HASH = /^[0-9a-f]{16}$/;
 
 /**
  * One unsafe-character policy for every banner line, at BOTH ends of IPC.
@@ -188,10 +189,68 @@ export function teamBridgeNotifyOwnerMatches(
 	);
 }
 
+/** Identity is directory-derived, never an LLM notify argument. For an agent,
+ * account_id/display_name name its HUMAN OWNER, not the recipient in owner.
+ * Unknown versions/kinds degrade to today's title/icon without losing delivery. */
+export type TeamBridgeNotificationSender = {
+	v: 1;
+	kind: "person" | "person_agent";
+	account_id: string;
+	display_name: string;
+	agent_name?: string;
+	avatar?: { account_id: string; hash: string };
+};
+
+export function parseTeamBridgeNotificationSender(
+	value: unknown,
+): TeamBridgeNotificationSender | undefined {
+	if (!value || typeof value !== "object" || Array.isArray(value)) return;
+	const input = value as Record<string, unknown>;
+	if (
+		input.v !== 1 ||
+		(input.kind !== "person" && input.kind !== "person_agent")
+	)
+		return;
+	const accountId = cleanId(input.account_id);
+	const displayName = cleanText(
+		input.display_name,
+		TEAM_BRIDGE_NOTIFY_MAX_TITLE,
+	);
+	const agentName = cleanText(input.agent_name, TEAM_BRIDGE_NOTIFY_MAX_TITLE);
+	if (
+		!accountId ||
+		!displayName ||
+		(input.kind === "person_agent" && !agentName)
+	)
+		return;
+	const ref = input.avatar as Record<string, unknown> | undefined;
+	// Bad OPTIONAL photo metadata must not suppress the valid message or name.
+	const avatar =
+		ref &&
+		typeof ref === "object" &&
+		ref.account_id === accountId &&
+		typeof ref.hash === "string" &&
+		AVATAR_HASH.test(ref.hash)
+			? { account_id: accountId, hash: ref.hash }
+			: undefined;
+	return {
+		v: 1,
+		kind: input.kind,
+		account_id: accountId,
+		display_name: displayName,
+		...(input.kind === "person_agent"
+			? { agent_name: agentName as string }
+			: {}),
+		...(avatar ? { avatar } : {}),
+	};
+}
+
 export type TeamBridgeNotifyRequest = {
 	owner: TeamBridgeNotifyOwner;
 	conversationId: string;
 	tenantId: string;
+	/** Additive sender v1; absence keeps the legacy app icon. */
+	sender?: TeamBridgeNotificationSender;
 	title: string;
 	body: string;
 	seq: number;
@@ -234,6 +293,12 @@ function cleanId(value: unknown): string | null {
 	return typeof value === "string" && SAFE_ID.test(value) ? value : null;
 }
 
+/** The same id vocabulary the notify payload accepts, for IPC envelopes that
+ * carry an id outside a full request (the roster sync's `tenantId`). */
+export function isTeamBridgeNotifyId(value: unknown): value is string {
+	return cleanId(value) !== null;
+}
+
 function cleanText(value: unknown, max: number): string | null {
 	if (typeof value !== "string") return null;
 	const trimmed = value.trim();
@@ -261,6 +326,7 @@ export function parseTeamBridgeNotifyRequest(
 	const title = cleanText(input.title, TEAM_BRIDGE_NOTIFY_MAX_TITLE);
 	const body = cleanText(input.body, TEAM_BRIDGE_NOTIFY_MAX_BODY);
 	const seq = input.seq;
+	const sender = parseTeamBridgeNotificationSender(input.sender);
 	/*
 	 * The additive fields are refused WHOLE when present and malformed, the
 	 * same rule as the required ones: a subtitle that failed the text check is
@@ -301,6 +367,7 @@ export function parseTeamBridgeNotifyRequest(
 		title,
 		body,
 		seq,
+		...(sender ? { sender } : {}),
 		...(subtitle === undefined ? {} : { subtitle }),
 		...(threadId === undefined ? {} : { threadId }),
 		...(viewing === undefined ? {} : { viewing }),

@@ -285,7 +285,12 @@ function fakeBanner(options) {
 	return banner;
 }
 
-function harness({ focused = false, platform = "darwin" } = {}) {
+function harness({
+	focused = false,
+	platform = "darwin",
+	images,
+	waitTimers,
+} = {}) {
 	const dir = mkdtempSync(join(tmpdir(), "team-bridge-banner-"));
 	const banners = [];
 	const signals = [];
@@ -304,6 +309,8 @@ function harness({ focused = false, platform = "darwin" } = {}) {
 		canNotify: () => true,
 		platform,
 		now: () => clock,
+		...(images ? { images } : {}),
+		...(waitTimers ?? {}),
 		createBanner: (options) => {
 			const banner = fakeBanner(options);
 			banners.push(banner);
@@ -333,10 +340,10 @@ const request = (patch = {}) => ({
 	...patch,
 });
 
-test("macOS gets title, native subtitle and preview, under a stable id", () => {
+test("macOS gets title, native subtitle and preview, under a stable id", async () => {
 	const h = harness();
 	try {
-		assert.deepEqual(h.notifier.notify(request()), { shown: true });
+		assert.deepEqual(await h.notifier.notify(request()), { shown: true });
 		const options = h.banners[0].options;
 		assert.equal(options.title, "Ada Lovelace");
 		assert.equal(options.subtitle, "#general · Minerva");
@@ -349,11 +356,11 @@ test("macOS gets title, native subtitle and preview, under a stable id", () => {
 	}
 });
 
-test("Windows and Linux fold the place into the body", () => {
+test("Windows and Linux fold the place into the body", async () => {
 	for (const platform of ["win32", "linux"]) {
 		const h = harness({ platform });
 		try {
-			h.notifier.notify(request());
+			await h.notifier.notify(request());
 			const options = h.banners[0].options;
 			assert.equal(options.subtitle, undefined);
 			assert.equal(
@@ -366,12 +373,12 @@ test("Windows and Linux fold the place into the body", () => {
 	}
 });
 
-test("a burst replaces the banner under the same id and sounds once", () => {
+test("a burst replaces the banner under the same id and sounds once", async () => {
 	const h = harness();
 	try {
-		h.notifier.notify(request({ seq: 4 }));
+		await h.notifier.notify(request({ seq: 4 }));
 		h.advance(3_000);
-		h.notifier.notify(
+		await h.notifier.notify(
 			request({ seq: 6, body: "3 new messages: also the flag" }),
 		);
 		assert.equal(h.banners.length, 2);
@@ -382,18 +389,18 @@ test("a burst replaces the banner under the same id and sounds once", () => {
 
 		// Outside the window it is a new moment and sounds again.
 		h.advance(notifierModule.TEAM_BRIDGE_COALESCE_MS + 1);
-		h.notifier.notify(request({ seq: 7 }));
+		await h.notifier.notify(request({ seq: 7 }));
 		assert.equal(h.banners[2].options.silent, false);
 	} finally {
 		h.cleanup();
 	}
 });
 
-test("a different conversation is never coalesced into another's banner", () => {
+test("a different conversation is never coalesced into another's banner", async () => {
 	const h = harness();
 	try {
-		h.notifier.notify(request());
-		h.notifier.notify(request({ conversationId: "bcv_other", seq: 1 }));
+		await h.notifier.notify(request());
+		await h.notifier.notify(request({ conversationId: "bcv_other", seq: 1 }));
 		assert.equal(h.banners[0].closed, false);
 		assert.equal(h.banners[1].options.silent, false);
 		assert.notEqual(h.banners[1].options.id, h.banners[0].options.id);
@@ -402,22 +409,22 @@ test("a different conversation is never coalesced into another's banner", () => 
 	}
 });
 
-test("a focused window is quiet only for the conversation on screen", () => {
+test("a focused window is quiet only for the conversation on screen", async () => {
 	const h = harness({ focused: true });
 	try {
-		assert.deepEqual(h.notifier.notify(request({ viewing: true })), {
+		assert.deepEqual(await h.notifier.notify(request({ viewing: true })), {
 			shown: false,
 		});
 		// Reading #general does not hide a DM from someone else.
 		assert.deepEqual(
-			h.notifier.notify(
+			await h.notifier.notify(
 				request({ conversationId: "bcv_dm", seq: 9, viewing: false }),
 			),
 			{ shown: true },
 		);
 		// An older renderer that cannot say keeps the original rule.
 		assert.deepEqual(
-			h.notifier.notify(request({ conversationId: "bcv_old", seq: 1 })),
+			await h.notifier.notify(request({ conversationId: "bcv_old", seq: 1 })),
 			{ shown: false },
 		);
 	} finally {
@@ -425,10 +432,14 @@ test("a focused window is quiet only for the conversation on screen", () => {
 	}
 });
 
-test("the thread hook routes the parked target in the shipped build", () => {
+test("the thread hook routes the parked target in the shipped build", async () => {
+	// ASYNC because main made the notify path asynchronous; the assertion is this
+	// branch's, because the hold is flipped here so the parked thread target is
+	// routed rather than dropped. Taking either side whole would be wrong: the
+	// branch's version did not await, and main's asserts the held (unrouted) path.
 	const h = harness();
 	try {
-		h.notifier.notify(request({ threadId: "bms_root1" }));
+		await h.notifier.notify(request({ threadId: "bms_root1" }));
 		h.banners[0].emit("click");
 		const target = h.notifier.takePendingOpen();
 		assert.deepEqual(target, {
@@ -574,7 +585,7 @@ test("preview truncation keeps ZWJ emoji, flags and combining marks whole", () =
 	}
 });
 
-test("retained handlers receive only routing IDs, never the preview-bearing request", () => {
+test("retained handlers receive only routing IDs, never the preview-bearing request", async () => {
 	const h = harness();
 	try {
 		const retained = [];
@@ -583,7 +594,7 @@ test("retained handlers receive only routing IDs, never the preview-bearing requ
 			retained.push(target);
 			return original(notification, target);
 		};
-		h.notifier.notify(
+		await h.notifier.notify(
 			request({ threadId: "bms_root1", body: "private preview fixture" }),
 		);
 		assert.deepEqual(retained, [
@@ -596,6 +607,70 @@ test("retained handlers receive only routing IDs, never the preview-bearing requ
 		]);
 		h.banners[0].emit("click");
 		assert.deepEqual(h.notifier.takePendingOpen(), retained[0]);
+	} finally {
+		h.cleanup();
+	}
+});
+
+/**
+ * notify() awaits a bounded sender-image wait (<=250 ms) before it posts. The
+ * post-wait half must re-check what the wait could have changed, and must
+ * do the replace/burst step only then. An image source that never answers
+ * stands in for a slow core, and the captured deadline is fired by hand.
+ */
+function hangingWait() {
+	const armed = [];
+	return {
+		images: {
+			read: () => new Promise(() => {}),
+			peek: () => undefined,
+			syncDirectory() {},
+			clear() {},
+		},
+		waitTimers: {
+			setWaitTimer: (callback) => {
+				armed.push(callback);
+				return armed.length;
+			},
+			clearWaitTimer() {},
+		},
+		fire: () => {
+			for (const callback of armed.splice(0)) callback();
+		},
+	};
+}
+
+test("a banner waiting on its image is not posted after a sign-out, and nothing is posted before the wait ends", async () => {
+	const wait = hangingWait();
+	const h = harness(wait);
+	try {
+		const pending = h.notifier.notify(request());
+		assert.equal(h.banners.length, 0, "nothing posts during the wait");
+		h.notifier.setAuthority({ epoch: 2 });
+		wait.fire();
+		assert.deepEqual(await pending, { shown: false });
+		assert.equal(h.banners.length, 0, "no preview after the sign-out");
+	} finally {
+		h.cleanup();
+	}
+});
+
+test("a burst that arrives during the image wait replaces once and sounds once", async () => {
+	const wait = hangingWait();
+	const h = harness(wait);
+	try {
+		const first = h.notifier.notify(request({ seq: 4 }));
+		const second = h.notifier.notify(
+			request({ seq: 6, body: "3 new messages: also the flag" }),
+		);
+		wait.fire();
+		assert.deepEqual(await first, { shown: true });
+		assert.deepEqual(await second, { shown: true });
+		assert.equal(h.banners.length, 2);
+		assert.equal(h.banners[0].closed, true, "the earlier banner is replaced");
+		assert.equal(h.banners[1].closed, false);
+		assert.equal(h.banners[1].options.silent, true, "no second sound");
+		assert.equal(h.banners[1].options.body, "3 new messages: also the flag");
 	} finally {
 		h.cleanup();
 	}
