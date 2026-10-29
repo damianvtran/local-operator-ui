@@ -1,5 +1,4 @@
 {
-	"ui.chat.attachments.open": "Открыть",
 	"ui.chat.attachments.pending_caption": "Ещё не отправлено",
 	"ui.chat.attachments.file_meta": "{type} · {size}",
 	"ui.chat.attachments.file_missing": "Перемещено или удалено",
@@ -10,10 +9,12 @@
 	"ui.chat.attachments.file_missing_recovery": "Файла по этому пути больше нет.",
 	"ui.chat.attachments.file_type_unknown": "Файл",
 	"ui.chat.attachments.copy_saved_path": "Скопировать путь сохранённой копии",
+	"ui.chat.attachments.saved_path_copied": "Путь сохранённой копии скопирован",
+	"ui.chat.attachments.saved_copy_label": "Сохранённая копия",
+	"ui.chat.attachments.file_and_copy_missing": "Сохранённой копии тоже нет.",
+	"ui.chat.attachments.open": "Открыть",
 	"ui.chat.attachments.playback_position": "Позиция воспроизведения",
 	"ui.chat.attachments.playback_rate": "Скорость воспроизведения",
 	"ui.chat.attachments.playback_rate_option": "{rate}x",
-	"ui.chat.attachments.saved_path_copied": "Путь сохранённой копии скопирован",
-	"ui.chat.attachments.saved_copy_label": "Сохранённая копия",
 	"ui.chat.attachments.volume": "Громкость"
 }

@@ -661,7 +661,7 @@ testSerial(
 			],
 			[
 				"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
-				"[narrowed, prefs, narrowing, closed, locale]",
+				"[narrowed, prefs, narrowing, closed, locale, narrowedAttachments]",
 			],
 			[
 				"src/renderer/src/features/chat/pickers/destination-pickers.tsx",

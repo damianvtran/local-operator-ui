@@ -1,5 +1,4 @@
 {
-	"ui.chat.attachments.open": "Ouvrir",
 	"ui.chat.attachments.pending_caption": "Pas encore envoyé",
 	"ui.chat.attachments.file_meta": "{type} · {size}",
 	"ui.chat.attachments.file_missing": "Déplacé ou supprimé",
@@ -10,10 +9,12 @@
 	"ui.chat.attachments.file_missing_recovery": "Le fichier n'est plus à cet emplacement.",
 	"ui.chat.attachments.file_type_unknown": "Fichier",
 	"ui.chat.attachments.copy_saved_path": "Copier le chemin de la copie conservée",
+	"ui.chat.attachments.saved_path_copied": "Chemin de la copie conservée copié",
+	"ui.chat.attachments.saved_copy_label": "Copie conservée",
+	"ui.chat.attachments.file_and_copy_missing": "La copie conservée a aussi disparu.",
+	"ui.chat.attachments.open": "Ouvrir",
 	"ui.chat.attachments.playback_position": "Position de lecture",
 	"ui.chat.attachments.playback_rate": "Vitesse de lecture",
 	"ui.chat.attachments.playback_rate_option": "{rate}x",
-	"ui.chat.attachments.saved_path_copied": "Chemin de la copie conservée copié",
-	"ui.chat.attachments.saved_copy_label": "Copie conservée",
 	"ui.chat.attachments.volume": "Volume"
 }

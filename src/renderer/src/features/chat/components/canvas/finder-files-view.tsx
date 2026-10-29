@@ -18,6 +18,7 @@ import { createBlobUrl, revokeBlobUrl } from "@shared/lib/blob-url-cache";
 import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { showInfoToast } from "@shared/utils/toast-manager";
 import {
 	ArrowUpDown,
 	ChevronDown,
@@ -44,17 +45,21 @@ import {
 	formatNumber,
 } from "../../../../../../i18n/format";
 import type { FileIndexState } from "../../canonical/use-session-files";
+import { canMaterialiseAttachment } from "../../canonical/user-attachments";
 import type { CanvasDocument } from "../../types/canvas";
+import { ARTIFACT_HEAD_LENGTH } from "../../utils/artifact-identity";
 import {
 	artifactFileName,
 	artifactTooltip,
 } from "../../utils/artifact-identity";
 import { revealLocalTarget } from "../../utils/link-open";
 import { viewerFor } from "../../utils/viewer-routing";
-import { ImageActionsMenu } from "../image-actions-menu";
+import { ImageActionsMenu, imageMenuActions } from "../image-actions-menu";
+import { attachmentTooltipText } from "./attachment-items";
 import { AudioDocumentPlayer } from "./audio-document-player";
 import { FILE_KIND_GROUPS, filterAndSearchRows } from "./file-rows";
 import {
+	ATTACHMENTS_SECTION,
 	FINDER_HEADER_BAND,
 	FOCUS_RING_GAP,
 	type FinderBand,
@@ -64,6 +69,7 @@ import {
 	finderWindow,
 	layoutFinder,
 	sortFinder,
+	tileThumbHeight,
 } from "./finder-layout";
 import { finderOriginal, useFinderThumbnail } from "./finder-thumbnails";
 
@@ -90,6 +96,7 @@ const sectionLabels: Record<string, () => string> = {
 	Spreadsheets: () => t("ui.canvas.files.spreadsheets"),
 	Other: () => t("ui.canvas.files.other"),
 	Files: () => t("ui.canvas.files.files"),
+	Attachments: () => t("ui.canvas.files.attachments"),
 };
 const kindLabel = (kind: string): string => {
 	switch (kind) {
@@ -113,6 +120,23 @@ const kindLabel = (kind: string): string => {
 			return t("ui.canvas.files.other");
 	}
 };
+/** A path has a separator; a bare attachment name does not. */
+const PATH_SEPARATOR = /[/\\]/;
+/*
+ * The shortest time a Retry's loading line stays up (UX R3 U17). A failure
+ * that returns in 8 ms swapped the banner out and back inside one frame, so the
+ * press looked ignored; 300 ms is long enough to read as "it tried".
+ */
+const RETRY_MIN_VISIBLE_MS = 300;
+
+/** `:focus-visible`, read defensively: an engine without the selector says no. */
+function isFocusVisible(node: Element): boolean {
+	try {
+		return node.matches(":focus-visible");
+	} catch {
+		return false;
+	}
+}
 const REVEAL =
 	"pointer-events-none absolute top-1 end-1 flex gap-1 opacity-0 transition-opacity duration-fast ease-out-quart group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 has-[[aria-expanded=true]]:pointer-events-auto has-[[aria-expanded=true]]:opacity-100";
 
@@ -126,6 +150,32 @@ type Props = {
 	cwd?: string;
 	onOpen: (document: CanvasDocument) => void;
 	materialise: (document: CanvasDocument) => Promise<string>;
+	/**
+	 * The person's attachments, already projected (`attachment-items.ts`) and
+	 * pinned above the agent's files. `complete: false` = only loaded rows were
+	 * available, which the section header says rather than hides.
+	 *
+	 * `capable` = the backend serves `session_attachments` (the materialise
+	 * route). Without it an attachment row offers NO materialise-backed action:
+	 * on an older backend the route 404s, so Open file / Open folder / Copy file
+	 * path would each be a menu entry that can only fail (agent review round 2,
+	 * R2-1 - the same gate the transcript's pictures and sent-file card use).
+	 */
+	attachments?: {
+		items: FinderItem[];
+		complete: boolean;
+		state: "loading" | "ready" | "error";
+		capable: boolean;
+		retry: () => void;
+	};
+};
+
+const NO_ATTACHMENTS = {
+	items: [] as FinderItem[],
+	complete: true,
+	state: "ready" as const,
+	capable: false,
+	retry: () => {},
 };
 
 /** A button/list keyboard model; no grid/listbox claim without their selection semantics. */
@@ -137,6 +187,7 @@ export function FinderFilesView({
 	onOpen,
 	materialise,
 	legacyScan,
+	attachments = NO_ATTACHMENTS,
 }: Props) {
 	const locale = useI18nLocale();
 	const selectedId = useCanvasStore(
@@ -161,6 +212,38 @@ export function FinderFilesView({
 	const headerControls = useRef(new Map<string, HTMLButtonElement>());
 	const [lightbox, setLightbox] = useState<string | null>(null);
 	const lightboxOpener = useRef<HTMLElement | null>(null);
+	/*
+	 * A Retry the person pressed is pending until the listing settles (U11),
+	 * and for at least `RETRY_MIN_VISIBLE_MS` (U17). Its button unmounts while
+	 * the loading line stands in, so focus falls to the page: when the error
+	 * comes back, focus goes back to the new Retry button rather than leaving a
+	 * keyboard user to Tab in from the top.
+	 */
+	const [retrying, setRetrying] = useState(false);
+	const retryStartedAt = useRef(0);
+	const retryButton = useRef<HTMLButtonElement>(null);
+	const refocusRetry = useRef(false);
+	useEffect(() => {
+		if (!retrying || attachments.state === "loading") return;
+		const timer = window.setTimeout(
+			() => setRetrying(false),
+			Math.max(0, RETRY_MIN_VISIBLE_MS - (Date.now() - retryStartedAt.current)),
+		);
+		return () => window.clearTimeout(timer);
+	}, [retrying, attachments.state]);
+	useEffect(() => {
+		if (retrying || !refocusRetry.current) return;
+		/*
+		 * The flag belongs to ONE retry: once it settles it is spent either way.
+		 * Left armed after a success, the next failed re-read (one per send,
+		 * with no `loading` in between) pulled focus out of the composer onto
+		 * Retry (review R6-2).
+		 */
+		if (attachments.state === "loading") return;
+		refocusRetry.current = false;
+		if (attachments.state === "error")
+			retryButton.current?.focus({ preventScroll: true });
+	}, [retrying, attachments.state]);
 	useEffect(() => {
 		if (index.localReadAllowed === false) {
 			setSettledItems([]);
@@ -188,11 +271,34 @@ export function FinderFilesView({
 			prefs,
 		);
 	}, [displayItems, query, prefs]);
+	/*
+	 * Attachments are narrowed by the same search and kind filter as the agent's
+	 * files (one query box, one filter), but are NOT held by the hover freeze
+	 * above: a new send must appear the moment it lands, and an attachment is
+	 * never removed by a turn the way an agent file can be rewritten.
+	 */
+	const narrowedAttachments = useMemo(() => {
+		if (index.localReadAllowed === false && !attachments.items.length)
+			return [];
+		const ids = new Set(
+			filterAndSearchRows(
+				attachments.items.map((item) => item.row),
+				{ query, kinds: prefs.kinds },
+			).map((row) => row.document.id),
+		);
+		return attachments.items.filter((item) => ids.has(item.row.document.id));
+	}, [attachments.items, query, prefs.kinds, index.localReadAllowed]);
 	const sections = useMemo(() => {
 		// Section labels are translated inside finderSections, not in these inputs.
 		void locale;
-		return finderSections(narrowed, prefs, narrowing, closed);
-	}, [narrowed, prefs, narrowing, closed, locale]);
+		return finderSections(
+			narrowed,
+			prefs,
+			narrowing,
+			closed,
+			narrowedAttachments,
+		);
+	}, [narrowed, prefs, narrowing, closed, locale, narrowedAttachments]);
 	const layout = useMemo(
 		() => layoutFinder(sections, viewport.width, prefs.group),
 		[sections, viewport.width, prefs.group],
@@ -222,14 +328,15 @@ export function FinderFilesView({
 		() => new Set(finderWindow(layout, viewport.top, viewport.height, active)),
 		[layout, viewport.top, viewport.height, active],
 	);
+	// The gallery walks the pictures in on-screen order: attachments first.
 	const images = useMemo(
 		() =>
-			narrowed.filter(
+			[...narrowedAttachments, ...narrowed].filter(
 				(item) =>
 					item.row.media === "image" &&
 					layout.positions.has(item.row.document.id),
 			),
-		[narrowed, layout],
+		[narrowed, narrowedAttachments, layout],
 	);
 	const selectedImage = images.find(
 		(item) => item.row.document.id === lightbox,
@@ -577,12 +684,21 @@ export function FinderFilesView({
 							? ""
 							: narrowing
 								? t("ui.canvas.files.narrowCount", {
-										shown: formatNumber(narrowed.length),
-										total: formatNumber(items.length),
+										shown: formatNumber(
+											narrowed.length + narrowedAttachments.length,
+										),
+										total: formatNumber(
+											items.length + attachments.items.length,
+										),
 									})
-								: t("ui.canvas.files.count", {
-										count: index.mode === "index" ? index.total : items.length,
-									})}
+								: attachments.state === "loading" &&
+										!items.length &&
+										// A retry says it once, in the banner slot (UX R3 U19).
+										!retrying
+									? t("ui.canvas.files.loading")
+									: t("ui.canvas.files.count", {
+											count: items.length + attachments.items.length,
+										})}
 						{index.mode === "index" &&
 						(index.state === "loading" || index.state === "building") &&
 						index.pendingTotal > 0
@@ -622,6 +738,38 @@ export function FinderFilesView({
 						</Button>
 					</div>
 				)}
+				{attachments.state === "error" && !retrying ? (
+					<output
+						title={t("ui.canvas.files.attachmentsErrorReason")}
+						className={cn("text-body-sm text-ink-muted")}
+					>
+						{t("ui.canvas.files.attachmentsError")}
+						<Button
+							ref={retryButton}
+							variant="ghost"
+							size="sm"
+							onClick={(event) => {
+								refocusRetry.current =
+									document.activeElement === event.currentTarget;
+								retryStartedAt.current = Date.now();
+								setRetrying(true);
+								attachments.retry();
+							}}
+						>
+							{t("ui.canvas.files.retry")}
+						</Button>
+					</output>
+				) : retrying ? (
+					/*
+					 * THE RETRY IS IN FLIGHT (UX R2 U11): the banner's own slot says so
+					 * with the existing loading line, so the press visibly registered
+					 * even when the section (and its header caption) is not on screen.
+					 * A second failure replaces this with the banner again.
+					 */
+					<output className={cn("text-body-sm text-ink-dim")}>
+						{t("ui.canvas.files.loading")}
+					</output>
+				) : null}
 				{index.error && narrowed.length > 0 && (
 					<output className={cn("text-body-sm text-ink-muted")}>
 						{index.error}
@@ -679,7 +827,7 @@ export function FinderFilesView({
 					}
 				}}
 			>
-				{!narrowed.length ? (
+				{!narrowed.length && !narrowedAttachments.length ? (
 					<div
 						className={cn(
 							"flex min-h-40 flex-col items-center justify-center gap-2 p-4 text-center",
@@ -690,7 +838,7 @@ export function FinderFilesView({
 								? (index.error ?? t("ui.canvas.files.error"))
 								: index.state === "unsupported"
 									? (index.error ?? t("ui.canvas.files.remote"))
-									: index.state === "loading"
+									: index.state === "loading" || attachments.state === "loading"
 										? t("ui.canvas.files.loading")
 										: index.state === "building"
 											? t("ui.canvas.files.building")
@@ -698,11 +846,13 @@ export function FinderFilesView({
 												? t("ui.canvas.files.noMatch")
 												: t("ui.canvas.files.empty")}
 						</p>
-						{index.state === "ready" && !narrowing && (
-							<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
-								{t("ui.canvas.files.emptyDetail")}
-							</p>
-						)}
+						{index.state === "ready" &&
+							attachments.state !== "loading" &&
+							!narrowing && (
+								<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
+									{t("ui.canvas.files.emptyDetail")}
+								</p>
+							)}
 						{index.error && (
 							<Button variant="outline" size="sm" onClick={index.refresh}>
 								{index.state === "building"
@@ -876,6 +1026,33 @@ export function FinderFilesView({
 														: 0),
 											)}
 										</span>
+										{section.id === ATTACHMENTS_SECTION &&
+											/*
+											 * THREE STATES, THREE CAPTIONS (agent review round 2, R2-3).
+											 * `complete` alone cannot tell them apart: a first read in
+											 * flight is not complete either, and a failed read is not
+											 * "partial" - it is reported by the banner above, so it
+											 * gets no caption. Only a SETTLED list built from loaded
+											 * rows (older backend, unsupported arm) says it may be
+											 * incomplete. A caption, never a control: this markup sits
+											 * INSIDE the section's fold button, and a nested button is
+											 * invalid HTML.
+											 */
+											(attachments.state === "loading" ? (
+												retrying ? null : (
+													<span className={cn("text-meta text-ink-dim")}>
+														{t("ui.canvas.files.loading")}
+													</span>
+												)
+											) : attachments.state === "ready" &&
+												!attachments.complete ? (
+												<span
+													title={t("ui.canvas.files.attachmentsPartialReason")}
+													className={cn("text-meta text-ink-dim")}
+												>
+													{t("ui.canvas.files.attachmentsPartial")}
+												</span>
+											) : null)}
 									</button>
 								</h3>
 								<ul
@@ -940,8 +1117,18 @@ export function FinderFilesView({
 																		) ?? null;
 																	setLightbox(item.row.document.id);
 																}}
-																materialise={() =>
-																	materialise(item.row.document)
+																materialise={
+																	// R2-1: an attachment's copy-out needs the
+																	// capable backend AND the backend's per-row
+																	// verdict (Q1); without either the row gets no
+																	// resolver, so no path entry is offered at all.
+																	item.attachment &&
+																	!canMaterialiseAttachment(
+																		attachments.capable,
+																		item.attachment.materialisable,
+																	)
+																		? undefined
+																		: () => materialise(item.row.document)
 																}
 															/>
 														))}
@@ -1019,10 +1206,26 @@ function FinderEntry({
 	onKeyDown: (event: KeyboardEvent) => void;
 	onOpen: () => void;
 	onExpand: () => void;
-	materialise: () => Promise<string>;
+	/** Absent = nothing can copy this row's bytes out; see `attachments.capable`. */
+	materialise?: () => Promise<string>;
 }) {
 	useI18nLocale();
 	const doc = item.row.document;
+	/*
+	 * The backend refused to copy this attachment out (Q1): besides having no
+	 * resolver, it offers no "Show in canvas" entry either - the row's own click
+	 * still opens it by digest, the same door an older backend's rows use.
+	 */
+	const refused = item.attachment?.materialisable === false;
+	/*
+	 * Not judged YET (QA R6 Q3): the inventory is loading or failed, or this
+	 * send is newer than the listing. It gets a refused row's actions (none
+	 * that touch a path) but none of its words: nothing says "secret" about a
+	 * file nobody has judged, and the section header already says it is
+	 * loading or failed.
+	 */
+	const pending = item.attachment?.materialisable === "pending";
+	const gated = refused || pending;
 	const [nearRef, near] = useEverInView("200px");
 	const thumb = useFinderThumbnail(
 		doc,
@@ -1031,27 +1234,122 @@ function FinderEntry({
 	const [menuOpen, setMenuOpen] = useState(false);
 	const rowControl = useRef<HTMLButtonElement | null>(null);
 	const tiled = band.kind === "tiles" || band.kind === "video";
-	const height = tiled ? band.height - 32 : band.kind === "highlight" ? 40 : 28;
-	const tooltip = doc.artifact
-		? artifactTooltip({ ...doc.artifact, title: doc.title })
+	const height = tiled
+		? tileThumbHeight(band)
+		: band.kind === "highlight"
+			? 40
+			: 28;
+	const identity = doc.artifact
+		? item.attachment
+			? t("ui.canvas.files.attachmentTooltip", {
+					name: doc.title,
+					digest: doc.artifact.digest.slice(0, ARTIFACT_HEAD_LENGTH),
+				})
+			: artifactTooltip({ ...doc.artifact, title: doc.title })
 		: doc.path;
+	/*
+	 * A moved or deleted attachment's tooltip SAYS SO (agent review round 2,
+	 * R2-2): the identity line alone reads as a present file. A refused row
+	 * has no actions, and silence beside a sibling that has them read as a
+	 * glitch (UX R2 U13): the tooltip says why, once (R7-2).
+	 */
+	const tooltip = attachmentTooltipText(
+		identity,
+		item.attachment?.status,
+		refused,
+	);
+	/*
+	 * THE CONTEXT-MENU KEY ON A REFUSED ROW SAYS WHY (UX R3 U18). A native
+	 * `title` never shows on keyboard focus, and the refused row has no menu, so
+	 * Shift+F10 did nothing at all - the "glitch" U13 fixed for the pointer. The
+	 * same sentence the tooltip carries is announced instead (a toast is the
+	 * app's live region); no new copy. A row WITH a menu opens it as before.
+	 */
+	/*
+	 * ...and ON KEYBOARD FOCUS the row's note line states it (U18's other
+	 * half): a sighted keyboard user never sees the `title`, so the reason
+	 * replaces the size/date while the row holds `:focus-visible`. Pointer focus
+	 * keeps the note (that user has the tooltip).
+	 */
+	const [keyboardFocus, setKeyboardFocus] = useState(false);
+	const focusReason =
+		refused && keyboardFocus ? t("ui.canvas.files.attachmentRefused") : null;
+	const sentenceNote = Boolean(item.attachment?.status || focusReason);
+	const openMenu = () => {
+		/*
+		 * Announce whenever the menu would show NO entry (QA R6 Q4): a refused
+		 * row WITH a saved copy has a menu in principle, but every entry is
+		 * filtered out, and the key did nothing at all.
+		 */
+		if (refused && !menuHasEntries)
+			showInfoToast(t("ui.canvas.files.attachmentRefused"));
+		else if (menuHasEntries) setMenuOpen(true);
+	};
+	/*
+	 * A gone attachment with no origin path (a pasted picture whose stored copy
+	 * was pruned) has nothing any action could act on - not even a path to copy
+	 * - so it carries no menu rather than a menu of dead entries. Its meta line
+	 * already says it is gone. A refused row with no stored bytes carries only
+	 * its bare name (review R4-U1): every entry would act on a cwd-relative
+	 * path. A refused row WITH bytes keeps its digest-only entries (a picture's
+	 * Expand / Copy image).
+	 */
+	const hasMenu = !(
+		(item.attachment && item.row.missing && !PATH_SEPARATOR.test(doc.path)) ||
+		(gated && !doc.artifact)
+	);
+	/*
+	 * The entries the row's menu would render, asked of the menu's own rule
+	 * (`imageMenuActions`), so the key and the menu cannot disagree about
+	 * whether there is anything to show (Q4).
+	 */
+	const menuShowInCanvas =
+		viewerFor(doc.path, doc.type) === null || gated ? undefined : onOpen;
+	const menuSaveName =
+		doc.artifact && !item.attachment
+			? artifactFileName(doc.artifact)
+			: undefined;
+	const menuResolvePath =
+		doc.artifact && !item.row.missing ? materialise : undefined;
+	const menuMissing = item.row.missing && !doc.artifact;
+	const menuHasEntries =
+		hasMenu &&
+		imageMenuActions({
+			file: doc.path,
+			resolvePath: menuResolvePath,
+			missing: menuMissing,
+			onShowInCanvas: menuShowInCanvas,
+			mediaKind:
+				band.kind === "audio"
+					? "audio"
+					: item.row.media === "image"
+						? "image"
+						: "video",
+			onExpand:
+				band.kind !== "audio" && item.row.media === "image"
+					? onExpand
+					: undefined,
+			saveName: menuSaveName,
+		}).length > 0;
 	const sort = useUiPreferencesStore((state) => state.finderFiles.sort);
 	const timestamp = sort === "created" ? item.created : item.modified;
 	const dateMetric =
 		timestamp === null
 			? ""
 			: formatDate(timestamp * 1000, { month: "short", day: "numeric" });
-	const meta = item.row.missing
-		? doc.artifact
-			? t("ui.canvas.files.gone")
-			: t("ui.canvas.files.missing")
-		: sort === "modified" || sort === "created"
-			? dateMetric
-			: sort === "size"
-				? (item.row.size ?? "")
-				: doc.artifact
-					? t("ui.canvas.files.sessionOnly")
-					: (item.row.size ?? "");
+	const meta = item.attachment
+		? item.attachment.note
+		: item.row.missing
+			? doc.artifact
+				? t("ui.canvas.files.gone")
+				: t("ui.canvas.files.missing")
+			: sort === "modified" || sort === "created"
+				? dateMetric
+				: sort === "size"
+					? (item.row.size ?? "")
+					: doc.artifact
+						? t("ui.canvas.files.sessionOnly")
+						: (item.row.size ?? "");
 
 	/*
 	 * THE SOUND BAND'S ROW, WHICH IS NOT A BUTTON (sound phase). Every other
@@ -1095,7 +1393,7 @@ function FinderEntry({
 								event.key === "ContextMenu"
 							) {
 								event.preventDefault();
-								setMenuOpen(true);
+								openMenu();
 							} else onKeyDown(event);
 						}}
 						className={cn(
@@ -1130,15 +1428,11 @@ function FinderEntry({
 						}}
 						triggerTabIndex={-1}
 						mediaKind="audio"
-						onShowInCanvas={
-							viewerFor(doc.path, doc.type) === null ? undefined : onOpen
-						}
+						onShowInCanvas={menuShowInCanvas}
 						resolveBytes={() => finderOriginal(doc)}
-						saveName={doc.artifact ? artifactFileName(doc.artifact) : undefined}
-						resolvePath={
-							doc.artifact && !item.row.missing ? materialise : undefined
-						}
-						missing={item.row.missing && !doc.artifact}
+						saveName={menuSaveName}
+						resolvePath={menuResolvePath}
+						missing={menuMissing}
 					/>
 				</div>
 			</div>
@@ -1166,16 +1460,20 @@ function FinderEntry({
 					buttonRef(node);
 				}}
 				tabIndex={tabIndex}
-				onFocus={onFocus}
+				onFocus={(event) => {
+					if (refused) setKeyboardFocus(isFocusVisible(event.currentTarget));
+					onFocus();
+				}}
+				onBlur={() => setKeyboardFocus(false)}
 				title={tooltip}
-				onClick={onOpen}
+				onClick={tiled && item.row.media === "image" ? onExpand : onOpen}
 				onKeyDown={(event) => {
 					if (
 						(event.shiftKey && event.key === "F10") ||
 						event.key === "ContextMenu"
 					) {
 						event.preventDefault();
-						setMenuOpen(true);
+						openMenu();
 					} else onKeyDown(event);
 				}}
 				className={cn(
@@ -1224,11 +1522,27 @@ function FinderEntry({
 					)}
 				>
 					<span
-						className={cn("flex min-w-0 items-center justify-between gap-2")}
+						className={cn(
+							"flex min-w-0 gap-2",
+							tiled && item.attachment
+								? "flex-col gap-0"
+								: "items-center justify-between",
+						)}
 					>
 						<span
 							className={cn(
-								"min-w-0 flex-1 truncate",
+								"min-w-0 truncate",
+								/*
+								 * Beside a STATUS sentence the name takes only what it
+								 * needs, down to a floor (design R3 D15): a fixed 50% cap
+								 * cut "saved copy kept" / "no saved copy" - the words that
+								 * tell the states apart - while a short name's box sat
+								 * half empty. D9's guarantee holds through the floor: the
+								 * name never shrinks below 6rem (or half a narrower row).
+								 */
+								!tiled && sentenceNote
+									? "min-w-[min(6rem,50%)] shrink"
+									: "flex-1",
 								item.row.missing ? "text-ink-muted" : "text-ink",
 							)}
 						>
@@ -1245,14 +1559,66 @@ function FinderEntry({
 						)}
 						{
 							<span
+								/*
+								 * The date hint belongs to a size/date note only. On a
+								 * status note it shadowed the row's tooltip, which carries
+								 * the full sentence the truncation cuts (review R5-1).
+								 */
 								title={
-									timestamp === null
+									timestamp === null || sentenceNote
 										? undefined
 										: formatDateTime(timestamp * 1000)
 								}
-								className={cn("shrink-0 text-meta text-ink-dim")}
+								className={cn(
+									"text-meta text-ink-dim",
+									tiled && item.attachment
+										? "min-w-0 truncate"
+										: sentenceNote
+											? /*
+												 * A row's STATUS sentence takes the space the name
+												 * leaves (design R3 D15) and truncates last (design R2
+												 * D9: vi/hi status runs 259-290 px starved the name to
+												 * 14 px at the 400 docked floor, so the name keeps its
+												 * floor above). Its own floor keeps a long name from
+												 * taking the whole row: the note grows from zero, so
+												 * without one it would vanish. That floor is about half
+												 * the row (design R4 D17): at 6rem a long name's note
+												 * read "Moved or delet…" at every width, while the name
+												 * still keeps D9's floor in the other half. The whole
+												 * sentence is the row's tooltip.
+												 */
+												"min-w-[min(13rem,50%)] flex-1 truncate text-end"
+											: "shrink-0",
+								)}
 							>
-								{tiled && doc.artifact ? t("ui.canvas.files.inSession") : meta}
+								{focusReason ? (
+									<bdi>{focusReason}</bdi>
+								) : item.attachment && !item.attachment.status ? (
+									/* Size and date as two runs with the separator in markup, on
+									 * tiles AND list rows: one `<bdi>` around "286 KB · 27 اکتوبر"
+									 * resolves LTR from "KB" and mirrors the Urdu date. A
+									 * retained/gone attachment shows its STATUS sentence instead,
+									 * on tiles too (R2-2: a moved picture must not read as
+									 * present); one run, below, truncated on a tile. */
+									<>
+										<bdi>{item.attachment.size}</bdi>
+										{item.attachment.size && item.attachment.when ? (
+											<span aria-hidden="true"> · </span>
+										) : null}
+										<bdi>{item.attachment.when}</bdi>
+									</>
+								) : tiled && doc.artifact && !item.attachment ? (
+									t("ui.canvas.files.inSession")
+								) : (
+									/* One directional run: a row's note can be a sentence in an RTL
+									 * locale, and an unisolated run beside the name reorders it.
+									 * A tile states the short status (D10). */
+									<bdi>
+										{tiled && item.attachment
+											? item.attachment.tileStatus
+											: meta}
+									</bdi>
+								)}
 							</span>
 						}
 					</span>
@@ -1278,33 +1644,31 @@ function FinderEntry({
 						</Button>
 					</Tooltip>
 				)}
-				<ImageActionsMenu
-					file={doc.path}
-					tooltip={
-						item.row.media === "image"
-							? t("ui.canvas.finder_files_view.ui_canvas_files_imageactions")
-							: t("ui.canvas.finder_files_view.ui_canvas_files_fileactions")
-					}
-					label={doc.title}
-					open={menuOpen}
-					onOpenChange={setMenuOpen}
-					onCloseAutoFocus={(event) => {
-						event.preventDefault();
-						rowControl.current?.focus({ preventScroll: true });
-					}}
-					triggerTabIndex={-1}
-					mediaKind={item.row.media === "image" ? "image" : "video"}
-					onShowInCanvas={
-						viewerFor(doc.path, doc.type) === null ? undefined : onOpen
-					}
-					onExpand={item.row.media === "image" ? onExpand : undefined}
-					resolveBytes={() => finderOriginal(doc)}
-					saveName={doc.artifact ? artifactFileName(doc.artifact) : undefined}
-					resolvePath={
-						doc.artifact && !item.row.missing ? materialise : undefined
-					}
-					missing={item.row.missing && !doc.artifact}
-				/>
+				{hasMenu && (
+					<ImageActionsMenu
+						file={doc.path}
+						tooltip={
+							item.row.media === "image"
+								? t("ui.canvas.finder_files_view.ui_canvas_files_imageactions")
+								: t("ui.canvas.finder_files_view.ui_canvas_files_fileactions")
+						}
+						label={doc.title}
+						open={menuOpen}
+						onOpenChange={setMenuOpen}
+						onCloseAutoFocus={(event) => {
+							event.preventDefault();
+							rowControl.current?.focus({ preventScroll: true });
+						}}
+						triggerTabIndex={-1}
+						mediaKind={item.row.media === "image" ? "image" : "video"}
+						onShowInCanvas={menuShowInCanvas}
+						onExpand={item.row.media === "image" ? onExpand : undefined}
+						resolveBytes={() => finderOriginal(doc)}
+						saveName={menuSaveName}
+						resolvePath={menuResolvePath}
+						missing={menuMissing}
+					/>
+				)}
 			</div>
 		</div>
 	);

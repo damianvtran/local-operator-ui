@@ -106,8 +106,20 @@ const PICTURE_CLASS: Record<ImageSize, string> = {
 	].join(" "),
 };
 
+/**
+ * Path actions for a picture whose only bytes are a retained store copy (a
+ * user's pasted screenshot). `resolvePath` copies it out under a real name at
+ * action time; `onShowInCanvas` opens that copy. Absent, the picture keeps the
+ * per-kind set `image-actions.ts` gives its source string.
+ */
+export type ImagePathActions = {
+	resolvePath: () => Promise<string>;
+	onShowInCanvas?: () => void;
+};
+
 export type ImageAttachmentProps = BaseImageAttachmentProps & {
 	conversationId: string;
+	pathActions?: ImagePathActions;
 	/**
 	 * The overlay a press opens, when the caller owns it — the group carousel's
 	 * door (see `canonical-image.tsx`'s `group`). Receives the layer's open
@@ -215,7 +227,16 @@ const getFileName = (path: string): string => {
  * canonical surface takes the same shape through its `inline-block` wrapper.
  */
 export const ImageAttachment: FC<ImageAttachmentProps> = memo(
-	({ file, src, conversationId, label, size = "full", overlay, press }) => {
+	({
+		file,
+		src,
+		conversationId,
+		label,
+		size = "full",
+		overlay,
+		press,
+		pathActions,
+	}) => {
 		const [hasError, setHasError] = useState(false);
 		const [isLoaded, setIsLoaded] = useState(false);
 		/**
@@ -377,10 +398,13 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 		 * tab after every restart (see the `blob` row in `image-actions.ts`).
 		 */
 		const canvasKind = kind === "path" || kind === "data";
-		const canShowInCanvas = canvasKind && conversationId !== "";
+		const canShowInCanvas =
+			(canvasKind && conversationId !== "") ||
+			Boolean(pathActions?.onShowInCanvas);
 		const showMenu = hasImageActions(kind, {
 			canShowInCanvas,
 			source: src,
+			artifactPathActions: Boolean(pathActions),
 		});
 		/** The picture is a file on disk — the lightbox's copy tells them apart. */
 		const isLocalFile = kind === "path";
@@ -554,7 +578,11 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 							file={file}
 							src={src}
 							label={name}
-							onShowInCanvas={canShowInCanvas ? handleShowInCanvas : undefined}
+							onShowInCanvas={
+								pathActions?.onShowInCanvas ??
+								(canShowInCanvas ? handleShowInCanvas : undefined)
+							}
+							resolvePath={pathActions?.resolvePath}
 						/>
 					</div>
 				)}

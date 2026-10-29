@@ -59,6 +59,11 @@
 		"tone": "short noun phrase, sentence case",
 		"note": "Introduces the attachment store path of the retained copy, which follows on the same row beside a copy control."
 	},
+	"ui.chat.attachments.file_and_copy_missing": {
+		"role": "status",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Under 'Moved or deleted' on a sent file card: neither the original file nor the app's retained copy exists any more."
+	},
 	"ui.chat.attachments.open": {
 		"role": "link label",
 		"tone": "plain",
@@ -77,7 +82,9 @@
 		"role": "select option",
 		"tone": "plain",
 		"note": "The multiplier sign stays beside the number in every language; do not spell the word 'times'.",
-		"placeholders": { "rate": "A multiplier such as 0.5, 1, 1.5 or 2." }
+		"placeholders": {
+			"rate": "A multiplier such as 0.5, 1, 1.5 or 2."
+		}
 	},
 	"ui.chat.attachments.volume": {
 		"role": "slider name",
