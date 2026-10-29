@@ -11,7 +11,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { test } from "node:test";
+import { after, test } from "node:test";
 import { build } from "esbuild";
 
 // Fake CDP exercises the shipped action and pool lifecycle, not native Chromium.
@@ -128,6 +128,14 @@ function stream(
 	};
 }
 
+/** Every view id this file created, so one failing test cannot leave a recording
+ * holding the app-wide cap for the next one. */
+const createdIds = [];
+
+after(() => {
+	for (const id of createdIds) mod.abortRecording(id, "test-cleanup");
+});
+
 function contentsFor(id, extra = {}) {
 	return {
 		id,
@@ -169,6 +177,7 @@ function fixture(options = {}) {
 	};
 	const addTab = (token, extra) => {
 		const contents = contentsFor(nextViewId++, extra);
+		createdIds.push(contents.id);
 		tabs.set(token, contents);
 		return contents;
 	};
@@ -351,17 +360,28 @@ test("a second start by another owner replaces the recording", async () => {
 	assert.equal(replaced.recording, true);
 	// The old owner's session is gone, so its start is replaced rather than
 	// swallowed: the new owner gets its own capture on the same tab.
-	assert.equal(
-		commands.filter((call) => call.method === "Page.startScreenRecording")
-			.length,
-		2,
-	);
 	// The displaced owner learns nothing about the new recording...
 	await rejectsReason(stop("session:a"), "internal", "record_not_active");
 	// ...and the new owner's stop is the one that publishes.
 	const done = await stop("session:b");
 	assert.equal(done.path, join(dir, "b.mp4"));
 	assert.equal(existsSync(path), false, "a replaced recording writes nothing");
+	// Chromium refuses a second start while the old recorder is live ("Screencast
+	// is already active", measured on Electron 45.1.0), so the replace has to STOP
+	// the old stream before starting the new one — discarding the state alone left
+	// the target busy and the hand-over impossible.
+	assert.deepEqual(
+		commands.map((call) => call.method),
+		[
+			"Page.startScreenRecording",
+			"Page.stopScreenRecording",
+			"IO.close",
+			"Page.startScreenRecording",
+			"Page.stopScreenRecording",
+			"IO.read",
+			"IO.close",
+		],
+	);
 });
 
 // ---- 5. the command is missing --------------------------------------------

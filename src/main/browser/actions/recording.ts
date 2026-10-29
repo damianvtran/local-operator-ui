@@ -95,6 +95,13 @@ export const RECORD_STOP_DEADLINE_MS = 20_000;
  * timeout derives from the same table. */
 export const RECORD_STOP_BUDGET_MS = 45_000;
 
+/** How long a REPLACE waits for the old recorder to stop (D7's abort-and-discard
+ * applied to a tab whose attachment survives). Chromium refuses a second
+ * `Page.startScreenRecording` with "Screencast is already active" while the old
+ * recorder is live — measured on Electron 45.1.0 — so discarding the old state
+ * without stopping the stream would make a hand-over impossible. */
+export const RECORD_ABORT_DEADLINE_MS = 2_000;
+
 /** One `IO.read` page. 1 MiB is the size the probe measured as reliable, and it
  * keeps the decoded copy of a page small enough for the main process. */
 export const RECORD_READ_BYTES = 1024 * 1024;
@@ -279,6 +286,14 @@ function maxBytesOf(params: Record<string, unknown>): number {
 	return bytes;
 }
 
+/** The cap in the words the refusal uses: MiB for a sane cap, KiB for a test-sized
+ * one, so "larger than 0 MiB" can never be the only thing a reader sees. */
+function capWords(bytes: number): string {
+	return bytes >= 1024 * 1024
+		? `${Math.floor(bytes / (1024 * 1024))} MiB`
+		: `${Math.round(bytes / 1024)} KiB`;
+}
+
 /** D9's start-error taxonomy: version first, then Chromium's own text. */
 function classifyStartFailure(error: unknown): BrowserHostError {
 	const message = error instanceof Error ? error.message : String(error);
@@ -371,7 +386,7 @@ async function readStream(
 		if (bytes > recording.maxBytes) {
 			throw new BrowserHostError(
 				"internal",
-				`the recording is larger than ${Math.floor(recording.maxBytes / (1024 * 1024))} MiB; nothing was saved. Record a shorter span (timeout_s) and retry.`,
+				`the recording is larger than ${capWords(recording.maxBytes)}; nothing was saved. Record a shorter span (timeout_s) and retry.`,
 				{ reason: "record_too_large", max_bytes: recording.maxBytes },
 			);
 		}
@@ -503,6 +518,41 @@ function settle(
 	settled.set(webContentsId, { owner: recording.owner, ...outcome });
 }
 
+/**
+ * End a recording that another owner is taking over, without salvaging its bytes.
+ *
+ * D7's "abort the old recording (discard), start fresh" assumes the old capture
+ * can be discarded; measured on Electron 45.1.0, Chromium keeps the media
+ * recorder alive until it is stopped, and the next `Page.startScreenRecording`
+ * on that target is refused with "Screencast is already active". So the abort is
+ * a stop: bounded at 2 s, best effort, and the stream is closed unread — the
+ * bytes are thrown away, which is what discard means.
+ */
+async function endReplaced(recording: Recording): Promise<void> {
+	try {
+		const stopped = await recording.cdp.send<{ stream?: string }>(
+			recording.contents,
+			"Page.stopScreenRecording",
+			{},
+			{ deadlineMs: RECORD_ABORT_DEADLINE_MS },
+		);
+		const handle = typeof stopped?.stream === "string" ? stopped.stream : "";
+		if (handle) {
+			await recording.cdp
+				.send(
+					recording.contents,
+					"IO.close",
+					{ handle },
+					{ deadlineMs: RECORD_ABORT_DEADLINE_MS },
+				)
+				.catch(() => undefined);
+		}
+	} catch {
+		// A session that is already gone cannot be stopped; the start below is where
+		// that becomes visible, with Chromium's own words.
+	}
+}
+
 /** Finalize at most once per recording, and share the result. */
 function finish(
 	webContentsId: number,
@@ -565,6 +615,9 @@ export async function recordStart(
 		// tab forever. Discarding keeps the headline number honest: one encoder
 		// per recording, and the count below is what bounds the machine.
 		abortRecording(id, "replaced_by_another_owner");
+		// The abort above drops our state; this ends the recorder itself, which is
+		// what lets the next start succeed on the same target.
+		await endReplaced(active);
 	} else if (recordings.size >= MAX_CONCURRENT_RECORDINGS) {
 		throw new BrowserHostError(
 			"busy",
