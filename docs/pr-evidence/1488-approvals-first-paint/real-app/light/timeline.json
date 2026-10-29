@@ -1,0 +1,314 @@
+[
+ {
+  "at": 10,
+  "error": "Error: evaluate threw: Uncaught TypeError: Cannot read properties of null (reading 'dataset')\n    at <anonymous>:5:41\n    at <anonymous>:12:7"
+ },
+ {
+  "at": 221,
+  "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+  "theme": "localOperatorDark",
+  "vis": "hidden",
+  "size": [
+   368,
+   112
+  ],
+  "hasCard": true,
+  "text": "",
+  "bg": "rgb(50, 45, 34)"
+ },
+ {
+  "at": 376,
+  "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+  "theme": "kanagawaLotus",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(242, 236, 188)"
+ },
+ {
+  "at": 579,
+  "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+  "theme": "kanagawaLotus",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(242, 236, 188)"
+ },
+ {
+  "at": 694,
+  "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+  "theme": "kanagawaLotus",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(242, 236, 188)"
+ },
+ {
+  "at": 811,
+  "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+  "theme": "kanagawaLotus",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(242, 236, 188)"
+ },
+ {
+  "at": 928,
+  "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+  "theme": "kanagawaLotus",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(242, 236, 188)"
+ },
+ {
+  "at": 1054,
+  "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+  "theme": "kanagawaLotus",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(242, 236, 188)"
+ },
+ {
+  "at": 1170,
+  "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+  "theme": "kanagawaLotus",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(242, 236, 188)"
+ },
+ {
+  "at": 1382,
+  "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+  "theme": "kanagawaLotus",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(242, 236, 188)"
+ },
+ {
+  "at": 1495,
+  "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+  "theme": "kanagawaLotus",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(242, 236, 188)"
+ },
+ {
+  "at": 1616,
+  "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+  "theme": "kanagawaLotus",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(242, 236, 188)"
+ },
+ {
+  "at": 1728,
+  "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+  "theme": "kanagawaLotus",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(242, 236, 188)"
+ },
+ {
+  "at": 1844,
+  "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+  "theme": "kanagawaLotus",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(242, 236, 188)"
+ },
+ {
+  "at": 1962,
+  "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+  "theme": "kanagawaLotus",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(242, 236, 188)"
+ },
+ {
+  "at": 2079,
+  "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+  "theme": "kanagawaLotus",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(242, 236, 188)"
+ },
+ {
+  "at": 2194,
+  "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+  "theme": "kanagawaLotus",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(242, 236, 188)"
+ },
+ {
+  "at": 2303,
+  "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+  "theme": "kanagawaLotus",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(242, 236, 188)"
+ },
+ {
+  "at": 2419,
+  "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+  "theme": "kanagawaLotus",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(242, 236, 188)"
+ },
+ {
+  "at": 2537,
+  "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+  "theme": "kanagawaLotus",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(242, 236, 188)"
+ },
+ {
+  "at": 2653,
+  "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+  "theme": "kanagawaLotus",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(242, 236, 188)"
+ },
+ {
+  "at": 2870,
+  "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+  "theme": "kanagawaLotus",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(242, 236, 188)"
+ },
+ {
+  "at": 2986,
+  "target": "4F252CEB62BC6A5ADFB8B089F810E76C",
+  "href": "file:///Users/damian/local-operator-ui/.worktrees/qa-1488-real-app/out/renderer/browser-approvals-overlay.html?count=1&theme=light&palette=kanagawaLotus",
+  "theme": "kanagawaLotus",
+  "vis": "visible",
+  "size": [
+   368,
+   383
+  ],
+  "hasCard": true,
+  "text": "Local Operator Approvals Close An agent from another session · etic wants to ope",
+  "bg": "rgb(242, 236, 188)"
+ }
+]
