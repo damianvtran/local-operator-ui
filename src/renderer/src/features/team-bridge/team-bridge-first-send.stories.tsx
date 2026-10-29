@@ -50,6 +50,42 @@ const people: TeamBridgeDirectoryMember[] = [
 ];
 
 /**
+ * The composer field's live numbers, re-read one frame after any scroll, input
+ * or selection change - after the auto-grow layout effect has run, so the
+ * numbers are the ones the reader sees.
+ */
+function useFieldReadout(enabled: boolean) {
+	const [text, setText] = useState("");
+	useEffect(() => {
+		if (!enabled) return;
+		let frame = 0;
+		const read = () => {
+			cancelAnimationFrame(frame);
+			frame = requestAnimationFrame(() => {
+				const field = document.querySelector<HTMLTextAreaElement>(
+					"#storybook-root textarea",
+				);
+				if (!field) return;
+				setText(
+					`field scrollTop ${Math.round(field.scrollTop)} / ${field.scrollHeight - field.clientHeight} max · caret ${field.selectionStart}/${field.value.length} · height ${field.getBoundingClientRect().height}px · overflow-y ${getComputedStyle(field).overflowY}`,
+				);
+			});
+		};
+		read();
+		document.addEventListener("scroll", read, true);
+		document.addEventListener("input", read, true);
+		document.addEventListener("selectionchange", read);
+		return () => {
+			cancelAnimationFrame(frame);
+			document.removeEventListener("scroll", read, true);
+			document.removeEventListener("input", read, true);
+			document.removeEventListener("selectionchange", read);
+		};
+	}, [enabled]);
+	return enabled ? text : null;
+}
+
+/**
  * A stable draft journal for the story: `useMemo` on the seed text, so the view
  * does not see a new object every render and reset the draft under the capture.
  */
@@ -67,6 +103,9 @@ function FirstSendPage({
 	frozen = false,
 	focusAction = "none",
 	composer,
+	readout = false,
+	fieldScrollTop,
+	fieldCaret,
 }: {
 	state: TeamBridgeLocalRowPresentation["state"];
 	targetKind: "chief" | "person";
@@ -101,7 +140,38 @@ function FirstSendPage({
 	 * grown field.
 	 */
 	composer: string;
+	/**
+	 * Print the composer field's scrollTop, caret and height in the frame itself,
+	 * so a capture of auto-grow carries its own numbers (frame F-A: does a
+	 * keystroke at the cap keep the reader's place?). Story-only; the product
+	 * never draws this.
+	 */
+	readout?: boolean;
+	/**
+	 * Put the reader somewhere inside a long draft before the capture: the field's
+	 * own scroll offset and caret, set once after mount, with the field focused. A
+	 * capture tool can scroll the page but not the field, and frame F-A needs a
+	 * reader who scrolled UP inside their draft. Programmatic, and said so.
+	 */
+	fieldScrollTop?: number;
+	fieldCaret?: number;
 }) {
+	const fieldReadout = useFieldReadout(readout);
+	useEffect(() => {
+		if (fieldScrollTop === undefined && fieldCaret === undefined) return;
+		// One frame after mount: the auto-grow layout effect has measured by then.
+		const frame = requestAnimationFrame(() => {
+			const field = document.querySelector<HTMLTextAreaElement>(
+				"#storybook-root textarea",
+			);
+			if (!field) return;
+			field.focus({ preventScroll: true });
+			if (fieldCaret !== undefined)
+				field.setSelectionRange(fieldCaret, fieldCaret);
+			if (fieldScrollTop !== undefined) field.scrollTop = fieldScrollTop;
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [fieldScrollTop, fieldCaret]);
 	const draftJournal = useStoryDraft(composer);
 	const [state, setState] = useState(initialState);
 	useEffect(() => {
@@ -200,6 +270,35 @@ function FirstSendPage({
 					typeof width === "number" ? width : width === "narrow" ? 680 : 1380,
 			}}
 		>
+			{fieldReadout !== null && (
+				<div className="flex shrink-0 items-center gap-3 border-hairline border-b bg-surface px-3 py-2">
+					<output data-field-readout className="font-mono text-[12px]">
+						{fieldReadout}
+					</output>
+					{/*
+					 * ONE KEYSTROKE AT THE CARET, the way the browser inserts it. A capture
+					 * tool's "type" REPLACES the field's value, which is not what a reader
+					 * does and collapses the draft; `insertText` goes through the same
+					 * editing path as a key press - it inserts at the selection and fires
+					 * the native `input` event React listens for. `onMouseDown` keeps the
+					 * field focused, so the caret it inserts at is the reader's own.
+					 */}
+					<Button
+						variant="ghost"
+						data-insert-character
+						onMouseDown={(event) => event.preventDefault()}
+						onClick={() => {
+							const field = document.querySelector<HTMLTextAreaElement>(
+								"#storybook-root textarea",
+							);
+							field?.focus({ preventScroll: true });
+							document.execCommand("insertText", false, "x");
+						}}
+					>
+						Type one character at the caret
+					</Button>
+				</div>
+			)}
 			{allowSwap && (
 				<div className="flex shrink-0 items-center gap-3 border-hairline border-b bg-surface px-3 py-2 text-sm">
 					<span>Projection fixture · no API dispatch</span>
@@ -281,6 +380,9 @@ const meta = {
 			options: ["none", "retry", "return", "discard"],
 		},
 		composer: { control: "text" },
+		readout: { control: "boolean" },
+		fieldScrollTop: { control: "number" },
+		fieldCaret: { control: "number" },
 	},
 } satisfies Meta<typeof FirstSendPage>;
 export default meta;
@@ -307,6 +409,31 @@ export const ComposerAtCap: Story = {
 			(_, index) =>
 				`Line ${index + 1}: the quick brown fox jumps over the lazy dog.`,
 		).join("\n"),
+	},
+};
+/**
+ * FRAME F-A (review A1): the capped composer with its numbers printed in the
+ * frame. Scroll the field up, type one character, and the readout says whether
+ * the reader's place survived the re-measure.
+ */
+export const ComposerAtCapReadout: Story = {
+	args: { ...ComposerAtCap.args, readout: true },
+};
+/**
+ * F-A's starting state: scrolled to the middle of the draft (100 of 217px), the
+ * caret at the start of line 9 - inside the visible band, where a reader who
+ * scrolled up to edit would have put it.
+ */
+export const ComposerAtCapScrolledUp: Story = {
+	args: {
+		...ComposerAtCap.args,
+		readout: true,
+		fieldScrollTop: 100,
+		fieldCaret: Array.from(
+			{ length: 8 },
+			(_, index) =>
+				`Line ${index + 1}: the quick brown fox jumps over the lazy dog.\n`,
+		).join("").length,
 	},
 };
 export const Confirmed: Story = { args: { state: "confirmed" } };
