@@ -193,12 +193,10 @@ async function deliverTeamBridgeBanner(
 	let senderLabel = candidate.senderLabel;
 	let preview: string | null = null;
 	/*
-	 * NO THREAD READ WHILE THE HOLD IS ON. A reply banner would otherwise address
-	 * `listReplies` for its preview, which is one of the thread paths carrying
-	 * the reported #1304 cross-account isolation defects. Treated as an ordinary
-	 * message instead: the timeline read below excludes replies, so a held reply
-	 * banner degrades to its metadata (or is skipped) rather than touching the
-	 * thread cache, and the click target carries no thread root either.
+	 * A thread preview is read only in a build that ships the guarded thread
+	 * contract. The observed account supplies the required receipt, and the
+	 * authority comparison above prevents a delayed preview crossing to the next
+	 * signed-in account. Older/held builds use the ordinary message read instead.
 	 */
 	const authority = observedRadientAuthority(client);
 	if (authority.accountId !== selfAccountId) return;
@@ -214,6 +212,7 @@ async function deliverTeamBridgeBanner(
 			? assertThreadPage(
 					await TeamBridgeApi.listReplies(candidate.conversationId, threadId, {
 						tenantId: candidate.tenantId,
+						accountId: selfAccountId,
 						afterSeq: candidate.seq,
 						limit: 1,
 					}),

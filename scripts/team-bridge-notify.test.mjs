@@ -836,13 +836,10 @@ test("reply summary seq/root survive planning, native click and old-root navigat
 			tenantId: "tnt_1",
 			threadId: "bcmsg_oldroot",
 		});
-		// THE HOLD DROPS THE THREAD ROOT FROM THE ROUTE. Main still parks the
-		// ids it was given (the click target is a fact), but this build does not
-		// route a thread - see `TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD` in
-		// `team-bridge-notify.ts`.
+		// Main parks the exact click target and the shipped route retains it.
 		assert.equal(
 			limits.teamBridgeOpenPath(target),
-			"/team-bridge?tenant=tnt_1&conversation=bcv_1",
+			"/team-bridge?tenant=tnt_1&conversation=bcv_1&thread=bcmsg_oldroot",
 		);
 	} finally {
 		rmSync(dir, { recursive: true, force: true });

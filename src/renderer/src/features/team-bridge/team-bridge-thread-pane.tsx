@@ -457,9 +457,9 @@ export type ThreadPaneMountProps = {
 	onMessagePerson?: ThreadPaneProps["onMessagePerson"];
 	onClose: () => void;
 	reactionContext?: ThreadPaneProps["reactionContext"];
-	/* The attachment lane's two additions ride the mount props, so the shipped-
-	   build gate wrapper passes them through untouched. */
-	accountId?: string;
+	/* The account captured with this pane binds both its reads and its replies
+	   to the same signed-in owner. A missing owner cannot dispatch either. */
+	accountId: string;
 	attachmentCapability?: TeamBridgeAttachmentCapability | null;
 };
 
@@ -510,7 +510,7 @@ function TeamBridgeThreadPaneMount({
 	const query = useInfiniteQuery({
 		queryKey: key,
 		initialPageParam: undefined as number | undefined,
-		queryFn: ({ pageParam }) => loadThreadPage(target, pageParam),
+		queryFn: ({ pageParam }) => loadThreadPage(target, accountId, pageParam),
 		getNextPageParam: (page) =>
 			page.has_more ? page.next_after_seq : undefined,
 		refetchInterval: 8_000,
@@ -533,6 +533,7 @@ function TeamBridgeThreadPaneMount({
 				body,
 				clientRef,
 				tenantId,
+				expectedAccountId: accountId,
 				threadRootId: rootId,
 				attachmentIds,
 			}),

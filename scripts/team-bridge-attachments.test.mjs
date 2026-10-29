@@ -1684,11 +1684,6 @@ test(
 	"page R4-02: opening Drafts or Scheduled closes an open thread",
 	{
 		timeout: 30_000,
-		// HELD IN THIS BUILD: main gates the thread surface at the view's front
-		// door (`TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD = false`), so this
-		// export renders null and the pane's scroll behaviour is unreachable.
-		// Re-enable with the thread surface; nothing here is attachment-specific.
-		skip: "thread surface is held in this build (TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD)",
 	},
 	async () => {
 		for (const label of ["Drafts", "Scheduled"]) {
@@ -1700,6 +1695,10 @@ test(
 			const app = await mountPage(
 				pageProps({
 					target: { type: "conversation", id: "bcv_dm" },
+					/* The thread lane is capability-gated; this fixture exercises the
+					   page's own close-on-quick-view wiring, so it states the enabled
+					   capability rather than relying on a default. */
+					threadsCapabilityState: "enabled",
 					threadLink: {
 						tenantId: "org_page",
 						conversationId: "bcv_dm",
@@ -2074,11 +2073,6 @@ test(
 	"F9 thread pane: opens at the newest reply, follows when pinned, never yanks a reader who scrolled up",
 	{
 		timeout: 30_000,
-		// HELD IN THIS BUILD: main gates the thread surface at the view's front
-		// door (`TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD = false`), so this
-		// export renders null and the pane's scroll behaviour is unreachable.
-		// Re-enable with the thread surface; nothing here is attachment-specific.
-		skip: "thread surface is held in this build (TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD)",
 	},
 	() =>
 		withScrollGeometry(async () => {
@@ -2312,11 +2306,6 @@ test(
 	"r8 m2: Load more replies keeps the reader's place instead of jumping past the new page",
 	{
 		timeout: 30_000,
-		// HELD IN THIS BUILD: main gates the thread surface at the view's front
-		// door (`TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD = false`), so this
-		// export renders null and the pane's scroll behaviour is unreachable.
-		// Re-enable with the thread surface; nothing here is attachment-specific.
-		skip: "thread surface is held in this build (TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD)",
 	},
 	() =>
 		withScrollGeometry(async () => {

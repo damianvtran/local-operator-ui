@@ -538,16 +538,10 @@ test("machine-only off names this machine, claims no consent step, and links to 
  * compiled and rendered every pane sender as "Unknown person"; the page now
  * passes `(sender) => labelFor(sender, thread.tenantId)`.
  *
- * THAT RENDER PATH IS HELD IN THIS BUILD. `teamBridgeThreadsAvailable` is false
- * whatever the runtime advertises (`team-bridge-thread-gate.ts`), so the page
- * with a `threadLink` renders NO pane and NO reply affordance - even with the
- * capability answering `enabled`, which is the case this test uses. What is
- * left to pin is the hold at the real view plus the tenant-scoped wiring in
- * source, which is what the feature returns on. The pane's own sender naming is
- * unreachable until the constant flips; asserting it here would be an assertion
- * about a surface no build mounts.
+ * The real page proves the capability half: enabled mounts the thread and
+ * reply affordance, while every unresolved or unsupported answer hides them.
  */
-test("the held page mounts no thread pane or reply affordance, and keeps the tenant-scoped label wiring", async () => {
+test("the page mounts its thread only for the enabled capability, with tenant-scoped labels", async () => {
 	const { QueryClient, QueryClientProvider } = await import(
 		"@tanstack/react-query"
 	);
@@ -587,8 +581,7 @@ test("the held page mounts no thread pane or reply affordance, and keeps the ten
 				),
 			),
 		);
-	// EVERY capability answer is held, `enabled` included: an absent prop is the
-	// "no capabilities read" mount and must behave like `unknown`.
+	// An absent prop is the "no capabilities read" mount and behaves as unknown.
 	for (const state of [
 		undefined,
 		"unknown",
@@ -598,10 +591,17 @@ test("the held page mounts no thread pane or reply affordance, and keeps the ten
 	]) {
 		const html = render(state);
 		const label = state ?? "absent";
-		// The timeline itself still renders; only the thread lane is withheld.
 		assert.match(html, /Thread root body/, `${label}: timeline`);
-		assert.doesNotMatch(html, /aria-label="Thread"/, `${label}: pane`);
-		assert.doesNotMatch(html, /Reply in thread/, `${label}: reply`);
+		assert.equal(
+			html.includes('aria-label="Thread"'),
+			state === "enabled",
+			`${label}: pane`,
+		);
+		assert.equal(
+			html.includes("Reply in thread"),
+			state === "enabled",
+			`${label}: reply`,
+		);
 	}
 	const pageSource = readFileSync(
 		"src/renderer/src/features/team-bridge/team-bridge-page.tsx",

@@ -5,27 +5,11 @@ import { build } from "esbuild";
 
 /*
  * Team Bridge's capability gates, exercised through the SHIPPED modules.
- *
- * WHY THIS FILE EXISTS. The pane and the reply-in-thread affordance carry
- * cross-account isolation defects inherited from #1304, so this build must not
- * reach them however the runtime answers. The matrix below is the fail-closed
- * rule (`unknown`, `below-version`, `unpaired` AND `enabled` all hidden) and
- * the source half pins every mount and route the reviewer census named: a
- * capability that answers `enabled` is the easiest path to accidentally reopen,
- * so it is the case the render test in `team-bridge-directory.test.mjs` uses.
- *
- * THE REACTIONS HOLD IS THE SAME SHAPE. The shipped runtime serves no reaction
- * route and the old reaction path is not reviewed for account/retry safety, so
- * `TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD` (false) dominates the
- * `team_bridge_reactions` capability: chips, react button and picker stay
- * hidden for every answer, `enabled` included. Its matrix runs through the REAL
- * `desktopFeatureState`, with the page rendered for each answer, so the payload
- * shape (missing key, 0, 1, unpaired, no data) is the one the capability read
- * actually produces; the return path is proven with the flag on.
- *
- * THE RETURN PATH IS TESTED, NOT ASSUMED. `teamBridgeThreadsAvailable` accepts
- * the shipped flag so the capability half can be proven without shipping the
- * surface: `enabled` with the flag on is the ONLY true answer.
+ * #3149 publishes the guarded thread and reaction capabilities and this build
+ * supplies their required receipts. The matrix therefore proves both halves:
+ * `enabled` returns the surface, while unknown, below-version and unpaired
+ * answers still fail closed. The source census keeps every mount and route on
+ * that one decision rather than allowing an unrelated affordance to bypass it.
  */
 const ROOT = process.cwd();
 const bundle = await build({
@@ -160,39 +144,23 @@ const notifications = read(
 	"src/renderer/src/features/team-bridge/use-team-bridge-notifications.ts",
 );
 
-test("the build holds the surface: every capability answer is hidden", () => {
-	for (const state of [
-		undefined,
-		"unknown",
-		"below-version",
-		"unpaired",
-		"enabled",
-	]) {
+test("shipped threads return only for an enabled capability", () => {
+	assert.equal(gate.TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD, true);
+	assert.equal(gate.teamBridgeThreadsAvailable("enabled"), true);
+	for (const state of [undefined, "unknown", "below-version", "unpaired"]) {
 		assert.equal(
 			gate.teamBridgeThreadsAvailable(state),
 			false,
 			`${String(state)} must leave the thread surface hidden`,
 		);
 	}
-	assert.equal(
-		gate.TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD,
-		false,
-		"the constant, not the runtime, closes the surface",
-	);
 });
 
-test("the return path is the capability, and only `enabled` opens it", () => {
-	assert.equal(gate.teamBridgeThreadsAvailable("enabled", true), true);
-	for (const state of [undefined, "unknown", "below-version", "unpaired"]) {
-		assert.equal(
-			gate.teamBridgeThreadsAvailable(state, true),
-			false,
-			`${String(state)} must stay hidden even when shipped`,
-		);
-	}
+test("an unshipped build stays closed even for an enabled capability", () => {
+	assert.equal(gate.teamBridgeThreadsAvailable("enabled", false), false);
 });
 
-test("a notification click lands on the conversation, never on a thread", () => {
+test("a notification click preserves its guarded thread target", () => {
 	const target = {
 		conversationId: "bcv_1",
 		tenantId: "tnt_1",
@@ -202,8 +170,7 @@ test("a notification click lands on the conversation, never on a thread", () => 
 	assert.match(path, /^\/team-bridge\?/);
 	assert.match(path, /tenant=tnt_1/);
 	assert.match(path, /conversation=bcv_1/);
-	assert.doesNotMatch(path, /thread=/, "a held build must not route a thread");
-	assert.doesNotMatch(path, /bmsg_root/);
+	assert.match(path, /thread=bmsg_root/);
 });
 
 // ---------------------------------------------------------------------------
@@ -351,8 +318,8 @@ const capabilityPayloads = [
 	},
 ];
 
-test("the reactions hold hides every capability answer, `enabled` included", () => {
-	for (const { label, caps, state } of capabilityPayloads) {
+test("shipped reactions follow only the enabled capability and otherwise fail closed", () => {
+	for (const { label, caps, state, available = false } of capabilityPayloads) {
 		assert.equal(
 			gate.desktopFeatureState(caps, "team_bridge_reactions"),
 			state,
@@ -362,11 +329,12 @@ test("the reactions hold hides every capability answer, `enabled` included", () 
 			gate.teamBridgeReactionsAvailable(
 				gate.desktopFeatureState(caps, "team_bridge_reactions"),
 			),
-			false,
-			`${label}: the constant, not the runtime, closes the surface`,
+			available,
+			`${label}: capability availability`,
 		);
 	}
-	assert.equal(gate.TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD, false);
+	assert.equal(gate.TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD, true);
+	assert.equal(gate.teamBridgeReactionsAvailable("enabled", false), false);
 });
 
 test("the return path is the shipped flag AND `enabled`", () => {
@@ -458,7 +426,7 @@ const renderPage = (reactionsCapabilityState) =>
 		}),
 	);
 
-test("reaction chips and the react control are absent for every answer, `enabled` included", () => {
+test("reaction chips and the react control return only for the enabled capability", () => {
 	// The absent prop is the "no capabilities read" mount: it must behave like
 	// `unknown`, not like an assumed yes.
 	for (const state of [
@@ -470,26 +438,26 @@ test("reaction chips and the react control are absent for every answer, `enabled
 	]) {
 		const html = renderPage(state);
 		const label = state ?? "absent";
-		// The timeline itself still renders; only the reaction lane is withheld.
 		assert.match(html, /hello/, `${label}: message body`);
-		assert.doesNotMatch(html, /data-reaction-layout="chips"/, label);
-		assert.doesNotMatch(
-			html,
-			/aria-label="Add reaction"/,
+		assert.equal(
+			html.includes('data-reaction-layout="chips"'),
+			state === "enabled",
+			`${label}: chips`,
+		);
+		assert.equal(
+			html.includes('aria-label="Add reaction"'),
+			state === "enabled",
 			`${label}: react control`,
 		);
-		assert.doesNotMatch(html, /role="toolbar"/, `${label}: no toolbar`);
+		assert.equal(
+			html.includes('role="toolbar"'),
+			state === "enabled",
+			`${label}: toolbar`,
+		);
 	}
 });
 
-test("every directly exported reaction entry point honours the hold", () => {
-	/*
-	 * A page that withholds the context is not enough: a story, a rig or a
-	 * future call site can import these directly. Each export is guarded before
-	 * its body's hooks mount, so every one renders nothing while the constant is
-	 * false. The message list is included because it is the row that would pass
-	 * a context into them.
-	 */
+test("directly exported reaction entry points render in the shipped build", () => {
 	const state = {
 		accountId: "acct_self",
 		rows: [
@@ -501,14 +469,14 @@ test("every directly exported reaction entry point honours the hold", () => {
 		unavailable: false,
 		choose() {},
 	};
-	assert.equal(
+	assert.match(
 		renderToStaticMarkup(
 			createElement(view.TeamBridgeReactionChips, { state }),
 		),
-		"",
+		/data-reaction-layout="chips"/,
 		"chips",
 	);
-	assert.equal(
+	assert.match(
 		renderToStaticMarkup(
 			createElement(view.TeamBridgeReactionPicker, {
 				state,
@@ -517,10 +485,10 @@ test("every directly exported reaction entry point honours the hold", () => {
 				children: createElement("button", null, "react"),
 			}),
 		),
-		"",
-		"picker",
+		/react/,
+		"picker trigger",
 	);
-	assert.equal(
+	assert.match(
 		renderToStaticMarkup(
 			createElement(view.TeamBridgeReactions, {
 				conversationId: reactionMessage.conversation_id,
@@ -530,10 +498,10 @@ test("every directly exported reaction entry point honours the hold", () => {
 				reactions: reactionMessage.reactions,
 			}),
 		),
-		"",
+		/data-reaction-layout="chips"/,
 		"standalone chips",
 	);
-	assert.equal(
+	assert.match(
 		renderToStaticMarkup(
 			createElement(view.TeamBridgeEmojiPicker, {
 				accountId: "acct_self",
@@ -541,7 +509,7 @@ test("every directly exported reaction entry point honours the hold", () => {
 				onClose() {},
 			}),
 		),
-		"",
+		/input/,
 		"emoji grid",
 	);
 	assert.equal(
@@ -552,18 +520,12 @@ test("every directly exported reaction entry point honours the hold", () => {
 				reactionContext: { accountId: "acct_self", tenantId: "tnt_1" },
 			}),
 		).includes('data-reaction-layout="chips"'),
-		false,
-		"a direct row context cannot reach the chips",
+		true,
+		"a direct row context reaches the shipped chips",
 	);
 });
 
-test("the reaction hook is inert while held and issues no toggle", () => {
-	/*
-	 * The hook still runs its hooks (a conditional hook would break callers) but
-	 * returns an inert state: no rows projected from the message, disabled and
-	 * unavailable true, and `choose` a no-op. The toggle spy is the proof that no
-	 * reaction read or write is issued.
-	 */
+test("the shipped reaction hook projects rows and enables a toggle", () => {
 	let toggles = 0;
 	function Probe() {
 		const state = view.useTeamBridgeReactionState({
@@ -577,25 +539,24 @@ test("the reaction hook is inert while held and issues no toggle", () => {
 				return { message_id: reactionMessage.id, reactions: [] };
 			},
 		});
-		void state.choose("👍");
 		return createElement(
 			"span",
 			{
-				"data-inert": String(
-					state.rows.length === 0 &&
-						state.disabled === true &&
-						state.unavailable === true,
+				"data-active": String(
+					state.rows.length === 1 &&
+						state.disabled === false &&
+						state.unavailable === false,
 				),
 			},
 			"probe",
 		);
 	}
 	const html = renderToStaticMarkup(createElement(Probe));
-	assert.match(html, /data-inert="true"/);
-	assert.equal(toggles, 0, "no toggle may be issued while held");
+	assert.match(html, /data-active="true"/);
+	assert.equal(toggles, 0, "rendering alone must not toggle a reaction");
 });
 
-test("no reaction state is mounted while the hold is on", () => {
+test("reaction state mounts only with the capability-derived owner context", () => {
 	// `ReactableMessageRow` is the only caller of the reaction hook, and it
 	// mounts only when the context is present - so withholding the context is
 	// what keeps reaction state and its toggle out of a build the runtime cannot
@@ -618,7 +579,7 @@ test("no reaction state is mounted while the hold is on", () => {
 	);
 });
 
-test("the toolbar counts no reaction control while held", () => {
+test("the toolbar counts a reaction control only in a shipped build", () => {
 	const toolbarSource = read(
 		"src/renderer/src/features/team-bridge/team-bridge-message-toolbar.tsx",
 	);

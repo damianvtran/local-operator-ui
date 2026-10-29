@@ -602,11 +602,8 @@ test("a zero-total org's first message before the conversation list resolves sti
 /**
  * Deferred real transport edges reproduce R1-2 through the mounted hook.
  *
- * THE REPLIES ARM IS NOT A TRANSPORT HERE ANY MORE. The build holds the thread
- * surface closed, so a reply candidate is delivered from the TIMELINE read
- * instead of `listReplies` (see `use-team-bridge-notifications.ts` and
- * `team-bridge-thread-gate.ts`). The history arm below keeps the race matrix;
- * the held reply path has its own test after it.
+ * The history arm below keeps the race matrix; the guarded reply preview has
+ * its own receipt-bearing test after it.
  */
 for (const pending of ["history", "directory"]) {
 	for (const disable of ["setting", "capability", "mute", "none"]) {
@@ -752,15 +749,11 @@ for (const pending of ["history", "directory"]) {
 }
 
 /*
- * A REPLY CANDIDATE ON THE HELD BUILD. The same fixture the reply-enrichment
- * matrix used to drive `listReplies` with: a conversation whose newest seq is a
- * thread reply. The hold routes it through the timeline read, which excludes
- * replies, so the banner carries no preview and no thread root - and the click
- * path lands on the conversation. The adversarial thread-page scenarios that
- * suite screened (wrong root/conversation, later seq, read failure) are
- * unreachable while the hold is on because no thread read is issued at all.
+ * A reply preview is a real thread read in the shipped build. Its query must
+ * carry the observed account and candidate tenant, and the click retains the
+ * same thread target rather than degrading to the conversation timeline.
  */
-test("a reply candidate reads the timeline, never the thread, and opens the conversation", async () => {
+test("a reply candidate reads its guarded thread with the observed account and opens the reply", async () => {
 	resetFixture();
 	const root = {
 		id: "bcmsg_root",
@@ -835,23 +828,27 @@ test("a reply candidate reads the timeline, never the thread, and opens the conv
 			() => mounted.notifications.length === 1,
 			"the metadata banner",
 		);
-		await until(
-			() => fixture.calls.history.length === 1,
-			"the timeline fallback",
-		);
+		await until(() => fixture.calls.replies.length === 1, "the thread read");
 		await settle();
-		assert.deepEqual(fixture.calls.replies, [], "no thread read while held");
-		assert.deepEqual(fixture.calls.history, [
-			{ id: "bcv_reply", tenantId: "tnt_reply", limit: 1 },
+		assert.deepEqual(fixture.calls.replies, [
+			{
+				id: "bcv_reply",
+				rootId: "bcmsg_root",
+				tenantId: "tnt_reply",
+				accountId: "acct_alice",
+				afterSeq: 2,
+				limit: 1,
+			},
 		]);
+		assert.deepEqual(fixture.calls.history, []);
 		const banner = mounted.notifications[0];
-		assert.equal(banner.threadId, undefined, "no thread target on the click");
+		assert.equal(banner.threadId, "bcmsg_root");
 		assert.equal(banner.seq, 2);
 		assert.equal(banner.tenantId, "tnt_reply");
-		assert.doesNotMatch(banner.body, /Private reply|Root-only history/);
+		assert.match(banner.body, /Private reply preview/);
 		assert.equal(
 			api.teamBridgeOpenPath(banner),
-			"/team-bridge?tenant=tnt_reply&conversation=bcv_reply",
+			"/team-bridge?tenant=tnt_reply&conversation=bcv_reply&thread=bcmsg_root",
 		);
 	} finally {
 		await mounted.teardown();

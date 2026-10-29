@@ -308,40 +308,31 @@ export function parseTeamBridgeNotifyRequest(
 }
 
 /**
- * THE HOLD: the thread surface does not ship in this build, whatever a runtime
- * advertises.
+ * Threads ship only with the owner-guarded runtime contract. local-operator
+ * PR #3149 publishes `team_bridge_threads` and requires the captured account
+ * and target tenant on every thread read and reply; the desktop contract now
+ * satisfies those guards, including the schema-level threaded-send refusal.
  *
- * HERE, IN THE SHARED MODULE, because the hold has to close BOTH sides of the
+ * THE CONSTANT STILL LIVES HERE because it guards BOTH sides of the
  * notification path: main parks a banner's click target (including a thread
- * root) and the renderer turns it back into a route. A constant the renderer
- * alone read would leave `?thread=` on the path and would leave the banner
- * preview reading thread replies, which are the cache/retry paths carrying the
- * reported cross-account isolation defects inherited from #1304. A runtime
- * advertising the route is not clearance: the backend cannot know which client
- * build is talking to it, and a client built before the fix would reactivate
- * those defects the moment the runtime that serves threads ships
- * (local-operator PR #2757).
- *
- * Returning the feature is flipping this to `true` and letting the capability
- * key (`team_bridge_threads`) decide the rest - not a cleanup.
+ * root) and the renderer turns it back into a route. The capability must still
+ * answer exactly `enabled`; unknown, below-version and unpaired states fail
+ * closed. The old receipt-less paths must not be reintroduced when this build
+ * constant is changed again.
  */
-export const TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD = false;
+export const TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD = true;
 
 /**
- * THE REACTIONS HOLD: the reaction affordances do not ship in this build,
- * whatever a runtime advertises.
+ * Reactions ship with the same deliberate build-and-capability gate.
+ * local-operator PR #3149 publishes `team_bridge_reactions` and requires the
+ * captured account and target tenant in the PUT body or DELETE query; the
+ * desktop contract now supplies both before dispatch.
  *
- * The shipped runtime serves no reaction route at all (its OpenAPI schema
- * carries none; a reaction GET answers 404), and the old reaction path has NOT
- * been reviewed for account/retry safety. A backend advertising a
- * `team_bridge_reactions` capability must therefore never wake it up: enabling
- * reactions is a DELIBERATE flip of this constant in a release that carries the
- * verified fix, never an automatic consequence of a capability appearing.
- *
- * Kept beside the threads constant because the two holds share one shape: the
- * build constant dominates, and the capability only narrows further.
+ * The capability appearing alone is not clearance: `teamBridgeReactionsAvailable`
+ * still returns the surface only for an exact `enabled` answer, and every other
+ * capability state remains hidden.
  */
-export const TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD = false;
+export const TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD = true;
 
 /**
  * The in-app path a click lands on.

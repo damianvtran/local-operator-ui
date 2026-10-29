@@ -771,14 +771,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		setQuickView(null);
 		onTarget(next);
 	};
-	/* THE HOLD. Both halves must agree before any thread state exists, so a deep
-	   link or a reply handler cannot leave a selection behind that a later
-	   render would mount. See `team-bridge-thread-gate.ts`. */
-	const threadsAvailable = teamBridgeThreadsAvailable(threadsCapabilityState);
-	/* THE REACTIONS HOLD. The build constant dominates the capability: the
-	   context is withheld in this build whatever the runtime advertises, so the
-	   message list mounts no reaction state and neither chips nor the toolbar's
-	   react button exist. See `team-bridge-reaction-gate.ts`. */
+	/* Both the build/capability gate and a resolved account are required before
+	   any thread state exists. Reads and replies need that captured owner, so a
+	   deep link or reply handler cannot mount an unidentified thread surface. */
+	const threadsAvailable =
+		teamBridgeThreadsAvailable(threadsCapabilityState) &&
+		selfAccountId !== undefined;
+	/* Reactions likewise require their captured account as well as the build
+	   and capability. Without that context no chip or toolbar toggle mounts. */
 	const reactionsAvailable = teamBridgeReactionsAvailable(
 		reactionsCapabilityState,
 	);
@@ -2395,10 +2395,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					</>
 				)}
 			</section>
-			{/* Threads: a ground-separated sibling; no rail or compose routing changes.
-			    THE HOLD IS THE FIRST TERM: `threadsAvailable` is false in this
-			    build whatever the runtime advertises, so no selection - deep link,
-			    reply click, story fixture - can mount the pane. */}
+			{/* Threads: a ground-separated sibling. The capability and captured
+			    account gate every selection source, including deep links. */}
 			{threadsAvailable &&
 				threadSelection &&
 				shown &&

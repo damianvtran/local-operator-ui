@@ -29,7 +29,7 @@ type Props = {
 	conversationId: string;
 	messageId: string;
 	accountId: string;
-	tenantId?: string;
+	tenantId: string;
 	reactions?: TeamBridgeReaction[];
 	disabled?: boolean;
 	defaultOpen?: boolean;
@@ -58,11 +58,10 @@ export function useTeamBridgeReactionState({
 	toggle = TeamBridgeApi.react,
 }: Omit<Props, "defaultOpen">) {
 	/*
-	 * THE HOLD, INSIDE THE HOOK. Hooks run unconditionally (a conditional hook
-	 * would break every caller), but while the constant is false this returns an
-	 * INERT state and `choose` is a no-op: no reaction state is projected from
-	 * the message and no toggle can be issued. The shipped runtime serves no
-	 * reaction route, and the old path is not reviewed for account/retry safety.
+	 * THE BUILD GUARD, INSIDE THE HOOK. Hooks run unconditionally (a conditional
+	 * hook would break every caller), but a build with the surface withheld
+	 * returns an INERT state and `choose` is a no-op. In this shipped build the
+	 * toggle carries the captured account and target tenant required by #3149.
 	 */
 	const held = !TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD;
 	const [rows, setRows] = useState(held ? EMPTY_REACTIONS : reactions);
@@ -88,6 +87,7 @@ export function useTeamBridgeReactionState({
 				emoji,
 				active,
 				tenantId,
+				accountId,
 			);
 			setRows(answer.reactions);
 			if (active) record(accountId, emoji);
