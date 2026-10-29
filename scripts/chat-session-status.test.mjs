@@ -119,8 +119,8 @@ for (const [code, icon, ink] of [
 	 */
 	["wedged", "equal-approximately", "warning"],
 	["busy", "loader-circle", "accent"],
-	["answer", "circle-alert", "warning"],
-	["approval", "circle-alert", "warning"],
+	["answer", "message-circle-question", "warning"],
+	["approval", "message-circle-question", "warning"],
 	["scheduled", "clock", "ink-dim"],
 	["attached", "message-square", "ink-dim"],
 	/*
