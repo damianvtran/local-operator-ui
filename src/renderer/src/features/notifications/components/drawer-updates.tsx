@@ -20,7 +20,11 @@ import { Tooltip } from "@shared/components/ui/tooltip";
 import { formatNumber, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { showErrorToast, showInfoToast } from "@shared/utils/toast-manager";
+import {
+	replaceErrorToast,
+	showErrorToast,
+	showInfoToast,
+} from "@shared/utils/toast-manager";
 import { useQuery } from "@tanstack/react-query";
 import {
 	Check,
@@ -376,7 +380,17 @@ export const DrawerUpdates: FC<{
 				{ verb, target: { items } },
 				{
 					onError: () =>
-						showErrorToast(t("ui.notifications.error.mark"), {
+						/*
+						 * THE ANSWER TO THE PRESS, NOT AN UNSOLICITED REFUSAL. `showErrorToast`
+						 * dedupes one sentence per five seconds, which is right for a failure a
+						 * person did not ask for - and wrong here: a refused Undo landing inside
+						 * that window after ANY earlier notification failure published nothing,
+						 * so the person saw no answer and lost the retry. That is the case
+						 * `replaceErrorToast` exists for (its own doc names "the answer to a
+						 * press"); the hosted native scene found it when a refused dismiss, then
+						 * a refused Undo, collapsed into one card with no action.
+						 */
+						replaceErrorToast(t("ui.notifications.error.mark"), {
 							action: {
 								label: t("ui.notifications.error.retry"),
 								onClick: retry,

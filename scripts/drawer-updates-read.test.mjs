@@ -1115,6 +1115,56 @@ test(
 );
 
 test(
+	/*
+	 * THE HOSTED SCENE'S SECOND REFUSAL. `showErrorToast` dedupes one sentence per
+	 * five seconds, so a refused Undo that lands after another notification
+	 * failure published nothing: no answer to the press, and no retry control.
+	 * The scene's "Undo error with retry" step is exactly that pair, and it timed
+	 * out at the failing native head. This test is the red-first spelling of it:
+	 * it fails while the Undo's own failure goes through the deduping path.
+	 */
+	"U3: a refused Undo answers even when the same refusal was just shown",
+	BOUNDED,
+	async () => {
+		DRAWER.resetToastDedup();
+		const page = await mount();
+		const firstError = errorToasts.length;
+		const firstInfo = infoToasts.length;
+		try {
+			await page.settle(() => page.rowIds().length === 5);
+			// The earlier refusal, in the drawer's own copy: a refused mark-all.
+			page.refuseNextWrite();
+			await page.click("[data-drawer-mark-all-read]");
+			assert.ok(
+				await page.settle(() => errorToasts.length > firstError),
+				"precondition: the first refusal was shown",
+			);
+			// The same action then succeeds, so there is an Undo to refuse.
+			await page.click("[data-drawer-mark-all-read]");
+			assert.ok(
+				await page.settle(() => infoToasts.length > firstInfo),
+				"precondition: the Undo card exists",
+			);
+			const beforeUndo = errorToasts.length;
+			page.refuseNextWrite();
+			await act(async () => infoToasts.at(-1).options.action.onClick());
+			assert.ok(
+				await page.settle(() => errorToasts.length > beforeUndo),
+				"a refused Undo must answer inside the dedupe window",
+			);
+			assert.equal(
+				typeof errorToasts.at(-1).options.action.onClick,
+				"function",
+				"and its answer must carry the retry",
+			);
+		} finally {
+			await page.unmount();
+			page.client.clear();
+		}
+	},
+);
+
+test(
 	"U3: refused Undo keeps successful original state and offers explicit retry with original tokens",
 	BOUNDED,
 	async () => {
