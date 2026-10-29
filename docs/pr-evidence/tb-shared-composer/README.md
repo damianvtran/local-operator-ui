@@ -39,6 +39,13 @@ the point of typing, the alert under a failed send names the failure, and the
 schedule clock states its reason. The frames above them predate it and would
 have shown copy that no longer exists.
 
-`after/empty-account`, `after/loading` and `after/error-state` are unchanged
-from the earlier head on purpose: none of them renders a composer, so the copy
-change cannot reach them.
+`after/empty-account` and `after/loading` are unchanged from the earlier head on
+purpose: neither renders a composer, so the copy change cannot reach them.
+
+**`error-state` is deliberately NOT here.** The capture that was committed as
+`after/error-state.png` measured 1,170,355 of 1,170,720 pixels pure white with
+only a spinner — it caught the page before its theme applied, which is why the
+design round refused it as an invalid frame. A frame that cannot carry its
+claim is worse than no frame, so it is withdrawn rather than re-labelled; the
+error state needs a re-capture under the theme, and until then this directory
+claims nothing about it.
