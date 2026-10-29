@@ -218,9 +218,11 @@ import esUiSettingsShortcuts from "./catalogues/es/ui.settings.shortcuts.json";
 import esUiSettingsSpeech from "./catalogues/es/ui.settings.speech.json";
 import esUiSettingsUpdates from "./catalogues/es/ui.settings.updates.json";
 import esUiShell from "./catalogues/es/ui.shell.json";
+import esUiShellMenubar from "./catalogues/es/ui.shell.menubar.json";
 import esUiShellRail from "./catalogues/es/ui.shell.rail.json";
 import esUiTeamBridgeArchive from "./catalogues/es/ui.teamBridge.archive.json";
 import esUiTeamBridge from "./catalogues/es/ui.teamBridge.json";
+import esUiUpdatesPanel from "./catalogues/es/ui.updates.panel.json";
 import frUiAgentMessages from "./catalogues/fr/ui.agentMessages.json";
 import frUiAgentMessagesSettings from "./catalogues/fr/ui.agentMessages.settings.json";
 import frUiAgentsConfig from "./catalogues/fr/ui.agents.config.json";
@@ -317,9 +319,11 @@ import frUiSettingsShortcuts from "./catalogues/fr/ui.settings.shortcuts.json";
 import frUiSettingsSpeech from "./catalogues/fr/ui.settings.speech.json";
 import frUiSettingsUpdates from "./catalogues/fr/ui.settings.updates.json";
 import frUiShell from "./catalogues/fr/ui.shell.json";
+import frUiShellMenubar from "./catalogues/fr/ui.shell.menubar.json";
 import frUiShellRail from "./catalogues/fr/ui.shell.rail.json";
 import frUiTeamBridgeArchive from "./catalogues/fr/ui.teamBridge.archive.json";
 import frUiTeamBridge from "./catalogues/fr/ui.teamBridge.json";
+import frUiUpdatesPanel from "./catalogues/fr/ui.updates.panel.json";
 import hiUiAgentMessages from "./catalogues/hi/ui.agentMessages.json";
 import hiUiAgentMessagesSettings from "./catalogues/hi/ui.agentMessages.settings.json";
 import hiUiAgentsConfig from "./catalogues/hi/ui.agents.config.json";
@@ -416,9 +420,11 @@ import hiUiSettingsShortcuts from "./catalogues/hi/ui.settings.shortcuts.json";
 import hiUiSettingsSpeech from "./catalogues/hi/ui.settings.speech.json";
 import hiUiSettingsUpdates from "./catalogues/hi/ui.settings.updates.json";
 import hiUiShell from "./catalogues/hi/ui.shell.json";
+import hiUiShellMenubar from "./catalogues/hi/ui.shell.menubar.json";
 import hiUiShellRail from "./catalogues/hi/ui.shell.rail.json";
 import hiUiTeamBridgeArchive from "./catalogues/hi/ui.teamBridge.archive.json";
 import hiUiTeamBridge from "./catalogues/hi/ui.teamBridge.json";
+import hiUiUpdatesPanel from "./catalogues/hi/ui.updates.panel.json";
 import ruUiAgentMessages from "./catalogues/ru/ui.agentMessages.json";
 import ruUiAgentMessagesSettings from "./catalogues/ru/ui.agentMessages.settings.json";
 import ruUiAgentsConfig from "./catalogues/ru/ui.agents.config.json";
@@ -515,9 +521,11 @@ import ruUiSettingsShortcuts from "./catalogues/ru/ui.settings.shortcuts.json";
 import ruUiSettingsSpeech from "./catalogues/ru/ui.settings.speech.json";
 import ruUiSettingsUpdates from "./catalogues/ru/ui.settings.updates.json";
 import ruUiShell from "./catalogues/ru/ui.shell.json";
+import ruUiShellMenubar from "./catalogues/ru/ui.shell.menubar.json";
 import ruUiShellRail from "./catalogues/ru/ui.shell.rail.json";
 import ruUiTeamBridgeArchive from "./catalogues/ru/ui.teamBridge.archive.json";
 import ruUiTeamBridge from "./catalogues/ru/ui.teamBridge.json";
+import ruUiUpdatesPanel from "./catalogues/ru/ui.updates.panel.json";
 import urUiAgentMessages from "./catalogues/ur/ui.agentMessages.json";
 import urUiAgentMessagesSettings from "./catalogues/ur/ui.agentMessages.settings.json";
 import urUiAgentsConfig from "./catalogues/ur/ui.agents.config.json";
@@ -614,9 +622,11 @@ import urUiSettingsShortcuts from "./catalogues/ur/ui.settings.shortcuts.json";
 import urUiSettingsSpeech from "./catalogues/ur/ui.settings.speech.json";
 import urUiSettingsUpdates from "./catalogues/ur/ui.settings.updates.json";
 import urUiShell from "./catalogues/ur/ui.shell.json";
+import urUiShellMenubar from "./catalogues/ur/ui.shell.menubar.json";
 import urUiShellRail from "./catalogues/ur/ui.shell.rail.json";
 import urUiTeamBridgeArchive from "./catalogues/ur/ui.teamBridge.archive.json";
 import urUiTeamBridge from "./catalogues/ur/ui.teamBridge.json";
+import urUiUpdatesPanel from "./catalogues/ur/ui.updates.panel.json";
 import viUiAgentMessages from "./catalogues/vi/ui.agentMessages.json";
 import viUiAgentMessagesSettings from "./catalogues/vi/ui.agentMessages.settings.json";
 import viUiAgentsConfig from "./catalogues/vi/ui.agents.config.json";
@@ -713,9 +723,11 @@ import viUiSettingsShortcuts from "./catalogues/vi/ui.settings.shortcuts.json";
 import viUiSettingsSpeech from "./catalogues/vi/ui.settings.speech.json";
 import viUiSettingsUpdates from "./catalogues/vi/ui.settings.updates.json";
 import viUiShell from "./catalogues/vi/ui.shell.json";
+import viUiShellMenubar from "./catalogues/vi/ui.shell.menubar.json";
 import viUiShellRail from "./catalogues/vi/ui.shell.rail.json";
 import viUiTeamBridgeArchive from "./catalogues/vi/ui.teamBridge.archive.json";
 import viUiTeamBridge from "./catalogues/vi/ui.teamBridge.json";
+import viUiUpdatesPanel from "./catalogues/vi/ui.updates.panel.json";
 import zhCNUiAgentMessages from "./catalogues/zh-CN/ui.agentMessages.json";
 import zhCNUiAgentMessagesSettings from "./catalogues/zh-CN/ui.agentMessages.settings.json";
 import zhCNUiAgentsConfig from "./catalogues/zh-CN/ui.agents.config.json";
@@ -812,9 +824,11 @@ import zhCNUiSettingsShortcuts from "./catalogues/zh-CN/ui.settings.shortcuts.js
 import zhCNUiSettingsSpeech from "./catalogues/zh-CN/ui.settings.speech.json";
 import zhCNUiSettingsUpdates from "./catalogues/zh-CN/ui.settings.updates.json";
 import zhCNUiShell from "./catalogues/zh-CN/ui.shell.json";
+import zhCNUiShellMenubar from "./catalogues/zh-CN/ui.shell.menubar.json";
 import zhCNUiShellRail from "./catalogues/zh-CN/ui.shell.rail.json";
 import zhCNUiTeamBridgeArchive from "./catalogues/zh-CN/ui.teamBridge.archive.json";
 import zhCNUiTeamBridge from "./catalogues/zh-CN/ui.teamBridge.json";
+import zhCNUiUpdatesPanel from "./catalogues/zh-CN/ui.updates.panel.json";
 
 /** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */
 export const bundledEnglish: Readonly<Record<string, string>> = {
@@ -1023,9 +1037,11 @@ export const bundledCatalogues: Readonly<
 		...esUiSettingsSpeech,
 		...esUiSettingsUpdates,
 		...esUiShell,
+		...esUiShellMenubar,
 		...esUiShellRail,
 		...esUiTeamBridgeArchive,
 		...esUiTeamBridge,
+		...esUiUpdatesPanel,
 	},
 	fr: {
 		...frUiAgentMessages,
@@ -1124,9 +1140,11 @@ export const bundledCatalogues: Readonly<
 		...frUiSettingsSpeech,
 		...frUiSettingsUpdates,
 		...frUiShell,
+		...frUiShellMenubar,
 		...frUiShellRail,
 		...frUiTeamBridgeArchive,
 		...frUiTeamBridge,
+		...frUiUpdatesPanel,
 	},
 	hi: {
 		...hiUiAgentMessages,
@@ -1225,9 +1243,11 @@ export const bundledCatalogues: Readonly<
 		...hiUiSettingsSpeech,
 		...hiUiSettingsUpdates,
 		...hiUiShell,
+		...hiUiShellMenubar,
 		...hiUiShellRail,
 		...hiUiTeamBridgeArchive,
 		...hiUiTeamBridge,
+		...hiUiUpdatesPanel,
 	},
 	ru: {
 		...ruUiAgentMessages,
@@ -1326,9 +1346,11 @@ export const bundledCatalogues: Readonly<
 		...ruUiSettingsSpeech,
 		...ruUiSettingsUpdates,
 		...ruUiShell,
+		...ruUiShellMenubar,
 		...ruUiShellRail,
 		...ruUiTeamBridgeArchive,
 		...ruUiTeamBridge,
+		...ruUiUpdatesPanel,
 	},
 	ur: {
 		...urUiAgentMessages,
@@ -1427,9 +1449,11 @@ export const bundledCatalogues: Readonly<
 		...urUiSettingsSpeech,
 		...urUiSettingsUpdates,
 		...urUiShell,
+		...urUiShellMenubar,
 		...urUiShellRail,
 		...urUiTeamBridgeArchive,
 		...urUiTeamBridge,
+		...urUiUpdatesPanel,
 	},
 	vi: {
 		...viUiAgentMessages,
@@ -1528,9 +1552,11 @@ export const bundledCatalogues: Readonly<
 		...viUiSettingsSpeech,
 		...viUiSettingsUpdates,
 		...viUiShell,
+		...viUiShellMenubar,
 		...viUiShellRail,
 		...viUiTeamBridgeArchive,
 		...viUiTeamBridge,
+		...viUiUpdatesPanel,
 	},
 	"zh-CN": {
 		...zhCNUiAgentMessages,
@@ -1629,9 +1655,11 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiSettingsSpeech,
 		...zhCNUiSettingsUpdates,
 		...zhCNUiShell,
+		...zhCNUiShellMenubar,
 		...zhCNUiShellRail,
 		...zhCNUiTeamBridgeArchive,
 		...zhCNUiTeamBridge,
+		...zhCNUiUpdatesPanel,
 	},
 };
 
