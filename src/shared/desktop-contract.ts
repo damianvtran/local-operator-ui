@@ -1957,6 +1957,29 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			fileId: z.string().regex(/^[a-f0-9]{16}$/),
 		})
 		.strict(),
+	/*
+	 * The files and pictures the PERSON attached (`features.session_attachments`).
+	 * A backend read over the whole journal because history pages arrive lazily,
+	 * newest first: a first-turn PDF is not in memory when the canvas opens, and a
+	 * list built from loaded rows alone would claim "nothing attached". Metadata
+	 * only - bytes stay on `sessions.attachment` (one binary transport).
+	 */
+	z
+		.object({
+			op: z.literal("sessions.userAttachments"),
+			sessionId,
+		})
+		.strict(),
+	// Copies one listed attachment's retained bytes to a real, named file in the
+	// session scratchpad, so open/reveal/copy-path have something an OS app opens
+	// (a pasted screenshot has no path; a moved file's store copy is a `.bin`).
+	z
+		.object({
+			op: z.literal("sessions.userAttachments.materialise"),
+			sessionId,
+			digest: z.string().regex(/^[a-f0-9]{32}$/),
+		})
+		.strict(),
 
 	z
 		.object({
@@ -6633,6 +6656,7 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"sessions.get",
 	"sessions.history",
 	"sessions.files",
+	"sessions.userAttachments",
 	"sessions.list",
 	"sessions.preview",
 	"sessions.report",
@@ -8328,6 +8352,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 		case "sessions.files.materialise":
 			return {
 				path: `/v1/desktop/sessions/${encodeURIComponent(request.sessionId)}/files/${encodeURIComponent(request.fileId)}/materialise`,
+				method: "POST",
+			};
+		case "sessions.userAttachments":
+			return {
+				path: `/v1/desktop/sessions/${encodeURIComponent(request.sessionId)}/user-attachments`,
+				method: "GET",
+			};
+		case "sessions.userAttachments.materialise":
+			return {
+				path: `/v1/desktop/sessions/${encodeURIComponent(request.sessionId)}/user-attachments/${encodeURIComponent(request.digest)}/materialise`,
 				method: "POST",
 			};
 

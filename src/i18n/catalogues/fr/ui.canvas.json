@@ -31,7 +31,7 @@
 	"ui.canvas.files.retry": "Réessayer",
 	"ui.canvas.files.continue": "Continuer le chargement",
 	"ui.canvas.files.empty": "Aucun fichier pour l’instant",
-	"ui.canvas.files.emptyDetail": "Les fichiers créés ou mis en avant par l’agent apparaissent ici.",
+	"ui.canvas.files.emptyDetail": "Les fichiers créés par l’agent ou que vous joignez apparaissent ici.",
 	"ui.canvas.files.noMatch": "Aucun fichier ne correspond à cette recherche et à ce filtre",
 	"ui.canvas.files.clear": "Effacer la recherche et le filtre",
 	"ui.canvas.files.sessionOnly": "Dans la conversation uniquement",
@@ -345,5 +345,18 @@
 	"ui.canvas.wysiwyg_markdown_editor.remove": "- Retirer",
 	"ui.canvas.wysiwyg_markdown_editor.add": "+ Ajouter",
 	"ui.canvas.create_file_dialog.creating": "Création…",
-	"ui.canvas.variable_form_dialog.saving": "Enregistrement…"
+	"ui.canvas.variable_form_dialog.saving": "Enregistrement…",
+	"ui.canvas.files.attachments": "Pièces jointes",
+	"ui.canvas.files.attachmentsPartial": "Peut être incomplet",
+	"ui.canvas.files.attachmentsPartialReason": "Liste créée à partir des messages chargés jusqu’ici.",
+	"ui.canvas.files.attachmentsError": "Impossible de charger les pièces jointes",
+	"ui.canvas.files.attachmentsErrorReason": "Le backend n’a pas pu vérifier la liste des pièces jointes. Réessayez.",
+	"ui.canvas.files.attachmentTooltip": "{name} · {digest} · Joint par vous, conservé dans cette session",
+	"ui.canvas.files.attachmentGoneRecovery": "Déplacé ou supprimé, et il ne reste aucune copie conservée. Copiez le chemin depuis le menu pour le rechercher.",
+	"ui.canvas.files.attachmentImage": "Image jointe",
+	"ui.canvas.files.attachmentRetained": "Déplacé ou supprimé · copie conservée",
+	"ui.canvas.files.attachmentGone": "Déplacé ou supprimé · aucune copie conservée",
+	"ui.canvas.files.attachmentMeta": "{size} · {when}",
+	"ui.canvas.files.attachmentRefused": "Ressemble à un secret, actions sur le fichier désactivées",
+	"ui.canvas.files.attachmentReadOnly": "Lecture seule — copie conservée d’une pièce jointe"
 }
