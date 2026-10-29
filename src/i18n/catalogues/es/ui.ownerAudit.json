@@ -1,6 +1,6 @@
 {
 	"ui.ownerAudit.title": "Mensajes de tu jefe de gabinete",
-	"ui.ownerAudit.read_only": "Historial de solo lectura. Enviar, reaccionar y editar no está disponible.",
+	"ui.ownerAudit.read_only": "Historial de solo lectura. Enviar, reaccionar y editar no están disponibles.",
 	"ui.ownerAudit.loading": "Cargando mensajes auditados",
 	"ui.ownerAudit.error": "No se pudieron cargar los mensajes auditados.",
 	"ui.ownerAudit.retry": "Reintentar",

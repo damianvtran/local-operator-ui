@@ -1,0 +1,263 @@
+{
+  "locale": "ur",
+  "namespaces": {
+    "ui.shell.menubar": {
+      "status": "passed",
+      "keys_audited": 13,
+      "sha256": {
+        "en": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+        "ur": "256b0938a8c372cf3df13ae1ee8d495fa2829562cb01f629858e214af45a0cb4"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "namespace": "ui.shell.menubar",
+          "key": "ui.shell.menubar.zoom_in",
+          "current": "بڑا کریں",
+          "suggestion": "زوم ان  (or: بڑا کریں / بڑا دکھائیں)",
+          "rationale": "Bare 'make big' drops the zoom/view sense and has no object; ambiguous beside View. Pair with زوم آؤٹ for symmetry. Not wrong; length ok."
+        },
+        {
+          "severity": "MINOR",
+          "namespace": "ui.shell.menubar",
+          "key": "ui.shell.menubar.zoom_out",
+          "current": "چھوٹا کریں",
+          "suggestion": "زوم آؤٹ  (or: چھوٹا دکھائیں)",
+          "rationale": "Same as zoom_in; keep the pair consistent."
+        }
+      ]
+    },
+    "ui.updates.panel": {
+      "status": "passed",
+      "keys_audited": 41,
+      "sha256": {
+        "en": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+        "ur": "eb5b1bc66cc9764c660b788779e9477987ba966bf9e36c261f0846a1e2045109"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.artifact.remedy",
+          "current": "ریلیز دوبارہ ڈاؤن لوڈ کرنے کے لیے اپ ڈیٹس دوبارہ تلاش کریں۔",
+          "suggestion": "ریلیز دوبارہ ڈاؤن لوڈ کرنے کے لیے اپ ڈیٹس کی جانچ دوبارہ کریں۔",
+          "rationale": "'Check for updates' rendered as تلاش کریں (search); also double دوبارہ. Same for disk.remedy: ... پھر اپ ڈیٹس کی جانچ دوبارہ کریں۔"
+        },
+        {
+          "severity": "MINOR",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.seal.remedy",
+          "current": "...نئی نقل ڈاؤن لوڈ کریں... (also seal.startup.heading/message, launch.keep.*, failure.*.remedy)",
+          "suggestion": "نئی کاپی ڈاؤن لوڈ کریں / اس کاپی کو بدلنا ضروری ہے",
+          "rationale": "'نقل' as app copy also connotes imitation/cheating (نقل کرنا); 'کاپی' is the settled software loanword and matches the style guide's loanword policy. Consistent across ~7 keys, so a single decision."
+        },
+        {
+          "severity": "MINOR",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.server.behind.remedy",
+          "current": "اسی لیے `lop-update` نے اس سے بلڈ بنانے سے انکار کیا: ... یہاں اگلی بار دبانے پر یہ بلڈ ہو جائے گا۔",
+          "suggestion": "اسی لیے `lop-update` نے اسے بلڈ کرنے سے انکار کر دیا: چیک آؤٹ کو تازہ کریں، پھر یہاں بٹن دبانے پر یہ بلڈ ہو جائے گا۔",
+          "rationale": "Stacked سے...سے is clumsy; 'دبانے' has no object (source 'next press here' also elliptical). Backticked command is kept intact and isolated by the renderer: no bidi defect."
+        },
+        {
+          "severity": "MINOR",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.server.rebuild.remedy",
+          "current": "دوبارہ تعمیر اسی وقت اس تنصیب کو بدلتی ہے...",
+          "suggestion": "دوبارہ بلڈ کرنا اسی وقت اس تنصیب کو بدلتا ہے جب وہ کامیاب ہو...",
+          "rationale": "Terminology drift: 'build' is بلڈ in behind.remedy and norestart.remedy but 'rebuild' is دوبارہ تعمیر here, so the three adjacent remedies read as different concepts."
+        },
+        {
+          "severity": "NIT",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.launch.open.message",
+          "current": "...macOS سے لانچ نہیں ہو سکتی...",
+          "suggestion": "...macOS اسے لانچ نہیں کر سکتا...",
+          "rationale": "'macOS سے ... ہو سکتی' can read as 'from macOS'; the active form names macOS as the agent, matching the English."
+        },
+        {
+          "severity": "NIT",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.launch.keep.message_version",
+          "current": "...تو اسے چھوڑ دیں",
+          "suggestion": "...تو اسے انسٹال نہ کریں / اسے نظر انداز کریں",
+          "rationale": "'چھوڑ دیں' (leave/abandon) is ambiguous for 'skip'. Prefer the unambiguous wording."
+        },
+        {
+          "severity": "NIT",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.service.no_server.message",
+          "current": "اپ ڈیٹ کرنے کو کچھ نہیں۔",
+          "suggestion": "اپ ڈیٹ کرنے کے لیے کچھ نہیں۔",
+          "rationale": "'کرنے کو' is colloquial for a neutral status line."
+        },
+        {
+          "severity": "NIT",
+          "namespace": "ui.updates.panel",
+          "key": "ui.updates.panel.artifact.not_this_app.message",
+          "current": "اس ایپلیکیشن کی نہیں ہے",
+          "suggestion": "اس ایپ کی نہیں ہے",
+          "rationale": "Source says 'application'; every other string here uses ایپ. Trivial consistency nit."
+        }
+      ]
+    }
+  },
+  "checkout": "/Users/damian/lo-audit-1464 (damianvtran/local-operator-ui, PR #1464, branch i18n-wave-c1)",
+  "checkout_head": "57a725f020853d9cc03ad5d97636fec2380b0ddb",
+  "key_count": 54,
+  "audit_date": "2026-10-28",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "8dc97dbcd247",
+    "model": "anthropic/claude-sonnet-5-5"
+  },
+  "input_sha256": {
+    "en/ui.shell.menubar.json": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+    "en/ui.updates.panel.json": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+    "ur/ui.shell.menubar.json": "256b0938a8c372cf3df13ae1ee8d495fa2829562cb01f629858e214af45a0cb4",
+    "ur/ui.updates.panel.json": "eb5b1bc66cc9764c660b788779e9477987ba966bf9e36c261f0846a1e2045109",
+    "en/ui.shell.menubar.context.json": "29964bf8fd93544fd8d8478324b58170b326139066b2bd063405876a1b4775d1",
+    "en/ui.updates.panel.context.json": "d709c7cc09695b16b271101f2ba25a027e70241cab10a2ac2935aab404aa3a5f",
+    "~/local-operator/i18n/glossary.md": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "~/local-operator/i18n/style-guides/ur.md": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+  },
+  "read_provenance": {
+    "via_read_public_copy": [
+      {
+        "path": "src/i18n/catalogues/ur/ui.shell.menubar.json",
+        "key": "whole file (all keys: 13 menubar / 41 panel)"
+      },
+      {
+        "path": "src/i18n/catalogues/en/ui.shell.menubar.json",
+        "key": "whole file (all keys: 13 menubar / 41 panel)"
+      },
+      {
+        "path": "src/i18n/catalogues/ur/ui.updates.panel.json",
+        "key": "whole file (all keys: 13 menubar / 41 panel)"
+      },
+      {
+        "path": "src/i18n/catalogues/en/ui.updates.panel.json",
+        "key": "whole file (all keys: 13 menubar / 41 panel)"
+      }
+    ],
+    "context_docs_via_filesystem_not_catalogue_copy": [
+      "src/i18n/catalogues/en/ui.shell.menubar.context.json",
+      "src/i18n/catalogues/en/ui.updates.panel.context.json",
+      "~/local-operator/i18n/glossary.md",
+      "~/local-operator/i18n/style-guides/ur.md"
+    ],
+    "note": "Each catalogue was read as one whole-file call through read_public_copy (no per-key calls). Hashes in input_sha256 computed with shasum -a 256. Nothing read from ~/qa/c1b, ~/qa/c1-translations or ~/qa/c1-audit prior to this run."
+  },
+  "checks": {
+    "key_parity": "en/ur key sets identical in both namespaces (13/13, 41/41); valid JSON",
+    "icu_placeholders": "{name},{version},{size},{target},{running} identical sets per key and untouched; no plural/select in either namespace",
+    "backtick_code": "`lop-update` byte-identical (only code span in scope)",
+    "bidi_controls": "no manual RLM/LRM/FSI/PDI/embedding chars in any ur string (style guide forbids; renderer isolates)",
+    "bidi_latin_runs": "Local Operator, macOS, Python, Applications, lop-update, {version} sit as isolated LTR runs inside RTL sentences; none leads or trails in a way that misorders punctuation. ۔ ، ؛ used correctly; no Hindi danda; no trailing ASCII punctuation; ASCII ':' used once in server.behind.remedy mirroring source, acceptable.",
+    "platform_menu_convention": "macOS ships no Urdu UI localisation, so there is no Apple Urdu wording to match; menu labels use settled Urdu/loanword terms (فائل، ترمیم، منظر، ونڈو). 'منظر' for View is acceptable; no contrary convention found. About-item {name} کے بارے میں follows Urdu postposition order with name kept verbatim.",
+    "menu_fit": "all 13 menu labels 1-4 words (longest: زبردستی دوبارہ لوڈ کریں, 4); no trailing full stop; no shortcut-column risk",
+    "register": "آپ-level respectful imperatives (کریں); no تم/تو; no '!'; calm factual tone per sidecar; no blame",
+    "glossary": "Local Operator verbatim; macOS official spelling; ایپ/سیشن-class loanwords per guide; no glossary term mistranslated. Non-glossary build/rebuild drift noted as MINOR.",
+    "accuracy": "meaning, negation and polarity preserved in all 54 keys; every 'so it wasn't installed / nothing was restarted' safety statement retained",
+    "digits": "Latin digits/versions via placeholders; no hand-written numbers",
+    "not_run": "no repo validator or audit-ledger command run (task limited to receipt + summary; repo not edited)"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "namespace": "ui.shell.menubar",
+      "key": "ui.shell.menubar.zoom_in",
+      "current": "بڑا کریں",
+      "suggestion": "زوم ان  (or: بڑا کریں / بڑا دکھائیں)",
+      "rationale": "Bare 'make big' drops the zoom/view sense and has no object; ambiguous beside View. Pair with زوم آؤٹ for symmetry. Not wrong; length ok."
+    },
+    {
+      "severity": "MINOR",
+      "namespace": "ui.shell.menubar",
+      "key": "ui.shell.menubar.zoom_out",
+      "current": "چھوٹا کریں",
+      "suggestion": "زوم آؤٹ  (or: چھوٹا دکھائیں)",
+      "rationale": "Same as zoom_in; keep the pair consistent."
+    },
+    {
+      "severity": "MINOR",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.artifact.remedy",
+      "current": "ریلیز دوبارہ ڈاؤن لوڈ کرنے کے لیے اپ ڈیٹس دوبارہ تلاش کریں۔",
+      "suggestion": "ریلیز دوبارہ ڈاؤن لوڈ کرنے کے لیے اپ ڈیٹس کی جانچ دوبارہ کریں۔",
+      "rationale": "'Check for updates' rendered as تلاش کریں (search); also double دوبارہ. Same for disk.remedy: ... پھر اپ ڈیٹس کی جانچ دوبارہ کریں۔"
+    },
+    {
+      "severity": "MINOR",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.seal.remedy",
+      "current": "...نئی نقل ڈاؤن لوڈ کریں... (also seal.startup.heading/message, launch.keep.*, failure.*.remedy)",
+      "suggestion": "نئی کاپی ڈاؤن لوڈ کریں / اس کاپی کو بدلنا ضروری ہے",
+      "rationale": "'نقل' as app copy also connotes imitation/cheating (نقل کرنا); 'کاپی' is the settled software loanword and matches the style guide's loanword policy. Consistent across ~7 keys, so a single decision."
+    },
+    {
+      "severity": "MINOR",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.server.behind.remedy",
+      "current": "اسی لیے `lop-update` نے اس سے بلڈ بنانے سے انکار کیا: ... یہاں اگلی بار دبانے پر یہ بلڈ ہو جائے گا۔",
+      "suggestion": "اسی لیے `lop-update` نے اسے بلڈ کرنے سے انکار کر دیا: چیک آؤٹ کو تازہ کریں، پھر یہاں بٹن دبانے پر یہ بلڈ ہو جائے گا۔",
+      "rationale": "Stacked سے...سے is clumsy; 'دبانے' has no object (source 'next press here' also elliptical). Backticked command is kept intact and isolated by the renderer: no bidi defect."
+    },
+    {
+      "severity": "MINOR",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.server.rebuild.remedy",
+      "current": "دوبارہ تعمیر اسی وقت اس تنصیب کو بدلتی ہے...",
+      "suggestion": "دوبارہ بلڈ کرنا اسی وقت اس تنصیب کو بدلتا ہے جب وہ کامیاب ہو...",
+      "rationale": "Terminology drift: 'build' is بلڈ in behind.remedy and norestart.remedy but 'rebuild' is دوبارہ تعمیر here, so the three adjacent remedies read as different concepts."
+    },
+    {
+      "severity": "NIT",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.launch.open.message",
+      "current": "...macOS سے لانچ نہیں ہو سکتی...",
+      "suggestion": "...macOS اسے لانچ نہیں کر سکتا...",
+      "rationale": "'macOS سے ... ہو سکتی' can read as 'from macOS'; the active form names macOS as the agent, matching the English."
+    },
+    {
+      "severity": "NIT",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.launch.keep.message_version",
+      "current": "...تو اسے چھوڑ دیں",
+      "suggestion": "...تو اسے انسٹال نہ کریں / اسے نظر انداز کریں",
+      "rationale": "'چھوڑ دیں' (leave/abandon) is ambiguous for 'skip'. Prefer the unambiguous wording."
+    },
+    {
+      "severity": "NIT",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.service.no_server.message",
+      "current": "اپ ڈیٹ کرنے کو کچھ نہیں۔",
+      "suggestion": "اپ ڈیٹ کرنے کے لیے کچھ نہیں۔",
+      "rationale": "'کرنے کو' is colloquial for a neutral status line."
+    },
+    {
+      "severity": "NIT",
+      "namespace": "ui.updates.panel",
+      "key": "ui.updates.panel.artifact.not_this_app.message",
+      "current": "اس ایپلیکیشن کی نہیں ہے",
+      "suggestion": "اس ایپ کی نہیں ہے",
+      "rationale": "Source says 'application'; every other string here uses ایپ. Trivial consistency nit."
+    }
+  ],
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 6,
+    "NIT": 4
+  },
+  "verdict": "passed",
+  "instance": "8dc97dbcd247-ur",
+  "model": "anthropic/claude-sonnet-5-5",
+  "status": "passed",
+  "sha256": {
+    "src/i18n/catalogues/en/ui.shell.menubar.json": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+    "src/i18n/catalogues/en/ui.updates.panel.json": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+    "src/i18n/catalogues/ur/ui.shell.menubar.json": "256b0938a8c372cf3df13ae1ee8d495fa2829562cb01f629858e214af45a0cb4",
+    "src/i18n/catalogues/ur/ui.updates.panel.json": "eb5b1bc66cc9764c660b788779e9477987ba966bf9e36c261f0846a1e2045109"
+  }
+}
