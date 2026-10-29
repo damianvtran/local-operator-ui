@@ -1,0 +1,136 @@
+{
+	"auditor": "reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"fallback": "none — every usage record in auditor session 595127968969 names claude-opus-5-5 (provider anthropic)",
+	"instance": "i18n-audit-1452-r5-20261028-fr",
+	"session": "595127968969",
+	"job": "7497dd7ce57e",
+	"parent_session": "65a12b105119",
+	"date": "2026-10-28",
+	"locale": "fr",
+	"round": 5,
+	"translator": {
+		"agent": "coder",
+		"job": "44760bfa9008",
+		"session": "f2acc2988e22",
+		"parent_session": "65a12b105119",
+		"model": "anthropic/claude-opus-5-5 (usage records in session f2acc2988e22 name claude-opus-5-5 324x, provider anthropic)",
+		"commit": "2558056b450a82b8c4929e8df0cf4babf99624ac",
+		"lineage": [
+			{
+				"round": 1,
+				"agent": "task",
+				"job": "7c09e08359e1",
+				"model": "anthropic/claude-opus-5-5",
+				"commit": "0a02713ed4 (rebased as 6da4ebea87)"
+			},
+			{
+				"round": 2,
+				"agent": "coder",
+				"job": "4a907cae19a9",
+				"session": "5f4c49fec12b",
+				"model": "kimi/k3.1-pro via radient/auto",
+				"commit": "752abc1c19 (rebased as 922b9a5a40)"
+			},
+			{
+				"round": 3,
+				"agent": "coder",
+				"job": "0fc4118bdd37",
+				"session": "43acf20a38da",
+				"model": "anthropic/claude-opus-5-5",
+				"commit": "8cbaff82e6"
+			},
+			{
+				"round": 4,
+				"agent": "coder",
+				"job": "bdb7d1ad75b7",
+				"session": "cedb979297ba",
+				"parent_session": "65a12b105119",
+				"model": "anthropic/claude-opus-5-5",
+				"commit": "c6eac7664b",
+				"what": "added ui.canvas.files.attachmentRefused (en + context note + 7 locales); no other ui.canvas value changed"
+			},
+			{
+				"round": 5,
+				"agent": "coder",
+				"job": "44760bfa9008",
+				"session": "f2acc2988e22",
+				"parent_session": "65a12b105119",
+				"model": "anthropic/claude-opus-5-5 (usage records in session f2acc2988e22 name claude-opus-5-5 324x, provider anthropic)",
+				"commit": "0f61692348 (rebased as 2558056b45)",
+				"what": "added ui.canvas.files.attachmentReadOnly (en + context note + 7 locales) and revised the en context note of attachmentRefused (D16); no other ui.canvas value changed"
+			}
+		]
+	},
+	"pr": "damianvtran/local-operator-ui#1452",
+	"source_base": "8a5f77af84e826735073d7bc75c9be4a821f240b",
+	"source_head": "2558056b450a82b8c4929e8df0cf4babf99624ac",
+	"scope": "Round-5 audit of ui.canvas: the one new key ui.canvas.files.attachmentReadOnly added by coder job 44760bfa9008 in 0f61692348 (rebased as 2558056b45), plus the revised en context note of ui.canvas.files.attachmentRefused (D16). Baseline 8a5f77af84 (the round-4 audit commit, an ancestor of the head) carries exactly the round-4 audited bytes: sha256 of en, en context and this locale's ui.canvas.json equal the r4 receipt's. 8a5f77af84..2558056b45 in ui.canvas is that one added key in every catalogue, and in the en context file that one added note plus the one changed note. Catalogue audit only.",
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "local-operator 85f3b9097b9 (origin/main)",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/fr.md",
+			"revision": "local-operator 85f3b9097b9 (origin/main)",
+			"sha256": "49010212a65f0d30d49bf532601bb39ad277be28aef5d476715186cf28525990"
+		}
+	},
+	"namespaces": {
+		"ui.canvas": {
+			"status": "passed",
+			"keys_audited": 2,
+			"keys": [
+				"ui.canvas.files.attachmentReadOnly",
+				"ui.canvas.files.attachmentRefused"
+			],
+			"value": "Lecture seule — copie conservée d’une pièce jointe",
+			"sha256": {
+				"en": "36169fd626d09bca2e4cc8c9e8be3386e66aa70dd0195b63eda58672552ecfe8",
+				"fr": "dac22792e49bf85385535fc43af7b9868ec9cd6c1981a34a750c4bd0b856a273"
+			},
+			"context_sha256": "c7abaaa9a90a4d808abd12333b820214677533a4cbf2abe8e879f1a9326e4606",
+			"key_sha256": {
+				"en": "ebaf142b67c39f89ccbf010416336346e8c38aba95bb447fe90d69cbd94c2687",
+				"fr": "f612d427d6849918136abf24f7b6b1c70efd9870e5425f0c6d41e218de1e7350",
+				"context": "79525db0aa4ddfe8a61600e2f28e718d8472a20a0693595cfbb996f2ae7c36b0",
+				"attachmentRefused_context": "0bb5efba059f51f3739fb48ddc747f9555a587ec8e1c830b9359d3f94caa446e"
+			},
+			"findings": [
+				{
+					"id": "I-fr-1",
+					"severity": "MINOR",
+					"key": "ui.canvas.files.attachmentRefused",
+					"current": "Ressemble à un secret, les actions sur le fichier sont donc désactivées",
+					"issue": "Unchanged value, but the D16-revised context note now requires the line to be 'no longer than the identity line above it'. For the canonical .env row that identity line is 61 characters ({name}=.env, 8-char digest; 63 for id_rsa); this value is 71. It also renders now in the truncated keyboard-focus note slot (see I-en-1).",
+					"proposed": "Ressemble à un secret, actions sur le fichier désactivées (57) — the round-4 I-fr-1 proposal, which satisfies the clause",
+					"disposition": "non-gating"
+				}
+			]
+		}
+	},
+	"source_findings": [
+		{
+			"id": "I-en-1",
+			"severity": "MINOR",
+			"key": "ui.canvas.files.attachmentRefused",
+			"file": "src/i18n/catalogues/en/ui.canvas.context.json",
+			"issue": "The D16 note still describes the string only as 'Last line of the hover text', but 2558056b45 also renders it (a) as the row's note line on keyboard focus (finder-files-view.tsx focusReason, class 'min-w-[min(6rem,40%)] flex-1 truncate text-end', i.e. truncated) and (b) as an info toast on Shift+F10/context-menu (showInfoToast). A translator sizing to 'about 70 characters, one tooltip line' cannot know the keyboard-focus slot truncates; and the new clause 'no longer than the identity line above it' is already unmet by fr and es (I-fr-1, I-es-1).",
+			"proposed": "Name all three render sites in the note (tooltip line, truncated keyboard-focus row note, toast) and state which length governs; keep the 'no longer than the identity line' clause only if fr/es take the shorter wordings.",
+			"disposition": "non-gating; source-note scope (not counted in this locale's row)"
+		}
+	],
+	"checks": {
+		"independence": "Auditor reviewer session 595127968969 (job 7497dd7ce57e): a different agent and session from coder job 44760bfa9008 (session f2acc2988e22) and every earlier author in the lineage; this auditor edited no catalogue value.",
+		"unchanged": "8a5f77af84 vs 2558056b45: ui.canvas key-by-key, 0 changed values, 1 added key (attachmentReadOnly), 0 removed, 360 keys = en; en context: 1 changed note (attachmentRefused, D16), 1 added; keys.gen.ts adds only the attachmentReadOnly: undefined row. Baseline bytes = r4 audited bytes (en, context, fr).",
+		"terminology": "'Lecture seule' matches the catalogue's read-only wording ('en lecture seule', 3 sibling values); 'copie conservée' is the exact saved_copy_label ('Copie conservée') and attachmentRetained/attachmentGone wording; 'pièce jointe' is the singular of the section heading 'Pièces jointes'. Typographic apostrophe U+2019 in 'd’une', as the rest of the fr catalogue.",
+		"dash": "Em dash U+2014 with a space either side, per fr style guide ('em dash \" — \" with spaces').",
+		"caption": "Rendered as one muted caption in an h-8 'truncate' row above the read-only preview (artifact-text-preview.tsx:145-151); no placeholders, so ICU is trivially identical; read-only part first, as the note asks; no trailing full stop.",
+		"typography": "Value and whole ui.canvas file NFC; no bidi controls (U+200E/F, U+061C, U+202A-E, U+2066-9).",
+		"length": "50 characters (en 39; note budget about 50)."
+	},
+	"limitations": "No app build, browser or Storybook this round (pure file work by brief): no rendered-fit or RTL layout measurement. Fit judged by character count against the context note; the keyboard-focus truncation in I-en-1 is read from the source, not rendered.",
+	"status_note": "Passed with one MINOR."
+}
