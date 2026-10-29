@@ -1,0 +1,300 @@
+{
+ "locale": "vi",
+ "namespaces": {
+  "ui.shell.menubar": {
+   "status": "passed",
+   "keys_audited": 13,
+   "sha256": {
+    "en": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+    "vi": "64883fe1252641ce469b34fda71123a757c9be14483f421c7beb8b4f42cc9f52"
+   },
+   "findings": [
+    {
+     "severity": "MINOR",
+     "namespace": "ui.shell.menubar",
+     "key": "ui.shell.menubar.edit",
+     "current": "Chỉnh sửa",
+     "suggestion": "Sửa (Apple vi macOS menu wording; shorter for the narrow menu column). Current is acceptable."
+    },
+    {
+     "severity": "NIT",
+     "namespace": "ui.shell.menubar",
+     "key": "ui.shell.menubar.actual_size",
+     "current": "Kích thước thực",
+     "suggestion": "Kích thước thực tế (Apple vi wording); current fits and is understood."
+    }
+   ]
+  },
+  "ui.updates.panel": {
+   "status": "passed",
+   "keys_audited": 41,
+   "sha256": {
+    "en": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+    "vi": "e6e27e263633b274d72481739e1c304f5d090851269b1b33198a4db51f25024b"
+   },
+   "findings": [
+    {
+     "severity": "MINOR",
+     "namespace": "ui.updates.panel",
+     "key": "ui.updates.panel.server.norestart.remedy",
+     "current": "Chưa có gì được khởi động lại: …",
+     "suggestion": "Không có gì được khởi động lại: … (\"chưa\" implies a restart is still to come; the English states a finished fact). Same for server.rebuild.remedy (\"nên chưa có gì được khởi động lại\" -> \"nên không có gì được khởi động lại\")."
+    },
+    {
+     "severity": "MINOR",
+     "namespace": "ui.updates.panel",
+     "key": "ui.updates.panel.artifact.damaged.message (and the 14 other artifact/disk/launch *.message[_version] keys ending \"nên chưa được cài\")",
+     "current": "…nên chưa được cài.",
+     "suggestion": "…nên không được cài. \"chưa được cài\" reads as \"not yet installed\"; the source says the update was rejected (\"wasn't installed\"). Applied consistently, so fix as one sweep."
+    },
+    {
+     "severity": "MINOR",
+     "namespace": "ui.updates.panel",
+     "key": "ui.updates.panel.launch.check.message",
+     "current": "Không thể kiểm tra bản cập nhật đã tải để khởi chạy, nên chưa được cài.",
+     "suggestion": "Không thể xác minh bản cập nhật đã tải trước khi khởi chạy, nên không được cài. \"kiểm tra … để khởi chạy\" reads as \"check in order to launch\"; the source means a pre-launch check. Same for launch.check.message_version and the heading launch.heading, which also collides with \"kiểm tra cập nhật\" (check for updates)."
+    },
+    {
+     "severity": "MINOR",
+     "namespace": "ui.updates.panel",
+     "key": "ui.updates.panel.server.behind.remedy",
+     "current": "Bản checkout này đang cũ hơn bản từ xa, … hãy cập nhật bản checkout, lần nhấn kế tiếp tại đây sẽ dựng nó.",
+     "suggestion": "Bản checkout này đang tụt sau remote của nó, và `lop-update` đã từ chối dựng từ đó: hãy cập nhật bản checkout, rồi lần nhấn kế tiếp tại đây sẽ dựng nó. \"bản từ xa\" loses the git remote sense; the final clause lacks a connective (\"rồi\")."
+    },
+    {
+     "severity": "NIT",
+     "namespace": "ui.updates.panel",
+     "key": "ui.updates.panel.seal.remedy",
+     "current": "…thay ứng dụng trong Applications.",
+     "suggestion": "Optionally \"thay ứng dụng trong thư mục Applications\" so the Latin token reads as a folder; the English has the same bare token, so acceptable as is (also failure.*.remedy)."
+    }
+   ]
+  }
+ },
+ "checkout": "damianvtran/local-operator-ui branch i18n-wave-c1 (PR #1464), worktree /Users/damian/lo-audit-1464",
+ "checkout_head": "57a725f020853d9cc03ad5d97636fec2380b0ddb",
+ "key_count": 54,
+ "audit_date": "2026-10-28",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "c49cc3830e62",
+  "model": "anthropic/claude-sonnet-5-5"
+ },
+ "input_sha256": {
+  "src/i18n/catalogues/en/ui.shell.menubar.json": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+  "src/i18n/catalogues/vi/ui.shell.menubar.json": "64883fe1252641ce469b34fda71123a757c9be14483f421c7beb8b4f42cc9f52",
+  "src/i18n/catalogues/en/ui.shell.menubar.context.json (context via filesystem)": "29964bf8fd93544fd8d8478324b58170b326139066b2bd063405876a1b4775d1",
+  "src/i18n/catalogues/en/ui.updates.panel.json": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+  "src/i18n/catalogues/vi/ui.updates.panel.json": "e6e27e263633b274d72481739e1c304f5d090851269b1b33198a4db51f25024b",
+  "src/i18n/catalogues/en/ui.updates.panel.context.json (context via filesystem)": "d709c7cc09695b16b271101f2ba25a027e70241cab10a2ac2935aab404aa3a5f"
+ },
+ "read_provenance": {
+  "via_read_public_copy": [
+   "src/i18n/catalogues/en/ui.shell.menubar.json key=ui.shell.menubar.file",
+   "src/i18n/catalogues/en/ui.shell.menubar.json key=ui.shell.menubar.edit",
+   "src/i18n/catalogues/en/ui.shell.menubar.json key=ui.shell.menubar.view",
+   "src/i18n/catalogues/en/ui.shell.menubar.json key=ui.shell.menubar.window",
+   "src/i18n/catalogues/en/ui.shell.menubar.json key=ui.shell.menubar.new_browser_tab",
+   "src/i18n/catalogues/en/ui.shell.menubar.json key=ui.shell.menubar.reload",
+   "src/i18n/catalogues/en/ui.shell.menubar.json key=ui.shell.menubar.force_reload",
+   "src/i18n/catalogues/en/ui.shell.menubar.json key=ui.shell.menubar.actual_size",
+   "src/i18n/catalogues/en/ui.shell.menubar.json key=ui.shell.menubar.zoom_in",
+   "src/i18n/catalogues/en/ui.shell.menubar.json key=ui.shell.menubar.zoom_out",
+   "src/i18n/catalogues/en/ui.shell.menubar.json key=ui.shell.menubar.close_tab_or_window",
+   "src/i18n/catalogues/en/ui.shell.menubar.json key=ui.shell.menubar.learn_more",
+   "src/i18n/catalogues/en/ui.shell.menubar.json key=ui.shell.menubar.about",
+   "src/i18n/catalogues/vi/ui.shell.menubar.json key=ui.shell.menubar.file",
+   "src/i18n/catalogues/vi/ui.shell.menubar.json key=ui.shell.menubar.edit",
+   "src/i18n/catalogues/vi/ui.shell.menubar.json key=ui.shell.menubar.view",
+   "src/i18n/catalogues/vi/ui.shell.menubar.json key=ui.shell.menubar.window",
+   "src/i18n/catalogues/vi/ui.shell.menubar.json key=ui.shell.menubar.new_browser_tab",
+   "src/i18n/catalogues/vi/ui.shell.menubar.json key=ui.shell.menubar.reload",
+   "src/i18n/catalogues/vi/ui.shell.menubar.json key=ui.shell.menubar.force_reload",
+   "src/i18n/catalogues/vi/ui.shell.menubar.json key=ui.shell.menubar.actual_size",
+   "src/i18n/catalogues/vi/ui.shell.menubar.json key=ui.shell.menubar.zoom_in",
+   "src/i18n/catalogues/vi/ui.shell.menubar.json key=ui.shell.menubar.zoom_out",
+   "src/i18n/catalogues/vi/ui.shell.menubar.json key=ui.shell.menubar.close_tab_or_window",
+   "src/i18n/catalogues/vi/ui.shell.menubar.json key=ui.shell.menubar.learn_more",
+   "src/i18n/catalogues/vi/ui.shell.menubar.json key=ui.shell.menubar.about",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.dismiss.not_now",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.seal.startup.heading",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.seal.startup.message",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.seal.update.message",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.seal.update.message_version",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.seal.remedy",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.artifact.metadata_missing.message",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.artifact.metadata_missing.message_version",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.artifact.mismatch.message",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.artifact.mismatch.message_version",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.artifact.unreadable.message",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.artifact.unreadable.message_version",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.artifact.missing_on_disk.message",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.artifact.missing_on_disk.message_version",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.artifact.not_this_app.message",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.artifact.not_this_app.message_version",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.artifact.damaged.message",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.artifact.damaged.message_version",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.artifact.remedy",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.disk.message",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.disk.message_version",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.disk.remedy",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.launch.heading",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.launch.check.message",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.launch.check.message_version",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.launch.open.message",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.launch.open.message_version",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.launch.keep.message",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.launch.keep.message_version",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.failure.cancelled.message",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.failure.cancelled.remedy",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.failure.unfinished.message",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.failure.unfinished.remedy",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.service.restart.message",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.service.restart.message_version",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.service.no_backend.message",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.service.no_server.message",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.service.check_unavailable.message",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.server.behind.remedy",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.server.rebuild.remedy",
+   "src/i18n/catalogues/en/ui.updates.panel.json key=ui.updates.panel.server.norestart.remedy",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.dismiss.not_now",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.seal.startup.heading",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.seal.startup.message",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.seal.update.message",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.seal.update.message_version",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.seal.remedy",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.artifact.metadata_missing.message",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.artifact.metadata_missing.message_version",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.artifact.mismatch.message",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.artifact.mismatch.message_version",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.artifact.unreadable.message",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.artifact.unreadable.message_version",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.artifact.missing_on_disk.message",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.artifact.missing_on_disk.message_version",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.artifact.not_this_app.message",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.artifact.not_this_app.message_version",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.artifact.damaged.message",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.artifact.damaged.message_version",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.artifact.remedy",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.disk.message",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.disk.message_version",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.disk.remedy",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.launch.heading",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.launch.check.message",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.launch.check.message_version",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.launch.open.message",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.launch.open.message_version",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.launch.keep.message",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.launch.keep.message_version",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.failure.cancelled.message",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.failure.cancelled.remedy",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.failure.unfinished.message",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.failure.unfinished.remedy",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.service.restart.message",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.service.restart.message_version",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.service.no_backend.message",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.service.no_server.message",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.service.check_unavailable.message",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.server.behind.remedy",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.server.rebuild.remedy",
+   "src/i18n/catalogues/vi/ui.updates.panel.json key=ui.updates.panel.server.norestart.remedy"
+  ],
+  "note": "Each of the four catalogue files was read whole via read_public_copy (key omitted = whole file; every key therefore covered).",
+  "context_docs_via_filesystem_not_catalogue_copy": [
+   "src/i18n/catalogues/en/ui.shell.menubar.context.json",
+   "src/i18n/catalogues/en/ui.updates.panel.context.json",
+   "~/local-operator/i18n/glossary.md",
+   "~/local-operator/i18n/style-guides/vi.md"
+  ]
+ },
+ "checks": {
+  "key_parity_en_vi": "54/54 identical key order",
+  "placeholders_ICU": "{name},{version},{size},{target},{running} identical set per key (script-verified), no plural/select present",
+  "nfc": "all vi strings NFC",
+  "glossary": "Local Operator, lop-update, macOS, Applications kept Latin; tệp/máy chủ/thẻ consistent with vi guide and other catalogues",
+  "register": "bạn omitted, \"Hãy\" imperatives, no \"!\" ; sentence case per vi guide overrides sidecar Title Case (deliberate, not a finding)",
+  "macOS_menu_convention": "Tệp/Xem/Cửa sổ/Phóng to/Thu nhỏ/Tải lại/Giới thiệu về match Apple vi; Edit differs (Apple: Sửa) -> MINOR",
+  "fit": "menu items all 1-4 words (max: \"Đóng thẻ hoặc cửa sổ\" 5 syllables/4 words); panel strings keep source shape",
+  "typography": "backticks around lop-update preserved; em dashes preserved; no trailing full stop on menu items",
+  "ur_bidi": "n/a (locale vi)"
+ },
+ "findings": [
+  {
+   "severity": "MINOR",
+   "namespace": "ui.shell.menubar",
+   "key": "ui.shell.menubar.edit",
+   "current": "Chỉnh sửa",
+   "suggestion": "Sửa (Apple vi macOS menu wording; shorter for the narrow menu column). Current is acceptable."
+  },
+  {
+   "severity": "MINOR",
+   "namespace": "ui.updates.panel",
+   "key": "ui.updates.panel.server.norestart.remedy",
+   "current": "Chưa có gì được khởi động lại: …",
+   "suggestion": "Không có gì được khởi động lại: … (\"chưa\" implies a restart is still to come; the English states a finished fact). Same for server.rebuild.remedy (\"nên chưa có gì được khởi động lại\" -> \"nên không có gì được khởi động lại\")."
+  },
+  {
+   "severity": "MINOR",
+   "namespace": "ui.updates.panel",
+   "key": "ui.updates.panel.artifact.damaged.message (and the 14 other artifact/disk/launch *.message[_version] keys ending \"nên chưa được cài\")",
+   "current": "…nên chưa được cài.",
+   "suggestion": "…nên không được cài. \"chưa được cài\" reads as \"not yet installed\"; the source says the update was rejected (\"wasn't installed\"). Applied consistently, so fix as one sweep."
+  },
+  {
+   "severity": "MINOR",
+   "namespace": "ui.updates.panel",
+   "key": "ui.updates.panel.launch.check.message",
+   "current": "Không thể kiểm tra bản cập nhật đã tải để khởi chạy, nên chưa được cài.",
+   "suggestion": "Không thể xác minh bản cập nhật đã tải trước khi khởi chạy, nên không được cài. \"kiểm tra … để khởi chạy\" reads as \"check in order to launch\"; the source means a pre-launch check. Same for launch.check.message_version and the heading launch.heading, which also collides with \"kiểm tra cập nhật\" (check for updates)."
+  },
+  {
+   "severity": "MINOR",
+   "namespace": "ui.updates.panel",
+   "key": "ui.updates.panel.server.behind.remedy",
+   "current": "Bản checkout này đang cũ hơn bản từ xa, … hãy cập nhật bản checkout, lần nhấn kế tiếp tại đây sẽ dựng nó.",
+   "suggestion": "Bản checkout này đang tụt sau remote của nó, và `lop-update` đã từ chối dựng từ đó: hãy cập nhật bản checkout, rồi lần nhấn kế tiếp tại đây sẽ dựng nó. \"bản từ xa\" loses the git remote sense; the final clause lacks a connective (\"rồi\")."
+  },
+  {
+   "severity": "NIT",
+   "namespace": "ui.updates.panel",
+   "key": "ui.updates.panel.seal.remedy",
+   "current": "…thay ứng dụng trong Applications.",
+   "suggestion": "Optionally \"thay ứng dụng trong thư mục Applications\" so the Latin token reads as a folder; the English has the same bare token, so acceptable as is (also failure.*.remedy)."
+  },
+  {
+   "severity": "NIT",
+   "namespace": "ui.shell.menubar",
+   "key": "ui.shell.menubar.actual_size",
+   "current": "Kích thước thực",
+   "suggestion": "Kích thước thực tế (Apple vi wording); current fits and is understood."
+  }
+ ],
+ "counts": {
+  "per_namespace": {
+   "ui.shell.menubar": {
+    "MINOR": 1,
+    "NIT": 1
+   },
+   "ui.updates.panel": {
+    "MINOR": 4,
+    "NIT": 1
+   }
+  },
+  "total": {
+   "BLOCKER": 0,
+   "MAJOR": 0,
+   "MINOR": 5,
+   "NIT": 2
+  }
+ },
+ "verdict": "passed",
+ "instance": "c49cc3830e62-vi",
+ "model": "anthropic/claude-sonnet-5-5",
+ "status": "passed",
+ "sha256": {
+  "src/i18n/catalogues/en/ui.shell.menubar.json": "a2950cd3f057ee4641bb12df761ec98d496282e09d69e6150d6dd6edbc74be82",
+  "src/i18n/catalogues/en/ui.updates.panel.json": "a94e79256f94128562493e36d8835952e2e78a41cd30382968b942fd6876794a",
+  "src/i18n/catalogues/vi/ui.shell.menubar.json": "64883fe1252641ce469b34fda71123a757c9be14483f421c7beb8b4f42cc9f52",
+  "src/i18n/catalogues/vi/ui.updates.panel.json": "e6e27e263633b274d72481739e1c304f5d090851269b1b33198a4db51f25024b"
+ }
+}

@@ -117,9 +117,11 @@ import enUiSettingsShortcuts from "./catalogues/en/ui.settings.shortcuts.json";
 import enUiSettingsSpeech from "./catalogues/en/ui.settings.speech.json";
 import enUiSettingsUpdates from "./catalogues/en/ui.settings.updates.json";
 import enUiShell from "./catalogues/en/ui.shell.json";
+import enUiShellMenubar from "./catalogues/en/ui.shell.menubar.json";
 import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
 import enUiTeamBridgeArchive from "./catalogues/en/ui.teamBridge.archive.json";
 import enUiTeamBridge from "./catalogues/en/ui.teamBridge.json";
+import enUiUpdatesPanel from "./catalogues/en/ui.updates.panel.json";
 import esUiAgentMessages from "./catalogues/es/ui.agentMessages.json";
 import esUiAgentMessagesSettings from "./catalogues/es/ui.agentMessages.settings.json";
 import esUiAgentsConfig from "./catalogues/es/ui.agents.config.json";
@@ -216,9 +218,11 @@ import esUiSettingsShortcuts from "./catalogues/es/ui.settings.shortcuts.json";
 import esUiSettingsSpeech from "./catalogues/es/ui.settings.speech.json";
 import esUiSettingsUpdates from "./catalogues/es/ui.settings.updates.json";
 import esUiShell from "./catalogues/es/ui.shell.json";
+import esUiShellMenubar from "./catalogues/es/ui.shell.menubar.json";
 import esUiShellRail from "./catalogues/es/ui.shell.rail.json";
 import esUiTeamBridgeArchive from "./catalogues/es/ui.teamBridge.archive.json";
 import esUiTeamBridge from "./catalogues/es/ui.teamBridge.json";
+import esUiUpdatesPanel from "./catalogues/es/ui.updates.panel.json";
 import frUiAgentMessages from "./catalogues/fr/ui.agentMessages.json";
 import frUiAgentMessagesSettings from "./catalogues/fr/ui.agentMessages.settings.json";
 import frUiAgentsConfig from "./catalogues/fr/ui.agents.config.json";
@@ -315,9 +319,11 @@ import frUiSettingsShortcuts from "./catalogues/fr/ui.settings.shortcuts.json";
 import frUiSettingsSpeech from "./catalogues/fr/ui.settings.speech.json";
 import frUiSettingsUpdates from "./catalogues/fr/ui.settings.updates.json";
 import frUiShell from "./catalogues/fr/ui.shell.json";
+import frUiShellMenubar from "./catalogues/fr/ui.shell.menubar.json";
 import frUiShellRail from "./catalogues/fr/ui.shell.rail.json";
 import frUiTeamBridgeArchive from "./catalogues/fr/ui.teamBridge.archive.json";
 import frUiTeamBridge from "./catalogues/fr/ui.teamBridge.json";
+import frUiUpdatesPanel from "./catalogues/fr/ui.updates.panel.json";
 import hiUiAgentMessages from "./catalogues/hi/ui.agentMessages.json";
 import hiUiAgentMessagesSettings from "./catalogues/hi/ui.agentMessages.settings.json";
 import hiUiAgentsConfig from "./catalogues/hi/ui.agents.config.json";
@@ -414,9 +420,11 @@ import hiUiSettingsShortcuts from "./catalogues/hi/ui.settings.shortcuts.json";
 import hiUiSettingsSpeech from "./catalogues/hi/ui.settings.speech.json";
 import hiUiSettingsUpdates from "./catalogues/hi/ui.settings.updates.json";
 import hiUiShell from "./catalogues/hi/ui.shell.json";
+import hiUiShellMenubar from "./catalogues/hi/ui.shell.menubar.json";
 import hiUiShellRail from "./catalogues/hi/ui.shell.rail.json";
 import hiUiTeamBridgeArchive from "./catalogues/hi/ui.teamBridge.archive.json";
 import hiUiTeamBridge from "./catalogues/hi/ui.teamBridge.json";
+import hiUiUpdatesPanel from "./catalogues/hi/ui.updates.panel.json";
 import ruUiAgentMessages from "./catalogues/ru/ui.agentMessages.json";
 import ruUiAgentMessagesSettings from "./catalogues/ru/ui.agentMessages.settings.json";
 import ruUiAgentsConfig from "./catalogues/ru/ui.agents.config.json";
@@ -513,9 +521,11 @@ import ruUiSettingsShortcuts from "./catalogues/ru/ui.settings.shortcuts.json";
 import ruUiSettingsSpeech from "./catalogues/ru/ui.settings.speech.json";
 import ruUiSettingsUpdates from "./catalogues/ru/ui.settings.updates.json";
 import ruUiShell from "./catalogues/ru/ui.shell.json";
+import ruUiShellMenubar from "./catalogues/ru/ui.shell.menubar.json";
 import ruUiShellRail from "./catalogues/ru/ui.shell.rail.json";
 import ruUiTeamBridgeArchive from "./catalogues/ru/ui.teamBridge.archive.json";
 import ruUiTeamBridge from "./catalogues/ru/ui.teamBridge.json";
+import ruUiUpdatesPanel from "./catalogues/ru/ui.updates.panel.json";
 import urUiAgentMessages from "./catalogues/ur/ui.agentMessages.json";
 import urUiAgentMessagesSettings from "./catalogues/ur/ui.agentMessages.settings.json";
 import urUiAgentsConfig from "./catalogues/ur/ui.agents.config.json";
@@ -612,9 +622,11 @@ import urUiSettingsShortcuts from "./catalogues/ur/ui.settings.shortcuts.json";
 import urUiSettingsSpeech from "./catalogues/ur/ui.settings.speech.json";
 import urUiSettingsUpdates from "./catalogues/ur/ui.settings.updates.json";
 import urUiShell from "./catalogues/ur/ui.shell.json";
+import urUiShellMenubar from "./catalogues/ur/ui.shell.menubar.json";
 import urUiShellRail from "./catalogues/ur/ui.shell.rail.json";
 import urUiTeamBridgeArchive from "./catalogues/ur/ui.teamBridge.archive.json";
 import urUiTeamBridge from "./catalogues/ur/ui.teamBridge.json";
+import urUiUpdatesPanel from "./catalogues/ur/ui.updates.panel.json";
 import viUiAgentMessages from "./catalogues/vi/ui.agentMessages.json";
 import viUiAgentMessagesSettings from "./catalogues/vi/ui.agentMessages.settings.json";
 import viUiAgentsConfig from "./catalogues/vi/ui.agents.config.json";
@@ -711,9 +723,11 @@ import viUiSettingsShortcuts from "./catalogues/vi/ui.settings.shortcuts.json";
 import viUiSettingsSpeech from "./catalogues/vi/ui.settings.speech.json";
 import viUiSettingsUpdates from "./catalogues/vi/ui.settings.updates.json";
 import viUiShell from "./catalogues/vi/ui.shell.json";
+import viUiShellMenubar from "./catalogues/vi/ui.shell.menubar.json";
 import viUiShellRail from "./catalogues/vi/ui.shell.rail.json";
 import viUiTeamBridgeArchive from "./catalogues/vi/ui.teamBridge.archive.json";
 import viUiTeamBridge from "./catalogues/vi/ui.teamBridge.json";
+import viUiUpdatesPanel from "./catalogues/vi/ui.updates.panel.json";
 import zhCNUiAgentMessages from "./catalogues/zh-CN/ui.agentMessages.json";
 import zhCNUiAgentMessagesSettings from "./catalogues/zh-CN/ui.agentMessages.settings.json";
 import zhCNUiAgentsConfig from "./catalogues/zh-CN/ui.agents.config.json";
@@ -810,9 +824,11 @@ import zhCNUiSettingsShortcuts from "./catalogues/zh-CN/ui.settings.shortcuts.js
 import zhCNUiSettingsSpeech from "./catalogues/zh-CN/ui.settings.speech.json";
 import zhCNUiSettingsUpdates from "./catalogues/zh-CN/ui.settings.updates.json";
 import zhCNUiShell from "./catalogues/zh-CN/ui.shell.json";
+import zhCNUiShellMenubar from "./catalogues/zh-CN/ui.shell.menubar.json";
 import zhCNUiShellRail from "./catalogues/zh-CN/ui.shell.rail.json";
 import zhCNUiTeamBridgeArchive from "./catalogues/zh-CN/ui.teamBridge.archive.json";
 import zhCNUiTeamBridge from "./catalogues/zh-CN/ui.teamBridge.json";
+import zhCNUiUpdatesPanel from "./catalogues/zh-CN/ui.updates.panel.json";
 
 /** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */
 export const bundledEnglish: Readonly<Record<string, string>> = {
@@ -912,9 +928,11 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiSettingsSpeech,
 	...enUiSettingsUpdates,
 	...enUiShell,
+	...enUiShellMenubar,
 	...enUiShellRail,
 	...enUiTeamBridgeArchive,
 	...enUiTeamBridge,
+	...enUiUpdatesPanel,
 };
 
 /** The client's own messages per locale; `en` is `bundledEnglish` itself. */
@@ -1019,9 +1037,11 @@ export const bundledCatalogues: Readonly<
 		...esUiSettingsSpeech,
 		...esUiSettingsUpdates,
 		...esUiShell,
+		...esUiShellMenubar,
 		...esUiShellRail,
 		...esUiTeamBridgeArchive,
 		...esUiTeamBridge,
+		...esUiUpdatesPanel,
 	},
 	fr: {
 		...frUiAgentMessages,
@@ -1120,9 +1140,11 @@ export const bundledCatalogues: Readonly<
 		...frUiSettingsSpeech,
 		...frUiSettingsUpdates,
 		...frUiShell,
+		...frUiShellMenubar,
 		...frUiShellRail,
 		...frUiTeamBridgeArchive,
 		...frUiTeamBridge,
+		...frUiUpdatesPanel,
 	},
 	hi: {
 		...hiUiAgentMessages,
@@ -1221,9 +1243,11 @@ export const bundledCatalogues: Readonly<
 		...hiUiSettingsSpeech,
 		...hiUiSettingsUpdates,
 		...hiUiShell,
+		...hiUiShellMenubar,
 		...hiUiShellRail,
 		...hiUiTeamBridgeArchive,
 		...hiUiTeamBridge,
+		...hiUiUpdatesPanel,
 	},
 	ru: {
 		...ruUiAgentMessages,
@@ -1322,9 +1346,11 @@ export const bundledCatalogues: Readonly<
 		...ruUiSettingsSpeech,
 		...ruUiSettingsUpdates,
 		...ruUiShell,
+		...ruUiShellMenubar,
 		...ruUiShellRail,
 		...ruUiTeamBridgeArchive,
 		...ruUiTeamBridge,
+		...ruUiUpdatesPanel,
 	},
 	ur: {
 		...urUiAgentMessages,
@@ -1423,9 +1449,11 @@ export const bundledCatalogues: Readonly<
 		...urUiSettingsSpeech,
 		...urUiSettingsUpdates,
 		...urUiShell,
+		...urUiShellMenubar,
 		...urUiShellRail,
 		...urUiTeamBridgeArchive,
 		...urUiTeamBridge,
+		...urUiUpdatesPanel,
 	},
 	vi: {
 		...viUiAgentMessages,
@@ -1524,9 +1552,11 @@ export const bundledCatalogues: Readonly<
 		...viUiSettingsSpeech,
 		...viUiSettingsUpdates,
 		...viUiShell,
+		...viUiShellMenubar,
 		...viUiShellRail,
 		...viUiTeamBridgeArchive,
 		...viUiTeamBridge,
+		...viUiUpdatesPanel,
 	},
 	"zh-CN": {
 		...zhCNUiAgentMessages,
@@ -1625,9 +1655,11 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiSettingsSpeech,
 		...zhCNUiSettingsUpdates,
 		...zhCNUiShell,
+		...zhCNUiShellMenubar,
 		...zhCNUiShellRail,
 		...zhCNUiTeamBridgeArchive,
 		...zhCNUiTeamBridge,
+		...zhCNUiUpdatesPanel,
 	},
 };
 
@@ -8769,6 +8801,19 @@ export type MessageParams = {
 	"ui.shell.user_profile_sidebar.settings": undefined;
 	"ui.shell.user_profile_sidebar.sign_out": undefined;
 	"ui.shell.user_profile_sidebar.user": undefined;
+	"ui.shell.menubar.about": { name: string };
+	"ui.shell.menubar.actual_size": undefined;
+	"ui.shell.menubar.close_tab_or_window": undefined;
+	"ui.shell.menubar.edit": undefined;
+	"ui.shell.menubar.file": undefined;
+	"ui.shell.menubar.force_reload": undefined;
+	"ui.shell.menubar.learn_more": undefined;
+	"ui.shell.menubar.new_browser_tab": undefined;
+	"ui.shell.menubar.reload": undefined;
+	"ui.shell.menubar.view": undefined;
+	"ui.shell.menubar.window": undefined;
+	"ui.shell.menubar.zoom_in": undefined;
+	"ui.shell.menubar.zoom_out": undefined;
 	"ui.shell.rail.ask.aria": { chord: string; subject: string };
 	"ui.shell.rail.ask.aria_count": {
 		chord: string;
@@ -9114,6 +9159,57 @@ export type MessageParams = {
 	"ui.teamBridge.thread.withheld": undefined;
 	"ui.teamBridge.thread.yesterday": undefined;
 	"ui.teamBridge.unread.count": { count: number };
+	"ui.updates.panel.artifact.damaged.message": undefined;
+	"ui.updates.panel.artifact.damaged.message_version": { version: string };
+	"ui.updates.panel.artifact.metadata_missing.message": undefined;
+	"ui.updates.panel.artifact.metadata_missing.message_version": {
+		version: string;
+	};
+	"ui.updates.panel.artifact.mismatch.message": undefined;
+	"ui.updates.panel.artifact.mismatch.message_version": { version: string };
+	"ui.updates.panel.artifact.missing_on_disk.message": undefined;
+	"ui.updates.panel.artifact.missing_on_disk.message_version": {
+		version: string;
+	};
+	"ui.updates.panel.artifact.not_this_app.message": undefined;
+	"ui.updates.panel.artifact.not_this_app.message_version": { version: string };
+	"ui.updates.panel.artifact.remedy": undefined;
+	"ui.updates.panel.artifact.unreadable.message": undefined;
+	"ui.updates.panel.artifact.unreadable.message_version": { version: string };
+	"ui.updates.panel.disk.message": undefined;
+	"ui.updates.panel.disk.message_version": { version: string };
+	"ui.updates.panel.disk.remedy": { size: string };
+	"ui.updates.panel.dismiss.not_now": undefined;
+	"ui.updates.panel.failure.cancelled.message": {
+		target: string;
+		running: string;
+	};
+	"ui.updates.panel.failure.cancelled.remedy": undefined;
+	"ui.updates.panel.failure.unfinished.message": {
+		target: string;
+		running: string;
+	};
+	"ui.updates.panel.failure.unfinished.remedy": undefined;
+	"ui.updates.panel.launch.check.message": undefined;
+	"ui.updates.panel.launch.check.message_version": { version: string };
+	"ui.updates.panel.launch.heading": undefined;
+	"ui.updates.panel.launch.keep.message": undefined;
+	"ui.updates.panel.launch.keep.message_version": { version: string };
+	"ui.updates.panel.launch.open.message": undefined;
+	"ui.updates.panel.launch.open.message_version": { version: string };
+	"ui.updates.panel.seal.remedy": undefined;
+	"ui.updates.panel.seal.startup.heading": undefined;
+	"ui.updates.panel.seal.startup.message": undefined;
+	"ui.updates.panel.seal.update.message": undefined;
+	"ui.updates.panel.seal.update.message_version": { version: string };
+	"ui.updates.panel.server.behind.remedy": undefined;
+	"ui.updates.panel.server.norestart.remedy": undefined;
+	"ui.updates.panel.server.rebuild.remedy": undefined;
+	"ui.updates.panel.service.check_unavailable.message": undefined;
+	"ui.updates.panel.service.no_backend.message": undefined;
+	"ui.updates.panel.service.no_server.message": undefined;
+	"ui.updates.panel.service.restart.message": undefined;
+	"ui.updates.panel.service.restart.message_version": { version: string };
 };
 
 export type MessageKey = keyof MessageParams;
