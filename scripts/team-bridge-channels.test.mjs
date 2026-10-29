@@ -313,13 +313,36 @@ test("archive is the last action in the conversation menu, after every other", (
 	);
 	// And it must be separated from the preferences above it, so the eye reads
 	// it as a different kind of act rather than the next option in a list.
-	const separatorBeforeArchive = source.lastIndexOf(
-		"<DropdownMenuSeparator />",
-		archiveItem,
-	);
+	// Matched on the tag, not the exact self-closing literal: an ordinary
+	// className on that separator is a legitimate edit, and pinning the literal
+	// would fail on it while blaming the order.
+	const separatorTag = source.indexOf("<DropdownMenuSeparator", radioGroupEnd);
 	assert.ok(
-		separatorBeforeArchive > radioGroupEnd - 1,
+		separatorTag > 0 && separatorTag < archiveItem,
 		"a separator must sit between the preferences and archive",
+	);
+
+	/*
+	 * NOTHING RENDERS BENEATH ARCHIVE (review round 1, MINOR 1).
+	 *
+	 * The positional check above only sees a literal `<DropdownMenuItem`. A
+	 * sibling COMPONENT added after the archive block - `<ExtraActions />` - can
+	 * render its own rows underneath Archive while the search finds no later
+	 * item, so the guard would pass on precisely the layout it exists to forbid.
+	 * The region that matters is between the end of the archive guard and the
+	 * end of the menu: whatever lives there would render below Archive.
+	 */
+	const afterGuard = source.slice(
+		source.indexOf(")}", archiveItem) + 2,
+		source.indexOf("</DropdownMenu>", archiveItem),
+	);
+	const strayElement = afterGuard
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.match(/<[A-Za-z]/);
+	assert.equal(
+		strayElement,
+		null,
+		`nothing may render after the archive item; found ${strayElement?.[0] ?? ""}`,
 	);
 });
 
