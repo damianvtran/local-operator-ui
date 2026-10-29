@@ -540,6 +540,12 @@ test("unresolved source: one plain sentence with Retry, sentences read without a
 			(b) => b.textContent === "Retry",
 		);
 		assert(retry, "Retry is offered");
+		// Signed in, so the action is live: the other half of the admission below.
+		assert.equal(
+			retry.disabled,
+			false,
+			"a readable account's unresolved source offers a working Retry",
+		);
 		state.memberships = [
 			{
 				tenant_id: TENANT,
@@ -566,6 +572,62 @@ test("unresolved source: one plain sentence with Retry, sentences read without a
 			.panel()
 			.querySelector('[role="switch"][aria-label^="Auto-push"]');
 		assert.equal(push.disabled, true);
+	} finally {
+		await ui.close();
+	}
+});
+
+test("signed out: the source Retry is unavailable, and the panel says why", async () => {
+	/*
+	 * M1. With no signed-in account there is no membership read to re-run:
+	 * `refetchSource` declines the call. The control must present that same
+	 * admission instead of taking a press that reaches nothing - an enabled
+	 * control that does nothing is the specific failure this popover exists to
+	 * remove - and the state's reason has to be on screen, because a control in
+	 * the disabled ink pair with no sentence beside it reads as broken.
+	 */
+	const ui = await mountOpen(healthy({ tenant_name: null }), {
+		account: null,
+		memberships: [],
+	});
+	try {
+		await act(async () => pause(30));
+		const block = ui.panel().querySelector("[data-hub-link-source-unresolved]");
+		assert(block, "the unresolved line renders when signed out");
+		const retry = [...block.querySelectorAll("button")].find(
+			(b) => b.textContent === "Retry",
+		);
+		assert(retry, "the control is still rendered, so its state is visible");
+		assert.equal(
+			retry.disabled,
+			true,
+			"no account to read memberships for: no press may be offered",
+		);
+		assert.match(
+			block.textContent,
+			/Sign in to Radient in Settings/,
+			"the panel states why the action is unavailable",
+		);
+		// `aria-describedby` carries idrefs, so resolve them: the reason must be in
+		// the control's own description, not merely somewhere on the panel.
+		const described = (retry.getAttribute("aria-describedby") ?? "")
+			.split(/\s+/)
+			.filter(Boolean)
+			.map((id) => document.getElementById(id)?.textContent?.trim() ?? "")
+			.join(" ");
+		assert.match(
+			described,
+			/Sign in to Radient/,
+			"the control's description carries the reason",
+		);
+		// The press the enabled control used to accept reaches no read at all.
+		const before = state.membershipCalls;
+		await act(async () => {
+			retry.click();
+			await pause(40);
+		});
+		assert.equal(state.membershipCalls, before, "a press issues no request");
+		assert.equal(state.membershipCalls, 0, "signed out, no read was ever made");
 	} finally {
 		await ui.close();
 	}

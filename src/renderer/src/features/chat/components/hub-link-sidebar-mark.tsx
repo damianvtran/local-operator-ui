@@ -111,6 +111,10 @@ export function HubLinkSidebarMark({
 	 * accessibility tree - the described-by idiom the policy switches already use.
 	 */
 	const sourceUnresolvedId = useId();
+	// The signed-out state's own sentence: the source Retry has nothing to run
+	// there, so the reason it is unavailable is described by a second id rather
+	// than folded into the unresolved line, which holds in states that retry.
+	const sourceSignInId = useId();
 	const failedUpdateId = useId();
 	const item = displayName?.trim() ? displayName : link.name;
 	const { source, memberships, mayReadMemberships } = useHubLinkSource(link);
@@ -334,23 +338,42 @@ export function HubLinkSidebarMark({
 						className="mb-3 flex items-start justify-between gap-3"
 						data-hub-link-source-unresolved=""
 					>
-						<p
-							id={sourceUnresolvedId}
-							className="min-w-0 text-meta text-ink-muted"
-						>
-							{t("ui.hub.links.source_unresolved")}
-						</p>
+						<div className="flex min-w-0 flex-col gap-1">
+							<p id={sourceUnresolvedId} className="text-meta text-ink-muted">
+								{t("ui.hub.links.source_unresolved")}
+							</p>
+							{!mayReadMemberships && (
+								<p id={sourceSignInId} className="text-meta text-ink-muted">
+									{t("ui.hub.links.sign_in_required")}
+								</p>
+							)}
+						</div>
 						{/*
-						 * The label follows the fetch, exactly as the incoming-update Retry follows
-						 * its mutation. Held invariant, this panel's only action sat in the disabled
-						 * ink pair on open, on click and through every backoff attempt, looking dead
-						 * with nothing on screen saying why.
+						 * The label follows the fetch, but NOT "exactly as" the incoming-update
+						 * Retry follows its mutation: that one tracks `isPending`, its own write,
+						 * while this one tracks `isFetching`, which the read an account switch
+						 * starts also sets - so it can read "Retrying..." for a retry nobody
+						 * pressed. Held invariant, this panel's only action sat in the disabled
+						 * ink pair on open, on click and through every backoff attempt, looking
+						 * dead with nothing on screen saying why.
+						 *
+						 * `!mayReadMemberships` joins the disabled condition because
+						 * `refetchSource` declines that same case: with no signed-in account
+						 * there is no membership read to re-run. A control that takes the press
+						 * and reaches nothing is the inert action this popover exists to remove,
+						 * so the admission and the control are stated once, together.
 						 */}
 						<Button
 							variant="outline"
 							size="sm"
-							disabled={memberships.isFetching}
-							aria-describedby={sourceUnresolvedId}
+							disabled={memberships.isFetching || !mayReadMemberships}
+							// A dangling idref is worse than none: the reason is named only
+							// while the line carrying it renders.
+							aria-describedby={
+								mayReadMemberships
+									? sourceUnresolvedId
+									: `${sourceUnresolvedId} ${sourceSignInId}`
+							}
 							onClick={refetchSource}
 						>
 							{t(
