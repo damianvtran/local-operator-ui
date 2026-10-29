@@ -1,0 +1,147 @@
+{
+ "instance": "463b28c1ba8b-ov2-ur",
+ "locale": "ur",
+ "scope": "delta round 2: the same 23 keys (ui.chat.thread_search 20, ui.chat.canonical 3) re-checked at 58de30166d against the round-1 verdict; not a from-scratch re-audit",
+ "checkout_head": "58de30166d",
+ "key_count": 23,
+ "audit_date": "2026-10-29",
+ "reviewed_previous": {
+  "path": "/Users/damian/qa/ov-audit/ur/receipt.json",
+  "instance": "463b28c1ba8b-ov-ur",
+  "checkout_head": "f6e5c3eb62",
+  "verdict": "CHANGES_REQUESTED",
+  "counts": {
+   "BLOCKER": 0,
+   "MAJOR": 1,
+   "MINOR": 1,
+   "NIT": 1
+  }
+ },
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "463b28c1ba8b",
+  "model": "radient/auto",
+  "actual_model_source": "fallback, unchanged from round 1: anthropic/claude-sonnet-5-5 -> openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto",
+  "independent_from_translator_session": true
+ },
+ "input_sha256": {
+  "src/i18n/catalogues/en/ui.chat.thread_search.json": "08bc59d1fe1058d3704800f92ee05afe5a7ffc1c7146683100a1afe5b2fa28e6",
+  "src/i18n/catalogues/ur/ui.chat.thread_search.json": "a3331a2ecc7fd3f9cdd738ab56afc65363646209650dca17ace1755c624709ac",
+  "src/i18n/catalogues/en/ui.chat.canonical.json": "da2c87f6caf8f238997861d850f575a3b3d8328c5d46abfffae4728ed41fb892",
+  "src/i18n/catalogues/ur/ui.chat.canonical.json": "cc62cd8900c3592765722f85a0dd2d49f8d0e30eee51a94df62a2ac3b927692c"
+ },
+ "input_hashes": {
+  "context": [
+   {
+    "path": "src/i18n/catalogues/en/ui.chat.thread_search.context.json",
+    "sha256": "bffc3975ecb828e236a87884b7667abbd7b848212e74e8f21d604e7f8df450e3"
+   }
+  ],
+  "en": [
+   {
+    "path": "src/i18n/catalogues/en/ui.chat.thread_search.json",
+    "sha256": "08bc59d1fe1058d3704800f92ee05afe5a7ffc1c7146683100a1afe5b2fa28e6"
+   }
+  ],
+  "ur": [
+   {
+    "path": "src/i18n/catalogues/ur/ui.chat.thread_search.json",
+    "sha256": "a3331a2ecc7fd3f9cdd738ab56afc65363646209650dca17ace1755c624709ac"
+   }
+  ]
+ },
+ "read_provenance": {
+  "values": "the moved values read through read_public_copy (en and ur ui.chat.thread_search.count.split), plus re-reads of ur count.match, count.truncated, role.user and role.agent to confirm they still read correctly at the new bytes",
+  "unchanged_evidence": "per-key equality computed mechanically between f6e5c3eb62 and 58de30166d over every key of all four files: thread_search 23/23 (only count.split changed in en and ur), canonical 80/80 (nothing changed); no unreviewed value was read by eye",
+  "docs": "en count.split sidecar note read from the filesystem; git log -1 %B for the remediation statement"
+ },
+ "checks": [
+  {
+   "id": "prior-major-resolved",
+   "result": "pass",
+   "detail": "UR-1: count.split is now label-first in en and ur"
+  },
+  {
+   "id": "icu-args",
+   "result": "pass",
+   "detail": "ur count.split arguments {exactText,relatedText} identical to en; plural sites count.match/count.related/count.truncated unchanged and still one/other"
+  },
+  {
+   "id": "plural-categories",
+   "result": "pass",
+   "detail": "Intl.PluralRules('ur') one,other; renders 0/1/2/5/21 -> other/one/other/other/other, bodies correct"
+  },
+  {
+   "id": "nothing-else-moved",
+   "result": "pass",
+   "detail": "whole-file per-key diff: only ui.chat.thread_search.count.split changed; canonical files byte-identical to round 1"
+  },
+  {
+   "id": "typography-bidi",
+   "result": "pass",
+   "detail": "no manual bidi controls, no double or edge spaces, no Latin full stop; middot and colon kept; label-number order is the RTL-correct one"
+  },
+  {
+   "id": "false-positive-note",
+   "result": "n/a",
+   "detail": "the automated LATIN-COMMA flag is ICU syntax inside '{count, plural, ...}', not punctuation in any rendered body"
+  }
+ ],
+ "counts": {
+  "BLOCKER": 0,
+  "MAJOR": 0,
+  "MINOR": 0,
+  "NIT": 0
+ },
+ "verdict": "pass",
+ "namespaces": {
+  "ui.chat.thread_search": {
+   "status": "passed",
+   "keys_audited": 20,
+   "sha256": {
+    "en": "08bc59d1fe1058d3704800f92ee05afe5a7ffc1c7146683100a1afe5b2fa28e6",
+    "target": "a3331a2ecc7fd3f9cdd738ab56afc65363646209650dca17ace1755c624709ac"
+   },
+   "findings": []
+  },
+  "ui.chat.canonical": {
+   "status": "passed",
+   "keys_audited": 3,
+   "sha256": {
+    "en": "da2c87f6caf8f238997861d850f575a3b3d8328c5d46abfffae4728ed41fb892",
+    "target": "cc62cd8900c3592765722f85a0dd2d49f8d0e30eee51a94df62a2ac3b927692c"
+   },
+   "findings": []
+  }
+ },
+ "notes": [
+  {
+   "prior": "UR-1",
+   "severity": "MAJOR",
+   "key": "ui.chat.thread_search.count.split",
+   "status": "resolved",
+   "detail": "Was '{exactText} درست · {relatedText} متعلقہ': 'درست' means correct/right, so the pair sat on two axes (quality vs relatedness) and the line's only job - the exact/related split - was blurred. Now 'مطابق: {exactText} · متعلقہ: {relatedText}'. Both tiers are now on the match axis, the 'correct' misreading is gone, and the label shares its root with the noun count.match already uses ('مطابقت'), so the overlay's vocabulary is consistent. Residual, not a defect: 'مطابق' reads as 'matching' rather than the emphatic 'عین مطابق'; the contrast with 'متعلقہ' carries 'exact', so no change asked for."
+  },
+  {
+   "prior": "UR-2",
+   "severity": "MINOR",
+   "key": "ui.chat.canonical.image_gen.control.edit_and_restart",
+   "status": "answered - no change",
+   "detail": "The label is unchanged at the new bytes (canonical files are byte-identical to round 1), so nothing was addressed in code. My finding was conditional on the control's room ('keep as is if it fits'), so leaving it stands as the answered disposition; it was non-blocking and remains an observation for the next wave, not a defect."
+  },
+  {
+   "prior": "UR-3",
+   "severity": "NIT",
+   "key": "ui.chat.thread_search.unsupported",
+   "status": "answered - no change",
+   "detail": "Unchanged ('کسی دوسرے ڈیوائس پر'). My NIT was itself conditional on how the shipped ur copy treats ڈیوائس elsewhere ('otherwise no change'); the masculine oblique is attested Urdu, so no edit is required and none was made."
+  },
+  {
+   "prior": "cross-locale",
+   "severity": "n/a",
+   "key": "ui.chat.thread_search.count.split",
+   "status": "noted",
+   "detail": "The English sidecar now states the label-first rule and why a numeral next to an agreeing adjective is unsatisfiable; the ur value obeys '{label}: {number}', the middot and both placeholders, so a future wave cannot drift back into the round-1 form without contradicting its own sidecar."
+  }
+ ]
+}

@@ -1,0 +1,447 @@
+{
+  "locale": "hi",
+  "instance": "740a6d12c8a5-r4-hi",
+  "round": "4 (verification of the round-3 delta audit after a10255813c)",
+  "reviewed_previous": {
+    "path": "/Users/damian/qa/lit-audit3/hi/receipt.json",
+    "instance": "740a6d12c8a5-r3-hi",
+    "head": "8f1c56a4257b23ff5f543b9c0c0edb431df87f08",
+    "verdict": "passed",
+    "counts": {
+      "BLOCKER": 0,
+      "MAJOR": 0,
+      "MINOR": 3,
+      "NIT": 4
+    }
+  },
+  "scope": "Verification only, at the new bytes: the 89 English keys added by 930c8ec2d1 in branch i18n-final-literals as corrected by 40afea32ff and 8f1c56a425, re-checked at a10255813c. Not a fresh full audit: no new policy findings, no re-audit of unchanged keys beyond the regression sweep, nothing reported outside these 89 keys.",
+  "checkout_head": "a10255813c44112eb49bb5d5d6fe05173e2d21c1",
+  "branch": "i18n-final-literals",
+  "key_count": 89,
+  "audit_date": "2026-10-29",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "740a6d12c8a5",
+    "model": "radient/auto",
+    "actual_model_source": "Session pinned anthropic/claude-sonnet-5-5; provider-quota fallbacks moved it to openai/gpt-6-astra, then kimi/k3.1-pro, then radient/auto. Both the round-3 audit and this verification ran under radient/auto; the Claude pin is a fallback origin, not the audit model.",
+    "independent_from_translator_session": true,
+    "native_fluent_hi": true,
+    "used_mt_or_translation_service": false
+  },
+  "read_provenance": {
+    "route": "Every en and hi value read in this round came through read_public_copy (src/i18n/catalogues/{en,hi}/<file>, key=<id>). Sidecars, glossary and i18n/style-guides/hi.md were read from the filesystem as documents.",
+    "values_read": [
+      "ui.hub.detail.back_aria (hi, en)",
+      "ui.hub.detail.delist_tooltip (hi, en)",
+      "ui.hub.detail.failure.favourite (hi)",
+      "ui.hub.detail.viewer_unknown (hi)",
+      "ui.hub.pages.pager.nav_aria (hi)",
+      "ui.chat.canonical.turn_summary.took (hi)",
+      "ui.chat.canonical.security_notice.show_code (hi)",
+      "ui.hub.viewer.unlike (hi)",
+      "ui.chat.pickers.slash.action_kind (hi)",
+      "ui.hub.pages.header.title (hi, en) — to establish this locale's shipped hub title"
+    ],
+    "mechanical_route": "Change set and byte-identity checks were computed by scripts that print only key names and booleans; the 89-key sweep printed only pass/fail counts. No translated value was disclosed outside read_public_copy."
+  },
+  "changes_reviewed": [
+    {
+      "key": "ui.hub.detail.back_aria",
+      "before": "Agent Hub पर वापस जाएँ",
+      "after": "एजेंट हब पर वापस जाएँ",
+      "verdict": "correct",
+      "why": "Matches this locale's shipped hub title (ui.hub.pages.header.title = \"एजेंट हब\"), reads naturally, and carries no placeholder. en is \"Back to Agent Hub\"."
+    },
+    {
+      "key": "ui.hub.detail.delist_tooltip",
+      "before": "इस एजेंट को Agent Hub की सूची से स्थायी रूप से हटाएँ",
+      "after": "एजेंट हब की सूची से इस एजेंट को स्थायी रूप से हटाएँ",
+      "verdict": "correct",
+      "why": "Same shipped title; fronting the source phrase is natural Hindi word order, the \"की सूची से\" matches how every other delist string in the delta renders delist, and the string carries no placeholder. en is \"Permanently delist this agent from Agent Hub\"."
+    }
+  ],
+  "checks": {
+    "change_set": {
+      "result": "pass",
+      "detail": "Across the 89 in-scope keys, a10255813c changes exactly two hi values (ui.hub.detail.back_aria, ui.hub.detail.delist_tooltip) and zero en values. The only English file touched is ui.hub.detail.context.json, a docs sidecar. Nothing else in the delta moved, so nothing approved in round 3 was disturbed."
+    },
+    "hub_naming": {
+      "result": "pass",
+      "detail": "No in-scope hi value still names the hub in Latin (0 occurrences of \"Agent Hub\"); both changed strings use \"एजेंट हब\", byte-identical to the shipped title. The direction is the one this round was asked to accept; not filed as a policy finding."
+    },
+    "placeholders": {
+      "result": "pass",
+      "detail": "All 89 keys still carry byte-identical placeholder sets against English, including the seven keys that carry my filed findings ({duration}, {message}, {rate}x, {name}, {ago}, {date}, {author}, {email}). No ICU plural on either side, so no CLDR category obligation."
+    },
+    "key_coverage": {
+      "result": "pass",
+      "detail": "89/89 keys present in both catalogues at the new head."
+    },
+    "typography": {
+      "result": "pass",
+      "detail": "Still 12 values carrying danda; no prose string closes on an ASCII full stop; the two changed strings introduce no punctuation drift."
+    },
+    "regression": {
+      "result": "pass",
+      "detail": "Nothing approved in round 3 regressed. The two changed strings keep their roles (icon-button name, tooltip), their tone, and their lack of placeholders."
+    },
+    "repo_state": {
+      "result": "gates re-run and green; repo not edited",
+      "detail": "Read-only gates re-run at a10255813c: context-parity ok (131 allowed gaps in 4 namespaces, shrink-only allowance — so the sidecar note edited in this commit still parses and still agrees with its catalogue); generate --check reports keys.gen.ts byte-identical to a fresh generation; check-duplicates ok (934 files, 0 duplicate keys). ledger-check was not re-run: no ledger row was written, so its round-3 result still describes this tree, and landing the delta's ledger entry belongs to the coordinator. No repo file was edited by this round."
+    }
+  },
+  "prior_finding_status": [
+    {
+      "id": "M1",
+      "key": "ui.hub.detail.failure.favourite",
+      "severity": "MINOR",
+      "status": "unresolved",
+      "evidence": "byte-identical to 8f1c56a425"
+    },
+    {
+      "id": "M2",
+      "key": "ui.hub.detail.viewer_unknown",
+      "severity": "MINOR",
+      "status": "unresolved",
+      "evidence": "byte-identical to 8f1c56a425"
+    },
+    {
+      "id": "M3",
+      "key": "ui.hub.pages.pager.nav_aria",
+      "severity": "MINOR",
+      "status": "unresolved",
+      "evidence": "byte-identical to 8f1c56a425"
+    },
+    {
+      "id": "N1",
+      "key": "ui.chat.canonical.turn_summary.took",
+      "severity": "NIT",
+      "status": "unresolved",
+      "evidence": "byte-identical to 8f1c56a425"
+    },
+    {
+      "id": "N2",
+      "key": "ui.hub.viewer.unlike",
+      "severity": "NIT",
+      "status": "unresolved",
+      "evidence": "byte-identical to 8f1c56a425"
+    },
+    {
+      "id": "N3",
+      "key": "ui.chat.pickers.slash.action_kind",
+      "severity": "NIT",
+      "status": "unresolved",
+      "evidence": "byte-identical to 8f1c56a425"
+    },
+    {
+      "id": "N4",
+      "key": "ui.chat.canonical.security_notice.show_code",
+      "severity": "NIT",
+      "status": "unresolved",
+      "evidence": "byte-identical to 8f1c56a425"
+    }
+  ],
+  "findings": [
+    {
+      "id": "M1",
+      "severity": "MINOR",
+      "status": "unresolved",
+      "namespace": "ui.hub.detail",
+      "key": "ui.hub.detail.failure.favourite",
+      "current": "पसंदीदा नहीं जोड़ा जा सका",
+      "problem": "में is still missing, so the alert title reads \"the favourite could not be added\". Byte-identical to the value audited in round 3.",
+      "suggested": "पसंदीदा में जोड़ा नहीं जा सका"
+    },
+    {
+      "id": "M2",
+      "severity": "MINOR",
+      "status": "unresolved",
+      "namespace": "ui.hub.detail",
+      "key": "ui.hub.detail.viewer_unknown",
+      "current": "आपकी पसंद और पसंदीदा की जानकारी नहीं मिल सकी, इसलिए इस एजेंट के लिए आपकी स्थिति नहीं दिखाई गई है।",
+      "problem": "One आपकी still governs both पसंद (feminine) and पसंदीदा (masculine plural in ui.hub.viewer.favourite_unknown). Byte-identical to the round-3 value.",
+      "suggested": "आपकी पसंद और आपके पसंदीदा की जानकारी नहीं मिल सकी, इसलिए इस एजेंट के लिए आपकी स्थिति नहीं दिखाई गई है।"
+    },
+    {
+      "id": "M3",
+      "severity": "MINOR",
+      "status": "unresolved",
+      "namespace": "ui.hub.pages",
+      "key": "ui.hub.pages.pager.nav_aria",
+      "current": "एजेंट के पेज",
+      "problem": "Singular oblique for the English plural \"Agent pages\". Byte-identical to the round-3 value.",
+      "suggested": "एजेंटों के पेज"
+    },
+    {
+      "id": "N1",
+      "severity": "NIT",
+      "status": "unresolved",
+      "namespace": "ui.chat.canonical",
+      "key": "ui.chat.canonical.turn_summary.took",
+      "current": "{duration} लगे",
+      "problem": "The fixed plural लगे does not fit a duration the formatter can render as \"1 s\" / \"0.5 s\". Byte-identical to the round-3 value.",
+      "suggested": "लिया गया समय: {duration}"
+    },
+    {
+      "id": "N2",
+      "severity": "NIT",
+      "status": "unresolved",
+      "namespace": "ui.hub.viewer",
+      "key": "ui.hub.viewer.unlike",
+      "current": "एजेंट के लिए अपनी पसंद वापस लें",
+      "problem": "Heavier and not parallel with its neighbour ui.hub.viewer.unfavourite. Byte-identical to the round-3 value.",
+      "suggested": "एजेंट से अपनी पसंद हटाएँ"
+    },
+    {
+      "id": "N3",
+      "severity": "NIT",
+      "status": "unresolved",
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.slash.action_kind",
+      "current": "क्रिया",
+      "problem": "As a row-kind marker it also reads as the grammar term \"verb\". Byte-identical to the round-3 value.",
+      "suggested": "कार्रवाई, if the small-weight row marker has the width"
+    },
+    {
+      "id": "N4",
+      "severity": "NIT",
+      "status": "unresolved",
+      "namespace": "ui.chat.canonical",
+      "key": "ui.chat.canonical.security_notice.show_code",
+      "current": "समीक्षा किया गया कोड दिखाएँ",
+      "problem": "Passive relative is heavy for a disclosure summary. Byte-identical to the round-3 value.",
+      "suggested": "समीक्षित कोड दिखाएँ"
+    }
+  ],
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 3,
+    "NIT": 4
+  },
+  "verdict": "pass",
+  "verdict_note": "Pass, on the project's own gate: no BLOCKER and no MAJOR remains, and the two values this commit changed are correct against the locale's shipped title and introduce no regression. Be clear about what this verdict does NOT say: the commit did not touch the wording findings. All seven filed items (M1, M2, M3, N1, N2, N3, N4) are byte-identical to the round-3 bytes, so if they were believed fixed, they were not. They are non-blocking polish and stay carried; nothing here reopens the round-3 verdict, which also passed with them open.",
+  "namespaces": {
+    "ui.agents.settings": {
+      "status": "passed",
+      "keys_audited": 5,
+      "sha256": {
+        "en": "3ba270885be69d682183c849436c3e2146bf5c8875cf8a2be1f26528ed20fd4d",
+        "target": "415bf78502719ac5ae0f2f07d7c68da2d24933d7843ae77b6e95c18be3594928"
+      },
+      "findings": []
+    },
+    "ui.chat.asks": {
+      "status": "passed",
+      "keys_audited": 2,
+      "sha256": {
+        "en": "3399e4015ace811013fb16d9f021016eaecf8ed700e6d34ee2c0d0029068832a",
+        "target": "3406222412d3def699c106fefa7a57383af45effb00d66bd894f148db690224c"
+      },
+      "findings": []
+    },
+    "ui.chat.attachments": {
+      "status": "passed",
+      "keys_audited": 5,
+      "sha256": {
+        "en": "623a1363260ecbe40393b4424dde4d7b6cc084688ac354483052639a145ce892",
+        "target": "8120d0ca4e993a84b75076fcd106eeee0a47f4f4720791bd0eec7db542fc33b0"
+      },
+      "findings": []
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "keys_audited": 9,
+      "sha256": {
+        "en": "e497effa4c5ba36da6fc3fb4598e5cd7cd2219cae675e94b51d00682e2f90935",
+        "target": "dc5d836f88e8f3ade720294467ba05c525e6bc7b7e8a8c4f72e5f7c8f2af692d"
+      },
+      "findings": [
+        {
+          "id": "N1",
+          "severity": "NIT",
+          "status": "unresolved",
+          "namespace": "ui.chat.canonical",
+          "key": "ui.chat.canonical.turn_summary.took",
+          "current": "{duration} लगे",
+          "problem": "The fixed plural लगे does not fit a duration the formatter can render as \"1 s\" / \"0.5 s\". Byte-identical to the round-3 value.",
+          "suggested": "लिया गया समय: {duration}"
+        },
+        {
+          "id": "N4",
+          "severity": "NIT",
+          "status": "unresolved",
+          "namespace": "ui.chat.canonical",
+          "key": "ui.chat.canonical.security_notice.show_code",
+          "current": "समीक्षा किया गया कोड दिखाएँ",
+          "problem": "Passive relative is heavy for a disclosure summary. Byte-identical to the round-3 value.",
+          "suggested": "समीक्षित कोड दिखाएँ"
+        }
+      ]
+    },
+    "ui.chat.device": {
+      "status": "passed",
+      "keys_audited": 1,
+      "sha256": {
+        "en": "2be9eaf88f3f95eec4d28b4cc5b6397edbd3173eb2af3713ff2da4f6b0b5fcd6",
+        "target": "bcef66932052cddb3e7fb684837ca3e2eabe886a4a6f14f72b0fc27e4e49dc08"
+      },
+      "findings": []
+    },
+    "ui.chat.header": {
+      "status": "passed",
+      "keys_audited": 2,
+      "sha256": {
+        "en": "a2584118fd1ae8da26a27f8e739bbde58c30ec5c7c8c9515d2ab876bc7a82dd8",
+        "target": "aad7bf1719ec81afa593ac86659640d27479fc4c0ec1be5236447523c99f3280"
+      },
+      "findings": []
+    },
+    "ui.chat.pickers": {
+      "status": "passed",
+      "keys_audited": 1,
+      "sha256": {
+        "en": "e77e75172487fb154b12ce349fac574cc88516c811acaefd2018208baaf192c1",
+        "target": "caebc38dd6a387db957b373195b8ab4dfd52720356bcb0aad76f056c20465848"
+      },
+      "findings": [
+        {
+          "id": "N3",
+          "severity": "NIT",
+          "status": "unresolved",
+          "namespace": "ui.chat.pickers",
+          "key": "ui.chat.pickers.slash.action_kind",
+          "current": "क्रिया",
+          "problem": "As a row-kind marker it also reads as the grammar term \"verb\". Byte-identical to the round-3 value.",
+          "suggested": "कार्रवाई, if the small-weight row marker has the width"
+        }
+      ]
+    },
+    "ui.chat.radient_session": {
+      "status": "passed",
+      "keys_audited": 8,
+      "sha256": {
+        "en": "3ac15679b3551e879c2d88d11594946ea4307238330e88cee24ba80b07721118",
+        "target": "bcfec4998ba61eca16dfdffb3a366f8cf70807534914960dd95975110d78c8f5"
+      },
+      "findings": []
+    },
+    "ui.chat.thread_search": {
+      "status": "passed",
+      "keys_audited": 3,
+      "sha256": {
+        "en": "aea9f467a5a57775ec7510e09b52800077f8ebd93bf430b7956dd381f1ed3d91",
+        "target": "143c0839abfe22f59db3aebb5edf81bab07af77b45c60404e60776bb15c5c242"
+      },
+      "findings": []
+    },
+    "ui.chat.transcript_copy": {
+      "status": "passed",
+      "keys_audited": 5,
+      "sha256": {
+        "en": "d6f5264ef4cd19ea1a66b10d7dadfd6478ec239973a7a8fca49903b8ae3818dc",
+        "target": "9247f815b617555561c2923cb367fd173746f8f719a2199e348a74a16022d1b8"
+      },
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "keys_audited": 3,
+      "sha256": {
+        "en": "0c279fc21d17c3f1937e4364fac698601ec4304ce7c7055df786bc037a8b12e3",
+        "target": "72a489f7661876d24e7d33a401921dcc631bc06f12d1bb3e0fd485a57b62a745"
+      },
+      "findings": []
+    },
+    "ui.hub.card": {
+      "status": "passed",
+      "keys_audited": 6,
+      "sha256": {
+        "en": "b9459d327a82d48b8607356f857e6a260cc0b46b78a12109d8b843c559abfcbc",
+        "target": "bc07721a7eb33a1e7e92593aed5046a96f7a6be811729e389b8161071380f3af"
+      },
+      "findings": []
+    },
+    "ui.hub.detail": {
+      "status": "passed",
+      "keys_audited": 26,
+      "sha256": {
+        "en": "d6a3fdb30fc5a4c1d8e0e5530f377dfac0e2b1238f2fd3dd32a12f0e082861d4",
+        "target": "181b360be1296c669fec3ec6cb4f7f4579bce77c3de4c51e57e25a00b93210d8"
+      },
+      "findings": [
+        {
+          "id": "M1",
+          "severity": "MINOR",
+          "status": "unresolved",
+          "namespace": "ui.hub.detail",
+          "key": "ui.hub.detail.failure.favourite",
+          "current": "पसंदीदा नहीं जोड़ा जा सका",
+          "problem": "में is still missing, so the alert title reads \"the favourite could not be added\". Byte-identical to the value audited in round 3.",
+          "suggested": "पसंदीदा में जोड़ा नहीं जा सका"
+        },
+        {
+          "id": "M2",
+          "severity": "MINOR",
+          "status": "unresolved",
+          "namespace": "ui.hub.detail",
+          "key": "ui.hub.detail.viewer_unknown",
+          "current": "आपकी पसंद और पसंदीदा की जानकारी नहीं मिल सकी, इसलिए इस एजेंट के लिए आपकी स्थिति नहीं दिखाई गई है।",
+          "problem": "One आपकी still governs both पसंद (feminine) and पसंदीदा (masculine plural in ui.hub.viewer.favourite_unknown). Byte-identical to the round-3 value.",
+          "suggested": "आपकी पसंद और आपके पसंदीदा की जानकारी नहीं मिल सकी, इसलिए इस एजेंट के लिए आपकी स्थिति नहीं दिखाई गई है।"
+        }
+      ]
+    },
+    "ui.hub.pages": {
+      "status": "passed",
+      "keys_audited": 3,
+      "sha256": {
+        "en": "9ae73c3aabece832df701ffe1b8c24b01d731a94adeb795103a0215b84fb57bd",
+        "target": "d55a6f04583acd064d1b4051dd57371c2ffc2de62f046757967c260f922fc994"
+      },
+      "findings": [
+        {
+          "id": "M3",
+          "severity": "MINOR",
+          "status": "unresolved",
+          "namespace": "ui.hub.pages",
+          "key": "ui.hub.pages.pager.nav_aria",
+          "current": "एजेंट के पेज",
+          "problem": "Singular oblique for the English plural \"Agent pages\". Byte-identical to the round-3 value.",
+          "suggested": "एजेंटों के पेज"
+        }
+      ]
+    },
+    "ui.hub.viewer": {
+      "status": "passed",
+      "keys_audited": 10,
+      "sha256": {
+        "en": "a6eed998576ef689a2fc011b2f9c64eaf53fe8b007b2efc21cf66118bc206375",
+        "target": "fc9c213f16841922e1c1b0c02746462ab9c5aa9a720a9bbf67a0e4172563510c"
+      },
+      "findings": [
+        {
+          "id": "N2",
+          "severity": "NIT",
+          "status": "unresolved",
+          "namespace": "ui.hub.viewer",
+          "key": "ui.hub.viewer.unlike",
+          "current": "एजेंट के लिए अपनी पसंद वापस लें",
+          "problem": "Heavier and not parallel with its neighbour ui.hub.viewer.unfavourite. Byte-identical to the round-3 value.",
+          "suggested": "एजेंट से अपनी पसंद हटाएँ"
+        }
+      ]
+    }
+  },
+  "notes": [
+    "Change set verified: a10255813c alters exactly two of the 89 hi keys and no en key; the only English edit is the ui.hub.detail.context.json sidecar.",
+    "Hub naming: both changed strings now use \"एजेंट हब\", which is this locale's shipped title (ui.hub.pages.header.title). Correct for hi; the direction was accepted as given, not re-argued.",
+    "M1 unresolved: ui.hub.detail.failure.favourite still reads \"पसंदीदा नहीं जोड़ा जा सका\".",
+    "M2 unresolved: ui.hub.detail.viewer_unknown still splits one आपकी across पसंद and पसंदीदा.",
+    "M3 unresolved: ui.hub.pages.pager.nav_aria still reads \"एजेंट के पेज\".",
+    "N1-N4 unresolved: turn_summary.took, unlike, slash.action_kind and show_code are byte-identical to the round-3 bytes.",
+    "Observation, not a finding: the updated sidecar note on ui.hub.detail.back_aria both gives es as an example of an own-shipped title (\"Hub de agentes\") and lists es among the locales that ship \"Agent Hub\" Latin. That parenthetical contradicts its own example and would mislead a future translator; hi is unaffected because its shipped title is localised and the value matches it. Recorded for the coordinator, not filed against a string.",
+    "No new findings were invented in this round, and no key outside the 89 was reported on."
+  ],
+  "evidence_location": "/Users/damian/qa/lit-audit4/hi/ (receipt.json, verdict.txt) — outside the repo, which was not edited."
+}

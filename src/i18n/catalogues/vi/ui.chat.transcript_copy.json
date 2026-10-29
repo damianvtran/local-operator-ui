@@ -1,7 +1,12 @@
 {
+	"ui.chat.transcript_copy.block.logs": "Nhật ký",
+	"ui.chat.transcript_copy.block.output": "Đầu ra",
 	"ui.chat.transcript_copy.menu.copy_text": "Sao chép văn bản",
 	"ui.chat.transcript_copy.menu.copy_markdown": "Sao chép Markdown",
 	"ui.chat.transcript_copy.menu.copy_selection": "Sao chép phần đã chọn",
+	"ui.chat.transcript_copy.role.assistant": "Trợ lý",
+	"ui.chat.transcript_copy.selection.quote": "Trích dẫn",
+	"ui.chat.transcript_copy.technical_details": "Chi tiết kỹ thuật",
 	"ui.chat.transcript_copy.toast.copied_markdown": "Đã sao chép Markdown",
 	"ui.chat.transcript_copy.toast.copied_selection": "Đã sao chép phần đã chọn",
 	"ui.chat.transcript_copy.row.your_message": "Tin nhắn của bạn",

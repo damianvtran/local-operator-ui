@@ -1,4 +1,5 @@
 {
+	"ui.chat.asks.answer_options": "Answer options",
 	"ui.chat.asks.context.messages_since": "{count, plural, one {# message from you since this was asked} other {# messages from you since this was asked}} (last message {time})",
 	"ui.chat.asks.dismiss.answered_in_chat.note": "you already replied in the conversation",
 	"ui.chat.asks.dismiss.answered_in_chat.title": "Answered in chat",
@@ -12,6 +13,7 @@
 	"ui.chat.asks.dismiss.refused": "Couldn't dismiss this ask — nothing was sent.",
 	"ui.chat.asks.dismiss.trigger": "Dismiss…",
 	"ui.chat.asks.other_label": "Other",
+	"ui.chat.asks.recommended": "Recommended",
 	"ui.chat.asks.urgent": "Urgent.",
 	"ui.chat.asks.no_answer": "No answer given",
 	"ui.chat.asks.changed_handoff": "Changed — the agent has not been handed it yet.",

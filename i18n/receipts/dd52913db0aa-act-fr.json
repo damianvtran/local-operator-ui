@@ -1,0 +1,171 @@
+{
+  "locale": "fr",
+  "scope": "ui.common.actions: verification that the only change since 369bb0113f is the deletion of the unused key check_again",
+  "checkout_head": "58de30166d",
+  "audit_date": "2026-10-29",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "dd52913db0aa",
+    "model": "radient/auto",
+    "independent_from_translator_session": true,
+    "actual_model_source": "provider quota failures switched the session model during this audit: anthropic/claude-sonnet-5-5 (primary) -> openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto (active when this receipt was written)",
+    "instance": "dd52913db0aa-act-fr"
+  },
+  "instance": "dd52913db0aa-act-fr",
+  "input_sha256": {
+    "en": "8dc67dc7c285d2747f4586a5d01a39c23423b10e506f6cfa44c258caed37a412",
+    "target": "b0093fc7679e25fc05fbc9106fe9d4da3f9fe71edf345cf40a0b4a57e46c2076"
+  },
+  "baseline": {
+    "commit": "369bb0113f",
+    "note": "the bind commit whose bytes were previously audited for this namespace",
+    "input_sha256": {
+      "en": "0c279fc21d17c3f1937e4364fac698601ec4304ce7c7055df786bc037a8b12e3",
+      "target": "80326f2a88214d074a869ab533d78e09dc4f7162c2ad742bbf6ba46b10a26184"
+    }
+  },
+  "diff_command": "git -C /Users/damian/lo-literals diff 369bb0113f..HEAD -- src/i18n/catalogues/en/ui.common.actions.json src/i18n/catalogues/fr/ui.common.actions.json",
+  "diff": "diff --git a/src/i18n/catalogues/en/ui.common.actions.json b/src/i18n/catalogues/en/ui.common.actions.json\nindex 33fc638f18..949e93c177 100644\n--- a/src/i18n/catalogues/en/ui.common.actions.json\n+++ b/src/i18n/catalogues/en/ui.common.actions.json\n@@ -1,6 +1,5 @@\n {\n \t\"ui.common.actions.cancel\": \"Cancel\",\n-\t\"ui.common.actions.check_again\": \"Check again\",\n \t\"ui.common.actions.close\": \"Close\",\n \t\"ui.common.actions.copied\": \"Copied\",\n \t\"ui.common.actions.copy_failed\": \"Could not copy. Select and copy it manually.\",\ndiff --git a/src/i18n/catalogues/fr/ui.common.actions.json b/src/i18n/catalogues/fr/ui.common.actions.json\nindex b23a06bab1..8bf67d441a 100644\n--- a/src/i18n/catalogues/fr/ui.common.actions.json\n+++ b/src/i18n/catalogues/fr/ui.common.actions.json\n@@ -1,6 +1,5 @@\n {\n \t\"ui.common.actions.cancel\": \"Annuler\",\n-\t\"ui.common.actions.check_again\": \"Vérifier à nouveau\",\n \t\"ui.common.actions.close\": \"Fermer\",\n \t\"ui.common.actions.copied\": \"Copié\",\n \t\"ui.common.actions.copy_failed\": \"Copie impossible. Sélectionnez le texte et copiez-le manuellement.\",\n",
+  "diff_summary": {
+    "files_in_namespace": 2,
+    "files_in_namespace_changed": 2,
+    "lines_added": 0,
+    "lines_removed": {
+      "en": 1,
+      "fr": 1
+    },
+    "removed_lines": {
+      "en": "\t\"ui.common.actions.check_again\": \"Check again\",",
+      "fr": "\t\"ui.common.actions.check_again\": \"Vérifier à nouveau\","
+    },
+    "added_lines": [],
+    "all_locale_sweep": "git diff --stat 369bb0113f..HEAD across all 8 ui.common.actions.json files: 8 files changed, 8 deletions(-) — en, es, fr, hi, ru, ur, vi, zh-CN each lose exactly one line, no additions anywhere"
+  },
+  "byte_identity_proof": {
+    "method": "take the 369bb0113f blob, drop every line containing \"ui.common.actions.check_again\", compare with cmp to the current file",
+    "en_byte_identical_after_exactly_one_line_removed": true,
+    "fr_byte_identical_after_exactly_one_line_removed": true,
+    "conclusion": "the only difference between the audited bytes and HEAD is the single check_again row on each side; every other byte in both files is unchanged — no reordering, no reindent, no trailing-newline change"
+  },
+  "key_parity": {
+    "en_key_count": 52,
+    "fr_key_count": 52,
+    "key_sets_identical": true,
+    "en_only": [],
+    "target_only": [],
+    "check_again_absent_from_both": true
+  },
+  "placeholder_parity": {
+    "keys_checked": 52,
+    "mismatches": [],
+    "clean": true
+  },
+  "plural_structure": {
+    "icu_keys_en": [],
+    "icu_keys_target": [],
+    "branch_report": [],
+    "note": "this namespace holds no ICU plural/select message, so the fr CLDR one/many/other requirement has nothing to satisfy here"
+  },
+  "orphaned_key_check": {
+    "deleted_key": "ui.common.actions.check_again",
+    "consumers_found": "none — grep over src/ and the repo finds the string only inside i18n/receipts/d2cc21c7d250-r4-ur.json, a historical audit receipt (a record reference, not a consumer)",
+    "generated_key_map": "ui.common.actions.check_again is absent from src/i18n/keys.gen.ts, and `generate --check` reports the file byte-identical to a fresh generation; the five surviving check_again keys belong to other namespaces (ui.chat.device, ui.mesh.mesh_actions, ui.providers.phone.action, ui.providers.provider_detail, ui.settings.integrations.integration_model)",
+    "used_sibling_intact": "ui.chat.device.check_again still ships in all seven locales, fr = 'Vérifier à nouveau'"
+  },
+  "sampled_values_read_via_read_public_copy": [
+    {
+      "key": "ui.common.actions.cancel",
+      "en": "Cancel",
+      "fr": "Annuler"
+    },
+    {
+      "key": "ui.common.actions.copy_failed",
+      "en": "Could not copy. Select and copy it manually.",
+      "fr": "Copie impossible. Sélectionnez le texte et copiez-le manuellement."
+    },
+    {
+      "key": "ui.common.actions.retry",
+      "en": "Retry",
+      "fr": "Réessayer"
+    },
+    {
+      "key": "ui.common.actions.credential_updated",
+      "en": "Credential \"{key}\" updated successfully",
+      "fr": "Identifiant « {key} » mis à jour"
+    },
+    {
+      "key": "ui.common.actions.find_replace_widget.of",
+      "en": "{currentmatch, number, ::group-off} of {matchcount, number, ::group-off}",
+      "fr": "{currentmatch, number, ::group-off} sur {matchcount, number, ::group-off}"
+    },
+    {
+      "key": "ui.common.actions.date_time_picker.choose_date",
+      "en": "Choose {label} date",
+      "fr": "Choisir la date de {label}"
+    }
+  ],
+  "style_guide_conformance_fr": {
+    "guide_read": "/Users/damian/local-operator/i18n/style-guides/fr.md, read as a labelled doc in this audit",
+    "mechanical_scan_over_52_fr_values": "no U+0027 straight apostrophe, no straight double quote, no missing U+202F before : ; ! ? in prose, no tutoiement, no 'Veuillez'",
+    "vous_and_imperative": "confirmed in sampled values, e.g. 'Sélectionnez le texte et copiez-le manuellement.'",
+    "guillemets": "credential_updated uses « U+202F {key} U+202F » as the guide requires",
+    "glossary_credential": "i18n/glossary.md row 66 renders credentials as fr 'identifiants'; 'Identifiant' here matches the glossary and the rest of the shipped fr copy (ui.chat.pickers.credential.title = 'Identifiant')",
+    "kept_english": "prompt stays English ('Prompt système mis à jour'); fichier, paramètres, appareil translated per the guide"
+  },
+  "gates_run": [
+    {
+      "command": "node scripts/i18n/generate.mjs --check",
+      "result": "src/i18n/keys.gen.ts is byte-identical to a fresh generation.",
+      "exit": 0
+    },
+    {
+      "command": "node scripts/i18n/check-duplicates.mjs",
+      "result": "ok — 934 file(s) scanned, 0 duplicate key(s)",
+      "exit": 0
+    },
+    {
+      "command": "node scripts/i18n/context-parity.mjs",
+      "result": "ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only)",
+      "exit": 0
+    }
+  ],
+  "gates_not_run": [
+    {
+      "command": "node scripts/i18n/ledger-check.mjs",
+      "reason": "it measures the audit ledger (audited-hash rows per locale), not the catalogue bytes; this verification was told not to edit the repo, so no ledger row was written and a reading here would report other namespaces' pending state rather than this namespace's"
+    }
+  ],
+  "out_of_scope_observations": [
+    {
+      "note": "ui.common.actions.date_time_picker.set_to_current_time369877 carries a numeric suffix. Pre-existing: present and byte-identical in both files at 369bb0113f, unchanged by this commit, and its en/fr values are a matched pair ('Set {label} to current time' / 'Définir {label} sur l’heure actuelle') with the same {label}. Not a finding here because nothing moved; flagged for the key-naming owner in case the suffix is unintended."
+    }
+  ],
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 0
+  },
+  "verdict": "pass",
+  "verdict_basis": "the diff is exactly the one check_again deletion on both sides with zero additions, and every other byte of en and fr is identical to the audited bind commit 369bb0113f; key parity, placeholders, plural structure, glossary and fr typography all still hold",
+  "namespaces": {
+    "ui.common.actions": {
+      "status": "passed",
+      "keys_audited": 52,
+      "keys_removed_since_baseline": 1,
+      "sha256": {
+        "en": "8dc67dc7c285d2747f4586a5d01a39c23423b10e506f6cfa44c258caed37a412",
+        "target": "b0093fc7679e25fc05fbc9106fe9d4da3f9fe71edf345cf40a0b4a57e46c2076"
+      },
+      "baseline_sha256": {
+        "en": "0c279fc21d17c3f1937e4364fac698601ec4304ce7c7055df786bc037a8b12e3",
+        "target": "80326f2a88214d074a869ab533d78e09dc4f7162c2ad742bbf6ba46b10a26184"
+      },
+      "findings": []
+    }
+  },
+  "requesting_session": "3ef6295a5545",
+  "instance_placeholder_raw": "$(basename $(dirname /Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/act-audit.sh))",
+  "instance_placeholder_evaluated": "scratchpad",
+  "instance_source": "the task asked for the instance via that command substitution; evaluated it yields \"scratchpad\" because dirname is applied once too many (the parent of the scratch dir is the session dir), and the path names the requesting manager session 3ef6295a5545, not this auditor. Repo receipts use a 12-hex auditor session/audit-run id, so this field carries the audit run id (dd52913db0aa-act-fr, derived from auditor session dd52913db0aa); the raw and evaluated placeholder plus the requesting session are recorded alongside so nothing is lost."
+}

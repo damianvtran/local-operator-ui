@@ -1,4 +1,6 @@
 import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { type FC, memo, useCallback, useState } from "react";
@@ -27,6 +29,7 @@ export type VideoAttachmentProps = BaseVideoAttachmentProps & {
  */
 export const VideoAttachment: FC<VideoAttachmentProps> = memo(
 	({ file, src, onClick, conversationId }) => {
+		useI18nLocale();
 		const [hasError, setHasError] = useState(false);
 		const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
 		const { setViewMode } = useCanvasStore();
@@ -189,8 +192,8 @@ export const VideoAttachment: FC<VideoAttachmentProps> = memo(
 					>
 						<FileActionsMenu
 							filePath={normalizedPath}
-							tooltip="File actions"
-							aria-label="File actions"
+							tooltip={t("ui.common.actions.file_actions_menu.file_actions")}
+							aria-label={t("ui.common.actions.file_actions_menu.file_actions")}
 							onShowInCanvas={handleShowInCanvas}
 						/>
 					</div>

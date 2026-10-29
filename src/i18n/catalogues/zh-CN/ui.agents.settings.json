@@ -1,5 +1,10 @@
 {
+	"ui.agents.settings.chat.generation_settings": "生成设置",
+	"ui.agents.settings.chat.generation_tooltip": "控制智能体生成回复方式的设置",
+	"ui.agents.settings.chat.model_hosting_heading": "模型与托管",
+	"ui.agents.settings.chat.model_hosting_tooltip": "配置要使用的模型和托管提供商",
 	"ui.agents.settings.chat.not_set_yet": "尚未设置",
+	"ui.agents.settings.chat.set_custom_values_note": "可在下方为这些设置自定义值。未设置的选项将使用经过用户测试优化的默认值。",
 	"ui.agents.settings.chat.set_to_default": "设为默认值（{value}）",
 	"ui.agents.settings.chat.advanced_chat_settings": "高级对话设置",
 	"ui.agents.settings.chat.advanced_settings_to_change_how_the_agent": "调整智能体生成回复的方式。",

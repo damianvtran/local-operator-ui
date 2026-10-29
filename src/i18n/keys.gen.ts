@@ -55,6 +55,7 @@ import enUiChatHeader from "./catalogues/en/ui.chat.header.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
 import enUiChatLiveUpdates from "./catalogues/en/ui.chat.live_updates.json";
 import enUiChatPickers from "./catalogues/en/ui.chat.pickers.json";
+import enUiChatRadientSession from "./catalogues/en/ui.chat.radient_session.json";
 import enUiChatResponseActions from "./catalogues/en/ui.chat.response_actions.json";
 import enUiChatRunDetails from "./catalogues/en/ui.chat.run_details.json";
 import enUiChatSidebar from "./catalogues/en/ui.chat.sidebar.json";
@@ -62,6 +63,7 @@ import enUiChatSidebarView from "./catalogues/en/ui.chat.sidebar_view.json";
 import enUiChatStatus from "./catalogues/en/ui.chat.status.json";
 import enUiChatTagDialogs from "./catalogues/en/ui.chat.tag_dialogs.json";
 import enUiChatTags from "./catalogues/en/ui.chat.tags.json";
+import enUiChatThreadSearch from "./catalogues/en/ui.chat.thread_search.json";
 import enUiChatTranscriptCopy from "./catalogues/en/ui.chat.transcript_copy.json";
 import enUiCodeReview from "./catalogues/en/ui.code_review.json";
 import enUiCommandPalette from "./catalogues/en/ui.command_palette.json";
@@ -81,12 +83,15 @@ import enUiCommonUpdates from "./catalogues/en/ui.common.updates.json";
 import enUiCommonViewer from "./catalogues/en/ui.common.viewer.json";
 import enUiConsoleErrors from "./catalogues/en/ui.console.errors.json";
 import enUiConsole from "./catalogues/en/ui.console.json";
+import enUiHubCard from "./catalogues/en/ui.hub.card.json";
 import enUiHubComments from "./catalogues/en/ui.hub.comments.json";
+import enUiHubDetail from "./catalogues/en/ui.hub.detail.json";
 import enUiHub from "./catalogues/en/ui.hub.json";
 import enUiHubPages from "./catalogues/en/ui.hub.pages.json";
 import enUiHubTaxonomy from "./catalogues/en/ui.hub.taxonomy.json";
 import enUiHubTeams from "./catalogues/en/ui.hub.teams.json";
 import enUiHubUpdates from "./catalogues/en/ui.hub.updates.json";
+import enUiHubViewer from "./catalogues/en/ui.hub.viewer.json";
 import enUiInstaller from "./catalogues/en/ui.installer.json";
 import enUiLibraryErrors from "./catalogues/en/ui.library.errors.json";
 import enUiLibrary from "./catalogues/en/ui.library.json";
@@ -157,6 +162,7 @@ import esUiChatHeader from "./catalogues/es/ui.chat.header.json";
 import esUiChat from "./catalogues/es/ui.chat.json";
 import esUiChatLiveUpdates from "./catalogues/es/ui.chat.live_updates.json";
 import esUiChatPickers from "./catalogues/es/ui.chat.pickers.json";
+import esUiChatRadientSession from "./catalogues/es/ui.chat.radient_session.json";
 import esUiChatResponseActions from "./catalogues/es/ui.chat.response_actions.json";
 import esUiChatRunDetails from "./catalogues/es/ui.chat.run_details.json";
 import esUiChatSidebar from "./catalogues/es/ui.chat.sidebar.json";
@@ -164,6 +170,7 @@ import esUiChatSidebarView from "./catalogues/es/ui.chat.sidebar_view.json";
 import esUiChatStatus from "./catalogues/es/ui.chat.status.json";
 import esUiChatTagDialogs from "./catalogues/es/ui.chat.tag_dialogs.json";
 import esUiChatTags from "./catalogues/es/ui.chat.tags.json";
+import esUiChatThreadSearch from "./catalogues/es/ui.chat.thread_search.json";
 import esUiChatTranscriptCopy from "./catalogues/es/ui.chat.transcript_copy.json";
 import esUiCodeReview from "./catalogues/es/ui.code_review.json";
 import esUiCommandPalette from "./catalogues/es/ui.command_palette.json";
@@ -183,12 +190,15 @@ import esUiCommonUpdates from "./catalogues/es/ui.common.updates.json";
 import esUiCommonViewer from "./catalogues/es/ui.common.viewer.json";
 import esUiConsoleErrors from "./catalogues/es/ui.console.errors.json";
 import esUiConsole from "./catalogues/es/ui.console.json";
+import esUiHubCard from "./catalogues/es/ui.hub.card.json";
 import esUiHubComments from "./catalogues/es/ui.hub.comments.json";
+import esUiHubDetail from "./catalogues/es/ui.hub.detail.json";
 import esUiHub from "./catalogues/es/ui.hub.json";
 import esUiHubPages from "./catalogues/es/ui.hub.pages.json";
 import esUiHubTaxonomy from "./catalogues/es/ui.hub.taxonomy.json";
 import esUiHubTeams from "./catalogues/es/ui.hub.teams.json";
 import esUiHubUpdates from "./catalogues/es/ui.hub.updates.json";
+import esUiHubViewer from "./catalogues/es/ui.hub.viewer.json";
 import esUiInstaller from "./catalogues/es/ui.installer.json";
 import esUiLibraryErrors from "./catalogues/es/ui.library.errors.json";
 import esUiLibrary from "./catalogues/es/ui.library.json";
@@ -259,6 +269,7 @@ import frUiChatHeader from "./catalogues/fr/ui.chat.header.json";
 import frUiChat from "./catalogues/fr/ui.chat.json";
 import frUiChatLiveUpdates from "./catalogues/fr/ui.chat.live_updates.json";
 import frUiChatPickers from "./catalogues/fr/ui.chat.pickers.json";
+import frUiChatRadientSession from "./catalogues/fr/ui.chat.radient_session.json";
 import frUiChatResponseActions from "./catalogues/fr/ui.chat.response_actions.json";
 import frUiChatRunDetails from "./catalogues/fr/ui.chat.run_details.json";
 import frUiChatSidebar from "./catalogues/fr/ui.chat.sidebar.json";
@@ -266,6 +277,7 @@ import frUiChatSidebarView from "./catalogues/fr/ui.chat.sidebar_view.json";
 import frUiChatStatus from "./catalogues/fr/ui.chat.status.json";
 import frUiChatTagDialogs from "./catalogues/fr/ui.chat.tag_dialogs.json";
 import frUiChatTags from "./catalogues/fr/ui.chat.tags.json";
+import frUiChatThreadSearch from "./catalogues/fr/ui.chat.thread_search.json";
 import frUiChatTranscriptCopy from "./catalogues/fr/ui.chat.transcript_copy.json";
 import frUiCodeReview from "./catalogues/fr/ui.code_review.json";
 import frUiCommandPalette from "./catalogues/fr/ui.command_palette.json";
@@ -285,12 +297,15 @@ import frUiCommonUpdates from "./catalogues/fr/ui.common.updates.json";
 import frUiCommonViewer from "./catalogues/fr/ui.common.viewer.json";
 import frUiConsoleErrors from "./catalogues/fr/ui.console.errors.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
+import frUiHubCard from "./catalogues/fr/ui.hub.card.json";
 import frUiHubComments from "./catalogues/fr/ui.hub.comments.json";
+import frUiHubDetail from "./catalogues/fr/ui.hub.detail.json";
 import frUiHub from "./catalogues/fr/ui.hub.json";
 import frUiHubPages from "./catalogues/fr/ui.hub.pages.json";
 import frUiHubTaxonomy from "./catalogues/fr/ui.hub.taxonomy.json";
 import frUiHubTeams from "./catalogues/fr/ui.hub.teams.json";
 import frUiHubUpdates from "./catalogues/fr/ui.hub.updates.json";
+import frUiHubViewer from "./catalogues/fr/ui.hub.viewer.json";
 import frUiInstaller from "./catalogues/fr/ui.installer.json";
 import frUiLibraryErrors from "./catalogues/fr/ui.library.errors.json";
 import frUiLibrary from "./catalogues/fr/ui.library.json";
@@ -361,6 +376,7 @@ import hiUiChatHeader from "./catalogues/hi/ui.chat.header.json";
 import hiUiChat from "./catalogues/hi/ui.chat.json";
 import hiUiChatLiveUpdates from "./catalogues/hi/ui.chat.live_updates.json";
 import hiUiChatPickers from "./catalogues/hi/ui.chat.pickers.json";
+import hiUiChatRadientSession from "./catalogues/hi/ui.chat.radient_session.json";
 import hiUiChatResponseActions from "./catalogues/hi/ui.chat.response_actions.json";
 import hiUiChatRunDetails from "./catalogues/hi/ui.chat.run_details.json";
 import hiUiChatSidebar from "./catalogues/hi/ui.chat.sidebar.json";
@@ -368,6 +384,7 @@ import hiUiChatSidebarView from "./catalogues/hi/ui.chat.sidebar_view.json";
 import hiUiChatStatus from "./catalogues/hi/ui.chat.status.json";
 import hiUiChatTagDialogs from "./catalogues/hi/ui.chat.tag_dialogs.json";
 import hiUiChatTags from "./catalogues/hi/ui.chat.tags.json";
+import hiUiChatThreadSearch from "./catalogues/hi/ui.chat.thread_search.json";
 import hiUiChatTranscriptCopy from "./catalogues/hi/ui.chat.transcript_copy.json";
 import hiUiCodeReview from "./catalogues/hi/ui.code_review.json";
 import hiUiCommandPalette from "./catalogues/hi/ui.command_palette.json";
@@ -387,12 +404,15 @@ import hiUiCommonUpdates from "./catalogues/hi/ui.common.updates.json";
 import hiUiCommonViewer from "./catalogues/hi/ui.common.viewer.json";
 import hiUiConsoleErrors from "./catalogues/hi/ui.console.errors.json";
 import hiUiConsole from "./catalogues/hi/ui.console.json";
+import hiUiHubCard from "./catalogues/hi/ui.hub.card.json";
 import hiUiHubComments from "./catalogues/hi/ui.hub.comments.json";
+import hiUiHubDetail from "./catalogues/hi/ui.hub.detail.json";
 import hiUiHub from "./catalogues/hi/ui.hub.json";
 import hiUiHubPages from "./catalogues/hi/ui.hub.pages.json";
 import hiUiHubTaxonomy from "./catalogues/hi/ui.hub.taxonomy.json";
 import hiUiHubTeams from "./catalogues/hi/ui.hub.teams.json";
 import hiUiHubUpdates from "./catalogues/hi/ui.hub.updates.json";
+import hiUiHubViewer from "./catalogues/hi/ui.hub.viewer.json";
 import hiUiInstaller from "./catalogues/hi/ui.installer.json";
 import hiUiLibraryErrors from "./catalogues/hi/ui.library.errors.json";
 import hiUiLibrary from "./catalogues/hi/ui.library.json";
@@ -463,6 +483,7 @@ import ruUiChatHeader from "./catalogues/ru/ui.chat.header.json";
 import ruUiChat from "./catalogues/ru/ui.chat.json";
 import ruUiChatLiveUpdates from "./catalogues/ru/ui.chat.live_updates.json";
 import ruUiChatPickers from "./catalogues/ru/ui.chat.pickers.json";
+import ruUiChatRadientSession from "./catalogues/ru/ui.chat.radient_session.json";
 import ruUiChatResponseActions from "./catalogues/ru/ui.chat.response_actions.json";
 import ruUiChatRunDetails from "./catalogues/ru/ui.chat.run_details.json";
 import ruUiChatSidebar from "./catalogues/ru/ui.chat.sidebar.json";
@@ -470,6 +491,7 @@ import ruUiChatSidebarView from "./catalogues/ru/ui.chat.sidebar_view.json";
 import ruUiChatStatus from "./catalogues/ru/ui.chat.status.json";
 import ruUiChatTagDialogs from "./catalogues/ru/ui.chat.tag_dialogs.json";
 import ruUiChatTags from "./catalogues/ru/ui.chat.tags.json";
+import ruUiChatThreadSearch from "./catalogues/ru/ui.chat.thread_search.json";
 import ruUiChatTranscriptCopy from "./catalogues/ru/ui.chat.transcript_copy.json";
 import ruUiCodeReview from "./catalogues/ru/ui.code_review.json";
 import ruUiCommandPalette from "./catalogues/ru/ui.command_palette.json";
@@ -489,12 +511,15 @@ import ruUiCommonUpdates from "./catalogues/ru/ui.common.updates.json";
 import ruUiCommonViewer from "./catalogues/ru/ui.common.viewer.json";
 import ruUiConsoleErrors from "./catalogues/ru/ui.console.errors.json";
 import ruUiConsole from "./catalogues/ru/ui.console.json";
+import ruUiHubCard from "./catalogues/ru/ui.hub.card.json";
 import ruUiHubComments from "./catalogues/ru/ui.hub.comments.json";
+import ruUiHubDetail from "./catalogues/ru/ui.hub.detail.json";
 import ruUiHub from "./catalogues/ru/ui.hub.json";
 import ruUiHubPages from "./catalogues/ru/ui.hub.pages.json";
 import ruUiHubTaxonomy from "./catalogues/ru/ui.hub.taxonomy.json";
 import ruUiHubTeams from "./catalogues/ru/ui.hub.teams.json";
 import ruUiHubUpdates from "./catalogues/ru/ui.hub.updates.json";
+import ruUiHubViewer from "./catalogues/ru/ui.hub.viewer.json";
 import ruUiInstaller from "./catalogues/ru/ui.installer.json";
 import ruUiLibraryErrors from "./catalogues/ru/ui.library.errors.json";
 import ruUiLibrary from "./catalogues/ru/ui.library.json";
@@ -565,6 +590,7 @@ import urUiChatHeader from "./catalogues/ur/ui.chat.header.json";
 import urUiChat from "./catalogues/ur/ui.chat.json";
 import urUiChatLiveUpdates from "./catalogues/ur/ui.chat.live_updates.json";
 import urUiChatPickers from "./catalogues/ur/ui.chat.pickers.json";
+import urUiChatRadientSession from "./catalogues/ur/ui.chat.radient_session.json";
 import urUiChatResponseActions from "./catalogues/ur/ui.chat.response_actions.json";
 import urUiChatRunDetails from "./catalogues/ur/ui.chat.run_details.json";
 import urUiChatSidebar from "./catalogues/ur/ui.chat.sidebar.json";
@@ -572,6 +598,7 @@ import urUiChatSidebarView from "./catalogues/ur/ui.chat.sidebar_view.json";
 import urUiChatStatus from "./catalogues/ur/ui.chat.status.json";
 import urUiChatTagDialogs from "./catalogues/ur/ui.chat.tag_dialogs.json";
 import urUiChatTags from "./catalogues/ur/ui.chat.tags.json";
+import urUiChatThreadSearch from "./catalogues/ur/ui.chat.thread_search.json";
 import urUiChatTranscriptCopy from "./catalogues/ur/ui.chat.transcript_copy.json";
 import urUiCodeReview from "./catalogues/ur/ui.code_review.json";
 import urUiCommandPalette from "./catalogues/ur/ui.command_palette.json";
@@ -591,12 +618,15 @@ import urUiCommonUpdates from "./catalogues/ur/ui.common.updates.json";
 import urUiCommonViewer from "./catalogues/ur/ui.common.viewer.json";
 import urUiConsoleErrors from "./catalogues/ur/ui.console.errors.json";
 import urUiConsole from "./catalogues/ur/ui.console.json";
+import urUiHubCard from "./catalogues/ur/ui.hub.card.json";
 import urUiHubComments from "./catalogues/ur/ui.hub.comments.json";
+import urUiHubDetail from "./catalogues/ur/ui.hub.detail.json";
 import urUiHub from "./catalogues/ur/ui.hub.json";
 import urUiHubPages from "./catalogues/ur/ui.hub.pages.json";
 import urUiHubTaxonomy from "./catalogues/ur/ui.hub.taxonomy.json";
 import urUiHubTeams from "./catalogues/ur/ui.hub.teams.json";
 import urUiHubUpdates from "./catalogues/ur/ui.hub.updates.json";
+import urUiHubViewer from "./catalogues/ur/ui.hub.viewer.json";
 import urUiInstaller from "./catalogues/ur/ui.installer.json";
 import urUiLibraryErrors from "./catalogues/ur/ui.library.errors.json";
 import urUiLibrary from "./catalogues/ur/ui.library.json";
@@ -667,6 +697,7 @@ import viUiChatHeader from "./catalogues/vi/ui.chat.header.json";
 import viUiChat from "./catalogues/vi/ui.chat.json";
 import viUiChatLiveUpdates from "./catalogues/vi/ui.chat.live_updates.json";
 import viUiChatPickers from "./catalogues/vi/ui.chat.pickers.json";
+import viUiChatRadientSession from "./catalogues/vi/ui.chat.radient_session.json";
 import viUiChatResponseActions from "./catalogues/vi/ui.chat.response_actions.json";
 import viUiChatRunDetails from "./catalogues/vi/ui.chat.run_details.json";
 import viUiChatSidebar from "./catalogues/vi/ui.chat.sidebar.json";
@@ -674,6 +705,7 @@ import viUiChatSidebarView from "./catalogues/vi/ui.chat.sidebar_view.json";
 import viUiChatStatus from "./catalogues/vi/ui.chat.status.json";
 import viUiChatTagDialogs from "./catalogues/vi/ui.chat.tag_dialogs.json";
 import viUiChatTags from "./catalogues/vi/ui.chat.tags.json";
+import viUiChatThreadSearch from "./catalogues/vi/ui.chat.thread_search.json";
 import viUiChatTranscriptCopy from "./catalogues/vi/ui.chat.transcript_copy.json";
 import viUiCodeReview from "./catalogues/vi/ui.code_review.json";
 import viUiCommandPalette from "./catalogues/vi/ui.command_palette.json";
@@ -693,12 +725,15 @@ import viUiCommonUpdates from "./catalogues/vi/ui.common.updates.json";
 import viUiCommonViewer from "./catalogues/vi/ui.common.viewer.json";
 import viUiConsoleErrors from "./catalogues/vi/ui.console.errors.json";
 import viUiConsole from "./catalogues/vi/ui.console.json";
+import viUiHubCard from "./catalogues/vi/ui.hub.card.json";
 import viUiHubComments from "./catalogues/vi/ui.hub.comments.json";
+import viUiHubDetail from "./catalogues/vi/ui.hub.detail.json";
 import viUiHub from "./catalogues/vi/ui.hub.json";
 import viUiHubPages from "./catalogues/vi/ui.hub.pages.json";
 import viUiHubTaxonomy from "./catalogues/vi/ui.hub.taxonomy.json";
 import viUiHubTeams from "./catalogues/vi/ui.hub.teams.json";
 import viUiHubUpdates from "./catalogues/vi/ui.hub.updates.json";
+import viUiHubViewer from "./catalogues/vi/ui.hub.viewer.json";
 import viUiInstaller from "./catalogues/vi/ui.installer.json";
 import viUiLibraryErrors from "./catalogues/vi/ui.library.errors.json";
 import viUiLibrary from "./catalogues/vi/ui.library.json";
@@ -769,6 +804,7 @@ import zhCNUiChatHeader from "./catalogues/zh-CN/ui.chat.header.json";
 import zhCNUiChat from "./catalogues/zh-CN/ui.chat.json";
 import zhCNUiChatLiveUpdates from "./catalogues/zh-CN/ui.chat.live_updates.json";
 import zhCNUiChatPickers from "./catalogues/zh-CN/ui.chat.pickers.json";
+import zhCNUiChatRadientSession from "./catalogues/zh-CN/ui.chat.radient_session.json";
 import zhCNUiChatResponseActions from "./catalogues/zh-CN/ui.chat.response_actions.json";
 import zhCNUiChatRunDetails from "./catalogues/zh-CN/ui.chat.run_details.json";
 import zhCNUiChatSidebar from "./catalogues/zh-CN/ui.chat.sidebar.json";
@@ -776,6 +812,7 @@ import zhCNUiChatSidebarView from "./catalogues/zh-CN/ui.chat.sidebar_view.json"
 import zhCNUiChatStatus from "./catalogues/zh-CN/ui.chat.status.json";
 import zhCNUiChatTagDialogs from "./catalogues/zh-CN/ui.chat.tag_dialogs.json";
 import zhCNUiChatTags from "./catalogues/zh-CN/ui.chat.tags.json";
+import zhCNUiChatThreadSearch from "./catalogues/zh-CN/ui.chat.thread_search.json";
 import zhCNUiChatTranscriptCopy from "./catalogues/zh-CN/ui.chat.transcript_copy.json";
 import zhCNUiCodeReview from "./catalogues/zh-CN/ui.code_review.json";
 import zhCNUiCommandPalette from "./catalogues/zh-CN/ui.command_palette.json";
@@ -795,12 +832,15 @@ import zhCNUiCommonUpdates from "./catalogues/zh-CN/ui.common.updates.json";
 import zhCNUiCommonViewer from "./catalogues/zh-CN/ui.common.viewer.json";
 import zhCNUiConsoleErrors from "./catalogues/zh-CN/ui.console.errors.json";
 import zhCNUiConsole from "./catalogues/zh-CN/ui.console.json";
+import zhCNUiHubCard from "./catalogues/zh-CN/ui.hub.card.json";
 import zhCNUiHubComments from "./catalogues/zh-CN/ui.hub.comments.json";
+import zhCNUiHubDetail from "./catalogues/zh-CN/ui.hub.detail.json";
 import zhCNUiHub from "./catalogues/zh-CN/ui.hub.json";
 import zhCNUiHubPages from "./catalogues/zh-CN/ui.hub.pages.json";
 import zhCNUiHubTaxonomy from "./catalogues/zh-CN/ui.hub.taxonomy.json";
 import zhCNUiHubTeams from "./catalogues/zh-CN/ui.hub.teams.json";
 import zhCNUiHubUpdates from "./catalogues/zh-CN/ui.hub.updates.json";
+import zhCNUiHubViewer from "./catalogues/zh-CN/ui.hub.viewer.json";
 import zhCNUiInstaller from "./catalogues/zh-CN/ui.installer.json";
 import zhCNUiLibraryErrors from "./catalogues/zh-CN/ui.library.errors.json";
 import zhCNUiLibrary from "./catalogues/zh-CN/ui.library.json";
@@ -874,6 +914,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChat,
 	...enUiChatLiveUpdates,
 	...enUiChatPickers,
+	...enUiChatRadientSession,
 	...enUiChatResponseActions,
 	...enUiChatRunDetails,
 	...enUiChatSidebar,
@@ -881,6 +922,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatStatus,
 	...enUiChatTagDialogs,
 	...enUiChatTags,
+	...enUiChatThreadSearch,
 	...enUiChatTranscriptCopy,
 	...enUiCodeReview,
 	...enUiCommandPalette,
@@ -900,12 +942,15 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiCommonViewer,
 	...enUiConsoleErrors,
 	...enUiConsole,
+	...enUiHubCard,
 	...enUiHubComments,
+	...enUiHubDetail,
 	...enUiHub,
 	...enUiHubPages,
 	...enUiHubTaxonomy,
 	...enUiHubTeams,
 	...enUiHubUpdates,
+	...enUiHubViewer,
 	...enUiInstaller,
 	...enUiLibraryErrors,
 	...enUiLibrary,
@@ -984,6 +1029,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChat,
 		...esUiChatLiveUpdates,
 		...esUiChatPickers,
+		...esUiChatRadientSession,
 		...esUiChatResponseActions,
 		...esUiChatRunDetails,
 		...esUiChatSidebar,
@@ -991,6 +1037,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatStatus,
 		...esUiChatTagDialogs,
 		...esUiChatTags,
+		...esUiChatThreadSearch,
 		...esUiChatTranscriptCopy,
 		...esUiCodeReview,
 		...esUiCommandPalette,
@@ -1010,12 +1057,15 @@ export const bundledCatalogues: Readonly<
 		...esUiCommonViewer,
 		...esUiConsoleErrors,
 		...esUiConsole,
+		...esUiHubCard,
 		...esUiHubComments,
+		...esUiHubDetail,
 		...esUiHub,
 		...esUiHubPages,
 		...esUiHubTaxonomy,
 		...esUiHubTeams,
 		...esUiHubUpdates,
+		...esUiHubViewer,
 		...esUiInstaller,
 		...esUiLibraryErrors,
 		...esUiLibrary,
@@ -1088,6 +1138,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChat,
 		...frUiChatLiveUpdates,
 		...frUiChatPickers,
+		...frUiChatRadientSession,
 		...frUiChatResponseActions,
 		...frUiChatRunDetails,
 		...frUiChatSidebar,
@@ -1095,6 +1146,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatStatus,
 		...frUiChatTagDialogs,
 		...frUiChatTags,
+		...frUiChatThreadSearch,
 		...frUiChatTranscriptCopy,
 		...frUiCodeReview,
 		...frUiCommandPalette,
@@ -1114,12 +1166,15 @@ export const bundledCatalogues: Readonly<
 		...frUiCommonViewer,
 		...frUiConsoleErrors,
 		...frUiConsole,
+		...frUiHubCard,
 		...frUiHubComments,
+		...frUiHubDetail,
 		...frUiHub,
 		...frUiHubPages,
 		...frUiHubTaxonomy,
 		...frUiHubTeams,
 		...frUiHubUpdates,
+		...frUiHubViewer,
 		...frUiInstaller,
 		...frUiLibraryErrors,
 		...frUiLibrary,
@@ -1192,6 +1247,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChat,
 		...hiUiChatLiveUpdates,
 		...hiUiChatPickers,
+		...hiUiChatRadientSession,
 		...hiUiChatResponseActions,
 		...hiUiChatRunDetails,
 		...hiUiChatSidebar,
@@ -1199,6 +1255,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChatStatus,
 		...hiUiChatTagDialogs,
 		...hiUiChatTags,
+		...hiUiChatThreadSearch,
 		...hiUiChatTranscriptCopy,
 		...hiUiCodeReview,
 		...hiUiCommandPalette,
@@ -1218,12 +1275,15 @@ export const bundledCatalogues: Readonly<
 		...hiUiCommonViewer,
 		...hiUiConsoleErrors,
 		...hiUiConsole,
+		...hiUiHubCard,
 		...hiUiHubComments,
+		...hiUiHubDetail,
 		...hiUiHub,
 		...hiUiHubPages,
 		...hiUiHubTaxonomy,
 		...hiUiHubTeams,
 		...hiUiHubUpdates,
+		...hiUiHubViewer,
 		...hiUiInstaller,
 		...hiUiLibraryErrors,
 		...hiUiLibrary,
@@ -1296,6 +1356,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChat,
 		...ruUiChatLiveUpdates,
 		...ruUiChatPickers,
+		...ruUiChatRadientSession,
 		...ruUiChatResponseActions,
 		...ruUiChatRunDetails,
 		...ruUiChatSidebar,
@@ -1303,6 +1364,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChatStatus,
 		...ruUiChatTagDialogs,
 		...ruUiChatTags,
+		...ruUiChatThreadSearch,
 		...ruUiChatTranscriptCopy,
 		...ruUiCodeReview,
 		...ruUiCommandPalette,
@@ -1322,12 +1384,15 @@ export const bundledCatalogues: Readonly<
 		...ruUiCommonViewer,
 		...ruUiConsoleErrors,
 		...ruUiConsole,
+		...ruUiHubCard,
 		...ruUiHubComments,
+		...ruUiHubDetail,
 		...ruUiHub,
 		...ruUiHubPages,
 		...ruUiHubTaxonomy,
 		...ruUiHubTeams,
 		...ruUiHubUpdates,
+		...ruUiHubViewer,
 		...ruUiInstaller,
 		...ruUiLibraryErrors,
 		...ruUiLibrary,
@@ -1400,6 +1465,7 @@ export const bundledCatalogues: Readonly<
 		...urUiChat,
 		...urUiChatLiveUpdates,
 		...urUiChatPickers,
+		...urUiChatRadientSession,
 		...urUiChatResponseActions,
 		...urUiChatRunDetails,
 		...urUiChatSidebar,
@@ -1407,6 +1473,7 @@ export const bundledCatalogues: Readonly<
 		...urUiChatStatus,
 		...urUiChatTagDialogs,
 		...urUiChatTags,
+		...urUiChatThreadSearch,
 		...urUiChatTranscriptCopy,
 		...urUiCodeReview,
 		...urUiCommandPalette,
@@ -1426,12 +1493,15 @@ export const bundledCatalogues: Readonly<
 		...urUiCommonViewer,
 		...urUiConsoleErrors,
 		...urUiConsole,
+		...urUiHubCard,
 		...urUiHubComments,
+		...urUiHubDetail,
 		...urUiHub,
 		...urUiHubPages,
 		...urUiHubTaxonomy,
 		...urUiHubTeams,
 		...urUiHubUpdates,
+		...urUiHubViewer,
 		...urUiInstaller,
 		...urUiLibraryErrors,
 		...urUiLibrary,
@@ -1504,6 +1574,7 @@ export const bundledCatalogues: Readonly<
 		...viUiChat,
 		...viUiChatLiveUpdates,
 		...viUiChatPickers,
+		...viUiChatRadientSession,
 		...viUiChatResponseActions,
 		...viUiChatRunDetails,
 		...viUiChatSidebar,
@@ -1511,6 +1582,7 @@ export const bundledCatalogues: Readonly<
 		...viUiChatStatus,
 		...viUiChatTagDialogs,
 		...viUiChatTags,
+		...viUiChatThreadSearch,
 		...viUiChatTranscriptCopy,
 		...viUiCodeReview,
 		...viUiCommandPalette,
@@ -1530,12 +1602,15 @@ export const bundledCatalogues: Readonly<
 		...viUiCommonViewer,
 		...viUiConsoleErrors,
 		...viUiConsole,
+		...viUiHubCard,
 		...viUiHubComments,
+		...viUiHubDetail,
 		...viUiHub,
 		...viUiHubPages,
 		...viUiHubTaxonomy,
 		...viUiHubTeams,
 		...viUiHubUpdates,
+		...viUiHubViewer,
 		...viUiInstaller,
 		...viUiLibraryErrors,
 		...viUiLibrary,
@@ -1608,6 +1683,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChat,
 		...zhCNUiChatLiveUpdates,
 		...zhCNUiChatPickers,
+		...zhCNUiChatRadientSession,
 		...zhCNUiChatResponseActions,
 		...zhCNUiChatRunDetails,
 		...zhCNUiChatSidebar,
@@ -1615,6 +1691,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatStatus,
 		...zhCNUiChatTagDialogs,
 		...zhCNUiChatTags,
+		...zhCNUiChatThreadSearch,
 		...zhCNUiChatTranscriptCopy,
 		...zhCNUiCodeReview,
 		...zhCNUiCommandPalette,
@@ -1634,12 +1711,15 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiCommonViewer,
 		...zhCNUiConsoleErrors,
 		...zhCNUiConsole,
+		...zhCNUiHubCard,
 		...zhCNUiHubComments,
+		...zhCNUiHubDetail,
 		...zhCNUiHub,
 		...zhCNUiHubPages,
 		...zhCNUiHubTaxonomy,
 		...zhCNUiHubTeams,
 		...zhCNUiHubUpdates,
+		...zhCNUiHubViewer,
 		...zhCNUiInstaller,
 		...zhCNUiLibraryErrors,
 		...zhCNUiLibrary,
@@ -2169,11 +2249,15 @@ export type MessageParams = {
 	"ui.agents.settings.chat.enter_stop_sequences_one_per_line": undefined;
 	"ui.agents.settings.chat.error.invalid_seed": undefined;
 	"ui.agents.settings.chat.frequency_penalty": undefined;
+	"ui.agents.settings.chat.generation_settings": undefined;
+	"ui.agents.settings.chat.generation_tooltip": undefined;
 	"ui.agents.settings.chat.increases_diversity_by_lowering_likelihood_of_prompt": undefined;
 	"ui.agents.settings.chat.length_and_stopping": undefined;
 	"ui.agents.settings.chat.limits_tokens_to_sample_from_at_each": undefined;
 	"ui.agents.settings.chat.max_tokens": undefined;
 	"ui.agents.settings.chat.maximum_tokens_to_generate_in_response": undefined;
+	"ui.agents.settings.chat.model_hosting_heading": undefined;
+	"ui.agents.settings.chat.model_hosting_tooltip": undefined;
 	"ui.agents.settings.chat.not_set_yet": undefined;
 	"ui.agents.settings.chat.presence_penalty": undefined;
 	"ui.agents.settings.chat.random_number_seed_for_deterministic_generation": undefined;
@@ -2184,6 +2268,7 @@ export type MessageParams = {
 	"ui.agents.settings.chat.seed": undefined;
 	"ui.agents.settings.chat.sequences_that_will_cause_the_model_to": undefined;
 	"ui.agents.settings.chat.set_custom_values_for_any_of_these": undefined;
+	"ui.agents.settings.chat.set_custom_values_note": undefined;
 	"ui.agents.settings.chat.set_to_default": { value: string };
 	"ui.agents.settings.chat.stop_sequences": undefined;
 	"ui.agents.settings.chat.temperature": undefined;
@@ -2571,6 +2656,11 @@ export type MessageParams = {
 	"ui.browser.browser_pane.close_browser": undefined;
 	"ui.browser.browser_pane.this_conversation": undefined;
 	"ui.browser.browser_pane.which_tabs_to_show": undefined;
+	"ui.browser.browser_passkey_notice.dismiss": undefined;
+	"ui.browser.browser_passkey_notice.explanation": undefined;
+	"ui.browser.browser_passkey_notice.message": { who: string; site: string };
+	"ui.browser.browser_passkey_notice.open_in_system_browser": undefined;
+	"ui.browser.browser_passkey_notice.passkey_request": undefined;
 	"ui.browser.browser_surface.browser_unavailable": undefined;
 	"ui.browser.browser_surface.dismiss": undefined;
 	"ui.browser.browser_surface.loading_browser": undefined;
@@ -2668,6 +2758,7 @@ export type MessageParams = {
 	"ui.browser.page_context_menu.select_all": undefined;
 	"ui.browser.page_context_menu.undo": undefined;
 	"ui.browser.use_browser_chrome.downloads_folder_failed": { message: string };
+	"ui.browser.use_browser_chrome.passkey_open_failed": { reason: string };
 	"ui.browser.use_consent_attention_lifetime.that_request_is_no_longer_waiting": undefined;
 	"ui.browser.webauthn_chooser.a_site": undefined;
 	"ui.browser.webauthn_chooser.nobody_chose_a_passkey_within_a_minute": undefined;
@@ -3078,6 +3169,7 @@ export type MessageParams = {
 	"ui.chat.analytics.toolbar.refreshing": undefined;
 	"ui.chat.analytics.toolbar.this_session_only": undefined;
 	"ui.chat.asks.all_asks": undefined;
+	"ui.chat.asks.answer_options": undefined;
 	"ui.chat.asks.cancel": undefined;
 	"ui.chat.asks.change_answer": undefined;
 	"ui.chat.asks.changed_handoff": undefined;
@@ -3099,6 +3191,7 @@ export type MessageParams = {
 	"ui.chat.asks.filter_label": undefined;
 	"ui.chat.asks.no_answer": undefined;
 	"ui.chat.asks.other_label": undefined;
+	"ui.chat.asks.recommended": undefined;
 	"ui.chat.asks.send_answer": undefined;
 	"ui.chat.asks.settled_heading": undefined;
 	"ui.chat.asks.update_answer": undefined;
@@ -3112,10 +3205,19 @@ export type MessageParams = {
 	"ui.chat.attachments.file_retained": { digest: string };
 	"ui.chat.attachments.file_type_unknown": undefined;
 	"ui.chat.attachments.file_unnamed": undefined;
+	"ui.chat.attachments.open": undefined;
 	"ui.chat.attachments.path_copied": undefined;
 	"ui.chat.attachments.pending_caption": undefined;
+	"ui.chat.attachments.playback_position": undefined;
+	"ui.chat.attachments.playback_rate": undefined;
+	"ui.chat.attachments.playback_rate_option": { rate: string };
 	"ui.chat.attachments.saved_copy_label": undefined;
 	"ui.chat.attachments.saved_path_copied": undefined;
+	"ui.chat.attachments.volume": undefined;
+	"ui.chat.canonical.image_gen.control.edit_and_restart": undefined;
+	"ui.chat.canonical.image_gen.control.restart": undefined;
+	"ui.chat.canonical.image_gen.control.stop": undefined;
+	"ui.chat.canonical.image_gen.progress": undefined;
 	"ui.chat.canonical.older_history.conversation_start": undefined;
 	"ui.chat.canonical.older_history.failed.long": undefined;
 	"ui.chat.canonical.older_history.failed.short": undefined;
@@ -3131,6 +3233,10 @@ export type MessageParams = {
 	"ui.chat.canonical.older_history.windowed.title_gesture": undefined;
 	"ui.chat.canonical.placeholder.loading": undefined;
 	"ui.chat.canonical.placeholder.region_label": undefined;
+	"ui.chat.canonical.raw_information": undefined;
+	"ui.chat.canonical.security_notice.aria": undefined;
+	"ui.chat.canonical.security_notice.blocked": undefined;
+	"ui.chat.canonical.security_notice.show_code": undefined;
 	"ui.chat.canonical.send_failure.aside_not_answered": undefined;
 	"ui.chat.canonical.send_failure.aside_still_answering": undefined;
 	"ui.chat.canonical.send_failure.busy": undefined;
@@ -3171,9 +3277,11 @@ export type MessageParams = {
 	"ui.chat.canonical.tool_row.outcome.interrupted": undefined;
 	"ui.chat.canonical.tool_row.outcome.never_ran": undefined;
 	"ui.chat.canonical.tool_row.outcome.succeeded": undefined;
+	"ui.chat.canonical.tool_row.pending": undefined;
 	"ui.chat.canonical.transcript.connect_provider": undefined;
 	"ui.chat.canonical.transcript.credential_lost": undefined;
 	"ui.chat.canonical.transcript.edit": undefined;
+	"ui.chat.canonical.transcript.load_failed": undefined;
 	"ui.chat.canonical.transcript.missing_session": undefined;
 	"ui.chat.canonical.transcript.missing_session_detail": undefined;
 	"ui.chat.canonical.transcript.reconnect": undefined;
@@ -3183,6 +3291,8 @@ export type MessageParams = {
 	"ui.chat.canonical.transcript.stale_caption": undefined;
 	"ui.chat.canonical.transcript.start_new_chat": undefined;
 	"ui.chat.canonical.transcript.stopped_before_finishing": undefined;
+	"ui.chat.canonical.turn_summary.completed": undefined;
+	"ui.chat.canonical.turn_summary.took": { duration: string };
 	"ui.chat.canonical.untitled": undefined;
 	"ui.chat.commentary_actions.label": undefined;
 	"ui.chat.composer.ask_aside": undefined;
@@ -3261,6 +3371,7 @@ export type MessageParams = {
 	"ui.chat.composer_media.preview_failed": undefined;
 	"ui.chat.composer_media.recording": undefined;
 	"ui.chat.composer_media.remove_attachment": undefined;
+	"ui.chat.device.check_again": undefined;
 	"ui.chat.device.fact.this_device": undefined;
 	"ui.chat.device.footer.move_deletes_copy": undefined;
 	"ui.chat.device.label.moving_to": { name: string };
@@ -3358,6 +3469,8 @@ export type MessageParams = {
 	"ui.chat.header.rename_conversation": undefined;
 	"ui.chat.header.restore_conversation": undefined;
 	"ui.chat.header.saving_conversation_name": undefined;
+	"ui.chat.header.session_model_connect": undefined;
+	"ui.chat.header.session_model_switch": undefined;
 	"ui.chat.header.transcript_display": undefined;
 	"ui.chat.action.stopped": undefined;
 	"ui.chat.approval.reply_required": undefined;
@@ -4443,6 +4556,7 @@ export type MessageParams = {
 	"ui.chat.pickers.session_report_model.without_a_tracked_basis": undefined;
 	"ui.chat.pickers.skills.loading": undefined;
 	"ui.chat.pickers.skills.title": undefined;
+	"ui.chat.pickers.slash.action_kind": undefined;
 	"ui.chat.pickers.slash.arguments_region_label": undefined;
 	"ui.chat.pickers.slash.click.chooses_name": undefined;
 	"ui.chat.pickers.slash.click.completes_label": { label: string };
@@ -4550,6 +4664,14 @@ export type MessageParams = {
 		destination: string;
 	};
 	"ui.chat.pickers.use_picker_backend.the_backend_refused_it": undefined;
+	"ui.chat.radient_session.action.sign_in": undefined;
+	"ui.chat.radient_session.pointer.sign_in_active": undefined;
+	"ui.chat.radient_session.prose.input_required": { message: string };
+	"ui.chat.radient_session.prose.needs_sign_in": undefined;
+	"ui.chat.radient_session.prose.signing_in": undefined;
+	"ui.chat.radient_session.title.input_required": undefined;
+	"ui.chat.radient_session.title.needs_sign_in": undefined;
+	"ui.chat.radient_session.title.signing_in": undefined;
 	"ui.chat.response_actions.answer_label": undefined;
 	"ui.chat.response_actions.copied": undefined;
 	"ui.chat.response_actions.copy": undefined;
@@ -4799,13 +4921,44 @@ export type MessageParams = {
 	"ui.chat.tags.untagged": undefined;
 	"ui.chat.tags.unused": { count: string };
 	"ui.chat.tags.use_time": undefined;
+	"ui.chat.thread_search.building": undefined;
+	"ui.chat.thread_search.building_hint": undefined;
+	"ui.chat.thread_search.close_label": undefined;
+	"ui.chat.thread_search.count.match": { count: number; countText: string };
+	"ui.chat.thread_search.count.related": { count: number; countText: string };
+	"ui.chat.thread_search.count.split": {
+		exactText: string;
+		relatedText: string;
+	};
+	"ui.chat.thread_search.count.truncated": { count: number; countText: string };
+	"ui.chat.thread_search.empty": undefined;
+	"ui.chat.thread_search.error": undefined;
+	"ui.chat.thread_search.hint.browse": undefined;
+	"ui.chat.thread_search.hint.close": undefined;
+	"ui.chat.thread_search.hint.jump": undefined;
+	"ui.chat.thread_search.jumping": undefined;
+	"ui.chat.thread_search.list_label": undefined;
+	"ui.chat.thread_search.partial": undefined;
+	"ui.chat.thread_search.placeholder": undefined;
+	"ui.chat.thread_search.recheck": undefined;
+	"ui.chat.thread_search.role.agent": undefined;
+	"ui.chat.thread_search.role.user": undefined;
+	"ui.chat.thread_search.searching": undefined;
+	"ui.chat.thread_search.stale": undefined;
+	"ui.chat.thread_search.tier.related": undefined;
+	"ui.chat.thread_search.unsupported": undefined;
+	"ui.chat.transcript_copy.block.logs": undefined;
+	"ui.chat.transcript_copy.block.output": undefined;
 	"ui.chat.transcript_copy.menu.copy_markdown": undefined;
 	"ui.chat.transcript_copy.menu.copy_selection": undefined;
 	"ui.chat.transcript_copy.menu.copy_text": undefined;
+	"ui.chat.transcript_copy.role.assistant": undefined;
 	"ui.chat.transcript_copy.row.agent_message": undefined;
 	"ui.chat.transcript_copy.row.your_message": undefined;
 	"ui.chat.transcript_copy.selection.copy": undefined;
+	"ui.chat.transcript_copy.selection.quote": undefined;
 	"ui.chat.transcript_copy.selection.toolbar": undefined;
+	"ui.chat.transcript_copy.technical_details": undefined;
 	"ui.chat.transcript_copy.toast.copied_markdown": undefined;
 	"ui.chat.transcript_copy.toast.copied_selection": undefined;
 	"ui.code_review.activity.close": undefined;
@@ -5029,6 +5182,7 @@ export type MessageParams = {
 	"ui.common.actions.date_time_picker.set_to_current_time369877": {
 		label: string;
 	};
+	"ui.common.actions.dismiss": undefined;
 	"ui.common.actions.file_actions_menu.failed_to_copy_file_path": undefined;
 	"ui.common.actions.file_actions_menu.file_actions": undefined;
 	"ui.common.actions.file_actions_menu.file_path_copied_to_clipboard": undefined;
@@ -5048,6 +5202,7 @@ export type MessageParams = {
 	"ui.common.actions.find_replace_widget.replace_enter": undefined;
 	"ui.common.actions.find_replace_widget.switch_to_find": undefined;
 	"ui.common.actions.find_replace_widget.switch_to_replace": undefined;
+	"ui.common.actions.more_info": undefined;
 	"ui.common.actions.retry": undefined;
 	"ui.common.actions.retry_again": undefined;
 	"ui.common.actions.retrying": undefined;
@@ -5718,6 +5873,12 @@ export type MessageParams = {
 	"ui.console.unavailable.pty.detail": undefined;
 	"ui.console.unavailable.title": undefined;
 	"ui.console.unavailable.unknown.detail": undefined;
+	"ui.hub.card.download_named": { name: string };
+	"ui.hub.card.downloads_tooltip": undefined;
+	"ui.hub.card.get": undefined;
+	"ui.hub.card.unknown_author": undefined;
+	"ui.hub.card.updated": { ago: string };
+	"ui.hub.card.view_details": { name: string };
 	"ui.hub.comments.age.days": { count: number };
 	"ui.hub.comments.age.fallback": { duration: string };
 	"ui.hub.comments.age.hours": { count: number };
@@ -5747,6 +5908,32 @@ export type MessageParams = {
 	"ui.hub.comments.mutation.unauthorized": undefined;
 	"ui.hub.comments.mutation.update_failed": { reason: string };
 	"ui.hub.comments.mutation.updated": undefined;
+	"ui.hub.detail.back_aria": undefined;
+	"ui.hub.detail.created": { ago: string; date: string };
+	"ui.hub.detail.created_by": { author: string };
+	"ui.hub.detail.created_by_with_email": { author: string; email: string };
+	"ui.hub.detail.delist_aria": undefined;
+	"ui.hub.detail.delist_body": { name: string };
+	"ui.hub.detail.delist_confirm": undefined;
+	"ui.hub.detail.delist_title": undefined;
+	"ui.hub.detail.delist_tooltip": undefined;
+	"ui.hub.detail.delisting": undefined;
+	"ui.hub.detail.download_aria": undefined;
+	"ui.hub.detail.download_tooltip": undefined;
+	"ui.hub.detail.failure.delist": undefined;
+	"ui.hub.detail.failure.download": undefined;
+	"ui.hub.detail.failure.favourite": undefined;
+	"ui.hub.detail.failure.like": undefined;
+	"ui.hub.detail.last_modified": { ago: string; date: string };
+	"ui.hub.detail.load_failed_body": undefined;
+	"ui.hub.detail.load_failed_title": undefined;
+	"ui.hub.detail.loading": undefined;
+	"ui.hub.detail.no_description": undefined;
+	"ui.hub.detail.not_found": undefined;
+	"ui.hub.detail.sign_in_tooltip": undefined;
+	"ui.hub.detail.trying": undefined;
+	"ui.hub.detail.unknown_author": undefined;
+	"ui.hub.detail.viewer_unknown": undefined;
 	"ui.hub.conflict.body": undefined;
 	"ui.hub.conflict.reload": undefined;
 	"ui.hub.conflict.title": undefined;
@@ -5766,10 +5953,10 @@ export type MessageParams = {
 	"ui.hub.links.aggregate_mark": { count: number; state: string };
 	"ui.hub.links.available": { item: string; source: string };
 	"ui.hub.links.busy": { direction: string; item: string; source: string };
+	"ui.hub.links.check_failed": { item: string; source: string };
 	"ui.hub.links.confirm_publish": undefined;
 	"ui.hub.links.direction_pull": undefined;
 	"ui.hub.links.direction_push": undefined;
-	"ui.hub.links.empty": undefined;
 	"ui.hub.links.failed": { direction: string; item: string; source: string };
 	"ui.hub.links.healthy": {
 		item: string;
@@ -5778,6 +5965,11 @@ export type MessageParams = {
 		autoPush: string;
 	};
 	"ui.hub.links.hub_id": { address: string };
+	"ui.hub.links.incoming_failed": { outcome: string };
+	"ui.hub.links.incoming_needs_review": undefined;
+	"ui.hub.links.incoming_nothing": { outcome: string };
+	"ui.hub.links.incoming_outcome": { item: string; outcome: string };
+	"ui.hub.links.incoming_unknown_baseline": undefined;
 	"ui.hub.links.last_success": { time: string };
 	"ui.hub.links.links_count": { count: number };
 	"ui.hub.links.load_failed": undefined;
@@ -5789,12 +5981,21 @@ export type MessageParams = {
 	"ui.hub.links.mark_healthy": undefined;
 	"ui.hub.links.mark_review": undefined;
 	"ui.hub.links.mixed": undefined;
+	"ui.hub.links.name_ambiguous": undefined;
+	"ui.hub.links.outcome_failed": undefined;
+	"ui.hub.links.outcome_needs_review": undefined;
+	"ui.hub.links.outcome_skipped": undefined;
+	"ui.hub.links.outcome_unavailable": undefined;
+	"ui.hub.links.outcome_unchanged": undefined;
+	"ui.hub.links.outcome_up_to_date": undefined;
+	"ui.hub.links.outcome_would_merge": undefined;
 	"ui.hub.links.prefer_local": undefined;
 	"ui.hub.links.prefer_remote": undefined;
 	"ui.hub.links.preview_changed": undefined;
 	"ui.hub.links.preview_expired": undefined;
 	"ui.hub.links.preview_payload": { source: string };
 	"ui.hub.links.preview_pull": undefined;
+	"ui.hub.links.preview_recomputed": undefined;
 	"ui.hub.links.preview_warnings": undefined;
 	"ui.hub.links.publication_pending": undefined;
 	"ui.hub.links.published": { item: string; source: string };
@@ -5950,6 +6151,9 @@ export type MessageParams = {
 	"ui.hub.pages.header.title": undefined;
 	"ui.hub.pages.orgs_below_version": undefined;
 	"ui.hub.pages.orgs_unavailable": undefined;
+	"ui.hub.pages.pager.nav_aria": undefined;
+	"ui.hub.pages.pager.next": undefined;
+	"ui.hub.pages.pager.previous": undefined;
 	"ui.hub.pages.publish": undefined;
 	"ui.hub.pages.scope.org_label": undefined;
 	"ui.hub.pages.scope.org_unnamed": undefined;
@@ -6110,6 +6314,16 @@ export type MessageParams = {
 	"ui.hub.updates.rollup.updated": { count: number };
 	"ui.hub.updates.sign_in": undefined;
 	"ui.hub.updates.slow_note": undefined;
+	"ui.hub.viewer.favourite": undefined;
+	"ui.hub.viewer.favourite_signed_out": undefined;
+	"ui.hub.viewer.favourite_unavailable": undefined;
+	"ui.hub.viewer.favourite_unknown": undefined;
+	"ui.hub.viewer.like": undefined;
+	"ui.hub.viewer.like_signed_out": undefined;
+	"ui.hub.viewer.like_unavailable": undefined;
+	"ui.hub.viewer.like_unknown": undefined;
+	"ui.hub.viewer.unfavourite": undefined;
+	"ui.hub.viewer.unlike": undefined;
 	"ui.installer.expectation": undefined;
 	"ui.installer.installer_panel.cancel_setup": undefined;
 	"ui.installer.installer_panel.getting_started": undefined;
