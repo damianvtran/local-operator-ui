@@ -63,6 +63,7 @@ import {
 } from "../shared/mini-view";
 import { readLaunchTarget, readOpenSessionArgv } from "../shared/open-session";
 import type {
+	TeamBridgeNotificationSender,
 	TeamBridgeNotifyAuthority,
 	TeamBridgeNotifyRequest,
 	TeamBridgeOpenResult,
@@ -153,6 +154,12 @@ const api = {
 				ipcRenderer.invoke("team-bridge:authority", authority),
 			notify: (input: TeamBridgeNotifyRequest): Promise<{ shown: boolean }> =>
 				ipcRenderer.invoke("team-bridge:notify", input),
+			/** Main derives the current viewer/epoch; the renderer supplies only the
+			 * already-fetched tenant roster for cache eviction and warming. */
+			syncDirectory: (input: {
+				tenantId: string;
+				members: TeamBridgeNotificationSender[];
+			}): Promise<void> => ipcRenderer.invoke("team-bridge:directory", input),
 			onOpen: (callback: () => void) => {
 				const handler = () => callback();
 				ipcRenderer.on("team-bridge:open", handler);

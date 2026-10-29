@@ -70,6 +70,7 @@ import {
 	radientAuthoritySnapshot,
 	subscribeRadientAuthority,
 } from "@shared/hooks/radient-account-authority";
+import { teamBridgeAvatarVersion } from "@shared/hooks/use-account-avatar";
 import { t } from "@shared/i18n";
 import {
 	type QueryClient,
@@ -80,6 +81,12 @@ import {
 } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
+import {
+	TEAM_BRIDGE_NOTIFY_MAX_TITLE,
+	type TeamBridgeNotificationSender,
+	parseTeamBridgeNotificationSender,
+	safeTeamBridgeBannerText,
+} from "../../../../shared/team-bridge-notify";
 import {
 	type TeamBridgeBannerCopy,
 	type TeamBridgeBannerPlace,
@@ -114,6 +121,7 @@ import { assertThreadPage } from "./team-bridge-thread-read";
 import { teamBridgeViewingConversation } from "./team-bridge-viewing";
 import {
 	teamBridgeKeys,
+	useTeamBridgeDirectories,
 	useTeamBridgeStatus,
 	useTeamBridgeUnread,
 } from "./use-team-bridge";
@@ -146,32 +154,59 @@ function bannerPlace(
 }
 
 /**
+ * One directory member as the sender descriptor main keys its image cache on.
+ *
+ * SHARED by the banner path and the roster warm (review m3): if the two built
+ * the descriptor differently - one honouring `source: "none"`, the other not -
+ * the warm would fill a key the banner never reads, and the banner would miss
+ * and wait. `undefined` when the member cannot be described (e.g. an agent
+ * banner for a member with no named agent).
+ */
+function notificationSender(
+	member: TeamBridgeDirectoryMember,
+	kind: TeamBridgeNotificationSender["kind"],
+): TeamBridgeNotificationSender | undefined {
+	// Directory identity, not a message's possibly stale composed label.
+	// Source=none wins even if an old avatar_url lingers in a response.
+	const photo =
+		member.profile?.avatar?.source === "none"
+			? null
+			: teamBridgeAvatarVersion(member);
+	return parseTeamBridgeNotificationSender({
+		v: 1,
+		kind,
+		account_id: member.account_id,
+		display_name: safeTeamBridgeBannerText(
+			member.display_label,
+			TEAM_BRIDGE_NOTIFY_MAX_TITLE,
+		),
+		agent_name: safeTeamBridgeBannerText(
+			member.agent?.name ?? "",
+			TEAM_BRIDGE_NOTIFY_MAX_TITLE,
+		),
+		...(photo
+			? { avatar: { account_id: photo.accountId, hash: photo.hash } }
+			: {}),
+	});
+}
+
+/**
  * The organization's people, for naming a sender the way the rail does.
  *
- * Through the SAME cache entry the page's People section reads, so a banner and
- * the rail never disagree about a name and an open page costs no second read.
- * A refused or failed directory is an empty list: the sender's own wire label
- * is then the name, which is still a person's name.
+ * Join ONLY the already-fetched owner+tenant cache entry. Notification delivery
+ * must never fetch a directory per message or wait on a directory request.
+ * A missing/refused directory keeps the wire label and the app icon.
  */
-async function directoryPeople(
+function directoryPeople(
 	client: QueryClient,
 	tenantId: string,
 	accountId: string,
-): Promise<readonly TeamBridgeDirectoryMember[]> {
-	try {
-		const directory = await client.fetchQuery({
-			queryKey: teamBridgeKeys.directory(tenantId, accountId),
-			queryFn: () =>
-				readForBridgeOwner(client, accountId, () =>
-					TeamBridgeApi.directory(tenantId),
-				),
-			staleTime: 30_000,
-			retry: false,
-		});
-		return directory.members;
-	} catch {
-		return [];
-	}
+): readonly TeamBridgeDirectoryMember[] {
+	return (
+		client.getQueryData<Awaited<ReturnType<typeof TeamBridgeApi.directory>>>(
+			teamBridgeKeys.directory(tenantId, accountId),
+		)?.members ?? []
+	);
 }
 
 /**
@@ -191,6 +226,7 @@ async function deliverTeamBridgeBanner(
 ): Promise<void> {
 	if (!stillCurrent()) return;
 	let senderLabel = candidate.senderLabel;
+	let sender: TeamBridgeNotificationSender | undefined;
 	let preview: string | null = null;
 	/*
 	 * NO THREAD READ WHILE THE HOLD IS ON. A reply banner would otherwise address
@@ -237,16 +273,24 @@ async function deliverTeamBridgeBanner(
 				return;
 			}
 			if (!stillCurrent()) return;
-			const people = await directoryPeople(
-				client,
-				candidate.tenantId,
-				selfAccountId,
-			);
+			const people = directoryPeople(client, candidate.tenantId, selfAccountId);
 			senderLabel = participantLabel(newest.sender, people, {
 				named: (agent, person) =>
 					t("ui.teamBridge.chief.label", { agent, person }),
 				unnamed: (person) => t("ui.teamBridge.chief.unnamed", { person }),
 			});
+			const person = people.find(
+				(member) => member.account_id === newest.sender.account_id,
+			);
+			if (
+				person &&
+				(newest.sender.kind === "human" || newest.sender.kind === "agent")
+			) {
+				sender = notificationSender(
+					person,
+					newest.sender.kind === "human" ? "person" : "person_agent",
+				);
+			}
 			preview = teamBridgePreviewText(newest.body);
 		}
 	} catch {
@@ -314,6 +358,7 @@ async function deliverTeamBridgeBanner(
 			// hold is on (see `threadId` above).
 			...(threadId ? { threadId } : {}),
 			tenantId: candidate.tenantId,
+			...(sender ? { sender } : {}),
 			seq: candidate.seq,
 			title: text.title,
 			subtitle: text.subtitle,
@@ -486,6 +531,52 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 	 * mounted. That is deliberate: the watcher cannot prove membership, notify
 	 * policy or a conversation's title from an unread row alone.
 	 */
+	const directories = useTeamBridgeDirectories(
+		notificationOrganizations.map((organization) =>
+			asTeamBridgeTenantId(organization.tenant_id),
+		),
+		active,
+		selfAccountId,
+	);
+	/*
+	 * The descriptors main warms, built in render because they are cheap and
+	 * pure. A member's agent posts under the member's account but core draws a
+	 * different composite for it (the agent marker, review M2), so a member with
+	 * a named agent is described in both variants.
+	 */
+	const directorySenders: Record<string, TeamBridgeNotificationSender[]> = {};
+	for (const [tenantId, members] of Object.entries(directories))
+		directorySenders[tenantId] = members
+			.filter((member) => member.account_id !== selfAccountId)
+			.flatMap((member) => [
+				notificationSender(member, "person"),
+				...(member.agent?.name
+					? [notificationSender(member, "person_agent")]
+					: []),
+			])
+			.filter(
+				(sender): sender is TeamBridgeNotificationSender =>
+					sender !== undefined,
+			);
+	/*
+	 * Read through a ref for the reason `tenantUnreadRef` exists: the record
+	 * above is a fresh object every render, so depending on it directly would
+	 * re-send every roster to main on each one. The serialized descriptors are
+	 * the change detector - they carry exactly what main keys on (hash, kind,
+	 * the name the initials come from), so a rename re-sends and re-warms the
+	 * initials while an unchanged roster sends nothing.
+	 */
+	const directoryVersion = JSON.stringify(directorySenders);
+	const directoriesRef = useRef(directorySenders);
+	directoriesRef.current = directorySenders;
+	/** The roster version last sent to main, so one answer is applied once (and a
+	 * StrictMode double-invoke does not repeat every warm). */
+	const lastDirectoryKey = useRef<string | null>(null);
+	/** Tenants whose roster main currently holds, so one that disappears (the
+	 * viewer left the org, or its directory is now refused) is revoked at once
+	 * rather than left to age out of the TTL (review m4). */
+	const syncedTenants = useRef<Set<string>>(new Set());
+
 	const conversations = useQuery({
 		queryKey: teamBridgeKeys.conversations(
 			TEAM_BRIDGE_ALL_SCOPE,
@@ -525,6 +616,32 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 			.join(","),
 		selfAccountId ?? "",
 	].join("#");
+
+	// The roster is the sender-photo revocation authority. Every fresh answer
+	// evicts missing members/changed hashes in main and warms 64 px composites.
+	useEffect(() => {
+		if (lastDirectoryKey.current === directoryVersion) return;
+		lastDirectoryKey.current = directoryVersion;
+		const bridge = window.api?.desktop?.teamBridge;
+		if (!bridge?.syncDirectory) return;
+		const current = directoriesRef.current;
+		// An EMPTY roster is main's per-tenant revocation: every cached or
+		// pending composite for that tenant is dropped.
+		for (const tenantId of syncedTenants.current)
+			if (!(tenantId in current))
+				void bridge.syncDirectory({ tenantId, members: [] }).catch(() => {
+					// Same as below: the next fenced roster reconciles.
+				});
+		syncedTenants.current = new Set(Object.keys(current));
+		for (const [tenantId, senders] of Object.entries(current)) {
+			void bridge.syncDirectory({ tenantId, members: senders }).catch(() => {
+				// A navigation/auth transition may close this channel; the next
+				// fenced roster will reconcile the cache. Photos never gate delivery.
+			});
+		}
+		// `selfAccountId` is folded into `directoryVersion` (the self filter), so
+		// an account change re-sends through the version, not a second dep.
+	}, [directoryVersion]);
 
 	// A different account starts over: seq cursors and org seeds from another
 	// user's conversations are meaningless and could suppress a first banner.
