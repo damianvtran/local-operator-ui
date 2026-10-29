@@ -1,0 +1,81 @@
+{
+	"ui.shell.menubar.file": {
+		"role": "Electron application-menu item, top-level menu or one entry inside it",
+		"tone": "Native menu voice: Title Case stand-alone item, no trailing full stop, the wording the platform's own menus use.",
+		"length": "One to four words. The macOS menu column is narrow, so a longer phrase pushes the shortcut column out.",
+		"note": "English source: File. Shown in the application menu, outside the window, so it does not follow a renderer reload."
+	},
+	"ui.shell.menubar.edit": {
+		"role": "Electron application-menu item, top-level menu or one entry inside it",
+		"tone": "Native menu voice: Title Case stand-alone item, no trailing full stop, the wording the platform's own menus use.",
+		"length": "One to four words. The macOS menu column is narrow, so a longer phrase pushes the shortcut column out.",
+		"note": "English source: Edit. Shown in the application menu, outside the window, so it does not follow a renderer reload."
+	},
+	"ui.shell.menubar.view": {
+		"role": "Electron application-menu item, top-level menu or one entry inside it",
+		"tone": "Native menu voice: Title Case stand-alone item, no trailing full stop, the wording the platform's own menus use.",
+		"length": "One to four words. The macOS menu column is narrow, so a longer phrase pushes the shortcut column out.",
+		"note": "English source: View. Shown in the application menu, outside the window, so it does not follow a renderer reload."
+	},
+	"ui.shell.menubar.window": {
+		"role": "Electron application-menu item, top-level menu or one entry inside it",
+		"tone": "Native menu voice: Title Case stand-alone item, no trailing full stop, the wording the platform's own menus use.",
+		"length": "One to four words. The macOS menu column is narrow, so a longer phrase pushes the shortcut column out.",
+		"note": "English source: Window. Shown in the application menu, outside the window, so it does not follow a renderer reload."
+	},
+	"ui.shell.menubar.new_browser_tab": {
+		"role": "Electron application-menu item, top-level menu or one entry inside it",
+		"tone": "Native menu voice: Title Case stand-alone item, no trailing full stop, the wording the platform's own menus use.",
+		"length": "One to four words. The macOS menu column is narrow, so a longer phrase pushes the shortcut column out.",
+		"note": "English source: New Browser Tab. Shown in the application menu, outside the window, so it does not follow a renderer reload."
+	},
+	"ui.shell.menubar.reload": {
+		"role": "Electron application-menu item, top-level menu or one entry inside it",
+		"tone": "Native menu voice: Title Case stand-alone item, no trailing full stop, the wording the platform's own menus use.",
+		"length": "One to four words. The macOS menu column is narrow, so a longer phrase pushes the shortcut column out.",
+		"note": "English source: Reload. Shown in the application menu, outside the window, so it does not follow a renderer reload."
+	},
+	"ui.shell.menubar.force_reload": {
+		"role": "Electron application-menu item, top-level menu or one entry inside it",
+		"tone": "Native menu voice: Title Case stand-alone item, no trailing full stop, the wording the platform's own menus use.",
+		"length": "One to four words. The macOS menu column is narrow, so a longer phrase pushes the shortcut column out.",
+		"note": "English source: Force Reload. Shown in the application menu, outside the window, so it does not follow a renderer reload."
+	},
+	"ui.shell.menubar.actual_size": {
+		"role": "Electron application-menu item, top-level menu or one entry inside it",
+		"tone": "Native menu voice: Title Case stand-alone item, no trailing full stop, the wording the platform's own menus use.",
+		"length": "One to four words. The macOS menu column is narrow, so a longer phrase pushes the shortcut column out.",
+		"note": "English source: Actual Size. Shown in the application menu, outside the window, so it does not follow a renderer reload."
+	},
+	"ui.shell.menubar.zoom_in": {
+		"role": "Electron application-menu item, top-level menu or one entry inside it",
+		"tone": "Native menu voice: Title Case stand-alone item, no trailing full stop, the wording the platform's own menus use.",
+		"length": "One to four words. The macOS menu column is narrow, so a longer phrase pushes the shortcut column out.",
+		"note": "English source: Zoom In. Shown in the application menu, outside the window, so it does not follow a renderer reload."
+	},
+	"ui.shell.menubar.zoom_out": {
+		"role": "Electron application-menu item, top-level menu or one entry inside it",
+		"tone": "Native menu voice: Title Case stand-alone item, no trailing full stop, the wording the platform's own menus use.",
+		"length": "One to four words. The macOS menu column is narrow, so a longer phrase pushes the shortcut column out.",
+		"note": "English source: Zoom Out. Shown in the application menu, outside the window, so it does not follow a renderer reload."
+	},
+	"ui.shell.menubar.close_tab_or_window": {
+		"role": "Electron application-menu item, top-level menu or one entry inside it",
+		"tone": "Native menu voice: Title Case stand-alone item, no trailing full stop, the wording the platform's own menus use.",
+		"length": "One to four words. The macOS menu column is narrow, so a longer phrase pushes the shortcut column out.",
+		"note": "English source: Close Tab or Window. Shown in the application menu, outside the window, so it does not follow a renderer reload."
+	},
+	"ui.shell.menubar.learn_more": {
+		"role": "Electron application-menu item, top-level menu or one entry inside it",
+		"tone": "Native menu voice: Title Case stand-alone item, no trailing full stop, the wording the platform's own menus use.",
+		"length": "One to four words. The macOS menu column is narrow, so a longer phrase pushes the shortcut column out.",
+		"note": "English source: Learn More. Shown in the application menu, outside the window, so it does not follow a renderer reload."
+	},
+	"ui.shell.menubar.about": {
+		"role": "Electron application-menu item, top-level menu or one entry inside it",
+		"tone": "Native menu voice: Title Case stand-alone item, no trailing full stop, the wording the platform's own menus use.",
+		"length": "One to four words. The macOS menu column is narrow, so a longer phrase pushes the shortcut column out.",
+		"note": "English source: About {name}. The name is the app's own bundle name and is never translated.",
+		"placeholder": "{name} is app.name, the product name, and stays verbatim in every locale."
+	}
+}
