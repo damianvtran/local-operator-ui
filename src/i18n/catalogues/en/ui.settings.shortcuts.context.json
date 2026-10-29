@@ -32,8 +32,8 @@
 	"ui.settings.shortcuts.keyboard_shortcuts_section.browser_shortcuts_answer_only_while_the_browser_has_focus": {
 		"role": "Explanatory paragraph in the Keyboard shortcuts settings section, above the shortcut rows",
 		"tone": "Calm, factual second person; the reason is stated without blame or apology.",
-		"length": "Wrapping paragraph in the settings content column (about 60-70 characters per line); no length cap, keep every fact. English is 295 characters.",
-		"note": "Explains why the browser's own shortcuts seem dead from elsewhere in the app: they answer only while the browser pane or a page inside it has focus. Names the group by job (new tab, reopen tab, reload, the browser address bar, switching tabs) instead of spelling the chords, because the keymap registry is the only place a chord is spelled; use the target language's own terms for those actions. The middle sentence gives the reason: the app must not take those chords away from the rest of the interface. The last sentence is the instruction the reader needs: focus the browser first."
+		"length": "Wrapping paragraph in the settings content column (about 60-70 characters per line); no length cap, keep every fact. English is 287 characters.",
+		"note": "Explains why the browser's own shortcuts seem dead from elsewhere in the app: they answer only while the browser pane or a page inside it has focus. Names the group by job (new tab, reopen tab, the browser address bar, switching tabs) instead of spelling the chords, because the keymap registry is the only place a chord is spelled; use the target language's own terms for those actions. Reload is deliberately NOT in that group: it is dual-scope, so its own row states both outcomes. The middle sentence gives the reason: the app must not take those chords away from the rest of the interface. The last sentence is the instruction the reader needs: focus the browser first."
 	},
 	"ui.settings.shortcuts.keyboard_shortcuts_section.no_shortcut": {
 		"role": "Text shown inside a shortcut field with no binding",
@@ -185,14 +185,14 @@
 	"ui.settings.shortcuts.reserved.browser_reload": {
 		"role": "Shortcut capture refusal",
 		"tone": "Factual explanation of a fixed application shortcut.",
-		"length": "One shortcut row or refusal sentence pair; two short sentences, keep compact.",
-		"note": "Explains why this chord cannot be reassigned: reloads the browser page. The closing sentence tells the reader the chord answers only while the browser has focus and to focus the browser first; keep it a second sentence in the target language, imperative, and do not fold it into the job description."
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned. This chord is DUAL-SCOPE, so the sentence must name both outcomes: it reloads the browser page when the browser has focus, and the app window outside it. Do NOT add a focus instruction - the chord is not browser-only and telling the reader to focus the browser first would be false. Follow the '..., or ... outside it.' shape the browser_back, close and find rows already use in this locale."
 	},
 	"ui.settings.shortcuts.reserved.browser_reload_cache": {
 		"role": "Shortcut capture refusal",
 		"tone": "Factual explanation of a fixed application shortcut.",
-		"length": "One shortcut row or refusal sentence pair; two short sentences, keep compact.",
-		"note": "Explains why this chord cannot be reassigned: reloads the browser page, bypassing the cache. The closing sentence tells the reader the chord answers only while the browser has focus and to focus the browser first; keep it a second sentence in the target language, imperative, and do not fold it into the job description."
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned. This chord is DUAL-SCOPE, so the sentence must name both outcomes: it reloads the browser page without its cache when the browser has focus, and the app window outside it. Do NOT add a focus instruction - the chord is not browser-only and telling the reader to focus the browser first would be false. Follow the '..., or ... outside it.' shape the browser_back, close and find rows already use in this locale."
 	},
 	"ui.settings.shortcuts.reserved.browser_reopen_tab": {
 		"role": "Shortcut capture refusal",

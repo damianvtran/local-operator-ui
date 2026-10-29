@@ -540,6 +540,15 @@ const browserClaims = (chord) =>
 const DUAL_SCOPE = new Set([
 	// Menu: closes the window outside the browser.
 	"primary+w",
+	/*
+	 * Menu "Reload"/"Force Reload": `runBrowserMenuAction` falls THROUGH to
+	 * `webContents.reload()`/`reloadIgnoringCache()` on the callback window when
+	 * the browser does not own the chord, so outside the browser these reload the
+	 * whole app window rather than nothing. They were wrongly pinned as
+	 * browser-only, which is the claim that loses a user their renderer.
+	 */
+	"primary+r",
+	"primary+shift+r",
 	// Transcript search outside the browser.
 	"primary+f",
 	// Chat navigation outside the browser.
@@ -561,8 +570,6 @@ const BROWSER_ONLY_EXPECTED = [
 		(digit) => `primary+${digit}`,
 	),
 	"primary+l",
-	"primary+r",
-	"primary+shift+r",
 	"primary+shift+t",
 	"primary+t",
 ].sort();
@@ -583,6 +590,25 @@ test("every browser-owning reserved sentence tells the reader to focus the brows
 			RESERVED_CHORDS.get(chord),
 			FOCUS_INSTRUCTION_TAIL,
 			`${chord}'s refusal must tell the reader to focus the browser first`,
+		);
+	}
+});
+
+test("a dual-scope chord's row never claims the chord is browser-only", () => {
+	/*
+	 * THE INVERSE OF THE PIN ABOVE, and the regression that motivated it. A row
+	 * whose chord the app also answers outside the browser must NOT end with the
+	 * focus instruction: read literally, "Focus the browser first" says the chord
+	 * does nothing anywhere else. Excluding a chord from `BROWSER_ONLY` alone
+	 * would leave such a row unchecked, so the exclusion is asserted, not assumed.
+	 */
+	for (const chord of DUAL_SCOPE) {
+		const copy = RESERVED_CHORDS.get(chord);
+		if (copy === undefined) continue;
+		assert.doesNotMatch(
+			copy,
+			FOCUS_INSTRUCTION_TAIL,
+			`${chord} is dual-scope: outside the browser the app answers it, so its row must not tell the reader to focus the browser first`,
 		);
 	}
 });
