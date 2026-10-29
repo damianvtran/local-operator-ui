@@ -1,0 +1,78 @@
+{
+	"auditor": "reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"fallback": "none — every usage record in auditor session 622e9f2784ab names anthropic/claude-opus-5-5",
+	"instance": "i18n-audit-1452-r2-20261027-hi",
+	"session": "622e9f2784ab",
+	"job": "2d97ef80da95",
+	"parent_session": "65a12b105119",
+	"date": "2026-10-27",
+	"locale": "hi",
+	"round": 2,
+	"translator": {
+		"agent": "coder",
+		"job": "4a907cae19a9",
+		"session": "5f4c49fec12b",
+		"parent_session": "65a12b105119",
+		"model": "kimi/k3.1-pro via radient/auto (usage records in session 5f4c49fec12b name kimi/k3.1-pro 126x and radient/auto 86x; model_label radient/auto)",
+		"commit": "752abc1c19"
+	},
+	"pr": "damianvtran/local-operator-ui#1452",
+	"source_base": "6e73a91069",
+	"source_head": "2690936bc940364fa3ae339ed2d3b3c69b906344",
+	"scope": "Round-2 audit of the ui.canvas keys changed after round 1: added attachmentsPartialReason, attachmentsError, attachmentsErrorReason, attachmentTooltip ({name},{digest}), attachmentGoneRecovery; changed attachmentsPartial, attachmentRetained, emptyDetail. 6e73a91069 is not an ancestor of the head (branch rebased onto 1fa9fbabc0); range-diff shows the four round-1 commits '=' except a package.json test:desktop union, and the per-locale ui.canvas diffs 6e73a91069..head and 2cc77fc58f..head are byte-identical, so the delta is exactly 752abc1c19. ui.chat.attachments is unchanged and keeps its round-1 audit. Catalogue audit only; no rendered-fit/activation/release claim.",
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "local-operator db7681b555d (origin/main)",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/hi.md",
+			"revision": "local-operator db7681b555d (origin/main)",
+			"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+		}
+	},
+	"namespaces": {
+		"ui.canvas": {
+			"status": "passed",
+			"keys_audited": 8,
+			"keys": [
+				"ui.canvas.files.attachmentsPartial",
+				"ui.canvas.files.attachmentsPartialReason",
+				"ui.canvas.files.attachmentsError",
+				"ui.canvas.files.attachmentsErrorReason",
+				"ui.canvas.files.attachmentTooltip",
+				"ui.canvas.files.attachmentRetained",
+				"ui.canvas.files.attachmentGoneRecovery",
+				"ui.canvas.files.emptyDetail"
+			],
+			"sha256": {
+				"en": "ab2b9c23f60af19a912ae0230a3b6dc0883d0fd668c9c71c3cc0a1c285ef47f4",
+				"hi": "e890b6f666ce1b9534f57bcd69840f00db1b5a841d9479b80d0d25eea27a73d0"
+			},
+			"context_sha256": "f3334b6ccf7da0dd0a9b4c23157fc927fbf6e90b4d0549618af383a2ed2cd295",
+			"findings": [
+				{
+					"id": "I-hi-1",
+					"severity": "MINOR",
+					"key": "ui.canvas.files.attachmentGoneRecovery",
+					"current": "… खोजने के लिए मेन्यू से पथ कॉपी करें।",
+					"issue": "The menu item it points at is labelled 'पाथ कॉपी करें' (ui.chat.attachments.copy_path), and पाथ is the hi catalogue term (24 uses, including the sibling file_viewer recovery line). पथ appears only here and in one other string.",
+					"proposed": "… खोजने के लिए मेन्यू से पाथ कॉपी करें।"
+				}
+			]
+		}
+	},
+	"checks": {
+		"independence": "Auditor reviewer session 622e9f2784ab (job 2d97ef80da95): a different agent and session from the coder job 4a907cae19a9 that authored these values; this auditor never edited them.",
+		"semantics": "Each value checked against en and the call sites at head: finder-files-view.tsx (partial caption + its title, error banner + retry, tile tooltip, empty state) and canvas-file-viewer.tsx (attachmentGoneRecovery).",
+		"terminology": "Checked against glossary §2 (agent, session) and the siblings ui.chat.attachments.file_missing / saved_copy_label / file_and_copy_missing / copy_path, plus the ui.canvas backend strings.",
+		"icu": "Parsed en and target with @formatjs/icu-messageformat-parser: the argument sets are identical for all audited keys plus attachmentMeta ({name},{digest} only in attachmentTooltip). Formatted the tooltip with intl-messageformat (name=shot.png, digest=3f9a1c2b).",
+		"structure": "Key set equal to en.",
+		"typography": "All audited values are NFC and carry no bidi controls (U+200E/F, U+202A-E, U+2066-9, U+061C).",
+		"clean_values": "Other values natural; आप per guide; बैकएंड matches siblings; अटैचमेंट consistent with section heading."
+	},
+	"limitations": "No browser or app launch; no rendered-fit screenshots. The RTL layout was probed with CoreText (swift), not Chromium. The en context sidecar has no notes for the five new keys or emptyDetail (context sha unchanged since round 1).",
+	"status_note": "Passed with the findings listed."
+}

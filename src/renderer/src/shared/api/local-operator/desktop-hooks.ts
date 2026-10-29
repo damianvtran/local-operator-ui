@@ -221,6 +221,14 @@ export type DesktopFeature =
 	| "ask_dismiss"
 	| "session_files"
 	/**
+	 * The user-attachment inventory (`GET .../user-attachments` and its
+	 * materialise child). Its own key because `session_files` describes the
+	 * agent's OUTPUT and promises nothing about inputs. Absent, the canvas lists
+	 * attachments from the history rows it has loaded and says so - it never
+	 * calls the route (404) and never presents that partial list as complete.
+	 */
+	| "session_attachments"
+	/**
 	 * The global Library surface (`/v1/desktop/library*` and the Librarian
 	 * routes). Its own key because the destination must disappear entirely on a
 	 * backend that predates the catalog: the routes 404, and a nav row that

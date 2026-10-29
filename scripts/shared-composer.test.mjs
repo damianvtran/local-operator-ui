@@ -282,12 +282,29 @@ globalThis.fetch = async (url, init) => {
 		 * The body carries no frontmatter block so `skillBodyHasContent` reads
 		 * it as content, exactly as a real SKILL.md's instruction half would.
 		 */
-		if (typeof request.name === "string")
-			return answer({
-				data: { detail: "# release-notes\n\nWrite the release notes.\n" },
-			});
+		if (typeof request.name === "string") {
+			/*
+			 * One body per name, because the seam test drives several mentions in
+			 * one message and their ORDER is the claim: a stub that answered every
+			 * name with the same body would make text order unobservable. `hollow`
+			 * answers front matter only, which `skillBodyHasContent` reads as empty
+			 * — the skipped-body arm the send has to notice.
+			 */
+			const bodies = {
+				"release-notes": "# release-notes\n\nWrite the release notes.\n",
+				research: "# research\n\nRead the code first.\n",
+				hollow: "---\nname: hollow\ndescription: A stub\n---\n",
+			};
+			return answer({ data: { detail: bodies[request.name] ?? null } });
+		}
 		return answer({
-			data: { skills: [{ name: "release-notes" }, { name: "research" }] },
+			data: {
+				skills: [
+					{ name: "release-notes" },
+					{ name: "research" },
+					{ name: "hollow" },
+				],
+			},
 		});
 	}
 	return answer({});
@@ -634,117 +651,210 @@ test("forcing the fallback to report provided:true fires the ops case 1 refuses"
 /* 1c. The draft send seam: the composed `$skill` payload survives it   */
 /* ------------------------------------------------------------------ */
 
-test("a draft's first-message seam answers with the composed `$skill` payload (QA round 1, Q-1)", async () => {
+test("the draft send seam composes the new `$skill` block for every mention (B1)", async () => {
 	/*
-	 * THE BLOCKER'S REGRESSION. On a draft pane the composer hands the store a
-	 * `beforeAdmission` seam, and the store LETS ITS RETURN REPLACE the text the
-	 * press built (`admitChatDraft`: `(await beforeAdmission(id)) ?? text`). The
-	 * seam used to answer with the substituted raw line, so a first-message
-	 * `$skill` reached the model as prose - QA measured it live (S12: the
-	 * daemon's transcript holds the typed line; the read had succeeded, the
-	 * payload had been built, and the replacement discarded it). This case
-	 * drives the SHIPPED composer's own submit on a draft mount, takes the seam
-	 * the host is handed, invokes it the way the store does (with the session a
-	 * create would return), and reads its answer: the composed payload, byte for
-	 * byte the first argument the host received.
+	 * THE SUBMIT SEAM, EXECUTED — the only mount-level test of it. On a draft
+	 * pane the composer hands the store a `beforeAdmission` seam, and the store
+	 * LETS ITS RETURN REPLACE the text the press built
+	 * (`admitChatDraft`: `(await beforeAdmission(id)) ?? text`); this case drives
+	 * the SHIPPED composer's `submitNow`, takes the seam the host is handed,
+	 * invokes it the way the store does, and reads the first argument the host
+	 * received. The store's half — "the seam's answer is what is sent" — is
+	 * pinned in `canonical-chat.test.mjs`; together they cover the chain that
+	 * failed end to end in QA round 1 (Q-1).
 	 *
-	 * The store's half - "the seam's answer is what is sent" - is pinned in
-	 * `canonical-chat.test.mjs`; together the two cases cover the chain that
-	 * failed end to end. THIS case discriminates the composer's half: restored
-	 * to `return settled.text`, the final assertion fails (mutation-checked).
+	 * THE ROWS ARE THE CONTRACT NOW: the payload is the typed text verbatim and
+	 * one `<operator-skills>` tail block carrying one body per fired name, in
+	 * text order, deduped by resolved name. A skill whose body is empty is
+	 * skipped with its notice and the rest still attach; when none attach, the
+	 * message is still sent, unchanged. The expected blocks below are written
+	 * out here (not produced by `renderSkillBlock`) so the bytes are a fixture,
+	 * not a mirror of the implementation.
 	 */
-	transportOps.length = 0;
+	const EXPECTED_BODIES = {
+		research: "# research\n\nRead the code first.\n",
+		"release-notes": "# release-notes\n\nWrite the release notes.\n",
+	};
+	const SKILL_PREAMBLE =
+		"The user invoked the following skills directly. Follow them for this request. Their reference files, if any, are listed at the end of each body and are read with `skill://<name>/<path>`.";
+	const expectedBlock = (entries) =>
+		`<operator-skills>\n\n${SKILL_PREAMBLE}\n\n${entries
+			.map(([name, body]) => `<skill name="${name}">\n${body}\n</skill>`)
+			.join("\n\n")}\n\n</operator-skills>`;
+
 	const { MessageInput: ProvidedMessageInput } =
 		await buildProvidedComposerBundle();
-
-	const sent = [];
-	let handle = null;
-	const container = window.document.createElement("div");
-	window.document.body.appendChild(container);
-	const seamRoot = createRoot(container);
-	await act(async () => {
-		seamRoot.render(
-			h(ProvidedMessageInput, {
-				conversationId: `shared-composer-seam-${++mountSeq}`,
-				messages: [],
-				isLoading: false,
-				/*
-				 * A DRAFT PANE, BY CONSTRUCTION: no `sessionStatus` means
-				 * `credentialSessionId` is undefined - the ONE condition that hands
-				 * the host a seam (`message-input.tsx`).
-				 */
-				cwd: "~",
-				ref: (node) => {
-					handle = node;
-				},
-				onSendMessage: async (...args) => {
-					sent.push(args);
-					// The ordinary accepted outcome: `undefined`, never an object
-					// (the off-record-ask shape the guard reads into any object).
-					return undefined;
-				},
-			}),
-		);
-	});
-	await settle();
-	assert.ok(handle?.submitNow, "the composer's handle is mounted");
-
-	/*
-	 * THE VOCABULARY MUST HAVE LANDED BEFORE THE PRESS: the send parses the
-	 * TYPED line against `skillNamesRef` at call time, and a press before the
-	 * sessionless read settles would send prose for a harness reason rather than
-	 * a product one. The wait is BOUNDED and the read is asserted afterwards, so
-	 * a mount that fetched nothing fails loudly instead of sleeping green.
-	 */
-	for (let pass = 0; pass < 40; pass++) {
-		if (transportOps.includes("skills.list")) break;
-		await settle();
-	}
-	assert.ok(
-		transportOps.filter((op) => op === "skills.list").length >= 1,
-		"the sessionless vocabulary read fired (folder + capability + provider)",
-	);
-	await settle();
-
-	const field = container.querySelector("textarea");
 	const valueSetter = Object.getOwnPropertyDescriptor(
 		window.HTMLTextAreaElement.prototype,
 		"value",
 	).set;
-	await act(async () => {
-		valueSetter.call(field, "$release-notes QA fixture: summarise today.");
-		field.dispatchEvent(new window.Event("input", { bubbles: true }));
-	});
-	await settle();
-	assert.equal(field.value, "$release-notes QA fixture: summarise today.");
 
-	await act(async () => {
-		handle.submitNow();
-	});
-	await settle();
-	assert.equal(sent.length, 1, "one send reached the host");
-	const [content, , , typed, seam] = sent[0];
-	assert.equal(typed, "$release-notes QA fixture: summarise today.");
-	assert.match(
-		content,
-		/<skill name="release-notes" invocation="\$release-notes QA fixture: summarise today\.">/,
-		"the first argument is the composed payload, not the raw line",
-	);
-	assert.equal(typeof seam, "function", "a draft pane hands the host a seam");
-	/*
-	 * AND THE SEAM'S ANSWER IS THE PAYLOAD (the regression proper): the store
-	 * sends this string verbatim - `?? text` is only for a seam that declines.
+	/**
+	 * Mount a draft composer, wait for its own vocabulary read, type `draft`,
+	 * press Send once, and read what the host was handed.
+	 *
+	 * A UNIQUE `cwd` per case is what makes the wait a reading rather than a
+	 * sleep: the sessionless catalogue key includes the folder, so each mount
+	 * fires its own `skills.list` and the case waits for THAT one instead of
+	 * trusting a cache another mount primed.
 	 */
-	const rendered = await seam("1234567890ab");
-	assert.equal(
-		rendered,
-		content,
-		"the seam composes rather than replaces - the payload survives it",
-	);
-	assert.notEqual(rendered, typed, "and it is not the typed line");
-	await act(async () => {
-		seamRoot.unmount();
-	});
+	const sendDraft = async (draft) => {
+		const sent = [];
+		const notes = [];
+		const container = window.document.createElement("div");
+		window.document.body.appendChild(container);
+		const seamRoot = createRoot(container);
+		let handle = null;
+		const cwd = `~/seam-${++mountSeq}`;
+		/*
+		 * The baseline is read BEFORE the render: the vocabulary query fires
+		 * during the mount's own settle, so a baseline taken afterwards would
+		 * count that read and then wait for a second one that never comes.
+		 */
+		const before = transportOps.filter((op) => op === "skills.list").length;
+		await act(async () => {
+			seamRoot.render(
+				h(ProvidedMessageInput, {
+					conversationId: `shared-composer-seam-${++mountSeq}`,
+					messages: [],
+					isLoading: false,
+					/*
+					 * A DRAFT PANE, BY CONSTRUCTION: no `sessionStatus` means
+					 * `credentialSessionId` is undefined — the ONE condition that hands
+					 * the host a seam (`message-input.tsx`).
+					 */
+					cwd,
+					onSlashNote: (text) => notes.push(text),
+					ref: (node) => {
+						handle = node;
+					},
+					onSendMessage: async (...args) => {
+						sent.push(args);
+						// The ordinary accepted outcome: `undefined`, never an object
+						// (the off-record-ask shape the guard reads into any object).
+						return undefined;
+					},
+				}),
+			);
+		});
+		await settle();
+		const reads = () =>
+			transportOps.filter((op) => op === "skills.list").length;
+		for (let pass = 0; pass < 40 && reads() === before; pass++) {
+			await settle();
+		}
+		assert.ok(
+			reads() > before,
+			`the sessionless vocabulary read fired for ${cwd}`,
+		);
+		await settle();
+		assert.ok(handle?.submitNow, "the composer's handle is mounted");
+
+		const field = container.querySelector("textarea");
+		await act(async () => {
+			valueSetter.call(field, draft);
+			field.dispatchEvent(new window.Event("input", { bubbles: true }));
+		});
+		await settle();
+		assert.equal(field.value, draft);
+
+		await act(async () => {
+			handle.submitNow();
+		});
+		await settle();
+		assert.equal(sent.length, 1, "the message always sends");
+		const [content, , , typed, seam] = sent[0];
+		assert.equal(typed, draft, "the fourth argument is the typed text");
+		/*
+		 * AND THE SEAM'S ANSWER IS THE PAYLOAD (the regression proper): the store
+		 * sends this string verbatim - `?? text` is only for a seam that declines.
+		 */
+		const rendered =
+			typeof seam === "function" ? await seam("1234567890ab") : undefined;
+		await act(async () => {
+			seamRoot.unmount();
+		});
+		container.remove();
+		return { content, notes, rendered, seam, typed };
+	};
+
+	// ONE MENTION: the payload is the typed line and the block, byte for byte.
+	{
+		const draft = "$release-notes QA fixture: summarise today.";
+		const run = await sendDraft(draft);
+		assert.equal(
+			run.content,
+			`${draft}\n\n${expectedBlock([
+				["release-notes", EXPECTED_BODIES["release-notes"]],
+			])}`,
+			"the first argument is the composed payload, not the raw line",
+		);
+		assert.equal(
+			typeof run.seam,
+			"function",
+			"a draft pane hands the host a seam",
+		);
+		assert.equal(
+			run.rendered,
+			run.content,
+			"the seam composes rather than replaces - the payload survives it",
+		);
+		assert.notEqual(run.rendered, run.typed, "and it is not the typed line");
+		assert.deepEqual(run.notes, [], "a readable body says nothing");
+	}
+
+	// TWO MENTIONS: one block, bodies in TEXT order, not vocabulary order.
+	{
+		const draft = "compare $research and $release-notes now";
+		const run = await sendDraft(draft);
+		assert.equal(
+			run.content,
+			`${draft}\n\n${expectedBlock([
+				["research", EXPECTED_BODIES.research],
+				["release-notes", EXPECTED_BODIES["release-notes"]],
+			])}`,
+		);
+	}
+
+	// DEDUPE BY RESOLVED NAME: `$Research` is the same skill, so one body.
+	{
+		const draft = "$research then $Research again";
+		const run = await sendDraft(draft);
+		assert.equal(
+			run.content,
+			`${draft}\n\n${expectedBlock([["research", EXPECTED_BODIES.research]])}`,
+			"the second spelling adds no second body",
+		);
+		assert.equal(
+			run.content.match(/<skill name=/g)?.length,
+			1,
+			"one element, not two",
+		);
+	}
+
+	// ONE EMPTY BODY: skipped with its notice, the other still attaches.
+	{
+		const draft = "$hollow and $research fix";
+		const run = await sendDraft(draft);
+		assert.equal(
+			run.content,
+			`${draft}\n\n${expectedBlock([["research", EXPECTED_BODIES.research]])}`,
+			"the empty skill is not in the block",
+		);
+		assert.deepEqual(run.notes, [
+			"skill `hollow` has an empty body — sending your message as written",
+		]);
+	}
+
+	// ALL EMPTY: no block at all, and the message STILL sends unchanged.
+	{
+		const draft = "$hollow please";
+		const run = await sendDraft(draft);
+		assert.equal(run.content, draft, "the typed line goes through untouched");
+		assert.deepEqual(run.notes, [
+			"skill `hollow` has an empty body — sending your message as written",
+		]);
+	}
 });
 
 /* ------------------------------------------------------------------ */

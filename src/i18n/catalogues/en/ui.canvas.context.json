@@ -1539,5 +1539,79 @@
 		"role": "button label",
 		"tone": "Plain, concise product language; preserve raw identifiers.",
 		"note": "Shown while a canvas variable create/update is in flight."
+	},
+	"ui.canvas.files.attachments": {
+		"role": "section heading",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Canvas Files view: the section, pinned above the agent's files, listing every file and screenshot the user attached in this conversation."
+	},
+	"ui.canvas.files.attachmentsPartial": {
+		"role": "status",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Beside the Attachments heading when the list could only be built from the messages loaded so far (older backend or another device's conversation), so it may not be complete."
+	},
+	"ui.canvas.files.attachmentsPartialReason": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Hover text on the \"May be incomplete\" caption beside the Attachments heading: explains the list was built only from the messages loaded so far. One short sentence; no action is offered here."
+	},
+	"ui.canvas.files.attachmentsError": {
+		"role": "status",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Inline banner in the Canvas Files view when the attachment list could not be read; a Retry button follows it on the same line, so keep it short (about 30 characters) and do not include \"retry\" yourself."
+	},
+	"ui.canvas.files.attachmentsErrorReason": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Hover text on the \"Couldn't load attachments\" banner. \"Backend\" is the local Local Operator process the app talks to, not a remote server: use the catalogue's existing term for backend. \"Try again\" points at the Retry button beside the banner."
+	},
+	"ui.canvas.files.attachmentImage": {
+		"role": "label",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Name for a pasted screenshot/picture that has no file name."
+	},
+	"ui.canvas.files.attachmentTooltip": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Hover text on an attached file or pasted picture in the Attachments section: its name, a short content fingerprint, then who added it and where it is kept. Keep the two \" · \" separators and the order name, fingerprint, sentence.",
+		"placeholders": {
+			"name": "File name or the localized picture name (attachmentImage); shown verbatim",
+			"digest": "First characters of the saved copy's content hash, lowercase hex, e.g. 3f9a2c1b; never translate or reformat"
+		}
+	},
+	"ui.canvas.files.attachmentRetained": {
+		"role": "status",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Row meta: the attached file is no longer at its original path, but the app kept its own saved copy, which the row's actions use."
+	},
+	"ui.canvas.files.attachmentGone": {
+		"role": "status",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Row meta: the attached file is gone from its original path AND the app's saved copy is gone too; nothing can be opened."
+	},
+	"ui.canvas.files.attachmentGoneRecovery": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Second line of the error toast shown when the person opens an attachment whose original file AND the app's saved copy are both gone. Tells them what to do next: the row's menu still has the Copy path item (ui.chat.attachments.copy_path), so name that control with the catalogue's own label and menu term. One or two short sentences."
+	},
+	"ui.canvas.files.attachmentMeta": {
+		"role": "meta line",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Row meta: file size, then the short date it was attached.",
+		"placeholders": {
+			"size": "Formatted byte size, e.g. 286 KB",
+			"when": "Short localized date, e.g. Oct 27"
+		}
+	},
+	"ui.canvas.files.attachmentRefused": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; calm, not alarming.",
+		"note": "Says why an attached file the backend judged sensitive (an .env file, an SSH key) offers no file actions. It is shown in THREE places on the canvas Attachments section: (1) the last line of the row's hover text, under the identity line; (2) the row's own note line, in place of its size and date, while the row has keyboard focus, and as that note when the file has no saved copy - a single line that is TRUNCATED at the end, roughly half the row wide (about 25-35 characters show at the narrowest pane); (3) an info toast when the person presses Shift+F10 or the context-menu key on the row. 'secret' = a password, key or token, the same word the app uses for its secret store; 'file actions' = the row's path actions (Open file, Open folder, Copy file path). No trailing full stop: it is a line, not a sentence. Put the cause ('looks like a secret') first, so the truncated note keeps it. Length: no longer than the identity line above it in the hover text (name · digest · 'Attached by you, kept in this session'), about 60 characters, and never more than 70."
+	},
+	"ui.canvas.files.attachmentReadOnly": {
+		"role": "caption",
+		"tone": "Plain, quiet product language; a statement of fact, not a warning.",
+		"note": "One muted line above the text of an attached file opened in the canvas from the app's saved copy (the bytes the person sent, kept in this session). The view cannot be edited, and without this line typing into it looked broken. 'Read-only' = the person can read and select but not change it; 'saved copy' = the same term as the 'Saved copy' label on attachment cards; 'attachment' = a file the person attached to a message. Keep the read-only part first: it is what explains the ignored typing. No trailing full stop: it is a caption, not a sentence.",
+		"length": "One line in a 400 px canvas pane at 12 px: about 50 characters."
 	}
 }

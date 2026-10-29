@@ -394,3 +394,92 @@ export const MessageToolbarKeyboard: Story = {
 		await assertToolbarClear(canvasElement);
 	},
 };
+
+/** Two frames: the first rAF runs before the paint that follows the commit,
+ * the second runs after that paint, so its timestamp bounds "painted". */
+const afterPaint = () =>
+	new Promise<void>((resolve) =>
+		requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+	);
+
+/**
+ * THE PICKER AT THE COLUMN'S END EDGE (operator report 2026-10-27). The row
+ * sits flush against the viewport's right edge with its toolbar forced on, so
+ * the picker opens from a trigger with no room to its end: Radix must shift it
+ * back inside (`collisionPadding`). The play function clicks the real react
+ * button, then asserts the picker's rect lies within the viewport and that
+ * click dispatch -> painted is under 200 ms, read from `performance.measure`
+ * so the number is in the Performance panel as well as the assertion. The
+ * synthetic pointer dispatch is direct: `userEvent`'s configured typing and
+ * action delays are harness time, not time the operator waits for the picker.
+ *
+ * Both reaction holds (`shared/team-bridge-notify.ts`) render no toolbar in
+ * this build, so the measurement runs only where the surface exists; the
+ * board then records that the control is absent instead of failing on it.
+ */
+export const PickerOpensInsideViewport: Story = {
+	...MessageToolbar,
+	render: () => (
+		<div className="ms-auto w-[min(560px,100%)] min-w-0">
+			<TeamBridgeMessageList
+				labelFor={(sender) => sender.display_label}
+				reactionContext={storyReactionContext}
+				forceToolbar
+				messages={[toolbarRoot]}
+			/>
+		</div>
+	),
+	play: async ({ canvasElement }) => {
+		const toolbar = canvasElement.querySelector('[role="toolbar"]');
+		if (!toolbar) {
+			canvasElement.dataset.pickerMeasured = "held";
+			return;
+		}
+		const trigger = within(toolbar as HTMLElement).getByRole("button", {
+			name: t("ui.teamBridge.reactions.add"),
+		});
+		performance.clearMarks("tb-picker-click");
+		performance.mark("tb-picker-click");
+		trigger.dispatchEvent(
+			new PointerEvent("pointerdown", {
+				bubbles: true,
+				button: 0,
+				pointerId: 1,
+				pointerType: "mouse",
+			}),
+		);
+		trigger.dispatchEvent(
+			new PointerEvent("pointerup", {
+				bubbles: true,
+				button: 0,
+				pointerId: 1,
+				pointerType: "mouse",
+			}),
+		);
+		trigger.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+		const body = canvasElement.ownerDocument.body;
+		const picker = await waitFor(
+			() => {
+				const node = body.querySelector("[data-radix-popper-content-wrapper]");
+				if (!(node instanceof HTMLElement)) throw new Error("no picker");
+				return node;
+			},
+			{ interval: 5 },
+		);
+		await afterPaint();
+		performance.mark("tb-picker-painted");
+		const { duration } = performance.measure(
+			"tb-picker-open",
+			"tb-picker-click",
+			"tb-picker-painted",
+		);
+		canvasElement.dataset.pickerMeasured = duration.toFixed(1);
+		await expect(duration).toBeLessThan(200);
+		const r = picker.getBoundingClientRect();
+		const view = canvasElement.ownerDocument.documentElement;
+		await expect(r.left).toBeGreaterThanOrEqual(0);
+		await expect(r.top).toBeGreaterThanOrEqual(0);
+		await expect(r.right).toBeLessThanOrEqual(view.clientWidth);
+		await expect(r.bottom).toBeLessThanOrEqual(view.clientHeight);
+	},
+};

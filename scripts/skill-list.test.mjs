@@ -232,7 +232,7 @@ const complete = (text, caret, name) => {
 	return skillCompletionFor(text, token, name);
 };
 
-test("a leading token is replaced in place, preserving lead and lstriping the suffix", () => {
+test("a token is replaced in its own span, preserving every other character", () => {
 	assert.deepEqual(complete("$res fix bug", 4, "research"), {
 		text: "$research fix bug",
 		caret: 10,
@@ -241,35 +241,44 @@ test("a leading token is replaced in place, preserving lead and lstriping the su
 		text: "  $research fix",
 		caret: 12,
 	});
-	// The write brings its own separator, so the suffix's runs collapse.
+	// The existing whitespace is the separator and is NOT collapsed: a
+	// completion must not reformat prose the user typed.
 	assert.deepEqual(complete("$res  fix", 4, "research"), {
-		text: "$research fix",
+		text: "$research  fix",
 		caret: 10,
 	});
+	// A NEWLINE terminates the token but the caret stops after the name, on the
+	// line the token is on; the newline itself survives.
 	assert.deepEqual(complete("$res\nfix", 4, "research"), {
-		text: "$research fix",
-		caret: 10,
+		text: "$research\nfix",
+		caret: 9,
 	});
 });
 
-test("an inline token is reassembled to the FRONT with the draft as its request", () => {
-	const assembled = "$research fix this ";
+test("an inline token is completed WHERE IT SITS — no reassembly", () => {
 	assert.deepEqual(complete("fix this $res", 12, "research"), {
-		text: assembled,
-		caret: assembled.length,
+		text: "fix this $research ",
+		caret: "fix this $research ".length,
 	});
-	// One adjoining separator goes with the token, so no gap survives the move.
+	// The surviving draft keeps its position; one space is inserted because the
+	// request follows immediately, and nothing is moved.
 	assert.deepEqual(complete("fix this $res bug", 12, "research"), {
-		text: "$research fix this bug ",
-		caret: "$research fix this bug ".length,
+		text: "fix this $research bug",
+		caret: 19,
 	});
 	assert.deepEqual(complete("hello\n$res fix", 9, "research"), {
-		text: "$research hello fix ",
-		caret: "$research hello fix ".length,
+		text: "hello\n$research fix",
+		caret: 16,
 	});
 	assert.deepEqual(complete("fix $res", 7, "research"), {
-		text: "$research fix ",
-		caret: "$research fix ".length,
+		text: "fix $research ",
+		caret: "fix $research ".length,
+	});
+	// TWO tokens in one draft: completing the second leaves the first untouched,
+	// which is the shape the reassembly could not survive.
+	assert.deepEqual(complete("compare $check and $res", 21, "research"), {
+		text: "compare $check and $research ",
+		caret: "compare $check and $research ".length,
 	});
 });
 
@@ -556,13 +565,13 @@ test("the shipped composer wires the `$` seams", () => {
 	);
 	assert.match(
 		input,
-		/parseSkillInvocation\(message, skillNames\)/,
-		"the submit reads the TYPED line before anything splices it",
+		/planSkillMentions\(message, skillNames\)/,
+		"the submit plans every mention from the TYPED line",
 	);
 	assert.match(
 		input,
-		/renderSkillInvocation\(/,
-		"and renders the harness payload",
+		/renderSkillBlock\(/,
+		"the payload is the plan's skill block",
 	);
 	assert.match(
 		input,
@@ -645,12 +654,12 @@ test("the shipped composer wires the `$` seams", () => {
 	 */
 	assert.match(
 		input,
-		/if \(invocation && skillReadProvided\)/,
+		/if \(planned\.length > 0 && skillReadProvided\)/,
 		"the expansion gate is sessionless",
 	);
 	assert.match(
 		input,
-		/readSkillBody\(\s*skillReadClient,\s*cwd \?\? "",\s*invocation\.name,/,
+		/readSkillBody\(\s*skillReadClient,\s*cwd \?\? "",\s*mention\.name,/,
 		"and the body read travels with the composer's folder",
 	);
 	assert.match(

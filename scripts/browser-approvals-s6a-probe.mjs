@@ -178,7 +178,6 @@ await build({
 const env = withNotificationsOff({
 	...process.env,
 	HOME: join(OUT, "home"),
-	LOCAL_OPERATOR_UI_BROWSER_APPROVALS_OVERLAY_S6A: "1",
 });
 for (const key of Object.keys(env))
 	if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];

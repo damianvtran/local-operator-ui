@@ -162,7 +162,12 @@ export async function upload(
 	}
 	const paths = uploadPaths(params);
 	const contents = record.view.webContents;
-	const node = await resolveNode(ctx, record, selector);
+	// NO SCROLL: a file input is routinely `display:none` behind a styled button (the
+	// React/Slack/GitHub pattern), and a node with no layout object makes
+	// `DOM.scrollIntoViewIfNeeded` fail with `Node does not have a layout object`.
+	// `DOM.setFileInputFiles` and the read-back below need the node, never its
+	// geometry — see `ResolveOptions.scroll`.
+	const node = await resolveNode(ctx, record, selector, { scroll: false });
 	if (node.frame) {
 		// Deferred by ARCH-1 D3, and refused rather than attempted: the attach and
 		// its read-back below run on the PAGE session, which cannot reach a node in

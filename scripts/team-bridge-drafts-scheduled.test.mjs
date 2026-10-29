@@ -1862,3 +1862,743 @@ test("D33: Escape returns focus to the control that opened the schedule dialog",
 		element.remove();
 	}
 });
+
+/*
+ * agent-server #223 QA r2, Q2-Q4: a stale schedule edit answers 409
+ * `invalid_transition` / `details.rule = "concurrent_edit"` (or 404 when the
+ * schedule moved or vanished). The dialog must never resend its stale draft as
+ * a full replacement. These drive the real list + row + dialog against a fake
+ * desktop transport whose "server" row another device moves, and assert on the
+ * PATCH that goes out and on the strings the user reads.
+ */
+const STALE_EDIT_409 = {
+	status: 409,
+	body: {
+		detail: {
+			code: "invalid_transition",
+			message: "This change is not allowed for this message.",
+			details: { rule: "concurrent_edit" },
+		},
+	},
+};
+const ATTACHMENT_404 = {
+	status: 404,
+	body: { detail: { code: "attachment_not_found", message: "not found" } },
+};
+const SCHEDULE_404 = {
+	status: 404,
+	body: { detail: { code: "not_found", message: "not found" } },
+};
+// Design review round 1 (D1/D2/D7): the conflict notice is a headline plus
+// one line per field that moved, then the next step; asserted line by line.
+const CONFLICT_HEAD = "This message changed on another device.";
+const CONFLICT_REVIEW =
+	"The latest version is shown, with the rest of your changes kept. Review it and try again.";
+const CONFLICT_NOTHING_LEFT =
+	"The latest version is shown. None of your changes are left to save.";
+const GONE_COPY =
+	"This message was cancelled or already sent, so it can't be changed.";
+const EDIT_FAILED_COPY =
+	"Couldn't save your changes. They're still here. Try again.";
+const image = (id) => ({
+	id,
+	mime: "image/png",
+	size: 10,
+	width: 1,
+	height: 1,
+	state: "reserved",
+});
+// Whole minutes, inside the hub's 1 min..120 d window, so the local input
+// round-trips exactly.
+const inMinutes = (minutes) =>
+	new Date(
+		Math.floor(Date.now() / 60_000) * 60_000 + minutes * 60_000,
+	).toISOString();
+
+async function mountScheduledEdit(initial, answer) {
+	const element = document.createElement("div");
+	document.body.append(element);
+	const root = createRoot(element);
+	// `state`/`failedTenants` let a test make the REFRESH fail (review R1-01).
+	const server = { rows: [initial], state: "ready", failedTenants: [] };
+	const patches = [];
+	window.api = {
+		desktop: {
+			request: async (request) => {
+				patches.push(request);
+				return answer(request, server);
+			},
+		},
+	};
+	let setRows;
+	function Harness() {
+		const [view, set] = React.useState({
+			rows: server.rows,
+			state: "ready",
+			failedTenants: [],
+		});
+		setRows = set;
+		return React.createElement(model.TeamBridgeScheduledListView, {
+			state: view.state,
+			messages: view.rows,
+			failedTenants: view.failedTenants,
+			refresh: async () =>
+				setRows({
+					rows: [...server.rows],
+					state: server.state,
+					failedTenants: [...server.failedTenants],
+				}),
+		});
+	}
+	await act(async () => root.render(React.createElement(Harness)));
+	await act(async () =>
+		[...element.querySelectorAll("button")]
+			.find((button) => button.textContent === "Reschedule")
+			.click(),
+	);
+	const dialog = () => document.querySelector('[role="dialog"]');
+	const buttonText = () =>
+		[...(dialog()?.querySelectorAll("button") ?? [])].map(
+			(button) => button.textContent,
+		);
+	const click = async (label) =>
+		act(async () =>
+			[...dialog().querySelectorAll("button")]
+				.find((button) => button.textContent === label)
+				.click(),
+		);
+	const type = async (selector, proto, value) =>
+		act(async () => {
+			const field = dialog().querySelector(selector);
+			Object.getOwnPropertyDescriptor(proto.prototype, "value").set.call(
+				field,
+				value,
+			);
+			field.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+		});
+	return {
+		server,
+		patches,
+		dialogOpen: () => dialog() !== null,
+		alert: () => dialog()?.querySelector('[role="alert"]')?.textContent ?? "",
+		alertLines: () =>
+			[...(dialog()?.querySelectorAll('[role="alert"] p') ?? [])].map(
+				(line) => line.textContent,
+			),
+		title: () => dialog()?.querySelector("h2")?.textContent ?? "",
+		bodyDisabled: () => dialog().querySelector("textarea").disabled,
+		// Lets a test move the list under an open dialog without a request.
+		pushList: async () =>
+			act(async () =>
+				setRows({
+					rows: [...server.rows],
+					state: server.state,
+					failedTenants: [...server.failedTenants],
+				}),
+			),
+		body: () => dialog().querySelector("textarea").value,
+		when: () => dialog().querySelector('input[type="datetime-local"]').value,
+		buttonText,
+		click,
+		setWhen: (value) =>
+			type('input[type="datetime-local"]', dom.window.HTMLInputElement, value),
+		setBody: (value) => type("textarea", dom.window.HTMLTextAreaElement, value),
+		// A failed submit keeps its confirmed step, so Review may already be past.
+		confirm: async () => {
+			if (buttonText().includes("Review schedule"))
+				await click("Review schedule");
+			await click("Confirm schedule");
+		},
+		close: async () => {
+			await act(async () => root.unmount());
+			element.remove();
+			window.api = undefined;
+		},
+	};
+}
+
+test("schedule edit helpers: ids not lengths, deltas rebased, only concurrent_edit is a conflict", () => {
+	assert.equal(model.sameAttachmentIds(["a1"], ["a3"]), false);
+	assert.equal(model.sameAttachmentIds(["a1", "a2"], ["a2", "a1"]), false);
+	assert.equal(model.sameAttachmentIds(["a1"], ["a1"]), true);
+	const sendAt = "2030-04-05T12:30:00Z";
+	const previous = { body: "old", sendAt, attachments: [image("a1")] };
+	const when = model.scheduledLocalInput("2030-04-05T13:30:00Z");
+	// U1: this user moved the time; another device added a2.
+	assert.deepEqual(
+		model.rebaseScheduledEdit(
+			previous,
+			{ ...previous, attachments: [image("a1"), image("a2")] },
+			{ body: "old", when, kept: [image("a1")] },
+		),
+		{ body: "old", when, kept: [image("a1"), image("a2")] },
+	);
+	// U2: this user removed every image; another device edited the text.
+	const u2 = model.rebaseScheduledEdit(
+		previous,
+		{ ...previous, body: "new" },
+		{ body: "old", when: model.scheduledLocalInput(sendAt), kept: [] },
+	);
+	assert.equal(u2.body, "new");
+	assert.deepEqual(u2.kept, []);
+	// Both sides changed the text: the server's wins (the dialog says so).
+	assert.equal(
+		model.rebaseScheduledEdit(
+			previous,
+			{ ...previous, body: "theirs" },
+			{ body: "mine", when, kept: [image("a1")] },
+		).body,
+		"theirs",
+	);
+	// This user's own text edit survives an image-only change elsewhere.
+	assert.equal(
+		model.rebaseScheduledEdit(
+			previous,
+			{ ...previous, attachments: [] },
+			{ body: "mine", when, kept: [image("a1")] },
+		).body,
+		"mine",
+	);
+	const refusal = (status, detail) =>
+		new Promise((resolve) => {
+			window.api = {
+				desktop: { request: async () => ({ status, body: { detail } }) },
+			};
+			model.TeamBridgeApi.scheduledUpdate("org_a", "bsch_x", {}).catch(
+				(error) => resolve(model.scheduledEditFailure(error)),
+			);
+		});
+	return Promise.all([
+		refusal(409, STALE_EDIT_409.body.detail),
+		refusal(409, { code: "invalid_transition", message: "sending" }),
+		refusal(404, SCHEDULE_404.body.detail),
+	]).then((kinds) => {
+		window.api = undefined;
+		assert.deepEqual(kinds, ["conflict", "other", "other"]);
+	});
+});
+
+test("U1: a stale time-only retry after concurrent_edit keeps the other device's image", async () => {
+	const row = {
+		id: "bsch_u1",
+		tenant_id: "org_a",
+		conversation_id: "bcv_a",
+		body: "release notes",
+		send_at: inMinutes(120),
+		status: "scheduled",
+		created_at: new Date().toISOString(),
+		attachments: [image("a1")],
+	};
+	const later = model.scheduledLocalInput(inMinutes(180));
+	let refuseNext = true;
+	const ui = await mountScheduledEdit(row, (request, server) => {
+		if (refuseNext) {
+			refuseNext = false;
+			// Another device committed an image add between our read and write.
+			server.rows = [{ ...row, attachments: [image("a1"), image("a2")] }];
+			return STALE_EDIT_409;
+		}
+		server.rows = [{ ...server.rows[0], send_at: request.send_at }];
+		return { status: 200, body: { result: server.rows[0] } };
+	});
+	try {
+		await ui.setWhen(later);
+		await ui.confirm();
+		assert.equal(ui.patches.length, 1);
+		assert.deepEqual(ui.alertLines(), [
+			CONFLICT_HEAD,
+			"An image was added on the other device.",
+			CONFLICT_REVIEW,
+		]);
+		assert.equal(ui.when(), later, "this user's time change survives");
+		assert.equal(ui.body(), "release notes");
+		await ui.confirm();
+		assert.equal(ui.patches.length, 2);
+		const retry = ui.patches[1];
+		assert.equal(retry.op, "team_bridge.scheduled.update");
+		assert.equal(typeof retry.send_at, "string");
+		assert.equal(
+			"attachment_ids" in retry,
+			false,
+			"the retry names no image set, so it cannot replace [a1, a2] with [a1]",
+		);
+		assert.equal("body" in retry, false);
+		assert.deepEqual(
+			ui.server.rows[0].attachments.map((row) => row.id),
+			["a1", "a2"],
+		);
+		assert.equal(ui.dialogOpen(), false);
+	} finally {
+		await ui.close();
+	}
+});
+
+test("U2: a stale Remove-all retry after concurrent_edit does not revert the other device's text", async () => {
+	const row = {
+		id: "bsch_u2",
+		tenant_id: "org_a",
+		conversation_id: "bcv_a",
+		body: "old text",
+		send_at: inMinutes(120),
+		status: "scheduled",
+		created_at: new Date().toISOString(),
+		attachments: [image("a1")],
+	};
+	let refuseNext = true;
+	const ui = await mountScheduledEdit(row, (request, server) => {
+		if (refuseNext) {
+			refuseNext = false;
+			server.rows = [{ ...row, body: "new text" }];
+			return STALE_EDIT_409;
+		}
+		server.rows = [
+			{
+				...server.rows[0],
+				...(request.body === undefined ? {} : { body: request.body }),
+				attachments: (request.attachment_ids ?? ["a1"]).map(image),
+			},
+		];
+		return { status: 200, body: { result: server.rows[0] } };
+	});
+	try {
+		await ui.click("Remove images");
+		await ui.confirm();
+		assert.deepEqual(ui.alertLines(), [
+			CONFLICT_HEAD,
+			"The text was changed on the other device.",
+			CONFLICT_REVIEW,
+		]);
+		assert.equal(ui.body(), "new text", "re-seeded from the refreshed row");
+		assert.equal(
+			ui.buttonText().includes("Remove images"),
+			false,
+			"this user's removal is still applied",
+		);
+		await ui.confirm();
+		const retry = ui.patches[1];
+		assert.equal("body" in retry, false, "the stale body is not resent");
+		assert.deepEqual(retry.attachment_ids, []);
+		assert.equal(ui.server.rows[0].body, "new text");
+	} finally {
+		await ui.close();
+	}
+});
+
+test("U3: a 404 for a swapped image rebases onto the new set instead of looping", async () => {
+	const row = {
+		id: "bsch_u3",
+		tenant_id: "org_a",
+		conversation_id: "bcv_a",
+		body: "swap",
+		send_at: inMinutes(120),
+		status: "scheduled",
+		created_at: new Date().toISOString(),
+		attachments: [image("a1")],
+	};
+	const later = model.scheduledLocalInput(inMinutes(240));
+	const ui = await mountScheduledEdit(row, (request, server) => {
+		if (request.attachment_ids?.includes("a1")) return ATTACHMENT_404;
+		if (server.rows[0].attachments[0].id === "a1") {
+			// Another device swapped a1 for a3; this edit's preflight lost.
+			server.rows = [{ ...row, attachments: [image("a3")] }];
+			return ATTACHMENT_404;
+		}
+		server.rows = [{ ...server.rows[0], send_at: request.send_at }];
+		return { status: 200, body: { result: server.rows[0] } };
+	});
+	try {
+		await ui.setWhen(later);
+		await ui.confirm();
+		assert.deepEqual(ui.alertLines(), [
+			CONFLICT_HEAD,
+			"An image was added on the other device.",
+			"An image was removed on the other device.",
+			CONFLICT_REVIEW,
+		]);
+		assert.equal(ui.when(), later);
+		await ui.confirm();
+		assert.equal(ui.patches.length, 2);
+		assert.equal("attachment_ids" in ui.patches[1], false);
+		assert.deepEqual(
+			ui.server.rows[0].attachments.map((row) => row.id),
+			["a3"],
+		);
+		assert.equal(ui.dialogOpen(), false, "the retry succeeded");
+	} finally {
+		await ui.close();
+	}
+});
+
+test("a 404 for a schedule cancelled or sent elsewhere offers Close, never a retry", async () => {
+	const row = {
+		id: "bsch_gone",
+		tenant_id: "org_a",
+		conversation_id: "bcv_a",
+		body: "going away",
+		send_at: inMinutes(120),
+		status: "scheduled",
+		created_at: new Date().toISOString(),
+	};
+	const ui = await mountScheduledEdit(row, (_request, server) => {
+		server.rows = [];
+		return SCHEDULE_404;
+	});
+	try {
+		await ui.setBody("my edit");
+		await ui.confirm();
+		assert.equal(ui.patches.length, 1);
+		assert.equal(ui.dialogOpen(), true, "the open dialog is not yanked away");
+		assert.equal(ui.alert(), GONE_COPY);
+		const labels = ui.buttonText();
+		assert.equal(labels.includes("Review schedule"), false);
+		assert.equal(labels.includes("Confirm schedule"), false);
+		assert.equal(labels.includes("Close"), true);
+		await ui.click("Close");
+		assert.equal(ui.dialogOpen(), false);
+		assert.equal(ui.patches.length, 1, "closing sent nothing");
+		assert.equal(
+			document.body.textContent.includes("No pending scheduled messages."),
+			true,
+		);
+	} finally {
+		await ui.close();
+	}
+});
+
+test("a generic edit failure shows edit copy, not the create sentence", async () => {
+	const row = {
+		id: "bsch_generic",
+		tenant_id: "org_a",
+		conversation_id: "bcv_a",
+		body: "steady",
+		send_at: inMinutes(120),
+		status: "scheduled",
+		created_at: new Date().toISOString(),
+	};
+	const ui = await mountScheduledEdit(row, () => ({
+		status: 429,
+		body: { detail: { code: "rate_limited", message: "slow down" } },
+	}));
+	try {
+		await ui.setBody("edited");
+		await ui.confirm();
+		assert.equal(ui.alert(), EDIT_FAILED_COPY);
+		assert.equal(ui.body(), "edited");
+	} finally {
+		await ui.close();
+	}
+});
+
+/* --------------------- PR #1444 review round 1 remediation -------------------- */
+
+const UNAVAILABLE_503 = {
+	status: 503,
+	body: { detail: { code: "messaging_unavailable", message: "unavailable" } },
+};
+const editRow = (id, extra = {}) => ({
+	id,
+	tenant_id: "org_a",
+	conversation_id: "bcv_a",
+	body: "draft text",
+	send_at: inMinutes(120),
+	status: "scheduled",
+	created_at: new Date().toISOString(),
+	...extra,
+});
+
+test("R1-01: a failed refresh for the row's organization is not 'gone'; two orgs", async () => {
+	const other = { ...editRow("bsch_other"), tenant_id: "org_b" };
+	const ui = await mountScheduledEdit(
+		editRow("bsch_r101"),
+		(_request, server) => {
+			// The hub is down: the edit fails AND org_a's list read fails, so the
+			// refreshed list lacks the row while naming org_a in failedTenants.
+			server.rows = [other];
+			server.failedTenants = ["org_a"];
+			return UNAVAILABLE_503;
+		},
+	);
+	try {
+		ui.server.rows = [editRow("bsch_r101"), other];
+		await ui.pushList();
+		await ui.setBody("my careful edit");
+		await ui.confirm();
+		assert.equal(ui.dialogOpen(), true);
+		assert.equal(ui.alert(), EDIT_FAILED_COPY);
+		assert.equal(ui.alert().includes("cancelled"), false);
+		assert.equal(ui.body(), "my careful edit", "the typed edit survives");
+		assert.equal(ui.bodyDisabled(), false, "still editable");
+		// The submit stays live (it keeps its confirmed step after a failure).
+		assert.equal(ui.buttonText().includes("Confirm schedule"), true);
+		assert.equal(ui.title(), "Schedule message");
+	} finally {
+		await ui.close();
+	}
+});
+
+test("R1-01: a single-org list error keeps the open dialog mounted and editable", async () => {
+	const ui = await mountScheduledEdit(
+		editRow("bsch_single"),
+		(_request, server) => {
+			server.rows = [];
+			server.state = "error";
+			server.failedTenants = ["org_a"];
+			return UNAVAILABLE_503;
+		},
+	);
+	try {
+		await ui.setBody("still mine");
+		await ui.confirm();
+		assert.equal(ui.dialogOpen(), true, "the list error did not unmount it");
+		assert.equal(ui.alert(), EDIT_FAILED_COPY);
+		assert.equal(ui.body(), "still mine");
+		assert.equal(ui.bodyDisabled(), false);
+		// The list behind still says it failed to load.
+		assert.equal(
+			document.body.textContent.includes(
+				"Scheduled messages could not be loaded.",
+			),
+			true,
+		);
+		// When the hub comes back the retry goes through.
+		ui.server.rows = [editRow("bsch_single")];
+		ui.server.state = "ready";
+		ui.server.failedTenants = [];
+		window.api.desktop.request = async (request) => {
+			ui.patches.push(request);
+			ui.server.rows = [{ ...ui.server.rows[0], body: request.body }];
+			return { status: 200, body: { result: ui.server.rows[0] } };
+		};
+		await ui.confirm();
+		assert.equal(ui.patches.at(-1).body, "still mine");
+		assert.equal(ui.dialogOpen(), false);
+	} finally {
+		await ui.close();
+	}
+});
+
+test("R1-02: expected_version pins the seeded row; a stale FIRST submit gets concurrent_edit", async () => {
+	const row = editRow("bsch_v", { version: 3, attachments: [image("a1")] });
+	const ui = await mountScheduledEdit(row, (request, server) => {
+		// The hub's view: another device already moved the row to version 4 and
+		// added a2, which this dialog never saw.
+		if (request.expected_version !== 4) {
+			server.rows = [
+				{ ...row, version: 4, attachments: [image("a1"), image("a2")] },
+			];
+			return STALE_EDIT_409;
+		}
+		server.rows = [{ ...server.rows[0], version: 5, attachments: [] }];
+		return { status: 200, body: { result: server.rows[0] } };
+	});
+	try {
+		await ui.click("Remove images");
+		await ui.confirm();
+		assert.equal(ui.patches[0].expected_version, 3);
+		assert.deepEqual(ui.patches[0].attachment_ids, []);
+		assert.equal(ui.alertLines()[0], CONFLICT_HEAD);
+		assert.equal(
+			ui.alertLines().includes("An image was added on the other device."),
+			true,
+		);
+		// The rebased draft pins the NEW version and still removes only a1,
+		// the image this user removed; a2 shows up so the user can decide.
+		await ui.click("Remove images");
+		await ui.confirm();
+		assert.equal(ui.patches[1].expected_version, 4);
+		// Desktop wire body carries the field (core relays it to the hub).
+		const wire = model.desktopEndpoint(
+			model.desktopRequestSchema.parse(ui.patches[1]),
+		);
+		assert.equal(wire.body.expected_version, 4);
+	} finally {
+		await ui.close();
+	}
+});
+
+test("R1-02: no version on the row (older hub) sends no expected_version", async () => {
+	const ui = await mountScheduledEdit(
+		editRow("bsch_nov"),
+		(request, server) => {
+			server.rows = [{ ...server.rows[0], body: request.body }];
+			return { status: 200, body: { result: server.rows[0] } };
+		},
+	);
+	try {
+		await ui.setBody("v-less edit");
+		await ui.confirm();
+		assert.equal(ui.patches.length, 1);
+		assert.equal("expected_version" in ui.patches[0], false);
+		assert.equal(
+			"expected_version" in
+				model.desktopEndpoint(model.desktopRequestSchema.parse(ui.patches[0]))
+					.body,
+			false,
+		);
+	} finally {
+		await ui.close();
+	}
+	// A legacy row with an explicit null version parses and is treated the same.
+	assert.equal(
+		model.teamBridgeScheduledMessageSchema.parse(
+			editRow("bsch_null", { version: null }),
+		).version,
+		null,
+	);
+});
+
+test("R1-02: an older core refusing the unknown field (422 invalid_request) retries once without it", async () => {
+	const ui = await mountScheduledEdit(
+		editRow("bsch_core", { version: 0 }),
+		(request, server) => {
+			if ("expected_version" in request)
+				return {
+					status: 422,
+					body: {
+						detail: {
+							code: "invalid_request",
+							message: "the request is not valid",
+						},
+					},
+				};
+			server.rows = [{ ...server.rows[0], body: request.body }];
+			return { status: 200, body: { result: server.rows[0] } };
+		},
+	);
+	try {
+		await ui.setBody("through an old core");
+		await ui.confirm();
+		assert.equal(ui.patches.length, 2);
+		assert.equal(ui.patches[0].expected_version, 0, "0 is sent, not dropped");
+		assert.equal("expected_version" in ui.patches[1], false);
+		assert.equal(ui.patches[1].body, "through an old core");
+		assert.equal(ui.dialogOpen(), false);
+	} finally {
+		await ui.close();
+	}
+	// Only that exact refusal falls back; anything else is thrown unchanged and
+	// the edit is sent exactly once.
+	const calls = [];
+	await assert.rejects(
+		model.updateScheduledEdit(
+			async (_tenant, _id, patch) => {
+				calls.push(patch);
+				throw new Error("offline");
+			},
+			"org_a",
+			"bsch",
+			{ body: "x" },
+			1,
+		),
+		/offline/,
+	);
+	assert.deepEqual(calls, [{ body: "x", expected_version: 1 }]);
+});
+
+test("R1-03: a row that flips to sending while its dialog is open offers only Close", async () => {
+	const ui = await mountScheduledEdit(editRow("bsch_send"), () => SCHEDULE_404);
+	try {
+		await ui.setBody("too late");
+		ui.server.rows = [{ ...editRow("bsch_send"), status: "sending" }];
+		await ui.pushList();
+		assert.equal(ui.alert(), GONE_COPY);
+		const labels = ui.buttonText();
+		assert.equal(labels.includes("Review schedule"), false);
+		assert.equal(labels.includes("Confirm schedule"), false);
+		assert.deepEqual(labels, ["Close"], "one Close, no corner duplicate (D6)");
+		assert.equal(ui.title(), "Message no longer scheduled");
+		assert.equal(ui.bodyDisabled(), true);
+		assert.equal(ui.patches.length, 0);
+	} finally {
+		await ui.close();
+	}
+});
+
+test("D1/D2: a conflict that overrides the user's text says so, offers it back, and never dead-ends", async () => {
+	const row = editRow("bsch_d", { body: "old text", version: 1 });
+	const ui = await mountScheduledEdit(row, (request, server) => {
+		if (request.expected_version === 1) {
+			server.rows = [{ ...row, body: "their text", version: 2 }];
+			return STALE_EDIT_409;
+		}
+		server.rows = [{ ...server.rows[0], body: request.body, version: 3 }];
+		return { status: 200, body: { result: server.rows[0] } };
+	});
+	try {
+		await ui.setBody("my text");
+		await ui.confirm();
+		assert.deepEqual(ui.alertLines(), [
+			CONFLICT_HEAD,
+			"Your text was replaced by the version from the other device.",
+			CONFLICT_NOTHING_LEFT,
+		]);
+		assert.equal(ui.body(), "their text");
+		// D1: nothing of the user's survived, so the action is Close, not a
+		// disabled Review beside "try again".
+		assert.equal(ui.buttonText().includes("Review schedule"), false);
+		assert.equal(ui.buttonText().includes("Close"), true);
+		// D2: the lost text is recoverable. Focus the button first, as a
+		// keyboard user does: jsdom's click() moves no focus, and Radix already
+		// focused the textarea on open, which would pass D11 without the fix.
+		await act(async () =>
+			[...document.querySelectorAll('[role="dialog"] button')]
+				.find((button) => button.textContent === "Use my text instead")
+				.focus(),
+		);
+		assert.equal(document.activeElement?.textContent, "Use my text instead");
+		await ui.click("Use my text instead");
+		assert.equal(ui.body(), "my text");
+		assert.equal(ui.buttonText().includes("Use my text instead"), false);
+		assert.equal(ui.buttonText().includes("Review schedule"), true);
+		assert.equal(ui.alertLines().at(-1), CONFLICT_REVIEW);
+		// D11 (round 2): the button unmounted; focus lands on the refilled field.
+		assert.equal(document.activeElement?.tagName, "TEXTAREA");
+		// R2-01: the restored text goes out as a body-only edit pinned to the
+		// version of the row it was rebased onto - not the stale seed.
+		await ui.confirm();
+		const sent = { ...ui.patches[1] };
+		assert.deepEqual(
+			{
+				body: sent.body,
+				expected_version: sent.expected_version,
+				send_at: sent.send_at,
+				attachment_ids: sent.attachment_ids,
+			},
+			{
+				body: "my text",
+				expected_version: 2,
+				send_at: undefined,
+				attachment_ids: undefined,
+			},
+		);
+		assert.equal(ui.dialogOpen(), false);
+	} finally {
+		await ui.close();
+	}
+});
+
+test("R2-01: a refresh that moves only the version is adopted, so the next pin is current", async () => {
+	const row = editRow("bsch_adopt", { version: 7 });
+	const ui = await mountScheduledEdit(row, (request, server) => {
+		// The hub accepts only the CURRENT version; a stale pin would 409.
+		if (request.expected_version !== server.rows[0].version)
+			return STALE_EDIT_409;
+		server.rows = [{ ...server.rows[0], body: request.body, version: 9 }];
+		return { status: 200, body: { result: server.rows[0] } };
+	});
+	try {
+		await ui.setBody("pinned edit");
+		// Same body, time and images; only the version moved (an edit that wrote
+		// identical values elsewhere, or this user's lost-response edit).
+		ui.server.rows = [{ ...row, version: 8 }];
+		await ui.pushList();
+		assert.equal(ui.alert(), "", "nothing visible moved, so no notice");
+		assert.equal(ui.body(), "pinned edit", "the draft is untouched");
+		await ui.confirm();
+		assert.equal(ui.patches.length, 1);
+		assert.equal(ui.patches[0].expected_version, 8);
+		assert.equal(ui.dialogOpen(), false);
+	} finally {
+		await ui.close();
+	}
+});
