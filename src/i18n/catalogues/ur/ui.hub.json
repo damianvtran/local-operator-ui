@@ -4,7 +4,7 @@
 	"ui.hub.links.empty": "Agent Hub سے منسلک نہیں۔",
 	"ui.hub.links.load_failed": "Agent Hub کے روابط لوڈ نہیں ہو سکے۔ دوبارہ کوشش کریں۔",
 	"ui.hub.links.retry": "دوبارہ کوشش کریں",
-	"ui.hub.links.retry_update": "اپ ڈیٹ دوبارہ کوشش کریں",
+	"ui.hub.links.retry_update": "اپ ڈیٹ کی دوبارہ کوشش کریں",
 	"ui.hub.links.source_public": "عوامی",
 	"ui.hub.links.source_private": "{organization} · نجی",
 	"ui.hub.links.source_unavailable": "ماخذ دستیاب نہیں",

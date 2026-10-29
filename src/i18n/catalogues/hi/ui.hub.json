@@ -4,7 +4,7 @@
 	"ui.hub.links.empty": "हब से लिंक नहीं है।",
 	"ui.hub.links.load_failed": "हब लिंक लोड नहीं हो सके। फिर कोशिश करें।",
 	"ui.hub.links.retry": "फिर कोशिश करें",
-	"ui.hub.links.retry_update": "अपडेट फिर कोशिश करें",
+	"ui.hub.links.retry_update": "अपडेट दोबारा करें",
 	"ui.hub.links.source_public": "सार्वजनिक",
 	"ui.hub.links.source_private": "{organization} · निजी",
 	"ui.hub.links.source_unavailable": "स्रोत उपलब्ध नहीं है",

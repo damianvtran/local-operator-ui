@@ -4,7 +4,7 @@
 	"ui.hub.links.empty": "尚未关联到中心。",
 	"ui.hub.links.load_failed": "无法加载中心关联，请重试。",
 	"ui.hub.links.retry": "重试",
-	"ui.hub.links.retry_update": "重试更新",
+	"ui.hub.links.retry_update": "重新尝试更新",
 	"ui.hub.links.source_public": "公开",
 	"ui.hub.links.source_private": "{organization} · 私有",
 	"ui.hub.links.source_unavailable": "来源不可用",
