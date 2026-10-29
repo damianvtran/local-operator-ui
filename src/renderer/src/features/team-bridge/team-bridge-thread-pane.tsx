@@ -277,7 +277,14 @@ function TeamBridgeThreadPaneBody({
 					<X size={16} />
 				</Button>
 			</header>
-			<ScrollArea ref={scroll.rootRef} className="min-h-0 flex-1">
+			{/* Radix wraps the content in `display: table; min-width: 100%`, which
+			    grows to the widest row's min-content: one wide table or code line
+			    and every reply's hover ground and toolbar would run past the pane.
+			    A block wrapper is the viewport's width, as the page timeline's is. */}
+			<ScrollArea
+				ref={scroll.rootRef}
+				className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block!"
+			>
 				{root && (
 					<TeamBridgeMessageList
 						messages={[root]}

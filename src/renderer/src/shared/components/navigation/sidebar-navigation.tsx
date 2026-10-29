@@ -1597,7 +1597,10 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					 * it. Here the glyph sits in a 28px box (the strip's hit target, inside
 					 * the 30px row) and the mark is the panel rail's corner mark
 					 * (`panel-rail.tsx`, the browser item's block states the geometry):
-					 * 14px, pinned at -2px/-2px of the box, so the glyph is the button's
+					 * 14px, pinned at -4px up / -6px out of the box (design follow-up to
+					 * #1465, D1: at -2px/-2px a `99+` mark lay across the top 6px of the
+					 * whole 16px glyph; pushed out, and capped at `9+` by the badge, it
+					 * covers only the icon's corner), so the glyph is the button's
 					 * only in-flow content and stays centred. The register is the shared
 					 * `AttentionBadge`; only the size and the place are the rail's. The busy mark
 					 * keeps its in-flow slot: where a spinner goes in the strip is a
@@ -1606,7 +1609,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					<span className="relative flex size-7 shrink-0 items-center justify-center">
 						{glyph}
 						{attention > 0 && (
-							<span className="pointer-events-none absolute -top-0.5 -end-0.5 flex">
+							<span className="pointer-events-none absolute -top-1 -end-1.5 flex">
 								<AttentionBadge
 									count={attention}
 									placement="corner"
@@ -2080,7 +2083,8 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			disabled?: boolean;
 			attrs?: Record<string, string | boolean>;
 			/* A count the group carries while it is closed: the corner mark the
-			   destination rows use, so a collapsed More can say something waits. */
+			   destination rows use, so a collapsed More can say something waits.
+			   The caller passes 0 while the group is open (design D2). */
 			attention?: number;
 			attentionTag?: string;
 			/*
@@ -2113,7 +2117,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					<span className="relative flex size-7 items-center justify-center">
 						<Icon size={16} aria-hidden="true" />
 						{(props.attention ?? 0) > 0 && (
-							<span className="pointer-events-none absolute -top-0.5 -end-0.5 flex">
+							<span className="pointer-events-none absolute -top-1 -end-1.5 flex">
 								<AttentionBadge
 									count={props.attention ?? 0}
 									placement="corner"
@@ -2211,6 +2215,17 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		 * spinner is still drawn beside it, so the state is not lost to sight.
 		 */
 		const moreAttention = moreAttentionCount(hiddenItems);
+		/*
+		 * THE AGGREGATE IS A SUMMARY OF WHAT IS HIDDEN, SO IT IS DRAWN ONLY WHILE
+		 * THE GROUP IS CLOSED (design follow-up to #1465, D2). Open, the hidden rows
+		 * are on screen and carry their own pills; More's `4` beside Team Bridge's
+		 * `3` and Mesh's `1` drew the same attention twice - the usual disclosure
+		 * pattern is that a closed group summarises and an open group lets its rows
+		 * speak. The accessible name keeps the sum in both states: it describes the
+		 * control, and a reader tabbing past an open More still learns how much
+		 * waits inside it.
+		 */
+		const moreMark = overflowRevealed ? 0 : moreAttention;
 		const moreWorking = hiddenItems.some((item) => item.working === true);
 		const moreName =
 			moreAttention > 0
@@ -2247,11 +2262,11 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						<span className="min-w-0 flex-1 truncate text-start">
 							{t("ui.library.page.more")}
 						</span>
-						{(moreAttention > 0 || moreWorking) && (
+						{(moreMark > 0 || moreWorking) && (
 							<span className="inline-flex shrink-0 items-center gap-1">
-								{moreAttention > 0 && (
+								{moreMark > 0 && (
 									<AttentionBadge
-										count={moreAttention}
+										count={moreMark}
 										data-tour-tag="nav-more-badge"
 									/>
 								)}
@@ -2276,7 +2291,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				) : (
 					stripButton(Ellipsis, moreName, {
 						onClick: () => setOverflowExpanded(!overflowRevealed),
-						attention: moreAttention,
+						attention: moreMark,
 						attentionTag: "nav-more-badge",
 						working: moreWorking,
 						attrs: {

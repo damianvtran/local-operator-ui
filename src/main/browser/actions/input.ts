@@ -217,6 +217,25 @@ export interface ResolvedNode {
 	frame?: FrameScope;
 }
 
+/** How a resolution may touch the page beyond naming the node. */
+export interface ResolveOptions {
+	/**
+	 * Scroll the node (and the frame chain holding it) into view before resolving.
+	 * Default `true`: `click` and `type` act on what is on screen, so they need the
+	 * element brought into the viewport.
+	 *
+	 * `upload` passes `false`. `DOM.scrollIntoViewIfNeeded` is a LAYOUT step, and
+	 * Chromium refuses it for a node with no layout object — answering `Node does not
+	 * have a layout object`, which surfaces as `internal` — and a file input hidden
+	 * with `display:none` (the React/Slack/GitHub pattern: a button calls
+	 * `input.click()`) has exactly none. `DOM.setFileInputFiles` needs only the node,
+	 * never its geometry, so the upload path must not depend on layout at all. Every
+	 * other part of the resolution — the epoch rule, locator and ref lookup, frame
+	 * hops, denial checks and `element_not_found` diagnostics — is unchanged.
+	 */
+	scroll?: boolean;
+}
+
 /** Results carry the frame's origin whenever the target is not in the top
  * document: approval is per top-level origin, so the agent and the transcript
  * must see when the text went to a third-party frame (ARCH-1, consent). */
@@ -262,7 +281,9 @@ export async function resolveNode(
 	ctx: BrowserActionContext,
 	record: TabRecord,
 	target: string,
+	options: ResolveOptions = {},
 ): Promise<ResolvedNode> {
+	const scroll = options.scroll !== false;
 	const view = record.view;
 	const contents = view.webContents;
 
@@ -274,7 +295,7 @@ export async function resolveNode(
 				"the page navigated since that snapshot; take a new snapshot and retry",
 			);
 		}
-		if (ref.frameId) return resolveFrameRef(ctx, contents, target, ref);
+		if (ref.frameId) return resolveFrameRef(ctx, contents, target, ref, scroll);
 		await ctx.cdp.send(contents, "DOM.getDocument", { depth: 0 });
 		const pushed = await ctx.cdp.send<{ nodeIds?: number[] }>(
 			contents,
@@ -285,7 +306,7 @@ export async function resolveNode(
 		if (pushedId === undefined) {
 			throw new BrowserHostError("element_not_found", "snapshot ref is stale");
 		}
-		return finishTop(ctx, contents, target, pushedId, ref.frameOrigin);
+		return finishTop(ctx, contents, target, scroll, pushedId, ref.frameOrigin);
 	}
 
 	// Accessibility locators are resolved BEFORE the CSS path: `role=`,
@@ -329,7 +350,7 @@ export async function resolveNode(
 				`${target} is no longer in the document`,
 			);
 		}
-		const resolved = await finishTop(ctx, contents, target, nodeId);
+		const resolved = await finishTop(ctx, contents, target, scroll, nodeId);
 		return {
 			...resolved,
 			resolvedBy: "locator",
@@ -342,7 +363,7 @@ export async function resolveNode(
 	const hops = parseFrameHops(target);
 	if (hops) {
 		const hit = await resolveHops(ctx, contents, hops);
-		return finishInFrame(ctx, contents, target, hit.scope, hit.nodeId);
+		return finishInFrame(ctx, contents, target, scroll, hit.scope, hit.nodeId);
 	}
 
 	let nodeId: number;
@@ -385,11 +406,12 @@ export async function resolveNode(
 			ctx,
 			contents,
 			target,
+			scroll,
 			matches[0].scope,
 			matches[0].nodeId,
 		);
 	}
-	return finishTop(ctx, contents, target, nodeId);
+	return finishTop(ctx, contents, target, scroll, nodeId);
 }
 
 /** Why a frame search was not exhaustive, in the refusal's words. */
@@ -419,12 +441,17 @@ async function finishTop(
 	ctx: BrowserActionContext,
 	contents: DriveableView["webContents"],
 	target: string,
+	scroll: boolean,
 	nodeId: number,
 	frameOrigin?: string,
 ): Promise<ResolvedNode> {
 	if (frameOrigin !== undefined)
 		assertFrameNotDenied(ctx, { origin: frameOrigin });
-	await ctx.cdp.send(contents, "DOM.scrollIntoViewIfNeeded", { nodeId });
+	// Skipped for `upload` (see `ResolveOptions.scroll`): the scroll is the one
+	// layout-dependent command on this path, and it throws for a `display:none` node.
+	if (scroll) {
+		await ctx.cdp.send(contents, "DOM.scrollIntoViewIfNeeded", { nodeId });
+	}
 	const resolved = await ctx.cdp.send<{ object?: { objectId?: string } }>(
 		contents,
 		"DOM.resolveNode",
@@ -451,20 +478,23 @@ async function finishInFrame(
 	ctx: BrowserActionContext,
 	contents: DriveableView["webContents"],
 	target: string,
+	scroll: boolean,
 	scope: FrameScope,
 	nodeId: number,
 ): Promise<ResolvedNode> {
 	// Before ANY command in the frame: a denied origin is neither scrolled, resolved
 	// nor touched (review round 1, M1).
 	assertFrameNotDenied(ctx, scope);
-	for (const hop of scope.hops) {
-		await sendIn(ctx, contents, hop.sessionId, "DOM.scrollIntoViewIfNeeded", {
-			nodeId: hop.nodeId,
+	if (scroll) {
+		for (const hop of scope.hops) {
+			await sendIn(ctx, contents, hop.sessionId, "DOM.scrollIntoViewIfNeeded", {
+				nodeId: hop.nodeId,
+			}).catch(() => undefined);
+		}
+		await sendIn(ctx, contents, scope.sessionId, "DOM.scrollIntoViewIfNeeded", {
+			nodeId,
 		}).catch(() => undefined);
 	}
-	await sendIn(ctx, contents, scope.sessionId, "DOM.scrollIntoViewIfNeeded", {
-		nodeId,
-	}).catch(() => undefined);
 	const resolved = await sendIn<{ object?: { objectId?: string } }>(
 		ctx,
 		contents,
@@ -490,6 +520,7 @@ async function resolveFrameRef(
 	contents: DriveableView["webContents"],
 	target: string,
 	ref: TabRecord["refs"][string],
+	scroll: boolean,
 ): Promise<ResolvedNode> {
 	// Refused before attaching when the snapshot already named a denied origin;
 	// checked again below against the document actually there now.
@@ -510,18 +541,20 @@ async function resolveFrameRef(
 	// selector paths do through their hops (review round 1, n1; ARCH-1 §7). Best
 	// effort: the owner of a frame nested in another out-of-process frame lives in
 	// THAT frame's session, where the page session's lookup fails harmlessly.
-	await ctx.cdp
-		.send<{ backendNodeId?: number }>(contents, "DOM.getFrameOwner", {
-			frameId: ref.frameId,
-		})
-		.then((owner) =>
-			owner?.backendNodeId
-				? ctx.cdp.send(contents, "DOM.scrollIntoViewIfNeeded", {
-						backendNodeId: owner.backendNodeId,
-					})
-				: undefined,
-		)
-		.catch(() => undefined);
+	if (scroll) {
+		await ctx.cdp
+			.send<{ backendNodeId?: number }>(contents, "DOM.getFrameOwner", {
+				frameId: ref.frameId,
+			})
+			.then((owner) =>
+				owner?.backendNodeId
+					? ctx.cdp.send(contents, "DOM.scrollIntoViewIfNeeded", {
+							backendNodeId: owner.backendNodeId,
+						})
+					: undefined,
+			)
+			.catch(() => undefined);
+	}
 	const pushed = await ctx.cdp.send<{ nodeIds?: number[] }>(
 		contents,
 		"DOM.pushNodesByBackendIdsToFrontend",
@@ -536,6 +569,7 @@ async function resolveFrameRef(
 		ctx,
 		contents,
 		target,
+		scroll,
 		{
 			sessionId: rooted.sessionId,
 			frameTargetId: ref.frameId,
