@@ -221,3 +221,18 @@ export const SentFileLongPathCopyProof: Story = {
 export const RemoteNoClaim: Story = {
 	render: () => <SentFileCard document={DOCUMENT} remote={true} />,
 };
+
+/**
+ * The third state: the original is gone AND the saved copy is gone too - a
+ * pruned store. The card says both, offers no saved-copy row, and its menu keeps
+ * only "Copy file path" (the record of where the file was).
+ */
+export const MissingAndCopyGone: Story = {
+	render: () => (
+		<SentFileCard
+			document={DOCUMENT}
+			existence={false}
+			storedExistence={false}
+		/>
+	),
+};

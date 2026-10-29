@@ -1,0 +1,653 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent-namespace-delta-translation-audit",
+  "date": "2026-10-26",
+  "locale": "es",
+  "branch": "i18n-agents-literals-2",
+  "head": "a9e536bf892f48ed2a87772658055abfd10caa5e",
+  "base": "f1aca5935bc38b5fdb733aa2cab8f2ab8c55b30c",
+  "translator_commit": "a9e536bf892f48ed2a87772658055abfd10caa5e",
+  "english_keys_commit": "73af0b6855",
+  "instance": "e9688c682c8f",
+  "agent": "i18n-auditor",
+  "model": "radient/auto",
+  "fallback": null,
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "e9688c682c8f",
+    "instance": "e9688c682c8f",
+    "model": "radient/auto",
+    "actual_model_source": "harness session banner in this delegated run: 'Model: radient/auto'",
+    "fallback": null,
+    "model_note": "The route the harness reported for this session is radient/auto (an auto-selecting route, not a pinned vendor model). No provider fallback was reported or observed during this run; no role or model pin was changed by the auditor.",
+    "independent_from_translator_session": true,
+    "independence": "This session did not translate, remediate or author any of the audited values, and read no translator reasoning. It wrote only this receipt and the seven record.json evidence files; no catalogue, ledger, English, generated or test file was edited."
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "key_count": 25,
+  "namespaces": {
+    "ui.agents.pages": {
+      "namespace": "ui.agents.pages",
+      "keys_audited": 8,
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781",
+      "target_sha256": "e93721466daafd39e76e3a1ac292e88bfedca14b1799c5d138c06bc7a50c6035",
+      "context_sha256": "f9690a17e6e7307df154bdc0d71ab8a0d002a07a052e11c0025d2ff874d3dfea",
+      "sha256": {
+        "en": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781",
+        "es": "e93721466daafd39e76e3a1ac292e88bfedca14b1799c5d138c06bc7a50c6035",
+        "context": "f9690a17e6e7307df154bdc0d71ab8a0d002a07a052e11c0025d2ff874d3dfea"
+      },
+      "finding_ids": [],
+      "findings": []
+    },
+    "ui.agents.config": {
+      "namespace": "ui.agents.config",
+      "keys_audited": 3,
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "5338f6e229d67bf214a4741224470e82222bd2f04eba9bc9eda7324242393c32",
+      "target_sha256": "99feac215796455e33867a85f64163e15c6ed7cea3065f2c363a7f2cfc32c532",
+      "context_sha256": "63a7879a771b5aa7732fcfc8848033ba207701aaf1452e2855e8ec2bd52821bf",
+      "sha256": {
+        "en": "5338f6e229d67bf214a4741224470e82222bd2f04eba9bc9eda7324242393c32",
+        "es": "99feac215796455e33867a85f64163e15c6ed7cea3065f2c363a7f2cfc32c532",
+        "context": "63a7879a771b5aa7732fcfc8848033ba207701aaf1452e2855e8ec2bd52821bf"
+      },
+      "finding_ids": [],
+      "findings": []
+    },
+    "ui.agents.detail": {
+      "namespace": "ui.agents.detail",
+      "keys_audited": 3,
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+      "target_sha256": "08df1422014aa6407b884bd31a9438c91bace7cfbaa20b55f7ee0657d737cc15",
+      "context_sha256": "a0e40ba7fceccdf78da28d064fd4386cc48d8f1c80127a5721550e879c49b511",
+      "sha256": {
+        "en": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+        "es": "08df1422014aa6407b884bd31a9438c91bace7cfbaa20b55f7ee0657d737cc15",
+        "context": "a0e40ba7fceccdf78da28d064fd4386cc48d8f1c80127a5721550e879c49b511"
+      },
+      "finding_ids": [],
+      "findings": []
+    },
+    "ui.agents.upload": {
+      "namespace": "ui.agents.upload",
+      "keys_audited": 6,
+      "status": "passed",
+      "result": "clean-with-findings",
+      "source_sha256": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949",
+      "target_sha256": "624ab582a9c7db606d42a6eea930537053aaf2a2ba3788ad438cdfb1532d4833",
+      "context_sha256": "3141f45c4b8fc17b96061a4556a66b3133bbfe27345ee7e4d929dfe21ee049f0",
+      "sha256": {
+        "en": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949",
+        "es": "624ab582a9c7db606d42a6eea930537053aaf2a2ba3788ad438cdfb1532d4833",
+        "context": "3141f45c4b8fc17b96061a4556a66b3133bbfe27345ee7e4d929dfe21ee049f0"
+      },
+      "finding_ids": [
+        "ES-AL-1"
+      ],
+      "findings": [
+        {
+          "id": "ES-AL-1",
+          "severity": "MINOR",
+          "key": "ui.agents.upload.title.republished",
+          "keys_involved": [
+            "ui.agents.upload.title.published_org",
+            "ui.agents.upload.title.published_public",
+            "ui.agents.upload.title.republished"
+          ],
+          "current": [
+            "Publicado “{name}” en {destination}",
+            "Publicado “{name}” en el Hub de agentes",
+            "Se actualizó la ficha de “{name}” en el Hub de agentes"
+          ],
+          "problem": "The dialog's three receipt titles are split across two constructions: the two first-publication titles are bare past-participle headlines ('Publicado …'), the update receipt is a full preterite passive-reflexive sentence ('Se actualizó la ficha …'). Each is grammatical and none is misleading, but the family is uneven inside one dialog, and the locale's shipped sentence receipts for this exact event are the 'Se + pretérito' form (ui.hub.links.published 'Se publicó {item} en {source}', ui.hub.links.updated 'Se actualizó {item} desde {source}', ui.notices.agents.saved 'Se guardó {name}.'). Not a MAJOR: no meaning, polarity or feature difference, and no register break - bare participles are shipped es too, but as status labels ('Creado', 'Archivo guardado'), not as sentence receipts.",
+          "proposed_fix": "Harmonise on the shipped sentence receipt: 'Se publicó “{name}” en {destination}' and 'Se publicó “{name}” en el Hub de agentes' (+3.0 px at the sample name); keep 'Se actualizó la ficha de “{name}” en el Hub de agentes' unchanged. The alternative direction (participle everywhere) would need a participial construction for the update receipt that reads worse in Spanish ('Ficha de “{name}” actualizada en el Hub de agentes').",
+          "evidence": "Measured at 16px with the sample name 'Revisor de código': 'Publicado “{name}” en el Hub de agentes' is 336.0 px and 'Se publicó “{name}” en el Hub de agentes' is 339.0 px (+3.0 px). The update receipt on the same sample is 419.0 px against ~464 px of dialog header content, so the harmonised form stays on one line."
+        }
+      ]
+    },
+    "ui.hub.pages": {
+      "namespace": "ui.hub.pages",
+      "keys_audited": 2,
+      "status": "passed",
+      "result": "clean-with-findings",
+      "source_sha256": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6",
+      "target_sha256": "822b694ee9bc1a0f1690f5707c76eca8321df32c01bcf6defd6fe3dc07d90a83",
+      "context_sha256": "d913efa6ea062fe5c04861c6db202d5bf303b7b0c1a6f9c7efbdaa4b5c095d10",
+      "sha256": {
+        "en": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6",
+        "es": "822b694ee9bc1a0f1690f5707c76eca8321df32c01bcf6defd6fe3dc07d90a83",
+        "context": "d913efa6ea062fe5c04861c6db202d5bf303b7b0c1a6f9c7efbdaa4b5c095d10"
+      },
+      "finding_ids": [
+        "ES-AL-2"
+      ],
+      "findings": [
+        {
+          "id": "ES-AL-2",
+          "severity": "MINOR",
+          "key": "ui.hub.pages.card.get",
+          "keys_involved": [
+            "ui.hub.pages.card.get"
+          ],
+          "current": "Obtener",
+          "problem": "The visible Get label is 42.0px at 12px against 18.0px for 'Get'. In the card footer at the 280px minimum grid column (256px of footer content, px-3), with 3-digit like/favourite/download counters the row measures 248.0px in es against 224.0px in en - 8px of slack where the source leaves 32px. With 4-digit counters both languages wrap (en 263.0px, es 287.0px), so the wrap threshold is not introduced by Spanish, the margin is: the label leaves one counter digit of headroom. Nothing is clipped - the button is whitespace-nowrap/shrink-0 and the footer's documented fallback is a second line - so this is a fit-margin risk, not truncation.",
+          "proposed_fix": "Keep 'Obtener': it is the shortest natural Spanish Get (42.0px; 'Descargar' is 53.0px and 'Instalar' changes the meaning; the imperative 'Obtén' breaks the guide's infinitive action rule). Verify the footer line at the 280px minimum column with 3-digit counters in QA; if it wraps there, the fix is layout (footer gap/px), not copy.",
+          "evidence": "width_measurements: rows for counter_sample 128 (fits, 8px slack) and 1,840 (wraps in both)."
+        }
+      ]
+    },
+    "ui.hub.teams": {
+      "namespace": "ui.hub.teams",
+      "keys_audited": 2,
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+      "target_sha256": "4b813ab392272a05c3fd55288c2458cea7672522c43b856e9a05f42e9982fe59",
+      "context_sha256": "b062f0ca8aed037084233730702e41c6f3ef09aa39bed405e007466716c711a0",
+      "sha256": {
+        "en": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+        "es": "4b813ab392272a05c3fd55288c2458cea7672522c43b856e9a05f42e9982fe59",
+        "context": "b062f0ca8aed037084233730702e41c6f3ef09aa39bed405e007466716c711a0"
+      },
+      "finding_ids": [],
+      "findings": []
+    },
+    "ui.common.actions": {
+      "namespace": "ui.common.actions",
+      "keys_audited": 1,
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9",
+      "target_sha256": "ddaeb34dd0150437906969bb296a4b278d8b71114f8cc7ebe9179b176a24c8b6",
+      "context_sha256": "48756cd31d4abbec5d56b3648ffb2fefe578c074645386480c91b4921accf321",
+      "sha256": {
+        "en": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9",
+        "es": "ddaeb34dd0150437906969bb296a4b278d8b71114f8cc7ebe9179b176a24c8b6",
+        "context": "48756cd31d4abbec5d56b3648ffb2fefe578c074645386480c91b4921accf321"
+      },
+      "finding_ids": [],
+      "findings": []
+    }
+  },
+  "findings": [
+    {
+      "id": "ES-AL-1",
+      "severity": "MINOR",
+      "key": "ui.agents.upload.title.republished",
+      "keys_involved": [
+        "ui.agents.upload.title.published_org",
+        "ui.agents.upload.title.published_public",
+        "ui.agents.upload.title.republished"
+      ],
+      "current": [
+        "Publicado “{name}” en {destination}",
+        "Publicado “{name}” en el Hub de agentes",
+        "Se actualizó la ficha de “{name}” en el Hub de agentes"
+      ],
+      "problem": "The dialog's three receipt titles are split across two constructions: the two first-publication titles are bare past-participle headlines ('Publicado …'), the update receipt is a full preterite passive-reflexive sentence ('Se actualizó la ficha …'). Each is grammatical and none is misleading, but the family is uneven inside one dialog, and the locale's shipped sentence receipts for this exact event are the 'Se + pretérito' form (ui.hub.links.published 'Se publicó {item} en {source}', ui.hub.links.updated 'Se actualizó {item} desde {source}', ui.notices.agents.saved 'Se guardó {name}.'). Not a MAJOR: no meaning, polarity or feature difference, and no register break - bare participles are shipped es too, but as status labels ('Creado', 'Archivo guardado'), not as sentence receipts.",
+      "proposed_fix": "Harmonise on the shipped sentence receipt: 'Se publicó “{name}” en {destination}' and 'Se publicó “{name}” en el Hub de agentes' (+3.0 px at the sample name); keep 'Se actualizó la ficha de “{name}” en el Hub de agentes' unchanged. The alternative direction (participle everywhere) would need a participial construction for the update receipt that reads worse in Spanish ('Ficha de “{name}” actualizada en el Hub de agentes').",
+      "evidence": "Measured at 16px with the sample name 'Revisor de código': 'Publicado “{name}” en el Hub de agentes' is 336.0 px and 'Se publicó “{name}” en el Hub de agentes' is 339.0 px (+3.0 px). The update receipt on the same sample is 419.0 px against ~464 px of dialog header content, so the harmonised form stays on one line."
+    },
+    {
+      "id": "ES-AL-2",
+      "severity": "MINOR",
+      "key": "ui.hub.pages.card.get",
+      "keys_involved": [
+        "ui.hub.pages.card.get"
+      ],
+      "current": "Obtener",
+      "problem": "The visible Get label is 42.0px at 12px against 18.0px for 'Get'. In the card footer at the 280px minimum grid column (256px of footer content, px-3), with 3-digit like/favourite/download counters the row measures 248.0px in es against 224.0px in en - 8px of slack where the source leaves 32px. With 4-digit counters both languages wrap (en 263.0px, es 287.0px), so the wrap threshold is not introduced by Spanish, the margin is: the label leaves one counter digit of headroom. Nothing is clipped - the button is whitespace-nowrap/shrink-0 and the footer's documented fallback is a second line - so this is a fit-margin risk, not truncation.",
+      "proposed_fix": "Keep 'Obtener': it is the shortest natural Spanish Get (42.0px; 'Descargar' is 53.0px and 'Instalar' changes the meaning; the imperative 'Obtén' breaks the guide's infinitive action rule). Verify the footer line at the 280px minimum column with 3-digit counters in QA; if it wraps there, the fix is layout (footer gap/px), not copy.",
+      "evidence": "width_measurements: rows for counter_sample 128 (fits, 8px slack) and 1,840 (wraps in both)."
+    }
+  ],
+  "findings_summary": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 0
+  },
+  "finding_ids": [
+    "ES-AL-1",
+    "ES-AL-2"
+  ],
+  "scope": "The 25 new keys of branch i18n-agents-literals-2 (head a9e536bf89) across seven es namespaces, bound by sha256 to the bytes on disk: ui.agents.pages (8), ui.agents.config (3), ui.agents.detail (3), ui.agents.upload (6), ui.hub.pages (2), ui.hub.teams (2), ui.common.actions (1). Every pre-existing key in those seven files was proved byte-equal to parent 73af0b6855; only the 25 added keys are judged.",
+  "method": [
+    "1. Bind by hash before reading: the seven es target sha256 prefixes matched the task's expected e9372146 / 99feac21 / 08df1422 / 624ab582 / 822b694e / 4b813ab3 / ddaeb34d.",
+    "2. Mechanical: key set and order identical to en in all seven files, per-key placeholder multiset identical, no empty value, JSON parses, no ICU structure in these 25 (none carry plural/select, checked both ways), locale typography (U+201C/U+201D/U+2026/U+00BF, no ASCII quotes, no three periods), pre-existing keys byte-equal to the parent commit.",
+    "3. Accuracy: element-by-element reading of each value against the English source and its context sidecar (role, tone, length_hint, note, placeholder semantics).",
+    "4. Idiom and register: tú throughout, infinitive action labels vs imperative headings/invitations, sentence case, neutral Spanish, no Title Case, no '!'.",
+    "5. Terminology: compared against shipped es siblings for agent/agente, team/equipo, Agent Hub/Hub de agentes, listing/ficha, configuration run/ejecución de configuración, Delegates, Get, retry/retrying, Show all/Show less, and the shared age phrases.",
+    "6. Fit: advance widths measured with HarfBuzz (hb-shape) in the app's real type sizes and fonts (SF Pro at text-meta 12px / text-heading 16px, Geist Mono at text-mono-sm 11px) against the containers read from the components: 288px roster button, 256px card footer content at the 280px minimum grid column, ~464px dialog title content, 304px narrowest docked composer.",
+    "7. Samples: composed every placeholder string with a short Latin name, a Latin identifier, a Cyrillic name, a CJK name and a long Spanish name, plus shipped es age phrases ('hace 4 días', 'hace 3 días'), and judged the composed sentences.",
+    "RTL section does not apply: the audited locale is es."
+  ],
+  "rulings": [
+    {
+      "item": "Publish receipt construction mix (manager-flagged)",
+      "verdict": "MINOR finding ES-AL-1, not a gate",
+      "reasoning": "Both constructions are grammatical es and neither confuses update with first publication; the update receipt says UPDATE exactly as the sidecar demands. The locale ships both forms, but the shipped SENTENCE receipts are 'Se + pretérito'; giving the participle pair the shipped form makes the dialog uniform for one extra word each."
+    },
+    {
+      "item": "'Delegación' for the Delegates meta fact",
+      "verdict": "accepted, no finding",
+      "reasoning": "The fact must be a one-word noun: the note forbids a verb ('Delega' would be the imperative the note rules out), and the shipped sibling states the same capability as 'Puede delegar en subagentes' (ui.agents.detail.delegate.label/aria). 'Delegación' is the one-word noun of the same root, 10 code points against the ~9-character slot, and reads as a capability tag between the source label and 'Specialist' (AgentMeta joins facts with ' · '). No contradiction with the switch's sentence, and no second name for the concept."
+    },
+    {
+      "item": "'Obtener' for the hub Get button",
+      "verdict": "accepted with the measured fit note, MINOR ES-AL-2",
+      "reasoning": "EN's visible label is deliberately shorter than its aria 'Download {name}', and es 'Obtener' mirrors that choice, is shipped es for Get (ui.onboarding 'Obtener {name}', ui.common.account 'Obtener más créditos') and is 11px shorter than 'Descargar' in the tightest footer slot. Accepted as the term; the measured margin is recorded for QA."
+    },
+    {
+      "item": "'Hub de agentes' and 'ficha' in the upload titles",
+      "verdict": "conform, no finding",
+      "reasoning": "'Hub de agentes' is the shipped navigation render (ui.hub.pages.header.title, ui.shell.sidebar_navigation.agent_hub, ui.command_palette.use_palette_sources.agent_hub) and matches the sidecar's instruction to follow the hub page title. 'ficha' is the shipped word for a hub listing (ui.agents.upload.action.open_listing 'Abrir la ficha', ui.agents.publication.action.update_listing 'Actualizar la ficha existente'), distinct from 'conjunto de instrucciones' for the content."
+    },
+    {
+      "item": "'Reintentando…' for 'Trying…'",
+      "verdict": "conform, no finding",
+      "reasoning": "Shipped twice in es (ui.agents.navigation.updates.action.retrying, ui.hub.teams.public.trying) and it is the gerund of the shipped 'Reintentar'. It also renders narrower than the idle label of the same button (73.0px vs 'Volver a intentar' 79.0px at 12px), so the in-flight state cannot overflow where the idle state fits. 'Trying…' is softer in English, but the press being acknowledged IS a retry here, so the meaning is exact."
+    },
+    {
+      "item": "'ejecución de configuración' for 'configuration run'",
+      "verdict": "conform, no finding",
+      "reasoning": "Identical to the shipped product term (ui.agents.config.status.attached 'Ya había una ejecución de configuración en marcha', ui.agents.detail.alert.conflict_body), so the two explanatory paragraphs introduce no second name, as the sidecar requires."
+    },
+    {
+      "item": "Lowercase fragments 'actualizado {when}' / 'creado {when}'",
+      "verdict": "conform, no finding",
+      "reasoning": "The guide allows lowercase fragments; the es age messages render 'hace 4 días', so the composed line reads 'author · actualizado hace 4 días' with no doubled 'hace'. 'actualizado' matches shipped es (ui.code_review.age.* 'actualizado hace …', ui.chat.pickers.info_model.up_to_date). Gender agrees with the subject: an agent (masc.) on a card and an equipo (masc.) in a team row; the created arm stays distinguishable ('creado')."
+    }
+  ],
+  "samples": [
+    "¿Publicar “Revisor de código” en el Hub de agentes?",
+    "¿Publicar “Агент проверки” en Acme Corp?",
+    "Publicado “代码审查助手” en el Hub de agentes",
+    "¿Actualizar la ficha de “release-crew” en el Hub de agentes?",
+    "Se actualizó la ficha de “Revisor de código” en el Hub de agentes",
+    "Cambia Asistente de revisión de contratos y políticas internas…",
+    "Pide un cambio o describe algo nuevo…",
+    "Radient Labs · actualizado hace 4 días",
+    "Equipo de plataforma · creado hace 2 días",
+    "Añadir agente a mano",
+    "O añade un equipo a mano"
+  ],
+  "width_measurements": {
+    "method": {
+      "shaper": "hb-shape (HarfBuzz)",
+      "sans": "/System/Library/Fonts/SFNS.ttf",
+      "mono": "src/renderer/src/assets/fonts/GeistMonoNerdFontMono-Regular.otf",
+      "type_sizes": {
+        "text-meta": 12,
+        "text-mono-sm": 11,
+        "text-heading": 16
+      },
+      "containers": {
+        "card_min_column_px": 280,
+        "card_footer_content_px": 256,
+        "card_provenance_content_px": 248,
+        "dialog_lg_content_px": 464,
+        "docked_composer_content_px": 304,
+        "roster_column_px": 288
+      }
+    },
+    "labels": {
+      "Get": 18,
+      "Obtener": 42,
+      "Descargar": 53,
+      "Instalar": 37,
+      "Obten_imperative": 32,
+      "Show all": 40,
+      "Mostrar todo": 65,
+      "Show less": 50,
+      "Mostrar menos": 76,
+      "Add agent manually": 99,
+      "Añadir agente a mano": 108,
+      "Add team manually": 96,
+      "Añadir equipo a mano": 107,
+      "updated": 43,
+      "actualizado": 57,
+      "created": 39,
+      "creado": 35,
+      "Trying…": 38,
+      "Try again": 45,
+      "Volver a intentar": 79,
+      "Reintentando…": 73,
+      "Describe what you want…": 126,
+      "Describe lo que quieres…": 122,
+      "Ask for a change, or describe something new…": 226,
+      "Pide un cambio o describe algo nuevo…": 191
+    },
+    "card_footer_row": [
+      {
+        "counter_sample": "128",
+        "locale": "en",
+        "row_px": 224,
+        "available_px": 256,
+        "slack_px": 32
+      },
+      {
+        "counter_sample": "128",
+        "locale": "es",
+        "row_px": 248,
+        "available_px": 256,
+        "slack_px": 8
+      },
+      {
+        "counter_sample": "1,840",
+        "locale": "en",
+        "row_px": 263,
+        "available_px": 256,
+        "slack_px": -7
+      },
+      {
+        "counter_sample": "1,840",
+        "locale": "es",
+        "row_px": 287,
+        "available_px": 256,
+        "slack_px": -31
+      }
+    ],
+    "provenance_line": [
+      {
+        "author_sample": "Radient Labs",
+        "locale": "en",
+        "line_px": 172,
+        "available_px": 248
+      },
+      {
+        "author_sample": "Radient Labs",
+        "locale": "es",
+        "line_px": 187,
+        "available_px": 248
+      },
+      {
+        "author_sample": "Equipo de plataforma",
+        "locale": "en",
+        "line_px": 213,
+        "available_px": 248
+      },
+      {
+        "author_sample": "Equipo de plataforma",
+        "locale": "es",
+        "line_px": 228,
+        "available_px": 248
+      }
+    ],
+    "dialog_titles": [
+      {
+        "name_sample": "Revisor de código",
+        "locale": "en",
+        "template": "Updated the Agent Hub listing for “{n}”",
+        "width_px": 350,
+        "available_px": 464
+      },
+      {
+        "name_sample": "Revisor de código",
+        "locale": "es",
+        "template": "Se actualizó la ficha de “{n}” en el Hub de agentes",
+        "width_px": 419,
+        "available_px": 464
+      },
+      {
+        "name_sample": "Revisor de código",
+        "locale": "es",
+        "template": "Se publicó “{n}” en el Hub de agentes",
+        "width_px": 339,
+        "available_px": 464
+      },
+      {
+        "name_sample": "release-crew",
+        "locale": "en",
+        "template": "Updated the Agent Hub listing for “{n}”",
+        "width_px": 320,
+        "available_px": 464
+      },
+      {
+        "name_sample": "release-crew",
+        "locale": "es",
+        "template": "Se actualizó la ficha de “{n}” en el Hub de agentes",
+        "width_px": 389,
+        "available_px": 464
+      },
+      {
+        "name_sample": "release-crew",
+        "locale": "es",
+        "template": "Se publicó “{n}” en el Hub de agentes",
+        "width_px": 309,
+        "available_px": 464
+      },
+      {
+        "name_sample": "Агент проверки",
+        "locale": "en",
+        "template": "Updated the Agent Hub listing for “{n}”",
+        "width_px": 345,
+        "available_px": 464
+      },
+      {
+        "name_sample": "Агент проверки",
+        "locale": "es",
+        "template": "Se actualizó la ficha de “{n}” en el Hub de agentes",
+        "width_px": 414,
+        "available_px": 464
+      },
+      {
+        "name_sample": "Агент проверки",
+        "locale": "es",
+        "template": "Se publicó “{n}” en el Hub de agentes",
+        "width_px": 334,
+        "available_px": 464
+      },
+      {
+        "name_sample": "代码审查助手",
+        "locale": "en",
+        "template": "Updated the Agent Hub listing for “{n}”",
+        "width_px": 330,
+        "available_px": 464
+      },
+      {
+        "name_sample": "代码审查助手",
+        "locale": "es",
+        "template": "Se actualizó la ficha de “{n}” en el Hub de agentes",
+        "width_px": 399,
+        "available_px": 464
+      },
+      {
+        "name_sample": "代码审查助手",
+        "locale": "es",
+        "template": "Se publicó “{n}” en el Hub de agentes",
+        "width_px": 319,
+        "available_px": 464
+      },
+      {
+        "name_sample": "Asistente de revisión de contratos y políticas internas",
+        "locale": "en",
+        "template": "Updated the Agent Hub listing for “{n}”",
+        "width_px": 574,
+        "available_px": 464
+      },
+      {
+        "name_sample": "Asistente de revisión de contratos y políticas internas",
+        "locale": "es",
+        "template": "Se actualizó la ficha de “{n}” en el Hub de agentes",
+        "width_px": 643,
+        "available_px": 464
+      },
+      {
+        "name_sample": "Asistente de revisión de contratos y políticas internas",
+        "locale": "es",
+        "template": "Se publicó “{n}” en el Hub de agentes",
+        "width_px": 563,
+        "available_px": 464
+      }
+    ],
+    "placeholder_about": [
+      {
+        "name_sample": "Revisor de código",
+        "value": "Cambia Revisor de código…",
+        "width_px": 136,
+        "narrowest_docked_content_px": 304
+      },
+      {
+        "name_sample": "Агент проверки",
+        "value": "Cambia Агент проверки…",
+        "width_px": 131,
+        "narrowest_docked_content_px": 304
+      },
+      {
+        "name_sample": "代码审查助手",
+        "value": "Cambia 代码审查助手…",
+        "width_px": 120,
+        "narrowest_docked_content_px": 304
+      },
+      {
+        "name_sample": "release-crew",
+        "value": "Cambia release-crew…",
+        "width_px": 113,
+        "narrowest_docked_content_px": 304
+      }
+    ],
+    "other_slots": [
+      {
+        "slot": "ui.agents.pages.add_manual.* : full-width ghost button in the 288px roster column",
+        "locale": "es",
+        "text_px": 107,
+        "icon_px": 16,
+        "padding_px": 16,
+        "required_px": 139,
+        "available_px": 288,
+        "note": "20-glyph label + 16px icon + the button's own padding, well inside the column"
+      },
+      {
+        "slot": "ui.common.actions.retrying : ghost sm retry button in a wrap-enabled status row",
+        "locale": "es",
+        "idle_button_px": 113,
+        "busy_button_px": 107,
+        "note": "the in-flight label is narrower than the idle one, so the state change cannot overflow the row"
+      },
+      {
+        "slot": "ui.agents.detail.read.show_all/show_less link button (intrinsic width)",
+        "locale": "es",
+        "show_all_px": 65,
+        "show_less_px": 76,
+        "note": "link buttons are intrinsic-width inside a prose column; the 48px figure in the sidecar is the measured English link box, not a cap"
+      }
+    ],
+    "receipt_variants": {
+      "participle_published_public": {
+        "text": "Publicado “Revisor de código” en el Hub de agentes",
+        "width_px": 336
+      },
+      "preterite_published_public": {
+        "text": "Se publicó “Revisor de código” en el Hub de agentes",
+        "width_px": 339
+      },
+      "preterite_republished": {
+        "text": "Se actualizó la ficha de “Revisor de código” en el Hub de agentes",
+        "width_px": 419
+      },
+      "delta_preterite_minus_participle_px": 3,
+      "dialog_header_content_px": 464
+    }
+  },
+  "width_measurement_script": {
+    "path": "/Users/damian/.local-operator/sessions/ed3e7c514150/scratchpad/measure_es_widths.py",
+    "sha256": "6c38e6731f219a74967e8d149ccac2a35cbe1aad30924388b26ceaebfe037a3f",
+    "language": "python3",
+    "source": "#!/usr/bin/env python3\n\"\"\"Measure the es/en strings under audit against their real containers.\n\nFont: the app's declared sans stack resolves to the macOS system UI face on this\nplatform (`--font-sans: system-ui, ...`), rendered here with HarfBuzz through\nhb-shape at /System/Library/Fonts/SFNS.ttf; counters use the bundled\nGeistMonoNerdFontMono-Regular.otf at text-mono-sm. Type sizes and paddings are\nread from the repo's own classes (text-meta 0.75rem, text-heading 1rem, button\nsize sm h-7/gap-1/px-2/[&_svg]:size-3.5, footer px-3, card p-4, grid\nminmax(17.5rem,1fr)). Output is one JSON document; nothing is asserted by hand.\n\"\"\"\nimport json\nimport subprocess\n\nSANS = \"/System/Library/Fonts/SFNS.ttf\"\nMONO = \"src/renderer/src/assets/fonts/GeistMonoNerdFontMono-Regular.otf\"\n\n\ndef width(text, size, font=SANS):\n\tproc = subprocess.run(\n\t\t[\n\t\t\t\"hb-shape\",\n\t\t\tf\"--font-size={size}\",\n\t\t\t\"--no-glyph-names\",\n\t\t\t\"--output-format=json\",\n\t\t\tfont,\n\t\t\ttext,\n\t\t],\n\t\tcapture_output=True,\n\t\ttext=True,\n\t\tcheck=True,\n\t)\n\treturn sum(glyph[\"ax\"] for glyph in json.loads(proc.stdout))\n\n\ndef button_sm(text, size=12, font=SANS, border=0):\n\t# h-7 gap-1 px-2, [&_svg]:size-3.5\n\treturn border + 8 + 14 + 4 + width(text, size, font) + 8\n\n\nout = {\n\t\"method\": {\n\t\t\"shaper\": \"hb-shape (HarfBuzz)\",\n\t\t\"sans\": SANS,\n\t\t\"mono\": MONO,\n\t\t\"type_sizes\": {\"text-meta\": 12, \"text-mono-sm\": 11, \"text-heading\": 16},\n\t\t\"containers\": {\n\t\t\t\"card_min_column_px\": 280,\n\t\t\t\"card_footer_content_px\": 256,\n\t\t\t\"card_provenance_content_px\": 248,\n\t\t\t\"dialog_lg_content_px\": 464,\n\t\t\t\"docked_composer_content_px\": 304,\n\t\t\t\"roster_column_px\": 288,\n\t\t},\n\t},\n\t\"labels\": {\n\t\t\"Get\": width(\"Get\", 12),\n\t\t\"Obtener\": width(\"Obtener\", 12),\n\t\t\"Descargar\": width(\"Descargar\", 12),\n\t\t\"Instalar\": width(\"Instalar\", 12),\n\t\t\"Obten_imperative\": width(\"Obtén\", 12),\n\t\t\"Show all\": width(\"Show all\", 12),\n\t\t\"Mostrar todo\": width(\"Mostrar todo\", 12),\n\t\t\"Show less\": width(\"Show less\", 12),\n\t\t\"Mostrar menos\": width(\"Mostrar menos\", 12),\n\t\t\"Add agent manually\": width(\"Add agent manually\", 12),\n\t\t\"Añadir agente a mano\": width(\"Añadir agente a mano\", 12),\n\t\t\"Add team manually\": width(\"Add team manually\", 12),\n\t\t\"Añadir equipo a mano\": width(\"Añadir equipo a mano\", 12),\n\t\t\"updated\": width(\"updated\", 12),\n\t\t\"actualizado\": width(\"actualizado\", 12),\n\t\t\"created\": width(\"created\", 12),\n\t\t\"creado\": width(\"creado\", 12),\n\t\t\"Trying…\": width(\"Trying…\", 12),\n\t\t\"Try again\": width(\"Try again\", 12),\n\t\t\"Volver a intentar\": width(\"Volver a intentar\", 12),\n\t\t\"Reintentando…\": width(\"Reintentando…\", 12),\n\t\t\"Describe what you want…\": width(\"Describe what you want…\", 12),\n\t\t\"Describe lo que quieres…\": width(\"Describe lo que quieres…\", 12),\n\t\t\"Ask for a change, or describe something new…\": width(\n\t\t\t\"Ask for a change, or describe something new…\", 12\n\t\t),\n\t\t\"Pide un cambio o describe algo nuevo…\": width(\n\t\t\t\"Pide un cambio o describe algo nuevo…\", 12\n\t\t),\n\t},\n\t\"card_footer_row\": [],\n\t\"provenance_line\": [],\n\t\"dialog_titles\": [],\n\t\"placeholder_about\": [],\n\t\"other_slots\": [],\n}\n\nfor count in (\"128\", \"1,840\"):\n\tcount_px = width(count, 11, MONO)\n\tlike = 8 + 14 + 4 + max(16, count_px) + 8\n\tdownloads = 4 + 14 + 4 + max(24, count_px) + 4\n\tgroup = like + 2 + like + downloads\n\tfor lang, label in ((\"en\", \"Get\"), (\"es\", \"Obtener\")):\n\t\trow = group + 8 + button_sm(label, border=2)\n\t\tout[\"card_footer_row\"].append(\n\t\t\t{\n\t\t\t\t\"counter_sample\": count,\n\t\t\t\t\"locale\": lang,\n\t\t\t\t\"row_px\": round(row, 1),\n\t\t\t\t\"available_px\": 256,\n\t\t\t\t\"slack_px\": round(256 - row, 1),\n\t\t\t}\n\t\t)\n\nfor author in (\"Radient Labs\", \"Equipo de plataforma\"):\n\tauthor_px = width(author, 12)\n\tfor lang, phrase in ((\"en\", \"updated 4 days ago\"), (\"es\", \"actualizado hace 4 días\")):\n\t\tout[\"provenance_line\"].append(\n\t\t\t{\n\t\t\t\t\"author_sample\": author,\n\t\t\t\t\"locale\": lang,\n\t\t\t\t\"line_px\": round(author_px + width(\" · \", 12) + width(phrase, 12), 1),\n\t\t\t\t\"available_px\": 248,\n\t\t\t}\n\t\t)\n\nfor name in (\n\t\"Revisor de código\",\n\t\"release-crew\",\n\t\"Агент проверки\",\n\t\"代码审查助手\",\n\t\"Asistente de revisión de contratos y políticas internas\",\n):\n\tfor lang, template in (\n\t\t(\"en\", 'Updated the Agent Hub listing for “{n}”'),\n\t\t(\"es\", 'Se actualizó la ficha de “{n}” en el Hub de agentes'),\n\t\t(\"es\", 'Se publicó “{n}” en el Hub de agentes'),\n\t):\n\t\tout[\"dialog_titles\"].append(\n\t\t\t{\n\t\t\t\t\"name_sample\": name,\n\t\t\t\t\"locale\": lang,\n\t\t\t\t\"template\": template,\n\t\t\t\t\"width_px\": round(width(template.replace(\"{n}\", name), 16), 1),\n\t\t\t\t\"available_px\": 464,\n\t\t\t}\n\t\t)\n\nfor name in (\"Revisor de código\", \"Агент проверки\", \"代码审查助手\", \"release-crew\"):\n\tout[\"placeholder_about\"].append(\n\t\t{\n\t\t\t\"name_sample\": name,\n\t\t\t\"value\": f\"Cambia {name}…\",\n\t\t\t\"width_px\": round(width(f\"Cambia {name}…\", 12), 1),\n\t\t\t\"narrowest_docked_content_px\": 304,\n\t\t}\n\t)\n\nout[\"other_slots\"] = [\n\t{\n\t\t\"slot\": \"ui.agents.pages.add_manual.* : full-width ghost button in the 288px roster column\",\n\t\t\"locale\": \"es\",\n\t\t\"text_px\": round(width(\"Añadir equipo a mano\", 12), 1),\n\t\t\"icon_px\": 16,\n\t\t\"padding_px\": 16,\n\t\t\"required_px\": round(width(\"Añadir equipo a mano\", 12) + 16 + 16, 1),\n\t\t\"available_px\": 288,\n\t\t\"note\": \"20-glyph label + 16px icon + the button's own padding, well inside the column\",\n\t},\n\t{\n\t\t\"slot\": \"ui.common.actions.retrying : ghost sm retry button in a wrap-enabled status row\",\n\t\t\"locale\": \"es\",\n\t\t\"idle_button_px\": round(button_sm(\"Volver a intentar\"), 1),\n\t\t\"busy_button_px\": round(button_sm(\"Reintentando…\"), 1),\n\t\t\"note\": \"the in-flight label is narrower than the idle one, so the state change cannot overflow the row\",\n\t},\n\t{\n\t\t\"slot\": \"ui.agents.detail.read.show_all/show_less link button (intrinsic width)\",\n\t\t\"locale\": \"es\",\n\t\t\"show_all_px\": round(width(\"Mostrar todo\", 12), 1),\n\t\t\"show_less_px\": round(width(\"Mostrar menos\", 12), 1),\n\t\t\"note\": \"link buttons are intrinsic-width inside a prose column; the 48px figure in the sidecar is the measured English link box, not a cap\",\n\t},\n]\n\nprint(json.dumps(out, ensure_ascii=False, indent=1))\n",
+    "note": "Executed in this session; its stdout is the widths-hb-shape machine check and the width_measurements object."
+  },
+  "receipt_variant_script": {
+    "path": "/Users/damian/.local-operator/sessions/ed3e7c514150/scratchpad/receipt_variants.py",
+    "sha256": "230f55cb67e389ebe5faee5d3e88001bf98e022961735b0e83afaadfe984bc18",
+    "language": "python3",
+    "source": "import json, subprocess\nSANS = \"/System/Library/Fonts/SFNS.ttf\"\ndef w(s, size=16):\n    out = subprocess.run([\"hb-shape\", f\"--font-size={size}\", \"--no-glyph-names\",\n                          \"--output-format=json\", SANS, s], capture_output=True, text=True, check=True)\n    return round(sum(g[\"ax\"] for g in json.loads(out.stdout)), 1)\nname = \"Revisor de código\"\nvariants = {\n    \"participle_published_public\": f\"Publicado “{name}” en el Hub de agentes\",\n    \"preterite_published_public\": f\"Se publicó “{name}” en el Hub de agentes\",\n    \"preterite_republished\": f\"Se actualizó la ficha de “{name}” en el Hub de agentes\",\n}\nresult = {k: {\"text\": v, \"width_px\": w(v)} for k, v in variants.items()}\nresult[\"delta_preterite_minus_participle_px\"] = round(\n    result[\"preterite_published_public\"][\"width_px\"] - result[\"participle_published_public\"][\"width_px\"], 1)\nresult[\"dialog_header_content_px\"] = 464\nprint(json.dumps(result, ensure_ascii=False, indent=1))\n",
+    "note": "Executed in this session; stdout is the receipt-variant-widths machine check and width_measurements.receipt_variants."
+  },
+  "machine_checks": [
+    {
+      "id": "hash-binding",
+      "command": "for ns in ui.agents.pages ui.agents.config ui.agents.detail ui.agents.upload ui.hub.pages ui.hub.teams ui.common.actions; do printf \"%-20s en=%s es=%s\\n\" \"$ns\" \"$(shasum -a 256 src/i18n/catalogues/en/$ns.json | cut -c1-8)\" \"$(shasum -a 256 src/i18n/catalogues/es/$ns.json | cut -c1-8)\"; done",
+      "exit_code": 0,
+      "stdout": "ui.agents.pages      en=e85765cc es=e9372146\nui.agents.config     en=5338f6e2 es=99feac21\nui.agents.detail     en=80877db4 es=08df1422\nui.agents.upload     en=52876ab5 es=624ab582\nui.hub.pages         en=c54d0aca es=822b694e\nui.hub.teams         en=4121cd4f es=4b813ab3\nui.common.actions    en=132f60c9 es=ddaeb34d\n",
+      "stderr": "",
+      "note": "Expected es prefixes from the task: e9372146 99feac21 08df1422 624ab582 822b694e 4b813ab3 ddaeb34d."
+    },
+    {
+      "id": "key-set-order-placeholders-icu",
+      "command": "python3 - <<'PY'\nimport json, re\nNS=['ui.agents.pages','ui.agents.config','ui.agents.detail','ui.agents.upload','ui.hub.pages','ui.hub.teams','ui.common.actions']\nPH=re.compile(r'\\{([A-Za-z0-9_]+)\\}')\nok=True\nfor ns in NS:\n    en=json.load(open(f'src/i18n/catalogues/en/{ns}.json'))\n    es=json.load(open(f'src/i18n/catalogues/es/{ns}.json'))\n    same=list(en)==list(es)\n    print(f'{ns}: en={len(en)} es={len(es)} key_order_and_set_identical={same}')\n    ok = ok and same\n    for k in en:\n        sv=es.get(k)\n        if not isinstance(sv,str) or not sv.strip():\n            ok=False; print('  EMPTY/MISSING',k); continue\n        if sorted(PH.findall(en[k]))!=sorted(PH.findall(sv)):\n            ok=False; print('  PLACEHOLDER MISMATCH',k,PH.findall(en[k]),PH.findall(sv))\n        for tok in re.findall(r'\\b(plural|select|selectordinal)\\b',en[k]):\n            if tok not in sv: ok=False; print('  ICU TOKEN LOST',k,tok)\nprint('RESULT:','PASS' if ok else 'FAIL')\nPY",
+      "exit_code": 0,
+      "stdout": "ui.agents.pages: en=30 es=30 key_order_and_set_identical=True\nui.agents.config: en=31 es=31 key_order_and_set_identical=True\nui.agents.detail: en=50 es=50 key_order_and_set_identical=True\nui.agents.upload: en=29 es=29 key_order_and_set_identical=True\nui.hub.pages: en=37 es=37 key_order_and_set_identical=True\nui.hub.teams: en=49 es=49 key_order_and_set_identical=True\nui.common.actions: en=51 es=51 key_order_and_set_identical=True\nRESULT: PASS\n",
+      "stderr": "",
+      "note": "JSON.parse succeeds for every file (json.load). None of the 25 messages carries plural/select/selectordinal in en, so no CLDR category set applies; the loop still proves no ICU structure was dropped."
+    },
+    {
+      "id": "typography",
+      "command": "python3 - <<'PY'\nimport json\nNS=['ui.agents.pages','ui.agents.config','ui.agents.detail','ui.agents.upload','ui.hub.pages','ui.hub.teams','ui.common.actions']\nkeys=json.load(open('agents-literals-2-keys.json'))['keys']\nviol=[]; ell=[]; cps={}\nfor item in keys:\n    ns=item['namespace']; v=json.load(open(f'src/i18n/catalogues/es/{ns}.json'))[item['key']]\n    if '...' in v: viol.append((item['key'],'three periods'))\n    if '\"' in v: viol.append((item['key'],'ASCII double quote'))\n    if chr(39) in v: viol.append((item['key'],'ASCII apostrophe'))\n    if '\\u2026' in v: ell.append(item['key'].split('.')[-1])\n    for c in v:\n        if ord(c)>127: cps[c]=cps.get(c,0)+1\nprint('ASCII-quote / three-period breaches:', viol if viol else 'none')\nprint('values carrying U+2026:', ', '.join(ell))\nprint('non-ASCII code points in the 25 values:', ' '.join(sorted(f'U+{ord(c):04X}' for c in cps)))\nPY",
+      "exit_code": 0,
+      "stdout": "ASCII-quote / three-period breaches: none\nvalues carrying U+2026: about, docked, hero, retrying\nnon-ASCII code points in the 25 values: U+00BF U+00E9 U+00F1 U+00F3 U+201C U+201D U+2026\n",
+      "stderr": ""
+    },
+    {
+      "id": "pre-existing-bytes-vs-parent",
+      "command": "python3 - <<'PY'\nimport json, subprocess\nNS=['ui.agents.pages','ui.agents.config','ui.agents.detail','ui.agents.upload','ui.hub.pages','ui.hub.teams','ui.common.actions']\nnew={k['key'] for k in json.load(open('agents-literals-2-keys.json'))['keys']}\ntotal=0\nfor ns in NS:\n    p=f'src/i18n/catalogues/es/{ns}.json'\n    prev=json.loads(subprocess.run(['git','show',f'73af0b6855:{p}'],capture_output=True,text=True,check=True).stdout)\n    cur=json.load(open(p))\n    changed=[k for k,v in prev.items() if cur.get(k)!=v]\n    added=[k for k in cur if k not in prev]\n    unexpected=[k for k in added if k not in new]\n    print(f'{ns}: parent={len(prev)} current={len(cur)} preexisting_changed={len(changed)} added={len(added)} added_are_exactly_new_keys={not unexpected}')\n    total += len(changed) + len(unexpected)\nprint('RESULT:','PASS' if total==0 else 'FAIL')\nPY",
+      "exit_code": 0,
+      "stdout": "ui.agents.pages: parent=22 current=30 preexisting_changed=0 added=8 added_are_exactly_new_keys=True\nui.agents.config: parent=28 current=31 preexisting_changed=0 added=3 added_are_exactly_new_keys=True\nui.agents.detail: parent=47 current=50 preexisting_changed=0 added=3 added_are_exactly_new_keys=True\nui.agents.upload: parent=23 current=29 preexisting_changed=0 added=6 added_are_exactly_new_keys=True\nui.hub.pages: parent=35 current=37 preexisting_changed=0 added=2 added_are_exactly_new_keys=True\nui.hub.teams: parent=47 current=49 preexisting_changed=0 added=2 added_are_exactly_new_keys=True\nui.common.actions: parent=50 current=51 preexisting_changed=0 added=1 added_are_exactly_new_keys=True\nRESULT: PASS\n",
+      "stderr": "",
+      "note": "Byte-equality is proved by comparing parsed values of the parent commit's file with the current file; only the 25 added keys differ."
+    },
+    {
+      "id": "locale-parity-test",
+      "command": "set -o pipefail; node --test scripts/i18n/locale-parity.test.mjs 2>&1 | tail -8",
+      "exit_code": 0,
+      "stdout": "ℹ tests 44\nℹ suites 0\nℹ pass 44\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 1553.851417\n",
+      "stderr": "",
+      "note": "pipefail so the exit code is node's, not tail's."
+    },
+    {
+      "id": "coverage-check",
+      "command": "node scripts/i18n/check-coverage.mjs; echo EXIT=$?",
+      "exit_code": 0,
+      "stdout": "coverage-check: ok — 7 gated language(s) over 94 namespace(s); 0 allowed key(s) remain across 0 pair(s) (shrink-only; see i18n/coverage-allowance.json).\nEXIT=0\n",
+      "stderr": ""
+    },
+    {
+      "id": "ledger-check",
+      "command": "node scripts/i18n/ledger-check.mjs > /Users/damian/.local-operator/sessions/ed3e7c514150/scratchpad/ledger-check.out 2>&1; s=$?; echo \"ledger-check exit=$s\"; echo -n 'es finding lines: '; grep -cE '^ledger-check: es/' /Users/damian/.local-operator/sessions/ed3e7c514150/scratchpad/ledger-check.out; grep -E '^ledger-check: es/ui.agents.pages' /Users/damian/.local-operator/sessions/ed3e7c514150/scratchpad/ledger-check.out; tail -1 /Users/damian/.local-operator/sessions/ed3e7c514150/scratchpad/ledger-check.out; exit $s",
+      "exit_code": 1,
+      "stdout": "ledger-check exit=1\nes finding lines: 21\nledger-check: es/ui.agents.pages: stale source_sha256 (ledger 38a713b6cc4a…, file e85765ccb25a…) — the English source moved since translation\nledger-check: es/ui.agents.pages: stale target_sha256 (ledger ae902f2c0216…, file e93721466daa…) — the translated file changed since it was audited\nledger-check: es/ui.agents.pages: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file\nledger-check: FAILED — 147 finding(s) across 658 ledger entr(ies)\n",
+      "stderr": "",
+      "note": "The nonzero code is the expected pending state: the ledger records the pre-translation target hashes for all seven es namespaces, so corpus-wide ledger-check fails (147 findings across 658 entries) until ledger-assemble records this audit. The excerpt is the es slice; nothing is hidden."
+    },
+    {
+      "id": "widths-hb-shape",
+      "command": "python3 \"/Users/damian/.local-operator/sessions/ed3e7c514150/scratchpad/measure_es_widths.py\"  # HarfBuzz via hb-shape, SF Pro + bundled Geist Mono",
+      "exit_code": 0,
+      "stdout": "{\n \"method\": {\n  \"shaper\": \"hb-shape (HarfBuzz)\",\n  \"sans\": \"/System/Library/Fonts/SFNS.ttf\",\n  \"mono\": \"src/renderer/src/assets/fonts/GeistMonoNerdFontMono-Regular.otf\",\n  \"type_sizes\": {\n   \"text-meta\": 12,\n   \"text-mono-sm\": 11,\n   \"text-heading\": 16\n  },\n  \"containers\": {\n   \"card_min_column_px\": 280,\n   \"card_footer_content_px\": 256,\n   \"card_provenance_content_px\": 248,\n   \"dialog_lg_content_px\": 464,\n   \"docked_composer_content_px\": 304,\n   \"roster_column_px\": 288\n  }\n },\n \"labels\": {\n  \"Get\": 18,\n  \"Obtener\": 42,\n  \"Descargar\": 53,\n  \"Instalar\": 37,\n  \"Obten_imperative\": 32,\n  \"Show all\": 40,\n  \"Mostrar todo\": 65,\n  \"Show less\": 50,\n  \"Mostrar menos\": 76,\n  \"Add agent manually\": 99,\n  \"Añadir agente a mano\": 108,\n  \"Add team manually\": 96,\n  \"Añadir equipo a mano\": 107,\n  \"updated\": 43,\n  \"actualizado\": 57,\n  \"created\": 39,\n  \"creado\": 35,\n  \"Trying…\": 38,\n  \"Try again\": 45,\n  \"Volver a intentar\": 79,\n  \"Reintentando…\": 73,\n  \"Describe what you want…\": 126,\n  \"Describe lo que quieres…\": 122,\n  \"Ask for a change, or describe something new…\": 226,\n  \"Pide un cambio o describe algo nuevo…\": 191\n },\n \"card_footer_row\": [\n  {\n   \"counter_sample\": \"128\",\n   \"locale\": \"en\",\n   \"row_px\": 224,\n   \"available_px\": 256,\n   \"slack_px\": 32\n  },\n  {\n   \"counter_sample\": \"128\",\n   \"locale\": \"es\",\n   \"row_px\": 248,\n   \"available_px\": 256,\n   \"slack_px\": 8\n  },\n  {\n   \"counter_sample\": \"1,840\",\n   \"locale\": \"en\",\n   \"row_px\": 263,\n   \"available_px\": 256,\n   \"slack_px\": -7\n  },\n  {\n   \"counter_sample\": \"1,840\",\n   \"locale\": \"es\",\n   \"row_px\": 287,\n   \"available_px\": 256,\n   \"slack_px\": -31\n  }\n ],\n \"provenance_line\": [\n  {\n   \"author_sample\": \"Radient Labs\",\n   \"locale\": \"en\",\n   \"line_px\": 172,\n   \"available_px\": 248\n  },\n  {\n   \"author_sample\": \"Radient Labs\",\n   \"locale\": \"es\",\n   \"line_px\": 187,\n   \"available_px\": 248\n  },\n  {\n   \"author_sample\": \"Equipo de plataforma\",\n   \"locale\": \"en\",\n   \"line_px\": 213,\n   \"available_px\": 248\n  },\n  {\n   \"author_sample\": \"Equipo de plataforma\",\n   \"locale\": \"es\",\n   \"line_px\": 228,\n   \"available_px\": 248\n  }\n ],\n \"dialog_titles\": [\n  {\n   \"name_sample\": \"Revisor de código\",\n   \"locale\": \"en\",\n   \"template\": \"Updated the Agent Hub listing for “{n}”\",\n   \"width_px\": 350,\n   \"available_px\": 464\n  },\n  {\n   \"name_sample\": \"Revisor de código\",\n   \"locale\": \"es\",\n   \"template\": \"Se actualizó la ficha de “{n}” en el Hub de agentes\",\n   \"width_px\": 419,\n   \"available_px\": 464\n  },\n  {\n   \"name_sample\": \"Revisor de código\",\n   \"locale\": \"es\",\n   \"template\": \"Se publicó “{n}” en el Hub de agentes\",\n   \"width_px\": 339,\n   \"available_px\": 464\n  },\n  {\n   \"name_sample\": \"release-crew\",\n   \"locale\": \"en\",\n   \"template\": \"Updated the Agent Hub listing for “{n}”\",\n   \"width_px\": 320,\n   \"available_px\": 464\n  },\n  {\n   \"name_sample\": \"release-crew\",\n   \"locale\": \"es\",\n   \"template\": \"Se actualizó la ficha de “{n}” en el Hub de agentes\",\n   \"width_px\": 389,\n   \"available_px\": 464\n  },\n  {\n   \"name_sample\": \"release-crew\",\n   \"locale\": \"es\",\n   \"template\": \"Se publicó “{n}” en el Hub de agentes\",\n   \"width_px\": 309,\n   \"available_px\": 464\n  },\n  {\n   \"name_sample\": \"Агент проверки\",\n   \"locale\": \"en\",\n   \"template\": \"Updated the Agent Hub listing for “{n}”\",\n   \"width_px\": 345,\n   \"available_px\": 464\n  },\n  {\n   \"name_sample\": \"Агент проверки\",\n   \"locale\": \"es\",\n   \"template\": \"Se actualizó la ficha de “{n}” en el Hub de agentes\",\n   \"width_px\": 414,\n   \"available_px\": 464\n  },\n  {\n   \"name_sample\": \"Агент проверки\",\n   \"locale\": \"es\",\n   \"template\": \"Se publicó “{n}” en el Hub de agentes\",\n   \"width_px\": 334,\n   \"available_px\": 464\n  },\n  {\n   \"name_sample\": \"代码审查助手\",\n   \"locale\": \"en\",\n   \"template\": \"Updated the Agent Hub listing for “{n}”\",\n   \"width_px\": 330,\n   \"available_px\": 464\n  },\n  {\n   \"name_sample\": \"代码审查助手\",\n   \"locale\": \"es\",\n   \"template\": \"Se actualizó la ficha de “{n}” en el Hub de agentes\",\n   \"width_px\": 399,\n   \"available_px\": 464\n  },\n  {\n   \"name_sample\": \"代码审查助手\",\n   \"locale\": \"es\",\n   \"template\": \"Se publicó “{n}” en el Hub de agentes\",\n   \"width_px\": 319,\n   \"available_px\": 464\n  },\n  {\n   \"name_sample\": \"Asistente de revisión de contratos y políticas internas\",\n   \"locale\": \"en\",\n   \"template\": \"Updated the Agent Hub listing for “{n}”\",\n   \"width_px\": 574,\n   \"available_px\": 464\n  },\n  {\n   \"name_sample\": \"Asistente de revisión de contratos y políticas internas\",\n   \"locale\": \"es\",\n   \"template\": \"Se actualizó la ficha de “{n}” en el Hub de agentes\",\n   \"width_px\": 643,\n   \"available_px\": 464\n  },\n  {\n   \"name_sample\": \"Asistente de revisión de contratos y políticas internas\",\n   \"locale\": \"es\",\n   \"template\": \"Se publicó “{n}” en el Hub de agentes\",\n   \"width_px\": 563,\n   \"available_px\": 464\n  }\n ],\n \"placeholder_about\": [\n  {\n   \"name_sample\": \"Revisor de código\",\n   \"value\": \"Cambia Revisor de código…\",\n   \"width_px\": 136,\n   \"narrowest_docked_content_px\": 304\n  },\n  {\n   \"name_sample\": \"Агент проверки\",\n   \"value\": \"Cambia Агент проверки…\",\n   \"width_px\": 131,\n   \"narrowest_docked_content_px\": 304\n  },\n  {\n   \"name_sample\": \"代码审查助手\",\n   \"value\": \"Cambia 代码审查助手…\",\n   \"width_px\": 120,\n   \"narrowest_docked_content_px\": 304\n  },\n  {\n   \"name_sample\": \"release-crew\",\n   \"value\": \"Cambia release-crew…\",\n   \"width_px\": 113,\n   \"narrowest_docked_content_px\": 304\n  }\n ],\n \"other_slots\": [\n  {\n   \"slot\": \"ui.agents.pages.add_manual.* : full-width ghost button in the 288px roster column\",\n   \"locale\": \"es\",\n   \"text_px\": 107,\n   \"icon_px\": 16,\n   \"padding_px\": 16,\n   \"required_px\": 139,\n   \"available_px\": 288,\n   \"note\": \"20-glyph label + 16px icon + the button's own padding, well inside the column\"\n  },\n  {\n   \"slot\": \"ui.common.actions.retrying : ghost sm retry button in a wrap-enabled status row\",\n   \"locale\": \"es\",\n   \"idle_button_px\": 113,\n   \"busy_button_px\": 107,\n   \"note\": \"the in-flight label is narrower than the idle one, so the state change cannot overflow the row\"\n  },\n  {\n   \"slot\": \"ui.agents.detail.read.show_all/show_less link button (intrinsic width)\",\n   \"locale\": \"es\",\n   \"show_all_px\": 65,\n   \"show_less_px\": 76,\n   \"note\": \"link buttons are intrinsic-width inside a prose column; the 48px figure in the sidecar is the measured English link box, not a cap\"\n  }\n ]\n}\n",
+      "stderr": "",
+      "note": "The stdout is the JSON document also embedded as width_measurements (byte-identical); the script source is embedded as width_measurement_script."
+    },
+    {
+      "id": "receipt-variant-widths",
+      "command": "python3 \"/Users/damian/.local-operator/sessions/ed3e7c514150/scratchpad/receipt_variants.py\"",
+      "exit_code": 0,
+      "stdout": "{\n \"participle_published_public\": {\n  \"text\": \"Publicado “Revisor de código” en el Hub de agentes\",\n  \"width_px\": 336\n },\n \"preterite_published_public\": {\n  \"text\": \"Se publicó “Revisor de código” en el Hub de agentes\",\n  \"width_px\": 339\n },\n \"preterite_republished\": {\n  \"text\": \"Se actualizó la ficha de “Revisor de código” en el Hub de agentes\",\n  \"width_px\": 419\n },\n \"delta_preterite_minus_participle_px\": 3,\n \"dialog_header_content_px\": 464\n}\n",
+      "stderr": "",
+      "note": "The three receipt constructions at 16px with the sample name; underpins ES-AL-1 evidence."
+    }
+  ],
+  "limitations": [
+    "Static catalogue audit: no browser, no app build, no rendered frame, no native run. Fit numbers are HarfBuzz advance widths in the app's declared type sizes and fonts against the containers read from the components, not pixels from a driven frame; QA should confirm the card footer at the 280px minimum column.",
+    "No native-speaker sign-off is claimed; the verdict is this session's independent read.",
+    "No translation or MT service was used to compare or back-translate anything; every judgement is reasoning about the source, the context sidecar and shipped es siblings.",
+    "ledger-check currently FAILS on es for all seven namespaces because the ledger still records the pre-translation target hashes; that is the expected pending state until ledger-assemble records this audit. It is quoted as context, not as a passing check."
+  ]
+}

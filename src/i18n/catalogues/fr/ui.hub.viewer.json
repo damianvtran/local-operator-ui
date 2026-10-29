@@ -1,0 +1,12 @@
+{
+	"ui.hub.viewer.favourite": "Ajouter l’agent aux favoris",
+	"ui.hub.viewer.favourite_signed_out": "Connectez-vous à Radient pour ajouter des agents aux favoris",
+	"ui.hub.viewer.favourite_unavailable": "État des favoris indisponible",
+	"ui.hub.viewer.favourite_unknown": "Vos favoris n’ont pas pu être lus ; cet agent n’est donc pas marqué comme retiré de vos favoris.",
+	"ui.hub.viewer.like": "Aimer l’agent",
+	"ui.hub.viewer.like_signed_out": "Connectez-vous à Radient pour aimer des agents",
+	"ui.hub.viewer.like_unavailable": "État des j’aime indisponible",
+	"ui.hub.viewer.like_unknown": "Vos j’aime n’ont pas pu être lus ; cet agent n’est donc pas marqué comme non aimé.",
+	"ui.hub.viewer.unfavourite": "Retirer l’agent des favoris",
+	"ui.hub.viewer.unlike": "Ne plus aimer l’agent"
+}

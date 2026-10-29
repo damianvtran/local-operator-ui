@@ -39,6 +39,8 @@ interface ApprovalsCardApi {
 
 interface ApprovalsCardBridge {
 	setModel(model: ApprovalsCardModel): void;
+	/** Host-only pull through executeJavaScript; not a renderer IPC channel. */
+	measure(): number;
 }
 
 declare global {
@@ -49,9 +51,34 @@ declare global {
 }
 
 const params = new URLSearchParams(window.location.search);
-// The URL values are the first paint only; the model owns both once it lands.
-if (params.get("theme") === "light") {
-	document.documentElement.dataset.theme = "localOperatorLight";
+/*
+ * THE FIRST PAINT PAINTS THE APP'S EXACT PALETTE. This document is created and
+ * loaded by the controller before any model exists, so a theme-only URL painted
+ * the document's own default (`localOperatorDark`) and corrected only once
+ * `setModel` landed — the flash the operator reported. `palette` is the same
+ * name the model will carry, so the first paint and the model paint agree; the
+ * model stays authoritative afterwards, and `theme` stays the mode fallback.
+ *
+ * THE STYLESHEET IS THE ONLY AUTHORITY ON WHICH NAMES EXIST. A name with no
+ * `[data-theme="…"]` block defines no role, so the card would paint unstyled;
+ * the requested name is therefore applied and then verified by reading one
+ * generated role, falling back to the mode default when it is unset. Module
+ * scripts run after the blocking stylesheets have loaded, which is why this
+ * read sees the stylesheet rather than an empty document.
+ */
+const modeDefault =
+	params.get("theme") === "light" ? "localOperatorLight" : "localOperatorDark";
+document.documentElement.dataset.theme = modeDefault;
+const requestedPalette = params.get("palette");
+if (requestedPalette) {
+	document.documentElement.dataset.theme = requestedPalette;
+	const defined = getComputedStyle(document.documentElement)
+		.getPropertyValue("--lo-elevated")
+		.trim();
+	if (defined === "") {
+		// Unknown name: the generated stylesheet has no block for it.
+		document.documentElement.dataset.theme = modeDefault;
+	}
 }
 if (params.get("opaque") === "1") {
 	document.documentElement.dataset.opaque = "1";
@@ -87,6 +114,28 @@ const cardBody = document.querySelector(".card-body");
 let model: ApprovalsCardModel | null = null;
 let localView: "request" | "list" = "request";
 let lastEntryId: string | null = null;
+/**
+ * THE DECISIONS ARE INERT UNTIL THIS INSTANT (U3). When the request on screen
+ * changes UNDER the user (withdrawn, expired, dismissed: the controller's pick
+ * moved, not the user's own list selection), the card repaints the next request
+ * in place in a few milliseconds with every button live. A click aimed at the
+ * request the user had read then granted a durable scope for a site they never
+ * saw (measured: a 724 ms click recorded the queued site). The sequence number
+ * does not help, because the model carrying the new request is pushed BEFORE the
+ * click, so the click carries the new `seq`. The only defence that adds no
+ * channel and widens no host validation is not to let a decision leave the
+ * document for a short bounded window after the swap: long enough for a pointer
+ * already travelling to land on nothing, short enough not to feel broken to
+ * someone who reads the new site first.
+ */
+let inertUntil = 0;
+const INERT_MS = 700;
+/** Characters of the requester label the headline shows (D-2). */
+const REQUESTER_MAX = 48;
+/** Whether the previous render painted a request (a hidden card is not a swap). */
+let lastShown = false;
+let inertTimer: ReturnType<typeof setTimeout> | null = null;
+const isInert = (): boolean => Date.now() < inertUntil;
 /** A row the operator picked in the queue list; overrides the controller's pick. */
 let selectedEntryId: string | null = null;
 
@@ -119,22 +168,152 @@ function expiringText(expiresAt: number): string {
 	});
 }
 
-function setGloss(text: string): void {
-	if (glossNode) glossNode.textContent = text;
+/** Each decision button's own gloss sentence, so the tallest can be reserved. */
+const glossFor = new WeakMap<HTMLButtonElement, string>();
+
+let glossOwner: HTMLButtonElement | null = null;
+
+/** Only real overflow adds a keyboard stop; no extra stop for a short gloss. */
+function syncGlossAccess(): void {
+	if (!glossNode) return;
+	const overflowing =
+		!requestView?.hidden &&
+		glossNode.clientHeight > 0 &&
+		glossNode.scrollHeight > glossNode.clientHeight + 1;
+	glossNode.tabIndex = overflowing ? 0 : -1;
+	glossNode.dataset.overflow = String(overflowing);
+	glossNode.setAttribute("role", "region");
+	glossNode.setAttribute("aria-label", glossOwner?.textContent ?? "");
 }
+
+function setGloss(text: string, owner: HTMLButtonElement): void {
+	if (!glossNode) return;
+	// Once entered, the explanation belongs to the chosen scope. A stray hover
+	// on another decision must not replace its consequences while it is read.
+	if (document.activeElement === glossNode) return;
+	glossOwner = owner;
+	glossNode.textContent = text;
+	glossNode.scrollTop = 0;
+	syncGlossAccess();
+}
+
+function wireGloss(button: HTMLButtonElement, text: string): void {
+	glossFor.set(button, text);
+	button.setAttribute("aria-describedby", "approvals-gloss");
+	button.onmouseenter = () => setGloss(text, button);
+	button.onfocus = () => setGloss(text, button);
+	button.onkeydown = (event) => {
+		// The gloss precedes scoped decisions in DOM order. Route forward Tab
+		// through THAT decision's explanation when it overflows, rather than
+		// forcing users past other scopes that replace the selected text (R3-2).
+		if (event.key !== "Tab" || event.shiftKey) return;
+		// A pointer may have hovered a different scope since this button gained
+		// focus. Keyboard entry must describe the button being left, not that hover.
+		setGloss(text, button);
+		syncGlossAccess();
+		if (glossNode?.tabIndex !== 0) return;
+		event.preventDefault();
+		glossNode.focus();
+	};
+}
+
+// A bounded, named scrollport needs an actual keyboard path to its end, not
+// merely a tabindex. Tab continues after the scope whose text was read; reverse
+// Tab returns to that scope. Neither route changes the decision payload.
+glossNode?.addEventListener("keydown", (event) => {
+	if (!glossNode) return;
+	if (event.key === "Tab" && glossOwner) {
+		const buttons = [
+			allowOnceNode,
+			...(secondaryNode?.querySelectorAll("button") ?? []),
+		];
+		const index = buttons.indexOf(glossOwner);
+		const next = event.shiftKey
+			? glossOwner
+			: (buttons[index + 1] ?? reviewNode);
+		if (next) {
+			event.preventDefault();
+			next.focus();
+		}
+		return;
+	}
+	const maximum = Math.max(0, glossNode.scrollHeight - glossNode.clientHeight);
+	let target: number;
+	switch (event.key) {
+		case "End":
+			target = maximum;
+			break;
+		case "Home":
+			target = 0;
+			break;
+		case "ArrowDown":
+			target = glossNode.scrollTop + 16;
+			break;
+		case "ArrowUp":
+			target = glossNode.scrollTop - 16;
+			break;
+		case "PageDown":
+			target = glossNode.scrollTop + glossNode.clientHeight;
+			break;
+		case "PageUp":
+			target = glossNode.scrollTop - glossNode.clientHeight;
+			break;
+		default:
+			return;
+	}
+	event.preventDefault();
+	glossNode.scrollTop = Math.max(0, Math.min(maximum, target));
+});
 
 function action(
 	label: string,
 	onClick: () => void,
-	onGloss: () => void,
+	gloss: string,
 ): HTMLButtonElement {
 	const button = document.createElement("button");
 	button.type = "button";
 	button.textContent = label;
+	wireGloss(button, gloss);
 	button.addEventListener("click", onClick);
-	button.addEventListener("mouseenter", onGloss);
-	button.addEventListener("focus", onGloss);
 	return button;
+}
+
+/**
+ * RESERVE THE TALLEST GLOSS (Q1). The one gloss line follows hover and focus, and
+ * the "Don't allow" sentence wraps to two lines where the others take one. Nothing
+ * re-measures on a hover, so the card grew inside a native view that stayed put:
+ * the footer covered the lowest decision (measured: overdraw 9) and every button
+ * slid 15 px under the pointer, so a click landed in the gap. The host re-measures
+ * the tallest sentence at the real width after paint.
+ * It becomes a SHRINKABLE flex basis, never a hard minimum: at the native cap
+ * the gloss scrolls internally rather than pushing denial underneath the footer.
+ * Hover changes only text, not this basis, so the decision targets stay put.
+ */
+let glossTexts: string[] = [];
+function reserveGloss(): void {
+	if (!glossNode) return;
+	glossNode.style.flexBasis = "";
+	glossNode.style.flexShrink = "0";
+	// A hidden view or the provisional zero-width child reports a height that is
+	// not the card's: reserve nothing there; the next render, view switch or
+	// resize does it at the real width.
+	if (glossNode.getBoundingClientRect().width <= 0) {
+		glossNode.style.flexShrink = "";
+		return;
+	}
+	const current = glossNode.textContent;
+	const scrollTop = glossNode.scrollTop;
+	let tallest = 0;
+	for (const text of glossTexts) {
+		glossNode.textContent = text;
+		tallest = Math.max(tallest, glossNode.getBoundingClientRect().height);
+	}
+	glossNode.textContent = current;
+	if (tallest > 0) glossNode.style.flexBasis = `${Math.ceil(tallest)}px`;
+	glossNode.style.flexShrink = "";
+	// Measuring shorter alternatives can clamp the scroll position to zero.
+	// Restore the reader's place after the selected explanation is back.
+	glossNode.scrollTop = scrollTop;
 }
 
 function dismiss(): void {
@@ -159,6 +338,7 @@ function sendDecision(decision: ApprovalsCardDecision): void {
 	if (!model) return;
 	const request = shownRequest();
 	if (!request) return;
+	if (isInert()) return;
 	window.approvalsCard?.decide({
 		seq: model.seq,
 		entryId: request.entryId,
@@ -182,22 +362,14 @@ function renderSecondary(request: ApprovalsCardRequest): void {
 		action(
 			t("ui.browser.browser_consent_request.allow_until_the_app_quits"),
 			() => sendDecision("session"),
-			() =>
-				setGloss(
-					t(
-						"ui.browser.browser_consent_request.this_site_for_this_run_only_and",
-					),
-				),
+			t("ui.browser.browser_consent_request.this_site_for_this_run_only_and"),
 		),
 		action(
 			t("ui.browser.browser_consent_request.always_allow_this_site"),
 			() => sendDecision("site"),
-			() =>
-				setGloss(
-					t(
-						"ui.browser.browser_consent_request.kept_until_you_revoke_it_and_shared",
-					),
-				),
+			t(
+				"ui.browser.browser_consent_request.kept_until_you_revoke_it_and_shared",
+			),
 		),
 	];
 	if (request.broadKey) {
@@ -205,10 +377,7 @@ function renderSecondary(request: ApprovalsCardRequest): void {
 			action(
 				`${t("ui.browser.browser_consent_request.allow_all_of")}${request.broadKey}`,
 				() => sendDecision("domain"),
-				() =>
-					setGloss(
-						`${t("ui.browser.browser_consent_request.every_site_under")}${request.broadKey}${t("ui.browser.browser_consent_request.kept_until_you_revoke_it_shared_with")}`,
-					),
+				`${t("ui.browser.browser_consent_request.every_site_under")}${request.broadKey}${t("ui.browser.browser_consent_request.kept_until_you_revoke_it_shared_with")}`,
 			),
 		);
 	}
@@ -216,12 +385,9 @@ function renderSecondary(request: ApprovalsCardRequest): void {
 		action(
 			t("ui.browser.browser_consent_request.don_t_allow"),
 			() => sendDecision("deny"),
-			() =>
-				setGloss(
-					t(
-						"ui.browser.browser_consent_request.the_agent_stops_asking_about_this_site",
-					),
-				),
+			t(
+				"ui.browser.browser_consent_request.the_agent_stops_asking_about_this_site",
+			),
 		),
 	);
 	secondaryNode.append(...buttons);
@@ -290,7 +456,25 @@ function setView(view: "request" | "list"): void {
 	if (listView) listView.hidden = view !== "list";
 	if (reviewNode) reviewNode.hidden = view !== "request";
 	if (backNode) backNode.hidden = view !== "list";
-	setTimeout(syncScrim, 0);
+	if (view === "request") reserveGloss();
+	setTimeout(() => {
+		syncScrim();
+		syncGlossAccess();
+	}, 0);
+}
+
+/** Refresh only inert/expired state, without replacing the focused DOM nodes. */
+function syncDecisionAvailability(): void {
+	if (!model) return;
+	const request = shownRequest();
+	const disabled =
+		model.busy ||
+		isInert() ||
+		(request ? (minutesLeft(request.expiresAt) ?? 1) <= 0 : true);
+	if (allowOnceNode) allowOnceNode.disabled = disabled;
+	for (const button of secondaryNode?.querySelectorAll("button") ?? []) {
+		button.disabled = disabled;
+	}
 }
 
 function render(): void {
@@ -302,6 +486,19 @@ function render(): void {
 	 * queue) and painted it again (Q-S6b-1). Reset on every controller pick, and
 	 * clear on an empty pick, so the painted request always follows main. */
 	if (model.request && model.request.entryId !== lastEntryId) {
+		// Inert only when the pick moved under a card that was already showing a
+		// request. The first request after a hide is not a swap, and the user's own
+		// list selection (`selectedEntryId`) never goes through here.
+		if (lastEntryId !== null && lastShown) {
+			inertUntil = Date.now() + INERT_MS;
+			if (inertTimer) clearTimeout(inertTimer);
+			inertTimer = setTimeout(() => {
+				inertTimer = null;
+				// Re-arming is not a repaint: replacing list rows here also drops
+				// focus even if model.focus has already been consumed (R2-1).
+				syncDecisionAvailability();
+			}, INERT_MS + 20);
+		}
 		lastEntryId = model.request.entryId;
 		selectedEntryId = null;
 		// A new request always opens on the request view, never on the list a
@@ -312,8 +509,20 @@ function render(): void {
 	const request = shownRequest();
 	if (request) {
 		if (requesterNode) {
-			requesterNode.textContent =
+			const label =
 				request.requester || t("ui.browser.browser_consent_request.an_agent");
+			// BOUND THE HEADLINE (D-2). The requester is a conversation title: arbitrary
+			// text the model caps at 256 characters. Unbounded, it wraps to many lines
+			// at the narrowest width and pushes the decisions past the 480 DIP height
+			// cap, where the sticky footer covers the lowest one (measured overdraw 2.1
+			// at 264, 98 characters). The question is "which site", not "which title",
+			// so the headline is clipped and the full label stays reachable as a tooltip.
+			const clipped = [...label];
+			requesterNode.textContent =
+				clipped.length > REQUESTER_MAX
+					? `${clipped.slice(0, REQUESTER_MAX - 1).join("")}\u2026`
+					: label;
+			requesterNode.title = clipped.length > REQUESTER_MAX ? label : "";
 		}
 		if (leadNode) {
 			leadNode.textContent = t(
@@ -330,16 +539,25 @@ function render(): void {
 			// (round-2 minor): an expired request cannot be answered from a stale
 			// card.
 			allowOnceNode.disabled =
-				model.busy || (minutesLeft(request.expiresAt) ?? 1) <= 0;
+				model.busy || isInert() || (minutesLeft(request.expiresAt) ?? 1) <= 0;
 			allowOnceNode.onclick = () => sendDecision("once");
-			setGloss(
-				t(
-					"ui.browser.browser_consent_request.one_navigation_for_that_conversation_up_to",
-				),
+			const primaryGloss = t(
+				"ui.browser.browser_consent_request.one_navigation_for_that_conversation_up_to",
 			);
+			wireGloss(allowOnceNode, primaryGloss);
+			setGloss(primaryGloss, allowOnceNode);
 		}
 		renderSecondary(request);
+		glossTexts = [
+			t(
+				"ui.browser.browser_consent_request.one_navigation_for_that_conversation_up_to",
+			),
+			...[...(secondaryNode?.querySelectorAll("button") ?? [])].map(
+				(button) => glossFor.get(button) ?? "",
+			),
+		];
 	}
+	lastShown = request !== null;
 	if (reviewNode) {
 		// The count says what the list holds (D9), and the accessible name says
 		// what pressing it does, so the visible status text is still a known
@@ -353,19 +571,23 @@ function render(): void {
 			t("ui.browser.browser_approvals_tray.open_approvals"),
 		);
 		reviewNode.disabled = model.busy;
-		reviewNode.onclick = () => setView("list");
+		reviewNode.onclick = () => {
+			setView("list");
+			// The pressed button is hidden by the view switch; without this the
+			// document's focus fell to <body> and the next Tab started over (U11).
+			backNode?.focus();
+		};
 	}
 	if (backNode) {
 		backNode.textContent = t("ui.browser.browser_url_bar.back");
-		backNode.onclick = () => setView("request");
+		backNode.onclick = () => {
+			setView("request");
+			reviewNode?.focus();
+		};
 	}
 	renderRows(model.pending);
 	setView(localView);
-	const disabled =
-		model.busy || (request ? (minutesLeft(request.expiresAt) ?? 1) <= 0 : true);
-	for (const button of secondaryNode?.querySelectorAll("button") ?? []) {
-		button.disabled = disabled;
-	}
+	syncDecisionAvailability();
 	card?.setAttribute("aria-busy", model.busy ? "true" : "false");
 	if (errorNode) {
 		errorNode.hidden = model.error === null;
@@ -378,13 +600,29 @@ function render(): void {
 					? t("ui.browser.browser_surface.browser_unavailable")
 					: "";
 	}
-	if (model.focus) card?.focus();
 	// After the view switch and the model paint; a timer, not rAF, because the
 	// card's window is hidden and runs no animation frames.
-	setTimeout(syncScrim, 0);
+	setTimeout(() => {
+		syncScrim();
+		syncGlossAccess();
+	}, 0);
 }
 
 window.__approvalsCard = {
+	measure(): number {
+		if (!card) return 0;
+		// Recompute intrinsic text sizes AFTER the model and stylesheet paint,
+		// with no provisional viewport clamp. The host rounds/clamps this result
+		// and resizes the child. At that final ceiling only context/gloss can
+		// shrink; decision targets and the non-overlapping footer cannot (D2-1).
+		const previous = card.style.maxHeight;
+		card.style.maxHeight = "none";
+		reserveGloss();
+		const height = card.getBoundingClientRect().height;
+		card.style.maxHeight = previous;
+		syncGlossAccess();
+		return height;
+	},
 	setModel(next: ApprovalsCardModel): void {
 		model = next;
 		// A selected row that left the queue must not keep the request view on a
@@ -417,6 +655,9 @@ window.__approvalsCard = {
 			closeNode.onclick = dismiss;
 		}
 		render();
+		// Focus is a one-shot command on receipt, not retained render state. The
+		// inert-window timer must not take focus back from Review all or Back.
+		if (next.focus) card?.focus();
 	},
 };
 
@@ -432,7 +673,16 @@ document.addEventListener("keydown", (event) => {
 
 // The expiry line is the one value that changes without a model push. A local
 // tick repaints it; it crosses no boundary and decides nothing.
-window.addEventListener("resize", syncScrim);
+window.addEventListener("resize", () => {
+	syncScrim();
+	reserveGloss();
+	syncGlossAccess();
+});
+// The native viewport may resize after the host's measurement resolves. Keep
+// accessibility in step with the resulting scrollport, without an IPC channel.
+if (glossNode && typeof ResizeObserver !== "undefined") {
+	new ResizeObserver(syncGlossAccess).observe(glossNode);
+}
 
 setInterval(() => {
 	const request = shownRequest();

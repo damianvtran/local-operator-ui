@@ -41,6 +41,10 @@ const SOURCE_LOCALE = "en";
  * a UI token. An entry here is a claim that gets reviewed, not a silencer.
  */
 const IDENTICAL_OK = new Map([
+	[
+		"fr:ui.chat.thread_search.role.agent",
+		"French cognate: the role name for an agent turn is « Agent », same spelling; scoped to fr so other locales still translate it",
+	],
 	// French cognates only: these are the normal French UI nouns, not English
 	// fallbacks. Scope to fr so untranslated nouns in other languages still fail.
 	["fr:ui.notifications.nav.label", "French UI noun: Notifications"],
@@ -96,6 +100,15 @@ const IDENTICAL_OK = new Map([
 		// filename-derived token (PDF, PNG) and the size is formatted by the caller;
 		// there is nothing for a locale to translate, and a differing value would
 		// only invent punctuation per language.
+		"language-neutral format string: only placeholders and '·', no words",
+	],
+	[
+		"ui.canvas.files.attachmentMeta",
+		// `{size} · {when}`: the Canvas attachment row's note, placeholders and a
+		// middle dot, no words. The size and the date arrive already localised
+		// (`attachmentSizeLabel`, `formatDate`); the message exists only so a locale
+		// CAN own the separator, so identical is the correct translation in every
+		// shipped locale - the same shape as `ui.chat.attachments.file_meta`.
 		"language-neutral format string: only placeholders and '·', no words",
 	],
 	[
@@ -1294,6 +1307,10 @@ const IDENTICAL_OK = new Map([
 		"Product name (Agent Hub), kept in Latin like ur:ui.hub.pages.header.title and ui.shell.sidebar_navigation.agent_hub (both exempted); the ur audit receipts (17d1ca9bf58a-ur, aa44e837c157-ur) pass it clean with no finding",
 	],
 	[
+		"fr:ui.agents.config.kind.agent",
+		"French noun « agent » has the same spelling and is the glossary term (agent -> agent); it is the bare kind word of the config composer's About line and summary suffix, and the seven-locale union audit read it in context",
+	],
+	[
 		"fr:ui.hub.pages.search_field.description",
 		"French noun « description » has the same spelling; search option paired with the translated « Nom »",
 	],
@@ -1316,6 +1333,25 @@ const IDENTICAL_OK = new Map([
 	[
 		"fr:ui.common.layout.toasts.notifications",
 		"French plural « Notifications » has the same spelling; the toast region's own accessible name",
+	],
+	[
+		"ui.chat.attachments.playback_rate_option",
+		// `{rate}x`: a numeral and the letter x, no words to translate. Identical in
+		// every locale is the correct value; a differing one would be invented
+		// punctuation or a translated multiplication sign the format does not use.
+		"language-neutral format: only a {rate} placeholder and 'x', no words",
+	],
+	[
+		"fr:ui.chat.attachments.volume",
+		"French cognate: the French noun for this control is « Volume », same spelling; scoped to fr so other locales still translate it",
+	],
+	[
+		"fr:ui.chat.pickers.slash.action_kind",
+		"French cognate: « Action » is the French noun, same spelling; scoped to fr so other locales still translate it",
+	],
+	[
+		"fr:ui.chat.transcript_copy.role.assistant",
+		"French cognate: the French role name is « Assistant », same spelling; scoped to fr so other locales still translate it",
 	],
 ]);
 

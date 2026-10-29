@@ -1237,8 +1237,8 @@ try {
 		checkDock("unavailable state", errored, true);
 		checkContentStable("closed baseline -> unavailable", closedBefore, errored);
 		check(
-			"a failed history read says suggestions are unavailable while the field still types",
-			errored.list?.text.includes("Address suggestions are unavailable"),
+			"a failed history read says the history could not be read while the field still types",
+			errored.list?.text.includes("Couldn't read your browsing history"),
 			errored.list?.text,
 		);
 		await shot("04-unavailable");

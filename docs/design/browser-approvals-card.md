@@ -1,9 +1,15 @@
 # Browser approvals card — S6b
 
-Status (2026-10-24): **S6b, interactive native child under the S6A opt-in.
-Round-2 remediation applied; the four-cell native probe passes apart from the
-measured I3 ring row. Not a shipped product surface until the independent
-rounds clear.**
+Status (2026-10-28): **S6d, default-on.** The card is the approvals surface of
+the product build; `LOCAL_OPERATOR_UI_BROWSER_APPROVALS_OVERLAY_DISABLE=1`
+(exactly `1`) is the documented kill switch and restores the DOM dock and band
+for that launch. Grants, revoke, revoke all, Forget this site and Clear browsing
+data live in the Approvals dialog (below), so enabling the card loses nothing.
+**BLOCKED, STATED NOT IMPLIED:** native composite/transparency of the card over
+a live sibling page, the 8 DIP ring's native hit routing, and VoiceOver across
+the card's second document are NOT measured. Enabling by default needs an
+attended check of those three or an explicit owner-named limitation in the
+release notes; this document claims no parity on them.
 
 The approvals card is one native `WebContentsView` over the live page, sized to
 the card and anchored to the content rect's **inline end**: bottom-right in LTR,
@@ -62,11 +68,14 @@ the page.
   browser keys. No new English key was added: a new key would require an
   audited translation in every shipped locale, and the card is not allowed to
   ship unaudited copy.
-- The footer is sticky inside the scrolling body and shares that body's content
-  width; the scroll boundary is marked by a hairline and a scrim that is
-  **painted only while the body actually overflows** (D13 — an always-on shadow
-  greyed the empty ground of a short list), and the failure line lives there so
-  it is never below the 480 ceiling (D5/D6/D7). The close control is on the app's 28px ladder
+- The footer is a non-shrinking sibling of the content body, separated by a
+  hairline; it never paints on top of a decision. The host pulls the document's
+  intrinsic measurement after model paint through the existing executeJavaScript
+  path, then rounds/clamps and resizes the child. At the 480-DIP ceiling the
+  measured gloss basis can shrink and scroll internally; it is not a minimum
+  height. Hover changes only its text, so button targets do not move. The requested
+  origin and expiry retain their space, and pathological taller content remains
+  scrollable above—not behind—the footer (round-2 Q2-1/D2-1). The close control is on the app's 28px ladder
   (D8); disabled states are colour treatments, not `opacity: .6` (D4 — the
   light disabled primary measured 2.53:1 under opacity; `ink-dim` on
   `elevated` is 6.14:1).
@@ -96,6 +105,49 @@ dedicated non-persistent partition, and the pinned deny-all CSP.
   rebuilt by a pure sanitiser (fixed enums, bounded strings, bounded array,
   32 KiB total, no HTML) before serialisation.
 - More options and Review all are local view changes; they never cross.
+
+## Where the grants went (S6d)
+
+The card answers what is pending and nothing else; it keeps exactly two
+sender-pinned channels, `dismiss` and `decide`, and `decide`'s enum is not
+widened. Revoke, revoke all, Forget this site and Clear browsing data are
+destructive grant/data actions, so they are NOT a card verb: they live in the
+**Approvals dialog** (`browser-approvals-dialog.tsx`, a `BaseDialog` over the
+shared standing sections in `browser-approvals-sections.tsx`, which the dock
+also renders, so there is one implementation of each affordance and one set of
+copy keys).
+
+- Reached from the toolbar Approvals control when nothing is pending (with a
+  request pending the control toggles the card), and from the page menu's
+  Approvals item at any time.
+- A `BaseDialog` registers with the browser view's overlay policy, so main hides
+  the page view and the card while it is open and restores both on close. No
+  page rectangle moves and no native surface is added. A pending request cannot
+  be decided while the dialog is up; its count is stated in the dialog's summary.
+- The toolbar badge is the renderer's expiry-aware `queue.count`: main fires
+  nothing at expiry, so the count falls on the renderer's own clock.
+- With the card available the dock and the consent band are **not mounted**
+  (no `[data-dock-layout]`, no dock title, no band), proved by absence in
+  `scripts/browser-approvals-route.test.mjs`; they mount only when the host
+  reports `approvalsCard.available: false`.
+
+## Re-measure after the error line (D1)
+
+The stale/unavailable inline error adds a line (about 14.6 DIP) to the sticky
+footer. The controller now re-applies the model and re-reads the painted height
+in the same `setTimeout(0)` task for those two pushes too (`dropAction`,
+`showActionError`), then resizes the child. Measured on Electron 44.3.0: a
+height `setBounds` did not reach the child's `innerHeight` in the hidden-window
+rig, so the viewport stayed shorter than the view and the card's own
+`max-height` still clamped it. A growth whose viewport did not follow is
+therefore read back and the child is rebuilt at the new bounds (the width-change
+boundary). Probe rows `D1-*` assert every decision button lies inside the card
+and above the footer in the stale, unavailable and normal states at 264 and 900,
+both themes.
+
+A child that dies after construction (`did-fail-load`, `render-process-gone`)
+latches the card off and pushes the projection, so the renderer mounts the dock
+fallback instead of waiting on a dead surface.
 
 ## Interaction, focus, accessibility
 
@@ -163,7 +215,7 @@ override, and reaps its process group; all four boots exit 0 with no leftover
 Electron. The earlier "environment BLOCKED" claim was wrong: a sized child
 loads once the probe follows that recipe.
 
-**BLOCKED and not claimed:** native composite/transparency over a sibling page
+**BLOCKED and not claimed (unchanged by S6d):** native composite/transparency over a sibling page
 (no Screen Recording, hidden window), the 8 DIP ring's native hit routing (no
 sibling-view hit testing in a hidden window), and VoiceOver across the second
 document (manual release gate).
@@ -175,3 +227,19 @@ in the `CONTROLS` table), the controller suite
 (`scripts/approvals-overlay.test.mjs`), the spawn-site tables, and the existing
 browser suites the wiring touches. Desktop CI is the terminal automated run for
 the full lane.
+
+## Round-1 remediation notes (S6d)
+
+- **Request swaps hold the decisions inert for 700 ms (U3).** When the controller's pick changes under a
+  card that was already showing a request (withdrawn, expired, dismissed), the document disables every
+  decision and refuses `decide` until the window ends, then re-enables itself with no new push. A user's own
+  Review-all selection and a first paint after a hide are not swaps. No channel and no host validation changed.
+- **Historical round-1 gloss reservation (Q1):** it fixed hover movement but its hard minimum
+  regressed denial clipping at the native cap in French, Spanish and Russian. Round 2 replaces that
+  minimum with after-paint intrinsic measurement and a shrinkable, internally scrolling gloss basis;
+  the footer is outside the content body. See the round-2 evidence for the longer-authority fixture,
+  rather than generalizing the earlier short-fixture results.
+- **The requester headline is bounded to 48 characters (D-2)**, full label in the tooltip, so a long
+  conversation title cannot push the decisions past the 480 DIP cap.
+- Still **not measured**: native composite/transparency, ring hit routing and VoiceOver. A live region in the
+  app renderer now announces arrivals (U4), but a screen-reader pass has not been done.

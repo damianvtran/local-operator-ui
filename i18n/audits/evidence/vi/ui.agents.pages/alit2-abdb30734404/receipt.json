@@ -1,0 +1,16 @@
+{
+  "audit_id": "alit2-abdb30734404",
+  "locale": "vi",
+  "namespace": "ui.agents.pages",
+  "audit_date": "2026-10-26",
+  "receipt": {
+    "path": "i18n/receipts/vi-agents-literals-audit-abdb30734404.json",
+    "sha256": "0468afdef18df4ce6c8762b3a243db5da8a359470277409329d8385cf4e5a529"
+  },
+  "bundle_companions_sha256": {
+    "record.json": "093f3af213e02be5696ee5796d83964ebd7c164a843e7c253205856831e95236",
+    "audit.log": "275809f6e633ba943095e0abc94b177bae50707bafc1f99cd1afdf6f16727bba",
+    "report.md": "4182be83b7953a10bd889eb8f9b915704736d7d0eb59cd8e9a46cbfa3678ed01"
+  },
+  "note": "hashes of the bundle companions; this file does not hash itself because a file cannot carry its own digest"
+}

@@ -1,4 +1,5 @@
 {
+	"ui.chat.device.check_again": "Vérifier à nouveau",
 	"ui.chat.device.label.moving_to": "Déplacement vers {name}",
 	"ui.chat.device.label.new_on": "Nouvelle sur {name}",
 	"ui.chat.device.label.new_on_this_device": "Nouvelle sur l’appareil",

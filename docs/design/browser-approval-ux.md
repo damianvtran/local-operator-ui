@@ -214,6 +214,32 @@ follow — default is keep in-band.
 
 ---
 
+## Addendum — 2026-10-25: the tab-actions menu is a NATIVE menu
+
+THE 2026-09-28 POPOUT RULING IS SUPERSEDED (operator report, LOH-13). The registered
+popout still had to hide the page to paint over it, and the paused note behind the menu
+was itself the reported defect. A native Electron `Menu` is drawn by the OS above the
+native `WebContentsView`: the page stays visible while the menu is up, the strip does not
+grow, and no suppression is registered for it — `useSuppressBrowserView(…,
+"browser-tab-actions")` is gone with the popout.
+
+WHAT MOVED: §6's row-menu row again; the strip's tab-actions markup (no Radix menu, no
+portal, `aria-haspopup="menu"` on the trigger); the item list is still the strip's
+(`buildTabActionsMenuItems`, which carries the counts and the ellipsis on the
+picker-opening hand-over row), and main validates the wire shape before building the
+popup. WHAT DID NOT: the pinned "All tabs" list stays a band row, and the strip does not
+grow.
+
+HOW IT IS MEASURED: `scripts/browser-tab-menu-native-proof.mjs` on the real built app
+records the page still painted and the content rectangle unchanged while the menu is
+open, no `browser-tab-actions` panel in the DOM, and an empty `data-suppressed-by`; the
+item order and copy are pinned by `browser-tab-actions-menu.test.mjs`, and the DOM focus
+contract by `browser-tab-strip-focus.test.mjs`. The OS-drawn popup's own pixels are not
+captured on the packaging host (Screen Recording is denied), so its appearance is a
+first-use smoke, recorded as a known limitation rather than a visual pass.
+
+---
+
 ## 0. The four asks, and what each actually requires
 
 The operator asked for four things across three messages. Stated as
@@ -727,7 +753,7 @@ belongs to.
 | Title | `truncate`, native `title` | keep | Truncation is recoverable with the pointer and the full text is in the DOM (D13, `:145-152`) |
 | Width policy | `basis-32 grow min-w-32 max-w-[50%]`, row scrolls | keep | D13's reviewed policy. Chrome shrinks tabs below 128px; this strip cannot, because the mark, the chips and the close button need the room, and a 60px tab would show no name at all. **A deliberate difference from Chrome**, stated so it is not "fixed" later |
 | Close | always rendered per tab | rendered for the active tab always; for an inactive tab on hover **or** focus-within; always available from the row's menu | A focusable but invisible control is a keyboard trap of its own; the menu's `Close tab` (`:237-239`) is the always-visible path. Reveal is a colour/opacity transition, never a layout shift |
-| Row menu | Radix `DropdownMenu` opening *downward* over the page area | **registered popout over the paused page** (revised 2026-09-28; the in-band ruling is superseded — see the addendum) | The menu is anchored to the ⋯ trigger and floats over the content rect, so it REGISTERS with the overlay policy while open (`useSuppressBrowserView(…, "browser-tab-actions")`): the view hides and the paused note shows behind the panel, exactly as for a dialog. The in-band row this replaces avoided suppression by growing the strip — up to 214px at its own designed worst case — and pushing the page and the URL bar down, which is the operator's report. The hand-over entry point still lives in this menu (`:225-236`) |
+| Row menu | Radix `DropdownMenu` opening *downward* over the page area | **native Electron `Menu`** (revised 2026-10-25; supersedes the 2026-09-28 registered-popout ruling — see the addendum) | The OS draws the menu ABOVE the native `WebContentsView`, so the page stays visible for as long as it is up and the strip registers NO overlay suppression for it. The item list (labels, counts and the optional hands) is still the strip's, because the counts disclose what a destructive press will close; main validates the list against a fixed item vocabulary and builds the popup. The hand-over entry point still lives in this menu (`:225-236`), and its label ends in `…` because the row opens the picker rather than handing over at once |
 | Waiting chip | `Waiting` | `Waiting <n>` | §5.2 |
 | Agent / Shared / Restored / Failed chips | as today | as today | The agent marker is the one thing that tells an agent tab from the user's, and its text is what a QA pass asserts on (`:155-165`); the other three are the only carriers of their state on a background tab. Restyle only if a frame shows them reading as buttons — and then as compact pills on the title row, never as new colours |
 | Activation scroll | — | the activated tab scrolls into view | With the width policy kept, a long strip scrolls; a tab activated from the dock or by attention must become visible or the click looks inert |

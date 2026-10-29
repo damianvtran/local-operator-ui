@@ -1,0 +1,40 @@
+{
+	"ui.chat.radient_session.action.sign_in": {
+		"role": "action",
+		"tone": "plain",
+		"note": "Starts the browser sign-in. Keep Radient in Latin."
+	},
+	"ui.chat.radient_session.pointer.sign_in_active": {
+		"role": "pointer line",
+		"tone": "plain",
+		"note": "Names the place, not the verb: the backend's sentence above it already carries the instruction. Name the Settings page and its Providers section with the locale's OWN terms from the shipped navigation (es Ajustes, zh-CN 设置 / 提供商, fr Paramètres, and so on) -- never the English labels, which the app itself does not show in that locale. Only product names (Radient, Local Operator) stay in Latin. Corrected 2026-10-29: an earlier note said to keep Settings and Providers in Latin, which contradicted every shipped locale's navigation and produced one Latin string per locale in an otherwise localized sentence."
+	},
+	"ui.chat.radient_session.prose.input_required": {
+		"role": "alert body",
+		"tone": "plain",
+		"note": "{message} is the backend's own sentence and is passed through, not translated. Name the Settings page and its Providers section with the locale's OWN shipped navigation terms, never the English labels; only product names stay in Latin.",
+		"placeholders": {
+			"message": "The backend's sentence, already in the active language."
+		}
+	},
+	"ui.chat.radient_session.prose.needs_sign_in": {
+		"role": "alert body",
+		"tone": "plain, calm"
+	},
+	"ui.chat.radient_session.prose.signing_in": {
+		"role": "alert body",
+		"tone": "plain"
+	},
+	"ui.chat.radient_session.title.input_required": {
+		"role": "alert title",
+		"tone": "plain"
+	},
+	"ui.chat.radient_session.title.needs_sign_in": {
+		"role": "alert title",
+		"tone": "plain"
+	},
+	"ui.chat.radient_session.title.signing_in": {
+		"role": "alert title",
+		"tone": "plain"
+	}
+}

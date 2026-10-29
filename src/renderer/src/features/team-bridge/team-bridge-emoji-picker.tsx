@@ -1,7 +1,7 @@
 import { Spinner } from "@shared/components/common/spinner";
 import { t } from "@shared/i18n";
 import { Grid2X2 } from "lucide-react";
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
 	EMOJI_ENTRIES,
 	EMOJI_GROUPS,
@@ -16,6 +16,12 @@ import { useReactionPreferences } from "./team-bridge-reaction-preferences";
 const COLUMNS = 8;
 const CELL = 36;
 const HEIGHT = 252;
+/* First-render probe budget: the visible window is 7 rows of 8 plus the
+   virtual table's 3-row overscan, so 160 candidates cover it even when some
+   glyphs are filtered out. Idle slices then probe the rest, each yielding to
+   input and paint after `PROBE_SLICE_MS`. */
+const FIRST_PAINT = 160;
+const PROBE_SLICE_MS = 8;
 const GROUP_ICONS = ["😀", "👋", "🐻", "🍎", "🌍", "⚽", "💡", "🔣", "🏳️"];
 const CATEGORY_KEYS = [
 	"ui.teamBridge.reactions.category0",
@@ -73,10 +79,43 @@ function TeamBridgeEmojiPickerBody({
 	const grid = useRef<HTMLTableElement>(null);
 	// Keep the full wire corpus, but only offer glyphs this renderer actually paints. The
 	// per-glyph probe caches across popover mounts; filtering never changes the server allowlist.
+	//
+	// THE PROBE IS PAGED, NOT UP FRONT (operator report 2026-10-27: the picker
+	// took 3-12 s from click to paint). Each probe is two canvas paints and two
+	// `getImageData` reads, and filtering all 3963 candidates before the first
+	// render put ~8000 synchronous readbacks on the click path. Only the first
+	// `FIRST_PAINT` candidates - more than the grid's visible window - are
+	// probed in the render; the rest are probed in idle slices after paint and
+	// appended, so the grid, its height and `aria-rowcount` grow in place below
+	// the visible rows while the reader is still looking at the top. The cache
+	// is module-wide, so a second open probes nothing.
+	const candidates = useMemo(() => searchEmoji(query, group), [query, group]);
+	const [probe, setProbe] = useState({ candidates, upTo: FIRST_PAINT });
+	// A new search or category restarts from the first page, in the same render.
+	const probedUpTo =
+		probe.candidates === candidates
+			? Math.min(probe.upTo, candidates.length)
+			: Math.min(FIRST_PAINT, candidates.length);
+	const probing = probedUpTo < candidates.length;
+	useEffect(() => {
+		if (!probing) return;
+		const timer = setTimeout(() => {
+			const deadline = performance.now() + PROBE_SLICE_MS;
+			let next = probedUpTo;
+			while (next < candidates.length && performance.now() < deadline) {
+				canRenderEmoji(candidates[next].emoji);
+				next++;
+			}
+			setProbe({ candidates, upTo: next });
+		}, 0);
+		return () => clearTimeout(timer);
+	}, [candidates, probedUpTo, probing]);
 	const entries = useMemo(
 		() =>
-			searchEmoji(query, group).filter((entry) => canRenderEmoji(entry.emoji)),
-		[query, group],
+			candidates
+				.slice(0, probedUpTo)
+				.filter((entry) => canRenderEmoji(entry.emoji)),
+		[candidates, probedUpTo],
 	);
 	const frequent = frequentEmoji(preferences?.usage ?? {}, Date.now()).filter(
 		canRenderEmoji,
@@ -201,7 +240,7 @@ function TeamBridgeEmojiPickerBody({
 				style={{ height: HEIGHT }}
 				onScroll={(event) => setTop(event.currentTarget.scrollTop)}
 			>
-				{!entries.length ? (
+				{!entries.length && !probing ? (
 					<p className="p-4 text-ink-muted">
 						{t("ui.teamBridge.reactions.noResults")}
 					</p>

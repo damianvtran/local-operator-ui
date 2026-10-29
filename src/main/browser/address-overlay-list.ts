@@ -87,9 +87,28 @@ export interface AddressListRect {
 	height: number;
 }
 
+/**
+ * One display span inside a row's `text` that the child isolates as an LTR run.
+ *
+ * WHY IT EXISTS: a row's text is a localized sentence with the user's own value
+ * substituted in. In an RTL locale a value with no strong Latin character
+ * (`192.168.1.1/`, `[::1]:3000/`) takes its direction from the sentence and
+ * reorders. Bidi controls (U+2066-2069) would isolate it, but they are stripped
+ * from every row on purpose - a bidi control is how a row can be made to look
+ * like another - so the renderer names the span instead and the child wraps it in
+ * `<bdi dir="ltr">`. UTF-16 offsets into `text`; display only, never a
+ * destination, never trusted for anything else.
+ */
+export interface AddressListIsolate {
+	start: number;
+	end: number;
+}
+
 export interface AddressListRow {
 	text: string;
 	title: string;
+	/** At most one range, only on rows whose text embeds the typed value. */
+	isolate?: AddressListIsolate;
 }
 
 export type AddressListView =
@@ -258,12 +277,31 @@ export function sanitizeOverlayText(
 	return points.length > cap ? points.slice(0, cap).join("") : stripped;
 }
 
+const ROW_KEYS = ["text", "title", "isolate"] as const;
+const ISOLATE_KEYS = ["start", "end"] as const;
+
+/** A valid range is two integers with 0 <= start < end <= text.length. Anything
+ * else is a malformed row (refused), not a row to paint plain: a renderer that
+ * sends a bad range is a renderer this boundary should not half-trust. */
+function sanitizeIsolate(
+	value: unknown,
+	textLength: number,
+): AddressListIsolate | null {
+	if (!isRecord(value) || !hasOnlyKeys(value, ISOLATE_KEYS)) return null;
+	const { start, end } = value;
+	if (!Number.isInteger(start) || !Number.isInteger(end)) return null;
+	const from = start as number;
+	const to = end as number;
+	if (from < 0 || from >= to || to > textLength) return null;
+	return { start: from, end: to };
+}
+
 function sanitizeRows(value: unknown): AddressListRow[] | null {
 	if (!Array.isArray(value)) return null;
 	if (value.length === 0 || value.length > ADDRESS_LIST_ROWS_MAX) return null;
 	const rows: AddressListRow[] = [];
 	for (const entry of value) {
-		if (!isRecord(entry) || !hasOnlyKeys(entry, ["text", "title"])) return null;
+		if (!isRecord(entry) || !hasOnlyKeys(entry, ROW_KEYS)) return null;
 		const text = sanitizeOverlayText(entry.text, ADDRESS_LIST_MAX_TEXT);
 		const title = sanitizeOverlayText(entry.title, ADDRESS_LIST_MAX_TITLE);
 		if (text === null || title === null) return null;
@@ -271,7 +309,18 @@ function sanitizeRows(value: unknown): AddressListRow[] | null {
 		// always ends in the destination. Refusing beats rendering a blank row the
 		// user cannot map to the row they clicked.
 		if (text.length === 0) return null;
-		rows.push({ text, title });
+		if (entry.isolate === undefined) {
+			rows.push({ text, title });
+			continue;
+		}
+		// The range is validated against the text the renderer SENT, then dropped
+		// when sanitizing changed that text: stripping a control or truncating
+		// shifts every offset, and a range pointing at the wrong bytes would isolate
+		// the wrong span. Dropping it only costs the cosmetic isolate.
+		const sent = typeof entry.text === "string" ? entry.text : "";
+		const isolate = sanitizeIsolate(entry.isolate, sent.length);
+		if (isolate === null) return null;
+		rows.push(text === sent ? { text, title, isolate } : { text, title });
 	}
 	return rows;
 }

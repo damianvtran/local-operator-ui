@@ -7,20 +7,19 @@
  * diffed by name. The TUI file's own header states the two properties the
  * desktop keeps by porting it rather than inventing a rule:
  *
- *   - A `$` opens a token only at a WORD BOUNDARY: line start, or right after a
- *     separator. `costs$5` and `a$b` are punctuation inside a word, never a
- *     sigil, so money and shell variables that are glued to their left context
- *     cannot open the list at all.
+ *   - A `$` opens a token only at a WORD BOUNDARY (`isBoundary`): line start,
+ *     or right after a separator. `costs$5` and `a$b` are punctuation inside a
+ *     word, never a sigil, so money and shell variables that are glued to
+ *     their left context cannot open the list at all.
  *   - It is WORD-PHASE only, like `slashContext`: the terminating whitespace
  *     means the user has moved on into the request, where a skill list is stale
  *     advice. The caret must be INSIDE the token; moving it out closes the list,
  *     which is what makes the picker phase a property of the parse.
  *
  * INLINE, on the same terms as the TUI's current rule: the token may sit
- * anywhere a boundary allows (`fix this $res`, or a `$` opening line 2), and
- * the ACCEPT gesture is what reconciles that with the anchored submit-side
- * parser — `skillCompletionFor` moves the token to the FRONT with the
- * surviving draft as its request before Enter can see it.
+ * anywhere a boundary allows (`fix this $res`, or a `$` opening line 2). The
+ * submit-side resolver reads the whole message (`skill-invocation.ts`), so
+ * accepting a row only replaces the token's own span — no reassembly.
  *
  * WHAT IS DELIBERATELY NOT PORTED, stated so a reader does not take its absence
  * for an oversight: the TUI relaxes a recognised command's claim over its line
@@ -37,7 +36,7 @@
  * Pure and I/O-free: no React, no DOM, no network.
  */
 
-import { SEPARATOR, lineOfCursor, pyTrim } from "./slash-token";
+import { SEPARATOR, isBoundary, lineOfCursor, pyTrim } from "./slash-token";
 
 export type SkillToken = {
 	/** Whole-buffer offset of the `$`. */
@@ -54,13 +53,15 @@ export type SkillToken = {
  * `_active_sigil`'s rule, restated: `$` has no vocabulary of its own to
  * terminate a token with, so unlike `/` there is no claiming clause — the last
  * boundary sigil at or before the caret is always the one being edited
- * (`$a $re|` is `$re`).
+ * (`$a $re|` is `$re`). The boundary itself is the shared
+ * `slash-token.ts:isBoundary`, so this picker and the submit-time resolver
+ * cannot answer "is this a token" differently.
  */
 function activeSigil(line: string, column: number): number | null {
 	let candidate: number | null = null;
 	for (let index = 0; index < line.length; index++) {
 		if (line[index] !== "$") continue;
-		if (index !== 0 && !SEPARATOR.test(line[index - 1])) continue;
+		if (!isBoundary(line, index)) continue;
 		if (index <= column) candidate = index;
 	}
 	return candidate;
@@ -95,15 +96,15 @@ export function skillToken(
 /**
  * Whether `token` opens `text`, ignoring leading whitespace.
  *
- * THE definition of "leading" for the `$` grammar, in one place because two
- * separate decisions turn on it and they must not drift: whether the fuzzy
- * matcher may run inline without evidence (`skillSuggestions`) and whether
- * accepting a row has to reassemble the buffer (`skillCompletionFor`). Both
- * ask the same question — is this token already the prefix the anchored
- * submit-side parser reads? — so both read the same answer.
+ * The picker's own reading of "leading": an EMPTY query at the start of the
+ * draft opens the whole catalogue and runs the full case-insensitive matcher,
+ * while inline matching demands the lowercase-evidence gate
+ * (`skillSuggestions`). The submit path reads the same question itself — the
+ * first token's `leading` field in `skillMentions` — and `pyTrim` is what makes
+ * the two agree on Python's whitespace class rather than JavaScript's.
  *
- * `pyTrim`, not `trim()`: the submit-side parser `lstrip`s Python's class, and
- * JavaScript's is a different set in both directions (see `slash-token.ts`).
+ * `pyTrim`, not `trim()`: Python's class differs in both directions (see
+ * `slash-token.ts`).
  */
 export function skillTokenIsLeading(text: string, token: SkillToken): boolean {
 	return pyTrim(text.slice(0, token.start)) === "";

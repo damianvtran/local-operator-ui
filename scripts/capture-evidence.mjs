@@ -12,6 +12,9 @@
  * `docs/evidence-frames/<feature>/<story>/<theme>.webp` - the IGNORED frames
  * tree (see `.gitignore`); the manifest it stamps stays in `docs/evidence/`.
  *
+ * To have the Storybook booted and reaped for you, wrap the run:
+ *     node scripts/with-storybook.mjs -- node scripts/capture-evidence.mjs "$STORYBOOK_ORIGIN"
+ *
  * Why this file exists. The review process for this app is visual: there is
  * no test runner, and the design contract (docs/branding.md) is judged by
  * looking at the surface in every theme, because a contrast or spacing defect
@@ -6195,6 +6198,47 @@ export const STORIES = [
 	 * Giving those rows up is a decision for the set's README and the commit
 	 * message, not a side effect of where a tuple sits.
 	 */
+	/*
+	 * THE SHARED ATTENTION BADGE (operator, 2026-10-28; `sidebar-attention.stories.tsx`).
+	 * Every sidebar attention count through the real rail's own data paths: the
+	 * small counts with More folded (its badge is the SUM of Mesh and Team
+	 * Bridge), More opened, the `99+` cap, and the collapsed strip in both, plus
+	 * the strip at 5 / 12 / 125 for the corner's `9+` cap (design D1). The
+	 * expectation waits for the badges the scene seeds, so a frame shot before
+	 * the reads settle is a refusal rather than a picture of a quiet rail.
+	 *
+	 * The two OPEN states expect no `more` badge: an open group's rows carry
+	 * their own pills and More draws none (design D2), so waiting for it would
+	 * turn the correct frame into a refusal. The scene test pins its absence.
+	 */
+	...[
+		["counts", ["aida", "notifications", "browser", "more"]],
+		["more-open", ["aida", "notifications", "browser", "team-bridge", "mesh"]],
+		["overflow", ["aida", "notifications", "browser", "team-bridge", "mesh"]],
+		["collapsed", ["aida", "notifications", "browser", "more"]],
+		["collapsed-overflow", ["aida", "notifications", "browser", "more"]],
+		["collapsed-5", ["aida", "notifications", "browser", "more"]],
+		["collapsed-12", ["aida", "notifications", "browser", "more"]],
+		["collapsed-125", ["aida", "notifications", "browser", "more"]],
+	].map(([state, rows]) => [
+		`shell-sidebar-attention-badges--${state}`,
+		/* 900 tall: the destinations region caps at 50dvh, and below ~880 More's
+		   last row (Mesh) scrolls out of the frame it is meant to prove. */
+		1024,
+		900,
+		{
+			expect: {
+				pollMs: 8000,
+				/* Each seeded row's OWN badge, by its tour tag: a count is not
+				   enough, because the mesh read lands last (membership, then
+				   approvals) and a frame shot before it is a different picture.
+				   The tags are the rows', not the shared badge's marker, so the
+				   same row stands for the before frames shot from main's rail. */
+				expression: `${JSON.stringify(rows)}.every((row) => document.querySelector('[data-tour-tag="nav-' + row + '-badge"]'))`,
+				message: `the rail draws every seeded row's badge (${rows.join(", ")})`,
+			},
+		},
+	]),
 	["shell-app-shell--agents", 1280, 800],
 	["shell-app-shell--agents", 1000, 800],
 	["shell-app-shell--agents", 900, 800],

@@ -1,0 +1,8 @@
+{
+	"ui.hub.card.download_named": "{name} डाउनलोड करें",
+	"ui.hub.card.downloads_tooltip": "डाउनलोड",
+	"ui.hub.card.get": "पाएँ",
+	"ui.hub.card.unknown_author": "अज्ञात लेखक",
+	"ui.hub.card.updated": "{ago} पहले अपडेट किया गया",
+	"ui.hub.card.view_details": "{name} का विवरण देखें"
+}

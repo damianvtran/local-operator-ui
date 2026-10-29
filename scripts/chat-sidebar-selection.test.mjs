@@ -2682,29 +2682,22 @@ test("no Team Bridge initial plate regrows a border, ring, divider or shadow", (
 
 test("every object a row state can paint over keeps an edge, or records why it need not", async () => {
 	/*
-	 * The former tab-actions overlay painted elevated/surface over the row and
-	 * belonged in the plate inventory. Its replacement is layout-only: contents
-	 * generates no principal box and carries no ground. Pin the precise wrapper,
-	 * not an exemption for a live surface: adding a ground/overlay class or style
-	 * must fail here until its new paint is accounted for in the inventory.
+	 * THE TAB ACTIONS HAVE LEFT THIS INVENTORY (LOH-13 operator report,
+	 * 2026-10-25). They are a native Electron menu now: the OS draws the panel
+	 * outside this document, so there is no renderer plate that could paint a
+	 * ground over the row and nothing to carry an edge. The former popout's
+	 * boxless `<div className="contents">` wrapper went with it. The pin is the
+	 * ABSENCE: a renderer panel reappearing here must fail until its paint is
+	 * accounted for in the inventory.
 	 */
 	const browserTabs = read(BROWSER_TABS);
-	const actionsAt = browserTabs.indexOf("open={actionsTabId === tab.tabId}");
-	assert.notEqual(
-		actionsAt,
-		-1,
-		"the actual tab-actions menu anchor must exist",
+	assert.ok(
+		!browserTabs.includes('data-tour-tag="browser-tab-actions"'),
+		"the tab-actions menu must not paint a renderer panel; restore its painted-plate inventory entry if it starts painting again",
 	);
-	const clusterAt = browserTabs.lastIndexOf("<div", actionsAt);
-	assert.notEqual(clusterAt, -1, "the actual tab-actions wrapper must exist");
-	const cluster = browserTabs.slice(
-		clusterAt,
-		browserTabs.indexOf(">", clusterAt) + 1,
-	);
-	assert.equal(
-		cluster,
-		'<div className="contents">',
-		"the tab-actions cluster must remain boxless and ground/overlay-free; restore its painted-plate inventory entry if it starts painting again",
+	assert.ok(
+		browserTabs.includes('aria-haspopup="menu"'),
+		"and its trigger must still be the native menu's own button",
 	);
 
 	/*

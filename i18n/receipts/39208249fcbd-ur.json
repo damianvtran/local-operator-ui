@@ -1,0 +1,140 @@
+{
+ "locale": "ur",
+ "namespace": "ui.agents.config",
+ "audit_round": 3,
+ "audit_date": "2026-10-28",
+ "key_count": 38,
+ "checkout": {
+  "path": "/Users/damian/lo-audit-1439c",
+  "head": "ae918aa12a",
+  "pr": 1439,
+  "baseline": "origin/main (git -C ~/local-operator-ui show origin/main:src/i18n/catalogues/ur/ui.agents.config.json, sha256 d9069340b0379774f565afbe7f5926a1dd4644d57e4c45a42f73e986e2d77117)"
+ },
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.agents.config.json",
+   "sha256": "5f06618661e942dd8dc61f2f40dc7894f2048855e624fdc58ffe1aa0f5fcb7a6"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.agents.config.context.json",
+   "sha256": "07de5b1c02c8c64c130da1cc532cf03c13f7ef462c9cdc27e34b1a5cf3215459"
+  },
+  "ur": {
+   "path": "src/i18n/catalogues/ur/ui.agents.config.json",
+   "sha256": "27a05aae3a602e597e8ca3ca7ef90c59456bb083cfdda6751bd9da26232f2cf1"
+  }
+ },
+ "read_provenance": {
+  "catalogue_copy_via_read_public_copy": [
+   {
+    "path": "src/i18n/catalogues/en/ui.agents.config.json",
+    "key": "(whole file; covers all 38 keys: ui.agents.config.about, ui.agents.config.kind.agent, ui.agents.config.kind.team, ui.agents.config.action.clear, ui.agents.config.action.dismiss, ui.agents.config.action.retry, ui.agents.config.action.stop, ui.agents.config.action.watch, ui.agents.config.activity.empty, ui.agents.config.background_only, ui.agents.config.composer.label, ui.agents.config.definitions, ui.agents.config.error.stop_refused, ui.agents.config.error.turn_failed, ui.agents.config.examples.add_twice, ui.agents.config.examples.reads_code, ui.agents.config.examples.team_shipping, ui.agents.config.placeholder.about, ui.agents.config.placeholder.docked, ui.agents.config.placeholder.hero, ui.agents.config.result.changed, ui.agents.config.result.configured, ui.agents.config.result.created, ui.agents.config.state.did_not_finish, ui.agents.config.state.sending, ui.agents.config.state.stopping, ui.agents.config.status.attached, ui.agents.config.stopped.kept, ui.agents.config.stopped.nothing, ui.agents.config.summary.created, ui.agents.config.summary.hidden_changes, ui.agents.config.summary.no_changes, ui.agents.config.summary.nothing_else, ui.agents.config.summary.updated, ui.agents.config.summary.you_asked, ui.agents.config.banner.unavailable, ui.agents.config.disabled_gate, ui.agents.config.run_details_region)"
+   },
+   {
+    "path": "src/i18n/catalogues/ur/ui.agents.config.json",
+    "key": "(whole file; all 38 keys)"
+   }
+  ],
+  "context_docs_via_filesystem_not_catalogue_copy": [
+   "src/i18n/catalogues/en/ui.agents.config.context.json (cat, all keys)",
+   "~/local-operator/i18n/style-guides/ur.md",
+   "~/local-operator/i18n/glossary.md (sections 2 rows agent, team, tool, model, etc.)"
+  ],
+  "other_filesystem": [
+   "git show origin/main ur catalogue (baseline for origin attribution)",
+   "git diff origin/main...HEAD on ur catalogue",
+   "src/renderer/src/features/agents/config-run/config-composer.tsx lines ~800-910 (kindWord / about / (kind) suffix usage)"
+  ],
+  "forbidden_paths_read": "none; one `ls` of the empty output dir ~/qa/reaudit3-1439 returned nothing"
+ },
+ "checks": {
+  "json_valid_and_key_parity": "pass: 38/38 keys, no added/dropped",
+  "placeholders": "pass: {kind},{name},{count},{topic} identical per key (scripted compare)",
+  "icu_plural": "pass: definitions has one/other, the ur CLDR categories",
+  "bidi_controls": "pass: no RLM/LRM/FSI/PDI/embedding chars; no ASCII '...' or '!'; ellipsis U+2026 parity with en",
+  "punctuation": "pass: ۔ ، — used; Latin identifiers (release-crew, coder, shipping) untouched",
+  "glossary": "pass: ایجنٹ, ٹیم, ٹول, ماڈل, رن usage per glossary/style guide; no Hindi-isation",
+  "kind_composition_about": {
+   "agent": "متعلق: ایجنٹ {name} -> reads correctly, bare noun, no case ending needed",
+   "team": "متعلق: ٹیم {name} -> reads correctly",
+   "consistency": "matches ui.agents.skills.composer.about 'متعلق: مہارت {name}'",
+   "summary_suffix": "'(ایجنٹ)' / '(ٹیم)' read correctly as parenthetical after بنایا گیا / اپ ڈیٹ کیا گیا {name}"
+  },
+  "fit": "pass: no maxCells hints in sidecar; placeholder.docked 38 chars vs EN ~45; kind words 3-5 chars",
+  "rtl": "pass: Latin names placed after Urdu words in about/summary; placeholder.about starts with {name} (Latin) then Urdu - isolated by renderer FSI/PDI, no hazard",
+  "repo_validator": "not run (no validator command was named); mechanical checks are my own script"
+ },
+ "introduced_by_pr_keys": [
+  "kind.agent",
+  "kind.team",
+  "placeholder.about",
+  "placeholder.docked",
+  "placeholder.hero",
+  "action.watch (changed دیکھیں -> رن کے مراحل)"
+ ],
+ "introduced_keys_verdict": "all 6 read correctly; no defects beyond the 1 nit above",
+ "findings": [
+  {
+   "severity": "MINOR",
+   "key": "ui.agents.config.definitions",
+   "current": "{count, plural, one {# تعریف} other {# تعریفیں}}",
+   "suggestion": "keep structure; consider a technical qualifier, e.g. one {# ڈیفینیشن فائل} other {# ڈیفینیشن فائلیں}",
+   "origin": "inherited from origin/main",
+   "problem": "تعریف alone also reads as 'praise/description'; after 'ترتیب شدہ' ('Configured 2 definitions') the sense is not obvious. Plural structure (one/other) is valid."
+  },
+  {
+   "severity": "MINOR",
+   "key": "ui.agents.config.status.attached",
+   "current": "ایک اور کنفیگریشن رن ...",
+   "suggestion": "use one word for 'configure': either ترتیب (as in result.configured, disabled_gate) or کنفیگریشن throughout",
+   "origin": "inherited from origin/main",
+   "problem": "Same concept rendered as کنفیگریشن (status.attached) and ترتیب (result.configured, disabled_gate); ترتیبات is also 'settings'."
+  },
+  {
+   "severity": "MINOR",
+   "key": "ui.agents.config.examples.team_shipping / examples.reads_code vs examples.add_twice",
+   "current": "... ایک منتظم اور دو کوڈرز ...; جائزہ لینے والا; release-crew میں coder کو ...",
+   "suggestion": "pick one policy for role words (coder/manager/reviewer): Latin everywhere or Urdu everywhere",
+   "origin": "inherited from origin/main",
+   "problem": "The coder role is Latin in add_twice but کوڈرز in team_shipping within the same hero row."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.agents.config.stopped.nothing",
+   "current": "ابھی کچھ نہیں بدلا گیا تھا۔",
+   "suggestion": "ابھی تک کچھ نہیں بدلا گیا تھا۔ (or تب تک)",
+   "origin": "inherited from origin/main",
+   "problem": "'ابھی' with pluperfect 'تھا' reads slightly off for 'yet'."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.agents.config.placeholder.docked",
+   "current": "تبدیلی طلب کریں، یا کچھ نیا بیان کریں…",
+   "suggestion": "تبدیلی کی درخواست کریں، یا کچھ نیا بیان کریں…",
+   "origin": "introduced by this PR (new key; repeats inherited composer.label wording)",
+   "problem": "'طلب کریں' is stiff for 'Ask for'; same wording already in composer.label, so consistent. Fits (38 chars vs ~45 EN). Optional."
+  }
+ ],
+ "counts": {
+  "BLOCKER": 0,
+  "MAJOR": 0,
+  "MINOR": 3,
+  "NIT": 2
+ },
+ "verdict": "passed",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "39208249fcbd",
+  "model": "anthropic/claude-sonnet-5-5",
+  "independent_from_translator_session": true,
+  "actual_model_source": "session header",
+  "note": "no MT/translation service used; single pass"
+ },
+ "instance": "39208249fcbd-ur",
+ "model": "anthropic/claude-sonnet-5-5",
+ "status": "passed",
+ "sha256": {
+  "ur": "27a05aae3a602e597e8ca3ca7ef90c59456bb083cfdda6751bd9da26232f2cf1",
+  "en": "5f06618661e942dd8dc61f2f40dc7894f2048855e624fdc58ffe1aa0f5fcb7a6"
+ }
+}

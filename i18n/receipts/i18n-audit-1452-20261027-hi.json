@@ -1,0 +1,78 @@
+{
+	"auditor": "reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"fallback": "none — no fallback model was used; served model per this session system prompt",
+	"instance": "i18n-audit-1452-20261027-hi",
+	"session": "040071214fd5",
+	"job": "00a9a178acb4",
+	"parent_session": "65a12b105119",
+	"date": "2026-10-27",
+	"locale": "hi",
+	"round": 1,
+	"translator": {
+		"agent": "task",
+		"model": "anthropic/claude-opus-5-5",
+		"job": "7c09e08359e1",
+		"parent_session": "65a12b105119",
+		"commit": "0a02713ed499fd20f7c164bfb00cba4fc017276d"
+	},
+	"pr": "damianvtran/local-operator-ui#1452",
+	"source_base": "8953ae18b6",
+	"source_head": "0a02713ed499fd20f7c164bfb00cba4fc017276d",
+	"scope": "Round-1 independent audit of the 7 English keys PR #1452 adds (ui.canvas.files.attachments/attachmentsPartial/attachmentImage/attachmentRetained/attachmentGone/attachmentMeta, ui.chat.attachments.file_and_copy_missing) in hi, translated in 0a02713ed4 (scope 8953ae18b6..0a02713ed4). git diff 6bd3c93..0a02713ed4 -- src/i18n/catalogues changes no other English VALUE: three ui.canvas strings switch the escape \\u2026 to a literal U+2026 (parsed values identical). All other hi values in both namespaces are byte-identical to the base and stay covered by the superseded audits. Catalogue audit only; no rendered-fit/activation/release claim.",
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "local-operator fcfb314b0f (origin/main)",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/hi.md",
+			"revision": "local-operator fcfb314b0f (origin/main)",
+			"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+		}
+	},
+	"namespaces": {
+		"ui.canvas": {
+			"status": "passed",
+			"keys_audited": 6,
+			"keys": [
+				"ui.canvas.files.attachments",
+				"ui.canvas.files.attachmentsPartial",
+				"ui.canvas.files.attachmentImage",
+				"ui.canvas.files.attachmentRetained",
+				"ui.canvas.files.attachmentGone",
+				"ui.canvas.files.attachmentMeta"
+			],
+			"sha256": {
+				"en": "8a8466e88b04b36c77d648c6fdc0365b338ca1cf261131c43a105ff1f4d216bd",
+				"hi": "9f46453337ba6d2b8f3d39102053db0b40afc929bde0979762ac6fe30f4dfba1"
+			},
+			"context_sha256": "f3334b6ccf7da0dd0a9b4c23157fc927fbf6e90b4d0549618af383a2ed2cd295",
+			"findings": []
+		},
+		"ui.chat.attachments": {
+			"status": "passed",
+			"keys_audited": 1,
+			"keys": [
+				"ui.chat.attachments.file_and_copy_missing"
+			],
+			"sha256": {
+				"en": "1f476ef54a5fb470d00da5e66e7f2ccd2665d4d22f07ff11f20a3e00acfeadc5",
+				"hi": "abae41cac8100c2bc917ba8798e36cd0b7b9e0bedbdd87fb88f3af29f305ced3"
+			},
+			"context_sha256": "e45c568a716aef990f65de5b2b45a2a1622fed091db9185ad61248a9945b3c46",
+			"findings": []
+		}
+	},
+	"checks": {
+		"independence": "Auditor reviewer session 040071214fd5 (job 00a9a178acb4), different agent and session from translator task job 7c09e08359e1; this auditor never authored these strings.",
+		"semantics": "Each value checked against the en value, the en context sidecar note and the call sites (attachment-items.ts attachmentNote/nameOf, finder-files-view.tsx section heading + partial badge, sent-file-card.tsx storedGone branch).",
+		"terminology": "Consistent with siblings ui.chat.attachments.file_missing (Moved or deleted), saved_copy_label (Saved copy), file_unnamed, ui.canvas.inline_edit.add_attachments and ui.canvas.files.images.",
+		"icu": "Parsed en and target with @formatjs/icu-messageformat-parser: argument sets identical ({size},{when} only in attachmentMeta); formatted with intl-messageformat using a 286 KB size and an Intl short date.",
+		"structure": "Key sets equal to en in both namespaces. ru and vi ui.canvas key ORDER differs from en, already at base 6bd3c93 (pre-existing, not introduced by this PR); the new keys are appended at the end as in en.",
+		"typography": "All 7 values NFC; no bidi controls (U+200E/F, U+202A-E, U+2066-9); separator U+00B7 with spaces, matching the locale catalogues existing convention.",
+		"rtl": "Not applicable (LTR)."
+	},
+	"limitations": "No browser or app launch; no rendered-fit screenshots or pseudo-localization. The row meta is a shrink-0 span beside a truncating file name, so the longer locales (vi/hi attachmentGone at 50 chars against en 32) squeeze the name instead of overflowing: a design-review concern, not a translation defect."
+}

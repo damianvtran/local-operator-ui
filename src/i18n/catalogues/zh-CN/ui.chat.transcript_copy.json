@@ -1,7 +1,12 @@
 {
+	"ui.chat.transcript_copy.block.logs": "日志",
+	"ui.chat.transcript_copy.block.output": "输出",
 	"ui.chat.transcript_copy.menu.copy_text": "复制文本",
 	"ui.chat.transcript_copy.menu.copy_markdown": "复制为Markdown",
 	"ui.chat.transcript_copy.menu.copy_selection": "复制所选内容",
+	"ui.chat.transcript_copy.role.assistant": "助手",
+	"ui.chat.transcript_copy.selection.quote": "引用",
+	"ui.chat.transcript_copy.technical_details": "技术详情",
 	"ui.chat.transcript_copy.toast.copied_markdown": "已复制为Markdown",
 	"ui.chat.transcript_copy.toast.copied_selection": "已复制所选内容",
 	"ui.chat.transcript_copy.row.your_message": "你的消息",

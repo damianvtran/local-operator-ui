@@ -16,6 +16,10 @@ import type {
 } from "../shared/browser-address-history";
 import type { HumanTabActionOutcome } from "../shared/browser-tab-action";
 import type {
+	TabActionsMenuRequest,
+	TabActionsMenuSelection,
+} from "../shared/browser-tab-actions-menu";
+import type {
 	DesktopAPI,
 	DirectoryListing,
 	ExternalOpenOutcome,
@@ -189,6 +193,12 @@ declare global {
 					tabId: number,
 					action: "duplicate" | "reload" | "mute" | "unmute",
 				) => Promise<HumanTabActionOutcome>;
+				/** The tab strip's actions menu, popped as a NATIVE menu by main.
+				 * Resolves with the selected item id, or null when the menu was
+				 * dismissed (or cannot be shown, as in a headless run). */
+				tabActionsMenu: (
+					request: TabActionsMenuRequest,
+				) => Promise<TabActionsMenuSelection>;
 				newTab: (sessionId?: string | null) => Promise<unknown>;
 				closeTab: (tabId: number) => Promise<unknown>;
 				/** A bulk close. `{ mode: "ids", tabIds }`, or `{ mode: "conversation",

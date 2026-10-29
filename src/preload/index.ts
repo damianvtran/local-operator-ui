@@ -30,6 +30,10 @@ import type {
 	HumanTabAction,
 	HumanTabActionOutcome,
 } from "../shared/browser-tab-action";
+import type {
+	TabActionsMenuRequest,
+	TabActionsMenuSelection,
+} from "../shared/browser-tab-actions-menu";
 import {
 	type DesktopMediaRequest,
 	type DesktopRequest,
@@ -59,6 +63,7 @@ import {
 } from "../shared/mini-view";
 import { readLaunchTarget, readOpenSessionArgv } from "../shared/open-session";
 import type {
+	TeamBridgeNotificationSender,
 	TeamBridgeNotifyAuthority,
 	TeamBridgeNotifyRequest,
 	TeamBridgeOpenResult,
@@ -149,6 +154,12 @@ const api = {
 				ipcRenderer.invoke("team-bridge:authority", authority),
 			notify: (input: TeamBridgeNotifyRequest): Promise<{ shown: boolean }> =>
 				ipcRenderer.invoke("team-bridge:notify", input),
+			/** Main derives the current viewer/epoch; the renderer supplies only the
+			 * already-fetched tenant roster for cache eviction and warming. */
+			syncDirectory: (input: {
+				tenantId: string;
+				members: TeamBridgeNotificationSender[];
+			}): Promise<void> => ipcRenderer.invoke("team-bridge:directory", input),
 			onOpen: (callback: () => void) => {
 				const handler = () => callback();
 				ipcRenderer.on("team-bridge:open", handler);
@@ -978,6 +989,13 @@ const api = {
 			ipcRenderer.invoke("browser-tab-action", tabId, action),
 		newTab: (sessionId?: string | null): Promise<unknown> =>
 			ipcRenderer.invoke("browser-new-tab", sessionId ?? null),
+		/** The strip's actions menu: a native popup owned by main (LOH-13
+		 * operator report). The request is validated there; the answer is the
+		 * selected item id or null for a dismissal. */
+		tabActionsMenu: (
+			request: TabActionsMenuRequest,
+		): Promise<TabActionsMenuSelection> =>
+			ipcRenderer.invoke("browser-tab-actions-menu", request),
 		closeTab: (tabId: number): Promise<unknown> =>
 			ipcRenderer.invoke("browser-close-tab", tabId),
 		/** A bulk close: `{ mode: "ids", tabIds }` for tabs the user could see, or

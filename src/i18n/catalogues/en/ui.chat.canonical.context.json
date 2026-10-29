@@ -385,5 +385,65 @@
 		"length": "One word.",
 		"note": "Spoken, not drawn: a success draws no visible word, so this is the whole of what a reader with no screen hears for the outcome.",
 		"placeholders": {}
+	},
+	"ui.chat.canonical.image_gen.control.edit_and_restart": {
+		"role": "button label",
+		"tone": "Direct, two verbs.",
+		"note": "Shown on a finished or failed generation: it reopens the editable prompt and starts a new run from it. The edit happens before the run, so the label names both steps.",
+		"length": "Three words."
+	},
+	"ui.chat.canonical.image_gen.control.restart": {
+		"role": "button label",
+		"tone": "Direct, calm.",
+		"note": "Shown after a cancel: nothing failed, so this starts the same generation again rather than retrying an error. Same slot as the retry label, chosen by the card's state.",
+		"length": "One word."
+	},
+	"ui.chat.canonical.image_gen.control.stop": {
+		"role": "button label",
+		"tone": "Direct, calm.",
+		"note": "Stops a generation in flight. Deliberately not `Cancel`: cancellation is a REQUEST, best-effort once the provider is working, and a button saying `Cancel` would promise a stop the contract does not offer. The control's hint states which of the two promises it can keep.",
+		"length": "One word."
+	},
+	"ui.chat.canonical.image_gen.progress": {
+		"role": "progress name",
+		"tone": "plain",
+		"note": "Announced as the bar's value while an image generates."
+	},
+	"ui.chat.canonical.raw_information": {
+		"role": "pane heading",
+		"tone": "plain"
+	},
+	"ui.chat.canonical.security_notice.aria": {
+		"role": "section name",
+		"tone": "plain"
+	},
+	"ui.chat.canonical.security_notice.blocked": {
+		"role": "notice title",
+		"tone": "plain",
+		"note": "The guard stopped an action it judged risky."
+	},
+	"ui.chat.canonical.security_notice.show_code": {
+		"role": "disclosure summary",
+		"tone": "plain"
+	},
+	"ui.chat.canonical.tool_row.pending": {
+		"role": "screen-reader only",
+		"tone": "lowercase word",
+		"note": "Stands in for the animating ellipsis while a tool call is still running."
+	},
+	"ui.chat.canonical.transcript.load_failed": {
+		"role": "alert title",
+		"tone": "plain"
+	},
+	"ui.chat.canonical.turn_summary.completed": {
+		"role": "screen-reader only",
+		"tone": "lowercase word",
+		"note": "Announces the turn's end where the visible receipt is already on screen."
+	},
+	"ui.chat.canonical.turn_summary.took": {
+		"role": "receipt line",
+		"tone": "plain",
+		"note": "How long the turn ran.",
+		"placeholders": { "duration": "A formatted duration such as '4.2 s'." }
 	}
 }

@@ -1,0 +1,8 @@
+{
+	"ui.hub.card.download_named": "Tải xuống {name}",
+	"ui.hub.card.downloads_tooltip": "Lượt tải xuống",
+	"ui.hub.card.get": "Tải",
+	"ui.hub.card.unknown_author": "Không rõ tác giả",
+	"ui.hub.card.updated": "đã cập nhật {ago} trước",
+	"ui.hub.card.view_details": "Xem chi tiết về {name}"
+}

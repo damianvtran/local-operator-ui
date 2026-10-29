@@ -33,8 +33,11 @@ import {
 import { nextStaleAttempt } from "./stale-layout-retry";
 
 export interface AddressMirrorRow {
+	/** Plain display text: NO bidi controls. The child strips them by design, so
+	 * the isolation travels as `isolate` instead. */
 	text: string;
 	title: string;
+	isolate?: { start: number; end: number };
 	/** The candidate's stable identity (its URL). Never sent: it exists so a
 	 * click can be checked against the row the child actually painted. */
 	key: string;
@@ -142,7 +145,11 @@ function viewOf(input: AddressMirrorInput): AddressOverlayView {
 	if (input.rows.length > 0) {
 		return {
 			kind: "rows",
-			rows: input.rows.map((row) => ({ text: row.text, title: row.title })),
+			rows: input.rows.map((row) => ({
+				text: row.text,
+				title: row.title,
+				...(row.isolate ? { isolate: row.isolate } : {}),
+			})),
 		};
 	}
 	return {

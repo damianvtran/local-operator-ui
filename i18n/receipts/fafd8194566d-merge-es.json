@@ -1,0 +1,191 @@
+{
+  "locale": "es",
+  "scope": "ui.hub.pages + ui.common.actions: verification of the #1439 merge resolution",
+  "checkout_head": "2ba58dd71d",
+  "audit_date": "2026-10-29",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "fafd8194566d",
+    "model": "kimi/k3.1-pro"
+  },
+  "instance": "fafd8194566d-merge-es",
+  "input_sha256": {
+    "src/i18n/catalogues/en/ui.hub.pages.json": "f1b0a81c417ad3037e96efb0a6c85ae4588f9d01e9c01a3dbbb357f90dd03d3e",
+    "src/i18n/catalogues/en/ui.common.actions.json": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
+    "src/i18n/catalogues/es/ui.hub.pages.json": "6d13c1bc52d7217446b728226c37b5afed423dfc2ed1e0639508b87b05134683",
+    "src/i18n/catalogues/es/ui.common.actions.json": "9b90e06d6f1999a64a80a912811cd4254c1a86eb199da69ed15939c5064345c7"
+  },
+  "observed_diffs": {
+    "src/i18n/catalogues/en/ui.hub.pages.json": {
+      "key_counts": {
+        "main": 37,
+        "branch": 38,
+        "merged": 40
+      },
+      "against_origin_main": {
+        "added": [
+          "ui.hub.pages.pager.nav_aria",
+          "ui.hub.pages.pager.next",
+          "ui.hub.pages.pager.previous"
+        ],
+        "removed": [],
+        "changed": []
+      },
+      "against_2ba58dd71d": {
+        "added": [
+          "ui.hub.pages.card.get",
+          "ui.hub.pages.card.updated"
+        ],
+        "removed": [],
+        "changed": []
+      },
+      "overlap_count": 35,
+      "overlap_value_differences": [],
+      "union_proof": {
+        "merged_equals_main_plus_branch_only_values": true,
+        "all_main_values_preserved": true,
+        "all_main_raw_lines_preserved": true,
+        "all_branch_values_preserved": true,
+        "all_branch_only_raw_lines_preserved": true,
+        "json_valid_no_duplicate_keys": true
+      }
+    },
+    "src/i18n/catalogues/en/ui.common.actions.json": {
+      "key_counts": {
+        "main": 51,
+        "branch": 52,
+        "merged": 53
+      },
+      "against_origin_main": {
+        "added": [
+          "ui.common.actions.dismiss",
+          "ui.common.actions.more_info"
+        ],
+        "removed": [],
+        "changed": []
+      },
+      "against_2ba58dd71d": {
+        "added": [
+          "ui.common.actions.retrying"
+        ],
+        "removed": [],
+        "changed": []
+      },
+      "overlap_count": 50,
+      "overlap_value_differences": [],
+      "union_proof": {
+        "merged_equals_main_plus_branch_only_values": true,
+        "all_main_values_preserved": true,
+        "all_main_raw_lines_preserved": true,
+        "all_branch_values_preserved": true,
+        "all_branch_only_raw_lines_preserved": true,
+        "json_valid_no_duplicate_keys": true
+      }
+    },
+    "src/i18n/catalogues/es/ui.hub.pages.json": {
+      "key_counts": {
+        "main": 37,
+        "branch": 38,
+        "merged": 40
+      },
+      "against_origin_main": {
+        "added": [
+          "ui.hub.pages.pager.nav_aria",
+          "ui.hub.pages.pager.next",
+          "ui.hub.pages.pager.previous"
+        ],
+        "removed": [],
+        "changed": []
+      },
+      "against_2ba58dd71d": {
+        "added": [
+          "ui.hub.pages.card.get",
+          "ui.hub.pages.card.updated"
+        ],
+        "removed": [],
+        "changed": []
+      },
+      "overlap_count": 35,
+      "overlap_value_differences": [],
+      "union_proof": {
+        "merged_equals_main_plus_branch_only_values": true,
+        "all_main_values_preserved": true,
+        "all_main_raw_lines_preserved": true,
+        "all_branch_values_preserved": true,
+        "all_branch_only_raw_lines_preserved": true,
+        "json_valid_no_duplicate_keys": true
+      }
+    },
+    "src/i18n/catalogues/es/ui.common.actions.json": {
+      "key_counts": {
+        "main": 51,
+        "branch": 52,
+        "merged": 53
+      },
+      "against_origin_main": {
+        "added": [
+          "ui.common.actions.dismiss",
+          "ui.common.actions.more_info"
+        ],
+        "removed": [],
+        "changed": []
+      },
+      "against_2ba58dd71d": {
+        "added": [
+          "ui.common.actions.retrying"
+        ],
+        "removed": [],
+        "changed": []
+      },
+      "overlap_count": 50,
+      "overlap_value_differences": [],
+      "union_proof": {
+        "merged_equals_main_plus_branch_only_values": true,
+        "all_main_values_preserved": true,
+        "all_main_raw_lines_preserved": true,
+        "all_branch_values_preserved": true,
+        "all_branch_only_raw_lines_preserved": true,
+        "json_valid_no_duplicate_keys": true
+      }
+    }
+  },
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 0
+  },
+  "verdict": "pass",
+  "namespaces": {
+    "ui.hub.pages": {
+      "status": "passed",
+      "keys_audited": 40,
+      "sha256": {
+        "en": "f1b0a81c417ad3037e96efb0a6c85ae4588f9d01e9c01a3dbbb357f90dd03d3e",
+        "target": "6d13c1bc52d7217446b728226c37b5afed423dfc2ed1e0639508b87b05134683"
+      },
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "keys_audited": 53,
+      "sha256": {
+        "en": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
+        "target": "9b90e06d6f1999a64a80a912811cd4254c1a86eb199da69ed15939c5064345c7"
+      },
+      "findings": []
+    }
+  },
+  "verification": {
+    "merge_proof": "Working-tree files equal origin/main values plus branch-only values from 2ba58dd71d; no removals or changed values. Every main key's complete JSON line is byte-identical, as is every branch-only key's complete JSON line. Overlapping values had no disagreements.",
+    "spanish": "All 93 Spanish values reviewed against English and context sidecars. Both namespaces retain a coherent neutral-Spanish tú/infinitive voice. Every Spanish value present in origin/main is unchanged; no Spanish value equals its English source.",
+    "mechanics": "All 186 messages parsed with @formatjs/icu-messageformat-parser using requiresOtherClause. Argument names match en/es; Spanish plural arms are one/many/other. Placeholder, plural-arm, ellipsis and quote-glyph preservation checks against both revisions found no changes; no three-period ellipses.",
+    "public_copy_reader": {
+      "attempted": true,
+      "result": "refused",
+      "reason": "Both es working-tree files differ from HEAD; the tool requires committed public copy. No edits or commits were made, as instructed. Direct reads supplied the linguistic review, but this requested route could not verify the uncommitted resolution."
+    },
+    "style_guide": "/Users/damian/local-operator/i18n/style-guides/es.md (labelled reference document; neutral Spanish, tú, infinitive actions, one/many/other plurals)",
+    "checkout_note": "HEAD remains pre-merge 2ba58dd71d while the worktree contains the merge resolution under audit."
+  }
+}

@@ -25,7 +25,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { editDraftOf, editTextOf, skillOf, skillRowOf } from "./src/renderer/src/features/chat/canonical/skill-row";
+			export { editDraftOf, editTextOf, displayTextOf, skillOf, skillRowOf } from "./src/renderer/src/features/chat/canonical/skill-row";
 			export { escapeSkillAttribute, renderSkillInvocation, typedLineOf, unescapeSkillAttribute } from "./src/renderer/src/features/chat/components/skill-invocation";
 		`,
 		resolveDir: process.cwd(),
@@ -40,6 +40,7 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
 	editDraftOf,
 	editTextOf,
+	displayTextOf,
 	skillOf,
 	skillRowOf,
 	escapeSkillAttribute,
@@ -563,6 +564,39 @@ test("Edit hands the composer the typed line and the quote as a chip", () => {
 		'the format is <skill name="x" invocation="$seal-demo do it"> body </skill> then the request';
 	assert.equal(editTextOf(prose), prose);
 	assert.equal(editTextOf(`${reply}\nplain words`), `${reply}\nplain words`);
+});
+
+test("the new block shape paints as the typed line and edits back to it", () => {
+	const block = [
+		"<operator-skills>",
+		"",
+		"The user invoked the following skills directly. Follow them for this request. Their reference files, if any, are listed at the end of each body and are read with `skill://<name>/<path>`.",
+		"",
+		'<skill name="seal-demo">',
+		"# Seal demo",
+		"",
+		"Answer with one line.",
+		"</skill>",
+		"",
+		"</operator-skills>",
+	].join("\n");
+	const typed = "$seal-demo review the diff";
+	const payload = `${typed}\n\n${block}`;
+	assert.equal(displayTextOf(payload), typed);
+	assert.equal(editTextOf(payload), typed);
+	const draft = editDraftOf(payload);
+	assert.equal(draft.text, typed);
+	assert.deepEqual(draft.replies, []);
+	// A message may carry several skills, so there is no single seal to name.
+	assert.equal(skillOf(payload), undefined);
+	// Ordinary text is byte-identical, whitespace included.
+	assert.equal(displayTextOf("  keep my spaces  "), "  keep my spaces  ");
+	// A quoted new-shape send: the row keeps the prefix (parseReplies splits it)
+	// and Edit hands the box the typed line alone.
+	const reply = "<reply-to>the answer above</reply-to>";
+	const quoted = editDraftOf(`${reply}\n${payload}`);
+	assert.equal(quoted.text, typed);
+	assert.equal(quoted.replies.length, 1);
 });
 
 test("escape and unescape are inverses, and unescape undoes the entities once", () => {
