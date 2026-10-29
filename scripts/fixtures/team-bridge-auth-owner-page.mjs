@@ -103,14 +103,12 @@ const bundle = await build({
 	// (`browser-chrome.test.mjs` records the same trap). The URL is dead on purpose.
 	define: { "import.meta.env": "__viteEnv" },
 	/*
-	 * BOTH SHIMS THE APP'S BUNDLER GIVES THE SAME MODULES. `__viteEnv` is Vite's
-	 * `import.meta.env`; `require` is what a CJS dependency inside an ESM bundle
-	 * needs (the composer's graph keeps one), resolved from THIS file the way the
-	 * app resolves it. `agents-composer-mount.test.mjs` states the same recipe.
+	 * CJS output supplies `require` itself and Module._compile wraps this text as
+	 * CJS. An ESM `import` banner therefore makes Node 24 classify the whole
+	 * generated file as ESM, so `module.exports` throws before any assertions run.
+	 * Only Vite's env shim belongs here.
 	 */
-	banner: {
-		js: 'const __viteEnv = {}; import { createRequire as __loCreateRequire } from "node:module"; const require = __loCreateRequire(import.meta.url);',
-	},
+	banner: { js: "const __viteEnv = {};" },
 	// The page mounts the SHARED composer now, which pulls the brand mark (.png).
 	// Bundling it keeps this container probe on the real component tree; a `dataurl`
 	// rather than a file keeps the fixture asset-free.
