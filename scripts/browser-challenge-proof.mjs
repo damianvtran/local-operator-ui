@@ -90,6 +90,7 @@ import {
 	reapOnExit,
 	stopAppTree,
 } from "./app-tree-teardown.mjs";
+import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 
@@ -1917,9 +1918,51 @@ async function noticeState(renderer) {
 }
 
 async function runPasskeyAttempt() {
+	/*
+	 * This arm OWNS its two loopback listeners, because the caller's outer
+	 * `servers` variable is deliberately null for it — main() cannot close what
+	 * the attempt opened. The attempt proper therefore runs inside this wrapper,
+	 * whose `finally` runs on every exit path (success, early return and throw)
+	 * and closes whatever it registered. Without it a throw AFTER the second
+	 * listen left Node holding two referenced listening handles: the process
+	 * never exited, and every further attempt accumulated another pair
+	 * (agent review round 1, R1 — reproduced with real loopback servers and an
+	 * injected exception).
+	 */
+	const owners = [];
+	try {
+		return await passkeyAttemptBody(owners);
+	} finally {
+		await closePasskeyServers(owners);
+	}
+}
+
+/**
+ * Closes the servers an attempt opened, newest first, and NEVER throws: a close
+ * failure must not replace the attempt's own error, which is what the caller
+ * records. Keep-alive and half-open sockets are destroyed first because
+ * `close()` alone waits for them, so a page still holding a connection would
+ * keep the handle alive and defeat the whole point of closing here.
+ */
+async function closePasskeyServers(owners) {
+	for (const server of [...owners].reverse()) {
+		if (!server.listening) continue;
+		server.closeAllConnections?.();
+		await new Promise((settle) => server.close(() => settle()));
+	}
+}
+
+/**
+ * The passkey attempt proper. Each server is registered in `owners` the moment
+ * it exists — before the next await that can throw — because the wrapper's
+ * `finally` is the only place that runs on a failed attempt.
+ */
+async function passkeyAttemptBody(owners) {
 	const inspectPort = await freeDevtoolsPort();
 	const topServer = await startServer("rp.test top (origin P1)", {});
+	owners.push(topServer);
 	const frameServer = await startServer("rp.test frame (origin P2)", {});
+	owners.push(frameServer);
 	const p1 = topServer.address().port;
 	const p2 = frameServer.address().port;
 	// Rebuild the routes now that both ports are known (startServer closes over a
@@ -1965,8 +2008,8 @@ async function runPasskeyAttempt() {
 		extraArgs: [
 			// A scratch HOME has no keychain; without this Chromium asks macOS to create
 			// one and the prompt lands on the operator's screen (AGENTS.md, the keychain
-			// section on rigs).
-			"--use-mock-keychain",
+			// section on rigs). The switch is spelled once, in chrome-keychain.mjs.
+			MOCK_KEYCHAIN_SWITCH,
 			"--host-resolver-rules=MAP rp.test 127.0.0.1",
 			`--unsafely-treat-insecure-origin-as-secure=${top},${frameOrigin}`,
 		],
@@ -2446,8 +2489,6 @@ async function runPasskeyAttempt() {
 
 	for (const client of [page1, page2, page3, page4, renderer, main])
 		client.close();
-	topServer.close();
-	frameServer.close();
 	return failures === 0 && !launched.exited();
 }
 
