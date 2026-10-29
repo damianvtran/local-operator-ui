@@ -395,21 +395,30 @@ test("immutable local ID never falls back to an alias belonging to another copy"
 		["link-2"],
 	);
 });
-test("stable retry names direction and cannot also select another named copy", () => {
+test("retry addresses exactly one item by local id and carries no link or direction", () => {
 	const request = {
 		op: "hub.retry",
 		requestId: "00000000-0000-4000-8000-000000000001",
-		linkId: "synthetic-link",
-		direction: "push",
+		kind: "agent",
+		localId: "synthetic-local-id",
 	};
 	assert.deepEqual(desktopEndpoint(desktopRequestSchema.parse(request)).body, {
 		request_id: request.requestId,
-		link_id: "synthetic-link",
-		direction: "push",
+		kind: "agent",
+		local_id: "synthetic-local-id",
 	});
+	/*
+	 * `link_id` and `direction` are not members of core's `HubRetry`
+	 * (`desktop_hub.py`), whose base forbids extra fields: the released body was
+	 * refused 422. One address only, and an id without its kind is refused
+	 * rather than searched across kinds.
+	 */
 	for (const over of [
-		{ direction: undefined },
-		{ kind: "agent", name: "other-copy" },
+		{ linkId: "synthetic-link" },
+		{ direction: "push" },
+		{ localId: undefined },
+		{ name: "other-copy", localId: "synthetic-local-id" },
+		{ kind: undefined },
 	])
 		assert.equal(
 			desktopRequestSchema.safeParse({ ...request, ...over }).success,
@@ -451,17 +460,24 @@ test("manual publish cannot confirm unseen proposal or treat dry-run as consent"
 	assert.equal(endpoint.path, "/v1/desktop/hub/updates/push");
 });
 
-test("incoming viewed result requires receipt + explicit confirm and cannot share dry-run", () => {
+test("an apply addresses one item and carries no receipt or direction", () => {
 	const base = {
 		op: "hub.apply",
 		requestId: "00000000-0000-4000-8000-000000000001",
-		linkId: "synthetic-link",
-		direction: "pull",
+		kind: "agent",
+		localId: "synthetic-local-id",
 	};
+	/*
+	 * Core's `HubApply` has no `preview_receipt`/`confirm_apply` and no
+	 * `direction`: `extra="forbid"` refused every body that carried them (the
+	 * receipt mechanism belongs to the PUSH route). The preview is `dry_run`,
+	 * and the merge options are `prefer`/`acknowledge_unknown_baseline`.
+	 */
 	for (const over of [
-		{ confirmApply: true },
 		{ previewReceipt: "receipt" },
-		{ previewReceipt: "receipt", confirmApply: true, dryRun: true },
+		{ confirmApply: true },
+		{ direction: "pull" },
+		{ linkId: "synthetic-link" },
 	])
 		assert.equal(
 			desktopRequestSchema.safeParse({ ...base, ...over }).success,
@@ -470,16 +486,20 @@ test("incoming viewed result requires receipt + explicit confirm and cannot shar
 	const endpoint = desktopEndpoint(
 		desktopRequestSchema.parse({
 			...base,
-			previewReceipt: "receipt",
-			confirmApply: true,
+			dryRun: true,
 			prefer: "local",
 			acknowledgeUnknownBaseline: true,
 		}),
 	);
-	assert.equal(endpoint.body.preview_receipt, "receipt");
-	assert.equal(endpoint.body.confirm_apply, true);
-	assert.equal(endpoint.body.prefer, "local");
-	assert.equal(endpoint.body.acknowledge_unknown_baseline, true);
+	assert.deepEqual(endpoint.body, {
+		request_id: base.requestId,
+		kind: "agent",
+		local_id: "synthetic-local-id",
+		prefer: "local",
+		acknowledge_unknown_baseline: true,
+		dry_run: true,
+	});
+	assert.equal(endpoint.path, "/v1/desktop/hub/updates/apply");
 });
 test("inbound old-server nullable revision remains bound to remote hash and source", () => {
 	const incoming = {
