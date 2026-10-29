@@ -12,7 +12,7 @@ light one (`kanagawaLotus`).
 | --- | --- | --- |
 | `first-paint-obsidian-before.png` | `main` @ 20225f3 | brand `localOperatorDark`: warm charcoal card, brand-green primary. `data-theme=localOperatorDark` |
 | `after-model-obsidian.png` | `main` @ 20225f3 | the model arrives and corrects it to `obsidian`: neutral grey card, white primary. This is the correction the operator saw |
-| `first-paint-obsidian-after.png` | `fix/approvals-first-paint-palette` | `obsidian` already at first paint — byte-identical to the model's own paint (`sha256 03c7f947…` for the post-model frame in both trees) |
+| `first-paint-obsidian-after.png` | `fix/approvals-first-paint-palette` | `obsidian` already at first paint — its sampled card background equals the model's own paint, though the frames are not byte-identical. The post-model frame has `sha256 03c7f947…` in both trees |
 | `first-paint-kanagawaLotus-before.png` | `main` @ 20225f3 | the mode default is `localOperatorLight`: white card, brand-green primary |
 | `first-paint-kanagawaLotus-after.png` | `fix/approvals-first-paint-palette` | `kanagawaLotus` cream and navy at first paint |
 | `after-model-kanagawaLotus.png` | either tree | the model's paint of the same card, unchanged |
