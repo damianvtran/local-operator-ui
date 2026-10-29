@@ -15,6 +15,8 @@ import {
 	teamBridgeSuspendArrivals,
 } from "./team-bridge-arrival-model";
 import { TeamBridgeMessageAttachments } from "./team-bridge-attachments";
+import { EMOJI_ENTRIES } from "./team-bridge-emoji-model";
+import { warmEmojiProbeCache } from "./team-bridge-emoji-support";
 import { TeamBridgeMarkdown } from "./team-bridge-markdown";
 import { TeamBridgeMessageToolbar } from "./team-bridge-message-toolbar";
 import { type ThreadItem, threadItems } from "./team-bridge-model";
@@ -22,6 +24,7 @@ import {
 	TeamBridgeAvatar,
 	TeamBridgeProfileCard,
 } from "./team-bridge-profile-card";
+import { TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-reaction-gate";
 import {
 	TeamBridgeReactionChips,
 	useTeamBridgeReactionState,
@@ -189,8 +192,31 @@ export const TeamBridgeMessageList: FC<{
 	const locale = useI18nLocale();
 	const arriving = useArrivingRows(arrivalKey, messages, arrivalsEnabled);
 	const items = threadItems(messages, new Date());
+	/* Warm the emoji font probe while the reader is reading, so opening the
+	   reaction picker is a cache lookup rather than canvas readbacks inside its
+	   click handler. GATED ON THE HOLD (agent review round 1, m1): while
+	   reactions do not ship, no toolbar, picker or chip renders, so the walk
+	   buys this build nothing and would spend the operator's first load on it.
+	   Mounted on the list because the row's toolbar - the only door to the
+	   picker - lives here; the helper itself is once-per-module, so the thread
+	   pane's extra lists do not each take a slice. */
+	useEffect(() => {
+		if (!TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD) return;
+		return warmEmojiProbeCache(EMOJI_ENTRIES.map((entry) => entry.emoji));
+	}, []);
 	return (
-		<ol className="mt-auto flex flex-col pt-4 pb-2">
+		/* THE SHARED WIDTH CONSTRAINT (operator report 2026-10-27: the hover
+		   band and the action row ran past the visible column). The list is
+		   exactly the scroll viewport's width, never its content's: `w-full
+		   min-w-0` here and on every row means a long unbroken token, a code
+		   block or a table can only wrap or scroll inside the row's content
+		   column (`lo-markdown` breaks words; `pre` and tables scroll in their
+		   own box), so the row-hover ground and the toolbar float, which is the
+		   last thing at the column's end edge, stay inside what the reader sees.
+		   Both scroll hosts (the page timeline and the thread pane) also lay
+		   Radix's content wrapper out as a block, not its default shrink-to-fit
+		   `display: table`; see their ScrollArea class names. */
+		<ol className="mt-auto flex w-full min-w-0 flex-col pt-4 pb-2">
 			{items.map((item) =>
 				item.type === "day" ? (
 					<DayDivider key={`day:${item.key}`} item={item} locale={locale} />
@@ -402,7 +428,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 			data-message-id={message.id}
 			onAnimationEnd={arriving ? onArrivalEnd : undefined}
 			className={cn(
-				"group/message relative flex gap-3 px-5 transition-colors duration-fast ease-out-quart hover:bg-row-hover",
+				"group/message relative flex w-full min-w-0 gap-3 px-5 transition-colors duration-fast ease-out-quart hover:bg-row-hover",
 				// Transform/opacity only: the row reserves its final layout box
 				// immediately, so arrival cannot move the scroll geometry.
 				arriving && "lo-team-bridge-arrival",

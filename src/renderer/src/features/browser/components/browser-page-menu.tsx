@@ -34,8 +34,11 @@ import { useEffect, useRef, useState } from "react";
  * chrome" exists to avoid. What remains is what has no row control: Find, Print,
  * Reset zoom when it is off 100%, the downloads folder when one is known, and
  * Approvals — which is also the way back to site access when nothing is pending.
- * At wide widths the row's shield opens the same dock; below 300px that control
- * is folded and this item is the only route to the list.
+ * At wide widths the row's shield opens the native card (or, with nothing
+ * pending, the Approvals dialog); below 300px that control is folded and this
+ * item is the route to the grants. With the native card it ALWAYS opens the
+ * Approvals dialog (S6d), so revoke / forget / clear stay reachable while a
+ * request is pending; on the kill-switch fallback it toggles the dock.
  *
  * FOLDED CONTROLS COME BACK HERE. In a narrow pane the row sheds Home (below
  * 360px) and then Forward (below 300px) — see `browser-surface.tsx`'s width

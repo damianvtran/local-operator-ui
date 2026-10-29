@@ -3852,6 +3852,13 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			send_at: z.string().datetime({ offset: true }).optional(),
 			/* The WHOLE new set when present (`[]` removes every image); absent keeps it. */
 			attachment_ids: teamBridgeAttachmentIds.optional(),
+			/*
+			 * The hub version of the row this edit was derived from (agent-server
+			 * #223). The hub refuses the edit with 409 `concurrent_edit` when the
+			 * row has moved since, so a stale FIRST submit cannot erase another
+			 * device's change. Absent = the hub checks only its own read.
+			 */
+			expected_version: z.number().int().nonnegative().optional(),
 		})
 		.strict(),
 	/*
@@ -9588,6 +9595,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.attachment_ids === undefined
 						? {}
 						: { attachment_ids: request.attachment_ids }),
+					...(request.expected_version === undefined
+						? {}
+						: { expected_version: request.expected_version }),
 				},
 			};
 		case "team_bridge.attachments.delete":

@@ -927,6 +927,101 @@
 		"placeholders": {},
 		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
 	},
+	"ui.teamBridge.schedule.edit_failed": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge, editing an existing scheduled message. The server did not save the change (not a conflict). The person's edits stay in the dialog and they can submit again."
+	},
+	"ui.teamBridge.schedule.edit_conflict": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. Headline of a warning notice; one or more detail sentences follow beneath it."
+	},
+	"ui.teamBridge.schedule.edit_gone": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge, editing an existing scheduled message. It is no longer pending (cancelled, or delivered, possibly from another device), so editing is impossible. The only action is Close; do not suggest retrying."
+	},
+	"ui.teamBridge.schedule.edit_gone_title": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Dialog title replacing 'Schedule message' when the edited scheduled message was cancelled or already sent and can no longer be changed."
+	},
+	"ui.teamBridge.schedule.conflict_body_replaced": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. The person had edited the text, but the other device's text won and is now shown in the field. Pairs with the 'Use my text instead' button."
+	},
+	"ui.teamBridge.schedule.conflict_body_changed": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. The person had not edited the text; the other device changed it and the new text is shown."
+	},
+	"ui.teamBridge.schedule.conflict_time_replaced": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. The person had picked a new send time, but the other device's time won and is now shown."
+	},
+	"ui.teamBridge.schedule.conflict_time_changed": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. The person had not changed the send time; the other device changed it."
+	},
+	"ui.teamBridge.schedule.conflict_images_added": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {
+			"count": "Number of images (integer)."
+		},
+		"note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. Images attached on the other device now appear in the dialog. ICU plural on count."
+	},
+	"ui.teamBridge.schedule.conflict_images_removed": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {
+			"count": "Number of images (integer)."
+		},
+		"note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. Images the person could still see were removed on the other device. ICU plural on count."
+	},
+	"ui.teamBridge.schedule.conflict_review": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. Shown when some of the person's own changes survived and the Review button is enabled."
+	},
+	"ui.teamBridge.schedule.conflict_nothing_left": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. Shown when none of the person's changes remain; the only action offered is Close."
+	},
+	"ui.teamBridge.schedule.conflict_restore_body": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge, editing an existing scheduled message that the same person also changed on another device while this dialog was open. Button that puts the person's own lost text back into the message field. First person ('my') is the person's own voice."
+	},
 	"ui.teamBridge.schedule.confirm_action": {
 		"role": "Scheduled messaging and intentional draft interface",
 		"tone": "Clear, calm, sentence case",

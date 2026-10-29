@@ -2066,7 +2066,19 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 														onMessage={() => {}}
 														canMessage={false}
 													>
-														<button type="button" className="rounded-xl">
+														{/* `self-start`, not the column's default stretch: a
+														    stretched <button> spans the pane, and the UA's
+														    `text-align: center` for buttons then centred the
+														    56px mark over left-aligned name and intro lines
+														    (operator report 2026-10-27, regressed when #1433
+														    wrapped the plate in this profile-card trigger).
+														    The mark shares the text block's left edge,
+														    Slack-style, and the hit target is the mark only. */}
+														<button
+															type="button"
+															data-draft-avatar=""
+															className="self-start rounded-xl"
+														>
 															<TeamBridgeAvatar
 																member={draftPerson}
 																label={paneTitle ?? ""}
@@ -2102,7 +2114,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 														)}
 													</span>
 												)}
-												<p className="font-semibold text-[17px] text-ink">
+												<p
+													data-draft-name=""
+													className="font-semibold text-[17px] text-ink"
+												>
 													{paneTitle}
 												</p>
 												<p className="text-[13px] text-ink-muted">
