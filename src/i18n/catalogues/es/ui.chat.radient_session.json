@@ -1,6 +1,6 @@
 {
 	"ui.chat.radient_session.action.sign_in": "Iniciar sesión en Radient",
-	"ui.chat.radient_session.pointer.sign_in_active": "En Ajustes, dentro de Proveedores, es donde se puede borrar.",
+	"ui.chat.radient_session.pointer.sign_in_active": "En Settings, dentro de Providers, es donde se puede borrar.",
 	"ui.chat.radient_session.prose.input_required": "{message} Esta pantalla no acepta el código pegado, así que termina de iniciar sesión en Ajustes, dentro de Proveedores.",
 	"ui.chat.radient_session.prose.needs_sign_in": "Radient ya no acepta el inicio de sesión guardado en este equipo. Al iniciar sesión de nuevo, se restauran los modelos de Radient y se abre el navegador para que des tu consentimiento.",
 	"ui.chat.radient_session.prose.signing_in": "Completa el inicio de sesión en tu navegador. El conector se reinicia solo cuando se completa el inicio de sesión; los intentos sin terminar caducan a los pocos minutos.",

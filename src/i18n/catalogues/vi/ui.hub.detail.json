@@ -1,8 +1,8 @@
 {
 	"ui.hub.detail.back_aria": "Quay lại Agent Hub",
 	"ui.hub.detail.created": "Đã tạo: {ago} trước ({date})",
-	"ui.hub.detail.created_by": "NgườI tạo: {author}",
-	"ui.hub.detail.created_by_with_email": "NgườI tạo: {author} ({email})",
+	"ui.hub.detail.created_by": "Người tạo: {author}",
+	"ui.hub.detail.created_by_with_email": "Người tạo: {author} ({email})",
 	"ui.hub.detail.delist_aria": "Gỡ tác nhân khỏi danh sách",
 	"ui.hub.detail.delist_body": "Thao tác này sẽ gỡ “{name}” khỏi trung tâm ngay lập tức và không ai có thể tải xuống nữa. Bạn có thể tải lên lại sau.",
 	"ui.hub.detail.delist_confirm": "Gỡ khỏi danh sách",

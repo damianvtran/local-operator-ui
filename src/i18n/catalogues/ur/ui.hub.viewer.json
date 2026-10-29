@@ -1,10 +1,10 @@
 {
 	"ui.hub.viewer.favourite": "ایجنٹ کو پسندیدہ بنائیں",
-	"ui.hub.viewer.favourite_signed_out": "ایجنٹس کو پسندیدہ بنانے کے لیے Radient میں لاگ ان کریں",
+	"ui.hub.viewer.favourite_signed_out": "ایجنٹس کو پسندیدہ بنانے کے لیے Radient میں سائن ان کریں",
 	"ui.hub.viewer.favourite_unavailable": "پسندیدہ کی حالت دستیاب نہیں",
 	"ui.hub.viewer.favourite_unknown": "آپ کے پسندیدہ پڑھے نہیں جا سکے، اس لیے اسے غیر پسندیدہ نہیں دکھایا گیا۔",
 	"ui.hub.viewer.like": "ایجنٹ لائک کریں",
-	"ui.hub.viewer.like_signed_out": "ایجنٹس لائک کرنے کے لیے Radient میں لاگ ان کریں",
+	"ui.hub.viewer.like_signed_out": "ایجنٹس کو لائک کرنے کے لیے Radient میں سائن ان کریں",
 	"ui.hub.viewer.like_unavailable": "لائک کی حالت دستیاب نہیں",
 	"ui.hub.viewer.like_unknown": "آپ کے لائکس پڑھے نہیں جا سکے، اس لیے اسے غیر لائک شدہ نہیں دکھایا گیا۔",
 	"ui.hub.viewer.unfavourite": "ایجنٹ کو پسندیدہ سے ہٹائیں",

@@ -4,7 +4,7 @@
 	"ui.agents.settings.chat.model_hosting_heading": "Модель и хостинг",
 	"ui.agents.settings.chat.model_hosting_tooltip": "Выберите модель и провайдера хостинга",
 	"ui.agents.settings.chat.not_set_yet": "Ещё не задано",
-	"ui.agents.settings.chat.set_custom_values_note": "Вы можете задать свои значения этих параметров в полях ниже. Для незаданных параметров используются значения по умолчанию, оптимизированные по результатам пользовательских испытаний.",
+	"ui.agents.settings.chat.set_custom_values_note": "Вы можете задать свои значения этих параметров в полях ниже. Для незаданных параметров используются значения по умолчанию, оптимизированные по результатам пользовательского тестирования.",
 	"ui.agents.settings.chat.set_to_default": "По умолчанию ({value})",
 	"ui.agents.settings.chat.advanced_chat_settings": "Расширенные настройки чата",
 	"ui.agents.settings.chat.advanced_settings_to_change_how_the_agent": "Расширенные настройки, влияющие на то, как агент формирует ответы",

@@ -3,11 +3,11 @@
 	"ui.hub.detail.created": "تخلیق شدہ: {ago} پہلے ({date})",
 	"ui.hub.detail.created_by": "تخلیق کار: {author}",
 	"ui.hub.detail.created_by_with_email": "تخلیق کار: {author} ({email})",
-	"ui.hub.detail.delist_aria": "ایجنٹ کی فہرست سے ہٹائیں",
+	"ui.hub.detail.delist_aria": "ایجنٹ کو فہرست سے ہٹائیں",
 	"ui.hub.detail.delist_body": "اس سے “{name}” فوراً ہب کی فہرست سے ہٹ جائے گا اور کوئی اسے ڈاؤن لوڈ نہیں کر سکے گا۔ آپ بعد میں اسے دوبارہ اپ لوڈ کر سکتے ہیں۔",
 	"ui.hub.detail.delist_confirm": "فہرست سے ہٹائیں",
 	"ui.hub.detail.delist_title": "اس ایجنٹ کو فہرست سے ہٹائیں؟",
-	"ui.hub.detail.delist_tooltip": "اس ایجنٹ کو Agent Hub کی فہرست سے مستقل ہٹائیں",
+	"ui.hub.detail.delist_tooltip": "اس ایجنٹ کو Agent Hub کی فہرست سے مستقل طور پر ہٹائیں",
 	"ui.hub.detail.delisting": "ایجنٹ کو فہرست سے ہٹایا جا رہا ہے",
 	"ui.hub.detail.download_aria": "ایجنٹ ڈاؤن لوڈ کریں",
 	"ui.hub.detail.download_tooltip": "ایجنٹ اپنے کمپیوٹر پر ڈاؤن لوڈ کریں",
@@ -24,5 +24,5 @@
 	"ui.hub.detail.sign_in_tooltip": "یہ سہولت استعمال کرنے کے لیے Radient میں سائن ان کریں",
 	"ui.hub.detail.trying": "کوشش جاری ہے…",
 	"ui.hub.detail.unknown_author": "نامعلوم",
-	"ui.hub.detail.viewer_unknown": "آپ کے لائکس اور پسندیدہ پڑھے نہیں جا سکے، اس لیے اس ایجنٹ پر آپ کی حالت نہیں دکھائی گئی۔"
+	"ui.hub.detail.viewer_unknown": "آپ کے لائکس اور پسندیدہ پڑھے نہیں جا سکے، اس لیے اس ایجنٹ پر آپ کی لائک اور پسندیدہ کی حالت نہیں دکھائی گئی۔"
 }

@@ -22,7 +22,7 @@
 	"ui.hub.detail.no_description": "未提供描述。",
 	"ui.hub.detail.not_found": "未找到智能体。",
 	"ui.hub.detail.sign_in_tooltip": "登录Radient以使用此功能",
-	"ui.hub.detail.trying": "正在重试……",
+	"ui.hub.detail.trying": "正在尝试……",
 	"ui.hub.detail.unknown_author": "未知",
 	"ui.hub.detail.viewer_unknown": "无法读取你的点赞和收藏，因此不显示此智能体的相关状态。"
 }
