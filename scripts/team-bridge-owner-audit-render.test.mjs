@@ -60,6 +60,7 @@
  */
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import Module from "node:module";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -93,11 +94,39 @@ globalThis.getComputedStyle = dom.window.getComputedStyle;
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const { createRoot } = await import("react-dom/client");
 
+/* Keep the audit render bundle on the rail's shared primitives without
+ * bundling the entire chat tree behind its one selected-row token. This is the
+ * same dependency-boundary stub the sibling rail suites use. */
+const chatSidebarSource = readFileSync(
+	`${process.cwd()}/src/renderer/src/features/chat/components/chat-sidebar.tsx`,
+	"utf8",
+);
+const rowCurrentLiteral = chatSidebarSource.match(
+	/export const rowCurrent =\s*("[^"]+")/,
+)?.[1];
+if (!rowCurrentLiteral) throw new Error("rowCurrent literal not found");
+const CHAT_SIDEBAR_MODULE = /chat\/components\/chat-sidebar$/;
+const ANY_STUB_MODULE = /.*/;
+const chatSidebarStub = {
+	name: "chat-sidebar-stub",
+	setup(pluginBuild) {
+		pluginBuild.onResolve({ filter: CHAT_SIDEBAR_MODULE }, () => ({
+			path: "chat-sidebar-stub",
+			namespace: "stub",
+		}));
+		pluginBuild.onLoad({ filter: ANY_STUB_MODULE, namespace: "stub" }, () => ({
+			contents: `export const rowCurrent = ${rowCurrentLiteral};`,
+			loader: "js",
+		}));
+	},
+};
+
 const bundle = await build({
 	stdin: {
 		contents: `
 			export { OwnerAuditRailView, OwnerAuditPanelView, useOwnerAuditSurface } from "./src/renderer/src/features/team-bridge/team-bridge-owner-audit";
 			export { ownerAuditDelivery } from "./src/renderer/src/features/team-bridge/team-bridge-owner-audit-model";
+			export { RAIL_ROW } from "./src/renderer/src/features/team-bridge/team-bridge-rail";
 			export {
 				ownerAuditConversationPageSchema,
 				ownerAuditMessagePageSchema,
@@ -118,6 +147,7 @@ const bundle = await build({
 	external: ["react", "react-dom"],
 	loader: { ".css": "empty" },
 	tsconfig: "tsconfig.app.json",
+	plugins: [chatSidebarStub],
 	write: false,
 });
 const compiledPath = `${process.cwd()}/scripts/team-bridge-owner-audit-render-runtime.cjs`;
@@ -647,6 +677,13 @@ test("the client sends the account binding and parses the page it gets back", as
    2. The rail and the panel, four states each
 \* ------------------------------------------------------------------ */
 
+const channel = {
+	...group,
+	id: "conv_channel_launch",
+	kind: "channel",
+	name: "launch",
+};
+
 const rail = (overrides) =>
 	h(m.OwnerAuditRailView, {
 		conversations: [],
@@ -699,7 +736,7 @@ test("rail: loading, error with a working retry, empty, populated", async () => 
 	let selected = null;
 	const populated = await renderView(
 		rail({
-			conversations: [direct, group],
+			conversations: [direct, group, channel],
 			selectedId: group.id,
 			hasMore: true,
 			onSelect: (conversation) => {
@@ -708,12 +745,25 @@ test("rail: loading, error with a working retry, empty, populated", async () => 
 		}),
 	);
 	const rows = [...populated.host.querySelectorAll("li > button")];
-	assert.equal(rows.length, 2);
+	assert.equal(rows.length, 3);
 	/* A DM has no name, so its title is its members; a group shows its name. */
 	assert.ok(rows[0].textContent.includes("Ben Okafor, Aida"));
 	assert.ok(rows[1].textContent.includes("Q4 planning"));
 	assert.equal(rows[1].getAttribute("aria-current"), "page");
 	assert.equal(rows[0].getAttribute("aria-current"), null);
+	/* D1: audit rows borrow the rail's exact 30px class string and kind marks.
+	 * The agent name is already the section's scope, not a second text line. */
+	for (const row of rows) {
+		for (const token of m.RAIL_ROW.split(" "))
+			assert.ok(
+				row.classList.contains(token),
+				`audit row misses rail token ${token}`,
+			);
+		assert.equal(row.querySelectorAll("svg").length, 1);
+	}
+	assert.ok(rows[0].querySelector("svg.lucide-at-sign"));
+	assert.ok(rows[1].querySelector("svg.lucide-users"));
+	assert.ok(rows[2].querySelector("svg.lucide-hash"));
 	assert.ok(populated.text().includes(m.t("ui.ownerAudit.more")));
 	await click(rows[0]);
 	assert.equal(selected?.id, direct.id);

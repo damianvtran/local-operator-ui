@@ -14,6 +14,7 @@ import {
 	ownerAuditDelivery,
 	ownerAuditTitle,
 } from "./team-bridge-owner-audit-model";
+import { ConversationKindIcon, RAIL_ROW } from "./team-bridge-rail";
 import {
 	useOwnerAuditConversations,
 	useOwnerAuditMessages,
@@ -107,17 +108,19 @@ export function OwnerAuditRailView({
 						<button
 							type="button"
 							aria-current={selectedId === conversation.id ? "page" : undefined}
+							/* One 30px rail anatomy: the audit is already scoped to this
+							   chief of staff, so repeating her name added a second line
+							   instead of information (design round 2, D1). */
 							className={cn(
-								"w-full rounded-md px-3 py-2 text-start text-sm text-ink",
-								selectedId === conversation.id
-									? "bg-row-selected"
-									: "hover:bg-row-hover",
+								RAIL_ROW,
+								"text-ink-muted hover:bg-row-hover hover:text-ink",
+								selectedId === conversation.id && "bg-row-selected text-ink",
 							)}
 							onClick={() => onSelect(conversation)}
 						>
-							<span className="block truncate">{title(conversation)}</span>
-							<span className="block truncate text-xs text-ink-muted">
-								{conversation.agent.display_label || t("ui.ownerAudit.agent")}
+							<ConversationKindIcon kind={conversation.kind} />
+							<span className="min-w-0 flex-1 truncate">
+								{title(conversation)}
 							</span>
 						</button>
 					</li>
