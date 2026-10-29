@@ -815,18 +815,17 @@ const DrawerReadViews: FC<{
 							variant="neutral"
 							size="count"
 							/*
-							 * RESERVE TWO DIGITS (design round 1, D4). The count widened the
-							 * Unread segment by a digit as it passed 10, so the Read segment
-							 * moved 7.7 px under the pointer on the first click of a triage
-							 * run - exactly the click that takes the count from 10 to 9.
-							 * Tabular figures are already the primitive; this is the width
-							 * that makes one digit and two occupy one slot. From three digits
-							 * the badge grows by the digit it gained: reserving that on every
-							 * load costs this control 8 px of the drawer narrowest width for
-							 * a usually single-digit count.
+							 * RESERVE TWO DIGITS, PLUS THE COUNT BADGE'S CHROME (design round 1,
+							 * D4). `ch` measures the numeral's content box, not the `px-1` padding
+							 * and one-pixel borders around it. Reserving only `2ch` therefore never
+							 * bound: even a one-digit count badge was wider than the reservation,
+							 * and Read moved by one digit when Unread went from 10 to 9.
+							 * From three digits the badge grows by the digit it gained: reserving
+							 * that on every load costs this control 8 px at the drawer's narrowest
+							 * width for a usually single-digit count.
 							 */
 							style={{
-								minWidth: `${Math.max(2, formatNumber(unreadCount).length)}ch`,
+								minWidth: `calc(${Math.max(2, formatNumber(unreadCount).length)}ch + 10px)`,
 							}}
 						>
 							{formatNumber(unreadCount)}

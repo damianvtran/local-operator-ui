@@ -391,6 +391,67 @@ async function mount(options = {}) {
 
 const BOUNDED = { timeout: 30_000 };
 
+/*
+ * D4 geometry, in the measure the reservation owns. JSDOM has no CSS layout, so
+ * use the native scene's measured tabular digit and the count primitive's actual
+ * chrome (px-1 on both sides, one-pixel borders, min-w-4). The hosted scene
+ * remains the pixel evidence; this mounted test makes a missing or content-only
+ * reservation fail before it can move the neighbouring Read segment again.
+ */
+const TABULAR_DIGIT_PX = 7.71875;
+const DIGIT_RESERVATION = /^calc\((\d+)ch \+ 10px\)$/;
+const badgeBorderBox = (badge) => {
+	const naturalWidth = Math.max(
+		16,
+		badge.textContent.length * TABULAR_DIGIT_PX + 10,
+	);
+	const reservation = badge.style.minWidth.match(DIGIT_RESERVATION);
+	assert.ok(
+		reservation,
+		"the count reserves its digits plus the badge's 8px padding and 2px borders",
+	);
+	const reservedWidth = Number(reservation[1]) * TABULAR_DIGIT_PX + 10;
+	return Math.max(naturalWidth, reservedWidth);
+};
+
+test(
+	"D4: the digit reservation holds the Read segment's x across 10 to 9",
+	BOUNDED,
+	async () => {
+		const page = await mount({
+			items: Array.from({ length: 10 }, (_, index) => row(index + 1)),
+		});
+		const release = page.hold();
+		try {
+			assert.ok(await page.settle(() => page.tabCount() === "10"));
+			const before = page.q('[data-drawer-read-view="unread"] > span');
+			assert.ok(before);
+			const beforeWidth = badgeBorderBox(before);
+			/* Native frame localOperatorDark-populated: Read's x at Unread 10. */
+			const readXBefore = 643.515625;
+
+			await page.click(
+				'[data-drawer-update="n_row1"] [data-row-action="read"]',
+			);
+			assert.ok(await page.settle(() => page.tabCount() === "9"));
+			const after = page.q('[data-drawer-read-view="unread"] > span');
+			assert.ok(after);
+			const readXAfter = readXBefore + badgeBorderBox(after) - beforeWidth;
+
+			assert.equal(after.textContent, "9");
+			assert.equal(
+				readXAfter,
+				readXBefore,
+				"the badge's reserved border box, and therefore Read's x, does not shrink",
+			);
+		} finally {
+			await release();
+			await page.unmount();
+			page.client.clear();
+		}
+	},
+);
+
 const errorToasts = [];
 const originalErrorToast = DRAWER.sonnerToast.error;
 DRAWER.sonnerToast.error = (message, options) => {
