@@ -3,7 +3,10 @@ import {
 	hubLinkSourceName,
 } from "@features/agents/components/hub-link-policy-controls";
 import { hubLinkView } from "@features/agents/hub-link-adapter";
-import { hubReasonText } from "@features/agents/hub-link-copy";
+import {
+	hubActionFailureText,
+	hubReasonText,
+} from "@features/agents/hub-link-copy";
 import { hubLinkMark } from "@features/agents/hub-link-view";
 import { useHubLinkActions } from "@shared/api/local-operator/hub-link-actions";
 import type { HubLink } from "@shared/api/local-operator/hub-links";
@@ -55,9 +58,27 @@ export function HubLinkSidebarMark({
 	link,
 	staged,
 	onDetail,
-}: { link: HubLink; staged: boolean; onDetail: () => void }) {
+	displayName,
+	itemsById = false,
+	nameAmbiguous = false,
+}: {
+	link: HubLink;
+	staged: boolean;
+	onDetail: () => void;
+	/** The row's DISPLAY name: an agent/team link row's `name` is its id. */
+	displayName?: string;
+	/** `desktopFeatureEnabled(capabilities, "hub_items_by_id")`. */
+	itemsById?: boolean;
+	/**
+	 * An older core has no id arm, so this press would address by name - and
+	 * another loaded row carries the same name, case-insensitively (`check.py`
+	 * compares `str(name).strip().lower()`). The press would merge BOTH rows,
+	 * so it opens the menu with the reason instead of writing.
+	 */
+	nameAmbiguous?: boolean;
+}) {
 	useI18nLocale();
-	const actions = useHubLinkActions(link.link_id);
+	const actions = useHubLinkActions(link, { displayName, itemsById });
 	const [open, setOpen] = useState(false);
 	const [consentOpen, setConsentOpen] = useState(false);
 	const button = useRef<HTMLButtonElement>(null);
@@ -65,6 +86,11 @@ export function HubLinkSidebarMark({
 	const descriptionId = useId();
 	const source = hubLinkSourceName(link);
 	const mark = hubLinkMark(hubLinkView(link));
+	/** A direct write this core cannot aim: the name matches more than one row. */
+	const ambiguousWrite =
+		!itemsById &&
+		nameAmbiguous &&
+		(mark.action === "apply" || mark.action === "retry");
 	const Glyph = actions.isPending ? LoaderCircle : ICON[mark.kind];
 	const direction = t(
 		mark.direction === "pull"
@@ -150,6 +176,7 @@ export function HubLinkSidebarMark({
 							if (
 								actions.isPending ||
 								mark.action === "policy" ||
+								ambiguousWrite ||
 								(!actions.canWrite &&
 									(mark.action === "apply" || mark.action === "retry"))
 							) {
@@ -207,11 +234,16 @@ export function HubLinkSidebarMark({
 					link={link}
 					onConsentChange={setConsentOpen}
 				/>
+				{ambiguousWrite && (
+					<output className="mt-3 text-meta text-warning">
+						{t("ui.hub.links.name_ambiguous")}
+					</output>
+				)}
 				{actions.error && (
 					<p role="alert" className="mt-3 text-meta text-danger">
 						{actions.error instanceof HubMutationUpgradeRequired
 							? actions.error.message
-							: t("ui.hub.links.action_failed", {
+							: hubActionFailureText(actions.variables?.action, {
 									direction,
 									item: link.name,
 									source,

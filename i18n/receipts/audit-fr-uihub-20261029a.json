@@ -1,0 +1,31 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "kimi/k3.1-pro",
+  "instance": "audit-fr-uihub-20261029a",
+  "status": "passed",
+  "namespace": "ui.hub",
+  "sha256": {
+    "fr": "3072f5ee4401aa982d8f0e18575900a7cd5fc43624c0c974ac63e968fba7f466",
+    "en": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.hub.links.incoming_outcome",
+      "problem": "The colon is preceded by an ordinary space rather than the narrow no-break space used by the rest of this catalogue's French punctuation.",
+      "fix": "Replace \"{item} : {outcome}\" with \"{item} : {outcome}\"."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.hub.links.incoming_unknown_baseline",
+      "problem": "The colon is preceded by an ordinary space rather than the narrow no-break space used by the rest of this catalogue's French punctuation.",
+      "fix": "Replace \"copie : tous\" with \"copie : tous\"."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.hub.skills.installed_alias",
+      "problem": "The placeholder {item} is a generic downloaded item, but the added \"a été téléchargée\" hard-codes feminine gender and an unnecessary past-tense construction.",
+      "fix": "Use the gender-neutral, parallel form \"{item} téléchargé depuis {source}\"."
+    }
+  ]
+}
