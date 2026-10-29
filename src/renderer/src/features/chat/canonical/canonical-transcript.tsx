@@ -52,6 +52,10 @@ import {
 	NO_PROVIDER_NOTICE,
 	useConnectProviderStore,
 } from "@features/providers/connect-provider-store";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { SpeechGateScope } from "@shared/components/common/speak-control";
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
 import { Button } from "@shared/components/ui";
@@ -77,7 +81,7 @@ import {
 	writeWatchedRun,
 } from "@shared/store/turn-collapse-watched";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { showInfoToast } from "@shared/utils/toast-manager";
+import { showErrorToast, showInfoToast } from "@shared/utils/toast-manager";
 import {
 	CircleAlert,
 	Info,
@@ -114,6 +118,7 @@ import {
 	type MarkdownStyleProps,
 	StreamingMarkdown,
 } from "../components/markdown-renderer";
+import type { ImagePathActions } from "../components/message-item/image-attachment";
 import { MessageContainer } from "../components/message-item/message-container";
 import { TurnTimestamp } from "../components/message-item/turn-timestamp";
 import { ReplyPreview } from "../components/reply-preview";
@@ -158,6 +163,7 @@ import {
 } from "../transcript-display-mode";
 import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { copyTarget } from "../utils/link-open";
+import { openPathInCanvas } from "../utils/open-in-canvas";
 import { parseReplies } from "../utils/reply-utils";
 import { CanonicalAudio } from "./canonical-audio";
 import { CanonicalImage } from "./canonical-image";
@@ -191,7 +197,7 @@ import { RadientCreditsGuidance } from "./radient-credits-guidance";
 import { ensureReachable, jumpToEntry } from "./reveal-record";
 import { SETTLE_MS } from "./scroll-paging";
 import { SentFileCard } from "./sent-file-card";
-import { editTextOf, skillRowOf } from "./skill-row";
+import { displayTextOf, editTextOf } from "./skill-row";
 import { SupplementRow } from "./supplement-row";
 import { THREAD_SEARCH_JUMP_MISS_COPY } from "./thread-search-model";
 import { ThreadSearchOverlay } from "./thread-search-overlay";
@@ -295,6 +301,13 @@ import {
 	useTranscriptDomWindow,
 } from "./use-transcript-dom-window";
 import { useTurnAnswerRail } from "./use-turn-answer-rail";
+import { materialiseUserAttachment } from "./use-user-attachments";
+import {
+	type AttachmentRefusals,
+	NO_REFUSALS,
+	canMaterialiseAttachment,
+	refusalVerdict,
+} from "./user-attachments";
 import {
 	type WorkingLineState,
 	deriveWorkingLine,
@@ -793,6 +806,19 @@ export type CanonicalTranscriptProps = {
 	 */
 	labelMarked?: ReadonlySet<string>;
 	/**
+	 * What the backend refused to copy out (`materialisable: false` in the
+	 * user-attachment inventory; core PR #3042 QA round 3, Q1), by digest, by
+	 * the inventory's message + kind + position, and by origin path - an inline
+	 * file under 768 B has no digest (QA R5 Q2). The sent-file cards and
+	 * pictures here are painted from loaded records, which carry no verdict, so
+	 * they read it from this (`refusalVerdict`). It also says when a verdict
+	 * is NOT KNOWN yet (QA R6 Q3: the inventory is loading or failed, or a
+	 * just-sent block awaits the re-read), and that withholds every path
+	 * action. Absent = no refusals: the `session_attachments` capability alone
+	 * governs (an older backend, a child reader).
+	 */
+	refusedAttachments?: AttachmentRefusals;
+	/**
 	 * Re-arm the session's stream and history read.
 	 *
 	 * Required rather than optional: every caller of this component has a
@@ -860,6 +886,44 @@ export type UndeliveredTurn = {
  * file has always labelled those tiles with, hoisted so the carousel's filmstrip
  * and title reuse the same sentence (see `fold-media.tsx`'s twin).
  */
+/**
+ * Open / reveal / copy-path for a picture the PERSON attached.
+ *
+ * A pasted screenshot has no path, only a retained digest; the backend copies
+ * it out under a real name (`materialiseUserAttachment`) at action time, and the
+ * canvas opens that copy - a real path, so the tab survives a restart. Only for
+ * a local conversation whose backend can do it (the route 404s otherwise, which
+ * the menu reports as a failure toast, never silently). Absent, the picture keeps
+ * the actions its blob/data source allows.
+ */
+
+function userImagePathActions(
+	image: TranscriptImage,
+	scope: AttachmentScope | null,
+	conversationId: string | undefined,
+	remote: boolean,
+	capable: boolean,
+): ImagePathActions | undefined {
+	const digest = image.attachment;
+	const sessionId = scope?.sessionId;
+	if (!capable || !digest || !sessionId || remote || scope?.childId)
+		return undefined;
+	const resolvePath = () => materialiseUserAttachment(sessionId, digest);
+	return {
+		resolvePath,
+		onShowInCanvas: conversationId
+			? () => {
+					void resolvePath()
+						.then((path) => openPathInCanvas(conversationId, path))
+						.then((opened) => {
+							if (!opened) showErrorToast(t("ui.canvas.files.prepareError"));
+						})
+						.catch(() => showErrorToast(t("ui.canvas.files.prepareError")));
+				}
+			: undefined,
+	};
+}
+
 const userImageLabel = (
 	image: TranscriptImage,
 	index: number,
@@ -899,12 +963,16 @@ const UserRow = memo(function UserRow({
 	record,
 	isSmallView,
 	scope,
+	capable,
+	refusedAttachments = NO_REFUSALS,
 	conversationId,
 	undelivered = null,
 }: {
 	record: Extract<TranscriptRecord, { kind: "user" }>;
 	isSmallView: boolean;
 	scope: AttachmentScope | null;
+	capable: boolean;
+	refusedAttachments?: AttachmentRefusals;
 	conversationId?: string;
 	/** §F3's per-message failure state, when this row is the one it names. */
 	undelivered?: UndeliveredTurn | null;
@@ -955,13 +1023,14 @@ const UserRow = memo(function UserRow({
 	 * split happens here rather than downstream: this string is what the row paints
 	 * AND what the turn's own Copy and Quote read (`bodyText` below), so a payload
 	 * still standing in for the typed line would be quoted and copied as a wall of
-	 * SKILL.md. `skill-row.ts` is the one derivation; `record.skill` below is the
-	 * seal built from it at record time.
+	 * SKILL.md. `skill-row.ts`'s `displayTextOf` is the one derivation, for both
+	 * payload shapes; `record.skill` below is the legacy seal built from it at
+	 * record time.
 	 */
-	const invocation = useMemo(() => skillRowOf(record.text), [record.text]);
+	const bodyText = useMemo(() => displayTextOf(record.text), [record.text]);
 	const { replies, remainingContent } = useMemo(
-		() => parseReplies(invocation?.text ?? record.text),
-		[invocation, record.text],
+		() => parseReplies(bodyText),
+		[bodyText],
 	);
 	/*
 	 * The seal the reducer stamped beside the text, when this row is an
@@ -1352,14 +1421,38 @@ const UserRow = memo(function UserRow({
 							)}
 							{(record.documents?.length ?? 0) > 0 && (
 								<div className={cn("mt-2 flex flex-col gap-1")}>
-									{record.documents?.map((document) => (
-										<SentFileCard
-											key={document.id}
-											document={document}
-											remote={remote}
-											placementKnown={placementKnown}
-										/>
-									))}
+									{record.documents?.map((document, index, documents) => {
+										/*
+										 * Judged by position and origin path as well as digest
+										 * (QA R5 Q2): an inline `.env` under 768 B has no digest,
+										 * and its card offered Open on the real file.
+										 */
+										const verdict = refusalVerdict(refusedAttachments, {
+											messageId: record.id,
+											kind: "document",
+											position: index,
+											count: documents.length,
+											digest: document.attachment,
+											path: document.path,
+										});
+										return (
+											<SentFileCard
+												key={document.id}
+												document={document}
+												remote={remote}
+												placementKnown={placementKnown}
+												sessionId={
+													scope &&
+													!scope.childId &&
+													canMaterialiseAttachment(capable, verdict)
+														? scope.sessionId
+														: null
+												}
+												refused={verdict === false}
+												withheld={verdict === "pending"}
+											/>
+										);
+									})}
 								</div>
 							)}
 							{pictures.length > 0 && (
@@ -1392,6 +1485,22 @@ const UserRow = memo(function UserRow({
 												index,
 												labelFor: userImageLabel,
 											}}
+											pathActions={userImagePathActions(
+												image,
+												scope,
+												conversationId,
+												remote || !placementKnown,
+												canMaterialiseAttachment(
+													capable,
+													refusalVerdict(refusedAttachments, {
+														messageId: record.id,
+														kind: "image",
+														position: index,
+														count: pictures.length,
+														digest: image.attachment,
+													}),
+												),
+											)}
 										/>
 									))}
 								</div>
@@ -3136,6 +3245,8 @@ const TranscriptRow = memo(function TranscriptRow({
 	enter = false,
 	isSmallView,
 	scope,
+	capable,
+	refusedAttachments = NO_REFUSALS,
 	conversationId,
 	/*
 	 * The fold onto `origin/main` that carried #490 (`fix(chat): label every
@@ -3167,6 +3278,9 @@ const TranscriptRow = memo(function TranscriptRow({
 	enter?: boolean;
 	isSmallView: boolean;
 	scope: AttachmentScope | null;
+	capable: boolean;
+	/** See `CanonicalTranscriptProps.refusedAttachments`. */
+	refusedAttachments?: AttachmentRefusals;
 	conversationId?: string;
 	/**
 	 * The transcript's one read of the rail setting. A BOOLEAN rather than the
@@ -3298,6 +3412,8 @@ const TranscriptRow = memo(function TranscriptRow({
 					record={record}
 					isSmallView={isSmallView}
 					scope={scope}
+					capable={capable}
+					refusedAttachments={refusedAttachments}
 					conversationId={conversationId}
 					undelivered={undelivered?.recordId === record.id ? undelivered : null}
 				/>
@@ -3572,12 +3688,18 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	undelivered = null,
 	labelHoldLate,
 	labelMarked,
+	refusedAttachments = NO_REFUSALS,
 	onReconnect,
 	onStartNewChat,
 }) => {
 	// The pane's own subscription: the notices and status lines below are
 	// translated and the pane must repaint when the locale changes.
 	useI18nLocale();
+	const capabilities = useDesktopCapabilities();
+	const attachmentsCapable = desktopFeatureEnabled(
+		capabilities.data,
+		"session_attachments",
+	);
 	// A crash-recovered outcome has no durable row of its own, so it is
 	// synthesized here rather than in the stream reducer: this is the layer that
 	// decides what is renderable, and an anchor with nothing to hit-test is an
@@ -6215,6 +6337,8 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					enter={arriving.has(row.record.id) && row.record.kind !== "assistant"}
 					isSmallView={isSmallView}
 					scope={mediaScope}
+					capable={attachmentsCapable}
+					refusedAttachments={refusedAttachments}
 					conversationId={conversationId}
 					labelPending={
 						row.record.kind === "tool" &&
@@ -6332,6 +6456,8 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 										}
 										isSmallView={isSmallView}
 										scope={mediaScope}
+										capable={attachmentsCapable}
+										refusedAttachments={refusedAttachments}
 										conversationId={conversationId}
 										labelPending={
 											row.record.kind === "tool" &&
@@ -6371,6 +6497,8 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				}
 				isSmallView={isSmallView}
 				scope={mediaScope}
+				capable={attachmentsCapable}
+				refusedAttachments={refusedAttachments}
 				conversationId={conversationId}
 				labelPending={
 					group.row.record.kind === "tool" &&

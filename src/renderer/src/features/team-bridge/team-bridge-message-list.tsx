@@ -334,7 +334,7 @@ const DayDivider: FC<{
 const SendStatus: FC<{ row: TeamBridgeLocalRowPresentation }> = ({ row }) => (
 	<span
 		className={cn(
-			"inline-flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-sm bg-canvas px-1 text-[12px]",
+			"inline-flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-sm bg-canvas text-[12px]",
 			/* The 24px target floor belongs to the CONTROLS, so only the failed
 			 * strip carries it (capture round, frame 7). On a pending row it made
 			 * the header 24px against a confirmed row's 21.7px, so the body jumped
@@ -369,13 +369,25 @@ const SendStatus: FC<{ row: TeamBridgeLocalRowPresentation }> = ({ row }) => (
 		 * `inline-flex` button kept its longest word as its floor and painted past the
 		 * column anyway (merge-delta review, M1). Same utility as the house precedent
 		 * in `mesh-approvals-tray.tsx`.
-		 * resort. A wrapped label is CENTRED (D23): `text-start` left a filled
+		 *
+		 * PADDING BUDGET - DO NOT RE-ADD THE STRIP'S `px-1` WITHOUT TAKING IT FROM
+		 * SOMEWHERE ELSE (design round 4, D24). The labels get 76px of a 84px column:
+		 * 84, less the controls' own `px-1` (8). `Abandonner` needs 70.0 on one line,
+		 * and it fitted 60 only by breaking mid-word as `Abandonn/er`. Restoring the
+		 * strip's padding puts it back to two lines, mid-word, in every French row.
+		 *
+		 * `grow`, NOT `w-full` (code review round 6, R6-1): `w-full` is 100% of the
+		 * strip's content box, so two controls can never share a line and the row
+		 * stacks at EVERY width - a regression at 390 and above, where the three
+		 * controls used to sit on one line. `grow` fills the line when a control has
+		 * it to itself (the floor) and shares it where the labels fit.
+		 * A wrapped label is CENTRED (D23): `text-start` left a filled
 		 * Retry's short last line hugging one edge, which read as lopsided in
 		 * `ur`; centred lines read as one label in either direction. */}
 		{row.state === "failed" && row.onRetry && (
 			<Button
 				variant="primary"
-				className="h-auto min-h-6 min-w-0 shrink whitespace-normal px-2 text-center text-[12px] [overflow-wrap:anywhere]"
+				className="h-auto min-h-6 min-w-0 shrink grow whitespace-normal px-1 text-center text-[12px] [overflow-wrap:anywhere]"
 				onClick={row.onRetry}
 			>
 				{t("ui.common.actions.retry")}
@@ -384,7 +396,7 @@ const SendStatus: FC<{ row: TeamBridgeLocalRowPresentation }> = ({ row }) => (
 		{row.state === "failed" && row.onReturnToDraft && (
 			<Button
 				variant="ghost"
-				className="h-auto min-h-6 min-w-0 shrink whitespace-normal px-2 text-center text-[12px] [overflow-wrap:anywhere] text-ink-muted hover:text-ink"
+				className="h-auto min-h-6 min-w-0 shrink grow whitespace-normal px-1 text-center text-[12px] [overflow-wrap:anywhere] text-ink-muted hover:text-ink"
 				onClick={row.onReturnToDraft}
 			>
 				{t("ui.teamBridge.message.return_to_draft")}
@@ -397,7 +409,7 @@ const SendStatus: FC<{ row: TeamBridgeLocalRowPresentation }> = ({ row }) => (
 				 * and press on the ACCENT wash, so a destructive control drew a red label
 				 * on the brand hue. The danger wash is its own ground - danger on
 				 * danger-wash measures 4.524:1 at worst (everforestLight). */
-				className="h-auto min-h-6 min-w-0 shrink whitespace-normal px-2 text-center text-[12px] [overflow-wrap:anywhere] text-danger hover:bg-danger-wash hover:text-danger active:bg-danger-wash active:text-danger"
+				className="h-auto min-h-6 min-w-0 shrink grow whitespace-normal px-1 text-center text-[12px] [overflow-wrap:anywhere] text-danger hover:bg-danger-wash hover:text-danger active:bg-danger-wash active:text-danger"
 				onClick={row.onDiscard}
 			>
 				{t("ui.teamBridge.message.discard")}
