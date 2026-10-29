@@ -7,6 +7,10 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
 import { Spinner } from "@shared/components/common/spinner";
+import {
+	MessageInput,
+	type MessageInputProps,
+} from "@shared/components/composer";
 import { AttentionBadge } from "@shared/components/ui/attention-badge";
 import { Button } from "@shared/components/ui/button";
 import { ScrollArea } from "@shared/components/ui/scroll-area";
@@ -14,10 +18,14 @@ import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { formatRelativeTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
+import { useConversationInputStore } from "@shared/store/conversation-input-store";
+import {
+	forgetBridgeComposerRows,
+	teamBridgeComposerKey,
+} from "@shared/store/team-bridge-composer-rows";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import {
 	Archive,
-	ArrowUp,
 	Bot,
 	Clock,
 	Hash,
@@ -60,11 +68,6 @@ import {
 	teamBridgeSuspendArrivals,
 } from "./team-bridge-arrival-model";
 import {
-	TeamBridgeAttachButton,
-	TeamBridgeAttachmentStrip,
-	attachmentPasteHandlers,
-} from "./team-bridge-attachments";
-import {
 	attachmentCapability,
 	isAttachmentNotFound,
 	sendAttachmentIds,
@@ -74,6 +77,7 @@ import { TeamBridgeConversationMenu } from "./team-bridge-conversation-menu";
 import { TeamBridgeCreateDialog } from "./team-bridge-create-dialog";
 import { TeamBridgeDefaultOnBanner } from "./team-bridge-default-on-banner";
 import { draftTargetKey } from "./team-bridge-drafts";
+import type { TeamBridgeDraft } from "./team-bridge-drafts";
 import { TeamBridgeHeldAttempt } from "./team-bridge-held-attempt";
 import { TeamBridgeInvitations } from "./team-bridge-invitations";
 import {
@@ -151,6 +155,8 @@ import {
 	scheduleTeamBridgeDraft,
 	scheduledTargetAfterSuccess,
 } from "./team-bridge-scheduling";
+import { uploadStagedImages } from "./team-bridge-staged-upload";
+import type { StagedUploadFailure } from "./team-bridge-staged-upload";
 import {
 	TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD,
 	teamBridgeThreadsAvailable,
@@ -182,8 +188,39 @@ import {
 	useTeamBridgeUnread,
 	useUnarchiveTeamBridgeConversation,
 } from "./use-team-bridge";
-import { useTeamBridgeAttachments } from "./use-team-bridge-attachments";
 import { useTeamBridgeDrafts } from "./use-team-bridge-drafts";
+
+/**
+ * The shared composer draws its empty-chat splash from `messages`; a host with no
+ * transcript says so with `transcriptless`, and passes the same empty list the
+ * mini view does rather than a second shape of "nothing".
+ */
+const EMPTY_BRIDGE_MESSAGES: MessageInputProps["messages"] = [];
+
+/**
+ * Why a send was refused, in the terms the person can act on (UX round 1, U2).
+ *
+ * A SEND-SIDE FACT, not a chip state. The shared composer's chips are the app's own
+ * and carry no failure badge and no per-file retry, so the bridge holds the refusal
+ * outside them and states it in words: which hub rule refused the whole set, which
+ * staged id no longer binds, or which single file failed and why.
+ */
+type SendRefusal =
+	| { kind: "capability" }
+	| { kind: "expired" }
+	| { kind: "upload"; failure: StagedUploadFailure };
+
+/**
+ * The catalogue's own sentence for each upload refusal this send can produce, so
+ * the reason a picture did not go is said in the words the feature already uses for
+ * that failure rather than in a second phrasing written here (`error_upload` names
+ * the two moves a person has: retry, or remove it).
+ */
+const STAGED_FAILURE_COPY = {
+	read: "ui.teamBridge.attachments.error_invalid",
+	unsupported: "ui.teamBridge.attachments.error_type",
+	upload: "ui.teamBridge.attachments.error_upload",
+} as const;
 
 /**
  * The Team Bridge page: a Slack-shaped rail, a thread and a composer.
@@ -732,12 +769,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		selfAccountId,
 		draftTenant,
 		target,
-		/* The journal first: the parent KEYS this view by draft key, so a switch
-		   back to A remounts a fresh hook, and the durable store may be absent
-		   (storage unavailable). Main's in-memory journal is what makes A's text
-		   come back in every environment; the hook adds persistence across
-		   restarts. Both name the same draft. */
-		draftJournal?.body ?? initialDraft,
+		/*
+		 * NO BODY SEEDED INTO THIS JOURNAL. The composer's text lives in
+		 * `conversation-input-store` under `composerKey` (below) and that store is the
+		 * ONE owner; this journal keeps only the facts the store cannot hold - the
+		 * idempotency key, a schedule time, a create-uncertain flag and the
+		 * conversation the draft became. Seeding a body here as well is how two copies
+		 * come to disagree across a remount (R2).
+		 */
+		"",
 		eligibility === "signed_out",
 		scope === TEAM_BRIDGE_ALL_SCOPE,
 	);
@@ -746,60 +786,131 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		!draftState.current?.createUncertain &&
 		!scheduling;
 
-	const { body: draft, setBody: setDraftState } = draftState;
-	/* ONE value, two stores: every keystroke lands in the durable hook AND in
-	   main's journal, so the remount path and the restart path see the same
-	   text. `isDraftCurrent()` stays the outermost fence, exactly as main had
-	   it — the hook's epoch check is not a substitute for it at this seam. */
-	const setDraft = (value: string) => {
-		if (!isDraftCurrent()) return;
-		setDraftState(value);
-		if (draftJournal) draftJournal.body = value;
-		// "Message scheduled" describes ONE message; a fresh edit is not it
-		// (review round 12, n1).
-		if (scheduledSuccess) setScheduledSuccess(false);
-	};
 	/*
-	 * The composer's staged images. Keyed to the same draft identity as the
-	 * text, so switching conversations swaps both together; uploads go straight
-	 * to an existing conversation and are HELD in memory for a draft whose
-	 * conversation the first send will create.
+	 * THE COMPOSER'S TEXT, FROM ITS ONE OWNER.
 	 *
-	 * The conversation is the RESOLVED one (`targetConversation`, the same
-	 * resolution the pane and the send use), not just a `conversation` target:
-	 * a People/Chiefs row or a one-recipient To: draft whose DM already exists
-	 * IS that DM, and treating it as "no conversation yet" held its images
-	 * while the send posted the text alone (review round 1, R1-01).
+	 * `teamBridgeComposerKey` names the account, the scope the draft was authored
+	 * under and the target, so a row is unreachable from another account - the input
+	 * store persists to ONE unscoped `localStorage` key, while this feature fences by
+	 * account epoch (R1) - and switching between "All organizations" and a specific
+	 * one does not move the text between drafts.
 	 */
-	const resolvedForImages = targetConversation(
-		target,
-		conversations,
+	const composerKey = teamBridgeComposerKey(
 		selfAccountId,
+		draftTenant,
+		target ? draftTargetKey(target) : "",
 	);
-	const images = useTeamBridgeAttachments({
-		scopeKey: `${draftTenant}|${target ? draftTargetKey(target) : ""}`,
-		accountId: selfAccountId,
-		tenantId:
-			resolvedForImages?.tenant_id ??
-			(draftTenant === TEAM_BRIDGE_ALL_SCOPE ? undefined : draftTenant),
-		conversationId:
-			resolvedForImages?.id ?? draftState.current?.conversationId ?? null,
-		capability: imageCapability,
-		persisted: draftState.current?.attachments,
-		onPersist: (next) => {
-			/*
-			 * While a send or schedule is in flight its idempotency key is already
-			 * on the wire, and staging held images INSIDE that request must not
-			 * rotate it, or the settled request can no longer clear its own draft
-			 * (review round 1, R1-02).
-			 */
-			draftState.setAttachments(next, { keepClientRef: writing.current });
-		},
-	});
-	const [imagesBlocked, setImagesBlocked] = useState(false);
-	/* Text OR at least one staged image; image-only messages are allowed. */
-	const hasContent = Boolean(draft.trim()) || images.count > 0;
-	const imagesSettled = !images.busy && !images.blocked;
+	const composerRow = useConversationInputStore(
+		(state) => state.inputByConversation[composerKey],
+	);
+	const draft = composerRow?.currentInput ?? "";
+	const stagedPaths = (composerRow?.attachments ?? []).map(
+		(entry) => entry.path,
+	);
+	/*
+	 * THE ONE-TIME HANDOVER. Earlier builds kept this draft's text in the journal and
+	 * in `localStorage` under that key; the composer reads the store now, so a draft
+	 * written by the version before this one is moved across once and the journal's
+	 * copy cleared. Guarded on the store row being empty, so a later visit can never
+	 * overwrite what the reader has typed since.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: one handover per draft key.
+	useEffect(() => {
+		const legacy =
+			draftState.current?.body || draftJournal?.body || initialDraft;
+		if (!legacy.trim()) return;
+		const store = useConversationInputStore.getState();
+		if (store.getCurrentInput(composerKey).trim()) return;
+		store.setComposerText(composerKey, legacy);
+		if (draftState.current?.body) draftState.update({ body: "" });
+		if (draftJournal) draftJournal.body = "";
+	}, [composerKey]);
+	/*
+	 * "Message scheduled" describes ONE message, and a fresh edit is not it (review
+	 * round 12, n1). The edit is the composer's own now, so this watches the store
+	 * instead of a keystroke handler.
+	 */
+	useEffect(() => {
+		if (scheduledSuccess && draft.trim()) setScheduledSuccess(false);
+	}, [draft, scheduledSuccess]);
+	/*
+	 * R1'S OTHER HALF: the drafts are DROPPED, not just unreachable. The key above
+	 * carries the account, so another account cannot address these rows - but the
+	 * input store persists them all to one unscoped `localStorage` entry, so without
+	 * this a signed-out renderer would leave the last account's bridge text on disk.
+	 * The same two facts the journal erases on are the ones watched here: sign-out,
+	 * and a change of the signed-in account.
+	 */
+	const draftOwner = useRef(selfAccountId);
+	useEffect(() => {
+		const previous = draftOwner.current;
+		if (
+			eligibility === "signed_out" ||
+			(previous && selfAccountId !== previous)
+		) {
+			const store = useConversationInputStore.getState();
+			forgetBridgeComposerRows(store, store.clearComposer, previous);
+		}
+		draftOwner.current =
+			eligibility === "signed_out" ? undefined : selfAccountId;
+	}, [selfAccountId, eligibility]);
+	/*
+	 * THE INDEX FOLLOWS THE BODY (review round 1, R1-2).
+	 *
+	 * The journal is no longer where the text lives, but it is still the index that
+	 * the rail's draft dot and the Drafts list enumerate - and the keystroke write
+	 * that used to create an entry for a conversation, a person or a chief went away
+	 * with the body. So an entry is created when there is something to index and none
+	 * exists yet. It holds the TARGET and the idempotency key, never the text: the
+	 * preview reads the store through `draftTextAt`, which is what keeps one owner
+	 * for the body rather than two.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the current entry is read, not watched.
+	useEffect(() => {
+		if (!draft.trim() || !target || draftState.current || !isDraftCurrent())
+			return;
+		draftState.update({});
+	}, [draft, target]);
+	const [sendRefusal, setSendRefusal] = useState<SendRefusal | null>(null);
+	/*
+	 * Text, or at least one staged file: an attachment-only message is allowed, and
+	 * the schedule control beside the composer must agree with the send about
+	 * whether there is anything to take. The row is the composer's own, so this
+	 * reads the one owner rather than keeping a second copy.
+	 */
+	const hasContent = Boolean(draft.trim()) || stagedPaths.length > 0;
+	/*
+	 * A DRAFT'S TEXT AND CHIPS, BY TARGET - for the rail's draft dot and the Drafts
+	 * list's preview. These read the SAME owner the composer does (the row named by
+	 * `teamBridgeComposerKey`); the journal no longer holds text, so reading a
+	 * preview from anywhere else would be a copy that never updates. `tenantId` is
+	 * the scope the entry was authored under, which is part of the key.
+	 */
+	const draftRows = useConversationInputStore(
+		(state) => state.inputByConversation,
+	);
+	const draftTextAt = (tenantId: string, targetKey: string): string =>
+		draftRows[teamBridgeComposerKey(selfAccountId, tenantId, targetKey)]
+			?.currentInput ?? "";
+	const draftStagedAt = (tenantId: string, targetKey: string): number =>
+		draftRows[teamBridgeComposerKey(selfAccountId, tenantId, targetKey)]
+			?.attachments.length ?? 0;
+	/* Whether a draft row is worth listing at all: text, chips, or an addressed To:
+	   that is waiting for its first send. `entry.attachments` is the legacy journal
+	   copy, kept in the test so a draft written by the previous version still
+	   lists once before the handover clears it. */
+	const draftHasContent = (
+		entry: TeamBridgeDraft,
+		tenantId: string,
+	): boolean => {
+		const key = draftTargetKey(entry.target);
+		return (
+			Boolean(draftTextAt(tenantId, key).trim()) ||
+			draftStagedAt(tenantId, key) > 0 ||
+			(entry.attachments?.length ?? 0) > 0 ||
+			(entry.target.type === "compose" && entry.target.recipients.length > 0)
+		);
+	};
 	const selectTarget = (next: TeamBridgeTarget | null) => {
 		setQuickView(null);
 		onTarget(next);
@@ -1038,6 +1149,24 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			(target?.type === "compose" && composeRecipients.length > 0) ||
 			((target?.type === "person" || target?.type === "chief") &&
 				draftPerson !== null));
+	/*
+	 * What the shared composer is invited to say. The same words the box had when
+	 * this page drew it: a To: draft names its recipients, a conversation names
+	 * itself, and a bare composer invites a message.
+	 */
+	const composerPlaceholder =
+		target?.type === "compose" && composeRecipients.length > 0
+			? t("ui.teamBridge.composer.placeholder_to", {
+					name: composeRecipients
+						.map((recipient) => recipient.label)
+						.join(", "),
+				})
+			: paneTitle && target?.type !== "compose"
+				? t("ui.teamBridge.composer.placeholder_to", { name: paneTitle })
+				: t("ui.teamBridge.composer.placeholder");
+	/* The no-destination notice's own id: distinct from the held attempt's, because
+	   both arms name the box's `aria-describedby` and only one of them can be up. */
+	const composeGateId = `${heldReasonId}-gate`;
 	/* One reaction context for the timeline AND the thread pane, so a reply can
 	   be reacted to under exactly the rules its root is. WITHHELD - not passed
 	   disabled - when the runtime does not advertise reactions: a chip or picker
@@ -1052,20 +1181,37 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			: undefined;
 
 	/*
-	 * Records which ids a send/schedule actually put on the wire: the staged
-	 * ids taken at submit, or (for held images) what the upload inside the
-	 * request bound. Settle paths clear only these.
+	 * What a send or a schedule puts on the wire.
+	 *
+	 * THE STAGED LIST IS PATHS NOW: the composer's chips are local files until the
+	 * request binds them, because the chips live in the composer's own store rather
+	 * than in a strip this page draws. So EVERY request uploads inside itself, which
+	 * is the arm the previous code already had for a draft whose conversation the
+	 * send creates; `stageHeld` runs after the create and before the post either way
+	 * (`sendAttachmentIds` prefers it over `ids`).
+	 *
+	 * A PARTIAL UPLOAD THROWS rather than posting the text alone - the rule the held
+	 * arm has always had. A message that silently loses the picture the author
+	 * staged is worse than a refusal they can act on.
 	 */
-	const carriedIds = (staged: readonly string[]) => {
-		let bound: readonly string[] = staged;
-		return {
-			ids: () => bound,
-			stageHeld: async (conversationId: string, tenant: string | undefined) => {
-				bound = await images.uploadHeld(conversationId, tenant);
-				return [...bound];
-			},
-		};
-	};
+	const stagedForSend = (paths: readonly string[]) => ({
+		ids: [] as readonly string[],
+		stageHeld: async (conversationId: string, tenant: string | undefined) => {
+			const uploaded = await uploadStagedImages({
+				paths,
+				accountId: selfAccountId ?? "",
+				tenantId:
+					tenant ?? (draftTenant === TEAM_BRIDGE_ALL_SCOPE ? "" : draftTenant),
+				conversationId,
+				capability: imageCapability,
+			});
+			if (uploaded.failures.length > 0)
+				setSendRefusal({ kind: "upload", failure: uploaded.failures[0] });
+			if (uploaded.ids.length !== paths.length)
+				throw new Error("attachment staging refused");
+			return uploaded.ids;
+		},
+	});
 	// Capture the original entry and scope: navigation while a request is in
 	// flight must not clear the next target's text, even if it is identical.
 	// Opens at the newest message and follows new ones while the reader is at
@@ -1111,16 +1257,27 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	const pendingSend = useRef<{ body: string; clientRef: string } | null>(
 		draftJournal?.pending ?? null,
 	);
-	const submit = () => {
-		const body = draft.trim();
-		if (images.blocked) {
-			setImagesBlocked(true);
-			return;
-		}
+	/*
+	 * THE SHARED COMPOSER'S SEND BINDING.
+	 *
+	 * The box, the chips and the clearing belong to `MessageInput` now; what stays
+	 * here is what a composer cannot know - the target, the create-or-post
+	 * resolution, the idempotency key and the hub's attachment binding. `false` is a
+	 * REFUSAL and it is returned before anything is retired, so a refused send
+	 * leaves the text and chips where the reader can retry them (R6b); `true` lets
+	 * the box clear itself, which is the only clear a transcriptless host gets.
+	 */
+	const submit = async (content: string, attachments: string[]) => {
+		/*
+		 * A MESSAGE CAN BE THE PICTURE (UX round 1, U1). The shared composer enables and
+		 * admits an attachment-only payload, so refusing `!body` here made an enabled Send
+		 * do nothing at all - no request, no error, chips kept. The upload guards below are
+		 * unchanged, so an image that cannot be read or bound still refuses.
+		 */
+		const body = content.trim();
 		if (
+			(!body && attachments.length === 0) ||
 			!isDraftCurrent() ||
-			!hasContent ||
-			images.busy ||
 			sending ||
 			scheduling ||
 			writing.current ||
@@ -1129,78 +1286,56 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			!canCompose ||
 			!target
 		)
-			return;
-		const clientRef = draftState.current?.clientRef ?? crypto.randomUUID();
-		const entryKey = draftTargetKey(target);
-		if (!draftState.update({ clientRef })) return;
-		setImagesBlocked(false);
-		const sentIds = images.readyIds();
+			return false;
 		/*
-		 * Exactly the ids THIS request carried. Paste and drop stay live while a
-		 * send is in flight, so re-reading the strip on settle would clear an
-		 * image added mid-send as "sent" when it never left (review round 2,
-		 * R2-01). Held images report their bound ids through the wrapper.
+		 * THE HUB'S IMAGE CAPABILITY IS REFUSED HERE, not by hiding an affordance: the
+		 * attach control belongs to the shared composer and accepts any file, so the
+		 * refusal has to be a sentence at the only place that can act on it.
 		 */
-		const carried = carriedIds(sentIds);
+		if (attachments.length > 0 && !imageCapability) {
+			setSendRefusal({ kind: "capability" });
+			return false;
+		}
+		setSendRefusal(null);
+		const clientRef = draftState.current?.clientRef ?? crypto.randomUUID();
+		if (!draftState.update({ clientRef })) return false;
 		// ONE attempt, named in both stores: main's optimistic-row journal and
 		// this branch's durable row must carry the same `client_ref`, or a retry
 		// after a remount could post the message twice.
 		const entry = { body, clientRef };
 		pendingSend.current = entry;
 		if (draftJournal) draftJournal.pending = entry;
-		// Fenced BEFORE the call: held images stage inside it (R1-02).
+		// Fenced BEFORE the call: the upload inside it stages into a conversation
+		// this request may be creating (R1-02).
 		writing.current = true;
 		// The author's own send lands in view when it arrives (F9).
 		timeline.pin();
-		const result = onSend(body, clientRef, {
-			ids: sentIds,
-			...(images.held ? { stageHeld: carried.stageHeld } : {}),
-		});
-		if (!(result instanceof Promise)) writing.current = false;
-		const settle = () => {
-			if (!isDraftCurrent()) return;
-			if (pendingSend.current === entry) {
+		try {
+			await onSend(body, clientRef, stagedForSend(attachments));
+			/*
+			 * THE BOX CLEARS ITSELF on an accepted send (`transcriptless`): it compares the
+			 * row it sent against the row it holds now, so text typed during the request
+			 * survives while the sent text goes. Computing that comparison from THIS
+			 * render was the tautology of round 12's B1; all this side retires is its own
+			 * attempt record, which names a request that is over.
+			 */
+			if (isDraftCurrent() && pendingSend.current === entry) {
 				pendingSend.current = null;
 				if (draftJournal) draftJournal.pending = null;
 			}
-		};
-		/*
-		 * THE CLEAR IS DELEGATED TO THE STORES, NEVER DECIDED FROM THIS RENDER.
-		 * `draft` and `body` both come from the submit render, so comparing them
-		 * here is a tautology that wrote "" over text typed while the request was
-		 * in flight (review round 12, B1). `clearSent` re-reads the DURABLE row,
-		 * so a mid-flight edit keeps that row and the box keeps its text.
-		 */
-		const finish = (bound: readonly string[] = []) => {
-			// The journal lives ABOVE the keyed view, so a body left there reseeds
-			// the sent text on remount (review round 12, M1). Clear it under the
-			// same condition the durable store uses: still exactly what was sent.
-			if (draftJournal && draftJournal.body.trim() === body)
-				draftJournal.body = "";
-			// Chips first (still fenced by `writing`, so the key holds), then the
-			// draft entry, which by then carries no bound ids (R1-02). A text-only
-			// send passes no ids, so this is the single clear path for both.
-			images.clearSent(bound);
-			draftState.clearSent(entryKey, body, clientRef, bound);
-			settle();
-		};
-		if (result instanceof Promise) {
-			void result
-				.then(() => finish(carried.ids()))
-				.catch((error) => {
-					// The hub's uniform 404 for a staged id that no longer binds (72 h
-					// TTL, or bound elsewhere): the chips flip to "expired" so the
-					// author re-adds or removes them; the text is kept.
-					if (carried.ids().length > 0 && isAttachmentNotFound(error))
-						images.markExpired(carried.ids());
-				})
-				.finally(() => {
-					writing.current = false;
-				});
-		} else {
-			// A synchronous send has already resolved: main's journal must not
-			// keep naming an attempt that is over.
-			finish();
+			return true;
+		} catch (error) {
+			/*
+			 * THE RESTORE IS THE COMPOSER'S, and this is the path that finally fires it
+			 * (R4): `false` hands the payload back through the store the box reads, so
+			 * the text and the chips are still there for the retry. A create-uncertain
+			 * outcome does NOT come through here - that is the schedule's arm, and its
+			 * recovery is the held-attempt chrome beside the box.
+			 */
+			if (isAttachmentNotFound(error)) setSendRefusal({ kind: "expired" });
+			return false;
+		} finally {
+			writing.current = false;
 		}
 	};
 	const schedule = async (sendAt: string) => {
@@ -1210,7 +1345,6 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			writing.current ||
 			draftState.current?.createUncertain ||
 			!hasContent ||
-			!imagesSettled ||
 			!canCompose ||
 			sending ||
 			scheduling
@@ -1240,10 +1374,20 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		setScheduling(true);
 		setScheduledSuccess(false);
 		setScheduleFailed(false);
-		const scheduledIds = images.readyIds();
-		// The schedule's own reserved set, not the strip at settle (R2-01); the
-		// 404 path below expires only these too (R3-02).
-		const carried = carriedIds(scheduledIds);
+		/*
+		 * WHAT THIS SCHEDULE TAKES, SNAPSHOTTED AT THE PRESS (UX round 1, U5). The
+		 * settle arm has to tell "the box still holds what went out" from "the person
+		 * added a picture while the request was in flight", and only a snapshot taken
+		 * here can answer that - a render-time read would be the same tautology the
+		 * composer's own clear had to retire.
+		 */
+		const scheduledPaths = stagedPaths;
+		/*
+		 * THE SAME PATH-UPLOADING BINDING THE SEND USES, so a scheduled message carries
+		 * the chips its author staged rather than the text alone. The upload runs inside
+		 * the request, after the create, exactly as a plain send's does.
+		 */
+		const carried = stagedForSend(scheduledPaths);
 		try {
 			await onSchedule(
 				body,
@@ -1261,24 +1405,47 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					)
 						throw new Error("draft persistence unavailable");
 				},
-				{
-					ids: scheduledIds,
-					...(images.held ? { stageHeld: carried.stageHeld } : {}),
-				},
+				carried,
 			);
-			const reserved = carried.ids();
-			// Same two-store clear as a send, in the same order: the journal first
-			// (it lives above the keyed view, round 12 M1), then the chips, then the
-			// durable row with exactly the ids this request reserved (R1-02).
+			/*
+			 * THE BOX CLEARS ON A SCHEDULED SEND TOO. The composer only clears itself for a
+			 * send IT made, and this one went out through the schedule path, so the row is
+			 * retired here - text and chips together, from the store that holds them.
+			 */
 			if (draftJournal && draftJournal.body.trim() === body)
 				draftJournal.body = "";
-			images.clearSent(reserved);
-			draftState.clearSent(entryKey, body, clientRef, reserved);
+			/*
+			 * ONLY THE COPY THIS SCHEDULE RETIRED (review round 1, R1-4; UX round 1, U5).
+			 * A blanket clear would eat text typed while the request was in flight, and
+			 * `heldAttempt` is false while `scheduling` is true, so nothing else stands
+			 * between the reader and that loss. The chips need the same test: text can
+			 * still match while a picture added mid-request does not, and clearing then
+			 * would retire a chip that never went anywhere. Both match -> the whole box
+			 * goes; otherwise only the paths this schedule carried are removed and the
+			 * scheduled text is retired, so what the person added since survives.
+			 */
+			const composerStore = useConversationInputStore.getState();
+			const composerState = composerStore.inputByConversation[composerKey];
+			const currentPaths = (composerState?.attachments ?? []).map(
+				(entry) => entry.path,
+			);
+			const textStillScheduled =
+				composerStore.getCurrentInput(composerKey).trim() === body;
+			const chipsStillScheduled =
+				currentPaths.length === scheduledPaths.length &&
+				currentPaths.every((path, index) => path === scheduledPaths[index]);
+			if (textStillScheduled && chipsStillScheduled) {
+				composerStore.clearComposer(composerKey);
+			} else {
+				for (const entry of composerState?.attachments ?? [])
+					if (scheduledPaths.includes(entry.path))
+						composerStore.removeAttachment(composerKey, entry.id);
+				if (textStillScheduled) composerStore.setComposerText(composerKey, "");
+			}
+			draftState.clearSent(entryKey, body, clientRef);
 			setScheduledSuccess(true);
 		} catch (error) {
 			setScheduleFailed(true);
-			if (carried.ids().length > 0 && isAttachmentNotFound(error))
-				images.markExpired(carried.ids());
 			// A definitive client refusal cannot have created a group. A lost response
 			// can: require a deliberate Groups check before another create attempt.
 			const status = (error as { status?: number | null })?.status;
@@ -1339,7 +1506,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					hasDraft={draftState.entries.some(
 						({ entry, tenantId }) =>
 							tenantId === conversation.tenant_id &&
-							(Boolean(entry.body.trim()) ||
+							(Boolean(
+								draftTextAt(tenantId, draftTargetKey(entry.target)).trim(),
+							) ||
+								draftStagedAt(tenantId, draftTargetKey(entry.target)) > 0 ||
 								(entry.attachments?.length ?? 0) > 0) &&
 							targetConversation(entry.target, [conversation], selfAccountId)
 								?.id === conversation.id,
@@ -1662,9 +1832,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										{people.map((member) => (
 											<PersonRailRow
 												hasDraft={Boolean(
-													draftState.drafts[
-														`person:${member.account_id}`
-													]?.body.trim(),
+													draftTextAt(
+														draftTenant,
+														`person:${member.account_id}`,
+													).trim(),
 												)}
 												key={member.account_id}
 												member={member}
@@ -1709,9 +1880,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										{chiefs.map((chief) => (
 											<ChiefRailRow
 												hasDraft={Boolean(
-													draftState.drafts[
-														`chief:${chief.person.account_id}`
-													]?.body.trim(),
+													draftTextAt(
+														draftTenant,
+														`chief:${chief.person.account_id}`,
+													).trim(),
 												)}
 												key={chief.person.account_id}
 												chief={chief}
@@ -1819,25 +1991,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						<h2 className="text-lg font-medium text-ink">
 							{t("ui.teamBridge.drafts.title")}
 						</h2>
-						{draftState.entries.filter(
-							({ entry }) =>
-								entry.body.trim() ||
-								(entry.attachments?.length ?? 0) > 0 ||
-								(entry.target.type === "compose" &&
-									entry.target.recipients.length > 0),
+						{draftState.entries.filter(({ entry, tenantId }) =>
+							draftHasContent(entry, tenantId),
 						).length === 0 && (
 							<p className="text-ink-muted">
 								{t("ui.teamBridge.drafts.empty")}
 							</p>
 						)}
 						{draftState.entries
-							.filter(
-								({ entry }) =>
-									entry.body.trim() ||
-									(entry.attachments?.length ?? 0) > 0 ||
-									(entry.target.type === "compose" &&
-										entry.target.recipients.length > 0),
-							)
+							.filter(({ entry, tenantId }) => draftHasContent(entry, tenantId))
 							.map(({ key, tenantId, entry }) => (
 								<button
 									type="button"
@@ -1853,7 +2015,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										{draftLabel(entry.target)}
 									</span>
 									<span className="block truncate text-sm text-ink-muted">
-										{entry.body}
+										{draftTextAt(tenantId, draftTargetKey(entry.target)) ||
+											entry.body}
 									</span>
 								</button>
 							))}
@@ -2228,11 +2391,18 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							</div>
 						</ScrollArea>
 
-						{/* THE AGENT COMPOSER'S SHAPE: one borderless box on `elevated`,
-						    the field and its tools inside, Send in the bottom-right. The
-						    focus ring is promoted from the textarea to the box via `:has`.
-						    No composer in a preview (a non-member cannot write) and none
-						    on surface F, where the reason replaces it. */}
+						{/* THE SHARED COMPOSER, NOT A SECOND ONE. The box, its field, its
+						    chips and its Send are `MessageInput`'s - the same assembly the
+						    chat pane and the mini view mount - so this page stops owning a
+						    composer of its own that drifts from the app's. What a composer
+						    cannot know (the target, the hub's attachment binding, a
+						    schedule) travels in as props or sits BESIDE it as host chrome.
+						    THE BAND CLIPS NOTHING: the composer draws its focus ring OUTSIDE
+						    the box, and an ancestor that clips at its padding box eats that
+						    edge (R3). The recovery alerts that used to live in that scroller
+						    now sit above the box, which is also where a reader looks for
+						    them; the schedule control, which has no composer slot, sits
+						    below it. */}
 						{!previewSelected &&
 							(shown?.status === "archived" ? (
 								/* Nobody can post: the server refuses it too (`conversation_archived`). */
@@ -2244,15 +2414,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									{t("ui.teamBridge.read_only.composer")}
 								</p>
 							) : (
-								/* Bound localized recovery controls without consuming the whole timeline.
-								   `pt-1` is the focus ring's room: the box below draws its ring
-								   OUTSIDE itself (2px outline at a 2px offset = 4px), and this
-								   overflow container clips at its padding box, so with no top
-								   padding the ring's top edge was cut off while the sides and
-								   bottom (inside px-4/pb-4) drew whole. It is the container's
-								   own padding so the room holds whichever alert or box is first;
-								   pinned by scripts/team-bridge-composer-ring.test.mjs. */
-								<div className="min-h-0 max-h-[60%] shrink-0 overflow-y-auto px-4 pt-1 pb-4">
+								<div className="flex min-w-0 shrink-0 flex-col gap-2 px-4 pt-1">
 									{scheduleFailed && (
 										<p role="alert" className="text-sm text-danger">
 											{t("ui.teamBridge.schedule.failed")}
@@ -2263,202 +2425,209 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											{t("ui.teamBridge.schedule.success")}
 										</p>
 									)}
-									{draftState.current?.createUncertain && !scheduling && (
-										<div role="alert" className="text-sm text-danger">
-											<p id={`${heldReasonId}-group`}>
-												{t("ui.teamBridge.schedule.create_uncertain")}
-											</p>
-											<Button
-												variant="ghost"
-												onClick={() =>
-													draftState.update({ createUncertain: false })
-												}
-											>
-												{t("ui.teamBridge.schedule.create_retry")}
-											</Button>
-										</div>
+									{/*
+									 * WHAT THE SEND COULD NOT TAKE, AND WHAT TO DO ABOUT IT (UX round 1,
+									 * U2). The shared composer's chips are the app's own and carry no
+									 * failure badge and no per-file retry, so pointing at "images marked
+									 * with an error" sent a person hunting for a mark that does not exist.
+									 * This names the file and the reason, and each branch states a move they
+									 * actually have: remove the chip, or send again.
+									 */}
+									{sendRefusal && (
+										<p className="text-sm text-danger" role="alert">
+											{sendRefusal.kind === "capability" &&
+												t("ui.teamBridge.attachments.unsupported")}
+											{sendRefusal.kind === "expired" &&
+												t("ui.teamBridge.attachments.expired_staged_retry")}
+											{sendRefusal.kind === "upload" && (
+												/* The file and its reason, side by side with a GAP rather
+												   than a typed separator: the sentence is a complete one
+												   from the catalogue, and a literal ": " here would be
+												   copy the i18n gates have to police. */
+												<span className="inline-flex min-w-0 flex-wrap items-baseline gap-x-1.5">
+													<span className="font-medium">
+														{sendRefusal.failure.name}
+													</span>
+													<span>
+														{t(STAGED_FAILURE_COPY[sendRefusal.failure.reason])}
+													</span>
+												</span>
+											)}
+										</p>
+									)}
+									{sendFailed && (
+										<p role="alert" className="text-sm text-danger">
+											{t("ui.teamBridge.composer.error")}
+										</p>
 									)}
 									{draftState.storageFailed && (
 										<p role="alert" className="text-sm text-danger">
 											{t("ui.teamBridge.drafts.storage_failed")}
 										</p>
 									)}
-									{sendFailed && (
-										<p
-											role="alert"
-											className="px-2 pb-1 text-[12px] text-danger"
+									<MessageInput
+										conversationId={composerKey}
+										messages={EMPTY_BRIDGE_MESSAGES}
+										isLoading={false}
+										/* No transcript, no job and no Stop: the empty-chat splash
+										   and the turn machinery are the chat pane's, and this host
+										   clears its own accepted send (U1). */
+										transcriptless
+										ownGutter
+										/* A SECOND LIVE COMPOSER NEEDS ITS OWN REGISTRATION, or this
+										   box and the chat pane's overwrite each other's
+										   push-to-talk handler in the manager's id-keyed map (R5). */
+										speechRegistrationId="team-bridge-composer"
+										placeholderOverride={composerPlaceholder}
+										onSendMessage={submit}
+										hostNotice={
+											heldAttempt ||
+											(draftState.current?.createUncertain && !scheduling)
+												? {
+														id: heldReasonId,
+														node: heldAttempt ? (
+															<TeamBridgeHeldAttempt
+																reasonId={heldReasonId}
+																busy={sending || scheduling}
+																onRetry={
+																	onSchedule
+																		? () => {
+																				const at = draftState.current?.sendAt;
+																				if (at)
+																					void schedule(at).catch(() =>
+																						setScheduleFailed(true),
+																					);
+																			}
+																		: undefined
+																}
+																onDiscard={() => {
+																	if (writing.current || scheduling || sending)
+																		return;
+																	// This releases only the local attempt; the explicit
+																	// acknowledgement asks the reader to check/cancel any
+																	// server schedule before minting a fresh key.
+																	if (
+																		draftState.update({
+																			sendAt: undefined,
+																			clientRef: crypto.randomUUID(),
+																		})
+																	)
+																		setScheduleFailed(false);
+																}}
+															/>
+														) : (
+															<div role="alert" className="text-sm text-danger">
+																<p id={heldReasonId}>
+																	{t("ui.teamBridge.schedule.create_uncertain")}
+																</p>
+																<Button
+																	variant="ghost"
+																	onClick={() =>
+																		draftState.update({
+																			createUncertain: false,
+																		})
+																	}
+																>
+																	{t("ui.teamBridge.schedule.create_retry")}
+																</Button>
+															</div>
+														),
+														/* A held or uncertain attempt refuses the box: the
+														   attempt already owns this draft's idempotency key, and
+														   a second send would race it. */
+														blocksInput: true,
+														statedByNode: true,
+														placeholder: composerPlaceholder,
+													}
+												: !canCompose
+													? {
+															/* No destination yet. The box still renders - it is the
+															   composer this host has - and states why it refuses
+															   instead of inviting text it cannot send. */
+															id: composeGateId,
+															node: (
+																<p
+																	id={composeGateId}
+																	className="text-sm text-ink-muted"
+																>
+																	{t("ui.teamBridge.compose.empty")}
+																</p>
+															),
+															blocksInput: true,
+															statedByNode: true,
+															placeholder: composerPlaceholder,
+														}
+													: undefined
+										}
+									/>
+									{/* HOST CHROME THE COMPOSER HAS NO SLOT FOR. Scheduling needs the
+									   target and a time, neither of which is typing, and the
+									   restored attempt above names the clock by id. */}
+									{/*
+									 * THE LINE UNDER THE BOX HEARS BOTH FACTS (UX round 1, U3 + U4).
+									 * The shared composer shows its keyboard hints on ITS controls (the
+									 * mic), not at the point of typing, so the principal chord had become
+									 * undiscoverable when the bridge stopped drawing its own box. While a
+									 * send is in flight the same slot says why the schedule control is
+									 * refusing - the app's own sentence for that state, borrowed rather than
+									 * written a second time.
+									 */}
+									<div className="flex items-center gap-2 px-1 pb-4">
+										<span
+											className={cn(
+												"min-w-0 flex-1 truncate ps-1.5 text-meta-sm text-ink-dim transition-opacity duration-fast",
+												sending || hasContent ? "opacity-100" : "opacity-0",
+											)}
+											aria-hidden={!(sending || hasContent)}
 										>
-											{t("ui.teamBridge.composer.error")}
-										</p>
-									)}
-									{/* A hub that cannot take images is already explained by the strip's
-									   unsupported note; this alert is only for error-marked chips (R2-02). */}
-									{imagesBlocked && images.blocked && !images.unsupported && (
-										<p
-											role="alert"
-											className="px-2 pb-1 text-[12px] text-danger"
-										>
-											{t("ui.teamBridge.attachments.send_blocked")}
-										</p>
-									)}
-									<div
-										className={cn(
-											"rounded-xl bg-elevated transition-colors duration-fast ease-out-quart",
-											"has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-solid",
-										)}
-										{...(canCompose ? attachmentPasteHandlers(images) : {})}
-									>
-										{heldAttempt && (
-											<TeamBridgeHeldAttempt
-												reasonId={heldReasonId}
-												busy={sending || scheduling}
-												onRetry={
-													onSchedule
-														? () => {
-																const at = draftState.current?.sendAt;
-																if (at)
-																	void schedule(at).catch(() =>
-																		setScheduleFailed(true),
-																	);
-															}
+											{sending
+												? t("ui.chat.canonical.send_failure.send_lock")
+												: t("ui.teamBridge.composer.hint")}
+										</span>
+										{onSchedule && (
+											<Button
+												ref={clockRef}
+												variant="ghost"
+												size="icon"
+												aria-label={t("ui.teamBridge.schedule.title")}
+												/* The line above already says this while a send is in
+												   flight; the control says it too, so the refusal is
+												   reachable from the control itself (UX round 1, U3). */
+												title={
+													sending
+														? t("ui.chat.canonical.send_failure.send_lock")
 														: undefined
 												}
-												onDiscard={() => {
-													if (writing.current || scheduling || sending) return;
-													// This releases only the local attempt; the explicit acknowledgement asks
-													// the reader to check/cancel any server schedule before minting a fresh key.
-													if (
-														draftState.update({
-															sendAt: undefined,
-															clientRef: crypto.randomUUID(),
-														})
-													)
-														setScheduleFailed(false);
-												}}
-											/>
-										)}
-										<TeamBridgeAttachmentStrip state={images} />
-										<textarea
-											value={draft}
-											onChange={(event) => setDraft(event.target.value)}
-											onKeyDown={(event) => {
-												// An IME candidate confirmation is Enter too; sending on it
-												// would post the half-composed text.
-												if (
-													event.key === "Enter" &&
-													!event.shiftKey &&
-													!event.nativeEvent.isComposing
-												) {
-													event.preventDefault();
-													submit();
-												}
-											}}
-											rows={1}
-											disabled={!canCompose}
-											placeholder={
-												target.type === "compose" &&
-												composeRecipients.length > 0
-													? t("ui.teamBridge.composer.placeholder_to", {
-															name: composeRecipients
-																.map((recipient) => recipient.label)
-																.join(", "),
-														})
-													: paneTitle && target.type !== "compose"
-														? t("ui.teamBridge.composer.placeholder_to", {
-																name: paneTitle,
-															})
-														: t("ui.teamBridge.composer.placeholder")
-											}
-											aria-label={t("ui.teamBridge.composer.placeholder")}
-											className="block max-h-40 min-h-10 w-full resize-none bg-transparent px-3.5 pt-3 pb-1 text-[14px] text-ink outline-none placeholder:text-ink-dim disabled:cursor-not-allowed"
-										/>
-										<div className="flex items-center gap-2 px-2 pb-2">
-											{/*
-											 * The key hint shows only while there is something to send
-											 * (design round 1, D8): permanent chrome the agent composer,
-											 * Slack and Discord do not carry. The slot stays, so Send
-											 * does not move when the hint appears.
-											 */}
-											<span
-												className={cn(
-													"min-w-0 flex-1 truncate ps-1.5 text-meta-sm text-ink-dim transition-opacity duration-fast",
-													hasContent ? "opacity-100" : "opacity-0",
-												)}
-												aria-hidden={!hasContent}
-											>
-												{t("ui.teamBridge.composer.hint")}
-											</span>
-											<TeamBridgeAttachButton
-												state={images}
-												disabled={!canCompose || sending || scheduling}
-											/>
-											{onSchedule && (
-												<Button
-													ref={clockRef}
-													variant="ghost"
-													size="icon"
-													aria-label={t("ui.teamBridge.schedule.title")}
-													aria-describedby={
-														draftState.current?.createUncertain && !scheduling
-															? `${heldReasonId}-group`
-															: heldAttempt
-																? heldReasonId
+												aria-describedby={
+													draftState.current?.createUncertain && !scheduling
+														? heldReasonId
+														: heldAttempt
+															? heldReasonId
+															: !canCompose
+																? composeGateId
 																: undefined
-													}
-													disabled={
-														Boolean(draftState.current?.sendAt) ||
-														Boolean(draftState.current?.createUncertain) ||
-														!hasContent ||
-														!imagesSettled ||
-														sending ||
-														scheduling ||
-														!canCompose
-													}
-													onClick={() => setScheduleOpen(true)}
-												>
-													<Clock size={16} aria-hidden="true" />
-												</Button>
-											)}
-											<TeamBridgeScheduleDialog
-												open={scheduleOpen}
-												returnFocus={clockRef}
-												onOpenChange={setScheduleOpen}
-												busy={scheduling}
-												onSchedule={schedule}
-											/>
-											<Button
-												size="icon-sm"
-												variant="primary"
-												/* A rounded square, the avatar's shape (design round 1,
-												   D11), not the pill the size's default radius gave. */
-												className="rounded-md"
+												}
 												disabled={
 													Boolean(draftState.current?.sendAt) ||
 													Boolean(draftState.current?.createUncertain) ||
 													!hasContent ||
-													images.busy ||
 													sending ||
 													scheduling ||
 													!canCompose
 												}
-												aria-label={t("ui.teamBridge.composer.send")}
-												aria-describedby={
-													draftState.current?.createUncertain && !scheduling
-														? `${heldReasonId}-group`
-														: heldAttempt
-															? heldReasonId
-															: undefined
-												}
-												onClick={submit}
+												onClick={() => setScheduleOpen(true)}
 											>
-												{sending ? (
-													<Spinner size="sm" />
-												) : (
-													<ArrowUp size={16} />
-												)}
+												<Clock size={16} aria-hidden="true" />
 											</Button>
-										</div>
+										)}
 									</div>
+									<TeamBridgeScheduleDialog
+										open={scheduleOpen}
+										returnFocus={clockRef}
+										onOpenChange={setScheduleOpen}
+										busy={scheduling}
+										onSchedule={schedule}
+									/>
 								</div>
 							))}
 					</>
