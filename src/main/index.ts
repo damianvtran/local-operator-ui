@@ -4304,6 +4304,9 @@ app
 					// the screen, and re-deciding it there would be a second policy beside
 					// `window-mode.ts`.
 					windowShow: windowLaunch.show,
+					// The vetted door to the OS's URL handlers, for the passkey notice's
+					// "Open in system browser" (see `src/main/browser/passkey-notice.ts`).
+					openExternal: openExternalVetted,
 					// The other half of the plan the browser host forwards to a popup's
 					// `webPreferences`: a hidden popup must render like a shown one, so the
 					// mode's own answer travels with the mode rather than being re-derived

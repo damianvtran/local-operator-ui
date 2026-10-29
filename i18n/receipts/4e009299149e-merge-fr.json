@@ -1,0 +1,124 @@
+{
+  "locale": "fr",
+  "scope": "ui.hub.pages + ui.common.actions: verification of the #1439 merge resolution",
+  "checkout_head": "2ba58dd71d",
+  "audit_date": "2026-10-29T09:48:43Z",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "4e009299149e",
+    "model": "kimi/k3.1-pro (fallback from anthropic/claude-sonnet-5-5, provider quota)"
+  },
+  "instance": "4e009299149e-merge-fr",
+  "input_sha256": {
+    "src/i18n/catalogues/en/ui.hub.pages.json": "f1b0a81c417ad3037e96efb0a6c85ae4588f9d01e9c01a3dbbb357f90dd03d3e",
+    "src/i18n/catalogues/en/ui.common.actions.json": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
+    "src/i18n/catalogues/fr/ui.hub.pages.json": "eebd0cf4cb0ab660a937b0c40b3cd300ad329e7e8020f4c2c8c5180c03a5f7d4",
+    "src/i18n/catalogues/fr/ui.common.actions.json": "8672c8f71fba10d7df3c8c0130cbc2953782a9fc0bbb2146881bdf378947827e"
+  },
+  "note": "Merge resolution is uncommitted (staged in the index, present in the working tree). HEAD is still the pre-merge tip 2ba58dd71d; the four files' working-tree bytes are the merged result and were audited as such. read_public_copy refused the uncommitted files; fr values were read from the same working-tree bytes directly.",
+  "observed_diffs": {
+    "en/ui.hub.pages": {
+      "counts": {"main": 37, "pre_merge": 38, "merged": 40},
+      "vs_main": {
+        "added": ["ui.hub.pages.pager.nav_aria", "ui.hub.pages.pager.next", "ui.hub.pages.pager.previous"],
+        "removed": [],
+        "changed": []
+      },
+      "vs_pre_merge": {
+        "added": ["ui.hub.pages.card.get", "ui.hub.pages.card.updated"],
+        "removed": [],
+        "changed": []
+      },
+      "main_only_keys": ["ui.hub.pages.card.get", "ui.hub.pages.card.updated"],
+      "pre_merge_only_keys": ["ui.hub.pages.pager.nav_aria", "ui.hub.pages.pager.next", "ui.hub.pages.pager.previous"],
+      "keys_with_divergent_values_between_baselines": [],
+      "union_check": {"missing": [], "extra": [], "mismatched_values": []}
+    },
+    "en/ui.common.actions": {
+      "counts": {"main": 51, "pre_merge": 52, "merged": 53},
+      "vs_main": {
+        "added": ["ui.common.actions.dismiss", "ui.common.actions.more_info"],
+        "removed": [],
+        "changed": []
+      },
+      "vs_pre_merge": {
+        "added": ["ui.common.actions.retrying"],
+        "removed": [],
+        "changed": []
+      },
+      "main_only_keys": ["ui.common.actions.retrying"],
+      "pre_merge_only_keys": ["ui.common.actions.dismiss", "ui.common.actions.more_info"],
+      "keys_with_divergent_values_between_baselines": [],
+      "union_check": {"missing": [], "extra": [], "mismatched_values": []}
+    },
+    "fr/ui.hub.pages": {
+      "counts": {"main": 37, "pre_merge": 38, "merged": 40},
+      "vs_main": {
+        "added": ["ui.hub.pages.pager.nav_aria", "ui.hub.pages.pager.next", "ui.hub.pages.pager.previous"],
+        "removed": [],
+        "changed": []
+      },
+      "vs_pre_merge": {
+        "added": ["ui.hub.pages.card.get", "ui.hub.pages.card.updated"],
+        "removed": [],
+        "changed": []
+      },
+      "main_only_keys": ["ui.hub.pages.card.get", "ui.hub.pages.card.updated"],
+      "pre_merge_only_keys": ["ui.hub.pages.pager.nav_aria", "ui.hub.pages.pager.next", "ui.hub.pages.pager.previous"],
+      "keys_with_divergent_values_between_baselines": [],
+      "union_check": {"missing": [], "extra": [], "mismatched_values": []}
+    },
+    "fr/ui.common.actions": {
+      "counts": {"main": 51, "pre_merge": 52, "merged": 53},
+      "vs_main": {
+        "added": ["ui.common.actions.dismiss", "ui.common.actions.more_info"],
+        "removed": [],
+        "changed": []
+      },
+      "vs_pre_merge": {
+        "added": ["ui.common.actions.retrying"],
+        "removed": [],
+        "changed": []
+      },
+      "main_only_keys": ["ui.common.actions.retrying"],
+      "pre_merge_only_keys": ["ui.common.actions.dismiss", "ui.common.actions.more_info"],
+      "keys_with_divergent_values_between_baselines": [],
+      "union_check": {"missing": [], "extra": [], "mismatched_values": []}
+    }
+  },
+  "verification": {
+    "main_keys_all_present_byte_identical": true,
+    "pre_merge_branch_keys_all_present_with_pre_merge_values": true,
+    "no_key_dropped_by_either_side": true,
+    "no_value_conflicts_existed_between_baselines": true,
+    "icu_placeholder_and_plural_parity_en_fr": "pass (brace-balanced arg extraction, 0 mismatches across both namespaces)",
+    "fr_plural_categories": "one/many/other present where applicable; no 'few' (correct for fr CLDR)",
+    "fr_typography": "pass: curly apostrophe U+2019, guillemets with U+202F, no straight apostrophes, no missing U+202F before ;:!?",
+    "fr_voice": "coherent native product French across all 93 fr values: vous address, imperative actions, past-participle statuses, kept-English technical terms per style guide (backend, hub, prompt)",
+    "fr_untranslated_check": "3 fr==en values (Description, Agents, Agents {scope}) are legitimate cognates present identically in both baselines; no key silently inherited an English value",
+    "new_fr_values_from_main": {"ui.hub.pages.card.get": "Obtenir", "ui.hub.pages.card.updated": "modifié {when}", "ui.common.actions.retrying": "Nouvelle tentative…"},
+    "new_fr_values_from_branch": {"ui.hub.pages.pager.nav_aria": "Pages d’agents", "ui.hub.pages.pager.next": "Suivant", "ui.hub.pages.pager.previous": "Précédent", "ui.common.actions.dismiss": "Ignorer", "ui.common.actions.more_info": "Plus d’infos"}
+  },
+  "counts": {"BLOCKER": 0, "MAJOR": 0, "MINOR": 0, "NIT": 0},
+  "verdict": "pass",
+  "namespaces": {
+    "ui.hub.pages": {
+      "status": "passed",
+      "keys_audited": 40,
+      "sha256": {
+        "en": "f1b0a81c417ad3037e96efb0a6c85ae4588f9d01e9c01a3dbbb357f90dd03d3e",
+        "target": "eebd0cf4cb0ab660a937b0c40b3cd300ad329e7e8020f4c2c8c5180c03a5f7d4"
+      },
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "keys_audited": 53,
+      "sha256": {
+        "en": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
+        "target": "8672c8f71fba10d7df3c8c0130cbc2953782a9fc0bbb2146881bdf378947827e"
+      },
+      "findings": []
+    }
+  }
+}

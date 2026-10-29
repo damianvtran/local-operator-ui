@@ -38,6 +38,8 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { usePairingCause } from "@shared/hooks/use-pairing-cause";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type QueryClient, useQuery } from "@tanstack/react-query";
 import type { KeyboardEvent } from "react";
@@ -465,6 +467,7 @@ export function SkillSuggestionsPopup({
 	state,
 	onPick,
 }: SkillSuggestionsPopupProps) {
+	useI18nLocale();
 	const activeRef = useRef<HTMLLIElement | null>(null);
 	// Keep the active row in view without scrolling the page or transcript,
 	// on the same trigger pattern as the slash popup's.
@@ -482,7 +485,7 @@ export function SkillSuggestionsPopup({
 			// biome-ignore lint/a11y/useFocusableInteractive: the textarea keeps focus.
 			// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox cannot be a native <select>.
 			role="listbox"
-			aria-label="Skills"
+			aria-label={t("ui.chat.pickers.skills.title")}
 			className={cn(
 				"absolute bottom-full left-0 right-0 z-20 mb-1",
 				"overflow-hidden rounded-md border border-control bg-elevated",

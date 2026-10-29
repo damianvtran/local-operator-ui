@@ -1,0 +1,58 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor (lopdev coder-role session 00e01e296fe8, delta audit of the #1461 incoming-preview and ambiguous-name keys; not the PR coder, the translator of 12b2df28cd, or any previous ui.hub auditor)",
+ "agent": "translation-auditor (lopdev coder-role session 00e01e296fe8, delta audit of the #1461 incoming-preview and ambiguous-name keys; not the PR coder, the translator of 12b2df28cd, or any previous ui.hub auditor)",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Every catalogue read and verdict in this receipt ran on anthropic/claude-opus-5-5 (session header); no fallback occurred in this session.",
+ "fallback": "none",
+ "independence": "Separate session (00e01e296fe8) from the PR coder, from the translator of these keys (12b2df28cd: agent coder, lopdev translator step, openrouter/deepseek/deepseek-v4.1-flash-1017 after fallback from deepseek/deepseek-flash) and from the previous ui.hub auditors (a26b945b2ee1 and earlier). CROSS-FAMILY: DeepSeek translator, Anthropic auditor. The translator's commit message was read only as claims to check. The verdict was rebuilt from the English source, the en context, the render sites, sibling keys, the glossary and the locale style guide.",
+ "instance": "00e01e296fe8-hub-hi",
+ "session": "00e01e296fe8",
+ "locale": "hi",
+ "branch": "fix/hub-check-now-body",
+ "head": "12b2df28cd5be8ffa9a69963b73ee56fc371f1fc",
+ "pr": "damianvtran/local-operator-ui#1461",
+ "date": "2026-10-28",
+ "status": "passed",
+ "scope": "ui.hub: delta audit of ui.hub.links.preview_recomputed, incoming_outcome, incoming_nothing and name_ambiguous (en added in dfbd75977a, translated in 12b2df28cd). The carried keys are byte-identical to the last audited row (a26b945b2ee1 at 15d47f4dd9, rebased unchanged as 273b8a01ee).",
+ "inputs_sha256": {
+  "en_context (ui.hub.context.json)": "460b263cc5e892d57e6896fe4a3f41bf0a15beef43ab66d5f6fa2fc5099ccbf8",
+  "glossary (local-operator/i18n/glossary.md)": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style guide (local-operator/i18n/style-guides/hi.md)": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+ },
+ "verified": [
+  "key sets equal en; incoming_outcome keeps exactly {item} and {outcome}, incoming_nothing exactly {outcome}, and preview_recomputed/name_ambiguous stay placeholder-free; {outcome} is never translated or inflected (core vocabulary, per en context); no bidi/zero-width/BOM characters, no edge or double spaces; NFC",
+  "carried ui.hub keys byte-identical to the last audited row: the ledger target_sha256 at 273b8a01ee (range-diff '=' to the audited 15d47f4dd9) equals that commit's blob, and parsed 273b8a01ee vs this head differs only by the four added keys (no key changed or removed); en adds exactly those four keys and changes none",
+  "'Core' is rendered as the locale's established backend term from shipped ui.hub status copy (status.backend_checking / core_update_required). The en sibling name_ambiguous itself says 'this backend', and a literal 'core/núcleo/内核' would name nothing the operator sees",
+  "preview_recomputed stays advisory, as the context requires: it says the backend recomputes at apply time and that the applied result may differ, and never promises the previewed merge",
+  "incoming_nothing states a no-op as item state, never an error, and uses the locale's shipped pull operation term",
+  "name_ambiguous explains the refusal without blame and uses the locale's shipped link noun",
+  "merge/pull: both stay Latin and lower-case with Hindi grammar around them ('यह merge … बनाता है', 'merge होंगे', 'pull करने के लिए'), matching the ui.hub siblings status.merging ('merge हो रहे हैं') and subscriptions.pull ('अभी pull करें'). ui.hub.updates uses Devanagari मर्ज. That split is outside this delta.",
+  "separators: ASCII colon before {outcome}; । full stop; Latin digits not applicable; आप register",
+  "render sites: preview_recomputed is the DialogDescription of the incoming preview in hub-links-panel.tsx (the publish twin is subscriptions.enable_safety); incoming_outcome is one <li> per dry-run report; incoming_nothing is an inline <output>; name_ambiguous is a warning <output> in the policy popover of hub-link-sidebar-mark.tsx"
+ ],
+ "namespaces": {
+  "ui.hub": {
+   "namespace": "ui.hub",
+   "status": "passed",
+   "result": "clean",
+   "keys_read": 184,
+   "delta_keys_audited": [
+    "ui.hub.links.preview_recomputed",
+    "ui.hub.links.incoming_outcome",
+    "ui.hub.links.incoming_nothing",
+    "ui.hub.links.name_ambiguous"
+   ],
+   "sha256": {
+    "hi": "23ded75fab8b3dfb66061e5a5b9dcf51991473f5f92e71c13489ba352ac268f7",
+    "en": "5f64dc7ff1a23909a5adef9010f7aff5a1c6154d1cb9fd22635b42fd676b72cc"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.hub.json",
+    "target": "src/i18n/catalogues/hi/ui.hub.json",
+    "context": "src/i18n/catalogues/en/ui.hub.context.json"
+   },
+   "findings": []
+  }
+ }
+}

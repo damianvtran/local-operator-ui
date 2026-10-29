@@ -1220,6 +1220,16 @@ export function projectTagRule(tag: string): string | null {
 const hubItemKind = z.enum(["agent", "team", "skill"]);
 
 /*
+ * ONE ROW's local identity: the registry id an agent/team link row carries, or a
+ * skill link's id (`HubLink.local_id` in `GET /v1/desktop/hub/links`).
+ *
+ * Mirrors core's `LocalId` (`local_operator/server/routes/desktop_hub.py`):
+ * 1..128 characters and NOT whitespace-only - a blank id is a malformed request
+ * (422), while a well-formed id that matches nothing is the route's 404.
+ */
+const localItemId = z.string().min(1).max(128).regex(/\S/);
+
+/*
  * The sidebar customisation resource's wire schema (design contract § 2, § 4).
  *
  * `SIDEBAR_DESTINATION_IDS` is the one allow-list shared with the control DTOs
@@ -1494,26 +1504,44 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			confirmPublicEgress: z.boolean().optional(),
 		})
 		.strict(),
+	/*
+	 * A CHECK IS NOT ADDRESSED BY `link_id` (QA round 3 on #1458, Q13). Core's
+	 * `/v1/desktop/hub/updates/check` takes `HubCheck` (core
+	 * `local_operator/server/routes/desktop_hub.py`), whose members are
+	 * `request_id`, `kind` and `name` ONLY, and whose base `Input` forbids extra
+	 * fields - so the `link_id`/`direction` pair this schema used to allow made
+	 * every per-link check a 422 before any work ran. A check is scoped to ONE
+	 * item by its local identity (`kind` + `name`), which is what the link row
+	 * carries; there is no per-link route and no direction on this wire.
+	 */
+	/*
+	 * ONE ITEM, ADDRESSED BY `local_id` WHEN THE BACKEND OFFERS IT (`hub_items_by_id`).
+	 *
+	 * `name` is a DISPLAY name, and a display name is not an identity: an agent's
+	 * registry refuses only an EXACT duplicate and a rename checks nothing, while
+	 * core matches names case-insensitively - so `name: "coder"` reaches both
+	 * `Coder` and `coder`, and an Apply would merge into two agents. Core
+	 * (local_operator/server/routes/desktop_hub.py, `HubCheck`) accepts
+	 * `local_id` with `kind` as the exact arm; an OLDER core refuses that field
+	 * with a 422 (`Input` is `extra="forbid"`), so callers send it only when the
+	 * `hub_items_by_id` capability is advertised. At most one arm is allowed.
+	 */
 	z
 		.object({
 			op: z.literal("hub.check"),
 			requestId,
-			linkId: z.string().min(1).max(256).optional(),
-			direction: z.enum(["pull", "push"]).optional(),
 			kind: hubItemKind.optional(),
 			name: profileName.optional(),
+			localId: localItemId.optional(),
 		})
 		.strict(),
 	z
 		.object({
 			op: z.literal("hub.apply"),
 			requestId,
-			previewReceipt: z.string().min(1).max(4096).optional(),
-			confirmApply: z.literal(true).optional(),
-			linkId: z.string().min(1).max(256).optional(),
-			direction: z.literal("pull").optional(),
 			kind: hubItemKind.optional(),
 			name: profileName.optional(),
+			localId: localItemId.optional(),
 			prefer: z.enum(["local", "remote"]).optional(),
 			acknowledgeUnknownBaseline: z.boolean().optional(),
 			dryRun: z.boolean().optional(),
@@ -1543,10 +1571,9 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("hub.retry"),
 			requestId,
-			linkId: z.string().min(1).max(256).optional(),
-			direction: z.enum(["pull", "push"]).optional(),
 			kind: hubItemKind.optional(),
 			name: profileName.optional(),
+			localId: localItemId.optional(),
 		})
 		.strict(),
 	z
@@ -4693,49 +4720,34 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 				return;
 			}
 		}
-		// Stable links and legacy name selectors are mutually exclusive. Never
-		// let one surface's active organization/name override a scoped origin.
+		/*
+		 * ONE UNAMBIGUOUS ADDRESS. Core refuses `name` and `local_id` together,
+		 * and apply/retry require exactly one (its `_one_address` in
+		 * `desktop_hub.py`); a check may name neither to check everything. An id
+		 * without `kind` could land on a row of another kind, so it is refused
+		 * here as well as in core.
+		 */
 		if (
 			request.op === "hub.check" ||
 			request.op === "hub.apply" ||
 			request.op === "hub.retry"
 		) {
-			const hasLink = request.linkId !== undefined;
-			const hasLegacy =
-				request.kind !== undefined || request.name !== undefined;
+			const hasName = request.name !== undefined;
+			const hasId = request.localId !== undefined;
+			const required = request.op !== "hub.check";
 			if (
-				(hasLink && hasLegacy) ||
-				(request.op !== "hub.check" &&
-					!hasLink &&
-					(!request.kind || !request.name)) ||
-				(request.op === "hub.retry" && hasLink && !request.direction) ||
-				(request.direction === "push" && !hasLink)
+				(hasName && hasId) ||
+				(required && !hasName && !hasId) ||
+				(hasId && request.kind === undefined)
 			) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
 					message:
-						"A hub action requires one unambiguous selector and an explicit retry direction",
-					path: ["linkId"],
+						"A hub action addresses one item by name or local id, never both", // i18n: ignore request-schema diagnostic
+					path: ["localId"],
 				});
 				return;
 			}
-		}
-		if (
-			request.op === "hub.apply" &&
-			(request.previewReceipt !== undefined ||
-				request.confirmApply !== undefined) &&
-			(!request.linkId ||
-				request.dryRun ||
-				!request.previewReceipt ||
-				request.confirmApply !== true)
-		) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				message:
-					"A viewed incoming application requires its scoped preview receipt and confirmation",
-				path: ["previewReceipt"],
-			});
-			return;
 		}
 		/*
 		 * The resolve arm is a SOURCE CONFIRMATION, not an application: it must
@@ -4754,15 +4766,13 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 				!request.hubSource ||
 				!scopePaired ||
 				request.acknowledgeUnknownBaseline !== true ||
-				request.linkId !== undefined ||
-				request.previewReceipt !== undefined ||
-				request.confirmApply !== undefined ||
+				request.localId !== undefined ||
 				request.prefer !== undefined
 			) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
 					message:
-						"Confirming a source requires its exact stated destination and the unknown-baseline acknowledgement, with no link, preview or preference",
+						"Confirming a source requires its exact stated destination and the unknown-baseline acknowledgement, addressed by name, with no preference", // i18n: ignore request-schema diagnostic
 					path: ["hubSource"],
 				});
 				return;
@@ -8024,10 +8034,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "POST",
 				body: {
 					request_id: request.requestId,
-					...(request.linkId ? { link_id: request.linkId } : {}),
-					...(request.direction ? { direction: request.direction } : {}),
 					...(request.kind ? { kind: request.kind } : {}),
 					...(request.name ? { name: request.name } : {}),
+					...(request.localId ? { local_id: request.localId } : {}),
 				},
 			};
 		case "hub.apply":
@@ -8036,14 +8045,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "POST",
 				body: {
 					request_id: request.requestId,
-					...(request.previewReceipt
-						? { preview_receipt: request.previewReceipt }
-						: {}),
-					...(request.confirmApply ? { confirm_apply: true } : {}),
-					...(request.linkId ? { link_id: request.linkId } : {}),
-					...(request.direction ? { direction: request.direction } : {}),
 					...(request.kind ? { kind: request.kind } : {}),
 					...(request.name ? { name: request.name } : {}),
+					...(request.localId ? { local_id: request.localId } : {}),
 					...(request.prefer ? { prefer: request.prefer } : {}),
 					...(request.acknowledgeUnknownBaseline !== undefined
 						? {
@@ -8084,10 +8088,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "POST",
 				body: {
 					request_id: request.requestId,
-					...(request.linkId ? { link_id: request.linkId } : {}),
-					...(request.direction ? { direction: request.direction } : {}),
 					...(request.kind ? { kind: request.kind } : {}),
 					...(request.name ? { name: request.name } : {}),
+					...(request.localId ? { local_id: request.localId } : {}),
 				},
 			};
 		case "hub.push":
