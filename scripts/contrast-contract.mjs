@@ -1435,18 +1435,38 @@ const CONTROLS = [
 	},
 	{
 		/*
-		 * THE NOTIFICATIONS ROW'S COUNT (operator, 2026-10-25, notifications
-		 * decisions D5): the `emphasis` badge variant, a filled pill with no border
-		 * because the operator found the quiet register above "a bit too subtle"
-		 * for this one row. Unlike the quiet row, the EDGE IS CLAIMED: with no
-		 * border the fill is the whole boundary, and `accent` clears the 3:1
-		 * non-text floor on all four rail grounds (4.24:1 worst, tokyoNight on
-		 * `rowSelected`), so this row keeps the default edge check rather than
+		 * EVERY SIDEBAR ATTENTION COUNT (operator, 2026-10-28): the `emphasis` badge
+		 * variant as worn by the shared `AttentionBadge` - Aida, Browser, Mesh, Team
+		 * Bridge, Notifications, More's aggregate, and Team Bridge's channel / group
+		 * / people / organization unread pills. It began as the Notifications row's
+		 * alone (notifications decisions D5, 2026-10-25); the operator reversed D5
+		 * and made it the one attention register. A filled pill with no border, so
+		 * the EDGE IS CLAIMED: the fill is the whole boundary, and `accent` clears
+		 * the 3:1 non-text floor on all four rail grounds (4.24:1 worst, tokyoNight
+		 * on `rowSelected`), so this row keeps the default edge check rather than
 		 * `edge: false`. The numeral is `onAccent` on `accent`, 4.97:1 worst
-		 * (tokyoNightDay) against the 4.5:1 text floor the loop applies.
+		 * (tokyoNightDay) against the 4.5:1 text floor the loop applies. Under the
+		 * window glass the fill is opaque, so the digit pair is unchanged, and the
+		 * fill against the `canvas` / `surface` glass composites is the same
+		 * `accent`-on-composite pair the "glass focus ring" assertion below holds
+		 * at 3:1 for every palette, tier and scheme.
 		 */
-		name: "rail notifications badge (emphasis)",
-		on: ["canvas", "surface", "rowSelected", "rowHover"],
+		name: "rail attention badge (emphasis)",
+		/*
+		 * `elevated` and `accentWash` are the org switcher's MENU grounds: its
+		 * per-organization pills render inside `DropdownMenuRadioItem`, on the
+		 * menu panel and on the highlighted row (`dropdown-menu.tsx`). Measured
+		 * 4.51:1 at worst on both (tokyoNight / everforest, review of #1465 m2);
+		 * listed so the 3:1 floor is pinned rather than incidental.
+		 */
+		on: [
+			"canvas",
+			"surface",
+			"rowSelected",
+			"rowHover",
+			"elevated",
+			"accentWash",
+		],
 		fill: "accent",
 		border: null,
 		ink: "onAccent",

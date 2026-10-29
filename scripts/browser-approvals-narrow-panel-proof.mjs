@@ -3,9 +3,9 @@
  * S6c-lite: the narrow approvals panel, measured in the built app.
  *
  * This boots the real app headless at a 264px content width and drives the
- * PRODUCT dock (the native card is not involved and the S6A opt-in is removed
- * from the launch env). It measures the four acceptance points with bounding
- * rects — Allow/Deny reachable, standing-grant Revoke/Revoke-all reachable, no
+ * PRODUCT dock (the native card is not involved: the launch sets the S6d kill
+ * switch LOCAL_OPERATOR_UI_BROWSER_APPROVALS_OVERLAY_DISABLE=1). It measures
+ * the four acceptance points with bounding rects — Allow/Deny reachable, standing-grant Revoke/Revoke-all reachable, no
  * interactive control clipped or overlapped, and the request reason wrapping
  * rather than truncating — in dark and light, plus the empty panel. The wide
  * side layout is unchanged by contract and is not a claim of this rig.
@@ -180,12 +180,10 @@ function launchApp(mode) {
 	for (const key of Object.keys(env)) {
 		if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
 	}
-	// The card is the default; a stale variable from a caller would silently
-	// test the fallback instead.
-	Reflect.deleteProperty(
-		env,
-		"LOCAL_OPERATOR_UI_BROWSER_APPROVALS_OVERLAY_S6A",
-	);
+	// This rig measures the DOCK, which since S6d is the kill-switch fallback:
+	// the card is default-on, so the launch must say `1` explicitly or the dock
+	// is not mounted and every measurement here would be of nothing.
+	env.LOCAL_OPERATOR_UI_BROWSER_APPROVALS_OVERLAY_DISABLE = "1";
 	app = spawn(
 		electron,
 		withMockKeychain([

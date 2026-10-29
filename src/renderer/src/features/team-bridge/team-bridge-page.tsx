@@ -7,7 +7,7 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
 import { Spinner } from "@shared/components/common/spinner";
-import { Badge, countLabel } from "@shared/components/ui/badge";
+import { AttentionBadge } from "@shared/components/ui/attention-badge";
 import { Button } from "@shared/components/ui/button";
 import { ScrollArea } from "@shared/components/ui/scroll-area";
 import {
@@ -1568,10 +1568,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								{t("ui.teamBridge.invitations.title")}
 							</span>
 							{invitations.length > 0 && (
-								<Badge
-									variant="attentionQuiet"
-									shape="pill"
-									size="count"
+								/* Pending invitations wait on the reader's answer: an
+								   attention count, so the shared accent badge (2026-10-28). */
+								<AttentionBadge
+									count={invitations.length}
 									/* ONE BADGE COLUMN (design round 1, D3): nav rows sit
 									   8px further in than conversation rows (px-3 vs px-1),
 									   so the count pulls back out to their x=276 edge. */
@@ -1579,9 +1579,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									aria-label={t("ui.teamBridge.invitations.count", {
 										count: invitations.length,
 									})}
-								>
-									{countLabel(invitations.length, 99)}
-								</Badge>
+								/>
 							)}
 						</button>
 					)}
@@ -2161,7 +2159,19 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 														onMessage={() => {}}
 														canMessage={false}
 													>
-														<button type="button" className="rounded-xl">
+														{/* `self-start`, not the column's default stretch: a
+														    stretched <button> spans the pane, and the UA's
+														    `text-align: center` for buttons then centred the
+														    56px mark over left-aligned name and intro lines
+														    (operator report 2026-10-27, regressed when #1433
+														    wrapped the plate in this profile-card trigger).
+														    The mark shares the text block's left edge,
+														    Slack-style, and the hit target is the mark only. */}
+														<button
+															type="button"
+															data-draft-avatar=""
+															className="self-start rounded-xl"
+														>
 															<TeamBridgeAvatar
 																member={draftPerson}
 																label={paneTitle ?? ""}
@@ -2197,7 +2207,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 														)}
 													</span>
 												)}
-												<p className="font-semibold text-[17px] text-ink">
+												<p
+													data-draft-name=""
+													className="font-semibold text-[17px] text-ink"
+												>
 													{paneTitle}
 												</p>
 												<p className="text-[13px] text-ink-muted">

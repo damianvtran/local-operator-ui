@@ -1,0 +1,141 @@
+{
+  "audit_id": "teambridge-pr1444-audit-e3a57e993d00",
+  "date": "2026-10-27",
+  "locale": "es",
+  "namespace": "ui.teamBridge",
+  "source_commit": "90f0e9c1e8bbeedaba91a4ad7e39834fa9f6924f",
+  "translator": {
+    "agent": "translator",
+    "session": "f7213e039f58",
+    "model": "anthropic/claude-opus-5-5",
+    "fallback": "none recorded",
+    "commit": "90f0e9c1e8bbeedaba91a4ad7e39834fa9f6924f",
+    "method": "LLM reasoning, no MT service (commit message)"
+  },
+  "auditors": [
+    {
+      "agent": "i18n-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "date": "2026-10-27",
+      "result": "clean-with-findings",
+      "instance": "e3a57e993d00-es",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      },
+      "receipt": "i18n/receipts/e3a57e993d00-es.json",
+      "receipt_sha256": "dc67139f7ca8239a214e59e3219e5d7ac141aa3c0751da30a42522d6b09dbe3e",
+      "scope": "New-key delta: ui.teamBridge.schedule.edit_failed, edit_conflict, edit_gone (PR #1444); other 208 keys inherited on byte identity.",
+      "note": "PR #1444 3-key delta (schedule.edit_*); 1 open NIT, see receipt"
+    }
+  ],
+  "independence": "Independent auditor (reviewer role, session e3a57e993d00). It authored none of the audited strings and edited no catalogue byte. The translator was session f7213e039f58 (commit 90f0e9c1e8). This run wrote only these receipts, the per-locale evidence records, and the ledger rows (via ledger-assemble.mjs).",
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "6fd3d94516a1b0a2175c7e104ea9618e3266894b4b4016438093d2893a9b9603"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/es/ui.teamBridge.json",
+      "sha256": "60c0387d0acc2af9db6b5d54bdaf2d7827633f58f44b56919c48217f923b18ba"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "017e705c4044200701616c96df11e1075d19f7254807b7bb414d287c84c632e1"
+    }
+  },
+  "audited": {
+    "ui.teamBridge.schedule.edit_failed": {
+      "en": "Your change was not confirmed. Your edits are kept here; review them and try again.",
+      "target": "No se confirmó tu cambio. Tus ediciones se conservan aquí; revísalas y vuelve a intentarlo."
+    },
+    "ui.teamBridge.schedule.edit_conflict": {
+      "en": "This message changed on another device. The latest version is shown with your changes kept where they don't clash. Review it and try again.",
+      "target": "Este mensaje cambió en otro dispositivo. Se muestra la versión más reciente, con tus cambios conservados donde no entran en conflicto. Revísala y vuelve a intentarlo."
+    },
+    "ui.teamBridge.schedule.edit_gone": {
+      "en": "This message was cancelled or has already been sent, so it can no longer be changed.",
+      "target": "Este mensaje se canceló o ya se envió, por lo que no se puede modificar."
+    }
+  },
+  "notes": "tú register (revísalas, vuelve a intentarlo) consistent with schedule.failed; 'dispositivo' per glossary; 'Revísala' agrees with 'la versión'; 'vuelve a intentarlo' matches schedule.failed/cancel_failed. See N2.",
+  "findings": [
+    {
+      "id": "N2",
+      "severity": "nit",
+      "locale": "es",
+      "key": "ui.teamBridge.schedule.edit_gone",
+      "summary": "'por lo que no se puede modificar' drops the 'no longer' of the English ('can no longer be changed'); the sibling ui.teamBridge.schedule.sending already says 'ya no se puede editar'. 'por lo que ya no se puede modificar' restores the nuance and the sibling consistency. Meaning is intact ('ya se envió' carries the finality).",
+      "disposition": "open - correctness-preserving; follow-up for the translator, not a blocker"
+    }
+  ],
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide_fr": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "revision": "85c8cec6264f07d27020c76355df2e9c7df871ce",
+      "sha256": "f37e65a3c4ac002c5f3a32ef450061a88eecf0cc89f3d981971e67a12aa864b6"
+    },
+    "style_guide_es": {
+      "path": "~/local-operator/i18n/style-guides/es.md",
+      "revision": "95dea370856c5ab99309246b5e41869ea5c69d7a",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    "style_guide_zh-CN": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "revision": "ad1de332210d47cc01e62393c2d0cd4708e2312b",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    },
+    "style_guide_ru": {
+      "path": "~/local-operator/i18n/style-guides/ru.md",
+      "revision": "6c085b93b6ecc1a27a0daab552302687b059a911",
+      "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+    },
+    "style_guide_vi": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "revision": "6c085b93b6ecc1a27a0daab552302687b059a911",
+      "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+    },
+    "style_guide_ur": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "revision": "3afecd0a23b09b8d7d3374d90a7ace6f091ed629",
+      "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+    },
+    "style_guide_hi": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "revision": "14f73c4dcce62d858508fb6313b7f0416999a63b",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    "core_ref": "ef10ec9a202e853593c3b4198270a114e0cb66f7",
+    "docs/I18N.md": {
+      "path": "docs/I18N.md",
+      "sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe"
+    },
+    "AGENTS.md": {
+      "path": "AGENTS.md",
+      "sha256": "b05f5fd1472fe1617783e51bc709df8e6f079a87ceda0f2ff97fff539be320af"
+    },
+    "scripts/i18n/ledger-rules.mjs": {
+      "path": "scripts/i18n/ledger-rules.mjs",
+      "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+    },
+    "scripts/i18n/ledger-assemble.mjs": {
+      "path": "scripts/i18n/ledger-assemble.mjs",
+      "sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+    }
+  },
+  "artifacts": {
+    "receipt": {
+      "path": "i18n/receipts/e3a57e993d00-es.json",
+      "sha256": "dc67139f7ca8239a214e59e3219e5d7ac141aa3c0751da30a42522d6b09dbe3e"
+    },
+    "ledger_row": "i18n/ledger.json"
+  },
+  "limitations": "No rendered-fit or screenshot evidence: this role has no browser tool. Lengths are comparable to the sibling schedule.failed in every locale, and the context allows wrapping."
+}

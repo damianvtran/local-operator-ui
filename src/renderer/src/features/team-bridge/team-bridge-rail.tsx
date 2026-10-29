@@ -1,5 +1,6 @@
 import { Spinner } from "@shared/components/common/spinner";
-import { Badge, countLabel } from "@shared/components/ui/badge";
+import { AttentionBadge } from "@shared/components/ui/attention-badge";
+import { Badge } from "@shared/components/ui/badge";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -88,16 +89,18 @@ const RAIL_CARD = {
 	openOnFocus: false,
 } as const;
 
-/** The unread pill every row shares, the sidebar's quiet attention badge. */
+/**
+ * The unread pill every channel, group, person and chief row shares: the
+ * sidebar's shared accent `AttentionBadge` (operator, 2026-10-28), because an
+ * unread conversation is a request for the reader's attention, not a total.
+ */
 const Unread: FC<{ count: number; yieldsToMenu?: boolean }> = ({
 	count,
 	yieldsToMenu = false,
 }) =>
 	count > 0 ? (
-		<Badge
-			variant="attentionQuiet"
-			shape="pill"
-			size="count"
+		<AttentionBadge
+			count={count}
 			/*
 			 * ONE BADGE COLUMN (design round 1, D4). Person and chief rows used to
 			 * reserve `pr-8` for the hover "…", which pushed their counts 24px left
@@ -111,9 +114,7 @@ const Unread: FC<{ count: number; yieldsToMenu?: boolean }> = ({
 					"group-focus-within/row:invisible group-hover/row:invisible",
 			)}
 			aria-label={t("ui.teamBridge.unread.count", { count })}
-		>
-			{countLabel(count, 99)}
-		</Badge>
+		/>
 	) : null;
 
 export const RailSection: FC<{

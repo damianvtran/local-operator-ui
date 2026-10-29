@@ -5,6 +5,11 @@
 const SIZE = 40;
 const FONT_SIZE = 28;
 const cache = new Map<string, boolean>();
+/* The warm-up walk's position, and the only completion marker there is.
+   MODULE LEVEL, and advanced only as probes actually run: a walk can be
+   cancelled part-way and has to resume, so "started" cannot mean "done". See
+   `warmEmojiProbeCache` for the two mounts that cancel it. */
+let cursor = 0;
 let context: CanvasRenderingContext2D | null | undefined;
 
 export function isSingleColorGlyph(
@@ -62,4 +67,56 @@ export function canRenderEmoji(emoji: string): boolean {
 	}
 	cache.set(emoji, supported);
 	return supported;
+}
+
+/**
+ * WARM THE PROBE CACHE BEFORE THE PICKER IS ASKED FOR (operator report
+ * 2026-10-27: the picker took seconds to open). `canRenderEmoji` is a canvas
+ * paint plus `getImageData` per sequence - about 0.7 ms each here, so the
+ * first picker open used to pay for hundreds of them inside its own click
+ * handler, and the operator waited on a click that had not painted. This walks
+ * the corpus in idle slices instead, starting when a timeline mounts (the
+ * toolbar that opens the picker is on every row), so the synchronous probe left
+ * on the open path is a cache lookup.
+ *
+ * Deliberately returns its cancel function, and deliberately walks the corpus
+ * ONCE per module: the corpus is a fixed table, so every later caller - the
+ * thread pane's own lists, a conversation switch - would otherwise re-walk what
+ * is already probed.
+ *
+ * "Once" means ONE COMPLETED WALK, not one start, because the walk is routinely
+ * cancelled part-way and must resume (agent review round 2, R2-M1). Two mounts
+ * cancel it: React StrictMode mounts, cleans up and remounts every effect in
+ * development, and the timeline list unmounts whenever a conversation loads. A
+ * `started` flag set at the top would have left the cache cold for the rest of
+ * the session in both cases - every later picker open falling back to the
+ * synchronous probing this warm-up exists to remove - so the cursor lives at
+ * module level and a later call continues from it. The corpus length is the
+ * completion marker: once the cursor reaches it, later calls are no-ops.
+ *
+ * `requestIdleCallback` is not used: it is absent in older WebKit and the
+ * scheduler here only needs "after paint", which a zero-delay timer already
+ * gives.
+ */
+export function warmEmojiProbeCache(
+	entries: readonly string[],
+	sliceMs = 8,
+): () => void {
+	if (cursor >= entries.length) return () => {};
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	let cancelled = false;
+	const slice = () => {
+		if (cancelled) return;
+		const deadline = performance.now() + sliceMs;
+		while (cursor < entries.length && performance.now() < deadline) {
+			canRenderEmoji(entries[cursor]);
+			cursor++;
+		}
+		if (cursor < entries.length) timer = setTimeout(slice, 0);
+	};
+	timer = setTimeout(slice, 0);
+	return () => {
+		cancelled = true;
+		if (timer !== undefined) clearTimeout(timer);
+	};
 }
