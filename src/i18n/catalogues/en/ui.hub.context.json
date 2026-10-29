@@ -24,6 +24,11 @@
 		"tone": "plain, precise; safety statements must not weaken or promise success",
 		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
 	},
+	"ui.hub.links.retry_update": {
+		"role": "button",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. This button re-issues the FAILED INCOMING UPDATE and names that target in its label, so it never reads as the source Retry shown above it when both are on screen; keep the target word in the translation."
+	},
 	"ui.hub.links.source_public": {
 		"role": "status",
 		"tone": "plain, precise; safety statements must not weaken or promise success",

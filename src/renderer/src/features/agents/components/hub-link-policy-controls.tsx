@@ -17,6 +17,7 @@ import {
 import { Switch } from "@shared/components/ui/switch";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { cn } from "@shared/lib/utils";
 import { useEffect, useId, useRef, useState } from "react";
 import { hubReasonText } from "../hub-link-copy";
 import { useHubLinkSource } from "../hub-link-source";
@@ -185,69 +186,88 @@ export function HubLinkPolicyControls({
 					{t("ui.hub.subscriptions.manual_available")}
 				</p>
 			)}
-			<div className="flex items-start justify-between gap-4">
-				<div className="min-w-0">
-					<label htmlFor={`${id}-push`} className="text-body-sm text-ink">
-						{t("ui.hub.subscriptions.auto_push")}
-					</label>
-					<p className="text-meta text-ink-muted">
-						{source
-							? t("ui.hub.subscriptions.auto_push_description", { source })
-							: t("ui.hub.subscriptions.auto_push_description_unsourced")}
-					</p>
-				</div>
-				{/*
-				 * A disabled switch takes no pointer events, so the reason rides a
-				 * wrapper's native tooltip as well as the visible line below it
-				 * (`aria-describedby`): the person who hovers the dead control learns
-				 * why without having to find the sentence underneath.
-				 */}
-				<span
-					className="inline-flex shrink-0"
-					data-hub-auto-push-reason={line !== "none" ? "" : undefined}
-					title={line === "unavailable" ? unavailableReason : undefined}
-				>
-					<Switch
-						id={`${id}-push`}
-						// Point at the line only while it renders; a dangling idref is worse
-						// than none. The aria-label stays the name; this adds the reason.
-						aria-describedby={line !== "none" ? `${id}-push-line` : undefined}
-						checked={link.policy.auto_push}
-						disabled={
-							write.isPending ||
-							!write.canWrite ||
-							(!link.policy.auto_push && unavailable)
-						}
-						aria-label={
-							source
-								? `${t("ui.hub.subscriptions.auto_push")}: ${source}`
-								: t("ui.hub.subscriptions.auto_push")
-						}
-						onCheckedChange={(value) => {
-							if (!value) save({ auto_push: false }, "auto_push");
-							// No named destination, no consent: the dialog states WHERE
-							// future changes go, so it cannot open on an unnamed source.
-							else if (!unavailable && source) {
-								onConsentChange?.(true);
-								setConsent({
-									linkId: link.link_id,
-									revision: link.policy.revision,
-									source,
-								});
+			{/*
+			 * The reason belongs to the switch row it explains, not to the panel's section
+			 * rhythm: at the container's `gap-3` it read as a peer section. `gap-1` keeps
+			 * it attached while the block still steps away from its neighbours by 12px.
+			 */}
+			<div className="flex flex-col gap-1">
+				<div className="flex items-start justify-between gap-4">
+					<div className="min-w-0">
+						<label htmlFor={`${id}-push`} className="text-body-sm text-ink">
+							{t("ui.hub.subscriptions.auto_push")}
+						</label>
+						<p className="text-meta text-ink-muted">
+							{source
+								? t("ui.hub.subscriptions.auto_push_description", { source })
+								: t("ui.hub.subscriptions.auto_push_description_unsourced")}
+						</p>
+					</div>
+					{/*
+					 * A disabled switch takes no pointer events, so the reason rides a
+					 * wrapper's native tooltip as well as the visible line below it
+					 * (`aria-describedby`): the person who hovers the dead control learns
+					 * why without having to find the sentence underneath.
+					 */}
+					<span
+						className="inline-flex shrink-0"
+						data-hub-auto-push-reason={line !== "none" ? "" : undefined}
+						title={line === "unavailable" ? unavailableReason : undefined}
+					>
+						<Switch
+							id={`${id}-push`}
+							// Point at the line only while it renders; a dangling idref is worse
+							// than none. The aria-label stays the name; this adds the reason.
+							aria-describedby={line !== "none" ? `${id}-push-line` : undefined}
+							checked={link.policy.auto_push}
+							disabled={
+								write.isPending ||
+								!write.canWrite ||
+								(!link.policy.auto_push && unavailable)
 							}
-						}}
-					/>
-				</span>
+							aria-label={
+								source
+									? `${t("ui.hub.subscriptions.auto_push")}: ${source}`
+									: t("ui.hub.subscriptions.auto_push")
+							}
+							onCheckedChange={(value) => {
+								if (!value) save({ auto_push: false }, "auto_push");
+								// No named destination, no consent: the dialog states WHERE
+								// future changes go, so it cannot open on an unnamed source.
+								else if (!unavailable && source) {
+									onConsentChange?.(true);
+									setConsent({
+										linkId: link.link_id,
+										revision: link.policy.revision,
+										source,
+									});
+								}
+							}}
+						/>
+					</span>
+				</div>
+				{line !== "none" && (
+					<p
+						id={`${id}-push-line`}
+						className={cn(
+							"text-meta",
+							/*
+							 * The standing capability note ("Auto-push is unavailable…") is true on a
+							 * healthy link, so in warning ink it was the panel's permanent alarm while
+							 * a failed update beside it read neutral. The transient pause keeps the
+							 * attention ink: it reports a state that should not persist.
+							 */
+							line === "paused" ? "text-warning" : "text-ink-muted",
+						)}
+					>
+						{line === "paused"
+							? t("ui.hub.subscriptions.effective_paused", {
+									reason: unavailableReason,
+								})
+							: unavailableReason}
+					</p>
+				)}
 			</div>
-			{line !== "none" && (
-				<p id={`${id}-push-line`} className="text-meta text-warning">
-					{line === "paused"
-						? t("ui.hub.subscriptions.effective_paused", {
-								reason: unavailableReason,
-							})
-						: unavailableReason}
-				</p>
-			)}
 			{write.isPending && (
 				<output className="text-meta text-ink-muted">
 					{source

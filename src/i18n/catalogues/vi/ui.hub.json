@@ -4,6 +4,7 @@
 	"ui.hub.links.empty": "Chưa liên kết với trung tâm.",
 	"ui.hub.links.load_failed": "Không tải được liên kết trung tâm. Hãy thử lại.",
 	"ui.hub.links.retry": "Thử lại",
+	"ui.hub.links.retry_update": "Thử lại cập nhật",
 	"ui.hub.links.source_public": "Công khai",
 	"ui.hub.links.source_private": "{organization} · Riêng tư",
 	"ui.hub.links.source_unavailable": "Nguồn không khả dụng",

@@ -5757,6 +5757,7 @@ export type MessageParams = {
 	"ui.hub.links.resolve_title": undefined;
 	"ui.hub.links.retry": undefined;
 	"ui.hub.links.retry_failed": undefined;
+	"ui.hub.links.retry_update": undefined;
 	"ui.hub.links.retrying": undefined;
 	"ui.hub.links.scope_label": undefined;
 	"ui.hub.links.scope_placeholder": undefined;

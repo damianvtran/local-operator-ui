@@ -4,6 +4,7 @@
 	"ui.hub.links.empty": "No vinculado al hub.",
 	"ui.hub.links.load_failed": "No se pudieron cargar los enlaces del hub. Inténtalo de nuevo.",
 	"ui.hub.links.retry": "Reintentar",
+	"ui.hub.links.retry_update": "Reintentar actualización",
 	"ui.hub.links.source_public": "Público",
 	"ui.hub.links.source_private": "{organization} · Privado",
 	"ui.hub.links.source_unavailable": "Origen no disponible",

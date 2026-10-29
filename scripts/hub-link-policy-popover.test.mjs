@@ -448,6 +448,13 @@ async function mountOpen(
 
 const UUID = new RegExp(TEAM_ID);
 const SPLICED = /Source unavailable/;
+/*
+ * The failed-update card's action names its target. Two buttons both reading
+ * "Retry" can be on screen at once (an unresolved source above a failed update),
+ * which is the ambiguity this popover exists to remove - so the card's label is
+ * part of the contract these tests assert, not an incidental string.
+ */
+const RETRY_UPDATE = "Retry update";
 
 test("healthy org link: display name, organization source, no UUID, auto-push enabled", async () => {
 	const ui = await mountOpen(healthy(), {
@@ -564,6 +571,52 @@ test("unresolved source: one plain sentence with Retry, sentences read without a
 	}
 });
 
+test("both retry affordances at once: distinct labels, each described by its own sentence", async () => {
+	/*
+	 * D4: this popover exists because two same-named actions were ambiguous. An
+	 * unresolved source above a failed incoming update can offer BOTH at once, so
+	 * the card's action names its target and each button is described by the
+	 * sentence it acts on - a container edge is not visible to a button list.
+	 */
+	const ui = await mountOpen(row(), { memberships: [] });
+	try {
+		await act(async () => pause(30));
+		const unresolved = ui
+			.panel()
+			.querySelector("[data-hub-link-source-unresolved]");
+		const box = ui.panel().querySelector("[data-hub-link-incoming-failed]");
+		assert(unresolved && box, "both blocks render together");
+		const sourceRetry = [...unresolved.querySelectorAll("button")].find(
+			(b) => b.textContent === "Retry",
+		);
+		const updateRetry = [...box.querySelectorAll("button")].find(
+			(b) => b.textContent === RETRY_UPDATE,
+		);
+		assert(sourceRetry && updateRetry, "both actions are offered");
+		assert.notEqual(
+			sourceRetry.textContent,
+			updateRetry.textContent,
+			"the two actions never read the same",
+		);
+		const describedBy = (button) => {
+			const id = button.getAttribute("aria-describedby");
+			return id
+				? (ui.panel().querySelector(`[id="${id}"]`)?.textContent ?? null)
+				: null;
+		};
+		assert.match(
+			describedBy(sourceRetry) ?? "",
+			/organization could not be identified/,
+		);
+		assert.match(
+			describedBy(updateRetry) ?? "",
+			/The last incoming update didn’t complete\./,
+		);
+	} finally {
+		await ui.close();
+	}
+});
+
 test("failed incoming update: reason, Retry posts {kind, local_id}, clears on success", async () => {
 	const failing = row();
 	const ui = await mountOpen(failing, { memberships: [] });
@@ -575,7 +628,7 @@ test("failed incoming update: reason, Retry posts {kind, local_id}, clears on su
 		assert.match(box.textContent, /Couldn't reach the hub\./);
 		assert.doesNotMatch(box.textContent, UUID);
 		const retry = [...box.querySelectorAll("button")].find(
-			(b) => b.textContent === "Retry",
+			(b) => b.textContent === RETRY_UPDATE,
 		);
 		assert(retry, "Retry is offered beside the failure");
 		const succeeded = {
@@ -641,7 +694,7 @@ test("failed incoming update on an older core retries by registry name; a stated
 		const box = ui.panel().querySelector("[data-hub-link-incoming-failed]");
 		assert.match(box.textContent, /The hub answered 502 Bad Gateway\./);
 		const retry = [...box.querySelectorAll("button")].find(
-			(b) => b.textContent === "Retry",
+			(b) => b.textContent === RETRY_UPDATE,
 		);
 		await act(async () => {
 			retry.click();
@@ -669,7 +722,7 @@ test("a refused retry says so in the failure block, and only there", async () =>
 		};
 		const box = ui.panel().querySelector("[data-hub-link-incoming-failed]");
 		const retry = [...box.querySelectorAll("button")].find(
-			(b) => b.textContent === "Retry",
+			(b) => b.textContent === RETRY_UPDATE,
 		);
 		await act(async () => {
 			retry.click();
@@ -763,7 +816,7 @@ test("an org sign-in refusal (core's 401) says where to sign in, names no id, sp
 		};
 		const box = ui.panel().querySelector("[data-hub-link-incoming-failed]");
 		const retry = [...box.querySelectorAll("button")].find(
-			(b) => b.textContent === "Retry",
+			(b) => b.textContent === RETRY_UPDATE,
 		);
 		await act(async () => {
 			retry.click();
@@ -797,7 +850,7 @@ test("a mark-press failure names the item by its display name, never its id", as
 		};
 		const box = ui.panel().querySelector("[data-hub-link-incoming-failed]");
 		const retry = [...box.querySelectorAll("button")].find(
-			(b) => b.textContent === "Retry",
+			(b) => b.textContent === RETRY_UPDATE,
 		);
 		await act(async () => {
 			retry.click();

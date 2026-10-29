@@ -104,6 +104,14 @@ export function HubLinkSidebarMark({
 	const button = useRef<HTMLButtonElement>(null);
 	const titleId = useId();
 	const descriptionId = useId();
+	/*
+	 * Two retry affordances can be on screen at once (an unresolved source and a
+	 * failed incoming update). Their labels are distinct, and each button is
+	 * described by its own sentence, so the pair never reads as one control in the
+	 * accessibility tree - the described-by idiom the policy switches already use.
+	 */
+	const sourceUnresolvedId = useId();
+	const failedUpdateId = useId();
 	const item = displayName?.trim() ? displayName : link.name;
 	const { source, memberships, mayReadMemberships } = useHubLinkSource(link);
 
@@ -307,7 +315,11 @@ export function HubLinkSidebarMark({
 					button.current?.focus();
 				}}
 			>
-				<h4 id={titleId} className="break-words text-body-sm text-ink">
+				{/*
+				 * `text-heading` (16px/600) is the rank the app's own `DialogTitle` carries.
+				 * At `text-body-sm` this title competed with its own section labels.
+				 */}
+				<h4 id={titleId} className="break-words text-heading text-ink">
 					{t("ui.hub.links.policy_title", { item })}
 				</h4>
 				{source ? (
@@ -322,16 +334,30 @@ export function HubLinkSidebarMark({
 						className="mb-3 flex items-start justify-between gap-3"
 						data-hub-link-source-unresolved=""
 					>
-						<p className="min-w-0 text-meta text-ink-muted">
+						<p
+							id={sourceUnresolvedId}
+							className="min-w-0 text-meta text-ink-muted"
+						>
 							{t("ui.hub.links.source_unresolved")}
 						</p>
+						{/*
+						 * The label follows the fetch, exactly as the incoming-update Retry follows
+						 * its mutation. Held invariant, this panel's only action sat in the disabled
+						 * ink pair on open, on click and through every backoff attempt, looking dead
+						 * with nothing on screen saying why.
+						 */}
 						<Button
 							variant="outline"
 							size="sm"
 							disabled={memberships.isFetching}
+							aria-describedby={sourceUnresolvedId}
 							onClick={refetchSource}
 						>
-							{t("ui.hub.links.retry")}
+							{t(
+								memberships.isFetching
+									? "ui.hub.links.retrying"
+									: "ui.hub.links.retry",
+							)}
 						</Button>
 					</div>
 				)}
@@ -343,12 +369,18 @@ export function HubLinkSidebarMark({
 						{t("ui.hub.links.legacy_retry_unverified")}
 					</output>
 				)}
+				{/*
+				 * Ink roles, not borders: the first line carries the attention ink
+				 * (`text-warning`, escalating to `text-danger` only when the retry itself
+				 * fails), and the well fill separates the block from the panel body in
+				 * every palette. `border-hairline` stays - a decorative container edge.
+				 */}
 				{pullFailed && (
 					<div
-						className="mb-3 flex flex-col gap-2 rounded-md border border-hairline p-3"
+						className="mb-3 flex flex-col gap-2 rounded-md border border-hairline bg-sunken p-3"
 						data-hub-link-incoming-failed=""
 					>
-						<p className="text-body-sm text-ink">
+						<p id={failedUpdateId} className="text-body-sm text-warning">
 							{t("ui.hub.links.incoming_update_failed")}
 						</p>
 						<p className="text-meta text-ink-muted">
@@ -370,12 +402,13 @@ export function HubLinkSidebarMark({
 								disabled={
 									actions.isPending || !actions.canWrite || legacyWriteBlocked
 								}
+								aria-describedby={failedUpdateId}
 								onClick={retryIncoming}
 							>
 								{t(
 									actions.isPending
 										? "ui.hub.links.retrying"
-										: "ui.hub.links.retry",
+										: "ui.hub.links.retry_update",
 								)}
 							</Button>
 						</div>

@@ -54,6 +54,7 @@
 	"ui.hub.links.hub_id": "ID хаба: {address}",
 	"ui.hub.links.resolve_title": "Подтвердите источник этой связи",
 	"ui.hub.links.retry": "Повторить",
+	"ui.hub.links.retry_update": "Повторить обновление",
 	"ui.hub.links.scope_label": "Область публикации",
 	"ui.hub.links.scope_placeholder": "Выберите область…",
 	"ui.hub.links.scope_private": "{organization} · приватная",
