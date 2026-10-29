@@ -19,7 +19,7 @@ import {
 	CHAT_COLUMN_INSET,
 	CHAT_MEASURE,
 } from "@features/chat/chat-measure";
-import { CHAT_REGION_LABEL } from "@features/chat/chat-regions";
+import { chatRegionLabel } from "@features/chat/chat-regions";
 import { AttachmentsPreview } from "@features/chat/components/attachments-preview";
 import { AudioRecordingIndicator } from "@features/chat/components/audio-recording-indicator";
 import { ComposerStatusRow } from "@features/chat/components/composer-status-row";
@@ -386,8 +386,8 @@ import { skillCompletionFor } from "@features/chat/components/skill-completion";
  */
 import { skillHighlightRuns } from "@features/chat/components/skill-highlight";
 import {
-	parseSkillInvocation,
-	renderSkillInvocation,
+	planSkillMentions,
+	renderSkillBlock,
 	skillBodyHasContent,
 } from "@features/chat/components/skill-invocation";
 import {
@@ -2932,66 +2932,63 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				if (carried.unconfirmed.length > 0)
 					showWarningToast(unconfirmedNotice(carried.unconfirmed));
 				/*
-				 * THE `$skill` EXPANSION (issue #664), resolved on the SUBMITTED line
-				 * and applied where the message leaves. Only a FIRST-TOKEN `$name`
-				 * matching a DISCOVERED skill fires — `parseSkillInvocation` is the
-				 * harness's own recognition rule, and the vocabulary is the
-				 * `skills.list` answer with no hard-coded names — and the payload it
-				 * injects is `invoke.py`'s expansion character-for-character
-				 * (`skill-invocation.ts` owns that half, escape order included).
+				 * THE `$skill` EXPANSION (issue #664), INLINE AND MULTI now — every
+				 * boundary `$name` matching a DISCOVERED name fires, not only a leading
+				 * one, and a message may name several. `planSkillMentions` is the
+				 * harness's own trigger (`local_operator/sigils.py::skill_mentions`),
+				 * so the token the ink painted is the token that expands; the
+				 * vocabulary is the `skills.list` answer with no hard-coded names.
 				 *
-				 * WHAT KEEPS A PASTED DOCUMENT FROM FIRING IS THE ANCHOR, not a
-				 * typed-vs-pasted marker: the rule reads the FIRST token of what is
-				 * being submitted, so a document whose later line says `$research …`
-				 * cannot fire — the harness's own stated guarantee
-				 * (`command_picker.py`). A paste whose content IS the first line
-				 * behaves exactly as typing it does, which is also the harness's
-				 * behaviour (`$skill` at offset 0 IS the invocation). Mid-document
-				 * pastes stay prose for the same anchor reason.
+				 * THE PAYLOAD IS THE USER'S TEXT VERBATIM and one tail block carrying
+				 * a body per fired name, joined by a blank line (`renderSkillBlock`,
+				 * byte-identical to `invoke.py`). `harness.rows.user_row_text` strips
+				 * that block back off, and this side's `displayTextOf` does the same,
+				 * which is what keeps the row on screen the typed line rather than a
+				 * wall of SKILL.md.
 				 *
-				 * A skill whose body cannot be read is NOT silently swallowed: the
-				 * notice says so and the raw text goes through untouched, which is the
-				 * harness's own trade — a message the user can see and resend beats a
-				 * gesture that looked like it fired and did not. The REQUEST comes from
-				 * the substituted text (whichever one this path's credential step
-				 * settled on — `composeOutgoing` below takes it as its argument) when
-				 * that still parses to the SAME skill, because credential citations may
-				 * have rewritten it inside the request; a different or missing parse
-				 * keeps the typed request.
+				 * A skill whose body cannot be read is NOT silently swallowed: one
+				 * keyed notice per skipped name — empty body, or the read failed — the
+				 * rest still attach, and when NONE attach the text goes through
+				 * untouched. That is the harness's own trade: a message the user can
+				 * see and resend beats a gesture that looked like it fired and did not.
 				 */
 				const skillNames = skillNamesRef.current;
-				const invocation = parseSkillInvocation(message, skillNames);
+				const planned = planSkillMentions(message, skillNames);
 				/*
 				 * THE SESSIONLESS BODY READ (#690's draft-pane finding, closed): the read
 				 * travels with the composer's OWN folder — the staged cwd on a first
 				 * message, the session's cwd once attached — so a `$skill` expands on a
-				 * first message exactly as it does in a live one. The parse still reads
-				 * the TYPED line before anything splices it, and the vocabulary it
-				 * resolves against is the same sessionless answer the list shows.
+				 * first message exactly as it does in a live one. The plan reads the
+				 * TYPED line before anything splices it, and the vocabulary it resolves
+				 * against is the same sessionless answer the list shows.
 				 *
 				 * READ ONCE, ABOVE BOTH COMPOSERS: the attached path's composition and
-				 * the draft path's seam both consume this body, and a second read
+				 * the draft path's seam both consume these bodies, and a second read
 				 * inside the seam would be a second request for an answer already in
 				 * hand.
 				 */
-				let skillBody: string | null = null;
-				if (invocation && skillReadProvided) {
-					const body = await readSkillBody(
-						skillReadClient,
-						cwd ?? "",
-						invocation.name,
-					);
-					if (body !== null && skillBodyHasContent(body)) skillBody = body;
-					else if (body !== null) {
-						onSlashNote?.(
-							`skill \`${invocation.name}\` has an empty body — sending your message as written`,
+				const skillEntries: { name: string; body: string }[] = [];
+				if (planned.length > 0 && skillReadProvided) {
+					for (const mention of planned) {
+						const body = await readSkillBody(
+							skillReadClient,
+							cwd ?? "",
+							mention.name,
 						);
-					} else {
-						onSlashNote?.(
-							`could not load skill \`${invocation.name}\` — sending your message as written`,
-						);
+						if (body !== null && skillBodyHasContent(body))
+							skillEntries.push({ name: mention.name, body });
+						else if (body !== null)
+							onSlashNote?.(
+								`skill \`${mention.name}\` has an empty body — sending your message as written`,
+							);
+						else
+							onSlashNote?.(
+								`could not load skill \`${mention.name}\` — sending your message as written`,
+							);
 					}
 				}
+				const skillBlock =
+					skillEntries.length > 0 ? renderSkillBlock(skillEntries) : "";
 				/*
 				 * THE ONE COMPOSITION, over whichever text the credential step settled
 				 * on — and WHY IT IS ONE (QA round 1, Q-1, the blocker). On a DRAFT pane
@@ -3008,23 +3005,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * read and the list were all working; only the final string was
 				 * replaced.
 				 */
-				const composeOutgoing = (substitutedText: string): string => {
-					if (invocation !== null && skillBody !== null) {
-						const substituted = parseSkillInvocation(
-							substitutedText,
-							skillNames,
-						);
-						const request =
-							substituted && substituted.name === invocation.name
-								? substituted.request
-								: invocation.request;
-						return buildSendPayload(
-							renderSkillInvocation({ ...invocation, request }, skillBody),
-							replies,
-						);
-					}
-					return buildSendPayload(substitutedText, replies);
-				};
+				const composeOutgoing = (substitutedText: string): string =>
+					buildSendPayload(
+						skillBlock
+							? `${substitutedText}\n\n${skillBlock}`
+							: substitutedText,
+						replies,
+					);
 				const seam = credentialSessionId
 					? undefined
 					: async (sessionId: string) => {
@@ -3034,10 +3021,10 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				const outgoingText = composeOutgoing(carried.text);
 				const accepted = await onSendMessage(
 					/*
-					 * THE INVOCATION PAYLOAD WHEN ONE FIRED, the composed text otherwise.
-					 * With the seam the payload travels with its MARKERS as before — the
-					 * branch above read the TYPED line, and the payload's request came from
-					 * the substituted text when that still parsed.
+					 * THE COMPOSED PAYLOAD WHEN AT LEAST ONE SKILL ATTACHED, the settled text
+					 * otherwise. With the seam the payload travels with its markers as before —
+					 * the bodies were read from the TYPED line, and the prose is whichever text
+					 * the credential step settled on.
 					 */
 					outgoingText,
 					attachments.map((a) => a.path),
@@ -4342,14 +4329,17 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * THE `$skill` INK, merged AFTER the plan gate above rather than through it —
 		 * and the order is load-bearing, not tidiness. A `$research fix this` draft
 		 * goes to the model on Enter (`plan.kind` is `send`), so `runsMatchingPlan`
-		 * blanks every run of it: a skill run merged before the gate would blank
-		 * exactly the primary case this tint exists for. The merge below appends the
-		 * `$` runs to the gated slash runs, and the two families cannot overlap by
-		 * construction — a paintable skill token must be LEADING (whitespace-only
-		 * before it), while a slash run needs its `/` word before anything a claim
-		 * could leave it, so at most one family can hold the draft's first token.
+		 * blanks every run of it: a skill run merged before that gate would blank
+		 * exactly the primary case this tint exists for.
 		 *
-		 * The four inputs are the ones `skill-highlight.ts` judges on: the draft, the
+		 * THE SURFACE GATE IS THE PLAN Enter USES (`planForDraft`), because a skill
+		 * only expands on a draft that reaches the send seam. `/team delivery
+		 * $research` dispatches a command and the argument is admitted by the
+		 * backend; no skill attaches, so no ink claims one. A leading slash word the
+		 * planner treats as prose still paints — Enter sends it, and the seam
+		 * expands it. `skill-highlight.ts` carries the whole surface argument.
+		 *
+		 * The rest are the inputs `skill-highlight.ts` judges on: the draft, the
 		 * vocabulary the popup reads (one vocabulary, no second request), whether
 		 * that answer is settled, and whether the list is open on the token — which
 		 * suppresses the UNRESOLVED ink only (a resolved name paints through, see
@@ -4362,8 +4352,17 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				vocabulary: skills.vocabulary,
 				settled: skills.settled,
 				picking: skills.open,
+				expands: planForDraft(newMessage, caret).kind === "send",
 			});
-		}, [newMessage, composing, skills.vocabulary, skills.settled, skills.open]);
+		}, [
+			newMessage,
+			caret,
+			composing,
+			skills.vocabulary,
+			skills.settled,
+			skills.open,
+			planForDraft,
+		]);
 		const composerRuns = useMemo(
 			() => [...slashRuns, ...skillRuns],
 			[slashRuns, skillRuns],
@@ -5446,12 +5445,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		/*
 		 * THE `$skill` ACCEPT (issue #664) — the one gesture whose whole output is a
-		 * STAGED DRAFT. Accepting a row writes `$name ` plus the surviving draft
-		 * (the pure `skillCompletionFor`, the TUI's own `_complete_skill`
-		 * arithmetic) and stops there: neither Tab nor Enter ever submits for a
-		 * skill row, because a completed `$skill ` is the opening of a prompt the
-		 * user is still writing. What the NEXT Enter sends is the expanded payload,
-		 * built in `onSubmit` to match `invoke.py` character-for-character.
+		 * STAGED DRAFT. Accepting a row replaces the token's OWN SPAN with `$name `
+		 * (the pure `skillCompletionFor`, the TUI's own `_skill_span_replacement`
+		 * arithmetic) and stops there: nothing outside the token moves, and neither
+		 * Tab nor Enter ever submits for a skill row, because a completed `$skill `
+		 * is the opening of a prompt the user is still writing. What the NEXT Enter
+		 * sends is the expanded payload, built in `onSubmit` to match `invoke.py`
+		 * character-for-character.
 		 *
 		 * The refusal covers this popup's click too — the same MAJOR-2 rule the two
 		 * sibling popups carry. `readOnly` cannot close this path here either,
@@ -8071,7 +8071,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * (the refusal notice replaces the box).
 				 */
 				data-chat-region="composer"
-				aria-label={CHAT_REGION_LABEL.composer}
+				aria-label={chatRegionLabel("composer")}
 				tabIndex={-1}
 				className="w-full"
 			>

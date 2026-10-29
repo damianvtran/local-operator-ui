@@ -1,0 +1,228 @@
+{
+  "audit_id": "wavea-delta-20261027",
+  "locale": "zh-CN",
+  "namespace": "ui.chat",
+  "audit_date": "2026-10-27",
+  "audit_kind": "delta re-audit (wave A round 2)",
+  "source_commit": "80ee119bbd1084ee873994a1f39db0c085c62083",
+  "parent_commit": "a81c00cdda2667dc6b094128ff47ec72d0c4d095",
+  "key_count": 18,
+  "namespace_key_count": 133,
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "f3e86c8bcafb",
+    "model": "radient/auto",
+    "actual_model_source": "harness session header: `Model: radient/auto` (auto-routing alias; no concrete served provider/model id is exposed to this subagent)",
+    "fallback": "none observed or reported",
+    "independent_from_translator_session": true,
+    "independence_note": "Independent: this auditor (agent i18n-auditor, session f3e86c8bcafb) did not translate these values, wrote no catalogue bytes and edited nothing in the repository. The translator was a different agent instance (the wave-A coder that authored a81c00cdda and the amendments in 80ee119bbd; the shared git identity records no session id). Judgement is by reading the English source, the context sidecars, the call sites and the zh-CN catalogue; no translation API, SDK or MT service was used, and no back-translation service was consulted."
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.json",
+      "sha256": "1a1c9329a1a56ffda47b27da91e80fdf454751a4463b76f09ae9138d1ad0bcdc"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.context.json",
+      "sha256": "1df3ad0e7054c77b2cc59971eae3a9387059be42839a271d80f70e754e542426"
+    },
+    "zh-CN": {
+      "path": "src/i18n/catalogues/zh-CN/ui.chat.json",
+      "sha256": "ad47f77e03e43d8b386e8c666bfe090ece03117b07e86e62471e364d64ca5c4b"
+    }
+  },
+  "references": {
+    "style_guide": {
+      "path": "i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    },
+    "glossary": {
+      "path": "i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+      "note": "Read from the core checkout ~/local-operator at the date of this audit; the UI docs/I18N.md links the core glossary as the shared contract."
+    },
+    "contract": "docs/I18N.md (UI) and the core HOWTO it links"
+  },
+  "scope": "Wave A zh-CN delta at 80ee119bbd: the 38 wave-A keys in ui.chat (18), ui.chat.header (5), ui.chat.response_actions (4) and ui.chat.sidebar (11). Two of them were amended by this commit (ui.chat.region.conversation 对话->对话区, ui.chat.checkpoint.turn comma->parenthetical); the other 36 are byte-identical to the a81c00cdda bytes this auditor read in round 1 (parsed-JSON equality, proven in the evidence). All 215 keys of the four namespace files were re-checked mechanically (ICU placeholders/types, select option sets, zh-CN plural categories, tags, backticks, typography, key sets); the 177 non-wave-A values are unchanged since their earlier independent audits and were not re-read semantically, per the delta-audit rule for unchanged values. Hash binding is whole-file, as the ledger contract requires.",
+  "findings": [
+    {
+      "id": "wavea-zh-d1",
+      "severity": "NIT",
+      "key": "ui.chat.checkpoint.jump_user",
+      "also_keys": [
+        "ui.chat.checkpoint.jump_user_no_clock"
+      ],
+      "issue": "Family punctuation split, cosmetic. The two user forms keep the comma apposition INSIDE the parentheses the translator added (跳转到你的消息（第{turn}轮，共{total}轮）) while checkpoint.turn, jump_agent and jump_agent_unnamed spell the same pair as 第{turn}轮（共{total}轮）. Both are idiomatic Chinese progress forms (compare 第3页（共12页）), checkpoint-model.ts deliberately delegates each sentence's spelling to the catalogue ('the noun and its word order belong to the catalogue', checkpointTurnLabel docstring), and the comma form avoids nesting a second parenthetical inside the destination bracket — so the translator's declination is defensible and this is not a meaning, accuracy or grammar defect. Recorded because the manager asked for the judgement, not because the current text needs a change.",
+      "current": "跳转到你的消息（第{turn, number}轮，共{total, number}轮），{clock}  /  跳转到你的消息（第{turn, number}轮，共{total, number}轮）",
+      "proposed": "跳转到你在第{turn, number}轮（共{total, number}轮）的消息，{clock}  /  跳转到你在第{turn, number}轮（共{total, number}轮）的消息",
+      "proposed_note": "Optional uniformity only. It also makes the 'in turn N of M' relation explicit in the Chinese sentence. No change required for a passing verdict."
+    },
+    {
+      "id": "wavea-zh-d2",
+      "severity": "NIT",
+      "key": "ui.chat.checkpoint.jump_user",
+      "issue": "Code-level, inherited. {clock} is filled by checkpointClockLabel(), which hardcodes the English 12-hour 'h:mm a' shape ('12-hour with an AM/PM marker by request', checkpoint-model.ts). The zh-CN style guide requires 24-hour times (\"14:30\") and this key's own sidecar promises \"{clock} is a clock time already formatted by the locale-aware time formatter\". Measured with the real builder: 跳转到你的消息（第3轮，共12轮），3:45 PM. The Chinese sentence is correct; the English-shaped time comes from the formatter, not the catalogue, and the same hardcoded shape is product-wide (formatMessageDateTime), so this does not gate the translation. Same class as the fr audit's fr-wavea-3.",
+      "current": "跳转到你的消息（第{turn, number}轮，共{total, number}轮），{clock}",
+      "proposed": "(no catalogue change) format {clock} through the locale-aware 24-hour formatter for zh-CN (14:45) in checkpointClockLabel / formatMessageDateTime",
+      "proposed_note": "Belongs in the formatter; the catalogue value stays as it is."
+    },
+    {
+      "id": "wavea-zh-i1",
+      "severity": "INFO",
+      "key": "ui.chat.region.conversation",
+      "issue": "Verified-OK; the wave-A MAJOR (M1) is resolved. chatRegionLabel() rendered through the shipped runtime returns 对话 for sidebar (ui.chat.sidebar.nav.chats), 对话区 for header/transcript (ui.chat.region.conversation) and 消息输入框 for composer (ui.chat.region.composer) — three distinct names, so the sidebar nav and the transcript landmark no longer announce identically. The header <header> carries no aria-label by design (chat-header.tsx: 'NO aria-label ... this is not one of §C4's named three'), so the announced set in this tree is exactly 对话 / 对话区 / 消息输入框. 对话区 is natural product Chinese: 区 is the region word this catalogue already uses (ui.settings.shortcuts.reserved.chat_region_down/up say 对话区域 for the generic plural 'chat regions'; the pickers use 分析区域, 上下文估算区域, 会话诊断区域), but those translate an English 'X region' while this key translates bare 'Conversation'; 对话区 names the place in three characters and fits the guide's terse rule. 对话区域 would also pass and would match the sibling region labels more formally — a preference, not a defect, so no change is proposed."
+    },
+    {
+      "id": "wavea-zh-i3",
+      "severity": "INFO",
+      "key": "ui.chat.region.composer",
+      "issue": "Verified-OK. 消息输入框 names the message box rather than the whole composer <form> (which also holds the status row, alert band and interrupt notice — the same narrowing the fr audit noted as fr-wavea-2), but it is this catalogue's existing word for that area (ui.chat.question_dock.hint.approval_held: 也可以在消息输入框中按Esc停止本轮) and the region's data-region-entry is the textarea itself, so the name a reader hears on landing is truthful. No change."
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "result": "clean-with-findings",
+    "severity_counts": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 2
+    },
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "wavea-zh-d1",
+      "wavea-zh-d2",
+      "wavea-zh-i1",
+      "wavea-zh-i3"
+    ]
+  },
+  "receipt": {
+    "repo_path": "i18n/receipts/f3e86c8bcafb.json",
+    "sha256": "e2434d1902dc26ec0b7f7e144aa5d0d07945250f742447bcec1f43baab124b9b"
+  },
+  "report": "AUDIT-REPORT-zh-CN-wave-A-delta.md",
+  "artifacts": [
+    {
+      "path": "AUDIT-REPORT-zh-CN-wave-A-delta.md",
+      "sha256": "660cff8d422432fd219647c984415f65ece3af1e0e291b2ff05fc68afd6fa806"
+    },
+    {
+      "path": "audit.log",
+      "sha256": "d68477a0fb33f3904ad0df35031744897c4efd21019e406a34343cd3fc26cafe"
+    },
+    {
+      "path": "evidence/build-receipt.py",
+      "sha256": "3b48df109b9000e3e073616b98f49aeb4ec417dd2aaf7c596597d1571a087963"
+    },
+    {
+      "path": "evidence/build-report.py",
+      "sha256": "afb08b7bba1166030be67c451dd71ee555c0074a1bb2a89c0f582ad3d65bb228"
+    },
+    {
+      "path": "evidence/gates.log",
+      "sha256": "8c27430bbf3c95cc4bdd7a84ee963e0b80235cd01cfa4f69dfb665184f530c44"
+    },
+    {
+      "path": "evidence/hashes.txt",
+      "sha256": "8f2a31f4e2fe5b754f153aa3a96d3e179281dc93c39a51b8f684d948959bd525"
+    },
+    {
+      "path": "evidence/keys-triples.txt",
+      "sha256": "df46b6b8974f4e07b86e5c4de740a682dbd3da34e0d1b7e59c0a5c8165e24501"
+    },
+    {
+      "path": "evidence/ledger-bind.log",
+      "sha256": "769e05cd91051ddf7a3925276698ececd799bcb4a61dd48cc3335d97b3eca2ea"
+    },
+    {
+      "path": "evidence/ledger-rows-suggested.json",
+      "sha256": "858b728b0fe67e1757ae174b3c3ab267e79be6723345e982b2d37347c199564f"
+    },
+    {
+      "path": "evidence/mechanical.json",
+      "sha256": "bd18275c5c4a0fbbb25360fc0ec762c8a44c8d53693c0a59825df445b07dc02a"
+    },
+    {
+      "path": "evidence/mechanical.log",
+      "sha256": "479b5378789091499e493aabda885e011d3251829e506560a0f602ae253f39bf"
+    },
+    {
+      "path": "evidence/mechanical.mjs",
+      "sha256": "97f3a14d2371b5029c90ee8fc02f16e246d25c77ea5bdd99d88a3fd1f35270c4"
+    },
+    {
+      "path": "evidence/regression.log",
+      "sha256": "2c2def43c86e09bb8f0173c3b189d5779986c111d46d546dc7ab28d63b6bd0ff"
+    },
+    {
+      "path": "evidence/render.log",
+      "sha256": "47de1f739491ba8233a33a404588a82418ec21c8297b9fc9220faeff75b30768"
+    },
+    {
+      "path": "evidence/render.mjs",
+      "sha256": "48054f078fd4cbaefc3f69368121f6473dc79fd8903a26902ff761e35dc20e8a"
+    },
+    {
+      "path": "evidence/typography.log",
+      "sha256": "e54aaf38453588d2e213dc0d1809132df536610cb7a2c67aeba176f246cf07ec"
+    },
+    {
+      "path": "evidence/typography.py",
+      "sha256": "5fae823f2254d55128a218034bcbc34023fad43f576ef506e7f7e6f6f9111e60"
+    },
+    {
+      "path": "evidence/validate-receipt.log",
+      "sha256": "516917bc79abe7f7f5982b9e2b60bff5a04a959eb0cf018b4e066b62283ed956"
+    },
+    {
+      "path": "evidence/validate-receipt.mjs",
+      "sha256": "d3e8ffd0e5cf61ed0fcad878653f3048363c28caaccc2ea2408cd071c6df10d1"
+    },
+    {
+      "path": "receipt.json",
+      "sha256": "e2434d1902dc26ec0b7f7e144aa5d0d07945250f742447bcec1f43baab124b9b"
+    },
+    {
+      "path": "receipt.sha256",
+      "sha256": "405db32c7101dc3d4c772dd5c6e5c510181470ba28628b74958940a3f03fd6b5"
+    }
+  ],
+  "execution_logs": [
+    {
+      "path": "audit.log",
+      "kind": "execution_log"
+    },
+    {
+      "path": "evidence/gates.log",
+      "kind": "execution_log"
+    },
+    {
+      "path": "evidence/regression.log",
+      "kind": "execution_log"
+    },
+    {
+      "path": "evidence/mechanical.log",
+      "kind": "execution_log"
+    },
+    {
+      "path": "evidence/render.log",
+      "kind": "execution_log"
+    },
+    {
+      "path": "evidence/typography.log",
+      "kind": "execution_log"
+    },
+    {
+      "path": "evidence/validate-receipt.log",
+      "kind": "execution_log"
+    },
+    {
+      "path": "evidence/ledger-bind.log",
+      "kind": "execution_log"
+    }
+  ],
+  "notes_are_not_execution_log": true,
+  "notes": "Wave A delta re-audit at 80ee119bbd. 36 of the 38 wave-A keys are byte-identical to the a81c00cdda bytes round 1 audited; the 2 amended values were re-read and pass. All 215 namespace keys passed the mechanical ICU/typography checks. No rendered-frame claim.",
+  "rendered_frame_evidence": "none — copy/composition audit; real ICU formatter and label builders only",
+  "native_or_compiled_check": "none — out of scope for this audit"
+}

@@ -13,6 +13,7 @@
  * not show the tool row that must not have one.
  */
 
+import { t } from "@shared/i18n";
 import type { TranscriptRecord } from "./transcript-reducer";
 
 export type AnswerActionId = "copy" | "speak" | "fork";
@@ -211,11 +212,20 @@ export function forkExcerpt(text: string): string {
 /**
  * The toolbar's accessible name. It names what the buttons act on, the way the
  * link toolbar's label does, because the buttons are icons.
+ *
+ * WHY A FUNCTION. The label is resolved where it is used, not at import: the
+ * interface language can change under a live window, and a module-scope string
+ * would keep announcing the language the module was first loaded in. This is
+ * the same reason `checkpoint-model.ts` composes its tick names in an accessor.
  */
-export const ANSWER_ACTIONS_LABEL = "Answer actions";
+export function answerActionsLabel(): string {
+	return t("ui.chat.response_actions.answer_label");
+}
 
 /** The user row's own label: the buttons act on the reader's message. */
-export const USER_ACTIONS_LABEL = "Your message actions";
+export function userActionsLabel(): string {
+	return t("ui.chat.response_actions.yours_label");
+}
 
 /**
  * The reveal treatment every action row wears at rest: invisible to the eye and

@@ -108,7 +108,7 @@ import type {
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
 import { askResponseSummary, askTimeoutSummary } from "../ask-queue";
 import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
-import { CHAT_REGION_LABEL } from "../chat-regions";
+import { chatRegionLabel } from "../chat-regions";
 import {
 	MarkdownRenderer,
 	type MarkdownStyleProps,
@@ -191,7 +191,7 @@ import { RadientCreditsGuidance } from "./radient-credits-guidance";
 import { ensureReachable, jumpToEntry } from "./reveal-record";
 import { SETTLE_MS } from "./scroll-paging";
 import { SentFileCard } from "./sent-file-card";
-import { editTextOf, skillRowOf } from "./skill-row";
+import { displayTextOf, editTextOf } from "./skill-row";
 import { SupplementRow } from "./supplement-row";
 import { THREAD_SEARCH_JUMP_MISS_COPY } from "./thread-search-model";
 import { ThreadSearchOverlay } from "./thread-search-overlay";
@@ -955,13 +955,14 @@ const UserRow = memo(function UserRow({
 	 * split happens here rather than downstream: this string is what the row paints
 	 * AND what the turn's own Copy and Quote read (`bodyText` below), so a payload
 	 * still standing in for the typed line would be quoted and copied as a wall of
-	 * SKILL.md. `skill-row.ts` is the one derivation; `record.skill` below is the
-	 * seal built from it at record time.
+	 * SKILL.md. `skill-row.ts`'s `displayTextOf` is the one derivation, for both
+	 * payload shapes; `record.skill` below is the legacy seal built from it at
+	 * record time.
 	 */
-	const invocation = useMemo(() => skillRowOf(record.text), [record.text]);
+	const bodyText = useMemo(() => displayTextOf(record.text), [record.text]);
 	const { replies, remainingContent } = useMemo(
-		() => parseReplies(invocation?.text ?? record.text),
-		[invocation, record.text],
+		() => parseReplies(bodyText),
+		[bodyText],
 	);
 	/*
 	 * The seal the reducer stamped beside the text, when this row is an
@@ -6816,7 +6817,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					data-lo-dom-window={domWindow.enabled ? "on" : "off"}
 					data-lo-dom-window-reason={domWindow.reason}
 					data-lo-dom-pinned={domWindow.pinned}
-					aria-label={CHAT_REGION_LABEL.transcript}
+					aria-label={chatRegionLabel("transcript")}
 					// Only the `windowed` branch renders that id, so the description has to
 					// track the branch rather than the looser "history exists" condition it
 					// was derived from: `hasMore` with no hidden rows yields `idle`, whose

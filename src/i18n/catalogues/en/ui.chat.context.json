@@ -477,5 +477,162 @@
 		"length": "Thirteen words.",
 		"note": "Says the credential is still saved, which is the fact that makes retrying reasonable. Never imply the sign-in was lost or expired.",
 		"placeholders": {}
+	},
+	"ui.chat.checkpoint.turn": {
+		"role": "the structural identity of one turn in the conversation, shown on the run-details rail",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Four words.",
+		"note": "Also restated inside the rail tick's accessible name, but not by embedding this message: `jump_agent` / `jump_user` carry {turn} and {total} in their own sentences, so the word order and the turn noun are each message's own — write a noun phrase here and do not assume it will sit inside a longer sentence. Both numbers are ordinal-safe counts of turns, not messages.",
+		"placeholders": {
+			"turn": "the turn's 1-based position in the conversation",
+			"total": "the number of turns in the conversation"
+		}
+	},
+	"ui.chat.checkpoint.jump_agent": {
+		"role": "accessible name of a run-details tick that jumps to an agent turn that has a title",
+		"tone": "action plus the destination, sentence case, then the title after a comma",
+		"length": "Up to a short sentence; the title can be long.",
+		"note": "{turn} and {total} are the same two numbers the tick's visible identity line shows; the turn noun and its word order belong to this sentence. {name} is the turn's own generated title and is never translated.",
+		"placeholders": {
+			"turn": "the turn's 1-based position in the conversation",
+			"total": "the number of turns in the conversation",
+			"name": "the turn's own title"
+		}
+	},
+	"ui.chat.checkpoint.jump_agent_unnamed": {
+		"role": "accessible name of a run-details tick that jumps to an agent turn that has no title yet",
+		"tone": "action plus the destination, sentence case",
+		"length": "Up to a short sentence.",
+		"note": "Same tick as ui.chat.checkpoint.jump_agent while the turn is still unnamed; the title is simply absent, never substituted.",
+		"placeholders": {
+			"turn": "the turn's 1-based position in the conversation",
+			"total": "the number of turns in the conversation"
+		}
+	},
+	"ui.chat.checkpoint.jump_user": {
+		"role": "accessible name of a run-details tick that jumps to the reader's own message",
+		"tone": "action plus the destination and a time, sentence case",
+		"length": "Up to a short sentence.",
+		"note": "{turn} and {total} are the same two numbers the tick's visible identity line shows. {clock} is a clock time already formatted by the locale-aware time formatter, not a pattern.",
+		"placeholders": {
+			"turn": "the turn's 1-based position in the conversation",
+			"total": "the number of turns in the conversation",
+			"clock": "the locale-formatted time of the message"
+		}
+	},
+	"ui.chat.checkpoint.jump_user_no_clock": {
+		"role": "accessible name of a run-details tick that jumps to the reader's own message when no time is known",
+		"tone": "action plus the destination, sentence case",
+		"length": "Up to a short sentence.",
+		"note": "The clock half is omitted rather than invented when the message carries no usable timestamp.",
+		"placeholders": {
+			"turn": "the turn's 1-based position in the conversation",
+			"total": "the number of turns in the conversation"
+		}
+	},
+	"ui.chat.header_identity.no_agent": {
+		"role": "chip label meaning no agent is attached to the open conversation",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "It is an assign affordance, not a status claim about a named-but-unknown agent: pressing it opens the agent picker. The same words appear inside the control's accessible name.",
+		"placeholders": {}
+	},
+	"ui.chat.header_identity.no_team": {
+		"role": "chip label meaning no team is attached to the open conversation",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "The team twin of ui.chat.header_identity.no_agent: pressing it opens the team picker. A closed seat never shows this label.",
+		"placeholders": {}
+	},
+	"ui.chat.header_identity.assign_agent": {
+		"role": "tooltip of the header chip while no agent is attached",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Tooltip only: the same act is spelled inside the chip's accessible name (ui.chat.header_identity.aria_agent_assign), so keep the verb consistent between the two.",
+		"placeholders": {}
+	},
+	"ui.chat.header_identity.assign_team": {
+		"role": "tooltip of the header chip while no team is attached",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Tooltip only: the same act is spelled inside the chip's accessible name (ui.chat.header_identity.aria_team_assign), so keep the verb consistent between the two.",
+		"placeholders": {}
+	},
+	"ui.chat.header_identity.aria_agent_assign": {
+		"role": "accessible name of the header agent chip while no agent is attached",
+		"tone": "role and state, then the action, separated by periods",
+		"length": "Up to a short sentence.",
+		"note": "A whole sentence, not a concatenation: {label} is the chip's visible label (usually the no-agent phrase) and must appear verbatim so voice control keeps matching the control.",
+		"placeholders": {
+			"label": "the chip's own visible label"
+		}
+	},
+	"ui.chat.header_identity.aria_agent_switch": {
+		"role": "accessible name of the header agent chip while an agent is attached",
+		"tone": "role and state, then the action, separated by periods",
+		"length": "Up to a short sentence.",
+		"note": "The assigned-state twin of aria_agent_assign; the visible agent name is {label} and must appear verbatim.",
+		"placeholders": {
+			"label": "the attached agent's own display name"
+		}
+	},
+	"ui.chat.header_identity.aria_agent_closed": {
+		"role": "accessible name of the header agent chip while the runtime has closed the seat",
+		"tone": "role and state, then the reason, separated by periods",
+		"length": "Up to a sentence; the reason is backend prose.",
+		"note": "{reason} is a sentence this UI composes itself (`identityAgentClosedCaption` in `chat-header-identity-menu-model.ts`) to mirror core's `team_owns_the_agent_slot_message` byte for byte — core's docstring names this UI as keying on the exact words, so it is a cross-repo contract, NOT backend text: never translate or paraphrase it.",
+		"placeholders": {
+			"label": "the attached agent's own display name",
+			"reason": "the runtime-served closure sentence"
+		}
+	},
+	"ui.chat.header_identity.aria_team_assign": {
+		"role": "accessible name of the header team chip while no team is attached",
+		"tone": "role and state, then the action, separated by periods",
+		"length": "Up to a short sentence.",
+		"note": "The team twin of aria_agent_assign; {label} is the chip's visible label and must appear verbatim.",
+		"placeholders": {
+			"label": "the chip's own visible label"
+		}
+	},
+	"ui.chat.header_identity.aria_team_switch": {
+		"role": "accessible name of the header team chip while a team is attached",
+		"tone": "role and state, then the action, separated by periods",
+		"length": "Up to a short sentence.",
+		"note": "The assigned-state twin of aria_team_assign; the visible team name is {label} and must appear verbatim.",
+		"placeholders": {
+			"label": "the attached team's own display name"
+		}
+	},
+	"ui.chat.header_identity.aria_team_closed": {
+		"role": "accessible name of the header team chip while the runtime has closed the seat",
+		"tone": "role and state, then the reason, separated by periods",
+		"length": "Up to a sentence; the reason is backend prose.",
+		"note": "{reason} is a sentence this UI composes itself (`identityAgentClosedCaption` in `chat-header-identity-menu-model.ts`) to mirror core's `team_owns_the_agent_slot_message` byte for byte — a cross-repo contract, not backend text: passed through unchanged, never translated.",
+		"placeholders": {
+			"label": "the attached team's own display name",
+			"reason": "the runtime-served closure sentence"
+		}
+	},
+	"ui.chat.region.composer": {
+		"role": "accessible name of the composer landmark",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Screen-reader only: it names the form region the message field lives in, and the F6 region walk reads it back. Not a placeholder and not a button label.",
+		"placeholders": {}
+	},
+	"ui.chat.region.conversation": {
+		"role": "accessible name of the transcript landmark and of the chat header landmark",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Screen-reader only: the transcript's role=log region and the header landmark share it because both head the same conversation. It names the region, not a tab.",
+		"placeholders": {}
+	},
+	"ui.chat.checkpoint.generating_name": {
+		"role": "line on a run-details card while the turn's title is still being generated",
+		"tone": "plain progress statement, sentence case, trailing ellipsis as shown",
+		"length": "Two words plus an ellipsis.",
+		"note": "A temporary line, replaced by the generated title when it lands. The ellipsis is part of the source string; keep it as the locale's own ellipsis character.",
+		"placeholders": {}
 	}
 }

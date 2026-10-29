@@ -1,0 +1,17 @@
+[run_bounded] memory budget 3000 MiB (explicit, capped by inherited); sampled owned child group only
+{"input":{"approvalsOverlay":"~/local-operator-ui/.worktrees/s6d/src/renderer/browser-approvals-overlay.html"},"outDir":"~/local-operator-ui/.worktrees/s6d/out/renderer","emptyOutDir":false,"config":"~/local-operator-ui/.worktrees/s6d/electron.vite.config.js","plugins":["vite:react-babel","vite:react-refresh","@tailwindcss/vite:scan","@tailwindcss/vite:generate:serve","@tailwindcss/vite:generate:build","vite-tsconfig-paths","desktop-control-proxy","vite:electron-renderer-preset-config","vite:electron-renderer-resolved-config"]}
+vite v6.2.6 building for production...
+transforming...
+✓ 804 modules transformed.
+rendering chunks...
+../../out/renderer/browser-approvals-overlay.html            3.51 kB
+../../out/renderer/assets/approvalsOverlay-DFlzjkxC.css     67.26 kB
+../../out/renderer/assets/approvalsOverlay-BXULKA6x.js   5,379.76 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 1.46s
+CARD BUILD VERIFIED: main/preload byte-identical, source unchanged, card artifact hashes recorded
+[run_bounded] node rc=0 wall=3.1s

@@ -87,7 +87,7 @@ const bundle = await build({
 				}));
 				b.onLoad({ filter: ANY_SEAM, namespace: "seam" }, (args) => ({
 					contents: args.path.includes("emoji-support")
-						? "export const canRenderEmoji=(emoji)=>!globalThis.__unsupportedGlyphs?.has(emoji);"
+						? "export const canRenderEmoji=(emoji)=>!globalThis.__unsupportedGlyphs?.has(emoji); export const warmEmojiProbeCache=()=>{globalThis.__warmCalls=(globalThis.__warmCalls??0)+1; return ()=>{}};"
 						: args.path.includes("api/")
 							? "export const TeamBridgeApi={react:(...args)=>globalThis.__reactionApi(...args)};"
 							: args.path.includes("markdown")
@@ -338,6 +338,22 @@ test("the held thread pane renders nothing, even when mounted directly (review r
 	assert.equal(named(m.host, "ui.teamBridge.replies.action").length, 0);
 	assert.equal(m.host.textContent, "", "no pane body may render");
 	await m.close();
+});
+
+test("a held list does not warm the emoji probe cache it cannot open", async () => {
+	// Agent review round 1, m1: the warm-up walks ~4000 canvas readbacks on the
+	// first Team Bridge mount. With the reactions hold closed no toolbar, picker
+	// or chip renders, so that walk is pure cost on the operator's first load.
+	globalThis.__warmCalls = undefined;
+	const m = mount();
+	await renderList(m, { forceToolbar: true });
+	assert.equal(
+		globalThis.__warmCalls,
+		undefined,
+		"the held build must not schedule the emoji probe walk",
+	);
+	await m.close();
+	globalThis.__warmCalls = undefined;
 });
 
 test("a held row renders no toolbar: neither react nor reply", async () => {

@@ -1,3 +1,7 @@
 {
-	"ui.chat.response_actions.label": "جواب کے اعمال"
+	"ui.chat.response_actions.answer_label": "حتمی جواب کے اعمال",
+	"ui.chat.response_actions.copied": "نقل ہو گیا",
+	"ui.chat.response_actions.copy": "نقل کریں",
+	"ui.chat.response_actions.label": "جواب کے اعمال",
+	"ui.chat.response_actions.yours_label": "آپ کے پیغام کے اعمال"
 }
