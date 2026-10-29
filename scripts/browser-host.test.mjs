@@ -66,7 +66,11 @@ const bundle = await build({
 			// through the shipped authorize gate and the shipped validators, which is
 			// where a new tab's conversation id is validated.
 			'export * from "./src/main/browser/ipc";',
-			'export { ipcMain } from "electron";',
+			'export { ipcMain, Menu } from "electron";',
+			// The tab-actions menu's wire contract: the browser-host test drives the
+			// menu CHANNEL through `registerBrowserIpc`, so the same validators the
+			// main process applies are importable here rather than re-spelled.
+			'export * from "./src/shared/browser-tab-actions-menu";',
 			'export * from "./src/main/browser/ownership";',
 			'export * from "./src/main/browser/host";',
 			// The download capture and the file-transfer policy pair. Bundled so the
@@ -157,9 +161,12 @@ const {
 	consentClickHandler,
 	ElectronNotification,
 	ipcMain,
+	Menu,
 	registerBrowserIpc,
 	unregisterBrowserIpc,
 	BROWSER_IPC_CHANNELS,
+	TAB_ACTIONS_MENU_ACTION_IDS,
+	tabActionsMenuSelectionOrNull,
 	OwnershipLedger,
 	BrowserHost,
 	CdpPool,
@@ -2304,6 +2311,7 @@ test("browser readiness reads stay authorized before initialization and across r
 	registerBrowserIpc({
 		window: () => window,
 		expectedUrl: "http://localhost:5173",
+		headless: false,
 		host: () => currentHost,
 		availability: () => availability,
 		clearData: async () => {},
@@ -2352,6 +2360,148 @@ test("browser readiness reads stay authorized before initialization and across r
 			read,
 			"attempts do not replace the handler",
 		);
+	} finally {
+		unregisterBrowserIpc();
+	}
+});
+
+test("the tab actions menu channel: authorization, refusals, validation and one settlement", async () => {
+	/** What the channel logged, so a rig can tell a refusal from a window that
+	 * simply did not show a menu (the diagnosability `window-chrome.ts` argues for). */
+	const logs = [];
+	const frame = { url: "http://localhost:5173/index.html" };
+	let zoom = 1;
+	const webContents = { id: 1, mainFrame: frame, getZoomFactor: () => zoom };
+	let visible = true;
+	const window = {
+		isDestroyed: () => false,
+		isVisible: () => visible,
+		webContents,
+	};
+	/** Mutable because the handler reads the option per call: flipping this is how
+	 * one registration exercises both the headless gate and the normal path. */
+	const state = { headless: false };
+	ipcMain.reset();
+	Menu.reset();
+	registerBrowserIpc({
+		window: () => window,
+		expectedUrl: "http://localhost:5173",
+		host: () => null,
+		clearData: async () => {},
+		get headless() {
+			return state.headless;
+		},
+		log: (line) => logs.push(line),
+	});
+	const menu = ipcMain.handlers.get("browser-tab-actions-menu");
+	const event = { sender: webContents, senderFrame: frame };
+	const items = [
+		{ id: "header", label: 'Actions for "Tab 2"', enabled: false },
+		{ id: "watch", label: 'Watch "Tab 2"', enabled: true },
+		{ id: "close", label: 'Close "Tab 2"', enabled: true },
+	];
+	const request = (overrides = {}) => ({
+		tabId: 2,
+		anchor: { x: 40, y: 60 },
+		items,
+		...overrides,
+	});
+	try {
+		/*
+		 * THE SENDER GATE COMES FIRST, and it is the only authority this new channel
+		 * adds: a foreign frame is refused before its payload is even read.
+		 */
+		assert.throws(
+			() => menu({ sender: {}, senderFrame: frame }, request()),
+			/cannot use/,
+		);
+		assert.throws(
+			() => menu({ sender: webContents, senderFrame: { ...frame } }, request()),
+			/cannot use/,
+		);
+
+		/*
+		 * VALIDATION HAPPENS BEFORE A MENU EXISTS. Each payload below is refused as
+		 * a whole, and `Menu.built` staying empty is the property: a menu that
+		 * dropped an unknown row would be a different menu from the strip's.
+		 */
+		for (const bad of [
+			{ items: [{ ...items[1], id: "format-disk" }] },
+			{ items: [{ ...items[1], enabled: "yes" }] },
+			{ items: [] },
+			{ items: [{ ...items[1], label: "" }] },
+			{ anchor: { x: Number.NaN, y: 60 } },
+			{ tabId: 0 },
+		]) {
+			assert.throws(
+				() => menu(event, request(bad)),
+				/Menu item|menu item|items must|anchor|tabId/,
+			);
+		}
+		assert.equal(
+			Menu.built.length,
+			0,
+			"no menu is built for a refused request",
+		);
+
+		/*
+		 * THE LAUNCH-MODE GATE. A headless launch has no window to hang a popup
+		 * from, so the request answers a dismissal AND says so - a rig must be able
+		 * to tell this refusal from a menu that simply did not show.
+		 */
+		state.headless = true;
+		assert.equal(menu(event, request()), null);
+		assert.equal(Menu.built.length, 0);
+		assert.ok(
+			logs.some((line) => /headless/.test(line)),
+			"the headless refusal is logged",
+		);
+		state.headless = false;
+
+		/* A hidden window is the same refusal, and equally dismisses. */
+		visible = false;
+		assert.equal(menu(event, request()), null);
+		assert.equal(Menu.built.length, 0);
+		visible = true;
+
+		/*
+		 * THE BUILT MENU carries the validated list and a DIP anchor: the request's
+		 * CSS px (40, 60) times the window's zoom factor (1.5).
+		 */
+		zoom = 1.5;
+		const first = menu(event, request());
+		assert.equal(Menu.built.length, 1);
+		const built = Menu.built.at(-1);
+		assert.equal(built.popupOptions.window, window);
+		assert.equal(built.popupOptions.x, 60);
+		assert.equal(built.popupOptions.y, 90);
+		assert.deepEqual(
+			built.template.map((entry) => entry.label ?? entry.type),
+			['Actions for "Tab 2"', 'Watch "Tab 2"', 'Close "Tab 2"'],
+		);
+		/*
+		 * ONE SETTLEMENT. A click resolves with the item it named; a second click
+		 * and the popup's own close callback (what Escape/outside press run) cannot
+		 * replace that answer. The answer is drawn from the action vocabulary.
+		 */
+		built.template[1].click();
+		built.template[2].click();
+		built.closePopup();
+		assert.equal(await first, "watch");
+		assert.ok(TAB_ACTIONS_MENU_ACTION_IDS.includes("watch"));
+
+		/* A dismissal settles null, once. */
+		const second = menu(event, request());
+		Menu.built.at(-1).closePopup();
+		assert.equal(await second, null);
+
+		/*
+		 * THE ANSWER DIRECTION IS VALIDATED TOO: an id outside the action set never
+		 * reaches the strip, and every listed action does.
+		 */
+		assert.equal(tabActionsMenuSelectionOrNull("format-disk"), null);
+		for (const id of TAB_ACTIONS_MENU_ACTION_IDS)
+			assert.equal(tabActionsMenuSelectionOrNull(id), id);
 	} finally {
 		unregisterBrowserIpc();
 	}
@@ -2463,6 +2613,7 @@ test("a conversation id is validated at the IPC boundary rather than trusted (R1
 	registerBrowserIpc({
 		window: () => window,
 		expectedUrl: "http://localhost:5173",
+		headless: false,
 		host: () => host,
 		clearData: async () => {},
 		// The reveal's ANSWER is recorded rather than performed: this fixture has no
@@ -8013,6 +8164,7 @@ test("the download reveal opens the host's own directory and takes no path from 
 	registerBrowserIpc({
 		window: () => window,
 		expectedUrl: "http://localhost:5173",
+		headless: false,
 		host: () => host,
 		clearData: async () => {},
 		revealDownloads: async () => {
@@ -9568,6 +9720,367 @@ test("frames 8: upload refuses a node that resolved inside a frame", async () =>
 	rmSync(dir, { recursive: true, force: true });
 });
 
+/* ---- upload resolves a file input WITHOUT any layout step ------------------------
+ *
+ * The defect: a file input hidden with `display:none` (a styled button calls
+ * `input.click()`; React, Slack and GitHub all do this) has no layout object, and
+ * Chromium answers every layout-dependent CDP command for it with `Node does not have
+ * a layout object`. `upload` reached `DOM.scrollIntoViewIfNeeded` through the shared
+ * resolver, so it failed with `internal` on exactly the inputs real sites use.
+ * `DOM.setFileInputFiles` needs only the node. These tests drive the shipped action
+ * through a CDP that behaves like Chromium for a layout-less node: it THROWS on the
+ * three layout commands, so a resolver that still scrolls (or measures) fails here
+ * instead of passing against a permissive stub. */
+const NO_LAYOUT = "Node does not have a layout object";
+const LAYOUT_COMMANDS = [
+	"DOM.scrollIntoViewIfNeeded",
+	"DOM.getBoxModel",
+	"DOM.getContentQuads",
+];
+
+function hiddenInputRig({ refs = {}, epoch = 1, readBack = null } = {}) {
+	const calls = [];
+	const notes = [];
+	const send = async (_contents, method, params) => {
+		calls.push({ method, params });
+		if (LAYOUT_COMMANDS.includes(method)) throw new Error(NO_LAYOUT);
+		switch (method) {
+			case "DOM.getDocument":
+				return { root: { nodeId: 1 } };
+			case "DOM.querySelector":
+				return { nodeId: 42 };
+			case "DOM.pushNodesByBackendIdsToFrontend":
+				return { nodeIds: [42] };
+			case "DOM.resolveNode":
+				return { object: { objectId: "obj-hidden" } };
+			case "DOM.getAttributes":
+				return { attributes: ["type", "file", "style", "display:none"] };
+			case "Runtime.callFunctionOn":
+				return { result: { value: readBack } };
+			case "Accessibility.enable":
+			case "Accessibility.disable":
+				return {};
+			case "Accessibility.getFullAXTree":
+				return {
+					nodes: [
+						{
+							nodeId: "1",
+							role: { value: "RootWebArea" },
+							name: { value: "" },
+							childIds: ["2"],
+						},
+						{
+							nodeId: "2",
+							backendDOMNodeId: 41,
+							role: { value: "textbox" },
+							name: { value: "Attach" },
+							childIds: [],
+						},
+					],
+				};
+			default:
+				return {};
+		}
+	};
+	const record = {
+		tabId: 7,
+		epoch,
+		refs,
+		view: {
+			webContents: {
+				getURL: () => "https://approved.example/compose",
+				getTitle: () => "Compose",
+				isDestroyed: () => false,
+				on: () => undefined,
+				removeListener: () => undefined,
+			},
+		},
+	};
+	const ctx = {
+		cdp: { send },
+		approvals: { refusalReason: () => "unapproved" },
+		downloads: { noteUpload: (...args) => notes.push(args) },
+		registry: { requireSurface: () => record, touch: () => {} },
+	};
+	return { ctx, calls, notes, record };
+}
+
+function hiddenInputFile() {
+	const dir = tempDir("upload-hidden");
+	const file = join(dir, "deck.pdf");
+	writeFileSync(file, "x".repeat(21));
+	return { dir, file };
+}
+
+const held = (names, sizes) => ({
+	result: { value: { count: names.length, names, sizes } },
+});
+
+test("upload attaches to a display:none file input: no scroll, no box model, no quads, and the read-back still runs", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const { dir, file } = hiddenInputFile();
+	// The read-back answers from the node, as the page would.
+	const { ctx, calls, notes } = hiddenInputRig({
+		readBack: { count: 1, names: ["deck.pdf"], sizes: [21] },
+	});
+
+	const result = await FRAMES_ACTIONS.upload(ctx, {
+		tab: "t",
+		selector: "input[type=file]",
+		paths: [file],
+	});
+
+	assert.deepEqual(result.inputs, ["input[type=file]"]);
+	assert.deepEqual(
+		result.accepted.map((fact) => [fact.name, fact.bytes]),
+		[["deck.pdf", 21]],
+	);
+	assert.equal(result.readback, "", "the read-back completed");
+	assert.deepEqual(
+		calls.filter((call) => LAYOUT_COMMANDS.includes(call.method)),
+		[],
+		"upload never asks Chromium for layout",
+	);
+	const attach = calls.find((call) => call.method === "DOM.setFileInputFiles");
+	assert.deepEqual(attach.params, { files: [file], nodeId: 42 });
+	assert.equal(notes.length, 1, "the strip's upload note is still recorded");
+	assert.deepEqual(
+		calls.map((call) => call.method),
+		[
+			"DOM.getDocument",
+			"DOM.querySelector",
+			"DOM.resolveNode",
+			"DOM.getAttributes",
+			"DOM.setFileInputFiles",
+			"Runtime.callFunctionOn",
+		],
+	);
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("upload to a hidden input by snapshot ref and by locator skips the scroll too, and a stale ref still fails", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const { dir, file } = hiddenInputFile();
+	const wire = (rig) => {
+		const send = rig.ctx.cdp.send;
+		rig.ctx.cdp.send = async (contents, method, params) =>
+			method === "Runtime.callFunctionOn"
+				? held(["deck.pdf"], [21])
+				: send(contents, method, params);
+		return rig;
+	};
+	{
+		const rig = wire(
+			hiddenInputRig({ refs: { e3: { backendNodeId: 41, epoch: 1 } } }),
+		);
+		const result = await FRAMES_ACTIONS.upload(rig.ctx, {
+			tab: "t",
+			selector: "e3",
+			paths: [file],
+		});
+		assert.deepEqual(result.inputs, ["e3"]);
+		assert.deepEqual(
+			rig.calls.filter((call) => LAYOUT_COMMANDS.includes(call.method)),
+			[],
+		);
+		assert.deepEqual(
+			rig.calls.find(
+				(call) => call.method === "DOM.pushNodesByBackendIdsToFrontend",
+			).params,
+			{ backendNodeIds: [41] },
+		);
+	}
+	{
+		const rig = wire(hiddenInputRig());
+		await FRAMES_ACTIONS.upload(rig.ctx, {
+			tab: "t",
+			selector: 'role=textbox[name="Attach"]',
+			paths: [file],
+		});
+		assert.deepEqual(
+			rig.calls.filter((call) => LAYOUT_COMMANDS.includes(call.method)),
+			[],
+		);
+		assert.ok(
+			rig.calls.some((call) => call.method === "DOM.setFileInputFiles"),
+		);
+	}
+	{
+		// The epoch rule is the resolver's, and dropping the scroll must not drop it.
+		const rig = wire(
+			hiddenInputRig({
+				refs: { e3: { backendNodeId: 41, epoch: 1 } },
+				epoch: 2,
+			}),
+		);
+		await assert.rejects(
+			() =>
+				FRAMES_ACTIONS.upload(rig.ctx, {
+					tab: "t",
+					selector: "e3",
+					paths: [file],
+				}),
+			(error) =>
+				error.code === "element_not_found" &&
+				/navigated since that snapshot/.test(error.message),
+		);
+		assert.equal(
+			rig.calls.some((call) => call.method === "DOM.setFileInputFiles"),
+			false,
+		);
+	}
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("upload without a layout step keeps the frame refusal, the denial check and the missing-element diagnostics", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const { dir, file } = hiddenInputFile();
+	{
+		// A same-process frame ref whose origin the user DENIED: refused before any command.
+		const rig = hiddenInputRig({
+			refs: {
+				e9: { backendNodeId: 41, epoch: 1, frameOrigin: "https://pay.example" },
+			},
+		});
+		rig.ctx.approvals = { refusalReason: () => "denied" };
+		await assert.rejects(
+			() =>
+				FRAMES_ACTIONS.upload(rig.ctx, {
+					tab: "t",
+					selector: "e9",
+					paths: [file],
+				}),
+			(error) => /pay\.example/.test(error.message),
+		);
+		assert.equal(
+			rig.calls.some((call) => call.method === "DOM.setFileInputFiles"),
+			false,
+		);
+	}
+	{
+		// An undenied same-process frame ref still resolves into a frame and is refused as
+		// before ("upload into a frame is not supported"), still without a scroll.
+		const rig = hiddenInputRig({
+			refs: {
+				e9: { backendNodeId: 41, epoch: 1, frameOrigin: "https://pay.example" },
+			},
+		});
+		rig.ctx.approvals = { refusalReason: () => "unapproved" };
+		await assert.rejects(
+			() =>
+				FRAMES_ACTIONS.upload(rig.ctx, {
+					tab: "t",
+					selector: "e9",
+					paths: [file],
+				}),
+			(error) => /upload into a frame is not supported/.test(error.message),
+		);
+		assert.deepEqual(
+			rig.calls.filter((call) => LAYOUT_COMMANDS.includes(call.method)),
+			[],
+		);
+	}
+	{
+		const rig = hiddenInputRig();
+		const send = rig.ctx.cdp.send;
+		rig.ctx.cdp.send = async (contents, method, params) =>
+			method === "DOM.querySelector"
+				? { nodeId: 0 }
+				: send(contents, method, params);
+		await assert.rejects(
+			() =>
+				FRAMES_ACTIONS.upload(rig.ctx, {
+					tab: "t",
+					selector: "#nope",
+					paths: [file],
+				}),
+			(error) =>
+				error.code === "element_not_found" &&
+				/#nope matched nothing/.test(error.message),
+		);
+	}
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("upload into a frame hop sends no scroll in any session; click through the same hop still scrolls", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const { dir, file } = hiddenInputFile();
+	{
+		const { page } = cardPage();
+		const { pool, contents } = await framePool(page);
+		await assert.rejects(
+			() =>
+				FRAMES_ACTIONS.upload(frameCtx(pool, contents), {
+					tab: "t",
+					selector: "iframe#card >>> #number",
+					paths: [file],
+				}),
+			(error) => /upload into a frame is not supported/.test(error.message),
+		);
+		assert.equal(
+			page.calls.some((call) => call.method === "DOM.scrollIntoViewIfNeeded"),
+			false,
+			"no scroll for the frame hop or the node",
+		);
+	}
+	{
+		const { page } = cardPage();
+		const { pool, contents } = await framePool(page);
+		await FRAMES_ACTIONS.click(frameCtx(pool, contents), {
+			tab: "t",
+			selector: "iframe#card >>> #number",
+		}).catch(() => undefined);
+		assert.ok(
+			page.calls.some((call) => call.method === "DOM.scrollIntoViewIfNeeded"),
+			"click keeps scrolling the frame chain",
+		);
+	}
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("click and type still scroll the node into view before acting (the upload change must not leak into them)", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	for (const [name, params] of [
+		["click", { tab: "t", selector: "#go" }],
+		["type", { tab: "t", selector: "#go", text: "hi" }],
+	]) {
+		const rig = hiddenInputRig();
+		// A visible node: layout commands answer, so the action runs as it always did.
+		const send = rig.ctx.cdp.send;
+		rig.ctx.cdp.send = async (contents, method, p) => {
+			if (LAYOUT_COMMANDS.includes(method)) {
+				rig.calls.push({ method, params: p });
+				return method === "DOM.getBoxModel"
+					? { model: { content: [0, 0, 10, 0, 10, 10, 0, 10] } }
+					: {};
+			}
+			return send(contents, method, p);
+		};
+		await FRAMES_ACTIONS[name](rig.ctx, params).catch(() => undefined);
+		const scrolls = rig.calls.filter(
+			(call) => call.method === "DOM.scrollIntoViewIfNeeded",
+		);
+		assert.deepEqual(
+			scrolls.map((call) => call.params),
+			[{ nodeId: 42 }],
+			`${name} scrolls the resolved node exactly once`,
+		);
+		const order = rig.calls.map((call) => call.method);
+		assert.ok(
+			order.indexOf("DOM.scrollIntoViewIfNeeded") <
+				order.indexOf("DOM.resolveNode"),
+			`${name}: the scroll comes before the node is resolved, as before`,
+		);
+	}
+	// And a layout-less node still FAILS a click, which is the honest answer for an
+	// action that needs geometry.
+	const rig = hiddenInputRig();
+	await assert.rejects(
+		() => FRAMES_ACTIONS.click(rig.ctx, { tab: "t", selector: "#go" }),
+		(error) => error.message.includes(NO_LAYOUT),
+	);
+});
+
 test("frames M1: a frame from an origin the user DENIED is refused on every path, and hidden from snapshot", async () => {
 	const { FRAMES_ACTIONS } = await frameActions();
 	const denied = ["https://pay.example"];
@@ -10189,6 +10702,7 @@ test("human page-control IPC validates owner/frame/URL and primitive inputs", as
 	registerBrowserIpc({
 		window: () => owner,
 		expectedUrl: "http://localhost:5173",
+		headless: false,
 		host: () => host,
 		clearData: async () => {},
 		log: () => {},
@@ -10354,6 +10868,7 @@ test("tab management IPC rejects foreign sender/frame and malformed permutations
 	registerBrowserIpc({
 		window: () => window,
 		expectedUrl: "http://localhost:5173",
+		headless: false,
 		host: () => host,
 		clearData: async () => {},
 		log: () => {},

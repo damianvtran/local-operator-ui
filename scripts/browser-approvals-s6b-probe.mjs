@@ -34,11 +34,27 @@ const THEME =
 		? "light"
 		: "dark";
 if (!OUT || OUT.startsWith("--")) throw new Error("--out required");
+// S6d evidence switches. `--frames` writes PNGs of the card document in its
+// request, Review-all, stale-error and unavailable-error views (CDP capture of
+// the card child, no window shown). `--controller <path>` runs the SAME rig
+// against another copy of the controller, which is how the "before" frames and
+// the D1 reproduction are taken from `origin/main`'s controller without
+// touching this tree's. The card DOCUMENT (out/renderer) is unchanged by S6d.
+const FRAMES = process.argv.includes("--frames");
+// Round-2 regression fixture: ordinary requester, longer authority and broad
+// grant; the original short fixture did not reach the translated height cap.
+const REVIEW_FIXTURE = process.argv.includes("--review-fixture");
+const LOCALE = process.argv.includes("--locale")
+	? process.argv[process.argv.indexOf("--locale") + 1]
+	: "fr";
+const CONTROLLER_ARG = process.argv.indexOf("--controller");
+const CONTROLLER =
+	CONTROLLER_ARG >= 0
+		? resolve(process.argv[CONTROLLER_ARG + 1])
+		: join(ROOT, "src/main/browser/approvals-overlay.ts");
 mkdirSync(OUT, { recursive: true });
-// No HOME override: Electron resolves its profile from NSHomeDirectory on
-// macOS, and a scratch HOME is what made the child view fail in the round-2
-// investigation. The private --user-data-dir below is the isolation that
-// matters; the mock-keychain switch (applied in the fixture) keeps the keychain out.
+// Private HOME/config as well as userData: the latter alone does not isolate
+// every client. The mock-keychain switch prevents scratch-HOME keychain prompts.
 
 const MAIN = join(OUT, "s6b-main.mjs");
 const FIXTURE = join(OUT, "fixture.html");
@@ -54,7 +70,10 @@ writeFileSync(
 	`
 import { app, BrowserWindow, WebContentsView, webContents } from "electron";
 import { writeFileSync } from "node:fs";
-import { ApprovalsOverlayController } from ${JSON.stringify(join(ROOT, "src/main/browser/approvals-overlay.ts"))};
+import { ApprovalsOverlayController } from ${JSON.stringify(CONTROLLER)};
+const FRAMES = ${FRAMES};
+const REVIEW_FIXTURE = ${REVIEW_FIXTURE};
+const LOCALE = ${JSON.stringify(LOCALE)};
 
 const out = ${JSON.stringify(OUT)};
 const cardUrl = ${JSON.stringify(`file://${CARD}`)};
@@ -146,6 +165,68 @@ app.whenReady().then(async () => {
       footerTop: (() => { const el = document.querySelector('.card-footer'); const card = document.getElementById('approvals-card'); if (!el || !card) return null; return Math.round(el.getBoundingClientRect().top - card.getBoundingClientRect().top); })(),
       decisionRects: [...document.querySelectorAll('#approvals-secondary button')].map((b) => { const r = b.getBoundingClientRect(); const c = document.getElementById('approvals-card').getBoundingClientRect(); return { text: b.textContent, top: Math.round(r.top - c.top), bottom: Math.round(r.bottom - c.top) }; }),
     }))()\`);
+  // D1: where the decision buttons sit against the card the native view gives
+  // them. Rects are in the card's own border-box coordinates; overdraw is how
+  // far the sticky footer's top edge cuts into the lowest decision button, and
+  // bodyOverflow is how much of the body is scrolled out of the card (both 0
+  // when the card was measured after the error line painted).
+  const readD1 = () =>
+    currentCard().webContents.executeJavaScript(\`(() => {
+      const card = document.getElementById('approvals-card');
+      const body = document.querySelector('.card-body');
+      const footer = document.querySelector('.card-footer');
+      const c = card.getBoundingClientRect();
+      const buttons = [document.getElementById('approvals-allow-once'), ...document.querySelectorAll('#approvals-secondary button')].filter(Boolean);
+      const rects = buttons.map((b) => { const r = b.getBoundingClientRect(); return { text: b.textContent, top: +(r.top - c.top).toFixed(2), bottom: +(r.bottom - c.top).toFixed(2) }; });
+      const footerTop = +(footer.getBoundingClientRect().top - c.top).toFixed(2);
+      const lowest = Math.max(...rects.map((r) => r.bottom));
+      const errorEl = document.getElementById('approvals-error');
+      return {
+        errorVisible: !errorEl.hidden,
+        errorText: errorEl.textContent,
+        cardHeight: +c.height.toFixed(2),
+        innerHeight: window.innerHeight,
+        footerTop,
+        lowestDecisionBottom: lowest,
+        overdraw: +Math.max(0, lowest - footerTop).toFixed(2),
+        bodyOverflow: body.scrollHeight - body.clientHeight,
+        gloss: (() => { const g = document.getElementById('approvals-gloss'); return { allocated: g.clientHeight, content: g.scrollHeight, basis: g.style.flexBasis, minimum: g.style.minHeight }; })(),
+        footerOutsideBody: footer.parentElement === card,
+        intrinsicHeight: window.__approvalsCard?.measure?.() ?? null,
+        insideCard: rects.every((r) => r.top >= 0 && r.bottom <= c.height),
+        rects,
+      };
+    })()\`);
+  // A rebuilt child is mid-load for a moment (a 166 DIP half-painted card was
+  // read once); the reading that counts is the one that repeats AND shows the
+  // state the step asked for, so a mid-reload frame is never recorded as a pass
+  // or a fail.
+  const readD1Settled = async (expectError) => {
+    let previous = "";
+    let last = null;
+    for (let i = 0; i < 80; i += 1) {
+      await sleep(150);
+      try {
+        last = await readD1();
+      } catch {
+        continue;
+      }
+      const key = JSON.stringify([last.errorVisible, last.cardHeight, last.innerHeight, controller.facts().bounds?.view.height]);
+      if (last.errorVisible === expectError && key === previous) return last;
+      previous = key;
+    }
+    return last;
+  };
+  const stableBounds = async () => {
+    let last = null;
+    for (let stable = 0; stable < 4; ) {
+      await sleep(150);
+      const h = controller.facts().bounds?.card.height ?? null;
+      stable = h === last ? stable + 1 : 0;
+      last = h;
+    }
+    return last;
+  };
   const settle = async (predicate, label, timeout = 45000) => {
     const started = Date.now();
     while (Date.now() - started < timeout) {
@@ -159,15 +240,15 @@ app.whenReady().then(async () => {
   // through the renderer-pushed requesterLabels map.
   const entry = (index) => ({
     entryId: "entry-" + index,
-    origin: "https://example" + index + ".test",
+    origin: REVIEW_FIXTURE && index === 0 ? "https://docs.example-company.test" : "https://example" + index + ".test",
     displayAuthority: "example" + index + ".test",
     requester: "session:entry-" + index,
     requesterSessionId: "entry-" + index,
     expiresAt: Date.now() + 9 * 60000,
-    ...(index === 0 ? { broad: { scope: "domain", key: "example0.test" } } : {}),
+    ...(index === 0 ? { broad: { scope: "domain", key: REVIEW_FIXTURE ? "example-company.test" : "example0.test" } } : {}),
   });
   const requesterLabels = {
-    "entry-0": "Fix the login flow",
+    "entry-0": REVIEW_FIXTURE ? "Fix the login flow on the staging dashboard" : "Fix the login flow",
     "entry-1": "Draft a release note",
   };
   const entries = [entry(0), entry(1)];
@@ -185,7 +266,7 @@ app.whenReady().then(async () => {
   const pageBefore = { bounds: page.getBounds(), visible: page.getVisible(), viewport: pageViewport, probe: await page.webContents.executeJavaScript("window.__probe()") };
   const focusBefore = webContents.getFocusedWebContents()?.id ?? null;
   controller.onLayout({ presented: true, contentRect: pageRect, revision: 1 });
-  controller.setModel({ entries, locale: "fr", dir: "ltr", theme: THEME, requesterLabels });
+  controller.setModel({ entries, locale: LOCALE, dir: "ltr", theme: THEME, requesterLabels });
   const autoSettled = await settle((f) => f.ready && f.visible, "auto-present");
   // A content-driven card grows after the model paints; the focus proof must be
   // read once the height has stopped changing, not on the first visible frame.
@@ -229,7 +310,7 @@ app.whenReady().then(async () => {
   record("A1-auto-present-unfocused", Boolean(autoSettled && autoDoc && !factsAtAuto.explicitOpen && focusTargets.length === 0 && pageAfterAuto.probe.focusEvents === pageBefore.probe.focusEvents && pageAfterAuto.probe.blurEvents === pageBefore.probe.blurEvents && pageAfterAuto.probe.activeElement === pageBefore.probe.activeElement && JSON.stringify(pageAfterAuto.bounds) === JSON.stringify(pageBefore.bounds) && pageAfterAuto.visible === pageBefore.visible && focusAfterAuto === focusBefore), { autoSettled, facts: factsAtAuto, pageBefore, pageAfterAuto, focusBefore, focusAfterAuto, focusTargets: [...focusTargets], doc: autoDoc });
 
   // I6 — shield toggle: the explicit open/close path the renderer's shield calls.
-  controller.open({ focus: true, locale: "fr", dir: "ltr", theme: THEME });
+  controller.open({ focus: true, locale: LOCALE, dir: "ltr", theme: THEME });
   const opened = await settle((f) => f.visible && f.explicitOpen, "explicit open");
   const openDoc = opened ? await readCard() : null;
   const openFocus = [...focusTargets];
@@ -297,21 +378,22 @@ app.whenReady().then(async () => {
   await settle((f) => f.visible, "reopen for tab order");
   await sleep(200);
   const tabOrder = [];
-  for (let index = 0; index < 7; index += 1) {
+  for (let index = 0; index < 14; index += 1) {
     currentCard().webContents.sendInputEvent({ type: "keyDown", keyCode: "Tab" });
     currentCard().webContents.sendInputEvent({ type: "keyUp", keyCode: "Tab" });
     await sleep(120);
-    tabOrder.push((await readCard()).active);
+    const active = (await readCard()).active;
+    tabOrder.push(active);
+    if (active === "approvals-review") break;
   }
-  // The four secondary decision buttons carry no id; a stable order is proven by
-  // the number of distinct focus stops and by the first/last named controls.
+  // Overflow explanations are intentional extra stops (R3-2), not missing
+  // controls. Preserve the exact original control order after filtering ONLY
+  // the named explanation; unexpected BODY/scrollport stops still fail.
+  const controls = tabOrder.filter(id => id !== "approvals-gloss");
   record(
     "I7-tab-order",
-    tabOrder.length >= 6 &&
-      tabOrder[0] === "approvals-close" &&
-      tabOrder[1] === "approvals-allow-once" &&
-      tabOrder.at(-1) === "approvals-review",
-    { tabOrder },
+    JSON.stringify(controls) === JSON.stringify(["approvals-close", "approvals-allow-once", "", "", "", "", "approvals-review"]),
+    { tabOrder, controls },
   );
 
   // I8 — a stale seq decides nothing (the preload surface called with an old seq).
@@ -319,6 +401,137 @@ app.whenReady().then(async () => {
   const staleResult = await currentCard().webContents.executeJavaScript("window.approvalsCard ? (window.approvalsCard.decide({ seq: 999999, entryId: 'entry-0', decision: 'once' }), 'sent') : 'no-bridge'");
   await sleep(250);
   record("I8-stale-seq", responded.length === beforeStale && controller.facts().actions.dropped >= 1, { staleResult, responded: [...responded], actions: controller.facts().actions });
+
+  // D1 — the stale / unavailable inline error must not push the sticky footer
+  // over "Don't allow". The stale line is the one the I8 drop just painted; the
+  // unavailable line comes from the host's own failure path. Each is read after
+  // the native height has stopped changing, and the pass condition is geometric:
+  // every decision button is inside the card, none is under the footer, and the
+  // body is not scrolled. The measured native card height is recorded beside it.
+  await stableBounds();
+  const d1Stale = await readD1Settled(true);
+  const d1StaleNative = controller.facts().bounds?.card.height ?? null;
+  record("D1-stale-error-keeps-decisions-visible", Boolean(d1Stale.errorVisible && d1Stale.overdraw === 0 && d1Stale.bodyOverflow <= 0 && d1Stale.insideCard), { ...d1Stale, nativeCardHeight: d1StaleNative, nativeViewBounds: controller.facts().bounds?.view ?? null });
+  controller.setModel({ entries, error: "unavailable" });
+  await sleep(300);
+  await stableBounds();
+  const d1Unavailable = await readD1Settled(true);
+  const d1UnavailableNative = controller.facts().bounds?.card.height ?? null;
+  record("D1-unavailable-error-keeps-decisions-visible", Boolean(d1Unavailable.errorVisible && d1Unavailable.overdraw === 0 && d1Unavailable.bodyOverflow <= 0 && d1Unavailable.insideCard), { ...d1Unavailable, nativeCardHeight: d1UnavailableNative });
+  controller.setModel({ entries });
+  await sleep(300);
+  await stableBounds();
+  const d1Normal = await readD1Settled(false);
+  record("D1-normal-keeps-decisions-visible", Boolean(!d1Normal.errorVisible && d1Normal.overdraw === 0 && d1Normal.bodyOverflow <= 0 && d1Normal.insideCard), { ...d1Normal, nativeCardHeight: controller.facts().bounds?.card.height ?? null });
+
+  // Q1: HOVER AND FOCUS MUST NOT MOVE THE DECISIONS. The gloss line follows the
+  // pointer and the keyboard, and the "Don't allow" sentence wraps to two lines
+  // where the others take one. Before the reserved min-height the card grew inside
+  // a native view that stayed put: overdraw 9, every button slid 15 px, and a click
+  // at the pre-hover centre landed in the gap. For each decision, in the normal
+  // state and under the stale error line, the rects must be identical before and
+  // during hover and during focus, overdraw must stay 0, and the element at the
+  // pre-hover centre must still be that same button (the hover-then-click check).
+  const hoverProbe = () =>
+    currentCard().webContents.executeJavaScript(\`(async () => {
+      const card = document.getElementById('approvals-card');
+      const footer = document.querySelector('.card-footer');
+      const buttons = [document.getElementById('approvals-allow-once'), ...document.querySelectorAll('#approvals-secondary button')].filter(Boolean);
+      const read = () => {
+        const c = card.getBoundingClientRect();
+        return buttons.map((b) => { const r = b.getBoundingClientRect(); return { top: +r.top.toFixed(2), bottom: +r.bottom.toFixed(2), cx: r.left + r.width / 2, cy: r.top + r.height / 2 }; });
+      };
+      const overdraw = () => {
+        const lowest = Math.max(...buttons.map((b) => b.getBoundingClientRect().bottom));
+        return +Math.max(0, lowest - footer.getBoundingClientRect().top).toFixed(2);
+      };
+      const idle = read();
+      const out = { idle: idle.map((r) => [r.top, r.bottom]), moved: [], overdrawMax: overdraw(), hitMiss: [], glossHeights: [] };
+      for (const mode of ['hover', 'focus']) {
+        for (let i = 0; i < buttons.length; i += 1) {
+          buttons[i].dispatchEvent(new MouseEvent(mode === 'hover' ? 'mouseenter' : 'focus', { bubbles: false }));
+          if (mode === 'focus') buttons[i].focus();
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          const during = read();
+          during.forEach((r, j) => { if (r.top !== idle[j].top || r.bottom !== idle[j].bottom) out.moved.push(mode + ':' + i + '->' + j); });
+          out.overdrawMax = Math.max(out.overdrawMax, overdraw());
+          const hit = document.elementFromPoint(idle[i].cx, idle[i].cy);
+          if (hit !== buttons[i] && !buttons[i].contains(hit)) out.hitMiss.push(mode + ':' + i);
+          out.glossHeights.push(+document.getElementById('approvals-gloss').getBoundingClientRect().height.toFixed(2));
+        }
+      }
+      return out;
+    })()\`);
+  const q1Normal = await hoverProbe();
+  record("Q1-hover-focus-keeps-decisions-in-place-normal", Boolean(q1Normal.moved.length === 0 && q1Normal.overdrawMax === 0 && q1Normal.hitMiss.length === 0), q1Normal);
+  controller.setModel({ entries, error: "stale" });
+  await sleep(300);
+  await stableBounds();
+  await readD1Settled(true);
+  const q1Stale = await hoverProbe();
+  record("Q1-hover-focus-keeps-decisions-in-place-stale", Boolean(q1Stale.moved.length === 0 && q1Stale.overdrawMax === 0 && q1Stale.hitMiss.length === 0), q1Stale);
+  controller.setModel({ entries });
+  await sleep(300);
+  await stableBounds();
+
+  // S6d frames: the card document in the four views the PR evidence names. The
+  // stale / unavailable frames are taken from the SAME settled states the D1 rows
+  // measured, so a frame and its geometry row cannot describe different cards.
+  if (FRAMES) {
+    const shoot = async (name) => {
+      try {
+        const dbg = currentCard().webContents.debugger;
+        if (!dbg.isAttached()) dbg.attach("1.3");
+        const shot = await dbg.sendCommand("Page.captureScreenshot", { format: "png" });
+        writeFileSync(out + "/card-" + name + ".png", Buffer.from(shot.data, "base64"));
+      } catch (error) {
+        writeFileSync(out + "/card-" + name + "-error.txt", String(error));
+      }
+    };
+    await shoot("normal-request");
+    // Q1 frame: the two-line "Don't allow" gloss showing while hovered. The
+    // decisions must sit exactly where the normal frame has them.
+    await currentCard().webContents.executeJavaScript("(() => { const b = [...document.querySelectorAll('#approvals-secondary button')].pop(); b.dispatchEvent(new MouseEvent('mouseenter')); return b.textContent; })()");
+    await sleep(150);
+    await shoot("hover-dont-allow");
+    await currentCard().webContents.executeJavaScript("document.getElementById('approvals-gloss').textContent = ''; 0");
+    // D-2 frame: a 98-character conversation title under the stale line, the case
+    // that reached the 480 DIP cap at 264 before the headline was bounded.
+    const longEntries = entries.map((entry, index) => index === 0 ? { ...entry } : entry);
+    controller.setModel({ entries: longEntries, locale: LOCALE, dir: "ltr", theme: THEME, requesterLabels: { ...requesterLabels, [entries[0].requesterSessionId]: "Refactor the quarterly reconciliation pipeline so that every ledger adjustment is traceable to a source" } });
+    await currentCard().webContents.executeJavaScript("window.approvalsCard.decide({ seq: 999999, entryId: 'entry-0', decision: 'once' })");
+    const d2 = await readD1Settled(true);
+    record("D2-long-requester-keeps-decisions-visible", Boolean(d2.errorVisible && d2.overdraw === 0 && d2.bodyOverflow <= 0 && d2.insideCard), d2);
+    await shoot("long-requester-stale-error");
+    controller.setModel({ entries, locale: LOCALE, dir: "ltr", theme: THEME, requesterLabels });
+    await readD1Settled(false);
+    // The stale line through the PRODUCT path (a dropped card action), not a
+    // host-supplied error: dropAction is the path D1 is about.
+    await currentCard().webContents.executeJavaScript("window.approvalsCard.decide({ seq: 999999, entryId: 'entry-0', decision: 'once' })");
+    await readD1Settled(true);
+    await shoot("stale-error");
+    controller.setModel({ entries, error: "unavailable" });
+    await readD1Settled(true);
+    await shoot("unavailable-error");
+    controller.setModel({ entries });
+    await readD1Settled(false);
+    await currentCard().webContents.executeJavaScript("document.getElementById('approvals-review').click()");
+    await sleep(500);
+    await shoot("review-all-list");
+    const reviewLayout = await currentCard().webContents.executeJavaScript("(() => { const r = document.getElementById('approvals-request'); const box = r.getBoundingClientRect(); return { hidden:r.hidden, display:getComputedStyle(r).display, width:box.width, height:box.height, decisions:[...r.querySelectorAll('button')].map(b => {const x=b.getBoundingClientRect();return {width:x.width,height:x.height};}) }; })()");
+    const reviewTabs = [];
+    for (let i=0; i<8; i++) {
+      currentCard().webContents.sendInputEvent({type:'keyDown',keyCode:'Tab'});
+      currentCard().webContents.sendInputEvent({type:'keyUp',keyCode:'Tab'});
+      await sleep(60);
+      reviewTabs.push(await currentCard().webContents.executeJavaScript("Boolean(document.activeElement.closest('#approvals-request'))"));
+    }
+    record("R3-review-all-hides-request-layout-and-tab-stops", reviewLayout.hidden && reviewLayout.display === "none" && reviewLayout.width === 0 && reviewLayout.height === 0 && reviewLayout.decisions.every(r => r.width === 0 && r.height === 0) && !reviewTabs.some(Boolean), {reviewLayout, reviewTabs});
+    await currentCard().webContents.executeJavaScript("document.getElementById('approvals-back').click()");
+    const backLayout = await currentCard().webContents.executeJavaScript("(() => { const r=document.getElementById('approvals-request'); return {hidden:r.hidden,display:getComputedStyle(r).display,height:r.getBoundingClientRect().height}; })()");
+    record("R3-back-restores-request-layout", !backLayout.hidden && backLayout.display === 'flex' && backLayout.height > 0, backLayout);
+    await sleep(300);
+  }
 
   // I4 — Escape dismisses without deciding AND the document repaints the next
   // request. The second half is the Q-S6b-1 regression: a dismissal that only
@@ -368,11 +581,91 @@ app.whenReady().then(async () => {
     writeFileSync(out + "/s6b-cdp-capture-error.txt", String(error));
   }
 
+  // Actual hover-then-centre clicks, not just elementFromPoint. Run last so a
+  // successful denial cannot disturb the earlier no-decision/Escape proofs.
+  for (const error of [null, "stale"]) {
+    controller.setModel({ entries, error, locale: LOCALE, dir: "ltr", requesterLabels });
+    controller.open({ focus: false });
+    await readD1Settled(Boolean(error));
+    await sleep(850);
+    const target = await currentCard().webContents.executeJavaScript("(() => { const b = [...document.querySelectorAll('#approvals-secondary button')].pop(); const r = b.getBoundingClientRect(); return { x: Math.round(r.x + r.width/2), y: Math.round(r.y + r.height/2), text: b.textContent }; })()");
+    const before = responded.length;
+    currentCard().webContents.sendInputEvent({ type: "mouseMove", x: target.x, y: target.y });
+    await sleep(100);
+    const geometry = await readD1();
+    currentCard().webContents.sendInputEvent({ type: "mouseDown", x: target.x, y: target.y, button: "left", clickCount: 1 });
+    currentCard().webContents.sendInputEvent({ type: "mouseUp", x: target.x, y: target.y, button: "left", clickCount: 1 });
+    await sleep(150);
+    record("Q2-hover-centre-deny-" + (error ?? "normal"), responded.length === before + 1 && responded.at(-1)?.decision === "deny" && geometry.overdraw === 0, { target, geometry, response: responded.at(-1), countBefore: before, countAfter: responded.length });
+  }
+
+  // R3-2: native keyboard and wheel must reach the complete selected scope
+  // explanation. DOM-only tests use synthetic heights and cannot prove this.
+  // Fresh IDs avoid the earlier Escape's presentation dismissal selecting the
+  // second fixture entry (which intentionally has no broad/domain option).
+  const explanationEntries = entries.map((entry, index) => ({...entry,entryId:'explanation-'+index}));
+  controller.setModel({ entries: explanationEntries, error: "stale", locale: LOCALE, dir: "ltr", requesterLabels });
+  controller.open({ focus: false });
+  await readD1Settled(true);
+  await sleep(850);
+  const explanationRows = [];
+  for (let index=0; index<5; index++) {
+    const info = await currentCard().webContents.executeJavaScript(\`(() => {
+      const b=[document.getElementById('approvals-allow-once'),...document.querySelectorAll('#approvals-secondary button')][${"${index}"}];
+      b.focus(); const g=document.getElementById('approvals-gloss'); const r=g.getBoundingClientRect();
+      return {text:g.textContent,name:g.getAttribute('aria-label'),label:b.textContent,describedBy:b.getAttribute('aria-describedby'),tabIndex:g.tabIndex,height:g.clientHeight,content:g.scrollHeight,x:r.x+r.width/2,y:r.y+r.height/2};
+    })()\`);
+    if (info.content <= info.height + 1) {
+      explanationRows.push({...info,pass:info.tabIndex === -1,overflow:false});
+      continue;
+    }
+    currentCard().webContents.sendInputEvent({type:'keyDown',keyCode:'Tab'});
+    currentCard().webContents.sendInputEvent({type:'keyUp',keyCode:'Tab'});
+    currentCard().webContents.sendInputEvent({type:'keyDown',keyCode:'End'});
+    currentCard().webContents.sendInputEvent({type:'keyUp',keyCode:'End'});
+    await sleep(100);
+    const keyboard = await currentCard().webContents.executeJavaScript("(() => {const g=document.getElementById('approvals-gloss');return {active:document.activeElement.id,text:g.textContent,end:g.scrollTop+g.clientHeight,content:g.scrollHeight,outline:getComputedStyle(g).outlineStyle};})()");
+    // Reset position ONLY as setup. Actual pointer reveal is native wheel input.
+    await currentCard().webContents.executeJavaScript("document.getElementById('approvals-gloss').scrollTop=0");
+    const dbg = currentCard().webContents.debugger;
+    if (!dbg.isAttached()) dbg.attach('1.3');
+    for (let step=0; step<3; step++) {
+      await dbg.sendCommand('Input.dispatchMouseEvent',{type:'mouseWheel',x:info.x,y:info.y,deltaX:0,deltaY:250});
+      await sleep(100);
+    }
+    const pointer = await currentCard().webContents.executeJavaScript("(() => {const g=document.getElementById('approvals-gloss');return {text:g.textContent,end:g.scrollTop+g.clientHeight,content:g.scrollHeight};})()");
+    const geometry = await readD1();
+    const pass = info.name === info.label && info.describedBy === 'approvals-gloss' && keyboard.active === 'approvals-gloss' && keyboard.text === info.text && keyboard.end >= keyboard.content-1 && pointer.text === info.text && pointer.end >= pointer.content-1 && geometry.overdraw === 0;
+    explanationRows.push({...info,pass,overflow:true,keyboard,pointer,overdraw:geometry.overdraw});
+    if (FRAMES) {
+      const shot=await dbg.sendCommand('Page.captureScreenshot',{format:'png'});
+      writeFileSync(out+'/card-explanation-end-'+index+'.png',Buffer.from(shot.data,'base64'));
+    }
+  }
+  record('R3-complete-scope-text-keyboard-and-pointer', explanationRows.every(r=>r.pass), {explanationRows});
+
+  // R2-1 on the real compiled document. This is local DOM focus, not an OS
+  // focus claim. Do it after the host action proofs; no decision is submitted.
+  const timerFocus = await currentCard().webContents.executeJavaScript(\`(async () => {
+    const a = { entryId: 'focus-a', origin: 'https://a.example', requester: 'a', expiresAt: Date.now()+600000, broadKey: null };
+    const b = { ...a, entryId: 'focus-b', origin: 'https://b.example' };
+    const m = { v:1, seq:1, locale: document.documentElement.lang, dir:'ltr', theme:'light', palette:document.documentElement.dataset.theme, view:'request', focus:false, count:2, busy:false, request:a, pending:[a,b], error:null };
+    window.__approvalsCard.setModel(m);
+    window.__approvalsCard.setModel({ ...m, seq:2, request:b, pending:[b], count:1, focus:true });
+    document.getElementById('approvals-review').click();
+    const before = document.activeElement.id;
+    await new Promise(r => setTimeout(r,820));
+    return { before, after:document.activeElement.id };
+  })()\`);
+  record("R2-focus-not-replayed-after-inert-window", timerFocus.before === 'approvals-back' && timerFocus.after === 'approvals-back', timerFocus);
+
   writeFileSync(
     out + "/s6b-facts.json",
     JSON.stringify({
       width: WIDTH,
       theme: THEME,
+      locale: LOCALE,
+      reviewFixture: REVIEW_FIXTURE,
       facts: controller.facts(),
       rows,
       autoPresent: { pageBefore, pageAfterAuto, focusBefore, focusAfterAuto, focusTargets: [...focusTargets], doc: autoDoc, factsAtAuto },
@@ -397,9 +690,12 @@ await build({
 	outfile: MAIN,
 	external: ["electron"],
 });
+for (const directory of ["home", "config"])
+	mkdirSync(join(OUT, directory), { recursive: true });
 const env = withNotificationsOff({
 	...process.env,
-	LOCAL_OPERATOR_UI_BROWSER_APPROVALS_OVERLAY_S6A: "1",
+	HOME: join(OUT, "home"),
+	LOCAL_OPERATOR_CONFIG_DIR: join(OUT, "config"),
 });
 for (const key of Object.keys(env))
 	if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
@@ -419,6 +715,7 @@ const child = spawn(
 		// a hidden document and its absence avoids the GL init path that wedged the
 		// child view in the round-2 investigation.
 		"--disable-gpu",
+		"--window-mode=headless",
 	],
 	{
 		env,

@@ -119,7 +119,12 @@ export const TeamBridgeApi = {
 	async scheduledUpdate(
 		tenantId: string,
 		scheduledId: string,
-		patch: { body?: string; send_at?: string; attachment_ids?: string[] },
+		patch: {
+			body?: string;
+			send_at?: string;
+			attachment_ids?: string[];
+			expected_version?: number;
+		},
 	) {
 		return teamBridgeScheduledMessageSchema.parse(
 			await desktopResult<unknown>({
