@@ -715,6 +715,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	/* Escape from the schedule dialog must land back on the clock (D33). */
 	const clockRef = useRef<HTMLButtonElement>(null);
 	const composerRef = useRef<HTMLTextAreaElement>(null);
+	const composerColumnRef = useRef<HTMLElement>(null);
+	const composerBlockRef = useRef<HTMLDivElement>(null);
 	const heldReasonId = useId();
 	const draftTenant =
 		scope === TEAM_BRIDGE_ALL_SCOPE && target?.type === "conversation"
@@ -1120,15 +1122,18 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	});
 	/*
 	 * The composer grows with what is in it (up to ten lines or 40% of the
-	 * window) and shrinks when the draft empties - after a send, or when Return
-	 * to draft is undone. Growing is the reader's own act, so it only re-follows
-	 * the bottom if the timeline was already following it.
+	 * COLUMN it shares with the timeline, counted over the whole composer block)
+	 * and shrinks when the draft empties - after a send, or when Return to draft
+	 * is undone. Growing is the reader's own act, so it only re-follows the
+	 * bottom if the timeline was already following it. The cap is derived from
+	 * the COLUMN because its height does not change as the composer grows; the
+	 * earlier attempt to solve it from the timeline's height oscillated one step
+	 * per keystroke (design round 2, D9).
 	 */
 	useComposerAutoGrow(composerRef, draft, {
 		onGrow: timeline.repin,
-		// The timeline is the scrolling area this composer shares its column with,
-		// so it is the pane the 40% cap is a fraction of (design round 1, D1).
-		paneRef: timeline.rootRef,
+		columnRef: composerColumnRef,
+		blockRef: composerBlockRef,
 	});
 	// The retry's idempotency key: a failed send is retried with the SAME
 	// `client_ref`, so an ambiguous failure (request landed, answer lost) cannot
@@ -1855,6 +1860,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			{/* The ONE ground split: the rail inherits the page canvas, the thread
 			    carries the surface — two regions read apart without a rule. */}
 			<section
+				ref={composerColumnRef}
 				className={cn(
 					"panel-top-pad flex min-w-0 flex-1 flex-col bg-surface",
 					threadIsOpen && "@max-[1024px]/bridge:invisible",
@@ -2321,7 +2327,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								   bottom (inside px-4/pb-4) drew whole. It is the container's
 								   own padding so the room holds whichever alert or box is first;
 								   pinned by scripts/team-bridge-composer-ring.test.mjs. */
-								<div className="min-h-0 max-h-[60%] shrink-0 overflow-y-auto px-4 pt-1 pb-4">
+								<div
+									ref={composerBlockRef}
+									className="min-h-0 max-h-[60%] shrink-0 overflow-y-auto px-4 pt-1 pb-4"
+								>
 									{scheduleFailed && (
 										<p role="alert" className="text-sm text-danger">
 											{t("ui.teamBridge.schedule.failed")}

@@ -110,22 +110,60 @@ const type = async (field, value) => {
 	});
 };
 
-const Composer = ({ onGrow }) => {
+/**
+ * jsdom has no layout, so the two boxes the cap reads are modelled where the
+ * browser would put them: the COLUMN has a fixed height, and the composer BLOCK
+ * is the field plus `CHROME_PX` of hint/send row and wrapper padding. The block's
+ * height is re-measured after every render, exactly as a browser would reflow it,
+ * so a hook that reads the wrong box still gets a truthful DOM.
+ */
+const CHROME_PX = 56;
+
+const Composer = ({ onGrow, columnPx = 0 }) => {
 	const [value, setValue] = React.useState("");
 	const ref = React.useRef(null);
-	ui.useComposerAutoGrow(ref, value, { minPx: 40, onGrow });
-	return React.createElement("textarea", {
-		ref,
-		value,
-		onChange: (event) => setValue(event.target.value),
+	const columnRef = React.useRef(null);
+	const blockRef = React.useRef(null);
+	ui.useComposerAutoGrow(ref, value, {
+		minPx: 40,
+		onGrow,
+		columnRef,
+		blockRef,
 	});
+	React.useLayoutEffect(() => {
+		const field = ref.current;
+		const block = blockRef.current;
+		if (!field || !block) return;
+		const fieldPx = Number.parseInt(field.style.height, 10) || 40;
+		// jsdom returns a zero rect for everything; in a browser the field's box IS
+		// the height this hook wrote, and that is what the chrome arithmetic reads.
+		field.getBoundingClientRect = () => ({ height: fieldPx });
+		block.getBoundingClientRect = () => ({ height: fieldPx + CHROME_PX });
+		// The column's height does NOT depend on the composer: growth takes it
+		// from the timeline inside the same flex column.
+		if (columnRef.current)
+			columnRef.current.getBoundingClientRect = () => ({ height: columnPx });
+	});
+	return React.createElement(
+		"div",
+		{ ref: columnRef, "data-column": true },
+		React.createElement(
+			"div",
+			{ ref: blockRef, "data-block": true },
+			React.createElement("textarea", {
+				ref,
+				value,
+				onChange: (event) => setValue(event.target.value),
+			}),
+		),
+	);
 };
 
 const heightOf = (field) => Number.parseInt(field.style.height, 10);
 const overflowOf = (field) => field.style.overflowY;
 
-const mountComposer = async () => {
-	const app = await mount(React.createElement(Composer));
+const mountComposer = async (props = {}) => {
+	const app = await mount(React.createElement(Composer, props));
 	const field = app.host.querySelector("textarea");
 	return { ...app, field };
 };
@@ -189,8 +227,8 @@ test("the cap is the SMALLER of ten lines and 40% of the window", async () => {
 		await type(field, text(21));
 		assert.equal(
 			heightOf(field),
-			Math.round(400 * 0.4),
-			"40% of the window wins in a short one",
+			Math.round(400 * 0.4) - CHROME_PX,
+			"40% of the window, less the composer's own chrome, wins in a short one",
 		);
 		assert.equal(overflowOf(field), "auto");
 	} finally {
@@ -420,6 +458,64 @@ test("a keystroke at the cap keeps the reader's place in a long draft", async ()
 			"scrollHeight",
 			real,
 		);
+		await app.unmount();
+	}
+});
+
+test("the 600px column: one long paste reaches its final height in ONE step", async () => {
+	/*
+	 * Design round 2, D9. The cap used to be solved from the TIMELINE's height, so
+	 * each keystroke measured a smaller pane, computed a smaller cap and stepped
+	 * the field down again - one oscillation per keystroke on any window under
+	 * ~740px. A 600px column is the app's minimum window: 40% of it is 240px, less
+	 * 56px of chrome, so the field may be 184px - and it must STAY there.
+	 */
+	const app = await mountComposer({ columnPx: 600 });
+	const { field } = app;
+	try {
+		await type(field, text(20)); // a long paste
+		const settled = heightOf(field);
+		assert.equal(
+			settled,
+			Math.min(10 * LINE_PX + 16, Math.round(600 * 0.4) - CHROME_PX),
+			"the paste reaches the column cap in one measurement",
+		);
+		assert.equal(overflowOf(field), "auto", "past the cap the field scrolls");
+		const heights = [settled];
+		for (let extra = 1; extra <= 4; extra += 1) {
+			await type(field, text(20) + "y".repeat(extra));
+			heights.push(heightOf(field));
+		}
+		assert.deepEqual(
+			heights,
+			[settled, settled, settled, settled, settled],
+			"every following keystroke holds the same height - no overshoot, no oscillation",
+		);
+	} finally {
+		await app.unmount();
+	}
+});
+
+test("the cap is 40% of the COLUMN, counting the composer block's chrome", async () => {
+	const app = await mountComposer({ columnPx: 500 });
+	const { field } = app;
+	try {
+		// 40% of 500 is 200; the block's chrome is 56, so the field gets 144.
+		await type(field, text(20));
+		assert.equal(
+			heightOf(field),
+			Math.round(500 * 0.4) - CHROME_PX,
+			"the fraction covers the whole block, not the field alone",
+		);
+		const block = app.host
+			.querySelector("[data-block]")
+			.getBoundingClientRect();
+		assert.equal(
+			block.height,
+			Math.round(500 * 0.4),
+			"the block - field plus chrome - is exactly what the fraction allows",
+		);
+	} finally {
 		await app.unmount();
 	}
 });

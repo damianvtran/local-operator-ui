@@ -263,11 +263,20 @@ function FirstSendPage({
 			onDiscard: frozen ? () => {} : () => setDiscarded(true),
 		});
 	return (
+		/*
+		 * A BOUNDED FRAME (design round 2, D10). `h-dvh` alone let the page grow
+		 * to fit its content - the composer grew, the page grew with it, and the
+		 * timeline stayed the same height in every frame, which is precisely the
+		 * thing an auto-grow capture has to show it does NOT do. An explicit
+		 * height plus `overflow-hidden` makes the column the window's height, so
+		 * growth can only come out of the timeline.
+		 */
 		<div
-			className="flex h-dvh max-w-full flex-col bg-canvas text-ink"
+			className="flex max-w-full flex-col overflow-hidden bg-canvas text-ink"
 			style={{
 				width:
 					typeof width === "number" ? width : width === "narrow" ? 680 : 1380,
+				height: "100dvh",
 			}}
 		>
 			{fieldReadout !== null && (

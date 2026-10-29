@@ -21,13 +21,20 @@ import type { RefObject } from "react";
  * - ten LINES, measured from the field's own line height plus its vertical
  *   padding. Padding is part of `scrollHeight` and was not part of the old cap,
  *   so "ten lines" was really about 9.3 (review round 1, minor).
- * - 40% OF THE PANE the composer sits under - expressed as a fraction of the
- *   TIMELINE's height, because that is the number that is measurable without
- *   coupling this hook to markup: `c = f/(1-f) * t` is the height at which the
- *   composer is exactly `f` of the column it shares with the timeline. The old
- *   term was 40% of the WINDOW, which at the app's 572px viewport floor could
- *   never bind at all - a guard that is inert is not a guard (design round 1,
- *   D1). With no pane to measure (a story, the first frame) it falls back to the
+ * - 40% OF THE COLUMN the composer shares with the timeline, applied to the
+ *   WHOLE COMPOSER BLOCK (field + its hint/send chrome + the wrapper's padding),
+ *   not to the field alone (design round 1 D1; round 2 D9). The column is the
+ *   right quantity because the COLUMN'S HEIGHT DOES NOT DEPEND ON THE COMPOSER:
+ *   growth takes space from the timeline inside it. Two earlier attempts got
+ *   this wrong. 40% of the WINDOW could never bind at the app's 572px viewport
+ *   floor. Solving from the TIMELINE's height (`c = f/(1-f)*t`) was worse than
+ *   inert: the timeline shrinks as the composer grows, so each keystroke
+ *   measured a smaller pane, computed a smaller cap, and the field stepped down
+ *   again - one oscillation per keystroke, visible on any window under ~740px,
+ *   and the code comment claimed the opposite. capping the BLOCK from a
+ *   height that does not feed back is one measurement with no loop.
+ *
+ *   With no column to measure (a story, the first frame) it falls back to the
  *   window, and says so.
  *
  * WHAT IT DELIBERATELY DOES NOT DO: touch the caret, the selection, or the
@@ -41,18 +48,30 @@ export function useComposerAutoGrow(
 	value: string,
 	{
 		onGrow,
-		paneRef,
+		columnRef,
+		blockRef,
 		minPx = 40,
 		maxLines = 10,
-		paneFraction = 0.4,
+		blockFraction = 0.4,
 	}: {
 		/** Called after a change in height, so the timeline can stay pinned. */
 		onGrow?: () => void;
-		/** The scrolling area the composer shares its column with (the timeline). */
-		paneRef?: RefObject<HTMLElement | null>;
+		/**
+		 * The COLUMN the composer and the timeline share (the thread's flex
+		 * column). Its height does not change when the composer grows, so a cap
+		 * derived from it cannot feed back into itself.
+		 */
+		columnRef?: RefObject<HTMLElement | null>;
+		/**
+		 * The composer BLOCK: the field plus its hint/send row and the wrapper's
+		 * padding. The fraction applies to this, so "40% of the column" is not
+		 * quietly 40%-of-the-field leaving 56px of chrome outside the budget.
+		 */
+		blockRef?: RefObject<HTMLElement | null>;
 		minPx?: number;
 		maxLines?: number;
-		paneFraction?: number;
+		/** Share of the column the whole composer block may take. */
+		blockFraction?: number;
 	} = {},
 ): void {
 	/** The node the last measurement applied to, so a REMOUNT re-measures. */
@@ -97,22 +116,23 @@ export function useComposerAutoGrow(
 		const padding =
 			(Number.parseFloat(style.paddingTop) || 0) +
 			(Number.parseFloat(style.paddingBottom) || 0);
-		const pane = paneRef?.current?.getBoundingClientRect().height ?? 0;
 		/*
-		 * `c = f/(1-f) * t`: the composer is exactly `paneFraction` of the column
-		 * once it reaches this height, since the column is the timeline plus the
-		 * composer. Solving it here rather than measuring the column keeps the
-		 * term honest without a new wrapper element - and it converges rather than
-		 * oscillating, because each measurement moves the composer toward the
-		 * fixed point instead of overshooting it.
+		 * THE CHROME IS WHAT THE BLOCK WEARS THAT THE FIELD DOES NOT: the hint and
+		 * send row, the wrapper's padding. It does not depend on the field's
+		 * height, so measuring it against the CURRENT block is stable - unlike the
+		 * timeline, which the field's own growth shrinks.
 		 */
-		const paneCap =
-			pane > 0
-				? (pane * paneFraction) / (1 - paneFraction)
-				: window.innerHeight * paneFraction;
+		const fieldBox = field.getBoundingClientRect().height;
+		const block = blockRef?.current?.getBoundingClientRect().height ?? 0;
+		const chrome = block > 0 ? Math.max(0, block - fieldBox) : 0;
+		const column = columnRef?.current?.getBoundingClientRect().height ?? 0;
+		const budget =
+			(column > 0 ? column : window.innerHeight) * blockFraction - chrome;
+		/* ONE step, no feedback: the column's height is fixed while the composer
+		 * grows, so this cap is the same on every keystroke of a given draft. */
 		const cap = Math.max(
 			minPx,
-			Math.min(lineHeight * maxLines + padding, paneCap),
+			Math.min(lineHeight * maxLines + padding, budget),
 		);
 
 		const previousHeight = field.style.height;
@@ -145,7 +165,16 @@ export function useComposerAutoGrow(
 		)
 			field.setSelectionRange(selection[0] ?? 0, selection[1] ?? 0);
 		if (field.style.height !== previousHeight) reportGrowth();
-	}, [ref, value, minPx, maxLines, paneFraction, paneRef, reportGrowth]);
+	}, [
+		ref,
+		value,
+		minPx,
+		maxLines,
+		blockFraction,
+		columnRef,
+		blockRef,
+		reportGrowth,
+	]);
 
 	/*
 	 * ONE DECISION, ONCE PER COMMIT: measure when the VALUE changed, or when a
