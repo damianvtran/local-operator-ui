@@ -211,6 +211,13 @@
 		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
 		"note": "English source: Quit Local Operator and replace it in Applications with a fresh copy, or update again from the app."
 	},
+	"ui.updates.panel.install.in_flight.message": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: Version {version} can't finish installing while Local Operator is open — keeping it open cancels the install. Quit and leave it closed until the app opens again by itself.",
+		"placeholder": "{version} is a release number written as the backend publishes it (for example 0.42.7) and stays verbatim."
+	},
 	"ui.updates.panel.service.restart.message": {
 		"role": "Update or install failure panel and the notice that reports a failed install",
 		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
@@ -241,6 +248,25 @@
 		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
 		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
 		"note": "English source: Unable to determine backend version."
+	},
+	"ui.updates.panel.service.recorded_running.message": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: A server update this app started {age} is still running (process group {groupPid}), so a second one will not be started beside it. If that update is no longer responding, the update service log says what it was doing.",
+		"placeholder": "{age} is a complete English age phrase such as 'moments ago' or '3 minutes ago', localized at composition time. {groupPid} is the numeric operating-system process group identifier and stays verbatim."
+	},
+	"ui.updates.panel.service.already_running.message": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: A server update is already running. Let it finish before starting another."
+	},
+	"ui.updates.panel.service.startup_unknown.message": {
+		"role": "Update or install failure panel and the notice that reports a failed install",
+		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim.",
+		"length": "One or two sentences; the panel's body column is narrow, so keep the shape of the source rather than expanding it.",
+		"note": "English source: The app could not tell how this server was started, so it did not update it. See the update service log."
 	},
 	"ui.updates.panel.server.behind.remedy": {
 		"role": "Update or install failure panel and the notice that reports a failed install",

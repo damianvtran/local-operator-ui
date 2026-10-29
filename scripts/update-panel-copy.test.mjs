@@ -76,7 +76,7 @@ test("both namespaces carry their English source", () => {
 		key.startsWith("ui.updates.panel."),
 	);
 	assert.equal(menubar.length, 13);
-	assert.equal(panel.length, 41);
+	assert.equal(panel.length, 45);
 	// The sentences the panel shows, byte-for-byte after keying: an edit here is
 	// a copy change, and it should be a deliberate one.
 	assert.equal(

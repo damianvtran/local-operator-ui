@@ -2563,9 +2563,16 @@ export function installInFlightPayload(
 	marker: PendingInstallMarker,
 	runningVersion: string,
 ): InstallInFlightPayload {
+	/*
+	 * This sentence was a hardcoded main-process literal. The version is an ICU
+	 * value so the translated sentence can order the whole warning naturally.
+	 * The timestamp, artifact path and running version stay in the support detail.
+	 */
 	return {
 		targetVersion: marker.targetVersion,
-		message: `Version ${marker.targetVersion} can't finish installing while Local Operator is open — keeping it open cancels the install. Quit and leave it closed until the app opens again by itself.`,
+		message: t("ui.updates.panel.install.in_flight.message", {
+			version: marker.targetVersion,
+		}),
 		detail: `Install started ${installStartedText(marker)} from ${marker.artifactPath || "an unknown artifact"}, while version ${runningVersion} was running.`,
 	};
 }

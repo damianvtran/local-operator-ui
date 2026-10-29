@@ -8972,6 +8972,11 @@ export class UpdateService {
 			const ageMinutes = Number.isFinite(startedAtMs)
 				? Math.max(0, Math.round((Date.now() - startedAtMs) / 60_000))
 				: null;
+			/*
+			 * The refusal was a hardcoded main-process literal. Pass the age phrase
+			 * and process-group record as ICU values so translators can reorder them;
+			 * the pluralized English age remains one complete grammatical unit.
+			 */
 			const age =
 				ageMinutes === null
 					? "at a time that could not be read"
@@ -8979,7 +8984,10 @@ export class UpdateService {
 						? "moments ago"
 						: `${ageMinutes} minute${ageMinutes === 1 ? "" : "s"} ago`;
 			this.sendToRenderer("backend-update-error", {
-				message: `A server update this app started ${age} is still running (process group ${outcome.marker.groupPid}), so a second one will not be started beside it. If that update is no longer responding, the update service log says what it was doing.`,
+				message: t("ui.updates.panel.service.recorded_running.message", {
+					age,
+					groupPid: String(outcome.marker.groupPid),
+				}),
 				phase: "update",
 				logPath: serverUpdateLogPath(),
 			});
@@ -8991,8 +8999,9 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 			this.sendToRenderer("backend-update-error", {
-				message:
-					"A server update is already running. Let it finish before starting another.",
+				// The refusal was a hardcoded main-process literal; both update paths
+				// share this key because they present the same consequence and remedy.
+				message: t("ui.updates.panel.service.already_running.message"),
 				phase: "update",
 				logPath: serverUpdateLogPath(),
 			});
@@ -10125,8 +10134,9 @@ export class UpdateService {
 					 * the rule this branch was the exception to.
 					 */
 					this.sendToRenderer("backend-update-error", {
-						message:
-							"The app could not tell how this server was started, so it did not update it. See the update service log.",
+						// This refusal was a hardcoded main-process literal; keying it lets
+						// the panel explain the unsupported startup mode in its locale.
+						message: t("ui.updates.panel.service.startup_unknown.message"),
 						phase: "update",
 						logPath: serverUpdateLogPath(),
 					});
@@ -10227,8 +10237,9 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 			this.sendToRenderer("backend-update-error", {
-				message:
-					"A server update is already running. Let it finish before starting another.",
+				// The refusal was a hardcoded main-process literal; both update paths
+				// share this key because they present the same consequence and remedy.
+				message: t("ui.updates.panel.service.already_running.message"),
 				phase: "update",
 				logPath: serverUpdateLogPath(),
 			});

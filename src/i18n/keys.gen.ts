@@ -9145,6 +9145,7 @@ export type MessageParams = {
 		running: string;
 	};
 	"ui.updates.panel.failure.unfinished.remedy": undefined;
+	"ui.updates.panel.install.in_flight.message": { version: string };
 	"ui.updates.panel.launch.check.message": undefined;
 	"ui.updates.panel.launch.check.message_version": { version: string };
 	"ui.updates.panel.launch.heading": undefined;
@@ -9160,11 +9161,17 @@ export type MessageParams = {
 	"ui.updates.panel.server.behind.remedy": undefined;
 	"ui.updates.panel.server.norestart.remedy": undefined;
 	"ui.updates.panel.server.rebuild.remedy": undefined;
+	"ui.updates.panel.service.already_running.message": undefined;
 	"ui.updates.panel.service.check_unavailable.message": undefined;
 	"ui.updates.panel.service.no_backend.message": undefined;
 	"ui.updates.panel.service.no_server.message": undefined;
+	"ui.updates.panel.service.recorded_running.message": {
+		age: string;
+		groupPid: string;
+	};
 	"ui.updates.panel.service.restart.message": undefined;
 	"ui.updates.panel.service.restart.message_version": { version: string };
+	"ui.updates.panel.service.startup_unknown.message": undefined;
 };
 
 export type MessageKey = keyof MessageParams;
