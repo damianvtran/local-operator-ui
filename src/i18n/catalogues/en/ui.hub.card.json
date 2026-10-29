@@ -1,0 +1,8 @@
+{
+	"ui.hub.card.download_named": "Download {name}",
+	"ui.hub.card.downloads_tooltip": "Downloads",
+	"ui.hub.card.get": "Get",
+	"ui.hub.card.unknown_author": "Unknown author",
+	"ui.hub.card.updated": "updated {ago} ago",
+	"ui.hub.card.view_details": "View details for {name}"
+}

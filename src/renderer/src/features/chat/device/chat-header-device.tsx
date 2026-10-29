@@ -33,6 +33,8 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Check, ChevronDown, Monitor } from "lucide-react";
 import {
@@ -470,7 +472,7 @@ const DevicePicker = ({
 								}}
 								className="shrink-0 px-1 py-0 text-meta"
 							>
-								Check again
+								{t("ui.chat.device.check_again")}
 							</DropdownMenuItem>
 						) : null}
 					</div>
@@ -507,6 +509,7 @@ export const ChatHeaderDevice = ({
 	onPick: (deviceId: string | null, keep: boolean) => void;
 	onCheckAgain: () => void;
 }) => {
+	useI18nLocale();
 	/*
 	 * WHERE THE CONVERSATION IS NOW, for the recall's loss sentence. A pick on a
 	 * `gone` pane is a recall too - the copy the dialog names is the one on the peer

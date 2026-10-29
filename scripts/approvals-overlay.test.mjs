@@ -68,6 +68,8 @@ export class WebContentsView {
     this.focusCalls = 0;
     this.destroyed = false;
     this.handlers = new Map();
+    /* Every URL this child was asked to load; the first-paint test reads it. */
+    this.loadedUrls = [];
     this.mainFrame = { url: "file:///tmp/browser-approvals-overlay.html" };
     this.webContents = {
       id: 70 + state.views.length,
@@ -82,10 +84,18 @@ export class WebContentsView {
         const list = (this.handlers.get(event) ?? []).filter((entry) => entry !== cb);
         this.handlers.set(event, list);
       },
-      loadURL: () => {
+      loadURL: (url) => {
+        this.loadedUrls.push(String(url));
         setTimeout(() => {
           for (const cb of this.handlers.get("did-finish-load") ?? []) cb();
         }, 0);
+        /* Tests may defer a load to exercise replacement before rejection. */
+        if (this.loadDeferred || state.deferNextLoad) {
+          state.deferNextLoad = false;
+          return new Promise((resolve, reject) => {
+            this.loadDeferred = { resolve, reject };
+          });
+        }
         return Promise.resolve();
       },
       executeJavaScript: (script) =>
@@ -228,19 +238,21 @@ test("geometry: a fractional measured card rounds up, not down to the floor", ()
 	assert.equal(bounds.view.y + 8, bounds.card.y);
 });
 
-test("controller: S6a is opt-in on the exact env value only", () => {
-	assert.equal(mod.approvalsOverlayEnabled({}), false);
+test("controller: the card is on by default; only the disable switch turns it off", () => {
+	assert.equal(mod.approvalsOverlayEnabled({}), true);
 	assert.equal(
-		mod.approvalsOverlayEnabled({ [mod.APPROVALS_OVERLAY_S6A_ENV]: "0" }),
-		false,
-	);
-	assert.equal(
-		mod.approvalsOverlayEnabled({ [mod.APPROVALS_OVERLAY_S6A_ENV]: "true" }),
-		false,
-	);
-	assert.equal(
-		mod.approvalsOverlayEnabled({ [mod.APPROVALS_OVERLAY_S6A_ENV]: "1" }),
+		mod.approvalsOverlayEnabled({ [mod.APPROVALS_OVERLAY_DISABLE_ENV]: "0" }),
 		true,
+	);
+	assert.equal(
+		mod.approvalsOverlayEnabled({
+			[mod.APPROVALS_OVERLAY_DISABLE_ENV]: "true",
+		}),
+		true,
+	);
+	assert.equal(
+		mod.approvalsOverlayEnabled({ [mod.APPROVALS_OVERLAY_DISABLE_ENV]: "1" }),
+		false,
 	);
 });
 
@@ -270,6 +282,168 @@ test("document: the count is a first-paint fallback, and zero is omitted", () =>
 	);
 	assert.equal(light.searchParams.get("theme"), "light");
 	assert.equal(light.searchParams.get("opaque"), "1");
+});
+
+test("document: the exact palette rides the URL as a first-paint value", () => {
+	const at = (palette) =>
+		new URL(
+			mod.approvalsDocumentUrl(
+				"file:///app/out/renderer/browser-approvals-overlay.html",
+				2,
+				"dark",
+				false,
+				palette,
+			),
+		);
+	/*
+	 * THE URL IS THE FIRST PAINT. Without the palette the document painted its
+	 * own localOperatorDark default and corrected only when the model landed, so
+	 * a dropped parameter is the defect, not a nicety.
+	 */
+	assert.equal(at("obsidian").searchParams.get("palette"), "obsidian");
+	assert.equal(
+		at("kanagawaLotus").searchParams.get("palette"),
+		"kanagawaLotus",
+	);
+	// No palette known means the mode default is the honest answer, and a name
+	// that is not a CSS token never reaches the query string.
+	assert.equal(at(null).searchParams.get("palette"), null);
+	assert.equal(at(undefined).searchParams.get("palette"), null);
+	assert.equal(at("obsidian; color: red").searchParams.get("palette"), null);
+	// The mode fallback is unchanged whatever the exact palette does.
+	assert.equal(at("obsidian").searchParams.get("theme"), "dark");
+});
+
+test("controller: the child's URL carries the palette resolved before it existed", async () => {
+	const children = [];
+	const window = {
+		contentView: {
+			get children() {
+				return children;
+			},
+			addChildView(view) {
+				const index = children.indexOf(view);
+				if (index !== -1) children.splice(index, 1);
+				children.push(view);
+			},
+			removeChildView(view) {
+				const index = children.indexOf(view);
+				if (index !== -1) children.splice(index, 1);
+			},
+		},
+		isDestroyed: () => false,
+	};
+	// The product constructs the controller with no palette: the renderer pushes
+	// the resolved one on mount, long before any approval creates the child.
+	const controller = new mod.ApprovalsOverlayController({
+		window,
+		documentUrl: "https://example.test/browser-approvals-overlay.html",
+		palette: null,
+	});
+	controller.setContext({ theme: "dark", palette: "obsidian" });
+	controller.setModel({ entries: entries(1) });
+	controller.onLayout({
+		presented: true,
+		contentRect: rect(0, 0, 1000, 700),
+		revision: 1,
+	});
+	await waitFor(
+		() => children.length > 0 && children.at(-1).loadedUrls.length > 0,
+		"the card document load",
+	);
+	const loaded = new URL(children.at(-1).loadedUrls[0]);
+	assert.equal(
+		loaded.searchParams.get("palette"),
+		"obsidian",
+		"the first paint must carry the app's palette, not only its mode",
+	);
+	assert.equal(loaded.searchParams.get("theme"), "dark");
+	controller.dispose("test");
+});
+
+test("controller: successive hidden palette changes load the newest palette", async () => {
+	const children = [];
+	const contentView = {
+		get children() {
+			return children;
+		},
+		addChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+			children.push(view);
+		},
+		removeChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+		},
+	};
+	const controller = new mod.ApprovalsOverlayController({
+		window: { contentView, isDestroyed: () => false },
+		documentUrl: "https://example.test/browser-approvals-overlay.html",
+		palette: null,
+	});
+	const first = children.at(-1);
+	controller.setContext({ theme: "dark", palette: "obsidian" });
+	const second = children.at(-1);
+	controller.setContext({ theme: "light", palette: "kanagawaLotus" });
+	const third = children.at(-1);
+	assert.notEqual(second, first, "the first hidden palette change rebuilds");
+	assert.notEqual(third, second, "the second change must rebuild again");
+	assert.equal(third.loadedUrls.length, 1);
+	const loaded = new URL(third.loadedUrls[0]);
+	assert.equal(loaded.searchParams.get("palette"), "kanagawaLotus");
+	assert.equal(loaded.searchParams.get("theme"), "light");
+	assert.equal(children.length, 1, "only the newest child remains attached");
+	await waitFor(() => controller.facts().ready, "the newest document load");
+	controller.dispose("test");
+});
+
+test("controller: a superseded load rejection does not latch off the replacement", async () => {
+	const children = [];
+	const contentView = {
+		get children() {
+			return children;
+		},
+		addChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+			children.push(view);
+		},
+		removeChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+		},
+	};
+	mod.electron.focusState.deferNextLoad = true;
+	const controller = new mod.ApprovalsOverlayController({
+		window: { contentView, isDestroyed: () => false },
+		documentUrl: "https://example.test/browser-approvals-overlay.html",
+		palette: null,
+	});
+	const stale = children.at(-1);
+	controller.setContext({ theme: "dark", palette: "obsidian" });
+	const replacement = children.at(-1);
+	assert.notEqual(replacement, stale);
+	await waitFor(
+		() => controller.facts().ready,
+		"the replacement document load",
+	);
+	assert.equal(typeof stale.loadDeferred.reject, "function");
+	stale.loadDeferred.reject(new Error("ERR_ABORTED"));
+	await sleep(0);
+	assert.equal(
+		controller.facts().failedReason,
+		null,
+		"the stale rejection must not dispose the current child",
+	);
+	assert.equal(controller.state().available, true);
+	assert.equal(
+		controller.facts().childWebContentsId,
+		replacement.webContents.id,
+	);
+	assert.equal(replacement.destroyed, false);
+	assert.equal(controller.facts().ready, true);
+	controller.dispose("test");
 });
 
 test("geometry: resize rebuild keeps the card at the new width", async () => {
@@ -1131,5 +1305,177 @@ test("controller: setContext re-pushes the locale and mirrors the view (U5)", as
 		"the RTL layout pass",
 	);
 	assert.ok(controller.facts().seq > before, "the model was re-pushed");
+	controller.dispose("test");
+});
+
+/** A controller over the stub window, auto-presented, with a recorded `onChanged`. */
+async function presentedController(extra = {}) {
+	const children = [];
+	const contentView = {
+		get children() {
+			return children;
+		},
+		addChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+			children.push(view);
+		},
+		removeChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+		},
+	};
+	let changed = 0;
+	const controller = new mod.ApprovalsOverlayController({
+		window: { contentView, isDestroyed: () => false },
+		documentUrl: "file:///tmp/browser-approvals-overlay.html",
+		onChanged: () => {
+			changed += 1;
+		},
+		...extra,
+	});
+	controller.onLayout({
+		presented: true,
+		contentRect: rect(0, 0, 900, 600),
+		revision: 1,
+	});
+	controller.setModel({ entries: entries(1) });
+	await waitFor(
+		() => controller.facts().ready && controller.facts().visible,
+		"the auto-presented card",
+	);
+	return { controller, children, changes: () => changed };
+}
+
+test("M1: a did-fail-load after construction latches the card off and pushes the projection", async () => {
+	const { controller, children, changes } = await presentedController();
+	assert.equal(controller.state().available, true);
+	const view = children.at(-1);
+	const before = changes();
+	for (const cb of view.handlers.get("did-fail-load") ?? []) {
+		cb({}, -6, "ERR_FILE_NOT_FOUND");
+	}
+	// `available: false` is what the renderer reads to mount the dock and band
+	// again; the push is what makes it read it now rather than on the next
+	// unrelated projection tick.
+	assert.equal(controller.state().available, false);
+	assert.equal(controller.state().visible, false);
+	assert.ok(changes() > before, "the host is told the card is gone");
+	assert.ok(controller.facts().failedReason.startsWith("load_failed:-6:"));
+	assert.equal(children.includes(view), false, "the dead child is detached");
+	assert.equal(mod.listenerCount(mod.APPROVALS_CARD_DECIDE_CHANNEL), 0);
+});
+
+test("M1: a render-process-gone child fails the card the same way", async () => {
+	const { controller, children, changes } = await presentedController();
+	const view = children.at(-1);
+	const before = changes();
+	for (const cb of view.handlers.get("render-process-gone") ?? []) {
+		cb({}, { reason: "crashed" });
+	}
+	assert.equal(controller.state().available, false);
+	assert.ok(changes() > before);
+	assert.equal(controller.facts().failedReason, "render_process_gone:crashed");
+});
+
+test("D1: a stale-action error line is measured again, not only pushed", async () => {
+	const { controller, children } = await presentedController();
+	const view = children.at(-1);
+	const reads = [];
+	const original = view.webContents.executeJavaScript;
+	view.webContents.executeJavaScript = (script) => {
+		reads.push(script);
+		return original(script);
+	};
+	// A decision for an entry that is not live drops with the stale line.
+	mod.emitIpc(
+		mod.APPROVALS_CARD_DISMISS_CHANNEL,
+		{ sender: view.webContents, senderFrame: view.mainFrame },
+		{
+			seq: controller.facts().seq,
+			entryId: "not-a-live-entry",
+		},
+	);
+	const measured = reads.filter(
+		(script) =>
+			script.includes("getBoundingClientRect") &&
+			script.includes("setModel") &&
+			script.includes('"error":"stale"'),
+	);
+	assert.equal(
+		measured.length,
+		1,
+		"the stale model is applied and the painted height read in the SAME script",
+	);
+	assert.ok(
+		measured[0].includes("setTimeout(read, 0)"),
+		"the read is a timer task after the apply, so the error line has painted",
+	);
+	controller.dispose("test");
+	assert.ok(
+		measured[0].includes("window.__approvalsCard.measure()"),
+		"the same after-paint read pulls intrinsic document measurement without another IPC channel",
+	);
+});
+
+test("D1: the unavailable error line is measured again as well", async () => {
+	const { controller, children } = await presentedController({
+		respond: () => {
+			throw new Error("browser_unavailable");
+		},
+	});
+	const view = children.at(-1);
+	const reads = [];
+	const original = view.webContents.executeJavaScript;
+	view.webContents.executeJavaScript = (script) => {
+		reads.push(script);
+		return original(script);
+	};
+	const seq = controller.facts().seq;
+	mod.emitIpc(
+		mod.APPROVALS_CARD_DECIDE_CHANNEL,
+		{ sender: view.webContents, senderFrame: view.mainFrame },
+		{ seq, entryId: controller.facts().requestEntryId, decision: "once" },
+	);
+	assert.equal(
+		reads.filter(
+			(script) =>
+				script.includes("getBoundingClientRect") &&
+				script.includes('"error":"unavailable"'),
+		).length,
+		1,
+	);
+	controller.dispose("test");
+});
+
+test("D1: a height growth that the child's viewport did not follow rebuilds the child at the new bounds", async () => {
+	const { controller, children } = await presentedController();
+	const first = children.at(-1);
+	// The document reports the OLD viewport after the view grew: what Electron
+	// 44.3.0 did in the hidden-window probe (innerHeight 414 against 436).
+	first.webContents.executeJavaScript = (script) =>
+		script.includes("approvals-card")
+			? Promise.resolve(260)
+			: script === "window.innerHeight"
+				? Promise.resolve(200)
+				: Promise.resolve(0);
+	controller.onLayout({
+		presented: true,
+		contentRect: rect(0, 0, 900, 600),
+		revision: 2,
+	});
+	controller.setModel({ entries: entries(2) });
+	await waitFor(
+		() => children.at(-1) !== first && controller.facts().visible,
+		"the rebuilt child",
+		4000,
+		() => controller.facts(),
+	);
+	assert.equal(first.destroyed, true, "the stale-viewport child is closed");
+	assert.equal(
+		controller.state().available,
+		true,
+		"a rebuild is not a failure",
+	);
 	controller.dispose("test");
 });

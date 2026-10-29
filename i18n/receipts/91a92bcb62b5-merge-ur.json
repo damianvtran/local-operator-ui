@@ -1,0 +1,279 @@
+{
+  "locale": "ur",
+  "scope": "ui.hub.pages + ui.common.actions: verification of the #1439 merge resolution",
+  "checkout_head": "2ba58dd71d",
+  "audit_date": "2026-10-29",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "91a92bcb62b5",
+    "model": "kimi/k3.1-pro"
+  },
+  "input_sha256": {
+    "src/i18n/catalogues/en/ui.hub.pages.json": "f1b0a81c417ad3037e96efb0a6c85ae4588f9d01e9c01a3dbbb357f90dd03d3e",
+    "src/i18n/catalogues/ur/ui.hub.pages.json": "59c2c9382424df511177c8ad3da80f5be1fff496248c85fd3f6c15e7e25939bc",
+    "src/i18n/catalogues/en/ui.common.actions.json": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
+    "src/i18n/catalogues/ur/ui.common.actions.json": "3ec87bb6883a33e5a990ed71d0c2783583947f768503bb57e8509ee73a8b21e9"
+  },
+  "observed_diffs": {
+    "src/i18n/catalogues/en/ui.hub.pages.json": {
+      "input_sha256": "f1b0a81c417ad3037e96efb0a6c85ae4588f9d01e9c01a3dbbb357f90dd03d3e",
+      "reference_sha256": {
+        "merged": "f1b0a81c417ad3037e96efb0a6c85ae4588f9d01e9c01a3dbbb357f90dd03d3e",
+        "origin/main": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6",
+        "2ba58dd71d": "9ae73c3aabece832df701ffe1b8c24b01d731a94adeb795103a0215b84fb57bd"
+      },
+      "key_counts": {
+        "merged": 40,
+        "main": 37,
+        "branch": 38,
+        "main_overlap_branch": 35
+      },
+      "against_origin_main": {
+        "added": [
+          "ui.hub.pages.pager.nav_aria",
+          "ui.hub.pages.pager.next",
+          "ui.hub.pages.pager.previous"
+        ],
+        "removed": [],
+        "changed": [],
+        "unchanged": 37
+      },
+      "against_pre_merge_2ba58dd71d": {
+        "added": [
+          "ui.hub.pages.card.get",
+          "ui.hub.pages.card.updated"
+        ],
+        "removed": [],
+        "changed": [],
+        "unchanged": 38
+      },
+      "expected_merge_exact": true,
+      "unexpected_keys": [],
+      "main_overlap_value_differences": {},
+      "byte_reconstruction": {
+        "origin/main": {
+          "merged_minus_added_keys_byte_identical": true,
+          "removed_line_count": 3,
+          "added_key_count": 3
+        },
+        "2ba58dd71d": {
+          "merged_minus_added_keys_byte_identical": true,
+          "removed_line_count": 2,
+          "added_key_count": 2
+        }
+      },
+      "unified_diff_against_origin_main": "--- origin/main:src/i18n/catalogues/en/ui.hub.pages.json\n+++ merged:src/i18n/catalogues/en/ui.hub.pages.json\n@@ -8,2 +8,5 @@\n \t\"ui.hub.pages.orgs_unavailable\": \"Organizations are unavailable\",\n+\t\"ui.hub.pages.pager.nav_aria\": \"Agent pages\",\n+\t\"ui.hub.pages.pager.next\": \"Next\",\n+\t\"ui.hub.pages.pager.previous\": \"Previous\",\n \t\"ui.hub.pages.publish\": \"Publish an agent\",\n",
+      "unified_diff_against_pre_merge_2ba58dd71d": "--- 2ba58dd71d:src/i18n/catalogues/en/ui.hub.pages.json\n+++ merged:src/i18n/catalogues/en/ui.hub.pages.json\n@@ -2,2 +2,4 @@\n \t\"ui.hub.pages.browse_aria\": \"Browse the hub by type\",\n+\t\"ui.hub.pages.card.get\": \"Get\",\n+\t\"ui.hub.pages.card.updated\": \"updated {when}\",\n \t\"ui.hub.pages.header.subtitle\": \"Discover and download agents, teams and skills on Radient\",\n"
+    },
+    "src/i18n/catalogues/ur/ui.hub.pages.json": {
+      "input_sha256": "59c2c9382424df511177c8ad3da80f5be1fff496248c85fd3f6c15e7e25939bc",
+      "reference_sha256": {
+        "merged": "59c2c9382424df511177c8ad3da80f5be1fff496248c85fd3f6c15e7e25939bc",
+        "origin/main": "e5fd416a3ff17811e57101c1c7b6f916914e7b0f0f01046809fa0287c53eb057",
+        "2ba58dd71d": "8e6bfbaae61d4539aa004bcd98c2876760ad0d439e6c5a29e6e09dec3e25d930"
+      },
+      "key_counts": {
+        "merged": 40,
+        "main": 37,
+        "branch": 38,
+        "main_overlap_branch": 35
+      },
+      "against_origin_main": {
+        "added": [
+          "ui.hub.pages.pager.nav_aria",
+          "ui.hub.pages.pager.next",
+          "ui.hub.pages.pager.previous"
+        ],
+        "removed": [],
+        "changed": [],
+        "unchanged": 37
+      },
+      "against_pre_merge_2ba58dd71d": {
+        "added": [
+          "ui.hub.pages.card.get",
+          "ui.hub.pages.card.updated"
+        ],
+        "removed": [],
+        "changed": [],
+        "unchanged": 38
+      },
+      "expected_merge_exact": true,
+      "unexpected_keys": [],
+      "main_overlap_value_differences": {},
+      "byte_reconstruction": {
+        "origin/main": {
+          "merged_minus_added_keys_byte_identical": true,
+          "removed_line_count": 3,
+          "added_key_count": 3
+        },
+        "2ba58dd71d": {
+          "merged_minus_added_keys_byte_identical": true,
+          "removed_line_count": 2,
+          "added_key_count": 2
+        }
+      },
+      "unified_diff_against_origin_main": "--- origin/main:src/i18n/catalogues/ur/ui.hub.pages.json\n+++ merged:src/i18n/catalogues/ur/ui.hub.pages.json\n@@ -8,2 +8,5 @@\n \t\"ui.hub.pages.orgs_unavailable\": \"تنظیمیں دستیاب نہیں\",\n+\t\"ui.hub.pages.pager.nav_aria\": \"ایجنٹوں کے صفحات\",\n+\t\"ui.hub.pages.pager.next\": \"اگلا\",\n+\t\"ui.hub.pages.pager.previous\": \"پچھلا\",\n \t\"ui.hub.pages.publish\": \"ایجنٹ شائع کریں\",\n",
+      "unified_diff_against_pre_merge_2ba58dd71d": "--- 2ba58dd71d:src/i18n/catalogues/ur/ui.hub.pages.json\n+++ merged:src/i18n/catalogues/ur/ui.hub.pages.json\n@@ -2,2 +2,4 @@\n \t\"ui.hub.pages.browse_aria\": \"ہب کو قسم کے لحاظ سے دیکھیں\",\n+\t\"ui.hub.pages.card.get\": \"حاصل کریں\",\n+\t\"ui.hub.pages.card.updated\": \"{when} اپ ڈیٹ کیا گیا\",\n \t\"ui.hub.pages.header.subtitle\": \"Radient پر ایجنٹس، ٹیمیں اور مہارتیں دریافت کریں اور ڈاؤن لوڈ کریں\",\n"
+    },
+    "src/i18n/catalogues/en/ui.common.actions.json": {
+      "input_sha256": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
+      "reference_sha256": {
+        "merged": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
+        "origin/main": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9",
+        "2ba58dd71d": "8dc67dc7c285d2747f4586a5d01a39c23423b10e506f6cfa44c258caed37a412"
+      },
+      "key_counts": {
+        "merged": 53,
+        "main": 51,
+        "branch": 52,
+        "main_overlap_branch": 50
+      },
+      "against_origin_main": {
+        "added": [
+          "ui.common.actions.dismiss",
+          "ui.common.actions.more_info"
+        ],
+        "removed": [],
+        "changed": [],
+        "unchanged": 51
+      },
+      "against_pre_merge_2ba58dd71d": {
+        "added": [
+          "ui.common.actions.retrying"
+        ],
+        "removed": [],
+        "changed": [],
+        "unchanged": 52
+      },
+      "expected_merge_exact": true,
+      "unexpected_keys": [],
+      "main_overlap_value_differences": {},
+      "byte_reconstruction": {
+        "origin/main": {
+          "merged_minus_added_keys_byte_identical": true,
+          "removed_line_count": 2,
+          "added_key_count": 2
+        },
+        "2ba58dd71d": {
+          "merged_minus_added_keys_byte_identical": true,
+          "removed_line_count": 1,
+          "added_key_count": 1
+        }
+      },
+      "unified_diff_against_origin_main": "--- origin/main:src/i18n/catalogues/en/ui.common.actions.json\n+++ merged:src/i18n/catalogues/en/ui.common.actions.json\n@@ -5,2 +5,4 @@\n \t\"ui.common.actions.copy_failed\": \"Could not copy. Select and copy it manually.\",\n+\t\"ui.common.actions.dismiss\": \"Dismiss\",\n+\t\"ui.common.actions.more_info\": \"More info\",\n \t\"ui.common.actions.retry\": \"Retry\",\n",
+      "unified_diff_against_pre_merge_2ba58dd71d": "--- 2ba58dd71d:src/i18n/catalogues/en/ui.common.actions.json\n+++ merged:src/i18n/catalogues/en/ui.common.actions.json\n@@ -9,2 +9,3 @@\n \t\"ui.common.actions.retry_again\": \"Try again\",\n+\t\"ui.common.actions.retrying\": \"Trying…\",\n \t\"ui.common.actions.date_time_picker.select_date\": \"Select date\",\n"
+    },
+    "src/i18n/catalogues/ur/ui.common.actions.json": {
+      "input_sha256": "3ec87bb6883a33e5a990ed71d0c2783583947f768503bb57e8509ee73a8b21e9",
+      "reference_sha256": {
+        "merged": "3ec87bb6883a33e5a990ed71d0c2783583947f768503bb57e8509ee73a8b21e9",
+        "origin/main": "2750cf43d61f77f8e5ed4313a53fe816bee86bfbaf937aa640a630991809377b",
+        "2ba58dd71d": "4999408a82f004e3d33270dfe6a863415b2199bc59ed2912d31d4f278d370967"
+      },
+      "key_counts": {
+        "merged": 53,
+        "main": 51,
+        "branch": 52,
+        "main_overlap_branch": 50
+      },
+      "against_origin_main": {
+        "added": [
+          "ui.common.actions.dismiss",
+          "ui.common.actions.more_info"
+        ],
+        "removed": [],
+        "changed": [],
+        "unchanged": 51
+      },
+      "against_pre_merge_2ba58dd71d": {
+        "added": [
+          "ui.common.actions.retrying"
+        ],
+        "removed": [],
+        "changed": [],
+        "unchanged": 52
+      },
+      "expected_merge_exact": true,
+      "unexpected_keys": [],
+      "main_overlap_value_differences": {},
+      "byte_reconstruction": {
+        "origin/main": {
+          "merged_minus_added_keys_byte_identical": true,
+          "removed_line_count": 2,
+          "added_key_count": 2
+        },
+        "2ba58dd71d": {
+          "merged_minus_added_keys_byte_identical": true,
+          "removed_line_count": 1,
+          "added_key_count": 1
+        }
+      },
+      "unified_diff_against_origin_main": "--- origin/main:src/i18n/catalogues/ur/ui.common.actions.json\n+++ merged:src/i18n/catalogues/ur/ui.common.actions.json\n@@ -5,2 +5,4 @@\n \t\"ui.common.actions.copy_failed\": \"نقل نہیں ہو سکا۔ اسے منتخب کر کے خود نقل کریں۔\",\n+\t\"ui.common.actions.dismiss\": \"ہٹا دیں\",\n+\t\"ui.common.actions.more_info\": \"مزید معلومات\",\n \t\"ui.common.actions.retry\": \"دوبارہ کوشش کریں\",\n",
+      "unified_diff_against_pre_merge_2ba58dd71d": "--- 2ba58dd71d:src/i18n/catalogues/ur/ui.common.actions.json\n+++ merged:src/i18n/catalogues/ur/ui.common.actions.json\n@@ -9,2 +9,3 @@\n \t\"ui.common.actions.retry_again\": \"دوبارہ کوشش کریں\",\n+\t\"ui.common.actions.retrying\": \"کوشش جاری ہے…\",\n \t\"ui.common.actions.date_time_picker.select_date\": \"تاریخ منتخب کریں\",\n"
+    }
+  },
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 0
+  },
+  "verdict": "pass",
+  "instance": "91a92bcb62b5-merge-ur",
+  "namespaces": {
+    "ui.hub.pages": {
+      "status": "passed",
+      "keys_audited": 40,
+      "sha256": {
+        "en": "f1b0a81c417ad3037e96efb0a6c85ae4588f9d01e9c01a3dbbb357f90dd03d3e",
+        "target": "59c2c9382424df511177c8ad3da80f5be1fff496248c85fd3f6c15e7e25939bc"
+      },
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "keys_audited": 53,
+      "sha256": {
+        "en": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
+        "target": "3ec87bb6883a33e5a990ed71d0c2783583947f768503bb57e8509ee73a8b21e9"
+      },
+      "findings": []
+    }
+  },
+  "mechanical_validation": {
+    "json_parse": "4/4 merged files valid",
+    "merged_key_value_maps": "exactly {**pre_merge_branch, **origin_main} for all four files (main wins overlap)",
+    "byte_reconstruction": "8/8 reference files reproduced exactly by removing only the reported addition lines from merged bytes",
+    "icu_parser": "@formatjs/icu-messageformat-parser: 93/93 Urdu messages parsed; argument names/types/styles match en",
+    "icu_formatter": "intl-messageformat: 93/93 Urdu messages formatted successfully",
+    "plurals": "2/2 messages have exactly Urdu CLDR categories one/other",
+    "rendered_samples": {
+      "ui.hub.pages.status.count.teams": "عوامی ہب میں 2 ٹیمیں",
+      "ui.common.actions.find_replace_widget.of": "9 میں سے 2"
+    },
+    "bidi_controls": "0 manual bidi controls across 93 Urdu values",
+    "typography": "Urdu terminal punctuation preserved; ellipses U+2026; no Hindi danda; code tokens Enter and Cmd/Ctrl+Enter unchanged"
+  },
+  "voice_review": {
+    "result": "Coherent respectful Urdu product voice; no unintended English fallback. The sole English-identical value is the proper product name Agent Hub in ui.hub.pages.header.title.",
+    "direct_file_samples": [
+      "ui.hub.pages.card.get = حاصل کریں",
+      "ui.hub.pages.card.updated = {when} اپ ڈیٹ کیا گیا",
+      "ui.hub.pages.header.subtitle = Radient پر ایجنٹس، ٹیمیں اور مہارتیں دریافت کریں اور ڈاؤن لوڈ کریں",
+      "ui.hub.pages.status.count.teams = {scope} {count, plural, one {# ٹیم} other {# ٹیمیں}}",
+      "ui.hub.pages.viewer_unknown = آپ کے لائکس اور پسندیدہ پڑھے نہیں جا سکے، اس لیے کسی کارڈ پر یہ نہیں دکھایا گیا کہ آپ نے اسے لائک کیا ہے یا پسندیدہ بنایا ہے۔",
+      "ui.common.actions.dismiss = ہٹا دیں",
+      "ui.common.actions.retrying = کوشش جاری ہے…",
+      "ui.common.actions.find_replace_widget.of = {matchcount, number, ::group-off} میں سے {currentmatch, number, ::group-off}",
+      "ui.common.actions.credential_updated = اسناد “{key}” اپ ڈیٹ ہو گئیں",
+      "ui.common.actions.copy_failed = نقل نہیں ہو سکا۔ اسے منتخب کر کے خود نقل کریں۔"
+    ]
+  },
+  "public_copy_reader": {
+    "attempted": true,
+    "result": "refused",
+    "reason": "Both merged Urdu files differ from HEAD; the audited route requires committed public copy. Ten requested sample reads were refused; no repo edit or commit was made. Voice review therefore used direct reads of the exact hashed working-tree files. This limitation does not affect the byte-exact merge proof.",
+    "refusals": 10
+  },
+  "repository_changes_by_auditor": "none"
+}

@@ -21,5 +21,11 @@
 	"ui.agents.upload.target.upgrade": "(cần nâng cấp)",
 	"ui.agents.upload.terms.lead": "Tôi xác nhận đã đọc và đồng ý với",
 	"ui.agents.upload.terms.link": "điều khoản và điều kiện",
-	"ui.agents.upload.terms.tail": "đồng thời xác nhận rằng tác nhân này không chứa nội dung độc hại hay vi phạm chính sách sử dụng."
+	"ui.agents.upload.terms.tail": "đồng thời xác nhận rằng tác nhân này không chứa nội dung độc hại hay vi phạm chính sách sử dụng.",
+	"ui.agents.upload.title.publish_org": "Xuất bản “{name}” đến {destination}?",
+	"ui.agents.upload.title.publish_public": "Xuất bản “{name}” lên Trung tâm tác nhân?",
+	"ui.agents.upload.title.published_org": "Đã xuất bản “{name}” đến {destination}",
+	"ui.agents.upload.title.published_public": "Đã xuất bản “{name}” lên Trung tâm tác nhân",
+	"ui.agents.upload.title.republished": "Đã cập nhật mục đăng của “{name}” trên Trung tâm tác nhân",
+	"ui.agents.upload.title.update_listing": "Cập nhật mục đăng của “{name}” trên Trung tâm tác nhân?"
 }

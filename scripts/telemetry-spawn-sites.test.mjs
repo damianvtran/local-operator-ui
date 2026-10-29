@@ -251,6 +251,14 @@ function exempt(file, name, index, why, site, noEnv) {
 
 const APP_SPAWN_SITES = [
 	guarded(
+		"scripts/browser-approvals-first-paint-probe.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless to capture the approvals card's first paint; its environment carries the telemetry kill switch like every other app rig, so a probe run cannot report product telemetry",
+		/withTelemetryOff\(env\)/,
+	),
+	guarded(
 		"scripts/browser-tab-menu-native-proof.mjs",
 		"spawn",
 		1,
@@ -288,6 +296,14 @@ const APP_SPAWN_SITES = [
 		1,
 		/(?:\{|,)\s*env\s*,/,
 		"boots a standalone Electron fixture for the S6b interactive approvals card, so the kill switch must ride the launch env like every app rig",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
+		"scripts/browser-approvals-s6d-capture.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless to capture the S6d approvals route; the build carries the live PostHog key, so this launch needs the telemetry switch",
 		/withTelemetryOff\(env\);/,
 	),
 	guarded(

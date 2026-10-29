@@ -55,6 +55,7 @@ import {
 import {
 	type ApprovalsCardModelInput,
 	approvalsCardModelFrom,
+	paletteName,
 } from "./approvals-overlay-model";
 
 export interface ApprovalsOverlayLayout {
@@ -139,18 +140,23 @@ function sanitizeRequesterLabels(
 	return labels;
 }
 
-/** The exact opt-in for S6a. Absent or not exactly `1` is off. */
-export const APPROVALS_OVERLAY_S6A_ENV =
-	"LOCAL_OPERATOR_UI_BROWSER_APPROVALS_OVERLAY_S6A";
+/**
+ * S6c's one product switch. The card is ON by default; exactly `1` is the
+ * kill switch that restores the DOM dock and band for that launch. Any other
+ * value (including absent) leaves the card on. The switch is read once in the
+ * host, so a launch either builds the child or never creates it.
+ */
+export const APPROVALS_OVERLAY_DISABLE_ENV =
+	"LOCAL_OPERATOR_UI_BROWSER_APPROVALS_OVERLAY_DISABLE";
 
 const TRANSPARENT = "#00000000";
 const OPAQUE = "#1b1f24";
 
-/** The only opt-in, in one place so the host and its test spell it the same. */
+/** The only switch, in one place so the host and its test spell it the same. */
 export function approvalsOverlayEnabled(
 	env: Record<string, string | undefined>,
 ): boolean {
-	return env[APPROVALS_OVERLAY_S6A_ENV] === "1";
+	return env[APPROVALS_OVERLAY_DISABLE_ENV] !== "1";
 }
 
 /**
@@ -184,12 +190,23 @@ export function approvalsDocumentUrl(
 	count: number,
 	theme: "light" | "dark",
 	opaque: boolean,
+	palette?: string | null,
 ): string {
 	try {
 		const url = new URL(documentUrl);
 		if (count > 0) url.searchParams.set("count", String(count));
 		url.searchParams.set("theme", theme);
 		if (opaque) url.searchParams.set("opaque", "1");
+		/*
+		 * THE EXACT PALETTE IS A FIRST-PAINT VALUE. The document loads before the
+		 * model that carries the palette has ever been pushed, so without this
+		 * parameter it paints the document's own default (localOperatorDark) and
+		 * corrects only when `setModel` lands — the flash the operator reported.
+		 * `theme` stays the mode fallback; the model remains authoritative once
+		 * it arrives, which is why this is a hint and never the source of truth.
+		 */
+		const exact = paletteName(palette);
+		if (exact) url.searchParams.set("palette", exact);
 		return url.toString();
 	} catch {
 		return documentUrl;
@@ -222,6 +239,15 @@ export class ApprovalsOverlayController {
 	) => void;
 
 	private view: WebContentsView | null;
+	/**
+	 * The mode/palette the CURRENT document was loaded with. The child is created
+	 * at construction, before the renderer has pushed the app's palette, so this
+	 * is what `setContext` checks before re-loading the still-hidden document.
+	 */
+	private documentTheme: {
+		theme: "light" | "dark";
+		palette: string | null;
+	} | null;
 	private childListeners: Array<() => void>;
 	private model: ApprovalsCardModel | null;
 	/**
@@ -246,6 +272,16 @@ export class ApprovalsOverlayController {
 	private visible: boolean;
 	private failedReason: string | null;
 	private disposed: boolean;
+	/**
+	 * True only while the constructor runs. A child that fails synchronously
+	 * (`session.fromPartition`, `new WebContentsView` throwing) reaches `fail()`
+	 * before the host has finished building: its `onChanged` closes over
+	 * `notifyChanged`, which is declared AFTER the controller in the host, so
+	 * calling it here is a temporal-dead-zone throw that stopped the whole browser
+	 * host (R1). Nothing was told `available: true` yet, so there is nothing to push:
+	 * the host's first projection reads `state()` and sees `available: false`.
+	 */
+	private constructing: boolean;
 	private naturalHeight: number;
 	private layout: ApprovalsOverlayLayout;
 	private bounds: ApprovalsCardBounds | null;
@@ -261,6 +297,7 @@ export class ApprovalsOverlayController {
 		this.onChanged = deps.onChanged ?? null;
 		this.log = deps.log ?? (() => {});
 		this.view = null;
+		this.documentTheme = null;
 		this.childListeners = [];
 		this.model = null;
 		this.entries = [];
@@ -280,6 +317,7 @@ export class ApprovalsOverlayController {
 		this.visible = false;
 		this.failedReason = null;
 		this.disposed = false;
+		this.constructing = false;
 		this.naturalHeight = APPROVALS_CARD_MIN_HEIGHT;
 		this.layout = {
 			presented: false,
@@ -328,7 +366,12 @@ export class ApprovalsOverlayController {
 		 * construction (before any page exists) keeps the auto-present path from
 		 * moving focus when the card is later shown.
 		 */
-		this.ensureChild();
+		this.constructing = true;
+		try {
+			this.ensureChild();
+		} finally {
+			this.constructing = false;
+		}
 	}
 
 	/**
@@ -541,10 +584,46 @@ export class ApprovalsOverlayController {
 			});
 		}
 		this.pushModel(false);
+		this.reloadDocumentForTheme();
 		// A locale change changes the copy length, and a direction change moves the
 		// native view; both need the layout pass and a fresh measurement.
 		if (this.layout.presented) this.maybeShow();
 		if (this.ready) this.measureAndShow();
+	}
+
+	/**
+	 * Re-load the hidden document after the app's palette changed.
+	 *
+	 * THE CHILD IS ATTACHED AT CONSTRUCTION, before the renderer has pushed any
+	 * palette, so the document the card will first show was loaded with the mode
+	 * default only. `setModel` is what paints the exact palette, and the first
+	 * model arrives with the first approval — the very moment the card appears.
+	 * That gap is the flash the operator reported: a visible card in
+	 * `localOperatorDark` that corrects when the model lands.
+	 *
+	 * So a palette that arrives while the card is still hidden re-loads the
+	 * document with the new URL, and the paint that becomes visible is already
+	 * themed. A VISIBLE card is never rebuilt here: `setModel`/`setContext` push
+	 * the new palette into it, and a reload would flash an empty document.
+	 */
+	private reloadDocumentForTheme(): void {
+		if (this.view === null || this.visible || this.disposed) return;
+		if (this.failedReason !== null) return;
+		// A model push repaints the hidden document with the new palette already.
+		if (this.model !== null) return;
+		const used = this.documentTheme;
+		if (used && used.theme === this.theme && used.palette === this.palette) {
+			return;
+		}
+		this.releaseView("palette");
+		this.ready = false;
+		this.createChild();
+		/*
+		 * A RELOAD NEVER CHANGES WHAT IS ON SCREEN. `createChild` shows a child at
+		 * known bounds, but this path only runs while the card is hidden; the
+		 * presentation decision stays with `maybeShow`, exactly as at construction.
+		 */
+		this.hide();
 	}
 
 	/** Close without deciding (Close, Escape, or the shield's second click). */
@@ -631,6 +710,10 @@ export class ApprovalsOverlayController {
 		this.disposed = true;
 		this.visible = false;
 		this.ready = false;
+		// A dead card is not an open one: `state().open` must read false after a
+		// crash, as `fail()` promises the renderer (Q2).
+		this.explicitOpen = false;
+		this.pendingFocus = false;
 		ipcMain.removeListener(
 			APPROVALS_CARD_DISMISS_CHANNEL,
 			this.onDismissAction,
@@ -719,8 +802,27 @@ export class ApprovalsOverlayController {
 				error: this.actionError,
 				dismissed: this.dismissed,
 			});
-			this.pushModel(false);
+			this.remeasureAfterModelChange();
 		}
+	}
+
+	/**
+	 * A model change that ADDS A LINE must be measured again, not only pushed (D1).
+	 *
+	 * The stale/unavailable error is an inline line in the sticky footer. Pushing
+	 * it alone grew the card's content by ~14.6 DIP inside a native view that kept
+	 * its old height, so the card's own `max-height` clamp turned the extra line
+	 * into a scrolling body and the sticky footer sat over "Don't allow" (measured
+	 * 14.6 DIP hidden on the S6c head, with no re-measure). `measureAndShow`
+	 * applies the model AND reads the painted height in ONE script (the read is a
+	 * `setTimeout(0)` after the apply, so the error has painted), then
+	 * `maybeShow` resizes the child through `applyBounds`: a height change is a
+	 * plain `setBounds`, never a rebuild. Before the document is ready there is
+	 * nothing to measure; the load's own `measureAndShow` carries the model.
+	 */
+	private remeasureAfterModelChange(): void {
+		this.pushModel(false);
+		if (this.ready) this.measureAndShow();
 	}
 
 	/** Close the card's current entry without deciding it. */
@@ -790,7 +892,8 @@ export class ApprovalsOverlayController {
 	private showActionError(): void {
 		if (!this.model) return;
 		this.model = { ...this.model, error: "unavailable", busy: false };
-		this.pushModel(false);
+		// The same extra line as `dropAction`'s stale error (D1): re-measure.
+		this.remeasureAfterModelChange();
 	}
 
 	/** Focus the card, only through the host's gated helper. */
@@ -869,7 +972,9 @@ export class ApprovalsOverlayController {
 				this.rebuildAt(bounds);
 				return;
 			}
+			const grew = bounds.view.height > current.height;
 			view.setBounds(bounds.view);
+			if (grew) this.verifyViewportFollowed(view, bounds);
 			/*
 			 * Raise only when a page view has been appended since the last pass.
 			 * Re-adding an already-topmost child is not free: it can move focus, and
@@ -884,6 +989,55 @@ export class ApprovalsOverlayController {
 		} catch (error) {
 			this.fail(`bounds_apply_failed:${String(error)}`);
 		}
+	}
+
+	/**
+	 * A height GROWTH must reach the document's VIEWPORT, not only the native view
+	 * (D1).
+	 *
+	 * The card is bottom-pinned with `max-height: calc(100% - 16px)`, so if the
+	 * child's `innerHeight` stays at the old value the card is clamped to it and
+	 * the extra line (the stale/unavailable error) still scrolls the body under
+	 * the sticky footer. Electron 44.3.0 is documented to propagate a height
+	 * `setBounds` to the viewport, but the S6d probe measured a hidden-window
+	 * child whose `innerHeight` stayed at 414 against a 436 DIP view across eight
+	 * reads over 2 s, and again for +10/+30/+60/+200 DIP nudges. The viewport is
+	 * therefore READ BACK after a short settle and, if it is SHORTER than the view
+	 * (the only case where the card gets clamped), the child is rebuilt at the new
+	 * bounds: the same fresh-child boundary a width change already uses, with the
+	 * document loaded at its final size.
+	 *
+	 * Growth only, on purpose: a viewport taller than the view does not clamp the
+	 * card, and rebuilding on every fractional height wobble made ordinary flows
+	 * (an explicit open, a dismissal) tear the document down under a click. A
+	 * rebuild lands the viewport on the new height, so the next pass sees it
+	 * followed and this cannot loop. A non-numeric read (a stubbed or torn-down
+	 * document) is ignored, never treated as a mismatch.
+	 */
+	private verifyViewportFollowed(
+		view: WebContentsView,
+		bounds: ApprovalsCardBounds,
+	): void {
+		setTimeout(() => {
+			if (this.view !== view || view.webContents.isDestroyed()) return;
+			void view.webContents
+				.executeJavaScript("window.innerHeight")
+				.then((innerHeight: unknown) => {
+					if (this.view !== view || this.disposed) return;
+					if (
+						typeof innerHeight !== "number" ||
+						!Number.isFinite(innerHeight) ||
+						innerHeight <= 0 ||
+						innerHeight >= bounds.view.height - 1
+					) {
+						return;
+					}
+					this.rebuildAt(bounds);
+				})
+				.catch(() => {
+					// A document mid-navigation answers on its next load.
+				});
+		}, 100);
 	}
 
 	private rebuildAt(bounds: ApprovalsCardBounds): void {
@@ -947,11 +1101,13 @@ export class ApprovalsOverlayController {
 				},
 			});
 			view.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+			this.documentTheme = { theme: this.theme, palette: this.palette };
 			const allow = approvalsDocumentUrl(
 				this.documentUrl,
 				this.pending,
 				this.theme,
 				this.opaque,
+				this.palette,
 			);
 			const base = (() => {
 				try {
@@ -996,8 +1152,23 @@ export class ApprovalsOverlayController {
 			) => {
 				this.fail(`load_failed:${code}:${description}`);
 			};
+			/*
+			 * A CHILD THAT DIES AFTER CONSTRUCTION IS A FAILED CARD, not a hidden one.
+			 * `render-process-gone` (crash, OOM, kill) leaves a blank native view over
+			 * the page that nothing would ever repaint; latching the controller off
+			 * disposes it, and `fail` pushes the projection so the renderer sees
+			 * `approvalsCard.available: false` and falls back to the dock and band
+			 * instead of waiting on a card that can no longer be answered (S6d, M1).
+			 */
+			const onGone = (_event: Electron.Event, details: { reason?: string }) => {
+				this.fail(`render_process_gone:${details?.reason ?? "unknown"}`);
+			};
 			view.webContents.on("did-finish-load", onFinish);
 			view.webContents.on("did-fail-load", onFail);
+			view.webContents.on("render-process-gone", onGone);
+			this.childListeners.push(() =>
+				view.webContents.removeListener("render-process-gone", onGone),
+			);
 			this.childListeners.push(() =>
 				view.webContents.removeListener("did-finish-load", onFinish),
 			);
@@ -1005,6 +1176,9 @@ export class ApprovalsOverlayController {
 				view.webContents.removeListener("did-fail-load", onFail),
 			);
 			void view.webContents.loadURL(allow).catch((error: unknown) => {
+				// A superseded child's load rejects when a rebuild releases it; that is
+				// the rebuild's own teardown, not a broken document to latch off on.
+				if (this.view !== view) return;
 				this.fail(`load_rejected:${String(error)}`);
 			});
 		} catch (error) {
@@ -1059,6 +1233,12 @@ export class ApprovalsOverlayController {
 					 * return the provisional 96 DIP view's ceiling forever: a
 					 * circular size that never reaches the card's real height.
 					 */
+					// The document owns its intrinsic text measurement. Pull it here,
+					// after paint, over the existing host/model path (no resize IPC).
+					if (window.__approvalsCard?.measure) {
+						resolve(window.__approvalsCard.measure());
+						return;
+					}
 					const previous = el.style.maxHeight;
 					el.style.maxHeight = 'none';
 					const height = el.getBoundingClientRect().height;
@@ -1161,5 +1341,14 @@ export class ApprovalsOverlayController {
 		// its own load already failed.
 		this.dispose("failed");
 		this.log(`[browser] approvals overlay latched off: ${reason}`);
+		/*
+		 * TELL THE RENDERER. `state().available` just became false, but the chrome
+		 * projection only changes when something pushes it; without this a failure
+		 * after construction left the toolbar and the (unmounted) dock route
+		 * believing the card still existed until the next unrelated projection tick
+		 * (S6d, M1). The shield's `open` is also now false, so the push is what
+		 * returns the Approvals control to the dock/dialog route.
+		 */
+		if (!this.constructing) this.onChanged?.();
 	}
 }

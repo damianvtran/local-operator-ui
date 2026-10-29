@@ -1,4 +1,5 @@
 {
+	"ui.chat.device.check_again": "Check again",
 	"ui.chat.device.label.moving_to": "Moving to {name}",
 	"ui.chat.device.label.new_on": "New on {name}",
 	"ui.chat.device.label.new_on_this_device": "New on this device",

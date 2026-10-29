@@ -1,7 +1,12 @@
 {
+	"ui.chat.transcript_copy.block.logs": "Журналы",
+	"ui.chat.transcript_copy.block.output": "Вывод",
 	"ui.chat.transcript_copy.menu.copy_text": "Копировать текст",
 	"ui.chat.transcript_copy.menu.copy_markdown": "Копировать как Markdown",
 	"ui.chat.transcript_copy.menu.copy_selection": "Копировать выделенное",
+	"ui.chat.transcript_copy.role.assistant": "Ассистент",
+	"ui.chat.transcript_copy.selection.quote": "Цитировать",
+	"ui.chat.transcript_copy.technical_details": "Технические сведения",
 	"ui.chat.transcript_copy.toast.copied_markdown": "Скопировано как Markdown",
 	"ui.chat.transcript_copy.toast.copied_selection": "Выделенное скопировано",
 	"ui.chat.transcript_copy.row.your_message": "Ваше сообщение",

@@ -21,5 +21,11 @@
 	"ui.agents.upload.target.upgrade": "(mise à niveau requise)",
 	"ui.agents.upload.terms.lead": "Je confirme avoir lu et accepté les",
 	"ui.agents.upload.terms.link": "conditions générales",
-	"ui.agents.upload.terms.tail": "et que cet agent ne contient aucun contenu malveillant et n’enfreint aucune politique d’utilisation."
+	"ui.agents.upload.terms.tail": "et que cet agent ne contient aucun contenu malveillant et n’enfreint aucune politique d’utilisation.",
+	"ui.agents.upload.title.publish_org": "Publier « {name} » vers {destination} ?",
+	"ui.agents.upload.title.publish_public": "Publier « {name} » sur le Hub des agents ?",
+	"ui.agents.upload.title.published_org": "Publication de « {name} » vers {destination}",
+	"ui.agents.upload.title.published_public": "Publication de « {name} » sur le Hub des agents",
+	"ui.agents.upload.title.republished": "Fiche de « {name} » mise à jour sur le Hub des agents",
+	"ui.agents.upload.title.update_listing": "Mettre à jour la fiche de « {name} » sur le Hub des agents ?"
 }

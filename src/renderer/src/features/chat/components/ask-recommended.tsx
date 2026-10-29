@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * THE RECOMMENDATION MARK: one rendering of "the model recommends this", shared
  * by both ask cards.
@@ -88,6 +90,7 @@ export function recommendedIndex(
  * name plus the word.
  */
 export function AskRecommendedBadge({ className }: { className?: string }) {
+	useI18nLocale();
 	return (
 		<span
 			className={cn(
@@ -110,7 +113,7 @@ export function AskRecommendedBadge({ className }: { className?: string }) {
 			)}
 		>
 			<span aria-hidden="true">▸</span>
-			Recommended
+			{t("ui.chat.asks.recommended")}
 		</span>
 	);
 }

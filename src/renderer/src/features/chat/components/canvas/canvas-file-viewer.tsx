@@ -14,6 +14,17 @@ import { t } from "../../../../../../i18n";
 import { indexedDocument } from "../../canonical/session-files";
 import type { MentionScanHandle } from "../../canonical/use-mentioned-files";
 import type { useSessionFiles } from "../../canonical/use-session-files";
+import { materialiseUserAttachment } from "../../canonical/use-user-attachments";
+import type { UserAttachmentsState } from "../../canonical/use-user-attachments";
+import {
+	attachmentDigests,
+	canMaterialiseAttachment,
+} from "../../canonical/user-attachments";
+import {
+	ATTACHMENT_ID_PREFIX,
+	attachmentFinderItems,
+	withoutAttached,
+} from "./attachment-items";
 import { buildFileRows } from "./file-rows";
 import { FinderFilesView } from "./finder-files-view";
 import type { FinderItem } from "./finder-layout";
@@ -34,6 +45,8 @@ type CanvasFileViewerProps = {
 	 * nothing to say.
 	 */
 	scan?: MentionScanHandle | null;
+	/** The person's attachments (the pinned section); see `useUserAttachments`. */
+	attachments?: UserAttachmentsState | null;
 };
 
 const defaultFiles: CanvasDocument[] = [];
@@ -45,6 +58,7 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 	index,
 	onSwitchToDocumentView,
 	scan = null,
+	attachments = null,
 }) => {
 	// Get files from the canvas store for this conversation
 	const fallbackFiles = useCanvasStore((state): CanvasDocument[] => {
@@ -220,7 +234,9 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 						// What to do next, not only what happened: the path alone leaves
 						// the reader with a three-line wrap and nowhere to go.
 						description: t(
-							"ui.canvas.file_viewer.copy_its_path_from_the_row_s_menu_to_look_for_it_or_check_whether_the_ag",
+							fileDoc.id.startsWith(ATTACHMENT_ID_PREFIX)
+								? "ui.canvas.files.attachmentGoneRecovery"
+								: "ui.canvas.file_viewer.copy_its_path_from_the_row_s_menu_to_look_for_it_or_check_whether_the_ag",
 						),
 					},
 				);
@@ -304,7 +320,21 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 		],
 	);
 
-	const finderItems: FinderItem[] = rows.map((row, position) => {
+	const attachmentItems = useMemo(
+		() => attachmentFinderItems(attachments?.items ?? [], sessionId ?? ""),
+		[attachments?.items, sessionId],
+	);
+	/*
+	 * Attachments OWN what the person attached: the ledger also admits a
+	 * kind-carrying pasted image as a "mentioned" file, so its agent-row copy is
+	 * dropped here by digest (filtered AFTER the row/index pairing below, which
+	 * is positional).
+	 */
+	const ownedDigests = useMemo(
+		() => attachmentDigests({ items: attachments?.items ?? [] }),
+		[attachments?.items],
+	);
+	const pairedItems: FinderItem[] = rows.map((row, position) => {
 		const entry = index.mode === "index" ? index.rows[position] : undefined;
 		return {
 			row,
@@ -319,7 +349,59 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 			mentioned: entry?.first_ts ?? entry?.first_seq ?? position,
 		};
 	});
+	const finderItems = withoutAttached(
+		pairedItems,
+		(item) => item.row.artifact?.digest,
+		ownedDigests,
+	);
+	/*
+	 * The ONE capability bit every attachment action keys off
+	 * (`session_attachments`, read by `useUserAttachments`), the same one the
+	 * transcript's pictures and sent-file card gate on. Absent state (a story, a
+	 * standalone render) is NOT capable: offering an action that 404s is the
+	 * defect round 1's F1 and round 2's R2-1 named.
+	 */
+	const attachmentsCapable = attachments?.capable ?? false;
+	/*
+	 * Attachment rows the backend refused to copy out (`materialisable: false`,
+	 * core PR #3042 QA round 3, Q1), by row id: the open and materialise doors
+	 * below get the same per-row verdict the row's menu does. A row it has not
+	 * judged yet (`"pending"`, QA R6 Q3) is in the set too: unknown is not
+	 * allowed, so it opens only by digest, read-only, like a refused one.
+	 */
+	const refusedIds = useMemo(
+		() =>
+			new Set(
+				attachmentItems
+					.filter(
+						(item) =>
+							item.attachment?.materialisable === false ||
+							item.attachment?.materialisable === "pending",
+					)
+					.map((item) => item.row.document.id),
+			),
+		[attachmentItems],
+	);
+	const canCopyOut = (document: CanvasDocument): boolean =>
+		canMaterialiseAttachment(
+			attachmentsCapable,
+			refusedIds.has(document.id) ? false : null,
+		);
 	const materialise = async (document: CanvasDocument): Promise<string> => {
+		/*
+		 * A USER ATTACHMENT copies out through its own route: the file index does
+		 * not list the person's inputs, so its row id would 404. One routing point
+		 * here serves both the row's path actions and the canvas open below.
+		 */
+		if (document.id.startsWith(ATTACHMENT_ID_PREFIX) && document.artifact) {
+			// Fail closed: no row offers this on an older backend (R2-1) or for a
+			// refused row (Q1), and a caller that slips through must not reach a
+			// route that cannot (or will not) answer.
+			if (!canCopyOut(document))
+				throw new Error("Backend cannot materialise this attachment");
+			if (!sessionId) throw new Error("No session for the attachment");
+			return materialiseUserAttachment(sessionId, document.artifact.digest);
+		}
 		if (!sessionId || index.mode !== "index")
 			throw new Error("No indexed artifact owner");
 		const response = await desktopRequest({
@@ -340,9 +422,29 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 			legacyScan={scan}
 			cwd={index.state === "unsupported" ? undefined : cwd}
 			materialise={materialise}
+			attachments={{
+				items: attachmentItems,
+				complete: (attachments?.complete ?? true) && !attachments?.truncated,
+				state: attachments?.state ?? "ready",
+				capable: attachmentsCapable,
+				retry: attachments?.retry ?? (() => {}),
+			}}
 			onOpen={(document) => {
+				/*
+				 * A refused row with no stored bytes has nothing the app may show:
+				 * its document is the bare name, and a probe or a "no longer exists"
+				 * toast pointing at a menu it does not have would both be wrong
+				 * (review R4-U1). Its tooltip says why. A refused row WITH bytes
+				 * opens them read-only by digest (`ArtifactTextPreview`, U12).
+				 */
+				if (refusedIds.has(document.id) && !document.artifact) return;
 				if (
 					document.artifact &&
+					// An attachment on an older backend (R2-1), or one the backend
+					// refused to copy out (Q1), opens by digest in the artifact-aware
+					// viewer instead.
+					(canCopyOut(document) ||
+						!document.id.startsWith(ATTACHMENT_ID_PREFIX)) &&
 					document.type !== "image" &&
 					document.type !== "video" &&
 					// Audio is digest-backed too: materialising here loses its shared

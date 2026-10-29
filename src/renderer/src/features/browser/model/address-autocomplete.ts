@@ -35,6 +35,87 @@ export type AddressIntent = "empty" | "url" | "search" | "blocked";
  * invent a second spelling. */
 export const ADDRESS_SEARCH_URL_PREFIX = "https://duckduckgo.com/?q=";
 
+/**
+ * A typed value as an ISOLATED RUN inside a catalogue sentence.
+ *
+ * WHY: the row copy ("Open \"{address}\"", "Search ... \"{query}\"") is a
+ * sentence in the UI's language with the user's text substituted in. In an RTL
+ * locale (ur) the surrounding paragraph is RTL, so an LTR address such as
+ * `github.com/` takes the neighbouring punctuation into its own bidi run and its
+ * trailing slash is painted at the front. FSI/PDI (U+2068/U+2069) is the inline
+ * `<bdi>`: a catalogue message cannot carry an element, and the isolate wraps the
+ * VALUE, never the copy, so a translation keeps its own quotes. The same
+ * technique `browser-tab-strip.tsx` uses for tab titles (`isolatedTabLabel`,
+ * which is tab-specific - it truncates - so it is not reusable here).
+ *
+ * DISPLAY ONLY: the row's commit target is always the raw text. Main's list
+ * sanitizer strips U+2066-2069 from rows by design (a bidi control is how a row
+ * can be made to look like another), so the native child receives the same
+ * string and shows it without the isolates; its rows are `dir="auto"`, which
+ * resolves the paragraph from the first strong character of the Latin value.
+ */
+export function isolateBidi(value: string): string {
+	return `\u2068${value}\u2069`;
+}
+
+/**
+ * The typed value as it is DISPLAYED inside a row's sentence: bidi controls
+ * removed. A literal PDI followed by an RLO in what the user typed would close
+ * the FSI/PDI isolate this module wraps around the value and reorder the rest of
+ * the row (QA Q3). The native child already strips these on its side; the page
+ * DOM list had no such gate. DISPLAY ONLY - a row's commit target is the raw
+ * text, byte for byte (that half of the question is pre-existing and stays with
+ * `usableRawAddress`).
+ */
+const DISPLAY_BIDI_CONTROLS = /[\u200E\u200F\u061C\u202A-\u202E\u2066-\u2069]/g;
+export function displayValue(value: string): string {
+	return value.replace(DISPLAY_BIDI_CONTROLS, "");
+}
+
+/**
+ * The row the highlight starts on: the search and typed-address rows (an explicit
+ * default for what the user typed) and the promoted completion row. Anything else
+ * starts with no row highlighted, so Enter keeps its inline-completion / raw-text
+ * precedence.
+ */
+export function defaultActiveIndex(suggestions: AddressSuggestions): number {
+	const first = suggestions.rows[0];
+	if (!first) return -1;
+	if (first.kind === "search" || first.kind === "typed") return 0;
+	return suggestions.inlineRow ? 0 : -1;
+}
+
+/**
+ * Format a sentence that embeds `value` and report WHERE the value landed.
+ *
+ * The native child cannot receive FSI/PDI (main strips them), so it is told the
+ * value's span instead. The position comes from the message's own argument, not
+ * from searching the output for the user's text - the text can repeat a word of
+ * the copy or contain its quotes. A private-use sentinel stands in for the value
+ * in a first pass; it is not user input, so its index is the argument position,
+ * and the real pass is the sentence the user reads. A message that does not
+ * carry the argument (a failed lookup renders the key) yields no range.
+ */
+export function embedValue(
+	format: (value: string) => string,
+	value: string,
+): { text: string; isolate: { start: number; end: number } | null } {
+	const SENTINEL = "\uE000";
+	const text = format(value);
+	const probe = format(SENTINEL);
+	const start = probe.indexOf(SENTINEL);
+	if (
+		start < 0 ||
+		value.length === 0 ||
+		probe.length - 1 + value.length !== text.length ||
+		text.slice(start, start + value.length) !== value ||
+		text.slice(0, start) !== probe.slice(0, start)
+	) {
+		return { text, isolate: null };
+	}
+	return { text, isolate: { start, end: start + value.length } };
+}
+
 export function searchUrl(query: string): string {
 	return `${ADDRESS_SEARCH_URL_PREFIX}${encodeURIComponent(query.trim())}`;
 }
@@ -69,6 +150,29 @@ export interface AddressSearchRow {
 	targetUrl: string;
 }
 
+/**
+ * The text the user typed, offered back as a destination ("Open <address>").
+ *
+ * WHY IT EXISTS: a URL-shaped input with no history match used to produce an
+ * EMPTY list (URL intent has no search row), so a brand-new address - the
+ * ordinary case on a fresh profile or a new tab - got a "no matching pages"
+ * notice and nothing to press. The row is the typed value itself, so the
+ * highlighted default for URL intent is exactly what Enter has always done:
+ * navigate the trimmed text. It is NOT offered next to history candidates (the
+ * reported case was "no history"; a typed row above real matches would push
+ * the matches down and fight the inline completion for the same Enter).
+ */
+export interface AddressTypedRow {
+	kind: "typed";
+	/** The text the user typed, trimmed. The UI wraps it in the localized row
+	 * copy; the model owns no user-facing strings. */
+	address: string;
+	/** What Enter navigates: the trimmed text, byte for byte. Scheme handling (an
+	 * HTTPS upgrade of a bare host, a refused scheme) stays with the host's own
+	 * navigation path, exactly as for a typed Enter before this row existed. */
+	targetUrl: string;
+}
+
 export interface AddressCandidateRow {
 	kind: "candidate";
 	candidate: AddressCandidate;
@@ -77,13 +181,18 @@ export interface AddressCandidateRow {
 /**
  * One row of the unified list.
  *
- * ORDER, and it is the product decision: search row (when there is one),
- * history matches by score, then open-tab matches. There are deliberately no
+ * ORDER, and it is the product decision: the typed-address row (URL intent
+ * with no match at all) or the search row (search intent), history matches by
+ * score, then open-tab matches. A URL-intent input with no match is
+ * [typed address, search row]. There are deliberately no
  * section-heading rows: the native overlay protocol S4b owns has uniform row
  * heights and a row count, so a heading row would be a row the user can select
  * and a height the child cannot paint in its own model.
  */
-export type AddressRow = AddressSearchRow | AddressCandidateRow;
+export type AddressRow =
+	| AddressSearchRow
+	| AddressTypedRow
+	| AddressCandidateRow;
 
 export interface AddressSuggestions {
 	inline: InlineCompletion | null;
@@ -91,8 +200,17 @@ export interface AddressSuggestions {
 	candidates: AddressCandidate[];
 	/** The unified list: at most five rows, the search row included. */
 	rows: AddressRow[];
-	/** The search row, or null when this input is not search intent. */
+	/** The search row: first for search intent, second (after the typed row) for a
+	 * URL-shaped input with no match at all, null otherwise. */
 	search: AddressSearchRow | null;
+	/** The typed-address row, only for URL intent with no history/tab match. */
+	typed: AddressTypedRow | null;
+	/** True when the list's ONLY row is the inline completion's own destination,
+	 * promoted into the list so the list never says "no match" while the field is
+	 * completing from history. It is the highlighted default (Enter opens exactly
+	 * that), and only then: a suppressed completion leaves its destination as an
+	 * ordinary row with nothing highlighted, so Enter keeps committing the raw text. */
+	inlineRow: boolean;
 	intent: AddressIntent;
 }
 
@@ -108,6 +226,7 @@ const BARE_SCHEME = /^([a-z][a-z0-9+.-]*):/i;
 const HAS_WHITESPACE = /\s/;
 const LEADING_DOUBLE_SLASH = /^\/\//;
 const URL_BOUNDARY = /[/?#]/;
+const FILE_SCHEME_TYPED = /^file:/i;
 const CONTROL_CHARS = /[\p{Cc}]/u;
 const DNS_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i;
 const IPV4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
@@ -440,12 +559,23 @@ export function suggestAddresses(
 		 * with no visible completion, and filtering then makes the list claim
 		 * there is no match while Enter commits the shorter, wrong host. */
 		inlineShown?: boolean;
+		/** False when the field is not being edited: the text is then the tab's
+		 * live URL, not something typed, so there is nothing to offer back. */
+		offerTyped?: boolean;
 	} = {},
 ): AddressSuggestions {
 	const inlineShown = options.inlineShown ?? true;
 	const intent = addressIntent(raw);
 	if (intent === "blocked") {
-		return { inline: null, candidates: [], rows: [], search: null, intent };
+		return {
+			inline: null,
+			candidates: [],
+			rows: [],
+			search: null,
+			typed: null,
+			inlineRow: false,
+			intent,
+		};
 	}
 	const shape = queryShape(raw);
 	const seen = new Set<string>();
@@ -487,28 +617,72 @@ export function suggestAddresses(
 			};
 		}
 	}
-	// THE SEARCH ROW IS A ROW, not a banner: it takes the first slot, which is
-	// also why the candidate cap is one lower when it is present.
+	// THE TYPED ROW: a URL-shaped input that no history entry or open tab matches
+	// AS A URL (a host or path prefix, rank <= 1). `ranked`, not `candidates`,
+	// because the inline target is filtered out of `candidates` and would
+	// otherwise look like "no match" while a completion is on screen. A TITLE-only
+	// match (rank 2, e.g. a search-results page whose title repeats the address)
+	// is not the address: it sits BELOW the typed row instead of replacing it, or
+	// the next visit to a host the user once searched for would offer no Open row
+	// and nothing highlighted. `file:` is URL intent so it is never searched, and
+	// it is refused on Enter, so it is not offered as something to open.
+	// `usableRawAddress` is the same gate Enter applies to the raw text, so the row
+	// can never offer something the commit path would refuse (control characters).
+	const typedAddress = usableRawAddress(raw);
+	const typed: AddressTypedRow | null =
+		(options.offerTyped ?? true) &&
+		intent === "url" &&
+		!ranked.some((candidate) => candidate.rank <= 1) &&
+		typedAddress !== null &&
+		!FILE_SCHEME_TYPED.test(typedAddress)
+			? { kind: "typed", address: typedAddress, targetUrl: typedAddress }
+			: null;
+	// THE SEARCH ROW IS A ROW, not a banner: it takes the first slot for search
+	// intent, which is also why the candidate cap is one lower when it is present.
+	// Behind the typed row it is the "or search for it" alternative.
 	const search: AddressSearchRow | null =
-		intent === "search" && raw.trim().length > 0
+		(intent === "search" || typed !== null) && raw.trim().length > 0
 			? {
 					kind: "search",
 					query: raw.trim(),
 					targetUrl: searchUrl(raw),
 				}
 			: null;
-	const candidates = ranked
+	let inlineRow = false;
+	let candidates = ranked
 		.filter(
 			(candidate) => !(inlineShown && candidate.url === inline?.targetUrl),
 		)
 		.slice(0, search ? MAX_ADDRESS_ROWS - 1 : MAX_ADDRESS_ROWS);
+	// THE COMPLETION IS NEVER "NO MATCH". With other rows the inline target is
+	// dropped because the field already shows it (one destination, one place). When
+	// it would leave the list EMPTY, the field is completing from history while the
+	// list says nothing matched, and Enter opens an address the list never named:
+	// the inline target becomes the one row, and `defaultActiveIndex` highlights it
+	// (UX U1 / QA Q1).
+	if (
+		inlineShown &&
+		inline !== null &&
+		candidates.length === 0 &&
+		!search &&
+		!typed
+	) {
+		const target = ranked.find(
+			(candidate) => candidate.url === inline.targetUrl,
+		);
+		if (target) {
+			candidates = [target];
+			inlineRow = true;
+		}
+	}
 	const rows: AddressRow[] = [
+		...(typed ? [typed] : []),
 		...(search ? [search] : []),
 		...candidates.map(
 			(candidate): AddressCandidateRow => ({ kind: "candidate", candidate }),
 		),
 	];
-	return { inline, candidates, rows, search, intent };
+	return { inline, candidates, rows, search, typed, inlineRow, intent };
 }
 
 /**
@@ -564,7 +738,8 @@ export function rowTarget(
 	if (activeIndex >= 0) {
 		const row = suggestions.rows[activeIndex];
 		if (!row) return null;
-		return row.kind === "search" ? row.targetUrl : row.candidate.url;
+		if (row.kind === "search" || row.kind === "typed") return row.targetUrl;
+		return row.candidate.url;
 	}
 	return suggestions.inline?.targetUrl ?? null;
 }
