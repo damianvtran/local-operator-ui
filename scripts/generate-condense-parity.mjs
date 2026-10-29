@@ -259,10 +259,14 @@ async function bundleModel() {
 					 * model bundle now loads the whole English catalogue set; pinning those
 					 * ~760 files would make every copy edit invalidate a fixture that records
 					 * only ids, segment keys, counts and label KINDS, and the i18n gates own
-					 * the values. The pin therefore covers the model's CODE and the locale
-					 * manifest, not the copy it renders.
+					 * the values. Generated key catalogues are excluded for the same reason:
+					 * they carry no condensation decision, so every translation PR would move
+					 * the hash and redden core's build for all open core PRs while all 660
+					 * decisions stayed byte-identical. The pin therefore covers the model's
+					 * CODE and the locale manifest, not generated copy metadata.
 					 */
-					!input.startsWith("src/i18n/catalogues/"),
+					!input.startsWith("src/i18n/catalogues/") &&
+					!input.startsWith("src/i18n/keys.gen."),
 			)
 			.map((input) => input.replace(/^\.\//, ""))
 			.sort(),

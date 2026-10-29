@@ -124,6 +124,15 @@ test("the fixture pins the model source it came from, and the pin verifies", asy
 		),
 		"every pinned source is a repository source file",
 	);
+	/* A generated key map is copy metadata, not a decision-bearing model source. */
+	assert.ok(
+		derived.every(
+			(file) =>
+				!file.startsWith("src/i18n/catalogues/") &&
+				!file.startsWith("src/i18n/keys.gen."),
+		),
+		"generated i18n copy and key maps must stay out of the condensation source pin",
+	);
 	for (const core of [
 		"src/renderer/src/features/chat/canonical/transcript-reducer.ts",
 		"src/renderer/src/features/chat/canonical/turn-segments.ts",
