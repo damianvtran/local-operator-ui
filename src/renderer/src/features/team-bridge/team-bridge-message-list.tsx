@@ -334,7 +334,7 @@ const DayDivider: FC<{
 const SendStatus: FC<{ row: TeamBridgeLocalRowPresentation }> = ({ row }) => (
 	<span
 		className={cn(
-			"inline-flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-sm bg-canvas px-1 text-[12px]",
+			"inline-flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-sm bg-canvas text-[12px]",
 			/* The 24px target floor belongs to the CONTROLS, so only the failed
 			 * strip carries it (capture round, frame 7). On a pending row it made
 			 * the header 24px against a confirmed row's 21.7px, so the body jumped
@@ -375,7 +375,7 @@ const SendStatus: FC<{ row: TeamBridgeLocalRowPresentation }> = ({ row }) => (
 		{row.state === "failed" && row.onRetry && (
 			<Button
 				variant="primary"
-				className="h-auto min-h-6 min-w-0 shrink whitespace-normal px-2 text-center text-[12px] [overflow-wrap:anywhere]"
+				className="h-auto min-h-6 w-full min-w-0 shrink whitespace-normal px-1 text-center text-[12px] [overflow-wrap:anywhere]"
 				onClick={row.onRetry}
 			>
 				{t("ui.common.actions.retry")}
@@ -384,7 +384,7 @@ const SendStatus: FC<{ row: TeamBridgeLocalRowPresentation }> = ({ row }) => (
 		{row.state === "failed" && row.onReturnToDraft && (
 			<Button
 				variant="ghost"
-				className="h-auto min-h-6 min-w-0 shrink whitespace-normal px-2 text-center text-[12px] [overflow-wrap:anywhere] text-ink-muted hover:text-ink"
+				className="h-auto min-h-6 w-full min-w-0 shrink whitespace-normal px-1 text-center text-[12px] [overflow-wrap:anywhere] text-ink-muted hover:text-ink"
 				onClick={row.onReturnToDraft}
 			>
 				{t("ui.teamBridge.message.return_to_draft")}
@@ -397,7 +397,7 @@ const SendStatus: FC<{ row: TeamBridgeLocalRowPresentation }> = ({ row }) => (
 				 * and press on the ACCENT wash, so a destructive control drew a red label
 				 * on the brand hue. The danger wash is its own ground - danger on
 				 * danger-wash measures 4.524:1 at worst (everforestLight). */
-				className="h-auto min-h-6 min-w-0 shrink whitespace-normal px-2 text-center text-[12px] [overflow-wrap:anywhere] text-danger hover:bg-danger-wash hover:text-danger active:bg-danger-wash active:text-danger"
+				className="h-auto min-h-6 w-full min-w-0 shrink whitespace-normal px-1 text-center text-[12px] [overflow-wrap:anywhere] text-danger hover:bg-danger-wash hover:text-danger active:bg-danger-wash active:text-danger"
 				onClick={row.onDiscard}
 			>
 				{t("ui.teamBridge.message.discard")}
