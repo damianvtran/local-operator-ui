@@ -1,12 +1,14 @@
 import type { Agent } from "@shared/api/radient/types";
 import { Button, Skeleton, Tooltip } from "@shared/components/ui";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { formatDistanceToNowStrict } from "date-fns";
 import { Download, Heart, Star } from "lucide-react";
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { commentAge } from "../comment-age";
 import { hubDisplayName } from "../display-name";
 import { AgentTagsAndCategories } from "./agent-tags-and-categories";
 import { OrgOriginBadge } from "./org-origin-badge";
@@ -102,6 +104,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 }) => {
 	const navigate = useNavigate();
 	const { isAuthenticated } = useRadientAuth();
+	useI18nLocale();
 
 	const description = agent.description ?? "";
 
@@ -247,7 +250,9 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 						<span aria-hidden="true" className="mx-1.5">
 							·
 						</span>
-						updated {formatDistanceToNowStrict(new Date(agent.updated_at))} ago
+						{t("ui.hub.pages.card.updated", {
+							when: commentAge(new Date(agent.updated_at)),
+						})}
 					</p>
 				</div>
 			</button>
@@ -410,7 +415,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 							data-tour-tag="agent-hub-download-button"
 						>
 							<Download data-testid="agent-download" />
-							Get
+							{t("ui.hub.pages.card.get")}
 						</Button>
 					</div>
 				)}
@@ -434,7 +439,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 					<span className="min-w-0 flex-1">{actionError}</span>
 					{onRetryAction && (
 						<Button variant="ghost" size="sm" onClick={onRetryAction}>
-							Try again
+							{t("ui.common.actions.retry_again")}
 						</Button>
 					)}
 				</output>

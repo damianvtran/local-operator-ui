@@ -125,8 +125,8 @@ export function ReadBlock({
 	text,
 	empty = "Nothing here yet.",
 	mono = false,
-	showAllLabel = "Show all",
-	showLessLabel = "Show less",
+	showAllLabel,
+	showLessLabel,
 	breakLongTokens = false,
 	markdown = false,
 }: {
@@ -135,9 +135,9 @@ export function ReadBlock({
 	/** Machine voice (a packaged prompt shown for comparison), per branding §5. */
 	mono?: boolean;
 	/**
-	 * The expander's words. The defaults are the English the agent and team
-	 * panes have always printed; a caller that has keyed its copy (the Skills
-	 * tab) passes its own so the block is reused rather than copied.
+	 * The expander's words. Unset, the block prints its own catalogue messages
+	 * (below); a caller that needs different words - the Skills tab names its own
+	 * keys - passes them so the block is reused rather than copied.
 	 */
 	showAllLabel?: string;
 	showLessLabel?: string;
@@ -167,6 +167,15 @@ export function ReadBlock({
 	const [expanded, setExpanded] = useState(false);
 	const [overflows, setOverflows] = useState(false);
 	const ref = useRef<HTMLDivElement>(null);
+	/* The expander's two labels are catalogue copy; subscribe so a language switch
+	 * repaints them with the rest of the pane. */
+	useI18nLocale();
+	/* The defaults are catalogue messages, not literals: the agent and team panes
+	 * render this block without labels, and an English default here would be the
+	 * one untranslated string a page still prints (and no ratchet scans default
+	 * values). A caller with its own words still wins. */
+	const showLess = showLessLabel ?? t("ui.agents.detail.read.show_less");
+	const showAll = showAllLabel ?? t("ui.agents.detail.read.show_all");
 
 	/*
 	 * Measured, not assumed from a character count: what overflows depends on the
@@ -243,7 +252,7 @@ export function ReadBlock({
 					aria-expanded={expanded}
 					onClick={() => setExpanded((value) => !value)}
 				>
-					{expanded ? showLessLabel : showAllLabel}
+					{expanded ? showLess : showAll}
 				</Button>
 			) : null}
 		</div>

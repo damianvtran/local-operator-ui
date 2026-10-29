@@ -1,0 +1,80 @@
+{
+  "audit_id": "alit2-abdb30734404",
+  "audit_kind": "independent-namespace-delta-translation-audit",
+  "audit_date": "2026-10-26",
+  "locale": "vi",
+  "namespace": "ui.agents.pages",
+  "key_count": 8,
+  "keys_audited": [
+    "ui.agents.pages.add_manual.agent",
+    "ui.agents.pages.add_manual.team",
+    "ui.agents.pages.ask.body_agent",
+    "ui.agents.pages.ask.body_team",
+    "ui.agents.pages.ask.heading_agent",
+    "ui.agents.pages.ask.heading_team",
+    "ui.agents.pages.ask.manual_agent",
+    "ui.agents.pages.ask.manual_team"
+  ],
+  "audited_head": "a9e536bf892f48ed2a87772658055abfd10caa5e",
+  "english_keys_commit": "73af0b6855",
+  "branch": "i18n-agents-literals-2",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "cce11618efc2",
+    "instance": "abdb30734404",
+    "model": "radient/auto",
+    "actual_model_source": "harness session banner 'Model: radient/auto' plus this session's checkpoint (~/.local-operator/sessions/cce11618efc2/tail-anchor.v1.json) recording selected_model {selector: radient/auto, boot: radient/auto, effort: auto}",
+    "fallback": null,
+    "independent_from_translator_session": true,
+    "independence_basis": "Did not translate, remediate or author the audited values and read no translator reasoning; wrote only the receipt and these evidence records."
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.agents.pages.json",
+      "sha256": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.agents.pages.context.json",
+      "sha256": "f9690a17e6e7307df154bdc0d71ab8a0d002a07a052e11c0025d2ff874d3dfea"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/vi/ui.agents.pages.json",
+      "sha256": "1a32b43038518753067d9f11a9bbba5bb4518df122b15d5d0d78a75119a8c0cb"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "i18n/receipts/vi-agents-literals-audit-abdb30734404.json",
+      "sha256": "0468afdef18df4ce6c8762b3a243db5da8a359470277409329d8385cf4e5a529"
+    },
+    {
+      "path": "i18n/audits/evidence/vi/ui.agents.pages/alit2-abdb30734404/record.json",
+      "sha256": null,
+      "note": "this record; its own hash is not self-referential"
+    },
+    {
+      "path": "i18n/audits/evidence/vi/ui.agents.pages/alit2-abdb30734404/audit.log",
+      "sha256": null,
+      "note": "execution log for this bundle; hashed separately when the bundle is reviewed"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "vi-n1"
+    ],
+    "result": "clean-with-findings",
+    "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 1
+    }
+  },
+  "audit_notes_not_execution_log": "This record is provenance, not a log: it states what was audited and what the verdict is. The executed commands and their actual stdout live in audit.log beside it and in the receipt's checks block; no command output is asserted here.",
+  "execution_log": "i18n/audits/evidence/vi/ui.agents.pages/alit2-abdb30734404/audit.log",
+  "receipt": "i18n/receipts/vi-agents-literals-audit-abdb30734404.json",
+  "receipt_sha256": "0468afdef18df4ce6c8762b3a243db5da8a359470277409329d8385cf4e5a529",
+  "scope": "Independent audit of the 8 new vi keys in ui.agents.pages (English source plus its context sidecar), bound by sha256 before reading, in worktree ~/local-operator-ui/.worktrees/i18n-agents-literals-2 at head a9e536bf89. All 30 values of the file were read for consistency with already-shipped siblings; the flat 25-key batch report is the receipt named above."
+}
