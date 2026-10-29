@@ -47,6 +47,13 @@ const LABELS = {
 	"ui.hub.links.outcome_skipped": "skipped",
 	"ui.hub.links.outcome_unavailable": "unavailable",
 	"ui.hub.links.incoming_outcome": "Preview for {item}: {outcome}.",
+	/*
+	 * Design D10: the two sentences that still ran core's `ItemOutcome` token
+	 * straight into the copy. Both interpolate the WORD for the class, which the
+	 * `outcome_*` keys above supply.
+	 */
+	"ui.hub.links.action_result": "{direction} for {item} at {source}: {outcome}",
+	"ui.hub.links.incoming_failed": "The preview could not finish ({outcome}).",
 	"ui.hub.links.incoming_nothing": "Nothing to pull: this item is {outcome}.",
 	"ui.hub.subscriptions.pull": "Pull now",
 	"ui.hub.subscriptions.check": "Check now",
@@ -284,7 +291,13 @@ async function mount() {
 															: args.path === "@shared/i18n"
 																? `const LABELS = ${JSON.stringify(LABELS)};
 												   export const t = (key, params) => {
-												     const template = LABELS[key] ?? key;
+												     /* Design D10: which key a sentence asked for is the observable
+												        difference between the class's word and the raw token. */
+												     (globalThis.__hubAskedKeys ??= []).push(key);
+												     /* globalThis.__hubTranslations stands in for another locale's catalogue
+												        (see the D10 test); unset means these English words. */
+												     const overrides = globalThis.__hubTranslations;
+												     const template = (overrides && overrides[key]) || LABELS[key] || key;
 												     return template.replace(/\\{(\\w+)\\}/g, (w, k) => (params && k in params ? String(params[k]) : w));
 												   };
 												   export const formatDateTime = () => "";`
@@ -500,6 +513,112 @@ test("a dry run with nothing to merge is stated inline, with no dialog", async (
 	assert.match(
 		document.body.textContent,
 		/Nothing to pull: this item is up to date\./,
+	);
+});
+
+test("the pull result and the failed preview name the class, never core's token (design D10)", async () => {
+	/*
+	 * Design D10 (round 1): D1 humanised the dialog's headline and left two
+	 * sentences in the same surface interpolating core's `ItemOutcome` enum raw -
+	 * the pull result ("Incoming for Coder at …: would-merge") and the failed
+	 * preview ("The preview could not finish (needs-review)"). A reader had to
+	 * parse a hyphenated machine token, and in any locale those words stayed
+	 * English because the token never reached the catalogue.
+	 *
+	 * Both halves are asserted where each defect is observable:
+	 * - the pull line, on the RENDERED sentence: `would-merge` must appear as the
+	 *   class's word "would merge" and the raw token must be gone;
+	 * - the failed line, on a CATALOGUE VALUE that differs from the token: a
+	 *   failure class's English word reads the same as its token today
+	 *   (`outcome_failed` = "failed"), so English alone could not tell the two
+	 *   apart. The Spanish catalogue's word for that class (`fallido`, straight
+	 *   from `src/i18n/catalogues/es/ui.hub.json`) is what the sentence must
+	 *   carry once the class is translated - and it only appears if the sentence
+	 *   asks the catalogue at all. Raw interpolation renders "(failed)".
+	 */
+	await mount();
+	const host = document.createElement("div");
+	document.body.appendChild(host);
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+	});
+	const root = createRoot(host);
+	await actAsync(() => {
+		root.render(
+			React.createElement(
+				QueryClientProvider,
+				{ client },
+				React.createElement(app.HubLinkGroup, {
+					link,
+					displayName: "Coder",
+					itemsById: true,
+				}),
+			),
+		);
+	});
+	const button = (label) =>
+		[...document.querySelectorAll("button")].find(
+			(node) => node.textContent.trim() === label,
+		);
+
+	/* 1. A preview that failed, in a language that translates the class. */
+	globalThis.__hubAskedKeys = [];
+	globalThis.__hubTranslations = { "ui.hub.links.outcome_failed": "fallido" };
+	globalThis.__hubPreviewTest.answer = {
+		reports: [
+			{
+				...DRY_RUN_ANSWER.reports[0],
+				outcome: "failed",
+				error_class: "transport",
+				message: "hub unreachable at https://hub.invalid/api/v1 (502)",
+			},
+		],
+		status: { items: [], credential: "ok" },
+	};
+	await actAsync(() => button("Preview incoming changes").click());
+	await settle();
+	assert.match(
+		document.body.textContent,
+		/The preview could not finish \(fallido\)\./,
+		"the failure sentence carries the catalogue's word for the class",
+	);
+	assert.ok(
+		globalThis.__hubAskedKeys.includes("ui.hub.links.outcome_failed"),
+		"the failure sentence asks the catalogue for the class's word",
+	);
+
+	/* 2. A pull that lands a directional report, so the result line renders. */
+	globalThis.__hubTranslations = null;
+	globalThis.__hubPreviewTest.answer = DRY_RUN_ANSWER;
+	await actAsync(() => button("Preview incoming changes").click());
+	await settle();
+	assert.ok(document.querySelector('[data-dialog="open"]'), "the dialog opens");
+	globalThis.__hubPreviewTest.answer = {
+		reports: [
+			{
+				...DRY_RUN_ANSWER.reports[0],
+				link_id: LINK_ID,
+				direction: "pull",
+				operation_id: "op-1",
+				remote_revision: "rev-7",
+				model_used: null,
+				outcome: "would-merge",
+			},
+		],
+		status: { items: [], credential: "ok" },
+	};
+	await actAsync(() => button("Pull now").click());
+	await settle();
+	const text = document.body.textContent;
+	assert.match(
+		text,
+		/: would merge$/,
+		"the pull result states the class's word, and ends on it",
+	);
+	assert.doesNotMatch(
+		text,
+		/would-merge/,
+		"no raw ItemOutcome token reaches the reader",
 	);
 });
 

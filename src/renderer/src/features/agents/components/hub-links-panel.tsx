@@ -457,7 +457,15 @@ export function HubLinkGroup({
 								direction: directionLabel(report.direction),
 								item: link.name,
 								source,
-								outcome: report.outcome,
+								/*
+								 * Design D10: the same defect class D1 fixed one string over. `outcome` is
+								 * core's `ItemOutcome` enum (`report.py`), so interpolating it raw put
+								 * "would-merge" in front of a reader - and in a locale it left the one
+								 * word this app does translate in English. `hubOutcomeText` is the word
+								 * for the class, degrading to the raw token only for a class this build
+								 * has never seen.
+								 */
+								outcome: hubOutcomeText(report.outcome),
 							})}
 						</output>
 					))}
@@ -473,8 +481,15 @@ export function HubLinkGroup({
 			{incomingFailure && (
 				<div role="alert" className="flex flex-col gap-0.5">
 					<p className="text-body-sm text-danger">
+						{/*
+						 * Design D10, the second string in this dialog: the failure sentence ran
+						 * the raw `ItemOutcome` token into its parentheses. A failure class's
+						 * translated word happens to read the same in English today, but the raw
+						 * token bypasses the catalogue entirely - so no locale can translate it,
+						 * and a class this build does not know would ride in untranslated too.
+						 */}
 						{t("ui.hub.links.incoming_failed", {
-							outcome: incomingFailure.outcome,
+							outcome: hubOutcomeText(incomingFailure.outcome),
 						})}
 					</p>
 					{/*
