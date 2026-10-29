@@ -6150,6 +6150,30 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "7e4eb2df05adb716670d70a950bb007d66292159542f6e302bb1e44df4044c9a",
+					"target_sha256": "8622d517c1bec59384b35f13d08f24214265da31c4c761ae80b9f13ce56abb67",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "086ffbdae3da-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/086ffbdae3da-es.json",
+							"receipt_sha256": "38feca4fa01fe29a182cbe1bf37596dd733753d9e11360b5d9689163d4dbc7b3",
+							"scope": "Team Bridge first-send: 4 message.* keys (sending/failed restored from #1334, discard/return_to_draft new)",
+							"note": "First-send R1 (0 findings). Evidence: i18n/audits/evidence/es/ui.teamBridge/teambridge-first-send-audit-086ffbdae3da/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -12720,6 +12744,30 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "7e4eb2df05adb716670d70a950bb007d66292159542f6e302bb1e44df4044c9a",
+					"target_sha256": "08dfb5cccd29f85beb0821d1526df4a86d44b10305345f27647eb9193d740554",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "92764c1f-r2-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/92764c1f-r2-fr.json",
+							"receipt_sha256": "b3e2feafe2aa4fe872ba57ddb83ffa985ab3dc2f681dfff1eae19906ffa2d145",
+							"scope": "Team Bridge first-send R2: remediation of round-1 findings",
+							"note": "First-send R2 delta, 0 findings. Evidence: i18n/audits/evidence/fr/ui.teamBridge/teambridge-first-send-audit-r2-92764c1f/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -19118,6 +19166,30 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "7e4eb2df05adb716670d70a950bb007d66292159542f6e302bb1e44df4044c9a",
+					"target_sha256": "cf5ae680fc318c3431b70a71b63ca9b43161fb9fc9de468475670f5cdd233144",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "92764c1f-r2-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/92764c1f-r2-hi.json",
+							"receipt_sha256": "5b6d9b40fc92aeabd26b17fe119861ec38063fc846b19d15431c06ed16663408",
+							"scope": "Team Bridge first-send R2: remediation of round-1 findings",
+							"note": "First-send R2 delta, 0 findings. Evidence: i18n/audits/evidence/hi/ui.teamBridge/teambridge-first-send-audit-r2-92764c1f/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -25322,6 +25394,30 @@
 							"receipt_sha256": "77d5e906d77f9c1bd1422f6c961d3abbc1d8e25f33cbd5e42d55b320a2495614",
 							"scope": "PR #1444 round 2: 13 ui.teamBridge.schedule edit/conflict keys added in 27d9d0032c; other 241 keys byte-identical to origin/main",
 							"note": "PR #1444 R2 13-key delta (schedule.edit_*/conflict_*); 0 findings, see receipt"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7e4eb2df05adb716670d70a950bb007d66292159542f6e302bb1e44df4044c9a",
+					"target_sha256": "a59a9d78936052e8a632cabba6c3d3807f3b58b17da248383a70e58ad2ef82ad",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "086ffbdae3da-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/086ffbdae3da-ru.json",
+							"receipt_sha256": "ac83b83dd52f9d4a3369d73a82a9cbdfcbeee3dcc78983bbdeb59e4ea67dcddf",
+							"scope": "Team Bridge first-send: 4 message.* keys (sending/failed restored from #1334, discard/return_to_draft new)",
+							"note": "First-send R1 (0 findings). Evidence: i18n/audits/evidence/ru/ui.teamBridge/teambridge-first-send-audit-086ffbdae3da/record.json"
 						}
 					],
 					"status": "audited"
@@ -31576,6 +31672,30 @@
 							"receipt_sha256": "42f317cac5f89bdb0e033ad510a629295da9483061834f6b9ba953b581cc01bc",
 							"scope": "PR #1444 round 2: 13 ui.teamBridge.schedule edit/conflict keys added in 27d9d0032c; other 241 keys byte-identical to origin/main",
 							"note": "PR #1444 R2 13-key delta (schedule.edit_*/conflict_*); 0 findings, see receipt"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7e4eb2df05adb716670d70a950bb007d66292159542f6e302bb1e44df4044c9a",
+					"target_sha256": "300e8dd42e9a3b940d1c13bb4940804d6c85e0d9455f1f945f99a6ded7e8b429",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "086ffbdae3da-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/086ffbdae3da-ur.json",
+							"receipt_sha256": "4b1295be794802f62fa595e12b5a4bed6af96d8b3a4298d48b4534b82b31b1ff",
+							"scope": "Team Bridge first-send: 4 message.* keys (sending/failed restored from #1334, discard/return_to_draft new)",
+							"note": "First-send R1 (0 findings). Evidence: i18n/audits/evidence/ur/ui.teamBridge/teambridge-first-send-audit-086ffbdae3da/record.json"
 						}
 					],
 					"status": "audited"
@@ -38062,6 +38182,30 @@
 							"receipt_sha256": "35663a131ad3954aad8773fda35037539e4898984d9b2b961a81a905a5d9764f",
 							"scope": "PR #1444 round 2: 13 ui.teamBridge.schedule edit/conflict keys added in 27d9d0032c; other 241 keys byte-identical to origin/main",
 							"note": "PR #1444 R2 13-key delta (schedule.edit_*/conflict_*); 0 findings, see receipt"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7e4eb2df05adb716670d70a950bb007d66292159542f6e302bb1e44df4044c9a",
+					"target_sha256": "6f0d0a107813d3a46020f80cc8d15a32ea2b7e3a811e03e9c1ec614207de22d7",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "92764c1f-r2-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/92764c1f-r2-vi.json",
+							"receipt_sha256": "3bdae4b8fa21405c4e36b8965b6682948c6dc717ef83f4106e0fc618c9f486e3",
+							"scope": "Team Bridge first-send R2: remediation of round-1 findings",
+							"note": "First-send R2 delta, 0 findings. Evidence: i18n/audits/evidence/vi/ui.teamBridge/teambridge-first-send-audit-r2-92764c1f/record.json"
 						}
 					],
 					"status": "audited"
@@ -45163,6 +45307,30 @@
 							"receipt_sha256": "4d4d9992fd2578d6a4443f6688ed1c048a3c3ba9492b7a270b5ffb58d9837e5b",
 							"scope": "PR #1444 round 2: 13 ui.teamBridge.schedule edit/conflict keys added in 27d9d0032c; other 241 keys byte-identical to origin/main",
 							"note": "PR #1444 R2 13-key delta (schedule.edit_*/conflict_*); prior N1 (bei passive) resolved; 0 findings, see receipt"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7e4eb2df05adb716670d70a950bb007d66292159542f6e302bb1e44df4044c9a",
+					"target_sha256": "f10dcb53370f9eaabcff91562c7eb88a6805c779e74fa5e963cbe9e4766c04cc",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "086ffbdae3da-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/086ffbdae3da-zh-cn.json",
+							"receipt_sha256": "c67d69eefc22d05853352d384ffb6a902b2ac919b582b5bee0dae70424ad1bd0",
+							"scope": "Team Bridge first-send: 4 message.* keys (sending/failed restored from #1334, discard/return_to_draft new)",
+							"note": "First-send R1 (0 findings). Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-first-send-audit-086ffbdae3da/record.json"
 						}
 					],
 					"status": "audited"

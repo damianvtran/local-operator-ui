@@ -363,14 +363,19 @@ const SendStatus: FC<{ row: TeamBridgeLocalRowPresentation }> = ({ row }) => (
 		 * round 3): `shrink` + `whitespace-normal` let a label wrap at spaces, but
 		 * a single long word ("Abandonner" in fr) still cannot fit an 84px column
 		 * and pushed the control ~6.5px past it (D18) - `min-w-0` lets the button
-		 * narrow below its text and `break-words` breaks the word as a last
+		 * narrow below its text, and `[overflow-wrap:anywhere]` (NOT `break-words`) is
+		 * what actually breaks a single long word: `overflow-wrap: break-word` adds no
+		 * wrap opportunities for MIN-CONTENT sizing, so a bare text child of an
+		 * `inline-flex` button kept its longest word as its floor and painted past the
+		 * column anyway (merge-delta review, M1). Same utility as the house precedent
+		 * in `mesh-approvals-tray.tsx`.
 		 * resort. A wrapped label is CENTRED (D23): `text-start` left a filled
 		 * Retry's short last line hugging one edge, which read as lopsided in
 		 * `ur`; centred lines read as one label in either direction. */}
 		{row.state === "failed" && row.onRetry && (
 			<Button
 				variant="primary"
-				className="h-auto min-h-6 min-w-0 shrink whitespace-normal break-words px-2 text-center text-[12px]"
+				className="h-auto min-h-6 min-w-0 shrink whitespace-normal px-2 text-center text-[12px] [overflow-wrap:anywhere]"
 				onClick={row.onRetry}
 			>
 				{t("ui.common.actions.retry")}
@@ -379,7 +384,7 @@ const SendStatus: FC<{ row: TeamBridgeLocalRowPresentation }> = ({ row }) => (
 		{row.state === "failed" && row.onReturnToDraft && (
 			<Button
 				variant="ghost"
-				className="h-auto min-h-6 min-w-0 shrink whitespace-normal break-words px-2 text-center text-[12px] text-ink-muted hover:text-ink"
+				className="h-auto min-h-6 min-w-0 shrink whitespace-normal px-2 text-center text-[12px] [overflow-wrap:anywhere] text-ink-muted hover:text-ink"
 				onClick={row.onReturnToDraft}
 			>
 				{t("ui.teamBridge.message.return_to_draft")}
@@ -392,7 +397,7 @@ const SendStatus: FC<{ row: TeamBridgeLocalRowPresentation }> = ({ row }) => (
 				 * and press on the ACCENT wash, so a destructive control drew a red label
 				 * on the brand hue. The danger wash is its own ground - danger on
 				 * danger-wash measures 4.524:1 at worst (everforestLight). */
-				className="h-auto min-h-6 min-w-0 shrink whitespace-normal break-words px-2 text-center text-[12px] text-danger hover:bg-danger-wash hover:text-danger active:bg-danger-wash active:text-danger"
+				className="h-auto min-h-6 min-w-0 shrink whitespace-normal px-2 text-center text-[12px] [overflow-wrap:anywhere] text-danger hover:bg-danger-wash hover:text-danger active:bg-danger-wash active:text-danger"
 				onClick={row.onDiscard}
 			>
 				{t("ui.teamBridge.message.discard")}
