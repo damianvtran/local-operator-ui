@@ -146,6 +146,45 @@ const failureSentence = (
 	error: unknown,
 ): string => (error instanceof AttachmentGoneError ? gone : fallback);
 
+/**
+ * The entries `ImageActionsMenu` would render for these props - the one
+ * definition, exported so a caller that must know whether the menu is EMPTY
+ * (Finder's Shift+F10 on a refused row, QA R6 Q4) asks the menu itself
+ * rather than re-deriving its filters.
+ */
+export function imageMenuActions({
+	file,
+	src,
+	resolvePath,
+	missing,
+	onShowInCanvas,
+	mediaKind,
+	onExpand,
+	saveName,
+}: Pick<
+	ImageActionsMenuProps,
+	| "file"
+	| "src"
+	| "resolvePath"
+	| "missing"
+	| "onShowInCanvas"
+	| "mediaKind"
+	| "onExpand"
+	| "saveName"
+>) {
+	return imageActions(classifyAttachmentSource(file), {
+		canShowInCanvas: Boolean(onShowInCanvas),
+		source: src ?? file,
+		mediaKind,
+		artifactPathActions: Boolean(resolvePath),
+		canExpand: Boolean(onExpand),
+	}).filter(
+		(action) =>
+			(action.id !== "save-as" || Boolean(saveName)) &&
+			(!missing || action.id === "copy-file-path"),
+	);
+}
+
 export const ImageActionsMenu = ({
 	file,
 	src,
@@ -165,17 +204,16 @@ export const ImageActionsMenu = ({
 	"aria-label": ariaLabel,
 }: ImageActionsMenuProps) => {
 	const kind = classifyAttachmentSource(file);
-	const actions = imageActions(kind, {
-		canShowInCanvas: Boolean(onShowInCanvas),
-		source: src ?? file,
+	const actions = imageMenuActions({
+		file,
+		src,
+		resolvePath,
+		missing,
+		onShowInCanvas,
 		mediaKind,
-		artifactPathActions: Boolean(resolvePath),
-		canExpand: Boolean(onExpand),
-	}).filter(
-		(action) =>
-			(action.id !== "save-as" || Boolean(saveName)) &&
-			(!missing || action.id === "copy-file-path"),
-	);
+		onExpand,
+		saveName,
+	});
 	if (actions.length === 0) return null;
 
 	/**

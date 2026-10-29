@@ -232,8 +232,16 @@ export function imageActions(
 			 * durable canvas for digest-backed pictures is a follow-up that needs
 			 * the attachment store's identity on the document, not a path this menu
 			 * may fake.
+			 *
+			 * THE ONE EXCEPTION: a USER ATTACHMENT whose retained bytes the backend
+			 * can copy out under a real name (`materialiseUserAttachment`). Its
+			 * surface passes that resolver (`artifactPathActions`); the path entries
+			 * then act on the copy and the canvas opens the copy - a real path, so
+			 * the persisted tab survives a restart and the reason above holds.
 			 */
-			return [COPY_IMAGE];
+			return artifactPathActions
+				? [...canvas, OPEN_FILE, OPEN_FOLDER, COPY_FILE_PATH, COPY_IMAGE]
+				: [COPY_IMAGE];
 		case "http":
 			/*
 			 * The copy-bytes entry is offered only where the page's own policy lets
