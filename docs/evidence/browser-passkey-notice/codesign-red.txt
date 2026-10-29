@@ -1,0 +1,57 @@
+✔ the keychain access group is <TEAM_ID>.<BUNDLE_ID>.webauthn (0.701916ms)
+✔ the bundle path is derived from the executable, not from app.getAppPath() (0.109ms)
+✔ TeamIdentifier and Identifier are parsed from the real report shape (0.219916ms)
+✔ keychain access groups are parsed from the entitlements plist (0.509208ms)
+✔ the gate names the first fact that is wrong, in order (0.225708ms)
+✔ the signature probe spawns codesign only for a packaged macOS bundle (0.576292ms)
+✖ the shipped signature is read from codesign's real streams: report on stderr, plist on stdout (0.633875ms)
+✔ the report is read from either stream, stderr taking precedence (0.137958ms)
+✔ the installer configures the authenticator only when the signature carries the group (0.239667ms)
+✔ the installer survives a configureWebAuthn that throws (0.160792ms)
+✔ a multi-match request is surfaced with its accounts and answered with the choice (0.399333ms)
+✔ a request with no account, a dismissal and an unknown request id all settle with nothing (0.13475ms)
+✔ a choice naming a credential that was not offered cancels the request (0.08075ms)
+✔ an unanswered chooser expires rather than leaving the page pending (61.775375ms)
+✔ stopping the host cancels every pending choice (0.504042ms)
+✔ the chooser labels an account without inventing an identity (12.625833ms)
+✔ a second host start leaves ONE listener, and one request settles one callback (0.26575ms)
+✔ a surface that mounts late reads the pending queue oldest-first, with the page it came from (0.175959ms)
+✔ every settle path reports its outcome, which is what the surface explains (0.138667ms)
+✔ an expired request reports 'expired' rather than only cancelling (60.963458ms)
+✔ a nameless multi-match is explained rather than offered as an arbitrary choice (1.921833ms)
+✔ only the endings the user did not choose carry copy (0.330084ms)
+✔ the mirror merges main's snapshot instead of overwriting what it holds (0.182458ms)
+✔ the recovery clause lives in the lead, where prose wraps, and not in a truncating row (0.104834ms)
+✔ a request whose push throws leaves nothing pending behind (0.128708ms)
+✔ a live request is never hidden behind an ending, and an ending cancels nothing (0.11375ms)
+✔ an inbound chooser payload is validated once, for both channels (0.133584ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 26
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 813.700709
+
+✖ failing tests:
+
+test at scripts/webauthn.test.mjs:306:1
+✖ the shipped signature is read from codesign's real streams: report on stderr, plist on stdout (0.633875ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + null
+  - 'com.local-operator'
+  
+      at TestContext.<anonymous> (file:///Users/damian/local-operator-ui/scripts/webauthn.test.mjs:328:9)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: 'com.local-operator',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

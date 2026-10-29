@@ -315,6 +315,14 @@ declare global {
 				 * ANSWERS whether it opened: `shell.openPath` returns its failure rather than
 				 * throwing, so the answer is what a caller needs to show one. */
 				revealDownloads: () => Promise<{ opened: boolean; message: string }>;
+				/** Dismiss the passkey notice `at` on `tabId`; false when it was replaced. */
+				dismissPasskeyNotice: (tabId: number, at: number) => Promise<boolean>;
+				/** Open the tab's own page in the system browser through the vetted door.
+				 * Takes no URL: main reads the tab's URL itself. */
+				openPasskeyNotice: (
+					tabId: number,
+					at: number,
+				) => Promise<{ ok: true } | { ok: false; reason: string }>;
 				onStateChanged: (callback: () => void) => () => void;
 				onConsentChanged: (callback: () => void) => () => void;
 				onConsentAttention: (

@@ -1203,5 +1203,35 @@
 		"role": "status text beside the address field",
 		"tone": "plain, restrained",
 		"note": "Shown when the browser pane is too narrow to host the suggestions list. 'Pane' is the browser panel, not a window. States the action: Enter opens what was typed. Keep it short enough to share the field with typed text. No placeholders."
+	},
+	"ui.browser.browser_passkey_notice.passkey_request": {
+		"role": "accessible region name \u2014 passkey notice strip",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Accessible name of the strip that tells the user a page asked for a passkey. Length: keep compact, around the English footprint."
+	},
+	"ui.browser.browser_passkey_notice.message": {
+		"role": "status sentence \u2014 passkey notice strip",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Names who asked for a passkey. {who} is agent (tab driven by an agent), agentFrame (an embedded frame in an agent-driven tab), userFrame (an embedded frame on the user's page) or other (the page itself); {site} is a host name, never translate it. Say the request MAY still be waiting: the page's request was neither refused nor answered. Do not say it failed. 'Agent' follows the glossary term for AI agent."
+	},
+	"ui.browser.browser_passkey_notice.explanation": {
+		"role": "explanatory text \u2014 passkey notice strip",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "States plainly that passkeys do not work in this browser yet, that Touch ID passkeys are planned (a plan, not a promise or date), and to use the system browser meanwhile. Do not name unsupported hardware and do not give dates."
+	},
+	"ui.browser.browser_passkey_notice.open_in_system_browser": {
+		"role": "button label \u2014 passkey notice strip",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Opens the current page in the user's default web browser. Keep compact, around the English footprint."
+	},
+	"ui.browser.browser_passkey_notice.dismiss": {
+		"role": "accessible control name \u2014 passkey notice strip",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Dismisses the passkey notice. Keep compact, around the English footprint."
+	},
+	"ui.browser.use_browser_chrome.passkey_open_failed": {
+		"role": "error text \u2014 browser toolbar toast",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Shown when handing the page to the system browser was refused or failed. {reason} is the app's own reason sentence, already in English or the user's language; keep it as the last sentence."
 	}
 }
