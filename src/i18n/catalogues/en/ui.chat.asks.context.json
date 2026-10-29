@@ -99,5 +99,15 @@
 	"ui.chat.asks.settled_heading": "Heading over the settled (resolved) half of the ask list.",
 	"ui.chat.asks.close_asks": "Tooltip and accessible name of the control that closes the asks drawer.",
 	"ui.chat.asks.all_asks": "Accessible name of the asks drawer when it shows every session's asks.",
-	"ui.chat.asks.conversation_asks": "Accessible name of the asks drawer when it shows the open conversation's asks."
+	"ui.chat.asks.conversation_asks": "Accessible name of the asks drawer when it shows the open conversation's asks.",
+	"ui.chat.asks.answer_options": {
+		"role": "group name",
+		"tone": "plain",
+		"note": "The fieldset that holds an ask's answer choices."
+	},
+	"ui.chat.asks.recommended": {
+		"role": "option marker",
+		"tone": "plain",
+		"note": "Marks the option the agent suggests; a glyph precedes it and is not part of the sentence."
+	}
 }

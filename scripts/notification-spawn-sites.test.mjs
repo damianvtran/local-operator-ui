@@ -233,6 +233,14 @@ function exempt(file, name, index, why, site, noEnv) {
 
 const APP_SPAWN_SITES = [
 	guarded(
+		"scripts/browser-approvals-first-paint-probe.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless to capture the approvals card's first paint in an isolated profile; it passes the notification kill switch like every other app rig, and it strips CMUX_*/LOP_* from the inherited environment so a developer's own session cannot leak in",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/browser-tab-menu-native-proof.mjs",
 		"spawn",
 		1,

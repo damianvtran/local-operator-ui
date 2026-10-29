@@ -1056,18 +1056,15 @@ export function AgentsPage() {
 				 * affordance, not a boxed button - a bordered secondary was the heaviest
 				 * object in the column for a secondary job.
 				 */}
-				<Button
-					variant="ghost"
+				<AddManuallyButton
+					teamMode={teamMode}
 					// `hidden` (display:none) on the Skills tab: there is nothing to add by
 					// hand until U2, and a class rather than a conditional keeps this block
 					// byte-identical to the Agents/Teams one it shares.
-					className={cn("w-full justify-start", skillMode && "hidden")}
+					className={cn(skillMode && "hidden")}
 					disabled={!catalogueEnabled}
 					onClick={() => requestGo({ create: teamMode ? "team" : "agent" })}
-				>
-					<Plus className="size-4" />
-					{teamMode ? "Add team manually" : "Add agent manually"}
-				</Button>
+				/>
 			</aside>
 
 			{/*
@@ -1683,6 +1680,7 @@ function EmptyPane({
 	run: ReturnType<typeof useConfigRun>;
 	onAddManually: () => void;
 }) {
+	useI18nLocale();
 	/*
 	 * THE ASK PANE IS THE CHAT COMPOSER'S COLUMN (operator report, 2026-10-05).
 	 *
@@ -1715,16 +1713,7 @@ function EmptyPane({
 	return (
 		<div className="flex min-h-full flex-col justify-center space-y-4 pb-12">
 			<div className={column}>
-				<div className={cn(CHAT_MEASURE, "space-y-2")}>
-					<h2 className="text-title">
-						{teamMode ? "Ask for a team" : "Ask for an agent"}
-					</h2>
-					<p className="text-body text-ink-muted">
-						{teamMode
-							? "A team has one agent that leads the chat and members it can hand work to. Describe what you want and a configuration run sets it up."
-							: "An agent is a reusable set of instructions you can start a chat with, or let other agents call on. Describe what you want and a configuration run sets it up."}
-					</p>
-				</div>
+				<AskPaneCopy teamMode={teamMode} />
 			</div>
 			<ConfigComposer
 				run={run}
@@ -1736,10 +1725,78 @@ function EmptyPane({
 				<div className={CHAT_MEASURE}>
 					{/* `-ml-3` cancels this `md` button's own `px-3` (the chips are `sm`, `px-2`, hence their `-ml-2`), so its TEXT is at the box's edge. */}
 					<Button variant="ghost" className="-ml-3" onClick={onAddManually}>
-						{teamMode ? "Or add a team by hand" : "Or add an agent by hand"}
+						{teamMode
+							? t("ui.agents.pages.ask.manual_team")
+							: t("ui.agents.pages.ask.manual_agent")}
 					</Button>
 				</div>
 			</div>
+		</div>
+	);
+}
+
+/**
+ * `Add agent manually` / `Add team manually`, the roster's last affordance.
+ *
+ * ITS OWN COMPONENT so the copy can be rendered in a non-English locale without
+ * mounting the page's data layer: the label is a catalogue message either way,
+ * and a test that had to fake profiles, runs and routing to read two words would
+ * be testing the fake rather than the string.
+ */
+export function AddManuallyButton({
+	teamMode,
+	className,
+	disabled,
+	onClick,
+}: {
+	teamMode: boolean;
+	/**
+	 * Extra classes on the button itself. The Skills tab hides the affordance
+	 * (`hidden`) until a skill can be added by hand; a class rather than a
+	 * conditional at the call site keeps the block identical across the three
+	 * tabs it serves.
+	 */
+	className?: string;
+	disabled: boolean;
+	onClick: () => void;
+}) {
+	useI18nLocale();
+	return (
+		<Button
+			variant="ghost"
+			className={cn("w-full justify-start", className)}
+			disabled={disabled}
+			onClick={onClick}
+		>
+			<Plus className="size-4" />
+			{teamMode
+				? t("ui.agents.pages.add_manual.team")
+				: t("ui.agents.pages.add_manual.agent")}
+		</Button>
+	);
+}
+
+/**
+ * The ask pane's heading and description, as one presentational block.
+ *
+ * Both variants are catalogue messages, and both are rendered by a component
+ * that subscribes to the locale store: the page's own data hooks never need to
+ * re-run for the sentence to repaint (see `useI18nLocale`).
+ */
+export function AskPaneCopy({ teamMode }: { teamMode: boolean }) {
+	useI18nLocale();
+	return (
+		<div className={cn(CHAT_MEASURE, "space-y-2")}>
+			<h2 className="text-title">
+				{teamMode
+					? t("ui.agents.pages.ask.heading_team")
+					: t("ui.agents.pages.ask.heading_agent")}
+			</h2>
+			<p className="text-body text-ink-muted">
+				{teamMode
+					? t("ui.agents.pages.ask.body_team")
+					: t("ui.agents.pages.ask.body_agent")}
+			</p>
 		</div>
 	);
 }

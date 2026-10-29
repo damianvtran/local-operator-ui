@@ -1,0 +1,120 @@
+{
+  "instance": "2248800d3855-ov2-vi",
+  "locale": "vi",
+  "scope": {
+    "kind": "independent-i18n-delta-audit-round-2",
+    "checkout": "~/lo-literals",
+    "branch": "i18n-final-literals",
+    "delta_commit": "fbf78b5f67",
+    "carried_by": "58de30166d",
+    "supersedes_head": "f6e5c3eb62",
+    "remediation_commit": "58de30166d",
+    "namespaces": ["ui.chat.thread_search", "ui.chat.canonical"],
+    "keys": 23,
+    "policy_note": "round 2 verifies the round-1 findings and the moved count keys at the new bytes; the 23 keys are not re-audited from scratch and no new out-of-scope issue is filed"
+  },
+  "checkout_head": "58de30166d",
+  "key_count": 23,
+  "audit_date": "2026-10-29",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "2248800d3855",
+    "model": "radient/auto",
+    "model_fallback": true,
+    "actual_model_source": "runtime-selected model; provider fallback chain recorded in round 1 (anthropic/claude-sonnet-5-5 -> openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto)",
+    "independent_from_translator_session": true
+  },
+  "reviewed_previous": {
+    "instance": "2248800d3855-ov-vi",
+    "receipt": "/Users/damian/qa/ov-audit/vi/receipt.json",
+    "verdict": "PASS",
+    "counts": {"BLOCKER": 0, "MAJOR": 0, "MINOR": 0, "NIT": 2},
+    "audited_head": "f6e5c3eb62"
+  },
+  "input_sha256": {
+    "en/ui.chat.thread_search.json": "08bc59d1fe1058d3704800f92ee05afe5a7ffc1c7146683100a1afe5b2fa28e6",
+    "vi/ui.chat.thread_search.json": "3c3eccc0852275a021a379e49c387814ec67a2b8138d972c62cace1b42c03495",
+    "en/ui.chat.canonical.json": "da2c87f6caf8f238997861d850f575a3b3d8328c5d46abfffae4728ed41fb892",
+    "vi/ui.chat.canonical.json": "d44c02049a3e235c9af31e81a675b30fd256df3232f8b2bb9efe65e90dee299c"
+  },
+  "read_provenance": {
+    "en_and_vi_values": "read_public_copy only: src/i18n/catalogues/{en,vi}/<namespace>.json, key=<each of the 23 ids>, 46 reads at 58de30166d",
+    "context_sidecar": "filesystem docs (labelled): src/i18n/catalogues/en/ui.chat.thread_search.context.json (count.split and count.truncated entries re-read)",
+    "previous_bytes": "round-1 values from the prior receipt's own read_public_copy transcript, diffed against the new reads in-session; no raw catalogue file read",
+    "repo_edit": "none"
+  },
+  "checks": [
+    "per-key diff of all 46 round-1 values against 58de30166d: exactly 2 values moved, both ui.chat.thread_search.count.split (en and vi); no other audited key changed",
+    "file-level proof nothing else moved: git diff --numstat f6e5c3eb62..58de30166d shows 1/1 changed lines in en and vi thread_search catalogues, 0 lines in both canonical catalogues (canonical hashes identical to round 1)",
+    "count.split new form read against own round-1 reasoning: label-first parallel labels (Exact:/Related:; Khop dung:/Lien quan:), placeholders exactText/relatedText byte-identical, middot kept; the qualifier-shape asymmetry I filed no longer exists",
+    "ICU arguments: count/countText on count.match, count.related, count.truncated and exactText/relatedText on count.split identical between en and vi",
+    "CLDR categories: vi plurals still exactly {other}, correct for 0/1/2/5/21; no one/other branch added",
+    "result-row labels: role.agent 'Tac nhan' and role.user 'Ban' unchanged and still read correctly; the ru label-capitalisation change in this commit is locale ru, outside this vi audit",
+    "changed string typography: NFC, no ASCII ellipsis, spaced middot, sentence-case segment labels matching the English shape",
+    "sidecar: the new en note states label-first is required because a bare number plus an agreeing adjective cannot satisfy both counts (one may be 1) in inflecting locales; vi form conforms",
+    "not run: repo-wide Node validators (delta scope, one pass); mechanical parity verified directly on the 46 values"
+  ],
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 1
+  },
+  "verdict": "pass",
+  "namespaces": {
+    "ui.chat.thread_search": {
+      "status": "passed",
+      "keys_audited": 20,
+      "sha256": {
+        "en": "08bc59d1fe1058d3704800f92ee05afe5a7ffc1c7146683100a1afe5b2fa28e6",
+        "target": "3c3eccc0852275a021a379e49c387814ec67a2b8138d972c62cace1b42c03495"
+      },
+      "findings": [
+        {
+          "id": "vi-delta-N1",
+          "severity": "NIT",
+          "key": "ui.chat.thread_search.count.truncated",
+          "current": "{count, plural, other {(hiển thị {countText} kết quả đầu)}}",
+          "status": "open, unchanged at 58de30166d",
+          "problem": "Meaning is right (the list is a floor). Style: 'kết quả đầu' drops 'tiên' and reads colloquial inside a technical parenthetical.",
+          "suggestion": "{count, plural, other {(hiển thị {countText} kết quả đầu tiên)}}",
+          "blocking": false,
+          "origin": "round 1 (not re-filed; carried forward)"
+        }
+      ]
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "keys_audited": 3,
+      "sha256": {
+        "en": "da2c87f6caf8f238997861d850f575a3b3d8328c5d46abfffae4728ed41fb892",
+        "target": "d44c02049a3e235c9af31e81a675b30fd256df3232f8b2bb9efe65e90dee299c"
+      },
+      "findings": []
+    }
+  },
+  "notes": [
+    {
+      "prior_finding": "vi-delta-N2",
+      "severity": "NIT",
+      "key": "ui.chat.thread_search.count.split",
+      "round_1": "{exactText} khớp đúng · {relatedText} liên quan",
+      "status": "RESOLVED at 58de30166d",
+      "evidence": "new vi: 'Khớp đúng: {exactText} · Liên quan: {relatedText}' (en 'Exact: {exactText} · Related: {relatedText}'). Label-first makes both qualifiers parallel labels, so the shape asymmetry is gone; placeholders and middot preserved; reads naturally as label/value pairs."
+    },
+    {
+      "prior_finding": "vi-delta-N1",
+      "severity": "NIT",
+      "key": "ui.chat.thread_search.count.truncated",
+      "status": "OPEN, not addressed in this commit",
+      "evidence": "value byte-identical to round 1; non-blocking polish only, no meaning or ICU defect. Not re-filed as a new finding."
+    },
+    {
+      "prior_finding": "none (no MAJOR/MINOR/BLOCKER was filed in round 1)",
+      "status": "n/a"
+    },
+    {
+      "note": "Sibling locales (es, fr, hi, ru, ur, zh-CN) and the ru result-row capitalisation also changed in 58de30166d; they are outside this vi audit and were not judged."
+    }
+  ]
+}

@@ -51,6 +51,61 @@ function fixtureFindings() {
 	return scanned.get(FIXTURE) ?? [];
 }
 
+/**
+ * A counted corpus in a temp directory, for the baseline-writing cases below.
+ *
+ * Those cases used to take their inputs from the live tree (`runCheck()`), which
+ * made them a mirror of the ratchet's current state rather than a test of
+ * `--update` and `--init`: once the migration finished and the real baseline
+ * legitimately reached `{}`, there was no counted file left to lower, raise or
+ * prune, and both cases went red. The corpus here is scanned by the same
+ * compiler and scanner the gate runs, so every branch stays exercised whatever
+ * the product tree holds.
+ *
+ * The counts are PINNED and asserted against the scan: a fixture whose own
+ * numbers floated with the scanner would pass straight through a counting
+ * regression.
+ */
+const CORPUS = {
+	"lower.tsx":
+		"export const A = () => <p>One</p>;\nexport const B = () => <p>Two</p>;\n",
+	"raise.tsx":
+		"export const C = () => <p>Three</p>;\nexport const D = () => <p>Four</p>;\nexport const E = () => <p>Five</p>;\n",
+	"third.tsx": "export const F = () => <p>Six</p>;\n",
+};
+const CORPUS_COUNTS = { "lower.tsx": 2, "raise.tsx": 3, "third.tsx": 1 };
+
+function countedCorpus() {
+	const dir = mkdtempSync(join(tmpdir(), "i18n-corpus-"));
+	writeFileSync(
+		join(dir, "tsconfig.app.json"),
+		JSON.stringify({
+			compilerOptions: { jsx: "react-jsx" },
+			include: ["*.tsx"],
+		}),
+	);
+	writeFileSync(
+		join(dir, "tsconfig.node.json"),
+		JSON.stringify({ compilerOptions: { noEmit: true } }),
+	);
+	for (const [name, body] of Object.entries(CORPUS)) {
+		writeFileSync(join(dir, name), body);
+	}
+	const rels = Object.keys(CORPUS).sort();
+	const { api, snapshot } = openSnapshot(
+		dir,
+		rels.map((rel) => join(dir, rel)),
+	);
+	try {
+		const scanned = scanSnapshot(snapshot, dir, { extraScan: rels });
+		const counts = countsOf(scanned, []);
+		assert.deepEqual(counts, CORPUS_COUNTS);
+		return { dir, counts };
+	} finally {
+		api.close();
+	}
+}
+
 test("the fixture's findings are exactly the flagged shapes, on pinned lines", () => {
 	const found = fixtureFindings().map((finding) => ({
 		line: finding.line,
@@ -345,21 +400,22 @@ test("the real tree is at or below its baseline, and every counted file is recor
 });
 
 test("--update lowers a ceiling, and refuses every raise", () => {
+	const { dir: corpus, counts } = countedCorpus();
 	const dir = mkdtempSync(join(tmpdir(), "i18n-update-"));
 	try {
 		const baselinePath = join(dir, "baseline.json");
 		/*
-		 * Every number here comes from the tree's own counts, never a pinned
-		 * literal. This harness once pinned the expected post-update count of one
-		 * migration file and broke the moment that file's copy was fully keyed —
-		 * `--update` then deletes the entry instead of lowering it — so both the
-		 * targets and the expected values are read from the counted set here.
+		 * Every number here comes from the fixture corpus, never a pinned literal
+		 * and never the live tree. This harness once pinned the expected
+		 * post-update count of one migration file and broke the moment that file's
+		 * copy was fully keyed — `--update` then deletes the entry instead of
+		 * lowering it — so both the targets and the expected values are read from
+		 * the counted set, and the counted set itself is a fixture.
 		 *
-		 * 99 sits above every real count, so the lower target has room to move down;
-		 * the raise target is recorded one below the tree's count, so the raise is
-		 * refused and its entry stays intact.
+		 * 99 sits above every corpus count, so the lower target has room to move
+		 * down; the raise target is recorded one below the corpus's count, so the
+		 * raise is refused and its entry stays intact.
 		 */
-		const { counts } = runCheck();
 		const counted = Object.keys(counts).sort();
 		const lowerTarget = counted.find((rel) => counts[rel] < 99);
 		// Prefer a file carrying more than one literal: a zero ceiling is valid,
@@ -382,9 +438,9 @@ test("--update lowers a ceiling, and refuses every raise", () => {
 			{ [lowerTarget]: 99, [raiseTarget]: raisedCeiling },
 			"note",
 		);
-		const options = { baselinePath, allowlistPath: ALLOWLIST };
+		const options = { baselinePath, allowlistPath: ALLOWLIST, counts };
 		assert.equal(main(["--update", lowerTarget], options), 0);
-		// The update wrote exactly the tree's count, strictly below the planted 99.
+		// The update wrote exactly the corpus's count, strictly below the planted 99.
 		assert.equal(loadBaseline(baselinePath).files[lowerTarget], loweredCeiling);
 		assert.ok(loweredCeiling < 99);
 		// A file recorded below its real count: refused, entry intact.
@@ -401,9 +457,10 @@ test("--update lowers a ceiling, and refuses every raise", () => {
 			Object.hasOwn(loadBaseline(baselinePath).files, raiseTarget),
 			false,
 		);
-		// A clean file with no entry: nothing to do, no refusal.
+		// A path with no counted literal and no entry: nothing to do, no refusal.
 		assert.equal(main(["--update", "src/i18n/index.ts"], options), 0);
 	} finally {
+		rmSync(corpus, { recursive: true, force: true });
 		rmSync(dir, { recursive: true, force: true });
 	}
 });
@@ -424,16 +481,16 @@ function captureStdout(fn) {
 }
 
 test("--init --force reports added, raised, lowered and pruned files", () => {
+	const { dir: corpus, counts } = countedCorpus();
 	const dir = mkdtempSync(join(tmpdir(), "i18n-init-"));
 	try {
 		const baselinePath = join(dir, "baseline.json");
-		const { counts } = runCheck();
-		const rels = Object.keys(counts).sort();
 		/*
-		 * A scratch baseline that exercises each branch at once: one counted file
+		 * A scratch baseline that exercises each branch at once: one corpus file
 		 * missing (that is the `added` case), one entry below its count, one above,
 		 * and one entry for a file with no literals (pruned).
 		 */
+		const rels = Object.keys(counts).sort();
 		const [added, raised, lowered] = rels;
 		const files = { ...counts };
 		delete files[added];
@@ -443,7 +500,11 @@ test("--init --force reports added, raised, lowered and pruned files", () => {
 		saveBaseline(baselinePath, files, "note");
 
 		const { code, out } = captureStdout(() =>
-			main(["--init", "--force"], { baselinePath, allowlistPath: ALLOWLIST }),
+			main(["--init", "--force"], {
+				baselinePath,
+				allowlistPath: ALLOWLIST,
+				counts,
+			}),
 		);
 		assert.equal(code, 0);
 		assert.ok(out.includes("added 1:"), out);
@@ -470,6 +531,7 @@ test("--init --force reports added, raised, lowered and pruned files", () => {
 		assert.deepEqual(captured.files, counts);
 		assert.equal(captured.note, BASELINE_NOTE);
 	} finally {
+		rmSync(corpus, { recursive: true, force: true });
 		rmSync(dir, { recursive: true, force: true });
 	}
 });

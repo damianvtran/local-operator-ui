@@ -1,0 +1,180 @@
+{
+	"probe": "scripts/browser-approvals-first-paint-probe.mjs",
+	"before": {
+		"ref": "main @ 20225f3",
+		"cases": {
+			"obsidian": {
+				"theme": "dark",
+				"urlPalette": null,
+				"firstPaintTheme": "localOperatorDark",
+				"themeTimeline": [
+					{
+						"phase": "document-start",
+						"theme": null,
+						"at": 108
+					},
+					{
+						"phase": "observed",
+						"theme": "localOperatorDark",
+						"at": 111
+					},
+					{
+						"phase": "domcontentloaded",
+						"theme": "localOperatorDark",
+						"at": 178
+					},
+					{
+						"phase": "load",
+						"theme": "localOperatorDark",
+						"at": 178
+					},
+					{
+						"phase": "data-theme-changed",
+						"theme": "obsidian",
+						"at": 195
+					}
+				],
+				"documentFirstPaintTheme": "localOperatorDark",
+				"afterModelTheme": "obsidian",
+				"firstPaintBackground": "#262217",
+				"afterModelBackground": "#2a292d",
+				"sameBackground": false,
+				"afterModelSha256": "03c7f947dca3b75cf9ee552b3abcc8b7b9dfc7ae17cb0dccd49b8dcc26784baf"
+			},
+			"kanagawaLotus": {
+				"theme": "light",
+				"urlPalette": null,
+				"firstPaintTheme": "localOperatorLight",
+				"themeTimeline": [
+					{
+						"phase": "document-start",
+						"theme": null,
+						"at": 128
+					},
+					{
+						"phase": "observed",
+						"theme": "localOperatorDark",
+						"at": 131
+					},
+					{
+						"phase": "data-theme-changed",
+						"theme": "localOperatorLight",
+						"at": 189
+					},
+					{
+						"phase": "domcontentloaded",
+						"theme": "localOperatorLight",
+						"at": 189
+					},
+					{
+						"phase": "load",
+						"theme": "localOperatorLight",
+						"at": 189
+					},
+					{
+						"phase": "data-theme-changed",
+						"theme": "kanagawaLotus",
+						"at": 205
+					}
+				],
+				"documentFirstPaintTheme": "localOperatorLight",
+				"afterModelTheme": "kanagawaLotus",
+				"firstPaintBackground": "#ffffff",
+				"afterModelBackground": "#fffdc8",
+				"sameBackground": false,
+				"afterModelSha256": "f3cfd6f3d9fcefa0035756704899b674fb0955a58ef07b1316034bcb5248f6a5"
+			}
+		}
+	},
+	"after": {
+		"ref": "fix/approvals-first-paint-palette",
+		"cases": {
+			"obsidian": {
+				"theme": "dark",
+				"urlPalette": "obsidian",
+				"firstPaintTheme": "obsidian",
+				"themeTimeline": [
+					{
+						"phase": "document-start",
+						"theme": null,
+						"at": 96
+					},
+					{
+						"phase": "observed",
+						"theme": "localOperatorDark",
+						"at": 99
+					},
+					{
+						"phase": "data-theme-changed",
+						"theme": "obsidian",
+						"at": 167
+					},
+					{
+						"phase": "domcontentloaded",
+						"theme": "obsidian",
+						"at": 167
+					},
+					{
+						"phase": "load",
+						"theme": "obsidian",
+						"at": 167
+					},
+					{
+						"phase": "data-theme-changed",
+						"theme": "obsidian",
+						"at": 194
+					}
+				],
+				"documentFirstPaintTheme": "obsidian",
+				"afterModelTheme": "obsidian",
+				"firstPaintBackground": "#2a292d",
+				"afterModelBackground": "#2a292d",
+				"sameBackground": true,
+				"afterModelSha256": "03c7f947dca3b75cf9ee552b3abcc8b7b9dfc7ae17cb0dccd49b8dcc26784baf"
+			},
+			"kanagawaLotus": {
+				"theme": "light",
+				"urlPalette": "kanagawaLotus",
+				"firstPaintTheme": "kanagawaLotus",
+				"themeTimeline": [
+					{
+						"phase": "document-start",
+						"theme": null,
+						"at": 434
+					},
+					{
+						"phase": "observed",
+						"theme": "localOperatorDark",
+						"at": 438
+					},
+					{
+						"phase": "data-theme-changed",
+						"theme": "kanagawaLotus",
+						"at": 510
+					},
+					{
+						"phase": "domcontentloaded",
+						"theme": "kanagawaLotus",
+						"at": 510
+					},
+					{
+						"phase": "load",
+						"theme": "kanagawaLotus",
+						"at": 510
+					},
+					{
+						"phase": "data-theme-changed",
+						"theme": "kanagawaLotus",
+						"at": 535
+					}
+				],
+				"documentFirstPaintTheme": "kanagawaLotus",
+				"afterModelTheme": "kanagawaLotus",
+				"firstPaintBackground": "#fffdc8",
+				"afterModelBackground": "#fffdc8",
+				"sameBackground": true,
+				"afterModelSha256": "f3cfd6f3d9fcefa0035756704899b674fb0955a58ef07b1316034bcb5248f6a5"
+			}
+		}
+	}
+}

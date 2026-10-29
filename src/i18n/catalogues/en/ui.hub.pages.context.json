@@ -4,6 +4,21 @@
 		"plain, names the axis",
 		"The three tabs switch what the hub lists (agents, teams, skills). No visible label, so this is the group's only name."
 	],
+	"ui.hub.pages.card.get": {
+		"role": "Download button label on a public hub card",
+		"tone": "Imperative verb, shortest possible; sentence case.",
+		"length_hint": "Three characters in English. It sits in a small secondary button beside a download icon in the card footer; keep it to one short word, or the footer's action row wraps.",
+		"note": "The accessible name on the same button is the sentence 'Download {name}', a separate message; this key is the visible word only."
+	},
+	"ui.hub.pages.card.updated": {
+		"role": "Provenance fragment on a public hub card, after the author and a dot",
+		"tone": "Quiet, lowercase fragment; it continues a dot-separated line, so it does not start a sentence.",
+		"length_hint": "Two words plus the age in English. The line truncates with an ellipsis inside a card that is about 280 px wide, so keep the surrounding words short.",
+		"placeholders": {
+			"when": "The localized age phrase, for example '4 days ago' or 'just now', produced by the hub's shared age messages (ui.hub.comments.age.*). It already contains its own 'ago'; do not add another. Translate the verb around it, never the age itself."
+		},
+		"note": "One whole sentence, so a language that puts the time before the verb can reorder it. Agent Hub cards describe an agent the author last changed at this age."
+	},
 	"ui.hub.pages.header.subtitle": [
 		"page subtitle",
 		"plain, one line of scope",
@@ -173,5 +188,20 @@
 		"status sentence in an output element",
 		"plain, explains an absence",
 		"One failed batched read means no card can show like/favourite state, so this says why once rather than letting every card read as 'not liked'. Full sentence; wraps."
+	],
+	"ui.hub.pages.pager.nav_aria": [
+		"landmark name",
+		"plain",
+		"The hub grid's page footer. Keep Agent Hub's vocabulary ('agents') so the landmark and the page agree."
+	],
+	"ui.hub.pages.pager.next": [
+		"button label",
+		"plain",
+		"Visible word beside the chevron; the accessible name is the button's own 'Next page'."
+	],
+	"ui.hub.pages.pager.previous": [
+		"button label",
+		"plain",
+		"Visible word beside the chevron; the accessible name is the button's own 'Previous page'."
 	]
 }

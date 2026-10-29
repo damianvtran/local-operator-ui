@@ -1,0 +1,194 @@
+{
+  "instance": "bd7b35057a3f-union-fr",
+  "locale": "fr",
+  "namespace": "ui.chat.attachments",
+  "scope": "ui.chat.attachments: verification of the hand-union of 5 branch keys and 1 main key onto the 12-key base",
+  "checkout_head": "36b88a45fe",
+  "audit_date": "2026-10-29",
+  "merge": {
+    "branch": "i18n-final-literals",
+    "merge_head": "9a767426fe",
+    "merge_base": "aafa890e3c",
+    "state": "merge in progress; en/fr ui.chat.attachments.json and the en context sidecar are UU (hand-resolved in the working tree, not yet `git add`ed)"
+  },
+  "auditor": {
+    "agent": "i18n-auditor (Local Operator harness agent)",
+    "session": "bd7b35057a3f",
+    "model": "radient/auto",
+    "model_note": "Session opened on anthropic/claude-sonnet-5-5 and fell back on provider quota to openai/gpt-6-astra, then kimi/k3.1-pro, then radient/auto before any audit work began; this audit was performed as radient/auto. No second independent pass is claimed for this namespace (not a high-visibility group: attachment card chrome).",
+    "independent_from_translator": true
+  },
+  "input_sha256": {
+    "method": "shasum -a 256, whole file, working tree (the hand-union bytes)",
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.attachments.json",
+      "sha256": "5e99fd052e7a24dc2715d7de1332b378c1c964f801cdc1c241c7068569de41a0"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/fr/ui.chat.attachments.json",
+      "sha256": "3dbeeefb05a000e93ec2350523ac0a67ae511a8beac7fe659aa54dfdb4fd2c09"
+    }
+  },
+  "diffs_observed": {
+    "method": "parsed per-key raw-value comparison (one key per line, so raw JSON value bytes are compared), plus `git diff` for direction and ordering; scripts and diff files under /Users/damian/qa/union-audit/fr/",
+    "base_to_branch": {
+      "keys_added": [
+        "ui.chat.attachments.open",
+        "ui.chat.attachments.playback_position",
+        "ui.chat.attachments.playback_rate",
+        "ui.chat.attachments.playback_rate_option",
+        "ui.chat.attachments.volume"
+      ],
+      "keys_removed": [],
+      "values_changed": [],
+      "note": "en 12→17, fr 12→17; the only '-' lines are the comma appended to saved_copy_label, whose value is unchanged"
+    },
+    "base_to_main": {
+      "keys_added": [
+        "ui.chat.attachments.file_and_copy_missing"
+      ],
+      "keys_removed": [],
+      "values_changed": [],
+      "note": "en 12→13, fr 12→13; same saved_copy_label comma artefact"
+    },
+    "union_vs_branch": {
+      "keys_added": [
+        "ui.chat.attachments.file_and_copy_missing"
+      ],
+      "keys_removed": [],
+      "values_changed": [],
+      "reordering": "open moved from the branch's first position to the end group; saved_path_copied and saved_copy_label moved above the playback keys. Relative order of the five branch additions is preserved. Order is not semantically load-bearing in a flat catalogue and en/fr orders are identical.",
+      "diff_file": "diffs/union-vs-branch-fr.diff"
+    },
+    "union_vs_main": {
+      "keys_added": [
+        "ui.chat.attachments.open",
+        "ui.chat.attachments.playback_position",
+        "ui.chat.attachments.playback_rate",
+        "ui.chat.attachments.playback_rate_option",
+        "ui.chat.attachments.volume"
+      ],
+      "keys_removed": [],
+      "values_changed": [],
+      "diff_file": "diffs/union-vs-main-fr.diff"
+    },
+    "both_sides_added": [],
+    "conflicting_values": []
+  },
+  "union_claim": {
+    "en": {
+      "base": 12,
+      "branch": 17,
+      "main": 13,
+      "union": 18
+    },
+    "fr": {
+      "base": 12,
+      "branch": 17,
+      "main": 13,
+      "union": 18
+    },
+    "proved": "branch\\base and main\\base are disjoint 5- and 1-key sets; base ⊂ both sides; every one of the 12 base values is byte-identical on the branch, on main and in the union; the union equals the computed base+5+1 map key-for-key and byte-for-byte, for en and fr independently."
+  },
+  "binding": {
+    "branch_five_keys": "i18n/receipts/e67567d1d626-r4-fr.json — namespace ui.chat.attachments, keys_audited 5, status passed, findings [], sha256 {en: 623a1363260ecbe40393b4424dde4d7b6cc084688ac354483052639a145ce892, target: 5b85a8ae171915f57a078bf83aec5da918fef62e03c650c46cac14821b076a60}; those are the exact hashes at the branch tip and at the receipt's audited_head a10255813c.",
+    "main_new_key": "i18n/receipts/i18n-audit-1452-20261027-fr.json — namespace ui.chat.attachments, keys_audited 1 (file_and_copy_missing), status passed, findings [], sha256 {en: 1f476ef54a5fb470d00da5e66e7f2ccd2665d4d22f07ff11f20a3e00acfeadc5, fr: 336c8da4c2b41faaf3daba16204933c941bef6fd185dbcefd3a4053bdec479a7}; equal to main's bytes.",
+    "ledger": "branch row target_sha256 5b85a8ae171915f5…, main row target_sha256 336c8da4c2b4…; both match their side's bytes.",
+    "conclusion": "every value in the union is proved byte-identical to bytes an independent audit already signed; the union adds no new text, only the coexistence of the two audited sets in one file."
+  },
+  "checks": {
+    "valid_json_and_no_duplicate_keys": {
+      "result": "pass",
+      "detail": "both files parse; no duplicate key in either"
+    },
+    "key_set_and_order_vs_source": {
+      "result": "pass",
+      "detail": "18/18 ids present in fr; key order identical between en and fr"
+    },
+    "placeholders_identical": {
+      "result": "pass",
+      "detail": "{type},{size},{digest},{rate} — names and sets identical to en for all 18 ids; no renamed token"
+    },
+    "icu_structure": {
+      "result": "pass",
+      "detail": "no plural/select/selectordinal in the English source, so no CLDR category can be missing; all 36 messages (18 x en/fr) parse with the repo's @formatjs/icu-messageformat-parser 3.5.21 and render with intl-messageformat 12.1.3, 0 failures"
+    },
+    "typography": {
+      "result": "pass",
+      "detail": "no guillemets, no ellipsis, no ' ;:!?' spacing, no bidi controls, all values NFC, U+2019 policy unaffected (no apostrophe in any of the six new fr values); one pre-existing straight apostrophe in a base key, recorded as an observation"
+    },
+    "terminology": {
+      "result": "pass",
+      "detail": "saved_copy_label Copie conservée reused verbatim in file_and_copy_missing; playback terms are the settled fr UI forms (Vitesse de lecture, Position de lecture); Volume unchanged across locales"
+    },
+    "generated_key_map": {
+      "result": "pass",
+      "detail": "src/i18n/keys.gen.ts carries all 18 ui.chat.attachments ids including the 6 new ones, with playback_rate_option typed {rate: string}"
+    },
+    "context_sidecar": {
+      "result": "pass",
+      "detail": "en sidecar is a clean union too: 12 base entries byte-identical, + the same 5 branch ids and 1 main id; 18 entries"
+    },
+    "sibling_locales": {
+      "result": "pass",
+      "detail": "all seven locales land at 18 keys with all six additions present after the merge, so the resolution was not left half-done (structural only; their values are out of this scope)"
+    }
+  },
+  "findings": [],
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 0
+  },
+  "verdict": "pass",
+  "namespaces": {
+    "ui.chat.attachments": {
+      "status": "passed",
+      "keys_audited": 18,
+      "sha256": {
+        "en": "5e99fd052e7a24dc2715d7de1332b378c1c964f801cdc1c241c7068569de41a0",
+        "target": "3dbeeefb05a000e93ec2350523ac0a67ae511a8beac7fe659aa54dfdb4fd2c09"
+      },
+      "findings": []
+    }
+  },
+  "outside_scope_observations": [
+    {
+      "id": "O-01",
+      "where": "src/renderer/src/features/chat/components/message-item/audio-attachment.tsx:232",
+      "observation": "playback_rate_option is rendered with rate: String(rate), so the option reads \"0.5x\", \"1.5x\", \"2x\" in fr — a full stop where fr requires a decimal comma (\"1,5x\"). The catalogue cannot fix it: {rate} is injected verbatim and \"{rate}x\" is the audited value. Shared code defect, affects every locale whose decimal separator is not '.'.",
+      "action": "source fix (Intl.NumberFormat(locale)), not a catalogue change; no byte of this namespace should move for it."
+    },
+    {
+      "id": "O-02",
+      "where": "ui.chat.attachments.file_missing_recovery (base key, unchanged by the union)",
+      "observation": "fr uses a straight apostrophe: \"Le fichier n'est plus à cet emplacement.\" The fr style guide requires U+2019. Pre-existing in the 12-key base and signed clean by the r4 audit, so it is not a regression; the union is required to keep it byte-identical, so it is not actionable here.",
+      "action": "next fr polish pass, not this merge."
+    }
+  ],
+  "limitations": [
+    "read_public_copy refuses both files while the union is uncommitted (\"differs from HEAD; commit the public copy before auditing it\"), so the audited bytes were bound by sha256 of the working-tree files against `git show <commit>:<path>`, which is the stronger check for this task; the sanctioned reader was attempted first and its refusal is recorded, not worked around.",
+    "Catalogue-level audit only: no app launch, no browser, no rendered frame, no native-speaker sign-off.",
+    "The fr style guide on disk is the local-operator working-tree copy (sha256 b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39); it differs from local-operator HEAD (49010212a65f0d30…) by two removed paragraphs (the bearer term note and the relay.health width exception), neither of which touches this namespace's rules. Glossary sha256 ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd."
+  ],
+  "artifacts": {
+    "diffs": [
+      "diffs/base-to-branch.diff",
+      "diffs/base-to-main.diff",
+      "diffs/union-vs-branch-fr.diff",
+      "diffs/union-vs-main-fr.diff"
+    ],
+    "inputs": [
+      "diffs/branch-fr.json",
+      "diffs/main-fr.json",
+      "work/en.json",
+      "work/fr.json",
+      "work/pair.json"
+    ],
+    "probe": {
+      "path": "work/icu-probe.cjs",
+      "note": "intl-messageformat 12.1.3 render of all 18 ids in en and fr against the repository's own node_modules; 0 parse/format failures"
+    }
+  }
+}

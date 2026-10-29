@@ -1,0 +1,138 @@
+{
+ "locale": "fr",
+ "namespace": "ui.agents.config",
+ "audit_round": 3,
+ "checkout": "/Users/damian/lo-audit-1439c",
+ "checkout_head": "ae918aa12a724c9fd934723bef0333ff1bd538e4",
+ "pr": "local-operator-ui#1439",
+ "key_count": 38,
+ "audit_date": "2026-10-28",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "1bbaba0f329a",
+  "model": "anthropic/claude-sonnet-5-5",
+  "independent_from_translator_session": true,
+  "actual_model_source": "session header Model field"
+ },
+ "input_sha256": {
+  "en_catalogue": {
+   "path": "src/i18n/catalogues/en/ui.agents.config.json",
+   "sha256": "5f06618661e942dd8dc61f2f40dc7894f2048855e624fdc58ffe1aa0f5fcb7a6"
+  },
+  "en_context": {
+   "path": "src/i18n/catalogues/en/ui.agents.config.context.json",
+   "sha256": "07de5b1c02c8c64c130da1cc532cf03c13f7ef462c9cdc27e34b1a5cf3215459"
+  },
+  "fr_catalogue": {
+   "path": "src/i18n/catalogues/fr/ui.agents.config.json",
+   "sha256": "69069e5823ab6963516c5a4df14037139ef71ca2132b8b0c1b35c58208381bed"
+  },
+  "glossary": {
+   "path": "/Users/damian/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide_fr": {
+   "path": "/Users/damian/local-operator/i18n/style-guides/fr.md",
+   "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+  }
+ },
+ "origin_main_fr_sha256": "8a609b88321d8f607d16bde6097b43971a3bc9b0a6fce7eeb0d3cdc45afa9ea7",
+ "read_provenance": {
+  "catalogue_via_read_public_copy": [
+   {
+    "path": "src/i18n/catalogues/en/ui.agents.config.json",
+    "key": "(whole file, all 38 keys)"
+   },
+   {
+    "path": "src/i18n/catalogues/fr/ui.agents.config.json",
+    "key": "(whole file, all 38 keys)"
+   }
+  ],
+  "context_docs_via_filesystem_not_catalogue_copy": [
+   "src/i18n/catalogues/en/ui.agents.config.context.json",
+   "/Users/damian/local-operator/i18n/style-guides/fr.md",
+   "/Users/damian/local-operator/i18n/glossary.md"
+  ],
+  "origin_main_baseline": "git -C ~/local-operator-ui show origin/main:src/i18n/catalogues/fr/ui.agents.config.json (diff only)",
+  "source_usage_read": [
+   "src/renderer/src/features/agents/config-run/config-composer.tsx (aboutLine, kindWord, RunSummary, definitionsPhrase)"
+  ],
+  "forbidden_paths_read": []
+ },
+ "checks": {
+  "keys_parity": "en/fr 38 keys each, identical sets: pass",
+  "placeholders": "{kind},{name},{count},{topic} identical per key: pass",
+  "plural": "definitions: fr one/many/other all present, 'many' = '# de définitions' per style guide: pass",
+  "about_with_bare_nouns": "'Concerne : agent coder' and 'Concerne : équipe shipping' read correctly; no article/case needed; '(agent)'/'(équipe)' suffix reads correctly: pass",
+  "typography": "U+202F before : and ; in all 7 occurrences, ’ throughout (no straight apostrophe), … U+2026, ' — ' with spaces: pass",
+  "glossary": "agent=agent, team=équipe, backend kept English consistent with sibling fr catalogues, run=exécution consistent: pass",
+  "fit": "no maxCells/maxChars in sidecar; docked placeholder 42 chars <= en 44; action.watch 18 cells noted (NIT): pass",
+  "diff_vs_origin_main": "PR adds 5 keys' fr (kind.agent, kind.team, placeholder.about/docked/hero), changes about and action.watch only",
+  "repo_validator": "not run (read-only audit, no repo edits); mechanical checks done by own script"
+ },
+ "findings": [
+  {
+   "severity": "MINOR",
+   "key": "ui.agents.config.placeholder.docked",
+   "current": "Demandez une modification ou une création…",
+   "suggestion": "Demandez une modification ou décrivez quelque chose de nouveau…",
+   "note": "en says 'describe something new'; fr drops the describe verb and narrows 'something new' to 'création'. Fits (42 chars vs en 44) so no fit cost.",
+   "origin": "introduced-by-this-PR"
+  },
+  {
+   "severity": "MINOR",
+   "key": "ui.agents.config.about",
+   "current": "Concerne : {kind} {name}",
+   "suggestion": "keep 'Concerne :' but align the sibling ui.agents.skills.composer.about ('À propos de la compétence {name}') or accept the two phrasings knowingly",
+   "note": "The same Agents-composer slot reads 'Concerne : équipe shipping' on the Agents/Teams tabs and 'À propos de la compétence X' on Skills. Both render correctly with the bare nouns ('Concerne : agent coder', 'Concerne : équipe shipping'); only cross-tab consistency is at issue. Origin/main had 'À propos : {kind} {name}'.",
+   "origin": "introduced-by-this-PR"
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.agents.config.action.clear",
+   "current": "Effacer",
+   "suggestion": "Retirer",
+   "note": "Button drops the about-scope only; 'Effacer' can read as erasing the text or the agent. 'Retirer' states removal of the target without destruction.",
+   "origin": "inherited-from-origin/main"
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.agents.config.action.watch",
+   "current": "Étapes d’exécution",
+   "suggestion": "Étapes",
+   "note": "18 cells beside Arrêter/Ignorer in the 392 px docked pane (en 9); accurate but a wrapping/overflow risk the sidecar gives no budget for.",
+   "origin": "introduced-by-this-PR"
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.agents.config.placeholder.about",
+   "current": "Modifier {name}…",
+   "suggestion": "Modifiez {name}…",
+   "note": "Sibling placeholders docked and hero use vous-imperative; this one is the infinitive. Style guide permits the infinitive for actions, so register mix only.",
+   "origin": "introduced-by-this-PR"
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.agents.config.summary.created",
+   "current": "Création de {name}",
+   "suggestion": "no change required; keep as is",
+   "note": "Sidecar tone is 'plain past tense'; fr uses a nominal heading ('Création de'/'Modification de') while result.created/changed use participles ('Créé :'). Idiomatic and consistent within the pair; flagged for awareness.",
+   "origin": "inherited-from-origin/main"
+  }
+ ],
+ "counts": {
+  "BLOCKER": 0,
+  "MAJOR": 0,
+  "MINOR": 2,
+  "NIT": 4
+ },
+ "verdict": "passed",
+ "note": "No BLOCKER/MAJOR; ledger recording not performed (deliverables-only task).",
+ "instance": "1bbaba0f329a-fr",
+ "model": "anthropic/claude-sonnet-5-5",
+ "status": "passed",
+ "sha256": {
+  "fr": "69069e5823ab6963516c5a4df14037139ef71ca2132b8b0c1b35c58208381bed",
+  "en": "5f06618661e942dd8dc61f2f40dc7894f2048855e624fdc58ffe1aa0f5fcb7a6"
+ }
+}
