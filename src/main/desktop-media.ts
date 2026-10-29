@@ -145,21 +145,6 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			digest: z.string().regex(/^[a-f0-9]{32}$/),
 		})
 		.strict(),
-	// SESSION VOICE'S TEXT DOOR (the frozen contract): the Qwen rig's transcript,
-	// as TEXT. The fields are NAMED rather than a free record, and the object is
-	// strict, so renderer code cannot add a field the route might one day read as
-	// authority - in particular there is no `file`/`fileName`/`mimeType`: this app
-	// never uploads a recording, and `requestDesktopMediaOutcome` refuses bytes for
-	// this op. The route admits the words as an ordinary prompt/steer and has no
-	// path to a gate answer (V7).
-	z
-		.object({
-			op: z.literal("voice.utterance"),
-			sessionId: z.string().regex(/^[a-f0-9]{12}$/),
-			// The route's own `RequestID`; refused here rather than as its 422.
-			requestId: z.string().regex(REQUEST_ID_PATTERN),
-			text: z.string().min(1).max(16_000),
-			textOrigin: z.enum(["qwen_s2s", "local_moonshine"]).optional(),
 	/*
 	 * Team Bridge image attachments (image-attachments contract §3). Upload and
 	 * fetch ride THIS relay rather than the JSON transport for the reason every
@@ -266,6 +251,23 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			assetId: z.string().regex(/^la_[0-9a-f]{16}$/),
 		})
 		.strict(),
+	// SESSION VOICE'S TEXT DOOR (the frozen contract): the Qwen rig's transcript,
+	// as TEXT. The fields are NAMED rather than a free record, and the object is
+	// strict, so renderer code cannot add a field the route might one day read as
+	// authority - in particular there is no `file`/`fileName`/`mimeType`: this app
+	// never uploads a recording, and `requestDesktopMediaOutcome` refuses bytes for
+	// this op. The route admits the words as an ordinary prompt/steer and has no
+	// path to a gate answer (V7).
+	z
+		.object({
+			op: z.literal("voice.utterance"),
+			sessionId: z.string().regex(/^[a-f0-9]{12}$/),
+			// The route's own `RequestID`; refused here rather than as its 422.
+			requestId: z.string().regex(REQUEST_ID_PATTERN),
+			text: z.string().min(1).max(16_000),
+			textOrigin: z.enum(["qwen_s2s", "local_moonshine"]).optional(),
+		})
+		.strict(),
 ]);
 
 export type DesktopMediaRequest = z.infer<typeof mediaRequestSchema>;
@@ -291,9 +293,6 @@ export type DesktopMediaResponse =
 			 * at all for the same reason: a media refusal the plane wrote must not be
 			 * rendered as this app's own sentence (design § 3.5, § 5.1).
 			 */
-			code?: DesktopRefusalCode;
-			/** A voice route's declared refusal (see `VOICE_REFUSAL_CODES`). */
-			voiceCode?: VoiceRefusalCode;
 			/**
 			 * `renderer_busy` is MAIN-ONLY, deliberately outside the shared
 			 * pairing-refusal table: core's composite route uses it for a transient
@@ -302,6 +301,8 @@ export type DesktopMediaResponse =
 			 * become a sentence the renderer shows or a code other routes may claim.
 			 */
 			code?: DesktopRefusalCode | "renderer_busy";
+			/** A voice route's declared refusal (see `VOICE_REFUSAL_CODES`). */
+			voiceCode?: VoiceRefusalCode;
 	  };
 
 function endpoint(request: DesktopMediaRequest): {
@@ -339,8 +340,6 @@ function endpoint(request: DesktopMediaRequest): {
 				path: `/v1/desktop/sessions/${request.sessionId}/supplements/${request.digest}/document`,
 				method: "GET",
 			};
-		case "voice.utterance":
-			return { path: "/v1/desktop/voice/utterance", method: "POST" };
 		case "library.content":
 			return {
 				path: `/v1/desktop/library/assets/${request.assetId}/content${request.download ? "?download=1" : ""}`,
@@ -389,6 +388,8 @@ function endpoint(request: DesktopMediaRequest): {
 				path: `/v1/desktop/team-bridge/accounts/${request.accountId}/avatar?${new URLSearchParams({ v: request.hash, size: String(request.size), expected_account_id: request.expectedAccountId })}`,
 				method: "GET",
 			};
+		case "voice.utterance":
+			return { path: "/v1/desktop/voice/utterance", method: "POST" };
 	}
 }
 
