@@ -8,6 +8,15 @@ import { CodeReviewPane } from "@features/code-review/components/code-review-pan
 import { useCodeRequests } from "@features/code-review/hooks/use-code-requests";
 import { ConsolePane } from "@features/console/components/console-pane";
 import { useConsoleBlipPulse } from "@features/console/hooks/use-console-attention";
+import {
+	DrawerBackToTop,
+	DrawerTabs,
+	DrawerUpdates,
+	defaultDrawerTab,
+	useSessionUnreadUpdates,
+} from "@features/notifications/components/drawer-updates";
+import { useNotificationDrawerTab } from "@features/notifications/drawer-tab-store";
+import { useNotificationsEnabled } from "@features/notifications/notifications-api";
 import { useProviderStatus } from "@features/providers/use-provider-status";
 import {
 	desktopFeatureEnabled,
@@ -104,6 +113,8 @@ import {
 } from "../canonical/transcript-pane";
 import { useMentionedFiles } from "../canonical/use-mentioned-files";
 import { useSessionFiles } from "../canonical/use-session-files";
+import { useUserAttachments } from "../canonical/use-user-attachments";
+import { attachmentRefusals } from "../canonical/user-attachments";
 import {
 	workingLineClaimed,
 	workingLineInputFor,
@@ -132,6 +143,7 @@ import type { Message } from "../types/message";
 import { useAskOpenPolicy } from "../use-ask-open-policy";
 import { AskDrawer } from "./asks/ask-drawer";
 import { Canvas } from "./canvas";
+import { combinedFileCount } from "./canvas/attachment-items";
 import { documentsForCanvas } from "./canvas/document-buffers";
 import { tabFollowingClose } from "./canvas/tab-selection";
 import { ChatHeader } from "./chat-header";
@@ -1438,10 +1450,46 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		// One inventory owns both the rail and the open canvas. Reading a disabled
 		// legacy scanner here made the rail deny files the backend already listed.
 		const indexedFiles = useSessionFiles(sessionId, true, turnTerminal);
-		const mentionedFileCount =
+		/*
+		 * The person's attachments, read ONCE here beside the file index: the live
+		 * records paint a new send immediately and the backend inventory supplies
+		 * the history that is not paged in. The rail, the Files segment and the
+		 * pinned Attachments section all read this one value.
+		 */
+		const userAttachments = useUserAttachments(
+			sessionId,
+			canonical?.view.transcript.records ?? null,
+			turnTerminal,
+		);
+		/*
+		 * What the inventory refused to copy out (Q1), for the transcript's
+		 * sent-file cards and pictures - painted from loaded records, which carry
+		 * no verdict of their own; keyed beyond the digest because an inline file
+		 * has none (QA R5 Q2). Memoised so the memoised rows compare equal.
+		 */
+		const attachmentItems = userAttachments.items;
+		// `verdicts` carries "not judged yet" (QA R6 Q3): no listing yet, or a
+		// send the listing has not seen, withholds every path action.
+		const attachmentVerdicts = userAttachments.verdicts;
+		const refusedAttachments = useMemo(
+			() =>
+				attachmentRefusals({
+					items: attachmentItems,
+					verdicts: attachmentVerdicts,
+				}),
+			[attachmentItems, attachmentVerdicts],
+		);
+		const mentionedFileCount = combinedFileCount(
 			indexedFiles.mode === "index"
 				? indexedFiles.total
-				: (canvasState ?? defaultCanvasState).mentionedFiles.length;
+				: (canvasState ?? defaultCanvasState).mentionedFiles.length,
+			indexedFiles.mode === "index"
+				? indexedFiles.rows.map((row) =>
+						row.ref.type === "artifact" ? row.ref.digest : null,
+					)
+				: [],
+			userAttachments,
+		);
 
 		// The slot's ONE default while nothing has been dragged
 		// (`DEFAULT_RIGHT_SLOT_WIDTH`, #872 follow-up): the run panel opens at the
@@ -1686,9 +1734,23 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * Both scopes count ANSWERABLE asks, so a lapsed one pulls no attention (D10, D11):
 		 * the session read falls back to the tally only when its list is incomplete.
 		 */
+		/*
+		 * THE DOOR COUNTS LIVE ASKS PLUS THIS CONVERSATION'S UNREAD UPDATES when the
+		 * backend serves the reel (design § 18, contract § 6.5): one door answers
+		 * "what does this conversation need from me?". Without the capability the
+		 * second term is zero and the count is exactly today's.
+		 */
+		const notificationsEnabled = useNotificationsEnabled();
+		const sessionUnreadUpdates = useSessionUnreadUpdates(
+			sessionId ?? null,
+			notificationsEnabled,
+		);
+		const drawerTab = useNotificationDrawerTab((state) => state.tab);
+		const setDrawerTab = useNotificationDrawerTab((state) => state.setTab);
 		const headerAsksCount = headerAsksSession
 			? askAttentionCount(sessionAsksView)
 			: fleetAsks.outstanding;
+		const headerAsksUpdates = headerAsksSession ? sessionUnreadUpdates : 0;
 		const headerAsksOpen =
 			isAskDrawerOpen && askDrawerScope === headerAsksScope;
 		/*
@@ -2697,6 +2759,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										labelPending={canonical.view.labelPending}
 										labelHoldLate={canonical.view.labelHoldLate}
 										labelMarked={canonical.view.labelMarked}
+										refusedAttachments={refusedAttachments}
 										onReconnect={canonical.view.retry}
 										onStartNewChat={onStartNewChat}
 										// The two states a notification click paints before the
@@ -3223,6 +3286,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								currentWorkingDirectory={cwd}
 								fileCount={mentionedFileCount}
 								fileIndex={indexedFiles}
+								attachments={userAttachments}
 								scan={filesScan}
 								/*
 								 * The pane's goals come off the SAME canonical frontend the composer
@@ -3329,7 +3393,51 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * which is why this block is gated on it above.
 								 */
 								scope="session"
-								onClose={handleCloseAskDrawer}
+								tabs={
+									notificationsEnabled && sessionId
+										? (() => {
+												/*
+												 * Tab state is per drawer open (design § 18): `null`
+												 * resolves to the default every time it reopens.
+												 */
+												const tab =
+													drawerTab ??
+													defaultDrawerTab(
+														"session",
+														askAttentionCount(sessionAsksView),
+													);
+												return {
+													strip: (
+														<DrawerTabs
+															tab={tab}
+															asks={askAttentionCount(sessionAsksView)}
+															unreadUpdates={sessionUnreadUpdates}
+															sessionless={false}
+															onTab={(next) => {
+																if (next === "all") {
+																	/* The fleet scope IS this tab: the
+																	   shell's mount takes the slot. */
+																	setDrawerTab(null);
+																	setAskDrawerOpen(true, "fleet");
+																	return;
+																}
+																setDrawerTab(next);
+															}}
+														/>
+													),
+													body:
+														tab === "updates" ? (
+															<DrawerUpdates sessionId={sessionId} />
+														) : null,
+													action: <DrawerBackToTop tab={tab} />,
+												};
+											})()
+										: undefined
+								}
+								onClose={(options) => {
+									setDrawerTab(null);
+									handleCloseAskDrawer(options);
+								}}
 								onAnswer={canonical?.onAnswerAsk}
 								onDecline={canonical?.onDeclineAsk}
 								onRevise={canonical?.onReviseAsk}
@@ -3615,6 +3723,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						   expression per fact, so the rail item and the menu row cannot disagree
 						   about which queue a press opens or how many are outstanding. */
 						askCount={headerAsksCount}
+						askUpdates={headerAsksUpdates}
 						askScope={headerAsksScope}
 						consoleUnseenCount={consoleUnseenMarks.length}
 						consoleUnseenPulsing={consoleUnseenPulsing}

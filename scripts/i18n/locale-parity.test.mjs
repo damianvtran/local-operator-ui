@@ -41,9 +41,38 @@ const SOURCE_LOCALE = "en";
  * a UI token. An entry here is a claim that gets reviewed, not a silencer.
  */
 const IDENTICAL_OK = new Map([
+	// French cognates only: these are the normal French UI nouns, not English
+	// fallbacks. Scope to fr so untranslated nouns in other languages still fail.
+	["fr:ui.notifications.nav.label", "French UI noun: Notifications"],
+	["fr:ui.notifications.page.title", "French UI noun: Notifications"],
+	[
+		"fr:ui.notifications.filter.group_conversation",
+		"French cognate: Conversation",
+	],
 	[
 		"fr:ui.teamBridge.profile.agent_badge",
 		"French glossary term for agent is « agent » — same spelling as English; scoped to fr so other locales still translate it",
+	],
+	[
+		"fr:ui.teamBridge.invitations.title",
+		"Shared UI term: the French noun is spelled identically (« Invitations »); scoped to fr so other locales still translate it",
+	],
+	[
+		"ui.notifications.row.chip.repeat",
+		// `×{count}`: the repeat chip on a collapsed reel row (notifications design
+		// section 4). A multiplication sign and a placeholder, no words; its context
+		// note requires every locale to keep it identical, so a differing value
+		// would be invented punctuation rather than a translation.
+		"language-neutral counter: only '×' and a placeholder, no words",
+	],
+	[
+		"ui.notifications.filter.chip",
+		// `{label}: {value}`: a filter chip's "Kind: All", two placeholders and a
+		// colon. It is ONE message so a locale owns its punctuation (French puts a
+		// space before the colon, Chinese uses a full-width one), which is why a
+		// locale MAY differ; where the locale's punctuation is the same as
+		// English, identical is the correct translation, not a stub.
+		"format string: two placeholders and a colon, punctuation only",
 	],
 	[
 		"ui.console.pane.label",
@@ -67,6 +96,15 @@ const IDENTICAL_OK = new Map([
 		// filename-derived token (PDF, PNG) and the size is formatted by the caller;
 		// there is nothing for a locale to translate, and a differing value would
 		// only invent punctuation per language.
+		"language-neutral format string: only placeholders and '·', no words",
+	],
+	[
+		"ui.canvas.files.attachmentMeta",
+		// `{size} · {when}`: the Canvas attachment row's note, placeholders and a
+		// middle dot, no words. The size and the date arrive already localised
+		// (`attachmentSizeLabel`, `formatDate`); the message exists only so a locale
+		// CAN own the separator, so identical is the correct translation in every
+		// shipped locale - the same shape as `ui.chat.attachments.file_meta`.
 		"language-neutral format string: only placeholders and '·', no words",
 	],
 	[
@@ -1245,6 +1283,25 @@ const IDENTICAL_OK = new Map([
 		"fr:ui.agents.teams.section.description",
 		"French noun « description » has the same spelling; section heading",
 	],
+	// The Skills tab's read-only details (#1443). Each row below is scoped to ONE
+	// locale and cites the shipped, audited value it matches, so none of them
+	// silences a stub in another language.
+	[
+		"es:ui.agents.skills.source.local",
+		"Spanish « Local » has the same spelling; the identical cognate is already shipped in es ui.providers.provider_labels.local (exempted above) and the audit receipts for ui.agents.skills (17d1ca9bf58a-es, aa44e837c157-es) pass it with no finding on this key",
+	],
+	// The Skills roster's short scope segment (#1458, i18n audit fit finding):
+	// the same word as the ur source label exempted beside it, so this row
+	// silences no stub in another language. es needs no row: its delta audit
+	// (32ed16b45687-es) pluralised the segment to « Locales », which differs.
+	[
+		"ur:ui.agents.skills.scope.hub",
+		"Product name (Agent Hub), kept in Latin; byte-identical to ur:ui.agents.skills.source.hub (exempted here) and ur:ui.hub.pages.header.title; the #1458 scope-key delta audit (32ed16b45687-ur) passes it clean",
+	],
+	[
+		"ur:ui.agents.skills.source.hub",
+		"Product name (Agent Hub), kept in Latin like ur:ui.hub.pages.header.title and ui.shell.sidebar_navigation.agent_hub (both exempted); the ur audit receipts (17d1ca9bf58a-ur, aa44e837c157-ur) pass it clean with no finding",
+	],
 	[
 		"fr:ui.hub.pages.search_field.description",
 		"French noun « description » has the same spelling; search option paired with the translated « Nom »",
@@ -1260,6 +1317,14 @@ const IDENTICAL_OK = new Map([
 	[
 		"fr:ui.hub.teams.brief.trigger",
 		"French noun « brief » has the same spelling; the namespace's long forms are « Brief de collaboration » / « Brief de projet » and its aria is « Voir le brief de {name} »",
+	],
+	[
+		"fr:ui.chat.pickers.slash.phase.arguments",
+		"French command-line term « Arguments » has the same spelling; it labels the slash command's argument phase",
+	],
+	[
+		"fr:ui.common.layout.toasts.notifications",
+		"French plural « Notifications » has the same spelling; the toast region's own accessible name",
 	],
 ]);
 

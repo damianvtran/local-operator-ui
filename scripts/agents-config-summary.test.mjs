@@ -145,8 +145,28 @@ test("a definition the run only read never reaches the summary", () => {
 		}).writes,
 		true,
 	);
-	// Only the two registry tools are projected at all.
-	assert.deepEqual([...RUN_TOOL_NAMES], ["agent", "team"]);
+	// Only the registry tools are projected at all: `agent`, `team`, and the
+	// `skill` tool a core with `agents_config_skills` declares (seam note §2).
+	assert.deepEqual([...RUN_TOOL_NAMES], ["agent", "team", "skill"]);
+	// A skill row is a SKILL target, never folded into "agent".
+	assert.deepEqual(
+		projectRunToolRow({
+			toolName: "skill",
+			args: { op: "update", name: "demo" },
+			phase: "done",
+			ts: 5,
+		}).target,
+		{ kind: "skill", name: "demo" },
+	);
+	// The skill tool's `edit` op (exact old_text -> new_text) is a write too.
+	const edited = projectRunToolRow({
+		toolName: "skill",
+		args: { op: "edit", name: "demo" },
+		phase: "done",
+		ts: 6,
+	});
+	assert.equal(edited.writes, true);
+	assert.equal(edited.verb, "Editing skill demo");
 });
 
 test("a write that failed, was skipped, or never ran is not a change", () => {

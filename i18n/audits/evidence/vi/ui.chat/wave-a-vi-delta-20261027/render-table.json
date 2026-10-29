@@ -1,0 +1,660 @@
+{
+ "namespace": "ui.chat",
+ "head": "80ee119bbd1084ee873994a1f39db0c085c62083",
+ "parent_head": "a81c00cdda2667dc6b094128ff47ec72d0c4d095",
+ "locale": "vi",
+ "tool": "delta-audit.mjs (repo-installed @formatjs/icu-messageformat-parser + intl-messageformat)",
+ "keys": [
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.checkpoint.generating_name",
+   "en": "Generating name…",
+   "vi": "Đang tạo tên…",
+   "ctx_role": "line on a run-details card while the turn's title is still being generated",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [],
+   "viArgs": [],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 16,
+   "viCells": 13,
+   "deltaCells": -3,
+   "ratio": 0.81,
+   "rendered": {
+    "args": {},
+    "en": "Generating name…",
+    "vi": "Đang tạo tên…",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.checkpoint.jump_agent",
+   "en": "Jump to turn {turn, number} of {total, number}, {name}",
+   "vi": "Đi tới lượt {turn, number} trên {total, number}, {name}",
+   "ctx_role": "accessible name of a run-details tick that jumps to an agent turn that has a title",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [
+    "name:argument",
+    "total:number",
+    "turn:number"
+   ],
+   "viArgs": [
+    "name:argument",
+    "total:number",
+    "turn:number"
+   ],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 54,
+   "viCells": 55,
+   "deltaCells": 1,
+   "ratio": 1.02,
+   "rendered": {
+    "args": {
+     "turn": 1234.5,
+     "total": 1234.5,
+     "name": "Mẫu"
+    },
+    "en": "Jump to turn 1,234.5 of 1,234.5, Mẫu",
+    "vi": "Đi tới lượt 1.234,5 trên 1.234,5, Mẫu",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.checkpoint.jump_agent_unnamed",
+   "en": "Jump to turn {turn, number} of {total, number}",
+   "vi": "Đi tới lượt {turn, number} trên {total, number}",
+   "ctx_role": "accessible name of a run-details tick that jumps to an agent turn that has no title yet",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [
+    "total:number",
+    "turn:number"
+   ],
+   "viArgs": [
+    "total:number",
+    "turn:number"
+   ],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 46,
+   "viCells": 47,
+   "deltaCells": 1,
+   "ratio": 1.02,
+   "rendered": {
+    "args": {
+     "turn": 1234.5,
+     "total": 1234.5
+    },
+    "en": "Jump to turn 1,234.5 of 1,234.5",
+    "vi": "Đi tới lượt 1.234,5 trên 1.234,5",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.checkpoint.jump_user",
+   "en": "Jump to your message in turn {turn, number} of {total, number}, {clock}",
+   "vi": "Đi tới tin nhắn của bạn ở lượt {turn, number} trên {total, number}, {clock}",
+   "ctx_role": "accessible name of a run-details tick that jumps to the reader's own message",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [
+    "clock:argument",
+    "total:number",
+    "turn:number"
+   ],
+   "viArgs": [
+    "clock:argument",
+    "total:number",
+    "turn:number"
+   ],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 71,
+   "viCells": 75,
+   "deltaCells": 4,
+   "ratio": 1.06,
+   "rendered": {
+    "args": {
+     "turn": 1234.5,
+     "total": 1234.5,
+     "clock": "Mẫu"
+    },
+    "en": "Jump to your message in turn 1,234.5 of 1,234.5, Mẫu",
+    "vi": "Đi tới tin nhắn của bạn ở lượt 1.234,5 trên 1.234,5, Mẫu",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.checkpoint.jump_user_no_clock",
+   "en": "Jump to your message in turn {turn, number} of {total, number}",
+   "vi": "Đi tới tin nhắn của bạn ở lượt {turn, number} trên {total, number}",
+   "ctx_role": "accessible name of a run-details tick that jumps to the reader's own message when no time is known",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [
+    "total:number",
+    "turn:number"
+   ],
+   "viArgs": [
+    "total:number",
+    "turn:number"
+   ],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 62,
+   "viCells": 66,
+   "deltaCells": 4,
+   "ratio": 1.06,
+   "rendered": {
+    "args": {
+     "turn": 1234.5,
+     "total": 1234.5
+    },
+    "en": "Jump to your message in turn 1,234.5 of 1,234.5",
+    "vi": "Đi tới tin nhắn của bạn ở lượt 1.234,5 trên 1.234,5",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.checkpoint.turn",
+   "en": "Turn {turn, number} of {total, number}",
+   "vi": "Lượt {turn, number} trên {total, number}",
+   "ctx_role": "the structural identity of one turn in the conversation, shown on the run-details rail",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [
+    "total:number",
+    "turn:number"
+   ],
+   "viArgs": [
+    "total:number",
+    "turn:number"
+   ],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 38,
+   "viCells": 40,
+   "deltaCells": 2,
+   "ratio": 1.05,
+   "rendered": {
+    "args": {
+     "turn": 1234.5,
+     "total": 1234.5
+    },
+    "en": "Turn 1,234.5 of 1,234.5",
+    "vi": "Lượt 1.234,5 trên 1.234,5",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.header_identity.aria_agent_assign",
+   "en": "Agent: {label}. Assign an agent",
+   "vi": "Tác nhân: {label}. Gán tác nhân",
+   "ctx_role": "accessible name of the header agent chip while no agent is attached",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [
+    "label:argument"
+   ],
+   "viArgs": [
+    "label:argument"
+   ],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 31,
+   "viCells": 31,
+   "deltaCells": 0,
+   "ratio": 1,
+   "rendered": {
+    "args": {
+     "label": "Mẫu"
+    },
+    "en": "Agent: Mẫu. Assign an agent",
+    "vi": "Tác nhân: Mẫu. Gán tác nhân",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.header_identity.aria_agent_closed",
+   "en": "Agent: {label}. {reason}",
+   "vi": "Tác nhân: {label}. {reason}",
+   "ctx_role": "accessible name of the header agent chip while the runtime has closed the seat",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [
+    "label:argument",
+    "reason:argument"
+   ],
+   "viArgs": [
+    "label:argument",
+    "reason:argument"
+   ],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 24,
+   "viCells": 27,
+   "deltaCells": 3,
+   "ratio": 1.13,
+   "rendered": {
+    "args": {
+     "label": "Mẫu",
+     "reason": "Mẫu"
+    },
+    "en": "Agent: Mẫu. Mẫu",
+    "vi": "Tác nhân: Mẫu. Mẫu",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.header_identity.aria_agent_switch",
+   "en": "Agent: {label}. Switch agent",
+   "vi": "Tác nhân: {label}. Đổi tác nhân",
+   "ctx_role": "accessible name of the header agent chip while an agent is attached",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [
+    "label:argument"
+   ],
+   "viArgs": [
+    "label:argument"
+   ],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 28,
+   "viCells": 31,
+   "deltaCells": 3,
+   "ratio": 1.11,
+   "rendered": {
+    "args": {
+     "label": "Mẫu"
+    },
+    "en": "Agent: Mẫu. Switch agent",
+    "vi": "Tác nhân: Mẫu. Đổi tác nhân",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.header_identity.aria_team_assign",
+   "en": "Team: {label}. Assign a team",
+   "vi": "Nhóm: {label}. Gán nhóm",
+   "ctx_role": "accessible name of the header team chip while no team is attached",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [
+    "label:argument"
+   ],
+   "viArgs": [
+    "label:argument"
+   ],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 28,
+   "viCells": 23,
+   "deltaCells": -5,
+   "ratio": 0.82,
+   "rendered": {
+    "args": {
+     "label": "Mẫu"
+    },
+    "en": "Team: Mẫu. Assign a team",
+    "vi": "Nhóm: Mẫu. Gán nhóm",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.header_identity.aria_team_closed",
+   "en": "Team: {label}. {reason}",
+   "vi": "Nhóm: {label}. {reason}",
+   "ctx_role": "accessible name of the header team chip while the runtime has closed the seat",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [
+    "label:argument",
+    "reason:argument"
+   ],
+   "viArgs": [
+    "label:argument",
+    "reason:argument"
+   ],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 23,
+   "viCells": 23,
+   "deltaCells": 0,
+   "ratio": 1,
+   "rendered": {
+    "args": {
+     "label": "Mẫu",
+     "reason": "Mẫu"
+    },
+    "en": "Team: Mẫu. Mẫu",
+    "vi": "Nhóm: Mẫu. Mẫu",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.header_identity.aria_team_switch",
+   "en": "Team: {label}. Switch team",
+   "vi": "Nhóm: {label}. Đổi nhóm",
+   "ctx_role": "accessible name of the header team chip while a team is attached",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [
+    "label:argument"
+   ],
+   "viArgs": [
+    "label:argument"
+   ],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 26,
+   "viCells": 23,
+   "deltaCells": -3,
+   "ratio": 0.88,
+   "rendered": {
+    "args": {
+     "label": "Mẫu"
+    },
+    "en": "Team: Mẫu. Switch team",
+    "vi": "Nhóm: Mẫu. Đổi nhóm",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.header_identity.assign_agent",
+   "en": "Assign an agent",
+   "vi": "Gán tác nhân",
+   "ctx_role": "tooltip of the header chip while no agent is attached",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [],
+   "viArgs": [],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 15,
+   "viCells": 12,
+   "deltaCells": -3,
+   "ratio": 0.8,
+   "rendered": {
+    "args": {},
+    "en": "Assign an agent",
+    "vi": "Gán tác nhân",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.header_identity.assign_team",
+   "en": "Assign a team",
+   "vi": "Gán nhóm",
+   "ctx_role": "tooltip of the header chip while no team is attached",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [],
+   "viArgs": [],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 13,
+   "viCells": 8,
+   "deltaCells": -5,
+   "ratio": 0.62,
+   "rendered": {
+    "args": {},
+    "en": "Assign a team",
+    "vi": "Gán nhóm",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.header_identity.no_agent",
+   "en": "No agent",
+   "vi": "Không có tác nhân",
+   "ctx_role": "chip label meaning no agent is attached to the open conversation",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [],
+   "viArgs": [],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 8,
+   "viCells": 17,
+   "deltaCells": 9,
+   "ratio": 2.13,
+   "rendered": {
+    "args": {},
+    "en": "No agent",
+    "vi": "Không có tác nhân",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.header_identity.no_team",
+   "en": "No team",
+   "vi": "Không có nhóm",
+   "ctx_role": "chip label meaning no team is attached to the open conversation",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [],
+   "viArgs": [],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 7,
+   "viCells": 13,
+   "deltaCells": 6,
+   "ratio": 1.86,
+   "rendered": {
+    "args": {},
+    "en": "No team",
+    "vi": "Không có nhóm",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.region.composer",
+   "en": "Message composer",
+   "vi": "Ô soạn tin",
+   "ctx_role": "accessible name of the composer landmark",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [],
+   "viArgs": [],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 16,
+   "viCells": 10,
+   "deltaCells": -6,
+   "ratio": 0.63,
+   "rendered": {
+    "args": {},
+    "en": "Message composer",
+    "vi": "Ô soạn tin",
+    "viError": null
+   },
+   "maxCells": null
+  },
+  {
+   "namespace": "ui.chat",
+   "key": "ui.chat.region.conversation",
+   "en": "Conversation",
+   "vi": "Khung trò chuyện",
+   "ctx_role": "accessible name of the transcript landmark and of the chat header landmark",
+   "enParseError": null,
+   "viParseError": null,
+   "enArgs": [],
+   "viArgs": [],
+   "argsMatch": true,
+   "enArms": [],
+   "viArms": [],
+   "armsMatch": true,
+   "nfc": true,
+   "bidiControls": 0,
+   "asciiEllipsis": false,
+   "straightQuote": false,
+   "leadingTrailingSpace": false,
+   "enCells": 12,
+   "viCells": 16,
+   "deltaCells": 4,
+   "ratio": 1.33,
+   "rendered": {
+    "args": {},
+    "en": "Conversation",
+    "vi": "Khung trò chuyện",
+    "viError": null
+   },
+   "maxCells": null
+  }
+ ]
+}

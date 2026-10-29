@@ -1002,7 +1002,7 @@ function effortReason(
 	if (!adjustable) return null;
 	if (openable)
 		return draft ? "Change it. It applies to this conversation." : "Change it.";
-	if (draft) return DRAFT_EFFORT_LINE;
+	if (draft) return draftEffortLine();
 	return COMMANDS_OFF;
 }
 
@@ -1019,18 +1019,23 @@ function effortReason(
  * session whose transcript carries no receipts, a state that fills in on its
  * own, where a draft's fills in because the user sends the first message.
  */
-const DRAFT_CONTEXT_LINE =
-	"Nothing measured yet. The window fills as the conversation runs.";
-const DRAFT_CONTEXT_TOOLTIP = ["Context", DRAFT_CONTEXT_LINE];
-// The same sentence as one utterance, which is why it starts lower-case.
-const DRAFT_CONTEXT_LABEL =
-	"Context: nothing measured yet. The window fills as the conversation runs.";
+/* FUNCTIONS, not constants: a module-level `t()` freezes the locale the process
+ * started in, and these three strings are read every time a draft's reading is
+ * drawn. The tooltip's first line is the word "Context" as a heading, which is
+ * why it is prose and not a reading. */
+const draftContextTooltip = (): [string, string] => [
+	t("ui.chat.session_status.context_heading"),
+	t("ui.chat.session_status.nothing_measured_yet"),
+];
+// The same fact as one utterance, which is why it starts lower-case after the colon.
+const draftContextLabel = () =>
+	t("ui.chat.session_status.context_nothing_measured_tooltip");
 
 /**
  * The effort reading's sentence on a draft: the ladder is real, the choice is
  * not available yet.
  */
-const DRAFT_EFFORT_LINE = "Set once the conversation starts.";
+const draftEffortLine = () => t("ui.chat.session_status.conversation_starting");
 
 /**
  * Snapshot presence is a component boundary, not a branch around hooks.
@@ -1627,7 +1632,7 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 			 */}
 			{chooseModel && (
 				<Reading
-					label="Model: none resolved yet. Choose the model this conversation will run on."
+					label={t("ui.chat.session_status.model_none_resolved_tooltip")}
 					tooltip={
 						<TooltipLines
 							lines={[
@@ -1756,7 +1761,7 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 								// question the mark raised, before the ladder detail.
 								...(effortNote ? [effortNote] : []),
 								...(draft && effort.adjustable && !openEffort
-									? [DRAFT_EFFORT_LINE]
+									? [draftEffortLine()]
 									: [effort.detail]),
 							]}
 						/>
@@ -1807,7 +1812,7 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 			<Reading
 				label={
 					draft
-						? DRAFT_CONTEXT_LABEL
+						? draftContextLabel()
 						: reading.status === "no-reading"
 							? `Context: no reading yet. ${contextBreakdownLine("no-reading", Boolean(sessionDispatch), held || contextHeld)}`
 							: `Context: ${reading.spelling}${
@@ -1824,7 +1829,7 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 						mono={reading.status !== "no-reading"}
 						lines={
 							draft
-								? DRAFT_CONTEXT_TOOLTIP
+								? draftContextTooltip()
 								: [
 										...contextTooltipLines(
 											reading,

@@ -1,4 +1,4 @@
-import { Badge, countLabel } from "@shared/components/ui/badge";
+import { AttentionBadge } from "@shared/components/ui/attention-badge";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -13,14 +13,17 @@ import { MessagesSquare, MoreHorizontal } from "lucide-react";
  * design-review surface for the one question that lane has to answer visually:
  * does the unread badge read as "something is waiting" on the overflow row
  * WITHOUT expanding the group, and does it hold in both themes and with glass
- * on? The row markup mirrors the sidebar's 30px geometry and the
- * `attentionQuiet` register, so a change agreed here is a props change there,
- * not a second design.
+ * on? The row markup mirrors the sidebar's 30px geometry, and the count is the
+ * sidebar's own shared `AttentionBadge` (operator, 2026-10-28, #1465) rather
+ * than a copy of its classes, so the board cannot show a register the product
+ * no longer draws. The real rail's every-count frame is
+ * `sidebar-attention.stories.tsx`; this board stays for the one row's states.
  *
  * THE BADGE IS ONE MARK, NOT TWO. When the group is collapsed the count rides
  * the More row; when it is expanded the count rides the Team Bridge row itself
- * and More's mark disappears (the group's own summary would otherwise double
- * the same number). Both states are below.
+ * and More draws no mark (design follow-up to #1465, D2: the group's summary
+ * would otherwise double the same number - `sidebar-navigation.tsx` draws
+ * More's sum only while the group is closed). Both states are below.
  */
 
 type RowProps = {
@@ -59,9 +62,7 @@ const Row = ({ label, expanded, unread, active = false }: RowProps) => {
 				{expanded && <span className="truncate">{label}</span>}
 				{unread > 0 && (
 					<span className={cn(expanded && "ml-auto", "inline-flex")}>
-						<Badge variant="attentionQuiet" shape="pill" size="count">
-							{countLabel(unread, 99)}
-						</Badge>
+						<AttentionBadge count={unread} />
 					</span>
 				)}
 			</button>
@@ -97,13 +98,7 @@ const GroupBoard = ({
 								<span className="min-w-0 flex-1 truncate text-[13px]">
 									{t("ui.teamBridge.group.more")}
 								</span>
-								{unread > 0 && (
-									<span className="inline-flex shrink-0">
-										<Badge variant="attentionQuiet" shape="pill" size="count">
-											{countLabel(unread, 99)}
-										</Badge>
-									</span>
-								)}
+								{/* Open: no mark here - the row below carries the count. */}
 								<MoreHorizontal size={16} aria-hidden="true" />
 							</li>
 							<Row
@@ -127,9 +122,7 @@ const GroupBoard = ({
 							</span>
 							{unread > 0 && (
 								<span className="inline-flex shrink-0">
-									<Badge variant="attentionQuiet" shape="pill" size="count">
-										{countLabel(unread, 99)}
-									</Badge>
+									<AttentionBadge count={unread} />
 								</span>
 							)}
 							<MoreHorizontal size={16} aria-hidden="true" />

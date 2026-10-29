@@ -26,7 +26,10 @@ import {
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
 import { chatStatusDisplay, chatStatusKey } from "../chat-status";
-import { ChatStatusStripView } from "./chat-status-strip";
+import {
+	ChatStatusStripView,
+	type ChatStatusStripViewProps,
+} from "./chat-status-strip";
 
 const PANE = ({ children }: { children: React.ReactNode }) => (
 	<div className="min-h-[220px] w-full bg-canvas p-0">
@@ -79,20 +82,57 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof ChatStatusStripView>;
 
-/** The `display` a state resolves to, from the shipped table rather than by hand. */
-const shown = (input: Parameters<typeof chatStatusDisplay>[0]) => ({
+/** The inputs one state resolves from: the table's own signature, not a copy. */
+type StatusInput = Parameters<typeof chatStatusDisplay>[0];
+
+/**
+ * The `display` a state resolves to, from the shipped table rather than by hand.
+ *
+ * CALL IT FROM A STORY'S `render`, NEVER AT MODULE SCOPE. The preview's
+ * `LocaleFrame` writes the locale store as the decorator renders, which is after
+ * this module has been imported - so a `display` built here freezes in the
+ * import's locale, and `?args=locale:ru` photographs ENGLISH (design review
+ * round 1, D4: the only visual evidence surface for four of this wave's
+ * sentences, un-reviewable in the locales it ships). `Strip` below is the
+ * render-time caller; the rule is why it exists at all.
+ */
+const shown = (input: StatusInput) => ({
 	display: chatStatusDisplay(input),
 	dismissedKey: null,
 	onDismiss: () => {},
 	onShow: () => {},
 });
 
+/**
+ * One strip state in the pane's column, resolved at render time.
+ *
+ * The `PANE` wrapper is here rather than only at the meta level because a
+ * story's own `render` REPLACES the meta's instead of composing with it: a
+ * story that returned the strip alone would measure its wash against white,
+ * which is the one thing `PANE` exists to prevent.
+ */
+const Strip = ({
+	input,
+	...view
+}: { input: StatusInput } & Omit<
+	ChatStatusStripViewProps,
+	"display" | "dismissedKey" | "onDismiss" | "onShow"
+>) => (
+	<PANE>
+		<ChatStatusStripView {...shown(input)} {...view} />
+	</PANE>
+);
+
 export const Unreachable: Story = {
-	args: shown({
-		connectivityIssue: "server_offline",
-		server: { state: "detached", detail: null, pairing: null },
-		internetOffline: false,
-	}),
+	render: () => (
+		<Strip
+			input={{
+				connectivityIssue: "server_offline",
+				server: { state: "detached", detail: null, pairing: null },
+				internetOffline: false,
+			}}
+		/>
+	),
 };
 
 /**
@@ -107,54 +147,70 @@ export const Unreachable: Story = {
  * keeps the frame's measure legible.
  */
 export const RefusedCredential: Story = {
-	args: shown({
-		connectivityIssue: null,
-		server: {
-			state: "wedged",
-			detail: "The running server refused this app's key.",
-			pairing: { available: false, cause: "credential-refused" },
-		},
-		internetOffline: false,
-	}),
+	render: () => (
+		<Strip
+			input={{
+				connectivityIssue: null,
+				server: {
+					state: "wedged",
+					detail: "The running server refused this app's key.",
+					pairing: { available: false, cause: "credential-refused" },
+				},
+				internetOffline: false,
+			}}
+		/>
+	),
 };
 
 export const Degraded: Story = {
-	args: shown({
-		connectivityIssue: null,
-		server: { state: "degraded", detail: null, pairing: null },
-		internetOffline: false,
-	}),
+	render: () => (
+		<Strip
+			input={{
+				connectivityIssue: null,
+				server: { state: "degraded", detail: null, pairing: null },
+				internetOffline: false,
+			}}
+		/>
+	),
 };
 
 export const InternetOffline: Story = {
-	args: shown({
-		connectivityIssue: "internet_offline",
-		server: null,
-		internetOffline: true,
-	}),
+	render: () => (
+		<Strip
+			input={{
+				connectivityIssue: "internet_offline",
+				server: null,
+				internetOffline: true,
+			}}
+		/>
+	),
 };
 
 /** The Retry's own progress and outcome, which U7's report was about. */
 export const Retrying: Story = {
-	args: {
-		...shown({
-			connectivityIssue: "server_offline",
-			server: { state: "detached", detail: null, pairing: null },
-			internetOffline: false,
-		}),
-		retrying: true,
-	},
+	render: () => (
+		<Strip
+			input={{
+				connectivityIssue: "server_offline",
+				server: { state: "detached", detail: null, pairing: null },
+				internetOffline: false,
+			}}
+			retrying
+		/>
+	),
 };
 
 export const RetryOutcome: Story = {
-	args: {
-		...shown({
-			connectivityIssue: "server_offline",
-			server: { state: "detached", detail: null, pairing: null },
-			internetOffline: false,
-		}),
-		outcome: "Still unreachable.",
-	},
+	render: () => (
+		<Strip
+			input={{
+				connectivityIssue: "server_offline",
+				server: { state: "detached", detail: null, pairing: null },
+				internetOffline: false,
+			}}
+			outcome="Still unreachable."
+		/>
+	),
 };
 
 /**
@@ -210,15 +266,19 @@ export const Dismissed: Story = {
  * at two widths rather than as two sentences.
  */
 export const Narrow: Story = {
-	args: shown({
-		connectivityIssue: null,
-		server: {
-			state: "wedged",
-			detail: "The running server refused this app's key.",
-			pairing: { available: false, cause: "credential-refused" },
-		},
-		internetOffline: false,
-	}),
+	render: () => (
+		<Strip
+			input={{
+				connectivityIssue: null,
+				server: {
+					state: "wedged",
+					detail: "The running server refused this app's key.",
+					pairing: { available: false, cause: "credential-refused" },
+				},
+				internetOffline: false,
+			}}
+		/>
+	),
 };
 
 /**

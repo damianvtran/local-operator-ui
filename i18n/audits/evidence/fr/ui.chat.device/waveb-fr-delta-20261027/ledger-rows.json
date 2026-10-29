@@ -1,0 +1,755 @@
+{
+ "what": "The nine fr rows ledger-assemble.mjs wrote in the throwaway copy, in namespace order. Apply these to i18n/ledger.json (or re-run ASSEMBLE-COMMANDS.sh, which is the same thing and refuses to invent anything).",
+ "locale": "fr",
+ "assembled_in": "/Users/damian/qa/wave-b-delta-fr-ledger",
+ "row_count": 9,
+ "rows": [
+  {
+   "locale": "fr",
+   "namespace": "ui.chat.device",
+   "source_sha256": "0d4c357edbb9a67d015301f263e3892f752aca9ee63a3d5c737bf12a9ac6375a",
+   "target_sha256": "6fa28c31e2cd37f80f0756b3b3e6690f040d5965941bf73f045601973408dd68",
+   "translator": {
+    "agent": "translator",
+    "model": "openrouter/moonshotai/kimi-k3.1-pro",
+    "date": "2026-10-24"
+   },
+   "auditors": [
+    {
+     "agent": "i18n-auditor",
+     "model": "radient/auto",
+     "date": "2026-10-27",
+     "result": "clean-with-findings",
+     "instance": "c3a8965266e3",
+     "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 1
+     },
+     "receipt": "i18n/receipts/c3a8965266e3.json",
+     "receipt_sha256": "4fb616ed186079246990ab445ec5da24cfa8abddda1937cb7310ac0cb373792c",
+     "scope": "Wave-B delta, fr: the changed fr values of this namespace were read in full against the English source, its context sidecar, the call sites, the glossary and the fr style guide; every other wave-B value in the namespace is byte-identical to the previously audited bytes (see the record's delta proof). Catalogue-level audit only.",
+     "note": "See i18n/audits/evidence/fr/ui.chat.device/waveb-fr-delta-20261027/record.json — 9 changed fr values re-read, 53 carried byte-identical, 0 blocker/major. Receipt and input hashes in the record."
+    }
+   ],
+   "status": "audited",
+   "superseded": [
+    {
+     "source_sha256": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
+     "target_sha256": "a8125151c300799fb731f67dd760f07925b02d17c3ced18d315afa78f1ec5d2d",
+     "auditors": [
+      {
+       "agent": "translation-auditor",
+       "model": "deepseek/deepseek-flash",
+       "date": "2026-10-24",
+       "result": "clean-with-findings",
+       "instance": "fr-extract-da12aa6ade20-r2",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+       },
+       "receipt": "i18n/receipts/fr-extract-da12aa6ade20-r2.json",
+       "receipt_sha256": "c56cf3241e239dc06441c5cff8c944ab04f7b81584390228b0c497e1d956842d",
+       "scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+       "note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+      }
+     ],
+     "status": "audited"
+    }
+   ]
+  },
+  {
+   "locale": "fr",
+   "namespace": "ui.chat.pickers",
+   "source_sha256": "d91585397b3314c5ffd81d93c3fd7d9fdb1e0a54cc6ddd57ba082f55d666522c",
+   "target_sha256": "0f4194326dabd0e12992e7270afd32c44ab45776cec8a1fcc9b083146ff60a71",
+   "translator": {
+    "agent": "translator",
+    "model": "openrouter/moonshotai/kimi-k3.1-pro",
+    "date": "2026-10-23"
+   },
+   "auditors": [
+    {
+     "agent": "i18n-auditor",
+     "model": "radient/auto",
+     "date": "2026-10-27",
+     "result": "clean-with-findings",
+     "instance": "c3a8965266e3",
+     "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 1
+     },
+     "receipt": "i18n/receipts/c3a8965266e3.json",
+     "receipt_sha256": "4fb616ed186079246990ab445ec5da24cfa8abddda1937cb7310ac0cb373792c",
+     "scope": "Wave-B delta, fr: the changed fr values of this namespace were read in full against the English source, its context sidecar, the call sites, the glossary and the fr style guide; every other wave-B value in the namespace is byte-identical to the previously audited bytes (see the record's delta proof). Catalogue-level audit only.",
+     "note": "See i18n/audits/evidence/fr/ui.chat.pickers/waveb-fr-delta-20261027/record.json — 9 changed fr values re-read, 53 carried byte-identical, 0 blocker/major. Receipt and input hashes in the record."
+    }
+   ],
+   "status": "audited",
+   "superseded": [
+    {
+     "source_sha256": "65f926679cefe21229f8d755f71d64381c5d6706c2d33c62cb63141e8f01352d",
+     "target_sha256": "e27bfaeed08e93094ce29487c9494e0989c5f9575dbc6743337b3c5c4ed718a4",
+     "auditors": [
+      {
+       "agent": "translation-auditor",
+       "model": "openrouter/moonshotai/kimi-k3.1-pro",
+       "date": "2026-10-23",
+       "result": "clean-with-findings",
+       "instance": "2ade56e55a2a",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+       },
+       "receipt": "i18n/receipts/2ade56e55a2a.json",
+       "receipt_sha256": "5df33afed26f574391201f932685b255acd6f51f8427239dfa31b24ecfd1f069",
+       "scope": "full independent round-1 audit at current hashes",
+       "note": "Independent audit; findings retained in immutable receipt. Second high-visibility pass recorded on this row."
+      },
+      {
+       "agent": "translation-auditor",
+       "model": "openrouter/moonshotai/kimi-k3.1-pro",
+       "date": "2026-10-23",
+       "result": "clean-with-findings",
+       "instance": "b4cb606f745a",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+       },
+       "receipt": "i18n/receipts/b4cb606f745a.json",
+       "receipt_sha256": "f95dc9abf31bbbd57ced92b73756af6a10337693c44b7ab1026fc3b83b9b1359",
+       "scope": "second independent high-visibility round-1 audit at current hashes",
+       "note": "Independent audit; findings retained in immutable receipt. Second high-visibility pass recorded on this row."
+      }
+     ],
+     "status": "audited"
+    },
+    {
+     "source_sha256": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+     "target_sha256": "2f084a6a1d24dc40d48d1e4146709d2fdb044ab516543aff9518f077a70f33d9",
+     "auditors": [
+      {
+       "agent": "translation-auditor",
+       "model": "radient/auto",
+       "date": "2026-10-24",
+       "result": "clean-with-findings",
+       "instance": "d94011de0dc0",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 5
+       },
+       "receipt": "i18n/receipts/d94011de0dc0.json",
+       "receipt_sha256": "47b8cc59535099ee6ca1b4b8f2f166eb31ca5e2c63ad0d29f1429cca440aec6b"
+      }
+     ],
+     "status": "audited"
+    }
+   ]
+  },
+  {
+   "locale": "fr",
+   "namespace": "ui.chat.canonical",
+   "source_sha256": "5bb6a6fe5dd64f70a4caf0812d3fa4b95c70bd49c12bd556ab0d827176ac4477",
+   "target_sha256": "8a5e69118ce5bc3432aaa493b2d0d01e7fc3199670083a79cb129ad379567885",
+   "translator": {
+    "agent": "translator",
+    "model": "openrouter/moonshotai/kimi-k3.1-pro",
+    "date": "2026-10-23"
+   },
+   "auditors": [
+    {
+     "agent": "i18n-auditor",
+     "model": "radient/auto",
+     "date": "2026-10-27",
+     "result": "clean",
+     "instance": "c3a8965266e3",
+     "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 0
+     },
+     "receipt": "i18n/receipts/c3a8965266e3.json",
+     "receipt_sha256": "4fb616ed186079246990ab445ec5da24cfa8abddda1937cb7310ac0cb373792c",
+     "scope": "Wave-B delta, fr: the changed fr values of this namespace were read in full against the English source, its context sidecar, the call sites, the glossary and the fr style guide; every other wave-B value in the namespace is byte-identical to the previously audited bytes (see the record's delta proof). Catalogue-level audit only.",
+     "note": "See i18n/audits/evidence/fr/ui.chat.canonical/waveb-fr-delta-20261027/record.json — 9 changed fr values re-read, 53 carried byte-identical, 0 blocker/major. Receipt and input hashes in the record."
+    }
+   ],
+   "status": "audited",
+   "superseded": [
+    {
+     "source_sha256": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
+     "target_sha256": "a382cd92e954e331f9ef75a5679c553e1ee9c6059e2edd419b4e3a99d871221a",
+     "auditors": [
+      {
+       "agent": "translation-auditor",
+       "model": "openrouter/moonshotai/kimi-k3.1-pro",
+       "date": "2026-10-23",
+       "result": "clean-with-findings",
+       "instance": "2ade56e55a2a",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+       },
+       "receipt": "i18n/receipts/2ade56e55a2a.json",
+       "receipt_sha256": "5df33afed26f574391201f932685b255acd6f51f8427239dfa31b24ecfd1f069",
+       "scope": "full independent round-1 audit at current hashes",
+       "note": "Independent audit; findings retained in immutable receipt. Second high-visibility pass recorded on this row."
+      },
+      {
+       "agent": "translation-auditor",
+       "model": "openrouter/moonshotai/kimi-k3.1-pro",
+       "date": "2026-10-23",
+       "result": "clean-with-findings",
+       "instance": "b4cb606f745a",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+       },
+       "receipt": "i18n/receipts/b4cb606f745a.json",
+       "receipt_sha256": "f95dc9abf31bbbd57ced92b73756af6a10337693c44b7ab1026fc3b83b9b1359",
+       "scope": "second independent high-visibility round-1 audit at current hashes",
+       "note": "Independent audit; findings retained in immutable receipt. Second high-visibility pass recorded on this row."
+      }
+     ],
+     "status": "audited"
+    },
+    {
+     "source_sha256": "dfa9cde6984a451b75a22530303197ed8a3c8d9148685231d017299f16cfe0dd",
+     "target_sha256": "f2aedbc1eff8b46a73cc77917b5049c3e15c57d600be4bd1b183023e4805c211",
+     "auditors": [
+      {
+       "agent": "translation-auditor",
+       "model": "radient/auto",
+       "date": "2026-10-24",
+       "result": "clean",
+       "instance": "d94011de0dc0",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+       },
+       "receipt": "i18n/receipts/d94011de0dc0-surfaces.json",
+       "receipt_sha256": "cdab18d3bc3b8c91215c07a178c64af0c5a1b44bf181c0b6d31e4bad14be3e8f"
+      }
+     ],
+     "status": "audited"
+    },
+    {
+     "source_sha256": "5a6a30405053c7319b902315bb0a1b38ce1cbd6443ad2d988132d4cbfcb8f2ce",
+     "target_sha256": "68101aba7ce7c7073321ec95478af53c680361eef6db7a1031ce41a125160b8f",
+     "auditors": [
+      {
+       "agent": "i18n-auditor",
+       "model": "radient/auto",
+       "date": "2026-10-26",
+       "result": "clean-with-findings",
+       "instance": "a5485b421686",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 2
+       },
+       "receipt": "i18n/receipts/a5485b421686.json",
+       "receipt_sha256": "b430a5f5354f5c620e53031881f6a036378e20c118a724b8645fefc0e77dab9e"
+      }
+     ],
+     "status": "audited"
+    }
+   ]
+  },
+  {
+   "locale": "fr",
+   "namespace": "ui.chat",
+   "source_sha256": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+   "target_sha256": "e9b9512ea3310705de0ca91dc87a644a8aa742ab59a72f04e8216ae01bb256dd",
+   "translator": {
+    "agent": "i18n-translator",
+    "model": "deepseek/deepseek-flash",
+    "date": "2026-10-18"
+   },
+   "auditors": [
+    {
+     "agent": "i18n-auditor",
+     "model": "radient/auto",
+     "date": "2026-10-27",
+     "result": "clean",
+     "instance": "c3a8965266e3",
+     "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 0
+     },
+     "receipt": "i18n/receipts/c3a8965266e3.json",
+     "receipt_sha256": "4fb616ed186079246990ab445ec5da24cfa8abddda1937cb7310ac0cb373792c",
+     "scope": "Wave-B delta, fr: the changed fr values of this namespace were read in full against the English source, its context sidecar, the call sites, the glossary and the fr style guide; every other wave-B value in the namespace is byte-identical to the previously audited bytes (see the record's delta proof). Catalogue-level audit only.",
+     "note": "See i18n/audits/evidence/fr/ui.chat/waveb-fr-delta-20261027/record.json — 9 changed fr values re-read, 53 carried byte-identical, 0 blocker/major. Receipt and input hashes in the record."
+    }
+   ],
+   "status": "audited",
+   "superseded": [
+    {
+     "source_sha256": "29169c4c0801689781d503f724d457757275416c49e975bfb6ae4872d90c2c46",
+     "target_sha256": "3cd942b2ff623a18d68995c148d5edf1d5a4028033932b71f6ed161f7ba03722",
+     "auditors": [
+      {
+       "agent": "i18n-auditor",
+       "model": "openai/gpt-6.1-sol",
+       "date": "2026-10-18",
+       "instance": "7c40d1c357cf",
+       "result": "clean",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+       },
+       "receipt": "i18n/receipts/7c40d1c357cf-round2.json",
+       "receipt_sha256": "bb0dd9cf343d3c859d940a5b6be5274972456cd386589af0535486a598dbec9e",
+       "scope": "Full round 1 76dda0304bfa4b54ebd42cccd32bbd05841ca4a3..6f04ff634be8863dbb3b7f13fe3352e666143d33; delta 6f04ff634be8863dbb3b7f13fe3352e666143d33..718219be27f3b17e605f2c2af35a20c0c19af88e; unchanged coverage retained",
+       "note": "Actual model openai/gpt-6.1-sol; automatic Anthropic quota fallback disclosed in receipt. F3/F4 remain nonblocking notes."
+      }
+     ],
+     "status": "audited"
+    },
+    {
+     "translator": {
+      "agent": "i18n-translator",
+      "model": "deepseek/deepseek-flash",
+      "date": "2026-10-18"
+     },
+     "auditors": [
+      {
+       "agent": "i18n-auditor",
+       "model": "openai/gpt-6.1-sol",
+       "date": "2026-10-18",
+       "instance": "7c40d1c357cf",
+       "result": "clean",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+       },
+       "receipt": "i18n/receipts/7c40d1c357cf-round2.json",
+       "receipt_sha256": "bb0dd9cf343d3c859d940a5b6be5274972456cd386589af0535486a598dbec9e",
+       "scope": "Full round 1 76dda0304bfa4b54ebd42cccd32bbd05841ca4a3..6f04ff634be8863dbb3b7f13fe3352e666143d33; delta 6f04ff634be8863dbb3b7f13fe3352e666143d33..718219be27f3b17e605f2c2af35a20c0c19af88e; unchanged coverage retained",
+       "note": "Actual model openai/gpt-6.1-sol; automatic Anthropic quota fallback disclosed in receipt. F3/F4 remain nonblocking notes."
+      }
+     ],
+     "source_sha256": "29169c4c0801689781d503f724d457757275416c49e975bfb6ae4872d90c2c46",
+     "status": "audited",
+     "target_sha256": "3cd942b2ff623a18d68995c148d5edf1d5a4028033932b71f6ed161f7ba03722"
+    },
+    {
+     "source_sha256": "346506195ffc36897dee351eb12a47aab4c21acdf3062710392eb0086024b442",
+     "target_sha256": "618801abecb508e8c75ff0fe1a0c3573f756a778b597b44323fe089ee6224101",
+     "auditors": [
+      {
+       "agent": "translation-auditor",
+       "model": "deepseek/deepseek-flash",
+       "date": "2026-10-24",
+       "result": "clean",
+       "instance": "fr-extract-da12aa6ade20-r2",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+       },
+       "receipt": "i18n/receipts/fr-extract-da12aa6ade20-r2.json",
+       "receipt_sha256": "c56cf3241e239dc06441c5cff8c944ab04f7b81584390228b0c497e1d956842d",
+       "scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+       "note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+      }
+     ],
+     "status": "audited"
+    },
+    {
+     "source_sha256": "6b6e21835462fccbbdbea4cfcca132344595bf3f14804018de64dbe8d9fbacf0",
+     "target_sha256": "a21edf2bdb3a3903f917072ac0eb3c32c2625289fa05dad7de5e53a830c23faa",
+     "auditors": [
+      {
+       "agent": "i18n-auditor",
+       "model": "radient/auto",
+       "date": "2026-10-26",
+       "result": "clean-with-findings",
+       "instance": "a5485b421686",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+       },
+       "receipt": "i18n/receipts/a5485b421686.json",
+       "receipt_sha256": "b430a5f5354f5c620e53031881f6a036378e20c118a724b8645fefc0e77dab9e"
+      }
+     ],
+     "status": "audited"
+    }
+   ]
+  },
+  {
+   "locale": "fr",
+   "namespace": "ui.chat.status",
+   "source_sha256": "c11e619f13f9c40637a33cbafc40442d61c1bf2eed5e4c0c7d667db55f4b65cb",
+   "target_sha256": "7fab4b75620d10beb7f59e23cd341402bd9bb8884adccbafbfda5add75a1cd00",
+   "translator": {
+    "agent": "i18n-translator",
+    "model": "radient/auto",
+    "date": "2026-10-27"
+   },
+   "auditors": [
+    {
+     "agent": "i18n-auditor",
+     "model": "radient/auto",
+     "date": "2026-10-27",
+     "result": "clean",
+     "instance": "c3a8965266e3",
+     "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 0
+     },
+     "receipt": "i18n/receipts/c3a8965266e3.json",
+     "receipt_sha256": "4fb616ed186079246990ab445ec5da24cfa8abddda1937cb7310ac0cb373792c",
+     "scope": "Wave-B delta, fr: the changed fr values of this namespace were read in full against the English source, its context sidecar, the call sites, the glossary and the fr style guide; every other wave-B value in the namespace is byte-identical to the previously audited bytes (see the record's delta proof). Catalogue-level audit only.",
+     "note": "See i18n/audits/evidence/fr/ui.chat.status/waveb-fr-delta-20261027/record.json — 9 changed fr values re-read, 53 carried byte-identical, 0 blocker/major. Receipt and input hashes in the record."
+    }
+   ],
+   "status": "audited"
+  },
+  {
+   "locale": "fr",
+   "namespace": "ui.chat.run_details",
+   "source_sha256": "77471485df0fccb4a29541d98949d5e21e8e541099cbe602e540c5848b96db61",
+   "target_sha256": "fd5bb71bbb7691760c92b9339e3aa032c34519b0a453600447923ce679e42f94",
+   "translator": {
+    "agent": "translator",
+    "model": "openrouter/moonshotai/kimi-k3.1-pro",
+    "date": "2026-10-23"
+   },
+   "auditors": [
+    {
+     "agent": "i18n-auditor",
+     "model": "radient/auto",
+     "date": "2026-10-27",
+     "result": "clean",
+     "instance": "c3a8965266e3",
+     "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 0
+     },
+     "receipt": "i18n/receipts/c3a8965266e3.json",
+     "receipt_sha256": "4fb616ed186079246990ab445ec5da24cfa8abddda1937cb7310ac0cb373792c",
+     "scope": "Wave-B delta, fr: the changed fr values of this namespace were read in full against the English source, its context sidecar, the call sites, the glossary and the fr style guide; every other wave-B value in the namespace is byte-identical to the previously audited bytes (see the record's delta proof). Catalogue-level audit only.",
+     "note": "See i18n/audits/evidence/fr/ui.chat.run_details/waveb-fr-delta-20261027/record.json — 9 changed fr values re-read, 53 carried byte-identical, 0 blocker/major. Receipt and input hashes in the record."
+    }
+   ],
+   "status": "audited",
+   "superseded": [
+    {
+     "source_sha256": "7eea05d7c5b371e7969214abc7bd2961bf6c38fd3e5886e0957493b787878094",
+     "target_sha256": "5f4d9cff39861504eedbd93fe5844919d5bdb2fd753d078e8bce7c9154a53936",
+     "auditors": [
+      {
+       "agent": "translation-auditor",
+       "model": "openrouter/moonshotai/kimi-k3.1-pro",
+       "date": "2026-10-23",
+       "result": "clean",
+       "instance": "2ade56e55a2a",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+       },
+       "receipt": "i18n/receipts/2ade56e55a2a.json",
+       "receipt_sha256": "5df33afed26f574391201f932685b255acd6f51f8427239dfa31b24ecfd1f069",
+       "scope": "full independent round-1 audit at current hashes",
+       "note": "Independent audit; findings retained in immutable receipt. Second high-visibility pass recorded on this row."
+      },
+      {
+       "agent": "translation-auditor",
+       "model": "openrouter/moonshotai/kimi-k3.1-pro",
+       "date": "2026-10-23",
+       "result": "clean",
+       "instance": "b4cb606f745a",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+       },
+       "receipt": "i18n/receipts/b4cb606f745a.json",
+       "receipt_sha256": "f95dc9abf31bbbd57ced92b73756af6a10337693c44b7ab1026fc3b83b9b1359",
+       "scope": "second independent high-visibility round-1 audit at current hashes",
+       "note": "Independent audit; findings retained in immutable receipt. Second high-visibility pass recorded on this row."
+      }
+     ],
+     "status": "audited"
+    },
+    {
+     "source_sha256": "288ba883ed0c25851fa2025ea9a23ff98bcb7f59724ab5bbb2ed5b212ed85b51",
+     "target_sha256": "278cc8c477c9cc2ecf28fe9cdab69377ccb2f1713e799c11bd83ed952628a4aa",
+     "auditors": [
+      {
+       "agent": "i18n-auditor",
+       "model": "radient/auto",
+       "date": "2026-10-26",
+       "result": "clean",
+       "instance": "a5485b421686",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+       },
+       "receipt": "i18n/receipts/a5485b421686.json",
+       "receipt_sha256": "b430a5f5354f5c620e53031881f6a036378e20c118a724b8645fefc0e77dab9e"
+      }
+     ],
+     "status": "audited"
+    }
+   ]
+  },
+  {
+   "locale": "fr",
+   "namespace": "ui.common.connection",
+   "source_sha256": "0e69a319b56d967cc012d15c6480ae1cf2084092ac0c98d130a9412047fcc681",
+   "target_sha256": "33de6a26e72133786f9cab668c16341262cece961ca130e95ca2c6e733c6d51b",
+   "translator": {
+    "agent": "i18n-translator",
+    "model": "deepseek/deepseek-flash",
+    "date": "2026-10-18"
+   },
+   "auditors": [
+    {
+     "agent": "i18n-auditor",
+     "model": "radient/auto",
+     "date": "2026-10-27",
+     "result": "clean",
+     "instance": "c3a8965266e3",
+     "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 0
+     },
+     "receipt": "i18n/receipts/c3a8965266e3.json",
+     "receipt_sha256": "4fb616ed186079246990ab445ec5da24cfa8abddda1937cb7310ac0cb373792c",
+     "scope": "Wave-B delta, fr: the changed fr values of this namespace were read in full against the English source, its context sidecar, the call sites, the glossary and the fr style guide; every other wave-B value in the namespace is byte-identical to the previously audited bytes (see the record's delta proof). Catalogue-level audit only.",
+     "note": "See i18n/audits/evidence/fr/ui.common.connection/waveb-fr-delta-20261027/record.json — 9 changed fr values re-read, 53 carried byte-identical, 0 blocker/major. Receipt and input hashes in the record."
+    }
+   ],
+   "status": "audited",
+   "superseded": [
+    {
+     "source_sha256": "d1acb6a1fae70e3f85255d880a91d9e35ed49a8bf7d04ef14722ce115d7c69bb",
+     "target_sha256": "8f48360aa233f40c0ad28f7f6fe06581394dd6543115b474add041ca07e6240e",
+     "auditors": [
+      {
+       "agent": "i18n-auditor",
+       "model": "openai/gpt-6.1-sol",
+       "date": "2026-10-18",
+       "instance": "c30073d4167f",
+       "result": "clean",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+       },
+       "receipt": "i18n/receipts/c30073d4167f.json",
+       "receipt_sha256": "384b9a6c0380589c8f2b2dad6f1e929275d213c813d99b564438f82337297c7d",
+       "scope": "Chunk D at 1516984ec99ae09e635b0cb58c4f2e747de1483c; full 206 new keys plus prior408 full coverage retained with typography-only delta.",
+       "note": "Actual automatic quota-fallback model verified; same resumed auditor, not second independent auditor. Nonblocking minors retained as deferred."
+      }
+     ],
+     "status": "audited"
+    },
+    {
+     "source_sha256": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
+     "target_sha256": "9531dbd77c4462d9b1ef23d707f54cd33a1b1d74943d51fef7cd514580a3eb5c",
+     "auditors": [
+      {
+       "agent": "translation-auditor",
+       "model": "radient/auto",
+       "date": "2026-10-24",
+       "result": "clean-with-findings",
+       "instance": "d94011de0dc0",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+       },
+       "receipt": "i18n/receipts/d94011de0dc0-surfaces.json",
+       "receipt_sha256": "cdab18d3bc3b8c91215c07a178c64af0c5a1b44bf181c0b6d31e4bad14be3e8f"
+      }
+     ],
+     "status": "audited"
+    }
+   ]
+  },
+  {
+   "locale": "fr",
+   "namespace": "ui.common.layout",
+   "source_sha256": "1d9f353eb3aa467d22e102aa9459ba7070637c6b2a2ddb17e31b075963df9231",
+   "target_sha256": "4bdcbbee0ea92a6fb65e901d0f7839f6bca6748e3f6603fc306de53efc74ca46",
+   "translator": {
+    "agent": "translator",
+    "model": "radient/auto",
+    "date": "2026-10-24"
+   },
+   "auditors": [
+    {
+     "agent": "i18n-auditor",
+     "model": "radient/auto",
+     "date": "2026-10-27",
+     "result": "clean",
+     "instance": "c3a8965266e3",
+     "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 0
+     },
+     "receipt": "i18n/receipts/c3a8965266e3.json",
+     "receipt_sha256": "4fb616ed186079246990ab445ec5da24cfa8abddda1937cb7310ac0cb373792c",
+     "scope": "Wave-B delta, fr: the changed fr values of this namespace were read in full against the English source, its context sidecar, the call sites, the glossary and the fr style guide; every other wave-B value in the namespace is byte-identical to the previously audited bytes (see the record's delta proof). Catalogue-level audit only.",
+     "note": "See i18n/audits/evidence/fr/ui.common.layout/waveb-fr-delta-20261027/record.json — 9 changed fr values re-read, 53 carried byte-identical, 0 blocker/major. Receipt and input hashes in the record."
+    }
+   ],
+   "status": "audited",
+   "superseded": [
+    {
+     "source_sha256": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+     "target_sha256": "26c831d3c079c031c9b406e4e480e8faab8d3670912971a575da5873d73b47d4",
+     "translator": {
+      "agent": "translator",
+      "model": "radient/auto",
+      "date": "2026-10-24"
+     },
+     "auditors": [
+      {
+       "agent": "translation-auditor",
+       "model": "radient/auto",
+       "date": "2026-10-24",
+       "result": "clean",
+       "instance": "d94011de0dc0",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+       },
+       "receipt": "i18n/receipts/d94011de0dc0.json",
+       "receipt_sha256": "47b8cc59535099ee6ca1b4b8f2f166eb31ca5e2c63ad0d29f1429cca440aec6b"
+      }
+     ],
+     "status": "audited"
+    },
+    {
+     "source_sha256": "0273823f7fc6e9e8470c96b52351e107ba492821f481b965d06890c0fb9c55f6",
+     "target_sha256": "18dc2a80958773f32f2bdefbb93a079a53ee020911f501a590aefbf2c41e347b",
+     "auditors": [
+      {
+       "agent": "translation-auditor",
+       "model": "deepseek/deepseek-flash",
+       "date": "2026-10-25",
+       "result": "clean",
+       "instance": "fr-layout-mac-removal-r2-18dc2a809587",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+       },
+       "receipt": "i18n/receipts/fr-layout-mac-removal-r2-18dc2a809587.json",
+       "receipt_sha256": "496fbdee7251848e4de30e750067d08501d263fdb7855f1939587bc7614b27be",
+       "scope": "deletion-only delta at the new bytes; every remaining value byte-identical to the parent"
+      }
+     ],
+     "status": "audited"
+    }
+   ]
+  },
+  {
+   "locale": "fr",
+   "namespace": "ui.agents.config",
+   "source_sha256": "534c035edf33e60c142f0106306cd2ce8c6250f6516a321a12ae5c0a6a5621bc",
+   "target_sha256": "8b05e223c55ebb8bda68482e449a21d498463bfcf0251a249910314d314a7d9e",
+   "translator": {
+    "agent": "i18n-translator",
+    "model": "radient/auto",
+    "date": "2026-10-26"
+   },
+   "auditors": [
+    {
+     "agent": "i18n-auditor",
+     "model": "radient/auto",
+     "date": "2026-10-27",
+     "result": "clean",
+     "instance": "c3a8965266e3",
+     "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 0
+     },
+     "receipt": "i18n/receipts/c3a8965266e3.json",
+     "receipt_sha256": "4fb616ed186079246990ab445ec5da24cfa8abddda1937cb7310ac0cb373792c",
+     "scope": "Wave-B delta, fr: the changed fr values of this namespace were read in full against the English source, its context sidecar, the call sites, the glossary and the fr style guide; every other wave-B value in the namespace is byte-identical to the previously audited bytes (see the record's delta proof). Catalogue-level audit only.",
+     "note": "See i18n/audits/evidence/fr/ui.agents.config/waveb-fr-delta-20261027/record.json — 9 changed fr values re-read, 53 carried byte-identical, 0 blocker/major. Receipt and input hashes in the record."
+    }
+   ],
+   "status": "audited",
+   "superseded": [
+    {
+     "source_sha256": "aa4fde04d7db00418387f862d42d547bead44e96c880e8b4e0dc86384eed305b",
+     "target_sha256": "0ac764e2ba0562e3d786a07a68b8007b1f62effaef765d302f32c81de2801287",
+     "auditors": [
+      {
+       "agent": "i18n-auditor",
+       "model": "radient/auto",
+       "date": "2026-10-26",
+       "result": "clean",
+       "instance": "caa0f0b9574d",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+       },
+       "receipt": "i18n/receipts/caa0f0b9574d.json",
+       "receipt_sha256": "23b537ab649195bf6ed3a57f19c6eed56bfcbf6a0a9350be7a290c94a8b0acc3"
+      }
+     ],
+     "status": "audited"
+    }
+   ]
+  }
+ ]
+}

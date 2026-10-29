@@ -67,6 +67,12 @@ export type PanelRailProps = {
 	 */
 	askCount: number;
 	/**
+	 * This conversation's unread notification updates (decisions D9): added to
+	 * the badge and named separately in the accessible name. 0 when the backend
+	 * does not serve the reel, which leaves the door exactly as it was.
+	 */
+	askUpdates?: number;
+	/**
 	 * Which queue the item's press opens - this conversation's or the fleet's -
 	 * riding the same `setAskDrawerOpen(open, scope)` seam the drawer reads.
 	 */
@@ -163,6 +169,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 	readerChildId,
 	browserAttentionCount,
 	askCount,
+	askUpdates = 0,
 	askScope,
 	consoleUnseenCount,
 	consoleUnseenPulsing,
@@ -315,6 +322,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 		askScope,
 		askCount,
 		capFor("panel.ask"),
+		askUpdates,
 	);
 	const consoleActive = drawn === "console" && consoleLiveCount > 0;
 	/*
@@ -444,7 +452,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 					data-ask-scope={askScope}
 				>
 					<AsksScopeIcon scope={askScope} aria-hidden={true} />
-					{askCount > 0 && (
+					{askCount + askUpdates > 0 && (
 						/*
 						 * THE COUNT IN THE RAIL'S OWN REGISTER (#896, the issue's "styled like
 						 * the Browser and Console counts already on the rail"). The browser
@@ -464,7 +472,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 								className="h-3.5 min-w-3.5 px-0.75 text-meta-sm leading-none ring-2 ring-surface"
 								data-tour-tag="ask-pane-badge"
 							>
-								{countLabel(askCount, 9)}
+								{countLabel(askCount + askUpdates, 9)}
 							</Badge>
 						</span>
 					)}

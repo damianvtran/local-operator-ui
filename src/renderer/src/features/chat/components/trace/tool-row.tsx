@@ -51,6 +51,8 @@
  */
 
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type ReactNode, useEffect, useState } from "react";
 import {
@@ -500,17 +502,17 @@ const DiffCounters = ({
  * still takes its category ink. The user stopped the call, and reporting that
  * as a failure blames the agent for the user's own decision.
  */
-const OUTCOME_LABEL: Record<ToolRowOutcome, string> = {
+const OUTCOME_LABEL_KEY = {
 	running: "",
-	success: "succeeded",
-	error: "failed",
-	interrupted: "interrupted",
+	success: "ui.chat.canonical.tool_row.outcome.succeeded",
+	error: "ui.chat.canonical.tool_row.outcome.failed",
+	interrupted: "ui.chat.canonical.tool_row.outcome.interrupted",
 	// NOT "failed": the call produced no result to fail, and the harness's own
 	// verdict names what stopped it before it was sent to a tool. Announced
 	// rather than silent for the same reason `error` is: it is a settled outcome
 	// the row is the only carrier of, and a reader who cannot see the glyph would
 	// otherwise hear only the size.
-	"not-run": "never ran",
+	"not-run": "ui.chat.canonical.tool_row.outcome.never_ran",
 	// The partial states do not announce through the table: their sentence is
 	// `SEND_DELIVERY_LABEL`'s (`delivered, wake unconfirmed` / `delivery
 	// unconfirmed`), which says more than the drawn word and is rendered where
@@ -521,6 +523,18 @@ const OUTCOME_LABEL: Record<ToolRowOutcome, string> = {
 	// announce. Silence here is not the running row's silence — that one is
 	// covered by the working line, which names the running phase in turn.
 	receipt: "",
+} as const;
+
+/**
+ * The row's verdict word for `outcome`, resolved when the row renders.
+ *
+ * Keyed rather than literal, and resolved in a function rather than held in a
+ * table of English: a module-level `t()` freezes the locale the process started
+ * in, so the word would stay in the language the app launched with.
+ */
+const outcomeLabel = (outcome: ToolRowOutcome): string => {
+	const key = OUTCOME_LABEL_KEY[outcome];
+	return key === "" ? "" : t(key);
 };
 
 /** The row's clock ticks at 1Hz because it shows whole seconds (`CLOCK_INTERVAL_S`). */
@@ -626,7 +640,7 @@ const StatusCluster = ({
 	const word = partial
 		? (deliveryWord ?? null)
 		: failedLike
-			? (deliveryWord ?? OUTCOME_LABEL[outcome])
+			? (deliveryWord ?? outcomeLabel(outcome))
 			: null;
 	const wordInk = partial ? "text-warning" : "text-danger";
 	/*
@@ -792,8 +806,8 @@ const StatusCluster = ({
 				 */}
 				{/* Announced, never drawn twice: the failure word above is already
 				    text, so repeating it here would read the row's outcome out twice. */}
-				{!failedLike && OUTCOME_LABEL[outcome] ? (
-					<span className={cn("sr-only")}>{OUTCOME_LABEL[outcome]}</span>
+				{!failedLike && outcomeLabel(outcome) ? (
+					<span className={cn("sr-only")}>{outcomeLabel(outcome)}</span>
 				) : null}
 				{/* The partial states' SPOKEN sentence, which is longer than the word the
 				    row draws (`SEND_DELIVERY_LABEL`); the drawn word is `aria-hidden`
@@ -845,6 +859,10 @@ export const ToolRow = ({
 	className,
 	media,
 }: ToolRowProps) => {
+	/* A subscription, not a value: `outcomeLabel` resolves through `t()` when the
+	 * row renders, and an interface-language switch has to repaint the verdict
+	 * word rather than wait for the next stream event. */
+	useI18nLocale();
 	const running = outcome === "running";
 	// The GROUND is gated on the `error` outcome alone, deliberately: see
 	// `neverSent` below, which states why a not-run row does not claim the wash.

@@ -1,5 +1,6 @@
 import { t } from "@shared/i18n";
 import type { FilesSort } from "../../canonical/session-files";
+import type { AttachmentVerdict } from "../../canonical/user-attachments";
 import type { FileKindGroup, FileRow } from "./file-rows";
 
 export type FinderPreferences = {
@@ -48,6 +49,7 @@ export function sanitizeFinderPreferences(value: unknown): FinderPreferences {
 					...new Set(
 						data.closedSections.filter((id) =>
 							[
+								ATTACHMENTS_SECTION,
 								"Highlights",
 								"Images",
 								"Videos",
@@ -73,7 +75,42 @@ export type FinderItem = {
 	created: number | null;
 	modified: number | null;
 	mentioned: number;
+	/**
+	 * Set on an item the PERSON attached (the Attachments section), never on an
+	 * agent file. Its meta line is `note` (size and when, or which copy is left)
+	 * rather than the agent rows' sort-driven metric, and its path actions act
+	 * on the retained copy through `materialise` when the origin is gone.
+	 */
+	attachment?: {
+		key: string;
+		digest: string | null;
+		note: string;
+		/**
+		 * The retained/gone sentence, or "" when `note` is the size/date pair:
+		 * a row renders `size` and `when` as separate runs only when this is "".
+		 */
+		status: string;
+		/** `status` in the words that fit a tile's caption (design R2 D10). */
+		tileStatus: string;
+		/** Separate directional runs so RTL never reorders size and date. */
+		size: string;
+		when: string;
+		/**
+		 * The backend's verdict (`UserAttachment.materialisable`): `false` = the
+		 * row offers no materialise-backed action; `"pending"` = not judged yet,
+		 * so none either (QA R6 Q3); `null` = capability decides.
+		 */
+		materialisable: AttachmentVerdict;
+	};
 };
+
+/**
+ * The Attachments section's stable id (preferences, closedSections, bands).
+ * Pinned ABOVE every agent section: what the person handed over is the context
+ * the rest of the list was made from, and it must not move as the agent's
+ * files grow.
+ */
+export const ATTACHMENTS_SECTION = "Attachments";
 export type FinderSection = {
 	id: string;
 	label: string;
@@ -156,10 +193,19 @@ export function finderSections(
 	prefs: FinderPreferences,
 	narrowing: boolean,
 	closed: Set<string>,
+	attachments: FinderItem[] = [],
 ): FinderSection[] {
 	const highlights = items.filter((item) => item.highlighted);
 	const working = items.filter((item) => !item.highlighted);
 	const sections: FinderSection[] = [];
+	if (attachments.length)
+		sections.push({
+			id: ATTACHMENTS_SECTION,
+			label: t("ui.canvas.files.attachments"),
+			items: attachments,
+			open: narrowing || !closed.has(ATTACHMENTS_SECTION),
+			highlights: false,
+		});
 	if (highlights.length)
 		sections.push({
 			id: "Highlights",
@@ -253,6 +299,38 @@ export const FINDER_HEADER_BAND = 32;
  */
 export const FOCUS_RING_GAP = 4;
 
+/**
+ * THE TILE CAPTION'S ONE-LINE BUDGET, in pixels: what a tile band adds below
+ * its 4:3 thumbnail for the name line, the tile's padding and the grid gap.
+ * The thumbnail is `band.height - TILE_CAPTION` (`finder-files-view.tsx`).
+ */
+export const TILE_CAPTION = 32;
+
+/**
+ * THE SECOND CAPTION LINE an ATTACHMENT tile carries, in pixels.
+ *
+ * An attachment tile states its name AND its size/date or its status ("Moved or
+ * deleted") on two lines (design R1 D1). The band was still the Images grid's
+ * one-line budget, so with two rows of tiles the second line sat under the next
+ * row's thumbnail - 10.8 of the 17.4 px `text-meta` line painted over, hiding
+ * exactly the status D1 exists to show (design R2 D8). The band grows by one
+ * line and the thumbnail gives the same amount back, so the tile's footprint in
+ * the grid changes by one line and the picture does not grow instead. Agent
+ * Images tiles carry one line and keep their geometry.
+ */
+export const ATTACHMENT_CAPTION_LINE = 18;
+
+/** The thumbnail box's height inside a tiled band (attachment tiles give back their second line). */
+export function tileThumbHeight(band: FinderBand): number {
+	return (
+		band.height -
+		TILE_CAPTION -
+		(band.kind === "tiles" && band.section.id === ATTACHMENTS_SECTION
+			? ATTACHMENT_CAPTION_LINE
+			: 0)
+	);
+}
+
 export function layoutFinder(
 	sections: FinderSection[],
 	width: number,
@@ -282,7 +360,25 @@ export function layoutFinder(
 		if (section.highlights)
 			for (const item of section.items)
 				push(section, "highlight", item.why ? 68 : 44, [item]);
-		else if (grouped && section.id === "Images") {
+		else if (section.id === ATTACHMENTS_SECTION) {
+			/*
+			 * Files as rows, then pictures in the Images grid's own tile geometry,
+			 * grouped or not: a screenshot the person pasted is read by its pixels,
+			 * and the tile arithmetic is the Images section's (one grid, one size).
+			 */
+			const files = section.items.filter((item) => item.row.media !== "image");
+			const pictures = section.items.filter(
+				(item) => item.row.media === "image",
+			);
+			for (const item of files) push(section, "compact", 36, [item]);
+			const tileW = (w - 4 * (cols - 1)) / cols;
+			const height =
+				Math.round(((tileW - 8) * 3) / 4) +
+				TILE_CAPTION +
+				ATTACHMENT_CAPTION_LINE;
+			for (let i = 0; i < pictures.length; i += cols)
+				push(section, "tiles", height, pictures.slice(i, i + cols), cols);
+		} else if (grouped && section.id === "Images") {
 			const tileW = (w - 4 * (cols - 1)) / cols;
 			const height = Math.round(((tileW - 8) * 3) / 4) + 32;
 			for (let i = 0; i < section.items.length; i += cols)

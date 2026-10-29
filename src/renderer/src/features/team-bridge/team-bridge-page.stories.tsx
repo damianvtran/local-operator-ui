@@ -29,7 +29,9 @@ import { draftStorageKey } from "./team-bridge-drafts";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeOrganization,
+	type TeamBridgeTarget,
 	asTeamBridgeTenantId,
+	draftCreateInput,
 	organizationOptions,
 } from "./team-bridge-model";
 import { TeamBridgePageView } from "./team-bridge-page";
@@ -151,8 +153,8 @@ const channel: TeamBridgeConversation = {
 	unread_count: 3,
 	muted: false,
 	// What agent-server sends on every row: active + invited (Damian, Bea, Cy).
-	// The header must still read 2 active members, not 3, so this fixture is the
-	// insider branch of `conversationMemberCount` rather than a decorative field.
+	// The header must read 2 active members with 1 invited beneath, not 3
+	// members: populated rows are authoritative over this aggregate field.
 	member_count: 3,
 };
 
@@ -414,6 +416,33 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const PopulatedDirectMessage: Story = {};
+
+/*
+ * The rail's Invitations entry (D5) beside the unread counts: the reader's own
+ * agent is invited to the channel, so the entry shows its quiet count in the
+ * SAME badge column as the conversation rows (design round 1, D3).
+ */
+export const InvitationWaiting: Story = {
+	args: {
+		conversations: [
+			dm,
+			{
+				...channel,
+				members: [
+					...channel.members,
+					{
+						account_id: self,
+						kind: "agent",
+						display_label: "Robo Damian",
+						role: "member",
+						state: "invited",
+					},
+				],
+			},
+			group,
+		],
+	},
+};
 
 /**
  * The row's real hover FILL, beside the borderless human and agent plates.
@@ -1090,7 +1119,9 @@ function DurableDraftStory() {
 			{...meta.args}
 			selfAccountId="acct_story_drafts"
 			target={target}
-			onTarget={setTarget}
+			onTarget={(next) => {
+				if (next) setTarget(next);
+			}}
 			initialDraft="The handoff notes are ready for review."
 			onSend={async () => {
 				throw new Error("fixture send refused");
@@ -2003,5 +2034,348 @@ export const ProfileMergedTenantMessage: Story = {
 			"data-profile-scope",
 			TEAM_BRIDGE_ALL_SCOPE,
 		);
+	},
+};
+
+/** Production-shaped regression: one active human owner, three invited agents.
+ * The header reads "1 active member" over "3 invited", derived from the
+ * participant rows; no `member_count` is needed.
+ */
+export const FourMembersThreeInvited: Story = {
+	args: {
+		organizations: [minervaOrganization],
+		scope: asTeamBridgeTenantId("tnt_1"),
+		conversations: [
+			{
+				...channel,
+				id: "bcv_qa_coordination",
+				name: "qa-coordination",
+				member_count: undefined,
+				members: [
+					{
+						account_id: self,
+						kind: "human",
+						display_label: "Damian Tran",
+						role: "owner",
+						state: "active",
+					},
+					...["Ben Tran", "Sana Ketabchi", "Sherman Tsui"].map(
+						(name, index) => ({
+							account_id: `acct_invited_${index}`,
+							kind: "agent" as const,
+							display_label: name,
+							role: "member" as const,
+							state: "invited" as const,
+						}),
+					),
+				],
+			},
+		],
+		target: { type: "conversation", id: "bcv_qa_coordination" },
+		people: rosterWithChiefs,
+		messages: [],
+	},
+};
+
+/**
+ * The reader HAS an enrolled agent ("Aida"), and neither the picker nor the
+ * Chiefs of staff section offers it (review R1-2 on #1441): a bridge DM with
+ * your own agent stays `invited` and muted on the hub, so its messages would
+ * post and never be delivered. See `chiefsOfStaff`.
+ */
+export const OwnChiefWithheld: Story = {
+	// The real picker, controlled, so browser QA can open it and confirm the
+	// reader's own agent is not among the options.
+	render: function OwnChiefPicker(args) {
+		const [target, setTarget] = useState<TeamBridgeTarget | null>(args.target);
+		return (
+			<TeamBridgePageView {...args} target={target} onTarget={setTarget} />
+		);
+	},
+	args: {
+		...PersonDraft.args,
+		people: rosterWithChiefs,
+		target: { type: "compose", recipients: [] },
+	},
+};
+
+/**
+ * Chiefs of staff: the directory defaults Ben's agent name to his own name.
+ * `composeChiefLabel` therefore renders "Ben Tran’s chief of staff" rather than
+ * "Ben Tran (Ben Tran)"; a named agent such as Aida renders "Aida (Ben Tran)".
+ * The legacy DM/message rows below deliberately store the doubled label. Read
+ * normalization suppresses it: no doubled label is a usable stored agent name.
+ */
+const echoedRoster = rosterWithChiefs.map((row) =>
+	row.account_id === "acct_ben"
+		? {
+				...row,
+				agent: { endpoint_id: "bep_ben", name: "Ben Tran", state: "active" },
+			}
+		: row,
+);
+const chiefDm: TeamBridgeConversation = {
+	...dm,
+	id: "bcv_dm_chief",
+	agent_capable: true,
+	members: [
+		{
+			account_id: self,
+			kind: "human",
+			display_label: "Damian Tran",
+			role: "owner",
+			state: "active",
+		},
+		{
+			account_id: "acct_ben",
+			kind: "agent",
+			display_label: "Ben Tran (Ben Tran)",
+			role: "member",
+			state: "active",
+		},
+	],
+};
+export const ChiefLabelUnnamedAgent: Story = {
+	args: {
+		...slackRail,
+		people: echoedRoster,
+		conversations: [humansChannel, agentsChannel, chiefDm],
+		target: { type: "chief", accountId: "acct_ben" },
+		messages: [
+			{
+				id: "bcmsg_c1",
+				conversation_id: chiefDm.id,
+				seq: 1,
+				sender: {
+					account_id: "acct_ben",
+					kind: "agent",
+					display_label: "Ben Tran (Ben Tran)",
+				},
+				body: "Hi, this is Ben's chief of staff. How can I help?",
+				origin: "agent",
+				created_at: at(5),
+			},
+		],
+	},
+};
+
+/** The same, with the agent's own name published: "Aida (Ben Tran)". */
+export const ChiefLabelNamedAgent: Story = {
+	args: {
+		...ChiefLabelUnnamedAgent.args,
+		people: rosterWithChiefs,
+	},
+};
+
+/**
+ * A first send to a teammate's chief, through the real create serializer
+ * (`draftCreateInput`), read back by the real view. The payload is printed so
+ * a reviewer can see the sent `display_label` is a bare name ("Aida", or the
+ * owner's name when unnamed), never the composed label.
+ *
+ * The fixture stores what the HUB stores, not what was sent (review R1-1 on
+ * #1441): agent-server rewrites a label equal to the owner's name to
+ * "{person}'s chief of staff" (`agentMemberLabel`), and the read path must
+ * still render that once, not "Ben Tran's chief of staff (Ben Tran)".
+ * In-memory fixture: it claims nothing about the container glue or a live
+ * backend.
+ */
+export const ChiefCreateReadRoundTrip: Story = {
+	args: {
+		...PersonDraft.args,
+		people: echoedRoster,
+		target: { type: "compose", recipients: [] },
+	},
+	render: function ChiefRoundTrip(args) {
+		const [target, setTarget] = useState<TeamBridgeTarget | null>(args.target);
+		const [created, setCreated] = useState<TeamBridgeConversation | null>(null);
+		const [confirmed, setConfirmed] = useState<TeamBridgeMessage[]>([]);
+		const [wire, setWire] = useState<ReturnType<typeof draftCreateInput>>(null);
+		// The hub's write-path rewrite (agent-server `agentMemberLabel`, ASCII
+		// apostrophe): a label equal to the owner's own name is degenerate.
+		const hubStored = (accountId: string, label: string) => {
+			const owner = (args.people ?? []).find(
+				(row) => row.account_id === accountId,
+			)?.display_label;
+			return owner && label.trim() === owner
+				? `${owner}'s chief of staff`
+				: label;
+		};
+		return (
+			<div className="flex h-full flex-col">
+				<output
+					className="shrink-0 px-3 py-1 text-meta-sm"
+					aria-label="Fixture create payload"
+				>
+					{wire ? JSON.stringify(wire) : "Fixture only: no create yet"}
+				</output>
+				<TeamBridgePageView
+					{...args}
+					target={target}
+					onTarget={setTarget}
+					conversations={created ? [created] : []}
+					messages={confirmed}
+					messageState={created ? "ready" : "idle"}
+					onSend={async (body) => {
+						if (target?.type !== "compose") return;
+						const input = draftCreateInput(target.recipients);
+						if (!input) return;
+						setWire(input);
+						const conversation: TeamBridgeConversation = {
+							...dm,
+							id: "bcv_chief_roundtrip",
+							tenant_id: "tnt_1",
+							kind: input.kind,
+							name: "",
+							agent_capable: input.agentCapable,
+							// The reader just started this thread: nothing is unread
+							// (design review D3 on #1441).
+							unread_count: 0,
+							last_read_seq: 1,
+							latest_seq: 1,
+							members: [
+								{
+									account_id: self,
+									kind: "human",
+									display_label: "Damian Tran",
+									role: "owner",
+									state: "active",
+								},
+								...input.members.map((member) => ({
+									account_id: member.account_id,
+									kind: member.kind,
+									display_label:
+										member.kind === "agent"
+											? hubStored(member.account_id, member.display_label ?? "")
+											: (member.display_label ?? ""),
+									role: "member" as const,
+									state: "invited" as const,
+								})),
+							],
+						};
+						setCreated(conversation);
+						setConfirmed([
+							{
+								id: "bcmsg_chief_roundtrip",
+								conversation_id: conversation.id,
+								seq: 1,
+								sender: {
+									account_id: self,
+									kind: "human",
+									display_label: "Damian Tran",
+								},
+								origin: "human",
+								body,
+								created_at: new Date().toISOString(),
+							},
+						]);
+						setTarget({ type: "conversation", id: conversation.id });
+					}}
+				/>
+			</div>
+		);
+	},
+};
+
+/** The same, with the teammate's agent name published: "Aida (Ben Tran)". */
+export const ChiefNamedCreateReadRoundTrip: Story = {
+	render: ChiefCreateReadRoundTrip.render,
+	args: { ...ChiefCreateReadRoundTrip.args, people: rosterWithChiefs },
+};
+
+/*
+ * ---------------------------------------------------------------------------
+ * LAYOUT REGRESSION BOARDS (operator report 2026-10-27). Two defects reached
+ * the operator because no story measured them: the empty DM centred its
+ * avatar over left-aligned text, and a hovered row's ground ran past the
+ * visible column. Each board's play function asserts the geometry, so the
+ * Interactions panel goes red on a regression rather than a reviewer having
+ * to notice a few pixels in a frame.
+ * ---------------------------------------------------------------------------
+ */
+
+/** Half a CSS pixel: subpixel layout rounds, a regression is whole pixels. */
+const EDGE_TOLERANCE = 0.5;
+
+/** The empty DM: the 56px mark starts on the same left edge as the name and
+ * the intro line, Slack-style, never centred in the pane. */
+export const PersonDraftAvatarAlignment: Story = {
+	args: PersonDraft.args,
+	play: async ({ canvasElement }) => {
+		const avatar = await waitFor(() => {
+			const node = canvasElement.querySelector("[data-draft-avatar]");
+			if (!(node instanceof HTMLElement)) throw new Error("avatar missing");
+			return node;
+		});
+		const name = canvasElement.querySelector("[data-draft-name]");
+		if (!(name instanceof HTMLElement)) throw new Error("name missing");
+		const a = avatar.getBoundingClientRect();
+		const n = name.getBoundingClientRect();
+		await expect(Math.abs(a.left - n.left)).toBeLessThanOrEqual(EDGE_TOLERANCE);
+		// The trigger hugs the mark: a stretched button is how it was centred.
+		await expect(a.width).toBeLessThanOrEqual(60);
+	},
+};
+
+/** The content that tried to widen a row: a long unbroken token, a long URL,
+ * a code line and a wide table. Each must wrap or scroll INSIDE the row. */
+const longContentThread: TeamBridgeMessage[] = [
+	...benThread,
+	{
+		id: "bcmsg_long1",
+		conversation_id: benDm.id,
+		seq: 5,
+		sender: {
+			account_id: "acct_ben",
+			kind: "human",
+			display_label: "Ben Tran",
+		},
+		body: `${"a".repeat(240)}\n\nhttps://example.com/${"path-segment-".repeat(18)}end\n\n\`\`\`\n${"const unbroken = 'x';".repeat(14)}\n\`\`\`\n\n| ${Array.from({ length: 12 }, (_, i) => `column_heading_${i}`).join(" | ")} |\n|${" --- |".repeat(12)}\n| ${Array.from({ length: 12 }, (_, i) => `value_${i}`).join(" | ")} |`,
+		origin: "human",
+		created_at: at(1),
+	},
+];
+
+/**
+ * Every row - and the hover ground and action row it carries - lies inside
+ * the timeline viewport's VISIBLE width, and the viewport has no horizontal
+ * overflow. The row's box IS the hover band (`hover:bg-row-hover` paints the
+ * `li`), so its rect is the band's rect; the toolbar is measured when this
+ * build ships one (both holds in `shared/team-bridge-notify.ts` close it
+ * today, and then there is no toolbar to measure).
+ */
+export const LongContentRowsStayInColumn: Story = {
+	args: {
+		...slackRail,
+		target: { type: "person", accountId: "acct_ben" },
+		messages: longContentThread,
+	},
+	play: async ({ canvasElement }) => {
+		const rows = await waitFor(() => {
+			const found = canvasElement.querySelectorAll<HTMLElement>(
+				"li[data-message-id]",
+			);
+			if (found.length < longContentThread.length)
+				throw new Error("rows missing");
+			return [...found];
+		});
+		const viewport = rows[0].closest("[data-radix-scroll-area-viewport]");
+		if (!(viewport instanceof HTMLElement)) throw new Error("no viewport");
+		const v = viewport.getBoundingClientRect();
+		// clientWidth excludes any scrollbar: the row must fit what is SEEN.
+		const visibleRight = v.left + viewport.clientWidth;
+		await expect(viewport.scrollWidth).toBeLessThanOrEqual(
+			viewport.clientWidth,
+		);
+		for (const row of rows) {
+			const r = row.getBoundingClientRect();
+			await expect(r.left).toBeGreaterThanOrEqual(v.left - EDGE_TOLERANCE);
+			await expect(r.right).toBeLessThanOrEqual(visibleRight + EDGE_TOLERANCE);
+			const toolbar = row.querySelector("[data-message-toolbar]");
+			if (toolbar) {
+				const tb = toolbar.getBoundingClientRect();
+				await expect(tb.right).toBeLessThanOrEqual(r.right + EDGE_TOLERANCE);
+			}
+		}
 	},
 };

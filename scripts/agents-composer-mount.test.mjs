@@ -1012,3 +1012,55 @@ test("an unblocked box with a draft explains nothing", async () => {
 		await act(async () => root.unmount());
 	}
 });
+
+/*
+ * #1458 QA r2 Q9: a run whose turn DIED hands focus to Retry, and the box's own
+ * caret claim must not take it back. The claim re-runs when the box stops being
+ * refused - which is the same render that leaves `running` for the failure - so
+ * QA measured focusin Retry -> focusout to TEXTAREA in one millisecond.
+ */
+test("a failed turn's Retry keeps focus; the box does not reclaim the caret", async () => {
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = createRoot(host);
+	const queryClient = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	const render = async (run) => {
+		await act(async () => {
+			root.render(
+				React.createElement(
+					QueryClientProvider,
+					{ client: queryClient },
+					React.createElement(ConfigComposer, {
+						run,
+						about: null,
+						onClearAbout: () => undefined,
+					}),
+				),
+			);
+		});
+	};
+	mounts.push({ root, queryClient });
+	await render(
+		handle({ status: "running", sessionId: "s-1", step: "Working" }).run,
+	);
+	// The reader was on nothing (the rig blurs, as QA's did).
+	document.activeElement?.blur?.();
+	await render(
+		handle({
+			status: "error",
+			sessionId: "s-1",
+			error: "The model provider returned an error (HTTP 500).",
+			canRetry: true,
+			turnFailed: true,
+		}).run,
+	);
+	await act(async () => new Promise((resolve) => setTimeout(resolve, 30)));
+	const active = document.activeElement;
+	assert.equal(
+		active?.getAttribute?.("data-testid") ?? active?.tagName ?? null,
+		"config-retry",
+		"focus is on Retry",
+	);
+});

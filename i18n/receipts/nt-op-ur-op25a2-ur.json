@@ -1,0 +1,204 @@
+{
+  "schema": 1,
+  "audit_id": "nt-op-ur-2",
+  "audit_kind": "delta_reaudit_of_auditor_proposed_repair",
+  "locale": "ur",
+  "namespace": "ui.notifications.operation",
+  "instance": "op25a2-ur",
+  "model": "radient/auto",
+  "status": "passed",
+  "result": "clean",
+  "key_count": 1,
+  "scope": {
+    "key_count": 1,
+    "keys": [
+      "ui.notifications.operation.progress"
+    ],
+    "note": "One-key delta re-audit. The other six locales and the existing 130-key ui.notifications namespace are outside this audit and are checked only for byte preservation; nothing there is re-audited."
+  },
+  "auditor": {
+    "agent": "translation-auditor",
+    "instance": "op25a2-ur",
+    "session": "766adb539e6a",
+    "model": "radient/auto",
+    "actual_model": "radient/auto",
+    "actual_model_source": "Session transcript provider payload for this run's assistant records: native_replay.provider='radient', model_id='auto' (api.radienthq.com). Declared primary openai/gpt-6-astra; earlier provider quota HTTP 429 fallback chain in this session: anthropic/claude-sonnet-5-5 -> openai/gpt-6.1-sol -> radient/auto.",
+    "primary_model": "openai/gpt-6-astra",
+    "fallback_chain_note": "The fallback happened in the previous turn of this same session; this turn is served by radient/auto.",
+    "fallback_used": true,
+    "independence": "Same auditor session/history that proposed the repair: this is an application verification of that proposal, not a fresh independent translation. The decisive check is byte equality to the proposal recorded in the prior receipt plus real parser/render execution. I authored no translation bytes; the UI owner applied the proposed text."
+  },
+  "translator": {
+    "agent": "UI owner (applied the auditor-proposed repair)",
+    "note": "No new translation was authored; the applied string had to equal the recorded proposal."
+  },
+  "prior_audit": {
+    "receipt": "i18n/receipts/nt-op-ur-766adb539e6a.json",
+    "receipt_sha256": "17822659b2ec9aa3129d5d98d6f97f375e18d07743c326256e3f4760b0116afc",
+    "binding": "the prior receipt was bound to the previous ur bytes; this receipt supersedes it for the current bytes",
+    "finding": "OP-UR-1",
+    "severity": "MINOR",
+    "disposition": "fixed",
+    "fix_evidence": "current target bytes exactly equal findings[0].proposed_text; the old plural label is absent; skipped renders grammatically at 1"
+  },
+  "sha256": {
+    "en": "65ebc87c40dbeaa315f0de192d01be7de8aa6d1c48a4bea25191b34d2742afd3",
+    "ur": "a50f4efbb99560fa4e82187668f0b4c2092dd17b835ef541605bb6b181dd9c14"
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.notifications.operation.json",
+      "sha256": "65ebc87c40dbeaa315f0de192d01be7de8aa6d1c48a4bea25191b34d2742afd3"
+    },
+    "en_context_sidecar": {
+      "path": "src/i18n/catalogues/en/ui.notifications.operation.context.json",
+      "sha256": "3dcade93393d080a081ad0d906842fb25eedbe77d4a353382c1c676c6c845b76"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/ur/ui.notifications.operation.json",
+      "sha256": "a50f4efbb99560fa4e82187668f0b4c2092dd17b835ef541605bb6b181dd9c14"
+    }
+  },
+  "guidance": {
+    "glossary": {
+      "path": "i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "i18n/style-guides/ur.md",
+      "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+    }
+  },
+  "verdict_reason": "The applied string is byte-for-byte the proposal recorded in OP-UR-1. All three numeric arguments survive with the same names, kinds and order; no plural/select branch was introduced. Renders at 0, 1 and 12 are grammatical, the invariant label removes the old 1-count agreement break, RTL hygiene is clean, and static width is unchanged at 49 cells. English/context pins and the other six locale files and receipts are unchanged.",
+  "findings": [],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "mechanical_checks": {
+    "toolchain": {
+      "parser": "@formatjs/icu-messageformat-parser (checkout dependency)",
+      "formatter": "intl-messageformat (checkout dependency)",
+      "script": "scratchpad://notifications-operation-audit/ur-delta-probe.cjs",
+      "script_sha256": "eb413d1929e208c9fbe2b1ae2eb0cab45456f148c8481a75e85e04d57f96ad1e"
+    },
+    "exact_equals_recorded_proposal": true,
+    "arguments": {
+      "changed": "number",
+      "skipped": "number",
+      "pending": "number"
+    },
+    "argument_names_types_order_match_english": true,
+    "select_or_plural_branches": 0,
+    "renders": {
+      "0": "تبدیل شدہ: 0 · نظر انداز: 0 · تصدیق نہیں ہوئی: 0",
+      "1": "تبدیل شدہ: 1 · نظر انداز: 1 · تصدیق نہیں ہوئی: 1",
+      "12": "تبدیل شدہ: 12 · نظر انداز: 12 · تصدیق نہیں ہوئی: 12"
+    },
+    "old_plural_label_absent": true,
+    "negative_controls": [
+      "dropped argument",
+      "renamed argument",
+      "number changed to plural",
+      "malformed ICU",
+      "manual bidi control detection"
+    ],
+    "negative_controls_result": "all five failed as required",
+    "rtl": {
+      "manual_bidi_controls": [],
+      "nfc": true,
+      "arabic_script_codepoints": 29,
+      "rendered_latin_letters": 0,
+      "separators": "two U+00B7 with spaces",
+      "colon_placement": "logical order, RTL punctuation"
+    },
+    "static_width": {
+      "metric": "rich.cells.cell_len plus Unicode code points",
+      "ur_cells": 49,
+      "en_cells": 40,
+      "ur_codepoints": 96,
+      "en_codepoints": 87,
+      "prior_ur_cells": 49,
+      "prior_ur_codepoints": 96,
+      "budget": null,
+      "note": "Wrapping status line, no maxCells; numbers are a static wrapping measure, not rendered fit."
+    },
+    "punctuation": {
+      "double_spaces": false,
+      "edge_whitespace": false,
+      "placeholder_count": 3
+    }
+  },
+  "preservation_checks": {
+    "en_and_context_pins": {
+      "en": "65ebc87c40dbeaa315f0de192d01be7de8aa6d1c48a4bea25191b34d2742afd3",
+      "context": "3dcade93393d080a081ad0d906842fb25eedbe77d4a353382c1c676c6c845b76",
+      "expected_en": "65ebc87c40dbeaa315f0de192d01be7de8aa6d1c48a4bea25191b34d2742afd3",
+      "expected_context": "3dcade93393d080a081ad0d906842fb25eedbe77d4a353382c1c676c6c845b76",
+      "unchanged": true
+    },
+    "other_six_target_files": {
+      "es": {
+        "receipt_target_sha256": "0404de4a010f73710593194a1ff2aed1afcf4106b8b89a566143367566c16f0f",
+        "current_sha256": "0404de4a010f73710593194a1ff2aed1afcf4106b8b89a566143367566c16f0f",
+        "unchanged": true
+      },
+      "fr": {
+        "receipt_target_sha256": "f767dd8294f7b8d19bc36d63e38af7d4e26df4b613ea829aee68fc29d7c5cdf9",
+        "current_sha256": "f767dd8294f7b8d19bc36d63e38af7d4e26df4b613ea829aee68fc29d7c5cdf9",
+        "unchanged": true
+      },
+      "hi": {
+        "receipt_target_sha256": "820ac0c446be5615f4e6f0c6a04c1d84d724402bba5b74fa56a58150eebd6886",
+        "current_sha256": "820ac0c446be5615f4e6f0c6a04c1d84d724402bba5b74fa56a58150eebd6886",
+        "unchanged": true
+      },
+      "ru": {
+        "receipt_target_sha256": "d0846a31ef54f4606cc37c50a7d952dd00c07428bafef16697a0810a0b1326ae",
+        "current_sha256": "d0846a31ef54f4606cc37c50a7d952dd00c07428bafef16697a0810a0b1326ae",
+        "unchanged": true
+      },
+      "vi": {
+        "receipt_target_sha256": "d9e16ae4406452823392135fb0e577d1c47691f6a03ed18714be4e29f3be4ee0",
+        "current_sha256": "d9e16ae4406452823392135fb0e577d1c47691f6a03ed18714be4e29f3be4ee0",
+        "unchanged": true
+      },
+      "zh-CN": {
+        "receipt_target_sha256": "e0e9e3e332c5360fcc09dd57940ad570980f517db7402c2f4ef3c6a102a64975",
+        "current_sha256": "e0e9e3e332c5360fcc09dd57940ad570980f517db7402c2f4ef3c6a102a64975",
+        "unchanged": true
+      }
+    },
+    "prior_receipts_unchanged": "all seven nt-op-<locale>-766adb539e6a.json receipts match the digests recorded before this delta; the prior ur receipt sha256 is quoted above",
+    "original_130_key_namespace": {
+      "en": {
+        "sha256": "ce0c8d6d9af80980667741dd6d289ab7312d04aaea0e717e5cef4cf55c2b37ae",
+        "expected": "ce0c8d6d9af80980667741dd6d289ab7312d04aaea0e717e5cef4cf55c2b37ae",
+        "unchanged": true
+      },
+      "ur": {
+        "sha256": "d5c4a7e21e450d9a21a06b85198bd8a2ed78cd2d5c007e0ab10c930d60fdae4d",
+        "expected": "d5c4a7e21e450d9a21a06b85198bd8a2ed78cd2d5c007e0ab10c930d60fdae4d",
+        "unchanged": true
+      }
+    }
+  },
+  "audit_log": {
+    "path": "/Users/damian/.local-operator/sessions/766adb539e6a/scratchpad/notifications-operation-audit/ur-delta-audit.log",
+    "sha256": "5c383e6c436622ee59c620786ab8bde0e5261b84e6b35a884c731f9863745df6"
+  },
+  "limitations": [
+    "Application verification of an auditor-proposed repair, not a fresh independent translation audit of the key.",
+    "LLM audit, no human/native-speaker review.",
+    "No rendered/browser/Electron fit proof; static widths only.",
+    "No catalogue, ledger, code or git edits; only this receipt was created."
+  ],
+  "preservation_log": {
+    "path": "/Users/damian/.local-operator/sessions/766adb539e6a/scratchpad/notifications-operation-audit/ur-delta-preservation.log",
+    "sha256": "b0b4270653cb572a65fbe830493f53bc0953683d728541abb357097ec5bed7ef",
+    "note": "Actual outputs of the EN/context pin checks, the other six target-file hash comparisons, and current receipt digests."
+  },
+  "instance_label_correction": "Instance label corrected from session id 766adb539e6a to op25a2-ur so the ledger can record distinct audits; no audit content changed."
+}

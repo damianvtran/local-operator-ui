@@ -2727,7 +2727,7 @@ test("the strip feeds `close others` the list it is showing, and nothing wider (
 	);
 	assert.match(
 		strip,
-		/closeOthersIntent\(tabs, actionsTabId\)/,
+		/closeOthersIntent\(tabs, tab\.tabId\)/,
 		"`Close N other tabs` must be built from the strip's own `tabs`: what it shows is what the label counts and what the press closes",
 	);
 	assert.match(

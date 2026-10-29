@@ -18,6 +18,15 @@ import { z } from "zod";
 
 const id = z.string().min(1).max(128);
 
+/**
+ * The code a renderer write carries when this runtime cannot bind it to its
+ * owner (`teamBridgeWriteOwner`: no `team_bridge_conversation_owner_guard`).
+ * A retry cannot change that answer, so callers map it to "update the app"
+ * rather than to a retryable failure (D5 review round 1, R7).
+ */
+export const TEAM_BRIDGE_OWNER_GUARD_UNAVAILABLE =
+	"team_bridge_owner_guard_unavailable";
+
 export const teamBridgeParticipantSchema = z
 	.object({
 		account_id: id,
@@ -89,6 +98,23 @@ export const teamBridgeConversationSchema = z
 		 * than failing the whole conversation list. Absent on older servers.
 		 */
 		builtin: z.string().min(1).max(32).optional(),
+		/*
+		 * ARCHIVE / PERMANENT DELETE (agent-server radient-ml/agent-server#219).
+		 * All additive: a server older than it sends none of these, and every one is
+		 * optional so that page still parses.
+		 *
+		 * `can_administer` is THE CALLER'S authority, computed by the same function the
+		 * archive/delete routes enforce (conversation owner, or an organization
+		 * owner/admin on a channel). The client never infers it from a role or from
+		 * `created_by`; absent means "this server cannot say", and the menus then
+		 * offer nothing rather than a button that may be refused.
+		 *
+		 * `archived_by_label` is best effort and the banner degrades without it.
+		 */
+		can_administer: z.boolean().optional(),
+		archived_at: z.string().optional(),
+		archived_by: id.optional(),
+		archived_by_label: z.string().min(1).max(64).optional(),
 	})
 	.passthrough();
 export type TeamBridgeConversation = z.infer<
@@ -100,6 +126,8 @@ export const teamBridgeConversationListSchema = z
 		conversations: z.array(teamBridgeConversationSchema),
 		has_more: z.boolean().optional(),
 		next_before: z.string().optional(),
+		/* The lossless compound position (both scopes); `next_before` is legacy and can drop ties. */
+		next_cursor: z.string().optional(),
 	})
 	.passthrough();
 export type TeamBridgeConversationList = z.infer<
@@ -557,6 +585,13 @@ export const teamBridgeScheduledMessageSchema = z
 		send_at: z.string().datetime({ offset: true }),
 		status: z.enum(["scheduled", "sending"]),
 		created_at: z.string().datetime({ offset: true }),
+		/*
+		 * The hub's edit counter (agent-server #223); absent from an older hub.
+		 * `null` is accepted and means "unknown", like absence: a legacy row can
+		 * carry an explicit null, and refusing the whole list over it would hide
+		 * every schedule.
+		 */
+		version: z.number().int().nonnegative().nullish(),
 		/* Reserved images; descriptors only (not bound to a message, so no bytes). */
 		attachments: z.array(teamBridgeAttachmentSchema).max(16).optional(),
 		/*

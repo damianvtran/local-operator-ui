@@ -329,5 +329,61 @@
 	"ui.chat.canonical.older_history.windowed.short_gesture": "Narrow-column spelling naming the scroll gesture.",
 	"ui.chat.canonical.older_history.unproven.short": "Narrow-column spelling of the row that says earlier history was never proven loaded.",
 	"ui.chat.canonical.older_history.unproven.long": "Full spelling of the unproven row and its title attribute.",
-	"ui.chat.canonical.older_history.conversation_start": "Row marking the oldest message, where nothing earlier exists."
+	"ui.chat.canonical.older_history.conversation_start": "Row marking the oldest message, where nothing earlier exists.",
+	"ui.chat.canonical.placeholder.loading": {
+		"role": "visible caption under the transcript while a conversation is still loading",
+		"tone": "status phrase, sentence case, trailing ellipsis character (U+2026), no period",
+		"length": "Two words.",
+		"note": "The words are VISIBLE, not sr-only: a sighted reader needs a sentence naming the wait. Keep the single-character ellipsis rather than three dots. `text-ink-dim` clears the 4.5:1 floor on every ground.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.placeholder.region_label": {
+		"role": "accessible name of the loading placeholder's live region",
+		"tone": "status phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "The same phrase as the visible caption without the ellipsis: it is an utterance, not a sentence. A screen reader announces this region while the transcript hydrates.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.generic_verb.running": {
+		"role": "verb column of a running tool row whose tool has no verb of its own",
+		"tone": "present participle, lowercase, one word, no punctuation",
+		"length": "One word.",
+		"note": "The generic verb for a tool the verb table has never heard of, or an op-aware call whose operation is unknown. It claims only that the call is happening; any op-specific verb would be a guess. The tool's own name follows it, so the row still says which call it was.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.generic_verb.settled": {
+		"role": "verb column of a finished tool row whose tool has no verb of its own",
+		"tone": "past tense, sentence case, one word, no punctuation",
+		"length": "One word.",
+		"note": "The settled sibling of `Calling`. Claims only that the call happened; the tool's own name follows it.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.outcome.failed": {
+		"role": "the outcome word a failed tool row contributes to assistive tech, and to the row's trailing status",
+		"tone": "past participle, lowercase, one word, no punctuation",
+		"length": "One word.",
+		"note": "Drawn beside the outcome glyph and announced in place of it. It is a statement about the CALL, not about the agent.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.outcome.interrupted": {
+		"role": "the outcome word for a tool call the user stopped",
+		"tone": "past participle, lowercase, one word, no punctuation",
+		"length": "One word.",
+		"note": "Deliberately not `failed`: the user stopped the call, so reporting it as a failure would blame the agent for the reader's own decision.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.outcome.never_ran": {
+		"role": "the outcome word for a call the harness refused before it reached any tool",
+		"tone": "lowercase clause, no punctuation",
+		"length": "Two words.",
+		"note": "Not `failed`: there was no result to fail. It names what stopped the call before it was sent. Announced rather than silent because the row is the only carrier of that verdict.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.outcome.succeeded": {
+		"role": "the outcome word a successful tool row announces to assistive tech",
+		"tone": "past participle, lowercase, one word, no punctuation",
+		"length": "One word.",
+		"note": "Spoken, not drawn: a success draws no visible word, so this is the whole of what a reader with no screen hears for the outcome.",
+		"placeholders": {}
+	}
 }

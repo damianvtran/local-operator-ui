@@ -493,7 +493,16 @@ const CURRENT = [
 		what: "the entity row's manage control",
 		file: SIDEBAR,
 		expression: () =>
-			expressionBefore(SIDEBAR, "aria-label={`Manage ${displayName}`}"),
+			/*
+			 * Keyed copy (i18n wave A): the control's accessible name is the
+			 * catalogue's, so the anchor is the expression the source carries -
+			 * matched in its formatted multi-line shape, where `expressionBefore`
+			 * reads the file as text.
+			 */
+			expressionBefore(
+				SIDEBAR,
+				'aria-label={t("ui.chat.sidebar.entity.manage", {',
+			),
 		stubs: { revealArmed: true, staged: true },
 		ground: false,
 		notCurrent: { revealArmed: true, staged: false },
@@ -1355,6 +1364,8 @@ const AGENTS_SIDEBAR =
 	"src/renderer/src/features/agents/components/agents-sidebar.tsx";
 const AGENTS_PAGE =
 	"src/renderer/src/features/agents/components/agents-page.tsx";
+const SKILLS_LIBRARY =
+	"src/renderer/src/features/agents/components/skills-library.tsx";
 const CANVAS_SECTION =
 	"src/renderer/src/features/chat/components/canvas/index.tsx";
 const FILE_ROW =
@@ -1543,11 +1554,48 @@ const ROW_STATE_GROUNDS = [
 		groundFile: TEAM_BRIDGE_PAGE,
 	},
 	{
+		/*
+		 * The Team Bridge page's own "Archived channels" entry (design round 1, D3).
+		 * It sits in the same `<aside>` as the rail's rows, so it is asserted on the
+		 * same ground: the selected fill is a step of `surface`, and the entry is the
+		 * one place on this page that paints the role outside the rail module.
+		 */
+		what: "the Team Bridge page's Archived channels entry",
+		rowFile: TEAM_BRIDGE_PAGE,
+		expression: () => expressionBefore(TEAM_BRIDGE_PAGE, "? rowCurrent"),
+		stubs: { quickView: "archived", rowCurrent },
+		ground: () =>
+			literalClassAt(
+				TEAM_BRIDGE_PAGE,
+				'data-glass-region="page-sidebar"',
+				"after",
+			),
+		groundFile: TEAM_BRIDGE_PAGE,
+	},
+	{
 		what: "the agents page's roster row",
 		rowFile: AGENTS_PAGE,
 		expression: () =>
 			expressionBefore(AGENTS_PAGE, "row.name === name && rowCurrent"),
 		stubs: { row: { name: "agent" }, name: "agent", rowCurrent },
+		ground: () => literalClassAt(AGENTS_PAGE, "<aside ", "after"),
+		groundFile: AGENTS_PAGE,
+	},
+	{
+		/*
+		 * THE SKILLS TAB'S ROW (#1443). It is a sibling of the agents roster row
+		 * above: the same selected-row role, painted in the roster scroller that sits
+		 * inside the page's one `<aside>`, so the ground is the SAME element and the
+		 * contrast numbers the design review measured for the Agents roster hold here
+		 * too. The row lives in its own module and the ground in the page, hence two
+		 * files. `card.name === selected` is the row's own predicate (a skill's name is
+		 * its identity), stubbed true so the role is resolved as painted.
+		 */
+		what: "the agents page's Skills roster row",
+		rowFile: SKILLS_LIBRARY,
+		expression: () =>
+			expressionBefore(SKILLS_LIBRARY, "card.name === selected && rowCurrent"),
+		stubs: { card: { name: "skill" }, selected: "skill", rowCurrent },
 		ground: () => literalClassAt(AGENTS_PAGE, "<aside ", "after"),
 		groundFile: AGENTS_PAGE,
 	},
@@ -1808,33 +1856,26 @@ test("the settings rail's group lists carry no ground of their own", () => {
  * THE PLATE INSIDE A ROW, AND THE HALF THE PALETTE GATE CANNOT SEE.
  *
  * The rail's account row is a row state's host (`hover:bg-row-hover`) and it
- * contains an element with a ground of its own — the avatar plate. That plate
- * was chosen when the rail was `sunken`, and re-grounding the rail to `surface`
- * did not touch it, which left a shape this file's own tables do not cover: an
- * element INSIDE a row, on a rung, with the row painting a fill underneath it.
+ * contains an element with a ground of its own — the avatar plate. A row state is
+ * authored as a STEP of the panel it sits on, so on some palette it lands on some
+ * rung: `elevated` against `rowHover` is byte-identical on `arcade` (ΔE00 0.00),
+ * which is why this plate used to wear `bg-elevated` plus a `border-control` ring.
  *
- * The pair under the pointer collapses on the shipped values: `elevated` against
- * `rowHover` is byte-identical on `arcade` (ΔE00 0.00) and inside the field floor
- * on `gruvbox` 1.14, `obsidian` 1.21 and `everforest` 1.90 — hover the row at any
- * of the four and the plate is a disc of the row's own hover colour. That is not a
- * value to re-solve: a row state is authored as a STEP of the panel it sits on, so
- * some palette's state will always land on some rung (16 of the 59 already land
- * within ΔE00 2.0 of `elevated` on `rowSelected`, which is why no fill role is
- * collision-free). So the plate carries `border-control` — this system's role for
- * an edge that IS the boundary of a thing, floored at 3:1 against every ground —
- * and THAT is what this test pins, because it is the half a colour gate cannot see.
- *
- * The colour half is `scripts/contrast-contract.mjs`'s, per palette: `elevated`
- * against `rowHover` at the field floor OR `border-control` against `rowHover` at
- * the non-text floor. On exactly the four palettes the fill fails, the edge clears
- * (3.18 `arcade`, 3.13 `gruvbox`, 3.27 `obsidian`, 3.10 `everforest`), so neither
- * half is decoration and neither file can make the other's assertion — the same
- * split `ROW_STATE_GROUNDS` above records for the grounds.
+ * BORDERLESS SINCE THE OWN-AVATAR CHANGE (design review round 1, D1/D2). The
+ * operator asked for borderless, rounded-square avatars, and the ring dropped
+ * away visibly the moment the photo landed. The plate now wears Team Bridge's
+ * `media-surface` fill, which is not a rung: `scripts/contrast-contract.mjs`
+ * measures it per palette against `surface` and `rowHover` (`team bridge
+ * borderless person and agent plates`) with `inkMuted` initials on it (`team
+ * bridge person initial plate`). What THIS test pins is the half that gate cannot
+ * see: the class text still names that fill on both the root (a transparent photo
+ * keeps the backing) and the fallback, in Team Bridge's `rounded-md` shape, with
+ * no edge.
  *
  * The pair is `rowHover` and NOT `rowSelected`, and that scope is asserted below
- * rather than implied: the account row is not a destination, so it never paints
- * `rowCurrent` and the plate can never be painted over a selection. If it ever
- * does, the pair in the palette gate has to grow, and it does not clear today.
+ * rather than implied: `media-surface` bottoms out at ΔE00 1.83 against
+ * `rowSelected`, so if the account row ever paints `rowCurrent` the plate needs
+ * the selected-row step Team Bridge's rail takes (`surface`).
  */
 const ACCOUNT_ROW =
 	"src/renderer/src/shared/components/navigation/user-profile-sidebar.tsx";
@@ -1854,7 +1895,7 @@ const TEAM_BUBBLE =
 const TEAM_BUBBLE_COMPOSITION =
 	/badgeVariants\(\{[\s\S]*?variant:\s*"attentionQuiet"[\s\S]*?shape:\s*"pill"[\s\S]*?size:\s*"count"/;
 
-test("the account row's plate carries an edge a row state cannot overrun", () => {
+test("the account row's plate is Team Bridge's borderless rounded-square plate", () => {
 	const row = sourceOf(ACCOUNT_ROW);
 	assert.ok(
 		row.includes("hover:bg-row-hover"),
@@ -1862,19 +1903,27 @@ test("the account row's plate carries an edge a row state cannot overrun", () =>
 	);
 	assert.ok(
 		!row.includes("rowCurrent"),
-		`${ACCOUNT_ROW} now paints or names \`rowCurrent\`, so the account row IS a destination and its plate can be painted over a selection as well as a hover — the pair in \`scripts/contrast-contract.mjs\` has to gain \`rowSelected\`, which it is not satisfiable against today (16 of the 59 palettes sit inside ΔE00 2.0 of \`elevated\` on \`rowSelected\`)`,
+		`${ACCOUNT_ROW} now paints or names \`rowCurrent\`, so the account row IS a destination and its plate can be painted over a selection as well as a hover — \`media-surface\` bottoms out at ΔE00 1.83 against \`rowSelected\`, so the plate needs the selected-row step Team Bridge's rail takes`,
 	);
-	const plate = literalClassAt(ACCOUNT_ROW, "<AvatarFallback", "after")
-		.split(/\s+/)
-		.filter((c) => c.length > 0);
-	assert.ok(
-		plate.includes("bg-elevated"),
-		`the account row's plate no longer paints \`bg-elevated\` — it reads ${JSON.stringify(plate)}. \`scripts/contrast-contract.mjs\` asserts the plate's fill as \`elevated\` against \`rowHover\`, so a re-role here has to move there too`,
-	);
-	assert.ok(
-		plate.includes("border-control"),
-		`the account row's plate is back on a FILL ALONE — it reads ${JSON.stringify(plate)} and carries no \`border-control\`, which is the one property a row's fill cannot overrun. \`elevated\` against \`rowHover\` is ΔE00 0.00 on \`arcade\` (byte-identical), 1.14 \`gruvbox\`, 1.21 \`obsidian\` and 1.90 \`everforest\`: hovering the row turns the plate into a disc of the row's own hover colour. The edge is the carrier, and the palette half of the pair is in \`scripts/contrast-contract.mjs\``,
-	);
+	for (const element of ["<Avatar ", "<AvatarFallback"]) {
+		const plate = literalClassAt(ACCOUNT_ROW, element, "after")
+			.split(/\s+/)
+			.filter((c) => c.length > 0);
+		assert.ok(
+			plate.includes("bg-media-surface"),
+			`the account row's ${element.trim()} no longer paints \`bg-media-surface\` — it reads ${JSON.stringify(plate)}. \`scripts/contrast-contract.mjs\` measures that fill against \`surface\` and \`rowHover\`; on the root it is also the backing a transparent photo needs once Radix unmounts the fallback (design review round 1, D4)`,
+		);
+		assert.ok(
+			plate.includes("rounded-md") && !plate.includes("rounded-full"),
+			`the account row's ${element.trim()} is not Team Bridge's rounded-square plate — it reads ${JSON.stringify(plate)}. \`TeamBridgeAvatar\` draws the same person's photo at \`rounded-md\`, and one person must not be two shapes (design review round 1, D1)`,
+		);
+		const edge = plate.find((c) => EDGE_LIKE.test(c));
+		assert.equal(
+			edge,
+			undefined,
+			`the account row's ${element.trim()} drew an edge back (${JSON.stringify(edge)}). The plate is borderless by the operator's ask; its separation is the measured \`media-surface\` fill (design review round 1, D2)`,
+		);
+	}
 });
 
 /*
@@ -2337,11 +2386,23 @@ const carriersInsideRowStates = async () => {
  */
 const PLATES_INSIDE_ROW_STATES = [
 	{
+		/* Borderless since the own-avatar change (design review round 1, D2): the
+		   rail's account plate takes Team Bridge's measured `media-surface` fill on
+		   both its root and its fallback, so the sweep finds two objects. */
 		what: "the rail's account plate",
 		file: ACCOUNT_ROW,
+		element: "Avatar",
+		ground: "bg-media-surface",
+		edge: false,
+		fact: "bg-media-surface",
+	},
+	{
+		what: "the rail's account plate's initials",
+		file: ACCOUNT_ROW,
 		element: "AvatarFallback",
-		ground: "bg-elevated",
-		edge: true,
+		ground: "bg-media-surface",
+		edge: false,
+		fact: "bg-media-surface",
 	},
 	{
 		what: "the agents sidebar's avatar",
@@ -2621,29 +2682,22 @@ test("no Team Bridge initial plate regrows a border, ring, divider or shadow", (
 
 test("every object a row state can paint over keeps an edge, or records why it need not", async () => {
 	/*
-	 * The former tab-actions overlay painted elevated/surface over the row and
-	 * belonged in the plate inventory. Its replacement is layout-only: contents
-	 * generates no principal box and carries no ground. Pin the precise wrapper,
-	 * not an exemption for a live surface: adding a ground/overlay class or style
-	 * must fail here until its new paint is accounted for in the inventory.
+	 * THE TAB ACTIONS HAVE LEFT THIS INVENTORY (LOH-13 operator report,
+	 * 2026-10-25). They are a native Electron menu now: the OS draws the panel
+	 * outside this document, so there is no renderer plate that could paint a
+	 * ground over the row and nothing to carry an edge. The former popout's
+	 * boxless `<div className="contents">` wrapper went with it. The pin is the
+	 * ABSENCE: a renderer panel reappearing here must fail until its paint is
+	 * accounted for in the inventory.
 	 */
 	const browserTabs = read(BROWSER_TABS);
-	const actionsAt = browserTabs.indexOf("open={actionsTabId === tab.tabId}");
-	assert.notEqual(
-		actionsAt,
-		-1,
-		"the actual tab-actions menu anchor must exist",
+	assert.ok(
+		!browserTabs.includes('data-tour-tag="browser-tab-actions"'),
+		"the tab-actions menu must not paint a renderer panel; restore its painted-plate inventory entry if it starts painting again",
 	);
-	const clusterAt = browserTabs.lastIndexOf("<div", actionsAt);
-	assert.notEqual(clusterAt, -1, "the actual tab-actions wrapper must exist");
-	const cluster = browserTabs.slice(
-		clusterAt,
-		browserTabs.indexOf(">", clusterAt) + 1,
-	);
-	assert.equal(
-		cluster,
-		'<div className="contents">',
-		"the tab-actions cluster must remain boxless and ground/overlay-free; restore its painted-plate inventory entry if it starts painting again",
+	assert.ok(
+		browserTabs.includes('aria-haspopup="menu"'),
+		"and its trigger must still be the native menu's own button",
 	);
 
 	/*

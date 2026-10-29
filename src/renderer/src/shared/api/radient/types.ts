@@ -137,6 +137,19 @@ export type AccountInfo = {
 	 */
 	metadata?: Record<string, string>;
 	/**
+	 * The person's optional presentation (agent-server #216). ADDITIVE: an older
+	 * hub omits it. Only `avatar` is read here, for the sidebar's own photo; its
+	 * `hash` pins the version the private avatar relay serves.
+	 */
+	profile?: {
+		avatar?: { source?: string; hash?: string } | null;
+	} | null;
+	/**
+	 * Relative, hash-pinned avatar URL. Response-only and derived; `/me` does not
+	 * currently decorate it, so it is optional and only cross-checked when present.
+	 */
+	avatar_url?: string;
+	/**
 	 * Account status (assuming this is still relevant, though not in Go struct)
 	 */
 	status?: "active" | "pending" | "suspended";

@@ -68,9 +68,11 @@ import {
 	type CatalogueSnapshot,
 	RUN_TOOL_NAMES,
 	type RunToolRow,
+	type SkillListRow,
 	diffCatalogue,
 	projectRunToolRow,
 	snapshotCatalogue,
+	snapshotSkills,
 } from "./summary";
 
 /**
@@ -100,6 +102,50 @@ export function configRunEnabled(
 		desktopFeatureEnabled(capabilities, "profile_catalogue") &&
 		desktopFeatureEnabled(capabilities, "team_catalogue")
 	);
+}
+
+/**
+ * Whether a configuration run may be ABOUT A SKILL, on top of `configRunEnabled`.
+ *
+ * A SEPARATE KEY, NOT `agents_config` (seam note §3). An older core advertises
+ * `agents_config` but builds no `skill` tool into the run, so a skill request
+ * there would be answered "I can't edit files" after a paid turn. Only a core
+ * that declares the tool advertises `agents_config_skills`. `skill_library` is
+ * required because the settle diff reads `skills.list` fingerprints; a run whose
+ * result the page cannot read is a write nobody sees. `configRunEnabled` itself
+ * is unchanged, so the agents/teams composer keeps its own gate.
+ */
+export function configSkillRunEnabled(
+	capabilities: DesktopCapabilities | null | undefined,
+): boolean {
+	return (
+		configRunEnabled(capabilities) &&
+		desktopFeatureEnabled(capabilities, "agents_config_skills") &&
+		desktopFeatureEnabled(capabilities, "skill_library")
+	);
+}
+
+/**
+ * The skills dimension of a snapshot, read DIRECTLY (never from the query cache)
+ * and only when the skill run is on.
+ *
+ * WHY NOT THE CACHE. `useSkillsLibrary` fills its key only once the Skills tab has
+ * been opened, and an empty `before` would make the diff report every skill as
+ * created (seam note §4). A failed read is `null`, which the diff treats as "not
+ * read" rather than "empty": a touched skill is still listed, without details.
+ */
+async function readSkillsSnapshot(
+	enabled: boolean,
+): Promise<CatalogueSnapshot["skills"]> {
+	if (!enabled) return null;
+	try {
+		const envelope = await desktopResult<{
+			data?: { skills?: SkillListRow[] };
+		}>({ op: "skills.list" });
+		return snapshotSkills(envelope?.data?.skills ?? null);
+	} catch {
+		return null;
+	}
 }
 
 /**
@@ -164,6 +210,106 @@ export function lastAssistantText(
 	}
 	return "";
 }
+
+/**
+ * Why the run's LATEST TURN died, or null when it did not (UX r1 U3 / QA Q4).
+ *
+ * A model that errored (provider 500, refusal, context overflow) ends the turn
+ * with a durable `session_incident` row, and the settle used to read the
+ * incident's own sentence as the run's ANSWER and settle `done`: "Finished
+ * without changing anything · The run answered without changing this skill."
+ * That is a claim the model looked and decided nothing needed changing, when
+ * nothing was attempted. The same shape hit Agents and Teams.
+ *
+ * WHAT COUNTS: after the last `user` row (the request this turn answers), an
+ * error-level `custom` row (the transcript reducer's tier for exactly
+ * `session_incident`), or a final assistant row the provider flagged
+ * `error: true` / `stopReason: "error"`. A tool call that failed is NOT one: the
+ * model reads that result and goes on, so it is the run's own business.
+ * Returns the incident's user-facing headline, or a fixed sentence.
+ */
+/**
+ * What the operator TYPED, for "You asked: …" (UX r1 U6): the box's text less
+ * the "Change the <kind> <name>: " seed that "Ask for a change" wrote for this
+ * same target. The seed is `configSeedPrompt`'s shape (config-composer.tsx,
+ * which imports this module, so the shape is restated rather than imported);
+ * `agents-config-summary.test.mjs` pins the two together. Text that does not
+ * start with the seed is the operator's own and is returned whole.
+ */
+export function typedTopic(text: string, about: RunTarget | null): string {
+	const trimmed = text.trim();
+	if (!about) return trimmed;
+	const seed = `Change the ${about.kind} ${about.name}:`;
+	if (!trimmed.startsWith(seed)) return trimmed;
+	const rest = trimmed.slice(seed.length).trim();
+	return rest || trimmed;
+}
+
+/**
+ * Whether a RETRIED request has reached the transcript: a `user` row at or past
+ * `from`. A transcript the page has not seen the retry land in still ends in the
+ * old turn, which cannot be judged as this request's verdict, so the settle
+ * waits. `from === 0` is a first send on a fresh run: nothing old to mistake
+ * for it, so the settle rules stay exactly what they were.
+ */
+export function requestReached(
+	records: readonly { kind: string }[] | undefined,
+	from: number,
+): boolean {
+	if (from <= 0) return true;
+	if (!records) return false;
+	for (let index = Math.max(0, from); index < records.length; index += 1)
+		if (records[index]?.kind === "user") return true;
+	return false;
+}
+
+export function turnFailure(
+	records:
+		| readonly {
+				kind: string;
+				level?: string;
+				headline?: string;
+				// `unknown`: other record kinds use `error` for their own string field;
+				// only an assistant's literal `true` is read.
+				error?: unknown;
+				stopReason?: unknown;
+				text?: string;
+		  }[]
+		| undefined,
+): string | null {
+	if (!records) return null;
+	let start = 0;
+	for (let index = records.length - 1; index >= 0; index -= 1) {
+		if (records[index]?.kind === "user") {
+			start = index + 1;
+			break;
+		}
+	}
+	let failure: string | null = null;
+	for (let index = start; index < records.length; index += 1) {
+		const row = records[index];
+		if (row?.kind === "custom" && row.level === "error")
+			failure = row.headline?.trim() || turnFailedFallback();
+		else if (
+			row?.kind === "assistant" &&
+			(row.error === true || row.stopReason === "error")
+		)
+			failure = turnFailedFallback();
+		// An assistant that answered after the incident (a recovered retry inside
+		// the same turn) is the run's real answer, so a later success clears it.
+		else if (
+			row?.kind === "assistant" &&
+			row.text?.trim() &&
+			row.error !== true
+		)
+			failure = null;
+	}
+	return failure;
+}
+
+// Resolved at call time, in the current locale (#1458 QA r2 Q10): every other
+// line of the failed strip is translated.
+const turnFailedFallback = () => t("ui.agents.config.error.turn_failed");
 
 /**
  * Whether the server says a turn is running on this session, or `null` for
@@ -251,6 +397,8 @@ export type ConfigRunHandle = {
 	 * delivered and pressing it would run it twice.
 	 */
 	canRetry: boolean;
+	/** The run's turn died (a session incident); see `turnFailure`. */
+	turnFailed: boolean;
 	dismiss: () => void;
 	starting: boolean;
 	/** True once a run has been adopted from the single-flight refusal. */
@@ -260,11 +408,33 @@ export type ConfigRunHandle = {
 export function useConfigRun(): ConfigRunHandle {
 	const capabilities = useDesktopCapabilities();
 	const enabled = configRunEnabled(capabilities.data);
+	const skillsEnabled = configSkillRunEnabled(capabilities.data);
 	const client = useQueryClient();
 	const store = useConfigRunStore();
 	const [starting, setStarting] = useState(false);
 	const [attached, setAttached] = useState(false);
 	const settleLatch = useRef(false);
+	/*
+	 * WHERE THE CURRENT REQUEST'S TURN STARTS in the run's transcript. A Retry
+	 * after a failed turn re-arms the SAME run, whose transcript still ends in the
+	 * old incident and whose turn count is already non-zero - so without this the
+	 * settle fired on the old turn the instant the retry was sent, and failed it
+	 * again. Nothing settles until a `user` row exists at or past this index.
+	 */
+	const turnStart = useRef(0);
+	/*
+	 * HOW MANY TURNS HAD COMPLETED WHEN RETRY WAS PRESSED (#1458 review r3 M1 =
+	 * QA r2 Q7). A `user` row past `turnStart` is not enough: core appends the
+	 * retried prompt's user row before it publishes `streaming=true`
+	 * (`AgentStartEvent` comes only after the inbox drain and the system-block
+	 * prep), and `turnsCompleted` is a per-subscription count the FAILED turn
+	 * already advanced. In that window "not streaming, a turn completed, the
+	 * request reached" all held, and the settle reported "Finished without
+	 * changing anything" ~100 ms after Retry while the model then edited the
+	 * skill unseen. The live settle now also needs the count to have GROWN past
+	 * this; a first send leaves it at 0, which is the old `turnsCompleted > 0`.
+	 */
+	const turnsAtRetry = useRef(0);
 
 	const live = store.status === "running" || store.status === "stopping";
 	const stream = useCanonicalSessionStream(
@@ -374,19 +544,42 @@ export function useConfigRun(): ConfigRunHandle {
 			 */
 			if (settleLatch.current) return;
 			settleLatch.current = true;
+			/*
+			 * A TURN THAT DIED IS A FAILURE, NOT A QUIET ANSWER (UX r1 U3). Checked
+			 * on the transcript the run itself wrote, before the diff: the run may
+			 * still have written something before the provider failed, so the lists
+			 * are re-read either way (the invalidation below), but the strip says
+			 * the run did not finish and offers Retry instead of "Finished without
+			 * changing anything".
+			 */
+			const died =
+				status === "done"
+					? turnFailure(transcriptRecordsRef.current?.slice(turnStart.current))
+					: null;
+			if (died) {
+				invalidateAuthoring(client);
+				useConfigRunStore.getState().failTurn(died);
+				return;
+			}
 			const before = store.before as CatalogueSnapshot | null;
 			let results: RunResult[] = [];
 			try {
-				const [profiles, teams] = await Promise.all([
+				const [profiles, teams, skills] = await Promise.all([
 					desktopResult<{ profiles: ReusableProfile[] }>({
 						op: "profiles.list",
 					}),
 					desktopResult<{ teams: ReusableTeam[] }>({ op: "teams.list" }),
+					/*
+					 * The third read only with the skill run on, so an agents/teams run on
+					 * a core without the key makes exactly the two reads it always made.
+					 * Its own failure is `null` (not diffed), never the settle's failure.
+					 */
+					readSkillsSnapshot(skillsEnabled),
 				]);
 				if (before) {
 					results = diffCatalogue(
 						before,
-						snapshotCatalogue(profiles.profiles, teams.teams),
+						{ ...snapshotCatalogue(profiles.profiles, teams.teams), skills },
 						store.touched,
 					);
 				}
@@ -429,7 +622,7 @@ export function useConfigRun(): ConfigRunHandle {
 			 * honest about which snapshot it is diffing against.
 			 */
 		},
-		[client, store.before, store.touched],
+		[client, store.before, store.touched, skillsEnabled],
 	);
 
 	useEffect(() => {
@@ -448,7 +641,9 @@ export function useConfigRun(): ConfigRunHandle {
 		if (settleLatch.current) return;
 		if (!stream.frontend) return;
 		if (stream.frontend.streaming) return;
-		if (stream.turnsCompleted === 0) return;
+		if (stream.turnsCompleted <= turnsAtRetry.current) return;
+		if (!requestReached(transcriptRecordsRef.current, turnStart.current))
+			return;
 		void settleRun(store.status === "stopping" ? "stopped" : "done", answer);
 	}, [
 		live,
@@ -495,8 +690,12 @@ export function useConfigRun(): ConfigRunHandle {
 				// Read at fire time, and once: the two conditions below are about the
 				// same snapshot of the transcript, and a delta arriving between them
 				// must not make them disagree.
-				const closing = lastAssistantText(transcriptRecordsRef.current);
-				if (!closing) return;
+				const records = transcriptRecordsRef.current;
+				if (!requestReached(records, turnStart.current)) return;
+				const current = records?.slice(turnStart.current);
+				// A turn that died has no closing sentence; its incident is the verdict.
+				const closing = lastAssistantText(current);
+				if (!closing && !turnFailure(current)) return;
 				void settleRun(
 					useConfigRunStore.getState().status === "stopping"
 						? "stopped"
@@ -553,10 +752,16 @@ export function useConfigRun(): ConfigRunHandle {
 		setStarting(true);
 		setAttached(false);
 		settleLatch.current = false;
-		const before = snapshotCatalogue(
-			client.getQueryData<ReusableProfile[]>(["desktop", "profiles"]),
-			client.getQueryData<ReusableTeam[]>(["desktop", "teams"]),
-		);
+		// A first send judges the run's whole transcript (see `requestReached`).
+		turnStart.current = 0;
+		turnsAtRetry.current = 0;
+		const before: CatalogueSnapshot = {
+			...snapshotCatalogue(
+				client.getQueryData<ReusableProfile[]>(["desktop", "profiles"]),
+				client.getQueryData<ReusableTeam[]>(["desktop", "teams"]),
+			),
+			skills: await readSkillsSnapshot(skillsEnabled),
+		};
 		/*
 		 * The context sentence is composed HERE rather than by the composer, so the
 		 * one place that decides what the run is told is also the one place that
@@ -635,7 +840,15 @@ export function useConfigRun(): ConfigRunHandle {
 				}
 				throw caught;
 			}
-			store.adopt(sessionId, body, before, images, files);
+			// The SENT body is kept for Retry; the strip says back what was typed (U6).
+			store.adopt(
+				sessionId,
+				body,
+				before,
+				images,
+				files,
+				typedTopic(text, about),
+			);
 			/*
 			 * The prompt is a SECOND call on the same session, exactly as the design's
 			 * mechanism table states: create, then message. `startedAt` is the accepted
@@ -736,14 +949,20 @@ export function useConfigRun(): ConfigRunHandle {
 			starting ||
 			!state.unsent ||
 			!state.sessionId ||
-			(!state.topic && state.images.length === 0)
+			(!state.prompt && state.images.length === 0)
 		)
 			return;
 		setStarting(true);
+		turnStart.current = transcriptRecordsRef.current?.length ?? 0;
+		turnsAtRetry.current = stream.turnsCompleted;
 		try {
+			/*
+			 * THE SENT BODY, not the typed topic: the retry rule is the same bytes
+			 * or a 409, and the body carries the page's own "About the …" context.
+			 */
 			await sendMessage(
 				state.sessionId,
-				state.topic,
+				state.prompt,
 				state.images,
 				state.files,
 			);
@@ -752,7 +971,14 @@ export function useConfigRun(): ConfigRunHandle {
 			 * and topic it needs are the ones already in hand — so the retry re-arms
 			 * the same run rather than starting a rival.
 			 */
-			store.adopt(state.sessionId, state.topic, state.before);
+			store.adopt(
+				state.sessionId,
+				state.prompt,
+				state.before,
+				state.images,
+				state.files,
+				state.topic,
+			);
 			settleLatch.current = false;
 		} catch (caught) {
 			// Still unsent: the retry did not deliver it either, so it stays retryable.
@@ -799,7 +1025,7 @@ export function useConfigRun(): ConfigRunHandle {
 		: capabilities.isLoading
 			? "Connecting to the backend…"
 			: capabilities.error
-				? "The backend could not be reached, so the composer is unavailable for now."
+				? t("ui.agents.config.banner.unavailable")
 				: "Ask for a change needs a newer backend. Update Local Operator to configure agents by conversation.";
 
 	return {
@@ -823,6 +1049,7 @@ export function useConfigRun(): ConfigRunHandle {
 		stop,
 		retry,
 		canRetry: store.unsent && Boolean(store.sessionId),
+		turnFailed: store.turnFailed,
 		dismiss: store.dismiss,
 		starting,
 		attached,

@@ -44,9 +44,18 @@
  */
 
 import {
+	FlagLine,
+	FlagLinesProvider,
+	useFlaggedItem,
+} from "@features/notifications/components/flag-line";
+import {
 	NO_PROVIDER_NOTICE,
 	useConnectProviderStore,
 } from "@features/providers/connect-provider-store";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { SpeechGateScope } from "@shared/components/common/speak-control";
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
 import { Button } from "@shared/components/ui";
@@ -72,7 +81,7 @@ import {
 	writeWatchedRun,
 } from "@shared/store/turn-collapse-watched";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { showInfoToast } from "@shared/utils/toast-manager";
+import { showErrorToast, showInfoToast } from "@shared/utils/toast-manager";
 import {
 	CircleAlert,
 	Info,
@@ -103,12 +112,13 @@ import type {
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
 import { askResponseSummary, askTimeoutSummary } from "../ask-queue";
 import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
-import { CHAT_REGION_LABEL } from "../chat-regions";
+import { chatRegionLabel } from "../chat-regions";
 import {
 	MarkdownRenderer,
 	type MarkdownStyleProps,
 	StreamingMarkdown,
 } from "../components/markdown-renderer";
+import type { ImagePathActions } from "../components/message-item/image-attachment";
 import { MessageContainer } from "../components/message-item/message-container";
 import { TurnTimestamp } from "../components/message-item/turn-timestamp";
 import { ReplyPreview } from "../components/reply-preview";
@@ -153,6 +163,7 @@ import {
 } from "../transcript-display-mode";
 import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { copyTarget } from "../utils/link-open";
+import { openPathInCanvas } from "../utils/open-in-canvas";
 import { parseReplies } from "../utils/reply-utils";
 import { CanonicalAudio } from "./canonical-audio";
 import { CanonicalImage } from "./canonical-image";
@@ -186,7 +197,7 @@ import { RadientCreditsGuidance } from "./radient-credits-guidance";
 import { ensureReachable, jumpToEntry } from "./reveal-record";
 import { SETTLE_MS } from "./scroll-paging";
 import { SentFileCard } from "./sent-file-card";
-import { editTextOf, skillRowOf } from "./skill-row";
+import { displayTextOf, editTextOf } from "./skill-row";
 import { SupplementRow } from "./supplement-row";
 import { THREAD_SEARCH_JUMP_MISS_COPY } from "./thread-search-model";
 import { ThreadSearchOverlay } from "./thread-search-overlay";
@@ -290,6 +301,13 @@ import {
 	useTranscriptDomWindow,
 } from "./use-transcript-dom-window";
 import { useTurnAnswerRail } from "./use-turn-answer-rail";
+import { materialiseUserAttachment } from "./use-user-attachments";
+import {
+	type AttachmentRefusals,
+	NO_REFUSALS,
+	canMaterialiseAttachment,
+	refusalVerdict,
+} from "./user-attachments";
 import {
 	type WorkingLineState,
 	deriveWorkingLine,
@@ -788,6 +806,19 @@ export type CanonicalTranscriptProps = {
 	 */
 	labelMarked?: ReadonlySet<string>;
 	/**
+	 * What the backend refused to copy out (`materialisable: false` in the
+	 * user-attachment inventory; core PR #3042 QA round 3, Q1), by digest, by
+	 * the inventory's message + kind + position, and by origin path - an inline
+	 * file under 768 B has no digest (QA R5 Q2). The sent-file cards and
+	 * pictures here are painted from loaded records, which carry no verdict, so
+	 * they read it from this (`refusalVerdict`). It also says when a verdict
+	 * is NOT KNOWN yet (QA R6 Q3: the inventory is loading or failed, or a
+	 * just-sent block awaits the re-read), and that withholds every path
+	 * action. Absent = no refusals: the `session_attachments` capability alone
+	 * governs (an older backend, a child reader).
+	 */
+	refusedAttachments?: AttachmentRefusals;
+	/**
 	 * Re-arm the session's stream and history read.
 	 *
 	 * Required rather than optional: every caller of this component has a
@@ -855,6 +886,44 @@ export type UndeliveredTurn = {
  * file has always labelled those tiles with, hoisted so the carousel's filmstrip
  * and title reuse the same sentence (see `fold-media.tsx`'s twin).
  */
+/**
+ * Open / reveal / copy-path for a picture the PERSON attached.
+ *
+ * A pasted screenshot has no path, only a retained digest; the backend copies
+ * it out under a real name (`materialiseUserAttachment`) at action time, and the
+ * canvas opens that copy - a real path, so the tab survives a restart. Only for
+ * a local conversation whose backend can do it (the route 404s otherwise, which
+ * the menu reports as a failure toast, never silently). Absent, the picture keeps
+ * the actions its blob/data source allows.
+ */
+
+function userImagePathActions(
+	image: TranscriptImage,
+	scope: AttachmentScope | null,
+	conversationId: string | undefined,
+	remote: boolean,
+	capable: boolean,
+): ImagePathActions | undefined {
+	const digest = image.attachment;
+	const sessionId = scope?.sessionId;
+	if (!capable || !digest || !sessionId || remote || scope?.childId)
+		return undefined;
+	const resolvePath = () => materialiseUserAttachment(sessionId, digest);
+	return {
+		resolvePath,
+		onShowInCanvas: conversationId
+			? () => {
+					void resolvePath()
+						.then((path) => openPathInCanvas(conversationId, path))
+						.then((opened) => {
+							if (!opened) showErrorToast(t("ui.canvas.files.prepareError"));
+						})
+						.catch(() => showErrorToast(t("ui.canvas.files.prepareError")));
+				}
+			: undefined,
+	};
+}
+
 const userImageLabel = (
 	image: TranscriptImage,
 	index: number,
@@ -894,12 +963,16 @@ const UserRow = memo(function UserRow({
 	record,
 	isSmallView,
 	scope,
+	capable,
+	refusedAttachments = NO_REFUSALS,
 	conversationId,
 	undelivered = null,
 }: {
 	record: Extract<TranscriptRecord, { kind: "user" }>;
 	isSmallView: boolean;
 	scope: AttachmentScope | null;
+	capable: boolean;
+	refusedAttachments?: AttachmentRefusals;
 	conversationId?: string;
 	/** §F3's per-message failure state, when this row is the one it names. */
 	undelivered?: UndeliveredTurn | null;
@@ -950,13 +1023,14 @@ const UserRow = memo(function UserRow({
 	 * split happens here rather than downstream: this string is what the row paints
 	 * AND what the turn's own Copy and Quote read (`bodyText` below), so a payload
 	 * still standing in for the typed line would be quoted and copied as a wall of
-	 * SKILL.md. `skill-row.ts` is the one derivation; `record.skill` below is the
-	 * seal built from it at record time.
+	 * SKILL.md. `skill-row.ts`'s `displayTextOf` is the one derivation, for both
+	 * payload shapes; `record.skill` below is the legacy seal built from it at
+	 * record time.
 	 */
-	const invocation = useMemo(() => skillRowOf(record.text), [record.text]);
+	const bodyText = useMemo(() => displayTextOf(record.text), [record.text]);
 	const { replies, remainingContent } = useMemo(
-		() => parseReplies(invocation?.text ?? record.text),
-		[invocation, record.text],
+		() => parseReplies(bodyText),
+		[bodyText],
 	);
 	/*
 	 * The seal the reducer stamped beside the text, when this row is an
@@ -1347,14 +1421,38 @@ const UserRow = memo(function UserRow({
 							)}
 							{(record.documents?.length ?? 0) > 0 && (
 								<div className={cn("mt-2 flex flex-col gap-1")}>
-									{record.documents?.map((document) => (
-										<SentFileCard
-											key={document.id}
-											document={document}
-											remote={remote}
-											placementKnown={placementKnown}
-										/>
-									))}
+									{record.documents?.map((document, index, documents) => {
+										/*
+										 * Judged by position and origin path as well as digest
+										 * (QA R5 Q2): an inline `.env` under 768 B has no digest,
+										 * and its card offered Open on the real file.
+										 */
+										const verdict = refusalVerdict(refusedAttachments, {
+											messageId: record.id,
+											kind: "document",
+											position: index,
+											count: documents.length,
+											digest: document.attachment,
+											path: document.path,
+										});
+										return (
+											<SentFileCard
+												key={document.id}
+												document={document}
+												remote={remote}
+												placementKnown={placementKnown}
+												sessionId={
+													scope &&
+													!scope.childId &&
+													canMaterialiseAttachment(capable, verdict)
+														? scope.sessionId
+														: null
+												}
+												refused={verdict === false}
+												withheld={verdict === "pending"}
+											/>
+										);
+									})}
 								</div>
 							)}
 							{pictures.length > 0 && (
@@ -1387,6 +1485,22 @@ const UserRow = memo(function UserRow({
 												index,
 												labelFor: userImageLabel,
 											}}
+											pathActions={userImagePathActions(
+												image,
+												scope,
+												conversationId,
+												remote || !placementKnown,
+												canMaterialiseAttachment(
+													capable,
+													refusalVerdict(refusedAttachments, {
+														messageId: record.id,
+														kind: "image",
+														position: index,
+														count: pictures.length,
+														digest: image.attachment,
+													}),
+												),
+											)}
 										/>
 									))}
 								</div>
@@ -1769,6 +1883,10 @@ const AssistantRow = memo(function AssistantRow({
 						 * block instead of per row.
 						 */
 						linkify
+						// A new message's identity for the link evidence's one re-check,
+						// so a report worded exactly like an earlier message still
+						// re-asks its cached negatives (`claimFirstScan`, review R3-3b).
+						documentId={record.id}
 					/>
 				)}
 				{record.stopReason === "aborted" && (
@@ -2125,6 +2243,21 @@ const ToolRow = memo(function ToolRow({
 	/** The pane's interrupt press, for the card's Cancel; absent = no control. */
 	onInterruptTurn?: () => void;
 }) {
+	/*
+	 * A `notify` CALL THE REEL KNOWS IS ITS FLAG LINE (notifications design
+	 * § 17.2): the item's title and read state, and the anchor the in-view
+	 * reader measures. Looked up by the call id, which is the item's
+	 * `anchor_id`; unknown to the reel (older core, items not loaded, another
+	 * tool) means the ordinary row below, exactly as before.
+	 */
+	const flagged = useFlaggedItem(record.toolCallId);
+	if (flagged !== null && record.toolName === "notify") {
+		return (
+			<MessageContainer isUser={false} isSmallView={isSmallView}>
+				<FlagLine item={flagged} />
+			</MessageContainer>
+		);
+	}
 	/*
 	 * THE IMAGE-GEN CARD IS THE ROW for a call in the detection set. It owns
 	 * the whole lifecycle - the progress while unsettled, the artifact and its
@@ -3112,6 +3245,8 @@ const TranscriptRow = memo(function TranscriptRow({
 	enter = false,
 	isSmallView,
 	scope,
+	capable,
+	refusedAttachments = NO_REFUSALS,
 	conversationId,
 	/*
 	 * The fold onto `origin/main` that carried #490 (`fix(chat): label every
@@ -3143,6 +3278,9 @@ const TranscriptRow = memo(function TranscriptRow({
 	enter?: boolean;
 	isSmallView: boolean;
 	scope: AttachmentScope | null;
+	capable: boolean;
+	/** See `CanonicalTranscriptProps.refusedAttachments`. */
+	refusedAttachments?: AttachmentRefusals;
 	conversationId?: string;
 	/**
 	 * The transcript's one read of the rail setting. A BOOLEAN rather than the
@@ -3274,6 +3412,8 @@ const TranscriptRow = memo(function TranscriptRow({
 					record={record}
 					isSmallView={isSmallView}
 					scope={scope}
+					capable={capable}
+					refusedAttachments={refusedAttachments}
 					conversationId={conversationId}
 					undelivered={undelivered?.recordId === record.id ? undelivered : null}
 				/>
@@ -3548,12 +3688,18 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	undelivered = null,
 	labelHoldLate,
 	labelMarked,
+	refusedAttachments = NO_REFUSALS,
 	onReconnect,
 	onStartNewChat,
 }) => {
 	// The pane's own subscription: the notices and status lines below are
 	// translated and the pane must repaint when the locale changes.
 	useI18nLocale();
+	const capabilities = useDesktopCapabilities();
+	const attachmentsCapable = desktopFeatureEnabled(
+		capabilities.data,
+		"session_attachments",
+	);
 	// A crash-recovered outcome has no durable row of its own, so it is
 	// synthesized here rather than in the stream reducer: this is the layer that
 	// decides what is renderable, and an anchor with nothing to hit-test is an
@@ -6191,6 +6337,8 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					enter={arriving.has(row.record.id) && row.record.kind !== "assistant"}
 					isSmallView={isSmallView}
 					scope={mediaScope}
+					capable={attachmentsCapable}
+					refusedAttachments={refusedAttachments}
 					conversationId={conversationId}
 					labelPending={
 						row.record.kind === "tool" &&
@@ -6308,6 +6456,8 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 										}
 										isSmallView={isSmallView}
 										scope={mediaScope}
+										capable={attachmentsCapable}
+										refusedAttachments={refusedAttachments}
 										conversationId={conversationId}
 										labelPending={
 											row.record.kind === "tool" &&
@@ -6347,6 +6497,8 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				}
 				isSmallView={isSmallView}
 				scope={mediaScope}
+				capable={attachmentsCapable}
+				refusedAttachments={refusedAttachments}
 				conversationId={conversationId}
 				labelPending={
 					group.row.record.kind === "tool" &&
@@ -6563,7 +6715,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		});
 	};
 
-	return (
+	const transcriptColumn = (
 		/*
 		 * The pane COLUMN, and the scroll box is one child of it.
 		 *
@@ -6792,7 +6944,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					data-lo-dom-window={domWindow.enabled ? "on" : "off"}
 					data-lo-dom-window-reason={domWindow.reason}
 					data-lo-dom-pinned={domWindow.pinned}
-					aria-label={CHAT_REGION_LABEL.transcript}
+					aria-label={chatRegionLabel("transcript")}
 					// Only the `windowed` branch renders that id, so the description has to
 					// track the branch rather than the looser "history exists" condition it
 					// was derived from: `hasMore` with no hidden rows yields `idle`, whose
@@ -7376,5 +7528,17 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				/>
 			)}
 		</div>
+	);
+	/*
+	 * THE FLAG LINES' DATA AND IN-VIEW READER are provided around the whole
+	 * column (notifications contract § 6.4): one read of this conversation's
+	 * items and one input listener per transcript, not per row. Without
+	 * `features.notifications` the provider supplies nothing and every row
+	 * renders exactly as before.
+	 */
+	return (
+		<FlagLinesProvider sessionId={sessionId}>
+			{transcriptColumn}
+		</FlagLinesProvider>
 	);
 };

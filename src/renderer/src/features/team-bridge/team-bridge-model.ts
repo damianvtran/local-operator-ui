@@ -53,6 +53,16 @@ export type TeamBridgeOrganization = {
  * header come to disagree about what a conversation is called.
  */
 
+/** A member's stored name; an agent's never repeats its owner ("X (X)"). */
+function memberStoredName(member: {
+	kind: "human" | "agent";
+	display_label: string;
+}): string | null {
+	return member.kind === "agent"
+		? storedAgentName(member.display_label, null)
+		: storedLabel(member.display_label);
+}
+
 /**
  * The name to render for a conversation.
  *
@@ -80,11 +90,11 @@ export function conversationTitle(
 	if (conversation.kind === "dm") {
 		const other =
 			others.find((member) => member.state === "active") ?? others[0];
-		return other ? storedLabel(other.display_label) : null;
+		return other ? memberStoredName(other) : null;
 	}
 	const labels = others
 		.filter((member) => member.state === "active")
-		.map((member) => storedLabel(member.display_label))
+		.map(memberStoredName)
 		.filter((label): label is string => label !== null);
 	if (labels.length === 0) return null;
 	if (labels.length <= 3) return labels.join(", ");
@@ -193,6 +203,202 @@ export function withNotificationPreference(
 	};
 }
 
+/*
+ * ARCHIVE / PERMANENT DELETE (agent-server radient-ml/agent-server#219).
+ *
+ * WHY THESE ARE GATED ON THE SERVER'S `can_administer` AND NOT ON A ROLE. The
+ * rule for who may archive is the server's (conversation owner, or an
+ * organization owner/admin on a channel) and it is enforced again on every
+ * request. Re-deriving it here from `created_by` or a membership role would be a
+ * second copy that drifts, and a button the server then refuses. A server that
+ * predates the field sends none, and the menus then offer nothing.
+ *
+ * ONLY CHANNELS. The server lets a DM or group owner archive their own, but the
+ * product surface is channels ("Archive channel"); a DM has no sidebar section
+ * to leave and no name to type, so the UI does not offer it. Built-ins can never
+ * be archived or deleted (the server refuses both), so the button is not drawn.
+ */
+export function canArchiveConversation(
+	conversation: Pick<
+		TeamBridgeConversation,
+		"kind" | "status" | "builtin" | "can_administer"
+	>,
+): boolean {
+	return (
+		conversation.kind === "channel" &&
+		conversation.status === "open" &&
+		!conversation.builtin &&
+		conversation.can_administer === true
+	);
+}
+
+/** Unarchive and permanent delete: the archived-side counterpart of the above. */
+export function canManageArchivedConversation(
+	conversation: Pick<
+		TeamBridgeConversation,
+		"kind" | "status" | "builtin" | "can_administer"
+	>,
+): boolean {
+	return (
+		conversation.kind === "channel" &&
+		conversation.status === "archived" &&
+		!conversation.builtin &&
+		conversation.can_administer === true
+	);
+}
+
+const sameRow = (
+	row: TeamBridgeConversation,
+	conversationId: string,
+	tenantId?: string,
+) => row.id === conversationId && (!tenantId || row.tenant_id === tenantId);
+
+/**
+ * The page without one conversation: the optimistic half of an archive.
+ *
+ * The row leaves the sidebar the moment the person confirms; a refusal restores
+ * the exact snapshot the mutation took, so this never has to know how to put a
+ * row back. Paging fields are preserved for the same reason
+ * `withNotificationPreference` preserves them.
+ */
+export function withoutConversation(
+	page: TeamBridgeConversationList,
+	conversationId: string,
+	tenantId?: string,
+): TeamBridgeConversationList {
+	return {
+		...page,
+		conversations: page.conversations.filter(
+			(row) => !sameRow(row, conversationId, tenantId),
+		),
+	};
+}
+
+/** The page with one conversation's lifecycle flipped (an unarchive keeps the row on screen). */
+export function withConversationStatus(
+	page: TeamBridgeConversationList,
+	conversationId: string,
+	status: TeamBridgeConversation["status"],
+	tenantId?: string,
+): TeamBridgeConversationList {
+	return {
+		...page,
+		conversations: page.conversations.map((row) =>
+			sameRow(row, conversationId, tenantId) ? { ...row, status } : row,
+		),
+	};
+}
+
+/**
+ * Everything a selection may resolve against: the live list, then the archived
+ * rows that are not already in it.
+ *
+ * ONE RULE FOR THE VIEW AND THE CONTAINER (review round 1, U1/D1). The view
+ * resolved a selected id against live + archived while the container resolved
+ * the SAME id against live only, so an archived channel opened from the Archived
+ * channels view had no `selected` in the container, its history read stayed
+ * disabled, and the banner sat over "No messages yet. Say hello." Both now call
+ * this, so the two cannot drift apart again.
+ */
+export function selectableConversations(
+	live: readonly TeamBridgeConversation[],
+	archived: readonly TeamBridgeConversation[],
+): TeamBridgeConversation[] {
+	const known = new Set(live.map((row) => row.id));
+	return [...live, ...archived.filter((row) => !known.has(row.id))];
+}
+
+/**
+ * The rows the Archived channels view lists: archived CHANNELS only (review round 1, U3).
+ *
+ * The server's archived page holds every archived conversation the caller is a member of
+ * (an owner-archived group, a DM archived when its last human left) plus an
+ * administrator's archived tenant channels. The view is named "Archived channels", draws a
+ * `#` and offers Unarchive and Delete, none of which exist for a DM or a group in this UI
+ * (`canManageArchivedConversation` is channels only), so listing them would show a
+ * "#"-iconed "Untitled conversation" the reader can open but do nothing with. They are
+ * filtered here rather than rendered with another icon: there is no action to put beside
+ * them. A row whose status has since flipped to open (an unarchive the cache already
+ * applied, before the refetch) is dropped for the same reason.
+ */
+export function archivedChannelRows(
+	rows: readonly TeamBridgeConversation[],
+): TeamBridgeConversation[] {
+	return rows.filter(
+		(row) => row.kind === "channel" && row.status === "archived",
+	);
+}
+
+/**
+ * Whether a history read was refused because the caller is not a member.
+ *
+ * agent-server answers `not_a_member` for an organization owner/admin reading an archived
+ * tenant channel they never joined (agent-server#219, S4): they may archive, unarchive and
+ * delete it from the Archived view but are not given its messages. That is a state to state
+ * ("you can manage this but not read it"), not a load failure to retry.
+ */
+export function isNotAMemberRefusal(error: unknown): boolean {
+	return (
+		typeof error === "object" &&
+		error !== null &&
+		(error as { code?: unknown }).code === "not_a_member"
+	);
+}
+
+/**
+ * Where the reader lands after a channel leaves their rail (review round 1, D2).
+ *
+ * Archiving or deleting removes the row the page was showing; leaving the target
+ * on it painted "Untitled conversation" with a dead composer. The landing is the
+ * NEXT channel in the order the rail draws (the one now under the cursor), else
+ * the one before it, else the default the page lands on at first load (#humans,
+ * then the first remaining row), else nothing (the empty state).
+ *
+ * `rows` are the sidebar rows (open conversations only) and may still contain the
+ * removed one: the optimistic cache write and this call are not ordered, so the
+ * function never lands on `removedId` itself.
+ */
+export function landingAfterRemoval(
+	rows: readonly TeamBridgeConversation[],
+	removedId: string,
+): TeamBridgeTarget | null {
+	const channels = railSections(rows).channels;
+	const at = channels.findIndex((row) => row.id === removedId);
+	const neighbour =
+		at >= 0
+			? (channels[at + 1] ?? channels[at - 1])
+			: (channels.find((row) => row.builtin === "humans") ?? channels[0]);
+	const remaining = rows.filter((row) => row.id !== removedId);
+	const next =
+		neighbour && neighbour.id !== removedId
+			? neighbour
+			: (remaining.find((row) => row.builtin === "humans") ?? remaining[0]);
+	return next ? { type: "conversation", id: next.id } : null;
+}
+
+/**
+ * The cached archived page with the next page appended (U4, "Load more").
+ *
+ * The result keeps the single-page shape on purpose: the archive, unarchive and
+ * delete writes patch every owned page with `withoutConversation` and
+ * `withConversationStatus`, and an infinite-query shape would crash them. Rows
+ * already present are skipped (a refetch between pages can repeat a boundary
+ * row) and the paging fields come from the NEW page, so `has_more` ends the walk.
+ */
+export function withAppendedPage(
+	current: TeamBridgeConversationList,
+	next: TeamBridgeConversationList,
+): TeamBridgeConversationList {
+	const known = new Set(current.conversations.map((row) => row.id));
+	return {
+		...next,
+		conversations: [
+			...current.conversations,
+			...next.conversations.filter((row) => !known.has(row.id)),
+		],
+	};
+}
+
 /**
  * Whether a refused notification write belongs to the visible conversation.
  *
@@ -221,6 +427,10 @@ export function notifyFailureIsVisible(
  * no `members` rows at all — membership is the fact the preview withholds — so
  * `member_count` is the only metadata there, and its invited-inclusive total is
  * the honest number the preview can state.
+ *
+ * Invitees are still VISIBLE: `conversationMembershipCounts` states them
+ * separately for the header badge, so counting them here would state the same
+ * fact twice in two different totals.
  */
 export function conversationMemberCount(
 	conversation: Pick<TeamBridgeConversation, "member_count" | "members">,
@@ -230,6 +440,23 @@ export function conversationMemberCount(
 			.length;
 	}
 	return conversation.member_count ?? 0;
+}
+
+/**
+ * The known membership states, kept separate so the header never presents
+ * invited agents as active. A preview has no participant rows, so it cannot
+ * claim either breakdown from its aggregate count alone.
+ */
+export function conversationMembershipCounts(
+	conversation: Pick<TeamBridgeConversation, "members">,
+): { active: number; invited: number } {
+	let active = 0;
+	let invited = 0;
+	for (const member of conversation.members) {
+		if (member.state === "active") active += 1;
+		if (member.state === "invited") invited += 1;
+	}
+	return { active, invited };
 }
 
 /**
@@ -503,6 +730,10 @@ export function visibleConversationRows(
  * update before anything else is attempted; an unavailable service is named as
  * such; and a READY account whose surface state is A is the plan gate — the
  * caller is signed in and current, the organization simply has no Team Bridge.
+ * An explicitly disabled endpoint is the `off` gate; the per-machine switch
+ * turned off under an enrolled endpoint is `off_local`. They gate the same
+ * way but are told apart because their way back differs: E re-enrols with
+ * fresh consent, while the machine switch collects none (review R2-2).
  * Every other shape (including a null payload, which is "no answer yet") is
  * eligible: this function may only withhold the page when the server says so.
  */
@@ -510,11 +741,18 @@ export type TeamBridgeEligibility =
 	| "signed_out"
 	| "update_required"
 	| "unavailable"
-	| "plan_required";
+	| "plan_required"
+	| "off"
+	| "off_local";
 
 export function teamBridgeEligibility(
 	status:
-		| Pick<AgentMessagesStatus, "state" | "surface_state" | "update_required">
+		| (Pick<
+				AgentMessagesStatus,
+				"state" | "surface_state" | "update_required"
+		  > & {
+				local?: Pick<AgentMessagesStatus["local"], "enabled">;
+		  })
 		| null
 		| undefined,
 ): TeamBridgeEligibility | null {
@@ -525,6 +763,25 @@ export function teamBridgeEligibility(
 	}
 	if (status.state === "unavailable") return "unavailable";
 	if (status.surface_state === "A") return "plan_required";
+	/*
+	 * Opt-out is NOT the runtime's read_only flag: that flag describes F
+	 * (organization-disabled retained history), while a member's disabled
+	 * endpoint is E with read_only=false. D1's full-container reproduction
+	 * returned E/local.enabled=false after the real query invalidation yet
+	 * left a live composer. Gate the page on those explicit off facts instead
+	 * of inventing a different read_only response or waiting for navigation.
+	 *
+	 * F stays readable and D stays usable while the local switch is on. An
+	 * older partial status without `local` does not imply a local opt-out.
+	 */
+	if (status.state !== "ready") return null;
+	// E outranks a stale local switch: the endpoint itself is off.
+	if (status.surface_state === "E") return "off";
+	if (
+		(status.surface_state === "C" || status.surface_state === "D") &&
+		status.local?.enabled === false
+	)
+		return "off_local";
 	return null;
 }
 
@@ -678,9 +935,23 @@ export function personInitial(displayLabel: string): string {
  * locale may reorder or re-punctuate it.
  *
  * WHO IS LISTED. Every OTHER person whose agent is enrolled and not disabled.
- * The reader's own chief of staff is excluded: talking to your own agent is
- * the chat surface's job, and a bridge DM with yourself would be a second,
- * screened path to the same session.
+ * Endpoint presence/state is the gate, never a display name.
+ *
+ * WHY THE READER'S OWN AGENT IS WITHHELD (review R1-2 on #1441). A bridge DM
+ * with your own chief of staff never reaches it today:
+ * - the hub's create-time admission skips a creator's own agent
+ *   (`admitDirectAgent`: `agent.AccountID == creatorID`), so it stays
+ *   `invited`;
+ * - the owner's consent route would activate it, but leaves the agent's
+ *   default `notify: mute`, and the hub's delivery rule
+ *   (`BridgeConversationFeedRecipients`) wakes a muted agent only on a
+ *   structured mention, which this composer never sends;
+ * - lifting the mute is the endpoint-addressed notify route, which the runtime
+ *   does not proxy, and auto-unmuting would break the default-mute rule.
+ * Offering the row would therefore create a conversation whose messages post
+ * and are silently never delivered. Restore it only once the hub admits the
+ * creator's own agent active with `notify: all` (or the UI can consent AND opt
+ * it in through a supported route).
  */
 export type TeamBridgeChiefOfStaff = {
 	person: TeamBridgeDirectoryMember;
@@ -848,7 +1119,20 @@ export type TeamBridgeTarget =
 /** One addressee of a draft: a person, or a person's chief of staff. */
 export type TeamBridgeRecipient =
 	| { kind: "human"; accountId: string; label: string }
-	| { kind: "agent"; accountId: string; endpointId: string; label: string };
+	| {
+			kind: "agent";
+			accountId: string;
+			endpointId: string;
+			/** What the picker and rail show (composed; never stored). */
+			label: string;
+			/**
+			 * The agent's own name (empty when it has none) and its owner's name,
+			 * so the create payload stores a NAME, not the composed display label
+			 * (`recipientMemberInput`). Absent on a hand-built recipient.
+			 */
+			agentName?: string;
+			ownerLabel?: string;
+	  };
 
 export function recipientKey(recipient: TeamBridgeRecipient): string {
 	return `${recipient.kind}:${recipient.accountId}`;
@@ -885,14 +1169,37 @@ export function targetConversation(
 	}
 }
 
+/** "X (X)" collapses to "X"; any other label is returned unchanged. */
+function dedupedAgentLabel(label: string): string {
+	const twice = COMPOSED_LABEL.exec(label.trim());
+	return twice && nameKey(twice[1]) === nameKey(twice[2])
+		? twice[1].trim()
+		: label;
+}
+
 /**
- * The create request a draft's first send makes.
+ * What an agent member's `display_label` is stored as.
  *
- * One recipient is a DM (find-or-create on the server, so a retry or a race
- * with another window lands on the same row); two or more is a private group,
- * agent-capable exactly when a chief of staff is among them. Returns null for
- * an empty draft: there is no one to send to.
+ * THE SERVER STORES THIS VERBATIM and every client reads it back, so it must be
+ * a NAME, never the composed display label: storing "Ben Tran's chief of
+ * staff" made the read path compose it AGAIN ("Ben Tran's chief of staff (Ben
+ * Tran)", review R1-1 on #1334). So: the agent's own name when it has one;
+ * otherwise the OWNER's name, which every reader already treats as "no agent
+ * name" (`storedAgentName`) and resolves from the directory, in the reader's
+ * own language. A recipient without those fields (hand-built) falls back to
+ * its label with a doubled "X (X)" collapsed.
  */
+function storedAgentLabel(
+	recipient: Extract<TeamBridgeRecipient, { kind: "agent" }>,
+): string {
+	const owner = recipient.ownerLabel?.trim();
+	if (recipient.agentName !== undefined && owner) {
+		const agent = recipient.agentName.trim();
+		return agent !== "" && nameKey(agent) !== nameKey(owner) ? agent : owner;
+	}
+	return dedupedAgentLabel(recipient.label);
+}
+
 /**
  * One addressed recipient as the create op's STRICT member shape: exactly the
  * wire keys, never a UI field (the `rowId` that refused every dialog create is
@@ -907,7 +1214,7 @@ export function recipientMemberInput(
 				account_id: recipient.accountId,
 				kind: "agent",
 				endpoint_id: recipient.endpointId,
-				display_label: recipient.label.slice(0, 64),
+				display_label: storedAgentLabel(recipient).slice(0, 64),
 			}
 		: {
 				account_id: recipient.accountId,
@@ -927,7 +1234,7 @@ export function recipientMemberInput(
 export function recipientCandidates(
 	people: readonly TeamBridgeDirectoryMember[],
 	selfAccountId: string | undefined,
-	chiefLabel: (agent: string, person: string) => string,
+	chiefLabels: ChiefLabels,
 ): TeamBridgeRecipient[] {
 	const humans: TeamBridgeRecipient[] = people
 		.filter((member) => {
@@ -946,11 +1253,25 @@ export function recipientCandidates(
 		kind: "agent",
 		accountId: chief.person.account_id,
 		endpointId: chief.endpointId,
-		label: chiefLabel(chief.agentName, personDisplayLabel(chief.person)),
+		agentName: chief.agentName,
+		ownerLabel: personDisplayLabel(chief.person),
+		label: composeChiefLabel(
+			chief.agentName,
+			personDisplayLabel(chief.person),
+			chiefLabels,
+		),
 	}));
 	return [...humans, ...agents];
 }
 
+/**
+ * The create request a draft's first send makes.
+ *
+ * One recipient is a DM (find-or-create on the server, so a retry or a race
+ * with another window lands on the same row); two or more is a private group,
+ * agent-capable exactly when a chief of staff is among them. Returns null for
+ * an empty draft: there is no one to send to.
+ */
 export function draftCreateInput(recipients: readonly TeamBridgeRecipient[]): {
 	kind: "dm" | "group";
 	visibility: "private";
@@ -991,6 +1312,146 @@ export function storedLabel(label: string): string | null {
 		: trimmed;
 }
 
+/**
+ * The two catalogue strings a chief-of-staff label is composed from. Injected
+ * because both are translatable ("{agent} ({person})" and "{person}'s chief of
+ * staff" reorder and re-punctuate per locale).
+ */
+export type ChiefLabels = {
+	/** "Aida (Ben Tran)": the agent's own name, the person as context. */
+	named: (agent: string, person: string) => string;
+	/** "Ben Tran's chief of staff": used when the agent has no name of its own. */
+	unnamed: (person: string) => string;
+};
+
+/**
+ * "Agent (Owner)": the composed display form. Older clients stored it as the
+ * agent member's `display_label`, so the read path must recognise it (and "X
+ * (X)") in existing rows; this client now stores a bare name (`storedAgentLabel`).
+ */
+const COMPOSED_LABEL = /^(.+?)\s*\((.+)\)$/;
+
+/**
+ * The stored tails of an unnamed agent's label. The ASCII form is the only
+ * one the hub writes (`chiefOfStaffSuffix`). The typographic form is the
+ * English catalogue's; no released client stored it, and it is matched
+ * defensively so a client that ever stores the catalogue string verbatim is
+ * not composed twice. Wire shapes, never rendered; see `storedAgentName`.
+ */
+const CHIEF_OF_STAFF_SUFFIXES = ["'s chief of staff", "’s chief of staff"];
+
+/**
+ * The hub's byte bound on a stored member label
+ * (`bridgeConversationLabelMax`).
+ */
+const HUB_LABEL_MAX_BYTES = 64;
+
+/**
+ * The person half of the hub's unnamed-agent label, as the hub writes it
+ * (review R2-1 on #1441). `agentMemberLabel` does three things, in order:
+ * - normalises the name (`NormalizeAgentName`: whitespace runs to one
+ *   space, ends trimmed);
+ * - cuts it to 64 − len("'s chief of staff") = 47 UTF-8 bytes, backing off
+ *   to a rune boundary (`truncateConversationLabelTo`);
+ * - trims again, then appends the suffix.
+ * A Cyrillic or Devanagari full name passes 47 bytes well before 47
+ * characters, so without this mirror the read path saw a name that is not
+ * the owner's and composed "Пет's chief of staff (… Петров)". Must stay
+ * byte-for-byte with the hub's rule; it is matched, never rendered.
+ */
+function hubTruncatedPerson(personName: string): string {
+	// `\s` plus NEL (U+0085): Go's `unicode.IsSpace` set, which JS `\s` lacks.
+	const person = personName.replace(/[\s\u0085]+/gu, " ").trim();
+	const bytes = new TextEncoder().encode(person);
+	let cut = HUB_LABEL_MAX_BYTES - CHIEF_OF_STAFF_SUFFIXES[0].length;
+	if (bytes.length <= cut) return person;
+	while (cut > 0 && (bytes[cut] & 0xc0) === 0x80) cut -= 1;
+	return new TextDecoder().decode(bytes.subarray(0, cut)).trim();
+}
+
+/** Case-, space- and accent-insensitive form for "is this the same name". */
+function nameKey(name: string): string {
+	return name.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
+}
+
+/**
+ * THE ONE PLACE a chief-of-staff label is composed (operator report,
+ * 2026-10-22: "Ben Tran (Ben Tran)" on the rail, the thread header and the
+ * composer placeholder, and persisted by the server verbatim as the agent
+ * member's `display_label`).
+ *
+ * WHY IT HAPPENED. The directory's `agent.name` is the endpoint's agent name,
+ * else its label, and an endpoint enrolled without an agent name was labelled
+ * with its OWNER's name. Composing "{agent} ({person})" from that repeated the
+ * person. So an agent name that is empty, or the same as the person's
+ * (normalised), is no name at all: the label is then "{person}'s chief of
+ * staff", and the person's name never appears twice.
+ */
+export function composeChiefLabel(
+	agentName: string,
+	personName: string,
+	labels: ChiefLabels,
+): string {
+	const agent = agentName.trim();
+	const person = personName.trim();
+	return agent === "" || nameKey(agent) === nameKey(person)
+		? labels.unnamed(person)
+		: labels.named(agent, person);
+}
+
+/**
+ * The agent half of a STORED agent `display_label`, or null when the row holds
+ * no agent name.
+ *
+ * Rows written before the composition fix hold "X (X)", the person's own name,
+ * or an already composed "Aida (Ben Tran)". The first two are no name; the
+ * third is stripped back to "Aida" so it is not composed a second time.
+ *
+ * "X's chief of staff" is ALSO no name (review R1-1 on #1441). The hub
+ * rewrites a degenerate agent label (empty, the owner's bare name, "X (X)")
+ * to exactly that English string on write (`agentMemberLabel`) and returns
+ * it as stored, so a client that stores the owner's bare name reads back
+ * this form. Taking it as an agent name composed "Ben Tran's chief of staff
+ * (Ben Tran)", and left non-English readers with the hub's English. The
+ * typographic apostrophe is accepted too: it is the English catalogue's shape,
+ * which older clients stored verbatim.
+ * `personName` must match by `nameKey`, mirroring the hub's
+ * `agentLabelDegenerate`; an unlisted owner keeps the stored string.
+ * The hub's suffix and the catalogue's English copy are matched literally
+ * because they are the wire shapes, not display copy.
+ * `personName` is null when the directory does not list the owner; a label of
+ * the form "X (X)" is still recognised then.
+ */
+export function storedAgentName(
+	label: string,
+	personName: string | null,
+): string | null {
+	const stored = storedLabel(label);
+	if (stored === null) return null;
+	if (personName !== null && nameKey(stored) === nameKey(personName)) {
+		return null;
+	}
+	if (
+		personName !== null &&
+		[personName, hubTruncatedPerson(personName)].some((person) =>
+			CHIEF_OF_STAFF_SUFFIXES.some(
+				(suffix) => nameKey(stored) === nameKey(`${person}${suffix}`),
+			),
+		)
+	) {
+		return null;
+	}
+	const composed = COMPOSED_LABEL.exec(stored);
+	if (composed) {
+		const [, agent, owner] = composed;
+		if (nameKey(agent) === nameKey(owner)) return null;
+		if (personName !== null && nameKey(owner) === nameKey(personName)) {
+			return agent.trim();
+		}
+	}
+	return stored;
+}
+
 /** The signed-in reader, when the account read has answered with a name. */
 export type TeamBridgeSelf = { accountId: string; name: string };
 
@@ -1020,24 +1481,33 @@ export function participantLabel(
 		display_label: string;
 	},
 	people: readonly TeamBridgeDirectoryMember[],
-	chiefLabel: (agent: string, person: string) => string,
+	chiefLabels: ChiefLabels,
 	self?: TeamBridgeSelf | null,
 ): string | null {
 	const person = people.find(
 		(row) => row.account_id === participant.account_id,
 	);
 	const personName = person ? personDisplayLabel(person) : null;
-	const stored = storedLabel(participant.display_label);
 	if (participant.kind === "human") {
+		const stored = storedLabel(participant.display_label);
 		const selfName =
 			self && self.accountId === participant.account_id
 				? self.name.trim() || null
 				: null;
 		return personName ?? selfName ?? stored;
 	}
-	const agentName = person?.agent?.name.trim() || stored;
-	if (!agentName) return null;
-	return personName ? chiefLabel(agentName, personName) : agentName;
+	// An agent name equal to the owner's is the server defaulting the label to
+	// the person (see `composeChiefLabel`): it is no name, so fall through to
+	// the stored label and then to "{person}'s chief of staff".
+	const directoryName = person?.agent?.name.trim() ?? "";
+	const agentName =
+		directoryName !== "" &&
+		(personName === null || nameKey(directoryName) !== nameKey(personName))
+			? directoryName
+			: storedAgentName(participant.display_label, personName);
+	if (personName)
+		return composeChiefLabel(agentName ?? "", personName, chiefLabels);
+	return agentName;
 }
 
 export type ThreadItem =

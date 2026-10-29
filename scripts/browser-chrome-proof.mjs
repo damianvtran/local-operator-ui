@@ -53,6 +53,16 @@
  * expected to fail here; the rest of the rig (overlay/consent/native-view
  * ordering) still runs. The authoritative rig for the shipped chrome is
  * `browser-chrome-s4b-probe.mjs`.
+ *
+ * SUPERSEDED IN PART AGAIN BY THE NATIVE TAB MENU (2026-10-25, LOH-13 operator
+ * report). The tab actions are a native Electron `Menu` now, so there is no
+ * `[data-tour-tag="browser-tab-actions"]` panel for this rig's menu sections
+ * (7/7b, the D2 clearance, the counted-close presses and the batch-close caret
+ * rows) to open, inspect or click, and `browser-tab-menu-turn-proof.mjs` is
+ * retired with the popout it proved. The live popup, the page staying visible
+ * behind it and the absent suppression are measured against the real built app
+ * by `scripts/browser-tab-menu-native-proof.mjs`; this rig's menu rows are known
+ * to be stale and are not a claim about the shipped menu.
  */
 
 import { execFile, spawn } from "node:child_process";
