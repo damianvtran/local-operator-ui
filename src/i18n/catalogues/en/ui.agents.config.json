@@ -4,7 +4,7 @@
 	"ui.agents.config.action.dismiss": "Dismiss",
 	"ui.agents.config.action.retry": "Retry",
 	"ui.agents.config.action.stop": "Stop",
-	"ui.agents.config.action.watch": "Watch",
+	"ui.agents.config.action.watch": "Run steps",
 	"ui.agents.config.activity.empty": "Nothing to show yet — the run has not called a tool.",
 	"ui.agents.config.background_only": "Runs in the background. This does not appear in your conversation.",
 	"ui.agents.config.composer.label": "Ask for an agent or team change",

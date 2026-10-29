@@ -4,7 +4,7 @@
 	"ui.agents.config.action.dismiss": "Ẩn",
 	"ui.agents.config.action.retry": "Thử lại",
 	"ui.agents.config.action.stop": "Dừng",
-	"ui.agents.config.action.watch": "Theo dõi",
+	"ui.agents.config.action.watch": "Bước của lượt chạy",
 	"ui.agents.config.activity.empty": "Chưa có gì để hiển thị — lần chạy chưa gọi công cụ nào.",
 	"ui.agents.config.background_only": "Chạy trong nền. Nội dung này không xuất hiện trong cuộc trò chuyện của bạn.",
 	"ui.agents.config.composer.label": "Yêu cầu thay đổi tác nhân hoặc nhóm",

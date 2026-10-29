@@ -4,7 +4,7 @@
 	"ui.agents.config.action.dismiss": "बंद करें",
 	"ui.agents.config.action.retry": "फिर कोशिश करें",
 	"ui.agents.config.action.stop": "रोकें",
-	"ui.agents.config.action.watch": "देखें",
+	"ui.agents.config.action.watch": "रन चरण",
 	"ui.agents.config.activity.empty": "अभी दिखाने के लिए कुछ नहीं — रन ने अब तक कोई टूल कॉल नहीं किया।",
 	"ui.agents.config.background_only": "यह पृष्ठभूमि में चलता है। यह आपकी बातचीत में नहीं दिखता।",
 	"ui.agents.config.composer.label": "एजेंट या टीम में बदलाव के लिए कहें",

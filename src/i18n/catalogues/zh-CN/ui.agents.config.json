@@ -4,7 +4,7 @@
 	"ui.agents.config.action.dismiss": "关闭",
 	"ui.agents.config.action.retry": "重试",
 	"ui.agents.config.action.stop": "停止",
-	"ui.agents.config.action.watch": "查看",
+	"ui.agents.config.action.watch": "运行步骤",
 	"ui.agents.config.activity.empty": "暂无可显示的内容——本次运行尚未调用工具。",
 	"ui.agents.config.background_only": "在后台运行。不会出现在你的对话中。",
 	"ui.agents.config.composer.label": "请求更改智能体或团队",
