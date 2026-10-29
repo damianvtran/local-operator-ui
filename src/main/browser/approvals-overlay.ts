@@ -55,6 +55,7 @@ import {
 import {
 	type ApprovalsCardModelInput,
 	approvalsCardModelFrom,
+	paletteName,
 } from "./approvals-overlay-model";
 
 export interface ApprovalsOverlayLayout {
@@ -184,12 +185,23 @@ export function approvalsDocumentUrl(
 	count: number,
 	theme: "light" | "dark",
 	opaque: boolean,
+	palette?: string | null,
 ): string {
 	try {
 		const url = new URL(documentUrl);
 		if (count > 0) url.searchParams.set("count", String(count));
 		url.searchParams.set("theme", theme);
 		if (opaque) url.searchParams.set("opaque", "1");
+		/*
+		 * THE EXACT PALETTE IS A FIRST-PAINT VALUE. The document loads before the
+		 * model that carries the palette has ever been pushed, so without this
+		 * parameter it paints the document's own default (localOperatorDark) and
+		 * corrects only when `setModel` lands — the flash the operator reported.
+		 * `theme` stays the mode fallback; the model remains authoritative once
+		 * it arrives, which is why this is a hint and never the source of truth.
+		 */
+		const exact = paletteName(palette);
+		if (exact) url.searchParams.set("palette", exact);
 		return url.toString();
 	} catch {
 		return documentUrl;
@@ -222,6 +234,15 @@ export class ApprovalsOverlayController {
 	) => void;
 
 	private view: WebContentsView | null;
+	/**
+	 * The mode/palette the CURRENT document was loaded with. The child is created
+	 * at construction, before the renderer has pushed the app's palette, so this
+	 * is what `setContext` checks before re-loading the still-hidden document.
+	 */
+	private documentTheme: {
+		theme: "light" | "dark";
+		palette: string | null;
+	} | null;
 	private childListeners: Array<() => void>;
 	private model: ApprovalsCardModel | null;
 	/**
@@ -261,6 +282,7 @@ export class ApprovalsOverlayController {
 		this.onChanged = deps.onChanged ?? null;
 		this.log = deps.log ?? (() => {});
 		this.view = null;
+		this.documentTheme = null;
 		this.childListeners = [];
 		this.model = null;
 		this.entries = [];
@@ -541,10 +563,46 @@ export class ApprovalsOverlayController {
 			});
 		}
 		this.pushModel(false);
+		this.reloadDocumentForTheme();
 		// A locale change changes the copy length, and a direction change moves the
 		// native view; both need the layout pass and a fresh measurement.
 		if (this.layout.presented) this.maybeShow();
 		if (this.ready) this.measureAndShow();
+	}
+
+	/**
+	 * Re-load the hidden document after the app's palette changed.
+	 *
+	 * THE CHILD IS ATTACHED AT CONSTRUCTION, before the renderer has pushed any
+	 * palette, so the document the card will first show was loaded with the mode
+	 * default only. `setModel` is what paints the exact palette, and the first
+	 * model arrives with the first approval — the very moment the card appears.
+	 * That gap is the flash the operator reported: a visible card in
+	 * `localOperatorDark` that corrects when the model lands.
+	 *
+	 * So a palette that arrives while the card is still hidden re-loads the
+	 * document with the new URL, and the paint that becomes visible is already
+	 * themed. A VISIBLE card is never rebuilt here: `setModel`/`setContext` push
+	 * the new palette into it, and a reload would flash an empty document.
+	 */
+	private reloadDocumentForTheme(): void {
+		if (this.view === null || this.visible || this.disposed) return;
+		if (this.failedReason !== null) return;
+		// A model push repaints the hidden document with the new palette already.
+		if (this.model !== null) return;
+		const used = this.documentTheme;
+		if (used && used.theme === this.theme && used.palette === this.palette) {
+			return;
+		}
+		this.releaseView("palette");
+		this.ready = false;
+		this.createChild();
+		/*
+		 * A RELOAD NEVER CHANGES WHAT IS ON SCREEN. `createChild` shows a child at
+		 * known bounds, but this path only runs while the card is hidden; the
+		 * presentation decision stays with `maybeShow`, exactly as at construction.
+		 */
+		this.hide();
 	}
 
 	/** Close without deciding (Close, Escape, or the shield's second click). */
@@ -947,11 +1005,13 @@ export class ApprovalsOverlayController {
 				},
 			});
 			view.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+			this.documentTheme = { theme: this.theme, palette: this.palette };
 			const allow = approvalsDocumentUrl(
 				this.documentUrl,
 				this.pending,
 				this.theme,
 				this.opaque,
+				this.palette,
 			);
 			const base = (() => {
 				try {
@@ -1005,6 +1065,9 @@ export class ApprovalsOverlayController {
 				view.webContents.removeListener("did-fail-load", onFail),
 			);
 			void view.webContents.loadURL(allow).catch((error: unknown) => {
+				// A superseded child's load rejects when a rebuild releases it; that is
+				// the rebuild's own teardown, not a broken document to latch off on.
+				if (this.view !== view) return;
 				this.fail(`load_rejected:${String(error)}`);
 			});
 		} catch (error) {

@@ -49,9 +49,34 @@ declare global {
 }
 
 const params = new URLSearchParams(window.location.search);
-// The URL values are the first paint only; the model owns both once it lands.
-if (params.get("theme") === "light") {
-	document.documentElement.dataset.theme = "localOperatorLight";
+/*
+ * THE FIRST PAINT PAINTS THE APP'S EXACT PALETTE. This document is created and
+ * loaded by the controller before any model exists, so a theme-only URL painted
+ * the document's own default (`localOperatorDark`) and corrected only once
+ * `setModel` landed — the flash the operator reported. `palette` is the same
+ * name the model will carry, so the first paint and the model paint agree; the
+ * model stays authoritative afterwards, and `theme` stays the mode fallback.
+ *
+ * THE STYLESHEET IS THE ONLY AUTHORITY ON WHICH NAMES EXIST. A name with no
+ * `[data-theme="…"]` block defines no role, so the card would paint unstyled;
+ * the requested name is therefore applied and then verified by reading one
+ * generated role, falling back to the mode default when it is unset. Module
+ * scripts run after the blocking stylesheets have loaded, which is why this
+ * read sees the stylesheet rather than an empty document.
+ */
+const modeDefault =
+	params.get("theme") === "light" ? "localOperatorLight" : "localOperatorDark";
+document.documentElement.dataset.theme = modeDefault;
+const requestedPalette = params.get("palette");
+if (requestedPalette) {
+	document.documentElement.dataset.theme = requestedPalette;
+	const defined = getComputedStyle(document.documentElement)
+		.getPropertyValue("--lo-elevated")
+		.trim();
+	if (defined === "") {
+		// Unknown name: the generated stylesheet has no block for it.
+		document.documentElement.dataset.theme = modeDefault;
+	}
 }
 if (params.get("opaque") === "1") {
 	document.documentElement.dataset.opaque = "1";
