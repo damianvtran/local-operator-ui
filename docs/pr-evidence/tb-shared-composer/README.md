@@ -29,3 +29,16 @@ Beyond the populated pair, the branch's own states: `channel-selected`,
 `sending-disabled-composer`. They exist so a reviewer can judge the composer in
 the states the populated fixture cannot show — disabled, failed, empty and
 loading — instead of being told they look fine.
+
+## Refreshed after the UX remediation
+
+`after/populated-direct-message`, `after/channel-selected`, `after/send-failed`
+and `after/sending-disabled-composer` were re-captured at head `f976d2c89c`,
+because that commit changed visible copy: the Enter/Shift+Enter hint is back at
+the point of typing, the alert under a failed send names the failure, and the
+schedule clock states its reason. The frames above them predate it and would
+have shown copy that no longer exists.
+
+`after/empty-account`, `after/loading` and `after/error-state` are unchanged
+from the earlier head on purpose: none of them renders a composer, so the copy
+change cannot reach them.
