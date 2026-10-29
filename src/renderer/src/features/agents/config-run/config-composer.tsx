@@ -800,21 +800,35 @@ function ComposerStatus({
 }
 
 /**
- * The About line's words. A skill gets its own key: `ui.agents.config.about`
- * interpolates the raw wire kind, which every other locale then prints in
- * English (design spec §5.3, E2).
+ * The About line's words. A skill gets its own sentence (`ui.agents.skills.
+ * composer.about`); an agent or a team goes through `ui.agents.config.about`
+ * with its kind word KEYED, never the raw wire kind. Interpolating the wire
+ * word printed English mid-sentence in every other locale (design spec §5.3,
+ * E2: "Concerne : team shipping"), which the seven-locale audit measured.
  */
 function aboutLine(about: RunTarget, skill: boolean): string {
 	return skill || about.kind === "skill"
 		? t("ui.agents.skills.composer.about", { name: about.name })
-		: t("ui.agents.config.about", { kind: about.kind, name: about.name });
+		: t("ui.agents.config.about", {
+				kind: kindWord(about),
+				name: about.name,
+			});
 }
 
-/** The `(kind)` suffix of a summary row; the skill word is keyed (spec §5.4). */
+/**
+ * The kind word for an About line and the `(kind)` suffix of a summary row
+ * (spec §5.4). Every kind is keyed; only `configSeedPrompt` below keeps the raw
+ * wire word because it is the sentence sent to the model, not interface copy.
+ */
 function kindWord(target: RunTarget): string {
-	return target.kind === "skill"
-		? t("ui.agents.skills.composer.kind")
-		: target.kind;
+	switch (target.kind) {
+		case "skill":
+			return t("ui.agents.skills.composer.kind");
+		case "team":
+			return t("ui.agents.config.kind.team");
+		case "agent":
+			return t("ui.agents.config.kind.agent");
+	}
 }
 
 /**

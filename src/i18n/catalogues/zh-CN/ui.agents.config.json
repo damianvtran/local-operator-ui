@@ -1,5 +1,7 @@
 {
 	"ui.agents.config.about": "关于{kind} {name}",
+	"ui.agents.config.kind.agent": "智能体",
+	"ui.agents.config.kind.team": "团队",
 	"ui.agents.config.action.clear": "清除",
 	"ui.agents.config.action.dismiss": "关闭",
 	"ui.agents.config.action.retry": "重试",

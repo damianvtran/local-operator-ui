@@ -1,5 +1,7 @@
 {
 	"ui.agents.config.about": "متعلق: {kind} {name}",
+	"ui.agents.config.kind.agent": "ایجنٹ",
+	"ui.agents.config.kind.team": "ٹیم",
 	"ui.agents.config.action.clear": "صاف کریں",
 	"ui.agents.config.action.dismiss": "ہٹائیں",
 	"ui.agents.config.action.retry": "دوبارہ کوشش کریں",

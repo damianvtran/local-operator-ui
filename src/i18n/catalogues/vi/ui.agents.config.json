@@ -1,5 +1,7 @@
 {
 	"ui.agents.config.about": "Về {kind} {name}",
+	"ui.agents.config.kind.agent": "tác nhân",
+	"ui.agents.config.kind.team": "nhóm",
 	"ui.agents.config.action.clear": "Bỏ chọn",
 	"ui.agents.config.action.dismiss": "Ẩn",
 	"ui.agents.config.action.retry": "Thử lại",

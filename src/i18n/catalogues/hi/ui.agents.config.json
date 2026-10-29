@@ -1,5 +1,7 @@
 {
 	"ui.agents.config.about": "{kind} {name} के बारे में",
+	"ui.agents.config.kind.agent": "एजेंट",
+	"ui.agents.config.kind.team": "टीम",
 	"ui.agents.config.action.clear": "साफ़ करें",
 	"ui.agents.config.action.dismiss": "बंद करें",
 	"ui.agents.config.action.retry": "फिर कोशिश करें",
@@ -18,7 +20,7 @@
 	"ui.agents.config.placeholder.docked": "बदलाव के लिए कहें, या कुछ नया बताएँ…",
 	"ui.agents.config.placeholder.hero": "जो चाहते हैं वह बताएँ…",
 	"ui.agents.config.result.changed": "बदला गया",
-	"ui.agents.config.result.configured": "कॉन्फ़िगर किया गया:",
+	"ui.agents.config.result.configured": "कॉन्फ़िगर किया गया",
 	"ui.agents.config.result.created": "बनाया गया",
 	"ui.agents.config.state.did_not_finish": "पूरा नहीं हुआ",
 	"ui.agents.config.state.sending": "भेजा जा रहा है…",

@@ -1,5 +1,7 @@
 {
 	"ui.agents.config.about": "Concerne : {kind} {name}",
+	"ui.agents.config.kind.agent": "agent",
+	"ui.agents.config.kind.team": "équipe",
 	"ui.agents.config.action.clear": "Effacer",
 	"ui.agents.config.action.dismiss": "Ignorer",
 	"ui.agents.config.action.retry": "Réessayer",

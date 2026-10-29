@@ -1,5 +1,7 @@
 {
 	"ui.agents.config.about": "Контекст: {kind} {name}",
+	"ui.agents.config.kind.agent": "агент",
+	"ui.agents.config.kind.team": "команда",
 	"ui.agents.config.action.clear": "Очистить",
 	"ui.agents.config.action.dismiss": "Скрыть",
 	"ui.agents.config.action.retry": "Повторить",

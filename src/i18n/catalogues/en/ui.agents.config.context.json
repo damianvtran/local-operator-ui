@@ -4,6 +4,16 @@
 		"plain, smallest register",
 		"Names what the next request is about: {kind} is the read-only word 'agent' or 'team' from the row's kind, {name} is the row's own name (data, never translated). The visible span truncates at 224 px; the tooltip carries the whole string."
 	],
+	"ui.agents.config.kind.agent": [
+		"a lowercase common noun, never capitalised",
+		"plain",
+		"Names what kind of row the next request is about. It is substituted for {kind} in 'ui.agents.config.about' and in the '({kind})' suffix of the summary rows, so it must work bare: no article, no case ending that a preposition would need. Not a heading or a button."
+	],
+	"ui.agents.config.kind.team": [
+		"a lowercase common noun, never capitalised",
+		"plain",
+		"Same slot as 'ui.agents.config.kind.agent': the word for a team of agents, used bare in 'About {kind} {name}' and in the '({kind})' summary suffix."
+	],
 	"ui.agents.config.action.clear": [
 		"button label",
 		"plain",

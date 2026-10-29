@@ -1774,6 +1774,8 @@ export type MessageParams = {
 	"ui.agents.config.examples.add_twice": undefined;
 	"ui.agents.config.examples.reads_code": undefined;
 	"ui.agents.config.examples.team_shipping": undefined;
+	"ui.agents.config.kind.agent": undefined;
+	"ui.agents.config.kind.team": undefined;
 	"ui.agents.config.placeholder.about": { name: string };
 	"ui.agents.config.placeholder.docked": undefined;
 	"ui.agents.config.placeholder.hero": undefined;
