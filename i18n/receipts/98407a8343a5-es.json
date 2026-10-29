@@ -1,0 +1,133 @@
+{
+  "locale": "es",
+  "namespace": "ui.agents.config",
+  "round": 3,
+  "checkout": {
+    "path": "/Users/damian/lo-audit-1439c",
+    "pr": 1439,
+    "head": "ae918aa12a"
+  },
+  "audit_date": "2026-10-28",
+  "key_count": 38,
+  "input_sha256": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.agents.config.json",
+      "sha256": "5f06618661e942dd8dc61f2f40dc7894f2048855e624fdc58ffe1aa0f5fcb7a6"
+    },
+    "es": {
+      "path": "src/i18n/catalogues/es/ui.agents.config.json",
+      "sha256": "e61d0de5679786b5370eda21f5488cf4807366b76fd6a37b9c5bd3c14c60936d"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.agents.config.context.json",
+      "sha256": "07de5b1c02c8c64c130da1cc532cf03c13f7ef462c9cdc27e34b1a5cf3215459"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/es.md",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    }
+  },
+  "read_provenance": {
+    "catalogue_copy_via_read_public_copy": [
+      {
+        "path": "src/i18n/catalogues/en/ui.agents.config.json",
+        "key": "<whole file, all 38 keys>"
+      },
+      {
+        "path": "src/i18n/catalogues/es/ui.agents.config.json",
+        "key": "<whole file, all 38 keys>"
+      }
+    ],
+    "context_docs_via_filesystem_not_catalogue_copy": [
+      "src/i18n/catalogues/en/ui.agents.config.context.json",
+      "~/local-operator/i18n/style-guides/es.md",
+      "~/local-operator/i18n/glossary.md"
+    ],
+    "baseline_diff": "git -C ~/local-operator-ui show origin/main:src/i18n/catalogues/es/ui.agents.config.json (diffed against PR es file)",
+    "consumer_code_read": "src/renderer/src/features/agents/config-run/config-composer.tsx (aboutLine, kindWord, summary rows, result.configured use)",
+    "other_catalogue_lookups": "es ui.agents.skills (composer.about/kind), ui.agents.teams/hub (responsable), grep of 'cuadro de mensaje' across es catalogues",
+    "not_read": [
+      "~/qa/union-agents-config-*",
+      "~/qa/reaudit-1439",
+      "~/qa/reaudit3-1439 (prior)",
+      "~/qa/fix-1439-*",
+      "~/qa/kind-1439"
+    ]
+  },
+  "checks": {
+    "key_parity_en_es": "pass (38/38, no added/dropped)",
+    "json_valid": "pass",
+    "placeholders": "pass (about {kind,name}; created/updated {name}; placeholder.about {name}; you_asked {topic}; definitions {count} - identical to en)",
+    "plural_definitions": "pass (one/many/other = full CLDR set for es; many='# de definiciones' correct; no 'few')",
+    "about_with_kind_agent": "pass: 'Acerca de coder (agente)'",
+    "about_with_kind_team": "pass: 'Acerca de shipping (equipo)'",
+    "kind_words_bare": "pass (lowercase, no article, no case ending; also reads in '(kind)' summary suffix: 'Creado shipping (equipo)')",
+    "glossary": "pass (agente, equipo, responsable consistent with ui.agents.teams; ajustes per style guide; backend/coder/reviewer kept per glossary role-name policy)",
+    "typography": "pass (ellipsis U+2026 retained on 3 placeholders and 2 states; no NBSP/double spaces; colon in place of em dash is accepted es register)",
+    "register": "pass (tu form throughout, no vosotros/usted)",
+    "fit": "pass with note (longest growth: action.watch 18 chars vs 9; about visible span ~27 chars within 224 px; placeholder.docked shorter than en)"
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "MINOR",
+      "key": "ui.agents.config.summary.hidden_changes",
+      "current": "cambió sus ajustes. La lista no muestra las instrucciones, así que abre su definición para ver qué se escribió.",
+      "suggestion": "se cambiaron sus ajustes. La lista no muestra las instrucciones, así que abre su definición para ver qué se escribió.",
+      "problem": "After 'Actualizado X (agente): ' the elided subject makes 'cambió sus ajustes' read as the agent changing its own settings; en is passive ('its settings changed').",
+      "origin": "inherited (verb 'cambió' is on origin/main; the PR only changed su configuración->sus ajustes and ábrela->abre su definición, both fine)"
+    },
+    {
+      "id": "F2",
+      "severity": "MINOR",
+      "key": "ui.agents.config.action.watch",
+      "current": "Pasos de ejecución",
+      "suggestion": "Ver pasos",
+      "problem": "Style guide: action labels are infinitives; this is a noun phrase and doubles the width (18 cells vs 9) in the shared trailing row with Detener/Descartar. Not an error; en 'Run steps' is also terse.",
+      "origin": "introduced-by-this-PR (main: 'Ver detalles')"
+    },
+    {
+      "id": "F3",
+      "severity": "NIT",
+      "key": "ui.agents.config.about",
+      "current": "Acerca de {name} ({kind})",
+      "suggestion": "keep; optionally align the skill sibling ui.agents.skills.composer.about ('Sobre la habilidad {name}') to 'Acerca de {name} (habilidad)'",
+      "problem": "Two prepositions/structures for the same About line across agent/team vs skill.",
+      "origin": "inherited (main already had 'Acerca de' vs 'Sobre'); sibling key lives outside this namespace"
+    },
+    {
+      "id": "F4",
+      "severity": "NIT",
+      "key": "ui.agents.config.result.configured",
+      "current": "Configuración de",
+      "suggestion": "keep",
+      "problem": "Noun-headed prefix before the count ('Configuración de 2 definiciones') is acceptable as a screen-reader prefix and as a noun phrase; recorded only because en is a participle.",
+      "origin": "inherited"
+    }
+  ],
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 2,
+    "NIT": 2
+  },
+  "verdict": "passed",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "98407a8343a5",
+    "model": "anthropic/claude-sonnet-5-5",
+    "independent_from_translator_session": true,
+    "actual_model_source": "session system header (no fallback)"
+  },
+  "instance": "98407a8343a5-es",
+  "model": "anthropic/claude-sonnet-5-5",
+  "status": "passed",
+  "sha256": {
+    "es": "e61d0de5679786b5370eda21f5488cf4807366b76fd6a37b9c5bd3c14c60936d",
+    "en": "5f06618661e942dd8dc61f2f40dc7894f2048855e624fdc58ffe1aa0f5fcb7a6"
+  }
+}

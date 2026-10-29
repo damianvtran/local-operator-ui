@@ -113,5 +113,61 @@
 		"last fragment of the consent sentence, after the link",
 		"plain, legal register",
 		"Completes the sentence begun by terms.lead and the linked terms.link. Must begin where the link leaves off."
-	]
+	],
+	"ui.agents.upload.title.publish_org": {
+		"role": "Publish dialog title, before the decision, organization destination",
+		"tone": "Direct question; sentence case.",
+		"length_hint": "One line in the dialog header; the organization name is data and can be long.",
+		"placeholders": {
+			"name": "The agent's name as stored; user-authored data, never translate it.",
+			"destination": "The organization's display name, data returned by the backend; never translate it."
+		},
+		"note": "The organization variant of publish_public: the destination is named, so this is about a private publication rather than the public hub."
+	},
+	"ui.agents.upload.title.publish_public": {
+		"role": "Publish dialog title, before the decision, public hub destination",
+		"tone": "Direct question; sentence case.",
+		"length_hint": "One line in the dialog header (about 60 characters in English); it wraps under the close control, so keep the name visible.",
+		"placeholders": {
+			"name": "The agent's name as stored, user-authored data; never translate it. Keep it quoted with the locale's own quotation marks."
+		},
+		"note": "'Agent Hub' is the surface's shipped name; render it the same way this language renders ui.hub.pages.header.title (the hub's own page title), not as a second name."
+	},
+	"ui.agents.upload.title.published_org": {
+		"role": "Publish dialog title after the hub accepted an organization publication",
+		"tone": "Past-tense receipt, not a question.",
+		"length_hint": "One line in the dialog header; the organization name is data.",
+		"placeholders": {
+			"name": "The agent's name as stored; user-authored data, never translate it.",
+			"destination": "The organization's display name, data returned by the backend; never translate it."
+		},
+		"note": "Receipt sibling of publish_org; no question mark, and it must not imply the public hub."
+	},
+	"ui.agents.upload.title.published_public": {
+		"role": "Publish dialog title after the hub accepted a public publication",
+		"tone": "Past-tense receipt, not a question.",
+		"length_hint": "One line in the dialog header; about 45 characters in English.",
+		"placeholders": {
+			"name": "The agent's name as stored; user-authored data, never translate it."
+		},
+		"note": "A receipt is not a question: no question mark, and do not reuse the imperative publish_public string."
+	},
+	"ui.agents.upload.title.republished": {
+		"role": "Publish dialog title after an existing public listing was updated",
+		"tone": "Past-tense receipt, not a question.",
+		"length_hint": "One line in the dialog header; about 55 characters in English.",
+		"placeholders": {
+			"name": "The agent's name as stored; user-authored data, never translate it."
+		},
+		"note": "The UPDATE receipt: it must say the listing was updated, not created, and must not read as a fresh publication."
+	},
+	"ui.agents.upload.title.update_listing": {
+		"role": "Publish dialog title when an existing hub listing will be updated",
+		"tone": "Direct question; sentence case.",
+		"length_hint": "One line in the dialog header; about 50 characters in English.",
+		"placeholders": {
+			"name": "The agent's name as stored; user-authored data, never translate it."
+		},
+		"note": "It must say UPDATE, not publish: the dialog would otherwise read as a first publication of something already on the hub."
+	}
 }

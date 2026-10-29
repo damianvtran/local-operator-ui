@@ -1055,16 +1055,19 @@ async function historyScene({ shot, framesDir }) {
 		await cdp.send("Emulation.clearDeviceMetricsOverride");
 		await sleep(400);
 
-		// H6: a query the (now empty) store cannot match shows the notice, not a
-		// search row and not a false history row.
+		// H6: a URL-shaped query the (now empty) store cannot match offers the TYPED
+		// ADDRESS and a search - never the "No matching pages" notice, which used to
+		// be a dead end for a brand-new address (the new-tab report, 2026-10-26). The
+		// typed row is the highlighted default; the notice survives only for a
+		// refused input.
 		await focusChrome(cdp);
 		await raise(cdp, "H6 no-match query");
 		await typeInAddressField(cdp, "zzz-nohistory.example");
 		await sleep(300);
 		await frameScene(cdp, "owner-no-match.png");
-		const noMatchChild = await childNotice(
+		const noMatchChild = await childFacts(
 			two.port,
-			"No matching pages in your history",
+			'Open "zzz-nohistory.example"',
 		);
 		if (noMatchChild) {
 			writeFileSync(
@@ -1076,7 +1079,16 @@ async function historyScene({ shot, framesDir }) {
 		const noMatchRows = await suggestionRows(cdp);
 		record(
 			"H6",
-			noMatchRows.rows.length === 0 && noMatchChild?.facts.updated === true
+			noMatchRows.rows.length === 2 &&
+				/Open "zzz-nohistory\.example"/.test(
+					(noMatchRows.rows[0]?.text ?? "").replace(/[\u2068\u2069]/g, ""),
+				) &&
+				noMatchRows.rows[0]?.selected === true &&
+				noMatchRows.rows[1]?.search === true &&
+				!(noMatchChild?.facts.rows ?? []).some((row) =>
+					row.includes("No matching pages"),
+				) &&
+				noMatchChild?.facts.updated === true
 				? "PASS"
 				: "FAIL",
 			{ owner: noMatchRows, child: noMatchChild?.facts ?? null },
@@ -1380,7 +1392,7 @@ plan(
 );
 plan(
 	"H6",
-	"a query with no match shows the no-match notice and no rows",
+	"a URL-shaped query with no match offers the typed address (highlighted) and a search, with no no-match notice",
 	"driven",
 );
 plan(
