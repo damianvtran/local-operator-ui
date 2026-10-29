@@ -9007,12 +9007,14 @@ export type MessageParams = {
 	"ui.teamBridge.member.active_count": { count: number };
 	"ui.teamBridge.member.count": { count: number };
 	"ui.teamBridge.member.invited_count": { count: number };
-	"ui.teamBridge.members.add": undefined;
+	"ui.teamBridge.members.add": { count: number };
 	"ui.teamBridge.members.agent_invitation": undefined;
 	"ui.teamBridge.members.current": undefined;
 	"ui.teamBridge.members.current_empty": undefined;
 	"ui.teamBridge.members.description": undefined;
 	"ui.teamBridge.members.empty": undefined;
+	"ui.teamBridge.members.group.agents": undefined;
+	"ui.teamBridge.members.group.people": undefined;
 	"ui.teamBridge.members.human_invitation": undefined;
 	"ui.teamBridge.members.invitation_note": undefined;
 	"ui.teamBridge.members.invite": undefined;
@@ -9033,7 +9035,6 @@ export type MessageParams = {
 	"ui.teamBridge.members.search": undefined;
 	"ui.teamBridge.members.state.active": undefined;
 	"ui.teamBridge.members.state.invited": undefined;
-	"ui.teamBridge.members.state.left": undefined;
 	"ui.teamBridge.members.title": undefined;
 	"ui.teamBridge.menu.label": undefined;
 	"ui.teamBridge.menu.mute": undefined;

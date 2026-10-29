@@ -377,6 +377,13 @@ const beaDm: TeamBridgeConversation = {
 	],
 };
 
+/**
+ * The member row prints role and state in ONE sentence ("Member · Invited; not
+ * active yet"), so the matcher has to look INSIDE that text rather than equal
+ * it. Top-level so the regex is not rebuilt on every call.
+ */
+const INVITED_NOT_ACTIVE = /Invited; not active yet/;
+
 const meta = {
 	title: "Team Bridge/Page",
 	component: TeamBridgePageView,
@@ -1082,7 +1089,9 @@ const ownedGroup: TeamBridgeConversation = {
 const ownedGroupArgs = {
 	...slackRail,
 	conversations: [ownedGroup, ...slackRail.conversations],
-	target: { type: "conversation", id: ownedGroup.id },
+	// `as const` keeps the target's discriminant a literal: an args bundle built
+	// outside `args` widens `type` to `string` and stops matching TeamBridgeTarget.
+	target: { type: "conversation" as const, id: ownedGroup.id },
 	onAddMembers: () => Promise.resolve(),
 	onRemoveMember: () => Promise.resolve(),
 };
@@ -1105,7 +1114,7 @@ export const AddMembersDialog: Story = {
 		// The reader's OWN chief of staff is offered, under its current name.
 		await expect(body.getByText("Aida (Damian Tran)")).toBeInTheDocument();
 		// An invited agent is never painted as active.
-		await expect(body.getByText("Invited; not active yet")).toBeInTheDocument();
+		await expect(body.getByText(INVITED_NOT_ACTIVE)).toBeInTheDocument();
 		await expect(
 			body.getByRole("button", { name: "Remove Ben Tran" }),
 		).toBeInTheDocument();

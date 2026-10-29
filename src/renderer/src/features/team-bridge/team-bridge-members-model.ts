@@ -161,11 +161,27 @@ export function memberCandidates(
 	return candidates;
 }
 
+/*
+ * Current membership only: active and invited.
+ *
+ * The conversation also carries `left` and `removed` participants: the server
+ * keeps them so history reads correctly and so a person who left can be
+ * invited back. Neither is a member of the room now, and listing them under a
+ * "Current members" heading puts departed people beside a room they are not
+ * in - the opposite of what the heading promises. `removed` is the invitation
+ * outcome after a decline (see team-bridge-invitations-model), so the same
+ * argument applies: a declined invitation is not an occupied seat.
+ *
+ * Both states stay ADDIABLE as candidates (`currentMemberKeys` blocks only
+ * active and invited), which is how a declined or departed person is
+ * re-invited from this same dialog.
+ */
+
 /** One row of the current-members list. */
 export type TeamBridgeCurrentMember = {
 	member: TeamBridgeParticipant;
 	label: string;
-	state: "active" | "invited" | "left";
+	state: "active" | "invited";
 	/*
 	 * The remove route is human-keyed, so an agent row is never removable here:
 	 * DELETE .../members/{account} would resolve the OWNER's human row, not the
@@ -188,13 +204,12 @@ export function currentMembers(
 	canRemove: boolean,
 ): TeamBridgeCurrentMember[] {
 	return conversation.members
-		.filter(
-			(member) =>
-				member.state === "active" ||
-				member.state === "invited" ||
-				member.state === "left",
+		.flatMap((member) =>
+			member.state === "active" || member.state === "invited"
+				? [{ member, state: member.state }]
+				: [],
 		)
-		.map((member) => ({
+		.map(({ member, state }) => ({
 			member,
 			label:
 				participantLabel(
@@ -208,7 +223,7 @@ export function currentMembers(
 					},
 					null,
 				) ?? member.account_id,
-			state: member.state,
+			state,
 			removable:
 				canRemove &&
 				member.kind === "human" &&

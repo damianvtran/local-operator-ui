@@ -95,6 +95,13 @@ const people: TeamBridgeDirectoryMember[] = [
 	},
 ];
 
+/**
+ * The member row prints role and state in ONE sentence ("Member · Invited; not
+ * active yet"), so the matcher has to look INSIDE that text rather than equal
+ * it. Top-level so the regex is not rebuilt on every call.
+ */
+const INVITED_NOT_ACTIVE = /Invited; not active yet/;
+
 const meta = {
 	title: "Team Bridge/Add members",
 	component: TeamBridgeAddMembersView,
@@ -128,9 +135,7 @@ export const Populated: Story = {
 	play: async ({ canvasElement }) => {
 		const dialog = within(canvasElement.ownerDocument.body);
 		await expect(dialog.getByText("Aida (Damian Tran)")).toBeInTheDocument();
-		await expect(
-			dialog.getByText("Invited; not active yet"),
-		).toBeInTheDocument();
+		await expect(dialog.getByText(INVITED_NOT_ACTIVE)).toBeInTheDocument();
 		await expect(
 			dialog.getByRole("button", { name: "Remove Ben Tran" }),
 		).toBeInTheDocument();
@@ -151,6 +156,22 @@ export const Empty: Story = {
 
 export const ReadOnly: Story = {
 	args: { canInvite: false, canRemove: false },
+};
+
+/**
+ * A peer who EXISTS in the directory but cannot be reached yet. The operator
+ * asked to see these rather than have them hidden, so the row stays, disabled,
+ * with the reason in words - the frame is the evidence for that requirement.
+ */
+export const BridgeNotEnabled: Story = {
+	args: { people: [people[0], people[4]] },
+	play: async ({ canvasElement }) => {
+		const dialog = within(canvasElement.ownerDocument.body);
+		await expect(dialog.getByText("Cy Smith")).toBeInTheDocument();
+		await expect(
+			dialog.getByText("Team Bridge is not enabled for this person"),
+		).toBeInTheDocument();
+	},
 };
 
 export const MutationError: Story = {

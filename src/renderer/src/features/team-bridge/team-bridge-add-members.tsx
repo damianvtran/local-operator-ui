@@ -12,7 +12,7 @@ import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Bot, Search, UserRound, UserRoundX } from "lucide-react";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type {
 	TeamBridgeConversation,
 	TeamBridgeDirectoryMember,
@@ -86,6 +86,7 @@ export function TeamBridgeAddMembersView({
 	useI18nLocale();
 	const headingId = useId();
 	const searchId = useId();
+	const searchRef = useRef<HTMLInputElement>(null);
 	const [query, setQuery] = useState("");
 	const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
 	useEffect(() => {
@@ -121,6 +122,31 @@ export function TeamBridgeAddMembersView({
 		chiefLabel,
 		canRemove,
 	);
+	/*
+	 * TWO GROUPS, IN THE ORDER THE OPERATOR THINKS ABOUT THEM.
+	 *
+	 * Slack separates people from bots in its invite picker for a reason that
+	 * holds here: a person and that person's chief of staff are two invitations
+	 * with different consequences - a human joins on accept, an agent joins
+	 * muted only after its owner consents - and one flat list hides that behind
+	 * an icon at the row's edge. The directory is the source of both, so the
+	 * split is the row's `kind`, never a second server call.
+	 *
+	 * A group with no rows after filtering is dropped rather than drawn empty:
+	 * a heading over nothing reads as a loading failure, not as a filter result.
+	 */
+	const groups = [
+		{
+			key: "people",
+			heading: t("ui.teamBridge.members.group.people"),
+			rows: filtered.filter(({ recipient }) => recipient.kind === "human"),
+		},
+		{
+			key: "agents",
+			heading: t("ui.teamBridge.members.group.agents"),
+			rows: filtered.filter(({ recipient }) => recipient.kind === "agent"),
+		},
+	].filter((group) => group.rows.length > 0);
 	const selectedMembers = candidates.filter(
 		({ recipient, disabledReason }) =>
 			disabledReason === null && selected.has(recipientKey(recipient)),
@@ -143,6 +169,20 @@ export function TeamBridgeAddMembersView({
 			<DialogContent
 				className="max-h-[min(780px,90dvh)] max-w-2xl overflow-hidden p-0"
 				closeDisabled={pending}
+				/*
+				 * THE SEARCH FIELD TAKES THE FIRST FOCUS, NOT THE FIRST FOCUSABLE THING.
+				 * Radix focuses the dialog's first focusable node, which here is the
+				 * first row's remove control - a destructive action wearing the
+				 * keyboard's Enter the moment the dialog opens. The filter is also what
+				 * this surface is for: type a name, tick it, confirm.
+				 */
+				onOpenAutoFocus={(event) => {
+					// A reading that is still loading, or failed, has no filter: there
+					// Radix's own choice is not a destructive one, so leave it be.
+					if (!searchRef.current) return;
+					event.preventDefault();
+					searchRef.current.focus();
+				}}
 			>
 				<DialogHeader className="px-6 pt-6 pe-12">
 					<DialogTitle>{t("ui.teamBridge.members.title")}</DialogTitle>
@@ -196,9 +236,7 @@ export function TeamBridgeAddMembersView({
 													{" · "}
 													{state === "active"
 														? t("ui.teamBridge.members.state.active")
-														: state === "invited"
-															? t("ui.teamBridge.members.state.invited")
-															: t("ui.teamBridge.members.state.left")}
+														: t("ui.teamBridge.members.state.invited")}
 													{removing &&
 														` · ${t("ui.teamBridge.members.removing")}`}
 												</p>
@@ -267,6 +305,7 @@ export function TeamBridgeAddMembersView({
 										className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-ink-dim"
 									/>
 									<Input
+										ref={searchRef}
 										value={query}
 										onChange={(event) => setQuery(event.target.value)}
 										placeholder={t("ui.teamBridge.members.search")}
@@ -283,76 +322,94 @@ export function TeamBridgeAddMembersView({
 												: t("ui.teamBridge.members.no_matches")}
 										</p>
 									) : (
-										filtered.map((candidate, index) => {
-											const key = recipientKey(candidate.recipient);
-											const checked =
-												selected.has(key) && candidate.disabledReason === null;
-											const disabled =
-												!canInvite ||
-												candidate.disabledReason !== null ||
-												pending;
-											const reasonId = `${searchId}-reason-${index}`;
-											return (
-												<label
-													key={key}
-													className={cn(
-														"flex w-full items-start gap-3 rounded-md border border-transparent px-2 py-2",
-														disabled
-															? "cursor-not-allowed"
-															: "cursor-pointer hover:bg-row-hover",
-														checked && "border-control bg-surface",
-													)}
-												>
-													{candidate.recipient.kind === "agent" ? (
-														<Bot
-															size={16}
-															className="mt-0.5 shrink-0 text-ink-dim"
-															aria-hidden="true"
-														/>
-													) : (
-														<UserRound
-															size={16}
-															className="mt-0.5 shrink-0 text-ink-dim"
-															aria-hidden="true"
-														/>
-													)}
-													<span className="min-w-0 flex-1">
-														<span
+										groups.map((group) => (
+											<div key={group.key}>
+												<p className="px-2 pt-2 pb-1 text-ink-dim text-meta">
+													{group.heading}
+												</p>
+												{group.rows.map((candidate, index) => {
+													const key = recipientKey(candidate.recipient);
+													const checked =
+														selected.has(key) &&
+														candidate.disabledReason === null;
+													const disabled =
+														!canInvite ||
+														candidate.disabledReason !== null ||
+														pending;
+													const reasonId = `${searchId}-${group.key}-${index}`;
+													return (
+														<label
+															key={key}
 															className={cn(
-																"block truncate text-sm",
-																disabled ? "text-ink-dim" : "text-ink",
+																"flex w-full items-start gap-3 rounded-md px-2 py-2",
+																disabled
+																	? "cursor-not-allowed"
+																	: "cursor-pointer hover:bg-row-hover",
+																/*
+																 * Selection is a GROUND step, never a stroke. The
+																 * checkbox is the control and already states the
+																 * fact; a border here would be a second mark for
+																 * something the row's own ground can say.
+																 */
+																checked && "bg-row-selected",
 															)}
 														>
-															{candidate.recipient.label}
-														</span>
-														<span
-															id={reasonId}
-															className="block text-meta-sm text-ink-muted"
-														>
-															{candidate.disabledReason
-																? reasonCopy(candidate.disabledReason)
-																: candidate.recipient.kind === "agent"
-																	? t("ui.teamBridge.members.agent_invitation")
-																	: t("ui.teamBridge.members.human_invitation")}
-														</span>
-													</span>
-													{/*
-													 * A native checkbox, not role="checkbox": the app's base
-													 * layer already gives it the control cursor and the
-													 * disabled rule. `aria-describedby` carries the reason, so
-													 * an unavailable row explains itself to a screen reader.
-													 */}
-													<input
-														type="checkbox"
-														className="mt-1 shrink-0"
-														checked={checked}
-														disabled={disabled}
-														onChange={() => toggle(candidate)}
-														aria-describedby={reasonId}
-													/>
-												</label>
-											);
-										})
+															{candidate.recipient.kind === "agent" ? (
+																<Bot
+																	size={16}
+																	className="mt-0.5 shrink-0 text-ink-dim"
+																	aria-hidden="true"
+																/>
+															) : (
+																<UserRound
+																	size={16}
+																	className="mt-0.5 shrink-0 text-ink-dim"
+																	aria-hidden="true"
+																/>
+															)}
+															<span className="min-w-0 flex-1">
+																<span
+																	className={cn(
+																		"block truncate text-sm",
+																		disabled ? "text-ink-dim" : "text-ink",
+																	)}
+																>
+																	{candidate.recipient.label}
+																</span>
+																<span
+																	id={reasonId}
+																	className="block text-meta-sm text-ink-muted"
+																>
+																	{candidate.disabledReason
+																		? reasonCopy(candidate.disabledReason)
+																		: candidate.recipient.kind === "agent"
+																			? t(
+																					"ui.teamBridge.members.agent_invitation",
+																				)
+																			: t(
+																					"ui.teamBridge.members.human_invitation",
+																				)}
+																</span>
+															</span>
+															{/*
+															 * A native checkbox, not role="checkbox": the app's base
+															 * layer already gives it the control cursor and the
+															 * disabled rule. `aria-describedby` carries the reason, so
+															 * an unavailable row explains itself to a screen reader.
+															 */}
+															<input
+																type="checkbox"
+																className="mt-1 shrink-0"
+																checked={checked}
+																disabled={disabled}
+																onChange={() => toggle(candidate)}
+																aria-describedby={reasonId}
+															/>
+														</label>
+													);
+												})}
+											</div>
+										))
 									)}
 								</div>
 							</>
@@ -364,7 +421,7 @@ export function TeamBridgeAddMembersView({
 						{t("ui.teamBridge.members.mutation_error")}
 					</p>
 				)}
-				<div className="flex items-center justify-between gap-3 border-t border-hairline px-6 py-4">
+				<div className="flex items-center justify-between gap-3 rounded-b-lg bg-surface px-6 py-4">
 					<p className="max-w-sm text-meta-sm text-ink-muted">
 						{t("ui.teamBridge.members.invitation_note")}
 					</p>
@@ -389,7 +446,9 @@ export function TeamBridgeAddMembersView({
 								)
 							}
 						>
-							{t("ui.teamBridge.members.add")}
+							{t("ui.teamBridge.members.add", {
+								count: selectedMembers.length,
+							})}
 						</Button>
 					</div>
 				</div>
