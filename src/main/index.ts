@@ -2645,8 +2645,10 @@ app
 						Number(
 							body?.result?.features?.team_bridge_notification_avatar ?? 0,
 						) >= 1;
-					// A capability transition is the only trigger; replay is a one-shot
-					// reconciliation, not a recurring retry of a failed avatar request.
+					// Gated on the capability reading TRUE after any backend-ready, not on a
+					// false -> true flip: this event cleared the cache just above, so the
+					// replay only refills what it emptied, and no path runs from cache
+					// completion back here. One reconciliation per negotiation, no retry.
 					if (notificationAvatarAvailable)
 						teamBridgeNotifier.replayDirectories();
 				})

@@ -2901,6 +2901,266 @@ test("Q-3 the initials sweep is independent of warm pump timing, and the app ico
 	}
 });
 
+test("Q-4 a photo inside the budget beats the initials that answered first", async () => {
+	const { dir, file } = tempFile();
+	try {
+		/*
+		 * QA round-3 Q-4, with the replies under the test's control: the initials
+		 * composite renders WITHOUT the hub, so when both variants are cold it
+		 * always answers first. Returning on the first flight to settle therefore
+		 * gave every cold banner miss its placeholder even when the photo was
+		 * milliseconds away - the regression this pins in the other direction.
+		 */
+		const calls = [];
+		const held = [];
+		const cache = imageCache({
+			request: (input) => {
+				calls.push(`${input.accountId}/${input.avatar ? "photo" : "initials"}`);
+				return new Promise((done) =>
+					held.push({ input, done: () => done(coreBytes(input)) }),
+				);
+			},
+		});
+		const clock = waitClock();
+		const h = harness({ file, images: cache, timers: clock });
+		const zed = personSender({
+			account_id: "acc_zed",
+			display_name: "Zed Ode",
+			avatar: photoOf("acc_zed", "0123456789abcdef"),
+		});
+		/*
+		 * QA's same cell: a roster whose warm lane is saturated, so zed's initials
+		 * are still QUEUED when the banner lands and are promoted alongside the
+		 * photo. Both variants are therefore in flight, and the placeholder is the
+		 * one that can answer first.
+		 */
+		h.notifier.syncDirectory({
+			tenantId: "tnt_1",
+			members: [
+				...["acc_ben", "acc_cara"].map((account_id) =>
+					personSender({ account_id }),
+				),
+				zed,
+			],
+		});
+		assert.deepEqual(
+			calls,
+			["acc_ben/initials", "acc_cara/initials"],
+			"the warm lane is saturated, so zed's variants are still queued",
+		);
+		const pending = h.notifier.notify(
+			request({ conversationId: "bcv_zed", sender: zed }),
+		);
+		assert.deepEqual(
+			calls.slice(2),
+			["acc_zed/photo", "acc_zed/initials"],
+			"both variants are asked for on the banner lane",
+		);
+		const release = (photo) => {
+			for (const entry of held.splice(0)) {
+				if (Boolean(entry.input.avatar) === photo) entry.done();
+				else held.push(entry);
+			}
+		};
+		// The placeholder answers the WAIT first, exactly as it does when cold.
+		release(false);
+		await settle();
+		assert.equal(
+			h.banners.length,
+			0,
+			"the placeholder does not answer the BANNER: the photo still has budget",
+		);
+		release(true);
+		await settle();
+		assert.deepEqual(await pending, { shown: true });
+		assert.equal(
+			h.banners[0].options.icon,
+			"composite:photo/person/acc_zed/0123456789abcdef",
+			"the photo is the preference whenever it resolves before the deadline",
+		);
+		assert.equal(
+			h.banners.length,
+			1,
+			"one banner, never a second after the wait",
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("Q-4 a photo past the deadline leaves the warmed initials, and the bound is the timer's", async () => {
+	/*
+	 * The images layer's own bound, measured rather than assumed: `read` arms a
+	 * real timer (the notifier's `waitClock` fakes only ITS deadline), so these
+	 * cells spend wall clock. 60 ms exercises the same clause as the shipped
+	 * 250 ms at a scale the suite can afford; the lower-bound assertions are
+	 * load-safe, and the fact that each read RETURNS at all is what proves the
+	 * timer - not a flight - ended the wait.
+	 */
+	const budget = 60;
+	const zed = personSender({
+		account_id: "acc_zed",
+		display_name: "Zed Ode",
+		avatar: photoOf("acc_zed", "0123456789abcdef"),
+	});
+	const banner = request({ conversationId: "bcv_zed", sender: zed });
+	// Initials render and answer; the photo hangs, as it does past the budget.
+	// The warm lane is saturated, so zed's initials are still QUEUED behind
+	// ben's and cara's when the banner lands and are promoted into the wait.
+	const warm = (photo) => {
+		const held = [];
+		const cache = imageCache({
+			request: (input) => {
+				if (input.avatar) return photo;
+				return new Promise((done) =>
+					held.push({ input, done: () => done(coreBytes(input)) }),
+				);
+			},
+		});
+		cache.syncDirectory({
+			owner: { accountId: "acct_a", epoch: 1 },
+			tenantId: "tnt_1",
+			members: [
+				...["acc_ben", "acc_cara"].map((account_id) =>
+					personSender({ account_id }),
+				),
+				zed,
+			],
+		});
+		return { cache, held };
+	};
+	const hung = new Promise(() => {});
+
+	const initialsWarm = warm(hung);
+	const started = Date.now();
+	const reading = initialsWarm.cache.read(banner, budget);
+	// The placeholder answers inside the budget; the photo never does.
+	for (const { done } of initialsWarm.held.splice(0)) done();
+	await settle();
+	assert.equal(
+		await reading,
+		"composite:initials/person/acc_zed/ZO",
+		"the deadline answers with the placeholder, not the app icon",
+	);
+	assert.ok(
+		Date.now() - started >= budget - 5,
+		"the primary was awaited for the whole budget, not abandoned on the first settle",
+	);
+
+	// Nothing resolves: the app icon is correct here, and the timer still ends
+	// the wait at the bound instead of hanging on either variant.
+	const nothingWarm = warm(hung);
+	const nothingStarted = Date.now();
+	assert.equal(await nothingWarm.cache.read(banner, budget), undefined);
+	assert.ok(
+		Date.now() - nothingStarted >= budget - 5,
+		"both variants missing ends the wait at the bound, not early and not never",
+	);
+});
+
+test("Q-4 a refused photo answers with the warmed initials immediately", async () => {
+	for (const status of [401, 503]) {
+		const cache = imageCache({
+			request: async (input) =>
+				input.avatar
+					? { kind: "error", status, detail: "refused" }
+					: coreBytes(input),
+		});
+		const sender = personSender({
+			avatar: photoOf("acc_ben", "0123456789abcdef"),
+		});
+		cache.syncDirectory({
+			owner: { accountId: "acct_a", epoch: 1 },
+			tenantId: "tnt_1",
+			members: [sender],
+		});
+		await settle();
+		const started = Date.now();
+		assert.equal(
+			await cache.read(request({ sender }), 250),
+			BEN_INITIALS,
+			`${status}: a failed primary falls back at once`,
+		);
+		assert.ok(
+			Date.now() - started < 250,
+			"a failure answers before the deadline: the budget is the photo's, not the fallback's",
+		);
+	}
+});
+
+test("Q-4 the fast-photo sweep answers PHOTO at every warm depth, the slow one never the icon", async () => {
+	/*
+	 * QA's round-3 B tables, compressed. The variable behind their +0..+600 ms
+	 * offsets was how far the warm pump had got when the banner landed, so these
+	 * cells vary the warm QUEUE DEPTH instead of sleeping through offsets. In BOTH
+	 * tables the initials answer first - which is exactly what the regression
+	 * rewarded - so the photo share is the number that inverts.
+	 */
+	const photo = "composite:photo/person/acc_zed/0123456789abcdef";
+	const initials = "composite:initials/person/acc_zed/ZO";
+	for (const [table, photoMs] of [
+		["fast", 40],
+		["slow", 600],
+	]) {
+		const icons = [];
+		for (const ahead of [0, 2, 12])
+			for (let rep = 0; rep < 2; rep++) {
+				const zed = personSender({
+					account_id: "acc_zed",
+					display_name: "Zed Ode",
+					avatar: photoOf("acc_zed", "0123456789abcdef"),
+				});
+				const cache = imageCache({
+					request: (input) =>
+						new Promise((done) =>
+							setTimeout(
+								() => done(coreBytes(input)),
+								input.avatar ? photoMs : 1,
+							),
+						),
+				});
+				cache.syncDirectory({
+					owner: { accountId: "acct_a", epoch: 1 },
+					tenantId: "tnt_1",
+					members: [
+						...Array.from({ length: ahead }, (_, i) =>
+							personSender({
+								account_id: `acc_ahead${i}`,
+								display_name: `Ahead ${i}`,
+							}),
+						),
+						zed,
+					],
+				});
+				icons.push(
+					await cache.read(
+						request({ conversationId: `bcv_zed${rep}`, sender: zed }),
+						250,
+					),
+				);
+			}
+		const share = (icon) => icons.filter((value) => value === icon).length;
+		if (table === "fast")
+			assert.equal(
+				share(photo),
+				icons.length,
+				`inside the budget the photo wins every cell: ${JSON.stringify(icons)}`,
+			);
+		else {
+			assert.equal(
+				share(initials),
+				icons.length,
+				`past the budget the placeholder answers every cell: ${JSON.stringify(icons)}`,
+			);
+			assert.equal(
+				share(undefined),
+				0,
+				"never the app icon for a known sender",
+			);
+		}
+	}
+});
+
 test("m2 capability replay restores initials after a backend clear and is bounded", async () => {
 	const { dir, file } = tempFile();
 	try {
@@ -2935,6 +3195,118 @@ test("m2 capability replay restores initials after a backend clear and is bounde
 			core.calls.length,
 			4,
 			"replays reconcile live entries without a loop",
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("M1 a capability replay never re-warms a roster an account switch withdrew", async () => {
+	const { dir, file } = tempFile();
+	try {
+		const core = fakeCore();
+		const cache = imageCache({ request: core.request });
+		const h = harness({ file, images: cache });
+		const ben = personSender({
+			avatar: photoOf("acc_ben", "0123456789abcdef"),
+		});
+		h.notifier.syncDirectory({ tenantId: "tnt_1", members: [ben] });
+		await settle();
+		const warmed = core.calls.length;
+		assert.equal(warmed, 2, "the roster warmed initials and photo");
+		/*
+		 * The reviewer's mutation probe, as a standing lock. A replay reaches the
+		 * cache through the images layer's `syncDirectory`, which has no authority
+		 * check of its own, so a map that outlived a withdrawal WAS the whole hole:
+		 * with the switch's clear removed, the replay re-warmed acc_ben into a cache
+		 * that had just been emptied (calls 2 -> 4, peek() returning the pre-switch
+		 * composite). It must never be able to.
+		 */
+		h.notifier.setAuthority({ accountId: "acct_b", epoch: 2 });
+		h.notifier.replayDirectories();
+		await settle();
+		assert.equal(
+			core.calls.length,
+			warmed,
+			"no request re-warms a roster the switch withdrew",
+		);
+		assert.equal(
+			cache.peek(request({ sender: ben })),
+			undefined,
+			"and nothing of it is readable afterwards",
+		);
+		/*
+		 * Owner-scoped, not a blanket refusal: if this fence also refused the live
+		 * owner, a backend restart would stop restoring anything at all.
+		 */
+		const dan = personSender({
+			account_id: "acc_dan",
+			display_name: "Dan Ode",
+			avatar: photoOf("acc_dan", "0123456789abcdef"),
+		});
+		h.notifier.syncDirectory({ tenantId: "tnt_2", members: [dan] });
+		await settle();
+		const owned = core.calls.length;
+		cache.clear();
+		h.notifier.replayDirectories();
+		await settle();
+		assert.equal(
+			core.calls.length - owned,
+			2,
+			"the current owner's roster still replays in full",
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("M2 the replay cap covers the first sixteen rosters and recovers on a content change", async () => {
+	const { dir, file } = tempFile();
+	try {
+		/*
+		 * The cap this test names was never exercised: the round-2 test replayed
+		 * one roster. What a capped tenant loses is the PRE-WARM only - its senders
+		 * fall back to the banner lane inside the same budget - and it recovers on
+		 * the next roster content change, so neither is a silent hole.
+		 */
+		const core = fakeCore();
+		const cache = imageCache({ request: core.request });
+		const h = harness({ file, images: cache });
+		const sender = (i) =>
+			personSender({ account_id: `acc_${i}`, display_name: `Person ${i}` });
+		for (let i = 0; i < 20; i++)
+			h.notifier.syncDirectory({ tenantId: `tnt_${i}`, members: [sender(i)] });
+		for (let i = 0; i < 40; i++) await tick();
+		const synced = core.calls.length;
+		assert.equal(
+			synced,
+			20,
+			"each of the twenty rosters warmed its one sender",
+		);
+		cache.clear();
+		h.notifier.replayDirectories();
+		await settle();
+		assert.equal(
+			core.calls.length - synced,
+			notifierModule.TEAM_BRIDGE_DIRECTORY_REPLAY_MAX,
+			"the cap replays sixteen tenant rosters of the twenty",
+		);
+		assert.equal(
+			cache.peek(request({ tenantId: "tnt_15", sender: sender(15) })),
+			"composite:initials/person/acc_15/P1",
+			"the sixteenth roster is warmed",
+		);
+		assert.equal(
+			cache.peek(request({ tenantId: "tnt_16", sender: sender(16) })),
+			undefined,
+			"the seventeenth is not, and that costs it the pre-warm only",
+		);
+		h.notifier.syncDirectory({ tenantId: "tnt_16", members: [sender(16)] });
+		await settle();
+		assert.equal(
+			cache.peek(request({ tenantId: "tnt_16", sender: sender(16) })),
+			"composite:initials/person/acc_16/P1",
+			"a roster content change warms the capped tenant immediately",
 		);
 	} finally {
 		rmSync(dir, { recursive: true, force: true });

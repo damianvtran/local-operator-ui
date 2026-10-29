@@ -357,9 +357,26 @@ export class TeamBridgeNotifier {
 	 * renderer sends a roster only on content changes, so a backend restart must
 	 * replay the accepted snapshot here rather than wait for a name/photo edit.
 	 * A capability callback is one finite reconciliation, not a recurring retry.
-	 * syncDirectory de-duplicates live, queued and in-flight work. */
+	 * syncDirectory de-duplicates live, queued and in-flight work.
+	 *
+	 * FENCED ON THE CURRENT OWNER, as well as on the map clears that revocation
+	 * and every auth transition perform. This path reaches the cache through the
+	 * images layer's `syncDirectory`, which has no authority check of its own, so
+	 * the clears were the entire fence: a replay over a map that outlived a
+	 * withdrawal re-warmed the previous account's tenants into a cache that had
+	 * just been emptied. Replaying only rosters whose owner and epoch are the
+	 * live authority keeps a stale map harmless rather than merely unlikely. */
 	replayDirectories(): void {
-		this.options.images?.replayDirectory([...this.directories.values()]);
+		const authority = this.authority;
+		if (this.awaitingDocument || authority?.settling || !authority?.accountId)
+			return;
+		this.options.images?.replayDirectory(
+			[...this.directories.values()].filter(
+				(directory) =>
+					directory.owner.accountId === authority.accountId &&
+					directory.owner.epoch === authority.epoch,
+			),
+		);
 	}
 
 	/** The renderer already fetched this roster; main revalidates its narrow

@@ -59,8 +59,24 @@ export const TEAM_BRIDGE_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 /** The size the OS banner actually shows. Asking core for 256 px would decode
  * and retain 16x the bitmap only to have the platform scale it back down. */
 export const TEAM_BRIDGE_IMAGE_SIZE = 64;
-/** A capability flip replays only this many rosters, mirroring the bounded
- * renderer fan-out. The cache's existing queue bound caps the queued work. */
+/**
+ * A capability flip replays at most this many tenant rosters, in map insertion
+ * order - the first tenants synced this session.
+ *
+ * The input is genuinely unbounded: the renderer publishes every tenant it can
+ * see (no renderer-side cap exists), and a replay costs one request per member
+ * variant, so it needs a ceiling of its own. The binding one is really the
+ * cache's 128 entries, and that is why this is a tenant count rather than a
+ * queue length.
+ *
+ * WHAT A USER LOSES at the cap: senders in the 17th and later tenant lose only
+ * the PRE-WARM. Their banners fetch on the post lane inside the same 250 ms
+ * budget, which is the Q-4/Q-1 path, and reach the app icon only if that misses
+ * too. RECOVERY: the next capability transition replays the same first tenants,
+ * so a heavy member stays capped there; any roster content change re-warms that
+ * tenant immediately, and a banner works regardless. Revocation is unaffected:
+ * every auth transition still drops the whole map.
+ */
 export const TEAM_BRIDGE_DIRECTORY_REPLAY_MAX = 16;
 /** Long enough to absorb a broken avatar across a burst, short enough that a
  * repaired hub/photo is tried again without waiting out the positive TTL. */
@@ -472,19 +488,12 @@ export class TeamBridgeNotificationImages
 		this.pump();
 	}
 
-	/**
-	 * The icon for one banner, within `deadline` ms.
-	 *
-	 * Order: a cached primary (photo, or initials for a sender without one); else
-	 * at most one request per variant on the banner lane. A queued initials warm
-	 * is PROMOTED, not duplicated, and runs alongside the photo so either can
-	 * answer before the shared deadline. The app icon is reserved for a sender
-	 * whose variants cannot resolve in time, not merely a warm queue not reached.
-	 */
 	/** A replay is initiated by the ONE capability transition false -> true, never
 	 * by cache completion, so eviction refills are finite and cannot loop. Missing
 	 * entries are deduped by syncDirectory; the last accepted tenant roster owns
-	 * revocation. */
+	 * revocation. The caller passes only rosters of the CURRENT owner (see the
+	 * notifier's `replayDirectories`): this layer has no authority check of its
+	 * own, so a withdrawn roster handed to it would warm a revoked tenant. */
 	replayDirectory(directories: TeamBridgeNotificationDirectory[]): void {
 		if (!this.options.enabled()) return;
 		for (const directory of directories.slice(
@@ -494,6 +503,23 @@ export class TeamBridgeNotificationImages
 			this.syncDirectory(directory);
 	}
 
+	/**
+	 * The icon for one banner, within `deadline` ms.
+	 *
+	 * Order: a cached primary (photo, or initials for a sender without one); else
+	 * at most one request per variant on the banner lane. A queued initials warm
+	 * is PROMOTED, not duplicated, and runs alongside the photo.
+	 *
+	 * THE PRIMARY HOLDS THE DEADLINE (QA Q-4). The placeholder renders without
+	 * the hub, so when both variants are cold it always answers first; returning
+	 * on the first flight to settle therefore handed every banner lane miss its
+	 * initials even when the photo was ~40 ms away, and only a banner whose
+	 * initials were already cached ever spent the budget on a photo. So await the
+	 * PHOTO until the deadline and answer from memory at it. The fallback answers
+	 * at the deadline or as soon as the primary fails - never a second budget.
+	 * The app icon is reserved for a sender whose variants cannot resolve in
+	 * time, not merely a warm queue not reached.
+	 */
 	async read(
 		request: TeamBridgeNotifyRequest,
 		deadline: number,
@@ -528,15 +554,18 @@ export class TeamBridgeNotificationImages
 		if (flights.length > 0) {
 			let timer: ReturnType<typeof setTimeout> | undefined;
 			try {
-				// Both variants race the SAME deadline. Check after the first settles:
-				// initials need not wait for a slow photo, nor a fast photo for initials.
 				const expired = new Promise<void>((resolve) => {
 					timer = setTimeout(resolve, deadline);
 					timer.unref?.();
 				});
-				await Promise.race([...flights, expired]);
+				// The primary's flight is what the budget is spent on; `flights` is only
+				// the fallback when no primary request was started at all (a sender
+				// without a photo, a negative entry, a zero budget).
+				await Promise.race([flight ?? Promise.all(flights), expired]);
 				const ready = this.peek(request);
 				if (ready) return ready;
+				// The photo failed or missed: a promoted fallback that is still in flight
+				// gets whatever is LEFT of the same budget, never a fresh one.
 				await Promise.race([Promise.all(flights), expired]);
 			} finally {
 				if (timer) clearTimeout(timer);
