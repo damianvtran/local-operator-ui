@@ -9452,6 +9452,21 @@ export const STORIES = [
 	 * selector of its own.
 	 */
 	["team-bridge-notification-unavailable-toast--stale-click", 1280, 800],
+	/*
+	 * The owner audit ("{chief of staff}'s messages"), the one surface that shows
+	 * the AGENT's screening verdict to a human and states who can read the
+	 * conversation. Four states, because three of them are things a reader must be
+	 * able to tell apart by looking: a refusal (which is also the answer for a
+	 * caller who does not own the agent), a list that is genuinely empty, a read in
+	 * flight, and the populated window with a collapsed rejection, a row whose body
+	 * the hub did not send, and the agent's own message. 1280x800 is the desktop
+	 * width the section is designed at; the rail is 300px and the panel takes the
+	 * rest, so a narrower frame would not show the message column at all.
+	 */
+	["team-bridge-owner-audit--populated", 1280, 800],
+	["team-bridge-owner-audit--empty", 1280, 800],
+	["team-bridge-owner-audit--loading", 1280, 800],
+	["team-bridge-owner-audit--read-failed", 1280, 800],
 	["command-palette-commandpalette--no-results", 1280, 800],
 	/*
 	 * The roster rows (issues #844, #849): the `@` scope's agent and team rows, one
