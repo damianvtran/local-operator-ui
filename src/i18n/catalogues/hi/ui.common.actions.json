@@ -1,6 +1,5 @@
 {
 	"ui.common.actions.cancel": "रद्द करें",
-	"ui.common.actions.check_again": "फिर जाँचें",
 	"ui.common.actions.close": "बंद करें",
 	"ui.common.actions.copied": "कॉपी हुआ",
 	"ui.common.actions.copy_failed": "कॉपी नहीं हो सका। इसे चुनकर खुद कॉपी करें।",

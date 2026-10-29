@@ -1,6 +1,5 @@
 {
 	"ui.common.actions.cancel": "取消",
-	"ui.common.actions.check_again": "重新检查",
 	"ui.common.actions.close": "关闭",
 	"ui.common.actions.copied": "已复制",
 	"ui.common.actions.copy_failed": "无法复制。请选中内容后手动复制。",

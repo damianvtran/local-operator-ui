@@ -213,6 +213,22 @@ export const THREAD_SEARCH_LIST_LABEL = "Search results";
 export const THREAD_SEARCH_CLOSE_LABEL = "Close search";
 
 /**
+ * How many hits matched the query verbatim, and how many are only related.
+ *
+ * One definition with two readers: `threadSearchCountLabel` below (the English
+ * spelling the model's tests pin) and the overlay, which states the same
+ * numbers through `ui.chat.thread_search.count.*`. Both read THIS split, so a
+ * hit can never be classified one way and counted another.
+ */
+export function threadSearchTierSplit(hits: readonly ThreadFindHit[]): {
+	exact: number;
+	related: number;
+} {
+	const exact = hits.filter((hit) => hit.tier === "exact").length;
+	return { exact, related: hits.length - exact };
+}
+
+/**
  * The count line's spelling, off the hit list rather than a total the wire
  * does not carry: the backend ranks and truncates, so `hits.length` is what
  * this panel can promise.
@@ -223,17 +239,21 @@ export const THREAD_SEARCH_CLOSE_LABEL = "Close search";
  * split when there IS one, stays a plain count when there is not, and the
  * truncation rides it as a suffix rather than a second sentence — the old
  * "100 matches Showing the first 100 matches." said the same thing twice.
+ *
+ * THIS SPELLING IS THE ENGLISH ONE THE TESTS PIN, not the shipped one: the
+ * overlay renders the same numbers through `ui.chat.thread_search.count.*`, so
+ * the sentences below stay here as the model's English contract while the
+ * panel opens in the reader's own language.
  */
 export function threadSearchCountLabel(hits: readonly ThreadFindHit[]): string {
-	const exact = hits.filter((hit) => hit.tier === "exact").length;
-	const soft = hits.length - exact;
-	if (soft === 0) {
+	const { exact, related } = threadSearchTierSplit(hits);
+	if (related === 0) {
 		return hits.length === 1 ? "1 match" : `${hits.length} matches`;
 	}
 	if (exact === 0) {
-		return soft === 1 ? "1 related match" : `${soft} related matches`;
+		return related === 1 ? "1 related match" : `${related} related matches`;
 	}
-	return `${exact} exact · ${soft} related`;
+	return `${exact} exact · ${related} related`;
 }
 
 /**

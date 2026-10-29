@@ -1,6 +1,5 @@
 {
 	"ui.common.actions.cancel": "Cancelar",
-	"ui.common.actions.check_again": "Volver a comprobar",
 	"ui.common.actions.close": "Cerrar",
 	"ui.common.actions.copied": "Copiado",
 	"ui.common.actions.copy_failed": "No se pudo copiar. Selecciónalo y cópialo manualmente.",

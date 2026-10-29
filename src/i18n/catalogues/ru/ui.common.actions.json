@@ -1,6 +1,5 @@
 {
 	"ui.common.actions.cancel": "Отмена",
-	"ui.common.actions.check_again": "Проверить ещё раз",
 	"ui.common.actions.close": "Закрыть",
 	"ui.common.actions.copied": "Скопировано",
 	"ui.common.actions.copy_failed": "Не удалось скопировать. Выделите и скопируйте вручную.",

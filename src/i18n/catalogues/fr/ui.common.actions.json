@@ -1,6 +1,5 @@
 {
 	"ui.common.actions.cancel": "Annuler",
-	"ui.common.actions.check_again": "Vérifier à nouveau",
 	"ui.common.actions.close": "Fermer",
 	"ui.common.actions.copied": "Copié",
 	"ui.common.actions.copy_failed": "Copie impossible. Sélectionnez le texte et copiez-le manuellement.",

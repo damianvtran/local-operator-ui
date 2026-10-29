@@ -19,27 +19,11 @@ import { THREAD_FIND_MAX_CHARS } from "../../../../../shared/desktop-contract";
 import { chatRegionOf } from "../chat-regions";
 import { pressLandsOnOverlay } from "../keyboard-scopes";
 import {
-	THREAD_SEARCH_BUILDING_COPY,
-	THREAD_SEARCH_BUILDING_HINT,
-	THREAD_SEARCH_CLOSE_LABEL,
-	THREAD_SEARCH_EMPTY_COPY,
-	THREAD_SEARCH_ERROR_COPY,
-	THREAD_SEARCH_JUMPING_COPY,
-	THREAD_SEARCH_LIST_LABEL,
-	THREAD_SEARCH_PARTIAL_COPY,
-	THREAD_SEARCH_PLACEHOLDER,
-	THREAD_SEARCH_RECHECK_LABEL,
-	THREAD_SEARCH_RETRY_LABEL,
-	THREAD_SEARCH_ROLE_LABELS,
-	THREAD_SEARCH_STALE_COPY,
-	THREAD_SEARCH_TIER_HINT,
-	THREAD_SEARCH_UNSUPPORTED_COPY,
 	type ThreadSearchState,
 	isThreadSearchPress,
 	splitThreadSearchRanges,
 	threadSearchCap,
-	threadSearchCountLabel,
-	threadSearchTruncatedLabel,
+	threadSearchTierSplit,
 } from "./thread-search-model";
 import { revealThreadSearchHit } from "./thread-search-reveal";
 import { useThreadSearch } from "./use-thread-search";
@@ -147,6 +131,40 @@ const MATCH_MARK_CLASS =
 const threadSearchIsMac = (): boolean =>
 	navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 
+/**
+ * The count line, tier-aware (design D2 + UX U3).
+ *
+ * The split between exact and related hits is why a near-miss can be here at
+ * all, so the line states the split when there IS one and stays a plain count
+ * when there is not; the truncation rides it as a suffix rather than a second
+ * sentence. WHICH hits are related is the model's reading
+ * (`threadSearchTierSplit`) rather than a second classification here — only the
+ * words are the panel's.
+ *
+ * The count arrives twice on purpose: `count` drives the ICU plural arm, and
+ * `countText` is the decimal already rendered by `String`, so English keeps its
+ * plain digits instead of gaining a thousands separator from CLDR.
+ */
+function threadSearchCountLine(hits: readonly ThreadFindHit[]): string {
+	const { exact, related } = threadSearchTierSplit(hits);
+	if (related === 0) {
+		return t("ui.chat.thread_search.count.match", {
+			count: hits.length,
+			countText: String(hits.length),
+		});
+	}
+	if (exact === 0) {
+		return t("ui.chat.thread_search.count.related", {
+			count: hits.length,
+			countText: String(hits.length),
+		});
+	}
+	return t("ui.chat.thread_search.count.split", {
+		exactText: String(exact),
+		relatedText: String(related),
+	});
+}
+
 /** One result row. */
 const ResultRow: FC<{
 	hit: ThreadFindHit;
@@ -179,14 +197,22 @@ const ResultRow: FC<{
 			)}
 		>
 			<span className="flex items-center gap-1.5 text-ink-muted text-meta">
-				<span>{THREAD_SEARCH_ROLE_LABELS[hit.role]}</span>
+				<span>
+					{t(
+						hit.role === "user"
+							? "ui.chat.thread_search.role.user"
+							: "ui.chat.thread_search.role.agent",
+					)}
+				</span>
 				{hit.tier === "soft" && (
 					<>
 						<span aria-hidden="true">
 							{/* i18n: ignore the separator before the tier hint - a bullet glyph, aria-hidden, with no words to translate */}
 							&middot;
 						</span>
-						<span className="text-ink-dim">{THREAD_SEARCH_TIER_HINT}</span>
+						<span className="text-ink-dim">
+							{t("ui.chat.thread_search.tier.related")}
+						</span>
 					</>
 				)}
 			</span>
@@ -313,8 +339,8 @@ export const ThreadSearchPanel: FC<ThreadSearchPanelProps> = ({
 						onChange={(event) => onQueryChange(event.target.value)}
 						onKeyDown={onInputKeyDown}
 						maxLength={THREAD_FIND_MAX_CHARS}
-						placeholder={THREAD_SEARCH_PLACEHOLDER}
-						aria-label={THREAD_SEARCH_PLACEHOLDER}
+						placeholder={t("ui.chat.thread_search.placeholder")}
+						aria-label={t("ui.chat.thread_search.placeholder")}
 						role="combobox"
 						aria-expanded={showList}
 						aria-controls={showList ? listId : undefined}
@@ -330,7 +356,7 @@ export const ThreadSearchPanel: FC<ThreadSearchPanelProps> = ({
 						type="button"
 						variant="ghost"
 						size="icon-sm"
-						aria-label={THREAD_SEARCH_CLOSE_LABEL}
+						aria-label={t("ui.chat.thread_search.close_label")}
 						onClick={onClose}
 					>
 						<X aria-hidden="true" />
@@ -341,25 +367,33 @@ export const ThreadSearchPanel: FC<ThreadSearchPanelProps> = ({
 			<div className="flex items-start gap-2 px-3 pb-2">
 				<p className="min-w-0 flex-1 text-ink-muted text-meta">
 					{state === "loading" &&
-						(showList ? THREAD_SEARCH_STALE_COPY : "Searching…")}
+						(showList
+							? t("ui.chat.thread_search.stale")
+							: t("ui.chat.thread_search.searching"))}
 					{state === "ready" &&
 						(hits.length > 0
-							? threadSearchCountLabel(hits)
-							: THREAD_SEARCH_EMPTY_COPY)}
+							? threadSearchCountLine(hits)
+							: t("ui.chat.thread_search.empty"))}
 					{state === "building" &&
 						(partial
-							? THREAD_SEARCH_PARTIAL_COPY
-							: THREAD_SEARCH_BUILDING_COPY)}
-					{state === "unsupported" && THREAD_SEARCH_UNSUPPORTED_COPY}
-					{state === "error" && THREAD_SEARCH_ERROR_COPY}
+							? t("ui.chat.thread_search.partial")
+							: t("ui.chat.thread_search.building"))}
+					{state === "unsupported" && t("ui.chat.thread_search.unsupported")}
+					{state === "error" && t("ui.chat.thread_search.error")}
 					{state === "ready" && truncated && showList && (
 						<span className="text-ink-dim">
 							{" "}
-							{threadSearchTruncatedLabel(hits.length)}
+							{t("ui.chat.thread_search.count.truncated", {
+								count: hits.length,
+								countText: String(hits.length),
+							})}
 						</span>
 					)}
 					{state === "building" && !partial && (
-						<span className="text-ink-dim"> {THREAD_SEARCH_BUILDING_HINT}</span>
+						<span className="text-ink-dim">
+							{" "}
+							{t("ui.chat.thread_search.building_hint")}
+						</span>
 					)}
 				</p>
 				{retryable && (
@@ -371,8 +405,8 @@ export const ThreadSearchPanel: FC<ThreadSearchPanelProps> = ({
 						className="shrink-0"
 					>
 						{state === "building"
-							? THREAD_SEARCH_RECHECK_LABEL
-							: THREAD_SEARCH_RETRY_LABEL}
+							? t("ui.chat.thread_search.recheck")
+							: t("ui.common.actions.retry_again")}
 					</Button>
 				)}
 			</div>
@@ -385,7 +419,7 @@ export const ThreadSearchPanel: FC<ThreadSearchPanelProps> = ({
 					// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a find-results list is a listbox rather than a native control.
 					// biome-ignore lint/a11y/useSemanticElements: a find-results list is a listbox, not a native select.
 					role="listbox"
-					aria-label={THREAD_SEARCH_LIST_LABEL}
+					aria-label={t("ui.chat.thread_search.list_label")}
 					/*
 					 * The in-flight list is the PREVIOUS search's: dimmed so the eye reads
 					 * it as a placeholder, `aria-busy` so a screen reader is told the same
@@ -421,7 +455,7 @@ export const ThreadSearchPanel: FC<ThreadSearchPanelProps> = ({
 				 * element a reader is told to expect it in.
 				 */
 				<output className="block border-t border-hairline px-3 py-1.5 text-ink-muted text-meta">
-					{THREAD_SEARCH_JUMPING_COPY}
+					{t("ui.chat.thread_search.jumping")}
 				</output>
 			)}
 

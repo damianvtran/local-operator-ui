@@ -498,11 +498,25 @@ function controlLabel(
 	 * vendor is working), and the button's own hint states which promise it can
 	 * keep — the queued case stops before the call, the running case only asks.
 	 * A control labelled "Cancel" would imply a guaranteed stop that the frozen
-	 * contract explicitly does not offer.
+	 * contract explicitly does not offer. The word lives in the catalogue, so the
+	 * reasoning that picked it is in that key's context note.
+	 *
+	 * Resolved per CALL, not at module load: `t()` reads the active locale each
+	 * time, so a card already on screen re-renders in the reader's language when
+	 * they switch it.
 	 */
-	if (kind === "cancel") return "Stop";
-	if (kind === "restart") return state === "failed" ? "Retry" : "Restart";
-	return "Edit and restart";
+	if (kind === "cancel") return t("ui.chat.canonical.image_gen.control.stop");
+	if (kind === "restart") {
+		/*
+		 * The failed case reuses the common action's `Retry`: nothing here failed in
+		 * a way the card owns, the prompt is retained, and a card-private key would
+		 * ship the same word seven more times for no reader's benefit.
+		 */
+		return state === "failed"
+			? t("ui.common.actions.retry")
+			: t("ui.chat.canonical.image_gen.control.restart");
+	}
+	return t("ui.chat.canonical.image_gen.control.edit_and_restart");
 }
 
 export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {

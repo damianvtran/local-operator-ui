@@ -1,4 +1,76 @@
 {
+	"ui.chat.thread_search.building": {
+		"role": "status line in the find overlay",
+		"tone": "Calm, plain, present tense.",
+		"note": "The index is still being built for this conversation, so the panel has no answer yet; it is a wait, not a failure. Recoverable by itself.",
+		"length": "One short sentence."
+	},
+	"ui.chat.thread_search.building_hint": {
+		"role": "hint appended to the building status line",
+		"tone": "Plain, reassuring.",
+		"note": "Follows the building sentence in dimmed text and says WHY waiting helps: the panel re-asks once and the index's own result arrives. Never a call to action — the reader does nothing.",
+		"length": "One short sentence."
+	},
+	"ui.chat.thread_search.close_label": {
+		"role": "close button accessible name",
+		"tone": "Short dismissal verb.",
+		"note": "Closes the find overlay only; the conversation and its transcript stay open behind it. The visible glyph is an X with no text.",
+		"length": "Two words."
+	},
+	"ui.chat.thread_search.count.match": {
+		"role": "result count line",
+		"tone": "Plain, terse.",
+		"note": "How many messages matched, when every hit is an exact occurrence of the query. The count is of MESSAGES, not occurrences, and the backend caps the list — the truncation note rides beside it rather than inside it.",
+		"length": "Two or three words.",
+		"placeholders": {
+			"count": "Cardinal number of matching messages.",
+			"countText": "Already-formatted decimal count from String(count); separate from the ICU cardinal so English does not gain thousands separators."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Use the target locale's native categories (Russian few/many, Arabic zero/two) as the locale's style guide requires."
+	},
+	"ui.chat.thread_search.count.related": {
+		"role": "result count line, related-only",
+		"tone": "Plain, terse.",
+		"note": "All hits are RELATED matches: the index matched the sense of the query, not its literal characters, so none of the rows highlights the typed words. The word `related` must stay distinct from the plain match count.",
+		"length": "Three or four words.",
+		"placeholders": {
+			"count": "Cardinal number of matching messages.",
+			"countText": "Already-formatted decimal count from String(count); see the plain match count."
+		},
+		"plural_guidance": "As the plain match count: follow the target locale's own plural categories."
+	},
+	"ui.chat.thread_search.count.split": {
+		"role": "result count line, mixed tiers",
+		"tone": "Plain, terse.",
+		"note": "The only line that states the exact/related split: two counts separated by a middot. It exists because a bare total hid that most hits were only related. Keep the separator glyph and the two qualifiers.",
+		"length": "Two counts and two qualifiers.",
+		"placeholders": {
+			"exactText": "Already-formatted number of exact hits.",
+			"relatedText": "Already-formatted number of related hits."
+		}
+	},
+	"ui.chat.thread_search.count.truncated": {
+		"role": "suffix under a capped result list",
+		"tone": "Plain, factual.",
+		"note": "Says the list is a FLOOR, not a total: the backend returned the first N hits. Stays parenthesised because it follows the count line as a suffix. Reads `the first match shown` in the singular case.",
+		"length": "Three or four words in parentheses.",
+		"placeholders": {
+			"count": "Cardinal number of hits the list shows.",
+			"countText": "Already-formatted decimal count from String(count); see the plain match count."
+		}
+	},
+	"ui.chat.thread_search.empty": {
+		"role": "status line in the find overlay",
+		"tone": "Plain, matter-of-fact.",
+		"note": "The search finished and nothing matched. Not an error and not a suggestion: the reader knows what to edit, and the box is still focused.",
+		"length": "One short sentence."
+	},
+	"ui.chat.thread_search.error": {
+		"role": "status line in the find overlay",
+		"tone": "Plain, non-alarming.",
+		"note": "The find request itself failed (the transcript is fine). A separate `Try again` control sits beside this line; do not put the retry instruction in this sentence.",
+		"length": "One short sentence."
+	},
 	"ui.chat.thread_search.hint.browse": {
 		"role": "keyboard hint",
 		"tone": "lowercase verb",
@@ -13,5 +85,71 @@
 		"role": "keyboard hint",
 		"tone": "lowercase verb",
 		"note": "Stands beside Enter in the panel footer, so it stays lowercase."
+	},
+	"ui.chat.thread_search.jumping": {
+		"role": "status line under the result list",
+		"tone": "Plain, present continuous.",
+		"note": "Shown while a far hit is being sought in the transcript; a reach can take seconds, and the trailing ellipsis is what says the wait is still running. The transcript reports the landing itself.",
+		"length": "One short sentence."
+	},
+	"ui.chat.thread_search.list_label": {
+		"role": "results list accessible name",
+		"tone": "Short noun phrase.",
+		"note": "The accessible name of the listbox holding the hits. Not a heading and never rendered visually.",
+		"length": "Two words."
+	},
+	"ui.chat.thread_search.partial": {
+		"role": "status line in the find overlay",
+		"tone": "Plain, honest about the gap.",
+		"note": "The index is still catching up and the answer it gave may be incomplete. Softer than the building sentence: the list IS shown, with a caveat, so do not imply the search failed.",
+		"length": "One sentence."
+	},
+	"ui.chat.thread_search.placeholder": {
+		"role": "search field placeholder and accessible name",
+		"tone": "Short, imperative-free.",
+		"note": "Both the placeholder inside the empty box and the combobox's accessible name, and the scope word matters: it searches the OPEN conversation, never the app, the files or other chats.",
+		"length": "Up to four words."
+	},
+	"ui.chat.thread_search.recheck": {
+		"role": "button label",
+		"tone": "Direct, calm.",
+		"note": "Re-asks a conversation whose index was still building. Nothing failed, so this is a re-check rather than a retry, and the label must not imply an error.",
+		"length": "Two words."
+	},
+	"ui.chat.thread_search.role.agent": {
+		"role": "message author label on a result row",
+		"tone": "Short noun, sentence case.",
+		"note": "The message was written by the agent. Humanised on purpose: the wire value `agent` stays out of the UI. Sits before a middot and the tier hint on a related row.",
+		"length": "One word."
+	},
+	"ui.chat.thread_search.role.user": {
+		"role": "message author label on a result row",
+		"tone": "Short pronoun, sentence case.",
+		"note": "The message is the reader's own; `You` rather than `User` because the transcript calls the reader's message theirs too. Sits before a middot and the tier hint on a related row.",
+		"length": "One word."
+	},
+	"ui.chat.thread_search.searching": {
+		"role": "status line in the find overlay",
+		"tone": "Plain, present continuous.",
+		"note": "A request is in flight and there is no earlier result list to show. The trailing ellipsis is the only thing saying the wait continues, so keep it.",
+		"length": "One word."
+	},
+	"ui.chat.thread_search.stale": {
+		"role": "status line above a retained result list",
+		"tone": "Plain, corrective.",
+		"note": "A new query's answer is in flight and the rows below are still the PREVIOUS query's — actionable, but not this query's answer. It replaced a count line that read as the current total. Keep the dash and the possessive.",
+		"length": "One short sentence."
+	},
+	"ui.chat.thread_search.tier.related": {
+		"role": "match-kind hint on a result row",
+		"tone": "lowercase qualifier.",
+		"note": "Follows a middot after the author label on a hit that matched the query's sense, not its characters. Lowercase because it continues the row's meta line, and `related` must stay the same word as in the related count line.",
+		"length": "Two words."
+	},
+	"ui.chat.thread_search.unsupported": {
+		"role": "status line in the find overlay",
+		"tone": "Plain, terminal.",
+		"note": "The conversation's messages live on another device, so this client cannot search them at all. Nothing the reader can do here — do not offer a retry.",
+		"length": "One sentence."
 	}
 }

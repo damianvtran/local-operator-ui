@@ -287,11 +287,6 @@
 		"length": "One compact status line, placeholder, button, or spoken suffix.",
 		"note": "English source: Clear"
 	},
-	"ui.common.actions.check_again": {
-		"role": "action",
-		"tone": "plain",
-		"note": "Re-runs a read that answered with nothing, where nothing failed."
-	},
 	"ui.common.actions.dismiss": {
 		"role": "action",
 		"tone": "plain"
