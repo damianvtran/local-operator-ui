@@ -292,6 +292,12 @@ function cleanId(value: unknown): string | null {
 	return typeof value === "string" && SAFE_ID.test(value) ? value : null;
 }
 
+/** The same id vocabulary the notify payload accepts, for IPC envelopes that
+ * carry an id outside a full request (the roster sync's `tenantId`). */
+export function isTeamBridgeNotifyId(value: unknown): value is string {
+	return cleanId(value) !== null;
+}
+
 function cleanText(value: unknown, max: number): string | null {
 	if (typeof value !== "string") return null;
 	const trimmed = value.trim();

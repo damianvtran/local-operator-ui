@@ -44,6 +44,7 @@ import {
 	type TeamBridgeNotifyRequest,
 	type TeamBridgeOpenResult,
 	type TeamBridgeOpenTarget,
+	isTeamBridgeNotifyId,
 	parseTeamBridgeNotifyAuthority,
 	parseTeamBridgeNotifyRequest,
 	safeTeamBridgeBannerText,
@@ -260,6 +261,8 @@ export class TeamBridgeNotifier {
 	private epochOwner: string | undefined;
 	/** Armed only while a credential refresh is unresolved; see the timeout doc. */
 	private settleTimer: unknown;
+	/** Bumped by every withdrawal. A notify that waited across one must not post. */
+	private revision = 0;
 	/** Banners withdrawn on purpose: their clicks answer as stale, not as a route. */
 	private readonly revokedBanners = new WeakSet<TeamBridgeBanner>();
 	private readonly createBanner: (
@@ -359,7 +362,9 @@ export class TeamBridgeNotifier {
 		const directory = input as Partial<TeamBridgeNotificationDirectory> | null;
 		if (
 			!directory ||
-			typeof directory.tenantId !== "string" ||
+			// Narrow at the boundary (review n1): core would refuse a bad tenant,
+			// but an id this module cannot key on should never reach the cache.
+			!isTeamBridgeNotifyId(directory.tenantId) ||
 			!Array.isArray(directory.members)
 		)
 			return;
@@ -435,6 +440,8 @@ export class TeamBridgeNotifier {
 	}
 
 	private revoke(): void {
+		// Fences every banner still inside its image wait: see `notify`.
+		this.revision += 1;
 		this.options.images?.clear();
 		// Preserve only neutral stale feedback after a settled account change.
 		if (this.pendingOpen) this.pendingUnavailable = true;
@@ -465,24 +472,38 @@ export class TeamBridgeNotifier {
 		if (request === null) {
 			throw new Error("Invalid Team Bridge notification payload.");
 		}
-		if (
-			this.awaitingDocument ||
-			this.authority?.settling ||
-			!teamBridgeNotifyOwnerMatches(request.owner, this.authority)
-		)
+		// Cheap refusals first, so a suppressed banner never spends a photo
+		// request. The SAME predicate runs again after the wait (below).
+		if (!this.admits(request)) return { shown: false };
+		/*
+		 * THE WAIT IS THE ONLY AWAIT IN THIS METHOD, AND EVERYTHING THAT READS OR
+		 * MUTATES DELIVERY STATE COMES AFTER IT (review M1). While a banner waits
+		 * up to 250 ms the account can sign out or switch, the window can gain
+		 * focus, and a second notify for the same conversation can arrive. So:
+		 *
+		 * - `revision` is captured before and compared after. `revoke()` bumps
+		 *   it; a banner that waited across a withdrawal belongs to the withdrawn
+		 *   set, and posting it would put a private preview on screen AFTER the
+		 *   sign-out closed everything else.
+		 * - admission (owner/epoch/settling/quiet/seq) is re-run on the live state.
+		 * - replace, the burst decision, show and seq recording all happen in one
+		 *   synchronous block after the wait, so two notifies racing in one
+		 *   conversation serialise there: the later seq replaces the earlier, an
+		 *   equal or older seq is refused, and exactly one banner stays tracked
+		 *   in `this.banners`, where `revoke()` can close it.
+		 *
+		 * Each notification owns its own deadline; no shared queue/lock means an
+		 * in-flight first banner cannot delay a second one. A late photo is only
+		 * cached: it never replaces or re-posts a delivered banner.
+		 *
+		 * THE RACE LIVES HERE, NOT IN THE CACHE. The cache is enrichment; this is
+		 * the post path, and it is the layer that must never wait on one. A slow,
+		 * broken or foreign image source therefore cannot delay a banner either.
+		 */
+		const revision = this.revision;
+		const icon = (await this.withImageDeadline(request)) ?? this.options.icon;
+		if (revision !== this.revision || !this.admits(request))
 			return { shown: false };
-		if (this.options.show === "never") return { shown: false };
-		if (!this.canNotify()) return { shown: false };
-		if (teamBridgeWindowIsQuiet(this.options.window(), request.viewing)) {
-			return { shown: false };
-		}
-		const previous = this.options.store.notifiedSeq(
-			request.owner.accountId,
-			request.conversationId,
-		);
-		if (previous !== undefined && request.seq <= previous) {
-			return { shown: false };
-		}
 		const now = (this.options.now ?? Date.now)();
 		const lastRaised = this.raisedAt.get(request.conversationId);
 		const burst =
@@ -511,15 +532,6 @@ export class TeamBridgeNotifier {
 					TEAM_BRIDGE_NOTIFY_MAX_TITLE,
 				)
 			: request.title;
-		// Each notification owns its own deadline; no shared queue/lock means an
-		// in-flight first banner cannot delay a second one. A late photo is only
-		// cached. The existing replace path runs only for a NEW notify call, so
-		// this wait cannot resurrect or replace an already delivered banner.
-		//
-		// THE RACE LIVES HERE, NOT IN THE CACHE. The cache is enrichment; this is
-		// the post path, and it is the layer that must never wait on one. A slow,
-		// broken or foreign image source therefore cannot delay a banner either.
-		const icon = (await this.withImageDeadline(request)) ?? this.options.icon;
 		const notification = this.createBanner({
 			id: teamBridgeBannerId(request.owner.accountId, request.conversationId),
 			groupId: teamBridgeBannerId(
@@ -569,6 +581,30 @@ export class TeamBridgeNotifier {
 	}
 
 	/**
+	 * Whether this request may raise a banner against the LIVE state.
+	 *
+	 * One predicate, called before and after the bounded image wait, so the two
+	 * checks cannot drift apart. Every clause reads state the wait can change.
+	 */
+	private admits(request: TeamBridgeNotifyRequest): boolean {
+		if (
+			this.awaitingDocument ||
+			this.authority?.settling ||
+			!teamBridgeNotifyOwnerMatches(request.owner, this.authority)
+		)
+			return false;
+		if (this.options.show === "never") return false;
+		if (!this.canNotify()) return false;
+		if (teamBridgeWindowIsQuiet(this.options.window(), request.viewing))
+			return false;
+		const previous = this.options.store.notifiedSeq(
+			request.owner.accountId,
+			request.conversationId,
+		);
+		return previous === undefined || request.seq > previous;
+	}
+
+	/**
 	 * Await one sender composite for AT MOST `TEAM_BRIDGE_IMAGE_WAIT_MS`.
 	 *
 	 * Resolves early on a hit. On a miss it starts (or joins) the cache's
@@ -600,12 +636,20 @@ export class TeamBridgeNotifier {
 				clearTimeout(timer as ReturnType<typeof setTimeout>));
 		let timer: unknown;
 		try {
-			return await Promise.race([
-				reading,
-				new Promise<undefined>((resolve) => {
-					timer = setTimer(() => resolve(undefined), TEAM_BRIDGE_IMAGE_WAIT_MS);
-				}),
-			]);
+			// When the deadline wins, post what is ALREADY in memory: the initials
+			// warmed at directory load (QA Q-1, plan a-a06c "else initials"). A
+			// synchronous lookup, never a second request in the post path.
+			return (
+				(await Promise.race([
+					reading,
+					new Promise<undefined>((resolve) => {
+						timer = setTimer(
+							() => resolve(undefined),
+							TEAM_BRIDGE_IMAGE_WAIT_MS,
+						);
+					}),
+				])) ?? images.peek(request)
+			);
 		} finally {
 			// Reading rejects? `read` never does; this guard keeps a future one from
 			// becoming an unhandled rejection that would silence the banner.

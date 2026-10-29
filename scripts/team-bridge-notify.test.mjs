@@ -1703,6 +1703,7 @@ test("cold sender enrichment posts within its deadline; completion never re-aler
 			warming++;
 			return fetch;
 		},
+		peek() {},
 		clear() {},
 	};
 	const clock = waitClock();
@@ -1739,6 +1740,7 @@ test("warm composite follows the person source kind; agent title names its owner
 	const { dir, file } = tempFile();
 	const images = {
 		read: async (r) => (r.sender ? `${r.sender.kind}-composite` : undefined),
+		peek() {},
 		clear() {},
 	};
 	try {
@@ -1767,29 +1769,44 @@ test("warm composite follows the person source kind; agent title names its owner
 	}
 });
 
-// This header is enough for the bounded admission check; fake native decoder
-// returns a token. Actual Pillow PNG decoding is covered by core loopback QA.
-const compositePng = () => {
+// This header is enough for the bounded admission check. The bytes after it
+// carry a TAG naming what core was asked to draw, and the fake decoder turns
+// those bytes into `composite:<tag>`: every icon assertion below therefore
+// proves which bytes reached the banner (QA Q-1), not merely that "something"
+// did. Actual Pillow PNG decoding is covered by core loopback QA.
+const compositePng = (tag = "untagged") => {
 	const data = Buffer.alloc(100);
 	Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(data);
 	data.writeUInt32BE(13, 8);
 	data.write("IHDR", 12);
 	data.writeUInt32BE(64, 16);
 	data.writeUInt32BE(64, 20);
+	data.write(tag, 33);
 	return data;
 };
+const TRAILING_NUL = /\0+$/u;
+const tagOf = (data) =>
+	Buffer.from(data).subarray(33).toString("utf8").replace(TRAILING_NUL, "");
+/** The tag a fake core stamps on a request: variant/kind/account(/hash). */
+const coreTag = (input) =>
+	input.avatar
+		? `photo/${input.kind}/${input.accountId}/${input.avatar.hash}`
+		: `initials/${input.kind}/${input.accountId}/${input.initials}`;
+const coreBytes = (input) => ({
+	kind: "bytes",
+	status: 200,
+	mimeType: "image/png",
+	data: compositePng(coreTag(input)),
+});
+const BEN_INITIALS_TAG = "initials/person/acc_ben/BT";
+const BEN_INITIALS = `composite:${BEN_INITIALS_TAG}`;
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 function imageCache(options = {}) {
 	return new notifierModule.TeamBridgeNotificationImages({
 		enabled: () => true,
 		theme: () => "light",
-		request: async () => ({
-			kind: "bytes",
-			status: 200,
-			mimeType: "image/png",
-			data: compositePng(),
-		}),
-		decode: () => "initials-composite",
+		request: async (input) => coreBytes(input),
+		decode: (data) => `composite:${tagOf(data)}`,
 		...options,
 	});
 }
@@ -1805,7 +1822,7 @@ test("photo cache hit/miss, TTL, LRU, tenant/epoch isolation and late auth fenci
 				kind: "bytes",
 				status: 200,
 				mimeType: "image/png",
-				data: compositePng(),
+				data: compositePng(BEN_INITIALS_TAG),
 			};
 		},
 	});
@@ -1814,28 +1831,28 @@ test("photo cache hit/miss, TTL, LRU, tenant/epoch isolation and late auth fenci
 			avatar: { account_id: "acc_ben", hash: "0123456789abcdef" },
 		}),
 	});
-	assert.equal(await cache.read(r, 250), "initials-composite");
+	assert.equal(await cache.read(r, 250), BEN_INITIALS);
 	assert.equal(calls, 1);
-	assert.equal(await cache.read(r, 250), "initials-composite");
+	assert.equal(await cache.read(r, 250), BEN_INITIALS);
 	assert.equal(calls, 1, "positive hit does not refetch");
 	assert.equal(
 		await cache.read({ ...r, tenantId: "tnt_other" }, 250),
-		"initials-composite",
+		BEN_INITIALS,
 	);
 	assert.equal(calls, 2, "tenant is isolated");
 	assert.equal(
 		await cache.read({ ...r, owner: { ...r.owner, epoch: 2 } }, 250),
-		"initials-composite",
+		BEN_INITIALS,
 	);
 	assert.equal(calls, 3, "epoch is isolated");
 	// Pinned to the operator's 15 minutes in literal ms: a test that read the
 	// constant back would follow any change to it and prove nothing.
 	assert.equal(notifierModule.TEAM_BRIDGE_IMAGE_TTL_MS, 900_000);
 	now = 899_999;
-	assert.equal(await cache.read(r, 250), "initials-composite");
+	assert.equal(await cache.read(r, 250), BEN_INITIALS);
 	assert.equal(calls, 3, "inside the TTL is still a hit");
 	now = 900_000;
-	assert.equal(await cache.read(r, 250), "initials-composite");
+	assert.equal(await cache.read(r, 250), BEN_INITIALS);
 	assert.equal(calls, 4, "TTL expiry refetches");
 	for (let i = 0; i <= notifierModule.TEAM_BRIDGE_IMAGE_MAX_ENTRIES; i++) {
 		await cache.read(
@@ -1849,7 +1866,7 @@ test("photo cache hit/miss, TTL, LRU, tenant/epoch isolation and late auth fenci
 	);
 	assert.equal(
 		cache.peek({ ...r, sender: personSender({ account_id: "acc_64" }) }),
-		"initials-composite",
+		BEN_INITIALS,
 	);
 	let release;
 	const pending = imageCache({
@@ -1864,7 +1881,7 @@ test("photo cache hit/miss, TTL, LRU, tenant/epoch isolation and late auth fenci
 		kind: "bytes",
 		status: 200,
 		mimeType: "image/png",
-		data: compositePng(),
+		data: compositePng(BEN_INITIALS_TAG),
 	});
 	await late;
 	assert.equal(
@@ -1894,10 +1911,10 @@ test("single-flight shares one request and photo is requested at banner size", a
 		kind: "bytes",
 		status: 200,
 		mimeType: "image/png",
-		data: compositePng(),
+		data: compositePng(BEN_INITIALS_TAG),
 	});
-	assert.equal(await first, "initials-composite");
-	assert.equal(await second, "initials-composite");
+	assert.equal(await first, BEN_INITIALS);
+	assert.equal(await second, BEN_INITIALS);
 });
 
 test("directory refresh evicts missing members and changed hashes per tenant and warms", async () => {
@@ -1906,30 +1923,31 @@ test("directory refresh evicts missing members and changed hashes per tenant and
 	const sender = personSender({
 		avatar: { account_id: "acc_ben", hash: "0123456789abcdef" },
 	});
+	const changed = personSender({
+		avatar: { account_id: "acc_ben", hash: "fedcba9876543210" },
+	});
 	const one = request({ sender });
 	const other = request({ tenantId: "tnt_other", sender });
-	await cache.read(one, 250);
-	await cache.read(other, 250);
-	cache.syncDirectory({
-		owner,
-		tenantId: "tnt_1",
-		members: [
-			personSender({
-				avatar: { account_id: "acc_ben", hash: "fedcba9876543210" },
-			}),
-		],
-	});
+	const OLD_PHOTO = "composite:photo/person/acc_ben/0123456789abcdef";
+	const NEW_PHOTO = "composite:photo/person/acc_ben/fedcba9876543210";
+	assert.equal(await cache.read(one, 250), OLD_PHOTO);
+	assert.equal(await cache.read(other, 250), OLD_PHOTO);
+	cache.syncDirectory({ owner, tenantId: "tnt_1", members: [changed] });
 	await tick();
-	assert.equal(cache.peek(one), undefined, "changed hash evicts");
-	assert.equal(
-		cache.peek(other),
-		"initials-composite",
-		"other tenant survives",
-	);
-	await cache.read(one, 250);
+	await tick();
+	// The old version's photo is gone; a banner still carrying it falls back to
+	// the initials the same refresh warmed - never the revoked photo.
+	assert.equal(cache.peek(one), BEN_INITIALS, "changed hash evicts the photo");
+	assert.equal(cache.peek(request({ sender: changed })), NEW_PHOTO, "warmed");
+	assert.equal(cache.peek(other), OLD_PHOTO, "other tenant survives");
 	cache.syncDirectory({ owner, tenantId: "tnt_1", members: [] });
 	assert.equal(cache.peek(one), undefined, "missing member evicts");
-	assert.equal(cache.peek(other), "initials-composite");
+	assert.equal(
+		cache.peek(request({ sender: changed })),
+		undefined,
+		"missing member evicts photo and initials",
+	);
+	assert.equal(cache.peek(other), OLD_PHOTO);
 });
 
 test("every auth transition clears photo cache including settling and document reset", async () => {
@@ -1947,7 +1965,7 @@ test("every auth transition clears photo cache including settling and document r
 			const h = harness({ file, images: cache });
 			const r = request({ sender: personSender() });
 			await cache.read(r, 250);
-			assert.equal(cache.peek(r), "initials-composite");
+			assert.equal(cache.peek(r), BEN_INITIALS);
 			if (transition === "sign-in")
 				h.notifier.setAuthority({ accountId: "acct_a", epoch: 2 });
 			if (transition === "sign-out") h.notifier.setAuthority({ epoch: 1 });
@@ -1969,7 +1987,7 @@ test("every auth transition clears photo cache including settling and document r
 	}
 });
 
-test("the 250 ms deadline posts initials; a late composite is cached, never re-posted", async () => {
+test("the 250 ms deadline posts at once (app icon: no roster warm, so unknown sender); a late composite is cached, never re-posted", async () => {
 	const { dir, file } = tempFile();
 	try {
 		let release;
@@ -1993,13 +2011,13 @@ test("the 250 ms deadline posts initials; a late composite is cached, never re-p
 		assert.equal(
 			h.banners[0].options.icon,
 			"app-icon",
-			"initials at the deadline",
+			"no warmed initials exist for a sender no roster named",
 		);
 		release({
 			kind: "bytes",
 			status: 200,
 			mimeType: "image/png",
-			data: compositePng(),
+			data: compositePng(BEN_INITIALS_TAG),
 		});
 		await tick();
 		assert.equal(h.banners.length, 1, "a late composite never posts again");
@@ -2008,10 +2026,7 @@ test("the 250 ms deadline posts initials; a late composite is cached, never re-p
 			"app-icon",
 			"the shown banner is not replaced",
 		);
-		assert.equal(
-			cache.peek(request({ sender: personSender() })),
-			"initials-composite",
-		);
+		assert.equal(cache.peek(request({ sender: personSender() })), BEN_INITIALS);
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}
@@ -2031,7 +2046,7 @@ test("a second banner is not delayed by an in-flight first", async () => {
 							kind: "bytes",
 							status: 200,
 							mimeType: "image/png",
-							data: compositePng(),
+							data: compositePng(BEN_INITIALS_TAG),
 						}),
 		});
 		const clock = waitClock();
@@ -2057,12 +2072,12 @@ test("a second banner is not delayed by an in-flight first", async () => {
 		);
 		clock.fireAll();
 		await first;
-		assert.equal(h.banners[0].options.icon, "initials-composite");
+		assert.equal(h.banners[0].options.icon, BEN_INITIALS);
 		releaseFirst({
 			kind: "bytes",
 			status: 200,
 			mimeType: "image/png",
-			data: compositePng(),
+			data: compositePng(BEN_INITIALS_TAG),
 		});
 		await tick();
 	} finally {
@@ -2132,7 +2147,7 @@ test("approved no-store composite is retained in memory with its avatar hash", a
 				kind: "bytes",
 				status: 200,
 				mimeType: "image/png",
-				data: compositePng(),
+				data: compositePng(BEN_INITIALS_TAG),
 			};
 		},
 	});
@@ -2141,7 +2156,7 @@ test("approved no-store composite is retained in memory with its avatar hash", a
 			avatar: { account_id: "acc_ben", hash: "0123456789abcdef" },
 		}),
 	});
-	assert.equal(await cache.read(r, 250), "initials-composite");
+	assert.equal(await cache.read(r, 250), BEN_INITIALS);
 	assert.equal(calls.length, 1);
 	assert.deepEqual(calls[0].avatar, {
 		account_id: "acc_ben",
@@ -2160,7 +2175,7 @@ test("directory sync is fenced by the live authority and never crosses tenants",
 					kind: "bytes",
 					status: 200,
 					mimeType: "image/png",
-					data: compositePng(),
+					data: compositePng(BEN_INITIALS_TAG),
 				};
 			},
 		});
@@ -2193,12 +2208,12 @@ test("directory sync is fenced by the live authority and never crosses tenants",
 		const other = request({ owner, tenantId: "tnt_other", sender });
 		await cache.read(scoped, 250);
 		await cache.read(other, 250);
-		assert.equal(cache.peek(scoped), "initials-composite");
+		assert.equal(cache.peek(scoped), BEN_INITIALS);
 		h.notifier.syncDirectory({ tenantId: "tnt_1", members: [] });
 		assert.equal(cache.peek(scoped), undefined, "named tenant evicted");
 		assert.equal(
 			cache.peek(other),
-			"initials-composite",
+			BEN_INITIALS,
 			"another tenant's photo survives a per-tenant revocation",
 		);
 
@@ -2210,7 +2225,7 @@ test("directory sync is fenced by the live authority and never crosses tenants",
 			{ tenantId: "t", members: {} },
 		])
 			h.notifier.syncDirectory(bad);
-		assert.equal(cache.peek(other), "initials-composite");
+		assert.equal(cache.peek(other), BEN_INITIALS);
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}
@@ -2242,7 +2257,7 @@ test("a composite in flight for an identity the roster revoked is discarded, not
 		kind: "bytes",
 		status: 200,
 		mimeType: "image/png",
-		data: compositePng(),
+		data: compositePng(BEN_INITIALS_TAG),
 	});
 	await tick();
 	assert.equal(
@@ -2258,12 +2273,458 @@ test("a composite in flight for an identity the roster revoked is discarded, not
 		kind: "bytes",
 		status: 200,
 		mimeType: "image/png",
-		data: compositePng(),
+		data: compositePng(BEN_INITIALS_TAG),
 	});
 	await tick();
 	assert.equal(
 		cache.peek(request({ sender: newSender })),
-		"initials-composite",
+		BEN_INITIALS,
 		"the current version is cached",
 	);
+});
+
+/**
+ * A fake core for the round-1 remediation tests: records every request, answers
+ * with tagged bytes, and HANGS any request `hold` selects until released.
+ */
+function fakeCore(hold = () => false) {
+	const calls = [];
+	const held = [];
+	return {
+		calls,
+		held,
+		request(input) {
+			calls.push(input);
+			if (!hold(input)) return Promise.resolve(coreBytes(input));
+			return new Promise((done) => held.push({ input, done }));
+		},
+		releaseAll() {
+			for (const { input, done } of held.splice(0)) done(coreBytes(input));
+		},
+	};
+}
+const settle = async () => {
+	for (let i = 0; i < 6; i++) await tick();
+};
+const openBanners = (h) => h.banners.filter((b) => b.shown && !b.closed);
+const photoOf = (account, hash) => ({
+	account_id: account,
+	hash,
+});
+
+for (const [label, next] of [
+	["sign-out", { epoch: 2 }],
+	["account switch", { accountId: "acct_b", epoch: 2 }],
+	["same-epoch out-of-band switch", { accountId: "acct_b", epoch: 1 }],
+]) {
+	test(`M1 a ${label} during the image wait posts nothing`, async () => {
+		const { dir, file } = tempFile();
+		try {
+			const core = fakeCore(() => true);
+			const cache = imageCache({ request: core.request });
+			const clock = waitClock();
+			const h = harness({ file, images: cache, timers: clock });
+			const pending = h.notifier.notify(request({ sender: personSender() }));
+			assert.equal(core.calls.length, 1, "the wait is genuinely in flight");
+			h.notifier.setAuthority(next);
+			clock.fireAll();
+			assert.deepEqual(await pending, { shown: false });
+			assert.equal(h.banners.length, 0, "no preview reaches the screen");
+			assert.equal(
+				h.store.notifiedSeq("acct_a", "bcv_abc123"),
+				undefined,
+				"a banner never shown never consumes its seq",
+			);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+}
+
+test("M1 the window gaining focus during the wait suppresses the banner", async () => {
+	const { dir, file } = tempFile();
+	try {
+		let focused = false;
+		const window = { ...fakeWindow(), isFocused: () => focused };
+		const core = fakeCore(() => true);
+		const clock = waitClock();
+		const h = harness({
+			file,
+			window,
+			images: imageCache({ request: core.request }),
+			timers: clock,
+		});
+		const pending = h.notifier.notify(request({ sender: personSender() }));
+		focused = true;
+		clock.fireAll();
+		assert.deepEqual(await pending, { shown: false });
+		assert.equal(h.banners.length, 0);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+for (const seqs of [
+	[4, 5],
+	[5, 4],
+	[4, 4],
+]) {
+	test(`M1 two notifies (seq ${seqs.join(" then ")}) in one conversation during the wait leave exactly one tracked banner, closed by sign-out`, async () => {
+		const { dir, file } = tempFile();
+		try {
+			const core = fakeCore(() => true);
+			const clock = waitClock();
+			const h = harness({
+				file,
+				images: imageCache({ request: core.request }),
+				timers: clock,
+			});
+			const first = h.notifier.notify(
+				request({ seq: seqs[0], sender: personSender() }),
+			);
+			const second = h.notifier.notify(
+				request({ seq: seqs[1], sender: personSender() }),
+			);
+			assert.equal(core.calls.length, 1, "one shared flight");
+			clock.fireAll();
+			await Promise.all([first, second]);
+			assert.equal(openBanners(h).length, 1, "exactly one banner on screen");
+			if (seqs[0] === seqs[1])
+				assert.equal(h.banners.length, 1, "a duplicate seq raises nothing");
+			assert.equal(
+				h.store.notifiedSeq("acct_a", "bcv_abc123"),
+				Math.max(...seqs),
+			);
+			h.notifier.setAuthority({ epoch: 2 });
+			assert.equal(
+				openBanners(h).length,
+				0,
+				"sign-out closes every banner shown",
+			);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+}
+
+test("M2 a warmed person composite never answers an agent banner", async () => {
+	const core = fakeCore();
+	const cache = imageCache({ request: core.request });
+	const owner = { accountId: "acct_a", epoch: 1 };
+	const avatar = photoOf("acc_ben", "0123456789abcdef");
+	cache.syncDirectory({
+		owner,
+		tenantId: "tnt_1",
+		members: [personSender({ avatar })],
+	});
+	await settle();
+	const person = request({ sender: personSender({ avatar }) });
+	assert.equal(
+		await cache.read(person, 250),
+		"composite:photo/person/acc_ben/0123456789abcdef",
+	);
+	const before = core.calls.length;
+	const agent = request({
+		sender: personSender({ kind: "person_agent", agent_name: "Aida", avatar }),
+	});
+	assert.equal(
+		await cache.read(agent, 250),
+		"composite:photo/person_agent/acc_ben/0123456789abcdef",
+		"the agent banner carries core's agent-marker composite",
+	);
+	assert.deepEqual(
+		core.calls.slice(before).map((input) => input.kind),
+		["person_agent"],
+		"the agent variant is requested, not served from the person entry",
+	);
+});
+
+test("M2 a roster carrying a member's agent warms both variants", async () => {
+	const core = fakeCore();
+	const cache = imageCache({ request: core.request });
+	const avatar = photoOf("acc_ben", "0123456789abcdef");
+	cache.syncDirectory({
+		owner: { accountId: "acct_a", epoch: 1 },
+		tenantId: "tnt_1",
+		members: [
+			personSender({ avatar }),
+			personSender({ kind: "person_agent", agent_name: "Aida", avatar }),
+		],
+	});
+	await settle();
+	const before = core.calls.length;
+	assert.equal(
+		await cache.read(
+			request({
+				sender: personSender({
+					kind: "person_agent",
+					agent_name: "Aida",
+					avatar,
+				}),
+			}),
+			250,
+		),
+		"composite:photo/person_agent/acc_ben/0123456789abcdef",
+	);
+	assert.equal(
+		await cache.read(request({ sender: personSender({ avatar }) }), 250),
+		"composite:photo/person/acc_ben/0123456789abcdef",
+		"the person variant is its own entry, not overwritten by the agent's",
+	);
+	assert.equal(core.calls.length, before, "both served warm, no request");
+});
+
+test("Q-1 the deadline posts the warmed initials bytes; no request is made for them in the post path", async () => {
+	const { dir, file } = tempFile();
+	try {
+		// Initials render without the hub and answer; the photo hangs.
+		const core = fakeCore((input) => Boolean(input.avatar));
+		const cache = imageCache({ request: core.request });
+		const clock = waitClock();
+		const h = harness({ file, images: cache, timers: clock });
+		const sender = personSender({
+			avatar: photoOf("acc_ben", "0123456789abcdef"),
+		});
+		h.notifier.syncDirectory({ tenantId: "tnt_1", members: [sender] });
+		await settle();
+		core.releaseAll();
+		await settle();
+		cache.clear();
+		h.notifier.syncDirectory({ tenantId: "tnt_1", members: [sender] });
+		await settle();
+		// Only the initials warm has landed; the photo warm is held.
+		assert.equal(cache.peek(request({ sender })), BEN_INITIALS);
+		const before = core.calls.length;
+		const pending = h.notifier.notify(request({ sender }));
+		clock.fireAll();
+		assert.deepEqual(await pending, { shown: true });
+		assert.equal(
+			h.banners[0].options.icon,
+			BEN_INITIALS,
+			"the banner carries core's initials composite, not the app icon",
+		);
+		assert.deepEqual(
+			core.calls.slice(before),
+			[],
+			"the photo was already in flight (joined) and no initials request ran",
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("Q-1 renderer_busy and refusals fall back to the warmed initials immediately", async () => {
+	for (const refusal of [
+		{ kind: "error", status: 503, detail: "busy", code: "renderer_busy" },
+		{ kind: "error", status: 503, detail: "plane closed" },
+		{ kind: "error", status: 401, detail: "x", code: "not_signed_in" },
+		{ kind: "error", status: 409, detail: "x", code: "account_mismatch" },
+		{ kind: "error", status: 404, detail: "x" },
+		{ kind: "error", status: 502, detail: "x", code: "malformed_page" },
+	]) {
+		const cache = imageCache({
+			request: async (input) => (input.avatar ? refusal : coreBytes(input)),
+		});
+		const sender = personSender({
+			avatar: photoOf("acc_ben", "0123456789abcdef"),
+		});
+		cache.syncDirectory({
+			owner: { accountId: "acct_a", epoch: 1 },
+			tenantId: "tnt_1",
+			members: [sender],
+		});
+		await settle();
+		assert.equal(
+			await cache.read(request({ sender }), 250),
+			BEN_INITIALS,
+			`${refusal.status} ${refusal.code ?? "uncoded"}`,
+		);
+	}
+});
+
+test("Q-1 the app icon is used only for a sender this cache does not know", async () => {
+	const { dir, file } = tempFile();
+	try {
+		const core = fakeCore(() => true);
+		const clock = waitClock();
+		const h = harness({
+			file,
+			images: imageCache({ request: core.request }),
+			timers: clock,
+		});
+		// No sender descriptor at all (legacy payload / not in the directory).
+		await h.notifier.notify(request());
+		assert.equal(h.banners[0].options.icon, "app-icon");
+		assert.equal(core.calls.length, 0, "no sender, no request");
+		// A sender whose roster never reached main: nothing is warmed for them,
+		// so the deadline can only post the app icon.
+		const pending = h.notifier.notify(
+			request({
+				conversationId: "bcv_other",
+				sender: personSender({ account_id: "acc_zed" }),
+			}),
+		);
+		clock.fireAll();
+		await pending;
+		assert.equal(h.banners[1].options.icon, "app-icon");
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("Q-2 an identical roster re-sent warms nothing", async () => {
+	const core = fakeCore();
+	const cache = imageCache({ request: core.request });
+	const owner = { accountId: "acct_a", epoch: 1 };
+	const members = [
+		"acc_ben",
+		"acc_cara",
+		"acc_dan",
+		"acc_eve",
+		"acc_fay",
+		"acc_gus",
+	].map((account_id, i) =>
+		personSender({
+			account_id,
+			avatar: photoOf(account_id, `${i}123456789abcdef`),
+		}),
+	);
+	cache.syncDirectory({ owner, tenantId: "tnt_1", members });
+	await settle();
+	assert.equal(core.calls.length, 12, "initials + photo for each of six");
+	for (let i = 0; i < 4; i++) {
+		cache.syncDirectory({ owner, tenantId: "tnt_1", members });
+		await settle();
+	}
+	assert.equal(core.calls.length, 12, "no refetch of live entries");
+	// One member changes their photo: exactly one request.
+	cache.syncDirectory({
+		owner,
+		tenantId: "tnt_1",
+		members: [
+			{ ...members[0], avatar: photoOf("acc_ben", "fedcba9876543210") },
+			...members.slice(1),
+		],
+	});
+	await settle();
+	assert.deepEqual(
+		core.calls
+			.slice(12)
+			.map((input) => `${input.accountId}/${input.avatar?.hash}`),
+		["acc_ben/fedcba9876543210"],
+	);
+});
+
+test("Q-2 a large roster is warmed completely, in order, never more than two at once", async () => {
+	const core = fakeCore(() => true);
+	const cache = imageCache({ request: core.request });
+	const owner = { accountId: "acct_a", epoch: 1 };
+	const accounts = Array.from(
+		{ length: 10 },
+		(_, i) => `acc_m${String(i).padStart(2, "0")}`,
+	);
+	cache.syncDirectory({
+		owner,
+		tenantId: "tnt_1",
+		// Deliberately shuffled: warm order must not depend on roster order.
+		members: [...accounts]
+			.reverse()
+			.map((account_id) => personSender({ account_id })),
+	});
+	let peak = 0;
+	while (core.held.length > 0) {
+		peak = Math.max(peak, core.held.length);
+		core.releaseAll();
+		await settle();
+	}
+	assert.deepEqual(
+		core.calls.map((input) => input.accountId),
+		accounts,
+		"all ten warmed, deterministically by account id",
+	);
+	assert.equal(peak, 2, "never more than one request per core render slot");
+});
+
+test("Q-2 a banner for an uncached sender starts its own fetch while warming is saturated", async () => {
+	const { dir, file } = tempFile();
+	try {
+		const core = fakeCore((input) => input.accountId !== "acc_zed");
+		const cache = imageCache({ request: core.request });
+		const clock = waitClock();
+		const h = harness({ file, images: cache, timers: clock });
+		h.notifier.syncDirectory({
+			tenantId: "tnt_1",
+			members: ["acc_ben", "acc_cara", "acc_dan", "acc_eve"].map((account_id) =>
+				personSender({ account_id }),
+			),
+		});
+		const zed = personSender({
+			account_id: "acc_zed",
+			display_name: "Zed Ode",
+		});
+		const shown = await h.notifier.notify(
+			request({ conversationId: "bcv_zed", sender: zed }),
+		);
+		assert.deepEqual(shown, { shown: true });
+		assert.deepEqual(
+			core.calls.filter((input) => input.accountId === "acc_zed").length,
+			1,
+			"the banner's miss was fetched, not starved by warming",
+		);
+		assert.equal(core.held.length, 2, "warming stayed saturated meanwhile");
+		assert.equal(
+			h.banners[0].options.icon,
+			"composite:initials/person/acc_zed/ZO",
+		);
+		core.releaseAll();
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("m1 the banner lane holds at most four requests and theme separates entries", async () => {
+	const core = fakeCore(() => true);
+	const cache = imageCache({ request: core.request });
+	for (let i = 0; i < 6; i++)
+		void cache.read(
+			request({ sender: personSender({ account_id: `acc_b${i}` }) }),
+			250,
+		);
+	assert.equal(core.calls.length, 4);
+	assert.equal(notifierModule.TEAM_BRIDGE_IMAGE_POST_CONCURRENCY, 4);
+	core.releaseAll();
+	await settle();
+
+	let theme = "light";
+	const themed = fakeCore();
+	const both = imageCache({ request: themed.request, theme: () => theme });
+	const r = request({ sender: personSender() });
+	await both.read(r, 250);
+	theme = "dark";
+	await both.read(r, 250);
+	assert.deepEqual(
+		themed.calls.map((input) => input.theme),
+		["light", "dark"],
+		"a light composite never answers a dark banner",
+	);
+});
+
+test("m5 a roster sent while a known account is settling is refused", async () => {
+	const { dir, file } = tempFile();
+	try {
+		const core = fakeCore();
+		const cache = imageCache({ request: core.request });
+		const h = harness({ file, images: cache });
+		h.notifier.setAuthority({ accountId: "acct_a", epoch: 1, settling: true });
+		h.notifier.syncDirectory({ tenantId: "tnt_1", members: [personSender()] });
+		await settle();
+		assert.equal(core.calls.length, 0);
+		// n1: a tenant id outside the notify id vocabulary is refused at the edge.
+		h.notifier.setAuthority({ accountId: "acct_a", epoch: 2 });
+		h.notifier.syncDirectory({ tenantId: "../x", members: [personSender()] });
+		await settle();
+		assert.equal(core.calls.length, 0);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
 });
