@@ -43,14 +43,21 @@ const LABELS = {
 	"ui.hub.links.incoming_needs_review":
 		"The hub and your copy both changed this item. Choose which side to keep, then pull again.",
 	"ui.hub.links.incoming_unknown_baseline":
-		"No baseline was recorded for this copy, so every field counts as changed. Tick the acknowledgement, then pull again.",
+		"No baseline was recorded for this copy, so every field counts as changed. Tick the acknowledgement.",
 	"ui.hub.status.other_error": "Something else went wrong.",
 	"ui.hub.status.transport_error": "Could not reach the hub.",
 	"ui.hub.links.incoming_failed": "The preview could not finish ({outcome}).",
 	"ui.hub.links.name_ambiguous": "Another item has the same name.",
 	"ui.hub.links.preview_recomputed":
 		"Core recomputes this merge when you apply",
-	"ui.hub.links.incoming_outcome": "Preview for {item}: {outcome}",
+	"ui.hub.links.outcome_would_merge": "would merge",
+	"ui.hub.links.outcome_needs_review": "needs review",
+	"ui.hub.links.outcome_up_to_date": "up to date",
+	"ui.hub.links.outcome_unchanged": "unchanged",
+	"ui.hub.links.outcome_failed": "failed",
+	"ui.hub.links.outcome_skipped": "skipped",
+	"ui.hub.links.outcome_unavailable": "unavailable",
+	"ui.hub.links.incoming_outcome": "Preview for {item}: {outcome}.",
 	"ui.hub.links.incoming_nothing": "Nothing to pull: this item is {outcome}.",
 	"ui.hub.subscriptions.pull": "Pull now",
 	"ui.hub.subscriptions.check": "Check now",

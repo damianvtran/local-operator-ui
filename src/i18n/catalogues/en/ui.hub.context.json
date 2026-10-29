@@ -9,11 +9,6 @@
 		"tone": "plain, precise; safety statements must not weaken or promise success",
 		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
 	},
-	"ui.hub.links.empty": {
-		"role": "status",
-		"tone": "plain, precise; safety statements must not weaken or promise success",
-		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
-	},
 	"ui.hub.links.load_failed": {
 		"role": "status",
 		"tone": "plain, precise; safety statements must not weaken or promise success",
@@ -292,12 +287,12 @@
 	"ui.hub.links.check_failed": {
 		"role": "status",
 		"tone": "plain, precise; a check changes nothing, so this sentence must not imply an incoming update was attempted",
-		"note": "The sentence for a CHECK that did not finish (QA round 3 on #1458, Q13). A check asks the hub what changed and applies nothing, so it is neither the incoming nor the outgoing direction: it must not borrow action_failed's {direction}. Placeholders {item} and {source} are the escaped display label and the verified hub source address; there is deliberately no {direction}. Keep the second sentence: the row's own status is where the reason appears."
+		"note": "The sentence for a CHECK that did not finish (QA round 3 on #1458, Q13). A check asks the hub what changed and applies nothing, so it is neither the incoming nor the outgoing direction: it must not borrow action_failed's {direction}. Placeholders {item} and {source} are the escaped display label and the verified hub source address; there is deliberately no {direction}. ONE CLAUSE ONLY (design D3): the row's own status, its reason line and the Retry control already say the rest, and a second sentence telling the reader to try again contradicted a scheduled retry standing next to it. Do not add a next-step instruction back."
 	},
 	"ui.hub.links.action_failed": {
 		"role": "status",
 		"tone": "plain, precise; safety statements must not weaken or promise success",
-		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
+		"note": "The sentence for a pull or push that did not finish, by the direction that failed. Placeholders: {direction} is the translated direction label, {item} and {source} are the escaped display label and the verified hub source address. ONE CLAUSE ONLY (design D3), for the same reason as check_failed: the row's status, its reason and the Retry control carry the next step, so this value must not repeat an instruction that can contradict a scheduled retry."
 	},
 	"ui.hub.links.preview_warnings": {
 		"role": "heading",
@@ -904,15 +899,50 @@
 		"tone": "plain, precise; advisory only - it must not promise the merge it shows",
 		"note": "The incoming preview's honesty line. Core recomputes the merge at apply time (the apply route re-checks the item), so the dialog shows an advisory preview, not a receipt. Do not weaken this into a promise of the previewed result."
 	},
+	"ui.hub.links.outcome_would_merge": {
+		"role": "state word",
+		"tone": "plain, lowercase state word; no sentence punctuation",
+		"note": "The state WORD for a dry run that WOULD write on Pull, interpolated into incoming_outcome/incoming_nothing (design D1: the raw enum token was unreadable and ran into the next sentence). No placeholders. Keep it short enough to sit after a colon, and keep the wording consistent with the mark_* state word for the same state."
+	},
+	"ui.hub.links.outcome_needs_review": {
+		"role": "state word",
+		"tone": "plain, lowercase state word; no sentence punctuation",
+		"note": "The state WORD for a dry run that needs a decision before anything is written (a field conflict, or an unacknowledged unknown baseline), interpolated into incoming_outcome/incoming_nothing (design D1: the raw enum token was unreadable and ran into the next sentence). No placeholders. Keep it short enough to sit after a colon, and keep the wording consistent with the mark_* state word for the same state."
+	},
+	"ui.hub.links.outcome_up_to_date": {
+		"role": "state word",
+		"tone": "plain, lowercase state word; no sentence punctuation",
+		"note": "The state WORD for a dry run with nothing to merge, interpolated into incoming_outcome/incoming_nothing (design D1: the raw enum token was unreadable and ran into the next sentence). No placeholders. Keep it short enough to sit after a colon, and keep the wording consistent with the mark_* state word for the same state."
+	},
+	"ui.hub.links.outcome_unchanged": {
+		"role": "state word",
+		"tone": "plain, lowercase state word; no sentence punctuation",
+		"note": "The state WORD for a dry run with nothing to merge (core's alternate no-op class), interpolated into incoming_outcome/incoming_nothing (design D1: the raw enum token was unreadable and ran into the next sentence). No placeholders. Keep it short enough to sit after a colon, and keep the wording consistent with the mark_* state word for the same state."
+	},
+	"ui.hub.links.outcome_failed": {
+		"role": "state word",
+		"tone": "plain, lowercase state word; no sentence punctuation",
+		"note": "The state WORD for a report row that did not settle, interpolated into incoming_outcome/incoming_nothing (design D1: the raw enum token was unreadable and ran into the next sentence). No placeholders. Keep it short enough to sit after a colon, and keep the wording consistent with the mark_* state word for the same state."
+	},
+	"ui.hub.links.outcome_skipped": {
+		"role": "state word",
+		"tone": "plain, lowercase state word; no sentence punctuation",
+		"note": "The state WORD for a report row core chose not to attempt, interpolated into incoming_outcome/incoming_nothing (design D1: the raw enum token was unreadable and ran into the next sentence). No placeholders. Keep it short enough to sit after a colon, and keep the wording consistent with the mark_* state word for the same state."
+	},
+	"ui.hub.links.outcome_unavailable": {
+		"role": "state word",
+		"tone": "plain, lowercase state word; no sentence punctuation",
+		"note": "The state WORD for a report row whose item could not be reached, interpolated into incoming_outcome/incoming_nothing (design D1: the raw enum token was unreadable and ran into the next sentence). No placeholders. Keep it short enough to sit after a colon, and keep the wording consistent with the mark_* state word for the same state."
+	},
 	"ui.hub.links.incoming_outcome": {
 		"role": "status",
-		"tone": "plain; {outcome} is core's stable vocabulary shown verbatim",
-		"note": "One dry-run report row in the incoming preview (one item): {item} is the escaped display label, {outcome} is core's ItemOutcome word (would-merge, up-to-date, unavailable...) and is not translated."
+		"tone": "plain; {outcome} is a state word, not core's enum",
+		"note": "One dry-run report row in the incoming preview (one item): {item} is the escaped display label and {outcome} is the TRANSLATED state word for core's ItemOutcome (would merge / needs review / up to date / unchanged / failed / skipped / unavailable - see the outcome_* keys). The value ends with a full stop because the row is a sentence, and core's own message is rendered as a separate muted line beneath it (design D1); do not fold the message back into this value."
 	},
 	"ui.hub.links.incoming_nothing": {
 		"role": "status",
 		"tone": "plain; states a no-op, never an error",
-		"note": "Shown inline instead of opening the preview dialog when the dry run says nothing would change. {outcome} is core's stable vocabulary word, not translated."
+		"note": "Shown inline instead of opening the preview dialog when the dry run says nothing would change. {outcome} is the TRANSLATED state word (see the outcome_* keys), not core's enum; in practice only the no-op classes reach this sentence, so it must read as a state (\"this item is up to date\")."
 	},
 	"ui.hub.links.name_ambiguous": {
 		"role": "status",
@@ -927,7 +957,7 @@
 	"ui.hub.links.incoming_unknown_baseline": {
 		"role": "status",
 		"tone": "plain; explains an unknown baseline without naming a CLI flag",
-		"note": "Replaces core's unknown-baseline message, which names the CLI option --accept-unknown-baseline (merge.py) and means nothing in the desktop window. The control it describes is the dialogue's acknowledgement checkbox."
+		"note": "Replaces core's unknown-baseline message, which names the CLI option --accept-unknown-baseline (merge.py) and means nothing in the desktop window. The control it describes is the dialogue's acknowledgement checkbox. It names the tick ONLY: the sequence (choose a side, then pull) is stated once, in incoming_needs_review (design D5)."
 	},
 	"ui.hub.links.incoming_failed": {
 		"role": "status",

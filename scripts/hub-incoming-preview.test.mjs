@@ -39,7 +39,14 @@ const LABELS = {
 	"ui.hub.links.preview_pull": "Preview incoming changes",
 	"ui.hub.links.preview_recomputed":
 		"Core recomputes this merge when you apply",
-	"ui.hub.links.incoming_outcome": "Preview for {item}: {outcome}",
+	"ui.hub.links.outcome_would_merge": "would merge",
+	"ui.hub.links.outcome_needs_review": "needs review",
+	"ui.hub.links.outcome_up_to_date": "up to date",
+	"ui.hub.links.outcome_unchanged": "unchanged",
+	"ui.hub.links.outcome_failed": "failed",
+	"ui.hub.links.outcome_skipped": "skipped",
+	"ui.hub.links.outcome_unavailable": "unavailable",
+	"ui.hub.links.incoming_outcome": "Preview for {item}: {outcome}.",
 	"ui.hub.links.incoming_nothing": "Nothing to pull: this item is {outcome}.",
 	"ui.hub.subscriptions.pull": "Pull now",
 	"ui.hub.subscriptions.check": "Check now",
@@ -426,7 +433,9 @@ test("the dialog opens from core's dry-run reports and Pull sends the real apply
 	/* 2. The dialog opens, and it shows THIS row's report only. */
 	assert.ok(document.querySelector('[data-dialog="open"]'), "the dialog opens");
 	const text = document.body.textContent;
-	assert.match(text, /Preview for Coder: would-merge/);
+	/* Design D1: the state word, and a sentence that ends - the raw enum token
+	 * ran straight into the report's own message before this. */
+	assert.match(text, /Preview for Coder: would merge\./);
 	assert.match(text, /Core recomputes this merge/);
 	assert.doesNotMatch(
 		text,
@@ -487,9 +496,10 @@ test("a dry run with nothing to merge is stated inline, with no dialog", async (
 	await actAsync(() => preview.click());
 	await settle();
 	assert.equal(document.querySelector('[data-dialog="open"]'), null);
+	/* Design D1: the state is a translated word, not core's enum token. */
 	assert.match(
 		document.body.textContent,
-		/Nothing to pull: this item is up-to-date\./,
+		/Nothing to pull: this item is up to date\./,
 	);
 });
 

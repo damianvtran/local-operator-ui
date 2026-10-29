@@ -42,6 +42,7 @@ import { hubLinkView } from "../hub-link-adapter";
 import {
 	hubActionFailureText,
 	hubDirectionStateText,
+	hubOutcomeText,
 	hubReasonText,
 } from "../hub-link-copy";
 import { hubPreviewIsCurrent, hubPreviewMatches } from "../hub-preview-binding";
@@ -113,6 +114,22 @@ export function HubLinkGroup({
 	const safeActionRef = useRef<HTMLButtonElement>(null);
 	const ackId = useId();
 	const busy = actions.isPending || isBusy(link);
+	/*
+	 * Design D2 / QA Q2: the row greyed all three controls and said nothing, so a
+	 * running CHECK was indistinguishable from a row that had stopped accepting
+	 * input - and grey is this app's word for UNAVAILABLE (measured 14.03:1 ->
+	 * 2.37:1 label in dark), never for "working". A pending press therefore names
+	 * itself: this derives which control is running, for the sentence below and
+	 * for `aria-busy` on the control itself.
+	 *
+	 * It hangs off the PRESS, not off `link.pull.state`: core's check answers
+	 * `{reports, status}` and writes no `checking` row state, so
+	 * `hubDirectionStateText`'s "Checking for changes..." can never be reached by
+	 * this button.
+	 */
+	const pendingAction = actions.isPending
+		? actions.variables?.action
+		: undefined;
 	// Known-ness is the provenance literal; only `adopt-unknown` is unknown.
 	const unknownBaseline = !baselineIsKnown(link.baseline_state);
 	/*
@@ -252,9 +269,11 @@ export function HubLinkGroup({
 					return (
 						<div
 							key={direction}
-							/* UX U10/design D21: one explicit column gap normalises
-							 * the spacing, so a control (Retry) is not stranded ~4px
-							 * under its own "Next retry:" line at a narrow width. */
+							/* UX U10/design D21: one explicit column gap normalises the
+							 * spacing, so the state sentence and the reason keep their own
+							 * rank rather than hugging whatever control follows them (design
+							 * D4 puts Retry directly after the reason, at a narrow width
+							 * included). */
 							className="flex min-w-0 flex-col items-start gap-1"
 							data-hub-direction={direction}
 						>
@@ -284,6 +303,26 @@ export function HubLinkGroup({
 									{hubReasonText(status.error_class)}
 								</p>
 							)}
+							{/*
+							 * Design D4: Retry belongs to the failure it retries, so it sits
+							 * directly under the state and its reason - not below the last-checked,
+							 * last-success and next-retry metadata, where it read as a fourth
+							 * button of the three-control group 16px below it rather than as that
+							 * failure's own control.
+							 */}
+							{view[direction].retryable &&
+								(direction === "pull" || link.policy.auto_push) && (
+									<Button
+										variant="outline"
+										size="sm"
+										disabled={busy || !actions.canWrite}
+										onClick={() =>
+											run({ action: "retry", linkId: link.link_id, direction })
+										}
+									>
+										{t("ui.hub.links.retry")}
+									</Button>
+								)}
 							{status.last_checked_at && (
 								<p className="text-meta text-ink-muted">
 									{t("ui.hub.status.last_checked", {
@@ -317,19 +356,6 @@ export function HubLinkGroup({
 									})}
 								</p>
 							)}
-							{view[direction].retryable &&
-								(direction === "pull" || link.policy.auto_push) && (
-									<Button
-										variant="outline"
-										size="sm"
-										disabled={busy || !actions.canWrite}
-										onClick={() =>
-											run({ action: "retry", linkId: link.link_id, direction })
-										}
-									>
-										{t("ui.hub.links.retry")}
-									</Button>
-								)}
 						</div>
 					);
 				})}
@@ -338,6 +364,9 @@ export function HubLinkGroup({
 				<Button
 					variant="outline"
 					size="sm"
+					/* Design D2: the PRESSED control says so, for assistive tech as well as
+					 * sight; the row's sentence below carries the same fact in words. */
+					aria-busy={pendingAction === "check"}
 					disabled={busy || !actions.canWrite}
 					onClick={() => run({ action: "check", linkId: link.link_id })}
 				>
@@ -357,6 +386,7 @@ export function HubLinkGroup({
 						!actions.canWrite ||
 						(link.kind === "skill" && hubLinkContentState(link) === "absent")
 					}
+					aria-busy={pendingAction === "apply"}
 					onClick={() =>
 						run({ action: "apply", linkId: link.link_id, preview: true })
 					}
@@ -377,6 +407,15 @@ export function HubLinkGroup({
 				>
 					{t("ui.hub.subscriptions.preview_publish")}
 				</Button>
+				{/*
+				 * Design D2 / QA Q2: the sentence a pressed control needs. It names what
+				 * IS happening, where the greyed trio named only what is not.
+				 */}
+				{pendingAction === "check" && (
+					<output className="self-center text-meta text-ink-muted">
+						{t("ui.hub.status.checking")}
+					</output>
+				)}
 			</div>
 			{previewChanged && (
 				<p role="alert" className="text-body-sm text-warning">
@@ -399,26 +438,35 @@ export function HubLinkGroup({
 							})}
 				</p>
 			)}
-			{actions.data?.reports
-				.filter(isDirectionalReport)
-				.filter((report) => report.link_id === link.link_id)
-				.map((report, index) => (
-					<output
-						key={`${report.operation_id ?? report.direction}-${index}`}
-						className="text-meta text-ink-muted"
-					>
-						{t("ui.hub.links.action_result", {
-							direction: directionLabel(report.direction),
-							item: link.name,
-							source,
-							outcome: report.outcome,
-						})}
-					</output>
-				))}
+			{/*
+			 * Design D8: a RETRY result restated the row below it. The post-mutation
+			 * refetch has already written the new state sentence under these same
+			 * controls, so the second line was one outcome told twice. A CHECK or a PULL
+			 * keeps its line: its answer is not a state this row can render on its own.
+			 */}
+			{actions.variables?.action !== "retry" &&
+				actions.data?.reports
+					.filter(isDirectionalReport)
+					.filter((report) => report.link_id === link.link_id)
+					.map((report, index) => (
+						<output
+							key={`${report.operation_id ?? report.direction}-${index}`}
+							className="text-meta text-ink-muted"
+						>
+							{t("ui.hub.links.action_result", {
+								direction: directionLabel(report.direction),
+								item: link.name,
+								source,
+								outcome: report.outcome,
+							})}
+						</output>
+					))}
 			{incomingReports && !incomingActionable && !incomingFailure && (
 				<output className="text-meta text-ink-muted">
 					{t("ui.hub.links.incoming_nothing", {
-						outcome: incomingReports[0]?.outcome ?? "up-to-date",
+						outcome: hubOutcomeText(
+							incomingReports[0]?.outcome ?? "up-to-date",
+						),
 					})}
 				</output>
 			)}
@@ -485,12 +533,16 @@ export function HubLinkGroup({
 								{incomingReports.map((report, index) => (
 									<li
 										key={`${report.local_id}-${index}`}
-										className="text-body-sm text-ink"
+										/* Design D1: the conclusion and its explanation rank separately - see
+										 * the two lines below. */
+										className="flex flex-col gap-0.5"
 									>
-										{t("ui.hub.links.incoming_outcome", {
-											item: displayName?.trim() || link.name,
-											outcome: report.outcome,
-										})}
+										<p className="text-body-sm text-ink">
+											{t("ui.hub.links.incoming_outcome", {
+												item: displayName?.trim() || link.name,
+												outcome: hubOutcomeText(report.outcome),
+											})}
+										</p>
 										{/*
 										 * Core's unknown-baseline refusal names the CLI flag
 										 * (`--accept-unknown-baseline`, `merge.py`), which means
@@ -503,11 +555,14 @@ export function HubLinkGroup({
 										 * both directions). Before the tick, the checkbox sentence;
 										 * after it, core's own words.
 										 */}
-										{unknownBaseline && !acknowledgedBaseline
-											? t("ui.hub.links.incoming_unknown_baseline")
-											: report.message
-												? report.message
-												: null}
+										{(unknownBaseline && !acknowledgedBaseline) ||
+										report.message ? (
+											<p className="text-meta text-ink-muted">
+												{unknownBaseline && !acknowledgedBaseline
+													? t("ui.hub.links.incoming_unknown_baseline")
+													: report.message}
+											</p>
+										) : null}
 									</li>
 								))}
 							</ul>
@@ -582,7 +637,11 @@ export function HubLinkGroup({
 					<DialogFooter>
 						<Button
 							ref={safeActionRef}
-							variant="outline"
+							/* Design D6: a dismiss is not one of the choices. `outline`'s fill step
+							 * from the accent fill is 1.08:1 (dark) / 1.07:1 (light), which made Cancel
+							 * read as a sibling of "Pull now"; `ghost` has neither fill nor edge at
+							 * rest (button.tsx), so the dismiss recedes without spending the accent. */
+							variant="ghost"
 							disabled={actions.isPending}
 							onClick={close}
 						>
