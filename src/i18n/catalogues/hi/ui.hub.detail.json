@@ -4,7 +4,7 @@
 	"ui.hub.detail.created_by": "बनाने वाले: {author}",
 	"ui.hub.detail.created_by_with_email": "बनाने वाले: {author} ({email})",
 	"ui.hub.detail.delist_aria": "एजेंट को सूची से हटाएँ",
-	"ui.hub.detail.delist_body": "इससे “{name}” तुरंत हब से हटा दिया जाएगा",
+	"ui.hub.detail.delist_body": "इससे “{name}” तुरंत हब से हटा दिया जाएगा और इसे कोई भी डाउनलोड नहीं कर सकेगा। आप इसे बाद में फिर से अपलोड कर सकते हैं।",
 	"ui.hub.detail.delist_confirm": "सूची से हटाएँ",
 	"ui.hub.detail.delist_title": "इस एजेंट को सूची से हटाएँ?",
 	"ui.hub.detail.delist_tooltip": "इस एजेंट को Agent Hub की सूची से स्थायी रूप से हटाएँ",

@@ -7,7 +7,7 @@
 	"ui.hub.detail.delist_body": "Агент «{name}» сразу исчезнет из хаба, и никто не сможет его скачать. Позже его можно будет опубликовать снова.",
 	"ui.hub.detail.delist_confirm": "Убрать из хаба",
 	"ui.hub.detail.delist_title": "Убрать этого агента из хаба?",
-	"ui.hub.detail.delist_tooltip": "Убрать этого агента из Agent Hub без сохранения публикации",
+	"ui.hub.detail.delist_tooltip": "Навсегда убрать этого агента из Agent Hub",
 	"ui.hub.detail.delisting": "Удаление агента из хаба",
 	"ui.hub.detail.download_aria": "Скачать агента",
 	"ui.hub.detail.download_tooltip": "Скачать агента на компьютер",

@@ -1,7 +1,7 @@
 {
 	"ui.chat.radient_session.action.sign_in": "Radient में साइन इन करें",
-	"ui.chat.radient_session.pointer.sign_in_active": "इसे Settings में Providers के नीचे जाकर हटाया जा सकता है।",
-	"ui.chat.radient_session.prose.input_required": "{message} इस सरफ़ेस पर कोड पेस्ट नहीं किया जा सकता, इसलिए Settings में Providers के नीचे जाकर साइन-इन पूरा करें।",
+	"ui.chat.radient_session.pointer.sign_in_active": "सेटिंग्स के मॉडल प्रोवाइडर सेक्शन से इसे हटाया जा सकता है।",
+	"ui.chat.radient_session.prose.input_required": "{message} इस सरफ़ेस पर कोड पेस्ट नहीं किया जा सकता, इसलिए साइन-इन सेटिंग्स के मॉडल प्रोवाइडर सेक्शन में जाकर पूरा करें।",
 	"ui.chat.radient_session.prose.needs_sign_in": "इस मशीन पर सहेजे गए साइन-इन को Radient अब स्वीकार नहीं करता। दोबारा साइन इन करने से Radient मॉडल वापस उपलब्ध हो जाएँगे और सहमति के लिए आपका ब्राउज़र खुलेगा।",
 	"ui.chat.radient_session.prose.signing_in": "अपने ब्राउज़र में साइन-इन पूरा करें। साइन-इन पूरा होते ही कनेक्टर अपने-आप फिर से शुरू हो जाएगा; अधूरी कोशिश कुछ मिनट बाद ख़त्म हो जाएगी।",
 	"ui.chat.radient_session.title.input_required": "Radient साइन-इन के लिए पेस्ट किया गया कोड चाहिए",

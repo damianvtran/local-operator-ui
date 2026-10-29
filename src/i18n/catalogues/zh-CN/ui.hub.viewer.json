@@ -1,6 +1,6 @@
 {
 	"ui.hub.viewer.favourite": "收藏智能体",
-	"ui.hub.viewer.favourite_signed_out": "登录Radient以收藏智能体",
+	"ui.hub.viewer.favourite_signed_out": "登录Radient即可收藏智能体",
 	"ui.hub.viewer.favourite_unavailable": "收藏状态不可用",
 	"ui.hub.viewer.favourite_unknown": "无法读取你的收藏，因此不会将其显示为未收藏。",
 	"ui.hub.viewer.like": "点赞智能体",

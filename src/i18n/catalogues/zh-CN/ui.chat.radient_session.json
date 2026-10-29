@@ -1,7 +1,7 @@
 {
 	"ui.chat.radient_session.action.sign_in": "登录Radient",
-	"ui.chat.radient_session.pointer.sign_in_active": "可在Settings的Providers下清除。",
-	"ui.chat.radient_session.prose.input_required": "{message} 此界面无法接收粘贴的代码，请在Settings的Providers下完成登录。",
+	"ui.chat.radient_session.pointer.sign_in_active": "可在“设置”中的“模型提供商”下清除。",
+	"ui.chat.radient_session.prose.input_required": "{message} 此界面无法接收粘贴的代码，请在“设置”中的“模型提供商”下完成登录。",
 	"ui.chat.radient_session.prose.needs_sign_in": "本机保存的Radient登录已失效。重新登录即可恢复Radient模型的使用，并打开浏览器完成授权。",
 	"ui.chat.radient_session.prose.signing_in": "请在浏览器中完成登录。登录完成后，连接器会自动重启；未完成的尝试将在几分钟后结束。",
 	"ui.chat.radient_session.title.input_required": "登录Radient需要粘贴代码",
