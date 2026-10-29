@@ -70,7 +70,42 @@ export function forgetBridgeComposerRows(
 }
 
 /**
+ * Keep only `accountId`'s rows; drop the rest. `null` drops every bridge row.
+ *
+ * THE AUTHORITATIVE PRUNE (review round 2, R2-1), and the reason it is keyed by
+ * account rather than by a revocation EVENT: a status answer names the account that
+ * is signed in, and that name is the only account fact that survives a restart. The
+ * revocation path below cannot carry this guarantee on its own - its trigger is
+ * computed from an in-memory epoch map, which is EMPTY in a fresh process, so a quit
+ * or crash as account A followed by a relaunch as account B notified nobody and left
+ * A's unsent words in `localStorage` with nothing to prune them. Reading the account
+ * out of the KEY is what makes the guarantee hold on the first status read of a new
+ * process, whether or not any epoch was in memory to revoke.
+ *
+ * It mirrors the journal's own rule one file over: `reconcileDraftAccount` prunes
+ * every stored draft scope that is not the signed-in account's, and the composer's
+ * rows are pruned beside them in the same pass.
+ */
+export function pruneBridgeComposerRows(accountId: string | null): void {
+	const store = useConversationInputStore.getState();
+	const keep =
+		accountId === null ? null : `${TEAM_BRIDGE_COMPOSER_PREFIX}${accountId}:`;
+	for (const key of Object.keys(store.inputByConversation)) {
+		if (!key.startsWith(TEAM_BRIDGE_COMPOSER_PREFIX)) continue;
+		if (keep !== null && key.startsWith(keep)) continue;
+		store.clearComposer(key);
+	}
+}
+
+/**
  * The revocation arm: every bridge row goes.
+ *
+ * THIS IS THE SECONDARY PATH, NOT THE GUARANTEE (review round 2, R2-1).
+ * `reconcileDraftAccount` prunes by account SEGMENT on every status read, which is
+ * what holds across a restart; this listener covers the paths that erase an account
+ * WITHOUT a status read (an in-app account switch or sign-out that calls
+ * `eraseAccountDrafts` directly). It cannot be the only trigger: its event is
+ * derived from an in-memory epoch map, which a fresh process has not filled.
  *
  * WHY EVERY ROW AND NOT ONE ACCOUNT'S. Revocation listeners are deliberately told
  * nothing - no account id leaves `team-bridge-draft-account.ts` - and the event

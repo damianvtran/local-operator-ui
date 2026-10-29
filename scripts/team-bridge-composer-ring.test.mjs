@@ -45,18 +45,37 @@ const LITERAL_DIV_OPEN = /<div\s+className="([^"]*)"/g;
 const OPEN_DIV = /<div\b/g;
 const CLOSE_DIV = /<\/div>/g;
 
-const topPaddingPx = (className) => {
-	const values = [...className.matchAll(TOP_PADDING)].map(
-		(match) => Number(match[1]) * 4,
+/**
+ * The px value of the FIRST top-padding utility - and a refusal to answer when the
+ * class string carries more than one DISTINCT value.
+ *
+ * WHY A CONFLICT IS AN ERROR RATHER THAN "LAST WINS" (review round 2, R2-2). Taking
+ * the first match made `pt-4 pt-0` read 16px and pass the ring-room assertion, which
+ * is the fail-open shape: the box would have no room while the test said it did. A
+ * conflict cannot be resolved honestly from source without reproducing Tailwind's
+ * ordering rules, so the reader refuses instead - and the band assertion then fails
+ * on a band nobody can measure.
+ */
+const CONFLICTING_PADDING = /conflicting padding utilities/;
+const measure = (values, className) => {
+	const distinct = [...new Set(values)];
+	assert.ok(distinct.length <= 1, `${CONFLICTING_PADDING} in (${className})`);
+	return distinct[0] ?? 0;
+};
+const topPaddingPx = (className) =>
+	measure(
+		[...className.matchAll(TOP_PADDING)].map((match) => Number(match[1]) * 4),
+		className,
 	);
-	return values[0] ?? 0;
-};
 
-const BOTTOM_PADDING = /(?:^|\s)(?:pb|py|p)-(\d+(?:\.5)?)(?=\s|$)/;
-const bottomPaddingPx = (className) => {
-	const match = BOTTOM_PADDING.exec(className);
-	return match ? Number(match[1]) * 4 : 0;
-};
+const BOTTOM_PADDING = /(?:^|\s)(?:pb|py|p)-(\d+(?:\.5)?)(?=\s|$)/g;
+const bottomPaddingPx = (className) =>
+	measure(
+		[...className.matchAll(BOTTOM_PADDING)].map(
+			(match) => Number(match[1]) * 4,
+		),
+		className,
+	);
 
 /**
  * Every literal `<div className="…">` still OPEN at `index`, i.e. the ones that
@@ -173,6 +192,18 @@ test("the padding readers measure what the utilities say", () => {
 	assert.equal(bottomPaddingPx("px-4 pt-1 pb-4"), 16);
 	assert.equal(bottomPaddingPx("px-4 py-2"), 8);
 	assert.equal(bottomPaddingPx("px-4 pt-1"), 0);
+});
+
+test("a conflicting padding pair is refused, not read as room (negative control)", () => {
+	// The fail-open shape R2-2 reproduced: `pt-4 pt-0` leaves the box with no room
+	// while a first-match reader reports 16px.
+	assert.throws(
+		() => topPaddingPx("overflow-y-auto px-4 pt-4 pt-0 pb-4"),
+		CONFLICTING_PADDING,
+	);
+	assert.throws(() => bottomPaddingPx("px-4 pb-4 pb-0"), CONFLICTING_PADDING);
+	// A repeated identical value is not a conflict.
+	assert.equal(topPaddingPx("px-4 pt-1 pt-1"), 4);
 });
 
 test("a re-wrapped band fails the ancestor rule (negative control)", () => {
