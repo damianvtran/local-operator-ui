@@ -240,10 +240,17 @@ export function threadSearchTierSplit(hits: readonly ThreadFindHit[]): {
  * truncation rides it as a suffix rather than a second sentence — the old
  * "100 matches Showing the first 100 matches." said the same thing twice.
  *
- * THIS SPELLING IS THE ENGLISH ONE THE TESTS PIN, not the shipped one: the
- * overlay renders the same numbers through `ui.chat.thread_search.count.*`, so
- * the sentences below stay here as the model's English contract while the
- * panel opens in the reader's own language.
+ * THIS SPELLING IS THE CATALOGUE'S ENGLISH, WORD FOR WORD. The panel renders
+ * the same numbers through `ui.chat.thread_search.count.*`, so the sentences
+ * here must be what those templates produce for the same counts — the split
+ * line's LABEL-FIRST order included, because that is the order the catalogue
+ * ships (a locale inflects each count against its own noun, which a single
+ * trailing "exact"/"related" cannot do). Two spellings of one sentence is how
+ * this function came to certify a line the panel no longer rendered: the
+ * overlay's suite pinned the shipped text and went red while these assertions
+ * stayed green. `scripts/thread-search-model.test.mjs` now formats the `en`
+ * templates and compares them to these forms, so a change on either side fails
+ * there rather than silently splitting the two again.
  */
 export function threadSearchCountLabel(hits: readonly ThreadFindHit[]): string {
 	const { exact, related } = threadSearchTierSplit(hits);
@@ -253,7 +260,7 @@ export function threadSearchCountLabel(hits: readonly ThreadFindHit[]): string {
 	if (exact === 0) {
 		return related === 1 ? "1 related match" : `${related} related matches`;
 	}
-	return `${exact} exact · ${related} related`;
+	return `Exact: ${exact} · Related: ${related}`;
 }
 
 /**
@@ -312,7 +319,14 @@ export const THREAD_SEARCH_STALE_COPY =
  */
 export const THREAD_SEARCH_JUMPING_COPY = "Going to that message…";
 
-/** The line a truncated list carries, so a floor is never read as a total. */
+/**
+ * The line a truncated list carries, so a floor is never read as a total.
+ *
+ * Same invariant as `threadSearchCountLabel`: this is
+ * `ui.chat.thread_search.count.truncated` in English, and the model test holds
+ * the two equal so the suffix a locale renders and the one pinned here cannot
+ * describe two different lines.
+ */
 export function threadSearchTruncatedLabel(count: number): string {
 	return count === 1 ? "(the first match shown)" : `(first ${count} shown)`;
 }
