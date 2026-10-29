@@ -1,4 +1,7 @@
 {
+	"ui.chat.canonical.image_gen.control.edit_and_restart": "Sửa và tạo lại",
+	"ui.chat.canonical.image_gen.control.restart": "Tạo lại",
+	"ui.chat.canonical.image_gen.control.stop": "Dừng",
 	"ui.chat.canonical.image_gen.progress": "Tiến trình tạo hình ảnh",
 	"ui.chat.canonical.raw_information": "Thông tin thô",
 	"ui.chat.canonical.security_notice.aria": "Thông báo bảo mật",

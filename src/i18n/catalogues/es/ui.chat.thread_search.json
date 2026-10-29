@@ -1,5 +1,25 @@
 {
+	"ui.chat.thread_search.building": "Aún se está indexando esta conversación.",
+	"ui.chat.thread_search.building_hint": "Los resultados aparecen a medida que el índice se pone al día.",
+	"ui.chat.thread_search.close_label": "Cerrar búsqueda",
+	"ui.chat.thread_search.count.match": "{count, plural, one {{countText} coincidencia} many {{countText} de coincidencias} other {{countText} coincidencias}}",
+	"ui.chat.thread_search.count.related": "{count, plural, one {{countText} coincidencia relacionada} many {{countText} de coincidencias relacionadas} other {{countText} coincidencias relacionadas}}",
+	"ui.chat.thread_search.count.split": "{exactText} exactas · {relatedText} relacionadas",
+	"ui.chat.thread_search.count.truncated": "{count, plural, one {(la primera coincidencia mostrada)} many {(primeras {countText} mostradas)} other {(primeras {countText} mostradas)}}",
+	"ui.chat.thread_search.empty": "Ningún mensaje coincide con esta búsqueda.",
+	"ui.chat.thread_search.error": "No se pudo buscar en esta conversación.",
 	"ui.chat.thread_search.hint.browse": "navegar",
 	"ui.chat.thread_search.hint.close": "cerrar",
-	"ui.chat.thread_search.hint.jump": "ir"
+	"ui.chat.thread_search.hint.jump": "ir",
+	"ui.chat.thread_search.jumping": "Yendo a ese mensaje…",
+	"ui.chat.thread_search.list_label": "Resultados de búsqueda",
+	"ui.chat.thread_search.partial": "Puede que falten mensajes recientes mientras el índice se pone al día.",
+	"ui.chat.thread_search.placeholder": "Buscar en esta conversación",
+	"ui.chat.thread_search.recheck": "Comprobar de nuevo",
+	"ui.chat.thread_search.role.agent": "Agente",
+	"ui.chat.thread_search.role.user": "Tú",
+	"ui.chat.thread_search.searching": "Buscando…",
+	"ui.chat.thread_search.stale": "Actualizando — la lista de abajo es de la búsqueda anterior.",
+	"ui.chat.thread_search.tier.related": "coincidencia relacionada",
+	"ui.chat.thread_search.unsupported": "Esta conversación está en otro dispositivo, así que no se puede buscar aquí."
 }

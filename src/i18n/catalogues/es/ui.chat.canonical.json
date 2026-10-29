@@ -1,4 +1,7 @@
 {
+	"ui.chat.canonical.image_gen.control.edit_and_restart": "Editar y reiniciar",
+	"ui.chat.canonical.image_gen.control.restart": "Reiniciar",
+	"ui.chat.canonical.image_gen.control.stop": "Detener",
 	"ui.chat.canonical.image_gen.progress": "Progreso de generación de imágenes",
 	"ui.chat.canonical.raw_information": "Información sin procesar",
 	"ui.chat.canonical.security_notice.aria": "Aviso de seguridad",

@@ -1,4 +1,7 @@
 {
+	"ui.chat.canonical.image_gen.control.edit_and_restart": "Изменить и перезапустить",
+	"ui.chat.canonical.image_gen.control.restart": "Перезапустить",
+	"ui.chat.canonical.image_gen.control.stop": "Остановить",
 	"ui.chat.canonical.image_gen.progress": "Прогресс генерации изображения",
 	"ui.chat.canonical.raw_information": "Исходные данные",
 	"ui.chat.canonical.security_notice.aria": "Уведомление безопасности",

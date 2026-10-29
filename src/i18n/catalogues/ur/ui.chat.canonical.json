@@ -1,4 +1,7 @@
 {
+	"ui.chat.canonical.image_gen.control.edit_and_restart": "ترمیم اور دوبارہ شروع کریں",
+	"ui.chat.canonical.image_gen.control.restart": "دوبارہ شروع کریں",
+	"ui.chat.canonical.image_gen.control.stop": "روکیں",
 	"ui.chat.canonical.image_gen.progress": "تصویر بنانے کی پیش رفت",
 	"ui.chat.canonical.raw_information": "خام معلومات",
 	"ui.chat.canonical.security_notice.aria": "سیکیورٹی نوٹس",

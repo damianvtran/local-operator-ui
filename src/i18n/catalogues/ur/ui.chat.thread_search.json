@@ -1,5 +1,25 @@
 {
+	"ui.chat.thread_search.building": "اس گفتگو کا اشاریہ ابھی بن رہا ہے۔",
+	"ui.chat.thread_search.building_hint": "اشاریہ مکمل ہوتے ہی نتائج دکھائی دیں گے۔",
+	"ui.chat.thread_search.close_label": "تلاش بند کریں",
+	"ui.chat.thread_search.count.match": "{count, plural, one {{countText} مطابقت} other {{countText} مطابقتیں}}",
+	"ui.chat.thread_search.count.related": "{count, plural, one {{countText} متعلقہ مطابقت} other {{countText} متعلقہ مطابقتیں}}",
+	"ui.chat.thread_search.count.split": "{exactText} درست · {relatedText} متعلقہ",
+	"ui.chat.thread_search.count.truncated": "{count, plural, one {(پہلی مطابقت دکھائی گئی)} other {(پہلی {countText} مطابقتیں دکھائی گئیں)}}",
+	"ui.chat.thread_search.empty": "اس تلاش سے کوئی پیغام نہیں ملا۔",
+	"ui.chat.thread_search.error": "اس گفتگو میں تلاش نہیں ہو سکی۔",
 	"ui.chat.thread_search.hint.browse": "براؤز کریں",
 	"ui.chat.thread_search.hint.close": "بند کریں",
-	"ui.chat.thread_search.hint.jump": "اس پر جائیں"
+	"ui.chat.thread_search.hint.jump": "اس پر جائیں",
+	"ui.chat.thread_search.jumping": "اس پیغام پر جا رہے ہیں…",
+	"ui.chat.thread_search.list_label": "تلاش کے نتائج",
+	"ui.chat.thread_search.partial": "اشاریہ مکمل ہونے تک نئے پیغامات چھوٹ سکتے ہیں۔",
+	"ui.chat.thread_search.placeholder": "اس گفتگو میں تلاش",
+	"ui.chat.thread_search.recheck": "دوبارہ جانچیں",
+	"ui.chat.thread_search.role.agent": "ایجنٹ",
+	"ui.chat.thread_search.role.user": "آپ",
+	"ui.chat.thread_search.searching": "تلاش جاری ہے…",
+	"ui.chat.thread_search.stale": "اپ ڈیٹ ہو رہا ہے — نیچے والی فہرست پچھلی تلاش کی ہے۔",
+	"ui.chat.thread_search.tier.related": "متعلقہ مطابقت",
+	"ui.chat.thread_search.unsupported": "یہ گفتگو کسی دوسرے ڈیوائس پر ہے، اس لیے یہاں اس میں تلاش نہیں کی جا سکتی۔"
 }

@@ -1,5 +1,25 @@
 {
+	"ui.chat.thread_search.building": "इस बातचीत का इंडेक्स अब भी बन रहा है।",
+	"ui.chat.thread_search.building_hint": "इंडेक्स पूरा होते ही परिणाम दिखने लगेंगे।",
+	"ui.chat.thread_search.close_label": "खोज बंद करें",
+	"ui.chat.thread_search.count.match": "{count, plural, one {{countText} संदेश मिला} other {{countText} संदेश मिले}}",
+	"ui.chat.thread_search.count.related": "{count, plural, one {{countText} संबंधित संदेश मिला} other {{countText} संबंधित संदेश मिले}}",
+	"ui.chat.thread_search.count.split": "{exactText} सटीक · {relatedText} संबंधित",
+	"ui.chat.thread_search.count.truncated": "{count, plural, one {(पहला संदेश दिखाया गया)} other {(पहले {countText} संदेश दिखाए गए)}}",
+	"ui.chat.thread_search.empty": "इस खोज से कोई संदेश नहीं मिला।",
+	"ui.chat.thread_search.error": "इस बातचीत को खोजा नहीं जा सका।",
 	"ui.chat.thread_search.hint.browse": "ब्राउज़ करें",
 	"ui.chat.thread_search.hint.close": "बंद करें",
-	"ui.chat.thread_search.hint.jump": "जाएँ"
+	"ui.chat.thread_search.hint.jump": "जाएँ",
+	"ui.chat.thread_search.jumping": "उस संदेश पर जाया जा रहा है…",
+	"ui.chat.thread_search.list_label": "खोज परिणाम",
+	"ui.chat.thread_search.partial": "इंडेक्स पूरा होने तक नए संदेश छूट सकते हैं।",
+	"ui.chat.thread_search.placeholder": "इस बातचीत में खोजें",
+	"ui.chat.thread_search.recheck": "फिर जाँचें",
+	"ui.chat.thread_search.role.agent": "एजेंट",
+	"ui.chat.thread_search.role.user": "आप",
+	"ui.chat.thread_search.searching": "खोजा जा रहा है…",
+	"ui.chat.thread_search.stale": "अपडेट हो रहा है — नीचे की सूची पिछली खोज की है।",
+	"ui.chat.thread_search.tier.related": "संबंधित मिलान",
+	"ui.chat.thread_search.unsupported": "यह बातचीत किसी दूसरे डिवाइस पर है, इसलिए इसे यहाँ खोजा नहीं जा सकता।"
 }

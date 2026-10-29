@@ -1,5 +1,25 @@
 {
+	"ui.chat.thread_search.building": "此对话仍在建立索引。",
+	"ui.chat.thread_search.building_hint": "索引跟上后，结果就会出现。",
+	"ui.chat.thread_search.close_label": "关闭搜索",
+	"ui.chat.thread_search.count.match": "{count, plural, other {{countText}条匹配消息}}",
+	"ui.chat.thread_search.count.related": "{count, plural, other {{countText}条相关匹配消息}}",
+	"ui.chat.thread_search.count.split": "精确{exactText} · 相关{relatedText}",
+	"ui.chat.thread_search.count.truncated": "{count, plural, other {（仅显示前{countText}条）}}",
+	"ui.chat.thread_search.empty": "没有消息匹配这次搜索。",
+	"ui.chat.thread_search.error": "无法搜索此对话。",
 	"ui.chat.thread_search.hint.browse": "浏览",
 	"ui.chat.thread_search.hint.close": "关闭",
-	"ui.chat.thread_search.hint.jump": "跳转"
+	"ui.chat.thread_search.hint.jump": "跳转",
+	"ui.chat.thread_search.jumping": "正在跳转到该消息……",
+	"ui.chat.thread_search.list_label": "搜索结果",
+	"ui.chat.thread_search.partial": "索引跟上之前，较新的消息可能缺失。",
+	"ui.chat.thread_search.placeholder": "搜索此对话",
+	"ui.chat.thread_search.recheck": "再次检查",
+	"ui.chat.thread_search.role.agent": "智能体",
+	"ui.chat.thread_search.role.user": "你",
+	"ui.chat.thread_search.searching": "搜索中……",
+	"ui.chat.thread_search.stale": "正在更新——下方仍是上一次搜索的结果。",
+	"ui.chat.thread_search.tier.related": "相关匹配",
+	"ui.chat.thread_search.unsupported": "此对话位于另一台设备，因此无法在此搜索。"
 }

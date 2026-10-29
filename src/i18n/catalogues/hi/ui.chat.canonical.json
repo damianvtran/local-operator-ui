@@ -1,4 +1,7 @@
 {
+	"ui.chat.canonical.image_gen.control.edit_and_restart": "संपादित करके बनाएँ",
+	"ui.chat.canonical.image_gen.control.restart": "फिर से बनाएँ",
+	"ui.chat.canonical.image_gen.control.stop": "रोकें",
 	"ui.chat.canonical.image_gen.progress": "इमेज जनरेशन की प्रगति",
 	"ui.chat.canonical.raw_information": "कच्ची जानकारी",
 	"ui.chat.canonical.security_notice.aria": "सुरक्षा सूचना",

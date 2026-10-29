@@ -1,5 +1,25 @@
 {
+	"ui.chat.thread_search.building": "Разговор ещё индексируется.",
+	"ui.chat.thread_search.building_hint": "Результаты появятся, когда индекс обновится.",
+	"ui.chat.thread_search.close_label": "Закрыть поиск",
+	"ui.chat.thread_search.count.match": "{count, plural, one {{countText} совпадение} few {{countText} совпадения} many {{countText} совпадений} other {{countText} совпадения}}",
+	"ui.chat.thread_search.count.related": "{count, plural, one {{countText} совпадение по смыслу} few {{countText} совпадения по смыслу} many {{countText} совпадений по смыслу} other {{countText} совпадения по смыслу}}",
+	"ui.chat.thread_search.count.split": "{exactText} точных · {relatedText} по смыслу",
+	"ui.chat.thread_search.count.truncated": "{count, plural, one {(показано первое совпадение)} few {(показаны первые {countText} совпадения)} many {(показаны первые {countText} совпадений)} other {(показаны первые {countText} совпадения)}}",
+	"ui.chat.thread_search.empty": "Сообщений по этому запросу нет.",
+	"ui.chat.thread_search.error": "Не удалось выполнить поиск в этом разговоре.",
 	"ui.chat.thread_search.hint.browse": "листать",
 	"ui.chat.thread_search.hint.close": "закрыть",
-	"ui.chat.thread_search.hint.jump": "перейти"
+	"ui.chat.thread_search.hint.jump": "перейти",
+	"ui.chat.thread_search.jumping": "Переход к сообщению…",
+	"ui.chat.thread_search.list_label": "Результаты поиска",
+	"ui.chat.thread_search.partial": "Новые сообщения могут отсутствовать, пока обновляется индекс.",
+	"ui.chat.thread_search.placeholder": "Поиск в разговоре",
+	"ui.chat.thread_search.recheck": "Проверить снова",
+	"ui.chat.thread_search.role.agent": "Агент",
+	"ui.chat.thread_search.role.user": "вы",
+	"ui.chat.thread_search.searching": "Поиск…",
+	"ui.chat.thread_search.stale": "Обновление — список ниже от предыдущего поиска.",
+	"ui.chat.thread_search.tier.related": "по смыслу",
+	"ui.chat.thread_search.unsupported": "Этот разговор хранится на другом устройстве, поэтому здесь его нельзя найти."
 }

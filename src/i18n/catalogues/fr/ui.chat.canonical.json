@@ -1,4 +1,7 @@
 {
+	"ui.chat.canonical.image_gen.control.edit_and_restart": "Modifier et relancer",
+	"ui.chat.canonical.image_gen.control.restart": "Relancer",
+	"ui.chat.canonical.image_gen.control.stop": "Arrêter",
 	"ui.chat.canonical.image_gen.progress": "Progression de la génération de l’image",
 	"ui.chat.canonical.raw_information": "Informations brutes",
 	"ui.chat.canonical.security_notice.aria": "Avis de sécurité",

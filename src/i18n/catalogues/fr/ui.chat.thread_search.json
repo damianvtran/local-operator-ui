@@ -1,5 +1,25 @@
 {
+	"ui.chat.thread_search.building": "Cette conversation est encore en cours d’indexation.",
+	"ui.chat.thread_search.building_hint": "Les résultats apparaissent à mesure que l’index progresse.",
+	"ui.chat.thread_search.close_label": "Fermer la recherche",
+	"ui.chat.thread_search.count.match": "{count, plural, one {{countText} correspondance} many {{countText} de correspondances} other {{countText} correspondances}}",
+	"ui.chat.thread_search.count.related": "{count, plural, one {{countText} correspondance connexe} many {{countText} de correspondances connexes} other {{countText} correspondances connexes}}",
+	"ui.chat.thread_search.count.split": "{exactText} exactes · {relatedText} connexes",
+	"ui.chat.thread_search.count.truncated": "{count, plural, one {(la première affichée)} many {(les {countText} premières affichées)} other {(les {countText} premières affichées)}}",
+	"ui.chat.thread_search.empty": "Aucun message ne correspond à cette recherche.",
+	"ui.chat.thread_search.error": "La recherche dans cette conversation a échoué.",
 	"ui.chat.thread_search.hint.browse": "parcourir",
 	"ui.chat.thread_search.hint.close": "fermer",
-	"ui.chat.thread_search.hint.jump": "aller"
+	"ui.chat.thread_search.hint.jump": "aller",
+	"ui.chat.thread_search.jumping": "Déplacement vers ce message…",
+	"ui.chat.thread_search.list_label": "Résultats de recherche",
+	"ui.chat.thread_search.partial": "Des messages récents peuvent manquer pendant que l’index se met à jour.",
+	"ui.chat.thread_search.placeholder": "Rechercher dans cette conversation",
+	"ui.chat.thread_search.recheck": "Vérifier à nouveau",
+	"ui.chat.thread_search.role.agent": "Agent",
+	"ui.chat.thread_search.role.user": "Vous",
+	"ui.chat.thread_search.searching": "Recherche…",
+	"ui.chat.thread_search.stale": "Mise à jour — la liste ci-dessous est celle de la recherche précédente.",
+	"ui.chat.thread_search.tier.related": "correspondance connexe",
+	"ui.chat.thread_search.unsupported": "Cette conversation est sur un autre appareil et ne peut pas être recherchée ici."
 }

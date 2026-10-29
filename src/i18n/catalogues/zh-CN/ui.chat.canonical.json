@@ -1,4 +1,7 @@
 {
+	"ui.chat.canonical.image_gen.control.edit_and_restart": "编辑并重新生成",
+	"ui.chat.canonical.image_gen.control.restart": "重新生成",
+	"ui.chat.canonical.image_gen.control.stop": "停止",
 	"ui.chat.canonical.image_gen.progress": "图像生成进度",
 	"ui.chat.canonical.raw_information": "原始信息",
 	"ui.chat.canonical.security_notice.aria": "安全提示",

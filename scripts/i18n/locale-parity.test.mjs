@@ -41,6 +41,10 @@ const SOURCE_LOCALE = "en";
  * a UI token. An entry here is a claim that gets reviewed, not a silencer.
  */
 const IDENTICAL_OK = new Map([
+	[
+		"fr:ui.chat.thread_search.role.agent",
+		"French cognate: the role name for an agent turn is « Agent », same spelling; scoped to fr so other locales still translate it",
+	],
 	// French cognates only: these are the normal French UI nouns, not English
 	// fallbacks. Scope to fr so untranslated nouns in other languages still fail.
 	["fr:ui.notifications.nav.label", "French UI noun: Notifications"],
