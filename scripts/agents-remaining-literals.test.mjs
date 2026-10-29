@@ -28,12 +28,14 @@
  *    whole dialog (its transport, credential probe and review states) would test
  *    the fakes rather than the sentence, so its six arms are called directly.
  *
- * B. THE WORDS ARE SENTINELS, NOT THE SHIPPED TRANSLATIONS. This branch is
- *    ENGLISH ONLY by design: the translator wave that gives these keys fr/ur
- *    values has not run yet, so `t()` would fall back to English and an assertion
- *    against the shipped catalogue would pass for the wrong reason. Each locale's
- *    catalogue is therefore registered over the real one with a marker per key
- *    (`FR …` / `UR …`), and the assertion is that the marker is what rendered.
+ * B. THE WORDS ARE SENTINELS, NOT THE SHIPPED TRANSLATIONS. All seven locales
+ *    now ship values for these keys (independently audited; see i18n/ledger.json),
+ *    but an assertion against the shipped catalogue would pin one translator's
+ *    wording and would still pass if `t()` silently fell back to a value that
+ *    happened to match. Each locale's catalogue is therefore registered over the
+ *    real one with a marker per key (`FR …` / `UR …`), and the assertion is that
+ *    the marker is what rendered: it proves the call site routes through `t()`,
+ *    which is the one thing this file owns.
  *    That proves the call site reads the key instead of a literal.
  *
  * C. THE AGE IS THE HUB'S LOCALIZED PHRASE. `updated {when}` passes
