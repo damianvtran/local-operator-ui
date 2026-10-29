@@ -1,5 +1,6 @@
 import { useCanvasStore } from "@shared/store/canvas-store";
 import type { CanvasDocument } from "../../types/canvas";
+import { isArtifactPath } from "../../utils/artifact-identity";
 import {
 	cancelPendingWrites,
 	currentWriteEpoch,
@@ -466,6 +467,15 @@ export async function saveBuffer(
 ): Promise<BufferSaveOutcome> {
 	const entry = buffers.get(documentId);
 	if (!entry) return { status: "unavailable" };
+	/*
+	 * AN ARTIFACT IS NOT A FILE, so nothing here may write one (PR #1452 UX R2
+	 * U12 / QA R4 Q1). `artifact:<digest>` is a store identity; handed to the
+	 * bridge it is a RELATIVE path that main joins onto the app's cwd, which is
+	 * how a person's typing landed in a file literally named `artifact:7b8f…`.
+	 * Refused before the probe, explicit or not: no surface may save one, and
+	 * this is the one place every save passes through.
+	 */
+	if (isArtifactPath(entry.path)) return { status: "unavailable" };
 	/*
 	 * An automatic save has nothing to do while the document is held: the row has
 	 * told the reader the file moved on, and their two routes out are the control

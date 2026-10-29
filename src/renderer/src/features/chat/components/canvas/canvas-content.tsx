@@ -1,6 +1,7 @@
 import { type FC, memo } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 import { viewerFor } from "../../utils/viewer-routing";
+import { ArtifactTextPreview } from "./artifact-text-preview";
 import { AudioPreview } from "./audio-preview";
 import { CodeEditor } from "./code-editor";
 import { HtmlPreview } from "./html-preview";
@@ -47,7 +48,25 @@ const CanvasContentComponent: FC<CanvasContentProps> = ({
 	conversationId,
 	agentId,
 }) => {
-	switch (viewerFor(document.path, document.type)) {
+	const kind = viewerFor(document.path, document.type);
+	/*
+	 * A TEXT-KIND ARTIFACT HAS NO FILE TO EDIT (PR #1452 U12/Q1). The editors
+	 * below read and write a path; an artifact's path is `artifact:<digest>`, so
+	 * they painted an empty buffer and saved into the cwd. The media viewers
+	 * resolve their own bytes by digest and keep their branches. The PDF viewer
+	 * keeps its branch too but reads `document.path`, so a digest-only PDF does
+	 * not resolve there (review R5-2, deferred: pre-existing). Every text-shaped
+	 * kind (code, markdown, HTML, a CSV) is shown read-only from the store.
+	 */
+	if (
+		document.artifact &&
+		kind !== "image" &&
+		kind !== "audio" &&
+		kind !== "video" &&
+		kind !== "pdf"
+	)
+		return <ArtifactTextPreview document={document} />;
+	switch (kind) {
 		case "markdown":
 			return (
 				<WysiwygMarkdownEditor

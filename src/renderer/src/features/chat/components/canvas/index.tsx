@@ -21,12 +21,17 @@ import type { CanonicalGoalHistoryEntry } from "../../../../../../shared/desktop
 import type { MentionScanHandle } from "../../canonical/use-mentioned-files";
 import { useSessionFiles } from "../../canonical/use-session-files";
 import {
+	type UserAttachmentsState,
+	useUserAttachments,
+} from "../../canonical/use-user-attachments";
+import {
 	canvasShortcutAction,
 	pressLandsOnOverlay,
 } from "../../keyboard-scopes";
 import type { CanvasDocument } from "../../types/canvas";
 import { createFile } from "../../utils/file-creation";
 import { getFileTypeFromPath } from "../../utils/file-types";
+import { combinedFileCount } from "./attachment-items";
 import { CanvasContent } from "./canvas-content";
 import { EmptyState } from "./canvas-empty-state";
 import { CanvasFileViewer } from "./canvas-file-viewer";
@@ -128,6 +133,12 @@ type CanvasProps = {
 	fileCount?: number;
 	/** Shared parent inventory also drives the rail while this pane is closed. */
 	fileIndex?: ReturnType<typeof useSessionFiles>;
+	/**
+	 * The person's attachments, owned by the chat beside `fileIndex` so the rail,
+	 * the Files segment and the pinned section share one reading. Absent (a
+	 * standalone canvas), the pane reads its own with no live records.
+	 */
+	attachments?: UserAttachmentsState;
 
 	/**
 	 * The completeness state of the Files panel's scan, plus its retry action.
@@ -445,6 +456,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 	currentWorkingDirectory,
 	fileCount = 0,
 	fileIndex: sharedFileIndex,
+	attachments: sharedAttachments,
 	scan = null,
 	goalHistory = EMPTY_GOAL_HISTORY,
 	goalHistoryTruncated = false,
@@ -461,7 +473,14 @@ const CanvasComponent: FC<CanvasProps> = ({
 		turnTerminal,
 	);
 	const fileIndex = sharedFileIndex ?? standaloneFileIndex;
-	const displayedFileCount =
+	const standaloneAttachments = useUserAttachments(
+		sessionId,
+		null,
+		turnTerminal,
+		!sharedAttachments,
+	);
+	const attachments = sharedAttachments ?? standaloneAttachments;
+	const agentFileCount =
 		fileIndex.mode === "negotiating"
 			? null
 			: fileIndex.mode === "index"
@@ -469,6 +488,20 @@ const CanvasComponent: FC<CanvasProps> = ({
 					? fileIndex.total
 					: null
 				: fileCount;
+	// The segment counts what the Files view lists: agent files plus the
+	// person's attachments, each digest once (`combinedFileCount`).
+	const displayedFileCount =
+		agentFileCount === null
+			? attachments.items.length || null
+			: combinedFileCount(
+					agentFileCount,
+					fileIndex.mode === "index"
+						? fileIndex.rows.map((row) =>
+								row.ref.type === "artifact" ? row.ref.digest : null,
+							)
+						: [],
+					attachments,
+				);
 	const [isCreateFileDialogOpen, setCreateFileDialogOpen] = useState(false);
 	const [isCreatingFile, setIsCreatingFile] = useState(false);
 	const [modifierKey, setModifierKey] = useState("Ctrl");
@@ -1073,6 +1106,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 					}
 					onSwitchToDocumentView={handleSwitchToDocumentView}
 					scan={scan}
+					attachments={attachments}
 				/>
 			)}
 			{currentView === "variables" && conversationId && (

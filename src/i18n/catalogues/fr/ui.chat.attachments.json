@@ -10,5 +10,6 @@
 	"ui.chat.attachments.file_type_unknown": "Fichier",
 	"ui.chat.attachments.copy_saved_path": "Copier le chemin de la copie conservée",
 	"ui.chat.attachments.saved_path_copied": "Chemin de la copie conservée copié",
-	"ui.chat.attachments.saved_copy_label": "Copie conservée"
+	"ui.chat.attachments.saved_copy_label": "Copie conservée",
+	"ui.chat.attachments.file_and_copy_missing": "La copie conservée a aussi disparu."
 }
