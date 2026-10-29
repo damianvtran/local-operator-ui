@@ -241,6 +241,8 @@ const stateOf = (cdp) =>
  badge:document.querySelector('a[href="#/notifications"]')?.textContent,
  empty:document.querySelector('[data-drawer-empty]')?.textContent,
  focus:document.activeElement?.outerHTML.slice(0,250),
+ focusedRow:document.activeElement?.closest('[data-drawer-update]')?.dataset.drawerUpdate,
+ focusedAction:document.activeElement?.dataset.rowAction,
  theme:document.documentElement.dataset.theme,dir:document.documentElement.dir,
  glass:document.documentElement.dataset.glass,
  bounds:[...document.querySelectorAll('[data-drawer-read-view], [data-drawer-updates], [data-ask-drawer]')].map(e=>{const r=e.getBoundingClientRect();return {selector:e.dataset.drawerReadView??e.dataset.askDrawer??'updates',x:r.x,y:r.y,width:r.width,height:r.height,scrollWidth:e.scrollWidth,clientWidth:e.clientWidth}})
@@ -317,9 +319,19 @@ export async function runDrawerRemediationScene({
 				3000,
 			);
 			const firstClick = await capture(`${theme}-first-click`);
-			assert.ok(
-				firstClick.focused,
+			/* Read the actual state fields: `focused` never existed, so the earlier
+			 * assertion failed even when Chromium correctly focused the next row.
+			 * Keep the row identity and action explicit: tab/other-action focus is a
+			 * failed handoff, not evidence that some element retained focus. */
+			assert.equal(
+				firstClick.focusedRow,
+				firstClick.rows[0].id,
 				"removing the focused row must hand keyboard position to a remaining row",
+			);
+			assert.equal(
+				firstClick.focusedAction,
+				"read",
+				"focus must land on the remaining row's read control, not another target",
 			);
 			fixture.release();
 			await until(
