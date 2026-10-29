@@ -94,6 +94,9 @@ export const STOP_DEADLINE_MS = 5000;
  * answer. `wait` is injectable so a test can drive the escalation without a real
  * 5 s grace.
  *
+ * `userData` is optional: a caller that boots a plain server (no profile flag to scan
+ * for) passes none and gets the group-signal-plus-pid verdict alone.
+ *
  * The result carries what the caller prints as well as `clean`: `reaped` and
  * `reparented` are the difference between "the group kill worked" and "the
  * backstop found two orphans", which are different facts about the run.
@@ -128,6 +131,21 @@ export async function stopAppTree({
 	const groupExited = isExited();
 
 	await wait(500);
+	// No profile to scan for: a server (Storybook, via `with-storybook.mjs`) carries
+	// no `--user-data-dir`, so the group signal is the whole mechanism and the pid
+	// answering is the whole verdict. The caller checks its port separately.
+	if (userData == null) {
+		return {
+			groupSignalled,
+			groupExited,
+			escalated,
+			profileUnreadable: false,
+			reaped: [],
+			reparented: 0,
+			survivors: [],
+			clean: alreadyGone(pid),
+		};
+	}
 	const found = thisRunProfile(userData);
 	if (found === null) {
 		return {
@@ -188,7 +206,9 @@ export function reapOnExit({ pid, userData }) {
 		} catch {
 			// The group has already gone away.
 		}
-		for (const entry of thisRunProfile(userData) ?? []) {
+		for (const entry of userData == null
+			? []
+			: (thisRunProfile(userData) ?? [])) {
 			try {
 				process.kill(entry.pid, "SIGKILL");
 			} catch {

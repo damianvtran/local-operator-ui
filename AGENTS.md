@@ -235,6 +235,15 @@ The mechanics:
 - Regenerate theme CSS: `pnpm gen-themes`
 - Bundle size: `pnpm bundle-size`, `pnpm startup-closure`
 - Component gallery: `pnpm storybook`
+- Storybook cache: Storybook 8.6 never evicts `node_modules/.cache/storybook` (one
+  hash-named dir per config dir, i.e. per worktree; 85 / 6 GiB by `du` in six days), so
+  `.storybook/main.ts` runs `scripts/storybook-cache-prune.mjs` at every start: entries
+  older than 48 h go, then oldest-first down to 40, never one touched in the last 6 h or
+  the current run's. It is all regenerable and fails open. Off: `STORYBOOK_CACHE_PRUNE=off`;
+  tune: `STORYBOOK_CACHE_MAX_AGE_HOURS` / `_MAX_ENTRIES` / `_MIN_KEEP_HOURS`.
+- Storybook for a rig or a QA lane: `node scripts/with-storybook.mjs -- <command>`
+  (see the rig rules below) boots one, exports `STORYBOOK_ORIGIN`, and stops its whole
+  process group on every exit path - do not leave a bare `storybook dev` running.
 - Fold an evidence stamp after a merge: `pnpm evidence:fold` (resolves
   `docs/evidence/manifest.json` per field, re-derives the counts from the merged
   tree, runs the guards and stages the result - one commit per fold).
@@ -1646,6 +1655,8 @@ pairing rather than to explain it.
 
 What follows for a run:
 
+- **Boot the Storybook through `scripts/with-storybook.mjs`** (`node scripts/with-storybook.mjs -- <command>`): it
+  owns the server's process group and tears it down on exit, failure and SIGINT/SIGTERM, so no dev server outlives its run.
 - **Open a story through the manager URL that carries the token**, never a bare
   `iframe.html?id=…` as the page's top-level URL: the bare form is the one the server
   channel refuses, and that refusal is what each reload was paired with.
