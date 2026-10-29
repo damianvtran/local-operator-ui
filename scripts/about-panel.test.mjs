@@ -151,6 +151,11 @@ test("no About item is left to Electron's role, whose action nothing can interce
 	 * A `role: "about"` item's click is AppKit's `orderFrontStandardAboutPanel:`:
 	 * there is no handler of ours in the path, so a headless run would raise a real
 	 * panel. Measured on the base tree, where that is exactly what happened.
+	 *
+	 * The template still carries its OWN About label; it now comes from the
+	 * catalogue through `applicationMenuLabels()` (i18n wave C1), which is a
+	 * resolution of our copy rather than a role handing the word to AppKit, so the
+	 * property this pin exists for is unchanged.
 	 */
 	for (const file of mainSources()) {
 		const text = readFileSync(file, "utf8");
@@ -160,7 +165,7 @@ test("no About item is left to Electron's role, whose action nothing can interce
 			`${file} still registers Electron's about role`,
 		);
 	}
-	assert.match(indexSource, /label:\s*`About \$\{app\.name\}`/);
+	assert.match(indexSource, /label:\s*labels\.about\(app\.name\)/);
 });
 
 test("the panel is raised from exactly one place, and only past the suppression branch", () => {

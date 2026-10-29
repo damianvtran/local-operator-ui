@@ -1,0 +1,15 @@
+{
+	"ui.shell.menubar.file": "Файл",
+	"ui.shell.menubar.edit": "Правка",
+	"ui.shell.menubar.view": "Вид",
+	"ui.shell.menubar.window": "Окно",
+	"ui.shell.menubar.new_browser_tab": "Новая вкладка браузера",
+	"ui.shell.menubar.reload": "Перезагрузить",
+	"ui.shell.menubar.force_reload": "Принудительно перезагрузить",
+	"ui.shell.menubar.actual_size": "Фактический размер",
+	"ui.shell.menubar.zoom_in": "Увеличить",
+	"ui.shell.menubar.zoom_out": "Уменьшить",
+	"ui.shell.menubar.close_tab_or_window": "Закрыть вкладку или окно",
+	"ui.shell.menubar.learn_more": "Подробнее",
+	"ui.shell.menubar.about": "О программе {name}"
+}
