@@ -106,6 +106,7 @@ function FirstSendPage({
 	readout = false,
 	fieldScrollTop,
 	fieldCaret,
+	frameHeight,
 }: {
 	state: TeamBridgeLocalRowPresentation["state"];
 	targetKind: "chief" | "person";
@@ -155,6 +156,11 @@ function FirstSendPage({
 	 */
 	fieldScrollTop?: number;
 	fieldCaret?: number;
+	/**
+	 * The frame's height in px, so a capture can show the app's 600px minimum
+	 * window instead of the tab's 720. `undefined` keeps the window's height.
+	 */
+	frameHeight?: number;
 }) {
 	const fieldReadout = useFieldReadout(readout);
 	useEffect(() => {
@@ -276,7 +282,7 @@ function FirstSendPage({
 			style={{
 				width:
 					typeof width === "number" ? width : width === "narrow" ? 680 : 1380,
-				height: "100dvh",
+				height: frameHeight === undefined ? "100dvh" : frameHeight,
 			}}
 		>
 			{fieldReadout !== null && (
@@ -292,6 +298,22 @@ function FirstSendPage({
 					 * the native `input` event React listens for. `onMouseDown` keeps the
 					 * field focused, so the caret it inserts at is the reader's own.
 					 */}
+					<Button
+						variant="ghost"
+						data-insert-newline
+						onMouseDown={(event) => event.preventDefault()}
+						onClick={() => {
+							// A newline AT the caret, the way Shift+Enter inserts one. Frame
+							// F-A2's case is a keystroke that makes the draft cross the cap.
+							const field = document.querySelector<HTMLTextAreaElement>(
+								"#storybook-root textarea",
+							);
+							field?.focus({ preventScroll: true });
+							document.execCommand("insertText", false, "\n");
+						}}
+					>
+						Insert a new line
+					</Button>
 					<Button
 						variant="ghost"
 						data-insert-character
@@ -400,6 +422,7 @@ const meta = {
 		composer: { control: "text" },
 		readout: { control: "boolean" },
 		fieldScrollTop: { control: "number" },
+		frameHeight: { control: "number" },
 		fieldCaret: { control: "number" },
 	},
 } satisfies Meta<typeof FirstSendPage>;
@@ -437,6 +460,55 @@ export const ComposerAtCap: Story = {
 export const ComposerAtCapReadout: Story = {
 	args: { ...ComposerAtCap.args, readout: true },
 };
+/**
+ * THE APP'S MINIMUM WINDOW (600px). At this height the column cap binds before
+ * the ten-line term, so these are the frames that show the composer taking
+ * height FROM THE TIMELINE rather than from the page (design round 2, D9/D10).
+ */
+export const ComposerAtCap600: Story = {
+	args: { ...ComposerAtCap.args, readout: true, frameHeight: 600 },
+};
+
+/** The same draft in a tall column, where the ten-line term binds instead. */
+export const ComposerAtCapTall: Story = {
+	args: { ...ComposerAtCap.args, readout: true, frameHeight: 900 },
+};
+
+/**
+ * D12 / F-A2: a keystroke that CROSSES the cap. At the app's 600px window the cap
+ * is about 7.5 lines, so this draft is already capped, scrolled to the bottom with
+ * the caret on the last line - the arrangement where a re-measure that restores a
+ * stale offset would hide the line the reader is typing into.
+ */
+export const ComposerCrossCap600: Story = {
+	args: {
+		readout: true,
+		frameHeight: 600,
+		targetKind: "person",
+		composer: Array.from(
+			{ length: 8 },
+			(_, index) =>
+				`Line ${index + 1}: the quick brown fox jumps over the lazy dog.`,
+		).join("\n"),
+		fieldScrollTop: 4000,
+		fieldCaret: 4000,
+	},
+};
+
+/**
+ * F-A3: the field at MAX scroll with the caret at the end of the draft - the one
+ * arrangement where a re-measure that loses the offset is visible, because the
+ * caret line is the bottom line and the restore writes back a stale 0.
+ */
+export const ComposerAtCapAtBottom: Story = {
+	args: {
+		...ComposerAtCap.args,
+		readout: true,
+		fieldScrollTop: 4000,
+		fieldCaret: 4000,
+	},
+};
+
 /**
  * F-A's starting state: scrolled to the middle of the draft (100 of 217px), the
  * caret at the start of line 9 - inside the visible band, where a reader who
