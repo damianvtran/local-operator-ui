@@ -2640,6 +2640,11 @@ export type MessageParams = {
 	"ui.browser.browser_pane.close_browser": undefined;
 	"ui.browser.browser_pane.this_conversation": undefined;
 	"ui.browser.browser_pane.which_tabs_to_show": undefined;
+	"ui.browser.browser_passkey_notice.dismiss": undefined;
+	"ui.browser.browser_passkey_notice.explanation": undefined;
+	"ui.browser.browser_passkey_notice.message": { who: string; site: string };
+	"ui.browser.browser_passkey_notice.open_in_system_browser": undefined;
+	"ui.browser.browser_passkey_notice.passkey_request": undefined;
 	"ui.browser.browser_surface.browser_unavailable": undefined;
 	"ui.browser.browser_surface.dismiss": undefined;
 	"ui.browser.browser_surface.loading_browser": undefined;
@@ -2737,6 +2742,7 @@ export type MessageParams = {
 	"ui.browser.page_context_menu.select_all": undefined;
 	"ui.browser.page_context_menu.undo": undefined;
 	"ui.browser.use_browser_chrome.downloads_folder_failed": { message: string };
+	"ui.browser.use_browser_chrome.passkey_open_failed": { reason: string };
 	"ui.browser.use_consent_attention_lifetime.that_request_is_no_longer_waiting": undefined;
 	"ui.browser.webauthn_chooser.a_site": undefined;
 	"ui.browser.webauthn_chooser.nobody_chose_a_passkey_within_a_minute": undefined;
@@ -8865,6 +8871,7 @@ export type MessageParams = {
 	"ui.settings.shortcuts.capture.needs_modifier_mac": undefined;
 	"ui.settings.shortcuts.capture.unbindable": undefined;
 	"ui.settings.shortcuts.category.panels": undefined;
+	"ui.settings.shortcuts.keyboard_shortcuts_section.browser_shortcuts_answer_only_while_the_browser_has_focus": undefined;
 	"ui.settings.shortcuts.keyboard_shortcuts_section.clear": undefined;
 	"ui.settings.shortcuts.keyboard_shortcuts_section.clear_label_s_shortcut": {
 		label: string;

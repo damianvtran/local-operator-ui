@@ -992,8 +992,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.browser",
-			"source_sha256": "9c26625772886bffa1392176565485cad451be8f2644519b1a939d863667aa81",
-			"target_sha256": "0963f0fa1508157025ccb00d4b1768d7e4c4c45bd02b4888be08e156f542a860",
+			"source_sha256": "8f37af681b57cc3f6beb521dd17367042e25522d9a47d9cf75b4a08f2ad5cb64",
+			"target_sha256": "bf3e82f15034e2447a3a81bb95ec16e31b5c7b94ba9be772f374db50cafb50b3",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -1002,20 +1002,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "es-newtab-suggestions-b4b10f148ecf",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-29",
+					"result": "clean",
+					"instance": "d70b41c5a0c8-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/es-newtab-suggestions-b4b10f148ecf.json",
-					"receipt_sha256": "b135a93635ecc703443acca43cee287e2890a94deca2f05bb8eaedf44aad8f71",
-					"scope": "ui.browser address_open_row + address_suggestions_unavailable{,_platform,_restart,_narrow} (PR newtab-address-suggestions, head 6451290126); search_row also read for ur bidi"
+					"receipt": "i18n/receipts/d70b41c5a0c8-es.json",
+					"receipt_sha256": "df52b5595f1c485705f004aa1c8ef1c6a349269f3aefbcf65ff1729c7f40f9a7",
+					"scope": "PR #1472 six-key passkey-notice delta at ec8c333cf208 (ui.browser); 241 carried keys byte-identical to the previously audited file.",
+					"note": "Independent delta audit, 0 findings. tú register (usa) and 'clave de acceso'/'Solicitud' match webauthn_chooser; safety claim intact. Model radient/auto (fallback chain disclosed in receipt)."
 				}
 			],
 			"status": "audited",
@@ -1176,6 +1177,29 @@
 							},
 							"receipt": "i18n/receipts/6e30d4afcd71.json",
 							"receipt_sha256": "26e257eb08f104aca5c06023ed2b55e0c650f54b90d04afb1ee16cb2aa7d63e7"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "9c26625772886bffa1392176565485cad451be8f2644519b1a939d863667aa81",
+					"target_sha256": "0963f0fa1508157025ccb00d4b1768d7e4c4c45bd02b4888be08e156f542a860",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "es-newtab-suggestions-b4b10f148ecf",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/es-newtab-suggestions-b4b10f148ecf.json",
+							"receipt_sha256": "b135a93635ecc703443acca43cee287e2890a94deca2f05bb8eaedf44aad8f71",
+							"scope": "ui.browser address_open_row + address_suggestions_unavailable{,_platform,_restart,_narrow} (PR newtab-address-suggestions, head 6451290126); search_row also read for ur bidi"
 						}
 					],
 					"status": "audited"
@@ -6575,8 +6599,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.settings.shortcuts",
-			"source_sha256": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
-			"target_sha256": "3599926c9fbca0be97f671f915610cce835e1aa1d29f34cc9679216f031aca25",
+			"source_sha256": "6ac7282da4a4dc30389e1777bca07fc63d434fa9f80e703b6b76aa72670a7919",
+			"target_sha256": "c30c549b00de9779650e4bac9d3b5a844e2776569d23117be895334199852115",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -6586,17 +6610,18 @@
 				{
 					"agent": "translation-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-24",
+					"date": "2026-10-29",
 					"result": "clean",
-					"instance": "9a6273e11154",
+					"instance": "591153bbfff3-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/9a6273e11154.json",
-					"receipt_sha256": "8a3c92eaaa3444b1fbb51d621f3299e4874474cc300fc4d4a3407b0d247c9522"
+					"receipt": "i18n/receipts/591153bbfff3-es.json",
+					"receipt_sha256": "54e1677be99418be200753a442700a34132d2a10356a5b8ac8aa0721624890b9",
+					"scope": "Changed rows only: the 3 keys this PR rewrote (browser-scope paragraph, browser_reload, browser_reload_cache). The other 61 keys are byte-identical to the previously audited commit 3d2e8ce. Key set == EN (64/64); ICU parity on the whole file; meaning vs the context.json note; dual-scope phrasing vs the same file's browser_back/close/find/zoom_in rows."
 				}
 			],
 			"status": "audited",
@@ -6620,6 +6645,28 @@
 							"receipt": "i18n/receipts/ea3629c2a645.json",
 							"receipt_sha256": "1adcf5201c953c8581cc9ebb888ae927bb4547d324f2ae550e1b8ca27f25874d",
 							"scope": "Full semantic read; exhaustive mechanical checks."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
+					"target_sha256": "3599926c9fbca0be97f671f915610cce835e1aa1d29f34cc9679216f031aca25",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "9a6273e11154",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/9a6273e11154.json",
+							"receipt_sha256": "8a3c92eaaa3444b1fbb51d621f3299e4874474cc300fc4d4a3407b0d247c9522"
 						}
 					],
 					"status": "audited"
@@ -8790,8 +8837,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.browser",
-			"source_sha256": "9c26625772886bffa1392176565485cad451be8f2644519b1a939d863667aa81",
-			"target_sha256": "d44bfc4d23be0328a3846d1eaa5f3f1492a9beb05f47213268d4eaaae818ddeb",
+			"source_sha256": "8f37af681b57cc3f6beb521dd17367042e25522d9a47d9cf75b4a08f2ad5cb64",
+			"target_sha256": "4daea7e7db89c712387254fbfa82d9e89ce88a7db42abac7a96d4977822f1e8d",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -8800,20 +8847,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "fr-newtab-suggestions-b4b10f148ecf",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-29",
+					"result": "clean",
+					"instance": "d70b41c5a0c8-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 3,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/fr-newtab-suggestions-b4b10f148ecf.json",
-					"receipt_sha256": "1d51c5336f2ddb309b2fb0bb96e4b566fafe7898a3b7ffbcfd38a9da660e07af",
-					"scope": "ui.browser address_open_row + address_suggestions_unavailable{,_platform,_restart,_narrow} (PR newtab-address-suggestions, head 6451290126); search_row also read for ur bidi"
+					"receipt": "i18n/receipts/d70b41c5a0c8-fr.json",
+					"receipt_sha256": "5b75b3a50110698716204019ffc7a171980eef2a905eeedf932af09bd9d4b3ea",
+					"scope": "PR #1472 six-key passkey-notice delta at ec8c333cf208 (ui.browser); 241 carried keys byte-identical to the previously audited file.",
+					"note": "Independent delta audit, 0 findings. vous register (utilisez) and 'clé d’accès'/'demande' match webauthn_chooser; 'Masquer' matches file-transfer notices; safety claim intact. Model radient/auto (fallback disclosed)."
 				}
 			],
 			"status": "audited",
@@ -8974,6 +9022,29 @@
 							},
 							"receipt": "i18n/receipts/e64778cf62ec.json",
 							"receipt_sha256": "d8eea9826a7adc9e397c999d21736006093416844c9c820b4660b42cd03231bf"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "9c26625772886bffa1392176565485cad451be8f2644519b1a939d863667aa81",
+					"target_sha256": "d44bfc4d23be0328a3846d1eaa5f3f1492a9beb05f47213268d4eaaae818ddeb",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "fr-newtab-suggestions-b4b10f148ecf",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/fr-newtab-suggestions-b4b10f148ecf.json",
+							"receipt_sha256": "1d51c5336f2ddb309b2fb0bb96e4b566fafe7898a3b7ffbcfd38a9da660e07af",
+							"scope": "ui.browser address_open_row + address_suggestions_unavailable{,_platform,_restart,_narrow} (PR newtab-address-suggestions, head 6451290126); search_row also read for ur bidi"
 						}
 					],
 					"status": "audited"
@@ -14686,8 +14757,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.settings.shortcuts",
-			"source_sha256": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
-			"target_sha256": "44385a5e62798e571e456f6e54b44ffe5ab3ab9bf04b0c3d741367ccaa288e36",
+			"source_sha256": "6ac7282da4a4dc30389e1777bca07fc63d434fa9f80e703b6b76aa72670a7919",
+			"target_sha256": "1c3091b34ce2392f74b6224d628d21be1ce371209a40263817be9ff50e59ddf1",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -14698,17 +14769,18 @@
 				{
 					"agent": "translation-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-24",
-					"result": "clean-with-findings",
-					"instance": "d94011de0dc0",
+					"date": "2026-10-29",
+					"result": "clean",
+					"instance": "591153bbfff3-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d94011de0dc0-surfaces.json",
-					"receipt_sha256": "cdab18d3bc3b8c91215c07a178c64af0c5a1b44bf181c0b6d31e4bad14be3e8f"
+					"receipt": "i18n/receipts/591153bbfff3-fr.json",
+					"receipt_sha256": "4e5dd7f48f7d3014dd7e9bbbaa3c5508a31ec6c10933cdadb415876a321d2e4f",
+					"scope": "Changed rows only: the 3 keys this PR rewrote (browser-scope paragraph, browser_reload, browser_reload_cache). The other 61 keys are byte-identical to the previously audited commit 3d2e8ce. Key set == EN (64/64); ICU parity on the whole file; meaning vs the context.json note; dual-scope phrasing vs the same file's browser_back/close/find/zoom_in rows."
 				}
 			],
 			"status": "audited",
@@ -14756,6 +14828,28 @@
 							"receipt_sha256": "569240f5e868624550ea73bfee1fa7df69e3f3ee58c1a707442bdb0cad240618",
 							"scope": "fr ui.settings.shortcuts vs en at the #1057 re-pinned sources - full-file re-audit incl. ::group-off token mirror",
 							"note": "Independent re-audit at the re-pinned head; receipt-backed. Prior comment-based audit records retained as history in superseded. Rendered pixel fit remains a separate PR check."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
+					"target_sha256": "44385a5e62798e571e456f6e54b44ffe5ab3ab9bf04b0c3d741367ccaa288e36",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean-with-findings",
+							"instance": "d94011de0dc0",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d94011de0dc0-surfaces.json",
+							"receipt_sha256": "cdab18d3bc3b8c91215c07a178c64af0c5a1b44bf181c0b6d31e4bad14be3e8f"
 						}
 					],
 					"status": "audited"
@@ -17025,8 +17119,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.browser",
-			"source_sha256": "9c26625772886bffa1392176565485cad451be8f2644519b1a939d863667aa81",
-			"target_sha256": "dbe2e967529f4aad521d079fbd8abc2278d6c15d21b35cc6427f68b13a4c8d2c",
+			"source_sha256": "8f37af681b57cc3f6beb521dd17367042e25522d9a47d9cf75b4a08f2ad5cb64",
+			"target_sha256": "ea7b3fb826f57ca242442019c64df82cd7e5b97d12baa3b2b7b13784a3288295",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -17035,20 +17129,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "hi-newtab-suggestions-b4b10f148ecf",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-29",
+					"result": "clean",
+					"instance": "d70b41c5a0c8-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/hi-newtab-suggestions-b4b10f148ecf.json",
-					"receipt_sha256": "12193ce35ff7e0439203fec4c672b849751f4aa2aca4ae7764e84f249f178951",
-					"scope": "ui.browser address_open_row + address_suggestions_unavailable{,_platform,_restart,_narrow} (PR newtab-address-suggestions, head 6451290126); search_row also read for ur bidi"
+					"receipt": "i18n/receipts/d70b41c5a0c8-hi.json",
+					"receipt_sha256": "97afbfbe48baa581b331440b250b6434c623ce90a8af3e4d1ac8cc9716f8bccc",
+					"scope": "PR #1472 six-key passkey-notice delta at ec8c333cf208 (ui.browser); 241 carried keys byte-identical to the previously audited file.",
+					"note": "Independent delta audit, 0 findings. आप imperatives; 'पासकी' and साइट verb agreement follow the namespace; danda punctuation; safety claim intact. Model radient/auto (fallback disclosed)."
 				}
 			],
 			"status": "audited",
@@ -17209,6 +17304,29 @@
 							},
 							"receipt": "i18n/receipts/23b7b00894fd.json",
 							"receipt_sha256": "6e0f536906f48f01ede0fba48a78df6d72a17f98decf38c36766b162e2dff755"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "9c26625772886bffa1392176565485cad451be8f2644519b1a939d863667aa81",
+					"target_sha256": "dbe2e967529f4aad521d079fbd8abc2278d6c15d21b35cc6427f68b13a4c8d2c",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "hi-newtab-suggestions-b4b10f148ecf",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/hi-newtab-suggestions-b4b10f148ecf.json",
+							"receipt_sha256": "12193ce35ff7e0439203fec4c672b849751f4aa2aca4ae7764e84f249f178951",
+							"scope": "ui.browser address_open_row + address_suggestions_unavailable{,_platform,_restart,_narrow} (PR newtab-address-suggestions, head 6451290126); search_row also read for ur bidi"
 						}
 					],
 					"status": "audited"
@@ -22828,8 +22946,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.settings.shortcuts",
-			"source_sha256": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
-			"target_sha256": "0b839379749920449bcd1665d800a95f295509e4072347b99ed21eb9f249f5da",
+			"source_sha256": "6ac7282da4a4dc30389e1777bca07fc63d434fa9f80e703b6b76aa72670a7919",
+			"target_sha256": "7501d8f29f8e2742604e61210bc27916f68ad1dd128dcbd20745a11bafb05f15",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -22839,17 +22957,18 @@
 				{
 					"agent": "translation-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-24",
-					"result": "clean",
-					"instance": "dab47dfc690a",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "591153bbfff3-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/dab47dfc690a-surfaces.json",
-					"receipt_sha256": "ef467c191feb9a91c8e4ada0c2814ec7a710506dcfd5fe0a8a4d964dc5738290"
+					"receipt": "i18n/receipts/591153bbfff3-hi.json",
+					"receipt_sha256": "7a7abbd5862ad47fe844b2a8c8ddc0e569d8bc80628e4f20295850ee7a8a0ee8",
+					"scope": "Changed rows only: the 3 keys this PR rewrote (browser-scope paragraph, browser_reload, browser_reload_cache). The other 61 keys are byte-identical to the previously audited commit 3d2e8ce. Key set == EN (64/64); ICU parity on the whole file; meaning vs the context.json note; dual-scope phrasing vs the same file's browser_back/close/find/zoom_in rows."
 				}
 			],
 			"status": "audited",
@@ -22874,6 +22993,28 @@
 							"receipt_sha256": "ec989e0af2c264081d50d722bc33a6d7956f94477723b0e330af5e1c2101b07d",
 							"scope": "hi ui.settings.shortcuts vs en source — round 1 independent full pass, 9 keys",
 							"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
+					"target_sha256": "0b839379749920449bcd1665d800a95f295509e4072347b99ed21eb9f249f5da",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "dab47dfc690a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/dab47dfc690a-surfaces.json",
+							"receipt_sha256": "ef467c191feb9a91c8e4ada0c2814ec7a710506dcfd5fe0a8a4d964dc5738290"
 						}
 					],
 					"status": "audited"
@@ -24974,8 +25115,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.browser",
-			"source_sha256": "9c26625772886bffa1392176565485cad451be8f2644519b1a939d863667aa81",
-			"target_sha256": "3545fdb1b0385132d06d37b93bb2447ad1e2917c5d88145d45179886f3416aed",
+			"source_sha256": "8f37af681b57cc3f6beb521dd17367042e25522d9a47d9cf75b4a08f2ad5cb64",
+			"target_sha256": "0aa5eaab85312b0dc32ef67153e4be490c98e6dcbc0ba9a60d7711401743a734",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -24984,20 +25125,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "ru-newtab-suggestions-b4b10f148ecf",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-29",
+					"result": "clean",
+					"instance": "d70b41c5a0c8-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ru-newtab-suggestions-b4b10f148ecf.json",
-					"receipt_sha256": "a53b50f5495ad881f8ee7fad9588d92fe9747bbed6d19244693c29a7bbdaf931",
-					"scope": "ui.browser address_open_row + address_suggestions_unavailable{,_platform,_restart,_narrow} (PR newtab-address-suggestions, head 6451290126); search_row also read for ur bidi"
+					"receipt": "i18n/receipts/d70b41c5a0c8-ru.json",
+					"receipt_sha256": "4e55e49a61175ebdc5d81d774c47d366bc8deb3b68dede989a05724d18db676c",
+					"scope": "PR #1472 six-key passkey-notice delta at ec8c333cf208 (ui.browser); 241 carried keys byte-identical to the previously audited file.",
+					"note": "Independent delta audit, 0 findings. вы register (используйте), 'ключ доступа'/'запрос' match webauthn_chooser; safety claim intact. Model radient/auto (fallback disclosed)."
 				}
 			],
 			"status": "audited",
@@ -25157,6 +25299,29 @@
 							},
 							"receipt": "i18n/receipts/4083353c8adf.json",
 							"receipt_sha256": "b11509881edd406939e69062a9760b679baff0b7e36f5ca7dfebf14b7248e774"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "9c26625772886bffa1392176565485cad451be8f2644519b1a939d863667aa81",
+					"target_sha256": "3545fdb1b0385132d06d37b93bb2447ad1e2917c5d88145d45179886f3416aed",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "ru-newtab-suggestions-b4b10f148ecf",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ru-newtab-suggestions-b4b10f148ecf.json",
+							"receipt_sha256": "a53b50f5495ad881f8ee7fad9588d92fe9747bbed6d19244693c29a7bbdaf931",
+							"scope": "ui.browser address_open_row + address_suggestions_unavailable{,_platform,_restart,_narrow} (PR newtab-address-suggestions, head 6451290126); search_row also read for ur bidi"
 						}
 					],
 					"status": "audited"
@@ -30611,8 +30776,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.settings.shortcuts",
-			"source_sha256": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
-			"target_sha256": "0ce9956474d363e363d25f58fb5615cd9919ad2aecd6059dd2b6078dbe13c318",
+			"source_sha256": "6ac7282da4a4dc30389e1777bca07fc63d434fa9f80e703b6b76aa72670a7919",
+			"target_sha256": "a4f839019f2e78f13c2455d2a34000f71ea1f3ca372eb5d7d06d3a37febca25a",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -30623,18 +30788,18 @@
 				{
 					"agent": "translation-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-24",
+					"date": "2026-10-29",
 					"result": "clean",
-					"instance": "23463a773a32-surfaces",
+					"instance": "591153bbfff3-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/23463a773a32-surfaces.json",
-					"receipt_sha256": "ffb00483f5a5b874782f3512f5de45836a54200b23fad9579f69d5803171188b",
-					"scope": "Remediation delta only: every ru value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical English/context hashes and the per-namespace target hashes recor"
+					"receipt": "i18n/receipts/591153bbfff3-ru.json",
+					"receipt_sha256": "fc401ad0eef6e2ee35355aeb2472a0357919d47cc18836adde59204e1cbb71a6",
+					"scope": "Changed rows only: the 3 keys this PR rewrote (browser-scope paragraph, browser_reload, browser_reload_cache). The other 61 keys are byte-identical to the previously audited commit 3d2e8ce. Key set == EN (64/64); ICU parity on the whole file; meaning vs the context.json note; dual-scope phrasing vs the same file's browser_back/close/find/zoom_in rows."
 				}
 			],
 			"status": "audited",
@@ -30659,6 +30824,29 @@
 							"receipt_sha256": "543b80cfc298f45cda1530dfef825f4ad61d165a4a85fa66763eafd73d1e3a60",
 							"scope": "Prior full audit 69efd21a56e0 plus 65ad12e767..2ee9bcd2f9 remediation delta; unmodified values and source/context bytes retained.",
 							"note": "All original findings fixed in 2ee9bcd2f9. Actual fallback model; copy audit only, not rendered fit or release eligibility."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
+					"target_sha256": "0ce9956474d363e363d25f58fb5615cd9919ad2aecd6059dd2b6078dbe13c318",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "23463a773a32-surfaces",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/23463a773a32-surfaces.json",
+							"receipt_sha256": "ffb00483f5a5b874782f3512f5de45836a54200b23fad9579f69d5803171188b",
+							"scope": "Remediation delta only: every ru value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical English/context hashes and the per-namespace target hashes recor"
 						}
 					],
 					"status": "audited"
@@ -32791,8 +32979,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.browser",
-			"source_sha256": "9c26625772886bffa1392176565485cad451be8f2644519b1a939d863667aa81",
-			"target_sha256": "2a48ee96efe1bfac3f3b45f456f84fedb22da7ca1f2b9c45e7174f04ab55085e",
+			"source_sha256": "8f37af681b57cc3f6beb521dd17367042e25522d9a47d9cf75b4a08f2ad5cb64",
+			"target_sha256": "e5c8bc6f6b04bd2ddf69d38102b45fe345f0e7965c22e096b263a5f5bdbd8e34",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -32801,20 +32989,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-10-26",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-29",
 					"result": "clean",
-					"instance": "ur-newtab-suggestions-close-410f4cc3cb0e",
+					"instance": "d70b41c5a0c8-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ur-newtab-suggestions-close-410f4cc3cb0e.json",
-					"receipt_sha256": "bdffd12fd53759e519efefad2c9052b850b5a4ec521997e40bda466baa8c77b4",
-					"scope": "ui.browser address_open_row + address_suggestions_unavailable{,_platform,_restart,_narrow} (PR newtab-address-suggestions, head 6451290126); search_row also read for ur bidi"
+					"receipt": "i18n/receipts/d70b41c5a0c8-ur.json",
+					"receipt_sha256": "a3613255d78e540e04931b70cfbcfe546c40fcba095b1b65053b6e718e423eb8",
+					"scope": "PR #1472 six-key passkey-notice delta at ec8c333cf208 (ui.browser); 241 carried keys byte-identical to the previously audited file.",
+					"note": "Independent delta audit, 0 findings. آپ imperative, 'پاس کی' matches webauthn_chooser, Urdu ،/۔ punctuation, no manual bidi marks; safety claim intact. Model radient/auto (fallback disclosed)."
 				}
 			],
 			"status": "audited",
@@ -32998,6 +33187,29 @@
 							},
 							"receipt": "i18n/receipts/6b2028436474.json",
 							"receipt_sha256": "97ee966f53c272f3c09fca533d19f71b5d74d5e200034a74a0d9c22d33a59263"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "9c26625772886bffa1392176565485cad451be8f2644519b1a939d863667aa81",
+					"target_sha256": "2a48ee96efe1bfac3f3b45f456f84fedb22da7ca1f2b9c45e7174f04ab55085e",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "ur-newtab-suggestions-close-410f4cc3cb0e",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ur-newtab-suggestions-close-410f4cc3cb0e.json",
+							"receipt_sha256": "bdffd12fd53759e519efefad2c9052b850b5a4ec521997e40bda466baa8c77b4",
+							"scope": "ui.browser address_open_row + address_suggestions_unavailable{,_platform,_restart,_narrow} (PR newtab-address-suggestions, head 6451290126); search_row also read for ur bidi"
 						}
 					],
 					"status": "audited"
@@ -38497,8 +38709,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.settings.shortcuts",
-			"source_sha256": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
-			"target_sha256": "92c8a9a56e12310aa219c8e33990c0991370032d687afe4882d84ac003189aa7",
+			"source_sha256": "6ac7282da4a4dc30389e1777bca07fc63d434fa9f80e703b6b76aa72670a7919",
+			"target_sha256": "0ede705f31e13cef71e49da3a227b665e29f3886a447bb1b390f1f73a5bf9944",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -38508,18 +38720,18 @@
 				{
 					"agent": "translation-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-24",
+					"date": "2026-10-29",
 					"result": "clean",
-					"instance": "21fe6c635cf3",
+					"instance": "591153bbfff3-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/21fe6c635cf3-surfaces.json",
-					"receipt_sha256": "c8a545503607c32407442b73c7b61ccb33fd68447cdf9c01d3a3415fcb578086",
-					"scope": "Remediation delta only: every value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical hashes recorded below."
+					"receipt": "i18n/receipts/591153bbfff3-ur.json",
+					"receipt_sha256": "5449e777d8bd935a71c513a8afc10ae1c6702d74c965cfc44e3e66979b94896b",
+					"scope": "Changed rows only: the 3 keys this PR rewrote (browser-scope paragraph, browser_reload, browser_reload_cache). The other 61 keys are byte-identical to the previously audited commit 3d2e8ce. Key set == EN (64/64); ICU parity on the whole file; meaning vs the context.json note; dual-scope phrasing vs the same file's browser_back/close/find/zoom_in rows."
 				}
 			],
 			"status": "audited",
@@ -38544,6 +38756,29 @@
 							"receipt_sha256": "7be92f4a2a4f9b5aff5a834d859d39e06e341caf831df08db9f9a64a75c306bf",
 							"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
 							"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
+					"target_sha256": "92c8a9a56e12310aa219c8e33990c0991370032d687afe4882d84ac003189aa7",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "21fe6c635cf3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/21fe6c635cf3-surfaces.json",
+							"receipt_sha256": "c8a545503607c32407442b73c7b61ccb33fd68447cdf9c01d3a3415fcb578086",
+							"scope": "Remediation delta only: every value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical hashes recorded below."
 						}
 					],
 					"status": "audited"
@@ -40640,8 +40875,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.browser",
-			"source_sha256": "9c26625772886bffa1392176565485cad451be8f2644519b1a939d863667aa81",
-			"target_sha256": "5c00b30c6f7d2376f1b85d9fdcc655dd8dfccac05a2e9e7840c09739813a3e36",
+			"source_sha256": "8f37af681b57cc3f6beb521dd17367042e25522d9a47d9cf75b4a08f2ad5cb64",
+			"target_sha256": "1bfbb1b7fde74d7d18e5259934276a92937880dcf23523c1dc7167d61241c7be",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -40650,20 +40885,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "vi-newtab-suggestions-b4b10f148ecf",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-29",
+					"result": "clean",
+					"instance": "d70b41c5a0c8-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/vi-newtab-suggestions-b4b10f148ecf.json",
-					"receipt_sha256": "38bf8c14ed7a87c54ccd5601f728cd5dd1da34ebf67de1deb8f65104eb99e03b",
-					"scope": "ui.browser address_open_row + address_suggestions_unavailable{,_platform,_restart,_narrow} (PR newtab-address-suggestions, head 6451290126); search_row also read for ur bidi"
+					"receipt": "i18n/receipts/d70b41c5a0c8-vi.json",
+					"receipt_sha256": "28885d7cbd44045c8e1ba11a692e840846f5037ef7d6e7bebe6c5662ec5cb4ac",
+					"scope": "PR #1472 six-key passkey-notice delta at ec8c333cf208 (ui.browser); 241 carried keys byte-identical to the previously audited file.",
+					"note": "Independent delta audit, 0 findings. 'tác nhân'/'khóa truy cập' match the catalogue; bạn register without pronoun; safety claim intact. Model radient/auto (fallback disclosed)."
 				}
 			],
 			"status": "audited",
@@ -40824,6 +41060,29 @@
 							},
 							"receipt": "i18n/receipts/402a0d64d6c4.json",
 							"receipt_sha256": "d890c34318b3ae0c3196c2dfb5f597bc7a20bc37a87c90c493c2f379483688b9"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "9c26625772886bffa1392176565485cad451be8f2644519b1a939d863667aa81",
+					"target_sha256": "5c00b30c6f7d2376f1b85d9fdcc655dd8dfccac05a2e9e7840c09739813a3e36",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "vi-newtab-suggestions-b4b10f148ecf",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/vi-newtab-suggestions-b4b10f148ecf.json",
+							"receipt_sha256": "38bf8c14ed7a87c54ccd5601f728cd5dd1da34ebf67de1deb8f65104eb99e03b",
+							"scope": "ui.browser address_open_row + address_suggestions_unavailable{,_platform,_restart,_narrow} (PR newtab-address-suggestions, head 6451290126); search_row also read for ur bidi"
 						}
 					],
 					"status": "audited"
@@ -46744,8 +47003,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.settings.shortcuts",
-			"source_sha256": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
-			"target_sha256": "b193310681a609816ecf7809005dc7d19d64d5bf8fb39d92d693bbf496d79ed8",
+			"source_sha256": "6ac7282da4a4dc30389e1777bca07fc63d434fa9f80e703b6b76aa72670a7919",
+			"target_sha256": "35bf6ee9d78c41c93aa3ba25ce46fb4ca195d72efb1208c0d700abab756ba9b4",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -46755,17 +47014,18 @@
 				{
 					"agent": "translation-auditor",
 					"model": "radient/auto",
-					"date": "2026-10-24",
-					"result": "clean-with-findings",
-					"instance": "b928c7f0c96d",
+					"date": "2026-10-29",
+					"result": "clean",
+					"instance": "591153bbfff3-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/b928c7f0c96d-surfaces.json",
-					"receipt_sha256": "3f79234f1f321130c46e9a6532ee7b90826101c21da47314852c169711c070fe"
+					"receipt": "i18n/receipts/591153bbfff3-vi.json",
+					"receipt_sha256": "2debf4669184d242bfa9935814e33f0e73f4c24ee0046c082c4aa5e2939faf92",
+					"scope": "Changed rows only: the 3 keys this PR rewrote (browser-scope paragraph, browser_reload, browser_reload_cache). The other 61 keys are byte-identical to the previously audited commit 3d2e8ce. Key set == EN (64/64); ICU parity on the whole file; meaning vs the context.json note; dual-scope phrasing vs the same file's browser_back/close/find/zoom_in rows."
 				}
 			],
 			"status": "audited",
@@ -46790,6 +47050,28 @@
 							"receipt_sha256": "8d032c3981834cee2a412dca0012528b697b81f214aae00328f79f1b3bb17711",
 							"scope": "full namespace; post-remediation verification of round-1 native audit findings",
 							"note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
+					"target_sha256": "b193310681a609816ecf7809005dc7d19d64d5bf8fb39d92d693bbf496d79ed8",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean-with-findings",
+							"instance": "b928c7f0c96d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b928c7f0c96d-surfaces.json",
+							"receipt_sha256": "3f79234f1f321130c46e9a6532ee7b90826101c21da47314852c169711c070fe"
 						}
 					],
 					"status": "audited"
@@ -49110,8 +49392,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.browser",
-			"source_sha256": "9c26625772886bffa1392176565485cad451be8f2644519b1a939d863667aa81",
-			"target_sha256": "d56c00aea21212eca67067d125bdd79bff524eefebde1ef7f65baa4017f0ac97",
+			"source_sha256": "8f37af681b57cc3f6beb521dd17367042e25522d9a47d9cf75b4a08f2ad5cb64",
+			"target_sha256": "6f822035f3658e1afc233716639e5f076dea9df7d87e87960525ff1c970a3590",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -49120,20 +49402,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "zh-cn-newtab-suggestions-b4b10f148ecf",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-29",
+					"result": "clean",
+					"instance": "d70b41c5a0c8-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 2
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/zh-cn-newtab-suggestions-b4b10f148ecf.json",
-					"receipt_sha256": "2b34f785adb5a21cff58a662aea5ae3e3838be3c378efed001c05f6928107839",
-					"scope": "ui.browser address_open_row + address_suggestions_unavailable{,_platform,_restart,_narrow} (PR newtab-address-suggestions, head 6451290126); search_row also read for ur bidi"
+					"receipt": "i18n/receipts/d70b41c5a0c8-zh-cn.json",
+					"receipt_sha256": "c3360d018cc42c8a75f6202cdcdf156efa1fb2b3e371400078b7945dffd5a890",
+					"scope": "PR #1472 six-key passkey-notice delta at ec8c333cf208 (ui.browser); 241 carried keys byte-identical to the previously audited file.",
+					"note": "Independent delta audit, 0 findings. 智能体/通行密钥 match the locale calls; 请 follows the namespace's existing imperative convention; safety claim intact. Model radient/auto (fallback disclosed)."
 				}
 			],
 			"status": "audited",
@@ -49318,6 +49601,29 @@
 							},
 							"receipt": "i18n/receipts/198be3ae76a8.json",
 							"receipt_sha256": "aee4f19f0170420f6020a493da7c59a1ebc692e3c32338ed26d7339797e59559"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "9c26625772886bffa1392176565485cad451be8f2644519b1a939d863667aa81",
+					"target_sha256": "d56c00aea21212eca67067d125bdd79bff524eefebde1ef7f65baa4017f0ac97",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "zh-cn-newtab-suggestions-b4b10f148ecf",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/zh-cn-newtab-suggestions-b4b10f148ecf.json",
+							"receipt_sha256": "2b34f785adb5a21cff58a662aea5ae3e3838be3c378efed001c05f6928107839",
+							"scope": "ui.browser address_open_row + address_suggestions_unavailable{,_platform,_restart,_narrow} (PR newtab-address-suggestions, head 6451290126); search_row also read for ur bidi"
 						}
 					],
 					"status": "audited"
@@ -55616,8 +55922,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.settings.shortcuts",
-			"source_sha256": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
-			"target_sha256": "42d14913361f54e3c446598ee2166cc9e1cf5e40cd1c3f4b0ba7091b26edffe5",
+			"source_sha256": "6ac7282da4a4dc30389e1777bca07fc63d434fa9f80e703b6b76aa72670a7919",
+			"target_sha256": "a7a32d86c33c7bc49e7f74a7053a08ab0f6e34ec452b06ebf86f46d02c262a09",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -55626,18 +55932,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "openrouter/moonshotai/kimi-k3.1-pro",
-					"date": "2026-10-24",
+					"model": "radient/auto",
+					"date": "2026-10-29",
 					"result": "clean",
-					"instance": "5e4bc8838c01-surfaces-zh-cn-r1",
+					"instance": "591153bbfff3-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/5e4bc8838c01-surfaces-zh-cn-r1.json",
-					"receipt_sha256": "11f672f8fa16f25cea4e723052c6f80dadc42be4d9fc458158b32f208d42194a"
+					"receipt": "i18n/receipts/591153bbfff3-zh-cn.json",
+					"receipt_sha256": "241d2e461a91021096d5aa03bb51c05e0f68ae1ef97c1b3c57e1381617643752",
+					"scope": "Changed rows only: the 3 keys this PR rewrote (browser-scope paragraph, browser_reload, browser_reload_cache). The other 61 keys are byte-identical to the previously audited commit 3d2e8ce. Key set == English (64/64); ICU placeholder parity over the whole file; meaning against ui.settings.shortcuts.context.json; dual-scope phrasing and register against the same file's browser_back/close/find/zoom_in rows."
 				}
 			],
 			"status": "audited",
@@ -55662,6 +55969,28 @@
 							"receipt_sha256": "76bff713ad227dc3b457b96b465a669fb73f33f59fdbfc372b59764b9c241ef7",
 							"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
 							"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
+					"target_sha256": "42d14913361f54e3c446598ee2166cc9e1cf5e40cd1c3f4b0ba7091b26edffe5",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openrouter/moonshotai/kimi-k3.1-pro",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "5e4bc8838c01-surfaces-zh-cn-r1",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/5e4bc8838c01-surfaces-zh-cn-r1.json",
+							"receipt_sha256": "11f672f8fa16f25cea4e723052c6f80dadc42be4d9fc458158b32f208d42194a"
 						}
 					],
 					"status": "audited"
