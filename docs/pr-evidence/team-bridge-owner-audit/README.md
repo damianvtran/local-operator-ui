@@ -21,7 +21,11 @@ Frames of the shipped components, captured from the Storybook stories in
 
 | State | What it shows |
 | --- | --- |
-| `populated-*` | The ordinary window: admitted text open, a `rejected` body collapsed behind "Show message text", a `not_screened` row whose body the hub did not send ("Message text unavailable."), and the chief of staff's own message open with its "Sent by your chief of staff" chip. The header carries the read-only promise, the membership state and the disclosure line with its viewer line. |
+| `populated-*` | The ordinary window: admitted text open, a `rejected` body collapsed behind "Show message text", a `not_screened` row whose body the hub did not send ("Message text unavailable."), and the chief of staff's own message open with its "Sent by your chief of staff" chip. The header carries the read-only promise, the disclosure (who can read this, and on what basis) and, under the "Also readable by" label, the OTHER agent owners by name — the reader is not listed as a reader of their own audit. The list closes with the quiet "Your chief of staff is still a member." |
+| `closed-window-*` | The audit window's cut-off: the agent was removed, so the message list ends with the boundary itself — a `hairline` rule and the reading ink, not the standing disclosure's grey — saying "The audit ends here. Your chief of staff was removed from this conversation, so later messages are not in it." A truncated history that reads as a complete one is the failure this state exists to disprove. |
 | `empty-*` | No audited conversations in this organization — and therefore **no panel**: the slot only opens one for a row the reader selects. |
 | `loading-*` | The list is still being read. |
 | `read-failed-*` | The read was refused or failed. A refusal renders as an error with a retry, never as an empty list: the routes answer `conversation_not_found` for a non-owner, an out-of-window conversation and an unknown id alike, so "nothing to show" would be a claim the client cannot make. |
+
+The `populated-*` and `closed-window-*` frames were re-captured for the design round-1 remediation of D2 and D3 (copy round 2). Measured on the live surface at the same viewport: the disclosure is `12px/400` `ink-muted` at y=76; the viewer list is `12px` at y=116; the cut-off notice is `14px/400` reading ink (`rgb(33,30,24)` light, `rgb(241,238,230)` dark) with a 1px `hairline` rule above it, against the quiet open-window line at `12px` `ink-dim` with no rule.
+
