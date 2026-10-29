@@ -122,7 +122,7 @@ const meta = {
 		canInvite: true,
 		canRemove: true,
 		onClose: () => {},
-		onRetryPeople: () => {},
+		onRetryMembers: () => {},
 		onAdd: () => {},
 		onRemove: () => {},
 	},

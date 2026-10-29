@@ -1,5 +1,6 @@
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
+import { Checkbox } from "@shared/components/ui/checkbox";
 import {
 	Dialog,
 	DialogContent,
@@ -12,7 +13,14 @@ import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Bot, Search, UserRound, UserRoundX } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useId,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import type {
 	TeamBridgeConversation,
 	TeamBridgeDirectoryMember,
@@ -39,7 +47,8 @@ export type TeamBridgeAddMembersViewProps = {
 	/** Which row is settling: "add", or "remove:<account id>". */
 	pendingKey?: string | null;
 	onClose: () => void;
-	onRetryPeople?: () => void;
+	/** Re-run the directory read for one organization, named by tenant id. */
+	onRetryMembers?: (tenantId: string) => void;
 	onAdd: (members: TeamBridgeMemberInput[]) => void;
 	onRemove: (accountId: string) => void;
 };
@@ -79,7 +88,7 @@ export function TeamBridgeAddMembersView({
 	mutationError = false,
 	pendingKey = null,
 	onClose,
-	onRetryPeople,
+	onRetryMembers,
 	onAdd,
 	onRemove,
 }: TeamBridgeAddMembersViewProps) {
@@ -87,25 +96,62 @@ export function TeamBridgeAddMembersView({
 	const headingId = useId();
 	const searchId = useId();
 	const searchRef = useRef<HTMLInputElement>(null);
+	const contentRef = useRef<HTMLDivElement>(null);
 	const [query, setQuery] = useState("");
 	const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+	/** The member row whose removal is armed; one at a time, cleared on close. */
+	const [armed, setArmed] = useState<string | null>(null);
 	useEffect(() => {
 		if (open) {
 			setQuery("");
 			setSelected(new Set());
+			setArmed(null);
 		}
 	}, [open]);
 
-	const chiefLabel = (agent: string, person: string) =>
-		agent.trim()
-			? t("ui.teamBridge.chief.label", { agent, person })
-			: t("ui.teamBridge.chief.unnamed", { person });
-	const candidates = memberCandidates(
-		conversation,
-		people,
-		selfAccountId,
-		chiefLabel,
+	const chiefLabel = useCallback(
+		(agent: string, person: string) =>
+			agent.trim()
+				? t("ui.teamBridge.chief.label", { agent, person })
+				: t("ui.teamBridge.chief.unnamed", { person }),
+		[],
 	);
+	/*
+	 * `candidates` is memoized on the things it is derived from - the
+	 * conversation (a new object on every refresh), the roster and the reader -
+	 * so the filtered list below actually re-filters when they change instead of
+	 * on every keystroke-driven render.
+	 */
+	const candidates = useMemo(
+		() => memberCandidates(conversation, people, selfAccountId, chiefLabel),
+		[conversation, people, selfAccountId, chiefLabel],
+	);
+
+	/*
+	 * A TICK THAT BECAME A MEMBERSHIP IS CLEARED, NOT KEPT IN RESERVE.
+	 *
+	 * When the hub accepts an invitation its rows turn into "already active or
+	 * invited" and stop rendering ticked - but the key would otherwise sit in
+	 * `selected` and re-arm itself the moment that person left the room again,
+	 * offering to invite someone the reader had since removed. Re-derive the
+	 * tick set from what is actually addable for the conversation as it is now.
+	 */
+	useEffect(() => {
+		setSelected((current) => {
+			const addable = new Set(
+				candidates
+					.filter(({ disabledReason }) => disabledReason === null)
+					.map(({ recipient }) => recipientKey(recipient)),
+			);
+			let dropped = false;
+			const next = new Set<string>();
+			for (const id of current) {
+				if (addable.has(id)) next.add(id);
+				else dropped = true;
+			}
+			return dropped ? next : current;
+		});
+	}, [candidates]);
 	const normalizedQuery = query.trim().toLocaleLowerCase();
 	const filtered = useMemo(
 		() =>
@@ -167,21 +213,23 @@ export function TeamBridgeAddMembersView({
 	return (
 		<Dialog open={open} onOpenChange={(next) => !next && onClose()}>
 			<DialogContent
+				ref={contentRef}
+				tabIndex={-1}
 				className="max-h-[min(780px,90dvh)] max-w-2xl overflow-hidden p-0"
 				closeDisabled={pending}
 				/*
-				 * THE SEARCH FIELD TAKES THE FIRST FOCUS, NOT THE FIRST FOCUSABLE THING.
-				 * Radix focuses the dialog's first focusable node, which here is the
-				 * first row's remove control - a destructive action wearing the
-				 * keyboard's Enter the moment the dialog opens. The filter is also what
-				 * this surface is for: type a name, tick it, confirm.
+				 * THE SEARCH FIELD TAKES THE FIRST FOCUS, NEVER A ROW'S CONTROLS.
+				 * Radix focuses the dialog's first focusable node, and the first section
+				 * here is the CURRENT-MEMBERS list whose rows carry a remove control - so
+				 * the default put the keyboard's Enter on a destructive action the moment
+				 * the picker opened. `preventDefault` is unconditional: when the roster is
+				 * still loading (or failed) there is no filter to focus, and the dialog's
+				 * own container takes the focus instead. Letting Radix choose there would
+				 * reintroduce exactly the control this rule exists to keep Enter off.
 				 */
 				onOpenAutoFocus={(event) => {
-					// A reading that is still loading, or failed, has no filter: there
-					// Radix's own choice is not a destructive one, so leave it be.
-					if (!searchRef.current) return;
 					event.preventDefault();
-					searchRef.current.focus();
+					(searchRef.current ?? contentRef.current)?.focus();
 				}}
 			>
 				<DialogHeader className="px-6 pt-6 pe-12">
@@ -201,7 +249,7 @@ export function TeamBridgeAddMembersView({
 						>
 							{t("ui.teamBridge.members.current")}
 						</h3>
-						<div className="min-h-0 space-y-1 md:overflow-y-auto md:pe-2">
+						<div className="min-h-0 space-y-1 [scrollbar-gutter:stable] md:overflow-y-auto md:pe-2">
 							{members.length === 0 ? (
 								<p className="text-sm text-ink-muted">
 									{t("ui.teamBridge.members.current_empty")}
@@ -210,38 +258,81 @@ export function TeamBridgeAddMembersView({
 								members.map(({ member, label, state, removable }) => {
 									const removing = pendingKey === `remove:${member.account_id}`;
 									return (
+										/*
+										 * THE ARMED CONTROLS GET THEIR OWN LINE. Rendered inside the
+										 * row's flex line they took ~170px of a 290px column and
+										 * truncated the very name the confirmation exists to state
+										 * ("Ben T..."). The row keeps its width; the question sits
+										 * under it, aligned to the end.
+										 */
 										<div
 											key={`${member.kind}:${member.account_id}:${state}`}
-											className="flex min-w-0 items-center gap-2 rounded-md px-2 py-2"
+											className="flex min-w-0 flex-col gap-1 rounded-md px-2 py-2"
 										>
-											{member.kind === "agent" ? (
-												<Bot
-													size={16}
-													className="shrink-0 text-ink-dim"
-													aria-hidden="true"
-												/>
-											) : (
-												<UserRound
-													size={16}
-													className="shrink-0 text-ink-dim"
-													aria-hidden="true"
-												/>
-											)}
-											<div className="min-w-0 flex-1">
-												<p className="truncate text-sm text-ink">{label}</p>
-												<p className="text-meta-sm text-ink-muted">
-													{member.role === "owner"
-														? t("ui.teamBridge.members.role.owner")
-														: t("ui.teamBridge.members.role.member")}
-													{" · "}
-													{state === "active"
-														? t("ui.teamBridge.members.state.active")
-														: t("ui.teamBridge.members.state.invited")}
-													{removing &&
-														` · ${t("ui.teamBridge.members.removing")}`}
-												</p>
+											<div className="flex min-w-0 items-center gap-2">
+												{member.kind === "agent" ? (
+													<Bot
+														size={16}
+														className="shrink-0 text-ink-dim"
+														aria-hidden="true"
+													/>
+												) : (
+													<UserRound
+														size={16}
+														className="shrink-0 text-ink-dim"
+														aria-hidden="true"
+													/>
+												)}
+												<div className="min-w-0 flex-1">
+													<p className="truncate text-sm text-ink">{label}</p>
+													<p className="text-meta-sm text-ink-muted">
+														{member.role === "owner"
+															? t("ui.teamBridge.members.role.owner")
+															: t("ui.teamBridge.members.role.member")}
+														{" · "}
+														{state === "active"
+															? t("ui.teamBridge.members.state.active")
+															: t("ui.teamBridge.members.state.invited")}
+														{removing &&
+															` · ${t("ui.teamBridge.members.removing")}`}
+													</p>
+												</div>
 											</div>
-											{removable && (
+											{/*
+											 * A REMOVAL IS ASKED TWICE. The archive path next door
+											 * confirms, and a member leaves with one stray click in a
+											 * list whose rows sit beside a checkbox column - so the
+											 * first press only arms the row, and the armed row states
+											 * the person it would remove.
+											 */}
+											{removable && armed === member.account_id && (
+												<div className="flex shrink-0 items-center justify-end gap-1">
+													<Button
+														type="button"
+														size="sm"
+														variant="ghost"
+														disabled={pending}
+														onClick={() => setArmed(null)}
+													>
+														{t("ui.teamBridge.create.cancel")}
+													</Button>
+													<Button
+														type="button"
+														size="sm"
+														variant="secondary"
+														disabled={pending}
+														onClick={() => {
+															setArmed(null);
+															onRemove(member.account_id);
+														}}
+													>
+														{t("ui.teamBridge.members.remove", {
+															name: label,
+														})}
+													</Button>
+												</div>
+											)}
+											{removable && armed !== member.account_id && (
 												<Button
 													type="button"
 													size="icon-sm"
@@ -253,7 +344,7 @@ export function TeamBridgeAddMembersView({
 													title={t("ui.teamBridge.members.remove", {
 														name: label,
 													})}
-													onClick={() => onRemove(member.account_id)}
+													onClick={() => setArmed(member.account_id)}
 												>
 													<UserRoundX size={15} aria-hidden="true" />
 												</Button>
@@ -285,12 +376,12 @@ export function TeamBridgeAddMembersView({
 								<p className="text-sm text-ink-muted">
 									{t("ui.teamBridge.members.load_error")}
 								</p>
-								{onRetryPeople && (
+								{onRetryMembers && (
 									<Button
 										type="button"
 										size="sm"
 										variant="outline"
-										onClick={onRetryPeople}
+										onClick={() => onRetryMembers(conversation.tenant_id)}
 									>
 										{t("ui.teamBridge.list.retry")}
 									</Button>
@@ -314,7 +405,7 @@ export function TeamBridgeAddMembersView({
 										disabled={!canInvite || pending}
 									/>
 								</div>
-								<div className="min-h-0 space-y-1 md:overflow-y-auto md:pe-2">
+								<div className="min-h-0 space-y-1 [scrollbar-gutter:stable] md:overflow-y-auto md:pe-2">
 									{filtered.length === 0 ? (
 										<p className="px-2 py-4 text-sm text-ink-muted">
 											{people.length === 0
@@ -323,8 +414,22 @@ export function TeamBridgeAddMembersView({
 										</p>
 									) : (
 										groups.map((group) => (
-											<div key={group.key}>
-												<p className="px-2 pt-2 pb-1 text-ink-dim text-meta">
+											/*
+											 * A FIELDSET, NOT A DIV WITH role="group": the heading names the group, so a
+											 * screen reader hears "People, Sherman Tsui" and then "Agents and chiefs of
+											 * staff, Orion (Sherman Tsui)" - the split the eye gets. The name comes from
+											 * `aria-labelledby` rather than a `<legend>`, whose own box would fight this
+											 * heading's register; the classes reset the fieldset's default frame.
+											 */
+											<fieldset
+												key={group.key}
+												className="m-0 min-w-0 border-0 p-0"
+												aria-labelledby={`${searchId}-${group.key}`}
+											>
+												<p
+													id={`${searchId}-${group.key}`}
+													className="px-2 pt-2 pb-1 text-ink-dim text-meta"
+												>
 													{group.heading}
 												</p>
 												{group.rows.map((candidate, index) => {
@@ -336,9 +441,10 @@ export function TeamBridgeAddMembersView({
 														!canInvite ||
 														candidate.disabledReason !== null ||
 														pending;
-													const reasonId = `${searchId}-${group.key}-${index}`;
+													const labelId = `${searchId}-${group.key}-${index}-label`;
+													const reasonId = `${searchId}-${group.key}-${index}-reason`;
 													return (
-														<label
+														<div
 															key={key}
 															className={cn(
 																"flex w-full items-start gap-3 rounded-md px-2 py-2",
@@ -346,13 +452,33 @@ export function TeamBridgeAddMembersView({
 																	? "cursor-not-allowed"
 																	: "cursor-pointer hover:bg-row-hover",
 																/*
-																 * Selection is a GROUND step, never a stroke. The
-																 * checkbox is the control and already states the
-																 * fact; a border here would be a second mark for
-																 * something the row's own ground can say.
+																 * Selection is a GROUND step, never a stroke: the checkbox
+																 * is the control and already states the fact.
 																 */
 																checked && "bg-row-selected",
 															)}
+															/*
+															 * ONE click handler, which ignores a click that landed on the
+															 * checkbox: the box toggles itself, and a row handler that also
+															 * fired would toggle it straight back. The keyboard twin keeps the
+															 * row's pointer and key targets agreeing; the checkbox stays the
+															 * tab stop.
+															 */
+															onClick={(event) => {
+																if (
+																	(event.target as HTMLElement).closest?.(
+																		"[data-row-checkbox]",
+																	)
+																)
+																	return;
+																toggle(candidate);
+															}}
+															onKeyDown={(event) => {
+																if (event.key !== "Enter" && event.key !== " ")
+																	return;
+																event.preventDefault();
+																toggle(candidate);
+															}}
 														>
 															{candidate.recipient.kind === "agent" ? (
 																<Bot
@@ -369,6 +495,7 @@ export function TeamBridgeAddMembersView({
 															)}
 															<span className="min-w-0 flex-1">
 																<span
+																	id={labelId}
 																	className={cn(
 																		"block truncate text-sm",
 																		disabled ? "text-ink-dim" : "text-ink",
@@ -376,39 +503,47 @@ export function TeamBridgeAddMembersView({
 																>
 																	{candidate.recipient.label}
 																</span>
-																<span
-																	id={reasonId}
-																	className="block text-meta-sm text-ink-muted"
-																>
-																	{candidate.disabledReason
-																		? reasonCopy(candidate.disabledReason)
-																		: candidate.recipient.kind === "agent"
-																			? t(
-																					"ui.teamBridge.members.agent_invitation",
-																				)
-																			: t(
-																					"ui.teamBridge.members.human_invitation",
-																				)}
-																</span>
+																{/*
+																 * ONLY A REASON IS SAID PER ROW. "Person; joins after
+																 * accepting the invitation" used to repeat on every addable row,
+																 * adding a line to each and pushing the Agents group below the
+																 * fold at 720px - a heading over nothing, which is what this
+																 * component's own rule forbids. The footer already states the
+																 * consequence once, for the whole invitation.
+																 */}
+																{candidate.disabledReason && (
+																	<span
+																		id={reasonId}
+																		className="block text-meta-sm text-ink-muted"
+																	>
+																		{reasonCopy(candidate.disabledReason)}
+																	</span>
+																)}
 															</span>
 															{/*
-															 * A native checkbox, not role="checkbox": the app's base
-															 * layer already gives it the control cursor and the
-															 * disabled rule. `aria-describedby` carries the reason, so
-															 * an unavailable row explains itself to a screen reader.
+															 * The house `Checkbox`, not a raw input: a native box paints
+															 * Chromium's accent and ignores every theme (design review D1).
+															 * The row's handler skips clicks that land inside this
+															 * wrapper, so a tick on the box toggles exactly once.
 															 */}
-															<input
-																type="checkbox"
-																className="mt-1 shrink-0"
-																checked={checked}
-																disabled={disabled}
-																onChange={() => toggle(candidate)}
-																aria-describedby={reasonId}
-															/>
-														</label>
+															<span
+																className="mt-0.5 shrink-0"
+																data-row-checkbox=""
+															>
+																<Checkbox
+																	checked={checked}
+																	disabled={disabled}
+																	onCheckedChange={() => toggle(candidate)}
+																	aria-labelledby={labelId}
+																	{...(candidate.disabledReason
+																		? { "aria-describedby": reasonId }
+																		: {})}
+																/>
+															</span>
+														</div>
 													);
 												})}
-											</div>
+											</fieldset>
 										))
 									)}
 								</div>

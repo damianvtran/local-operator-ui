@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { unlinkSync } from "node:fs";
+import { readFileSync, unlinkSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
@@ -73,11 +74,47 @@ globalThis.DOMRect ??= class {
 };
 const { createRoot } = await import("react-dom/client");
 
+/*
+ * THE RAIL'S ONE IMPORT FROM THE CHAT SIDEBAR IS ITS SELECTED-ROW ROLE.
+ * `team-bridge-rail.tsx` imports `rowCurrent` from `chat-sidebar.tsx`, which drags
+ * MUI and the whole chat tree into a node bundle. The stub exports the SAME
+ * literal, read from the shipped source, so the page still renders the real class
+ * string without that weight - the same seam `team-bridge-directory.test.mjs` uses.
+ */
+const chatSidebarSource = readFileSync(
+	`${process.cwd()}/src/renderer/src/features/chat/components/chat-sidebar.tsx`,
+	"utf8",
+);
+const rowCurrentLiteral = chatSidebarSource.match(
+	/export const rowCurrent =\s*("[^"]+")/,
+)?.[1];
+if (!rowCurrentLiteral)
+	throw new Error("rowCurrent literal not found in chat-sidebar.tsx");
+/** The rail's one import from the chat sidebar, and this file's own filter. */
+const CHAT_SIDEBAR_MODULE = /chat\/components\/chat-sidebar$/;
+const ANY_MODULE = /.*/;
+const ADD_MEMBERS_BUTTON = /Add members/;
+
+const chatSidebarStub = {
+	name: "chat-sidebar-stub",
+	setup(pluginBuild) {
+		pluginBuild.onResolve({ filter: CHAT_SIDEBAR_MODULE }, () => ({
+			path: "chat-sidebar-stub",
+			namespace: "stub",
+		}));
+		pluginBuild.onLoad({ filter: ANY_MODULE, namespace: "stub" }, () => ({
+			contents: `export const rowCurrent = ${rowCurrentLiteral};`,
+			loader: "js",
+		}));
+	},
+};
+
 const ROOT = process.cwd();
 const bundled = await build({
 	stdin: {
 		contents: `
 			export { TeamBridgeAddMembersView } from "./src/renderer/src/features/team-bridge/team-bridge-add-members";
+			export { TeamBridgePageView } from "./src/renderer/src/features/team-bridge/team-bridge-page";
 			export { canInviteMembers, canRemoveMembers, currentMembers, memberCandidates } from "./src/renderer/src/features/team-bridge/team-bridge-members-model";
 		`,
 		resolveDir: ROOT,
@@ -93,6 +130,7 @@ const bundled = await build({
 	jsx: "automatic",
 	write: false,
 	loader: { ".css": "empty" },
+	plugins: [chatSidebarStub],
 	alias: {
 		"@shared": `${ROOT}/src/renderer/src/shared`,
 		"@features": `${ROOT}/src/renderer/src/features`,
@@ -127,7 +165,7 @@ const COPY = {
 	bridgeOff: "Team Bridge is not enabled for this person",
 	alreadyMember: "Already active or invited",
 	agentNotPermitted: "This conversation does not allow agents",
-	emptyDirectory: "No people or agents are available in this organization.",
+	emptyDirectory: "Nobody in this organization can be invited.",
 	mutationError: "The member change was not saved. Try again.",
 	confirmInvitations: /Send invitations/,
 	confirmSome: (n) => new RegExp(`Send ${n} invitation`),
@@ -474,11 +512,16 @@ async function mount(t, props = {}) {
 	return { render, writes, document: dom.window.document };
 }
 
-const labels = (body) => [...body.querySelectorAll("label")];
-const rowTitle = (label) => label.querySelector("span > span")?.textContent;
-const rowFor = (body, name) =>
-	labels(body).find((label) => rowTitle(label) === name);
-const checkboxIn = (label) => label.querySelector('input[type="checkbox"]');
+/*
+ * A row is a `fieldset > div`; its title is the first `span > span` in the
+ * text column and its control is the house `Checkbox` (a React button with
+ * role="checkbox"), not a raw input. Selecting by structure keeps these
+ * helpers honest about the markup that actually ships.
+ */
+const rows = (body) => [...body.querySelectorAll("fieldset > div")];
+const rowTitle = (row) => row.querySelector("span > span")?.textContent;
+const rowFor = (body, name) => rows(body).find((row) => rowTitle(row) === name);
+const checkboxIn = (row) => row.querySelector('[role="checkbox"]');
 const buttonNamed = (body, pattern) =>
 	[...body.querySelectorAll("button")].find((button) =>
 		pattern.test(button.textContent ?? ""),
@@ -548,12 +591,12 @@ test("an empty directory states that, rather than an empty list", async (t) => {
 	);
 });
 
-test("a load failure offers a retry instead of the roster", async (t) => {
-	let retries = 0;
+test("a load failure offers a retry that names the organization", async (t) => {
+	const retries = [];
 	const { document: body } = await mount(t, {
 		peopleState: "error",
-		onRetryPeople: () => {
-			retries += 1;
+		onRetryMembers: (tenantId) => {
+			retries.push(tenantId);
 		},
 	});
 	const retry = [...body.querySelectorAll("button")].find(
@@ -561,7 +604,14 @@ test("a load failure offers a retry instead of the roster", async (t) => {
 	);
 	assert.ok(retry, "the failure is recoverable from the dialog");
 	await act(async () => retry.click());
-	assert.equal(retries, 1);
+	// The merged view mounts one directory read per organization, so a retry that
+	// named no tenant could only re-run whichever read happened to be handy - the
+	// bug review round 1 found, where the button did nothing at all.
+	assert.deepEqual(
+		retries,
+		["tnt_minerva"],
+		"the retry addresses the conversation's own organization",
+	);
 });
 
 // --------------------------------------------------------- interaction
@@ -660,6 +710,97 @@ test("a failed invitation says why in place and leaves the dialog usable", async
 	);
 });
 
+/**
+ * THE PAGE OWNS THE `.catch`, so only a mount of the PAGE can prove the failure
+ * is stated. The picker's error prop is a rendering fact; this case drives the
+ * rejected write through `TeamBridgePageView`, the same component the app mounts,
+ * so deleting the page's catch turns this red rather than leaving the suite green.
+ */
+async function mountPage(t, overrides = {}) {
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = createRoot(container);
+	const base = {
+		conversations: [conversation()],
+		target: { type: "conversation", id: conversation().id },
+		messages: [],
+		onTarget: () => {},
+		onNewChannel: () => {},
+		onScopeChange: () => {},
+		people: directory,
+		peopleState: "ready",
+		selfAccountId: "acct_self",
+		// The page names a conversation's organization; one row is the minimum
+		// the merged-scope label logic reads.
+		organizations: [
+			{ tenantId: "tnt_minerva", name: "Minerva", role: "owner", unread: 0 },
+		],
+	};
+	// The page reads through react-query; a provider is part of mounting it. The
+	// client's reads have no desktop transport here, so they settle as errors -
+	// which is exactly the state this test needs the FAILED WRITE to outrank.
+	const queryClient = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	const render = async (next = {}) =>
+		act(async () =>
+			root.render(
+				React.createElement(
+					QueryClientProvider,
+					{ client: queryClient },
+					React.createElement(view.TeamBridgePageView, {
+						...base,
+						...overrides,
+						...next,
+					}),
+				),
+			),
+		);
+	await render();
+	t.after(async () => {
+		await act(async () => root.unmount());
+		container.remove();
+	});
+	return { render, document: dom.window.document };
+}
+
+test("an invitation the hub refuses is stated by the page, in place", async (t) => {
+	let attempts = 0;
+	const { document: body } = await mountPage(t, {
+		onAddMembers: async () => {
+			attempts += 1;
+			throw new Error("hub refused");
+		},
+	});
+	// The header control is labelled, not an icon-only glyph (design review D2).
+	const opener = buttonNamed(body, ADD_MEMBERS_BUTTON);
+	assert.ok(opener, "the header control is the one entry point");
+	await act(async () => opener.click());
+	await act(async () => checkboxIn(rowFor(body, "Sherman Lee")).click());
+	const confirm = buttonNamed(body, COPY.confirmSome(1));
+	await act(async () => confirm.click());
+	// The rejection lands after the click resolves; let the queue drain.
+	await act(async () => {
+		await Promise.resolve();
+	});
+	assert.equal(
+		attempts,
+		1,
+		"the write was attempted once, not retried behind the reader",
+	);
+	assert.equal(
+		body.querySelector('[role="alert"]')?.textContent,
+		COPY.mutationError,
+		"the page states the failure in the dialog",
+	);
+	assert.ok(
+		body.body.textContent.includes("Conversation members"),
+		"and the dialog is still there to retry from",
+	);
+	const retry = buttonNamed(body, COPY.confirmSome(1));
+	assert.equal(retry.disabled, false, "the selection survived the refusal");
+});
+
 test("a write in flight closes no door and takes no second press", async (t) => {
 	const onClose = [];
 	const { document: body } = await mount(t, {
@@ -676,6 +817,14 @@ test("a write in flight closes no door and takes no second press", async (t) => 
 		cancel.disabled,
 		true,
 		"the dialog cannot be dismissed out from under a write",
+	);
+	// Disabling the button is only half the rule: the picker's own close path
+	// refuses while a write is in flight, and the page decides whether it may.
+	await act(async () => cancel.click());
+	assert.deepEqual(
+		onClose,
+		[],
+		"and pressing it reaches no close handler while the write is pending",
 	);
 });
 

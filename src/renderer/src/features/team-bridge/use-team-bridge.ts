@@ -38,7 +38,7 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import type { AgentMessagesStatus } from "../../../../shared/agent-messages-contract";
 import type {
 	TeamBridgeConversation,
@@ -311,16 +311,34 @@ export function useTeamBridgeDirectory(
  * under the SAME per-tenant key as the People read, so switching into an
  * organization afterwards is a cache hit rather than a second fetch.
  *
- * Returns the loaded rosters by tenant; a pending or failed read is simply
- * absent, and its senders fall back to the unknown placeholder.
+ * Returns the loaded rosters by tenant, plus each read's OWN state.
+ *
+ * WHY THE STATE IS PART OF THE ANSWER (review round 1, F1). Naming a sender can
+ * afford to treat "pending" and "failed" identically - both fall back to the
+ * unknown placeholder - but the member picker cannot: it renders a roster and a
+ * retry, and a roster that never arrives looks like a spinner that never ends.
+ * Collapsing the two here meant a failed directory read in the merged view (the
+ * default for anyone in more than one organization) presented as "loading
+ * forever", and the retry it offered was wired to a DISABLED query, so the
+ * button could not do anything either. `retry` therefore addresses ONE tenant's
+ * read, which is the one the open conversation belongs to.
  */
+export type TeamBridgeDirectoryReads = {
+	/** Loaded rosters by tenant; a pending or failed read is absent. */
+	members: Readonly<Record<string, readonly TeamBridgeDirectoryMember[]>>;
+	/** Per-tenant read state, so a failed read is never drawn as a pending one. */
+	state: Readonly<Record<string, "loading" | "error" | "ready">>;
+	/** Re-run one organization's read; a tenant with no mounted read is a no-op. */
+	retry: (tenantId: string) => void;
+};
+
 export function useTeamBridgeDirectories(
 	tenantIds: readonly string[],
 	enabled = true,
 	accountId?: string,
-): Readonly<Record<string, readonly TeamBridgeDirectoryMember[]>> {
+): TeamBridgeDirectoryReads {
 	const client = useQueryClient();
-	return useQueries({
+	const results = useQueries({
 		queries: tenantIds.map((tenantId) => ({
 			queryKey: teamBridgeKeys.directory(
 				tenantId,
@@ -335,14 +353,34 @@ export function useTeamBridgeDirectories(
 			refetchOnWindowFocus: true,
 			retry: 1,
 		})),
-		combine: (results) => {
-			const byTenant: Record<string, readonly TeamBridgeDirectoryMember[]> = {};
-			results.forEach((result, index) => {
-				if (result.data) byTenant[tenantIds[index]] = result.data.members;
-			});
-			return byTenant;
-		},
 	});
+	return useMemo(() => {
+		const members: Record<string, readonly TeamBridgeDirectoryMember[]> = {};
+		const state: Record<string, "loading" | "error" | "ready"> = {};
+		const byTenant = new Map<string, () => void>();
+		results.forEach((result, index) => {
+			const tenantId = tenantIds[index];
+			if (result.data) members[tenantId] = result.data.members;
+			state[tenantId] = result.isPending
+				? "loading"
+				: result.isError
+					? "error"
+					: "ready";
+			byTenant.set(tenantId, () => {
+				void result.refetch();
+			});
+		});
+		return {
+			members,
+			state,
+			retry: (tenantId: string) => {
+				byTenant.get(tenantId)?.();
+			},
+		};
+		// `results` is a fresh array per render; the derivations above are keyed
+		// on the tenants and are cheap, so the memo exists to keep ONE object
+		// shape for its consumers rather than to memoize the work.
+	}, [results, tenantIds]);
 }
 
 /**

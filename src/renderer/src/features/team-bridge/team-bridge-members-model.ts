@@ -224,10 +224,11 @@ export function currentMembers(
 					null,
 				) ?? member.account_id,
 			state,
+			// `state` is active or invited here, so the only removal the route can
+			// address is a human row that is not the reader's own.
 			removable:
 				canRemove &&
 				member.kind === "human" &&
-				member.state !== "left" &&
 				member.account_id !== selfAccountId,
 		}));
 }

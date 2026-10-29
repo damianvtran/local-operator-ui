@@ -35,11 +35,11 @@
 		"note": "Filters the candidate list by name. Do not add a trailing colon or an ellipsis."
 	},
 	"ui.teamBridge.members.empty": {
-		"role": "empty state for the candidate list",
+		"role": "empty state for the invite list",
 		"tone": "factual, non-accusatory",
 		"length": "One short sentence",
 		"placeholders": {},
-		"note": "The organization directory returned no people or agents at all. Distinct from no_matches, which is a filter result."
+		"note": "The directory returned nobody this reader may invite. It must NOT say the organization has no people: the Current-members pane beside it can list several. Say that nobody can be invited. Distinct from no_matches, which is a filter result."
 	},
 	"ui.teamBridge.members.no_matches": {
 		"role": "empty state for a filtered candidate list",
@@ -63,11 +63,11 @@
 		"note": "Read in the middle of a line already like 'Member · Active', so it must stand alone as a status phrase ('Removing member'), not a sentence."
 	},
 	"ui.teamBridge.members.read_only": {
-		"role": "explanation beside the invite controls when they are unavailable",
-		"tone": "factual",
+		"role": "inline notice beside the picker's heading, shown when the reader cannot invite",
+		"tone": "factual, about the reader's own ability; never a rule about who else may",
 		"length": "One short sentence",
 		"placeholders": {},
-		"note": "Explains why this caller cannot invite or remove members here. It states a permission, never a failure; no retry is implied."
+		"note": "Any active human member may invite and only the conversation owner may remove, so this must NOT say 'only an administrator can add'. It states that this conversation cannot take invitations from the reader: a direct message, an archived or built-in channel, or a reader who is not an active member. Sentence case, no ellipsis."
 	},
 	"ui.teamBridge.members.role.owner": {
 		"role": "member role label",
@@ -142,20 +142,6 @@
 		"length": "Short phrase",
 		"placeholders": {},
 		"note": "The invitation is pending. An invited agent cannot read/post and defaults to muted until its owner consents."
-	},
-	"ui.teamBridge.members.agent_invitation": {
-		"role": "agent candidate explanation",
-		"tone": "factual, consent-preserving",
-		"length": "One short line",
-		"placeholders": {},
-		"note": "Adding an agent creates an invitation only. The agent's owner must accept, and acceptance keeps the default muted notification policy."
-	},
-	"ui.teamBridge.members.human_invitation": {
-		"role": "human candidate explanation",
-		"tone": "factual",
-		"length": "One short line",
-		"placeholders": {},
-		"note": "A later-added human is invited and joins after accepting; do not say they are active immediately."
 	},
 	"ui.teamBridge.members.invitation_note": {
 		"role": "dialog footer clarification",

@@ -543,6 +543,10 @@ export type TeamBridgePageViewProps = {
 	 * list). A tenant whose read has not answered is absent.
 	 */
 	directories?: Readonly<Record<string, readonly TeamBridgeDirectoryMember[]>>;
+	/** Each organization's directory read state, for the merged view's picker. */
+	directoryStates?: Readonly<Record<string, "loading" | "error" | "ready">>;
+	/** Re-run one organization's directory read (the merged view's retry). */
+	onRetryMembers?: (tenantId: string) => void;
 	/**
 	 * The signed-in reader's account name, so their own messages are named even
 	 * when no directory lists them (merged view, directory loading or failed).
@@ -654,11 +658,13 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	isDraftCurrent = () => true,
 	people = [],
 	directories,
+	directoryStates,
 	selfName,
 	peopleState = "ready",
 	peopleError,
 	peopleIncomplete = false,
 	onRetryPeople,
+	onRetryMembers,
 	eligibility = null,
 	gatePending = false,
 	readOnly = false,
@@ -1961,26 +1967,35 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										{relative(shown.last_message_at, locale)}
 									</span>
 								)}
+								{/*
+								 * THE INVITE ACTION WEARS ITS NAME, NEXT TO THE COUNT IT ACTS ON
+								 * (design review round 1, D2). It shipped as a 28px unlabelled
+								 * ghost glyph in the far cluster, while the membership summary -
+								 * the very number the action changes - sat inert beside the title,
+								 * so the affordance was the quietest mark on a header whose job
+								 * here is invitation. It is a labelled ghost button now (no
+								 * border, no fill: nothing lifts), placed where the count is.
+								 */}
+								{shown &&
+									!previewSelected &&
+									!readOnly &&
+									onAddMembers &&
+									canInviteMembers(shown, selfAccountId) && (
+										<Button
+											type="button"
+											size="sm"
+											variant="ghost"
+											className="shrink-0"
+											onClick={() => {
+												setMemberActionFailed(false);
+												setMembersOpen(true);
+											}}
+										>
+											<UserPlus size={14} aria-hidden="true" />
+											{t("ui.teamBridge.members.menu")}
+										</Button>
+									)}
 								<div className="ms-auto flex items-center gap-1">
-									{shown &&
-										!previewSelected &&
-										!readOnly &&
-										onAddMembers &&
-										canInviteMembers(shown, selfAccountId) && (
-											<Button
-												type="button"
-												size="icon-sm"
-												variant="ghost"
-												aria-label={t("ui.teamBridge.members.menu")}
-												title={t("ui.teamBridge.members.menu")}
-												onClick={() => {
-													setMemberActionFailed(false);
-													setMembersOpen(true);
-												}}
-											>
-												<UserPlus size={16} aria-hidden="true" />
-											</Button>
-										)}
 									{shown && !previewSelected && !readOnly && onNotifyChange && (
 										<TeamBridgeConversationMenu
 											conversation={shown}
@@ -2580,9 +2595,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					selfAccountId={selfAccountId}
 					peopleState={
 						mergedView
-							? directories?.[shown.tenant_id]
-								? "ready"
-								: "loading"
+							? (directoryStates?.[shown.tenant_id] ?? "loading")
 							: peopleState
 					}
 					canInvite={!readOnly && canInviteMembers(shown, selfAccountId)}
@@ -2594,7 +2607,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						setMembersOpen(false);
 						setMemberActionFailed(false);
 					}}
-					onRetryPeople={onRetryPeople}
+					onRetryMembers={onRetryMembers}
 					onAdd={(members) => {
 						if (
 							!onAddMembers ||
@@ -2806,8 +2819,10 @@ const TeamBridgeOwnedPage: FC<{
 	);
 	const mergedView = scope === TEAM_BRIDGE_ALL_SCOPE;
 	// Names only (see `useTeamBridgeDirectories`): the merged view lists no
-	// roster, but its threads and DM rows still need their senders named.
-	const directories = useTeamBridgeDirectories(
+	// roster, but its threads and DM rows still need their senders named - and
+	// the member picker needs each read's own state and a retry that addresses
+	// it, which is why the hook answers with more than the rosters.
+	const directoriesRead = useTeamBridgeDirectories(
 		mergedView
 			? organizations.map((organization) => organization.tenantId)
 			: [],
@@ -3371,7 +3386,14 @@ const TeamBridgeOwnedPage: FC<{
 					setChannelFormOpen(true);
 				}}
 				people={people}
-				directories={directories}
+				directories={directoriesRead.members}
+				directoryStates={directoriesRead.state}
+				onRetryMembers={(tenantId) => {
+					// The merged view mounts one read per organization; the single-scope
+					// read is the one the rest of the page already shows and retries.
+					if (mergedView) directoriesRead.retry(tenantId);
+					else void directory.refetch();
+				}}
 				selfName={selfName}
 				peopleState={
 					directory.isPending
