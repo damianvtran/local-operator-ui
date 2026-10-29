@@ -35,7 +35,7 @@
 	"ui.updates.panel.service.restart.message": "服务器已重启，但未报告更新后的版本。查看更新服务日志，然后重启Local Operator。",
 	"ui.updates.panel.service.restart.message_version": "服务器已重启，但未报告版本{version}。查看更新服务日志，然后重启Local Operator。",
 	"ui.updates.panel.service.no_backend.message": "没有可用的后端服务引用，无法更新。",
-	"ui.updates.panel.service.no_server.message": "没有可用的Python服务器，无需更新。",
+	"ui.updates.panel.service.no_server.message": "没有可用的Python服务器，没有可更新的内容。",
 	"ui.updates.panel.service.check_unavailable.message": "无法确定后端版本。",
 	"ui.updates.panel.server.behind.remedy": "此检出的源码落后于其远程仓库，`lop-update`因此拒绝从中构建：将检出的源码更新到最新，下次在此操作时便会进行构建。",
 	"ui.updates.panel.server.rebuild.remedy": "重新构建只有成功后才会改变此安装，因此没有重启任何内容。",
