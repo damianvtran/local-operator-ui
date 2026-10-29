@@ -40,6 +40,7 @@ import {
 	type UpdateInfo,
 	autoUpdater,
 } from "electron-updater";
+import { t } from "../i18n";
 import { currentLocaleState, isLanguageTag } from "../i18n/locale";
 import {
 	type DriftAbsence,
@@ -451,11 +452,6 @@ const PYPI_VERSION_READ_TIMEOUT_MS = 10_000;
  * re-price of one must not silently re-price the other.
  */
 const NPM_VERSION_READ_TIMEOUT_MS = 10_000;
-
-/** ` to version X`, or nothing when the version is unknown. */
-function versionSuffix(version: string | null | undefined): string {
-	return version ? ` to version ${version}` : "";
-}
 
 /**
  * The failure the network gate hands its caller when the machine never had a network.
@@ -3933,9 +3929,13 @@ export class UpdateService {
 		if (!artifactPath) {
 			return {
 				code: "download-verification-failed",
-				message: `The downloaded update${versionSuffix(info?.version)} could not be found on disk, so it wasn't installed.`,
+				message: info?.version
+					? t("ui.updates.panel.artifact.missing_on_disk.message_version", {
+							version: info.version,
+						})
+					: t("ui.updates.panel.artifact.missing_on_disk.message"),
 				remedy: {
-					text: "Check for updates again to re-download the release.",
+					text: t("ui.updates.panel.artifact.remedy"),
 				},
 				detail: `No staged artifact matching ${candidates.join(", ") || "the update metadata"}.`,
 			};
@@ -3956,9 +3956,13 @@ export class UpdateService {
 		} catch (error) {
 			return {
 				code: "download-verification-failed",
-				message: `The downloaded update${versionSuffix(info?.version)} could not be read, so it wasn't installed.`,
+				message: info?.version
+					? t("ui.updates.panel.artifact.unreadable.message_version", {
+							version: info.version,
+						})
+					: t("ui.updates.panel.artifact.unreadable.message"),
 				remedy: {
-					text: "Check for updates again to re-download the release.",
+					text: t("ui.updates.panel.artifact.remedy"),
 				},
 				detail: `${artifactPath}: ${String(error)}`,
 			};
@@ -4308,8 +4312,12 @@ export class UpdateService {
 		if (!verdict.ok) {
 			return block(
 				`The staged update bundle is not this application: ${verdict.detail}.`,
-				`The downloaded update${versionSuffix(version)} is not this application, so it wasn't installed.`,
-				"Check for updates again to re-download the release.",
+				version
+					? t("ui.updates.panel.artifact.not_this_app.message_version", {
+							version,
+						})
+					: t("ui.updates.panel.artifact.not_this_app.message"),
+				t("ui.updates.panel.artifact.remedy"),
 			);
 		}
 
@@ -4346,8 +4354,12 @@ export class UpdateService {
 			 */
 			return block(
 				`The staged update bundle's seal reads \`unsealed\` (${stagedSeal.detail}), so Apple's own validation would have the same answer.`,
-				`The downloaded update${versionSuffix(version)} is damaged, so it wasn't installed.`,
-				"Check for updates again to re-download the release.",
+				version
+					? t("ui.updates.panel.artifact.damaged.message_version", {
+							version,
+						})
+					: t("ui.updates.panel.artifact.damaged.message"),
+				t("ui.updates.panel.artifact.remedy"),
 			);
 		}
 		if (stagedSeal.kind !== "sealed") {
@@ -7256,7 +7268,7 @@ export class UpdateService {
 						message:
 							installedVersion && this.pendingPypiVersion
 								? `A new server release (${this.pendingPypiVersion}) is still publishing, so no update was offered yet. Check again in a few minutes.`
-								: "Unable to determine backend version.",
+								: t("ui.updates.panel.service.check_unavailable.message"),
 						phase: "check",
 						logPath: serverUpdateLogPath(),
 					});
@@ -7315,7 +7327,7 @@ export class UpdateService {
 				);
 				if (reportFailure) {
 					this.sendToRenderer("backend-update-error", {
-						message: "Unable to determine backend version.",
+						message: t("ui.updates.panel.service.check_unavailable.message"),
 						phase: "check",
 						logPath: serverUpdateLogPath(),
 					});
@@ -9677,7 +9689,11 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 			this.sendToRenderer("backend-update-error", {
-				message: `The server restarted but did not report ${target ? `version ${target}` : "the updated version"}. See the update service log, then restart Local Operator.`,
+				message: target
+					? t("ui.updates.panel.service.restart.message_version", {
+							version: target,
+						})
+					: t("ui.updates.panel.service.restart.message"),
 				phase: "update",
 				logPath: serverUpdateLogPath(),
 			});
@@ -9949,7 +9965,7 @@ export class UpdateService {
 					!this.mainWindow.webContents.isDestroyed()
 				) {
 					this.mainWindow.webContents.send("backend-update-error", {
-						message: "No backend service reference available, cannot update.",
+						message: t("ui.updates.panel.service.no_backend.message"),
 						phase: "update",
 						logPath: serverUpdateLogPath(),
 					});
@@ -9984,7 +10000,7 @@ export class UpdateService {
 						!this.mainWindow.webContents.isDestroyed()
 					) {
 						this.mainWindow.webContents.send("backend-update-error", {
-							message: "No python server is available, nothing to update.",
+							message: t("ui.updates.panel.service.no_server.message"),
 							phase: "update",
 							logPath: serverUpdateLogPath(),
 						});

@@ -1,0 +1,15 @@
+{
+	"ui.shell.menubar.file": "文件",
+	"ui.shell.menubar.edit": "编辑",
+	"ui.shell.menubar.view": "显示",
+	"ui.shell.menubar.window": "窗口",
+	"ui.shell.menubar.new_browser_tab": "新建浏览器标签页",
+	"ui.shell.menubar.reload": "重新载入",
+	"ui.shell.menubar.force_reload": "强制重新载入",
+	"ui.shell.menubar.actual_size": "实际大小",
+	"ui.shell.menubar.zoom_in": "放大",
+	"ui.shell.menubar.zoom_out": "缩小",
+	"ui.shell.menubar.close_tab_or_window": "关闭标签页或窗口",
+	"ui.shell.menubar.learn_more": "了解更多",
+	"ui.shell.menubar.about": "关于{name}"
+}

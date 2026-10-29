@@ -1,0 +1,15 @@
+{
+	"ui.shell.menubar.file": "فائل",
+	"ui.shell.menubar.edit": "ترمیم",
+	"ui.shell.menubar.view": "منظر",
+	"ui.shell.menubar.window": "ونڈو",
+	"ui.shell.menubar.new_browser_tab": "نیا براؤزر ٹیب",
+	"ui.shell.menubar.reload": "دوبارہ لوڈ کریں",
+	"ui.shell.menubar.force_reload": "زبردستی دوبارہ لوڈ کریں",
+	"ui.shell.menubar.actual_size": "اصل سائز",
+	"ui.shell.menubar.zoom_in": "بڑا کریں",
+	"ui.shell.menubar.zoom_out": "چھوٹا کریں",
+	"ui.shell.menubar.close_tab_or_window": "ٹیب یا ونڈو بند کریں",
+	"ui.shell.menubar.learn_more": "مزید جانیں",
+	"ui.shell.menubar.about": "{name} کے بارے میں"
+}
