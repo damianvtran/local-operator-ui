@@ -549,7 +549,7 @@ export class TeamBridgeSendJournal<A = TeamBridgeSendAttachmentSnapshot> {
 				state: "failed",
 				error: {
 					kind: phase,
-					message: `Team Bridge send ${phase} failed`, // i18n: ignore diagnostic only — the list draws ui.teamBridge.message.failed from `kind`, so this string is never rendered; exception text is withheld above since it can carry a body or an attachment URL.
+					message: `Team Bridge send ${phase} failed`, // i18n: ignore diagnostic only — nothing reads `error.message`: the list draws ui.teamBridge.message.failed from `state`, the row projection drops `error` at the boundary, so this string is never rendered; the catch above is unbound because exception text can carry a body or an attachment URL.
 				},
 				settledAt: this.now(),
 			});
