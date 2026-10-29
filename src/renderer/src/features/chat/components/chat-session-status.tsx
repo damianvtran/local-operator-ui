@@ -334,54 +334,57 @@ export function ChatSessionStatus({
 				? Hourglass
 				: code === "busy"
 					? LoaderCircle
-					: code === "approval" || code === "answer" || code === "error"
-						? CircleAlert
-						: /*
-							 * `wedged` WEARS A MARK OF ITS OWN, and that is the fix rather than a
-							 * flourish. It used to share `CircleAlert` with `error`, so an owner that
-							 * had merely stopped reporting and a turn that had actually broken drew
-							 * byte-identical output — and the two ask opposite things of a reader
-							 * (reopen the failed one; do not expect a message to land in the silent
-							 * one). Colour cannot carry the difference either: this app and the TUI
-							 * share one brand ramp, and the measurement recorded for the same
-							 * `warning`/`danger` pair collapses the two inks under deuteranopia
-							 * (`session_picker.py:563-569`). SHAPE IS THE SIGNAL, so the state gets
-							 * a silhouette that shares no stroke with the alert ring — two
-							 * horizontal waves, which is this app's `EqualApproximately` and the
-							 * TUI's `≈` for the same state.
-							 *
-							 * WHY NOT THE NEAR MISSES: `WifiOff` is reserved for a lost link
-							 * (to the daemon or a remote owner), not a wedged session on a
-							 * reachable device; `HelpCircle` already means "a code
-							 * this build does not know" two branches below; and
-							 * `CircleDashed`/`CircleDotDashed` would put a second RING in the amber
-							 * class beside `approval`/`answer`, which is the grouping failure the
-							 * TUI's marker register warns about.
-							 *
-							 * IT STAYS STATIC while `busy` spins. Nothing about this state is
-							 * turning: the runtime's beat stopped landing, and an animation here
-							 * would both borrow the busy reading and assert an activity the stale
-							 * heartbeat cannot support.
-							 */
-							code === "wedged"
-							? EqualApproximately
-							: code === "interrupted" || code === "dormant"
-								? Pause
-								: code === "complete"
-									? unseenCompletion
-										? Check
-										: Circle
-									: code === "scheduled"
-										? Clock
-										: code === "attached"
-											? MessageSquare
-											: // A `delegating` row never reads this chain: its glyph slot draws
-												// the RUNNING MARK instead (`SubagentRunningMark` below), because the
-												// share glyph read as an action on a row whose mark is a state
-												// (issue #840).
-												KNOWN_RESTING.has(code ?? "recent")
-												? Circle
-												: HelpCircle;
+					: code === "approval" || code === "answer"
+						? /* Needs input must not share failure's alert ring: warning and danger can converge for colour-blind readers, so the question silhouette carries the distinction. */
+							MessageCircleQuestion
+						: code === "error"
+							? CircleAlert
+							: /*
+								 * `wedged` WEARS A MARK OF ITS OWN, and that is the fix rather than a
+								 * flourish. It used to share `CircleAlert` with `error`, so an owner that
+								 * had merely stopped reporting and a turn that had actually broken drew
+								 * byte-identical output — and the two ask opposite things of a reader
+								 * (reopen the failed one; do not expect a message to land in the silent
+								 * one). Colour cannot carry the difference either: this app and the TUI
+								 * share one brand ramp, and the measurement recorded for the same
+								 * `warning`/`danger` pair collapses the two inks under deuteranopia
+								 * (`session_picker.py:563-569`). SHAPE IS THE SIGNAL, so the state gets
+								 * a silhouette that shares no stroke with the alert ring — two
+								 * horizontal waves, which is this app's `EqualApproximately` and the
+								 * TUI's `≈` for the same state.
+								 *
+								 * WHY NOT THE NEAR MISSES: `WifiOff` is reserved for a lost link
+								 * (to the daemon or a remote owner), not a wedged session on a
+								 * reachable device; `HelpCircle` already means "a code
+								 * this build does not know" two branches below; and
+								 * `CircleDashed`/`CircleDotDashed` would put a second RING in the amber
+								 * class beside `approval`/`answer`, which is the grouping failure the
+								 * TUI's marker register warns about.
+								 *
+								 * IT STAYS STATIC while `busy` spins. Nothing about this state is
+								 * turning: the runtime's beat stopped landing, and an animation here
+								 * would both borrow the busy reading and assert an activity the stale
+								 * heartbeat cannot support.
+								 */
+								code === "wedged"
+								? EqualApproximately
+								: code === "interrupted" || code === "dormant"
+									? Pause
+									: code === "complete"
+										? unseenCompletion
+											? Check
+											: Circle
+										: code === "scheduled"
+											? Clock
+											: code === "attached"
+												? MessageSquare
+												: // A `delegating` row never reads this chain: its glyph slot draws
+													// the RUNNING MARK instead (`SubagentRunningMark` below), because the
+													// share glyph read as an action on a row whose mark is a state
+													// (issue #840).
+													KNOWN_RESTING.has(code ?? "recent")
+													? Circle
+													: HelpCircle;
 	const ink = uncertainLabel
 		? "text-ink-dim"
 		: linkDown
