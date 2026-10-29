@@ -31,7 +31,7 @@
 	"ui.canvas.files.retry": "دوبارہ کوشش کریں",
 	"ui.canvas.files.continue": "لوڈ کرنا جاری رکھیں",
 	"ui.canvas.files.empty": "ابھی کوئی فائل نہیں",
-	"ui.canvas.files.emptyDetail": "ایجنٹ کی بنائی یا نمایاں کی گئی فائلیں یہاں ظاہر ہوتی ہیں۔",
+	"ui.canvas.files.emptyDetail": "ایجنٹ کی بنائی ہوئی یا آپ کی منسلک کردہ فائلیں یہاں نظر آتی ہیں۔",
 	"ui.canvas.files.noMatch": "اس تلاش اور فلٹر سے کوئی فائل نہیں ملتی",
 	"ui.canvas.files.clear": "تلاش اور فلٹر صاف کریں",
 	"ui.canvas.files.sessionOnly": "صرف گفتگو میں",
@@ -345,5 +345,18 @@
 	"ui.canvas.wysiwyg_markdown_editor.remove": "- ہٹائیں",
 	"ui.canvas.wysiwyg_markdown_editor.add": "+ شامل کریں",
 	"ui.canvas.create_file_dialog.creating": "بنائی جا رہی ہے…",
-	"ui.canvas.variable_form_dialog.saving": "محفوظ ہو رہا ہے…"
+	"ui.canvas.variable_form_dialog.saving": "محفوظ ہو رہا ہے…",
+	"ui.canvas.files.attachments": "منسلکات",
+	"ui.canvas.files.attachmentsPartial": "شاید نامکمل ہو",
+	"ui.canvas.files.attachmentsPartialReason": "اب تک لوڈ شدہ پیغامات سے تیار کیا گیا ہے۔",
+	"ui.canvas.files.attachmentsError": "منسلکات لوڈ نہیں ہو سکے",
+	"ui.canvas.files.attachmentsErrorReason": "بیک اینڈ منسلکات کی فہرست کی جانچ نہیں کر سکا۔ دوبارہ کوشش کریں۔",
+	"ui.canvas.files.attachmentTooltip": "{name} · {digest} · آپ کی منسلک کردہ، اس سیشن میں محفوظ",
+	"ui.canvas.files.attachmentGoneRecovery": "منتقل یا حذف شدہ، اور کوئی محفوظ شدہ نقل باقی نہیں۔ تلاش کے لیے مینو سے راستہ نقل کریں۔",
+	"ui.canvas.files.attachmentImage": "منسلک تصویر",
+	"ui.canvas.files.attachmentRetained": "منتقل یا حذف شدہ · محفوظ شدہ نقل باقی ہے",
+	"ui.canvas.files.attachmentGone": "منتقل یا حذف شدہ · کوئی محفوظ شدہ نقل نہیں",
+	"ui.canvas.files.attachmentMeta": "{size} · {when}",
+	"ui.canvas.files.attachmentRefused": "یہ راز معلوم ہوتا ہے، اس لیے فائل کے اعمال بند ہیں",
+	"ui.canvas.files.attachmentReadOnly": "صرف پڑھنے کے لیے — منسلکہ کی محفوظ شدہ نقل"
 }
