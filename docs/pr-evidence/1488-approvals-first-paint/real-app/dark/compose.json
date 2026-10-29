@@ -1,0 +1,245 @@
+{
+  "dpr": 2,
+  "content": {
+    "x": 260,
+    "y": 106,
+    "width": 940,
+    "height": 694
+  },
+  "frames": [
+    {
+      "label": "first-presented",
+      "theme": "obsidian",
+      "visibility": "visible",
+      "atMs": 377,
+      "sincePresentedMs": 0,
+      "file": "run-dark/composite/first-presented.png",
+      "bytes": 147554,
+      "cssFile": "run-dark/composite/first-presented-css.png",
+      "cssBytes": 76110,
+      "layerSizes": {
+        "renderer": [
+          2400,
+          1600
+        ],
+        "page": [
+          1880,
+          1388
+        ],
+        "card": [
+          736,
+          766
+        ]
+      },
+      "placement": {
+        "page": [
+          520,
+          212
+        ],
+        "card": [
+          1664,
+          834
+        ]
+      },
+      "ring": {
+        "card_corner_rgba": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "composite_corner_rgb": [
+          29,
+          49,
+          77
+        ],
+        "page_at_corner_rgb": [
+          29,
+          49,
+          77
+        ],
+        "page_shows_through": true,
+        "card_corner_transparent": true
+      },
+      "card_surface": {
+        "card_centre_rgba": [
+          53,
+          52,
+          56,
+          255
+        ],
+        "composite_centre_rgb": [
+          53,
+          52,
+          56
+        ],
+        "page_under_centre_rgb": [
+          29,
+          49,
+          77
+        ],
+        "card_covers_page": true
+      },
+      "renderer": {
+        "opaque_pixels": 1230560,
+        "total_pixels": 3840000
+      }
+    },
+    {
+      "label": "mid-settle",
+      "theme": "obsidian",
+      "visibility": "visible",
+      "atMs": 1167,
+      "sincePresentedMs": 790,
+      "file": "run-dark/composite/mid-settle.png",
+      "bytes": 147554,
+      "cssFile": "run-dark/composite/mid-settle-css.png",
+      "cssBytes": 76110,
+      "layerSizes": {
+        "renderer": [
+          2400,
+          1600
+        ],
+        "page": [
+          1880,
+          1388
+        ],
+        "card": [
+          736,
+          766
+        ]
+      },
+      "placement": {
+        "page": [
+          520,
+          212
+        ],
+        "card": [
+          1664,
+          834
+        ]
+      },
+      "ring": {
+        "card_corner_rgba": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "composite_corner_rgb": [
+          29,
+          49,
+          77
+        ],
+        "page_at_corner_rgb": [
+          29,
+          49,
+          77
+        ],
+        "page_shows_through": true,
+        "card_corner_transparent": true
+      },
+      "card_surface": {
+        "card_centre_rgba": [
+          53,
+          52,
+          56,
+          255
+        ],
+        "composite_centre_rgb": [
+          53,
+          52,
+          56
+        ],
+        "page_under_centre_rgb": [
+          29,
+          49,
+          77
+        ],
+        "card_covers_page": true
+      },
+      "renderer": {
+        "opaque_pixels": 1230560,
+        "total_pixels": 3840000
+      }
+    },
+    {
+      "label": "settled",
+      "theme": "obsidian",
+      "visibility": "visible",
+      "atMs": 2633,
+      "sincePresentedMs": 2257,
+      "file": "run-dark/composite/settled.png",
+      "bytes": 147554,
+      "cssFile": "run-dark/composite/settled-css.png",
+      "cssBytes": 76110,
+      "layerSizes": {
+        "renderer": [
+          2400,
+          1600
+        ],
+        "page": [
+          1880,
+          1388
+        ],
+        "card": [
+          736,
+          766
+        ]
+      },
+      "placement": {
+        "page": [
+          520,
+          212
+        ],
+        "card": [
+          1664,
+          834
+        ]
+      },
+      "ring": {
+        "card_corner_rgba": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "composite_corner_rgb": [
+          29,
+          49,
+          77
+        ],
+        "page_at_corner_rgb": [
+          29,
+          49,
+          77
+        ],
+        "page_shows_through": true,
+        "card_corner_transparent": true
+      },
+      "card_surface": {
+        "card_centre_rgba": [
+          53,
+          52,
+          56,
+          255
+        ],
+        "composite_centre_rgb": [
+          53,
+          52,
+          56
+        ],
+        "page_under_centre_rgb": [
+          29,
+          49,
+          77
+        ],
+        "card_covers_page": true
+      },
+      "renderer": {
+        "opaque_pixels": 1230560,
+        "total_pixels": 3840000
+      }
+    }
+  ]
+}

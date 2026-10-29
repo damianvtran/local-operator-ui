@@ -1,0 +1,245 @@
+{
+  "dpr": 2,
+  "content": {
+    "x": 260,
+    "y": 106,
+    "width": 940,
+    "height": 694
+  },
+  "frames": [
+    {
+      "label": "first-presented",
+      "theme": "kanagawaLotus",
+      "visibility": "visible",
+      "atMs": 394,
+      "sincePresentedMs": 0,
+      "file": "run-light/composite/first-presented.png",
+      "bytes": 146661,
+      "cssFile": "run-light/composite/first-presented-css.png",
+      "cssBytes": 76084,
+      "layerSizes": {
+        "renderer": [
+          2400,
+          1600
+        ],
+        "page": [
+          1880,
+          1388
+        ],
+        "card": [
+          736,
+          766
+        ]
+      },
+      "placement": {
+        "page": [
+          520,
+          212
+        ],
+        "card": [
+          1664,
+          834
+        ]
+      },
+      "ring": {
+        "card_corner_rgba": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "composite_corner_rgb": [
+          29,
+          49,
+          77
+        ],
+        "page_at_corner_rgb": [
+          29,
+          49,
+          77
+        ],
+        "page_shows_through": true,
+        "card_corner_transparent": true
+      },
+      "card_surface": {
+        "card_centre_rgba": [
+          241,
+          236,
+          193,
+          255
+        ],
+        "composite_centre_rgb": [
+          241,
+          236,
+          193
+        ],
+        "page_under_centre_rgb": [
+          29,
+          49,
+          77
+        ],
+        "card_covers_page": true
+      },
+      "renderer": {
+        "opaque_pixels": 1230560,
+        "total_pixels": 3840000
+      }
+    },
+    {
+      "label": "mid-settle",
+      "theme": "kanagawaLotus",
+      "visibility": "visible",
+      "atMs": 1193,
+      "sincePresentedMs": 794,
+      "file": "run-light/composite/mid-settle.png",
+      "bytes": 146661,
+      "cssFile": "run-light/composite/mid-settle-css.png",
+      "cssBytes": 76084,
+      "layerSizes": {
+        "renderer": [
+          2400,
+          1600
+        ],
+        "page": [
+          1880,
+          1388
+        ],
+        "card": [
+          736,
+          766
+        ]
+      },
+      "placement": {
+        "page": [
+          520,
+          212
+        ],
+        "card": [
+          1664,
+          834
+        ]
+      },
+      "ring": {
+        "card_corner_rgba": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "composite_corner_rgb": [
+          29,
+          49,
+          77
+        ],
+        "page_at_corner_rgb": [
+          29,
+          49,
+          77
+        ],
+        "page_shows_through": true,
+        "card_corner_transparent": true
+      },
+      "card_surface": {
+        "card_centre_rgba": [
+          241,
+          236,
+          193,
+          255
+        ],
+        "composite_centre_rgb": [
+          241,
+          236,
+          193
+        ],
+        "page_under_centre_rgb": [
+          29,
+          49,
+          77
+        ],
+        "card_covers_page": true
+      },
+      "renderer": {
+        "opaque_pixels": 1230560,
+        "total_pixels": 3840000
+      }
+    },
+    {
+      "label": "settled",
+      "theme": "kanagawaLotus",
+      "visibility": "visible",
+      "atMs": 2679,
+      "sincePresentedMs": 2277,
+      "file": "run-light/composite/settled.png",
+      "bytes": 146661,
+      "cssFile": "run-light/composite/settled-css.png",
+      "cssBytes": 76084,
+      "layerSizes": {
+        "renderer": [
+          2400,
+          1600
+        ],
+        "page": [
+          1880,
+          1388
+        ],
+        "card": [
+          736,
+          766
+        ]
+      },
+      "placement": {
+        "page": [
+          520,
+          212
+        ],
+        "card": [
+          1664,
+          834
+        ]
+      },
+      "ring": {
+        "card_corner_rgba": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "composite_corner_rgb": [
+          29,
+          49,
+          77
+        ],
+        "page_at_corner_rgb": [
+          29,
+          49,
+          77
+        ],
+        "page_shows_through": true,
+        "card_corner_transparent": true
+      },
+      "card_surface": {
+        "card_centre_rgba": [
+          241,
+          236,
+          193,
+          255
+        ],
+        "composite_centre_rgb": [
+          241,
+          236,
+          193
+        ],
+        "page_under_centre_rgb": [
+          29,
+          49,
+          77
+        ],
+        "card_covers_page": true
+      },
+      "renderer": {
+        "opaque_pixels": 1230560,
+        "total_pixels": 3840000
+      }
+    }
+  ]
+}
