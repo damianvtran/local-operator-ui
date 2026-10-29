@@ -99,6 +99,15 @@ const IDENTICAL_OK = new Map([
 		"language-neutral format string: only placeholders and '·', no words",
 	],
 	[
+		"ui.canvas.files.attachmentMeta",
+		// `{size} · {when}`: the Canvas attachment row's note, placeholders and a
+		// middle dot, no words. The size and the date arrive already localised
+		// (`attachmentSizeLabel`, `formatDate`); the message exists only so a locale
+		// CAN own the separator, so identical is the correct translation in every
+		// shipped locale - the same shape as `ui.chat.attachments.file_meta`.
+		"language-neutral format string: only placeholders and '·', no words",
+	],
+	[
 		"ui.settings.account.settings_page.radient_pass",
 		"Product name, preserved verbatim by the programme glossary.",
 	],

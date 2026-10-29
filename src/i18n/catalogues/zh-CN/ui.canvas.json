@@ -31,7 +31,7 @@
 	"ui.canvas.files.retry": "重试",
 	"ui.canvas.files.continue": "继续加载",
 	"ui.canvas.files.empty": "暂无文件",
-	"ui.canvas.files.emptyDetail": "智能体创建或标为重点的文件会显示在这里。",
+	"ui.canvas.files.emptyDetail": "智能体创建的文件或你附加的文件会显示在这里。",
 	"ui.canvas.files.noMatch": "没有符合当前搜索和筛选条件的文件",
 	"ui.canvas.files.clear": "清除搜索和筛选条件",
 	"ui.canvas.files.sessionOnly": "仅在对话中",
@@ -345,5 +345,18 @@
 	"ui.canvas.wysiwyg_markdown_editor.remove": "- 移除",
 	"ui.canvas.wysiwyg_markdown_editor.add": "+ 添加",
 	"ui.canvas.create_file_dialog.creating": "正在创建……",
-	"ui.canvas.variable_form_dialog.saving": "正在保存……"
+	"ui.canvas.variable_form_dialog.saving": "正在保存……",
+	"ui.canvas.files.attachments": "附件",
+	"ui.canvas.files.attachmentsPartial": "可能不完整",
+	"ui.canvas.files.attachmentsPartialReason": "根据目前已加载的消息生成。",
+	"ui.canvas.files.attachmentsError": "无法加载附件",
+	"ui.canvas.files.attachmentsErrorReason": "后端无法检查附件列表，请重试。",
+	"ui.canvas.files.attachmentTooltip": "{name} · {digest} · 由你附加，保存在此会话中",
+	"ui.canvas.files.attachmentGoneRecovery": "已移动或删除，且没有保存的副本。如需查找，请从菜单中复制路径。",
+	"ui.canvas.files.attachmentImage": "附件图片",
+	"ui.canvas.files.attachmentRetained": "已移动或删除 · 已保留副本",
+	"ui.canvas.files.attachmentGone": "已移动或删除 · 无保存的副本",
+	"ui.canvas.files.attachmentMeta": "{size} · {when}",
+	"ui.canvas.files.attachmentRefused": "看起来是敏感信息，因此已关闭文件操作",
+	"ui.canvas.files.attachmentReadOnly": "只读——附件的已保存副本"
 }
