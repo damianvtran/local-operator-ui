@@ -164,7 +164,22 @@ export async function createAskFaultProxy({ base, token, accept }) {
 				res.writeHead(503);
 				res.end(
 					JSON.stringify({
-						detail: "Fixture-controlled transport failure; no answer recorded.",
+						/*
+						 * A DECLARED TRANSPORT FAILURE, NOT A BARE 503 (UX review round 2, U2).
+						 * `desktopRefusalCodeForStatus` reads a 503 on `/v1/desktop/` with no
+						 * declared code as `pairing.plane-closed` - the pairing refusal whose
+						 * sentence is "the server does not accept this app's desktop controls"
+						 * - and the panel no longer offers Retry for one, because a second
+						 * press cannot land there. So a fixture that means "the transport lost
+						 * the request" has to say so in the vocabulary main uses for exactly
+						 * that (`DESKTOP_MACHINE_DETAIL.transportFailed`). The bare-503 frame
+						 * is a different, non-retryable state and is NOT what these frames show.
+						 */
+						detail: {
+							code: "transport.failed",
+							message:
+								"The backend could not complete this request. Check its connection and try again.",
+						},
 					}),
 				);
 			} else {
@@ -549,6 +564,8 @@ export async function runAskRemediationScene({
 						receipt.retryGeometry.sendDisabled,
 				);
 				await reveal(cdp, buttonExpression("Retry"));
+				receipt.failureClassification =
+					"transport.failed (declared in the fixture's 503 envelope)";
 				receipt.errorFrames = await capturePair("ask-remediation-error");
 				// Start keyboard traversal from the real masked field, not the global reel.
 				await click(
@@ -573,6 +590,22 @@ export async function runAskRemediationScene({
 					await cdp.evaluate(`(${buttonExpression("Send answer")}).disabled`),
 					false,
 					"edited secret must re-arm Send",
+				);
+				/*
+				 * THE SUPERSEDED RETRY IS GONE THE MOMENT THE DRAFT MOVES ON (UX review round
+				 * 2, U3). It used to stay live and sat FIRST in keyboard order after the field,
+				 * so one Tab re-sent the value the reader had just replaced - unobservable in a
+				 * masked field. Recorded as a fact of the frame rather than asserted silently:
+				 * `retryHiddenAfterEdit` beside `correctedTabs` is what a reviewer can check
+				 * against the source.
+				 */
+				receipt.retryHiddenAfterEdit = !(await cdp.evaluate(
+					`!!(${buttonExpression("Retry")})`,
+				));
+				assert.equal(
+					receipt.retryHiddenAfterEdit,
+					true,
+					"a corrected draft must not offer the superseded Retry",
 				);
 				receipt.correctedTabs = await tabTo(
 					cdp,

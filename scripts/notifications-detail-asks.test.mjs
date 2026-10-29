@@ -362,7 +362,12 @@ async function mount({
 						if (reply.status !== 200)
 							return {
 								status: reply.status,
-								body: { detail: reply.detail ?? "offline" },
+								body: {
+									detail:
+										typeof reply.detail === "object"
+											? reply.detail
+											: (reply.detail ?? "offline"),
+								},
 							};
 						const ask = asks.find((row) => row.ask_id === request.askId);
 						if (request.decline) ask.status = "declined";
@@ -487,6 +492,7 @@ const RX_4 = /Answered — delivering/;
 const RX_5 = /no longer needed|moot/i;
 const RX_6 = /Dismissed — (no longer needed|settled in chat)/;
 const RX_7 = /\s+/;
+const RX_NO_ANSWER = /No answer given/;
 const BOUNDED = { timeout: 30_000 };
 const ITEM_A = `ask:${SESSION}:a-1111`;
 
@@ -649,13 +655,79 @@ test(
 );
 
 test(
+	"U2 a classified pairing refusal shows no Retry; a transport failure does",
+	BOUNDED,
+	async () => {
+		const page = await openOnA({
+			answer: () => ({
+				status: 503,
+				detail: {
+					code: "pairing.plane-closed",
+					message: "The server does not accept this app's desktop controls.",
+				},
+			}),
+		});
+		try {
+			await chooseFirstOption(page);
+			const send = page.buttonIn(page.card("a-1111"), "Send answer");
+			await act(async () => send.focus());
+			await page.press(send);
+			assert.ok(
+				await page.settle(() =>
+					page.card("a-1111")?.querySelector("[data-lo-ask-refused]"),
+				),
+			);
+			assert.equal(page.buttonIn(page.card("a-1111"), "Retry"), null);
+			assert.notEqual(document.activeElement, document.body);
+			assert.equal(
+				document.activeElement?.getAttribute("data-ask-option"),
+				"Rotate after the leaks close",
+				"a refusal without Retry returns focus to the answer field",
+			);
+		} finally {
+			await page.unmount();
+		}
+	},
+);
+
+test("U2 a genuine transport failure retains Retry", BOUNDED, async () => {
+	const page = await openOnA({
+		answer: () => ({
+			status: 503,
+			detail: {
+				code: "transport.failed",
+				message:
+					"The backend could not complete this request. Check its connection and try again.",
+			},
+		}),
+	});
+	try {
+		await chooseFirstOption(page);
+		await page.press(page.buttonIn(page.card("a-1111"), "Send answer"));
+		assert.ok(
+			await page.settle(() => page.buttonIn(page.card("a-1111"), "Retry")),
+			"a declared transport failure keeps its retry action",
+		);
+	} finally {
+		await page.unmount();
+	}
+});
+
+test(
 	"a transport failure shows the error with Retry, keeps the choice, and Retry lands",
 	BOUNDED,
 	async () => {
 		const page = await openOnA({
 			answer: (call) =>
 				call === 1
-					? { status: 503, detail: "The local server did not answer." }
+					? {
+							status: 503,
+							detail: {
+								code: "transport.failed",
+								message:
+									"The backend could not complete this request. Check its connection and try again.",
+							},
+						}
 					: { status: 200 },
 		});
 		try {
@@ -678,6 +750,7 @@ test(
 				"Retry",
 			);
 			assert.ok(retry, "Retry is offered for a transport failure");
+			assert.equal(document.activeElement, retry, "failure focuses recovery");
 			assert.equal(
 				card
 					.querySelector('[data-ask-option="Rotate after the leaks close"]')
@@ -1108,6 +1181,18 @@ test(
 				.find((text) => text.includes("A withdrawn question?"));
 			assert.ok(row.startsWith("Withdrawn"), `it wears Withdrawn (${row})`);
 			assert.ok(!page.pane().textContent.includes("Waiting on an answer"));
+			await page.press(
+				page
+					.pane()
+					.querySelector('[data-lo-ask-settled] button[aria-expanded="false"]'),
+			);
+			const expanded = page.pane().querySelector("[data-lo-ask-settled]");
+			assert.equal(
+				expanded.textContent.split("A withdrawn question?").length - 1,
+				1,
+				"the expanded withdrawn context does not repeat its question",
+			);
+			assert.match(expanded.textContent, RX_NO_ANSWER);
 			/* Read after mount: neither the map nor the badge may freeze English at import. */
 			for (const [locale, label] of Object.entries({
 				fr: "Retirée",
@@ -1147,7 +1232,16 @@ test(
 	async () => {
 		const page = await openOnA({
 			answer: (call) =>
-				call === 1 ? { status: 503, detail: "offline" } : { status: 200 },
+				call === 1
+					? {
+							status: 503,
+							detail: {
+								code: "transport.failed",
+								message:
+									"The backend could not complete this request. Check its connection and try again.",
+							},
+						}
+					: { status: 200 },
 		});
 		try {
 			await chooseFirstOption(page);
@@ -1222,7 +1316,16 @@ for (const surface of ["pane", "fleet"]) {
 						if (mixed) asks[0].questions.push(...ordinary);
 					},
 					answer: (call) =>
-						call <= 2 ? { status: 503, detail: "offline" } : { status: 200 },
+						call <= 2
+							? {
+									status: 503,
+									detail: {
+										code: "transport.failed",
+										message:
+											"The backend could not complete this request. Check its connection and try again.",
+									},
+								}
+							: { status: 200 },
 				});
 				try {
 					await page.settle(() => page.reads.aggregate > 0);
@@ -1257,6 +1360,26 @@ for (const surface of ["pane", "fleet"]) {
 						page.buttonIn(page.card("a-1111"), "Send answer").disabled,
 						false,
 						"secret edit re-arms a NEW Send answer",
+					);
+					assert.equal(
+						page.buttonIn(page.card("a-1111"), "Retry"),
+						null,
+						"a corrected draft cannot resend the superseded request",
+					);
+					const liveControls = [
+						...page
+							.card("a-1111")
+							.querySelectorAll(
+								"button:not([disabled]), input:not([disabled]), textarea:not([disabled])",
+							),
+					];
+					const fieldIndex = liveControls.indexOf(
+						page.card("a-1111").querySelector("input[data-ask-secret]"),
+					);
+					assert.equal(
+						liveControls[fieldIndex + 1],
+						page.buttonIn(page.card("a-1111"), "Send answer"),
+						"the corrected action is the next keyboard stop after the field",
 					);
 					await page.press(page.buttonIn(page.card("a-1111"), "Send answer"));
 					assert.ok(
@@ -1309,7 +1432,17 @@ for (const surface of ["pane", "fleet"]) {
 				surface,
 				seed,
 				holdAggregate: true,
-				answer: (call) => (call === 1 ? { status: 503 } : { status: 200 }),
+				answer: (call) =>
+					call === 1
+						? {
+								status: 503,
+								detail: {
+									code: "transport.failed",
+									message:
+										"The backend could not complete this request. Check its connection and try again.",
+								},
+							}
+						: { status: 200 },
 			});
 			try {
 				await page.settle(() => page.reads.aggregate > 0);

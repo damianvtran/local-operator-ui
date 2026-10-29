@@ -1099,6 +1099,55 @@ test("a refusal WITH the owner's sentence keeps it; without one, the app says th
 	);
 });
 
+test("only a transport failure earns a Retry; a pairing refusal does not (U2)", () => {
+	/*
+	 * THE CLASSIFICATION AND THE RETRY DECISION MUST AGREE. UX review round 2's U2
+	 * measured the failure row pairing "the server does not accept this app's desktop
+	 * controls" with an ENABLED Retry: a 503 on /v1/desktop/ is `pairing.plane-closed`
+	 * in the contract, so the sentence and the control contradicted each other.
+	 *
+	 * BOTH SIDES ARE PINNED. Suppressing Retry on every refusal code would take the
+	 * one state that HAS a working next action (`transport.failed` - main could not
+	 * complete the request, so nothing was learned about the plane) and give it none.
+	 */
+	const refused = (code, message) =>
+		new queue.DesktopControlError(503, message, undefined, code);
+	for (const code of [
+		"pairing.plane-closed",
+		"pairing.refused",
+		"pairing.no-credential",
+	])
+		assert.equal(
+			queue.askFailureEarnsRetry(refused(code, "refused")),
+			false,
+			`${code} is a pairing condition, so the sentence is the whole answer`,
+		);
+	assert.equal(
+		queue.askFailureEarnsRetry(
+			refused(
+				"transport.failed",
+				"The backend could not complete this request. Check its connection and try again.",
+			),
+		),
+		true,
+		"a transport failure is the press a Retry repairs",
+	);
+	/* No code at all: the renderer's own catch (the request never left), and a plain
+	 * 404 ("no ask with that id"). Neither is a statement about the plane. */
+	assert.equal(queue.askFailureEarnsRetry(new Error("socket closed")), true);
+	assert.equal(queue.askFailureEarnsRetry({ status: 404 }), true);
+	/* And the owner's own verdict stays final, as it was before this change. */
+	assert.equal(
+		queue.askFailureEarnsRetry(
+			new queue.DesktopControlError(
+				409,
+				"That ask was already answered by the phone.",
+			),
+		),
+		false,
+	);
+});
+
 test("the item's name never doubles a mark, and its clause is the model's one spelling", () => {
 	// The name is composed from the model's own clause, so what the chip PAINTS and
 	// what a screen reader is told cannot be two different sentences - the defect the

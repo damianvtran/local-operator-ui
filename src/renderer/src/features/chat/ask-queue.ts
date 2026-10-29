@@ -61,6 +61,7 @@ import {
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
 import { t } from "@shared/i18n";
+import { DESKTOP_REFUSAL_CODE } from "../../../../shared/desktop-contract";
 import type {
 	CanonicalFrontendState,
 	PendingAsk,
@@ -2438,6 +2439,35 @@ export const askRefusalSentence = (error: unknown): string => {
  */
 export const askRefusalIsOwner = (error: unknown): boolean =>
 	askRefusalFallback(error) !== null;
+
+/**
+ * Whether a failed press earns a Retry, or whether the sentence is the whole answer.
+ *
+ * U2 (UX review round 2, MAJOR) measured the failure row pairing `plane_closed` - "the
+ * server does not accept this app's desktop controls" - with an ENABLED Retry. That is
+ * the dead control this panel refuses elsewhere: a pairing condition is the app's own
+ * business to re-establish, and pressing Retry re-sends into the same closed plane.
+ *
+ * THE PAIRING CODES, NOT EVERY REFUSAL CODE (this is where the finding's own suggested
+ * predicate, "no code at all", is too broad). `DESKTOP_REFUSAL_CODE` holds two kinds:
+ * `noCredential`, `refused` and `planeClosed` are PAIRING conditions, while
+ * `transportFailed` is explicitly not one - "main could not complete the request" is a
+ * refused socket or a reset, nothing was learned about the plane, and it is exactly the
+ * failure a second press repairs. Suppressing Retry on every code would take the one
+ * state that has a working next action and give it none.
+ *
+ * A PLAIN `Error` CARRIES NO CODE and stays retryable for the same reason: the
+ * renderer's own catch means the request never reached the backend.
+ */
+export const askFailureEarnsRetry = (error: unknown): boolean => {
+	if (askRefusalIsOwner(error)) return false;
+	const code =
+		typeof error === "object" && error !== null
+			? (error as { code?: unknown }).code
+			: undefined;
+	if (typeof code !== "string") return true;
+	return code === DESKTOP_REFUSAL_CODE.transportFailed;
+};
 
 /**
  * The `sessions.answer` body for a whole-ask answer, or `null` when the draft is

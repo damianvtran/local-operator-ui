@@ -145,6 +145,29 @@ const LAUNCH_APP_CALL = /api\.launchApp\(\{([\s\S]*?)\}\)/g;
 const LAUNCH_API_URL = /apiUrl:\s*([^,\n]+)/;
 
 /*
+ * THE FAILURE THE FRAMES SHOW IS A DECLARED TRANSPORT FAILURE (UX review round 2, U2).
+ * A 503 on `/v1/desktop/` that declares nothing is `pairing.plane-closed`, and the panel
+ * offers it no Retry - so a fixture that returned a bare 503 would render a state these
+ * frames do not claim (and, after the U2 fix, would fail the scene's own Retry wait).
+ * Pinned here so the vocabulary cannot drift back into that overlap.
+ */
+test("the remediation failure fixture declares main's transport vocabulary", () => {
+	const scene = readFileSync(
+		new URL("./notifications-ask-remediation-scene.mjs", import.meta.url),
+		"utf8",
+	);
+	assert.ok(
+		scene.includes('code: "transport.failed"'),
+		"the 503 must declare transport.failed, not leave the status to be classified",
+	);
+	assert.ok(
+		!scene.includes("Fixture-controlled transport failure"),
+		"the old bare-503 body is a pairing refusal, not this frame's state",
+	);
+	assert.ok(scene.includes("retryHiddenAfterEdit"));
+});
+
+/*
  * launchApp's per-call apiUrl wins over prepareDriverContext's binding, so a
  * launch at `base` silently bypasses the fault proxy (round-3 P1). Every
  * launchApp in the parent scene must take the proxy URL once askFixture exists.

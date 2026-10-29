@@ -882,6 +882,23 @@ const AskRow = ({
 		failedRevision.current = { retry, revision: editRevision };
 	const retryPending =
 		retry !== undefined && failedRevision.current?.revision === editRevision;
+	const retryRef = useRef<HTMLButtonElement>(null);
+	/*
+	 * Failure disables the pressed Send control. Move focus in the same commit to
+	 * its recovery action rather than letting the browser strand it on BODY. A
+	 * pairing refusal has no Retry, so its recovery is the answer field itself.
+	 */
+	const failedOutcome = useRef<AskOutcome | null>(null);
+	if (outcome?.refused) failedOutcome.current = outcome;
+	useLayoutEffect(() => {
+		const failed = failedOutcome.current;
+		if (!outcome?.refused || failed !== outcome || failed === null) return;
+		failedOutcome.current = null;
+		const recovery = retryRef.current;
+		const target =
+			recovery ?? rowRef.current?.querySelector<HTMLElement>(LIVE_CONTROL);
+		target?.focus({ preventScroll: true });
+	}, [outcome]);
 	const disabled = busy || !canAnswer;
 	const ready = useMemo(
 		() => askAnswerMap(ask, draft, secrets) !== null,
@@ -1318,9 +1335,24 @@ const AskRow = ({
 						const source = ask.questions.find((q) => q.id === entry.id);
 						const offered = (source?.options ?? []).map((o) => o.label);
 						const tags = source?.secret !== true && offered.length > 0;
+						/*
+						 * THE ROW ALREADY NAMED THIS QUESTION (design review round 3, D6). The collapsed
+						 * row above the block prints `badge + question`, and the expanded body printed the
+						 * SAME sentence again 57 px lower - two lines of repeated reading for the one line
+						 * of new information (the status sentence and `No answer given`). Only the
+						 * question the trigger already carries is dropped: a second question on a
+						 * multi-question ask still gets its label here, because nothing above names it.
+						 */
+						const echoedByTrigger =
+							entry.id === ask.questions[0]?.id &&
+							(status === "withdrawn" || status === "timed_out");
 						return (
 							<div key={entry.id} className="flex flex-col gap-0.5">
-								<span className="text-ink-muted text-xs">{entry.question}</span>
+								{echoedByTrigger ? null : (
+									<span className="text-ink-muted text-xs">
+										{entry.question}
+									</span>
+								)}
 								{entry.answers.length > 0 ? (
 									entry.answers.map((value, index) => (
 										<span
@@ -1446,10 +1478,11 @@ const AskRow = ({
 					 * control this panel refuses elsewhere. The draft is untouched, so the
 					 * reader's typed answer is still in its field.
 					 */}
-					{outcome.retry !== undefined ? (
+					{retryPending ? (
 						<button
+							ref={retryRef}
 							type="button"
-							disabled={busy}
+							disabled={busy || !retryPending}
 							onClick={outcome.retry}
 							className="min-h-6 rounded-md border border-control px-2 py-1 text-ink text-xs hover:bg-sunken"
 						>

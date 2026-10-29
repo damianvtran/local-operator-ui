@@ -36,6 +36,7 @@ import { type AnswerOutcome, createSendLock } from "./ask-answer";
 import {
 	type AskDismissReason,
 	type AskOutcome,
+	askFailureEarnsRetry,
 	askPaintableAnswers,
 	askRefusalIsOwner,
 	askRefusalSentence,
@@ -103,6 +104,14 @@ export const useAskOutcomes = ({
 				}
 				if (outcome.status === "failed") {
 					const byOwner = askRefusalIsOwner(outcome.error);
+					/*
+					 * A PAIRING REFUSAL IS NOT A RETRYABLE FAILURE (U2, UX review round 2). The
+					 * classification and the retry decision read ONE predicate, so a 503 the
+					 * contract calls `planeClosed` can no longer earn a control whose only
+					 * outcome is the sentence above it. The owner's own verdict is still the
+					 * other half of the rule; both live in `askFailureEarnsRetry`.
+					 */
+					const retryable = askFailureEarnsRetry(outcome.error);
 					setOutcomes((current) => ({
 						...current,
 						[act.askId]: {
@@ -114,7 +123,7 @@ export const useAskOutcomes = ({
 							 * answered`, `expired`) would refuse the same press again.
 							 */
 							refusedByOwner: byOwner,
-							...(byOwner ? {} : { retry: () => run(act) }),
+							...(retryable ? { retry: () => run(act) } : {}),
 						},
 					}));
 					return;
