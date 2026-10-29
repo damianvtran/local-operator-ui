@@ -428,7 +428,10 @@ async function runFinalize(
 				{ reason: "record_failed" },
 			);
 		}
-		fd = openSync(partPath, "wx");
+		// 0600, as D5 promises for the default directory's files: a clip of a page is
+		// the same class of data as a screenshot, and the process umask would
+		// otherwise leave it readable by every account on the machine.
+		fd = openSync(partPath, "wx", 0o600);
 		const bytes = await readStream(recording, handle, budgetAt, fd);
 		if (bytes === 0) {
 			throw new BrowserHostError(

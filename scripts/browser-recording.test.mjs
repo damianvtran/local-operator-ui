@@ -6,6 +6,7 @@ import {
 	mkdtempSync,
 	readFileSync,
 	readdirSync,
+	statSync,
 	symlinkSync,
 	writeFileSync,
 } from "node:fs";
@@ -252,6 +253,12 @@ test("record_stop pages IO.read to eof and publishes a complete file", async () 
 	assert.equal(result.container, "mp4");
 	assert.equal(result.codec, "av1");
 	assert.deepEqual(readFileSync(path), Buffer.concat([head, tail]));
+	// D5's 0600: the umask must not be what decides who can read a clip.
+	assert.equal(
+		statSync(path).mode & 0o777,
+		0o600,
+		"the published clip is owner-only, like the directory Python creates",
+	);
 	assert.deepEqual(
 		partFiles(dir),
 		[],
