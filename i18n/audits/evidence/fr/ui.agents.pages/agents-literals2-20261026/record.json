@@ -1,0 +1,87 @@
+{
+	"audit_id": "agents-literals2-20261026",
+	"audit_date": "2026-10-26",
+	"locale": "fr",
+	"namespace": "ui.agents.pages",
+	"round": 1,
+	"batch": "agents-literals-2",
+	"head": "a9e536bf892f48ed2a87772658055abfd10caa5e",
+	"base": "73af0b6855231c8e484bd4097e57fb879e10e9a8",
+	"branch_base": "f1aca5935bc38b5fdb733aa2cab8f2ab8c55b30c",
+	"branch": "i18n-agents-literals-2",
+	"key_count": 8,
+	"keys_in_file": 30,
+	"keys": [
+		"ui.agents.pages.add_manual.agent",
+		"ui.agents.pages.add_manual.team",
+		"ui.agents.pages.ask.body_agent",
+		"ui.agents.pages.ask.body_team",
+		"ui.agents.pages.ask.heading_agent",
+		"ui.agents.pages.ask.heading_team",
+		"ui.agents.pages.ask.manual_agent",
+		"ui.agents.pages.ask.manual_team"
+	],
+	"scope": "Batch agents-literals-2: the 25 new fr keys only, over seven namespaces. Every other fr value in these files was verified byte-identical to 73af0b6855 and not re-audited; the English catalogues are byte-identical to that commit (git diff empty), so the audited delta is exactly the 25 fr values. Catalogue-only: no rendered frame, activation or release claim.",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"harness": "Local Operator",
+		"team": "lopdev",
+		"session": "9727f6733f25",
+		"instance": "4acffbcd1c3d",
+		"model": "radient/auto",
+		"actual_model_source": "Harness session header for this run: 'Model: radient/auto'; upstream provider/model resolution is not visible to this agent and is not inferred.",
+		"model_fallback": "none observed and none claimed: the only model identity visible to this run is the harness header radient/auto; no fallback notice appeared.",
+		"independent_from_translator_session": true,
+		"independence": "Independent of the translator: did not translate, remediate or edit any catalogue, ledger, English, generated file or test; read the clean working-tree bytes at the committed head and the English sidecars; bound the task-supplied hashes before reading; did not read the translator's session or reasoning.",
+		"second_pass": "A second careful pass over all 25 keys was made in this same instance; it is not an independent second auditor, and this record does not claim to be that pass."
+	},
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.agents.pages.json",
+			"sha256": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.agents.pages.context.json",
+			"sha256": "f9690a17e6e7307df154bdc0d71ab8a0d002a07a052e11c0025d2ff874d3dfea"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/fr/ui.agents.pages.json",
+			"sha256": "916d7c33e8c3b9f8ae5bfd8e488d0686c23b0d137c77b8c1173651da65b347ea"
+		}
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/fr-agents-literals-audit-4acffbcd1c3d.json",
+			"sha256": "55b01c5e79a85bfd1f0fb99f7dbb095e860556e7496fdf3fef4cd2b6cb844029"
+		},
+		"execution_log": {
+			"path": "i18n/audits/evidence/fr/ui.agents.pages/agents-literals2-20261026/audit.log",
+			"sha256": "3a42e54c262e7dc7697aebf0be136196c4b6f177dbbb12316eeb8f27feab1b6b"
+		},
+		"audit_json": {
+			"path": "i18n/audits/evidence/fr/ui.agents.pages/agents-literals2-20261026/record.json",
+			"note": "This file; its sha256 is reported by the audit's final message and by the project record."
+		}
+	},
+	"current_report_verdict": {
+		"status": "passed",
+		"result": {
+			"blocker": 0,
+			"major": 0,
+			"minor": 0,
+			"nit": 0
+		},
+		"unresolved_blocker_major_count": 0,
+		"finding_ids": []
+	},
+	"findings": [],
+	"audit_notes_not_execution_log": "The prose in this record and in the receipt is the auditor's reasoning. The commands and their actual output are in audit.log beside this file; nothing in it was edited or invented. The ledger-check section is explicitly filtered to the fr rows and its filter is stated there.",
+	"original_lost_evidence": {
+		"status": "none",
+		"original_path": null,
+		"expected_original_sha256": null
+	},
+	"new_report_is_original": true,
+	"new_report_is_historical_R2_recreation": false,
+	"backdated": false
+}

@@ -1,4 +1,12 @@
 {
+	"ui.agents.pages.add_manual.agent": "Add agent manually",
+	"ui.agents.pages.add_manual.team": "Add team manually",
+	"ui.agents.pages.ask.body_agent": "An agent is a reusable set of instructions you can start a chat with, or let other agents call on. Describe what you want and a configuration run sets it up.",
+	"ui.agents.pages.ask.body_team": "A team has one agent that leads the chat and members it can hand work to. Describe what you want and a configuration run sets it up.",
+	"ui.agents.pages.ask.heading_agent": "Ask for an agent",
+	"ui.agents.pages.ask.heading_team": "Ask for a team",
+	"ui.agents.pages.ask.manual_agent": "Or add an agent by hand",
+	"ui.agents.pages.ask.manual_team": "Or add a team by hand",
 	"ui.agents.pages.back_to_list": "Back to the list",
 	"ui.agents.pages.browse_aria": "Browse definitions by type",
 	"ui.agents.pages.discard_bar.agent": "Discard your unsaved changes to this agent?",

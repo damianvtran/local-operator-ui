@@ -522,3 +522,35 @@ test("usableRawAddress rejects blank and control-laden input, trims otherwise", 
 	assert.equal(usableRawAddress("exa\u0000mple"), null);
 	assert.equal(usableRawAddress("  example.com  "), "example.com");
 });
+
+test("embedValue locates the substituted value from the argument position", () => {
+	const { embedValue } = mod;
+	// The ICU argument position, not a search for the user's text: the value
+	// itself may contain the surrounding punctuation or repeat a word of the copy.
+	const open = (value) =>
+		`\u201C${value}\u201D \u06A9\u06BE\u0648\u0644\u06CC\u06BA`;
+	const out = embedValue(open, "192.168.1.1/");
+	assert.equal(out.text, open("192.168.1.1/"));
+	assert.deepEqual(out.isolate, { start: 1, end: 13 });
+	assert.equal(
+		out.text.slice(out.isolate.start, out.isolate.end),
+		"192.168.1.1/",
+	);
+	const tricky = embedValue((v) => `Open "${v}" Open`, 'Open "x');
+	assert.equal(
+		tricky.text.slice(tricky.isolate.start, tricky.isolate.end),
+		'Open "x',
+	);
+	// A message that does not carry the argument (a failed lookup returns its
+	// key) has nothing to isolate: no range, and the formatted text is unchanged.
+	assert.deepEqual(
+		embedValue(() => "no argument here", "v"),
+		{
+			text: "no argument here",
+			isolate: null,
+		},
+	);
+	for (const sentence of [open("[::1]:3000/"), open("127.0.0.1:8080/")]) {
+		assert.equal(/[\u2066-\u2069]/.test(sentence), false);
+	}
+});

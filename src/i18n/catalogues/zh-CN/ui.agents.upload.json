@@ -21,5 +21,11 @@
 	"ui.agents.upload.target.upgrade": "（需要升级）",
 	"ui.agents.upload.terms.lead": "我确认已阅读并同意",
 	"ui.agents.upload.terms.link": "《条款与条件》",
-	"ui.agents.upload.terms.tail": "并确认此智能体不含恶意内容，也不违反使用政策。"
+	"ui.agents.upload.terms.tail": "并确认此智能体不含恶意内容，也不违反使用政策。",
+	"ui.agents.upload.title.publish_org": "将“{name}”发布到{destination}？",
+	"ui.agents.upload.title.publish_public": "将“{name}”发布到智能体中心？",
+	"ui.agents.upload.title.published_org": "已将“{name}”发布到{destination}",
+	"ui.agents.upload.title.published_public": "已将“{name}”发布到智能体中心",
+	"ui.agents.upload.title.republished": "已更新“{name}”在智能体中心的条目",
+	"ui.agents.upload.title.update_listing": "更新“{name}”在智能体中心的条目？"
 }

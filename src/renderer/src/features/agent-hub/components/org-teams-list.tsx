@@ -586,7 +586,8 @@ const TeamComposition = ({ team }: { team: HubTeam }) => {
  * content. Every segment is omitted when it is missing (never a placeholder, never
  * an email), and a line with nothing left is not rendered at all.
  */
-const TeamProvenance = ({ team }: { team: HubTeam }) => {
+export const TeamProvenance = ({ team }: { team: HubTeam }) => {
+	useI18nLocale();
 	const project = team.project?.trim();
 	const author = teamAuthor(team);
 	const recency: TeamRecency | null = teamRecency(team);
@@ -597,16 +598,22 @@ const TeamProvenance = ({ team }: { team: HubTeam }) => {
 		segments.push({
 			key: "recency",
 			node: (
-				<>
-					{recency.label} {/*
-					 * The exact date is a POINTER-only convenience; the expanded body is
-					 * the keyboard-reachable path to the same fact. `<time>` carries the
-					 * machine value for assistive tech and for a copy.
-					 */}
-					<Tooltip content={recency.exact}>
-						<time dateTime={recency.iso}>{recency.when}</time>
-					</Tooltip>
-				</>
+				/*
+				 * ONE SENTENCE, so a language that puts its verb after the time can. The
+				 * prefix used to be concatenated (`{label} {when}`), which pinned English
+				 * order and shipped `updated il y a 2 jours` / `updated 2 دن پہلے` in seven
+				 * locales. The element is still `<time>`: `dateTime` carries the machine
+				 * value for assistive tech and for a copy, while the visible text is the
+				 * catalogue's whole phrase (there is no way to keep the verb outside the
+				 * element and still let the target language reorder it).
+				 */
+				<Tooltip content={recency.exact}>
+					<time dateTime={recency.iso}>
+						{recency.label === "updated"
+							? t("ui.hub.teams.recency.updated", { when: recency.when })
+							: t("ui.hub.teams.recency.created", { when: recency.when })}
+					</time>
+				</Tooltip>
 			),
 		});
 	}
