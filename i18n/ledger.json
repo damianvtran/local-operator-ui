@@ -4875,8 +4875,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.hub",
-			"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
-			"target_sha256": "fa629f8bea201bd32ecd5a979a3fa8c38a1802eb142a50d63039353e898c180f",
+			"source_sha256": "0d77070295627e861882e8f952888c59e1d013dd754e1a7da79c85d1a31a9753",
+			"target_sha256": "2d4624ac033a587d5a7a7e1d2c499c1b88b8292a8e09e6cabb380ac8d90eb0cf",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -4885,18 +4885,18 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "kimi/k3.1-pro",
+					"model": "radient/auto",
 					"date": "2026-10-29",
 					"result": "clean",
-					"instance": "audit-1461-es-uihub-20261029a",
+					"instance": "audit-1470u-es-uihub-20261029",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/audit-1461-es-uihub-20261029a.json",
-					"receipt_sha256": "b3dd95d468097d3380ba9a46eca24ffbf5ac7dd4e7db058450f2b4d57f784054"
+					"receipt": "i18n/receipts/audit-1470u-es-uihub-20261029.json",
+					"receipt_sha256": "1b27212673c30d95f6eda35dd703c1b4737eb6acc3feeed1a342910dfc73a7f0"
 				}
 			],
 			"status": "audited",
@@ -5038,6 +5038,28 @@
 							"receipt_sha256": "3a1ffb990fd1248720619159192dbfea2e6e04b5446bc1116fae5cdd86d7f2d6",
 							"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
 							"note": "code-review remediation adds one key: the inventory-unknown sentence"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
+					"target_sha256": "fa629f8bea201bd32ecd5a979a3fa8c38a1802eb142a50d63039353e898c180f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "kimi/k3.1-pro",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "audit-1461-es-uihub-20261029a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/audit-1461-es-uihub-20261029a.json",
+							"receipt_sha256": "b3dd95d468097d3380ba9a46eca24ffbf5ac7dd4e7db058450f2b4d57f784054"
 						}
 					],
 					"status": "audited"
@@ -12737,8 +12759,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.hub",
-			"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
-			"target_sha256": "3072f5ee4401aa982d8f0e18575900a7cd5fc43624c0c974ac63e968fba7f466",
+			"source_sha256": "0d77070295627e861882e8f952888c59e1d013dd754e1a7da79c85d1a31a9753",
+			"target_sha256": "67553cb8c00857eeff9c2ec7d4a6f88cf5115871533ce8a47a4f7a7344653c3d",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -12748,18 +12770,18 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "kimi/k3.1-pro",
+					"model": "radient/auto",
 					"date": "2026-10-29",
 					"result": "clean-with-findings",
-					"instance": "audit-fr-uihub-20261029a",
+					"instance": "audit-1470u-fr-uihub-20261029",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
+						"minor": 0,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/audit-fr-uihub-20261029a.json",
-					"receipt_sha256": "a79701e145f270cee845ea5ff19b1f131a16f4e4e45c2ee21bdbb1b403197f31"
+					"receipt": "i18n/receipts/audit-1470u-fr-uihub-20261029.json",
+					"receipt_sha256": "8850c097c71604ad61e026020033620ee03c668d728fa9df994a752eb69fbe4c"
 				}
 			],
 			"superseded": [
@@ -12924,6 +12946,28 @@
 							"receipt_sha256": "234956077766ed3003b05d76eadbbf65345ec631c9d5009a361914488505aa4c",
 							"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
 							"note": "code-review remediation adds one key: the inventory-unknown sentence"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
+					"target_sha256": "3072f5ee4401aa982d8f0e18575900a7cd5fc43624c0c974ac63e968fba7f466",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "kimi/k3.1-pro",
+							"date": "2026-10-29",
+							"result": "clean-with-findings",
+							"instance": "audit-fr-uihub-20261029a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/audit-fr-uihub-20261029a.json",
+							"receipt_sha256": "a79701e145f270cee845ea5ff19b1f131a16f4e4e45c2ee21bdbb1b403197f31"
 						}
 					],
 					"status": "audited"
@@ -20929,8 +20973,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.hub",
-			"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
-			"target_sha256": "99cec8945de2d4a0f7e5db841ded53399f7b79d52e8f0bc51b0691440e468549",
+			"source_sha256": "0d77070295627e861882e8f952888c59e1d013dd754e1a7da79c85d1a31a9753",
+			"target_sha256": "19d95541ba33fd98051afee8cfba61076267ad54fcb7f13ac6ae603006591693",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -20939,18 +20983,18 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "kimi/k3.1-pro",
+					"model": "radient/auto",
 					"date": "2026-10-29",
-					"result": "clean",
-					"instance": "audit-1461-hi-uihub-20261029a",
+					"result": "clean-with-findings",
+					"instance": "audit-1470u-hi-uihub-20261029",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/audit-1461-hi-uihub-20261029a.json",
-					"receipt_sha256": "241d9c45e67739e200cc48f6e0a3dcee7fcaf8dac1d7d19beb937acc42882295"
+					"receipt": "i18n/receipts/audit-1470u-hi-uihub-20261029.json",
+					"receipt_sha256": "9a7f55ed4add292d00d2e5a941f51a0d1d7a3464bdf7952605ff1e70803f165f"
 				}
 			],
 			"status": "audited",
@@ -21093,6 +21137,28 @@
 							"receipt_sha256": "d96d3513f36abae7371970fae4cf1a418f5b33c9dca537d00187231ff00e2d32",
 							"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
 							"note": "code-review remediation adds one key: the inventory-unknown sentence"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
+					"target_sha256": "99cec8945de2d4a0f7e5db841ded53399f7b79d52e8f0bc51b0691440e468549",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "kimi/k3.1-pro",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "audit-1461-hi-uihub-20261029a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/audit-1461-hi-uihub-20261029a.json",
+							"receipt_sha256": "241d9c45e67739e200cc48f6e0a3dcee7fcaf8dac1d7d19beb937acc42882295"
 						}
 					],
 					"status": "audited"
@@ -28826,8 +28892,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.hub",
-			"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
-			"target_sha256": "ad72d96550882043869f3d842326b825148654302f0f09eb64c3339dd813a2fb",
+			"source_sha256": "0d77070295627e861882e8f952888c59e1d013dd754e1a7da79c85d1a31a9753",
+			"target_sha256": "db2e510d6cbf71d820f951970fbdf9f5f6b73b6c9d4a8b7290ba52455c826e86",
 			"translator": {
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-10-18",
@@ -28836,18 +28902,18 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "kimi/k3.1-pro",
+					"model": "radient/auto",
 					"date": "2026-10-29",
-					"result": "clean",
-					"instance": "audit-1461-ru-uihub-20261029a",
+					"result": "clean-with-findings",
+					"instance": "audit-1470u-ru-uihub-20261029",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/audit-1461-ru-uihub-20261029a.json",
-					"receipt_sha256": "3f3199f3f8b71a8d85a96841f94148be8714f1483eb857ac502116bfcb5017bc"
+					"receipt": "i18n/receipts/audit-1470u-ru-uihub-20261029.json",
+					"receipt_sha256": "200674def13c55548fe7f7c5cbc86f9c1b8d5248c89b6e12a76c4507371bc845"
 				}
 			],
 			"status": "audited",
@@ -28989,6 +29055,28 @@
 							"receipt_sha256": "fd3fa95bf63d39686e5e0c3656183183f0ffc11c00d20ab0a49cf4d65d75d94f",
 							"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
 							"note": "code-review remediation adds one key: the inventory-unknown sentence"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
+					"target_sha256": "ad72d96550882043869f3d842326b825148654302f0f09eb64c3339dd813a2fb",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "kimi/k3.1-pro",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "audit-1461-ru-uihub-20261029a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/audit-1461-ru-uihub-20261029a.json",
+							"receipt_sha256": "3f3199f3f8b71a8d85a96841f94148be8714f1483eb857ac502116bfcb5017bc"
 						}
 					],
 					"status": "audited"
@@ -36668,8 +36756,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.hub",
-			"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
-			"target_sha256": "b31916b99da5d0d5d22cb8928be9494baaf5c5d095fccfee553d6cd94ec4c2d8",
+			"source_sha256": "0d77070295627e861882e8f952888c59e1d013dd754e1a7da79c85d1a31a9753",
+			"target_sha256": "741605b3722fb858cb2f897a59dc70e72b9519a6efbdf4d97c163a6a39f15edc",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -36678,18 +36766,18 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "kimi/k3.1-pro",
+					"model": "radient/auto",
 					"date": "2026-10-29",
 					"result": "clean",
-					"instance": "audit-1461-ur-uihub-20261029a",
+					"instance": "audit-1470u-ur-uihub-20261029",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/audit-1461-ur-uihub-20261029a.json",
-					"receipt_sha256": "adeeb5d1dbab28230eb381d08ce05977658f7aeecbec3b1f6d8fe81cc68bcc1e"
+					"receipt": "i18n/receipts/audit-1470u-ur-uihub-20261029.json",
+					"receipt_sha256": "231c8156d284ed9f888b05f05e929476508e68a0076d0a55a34980784cb58af9"
 				}
 			],
 			"status": "audited",
@@ -36856,6 +36944,28 @@
 							"receipt_sha256": "f5fd75ae6d7e1e6c58f40420e0279ccb87f64dad174dfb300d8d07eafe115ffa",
 							"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
 							"note": "code-review remediation adds one key: the inventory-unknown sentence"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
+					"target_sha256": "b31916b99da5d0d5d22cb8928be9494baaf5c5d095fccfee553d6cd94ec4c2d8",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "kimi/k3.1-pro",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "audit-1461-ur-uihub-20261029a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/audit-1461-ur-uihub-20261029a.json",
+							"receipt_sha256": "adeeb5d1dbab28230eb381d08ce05977658f7aeecbec3b1f6d8fe81cc68bcc1e"
 						}
 					],
 					"status": "audited"
@@ -44643,8 +44753,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.hub",
-			"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
-			"target_sha256": "81eb5b832f6db2a9a88213dd307d1dcdc957a45bbc71e8b38ffa22697fbf9f46",
+			"source_sha256": "0d77070295627e861882e8f952888c59e1d013dd754e1a7da79c85d1a31a9753",
+			"target_sha256": "fc06d103735b66b7da027549f0843f63e5b83b3688a348d953d57eab6dec7f6a",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -44653,18 +44763,18 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "kimi/k3.1-pro",
+					"model": "radient/auto",
 					"date": "2026-10-29",
-					"result": "clean",
-					"instance": "audit-1461-vi-uihub-20261029a",
+					"result": "clean-with-findings",
+					"instance": "audit-1470u-vi-uihub-20261029",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/audit-1461-vi-uihub-20261029a.json",
-					"receipt_sha256": "a31dbcbdf52a5c081c8b00d00fd4c3b006796bbb6c9a18f041b07515497c53b2"
+					"receipt": "i18n/receipts/audit-1470u-vi-uihub-20261029.json",
+					"receipt_sha256": "49280ab5ae0ccfc1f6fb3444e9c59e8b0fbc6c39c8d86d7b72dd068e64ea75be"
 				}
 			],
 			"status": "audited",
@@ -44807,6 +44917,28 @@
 							"receipt_sha256": "094d90db0e6535b66b38bc6996e6f85dfff685226dcfd6d7ffb7a46a5bc006e2",
 							"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
 							"note": "code-review remediation adds one key: the inventory-unknown sentence"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
+					"target_sha256": "81eb5b832f6db2a9a88213dd307d1dcdc957a45bbc71e8b38ffa22697fbf9f46",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "kimi/k3.1-pro",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "audit-1461-vi-uihub-20261029a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/audit-1461-vi-uihub-20261029a.json",
+							"receipt_sha256": "a31dbcbdf52a5c081c8b00d00fd4c3b006796bbb6c9a18f041b07515497c53b2"
 						}
 					],
 					"status": "audited"
@@ -53252,8 +53384,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.hub",
-			"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
-			"target_sha256": "81d356c1f6904b030cbd701fa34c4abe37a54f59be7801bc39c183887cb8676c",
+			"source_sha256": "0d77070295627e861882e8f952888c59e1d013dd754e1a7da79c85d1a31a9753",
+			"target_sha256": "bf1dbfbfab43ce96ea53b6663f621de608ba07d3c3f40b72aa18528445c54e40",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -53263,18 +53395,18 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "kimi/k3.1-pro",
+					"model": "radient/auto",
 					"date": "2026-10-29",
-					"result": "clean",
-					"instance": "audit-1461-zhcn-uihub-20261029a",
+					"result": "clean-with-findings",
+					"instance": "audit-1470u-zhcn-uihub-20261029",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/audit-1461-zhcn-uihub-20261029a.json",
-					"receipt_sha256": "64339138bed17a817b20654bd007eb6415ea57ea33d0ab266dba0f6f98cf9281"
+					"receipt": "i18n/receipts/audit-1470u-zhcn-uihub-20261029.json",
+					"receipt_sha256": "6a0b9d75af970b5143e446668c333f46fb4cb7ea9833aa1690908463b44eab33"
 				}
 			],
 			"status": "audited",
@@ -53441,6 +53573,28 @@
 							"receipt_sha256": "6455af2fbee0a614b81a316f917a9e838031b745663e505678e0db98dba734cd",
 							"scope": "ui.hub.skills.inventory_unknown at this target hash (round 9); all other strings byte-identical to round 8",
 							"note": "code-review remediation adds one key: the inventory-unknown sentence"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0522358c7f0dc91b5dc02f5a6d2c3919e88d11ef041983f092e099b98033632e",
+					"target_sha256": "81d356c1f6904b030cbd701fa34c4abe37a54f59be7801bc39c183887cb8676c",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "kimi/k3.1-pro",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "audit-1461-zhcn-uihub-20261029a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/audit-1461-zhcn-uihub-20261029a.json",
+							"receipt_sha256": "64339138bed17a817b20654bd007eb6415ea57ea33d0ab266dba0f6f98cf9281"
 						}
 					],
 					"status": "audited"
