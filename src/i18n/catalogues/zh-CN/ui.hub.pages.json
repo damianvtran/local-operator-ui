@@ -1,5 +1,7 @@
 {
 	"ui.hub.pages.browse_aria": "按类型浏览中心",
+	"ui.hub.pages.card.get": "获取",
+	"ui.hub.pages.card.updated": "{when}更新",
 	"ui.hub.pages.header.subtitle": "在Radient上发现并下载智能体、团队和技能",
 	"ui.hub.pages.header.title": "智能体中心",
 	"ui.hub.pages.orgs_below_version": "与组织共享智能体需要较新的Local Operator后端。请更新后端后重试。",

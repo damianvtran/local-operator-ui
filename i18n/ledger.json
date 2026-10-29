@@ -2746,8 +2746,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.common.actions",
-			"source_sha256": "f942004d5e81229b0eec4abb885f304d0bacb2e40b73ca2a522858177249d81b",
-			"target_sha256": "131eaa58e50fec921df2bb2cfa40af362abb551cbb313998cbc3a677d8af2f3c",
+			"source_sha256": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9",
+			"target_sha256": "ddaeb34dd0150437906969bb296a4b278d8b71114f8cc7ebe9179b176a24c8b6",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -2755,20 +2755,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-25",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "es-ui-common-actions-unionbind-131eaa58e50f",
+					"instance": "e9688c682c8f",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/es-ui-common-actions-unionbind-131eaa58e50f.json",
-					"receipt_sha256": "289a28f3f7aae3382cb940f8de24cb29ed47371d762e85912315120896f6e3c7",
-					"scope": "convergence re-bind of the merged union bytes at 404902650f"
+					"receipt": "i18n/receipts/e9688c682c8f.json",
+					"receipt_sha256": "c3b24d24093c5a64903f20eac2ff91ade815eb505ecccef6a0520186943f379e"
 				}
 			],
 			"status": "audited",
@@ -2837,6 +2836,29 @@
 							},
 							"receipt": "i18n/receipts/3ac75cca27a3.json",
 							"receipt_sha256": "2257b30cca565c081f02b5d321046ce96fb65d70edf10caafc2197caa4be8728"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f942004d5e81229b0eec4abb885f304d0bacb2e40b73ca2a522858177249d81b",
+					"target_sha256": "131eaa58e50fec921df2bb2cfa40af362abb551cbb313998cbc3a677d8af2f3c",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "es-ui-common-actions-unionbind-131eaa58e50f",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/es-ui-common-actions-unionbind-131eaa58e50f.json",
+							"receipt_sha256": "289a28f3f7aae3382cb940f8de24cb29ed47371d762e85912315120896f6e3c7",
+							"scope": "convergence re-bind of the merged union bytes at 404902650f"
 						}
 					],
 					"status": "audited"
@@ -9143,8 +9165,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.common.actions",
-			"source_sha256": "f942004d5e81229b0eec4abb885f304d0bacb2e40b73ca2a522858177249d81b",
-			"target_sha256": "bfb58cdc2fb77bb7e216406f8e1262b055004e20fe2f403ef38b93c37f07ca8d",
+			"source_sha256": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9",
+			"target_sha256": "12f505f7b66ba31c2fc3588790daa88d1e4012316ccc5085e51fc90b89061abe",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -9152,20 +9174,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-25",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "fr-ui-common-actions-unionbind-bfb58cdc2fb7",
+					"instance": "4acffbcd1c3d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/fr-ui-common-actions-unionbind-bfb58cdc2fb7.json",
-					"receipt_sha256": "bb69f8d2a98fe204ca37808e8f0e250f25575783ac254ca810eea52bdd49079e",
-					"scope": "convergence re-bind of the merged union bytes at 404902650f"
+					"receipt": "i18n/receipts/4acffbcd1c3d.json",
+					"receipt_sha256": "55b01c5e79a85bfd1f0fb99f7dbb095e860556e7496fdf3fef4cd2b6cb844029",
+					"note": "i18n/audits/evidence/fr/ui.common.actions/agents-literals2-20261026/record.json — fr agents-literals-2 audit, 51-key file / 1 new, 0 blocker/major, passed; receipt i18n/receipts/fr-agents-literals-audit-4acffbcd1c3d.json"
 				}
 			],
 			"status": "audited",
@@ -9234,6 +9256,29 @@
 							},
 							"receipt": "i18n/receipts/d94011de0dc0.json",
 							"receipt_sha256": "47b8cc59535099ee6ca1b4b8f2f166eb31ca5e2c63ad0d29f1429cca440aec6b"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f942004d5e81229b0eec4abb885f304d0bacb2e40b73ca2a522858177249d81b",
+					"target_sha256": "bfb58cdc2fb77bb7e216406f8e1262b055004e20fe2f403ef38b93c37f07ca8d",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "fr-ui-common-actions-unionbind-bfb58cdc2fb7",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/fr-ui-common-actions-unionbind-bfb58cdc2fb7.json",
+							"receipt_sha256": "bb69f8d2a98fe204ca37808e8f0e250f25575783ac254ca810eea52bdd49079e",
+							"scope": "convergence re-bind of the merged union bytes at 404902650f"
 						}
 					],
 					"status": "audited"
@@ -15918,8 +15963,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.common.actions",
-			"source_sha256": "f942004d5e81229b0eec4abb885f304d0bacb2e40b73ca2a522858177249d81b",
-			"target_sha256": "7a4694a3cb9338b35ef88def284dc6a0de4e8860531e5281d8b79d6933e11785",
+			"source_sha256": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9",
+			"target_sha256": "5107a5f9b3abb12181a2ed3b22d053f950b931ea61f3845bf428de8c2c23192f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -15927,20 +15972,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-25",
-					"result": "clean",
-					"instance": "hi-ui-common-actions-unionbind-7a4694a3cb93",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-26",
+					"result": "clean-with-findings",
+					"instance": "c512d3228b7f",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/hi-ui-common-actions-unionbind-7a4694a3cb93.json",
-					"receipt_sha256": "b26aad4bf954be87e1b296ef0c899f5953fd9c1a828d534c9e366d91ec8dddb4",
-					"scope": "convergence re-bind of the merged union bytes at 404902650f"
+					"receipt": "i18n/receipts/c512d3228b7f.json",
+					"receipt_sha256": "ba1e7dd7de85f490ba0717a332ab1184be19c7caab62b9461ede0eee420f68cc"
 				}
 			],
 			"status": "audited",
@@ -16009,6 +16053,29 @@
 							},
 							"receipt": "i18n/receipts/dab47dfc690a.json",
 							"receipt_sha256": "ddc129330ebb12e139c95c2d1e636b43c46c475d74d775a1b084048d05525871"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f942004d5e81229b0eec4abb885f304d0bacb2e40b73ca2a522858177249d81b",
+					"target_sha256": "7a4694a3cb9338b35ef88def284dc6a0de4e8860531e5281d8b79d6933e11785",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "hi-ui-common-actions-unionbind-7a4694a3cb93",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/hi-ui-common-actions-unionbind-7a4694a3cb93.json",
+							"receipt_sha256": "b26aad4bf954be87e1b296ef0c899f5953fd9c1a828d534c9e366d91ec8dddb4",
+							"scope": "convergence re-bind of the merged union bytes at 404902650f"
 						}
 					],
 					"status": "audited"
@@ -22384,8 +22451,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.common.actions",
-			"source_sha256": "f942004d5e81229b0eec4abb885f304d0bacb2e40b73ca2a522858177249d81b",
-			"target_sha256": "d04664176695f7d48485d30b3da2428c9050fc846beb17a3feb342404d9c85c2",
+			"source_sha256": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9",
+			"target_sha256": "05b997517999a61f5c89448e83124000f04c67424b3a9682764def2fa210b6b1",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -22393,20 +22460,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-25",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "ru-ui-common-actions-unionbind-d04664176695",
+					"instance": "114c8d6e8551",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ru-ui-common-actions-unionbind-d04664176695.json",
-					"receipt_sha256": "ff80217347736d0be614ecab10abf712216bef4d2241faad8a5ded657cb936b4",
-					"scope": "convergence re-bind of the merged union bytes at 404902650f"
+					"receipt": "i18n/receipts/114c8d6e8551.json",
+					"receipt_sha256": "c7604f6af740f3a2349af3b98cfffb28d0480b88b0767d274668268eb1a40c31"
 				}
 			],
 			"status": "audited",
@@ -22476,6 +22542,29 @@
 							"receipt": "i18n/receipts/23463a773a32-canvas.json",
 							"receipt_sha256": "d5e7cddbe80bae8dbee4ade1a2a8c28d75f5608c27e9270bd7a9800abd7b696a",
 							"scope": "Remediation delta only: every ru value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical English/context hashes and the per-namespace target hashes recor"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f942004d5e81229b0eec4abb885f304d0bacb2e40b73ca2a522858177249d81b",
+					"target_sha256": "d04664176695f7d48485d30b3da2428c9050fc846beb17a3feb342404d9c85c2",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "ru-ui-common-actions-unionbind-d04664176695",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ru-ui-common-actions-unionbind-d04664176695.json",
+							"receipt_sha256": "ff80217347736d0be614ecab10abf712216bef4d2241faad8a5ded657cb936b4",
+							"scope": "convergence re-bind of the merged union bytes at 404902650f"
 						}
 					],
 					"status": "audited"
@@ -28773,8 +28862,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.common.actions",
-			"source_sha256": "f942004d5e81229b0eec4abb885f304d0bacb2e40b73ca2a522858177249d81b",
-			"target_sha256": "e63feafa12e2cc9d33e4221842bbdd0cbb5e92df418a2750a2e975a796c0c297",
+			"source_sha256": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9",
+			"target_sha256": "2750cf43d61f77f8e5ed4313a53fe816bee86bfbaf937aa640a630991809377b",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -28782,20 +28871,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-25",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "ur-ui-common-actions-unionbind-e63feafa12e2",
+					"instance": "d959bfda62d5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ur-ui-common-actions-unionbind-e63feafa12e2.json",
-					"receipt_sha256": "058e5ab94ee8351606477c4cf20fd706ea6c42626b7ac94d1d4776fed26e714c",
-					"scope": "convergence re-bind of the merged union bytes at 404902650f"
+					"receipt": "i18n/receipts/d959bfda62d5.json",
+					"receipt_sha256": "e32b5e33f16ff501ba0aea0a4994afc57d5d66fc57655777b8e5fabe7c5b9580",
+					"note": "Record: i18n/audits/evidence/ur/ui.common.actions/lit2-ur-r2-20261026/record.json (round-1 verdict carried at identical bytes)."
 				}
 			],
 			"status": "audited",
@@ -28866,6 +28955,29 @@
 							"receipt": "i18n/receipts/21fe6c635cf3.json",
 							"receipt_sha256": "3719777f6a0ad81c384b6152f2a44dd20f9f645e6555ae08b7d3c959e39d64c0",
 							"scope": "Remediation delta only: every value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical hashes recorded below."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f942004d5e81229b0eec4abb885f304d0bacb2e40b73ca2a522858177249d81b",
+					"target_sha256": "e63feafa12e2cc9d33e4221842bbdd0cbb5e92df418a2750a2e975a796c0c297",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "ur-ui-common-actions-unionbind-e63feafa12e2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ur-ui-common-actions-unionbind-e63feafa12e2.json",
+							"receipt_sha256": "058e5ab94ee8351606477c4cf20fd706ea6c42626b7ac94d1d4776fed26e714c",
+							"scope": "convergence re-bind of the merged union bytes at 404902650f"
 						}
 					],
 					"status": "audited"
@@ -35122,8 +35234,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.common.actions",
-			"source_sha256": "f942004d5e81229b0eec4abb885f304d0bacb2e40b73ca2a522858177249d81b",
-			"target_sha256": "6a1077a07168458018fd8485d974d68bb723f4887e259978c4b94e5333b079bc",
+			"source_sha256": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9",
+			"target_sha256": "d95043e5fa14f4e6ddfb9ea512f979a2962728b72547b6b4c434eaa5d559d653",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -35131,20 +35243,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-25",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "vi-ui-common-actions-unionbind-6a1077a07168",
+					"instance": "abdb30734404",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/vi-ui-common-actions-unionbind-6a1077a07168.json",
-					"receipt_sha256": "2157fa3c4937fc92e0ee73e7c55625dd3bed7219dbfba483c3e8959df3981805",
-					"scope": "convergence re-bind of the merged union bytes at 404902650f"
+					"receipt": "i18n/receipts/abdb30734404.json",
+					"receipt_sha256": "0468afdef18df4ce6c8762b3a243db5da8a359470277409329d8385cf4e5a529",
+					"note": "r1 vi agents/hub literals: 25 new keys over 7 ns; record i18n/receipts/vi-agents-literals-audit-abdb30734404.json; 0 blocker/major/minor, 2 nit; rulings asked for (trực tiếp, đến, Tự thêm, Ủy quyền, Tải, {when}) accepted on shipped sibling evidence."
 				}
 			],
 			"status": "audited",
@@ -35213,6 +35325,29 @@
 							},
 							"receipt": "i18n/receipts/b928c7f0c96d.json",
 							"receipt_sha256": "fa09631a6ef82d9b05796a237dfc2542b700a7dcbe952ee1dfcd2638787c6bc2"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f942004d5e81229b0eec4abb885f304d0bacb2e40b73ca2a522858177249d81b",
+					"target_sha256": "6a1077a07168458018fd8485d974d68bb723f4887e259978c4b94e5333b079bc",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "vi-ui-common-actions-unionbind-6a1077a07168",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/vi-ui-common-actions-unionbind-6a1077a07168.json",
+							"receipt_sha256": "2157fa3c4937fc92e0ee73e7c55625dd3bed7219dbfba483c3e8959df3981805",
+							"scope": "convergence re-bind of the merged union bytes at 404902650f"
 						}
 					],
 					"status": "audited"
@@ -41989,8 +42124,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.common.actions",
-			"source_sha256": "f942004d5e81229b0eec4abb885f304d0bacb2e40b73ca2a522858177249d81b",
-			"target_sha256": "08b2c4fb7a03dc535d3a73a4a865f8e9375ede7d79d98d0a64704a3bec1fca61",
+			"source_sha256": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9",
+			"target_sha256": "fc8a26dd106a6ea3ebb9aca6c1939085bac8dc975eadd9ef2d5888ddc5874717",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -41998,20 +42133,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-25",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "zh-cn-ui-common-actions-unionbind-08b2c4fb7a03",
+					"instance": "c041efdee6f6",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/zh-cn-ui-common-actions-unionbind-08b2c4fb7a03.json",
-					"receipt_sha256": "ce46529591bddc7fe9d2180891940d10499713b73457f50b5c1e8f034f04050c",
-					"scope": "convergence re-bind of the merged union bytes at 404902650f"
+					"receipt": "i18n/receipts/c041efdee6f6.json",
+					"receipt_sha256": "34ee57d4b890565cf6dfb31fdb321ec84f7ac0c2989f167cb6a1880210853f0a"
 				}
 			],
 			"status": "audited",
@@ -42104,6 +42238,29 @@
 							},
 							"receipt": "i18n/receipts/93ed237d2e46.json",
 							"receipt_sha256": "2752cfdbaca9d7d26792aea54cffcc37ab0aeaa090674aa113a84ef3dbd0c6e0"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "f942004d5e81229b0eec4abb885f304d0bacb2e40b73ca2a522858177249d81b",
+					"target_sha256": "08b2c4fb7a03dc535d3a73a4a865f8e9375ede7d79d98d0a64704a3bec1fca61",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "zh-cn-ui-common-actions-unionbind-08b2c4fb7a03",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/zh-cn-ui-common-actions-unionbind-08b2c4fb7a03.json",
+							"receipt_sha256": "ce46529591bddc7fe9d2180891940d10499713b73457f50b5c1e8f034f04050c",
+							"scope": "convergence re-bind of the merged union bytes at 404902650f"
 						}
 					],
 					"status": "audited"
@@ -46221,8 +46378,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.agents.pages",
-			"source_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
-			"target_sha256": "f47cf6722ca91cfde0d32701dc03305fcc1c7651396d1e19d992bf039ba8caef",
+			"source_sha256": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781",
+			"target_sha256": "916d7c33e8c3b9f8ae5bfd8e488d0686c23b0d137c77b8c1173651da65b347ea",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -46234,16 +46391,16 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "3b643ef5ba8a",
+					"instance": "4acffbcd1c3d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3b643ef5ba8a.json",
-					"receipt_sha256": "31c91570ef864f08dc03032185dfc83f270f6ed8c76c5c9c5c0995fa7997393a",
-					"note": "fit remediation: singular class labels (Tout/Créé/Installé/Intégré) so the shared key reads right both as a filter segment and as one agent's source chip; round 4 passed 0/0/0/0; r3 receipt 1a77ecf49a12 (changes_requested) superseded"
+					"receipt": "i18n/receipts/4acffbcd1c3d.json",
+					"receipt_sha256": "55b01c5e79a85bfd1f0fb99f7dbb095e860556e7496fdf3fef4cd2b6cb844029",
+					"note": "i18n/audits/evidence/fr/ui.agents.pages/agents-literals2-20261026/record.json — fr agents-literals-2 audit, 30-key file / 8 new, 0 blocker/major, passed; receipt i18n/receipts/fr-agents-literals-audit-4acffbcd1c3d.json"
 				}
 			],
 			"status": "audited",
@@ -46269,14 +46426,37 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
+					"target_sha256": "f47cf6722ca91cfde0d32701dc03305fcc1c7651396d1e19d992bf039ba8caef",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "3b643ef5ba8a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3b643ef5ba8a.json",
+							"receipt_sha256": "31c91570ef864f08dc03032185dfc83f270f6ed8c76c5c9c5c0995fa7997393a",
+							"note": "fit remediation: singular class labels (Tout/Créé/Installé/Intégré) so the shared key reads right both as a filter segment and as one agent's source chip; round 4 passed 0/0/0/0; r3 receipt 1a77ecf49a12 (changes_requested) superseded"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "fr",
 			"namespace": "ui.agents.detail",
-			"source_sha256": "9cf3c2f8cbd522ea6e3e2c88b9c65c80bb63d79b7a417992ece92043809ff025",
-			"target_sha256": "a03ae0619ff46600550d4214e8c2c1aabf3f83043ce7823b4ffe98c656ff5d6c",
+			"source_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+			"target_sha256": "a095d5f6aea8467ff3d0a9c05d9aa7e93ee022ab780fdd18587d866a4e0a1f0b",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -46288,24 +46468,49 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "caa0f0b9574d",
+					"instance": "4acffbcd1c3d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/caa0f0b9574d.json",
-					"receipt_sha256": "23b537ab649195bf6ed3a57f19c6eed56bfcbf6a0a9350be7a290c94a8b0acc3"
+					"receipt": "i18n/receipts/4acffbcd1c3d.json",
+					"receipt_sha256": "55b01c5e79a85bfd1f0fb99f7dbb095e860556e7496fdf3fef4cd2b6cb844029",
+					"note": "i18n/audits/evidence/fr/ui.agents.detail/agents-literals2-20261026/record.json — fr agents-literals-2 audit, 50-key file / 3 new, 0 blocker/major, passed; receipt i18n/receipts/fr-agents-literals-audit-4acffbcd1c3d.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "9cf3c2f8cbd522ea6e3e2c88b9c65c80bb63d79b7a417992ece92043809ff025",
+					"target_sha256": "a03ae0619ff46600550d4214e8c2c1aabf3f83043ce7823b4ffe98c656ff5d6c",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "caa0f0b9574d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/caa0f0b9574d.json",
+							"receipt_sha256": "23b537ab649195bf6ed3a57f19c6eed56bfcbf6a0a9350be7a290c94a8b0acc3"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
 			"namespace": "ui.hub.pages",
-			"source_sha256": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
-			"target_sha256": "21fab8c093c0df4c899c7b4ac924369796510410ecfefc449de7e02ff3881ba7",
+			"source_sha256": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6",
+			"target_sha256": "224231b077e4d073d8a70a7ac3c8a69c4d8856e935eb9db88b738b8815c0a863",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -46317,24 +46522,49 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "caa0f0b9574d",
+					"instance": "4acffbcd1c3d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/caa0f0b9574d.json",
-					"receipt_sha256": "23b537ab649195bf6ed3a57f19c6eed56bfcbf6a0a9350be7a290c94a8b0acc3"
+					"receipt": "i18n/receipts/4acffbcd1c3d.json",
+					"receipt_sha256": "55b01c5e79a85bfd1f0fb99f7dbb095e860556e7496fdf3fef4cd2b6cb844029",
+					"note": "i18n/audits/evidence/fr/ui.hub.pages/agents-literals2-20261026/record.json — fr agents-literals-2 audit, 37-key file / 2 new, 0 blocker/major, passed; receipt i18n/receipts/fr-agents-literals-audit-4acffbcd1c3d.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
+					"target_sha256": "21fab8c093c0df4c899c7b4ac924369796510410ecfefc449de7e02ff3881ba7",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "caa0f0b9574d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/caa0f0b9574d.json",
+							"receipt_sha256": "23b537ab649195bf6ed3a57f19c6eed56bfcbf6a0a9350be7a290c94a8b0acc3"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
 			"namespace": "ui.hub.teams",
-			"source_sha256": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
-			"target_sha256": "8c73962ef3c16f1afeccfc148a884aad7ca54d838084277b4f68d98481bbdfa0",
+			"source_sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+			"target_sha256": "c24e2db54df54bf99673141ce02ec9f056d6c9e77ed63be4986ddf9264b38859",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -46346,24 +46576,49 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "01adc4da374e",
+					"instance": "4acffbcd1c3d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/01adc4da374e.json",
-					"receipt_sha256": "f1cb9d8554050301933621f6c9a9a00143bbf048fa31eced56bd1ba2e988bc70"
+					"receipt": "i18n/receipts/4acffbcd1c3d.json",
+					"receipt_sha256": "55b01c5e79a85bfd1f0fb99f7dbb095e860556e7496fdf3fef4cd2b6cb844029",
+					"note": "i18n/audits/evidence/fr/ui.hub.teams/agents-literals2-20261026/record.json — fr agents-literals-2 audit, 49-key file / 2 new, 0 blocker/major, passed; receipt i18n/receipts/fr-agents-literals-audit-4acffbcd1c3d.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
+					"target_sha256": "8c73962ef3c16f1afeccfc148a884aad7ca54d838084277b4f68d98481bbdfa0",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "01adc4da374e",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/01adc4da374e.json",
+							"receipt_sha256": "f1cb9d8554050301933621f6c9a9a00143bbf048fa31eced56bd1ba2e988bc70"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
 			"namespace": "ui.agents.config",
-			"source_sha256": "3785066b223dab5789b3b15ae3227e8d2e06bcd77ad69bae1e9235407767c26c",
-			"target_sha256": "8a609b88321d8f607d16bde6097b43971a3bc9b0a6fce7eeb0d3cdc45afa9ea7",
+			"source_sha256": "5f06618661e942dd8dc61f2f40dc7894f2048855e624fdc58ffe1aa0f5fcb7a6",
+			"target_sha256": "69069e5823ab6963516c5a4df14037139ef71ca2132b8b0c1b35c58208381bed",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -46371,20 +46626,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-28",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-29",
 					"result": "clean-with-findings",
-					"instance": "a26b945b2ee1-fr",
+					"instance": "1bbaba0f329a-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 2,
+						"nit": 4
 					},
-					"receipt": "i18n/receipts/a26b945b2ee1-fr.json",
-					"receipt_sha256": "0b72f53080e297975d3acc4980ab2d68333299204b374b31e990d6531f746db7",
-					"scope": "ui.agents.config, whole-file audit at 71fe658486 of the merged union (wave B's 3 keys from #1450 + this branch's 30), first audit of these bytes together; wave-B translator radient/auto (family not shown); auditor anthropic/claude-opus-5-5"
+					"receipt": "i18n/receipts/1bbaba0f329a-fr.json",
+					"receipt_sha256": "aa714059a99c523c90adcd942426671407fe731baecac619065f971d97b7f661",
+					"scope": "ui.agents.config, all 38 keys, round-3 cold audit via read_public_copy at ae918aa12a"
 				}
 			],
 			"status": "audited",
@@ -46480,6 +46735,29 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "3785066b223dab5789b3b15ae3227e8d2e06bcd77ad69bae1e9235407767c26c",
+					"target_sha256": "8a609b88321d8f607d16bde6097b43971a3bc9b0a6fce7eeb0d3cdc45afa9ea7",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "a26b945b2ee1-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/a26b945b2ee1-fr.json",
+							"receipt_sha256": "0b72f53080e297975d3acc4980ab2d68333299204b374b31e990d6531f746db7",
+							"scope": "ui.agents.config, whole-file audit at 71fe658486 of the merged union (wave B's 3 keys from #1450 + this branch's 30), first audit of these bytes together; wave-B translator radient/auto (family not shown); auditor anthropic/claude-opus-5-5"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -46515,8 +46793,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.agents.upload",
-			"source_sha256": "6f1242bae1dcc952a8f3a659a2850fad2af9a3b0834d6a23ddac28fc8be91c11",
-			"target_sha256": "6e24e5aee1f8b4b312f801b5e2430c084751deca759b6ad6eedd8d0895625109",
+			"source_sha256": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949",
+			"target_sha256": "a5a75050ce1177e191e3a860a1cea55c6ac353cae981b2534360b59054f4613f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -46528,18 +46806,43 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "caa0f0b9574d",
+					"instance": "4acffbcd1c3d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/caa0f0b9574d.json",
-					"receipt_sha256": "23b537ab649195bf6ed3a57f19c6eed56bfcbf6a0a9350be7a290c94a8b0acc3"
+					"receipt": "i18n/receipts/4acffbcd1c3d.json",
+					"receipt_sha256": "55b01c5e79a85bfd1f0fb99f7dbb095e860556e7496fdf3fef4cd2b6cb844029",
+					"note": "i18n/audits/evidence/fr/ui.agents.upload/agents-literals2-20261026/record.json — fr agents-literals-2 audit, 29-key file / 6 new, 0 blocker/major, passed; receipt i18n/receipts/fr-agents-literals-audit-4acffbcd1c3d.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6f1242bae1dcc952a8f3a659a2850fad2af9a3b0834d6a23ddac28fc8be91c11",
+					"target_sha256": "6e24e5aee1f8b4b312f801b5e2430c084751deca759b6ad6eedd8d0895625109",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "caa0f0b9574d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/caa0f0b9574d.json",
+							"receipt_sha256": "23b537ab649195bf6ed3a57f19c6eed56bfcbf6a0a9350be7a290c94a8b0acc3"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
@@ -46573,8 +46876,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.agents.pages",
-			"source_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
-			"target_sha256": "ae902f2c021690405716f966300d7ce79919840e7819eddb1a5d51bde530f04c",
+			"source_sha256": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781",
+			"target_sha256": "e93721466daafd39e76e3a1ac292e88bfedca14b1799c5d138c06bc7a50c6035",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -46586,24 +46889,48 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "a87a6ca87ae3",
+					"instance": "e9688c682c8f",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/a87a6ca87ae3.json",
-					"receipt_sha256": "43eb4783d26037f0c6128d12532d4fca8a183f4258dc48fd05c3b9d82199cdb0"
+					"receipt": "i18n/receipts/e9688c682c8f.json",
+					"receipt_sha256": "c3b24d24093c5a64903f20eac2ff91ade815eb505ecccef6a0520186943f379e"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
+					"target_sha256": "ae902f2c021690405716f966300d7ce79919840e7819eddb1a5d51bde530f04c",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "a87a6ca87ae3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a87a6ca87ae3.json",
+							"receipt_sha256": "43eb4783d26037f0c6128d12532d4fca8a183f4258dc48fd05c3b9d82199cdb0"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
 			"namespace": "ui.agents.detail",
-			"source_sha256": "9cf3c2f8cbd522ea6e3e2c88b9c65c80bb63d79b7a417992ece92043809ff025",
-			"target_sha256": "9dd48975937c3f08e7183a89a4ccfdec8909b28b13b159fd2e31128586bfc61f",
+			"source_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+			"target_sha256": "08df1422014aa6407b884bd31a9438c91bace7cfbaa20b55f7ee0657d737cc15",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -46615,24 +46942,48 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "c6732d07a0de",
+					"instance": "e9688c682c8f",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c6732d07a0de.json",
-					"receipt_sha256": "d614ae7908dfaa210e70245c57d111f2a5b77eaf65e93c6d76aafc1f2a72fa63"
+					"receipt": "i18n/receipts/e9688c682c8f.json",
+					"receipt_sha256": "c3b24d24093c5a64903f20eac2ff91ade815eb505ecccef6a0520186943f379e"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "9cf3c2f8cbd522ea6e3e2c88b9c65c80bb63d79b7a417992ece92043809ff025",
+					"target_sha256": "9dd48975937c3f08e7183a89a4ccfdec8909b28b13b159fd2e31128586bfc61f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "c6732d07a0de",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c6732d07a0de.json",
+							"receipt_sha256": "d614ae7908dfaa210e70245c57d111f2a5b77eaf65e93c6d76aafc1f2a72fa63"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
 			"namespace": "ui.hub.pages",
-			"source_sha256": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
-			"target_sha256": "ccbcf384a7270728c37ef2ca94b924a9be49b16a52d7077f0d207ca36c235a2b",
+			"source_sha256": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6",
+			"target_sha256": "822b694ee9bc1a0f1690f5707c76eca8321df32c01bcf6defd6fe3dc07d90a83",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -46644,24 +46995,48 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean-with-findings",
-					"instance": "c6732d07a0de",
+					"instance": "e9688c682c8f",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/c6732d07a0de.json",
-					"receipt_sha256": "d614ae7908dfaa210e70245c57d111f2a5b77eaf65e93c6d76aafc1f2a72fa63"
+					"receipt": "i18n/receipts/e9688c682c8f.json",
+					"receipt_sha256": "c3b24d24093c5a64903f20eac2ff91ade815eb505ecccef6a0520186943f379e"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
+					"target_sha256": "ccbcf384a7270728c37ef2ca94b924a9be49b16a52d7077f0d207ca36c235a2b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "c6732d07a0de",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/c6732d07a0de.json",
+							"receipt_sha256": "d614ae7908dfaa210e70245c57d111f2a5b77eaf65e93c6d76aafc1f2a72fa63"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
 			"namespace": "ui.hub.teams",
-			"source_sha256": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
-			"target_sha256": "19cfae6a6ccac69ed022387b8305819ff74fd8d9e0b7e90e39fa2d7fa28e0c18",
+			"source_sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+			"target_sha256": "4b813ab392272a05c3fd55288c2458cea7672522c43b856e9a05f42e9982fe59",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -46673,24 +47048,48 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "a87a6ca87ae3",
+					"instance": "e9688c682c8f",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/a87a6ca87ae3.json",
-					"receipt_sha256": "43eb4783d26037f0c6128d12532d4fca8a183f4258dc48fd05c3b9d82199cdb0"
+					"receipt": "i18n/receipts/e9688c682c8f.json",
+					"receipt_sha256": "c3b24d24093c5a64903f20eac2ff91ade815eb505ecccef6a0520186943f379e"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
+					"target_sha256": "19cfae6a6ccac69ed022387b8305819ff74fd8d9e0b7e90e39fa2d7fa28e0c18",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "a87a6ca87ae3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a87a6ca87ae3.json",
+							"receipt_sha256": "43eb4783d26037f0c6128d12532d4fca8a183f4258dc48fd05c3b9d82199cdb0"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
 			"namespace": "ui.agents.config",
-			"source_sha256": "3785066b223dab5789b3b15ae3227e8d2e06bcd77ad69bae1e9235407767c26c",
-			"target_sha256": "9d401ff36678b4e82dc6f82773d3009a746b19ab5c637a7c7d125f3422e5810f",
+			"source_sha256": "5f06618661e942dd8dc61f2f40dc7894f2048855e624fdc58ffe1aa0f5fcb7a6",
+			"target_sha256": "e61d0de5679786b5370eda21f5488cf4807366b76fd6a37b9c5bd3c14c60936d",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -46698,20 +47097,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-28",
-					"result": "clean",
-					"instance": "a26b945b2ee1-es",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "98407a8343a5-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 2,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/a26b945b2ee1-es.json",
-					"receipt_sha256": "a2dceadf5fdc45812e9d3207305502f0174df0f8574f94dafab2e17d2170d135",
-					"scope": "ui.agents.config, whole-file audit at 71fe658486 of the merged union (wave B's 3 keys from #1450 + this branch's 30), first audit of these bytes together; wave-B translator radient/auto (family not shown); auditor anthropic/claude-opus-5-5"
+					"receipt": "i18n/receipts/98407a8343a5-es.json",
+					"receipt_sha256": "61aea70fb609a28bcb0d4661fbb3d796758ddee3ce94fd0ece89aa5049a8b899",
+					"scope": "ui.agents.config, all 38 keys, round-3 cold audit via read_public_copy at ae918aa12a"
 				}
 			],
 			"status": "audited",
@@ -46807,6 +47206,29 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "3785066b223dab5789b3b15ae3227e8d2e06bcd77ad69bae1e9235407767c26c",
+					"target_sha256": "9d401ff36678b4e82dc6f82773d3009a746b19ab5c637a7c7d125f3422e5810f",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "a26b945b2ee1-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a26b945b2ee1-es.json",
+							"receipt_sha256": "a2dceadf5fdc45812e9d3207305502f0174df0f8574f94dafab2e17d2170d135",
+							"scope": "ui.agents.config, whole-file audit at 71fe658486 of the merged union (wave B's 3 keys from #1450 + this branch's 30), first audit of these bytes together; wave-B translator radient/auto (family not shown); auditor anthropic/claude-opus-5-5"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -46842,8 +47264,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.agents.upload",
-			"source_sha256": "6f1242bae1dcc952a8f3a659a2850fad2af9a3b0834d6a23ddac28fc8be91c11",
-			"target_sha256": "123f5308aacb363585f7aeabbbd1c6bb891edbf1cd1ce83177f6c7377d4b66f1",
+			"source_sha256": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949",
+			"target_sha256": "624ab582a9c7db606d42a6eea930537053aaf2a2ba3788ad438cdfb1532d4833",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -46854,19 +47276,43 @@
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
 					"date": "2026-10-26",
-					"result": "clean",
-					"instance": "c6732d07a0de",
+					"result": "clean-with-findings",
+					"instance": "e9688c682c8f",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c6732d07a0de.json",
-					"receipt_sha256": "d614ae7908dfaa210e70245c57d111f2a5b77eaf65e93c6d76aafc1f2a72fa63"
+					"receipt": "i18n/receipts/e9688c682c8f.json",
+					"receipt_sha256": "c3b24d24093c5a64903f20eac2ff91ade815eb505ecccef6a0520186943f379e"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6f1242bae1dcc952a8f3a659a2850fad2af9a3b0834d6a23ddac28fc8be91c11",
+					"target_sha256": "123f5308aacb363585f7aeabbbd1c6bb891edbf1cd1ce83177f6c7377d4b66f1",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "c6732d07a0de",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c6732d07a0de.json",
+							"receipt_sha256": "d614ae7908dfaa210e70245c57d111f2a5b77eaf65e93c6d76aafc1f2a72fa63"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
@@ -46900,8 +47346,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.agents.pages",
-			"source_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
-			"target_sha256": "14e83197e6b0aad504c18e41e2c14d8bd0815c192fbf1435b8d9ad61e95314f6",
+			"source_sha256": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781",
+			"target_sha256": "220ee7e2dc6fb4df210a6c489de1c16f55817f085625adf7e55769d3f46732f5",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -46913,16 +47359,15 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean-with-findings",
-					"instance": "5ce4f1b89cb7",
+					"instance": "114c8d6e8551",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/5ce4f1b89cb7.json",
-					"receipt_sha256": "be9b2a33e0fadc04fe1f42f5dc3348fd339e04dc2cb05a9e340ddd36bc95fef5",
-					"note": "fit remediation: installed scope label shortened to 'С хаба' (width-driven; measured 230.24 px in the real render vs 283.90 px); 1 minor (из/с хаба preposition drift) and 1 nit recorded"
+					"receipt": "i18n/receipts/114c8d6e8551.json",
+					"receipt_sha256": "c7604f6af740f3a2349af3b98cfffb28d0480b88b0767d274668268eb1a40c31"
 				}
 			],
 			"status": "audited",
@@ -46948,14 +47393,37 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
+					"target_sha256": "14e83197e6b0aad504c18e41e2c14d8bd0815c192fbf1435b8d9ad61e95314f6",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "5ce4f1b89cb7",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/5ce4f1b89cb7.json",
+							"receipt_sha256": "be9b2a33e0fadc04fe1f42f5dc3348fd339e04dc2cb05a9e340ddd36bc95fef5",
+							"note": "fit remediation: installed scope label shortened to 'С хаба' (width-driven; measured 230.24 px in the real render vs 283.90 px); 1 minor (из/с хаба preposition drift) and 1 nit recorded"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.agents.detail",
-			"source_sha256": "9cf3c2f8cbd522ea6e3e2c88b9c65c80bb63d79b7a417992ece92043809ff025",
-			"target_sha256": "8b8adb21d198357101b92a0b58c6402d1cf6013552c92ca4c32c96fc3209676a",
+			"source_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+			"target_sha256": "a79ce20314721ec2574266e6951bf00dcff26fb83c3f6763a492d0b2cf7e5c4d",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -46967,24 +47435,48 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "a7f4f2fdf169",
+					"instance": "114c8d6e8551",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/a7f4f2fdf169.json",
-					"receipt_sha256": "f862ea9ac4ef68bd1db45834f3fa62969c31c3e67336f47d34a86834255873ce"
+					"receipt": "i18n/receipts/114c8d6e8551.json",
+					"receipt_sha256": "c7604f6af740f3a2349af3b98cfffb28d0480b88b0767d274668268eb1a40c31"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "9cf3c2f8cbd522ea6e3e2c88b9c65c80bb63d79b7a417992ece92043809ff025",
+					"target_sha256": "8b8adb21d198357101b92a0b58c6402d1cf6013552c92ca4c32c96fc3209676a",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "a7f4f2fdf169",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a7f4f2fdf169.json",
+							"receipt_sha256": "f862ea9ac4ef68bd1db45834f3fa62969c31c3e67336f47d34a86834255873ce"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.hub.pages",
-			"source_sha256": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
-			"target_sha256": "953c2f0fe1c77cb9c9f37528e4e1520761b3a2c6ce8a27dfa5969d00ce5bd9cd",
+			"source_sha256": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6",
+			"target_sha256": "aee9ff22982f4da22d1ee86c5770559f367d103a7f78bad5994962c11ef01afd",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -46996,24 +47488,48 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "a7f4f2fdf169",
+					"instance": "114c8d6e8551",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/a7f4f2fdf169.json",
-					"receipt_sha256": "f862ea9ac4ef68bd1db45834f3fa62969c31c3e67336f47d34a86834255873ce"
+					"receipt": "i18n/receipts/114c8d6e8551.json",
+					"receipt_sha256": "c7604f6af740f3a2349af3b98cfffb28d0480b88b0767d274668268eb1a40c31"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
+					"target_sha256": "953c2f0fe1c77cb9c9f37528e4e1520761b3a2c6ce8a27dfa5969d00ce5bd9cd",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "a7f4f2fdf169",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a7f4f2fdf169.json",
+							"receipt_sha256": "f862ea9ac4ef68bd1db45834f3fa62969c31c3e67336f47d34a86834255873ce"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.hub.teams",
-			"source_sha256": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
-			"target_sha256": "293db853e0f9f5e4cee72a92073d47ebc4f933f858babf9a01854ddbb1359161",
+			"source_sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+			"target_sha256": "31b2d3bffac3f7a0b8ffcc475a9409fceb876acf40d13283109c8cf19e13c4ee",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -47025,24 +47541,48 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "cec82e80ef07",
+					"instance": "114c8d6e8551",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/cec82e80ef07.json",
-					"receipt_sha256": "014943d97be0008d208fcaff5700cba5a9d074859fb499fb501725fb58a910fa"
+					"receipt": "i18n/receipts/114c8d6e8551.json",
+					"receipt_sha256": "c7604f6af740f3a2349af3b98cfffb28d0480b88b0767d274668268eb1a40c31"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
+					"target_sha256": "293db853e0f9f5e4cee72a92073d47ebc4f933f858babf9a01854ddbb1359161",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "cec82e80ef07",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cec82e80ef07.json",
+							"receipt_sha256": "014943d97be0008d208fcaff5700cba5a9d074859fb499fb501725fb58a910fa"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.agents.config",
-			"source_sha256": "3785066b223dab5789b3b15ae3227e8d2e06bcd77ad69bae1e9235407767c26c",
-			"target_sha256": "ac6d377c08f7b90e21287c8e39a8ffa265bf9e19a8ae7da39375d9baf988b84c",
+			"source_sha256": "5f06618661e942dd8dc61f2f40dc7894f2048855e624fdc58ffe1aa0f5fcb7a6",
+			"target_sha256": "7e79a648d88847c7434e9d4bc2381a02cf29faeabef2e2609e9b0a95210fb30e",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -47050,20 +47590,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-28",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-29",
 					"result": "clean-with-findings",
-					"instance": "a26b945b2ee1-ru",
+					"instance": "2bee126eafdc-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 2,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/a26b945b2ee1-ru.json",
-					"receipt_sha256": "393eefcdc26e4523716aa5cfc766b485d2b3d50c6dbb50cd30b178b2d242b157",
-					"scope": "ui.agents.config, whole-file audit at 71fe658486 of the merged union (wave B's 3 keys from #1450 + this branch's 30), first audit of these bytes together; wave-B translator radient/auto (family not shown); auditor anthropic/claude-opus-5-5"
+					"receipt": "i18n/receipts/2bee126eafdc-ru.json",
+					"receipt_sha256": "38e16a28c9c18aa24c86d3534961696a098b41907e395ff5b257cf213e7e7ce2",
+					"scope": "ui.agents.config, all 38 keys, round-3 cold audit via read_public_copy at ae918aa12a"
 				}
 			],
 			"status": "audited",
@@ -47159,6 +47699,29 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "3785066b223dab5789b3b15ae3227e8d2e06bcd77ad69bae1e9235407767c26c",
+					"target_sha256": "ac6d377c08f7b90e21287c8e39a8ffa265bf9e19a8ae7da39375d9baf988b84c",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "a26b945b2ee1-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/a26b945b2ee1-ru.json",
+							"receipt_sha256": "393eefcdc26e4523716aa5cfc766b485d2b3d50c6dbb50cd30b178b2d242b157",
+							"scope": "ui.agents.config, whole-file audit at 71fe658486 of the merged union (wave B's 3 keys from #1450 + this branch's 30), first audit of these bytes together; wave-B translator radient/auto (family not shown); auditor anthropic/claude-opus-5-5"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -47194,8 +47757,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.agents.upload",
-			"source_sha256": "6f1242bae1dcc952a8f3a659a2850fad2af9a3b0834d6a23ddac28fc8be91c11",
-			"target_sha256": "7728206c2d19780227ad9230a03932e179f1266ce6c25da665ee63b3c98b4af2",
+			"source_sha256": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949",
+			"target_sha256": "37c8d508c4a48748e5ea8d759e26f20b0d54cf66562add737dce0fd323875872",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -47206,19 +47769,43 @@
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
 					"date": "2026-10-26",
-					"result": "clean",
-					"instance": "a7f4f2fdf169",
+					"result": "clean-with-findings",
+					"instance": "114c8d6e8551",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/a7f4f2fdf169.json",
-					"receipt_sha256": "f862ea9ac4ef68bd1db45834f3fa62969c31c3e67336f47d34a86834255873ce"
+					"receipt": "i18n/receipts/114c8d6e8551.json",
+					"receipt_sha256": "c7604f6af740f3a2349af3b98cfffb28d0480b88b0767d274668268eb1a40c31"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6f1242bae1dcc952a8f3a659a2850fad2af9a3b0834d6a23ddac28fc8be91c11",
+					"target_sha256": "7728206c2d19780227ad9230a03932e179f1266ce6c25da665ee63b3c98b4af2",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "a7f4f2fdf169",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a7f4f2fdf169.json",
+							"receipt_sha256": "f862ea9ac4ef68bd1db45834f3fa62969c31c3e67336f47d34a86834255873ce"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
@@ -47252,8 +47839,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.agents.pages",
-			"source_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
-			"target_sha256": "81140f6a5936d330d7b34b52049b65ff859ec4f977a9c590e6391714210eb9b4",
+			"source_sha256": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781",
+			"target_sha256": "1a32b43038518753067d9f11a9bbba5bb4518df122b15d5d0d78a75119a8c0cb",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -47264,25 +47851,50 @@
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
 					"date": "2026-10-26",
-					"result": "clean",
-					"instance": "3d1e9640e5ae",
+					"result": "clean-with-findings",
+					"instance": "abdb30734404",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/3d1e9640e5ae.json",
-					"receipt_sha256": "26b42ddfabfd39e4a1b325c4ca608d4db6854e72b047be0ae5fb5252ad890046"
+					"receipt": "i18n/receipts/abdb30734404.json",
+					"receipt_sha256": "0468afdef18df4ce6c8762b3a243db5da8a359470277409329d8385cf4e5a529",
+					"note": "r1 vi agents/hub literals: 25 new keys over 7 ns; record i18n/receipts/vi-agents-literals-audit-abdb30734404.json; 0 blocker/major/minor, 2 nit; rulings asked for (trực tiếp, đến, Tự thêm, Ủy quyền, Tải, {when}) accepted on shipped sibling evidence."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
+					"target_sha256": "81140f6a5936d330d7b34b52049b65ff859ec4f977a9c590e6391714210eb9b4",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "3d1e9640e5ae",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3d1e9640e5ae.json",
+							"receipt_sha256": "26b42ddfabfd39e4a1b325c4ca608d4db6854e72b047be0ae5fb5252ad890046"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.agents.detail",
-			"source_sha256": "9cf3c2f8cbd522ea6e3e2c88b9c65c80bb63d79b7a417992ece92043809ff025",
-			"target_sha256": "a70ed0be1e6234612f9dd6b41f02257d0d625508c27337910b94d7aed298be9f",
+			"source_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+			"target_sha256": "16b98fee171732fd0a77719ca2e9661687f055516e8ae52ed8eb442c0dd1c4f3",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -47294,24 +47906,49 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "3d1e9640e5ae",
+					"instance": "abdb30734404",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3d1e9640e5ae.json",
-					"receipt_sha256": "26b42ddfabfd39e4a1b325c4ca608d4db6854e72b047be0ae5fb5252ad890046"
+					"receipt": "i18n/receipts/abdb30734404.json",
+					"receipt_sha256": "0468afdef18df4ce6c8762b3a243db5da8a359470277409329d8385cf4e5a529",
+					"note": "r1 vi agents/hub literals: 25 new keys over 7 ns; record i18n/receipts/vi-agents-literals-audit-abdb30734404.json; 0 blocker/major/minor, 2 nit; rulings asked for (trực tiếp, đến, Tự thêm, Ủy quyền, Tải, {when}) accepted on shipped sibling evidence."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "9cf3c2f8cbd522ea6e3e2c88b9c65c80bb63d79b7a417992ece92043809ff025",
+					"target_sha256": "a70ed0be1e6234612f9dd6b41f02257d0d625508c27337910b94d7aed298be9f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "3d1e9640e5ae",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3d1e9640e5ae.json",
+							"receipt_sha256": "26b42ddfabfd39e4a1b325c4ca608d4db6854e72b047be0ae5fb5252ad890046"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.hub.pages",
-			"source_sha256": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
-			"target_sha256": "ec9798085400729808cb62d3e4a77dec2b1a09bcc361223b83e4ce033ba5e92a",
+			"source_sha256": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6",
+			"target_sha256": "f470af3ef5e44c6ef8641b3227e3fe9d4826b1a32c3c32be1587d366e1ac16ef",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -47322,25 +47959,50 @@
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
 					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "3d1e9640e5ae",
+					"result": "clean",
+					"instance": "abdb30734404",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/3d1e9640e5ae.json",
-					"receipt_sha256": "26b42ddfabfd39e4a1b325c4ca608d4db6854e72b047be0ae5fb5252ad890046"
+					"receipt": "i18n/receipts/abdb30734404.json",
+					"receipt_sha256": "0468afdef18df4ce6c8762b3a243db5da8a359470277409329d8385cf4e5a529",
+					"note": "r1 vi agents/hub literals: 25 new keys over 7 ns; record i18n/receipts/vi-agents-literals-audit-abdb30734404.json; 0 blocker/major/minor, 2 nit; rulings asked for (trực tiếp, đến, Tự thêm, Ủy quyền, Tải, {when}) accepted on shipped sibling evidence."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
+					"target_sha256": "ec9798085400729808cb62d3e4a77dec2b1a09bcc361223b83e4ce033ba5e92a",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "3d1e9640e5ae",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/3d1e9640e5ae.json",
+							"receipt_sha256": "26b42ddfabfd39e4a1b325c4ca608d4db6854e72b047be0ae5fb5252ad890046"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.hub.teams",
-			"source_sha256": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
-			"target_sha256": "799e7db8aeffbb017ab089286bb5082c0bdf764dc8d7612ed49dfd71dbf2bc38",
+			"source_sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+			"target_sha256": "5c0c58773fad3a2fcd35e9d269f74db4719df4a5abb41d6bca6a8052f0765ca8",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -47351,25 +48013,50 @@
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
 					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "3d1e9640e5ae",
+					"result": "clean",
+					"instance": "abdb30734404",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/3d1e9640e5ae.json",
-					"receipt_sha256": "26b42ddfabfd39e4a1b325c4ca608d4db6854e72b047be0ae5fb5252ad890046"
+					"receipt": "i18n/receipts/abdb30734404.json",
+					"receipt_sha256": "0468afdef18df4ce6c8762b3a243db5da8a359470277409329d8385cf4e5a529",
+					"note": "r1 vi agents/hub literals: 25 new keys over 7 ns; record i18n/receipts/vi-agents-literals-audit-abdb30734404.json; 0 blocker/major/minor, 2 nit; rulings asked for (trực tiếp, đến, Tự thêm, Ủy quyền, Tải, {when}) accepted on shipped sibling evidence."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
+					"target_sha256": "799e7db8aeffbb017ab089286bb5082c0bdf764dc8d7612ed49dfd71dbf2bc38",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "3d1e9640e5ae",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/3d1e9640e5ae.json",
+							"receipt_sha256": "26b42ddfabfd39e4a1b325c4ca608d4db6854e72b047be0ae5fb5252ad890046"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.agents.config",
-			"source_sha256": "3785066b223dab5789b3b15ae3227e8d2e06bcd77ad69bae1e9235407767c26c",
-			"target_sha256": "ccc80f5531716d1d400ca1a47bfa548e2a00bd8df8bc564764f173e07ca135a6",
+			"source_sha256": "5f06618661e942dd8dc61f2f40dc7894f2048855e624fdc58ffe1aa0f5fcb7a6",
+			"target_sha256": "537c16bd292bc5560260541baf811ea5e53f44b945e91d67d943c2dc864e87af",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -47377,20 +48064,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-28",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-29",
 					"result": "clean-with-findings",
-					"instance": "a26b945b2ee1-vi",
+					"instance": "53831cca65ff-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 3,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/a26b945b2ee1-vi.json",
-					"receipt_sha256": "773c96e59015b12fa903fc6b94115e9e7c100babd0768d0c682fd991893735cb",
-					"scope": "ui.agents.config, whole-file audit at 71fe658486 of the merged union (wave B's 3 keys from #1450 + this branch's 30), first audit of these bytes together; wave-B translator radient/auto (family not shown); auditor anthropic/claude-opus-5-5"
+					"receipt": "i18n/receipts/53831cca65ff-vi.json",
+					"receipt_sha256": "6cef5e5480723923646a2ab1a230e0b12f104f50f87f117e88eef201fa25099f",
+					"scope": "ui.agents.config, all 38 keys, round-3 cold audit via read_public_copy at ae918aa12a"
 				}
 			],
 			"status": "audited",
@@ -47486,6 +48173,29 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "3785066b223dab5789b3b15ae3227e8d2e06bcd77ad69bae1e9235407767c26c",
+					"target_sha256": "ccc80f5531716d1d400ca1a47bfa548e2a00bd8df8bc564764f173e07ca135a6",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "a26b945b2ee1-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/a26b945b2ee1-vi.json",
+							"receipt_sha256": "773c96e59015b12fa903fc6b94115e9e7c100babd0768d0c682fd991893735cb",
+							"scope": "ui.agents.config, whole-file audit at 71fe658486 of the merged union (wave B's 3 keys from #1450 + this branch's 30), first audit of these bytes together; wave-B translator radient/auto (family not shown); auditor anthropic/claude-opus-5-5"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -47521,8 +48231,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.agents.upload",
-			"source_sha256": "6f1242bae1dcc952a8f3a659a2850fad2af9a3b0834d6a23ddac28fc8be91c11",
-			"target_sha256": "648399bd3c90a2c80465399bd24a7e02e8cceb7f1244a1cb0ab7ed074e95ff90",
+			"source_sha256": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949",
+			"target_sha256": "09a98242c9e7e04c0784013f60bfe7c095fb78359a3912e7d248579be60cb755",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -47533,19 +48243,44 @@
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
 					"date": "2026-10-26",
-					"result": "clean",
-					"instance": "3d1e9640e5ae",
+					"result": "clean-with-findings",
+					"instance": "abdb30734404",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/3d1e9640e5ae.json",
-					"receipt_sha256": "26b42ddfabfd39e4a1b325c4ca608d4db6854e72b047be0ae5fb5252ad890046"
+					"receipt": "i18n/receipts/abdb30734404.json",
+					"receipt_sha256": "0468afdef18df4ce6c8762b3a243db5da8a359470277409329d8385cf4e5a529",
+					"note": "r1 vi agents/hub literals: 25 new keys over 7 ns; record i18n/receipts/vi-agents-literals-audit-abdb30734404.json; 0 blocker/major/minor, 2 nit; rulings asked for (trực tiếp, đến, Tự thêm, Ủy quyền, Tải, {when}) accepted on shipped sibling evidence."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6f1242bae1dcc952a8f3a659a2850fad2af9a3b0834d6a23ddac28fc8be91c11",
+					"target_sha256": "648399bd3c90a2c80465399bd24a7e02e8cceb7f1244a1cb0ab7ed074e95ff90",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "3d1e9640e5ae",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3d1e9640e5ae.json",
+							"receipt_sha256": "26b42ddfabfd39e4a1b325c4ca608d4db6854e72b047be0ae5fb5252ad890046"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
@@ -47579,8 +48314,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.agents.pages",
-			"source_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
-			"target_sha256": "5093782335d7d2fe23eb50a907a73a902a1e613f53c15d4cb2520cf9f07d5eb7",
+			"source_sha256": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781",
+			"target_sha256": "bfc7fc6bddba1e788cae049784256711390d38488c88a6544c7fa74fe5a18bb4",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -47592,24 +48327,48 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean-with-findings",
-					"instance": "9f3c2137fe40",
+					"instance": "c512d3228b7f",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/9f3c2137fe40.json",
-					"receipt_sha256": "8932d37bd4e5ba3f1fd937ae4b94df4374a31afa56b10a0bb3183b0b09b89f56"
+					"receipt": "i18n/receipts/c512d3228b7f.json",
+					"receipt_sha256": "ba1e7dd7de85f490ba0717a332ab1184be19c7caab62b9461ede0eee420f68cc"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
+					"target_sha256": "5093782335d7d2fe23eb50a907a73a902a1e613f53c15d4cb2520cf9f07d5eb7",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "9f3c2137fe40",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/9f3c2137fe40.json",
+							"receipt_sha256": "8932d37bd4e5ba3f1fd937ae4b94df4374a31afa56b10a0bb3183b0b09b89f56"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.agents.detail",
-			"source_sha256": "9cf3c2f8cbd522ea6e3e2c88b9c65c80bb63d79b7a417992ece92043809ff025",
-			"target_sha256": "d6edf0c9ebc5395c52b8ed3bde85deb3d7a5637599a3379a04cec4b9a28c41d3",
+			"source_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+			"target_sha256": "1c123f949bff4e8650697b24e24231fe09d32e5f6b3aa389b4a03038afd763b6",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -47621,24 +48380,48 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "9f3c2137fe40",
+					"instance": "c512d3228b7f",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/9f3c2137fe40.json",
-					"receipt_sha256": "8932d37bd4e5ba3f1fd937ae4b94df4374a31afa56b10a0bb3183b0b09b89f56"
+					"receipt": "i18n/receipts/c512d3228b7f.json",
+					"receipt_sha256": "ba1e7dd7de85f490ba0717a332ab1184be19c7caab62b9461ede0eee420f68cc"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "9cf3c2f8cbd522ea6e3e2c88b9c65c80bb63d79b7a417992ece92043809ff025",
+					"target_sha256": "d6edf0c9ebc5395c52b8ed3bde85deb3d7a5637599a3379a04cec4b9a28c41d3",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "9f3c2137fe40",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/9f3c2137fe40.json",
+							"receipt_sha256": "8932d37bd4e5ba3f1fd937ae4b94df4374a31afa56b10a0bb3183b0b09b89f56"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.hub.pages",
-			"source_sha256": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
-			"target_sha256": "2fe3a57086e80cf270ce9d3f8d3ef59b88b78f569ba188f54a39463fa1483a6b",
+			"source_sha256": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6",
+			"target_sha256": "829d55695b37c6e58b9689c7f4d436027ef861fd7c9b918bb3818e01219b1be8",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -47650,24 +48433,48 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "9f3c2137fe40",
+					"instance": "c512d3228b7f",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/9f3c2137fe40.json",
-					"receipt_sha256": "8932d37bd4e5ba3f1fd937ae4b94df4374a31afa56b10a0bb3183b0b09b89f56"
+					"receipt": "i18n/receipts/c512d3228b7f.json",
+					"receipt_sha256": "ba1e7dd7de85f490ba0717a332ab1184be19c7caab62b9461ede0eee420f68cc"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
+					"target_sha256": "2fe3a57086e80cf270ce9d3f8d3ef59b88b78f569ba188f54a39463fa1483a6b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "9f3c2137fe40",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/9f3c2137fe40.json",
+							"receipt_sha256": "8932d37bd4e5ba3f1fd937ae4b94df4374a31afa56b10a0bb3183b0b09b89f56"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.hub.teams",
-			"source_sha256": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
-			"target_sha256": "734157cc9890f1b0ed37dd20a4406d4682bf69fba85c38999a258a75616da967",
+			"source_sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+			"target_sha256": "693742d696271132acd44eb8d7217e0b43c9ed7772ce56e8d4211f73a48880a2",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -47678,25 +48485,49 @@
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
 					"date": "2026-10-26",
-					"result": "clean-with-findings",
-					"instance": "9f3c2137fe40",
+					"result": "clean",
+					"instance": "c512d3228b7f",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 3,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/9f3c2137fe40.json",
-					"receipt_sha256": "8932d37bd4e5ba3f1fd937ae4b94df4374a31afa56b10a0bb3183b0b09b89f56"
+					"receipt": "i18n/receipts/c512d3228b7f.json",
+					"receipt_sha256": "ba1e7dd7de85f490ba0717a332ab1184be19c7caab62b9461ede0eee420f68cc"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
+					"target_sha256": "734157cc9890f1b0ed37dd20a4406d4682bf69fba85c38999a258a75616da967",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "9f3c2137fe40",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/9f3c2137fe40.json",
+							"receipt_sha256": "8932d37bd4e5ba3f1fd937ae4b94df4374a31afa56b10a0bb3183b0b09b89f56"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.agents.config",
-			"source_sha256": "3785066b223dab5789b3b15ae3227e8d2e06bcd77ad69bae1e9235407767c26c",
-			"target_sha256": "0b1b78fdb1e2d0ab4ea19babb39b7292d88fd07e5d92b142e5a31289937a2b13",
+			"source_sha256": "5f06618661e942dd8dc61f2f40dc7894f2048855e624fdc58ffe1aa0f5fcb7a6",
+			"target_sha256": "d9d452f62fae38a8f9f075814fe9e9728a78e00bce90d40b8ae80dc3c8e791ce",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -47704,20 +48535,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-28",
-					"result": "clean",
-					"instance": "a26b945b2ee1-hi",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "07b7f1b7c5cb-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 4,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/a26b945b2ee1-hi.json",
-					"receipt_sha256": "dc973266023c0f0984b2777ad86106835748b49959fe84a998b788aab250ba4f",
-					"scope": "ui.agents.config, whole-file audit at 71fe658486 of the merged union (wave B's 3 keys from #1450 + this branch's 30), first audit of these bytes together; wave-B translator radient/auto (family not shown); auditor anthropic/claude-opus-5-5"
+					"receipt": "i18n/receipts/07b7f1b7c5cb-hi.json",
+					"receipt_sha256": "685b8708f6eb8acbcb93525f20e918531038c841ccbf27f603dff7fc9acf9869",
+					"scope": "ui.agents.config, all 38 keys, round-3 cold audit via read_public_copy at ae918aa12a"
 				}
 			],
 			"status": "audited",
@@ -47813,6 +48644,29 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "3785066b223dab5789b3b15ae3227e8d2e06bcd77ad69bae1e9235407767c26c",
+					"target_sha256": "0b1b78fdb1e2d0ab4ea19babb39b7292d88fd07e5d92b142e5a31289937a2b13",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "a26b945b2ee1-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a26b945b2ee1-hi.json",
+							"receipt_sha256": "dc973266023c0f0984b2777ad86106835748b49959fe84a998b788aab250ba4f",
+							"scope": "ui.agents.config, whole-file audit at 71fe658486 of the merged union (wave B's 3 keys from #1450 + this branch's 30), first audit of these bytes together; wave-B translator radient/auto (family not shown); auditor anthropic/claude-opus-5-5"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -47848,8 +48702,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.agents.upload",
-			"source_sha256": "6f1242bae1dcc952a8f3a659a2850fad2af9a3b0834d6a23ddac28fc8be91c11",
-			"target_sha256": "ffaa3608333e7686077638a6164ec01c5f49ffd5fd8beac6f17c5c3a3741f03d",
+			"source_sha256": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949",
+			"target_sha256": "0953a228e646ee9c165ccfd8ed1f27b1e189a2bedc26537ca63bc0e5e8819dbe",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -47861,18 +48715,42 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "9f3c2137fe40",
+					"instance": "c512d3228b7f",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/9f3c2137fe40.json",
-					"receipt_sha256": "8932d37bd4e5ba3f1fd937ae4b94df4374a31afa56b10a0bb3183b0b09b89f56"
+					"receipt": "i18n/receipts/c512d3228b7f.json",
+					"receipt_sha256": "ba1e7dd7de85f490ba0717a332ab1184be19c7caab62b9461ede0eee420f68cc"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6f1242bae1dcc952a8f3a659a2850fad2af9a3b0834d6a23ddac28fc8be91c11",
+					"target_sha256": "ffaa3608333e7686077638a6164ec01c5f49ffd5fd8beac6f17c5c3a3741f03d",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "9f3c2137fe40",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/9f3c2137fe40.json",
+							"receipt_sha256": "8932d37bd4e5ba3f1fd937ae4b94df4374a31afa56b10a0bb3183b0b09b89f56"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
@@ -47906,95 +48784,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.agents.pages",
-			"source_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
-			"target_sha256": "8c89cae6d432f7c638d54518206ad525249b825cafd571d617cc283bc0d3b4a7",
-			"translator": {
-				"agent": "i18n-translator",
-				"model": "radient/auto",
-				"date": "2026-10-26"
-			},
-			"auditors": [
-				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-26",
-					"result": "clean",
-					"instance": "fa696f7f3dff",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/fa696f7f3dff.json",
-					"receipt_sha256": "96fbda6007cfea0d0ba626557d09ad70527158eaf2ff4e5c4adad4e0bffe3c2c"
-				}
-			],
-			"status": "audited"
-		},
-		{
-			"locale": "zh-CN",
-			"namespace": "ui.agents.detail",
-			"source_sha256": "9cf3c2f8cbd522ea6e3e2c88b9c65c80bb63d79b7a417992ece92043809ff025",
-			"target_sha256": "1941c5bd63795c60e34b7a1f987a6acff9d08368cebd128059c972c735db538d",
-			"translator": {
-				"agent": "i18n-translator",
-				"model": "radient/auto",
-				"date": "2026-10-26"
-			},
-			"auditors": [
-				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-26",
-					"result": "clean",
-					"instance": "fa696f7f3dff",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/fa696f7f3dff.json",
-					"receipt_sha256": "96fbda6007cfea0d0ba626557d09ad70527158eaf2ff4e5c4adad4e0bffe3c2c"
-				}
-			],
-			"status": "audited"
-		},
-		{
-			"locale": "zh-CN",
-			"namespace": "ui.hub.pages",
-			"source_sha256": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
-			"target_sha256": "b82cefb8d92e95496575620c9697687bd1e970f93efac0f7ffc96b36cbd76536",
-			"translator": {
-				"agent": "i18n-translator",
-				"model": "radient/auto",
-				"date": "2026-10-26"
-			},
-			"auditors": [
-				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-26",
-					"result": "clean",
-					"instance": "fa696f7f3dff",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/fa696f7f3dff.json",
-					"receipt_sha256": "96fbda6007cfea0d0ba626557d09ad70527158eaf2ff4e5c4adad4e0bffe3c2c"
-				}
-			],
-			"status": "audited"
-		},
-		{
-			"locale": "zh-CN",
-			"namespace": "ui.hub.teams",
-			"source_sha256": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
-			"target_sha256": "3f8d5cbf07c498b9394f9c109431294ce84a929af5b50dd752848f4126f0b268",
+			"source_sha256": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781",
+			"target_sha256": "2b2e26580866cf9d91d339b97283b043d7da9352556cbab9c8c9ec0259cee9a0",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -48006,24 +48797,48 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean-with-findings",
-					"instance": "fa696f7f3dff",
+					"instance": "c041efdee6f6",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/fa696f7f3dff.json",
-					"receipt_sha256": "96fbda6007cfea0d0ba626557d09ad70527158eaf2ff4e5c4adad4e0bffe3c2c"
+					"receipt": "i18n/receipts/c041efdee6f6.json",
+					"receipt_sha256": "34ee57d4b890565cf6dfb31fdb321ec84f7ac0c2989f167cb6a1880210853f0a"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
+					"target_sha256": "8c89cae6d432f7c638d54518206ad525249b825cafd571d617cc283bc0d3b4a7",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "fa696f7f3dff",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/fa696f7f3dff.json",
+							"receipt_sha256": "96fbda6007cfea0d0ba626557d09ad70527158eaf2ff4e5c4adad4e0bffe3c2c"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",
-			"namespace": "ui.agents.config",
-			"source_sha256": "3785066b223dab5789b3b15ae3227e8d2e06bcd77ad69bae1e9235407767c26c",
-			"target_sha256": "77400405f8b6f5438fc8654d25192fd8287c2001d9d60a3883a52f622bc6769c",
+			"namespace": "ui.agents.detail",
+			"source_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+			"target_sha256": "c3b0f71f94d3062a112f3528af0f86837dfe5eda2b07fecae20b8eb9bfc754fe",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -48031,20 +48846,179 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-28",
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "a26b945b2ee1-zh-cn",
+					"instance": "c041efdee6f6",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/a26b945b2ee1-zh-cn.json",
-					"receipt_sha256": "701ecb8720c2a6ec9d3463e4c3a1fe315ea1ad2df606e390f933c8d0a8f58407",
-					"scope": "ui.agents.config, whole-file audit at 71fe658486 of the merged union (wave B's 3 keys from #1450 + this branch's 30), first audit of these bytes together; wave-B translator radient/auto (family not shown); auditor anthropic/claude-opus-5-5"
+					"receipt": "i18n/receipts/c041efdee6f6.json",
+					"receipt_sha256": "34ee57d4b890565cf6dfb31fdb321ec84f7ac0c2989f167cb6a1880210853f0a"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "9cf3c2f8cbd522ea6e3e2c88b9c65c80bb63d79b7a417992ece92043809ff025",
+					"target_sha256": "1941c5bd63795c60e34b7a1f987a6acff9d08368cebd128059c972c735db538d",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "fa696f7f3dff",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/fa696f7f3dff.json",
+							"receipt_sha256": "96fbda6007cfea0d0ba626557d09ad70527158eaf2ff4e5c4adad4e0bffe3c2c"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.hub.pages",
+			"source_sha256": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6",
+			"target_sha256": "e1343c5ab21aa0703bc5f9f71d526f7e12cb0b5a4dbe844fe429cd94a63764fa",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-26"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-26",
+					"result": "clean",
+					"instance": "c041efdee6f6",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/c041efdee6f6.json",
+					"receipt_sha256": "34ee57d4b890565cf6dfb31fdb321ec84f7ac0c2989f167cb6a1880210853f0a"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
+					"target_sha256": "b82cefb8d92e95496575620c9697687bd1e970f93efac0f7ffc96b36cbd76536",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "fa696f7f3dff",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/fa696f7f3dff.json",
+							"receipt_sha256": "96fbda6007cfea0d0ba626557d09ad70527158eaf2ff4e5c4adad4e0bffe3c2c"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.hub.teams",
+			"source_sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+			"target_sha256": "de8eefc67e19fc55f9f12be3ec855c4d5613789609fabbe2aea6af27524d4a32",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-26"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-26",
+					"result": "clean",
+					"instance": "c041efdee6f6",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/c041efdee6f6.json",
+					"receipt_sha256": "34ee57d4b890565cf6dfb31fdb321ec84f7ac0c2989f167cb6a1880210853f0a"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
+					"target_sha256": "3f8d5cbf07c498b9394f9c109431294ce84a929af5b50dd752848f4126f0b268",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "fa696f7f3dff",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/fa696f7f3dff.json",
+							"receipt_sha256": "96fbda6007cfea0d0ba626557d09ad70527158eaf2ff4e5c4adad4e0bffe3c2c"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.agents.config",
+			"source_sha256": "5f06618661e942dd8dc61f2f40dc7894f2048855e624fdc58ffe1aa0f5fcb7a6",
+			"target_sha256": "d337fcc18b3dddbd516d7096f4fe771eb987eb4081afcc4314810d5a2d8794ac",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-26"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "9075a3ebe927-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 3
+					},
+					"receipt": "i18n/receipts/9075a3ebe927-zh-cn.json",
+					"receipt_sha256": "91eaf07097b5f457e0b43742f3cc0282ef4eaf45c75053042706f2882ca8f785",
+					"scope": "ui.agents.config, all 38 keys, round-3 cold audit via read_public_copy at ae918aa12a"
 				}
 			],
 			"status": "audited",
@@ -48140,6 +49114,29 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "3785066b223dab5789b3b15ae3227e8d2e06bcd77ad69bae1e9235407767c26c",
+					"target_sha256": "77400405f8b6f5438fc8654d25192fd8287c2001d9d60a3883a52f622bc6769c",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "a26b945b2ee1-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a26b945b2ee1-zh-cn.json",
+							"receipt_sha256": "701ecb8720c2a6ec9d3463e4c3a1fe315ea1ad2df606e390f933c8d0a8f58407",
+							"scope": "ui.agents.config, whole-file audit at 71fe658486 of the merged union (wave B's 3 keys from #1450 + this branch's 30), first audit of these bytes together; wave-B translator radient/auto (family not shown); auditor anthropic/claude-opus-5-5"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -48175,8 +49172,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.agents.upload",
-			"source_sha256": "6f1242bae1dcc952a8f3a659a2850fad2af9a3b0834d6a23ddac28fc8be91c11",
-			"target_sha256": "395009e70b43410a3871d4e6688b78c1731c7f58f151e13f10972650d9405eee",
+			"source_sha256": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949",
+			"target_sha256": "9a05cfe14a53b447004b7bb61132d17ebf87fa219447c1bd60b609d97f90d394",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -48188,18 +49185,42 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean-with-findings",
-					"instance": "fa696f7f3dff",
+					"instance": "c041efdee6f6",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/fa696f7f3dff.json",
-					"receipt_sha256": "96fbda6007cfea0d0ba626557d09ad70527158eaf2ff4e5c4adad4e0bffe3c2c"
+					"receipt": "i18n/receipts/c041efdee6f6.json",
+					"receipt_sha256": "34ee57d4b890565cf6dfb31fdb321ec84f7ac0c2989f167cb6a1880210853f0a"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6f1242bae1dcc952a8f3a659a2850fad2af9a3b0834d6a23ddac28fc8be91c11",
+					"target_sha256": "395009e70b43410a3871d4e6688b78c1731c7f58f151e13f10972650d9405eee",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean-with-findings",
+							"instance": "fa696f7f3dff",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/fa696f7f3dff.json",
+							"receipt_sha256": "96fbda6007cfea0d0ba626557d09ad70527158eaf2ff4e5c4adad4e0bffe3c2c"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",
@@ -48233,8 +49254,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.agents.pages",
-			"source_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
-			"target_sha256": "14573b2594e6c54add646218f038a2fd3e430f9d0a714b128ae8b4892f0d662d",
+			"source_sha256": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781",
+			"target_sha256": "fc2f79de720fcb31530eaebfc9572bd9badee6e35312db47bae812040a67e8e7",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -48246,24 +49267,49 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "74bd1d94a511",
+					"instance": "d959bfda62d5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/74bd1d94a511.json",
-					"receipt_sha256": "fb36dbd7c46376b42467909f6b8428d58fb43dff756e7beb275073403fe6802c"
+					"receipt": "i18n/receipts/d959bfda62d5.json",
+					"receipt_sha256": "e32b5e33f16ff501ba0aea0a4994afc57d5d66fc57655777b8e5fabe7c5b9580",
+					"note": "Record: i18n/audits/evidence/ur/ui.agents.pages/lit2-ur-r2-20261026/record.json."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
+					"target_sha256": "14573b2594e6c54add646218f038a2fd3e430f9d0a714b128ae8b4892f0d662d",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "74bd1d94a511",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/74bd1d94a511.json",
+							"receipt_sha256": "fb36dbd7c46376b42467909f6b8428d58fb43dff756e7beb275073403fe6802c"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.agents.detail",
-			"source_sha256": "9cf3c2f8cbd522ea6e3e2c88b9c65c80bb63d79b7a417992ece92043809ff025",
-			"target_sha256": "74afcf443bf821481079cc823d2d0c06eb5280a9173b451491dce7089b1a67c8",
+			"source_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+			"target_sha256": "38f9647ca8cc7f97f1cfef95f305501d939dee3b4ebfe2223625dc5fa24636db",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -48275,24 +49321,49 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "2ae1e9eafd56",
+					"instance": "d959bfda62d5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/2ae1e9eafd56.json",
-					"receipt_sha256": "7320918a871c83fbc04048090472c81f332ae188e793216ffd67dd670b67c603"
+					"receipt": "i18n/receipts/d959bfda62d5.json",
+					"receipt_sha256": "e32b5e33f16ff501ba0aea0a4994afc57d5d66fc57655777b8e5fabe7c5b9580",
+					"note": "Record: i18n/audits/evidence/ur/ui.agents.detail/lit2-ur-r2-20261026/record.json (round-1 verdict carried at identical bytes)."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "9cf3c2f8cbd522ea6e3e2c88b9c65c80bb63d79b7a417992ece92043809ff025",
+					"target_sha256": "74afcf443bf821481079cc823d2d0c06eb5280a9173b451491dce7089b1a67c8",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "2ae1e9eafd56",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2ae1e9eafd56.json",
+							"receipt_sha256": "7320918a871c83fbc04048090472c81f332ae188e793216ffd67dd670b67c603"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.hub.pages",
-			"source_sha256": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
-			"target_sha256": "8c9bcd5bfc64b7de15a2bbab828110b7afc5d0a90e005711fd6655e0b8c1efd2",
+			"source_sha256": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6",
+			"target_sha256": "e5fd416a3ff17811e57101c1c7b6f916914e7b0f0f01046809fa0287c53eb057",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -48304,24 +49375,49 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "74bd1d94a511",
+					"instance": "d959bfda62d5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/74bd1d94a511.json",
-					"receipt_sha256": "fb36dbd7c46376b42467909f6b8428d58fb43dff756e7beb275073403fe6802c"
+					"receipt": "i18n/receipts/d959bfda62d5.json",
+					"receipt_sha256": "e32b5e33f16ff501ba0aea0a4994afc57d5d66fc57655777b8e5fabe7c5b9580",
+					"note": "Record: i18n/audits/evidence/ur/ui.hub.pages/lit2-ur-r2-20261026/record.json."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ba970e165ed879e7f9968a02302480a86d8002954d514247d633ae54eb7ca139",
+					"target_sha256": "8c9bcd5bfc64b7de15a2bbab828110b7afc5d0a90e005711fd6655e0b8c1efd2",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "74bd1d94a511",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/74bd1d94a511.json",
+							"receipt_sha256": "fb36dbd7c46376b42467909f6b8428d58fb43dff756e7beb275073403fe6802c"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.hub.teams",
-			"source_sha256": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
-			"target_sha256": "7c548a02ccd34bef24865ba9459e47ddf1910e1ce6d85b4420b8bb4acbb26b5f",
+			"source_sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+			"target_sha256": "256bb29b71ef571f7652ae455baa8b5f15f731dd0bdb08ab72e22a5d47daa4a6",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -48333,24 +49429,49 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "2ae1e9eafd56",
+					"instance": "d959bfda62d5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/2ae1e9eafd56.json",
-					"receipt_sha256": "7320918a871c83fbc04048090472c81f332ae188e793216ffd67dd670b67c603"
+					"receipt": "i18n/receipts/d959bfda62d5.json",
+					"receipt_sha256": "e32b5e33f16ff501ba0aea0a4994afc57d5d66fc57655777b8e5fabe7c5b9580",
+					"note": "Record: i18n/audits/evidence/ur/ui.hub.teams/lit2-ur-r2-20261026/record.json."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
+					"target_sha256": "7c548a02ccd34bef24865ba9459e47ddf1910e1ce6d85b4420b8bb4acbb26b5f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "2ae1e9eafd56",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2ae1e9eafd56.json",
+							"receipt_sha256": "7320918a871c83fbc04048090472c81f332ae188e793216ffd67dd670b67c603"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.agents.config",
-			"source_sha256": "3785066b223dab5789b3b15ae3227e8d2e06bcd77ad69bae1e9235407767c26c",
-			"target_sha256": "d9069340b0379774f565afbe7f5926a1dd4644d57e4c45a42f73e986e2d77117",
+			"source_sha256": "5f06618661e942dd8dc61f2f40dc7894f2048855e624fdc58ffe1aa0f5fcb7a6",
+			"target_sha256": "27a05aae3a602e597e8ca3ca7ef90c59456bb083cfdda6751bd9da26232f2cf1",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -48358,20 +49479,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-28",
-					"result": "clean",
-					"instance": "a26b945b2ee1-ur",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "39208249fcbd-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 3,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/a26b945b2ee1-ur.json",
-					"receipt_sha256": "6b617174bd59e11a815d2882546bc984ff334d3e83101056897be3c278b6df19",
-					"scope": "ui.agents.config, whole-file audit at 71fe658486 of the merged union (wave B's 3 keys from #1450 + this branch's 30), first audit of these bytes together; wave-B translator radient/auto (family not shown); auditor anthropic/claude-opus-5-5"
+					"receipt": "i18n/receipts/39208249fcbd-ur.json",
+					"receipt_sha256": "9940748c1e3df89bea680350de0723527a649116d576cdbd433b2eeb7c652abd",
+					"scope": "ui.agents.config, all 38 keys, round-3 cold audit via read_public_copy at ae918aa12a"
 				}
 			],
 			"status": "audited",
@@ -48467,6 +49588,29 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "3785066b223dab5789b3b15ae3227e8d2e06bcd77ad69bae1e9235407767c26c",
+					"target_sha256": "d9069340b0379774f565afbe7f5926a1dd4644d57e4c45a42f73e986e2d77117",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "a26b945b2ee1-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a26b945b2ee1-ur.json",
+							"receipt_sha256": "6b617174bd59e11a815d2882546bc984ff334d3e83101056897be3c278b6df19",
+							"scope": "ui.agents.config, whole-file audit at 71fe658486 of the merged union (wave B's 3 keys from #1450 + this branch's 30), first audit of these bytes together; wave-B translator radient/auto (family not shown); auditor anthropic/claude-opus-5-5"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -48502,8 +49646,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.agents.upload",
-			"source_sha256": "6f1242bae1dcc952a8f3a659a2850fad2af9a3b0834d6a23ddac28fc8be91c11",
-			"target_sha256": "67e1310ca35e233b632ee27e359beb5a9b5f0701b2abffc995955aff52231da0",
+			"source_sha256": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949",
+			"target_sha256": "f8ae928517294f95c263908e597aa18c59e8eaf9483e6c8457e8aeb3474de3b2",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -48515,18 +49659,43 @@
 					"model": "radient/auto",
 					"date": "2026-10-26",
 					"result": "clean",
-					"instance": "2ae1e9eafd56",
+					"instance": "d959bfda62d5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/2ae1e9eafd56.json",
-					"receipt_sha256": "7320918a871c83fbc04048090472c81f332ae188e793216ffd67dd670b67c603"
+					"receipt": "i18n/receipts/d959bfda62d5.json",
+					"receipt_sha256": "e32b5e33f16ff501ba0aea0a4994afc57d5d66fc57655777b8e5fabe7c5b9580",
+					"note": "Record: i18n/audits/evidence/ur/ui.agents.upload/lit2-ur-r2-20261026/record.json (round-1 verdict carried at identical bytes)."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6f1242bae1dcc952a8f3a659a2850fad2af9a3b0834d6a23ddac28fc8be91c11",
+					"target_sha256": "67e1310ca35e233b632ee27e359beb5a9b5f0701b2abffc995955aff52231da0",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-26",
+							"result": "clean",
+							"instance": "2ae1e9eafd56",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2ae1e9eafd56.json",
+							"receipt_sha256": "7320918a871c83fbc04048090472c81f332ae188e793216ffd67dd670b67c603"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",

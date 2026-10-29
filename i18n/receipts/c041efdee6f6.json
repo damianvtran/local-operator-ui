@@ -1,0 +1,689 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "independent-translation-audit",
+  "batch": "agents-literals-2",
+  "round": 1,
+  "branch": "i18n-agents-literals-2",
+  "head": "a9e536bf892f48ed2a87772658055abfd10caa5e",
+  "source_commit": "a9e536bf89",
+  "byte_equality_base": "73af0b6855231c8e484bd4097e57fb879e10e9a8",
+  "locale": "zh-CN",
+  "locale_name": "Simplified Chinese (mainland)",
+  "key_count": 25,
+  "namespace_count": 7,
+  "date": "2026-10-26",
+  "audit_date": "2026-10-26",
+  "scope": {
+    "worktree": "~/local-operator-ui/.worktrees/i18n-agents-literals-2",
+    "branch": "i18n-agents-literals-2",
+    "head": "a9e536bf892f48ed2a87772658055abfd10caa5e",
+    "namespaces": [
+      "ui.agents.pages",
+      "ui.agents.config",
+      "ui.agents.detail",
+      "ui.agents.upload",
+      "ui.hub.pages",
+      "ui.hub.teams",
+      "ui.common.actions"
+    ],
+    "delta": "exactly the 25 English-only keys added by this branch to the seven ui.agents.* / ui.hub.* / ui.common.actions namespaces; every other key in those files is byte-identical to 73af0b6855 and was checked mechanically, not re-translated",
+    "what_was_read": "all 25 new values in full against the English source and its context sidecar; the shipped zh-CN values of the same seven namespaces as the terminology witness; docs/I18N.md, the core glossary and the zh-CN style guide",
+    "what_was_not_done": "no catalogue, ledger, English, generated file, test or git state was touched; no translation/MT service was used; nothing was rendered in the app (the fit judgement is measured table/column arithmetic against the hints, plus ICU-composed strings - not screenshots)"
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "harness": "Local Operator",
+    "team": "lopdev",
+    "session": "c041efdee6f6",
+    "instance": "c041efdee6f6",
+    "model": "radient/auto",
+    "actual_model": "radient/auto",
+    "actual_model_source": "harness session header (Model: radient/auto); the session's origin.json (subagent, parent 3ef6295a5545) carries no model id; the resolved upstream provider/model is not exposed to the agent and is not inferred",
+    "model_provenance": "no provider error, quota or mid-run switch was surfaced to this session, so no fallback is claimed or used",
+    "independent_from_translator_session": true,
+    "independence": "Independent auditor of the translator lane: did not translate or remediate these values, saw only the committed candidate catalogue, read no translator reasoning, and used no translation/MT service. The only repository files this audit writes are this receipt, its seven evidence bundles and their audit.log."
+  },
+  "agent": "i18n-auditor",
+  "session": "c041efdee6f6",
+  "instance": "c041efdee6f6",
+  "model": "radient/auto",
+  "model_fallback": "none observed and none used: this run stayed on the radient/auto route for the whole audit; the harness surfaced no provider error and no mid-run switch. The resolved upstream provider/model id is not visible to the agent, so none is claimed.",
+  "actual_model_source": "harness session header (Model: radient/auto); upstream resolution not visible to the agent and not inferred.",
+  "independence": "Independent auditor of the translator lane: did not translate or remediate these values and edited no catalogue, ledger, English, generated file or test.",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "Passed: 0 blocker, 0 major, 1 minor, 2 nit across the 25 zh-CN keys. The values are faithful to the English and to the sidecar constraints, read as native product copy in the product's established terminology, and none exceeds its hinted slot. The minor is a clarity/idiom polish on one explanatory paragraph; the two nits are optional word-order/consistency polish. Nothing in the delta is wrong in meaning, unsafe, or over-width.",
+  "findings_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 2
+  },
+  "findings_index": [
+    {
+      "id": "ZH-F1",
+      "severity": "minor",
+      "key": "ui.agents.pages.ask.body_team"
+    },
+    {
+      "id": "ZH-F2",
+      "severity": "nit",
+      "key": "ui.agents.upload.title.republished / ui.agents.upload.title.update_listing"
+    },
+    {
+      "id": "ZH-F3",
+      "severity": "nit",
+      "key": "ui.agents.upload.published.listed (pre-existing) vs the six new titles"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "ZH-F1",
+      "ZH-F2",
+      "ZH-F3"
+    ]
+  },
+  "input_hashes": {
+    "en": {
+      "ui.agents.pages": {
+        "path": "src/i18n/catalogues/en/ui.agents.pages.json",
+        "sha256": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781"
+      },
+      "ui.agents.config": {
+        "path": "src/i18n/catalogues/en/ui.agents.config.json",
+        "sha256": "5338f6e229d67bf214a4741224470e82222bd2f04eba9bc9eda7324242393c32"
+      },
+      "ui.agents.detail": {
+        "path": "src/i18n/catalogues/en/ui.agents.detail.json",
+        "sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b"
+      },
+      "ui.agents.upload": {
+        "path": "src/i18n/catalogues/en/ui.agents.upload.json",
+        "sha256": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949"
+      },
+      "ui.hub.pages": {
+        "path": "src/i18n/catalogues/en/ui.hub.pages.json",
+        "sha256": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6"
+      },
+      "ui.hub.teams": {
+        "path": "src/i18n/catalogues/en/ui.hub.teams.json",
+        "sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06"
+      },
+      "ui.common.actions": {
+        "path": "src/i18n/catalogues/en/ui.common.actions.json",
+        "sha256": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9"
+      }
+    },
+    "context": {
+      "ui.agents.pages": {
+        "path": "src/i18n/catalogues/en/ui.agents.pages.context.json",
+        "sha256": "f9690a17e6e7307df154bdc0d71ab8a0d002a07a052e11c0025d2ff874d3dfea"
+      },
+      "ui.agents.config": {
+        "path": "src/i18n/catalogues/en/ui.agents.config.context.json",
+        "sha256": "63a7879a771b5aa7732fcfc8848033ba207701aaf1452e2855e8ec2bd52821bf"
+      },
+      "ui.agents.detail": {
+        "path": "src/i18n/catalogues/en/ui.agents.detail.context.json",
+        "sha256": "a0e40ba7fceccdf78da28d064fd4386cc48d8f1c80127a5721550e879c49b511"
+      },
+      "ui.agents.upload": {
+        "path": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+        "sha256": "3141f45c4b8fc17b96061a4556a66b3133bbfe27345ee7e4d929dfe21ee049f0"
+      },
+      "ui.hub.pages": {
+        "path": "src/i18n/catalogues/en/ui.hub.pages.context.json",
+        "sha256": "d913efa6ea062fe5c04861c6db202d5bf303b7b0c1a6f9c7efbdaa4b5c095d10"
+      },
+      "ui.hub.teams": {
+        "path": "src/i18n/catalogues/en/ui.hub.teams.context.json",
+        "sha256": "b062f0ca8aed037084233730702e41c6f3ef09aa39bed405e007466716c711a0"
+      },
+      "ui.common.actions": {
+        "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+        "sha256": "48756cd31d4abbec5d56b3648ffb2fefe578c074645386480c91b4921accf321"
+      }
+    },
+    "zh-CN": {
+      "ui.agents.pages": {
+        "path": "src/i18n/catalogues/zh-CN/ui.agents.pages.json",
+        "sha256": "2b2e26580866cf9d91d339b97283b043d7da9352556cbab9c8c9ec0259cee9a0"
+      },
+      "ui.agents.config": {
+        "path": "src/i18n/catalogues/zh-CN/ui.agents.config.json",
+        "sha256": "a63c70b031ddd93f6a9314c6b60f89f0294fb58b14daa83f92445a5cf349a5f0"
+      },
+      "ui.agents.detail": {
+        "path": "src/i18n/catalogues/zh-CN/ui.agents.detail.json",
+        "sha256": "c3b0f71f94d3062a112f3528af0f86837dfe5eda2b07fecae20b8eb9bfc754fe"
+      },
+      "ui.agents.upload": {
+        "path": "src/i18n/catalogues/zh-CN/ui.agents.upload.json",
+        "sha256": "9a05cfe14a53b447004b7bb61132d17ebf87fa219447c1bd60b609d97f90d394"
+      },
+      "ui.hub.pages": {
+        "path": "src/i18n/catalogues/zh-CN/ui.hub.pages.json",
+        "sha256": "e1343c5ab21aa0703bc5f9f71d526f7e12cb0b5a4dbe844fe429cd94a63764fa"
+      },
+      "ui.hub.teams": {
+        "path": "src/i18n/catalogues/zh-CN/ui.hub.teams.json",
+        "sha256": "de8eefc67e19fc55f9f12be3ec855c4d5613789609fabbe2aea6af27524d4a32"
+      },
+      "ui.common.actions": {
+        "path": "src/i18n/catalogues/zh-CN/ui.common.actions.json",
+        "sha256": "fc8a26dd106a6ea3ebb9aca6c1939085bac8dc975eadd9ef2d5888ddc5874717"
+      }
+    },
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "6fc7bea71643c0dcaeaed697ecd792cfdfeb11b7816b5f8d160011e7c7df2abe"
+    },
+    "delta_sidecar": {
+      "path": "agents-literals-2-keys.json",
+      "sha256": "ec602c83236ec67358370105c140880a55e134b68f872b0ba033446387cefada"
+    }
+  },
+  "source_sha256": {
+    "ui.agents.pages": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781",
+    "ui.agents.config": "5338f6e229d67bf214a4741224470e82222bd2f04eba9bc9eda7324242393c32",
+    "ui.agents.detail": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+    "ui.agents.upload": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949",
+    "ui.hub.pages": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6",
+    "ui.hub.teams": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+    "ui.common.actions": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9"
+  },
+  "target_sha256": {
+    "ui.agents.pages": "2b2e26580866cf9d91d339b97283b043d7da9352556cbab9c8c9ec0259cee9a0",
+    "ui.agents.config": "a63c70b031ddd93f6a9314c6b60f89f0294fb58b14daa83f92445a5cf349a5f0",
+    "ui.agents.detail": "c3b0f71f94d3062a112f3528af0f86837dfe5eda2b07fecae20b8eb9bfc754fe",
+    "ui.agents.upload": "9a05cfe14a53b447004b7bb61132d17ebf87fa219447c1bd60b609d97f90d394",
+    "ui.hub.pages": "e1343c5ab21aa0703bc5f9f71d526f7e12cb0b5a4dbe844fe429cd94a63764fa",
+    "ui.hub.teams": "de8eefc67e19fc55f9f12be3ec855c4d5613789609fabbe2aea6af27524d4a32",
+    "ui.common.actions": "fc8a26dd106a6ea3ebb9aca6c1939085bac8dc975eadd9ef2d5888ddc5874717"
+  },
+  "context_sha256": {
+    "ui.agents.pages": "f9690a17e6e7307df154bdc0d71ab8a0d002a07a052e11c0025d2ff874d3dfea",
+    "ui.agents.config": "63a7879a771b5aa7732fcfc8848033ba207701aaf1452e2855e8ec2bd52821bf",
+    "ui.agents.detail": "a0e40ba7fceccdf78da28d064fd4386cc48d8f1c80127a5721550e879c49b511",
+    "ui.agents.upload": "3141f45c4b8fc17b96061a4556a66b3133bbfe27345ee7e4d929dfe21ee049f0",
+    "ui.hub.pages": "d913efa6ea062fe5c04861c6db202d5bf303b7b0c1a6f9c7efbdaa4b5c095d10",
+    "ui.hub.teams": "b062f0ca8aed037084233730702e41c6f3ef09aa39bed405e007466716c711a0",
+    "ui.common.actions": "48756cd31d4abbec5d56b3648ffb2fefe578c074645386480c91b4921accf321"
+  },
+  "references": [
+    "docs/I18N.md (UI)",
+    "~/local-operator/i18n/glossary.md",
+    "~/local-operator/i18n/style-guides/zh-CN.md",
+    "agents-literals-2-keys.json (delta with role/tone/length_hint/note per key)",
+    "src/i18n/catalogues/en/<ns>.context.json for the seven namespaces"
+  ],
+  "machine_checks": [
+    {
+      "command": "node scripts/i18n/generate.mjs --check",
+      "exit": 0,
+      "output": "/Users/damian/local-operator-ui/.worktrees/i18n-agents-literals-2/src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+    },
+    {
+      "command": "node scripts/i18n/check-duplicates.mjs",
+      "exit": 0,
+      "output": "check-duplicates: ok — 844 file(s) scanned, 0 duplicate key(s)"
+    },
+    {
+      "command": "node scripts/i18n/check-strings.mjs",
+      "exit": 0,
+      "output": "check-strings.mjs: ok — 1376 file(s) scanned, 76 literal(s) at or below the baseline"
+    },
+    {
+      "command": "node scripts/i18n/context-parity.mjs",
+      "exit": 0,
+      "output": "context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json)."
+    },
+    {
+      "command": "node scripts/i18n/check-coverage.mjs",
+      "exit": 0,
+      "output": "coverage-check: ok — 7 gated language(s) over 94 namespace(s); 0 allowed key(s) remain across 0 pair(s) (shrink-only; see i18n/coverage-allowance.json)."
+    },
+    {
+      "command": "node --test scripts/i18n/locale-parity.test.mjs",
+      "exit": 0,
+      "output": "✔ [zh-CN] ships at least one message (not an empty claim) (136.992833ms)\n✔ [zh-CN] defines each key in at most one namespace file (9.278666ms)\n✔ [zh-CN] carries EVERY key of each namespace file it ships (23.200291ms)\n✔ [zh-CN] names only keys the English source defines (32.2255ms)\n✔ [zh-CN] preserves every ICU placeholder from the English source (64.893083ms)\n✔ [zh-CN] is not an English stub (no value identical to the source) (17.88475ms)\nℹ tests 44\nℹ pass 44\nℹ fail 0"
+    },
+    {
+      "command": "node <scratch>/verify-zh.mjs  (auditor's own digest: key order, ICU signature, plural legality, typography)",
+      "exit": 0,
+      "output": "ui.agents.pages: keys en/zh 30/30, order equal, delta 8, ICU parsed, plurals legal\nui.agents.config: keys en/zh 31/31, order equal, delta 3, ICU parsed, plurals legal\nui.agents.detail: keys en/zh 50/50, order equal, delta 3, ICU parsed, plurals legal\nui.agents.upload: keys en/zh 29/29, order equal, delta 6, ICU parsed, plurals legal\nui.hub.pages: keys en/zh 37/37, order equal, delta 2, ICU parsed, plurals legal\nui.hub.teams: keys en/zh 49/49, order equal, delta 2, ICU parsed, plurals legal\nui.common.actions: keys en/zh 51/51, order equal, delta 1, ICU parsed, plurals legal\nzh-CN CLDR plural categories: [other]\nkeys checked: 277; delta keys checked: 25; failures: 0"
+    },
+    {
+      "command": "node <scratch>/parent-binding-zh.mjs  (git show 73af0b6855:<path> vs worktree)",
+      "exit": 0,
+      "output": "ui.agents.pages: pre-existing 22, now 30, added 8, pre-existing values rewritten 0\nui.agents.config: pre-existing 28, now 31, added 3, pre-existing values rewritten 0\nui.agents.detail: pre-existing 47, now 50, added 3, pre-existing values rewritten 0\nui.agents.upload: pre-existing 23, now 29, added 6, pre-existing values rewritten 0\nui.hub.pages: pre-existing 35, now 37, added 2, pre-existing values rewritten 0\nui.hub.teams: pre-existing 47, now 49, added 2, pre-existing values rewritten 0\nui.common.actions: pre-existing 50, now 51, added 1, pre-existing values rewritten 0\nTOTAL added 25; pre-existing values rewritten 0"
+    },
+    {
+      "command": "node <scratch>/render-zh.mjs  (composed strings through IntlMessageFormat)",
+      "exit": 0,
+      "output": "AGE PHRASES (shipped ui.hub.comments.age.*):\n  seconds   -> 3秒前\n  minutes   -> 7分钟前\n  hours     -> 2小时前\n  days      -> 3天前\n  months    -> 5个月前\n  years     -> 1年前\n  fallback  -> 2周前\n\nCOMPOSED hub fragments:\n  card.updated     3秒前更新\n  card.updated     7分钟前更新\n  card.updated     2小时前更新\n  card.updated     3天前更新\n  card.updated     5个月前更新\n  card.updated     1年前更新\n  card.updated     2周前更新\n  recency.updated  3秒前更新\n  recency.updated  7分钟前更新\n  recency.updated  2小时前更新\n  recency.updated  3天前更新\n  recency.updated  5个月前更新\n  recency.updated  1年前更新\n  recency.updated  2周前更新\n  recency.created  3秒前创建\n  recency.created  7分钟前创建\n  recency.created  2小时前创建\n  recency.created  3天前创建\n  recency.created  5个月前创建\n  recency.created  1年前创建\n  recency.created  2周前创建\n\nplaceholder.about — 更改{name}……\n  更改PR reviewer……\n  更改高级代码审查智能体……\n  更改Александр-ревьюер……\n  更改the-really-long-release-notes-writer-agent-for-platform……\n\npublish_org — 将“{name}”发布到{destination}？\n  将“PR reviewer”发布到Radient Labs？\n  将“PR reviewer”发布到Acme 国际？\n  将“PR reviewer”发布到Very Long Organization Name Holdings International？\n  将“高级代码审查智能体”发布到Radient Labs？\n  将“高级代码审查智能体”发布到Acme 国际？\n  将“高级代码审查智能体”发布到Very Long Organization Name Holdings International？\n  已将“PR reviewer”发布到Radient Labs\n\npublish_public / published_public / republished / update_listing:\n  将“PR reviewer”发布到智能体中心？\n  将“高级代码审查智能体”发布到智能体中心？\n  将“Александр-ревьюер”发布到智能体中心？\n  将“the-really-long-release-notes-writer-agent-for-platform”发布到智能体中心？\n  已将“PR reviewer”发布到智能体中心\n  已将“高级代码审查智能体”发布到智能体中心\n  已将“Александр-ревьюер”发布到智能体中心\n  已将“the-really-long-release-notes-writer-agent-for-platform”发布到智能体中心\n  已更新“PR reviewer”在智能体中心的条目\n  已更新“高级代码审查智能体”在智能体中心的条目\n  已更新“Александр-ревьюер”在智能体中心的条目\n  已更新“the-really-long-release-notes-writer-agent-for-platform”在智能体中心的条目\n  更新“PR reviewer”在智能体中心的条目？\n  更新“高级代码审查智能体”在智能体中心的条目？\n  更新“Александр-ревьюер”在智能体中心的条目？\n  更新“the-really-long-release-notes-writer-agent-for-platform”在智能体中心的条目？\n\nzh-CN CLDR plural categories: [ 'other' ]"
+    },
+    {
+      "command": "node scripts/i18n/ledger-check.mjs",
+      "exit": 1,
+      "output": "AHEAD-OF-ASSEMBLY STATE, NOT A VERDICT ON THIS DELTA. The gate fails for the seven zh-CN namespaces exactly as it must before the ledger row is re-assembled from this receipt: English sources gained the 25 keys and the targets changed, so every existing zh-CN row is stale and its older receipt no longer names the bytes on disk. 21 zh-CN lines:\nledger-check: zh-CN/ui.common.actions: stale source_sha256 (ledger f942004d5e81…, file 132f60c9d401…) — the English source moved since translation\nledger-check: zh-CN/ui.common.actions: stale target_sha256 (ledger 08b2c4fb7a03…, file fc8a26dd106a…) — the translated file changed since it was audited\nledger-check: zh-CN/ui.common.actions: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file\nledger-check: zh-CN/ui.agents.pages: stale source_sha256 (ledger 38a713b6cc4a…, file e85765ccb25a…) — the English source moved since translation\nledger-check: zh-CN/ui.agents.pages: stale target_sha256 (ledger 8c89cae6d432…, file 2b2e26580866…) — the translated file changed since it was audited\nledger-check: zh-CN/ui.agents.pages: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file\nledger-check: zh-CN/ui.agents.detail: stale source_sha256 (ledger 9cf3c2f8cbd5…, file 80877db48543…) — the English source moved since translation\nledger-check: zh-CN/ui.agents.detail: stale target_sha256 (ledger 1941c5bd6379…, file c3b0f71f94d3…) — the translated file changed since it was audited\nledger-check: zh-CN/ui.agents.detail: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file\nledger-check: zh-CN/ui.hub.pages: stale source_sha256 (ledger ba970e165ed8…, file c54d0aca4e80…) — the English source moved since translation\nledger-check: zh-CN/ui.hub.pages: stale target_sha256 (ledger b82cefb8d92e…, file e1343c5ab21a…) — the translated file changed since it was audited\nledger-check: zh-CN/ui.hub.pages: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file\nledger-check: zh-CN/ui.hub.teams: stale source_sha256 (ledger 32d6df8db5c9…, file 4121cd4fada8…) — the English source moved since translation\nledger-check: zh-CN/ui.hub.teams: stale target_sha256 (ledger 3f8d5cbf07c4…, file de8eefc67e19…) — the translated file changed since it was audited\nledger-check: zh-CN/ui.hub.teams: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file\nledger-check: zh-CN/ui.agents.config: stale source_sha256 (ledger aa4fde04d7db…, file 5338f6e229d6…) — the English source moved since translation\nledger-check: zh-CN/ui.agents.config: stale target_sha256 (ledger 71209a18fdf6…, file a63c70b031dd…) — the translated file changed since it was audited\nledger-check: zh-CN/ui.agents.config: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file\nledger-check: zh-CN/ui.agents.upload: stale source_sha256 (ledger 6f1242bae1dc…, file 52876ab5bfa8…) — the English source moved since translation\nledger-check: zh-CN/ui.agents.upload: stale target_sha256 (ledger 395009e70b43…, file 9a05cfe14a53…) — the translated file changed since it was audited\nledger-check: zh-CN/ui.agents.upload: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file\nledger-check: FAILED — 147 finding(s) across 658 ledger entr(ies)\n(147 findings over 658 rows across all seven locales, same stale-bytes class.) The ledger row itself is the assembler's job with this receipt passed as --receipt; this auditor edits no ledger."
+    },
+    {
+      "command": "node <scratch>/markup-zh.mjs  (Rich/markup tags, backticks, identifiers in the 25 new values)",
+      "exit": 0,
+      "output": "delta values: 25\nvalues carrying Rich/markup tags: 0\nvalues carrying ICU pound (#): 0\nvalues carrying backticks or code fences: 0\nvalues carrying URL/command/flag/path-like runs: none"
+    }
+  ],
+  "second_pass": {
+    "why": "ui.agents.pages is the onboarding-adjacent high-visibility group; the manager asks for a second independent pass there.",
+    "method": "re-read the English and the sidecar notes and wrote the expected Chinese first, then compared it with the shipped target; separately re-read every upload title against its question-vs-receipt polarity and every placeholder against byte-exactness.",
+    "outcome": "7 of the 8 pages keys matched in substance on the second derivation; ask.body_team diverged and is recorded as ZH-F1. No finding was withdrawn after the second pass, and no finding was invented by it.",
+    "same_auditor": true,
+    "note": "This is a second pass by the same auditor, not a second independent auditor; it is not evidence of a second human/agent review."
+  },
+  "audit_notes_not_execution_log": true,
+  "audit_notes_not_execution_log_note": "Everything under namespaces[].dimensions, per_key, second_pass, verdict and the findings is reasoning (notes). Everything under machine_checks is captured command output with its real exit code; ledger-check exit 1 is the pre-assembly state explained in that entry, not a judgement on this delta.",
+  "evidence": {
+    "root": "i18n/audits/evidence/zh-CN/<namespace>/zl2-20261026-c041efde/",
+    "files_per_bundle": [
+      "record.json",
+      "audit.log"
+    ],
+    "note": "One bundle per namespace, all seven pointing at this one receipt; audit.log is the captured command output of the whole seven-namespace run, identical in each bundle."
+  },
+  "evidence_note": "The receipt is the portable artifact the ledger assembler consumes (it copies it to i18n/receipts/<instance>.json byte-for-byte). The bundles are the tracked evidence and reference this receipt by path and sha256.",
+  "per_key": [
+    {
+      "key": "ui.agents.pages.add_manual.agent",
+      "namespace": "ui.agents.pages",
+      "english": "Add agent manually",
+      "target": "手动添加智能体",
+      "verdict": "ok",
+      "note": "手动添加智能体 is the natural Chinese order for 'add manually' and uses 添加, the roster's own verb (ask.manual_agent repeats it). 14 columns, well inside the 288 px full-width button."
+    },
+    {
+      "key": "ui.agents.pages.add_manual.team",
+      "namespace": "ui.agents.pages",
+      "english": "Add team manually",
+      "target": "手动添加团队",
+      "verdict": "ok",
+      "note": "Only the object differs from its sibling, exactly as the context asks; 12 columns."
+    },
+    {
+      "key": "ui.agents.pages.ask.body_agent",
+      "namespace": "ui.agents.pages",
+      "english": "An agent is a reusable set of instructions you can start a chat with, or let other agents call on. Describe what you want and a configuration run sets it up.",
+      "target": "智能体是一套可复用的指令，你可以与它开始对话，也可以让其他智能体调用它。描述你的需求，配置运行便会把它建好。",
+      "verdict": "ok",
+      "note": "Two sentences kept. 一套可复用的指令 is accurate for 'a reusable set of instructions'. 配置运行 is the shipped name for a configuration run (ui.agents.config.status.attached, ui.agents.detail.alert.conflict_body), so no second name was invented. 与 is the shipped written particle (ui.hub.teams.org.aria 与{org}共享的团队). 108 columns, about two lines at the 810 px measure."
+    },
+    {
+      "key": "ui.agents.pages.ask.body_team",
+      "namespace": "ui.agents.pages",
+      "english": "A team has one agent that leads the chat and members it can hand work to. Describe what you want and a configuration run sets it up.",
+      "target": "团队有一个主导对话的智能体，以及由它委派工作的成员。描述你的需求，配置运行便会把它建好。",
+      "verdict": "minor",
+      "note": "Meaning is preserved (one agent leads the chat, members receive delegated work) but see ZH-F1: 一个主导对话的智能体 momentarily reads as 'an agent that dominates the conversation', and 以及由它委派工作的成员 front-loads the 由-phrase before its head noun."
+    },
+    {
+      "key": "ui.agents.pages.ask.heading_agent",
+      "namespace": "ui.agents.pages",
+      "english": "Ask for an agent",
+      "target": "请求一个智能体",
+      "verdict": "ok",
+      "note": "请求 is the verb this feature already ships (ui.agents.config.composer.label 请求更改智能体或团队; ui.agents.pages.empty.agents 可在下方请求一个), so the heading continues shipped wording instead of calquing 'ask for'. 14 columns."
+    },
+    {
+      "key": "ui.agents.pages.ask.heading_team",
+      "namespace": "ui.agents.pages",
+      "english": "Ask for a team",
+      "target": "请求一个团队",
+      "verdict": "ok",
+      "note": "Phrase-for-phrase parallel to heading_agent, differing only in its object; 12 columns."
+    },
+    {
+      "key": "ui.agents.pages.ask.manual_agent",
+      "namespace": "ui.agents.pages",
+      "english": "Or add an agent by hand",
+      "target": "或手动添加智能体",
+      "verdict": "ok",
+      "note": "Keeps the leading 或 and the same 手动添加 wording as the roster button, yet stays an alternative to asking rather than a second 'add' action, as the note requires."
+    },
+    {
+      "key": "ui.agents.pages.ask.manual_team",
+      "namespace": "ui.agents.pages",
+      "english": "Or add a team by hand",
+      "target": "或手动添加团队",
+      "verdict": "ok",
+      "note": "Parallel to ask.manual_agent; 14 columns."
+    },
+    {
+      "key": "ui.agents.config.placeholder.about",
+      "namespace": "ui.agents.config",
+      "english": "Change {name}…",
+      "target": "更改{name}……",
+      "verdict": "ok",
+      "note": "更改{name}…… keeps the placeholder byte-exact, inserts no space at the Chinese/Latin boundary (guide: no space between Chinese and Latin runs), and ends in the two-mark ellipsis. Rendered: 更改PR reviewer…… 更改高级代码审查智能体…… 更改Александр-ревьюер……"
+    },
+    {
+      "key": "ui.agents.config.placeholder.docked",
+      "namespace": "ui.agents.config",
+      "english": "Ask for a change, or describe something new…",
+      "target": "请求更改，或描述新内容……",
+      "verdict": "ok",
+      "note": "请求更改 repeats shipped 请求更改; 描述新内容 = 'describe something new'; names neither agent nor team, and does not read as messaging the open agent. 24 columns, far inside the docked content width the English 301.17 px form already fills."
+    },
+    {
+      "key": "ui.agents.config.placeholder.hero",
+      "namespace": "ui.agents.config",
+      "english": "Describe what you want…",
+      "target": "描述你的需求……",
+      "verdict": "ok",
+      "note": "描述你的需求…… = 'describe what you want', the same imperative the two body paragraphs use, so the hero box and the explainer agree. Ellipsis pair, 14 columns."
+    },
+    {
+      "key": "ui.agents.detail.meta.delegates",
+      "namespace": "ui.agents.detail",
+      "english": "Delegates",
+      "target": "可委派",
+      "verdict": "ok",
+      "note": "可委派 states the capability as a fact and is the shipped stem of delegate.label 可委派给子智能体; deliberately not a verb, per the note. 6 columns, one word."
+    },
+    {
+      "key": "ui.agents.detail.read.show_all",
+      "namespace": "ui.agents.detail",
+      "english": "Show all",
+      "target": "显示全部",
+      "verdict": "ok",
+      "note": "显示全部 uses the shipped 显示 verb (ui.hub.pages.status.count.*) and the shipped 显示全部 wording; 8 columns in the 48x17.4 px link box."
+    },
+    {
+      "key": "ui.agents.detail.read.show_less",
+      "namespace": "ui.agents.detail",
+      "english": "Show less",
+      "target": "收起",
+      "verdict": "ok",
+      "note": "收起 is the exact antonym of 显示全部 and the shipped collapse verb (ui.schedules.wake_conversation_row.show_fewer 收起). Reads as a pair with show_all."
+    },
+    {
+      "key": "ui.agents.upload.title.publish_org",
+      "namespace": "ui.agents.upload",
+      "english": "Publish \"{name}\" to {destination}?",
+      "target": "将“{name}”发布到{destination}？",
+      "verdict": "ok",
+      "note": "将“{name}”发布到{destination}？ uses the natural 将…发布到 frame, full-width ？, and no space before the placeholder. Rendered: 将“PR reviewer”发布到Radient Labs？ 将“高级代码审查智能体”发布到Acme 国际？"
+    },
+    {
+      "key": "ui.agents.upload.title.publish_public",
+      "namespace": "ui.agents.upload",
+      "english": "Publish \"{name}\" to the Agent Hub?",
+      "target": "将“{name}”发布到智能体中心？",
+      "verdict": "ok",
+      "note": "智能体中心 matches ui.hub.pages.header.title exactly, which the context note requires for Agent Hub. Rendered: 将“{name}”发布到智能体中心？"
+    },
+    {
+      "key": "ui.agents.upload.title.published_org",
+      "namespace": "ui.agents.upload",
+      "english": "Published \"{name}\" to {destination}",
+      "target": "已将“{name}”发布到{destination}",
+      "verdict": "ok",
+      "note": "Past-tense receipt 已将…发布到…, no question mark and no 。 on a dialog label; distinct from the question form."
+    },
+    {
+      "key": "ui.agents.upload.title.published_public",
+      "namespace": "ui.agents.upload",
+      "english": "Published \"{name}\" to the Agent Hub",
+      "target": "已将“{name}”发布到智能体中心",
+      "verdict": "ok",
+      "note": "Receipt form of the public publication, with the same 智能体中心 name as the hub's own page title; no question mark."
+    },
+    {
+      "key": "ui.agents.upload.title.republished",
+      "namespace": "ui.agents.upload",
+      "english": "Updated the Agent Hub listing for \"{name}\"",
+      "target": "已更新“{name}”在智能体中心的条目",
+      "verdict": "nit",
+      "note": "已更新…条目 correctly says the listing was updated, not created (see ZH-F2 for the stiff 「X 在 Y 的 Z」 chain, optional)."
+    },
+    {
+      "key": "ui.agents.upload.title.update_listing",
+      "namespace": "ui.agents.upload",
+      "english": "Update the Agent Hub listing for \"{name}\"?",
+      "target": "更新“{name}”在智能体中心的条目？",
+      "verdict": "nit",
+      "note": "Clearly the UPDATE question, distinct from publish_public; same modifier-chain polish as ZH-F2."
+    },
+    {
+      "key": "ui.hub.pages.card.get",
+      "namespace": "ui.hub.pages",
+      "english": "Get",
+      "target": "获取",
+      "verdict": "ok",
+      "note": "获取 is the settled zh-CN word for a 'Get' button (App Store convention) and already shipped in ui.agents.dialogs.create.hub_link (获取现成的智能体). 4 columns, one short word."
+    },
+    {
+      "key": "ui.hub.pages.card.updated",
+      "namespace": "ui.hub.pages",
+      "english": "updated {when}",
+      "target": "{when}更新",
+      "verdict": "ok",
+      "note": "{when}更新 puts the localized age first, the natural Chinese order. Rendered with the shipped ui.hub.comments.age.* messages: 3秒前更新 7分钟前更新 2小时前更新 3天前更新 5个月前更新 1年前更新 2周前更新. No second 'ago'."
+    },
+    {
+      "key": "ui.hub.teams.recency.created",
+      "namespace": "ui.hub.teams",
+      "english": "created {when}",
+      "target": "{when}创建",
+      "verdict": "ok",
+      "note": "{when}创建 renders 3秒前创建 … 3天前创建 … 2周前创建, states the creation date and never claims an update, so it stays distinguishable from its sibling."
+    },
+    {
+      "key": "ui.hub.teams.recency.updated",
+      "namespace": "ui.hub.teams",
+      "english": "updated {when}",
+      "target": "{when}更新",
+      "verdict": "ok",
+      "note": "{when}更新, same construction as the created sibling; used only when updated_at supplied the date, as the note requires."
+    },
+    {
+      "key": "ui.common.actions.retrying",
+      "namespace": "ui.common.actions",
+      "english": "Trying…",
+      "target": "正在重试……",
+      "verdict": "ok",
+      "note": "正在重试…… is the in-flight arm of retry (重试) and retry_again (再试一次): progress, no success/failure polarity, two-mark ellipsis, 10 columns on a text button that grows rather than truncating."
+    }
+  ],
+  "namespaces": {
+    "ui.agents.pages": {
+      "namespace": "ui.agents.pages",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "verdict": "clean-with-findings: 0 blocker, 0 major, 1 minor, 0 nit over 8 new keys (whole file 30 keys checked mechanically)",
+      "keys_audited": 8,
+      "whole_file_keys": 30,
+      "new_keys": [
+        "ui.agents.pages.add_manual.agent",
+        "ui.agents.pages.add_manual.team",
+        "ui.agents.pages.ask.body_agent",
+        "ui.agents.pages.ask.body_team",
+        "ui.agents.pages.ask.heading_agent",
+        "ui.agents.pages.ask.heading_team",
+        "ui.agents.pages.ask.manual_agent",
+        "ui.agents.pages.ask.manual_team"
+      ],
+      "sha256": {
+        "en": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781",
+        "zh-CN": "2b2e26580866cf9d91d339b97283b043d7da9352556cbab9c8c9ec0259cee9a0"
+      },
+      "context_sha256": "f9690a17e6e7307df154bdc0d71ab8a0d002a07a052e11c0025d2ff874d3dfea",
+      "dimensions": "MECHANICAL PASS for all 30 keys (see execution_log). ACCURACY PASS: the agent/team explanations keep both clauses and the ask->configure logic, and the two 请求 headings name the object the box creates. IDIOM: one MINOR (ZH-F1) on body_team; the other seven read as native, parallel, 你-addressed copy. TERMINOLOGY: 智能体 (agent), 团队 (team), 配置运行 (the shipped configuration-run term), 请求 (the shipped ask verb) are consistent; 手动添加 repeats the roster verb. FIT: widest label add_manual.agent 14 columns and ask.manual_agent 16 inside the 288 px roster/composer column; bodies 108 and 88 columns, about two lines at 810 px.",
+      "findings": [
+        {
+          "id": "ZH-F1",
+          "severity": "minor",
+          "dimension": "idiom",
+          "key": "ui.agents.pages.ask.body_team",
+          "current": "团队有一个主导对话的智能体，以及由它委派工作的成员。描述你的需求，配置运行便会把它建好。",
+          "problem": "Meaning is preserved, but 「一个主导对话的智能体」 momentarily parses as 'an agent that dominates the conversation' (主导 can carry 垄断/占据), and 「以及由它委派工作的成员」 front-loads the 由-phrase before its head noun, the densest available way to render 'members it can hand work to'. A native reader would not misread the feature, but the sentence reads more translated than its agent sibling.",
+          "proposed": "团队由一个智能体主导对话，它可以把工作委派给成员。描述你的需求，配置运行便会把它建好。",
+          "proposed_reason": "The verb structure 由一个智能体主导对话 removes the 'dominates' reading, and 它可以把工作委派给成员 states the hand-off in the direction the English has.",
+          "evidence": "Rendered comparison available in execution_log.render; the English is 'A team has one agent that leads the chat and members it can hand work to.'"
+        }
+      ]
+    },
+    "ui.agents.config": {
+      "namespace": "ui.agents.config",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean: 0 blocker, 0 major, 0 minor, 0 nit over 3 new keys (whole file 31 keys checked mechanically)",
+      "keys_audited": 3,
+      "whole_file_keys": 31,
+      "new_keys": [
+        "ui.agents.config.placeholder.about",
+        "ui.agents.config.placeholder.docked",
+        "ui.agents.config.placeholder.hero"
+      ],
+      "sha256": {
+        "en": "5338f6e229d67bf214a4741224470e82222bd2f04eba9bc9eda7324242393c32",
+        "zh-CN": "a63c70b031ddd93f6a9314c6b60f89f0294fb58b14daa83f92445a5cf349a5f0"
+      },
+      "context_sha256": "63a7879a771b5aa7732fcfc8848033ba207701aaf1452e2855e8ec2bd52821bf",
+      "dimensions": "MECHANICAL PASS for all 31 keys. ACCURACY PASS: {name} kept byte-exact in placeholder.about; the docked box still names no single object; the hero box names none by design. IDIOM PASS: 请求更改 repeats shipped wording; 描述新内容 is a plain invitation. TERMINOLOGY: 更改 consistent with ui.agents.detail.action.ask_change 请求更改. FIT: docked 24 columns (about 182 px at 14 px CJK) against the 304 px content area that the 301.17 px English string already nearly fills; the hint's 8-cell placeholder name leaves room.",
+      "findings": []
+    },
+    "ui.agents.detail": {
+      "namespace": "ui.agents.detail",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean: 0 blocker, 0 major, 0 minor, 0 nit over 3 new keys (whole file 50 keys checked mechanically)",
+      "keys_audited": 3,
+      "whole_file_keys": 50,
+      "new_keys": [
+        "ui.agents.detail.meta.delegates",
+        "ui.agents.detail.read.show_all",
+        "ui.agents.detail.read.show_less"
+      ],
+      "sha256": {
+        "en": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+        "zh-CN": "c3b0f71f94d3062a112f3528af0f86837dfe5eda2b07fecae20b8eb9bfc754fe"
+      },
+      "context_sha256": "a0e40ba7fceccdf78da28d064fd4386cc48d8f1c80127a5721550e879c49b511",
+      "dimensions": "MECHANICAL PASS for all 50 keys. ACCURACY PASS: 可委派 is a capability fact, not an instruction, and it does not contradict the switch's own sentence; show_all/show_less remain exact antonyms. IDIOM PASS: both are terse shipped verbs. TERMINOLOGY: 可委派 matches delegate.label 可委派给子智能体; 收起 matches shipped collapse copy (schedules.show_fewer, settings.collapse_all); 显示全部 matches mesh and projects. FIT: 6/8/4 columns, inside the one-line meta line and the 48x17.4 px link box.",
+      "findings": []
+    },
+    "ui.agents.upload": {
+      "namespace": "ui.agents.upload",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "verdict": "clean-with-findings: 0 blocker, 0 major, 0 minor, 2 nit over 6 new keys (whole file 29 keys checked mechanically)",
+      "keys_audited": 6,
+      "whole_file_keys": 29,
+      "new_keys": [
+        "ui.agents.upload.title.publish_org",
+        "ui.agents.upload.title.publish_public",
+        "ui.agents.upload.title.published_org",
+        "ui.agents.upload.title.published_public",
+        "ui.agents.upload.title.republished",
+        "ui.agents.upload.title.update_listing"
+      ],
+      "sha256": {
+        "en": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949",
+        "zh-CN": "9a05cfe14a53b447004b7bb61132d17ebf87fa219447c1bd60b609d97f90d394"
+      },
+      "context_sha256": "3141f45c4b8fc17b96061a4556a66b3133bbfe27345ee7e4d929dfe21ee049f0",
+      "dimensions": "MECHANICAL PASS for all 29 keys, including the two-placeholder titles ({name}+{destination}) whose ICU argument signature equals en. ACCURACY PASS: publish / published / republished / update_listing stay distinct; 条目 is the update noun; no receipt string carries a question mark; the org variant never mentions the public hub. IDIOM: one NIT (ZH-F2) on the modifier chain; otherwise native. TERMINOLOGY: 智能体中心 renders Agent Hub exactly as ui.hub.pages.header.title does; 发布到/更新 entries follow shipped 条目. FIT: 28-32 columns in a wrapping dialog header; no hint exceeded. ZH-F3 records the 中心/智能体中心 ruling.",
+      "findings": [
+        {
+          "id": "ZH-F2",
+          "severity": "nit",
+          "dimension": "idiom",
+          "key": "ui.agents.upload.title.republished / ui.agents.upload.title.update_listing",
+          "current": "已更新“{name}”在智能体中心的条目 / 更新“{name}”在智能体中心的条目？",
+          "problem": "Grammatical and accurate, but the 「X 在 Y 的 Z」 modifier chain is the stiffest ordering for a dialog title; the meaning ('the Agent Hub listing for {name}') survives either way.",
+          "proposed": "已更新智能体中心上“{name}”的条目 / 更新智能体中心上“{name}”的条目？",
+          "proposed_reason": "Fronting the place removes the stacked modifier; 条目 stays, matching shipped 打开条目 / 更新现有条目.",
+          "evidence": "Optional polish only; the current wording is not wrong and does not gate."
+        },
+        {
+          "id": "ZH-F3",
+          "severity": "nit",
+          "dimension": "terminology-ruling",
+          "key": "ui.agents.upload.published.listed (pre-existing) vs the six new titles",
+          "current": "titles: 将“{name}”发布到智能体中心？ / 已将“{name}”发布到智能体中心; shipped body in the same dialog: “{name}”已作为指令集发布到中心。任何人都可以查看并安装。",
+          "problem": "RULING REQUESTED: is bare 中心 against 智能体中心 a defect? No. 中心 is the shipped short form for this surface: 89 shipped values across 12 namespace files use the elided form (upload.published.listed, availability.taken, field.name_label, dialogs.menu.upload 上传到中心, navigation.updates.* 中心版本, hub.updates.*, common.errors.public_hub_*) against 10 values that spell 智能体中心, so the catalogue is already split and one title cannot fix it. Chinese drops a qualifier the context has established, and inside one publish dialog no reader takes 中心 and 智能体中心 for two features. The six new titles are the guide-aligned form (matching ui.hub.pages.header.title = 智能体中心, which the context note names explicitly) and must not be shortened.",
+          "proposed": "(optional, outside the 25-key delta) “{name}”已作为指令集发布到智能体中心。任何人都可以查看并安装。",
+          "proposed_reason": "Align the shipped body only if this wave touches that copy; the delta itself is correct as written.",
+          "evidence": "Counted from src/i18n/catalogues/zh-CN in this worktree: 89 values contain 中心 without 智能体中心, across 12 namespace files; 10 contain 智能体中心, including ui.hub.pages.header.title. The one place both appear together is the publish dialog: the new title says 智能体中心, the shipped body (ui.agents.upload.published.listed) says 中心."
+        }
+      ]
+    },
+    "ui.hub.pages": {
+      "namespace": "ui.hub.pages",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean: 0 blocker, 0 major, 0 minor, 0 nit over 2 new keys (whole file 37 keys checked mechanically)",
+      "keys_audited": 2,
+      "whole_file_keys": 37,
+      "new_keys": [
+        "ui.hub.pages.card.get",
+        "ui.hub.pages.card.updated"
+      ],
+      "sha256": {
+        "en": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6",
+        "zh-CN": "e1343c5ab21aa0703bc5f9f71d526f7e12cb0b5a4dbe844fe429cd94a63764fa"
+      },
+      "context_sha256": "d913efa6ea062fe5c04861c6db202d5bf303b7b0c1a6f9c7efbdaa4b5c095d10",
+      "dimensions": "MECHANICAL PASS for all 37 keys. ACCURACY PASS: {when}更新 asserts an update and adds no second 'ago'; 获取 is the visible word only, since the sentence accessible name is a separate message. IDIOM PASS: {when}更新 is the natural time-first Chinese order. TERMINOLOGY: 获取 matches shipped 获取 (dialogs.create.hub_link). FIT: 4 and 10 columns in a 280 px card footer and its single truncated provenance line.",
+      "findings": []
+    },
+    "ui.hub.teams": {
+      "namespace": "ui.hub.teams",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean: 0 blocker, 0 major, 0 minor, 0 nit over 2 new keys (whole file 49 keys checked mechanically)",
+      "keys_audited": 2,
+      "whole_file_keys": 49,
+      "new_keys": [
+        "ui.hub.teams.recency.created",
+        "ui.hub.teams.recency.updated"
+      ],
+      "sha256": {
+        "en": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+        "zh-CN": "de8eefc67e19fc55f9f12be3ec855c4d5613789609fabbe2aea6af27524d4a32"
+      },
+      "context_sha256": "b062f0ca8aed037084233730702e41c6f3ef09aa39bed405e007466716c711a0",
+      "dimensions": "MECHANICAL PASS for all 49 keys. ACCURACY PASS: recency.created says 创建 and recency.updated says 更新, so a creation date is never labelled as an update and the two stay distinguishable. IDIOM PASS: the same time-first construction as its hub-card sibling and as shipped {when}可用. TERMINOLOGY: consistent with this file's 创建于/更新于 and with the 中心 usage it already ships. FIT: 10 columns each in a single truncated provenance line.",
+      "findings": []
+    },
+    "ui.common.actions": {
+      "namespace": "ui.common.actions",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean: 0 blocker, 0 major, 0 minor, 0 nit over 1 new key (whole file 51 keys checked mechanically)",
+      "keys_audited": 1,
+      "whole_file_keys": 51,
+      "new_keys": [
+        "ui.common.actions.retrying"
+      ],
+      "sha256": {
+        "en": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9",
+        "zh-CN": "fc8a26dd106a6ea3ebb9aca6c1939085bac8dc975eadd9ef2d5888ddc5874717"
+      },
+      "context_sha256": "48756cd31d4abbec5d56b3648ffb2fefe578c074645386480c91b4921accf321",
+      "dimensions": "MECHANICAL PASS for all 51 keys. ACCURACY PASS: 正在重试…… states progress only - no success, no failure, no new instruction - and is the in-flight arm of retry (重试) and retry_again (再试一次). IDIOM PASS: terse, verb-first, ellipsis pair. TERMINOLOGY consistent with both shipped retry keys. FIT: 10 columns on a text button that grows; no truncation, and the flex-wrap error row wraps rather than clips.",
+      "findings": []
+    }
+  }
+}
