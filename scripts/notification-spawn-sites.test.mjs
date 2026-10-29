@@ -152,6 +152,20 @@ function findSpawnSites() {
 		if (!existsSync(dir)) continue;
 		for (const entry of readdirSync(dir, { withFileTypes: true })) {
 			if (!entry.isFile()) continue;
+			/*
+			 * A GENERATED BUNDLE IS NOT A CALL SITE. `node --test` runs test files in
+			 * PARALLEL inside one checkout, and the suites that paint a page transpile
+			 * it to a throwaway `scripts/_<name>-<pid>.mjs` for that one file to import.
+			 * While it exists it is a faithful copy of every module that page pulls in
+			 * - including, since the Team Bridge composer adoption, the chat composer's
+			 * chain - so scanning it reports spawn sites no source file contains and
+			 * `Desktop Tests` goes red on timing alone. `scripts/_*` is this
+			 * repository's disposable prefix (`.gitignore` carries `_*.bundle.*` and
+			 * no tracked file in `scripts/` or `bin/` starts with it), so skipping the
+			 * prefix is what keeps the scan a statement about SOURCE. A real spawn site
+			 * that is genuinely gone is still caught by the reach assertions below.
+			 */
+			if (entry.name.startsWith("_")) continue;
 			if (!/\.(mjs|js|cjs)$/.test(entry.name)) continue;
 			const file = join(dir, entry.name);
 			const raw = readScannedFile(file);
