@@ -325,7 +325,16 @@ function FirstSendPage({
 					</Button>
 				</div>
 			)}
-			<div className="min-h-0 flex-1">
+			{/*
+			 * A FLEX COLUMN, NOT A BLOCK (code review round 3, R3-1). The page root
+			 * is itself a flex column and relies on being a flex ITEM to take its
+			 * height from this wrapper; a `display:block` parent makes that `flex-1`
+			 * inert, so the thread section stayed content-sized, the cap moved with
+			 * every keystroke, and `overflow-hidden` clipped the page instead of the
+			 * timeline yielding - which is the defect the bounded frame exists to
+			 * remove.
+			 */}
+			<div className="flex min-h-0 flex-1 flex-col">
 				<TeamBridgePageView
 					selfAccountId={self}
 					selfName="Ada"

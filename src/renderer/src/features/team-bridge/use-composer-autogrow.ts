@@ -194,6 +194,19 @@ export function useComposerAutoGrow(
 		measure();
 	});
 
+	/* A COLUMN RESIZE IS SAFE TO FOLLOW (code review round 3, R3-2): the column
+	 * is the one quantity growth does not move, so re-measuring when the window
+	 * resizes or the shell chrome appears cannot start the loop the timeline-based
+	 * cap had. Without it, a resize kept a cap measured at the old height until
+	 * the next keystroke. */
+	useEffect(() => {
+		const pane = columnRef?.current;
+		if (!pane || typeof ResizeObserver !== "function") return;
+		const observer = new ResizeObserver(() => measure());
+		observer.observe(pane);
+		return () => observer.disconnect();
+	}, [columnRef, measure]);
+
 	/*
 	 * A WIDTH CHANGE RE-WRAPS THE TEXT, and the cap is in `px`: a draft measured
 	 * in a wide window is clipped, and clipped behind `overflow-y: hidden`, after
