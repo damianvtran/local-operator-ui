@@ -19,7 +19,7 @@
 	"ui.settings.shortcuts.capture.needs_modifier_mac": "快捷键需要包含⌘或Ctrl。",
 	"ui.settings.shortcuts.capture.unbindable": "此按键无法绑定。",
 	"ui.settings.shortcuts.category.panels": "面板",
-	"ui.settings.shortcuts.keyboard_shortcuts_section.browser_shortcuts_answer_only_while_the_browser_has_focus": "浏览器自带的快捷键仅在浏览器面板或其内的页面获得焦点时生效：新建标签页、重新打开标签页、重新加载、地址栏以及切换标签页。这是有意为之：应用不能把这些快捷键从界面的其他部分夺走。要使用其中之一，请先聚焦浏览器。",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.browser_shortcuts_answer_only_while_the_browser_has_focus": "浏览器自带的快捷键仅在浏览器窗格或其内的页面获得焦点时生效：新建标签页、重新打开标签页、重新加载、地址栏以及切换标签页。这是有意为之：应用不能把这些快捷键从界面的其他部分夺走。要使用其中之一，请先聚焦浏览器。",
 	"ui.settings.shortcuts.reserved.archive_chat": "保留：归档当前对话。",
 	"ui.settings.shortcuts.reserved.browser_address": "保留：聚焦浏览器地址栏。请先聚焦浏览器。",
 	"ui.settings.shortcuts.reserved.browser_back": "保留：在浏览器中后退，或在浏览器外的对话间后退。",

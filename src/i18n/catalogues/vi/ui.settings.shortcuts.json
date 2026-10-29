@@ -19,7 +19,7 @@
 	"ui.settings.shortcuts.capture.needs_modifier_mac": "Phím tắt cần ⌘ hoặc Ctrl.",
 	"ui.settings.shortcuts.capture.unbindable": "Không thể gán phím đó.",
 	"ui.settings.shortcuts.category.panels": "Bảng",
-	"ui.settings.shortcuts.keyboard_shortcuts_section.browser_shortcuts_answer_only_while_the_browser_has_focus": "Các phím tắt riêng của trình duyệt chỉ hoạt động khi bảng trình duyệt hoặc một trang bên trong đó đang được chọn: thẻ mới, mở lại thẻ, tải lại, thanh địa chỉ và chuyển thẻ. Đây là chủ ý: ứng dụng không được lấy những tổ hợp phím đó khỏi phần còn lại của giao diện. Để dùng một phím tắt như vậy, hãy chọn trình duyệt trước.",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.browser_shortcuts_answer_only_while_the_browser_has_focus": "Các phím tắt riêng của trình duyệt chỉ hoạt động khi ngăn trình duyệt hoặc một trang bên trong đó đang được chọn: thẻ mới, mở lại thẻ, tải lại, thanh địa chỉ và chuyển thẻ. Đây là chủ ý: ứng dụng không được lấy những tổ hợp phím đó khỏi phần còn lại của giao diện. Để dùng một phím tắt như vậy, hãy chọn trình duyệt trước.",
 	"ui.settings.shortcuts.reserved.archive_chat": "Dành riêng: lưu trữ cuộc trò chuyện đang chọn.",
 	"ui.settings.shortcuts.reserved.browser_address": "Dành riêng: chọn thanh địa chỉ trình duyệt. Hãy chọn trình duyệt trước.",
 	"ui.settings.shortcuts.reserved.browser_back": "Dành riêng: quay lại trong trình duyệt hoặc giữa các cuộc trò chuyện khi ở ngoài trình duyệt.",
