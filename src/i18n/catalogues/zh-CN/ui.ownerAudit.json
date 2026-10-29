@@ -11,6 +11,7 @@
 	"ui.ownerAudit.agent": "首席助理",
 	"ui.ownerAudit.more": "加载更多",
 	"ui.ownerAudit.older": "加载较早的消息",
+	"ui.ownerAudit.page_cutoff": "较早的消息尚未显示。加载较早的消息即可阅读此前的内容。",
 	"ui.ownerAudit.admitted": "已被你的首席助理接收",
 	"ui.ownerAudit.rejected": "已被你的首席助理的筛选拒绝",
 	"ui.ownerAudit.not_screened": "未经你的首席助理筛选",
@@ -22,9 +23,10 @@
 	"ui.ownerAudit.unknown_sender": "未知发送者",
 	"ui.ownerAudit.reveal": "显示消息正文",
 	"ui.ownerAudit.active": "你的首席助理仍是成员。",
-	"ui.ownerAudit.left": "你的首席助理已离开此对话；此后的消息不在审计时段内。",
-	"ui.ownerAudit.removed": "你的首席助理已被移除；此后的消息不在审计时段内。",
-	"ui.ownerAudit.disclosure": "仅你作为此智能体的所有者可见；其他成员可看到已启用所有者审计。",
-	"ui.ownerAudit.viewer": "智能体所有者 {name} 也可以查看。",
+	"ui.ownerAudit.left": "审计到此结束。你的首席助理已离开此对话，因此之后的消息不包含在内。",
+	"ui.ownerAudit.removed": "审计到此结束。你的首席助理已被移出此对话，因此之后的消息不包含在内。",
+	"ui.ownerAudit.window_unconfirmed": "此审计在何处结束尚不明确。无法确认你的首席助理在此对话中的成员身份。",
+	"ui.ownerAudit.disclosure": "你可以阅读此审计，因为你是它所涵盖的首席助理的所有者。其他成员会被告知，智能体所有者可以审计此对话。",
+	"ui.ownerAudit.viewers_label": "也可查看者",
 	"ui.ownerAudit.replies": "阅读讨论串回复"
 }

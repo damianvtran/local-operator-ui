@@ -280,6 +280,46 @@ function AuditMessage({
 	);
 }
 
+/**
+ * THE AUDIT WINDOW'S END, where a reader checks whether there is more.
+ *
+ * A TRUNCATED HISTORY THAT READS AS A COMPLETE ONE is the failure this surface
+ * exists to prevent, and it was the shape of design review round 1, D3: the
+ * membership sentence was the third of four identical 12px `ink-muted` lines in
+ * the header, the same size and grey as the standing disclosure, so the one line
+ * saying "this list is incomplete" was indistinguishable from boilerplate. It
+ * closes the message list now, at the point where a reader looks for the next
+ * message and finds none, and the cut-off cases carry a `hairline` rule and the
+ * reading ink (`text-sm text-ink`) so they cannot be skimmed as metadata. The
+ * open-window case stays quiet (`text-meta text-ink-dim`): there is nothing cut
+ * off to notice, and a complete history needs no alarm.
+ *
+ * The unknown case takes the CUT-OFF treatment, not the quiet one: the hub's
+ * vocabulary is additive, so an unrecognised membership state means this client
+ * cannot say whether the list ends where the conversation does, and the safe
+ * error is to look uncertain rather than complete.
+ */
+function OwnerAuditWindowEnd({
+	conversation,
+}: { conversation: OwnerAuditConversation }) {
+	useI18nLocale();
+	const membership = conversation.agent.state;
+	if (membership === "active") {
+		return (
+			<p className="mt-4 text-meta text-ink-dim">{t("ui.ownerAudit.active")}</p>
+		);
+	}
+	return (
+		<p className="mt-4 border-hairline border-t pt-3 text-ink text-sm">
+			{membership === "left"
+				? t("ui.ownerAudit.left")
+				: membership === "removed"
+					? t("ui.ownerAudit.removed")
+					: t("ui.ownerAudit.window_unconfirmed")}
+		</p>
+	);
+}
+
 export function OwnerAuditPanelView({
 	conversation,
 	messages,
@@ -289,6 +329,7 @@ export function OwnerAuditPanelView({
 	loadingMore = false,
 	loadMore,
 	renderReplies,
+	readerAccountId,
 }: {
 	conversation: OwnerAuditConversation;
 	messages: OwnerAuditMessage[];
@@ -298,16 +339,27 @@ export function OwnerAuditPanelView({
 	loadingMore?: boolean;
 	loadMore?: () => void;
 	renderReplies?: (message: OwnerAuditMessage) => ReactNode;
+	/**
+	 * The signed-in account reading this panel, so the viewer list can name OTHER
+	 * agent owners without listing the reader as an additional reader of their own
+	 * audit (design review round 1, D2). Required rather than optional: with no
+	 * reader the list is unanswerable, and an optional prop would let the
+	 * contradiction back in silently at the next call site.
+	 */
+	readerAccountId: string;
 }) {
 	useI18nLocale();
-	const membership =
-		conversation.agent.state === "active"
-			? "ui.ownerAudit.active"
-			: conversation.agent.state === "left"
-				? "ui.ownerAudit.left"
-				: conversation.agent.state === "removed"
-					? "ui.ownerAudit.removed"
-					: "ui.ownerAudit.unknown_status";
+	/*
+	 * WHO ELSE CAN READ THIS. `viewers` is the server's own answer, one entry per
+	 * agent owner whose agent is (or was) in the conversation. It includes the
+	 * caller, so rendering it verbatim listed the reader as a second reader:
+	 * "Visible only to you" followed by "Also visible to Damian Tran" (design
+	 * review round 1, D2). The reader is filtered out; the label above the names
+	 * carries no placeholder, so no locale has to inflect a person's name.
+	 */
+	const otherViewers = (conversation.viewers ?? []).filter(
+		(viewer) => viewer.account_id !== readerAccountId,
+	);
 	return (
 		<section
 			className="flex min-h-0 flex-1 flex-col"
@@ -318,20 +370,23 @@ export function OwnerAuditPanelView({
 					{title(conversation)}
 				</h2>
 				<p className="text-sm text-ink-muted">{t("ui.ownerAudit.read_only")}</p>
-				<p className="text-xs text-ink-muted">{t(membership)}</p>
 				<p className="text-xs text-ink-muted">
 					{t("ui.ownerAudit.disclosure")}
 				</p>
-				{conversation.viewers?.map((viewer, index) => (
-					<p
-						key={`${viewer.account_id}:${viewer.agent_member_key}:${index}`}
-						className="text-xs text-ink-muted"
-					>
-						{t("ui.ownerAudit.viewer", {
-							name: viewer.display_label || t("ui.ownerAudit.unknown_sender"),
-						})}
-					</p>
-				))}
+				{otherViewers.length > 0 && (
+					<div className="text-xs text-ink-muted">
+						<p>{t("ui.ownerAudit.viewers_label")}</p>
+						<ul>
+							{otherViewers.map((viewer, index) => (
+								<li
+									key={`${viewer.account_id}:${viewer.agent_member_key}:${index}`}
+								>
+									{viewer.display_label || t("ui.ownerAudit.unknown_sender")}
+								</li>
+							))}
+						</ul>
+					</div>
+				)}
 				{/* One retry per scope: while the body shows AuditFailure, the header's
 				 * Refresh would be a second control for the same refetch. */}
 				{state !== "error" && (
@@ -350,9 +405,18 @@ export function OwnerAuditPanelView({
 				) : (
 					<>
 						{hasMore && (
-							<Button variant="ghost" onClick={loadMore} disabled={loadingMore}>
-								{t("ui.ownerAudit.older")}
-							</Button>
+							<div className="pb-2">
+								<p className="text-meta text-ink-dim">
+									{t("ui.ownerAudit.page_cutoff")}
+								</p>
+								<Button
+									variant="ghost"
+									onClick={loadMore}
+									disabled={loadingMore}
+								>
+									{t("ui.ownerAudit.older")}
+								</Button>
+							</div>
 						)}
 						{messages.length === 0 && (
 							<p className="text-sm text-ink-muted">
@@ -367,6 +431,7 @@ export function OwnerAuditPanelView({
 								renderReplies={renderReplies}
 							/>
 						))}
+						<OwnerAuditWindowEnd conversation={conversation} />
 					</>
 				)}
 			</div>
@@ -456,6 +521,7 @@ function OwnerAuditPanel({
 					root={message}
 				/>
 			)}
+			readerAccountId={scope.accountId}
 		/>
 	);
 }

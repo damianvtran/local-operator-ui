@@ -83,6 +83,13 @@
 		"placeholders": {},
 		"note": "Audited messages page backwards (newest first), so this button sits ABOVE the list and loads OLDER messages. Use the locale's word for older/earlier rather than \"previous page\": the reader is moving in time, not through numbered pages."
 	},
+	"ui.ownerAudit.page_cutoff": {
+		"role": "standing line above the message list, shown only while older pages are still unread",
+		"tone": "factual, quiet, no alarm; this is a boundary, not a failure",
+		"length": "Two short sentences. Sits directly above the ui.ownerAudit.older button in the panel body, never in the header.",
+		"placeholders": {},
+		"note": "This sentence states that the history on screen is a bounded page rather than the whole conversation, and names the control that continues it. It must not read as an error, a refusal or a warning, and must not promise messages that do not exist: the reader really can load more, with the button immediately beside this line. The button repeats the second sentence's action on purpose (design review round 1, D3): a cut-off the reader cannot see is how a partial history gets read as a complete one. Keep the second sentence's verb matching the ui.ownerAudit.older button in the same locale so the pair reads as one instruction."
+	},
 	"ui.ownerAudit.admitted": {
 		"role": "per-message screening verdict chip",
 		"tone": "neutral metadata; not a compliment, not a permission granted to the reader",
@@ -154,41 +161,46 @@
 		"note": "The summary of a <details> element that hides a rejected or unscreened body until the reader asks for it — collapsed by default so a reader is never surprised by text the agent's screening refused, and because such text must never render as rich content (no previews, no remote images). This is a reading affordance, so no warning vocabulary: no \"reveal unsafe content\", no \"view anyway\", no warning symbol."
 	},
 	"ui.ownerAudit.active": {
-		"role": "agent membership state in the audit panel header",
+		"role": "closing line at the end of the message list when the audit window is still open",
 		"tone": "plain status, factual",
 		"length": "Short sentence.",
 		"placeholders": {},
-		"note": "The agent is still a member, so the audit window is open and future messages will appear. Present tense and present fact — do not phrase it as a promise about future delivery."
+		"note": "The last line of the message list, where a reader checks whether there is more. The agent is still a member, so the window is open and nothing has been cut off at the far end; this line is the quiet counterpart of ui.ownerAudit.left and ui.ownerAudit.removed, which carry the cut-off notice. Present tense and present fact — do not phrase it as a promise about future delivery, and do not add a word like \"complete\": older pages may still be unloaded (ui.ownerAudit.page_cutoff)."
 	},
 	"ui.ownerAudit.left": {
-		"role": "membership state for a conversation the agent left",
-		"tone": "neutral, factual explanation",
-		"length": "One sentence, two clauses.",
+		"role": "cut-off notice closing the message list for a conversation the agent left",
+		"tone": "neutral, factual; a boundary the reader must not miss, not an error",
+		"length": "Two short sentences.",
 		"placeholders": {},
-		"note": "The second clause explains why the reader may see fewer messages than the conversation holds; keep both halves, they answer different questions. The agent left, so the audit window closed where it left and later messages are not auditable — the owner's agent never had access to them either, so neither does the owner. Do NOT use a word that implies the conversation was archived, ended, or that messages were deleted: the conversation continues without the agent. Same \"audit window\" term as ui.ownerAudit.empty_history."
+		"note": "This is the ONLY thing on screen telling the reader the history is truncated, and it is rendered as a distinct notice at the end of the messages rather than as a line of header boilerplate (design review round 1, D3). The first sentence states the boundary; the second says what was cut and why. The agent left, so the audit window closed where it left and later messages are not auditable — the owner's agent never had access to them either, so neither does the owner. Do NOT promise the reader a way to load the later messages, and do NOT use a word that implies the conversation was archived, ended, or that messages were deleted: the conversation continues without the agent. Keep \"audit\" as the same term used elsewhere in this namespace."
 	},
 	"ui.ownerAudit.removed": {
-		"role": "membership state for a conversation the chief of staff was removed from",
-		"tone": "neutral, factual explanation, no blame",
-		"length": "One sentence, two clauses.",
+		"role": "cut-off notice closing the message list for a conversation the chief of staff was removed from",
+		"tone": "neutral, factual, no blame; a boundary the reader must not miss, not an error",
+		"length": "Two short sentences.",
 		"placeholders": {},
-		"note": "\"Removed\" is passive on purpose: the app cannot say who removed the agent or why, and must not imply the owner did it or that anyone was at fault. Second clause carries the same consequence as ui.ownerAudit.left — later messages are outside the audit window — so use the same wording for that half in each locale."
+		"note": "Same placement and job as ui.ownerAudit.left: the distinct notice at the END of the messages, and the only statement that this history is truncated. \"Removed\" is passive on purpose: the app cannot say who removed the agent or why, and must not imply the owner did it or that anyone was at fault. The second sentence carries the same consequence as ui.ownerAudit.left — later messages are not in the audit — so use the same wording for that half in each locale."
+	},
+	"ui.ownerAudit.window_unconfirmed": {
+		"role": "cut-off notice closing the message list when the agent's membership state is unknown",
+		"tone": "neutral, factual; states an uncertainty without alarm",
+		"length": "Two short sentences.",
+		"placeholders": {},
+		"note": "The conservative fallback for a membership state this client does not recognise (the hub's vocabulary is additive). It wears the same distinct notice as ui.ownerAudit.left and ui.ownerAudit.removed, because the one thing the reader must not do is read a possibly truncated history as a complete one. Say plainly that the end of the list cannot be confirmed; do not guess a cause, do not blame the server, and do not use \"error\" or \"failed\"."
 	},
 	"ui.ownerAudit.disclosure": {
-		"role": "disclosure banner in the audit panel header",
+		"role": "disclosure line in the audit panel header, above the viewer list",
 		"tone": "plain, unapologetic, no legal register",
-		"length": "One sentence, two clauses; may wrap to two lines.",
+		"length": "Two sentences; may wrap to three lines.",
 		"placeholders": {},
-		"note": "The disclosure the contract requires to exist for every participant, shown here to the owner so they know what others already see: the owner can read this conversation's messages to their agent, and the other members see that an agent owner is auditing. Two facts, both needed — do not shorten this into \"you can read this\" alone. Avoid \"monitoring\", \"surveillance\", \"compliance\", \"retention\" and any word that reads as legal or covert: this is disclosed, disclosed to be read, and it changes no consent. \"This agent's owner\" keeps the owner/agent distinction of the whole surface."
+		"note": "The disclosure the contract requires for every participant, shown here to the owner so they know the rule they are reading under. Two facts, both needed: (1) the reader's own basis — they own the chief of staff this audit covers; (2) what everyone else is told — that agent owners can audit the conversation. It must NOT claim the reader is the only one who can read this: other agent owners can, and the ui.ownerAudit.viewers_label list directly below names them (design review round 1, D2). \"The chief of staff it covers\" is deliberate: the agent may have left or been removed, and the audit still covers the window it was in. Avoid \"monitoring\", \"surveillance\", \"compliance\", \"retention\" and any word that reads as legal or covert: this is disclosed, disclosed to be read, and it changes no consent."
 	},
-	"ui.ownerAudit.viewer": {
-		"role": "one line per person who can audit the open conversation",
-		"tone": "neutral statement of fact",
-		"length": "One short sentence; may wrap.",
-		"placeholders": {
-			"{name}": "A person's display name as sent by the server; do not translate, reorder inside the placeholder, or add punctuation inside it. If the name is missing, ui.ownerAudit.unknown_sender fills the slot."
-		},
-		"note": "Rendered once per entry in the server-projected viewers list, so several can appear together: they name other people (not the current reader) whose agent is in this conversation and whose owner can therefore audit it. \"Also visible to {name}\" says the same read reaches that person as reaches you — keep it a disclosure, not a warning, and never suggest the viewer has access beyond this conversation. \"An agent owner\" is the role label; it must not be translated as a job title."
+	"ui.ownerAudit.viewers_label": {
+		"role": "label introducing the list of other agent owners who can audit this conversation",
+		"tone": "neutral, quiet metadata",
+		"length": "Three words at most; it is a label over a list of names, not a sentence.",
+		"placeholders": {},
+		"note": "A LABEL, with the names rendered below it as data straight from the server: there is no placeholder here, so no translator has to inflect or gender a person's name, which is exactly what the previous one-line-per-viewer form could not survive in seven locales (design review round 1, D2). It carries \"also\", because the reader's own access is stated by ui.ownerAudit.disclosure directly above; the current reader is excluded from this list, so the names are always other people. No colon and no trailing punctuation: the list is a separate element. \"Readable\" here means able to read this audit, not able to read the conversation in the messaging client."
 	},
 	"ui.ownerAudit.replies": {
 		"role": "summary that opens a message's thread replies inside the audit",

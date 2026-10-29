@@ -6840,6 +6840,7 @@ export type MessageParams = {
 	"ui.ownerAudit.not_screened": undefined;
 	"ui.ownerAudit.older": undefined;
 	"ui.ownerAudit.own": undefined;
+	"ui.ownerAudit.page_cutoff": undefined;
 	"ui.ownerAudit.read_only": undefined;
 	"ui.ownerAudit.refresh": undefined;
 	"ui.ownerAudit.rejected": undefined;
@@ -6851,7 +6852,8 @@ export type MessageParams = {
 	"ui.ownerAudit.unknown_sender": undefined;
 	"ui.ownerAudit.unknown_status": undefined;
 	"ui.ownerAudit.unnamed": undefined;
-	"ui.ownerAudit.viewer": { name: string };
+	"ui.ownerAudit.viewers_label": undefined;
+	"ui.ownerAudit.window_unconfirmed": undefined;
 	"ui.presence.days_ago": { count: number };
 	"ui.presence.device_link_down": { reason: string; age: string };
 	"ui.presence.device_unreachable": undefined;

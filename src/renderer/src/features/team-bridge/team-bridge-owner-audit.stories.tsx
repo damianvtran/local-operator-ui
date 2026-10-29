@@ -33,6 +33,9 @@ import {
  */
 
 const AGENT = "acct_5b8e0c7a1d23";
+/* The second agent owner's own agent, so the viewer list can name someone
+ * other than the reader. */
+const OTHER_AGENT = "acct_2f9d1b7c4e60";
 const AGENT_LABEL = "Aida";
 const OWNER = "acct_9f4c1e2d3a4b";
 const TENANT = "org_a1b2c3";
@@ -42,6 +45,16 @@ const viewer = {
 	display_label: "Damian Tran",
 	reason: "agent_owner",
 	agent_member_key: `a:bep_${AGENT}`,
+};
+/* A SECOND agent owner, because the reader is deliberately not the only one who
+ * can read this conversation and the header must say so (design review round 1,
+ * D2). The panel filters the reader out of this list, so without another entry
+ * the labelled list has nothing to show and the frame would hide the fix. */
+const otherOwner = {
+	account_id: "acct_7d1c40b2e881",
+	display_label: "Priya Shah",
+	reason: "agent_owner",
+	agent_member_key: `a:bep_${OTHER_AGENT}`,
 };
 
 const dm: OwnerAuditConversation = {
@@ -74,7 +87,7 @@ const dm: OwnerAuditConversation = {
 		},
 	],
 	member_count: 2,
-	viewers: [viewer],
+	viewers: [viewer, otherOwner],
 	agent: {
 		account_id: AGENT,
 		display_label: AGENT_LABEL,
@@ -106,7 +119,7 @@ const channel: OwnerAuditConversation = {
 		},
 	],
 	member_count: 4,
-	viewers: [viewer],
+	viewers: [viewer, otherOwner],
 	agent: {
 		account_id: AGENT,
 		display_label: AGENT_LABEL,
@@ -203,11 +216,17 @@ function Section({
 	conversations,
 	messages: rows,
 	selected,
+	readerAccountId,
+	hasMore,
 }: {
 	state: State;
 	conversations: OwnerAuditConversation[];
 	messages: OwnerAuditMessage[];
 	selected?: OwnerAuditConversation;
+	/** The signed-in reader, so the viewer list names the OTHER agent owners and
+	 * never lists the reader as a second reader of their own audit (D2). */
+	readerAccountId: string;
+	hasMore?: boolean;
 }) {
 	const noop = () => {};
 	return (
@@ -240,6 +259,8 @@ function Section({
 						messages={rows}
 						state={state}
 						retry={noop}
+						hasMore={hasMore}
+						readerAccountId={readerAccountId}
 					/>
 				</main>
 			)}
@@ -256,6 +277,7 @@ const meta = {
 		conversations: [channel, dm],
 		messages,
 		selected: dm,
+		readerAccountId: OWNER,
 	},
 } satisfies Meta<typeof Section>;
 
@@ -283,8 +305,16 @@ export const ReadFailed: Story = {
 	args: { state: "error", messages: [], selected: undefined },
 };
 
-/** The closed-window conversation: the agent was removed, so the header explains
- * why later messages are outside the audit window. */
+/** The closed-window conversation: the agent was removed, so the audit closes
+ * with a cut-off notice at the end of the message list saying what was cut and
+ * why (design review round 1, D3). */
 export const ClosedWindow: Story = {
 	args: { selected: channel, messages: messages.slice(0, 2) },
+};
+
+/** A bounded page: older messages are still unloaded, so the list says so beside
+ * the control that continues it rather than letting the reader take the shown
+ * page for the whole conversation (design review round 1, D3). */
+export const OlderPageAvailable: Story = {
+	args: { hasMore: true },
 };

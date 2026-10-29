@@ -51195,8 +51195,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb",
-			"target_sha256": "600eca2119f9911e8febed0361c9848e20a2f48f044ff5d15ea172a1d9923ef8",
+			"source_sha256": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1",
+			"target_sha256": "ff52aea829176e4d8c38b10d92dbcce0199d72eda3b26434a890aae94ae6aed2",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "not supplied",
@@ -51206,29 +51206,55 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-28",
-					"result": "clean",
-					"instance": "b393dc8cd01c-owneraudit-fr",
+					"model": "radient/auto",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "tb1482r2-fr-d643fd",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/b393dc8cd01c-owneraudit-fr.json",
-					"receipt_sha256": "28520ed68f57c86d954265b4c6f63c2f65d69563f4acc928e80c1382184b06a8",
-					"scope": "Full new namespace, 28 keys, at a975a0b4ec + auditor fixes.",
-					"note": "Fixed by auditor: I18N-fr-1. Evidence: i18n/audits/evidence/fr/ui.ownerAudit/teambridge-owner-audit-audit-b393dc8cd01c/record.json"
+					"receipt": "i18n/receipts/tb1482r2-fr-d643fd.json",
+					"receipt_sha256": "4e5bb3a082da9dde4e903aba5836d851dd337faf82c245c435929679a5be69dc",
+					"scope": "Round 2: six changed keys (copy gate for design D2/D3); earlier round out of scope.",
+					"note": "No fixes; two NITs open (stem repetition, membership noun). Evidence: i18n/audits/evidence/fr/ui.ownerAudit/tb1482r2-fr-d643fd/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb",
+					"target_sha256": "600eca2119f9911e8febed0361c9848e20a2f48f044ff5d15ea172a1d9923ef8",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "b393dc8cd01c-owneraudit-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b393dc8cd01c-owneraudit-fr.json",
+							"receipt_sha256": "28520ed68f57c86d954265b4c6f63c2f65d69563f4acc928e80c1382184b06a8",
+							"scope": "Full new namespace, 28 keys, at a975a0b4ec + auditor fixes.",
+							"note": "Fixed by auditor: I18N-fr-1. Evidence: i18n/audits/evidence/fr/ui.ownerAudit/teambridge-owner-audit-audit-b393dc8cd01c/record.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb",
-			"target_sha256": "c3d8f1b791c8b698e8b5566e5c4dbd95b0ed9874cfb1b4972a74f2417733d6d3",
+			"source_sha256": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1",
+			"target_sha256": "16ce57d2ff7c968dee0d20ae6a2767c3e23dd22ec8562f0816528b9e8a64de8b",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "not supplied",
@@ -51238,52 +51264,78 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-28",
+					"model": "radient/auto",
+					"date": "2026-10-29",
 					"result": "clean-with-findings",
-					"instance": "b393dc8cd01c-owneraudit-es",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 1,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/b393dc8cd01c-owneraudit-es.json",
-					"receipt_sha256": "3eec3bf1a12e6f1e71f487f3c52f6aef2400e1df12c0514d577cc55a8833ed6e",
-					"scope": "Full new namespace, 28 keys, at a975a0b4ec + auditor fixes.",
-					"note": "Open: I18N-es-1. Evidence: i18n/audits/evidence/es/ui.ownerAudit/teambridge-owner-audit-audit-b393dc8cd01c/record.json"
-				}
-			],
-			"status": "audited"
-		},
-		{
-			"locale": "zh-CN",
-			"namespace": "ui.ownerAudit",
-			"source_sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb",
-			"target_sha256": "58757532a2963d24c4b2dfe151ed8ac23bc67481dc174e12631ef5e07763ab48",
-			"translator": {
-				"agent": "i18n-translator",
-				"model": "not supplied",
-				"date": "2026-10-28",
-				"job": "64be94d56ced"
-			},
-			"auditors": [
-				{
-					"agent": "i18n-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-28",
-					"result": "clean",
-					"instance": "9de729bbb191-secondpass-zh-cn",
+					"instance": "tb1482r2-es-51507d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/9de729bbb191-secondpass-zh-cn.json",
-					"receipt_sha256": "f27e3afa63342ec5acc44306e3f59086943f1453623029dca77628274e5c12eb",
-					"scope": "Second independent pass over the auditor-authored zh-CN replacements in ui.ownerAudit (首席助理, 讨论串) plus I18N2-zh-CN-1 (代理 -> 智能体).",
-					"note": "Second pass; 首席助理/讨论串 confirmed shipped; I18N2-zh-CN-1 fixed pre-signature. Evidence: i18n/audits/evidence/zh-CN/ui.ownerAudit/teambridge-owner-audit-secondpass-zh-cn/record.json"
+					"receipt": "i18n/receipts/tb1482r2-es-51507d.json",
+					"receipt_sha256": "34df2fadaf20bf93f78157eec964376290cafcf904c6dd239f7e73aead73dc4f",
+					"scope": "Round 2: six changed keys (copy gate for design D2/D3); earlier round out of scope.",
+					"note": "Two MINORs fixed by auditor (anaphor). Three NITs open. Evidence: i18n/audits/evidence/es/ui.ownerAudit/tb1482r2-es-51507d/record.json"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb",
+					"target_sha256": "c3d8f1b791c8b698e8b5566e5c4dbd95b0ed9874cfb1b4972a74f2417733d6d3",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "b393dc8cd01c-owneraudit-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b393dc8cd01c-owneraudit-es.json",
+							"receipt_sha256": "3eec3bf1a12e6f1e71f487f3c52f6aef2400e1df12c0514d577cc55a8833ed6e",
+							"scope": "Full new namespace, 28 keys, at a975a0b4ec + auditor fixes.",
+							"note": "Open: I18N-es-1. Evidence: i18n/audits/evidence/es/ui.ownerAudit/teambridge-owner-audit-audit-b393dc8cd01c/record.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.ownerAudit",
+			"source_sha256": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1",
+			"target_sha256": "31b220b56fb05d78dd2edd399fee6ca8c2c7806c2c83cc24ceebbe7bddee7c19",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "not supplied",
+				"date": "2026-10-28",
+				"job": "64be94d56ced"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "tb1482r2-zh-cn-007251",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 3
+					},
+					"receipt": "i18n/receipts/tb1482r2-zh-cn-007251.json",
+					"receipt_sha256": "20655f76eb7b5f5ebac6d52a6184731ffa6bc5523b57e7dc76c6792a8b201864",
+					"scope": "Round 2: six changed keys (copy gate for design D2/D3); earlier round out of scope.",
+					"note": "One MINOR fixed by auditor (extent read as a timestamp); three NITs open. Evidence: i18n/audits/evidence/zh-CN/ui.ownerAudit/tb1482r2-zh-cn-007251/record.json"
 				}
 			],
 			"status": "audited",
@@ -51311,14 +51363,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb",
+					"target_sha256": "58757532a2963d24c4b2dfe151ed8ac23bc67481dc174e12631ef5e07763ab48",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "9de729bbb191-secondpass-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/9de729bbb191-secondpass-zh-cn.json",
+							"receipt_sha256": "f27e3afa63342ec5acc44306e3f59086943f1453623029dca77628274e5c12eb",
+							"scope": "Second independent pass over the auditor-authored zh-CN replacements in ui.ownerAudit (首席助理, 讨论串) plus I18N2-zh-CN-1 (代理 -> 智能体).",
+							"note": "Second pass; 首席助理/讨论串 confirmed shipped; I18N2-zh-CN-1 fixed pre-signature. Evidence: i18n/audits/evidence/zh-CN/ui.ownerAudit/teambridge-owner-audit-secondpass-zh-cn/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb",
-			"target_sha256": "24dd4e793a22eb93651a041d926d63d60e664e44739c2c9a558ff49fd2cd1cd2",
+			"source_sha256": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1",
+			"target_sha256": "e1363d77ba02c6247534a85de9fa1c18b97b6728948587a4ae1a31e2ecaeb1aa",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "not supplied",
@@ -51328,29 +51404,55 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-28",
+					"model": "radient/auto",
+					"date": "2026-10-29",
 					"result": "clean-with-findings",
-					"instance": "b393dc8cd01c-owneraudit-ru",
+					"instance": "tb1482r2-ru-1a5a1c",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/b393dc8cd01c-owneraudit-ru.json",
-					"receipt_sha256": "9dec2e6069593f4489787bd8a9791544744ace645b85427d2ddd8abceacbbbf6",
-					"scope": "Full new namespace, 28 keys, at a975a0b4ec + auditor fixes.",
-					"note": "Open: I18N-ru-4. Fixed by auditor: I18N-ru-1, I18N-ru-2, I18N-ru-3. Evidence: i18n/audits/evidence/ru/ui.ownerAudit/teambridge-owner-audit-audit-b393dc8cd01c/record.json"
+					"receipt": "i18n/receipts/tb1482r2-ru-1a5a1c.json",
+					"receipt_sha256": "fed872c4cc0ed76b70f163b03e3175b18d169f1f32e4292b8b62f5af1377a3bb",
+					"scope": "Round 2: six changed keys (copy gate for design D2/D3); earlier round out of scope.",
+					"note": "Two MAJORs and one MINOR fixed by auditor (pronoun binding, collocation); one NIT open. Evidence: i18n/audits/evidence/ru/ui.ownerAudit/tb1482r2-ru-1a5a1c/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb",
+					"target_sha256": "24dd4e793a22eb93651a041d926d63d60e664e44739c2c9a558ff49fd2cd1cd2",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "b393dc8cd01c-owneraudit-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/b393dc8cd01c-owneraudit-ru.json",
+							"receipt_sha256": "9dec2e6069593f4489787bd8a9791544744ace645b85427d2ddd8abceacbbbf6",
+							"scope": "Full new namespace, 28 keys, at a975a0b4ec + auditor fixes.",
+							"note": "Open: I18N-ru-4. Fixed by auditor: I18N-ru-1, I18N-ru-2, I18N-ru-3. Evidence: i18n/audits/evidence/ru/ui.ownerAudit/teambridge-owner-audit-audit-b393dc8cd01c/record.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb",
-			"target_sha256": "df9a9a9536d3d428dfc24ec2b0ec7d6c579a84aa2ebc03d2796801fe507cb096",
+			"source_sha256": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1",
+			"target_sha256": "2c1973082305830137de0577d4704c6549ee6943a6b5d3f204a3d52042e686b4",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "not supplied",
@@ -51360,20 +51462,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-28",
-					"result": "clean",
-					"instance": "9de729bbb191-secondpass-vi",
+					"model": "radient/auto",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "tb1482r2-vi-168d2d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/9de729bbb191-secondpass-vi.json",
-					"receipt_sha256": "f4d176d1a97f090552e60d0bb132fa7c49275fae4571861e178a5fa53fb5a655",
-					"scope": "Second independent pass over the auditor-authored vi replacements in ui.ownerAudit (the four corrupted words, chánh văn phòng, tác nhân, luồng) plus I18N2-vi-1 and I18N2-vi-2.",
-					"note": "Second pass; corruption fix and shipped terms confirmed; I18N2-vi-1/vi-2 fixed pre-signature. Evidence: i18n/audits/evidence/vi/ui.ownerAudit/teambridge-owner-audit-secondpass-vi/record.json"
+					"receipt": "i18n/receipts/tb1482r2-vi-168d2d.json",
+					"receipt_sha256": "037c426e925eb6a349379ee5225e9b45c0e30d7049505b0c3243732d38e7eb3c",
+					"scope": "Round 2: six changed keys (copy gate for design D2/D3); earlier round out of scope.",
+					"note": "Two MINORs fixed by auditor (pronoun referent); two NITs open. Evidence: i18n/audits/evidence/vi/ui.ownerAudit/tb1482r2-vi-168d2d/record.json"
 				}
 			],
 			"status": "audited",
@@ -51401,14 +51503,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb",
+					"target_sha256": "df9a9a9536d3d428dfc24ec2b0ec7d6c579a84aa2ebc03d2796801fe507cb096",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "9de729bbb191-secondpass-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/9de729bbb191-secondpass-vi.json",
+							"receipt_sha256": "f4d176d1a97f090552e60d0bb132fa7c49275fae4571861e178a5fa53fb5a655",
+							"scope": "Second independent pass over the auditor-authored vi replacements in ui.ownerAudit (the four corrupted words, chánh văn phòng, tác nhân, luồng) plus I18N2-vi-1 and I18N2-vi-2.",
+							"note": "Second pass; corruption fix and shipped terms confirmed; I18N2-vi-1/vi-2 fixed pre-signature. Evidence: i18n/audits/evidence/vi/ui.ownerAudit/teambridge-owner-audit-secondpass-vi/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb",
-			"target_sha256": "8e330a5e59bddcbd896ca8f1a46482ed2d2f87007eadbbf20cc7a44a175f44b9",
+			"source_sha256": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1",
+			"target_sha256": "b9e13f6260f8063fed840d1adb0ea7ce00aa74b32b70b0965f4e83a7eae04a17",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "not supplied",
@@ -51418,29 +51544,55 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-28",
-					"result": "clean",
-					"instance": "b393dc8cd01c-owneraudit-ur",
+					"model": "radient/auto",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "tb1482r2-ur-514736",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/b393dc8cd01c-owneraudit-ur.json",
-					"receipt_sha256": "cb8d96d577277a39a09b000c634ca49b8f0010f1194a3d43a13bd040b8af71a8",
-					"scope": "Full new namespace, 28 keys, at a975a0b4ec + auditor fixes.",
-					"note": "Fixed by auditor: I18N-ur-1, I18N-ur-2, I18N-ur-3. Evidence: i18n/audits/evidence/ur/ui.ownerAudit/teambridge-owner-audit-audit-b393dc8cd01c/record.json"
+					"receipt": "i18n/receipts/tb1482r2-ur-514736.json",
+					"receipt_sha256": "b71e411718d410ad1467d15e0aab749fddec43ef2e702fc0ea7b474f144a20b0",
+					"scope": "Round 2: six changed keys (copy gate for design D2/D3); earlier round out of scope.",
+					"note": "Two MINORs fixed by auditor (label subject, relative order); one NIT open. Evidence: i18n/audits/evidence/ur/ui.ownerAudit/tb1482r2-ur-514736/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb",
+					"target_sha256": "8e330a5e59bddcbd896ca8f1a46482ed2d2f87007eadbbf20cc7a44a175f44b9",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "b393dc8cd01c-owneraudit-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b393dc8cd01c-owneraudit-ur.json",
+							"receipt_sha256": "cb8d96d577277a39a09b000c634ca49b8f0010f1194a3d43a13bd040b8af71a8",
+							"scope": "Full new namespace, 28 keys, at a975a0b4ec + auditor fixes.",
+							"note": "Fixed by auditor: I18N-ur-1, I18N-ur-2, I18N-ur-3. Evidence: i18n/audits/evidence/ur/ui.ownerAudit/teambridge-owner-audit-audit-b393dc8cd01c/record.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb",
-			"target_sha256": "eec5f2b5be9a88348e741bbdc04c2e9844c035dd7de4e8938b84ccbced081a69",
+			"source_sha256": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1",
+			"target_sha256": "a31b024cca8c2e293940a98ba48cb3d33ede831ef2136d8767e658de89fcc987",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "not supplied",
@@ -51450,23 +51602,49 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-28",
-					"result": "clean",
-					"instance": "b393dc8cd01c-owneraudit-hi",
+					"model": "radient/auto",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "tb1482r2-hi-9351e2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 2,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/b393dc8cd01c-owneraudit-hi.json",
-					"receipt_sha256": "57105c29401bcd38edcde2692620b678ecab091826147f129ad4e5845756a4bc",
-					"scope": "Full new namespace, 28 keys, at a975a0b4ec + auditor fixes.",
-					"note": "Fixed by auditor: I18N-hi-1, I18N-hi-2. Evidence: i18n/audits/evidence/hi/ui.ownerAudit/teambridge-owner-audit-audit-b393dc8cd01c/record.json"
+					"receipt": "i18n/receipts/tb1482r2-hi-9351e2.json",
+					"receipt_sha256": "38168ff99882097f182864d4c56965e9ea8522eaf85fadc525055a4846852f14",
+					"scope": "Round 2: six changed keys (copy gate for design D2/D3); earlier round out of scope.",
+					"note": "Two MINORs left open (viewers_label finite-verb shape; legal register in disclosure), one NIT; auditor ran read-only and proposed one-line fixes. Evidence: i18n/audits/evidence/hi/ui.ownerAudit/tb1482r2-hi-9351e2/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb",
+					"target_sha256": "eec5f2b5be9a88348e741bbdc04c2e9844c035dd7de4e8938b84ccbced081a69",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "b393dc8cd01c-owneraudit-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b393dc8cd01c-owneraudit-hi.json",
+							"receipt_sha256": "57105c29401bcd38edcde2692620b678ecab091826147f129ad4e5845756a4bc",
+							"scope": "Full new namespace, 28 keys, at a975a0b4ec + auditor fixes.",
+							"note": "Fixed by auditor: I18N-hi-1, I18N-hi-2. Evidence: i18n/audits/evidence/hi/ui.ownerAudit/teambridge-owner-audit-audit-b393dc8cd01c/record.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		}
 	]
 }

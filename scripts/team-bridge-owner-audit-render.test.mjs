@@ -453,6 +453,8 @@ const PRIVATE_BYTES = /blob:|https?:\/\/\S+attachment/;
 const CAPABILITY_GATE = /team_bridge_owner_audit\s*\?\?\s*0\)\s*>=\s*1/;
 const RAIL_SITE = /\{ownerAudit\?\.rail\(/;
 const PANEL_SITE = /\{ownerAudit\?\.active\s*\?/;
+/* The exclusivity claim D2 removed: the disclosure must not re-introduce it. */
+const EXCLUSIVITY_CLAIM = /only you/i;
 
 const BUTTON_TEXT = (host, label) =>
 	[...host.querySelectorAll("button")].find(
@@ -660,6 +662,7 @@ const panel = (overrides) =>
 		messages: [],
 		state: "ready",
 		retry: () => {},
+		readerAccountId: OWNER,
 		...overrides,
 	});
 
@@ -878,54 +881,144 @@ test("an unknown verdict and an unknown sender fall back conservatively", async 
 	await view.close();
 });
 
-test("the disclosure banner names the owner and is present for every row", async () => {
-	const view = await renderView(panel({ messages: [admitted] }));
+test("the header states one rule for who can read this, and names the others", async () => {
+	/* The reader is one of the viewers the server projects, so the old
+	 * one-line-per-viewer form printed the reader as a SECOND reader under a
+	 * sentence claiming they were the only one (design review round 1, D2). The
+	 * header now states the rule once and lists the other agent owners by name. */
+	const other = {
+		...viewer,
+		account_id: "acct_ben",
+		display_label: "Ben Okafor",
+	};
+	const view = await renderView(
+		panel({ conversation: { ...direct, viewers: [viewer, other] } }),
+	);
 	const text = view.text();
-	/* The read-only promise, the disclosure sentence, and the viewer line the
-	 * contract requires every participant to be able to see. */
 	assert.ok(text.includes(m.t("ui.ownerAudit.read_only")));
 	assert.ok(text.includes(m.t("ui.ownerAudit.disclosure")));
-	assert.ok(
-		text.includes(m.t("ui.ownerAudit.viewer", { name: viewer.display_label })),
-		"the member who can read this must be named",
+	/* The disclosure no longer claims exclusivity: it states the basis (the
+	 * reader owns the chief of staff) and what everyone else is told. */
+	assert.equal(
+		EXCLUSIVITY_CLAIM.test(m.t("ui.ownerAudit.disclosure")),
+		false,
+		"the disclosure must not claim the reader is the only reader",
 	);
-	/* And it is a HEADER claim, not a footnote lost under the messages. */
 	const header = view.host.querySelector("section > header");
-	assert.ok(header);
+	assert.ok(header, "the disclosure is a header claim, not a footnote");
 	assert.ok(header.textContent.includes(m.t("ui.ownerAudit.disclosure")));
+
+	/* The label, then the names as a list. The label carries no placeholder, so
+	 * no locale has to inflect a person's name. */
+	assert.ok(header.textContent.includes(m.t("ui.ownerAudit.viewers_label")));
+	const names = [...header.querySelectorAll("ul li")].map((li) =>
+		(li.textContent ?? "").trim(),
+	);
+	assert.deepEqual(names, ["Ben Okafor"], "the other agent owner is named");
+	assert.equal(
+		header.textContent.includes(viewer.display_label),
+		false,
+		"the reader is not listed as an additional reader of their own audit",
+	);
 	await view.close();
 
-	/* Two viewers render two lines. */
-	const two = await renderView(
-		panel({
-			conversation: {
-				...direct,
-				viewers: [
-					viewer,
-					{ ...viewer, account_id: "acct_ben", display_label: "Ben Okafor" },
-				],
-			},
-			messages: [],
-		}),
+	/* Only the reader in the viewers list: no list at all, and the rule above it
+	 * still stands. */
+	const self = await renderView(panel({ messages: [] }));
+	assert.ok(self.text().includes(m.t("ui.ownerAudit.disclosure")));
+	assert.equal(
+		self.host.querySelector("section > header ul"),
+		null,
+		"a list with no other readers is not rendered empty",
 	);
-	assert.ok(
-		two.text().includes(m.t("ui.ownerAudit.viewer", { name: "Ben Okafor" })),
-	);
-	await two.close();
+	await self.close();
 
-	/* And NO viewer means no viewer line -- the banner sentence above it stays,
-	 * because it is a statement about this surface rather than about a person. */
+	/* No viewers at all: same header, no list. */
 	const none = await renderView(
 		panel({ conversation: { ...direct, viewers: null }, messages: [] }),
 	);
-	assert.equal(
-		none
-			.text()
-			.includes(m.t("ui.ownerAudit.viewer", { name: viewer.display_label })),
-		false,
-	);
 	assert.ok(none.text().includes(m.t("ui.ownerAudit.disclosure")));
+	assert.equal(none.host.querySelector("section > header ul"), null);
 	await none.close();
+});
+
+test("a truncated audit window says so where the reader is looking", async () => {
+	/* A cut-off dressed as header boilerplate read as a complete history
+	 * (design review round 1, D3). The notice now closes the message list, and the
+	 * cut-off cases wear a rule and the reading ink instead of the standing
+	 * disclosure's grey. */
+	const closed = await renderView(
+		panel({
+			conversation: { ...direct, agent: { ...direct.agent, state: "removed" } },
+			messages: [admitted],
+		}),
+	);
+	const header = closed.host.querySelector("section > header");
+	assert.ok(header);
+	assert.equal(
+		header.textContent.includes(m.t("ui.ownerAudit.removed")),
+		false,
+		"the cut-off is not a header line",
+	);
+	const notice = closed.host.querySelector("section > div > p:last-of-type");
+	assert.ok(notice, "the list ends with the window's own statement");
+	assert.ok(notice.textContent.includes(m.t("ui.ownerAudit.removed")));
+	/* Distinct treatment: the notice is not the disclosure's 12px quiet grey. */
+	assert.ok(notice.className.includes("text-sm"));
+	assert.ok(notice.className.includes("border-t"));
+	assert.ok(notice.className.includes("text-ink"));
+	assert.equal(notice.className.includes("text-ink-muted"), false);
+	await closed.close();
+
+	/* Left is its own sentence, not the removal one. */
+	const left = await renderView(
+		panel({
+			conversation: { ...direct, agent: { ...direct.agent, state: "left" } },
+			messages: [admitted],
+		}),
+	);
+	assert.ok(left.text().includes(m.t("ui.ownerAudit.left")));
+	assert.equal(left.text().includes(m.t("ui.ownerAudit.removed")), false);
+	await left.close();
+
+	/* An unknown membership state takes the SAME notice, never the quiet line:
+	 * the list may be truncated and this client cannot say otherwise. */
+	const unknown = await renderView(
+		panel({
+			conversation: {
+				...direct,
+				agent: { ...direct.agent, state: "departed" },
+			},
+			messages: [admitted],
+		}),
+	);
+	assert.ok(unknown.text().includes(m.t("ui.ownerAudit.window_unconfirmed")));
+	assert.equal(unknown.text().includes(m.t("ui.ownerAudit.active")), false);
+	await unknown.close();
+
+	/* An open window closes quietly: nothing was cut off, so nothing is claimed
+	 * beyond the fact that the agent is still a member. */
+	const open = await renderView(panel({ messages: [admitted] }));
+	assert.ok(open.text().includes(m.t("ui.ownerAudit.active")));
+	await open.close();
+});
+
+test("a bounded page says what is missing and how to load it", async () => {
+	/* The audit serves bounded pages. A reader who takes the page on screen for
+	 * the whole conversation is the same failure D3 names, one control up. */
+	const view = await renderView(
+		panel({ messages: [admitted], hasMore: true, loadMore: () => {} }),
+	);
+	assert.ok(view.text().includes(m.t("ui.ownerAudit.page_cutoff")));
+	/* What was cut: older messages. How to see more: the control beside it. */
+	const older = BUTTON_TEXT(view.host, m.t("ui.ownerAudit.older"));
+	assert.ok(older, "the load-older control is what makes the notice honest");
+	await view.close();
+
+	/* A complete page makes no claim at all. */
+	const whole = await renderView(panel({ messages: [admitted] }));
+	assert.equal(whole.text().includes(m.t("ui.ownerAudit.page_cutoff")), false);
+	await whole.close();
 });
 
 test("the surface offers no way to write: no composer, no reaction, no admit", async () => {
@@ -1079,10 +1172,13 @@ test("the section appears for the owner and audits the selected conversation", a
 	const panelHost = app.host.querySelector('[data-panel="active"]');
 	assert.ok(panelHost);
 	assert.ok(panelHost.textContent.includes(m.t("ui.ownerAudit.read_only")));
-	assert.ok(
-		panelHost.textContent.includes(
-			m.t("ui.ownerAudit.viewer", { name: viewer.display_label }),
-		),
+	/* The slot passes the signed-in account as the reader, so the panel names the
+	 * OTHER agent owners and never the reader (design review round 1, D2). */
+	assert.ok(panelHost.textContent.includes(m.t("ui.ownerAudit.disclosure")));
+	assert.equal(
+		panelHost.querySelector("header ul"),
+		null,
+		"the only viewer is the reader, so no other reader is listed",
 	);
 	assert.ok(panelHost.textContent.includes(admitted.body));
 	assert.equal(panelHost.querySelectorAll("textarea").length, 0);

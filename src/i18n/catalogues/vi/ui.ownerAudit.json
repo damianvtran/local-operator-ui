@@ -11,6 +11,7 @@
 	"ui.ownerAudit.agent": "Chánh văn phòng",
 	"ui.ownerAudit.more": "Tải thêm",
 	"ui.ownerAudit.older": "Tải tin nhắn cũ hơn",
+	"ui.ownerAudit.page_cutoff": "Các tin nhắn cũ hơn chưa được hiển thị. Tải tin nhắn cũ hơn để đọc phần trước đó.",
 	"ui.ownerAudit.admitted": "Được chánh văn phòng của bạn tiếp nhận",
 	"ui.ownerAudit.rejected": "Bị bộ lọc của chánh văn phòng của bạn từ chối",
 	"ui.ownerAudit.not_screened": "Chưa được chánh văn phòng của bạn lọc",
@@ -22,9 +23,10 @@
 	"ui.ownerAudit.unknown_sender": "Người gửi không xác định",
 	"ui.ownerAudit.reveal": "Hiển thị nội dung tin nhắn",
 	"ui.ownerAudit.active": "Chánh văn phòng của bạn vẫn là thành viên.",
-	"ui.ownerAudit.left": "Chánh văn phòng của bạn đã rời cuộc trò chuyện này; các tin nhắn sau đó nằm ngoài khoảng thời gian kiểm tra.",
-	"ui.ownerAudit.removed": "Chánh văn phòng của bạn đã bị xóa khỏi cuộc trò chuyện này; các tin nhắn sau đó nằm ngoài khoảng thời gian kiểm tra.",
-	"ui.ownerAudit.disclosure": "Chỉ bạn với tư cách chủ sở hữu tác nhân này mới thấy; các thành viên khác thấy rằng chế độ kiểm tra của chủ sở hữu đã bật.",
-	"ui.ownerAudit.viewer": "{name}, chủ sở hữu tác nhân, cũng có thể thấy.",
+	"ui.ownerAudit.left": "Lịch sử kiểm tra kết thúc ở đây. Chánh văn phòng của bạn đã rời cuộc trò chuyện này, nên các tin nhắn sau đó không nằm trong lịch sử kiểm tra này.",
+	"ui.ownerAudit.removed": "Lịch sử kiểm tra kết thúc ở đây. Chánh văn phòng của bạn đã bị xóa khỏi cuộc trò chuyện này, nên các tin nhắn sau đó không nằm trong lịch sử kiểm tra này.",
+	"ui.ownerAudit.window_unconfirmed": "Không rõ lịch sử kiểm tra này kết thúc ở đâu. Không thể xác nhận tư cách thành viên của chánh văn phòng của bạn trong cuộc trò chuyện này.",
+	"ui.ownerAudit.disclosure": "Bạn có thể đọc lịch sử kiểm tra này vì bạn sở hữu chánh văn phòng mà lịch sử này bao quát. Các thành viên khác được thông báo rằng chủ sở hữu tác nhân có thể kiểm tra cuộc trò chuyện.",
+	"ui.ownerAudit.viewers_label": "Cũng được đọc bởi",
 	"ui.ownerAudit.replies": "Đọc các câu trả lời trong luồng"
 }
