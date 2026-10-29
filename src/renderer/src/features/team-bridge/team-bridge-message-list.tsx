@@ -301,10 +301,21 @@ const DayDivider: FC<{
  *   pre-existing and wider than this change; it is reported on the PR.)
  *
  * `min-h-6` is 24px, exactly the WCAG 2.2 2.5.8 target floor: the controls have no
- * headroom, so any change to their padding or size must raise this too.
+ * headroom, so any change to their padding or size must raise this too. It applies
+ * to the FAILED strip only - the pending strip has no controls, and a 24px pending
+ * header against a 21.7px confirmed one moved the body at the swap.
  */
 const SendStatus: FC<{ row: TeamBridgeLocalRowPresentation }> = ({ row }) => (
-	<span className="inline-flex min-h-6 flex-wrap items-center gap-x-2 gap-y-1 rounded-sm bg-canvas px-1 text-[12px]">
+	<span
+		className={cn(
+			"inline-flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-sm bg-canvas px-1 text-[12px]",
+			/* The 24px target floor belongs to the CONTROLS, so only the failed
+			 * strip carries it (capture round, frame 7). On a pending row it made
+			 * the header 24px against a confirmed row's 21.7px, so the body jumped
+			 * 2.3px at the swap - D7's reserved height, measured. */
+			row.state === "failed" && "min-h-6",
+		)}
+	>
 		<output
 			className={cn("text-ink-muted", row.state === "failed" && "text-danger")}
 		>
@@ -325,7 +336,7 @@ const SendStatus: FC<{ row: TeamBridgeLocalRowPresentation }> = ({ row }) => (
 		{row.state === "failed" && row.onRetry && (
 			<Button
 				variant="primary"
-				className="h-auto min-h-6 whitespace-normal px-2 text-[12px]"
+				className="h-auto min-h-6 shrink whitespace-normal px-2 text-start text-[12px]"
 				onClick={row.onRetry}
 			>
 				{t("ui.common.actions.retry")}
@@ -334,7 +345,7 @@ const SendStatus: FC<{ row: TeamBridgeLocalRowPresentation }> = ({ row }) => (
 		{row.state === "failed" && row.onReturnToDraft && (
 			<Button
 				variant="ghost"
-				className="h-auto min-h-6 whitespace-normal px-2 text-[12px] text-ink-muted hover:text-ink"
+				className="h-auto min-h-6 shrink whitespace-normal px-2 text-start text-[12px] text-ink-muted hover:text-ink"
 				onClick={row.onReturnToDraft}
 			>
 				{t("ui.teamBridge.message.return_to_draft")}
@@ -343,7 +354,11 @@ const SendStatus: FC<{ row: TeamBridgeLocalRowPresentation }> = ({ row }) => (
 		{row.state === "failed" && row.onDiscard && (
 			<Button
 				variant="ghost"
-				className="h-auto min-h-6 whitespace-normal px-2 text-[12px] text-danger hover:text-danger active:text-danger"
+				/* Every state stays red (design round 2, D14): `ghost` paints its hover
+				 * and press on the ACCENT wash, so a destructive control drew a red label
+				 * on the brand hue. The danger wash is its own ground - danger on
+				 * danger-wash measures 4.524:1 at worst (everforestLight). */
+				className="h-auto min-h-6 shrink whitespace-normal px-2 text-start text-[12px] text-danger hover:bg-danger-wash hover:text-danger active:bg-danger-wash active:text-danger"
 				onClick={row.onDiscard}
 			>
 				{t("ui.teamBridge.message.discard")}
@@ -604,7 +619,19 @@ const MessageRowView: FC<MessageRowProps> = ({
 					forceVisible={forceToolbar}
 				/>
 				{!continuation && (
-					<div className="flex items-baseline gap-2">
+					<div
+						className={cn(
+							"flex items-baseline gap-2",
+							/* A FAILED row's header may wrap (design round 2, D13, measured in
+							 * the capture round): at a 390px thread the strip took the row and
+							 * the sender's name truncated to one letter, and at the 172px column
+							 * floor a 140px control sat in an 84px column. Wrapping puts the
+							 * strip on its own line under the name and time. Only failed rows:
+							 * on any other row wrapping would break a long name onto its own
+							 * line instead of truncating it. */
+							sendRow?.state === "failed" && "flex-wrap gap-y-1",
+						)}
+					>
 						{member ? (
 							<TeamBridgeProfileCard
 								member={member}
@@ -643,7 +670,18 @@ const MessageRowView: FC<MessageRowProps> = ({
 								{clock}
 							</time>
 						)}
-						{sendRow && <SendStatus row={sendRow} />}
+						{/* NOTHING FOR A CONFIRMED ROW (capture round, frame 7). A confirmed
+						    row keeps its journal entry through the swap, and the strip used
+						    to render for it as an EMPTY 8x24 canvas plate. An empty
+						    inline-flex box has no text baseline, so `items-baseline` aligned
+						    it by its bottom edge and the header grew 24 -> 28px: the body and
+						    the image moved down 4px at the exact moment of the swap - the
+						    jitter this change exists to remove - and a blank pill stayed
+						    beside the time. Pending and failed are the only states with
+						    anything to say. */}
+						{sendRow && sendRow.state !== "confirmed" && (
+							<SendStatus row={sendRow} />
+						)}
 					</div>
 				)}
 				{/* A null body is an agent member's unadmitted message: say so

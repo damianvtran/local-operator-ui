@@ -55,14 +55,52 @@ function FirstSendPage({
 	width,
 	withImage,
 	allowSwap,
+	dropped = 0,
+	frozen = false,
+	focusAction = "none",
 }: {
 	state: TeamBridgeLocalRowPresentation["state"];
 	targetKind: "chief" | "person";
-	width: "desktop" | "narrow";
+	/**
+	 * The fixture's outer width. `desktop` is the shipped 1380px window and
+	 * `narrow` 680px; a NUMBER is any other width a capture needs (design round 2,
+	 * D5). The rail is a fixed 288px, so a capture names the OUTER width that
+	 * gives the THREAD the width under test: 678 for a 390px thread, 460 for the
+	 * app's 172px column floor. An outer 390 would leave a 102px thread - below
+	 * the floor, and unreachable in the app, whose window minimum is 600px.
+	 */
+	width: "desktop" | "narrow" | number;
 	withImage: boolean;
 	allowSwap: boolean;
+	/** Images the failed attempt had to abandon (design round 2, D15). */
+	dropped?: number;
+	/**
+	 * Row actions do nothing. A capture tool that has no hover action can only
+	 * hover a control by clicking it, and a live handler would then change the
+	 * very state being captured.
+	 */
+	frozen?: boolean;
+	/**
+	 * Focus one row action on mount with `focusVisible`, so its keyboard ring can
+	 * be captured by a tool that cannot press Tab. Programmatic, and said so.
+	 */
+	focusAction?: "none" | "retry" | "return" | "discard";
 }) {
 	const [state, setState] = useState(initialState);
+	useEffect(() => {
+		if (focusAction === "none") return;
+		const label = {
+			retry: t("ui.common.actions.retry"),
+			return: t("ui.teamBridge.message.return_to_draft"),
+			discard: t("ui.teamBridge.message.discard"),
+		}[focusAction];
+		const control = [
+			...document.querySelectorAll<HTMLButtonElement>(
+				"[data-message-id] button",
+			),
+		].find((button) => button.textContent?.trim() === label);
+		control?.focus({ focusVisible: true } as FocusOptions);
+	}, [focusAction]);
 	const [discarded, setDiscarded] = useState(false);
 	useEffect(() => {
 		setState(initialState);
@@ -133,13 +171,17 @@ function FirstSendPage({
 			clientRef,
 			state,
 			previewUrls: withImage ? [SHOT_WIDE_DATA_URL] : [],
-			onRetry: () => setState("pending"),
-			onDiscard: () => setDiscarded(true),
+			droppedAttachments: dropped,
+			onRetry: frozen ? () => {} : () => setState("pending"),
+			onDiscard: frozen ? () => {} : () => setDiscarded(true),
 		});
 	return (
 		<div
 			className="flex h-dvh max-w-full flex-col bg-canvas text-ink"
-			style={{ width: width === "narrow" ? 680 : 1380 }}
+			style={{
+				width:
+					typeof width === "number" ? width : width === "narrow" ? 680 : 1380,
+			}}
 		>
 			{allowSwap && (
 				<div className="flex shrink-0 items-center gap-3 border-hairline border-b bg-surface px-3 py-2 text-sm">
@@ -180,10 +222,14 @@ function FirstSendPage({
 					 * never in any frame. The handler is a stub here, so this story
 					 * evidences the ACTION SET, not the merge-with-typed-text behaviour -
 					 * that half needs the live app. */
-					onTakeBackSend={() => ({
-						body: "Hi Ada, could we move the Wednesday review to Thursday?",
-						attachments: [],
-					})}
+					onTakeBackSend={() =>
+						frozen
+							? null
+							: {
+									body: "Hi Ada, could we move the Wednesday review to Thursday?",
+									attachments: [],
+								}
+					}
 					onTarget={() => {}}
 					onSend={() => undefined}
 					onNewChannel={() => {}}
@@ -208,7 +254,13 @@ const meta = {
 	argTypes: {
 		state: { control: "select", options: ["pending", "failed", "confirmed"] },
 		targetKind: { control: "select", options: ["chief", "person"] },
-		width: { control: "select", options: ["desktop", "narrow"] },
+		width: { control: "select", options: ["desktop", "narrow", 678, 460] },
+		dropped: { control: "number" },
+		frozen: { control: "boolean" },
+		focusAction: {
+			control: "select",
+			options: ["none", "retry", "return", "discard"],
+		},
 	},
 } satisfies Meta<typeof FirstSendPage>;
 export default meta;
@@ -221,6 +273,18 @@ export const PersonPending: Story = { args: { targetKind: "person" } };
 export const NarrowFailed: Story = {
 	args: { state: "failed", width: "narrow", targetKind: "person" },
 };
+/** Design round 2, D5/D13: a 390px thread (678 outer, beside the 288px rail). */
+export const Failed390: Story = { args: { state: "failed", width: 678 } };
+/** The thread at the app's 172px column floor (460 - the 288px rail). */
+export const FailedColumnFloor: Story = {
+	args: { state: "failed", width: 460 },
+};
+/** Design round 2, D15: two abandoned images say so once. */
+export const FailedTwoImagesDropped: Story = {
+	args: { state: "failed", dropped: 2 },
+};
+/** Hover/focus captures: the actions are inert so a click can only hover. */
+export const FailedFrozen: Story = { args: { state: "failed", frozen: true } };
 
 /** These assertions are authored but not executed while the disk hold is active.
  * The image and row DOM identity assertions are the negative controls for a

@@ -248,6 +248,24 @@ test("the canonical swap keeps the same row node and its client reference", asyn
 			null,
 			"no image box appears at the swap for a text-only send",
 		);
+		/*
+		 * NO HEADER BOX AT THE SWAP (capture round, frame 7). A confirmed row keeps
+		 * its journal entry, and the status strip used to render for it as an
+		 * EMPTY canvas plate. An empty inline-flex box has no text baseline, so the
+		 * header grew 24 -> 28px and the body moved 4px down at the swap - measured
+		 * in the browser; jsdom has no layout, so the structural cause is pinned:
+		 * after confirmation the header holds no status box at all.
+		 */
+		/* A BOOLEAN, never the node: on failure the test reporter serializes
+		 * `actual`, and inspecting a jsdom element walks the whole window - the
+		 * first version of this assertion, made to fail on purpose, ran the
+		 * suite into the 9 GB memory governor (15.8 GB) instead of reporting. */
+		const drawsStrip = confirmed.querySelector("span.bg-canvas") !== null;
+		assert.equal(
+			drawsStrip,
+			false,
+			"a confirmed row draws no status strip (an empty box moved the body)",
+		);
 	} finally {
 		app.fixture.postGate?.resolve();
 		await app.close();
