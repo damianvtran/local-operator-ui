@@ -2282,3 +2282,100 @@ export const ChiefNamedCreateReadRoundTrip: Story = {
 	render: ChiefCreateReadRoundTrip.render,
 	args: { ...ChiefCreateReadRoundTrip.args, people: rosterWithChiefs },
 };
+
+/*
+ * ---------------------------------------------------------------------------
+ * LAYOUT REGRESSION BOARDS (operator report 2026-10-27). Two defects reached
+ * the operator because no story measured them: the empty DM centred its
+ * avatar over left-aligned text, and a hovered row's ground ran past the
+ * visible column. Each board's play function asserts the geometry, so the
+ * Interactions panel goes red on a regression rather than a reviewer having
+ * to notice a few pixels in a frame.
+ * ---------------------------------------------------------------------------
+ */
+
+/** Half a CSS pixel: subpixel layout rounds, a regression is whole pixels. */
+const EDGE_TOLERANCE = 0.5;
+
+/** The empty DM: the 56px mark starts on the same left edge as the name and
+ * the intro line, Slack-style, never centred in the pane. */
+export const PersonDraftAvatarAlignment: Story = {
+	args: PersonDraft.args,
+	play: async ({ canvasElement }) => {
+		const avatar = await waitFor(() => {
+			const node = canvasElement.querySelector("[data-draft-avatar]");
+			if (!(node instanceof HTMLElement)) throw new Error("avatar missing");
+			return node;
+		});
+		const name = canvasElement.querySelector("[data-draft-name]");
+		if (!(name instanceof HTMLElement)) throw new Error("name missing");
+		const a = avatar.getBoundingClientRect();
+		const n = name.getBoundingClientRect();
+		await expect(Math.abs(a.left - n.left)).toBeLessThanOrEqual(EDGE_TOLERANCE);
+		// The trigger hugs the mark: a stretched button is how it was centred.
+		await expect(a.width).toBeLessThanOrEqual(60);
+	},
+};
+
+/** The content that tried to widen a row: a long unbroken token, a long URL,
+ * a code line and a wide table. Each must wrap or scroll INSIDE the row. */
+const longContentThread: TeamBridgeMessage[] = [
+	...benThread,
+	{
+		id: "bcmsg_long1",
+		conversation_id: benDm.id,
+		seq: 5,
+		sender: {
+			account_id: "acct_ben",
+			kind: "human",
+			display_label: "Ben Tran",
+		},
+		body: `${"a".repeat(240)}\n\nhttps://example.com/${"path-segment-".repeat(18)}end\n\n\`\`\`\n${"const unbroken = 'x';".repeat(14)}\n\`\`\`\n\n| ${Array.from({ length: 12 }, (_, i) => `column_heading_${i}`).join(" | ")} |\n|${" --- |".repeat(12)}\n| ${Array.from({ length: 12 }, (_, i) => `value_${i}`).join(" | ")} |`,
+		origin: "human",
+		created_at: at(1),
+	},
+];
+
+/**
+ * Every row - and the hover ground and action row it carries - lies inside
+ * the timeline viewport's VISIBLE width, and the viewport has no horizontal
+ * overflow. The row's box IS the hover band (`hover:bg-row-hover` paints the
+ * `li`), so its rect is the band's rect; the toolbar is measured when this
+ * build ships one (both holds in `shared/team-bridge-notify.ts` close it
+ * today, and then there is no toolbar to measure).
+ */
+export const LongContentRowsStayInColumn: Story = {
+	args: {
+		...slackRail,
+		target: { type: "person", accountId: "acct_ben" },
+		messages: longContentThread,
+	},
+	play: async ({ canvasElement }) => {
+		const rows = await waitFor(() => {
+			const found = canvasElement.querySelectorAll<HTMLElement>(
+				"li[data-message-id]",
+			);
+			if (found.length < longContentThread.length)
+				throw new Error("rows missing");
+			return [...found];
+		});
+		const viewport = rows[0].closest("[data-radix-scroll-area-viewport]");
+		if (!(viewport instanceof HTMLElement)) throw new Error("no viewport");
+		const v = viewport.getBoundingClientRect();
+		// clientWidth excludes any scrollbar: the row must fit what is SEEN.
+		const visibleRight = v.left + viewport.clientWidth;
+		await expect(viewport.scrollWidth).toBeLessThanOrEqual(
+			viewport.clientWidth,
+		);
+		for (const row of rows) {
+			const r = row.getBoundingClientRect();
+			await expect(r.left).toBeGreaterThanOrEqual(v.left - EDGE_TOLERANCE);
+			await expect(r.right).toBeLessThanOrEqual(visibleRight + EDGE_TOLERANCE);
+			const toolbar = row.querySelector("[data-message-toolbar]");
+			if (toolbar) {
+				const tb = toolbar.getBoundingClientRect();
+				await expect(tb.right).toBeLessThanOrEqual(r.right + EDGE_TOLERANCE);
+			}
+		}
+	},
+};
