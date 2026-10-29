@@ -189,6 +189,31 @@ import { useTeamBridgeDrafts } from "./use-team-bridge-drafts";
 const EMPTY_BRIDGE_MESSAGES: MessageInputProps["messages"] = [];
 
 /**
+ * Why a send was refused, in the terms the person can act on (UX round 1, U2).
+ *
+ * A SEND-SIDE FACT, not a chip state. The shared composer's chips are the app's own
+ * and carry no failure badge and no per-file retry, so the bridge holds the refusal
+ * outside them and states it in words: which hub rule refused the whole set, which
+ * staged id no longer binds, or which single file failed and why.
+ */
+type SendRefusal =
+	| { kind: "capability" }
+	| { kind: "expired" }
+	| { kind: "upload"; failure: StagedUploadFailure };
+
+/**
+ * The catalogue's own sentence for each upload refusal this send can produce, so
+ * the reason a picture did not go is said in the words the feature already uses for
+ * that failure rather than in a second phrasing written here (`error_upload` names
+ * the two moves a person has: retry, or remove it).
+ */
+const STAGED_FAILURE_COPY = {
+	read: "ui.teamBridge.attachments.error_invalid",
+	unsupported: "ui.teamBridge.attachments.error_type",
+	upload: "ui.teamBridge.attachments.error_upload",
+} as const;
+
+/**
  * The Team Bridge page: a Slack-shaped rail, a thread and a composer.
  *
  * WHY A PAGE AND NOT A DIALOG. A conversation is a place a person returns to,
@@ -813,7 +838,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			return;
 		draftState.update({});
 	}, [draft, target]);
-	const [imagesBlocked, setImagesBlocked] = useState(false);
+	const [sendRefusal, setSendRefusal] = useState<SendRefusal | null>(null);
 	/*
 	 * Text, or at least one staged file: an attachment-only message is allowed, and
 	 * the schedule control beside the composer must agree with the send about
@@ -1109,8 +1134,6 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	/* The no-destination notice's own id: distinct from the held attempt's, because
 	   both arms name the box's `aria-describedby` and only one of them can be up. */
 	const composeGateId = `${heldReasonId}-gate`;
-	const [uploadFailure, setUploadFailure] =
-		useState<StagedUploadFailure | null>(null);
 	/* One reaction context for the timeline AND the thread pane, so a reply can
 	   be reacted to under exactly the rules its root is. WITHHELD - not passed
 	   disabled - when the runtime does not advertise reactions: a chip or picker
@@ -1149,7 +1172,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				conversationId,
 				capability: imageCapability,
 			});
-			if (uploaded.failures.length > 0) setUploadFailure(uploaded.failures[0]);
+			if (uploaded.failures.length > 0)
+				setSendRefusal({ kind: "upload", failure: uploaded.failures[0] });
 			if (uploaded.ids.length !== paths.length)
 				throw new Error("attachment staging refused");
 			return uploaded.ids;
@@ -1211,9 +1235,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	 * the box clear itself, which is the only clear a transcriptless host gets.
 	 */
 	const submit = async (content: string, attachments: string[]) => {
+		/*
+		 * A MESSAGE CAN BE THE PICTURE (UX round 1, U1). The shared composer enables and
+		 * admits an attachment-only payload, so refusing `!body` here made an enabled Send
+		 * do nothing at all - no request, no error, chips kept. The upload guards below are
+		 * unchanged, so an image that cannot be read or bound still refuses.
+		 */
 		const body = content.trim();
 		if (
-			!body ||
+			(!body && attachments.length === 0) ||
 			!isDraftCurrent() ||
 			sending ||
 			scheduling ||
@@ -1230,11 +1260,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		 * refusal has to be a sentence at the only place that can act on it.
 		 */
 		if (attachments.length > 0 && !imageCapability) {
-			setImagesBlocked(true);
+			setSendRefusal({ kind: "capability" });
 			return false;
 		}
-		setImagesBlocked(false);
-		setUploadFailure(null);
+		setSendRefusal(null);
 		const clientRef = draftState.current?.clientRef ?? crypto.randomUUID();
 		if (!draftState.update({ clientRef })) return false;
 		// ONE attempt, named in both stores: main's optimistic-row journal and
@@ -1270,7 +1299,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			 * outcome does NOT come through here - that is the schedule's arm, and its
 			 * recovery is the held-attempt chrome beside the box.
 			 */
-			if (isAttachmentNotFound(error)) setImagesBlocked(true);
+			if (isAttachmentNotFound(error)) setSendRefusal({ kind: "expired" });
 			return false;
 		} finally {
 			writing.current = false;
@@ -1313,11 +1342,19 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		setScheduledSuccess(false);
 		setScheduleFailed(false);
 		/*
+		 * WHAT THIS SCHEDULE TAKES, SNAPSHOTTED AT THE PRESS (UX round 1, U5). The
+		 * settle arm has to tell "the box still holds what went out" from "the person
+		 * added a picture while the request was in flight", and only a snapshot taken
+		 * here can answer that - a render-time read would be the same tautology the
+		 * composer's own clear had to retire.
+		 */
+		const scheduledPaths = stagedPaths;
+		/*
 		 * THE SAME PATH-UPLOADING BINDING THE SEND USES, so a scheduled message carries
 		 * the chips its author staged rather than the text alone. The upload runs inside
 		 * the request, after the create, exactly as a plain send's does.
 		 */
-		const carried = stagedForSend(stagedPaths);
+		const carried = stagedForSend(scheduledPaths);
 		try {
 			await onSchedule(
 				body,
@@ -1345,14 +1382,33 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			if (draftJournal && draftJournal.body.trim() === body)
 				draftJournal.body = "";
 			/*
-			 * ONLY THE COPY THIS SCHEDULE RETIRED (review round 1, R1-4). A blanket clear
-			 * would eat text typed while the request was in flight, and `heldAttempt` is
-			 * false while `scheduling` is true, so nothing else stands between the reader
-			 * and that loss. Same rule the composer's own accepted send applies.
+			 * ONLY THE COPY THIS SCHEDULE RETIRED (review round 1, R1-4; UX round 1, U5).
+			 * A blanket clear would eat text typed while the request was in flight, and
+			 * `heldAttempt` is false while `scheduling` is true, so nothing else stands
+			 * between the reader and that loss. The chips need the same test: text can
+			 * still match while a picture added mid-request does not, and clearing then
+			 * would retire a chip that never went anywhere. Both match -> the whole box
+			 * goes; otherwise only the paths this schedule carried are removed and the
+			 * scheduled text is retired, so what the person added since survives.
 			 */
 			const composerStore = useConversationInputStore.getState();
-			if (composerStore.getCurrentInput(composerKey).trim() === body)
+			const composerState = composerStore.inputByConversation[composerKey];
+			const currentPaths = (composerState?.attachments ?? []).map(
+				(entry) => entry.path,
+			);
+			const textStillScheduled =
+				composerStore.getCurrentInput(composerKey).trim() === body;
+			const chipsStillScheduled =
+				currentPaths.length === scheduledPaths.length &&
+				currentPaths.every((path, index) => path === scheduledPaths[index]);
+			if (textStillScheduled && chipsStillScheduled) {
 				composerStore.clearComposer(composerKey);
+			} else {
+				for (const entry of composerState?.attachments ?? [])
+					if (scheduledPaths.includes(entry.path))
+						composerStore.removeAttachment(composerKey, entry.id);
+				if (textStillScheduled) composerStore.setComposerText(composerKey, "");
+			}
 			draftState.clearSent(entryKey, body, clientRef);
 			setScheduledSuccess(true);
 		} catch (error) {
@@ -2300,12 +2356,34 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											{t("ui.teamBridge.schedule.success")}
 										</p>
 									)}
-									{/* A hub that cannot take images, or a staged file the send could
-									   not bind. Both are refused before anything leaves, so the
-									   sentence belongs beside the box rather than on a chip. */}
-									{(uploadFailure || imagesBlocked) && (
-										<p role="alert" className="text-sm text-danger">
-											{t("ui.teamBridge.attachments.send_blocked")}
+									{/*
+									 * WHAT THE SEND COULD NOT TAKE, AND WHAT TO DO ABOUT IT (UX round 1,
+									 * U2). The shared composer's chips are the app's own and carry no
+									 * failure badge and no per-file retry, so pointing at "images marked
+									 * with an error" sent a person hunting for a mark that does not exist.
+									 * This names the file and the reason, and each branch states a move they
+									 * actually have: remove the chip, or send again.
+									 */}
+									{sendRefusal && (
+										<p className="text-sm text-danger" role="alert">
+											{sendRefusal.kind === "capability" &&
+												t("ui.teamBridge.attachments.unsupported")}
+											{sendRefusal.kind === "expired" &&
+												t("ui.teamBridge.attachments.expired_staged_retry")}
+											{sendRefusal.kind === "upload" && (
+												/* The file and its reason, side by side with a GAP rather
+												   than a typed separator: the sentence is a complete one
+												   from the catalogue, and a literal ": " here would be
+												   copy the i18n gates have to police. */
+												<span className="inline-flex min-w-0 flex-wrap items-baseline gap-x-1.5">
+													<span className="font-medium">
+														{sendRefusal.failure.name}
+													</span>
+													<span>
+														{t(STAGED_FAILURE_COPY[sendRefusal.failure.reason])}
+													</span>
+												</span>
+											)}
 										</p>
 									)}
 									{sendFailed && (
@@ -2416,13 +2494,41 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									{/* HOST CHROME THE COMPOSER HAS NO SLOT FOR. Scheduling needs the
 									   target and a time, neither of which is typing, and the
 									   restored attempt above names the clock by id. */}
-									{onSchedule && (
-										<div className="flex items-center justify-end px-1 pb-4">
+									{/*
+									 * THE LINE UNDER THE BOX HEARS BOTH FACTS (UX round 1, U3 + U4).
+									 * The shared composer shows its keyboard hints on ITS controls (the
+									 * mic), not at the point of typing, so the principal chord had become
+									 * undiscoverable when the bridge stopped drawing its own box. While a
+									 * send is in flight the same slot says why the schedule control is
+									 * refusing - the app's own sentence for that state, borrowed rather than
+									 * written a second time.
+									 */}
+									<div className="flex items-center gap-2 px-1 pb-4">
+										<span
+											className={cn(
+												"min-w-0 flex-1 truncate ps-1.5 text-meta-sm text-ink-dim transition-opacity duration-fast",
+												sending || hasContent ? "opacity-100" : "opacity-0",
+											)}
+											aria-hidden={!(sending || hasContent)}
+										>
+											{sending
+												? t("ui.chat.canonical.send_failure.send_lock")
+												: t("ui.teamBridge.composer.hint")}
+										</span>
+										{onSchedule && (
 											<Button
 												ref={clockRef}
 												variant="ghost"
 												size="icon"
 												aria-label={t("ui.teamBridge.schedule.title")}
+												/* The line above already says this while a send is in
+												   flight; the control says it too, so the refusal is
+												   reachable from the control itself (UX round 1, U3). */
+												title={
+													sending
+														? t("ui.chat.canonical.send_failure.send_lock")
+														: undefined
+												}
 												aria-describedby={
 													draftState.current?.createUncertain && !scheduling
 														? heldReasonId
@@ -2444,8 +2550,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											>
 												<Clock size={16} aria-hidden="true" />
 											</Button>
-										</div>
-									)}
+										)}
+									</div>
 									<TeamBridgeScheduleDialog
 										open={scheduleOpen}
 										returnFocus={clockRef}
