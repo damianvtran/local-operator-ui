@@ -1,5 +1,10 @@
 {
+	"ui.agents.settings.chat.generation_settings": "جواب سازی کی ترتیبات",
+	"ui.agents.settings.chat.generation_tooltip": "وہ ترتیبات جو یہ کنٹرول کرتی ہیں کہ ایجنٹ جوابات کیسے بناتا ہے",
+	"ui.agents.settings.chat.model_hosting_heading": "ماڈل اور ہوسٹنگ",
+	"ui.agents.settings.chat.model_hosting_tooltip": "استعمال ہونے والا ماڈل اور ہوسٹنگ فراہم کنندہ منتخب کریں",
 	"ui.agents.settings.chat.not_set_yet": "ابھی مقرر نہیں",
+	"ui.agents.settings.chat.set_custom_values_note": "نیچے دیے گئے اختیارات تبدیل کر کے ان ترتیبات کی حسب ضرورت قدریں مقرر کر سکتے ہیں۔ اگر کوئی قدر مقرر نہ کی جائے تو صارفین کے ساتھ جانچ کی بنیاد پر بہتر بنائی گئی ڈیفالٹ قدریں استعمال ہوں گی۔",
 	"ui.agents.settings.chat.set_to_default": "ڈیفالٹ مقرر کریں ({value})",
 	"ui.agents.settings.chat.advanced_chat_settings": "چیٹ کی پیش رفتہ ترتیبات",
 	"ui.agents.settings.chat.advanced_settings_to_change_how_the_agent": "ایجنٹ کے جواب بنانے کا طریقہ بدلنے کی پیش رفتہ ترتیبات",

@@ -53,6 +53,8 @@ import type {
 	RadientRefusal,
 	RadientSessionIssue,
 } from "@shared/hooks/use-radient-session-issue";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type FC, useEffect, useRef } from "react";
 import { CHAT_MEASURE } from "../chat-measure";
@@ -109,7 +111,7 @@ function issueProse(issue: RadientSessionIssue): string | null {
 			 * after pressing. It is also what makes this sentence shorter at the
 			 * app's narrowest window, where the block was 44% of the pane.
 			 */
-			return "Radient no longer accepts the sign-in stored on this machine. Signing in again restores Radient models and opens your browser for consent.";
+			return t("ui.chat.radient_session.prose.needs_sign_in");
 		case "signing-in":
 			/*
 			 * The second clause is what actually ends an unfinished attempt, and
@@ -121,9 +123,11 @@ function issueProse(issue: RadientSessionIssue): string | null {
 			 * the backend's, this surface does not own it, and a number written
 			 * here is a number that goes stale silently.
 			 */
-			return "Complete the sign-in in your browser. The connector restarts on its own once the sign-in completes; an attempt left unfinished ends after a few minutes.";
+			return t("ui.chat.radient_session.prose.signing_in");
 		case "input-required":
-			return `${issue.message} This surface cannot take the pasted code, so finish the sign-in from Settings, under Providers.`;
+			return t("ui.chat.radient_session.prose.input_required", {
+				message: issue.message,
+			});
 		case "settled":
 			return issue.message;
 		default:
@@ -154,7 +158,7 @@ function refusalPointer(refusal: RadientRefusal | undefined): string | null {
 		 * adjacent lines read as one instruction said twice. The place is the part
 		 * the backend cannot know, so it is the whole of what this sentence says.
 		 */
-		return "Settings, under Providers, is where it can be cleared.";
+		return t("ui.chat.radient_session.pointer.sign_in_active");
 	}
 	return null;
 }
@@ -169,6 +173,7 @@ export const RadientSessionIssueCallout: FC<
 	isSmallView = false,
 	onFocusComposer,
 }) => {
+	useI18nLocale();
 	const calloutRef = useRef<HTMLDivElement>(null);
 	const previouslyFocused = useRef<HTMLElement | null>(null);
 
@@ -295,11 +300,17 @@ export const RadientSessionIssueCallout: FC<
 			icon={signingIn ? <Spinner size="sm" /> : undefined}
 		>
 			{issue.kind === "needs-sign-in" && (
-				<AlertTitle>Radient needs re-authentication</AlertTitle>
+				<AlertTitle>
+					{t("ui.chat.radient_session.title.needs_sign_in")}
+				</AlertTitle>
 			)}
-			{signingIn && <AlertTitle>Signing in to Radient</AlertTitle>}
+			{signingIn && (
+				<AlertTitle>{t("ui.chat.radient_session.title.signing_in")}</AlertTitle>
+			)}
 			{issue.kind === "input-required" && (
-				<AlertTitle>Radient sign-in needs a pasted code</AlertTitle>
+				<AlertTitle>
+					{t("ui.chat.radient_session.title.input_required")}
+				</AlertTitle>
 			)}
 			<AlertDescription>{issueProse(issue)}</AlertDescription>
 			{pointer ? (
@@ -320,7 +331,7 @@ export const RadientSessionIssueCallout: FC<
 							className={cn("cursor-pointer text-body-sm underline")}
 							onClick={onSignIn}
 						>
-							Sign in to Radient
+							{t("ui.chat.radient_session.action.sign_in")}
 						</Button>
 					)}
 					{cancellable && (
@@ -331,7 +342,7 @@ export const RadientSessionIssueCallout: FC<
 							className={cn("cursor-pointer text-body-sm underline")}
 							onClick={onCancel}
 						>
-							Cancel
+							{t("ui.common.actions.cancel")}
 						</Button>
 					)}
 					{refusing && (
@@ -351,7 +362,7 @@ export const RadientSessionIssueCallout: FC<
 							className={cn("cursor-pointer text-body-sm underline")}
 							onClick={onDismiss}
 						>
-							Dismiss
+							{t("ui.common.actions.dismiss")}
 						</Button>
 					)}
 				</div>

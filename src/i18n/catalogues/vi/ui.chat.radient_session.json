@@ -1,0 +1,10 @@
+{
+	"ui.chat.radient_session.action.sign_in": "Đăng nhập vào Radient",
+	"ui.chat.radient_session.pointer.sign_in_active": "Có thể xóa trong Cài đặt, mục Nhà cung cấp mô hình.",
+	"ui.chat.radient_session.prose.input_required": "{message} Màn hình này không nhận mã đã dán, nên hãy hoàn tất đăng nhập trong Cài đặt, mục Nhà cung cấp mô hình.",
+	"ui.chat.radient_session.prose.needs_sign_in": "Radient không còn chấp nhận thông tin đăng nhập đã lưu trên máy này. Đăng nhập lại sẽ khôi phục các mô hình Radient và mở trình duyệt để bạn cấp quyền.",
+	"ui.chat.radient_session.prose.signing_in": "Hoàn tất đăng nhập trong trình duyệt. Trình kết nối sẽ tự khởi động lại khi đăng nhập xong; lượt thử chưa hoàn tất sẽ kết thúc sau vài phút.",
+	"ui.chat.radient_session.title.input_required": "Cần dán mã để đăng nhập vào Radient",
+	"ui.chat.radient_session.title.needs_sign_in": "Radient cần xác thực lại",
+	"ui.chat.radient_session.title.signing_in": "Đang đăng nhập vào Radient"
+}

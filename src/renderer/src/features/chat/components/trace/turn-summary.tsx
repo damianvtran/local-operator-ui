@@ -40,6 +40,8 @@
  */
 
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { CircleCheck } from "lucide-react";
 import { type FC, type ReactNode, useRef } from "react";
@@ -229,6 +231,7 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 	group = null,
 	episode = null,
 }) => {
+	useI18nLocale();
 	/*
 	 * The count clause and the sentence behind it, derived once: the visible words
 	 * carry the marker the model's `partial` fact asks for, and the title/name say
@@ -494,7 +497,9 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 								)}
 								{durationS !== null && (
 									<span className={cn("shrink-0 text-body-sm text-ink-muted")}>
-										Took {formatDuration(durationS)}
+										{t("ui.chat.canonical.turn_summary.took", {
+											duration: formatDuration(durationS),
+										})}
 									</span>
 								)}
 								{durationS !== null && actionCount > 0 && <Dot />}
@@ -544,7 +549,9 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 							 * off the AX tree. A second live region would say the same fact twice,
 							 * in a surface that already has one voice for the list.
 							 */
-							<span className={cn("sr-only")}>completed</span>
+							<span className={cn("sr-only")}>
+								{t("ui.chat.canonical.turn_summary.completed")}
+							</span>
 						)}
 						{stampTs !== null && (
 							/*

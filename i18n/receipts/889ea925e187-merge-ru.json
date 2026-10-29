@@ -1,0 +1,360 @@
+{
+  "locale": "ru",
+  "scope": "ui.hub.pages + ui.common.actions: verification of the #1439 merge resolution",
+  "checkout_head": "2ba58dd71d",
+  "audit_date": "2026-10-29",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "889ea925e187",
+    "model": "kimi/k3.1-pro"
+  },
+  "input_sha256": {
+    "src/i18n/catalogues/en/ui.hub.pages.json": "f1b0a81c417ad3037e96efb0a6c85ae4588f9d01e9c01a3dbbb357f90dd03d3e",
+    "src/i18n/catalogues/ru/ui.hub.pages.json": "316fe29f54f1a5dfaff0a0b66727cde172c744bd11f19afbe25d178bd682327c",
+    "src/i18n/catalogues/en/ui.common.actions.json": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
+    "src/i18n/catalogues/ru/ui.common.actions.json": "bc4285607954f7f79f8135c4de755433097dae7df28cd50a50fad6ff3c3bf718"
+  },
+  "observed_diffs": {
+    "hub.pages": {
+      "en": {
+        "current_key_count": 40,
+        "comparisons": {
+          "origin/main": {
+            "added": [
+              "ui.hub.pages.pager.nav_aria",
+              "ui.hub.pages.pager.next",
+              "ui.hub.pages.pager.previous"
+            ],
+            "removed": [],
+            "changed": [],
+            "unified_diff": "diff --git a/src/i18n/catalogues/en/ui.hub.pages.json b/src/i18n/catalogues/en/ui.hub.pages.json\nindex 8913978e68..abfb9d5fb5 100644\n--- a/src/i18n/catalogues/en/ui.hub.pages.json\n+++ b/src/i18n/catalogues/en/ui.hub.pages.json\n@@ -6,6 +6,9 @@\n \t\"ui.hub.pages.header.title\": \"Agent Hub\",\n \t\"ui.hub.pages.orgs_below_version\": \"Sharing agents with an organization needs a newer Local Operator backend. Update the backend and try again.\",\n \t\"ui.hub.pages.orgs_unavailable\": \"Organizations are unavailable\",\n+\t\"ui.hub.pages.pager.nav_aria\": \"Agent pages\",\n+\t\"ui.hub.pages.pager.next\": \"Next\",\n+\t\"ui.hub.pages.pager.previous\": \"Previous\",\n \t\"ui.hub.pages.publish\": \"Publish an agent\",\n \t\"ui.hub.pages.scope.org_label\": \"Organization\",\n \t\"ui.hub.pages.scope.org_unnamed\": \"this organization\",\n"
+          },
+          "2ba58dd71d": {
+            "added": [
+              "ui.hub.pages.card.get",
+              "ui.hub.pages.card.updated"
+            ],
+            "removed": [],
+            "changed": [],
+            "unified_diff": "diff --git a/src/i18n/catalogues/en/ui.hub.pages.json b/src/i18n/catalogues/en/ui.hub.pages.json\nindex 7b4365d0a5..abfb9d5fb5 100644\n--- a/src/i18n/catalogues/en/ui.hub.pages.json\n+++ b/src/i18n/catalogues/en/ui.hub.pages.json\n@@ -1,5 +1,7 @@\n {\n \t\"ui.hub.pages.browse_aria\": \"Browse the hub by type\",\n+\t\"ui.hub.pages.card.get\": \"Get\",\n+\t\"ui.hub.pages.card.updated\": \"updated {when}\",\n \t\"ui.hub.pages.header.subtitle\": \"Discover and download agents, teams and skills on Radient\",\n \t\"ui.hub.pages.header.title\": \"Agent Hub\",\n \t\"ui.hub.pages.orgs_below_version\": \"Sharing agents with an organization needs a newer Local Operator backend. Update the backend and try again.\",\n"
+          }
+        },
+        "reconstruction": {
+          "rule": "pre-merge branch keys overlaid by all origin/main keys (main wins overlaps)",
+          "equals_merged_key_value_mapping": true,
+          "main_keys_present_with_identical_values": true,
+          "branch_only_keys_present_with_premerge_values": true,
+          "overlap_keys": [
+            "ui.hub.pages.browse_aria",
+            "ui.hub.pages.header.subtitle",
+            "ui.hub.pages.header.title",
+            "ui.hub.pages.orgs_below_version",
+            "ui.hub.pages.orgs_unavailable",
+            "ui.hub.pages.publish",
+            "ui.hub.pages.scope.org_label",
+            "ui.hub.pages.scope.org_unnamed",
+            "ui.hub.pages.scope.public",
+            "ui.hub.pages.scope_label",
+            "ui.hub.pages.scope_legend",
+            "ui.hub.pages.search.aria",
+            "ui.hub.pages.search.placeholder",
+            "ui.hub.pages.search.scope_aria",
+            "ui.hub.pages.search_field.description",
+            "ui.hub.pages.search_field.name",
+            "ui.hub.pages.sort.aria",
+            "ui.hub.pages.sort.most_downloaded",
+            "ui.hub.pages.sort.most_favourited",
+            "ui.hub.pages.sort.most_liked",
+            "ui.hub.pages.sort.name_asc",
+            "ui.hub.pages.sort.newest",
+            "ui.hub.pages.sort.recently_updated",
+            "ui.hub.pages.status.agents_scope",
+            "ui.hub.pages.status.count.agents",
+            "ui.hub.pages.status.count.teams",
+            "ui.hub.pages.status.loading_agents",
+            "ui.hub.pages.status.loading_teams",
+            "ui.hub.pages.status.scope.public",
+            "ui.hub.pages.status.scope.shared_with",
+            "ui.hub.pages.status.teams_scope",
+            "ui.hub.pages.tab.agents",
+            "ui.hub.pages.tab.teams",
+            "ui.hub.pages.updating",
+            "ui.hub.pages.viewer_unknown"
+          ]
+        }
+      },
+      "ru": {
+        "current_key_count": 40,
+        "comparisons": {
+          "origin/main": {
+            "added": [
+              "ui.hub.pages.pager.nav_aria",
+              "ui.hub.pages.pager.next",
+              "ui.hub.pages.pager.previous"
+            ],
+            "removed": [],
+            "changed": [],
+            "unified_diff": "diff --git a/src/i18n/catalogues/ru/ui.hub.pages.json b/src/i18n/catalogues/ru/ui.hub.pages.json\nindex faac4701e0..a72043dee3 100644\n--- a/src/i18n/catalogues/ru/ui.hub.pages.json\n+++ b/src/i18n/catalogues/ru/ui.hub.pages.json\n@@ -6,6 +6,9 @@\n \t\"ui.hub.pages.header.title\": \"Хаб агентов\",\n \t\"ui.hub.pages.orgs_below_version\": \"Чтобы делиться агентами с организацией, нужен более новый бэкенд Local Operator. Обновите бэкенд и повторите попытку.\",\n \t\"ui.hub.pages.orgs_unavailable\": \"Организации недоступны\",\n+\t\"ui.hub.pages.pager.nav_aria\": \"Страницы агентов\",\n+\t\"ui.hub.pages.pager.next\": \"Далее\",\n+\t\"ui.hub.pages.pager.previous\": \"Назад\",\n \t\"ui.hub.pages.publish\": \"Опубликовать агента\",\n \t\"ui.hub.pages.scope.org_label\": \"Организация\",\n \t\"ui.hub.pages.scope.org_unnamed\": \"этой организации\",\n"
+          },
+          "2ba58dd71d": {
+            "added": [
+              "ui.hub.pages.card.get",
+              "ui.hub.pages.card.updated"
+            ],
+            "removed": [],
+            "changed": [],
+            "unified_diff": "diff --git a/src/i18n/catalogues/ru/ui.hub.pages.json b/src/i18n/catalogues/ru/ui.hub.pages.json\nindex 3a1b0eae9f..a72043dee3 100644\n--- a/src/i18n/catalogues/ru/ui.hub.pages.json\n+++ b/src/i18n/catalogues/ru/ui.hub.pages.json\n@@ -1,5 +1,7 @@\n {\n \t\"ui.hub.pages.browse_aria\": \"Просмотр хаба по типу\",\n+\t\"ui.hub.pages.card.get\": \"Загрузить\",\n+\t\"ui.hub.pages.card.updated\": \"обновлено {when}\",\n \t\"ui.hub.pages.header.subtitle\": \"Находите и загружайте агентов, команды и навыки в Radient\",\n \t\"ui.hub.pages.header.title\": \"Хаб агентов\",\n \t\"ui.hub.pages.orgs_below_version\": \"Чтобы делиться агентами с организацией, нужен более новый бэкенд Local Operator. Обновите бэкенд и повторите попытку.\",\n"
+          }
+        },
+        "reconstruction": {
+          "rule": "pre-merge branch keys overlaid by all origin/main keys (main wins overlaps)",
+          "equals_merged_key_value_mapping": true,
+          "main_keys_present_with_identical_values": true,
+          "branch_only_keys_present_with_premerge_values": true,
+          "overlap_keys": [
+            "ui.hub.pages.browse_aria",
+            "ui.hub.pages.header.subtitle",
+            "ui.hub.pages.header.title",
+            "ui.hub.pages.orgs_below_version",
+            "ui.hub.pages.orgs_unavailable",
+            "ui.hub.pages.publish",
+            "ui.hub.pages.scope.org_label",
+            "ui.hub.pages.scope.org_unnamed",
+            "ui.hub.pages.scope.public",
+            "ui.hub.pages.scope_label",
+            "ui.hub.pages.scope_legend",
+            "ui.hub.pages.search.aria",
+            "ui.hub.pages.search.placeholder",
+            "ui.hub.pages.search.scope_aria",
+            "ui.hub.pages.search_field.description",
+            "ui.hub.pages.search_field.name",
+            "ui.hub.pages.sort.aria",
+            "ui.hub.pages.sort.most_downloaded",
+            "ui.hub.pages.sort.most_favourited",
+            "ui.hub.pages.sort.most_liked",
+            "ui.hub.pages.sort.name_asc",
+            "ui.hub.pages.sort.newest",
+            "ui.hub.pages.sort.recently_updated",
+            "ui.hub.pages.status.agents_scope",
+            "ui.hub.pages.status.count.agents",
+            "ui.hub.pages.status.count.teams",
+            "ui.hub.pages.status.loading_agents",
+            "ui.hub.pages.status.loading_teams",
+            "ui.hub.pages.status.scope.public",
+            "ui.hub.pages.status.scope.shared_with",
+            "ui.hub.pages.status.teams_scope",
+            "ui.hub.pages.tab.agents",
+            "ui.hub.pages.tab.teams",
+            "ui.hub.pages.updating",
+            "ui.hub.pages.viewer_unknown"
+          ]
+        }
+      }
+    },
+    "common.actions": {
+      "en": {
+        "current_key_count": 53,
+        "comparisons": {
+          "origin/main": {
+            "added": [
+              "ui.common.actions.dismiss",
+              "ui.common.actions.more_info"
+            ],
+            "removed": [],
+            "changed": [],
+            "unified_diff": "diff --git a/src/i18n/catalogues/en/ui.common.actions.json b/src/i18n/catalogues/en/ui.common.actions.json\nindex b5a29b7832..a93ec6d0e6 100644\n--- a/src/i18n/catalogues/en/ui.common.actions.json\n+++ b/src/i18n/catalogues/en/ui.common.actions.json\n@@ -3,6 +3,8 @@\n \t\"ui.common.actions.close\": \"Close\",\n \t\"ui.common.actions.copied\": \"Copied\",\n \t\"ui.common.actions.copy_failed\": \"Could not copy. Select and copy it manually.\",\n+\t\"ui.common.actions.dismiss\": \"Dismiss\",\n+\t\"ui.common.actions.more_info\": \"More info\",\n \t\"ui.common.actions.retry\": \"Retry\",\n \t\"ui.common.actions.retry_again\": \"Try again\",\n \t\"ui.common.actions.retrying\": \"Trying…\",\n"
+          },
+          "2ba58dd71d": {
+            "added": [
+              "ui.common.actions.retrying"
+            ],
+            "removed": [],
+            "changed": [],
+            "unified_diff": "diff --git a/src/i18n/catalogues/en/ui.common.actions.json b/src/i18n/catalogues/en/ui.common.actions.json\nindex 949e93c177..a93ec6d0e6 100644\n--- a/src/i18n/catalogues/en/ui.common.actions.json\n+++ b/src/i18n/catalogues/en/ui.common.actions.json\n@@ -7,6 +7,7 @@\n \t\"ui.common.actions.more_info\": \"More info\",\n \t\"ui.common.actions.retry\": \"Retry\",\n \t\"ui.common.actions.retry_again\": \"Try again\",\n+\t\"ui.common.actions.retrying\": \"Trying…\",\n \t\"ui.common.actions.date_time_picker.select_date\": \"Select date\",\n \t\"ui.common.actions.date_time_picker.choose_date\": \"Choose {label} date\",\n \t\"ui.common.actions.date_time_picker.select_time\": \"Select time\",\n"
+          }
+        },
+        "reconstruction": {
+          "rule": "pre-merge branch keys overlaid by all origin/main keys (main wins overlaps)",
+          "equals_merged_key_value_mapping": true,
+          "main_keys_present_with_identical_values": true,
+          "branch_only_keys_present_with_premerge_values": true,
+          "overlap_keys": [
+            "ui.common.actions.agent_created",
+            "ui.common.actions.agent_deleted",
+            "ui.common.actions.agent_exported",
+            "ui.common.actions.agent_imported",
+            "ui.common.actions.agent_system_prompt_updated",
+            "ui.common.actions.agent_updated",
+            "ui.common.actions.cancel",
+            "ui.common.actions.clear",
+            "ui.common.actions.close",
+            "ui.common.actions.configuration_updated",
+            "ui.common.actions.confirmation_modal.cancel",
+            "ui.common.actions.confirmation_modal.confirm",
+            "ui.common.actions.conversation_cleared",
+            "ui.common.actions.copied",
+            "ui.common.actions.copy_failed",
+            "ui.common.actions.credential_updated",
+            "ui.common.actions.date_time_picker.choose_date",
+            "ui.common.actions.date_time_picker.choose_time",
+            "ui.common.actions.date_time_picker.select_date",
+            "ui.common.actions.date_time_picker.select_time",
+            "ui.common.actions.date_time_picker.set_to_current_time",
+            "ui.common.actions.date_time_picker.set_to_current_time369877",
+            "ui.common.actions.file_actions_menu.failed_to_copy_file_path",
+            "ui.common.actions.file_actions_menu.file_actions",
+            "ui.common.actions.file_actions_menu.file_path_copied_to_clipboard",
+            "ui.common.actions.find_replace_widget.all",
+            "ui.common.actions.find_replace_widget.close",
+            "ui.common.actions.find_replace_widget.find",
+            "ui.common.actions.find_replace_widget.next_match",
+            "ui.common.actions.find_replace_widget.no_results",
+            "ui.common.actions.find_replace_widget.of",
+            "ui.common.actions.find_replace_widget.previous_match",
+            "ui.common.actions.find_replace_widget.replace",
+            "ui.common.actions.find_replace_widget.replace_all",
+            "ui.common.actions.find_replace_widget.replace_all_cmd_ctrl_enter",
+            "ui.common.actions.find_replace_widget.replace_enter",
+            "ui.common.actions.find_replace_widget.switch_to_find",
+            "ui.common.actions.find_replace_widget.switch_to_replace",
+            "ui.common.actions.retry",
+            "ui.common.actions.retry_again",
+            "ui.common.actions.system_prompt_updated",
+            "ui.common.actions.text_selection_controls.ask_for_an_edit",
+            "ui.common.actions.text_selection_controls.copy",
+            "ui.common.actions.text_selection_controls.copy_without_formatting",
+            "ui.common.actions.text_selection_controls.open_in_browser",
+            "ui.common.actions.text_selection_controls.refer_to_this_from_file",
+            "ui.common.actions.text_selection_controls.reply",
+            "ui.common.actions.variable_created",
+            "ui.common.actions.variable_deleted",
+            "ui.common.actions.variable_updated"
+          ]
+        }
+      },
+      "ru": {
+        "current_key_count": 53,
+        "comparisons": {
+          "origin/main": {
+            "added": [
+              "ui.common.actions.dismiss",
+              "ui.common.actions.more_info"
+            ],
+            "removed": [],
+            "changed": [],
+            "unified_diff": "diff --git a/src/i18n/catalogues/ru/ui.common.actions.json b/src/i18n/catalogues/ru/ui.common.actions.json\nindex 728deb4c11..5e6cf35d8a 100644\n--- a/src/i18n/catalogues/ru/ui.common.actions.json\n+++ b/src/i18n/catalogues/ru/ui.common.actions.json\n@@ -3,39 +3,41 @@\n \t\"ui.common.actions.close\": \"Закрыть\",\n \t\"ui.common.actions.copied\": \"Скопировано\",\n \t\"ui.common.actions.copy_failed\": \"Не удалось скопировать. Выделите и скопируйте вручную.\",\n+\t\"ui.common.actions.dismiss\": \"Скрыть\",\n+\t\"ui.common.actions.more_info\": \"Подробнее\",\n \t\"ui.common.actions.retry\": \"Повторить\",\n \t\"ui.common.actions.retry_again\": \"Повторить\",\n \t\"ui.common.actions.retrying\": \"Повторная попытка…\",\n-\t\"ui.common.actions.confirmation_modal.cancel\": \"Отмена\",\n-\t\"ui.common.actions.confirmation_modal.confirm\": \"Подтвердить\",\n-\t\"ui.common.actions.date_time_picker.choose_date\": \"Выбрать дату: {label}\",\n-\t\"ui.common.actions.date_time_picker.choose_time\": \"Выбрать время: {label}\",\n \t\"ui.common.actions.date_time_picker.select_date\": \"Выберите дату\",\n+\t\"ui.common.actions.date_time_picker.choose_date\": \"Выбрать дату: {label}\",\n \t\"ui.common.actions.date_time_picker.select_time\": \"Выберите время\",\n+\t\"ui.common.actions.date_time_picker.choose_time\": \"Выбрать время: {label}\",\n \t\"ui.common.actions.date_time_picker.set_to_current_time\": \"Установить текущее время\",\n \t\"ui.common.actions.date_time_picker.set_to_current_time369877\": \"Установить текущее время для {label}\",\n-\t\"ui.common.actions.file_actions_menu.failed_to_copy_file_path\": \"Не удалось скопировать путь к файлу\",\n \t\"ui.common.actions.file_actions_menu.file_actions\": \"Действия с файлом\",\n \t\"ui.common.actions.file_actions_menu.file_path_copied_to_clipboard\": \"Путь к файлу скопирован в буфер обмена\",\n-\t\"ui.common.actions.find_replace_widget.all\": \"Все\",\n-\t\"ui.common.actions.find_replace_widget.close\": \"Закрыть\",\n+\t\"ui.common.actions.file_actions_menu.failed_to_copy_file_path\": \"Не удалось скопировать путь к файлу\",\n+\t\"ui.common.actions.find_replace_widget.switch_to_replace\": \"Перейти к замене\",\n+\t\"ui.common.actions.find_replace_widget.switch_to_find\": \"Перейти к поиску\",\n \t\"ui.common.actions.find_replace_widget.find\": \"Найти\",\n-\t\"ui.common.actions.find_replace_widget.next_match\": \"Следующее совпадение\",\n+\t\"ui.common.actions.find_replace_widget.replace\": \"Заменить\",\n \t\"ui.common.actions.find_replace_widget.no_results\": \"Нет результатов\",\n-\t\"ui.common.actions.find_replace_widget.of\": \"{currentmatch, number, ::group-off} из {matchcount, number, ::group-off}\",\n \t\"ui.common.actions.find_replace_widget.previous_match\": \"Предыдущее совпадение\",\n-\t\"ui.common.actions.find_replace_widget.replace\": \"Заменить\",\n-\t\"ui.common.actions.find_replace_widget.replace_all\": \"Заменить все\",\n-\t\"ui.common.actions.find_replace_widget.replace_all_cmd_ctrl_enter\": \"Заменить все (Cmd/Ctrl+Enter)\",\n+\t\"ui.common.actions.find_replace_widget.next_match\": \"Следующее совпадение\",\n \t\"ui.common.actions.find_replace_widget.replace_enter\": \"Заменить (Enter)\",\n-\t\"ui.common.actions.find_replace_widget.switch_to_find\": \"Перейти к поиску\",\n-\t\"ui.common.actions.find_replace_widget.switch_to_replace\": \"Перейти к замене\",\n+\t\"ui.common.actions.find_replace_widget.replace_all_cmd_ctrl_enter\": \"Заменить все (Cmd/Ctrl+Enter)\",\n+\t\"ui.common.actions.find_replace_widget.replace_all\": \"Заменить все\",\n+\t\"ui.common.actions.find_replace_widget.all\": \"Все\",\n+\t\"ui.common.actions.find_replace_widget.close\": \"Закрыть\",\n \t\"ui.common.actions.text_selection_controls.ask_for_an_edit\": \"Попросить внести правку\",\n \t\"ui.common.actions.text_selection_controls.copy\": \"Копировать\",\n \t\"ui.common.actions.text_selection_controls.copy_without_formatting\": \"Копировать без форматирования\",\n-\t\"ui.common.actions.text_selection_controls.open_in_browser\": \"Открыть в браузере\",\n-\t\"ui.common.actions.text_selection_controls.refer_to_this_from_file\": \"Сослаться на это из файла\",\n \t\"ui.common.actions.text_selection_controls.reply\": \"Ответить\",\n+\t\"ui.common.actions.text_selection_controls.refer_to_this_from_file\": \"Сослаться на это из файла\",\n+\t\"ui.common.actions.text_selection_controls.open_in_browser\": \"Открыть в браузере\",\n+\t\"ui.common.actions.confirmation_modal.confirm\": \"Подтвердить\",\n+\t\"ui.common.actions.confirmation_modal.cancel\": \"Отмена\",\n+\t\"ui.common.actions.find_replace_widget.of\": \"{currentmatch, number, ::group-off} из {matchcount, number, ::group-off}\",\n \t\"ui.common.actions.agent_created\": \"Агент создан\",\n \t\"ui.common.actions.agent_deleted\": \"Агент удалён\",\n \t\"ui.common.actions.agent_imported\": \"Агент импортирован\",\n"
+          },
+          "2ba58dd71d": {
+            "added": [
+              "ui.common.actions.retrying"
+            ],
+            "removed": [],
+            "changed": [],
+            "unified_diff": "diff --git a/src/i18n/catalogues/ru/ui.common.actions.json b/src/i18n/catalogues/ru/ui.common.actions.json\nindex 6f16a04fd8..5e6cf35d8a 100644\n--- a/src/i18n/catalogues/ru/ui.common.actions.json\n+++ b/src/i18n/catalogues/ru/ui.common.actions.json\n@@ -7,6 +7,7 @@\n \t\"ui.common.actions.more_info\": \"Подробнее\",\n \t\"ui.common.actions.retry\": \"Повторить\",\n \t\"ui.common.actions.retry_again\": \"Повторить\",\n+\t\"ui.common.actions.retrying\": \"Повторная попытка…\",\n \t\"ui.common.actions.date_time_picker.select_date\": \"Выберите дату\",\n \t\"ui.common.actions.date_time_picker.choose_date\": \"Выбрать дату: {label}\",\n \t\"ui.common.actions.date_time_picker.select_time\": \"Выберите время\",\n"
+          }
+        },
+        "reconstruction": {
+          "rule": "pre-merge branch keys overlaid by all origin/main keys (main wins overlaps)",
+          "equals_merged_key_value_mapping": true,
+          "main_keys_present_with_identical_values": true,
+          "branch_only_keys_present_with_premerge_values": true,
+          "overlap_keys": [
+            "ui.common.actions.agent_created",
+            "ui.common.actions.agent_deleted",
+            "ui.common.actions.agent_exported",
+            "ui.common.actions.agent_imported",
+            "ui.common.actions.agent_system_prompt_updated",
+            "ui.common.actions.agent_updated",
+            "ui.common.actions.cancel",
+            "ui.common.actions.clear",
+            "ui.common.actions.close",
+            "ui.common.actions.configuration_updated",
+            "ui.common.actions.confirmation_modal.cancel",
+            "ui.common.actions.confirmation_modal.confirm",
+            "ui.common.actions.conversation_cleared",
+            "ui.common.actions.copied",
+            "ui.common.actions.copy_failed",
+            "ui.common.actions.credential_updated",
+            "ui.common.actions.date_time_picker.choose_date",
+            "ui.common.actions.date_time_picker.choose_time",
+            "ui.common.actions.date_time_picker.select_date",
+            "ui.common.actions.date_time_picker.select_time",
+            "ui.common.actions.date_time_picker.set_to_current_time",
+            "ui.common.actions.date_time_picker.set_to_current_time369877",
+            "ui.common.actions.file_actions_menu.failed_to_copy_file_path",
+            "ui.common.actions.file_actions_menu.file_actions",
+            "ui.common.actions.file_actions_menu.file_path_copied_to_clipboard",
+            "ui.common.actions.find_replace_widget.all",
+            "ui.common.actions.find_replace_widget.close",
+            "ui.common.actions.find_replace_widget.find",
+            "ui.common.actions.find_replace_widget.next_match",
+            "ui.common.actions.find_replace_widget.no_results",
+            "ui.common.actions.find_replace_widget.of",
+            "ui.common.actions.find_replace_widget.previous_match",
+            "ui.common.actions.find_replace_widget.replace",
+            "ui.common.actions.find_replace_widget.replace_all",
+            "ui.common.actions.find_replace_widget.replace_all_cmd_ctrl_enter",
+            "ui.common.actions.find_replace_widget.replace_enter",
+            "ui.common.actions.find_replace_widget.switch_to_find",
+            "ui.common.actions.find_replace_widget.switch_to_replace",
+            "ui.common.actions.retry",
+            "ui.common.actions.retry_again",
+            "ui.common.actions.system_prompt_updated",
+            "ui.common.actions.text_selection_controls.ask_for_an_edit",
+            "ui.common.actions.text_selection_controls.copy",
+            "ui.common.actions.text_selection_controls.copy_without_formatting",
+            "ui.common.actions.text_selection_controls.open_in_browser",
+            "ui.common.actions.text_selection_controls.refer_to_this_from_file",
+            "ui.common.actions.text_selection_controls.reply",
+            "ui.common.actions.variable_created",
+            "ui.common.actions.variable_deleted",
+            "ui.common.actions.variable_updated"
+          ]
+        }
+      }
+    }
+  },
+  "verification": {
+    "merged_result": "All four working-tree files exactly equal the reconstruction from origin/main and 2ba58dd71d. No keys removed or changed against either parent in any file.",
+    "placeholder_plural_typography": "No regression: en/ru key sets match (40 hub, 53 actions); ICU argument names/types and plural/select structure match; braces balanced; all Russian values differ from English; no ellipsis, punctuation or typography regression against either parent.",
+    "russian_voice": "All 93 current Russian values inspected directly. Main-overlap values are byte-identical and the five additions are idiomatic, consistent Russian. No Russian key silently inherited an English value.",
+    "read_public_copy": {
+      "status": "blocked_by_uncommitted_merged_files",
+      "attempted_files": [
+        "src/i18n/catalogues/ru/ui.hub.pages.json",
+        "src/i18n/catalogues/ru/ui.common.actions.json"
+      ],
+      "error": "differs from HEAD; commit the public copy before auditing it",
+      "compensating_evidence": "Russian values were read from the exact hashed working-tree JSON inputs; the mandated audited-reader sample could not run without editing/committing the repo, which this task forbids."
+    },
+    "worktree_note": "The pre-existing merge worktree has unrelated unresolved conflicts (including src/i18n/catalogues/ru/ui.common.actions.json and vi/ui.common.actions.json plus agent-card.tsx). The ru common.actions worktree file itself contains no conflict markers and passed every requested content check; no repository files were edited."
+  },
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 0
+  },
+  "verdict": "pass",
+  "instance": "889ea925e187-merge-ru",
+  "namespaces": {
+    "ui.hub.pages": {
+      "status": "passed",
+      "keys_audited": 40,
+      "sha256": {
+        "en": "f1b0a81c417ad3037e96efb0a6c85ae4588f9d01e9c01a3dbbb357f90dd03d3e",
+        "target": "316fe29f54f1a5dfaff0a0b66727cde172c744bd11f19afbe25d178bd682327c"
+      },
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "keys_audited": 53,
+      "sha256": {
+        "en": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
+        "target": "bc4285607954f7f79f8135c4de755433097dae7df28cd50a50fad6ff3c3bf718"
+      },
+      "findings": []
+    }
+  }
+}

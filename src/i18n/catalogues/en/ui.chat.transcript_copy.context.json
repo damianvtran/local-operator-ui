@@ -43,5 +43,28 @@
 		"role": "accessible name of the floating toolbar that appears when the reader highlights transcript text, naming the group rather than any one action",
 		"tone": "noun phrase, sentence case, no trailing punctuation",
 		"note": "Screen-reader only: it labels the group that holds the selection's actions (Quote, Copy). Do not name a single action here, or the group and its button announce the same thing."
+	},
+	"ui.chat.transcript_copy.block.logs": {
+		"role": "block heading",
+		"tone": "plain",
+		"note": "Above a tool's log output; the output itself is not translated."
+	},
+	"ui.chat.transcript_copy.block.output": {
+		"role": "block heading",
+		"tone": "plain"
+	},
+	"ui.chat.transcript_copy.role.assistant": {
+		"role": "avatar name",
+		"tone": "plain"
+	},
+	"ui.chat.transcript_copy.selection.quote": {
+		"role": "icon-button name",
+		"tone": "plain",
+		"note": "Adds the selected text to the composer as a quotation."
+	},
+	"ui.chat.transcript_copy.technical_details": {
+		"role": "disclosure summary",
+		"tone": "plain",
+		"note": "Opens the transcript's technical blocks (logs, raw output)."
 	}
 }

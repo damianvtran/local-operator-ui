@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
 
@@ -17,9 +19,12 @@ type RawInfoViewProps = {
  * as machine output, so the box drawn around it carried no information.
  */
 export const RawInfoView: FC<RawInfoViewProps> = ({ content }) => {
+	useI18nLocale();
 	return (
 		<div className={cn("grow overflow-auto bg-sunken p-6")}>
-			<h2 className={cn("mb-3 text-heading text-ink")}>Raw information</h2>
+			<h2 className={cn("mb-3 text-heading text-ink")}>
+				{t("ui.chat.canonical.raw_information")}
+			</h2>
 			<pre
 				className={cn(
 					"overflow-auto whitespace-pre-wrap font-mono text-ink-muted text-mono-sm",
