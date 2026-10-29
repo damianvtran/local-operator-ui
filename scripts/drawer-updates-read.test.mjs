@@ -1014,6 +1014,14 @@ test(
 					.drawerUpdate,
 				"n_row6",
 			);
+			/* R1-2: the ROW is not the guarantee - the CONTROL is. Mutating the handoff
+			 * selector to `dismiss` left this test green while the operator's Enter
+			 * changed meaning. */
+			assert.equal(
+				document.activeElement.dataset.rowAction,
+				"read",
+				"the handoff lands on the read control, not another action",
+			);
 		} finally {
 			detached = null;
 			Reflect.deleteProperty(document, "activeElement");
@@ -1046,6 +1054,11 @@ test(
 					"n_row2",
 					`${direction}: next row owns focus after pointer removal`,
 				);
+				assert.equal(
+					document.activeElement.dataset.rowAction,
+					"read",
+					`${direction}: and on the read control that was used`,
+				);
 				const last = page.q(
 					'[data-drawer-update="n_row1"] [data-row-action="read"]',
 				);
@@ -1059,6 +1072,11 @@ test(
 						.drawerUpdate,
 					"n_row2",
 					`${direction}: previous row owns focus when no next row remains`,
+				);
+				assert.equal(
+					document.activeElement.dataset.rowAction,
+					"read",
+					`${direction}: and on the read control that was used`,
 				);
 				await page.click("[data-drawer-mark-all-read]");
 				await flush();
@@ -1103,6 +1121,11 @@ test(
 				document.activeElement.closest("[data-drawer-update]")?.dataset
 					.drawerUpdate,
 				"n_row6",
+			);
+			assert.equal(
+				document.activeElement.dataset.rowAction,
+				"read",
+				"the handoff lands on the read control, not another action",
 			);
 			await page.click("[data-drawer-mark-all-read]");
 			await flush();
@@ -1157,6 +1180,19 @@ test(
 				"function",
 				"and its answer must carry the retry",
 			);
+			/* D1/U1: the answer must SUPERSEDE the refusal already on screen. Sonner
+			 * replaces by id, so an answer without one stacked an identical sentence
+			 * beside the first - which is what the hosted frame showed. */
+			assert.equal(
+				errorToasts.at(-1).options.id,
+				"drawer-refusal",
+				"the Undo's answer names the card it replaces",
+			);
+			assert.equal(
+				errorToasts.at(beforeUndo - 1).options.id,
+				errorToasts.at(-1).options.id,
+				"and it is the same card as the refusal before it, not a twin",
+			);
 		} finally {
 			await page.unmount();
 			page.client.clear();
@@ -1186,6 +1222,244 @@ test(
 			);
 			await act(async () => errorToasts.at(-1).options.action.onClick());
 			assert.ok(await page.settle(() => page.rowIds().length === 5));
+		} finally {
+			await page.unmount();
+			page.client.clear();
+		}
+	},
+);
+
+/*
+ * ONE REFUSAL CARD, IN THE REFUSED VERB'S WORDS (design round 1, D1/D2; UX round 2,
+ * U1/U3; agent review round 1, R1-3).
+ *
+ * `replaceErrorToast` supersedes the card it is handed the `id` OF, so the drawer's
+ * refused Undo published a second identical sentence beside the refused dismiss it
+ * repeated (D1), and the drawer's other two press-driven refusals took the deduping
+ * path, where a second press inside five seconds said nothing at all (R1-3). All of
+ * them spoke the mark-read sentence, so a refused dismiss named an action the person
+ * never took (D2/U3). RED when any id is dropped, when the ids disagree, or when a
+ * verb stops naming itself.
+ */
+test(
+	"D1/U1/R1-3: every refused press answers in one drawer card, in its own verb's words",
+	BOUNDED,
+	async () => {
+		DRAWER.resetToastDedup();
+		const page = await mount();
+		const first = errorToasts.length;
+		const lastId = () => errorToasts.at(-1)?.options?.id;
+		try {
+			await page.settle(() => page.rowIds().length === 5);
+			page.refuseNextWrite();
+			await page.click("[data-drawer-mark-all-read]");
+			assert.ok(
+				await page.settle(() => errorToasts.length === first + 1),
+				"the first refused press answers",
+			);
+			assert.equal(
+				lastId(),
+				"drawer-refusal",
+				"the answer names the one card the drawer supersedes",
+			);
+			assert.equal(
+				errorToasts.at(-1).message,
+				"Couldn't mark read \u2014 nothing changed. Try again.",
+				"a refused mark-all keeps the mark sentence",
+			);
+			/* Inside `showErrorToast`'s five-second window: this press used to answer
+			 * nothing at all. */
+			page.refuseNextWrite();
+			await page.click("[data-drawer-mark-all-read]");
+			assert.ok(
+				await page.settle(() => errorToasts.length === first + 2),
+				"a second press inside the dedupe window still answers (R1-3)",
+			);
+			assert.equal(
+				lastId(),
+				"drawer-refusal",
+				"and supersedes that one card instead of stacking a twin (D1)",
+			);
+			page.refuseNextWrite();
+			await page.click(
+				'[data-drawer-update="n_row7"] [data-row-action="dismiss"]',
+			);
+			assert.ok(
+				await page.settle(() => errorToasts.length === first + 3),
+				"a refused dismiss answers",
+			);
+			assert.equal(
+				errorToasts.at(-1).message,
+				"Couldn't dismiss — nothing changed. Try again.",
+				"and names the dismiss, not the mark-read (D2/U3)",
+			);
+			assert.equal(
+				lastId(),
+				"drawer-refusal",
+				"in the same one card, so two refusals are one sentence at a time",
+			);
+		} finally {
+			await page.unmount();
+			page.client.clear();
+		}
+	},
+);
+
+/*
+ * A REFUSAL THAT PUTS THE ROW BACK HANDS THE KEYBOARD POSITION BACK WITH IT (UX
+ * round 2, U2). Removing the last unread row hands focus to the empty heading - new
+ * in this diff - and a rollback unmounts that heading, so the operator's next Tab
+ * restarted at the top of the document. The exact inverse of the U4 handoff.
+ */
+test(
+	"U2: a rollback-restored row takes back the focus its removal handed away",
+	BOUNDED,
+	async () => {
+		const page = await mount({
+			items: [{ ...row(3), read: false, read_via: null }],
+		});
+		try {
+			await page.settle(() => page.rowIds().length === 1);
+			assert.equal(
+				page.q('[data-drawer-empty="unread"]'),
+				null,
+				"precondition: the row is drawn, not the empty heading",
+			);
+			await act(async () =>
+				page
+					.q('[data-drawer-update="n_row3"] [data-row-action="read"]')
+					.focus(),
+			);
+			/* Held, then refused: the optimistic removal is on screen first, which is
+			 * the state the empty heading inherits - the refusal lands afterwards. */
+			const release = page.hold();
+			page.refuseNextWrite();
+			await page.click(
+				'[data-drawer-update="n_row3"] [data-row-action="read"]',
+			);
+			await flush();
+			assert.equal(
+				document.activeElement.dataset.drawerEmpty,
+				"unread",
+				"the optimistic removal hands focus to the empty heading",
+			);
+			await release();
+			assert.ok(
+				await page.settle(() => page.rowIds().includes("n_row3")),
+				`the refused write rolls the row back: ${page.rowIds()}`,
+			);
+			assert.equal(
+				document.activeElement.closest("[data-drawer-update]")?.dataset
+					.drawerUpdate,
+				"n_row3",
+				"the returned row takes the focus back",
+			);
+			assert.equal(
+				document.activeElement.dataset.rowAction,
+				"read",
+				"on the control whose press removed it",
+			);
+		} finally {
+			await page.unmount();
+			page.client.clear();
+		}
+	},
+);
+
+/* U5: after a dismiss, the next Enter must dismiss again (UX round 2, U5). */
+test(
+	"U5: a dismiss hands off to the next row's dismiss control, not its mark-read",
+	BOUNDED,
+	async () => {
+		const page = await mount();
+		try {
+			await page.settle(() => page.rowIds().length === 5);
+			await act(async () =>
+				page
+					.q('[data-drawer-update="n_row7"] [data-row-action="dismiss"]')
+					.focus(),
+			);
+			await page.click(
+				'[data-drawer-update="n_row7"] [data-row-action="dismiss"]',
+			);
+			await flush();
+			assert.equal(
+				document.activeElement.closest("[data-drawer-update]")?.dataset
+					.drawerUpdate,
+				"n_row6",
+				"the next row owns the position",
+			);
+			assert.equal(
+				document.activeElement.dataset.rowAction,
+				"dismiss",
+				"and the control the press used, so a second Enter dismisses again",
+			);
+		} finally {
+			await page.unmount();
+			page.client.clear();
+		}
+	},
+);
+
+/* D6: the Read view's empty sentence may not deny the badge beside it. */
+test(
+	"D6: the Read view with nothing read says nothing matches, not that nothing was flagged",
+	BOUNDED,
+	async () => {
+		const page = await mount({
+			items: [
+				{ ...row(3), read: false, read_via: null },
+				{ ...row(4), read: false, read_via: null },
+			],
+		});
+		try {
+			await page.settle(() => page.rowIds().length === 2);
+			await page.click('[data-drawer-read-view="read"]');
+			const empty = page.q('[data-drawer-empty="read"]');
+			assert.ok(empty, "the Read view draws its own empty state");
+			assert.equal(
+				empty.textContent,
+				"Nothing matches these filters",
+				"and does not tell the person nothing was flagged while the Unread badge counts two",
+			);
+			assert.equal(
+				page.tabCount(),
+				"2",
+				"the Unread tab still counts the two rows the sentence must not deny",
+			);
+		} finally {
+			await page.unmount();
+			page.client.clear();
+		}
+	},
+);
+
+/* U4: a successful Undo confirms itself where its rows are not on screen. */
+test(
+	"U4: a successful Undo says so, from the view where the restored rows are not drawn",
+	BOUNDED,
+	async () => {
+		const page = await mount();
+		try {
+			await page.settle(() => page.rowIds().length === 5);
+			const info = infoToasts.length;
+			await page.click("[data-drawer-mark-all-read]");
+			assert.ok(
+				await page.settle(() => infoToasts.length > info),
+				"the mark-all receipt exists",
+			);
+			await page.click('[data-drawer-read-view="read"]');
+			const undone = infoToasts.length;
+			await act(async () => infoToasts.at(info).options.action.onClick());
+			assert.ok(
+				await page.settle(() => infoToasts.length > undone),
+				"the Undo confirms itself instead of only moving rows elsewhere",
+			);
+			assert.equal(
+				infoToasts.at(-1).message,
+				"Restored",
+				"with the copy the Notifications page already uses",
+			);
 		} finally {
 			await page.unmount();
 			page.client.clear();

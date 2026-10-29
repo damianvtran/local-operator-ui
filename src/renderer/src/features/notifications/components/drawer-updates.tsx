@@ -20,11 +20,7 @@ import { Tooltip } from "@shared/components/ui/tooltip";
 import { formatNumber, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import {
-	replaceErrorToast,
-	showErrorToast,
-	showInfoToast,
-} from "@shared/utils/toast-manager";
+import { replaceErrorToast, showInfoToast } from "@shared/utils/toast-manager";
 import { useQuery } from "@tanstack/react-query";
 import {
 	Check,
@@ -256,6 +252,32 @@ export function useSessionUnreadUpdates(
  */
 export type DrawerReadView = "unread" | "read";
 
+/**
+ * ONE REFUSAL CARD PER PRESS, SUPERSEDED IN PLACE (design round 1, D1; UX round 2,
+ * U1). `showErrorToast` dedupes one sentence per five seconds - right for a refusal
+ * nobody asked for, wrong for the answer to a press, since a press refused inside
+ * that window said nothing at all. `replaceErrorToast` skips the dedupe, but its
+ * replacement IS the `id` it is handed: called without one it publishes a fresh
+ * card beside the refusal already on screen, so a refused Undo printed the same
+ * sentence twice and only the lower card carried "Try again". One id for the whole
+ * surface, not one per verb: the person is looking at one list, and two refused
+ * presses are one sentence at a time rather than two identical ones.
+ */
+const REFUSAL_TOAST_ID = "drawer-refusal";
+
+/**
+ * The sentence a refused write answers with, chosen by the verb that was refused
+ * (design round 1, D2; UX round 2, U3). Every refusal used to speak the mark-read
+ * sentence, so a refused dismiss said "Couldn't mark read" - while
+ * `ui.notifications.error.dismiss` sat in all eight catalogues referenced nowhere.
+ * `undismiss` keeps the mark sentence: the catalogue has two refusal forms and no
+ * restore form, and a third form is a translation round, not a one-line fix.
+ */
+const refusalCopy = (verb: "read" | "unread" | "dismiss" | "undismiss") =>
+	verb === "dismiss"
+		? t("ui.notifications.error.dismiss")
+		: t("ui.notifications.error.mark");
+
 export const DrawerUpdates: FC<{
 	sessionId: string;
 	nowMs?: number;
@@ -306,14 +328,59 @@ export const DrawerUpdates: FC<{
 	const listElement = useRef<HTMLDivElement>(null);
 	const focusedRow = useRef<{ id: string; index: number } | null>(null);
 	const focusedElement = useRef<HTMLElement | null>(null);
+	/*
+	 * THE CONTROL THE PRESS CAME FROM, so the handoff lands on that same control in
+	 * the next row (UX round 2, U5): a dismiss handed focus to the remaining row's
+	 * READ control, so a second Enter marked read where the first dismissed - the
+	 * meaning of Enter changed between presses in a triage run. `read` is the
+	 * default because the removal is made by the read control in every other lane
+	 * (the `R`/`E` keys and the row's own mark-read).
+	 */
+	const handoffAction = useRef<"read" | "dismiss">("read");
+	/* A row a refusal put BACK, under a focus position the removal took away (U2). */
+	const restoreRow = useRef<{
+		id: string;
+		action: "read" | "dismiss";
+	} | null>(null);
 	useLayoutEffect(() => {
+		const active = document.activeElement;
+		const hit = (selector: string) =>
+			listElement.current?.querySelector<HTMLElement>(selector) ?? null;
+		const restore = restoreRow.current;
+		if (restore) {
+			/*
+			 * ROLLBACK, NOT A REFUSAL TO MOVE (UX round 2, U2). A refused write puts the
+			 * row back where the optimistic removal took it from - and the empty heading
+			 * that inherited the keyboard position unmounts with it, leaving focus on
+			 * `document.body` and the next Tab at the top of the document. Only a focus
+			 * position this list still owns is restored: if the person moved on, nothing
+			 * is taken back from them.
+			 *
+			 * While the row is still gone the position is HELD, not cleared: `shown`
+			 * changes on every render of the list, and clearing it here would drop the
+			 * position on the first of them, before the refusal lands.
+			 */
+			const restored = hit(
+				`[data-drawer-update="${CSS.escape(restore.id)}"] [data-row-action="${restore.action}"]`,
+			);
+			if (restored) {
+				restoreRow.current = null;
+				const holdsListFocus =
+					active === null ||
+					active === window.document.body ||
+					active.hasAttribute("data-drawer-empty");
+				if (holdsListFocus) {
+					restored.focus();
+					return;
+				}
+			}
+		}
 		const focused = focusedRow.current;
 		if (!focused || shown.some((item) => item.id === focused.id)) return;
 		focusedRow.current = null;
 		/* Chromium can keep the removed action as activeElement through the
 		 * commit's focus notification. Re-focus now, synchronously, or a later
 		 * focus event on that detached action clears the row position we saved. */
-		const active = document.activeElement;
 		const removedOwnedFocus =
 			focusedElement.current !== null &&
 			!focusedElement.current.isConnected &&
@@ -321,8 +388,12 @@ export const DrawerUpdates: FC<{
 		if (active !== document.body && !removedOwnedFocus) return;
 		const next = shown[Math.min(focused.index, shown.length - 1)];
 		const selector = next
-			? `[data-drawer-update="${CSS.escape(next.id)}"] [data-row-action="read"]`
+			? `[data-drawer-update="${CSS.escape(next.id)}"] [data-row-action="${handoffAction.current}"]`
 			: "[data-drawer-empty], [data-drawer-load-more]";
+		/* No row left to hand off to: remember what the empty heading took over, so a
+		 * refusal that restores this row can hand the position back. */
+		if (!next)
+			restoreRow.current = { id: focused.id, action: handoffAction.current };
 		listElement.current?.querySelector<HTMLElement>(selector)?.focus();
 	}, [shown]);
 	const showInConversation = (item: DesktopNotificationItem) => {
@@ -379,6 +450,18 @@ export const DrawerUpdates: FC<{
 			write.mutate(
 				{ verb, target: { items } },
 				{
+					onSuccess: (result) => {
+						/*
+						 * CONFIRM THE UNDO (UX round 2, U4). Undone from the Read view, the
+						 * restored rows appear in a list the person is not looking at, so a
+						 * successful Undo said nothing at all where it did the most. The same
+						 * key the Notifications page confirms its own undo with: no new copy.
+						 * Only when rows really came back: a receipt that changed nothing is
+						 * not a restore, and "Restored" would be a claim the server refused.
+						 */
+						if (!result.changed?.length) return;
+						showInfoToast(t("ui.notifications.toast.undone"));
+					},
 					onError: () =>
 						/*
 						 * THE ANSWER TO THE PRESS, NOT AN UNSOLICITED REFUSAL. `showErrorToast`
@@ -389,8 +472,15 @@ export const DrawerUpdates: FC<{
 						 * `replaceErrorToast` exists for (its own doc names "the answer to a
 						 * press"); the hosted native scene found it when a refused dismiss, then
 						 * a refused Undo, collapsed into one card with no action.
+						 *
+						 * `REFUSAL_TOAST_ID` is the other half of that fix: `replaceErrorToast`
+						 * replaces the card NAMED BY ITS ID, so a call without one published a
+						 * second identical sentence beside the refusal already on screen
+						 * (design round 1, D1). The sentence is the refused verb's, not always
+						 * mark's.
 						 */
-						replaceErrorToast(t("ui.notifications.error.mark"), {
+						replaceErrorToast(refusalCopy(verb), {
+							id: REFUSAL_TOAST_ID,
 							action: {
 								label: t("ui.notifications.error.retry"),
 								onClick: retry,
@@ -404,6 +494,8 @@ export const DrawerUpdates: FC<{
 		item: DesktopNotificationItem,
 		verb: "read" | "unread" | "dismiss",
 	) => {
+		/* The handoff control in the next row is the one this press used (U5). */
+		handoffAction.current = verb === "dismiss" ? "dismiss" : "read";
 		const inverse =
 			verb === "dismiss" ? "undismiss" : verb === "read" ? "unread" : "read";
 		write.mutate(
@@ -430,7 +522,17 @@ export const DrawerUpdates: FC<{
 						},
 					);
 				},
-				onError: () => showErrorToast(t("ui.notifications.error.mark")),
+				onError: () =>
+					/*
+					 * A PRESS IS ANSWERED EVERY TIME, IN THE REFUSED VERB'S OWN WORDS
+					 * (R1-3, D2/U3). The deduping path swallowed a second refused
+					 * dismiss inside the five-second window - the row visibly stays put
+					 * and nothing says why - and it always spoke the mark-read
+					 * sentence, so a refused dismiss named the wrong action while
+					 * `ui.notifications.error.dismiss` sat unused in all eight
+					 * catalogues.
+					 */
+					replaceErrorToast(refusalCopy(verb), { id: REFUSAL_TOAST_ID }),
 			},
 		);
 	};
@@ -464,7 +566,11 @@ export const DrawerUpdates: FC<{
 						},
 					);
 				},
-				onError: () => showErrorToast(t("ui.notifications.error.mark")),
+				onError: () =>
+					/* The same answer-to-a-press rule as one row's refusal above. */
+					replaceErrorToast(t("ui.notifications.error.mark"), {
+						id: REFUSAL_TOAST_ID,
+					}),
 			},
 		);
 	};
@@ -579,7 +685,12 @@ export const DrawerUpdates: FC<{
 							? t("ui.notifications.drawer.empty")
 							: view === "unread"
 								? t("ui.notifications.empty.caught_up.title")
-								: t("ui.notifications.drawer.empty")}
+								: /* NOT "Nothing flagged in this conversation" (design round 1,
+									 * D6): the Read view can be empty while the Unread badge shows
+									 * rows, and that sentence then denies what the badge says. This
+									 * view IS a filter, and this is the catalogue sentence for one
+									 * with no matches. */
+									t("ui.notifications.empty.filtered.title")}
 					</h3>
 				) : (
 					<ul className="flex flex-col" data-drawer-view-list={view}>
@@ -700,7 +811,24 @@ const DrawerReadViews: FC<{
 						? t("ui.notifications.drawer.group.unread")
 						: t("ui.notifications.drawer.group.read")}
 					{value === "unread" && unreadCount > 0 && (
-						<Badge variant="neutral" size="count">
+						<Badge
+							variant="neutral"
+							size="count"
+							/*
+							 * RESERVE TWO DIGITS (design round 1, D4). The count widened the
+							 * Unread segment by a digit as it passed 10, so the Read segment
+							 * moved 7.7 px under the pointer on the first click of a triage
+							 * run - exactly the click that takes the count from 10 to 9.
+							 * Tabular figures are already the primitive; this is the width
+							 * that makes one digit and two occupy one slot. From three digits
+							 * the badge grows by the digit it gained: reserving that on every
+							 * load costs this control 8 px of the drawer narrowest width for
+							 * a usually single-digit count.
+							 */
+							style={{
+								minWidth: `${Math.max(2, formatNumber(unreadCount).length)}ch`,
+							}}
+						>
 							{formatNumber(unreadCount)}
 						</Badge>
 					)}

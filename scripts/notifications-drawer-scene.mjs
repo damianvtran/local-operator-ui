@@ -11,6 +11,11 @@ import { createServer, request as httpRequest } from "node:http";
 import { join } from "node:path";
 
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/* Three digits in any of the three digit families the shipped locales print: Latin,
+ * Arabic-Indic and Extended Arabic-Indic (Urdu). Module level so the poll below does
+ * not rebuild the literal on every tick. */
+const THREE_DIGITS = /[0-9\u0660-\u0669\u06F0-\u06F9]{3}/;
 async function until(check, label, ms = 30_000) {
 	const deadline = Date.now() + ms;
 	let last;
@@ -196,6 +201,25 @@ export async function prepareDrawerRemediation({
 				),
 			);
 		},
+		/*
+		 * THE NARROW STEP'S THREE-DIGIT COUNT (design round 1, D7). The seeded twelve
+		 * rows cannot reach three digits without holding every write for 95 presses.
+		 * Written through the pinned core's own store - a real row in the same table a
+		 * forwarding write would reach, never a manufactured receipt - so the badge is
+		 * counting rows that exist.
+		 */
+		seedUnread(count) {
+			return coreStore(
+				config,
+				[
+					"from local_operator.notifications.store import NotificationStore",
+					`store = NotificationStore(${JSON.stringify(config)})`,
+					`for i in range(${count}):`,
+					`    store.notify(${JSON.stringify(session)}, key=f'narrow-{i}', title=f'Narrow width update {i}', body_md='Synthetic CI notification; no model turn.', priority='normal')`,
+					"print('seeded')",
+				].join("\n"),
+			);
+		},
 		revise(row) {
 			return coreStore(
 				config,
@@ -210,14 +234,61 @@ export async function prepareDrawerRemediation({
 	};
 }
 
+/**
+ * Where a control can actually be hit, and why it cannot when it cannot.
+ *
+ * `click()` used to click the element's CENTRE and read "not the top hit at the
+ * centre" as "not there", so a control that is drawn, present and reachable but
+ * partly under another layer timed out with a bare `null`. That is not evidence
+ * about the product: the narrow 200 %/RTL step died on it and wrote none of its
+ * frames (agent review round 1, R1-1; design round 1, D7). This probe scrolls the
+ * control into view and samples points of its own box - centre first, then inset
+ * points inside the viewport - and answers the first point the element really
+ * owns. When it owns none, the answer carries the MEASUREMENT instead: the rect,
+ * the CSS viewport, and the element that is actually on top.
+ */
+const hittablePoint = (selector) => `(()=>{
+	const e=document.querySelector(${JSON.stringify(selector)});
+	if(!e) return {present:false};
+	e.scrollIntoView({block:'nearest',inline:'nearest'});
+	const r=e.getBoundingClientRect();
+	const vw=window.innerWidth,vh=window.innerHeight;
+	const round=(n)=>Math.round(n*10)/10;
+	const rect={x:round(r.x),y:round(r.y),width:round(r.width),height:round(r.height)};
+	const viewport={width:vw,height:vh};
+	const left=Math.max(r.left,0),right=Math.min(r.right,vw);
+	const top=Math.max(r.top,0),bottom=Math.min(r.bottom,vh);
+	const describe=(node)=>node?{tag:node.tagName,cls:String(node.className??'').slice(0,140),data:Object.assign({},node.dataset)}:null;
+	if(r.width<=0||r.height<=0) return {present:true,rect,viewport,reason:'zero-sized'};
+	if(right-left<=0||bottom-top<=0)
+		return {present:true,rect,viewport,reason:'outside the viewport',onTop:describe(document.elementFromPoint(vw/2,vh/2))};
+	const xs=[(left+right)/2,left+(right-left)*0.35,left+(right-left)*0.65];
+	const ys=[(top+bottom)/2,top+(bottom-top)*0.35,top+(bottom-top)*0.65];
+	for(const y of ys) for(const x of xs){
+		const hit=document.elementFromPoint(x,y);
+		if(hit&&(e===hit||e.contains(hit))) return {present:true,x,y,rect,viewport};
+	}
+	return {present:true,rect,viewport,reason:'another element is on top',onTop:describe(document.elementFromPoint((left+right)/2,(top+bottom)/2))};
+})()`;
+
 async function click(cdp, selector) {
-	const box = await until(
-		() =>
-			cdp.evaluate(
-				`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e)return null; e.scrollIntoView({block:'nearest'});const r=e.getBoundingClientRect();const x=r.x+r.width/2,y=r.y+r.height/2;const top=document.elementFromPoint(x,y);return r.width&&r.height&&e.contains(top)?{x,y}:null})()`,
-			),
-		`click ${selector}`,
-	);
+	let box;
+	try {
+		box = await until(async () => {
+			const probed = await cdp.evaluate(hittablePoint(selector));
+			return probed && typeof probed.x === "number"
+				? { x: probed.x, y: probed.y }
+				: null;
+		}, `click ${selector}`);
+	} catch {
+		/* The measurement, not a bare timeout - the thing R1-1 needed and did not get. */
+		const diagnosis = await cdp
+			.evaluate(hittablePoint(selector))
+			.catch(() => null);
+		throw new Error(
+			`click ${selector}: no point of the control is hittable - ${JSON.stringify(diagnosis)}`,
+		);
+	}
 	await cdp.send("Input.dispatchMouseEvent", {
 		type: "mouseMoved",
 		button: "none",
@@ -244,6 +315,7 @@ const stateOf = (cdp) =>
  focusedRow:document.activeElement?.closest('[data-drawer-update]')?.dataset.drawerUpdate,
  focusedAction:document.activeElement?.dataset.rowAction,
  theme:document.documentElement.dataset.theme,dir:document.documentElement.dir,
+ viewport:{width:window.innerWidth,height:window.innerHeight},
  glass:document.documentElement.dataset.glass,
  bounds:[...document.querySelectorAll('[data-drawer-read-view], [data-drawer-updates], [data-ask-drawer]')].map(e=>{const r=e.getBoundingClientRect();return {selector:e.dataset.drawerReadView??e.dataset.askDrawer??'updates',x:r.x,y:r.y,width:r.width,height:r.height,scrollWidth:e.scrollWidth,clientWidth:e.clientWidth}})
 }))()`);
@@ -257,6 +329,12 @@ export async function runDrawerRemediationScene({
 	out,
 }) {
 	const receipt = { matrix: [], frames: [], transport: fixture.state.patches };
+	/* One owner for the window geometry, so the zoom a step says it used is the one
+	 * the receipt's own viewport measurement proves. */
+	const zoomTo = (factor) =>
+		nodeCdp.evaluate(
+			`(()=>{const e=process.mainModule.require('electron');const w=e.BrowserWindow.getAllWindows()[0];w.setContentSize(1000,900);w.webContents.setZoomFactor(${factor});return {zoom:w.webContents.getZoomFactor(),size:w.getContentSize()}})()`,
+		);
 	const capture = async (label) => {
 		const state = await stateOf(cdp);
 		const frame = await screenshot(cdp, `drawer-${label}`);
@@ -319,6 +397,24 @@ export async function runDrawerRemediationScene({
 				3000,
 			);
 			const firstClick = await capture(`${theme}-first-click`);
+			/*
+			 * D4: THE READ SEGMENT MUST NOT MOVE WHEN THE COUNT LOSES A DIGIT. The badge
+			 * inside Unread widened its own segment by a digit as the count left two
+			 * digits, pushing Read 7.7 px sideways on the first click of a triage run -
+			 * the click this frame is of. Measured, not asserted from the class list.
+			 */
+			const readBefore = before.bounds.find((box) => box.selector === "read");
+			const readAfter = firstClick.bounds.find(
+				(box) => box.selector === "read",
+			);
+			assert.ok(
+				readBefore && readAfter,
+				"both frames must record the Read segment",
+			);
+			assert.ok(
+				Math.abs(readBefore.x - readAfter.x) <= 0.5,
+				`the Read segment held its x on the click: ${readBefore.x} -> ${readAfter.x}`,
+			);
 			/* Read the actual state fields: `focused` never existed, so the earlier
 			 * assertion failed even when Chromium correctly focused the next row.
 			 * Keep the row identity and action explicit: tab/other-action focus is a
@@ -508,40 +604,105 @@ export async function runDrawerRemediationScene({
 			locale.status >= 200 && locale.status < 300,
 			"core must accept Urdu setting for RTL evidence",
 		);
-		await nodeCdp.evaluate(
-			`(()=>{const e=process.mainModule.require('electron');const w=e.BrowserWindow.getAllWindows()[0];w.setContentSize(1000,900);w.webContents.setZoomFactor(2);return {zoom:w.webContents.getZoomFactor(),size:w.getContentSize()}})()`,
-		);
+		/*
+		 * A THREE-DIGIT COUNT AT THIS WIDTH (design round 1, D7). Seeded through the
+		 * fixture's own window - its proxy is still attached and the app just answered
+		 * a read - so the badge the frame shows is the server's count of real rows.
+		 */
+		fixture.seedUnread(100);
+		/*
+		 * OPEN AT 1x, THEN ZOOM THE OPEN PANE.
+		 *
+		 * The reload used to happen AFTER the 2x zoom, so the reopen had to click a
+		 * control inside a 500x450 CSS-px window the rig could not reach - and the step
+		 * then wrote no frame at all (agent review round 1, R1-1; design round 1, D7).
+		 * Page zoom only shrinks the viewport in CSS pixels: the layout the frames show
+		 * is the same layout, and the reachability probe below still measures whether
+		 * the strip's own control is hittable at 200 % in RTL. That is the product
+		 * claim; "the app's post-reload reopen works at 2x" is not this pane's to
+		 * prove, and asking for it here cost the entire narrow axis.
+		 */
 		await cdp.evaluate("location.reload()");
 		await pause(1500);
 		await open();
 		await ready();
+		await zoomTo(2);
+		/*
+		 * THE DISCRIMINATING MEASUREMENT, IN THE RECEIPT. "Drawn" and "hittable" are
+		 * different claims and the failing step conflated them: this names the point it
+		 * can hit, or the element that is on top when it cannot.
+		 */
+		const hit = await cdp.evaluate(
+			`(${hittablePoint('[data-drawer-tab="updates"]')})`,
+		);
+		const hittable = typeof hit.x === "number";
+		receipt.matrix.push({
+			surface: "narrow 200% RTL reachability",
+			result: hittable ? "PASS" : "FAIL",
+			measurement: {
+				viewport: hit.viewport,
+				rect: hit.rect,
+				reason: hit.reason,
+				onTop: hit.onTop,
+				point: hittable ? { x: hit.x, y: hit.y } : null,
+			},
+		});
+		assert.ok(
+			hittable,
+			`the Updates tab must stay hittable at 200% in RTL: ${JSON.stringify(hit)}`,
+		);
+		await until(
+			async () => THREE_DIGITS.test((await stateOf(cdp)).unread ?? ""),
+			"three-digit unread count",
+			60_000,
+		);
 		await click(cdp, '[data-drawer-read-view="read"]');
 		await pause(350);
 		const narrow = await capture("narrow-200-rtl-history");
 		assert.equal(narrow.dir, "rtl");
+		assert.ok(
+			narrow.viewport.width <= 520 && narrow.viewport.height <= 470,
+			`the narrow frame must be rendered at the zoomed viewport, got ${JSON.stringify(narrow.viewport)}`,
+		);
 		assert.ok(
 			narrow.bounds
 				.filter((box) => box.selector === "unread" || box.selector === "read")
 				.every((box) => box.scrollWidth <= box.clientWidth + 1),
 			"radio labels/counts clipped",
 		);
+		assert.match(
+			narrow.unread ?? "",
+			THREE_DIGITS,
+			`the narrow frame must carry a three-digit count: ${narrow.unread}`,
+		);
 		receipt.matrix.push({
 			surface: "narrow 200% RTL",
 			result: "PASS",
 			geometry: narrow.bounds,
+			count: narrow.unread,
 		});
+		/* Back to 1x for the reload that repaints through the app's own theme
+		 * persistence, then the same zoom-the-open-pane order as above. */
+		await zoomTo(1);
 		await cdp.evaluate(
 			`(()=>{const key='ui-preferences-storage';const prefs=JSON.parse(localStorage.getItem(key));prefs.state.themeName='localOperatorLight';localStorage.setItem(key,JSON.stringify(prefs));location.reload();return true})()`,
 		);
 		await pause(1500);
 		await open();
 		await ready();
+		await zoomTo(2);
 		await click(cdp, '[data-drawer-read-view="read"]');
 		await capture("light-narrow-200-rtl-history");
 		receipt.result = "PASS";
 	} catch (error) {
 		receipt.result = "FAIL";
 		receipt.error = String(error.stack ?? error);
+		/* A red step must leave pixels and geometry behind: the frames this lane could
+		 * not reach are why the round after R1-1 had nothing to read. */
+		try {
+			receipt.failureState = await stateOf(cdp);
+			receipt.failureFrame = await screenshot(cdp, "drawer-failure-state");
+		} catch {}
 		throw error;
 	} finally {
 		fixture.release();
