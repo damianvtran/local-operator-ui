@@ -86,7 +86,11 @@ const DURABLE_INTO_PROP =
 const DISPLAYED_INTO_PROP = /sessionId=\{[^}]*displayedSessionId[^}]*\}/;
 const KEEPS_EXPLICIT =
 	/snapshot\.status\?\.local\.session\s*\n?\s*\?\s*this\.snapshot\.status\.local\.session/;
-const EMPTY_FALLBACK = /:\s*sessionId\s*\n?\s*:\s*""/;
+/* An unresolved target still falls back to the EMPTY string — the expression moved
+ * when main reworked the helper into `target && pattern.test(target) ? target : ""`,
+ * so the anchor follows the current text rather than the original ternary nest. */
+const EMPTY_FALLBACK =
+	/sessionId && sessionIdPattern\.test\(sessionId\)[\s\S]{0,80}?:\s*""/;
 
 const AUDITED_AGENT = "acct-audited-agent";
 const message = (over = {}) => ({
@@ -208,13 +212,14 @@ test("the title prefers the name, then the members, then the caller's fallback",
 test("chronology de-duplicates an overlapping boundary and sorts by seq", () => {
 	// An inclusive `after_seq` cursor re-serves the previous page's last row, and
 	// the server pages newest-first: the model must not show it twice, and must
-	// not inherit the server's direction.
+	// not inherit the server's direction. The re-served copy here arrives WITHOUT
+	// text, which is the case that must not blank the body already on screen.
 	const older = [
 		message({ id: "bcmsg_1", seq: 1 }),
-		message({ id: "bcmsg_2", seq: 2 }),
+		message({ id: "bcmsg_2", seq: 2, body: "body from the older page" }),
 	];
 	const newer = [
-		message({ id: "bcmsg_2", seq: 2, body: "restated" }),
+		message({ id: "bcmsg_2", seq: 2, body: null }),
 		message({ id: "bcmsg_3", seq: 3 }),
 	];
 	const rows = model.ownerAuditChronology([newer, older]);
@@ -226,9 +231,20 @@ test("chronology de-duplicates an overlapping boundary and sorts by seq", () => 
 			["bcmsg_3", 3],
 		],
 	);
-	// The LAST occurrence of a duplicated row wins, so a re-read that healed a
-	// missing body is the one shown.
-	assert.equal(rows.find((row) => row.id === "bcmsg_2").body, "restated");
+	// The copy WITH a body wins over the re-served one that has none.
+	assert.equal(
+		rows.find((row) => row.id === "bcmsg_2").body,
+		"body from the older page",
+	);
+	// When both copies carry text the later fetch wins: that is the ordinary
+	// re-read, and a healed body is the one a reader should end up looking at.
+	assert.equal(
+		model.ownerAuditChronology([
+			[message({ id: "bcmsg_2", seq: 2, body: "as first fetched" })],
+			[message({ id: "bcmsg_2", seq: 2, body: "restated" })],
+		])[0].body,
+		"restated",
+	);
 });
 
 test("the not-open state is gated on all three conditions", () => {

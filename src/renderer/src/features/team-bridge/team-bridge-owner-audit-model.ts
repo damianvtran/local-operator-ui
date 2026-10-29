@@ -36,12 +36,23 @@ export function ownerAuditTitle(
 }
 
 /** Both history and inclusive thread pages can overlap. Never show a duplicate
- * boundary row, and keep chronology independent of the server page direction. */
+ * boundary row, and keep chronology independent of the server page direction.
+ *
+ * A LATER COPY NEVER BLANKS TEXT ALREADY SHOWN. `after_seq` is inclusive on the
+ * replies route, so the boundary row arrives twice; the second copy is normally
+ * the fresher one and wins, but a copy that arrives without a body (a projection
+ * that omitted it, a page whose body was withheld) must not erase the body the
+ * reader can already see. Preferring the copy with text costs nothing when both
+ * carry it, which is the ordinary case. */
 export function ownerAuditChronology(
 	pages: ReadonlyArray<ReadonlyArray<OwnerAuditMessage>>,
 ) {
 	const messages = new Map<string, OwnerAuditMessage>();
 	for (const page of pages)
-		for (const message of page) messages.set(message.id, message);
+		for (const message of page) {
+			const seen = messages.get(message.id);
+			if (seen?.body && !message.body) continue;
+			messages.set(message.id, message);
+		}
 	return [...messages.values()].sort((a, b) => a.seq - b.seq);
 }
