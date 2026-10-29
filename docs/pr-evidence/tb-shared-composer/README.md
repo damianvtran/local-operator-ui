@@ -21,3 +21,11 @@ made the page reach `window.electron.ipcRenderer` from a passive effect, which
 Storybook's preview does not mock, so all thirty stories in
 `team-bridge-page.stories.tsx` died in `commitHookEffectListMount`. The
 side-effect import of `story-electron-shim` is that fix.
+
+## State frames (`after/`)
+
+Beyond the populated pair, the branch's own states: `channel-selected`,
+`empty-account`, `loading`, `error-state`, `send-failed`,
+`sending-disabled-composer`. They exist so a reviewer can judge the composer in
+the states the populated fixture cannot show — disabled, failed, empty and
+loading — instead of being told they look fine.
