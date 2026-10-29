@@ -2306,6 +2306,42 @@ function fakeCore(hold = () => false) {
 const settle = async () => {
 	for (let i = 0; i < 6; i++) await tick();
 };
+/**
+ * Wait for a state the SHIPPED code reaches on its own schedule.
+ *
+ * Bounded by event-loop turns rather than a wall-clock sleep: Q-3 asserts an
+ * ORDERING (the promoted initials are in the cache before the notifier's
+ * deadline is ended), and a fixed sleep is a bet on the scheduler that a loaded
+ * CI runner loses. Exceeding the bound fails loudly rather than hanging, which
+ * is the other half of the same defect: a test that awaits a notifier whose
+ * deadline was never fired is reported by node as "Promise resolution is still
+ * pending but the event loop has already resolved".
+ */
+const settleUntil = async (ready, what) => {
+	for (let turn = 0; turn < 5_000; turn++) {
+		if (ready()) return;
+		await tick();
+	}
+	throw new Error(`waited 5000 event-loop turns for ${what}`);
+};
+/**
+ * Await work whose only bound is an UNREF'D timer.
+ *
+ * The images layer unrefs its deadline on purpose, so a hub that never answers
+ * cannot hold the app's process open. A test that awaits that bound must supply
+ * its own liveness: with nothing else queued, node empties the loop and reports
+ * the still-pending test as "Promise resolution is still pending but the event
+ * loop has already resolved" - the CI `Desktop Tests` signature on node 22.
+ * The handle is cleared in `finally` and observes nothing the assertions check.
+ */
+const withLiveLoop = async (work) => {
+	const keepalive = setInterval(() => {}, 25);
+	try {
+		return await work;
+	} finally {
+		clearInterval(keepalive);
+	}
+};
 const openBanners = (h) => h.banners.filter((b) => b.shown && !b.closed);
 const photoOf = (account, hash) => ({
 	account_id: account,
@@ -2746,21 +2782,32 @@ test("Q-3 a queued initials warm is promoted with the photo and wins the deadlin
 			["acc_ben/initials", "acc_cara/initials"],
 			"the warm lane is saturated, so zed's variants are still queued",
 		);
-		const pending = h.notifier.notify(
-			request({ conversationId: "bcv_zed", sender: zed }),
-		);
+		const banner = request({ conversationId: "bcv_zed", sender: zed });
+		const pending = h.notifier.notify(banner);
 		assert.deepEqual(
 			calls.slice(2),
 			["acc_zed/photo", "acc_zed/initials"],
 			"the queued initials is promoted to the post lane alongside the photo",
 		);
-		// The photo stays pending: the promoted initials answer first, well inside
-		// the deadline, so the banner never reaches the app icon.
+		/*
+		 * The photo stays pending, so the promoted initials are what can answer.
+		 * They must be IN THE CACHE before the deadline is ended, because the
+		 * deadline's fallback is `peek` - a synchronous read - while the image
+		 * layer's own 250 ms timer is REAL and this fake clock never arms it. Fire
+		 * first and the cell posts the app icon; await first and it waits on a
+		 * timer that is not there, which CI reported as "Promise resolution is
+		 * still pending but the event loop has already resolved". Hence: wait for
+		 * the observable cache state, then end the notifier's deadline.
+		 */
 		for (const entry of held.filter(
 			({ input }) => input.accountId === "acc_zed" && !input.avatar,
 		))
 			entry.done();
-		await settle();
+		await settleUntil(
+			() => cache.peek(banner) === "composite:initials/person/acc_zed/ZO",
+			"the promoted initials to reach the cache",
+		);
+		clock.fireAll();
 		assert.deepEqual(await pending, { shown: true });
 		assert.equal(
 			h.banners[0].options.icon,
@@ -2830,9 +2877,8 @@ test("Q-3 the initials sweep is independent of warm pump timing, and the app ico
 				held.shift()?.done();
 				await settle();
 			}
-			const pending = h.notifier.notify(
-				request({ conversationId: "bcv_zed", sender: zed }),
-			);
+			const banner = request({ conversationId: "bcv_zed", sender: zed });
+			const pending = h.notifier.notify(banner);
 			const initialsCalls = () =>
 				calls.filter((call) => call === "acc_zed/initials");
 			assert.equal(
@@ -2841,12 +2887,17 @@ test("Q-3 the initials sweep is independent of warm pump timing, and the app ico
 				`one initials request at warm position ${released}`,
 			);
 			// Only the initials answer in time. The photo stays over the deadline,
-			// exactly as in the QA reproduction (photo > 250 ms).
+			// exactly as in the QA reproduction (photo > 250 ms). The cache must hold
+			// those initials BEFORE the fake deadline fires: `peek` is the fallback,
+			// and the image layer's real timer is not armed through this clock.
 			for (const { input, done } of held.filter(
 				({ input }) => input.accountId === "acc_zed",
 			))
 				if (!input.avatar) done();
-			await settle();
+			await settleUntil(
+				() => cache.peek(banner) === "composite:initials/person/acc_zed/ZO",
+				`the promoted initials to reach the cache at warm position ${released}`,
+			);
 			clock.fireAll();
 			assert.deepEqual(await pending, { shown: true });
 			assert.equal(
@@ -3038,7 +3089,7 @@ test("Q-4 a photo past the deadline leaves the warmed initials, and the bound is
 	for (const { done } of initialsWarm.held.splice(0)) done();
 	await settle();
 	assert.equal(
-		await reading,
+		await withLiveLoop(reading),
 		"composite:initials/person/acc_zed/ZO",
 		"the deadline answers with the placeholder, not the app icon",
 	);
@@ -3051,7 +3102,10 @@ test("Q-4 a photo past the deadline leaves the warmed initials, and the bound is
 	// the wait at the bound instead of hanging on either variant.
 	const nothingWarm = warm(hung);
 	const nothingStarted = Date.now();
-	assert.equal(await nothingWarm.cache.read(banner, budget), undefined);
+	assert.equal(
+		await withLiveLoop(nothingWarm.cache.read(banner, budget)),
+		undefined,
+	);
 	assert.ok(
 		Date.now() - nothingStarted >= budget - 5,
 		"both variants missing ends the wait at the bound, not early and not never",
