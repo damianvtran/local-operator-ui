@@ -46,9 +46,19 @@ function readState(query: {
 const title = (conversation: OwnerAuditConversation) =>
 	ownerAuditTitle(conversation, t("ui.ownerAudit.unnamed"));
 
+/**
+ * A refusal is NOT an empty list, and it must not LOOK like one either.
+ *
+ * The words already differed; the treatment did not, so an empty section and a
+ * failed one were the same grey paragraph (design review round 1, D6). The
+ * failure now wears the semantic danger ink the contrast contract verifies, sits
+ * on its section's own inset instead of outdenting itself, and is the ONLY retry
+ * in its scope — the panel header drops its Refresh while this is what the
+ * reader is looking at, so one refetch does not appear twice (D7).
+ */
 function AuditFailure({ retry }: { retry: () => void }) {
 	return (
-		<div role="alert" className="space-y-2 text-sm text-ink-muted">
+		<div role="alert" className="space-y-2 px-3 text-sm text-danger">
 			<p>{t("ui.ownerAudit.error")}</p>
 			<Button variant="ghost" onClick={retry}>
 				{t("ui.ownerAudit.retry")}
@@ -251,7 +261,11 @@ function AuditMessage({
 				</p>
 			) : collapsed ? (
 				<details className="mt-2">
-					<summary className="cursor-pointer text-sm text-ink-muted">
+					{/* The target is the LABEL and its own box, not the full row width: a
+					 * click far to the right of the words used to open a message (design
+					 * review round 1, D9). 24px of vertical room clears the WCAG 2.5.8
+					 * floor that the browser's 20px marker missed. */}
+					<summary className="inline-flex min-h-[24px] w-fit cursor-pointer items-center text-sm text-ink-muted">
 						{t("ui.ownerAudit.reveal")}
 					</summary>
 					{body}
@@ -318,9 +332,13 @@ export function OwnerAuditPanelView({
 						})}
 					</p>
 				))}
-				<Button variant="ghost" onClick={retry}>
-					{t("ui.ownerAudit.refresh")}
-				</Button>
+				{/* One retry per scope: while the body shows AuditFailure, the header's
+				 * Refresh would be a second control for the same refetch. */}
+				{state !== "error" && (
+					<Button variant="ghost" onClick={retry}>
+						{t("ui.ownerAudit.refresh")}
+					</Button>
+				)}
 			</header>
 			<div className="min-h-0 flex-1 overflow-auto px-5 pb-5">
 				{state === "loading" ? (
@@ -489,10 +507,10 @@ export function useOwnerAuditSurface({
 		),
 		rail: (beforeSelect) => (
 			<section className="mt-4" aria-label={t("ui.ownerAudit.title")}>
-				<h2 className="px-3 py-2 text-xs font-medium text-ink-muted">
+				<h2 className="px-3 py-2 font-medium text-meta text-ink-dim tracking-wide">
 					{t("ui.ownerAudit.title")}
 				</h2>
-				<p className="px-3 pb-2 text-xs text-ink-muted">
+				<p className="px-3 pb-2 text-meta text-ink-dim">
 					{t("ui.ownerAudit.read_only")}
 				</p>
 				{organizations.map((organization) => (
