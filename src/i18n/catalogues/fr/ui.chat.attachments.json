@@ -11,5 +11,10 @@
 	"ui.chat.attachments.copy_saved_path": "Copier le chemin de la copie conservée",
 	"ui.chat.attachments.saved_path_copied": "Chemin de la copie conservée copié",
 	"ui.chat.attachments.saved_copy_label": "Copie conservée",
-	"ui.chat.attachments.file_and_copy_missing": "La copie conservée a aussi disparu."
+	"ui.chat.attachments.file_and_copy_missing": "La copie conservée a aussi disparu.",
+	"ui.chat.attachments.open": "Ouvrir",
+	"ui.chat.attachments.playback_position": "Position de lecture",
+	"ui.chat.attachments.playback_rate": "Vitesse de lecture",
+	"ui.chat.attachments.playback_rate_option": "{rate}x",
+	"ui.chat.attachments.volume": "Volume"
 }

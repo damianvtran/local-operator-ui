@@ -529,9 +529,16 @@ test("the count line splits by tier, and the cut rides it as a suffix", async ()
 		 * One line, both facts (design D2 + UX U3): the split the old count hid,
 		 * and the cut as a suffix rather than "2 matches Showing the first 2
 		 * matches." saying it twice.
+		 *
+		 * Label-first is the catalogue's order (`count.split`), not the model's
+		 * old suffix: a locale inflects each count against its own noun, which a
+		 * shared trailing "exact"/"related" cannot do. This assertion is the
+		 * shipped sentence on purpose — `thread-search-model.test.mjs` holds the
+		 * model's spelling to the same `en` template, so the panel and the model
+		 * cannot drift into two spellings of one line again (R2-1).
 		 */
 		const line = panel.panel().textContent;
-		assert.match(line, /1 exact · 1 related/);
+		assert.match(line, /Exact: 1 · Related: 1/);
 		assert.match(line, /\(first 2 shown\)/);
 		await panel.render({
 			query: "ledger",

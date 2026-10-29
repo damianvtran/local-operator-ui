@@ -11,5 +11,10 @@
 	"ui.chat.attachments.copy_saved_path": "محفوظ شدہ نقل کا راستہ نقل کریں",
 	"ui.chat.attachments.saved_path_copied": "محفوظ شدہ نقل کا راستہ نقل ہو گیا",
 	"ui.chat.attachments.saved_copy_label": "محفوظ شدہ نقل",
-	"ui.chat.attachments.file_and_copy_missing": "محفوظ شدہ نقل بھی موجود نہیں ہے۔"
+	"ui.chat.attachments.file_and_copy_missing": "محفوظ شدہ نقل بھی موجود نہیں ہے۔",
+	"ui.chat.attachments.open": "کھولیں",
+	"ui.chat.attachments.playback_position": "پلے بیک کا مقام",
+	"ui.chat.attachments.playback_rate": "پلے بیک کی رفتار",
+	"ui.chat.attachments.playback_rate_option": "{rate}x",
+	"ui.chat.attachments.volume": "آواز کا حجم"
 }
