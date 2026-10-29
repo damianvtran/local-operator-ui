@@ -7,6 +7,7 @@
 	"ui.common.actions.more_info": "مزید معلومات",
 	"ui.common.actions.retry": "دوبارہ کوشش کریں",
 	"ui.common.actions.retry_again": "دوبارہ کوشش کریں",
+	"ui.common.actions.retrying": "کوشش جاری ہے…",
 	"ui.common.actions.date_time_picker.select_date": "تاریخ منتخب کریں",
 	"ui.common.actions.date_time_picker.choose_date": "{label} کی تاریخ منتخب کریں",
 	"ui.common.actions.date_time_picker.select_time": "وقت منتخب کریں",

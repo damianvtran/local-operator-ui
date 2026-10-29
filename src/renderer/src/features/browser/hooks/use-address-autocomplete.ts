@@ -150,15 +150,28 @@ export function useAddressAutocomplete(
 			});
 	}, [enabled, clearDebounce]);
 
+	/**
+	 * `request` changes identity with `enabled`, and `enabled` now flips whenever
+	 * the tab moves between own-state (the DOM list) and a presented page (the
+	 * native child). The subscription below must NOT follow it: tearing down and
+	 * re-adding a `onStateChanged` listener on every such flip is churn on a
+	 * window-wide channel, and a bridge that tracks one listener per channel (the
+	 * start-page harness's fake does) drops every OTHER consumer's callback when
+	 * this one unsubscribes - a landed page then never reaches the surface. The
+	 * listener reads the latest `request` through a ref instead.
+	 */
+	const requestRef = useRef(request);
+	requestRef.current = request;
+
 	/** Coalesced invalidation from main: only while this field is focused. */
 	const invalidated = useCallback((): void => {
 		if (!focusedRef.current) return;
 		if (debounceRef.current !== null) return;
 		debounceRef.current = setTimeout(() => {
 			debounceRef.current = null;
-			request();
+			requestRef.current();
 		}, ADDRESS_HISTORY_REFRESH_DEBOUNCE_MS);
-	}, [request]);
+	}, []);
 
 	useEffect(() => {
 		mountedRef.current = true;

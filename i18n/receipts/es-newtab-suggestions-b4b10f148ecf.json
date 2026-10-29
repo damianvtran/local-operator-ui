@@ -1,0 +1,110 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "audit_kind": "fresh-namespace-delta",
+ "locale": "es",
+ "namespace": "ui.browser",
+ "pr": null,
+ "branch": "fix/newtab-address-suggestions",
+ "instance": "es-newtab-suggestions-b4b10f148ecf",
+ "auditor": {
+  "agent": "translation-auditor",
+  "role": "independent translation auditor (team lopdev); authored no catalogue value for this branch and edited no repo file",
+  "instance": "es-newtab-suggestions-b4b10f148ecf",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_note": "FALLBACK OBSERVED: the session started on deepseek/deepseek-flash and the harness switched to anthropic/claude-sonnet-5-5 mid-run (provider failure: quota HTTP 402). The diff derivation and catalogue reads were first issued on deepseek-flash; every judgement, the ICU parse, the bidi rendering and this receipt were produced on anthropic/claude-sonnet-5-5.",
+  "independence": "Read-only on the repo (worktree newtab-suggestions at 80a1c3224e). Wrote no catalogue value, edited no catalogue, English source, context sidecar, ledger or allowance, ran no ledger tool. Wrote only this receipt under the session scratchpad."
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "verdict": "Accurate, tú register consistent with neighbours (Pulsa Intro, historial, panel). Overflow is the only finding.",
+ "findings": [
+  {
+   "severity": "MINOR",
+   "key": "ui.browser.browser_url_bar.address_suggestions_unavailable_narrow",
+   "current": "Este panel es demasiado estrecho para mostrar sugerencias. Pulsa Intro para abrir lo que escribiste.",
+   "problem": "First sentence is 58 chars against English 40 (+45%); in the 45% pill it is cut before it finishes.",
+   "proposed": "Panel demasiado estrecho para mostrar sugerencias. Pulsa Intro para abrir lo que escribiste.",
+   "reason": "Drops the copula; first sentence 50 chars. Status fragments are normal for a hint in Spanish UI."
+  },
+  {
+   "severity": "MINOR",
+   "key": "ui.browser.browser_url_bar.address_suggestions_unavailable_platform",
+   "current": "Las sugerencias no se muestran en este sistema. Pulsa Intro para abrir lo que escribiste.",
+   "problem": "First sentence is 47 chars against English 40 and the pill truncates it.",
+   "proposed": "Sin sugerencias en este sistema. Pulsa Intro para abrir lo que escribiste.",
+   "reason": "First sentence 32 chars, same meaning, reuses the 'sugerencias' / 'este sistema' vocabulary."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.browser.browser_url_bar.address_suggestions_unavailable",
+   "current": "No se pudo leer tu historial de navegación. Las direcciones escritas siguen funcionando.",
+   "problem": "First sentence 43 chars against English 36 (+19%); 'de navegación' is redundant next to the neighbours, which say plain 'historial' ('De tu historial', 'No hay páginas coincidentes en tu historial').",
+   "proposed": "No se pudo leer tu historial. Las direcciones escritas siguen funcionando.",
+   "reason": "Matches the glossary form already used by the three neighbouring keys and shortens the visible sentence to 29."
+  }
+ ],
+ "finding_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 2,
+  "nit": 1
+ },
+ "checks": {
+  "keys_audited": 5,
+  "key_set_equals_english": true,
+  "namespace_keys": 241,
+  "placeholders": "@formatjs/icu-messageformat-parser parse of all 5 values: address_open_row carries exactly one argument {address}, byte-intact; the other four carry no argument and no ICU/markup construct, same as English.",
+  "first_sentence_chars_vs_en": {
+   "address_suggestions_unavailable": [
+    36,
+    43
+   ],
+   "address_suggestions_unavailable_narrow": [
+    40,
+    58
+   ],
+   "address_suggestions_unavailable_platform": [
+    40,
+    47
+   ],
+   "address_suggestions_unavailable_restart": [
+    37,
+    42
+   ]
+  },
+  "full_chars_vs_en": {
+   "address_open_row": [
+    16,
+    17
+   ],
+   "address_suggestions_unavailable": [
+    64,
+    88
+   ],
+   "address_suggestions_unavailable_platform": [
+    76,
+    89
+   ],
+   "address_suggestions_unavailable_restart": [
+    100,
+    110
+   ],
+   "address_suggestions_unavailable_narrow": [
+    76,
+    100
+   ]
+  }
+ },
+ "overflow_context": "Rendering context (renderer/src/features/browser/components/browser-url-bar.tsx ~1597-1612): the three standing sentences paint in a single-line `truncate` pill, max-w-[45%] of the address field, text-meta (12px), shown from a 342px field up. The full text is the aria-describedby description. Only the FIRST sentence can realistically be seen, so first-sentence length is the budget that matters.",
+ "sha256": {
+  "es": "0963f0fa1508157025ccb00d4b1768d7e4c4c45bd02b4888be08e156f542a860",
+  "en": "9c26625772886bffa1392176565485cad451be8f2644519b1a939d863667aa81"
+ },
+ "context_sha256": "aa83f0ec3e7d31793e54915a97955c49d2e788f7b926e26746ed46cc5f5a6e9b",
+ "scope": "ui.browser, the 5 keys this commit added or changed (address_open_row new; address_suggestions_unavailable changed; address_suggestions_unavailable_platform / _restart / _narrow new) read against src/i18n/catalogues/en/ui.browser.json and en/ui.browser.context.json, plus the surrounding browser_url_bar / browser_pane / browser_find_row / browser_tab_strip keys as register and glossary precedent. Diff derived from `git diff 2d4ba7c434..80a1c3224e -- src/i18n/catalogues`. 5 audited keys per locale; key set of the namespace equals English (241/241).",
+ "date": "2026-10-26",
+ "head": "80a1c3224e",
+ "head_full": "80a1c3224e2dbb2cafd154acda1ab3ef836c17b3",
+ "base": "2d4ba7c434"
+}

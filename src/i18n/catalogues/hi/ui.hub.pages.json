@@ -1,5 +1,7 @@
 {
 	"ui.hub.pages.browse_aria": "प्रकार के अनुसार हब देखें",
+	"ui.hub.pages.card.get": "पाएँ",
+	"ui.hub.pages.card.updated": "{when} अपडेट किया गया",
 	"ui.hub.pages.header.subtitle": "Radient पर एजेंट, टीमें और कौशल खोजें और डाउनलोड करें",
 	"ui.hub.pages.header.title": "एजेंट हब",
 	"ui.hub.pages.orgs_below_version": "संगठन के साथ एजेंट साझा करने के लिए नया Local Operator बैकएंड चाहिए। बैकएंड अपडेट करें और फिर कोशिश करें।",

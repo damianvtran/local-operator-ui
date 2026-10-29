@@ -1,5 +1,7 @@
 {
 	"ui.hub.pages.browse_aria": "Просмотр хаба по типу",
+	"ui.hub.pages.card.get": "Загрузить",
+	"ui.hub.pages.card.updated": "обновлено {when}",
 	"ui.hub.pages.header.subtitle": "Находите и загружайте агентов, команды и навыки в Radient",
 	"ui.hub.pages.header.title": "Хаб агентов",
 	"ui.hub.pages.orgs_below_version": "Чтобы делиться агентами с организацией, нужен более новый бэкенд Local Operator. Обновите бэкенд и повторите попытку.",

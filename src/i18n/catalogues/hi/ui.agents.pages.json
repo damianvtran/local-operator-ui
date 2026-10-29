@@ -1,4 +1,12 @@
 {
+	"ui.agents.pages.add_manual.agent": "एजेंट खुद जोड़ें",
+	"ui.agents.pages.add_manual.team": "टीम खुद जोड़ें",
+	"ui.agents.pages.ask.body_agent": "एजेंट निर्देशों का एक सेट है जिसे आप बार-बार इस्तेमाल कर सकते हैं — इसके साथ आप चैट शुरू कर सकते हैं, या दूसरे एजेंट इसे बुला सकते हैं। जो चाहते हैं वह बताएँ, और एक कॉन्फ़िगरेशन रन उसे तैयार कर देता है।",
+	"ui.agents.pages.ask.body_team": "टीम में एक एजेंट चैट की अगुवाई करता है, और सदस्य होते हैं जिन्हें वह काम सौंप सकता है। जो चाहते हैं वह बताएँ, और एक कॉन्फ़िगरेशन रन उसे तैयार कर देता है।",
+	"ui.agents.pages.ask.heading_agent": "एजेंट माँगें",
+	"ui.agents.pages.ask.heading_team": "टीम माँगें",
+	"ui.agents.pages.ask.manual_agent": "या खुद एक एजेंट जोड़ें",
+	"ui.agents.pages.ask.manual_team": "या खुद एक टीम जोड़ें",
 	"ui.agents.pages.back_to_list": "सूची पर वापस जाएँ",
 	"ui.agents.pages.browse_aria": "प्रकार के अनुसार परिभाषाएँ देखें",
 	"ui.agents.pages.discard_bar.agent": "इस एजेंट के सहेजे न गए बदलाव छोड़ दें?",

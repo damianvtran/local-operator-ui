@@ -1,4 +1,12 @@
 {
+	"ui.agents.pages.add_manual.agent": "Ajouter un agent à la main",
+	"ui.agents.pages.add_manual.team": "Ajouter une équipe à la main",
+	"ui.agents.pages.ask.body_agent": "Un agent est un jeu d’instructions réutilisable avec lequel vous pouvez démarrer une conversation, ou que d’autres agents peuvent solliciter. Décrivez ce que vous voulez et une exécution de configuration le met en place.",
+	"ui.agents.pages.ask.body_team": "Une équipe comprend un agent qui dirige la conversation et des membres à qui elle peut confier du travail. Décrivez ce que vous voulez et une exécution de configuration la met en place.",
+	"ui.agents.pages.ask.heading_agent": "Demander un agent",
+	"ui.agents.pages.ask.heading_team": "Demander une équipe",
+	"ui.agents.pages.ask.manual_agent": "Ou ajoutez un agent à la main",
+	"ui.agents.pages.ask.manual_team": "Ou ajoutez une équipe à la main",
 	"ui.agents.pages.back_to_list": "Retour à la liste",
 	"ui.agents.pages.browse_aria": "Parcourir les définitions par type",
 	"ui.agents.pages.discard_bar.agent": "Abandonner vos modifications non enregistrées sur cet agent ?",

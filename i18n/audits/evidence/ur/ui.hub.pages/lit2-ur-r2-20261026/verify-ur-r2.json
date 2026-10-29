@@ -1,0 +1,237 @@
+{
+ "head": "29d7805a13e7f240c2d27596cb106635ed83af3c",
+ "parent": "a9e536bf892f48ed2a87772658055abfd10caa5e",
+ "namespaces": {
+  "ui.agents.config": {
+   "en_path": "src/i18n/catalogues/en/ui.agents.config.json",
+   "ur_path": "src/i18n/catalogues/ur/ui.agents.config.json",
+   "context_path": "src/i18n/catalogues/en/ui.agents.config.context.json",
+   "en_sha256": "5338f6e229d67bf214a4741224470e82222bd2f04eba9bc9eda7324242393c32",
+   "ur_sha256": "c4e7123c2be0b7353e0e750ba1229ca633fdd3ddc31270f33c66dc52ead39cb2",
+   "context_sha256": "63a7879a771b5aa7732fcfc8848033ba207701aaf1452e2855e8ec2bd52821bf",
+   "key_count": 31,
+   "same_key_set_and_order": true,
+   "keys_changed_vs_parent": [],
+   "keys_changed_in_place_vs_parent": [],
+   "keys_added_or_removed_vs_parent": 0,
+   "arg_mismatches": []
+  },
+  "ui.agents.detail": {
+   "en_path": "src/i18n/catalogues/en/ui.agents.detail.json",
+   "ur_path": "src/i18n/catalogues/ur/ui.agents.detail.json",
+   "context_path": "src/i18n/catalogues/en/ui.agents.detail.context.json",
+   "en_sha256": "80877db48543e0557cd0a079c8fd2d0c238f1923c2885deae85428e17af1f65b",
+   "ur_sha256": "38f9647ca8cc7f97f1cfef95f305501d939dee3b4ebfe2223625dc5fa24636db",
+   "context_sha256": "a0e40ba7fceccdf78da28d064fd4386cc48d8f1c80127a5721550e879c49b511",
+   "key_count": 50,
+   "same_key_set_and_order": true,
+   "keys_changed_vs_parent": [],
+   "keys_changed_in_place_vs_parent": [],
+   "keys_added_or_removed_vs_parent": 0,
+   "arg_mismatches": []
+  },
+  "ui.agents.pages": {
+   "en_path": "src/i18n/catalogues/en/ui.agents.pages.json",
+   "ur_path": "src/i18n/catalogues/ur/ui.agents.pages.json",
+   "context_path": "src/i18n/catalogues/en/ui.agents.pages.context.json",
+   "en_sha256": "e85765ccb25a8675e64cb8cd1cc37edd86afbe9a77d444f9a1ec8ac9aee45781",
+   "ur_sha256": "fc2f79de720fcb31530eaebfc9572bd9badee6e35312db47bae812040a67e8e7",
+   "context_sha256": "f9690a17e6e7307df154bdc0d71ab8a0d002a07a052e11c0025d2ff874d3dfea",
+   "key_count": 30,
+   "same_key_set_and_order": true,
+   "keys_changed_vs_parent": [
+    "ui.agents.pages.ask.manual_agent",
+    "ui.agents.pages.ask.manual_team"
+   ],
+   "keys_changed_in_place_vs_parent": [
+    "ui.agents.pages.ask.manual_agent",
+    "ui.agents.pages.ask.manual_team"
+   ],
+   "keys_added_or_removed_vs_parent": 0,
+   "arg_mismatches": []
+  },
+  "ui.agents.upload": {
+   "en_path": "src/i18n/catalogues/en/ui.agents.upload.json",
+   "ur_path": "src/i18n/catalogues/ur/ui.agents.upload.json",
+   "context_path": "src/i18n/catalogues/en/ui.agents.upload.context.json",
+   "en_sha256": "52876ab5bfa8b6c1f9170fdb9ea10c991f231d3d9fb103b16842476589083949",
+   "ur_sha256": "f8ae928517294f95c263908e597aa18c59e8eaf9483e6c8457e8aeb3474de3b2",
+   "context_sha256": "3141f45c4b8fc17b96061a4556a66b3133bbfe27345ee7e4d929dfe21ee049f0",
+   "key_count": 29,
+   "same_key_set_and_order": true,
+   "keys_changed_vs_parent": [],
+   "keys_changed_in_place_vs_parent": [],
+   "keys_added_or_removed_vs_parent": 0,
+   "arg_mismatches": []
+  },
+  "ui.common.actions": {
+   "en_path": "src/i18n/catalogues/en/ui.common.actions.json",
+   "ur_path": "src/i18n/catalogues/ur/ui.common.actions.json",
+   "context_path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+   "en_sha256": "132f60c9d401d804147f29fbe10fca265e2c3b3a5436b9eceb70c544afe8f1b9",
+   "ur_sha256": "2750cf43d61f77f8e5ed4313a53fe816bee86bfbaf937aa640a630991809377b",
+   "context_sha256": "48756cd31d4abbec5d56b3648ffb2fefe578c074645386480c91b4921accf321",
+   "key_count": 51,
+   "same_key_set_and_order": true,
+   "keys_changed_vs_parent": [],
+   "keys_changed_in_place_vs_parent": [],
+   "keys_added_or_removed_vs_parent": 0,
+   "arg_mismatches": []
+  },
+  "ui.hub.pages": {
+   "en_path": "src/i18n/catalogues/en/ui.hub.pages.json",
+   "ur_path": "src/i18n/catalogues/ur/ui.hub.pages.json",
+   "context_path": "src/i18n/catalogues/en/ui.hub.pages.context.json",
+   "en_sha256": "c54d0aca4e8047657a61367c667c6ad9351f198a10d7380c1478745152a832b6",
+   "ur_sha256": "e5fd416a3ff17811e57101c1c7b6f916914e7b0f0f01046809fa0287c53eb057",
+   "context_sha256": "d913efa6ea062fe5c04861c6db202d5bf303b7b0c1a6f9c7efbdaa4b5c095d10",
+   "key_count": 37,
+   "same_key_set_and_order": true,
+   "keys_changed_vs_parent": [
+    "ui.hub.pages.card.updated"
+   ],
+   "keys_changed_in_place_vs_parent": [
+    "ui.hub.pages.card.updated"
+   ],
+   "keys_added_or_removed_vs_parent": 0,
+   "arg_mismatches": []
+  },
+  "ui.hub.teams": {
+   "en_path": "src/i18n/catalogues/en/ui.hub.teams.json",
+   "ur_path": "src/i18n/catalogues/ur/ui.hub.teams.json",
+   "context_path": "src/i18n/catalogues/en/ui.hub.teams.context.json",
+   "en_sha256": "4121cd4fada8986e1c77682c5909ecf8830f3015677ec99a0a5fb547f9040b06",
+   "ur_sha256": "256bb29b71ef571f7652ae455baa8b5f15f731dd0bdb08ab72e22a5d47daa4a6",
+   "context_sha256": "b062f0ca8aed037084233730702e41c6f3ef09aa39bed405e007466716c711a0",
+   "key_count": 49,
+   "same_key_set_and_order": true,
+   "keys_changed_vs_parent": [
+    "ui.hub.teams.recency.created",
+    "ui.hub.teams.recency.updated"
+   ],
+   "keys_changed_in_place_vs_parent": [
+    "ui.hub.teams.recency.created",
+    "ui.hub.teams.recency.updated"
+   ],
+   "keys_added_or_removed_vs_parent": 0,
+   "arg_mismatches": []
+  }
+ },
+ "changed_keys": [
+  "ui.agents.pages.ask.manual_agent",
+  "ui.agents.pages.ask.manual_team",
+  "ui.hub.pages.card.updated",
+  "ui.hub.teams.recency.created",
+  "ui.hub.teams.recency.updated"
+ ],
+ "problems": [],
+ "hygiene": {
+  "bidi_controls": {
+   "count": 0,
+   "hits": []
+  },
+  "zero_width": {
+   "count": 0,
+   "hits": []
+  },
+  "ascii_punct": {
+   "count": 10,
+   "hits": [
+    "ui.agents.config :: ui.agents.config.about",
+    "ui.agents.config :: ui.agents.config.summary.you_asked",
+    "ui.agents.detail :: ui.agents.detail.read.effort_label",
+    "ui.agents.upload :: ui.agents.upload.availability.agent_label",
+    "ui.agents.upload :: ui.agents.upload.field.name_hint",
+    "ui.agents.upload :: ui.agents.upload.sign_in.nothing_left",
+    "ui.hub.teams :: ui.hub.teams.manager_label",
+    "ui.hub.teams :: ui.hub.teams.member_count",
+    "ui.hub.teams :: ui.hub.teams.public.match_line",
+    "ui.hub.teams :: ui.hub.teams.public.pull_no_signin"
+   ]
+  },
+  "not_nfc": {
+   "count": 0,
+   "hits": []
+  },
+  "edges": {
+   "count": 0,
+   "hits": []
+  }
+ },
+ "rendered": [
+  {
+   "key": "ui.agents.pages.ask.manual_agent",
+   "args": {},
+   "out": "یا ایجنٹ ہاتھ سے شامل کریں"
+  },
+  {
+   "key": "ui.agents.pages.ask.manual_team",
+   "args": {},
+   "out": "یا ٹیم ہاتھ سے شامل کریں"
+  },
+  {
+   "key": "ui.hub.pages.card.updated",
+   "args": {
+    "when": "3 دن پہلے"
+   },
+   "out": "3 دن پہلے اپ ڈیٹ کیا گیا"
+  },
+  {
+   "key": "ui.hub.pages.card.updated",
+   "args": {
+    "when": "2 گھنٹے پہلے"
+   },
+   "out": "2 گھنٹے پہلے اپ ڈیٹ کیا گیا"
+  },
+  {
+   "key": "ui.hub.pages.card.updated",
+   "args": {
+    "when": "5 منٹ پہلے"
+   },
+   "out": "5 منٹ پہلے اپ ڈیٹ کیا گیا"
+  },
+  {
+   "key": "ui.hub.teams.recency.created",
+   "args": {
+    "when": "3 دن پہلے"
+   },
+   "out": "3 دن پہلے بنایا گیا"
+  },
+  {
+   "key": "ui.hub.teams.recency.created",
+   "args": {
+    "when": "ابھی"
+   },
+   "out": "ابھی بنایا گیا"
+  },
+  {
+   "key": "ui.hub.teams.recency.created",
+   "args": {
+    "when": "10 اکتوبر، 2026"
+   },
+   "out": "10 اکتوبر، 2026 بنایا گیا"
+  },
+  {
+   "key": "ui.hub.teams.recency.updated",
+   "args": {
+    "when": "2 گھنٹے پہلے"
+   },
+   "out": "2 گھنٹے پہلے اپ ڈیٹ کیا گیا"
+  },
+  {
+   "key": "ui.hub.teams.recency.updated",
+   "args": {
+    "when": "ابھی"
+   },
+   "out": "ابھی اپ ڈیٹ کیا گیا"
+  },
+  {
+   "key": "ui.hub.teams.recency.updated",
+   "args": {
+    "when": "10 اکتوبر، 2026"
+   },
+   "out": "10 اکتوبر، 2026 اپ ڈیٹ کیا گیا"
+  }
+ ],
+ "changed_key_count": 5
+}

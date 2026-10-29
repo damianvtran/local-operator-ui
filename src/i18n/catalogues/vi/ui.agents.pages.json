@@ -1,4 +1,12 @@
 {
+	"ui.agents.pages.add_manual.agent": "Tự thêm tác nhân",
+	"ui.agents.pages.add_manual.team": "Tự thêm nhóm",
+	"ui.agents.pages.ask.body_agent": "Tác nhân là một bộ chỉ dẫn tái sử dụng: bạn có thể trò chuyện trực tiếp với nó, hoặc để tác nhân khác gọi đến. Mô tả điều bạn muốn và một lần chạy cấu hình sẽ thiết lập nó.",
+	"ui.agents.pages.ask.body_team": "Một nhóm gồm một tác nhân dẫn dắt cuộc trò chuyện và các thành viên mà nó có thể giao việc cho. Mô tả điều bạn muốn và một lần chạy cấu hình sẽ thiết lập nó.",
+	"ui.agents.pages.ask.heading_agent": "Yêu cầu một tác nhân",
+	"ui.agents.pages.ask.heading_team": "Yêu cầu một nhóm",
+	"ui.agents.pages.ask.manual_agent": "Hoặc tự thêm tác nhân",
+	"ui.agents.pages.ask.manual_team": "Hoặc tự thêm nhóm",
 	"ui.agents.pages.back_to_list": "Quay lại danh sách",
 	"ui.agents.pages.browse_aria": "Duyệt định nghĩa theo loại",
 	"ui.agents.pages.discard_bar.agent": "Bỏ các thay đổi chưa lưu của tác nhân này?",
