@@ -55,6 +55,19 @@ export const GENERAL_SECTION = "general";
  */
 export const MODEL_EFFORT_SETTING_KEY = "model_effort";
 
+/** The sidebar section the agent-messages controls now live in. */
+export const AGENT_MESSAGES_SECTION = "agent-messages";
+
+/**
+ * The two local preferences the Agent messages section owns.
+ *
+ * Both are MACHINE-LOCAL (`settings.edit`) and both still exist as registry
+ * keys for the TUI; promoting them means the settings page renders their one
+ * canonical editor, and the Backend list filters the registry rows out.
+ */
+export const TEAM_BRIDGE_ENABLED_SETTING_KEY = "team_bridge.enabled";
+export const TEAM_BRIDGE_SESSION_SETTING_KEY = "team_bridge.session";
+
 /**
  * Registry key -> the sidebar section its (promoted) control lives in.
  *
@@ -72,6 +85,8 @@ export const MODEL_EFFORT_SETTING_KEY = "model_effort";
 export const PROMOTED_SETTING_SECTIONS: Readonly<Record<string, string>> = {
 	[LANGUAGE_SETTING_KEY]: GENERAL_SECTION,
 	[MODEL_EFFORT_SETTING_KEY]: GENERAL_SECTION,
+	[TEAM_BRIDGE_ENABLED_SETTING_KEY]: AGENT_MESSAGES_SECTION,
+	[TEAM_BRIDGE_SESSION_SETTING_KEY]: AGENT_MESSAGES_SECTION,
 };
 
 /**

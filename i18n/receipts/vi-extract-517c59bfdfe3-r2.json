@@ -1,0 +1,537 @@
+{
+  "schema": "local-operator-ui/i18n-audit-receipt",
+  "kind": "translation-audit-receipt",
+  "round": 2,
+  "locale": "vi",
+  "locale_name": "Tiếng Việt",
+  "batch": "remaining-renderer-copy",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "head": "d082bd9595dcc41018b86f22a26fa7f3ae4e891f",
+  "previous_head": "f517ec48995e5bc087ca63c9975ddbe9ce1f0c7c",
+  "base": "3d0e9010d71c00662902971e4bd6888f7a8f6f1c",
+  "merge_base_main": "3d0e9010d71c00662902971e4bd6888f7a8f6f1c",
+  "translation_commit": "d2b232a586",
+  "remediation_commit": "a486f3fdcdc98c7e6546cd0d9dde60d181eeee2d",
+  "date": "2026-10-24",
+  "status": "clean",
+  "verdict": "clean — all three round-1 findings are fixed in a486f3fdcd and present at d082bd9595; 6 values re-read semantically, 128 batch values carried by byte identity, the four unchanged namespaces are byte-identical (en/vi/context), 134/134 batch keys present, 3813/3813 whole-locale parity, 0 blocker/major/minor/nit.",
+  "auditor": {
+    "agent": "translation-auditor",
+    "harness": "Local Operator",
+    "team": "lopdev",
+    "session": "517c59bfdfe3",
+    "instance": "vi-extract-517c59bfdfe3-r2",
+    "model": "deepseek/deepseek-flash",
+    "model_provenance": "Harness session header reports deepseek/deepseek-flash; no narrower underlying id and no fallback were exposed. No other model is claimed.",
+    "independence": "This run audited the Vietnamese bytes at d082bd9595 (translation d2b232a586, remediation a486f3fdcd); it authored or edited no catalogue, English, other-locale, ledger, allowance or generated file. Only this new untracked receipt under i18n/receipts/ was written. The translation and remediation commits record no translator agent or model, so no translator identity is claimed here; independence is established by this run reading only the committed bytes.",
+    "date": "2026-10-24"
+  },
+  "model": "deepseek/deepseek-flash",
+  "instance": "vi-extract-517c59bfdfe3-r2",
+  "translator": {
+    "agent": "not recorded on the branch",
+    "commit": "d2b232a586",
+    "remediation_commit": "a486f3fdcdc98c7e6546cd0d9dde60d181eeee2d",
+    "author": "Damian Tran <damian@gominerva.com>",
+    "note": "The translation and remediation commits record no translator agent/model; the branch is authored under the shared account. The manager must supply --translator-agent/--translator-model when creating the absent rows."
+  },
+  "prior_receipt": {
+    "path": "i18n/receipts/vi-extract-23a1e4c22ac3.json",
+    "sha256": "9099e18d5cadcb9ebac1e8e405dfac895068f85da9dbb955133390045c3b4f90",
+    "head": "f517ec48995e5bc087ca63c9975ddbe9ce1f0c7c",
+    "status": "clean-with-findings",
+    "findings": [
+      "VI-EXT-1",
+      "VI-EXT-2",
+      "VI-EXT-3"
+    ]
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    }
+  },
+  "self_corrections": [
+    {
+      "field": "references.docs.sha256",
+      "round_1_value": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca8",
+      "round_2_value": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca",
+      "reason": "The round-1 receipt transcribed a 65-character sha256 for docs/I18N.md; the file hashes to the 64-character value above at d082bd9595. No catalogue byte is affected."
+    }
+  ],
+  "scope": {
+    "expected_batch_keys": 134,
+    "present_batch_keys": 134,
+    "absent_batch_keys": 0,
+    "namespaces_audited": 7,
+    "values_read_in_scope": 134,
+    "changed_values_re_read": 6,
+    "carried_values_by_hash_identity": 128,
+    "whole_locale_keys": 3813,
+    "whole_locale_namespaces": 75,
+    "description": "Round 2 of the independent vi extraction audit: the 3 findings of receipt vi-extract-23a1e4c22ac3 re-adjudicated at d082bd9595, covering all 134 batch keys across the 7 namespaces. The 6 values changed by the remediation were re-read semantically; the other 128 batch values are covered by byte identity to the round-1 receipt (74 in the three changed namespace files, 54 in the four unchanged files). The three changed files were read in full (131 keys), including 51 pre-existing keys outside the batch, and no value outside the 6 changed keys differs from round 1."
+  },
+  "method": [
+    "Re-read the three changed Vietnamese namespace files in full against the English catalogue and the en .context.json sidecar at d082bd9595; re-adjudicated all three round-1 findings against the bytes.",
+    "Diffed the vi catalogue at f517ec48..d082bd9595: exactly 6 values changed, 0 keys added, 0 removed, 3 files touched, all under the single remediation commit a486f3fdcd; confirmed the head's vi bytes are identical to that commit.",
+    "Verified the four unchanged namespaces (composer, device, dialogs, common.viewer) by full-file sha256 of en, vi and context against the round-1 receipt; all 12 hashes match; no value was re-read semantically because no byte changed.",
+    "Parsed 229 messages across the seven namespaces with @formatjs/icu-messageformat-parser (requiresOtherClause, shouldParseSkeletons): 0 parse errors; every argument, select arm, number skeleton and tag identical. 8 select nodes (7 in the batch plus the pre-existing pins.failure), all arms preserved. The only plural is the pre-existing secret_confirm_chars, where vi uses the style-guide-mandated other-only arm against English one|other; it is not in the batch.",
+    "Key parity: 134/134 batch keys and 3813/3813 whole-locale keys across 75 namespaces; 0 missing, 0 extra; the remediation added or removed no key.",
+    "Verified the dismiss cluster: every English Dismiss notice/update control renders “Ẩn”; ui.chat.asks.dismiss.* remains “Bỏ qua”/“Đang bỏ qua” for skipping an ask, a distinct action; the lowercase “ẩn” in connectivity_banner mirrors the lowercase English source.",
+    "Verified ui.chat.directory.folder.desktop against the platform file manager: macOS Finder vi Localizable.strings has \"Desktop\" => \"Màn hình nền\" (plutil -p).",
+    "Measured the changed strings with AppKit NSFont.systemFont(12, .medium), uppercased and 0.025em tracking for the sidebar heading: “Đang mở” 60.5px, “Trò chuyện hiện tại” 139.0px, EN “Current chat” 97.5px; available content at the 220px sidebar minimum is 196px. “Màn hình nền” 77.4px vs EN 48.3px; “Ẩn tóm tắt cập nhật” 114.0px vs EN 145.8px; “Ẩn” 15.5px.",
+    "Text invariants over the 134 batch values: NFC 134/134; 0 manual bidi controls; 0 ASCII \"...\"; 0 ASCII double quotes; 0 exclamation marks; trailing punctuation matches after the two style-guide ASCII-to-ellipsis conversions in ui.chat.directory.menu.browse and menu.enter_custom.",
+    "Glossary/register sweep carried from round 1; the six changed values introduce no glossary term (Desktop, Dismiss, Current chat)."
+  ],
+  "mechanical": {
+    "key_parity": "134/134 batch keys present in vi; 0 missing, 0 extra; 3813/3813 whole-locale keys across 75 namespaces; remediation added/removed no key.",
+    "placeholders": "0 argument/select/markup mismatches across 229 messages in the seven namespaces; 8 select nodes, every arm preserved.",
+    "plurals": "0 plural messages in the batch; the one pre-existing plural (ui.chat.composer.secret_confirm_chars) uses vi other-only per the style guide and is not in the batch.",
+    "identical_to_english": [
+      {
+        "key": "ui.chat.directory.folder.etc",
+        "value": "etc",
+        "classification": "filesystem identifier — do not translate"
+      },
+      {
+        "key": "ui.chat.directory.folder.media",
+        "value": "media",
+        "classification": "filesystem identifier — do not translate"
+      },
+      {
+        "key": "ui.chat.directory.folder.mnt",
+        "value": "mnt",
+        "classification": "filesystem identifier — do not translate"
+      },
+      {
+        "key": "ui.chat.directory.folder.opt",
+        "value": "opt",
+        "classification": "filesystem identifier — do not translate"
+      },
+      {
+        "key": "ui.chat.directory.folder.program_data",
+        "value": "ProgramData",
+        "classification": "filesystem identifier — do not translate"
+      },
+      {
+        "key": "ui.chat.directory.folder.program_files",
+        "value": "Program Files",
+        "classification": "filesystem identifier — do not translate"
+      },
+      {
+        "key": "ui.chat.directory.folder.program_files_x86",
+        "value": "Program Files (x86)",
+        "classification": "filesystem identifier — do not translate"
+      },
+      {
+        "key": "ui.chat.directory.folder.srv",
+        "value": "srv",
+        "classification": "filesystem identifier — do not translate"
+      },
+      {
+        "key": "ui.chat.directory.folder.usr",
+        "value": "usr",
+        "classification": "filesystem identifier — do not translate"
+      },
+      {
+        "key": "ui.chat.directory.folder.var",
+        "value": "var",
+        "classification": "filesystem identifier — do not translate"
+      }
+    ],
+    "text_invariants": "NFC 134/134; 0 bidi controls; 0 ASCII ellipsis; 0 ASCII double quotes; 0 exclamation marks; trailing punctuation matches after the two style-guide “...” to “…” conversions.",
+    "delta": "6 vi values changed at a486f3fdcd: folder.desktop, the four dismiss values, current_chat. 0 added/removed keys; 0 other vi files changed; en and context sidecars byte-identical to round 1 for all seven namespaces."
+  },
+  "remediation_reaudit": [
+    {
+      "id": "VI-EXT-1",
+      "severity": "minor",
+      "namespace": "ui.chat.directory",
+      "keys": [
+        "ui.chat.directory.folder.desktop"
+      ],
+      "status": "fixed",
+      "previous_value": "Màn hình chính",
+      "applied_value": "Màn hình nền",
+      "evidence": "plutil -p /System/Library/CoreServices/Finder.app/Contents/Resources/vi.lproj/Localizable.strings | grep '\"Desktop\" =>' -> \"Desktop\" => \"Màn hình nền\".",
+      "note": "Applied verbatim; the folder name now matches the platform file manager and the sidecar's instruction to translate the name the file manager shows."
+    },
+    {
+      "id": "VI-EXT-2",
+      "severity": "minor",
+      "namespace": "ui.chat",
+      "keys": [
+        "ui.chat.hub_update.dismiss",
+        "ui.chat.hub_update.dismiss_summary",
+        "ui.chat.quota_notice.dismiss",
+        "ui.chat.status_strip.dismiss"
+      ],
+      "status": "fixed",
+      "previous_value": "Bỏ qua / Bỏ qua tóm tắt cập nhật / Bỏ qua / Bỏ qua",
+      "applied_value": "Ẩn / Ẩn tóm tắt cập nhật / Ẩn / Ẩn",
+      "evidence": "Cluster scan at d082bd9595: Ẩn in ui.common.updates.update_quiet_indicator.dismiss_update_notice, ui.browser.browser_surface.dismiss, ui.browser.browser_file_transfer_row.dismiss_*_notice, ui.mesh.mesh_actions.dismiss, ui.settings.configuration…dismiss_this_notice and ui.settings.integrations…dismiss; Bỏ qua remains in ui.chat.asks.dismiss.* for skipping an ask.",
+      "note": "Applied verbatim; the four controls now match the notice/update dismiss cluster, and the asks-panel skip verb is left distinct."
+    },
+    {
+      "id": "VI-EXT-3",
+      "severity": "nit",
+      "namespace": "ui.chat.sidebar",
+      "keys": [
+        "ui.chat.sidebar.section.current_chat"
+      ],
+      "status": "fixed",
+      "previous_value": "Cuộc trò chuyện hiện tại",
+      "applied_value": "Đang mở",
+      "evidence": "AppKit measure at 12px system-font medium, uppercase, 0.025em tracking: 60.5px vs 179.5px previously; available 196px at the 220px sidebar minimum; two words, matching the sidecar length.",
+      "note": "Applied verbatim; the width finding is resolved. The value is a state phrase rather than the sidecar's noun phrase, but it matches the sibling “Đang chạy” heading and the locale's “cuộc trò chuyện đang mở” wording; recorded as an observation, not a new finding."
+    }
+  ],
+  "overflow_check": {
+    "note": "maxCells is an advisory translation target, not measured fit. None of the six changed keys carries a maxCells value; the round-1 maxCells table is unchanged and still passes.",
+    "max_cells": [
+      {
+        "key": "ui.chat.device.label.moving_to",
+        "vi_cells": 22,
+        "maxCells": 24
+      },
+      {
+        "key": "ui.chat.device.label.new_on",
+        "vi_cells": 15,
+        "maxCells": 20
+      },
+      {
+        "key": "ui.chat.device.label.new_on_this_device",
+        "vi_cells": 21,
+        "maxCells": 20,
+        "note": "1 over advisory; carried from round 1, no shorter phrase preserves the glossary term “thiết bị” without changing meaning"
+      },
+      {
+        "key": "ui.chat.device.label.on",
+        "vi_cells": 11,
+        "maxCells": 20
+      },
+      {
+        "key": "ui.chat.device.label.on_this_device",
+        "vi_cells": 17,
+        "maxCells": 20
+      },
+      {
+        "key": "ui.chat.session_status.choose_model",
+        "vi_cells": 12,
+        "maxCells": 18
+      },
+      {
+        "key": "ui.chat.session_status.last_reading",
+        "vi_cells": 13,
+        "maxCells": 16
+      }
+    ],
+    "pools": [
+      {
+        "pool": "composer tips",
+        "max_vi_cells": 58,
+        "budget": 59,
+        "result": "pass; carried from round 1"
+      },
+      {
+        "pool": "composer suggestions",
+        "max_vi_cells": 42,
+        "budget": 42,
+        "result": "pass; wake_with_summary is exactly at the cap; carried from round 1"
+      }
+    ],
+    "measured": {
+      "ui.chat.sidebar.section.current_chat": {
+        "en_width_px": 97.5,
+        "previous_vi_width_px": 179.5,
+        "current_vi_width_px": 60.5,
+        "available_px_at_220_sidebar": 196,
+        "wraps": false,
+        "truncates": false,
+        "method": "AppKit NSFont.systemFont(12, .medium), uppercase, 0.025em tracking; sidebar minimum 220px minus p-1 (8px) and section px-2 (16px) = 196px before the optional 8px scrollbar gutter (188px with it); 60.5px fits either."
+      },
+      "ui.chat.directory.folder.desktop": {
+        "en_width_px": 48.3,
+        "current_vi_width_px": 77.4,
+        "cells": 12,
+        "note": "No maxCells in the sidecar; 12 cells is below the existing “Thư mục chính” (13 cells) in the same folder menu, so it introduces no new overflow risk."
+      },
+      "ui.chat.hub_update.dismiss_summary": {
+        "en_width_px": 145.8,
+        "current_vi_width_px": 114.0,
+        "note": "Accessible name only; shorter than the English source and than the previous value."
+      }
+    }
+  },
+  "glossary_checks": {
+    "agent": "tác nhân",
+    "subagent": "tác nhân con",
+    "team": "nhóm",
+    "skill": "kỹ năng",
+    "session": "phiên",
+    "model": "mô hình",
+    "provider": "nhà cung cấp",
+    "device": "thiết bị",
+    "transcript": "bản ghi",
+    "hub": "trung tâm",
+    "panel": "bảng",
+    "run/turn": "lượt (chạy)",
+    "runtime": "runtime (kept English)",
+    "prompt": "prompt (kept English)",
+    "run_panel": "bảng lượt chạy — checked against ui.chat.header.open_run_details and bảng câu hỏi/bảng phê duyệt",
+    "changed_values": "none of the six changed values introduces a glossary term (Desktop, Dismiss, Current chat)."
+  },
+  "hash_verification": {
+    "unchanged_namespaces": [
+      {
+        "namespace": "ui.chat.composer",
+        "en": "identical",
+        "vi": "identical",
+        "context": "identical"
+      },
+      {
+        "namespace": "ui.chat.device",
+        "en": "identical",
+        "vi": "identical",
+        "context": "identical"
+      },
+      {
+        "namespace": "ui.chat.dialogs",
+        "en": "identical",
+        "vi": "identical",
+        "context": "identical"
+      },
+      {
+        "namespace": "ui.common.viewer",
+        "en": "identical",
+        "vi": "identical",
+        "context": "identical"
+      }
+    ],
+    "changed_namespaces": [
+      {
+        "namespace": "ui.chat.directory",
+        "en": "identical",
+        "vi": "changed",
+        "context": "identical",
+        "changed_keys": 1
+      },
+      {
+        "namespace": "ui.chat",
+        "en": "identical",
+        "vi": "changed",
+        "context": "identical",
+        "changed_keys": 4
+      },
+      {
+        "namespace": "ui.chat.sidebar",
+        "en": "identical",
+        "vi": "changed",
+        "context": "identical",
+        "changed_keys": 1
+      }
+    ],
+    "all_seven_en_and_context_identical_to_round_1": true,
+    "whole_locale_vi_changed_files": 3,
+    "whole_locale_vi_changed_values": 6,
+    "whole_locale_vi_added_keys": 0,
+    "whole_locale_vi_removed_keys": 0
+  },
+  "namespaces": {
+    "ui.chat.composer": {
+      "batch_keys": 30,
+      "head_keys": 66,
+      "changed_keys": 0,
+      "sha256": {
+        "en": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
+        "vi": "a6bc2d8119b3fabeb915560fac9ba7ae3ff342696b3acbe187675c21fba53a6b",
+        "context": "85ef8b6622f33788650bdbb7462b78d29b753291d2e4a3ca64ac344d77e9ce0c"
+      },
+      "previous_sha256": {
+        "en": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
+        "vi": "a6bc2d8119b3fabeb915560fac9ba7ae3ff342696b3acbe187675c21fba53a6b",
+        "context": "85ef8b6622f33788650bdbb7462b78d29b753291d2e4a3ca64ac344d77e9ce0c"
+      },
+      "status": "clean",
+      "findings": [],
+      "summary": "No value changed between f517ec48 and d082bd9595; the four unchanged namespaces were verified by full-file sha256 rather than re-read semantically.",
+      "verdict": "clean — carried; en/vi/context byte-identical to the round-1 receipt; 30 batch keys covered by hash identity."
+    },
+    "ui.chat.device": {
+      "batch_keys": 14,
+      "head_keys": 14,
+      "changed_keys": 0,
+      "sha256": {
+        "en": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
+        "vi": "088bf95185b071bfc3705ba9988cc90dfb4ef6fdfa5c1c90514a34c514cf705d",
+        "context": "011a317e02583cb0485a8cb03ae2892607d118d005a7b1fc1118c60f557352ce"
+      },
+      "previous_sha256": {
+        "en": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
+        "vi": "088bf95185b071bfc3705ba9988cc90dfb4ef6fdfa5c1c90514a34c514cf705d",
+        "context": "011a317e02583cb0485a8cb03ae2892607d118d005a7b1fc1118c60f557352ce"
+      },
+      "status": "clean",
+      "findings": [],
+      "summary": "No value changed between f517ec48 and d082bd9595; device-name placeholders and the round-1 maxCells results carry unchanged.",
+      "verdict": "clean — carried; en/vi/context byte-identical to the round-1 receipt; 14 batch keys covered by hash identity."
+    },
+    "ui.chat.dialogs": {
+      "batch_keys": 6,
+      "head_keys": 10,
+      "changed_keys": 0,
+      "sha256": {
+        "en": "05f2c86f08148e7ba94a3536861958cbed9e0b3b0f25292d8c7f0f64eef82493",
+        "vi": "c465c7d70f62c0401e98639a6e43022b2042c13a3bd2e9985e21050e3acfe90b",
+        "context": "2cc1cccec0e40f46106cc862422c7cb7770e99fe8b54ad5820ed6c722444e299"
+      },
+      "previous_sha256": {
+        "en": "05f2c86f08148e7ba94a3536861958cbed9e0b3b0f25292d8c7f0f64eef82493",
+        "vi": "c465c7d70f62c0401e98639a6e43022b2042c13a3bd2e9985e21050e3acfe90b",
+        "context": "2cc1cccec0e40f46106cc862422c7cb7770e99fe8b54ad5820ed6c722444e299"
+      },
+      "status": "clean",
+      "findings": [],
+      "summary": "No value changed between f517ec48 and d082bd9595; the clear/delete terms carry unchanged.",
+      "verdict": "clean — carried; en/vi/context byte-identical to the round-1 receipt; 6 batch keys covered by hash identity."
+    },
+    "ui.chat.directory": {
+      "batch_keys": 43,
+      "head_keys": 43,
+      "changed_keys": 1,
+      "sha256": {
+        "en": "911d137202d2dbca8c18d3536a7da10019424181a42c44817774da07cfef57ec",
+        "vi": "5fc84e15d5616afd9e665b851a914032a9c4d5455a185e57d74b0cda770e6b89",
+        "context": "8e224faff8632471b3a0cb34aa420d90b3a97230b8f3fd3d6c0c13bcdd0a16a8"
+      },
+      "previous_sha256": {
+        "en": "911d137202d2dbca8c18d3536a7da10019424181a42c44817774da07cfef57ec",
+        "vi": "38a00627f285570d577a945435c2a623ce3e9abd061179509c35b90cfd51f67a",
+        "context": "8e224faff8632471b3a0cb34aa420d90b3a97230b8f3fd3d6c0c13bcdd0a16a8"
+      },
+      "status": "clean",
+      "findings": [],
+      "summary": "43 batch keys; the ten filesystem identifiers remain byte-identical; “Màn hình nền” is the Finder vi name for Desktop and 12 cells, within the folder-name cluster (the existing “Thư mục chính” is 13).",
+      "verdict": "clean — VI-EXT-1 fixed; “Màn hình nền” matches Finder vi; 43 batch keys present, 1 changed value re-read."
+    },
+    "ui.chat": {
+      "batch_keys": 36,
+      "head_keys": 44,
+      "changed_keys": 4,
+      "sha256": {
+        "en": "346506195ffc36897dee351eb12a47aab4c21acdf3062710392eb0086024b442",
+        "vi": "25181a9ec310def8afc33a352b9ed45890c593e88c1f9fac27211de407b2a88d",
+        "context": "e2f4f6310081e9c54efd893faf10f34eb7bcc5101337a0f4d96a49bdf6dab424"
+      },
+      "previous_sha256": {
+        "en": "346506195ffc36897dee351eb12a47aab4c21acdf3062710392eb0086024b442",
+        "vi": "bbdc90eb4f92dc5217015da8f57ccdd959a4149dc655abdbfb1a8107ca2fd9ef",
+        "context": "e2f4f6310081e9c54efd893faf10f34eb7bcc5101337a0f4d96a49bdf6dab424"
+      },
+      "status": "clean",
+      "findings": [],
+      "summary": "36 batch keys; all four Dismiss controls now use “Ẩn”, the existing notice/update cluster term; “Bỏ qua” remains the asks-panel skip verb, a different action; no placeholder or select-arm change.",
+      "verdict": "clean — VI-EXT-2 fixed; four Dismiss controls now “Ẩn”, matching the notice/update cluster; 36 batch keys present, 4 changed values re-read."
+    },
+    "ui.chat.sidebar": {
+      "batch_keys": 1,
+      "head_keys": 44,
+      "changed_keys": 1,
+      "sha256": {
+        "en": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
+        "vi": "e27adae002290a4a3ace16ba29569836e1ef91656c67a5e8ada9dd97e5dc6494",
+        "context": "4c7581e198d0fcc05a2ce61a0e569c550d126e352e2956830ceee34f6ed6b0de"
+      },
+      "previous_sha256": {
+        "en": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
+        "vi": "9ef2941ec63d6826e274119aee7fe03d2aae704b5baa800e5026bf8aea031aec",
+        "context": "4c7581e198d0fcc05a2ce61a0e569c550d126e352e2956830ceee34f6ed6b0de"
+      },
+      "status": "clean",
+      "findings": [],
+      "summary": "1 batch key; “Đang mở” is a two-word state heading consistent with the sibling “Đang chạy” (Running) and the locale’s “cuộc trò chuyện đang mở” wording; 60.5px against 196px of content at the 220px sidebar minimum, down from 179.5px.",
+      "verdict": "clean — VI-EXT-3 fixed; “Đang mở” is 7 cells / 60.5px at the 220px sidebar minimum; 1 batch key present."
+    },
+    "ui.common.viewer": {
+      "batch_keys": 4,
+      "head_keys": 8,
+      "changed_keys": 0,
+      "sha256": {
+        "en": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
+        "vi": "517830ed45a14db0de431ceb30fc4330f4e210338558dc2210e6a184705ffc01",
+        "context": "e754ce6c5403f7fc27c1b7d768f25626ecc77be9886eaec1e12fdeed267514d5"
+      },
+      "previous_sha256": {
+        "en": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
+        "vi": "517830ed45a14db0de431ceb30fc4330f4e210338558dc2210e6a184705ffc01",
+        "context": "e754ce6c5403f7fc27c1b7d768f25626ecc77be9886eaec1e12fdeed267514d5"
+      },
+      "status": "clean",
+      "findings": [],
+      "summary": "No value changed between f517ec48 and d082bd9595; the viewer cluster carries unchanged.",
+      "verdict": "clean — carried; en/vi/context byte-identical to the round-1 receipt; 4 batch keys covered by hash identity."
+    }
+  },
+  "findings": [],
+  "observations": [
+    {
+      "term": "current_chat heading",
+      "issue": "“Đang mở” is a state phrase rather than the sidecar's “noun phrase”; it matches the sibling “Đang chạy” heading and the “đang mở” wording used in ui.settings.integrations…pickup_note and ui.mesh.mesh_actions…open_elsewhere.",
+      "recommendation": "No change required; the two-word budget is met and the heading reads as a status label. If a native review prefers an explicit noun, “Trò chuyện hiện tại” fits at 139.0px."
+    },
+    {
+      "term": "canvas",
+      "issue": "The locale has two renderings: “Canvas” (ui.chat.canonical.supplement.file_actions.open_in_canvas, ui.common.file_actions.show_in_canvas, and this batch's ui.chat.composer.tip.canvas) and “khung vẽ” (ui.command_palette.use_palette_sources.open_canvas/close_canvas, ui.mesh.mesh_page.canvas, ui.shell.rail.canvas.aria/aria_count/tooltip/tooltip_count).",
+      "recommendation": "Resolve locale-wide, not in this key. Carried from round 1; not a finding against the batch."
+    },
+    {
+      "term": "asset",
+      "issue": "21 values render asset as “tệp” (library cluster and the new viewer keys), but ui.projects.project_updates.show_asset_name renders it as “tài sản” (property/wealth). The new viewer keys use the correct cluster; the outlier is pre-existing.",
+      "recommendation": "Fix ui.projects.project_updates.show_asset_name in a separate terminology pass; do not propagate “tài sản” into the viewer. Carried from round 1."
+    },
+    {
+      "term": "home folder",
+      "issue": "ui.chat.directory.folder.home = “Thư mục chính”, while macOS Vietnamese's generic Finder string for Home is “Nhà”. The descriptive label is clearer than the bare OS string and Finder's sidebar normally shows the account name.",
+      "recommendation": "Keep unless strict platform-string parity is required. Carried from round 1."
+    },
+    {
+      "term": "connectivity_banner dismiss",
+      "issue": "ui.common.connection.connectivity_banner.dismiss renders “ẩn” lowercase, matching the English source's lowercase “dismiss”; every other Dismiss control uses “Ẩn”.",
+      "recommendation": "No change: the vi mirrors the source casing. Pre-existing and outside the batch."
+    }
+  ],
+  "totals": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0,
+    "keys_read": 134,
+    "keys_re_read": 6,
+    "namespaces": 7
+  },
+  "verdict_by_namespace": {
+    "ui.chat.composer": "clean — carried; en/vi/context byte-identical to the round-1 receipt; 30 batch keys covered by hash identity.",
+    "ui.chat.device": "clean — carried; en/vi/context byte-identical to the round-1 receipt; 14 batch keys covered by hash identity.",
+    "ui.chat.dialogs": "clean — carried; en/vi/context byte-identical to the round-1 receipt; 6 batch keys covered by hash identity.",
+    "ui.chat.directory": "clean — VI-EXT-1 fixed; “Màn hình nền” matches Finder vi; 43 batch keys present, 1 changed value re-read.",
+    "ui.chat": "clean — VI-EXT-2 fixed; four Dismiss controls now “Ẩn”, matching the notice/update cluster; 36 batch keys present, 4 changed values re-read.",
+    "ui.chat.sidebar": "clean — VI-EXT-3 fixed; “Đang mở” is 7 cells / 60.5px at the 220px sidebar minimum; 1 batch key present.",
+    "ui.common.viewer": "clean — carried; en/vi/context byte-identical to the round-1 receipt; 4 batch keys covered by hash identity."
+  },
+  "limitations": [
+    "No rendered app frame was captured; the only geometry claims are AppKit font-metric measurements of the changed strings, not screenshots.",
+    "No native-speaker sign-off is claimed; this is an independent agent audit against the vi style guide and glossary.",
+    "Pre-existing locale-wide splits (canvas, asset) are recorded as observations, not counted as findings against this batch.",
+    "The repository's full pnpm check-i18n gate was not re-run by this audit; the mechanical checks were performed directly on the committed catalogue bytes."
+  ]
+}

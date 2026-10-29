@@ -1,3 +1,11 @@
+import {
+	estimatedSpend,
+	legacySpend,
+	mixedSpend,
+	paygoSpend,
+	subscriptionSpend,
+} from "../../session-status/spend-basis-fixtures";
+import { scrollPanelToSection } from "./story-scroll";
 /**
  * `panels-analytics` — `/analytics` in every state it can be in.
  *
@@ -1861,4 +1869,29 @@ export const ChannelsDroppedRow: Story = {
 		channels: CHANNELS_DROPPED_ROW,
 		channelsEnabled: true,
 	},
+};
+
+export const PaymentSubscription: Story = {
+	args: { ...Channels.args, channels: subscriptionSpend },
+	play: () => scrollPanelToSection("By channel"),
+};
+
+export const PaymentMixedSameTurn: Story = {
+	args: { ...Channels.args, channels: mixedSpend },
+	play: () => scrollPanelToSection("By channel"),
+};
+
+export const PaymentPaygo: Story = {
+	args: { ...Channels.args, channels: paygoSpend },
+	play: () => scrollPanelToSection("By channel"),
+};
+
+export const PaymentLegacyUntracked: Story = {
+	args: { ...Channels.args, channels: legacySpend },
+	play: () => scrollPanelToSection("By channel"),
+};
+
+export const PaymentEstimated: Story = {
+	args: { ...Channels.args, channels: estimatedSpend },
+	play: () => scrollPanelToSection("By channel"),
 };

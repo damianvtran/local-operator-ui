@@ -1,0 +1,93 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "att-r1-vi",
+  "session": "b7f054029a3f",
+  "job": "76b8498e2a54",
+  "date": "2026-10-21",
+  "locale": "vi",
+  "translator": "coder",
+  "translator_session": "03594b2dcc02",
+  "translator_job": "bc0c4b952eaa",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "keys_audited": 23,
+  "scope": "23-key image-attachment delta: every ui.teamBridge.attachments.* key, per git diff 5005cfe8b6..cf1d7c616c of en/ui.teamBridge.json (31 added, 0 changed, 0 removed; the other 8 added are replies.* from the #1304 merge 8913528, out of scope). En history: 22 keys at 715c864171, remove_all at b8aad1066b, unsupported shortened at 0906d747e5 (dropped “Only the text was pasted.”); vi for all 23 at 0906d747e5, unchanged since. PR head cf1d7c616c re-checked, unchanged. Catalogue audit only, not rendered-fit/activation/release.",
+  "sha256": {
+    "en": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+    "vi": "608e2f506070968878a48fdbbf2a10ddc174de7c0e0db872bc6ade21b938bc03",
+    "context": "8a84800e3d2d52aae3c44393b8fe79bcc567f2ca5d8660a2d260f889cc487902"
+  },
+  "findings": [
+    {
+      "id": "ATT-VI-01",
+      "severity": "MINOR",
+      "key": "ui.teamBridge.attachments.remove",
+      "related_keys": [
+        "ui.teamBridge.attachments.remove_all",
+        "ui.teamBridge.attachments.send_blocked",
+        "ui.teamBridge.attachments.error_upload",
+        "ui.teamBridge.attachments.expired_staged",
+        "ui.teamBridge.attachments.error_quota"
+      ],
+      "current": "Xóa {label}",
+      "proposed": "Gỡ {label}",
+      "related_proposed": {
+        "ui.teamBridge.attachments.remove_all": "Gỡ hình ảnh",
+        "ui.teamBridge.attachments.send_blocked": "Hãy gỡ hoặc thử lại các hình ảnh bị đánh dấu lỗi trước khi gửi.",
+        "ui.teamBridge.attachments.error_upload": "Không tải hình ảnh lên được. Hãy thử lại hoặc gỡ hình ảnh.",
+        "ui.teamBridge.attachments.expired_staged": "Hình ảnh này không còn sẵn sàng để gửi. Hãy gỡ hình ảnh, hoặc thử lại nếu bản xem trước vẫn hiển thị.",
+        "ui.teamBridge.attachments.error_quota": "Có quá nhiều hình ảnh đang chờ gửi. Hãy gửi hoặc gỡ bớt rồi thử lại."
+      },
+      "note": "Glossary drift on “Remove”: the delta uses «Xóa» (delete/erase) six times, while the same composer-chip action elsewhere is «Gỡ» (ui.chat.composer_media.remove_attachment «Gỡ tệp đính kèm») and this namespace’s own chip uses «Bỏ» (compose.remove «Bỏ {name}»). These controls only take an image out of the message being written or rescheduled; «Xóa hình ảnh» in the reschedule dialog reads as deleting the picture itself. «Gỡ» matches the existing attachment precedent and the real effect."
+    },
+    {
+      "id": "ATT-VI-02",
+      "severity": "NIT",
+      "key": "ui.teamBridge.attachments.position",
+      "related_keys": [
+        "ui.teamBridge.attachments.open"
+      ],
+      "current": "Hình {index}/{count}",
+      "proposed": "Hình ảnh {index}/{count}",
+      "related_proposed": {
+        "ui.teamBridge.attachments.open": "Mở hình ảnh {index}/{count}"
+      },
+      "note": "“Image” is «hình ảnh» in the other 21 delta keys (and library.category.images / canvas.files.images) but shortened to «Hình» here and in open; «Hình 2/3» also reads as document figure numbering. It is alt text/aria/tooltip only (no width budget), and it is concatenated with «Hình ảnh này …» in the chip’s aria-label, so the two forms meet in one announcement."
+    }
+  ],
+  "inherited_receipt": {
+    "base": "5005cfe8b6",
+    "path": "i18n/receipts/tbh-r1-vi.json",
+    "sha256": "6bdc2b3a8750028e0529f5526063213564c1762cece8fe38cdfaad1e673e7245",
+    "keys_inherited": 138,
+    "base_source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+    "base_target_sha256": "0b6d510710c29488180fc315a4f44fdb62bf9e24a76fe172cb893964a09eaab8",
+    "unchanged_values_verified": 138,
+    "note": "#1309 stack (out of scope); its own audit chain owns these values."
+  },
+  "merged_in_receipt": {
+    "base": "8913528e50",
+    "path": "i18n/receipts/threads1304-r2-vi.json",
+    "sha256": "a0d50e3ba858afd34391677f602cd757f2e5bf25318d716c84b67ab50c24d1d0",
+    "keys_inherited": 8,
+    "base_source_sha256": "7de891f2cf03b7563747c440847c853f1c1356aa0a50480ec28eae347e6581e9",
+    "base_target_sha256": "409c2e8a9e2f92d2c3590ec02033c6b1174fa27ad07a9813f399b33761d782fd",
+    "unchanged_values_verified": 8,
+    "note": "#1304 replies.* keys (out of scope); en and vi values byte-identical to 8913528e50."
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+  },
+  "validation": {
+    "independence": "Auditor session b7f054029a3f (job 76b8498e2a54, translation-auditor) is distinct from the translator, the coder tb-att-ui (job bc0c4b952eaa, child session 03594b2dcc02, resumed from 7b1161ee751e). Values were read from the on-disk vi catalogue bytes, not from the commit summary. No catalogue/code edits, no git add/commit, no ledger-assemble.",
+    "semantics": "All 23 read side by side with en, the 23 context-sidecar entries (all present) and their call sites: team-bridge-attachments.tsx (composer chip aria/title, strip ul aria-label, status line role=status/alert, attach icon button aria/title, message tiles + lightbox label, 144px placeholder with retry link), team-bridge-page.tsx and team-bridge-thread-pane.tsx (send_blocked alert), team-bridge-scheduled.tsx (remove_all ghost button). Upload vs send is kept apart: «tải … lên» for upload (uploading, error_offline, error_upload), «gửi» for send. retry/retry_load «Thử lại» match list.retry and the namespace’s «Hãy … thử lại» pattern. unsupported «Tổ chức này chưa hỗ trợ gửi hình ảnh.» follows read_only.composer «Tổ chức này …» and correctly reflects the shortened en (no pasted-text clause). expired_staged makes “if it’s still shown” explicit as «nếu bản xem trước vẫn hiển thị», matching the retry button’s chip.prepared condition. unavailable «Không xem được hình ảnh» is idiomatic (not the calque «không khả dụng») and covers withheld/deleted/failed. error_invalid echoes library.preview «Tệp có thể bị hỏng». error_offline mirrors command-palette «không kết nối được máy chủ». Register: no «bạn» in the delta (pronoun drop per style guide), «Hãy» imperatives as in composer.error/drafts.storage_failed, no «Vui lòng», sentence case. Findings: ATT-VI-01 (Remove → Xóa vs Gỡ/Bỏ drift), ATT-VI-02 (image → Hình vs hình ảnh).",
+    "icu": "Parsed en and vi with @formatjs/icu-messageformat-parser: argument sets identical for all 23 ({index}/{count} in position, open; {label} in remove, retry; {count} plural in in_message; {max} plural in limit; none elsewhere); no tags. vi plurals are other-only per glossary §3 (Intl.PluralRules('vi') categories = [other]); # used in both. intl-messageformat vi: in_message count 1 → «1 hình ảnh», 3 → «3 hình ảnh»; limit max 4 → «Mỗi tin nhắn có thể đính kèm tối đa 4 hình ảnh.», max 1000 → «… 1.000 …»; remove with label «Hình 2/3» → «Xóa Hình 2/3». File: 169 keys, en order preserved, no duplicate keys, trailing newline kept; vs 5005cfe8b6 the vi diff is additions only; 138 base values byte-identical; 23 attachment values byte-identical to 0906d747e5.",
+    "typography": "All 23 NFC; no U+200E/F, U+202A–E, U+2066–9, U+061C; no value identical to en; real ellipsis U+2026 in uploading; no space before punctuation; no “!”; no ASCII quotes; open-syllable orthography xóa (no xoá/huỷ variants); format names PNG/JPEG/WebP/GIF and Local Operator kept Latin.",
+    "overflow": "Labels at or under en: Thêm hình ảnh 13/10 (icon-button tooltip/aria only), Xóa hình ảnh 12/13 (ghost sm button), Thử lại 7/9 (placeholder link), position 20/24, open 23/29, remove 11/14. Growth is in wrapping body copy (expired_staged 1.29×, uploading 1.38× as spinner label). Placeholder copy sits in a w-36 (144px) h-24 centred 12px box: «Hình ảnh đã hết hạn» 19 and «Không xem được hình ảnh» 23 chars likely wrap to two lines (en fits one); estimated icon+2 lines+retry link ≈72px < 96px, but not measured — flagged for a rendered check, not a finding.",
+    "rtl": "Not applicable (vi is LTR).",
+    "limitations": "Browser not used; no screenshots, glyph metrics, pseudo-localization, visual-fit or activation evidence claimed. No catalogue/code edits."
+  }
+}

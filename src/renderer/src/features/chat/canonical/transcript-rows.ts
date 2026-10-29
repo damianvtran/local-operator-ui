@@ -191,9 +191,45 @@ function walkTurns<T>(
 
 	const closed = (): boolean =>
 		sawTerminal || sawQuietClose || settledTail() || nothingHasRunYet();
-	/** Whether the open run's tail is a settled answer (the OLD closure test). */
+	/**
+	 * Whether the open run's tail is a settled answer - the closure test, now
+	 * reading the handover fact as well as the row's kind.
+	 *
+	 * A LEAD-IN IS NOT A HANDOVER. An assistant row that CARRIES TOOL CALLS is
+	 * narration ("Reading the ledger first.") followed by the call it announces:
+	 * its calls are still owed, so a user row arriving before those calls report
+	 * is a STEER into this turn, not the opener of the next one. Closing here
+	 * flushed the run on the lead-in, which made the steer a new turn, withdrew
+	 * liveness from every row before it and condensed them behind a bar - and the
+	 * bar went away again a pass later when the call's tool row landed and the
+	 * tail stopped reading as an answer. That is the operator's reported steer
+	 * alternation (2026-10-21: "condensing the messages before it and expanding
+	 * them").
+	 *
+	 * The rule is the transcript's own handover fact, not a second one:
+	 * `turn-segments.ts::isFinalResponse` states it from the same field
+	 * (`callsTools`, set from the journal payload and from `message_end`),
+	 * together with the paint test (`text.length > 0`). This closure deliberately
+	 * reads the SAME TWO FACTS MINUS THE PAINT TEST - a settled assistant that
+	 * says nothing is still a close, because the run is over whether or not it
+	 * had prose to hand over (agent review round 1, F3). It is `!== true` rather
+	 * than `=== false` so a record written before the field existed keeps the old
+	 * behaviour.
+	 *
+	 * THE RESIDUE (agent review round 1, F2). An assistant row that DECLARES calls
+	 * which never land - a turn that died without its tool rows and without a
+	 * terminal marker - makes the next user message a steer into that dead run
+	 * rather than the next turn's opener, because from the rows alone it is
+	 * indistinguishable from the steer this rule exists for. A marker settles the
+	 * question (any terminal marker still closes the run), so the merge only bites
+	 * when the death is invisible; the cost is a bar over two turns' work, never
+	 * lost data.
+	 */
 	const settledTail = (): boolean =>
-		last !== null && last.kind === "assistant" && !last.streaming;
+		last !== null &&
+		last.kind === "assistant" &&
+		!last.streaming &&
+		last.callsTools !== true;
 	/**
 	 * An EMPTY PREAMBLE: a run that opens off a non-user row (head-cut) and has
 	 * done no work of its own. Nothing can be steered into it - see the module

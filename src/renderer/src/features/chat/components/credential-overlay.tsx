@@ -109,6 +109,8 @@ type CredentialOverlayProps = {
 	payloads: ReadonlyMap<number, CredentialPayload>;
 	/** The open capture, so the masked span paints with the pill's own role. */
 	capture?: Capture;
+	/** Whether a first Esc is holding the capture (`escapeHolds`), which repaints the mask. */
+	held?: boolean;
 	/** The textarea this mirror aligns to, for width and scroll synchronisation. */
 	fieldRef: RefObject<HTMLTextAreaElement | null>;
 	/**
@@ -124,10 +126,18 @@ type CredentialOverlayProps = {
 	isSmallView: boolean;
 };
 
-const pillClassName = (kind: PaintSegment["kind"]) => {
+const pillClassName = (kind: PaintSegment["kind"], held: boolean) => {
 	if (kind === "plain") return "text-transparent";
 	if (kind === "armed") return cn("text-transparent", CREDENTIAL_ARMED_ROLE);
-	if (kind === "unbacked")
+	/*
+	 * A HELD mask takes the not-stored register (design review round 1, D3): after
+	 * the first Esc the sentence was the only change on screen, and a same-size
+	 * muted line is easy to miss on the confirmation step of an irreversible action.
+	 * The dashed warning edge already means "this value is not going to be stored"
+	 * on the unbacked chip, which is exactly what the next Esc does to this one, so
+	 * the existing role carries the meaning and no new token is introduced.
+	 */
+	if (kind === "unbacked" || (kind === "mask" && held))
 		return cn("text-transparent", CREDENTIAL_NOT_STORED_ROLE);
 	return cn("text-transparent", CREDENTIAL_CHIP_ROLE);
 };
@@ -136,6 +146,7 @@ export const CredentialOverlay = ({
 	text,
 	payloads,
 	capture = IDLE_CAPTURE,
+	held = false,
 	fieldRef,
 	mirrorRef,
 	isSmallView,
@@ -229,7 +240,7 @@ export const CredentialOverlay = ({
 					{...(segment.kind === "pill" || segment.kind === "unbacked"
 						? { "data-credential-run": index }
 						: {})}
-					className={pillClassName(segment.kind)}
+					className={pillClassName(segment.kind, held)}
 				>
 					{segment.text}
 				</span>

@@ -1,0 +1,182 @@
+# Branch test files run over origin/main 705e0d34d7 (git archive export), failure blocks only.
+# Composer suite: main's credential-capture.ts plus a copy shim (the two new notice strings and escapeHolds = () => false) so the branch test file bundles; main's Esc logic is untouched.
+
+## scripts/credential-composer.test.mjs
+✖ failing tests:
+
+test at scripts/credential-composer.test.mjs:2169:1
+✖ the notice is tied to the field, sits ABOVE the composer box in the band's flow, and reserves nothing (189.530834ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'masked as you type — Enter turns it into a pill, Esc cancels'
+  - 'masked as you type — Enter turns it into a pill, Esc twice discards it'
+  
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'masked as you type — Enter turns it into a pill, Esc cancels',
+    expected: 'masked as you type — Enter turns it into a pill, Esc twice discards it',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/credential-composer.test.mjs:2598:1
+✖ Esc during capture keeps the mask and the value, and writes no plaintext to the draft (362.674708ms)
+  AssertionError [ERR_ASSERTION]: the box still holds the mask cells, not the characters
+  + actual - expected
+  
+  + 'deploy with /credential dummy-not-a-secret-123'
+  - 'deploy with /credential ••••••••••••••••••••••'
+  
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'deploy with /credential dummy-not-a-secret-123',
+    expected: 'deploy with /credential ••••••••••••••••••••••',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/credential-composer.test.mjs:2638:1
+✖ a second Esc discards the capture, and no Esc path leaves plaintext anywhere (328.332ms)
+  AssertionError [ERR_ASSERTION]: the cells are gone and the token is left inert, as an empty-span cancel leaves it
+  + actual - expected
+  
+  + 'deploy with /credential dummy-not-a-secret-123'
+  - 'deploy with /credential '
+                             ^
+  
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'deploy with /credential dummy-not-a-secret-123',
+    expected: 'deploy with /credential ',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/credential-composer.test.mjs:2671:1
+✖ an edit between the two Escapes re-arms the hold rather than discarding (220.844125ms)
+  AssertionError [ERR_ASSERTION]: typing resumed
+  + actual - expected
+  
+  + ''
+  - 'masked as you type — Enter turns it into a pill, Esc cancels'
+  
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: 'masked as you type — Enter turns it into a pill, Esc cancels',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/credential-composer.test.mjs:2687:1
+✖ after a discard, the words typed past the inert token are the operator's sentence, as after an empty-span cancel (U9) (1424.894875ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'deploy with /credential dummy-not-a-secret-123mysecretname'
+  - 'deploy with /credential mysecretname'
+  
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'deploy with /credential dummy-not-a-secret-123mysecretname',
+    expected: 'deploy with /credential mysecretname',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/credential-composer.test.mjs:2725:1
+✖ a hold ends with its capture: a later identical capture is not pre-held (agent review round 1, R1-1) (239.955042ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /^Esc again discards it — still masked/. Input:
+  
+  '22 characters are now PLAIN TEXT in the composer — Enter is held: clear the box to release your words'
+  
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '22 characters are now PLAIN TEXT in the composer — Enter is held: clear the box to release your words',
+    expected: /^Esc again discards it — still masked/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at scripts/credential-composer.test.mjs:2760:1
+✖ the second Esc says the value was discarded, and the next edit retires the line (design review round 1, D2) (393.398292ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'deploy with /credential dummy-not-a-secret-123'
+  - 'deploy with /credential '
+                             ^
+  
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'deploy with /credential dummy-not-a-secret-123',
+    expected: 'deploy with /credential ',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/credential-composer.test.mjs:2785:1
+✖ leaving a held capture by switch or reload persists no plaintext (386.435916ms)
+  AssertionError [ERR_ASSERTION]: blur writes nothing
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+ℹ tests 87
+ℹ pass 79
+ℹ fail 8
+
+## scripts/credential-capture.test.mjs (no shim)
+✖ failing tests:
+
+test at scripts/credential-capture.test.mjs:782:1
+✖ an Esc cancel reports the token it left inert, and an edit that moves it ends that (0.757666ms)
+  AssertionError [ERR_ASSERTION]: a cancel DISCARDS (2026-10-22): a span that held characters reports the empty-span token
+  + actual - expected
+  
+    {
+  +   restored: 7,
+  +   restoredText: 'hunter2',
+      span: {
+        end: 12,
+        start: 0
+      },
+      text: '/credential '
+  
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: { span: { start: 0, end: 12 }, text: '/credential ', restored: 7, restoredText: 'hunter2' },
+    expected: { span: { start: 0, end: 12 }, text: '/credential ' },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/credential-capture.test.mjs:1322:1
+✖ Esc DISCARDS the typed characters: none reach the buffer, the draft or the result (0.129333ms)
+  TypeError [Error]: escapeHolds is not a function
+
+test at scripts/credential-capture.test.mjs:1361:1
+✖ an EMPTY span does not hold its Esc: one press ends the mode (0.039084ms)
+  TypeError [Error]: escapeHolds is not a function
+
+test at scripts/credential-capture.test.mjs:1895:1
+✖ the notices are the TUI's own sentences (0.206792ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'masked as you type — Enter turns it into a pill, Esc cancels'
+  - 'masked as you type — Enter turns it into a pill, Esc twice discards it'
+  
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'masked as you type — Enter turns it into a pill, Esc cancels',
+    expected: 'masked as you type — Enter turns it into a pill, Esc twice discards it',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/credential-composer.test.mjs:1:1

@@ -29,6 +29,11 @@
 		"tone": "Factual and restrained",
 		"note": "Move/invite/removal dialog and outcome notice: names/explains the copy here is deleted once it. Distinguish moving from keeping a copy, and preserve which device retains or loses the conversation; a refusal means no transfer happened. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
 	},
+	"ui.mesh.mesh_actions.the_copy_there_is_deleted_once_it": {
+		"role": "status or explanatory text — move/invite/removal dialog and outcome notice",
+		"tone": "Factual and restrained",
+		"note": "Recall confirmation (the conversation comes TO this device): caption under the preselected recall option. 'there' is the remote device that currently holds the conversation and LOSES its copy; 'here' is this device, which RECEIVES it. It must never read as this device's copy being deleted; it is the direction-mirror of ui.mesh.mesh_actions.the_copy_here_is_deleted_once_it, used for outbound moves. Keep the here/there wording consistent with ui.mesh.mesh_card.copy_here_leave_it_there. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
+	},
 	"ui.mesh.mesh_actions.it_is_open_on_the_other_end": {
 		"role": "warning/error explanation — move/invite/removal dialog and outcome notice",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
@@ -544,11 +549,6 @@
 		"tone": "Factual and restrained",
 		"note": "Device detail panel and conversation move menu: names/explains conversation count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
 	},
-	"ui.mesh.mesh_card.revoked_membership": {
-		"role": "status or explanatory text — device detail panel and conversation move menu",
-		"tone": "Factual and restrained",
-		"note": "Device detail panel and conversation move menu: names/explains revoked membership. Identity/membership security state, not mere lack of a network response. Preserve the lockout or identity warning. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
-	},
 	"ui.mesh.mesh_card.shown_of": {
 		"role": "status or explanatory text — device detail panel and conversation move menu",
 		"tone": "Factual and restrained",
@@ -563,11 +563,6 @@
 		"role": "dialog/section heading — device detail panel and conversation move menu",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
 		"note": "Device detail panel and conversation move menu: names/explains memberships. Length: keep the dialog/section heading compact, around the English footprint; no hard cell cap is defined."
-	},
-	"ui.mesh.mesh_card.revoked": {
-		"role": "status or explanatory text — device detail panel and conversation move menu",
-		"tone": "Factual and restrained",
-		"note": "Device detail panel and conversation move menu: names/explains revoked. Identity/membership security state, not mere lack of a network response. Preserve the lockout or identity warning. Inline fragment: preserve boundary spaces; its adjacent name/value stays in the existing markup. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
 	},
 	"ui.mesh.mesh_card.remove_from": {
 		"role": "button/menu choice — device detail panel and conversation move menu",
@@ -709,6 +704,16 @@
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
 		"note": "Conversation drag/drop resolution: names/explains owner no answer. Report only the observed reach/census fact: silence, not attempted and not reported are different states; the status frame is not a heartbeat. Placeholders: device = operator-supplied device label; reason = backend diagnostic with its existing parentheses, or empty. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label."
 	},
+	"ui.mesh.mesh_drop.reach_refusal": {
+		"role": "status or explanatory text — mesh move refusal",
+		"tone": "Factual and restrained",
+		"note": "A move was refused before it was sent because the destination's reach state is {reach}; {reason} is the backend's own sentence, already parenthesised by the caller. State the reach word rather than collapsing every failure into \"not answering\"."
+	},
+	"ui.mesh.mesh_drop.owner_reach_refusal": {
+		"role": "status or explanatory text — mesh move refusal",
+		"tone": "Factual and restrained",
+		"note": "A recall was refused because the owner device's reach state is {reach}; {reason} is the backend's own sentence, already parenthesised by the caller. State the reach word rather than collapsing every failure into \"not answering\"."
+	},
 	"ui.mesh.mesh_drop.recall_first": {
 		"role": "move resolver outcome/remedy — conversation drag/drop resolution",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
@@ -774,15 +779,40 @@
 		"tone": "Factual and restrained",
 		"note": "Mesh device/census summary: names/explains network count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale’s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
 	},
+	"ui.mesh.mesh_graph.address_unreachable_count": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Mesh device/census summary: names/explains how many devices were dialled at every published address and nothing answered (timeouts or no route). Placeholders: count = count of devices; ICU controls grammar. Keep this class separate from relay down, handshake refused and no answer."
+	},
+	"ui.mesh.mesh_graph.no_endpoint_count": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Mesh device/census summary: names/explains how many devices publish no dialable address. Placeholders: count = count of devices; ICU controls grammar. Nothing was attempted for these devices, so do not describe them as a transport failure."
+	},
+	"ui.mesh.mesh_graph.not_a_member_count": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Mesh device/census summary: names/explains how many devices report this device is not a member. Placeholders: count = count of devices; ICU controls grammar. A membership/access fact, not a transport failure."
+	},
 	"ui.mesh.mesh_graph.device_count": {
 		"role": "dialog/section heading — mesh device/census summary",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
 		"note": "Mesh device/census summary: names/explains device count. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories, not an English count === 1 rule (Russian one/few/many/other; Arabic zero/one/two/few/many/other). Preserve every count placeholder and the action/scope; zero is a real count unless the caller separately guards visibility."
 	},
+	"ui.mesh.mesh_graph.handshake_refused_count": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Mesh device/census summary: names/explains how many devices answered TCP and then closed the handshake. Placeholders: count = count of devices; ICU controls grammar. Keep every failure class named separately from relay down and no answer."
+	},
 	"ui.mesh.mesh_graph.suspected_count": {
 		"role": "device/census status phrase — mesh device/census summary",
 		"tone": "Factual and restrained",
 		"note": "Mesh device/census summary: names/explains suspected count. Identity/membership security state, not mere lack of a network response. Preserve the lockout or identity warning. Placeholders: count = count of the named objects/states; ICU controls grammar. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.mesh.mesh_graph.relay_down_count": {
+		"role": "device/census status phrase — mesh device/census summary",
+		"tone": "Factual and restrained",
+		"note": "Mesh device/census summary: names/explains how many devices have a relay that is not listening. The contract's rule is: not_listening when no endpoint connected AND at least one refused TCP (the host was up and nothing listened); unknown otherwise. Placeholders: count = count of devices; ICU controls grammar. Keep this class separate from handshake refused and no answer."
 	},
 	"ui.mesh.mesh_graph.reached_count": {
 		"role": "device/census status phrase — mesh device/census summary",
@@ -842,12 +872,12 @@
 	"ui.mesh.mesh_list.revoked_count": {
 		"role": "dialog/section heading — mesh device table",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
-		"note": "Mesh device table: names/explains revoked count. Identity/membership security state, not mere lack of a network response. Preserve the lockout or identity warning. Placeholders: count = count of the named objects/states; ICU controls grammar. Inline fragment: preserve boundary spaces; its adjacent name/value stays in the existing markup. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+		"note": "Mesh device table: names/explains revoked count. Identity/membership security state, not mere lack of a network response. Preserve the lockout or identity warning. Placeholders: count = count of the named objects/states; ICU controls grammar. Inline fragment: the fragment is the bare clause only, with no leading separator. The calling line writes its own · separator as markup, because a leading space in a flex item is dropped (design review round 1, D2). Do not add a leading space or a leading separator to the translation. Length: this explanatory copy may wrap in the existing panel/dialog; keep the full consequence, not just a shortened label. Plural guidance: use the target locale’s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
 	},
-	"ui.mesh.mesh_list.revoked": {
-		"role": "status or explanatory text — mesh device table",
-		"tone": "Factual and restrained",
-		"note": "Mesh device table: names/explains revoked. Identity/membership security state, not mere lack of a network response. Preserve the lockout or identity warning. Length: keep the status or explanatory text compact, around the English footprint; no hard cell cap is defined."
+	"ui.mesh.mesh_list.revoked_toggle_label": {
+		"role": "accessible control name — mesh device table",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Mesh device table: the accessible name of the inline trigger whose visible text is a bare count (\"2 revoked\"). It must say the disclosure holds revoked membership records rather than devices: the count read alone is mistaken for a device count, and the visible line stays short because this label carries the meaning. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
 	},
 	"ui.mesh.mesh_list.member": {
 		"role": "status or explanatory text — mesh device table",
@@ -984,6 +1014,76 @@
 		"tone": "Factual and restrained",
 		"note": "Device reach classification: names/explains reached. Report only the observed reach/census fact: silence, not attempted and not reported are different states; the status frame is not a heartbeat. Length: keep the device/census status phrase compact, around the English footprint; no hard cell cap is defined."
 	},
+	"ui.mesh.mesh_reach.relay_not_running": {
+		"role": "device/census status phrase — device reach classification",
+		"tone": "Factual and restrained",
+		"note": "The peer's relay process is not listening. The contract's rule is: not_listening when no endpoint connected AND at least one refused TCP (the host was up and nothing listened); unknown otherwise. This is a named transport verdict, not a generic unreachable state; keep the distinction from timeout and handshake refusal."
+	},
+	"ui.mesh.mesh_reach.address_unreachable": {
+		"role": "device/census status phrase — device reach classification",
+		"tone": "Factual and restrained",
+		"note": "The device was dialled at every published address and nothing answered (timeouts or no route). Distinct from relay not running (a refusal proves the host is up) and from handshake refused (something answered)."
+	},
+	"ui.mesh.mesh_reach.no_endpoint": {
+		"role": "device/census status phrase — device reach classification",
+		"tone": "Factual and restrained",
+		"note": "The device publishes no dialable address, so nothing was attempted. Never present this as the device failing to answer."
+	},
+	"ui.mesh.mesh_reach.not_a_member": {
+		"role": "device/census status phrase — device reach classification",
+		"tone": "Factual and restrained",
+		"note": "The peer reports this device is not a member of the shared network. A membership/access fact, not a transport failure."
+	},
+	"ui.mesh.mesh_reach.attempt_bad_address": {
+		"role": "device/census status phrase — per-address link evidence",
+		"tone": "Factual and restrained",
+		"note": "The published endpoint could not be parsed as a dialable address (detail token `bad_endpoint`). Short label beside the endpoint."
+	},
+	"ui.mesh.mesh_reach.attempt_could_not_connect": {
+		"role": "device/census status phrase — per-address link evidence",
+		"tone": "Factual and restrained",
+		"note": "The connection failed for a reason other than the known refusal/timeout tokens (a `connect_failed:` detail). Never print the exception class name."
+	},
+	"ui.mesh.mesh_reach.handshake_refused": {
+		"role": "device/census status phrase — device reach classification",
+		"tone": "Factual and restrained",
+		"note": "TCP connected but the peer closed the handshake with no reason (unknown device or epoch mismatch). Distinct from no answer and from relay not running; keep the word compact."
+	},
+	"ui.mesh.mesh_reach.addresses_tried": {
+		"role": "section label — per-address link evidence",
+		"tone": "Factual and restrained",
+		"note": "Heading above the list of dialled addresses and their transport results in the device panel."
+	},
+	"ui.mesh.mesh_reach.attempt_answered": {
+		"role": "device/census status phrase — per-address link evidence",
+		"tone": "Factual and restrained",
+		"note": "The dialled address answered successfully (detail token `ok`). Short label beside the endpoint."
+	},
+	"ui.mesh.mesh_reach.attempt_nothing_listening": {
+		"role": "device/census status phrase — per-address link evidence",
+		"tone": "Factual and restrained",
+		"note": "The address answered TCP with a connection refusal: the host is up and nothing is listening on that port."
+	},
+	"ui.mesh.mesh_reach.attempt_no_answer": {
+		"role": "device/census status phrase — per-address link evidence",
+		"tone": "Factual and restrained",
+		"note": "The address timed out or the handshake produced no answer. Distinct from a refusal: nothing spoke on that address."
+	},
+	"ui.mesh.mesh_reach.attempt_not_tried": {
+		"role": "device/census status phrase — per-address link evidence",
+		"tone": "Factual and restrained",
+		"note": "The address was never dialled, so no transport fact exists for it. Never present this as a failure of the device."
+	},
+	"ui.mesh.mesh_reach.peer_relay_not_running": {
+		"role": "status or explanatory text — device panel link evidence",
+		"tone": "Factual and restrained",
+		"note": "Headline above the per-address evidence: the peer's relay is not running. Report the observation; do not blame the reader's relay or the network."
+	},
+	"ui.mesh.mesh_reach.peer_closed_handshake": {
+		"role": "status or explanatory text — device panel link evidence",
+		"tone": "Factual and restrained",
+		"note": "Headline above the per-address evidence: the peer answered TCP but closed the handshake. Names the observed close rather than a generic silence."
+	},
 	"ui.mesh.mesh_reach.no_answer": {
 		"role": "device/census status phrase — device reach classification",
 		"tone": "Factual and restrained",
@@ -1028,6 +1128,11 @@
 		"role": "unnamed record fallback label — unnamed network/device label",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
 		"note": "Unnamed network/device label: names/explains device suffix. Placeholders: suffix = literal last six characters of a technical id. Length: keep the unnamed record fallback label compact, around the English footprint; no hard cell cap is defined."
+	},
+	"ui.mesh.mesh_types.unnamed_device": {
+		"role": "member identity — absent device name",
+		"tone": "Plain explanatory language; preserve the security distinction",
+		"note": "Shown without quotation marks beside the device id when no name is stored. Real stored names are always quoted, so this phrase must remain visually distinct and must not be used as a real-name fallback."
 	},
 	"ui.mesh.mesh_types.network_suffix": {
 		"role": "unnamed record fallback label — unnamed network/device label",
@@ -1113,5 +1218,10 @@
 		"role": "status text — mesh approval card, credential request's remaining decision window",
 		"tone": "Factual and restrained; quiet, secondary to the card's state",
 		"note": "The countdown beside a still-decidable credential request. Placeholder: `remaining` is an ALREADY-LOCALIZED string produced by the meshes' own `approvalRemainingLabel`, which picks one of the sibling `expires_*` messages (under a minute / minutes / hours) - it is never a raw number here. Do not reformat it, pluralize it, add units to it, or wrap it in `{remaining, number}`: that work is already done by those sibling keys, and doing it again would double the unit or the plural. Length: a compact line (`text-meta`, dim) in the card header, around the English footprint. Keep the trailing colon of the English label; the duration reads after it. Note the sibling `expires_*` keys carry the plural forms, so a locale's plural categories belong to THEM, not to this label."
+	},
+	"ui.mesh.mesh_reach.handshake_refused_hint": {
+		"note": "The next check after the handshake-refused headline: WHO should look at what. It names the two causes the protocol actually refuses for (removed membership, epoch disagreement) but says 'check', never 'this is why' - the wire closes the handshake with no reason, so the app may not assert a cause. Keep it one sentence; it sits under the headline in the device panel only, where there is room.",
+		"role": "recovery hint — device panel, under the handshake-refused headline",
+		"tone": "Plain, non-accusatory; a next check, never an asserted cause"
 	}
 }

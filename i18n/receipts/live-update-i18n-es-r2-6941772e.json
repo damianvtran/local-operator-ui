@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "live-update-i18n-es-r2-6941772e",
+  "namespace": "ui.chat.live_updates",
+  "locale": "es",
+  "keys_audited": 4,
+  "status": "passed",
+  "sha256": {
+    "es": "f3d89ad738176a31bdc4101e9c4a777f25f58cf5cbaf554cfae02727a87263e4",
+    "en": "7b42c5d744358c7edc55f835b946a19d824b4675c814dd38e864da641847db32"
+  },
+  "scope": {
+    "base": "75236aa18e4042f85536162992ab3ead2d65613c",
+    "head": "9beb8501906c75cb01113e71c9e043937ad784fd",
+    "kind": "i18n delta audit, 4 keys (new reload_failed; prior 3 re-checked)",
+    "namespace": "ui.chat.live_updates",
+    "note": "Read all 4 keys per file at head 9beb850190; the only catalogue change from 75236aa18e is the new ui.chat.live_updates.reload_failed key, with the prior three values unchanged. English source is 7b42c5d7…; core i18n/glossary.md and the locale style guide consulted; no rendered-frame or native-speaker pass claimed."
+  },
+  "findings": [],
+  "observations": [
+    "Clean at 4/4 keys. New reload_failed: “No se pudo recargar esta conversación. Inténtalo de nuevo.” — accurate two-sentence remedy; “Inténtalo” is the tú imperative the es guide requires and matches house error strings such as ui.teamBridge.composer.error. “recargar” and “conversación” match the other three keys. 58 characters vs 45 English (+29%); the band is flex-wrap with a 200px sentence basis, so it wraps rather than truncates. The prior three keys are unchanged from 75236aa18e. No placeholders."
+  ],
+  "independence": "Did not author or translate these strings; read the catalogue bytes on disk and audited against the English source, the core glossary and the locale style guide.",
+  "date": "2026-10-21"
+}

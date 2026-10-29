@@ -1,0 +1,274 @@
+[
+  {
+    "width": 220,
+    "theme": "Dark",
+    "roundTrip": "chat-sidebar-tags--drag-assign-round-trip \u2014 http://127.0.0.1:6019/iframe.html?id=chat-sidebar-tags--drag-assign-round-trip&viewMode=story&args=width%3A220%3Btheme%3AlocalOperatorDark&final=2\n\nrows 5 \u00b7 row heights 32 \u00b7 subheaders 5 \u00d7 28px \u00b7 modal none \u00b7 assignment writes 2 \u00b7 PASS: cursor grab \u2192 grabbing; header/body ID review; body 195\u00d732px; tagged cross-section 0 writes; synthetic pointer preview (not native delivery proof); Untagged\u2192tagged body 1 write; Undo restored Untagged (2 total)",
+    "preview": "chat-sidebar-tags--cursor-and-body-target \u2014 http://127.0.0.1:6019/iframe.html?id=chat-sidebar-tags--cursor-and-body-target&viewMode=story&args=width%3A220%3Btheme%3AlocalOperatorDark\n\nrows 5 \u00b7 row heights 32 \u00b7 subheaders 5 \u00d7 28px \u00b7 modal none \u00b7 assignment writes 0 \u00b7 PASS: cursor grab \u2192 grabbing; header/body ID review; body 195\u00d732px; tagged cross-section 0 writes; synthetic pointer preview (not native delivery proof)",
+    "styles": {
+      "tool_call_id": "call_4c085adf9beb45e38f3397d456bd58de:e5fc793657af4af494130bbc788db90b",
+      "tool_name": "browser",
+      "content": [
+        {
+          "type": "text",
+          "text": "1 match for '[data-session-row=\"555555555555\"] [data-chat-row]':\n\n[1] button.flex.h-8.items-center.gap-1.rounded-md.px-1.text-body-sm.leading-5.hover:bg-row-hover.focus-visible:outline-2.focus-vis\u2026 rect 12,184 167x32\n    display:flex position:static visibility:visible opacity:1 z-index:auto transform:none transform-origin:83.5px 16px top:auto right:auto bottom:auto left:auto width:167px height:32px contain:none filter:none will-change:auto overflow:visible overflow-x:visible overflow-y:visible pointer-events:auto cursor:grabbing"
+        }
+      ],
+      "details": {
+        "surface_id": "ui:7:c3a52732b3155ab31c12b5face75368e",
+        "url": "http://127.0.0.1:6019/iframe.html?id=chat-sidebar-tags--cursor-and-body-target&viewMode=story&args=width%3A220%3Btheme%3AlocalOperatorDark",
+        "title": "chat-sidebar-tags--cursor-and-body-target",
+        "selector": "[data-session-row=\"555555555555\"] [data-chat-row]",
+        "count": 1,
+        "truncated": false,
+        "matches": [
+          {
+            "tag": "button",
+            "id": "",
+            "role": "",
+            "className": "flex h-8 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-row-hover focus-visible:outline-2 focus-vis\u2026",
+            "rect": {
+              "x": 12,
+              "y": 184,
+              "top": 184,
+              "right": 179,
+              "bottom": 216,
+              "width": 167,
+              "height": 32
+            },
+            "styles": {
+              "display": "flex",
+              "position": "static",
+              "visibility": "visible",
+              "opacity": "1",
+              "z-index": "auto",
+              "transform": "none",
+              "transform-origin": "83.5px 16px",
+              "top": "auto",
+              "right": "auto",
+              "bottom": "auto",
+              "left": "auto",
+              "width": "167px",
+              "height": "32px",
+              "contain": "none",
+              "filter": "none",
+              "will-change": "auto",
+              "overflow": "visible",
+              "overflow-x": "visible",
+              "overflow-y": "visible",
+              "pointer-events": "auto",
+              "cursor": "grabbing"
+            },
+            "inline": {}
+          }
+        ]
+      },
+      "duration_s": 0.4886681669158861,
+      "is_error": false,
+      "useless": false
+    }
+  },
+  {
+    "width": 220,
+    "theme": "Light",
+    "roundTrip": "chat-sidebar-tags--drag-assign-round-trip \u2014 http://127.0.0.1:6019/iframe.html?id=chat-sidebar-tags--drag-assign-round-trip&viewMode=story&args=width%3A220%3Btheme%3AlocalOperatorLight&final=2\n\nrows 5 \u00b7 row heights 32 \u00b7 subheaders 5 \u00d7 28px \u00b7 modal none \u00b7 assignment writes 2 \u00b7 PASS: cursor grab \u2192 grabbing; header/body ID review; body 195\u00d732px; tagged cross-section 0 writes; synthetic pointer preview (not native delivery proof); Untagged\u2192tagged body 1 write; Undo restored Untagged (2 total)",
+    "preview": "chat-sidebar-tags--cursor-and-body-target \u2014 http://127.0.0.1:6019/iframe.html?id=chat-sidebar-tags--cursor-and-body-target&viewMode=story&args=width%3A220%3Btheme%3AlocalOperatorLight\n\nrows 5 \u00b7 row heights 32 \u00b7 subheaders 5 \u00d7 28px \u00b7 modal none \u00b7 assignment writes 0 \u00b7 PASS: cursor grab \u2192 grabbing; header/body ID review; body 195\u00d732px; tagged cross-section 0 writes; synthetic pointer preview (not native delivery proof)",
+    "styles": {
+      "tool_call_id": "call_4c085adf9beb45e38f3397d456bd58de:28cfe5ef52994e8ea759d5677b74012a",
+      "tool_name": "browser",
+      "content": [
+        {
+          "type": "text",
+          "text": "1 match for '[data-session-row=\"555555555555\"] [data-chat-row]':\n\n[1] button.flex.h-8.items-center.gap-1.rounded-md.px-1.text-body-sm.leading-5.hover:bg-row-hover.focus-visible:outline-2.focus-vis\u2026 rect 12,184 167x32\n    display:flex position:static visibility:visible opacity:1 z-index:auto transform:none transform-origin:83.5px 16px top:auto right:auto bottom:auto left:auto width:167px height:32px contain:none filter:none will-change:auto overflow:visible overflow-x:visible overflow-y:visible pointer-events:auto cursor:grabbing"
+        }
+      ],
+      "details": {
+        "surface_id": "ui:7:c3a52732b3155ab31c12b5face75368e",
+        "url": "http://127.0.0.1:6019/iframe.html?id=chat-sidebar-tags--cursor-and-body-target&viewMode=story&args=width%3A220%3Btheme%3AlocalOperatorLight",
+        "title": "chat-sidebar-tags--cursor-and-body-target",
+        "selector": "[data-session-row=\"555555555555\"] [data-chat-row]",
+        "count": 1,
+        "truncated": false,
+        "matches": [
+          {
+            "tag": "button",
+            "id": "",
+            "role": "",
+            "className": "flex h-8 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-row-hover focus-visible:outline-2 focus-vis\u2026",
+            "rect": {
+              "x": 12,
+              "y": 184,
+              "top": 184,
+              "right": 179,
+              "bottom": 216,
+              "width": 167,
+              "height": 32
+            },
+            "styles": {
+              "display": "flex",
+              "position": "static",
+              "visibility": "visible",
+              "opacity": "1",
+              "z-index": "auto",
+              "transform": "none",
+              "transform-origin": "83.5px 16px",
+              "top": "auto",
+              "right": "auto",
+              "bottom": "auto",
+              "left": "auto",
+              "width": "167px",
+              "height": "32px",
+              "contain": "none",
+              "filter": "none",
+              "will-change": "auto",
+              "overflow": "visible",
+              "overflow-x": "visible",
+              "overflow-y": "visible",
+              "pointer-events": "auto",
+              "cursor": "grabbing"
+            },
+            "inline": {}
+          }
+        ]
+      },
+      "duration_s": 0.3806771250674501,
+      "is_error": false,
+      "useless": false
+    }
+  },
+  {
+    "width": 640,
+    "theme": "Dark",
+    "roundTrip": "chat-sidebar-tags--drag-assign-round-trip \u2014 http://127.0.0.1:6019/iframe.html?id=chat-sidebar-tags--drag-assign-round-trip&viewMode=story&args=width%3A640%3Btheme%3AlocalOperatorDark&final=2\n\nrows 5 \u00b7 row heights 32 \u00b7 subheaders 5 \u00d7 28px \u00b7 modal none \u00b7 assignment writes 2 \u00b7 PASS: cursor grab \u2192 grabbing; header/body ID review; body 615\u00d732px; tagged cross-section 0 writes; synthetic pointer preview (not native delivery proof); Untagged\u2192tagged body 1 write; Undo restored Untagged (2 total)",
+    "preview": "chat-sidebar-tags--cursor-and-body-target \u2014 http://127.0.0.1:6019/iframe.html?id=chat-sidebar-tags--cursor-and-body-target&viewMode=story&args=width%3A640%3Btheme%3AlocalOperatorDark\n\nrows 5 \u00b7 row heights 32 \u00b7 subheaders 5 \u00d7 28px \u00b7 modal none \u00b7 assignment writes 0 \u00b7 PASS: cursor grab \u2192 grabbing; header/body ID review; body 615\u00d732px; tagged cross-section 0 writes; synthetic pointer preview (not native delivery proof)",
+    "styles": {
+      "tool_call_id": "call_4c085adf9beb45e38f3397d456bd58de:1e4745dcdb5041029e166b0112fbf408",
+      "tool_name": "browser",
+      "content": [
+        {
+          "type": "text",
+          "text": "1 match for '[data-session-row=\"555555555555\"] [data-chat-row]':\n\n[1] button.flex.h-8.items-center.gap-1.rounded-md.px-1.text-body-sm.leading-5.hover:bg-row-hover.focus-visible:outline-2.focus-vis\u2026 rect 12,184 587x32\n    display:flex position:static visibility:visible opacity:1 z-index:auto transform:none transform-origin:293.5px 16px top:auto right:auto bottom:auto left:auto width:587px height:32px contain:none filter:none will-change:auto overflow:visible overflow-x:visible overflow-y:visible pointer-events:auto cursor:grabbing"
+        }
+      ],
+      "details": {
+        "surface_id": "ui:7:c3a52732b3155ab31c12b5face75368e",
+        "url": "http://127.0.0.1:6019/iframe.html?id=chat-sidebar-tags--cursor-and-body-target&viewMode=story&args=width%3A640%3Btheme%3AlocalOperatorDark",
+        "title": "chat-sidebar-tags--cursor-and-body-target",
+        "selector": "[data-session-row=\"555555555555\"] [data-chat-row]",
+        "count": 1,
+        "truncated": false,
+        "matches": [
+          {
+            "tag": "button",
+            "id": "",
+            "role": "",
+            "className": "flex h-8 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-row-hover focus-visible:outline-2 focus-vis\u2026",
+            "rect": {
+              "x": 12,
+              "y": 184,
+              "top": 184,
+              "right": 599,
+              "bottom": 216,
+              "width": 587,
+              "height": 32
+            },
+            "styles": {
+              "display": "flex",
+              "position": "static",
+              "visibility": "visible",
+              "opacity": "1",
+              "z-index": "auto",
+              "transform": "none",
+              "transform-origin": "293.5px 16px",
+              "top": "auto",
+              "right": "auto",
+              "bottom": "auto",
+              "left": "auto",
+              "width": "587px",
+              "height": "32px",
+              "contain": "none",
+              "filter": "none",
+              "will-change": "auto",
+              "overflow": "visible",
+              "overflow-x": "visible",
+              "overflow-y": "visible",
+              "pointer-events": "auto",
+              "cursor": "grabbing"
+            },
+            "inline": {}
+          }
+        ]
+      },
+      "duration_s": 0.22382216702681035,
+      "is_error": false,
+      "useless": false
+    }
+  },
+  {
+    "width": 640,
+    "theme": "Light",
+    "roundTrip": "chat-sidebar-tags--drag-assign-round-trip \u2014 http://127.0.0.1:6019/iframe.html?id=chat-sidebar-tags--drag-assign-round-trip&viewMode=story&args=width%3A640%3Btheme%3AlocalOperatorLight&final=2\n\nrows 5 \u00b7 row heights 32 \u00b7 subheaders 5 \u00d7 28px \u00b7 modal none \u00b7 assignment writes 2 \u00b7 PASS: cursor grab \u2192 grabbing; header/body ID review; body 615\u00d732px; tagged cross-section 0 writes; synthetic pointer preview (not native delivery proof); Untagged\u2192tagged body 1 write; Undo restored Untagged (2 total)",
+    "preview": "chat-sidebar-tags--cursor-and-body-target \u2014 http://127.0.0.1:6019/iframe.html?id=chat-sidebar-tags--cursor-and-body-target&viewMode=story&args=width%3A640%3Btheme%3AlocalOperatorLight\n\nrows 5 \u00b7 row heights 32 \u00b7 subheaders 5 \u00d7 28px \u00b7 modal none \u00b7 assignment writes 0 \u00b7 PASS: cursor grab \u2192 grabbing; header/body ID review; body 615\u00d732px; tagged cross-section 0 writes; synthetic pointer preview (not native delivery proof)",
+    "styles": {
+      "tool_call_id": "call_4c085adf9beb45e38f3397d456bd58de:615c07af1a6544c384b8a9afccb4918b",
+      "tool_name": "browser",
+      "content": [
+        {
+          "type": "text",
+          "text": "1 match for '[data-session-row=\"555555555555\"] [data-chat-row]':\n\n[1] button.flex.h-8.items-center.gap-1.rounded-md.px-1.text-body-sm.leading-5.hover:bg-row-hover.focus-visible:outline-2.focus-vis\u2026 rect 12,184 587x32\n    display:flex position:static visibility:visible opacity:1 z-index:auto transform:none transform-origin:293.5px 16px top:auto right:auto bottom:auto left:auto width:587px height:32px contain:none filter:none will-change:auto overflow:visible overflow-x:visible overflow-y:visible pointer-events:auto cursor:grabbing"
+        }
+      ],
+      "details": {
+        "surface_id": "ui:7:c3a52732b3155ab31c12b5face75368e",
+        "url": "http://127.0.0.1:6019/iframe.html?id=chat-sidebar-tags--cursor-and-body-target&viewMode=story&args=width%3A640%3Btheme%3AlocalOperatorLight",
+        "title": "chat-sidebar-tags--cursor-and-body-target",
+        "selector": "[data-session-row=\"555555555555\"] [data-chat-row]",
+        "count": 1,
+        "truncated": false,
+        "matches": [
+          {
+            "tag": "button",
+            "id": "",
+            "role": "",
+            "className": "flex h-8 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-row-hover focus-visible:outline-2 focus-vis\u2026",
+            "rect": {
+              "x": 12,
+              "y": 184,
+              "top": 184,
+              "right": 599,
+              "bottom": 216,
+              "width": 587,
+              "height": 32
+            },
+            "styles": {
+              "display": "flex",
+              "position": "static",
+              "visibility": "visible",
+              "opacity": "1",
+              "z-index": "auto",
+              "transform": "none",
+              "transform-origin": "293.5px 16px",
+              "top": "auto",
+              "right": "auto",
+              "bottom": "auto",
+              "left": "auto",
+              "width": "587px",
+              "height": "32px",
+              "contain": "none",
+              "filter": "none",
+              "will-change": "auto",
+              "overflow": "visible",
+              "overflow-x": "visible",
+              "overflow-y": "visible",
+              "pointer-events": "auto",
+              "cursor": "grabbing"
+            },
+            "inline": {}
+          }
+        ]
+      },
+      "duration_s": 0.11243150010704994,
+      "is_error": false,
+      "useless": false
+    }
+  }
+]

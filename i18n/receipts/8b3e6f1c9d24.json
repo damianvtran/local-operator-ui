@@ -1,0 +1,28 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "8b3e6f1c9d24",
+  "date": "2026-10-19",
+  "locale": "vi",
+  "status": "passed",
+  "namespaces": {
+    "ui.chat.tags": {
+      "namespace": "ui.chat.tags",
+      "status": "passed",
+      "sha256": {
+        "source": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
+        "target": "bf38af2e698a1a475a03078714de875596c59d2d05a8f5519b0e2925676ed85d"
+      },
+      "findings": []
+    },
+    "ui.agentMessages": {
+      "namespace": "ui.agentMessages",
+      "status": "passed",
+      "sha256": {
+        "source": "8dadc34125e9434d3994cff7518f72774bd486ce36edd505d34e21ef4c4f574b",
+        "target": "d67fc9c4dd503ec1e14f4deed61ebb143ff32aa21da9e23d09eaa63c2f75df07"
+      },
+      "findings": []
+    }
+  }
+}

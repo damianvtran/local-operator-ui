@@ -218,7 +218,8 @@ const composerBundle = await build({
 				settleOffRecordPayload,
 				composerPlaceholder,
 				COMPOSER_PLACEHOLDER,
-			} from "./src/renderer/src/shared/hooks/use-message-input";`,
+			} from "./src/renderer/src/shared/hooks/use-message-input";
+			export { t } from "@shared/i18n";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -300,6 +301,7 @@ const {
 	settleOffRecordPayload,
 	composerPlaceholder,
 	COMPOSER_PLACEHOLDER,
+	t,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(composerBundle.outputFiles[0].text).toString("base64")}`
 );
@@ -517,7 +519,7 @@ const RE_PAGE_RAISES_THE_BUSY_CODE =
 const RE_PAGE_RETIRES_THE_BUSY_LINE =
 	/if \(sendErrorCode !== ASIDE_STILL_ANSWERING_CODE\) return;\s*if \(asideBusy\) return;\s*clearError\(\);/;
 const RE_PANEL_REGION_FOCUSABLE =
-	/tabIndex=\{0\}\s+aria-label="The aside exchange"/;
+	/tabIndex=\{0\}\s+aria-label=\{t\("ui\.chat\.aside\.exchange_label"\)\}/;
 /*
  * F11's effect trigger, pinned by F12: `retireRequest` is bumped by
  * `retireAcceptedPayload` and read by the effect's dependency list, and only those
@@ -1617,27 +1619,33 @@ test("the placeholder names the destination the press actually reaches", () => {
 		sendingUnsettled: false,
 		awaitingReply: false,
 	};
+	/*
+	 * THE TABLE HOLDS KEYS: `t()` resolves the sentence the box actually shows.
+	 * Comparing the key to the English sentence would pin a copy the catalogue
+	 * owns; comparing the resolved sentence to the ladder's return value is what
+	 * proves the two agree on ONE message.
+	 */
 	assert.equal(
-		COMPOSER_PLACEHOLDER.aside,
+		t(COMPOSER_PLACEHOLDER.aside),
 		"Ask off the record — Esc closes the aside",
 	);
 	assert.equal(
 		composerPlaceholder({ ...idle, asideAttached: true }),
-		COMPOSER_PLACEHOLDER.aside,
+		t(COMPOSER_PLACEHOLDER.aside),
 	);
 	assert.equal(
 		composerPlaceholder({ ...idle, asideAttached: true, awaitingAnswer: true }),
-		COMPOSER_PLACEHOLDER.answer,
+		t(COMPOSER_PLACEHOLDER.answer),
 		"the gate's placeholder term must precede the aside's: while a gate is unanswered the press answers the GATE",
 	);
 	// A box that takes no keystrokes is not invited to take one.
 	assert.equal(
 		composerPlaceholder({ ...idle, asideAttached: true, inputDisabled: true }),
-		COMPOSER_PLACEHOLDER.busy,
+		t(COMPOSER_PLACEHOLDER.busy),
 	);
 	assert.equal(
 		composerPlaceholder({ ...idle, asideAttached: true, unavailable: true }),
-		COMPOSER_PLACEHOLDER.unavailable,
+		t(COMPOSER_PLACEHOLDER.unavailable),
 	);
 	/*
 	 * And the attached aside outranks BOTH send-state sentences: the next Enter
@@ -1652,7 +1660,7 @@ test("the placeholder names the destination the press actually reaches", () => {
 			sendingUnsettled: true,
 			awaitingReply: true,
 		}),
-		COMPOSER_PLACEHOLDER.aside,
+		t(COMPOSER_PLACEHOLDER.aside),
 	);
 	// The wiring: the composer hands the attached panel to the function.
 	assert.match(
@@ -3511,7 +3519,7 @@ test("the panel renders a staged quote instead of the payload's markup", () => {
 	assert.match(panel, /\(\) => parseReplies\(question\)/);
 	// The quote keeps the transcript's own shape, and the typed words are the
 	// question — so the two surfaces cannot describe one payload two ways.
-	assert.match(panel, /border-hairline border-l-2 py-0\.5 pl-2/);
+	assert.match(panel, /border-hairline border-s-2 py-0\.5 ps-2/);
 	assert.match(panel, /\{remainingContent\}/);
 	// The question reaches the renderer through the reader, not as a string.
 	assert.match(panel, /<AsideQuestion question=\{turn\.question\} \/>/);
@@ -3538,25 +3546,30 @@ test("the question side names its speaker, visibly and for assistive tech", () =
 	const panel = read(
 		"src/renderer/src/features/chat/components/aside-panel.tsx",
 	);
-	// The assistive half stays: `Question: ` is the label a reader hears.
-	assert.match(panel, /<span className="sr-only">Question: <\/span>/);
+	// The assistive half stays: `Question: ` is the label a reader hears. The
+	// words now come from the catalogue, so this pins the key that supplies them
+	// rather than the literal (i18n extraction: it was never keyed).
+	assert.match(
+		panel,
+		/<span className="sr-only">\{t\("ui\.chat\.aside\.question_label"\)\} <\/span>/,
+	);
 	// The sighted half: a visible speaker marker, `aria-hidden` so the two
 	// labels do not both reach a screen reader.
 	assert.match(
 		panel,
-		/aria-hidden=\{true\} className="mr-1 text-meta text-ink-dim">\s*You:\s*<\/span>/,
+		/aria-hidden=\{true\} className="me-1 text-meta text-ink-dim">\s*\{t\("ui\.chat\.aside\.you_label"\)\}\{" "\}\s*<\/span>/,
 	);
 	/*
 	 * And it stays box-neutral: no block, no ground, no padding, no vertical
 	 * margin, no `leading-*`, and no type step other than the two the marker
 	 * uses (`text-meta`, the shared line box, and an `ink-*` colour) - every
-	 * one of those moves the measured box the cap is built on. `mr-1` is
+	 * one of those moves the measured box the cap is built on. `me-1` is
 	 * horizontal-only, which is why a margin is allowed here where the
 	 * vertical ones are not. An unrecognised `text-*` token fails too: the two
 	 * spellings proved safe on this line box are the only ones admitted.
 	 */
 	const marker = panel.match(
-		/<span aria-hidden=\{true\} className="([^"]*)">\s*You:/,
+		/<span aria-hidden=\{true\} className="([^"]*)">\s*\{t\("ui\.chat\.aside\.you_label"\)\}/,
 	);
 	assert.ok(marker, "the visible marker is one span with its own classes");
 	for (const token of marker[1].split(/\s+/)) {

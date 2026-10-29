@@ -275,8 +275,8 @@
 	},
 	"ui.command_palette.use_palette_sources.agent_hub": {
 		"role": "command/page label",
-		"tone": "Sentence-case destination noun or action phrase.",
-		"note": "Palette destination agent hub: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
+		"tone": "Destination proper name; title case.",
+		"note": "Palette destination Agent Hub: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched. Destinations are proper names and take title case (Agent Hub, Team Bridge, Library); actions are sentences and take sentence case (New chat, Search). Localised labels follow their own locale's conventions rather than English title case.",
 		"length": "One row; avoid adding an explanatory sentence."
 	},
 	"ui.command_palette.use_palette_sources.agent_settings": {

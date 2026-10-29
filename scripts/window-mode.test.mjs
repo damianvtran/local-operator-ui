@@ -1177,6 +1177,62 @@ test("only a headless run with a launcher watches that launcher", () => {
 	}
 });
 
+test("S3: the bounded visible probe is the one visible run that watches its launcher", () => {
+	const probe = (pid, overrides = {}) =>
+		resolveLauncherWatchPlan({
+			mode: "inactive",
+			launcherPid: pid,
+			boundedVisibleProbe: true,
+			...overrides,
+		});
+
+	// Every pre-S3 input is untouched: the flag defaults to false and the false
+	// branch is the same code path, asserted by identity of the whole answer.
+	for (const mode of ["normal", "inactive", "headless"]) {
+		for (const pid of [4242, 1, 0, 4242.5]) {
+			assert.deepEqual(
+				resolveLauncherWatchPlan({
+					mode,
+					launcherPid: pid,
+					boundedVisibleProbe: false,
+				}),
+				resolveLauncherWatchPlan({ mode, launcherPid: pid }),
+				`${mode}/${pid}`,
+			);
+		}
+	}
+
+	const watched = probe(4242);
+	assert.equal(watched.watch, true);
+	assert.equal(watched.launcherPid, 4242);
+	assert.match(watched.reason, /capped/);
+
+	// The flag never widens the rule to another visible mode: only `inactive`.
+	assert.equal(
+		resolveLauncherWatchPlan({
+			mode: "normal",
+			launcherPid: 4242,
+			boundedVisibleProbe: true,
+		}).watch,
+		false,
+	);
+
+	// A detached probe has no launcher; the 120 s cap is the lifetime then.
+	for (const pid of [0, 1, -1, 4242.5, Number.NaN]) {
+		const detached = probe(pid);
+		assert.equal(detached.watch, false, `pid ${pid}`);
+		assert.equal(detached.launcherPid, null, `pid ${pid}`);
+		assert.match(detached.reason, /already detached/, `pid ${pid}`);
+	}
+
+	// An explicit keep-alive still wins: it is the operator's own opt-out.
+	const opted = probe(4242, {
+		env: { [LAUNCHER_KEEP_ALIVE_ENV]: "1" },
+	});
+	assert.equal(opted.watch, false);
+	assert.match(opted.reason, /outlives its launcher/);
+});
+
 test("the keep-alive opt-out is read tightly, and only for headless runs", () => {
 	const withEnv = (value) =>
 		resolveLauncherWatchPlan({

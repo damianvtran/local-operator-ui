@@ -27,6 +27,8 @@
  */
 
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ShieldAlert } from "lucide-react";
 import type { ReactNode } from "react";
@@ -44,32 +46,47 @@ export const SecurityNotice = ({
 	content,
 	details,
 	className,
-}: SecurityNoticeProps) => (
-	<section
-		aria-label="Security notice"
-		className={cn(
-			"flex gap-3 border-warning border-l-2 py-0.5 pl-3",
-			className,
-		)}
-	>
-		<ShieldAlert
-			className="mt-0.5 size-4 shrink-0 text-warning"
-			aria-hidden={true}
-		/>
-		<div className="flex min-w-0 flex-1 flex-col gap-0.5">
-			<p className="font-medium text-body-sm text-warning">
-				Blocked a risky action
-			</p>
-			{content ? (
-				<p className="text-body-sm text-ink-muted">{content}</p>
-			) : null}
-			{details ? (
-				<Disclosure
-					summary={<span className="text-meta">Show the reviewed code</span>}
-				>
-					{details}
-				</Disclosure>
-			) : null}
-		</div>
-	</section>
-);
+}: SecurityNoticeProps) => {
+	/*
+	 * Subscribe to the locale even though `t()` resolves it per call: a value
+	 * read at render time only changes what is on screen when the component
+	 * re-renders, and this notice used to depend on its parent (`MessageItem`)
+	 * happening to subscribe. Every other keyed component takes the hook for the
+	 * same reason; inheriting a parent's subscription is a coupling, not a
+	 * contract.
+	 */
+	useI18nLocale();
+	return (
+		<section
+			aria-label={t("ui.chat.canonical.security_notice.aria")}
+			className={cn(
+				"flex gap-3 border-warning border-s-2 py-0.5 ps-3",
+				className,
+			)}
+		>
+			<ShieldAlert
+				className="mt-0.5 size-4 shrink-0 text-warning"
+				aria-hidden={true}
+			/>
+			<div className="flex min-w-0 flex-1 flex-col gap-0.5">
+				<p className="font-medium text-body-sm text-warning">
+					{t("ui.chat.canonical.security_notice.blocked")}
+				</p>
+				{content ? (
+					<p className="text-body-sm text-ink-muted">{content}</p>
+				) : null}
+				{details ? (
+					<Disclosure
+						summary={
+							<span className="text-meta">
+								{t("ui.chat.canonical.security_notice.show_code")}
+							</span>
+						}
+					>
+						{details}
+					</Disclosure>
+				) : null}
+			</div>
+		</section>
+	);
+};

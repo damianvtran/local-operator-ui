@@ -1,0 +1,762 @@
+[
+  {
+    "at": "2026-10-24T04:37:32Z",
+    "action": "probe",
+    "run": "264-dark",
+    "width": 264,
+    "theme": "dark",
+    "afterShow": {
+      "typed": "keys:1",
+      "typedAfter": "keys:2",
+      "pageProbe": {
+        "focusEvents": 0,
+        "blurEvents": 0,
+        "activeElement": "BODY",
+        "status": "keys:2"
+      },
+      "cardHref": "file:///Users/damian/local-operator-ui/.worktrees/browser-approvals-s6/out/renderer/browser-approvals-overlay.html?count=2&theme=dark",
+      "settledWidth": 264,
+      "settledNatural": 116,
+      "settleTimeout": false,
+      "pageFocused": false,
+      "cardFocused": false,
+      "windowFocused": false
+    },
+    "facts": {
+      "pending": 2,
+      "presented": true,
+      "contentRect": {
+        "x": 0,
+        "y": 120,
+        "width": 264,
+        "height": 600
+      },
+      "ready": true,
+      "visible": true,
+      "failedReason": null,
+      "bounds": {
+        "view": {
+          "x": 0,
+          "y": 588,
+          "width": 264,
+          "height": 132
+        },
+        "card": {
+          "x": 8,
+          "y": 596,
+          "width": 248,
+          "height": 116
+        },
+        "width": 248,
+        "height": 116,
+        "pad": 8
+      },
+      "childIndex": 1,
+      "childCount": 2,
+      "childWebContentsId": 5,
+      "focusedWebContentsId": null,
+      "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-approvals-s6/out/renderer/browser-approvals-overlay.html",
+      "opaque": false
+    },
+    "resized": {
+      "view": {
+        "x": 532,
+        "y": 588,
+        "width": 368,
+        "height": 132
+      },
+      "document": {
+        "href": "file:///Users/damian/local-operator-ui/.worktrees/browser-approvals-s6/out/renderer/browser-approvals-overlay.html?count=2&theme=dark",
+        "innerWidth": 368,
+        "innerHeight": 132,
+        "natural": 116,
+        "card": {
+          "x": 8,
+          "y": 8.109375,
+          "width": 352,
+          "height": 115.890625
+        }
+      },
+      "facts": {
+        "pending": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 0,
+          "y": 120,
+          "width": 900,
+          "height": 600
+        },
+        "ready": true,
+        "visible": true,
+        "failedReason": null,
+        "bounds": {
+          "view": {
+            "x": 532,
+            "y": 588,
+            "width": 368,
+            "height": 132
+          },
+          "card": {
+            "x": 540,
+            "y": 596,
+            "width": 352,
+            "height": 116
+          },
+          "width": 352,
+          "height": 116,
+          "pad": 8
+        },
+        "childIndex": 1,
+        "childCount": 2,
+        "childWebContentsId": 6,
+        "focusedWebContentsId": null,
+        "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-approvals-s6/out/renderer/browser-approvals-overlay.html",
+        "opaque": false
+      },
+      "timeout": false
+    },
+    "restored": {
+      "view": {
+        "x": 0,
+        "y": 588,
+        "width": 264,
+        "height": 132
+      },
+      "document": {
+        "href": "file:///Users/damian/local-operator-ui/.worktrees/browser-approvals-s6/out/renderer/browser-approvals-overlay.html?count=2&theme=dark",
+        "innerWidth": 264,
+        "innerHeight": 132,
+        "natural": 116,
+        "card": {
+          "x": 8,
+          "y": 8.109375,
+          "width": 248,
+          "height": 115.890625
+        }
+      },
+      "facts": {
+        "pending": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 0,
+          "y": 120,
+          "width": 264,
+          "height": 600
+        },
+        "ready": true,
+        "visible": true,
+        "failedReason": null,
+        "bounds": {
+          "view": {
+            "x": 0,
+            "y": 588,
+            "width": 264,
+            "height": 132
+          },
+          "card": {
+            "x": 8,
+            "y": 596,
+            "width": 248,
+            "height": 116
+          },
+          "width": 248,
+          "height": 116,
+          "pad": 8
+        },
+        "childIndex": 1,
+        "childCount": 2,
+        "childWebContentsId": 7,
+        "focusedWebContentsId": null,
+        "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-approvals-s6/out/renderer/browser-approvals-overlay.html",
+        "opaque": false
+      },
+      "timeout": false
+    },
+    "afterHide": {
+      "pageBounds": {
+        "x": 0,
+        "y": 120,
+        "width": 264,
+        "height": 600
+      },
+      "pageVisible": true,
+      "focused": null,
+      "pageFocused": false,
+      "cardVisible": false
+    },
+    "capture": {
+      "card": "s6a-card-capture.png",
+      "bytes": 20150
+    }
+  },
+  {
+    "at": "2026-10-24T04:37:32Z",
+    "action": "probe",
+    "run": "900-dark",
+    "width": 900,
+    "theme": "dark",
+    "afterShow": {
+      "typed": "keys:1",
+      "typedAfter": "keys:2",
+      "pageProbe": {
+        "focusEvents": 0,
+        "blurEvents": 0,
+        "activeElement": "BODY",
+        "status": "keys:2"
+      },
+      "cardHref": "file:///Users/damian/local-operator-ui/.worktrees/browser-approvals-s6/out/renderer/browser-approvals-overlay.html?count=2&theme=dark",
+      "settledWidth": 368,
+      "settledNatural": 116,
+      "settleTimeout": false,
+      "pageFocused": false,
+      "cardFocused": false,
+      "windowFocused": false
+    },
+    "facts": {
+      "pending": 2,
+      "presented": true,
+      "contentRect": {
+        "x": 0,
+        "y": 120,
+        "width": 900,
+        "height": 600
+      },
+      "ready": true,
+      "visible": true,
+      "failedReason": null,
+      "bounds": {
+        "view": {
+          "x": 532,
+          "y": 588,
+          "width": 368,
+          "height": 132
+        },
+        "card": {
+          "x": 540,
+          "y": 596,
+          "width": 352,
+          "height": 116
+        },
+        "width": 352,
+        "height": 116,
+        "pad": 8
+      },
+      "childIndex": 1,
+      "childCount": 2,
+      "childWebContentsId": 5,
+      "focusedWebContentsId": null,
+      "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-approvals-s6/out/renderer/browser-approvals-overlay.html",
+      "opaque": false
+    },
+    "resized": {
+      "view": {
+        "x": 0,
+        "y": 588,
+        "width": 264,
+        "height": 132
+      },
+      "document": {
+        "href": "file:///Users/damian/local-operator-ui/.worktrees/browser-approvals-s6/out/renderer/browser-approvals-overlay.html?count=2&theme=dark",
+        "innerWidth": 264,
+        "innerHeight": 132,
+        "natural": 116,
+        "card": {
+          "x": 8,
+          "y": 8.109375,
+          "width": 248,
+          "height": 115.890625
+        }
+      },
+      "facts": {
+        "pending": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 0,
+          "y": 120,
+          "width": 264,
+          "height": 600
+        },
+        "ready": true,
+        "visible": true,
+        "failedReason": null,
+        "bounds": {
+          "view": {
+            "x": 0,
+            "y": 588,
+            "width": 264,
+            "height": 132
+          },
+          "card": {
+            "x": 8,
+            "y": 596,
+            "width": 248,
+            "height": 116
+          },
+          "width": 248,
+          "height": 116,
+          "pad": 8
+        },
+        "childIndex": 1,
+        "childCount": 2,
+        "childWebContentsId": 6,
+        "focusedWebContentsId": null,
+        "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-approvals-s6/out/renderer/browser-approvals-overlay.html",
+        "opaque": false
+      },
+      "timeout": false
+    },
+    "restored": {
+      "view": {
+        "x": 532,
+        "y": 588,
+        "width": 368,
+        "height": 132
+      },
+      "document": {
+        "href": "file:///Users/damian/local-operator-ui/.worktrees/browser-approvals-s6/out/renderer/browser-approvals-overlay.html?count=2&theme=dark",
+        "innerWidth": 368,
+        "innerHeight": 132,
+        "natural": 116,
+        "card": {
+          "x": 8,
+          "y": 8.109375,
+          "width": 352,
+          "height": 115.890625
+        }
+      },
+      "facts": {
+        "pending": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 0,
+          "y": 120,
+          "width": 900,
+          "height": 600
+        },
+        "ready": true,
+        "visible": true,
+        "failedReason": null,
+        "bounds": {
+          "view": {
+            "x": 532,
+            "y": 588,
+            "width": 368,
+            "height": 132
+          },
+          "card": {
+            "x": 540,
+            "y": 596,
+            "width": 352,
+            "height": 116
+          },
+          "width": 352,
+          "height": 116,
+          "pad": 8
+        },
+        "childIndex": 1,
+        "childCount": 2,
+        "childWebContentsId": 7,
+        "focusedWebContentsId": null,
+        "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-approvals-s6/out/renderer/browser-approvals-overlay.html",
+        "opaque": false
+      },
+      "timeout": false
+    },
+    "afterHide": {
+      "pageBounds": {
+        "x": 0,
+        "y": 120,
+        "width": 900,
+        "height": 600
+      },
+      "pageVisible": true,
+      "focused": null,
+      "pageFocused": false,
+      "cardVisible": false
+    },
+    "capture": {
+      "card": "s6a-card-capture.png",
+      "bytes": 20675
+    }
+  },
+  {
+    "at": "2026-10-24T04:37:32Z",
+    "action": "probe",
+    "run": "264-light",
+    "width": 264,
+    "theme": "light",
+    "afterShow": {
+      "typed": "keys:1",
+      "typedAfter": "keys:2",
+      "pageProbe": {
+        "focusEvents": 0,
+        "blurEvents": 0,
+        "activeElement": "BODY",
+        "status": "keys:2"
+      },
+      "cardHref": "file:///Users/damian/local-operator-ui/.worktrees/browser-approvals-s6/out/renderer/browser-approvals-overlay.html?count=2&theme=light",
+      "settledWidth": 264,
+      "settledNatural": 116,
+      "settleTimeout": false,
+      "pageFocused": false,
+      "cardFocused": false,
+      "windowFocused": false
+    },
+    "facts": {
+      "pending": 2,
+      "presented": true,
+      "contentRect": {
+        "x": 0,
+        "y": 120,
+        "width": 264,
+        "height": 600
+      },
+      "ready": true,
+      "visible": true,
+      "failedReason": null,
+      "bounds": {
+        "view": {
+          "x": 0,
+          "y": 588,
+          "width": 264,
+          "height": 132
+        },
+        "card": {
+          "x": 8,
+          "y": 596,
+          "width": 248,
+          "height": 116
+        },
+        "width": 248,
+        "height": 116,
+        "pad": 8
+      },
+      "childIndex": 1,
+      "childCount": 2,
+      "childWebContentsId": 5,
+      "focusedWebContentsId": null,
+      "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-approvals-s6/out/renderer/browser-approvals-overlay.html",
+      "opaque": false
+    },
+    "resized": {
+      "view": {
+        "x": 532,
+        "y": 588,
+        "width": 368,
+        "height": 132
+      },
+      "document": {
+        "href": "file:///Users/damian/local-operator-ui/.worktrees/browser-approvals-s6/out/renderer/browser-approvals-overlay.html?count=2&theme=light",
+        "innerWidth": 368,
+        "innerHeight": 132,
+        "natural": 116,
+        "card": {
+          "x": 8,
+          "y": 8.109375,
+          "width": 352,
+          "height": 115.890625
+        }
+      },
+      "facts": {
+        "pending": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 0,
+          "y": 120,
+          "width": 900,
+          "height": 600
+        },
+        "ready": true,
+        "visible": true,
+        "failedReason": null,
+        "bounds": {
+          "view": {
+            "x": 532,
+            "y": 588,
+            "width": 368,
+            "height": 132
+          },
+          "card": {
+            "x": 540,
+            "y": 596,
+            "width": 352,
+            "height": 116
+          },
+          "width": 352,
+          "height": 116,
+          "pad": 8
+        },
+        "childIndex": 1,
+        "childCount": 2,
+        "childWebContentsId": 6,
+        "focusedWebContentsId": null,
+        "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-approvals-s6/out/renderer/browser-approvals-overlay.html",
+        "opaque": false
+      },
+      "timeout": false
+    },
+    "restored": {
+      "view": {
+        "x": 0,
+        "y": 588,
+        "width": 264,
+        "height": 132
+      },
+      "document": {
+        "href": "file:///Users/damian/local-operator-ui/.worktrees/browser-approvals-s6/out/renderer/browser-approvals-overlay.html?count=2&theme=light",
+        "innerWidth": 264,
+        "innerHeight": 132,
+        "natural": 116,
+        "card": {
+          "x": 8,
+          "y": 8.109375,
+          "width": 248,
+          "height": 115.890625
+        }
+      },
+      "facts": {
+        "pending": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 0,
+          "y": 120,
+          "width": 264,
+          "height": 600
+        },
+        "ready": true,
+        "visible": true,
+        "failedReason": null,
+        "bounds": {
+          "view": {
+            "x": 0,
+            "y": 588,
+            "width": 264,
+            "height": 132
+          },
+          "card": {
+            "x": 8,
+            "y": 596,
+            "width": 248,
+            "height": 116
+          },
+          "width": 248,
+          "height": 116,
+          "pad": 8
+        },
+        "childIndex": 1,
+        "childCount": 2,
+        "childWebContentsId": 7,
+        "focusedWebContentsId": null,
+        "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-approvals-s6/out/renderer/browser-approvals-overlay.html",
+        "opaque": false
+      },
+      "timeout": false
+    },
+    "afterHide": {
+      "pageBounds": {
+        "x": 0,
+        "y": 120,
+        "width": 264,
+        "height": 600
+      },
+      "pageVisible": true,
+      "focused": null,
+      "pageFocused": false,
+      "cardVisible": false
+    },
+    "capture": {
+      "card": "s6a-card-capture.png",
+      "bytes": 21107
+    }
+  },
+  {
+    "at": "2026-10-24T04:37:32Z",
+    "action": "probe",
+    "run": "900-light",
+    "width": 900,
+    "theme": "light",
+    "afterShow": {
+      "typed": "keys:1",
+      "typedAfter": "keys:2",
+      "pageProbe": {
+        "focusEvents": 0,
+        "blurEvents": 0,
+        "activeElement": "BODY",
+        "status": "keys:2"
+      },
+      "cardHref": "file:///Users/damian/local-operator-ui/.worktrees/browser-approvals-s6/out/renderer/browser-approvals-overlay.html?count=2&theme=light",
+      "settledWidth": 368,
+      "settledNatural": 116,
+      "settleTimeout": false,
+      "pageFocused": false,
+      "cardFocused": false,
+      "windowFocused": false
+    },
+    "facts": {
+      "pending": 2,
+      "presented": true,
+      "contentRect": {
+        "x": 0,
+        "y": 120,
+        "width": 900,
+        "height": 600
+      },
+      "ready": true,
+      "visible": true,
+      "failedReason": null,
+      "bounds": {
+        "view": {
+          "x": 532,
+          "y": 588,
+          "width": 368,
+          "height": 132
+        },
+        "card": {
+          "x": 540,
+          "y": 596,
+          "width": 352,
+          "height": 116
+        },
+        "width": 352,
+        "height": 116,
+        "pad": 8
+      },
+      "childIndex": 1,
+      "childCount": 2,
+      "childWebContentsId": 5,
+      "focusedWebContentsId": null,
+      "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-approvals-s6/out/renderer/browser-approvals-overlay.html",
+      "opaque": false
+    },
+    "resized": {
+      "view": {
+        "x": 0,
+        "y": 588,
+        "width": 264,
+        "height": 132
+      },
+      "document": {
+        "href": "file:///Users/damian/local-operator-ui/.worktrees/browser-approvals-s6/out/renderer/browser-approvals-overlay.html?count=2&theme=light",
+        "innerWidth": 264,
+        "innerHeight": 132,
+        "natural": 116,
+        "card": {
+          "x": 8,
+          "y": 8.109375,
+          "width": 248,
+          "height": 115.890625
+        }
+      },
+      "facts": {
+        "pending": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 0,
+          "y": 120,
+          "width": 264,
+          "height": 600
+        },
+        "ready": true,
+        "visible": true,
+        "failedReason": null,
+        "bounds": {
+          "view": {
+            "x": 0,
+            "y": 588,
+            "width": 264,
+            "height": 132
+          },
+          "card": {
+            "x": 8,
+            "y": 596,
+            "width": 248,
+            "height": 116
+          },
+          "width": 248,
+          "height": 116,
+          "pad": 8
+        },
+        "childIndex": 1,
+        "childCount": 2,
+        "childWebContentsId": 6,
+        "focusedWebContentsId": null,
+        "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-approvals-s6/out/renderer/browser-approvals-overlay.html",
+        "opaque": false
+      },
+      "timeout": false
+    },
+    "restored": {
+      "view": {
+        "x": 532,
+        "y": 588,
+        "width": 368,
+        "height": 132
+      },
+      "document": {
+        "href": "file:///Users/damian/local-operator-ui/.worktrees/browser-approvals-s6/out/renderer/browser-approvals-overlay.html?count=2&theme=light",
+        "innerWidth": 368,
+        "innerHeight": 132,
+        "natural": 116,
+        "card": {
+          "x": 8,
+          "y": 8.109375,
+          "width": 352,
+          "height": 115.890625
+        }
+      },
+      "facts": {
+        "pending": 2,
+        "presented": true,
+        "contentRect": {
+          "x": 0,
+          "y": 120,
+          "width": 900,
+          "height": 600
+        },
+        "ready": true,
+        "visible": true,
+        "failedReason": null,
+        "bounds": {
+          "view": {
+            "x": 532,
+            "y": 588,
+            "width": 368,
+            "height": 132
+          },
+          "card": {
+            "x": 540,
+            "y": 596,
+            "width": 352,
+            "height": 116
+          },
+          "width": 352,
+          "height": 116,
+          "pad": 8
+        },
+        "childIndex": 1,
+        "childCount": 2,
+        "childWebContentsId": 7,
+        "focusedWebContentsId": null,
+        "documentUrl": "file:///Users/damian/local-operator-ui/.worktrees/browser-approvals-s6/out/renderer/browser-approvals-overlay.html",
+        "opaque": false
+      },
+      "timeout": false
+    },
+    "afterHide": {
+      "pageBounds": {
+        "x": 0,
+        "y": 120,
+        "width": 900,
+        "height": 600
+      },
+      "pageVisible": true,
+      "focused": null,
+      "pageFocused": false,
+      "cardVisible": false
+    },
+    "capture": {
+      "card": "s6a-card-capture.png",
+      "bytes": 21637
+    }
+  }
+]

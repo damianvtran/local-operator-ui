@@ -1,0 +1,83 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "att-r1-zh-cn",
+  "session": "366e5a448425",
+  "job": "57c07e3808ab",
+  "date": "2026-10-21",
+  "locale": "zh-CN",
+  "translator": "coder",
+  "translator_session": "bc0c4b952eaa",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 23,
+  "scope": "23-key image-attachment delta: all ui.teamBridge.attachments.* keys (22 added in en at 715c864171, remove_all added at b8aad1066b, unsupported shortened at 0906d747e5; zh-CN for all 23 added at 0906d747e5 and unchanged through cf1d7c616c), per git diff 5005cfe8b6..cf1d7c616c of en/ui.teamBridge.json filtered to attachments. The 8 replies.* keys in that diff arrive via the #1304 merge (8913528) and the other 138 values via #1309 (5005cfe); all 146 non-attachment zh-CN values verified byte-unchanged versus 5005cfe8b6/8913528e50 and are OUT of scope (owned by their own audits). PR head cf1d7c616c re-checked, unchanged. Catalogue audit only, not rendered-fit/activation/release.",
+  "sha256": {
+    "en": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+    "zh-CN": "941547bb3bd80e153820fbd9c6a2ba680f626e2f908e629240a8a9ace3bf13d0",
+    "context": "8a84800e3d2d52aae3c44393b8fe79bcc567f2ca5d8660a2d260f889cc487902"
+  },
+  "findings": [
+    {
+      "id": "ATT-ZH-01",
+      "severity": "MINOR",
+      "key": "ui.teamBridge.attachments.position",
+      "related_keys": [
+        "ui.teamBridge.attachments.open",
+        "ui.teamBridge.attachments.remove",
+        "ui.teamBridge.attachments.retry"
+      ],
+      "current": "第 {index} 张，共 {count} 张",
+      "proposed": "第{index}张图片（共{count}张）",
+      "note": "English is 'Image {index} of {count}' but the value drops 图片, and since remove/retry interpolate it as {label} the composed tooltips read '移除第 2 张，共 3 张' (remove no. 2, 3 in all) with no object; the spaces around the digit placeholders also break the binding style-guide rule (no space between CJK and digit runs) that the same delta follows in in_message/limit ('#张图片') and the namespace follows everywhere else ('{count}条未读', '最后回复于{time}'). Give open the same shape: '打开第{index}张图片（共{count}张）'. aria-label/title only, so no width risk."
+    },
+    {
+      "id": "ATT-ZH-02",
+      "severity": "MINOR",
+      "key": "ui.teamBridge.attachments.error_type",
+      "related_keys": [
+        "ui.teamBridge.attachments.error_offline"
+      ],
+      "current": "此文件不是可发送的图片。请使用 PNG、JPEG、WebP 或 GIF。",
+      "proposed": "此文件不是可发送的图片。请使用PNG、JPEG、WebP或GIF格式。",
+      "note": "Spaces around Latin runs break the style-guide rule and this namespace's practice ('按Enter发送', '正在检查Team Bridge……'). The bare format list after 使用 is also a calque of 'Use PNG…': Chinese needs the noun 格式. Same spacing fix for error_offline: '无法连接Local Operator，图片未能上传。恢复连接后请重试。' (the locale writes Local Operator with no spaces 38 times and with spaces only twice)."
+    },
+    {
+      "id": "ATT-ZH-03",
+      "severity": "MINOR",
+      "key": "ui.teamBridge.attachments.expired_staged",
+      "current": "此图片已无法发送。请将其移除；如果仍显示预览，可以重试。",
+      "proposed": "此图片已无法发送。请将其移除；如果重试按钮仍在，也可以重试。",
+      "note": "The translation makes the retry condition 'the preview is still shown', which the English does not say, and in the code it can be false: Retry appears only when bytes are in memory ({failed && chip.prepared}), but a draft restored in the same app session gets a preview from the uploadPreview LRU without prepared, so a preview can show with no retry button. The English 'retry if it’s still shown' is ambiguous at the source, so the coder should also add a context note saying that 'it' is the Retry control."
+    },
+    {
+      "id": "ATT-ZH-04",
+      "severity": "MINOR",
+      "key": "ui.teamBridge.attachments.remove_all",
+      "current": "移除图片",
+      "proposed": "移除所有图片",
+      "note": "In English the plural 'images' carries the 'every image' meaning; Chinese has no plural, so '移除图片' reads as removing one image, while this ghost button in the reschedule dialog clears all of them. The locale already writes '移除所有标签' for the parallel tags action. 12 cells against 13 English characters, so it still fits."
+    },
+    {
+      "id": "ATT-ZH-05",
+      "severity": "NIT",
+      "key": "ui.teamBridge.attachments.uploading",
+      "current": "正在上传图片…",
+      "proposed": "正在上传图片……",
+      "note": "This is a single U+2026, but the style guide sets the ellipsis to …… and the three sibling loading strings in this file use it (identity_loading, plan.checking, schedule.loading). It is a NIT because the value only renders as Spinner sr-only text and inside the chip aria-label."
+    }
+  ],
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  },
+  "validation": {
+    "independence": "Auditor session 366e5a448425 (job 57c07e3808ab, translation-auditor, served model id claude-opus-5-5 on provider anthropic per this session's transcript) is distinct from translator coder job/session bc0c4b952eaa; read-only audit of on-disk bytes at HEAD cf1d7c616ca36bd48c0bf160d64a08514b7c2b08, no translator summary relied on, no catalogue/code edits, no git operations.",
+    "semantics": "All 23 values were read against the en source, the context sidecar, the glossary and the zh-CN style guide, and each was judged in its real call site: team-bridge-attachments.tsx (chip aria-label/title, Spinner label, strip ul aria-label, status line, add button aria-label/title, sent-message group aria-label, placeholder text and retry link, viewer open button), team-bridge-page.tsx and team-bridge-thread-pane.tsx send_blocked alert, team-bridge-scheduled.tsx remove_all ghost Button. Terms match the existing file and locale: 上传 (upload), 发送 (send), 移除 (remove, = compose.remove 移除{name}), 重试 (retry, = list.retry; retry_load 'Try again' 重试 = list.retry 'Try again'), 组织 (organization, = scope.*), 附加 (attach, = ui.chat '已附加到'), 待发送的图片 shared by strip and error_quota. Address is 你-register with the pronoun dropped, no 您. 请 follows the namespace's approved '请重试' precedent. unsupported keeps 'yet' as 暂. error_rate/error_quota keep the cause and the remedy. No value is identical to English. Findings ATT-ZH-01..05 above.",
+    "icu": "Parsed all 23 en and zh-CN values with @formatjs/icu-messageformat-parser; argument names match en exactly ({index},{count} in position/open; {label} in remove/retry; none elsewhere). in_message and limit are plural on count/max with en one/other → zh-CN other only (correct per style guide); the # is used in both. intl-messageformat zh-CN samples: in_message count=1 '1张图片', count=3 '3张图片'; limit max=1 '每条消息最多可附加1张图片。', max=4 '…4张图片。'; position '第 2 张，共 3 张'; remove '移除第 2 张，共 3 张'.",
+    "typography": "The file is NFC, has no BOM, ends with a newline, and contains no U+200E/F, U+202A–E, U+2066–9 or U+061C. Prose uses full-width ，。；、. Short labels (add, strip, expired, unavailable, retry_load, remove_all) have no sentence-final 。. Full sentences end in 。. Deviations: ASCII spaces around placeholders (ATT-ZH-01) and Latin runs (ATT-ZH-02), and a single-mark ellipsis (ATT-ZH-05).",
+    "overflow": "Display cells (CJK = 2) are at or below English character length for every visible label: add 8/10, strip 12/14, expired 10/13, unavailable 10/17, retry_load 4/9, remove_all 8/13 (12 with the proposal). The status/alert lines wrap. position (28/24) and open (36/29) are longer, but they are aria-label/title text only. No material overflow risk found.",
+    "observation_out_of_catalogue": "Not counted, not a catalogue finding: team-bridge-attachments.tsx builds chip and placeholder aria-labels as `${label}. ${reason}` (lines ~118 and ~395), so zh-CN screen readers get an ASCII '. ' joining two Chinese fragments. That is concatenated copy the HOWTO forbids, and it belongs to the coder as a keyed ICU pattern.",
+    "limitations": "Browser not used; no screenshots, glyph metrics, pseudo-localization, visual-fit or rendered check claimed. zh-CN is not runtime-eligible at core 532fd42d4 (recognized, not eligible), so no activation claim."
+  }
+}

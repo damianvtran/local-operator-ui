@@ -1,4 +1,6 @@
 import { Button, TabPanel, Tooltip } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { CanvasViewMode } from "@shared/store/canvas-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
@@ -19,12 +21,17 @@ import type { CanonicalGoalHistoryEntry } from "../../../../../../shared/desktop
 import type { MentionScanHandle } from "../../canonical/use-mentioned-files";
 import { useSessionFiles } from "../../canonical/use-session-files";
 import {
+	type UserAttachmentsState,
+	useUserAttachments,
+} from "../../canonical/use-user-attachments";
+import {
 	canvasShortcutAction,
 	pressLandsOnOverlay,
 } from "../../keyboard-scopes";
 import type { CanvasDocument } from "../../types/canvas";
 import { createFile } from "../../utils/file-creation";
 import { getFileTypeFromPath } from "../../utils/file-types";
+import { combinedFileCount } from "./attachment-items";
 import { CanvasContent } from "./canvas-content";
 import { EmptyState } from "./canvas-empty-state";
 import { CanvasFileViewer } from "./canvas-file-viewer";
@@ -126,6 +133,12 @@ type CanvasProps = {
 	fileCount?: number;
 	/** Shared parent inventory also drives the rail while this pane is closed. */
 	fileIndex?: ReturnType<typeof useSessionFiles>;
+	/**
+	 * The person's attachments, owned by the chat beside `fileIndex` so the rail,
+	 * the Files segment and the pinned section share one reading. Absent (a
+	 * standalone canvas), the pane reads its own with no live records.
+	 */
+	attachments?: UserAttachmentsState;
 
 	/**
 	 * The completeness state of the Files panel's scan, plus its retry action.
@@ -223,6 +236,7 @@ type CanvasProps = {
  * `role="radiogroup"` is what "one of these, always one" actually means — the
  * count it holds is not fixed, and the goals segment made it four.
  */
+// Label getters preserve the array contract without freezing module-load English.
 const VIEWS: {
 	value: CanvasViewMode;
 	label: string;
@@ -231,19 +245,25 @@ const VIEWS: {
 }[] = [
 	{
 		value: "documents",
-		label: "Documents",
+		get label() {
+			return t("ui.canvas.shell.documents");
+		},
 		tourTag: "canvas-documents-view-button",
 		Icon: FileText,
 	},
 	{
 		value: "files",
-		label: "Files",
+		get label() {
+			return t("ui.canvas.shell.files");
+		},
 		tourTag: "canvas-files-view-button",
 		Icon: FolderOpen,
 	},
 	{
 		value: "variables",
-		label: "Variables",
+		get label() {
+			return t("ui.canvas.shell.variables");
+		},
 		tourTag: "canvas-variables-view-button",
 		Icon: ListTree,
 	},
@@ -259,7 +279,9 @@ const VIEWS: {
 	 */
 	{
 		value: "goals",
-		label: "Goals",
+		get label() {
+			return t("ui.canvas.shell.goals");
+		},
 		tourTag: "canvas-goals-view-button",
 		Icon: Target,
 	},
@@ -284,7 +306,7 @@ const VIEWS: {
 const canvasViews = (goalCapable: boolean): typeof VIEWS =>
 	goalCapable ? VIEWS : VIEWS.filter((view) => view.value !== "goals");
 
-const ViewSwitcher: FC<{
+export const ViewSwitcher: FC<{
 	current: CanvasViewMode;
 	onChange: (view: CanvasViewMode) => void;
 	/**
@@ -305,81 +327,101 @@ const ViewSwitcher: FC<{
 	 * rule, and the reason it is a prop: only the caller holding the frame knows.
 	 */
 	goalTruncated: boolean;
-}> = ({ current, onChange, views, fileCount, goalCount, goalTruncated }) => (
-	// A `fieldset` rather than a div with `role="group"`: the element already
-	// means "these controls belong together", and it is the only way the group
-	// gets an accessible name without inventing ARIA for it. Its UA border and
-	// margin are reset by the utilities below.
-	//
-	// No track behind it. Selection is the same `sunken`-strip-with-a-`surface`
-	// -chip step the tab row six pixels below already uses, so a second recessed
-	// well would be a box drawn around a pattern the panel has already taught.
-	<fieldset
-		className={cn("inline-flex h-7 shrink-0 items-center gap-0.5 border-0 p-0")}
-	>
-		<legend className={cn("sr-only")}>Canvas view</legend>
-		{views.map(({ value, label, tourTag, Icon }) => {
-			const isActive = current === value;
-			/*
-			 * The count rides the Files and Goals segments' names, not a badge. This is
-			 * where a user who already knows the canvas exists looks for "is there
-			 * anything here", and the segment is the one control that is on screen in
-			 * every view; a number rendered inside a 24px icon button would either clip
-			 * or push the row apart.
-			 *
-			 * Only these two can say a number: a count of documents is a count of open
-			 * tabs the strip below already prints, and a count of variables is not known
-			 * to this component at all (its viewer fetches). A segment with no number is
-			 * simply its own name.
-			 */
-			const counted =
-				value === "files" ? fileCount : value === "goals" ? goalCount : 0;
-			const noun = value === "files" ? "file" : "goal";
-			/*
-			 * The name is DERIVED OUTSIDE, because the number it speaks is a claim about a
-			 * list and the Goals segment's list can be capped. `goalTruncated` is read only
-			 * for that segment: the documents count is the open tabs the strip below already
-			 * prints, so it has no cap to admit.
-			 */
-			const name =
-				counted === null
-					? label
-					: viewSegmentName(
-							label,
-							noun,
-							counted,
-							value === "goals" && goalTruncated,
-						);
-			return (
-				<Tooltip key={value} content={name}>
-					<button
-						type="button"
-						aria-pressed={isActive}
-						aria-label={name}
-						data-tour-tag={tourTag}
-						onClick={() => onChange(value)}
-						className={cn(
-							"inline-flex h-6 items-center justify-center rounded-sm px-2",
-							"transition-colors duration-fast ease-out-quart",
-							"[&_svg]:size-3.5",
-							isActive
-								? "bg-surface text-ink"
-								: "text-ink-muted hover:text-ink",
-						)}
-					>
-						<Icon aria-hidden="true" />
-						{value === "files" && (
-							<span className={cn("ml-1 text-meta")}>
-								{label}
-								{counted === null ? "" : ` ${formatNumber(counted)}`}
-							</span>
-						)}
-					</button>
-				</Tooltip>
-			);
-		})}
-	</fieldset>
-);
+}> = ({ current, onChange, views, fileCount, goalCount, goalTruncated }) => {
+	useI18nLocale();
+	return (
+		// A `fieldset` rather than a div with `role="group"`: the element already
+		// means "these controls belong together", and it is the only way the group
+		// gets an accessible name without inventing ARIA for it. Its UA border and
+		// margin are reset by the utilities below.
+		//
+		// No track behind it. Selection is the same `sunken`-strip-with-a-`surface`
+		// -chip step the tab row six pixels below already uses, so a second recessed
+		// well would be a box drawn around a pattern the panel has already taught.
+		<fieldset
+			className={cn(
+				"inline-flex h-7 shrink-0 items-center gap-0.5 border-0 p-0",
+			)}
+		>
+			<legend className={cn("sr-only")}>
+				{t("ui.canvas.shell.canvas_view")}
+			</legend>
+			{views.map(({ value, label, tourTag, Icon }) => {
+				const isActive = current === value;
+				/*
+				 * The count rides the Files and Goals segments' names, not a badge. This is
+				 * where a user who already knows the canvas exists looks for "is there
+				 * anything here", and the segment is the one control that is on screen in
+				 * every view; a number rendered inside a 24px icon button would either clip
+				 * or push the row apart.
+				 *
+				 * Only these two can say a number: a count of documents is a count of open
+				 * tabs the strip below already prints, and a count of variables is not known
+				 * to this component at all (its viewer fetches). A segment with no number is
+				 * simply its own name.
+				 */
+				const counted =
+					value === "files" ? fileCount : value === "goals" ? goalCount : 0;
+				/*
+				 * Both spellings are passed in: `viewSegmentName` must not derive the
+				 * plural from localized copy (round-1 B1's class), and the ICU message
+				 * needs the plural noun this segment's own kind names.
+				 */
+				const noun =
+					value === "files"
+						? t("ui.canvas.shell.file")
+						: t("ui.canvas.shell.goal");
+				const pluralNoun =
+					value === "files"
+						? t("ui.canvas.shell.files")
+						: t("ui.canvas.shell.goals");
+				/*
+				 * The name is DERIVED OUTSIDE, because the number it speaks is a claim about a
+				 * list and the Goals segment's list can be capped. `goalTruncated` is read only
+				 * for that segment: the documents count is the open tabs the strip below already
+				 * prints, so it has no cap to admit.
+				 */
+				const name =
+					counted === null
+						? label
+						: viewSegmentName(
+								label,
+								noun,
+								pluralNoun,
+								counted,
+								value === "goals" && goalTruncated,
+							);
+				return (
+					<Tooltip key={value} content={name}>
+						<button
+							type="button"
+							aria-pressed={isActive}
+							aria-label={name}
+							data-tour-tag={tourTag}
+							onClick={() => onChange(value)}
+							className={cn(
+								"inline-flex h-6 items-center justify-center rounded-sm px-2",
+								"transition-colors duration-fast ease-out-quart",
+								"[&_svg]:size-3.5",
+								isActive
+									? "bg-surface text-ink"
+									: "text-ink-muted hover:text-ink",
+							)}
+						>
+							<Icon aria-hidden="true" />
+							{value === "files" && (
+								<span className={cn("ms-1 text-meta")}>
+									{label}
+									{counted === null ? "" : ` ${formatNumber(counted)}`}
+								</span>
+							)}
+						</button>
+					</Tooltip>
+				);
+			})}
+		</fieldset>
+	);
+};
 
 /**
  * The canvas panel.
@@ -414,6 +456,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 	currentWorkingDirectory,
 	fileCount = 0,
 	fileIndex: sharedFileIndex,
+	attachments: sharedAttachments,
 	scan = null,
 	goalHistory = EMPTY_GOAL_HISTORY,
 	goalHistoryTruncated = false,
@@ -422,13 +465,22 @@ const CanvasComponent: FC<CanvasProps> = ({
 }) => {
 	// Standalone stories retain their hook, but a chat-mounted pane consumes the
 	// parent's inventory rather than issuing a second pagination/backfill loop.
+
+	useI18nLocale();
 	const standaloneFileIndex = useSessionFiles(
 		sessionId,
 		!sharedFileIndex,
 		turnTerminal,
 	);
 	const fileIndex = sharedFileIndex ?? standaloneFileIndex;
-	const displayedFileCount =
+	const standaloneAttachments = useUserAttachments(
+		sessionId,
+		null,
+		turnTerminal,
+		!sharedAttachments,
+	);
+	const attachments = sharedAttachments ?? standaloneAttachments;
+	const agentFileCount =
 		fileIndex.mode === "negotiating"
 			? null
 			: fileIndex.mode === "index"
@@ -436,6 +488,20 @@ const CanvasComponent: FC<CanvasProps> = ({
 					? fileIndex.total
 					: null
 				: fileCount;
+	// The segment counts what the Files view lists: agent files plus the
+	// person's attachments, each digest once (`combinedFileCount`).
+	const displayedFileCount =
+		agentFileCount === null
+			? attachments.items.length || null
+			: combinedFileCount(
+					agentFileCount,
+					fileIndex.mode === "index"
+						? fileIndex.rows.map((row) =>
+								row.ref.type === "artifact" ? row.ref.digest : null,
+							)
+						: [],
+					attachments,
+				);
 	const [isCreateFileDialogOpen, setCreateFileDialogOpen] = useState(false);
 	const [isCreatingFile, setIsCreatingFile] = useState(false);
 	const [modifierKey, setModifierKey] = useState("Ctrl");
@@ -745,7 +811,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 		 * 59.
 		 */
 		<section
-			aria-label="Canvas"
+			aria-label={t("ui.canvas.shell.canvas")}
 			data-tour-tag="canvas-container"
 			/*
 			 * The boundary the canvas's own `⌘N` is scoped to
@@ -757,7 +823,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 			 */
 			data-canvas-shortcuts
 			data-glass-region="pane"
-			className={cn("flex h-full flex-col bg-elevated")}
+			className={cn("panel-top-pad flex h-full flex-col bg-elevated")}
 		>
 			{/*
 			 * One 40px chrome bar: what you are looking at on the left, what you
@@ -831,22 +897,34 @@ const CanvasComponent: FC<CanvasProps> = ({
 					goalTruncated={goalHistoryTruncated}
 				/>
 				<div className={cn("flex shrink-0 items-center gap-0.5")}>
-					<Tooltip content={`New file (${modifierKey} + N)`}>
+					<Tooltip
+						content={t("ui.canvas.shell.new_file_n", {
+							modifierkey: modifierKey,
+						})}
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label={`New file (${modifierKey} + N)`}
+							aria-label={t("ui.canvas.shell.new_file_n", {
+								modifierkey: modifierKey,
+							})}
 							onClick={() => setCreateFileDialogOpen(true)}
 							data-tour-tag="canvas-create-file-button"
 						>
 							<FilePlus aria-hidden="true" />
 						</Button>
 					</Tooltip>
-					<Tooltip content={`Open file from disk (${modifierKey} + O)`}>
+					<Tooltip
+						content={t("ui.canvas.shell.open_file_from_disk_o", {
+							modifierkey: modifierKey,
+						})}
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label={`Open file from disk (${modifierKey} + O)`}
+							aria-label={t("ui.canvas.shell.open_file_from_disk_o", {
+								modifierkey: modifierKey,
+							})}
 							onClick={handleOpenFile}
 						>
 							<FileUp aria-hidden="true" />
@@ -857,15 +935,18 @@ const CanvasComponent: FC<CanvasProps> = ({
 					 * "close the document" beside a strip of tabs that each carry
 					 * their own ✕; this one says which way the panel goes.
 					 */}
-					<Tooltip content="Close canvas">
+					<Tooltip content={t("ui.canvas.shell.close_canvas")}>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Close canvas"
+							aria-label={t("ui.canvas.shell.close_canvas")}
 							onClick={onClose}
 							data-tour-tag="close-canvas-button"
 						>
-							<PanelRightClose aria-hidden="true" />
+							<PanelRightClose
+								aria-hidden="true"
+								className="rtl:-scale-x-100"
+							/>
 						</Button>
 					</Tooltip>
 				</div>
@@ -937,8 +1018,10 @@ const CanvasComponent: FC<CanvasProps> = ({
 					{/* Empty state when no documents are open */}
 					{!activeDocument && documents.length === 0 && (
 						<EmptyState
-							title="Nothing open yet"
-							description="Open a file to read or edit it here. Files the agent mentions in the conversation open here too."
+							title={t("ui.canvas.shell.nothing_open_yet")}
+							description={t(
+								"ui.canvas.shell.open_a_file_to_read_or_edit_it_here_files_the_agent_mentions_in_the_conv",
+							)}
 						>
 							{/*
 							 * Three actions, and ALWAYS these three in this order: browse what the
@@ -965,11 +1048,15 @@ const CanvasComponent: FC<CanvasProps> = ({
 								onClick={() => setCurrentView("files")}
 							>
 								<FolderOpen aria-hidden="true" />
-								{hasFiles ? `Browse files (${fileCountValue})` : "Browse files"}
+								{hasFiles
+									? t("ui.canvas.shell.browse_filesc0c547", {
+											filecountvalue: fileCountValue,
+										})
+									: t("ui.canvas.shell.browse_files")}
 							</Button>
 							<Button variant="secondary" size="sm" onClick={handleOpenFile}>
 								<FileUp aria-hidden="true" />
-								Open file from disk
+								{t("ui.canvas.shell.open_file_from_disk")}
 							</Button>
 							<Button
 								variant="secondary"
@@ -977,7 +1064,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 								onClick={() => setCreateFileDialogOpen(true)}
 							>
 								<FilePlus aria-hidden="true" />
-								New file
+								{t("ui.canvas.shell.new_file")}
 							</Button>
 						</EmptyState>
 					)}
@@ -1019,6 +1106,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 					}
 					onSwitchToDocumentView={handleSwitchToDocumentView}
 					scan={scan}
+					attachments={attachments}
 				/>
 			)}
 			{currentView === "variables" && conversationId && (
@@ -1059,8 +1147,10 @@ const CanvasComponent: FC<CanvasProps> = ({
 			{(currentView === "files" || currentView === "variables") &&
 				!conversationId && (
 					<EmptyState
-						title="No conversation open"
-						description="Start a conversation with an agent to see the files and variables it is working with."
+						title={t("ui.canvas.shell.no_conversation_open")}
+						description={t(
+							"ui.canvas.shell.start_a_conversation_with_an_agent_to_see_the_files_and_variables_it_is",
+						)}
 					/>
 				)}
 			{agentId && (

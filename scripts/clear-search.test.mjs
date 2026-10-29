@@ -70,6 +70,18 @@ const { clearSearch } = await import(
 
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
 const sidebar = readFileSync(join(ROOT, SIDEBAR), "utf8");
+/**
+ * The accessible name now comes from the sidebar's English catalogue, so the
+ * control's source anchor is the key and the copy is read from the message the
+ * user actually hears.
+ */
+const COPY = JSON.parse(
+	readFileSync(
+		join(ROOT, "src/i18n/catalogues/en/ui.chat.sidebar.json"),
+		"utf8",
+	),
+);
+const CLEAR_LABEL = 'aria-label={t("ui.chat.sidebar.search.clear")}';
 
 /** A field double that records what it was asked to do, in order. */
 const fieldDouble = () => {
@@ -111,7 +123,12 @@ test("the clear control is rendered only while a filter is applied", () => {
 });
 
 test("the clear control is the settings-search idiom, not a new one", () => {
-	const at = sidebar.indexOf('aria-label="Clear search"');
+	assert.equal(
+		COPY["ui.chat.sidebar.search.clear"],
+		"Clear search",
+		"the control must carry the accessible name `Clear search`",
+	);
+	const at = sidebar.indexOf(CLEAR_LABEL);
 	assert.ok(
 		at > 0,
 		"the control must carry the accessible name `Clear search`",
@@ -130,7 +147,7 @@ test("the clear control is the settings-search idiom, not a new one", () => {
 	);
 	assert.match(
 		control,
-		/className="absolute top-1\/2 right-1 -translate-y-1\/2 focus-visible:outline-offset-\[-2px\]!"/,
+		/className="absolute top-1\/2 end-1 -translate-y-1\/2 focus-visible:outline-offset-\[-2px\]!"/,
 		"the control must sit inside the field's own box, with its ring pulled inside that box",
 	);
 });
@@ -140,10 +157,14 @@ test("the icon is decorative and the query never runs under the control", () => 
 		sidebar.indexOf("ref={searchRef}"),
 		sidebar.indexOf("/>", sidebar.indexOf("ref={searchRef}")),
 	);
-	assert.match(input, /pr-9/, "the input must reserve the control's column");
+	assert.match(
+		input,
+		/pe-9/,
+		"the input must reserve the control's inline-end column",
+	);
 	// The X is a glyph inside a named button; announced separately it would be
 	// read as text with no meaning.
-	const at = sidebar.indexOf('aria-label="Clear search"');
+	const at = sidebar.indexOf(CLEAR_LABEL);
 	assert.match(
 		sidebar.slice(at, at + 200),
 		/<X aria-hidden="true" \/>/,
@@ -294,7 +315,7 @@ test("the committed readback still places the control inside its field", () => {
 		// 1px, not 0: the field's own `border-control` line is inside its border
 		// box, so a control flush with the box would paint over it.
 		contained(queried.controlBox, queried.inputBox, 1, `${theme}: the control`);
-		// `pr-9`: the query must never run under the control.
+		// `pe-9`: the query must never run under the control (36px at the inline end; the LTR readback below still reads it as `padding-right`).
 		assert.equal(queried.inputPaddingRight, "36px");
 
 		// Design round 1, D1: the ring's outer edge is inside the field, not

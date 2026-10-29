@@ -13,6 +13,7 @@
  * not show the tool row that must not have one.
  */
 
+import { t } from "@shared/i18n";
 import type { TranscriptRecord } from "./transcript-reducer";
 
 export type AnswerActionId = "copy" | "speak" | "fork";
@@ -23,9 +24,16 @@ export type AnswerActionId = "copy" | "speak" | "fork";
  * `answer` is the turn-closing assistant row the row was built for; `user` is
  * the reader's own turn, which offers Copy and nothing else (speaking the
  * reader's own message back is not an affordance the operator asked for, and
- * the speech engine synthesises agent-side text).
+ * the speech engine synthesises agent-side text). `response` is any OTHER
+ * FINAL RESPONSE in the turn - a settled assistant row that carries no
+ * `tool_calls` of its own (`turn-segments.ts::isFinalResponse`) - and it now
+ * offers the full answer set, because the operator's rule is that every final
+ * response gets the real bar wherever it sits in the turn. `commentary` is the
+ * in-between STATUS row (it carries its own `tool_calls`): the hover-only
+ * overlay class, Copy alone, so the visible turn still has exactly one full
+ * bar per handover and the narration does not sprout Speak/Fork on hover.
  */
-export type ActionRowRole = "answer" | "user";
+export type ActionRowRole = "answer" | "user" | "response" | "commentary";
 
 /**
  * The row's actions, in order, and the cap that keeps it a row.
@@ -120,6 +128,21 @@ export function answerActionsFor({
 	const fork: AnswerActionId[] = forkable ? ["fork"] : [];
 	if (role === "user") return ["copy", ...fork];
 	/*
+	 * A STATUS/COMMENTARY row offers Copy and nothing else: it is the in-between
+	 * narration the reader can hover to copy, not a handover, and Speak/Fork on
+	 * every "Reading the ledger first." would be the per-paragraph clutter PR
+	 * #698 removed.
+	 */
+	if (role === "commentary") return ["copy"];
+	/*
+	 * SPEAK AND FORK ON EVERY FINAL RESPONSE, closing or not (operator,
+	 * 2026-10-20): "all final responses to the user even in between should have
+	 * the inline action bar from before". The old Copy-only `response` arm was
+	 * #1043's economy - one full row per turn - and the operator's rule replaces
+	 * it: a final response is a handover, so it gets the handover's controls.
+	 */
+	if (role === "response") return ["copy", "speak", ...fork];
+	/*
 	 * SPEAK IS ALWAYS LISTED, and the row carries no agent gate. The gate this
 	 * replaced tested an agent id that in this app is the PANE's identity - not
 	 * anything the speech route can resolve - so it offered the control on
@@ -189,11 +212,20 @@ export function forkExcerpt(text: string): string {
 /**
  * The toolbar's accessible name. It names what the buttons act on, the way the
  * link toolbar's label does, because the buttons are icons.
+ *
+ * WHY A FUNCTION. The label is resolved where it is used, not at import: the
+ * interface language can change under a live window, and a module-scope string
+ * would keep announcing the language the module was first loaded in. This is
+ * the same reason `checkpoint-model.ts` composes its tick names in an accessor.
  */
-export const ANSWER_ACTIONS_LABEL = "Answer actions";
+export function answerActionsLabel(): string {
+	return t("ui.chat.response_actions.answer_label");
+}
 
 /** The user row's own label: the buttons act on the reader's message. */
-export const USER_ACTIONS_LABEL = "Your message actions";
+export function userActionsLabel(): string {
+	return t("ui.chat.response_actions.yours_label");
+}
 
 /**
  * The reveal treatment every action row wears at rest: invisible to the eye and

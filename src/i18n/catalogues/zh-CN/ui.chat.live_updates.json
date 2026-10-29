@@ -1,0 +1,6 @@
+{
+	"ui.chat.live_updates.paused": "实时更新已暂停，此对话可能已过时。",
+	"ui.chat.live_updates.reload": "从历史记录重新加载",
+	"ui.chat.live_updates.reloading": "正在重新加载……",
+	"ui.chat.live_updates.reload_failed": "无法重新加载此对话，请重试。"
+}

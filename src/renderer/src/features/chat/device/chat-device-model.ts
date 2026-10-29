@@ -22,6 +22,7 @@
  */
 
 import type { DesktopFeatureState } from "@shared/api/local-operator/desktop-hooks";
+import { t } from "@shared/i18n";
 import type { MovePlan } from "../../mesh/mesh-drop";
 import { lossSentence } from "../../mesh/mesh-drop";
 import type { NetworkSummary, PeerRow } from "../../mesh/mesh-types";
@@ -109,15 +110,15 @@ export function placementLabel(placement: DevicePlacement): string {
 	switch (placement.kind) {
 		case "draft":
 			return placement.deviceId
-				? `New on ${placement.name}`
-				: "New on this device";
+				? t("ui.chat.device.label.new_on", { name: placement.name })
+				: t("ui.chat.device.label.new_on_this_device");
 		case "local":
-			return "On this device";
+			return t("ui.chat.device.label.on_this_device");
 		case "remote":
 		case "gone":
-			return `On ${placement.name}`;
+			return t("ui.chat.device.label.on", { name: placement.name });
 		case "moving":
-			return `Moving to ${placement.name}`;
+			return t("ui.chat.device.label.moving_to", { name: placement.name });
 	}
 }
 
@@ -133,8 +134,10 @@ export function placementSentence(placement: DevicePlacement): string {
 	switch (placement.kind) {
 		case "draft":
 			return placement.deviceId
-				? `New conversations are created on ${placement.name}. Click to choose a different device.`
-				: "New conversations are created on this device. Click to choose a different device.";
+				? t("ui.chat.device.sentence.draft_elsewhere", {
+						name: placement.name,
+					})
+				: t("ui.chat.device.sentence.draft_here");
 		case "local":
 			/*
 			 * `OR RECALL IT LATER` IS THE SECOND HALF OF THE AFFORDANCE (agent review round
@@ -142,7 +145,7 @@ export function placementSentence(placement: DevicePlacement): string {
 			 * take from this control, which is the design's own reading of it, because the
 			 * chip's five visible words cannot say either one.
 			 */
-			return "This conversation runs on this device. Click to move it to another device or recall it later.";
+			return t("ui.chat.device.sentence.local");
 		case "remote":
 			/*
 			 * `reachable` IS TRI-STATE AND THE THIRD VALUE IS NOT A FAILURE (agent review
@@ -154,10 +157,16 @@ export function placementSentence(placement: DevicePlacement): string {
 			 * wire gave one, so the sentence can never end in `()`.
 			 */
 			if (placement.reachable === false) {
-				const because = placement.reason ? ` (${placement.reason})` : "";
-				return `This conversation runs on ${placement.name}, which did not answer the last read${because}.`;
+				return placement.reason
+					? t("ui.chat.device.sentence.remote_did_not_answer_reason", {
+							name: placement.name,
+							reason: placement.reason,
+						})
+					: t("ui.chat.device.sentence.remote_did_not_answer", {
+							name: placement.name,
+						});
 			}
-			return `This conversation runs on ${placement.name}. Click to recall it here or move it on.`;
+			return t("ui.chat.device.sentence.remote", { name: placement.name });
 		case "gone":
 			/*
 			 * THE TOMBSTONE NAMES AN ACTION THIS CONTROL CAN TAKE. It used to end "Click to
@@ -177,11 +186,13 @@ export function placementSentence(placement: DevicePlacement): string {
 			 * round 1's D4 settled).
 			 */
 			if (placement.reachable === false) {
-				return `This conversation moved to ${placement.name}, which did not answer the last read. The copy that was here was deleted. Click to bring it back here.`;
+				return t("ui.chat.device.sentence.gone_did_not_answer", {
+					name: placement.name,
+				});
 			}
-			return `This conversation moved to ${placement.name}. The copy that was here was deleted. Click to bring it back here.`;
+			return t("ui.chat.device.sentence.gone", { name: placement.name });
 		case "moving":
-			return `Moving this conversation to ${placement.name}.`;
+			return t("ui.chat.device.sentence.moving", { name: placement.name });
 	}
 }
 
@@ -250,9 +261,14 @@ export type DevicePickerModel = {
 	offerCheckAgain: boolean;
 };
 
-/** The exact consequence the default (deleting) move carries. */
-export const MOVE_FOOTER =
-	"The copy on this device is deleted when the move commits.";
+/**
+ * The exact consequence the default (deleting) move carries.
+ *
+ * A FUNCTION, NOT A CONST: a module-level `t()` freezes at import and would keep
+ * the locale the process started in, so every sentence this module exports is
+ * read at call time.
+ */
+export const moveFooter = () => t("ui.chat.device.footer.move_deletes_copy");
 
 /**
  * Why the header's move item stands down, from the capability answer's OWN state.
@@ -321,8 +337,7 @@ export function moveGateTone(state: DesktopFeatureState): "warning" | "dim" {
  * It has to travel through this device: recall it here first.`); this is the row's
  * own short half of it.
  */
-export const NOT_HERE_WHY =
-	"the conversation is not here to move; recall it here first";
+export const notHereWhy = () => t("ui.chat.device.row.not_here_why");
 
 /**
  * What this device's row says when no read has named it.
@@ -332,7 +347,7 @@ export const NOT_HERE_WHY =
  * running on - the plain word is both shorter and true. The `this device` fact is
  * dropped in the same case so the row does not say it twice.
  */
-export const THIS_DEVICE_LABEL = "This device";
+export const thisDeviceLabel = () => t("ui.chat.device.label.this_device");
 
 /**
  * The pairing line for a device in no network.
@@ -348,8 +363,8 @@ export const THIS_DEVICE_LABEL = "This device";
  * draws this line when the read came back (`PickerInput.meshRead`); the failure
  * has its own sentence below.
  */
-export const PAIRING_GUIDANCE =
-	"This device is in no network. Create one with `lop network init`, or join one with `lop network join <token>`.";
+export const pairingGuidance = () =>
+	t("ui.chat.device.sentence.pairing_guidance");
 
 /**
  * What a read that did not answer may be called.
@@ -358,8 +373,8 @@ export const PAIRING_GUIDANCE =
  * (§3.5) did not name: the device list is empty because nobody answered, which is
  * not a membership fact about this device and has a different remedy.
  */
-export const MESH_READ_FAILURE =
-	"The device list could not be read, so this is what the last answer holds.";
+export const meshReadFailure = () =>
+	t("ui.chat.device.sentence.mesh_read_failure");
 
 /**
  * The sentence a pick in flight puts in the picker's pinned band.
@@ -369,7 +384,7 @@ export const MESH_READ_FAILURE =
  * would be delivered nowhere. One state, one wording, two surfaces.
  */
 export function moveHoldSentence(name: string): string {
-	return `This conversation is moving to ${name}. It continues there; nothing sent from here would be delivered.`;
+	return t("ui.chat.device.sentence.move_in_flight", { name });
 }
 
 /**
@@ -381,19 +396,18 @@ export function moveHoldSentence(name: string): string {
  * branch never reaches (agent review R1-N1). What is true meanwhile is which side
  * the conversation belongs to and that the app cannot call it back.
  */
-export const MOVE_HOLD_DETAIL =
-	"handing off · it continues there; this cannot be stopped from here";
+export const moveHoldDetail = () => t("ui.chat.device.notice.move_hold_detail");
 
 /** `1 conversation` / `3 conversations`. */
-function conversations(n: number): string {
-	return `${n} ${n === 1 ? "conversation" : "conversations"}`;
+function conversations(count: number): string {
+	return t("ui.chat.device.row.conversations", { count });
 }
 
 /**
  * `1 device` / `2 devices`, the one spelling of a section heading's count.
  *
  * EXPORTED because the heading lives in `chat-header-device.tsx` and the count is
- * an arithmetic on the membership (`members.length - 1`, this device excluded) - two
+ * an arithmetic on the membership (its ACTIVE members, this device excluded) - two
  * places writing the plural by hand is how the list and its heading drift.
  */
 export function devices(n: number): string {
@@ -652,9 +666,12 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 	 */
 	const self: DeviceRow = {
 		deviceId: selfDeviceId,
-		name: selfName || THIS_DEVICE_LABEL,
+		name: selfName || thisDeviceLabel(),
 		facts: selfName
-			? [conversations(input.selfConversations), "this device"]
+			? [
+					conversations(input.selfConversations),
+					t("ui.chat.device.fact.this_device"),
+				]
 			: [conversations(input.selfConversations)],
 		state: selfIsHere
 			? "current"
@@ -669,7 +686,15 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 
 	const sections: DeviceSection[] = networks.map((network) => {
 		const rows: DeviceRow[] = network.members
-			.filter((member) => member.device_id !== selfDeviceId)
+			/*
+			 * A REVOKED MEMBER IS NOT A DEVICE TO PICK, and it is not counted either:
+			 * the section heading is `rows.length`, so a tombstone on the wire read as a
+			 * second device that "did not answer" (measured on damian-mesh, 2026-10-21:
+			 * "2 devices" for one peer). The topology keeps a plain revocation on
+			 * purpose - the Mesh tab draws it as revoked - so the filter belongs to the
+			 * surfaces that OFFER devices, here, rather than to the route.
+			 */
+			.filter((member) => member.device_id !== selfDeviceId && member.active)
 			.map((member) => {
 				const peer = byDeviceId.get(member.device_id);
 				/*
@@ -681,7 +706,7 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 				 */
 				const facts = [
 					member.role,
-					peer ? conversations(peer.session_count) : "",
+					peer?.session_count != null ? conversations(peer.session_count) : "",
 				].filter(Boolean);
 				if (!member.reachable && !moving) facts.push("unreachable");
 				const eligible =
@@ -712,7 +737,7 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 					why: !standsDown
 						? undefined
 						: eligible
-							? NOT_HERE_WHY
+							? notHereWhy()
 							: ineligibleReason({
 									canTransfer: input.canTransfer,
 									reachable: member.reachable,
@@ -734,7 +759,8 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 	 */
 	const answered = networks.some((network) =>
 		network.members.some(
-			(member) => member.device_id !== selfDeviceId && member.reachable,
+			(member) =>
+				member.device_id !== selfDeviceId && member.active && member.reachable,
 		),
 	);
 	/*
@@ -746,6 +772,7 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 		network.members.some(
 			(member) =>
 				member.device_id !== selfDeviceId &&
+				member.active &&
 				input.canTransfer &&
 				!member.reachable,
 		),
@@ -753,7 +780,9 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 	const failed = input.meshRead === "failed";
 
 	return {
-		heading: moving ? "Move this conversation to" : "Start the conversation on",
+		heading: moving
+			? t("ui.chat.device.picker.heading.move")
+			: t("ui.chat.device.picker.heading.start"),
 		self,
 		sections,
 		/*
@@ -765,7 +794,7 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 			placement.kind === "local" ||
 			placement.kind === "remote" ||
 			placement.kind === "moving"
-				? MOVE_FOOTER
+				? moveFooter()
 				: placement.kind === "gone"
 					? lossSentence(placement.name, "this device")
 					: null,
@@ -776,9 +805,9 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 		 */
 		guidance:
 			input.meshRead === "ok" && networks.length === 0
-				? PAIRING_GUIDANCE
+				? pairingGuidance()
 				: null,
-		readFailure: failed ? MESH_READ_FAILURE : null,
+		readFailure: failed ? meshReadFailure() : null,
 		inFlight: input.busy
 			? moveHoldSentence(placementDeviceName(placement) || "another device")
 			: null,

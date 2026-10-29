@@ -8,6 +8,7 @@ import {
 	createLocalOperatorClient,
 } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
+import { t } from "@shared/i18n";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { agentsQueryKey } from "./use-agents";
@@ -31,7 +32,7 @@ export const useUpdateAgent = () => {
 
 				if (response.status >= 400) {
 					throw new Error(
-						response.message || `Failed to update agent ${agentId}`,
+						response.message || t("ui.common.errors.agent_update", { agentId }),
 					);
 				}
 
@@ -40,7 +41,7 @@ export const useUpdateAgent = () => {
 				const errorMessage =
 					error instanceof Error
 						? error.message
-						: `An unknown error occurred while updating agent ${agentId}`;
+						: t("ui.common.errors.agent_update_unknown", { agentId });
 
 				showErrorToast(errorMessage);
 				throw error;
@@ -71,7 +72,7 @@ export const useUpdateAgent = () => {
 				type: "all", // Refetch all related queries at once
 			});
 
-			showSuccessToast("Agent updated");
+			showSuccessToast(t("ui.notices.agents.updated"));
 		},
 		onError: (error) => {
 			console.error("Error updating agent:", error);

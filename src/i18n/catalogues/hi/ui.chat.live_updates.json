@@ -1,0 +1,6 @@
+{
+	"ui.chat.live_updates.paused": "लाइव अपडेट रुके हुए हैं, इसलिए यह बातचीत पुरानी हो सकती है।",
+	"ui.chat.live_updates.reload": "इतिहास से फिर से लोड करें",
+	"ui.chat.live_updates.reloading": "फिर से लोड हो रहा है…",
+	"ui.chat.live_updates.reload_failed": "यह बातचीत फिर से लोड नहीं हो सकी। फिर कोशिश करें।"
+}

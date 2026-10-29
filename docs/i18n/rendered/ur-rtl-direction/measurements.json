@@ -1,0 +1,201 @@
+{
+  "method": "Two captures, both from the shipped branch and both using a scratch HOME/config/profile, inactive window mode at --window-size=1380x900, a real isolated `lop serve` 0.82.3 behind an in-process proxy that rewrites only `result.language` in GET /v1/capabilities, one real canonical session 'RTL QA' created with POST /v1/desktop/sessions and renamed by its own command, and localOperatorLight set through the app's own setTheme verb. The chat frames and their DOM readings were built at head 3061b57cf9 (the D1 commit, content-identical to the rebased 4bd490b07a; proxy port 8124). The settings frames and their DOM readings are inherited from the earlier capture at 49331f09cb (proxy port 8123), where the code is identical apart from the composer-only D1 fix, which does not touch the settings surface; they are not claimed as a fresh reading. Pixels are webContents.capturePage(); geometry is getBoundingClientRect() from the live renderer.",
+  "captures": {
+    "en": {
+      "dir": "ltr",
+      "lang": "en",
+      "computedDirection": "ltr",
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "sidebar": {
+        "x": 0,
+        "y": 32,
+        "w": 260,
+        "h": 868
+      },
+      "panelRail": {
+        "x": 1336,
+        "y": 32,
+        "w": 44,
+        "h": 868
+      },
+      "main": {
+        "x": 260,
+        "y": 32,
+        "w": 1076,
+        "h": 868
+      },
+      "mainPlusRail": {
+        "x": 260,
+        "width": 1120
+      },
+      "settingsSubnav": {
+        "x": 260,
+        "y": 32,
+        "w": 220,
+        "h": 868
+      },
+      "settingsContent": {
+        "x": 480,
+        "y": 32,
+        "w": 900,
+        "h": 868
+      },
+      "theme": "localOperatorLight",
+      "sessionRow": {
+        "text": "RTL QA",
+        "row": {
+          "x": 12,
+          "w": 228
+        },
+        "title": {
+          "x": 54,
+          "right": 202,
+          "w": 148
+        },
+        "textRect": {
+          "x": 54,
+          "right": 100,
+          "w": 46
+        },
+        "textAlign": "start",
+        "direction": "ltr",
+        "inlineStartGap": 42,
+        "inlineEndGap": 38
+      },
+      "chat": {
+        "path": "en-chat.png",
+        "pixels": {
+          "width": 2760,
+          "height": 1800
+        },
+        "devicePixelRatio": 2,
+        "bytes": 252686,
+        "sha256": "76c7c98347e79fcfef0174b24d5c70d1c8cc5afcaeeb0e7c053ec623069eedcb"
+      },
+      "settings": {
+        "path": "en-settings.png",
+        "pixels": {
+          "width": 2760,
+          "height": 1800
+        },
+        "devicePixelRatio": 2,
+        "bytes": 427944,
+        "sha256": "1c1b8cf4416c26d74991d5de3ef8d5b165fb468cf7d6c105faea039d2b75ae40"
+      }
+    },
+    "ur": {
+      "dir": "rtl",
+      "lang": "ur",
+      "computedDirection": "rtl",
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "sidebar": {
+        "x": 1120,
+        "y": 32,
+        "w": 260,
+        "h": 868
+      },
+      "panelRail": {
+        "x": 0,
+        "y": 32,
+        "w": 44,
+        "h": 868
+      },
+      "main": {
+        "x": 44,
+        "y": 32,
+        "w": 1076,
+        "h": 868
+      },
+      "mainPlusRail": {
+        "x": 0,
+        "width": 1120
+      },
+      "settingsSubnav": {
+        "x": 900,
+        "y": 32,
+        "w": 220,
+        "h": 868
+      },
+      "settingsContent": {
+        "x": 0,
+        "y": 32,
+        "w": 900,
+        "h": 868
+      },
+      "theme": "localOperatorLight",
+      "sessionRow": {
+        "text": "RTL QA",
+        "row": {
+          "x": 1140,
+          "w": 228
+        },
+        "title": {
+          "x": 1178,
+          "right": 1326,
+          "w": 148
+        },
+        "textRect": {
+          "x": 1280,
+          "right": 1326,
+          "w": 46
+        },
+        "textAlign": "start",
+        "direction": "rtl",
+        "inlineStartGap": 42,
+        "inlineEndGap": 38
+      },
+      "chat": {
+        "path": "ur-chat.png",
+        "pixels": {
+          "width": 2760,
+          "height": 1800
+        },
+        "devicePixelRatio": 2,
+        "bytes": 248799,
+        "sha256": "4953551d0be81aef9626a41c13072cfdb0628e624d33f10d43b98039d23bf49f"
+      },
+      "settings": {
+        "path": "ur-settings.png",
+        "pixels": {
+          "width": 2760,
+          "height": 1800
+        },
+        "devicePixelRatio": 2,
+        "bytes": 410498,
+        "sha256": "66fa0fe3a35a3d4c72292fda146c6bcdcf26bc547b919ddf011d15be565d7a00"
+      }
+    }
+  },
+  "control": {
+    "base": "491047154e (origin/main)",
+    "method": "Built origin/main 491047154e in a separate worktree with the same symlinked node_modules, captured English with the same rig, the same seeded session and the same localOperatorLight theme.",
+    "result": "en-chat.png and en-settings.png are byte-identical to en-chat-control.png and en-settings-control.png: 0 differing pixels each across 2760x1800 (ImageChops difference bbox null; sha256 matches).",
+    "frames": [
+      "en-chat-control.png",
+      "en-settings-control.png"
+    ],
+    "sha256": {
+      "en-chat.png": "76c7c98347e79fcfef0174b24d5c70d1c8cc5afcaeeb0e7c053ec623069eedcb",
+      "en-settings.png": "1c1b8cf4416c26d74991d5de3ef8d5b165fb468cf7d6c105faea039d2b75ae40",
+      "en-chat-control.png": "76c7c98347e79fcfef0174b24d5c70d1c8cc5afcaeeb0e7c053ec623069eedcb",
+      "en-settings-control.png": "1c1b8cf4416c26d74991d5de3ef8d5b165fb468cf7d6c105faea039d2b75ae40"
+    }
+  },
+  "composerLabel": {
+    "text": "Working directory:",
+    "fix": "The fallback phrase is wrapped in <bdi dir=\"auto\">; the Latin run gets its own LTR base direction inside the RTL row, so the trailing colon stays with the phrase.",
+    "urFrameChange": "Compared with the pre-fix Urdu chat frame at 49331f09cb, the only differing pixels are the composer label region, bbox (1573,1694)-(1802,1719); English chat is byte-identical to the origin/main control.",
+    "frames": [
+      "en-chat.png",
+      "ur-chat.png"
+    ]
+  }
+}

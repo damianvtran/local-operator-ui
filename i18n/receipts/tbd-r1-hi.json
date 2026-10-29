@@ -1,0 +1,58 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbd-r1-hi",
+  "session": "2e6dc2959949",
+  "date": "2026-10-21",
+  "locale": "hi",
+  "translator": "translator",
+  "namespaces": {
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 113,
+      "scope": "All 113 ui.teamBridge values in hi, read beside the en source and per-key context. Checked against the binding glossary, the hi style guide and the other hi ui.* catalogues. Byte checks: key set and order, ICU placeholders and plural arms, bidi and zero-width characters, NFC, nukta, danda.",
+      "sha256": {
+        "en": "0dfc0c5ed780b7b6e2cf2a560f007350ce4d17d512c39cce001a182bf43a09a7",
+        "hi": "e1b3dd05b8e6eb5bb4d66828bb70dd8c47a32088fe44ebe1d06ee68824439db7",
+        "context": "267fc1892bb84cd4d7dbab1ff86a8120e5ec07069d3437241cf45391c9fb2291"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.thread.withheld",
+          "current": "इस संदेश को एजेंट की मंज़ूरी का इंतज़ार है।",
+          "proposed": "एजेंट के यह संदेश स्वीकार करने का इंतज़ार है।",
+          "note": "मंज़ूरी means approval or sanction, so it suggests a moderation gate and overlaps with the product’s approvals concept (स्वीकृति). The English says “admit” (let in), and स्वीकार करना keeps that neutral state meaning."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.thread.draft",
+          "current": "{name} के साथ आपकी बातचीत यहाँ से शुरू होती है। संदेश भेजने तक कुछ नहीं बनता।",
+          "proposed": "{name} के साथ आपकी बातचीत यहाँ से शुरू होती है। संदेश भेजने से पहले कुछ भी नहीं बनाया जाता।",
+          "note": "“संदेश भेजने तक कुछ नहीं बनता” has no subject and can be read idiomatically as “nothing comes of it”. The passive “कुछ भी नहीं बनाया जाता” plainly says nothing is created yet."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.people.loading",
+          "current": "लोग लोड हो रहे हैं",
+          "proposed": "लोगों की सूची लोड हो रही है",
+          "note": "“लोग लोड हो रहे हैं” reads as if the people themselves are being loaded. The sibling error string already says “लोगों की सूची”, so this aligns the People section."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.plan.update_title",
+          "current": "Team Bridge के लिए अपडेट करें",
+          "proposed": "Team Bridge इस्तेमाल करने के लिए अपडेट करें",
+          "note": "Keeps the English “to use” and matches plan.sign_in_reason’s “Team Bridge इस्तेमाल करने के लिए”. Optional: the current text is understandable but looser."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.people.paused",
+          "current": "रुका हुआ",
+          "proposed": "रोका गया",
+          "note": "This sits on a person’s row, where the masculine participle रुका हुआ can read as describing a female teammate. The impersonal passive avoids that. Optional: रुका हुआ matches ui.agentMessages.settings.state.d_title, so check it in a rendered frame before changing."
+        }
+      ]
+    }
+  }
+}

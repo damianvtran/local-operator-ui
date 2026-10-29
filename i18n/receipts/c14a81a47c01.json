@@ -1,0 +1,35 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "c14a81a47c01",
+  "instance_derivation": "sha256('877cbcdfaf60:ru')[:12] from session 877cbcdfaf60",
+  "locale": "ru",
+  "status": "passed",
+  "namespace": "ui.console",
+  "date": "2026-10-22",
+  "scope": "Independent full pass over all 63 ui.console keys at the current bytes: read en/ui.console.json and en/ui.console.context.json, console-states.tsx (ended banner) and console-pane.tsx (tab strip), the core glossary and locale style guides, and docs/I18N.md; checked accuracy, register, glossary consistency, placeholder/ICU integrity, CLDR plurals, ur RTL and cell widths. No catalogue, ledger or code changes.",
+  "sha256": {
+    "en": "70587d7052f6129b3f56420f78427a588f64ce79a500e39c00d8a3a6d923aa52",
+    "target": "228b9fcb76ac24eb45e5310ab9cad6fee6e71046170b484ebb8065dabb9ecd04"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.console.ended.exit_signal",
+      "issue": "At 27 cells against 17 in English (+59%) this is outside the ru guide's 20-30% expansion band, and \"остановлен\" (stopped) softens the source's \"killed\".",
+      "suggestion": "убит сигналом {signal} (21 cells, +24%; the standard ru rendering for a signalled process)"
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.console.capacity.summary",
+      "issue": "At 40 cells against 22 (+82%) the full summary renders at the >=510px header step where the text is truncated; a rendered check should confirm the command name and both counts survive.",
+      "suggestion": "В приложении: {live, number, ::group-off} из {limit, number, ::group-off} (20 cells) if the check confirms truncation"
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.console.cleanup.result",
+      "issue": "The protected plural's other branch (fractions only in ru) uses a plural verb: \"{protected} терминала ещё используются и оставлены открытыми\" needs singular neuter agreement for a fractional count; integer counts never select this branch.",
+      "suggestion": "{protected, number, ::group-off} терминала ещё используется и оставлено открытым."
+    }
+  ]
+}

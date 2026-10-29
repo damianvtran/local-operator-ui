@@ -108,7 +108,7 @@ export function HubLinkSidebarMark({
 				if (next || !consentOpen) setOpen(next);
 			}}
 		>
-			<Tooltip content={description} side="right" disableHoverableContent>
+			<Tooltip content={description} side="top" disableHoverableContent>
 				<PopoverAnchor asChild>
 					<button
 						ref={button}
@@ -245,7 +245,7 @@ export function HubUnresolvedMark({
 	 */
 	const label = t("ui.hub.links.unresolved_mark", { item });
 	return (
-		<Tooltip content={label} side="right" disableHoverableContent>
+		<Tooltip content={label} side="top" disableHoverableContent>
 			<button
 				type="button"
 				data-hub-mark="unresolved"
@@ -335,7 +335,7 @@ export function HubLinkAggregateMark({
 		state: t(MARK_STATE_KEY[worst] ?? "ui.hub.links.mark_healthy"),
 	});
 	return (
-		<Tooltip content={label} side="right" disableHoverableContent>
+		<Tooltip content={label} side="top" disableHoverableContent>
 			<button
 				type="button"
 				data-hub-mark="aggregate"

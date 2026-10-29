@@ -1,0 +1,44 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbr-r2-vi",
+  "session": "a70e73a095a4",
+  "date": "2026-10-21",
+  "locale": "vi",
+  "translator": "translator",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 1,
+  "scope": "Round-2 remediation delta: ui.teamBridge.reactions.toneDefault (VI-R1-1) plus regression check that the other 128 values equal the round-1 audited bytes. Inherits round-1 tbr-r1-vi for the other 19 reaction keys and, through it, the base 2e16fb1456 audit for the 109 unchanged values. Catalogue audit only, not rendered-fit, activation or release approval.",
+  "sha256": {
+    "en": "69f741a64df96b85b00e2f389bcda35bbbcc7cc023c4e2f31c997ef64fc0b50c",
+    "vi": "363089cbfaaaf3efd156201140bd5ba8d1fd2b18496ecc96365425bc94a357f6",
+    "context": "ad0eef37d14411e02b07a083f3873518362734fefd8caa930cf4196728b2ef84"
+  },
+  "findings": [],
+  "remediation": {
+    "finding": "VI-R1-1",
+    "previous": "Màu da mặc định",
+    "current": "Tông màu da mặc định",
+    "disposition": "fixed"
+  },
+  "inherited_receipt": {
+    "round": 1,
+    "path": "i18n/receipts/tbr-r1-vi.json",
+    "sha256": "df5025e3ee8f4da05ee3554c3a1d03f35e51d957bf509b146b9c3d8961de8032",
+    "target_sha256": "09e61647b0db2e6f42881846bec65daa96cb49d23698886bb870d89ecf72d49f",
+    "values_unchanged_verified": 128
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+  },
+  "validation": {
+    "independence": "This auditor did not translate or edit any catalogue or code, and did not stage, commit, stash or check out anything in the worktree. The only file written is this scratchpad receipt. This session (a70e73a095a4) is not the round-1 auditor session (326f7079c3e5) and is not the translator. Served as anthropic/claude-opus-5-5 throughout; no model switch or fallback was noticed.",
+    "semantics": "In team-bridge-emoji-picker.tsx, reactions.toneDefault is the visible first <option value={0}> of the skin-tone <select>. reactions.tone («Tông màu da») is that select's aria-label, and options 1–5 are thumbs-up emoji with skin-tone modifiers. «Tông màu da mặc định» means 'default skin tone' accurately and reads naturally. It now uses the same rendering of 'skin tone' as reactions.tone, which resolves the drift VI-R1-1 raised. Postposed lowercase «mặc định» matches the locale's other 'default' strings (e.g. «Mô hình mặc định của {brand}», «Mô hình mặc định hiện tại»). Sentence case per the context sidecar; no «bạn», no punctuation. The glossary and style guide have no entry for skin tone that conflicts; the style guide's 'default' config-token rule does not apply here, because this is prose, not a config token. No other vi catalogue uses «màu da» or «tông màu», so there is no cross-namespace drift.",
+    "icu": "node in the worktree, require('@formatjs/icu-messageformat-parser').parse(): the vi and en values of reactions.toneDefault and reactions.tone each parse to one literal node (type 0), with zero arguments on both sides. Python json.loads with object_pairs_hook: 129 keys in en and vi, in the same order, 129 unique (no duplicates). The whole file is NFC (unicodedata.is_normalized). No U+200E/200F/202A–202E/2066–2069/061C, no BOM, trailing newline present. The new value is NFC with no leading or trailing whitespace.",
+    "byte_delta": "Python: the line '\"ui.teamBridge.reactions.toneDefault\": \"Tông màu da mặc định\",' occurs exactly once in the current file. Replacing it with the round-1 'current' value «Màu da mặc định» gives sha256 09e61647b0db2e6f42881846bec65daa96cb49d23698886bb870d89ecf72d49f, equal to the round-1 target hash. A pairwise value comparison of current vs reverted shows exactly 1 differing key (reactions.toneDefault) and 128 equal. The target was hashed at start and again just before writing this receipt: 363089cb… both times.",
+    "overflow": "Static only: the new value is 20 code points against 17 in English (previously 15). The select is auto-width (h-7, text-[12px], no fixed width) and shares a justify-between flex row with the 11-code-point «Thường dùng» label, inside a 320px (w-80) panel, so a static estimate says it fits. This is not verified rendered.",
+    "limitations": "Browser unavailable by task constraint. No screenshots, glyph metrics, visual-fit or native bidi-rendering claim. No catalogue/code edits."
+  }
+}

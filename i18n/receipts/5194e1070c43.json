@@ -1,0 +1,55 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "5194e1070c43",
+  "date": "2026-10-19",
+  "locale": "ur",
+  "round": 2,
+  "section": 6,
+  "status": "passed",
+  "scope": "Remediation delta audit of the changed namespaces in Section 6: changed keys plus direct composition neighbours; unchanged namespaces remained certified from round 1.",
+  "fallback": "Pinned anthropic/claude-sonnet-5-5 was unavailable (provider quota); this run executed on openai/gpt-6.1-sol.",
+  "notes": "All round-1 findings verified FIXED.",
+  "namespaces": {
+    "ui.browser": {
+      "namespace": "ui.browser",
+      "keys_read": 224,
+      "status": "passed",
+      "sha256": {
+        "en": "106e8aff158ee6957bdccf93bbae53e62a0724afdc406e8faa5743ced980d276",
+        "ur": "2881594c8b9b66d4d4aae8c1744990fcf3ac833dd059669535ebcce67f9243e8"
+      },
+      "findings": []
+    },
+    "ui.hub.taxonomy": {
+      "namespace": "ui.hub.taxonomy",
+      "keys_read": 21,
+      "status": "passed",
+      "sha256": {
+        "en": "4614e6b5eb2c56f0f48ccbee9bf26266193701a79994da4d9cf533386f1d3717",
+        "ur": "554adb6a39fae45b05903e75d4cba16e08780a47632ba61abf02565966212829"
+      },
+      "findings": []
+    },
+    "ui.code_review": {
+      "namespace": "ui.code_review",
+      "keys_read": 75,
+      "status": "passed",
+      "sha256": {
+        "en": "7344c8694a23662bfe3ae12205685cfa14851209d0685abbe463b9f513565085",
+        "ur": "425220c9559b696f8d6a76c29d3dcd51b2827a29ec2ef18d081431468ae4e2b7"
+      },
+      "findings": []
+    },
+    "ui.command_palette": {
+      "namespace": "ui.command_palette",
+      "keys_read": 75,
+      "status": "passed",
+      "sha256": {
+        "en": "c48797d973f81dea023e5c89c40c83d8ae0a9cdfaeb2509f6cbc4e9fb8abd7c6",
+        "ur": "7de3fc3edf1e296b00006156d89278ba78a3a84d136d3fd26023b306e04f4919"
+      },
+      "findings": []
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+	"ui.common.viewer.close": "{kind, select, image {Fermeture de l’image} asset {Fermeture de l’élément} other {Fermeture}}",
+	"ui.common.viewer.next": "{kind, select, image {Image suivante} asset {Élément suivant} other {Suivant}}",
+	"ui.common.viewer.opening": "Ouverture…",
+	"ui.common.viewer.position": "{kind, select, image {Image {index, number, ::group-off} sur {count, number, ::group-off}} asset {Élément {index, number, ::group-off} sur {count, number, ::group-off}} other {Image {index, number, ::group-off} sur {count, number, ::group-off}}}",
+	"ui.common.viewer.previous": "{kind, select, image {Image précédente} asset {Élément précédent} other {Précédent}}",
+	"ui.common.viewer.reset_view": "Réinitialiser la vue",
+	"ui.common.viewer.zoom_in": "Zoom avant",
+	"ui.common.viewer.zoom_out": "Zoom arrière",
+	"ui.common.viewer.image_lightbox.previous": "Précédent ({medialabel})",
+	"ui.common.viewer.image_lightbox.next": "Suivant ({medialabel})",
+	"ui.common.viewer.image_lightbox.close": "Fermer {medialabel}",
+	"ui.common.viewer.image_lightbox.asset_of": "Élément {index, number, ::group-off} sur {count, number, ::group-off}",
+	"ui.common.viewer.image_progress": "Image {index, number, ::group-off} sur {count, number, ::group-off}"
+}

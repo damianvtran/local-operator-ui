@@ -1,0 +1,29 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "d8814883ee09",
+  "instance_derivation": "sha256('877cbcdfaf60:vi')[:12] from session 877cbcdfaf60",
+  "locale": "vi",
+  "status": "passed",
+  "namespace": "ui.console",
+  "date": "2026-10-22",
+  "scope": "Independent full pass over all 63 ui.console keys at the current bytes: read en/ui.console.json and en/ui.console.context.json, console-states.tsx (ended banner) and console-pane.tsx (tab strip), the core glossary and locale style guides, and docs/I18N.md; checked accuracy, register, glossary consistency, placeholder/ICU integrity, CLDR plurals, ur RTL and cell widths. No catalogue, ledger or code changes.",
+  "sha256": {
+    "en": "70587d7052f6129b3f56420f78427a588f64ce79a500e39c00d8a3a6d923aa52",
+    "target": "a9d18b1603f155bf0c1e82ba190c6f3a17489a71060b914d6211b3d0899d6db9"
+  },
+  "findings": [
+    {
+      "severity": "NIT",
+      "key": "ui.console.capacity.summary",
+      "issue": "At 41 cells against 22 (+86%) the full summary renders at the >=510px header step where the text is truncated; a rendered check should confirm the command name and both counts survive.",
+      "suggestion": "{live, number, ::group-off}/{limit, number, ::group-off} đang chạy trong ứng dụng (28 cells) if the check confirms truncation"
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.console.cleanup.label",
+      "issue": "\"Clear\" is \"Xóa\" in 30 strings across the vi catalogues (e.g. ui.agents.dialogs.menu.clear \"Xóa cuộc trò chuyện\", ui.common.forms.editable_field.clear \"Xóa\") but \"Dọn\" throughout ui.console (cleanup.label, dismiss_history, dismiss.title, dismiss.confirm, tab.clear_label, tab.clear_label_retained); the console distinction from \"xóa\" (delete retained output) makes Dọn defensible.",
+      "suggestion": "Keep \"Dọn\" and record the clear-as-tidy exception, or align the family on \"Xóa\" if one term is wanted."
+    }
+  ]
+}

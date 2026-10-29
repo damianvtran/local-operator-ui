@@ -351,10 +351,18 @@
 	"ui.projects.project_todos.no_to_do_snapshots_from_the_linked_sessions_yet_a_session_publish": "Aún no hay instantáneas de tareas pendientes de las sesiones vinculadas. Una sesión publica su lista a medida que trabaja, y aparecerá aquí cuando lo haga.",
 	"ui.projects.project_todos.to_dos": "Tareas pendientes",
 	"ui.projects.project_updates.attachment": "Adjunto",
+	"ui.projects.project_updates.attachments": "Adjuntos",
 	"ui.projects.project_updates.file_actions_for_name": "Acciones de archivo para {name}",
 	"ui.projects.project_updates.loading": "Cargando ",
 	"ui.projects.project_updates.no_updates_yet_progress_reported_by_you_or_by_the_sessions_workin": "Aún no hay actualizaciones. El progreso que informes tú o las sesiones que trabajan en este proyecto se añade aquí.",
 	"ui.projects.project_updates.open_name": "Abrir {name}",
+	"ui.projects.project_updates.play_name": "Reproducir {name}",
+	"ui.projects.project_updates.preview_failed": "No se pudo abrir este archivo.",
+	"ui.projects.project_updates.preview_loading": "Cargando vista previa…",
+	"ui.projects.project_updates.preview_moved": "Su copia guardada puede haberse movido o eliminado.",
+	"ui.projects.project_updates.preview_name": "Vista previa de {name}",
+	"ui.projects.project_updates.preview_unavailable": "La vista previa no está disponible fuera de la aplicación de escritorio.",
+	"ui.projects.project_updates.show_asset_name": "Mostrar {name}, recurso {index} de {count}",
 	"ui.projects.project_updates.updates": "Actualizaciones",
 	"ui.projects.projects_page.checking_the_server_s_projects_support": "Comprobando la compatibilidad del servidor con Proyectos",
 	"ui.projects.projects_page.clear_all": "Borrar todo",
@@ -414,5 +422,8 @@
 	"ui.projects.request_update.value1_could_not_be_reached": " No se pudo contactar con {value1}.",
 	"ui.projects.timeline.read_failed": "No se pudieron leer los hitos de {count, plural, one {{count, number, ::group-off} proyecto} other {{count, number, ::group-off} proyectos} many {{count, number, ::group-off} de proyectos}}.",
 	"ui.projects.use_request_update.could_not_request_updates_endedsentence_message": "No se pudieron solicitar actualizaciones: {endedSentence_message}",
-	"ui.projects.use_request_update.the_request_could_not_be_confirmed": "No se pudo confirmar la solicitud."
+	"ui.projects.use_request_update.the_request_could_not_be_confirmed": "No se pudo confirmar la solicitud.",
+	"ui.projects.project_model.milestone_summary": "{completed, number, ::group-off} de {total, number, ::group-off} completados",
+	"ui.projects.project_model.todos_summary": "{open, number, ::group-off} pendientes de {total, number, ::group-off}",
+	"ui.projects.project_model.done_gate_tail": "completa o elimina los hitos incompletos y luego márcalo como completado"
 }

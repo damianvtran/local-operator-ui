@@ -10,16 +10,25 @@ import { build } from "esbuild";
  * (`pnpm lint:scripts`, which compares each changed file against its baseline)
  * is the only thing that would have said so.
  */
-const RE_FOLD_ACTION_COUNT = /actionCount=\{group\.actions\.length\}/;
-const RE_FOLD_MEMBER_COUNT = /actionCount=\{group\.rows\.length\}/;
+const RE_FOLD_SUMMARY_BINDING = /summary=\{group\.summary\}/;
+const RE_FOLD_DEAD_ACTION_COUNT = /actionCount=\{group\.actions\.length\}/;
 
-test("mixed TraceFold binding counts actual actions rather than member receipts", () => {
+/*
+ * The fold's header is bound to the GROUP SUMMARY, the units the collapsed line
+ * paints - no second `actionCount` prop for a tooltip to compose a claim from.
+ * The old pin existed because a tooltip said `${actionCount} actions`; removing
+ * the prop without moving the pin would have left a test asserting a binding
+ * nothing reads. What matters is that the header states its own contents,
+ * including receipt-only groups, so the guard now asserts the live binding and
+ * the absence of the dead one.
+ */
+test("the fold header is bound to the group summary, not a member count", () => {
 	const source = readFileSync(
 		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
 		"utf8",
 	);
-	assert.match(source, RE_FOLD_ACTION_COUNT);
-	assert.doesNotMatch(source, RE_FOLD_MEMBER_COUNT);
+	assert.match(source, RE_FOLD_SUMMARY_BINDING);
+	assert.doesNotMatch(source, RE_FOLD_DEAD_ACTION_COUNT);
 });
 
 const RE_STATUSUNAVAILABLE_INCLUDES_LIVENESS =
@@ -60,6 +69,10 @@ const bundle = await build({
 	format: "esm",
 	platform: "node",
 	write: false,
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@shared/i18n": "./src/i18n",
+	},
 	plugins: [
 		{
 			name: "canonical-transport-fixture",
@@ -215,7 +228,7 @@ const {
 	desktopRequestSchema,
 	DesktopControlError,
 	LEADING_SLASH_CODE,
-	LEADING_SLASH_MESSAGE,
+	leadingSlashMessage,
 	SESSION_UNVALIDATED_CODE,
 	STORE_OUT_OF_SPACE_CODE,
 	STORE_UNAVAILABLE_CODE,
@@ -232,8 +245,6 @@ const {
 	sendFailureCopy,
 	SEND_FAILURE_COPY,
 	normalizeSendText,
-	RETRY_LABEL,
-	CLEAR_LABEL,
 	useConversationInputStore,
 	withholdsRetryHint,
 } = module;
@@ -1139,6 +1150,76 @@ test("an admitted send is observable while it is in flight, and gone once it set
 	assert.equal(store.getState().drafts[key], undefined);
 });
 
+/**
+ * The composer's send state is retired by the POST, not by the event stream.
+ *
+ * WHY THIS IS ITS OWN CASE. The draft row's `pending` feeds
+ * `sendUnsettledForSession`, which is the composer's "Sending your message"
+ * placeholder. The reported failure mode was that placeholder outliving an
+ * answered POST because the settle rode the stream: a degraded socket drops the
+ * admission frame, and a view that waits for it says the message is still going
+ * out forever. This harness has NO stream at all - `desktopResult` is the only
+ * seam it fakes, and no echo registry entry is ever resolved - so a row that
+ * stops being pending here can only have been settled by the HTTP answer.
+ */
+test("the composer's send state settles from the POST alone, with no stream frame", async () => {
+	reset();
+	let release;
+	const held = new Promise((resolve) => {
+		release = () => resolve({ status: "admitted" });
+	});
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return {
+				session_id: "444444444444",
+				binding: { agent: null, team: null },
+			};
+		if (request.op === "sessions.list")
+			return { sessions: [], truncated: false };
+		if (request.op === "sessions.message") return held;
+		return {};
+	};
+	const settle = async (predicate) => {
+		for (let i = 0; i < 50; i++) {
+			if (predicate()) return;
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		}
+		assert.fail("the message request never reached the transport");
+	};
+	const key = store.getState().stageDraft();
+	const send = admitChatDraft(key, input);
+	await settle(() =>
+		calls.some((request) => request.op === "sessions.message"),
+	);
+	const id = "444444444444";
+	assert.equal(
+		sendUnsettledForSession(store.getState().drafts, id),
+		true,
+		"while the POST is unanswered the row is the composer's claim",
+	);
+	// The immediate settle path depends on `finishDraft` deleting the row under
+	// the SAME identity the composer reads - assert the identity is live before
+	// the answer, so a lookup that silently missed cannot make the next assertion
+	// pass for the wrong reason.
+	assert.ok(
+		store.getState().drafts[draftIdentityFor(key, id)],
+		"the row is reachable under the conversation identity",
+	);
+	release();
+	await send;
+	assert.equal(
+		sendUnsettledForSession(store.getState().drafts, id),
+		false,
+		"the answered POST retires the composer's send state without any stream frame",
+	);
+	assert.equal(
+		store.getState().drafts[draftIdentityFor(key, id)],
+		undefined,
+		"the settled row is gone, not merely unpending",
+	);
+});
+
 test("an existing session's in-flight send is found under its own key, and a failure clears it", async () => {
 	reset();
 	/*
@@ -1570,14 +1651,14 @@ test("a leading-slash refusal is classified, and says what the user can do", asy
 			assert.ok(error instanceof DesktopControlError);
 			assert.equal(error.status, 422);
 			assert.equal(error.code, LEADING_SLASH_CODE);
-			assert.equal(error.message, LEADING_SLASH_MESSAGE);
+			assert.equal(error.message, leadingSlashMessage());
 			assert.equal(error.cause.message, "The request has invalid fields.");
 			return true;
 		},
 	);
 	const draft = store.getState().drafts[key];
 	assert.equal(draft.errorCode, LEADING_SLASH_CODE);
-	assert.equal(draft.error, LEADING_SLASH_MESSAGE);
+	assert.equal(draft.error, leadingSlashMessage());
 	// A validation refusal is decided before anything is admitted, so the draft
 	// is not held and the text is back in the composer — where the fix the
 	// sentence names can actually be carried out.
@@ -1886,7 +1967,7 @@ test("the notice is ONE sentence from ONE place, and the composer renders it rat
 		new DesktopControlError(422, "The request has invalid fields."),
 		LEADING_SLASH_CODE,
 	);
-	assert.equal(slash.message, LEADING_SLASH_MESSAGE);
+	assert.equal(slash.message, leadingSlashMessage());
 	assert.equal(slash.retry, false);
 
 	// THE WIRING, at both ends the sentence travels between. The composer's notice
@@ -2045,13 +2126,13 @@ test("the notice is ONE sentence from ONE place, and the composer renders it rat
 	);
 	assert.match(
 		composer,
-		/\{RETRY_LABEL\}/,
-		"the retry control is no longer labelled from the shared constant, so the sentence and the control can drift apart",
+		/\{retryLabel\(\)\}/,
+		"the retry control no longer resolves the shared keyed label at render time",
 	);
 	assert.match(
 		composer,
-		/\{CLEAR_LABEL\}/,
-		"and the clear control is not either",
+		/\{clearLabel\(\)\}/,
+		"and the clear control does not either",
 	);
 	for (const word of [
 		"Restore message",
@@ -2564,7 +2645,7 @@ test("a leading-slash refusal on the created-session arm hands the payload to th
 	await assert.rejects(admitChatDraft(key, { ...input, text }), (error) => {
 		assert.ok(error instanceof DesktopControlError);
 		assert.equal(error.code, LEADING_SLASH_CODE);
-		assert.equal(error.message, LEADING_SLASH_MESSAGE);
+		assert.equal(error.message, leadingSlashMessage());
 		return true;
 	});
 	const state = store.getState();
@@ -2581,7 +2662,7 @@ test("a leading-slash refusal on the created-session arm hands the payload to th
 	);
 	assert.equal(draft.sessionId, "222222222222");
 	assert.equal(draft.errorCode, LEADING_SLASH_CODE);
-	assert.equal(draft.error, LEADING_SLASH_MESSAGE);
+	assert.equal(draft.error, leadingSlashMessage());
 	assert.equal(draft.admissionAttempted, false);
 	// The flip itself, and why a restore in the composer that pressed cannot be the
 	// only answer: the panel is now keyed on the id this very send minted ...
@@ -3150,7 +3231,7 @@ test("the notice is one sentence above the box, at most Retry and Clear, and not
 		"the sentence no longer wraps, and it is not always this app's own prose - a store refusal names a volume and an unreadable attachment names a file",
 	);
 	assert.ok(
-		region.includes("{RETRY_LABEL}") && region.includes("{CLEAR_LABEL}"),
+		region.includes("{retryLabel()}") && region.includes("{clearLabel()}"),
 		"the notice no longer offers the two labelled actions, so the remedy is somewhere else than the sentence",
 	);
 	const notice = rendered.slice(alertAt, rendered.indexOf("</p>", alertAt));
@@ -3182,15 +3263,17 @@ test("the notice is one sentence above the box, at most Retry and Clear, and not
 		"src/renderer/src/shared/store/canonical-sessions-store.ts",
 		"utf8",
 	);
-	assert.match(
-		store,
-		/export const RETRY_LABEL = "Retry";/,
-		"the retry label is no longer the app's one string",
+	assert.ok(
+		store.includes(
+			'export const retryLabel = (): string => t("ui.common.actions.retry");',
+		),
+		"the retry label no longer resolves its message key at call time",
 	);
-	assert.match(
-		store,
-		/export const CLEAR_LABEL = "Clear";/,
-		"and the clear label is not either",
+	assert.ok(
+		store.includes(
+			'export const clearLabel = (): string => t("ui.common.actions.clear");',
+		),
+		"and the clear label does not either",
 	);
 });
 
@@ -3334,7 +3417,7 @@ test("a session-creation refusal keeps its own code and copy, even for a leading
 	assert.equal(draft.errorCode, "invalid_cwd");
 	assert.equal(draft.error, "The working directory does not exist.");
 	assert.notEqual(draft.errorCode, LEADING_SLASH_CODE);
-	assert.notEqual(draft.error, LEADING_SLASH_MESSAGE);
+	assert.notEqual(draft.error, leadingSlashMessage());
 	// The generic retry hint is KEPT: a create refusal is not one of the two a
 	// resend cannot answer, and withholding it would be the same
 	// mis-attribution in the opposite direction.
@@ -3377,7 +3460,7 @@ test("a create payload the shipped schema rejects is not relabelled as a slash r
 	await assert.rejects(wire);
 	const draft = store.getState().drafts[key];
 	assert.notEqual(draft.errorCode, LEADING_SLASH_CODE);
-	assert.notEqual(draft.error, LEADING_SLASH_MESSAGE);
+	assert.notEqual(draft.error, leadingSlashMessage());
 	assert.equal(draft.error, "Invalid desktop operation.");
 	assert.equal(withholdsRetryHint(draft.errorCode), false);
 	/*

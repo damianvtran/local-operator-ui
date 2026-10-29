@@ -1,0 +1,279 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "independent-translation-audit",
+  "round": 3,
+  "locale": "fr",
+  "locale_name": "French",
+  "batch": "agents-surfaces",
+  "branch": "i18n-agents-pages",
+  "head": "91231e66c9",
+  "head_note": "Worktree ~/local-operator-ui/.worktrees/i18n-agents-pages at HEAD 91231e66c9 (91231e66c955197e86cec5b1bf7c6f488eff48de). The fr catalogues are untracked candidates in this worktree and are bound by sha256 recomputed from disk at audit time; scripts/i18n/locale-parity.test.mjs carries an uncommitted +51-line working-tree change (the fr IDENTICAL_OK rows) bound below. English sources and context sidecars are tracked at HEAD.",
+  "date": "2026-10-26",
+  "audit_date": "2026-10-26",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "harness": "Local Operator",
+    "team": "lopdev",
+    "session": "1c13ec00d5b9",
+    "instance": "01adc4da374e",
+    "model": "radient/auto",
+    "actual_model_source": "harness session header (Model: radient/auto); the resolved upstream provider/model id is not exposed to the agent and is not inferred.",
+    "model_provenance": "Harness session header reported Model: radient/auto for the whole audit; no provider error, quota or mid-run model switch was surfaced to this session, so no fallback model is claimed or used.",
+    "independence": "Independent round-3 auditor: did not translate or remediate these catalogues, read no translator report, used no translation or MT service, and edited no catalogue, ledger, script or git state. The only file this audit writes in the repo is this receipt."
+  },
+  "agent": "i18n-auditor",
+  "session": "1c13ec00d5b9",
+  "instance": "01adc4da374e",
+  "model": "radient/auto",
+  "model_fallback": "none observed and none used: this run stayed on the radient/auto route for the whole audit; the harness surfaced no provider error and no mid-run switch. The resolved upstream provider/model id is not visible to the agent, so none is claimed.",
+  "actual_model_source": "harness session header (Model: radient/auto); upstream resolution not visible to the agent and not inferred.",
+  "independence": "Independent round-3 auditor: did not translate or remediate these catalogues, read no translator report, used no translation or MT service, and edited no catalogue, ledger, script or git state. The only file this audit writes in the repo is this receipt.",
+  "scope": {
+    "worktree": "~/local-operator-ui/.worktrees/i18n-agents-pages",
+    "branch": "i18n-agents-pages",
+    "head": "91231e66c9",
+    "namespaces_reaudited": [
+      "ui.hub.teams"
+    ],
+    "note": "Round 3 over the CURRENT bytes of the one namespace the translator changed for fr: ui.hub.teams (47 keys), bound by sha256 from scratchpad agents-r3-hashes.txt (8c73962e...), plus verification of the eleven fr-scoped IDENTICAL_OK cognate rows added to scripts/i18n/locale-parity.test.mjs. The other seven fr namespaces are unchanged since the round-2 audit and were not re-audited (their disk hashes equal the round-2 audited hashes exactly)."
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    },
+    "parity_table": {
+      "path": "scripts/i18n/locale-parity.test.mjs",
+      "sha256": "77cfe5cb50f2a95ba4cc66eb15fb7843005b4919d12d7e4e645736bef861d67c",
+      "note": "Working-tree bytes including the +51-line IDENTICAL_OK addition; the diff is insertion-only (51 insertions, 0 deletions)."
+    },
+    "previous_receipt": {
+      "path": "i18n/receipts/fr-agents-surfaces-audit-r2-caa0f0b9574d.json"
+    }
+  },
+  "input_binding": {
+    "manifest": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/agents-r3-hashes.txt",
+    "manifest_row": "fr ui.hub.teams 8c73962ef3c16f1afeccfc148a884aad7ca54d838084277b4f68d98481bbdfa0",
+    "disk_sha256": "8c73962ef3c16f1afeccfc148a884aad7ca54d838084277b4f68d98481bbdfa0",
+    "match": true,
+    "other_fr_rows": {
+      "ui.agents.pages": "match",
+      "ui.agents.publication": "match",
+      "ui.agents.config": "match",
+      "ui.agents.upload": "match"
+    }
+  },
+  "namespace_count": 1,
+  "keys_read": 47,
+  "key_count": 47,
+  "mechanical": {
+    "json_valid": true,
+    "key_set_and_order_equal_to_en": true,
+    "key_count_en": 47,
+    "key_count_fr": 47,
+    "placeholder_parity": "identical argument names and types for all 47 keys (and the repo's ICU-parser test passes); only {org}, {name}, {date}, {count}, {visible}, {total}, {query} appear, exactly as in en",
+    "icu_plural_arms": {
+      "ui.hub.teams.member_count": [
+        "one",
+        "many",
+        "other"
+      ],
+      "ui.hub.teams.public.match_line": [
+        "one",
+        "many",
+        "other"
+      ]
+    },
+    "cldr_note": "fr categories are one/many/other per glossary §3 and the fr style guide; no 'few' arm is present, and every plural message carries all three categories.",
+    "nfc_normalised": true,
+    "tab_indent": true,
+    "single_trailing_newline": true,
+    "manual_bidi_controls": "none (no U+200E/U+200F, U+202A-U+202E or U+2066-U+2069)",
+    "typography": {
+      "u202f_before_colon_or_semicolon": "5 keys — manager_label, member_count, org.plan_body, public.match_line, public.pull_no_signin; every : and ; in the file carries U+202F",
+      "guillemet_spacing": "« » carry U+202F inside in public.match_line, public.search_miss and pull_failed",
+      "plain_space_before_punctuation": "none: no U+0020 or U+00A0 precedes any : ; ! ? in the file",
+      "straight_apostrophe_or_ascii_quotes": "none; U+2019 apostrophes and « » guillemets only"
+    },
+    "budgets": "the ui.hub.teams context sidecar carries no maxCells/maxChars; width is not a constraint on this surface",
+    "delta_proof": "The current file differs from the round-2 audited bytes by exactly one character: replacing the U+202F before the semicolon in org.plan_body with U+0020 reproduces the round-2 audited sha256 3626c1639c9fdff0b447a81e7c5a5717718498f018a7776f287dd50537b4ad6c exactly, leaving every other byte of all 47 keys, the key order, indentation and final newline identical."
+  },
+  "commands": [
+    {
+      "command": "node --test --test-name-pattern='fr' scripts/i18n/locale-parity.test.mjs",
+      "exit": 0,
+      "output": "tests 12 | suites 0 | pass 12 | fail 0 | cancelled 0 | skipped 0 | todo 0 | duration_ms 522.743709 — '[fr] is not an English stub (no value identical to the source)' passes, as do fr placeholder parity, key-set, duplicate-key and non-empty checks.",
+      "note": "The name filter is a substring regex, so the '...from the English source' subtests of other locales also run; no subtest failed."
+    },
+    {
+      "command": "node scripts/i18n/context-parity.mjs",
+      "exit": 0,
+      "output": "context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json)."
+    },
+    {
+      "command": "node scripts/i18n/check-duplicates.mjs",
+      "exit": 0,
+      "output": "check-duplicates: ok — 835 file(s) scanned, 0 duplicate key(s)"
+    },
+    {
+      "command": "node scripts/i18n/generate.mjs --check",
+      "exit": 0,
+      "output": "/Users/damian/local-operator-ui/.worktrees/i18n-agents-pages/src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+    },
+    {
+      "command": "node --test scripts/i18n/locale-parity.test.mjs",
+      "exit": 0,
+      "output": "tests 44 | pass 44 | fail 0 | duration_ms 455.957292 — the whole suite, including 'a locale-scoped identical-value exemption does not exempt another locale', passes.",
+      "note": "Extra self-check beyond the four named gates: proves the eleven new rows do not disturb any other locale."
+    }
+  ],
+  "gate_checks": {
+    "parity_gate": "closed — '[fr] is not an English stub' passes on the current test bytes; the round-2 G1 blocker is resolved by the fr-scoped rows, not by changing copy.",
+    "not_rerun": "scripts/i18n/check-strings.mjs was not re-run in round 3: the delta is one typographic character inside prose, it is not a runtime string-shape change, and the gate reported ok at round 2 (recorded there). Full automated suite was not duplicated beyond the parity file."
+  },
+  "parity_table_verification": {
+    "rows": 11,
+    "all_fr_scoped": true,
+    "any_global_row_for_same_key": false,
+    "mechanism": "allowsIdenticalValue(locale, key) accepts table.has(key) (global) or table.has(`${locale}:${key}`) (scoped); every added row is 'fr:<key>', so hi/zh-CN/ru/ur/vi/es still fail the stub test on an English copy of each key.",
+    "cross_locale_spot_check": "zh-CN 类型/智能体, ru Тип/Агент, ur قسم/ایجنٹ, hi प्रकार/एजेंट, vi Loại/Tác nhân, es Tipo/Agente — all differ from English, so the guard still bites outside fr.",
+    "entries": [
+      {
+        "key": "ui.agents.detail.origin.source",
+        "en": "Source",
+        "fr": "Source",
+        "identical": true,
+        "justified": true
+      },
+      {
+        "key": "ui.agents.detail.section.instructions",
+        "en": "Instructions",
+        "fr": "Instructions",
+        "identical": true,
+        "justified": true
+      },
+      {
+        "key": "ui.agents.pages.tab.agents",
+        "en": "Agents",
+        "fr": "Agents",
+        "identical": true,
+        "justified": true
+      },
+      {
+        "key": "ui.agents.publication.invalid.field.description",
+        "en": "Description.",
+        "fr": "Description.",
+        "identical": true,
+        "justified": true
+      },
+      {
+        "key": "ui.agents.teams.col.type",
+        "en": "Type",
+        "fr": "Type",
+        "identical": true,
+        "justified": true
+      },
+      {
+        "key": "ui.agents.teams.kind.agent",
+        "en": "Agent",
+        "fr": "Agent",
+        "identical": true,
+        "justified": true,
+        "note": "glossary §2 fixes the fr rendering of agent as 'agent'"
+      },
+      {
+        "key": "ui.agents.teams.section.description",
+        "en": "Description",
+        "fr": "Description",
+        "identical": true,
+        "justified": true
+      },
+      {
+        "key": "ui.hub.pages.search_field.description",
+        "en": "Description",
+        "fr": "Description",
+        "identical": true,
+        "justified": true
+      },
+      {
+        "key": "ui.hub.pages.status.agents_scope",
+        "en": "Agents {scope}",
+        "fr": "Agents {scope}",
+        "identical": true,
+        "justified": true,
+        "note": "the {scope} phrases are translated: 'dans le hub public' / 'dans le hub partagé avec {org}'"
+      },
+      {
+        "key": "ui.hub.pages.tab.agents",
+        "en": "Agents",
+        "fr": "Agents",
+        "identical": true,
+        "justified": true
+      },
+      {
+        "key": "ui.hub.teams.brief.trigger",
+        "en": "Brief",
+        "fr": "Brief",
+        "identical": true,
+        "justified": true,
+        "note": "borrowed French noun, consistent with 'Brief de collaboration' / 'Brief de projet' / 'Voir le brief de {name}' in the same namespace"
+      }
+    ],
+    "verdict": "justified — every row is a French common noun (or its French plural) whose spelling genuinely coincides with the English source, all eleven values are byte-identical to en on disk, and the exemption is fr-only."
+  },
+  "previous_round_resolution": {
+    "T-r2-1": "closed — ui.hub.teams.org.plan_body now carries U+202F before the semicolon; reverting that single character to U+0020 reproduces the round-2 audited sha256 3626c163... exactly, so the fix is the only change.",
+    "T-r2-i2": "open, unchanged, source-side not copy — organizer date labels still format through org-team-summary.ts formatTeamDate() = format(date, \"d MMM yyyy\") with date-fns' default en-US locale, so fr rows render '10 Oct 2026' rather than '10 oct. 2026'. Needs a code change (Intl.DateTimeFormat with the active locale, or date-fns with the fr locale); the catalogue values 'Créée le {date}' / 'Modifiée le {date}' are correct and need no edit.",
+    "G1 (round-2 parity gate)": "closed — the eleven fr-scoped IDENTICAL_OK rows exist and the stub test passes.",
+    "counts_correction": "The round-2 receipt records 1 minor and 0 nit (severity_counts), not 1 minor + 1 nit: the second item (T-r2-i2) is an info-severity source-gap observation, not a copy finding."
+  },
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [],
+    "closed_finding_ids": [
+      "T-r2-1"
+    ],
+    "carried_open_observation_ids": [
+      "T-r2-i2"
+    ]
+  },
+  "observations": [
+    "Only fr/ui.hub.teams.json moved between rounds: its sha256 changed from 3626c1639c9fdff0b447a81e7c5a5717718498f018a7776f287dd50537b4ad6c to 8c73962ef3c16f1afeccfc148a884aad7ca54d838084277b4f68d98481bbdfa0, and the single-character reconstruction proves nothing else moved. The other seven fr namespaces still hash exactly as audited at round 2, and every en/context input is unchanged.",
+    "Second independent pass: ui.hub.teams is not one of the high-visibility groups (onboarding, errors, settings) for which the manager requests one, so none is claimed. Round 3 nevertheless re-read all 47 values against en, the sidecar and the call sites; every byte except one character is the round-2 audited byte sequence.",
+    "Pull terminology recorded as a consistency observation, not re-opened: ui.hub.teams renders the hub Pull action as 'Télécharger'/'Téléchargement…', matching the shipped fr ui.hub.json skills control ('ui.hub.skills.download' = 'Télécharger', 'ui.hub.skills.pulled' = 'Téléchargée') and the fr publication namespace's pull copy. The glossary's kept-English 'pull' row covers git/hub operations as terms; this UI verb was accepted in rounds 1-2, so it is not a round-3 finding.",
+    "No rendered frame: this is a source-and-context audit with call-site reads. The namespace carries no width budget, so no overflow claim is made or needed; the full render proof is QA's/design's to run, not this audit's.",
+    "The eleven exempt keys belong to namespaces outside this round's re-audit; their values were read only to test the exemption's honesty, and no verdict is recorded here for those namespaces at round 3."
+  ],
+  "namespaces": {
+    "ui.hub.teams": {
+      "namespace": "ui.hub.teams",
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 47,
+      "verdict": "passed: 0 blocker, 0 major, 0 minor, 0 nit over 47 keys",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.hub.teams.json",
+        "target": "src/i18n/catalogues/fr/ui.hub.teams.json",
+        "context": "src/i18n/catalogues/en/ui.hub.teams.context.json"
+      },
+      "en_sha256": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
+      "fr_sha256": "8c73962ef3c16f1afeccfc148a884aad7ca54d838084277b4f68d98481bbdfa0",
+      "context_sha256": "9a6f5f35045687eab48c7491086b759c06d5ad635e93cdfdbcaf2f663acd6651",
+      "parity_gate": "pass — fr:ui.hub.teams.brief.trigger is covered by a scoped IDENTICAL_OK row and the stub test passes",
+      "note": "Round-2 minor T-r2-1 fixed with no wording change and no other byte moved. All 47 values accurate against en, the sidecar and the call sites; terminology matches the batch ('offre Team', 'Responsable', 'Composition', 'Télécharger'); typography uses U+202F before : and ; and « » with U+202F inside."
+    }
+  }
+}

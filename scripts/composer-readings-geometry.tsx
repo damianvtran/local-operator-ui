@@ -5,7 +5,7 @@
  * See `composer-readings-geometry.html` for why this page exists rather than a
  * story or a live-app capture. What it mounts is the SHIPPED `MessageInput`, with
  * the app's own stylesheet, palette and font faces, in one of two states, at the
- * column width the driver names, with the readings cluster in one of two
+ * column width the driver names, with the readings cluster in one of four
  * fixtures:
  *
  *   - `idle`     the settled row between turns on a backend that has negotiated
@@ -19,11 +19,13 @@
  *                derived against the two-box row, so above 860px the duration
  *                reading returns and overruns the controls.
  *
- * The two readings fixtures answer the second half of the derivation. The strip's
+ * The readings fixtures answer the second half of the derivation. The strip's
  * own comment states the threshold is the width at which the FULLEST state fits,
  * "not the plainest", and names that state: `estimate` beside the context reading
  * plus a four-digit spend. `plain` is the cheaper state, so measuring both is
  * what shows the widest state is the one the threshold has to be set from.
+ * `issue` is the #788 repro and `reported` is the operator's own row from the
+ * duration report; the fixture docblock below says what each one is for.
  *
  * WHAT IS DELIBERATELY NOT HERE. The post-stop GRACE window's reserved slot
  * (`data-interrupt-slot`) is not mounted as a third state, and it is not reachable
@@ -46,6 +48,16 @@
  * `chat-content.tsx` - so the compaction the app applies at a narrow column is a
  * function of the measured column rather than a second copy of the threshold here
  * that could drift from it.
+ *
+ * `measure` IS AN OPTIONAL DRIVER PARAMETER, and it exists because the row's
+ * width is not a function of the column alone: the composer box is capped at
+ * `--lo-chat-measure` (810px shipped, `styles/index.css`), and the operator's
+ * own report is at a widened measure. The operator's composer box measures
+ * 918px, so their row is ~886px while the shipped default draws 778px at the
+ * same 1024px column. The driver's `--measure=<px>` sets the same custom
+ * property the app's own story sets (`chat-measure.stories.tsx`), on this
+ * column, so the widened row is a measurement rather than arithmetic; absent,
+ * the shipped 810px value stands and the case id carries no measure suffix.
  */
 
 import { CssBaseline } from "@mui/material";
@@ -69,6 +81,20 @@ const COLUMN = Number(params.get("w") ?? 1024);
 const STATE = params.get("state") ?? "running";
 const READINGS = params.get("readings") ?? "plain";
 const THEME = (params.get("theme") ?? DEFAULT_THEME) as ThemeName;
+/*
+ * `null` means "the shipped measure". A number is an override in px, and the
+ * driver only names it when it wants the widened operator row; see the header.
+ */
+const MEASURE_PARAM = Number(params.get("measure") ?? 0);
+const MEASURE = MEASURE_PARAM > 0 ? MEASURE_PARAM : null;
+/*
+ * THE ROW'S DIRECTION. `ur` is a shipped locale and `dir="rtl"` mirrors the
+ * composer row, so a fit rule that only reads physical edges passes every LTR
+ * frame and hides the reading in that locale. This is the driver's hook for
+ * photographing that case: `--dir=rtl` sets the document's direction on the
+ * harness's own wrapper, and the strip resolves it with `getComputedStyle`.
+ */
+const DIR = params.get("dir") === "rtl" ? "rtl" : "ltr";
 
 applyThemeToDocument(THEME);
 
@@ -137,8 +163,35 @@ const MODEL_LONG = {
 	max_context_window: null,
 };
 
+/*
+ * The operator's model, in the app's own shape.
+ *
+ * `deepseek` is a DIRECT provider (not in `AGGREGATOR_PROVIDERS`), so the chip
+ * prints the listing name rather than refusing it: `DeepSeek Flash` is exactly
+ * what the reporting row shows, and it is SHORTER than the `claude-*` id
+ * `issue` truncates to its 56px floor. That difference is why this fixture is
+ * kept beside `issue` - the row being fixed has to fit a name drawn at its
+ * natural width, not at its narrowest.
+ *
+ * `reasoning_effort: "max"` is the load-bearing field: it is the `Max` the row
+ * reports. The rung list is carried so the reading is the ordinary adjustable
+ * chip rather than a plain label; its exact contents are not what this harness
+ * measures.
+ */
+const MODEL_REPORTED = {
+	provider: "deepseek",
+	model_id: "deepseek-flash",
+	display_name: "DeepSeek Flash",
+	reasoning: true,
+	reasoning_effort: "max",
+	reasoning_efforts: ["minimal", "low", "medium", "high", "max"],
+	reasoning_default_effort: null,
+	context_window: 1_000_000,
+	max_context_window: null,
+};
+
 /**
- * The three readings fixtures, and each answers a different question.
+ * The four readings fixtures, and each answers a different question.
  *
  * `plain`   a short model name, a three-digit spend, a measured context reading
  *           and a six-minute duration - the cheap end of the cluster.
@@ -152,6 +205,13 @@ const MODEL_LONG = {
  *           threshold has to be derived from ("the state that sets it is
  *           `estimate` plus a four-digit cost"). It is a superset of `issue`, so a
  *           threshold that fits `fullest` fits the reporter's state too.
+ * `reported` THE OPERATOR'S OWN ROW, from the report that opened this change:
+ *           display name `DeepSeek Flash`, effort `Max`, a MEASURED
+ *           `13.1%/1M` context reading, `$0.346` of spend and 20m25s banked.
+ *           It is the state the missing duration was reported in, and unlike
+ *           `issue` its model name is short enough not to sit at the chip's
+ *           floor - so it is the row a fix has to fit with the name drawn at
+ *           its natural width, not at its narrowest.
  *
  * The banked duration is non-zero in every fixture, because the reading has to
  * EXIST for the shed to be observable at all; a fixture with no duration would
@@ -203,6 +263,29 @@ const READINGS_FIXTURES: Record<string, CanonicalFrontendState> = {
 		active_duration_s: 72_000,
 		activity_started_at: null,
 	} as CanonicalFrontendState,
+	/*
+	 * THE OPERATOR'S OWN ROW, `DeepSeek Flash · Max · 13.1%/1M · $0.346` while a
+	 * turn runs. 131,000 tokens is the measured figure behind 13.1% of a 1M
+	 * window, and `context_is_estimate` is false because that is the provider's
+	 * receipt rather than the harness's estimate - the `estimate` word is
+	 * `fullest`'s job. 1,225 seconds is the 20m25s the row shows, and
+	 * `activity_started_at` is null so the reading is the banked number rather
+	 * than a live-ticking one (every case here must photograph a stable frame).
+	 */
+	reported: {
+		context_tokens: 131_000,
+		context_window: 1_000_000,
+		context_is_estimate: false,
+		cumulative_parent_cost: 0.346,
+		child_costs: {},
+		subagent_cost: null,
+		subagent_cost_knowledge: null,
+		cost_knowledge: "exact",
+		selected_model: MODEL_REPORTED,
+		effective_model: MODEL_REPORTED,
+		active_duration_s: 1225,
+		activity_started_at: null,
+	} as CanonicalFrontendState,
 };
 
 const frontend = READINGS_FIXTURES[READINGS];
@@ -250,8 +333,14 @@ const Harness = () => {
 		<div
 			ref={columnRef}
 			className="@container/chatcol mx-auto"
-			style={{ width: COLUMN }}
+			style={{
+				width: COLUMN,
+				...(MEASURE === null
+					? {}
+					: { ["--lo-chat-measure" as string]: `${MEASURE}px` }),
+			}}
 			data-lo-geometry-column={COLUMN}
+			data-lo-geometry-measure={MEASURE ?? "shipped"}
 		>
 			<MessageInput
 				isLoading={false}
@@ -281,8 +370,10 @@ createRoot(document.getElementById("root") as HTMLElement).render(
 				{/* Bottom-anchored, like the app's own band: the row sits at the bottom
 				    edge of the pane, which is the geometry the app draws. */}
 				<div
+					dir={DIR}
 					style={{ height: "100vh", display: "flex", flexDirection: "column" }}
 					className="justify-end bg-canvas"
+					data-lo-geometry-dir={DIR}
 				>
 					<Harness />
 				</div>

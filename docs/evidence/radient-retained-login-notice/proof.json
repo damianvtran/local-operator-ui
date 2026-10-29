@@ -1,0 +1,211 @@
+{
+  "status": "captured-evidence",
+  "base": "2eaf19928b2b7b26c67b690fbe2a013308584d63",
+  "main_inspected": "f6b9aae9ce5594e79dddb0d654edc4b4a0862331",
+  "source_blobs": {
+    "src/shared/desktop-contract.ts": "7535d8bbc107906bf2d2257705c920d729992dd0",
+    "src/renderer/src/features/providers/provider-detail.tsx": "5c4e466234dbf9e7ae546720c683eb3dd5348e7c",
+    "scripts/provider-detail-remount.test.mjs": "22fdfeddd122aadcbd390e926f827c03381822fb",
+    "src/renderer/src/features/providers/sign-in-states.stories.tsx": "d702d981f78a25ffe4e448659f25f411d9c11a96"
+  },
+  "artifacts": [
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/baseline-normal-direct.png",
+      "bytes": 96918,
+      "sha256": "e56c4283f3b9273891e02b1266248f127590442b0f059ebbded053fb722a0df5",
+      "historical_clipped": false
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/fixed-normal.png",
+      "bytes": 154977,
+      "sha256": "eb22f98d1bdff70a90ad77a78f363d7fc5220738eadb3bef45ae98ea5ea67bf8",
+      "historical_clipped": false
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/clean-baseline-320.png",
+      "bytes": 252299,
+      "sha256": "343e276849466684fdbd21071b5ec936b13dfaccbb31b29c16f7bdd53fa13101",
+      "historical_clipped": false
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/clean-fixed-320-first.png",
+      "bytes": 305953,
+      "sha256": "ba017632400256504b28ee3fc8c200a2906d2cf0651abbe5706760d2fc65328c",
+      "historical_clipped": false
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/clean-fixed-320-settled.png",
+      "bytes": 305953,
+      "sha256": "ba017632400256504b28ee3fc8c200a2906d2cf0651abbe5706760d2fc65328c",
+      "historical_clipped": false
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/old-core-absence.png",
+      "bytes": 96918,
+      "sha256": "e56c4283f3b9273891e02b1266248f127590442b0f059ebbded053fb722a0df5",
+      "historical_clipped": false
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/preserved-disabled.png",
+      "bytes": 105168,
+      "sha256": "ba2f87b964296e0fe6ed219434d0ccb848ac214f9e0ef7f0aca61fccb3e79aa2",
+      "historical_clipped": false
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/cancel-late-first.png",
+      "bytes": 113071,
+      "sha256": "2ad69e2b3ed62c7c905fd8696cbb14d82cc1a1b678ab2021c766a6656fc24bf3",
+      "historical_clipped": false
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/cancel-late-settled.png",
+      "bytes": 113071,
+      "sha256": "2ad69e2b3ed62c7c905fd8696cbb14d82cc1a1b678ab2021c766a6656fc24bf3",
+      "historical_clipped": false
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/baseline-narrow.png",
+      "bytes": 259612,
+      "sha256": "793e4a4b622dffe94ea825ddb2bdd8f722871d12c454b5503ae07ffea83a32fa",
+      "historical_clipped": true
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/fixed-narrow-first.png",
+      "bytes": 304976,
+      "sha256": "256496ebc260f1e1f1cd437622ee415df125e30abf5020985fa000433312c8d3",
+      "historical_clipped": true
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/fixed-narrow-settled.png",
+      "bytes": 304976,
+      "sha256": "256496ebc260f1e1f1cd437622ee415df125e30abf5020985fa000433312c8d3",
+      "historical_clipped": true
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/logs/dependency-identity.log",
+      "bytes": 418,
+      "sha256": "ba1781f3165a6e09eb234598f2974f89518678e79b1dcc6521ca542c1f7955e0",
+      "historical_clipped": false
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/logs/component-first.log",
+      "bytes": 291231,
+      "sha256": "77cc79996aa165e0078f3f0156031c19012d83266e66c812820b840efc06725b",
+      "historical_clipped": false
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/logs/component-final.log",
+      "bytes": 282908,
+      "sha256": "995890b05d59c242e07d9331b7b52f996e80e6abb94d804f6a2450adaf757bf7",
+      "historical_clipped": false
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/logs/baseline-witness.log",
+      "bytes": 11290,
+      "sha256": "6f555c5ccc4f817a5f953ae704233f52e55fe5c211b5d2cd56e3676add638e74",
+      "historical_clipped": false
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/logs/scoped-lint.log",
+      "bytes": 7590,
+      "sha256": "a1a7b04f2dce31753656db15a1170a6aef3cdfd0a0a831c039c8e3dc44684774",
+      "historical_clipped": false
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/logs/scoped-lint-final.log",
+      "bytes": 7550,
+      "sha256": "32d231029cd3fb5fedd53105ff3b6706521cd452ab23ef199a7d206cf5e7101a",
+      "historical_clipped": false
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/logs/renderer-types.log",
+      "bytes": 2110,
+      "sha256": "c13a46e0405c14145ef3f1cb85030147867ed90c05f17af0e38b2964c704a795",
+      "historical_clipped": false
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/logs/renderer-types-final.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "historical_clipped": false
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/logs/flow-final.log",
+      "bytes": 2162,
+      "sha256": "216755ce37454b236655e5aa29fc5a64b5cf495dba4c8286506797415b67caf3",
+      "historical_clipped": false
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/logs/storybook.log",
+      "bytes": 2012,
+      "sha256": "26fc3f9e4c40fc7fa36e0bd58667418442dd484ffe721d9e211c0ffb251399e3",
+      "historical_clipped": false
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/logs/storybook-narrow.log",
+      "bytes": 2450,
+      "sha256": "21a1c288a2ad472462a2d08b7c9cee0bc522af00a58f4f110c32420eaf622c1a",
+      "historical_clipped": false
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/logs/storybook-clean-narrow.log",
+      "bytes": 2036,
+      "sha256": "a9788def856afc085939cfba0a87320bf4fdb6748bffa8f15a5a5392e02a67fb",
+      "historical_clipped": false
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/receipts/radient-retained-login-validation.md",
+      "bytes": 5438,
+      "sha256": "97eea714160ee4421c51cfb80fa3ed1977f22f1c05240b3c0c0ac505f7f912c4",
+      "historical_clipped": false
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/receipts/radient-retained-login-capture-preflight.md",
+      "bytes": 6658,
+      "sha256": "e600cfb4f046a1e748e69e9aa1daa6e1a3e886ac8dd5fa2711d9775260b88121",
+      "historical_clipped": false
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/receipts/radient-retained-login-capture-receipt.md",
+      "bytes": 6525,
+      "sha256": "34c93aa5c6be45f4fd09d5b20cdc96cedc23f5ac3d87a6e942376f035c26bfeb",
+      "historical_clipped": false
+    },
+    {
+      "path": "docs/evidence-frames/radient-retained-login-notice/receipts/radient-retained-login-clean-narrow-receipt.md",
+      "bytes": 3384,
+      "sha256": "c1e1c66f140025cebb050ab58e7810c2b4c93e5b51142de22ec6cd3b4703bbd8",
+      "historical_clipped": false
+    }
+  ],
+  "automated": {
+    "component": "23/23",
+    "flow": "21/21",
+    "renderer_types_exit": 0,
+    "scoped_lint_exit": 0,
+    "scoped_lint_existing_warnings": 11,
+    "baseline_expected_exit": 1
+  },
+  "limits": [
+    "No narrow failure/absence/cancel captures",
+    "No numeric narrow paragraph overflow measurement",
+    "No pre-cancel waiting still",
+    "No full suite/native/JWT/OAuth/onramp claim",
+    "Initial functional guard omitted Data df; retained in receipts"
+  ],
+  "publication_main_inspected": "950df11e69fa6feebcb08cebf2cc251bcd0d2e0f",
+  "provenance_corrections": [
+    {
+      "finding": "Q1",
+      "review_url": "https://github.com/damianvtran/local-operator-ui/pull/1374#issuecomment-6379130538",
+      "supersedes_attribution": "automated.scoped_lint_existing_warnings",
+      "scoped_lint_warnings_total": 11,
+      "new_story_regex_warnings": 2,
+      "source_locations": [
+        "src/renderer/src/features/providers/sign-in-states.stories.tsx:1034",
+        "src/renderer/src/features/providers/sign-in-states.stories.tsx:1126"
+      ],
+      "note": "The original all-existing attribution was incorrect. Two useTopLevelRegex warnings concern newly added openRow(/^Manage /i) calls. Original logs, receipt and artifact hashes, source blobs and pixels are unchanged; no new execution is claimed."
+    }
+  ]
+}

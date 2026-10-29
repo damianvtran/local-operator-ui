@@ -194,9 +194,103 @@ export function useDesktopCapabilities() {
 
 export type DesktopFeature =
 	| "session_tags"
+	/**
+	 * The OPTIONAL auto-tag half of a desktop fork: the `auto_tag` body key on
+	 * `sessions.fork` and the naming call's tag contract behind it.
+	 *
+	 * ITS OWN KEY rather than a `session_tags` bump, and the direction of skew is
+	 * why: `Fork` inherits `extra="forbid"`, so an OLDER daemon answers 422 to a
+	 * body carrying `auto_tag` - a refused fork, not a degraded one. A client must
+	 * therefore ASK this key before it sends the field; absent, it omits the key
+	 * and the fork is byte- and behaviour-identical to the released one. A bump
+	 * of `session_tags` could not answer that question without also hiding the
+	 * tag catalogue, which a daemon without auto-tagging serves perfectly well.
+	 * See `local_operator/server/features.py`.
+	 */
+	| "session_tags_auto_tag"
+	/**
+	 * PUT AN OPEN QUEUED ASK AWAY from a surface (`{ask_id, dismiss: true,
+	 * reason?}` on the answers route, harness PR #2833 / SA-D5).
+	 *
+	 * ITS OWN KEY because the body field is refused, not ignored: the backend's
+	 * `Answer` is `extra="forbid"`, so a daemon that predates the field answers 422
+	 * to a body carrying `dismiss`. A client that offered the control without asking
+	 * this key would draw a button whose only outcome is a refusal — the dead
+	 * affordance the ask panel refuses elsewhere.
+	 */
+	| "ask_dismiss"
 	| "session_files"
+	/**
+	 * The user-attachment inventory (`GET .../user-attachments` and its
+	 * materialise child). Its own key because `session_files` describes the
+	 * agent's OUTPUT and promises nothing about inputs. Absent, the canvas lists
+	 * attachments from the history rows it has loaded and says so - it never
+	 * calls the route (404) and never presents that partial list as complete.
+	 */
+	| "session_attachments"
+	/**
+	 * The global Library surface (`/v1/desktop/library*` and the Librarian
+	 * routes). Its own key because the destination must disappear entirely on a
+	 * backend that predates the catalog: the routes 404, and a nav row that
+	 * lands on an error page is the dead end the fail-closed rule forbids.
+	 * Absent therefore means no row, no route and no read - not a degraded
+	 * Library with an empty grid.
+	 */
+	| "library"
+	/**
+	 * The notifications reel (`/v1/desktop/notifications*`, the feed's
+	 * `notifications` invalidation frame, the `/notifications` slash destination
+	 * and the sidebar row). Its own key for the Library reason: an older core
+	 * has no routes, refuses `"notifications"` in a sidebar-layout PUT, and
+	 * sends no frame, so absent means no row, no route, no read, no write and the
+	 * asks drawer exactly as it was - never an empty inbox.
+	 */
+	| "notifications"
+	/**
+	 * The sidebar customisation resource (`GET`/`PUT /v1/desktop/sidebar-layout`,
+	 * design contract § 4). Its own key because the column must render TODAY'S
+	 * fixed arrangement on a backend that predates the route: the drag handle and
+	 * the row menu are absent (fail-closed) rather than present over a route that
+	 * would answer 404 to every save. Absent therefore means "not customisable",
+	 * not "customisable with an empty layout".
+	 */
+	| "sidebar_layout"
 	/** Route presence only; dynamic organization eligibility is backend-owned. */
 	| "team_bridge"
+	| "team_bridge_conversations"
+	/**
+	 * The thread/replies plane: a message's thread pane and the reply-in-thread
+	 * affordance that opens it.
+	 *
+	 * ITS OWN KEY rather than a `team_bridge_conversations` bump, on the rule
+	 * this union states in several places: the conversation page must keep
+	 * serving every daemon that has it, while the thread surface has to be
+	 * ASKED about separately because a daemon can serve conversations without
+	 * serving threads.
+	 *
+	 * AND THE ANSWER IS NOT ENOUGH HERE. The UI holds this surface closed in
+	 * the build itself (`team-bridge-thread-gate.ts`): the runtime advertising
+	 * the route is not clearance for the cache/retry isolation defects the
+	 * thread paths inherited from #1304, because the backend cannot know which
+	 * client build is talking to it. The key is asked anyway - the capability
+	 * half is the plumbing the feature returns on - but absent, `unknown`,
+	 * `below-version` and `unpaired` all leave the surface hidden, and so does
+	 * `enabled` until the constant is flipped.
+	 */
+	| "team_bridge_threads"
+	/**
+	 * The reaction plane: a message's reaction chips, the toolbar's react button
+	 * and the emoji picker behind it.
+	 *
+	 * ITS OWN KEY because the shipped runtime serves no reaction path at all (the
+	 * OpenAPI schema carries none; a reaction GET answers 404), while the
+	 * conversation page around it works. The key is SCAFFOLDING for the return:
+	 * the build holds reactions closed regardless
+	 * (`TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD`), because the old reaction
+	 * path is not reviewed for account/retry safety and a backend advertising a
+	 * capability must never wake it up. See `team-bridge-reaction-gate.ts`.
+	 */
+	| "team_bridge_reactions"
 	| "auth"
 	| "settings"
 	| "commands"
@@ -248,6 +342,22 @@ export type DesktopFeature =
 	 * not a substitute and its absence must not close the working Hub plane.
 	 */
 	| "hub_skills"
+	/**
+	 * The skill library's READ side (core `skill_library:1`): `skills.list` rows
+	 * carry `source`/`link_id`/`installed`/`fingerprint`/`form` and the `name` arm
+	 * adds `skill_detail`. ITS OWN KEY, not `hub_skills` or `skill_catalogue`, so a
+	 * backend without it keeps the plain name/description list and the Agents page
+	 * never offers a Skills tab whose cards it could only half draw.
+	 */
+	| "skill_library"
+	/**
+	 * The skill library's WRITE side (core `skill_write:1`): `POST` / `PUT` /
+	 * `DELETE /v1/desktop/skills[/{name}]`, i.e. Copy to my skills, the inline
+	 * SKILL.md edit and Remove on the Agents page's Skills tab. Its own key so a
+	 * core that only reads skills keeps the read-only tab and offers no control
+	 * that would 404.
+	 */
+	| "skill_write"
 	| "profile_catalogue"
 	| "team_catalogue"
 	| "session_catalogue"
@@ -331,6 +441,22 @@ export type DesktopFeature =
 	 * first send creates is the dead affordance R20 forbids.
 	 */
 	| "draft_selection"
+	/**
+	 * `sessions.preview` and `sessions.create` accepting `fast_mode` on a draft's
+	 * model selection (`DraftModel.fast_mode`), so a NEW chat can be born on the
+	 * speed dial (issue #1265). The core half publishes it as
+	 * `features.draft_fast` (local-operator#2848, `server/features.py`).
+	 *
+	 * ITS OWN KEY RATHER THAN A BUMP OF `draft_selection`, and the reason is the
+	 * wire rather than taste: the draft model is `extra="forbid"` on the core, so
+	 * a backend that can select a draft's model but does not carry the dial
+	 * refuses the WHOLE create body - the model and the effort rung with it - the
+	 * moment the renderer sends a `fast_mode` it never asked about. A renderer on
+	 * such a backend keeps its model and effort chips exactly as they are and
+	 * leaves the speed route closed: `/fast` refuses on a draft rather than
+	 * opening a dialog whose only pick must end in a 422.
+	 */
+	| "draft_fast"
 	/**
 	 * `sessions.draft` plus the draft allow-list on `events`/`watch`/`warm`, and
 	 * `sessions.create` accepting `draft_id`: a NEW chat's runtime can be engaged
@@ -439,6 +565,14 @@ export type DesktopFeature =
 	 * path, with one honest line saying why (the `session_interrupt` precedent).
 	 */
 	| "agents_config"
+	/**
+	 * A configuration run that can revise a SKILL (core adds a `skill` tool to the
+	 * run's declaration and advertises `agents_config_skills:1`). Its own key by
+	 * the rule core states for `agents_config`: an older core has the run but no
+	 * skill tool, so a skill request there would end "I can't edit files" after a
+	 * paid turn. Gates the Skills tab's docked composer (`configSkillRunEnabled`).
+	 */
+	| "agents_config_skills"
 	/**
 	 * `input_mode` on `sessions.message`: the harness carries the composer's own
 	 * record of how a message was produced (`typed` / `dictated` / `mixed`, see

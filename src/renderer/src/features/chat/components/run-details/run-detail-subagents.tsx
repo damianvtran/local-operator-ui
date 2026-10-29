@@ -34,6 +34,8 @@
  */
 
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { ReactNode, Ref } from "react";
 import {
@@ -158,7 +160,7 @@ export const SubagentRowView = ({
 				type="button"
 				onClick={() => onOpen(row.id)}
 				className={cn(
-					"flex items-start gap-2 px-3 py-1.5 text-left",
+					"flex items-start gap-2 px-3 py-1.5 text-start",
 					/* The row's hover is a step DOWN from the pane's ground (`canvas/index.tsx`),
 					   not up to `elevated`: the rows ride the pane with no plane of their own,
 					   so an `elevated` hover measures ΔE00 0 against the drawer's rung. */
@@ -207,6 +209,7 @@ export const RunDetailSubagents = ({
 	 */
 	paneWidth: number;
 }) => {
+	useI18nLocale();
 	/*
 	 * The rows come from the model's `panelSlice`, never from a local narrowing:
 	 * the acknowledgement predicates count failures out of the SAME call, so a
@@ -236,7 +239,7 @@ export const RunDetailSubagents = ({
 				)}
 			>
 				<span className={cn("shrink-0 text-meta text-ink-muted")}>
-					Subagents
+					{t("ui.chat.run_details.subagents.title")}
 				</span>
 				<span
 					className={cn(

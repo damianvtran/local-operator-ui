@@ -79,6 +79,7 @@
  * filed under - and publishing it here as well would be two sources of one value.
  */
 
+import { FloatingToolbar } from "@shared/components/common/floating-toolbar";
 import {
 	SpeakButton,
 	useSpeakControl,
@@ -414,24 +415,14 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 	};
 
 	return (
-		<div
+		<FloatingToolbar
 			{...{ [QUOTE_TOOLKIT_ATTR]: "", [LINK_TOOLBAR_ATTR]: "" }}
 			ref={controlRef}
-			role="toolbar"
-			aria-label={model.label}
-			className={cn(
-				"absolute z-10 flex h-8 items-center gap-0.5 rounded-md border border-hairline bg-elevated px-1",
-				!placement && "invisible",
-			)}
+			label={model.label}
+			className={cn("absolute z-20", !placement && "invisible")}
 			style={
 				placement ? { top: placement.top, left: placement.left } : undefined
 			}
-			/*
-			 * The press must not collapse a highlight the toolbar is about to quote,
-			 * and must not move focus off the reader's highlight before `click` runs
-			 * - the same two reasons the quote control cancels `mousedown`.
-			 */
-			onMouseDown={(event) => event.preventDefault()}
 			/*
 			 * ESCAPE HIDES THE TOOLBAR AND HANDS FOCUS BACK to the link it was about,
 			 * which is the keyboard reader's only way out once Tab has walked into
@@ -517,12 +508,12 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 			 */}
 			{model.note && (
 				<span
-					className="max-w-56 truncate pl-1 text-ink-dim text-meta"
+					className="max-w-56 truncate ps-1 text-ink-dim text-meta"
 					title={model.noteTitle ?? model.note}
 				>
 					{model.note}
 				</span>
 			)}
-		</div>
+		</FloatingToolbar>
 	);
 };

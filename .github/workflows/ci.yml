@@ -3,21 +3,114 @@ name: Pre-Release CI Testing
 on:
   push:
     branches:
+      # ONLY `main` here, deliberately, and for the same reason the backend
+      # repository dropped `dev-*` from its own push list in 6f8cae2e35bc
+      # ("ci: stop the queue eating itself on a 20-job concurrency cap").
+      #
+      # `dev-*` used to be in this list as well, which double-billed every
+      # feature branch: a `dev-*` branch with an open PR fired a `push` run AND
+      # a `pull_request` run for the SAME commit, two identical sets of jobs
+      # whose results nobody read twice. The `pull_request` trigger below
+      # already covers feature branches, so dropping `dev-*` here halves the
+      # per-commit cost without reducing what is actually tested.
+      #
+      # Measured on 2026-10-19, the account-wide runner pool was saturated:
+      # 26-28 runs in flight across three repositories, 53-118 jobs queued, a
+      # median pending-job age of 25.8 minutes, and a four-minute sample in
+      # which zero jobs started. Every job that gates nothing is a job that
+      # makes a release gate wait.
+      #
+      # FIVE `dev-*` branches exist here and NOT ONE of them has an open pull
+      # request, so every push to any of them ran this whole job set to gate
+      # nothing at all. A `dev-*` branch with NO open PR now gets no CI until
+      # the PR is opened. That is the intended trade: CI exists to gate review
+      # and merge, and an un-PR'd branch is gating nothing -- and the manual
+      # dispatch trigger further down this block is the escape hatch for
+      # exactly that case.
       - main
-      - 'dev-*'
   # Pull requests run this workflow so the runtime-dependency guard below fires
   # before the merge: GitHub cannot run a single job from a workflow whose
   # trigger excludes the event, and a guard that only fires on `push` fires
   # after the merge, which is too late to stop an unvetted dependency shipping.
   # The rest of the job set riding along is the cost of that, not the reason.
   pull_request:
+  # The manual escape hatch, and it is a REQUIREMENT rather than a nicety now
+  # that `dev-*` has left the push list above: a branch with no open pull
+  # request gets no CI at all, so this is the only way to run the job set
+  # against such a branch by hand. The backend repository has the same
+  # trigger for the same reason.
+  workflow_dispatch:
 
-# Pull-request runs supersede each other, so the older one is cancelled rather
-# than queued; pushes to `main` are left alone so a merge is never interrupted
-# mid-flight.
+# Cancellation exists for SUPERSEDED COMMITS, not for "any event".
+#
+# `cancel-in-progress` is here so that a force-push or a follow-up commit does
+# not leave a runner working on a head nobody is waiting for. That is a
+# statement about the COMMIT, so it is keyed on the events that produce a new
+# commit: `push` (only `main` reaches this workflow's push list) and
+# `pull_request`/`synchronize`. Everything else that can start a run on an
+# already-running ref - `opened`, `reopened`, `workflow_dispatch` - cannot
+# cancel an IN-PROGRESS run. (A newly queued run still evicts a PENDING run in
+# the same group whatever `cancel-in-progress` says; that is a queue slot, not
+# a running suite, and it is a property of grouping rather than of this flag.)
+#
+# CHANGE THESE TWO LINES TOGETHER. The `push` arm below is safe only because
+# `github.sha` in the group gives every `main` commit its own group; with a
+# shared `main` group it would CANCEL the run already building, which is worse
+# than the eviction it replaced. Reverting only `group:` restores eviction;
+# reverting only `cancel-in-progress:` restores cancellation on `opened` and
+# `reopened`. The group fixes eviction, the event condition fixes non-head
+# cancellation, and neither is a substitute for the other.
+#
+# A non-head event that arrives during a run queues a SECOND full run of the
+# same head, which executes after the first finishes. That duplicate is
+# expected, not a bug: do not widen the event condition to suppress it.
+#
+# MEASURED ON 2026-10-20, because this block was blamed for the wrong thing
+# and the wrong fix was nearly landed twice. Three `Desktop Tests` runs on the
+# `feat/i18n-envelope-render` head concluded `cancelled` (39489336612,
+# 39489768296, 39491353371) and were read as "concurrency kills every long
+# run". Two of them were superseded by a genuinely newer head (20:10:53 by
+# 39489768296, 20:22:03 by 39491353371) - the designed behaviour. The third
+# never was: that run was re-attempted three times and EVERY attempt's job
+# carries the annotation
+#
+#   The job has exceeded the maximum execution time of 50m0s
+#
+# (20:38:18->21:33:18, 21:35:07->22:30:07, 22:30:32->23:25:33 - 55:00, 55:00,
+# 55:01 against a 50-minute ceiling). The JOB TIMEOUT fired three times; the
+# extra five minutes each time are the runner's cancellation grace, not queue
+# time. Read the closest job annotation before diagnosing a `cancelled`
+# conclusion as a concurrency event: `cancelled` is ALSO how GitHub reports a
+# job that exceeded `timeout-minutes`.
+#
+# What that means for the next reader: if `Desktop Tests` fails to finish, the
+# question is "does the suite fit its ceiling", not "who cancelled it". Do not
+# raise the ceiling to make a cancellation go away, and do not delete this
+# concurrency block to make a long run survive - neither changes what passes.
+#
+# `github.sha` for `main`: a push to `main` is the CI record for that merge
+# commit, and it must never be evicted. A shared per-ref group permits one run
+# in progress and ONE pending one; a third cancels the pending one. Measured
+# here on 2026-10-20: five `push`-to-`main` runs were cancelled with ZERO jobs
+# ever created (39478148883, 39484455334, 39485359664, 39497368882,
+# 39510898400), each one's cancellation instant equal to the next `main` run's
+# creation instant - five merged commits with no CI record in one afternoon.
+# Giving every `main` commit its own group removes the eviction entirely.
+#
+# THE COST, stated so it is not rediscovered as a latency bug: `main` runs are
+# no longer serialized, so N merges now start N full job sets at once. The
+# trade is deliberate - the alternative is losing a merge's CI record - and the
+# saturation figures at the top of this file (26-28 runs in flight, 53-118 jobs
+# queued, median pending age 25.8 minutes) are the reason to answer a latency
+# complaint with sharding or a queue, never by re-sharing this group.
+#
+# The group key is identical to the one the backend repository carries in its
+# own `ci.yml` (6f8cae2e35). The event narrowing has no backend counterpart:
+# that file still runs `cancel-in-progress: true`, so `opened` and `reopened`
+# do cancel there. "Aligning with the backend" must not erase the second half.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.ref == 'refs/heads/main' && github.sha || 'shared' }}
+  cancel-in-progress: ${{ github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action == 'synchronize') }}
 
 jobs:
   # Classifies this diff and exposes one flag per job, so a pull request that
@@ -76,6 +169,7 @@ jobs:
       unit: ${{ steps.classify.outputs.unit }}
       bytecode: ${{ steps.classify.outputs.bytecode }}
       evidence: ${{ steps.classify.outputs.evidence }}
+      i18n: ${{ steps.classify.outputs.i18n }}
       runtime_deps: ${{ steps.classify.outputs.runtime_deps }}
       audit: ${{ steps.classify.outputs.audit }}
       pack: ${{ steps.classify.outputs.pack }}
@@ -236,6 +330,63 @@ jobs:
       # against real scratch repositories and the same biome.
       - name: Check the scripts scope gate's own cases
         run: node --test scripts/check-scripts-lint.test.mjs
+
+  # `i18n/languages.json` promises every shipped language carries every English
+  # key, and `i18n/coverage-allowance.json` is only shrink-only if something
+  # CHECKS it at merge time. Before this job the whole policy was a `package.json`
+  # script nothing invoked, so the promise was documentation. The job runs the
+  # same catalogue and coverage gates a developer runs through `pnpm check-i18n`,
+  # plus the base-aware added-literal guard. Both diff-aware halves receive the
+  # base ref their comparisons need.
+  #
+  # THAT BASE IS `HEAD^1`, NOT `github.event.pull_request.base.sha`, for the
+  # reason the `lint:scripts` step above records: Actions checks out the
+  # recomputed `refs/pull/N/merge`, whose first parent is the base branch as of
+  # this run, while the payload's SHA is frozen when the event fires. So
+  # `fetch-depth: 2` is all this job needs - and on a push to `main`, `HEAD^1` is
+  # the commit before the merge, so the comparison still runs there rather than
+  # degrading to `origin/main` (which a push checkout may not carry at all).
+  #
+  # The classifier selects catalogue changes through `i18n`; `types` also turns
+  # this job on for renderer/source diffs so the added-literal guard sees them.
+  # Both flags use the workflow's fail-closed empty-output convention.
+  i18n-coverage:
+    name: Language Coverage
+    needs: [changes]
+    if: >-
+      !cancelled() &&
+      (needs.changes.outputs.i18n != 'false' ||
+      needs.changes.outputs.types != 'false')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check the catalogues, the scanner, the ledger and context parity
+        run: pnpm check-i18n:catalogues
+
+      - name: Check newly added literal copy against the pull request base
+        run: pnpm check-i18n:added-strings --base "$(git rev-parse HEAD^1)"
+
+      - name: Check language coverage against the pull request base
+        run: pnpm check-i18n:coverage --allowance-base "$(git rev-parse HEAD^1)"
 
   runtime-deps:
     # What the packaged app ships as node_modules is decided entirely by
@@ -422,13 +573,46 @@ jobs:
     # UNMEASURED and out of scope here. Nothing else changes: the job still runs
     # the suite once, fails on any red, and the whole-tree count assertions
     # stand.
-    name: Desktop Tests
+    # Three file-count partitions add capacity, not a guaranteed runtime balance.
+    # Every VM retains the existing concurrency/memory/lane protections.
+    name: Desktop Tests shard (${{ matrix.shard }}/3)
     needs: [changes]
     if: >-
       !cancelled() &&
       needs.changes.outputs.unit != 'false'
     runs-on: ubuntu-latest
+    # BACK TO 50 AFTER A ONE-DAY RAISE TO 75 on 2026-10-25, because the raise
+    # turned out to compensate for a defect rather than for a slow suite.
+    #
+    # The three shard-2 cancellations that prompted the raise were caused by a
+    # stall: `scripts/completion-view-ack.test.mjs` imported two esbuild bundles
+    # as `data:text/javascript;base64,...` specifiers, and a diagnostic naming
+    # those specifiers dumped the whole bundle into one 8,264,707-byte log line.
+    # #1407 (d52be1696c) removed that: its own report says this is not a proven root
+    # cause, and the measured pair is 402,575 B -> 163 B for the diagnostic, while
+    # 8,264,707 B is the size of the line the cancelled CI run actually wrote.
+    # Shard 2 then completed in 17m55s, and the runs either side of the fix
+    # measured 25m14s / 15m18s / 15m24s - all inside the ORIGINAL 50-minute cap.
+    #
+    # Output volume alone is not the trigger: the same shard still emits 3.93 MB
+    # `data:` lines from `link-actions.test.mjs` and finishes fine. The raise is
+    # reverted rather than kept as unexplained headroom, because a raised ceiling
+    # makes the next stall take 75 minutes to fail and produces the same
+    # unreadable log. If a future run hits 50, read the log before raising this
+    # again - the bound was doing its job.
+    #
+    # THE GUARD IS THE `Scan the suite log for payload lines` STEP BELOW, not a
+    # larger number: the finding was a multi-megabyte line, and a ceiling cannot
+    # name one.
     timeout-minutes: 50
+
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2]
+    env:
+      DESKTOP_SHARD_INDEX: ${{ matrix.shard }}
+      DESKTOP_REQUESTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
 
     steps:
       - name: Checkout code
@@ -448,6 +632,19 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # ITS OWN PROCESS, BEFORE THE BIG SUITE, and both halves are the fix.
+      # This suite bundles the shipped renderer with esbuild and drives it in
+      # jsdom; inside `pnpm test:desktop` its peak landed on the files already
+      # resident in the lane's single process group and the group was killed at
+      # 9.7 GB against the 7.8 GB budget, while main's suite passes at 851aea1.
+      # A separate step runs it once, releases the memory when the process
+      # exits, and keeps it a gate - it is NOT dropped, and a red suite still
+      # fails this job before the desktop suite starts.
+      - name: Run tag dialog tests
+        if: ${{ matrix.shard == 0 }}
+        timeout-minutes: 10
+        run: pnpm test:tag-dialogs
+
       # Native QA on the shared development host must not require another local
       # whole-renderer build. Reuse this existing, independently eligible job:
       # unlike pack it does not depend on typecheck succeeding. The artifact is
@@ -455,7 +652,7 @@ jobs:
       # dependencies are included; OAuth placeholders deliberately cannot log in.
       - name: Build plain-JS bundle for isolated native QA
         id: qa_bundle
-        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && matrix.shard == 0 }}
         timeout-minutes: 10
         env:
           LOCAL_OPERATOR_UI_NO_BYTECODE: 'true'
@@ -506,7 +703,7 @@ jobs:
           NODE
 
       - name: Upload isolated native QA bundle
-        if: ${{ !cancelled() && github.event_name == 'pull_request' && steps.qa_bundle.outcome == 'success' }}
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && steps.qa_bundle.outcome == 'success' && matrix.shard == 0 }}
         uses: actions/upload-artifact@v4
         with:
           name: ui-qa-bundle-${{ github.event.pull_request.number }}-${{ github.run_id }}
@@ -516,6 +713,14 @@ jobs:
 
       - name: Run the desktop suite and assert it actually ran
         id: desktop_suite
+        # A STEP ceiling below the job's, because a job cancelled at its own
+        # `timeout-minutes` runs no further steps: without this, the payload
+        # scan below is skipped in exactly the case it exists for. A step
+        # timeout kills this step's process and the job continues, so a stall
+        # ends at 45 minutes and the scan reads the truncated tee file. 45 is
+        # ~1.9x the slowest measured shard (23.9 minutes, run 40182194704) and
+        # leaves the job's last five minutes for the scan.
+        timeout-minutes: 45
         # ONE run, not two. This job used to invoke `pnpm test:desktop` twice:
         # once for its exit status and again inside its own count assertions,
         # which doubled the dominant cost of the job for no signal. `pipefail`
@@ -564,14 +769,19 @@ jobs:
           # while keeping `SUITE_RC=$?` restored the entire original defect
           # (measured: no rc line, no TAP summary, no annotations) and every
           # string pin still matched the body.
+          SUITE_STARTED=$SECONDS
           SUITE_RC=0
-          pnpm test:desktop 2>&1 | tee /tmp/desktop-tests.log || SUITE_RC=$?
+          # Local pnpm test:desktop remains the full inventory; this wrapper
+          # parses that exact command and forwards one partition to its runner.
+          CHECKOUT_SHA=$(git rev-parse HEAD)
+          node scripts/desktop-test-shards.mjs run --head "$DESKTOP_REQUESTED_HEAD" --checkout "$CHECKOUT_SHA" --index "$DESKTOP_SHARD_INDEX" 2>&1 | tee /tmp/desktop-tests.log || SUITE_RC=$?
           # `|| true` so a log with no counts still reaches the guards below
           # instead of tripping errexit on the way - the arms below are what name
           # that case, and they cannot name it from here if grep kills the step.
           PASS=$(grep -E '^# pass ' /tmp/desktop-tests.log | awk '{print $3}' || true)
           FAIL=$(grep -E '^# fail ' /tmp/desktop-tests.log | awk '{print $3}' || true)
           echo "desktop suite: rc=$SUITE_RC pass=$PASS fail=$FAIL"
+          echo "elapsed=$((SECONDS - SUITE_STARTED))" >> "$GITHUB_OUTPUT"
           # WHERE THIS ACTUALLY REACHES A READER, stated rather than implied:
           # everything printed below is written AFTER the suite finishes, so it
           # lands at the very END of the job log (measured: byte 37,747,599 of
@@ -622,6 +832,46 @@ jobs:
             exit 1
           fi
 
+      # A CEILING CANNOT NAME A MULTI-MEGABYTE LINE, so this step does. It is
+      # deliberately a SEPARATE step: the suite step's body is extracted and run
+      # by `scripts/ci-scope.test.mjs`, and a check that has to fail on its own
+      # must not change what that pin executes.
+      #
+      # WHAT IT CATCHES, measured rather than imagined: the 8,264,707-byte line
+      # that stalled this shard at the 50-minute cap (run 40169799731), and the
+      # 3,933,710/3,933,712-byte `at probeTarget(s) (data:...)` frames that a
+      # GREEN run still carried (run 40181028498, `scripts/link-actions.test.mjs`).
+      # Each finding names the test file and the nearest subtest, which is the
+      # thing nobody could do from a truncated log.
+      #
+      # WHAT IT CANNOT DO, so nobody expects it to: a job cancelled at
+      # `timeout-minutes` runs no further steps, so a run that stalls on its own
+      # log output is never scanned here. This names the class for every run that
+      # survives; the prevention is the emitter fix (a bundle imported from a
+      # file, not a data: URI), not this scan.
+      #
+      # THE THRESHOLD IS PER LINE (1 MiB), never on total size: a suite log is
+      # several megabytes and entirely readable. `data:` URIs are refused at any
+      # size, because a 900 KB base64 payload is as useless to a reader as a 4 MB
+      # one.
+      - name: Scan the suite log for payload lines
+        if: ${{ always() && steps.desktop_suite.outcome != 'skipped' }}
+        run: node scripts/ci-log-guard.mjs check /tmp/desktop-tests.log --max-line-bytes 1048576
+
+      - name: Record successful shard coverage
+        if: ${{ steps.desktop_suite.outcome == 'success' }}
+        run: |
+          node scripts/desktop-test-shards.mjs receipt --head "$DESKTOP_REQUESTED_HEAD" --checkout "$(git rev-parse HEAD)" --index "$DESKTOP_SHARD_INDEX" --log /tmp/desktop-tests.log --rc 0 --elapsed "${{ steps.desktop_suite.outputs.elapsed }}" --output "$RUNNER_TEMP/shard-$DESKTOP_SHARD_INDEX.json"
+
+      - name: Upload shard coverage receipt
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-shard-proof-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard }}
+          path: ${{ runner.temp }}/shard-${{ matrix.shard }}.json
+          if-no-files-found: error
+          retention-days: 7
+
       # gh's rendered job log can omit the middle of a large run, including
       # its real assertions and TAP summary. Keep the exact single-run tee file
       # independently retrievable on failure; no rerun or environment dump.
@@ -629,7 +879,7 @@ jobs:
         if: ${{ always() && (steps.desktop_suite.outcome == 'failure' || steps.desktop_suite.outcome == 'cancelled') }}
         uses: actions/upload-artifact@v4
         with:
-          name: desktop-suite-log-${{ github.run_id }}-${{ github.run_attempt }}
+          name: desktop-suite-log-${{ github.run_id }}-${{ github.run_attempt }}-shard-${{ matrix.shard }}
           path: /tmp/desktop-tests.log
           if-no-files-found: error
           retention-days: 7
@@ -647,6 +897,44 @@ jobs:
             exit 1
           fi
           echo "Working tree clean after the desktop suite."
+
+  # Keep the required check's display name stable while workers gain a matrix.
+  # A matrix aggregate status alone cannot prove every file ran: three exact,
+  # same-head receipts must reconstruct the inventory without overlap or gaps.
+  desktop-tests-result:
+    name: Desktop Tests
+    needs: [changes, test]
+    if: >-
+      always() &&
+      (needs.changes.outputs.unit != 'false' || needs.changes.result != 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      DESKTOP_REQUESTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+      UNIT_SCOPE: ${{ needs.changes.outputs.unit }}
+      CLASSIFIER_RESULT: ${{ needs.changes.result }}
+      WORKER_RESULT: ${{ needs.test.result }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reject unsuccessful or unknown classification and workers
+        run: |
+          test "$CLASSIFIER_RESULT" = success
+          test "$UNIT_SCOPE" = true
+          test "$WORKER_RESULT" = success
+      - name: Download this run attempt's shard proofs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-shard-proof-${{ github.run_id }}-${{ github.run_attempt }}-*
+          path: ${{ runner.temp }}/desktop-shard-receipts
+          merge-multiple: false
+      - name: Prove exact complete shard coverage
+        run: |
+          node scripts/desktop-test-shards.mjs verify --head "$DESKTOP_REQUESTED_HEAD" --checkout "$(git rev-parse HEAD)" --unit "$UNIT_SCOPE" --classifier "$CLASSIFIER_RESULT" --workers "$WORKER_RESULT" --run-id "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT" --receipts "$RUNNER_TEMP/desktop-shard-receipts"
 
   # The check that would have stopped v0.35.0 at the pull request.
   #
@@ -716,45 +1004,50 @@ jobs:
           fi
           echo 'Main bundle compiled to V8 bytecode.'
 
-  # The frame sweep - `pnpm check-evidence` - which NO workflow ran until this
-  # job existed.
+  # THE TRACKED EVIDENCE STRUCTURE - the half of the evidence gate a fresh
+  # checkout can still answer.
   #
-  # What it asserts: every committed FRAME under `docs/evidence/` whose NAME
-  # names a theme is a picture of that theme, whatever container it is packed in
-  # (the walk judges by name, not by extension), and the frames that name no
-  # theme are counted by `manifest.json`'s `unjudgedFrames` rather than skipped.
-  # The colour covering the most pixels must sit within DELTA-E00 25 of one of its
-  # theme's four grounds, no single colour may cover more than 98.5% of the frame,
-  # the manifest's counts must agree with the tree, and every `supplementary`
-  # entry must say where it came from. It is the only check in this repository
-  # that can see a frame that is of NOTHING.
+  # WHAT IT ASSERTS: no frame container is committed under `docs/evidence/`, and
+  # nothing at all is tracked in the ignored `docs/evidence-frames/` (the split's
+  # invariant); `manifest.json` parses, every `supplementary` set carries its
+  # provenance, a repository-relative path, no duplicate and non-negative integer
+  # counts; the proof artefacts the runbook names are still tracked; and the
+  # counts that need no pixels - `surfaces`/`themes` against
+  # `HEAD:scripts/capture-evidence.mjs` and the `partialCapture` tallies -
+  # through `stampFailures` itself.
   #
-  # WHY IT IS HERE RATHER THAN IN THE DESKTOP SUITE. That suite already holds the
-  # manifest's OTHER half - `scripts/evidence-manifest.test.mjs` checks the stamps
-  # and the counts that need no image, runs inside `pnpm test:desktop`, and is
-  # what caught a stale stamp that once reached `main`. The sweep is the half that
-  # decodes every frame, so it is its own job gated on its own flag and the
-  # classifier keeps it off every diff that cannot move a verdict. It ran in
-  # neither place, and that absence was not a quiet gap: 20 findings sat on `main`
-  # - 19 frames whose filename named no palette, and one `supplementary` entry
-  # with no `why` - under a green CI. A gate that is green by absence is worse
-  # than no gate, because the absence reads as a pass.
+  # WHAT ACTUALLY CATCHES A RIG THAT DEFAULTS BACK: this gate catches a COMMITTED
+  # frame, on the PR that commits it. A regressed rig writes an UNTRACKED file
+  # into an ignored path, and no diff - so no job - ever sees an untracked write;
+  # the net there is the `.gitignore` leftover rules, which keep an unforced
+  # `git add -A` from adding it, plus this assertion refusing the commit if one is
+  # force-added. Do not read this job as watching the working tree.
   #
-  # MEASURED COST, so nobody discovers it from a timeout: 15,532 frames in 4m53s
-  # on an M-series laptop at load 20 (one process; the decode is in-process and
-  # sequential, ~19ms a frame). A hosted runner is slower per core, so the ceiling
-  # is 60 minutes - a bound, not an expectation. Needs python3 (the sweep admits
-  # one run per machine through `scripts/evidence-run-guard.py`, which uses POSIX
-  # `flock`) and `sharp` (how the frames are decoded; a devDependency, hence the
-  # install below). On a fresh runner the lease is uncontended.
+  # WHAT IT DOES NOT ASSERT: that a frame is a picture of its theme. That is the
+  # pixel sweep, `pnpm check-evidence`, and it MOVED to the release path when the
+  # frames became rig output: a fresh runner checks out no frames at all, so a
+  # job decoding them here would either fail on every evidence-touching PR or
+  # pass over zero frames - the green-by-absence its predecessor existed to
+  # remove. The release owner runs the sweep on a captured checkout before the
+  # tag and records the verdict (AGENTS.md, "the window, and the release owner's
+  # procedure", step 2b).
+  #
+  # THIS IS A TRADE, NOT A COVERAGE CLAIM. Pixel verification used to run on
+  # every evidence-touching PR and now runs once per release, on one captured
+  # machine. The structural gate is what CI keeps; do not read its green as the
+  # sweep's green.
+  #
+  # WHY THE NAME CHANGED: "Evidence Frames" described a job that decoded frames.
+  # This one never does, and a name that says Frames while checking structure is
+  # the misleading-absence this repository keeps having to close.
   evidence:
-    name: Evidence Frames
+    name: Evidence Structure
     needs: [changes]
     if: >-
       !cancelled() &&
       needs.changes.outputs.evidence != 'false'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 10
 
     steps:
       - name: Checkout code
@@ -774,35 +1067,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # The gate's own exit status is the verdict: a frame that is not a picture
-      # of its theme, an unaccounted frame count, or a declaration that does not
-      # say where it came from each exits 1 with a `FAIL` line naming the file.
-      # `tee` is deliberately absent - the sweep's output IS the evidence, and
-      # piping it through a filter would put a process between the reader and the
-      # lines the gate prints.
-      #
-      # WHAT THIS JOB DOES NOT CHECK, named here because a skipped check is a
-      # claim and this file is where the scope is declared rather than restated
-      # per run: the CITATION half - whether every commit the manifest cites still
-      # exists and is reachable from a ref. `actions/checkout` here is ONE COMMIT
-      # DEEP, so every citation in the file reads as missing at once and this clone
-      # cannot answer the question at all; judging it made the first run of this
-      # job 111 findings on a tree that is clean locally, and printing a stand-down
-      # on 100% of runs would be a standing excuse that reads as a covered check.
-      #
-      # AND ON THIS FLEET IT IS CHECKED NOWHERE TODAY - not in CI and NOT LOCALLY
-      # either, which is the part "local-only" was understating: every checkout
-      # here is shallow too (`git rev-parse --is-shallow-repository` is `true` in
-      # this repository's own), so a developer's `pnpm check-evidence` stands the
-      # half down exactly as this job does, and `evidence-manifest.test.mjs`'s
-      # ancestry test SKIPS here for the same reason. Four citations are known to
-      # be reachable from no remote ref today, and that is the consequence. What
-      # does answer it: `git fetch --unshallow` before the run, and the synthetic
-      # manifests in `evidence-manifest.test.mjs`. A green run, local or here, is
-      # not evidence about the citations. The step name carries the same scope, so
-      # it travels with the job's own report.
-      - name: Sweep the committed frames (citations unchecked on shallow clones)
-        run: pnpm check-evidence
+      # The gate's exit status is the verdict; every assertion prints one `FAIL`
+      # line naming the path. `stampFailures` is asked with its frames tree
+      # absent, so it stands down from the pixel half - the release step owns
+      # that - rather than reporting a clean tree it never read.
+      - name: Assert the tracked evidence structure (the pixel sweep runs at release)
+        run: node scripts/check-evidence-structure.mjs
 
   audit:
     name: Security Audit
@@ -931,6 +1201,33 @@ jobs:
           VITE_MICROSOFT_CLIENT_ID: 00000000-0000-4000-8000-000000000001
           VITE_MICROSOFT_TENANT_ID: 00000000-0000-4000-8000-000000000002
 
+          # THE HEAP CEILING `publish.yml` ALREADY CARRIES, for the same build.
+          # `npm pack` runs the prepack script (`pnpm run build:npm` ->
+          # `electron-vite build`), and on Node 22's default ~2 GB heap the renderer
+          # pass aborts on macos-latest: run 40628162002 (8c5c5b23, 2026-10-28
+          # 03:41Z), job 122634096939, logged `7694 modules transformed`, then
+          # `rendering chunks...` and `Mark-Compact 1961.6 (2075.3) -> 1930.9
+          # (2050.0) MB`, `FATAL ERROR: Ineffective mark-compacts near heap limit
+          # Allocation failed - JavaScript heap out of memory`, `Abort trap: 6` on
+          # `npm pack`, exit 134. Same signature in runs 40625952174 (a22fd4bf, job
+          # 122625611670) and 40567859580 (cbc7ddbe, job 122430145666), on Node
+          # 22.23.4 and 22.23.3 respectively.
+          #
+          # The cause is not proven: the last green main run of this same job
+          # (40594559669, 1a707a36) packed a 36.3 MB unpacked tarball through this
+          # same path, so either the renderer's growth erodes the default heap's
+          # headroom or the runner draw varies. 4096 MB is a CEILING, not an
+          # allocation: it sits inside the ~7 GB macOS runner and only stops the
+          # default limit aborting a build that would otherwise fit.
+          #
+          # Bound on this step, not the job, because only this step builds: the npx
+          # launch and asks-regression steps below run the packed app and keep a
+          # user's environment. The ubuntu leg shares the step and stays under the
+          # default 2 GB (job 122634096771 succeeded in that run), so the ceiling
+          # only widens headroom there. This workflow sets no other NODE_OPTIONS
+          # for this to overwrite.
+          NODE_OPTIONS: '--max-old-space-size=4096'
+
         # npm pack triggers the prepack script, which builds the npm-channel
         # bundle (plain JS, no V8 bytecode). Do not add a separate pnpm build
         # here: it would emit bytecode that prepack then overwrites, which is
@@ -1026,6 +1323,53 @@ jobs:
           git cat-file -e "$CONTROL^{commit}" || git fetch --no-tags --depth=1 origin "$CONTROL"
           echo "asks regression control (merge base of this PR): $CONTROL"
           ASKS_CONTROL_OVERRIDE="$CONTROL" node scripts/asks-app-regression.mjs
+
+      # THE POSITIVE FOREGROUND PROOF FOR `notifications.read`, AND THE ONLY
+      # SHOWN WINDOW IN THIS REPOSITORY. A read means "a human saw this", so the
+      # main process refuses it unless the real window is focused; every other
+      # scene launches headless and therefore proves only the refusal. This step
+      # is the other half: a genuinely shown window on this EPHEMERAL
+      # GitHub-HOSTED macOS runner's own desktop (never a self-hosted runner,
+      # never the operator's machine - `resolvedWindowMode` and the scene both
+      # refuse anything else), a trusted input on a real row, main's real guard
+      # letting it through, and the PINNED core backend's SQLite showing exactly
+      # the tested revision read while an unrelated row and a revision raced
+      # behind the click stay unread. A runner with no interactive desktop FAILS
+      # here rather than falling back to headless, because a headless "success"
+      # would be a false positive.
+      #
+      # The backend is the pinned core revision, installed from its own extra and
+      # run on loopback under a throwaway HOME/config with a synthetic bearer.
+      # Nothing here talks to a provider or an operator account.
+      - name: Prove the positive foreground notification read on a shown window
+        id: notifications_native
+        if: runner.os == 'macOS' && github.event_name == 'pull_request'
+        timeout-minutes: 12
+        env:
+          LOCAL_OPERATOR_UI_NATIVE_SCENE: notifications
+          LOCAL_OPERATOR_CORE_REF: 1df606c6caf73a4087e1c2ef562f88ee8d9fa000
+          VITE_DISABLE_BACKEND_MANAGER: 'true'
+          LOCAL_OPERATOR_UI_NO_BYTECODE: 'true'
+          LOCAL_OPERATOR_UI_TELEMETRY: 'off'
+        run: |
+          set -euo pipefail
+          CORE_VENV="$RUNNER_TEMP/notifications-core-venv"
+          python3 -m venv "$CORE_VENV"
+          "$CORE_VENV/bin/pip" install --quiet --upgrade pip
+          "$CORE_VENV/bin/pip" install --quiet \
+            "local-operator[server] @ git+https://github.com/damianvtran/local-operator@${LOCAL_OPERATOR_CORE_REF}"
+          LOCAL_OPERATOR_CORE_BIN="$CORE_VENV/bin/local-operator" \
+          LOCAL_OPERATOR_CORE_PYTHON="$CORE_VENV/bin/python" \
+          node scripts/notifications-app-scene.mjs
+
+      - name: Upload notifications native foreground evidence
+        if: ${{ always() && steps.notifications_native.conclusion != 'skipped' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: notifications-native-${{ github.event.pull_request.number }}-${{ github.run_id }}
+          path: artifacts/notifications-native/
+          if-no-files-found: error
+          retention-days: 7
 
       # A run that completed must have produced frames, or this step fails red.
       # The step above being SKIPPED (an earlier gate went red) is not a missing

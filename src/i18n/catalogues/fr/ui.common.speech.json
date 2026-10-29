@@ -1,0 +1,18 @@
+{
+	"ui.common.speech.speak_control.loading_speech_press_again_to_cancel": "Chargement de la lecture vocale. Appuyez à nouveau pour annuler.",
+	"ui.common.speech.speak_control.replay_speech": "Relire à voix haute",
+	"ui.common.speech.speak_control.speak_aloud": "Lire à voix haute",
+	"ui.common.speech.speak_control.stop": "Arrêter",
+	"ui.common.speech.speak_control.reading_the_first_characters_the_rest_is_not_read_aloud": "Lecture des {tolocalestring} premiers caractères. Le reste n’est pas lu à voix haute.",
+	"ui.common.speech.control.checking": "Vérification de votre connexion à Radient…",
+	"ui.common.speech.control.recording_sign_in": "Activez l’enregistrement en vous connectant à Radient dans les paramètres",
+	"ui.common.speech.control.recording_unknown": "Votre connexion à Radient n’a pas pu être vérifiée ; l’enregistrement est indisponible pour le moment",
+	"ui.common.speech.control.recording_offline": "L’enregistrement est indisponible tant que Local Operator est hors ligne",
+	"ui.common.speech.control.speaking_sign_in": "Activez la lecture à voix haute en vous connectant à Radient dans les paramètres",
+	"ui.common.speech.control.speaking_unknown": "Votre connexion à Radient n’a pas pu être vérifiée ; la lecture à voix haute est indisponible pour le moment",
+	"ui.common.speech.control.speaking_offline": "La lecture à voix haute est indisponible tant que Local Operator est hors ligne",
+	"ui.common.speech.settings.checking": "Vérification de la lecture à voix haute sur cet ordinateur…",
+	"ui.common.speech.settings.sign_in": "Lecture à voix haute indisponible : exécutez /login radient ou enregistrez une clé de fournisseur dans la section Fournisseurs de modèles",
+	"ui.common.speech.settings.unknown": "Lecture à voix haute indisponible. Connexion à Radient ou clé de fournisseur requise",
+	"ui.common.speech.settings.offline": "Local Operator est hors ligne ; la lecture à voix haute est donc indisponible pour le moment"
+}

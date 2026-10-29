@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { CanonicalAudio, soundOwnerId } from "./canonical-audio";
 import type { SoundBatchItem } from "./sound-batch-model";
@@ -17,6 +19,7 @@ export function SoundBatch({
 	summary: string;
 	scope: AttachmentScope | null;
 }) {
+	useI18nLocale();
 	return (
 		<div
 			data-sound-batch=""
@@ -59,7 +62,7 @@ export function SoundBatch({
 							/>
 						) : (
 							<p className={cn("text-meta text-ink-muted")}>
-								Audio attachment unavailable.
+								{t("ui.chat.canonical.sound.batch_attachment_unavailable")}
 							</p>
 						)}
 						<p className={cn("text-meta text-ink-dim")}>

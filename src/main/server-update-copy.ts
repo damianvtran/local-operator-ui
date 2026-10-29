@@ -6,9 +6,18 @@
  * guard test both read: the sentence the panel shows for a failed attempt is composed
  * here, and nothing downstream may classify, truncate or replace it. Keeping them in
  * `update-service.ts` would put a module that imports Electron between the test and the
- * string it has to hold to that promise, so they live here, import nothing, and are
- * re-exported from the service for callers that already have it.
+ * string it has to hold to that promise, so they live here, and are re-exported from
+ * the service for callers that already have it.
+ *
+ * THE ONE IMPORT IS THE CATALOGUE RUNTIME, not Electron: `src/i18n/` is
+ * framework-free by design (RFC §3.2), so `t()` costs a test `intl-messageformat`
+ * and no window. The sentences are returned in whatever locale the main process
+ * resolved (see `main-locale.ts`), and each arm is its own key rather than a
+ * version clause spliced into one, so a translation can order "{version}" the
+ * way its own language needs.
  */
+
+import { t } from "../i18n";
 
 /**
  * What the reader can actually DO when an attempt failed, in the app's voice.
@@ -37,12 +46,46 @@ export function serverUpdateFailureRemedy(input: {
 		input.rebuildRoute &&
 		/REFUSING to release a stale ref/i.test(input.diagnosis)
 	) {
-		return "This checkout is behind its remote, which is what `lop-update` refused to build from: bring the checkout up to date, and the next press here will build it.";
+		return t("ui.updates.panel.server.behind.remedy");
 	}
 	if (input.rebuildRoute) {
-		return "A rebuild changes this install only once it succeeds, so nothing was restarted.";
+		return t("ui.updates.panel.server.rebuild.remedy");
 	}
-	return "Nothing was restarted: the build that was serving is the build still serving.";
+	return t("ui.updates.panel.server.norestart.remedy");
+}
+
+/**
+ * The installer's output without the cause sentence it duplicates.
+ *
+ * WHY THIS EXISTS (review F2). The updater prints its verdict to stderr as well
+ * as into the report, so `installDiagnosisLines` already returns that sentence on
+ * a by-hand failing run. The panel now shows the cause in its own primary line;
+ * leaving the same sentence in the raw block repeats it in a second register and
+ * makes the block look like the diagnosis. The line is dropped only when it is
+ * the report's own `error`; every other line of the installer's output survives,
+ * because the raw block is the fallback record.
+ *
+ * An empty result is a real answer: it means the stream carried nothing but the
+ * cause, so the caller sends no block rather than an empty one.
+ */
+export function stripFailureSentence(
+	output: string,
+	error: string | null,
+): string {
+	const needle = error?.trim();
+	if (!needle) return output;
+	/*
+	 * WHOLE LINES ONLY (review round 2, R2-F1). `includes` deleted any line that
+	 * happened to contain the verdict as a substring - a serve warning that quoted
+	 * it lost its surrounding context - and a stream whose only line was the cause
+	 * became empty. The duplicate is the line that IS the sentence; every other
+	 * line, including one that mentions it, is the reader's record.
+	 */
+	return output
+		.split("\n")
+		.filter((line) => line.trim() !== needle)
+		.join("\n")
+		.trim();
 }
 
 /**

@@ -198,6 +198,8 @@ test("the reserved inventory is exactly the decoded list", () => {
 		"primary+s",
 		"primary+shift+a",
 		"primary+shift+down",
+		// The focused conversation's Tags popover (sidebar tags v3, D8).
+		"primary+shift+l",
 		"primary+shift+p",
 		"primary+shift+s",
 		"primary+shift+up",

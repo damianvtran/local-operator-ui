@@ -473,11 +473,8 @@ export function fileRowParts(file: SupplementFile): {
 
 /**
  * One count clause, singular/plural: `1 file` / `2 files`, `1 graphic` /
- * `2 graphics` (design D1's copy table). Its remaining caller is the condensed
- * form's graphics-only clause; the files arms paint the rows and the image grid
- * instead since the 2026-10-16 rework, so no files clause is built here any
- * more — a second spelling of one set's count beside its own rows is the
- * duplication that rework removed.
+ * `2 graphics` (design D1's copy table). Reveal copy reuses this noun/count
+ * grammar; it does not change the overflow tail's separate Show all meaning.
  */
 export function countClause(count: number, noun: "file" | "graphic"): string {
 	const bounded = Math.max(0, Math.floor(count));
@@ -485,9 +482,25 @@ export function countClause(count: number, noun: "file" | "graphic"): string {
 }
 
 /**
- * The graphics disclosure's words: `Show all 2 graphics` — SINGULARIZED for one
- * (`Show all 1 graphic`), matching `moreText`'s own singular arm; the memo's
- * plural-only spelling was a defect against its sibling (UX round 1, U7).
+ * Closed copy names the budgeted head precisely: "Show 1 of 3 graphics" does
+ * not promise the off-budget tail. Open copy names the whole group being hidden,
+ * including a tail explicitly opened inside it. Equal counts keep the singular
+ * grammar ("Show 1 graphic") without an unnecessary "1 of 1".
+ */
+export function graphicRevealText(
+	count: number,
+	open: boolean,
+	headCount = count,
+): string {
+	if (open) return `Hide ${countClause(count, "graphic")}`;
+	return headCount < count
+		? `Show ${Math.max(0, Math.floor(headCount))} of ${countClause(count, "graphic")}`
+		: `Show ${countClause(count, "graphic")}`;
+}
+
+/**
+ * The overflow tail's own words: `Show all 2 graphics` — singularized for one
+ * (`Show all 1 graphic`), matching `moreText`'s singular arm (UX round 1, U7).
  */
 export function showAllText(count: number): string {
 	const bounded = Math.max(0, Math.floor(count));

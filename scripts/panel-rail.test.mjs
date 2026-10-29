@@ -55,6 +55,7 @@ const bundle = await build({
 			export { ChatHeader } from "./src/renderer/src/features/chat/components/chat-header";
 			export { AskDrawer } from "./src/renderer/src/features/chat/components/asks/ask-drawer";
 			export { Tooltip, TooltipProvider } from "./src/renderer/src/shared/components/ui/tooltip";
+			export { BrowserSafeTooltip } from "./src/renderer/src/shared/components/ui/browser-safe-tooltip";
 			export { ChatLayout } from "./src/renderer/src/shared/components/common/chat-layout";
 			export { InPanelRailHost, PanelRailHostContext } from "./${NAV}/panel-rail-host";
 			export { askRailLabels, browserRailLabels, canvasRailLabels, codeRailLabels, consoleRailLabels, PANEL_RAIL_ORDER } from "./${NAV}/panel-rail-model";
@@ -121,6 +122,7 @@ const {
 	overlapsBrowserView,
 	Tooltip,
 	TooltipProvider,
+	BrowserSafeTooltip,
 	ChatHeader,
 	AskDrawer,
 	ChatLayout,
@@ -353,6 +355,9 @@ const NO_PANES = {
 	isAskDrawerOpen: false,
 	askDrawerScope: "session",
 	askDrawerEvictedPane: null,
+	/* The liveness projection the pane publishes: a reset must not leave one cell's
+	   running terminal lighting the next cell's item. */
+	consoleLiveSurface: null,
 };
 const details = () => deriveRunDetails(fixtures.settled());
 
@@ -489,7 +494,10 @@ test("aria-pressed follows each of the six store flags, one at a time", async ()
 			["isCodeReviewPaneOpen", "code"],
 		]) {
 			reset(api);
-			await api.render(rail());
+			/* The console item's lit state follows LIVENESS, not the pane flag
+			   (operator report, 2026-10-21), so the cell that opens it must say a
+			   process is running - the prop chat-content derives from the pane. */
+			await api.render(rail(id === "console" ? { consoleLiveCount: 1 } : {}));
 			assert.deepEqual(api.pressed(), [], "nothing is lit with the slot empty");
 			api.store({ [flag]: true });
 			assert.deepEqual(api.pressed(), [id], `${flag} lights ${id} and only it`);
@@ -500,6 +508,78 @@ test("aria-pressed follows each of the six store flags, one at a time", async ()
 				);
 			}
 		}
+	});
+});
+
+test("the console item follows liveness, and an open history pane still toggles closed (U5)", async () => {
+	/*
+	 * THE OPERATOR'S REPORT (2026-10-21) AND ITS UX ROUND-1 CORRECTION (U5).
+	 *
+	 * Open on restored history: the item must NOT look active ("0 live"), and the
+	 * press is the pane's TOGGLE - it closes the pane the user is reading, because a
+	 * rail item is a door. The create-on-open rule belongs to the CLOSED state: a
+	 * press that opens an empty/history pane files `requestConsoleOpen`, and the pane
+	 * creates. A live console keeps the lit paint and the same close.
+	 */
+	await mount(async (api) => {
+		reset(api);
+		api.store({ isConsolePaneOpen: true, consoleLiveSurface: null });
+		await api.render(rail({ consoleLiveCount: 0 }));
+		assert.deepEqual(
+			api.pressed(),
+			[],
+			"an open pane with no running surface is not the active console",
+		);
+		/*
+		 * S5: the rail no longer carries a tooltip. A label opened LEFT would land on
+		 * the native browser page, and a tooltip may not take the page away (the
+		 * kind table), so the rail's accessible name is the channel. What this test
+		 * still owns is the PRESS: an unlit item on an open history pane closes it.
+		 */
+		await api.click(api.item("console"));
+		let state = useUiPreferencesStore.getState();
+		assert.equal(
+			state.isConsolePaneOpen,
+			false,
+			"the unlit item on an open history pane is the toggle that closes it",
+		);
+		assert.equal(
+			state.consoleOpenIntent,
+			null,
+			"closing is not a request for a new terminal",
+		);
+
+		// A CLOSED pane's press is the open that may create.
+		reset(api);
+		api.store({ isConsolePaneOpen: false, consoleLiveSurface: null });
+		await api.render(rail({ consoleLiveCount: 0 }));
+		await api.click(api.item("console"));
+		state = useUiPreferencesStore.getState();
+		assert.equal(state.isConsolePaneOpen, true, "a closed item opens the pane");
+		assert.equal(
+			state.consoleOpenIntent,
+			"session-1",
+			"and asks the pane for a terminal",
+		);
+
+		// And the live case is the lit toggle it always was.
+		reset(api);
+		api.store({
+			isConsolePaneOpen: true,
+			consoleLiveSurface: { sessionId: "session-1", count: 1 },
+		});
+		await api.render(rail({ consoleLiveCount: 1 }));
+		assert.deepEqual(
+			api.pressed(),
+			["console"],
+			"a running console is the active one",
+		);
+		await api.click(api.item("console"));
+		assert.equal(
+			useUiPreferencesStore.getState().isConsolePaneOpen,
+			false,
+			"the lit item is still the way to put a live console away",
+		);
 	});
 });
 
@@ -518,6 +598,9 @@ test("pressing an item claims the slot: the others are cleared, and a second pre
 			[],
 			"the lit item is also the way to close",
 		);
+		// The console's active treatment is liveness, so this door is judged in the
+		// state it is meant to be lit in: an open pane with a running surface.
+		await api.render(rail({ consoleLiveCount: 1 }));
 		await api.click(api.item("console"));
 		assert.deepEqual(api.pressed(), ["console"]);
 		assert.equal(
@@ -653,7 +736,6 @@ test("a claimed pane the route cannot draw lights NOTHING (the drawable-aware se
 		for (const [flag, id] of [
 			["isRunPanelOpen", "run"],
 			["isBrowserPaneOpen", "browser"],
-			["isConsolePaneOpen", "console"],
 			["isCanvasOpen", "canvas"],
 			["isCodeReviewPaneOpen", "code"],
 		]) {
@@ -662,6 +744,20 @@ test("a claimed pane the route cannot draw lights NOTHING (the drawable-aware se
 			await api.render(rail({ runDetails: null, sessionId: null }));
 			assert.deepEqual(api.pressed(), [id], `${flag} on a mounted draft`);
 		}
+		/*
+		 * THE CONSOLE IS THE EXCEPTION HERE, and it follows its own rule: the item is
+		 * active only while a terminal is RUNNING (operator report, 2026-10-21), and a
+		 * draft has no conversation to run one in. The pane still draws its notice; the
+		 * door just does not claim a live console.
+		 */
+		reset(api, DRAFT);
+		api.store({ isConsolePaneOpen: true });
+		await api.render(rail({ runDetails: null, sessionId: null }));
+		assert.deepEqual(
+			api.pressed(),
+			[],
+			"a draft has no live console, so the console door is not the active one",
+		);
 		reset(api, DRAFT);
 		api.store({ isAskDrawerOpen: true, askDrawerScope: "session" });
 		await api.render(rail({ runDetails: null, sessionId: null }));
@@ -716,7 +812,11 @@ test("a door pressed on a draft opens its pane, and the console files no open re
 			null,
 			"no conversation, so no console is requested",
 		);
-		assert.deepEqual(api.pressed(), ["console"]);
+		assert.deepEqual(
+			api.pressed(),
+			[],
+			"a draft has no live terminal, so the console item is not the active one",
+		);
 		for (const [id, flag] of [
 			["run", "isRunPanelOpen"],
 			["code", "isCodeReviewPaneOpen"],
@@ -1052,27 +1152,26 @@ test("the asks item is always present, and its labels carry the scope and the co
  * own keyboard path), because that is the string a reader actually gets - the
  * accessible name deliberately carries no verb (U2).
  */
-test("the asks item's tooltip verb follows its SCOPE while aria-pressed follows the slot (N1)", async () => {
+test("the asks item's NAME follows its SCOPE while aria-pressed follows the slot (N1)", async () => {
 	await mount(async (api) => {
 		reset(api);
 		await api.render(rail({ askCount: 2, askScope: "session" }));
-		const tooltip = () => api.$('[role="tooltip"]')?.textContent ?? null;
+		// S5: the visible tooltip is gone (it would open over the page), so the
+		// scope the verb used to state lives in the accessible name.
+		const name = () => api.item("ask").getAttribute("aria-label") ?? "";
 		act(() => api.item("ask").focus());
 		await frames(30);
-		assert.equal(
-			tooltip(),
-			"Open asks — This conversation, 2 waiting",
-			"closed: the item offers the open",
-		);
+		assert.match(name(), /This conversation/);
+		assert.match(name(), /2 waiting/);
 		assert.equal(api.item("ask").getAttribute("aria-pressed"), "false");
 
 		/* The carried cross-scope state: a fleet drawer is up over this conversation. */
 		api.store({ isAskDrawerOpen: true, askDrawerScope: "fleet" });
 		await frames(2);
-		assert.equal(
-			tooltip(),
-			"Open asks — This conversation, 2 waiting",
-			"cross-scope: the press re-scopes, so the verb stays the action it will take",
+		assert.match(
+			name(),
+			/This conversation/,
+			"cross-scope: the name states the scope the press will act on",
 		);
 		assert.equal(
 			api.item("ask").getAttribute("aria-pressed"),
@@ -1083,17 +1182,17 @@ test("the asks item's tooltip verb follows its SCOPE while aria-pressed follows 
 		/* Same scope: the press closes this scope's drawer. */
 		api.store({ isAskDrawerOpen: true, askDrawerScope: "session" });
 		await frames(2);
-		assert.equal(
-			tooltip(),
-			"Close asks — This conversation, 2 waiting",
-			"same-scope: the press closes, and now the verb says so",
+		assert.match(
+			name(),
+			/This conversation, 2 waiting/,
+			"same-scope: the name still states the scope",
 		);
 		assert.equal(api.item("ask").getAttribute("aria-pressed"), "true");
 
 		/* Closed again. */
 		api.store({ isAskDrawerOpen: false });
 		await frames(2);
-		assert.equal(tooltip(), "Open asks — This conversation, 2 waiting");
+		assert.match(name(), /This conversation, 2 waiting/);
 		assert.equal(api.item("ask").getAttribute("aria-pressed"), "false");
 		/*
 		 * ...and the bound cap rides the tooltip too (#928, review round 1's
@@ -1102,9 +1201,10 @@ test("the asks item's tooltip verb follows its SCOPE while aria-pressed follows 
 		 */
 		api.store({ shortcutBindings: { "panel.ask": ASK_SAMPLE_CHORD } });
 		await frames(2);
-		assert.equal(
-			tooltip(),
-			"Open asks (Ctrl+Shift+U) — This conversation, 2 waiting",
+		assert.match(
+			name(),
+			/\(Ctrl\+Shift\+U\)/,
+			"the bound cap rides the accessible name too",
 		);
 		api.store({ shortcutBindings: {} });
 		act(() => api.item("ask").blur());
@@ -1167,6 +1267,18 @@ test("the tooltips are the header's verbatim; the accessible names are stable no
 		tooltip: "Close asks — All conversations, 2 waiting",
 		aria: "Asks, All conversations, 2 waiting",
 	});
+	/*
+	 * NOTIFICATIONS (decisions D9): the door's badge adds this conversation's
+	 * unread updates, so the name says both; zero updates is today's name.
+	 */
+	assert.equal(
+		askRailLabels(false, "session", 1, null, 2).aria,
+		"Asks, This conversation, 1 waiting, 2 unread updates",
+	);
+	assert.equal(
+		askRailLabels(false, "session", 1, null, 0).aria,
+		"Asks, This conversation, 1 waiting",
+	);
 	assert.deepEqual(askRailLabels(false, "session", 0, null), {
 		tooltip: "Open asks — This conversation",
 		aria: "Asks, This conversation",
@@ -1887,183 +1999,51 @@ test("the host stays 44 across React StrictMode's double-mounted effects", async
  * PREDICATE, not a layout.
  */
 const VIEW = { x: 740, y: 150, width: 496, height: 750 };
-const ours = () =>
-	suppressedOverlayIds().filter((id) => id.startsWith("panel-rail-tooltip"));
 const frames = (n = 14) =>
 	act(async () => {
 		await new Promise((resolve) => setTimeout(resolve, n * 20));
 	});
 
-/** Open the item's tooltip by keyboard focus, with its panel reported at `rect`. */
-async function openTooltipAt(api, id, rect) {
-	const proto = api.window.HTMLElement.prototype;
-	const original = proto.getBoundingClientRect;
-	proto.getBoundingClientRect = function () {
-		if (this.getAttribute?.("role") === "tooltip") {
-			return {
-				left: rect.x,
-				top: rect.y,
-				right: rect.x + rect.width,
-				bottom: rect.y + rect.height,
-				x: rect.x,
-				y: rect.y,
-				width: rect.width,
-				height: rect.height,
-			};
-		}
-		return original.call(this);
-	};
-	act(() => api.item(id).focus());
-	await frames();
-	return () => {
-		proto.getBoundingClientRect = original;
-	};
-}
-
-test("a rail tooltip that REACHES the view suppresses it for exactly as long as it is open", async () => {
+test("the rail label is mounted only when no browser view can clip it (S5 D2)", async () => {
 	await mount(async (api) => {
 		reset(api);
-		api.store({ isBrowserPaneOpen: true });
 		const release = registerBrowserViewRect(() => VIEW);
 		await api.render(rail());
-		assert.deepEqual(ours(), [], "nothing is suppressed at rest");
-		/* Canvas: y=150..178, inside the view by 23px of its 27 (design's measurement). */
-		const restore = await openTooltipAt(api, "canvas", {
-			x: 1000,
-			y: 150,
-			width: 120,
-			height: 28,
-		});
-		assert.equal(ours().length, 1, "a tooltip over the view registers once");
-		act(() => api.item("canvas").blur());
-		await frames(4);
-		assert.deepEqual(ours(), [], "closing it releases the suppression");
-		restore();
-		release();
-	});
-	assert.deepEqual(ours(), [], "and unmounting leaves nothing behind");
-});
-
-test("a rail tooltip that does NOT reach the view buys nothing: the page stays drawn (D11)", async () => {
-	await mount(async (api) => {
-		reset(api);
-		api.store({ isBrowserPaneOpen: true });
-		const release = registerBrowserViewRect(() => VIEW);
-		await api.render(rail());
-		/* Console's: y=114..142, ENDS above the view's top (150). */
-		const restore = await openTooltipAt(api, "console", {
-			x: 1000,
-			y: 114,
-			width: 120,
-			height: 28,
-		});
-		assert.deepEqual(ours(), [], "a tooltip above the view must not blank it");
-		restore();
-		release();
-	});
-});
-
-test("with no browser surface mounted there is no view to occlude, so nothing registers", async () => {
-	await mount(async (api) => {
-		reset(api, DRAFT);
-		await api.render(rail());
-		const restore = await openTooltipAt(api, "canvas", {
-			x: 1000,
-			y: 150,
-			width: 120,
-			height: 28,
-		});
-		assert.deepEqual(ours(), []);
-		restore();
-	});
-});
-
-test("the view's rect moving (a consent banner pushes the page down) changes the answer with no constant to update", async () => {
-	await mount(async (api) => {
-		reset(api);
-		api.store({ isBrowserPaneOpen: true });
-		let view = VIEW;
-		const release = registerBrowserViewRect(() => view);
-		await api.render(rail());
-		/* The page is pushed below Canvas's tooltip (y=150..178): it no longer reaches it. */
-		view = { ...VIEW, y: 200, height: 700 };
-		const restore = await openTooltipAt(api, "canvas", {
-			x: 1000,
-			y: 150,
-			width: 120,
-			height: 28,
-		});
-		assert.deepEqual(
-			ours(),
-			[],
-			"Canvas stops suppressing once the page is below it",
-		);
-		restore();
-		release();
-	});
-});
-
-test("a tooltip left open by an exit through the window edge does not hold the page blank (R6/Q5)", async () => {
-	await mount(async (api) => {
-		reset(api);
-		api.store({ isBrowserPaneOpen: true });
-		const release = registerBrowserViewRect(() => VIEW);
-		await api.render(rail());
-		const restore = await openTooltipAt(api, "canvas", {
-			x: 1000,
-			y: 150,
-			width: 120,
-			height: 28,
-		});
-		assert.equal(ours().length, 1);
-		/* Radix does not close on this (it waits for a later document pointermove),
-		   which is the point: the registration must not depend on it. */
-		act(() => {
-			api.document.documentElement.dispatchEvent(
-				new api.window.Event("pointerleave"),
-			);
-		});
-		await act(async () => {});
-		assert.deepEqual(ours(), [], "pointer left the document: released");
-		act(() => {
-			api.document.dispatchEvent(
-				new api.window.Event("pointermove", { bubbles: true }),
-			);
-		});
-		await act(async () => {});
+		const node = api.item("canvas");
+		act(() => api.item("canvas").focus());
+		await frames(30);
 		assert.equal(
-			ours().length,
-			1,
-			"and re-armed while the tooltip is still open",
+			api.$('[role="tooltip"]'),
+			null,
+			"with a view mounted the label would be clipped, so it is not mounted",
 		);
-		act(() => api.window.dispatchEvent(new api.window.Event("blur")));
-		await act(async () => {});
-		assert.deepEqual(ours(), [], "window blur: released");
-		restore();
+		assert.ok(
+			api.item("canvas").getAttribute("aria-label"),
+			"the accessible name still carries it",
+		);
+		assert.deepEqual(suppressedOverlayIds(), [], "focus never pauses");
 		release();
-	});
-});
 
-test("keyboard focus takes the SAME measured path as hover (D14)", async () => {
-	await mount(async (api) => {
-		reset(api);
-		api.store({ isBrowserPaneOpen: true });
-		const release = registerBrowserViewRect(() => VIEW);
-		await api.render(rail());
-		/* Browser's tooltip sits in the pane's bar, above the view. Focus rests on it. */
-		const restore = await openTooltipAt(api, "browser", {
-			x: 1000,
-			y: 60,
-			width: 120,
-			height: 28,
-		});
-		assert.deepEqual(
-			ours(),
-			[],
-			"a focused item whose tooltip is above the view holds nothing blank",
+		/* No surface: the same rail, the same focus, the label is back. This is the
+		   regression the round-1 review found — the removal was global, but the
+		   conflict exists only on the browser route. */
+		await frames(2);
+		assert.equal(
+			api.item("canvas"),
+			node,
+			"the trigger node survives the view appearing and disappearing (U8)",
 		);
-		restore();
-		release();
+		assert.equal(
+			document.activeElement,
+			node,
+			"and focus does not fall to body while it happens",
+		);
+		act(() => api.item("canvas").blur());
+		await frames(2);
+		act(() => api.item("canvas").focus());
+		await frames(30);
+		assert.ok(api.$('[role="tooltip"]'), "a tooltip is mounted with no view");
+		assert.deepEqual(suppressedOverlayIds(), [], "and it still never pauses");
 	});
 });
 
@@ -2095,7 +2075,107 @@ test("Tooltip's onOpenChange follows what is SHOWN, so suppressed cannot leave a
 			"forced shut by `suppressed`: the report follows, it is not left at true",
 		);
 		await api.render(el(false));
-		assert.equal(seen.at(-1), true, "and back when the override lifts");
+		assert.equal(
+			seen.at(-1),
+			true,
+			"the DEFAULT resumes: suppression is not a discard (round-4 reviewer MAJOR-1)",
+		);
+		assert.ok(
+			api.$('[role="tooltip"]'),
+			"the panel returns when the override lifts",
+		);
+	});
+});
+
+test("discard opt-in stays closed on lift, and BrowserSafeTooltip opts in by default (U14)", async () => {
+	await mount(async (api) => {
+		const warns = [];
+		const original = console.error;
+		console.error = (...args) => warns.push(args.join(" "));
+		try {
+			// A caller's own `suppressed` is not a view discard (U29): with no
+			// browser view, suppress then lift and a FRESH focus opens the label.
+			const caller = (suppressed) =>
+				React.createElement(
+					BrowserSafeTooltip,
+					{ content: "caller", suppressed },
+					React.createElement(
+						"button",
+						{ id: "tooltip-caller", type: "button" },
+						"c",
+					),
+				);
+			await api.render(caller(true));
+			await frames(2);
+			act(() => api.$("#tooltip-caller").focus());
+			await frames(20);
+			assert.equal(api.$('[role="tooltip"]'), null, "caller suppression hides");
+			await api.render(caller(false));
+			await frames(2);
+			act(() => api.$("#tooltip-caller").blur());
+			act(() => api.$("#tooltip-caller").focus());
+			await frames(20);
+			assert.ok(
+				api.$('[role="tooltip"]'),
+				"caller suppression resumes by default",
+			);
+
+			const el = (suppressed) =>
+				React.createElement(
+					TooltipProvider,
+					null,
+					React.createElement(
+						Tooltip,
+						{ content: "hint", suppressed, discardWhileSuppressed: true },
+						React.createElement("button", { id: "d", type: "button" }, "d"),
+					),
+				);
+			await api.render(el(false));
+			act(() => api.$("#d").focus());
+			await frames(20);
+			assert.ok(api.$('[role="tooltip"]'), "open before suppression");
+			await api.render(el(true));
+			assert.equal(api.$('[role="tooltip"]'), null, "suppression hides it");
+			await api.render(el(false));
+			assert.equal(
+				api.$('[role="tooltip"]'),
+				null,
+				"discard is opt-in: lifting must not repaint the closed panel",
+			);
+
+			// BrowserSafeTooltip: focus, view arrives, view leaves; the label must
+			// not repaint, and the root must never flip uncontrolled.
+			const safe = () =>
+				React.createElement(
+					BrowserSafeTooltip,
+					{ content: "safe" },
+					React.createElement("button", { id: "s", type: "button" }, "s"),
+				);
+			await api.render(safe());
+			act(() => api.$("#s").focus());
+			await frames(20);
+			assert.ok(
+				api.$('[role="tooltip"]'),
+				"no view: label is a normal tooltip",
+			);
+			const release = registerBrowserViewRect(() => VIEW);
+			await frames(4);
+			assert.equal(api.$('[role="tooltip"]'), null, "view: panel stands down");
+			release();
+			await frames(6);
+			assert.equal(
+				api.$('[role="tooltip"]'),
+				null,
+				"view gone: a view-based label must not resume",
+			);
+			assert.equal(
+				warns.filter((line) => /uncontrolled to controlled/i.test(line)).length,
+				0,
+				"a boolean suppressed prop cannot flip the Radix root",
+			);
+		} finally {
+			console.error = original;
+		}
 	});
 });
 
@@ -2877,8 +2957,13 @@ test("the lit bar is clear of the focus ring, flush with the rail's leading edge
 		"src/renderer/src/shared/components/navigation/panel-rail-item.tsx",
 	);
 	assert.ok(
-		item.includes("before:-left-[6px]"),
-		"the bar is 6px outside the 32px control - the item is centred in the 44px rail, so the gutter is 6px a side - and its 2px width therefore starts ON the rail's leading edge",
+		item.includes("before:-start-[6px]"),
+		"the bar is 6px outside the 32px control - the item is centred in the 44px rail, so the gutter is 6px a side - and its 2px width therefore starts ON the rail's leading (inline-start) edge in either writing direction",
+	);
+	assert.ok(
+		!item.includes("before:-left-[6px]") &&
+			!item.includes("before:-right-[6px]"),
+		"the bar must be anchored to the rail's inline-start edge, not a physical side: in RTL the rail stands at the window's left and the content boundary is its right edge",
 	);
 	assert.ok(
 		!item.includes("before:-left-[6.5px]"),
@@ -2894,7 +2979,7 @@ test("the count badge is the small mark anchored to the corner (D4)", () => {
 	const rail = read(
 		"src/renderer/src/shared/components/navigation/panel-rail.tsx",
 	);
-	assert.match(rail, /absolute -top-0\.5 -right-0\.5 flex/);
+	assert.match(rail, /absolute -top-0\.5 -end-0\.5 flex/);
 	assert.ok(
 		rail.includes("text-meta-sm"),
 		"the type token, not a literal size",

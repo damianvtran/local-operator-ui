@@ -1,0 +1,16 @@
+{
+	"ui.chat.transcript_copy.block.logs": "Journaux",
+	"ui.chat.transcript_copy.block.output": "Sortie",
+	"ui.chat.transcript_copy.menu.copy_text": "Copier le texte",
+	"ui.chat.transcript_copy.menu.copy_markdown": "Copier en Markdown",
+	"ui.chat.transcript_copy.menu.copy_selection": "Copier la sélection",
+	"ui.chat.transcript_copy.role.assistant": "Assistant",
+	"ui.chat.transcript_copy.selection.quote": "Citer",
+	"ui.chat.transcript_copy.technical_details": "Détails techniques",
+	"ui.chat.transcript_copy.toast.copied_markdown": "Copié en Markdown",
+	"ui.chat.transcript_copy.toast.copied_selection": "Sélection copiée",
+	"ui.chat.transcript_copy.row.your_message": "Votre message",
+	"ui.chat.transcript_copy.row.agent_message": "Message de l’agent",
+	"ui.chat.transcript_copy.selection.copy": "Copier la sélection",
+	"ui.chat.transcript_copy.selection.toolbar": "Actions de la sélection"
+}

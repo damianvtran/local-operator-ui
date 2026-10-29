@@ -28,7 +28,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const tokyoNight: ThemeDefinition = {
 	id: "tokyoNight",
 	name: "Tokyo Night",
-	description: "Deep blue-purple night with a bright blue accent.",
+	descriptionKey: "ui.settings.appearance.theme.tokyo_night",
 	palette: {
 		mode: "dark",
 

@@ -33,6 +33,7 @@ import {
 	Tooltip,
 } from "@shared/components/ui";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import {
 	ClipboardCopy,
@@ -87,6 +88,7 @@ export function useFileTargets(
 	actionPath: string,
 	cwd?: string | null,
 	pane?: CanvasPane | null,
+	resolveActionPath?: () => Promise<string>,
 ) {
 	/*
 	 * Journal paths deliberately retain their portable spelling. Resolve only at
@@ -97,10 +99,16 @@ export function useFileTargets(
 	const withTarget = useCallback(
 		async (action: (path: string) => unknown) => {
 			try {
-				const [file] = await window.api.probeFiles(
-					[actionPath],
-					cwd ?? undefined,
-				);
+				/*
+				 * A file whose real bytes live only in the attachment store (a moved
+				 * original, a pasted screenshot) has no usable `actionPath` until it is
+				 * copied out under its own name; the caller supplies that copy here, and
+				 * it goes through the SAME probe as every other path.
+				 */
+				const target = resolveActionPath
+					? await resolveActionPath()
+					: actionPath;
+				const [file] = await window.api.probeFiles([target], cwd ?? undefined);
 				if (!file?.resolved.startsWith("/")) {
 					throw new Error("File path has no session working directory");
 				}
@@ -109,7 +117,7 @@ export function useFileTargets(
 				showErrorToast(t("ui.chat.highlights.file_resolution_failed"));
 			}
 		},
-		[actionPath, cwd],
+		[actionPath, cwd, resolveActionPath],
 	);
 	const canOpenInCanvas = opened(pane ?? null, actionPath);
 	const press = useCallback(() => {
@@ -133,6 +141,18 @@ export type FileActionsMenuProps = {
 	 * in this module's header, for a menu floating over picture pixels.
 	 */
 	overlay?: boolean;
+	/**
+	 * Produce the real path at action time, for a file whose only bytes are a
+	 * retained store copy (user attachments: `materialiseUserAttachment`).
+	 * Absent, every action uses `actionPath` as before.
+	 */
+	resolveActionPath?: () => Promise<string>;
+	/**
+	 * The file is gone from its path AND has no retained copy: only `Copy file
+	 * path` remains (the record of where it was), the rule `ImageActionsMenu`'s
+	 * `missing` already applies. Opening it would be a dead control.
+	 */
+	missing?: boolean;
 };
 
 /**
@@ -146,8 +166,16 @@ export const FileActionsMenu = memo(function FileActionsMenu({
 	cwd,
 	pane,
 	overlay = false,
+	resolveActionPath,
+	missing = false,
 }: FileActionsMenuProps) {
-	const { canOpenInCanvas, withTarget } = useFileTargets(actionPath, cwd, pane);
+	useI18nLocale();
+	const { canOpenInCanvas, withTarget } = useFileTargets(
+		actionPath,
+		cwd,
+		pane,
+		resolveActionPath,
+	);
 	const [copied, setCopied] = useState(false);
 	const ariaLabel = `Actions for ${label || "this file"}`;
 	return (
@@ -182,38 +210,58 @@ export const FileActionsMenu = memo(function FileActionsMenu({
 				</DropdownMenuTrigger>
 			</Tooltip>
 			<DropdownMenuContent align="end" className="min-w-45">
-				{canOpenInCanvas && (
+				{canOpenInCanvas && !missing && (
 					<DropdownMenuItem
 						onSelect={() => {
 							void withTarget((path) => pane?.openInCanvas(path));
 						}}
 					>
 						<LayoutGrid aria-hidden="true" />
-						<span>Open in canvas</span>
+						<span>
+							{t("ui.chat.canonical.supplement.file_actions.open_in_canvas")}
+						</span>
+					</DropdownMenuItem>
+				)}
+				{!missing && (
+					<DropdownMenuItem
+						onSelect={() => {
+							void withTarget(openLocalTarget);
+						}}
+					>
+						<FileIcon aria-hidden="true" />
+						<span>
+							{t(
+								"ui.chat.canonical.supplement.file_actions.open_in_default_app",
+							)}
+						</span>
+					</DropdownMenuItem>
+				)}
+				{!missing && (
+					<DropdownMenuItem
+						onSelect={() => {
+							void withTarget(revealLocalTarget);
+						}}
+					>
+						<FolderOpen aria-hidden="true" />
+						<span>
+							{t("ui.chat.canonical.supplement.file_actions.reveal_in_finder")}
+						</span>
 					</DropdownMenuItem>
 				)}
 				<DropdownMenuItem
 					onSelect={() => {
-						void withTarget(openLocalTarget);
-					}}
-				>
-					<FileIcon aria-hidden="true" />
-					<span>Open in default app</span>
-				</DropdownMenuItem>
-				<DropdownMenuItem
-					onSelect={() => {
-						void withTarget(revealLocalTarget);
-					}}
-				>
-					<FolderOpen aria-hidden="true" />
-					<span>Reveal in Finder</span>
-				</DropdownMenuItem>
-				<DropdownMenuItem
-					onSelect={() => {
-						void navigator.clipboard
-							.writeText(actionPath)
+						// A gone file copies the record of where it WAS; there is no copy
+						// to materialise.
+						void (
+							resolveActionPath && !missing
+								? resolveActionPath()
+								: Promise.resolve(actionPath)
+						)
+							.then((path) => navigator.clipboard.writeText(path))
 							.then(() => setCopied(true))
-							.catch(() => showErrorToast("Failed to copy file path"));
+							.catch(() =>
+								showErrorToast(t("ui.notices.files.copy_path_failed")),
+							);
 					}}
 				>
 					<ClipboardCopy aria-hidden="true" />

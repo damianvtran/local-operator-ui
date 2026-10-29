@@ -28,7 +28,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const iceberg: ThemeDefinition = {
 	id: "iceberg",
 	name: "Iceberg",
-	description: "Cool blue-grey paper with the Iceberg navy.",
+	descriptionKey: "ui.settings.appearance.theme.iceberg",
 	palette: {
 		mode: "light",
 

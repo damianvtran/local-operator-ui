@@ -1,0 +1,240 @@
+{
+  "schema": 1,
+  "date": "2026-10-19T17:36:42.349079+00:00",
+  "instance": "7d7bc589023f",
+  "auditor": "reviewer (independent mechanical formatting-compatibility verifier)",
+  "model": "openai/gpt-6.1-sol",
+  "model_provenance": "Session initially used anthropic/claude-sonnet-5-5; quota exhaustion switched it to openai/gpt-6.1-sol before the mechanical verification. No role/default pins or tool permissions changed.",
+  "status": "clean",
+  "result": "clean",
+  "locales": [
+    "es",
+    "fr",
+    "hi",
+    "ru",
+    "vi",
+    "zh-CN",
+    "ur"
+  ],
+  "findings": [],
+  "independence": "Did not author, translate, or edit catalogue values, code, or ledger. Independently derived Git-blob hashes, strict parsed JSON equality, and outside-string whitespace-only byte equality.",
+  "scope": {
+    "base": "532a4173c96b90edffa58c5d5b67c2ab56318c7e",
+    "head": "aecf1b2b9fd3a2a5716f91c0838d3fbbc1ed32ba",
+    "kind": "formatting-only compatibility and provenance refresh",
+    "namespace": "ui.chat.tags",
+    "note": "Independent mechanical verification of formatting-only canonicalization, not a new linguistic review. The prior ES/FR/HI/RU/VI/ZH-CN/UR linguistic audits remain valid because all message strings, ICU arms, placeholders, key sets, and complete context values are deeply identical. The unchanged Urdu target is byte-identical. This receipt refreshes byte-hash provenance for compatible values only; prior linguistic receipts are retained as the source of linguistic conclusions."
+  },
+  "namespaces": {
+    "ui.chat.tags": {
+      "status": "clean",
+      "result": "clean",
+      "findings": [],
+      "locales": [
+        "es",
+        "fr",
+        "hi",
+        "ru",
+        "vi",
+        "zh-CN",
+        "ur"
+      ],
+      "keys_verified_per_catalogue": 73,
+      "context_keys_verified": 73,
+      "sha256": {
+        "en": "de81b6bb40960f965c5f59fdacf3ea91c3a81279caf3842494c983034ea34762",
+        "es": "f15c50c19097b9a3d843c2d4a5e891f7e0fc184305774946302bf6e7441e4612",
+        "fr": "c27507c55ae119a6a5842ba44a9a96fd9fda9c93080916a56e9680bfa9226ddd",
+        "hi": "2a8e189535f490bf209a5056bc4802fc1d71060788e6baa08b957cfd7dd9c040",
+        "ru": "ea34bca9e39a884f993045a5720315f775487185ec5aa93e41bcad1deb1b21f3",
+        "vi": "75ef8f684e2928aab17dd47b2e78f75d728b1859dc0fdd6b3d607e008c6e6306",
+        "zh-CN": "0d1fc170c2ec2a20a029bd22240212d612de93cf1a6c87d6f91a8a83c900b735",
+        "ur": "1ebc41a63a56910daa408deebd50e875828ab7b88bb22b6d36a666dac37d4a5b",
+        "context": "2b8ed8ec021011e48af093d29d60bffb06b1bfcd97f35bf833d67c0df39a59bf"
+      },
+      "note": "Independent mechanical verification of formatting-only canonicalization, not a new linguistic review. The prior ES/FR/HI/RU/VI/ZH-CN/UR linguistic audits remain valid because all message strings, ICU arms, placeholders, key sets, and complete context values are deeply identical. The unchanged Urdu target is byte-identical. This receipt refreshes byte-hash provenance for compatible values only; prior linguistic receipts are retained as the source of linguistic conclusions."
+    }
+  },
+  "prior_linguistic_audits": [
+    {
+      "locale": "es",
+      "receipt": "i18n/receipts/a7b8c9d0e1f2.json",
+      "receipt_sha256": "7981bbb2c0d16ba539716a4339ffd70a11289df2abfe09300a4ecb44ad008635",
+      "auditor": "i18n-auditor-es",
+      "instance": "a7b8c9d0e1f2",
+      "model": "anthropic/claude-sonnet-5-5",
+      "source_sha256": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+      "target_sha256": "38cb3bfafe458380b4d22cef2155e1545421b108626c05e890414436a904381c",
+      "result": "clean"
+    },
+    {
+      "locale": "fr",
+      "receipt": "i18n/receipts/b8c9d0e1f2a3.json",
+      "receipt_sha256": "e2869fe6b3ec64d013a64d668188a86488976bbdfa26c5102fde8681aeaa8c63",
+      "auditor": "i18n-auditor-fr",
+      "instance": "b8c9d0e1f2a3",
+      "model": "anthropic/claude-sonnet-5-5",
+      "source_sha256": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+      "target_sha256": "6b731c9d4f552a5f78aa149ba41027ffa38c35c625f6323eb81c4c42eb86e686",
+      "result": "clean"
+    },
+    {
+      "locale": "hi",
+      "receipt": "i18n/receipts/c9d0e1f2a3b4.json",
+      "receipt_sha256": "9be97acc8d06740f55500f2218d3648b121f1cf4fdc332a5f9e8227ecd3eed5e",
+      "auditor": "i18n-auditor-hi",
+      "instance": "c9d0e1f2a3b4",
+      "model": "anthropic/claude-sonnet-5-5",
+      "source_sha256": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+      "target_sha256": "c0748d717e603b0ed083768dcf50a17cbd322f075d4e653651b7ed6b3535ba20",
+      "result": "clean"
+    },
+    {
+      "locale": "ru",
+      "receipt": "i18n/receipts/d0e1f2a3b4c5.json",
+      "receipt_sha256": "375e25dce4ade7d9399400136bee1f698acae517b84f1c4233992603db13c924",
+      "auditor": "i18n-auditor-ru",
+      "instance": "d0e1f2a3b4c5",
+      "model": "openai/gpt-6.1-sol",
+      "source_sha256": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+      "target_sha256": "5738510a615aac72a780de2a704c577fcb3f03d5ee19a72cd4c1cc41fa0552de",
+      "result": "clean"
+    },
+    {
+      "locale": "vi",
+      "receipt": "i18n/receipts/e1f2a3b4c5d6.json",
+      "receipt_sha256": "9e8d44ad76976802465a0fef785d959220d9edf842d7568c37eabd9e48c4dd35",
+      "auditor": "i18n-auditor-vi",
+      "instance": "e1f2a3b4c5d6",
+      "model": "anthropic/claude-sonnet-5-5",
+      "source_sha256": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+      "target_sha256": "4de3cdde2b12b0ff5bd1bf9b7c04c13edf9aacbbfd4bd259fc0b55513cb21b23",
+      "result": "clean"
+    },
+    {
+      "locale": "zh-CN",
+      "receipt": "i18n/receipts/f6a1b2c3d4e5.json",
+      "receipt_sha256": "3833454adfc4b95a511a9bfcdea6cadca35c30ebf1e52ad08b041c6e5ef7b827",
+      "auditor": "i18n-auditor-zh",
+      "instance": "f6a1b2c3d4e5",
+      "model": "openai/gpt-6.1-sol",
+      "source_sha256": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+      "target_sha256": "9ef8a855eb33c1d8cc4a85598f1ccc5343d48079a2498f92414959ba599f3e42",
+      "result": "clean-with-findings"
+    },
+    {
+      "locale": "ur",
+      "receipt": "i18n/receipts/f0a1b2c3d4e5.json",
+      "receipt_sha256": "b71e4560203cb59b7e17964d0ac1e1a9b97b9af73f731d31a0ef4705e1a6dc40",
+      "auditor": "reviewer",
+      "instance": "f0a1b2c3d4e5",
+      "model": "openai/gpt-6.1-sol",
+      "source_sha256": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+      "target_sha256": "1ebc41a63a56910daa408deebd50e875828ab7b88bb22b6d36a666dac37d4a5b",
+      "result": "clean"
+    }
+  ],
+  "mechanical_evidence": {
+    "addendum": "docs/evidence/sidebar-tags-v2-2/independent-formatting-compatibility.md",
+    "pr_comment": "https://github.com/damianvtran/local-operator-ui/pull/1226#issuecomment-6273214343",
+    "files": [
+      {
+        "path": "src/i18n/catalogues/en/ui.chat.tags.json",
+        "old_sha256": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+        "new_sha256": "de81b6bb40960f965c5f59fdacf3ea91c3a81279caf3842494c983034ea34762",
+        "hashes_match_freeze": true,
+        "deep_equal": true,
+        "whitespace_only": true,
+        "key_order_unchanged": true,
+        "top_level_keys": 73,
+        "working_copy_matches_new": true
+      },
+      {
+        "path": "src/i18n/catalogues/es/ui.chat.tags.json",
+        "old_sha256": "38cb3bfafe458380b4d22cef2155e1545421b108626c05e890414436a904381c",
+        "new_sha256": "f15c50c19097b9a3d843c2d4a5e891f7e0fc184305774946302bf6e7441e4612",
+        "hashes_match_freeze": true,
+        "deep_equal": true,
+        "whitespace_only": true,
+        "key_order_unchanged": true,
+        "top_level_keys": 73,
+        "working_copy_matches_new": true
+      },
+      {
+        "path": "src/i18n/catalogues/fr/ui.chat.tags.json",
+        "old_sha256": "6b731c9d4f552a5f78aa149ba41027ffa38c35c625f6323eb81c4c42eb86e686",
+        "new_sha256": "c27507c55ae119a6a5842ba44a9a96fd9fda9c93080916a56e9680bfa9226ddd",
+        "hashes_match_freeze": true,
+        "deep_equal": true,
+        "whitespace_only": true,
+        "key_order_unchanged": true,
+        "top_level_keys": 73,
+        "working_copy_matches_new": true
+      },
+      {
+        "path": "src/i18n/catalogues/hi/ui.chat.tags.json",
+        "old_sha256": "c0748d717e603b0ed083768dcf50a17cbd322f075d4e653651b7ed6b3535ba20",
+        "new_sha256": "2a8e189535f490bf209a5056bc4802fc1d71060788e6baa08b957cfd7dd9c040",
+        "hashes_match_freeze": true,
+        "deep_equal": true,
+        "whitespace_only": true,
+        "key_order_unchanged": true,
+        "top_level_keys": 73,
+        "working_copy_matches_new": true
+      },
+      {
+        "path": "src/i18n/catalogues/ru/ui.chat.tags.json",
+        "old_sha256": "5738510a615aac72a780de2a704c577fcb3f03d5ee19a72cd4c1cc41fa0552de",
+        "new_sha256": "ea34bca9e39a884f993045a5720315f775487185ec5aa93e41bcad1deb1b21f3",
+        "hashes_match_freeze": true,
+        "deep_equal": true,
+        "whitespace_only": true,
+        "key_order_unchanged": true,
+        "top_level_keys": 73,
+        "working_copy_matches_new": true
+      },
+      {
+        "path": "src/i18n/catalogues/vi/ui.chat.tags.json",
+        "old_sha256": "4de3cdde2b12b0ff5bd1bf9b7c04c13edf9aacbbfd4bd259fc0b55513cb21b23",
+        "new_sha256": "75ef8f684e2928aab17dd47b2e78f75d728b1859dc0fdd6b3d607e008c6e6306",
+        "hashes_match_freeze": true,
+        "deep_equal": true,
+        "whitespace_only": true,
+        "key_order_unchanged": true,
+        "top_level_keys": 73,
+        "working_copy_matches_new": true
+      },
+      {
+        "path": "src/i18n/catalogues/zh-CN/ui.chat.tags.json",
+        "old_sha256": "9ef8a855eb33c1d8cc4a85598f1ccc5343d48079a2498f92414959ba599f3e42",
+        "new_sha256": "0d1fc170c2ec2a20a029bd22240212d612de93cf1a6c87d6f91a8a83c900b735",
+        "hashes_match_freeze": true,
+        "deep_equal": true,
+        "whitespace_only": true,
+        "key_order_unchanged": true,
+        "top_level_keys": 73,
+        "working_copy_matches_new": true
+      },
+      {
+        "path": "src/i18n/catalogues/en/ui.chat.tags.context.json",
+        "old_sha256": "ce20c5a796056d03f7dd17f55974982fd62fe2895ec8d7250679c07bee93f852",
+        "new_sha256": "2b8ed8ec021011e48af093d29d60bffb06b1bfcd97f35bf833d67c0df39a59bf",
+        "hashes_match_freeze": true,
+        "deep_equal": true,
+        "whitespace_only": true,
+        "key_order_unchanged": true,
+        "top_level_keys": 73,
+        "working_copy_matches_new": true
+      }
+    ],
+    "ur": {
+      "path": "src/i18n/catalogues/ur/ui.chat.tags.json",
+      "old_sha256": "1ebc41a63a56910daa408deebd50e875828ab7b88bb22b6d36a666dac37d4a5b",
+      "new_sha256": "1ebc41a63a56910daa408deebd50e875828ab7b88bb22b6d36a666dac37d4a5b",
+      "byte_identical": true,
+      "top_level_keys": 73
+    },
+    "method": "Git show OLD:path and NEW:path; independently SHA-256 both byte streams; parse with duplicate-key rejection; complete Python JSON deep equality; compare byte streams after stripping only JSON whitespace outside quoted strings; verify unchanged top-level key order and current working-copy bytes.",
+    "limitations": "FMT-M1 remains until implementer updates ledger rows/receipt references and reruns check-i18n. This receipt does not assert ledger gate success, whole-head convergence, UI QA, or fresh linguistic execution."
+  }
+}

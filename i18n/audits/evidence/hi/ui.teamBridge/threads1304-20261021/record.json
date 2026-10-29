@@ -1,0 +1,70 @@
+{
+  "audit_id": "threads1304-20261021",
+  "date": "2026-10-21",
+  "locale": "hi",
+  "namespace": "ui.teamBridge",
+  "source_commit": "fbb29247e58cc6e29c40802a6271f8081c8c2200",
+  "translator": {
+    "agent": "translator",
+    "model": "meta-muse/muse-wonder-1.0",
+    "session": "24b08487a6fd",
+    "date": "2026-10-21"
+  },
+  "auditors": [
+    {
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "date": "2026-10-21",
+      "result": "clean",
+      "instance": "threads1304-r2-hi",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "receipt": "i18n/receipts/threads1304-r2-hi.json",
+      "receipt_sha256": "272412eef3f17302058255611b1dc6c041ab0982453f6a097a0bb2ae53012a65",
+      "scope": "PR #1304 eight-key delta: replies.{action,title,close,count,last,empty,placeholder,more}, each prefixed ui.teamBridge.; inherited genuine base 2e16fb1456 audit for the other 109 values, verified unchanged. No full semantic re-audit of unchanged copy. Read actual English/target/context and rendered call-site roles in tb-threads only; no catalogue/code edits.",
+      "note": "Independent delta audit; inherited unchanged base coverage. No rendered-fit claim."
+    }
+  ],
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "7de891f2cf03b7563747c440847c853f1c1356aa0a50480ec28eae347e6581e9"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+      "sha256": "dbada821a3167dede05e95f43867b34a46ddb128ec6f18c675226bbd48a5562c"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "7c3c9e52a1a159b3e661ac2101fa57bbe1a1ed324d566b09eda403e96c8dfd8f"
+    }
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    }
+  },
+  "independence": "Translation auditor is a different subagent from translator and coordinator; auditor never edited catalogues.",
+  "limitations": [
+    "Browser unavailable; no rendered-fit, screenshots, pseudo-localization or activation evidence claimed."
+  ],
+  "retained_rounds": [
+    {
+      "path": "i18n/receipts/threads1304-r1-hi.json",
+      "sha256": "09b43be894ef5cda4b52f273949d4ad50a0be1eb95f234f92b55c386a7cf32b9"
+    },
+    {
+      "path": "i18n/receipts/threads1304-r2-hi.json",
+      "sha256": "272412eef3f17302058255611b1dc6c041ab0982453f6a097a0bb2ae53012a65"
+    }
+  ]
+}

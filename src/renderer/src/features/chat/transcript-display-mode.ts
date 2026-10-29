@@ -26,8 +26,9 @@
  *   final response identifiable) rather than an undifferentiated wall.
  *
  * WHAT IT IS NOT: it never reorders rows, never reshapes the visibility
- * invariant, and never elects a second answer. `by-turn` must behave
- * byte-for-byte as it did before this module existed; see `partitionRun`.
+ * invariant, and never elects a second answer. `by-turn` must behave as it did
+ * before this module existed, apart from `partitionRun`'s declared V5 exception
+ * (`isFinalResponse` keeps a handover visible in both modes).
  */
 
 /** How a settled turn's transcript rows are drawn. */

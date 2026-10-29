@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * Toggle Setting Component
  *
@@ -75,6 +77,7 @@ export const ToggleSetting: FC<ToggleSettingProps> = ({
 	isSaving = false,
 	disabled = false,
 }) => {
+	useI18nLocale();
 	const [isOn, setIsOn] = useState(value);
 	const fieldId = useId();
 	const labelId = `${fieldId}-label`;
@@ -128,7 +131,10 @@ export const ToggleSetting: FC<ToggleSettingProps> = ({
 			    reflow the row. */}
 			<div className="flex h-6 shrink-0 items-center">
 				{isSaving ? (
-					<Spinner size="md" label={`Saving ${label}`} />
+					<Spinner
+						size="md"
+						label={t("ui.common.forms.toggle_setting.saving", { label: label })}
+					/>
 				) : (
 					<Switch
 						checked={isOn}

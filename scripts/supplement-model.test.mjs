@@ -808,3 +808,13 @@ test("sounds-only done highlights remain visible", () => {
 	});
 	assert.equal(model.supplementDisposition(sound, false), "block");
 });
+
+test("local graphic reveal copy preserves singular/plural and overflow meaning", () => {
+	assert.equal(model.graphicRevealText(1, false), "Show 1 graphic");
+	assert.equal(model.graphicRevealText(1, true), "Hide 1 graphic");
+	assert.equal(model.graphicRevealText(3, false), "Show 3 graphics");
+	assert.equal(model.graphicRevealText(3, false, 1), "Show 1 of 3 graphics");
+	assert.equal(model.graphicRevealText(3, true, 1), "Hide 3 graphics");
+	assert.equal(model.graphicRevealText(3, true), "Hide 3 graphics");
+	assert.equal(model.showAllText(2), "Show all 2 graphics");
+});

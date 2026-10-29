@@ -1,0 +1,50 @@
+{
+  "auditor": "i18n-auditor-vi",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "e5f6a1b2c3d4",
+  "locale": "vi",
+  "namespace": "ui.chat.tags",
+  "status": "passed",
+  "sha256": {
+    "en": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+    "vi": "0916543febe4afa3dfc2d6374aa4b5b0727f3acc8dfa75792679a7f63ebda3f1"
+  },
+  "keys_audited": 73,
+  "baseline_keys_verified_unchanged": 54,
+  "new_keys_audited": 19,
+  "findings": [
+    {
+      "id": "VI-1",
+      "severity": "MINOR",
+      "key": "ui.chat.tags.selection_limit",
+      "related_keys": [
+        "ui.chat.tags.registry_limit",
+        "ui.chat.tags.create_failed",
+        "ui.chat.tags.reorder_filtered",
+        "ui.chat.tags.create_pending",
+        "ui.chat.tags.remote",
+        "ui.chat.tags.registry_changed"
+      ],
+      "location": "src/i18n/catalogues/vi/ui.chat.tags.json:60-73",
+      "message": "New copy switches the same tag concept from established nhãn to thẻ. Both are understandable, so meaning is preserved, but picker/status/errors use inconsistent terminology beside Nhãn and Quản lý nhãn.",
+      "recommendation": "Use nhãn instead of thẻ consistently in these seven new values; retain all baseline values."
+    },
+    {
+      "id": "VI-2",
+      "severity": "MINOR",
+      "key": "ui.chat.tags.selection_status",
+      "location": "src/i18n/catalogues/vi/ui.chat.tags.json:68",
+      "message": "Nhóm trong {name} is understandable but an unnatural grouping instruction and inconsistent with existing Nhóm vào (group_under).",
+      "recommendation": "Prefer Đã chọn {count}. Nhóm vào {name}."
+    }
+  ],
+  "checks": {
+    "key_sets": "73 English/Vietnamese keys match; exactly the assigned 19 additions",
+    "baseline": "All 54 HEAD baseline Vietnamese values are unchanged",
+    "icu": "All 73 English and Vietnamese messages parsed using @formatjs/icu-messageformat-parser; argument-name sets match for every pair. Intl.PluralRules(vi) reports other only; Vietnamese other-only plurals and plain {count} tag_usage are appropriate.",
+    "reserved_name": "English context explicitly requires literal ASCII Untagged; retained correctly rather than translated.",
+    "language": "Reviewed all 73 pairs for meaning, grammar, neutral UI register, punctuation, placeholders and textual length risk; no blocker/major.",
+    "length": "No obvious new fixed menu/toast length blocker. Dynamic name length and rendered wrapping/fit remain later QA; no rendered-fit claim.",
+    "model_provenance": "Provider quota failure switched this audit from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol; receipt records the actual model."
+  }
+}

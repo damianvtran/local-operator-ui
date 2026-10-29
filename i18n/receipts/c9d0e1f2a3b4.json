@@ -1,0 +1,39 @@
+{
+  "auditor": "i18n-auditor-hi",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "c9d0e1f2a3b4",
+  "locale": "hi",
+  "namespace": "ui.chat.tags",
+  "status": "passed",
+  "result": "clean",
+  "date": "2026-10-19",
+  "namespaces": {
+    "ui.chat.tags": {
+      "status": "passed",
+      "keys_audited": 73,
+      "sha256": {
+        "en": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+        "hi": "c0748d717e603b0ed083768dcf50a17cbd322f075d4e653651b7ed6b3535ba20"
+      },
+      "findings": []
+    }
+  },
+  "checks": {
+    "scope": "Remediation audit of selection_status and create_helper, with mechanical validation of all 73 pairs. Unchanged linguistic review retained from receipt c3d4e5f6a1b2.json; no unrelated re-audit.",
+    "delta_proof": "Replaced only the two corrected values in memory with their previous values; SHA256 of restored UTF-8 bytes exactly matched previously audited 1ca9974dea475a59dfc8bdaec89ba279c57c7f2691ae95d91d3b6296e073560f. This proves all other bytes unchanged.",
+    "baseline": "Both EN and HI have 73 keys, identical key sets. All 54 baseline values compared with git HEAD remain unchanged in both locales; 19 additions retained. EN hash unchanged and target hash matches re-freeze.",
+    "icu": "Parsed all 73 EN/HI pairs using installed @formatjs/icu-messageformat-parser; recursive AST argument sets identical for every pair. Formatted all pairs in both locales at counts 0,1,2,8,32 with installed intl-messageformat: 730 formats passed.",
+    "count_assertions": {
+      "1": "1 चुना गया। काम के तहत समूह बनाएँ।",
+      "2": "2 चुने गए। काम के तहत समूह बनाएँ।",
+      "8": "8 चुने गए। काम के तहत समूह बनाएँ।"
+    },
+    "remediation": {
+      "HI1": "Fixed: exact =1 branch gives singular चुना गया; other branch gives plural चुने गए. count/name preserved. Executed and asserted exact output at 1/2/8.",
+      "HI2": "Fixed: helper now reads सभी बातचीतों के लिए सहेजा जाता है, with correct oblique plural before के लिए."
+    },
+    "length_punctuation_register": "Corrections preserve polite neutral register and sentence punctuation; no new static menu/toast length concern. No rendered-fit claim; deferred to later QA as requested.",
+    "write_scope": "Only this new receipt written; previous receipt unchanged. No application edits, ledger assembly, commits or pushes."
+  },
+  "verdict": "clean — TERMINAL. Zero BLOCKER, MAJOR, MINOR or NIT findings remain in the audited scope."
+}

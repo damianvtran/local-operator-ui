@@ -30,16 +30,27 @@
  * 2026-10-16): while the block's own turn renders condensed — one closed bar
  * over its run; the flag arrives from the transcript's collapse plan, never
  * re-derived here — the block shows THE SAME FILES SECTION as its expanded
- * self (the image grid, the rows, the `N more files` disclosure) and nothing
- * else. No `[data-supplement-slot]`/iframe: absent, not hidden, so no document
- * fetch either — and no graphics, whose route is the turn's own bar. The
- * operator's ruling is the small-set principle above extended to this form:
- * the passive count clause (`1 file: X`, `2 files: a, b`, `N files · M
- * graphics`) was the ONLY route to a file the reader may want to open while
- * the run is still folded, so it is replaced by the actionable rows themselves.
- * A graphics-ONLY finish keeps its plain count clause (`1 graphic`, `N
- * graphics`): there is no file to act on and the bar is the expansion frames
- * render in. The not-settled arms keep the state line and their actions exactly
+ * self (the image grid, the rows, the `N more files` disclosure).
+ * The explicit 2026-10-19 amendment (operator request from his own screenshot)
+ * supersedes the 2026-10-16 ruling that a graphics-only condensed finish keeps
+ * its plain count clause: the answer-local Show/Hide disclosure for graphics-only
+ * and mixed file/graphics finishes now DEFAULTS TO OPEN, after the files section,
+ * and its Hide control still folds it. Visible does not mean eager — the slot
+ * still starts under the EXISTING viewport gate (`SupplementFrameSlot`'s `near`),
+ * which gates the document fetch: an off-screen or far-away condensed turn
+ * renders only the reserved slot box, mounts no iframe and issues no document
+ * request until it is near (the gate is sticky once near, and an already-cached
+ * document may paint there without a request). The old "ZERO fetches while
+ * condensed" claim is therefore retired, not extended: a visible condensed
+ * frame is gated exactly like an expanded one. The identity a Hide belongs to
+ * is `(sessionId, anchor, job)`: a version bump of the same job keeps the Hide
+ * (it is the same graphic to the reader), while a different job starts open.
+ * A local Hide survives collapsing work again: that explicit request belongs to
+ * this supplement identity, not to the work bar. A new identity resets to the
+ * default (open), so a Hide set on one supplement is never resurrected for
+ * another. Expanded work and local reveal share ONE body, never duplicate
+ * attachments.
+ * The not-settled arms keep the state line and their actions exactly
  * as the expanded form wires them, with the files section ABOVE the line once
  * files are known — which is why the old counts prefix (`2 files · Preparing
  * highlights…`) has no job left and is gone: the rows say it.
@@ -57,6 +68,8 @@
 import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -87,12 +100,12 @@ import {
 	type SupplementRecord,
 	type SupplementSound,
 	causePhrase,
-	countClause,
 	diagnosticDisplay,
 	displayText,
 	failureExplanation,
 	fileRowParts,
 	frameBudgetPx,
+	graphicRevealText,
 	moreText,
 	planComponentMounts,
 	showAllText,
@@ -139,7 +152,7 @@ const SupplementFileLine = memo(function SupplementFileLine({
 			<FileGlyph path={actionPath} />
 			<button
 				type="button"
-				className="min-w-0 flex-1 truncate text-left text-ink hover:text-ink-dim"
+				className="min-w-0 flex-1 truncate text-start text-ink hover:text-ink-dim"
 				data-supplement-file=""
 				title={actionPath}
 				onClick={() => {
@@ -148,7 +161,7 @@ const SupplementFileLine = memo(function SupplementFileLine({
 			>
 				{displayText(label)}
 				{suffix && suffix !== label && (
-					<span className="ml-2 text-ink-muted">{displayText(suffix)}</span>
+					<span className="ms-2 text-ink-muted">{displayText(suffix)}</span>
 				)}
 			</button>
 			{size && <span className="shrink-0 text-ink-dim">{size}</span>}
@@ -215,7 +228,7 @@ const SupplementSoundLine = memo(function SupplementSoundLine({
 	 * leave the reader looking at an unnamed line and then watch it reflow.
 	 */
 	return (
-		<div className="flex min-w-0 flex-col gap-0.5">
+		<div data-supplement-sound="" className="flex min-w-0 flex-col gap-0.5">
 			{sound.title && (
 				<span
 					data-supplement-sound-title=""
@@ -230,8 +243,13 @@ const SupplementSoundLine = memo(function SupplementSoundLine({
 			) : source.state === "resolving" ? (
 				// A reserved line at the player's height (the same reason the two
 				// media components reserve): the block must not jump when the bytes
-				// land.
-				<div className="h-11" aria-hidden={true} />
+				// land. The marker is what a static render can count per sound -
+				// the player's own controls exist only once the resolver answered.
+				<div
+					data-supplement-sound-placeholder=""
+					className="h-11"
+					aria-hidden={true}
+				/>
 			) : (
 				<SoundPlayer
 					variant="compact"
@@ -323,10 +341,36 @@ export const SupplementRow = memo(function SupplementRow({
 	cwd,
 	condensed = false,
 }: SupplementRowProps) {
+	useI18nLocale();
 	const pane = useCanvasPane();
 	const [expandedMore, setExpandedMore] = useState(false);
 	const [detailsOpen, setDetailsOpen] = useState(false);
 	const [showAll, setShowAll] = useState(false);
+	/*
+	 * Store the permission WITH its identity. The default is OPEN (operator
+	 * request, 2026-10-19): the graphic is part of the answer, so a condensed
+	 * turn shows it without a press. A replacement is reset before commit, not
+	 * in an effect, so it starts at that default immediately and can never
+	 * inherit a Hide set on the supplement it replaced; returning to an earlier
+	 * identity starts open again rather than resurrecting its old Hide.
+	 *
+	 * The identity is `(sessionId, anchor, job)`, deliberately NOT the record
+	 * version: a version bump of the same job is the same graphic to the reader,
+	 * so a Hide they set must survive it. A different job is a different
+	 * supplement and starts open.
+	 *
+	 * Starting open is not eager fetching: the document fetch still starts only
+	 * behind `SupplementFrameSlot`'s viewport gate (the reserved box mounts, but
+	 * nothing is requested until the slot is near).
+	 */
+	const identity = JSON.stringify([sessionId, record.anchor, record.job]);
+	const [localGraphics, setLocalGraphics] = useState({ identity, open: true });
+	const localGraphicsOpen =
+		localGraphics.identity === identity && localGraphics.open;
+	if (localGraphics.identity !== identity) {
+		setLocalGraphics({ identity, open: true });
+		setShowAll(false);
+	}
 	const [adjusting, setAdjusting] = useState(false);
 	const [draft, setDraft] = useState("");
 	const [busy, setBusy] = useState(false);
@@ -400,7 +444,10 @@ export const SupplementRow = memo(function SupplementRow({
 			 * "Not Found" must never reach a toast).
 			 */
 			showErrorToast(
-				backendLoadErrorMessage("Highlights could not be updated.", error),
+				backendLoadErrorMessage(
+					t("ui.notices.files.highlights_update_failed"),
+					error,
+				),
 			);
 		} finally {
 			setBusy(false);
@@ -575,7 +622,7 @@ export const SupplementRow = memo(function SupplementRow({
 				autoFocus={true}
 				className="min-w-0 flex-1 rounded-sm border border-control bg-canvas px-1.5 py-0.5 text-ink text-meta"
 				maxLength={STEER_TEXT_MAX_CHARS}
-				placeholder="Adjust the graphic…"
+				placeholder={t("ui.chat.canonical.supplement.adjust_placeholder")}
 				value={draft}
 				onChange={(event) => setDraft(event.target.value)}
 				onKeyDown={(event) => {
@@ -592,7 +639,7 @@ export const SupplementRow = memo(function SupplementRow({
 				disabled={busy || !draft.trim()}
 				onClick={steer}
 			>
-				Send
+				{t("ui.chat.canonical.supplement.send")}
 			</button>
 		</div>
 	) : null;
@@ -706,7 +753,26 @@ export const SupplementRow = memo(function SupplementRow({
 	 */
 	const soundsSection =
 		sounds.length > 0 ? (
-			<div className="flex flex-col gap-1" data-supplement-sounds="">
+			/*
+			 * A COLLAGE, NOT A COLUMN. Fourteen sounds rendered as fourteen
+			 * stacked rows is an unreadable wall that pushes the answer off the
+			 * screen; the producer now sends every generated sound, so the layout
+			 * has to bound its height without hiding any of them (no slice, no
+			 * cap, no pagination - the brief's rule). `auto-fit` over a 15rem
+			 * minimum makes the grid answer to the BLOCK's own width: a typical
+			 * answer column fits two or three cells, a narrow pane one, and a
+			 * single sound still fills the row (auto-fit collapses the empty
+			 * tracks). The container is the same element in the expanded and
+			 * condensed forms - collapsing changes frame mounting, never media.
+			 */
+			<div
+				data-supplement-sounds=""
+				className={
+					sounds.length > 1
+						? "grid grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] gap-1"
+						: "flex flex-col gap-1"
+				}
+			>
 				{sounds.map((sound) => (
 					<SupplementSoundLine
 						key={sound.attachment}
@@ -725,6 +791,50 @@ export const SupplementRow = memo(function SupplementRow({
 	 * a sibling of the trace; collapsing work must change only frame mounting,
 	 * never the audio, image, or file callouts that make the answer actionable.
 	 */
+	const graphicsBody = (
+		<div className="flex flex-col gap-2" data-supplement-components="">
+			{head.map((component) => (
+				<SupplementFrameSlot
+					key={component.attachment}
+					component={component}
+					sessionId={sessionId}
+					onRetry={sessionId ? retry : undefined}
+					onHeight={noteHeight}
+				/>
+			))}
+			{tail.length > 0 && (
+				/*
+				 * The graphics sibling of the same disclosure grammar: a
+				 * toggle (`Show all N graphics` ⇄ `Show fewer`), the hidden
+				 * frames mounted only while it is open — an explicit
+				 * action, which is the memo's own condition for mounting
+				 * beyond the budget (§2.8).
+				 */
+				<Disclosure
+					chevronClassName="text-ink-dim"
+					open={showAll}
+					onOpenChange={setShowAll}
+					rowClassName="min-h-0 py-0"
+					summary={
+						<span data-supplement-show-all="">
+							{showAll ? "Show fewer" : showAllText(tail.length)}
+						</span>
+					}
+				>
+					{tail.map((component) => (
+						<SupplementFrameSlot
+							key={component.attachment}
+							component={component}
+							sessionId={sessionId}
+							onRetry={sessionId ? retry : undefined}
+							onHeight={noteHeight}
+						/>
+					))}
+				</Disclosure>
+			)}
+		</div>
+	);
+
 	return (
 		<div
 			className="flex flex-col gap-2"
@@ -734,18 +844,10 @@ export const SupplementRow = memo(function SupplementRow({
 			{filesSection}
 			{soundsSection}
 			{stateLine()}
-			{condensed &&
-				disposition === "block" &&
-				filesSection === null &&
-				components.length > 0 && (
-					<div className="text-ink-muted text-meta">
-						{countClause(components.length, "graphic")}
-					</div>
-				)}
+
 			{!condensed && record.detail?.includes("prepared:unsupported") && (
 				<p className="text-meta text-ink-muted" data-supplement-refusal="">
-					Inline preview unavailable. This HTML needs unsupported resources or
-					document content. Open the file to view it.
+					{t("ui.chat.canonical.supplement.preview_unavailable")}
 				</p>
 			)}
 			{!condensed &&
@@ -766,8 +868,18 @@ export const SupplementRow = memo(function SupplementRow({
 								summary="Details"
 							>
 								<div className="max-h-[min(320px,40vh)] overflow-auto break-words font-mono text-ink-dim">
-									{record.model && <p>Model: {record.model}</p>}
-									<p>Attempts: {record.attempts?.length ?? 0}</p>
+									{record.model && (
+										<p>
+											{t("ui.chat.canonical.supplement.details.model", {
+												name: record.model,
+											})}
+										</p>
+									)}
+									<p>
+										{t("ui.chat.canonical.supplement.details.attempts", {
+											count: record.attempts?.length ?? 0,
+										})}
+									</p>
 									{record.detail?.map((line) => (
 										<p key={line}>{diagnosticDisplay(line)}</p>
 									))}
@@ -778,49 +890,44 @@ export const SupplementRow = memo(function SupplementRow({
 				)}
 			{(disposition === "preparing" || disposition === "files_preparing") &&
 				adjustLine}
-			{!condensed && disposition === "block" && components.length > 0 && (
-				<div className="flex flex-col gap-2" data-supplement-components="">
-					{head.map((component) => (
-						<SupplementFrameSlot
-							key={component.attachment}
-							component={component}
-							sessionId={sessionId}
-							onRetry={sessionId ? retry : undefined}
-							onHeight={noteHeight}
-						/>
-					))}
-					{tail.length > 0 && (
-						/*
-						 * The graphics sibling of the same disclosure grammar: a
-						 * toggle (`Show all N graphics` ⇄ `Show fewer`), the hidden
-						 * frames mounted only while it is open — an explicit
-						 * action, which is the memo's own condition for mounting
-						 * beyond the budget (§2.8).
-						 */
-						<Disclosure
-							chevronClassName="text-ink-dim"
-							open={showAll}
-							onOpenChange={setShowAll}
-							rowClassName="min-h-0 py-0"
-							summary={
-								<span data-supplement-show-all="">
-									{showAll ? "Show fewer" : showAllText(tail.length)}
-								</span>
-							}
-						>
-							{tail.map((component) => (
-								<SupplementFrameSlot
-									key={component.attachment}
-									component={component}
-									sessionId={sessionId}
-									onRetry={sessionId ? retry : undefined}
-									onHeight={noteHeight}
-								/>
-							))}
-						</Disclosure>
-					)}
-				</div>
-			)}
+			{disposition === "block" &&
+				components.length > 0 &&
+				(condensed ? (
+					<Disclosure
+						open={localGraphicsOpen}
+						onOpenChange={(open) => {
+							// Closing revokes both grants: reopening must start at the
+							// budgeted head, not resurrect an earlier overflow request.
+							if (!open) setShowAll(false);
+							setLocalGraphics({ identity, open });
+						}}
+						chevronClassName="text-ink-dim"
+						rowClassName="min-h-0 py-0"
+						summary={
+							<span data-supplement-graphics-reveal="">
+								{graphicRevealText(
+									components.length,
+									localGraphicsOpen,
+									head.length,
+								)}
+							</span>
+						}
+					>
+						{/*
+						 * The shared Disclosure indents its disclosed body by one chevron
+						 * column (`ml-5`). The graphic is answer content, not detail
+						 * belonging to the Hide row, so this one body opts back out with
+						 * the SAME spacing token: the frame keeps the answer paragraph's
+						 * left edge and width in both forms, and expanding the work bar
+						 * does not shift it. Local to this call site — the shared
+						 * primitive's contract, and every other disclosure's indent, is
+						 * unchanged.
+						 */}
+						<div className="-ml-5 w-[calc(100%+1.25rem)]">{graphicsBody}</div>
+					</Disclosure>
+				) : (
+					graphicsBody
+				))}
 		</div>
 	);
 });

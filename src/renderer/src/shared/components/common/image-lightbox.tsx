@@ -6,6 +6,8 @@ import {
 	DialogContent,
 	DialogTitle,
 } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
 	VIEWER_PAN_ORIGIN,
 	VIEWER_ZOOM_MAX,
@@ -110,10 +112,22 @@ const reservedBox = (box: string) =>
  * operator filed against this very surface ("no controls... discoverable, not
  * hover-only-hidden"). The number is NOT `SCROLLBAR_RESTING_FLOOR` re-used: the
  * thumb's 0.45 is a colour-mix fraction measured against the grounds, and this
- * is an opacity on a cluster of buttons. 0.45 keeps the icons findable while
- * clearly below a full-strength control; a designer round may move it, and the
- * frames in `docs/evidence/image-viewer-controls/` exist to make that call
- * (`resting/` is that state, photographed after the hold).
+ * is an opacity on a cluster of buttons.
+ *
+ * 0.85 IS A MEASURED CONTRAST FLOOR, NOT A TASTE CALL (design round 2, D1).
+ * The fade multiplies BOTH the glyph and its `surface/85` plate, and at the
+ * earlier 0.45 the resting composite measured 1.67-2.25:1 worst-ground across
+ * the twelve captured themes — under the 3:1 non-text floor, for controls that
+ * still work (WCAG 1.4.11 exempts inactive controls, not active ones waiting
+ * for a pointer). The designer composed the diminished glyph against the plate
+ * over every pixel a picture can hold (pure white and pure black bound them)
+ * and swept all 59 selectable palettes: the limiting threshold is ~0.84022,
+ * and 0.80 fails (2.788:1 Nightfox, 2.915:1 Dracula) while 0.85 clears 3:1
+ * everywhere — worst 3.05493:1 (Nightfox over white), worst of the twelve
+ * captured 3.20265:1 (Dracula). The fade stays because a resting state must
+ * still read as a step down from awake; it now stops above the floor instead
+ * of under it. Re-derive the number if the plate stops being `surface/85`:
+ * the two compose, and a different plate moves the threshold.
  *
  * AND IT WAS UNREACHABLE UNTIL DESIGN ROUND 1'S D1-2 SETTLED WHERE FOCUS GOES
  * AT OPEN. Radix's autofocus parked focus on the cluster's first control, the
@@ -129,7 +143,27 @@ const reservedBox = (box: string) =>
  * state — every control works at rest, and the next pointer move or key press
  * brings the cluster back to full inside `duration-fast`.
  */
-const CONTROLS_RESTING_CLASS = "opacity-45";
+export const CONTROLS_RESTING_CLASS = "opacity-85";
+
+/**
+ * THE CHROME'S GROUND IS A THEME ROLE, NOT THE PICTURE (design round 1, D1).
+ *
+ * The controls are ghost buttons, so their glyphs used to be painted straight
+ * onto whatever pixels the page put behind the overlay: the light palette's Next
+ * glyph measured `#4e4940` over `#241a37` = 1.84:1, under the 3:1 non-text
+ * floor. A `surface` plate at 85% keeps the borderless look and makes the glyph's
+ * ground a role rather than the media. Measured against the worst picture for
+ * each palette (the plate blended over pure white and pure black, whose extremes
+ * bound every pixel a picture can hold): dark `#c2bcaf` over `#4b4742` 4.87:1,
+ * light `#4e4940` over `#d2d0ca` 5.79:1. The hover and active steps are the
+ * ghost variant's own opaque `accent-wash`, unchanged; the disabled step keeps
+ * the plate so an unreachable zoom step still reads as a control.
+ *
+ * THIS IS SHARED CHROME. The chat transcript and the project feed mount the same
+ * component, so a review of this change must re-check their frames as well as
+ * the Library's; only the button's ground changed, not its geometry or behaviour.
+ */
+const CHROME_PLATE = "bg-surface/85 disabled:bg-surface/85";
 
 /**
  * One picture, expanded over the app.
@@ -316,6 +350,36 @@ export type ImageLightboxProps = {
 	 * its behaviour.
 	 */
 	layerRef?: RefObject<HTMLDivElement>;
+	/**
+	 * What the slide IS, for a gallery that mixes pictures and clips.
+	 *
+	 * `image` is the component's original and only behaviour, so every existing
+	 * caller is unchanged by omission. `video` renders the same fitted frame
+	 * with a `<video controls autoPlay>` instead of the zoomable `<img>`: the
+	 * zoom ladder is an image-reading affordance (fit, 100%, 200% — no meaning
+	 * for a clip with its own player controls), so a video slide takes the frame
+	 * and the carousel chrome but not the zoom cluster.
+	 */
+	mediaKind?: "image" | "video";
+	/**
+	 * What the carousel calls its slides.
+	 *
+	 * `image` is the transcript's vocabulary and the default, so existing
+	 * callers are unchanged. `asset` is for a mixed gallery (the project feed's
+	 * update set): "Previous asset"/"Asset 2 of 3" stays true whether the slide
+	 * is a picture or a clip, while "Previous image" would misname half of them.
+	 */
+	mediaLabel?: "image" | "asset";
+	/**
+	 * Extra attributes for the dialog's layer element.
+	 *
+	 * Data attributes only, and only for a caller whose capture rig or test has
+	 * to tell THIS overlay from any other lightbox in the document: the
+	 * component's own hooks (`data-image-viewport`, `data-image-viewer-controls`)
+	 * are generic and deliberately say nothing about the surface that mounted it.
+	 * Kept off the props list above because it is not behaviour.
+	 */
+	layerAttributes?: Partial<Record<`data-${string}`, string>>;
 };
 
 /**
@@ -354,7 +418,20 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 	pending = false,
 	group,
 	layerRef,
+	mediaKind = "image",
+	mediaLabel = "image",
+	layerAttributes,
 }) => {
+	useI18nLocale();
+	const isVideo = mediaKind === "video";
+	const positionLabel = (index: number, count: number) =>
+		mediaLabel === "asset"
+			? t("ui.common.viewer.position", {
+					kind: "asset",
+					index: index + 1,
+					count,
+				})
+			: groupPositionLabel(index, count);
 	/*
 	 * WHICH PICTURE FAILED, rather than a boolean this component resets. The
 	 * transcript's picture failed once and the store is content-addressed, so a
@@ -524,7 +601,7 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 	 * that registration is the reason it may not be built on the primitive
 	 * without it.
 	 */
-	useSuppressBrowserView(open, "image-lightbox");
+	useSuppressBrowserView(open, "lightbox");
 
 	/*
 	 * The zoom frame's own element, read at gesture time rather than stored:
@@ -533,7 +610,8 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 	 * would be the wrong bound one resize after the cache was filled.
 	 */
 	const frameRef = useRef<HTMLDivElement>(null);
-	const canZoom = src !== undefined && !failed;
+	// A clip's own controls are its zoom; the ladder stays an image affordance.
+	const canZoom = !isVideo && src !== undefined && !failed;
 	/*
 	 * BY VALUE, not by reference: the pan state holds a fresh object after every
 	 * drag and clamp, so `pan === VIEWER_PAN_ORIGIN` is false for a view that is
@@ -665,25 +743,45 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 				onPointerUp={endPan}
 				onPointerCancel={endPan}
 			>
-				<img
-					src={src}
-					alt={label}
-					draggable={false}
-					className={cn(box, "block select-none object-contain")}
+				{isVideo ? (
 					/*
-					 * No transform at fit and origin, so the resting DOM is exactly
-					 * the one the pre-zoom frames measured; the transform appears
-					 * only once the view has something to say.
+					 * The clip sits in the SAME fitted box the picture uses, so a mixed
+					 * gallery does not change frame between slides. No zoom transform: a
+					 * scaled video would scale its controls too, and the reader's own
+					 * fullscreen control is the larger view.
 					 */
-					style={
-						atFit
-							? undefined
-							: {
-									transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-								}
-					}
-					onError={() => setFailedFor(src)}
-				/>
+					// biome-ignore lint/a11y/useMediaCaption: a project attachment's own audio is the content; no caption track is stored with it.
+					<video
+						src={src}
+						controls
+						autoPlay
+						className={cn(box, "block object-contain")}
+						data-lightbox-video=""
+						onError={() => setFailedFor(src)}
+					>
+						{label}
+					</video>
+				) : (
+					<img
+						src={src}
+						alt={label}
+						draggable={false}
+						className={cn(box, "block select-none object-contain")}
+						/*
+						 * No transform at fit and origin, so the resting DOM is exactly
+						 * the one the pre-zoom frames measured; the transform appears
+						 * only once the view has something to say.
+						 */
+						style={
+							atFit
+								? undefined
+								: {
+										transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+									}
+						}
+						onError={() => setFailedFor(src)}
+					/>
+				)}
 			</div>
 		) : src === undefined && pending ? (
 			/* The bytes are on their way: an empty reserved box, `aria-hidden` because
@@ -754,6 +852,7 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 					// COLOUR, which this is the only way to take off.
 					"gap-0 rounded-none border-0 border-transparent bg-transparent p-0 shadow-none",
 				)}
+				{...layerAttributes}
 			>
 				<DialogTitle className="sr-only">{label}</DialogTitle>
 				{showCarousel && group ? (
@@ -766,7 +865,7 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 					 * visually.
 					 */
 					<div aria-live="polite" className="sr-only">
-						{groupPositionLabel(group.index, group.count)}
+						{positionLabel(group.index, group.count)}
 					</div>
 				) : null}
 				{picture}
@@ -815,10 +914,15 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label="Previous image"
-								title="Previous image"
+								aria-label={t("ui.common.viewer.previous", {
+									kind: mediaLabel,
+								})}
+								title={t("ui.common.viewer.previous", { kind: mediaLabel })}
 								onClick={group?.onPrev}
-								className="pointer-events-auto fixed top-0 bottom-0 left-4 my-auto"
+								className={cn(
+									"pointer-events-auto fixed top-0 bottom-0 left-4 my-auto",
+									CHROME_PLATE,
+								)}
 								data-image-viewer-prev=""
 							>
 								<ChevronLeft aria-hidden="true" />
@@ -826,63 +930,74 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label="Next image"
-								title="Next image"
+								aria-label={t("ui.common.viewer.next", { kind: mediaLabel })}
+								title={t("ui.common.viewer.next", { kind: mediaLabel })}
 								onClick={group?.onNext}
-								className="pointer-events-auto fixed top-0 right-4 bottom-0 my-auto"
+								className={cn(
+									"pointer-events-auto fixed top-0 right-4 bottom-0 my-auto",
+									CHROME_PLATE,
+								)}
 								data-image-viewer-next=""
 							>
 								<ChevronRight aria-hidden="true" />
 							</Button>
 						</>
 					) : null}
-					<div className="pointer-events-auto fixed right-4 bottom-4 flex items-center gap-1">
-						{/*
-						 * Disabled is a COLOUR step on the shared button (see its
-						 * `ghost` variant), never an opacity, and the three disabled
-						 * states fall out of the view's own arithmetic rather than out
-						 * of a mode: no zoom-out below fit, no zoom-in past the ladder's
-						 * top, nothing for Reset when the view is already fit and
-						 * centred.
-						 */}
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							aria-label="Zoom out"
-							title="Zoom out"
-							disabled={!canZoom || zoom === VIEWER_ZOOM_MIN}
-							onClick={() => applyZoom(stepZoom(zoom, -1))}
-						>
-							<ZoomOut aria-hidden="true" />
-						</Button>
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							aria-label="Zoom in"
-							title="Zoom in"
-							disabled={!canZoom || zoom === VIEWER_ZOOM_MAX}
-							onClick={() => applyZoom(stepZoom(zoom, 1))}
-						>
-							<ZoomIn aria-hidden="true" />
-						</Button>
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							aria-label="Reset view"
-							title="Reset view"
-							disabled={!canZoom || atFit}
-							onClick={resetView}
-						>
-							<RotateCcw aria-hidden="true" />
-						</Button>
-					</div>
+					{!isVideo && (
+						<div className="pointer-events-auto fixed right-4 bottom-4 flex items-center gap-1">
+							{/*
+							 * Disabled is a COLOUR step on the shared button (see its
+							 * `ghost` variant), never an opacity, and the three disabled
+							 * states fall out of the view's own arithmetic rather than out
+							 * of a mode: no zoom-out below fit, no zoom-in past the ladder's
+							 * top, nothing for Reset when the view is already fit and
+							 * centred.
+							 */}
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								aria-label={t("ui.common.viewer.zoom_out")}
+								title={t("ui.common.viewer.zoom_out")}
+								disabled={!canZoom || zoom === VIEWER_ZOOM_MIN}
+								onClick={() => applyZoom(stepZoom(zoom, -1))}
+								className={CHROME_PLATE}
+							>
+								<ZoomOut aria-hidden="true" />
+							</Button>
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								aria-label={t("ui.common.viewer.zoom_in")}
+								title={t("ui.common.viewer.zoom_in")}
+								disabled={!canZoom || zoom === VIEWER_ZOOM_MAX}
+								onClick={() => applyZoom(stepZoom(zoom, 1))}
+								className={CHROME_PLATE}
+							>
+								<ZoomIn aria-hidden="true" />
+							</Button>
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								aria-label={t("ui.common.viewer.reset_view")}
+								title={t("ui.common.viewer.reset_view")}
+								disabled={!canZoom || atFit}
+								onClick={resetView}
+								className={CHROME_PLATE}
+							>
+								<RotateCcw aria-hidden="true" />
+							</Button>
+						</div>
+					)}
 					<DialogClose asChild>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							className={cn("pointer-events-auto fixed top-4 right-4")}
-							aria-label="Close image"
-							title="Close image"
+							className={cn(
+								"pointer-events-auto fixed top-4 right-4",
+								CHROME_PLATE,
+							)}
+							aria-label={t("ui.common.viewer.close", { kind: mediaLabel })}
+							title={t("ui.common.viewer.close", { kind: mediaLabel })}
 						>
 							<X aria-hidden="true" />
 						</Button>

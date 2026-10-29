@@ -68,7 +68,8 @@ const ARGS = process.argv.slice(2);
 const AS_JSON = ARGS.includes("--json");
 const flag = (name) =>
 	ARGS.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
-const OUT = flag("out") ?? join(ROOT, "docs/evidence/store-refusal-alert");
+const OUT =
+	flag("out") ?? join(ROOT, "docs", "evidence-frames", "store-refusal-alert");
 const PORT = Number(flag("port") ?? 5431);
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 const ONLY = flag("only");

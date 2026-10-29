@@ -1,0 +1,6 @@
+{
+	"ui.chat.live_updates.paused": "Cập nhật trực tiếp đã tạm dừng, vì vậy cuộc trò chuyện này có thể đã lỗi thời.",
+	"ui.chat.live_updates.reload": "Tải lại từ lịch sử",
+	"ui.chat.live_updates.reloading": "Đang tải lại…",
+	"ui.chat.live_updates.reload_failed": "Không thể tải lại cuộc trò chuyện này. Hãy thử lại."
+}

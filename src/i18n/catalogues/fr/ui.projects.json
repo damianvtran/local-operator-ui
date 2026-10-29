@@ -351,10 +351,18 @@
 	"ui.projects.project_todos.no_to_do_snapshots_from_the_linked_sessions_yet_a_session_publish": "Aucun instantané de tâches provenant des sessions liées pour l’instant. Une session publie sa liste au fil du travail, et elle apparaît ici dès qu’elle l’a fait.",
 	"ui.projects.project_todos.to_dos": "Tâches",
 	"ui.projects.project_updates.attachment": "Pièce jointe",
+	"ui.projects.project_updates.attachments": "Pièces jointes",
 	"ui.projects.project_updates.file_actions_for_name": "Actions de fichier pour {name}",
 	"ui.projects.project_updates.loading": "Chargement ",
 	"ui.projects.project_updates.no_updates_yet_progress_reported_by_you_or_by_the_sessions_workin": "Aucune mise à jour pour l’instant. Les progrès signalés par vous ou par les sessions qui travaillent sur ce projet sont ajoutés ici.",
 	"ui.projects.project_updates.open_name": "Ouvrir {name}",
+	"ui.projects.project_updates.play_name": "Lire {name}",
+	"ui.projects.project_updates.preview_failed": "Impossible d’ouvrir ce fichier.",
+	"ui.projects.project_updates.preview_loading": "Chargement de l’aperçu…",
+	"ui.projects.project_updates.preview_moved": "Sa copie enregistrée a peut-être été déplacée ou supprimée.",
+	"ui.projects.project_updates.preview_name": "Aperçu de {name}",
+	"ui.projects.project_updates.preview_unavailable": "L’aperçu n’est pas disponible en dehors de l’application de bureau.",
+	"ui.projects.project_updates.show_asset_name": "Afficher {name}, élément {index} sur {count}",
 	"ui.projects.project_updates.updates": "Mises à jour",
 	"ui.projects.projects_page.checking_the_server_s_projects_support": "Vérification de la prise en charge des projets par le serveur",
 	"ui.projects.projects_page.clear_all": "Tout effacer",
@@ -414,5 +422,8 @@
 	"ui.projects.request_update.value1_could_not_be_reached": " {value1} n’a pas pu être joint.",
 	"ui.projects.timeline.read_failed": "Les jalons n’ont pas pu être lus pour {count, plural, one {{count, number, ::group-off} projet} many {{count, number, ::group-off} de projets} other {{count, number, ::group-off} projets}}.",
 	"ui.projects.use_request_update.could_not_request_updates_endedsentence_message": "Impossible de demander les mises à jour : {endedSentence_message}",
-	"ui.projects.use_request_update.the_request_could_not_be_confirmed": "La demande n’a pas pu être confirmée."
+	"ui.projects.use_request_update.the_request_could_not_be_confirmed": "La demande n’a pas pu être confirmée.",
+	"ui.projects.project_model.milestone_summary": "{completed, plural, one {{completed, number, ::group-off} sur {total, number, ::group-off} terminé} many {{completed, number, ::group-off} sur {total, number, ::group-off} terminés} other {{completed, number, ::group-off} sur {total, number, ::group-off} terminés}}",
+	"ui.projects.project_model.todos_summary": "{open, plural, one {{open, number, ::group-off} ouverte sur {total, number, ::group-off}} many {{open, number, ::group-off} ouvertes sur {total, number, ::group-off}} other {{open, number, ::group-off} ouvertes sur {total, number, ::group-off}}}",
+	"ui.projects.project_model.done_gate_tail": "terminez ou supprimez les jalons incomplets, puis marquez-le comme terminé"
 }

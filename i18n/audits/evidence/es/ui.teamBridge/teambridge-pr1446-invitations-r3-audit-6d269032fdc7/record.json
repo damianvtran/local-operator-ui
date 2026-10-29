@@ -1,0 +1,102 @@
+{
+	"audit_id": "teambridge-pr1446-invitations-r3-audit-6d269032fdc7",
+	"date": "2026-10-27",
+	"locale": "es",
+	"namespace": "ui.teamBridge",
+	"source_commit": "61f028a1556f9f043d598a3e635af22d7a53566a",
+	"translator": {
+		"agent": "translator",
+		"session": "839f2593b55e",
+		"role": "coder",
+		"model": "anthropic/claude-opus-5-5",
+		"fallback": "none recorded",
+		"commit": "61f028a1556f9f043d598a3e635af22d7a53566a",
+		"method": "LLM reasoning; no MT service referenced"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"date": "2026-10-27",
+			"result": "clean",
+			"instance": "6d269032fdc7-r3-es",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/6d269032fdc7-r3-es.json",
+			"receipt_sha256": "f9c9e3027119add0b52c70e384644c5fa033d1adb93dac73c28ed662d263fd1e",
+			"scope": "PR #1446 round 3: en/vi agent_fallback (F3) and agent_line rendered with the fallback; rest byte-identical to round 2.",
+			"note": "PR #1446 R3 (0 findings; R2 F3 fixed). Evidence: i18n/audits/evidence/es/ui.teamBridge/teambridge-pr1446-invitations-r3-audit-6d269032fdc7/record.json"
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor (reviewer role, session 6d269032fdc7). It authored none of the audited strings and edited no catalogue byte. The translator was session 839f2593b55e (commit 61f028a155). This run wrote only receipts, evidence records and ledger rows (via ledger-assemble.mjs).",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "08f949e7904538063bccc45970ca5866bcc7bfb2cd43cd2ced8d729a2b4a611c"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/es/ui.teamBridge.json",
+			"sha256": "fafac4e8eb9c693dddad7137ae6d99ee3beefe0dc795d8b49441e3ae36c78a1e"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "adee106718acc3d6254c2e7ff4ef38cbb0b750e07131b4084ed4e549d58aee57"
+		}
+	},
+	"audited": {
+		"ui.teamBridge.invitations.agent_fallback": {
+			"en": "Your agent",
+			"target": "tu agente"
+		},
+		"ui.teamBridge.invitations.agent_line": {
+			"en": "{agent} was invited to this conversation",
+			"target": "Se invitó a {agent} a esta conversación"
+		}
+	},
+	"scope": {
+		"keys_audited_linguistically": [],
+		"rendered_with_fallback": [
+			"ui.teamBridge.invitations.agent_line"
+		],
+		"english_change": "en agent_fallback 'your agent' -> 'Your agent' (it opens the English agent_line); en context notes for agent_line and agent_fallback corrected. No other en key changed.",
+		"inherited_byte_identical": {
+			"round2_receipt": "i18n/receipts/6d269032fdc7-r2-es.json",
+			"round2_receipt_sha256": "ae7850fdfa4e7e8fdaf46fef73d074f119a0b061d9587e0694d062f434f5adaf",
+			"note": "the whole target catalogue is byte-identical to the round-2 audited bytes at 87507d9c52; #1441's keys stay on fe54982cb1b7-es, the base on e2cc7b3bceb8."
+		}
+	},
+	"notes": "Target byte-identical to round 2. agent_line with fallback: 'Se invitó a tu agente a esta conversación' - fallback mid-sentence, lowercase correct.",
+	"findings": [],
+	"fallback_renders": [
+		"en | agent_fallback = Your agent",
+		"en | agent_line named   => Robo Damian was invited to this conversation",
+		"en | agent_line unnamed => Your agent was invited to this conversation",
+		"es | agent_fallback = tu agente",
+		"es | agent_line named   => Se invitó a Robo Damian a esta conversación",
+		"es | agent_line unnamed => Se invitó a tu agente a esta conversación"
+	],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_es": {
+			"path": "~/local-operator/i18n/style-guides/es.md",
+			"revision": "95dea370856c5ab99309246b5e41869ea5c69d7a",
+			"sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+		}
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/6d269032fdc7-r3-es.json",
+			"sha256": "f9c9e3027119add0b52c70e384644c5fa033d1adb93dac73c28ed662d263fd1e"
+		}
+	},
+	"limitations": "No rendered-fit or screenshot evidence: this role has no browser tool."
+}

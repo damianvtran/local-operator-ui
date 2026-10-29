@@ -1,0 +1,88 @@
+{
+  "audit_id": "tbr-20261021",
+  "date": "2026-10-21",
+  "locale": "vi",
+  "namespace": "ui.teamBridge",
+  "source_commit": "c838523c627cde8408e30fb7ec4c1fb48390142a",
+  "source_note": "English catalogue and context frozen at c838523c62; later code-only commits on feat/tb-reactions do not change either file (hashes below re-verified).",
+  "translator": {
+    "agent": "translator",
+    "model": "anthropic/claude-opus-5-5",
+    "date": "2026-10-21",
+    "session": "e0c4639e4411",
+    "job": "ff8ce0cb39b8",
+    "remediation_job": "e3b57694d3ea"
+  },
+  "auditors": [
+    {
+      "agent": "translation-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "date": "2026-10-21",
+      "result": "clean",
+      "instance": "tbr-r2-vi",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "receipt": "i18n/receipts/tbr-r2-vi.json",
+      "receipt_sha256": "374b8fb5fc26259379cb89fd3ffefeb6ea1932a8e7024d17204607891d28a73d",
+      "scope": "Round-2 remediation delta: ui.teamBridge.reactions.toneDefault (VI-R1-1) plus regression check of the other 128 values against round 1. Catalogue audit only, not rendered-fit, activation or release approval.",
+      "note": "Independent re-audit; VI-R1-1 fixed. Round 1 (tbr-r1-vi) and base audits retained in superseded. No rendered-fit claim."
+    }
+  ],
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "69f741a64df96b85b00e2f389bcda35bbbcc7cc023c4e2f31c997ef64fc0b50c"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/vi/ui.teamBridge.json",
+      "sha256": "363089cbfaaaf3efd156201140bd5ba8d1fd2b18496ecc96365425bc94a357f6"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "ad0eef37d14411e02b07a083f3873518362734fefd8caa930cf4196728b2ef84"
+    }
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+    }
+  },
+  "independence": "Each translation-auditor run is a separate subagent session from the translator and from the coordinator; auditors never edited catalogues. Round-2 re-audits ran in new sessions distinct from round 1.",
+  "limitations": [
+    "Browser unavailable; no rendered-fit, screenshots, pseudo-localization or activation evidence claimed.",
+    "Static overflow risks noted in receipts (e.g. reactions.frequent heading, toneDefault select option) await a rendered check."
+  ],
+  "retained_rounds": [
+    {
+      "path": "i18n/receipts/tbr-r1-vi.json",
+      "sha256": "df5025e3ee8f4da05ee3554c3a1d03f35e51d957bf509b146b9c3d8961de8032",
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      }
+    },
+    {
+      "path": "i18n/receipts/tbr-r2-vi.json",
+      "sha256": "374b8fb5fc26259379cb89fd3ffefeb6ea1932a8e7024d17204607891d28a73d",
+      "result": "clean",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    }
+  ]
+}

@@ -30,6 +30,8 @@
  */
 
 import { Separator } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Fragment, type HTMLAttributes, type ReactNode, type Ref } from "react";
 import { JobCancelPopover } from "./job-cancel-popover";
@@ -178,6 +180,12 @@ export const RunDetailsPanel = ({
 	className,
 	...props
 }: RunDetailsPanelProps) => {
+	/*
+	 * The locale is a SUBSCRIPTION, not a value: the quiet line below resolves
+	 * through `t()` at render time, and a language switch has to repaint it
+	 * rather than wait for the run to move.
+	 */
+	useI18nLocale();
 	/*
 	 * The clock is taken HERE, at the body, and the re-measured model is handed to
 	 * the SUBAGENT rows only. Nothing above this component ticks (see
@@ -427,8 +435,8 @@ export const RunDetailsPanel = ({
 			{sections.length === 0 && (
 				<p className={cn("px-3 py-3 text-body-sm text-ink-muted")}>
 					{hasRunDetails(details)
-						? "Nothing to show yet."
-						: "Nothing in flight."}
+						? t("ui.chat.run_details.nothing_to_show_yet")
+						: t("ui.chat.run_details.nothing_in_flight")}
 				</p>
 			)}
 			{sections.map((section, index) => (

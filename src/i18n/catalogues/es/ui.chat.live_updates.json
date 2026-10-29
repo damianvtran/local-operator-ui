@@ -1,0 +1,6 @@
+{
+	"ui.chat.live_updates.paused": "Las actualizaciones en directo están en pausa, así que esta conversación puede estar desactualizada.",
+	"ui.chat.live_updates.reload": "Recargar desde el historial",
+	"ui.chat.live_updates.reloading": "Recargando…",
+	"ui.chat.live_updates.reload_failed": "No se pudo recargar esta conversación. Inténtalo de nuevo."
+}

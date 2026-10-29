@@ -1,6 +1,35 @@
 import assert from "node:assert/strict";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
+import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
+
+/*
+ * Import a bundle from a short temporary path rather than a `data:` URI.
+ *
+ * These bundles are a few hundred KB of base64. As a data-URI specifier, any
+ * diagnostic that includes the specifier -- a parse error, a thrown fixture, a
+ * rejected promise whose stack names the module -- writes the whole thing to
+ * the log. On CI that produced a multi-megabyte single line and the shard then
+ * stalled past its 50-minute cap, cancelling the job rather than failing it
+ * (Desktop Tests shard 2, run 40169799731 attempts 1 and 2).
+ *
+ * A file path is short, so a failure reads as `/tmp/.../contract.mjs:12` and the
+ * shard finishes. The import semantics are unchanged: same source, same module
+ * graph, same evaluation. The directory is left in place for the process
+ * lifetime; it is a few hundred KB under the OS temp root.
+ */
+let bundleDirPromise;
+function importBundle(source, name) {
+	bundleDirPromise ??= mkdtemp(join(tmpdir(), "lop-ack-"));
+	return bundleDirPromise.then(async (dir) => {
+		const file = join(dir, name);
+		await writeFile(file, source, "utf8");
+		return import(pathToFileURL(file).href);
+	});
+}
 
 /*
  * The renderer's read-receipt loop, driven headlessly.
@@ -110,8 +139,9 @@ export const discardPendingEchoes = () => undefined;`,
 		},
 	],
 });
-const storeModule = await import(
-	`data:text/javascript;base64,${Buffer.from(storeBundle.outputFiles[0].text).toString("base64")}`
+const storeModule = await importBundle(
+	storeBundle.outputFiles[0].text,
+	"store.mjs",
 );
 const store = storeModule.useCanonicalSessionsStore;
 // Handed to the hook bundle's fixture below, so both bundles share ONE store
@@ -208,9 +238,7 @@ const bundle = await build({
 // are new, and referring to them through the module is what lets the same file
 // run against a tree that predates them (where they are simply absent) instead
 // of failing to load at all.
-const contract = await import(
-	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-);
+const contract = await importBundle(bundle.outputFiles[0].text, "contract.mjs");
 const {
 	useCompletionView,
 	DesktopControlError,

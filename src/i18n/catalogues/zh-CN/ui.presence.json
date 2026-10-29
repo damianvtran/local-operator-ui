@@ -1,0 +1,11 @@
+{
+	"ui.presence.unknown": "未知",
+	"ui.presence.link_down_last_seen": "连接中断 · 最后活跃 {age}",
+	"ui.presence.device_link_down": "连接中断 · {reason} · 最后活跃 {age}",
+	"ui.presence.device_unreachable": "设备不可达",
+	"ui.presence.just_now": "刚刚",
+	"ui.presence.minutes_ago": "{count, number}分钟前",
+	"ui.presence.hours_ago": "{count, number}小时前",
+	"ui.presence.days_ago": "{count, number}天前",
+	"ui.presence.link_down_compact": "连接中断 · {age}"
+}

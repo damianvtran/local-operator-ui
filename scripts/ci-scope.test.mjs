@@ -32,6 +32,8 @@ import {
 	flagsFor,
 	isNamedLivePath,
 	isPermissiveDependency,
+	jobMatchesFlags,
+	jobPlan,
 	runJobs,
 } from "./ci-scope.mjs";
 
@@ -156,6 +158,9 @@ test("A1: every job is gated on flags that exist, or is declared ungated", () =>
 test("A2: every gate escapes the implicit success() and names its dependencies", () => {
 	for (const job of Object.keys(jobs)) {
 		if (!flagged(job)) continue;
+		// The result consumer is separately pinned by A17e: always-run so failed
+		// or missing workers become a red required result, never a collateral skip.
+		if (job === "desktop-tests-result") continue;
 		assert.match(
 			jobIf(job),
 			/!\s*cancelled\(\)/,
@@ -170,6 +175,7 @@ test("A2: every gate escapes the implicit success() and names its dependencies",
 		}
 	}
 	for (const job of Object.keys(jobs)) {
+		if (job === "desktop-tests-result") continue; // A17e pins the sole consumer exception.
 		assert.doesNotMatch(
 			jobIf(job),
 			/always\(\)/,
@@ -237,8 +243,9 @@ test("A3: every gate reads != 'false', and the writer refuses to emit a non-deci
  */
 test("A4: dependency clauses match the implication the module actually guarantees", () => {
 	const vectors = flagVectors();
-	const runs = (job, flags) => JOB_FLAGS[job].every((flag) => flags[flag]);
+	const runs = (job, flags) => jobMatchesFlags(job, flags);
 	for (const job of gatedJobs) {
+		if (job === "desktop-tests-result") continue; // A17e requires failed-worker consumption.
 		for (const dependency of jobNeeds(job)) {
 			if (dependency === "changes") continue;
 			const implied = vectors.every(
@@ -643,6 +650,31 @@ test("A10: a rename out of the inert set keeps the code suite", () => {
 // A11 + A12 - the module, the workflow and the local command are one opinion
 // ---------------------------------------------------------------------------
 
+test("renderer-only and i18n-only signals select the complete language gate", () => {
+	const renderer = classify([
+		"src/renderer/src/features/chat/reviewer-probe.tsx",
+	]);
+	assert.equal(renderer.types, true);
+	assert.equal(renderer.i18n, false);
+	assert.equal(jobPlan(renderer)["i18n-coverage"], "run");
+
+	const catalogueOnly = Object.fromEntries(
+		FLAGS.map((flag) => [flag, flag === "i18n"]),
+	);
+	assert.equal(jobPlan(catalogueOnly)["i18n-coverage"], "run");
+	assert.match(jobIf("i18n-coverage"), /\|\|/);
+	assert.deepEqual(JOB_COMMANDS["i18n-coverage"], [
+		"pnpm check-i18n:catalogues",
+		"pnpm check-i18n:added-strings",
+		"pnpm check-i18n:coverage",
+	]);
+
+	// This suite already runs in CI independently of the new guard suite, so it
+	// is the durable place to prove that guard suite remains enumerated.
+	const desktop = pkg.scripts["test:desktop"].split(/\s+/);
+	assert.ok(desktop.includes("scripts/i18n/check-added-strings.test.mjs"));
+});
+
 /*
  * Defect: `pnpm check-changed` (or a job's own commands) drifting from what CI
  * runs, so the local gate is green about a different set of checks than the one
@@ -673,6 +705,23 @@ test("A11: every job's local commands exist and match the workflow's own steps",
 			// command drifting to a different tool, and two tokens is the
 			// strongest check that the prefix cannot defeat.
 			const [tool, argument] = command.split(/\s+/);
+			if (job === "test" && command === "pnpm test:desktop") {
+				assert.ok(
+					blocks.some((b) =>
+						b.includes("node scripts/desktop-test-shards.mjs run"),
+					),
+				);
+				const planner = readFileSync(
+					join(repoRoot, "scripts/desktop-test-shards.mjs"),
+					"utf8",
+				);
+				assert.ok(planner.includes('pkg.scripts?.["test:desktop"]'));
+				assert.ok(planner.includes("[RUNNER, ...expected.shards[index]]"));
+				assert.ok(
+					planner.includes('const RUNNER = "scripts/run-desktop-tests.mjs"'),
+				);
+				continue;
+			}
 			assert.ok(
 				blocks.some(
 					(block) => block.includes(tool) && block.includes(argument),
@@ -946,17 +995,28 @@ test("A13: the copied module classifies from the invocation directory, not its o
  * desktop suite on a change to that suite's own input - `evidence-manifest.
  * test.mjs` reads `docs/evidence/manifest.json`, `clear-search.test.mjs`,
  * `new-chat-row-evidence.test.mjs` and `evidence-run-guard.test.mjs` read their
- * captured frames, and `chrome-keychain.test.mjs` walks the tree. A green PR
+ * proof artefacts, and `chrome-keychain.test.mjs` walks the tree. A green PR
  * that tested nothing.
  *
  * It keeps TWO jobs now, and `evidence` was added with the frame sweep for the
- * same reason: `docs/evidence/**` is exactly what `pnpm check-evidence` asserts
- * over, and the flags that stay false are the ones that would compile, build or
- * pack a frame. A21 pins what selects that second job.
+ * same reason: `docs/evidence/**` is exactly what the TRACKED half of evidence
+ * asserts over - the manifest and the proof artefacts - and the flags that stay
+ * false are the ones that would compile, build or pack a frame. A21 pins what
+ * selects that second job.
  *
- * Mutation: return `docs` for `docs/evidence/**`.
+ * THE THIRD CATEGORY, added with the frames split: `docs/evidence-frames/**` is
+ * the rig's IGNORED output. It is not committed evidence (there is nothing
+ * under it for a job to read) and it is not prose an inert skip is safe for
+ * (the only way it appears in a diff is a force-add, which re-materialises the
+ * ~570 MB this change removes from every worktree). So it is `other`: every
+ * code flag true, the unknown-path annotation raised, and `evidence` FALSE -
+ * selecting the frame sweep for a tree the sweep cannot see would let a
+ * force-added frame ride under a green job.
+ *
+ * Mutation: return `docs` for `docs/evidence/**`; or return `docs` for the
+ * frames tree; or fold the frames tree into `CAT_EVIDENCE`.
  */
-test("A16: docs/evidence/** keeps the suite and the frame sweep, and nothing else", () => {
+test("A16: docs/evidence/** keeps the suite and the evidence job, and nothing else", () => {
 	const flags = classify(["docs/evidence/manifest.json"]);
 	assert.equal(
 		flags.unit,
@@ -966,7 +1026,7 @@ test("A16: docs/evidence/** keeps the suite and the frame sweep, and nothing els
 	assert.equal(
 		flags.evidence,
 		true,
-		"a change to committed evidence must run the sweep that asserts over it",
+		"a change to committed evidence must run the evidence job that asserts over it",
 	);
 	assert.equal(flags.pack, false, "committed evidence is not built or packed");
 	assert.equal(flags.lint, false);
@@ -978,6 +1038,39 @@ test("A16: docs/evidence/** keeps the suite and the frame sweep, and nothing els
 	assert.equal(classify(["docs/evidence/usage/01-loaded.png"]).unit, true);
 	assert.equal(classify(["docs/evidence/README.md"]).unit, true);
 	assert.equal(classify(["docs/evidence"]).unit, true);
+
+	/*
+	 * The ignored frames tree is neither of the two above. It is `other`, so the
+	 * suite still runs (a force-add is a real change to the repository) and the
+	 * unknown-path annotation fires, but the frame sweep is NOT selected: there
+	 * are no committed frames there for it to read.
+	 */
+	for (const path of [
+		"docs/evidence-frames",
+		"docs/evidence-frames/live/one/dracula.webp",
+	]) {
+		assert.equal(
+			categoryOf(path),
+			"other",
+			`${path} must be named as unrecognised rather than committed evidence or inert prose`,
+		);
+		assert.equal(
+			isNamedLivePath(path),
+			false,
+			`${path} is not a live source path, so the unknown-path annotation must fire`,
+		);
+		const flags = classify([path]);
+		assert.equal(
+			flags.evidence,
+			false,
+			`${path} selected the frame sweep: nothing under the ignored tree is committed for it to read, so a green job there would be green by absence`,
+		);
+		assert.equal(flags.unit, true, `${path} skipped the suite`);
+		assert.equal(flags.pack, true, `${path} skipped the pack`);
+		// `docs/evidence` must not swallow the sibling by prefix: the two trees
+		// differ by a suffix only, which is exactly how a prefix rule gets it wrong.
+		assert.notEqual(categoryOf(path), "evidence");
+	}
 });
 
 // ---------------------------------------------------------------------------
@@ -1030,14 +1123,16 @@ test("A16: docs/evidence/** keeps the suite and the frame sweep, and nothing els
 test("A17: exactly one desktop-suite invocation, behind a failing-closed step", () => {
 	const invocations = runBlocks("test")
 		.join("\n")
-		.match(/pnpm test:desktop\b/g);
+		.match(/node scripts\/desktop-test-shards\.mjs run\b/g);
 	assert.equal(
 		invocations?.length ?? 0,
 		1,
 		`the 'test' job invokes \`pnpm test:desktop\` ${invocations?.length ?? 0} times; the suite is the job's dominant cost and one run plus the count assertions is the whole signal`,
 	);
 	const blocks = runBlocks("test");
-	const suite = blocks.find((block) => block.includes("pnpm test:desktop"));
+	const suite = blocks.find((block) =>
+		block.includes("node scripts/desktop-test-shards.mjs run"),
+	);
 	assert.match(
 		suite,
 		/set -o pipefail/,
@@ -1118,7 +1213,7 @@ function desktopStepBody() {
 	const step = (jobs.test?.steps ?? []).find(
 		(candidate) =>
 			typeof candidate.run === "string" &&
-			candidate.run.includes("pnpm test:desktop"),
+			candidate.run.includes("node scripts/desktop-test-shards.mjs run"),
 	);
 	assert.ok(step, "the `test` job has no step that runs `pnpm test:desktop`");
 	return step.run;
@@ -1146,7 +1241,7 @@ function runDesktopStep(body, scenario) {
 	mkdirSync(bin, { recursive: true });
 	const synthetic = join(dir, "synthetic.log");
 	writeFileSync(synthetic, scenario.log);
-	const stub = join(bin, "pnpm");
+	const stub = join(bin, "node");
 	writeFileSync(
 		stub,
 		[
@@ -1158,6 +1253,14 @@ function runDesktopStep(body, scenario) {
 		].join("\n"),
 	);
 	chmodSync(stub, 0o755);
+	// A17 exercises diagnostics, not Git or the planner. Exact synthetic SHA
+	// prevents a real git/keychain lookup under a fixture's environment.
+	const gitStub = join(bin, "git");
+	writeFileSync(
+		gitStub,
+		"#!/bin/sh\nprintf '%s\\n' aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+	);
+	chmodSync(gitStub, 0o755);
 	const script = join(dir, "step.sh");
 	writeFileSync(
 		script,
@@ -1173,6 +1276,9 @@ function runDesktopStep(body, scenario) {
 			// attribute when a variable that is already in the environment is
 			// reassigned, so a stub reading `SUITE_RC` would have read the step's
 			// own `SUITE_RC=0` and exited green for every case.
+			GITHUB_OUTPUT: join(dir, "step-output"),
+			DESKTOP_REQUESTED_HEAD: "a".repeat(40),
+			DESKTOP_SHARD_INDEX: "0",
 			CI_SCOPE_STUB_LOG: synthetic,
 			CI_SCOPE_STUB_STDERR: scenario.stderr ?? "",
 			CI_SCOPE_STUB_RC: String(scenario.suiteRc),
@@ -1446,6 +1552,7 @@ test("A17d: a failed desktop run retains its full log as a failure artifact", ()
 	assert.ok(jobs.test.steps.indexOf(artifact) > jobs.test.steps.indexOf(suite));
 	assert.match(artifact.with.name, /github\.run_id/);
 	assert.match(artifact.with.name, /github\.run_attempt/);
+	assert.match(artifact.with.name, /shard-\$\{\{ matrix\.shard \}\}/);
 	// Exercise the unchanged REAL shell body with an intentionally failed
 	// synthetic suite. Byte equality catches a tail-only or dropped stderr log.
 	const scenario = {
@@ -1590,19 +1697,25 @@ test("A20: --all writes every flag true", () => {
 // ---------------------------------------------------------------------------
 
 /*
- * Defect: `pnpm check-evidence` ran in NO workflow, so 20 findings sat on `main`
+ * Defect: the evidence gate ran in NO workflow, so 20 findings sat on `main`
  * - 19 frames whose filename named no palette, and one `supplementary` entry
  * with no `why` - under a green CI. The job exists now; this pins what SELECTS
  * it, because a gate nothing sets is the same absence one level up, and a gate
- * set too widely is a whole-tree decode paid on every unrelated diff.
+ * set too widely runs evidence work on every unrelated diff.
  *
- * Mutation: gate the job on `unit` (the sweep then pays its decode on every
- * `src/**` change); or drop `CAT_EVIDENCE` from the predicate (the sweep then
- * never runs on the diff that moves frames, which is the shipped defect); or
- * drop the palette prefix (`palette-source.mjs` reads the grounds out of those
- * files, so moving a ground must re-judge every frame).
+ * WHAT THE JOB CHECKS MOVED (2026-10-20): it asserts the tracked STRUCTURE, and
+ * the pixel sweep it used to run is the release path's step. What selects it is
+ * unchanged, and that is deliberate: a diff that moves the manifest, the rigs,
+ * a palette or the install is still the diff that can invalidate the structure
+ * or the grounds a release-time sweep judges against.
+ *
+ * Mutation: gate the job on `unit` (then every `src/**` change pays for the
+ * structure walk); or drop `CAT_EVIDENCE` from the predicate (the job then never
+ * runs on the diff that moves evidence, which is the shipped defect); or drop
+ * the palette prefix (`palette-source.mjs` reads the grounds out of those
+ * files, so moving a ground must re-judge every frame at the next release).
  */
-test("A21: the frame sweep runs on a frame change and on the inputs it judges", () => {
+test("A21: the evidence job runs on an evidence change and on the inputs it judges", () => {
 	assert.equal(
 		classify([
 			"docs/evidence/chat-older-history-slot/retry-recovery/head/in-transcript-idle/in-transcript-idle--03-t2381ms-idle/localOperatorDark.webp",
@@ -1655,16 +1768,33 @@ test("A21: the frame sweep runs on a frame change and on the inputs it judges", 
  * Mutation: add an import to `check-evidence.mjs` - or to anything it loads -
  * and leave the set alone; or drop an entry from the set.
  */
-test("A22: the sweep's selected sources ARE its derived load path", () => {
+test("A22: the gate's selected sources ARE its derived load path", () => {
+	/*
+	 * TWO entry points since the split: the structural gate CI runs
+	 * (`check-evidence-structure.mjs`, which loads `check-evidence.mjs` for
+	 * `stampFailures`) and the pixel sweep itself, whose closure also carries the
+	 * Python admission guard behind a spawn the import walk cannot see. The union
+	 * is the set: a module either entry point loads can move the job's verdict.
+	 */
+	const entries = [
+		"scripts/check-evidence.mjs",
+		"scripts/check-evidence-structure.mjs",
+	];
 	assert.deepEqual(
 		[...EVIDENCE_SOURCES].sort(),
 		[
 			...new Set([
-				...relativeImportClosure("scripts/check-evidence.mjs"),
-				...spawnedClosure("scripts/check-evidence.mjs"),
+				// The entry points themselves: the walk returns what they LOAD, and
+				// `check-evidence-structure.mjs` is imported by nothing (only the
+				// workflow and this table name it), so it would otherwise drop out.
+				...entries,
+				...entries.flatMap((entry) => [
+					...relativeImportClosure(entry),
+					...spawnedClosure(entry),
+				]),
 			]),
 		].sort(),
-		"EVIDENCE_SOURCES has to be the closure of what `scripts/check-evidence.mjs` LOADS and SPAWNS: a hand-kept list of the modules that produce the verdict lost `capture-evidence.mjs` once already, and an import walk alone cannot see the Python admission guard the sweep forks before it reads a frame",
+		"EVIDENCE_SOURCES has to be the closure of what the gate LOADS and SPAWNS: a hand-kept list of the modules that produce the verdict lost `capture-evidence.mjs` once already, and an import walk alone cannot see the Python admission guard the sweep forks before it reads a frame",
 	);
 });
 
@@ -1680,19 +1810,52 @@ test("A22: the sweep's selected sources ARE its derived load path", () => {
  * to every evidence-touching local run); or delete the exclusion outright (A11
  * refuses that - a gated job needs a local command OR a recorded reason).
  */
-test("A23: the whole-tree sweep is off the local path, with its reason recorded", () => {
-	assert.ok(
-		!Object.hasOwn(JOB_COMMANDS, "evidence"),
-		"`evidence` must not be on the local path: `pnpm check-evidence` is a whole-tree decode (~5 minutes) guarded by a machine-wide lease, so a local `check-changed` would pay it on every evidence-touching diff or be locked out",
+test("A23: local runs the STRUCTURAL gate, and the pixel sweep is the release path's", () => {
+	/*
+	 * Defect: the evidence job's local spelling being the pixel sweep. It decodes
+	 * the whole captured tree (~5 minutes) behind a machine-wide lease, so a local
+	 * `check-changed` would pay it on every evidence-touching diff or be locked
+	 * out of its own gate - and once the frames became rig output in an ignored
+	 * tree, a fresh CI checkout has none, so that spelling cannot be CI's either.
+	 *
+	 * What replaces it is two halves with two homes: the structural gate locally
+	 * and in CI (cheap, no pixels), and the pixel sweep at release on a captured
+	 * checkout. This pins both - the local command IS the structural one, and the
+	 * sweep is not reachable from `check-changed` at all.
+	 */
+	assert.deepEqual(
+		JOB_COMMANDS.evidence,
+		["node scripts/check-evidence-structure.mjs"],
+		"the evidence job's local spelling drifted from the structural gate CI runs (A11 reads the workflow side of this)",
 	);
 	assert.ok(
-		Object.hasOwn(LOCAL_EXCLUSIONS, "evidence"),
-		"and it is excluded WITH a reason rather than silently dropped",
+		!Object.values(JOB_COMMANDS)
+			.flat()
+			.some((command) => /\bcheck-evidence\.mjs\b/.test(command)),
+		"a local command invokes the PIXEL sweep: it is a whole-tree decode behind a machine-wide lease, and it needs a captured checkout - it belongs to the release path, not `check-changed`",
+	);
+	assert.ok(
+		!Object.hasOwn(LOCAL_EXCLUSIONS, "evidence"),
+		"`evidence` is excluded locally, so the cheap structural half never runs where a developer can see it",
+	);
+	/*
+	 * And the release path is DOCUMENTED, not merely intended: the owner's
+	 * procedure names the sweep and its verdict, which is the only record that it
+	 * ran. A code comment cannot be the home for a coverage move.
+	 */
+	const agents = readFileSync(new URL("../AGENTS.md", import.meta.url), "utf8");
+	const release = agents.slice(
+		agents.indexOf("## Releasing: one owner per window"),
 	);
 	assert.match(
-		LOCAL_EXCLUSIONS.evidence,
-		/75/,
-		"the reason names the DEFERRED code, because that is the outcome a reader of a local evidence diff will otherwise read as a failure",
+		release,
+		/node scripts\/check-evidence\.mjs/,
+		"the release-owner procedure does not name the pixel sweep: the check moved from every PR to release-time and must say where it went",
+	);
+	assert.match(
+		release,
+		/regenerated frames|regenerat/i,
+		"the release step does not say the sweep needs a CAPTURED checkout, which is the whole reason it could not stay in CI",
 	);
 });
 
@@ -1799,6 +1962,60 @@ test("A25: the bytecode check follows the main bundle's inputs", () => {
 			`'${path}' cannot change the bytecode-compiled main chunk and must not pay a full build`,
 		);
 	}
+});
+
+// ---------------------------------------------------------------------------
+// A26 - the language-coverage gate cannot be skipped by the diff it gates
+// ---------------------------------------------------------------------------
+
+/*
+ * Defect: `i18n/languages.json` promises every shipped language carries every
+ * English key, but nothing ran `pnpm check-i18n` at merge time - the policy was
+ * a `package.json` script and a paragraph. Adding the job to `ci.yml` is only
+ * half the fix: the classifier must SELECT it for every input the gate reads.
+ * The allowance is the case that matters most, because a change to it is pure
+ * data and looks inert to every category-based rule.
+ *
+ * Mutation: drop `i18n/` from `I18N_PREFIXES`, so an allowance-only change
+ * stops running the gate; or gate the job on `lint` and let a later narrowing
+ * of that predicate take the coverage check with it.
+ */
+test("A26: the language-coverage gate is selected by every path it reads", () => {
+	for (const path of [
+		"src/i18n/catalogues/en/ui.demo.json",
+		"src/i18n/keys.gen.ts",
+		"i18n/languages.json",
+		// Pure data. This is the path that would otherwise be skipped as "no code
+		// changed" while being exactly the file the gate polices.
+		"i18n/coverage-allowance.json",
+		"scripts/i18n/check-coverage.mjs",
+	]) {
+		assert.equal(
+			classify([path]).i18n,
+			true,
+			`'${path}' is an input to the coverage gate, so its job must run`,
+		);
+	}
+	// Its own predicate, not a second name for "source changed": prose and the
+	// suites that read no catalogue must not pay for it.
+	for (const path of ["docs/i18n.md", "README.md", "src/main/app.ts"]) {
+		assert.equal(
+			classify([path]).i18n,
+			false,
+			`'${path}' is not an input to the coverage gate`,
+		);
+	}
+	// Fail open where the classifier itself cannot answer, like every other flag.
+	assert.equal(classify([".github/workflows/ci.yml"]).i18n, true);
+	// The install is an input: `pnpm check-i18n` runs the script definitions in
+	// `package.json` and its parser/compiler come from the lockfile.
+	assert.equal(classify(["package.json"]).i18n, true);
+	assert.equal(classify(["pnpm-lock.yaml"]).i18n, true);
+	// An UNRECOGNISED path does not select it, unlike the code-suite flags: the
+	// gate reads a closed, named set of trees, and a new input tree cannot appear
+	// without a change under `scripts/i18n/**` - which does select it.
+	assert.equal(classify(["newdir/x"]).i18n, false);
+	assert.equal(classify(["newdir/x"]).lint, true);
 });
 
 // ---------------------------------------------------------------------------
@@ -2094,3 +2311,125 @@ function runClassifier(args, cwd, module = join(repoRoot, MODULE)) {
 		stderr: result.stderr ?? "",
 	};
 }
+
+// A17e owns the one exception to A2/A4's dependency-success admission rule:
+// this job CONSUMES failures, rather than starting work that needs their artifacts.
+test("A17e: three protected workers feed one exact fail-closed Desktop Tests result", () => {
+	const worker = jobs.test;
+	const result = jobs["desktop-tests-result"];
+	assert.deepEqual(worker.strategy, {
+		"fail-fast": false,
+		matrix: { shard: [0, 1, 2] },
+	});
+	assert.equal(worker["timeout-minutes"], 50);
+	assert.equal(result.name, "Desktop Tests");
+	assert.deepEqual(result.needs, ["changes", "test"]);
+	assert.equal(
+		result.if.trim().replace(/\s+/g, " "),
+		"always() && (needs.changes.outputs.unit != 'false' || needs.changes.result != 'success')",
+	);
+	assert.equal(result.env.CLASSIFIER_RESULT, "${{ needs.changes.result }}");
+	assert.equal(result.env.WORKER_RESULT, "${{ needs.test.result }}");
+	assert.equal(result.env.UNIT_SCOPE, "${{ needs.changes.outputs.unit }}");
+	const reject = result.steps.find((step) =>
+		step.name.startsWith("Reject unsuccessful"),
+	);
+	for (const variable of ["CLASSIFIER_RESULT", "WORKER_RESULT"])
+		assert.ok(reject.run.includes(`test "$${variable}" = success`));
+	assert.ok(reject.run.includes('test "$UNIT_SCOPE" = true'));
+	assert.ok(!result.steps.some((step) => step["continue-on-error"]));
+	assert.ok(
+		!runBlocks("desktop-tests-result").some((block) =>
+			/pnpm|npm install/.test(block),
+		),
+	);
+	assert.ok(
+		runBlocks("desktop-tests-result").some((block) =>
+			block.includes("desktop-test-shards.mjs verify"),
+		),
+	);
+	assert.equal(
+		LOCAL_EXCLUSIONS["desktop-tests-result"].includes(
+			"no local suite execution",
+		),
+		true,
+	);
+	assert.equal(Object.hasOwn(JOB_COMMANDS, "desktop-tests-result"), false);
+	const download = result.steps.find((step) =>
+		step.uses?.startsWith("actions/download-artifact@"),
+	);
+	assert.equal(
+		download.with.pattern,
+		"desktop-shard-proof-${{ github.run_id }}-${{ github.run_attempt }}-*",
+	);
+	assert.equal(download.with["merge-multiple"], false);
+	const proof = worker.steps.find(
+		(step) => step.name === "Record successful shard coverage",
+	);
+	assert.equal(proof.if, "${{ steps.desktop_suite.outcome == 'success' }}");
+	assert.ok(proof.run.includes("desktop-test-shards.mjs receipt"));
+	const upload = worker.steps.find(
+		(step) => step.name === "Upload shard coverage receipt",
+	);
+	assert.equal(upload.if, "${{ always() }}");
+	assert.equal(upload.with["if-no-files-found"], "error");
+	assert.equal(
+		upload.with.name,
+		"desktop-shard-proof-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard }}",
+	);
+	assert.equal(
+		worker.steps.filter((step) => step.run === "pnpm test:tag-dialogs").length,
+		1,
+	);
+	assert.equal(
+		worker.steps.find((step) => step.run === "pnpm test:tag-dialogs").if,
+		"${{ matrix.shard == 0 }}",
+	);
+	for (const name of [
+		"Build plain-JS bundle for isolated native QA",
+		"Upload isolated native QA bundle",
+	]) {
+		const step = worker.steps.find((candidate) => candidate.name === name);
+		assert.ok(step.if.includes("matrix.shard == 0"));
+		assert.ok(step.if.includes("!cancelled()"));
+		assert.ok(step.if.includes("github.event_name == 'pull_request'"));
+	}
+	assert.ok(
+		worker.steps
+			.find((step) => step.name === "Upload isolated native QA bundle")
+			.if.includes("steps.qa_bundle.outcome == 'success'"),
+	);
+	/*
+	 * THE LOG-PAYLOAD GUARD: a ceiling cannot name a multi-megabyte line, so the
+	 * scan is the guard and this pins what makes it a guard rather than a note.
+	 * It must read the suite's own tee file, run even when the suite is red
+	 * (`always()` — a red suite's log is exactly the one worth reading), stay
+	 * separate from the extracted suite step, and be allowed to fail the job
+	 * (`continue-on-error` would make a finding advisory).
+	 */
+	const payloadScan = worker.steps.find(
+		(step) => step.name === "Scan the suite log for payload lines",
+	);
+	assert.ok(payloadScan, "the shard job has no step that scans the suite log");
+	assert.match(
+		payloadScan.run,
+		/scripts\/ci-log-guard\.mjs check \/tmp\/desktop-tests\.log/,
+	);
+	assert.ok(payloadScan.if.includes("always()"));
+	assert.ok(
+		payloadScan.if.includes("steps.desktop_suite.outcome != 'skipped'"),
+	);
+	assert.equal("continue-on-error" in payloadScan, false);
+	/*
+	 * ...and the suite step carries its own LOWER ceiling, which is what makes the
+	 * scan reachable: a job cancelled at `timeout-minutes` runs no further steps,
+	 * so without a step ceiling a stall is exactly the case the scan never sees.
+	 */
+	const suiteStep = worker.steps.find(
+		(step) =>
+			typeof step.run === "string" &&
+			step.run.includes("node scripts/desktop-test-shards.mjs run"),
+	);
+	assert.equal(suiteStep["timeout-minutes"], 45);
+	assert.ok(suiteStep["timeout-minutes"] < worker["timeout-minutes"]);
+});

@@ -1,0 +1,22 @@
+{
+  "auditor": "translation-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "tbd-r3-ru",
+  "session": "6b368b5dece7",
+  "date": "2026-10-21",
+  "locale": "ru",
+  "translator": "translator",
+  "namespaces": {
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 3,
+      "scope": "Round 3 delta audit: people.bridge_off, thread.intro_group, create.channel_description; direct regression checks: compose.to, chief.label, single/multiple recipient rendering. Inherits full 109-key semantic coverage from immutable tbd-r2-ru.json (sha256 d838cecd8a8ff57145572a51a1a796d8f393aae90e0334d39408856de2be78b0). Reversing precisely these three substitutions and restoring prior tab indentation reconstructs prior ru hash 2906ca288e1aa2242e4f85310a1b244e924f16ef85265d9a8a20caae0479781c: all other values unchanged. Fresh whole-file 109-key parity, ICU placeholder/type, CLDR plural-category/count-use, NFC/bidi/mixed-script checks pass. Frozen en/context unchanged. All round-2 findings fixed verbatim; no findings remain. Prior cue-width estimate (~157px vs ~236px available) still applies; no new rendered-frame claim.",
+      "sha256": {
+        "en": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+        "ru": "cd1c54f380c8e15c394e7dbec468cae2ed1c54073464f841072cdede69702cce",
+        "context": "17b7e1450dc7fa529d8e2e684bb8653fcc4f6cf220bf8261631d078d26545de5"
+      },
+      "findings": []
+    }
+  }
+}

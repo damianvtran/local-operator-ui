@@ -25,6 +25,7 @@
 	"ui.console.empty.detail": "A console runs a program in this conversation's directory and keeps its output, whether or not this pane is open.",
 	"ui.console.empty.title": "No console in this session",
 	"ui.console.ended.exit_code": "exit code {code}",
+	"ui.console.ended.exit_signal": "killed by {signal}",
 	"ui.console.ended.exit_unknown": "exit code not observed",
 	"ui.console.ended.live": "This terminal has ended",
 	"ui.console.ended.restored": "This terminal has ended and its history was restored",
@@ -45,6 +46,7 @@
 	"ui.console.unavailable.title": "The console is not available in this app",
 	"ui.console.unavailable.unknown.detail": "This window could not reach the console, and did not say why. The app's log carries the reason.",
 	"ui.console.tab.ended": "ended",
+	"ui.console.tab.exit_code": "exit {code}",
 	"ui.console.tab.agent_opened": "An agent opened this console",
 	"ui.console.tab.agent_typed": "An agent has typed into this console",
 	"ui.console.tab.close_label": "Close {title}, tab {index, number, ::group-off} of {total, number, ::group-off}",
@@ -55,5 +57,9 @@
 	"ui.console.secure_toggle.start_tooltip": "Secure input: stop recording this terminal",
 	"ui.console.close.cancel": "Cancel",
 	"ui.console.terminal.prompt_label": "Terminal input",
-	"ui.console.terminal.too_much_output": "Too much output to announce, navigate to rows manually to read"
+	"ui.console.terminal.too_much_output": "Too much output to announce, navigate to rows manually to read",
+	"ui.console.ended.app_quit": "the app closed it when it quit",
+	"ui.console.ended.marker": "End of history",
+	"ui.console.ended.marker_detail": "This terminal is read-only. Select text to copy it.",
+	"ui.console.ended.input_blocked": "This terminal has ended, so that key was not sent. Open a new console to type again."
 }

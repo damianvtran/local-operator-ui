@@ -1,0 +1,173 @@
+{
+ "schema": 1,
+ "audit_kind": "independent-namespace-reaudit",
+ "date": "2026-10-24",
+ "locale": "ru",
+ "locale_name": "Russian",
+ "batch": "canvas",
+ "pr": "#1388",
+ "branch": "feat/i18n-canvas-batch",
+ "audited_head": "3f983092b2296a13e22fddaf74cc65e63efc03e1",
+ "audited_head_short": "3f983092b2",
+ "previous_audit": {
+  "receipt": "i18n/receipts/ru-canvas-pickers-r3-90d8cc2d4fda.json",
+  "receipt_sha256": "63c3ef0786ae334bdbaf05a6b65526da7af6d8fe119415292b326d615c56723a",
+  "head": "30fa931f77bbd2e6ff9719f3207ecf413aefde2f",
+  "target_sha256": "35af870130a99a5cfbd84c28863c4ccc128c77d3a4b77487e2493ebaf9fee6a8",
+  "note": "Round 3 requested changes at these bytes. The catalogue bytes at 510a9a64f8 are identical to 30fa931f77; this round re-audits only the round-3 findings and their direct neighbours."
+ },
+ "remediation": {
+  "commit": "3f983092b2296a13e22fddaf74cc65e63efc03e1",
+  "subject": "fix(i18n): apply canvas ru/ur audit remediation",
+  "author": "Damian Tran",
+  "note": "Producer of the changed bytes audited here. The commit records the RU and UR changes; this receipt does not invent a translator identity for it."
+ },
+ "translator": {
+  "agent": "i18n-translator",
+  "session": "ef600dd9bdd0",
+  "served_model": "radient/auto",
+  "date": "2026-10-24",
+  "receipt": "i18n/receipts/ui-ru-canvas-batch.json",
+  "note": "Original translation provenance carried from the round-3 receipt; the r4 bytes were changed by the remediation commit above."
+ },
+ "auditor": "translation-auditor",
+ "agent": "translation-auditor",
+ "team_role": "translation-auditor",
+ "instance": "aef2ad9d3193",
+ "session": "aef2ad9d3193",
+ "model": "deepseek/deepseek-flash",
+ "served_model": "deepseek/deepseek-flash",
+ "fallback": null,
+ "independence": "This auditor did not author or translate the lane and is a different session. No catalogue, source, context, ledger, allowance or generated file was edited; the two receipts are the only files added, and this audit session commits them. Model deepseek/deepseek-flash; no fallback was observed.",
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ru.md",
+   "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+  },
+  "ui_howto": {
+   "path": "docs/I18N.md",
+   "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+  },
+  "receipt_contract": {
+   "path": "scripts/i18n/ledger-assemble.mjs",
+   "note": "receipt contract lines 43-57; ledger-rules.mjs deriveReceiptAudit at the audited head"
+  }
+ },
+ "scope": "ONLY ui.chat.pickers at 3f983092b2: the round-3 findings R3-RU-PICKERS-01..11 and their direct neighbours. All 720 keys were checked mechanically (key set, ICU parse, arguments, skeletons, tags, plural/select arms); the 13 changed values and the keys they compose with were re-read semantically. Catalogue audit only; no rendered frame beyond the SSR pager strings, no native-speaker sign-off and no design/QA approval are claimed.",
+ "method": [
+  "Read the English source, en context sidecar and Russian catalogue at 3f983092b2 side by side for the changed keys and their neighbours.",
+  "Diffed the namespace against the round-3 head (510a9a64f8; catalogue bytes identical to the receipts' 30fa931f77): 13 values changed, each mapping to a round-3 finding; no other value changed.",
+  "Parsed all 720 messages with @formatjs/icu-messageformat-parser and compared arguments, number/date skeletons, tags, select arms and English plural arms key by key.",
+  "Rendered all 27 plural messages with the repo's IntlMessageFormat at 0, 1, 2, 3, 5, 21, 50 and 1.5: 0 errors.",
+  "SSR-rendered the real TablePager at totals 1, 2, 3, 5, 21 and 50 with the analytics panel's catalogue pair and with a second literal pair; recorded the exact strings.",
+  "Ran node --test scripts/i18n/table-pager-range.test.mjs (3/3 pass) and node --test scripts/i18n/locale-parity.test.mjs (43/43 pass).",
+  "Re-checked every round-3 finding at the current bytes and classified the residual arms; checked the deferred R3-RU-PICKERS-09 against its call site.",
+  "Checked NFC, manual bidi controls, invisible characters, duplicate keys, key-set/order parity and glossary/style-guide terminology."
+ ],
+ "delta": {
+  "keys_read": 720,
+  "values_changed_since_round3": 13,
+  "changed_keys": [
+   "ui.chat.pickers.analytics_panel.session",
+   "ui.chat.pickers.analytics_panel.sessions",
+   "ui.chat.pickers.destination_pickers.forgot",
+   "ui.chat.pickers.info_model.count_noun",
+   "ui.chat.pickers.info_model.of_did_not_report",
+   "ui.chat.pickers.model_catalogue_listing.the_provider_listing_failed_the_rows_are_refresh_from_providers_tr",
+   "ui.chat.pickers.table_pager.range",
+   "ui.chat.pickers.usage_view_model.d_ago",
+   "ui.chat.pickers.usage_view_model.exhausted",
+   "ui.chat.pickers.usage_view_model.model_cap_exhausted",
+   "ui.chat.pickers.usage_view_model.near_limit",
+   "ui.chat.pickers.usage_view_model.reported_balance",
+   "ui.chat.pickers.usage_view_model.sign_in_expired_run_login"
+  ],
+  "note": "All 13 changes map to round-3 findings; no other value in the namespace changed. The two analytics_panel keys are pager-only and now carry the genitive pair the RANGE message needs."
+ },
+ "namespaces": {
+  "ui.chat.pickers": {
+   "namespace": "ui.chat.pickers",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "verdict": "passed — clean-with-findings: 0 BLOCKER, 0 MAJOR, 2 MINOR, 0 NIT; 720/720 keys checked mechanically, 13 changed values and their neighbours re-read. R3-RU-PICKERS-01 is fixed: the pager renders the caller's genitive pair in every integer arm. The residuals are the unreachable fractional other arm (R4-RU-PICKERS-01) and the deferred source-level composition R3-RU-PICKERS-09 (R4-RU-PICKERS-02).",
+   "keys_read": 720,
+   "sha256": {
+    "en": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+    "ru": "dd80dac3989f831dd0f5d30bb3b6996250e58d578be54073f92f71ad337c6c58",
+    "context": "c921d3e37ce54288a18e2b45310034a0df0114f15c30e57133422018a00b38d9"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+    "target": "src/i18n/catalogues/ru/ui.chat.pickers.json",
+    "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+   },
+   "mechanical": {
+    "key_set_equals_en": true,
+    "missing_keys": [],
+    "extra_keys": [],
+    "exact_en_target_key_order": false,
+    "key_order_note": "The key SETS are equal and locale-parity.test.mjs passes; file order differs from English and is not a gate.",
+    "icu_parse": "720/720 messages parse",
+    "placeholder_argument_mismatches": 0,
+    "number_date_skeleton_mismatches": 0,
+    "markup_tag_mismatches": 0,
+    "select_arm_missing": 0,
+    "plural_categories": "one/few/many/other present in all 27 plural messages; no missing «other»",
+    "plural_messages_rendered": "27/27 at 0, 1, 2, 3, 5, 21, 50, 1.5; 0 format errors",
+    "nfc": true,
+    "manual_bidi_controls": 0,
+    "identical_values": 10,
+    "identical_values_note": "All ten are technical/template values: skill://, MY_API_KEY, TERM, COLORTERM, Python {python_version}, pid {pid}, pid {pid} duplicate, {note}., {completed}, {runtimecount} · {bound}{trajectorycount}.",
+    "ascii_double_quotes_in_prose": 0,
+    "nbsp_nnbsp_zwsp_bom_shy": 0,
+    "duplicate_keys": 0
+   },
+   "findings": [
+    {
+     "id": "R4-RU-PICKERS-01",
+     "severity": "minor",
+     "category": "accuracy/plural-branch",
+     "key": "ui.chat.pickers.table_pager.range",
+     "source": "{from}–{to} of {totaltext} {total, plural, one {{label}} other {{plurallabel}}}",
+     "current": "{from}–{to} из {totaltext} {total, plural, one {{label}} few {{plurallabel}} many {{plurallabel}} other {{plurallabel}}}",
+     "proposed": "{from}–{to} из {totaltext} {total, plural, one {{label}} few {{plurallabel}} many {{plurallabel}} other {{label}}}",
+     "reason": "Russian other is the fractional category; «из 1,5 сессий» is ungrammatical and needs the genitive singular «сессии» that {label} carries. The pager total is an integer row count, so no current caller reaches other; every integer arm now agrees.",
+     "evidence": "IntlMessageFormat at total=1.5 with the sessions pair renders the noun phrase «из 1,5 сессий»; the required phrase is «из 1,5 сессии». The SSR strings at 1/2/3/5/21/50 are correct: 1–1 из 1 сессии; 1–2 из 2 сессий; 1–3 из 3 сессий; 1–5 из 5 сессий; 1–10 из 21 сессии; 1–10 из 50 сессий.",
+     "status": "open"
+    },
+    {
+     "id": "R4-RU-PICKERS-02",
+     "severity": "minor",
+     "category": "composition",
+     "key": "ui.chat.pickers.info_model.runtime_trajectories",
+     "prior_id": "R3-RU-PICKERS-09",
+     "prior_receipt": "i18n/receipts/ru-canvas-pickers-r3-90d8cc2d4fda.json",
+     "source": "{runtimecount} · {bound}{trajectorycount}",
+     "current": "{runtimecount} · {bound}{trajectorycount}",
+     "proposed": "source-level: pass the bound inside the trajectory phrase, e.g. {runtimecount} · траектории: {bound}{count}, or drop {bound} from this composite",
+     "reason": "{trajectorycount} is the label-first plural() output («траектории: 12»), so prefixing {bound} yields «≥траектории: 12» in the unreported state; the mark attaches to the label, not the figure. R3-RU-PICKERS-09's only text-only fixes change the English message shape or drop the D2 lower-bound mark, so the coder deferred it.",
+     "evidence": "info-model.ts:620-634 composes bound = «≥» with trajectorycount; IntlMessageFormat renders «рантаймы: 1 · ≥траектории: 12».",
+     "status": "deferred",
+     "disposition": "deferred — source-level English message-shape change, out of the ru/ur catalogue lane; proposed text recorded for the follow-up."
+    }
+   ]
+  }
+ },
+ "totals": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 2,
+  "nit": 0
+ },
+ "status": "passed",
+ "verdict": "passed — clean-with-findings: 0 BLOCKER, 0 MAJOR, 2 MINOR, 0 NIT in ui.chat.pickers at 3f983092b2; 720/720 keys checked mechanically, 13 changed values and their neighbours re-read. The R3 major is fixed; the residuals are the unreachable fractional other arm and the deferred source-level R3-09 composition.",
+ "notes": [
+  "Catalogue audit only; no rendered frame beyond the SSR pager strings, no native-speaker sign-off, no design/QA approval.",
+  "The new test exercises the sessions pair at 1/3/5/21 and a literal second pair at 1/5/21, but not the fractional other arm; that gap is why R4-RU-PICKERS-01 is not caught by it. There is only one real TablePager caller (analytics-panel.tsx:693-705); the test's \"second caller\" is a synthetic pair, not a second call site.",
+  "No catalogue, source, context, ledger, allowance or generated file was edited; only the two receipts were added."
+ ]
+}

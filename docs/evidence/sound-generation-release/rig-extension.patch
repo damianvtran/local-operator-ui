@@ -1,0 +1,124 @@
+diff --git a/scripts/run-sounds-scene.mjs b/scripts/run-sounds-scene.mjs
+index 0e9be7631..009916dae 100644
+--- a/scripts/run-sounds-scene.mjs
++++ b/scripts/run-sounds-scene.mjs
+@@ -194,6 +194,10 @@ try {
+ 		`history preflight HTTP ${history.status}; ${root}/preflight-history.json`,
+ 	);
+ 	if (!history.ok) throw new Error("history fixture preflight failed");
++	// The original WAV contract remains independently tested; the live-artifact
++	// replay has different duration/byte facts and is checked by its hash preflight.
++	const releaseAssets = env.SOUNDS_RELEASE_ASSETS;
++	delete env.SOUNDS_RELEASE_ASSETS;
+ 	await complete(
+ 		launch(
+ 			process.execPath,
+@@ -201,6 +205,7 @@ try {
+ 			"fixture-preflight",
+ 		),
+ 	);
++	if (releaseAssets) env.SOUNDS_RELEASE_ASSETS = releaseAssets;
+ 	const inventory = await fetch(
+ 		`${backend}/v1/desktop/sessions/${fixture.sessionId}/files?limit=200&scope=family`,
+ 		{
+diff --git a/scripts/sounds-fixture.mjs b/scripts/sounds-fixture.mjs
+index 737e4af16..54c2c05e2 100644
+--- a/scripts/sounds-fixture.mjs
++++ b/scripts/sounds-fixture.mjs
+@@ -1,5 +1,5 @@
+ import { createHash } from "node:crypto";
+-import { mkdirSync, writeFileSync } from "node:fs";
++import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+ import { join } from "node:path";
+ 
+ export const SOUNDS_SESSION = "50a0facade01";
+@@ -32,6 +32,7 @@ export function writeSoundsFixture(
+ 	root,
+ 	expiredUrl = "http://127.0.0.1:9/expired-signed-audio?expired=1",
+ ) {
++	if (process.env.SOUNDS_RELEASE_ASSETS) return writeReleaseFixture(root);
+ 	const bytes = soundSample();
+ 	const digest = createHash("sha256").update(bytes).digest("hex").slice(0, 32);
+ 	const attachments = join(root, "attachments");
+@@ -132,3 +133,41 @@ export function writeSoundsFixture(
+ 	);
+ 	return { digest, sessionId: SOUNDS_SESSION, bytes: bytes.length };
+ }
++
++/** Replay verified production artifacts, never provider URLs or live sessions.
++ * Captions retain server billing provenance; this is not a fresh provider call. */
++function writeReleaseFixture(root) {
++ const assets = JSON.parse(readFileSync(process.env.SOUNDS_RELEASE_ASSETS, "utf8"));
++ const attachments = join(root, "attachments"); mkdirSync(attachments, {recursive:true});
++ const rows=[];
++ const message=(id,role,content,extra={})=>({id,ts:1792260000+rows.length,type:"message",payload:{kind:"message",role,content,...extra}});
++ for (const [index,a] of assets.entries()) {
++  const digest=a.sha256.slice(0,32); const bytes=readFileSync(a.path);
++  if(createHash("sha256").update(bytes).digest("hex")!==a.sha256) throw Error("artifact hash changed");
++  writeFileSync(join(attachments,`${digest}.bin`),bytes);
++  writeFileSync(join(attachments,`${digest}.json`),JSON.stringify({digest,mime_type:"audio/mpeg",bytes:bytes.length,duration_s:a.duration_s,peaks:a.peaks}));
++  writeFileSync(join(attachments,`${digest}.peaks.json`),JSON.stringify({version:1,bars:240,peaks:a.peaks}));
++  const call=`sounds-call-${index+1}`;
++  rows.push(message(`user-${index}`,"user",[{text:a.title}]));
++  rows.push(message(`call-${index}`,"assistant",[],{tool_calls:[{tool_call_id:call,tool_name:a.tool,arguments:index?{prompt:a.title,duration_s:.5}:{text:a.title}}]}));
++  rows.push(message(`result-${index}`,"tool",[{text:`Generated ${index?"sound effect":"voiceover"} (${a.duration_s}s). Cost $0.002 (billed). Request ${a.request_id}.`},{kind:"audio",content_type:"audio/mpeg",attachment:digest,mime_type:"audio/mpeg",name:`${a.title}.mp3`,duration_s:a.duration_s}],{tool_call_id:call,tool_name:a.tool}));
++  rows.push(message(`answer-${index}`,"assistant",[{text:"Attached the generated audio."}]));
++ }
++ const refusal={code:"audio_rejected",details:{reason:"duration_seconds is required: the provider's auto-duration mode cannot be quoted"},error:"This audio request could not be accepted."};
++ rows.push(message("refusal-user","user",[{text:"Generate a door creak without specifying duration."}]));
++ rows.push(message("refusal-call","assistant",[],{tool_calls:[{tool_call_id:"sounds-refusal",tool_name:"generate_sound_effect",arguments:{prompt:"a door creak",model:"radient/sound-effects"}}]}));
++ rows.push(message("refusal-result","tool",[{text:JSON.stringify(refusal,null,2)}],{tool_call_id:"sounds-refusal",tool_name:"generate_sound_effect",is_error:true,isError:true}));
++ rows.push(message("refusal-answer","assistant",[{text:"The server refused auto-duration because it cannot quote the request."}]));
++ const byok=JSON.parse(readFileSync(process.env.SOUNDS_RELEASE_BYOK,"utf8"));
++ const block=byok.result.content.find(c=>c.kind==="audio");
++ const store=process.env.SOUNDS_RELEASE_BYOK_STORE;
++ for(const ext of ["bin","json","peaks.json"]) { const path=join(store,`${block.attachment}.${ext}`); if(existsSync(path)) writeFileSync(join(attachments,`${block.attachment}.${ext}`),readFileSync(path)); }
++ rows.push(message("byok-user","user",[{text:"Generate a 0.5s door creak through the configured ElevenLabs key."}]));
++ rows.push(message("byok-call","assistant",[],{tool_calls:[{tool_call_id:"release-byok-call",tool_name:"generate_sound_effect",arguments:byok.args}]}));
++ rows.push(message("byok-result","tool",byok.result.content,{tool_call_id:"release-byok-call",tool_name:"generate_sound_effect",details:byok.result.details}));
++ rows.push(message("byok-answer","assistant",[{text:"Attached the BYOK-generated sound effect."}]));
++ rows.push(message("later-user","user",[{text:"Play the earlier voiceover while keeping this later conversation turn visible."}]));
++ rows.push(message("later-answer","assistant",[{text:"The earlier artifact stays playable in the transcript."}]));
++ const dir=join(root,"sessions",SOUNDS_SESSION);mkdirSync(dir,{recursive:true});writeFileSync(join(dir,"transcript.jsonl"),rows.map(r=>JSON.stringify(r)).join("\n")+"\n");
++ return {digest:assets[0].sha256.slice(0,32),sessionId:SOUNDS_SESSION,bytes:26374,releaseReplay:true};
++}
+diff --git a/scripts/sounds-scene.mjs b/scripts/sounds-scene.mjs
+index 3ead80487..8143399f8 100644
+--- a/scripts/sounds-scene.mjs
++++ b/scripts/sounds-scene.mjs
+@@ -51,6 +51,35 @@ export async function sceneSounds({
+ 	await waitFor(
+ 		"Boolean(document.querySelector('[data-record-id=\"tool:sounds-call-1\"] [data-sound-player] button'))",
+ 	);
++	if (process.env.SOUNDS_RELEASE_ASSETS) {
++  await capture(cdp,"release-voiceover-idle");
++  await verb(cdp,"press",{selector:'[data-record-id="tool:sounds-call-1"] [data-sound-player] button'});
++  await waitFor(`Boolean(document.querySelector('[data-sound-status="playing"]'))`);
++  await new Promise(r=>setTimeout(r,350));
++  const real=await verb(cdp,"soundsFacts");console.log("release voiceover facts",JSON.stringify(real));
++  demand("real MP3 advances silently",real.time>0 && !real.paused && real.gain===0 && real.rms===0 && real.inputRms>0);
++  await capture(cdp,"release-voiceover-playing");
++  await capture(cdp,"release-earlier-turn-playing");
++  await verb(cdp,"press",{selector:'[data-turn-summary][data-run-ids~="tool:sounds-call-2"] button[aria-expanded]'});
++  await waitFor(`Boolean(document.querySelector('[data-record-id="tool:sounds-call-2"] [data-sound-player] button'))`);
++  await cdp.evaluate(`document.querySelector('[data-record-id="tool:sounds-call-2"]').scrollIntoView({block:"center"})`);
++  await capture(cdp,"release-sfx-idle");
++  await verb(cdp,"press",{selector:'[data-record-id="tool:sounds-call-2"] [data-sound-player] button'});
++  await waitFor(`Boolean(document.querySelector('[data-record-id="tool:sounds-call-2"] [data-sound-status="playing"]'))`);
++  await new Promise(r=>setTimeout(r,120));
++  console.log("release SFX facts",JSON.stringify(await verb(cdp,"soundsFacts")));
++  await capture(cdp,"release-sfx-playing");
++  await verb(cdp,"press",{selector:'[data-turn-summary][data-run-ids~="tool:sounds-refusal"] button[aria-expanded]'});
++  await cdp.evaluate(`document.querySelector('[data-record-id="tool:sounds-refusal"]').scrollIntoView({block:"center"})`);
++  await new Promise(r=>setTimeout(r,500));
++  await capture(cdp,"release-auto-duration-refusal");
++  await verb(cdp,"press",{selector:'[data-turn-summary][data-run-ids~="tool:release-byok-call"] button[aria-expanded]'});
++  await waitFor(`Boolean(document.querySelector('[data-record-id="tool:release-byok-call"] [data-sound-player]'))`);
++  await cdp.evaluate(`document.querySelector('[data-record-id="tool:release-byok-call"]').scrollIntoView({block:"center"})`);
++  await new Promise(r=>setTimeout(r,500));
++  await capture(cdp,"release-byok-result");
++  return;
++ }
+ 	await capture(cdp, "sounds-transcript-idle");
+ 	await verb(cdp, "press", { selector: "[data-sound-player] button" });
+ 	await waitFor(

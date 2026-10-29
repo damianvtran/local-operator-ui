@@ -4874,6 +4874,21 @@ export class BackendServiceManager {
 	}
 
 	/**
+	 * The bearer token this app presents to THAT daemon, or null while none has
+	 * been minted/adopted yet.
+	 *
+	 * Exposed for the one request that does not travel through the op plane: the
+	 * attachment UPLOAD (attachment contract v1 §1.1). It carries raw bytes in a
+	 * multipart body, which the op plane's JSON schemas cannot describe, so it
+	 * goes over `fetch` from main and has to present the same credential the
+	 * plane would. Kept a getter rather than a public field so the token's
+	 * lifecycle stays owned here (`mintDesktopToken`, adoption, persistence).
+	 */
+	getDesktopToken(): string | null {
+		return this.desktopToken;
+	}
+
+	/**
 	 * Check if the backend service is using an external backend
 	 * @returns True if using an external backend, false if we started our own
 	 */

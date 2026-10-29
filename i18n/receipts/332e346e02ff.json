@@ -1,0 +1,211 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "harness session model (system prompt: deepseek/deepseek-flash); no fallback used",
+  "instance": "332e346e02ff",
+  "instance_source": "generated 12-hex audit-run id; this auditor runs as an in-process subagent without a separate session id (parent team manager session)",
+  "independent_from_translator_session": true,
+  "independence_basis": "The task states a different agent translated the 22-key delta. This auditor is a distinct i18n-auditor run and did not author or edit any catalogue value; the catalogue was only read.",
+  "date": "2026-10-19",
+  "locale": "ur",
+  "namespace": "ui.mesh",
+  "round": 1,
+  "audit_kind": "namespace-delta",
+  "key_count": 245,
+  "new_key_count": 22,
+  "worktree": "~/local-operator-ui/.worktrees/mesh-link-states (branch fix/mesh-link-states, HEAD 4406017d5ffd931fa3f6e4c99cd8de3c5d014dfd + uncommitted working-tree translation as audited)",
+  "scope": "ui.mesh ur: the 22 new keys (mesh_drop.reach_refusal, mesh_drop.owner_reach_refusal, mesh_graph.handshake_refused_count, mesh_graph.relay_down_count, mesh_graph.address_unreachable_count, mesh_graph.no_endpoint_count, mesh_graph.not_a_member_count, and the 15 mesh_reach.* keys) audited in depth; all 245 values read for whole-file consistency. The catalogue was not edited.",
+  "re_run": "The prior audit attempt for this delta died with [Errno 28] No space left on device and produced no receipt; this is the first completed audit of these bytes (round 1).",
+  "style_guide": {
+    "path": "~/local-operator/i18n/style-guides/ur.md",
+    "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c",
+    "glossary_path": "~/local-operator/i18n/glossary.md",
+    "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "note": "The UI checkout has no local i18n/glossary.md or i18n/style-guides/; docs/I18N.md points to the core repository's binding glossary and per-locale guide, which were used."
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.mesh.json",
+      "sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.mesh.context.json",
+      "sha256": "4ceb0a871d50757e49e8079b0446a91fe7fc4ad571f54479a056632cd1f1d533"
+    },
+    "ur": {
+      "path": "src/i18n/catalogues/ur/ui.mesh.json",
+      "sha256": "2c14d7f4ded458aeee1eb8dccca2a91ed7f2535872dd3cfbcd390788a36d3e33"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "i18n/receipts/332e346e02ff.json",
+      "role": "immutable audit receipt; the ledger row records its sha256"
+    }
+  ],
+  "execution_provenance": "Commands in mechanical.execution were actually run in this worktree during this audit; exit codes and outputs are copied from the run. The first entry's command is a compact rendering of the executed node -e loop (all 22 new keys, en and ur, formatted at count 3). No separate audit.log was written because this re-run is disk-constrained; this receipt carries the execution record.",
+  "namespaces": {
+    "ui.mesh": {
+      "status": "passed",
+      "keys_audited": 245,
+      "new_keys_audited": 22,
+      "sha256": {
+        "en": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
+        "ur": "2c14d7f4ded458aeee1eb8dccca2a91ed7f2535872dd3cfbcd390788a36d3e33"
+      },
+      "context_sha256": "4ceb0a871d50757e49e8079b0446a91fe7fc4ad571f54479a056632cd1f1d533",
+      "findings": [
+        {
+          "id": "UR-M1",
+          "severity": "minor",
+          "key": "ui.mesh.mesh_reach.handshake_refused_hint",
+          "current": "جانچ لیں کہ یہ ڈیوائس اب بھی نیٹ ورک کی رکن ہے اور دور میل کھاتا ہے؛ ہٹایا گیا ڈیوائس یا بدلا ہوا دور ہینڈ شیک مسترد کر دیتا ہے۔",
+          "problem": "The hint's bare 'دور میل کھاتا ہے' is ambiguous. 'دور' is the established rendering for epoch in this namespace (mesh_list.epoch = 'دور {epoch}', removed_the_membership_epoch_is_now = 'رکنیت کا موجودہ دور'), but as a standalone word it also means distance/far, so the clause can be read as 'the distance matches'. The protocol sense is recoverable only from the surrounding membership context; name the membership epoch explicitly, matching the existing 'رکنیت کا موجودہ دور'.",
+          "suggestion": "جانچ لیں کہ یہ ڈیوائس اب بھی نیٹ ورک کی رکن ہے اور رکنیت کا دور میل کھاتا ہے؛ ہٹایا گیا ڈیوائس یا بدلا ہوا دور ہینڈ شیک مسترد کر دیتا ہے۔",
+          "blocking": false
+        },
+        {
+          "id": "UR-M2",
+          "severity": "minor",
+          "key": "ui.mesh.mesh_reach.handshake_refused_hint",
+          "current": "جانچ لیں کہ یہ ڈیوائس اب بھی نیٹ ورک کی رکن ہے اور دور میل کھاتا ہے؛ ہٹایا گیا ڈیوائس یا بدلا ہوا دور ہینڈ شیک مسترد کر دیتا ہے۔",
+          "problem": "'رکن' is masculine, so the genitive should agree with it: 'نیٹ ورک کا رکن' for an inanimate device. 'کی رکن' is the form used when the member is a female person (e.g. Cambridge's 'وہ اسکول کی ترقیاتی کمیٹی کی رکن ہے'), so here it reads the device as a person. The same pattern is pre-existing in mesh_drop.no_shared_network (out of this delta); fix both together if accepted, otherwise defer consistently.",
+          "suggestion": "جانچ لیں کہ یہ ڈیوائس اب بھی نیٹ ورک کا رکن ہے اور دور میل کھاتا ہے؛ ہٹایا گیا ڈیوائس یا بدلا ہوا دور ہینڈ شیک مسترد کر دیتا ہے۔",
+          "combined_with_UR-M1": "جانچ لیں کہ یہ ڈیوائس اب بھی نیٹ ورک کا رکن ہے اور رکنیت کا دور میل کھاتا ہے؛ ہٹایا گیا ڈیوائس یا بدلا ہوا دور ہینڈ شیک مسترد کر دیتا ہے۔",
+          "blocking": false
+        },
+        {
+          "id": "UR-M3",
+          "severity": "minor",
+          "key": "ui.mesh.mesh_reach.peer_relay_not_running",
+          "keys": [
+            "ui.mesh.mesh_reach.peer_relay_not_running",
+            "ui.mesh.mesh_reach.peer_closed_handshake"
+          ],
+          "current": "دوسرے سرے کا ریلے نہیں چل رہا / دوسرے سرے نے جواب دیا مگر ہینڈ شیک بند کر دیا",
+          "problem": "The delta renders 'peer' as 'دوسرے سرے' (the other end), while the pre-existing ui.mesh.mesh_list.answered_the_peer_read_but_is_in renders 'the peer device' as 'ہم مرتبہ ڈیوائس'. The glossary does not fix 'peer', so this is an internal-consistency choice: two terms for the same remote-device concept in one namespace. 'دوسرے سرے' is the more natural link-end wording and matches the pre-existing 'دوسرے سرے پر' for 'on the other end'; 'ہم مرتبہ' is the literal peer/equal term.",
+          "suggestion": "Prefer one term. If 'دوسرے سرے' is kept (recommended for these link headlines), align the pre-existing row to 'دوسرے سرے کی ڈیوائس سے ...' in the same pass or record the split as deferred; otherwise use 'ہم مرتبہ ڈیوائس' in the two headlines.",
+          "blocking": false
+        }
+      ],
+      "dimensions": {
+        "mechanical": "PASS. Valid UTF-8 JSON, no BOM, 245 unique keys, 245/245 key parity with en, no added or dropped keys, no duplicate members. All 22 new values compile and format with intl-messageformat under 'ur' (0 failures). Argument names/types identical to en: {device}, {reach}, {reason} strings and {count} number, in the same order; every ::group-off skeleton preserved byte-for-byte. All five new plural keys carry both Urdu CLDR categories, one and other (Intl.PluralRules('ur').resolvedOptions().pluralCategories = ['one','other']); rendered 0/1/2/3/11/21, all grammatical. No markup, Rich tags, backticks, commands, flags, paths or identifiers in the new copy. Whole-file scan: 0 bidi controls, 0 non-NFC values.",
+        "accuracy": "PASS. Every new key preserves the English meaning. The two refusal sentences state the reach word and the backend reason, then the same consequence ('nothing was moved' / 'could not hand this conversation over'). handshake_refused_hint keeps the source's epistemic limit: it says what to check, not an asserted cause, and names the same two protocol causes (removed membership, changed epoch). No omissions, additions, negation or polarity changes. Destructive/permission/error wording is safe: no blame, no asserted cause, no instruction to delete or approve anything.",
+        "idiom_and_register": "PASS at gate level, with two MINOR polish notes (UR-M1, UR-M2). The copy reads as native Urdu product copy, not a calque: 'کچھ منتقل نہیں ہوا', 'حوالے نہیں کر سکی', 'ڈائل کرنے کے لیے کوئی پتہ نہیں', 'کچھ نہیں سن رہا', 'آزمایا نہیں گیا', 'جواب ملا' are idiomatic. The only addressed string uses the respectful imperative 'جانچ لیں' (آپ register); no تم/تو, no براہ کرم (English has no please), no exclamation marks. Sentence-case status labels and factual tone match the existing catalogue.",
+        "terminology": "PASS with UR-M3. Glossary/style-guide terms: relay=ریلے, device=ڈیوائس, network=نیٹ ورک, member=رکن, session=سیشن, workspace=ورک اسپیس (not used in this delta). Terms not fixed by the glossary follow the existing catalogue: handshake=ہینڈ شیک, epoch=دور, peer=دوسرے سرے in the two new headlines but ہم مرتبہ ڈیوائس in the pre-existing mesh_list.answered_the_peer_read_but_is_in (see UR-M3), conversation=گفتگو, move=منتقل. No product names, commands, flags, paths or identifiers in the new copy; no kept-English tokens to preserve except the ICU placeholders.",
+        "fit": "PASS by source inspection. ui.mesh.context.json defines no maxCells or maxChars for these keys. The count phrases are joined into meshSummary's <p className='text-meta'> above the canvas (a wrapping paragraph inside min-w-0 flex columns), not a fixed-width button/tab; the two headlines and the hint are <p> elements in the device card that wrap; the per-address labels are short (7-19 chars). Longest new values are no_endpoint_count other (164 chars) and handshake_refused_count (133 chars), both inside the wrapping census sentence. No button/tab/status-line truncation candidate in the delta; no wide-glyph or combining-mark width hazard beyond the measured one-cell-per-character Arabic-script rule in the ur guide.",
+        "rtl": "PASS. Zero manual bidi control characters (U+200E/U+200F/U+202A-U+202E/U+2066-U+2069; U+061C also absent) in all 245 values, not just the delta. The render layer applies FSI/PDI isolation per the ur style guide, so no double application. Embedded LTR islands are limited to ICU placeholders ({device}, {count, number, ::group-off}) and are not reordered or wrapped in Urdu punctuation. Urdu punctuation is used in logical order: ۔ ، ؛; no Devanagari danda or Arabic-only signs. No mirrored arrows or glyph hints in the new copy. The colon after {device} is ASCII and follows the existing remove/remove_from convention; it is a neutral in the isolated RTL run, not a manual control.",
+        "nfc": "PASS. Every one of the 245 values is NFC-normalised (unicodedata.is_normalized check); no combining-mark surprises, no NBSP/U+202F, zero-width or BOM characters, no leading/trailing/double spaces."
+      },
+      "decisions_scrutinised": {
+        "peer_terminology": "PASS at gate level with UR-M3. 'دوسرے سرے' is natural, non-literal link-end Urdu and matches the pre-existing 'دوسرے سرے پر' for 'on the other end'; the one pre-existing 'ہم مرتبہ ڈیوائس' row is the other term. The glossary does not fix 'peer', so this is a consistency choice, not a binding violation.",
+        "epoch_term": "PASS with UR-M1. 'دور' is the established term in this namespace (mesh_list.epoch = 'دور {epoch}', removed_the_membership_epoch_is_now = 'رکنیت کا موجودہ دور'). It is acceptable as the protocol term; the bare use in the hint needs 'رکنیت کا' to avoid the distance reading.",
+        "relay_term": "PASS. 'ریلے' is the glossary and ur style-guide call for relay; used in relay_not_running, relay_down_count and peer_relay_not_running. Masculine singular agreement ('ریلے نہیں چل رہا', 'کا ریلے بند ہے') is consistent with the transliteration's gender.",
+        "handshake_term": "PASS. 'ہینڈ شیک' is the established transliteration in the pre-existing is_locked_out_on_its_next_handshake; used consistently across the four new handshake strings and the count phrase.",
+        "one_plural_arms": "PASS. Urdu CLDR categories are one/other. All five new count keys carry both arms. In no_endpoint_count and not_a_member_count the one and other text is identical because the predicate is number-invariant in this telegraphic census label; ICU accepts identical arms and the one arm is present as CLDR requires. Rendered 0/1/2/3/11/21 with IntlMessageFormat: all grammatical. not_a_member_count's singular 'رکن' in the other arm is the label's predicate noun, not a counted noun; 'ارکان' would also be possible but is not required.",
+        "refusal_sentences": "PASS. Both new refusal sentences mirror the established, previously audited mesh_drop.no_answer / owner_no_answer shape ('{device} ...{reason}، اس لیے ...'); the reach word is inserted as a status label before the reason; 'کچھ منتقل نہیں ہوا' and 'یہ گفتگو حوالے نہیں کر سکی' match the existing house wording. The owner sentence's pro-dropped subject is the device, understood from the {device} label and the feminine verb, the same parse as the existing owner_no_answer.",
+        "register": "PASS. The only addressed string uses 'جانچ لیں' (respectful آپ imperative); status labels are unaddressed. No تم/تو forms, no honorific padding, no exclamation marks.",
+        "punctuation": "PASS. Urdu ۔ ، ؛ used correctly; no ASCII prose commas/semicolons/full stops; ':' after {device} follows the existing remove/remove_from convention; no Devanagari danda or Arabic-only signs; no manual bidi controls.",
+        "nfc_and_unicode": "PASS. Whole-file NFC; zero bidi controls; no U+061C; no NBSP/U+202F/zero-width/BOM."
+      },
+      "new_keys": [
+        "ui.mesh.mesh_drop.reach_refusal",
+        "ui.mesh.mesh_drop.owner_reach_refusal",
+        "ui.mesh.mesh_graph.handshake_refused_count",
+        "ui.mesh.mesh_graph.relay_down_count",
+        "ui.mesh.mesh_reach.relay_not_running",
+        "ui.mesh.mesh_reach.handshake_refused",
+        "ui.mesh.mesh_reach.address_unreachable",
+        "ui.mesh.mesh_reach.no_endpoint",
+        "ui.mesh.mesh_reach.not_a_member",
+        "ui.mesh.mesh_reach.attempt_bad_address",
+        "ui.mesh.mesh_reach.attempt_could_not_connect",
+        "ui.mesh.mesh_reach.addresses_tried",
+        "ui.mesh.mesh_reach.attempt_answered",
+        "ui.mesh.mesh_reach.attempt_nothing_listening",
+        "ui.mesh.mesh_reach.attempt_no_answer",
+        "ui.mesh.mesh_reach.attempt_not_tried",
+        "ui.mesh.mesh_reach.peer_relay_not_running",
+        "ui.mesh.mesh_reach.peer_closed_handshake",
+        "ui.mesh.mesh_graph.address_unreachable_count",
+        "ui.mesh.mesh_graph.no_endpoint_count",
+        "ui.mesh.mesh_graph.not_a_member_count",
+        "ui.mesh.mesh_reach.handshake_refused_hint"
+      ],
+      "out_of_delta_observations": [
+        {
+          "key": "ui.mesh.mesh_drop.no_shared_network",
+          "observation": "Pre-existing, byte-identical to HEAD, not part of this delta: '{device} ... کسی مشترکہ نیٹ ورک کی رکن نہیں ہے۔' has the same 'کی رکن' agreement as UR-M2. If UR-M2 is accepted, fix this value in the same pass; otherwise record the systemic pattern as deferred. Not counted in the delta verdict.",
+          "severity": "minor",
+          "counted_in_findings": false
+        },
+        {
+          "key": "ui.mesh.mesh_list.answered_the_peer_read_but_is_in",
+          "observation": "Pre-existing, byte-identical to HEAD, not part of this delta: renders 'the peer device' as 'ہم مرتبہ ڈیوائس', the other term for the concept UR-M3 flags. Align it with the delta's 'دوسرے سرے' if UR-M3 is accepted.",
+          "severity": "minor",
+          "counted_in_findings": false
+        }
+      ]
+    }
+  },
+  "mechanical": {
+    "json": "valid JSON; 245 unique keys; no duplicate members; UTF-8 without BOM",
+    "parity": "245/245 English keys present; no added or dropped keys",
+    "placeholders": "all 22 new keys checked: {device}, {reach}, {reason} strings and {count} number; names/types identical to en, no reordering or renaming; ::group-off skeletons byte-identical",
+    "icu": "all new plurals parse and format; Urdu one/other present in all five count keys; identical one/other arms in no_endpoint_count and not_a_member_count are valid and intentional (number-invariant predicate)",
+    "markup": "no markup, backtick code, commands, flags, paths or identifiers in the new copy",
+    "unicode": "all 245 values NFC; zero Cf/bidi control characters; no leading/trailing/double spaces",
+    "execution": [
+      {
+        "command": "node -e \"new IntlMessageFormat(value,'ur').format({count:3,...})\" for all 22 new keys",
+        "exit": 0,
+        "result": "0 compile/format failures; plural keys rendered 0/1/2/3/11/21"
+      },
+      {
+        "command": "node scripts/i18n/generate.mjs --check",
+        "exit": 1,
+        "result": "keys.gen.ts stale globally; regenerating to scratch with --out and diffing showed the only drift is the untracked ur/ui.mesh.json locale import and bundle entry (this worktree carries only ui.mesh.json from ur; HEAD has no ur directory). Not drift in this file."
+      },
+      {
+        "command": "node --test scripts/i18n/locale-parity.test.mjs",
+        "exit": 0,
+        "result": "43/43 tests passed, covering all locales including the untracked ur, key parity and placeholder integrity"
+      },
+      {
+        "command": "node scripts/i18n/context-parity.mjs",
+        "exit": 0,
+        "result": "ok: every English key covered, apart from 196 allowed gaps in 6 namespaces; note: 8 ui.mesh allowance keys are now covered and can be dropped with --update (not a ur delta defect)"
+      },
+      {
+        "command": "node scripts/i18n/check-strings.mjs",
+        "exit": 0,
+        "result": "ok: 1260 files scanned, 762 literals at or below baseline, 16 advisory findings (none in ui.mesh)"
+      },
+      {
+        "command": "node scripts/i18n/ledger-check.mjs",
+        "exit": 1,
+        "result": "pre-audit state: ur/ui.mesh is shipped without a ledger entry in this worktree because HEAD predates the Urdu merge; fr/hi/vi ui.mesh are also stale from other in-progress audits. Not a ur translation defect; the ur/ui.mesh row must be assembled on a tree that carries origin/main's ur ledger row."
+      }
+    ]
+  },
+  "second_pass": {
+    "performed": false,
+    "reason": "The 22-key delta is error/refusal copy, so this auditor re-read every value in a second pass within this run (new-key pass plus whole-file consistency read). That is not an independent second auditor instance. If the manager classifies mesh as high-visibility, commission a second i18n-auditor instance; this receipt records one independent pass only."
+  },
+  "limits": [
+    "Source-only translation audit; no rendered-frame or pseudo-localization fit proof. Fit conclusions are geometry/length reasoning from the sidecar and the wrapping <p> containers, not a screenshot.",
+    "Out-of-delta pre-existing observations are recorded for the manager but are NOT counted in the delta verdict; they do not block the 22 new keys.",
+    "The generated keys.gen.ts staleness is caused by the untracked ur locale in this worktree, not by ur/ui.mesh drift; it still must be regenerated before merge.",
+    "The ledger row was not assembled here: this worktree's ledger has no ur/ui.mesh row (HEAD predates the Urdu merge) and the translator agent/model for the 22-key delta was not available to this auditor, so creating a row would invent provenance and conflict with origin/main's existing row."
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "UR-M1",
+      "UR-M2",
+      "UR-M3"
+    ]
+  },
+  "note": "Receipt i18n/receipts/332e346e02ff.json. ur ui.mesh 22-key delta: 0 BLOCKER/MAJOR; 3 MINOR (epoch wording, device-member gender, peer term). 245 keys read; catalogue not edited."
+}

@@ -1,5 +1,6 @@
 import { useCanvasStore } from "@shared/store/canvas-store";
 import type { CanvasDocument } from "../../types/canvas";
+import { isArtifactPath } from "../../utils/artifact-identity";
 import {
 	cancelPendingWrites,
 	currentWriteEpoch,
@@ -354,6 +355,11 @@ export function bufferGeneration(documentId: string): number {
 export function bufferText(documentId: string): string | null {
 	const entry = buffers.get(documentId);
 	if (!entry) return null;
+	/* A CLOSED BUFFER CAN STILL BE THE READER'S ONLY COPY. `closeBuffer` leaves a
+	 * refused write's words in place, dirty, so reopening the same path can recover
+	 * them (the canvas close contract). Only a closed-and-CLEAN entry has nothing
+	 * left to hand back; nulling every closed entry broke that contract. */
+	if (entry.closed && !dirtyOf(entry)) return null;
 	return entry.serialize ? entry.serialize().text : entry.token;
 }
 
@@ -461,6 +467,15 @@ export async function saveBuffer(
 ): Promise<BufferSaveOutcome> {
 	const entry = buffers.get(documentId);
 	if (!entry) return { status: "unavailable" };
+	/*
+	 * AN ARTIFACT IS NOT A FILE, so nothing here may write one (PR #1452 UX R2
+	 * U12 / QA R4 Q1). `artifact:<digest>` is a store identity; handed to the
+	 * bridge it is a RELATIVE path that main joins onto the app's cwd, which is
+	 * how a person's typing landed in a file literally named `artifact:7b8f…`.
+	 * Refused before the probe, explicit or not: no surface may save one, and
+	 * this is the one place every save passes through.
+	 */
+	if (isArtifactPath(entry.path)) return { status: "unavailable" };
 	/*
 	 * An automatic save has nothing to do while the document is held: the row has
 	 * told the reader the file moved on, and their two routes out are the control

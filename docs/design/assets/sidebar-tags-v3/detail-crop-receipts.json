@@ -1,0 +1,103 @@
+{
+  "method": "Pillow integer crop of existing rendered screenshots; no render, paint or content changes",
+  "crops": [
+    {
+      "source": "after-state-picker-error-260-dark.png",
+      "crop": "after-detail-picker-error-260-dark.png",
+      "rect": [
+        0,
+        0,
+        1100,
+        1200
+      ],
+      "sourceSize": [
+        2560,
+        1440
+      ]
+    },
+    {
+      "source": "after-state-picker-eight-260-dark.png",
+      "crop": "after-detail-picker-eight-260-dark.png",
+      "rect": [
+        0,
+        0,
+        1100,
+        1200
+      ],
+      "sourceSize": [
+        2560,
+        1440
+      ]
+    },
+    {
+      "source": "after-state-picker-dense-220-dark.png",
+      "crop": "after-detail-picker-dense-220-dark.png",
+      "rect": [
+        0,
+        0,
+        1100,
+        1200
+      ],
+      "sourceSize": [
+        2560,
+        1440
+      ]
+    },
+    {
+      "source": "after-state-picker-unicode-220-dark.png",
+      "crop": "after-detail-picker-unicode-220-dark.png",
+      "rect": [
+        0,
+        0,
+        1100,
+        1200
+      ],
+      "sourceSize": [
+        2560,
+        1440
+      ]
+    },
+    {
+      "source": "after-state-picker-load-failed-260-dark.png",
+      "crop": "after-detail-picker-load-failed-260-dark.png",
+      "rect": [
+        0,
+        0,
+        1100,
+        1200
+      ],
+      "sourceSize": [
+        2560,
+        1440
+      ]
+    },
+    {
+      "source": "after-state-picker-create-error-260-dark.png",
+      "crop": "after-detail-picker-create-error-260-dark.png",
+      "rect": [
+        0,
+        0,
+        1100,
+        1200
+      ],
+      "sourceSize": [
+        2560,
+        1440
+      ]
+    },
+    {
+      "source": "after-state-picker-conflict-260-dark.png",
+      "crop": "after-detail-picker-conflict-260-dark.png",
+      "rect": [
+        0,
+        0,
+        1100,
+        1200
+      ],
+      "sourceSize": [
+        2560,
+        1440
+      ]
+    }
+  ]
+}

@@ -1,0 +1,170 @@
+{
+  "en": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker&viewMode=story&args=scenario:picker;width:260;theme:localOperatorLight;locale:en",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      398,
+      412
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [],
+    "options": 0,
+    "rovingStops": 0,
+    "registryWrites": 0,
+    "assignmentWrites": 0
+  },
+  "es": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker&viewMode=story&args=scenario:picker;width:260;theme:localOperatorLight;locale:es",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      398,
+      432
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [],
+    "options": 0,
+    "rovingStops": 0,
+    "registryWrites": 0,
+    "assignmentWrites": 0
+  },
+  "fr": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker&viewMode=story&args=scenario:picker;width:260;theme:localOperatorLight;locale:fr",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      398,
+      432
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [],
+    "options": 0,
+    "rovingStops": 0,
+    "registryWrites": 0,
+    "assignmentWrites": 0
+  },
+  "hi": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker&viewMode=story&args=scenario:picker;width:260;theme:localOperatorLight;locale:hi",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      398,
+      412
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [],
+    "options": 0,
+    "rovingStops": 0,
+    "registryWrites": 0,
+    "assignmentWrites": 0
+  },
+  "ru": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker&viewMode=story&args=scenario:picker;width:260;theme:localOperatorLight;locale:ru",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      398,
+      432
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [],
+    "options": 0,
+    "rovingStops": 0,
+    "registryWrites": 0,
+    "assignmentWrites": 0
+  },
+  "vi": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker&viewMode=story&args=scenario:picker;width:260;theme:localOperatorLight;locale:vi",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      398,
+      412
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [],
+    "options": 0,
+    "rovingStops": 0,
+    "registryWrites": 0,
+    "assignmentWrites": 0
+  },
+  "zh-CN": {
+    "url": "http://localhost:6044/iframe.html?id=chat-sidebar-tags--picker&viewMode=story&args=scenario:picker;width:260;theme:localOperatorLight;locale:zh-CN",
+    "viewport": [
+      1280,
+      720
+    ],
+    "dialog": [
+      420,
+      560
+    ],
+    "body": [
+      370,
+      370,
+      398,
+      412
+    ],
+    "footerVisible": true,
+    "horizontalOverflow": false,
+    "optionHeights": [],
+    "options": 0,
+    "rovingStops": 0,
+    "registryWrites": 0,
+    "assignmentWrites": 0
+  }
+}

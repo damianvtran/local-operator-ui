@@ -1,5 +1,9 @@
 import { t } from "../../i18n";
 import type {
+	AddressHistoryRequest,
+	AddressHistoryResponse,
+} from "../../shared/browser-address-history";
+import type {
 	HumanTabAction,
 	HumanTabActionOutcome,
 } from "../../shared/browser-tab-action";
@@ -9,12 +13,19 @@ import * as downloadActions from "./actions/download";
 import { withOriginGate } from "./actions/gate";
 import * as geometryActions from "./actions/geometry";
 import * as inputActions from "./actions/input";
+import * as networkActions from "./actions/network";
 import * as pageActions from "./actions/page";
+import * as queryActions from "./actions/query";
 import * as tabActions from "./actions/tabs";
 import * as uploadActions from "./actions/upload";
+import { collectAddressHistory, mergeAddressHistory } from "./address-history";
 import type { ConsentDecision } from "./approvals";
 import { ChromeTabOrder } from "./chrome-tab-order";
 import { BrowserHostError } from "./errors";
+import {
+	type BrowserHistoryStore,
+	createBrowserHistoryStore,
+} from "./history-store";
 import { PageControls, type PageZoomCommand } from "./page-controls";
 import { COMMAND_TIMEOUTS_S, type Method, PROTO_VERSION } from "./protocol";
 import type { ContentRect, TabRecord } from "./registry";
@@ -58,6 +69,12 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
 	"hit_test",
 	"ancestors",
 	"snapshot",
+	// `query` is a read of the CURRENT document's DOM (CSS in, descriptors out),
+	// so it is authorized against that document on entry and again on the result
+	// exactly as `read` is: an answer that raced a navigation it did not cause
+	// must be discarded, not reported as the new page's (agent review round 2 on
+	// the query slice — the action was missing from BOTH sets).
+	"query",
 	"screenshot",
 	"click",
 	"type",
@@ -159,6 +176,7 @@ const TAB_SCOPED: ReadonlySet<string> = new Set([
 	"hit_test",
 	"ancestors",
 	"snapshot",
+	"query",
 	"screenshot",
 	"click",
 	"type",
@@ -173,6 +191,16 @@ const TAB_SCOPED: ReadonlySet<string> = new Set([
 	// which call.
 	"download",
 	"upload",
+	// Network capture is TAB-scoped and deliberately NOT `DOCUMENT_SCOPED`, for the
+	// same reason `logs` is not: its answer describes the tab's TRAFFIC (which
+	// spans documents, redirects and third-party subresources), not the document
+	// currently loaded. Authorizing it against the current page would refuse a read
+	// of traffic the session already watched once the tab navigated elsewhere, and
+	// would add no confidentiality — the same metadata is what `logs` exposes.
+	"network_start",
+	"network_stop",
+	"network_read",
+	"network_clear",
 ]);
 
 /**
@@ -275,9 +303,36 @@ export interface LoadFailure {
  *
  * A zero code is the "provisional load failed" marker Electron also emits; it names
  * no failure either.
+ *
+ * RE-EVALUATED 2026-10-24 against the current recovery paths. `did-start-loading`
+ * clears the mark when a retry (or any new load) starts and `did-navigate` clears
+ * it on the commit (`browser/index.ts`), so a stop, a redirect chain and a
+ * superseded load never leave a stale panel behind. Measured on Electron 44.3.0:
+ * a superseded load rejects with `ERR_ABORTED (-3)` while a redirect chain
+ * resolves on its final commit; the read-only `query` action (DOCUMENT_SCOPED and
+ * TAB_SCOPED) never navigates, so it cannot produce either. The decision stands:
+ * reporting aborts would make the panel cry wolf on ordinary browsing.
  */
 export function isReportableLoadFailure(code: number): boolean {
 	return code !== 0 && code !== -3;
+}
+
+/**
+ * Whether a `history.restore()` rejection is the superseded-navigation abort.
+ *
+ * THE RESTORE PATH DOES NOT GET A NUMERIC NET CODE, unlike `did-fail-load`: the
+ * rejection is an `Error` whose message is the only place Electron puts
+ * `ERR_ABORTED (-3)`. Matching the message here is deliberate and narrow — the
+ * same reason `isReportableLoadFailure` exists one layer down — because a
+ * superseding navigation is ordinary browsing, not a restore failure. If that
+ * superseding page is then stopped before its `did-navigate`, no commit ever
+ * arrives to clear a mark written here, and `lastLoadFailed` would skip the tab
+ * on the next launch. The timeout and a deliberate Stop reject with different
+ * text (`ERR_FAILED (-2)` for a stop), so they still mark.
+ */
+function isSupersededRestore(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : String(error);
+	return message.includes("ERR_ABORTED (-3)");
 }
 
 /**
@@ -327,6 +382,40 @@ export interface BrowserHostOptions {
 	 * Injected from the wiring that owns the session, so this module does not
 	 * depend on the session object. */
 	forgetSiteData: (origin: string) => Promise<void>;
+	/** S4b: the popout's health, supplied by the wiring that owns the overlay
+	 * controller. Absent means no controller was built, which is `suspend`. */
+	addressOverlayMode?: () => {
+		mode: "popout" | "suspend";
+		reason: string | null;
+	};
+	/** Where the persistent suggestion history lives. Absent means no store
+	 * (a test or a story): suggestions still come from live tabs, and nothing
+	 * is recorded or written. The production wiring passes
+	 * `<userData>/browser-history.json`. */
+	historyFilePath?: string;
+	/**
+	 * S6b: the native approvals card, when the launch opt-in built one. Absent
+	 * means the shield keeps using the DOM tray/dock, so an ordinary launch is
+	 * unchanged.
+	 */
+	approvalsCard?: {
+		open: (input: {
+			locale?: string;
+			dir?: "ltr" | "rtl";
+			theme?: "light" | "dark";
+			palette?: string | null;
+			requesterLabels?: Readonly<Record<string, string>>;
+		}) => void;
+		close: () => void;
+		setContext: (input: {
+			locale?: string;
+			dir?: "ltr" | "rtl";
+			theme?: "light" | "dark";
+			palette?: string | null;
+			requesterLabels?: Readonly<Record<string, string>>;
+		}) => void;
+		state: () => { available: boolean; open: boolean };
+	};
 }
 
 export class BrowserHost implements BrowserActionContext {
@@ -359,6 +448,19 @@ export class BrowserHost implements BrowserActionContext {
 	readonly facts: () => HostFacts;
 	/** The session's per-origin storage clear, injected (see `BrowserHostOptions`). */
 	private readonly forgetSiteData: (origin: string) => Promise<void>;
+	/** S6b's native card, when the launch built one (see `BrowserHostOptions`). */
+	private readonly approvalsCard: BrowserHostOptions["approvalsCard"];
+	/** S4b's popout health, read from the controller (or the launch's platform
+	 * answer when no controller exists). The strip reads this from the same
+	 * projection as the tabs, so the renderer has one source for "child or
+	 * fallback" and never guesses from a failed IPC call. */
+	private readonly addressOverlayMode: () => {
+		mode: "popout" | "suspend";
+		reason: string | null;
+	};
+	/** One instance per host, constructed once in the constructor. `null` when
+	 * no path was supplied (see `BrowserHostOptions.historyFilePath`). */
+	private readonly historyStore: BrowserHistoryStore | null;
 
 	/**
 	 * The last main-frame load failure per tab, cleared by the next load.
@@ -377,7 +479,11 @@ export class BrowserHost implements BrowserActionContext {
 
 	constructor(options: BrowserHostOptions) {
 		this.registry = options.registry;
-		this.pageControls = new PageControls(() => this.onChanged());
+		this.pageControls = new PageControls(
+			() => this.onChanged(),
+			5000,
+			(tabId) => this.registry.hiddenByOverlay(tabId),
+		);
 		this.cdp = options.cdp;
 		this.approvals = options.approvals;
 		this.ownership = options.ownership;
@@ -389,6 +495,13 @@ export class BrowserHost implements BrowserActionContext {
 		this.tabAudio = new TabAudioTracker(() => this.onChanged());
 		this.facts = options.facts;
 		this.forgetSiteData = options.forgetSiteData;
+		this.approvalsCard = options.approvalsCard;
+		this.addressOverlayMode =
+			options.addressOverlayMode ??
+			(() => ({ mode: "suspend", reason: "unavailable" }));
+		this.historyStore = options.historyFilePath
+			? createBrowserHistoryStore(options.historyFilePath)
+			: null;
 	}
 
 	/** Answer one wire request. The only place a method name becomes an action. */
@@ -580,6 +693,8 @@ export class BrowserHost implements BrowserActionContext {
 				return geometryActions.hitTest(this, params);
 			case "ancestors":
 				return geometryActions.ancestors(this, params);
+			case "query":
+				return queryActions.query(this, params);
 			case "snapshot":
 				return pageActions.snapshot(this, params);
 			case "scroll":
@@ -596,6 +711,14 @@ export class BrowserHost implements BrowserActionContext {
 				return downloadActions.download(this, params);
 			case "upload":
 				return uploadActions.upload(this, params);
+			case "network_start":
+				return networkActions.networkStart(this, params, requestId);
+			case "network_stop":
+				return networkActions.networkStop(this, params, requestId);
+			case "network_read":
+				return networkActions.networkRead(this, params, requestId);
+			case "network_clear":
+				return networkActions.networkClear(this, params, requestId);
 			case "request_access":
 				return this.approvals.requestAccess(
 					params.url,
@@ -782,6 +905,11 @@ export class BrowserHost implements BrowserActionContext {
 			new Set(this.registry.snapshot().map((entry) => entry.tabId)),
 		);
 		return {
+			addressOverlay: this.addressOverlayMode(),
+			approvalsCard: this.approvalsCard?.state() ?? {
+				available: false,
+				open: false,
+			},
 			pageControls: this.pageControls.state(active),
 			tabs: this.chromeTabOrder
 				.project(this.registry.snapshot())
@@ -1042,6 +1170,15 @@ export class BrowserHost implements BrowserActionContext {
 
 	/** Main owns this short-lived UI focus fact; it conveys no page capability. */
 	chordFocus = false;
+	/**
+	 * The tab whose native view last reported focus. Tracked from each view's own
+	 * `focus`/`blur` events because `webContents.getFocusedWebContents()` can
+	 * answer null while a `WebContentsView` holds focus (measured on Electron
+	 * 44.3.0 in a window that is not itself activated). Like `chordFocus`, this
+	 * is an input-ownership fact and carries no page capability; `ownsPage`
+	 * refuses it unless the tab is the active, presented one.
+	 */
+	focusedPageTabId: number | null = null;
 	onChordFocusChanged?: (focused: boolean) => void;
 	/** An explicit tab id fences queued chrome intents: a switch between key
 	 * delivery and IPC must never search/zoom the newly active tab instead. */
@@ -1057,7 +1194,7 @@ export class BrowserHost implements BrowserActionContext {
 			if (
 				!active ||
 				active.tabId !== tabId ||
-				!active.presented ||
+				(!active.presented && !this.registry.hiddenByOverlay(tabId)) ||
 				active.view.webContents.isDestroyed()
 			)
 				throw new Error("The browser tab is no longer presented.");
@@ -1074,6 +1211,16 @@ export class BrowserHost implements BrowserActionContext {
 	setChordFocus(focused: boolean): void {
 		this.chordFocus = focused;
 		this.onChordFocusChanged?.(focused);
+	}
+	/** One view gained or lost native focus. Only the id that lost it may clear
+	 * the fact: a departing view's blur must not erase a successor's focus. */
+	setPageFocused(tabId: number, focused: boolean): void {
+		if (focused) this.focusedPageTabId = tabId;
+		else if (this.focusedPageTabId === tabId) this.focusedPageTabId = null;
+	}
+	/** The window's own renderer gained focus (the user clicked chrome/chat). */
+	clearPageFocus(): void {
+		this.focusedPageTabId = null;
 	}
 	/** Only user URLs survive a close, never a capability, page state or nonce.
 	 * Conversation attribution is retained only to find the appropriate scope. */
@@ -1093,6 +1240,7 @@ export class BrowserHost implements BrowserActionContext {
 	clearChordState(): void {
 		this.pageControls.clear();
 		this.setChordFocus(false);
+		this.clearPageFocus();
 		this.closedUserTabs = [];
 	}
 	/**
@@ -1444,15 +1592,19 @@ export class BrowserHost implements BrowserActionContext {
 			// to a sentence the user can act on, and this fallback exists only for the
 			// failures that path cannot see.
 			//
-			// AN ABORT IS NOT EXEMPTED HERE, unlike the view's own `did-fail-load`
-			// path (`isReportableLoadFailure` drops `ERR_ABORTED`): that path reads a
-			// NUMERIC net code and this catch has none — its own timeout rejection is
-			// the only shape it produces itself — so a parity check would be a second,
-			// guessing spelling of the exemption. Nothing committed and nothing came
-			// back, so the mark is honest; a stop or a superseding navigation clears it
-			// through the same wiring on the commit that follows (round-1 n-1).
+			// AN ABORT IS EXEMPTED HERE TOO. The earlier reading — that a
+			// supersede always commits before this catch runs, so the commit
+			// guard covers it — was too strong: on Electron 44.3.0 a restore
+			// superseded mid-flight rejects `ERR_ABORTED (-3)` at 928ms while
+			// the superseding page's `did-navigate` did not arrive until 4960ms
+			// (and fast runs showed 611ms vs 678ms). If that superseding load is
+			// then stopped, no `did-navigate` ever arrives, so a mark written here
+			// would survive and `lastLoadFailed` would skip the tab next launch.
+			// The rejection is the ordinary supersede, not a restore failure; the
+			// timeout and a deliberate Stop still carry different text and mark.
 			if (
 				!committed &&
+				!isSupersededRestore(error) &&
 				!this.loadFailures.has(tabId) &&
 				this.registry.get(tabId) &&
 				!contents.isDestroyed()
@@ -1507,6 +1659,92 @@ export class BrowserHost implements BrowserActionContext {
 	}
 
 	/**
+	 * Local address suggestions for the field the user is editing.
+	 *
+	 * THE EXPECTED TAB IS A GUARD, not a hint: a response about tab A rendered
+	 * over tab B is how a stale completion navigates a tab the user is no longer
+	 * looking at. Main answers the read only when the request still names the
+	 * active tab; the renderer separately discards responses whose `activeTabId`
+	 * no longer matches, which covers the race between this check and the reply
+	 * landing.
+	 *
+	 * RANKING MOVED HERE with the persistent store: the renderer used to rank a
+	 * snapshot of every stack, which cannot scale to a 5000-entry history either
+	 * in memory or across IPC. Main now asks the store for its top matches, puts
+	 * them ahead of the live-tab rows (`mergeAddressHistory`), and bounds the
+	 * answer by `request.limit`. The renderer still derives display text, the
+	 * target URL and the inline suffix, because those depend on exactly what the
+	 * user typed.
+	 */
+	addressHistory(request: AddressHistoryRequest): AddressHistoryResponse {
+		const activeTabId = this.registry.activeTab?.tabId ?? null;
+		if (activeTabId !== request.expectedTabId) {
+			throw new BrowserHostError(
+				"nav_failed",
+				"the active tab changed before suggestions were read",
+			);
+		}
+		const live = collectAddressHistory(
+			this.registry.list().map((record) => ({
+				tabId: record.tabId,
+				sessionId: record.sessionId,
+				webContents: record.view.webContents,
+				restoreRow: record.restoreRow ?? null,
+			})),
+			activeTabId,
+		);
+		const historyMatches =
+			this.historyStore?.suggest(request.query, request.limit) ?? [];
+		return {
+			requestId: request.requestId,
+			activeTabId: live.activeTabId,
+			entries: mergeAddressHistory(
+				live.entries,
+				historyMatches,
+				request.query,
+				request.limit,
+			),
+		};
+	}
+
+	/**
+	 * Record one committed top-level navigation.
+	 *
+	 * Called from the per-view wiring in `index.ts`, which is the only place that
+	 * sees the event for every tab. A non-HTTP(S) URL is dropped by the store, so
+	 * `about:blank`, `chrome://` and a refused scheme never enter the document.
+	 * The title is filled in by `recordHistoryTitle` when Chromium announces it;
+	 * recording the visit first is deliberate, because the commit is the fact and
+	 * the title is a later, optional update.
+	 */
+	recordHistoryVisit(url: string): void {
+		this.historyStore?.record(url, "");
+	}
+
+	/** Update the stored title for a URL that is already in the history. Never
+	 * increments a visit: `page-title-updated` fires for a page that has already
+	 * been counted, sometimes several times. */
+	recordHistoryTitle(url: string, title: string): void {
+		this.historyStore?.updateTitle(url, title);
+	}
+
+	/** Write any debounced history change now (quit, and the host's own stop). */
+	flushHistory(): void {
+		this.historyStore?.flush();
+	}
+
+	/** "Clear everything" also forgets the suggestion history (`profile.ts` is
+	 * the path that calls this, so cookies/cache alone cannot reach it). */
+	clearHistory(): void {
+		this.historyStore?.clear();
+	}
+
+	/** "Forget this site" drops that origin's rows; other origins stay. */
+	clearOriginHistory(origin: string): void {
+		this.historyStore?.clearOrigin(origin);
+	}
+
+	/**
 	 * A URL the USER typed goes through here, and it is deliberately different from
 	 * an agent navigation in one way and identical in another (design 6.1):
 	 *
@@ -1518,10 +1756,22 @@ export class BrowserHost implements BrowserActionContext {
 	 *   `file:` or `javascript:` here would hand a page (or a paste) a way to reach
 	 *   the local filesystem through the app's own URL bar.
 	 */
-	async navigateActive(rawUrl: string): Promise<Record<string, unknown>> {
+	async navigateActive(
+		rawUrl: string,
+		expectedTabId?: number,
+	): Promise<Record<string, unknown>> {
 		const record = this.registry.activeTab;
 		if (!record)
 			throw new BrowserHostError("tab_closed", "no browser tab is open");
+		// ADDITIVE AND OPTIONAL: the URL bar always supplies the tab its draft belongs
+		// to, so a commit that raced a tab switch is refused instead of loading the
+		// new active tab with the old tab's address. Agent/legacy callers omit it.
+		if (expectedTabId !== undefined && record.tabId !== expectedTabId) {
+			throw new BrowserHostError(
+				"nav_failed",
+				"the active tab changed before the address was submitted",
+			);
+		}
 		let url: URL;
 		try {
 			url = new URL(rawUrl.includes("://") ? rawUrl : `https://${rawUrl}`);
@@ -1614,13 +1864,28 @@ export class BrowserHost implements BrowserActionContext {
 	 * area and reports it, and main applies it to the active tab only. */
 	setContentRect(rect: ContentRect | null): Record<string, unknown> {
 		this.registry.setContentRect(rect);
+		// A hidden surface is no longer the accelerator's owner; a view can keep a
+		// stale focus fact while it is not presented.
+		if (rect === null) this.clearPageFocus();
 		return this.chromeState();
 	}
 
 	/** Full-window overlays hide the view: a native view paints above all DOM, so
-	 * an overlay is invisible unless the view goes away (design 11.3). */
-	setViewVisible(visible: boolean): Record<string, unknown> {
-		this.registry.setViewVisible(visible);
+	 * an overlay is invisible unless the view goes away (design 11.3).
+	 *
+	 * `ownPage` is the RENDERER'S REASON for the hide, and the only fact that lets
+	 * main tell the browser's own state pages (start page, load failure - hidden so
+	 * their DOM can paint) from an overlay covering them. Shortcut ownership keys
+	 * on it; presentation does not. See `TabRegistry.chromeVisible`. */
+	setViewVisible(
+		visible: boolean,
+		ownPage = false,
+		ownStatePage = ownPage,
+	): Record<string, unknown> {
+		this.registry.setViewVisible(visible, ownPage, ownStatePage);
+		// Suppressed by an overlay: the page must not keep the native key owner.
+		// True for a state page too - there is no presented page either way.
+		if (!visible) this.clearPageFocus();
 		return this.chromeState();
 	}
 
@@ -1673,6 +1938,80 @@ export class BrowserHost implements BrowserActionContext {
 		const result = this.approvals.respond(entryId, decision);
 		this.onChanged();
 		return { ...result, ...this.chromeState() };
+	}
+
+	/**
+	 * Open the native approvals card from the shield (S6b).
+	 *
+	 * The renderer passes the locale and direction it resolved: main has no
+	 * catalogue, and the card is a second document whose `lang`/`dir` must follow
+	 * the app rather than the device tag (UX U2). The theme is the evidence
+	 * palette today; S6b's product path keeps the dark default it was reviewed in.
+	 */
+	openApprovalsCard(input: unknown): Record<string, unknown> {
+		const request =
+			input && typeof input === "object"
+				? (input as Record<string, unknown>)
+				: {};
+		const locale =
+			typeof request.locale === "string" ? request.locale : undefined;
+		const dir =
+			request.dir === "rtl" || request.dir === "ltr" ? request.dir : undefined;
+		const theme =
+			request.theme === "light" || request.theme === "dark"
+				? request.theme
+				: undefined;
+		const palette =
+			request.palette === null
+				? null
+				: typeof request.palette === "string"
+					? request.palette
+					: undefined;
+		this.approvalsCard?.open({ locale, dir, theme, palette });
+		// The renderer discards the returned projection for the shield toggle
+		// (M2); the push is what makes aria-expanded and the button's selected
+		// style follow main. `onChanged` also re-renders a route that mounted
+		// after the card opened (U1).
+		this.onChanged();
+		return { ...this.chromeState() };
+	}
+
+	/** Close the native card without deciding (shield's second click / Escape). */
+	closeApprovalsCard(): Record<string, unknown> {
+		this.approvalsCard?.close();
+		this.onChanged();
+		return { ...this.chromeState() };
+	}
+
+	/** The renderer's resolved locale/theme, pushed on mount and on change (U5). */
+	setApprovalsCardContext(input: unknown): void {
+		const request =
+			input && typeof input === "object"
+				? (input as Record<string, unknown>)
+				: {};
+		const labels =
+			request.requesterLabels &&
+			typeof request.requesterLabels === "object" &&
+			!Array.isArray(request.requesterLabels)
+				? (request.requesterLabels as Record<string, string>)
+				: undefined;
+		this.approvalsCard?.setContext({
+			locale: typeof request.locale === "string" ? request.locale : undefined,
+			dir:
+				request.dir === "rtl" || request.dir === "ltr"
+					? request.dir
+					: undefined,
+			theme:
+				request.theme === "light" || request.theme === "dark"
+					? request.theme
+					: undefined,
+			...(request.palette === null
+				? { palette: null }
+				: typeof request.palette === "string"
+					? { palette: request.palette }
+					: {}),
+			...(labels ? { requesterLabels: labels } : {}),
+		});
 	}
 
 	/** Revoke one origin's approvals (design 9.4). Separate from closing a tab and

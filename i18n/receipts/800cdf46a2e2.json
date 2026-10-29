@@ -1,0 +1,29 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "800cdf46a2e2",
+  "instance_derivation": "sha256('877cbcdfaf60:fr')[:12] from session 877cbcdfaf60",
+  "locale": "fr",
+  "status": "passed",
+  "namespace": "ui.console",
+  "date": "2026-10-22",
+  "scope": "Independent full pass over all 63 ui.console keys at the current bytes: read en/ui.console.json and en/ui.console.context.json, console-states.tsx (ended banner) and console-pane.tsx (tab strip), the core glossary and locale style guides, and docs/I18N.md; checked accuracy, register, glossary consistency, placeholder/ICU integrity, CLDR plurals, ur RTL and cell widths. No catalogue, ledger or code changes.",
+  "sha256": {
+    "en": "70587d7052f6129b3f56420f78427a588f64ce79a500e39c00d8a3a6d923aa52",
+    "target": "5e9d8e44ed256774266337de568522578ecec5f0d96efbbfeaab07b7056d998f"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.console.tab.exit_code",
+      "issue": "\"sortie {code}\" uses the catalogue's established word for output (capacity.resources \"Sortie en attente\", close.kept \"Sa sortie est conservée\"), so the tab status can read as \"output 1\" rather than the exit status the English labels.",
+      "suggestion": "code {code} (6 cells, English parity; matches the banner's \"code de sortie\")"
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.console.pane.surfaces",
+      "issue": "The same English term \"surface\" is \"Terminaux\" here but \"surface\" in unavailable.disabled.detail (\"aucune surface ne peut être créée\"); the label is accurate for the tab strip, but the two renderings drift.",
+      "suggestion": "Surfaces de la console (22 cells, one shorter than the current 23), or record the terminal-for-surface exception in the fr guide."
+    }
+  ]
+}

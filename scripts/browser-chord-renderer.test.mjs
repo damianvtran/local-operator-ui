@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -56,6 +57,8 @@ async function rig({
 	activeId = 1,
 	pane = false,
 	sessionId = "a",
+	platform = "MacIntel",
+	ownState = false,
 } = {}) {
 	const dom = new JSDOM(
 		'<div id="mount"></div><button id="chat">Chat</button><input id="chat-editor" aria-label="Chat editor">',
@@ -79,7 +82,7 @@ async function rig({
 		});
 	}
 	Object.defineProperty(dom.window.navigator, "platform", {
-		value: "MacIntel",
+		value: platform,
 	});
 	const events = [];
 	const incoming = new Set();
@@ -131,6 +134,10 @@ async function rig({
 			tabs = [...tabs, { tabId: id, sessionId: session }];
 			active = id;
 			redraw();
+			// S5: the surface focuses the PERMANENT ROW when the new tab's start
+			// page becomes current — a surface-side effect, not a chord `close()`.
+			// The rig's stand-in is the root, so the DOM owner still survives.
+			document.getElementById("surface")?.focus();
 		},
 		closeTab: async (id) => {
 			events.push(["close", id]);
@@ -159,13 +166,25 @@ async function rig({
 		const [, render] = React.useState(0);
 		redraw = () => render((n) => n + 1);
 		chrome.state = { activeTabId: active, pageControls: { find } };
-		const address = useRef(null);
+		const inputRef = useRef(null);
+		// S4b's hook talks to an AddressController, not directly to an input. The
+		// rig keeps a real focusable field so "Cmd+L puts the caret in the field"
+		// remains the measured property, not a mock call count.
+		const address = useRef({
+			raise: () => {
+				inputRef.current?.focus();
+				inputRef.current?.select();
+			},
+			// S5 deleted `close()`: nothing is raised to lower. The new tab's start
+			// page focuses the row from the SURFACE, which this rig models in the
+			// `newTab` mock above.
+		});
 		const {
 			root: ref,
 			closeTab,
 			openFind,
 			findReturnToPage,
-		} = useBrowserChords(chrome, tabs, sessionId, address);
+		} = useBrowserChords(chrome, tabs, sessionId, address, ownState);
 		closeFromStrip = closeTab;
 		returnRef = findReturnToPage;
 		const surface = React.createElement(
@@ -177,7 +196,7 @@ async function rig({
 				"data-tour-tag": pane ? "browser-pane-surface" : "browser-route",
 			},
 			React.createElement("input", {
-				ref: address,
+				ref: inputRef,
 				defaultValue: "https://example.test/one",
 				id: "address",
 			}),
@@ -354,13 +373,22 @@ test("address draft belongs to its tab: a chord-driven tab change drops it and b
 		"Element",
 		"HTMLElement",
 		"HTMLInputElement",
+		// The URL bar measures its permanent suggestions dock on mount, and the
+		// chrome hover test's own harness already ships this stub: jsdom has no
+		// ResizeObserver, and the component only needs one to exist.
+		"ResizeObserver",
 		"IS_REACT_ACT_ENVIRONMENT",
 	]) {
 		previous[key] = Object.getOwnPropertyDescriptor(globalThis, key);
-		Object.defineProperty(globalThis, key, {
-			configurable: true,
-			value: key === "IS_REACT_ACT_ENVIRONMENT" ? true : dom.window[key],
-		});
+		let value = dom.window[key];
+		if (key === "IS_REACT_ACT_ENVIRONMENT") value = true;
+		else if (key === "ResizeObserver")
+			value = class {
+				observe() {}
+				unobserve() {}
+				disconnect() {}
+			};
+		Object.defineProperty(globalThis, key, { configurable: true, value });
 	}
 	const navigated = [];
 	const props = (tabId, url) => ({
@@ -392,23 +420,23 @@ test("address draft belongs to its tab: a chord-driven tab change drops it and b
 			document.querySelector('[data-tour-tag="browser-address"]');
 		await draw(1, "https://a.example/one");
 		await act(async () => field().focus());
-		assert.equal(field().value, "https://a.example/one", "Cmd+L shows A");
+		assert.equal(field().value, "a.example/one", "Cmd+L shows A");
 		// The keyboard moves to tab B while the field still has focus.
 		await draw(2, "https://b.example/two");
-		assert.equal(
-			field().value,
-			"https://b.example/two",
-			"B's own URL, not A's draft",
-		);
+		assert.equal(field().value, "b.example/two", "B's own URL, not A's draft");
 		await act(async () => field().blur());
 		assert.deepEqual(navigated, [], "blur must not commit A's text into B");
 		// A fresh blank tab (Cmd+T / last-tab replacement) shows an empty field.
 		await act(async () => field().focus());
 		await draw(3, "about:blank");
-		assert.equal(field().value, "", "new blank tab is empty, not A's text");
+		// A blank tab projects no address; the start page's own field is what a
+		// user sees there.
+		assert.equal(field().value, "", "new blank tab is empty, not A's draft");
 		await act(async () => field().blur());
 		assert.deepEqual(navigated, []);
-		// Typing on the CURRENT tab still commits there (the draft is not lost).
+		// Typing on the CURRENT tab is never committed by blur: the suggestion
+		// contract makes Enter (or a chosen candidate) the only commit, so a click
+		// on the page cannot navigate to text the person did not accept.
 		await act(async () => field().focus());
 		await act(async () => {
 			const setter = Object.getOwnPropertyDescriptor(
@@ -419,6 +447,24 @@ test("address draft belongs to its tab: a chord-driven tab change drops it and b
 			field().dispatchEvent(new dom.window.Event("input", { bubbles: true }));
 		});
 		await act(async () => field().blur());
+		assert.deepEqual(navigated, [], "blur never commits");
+		// Enter on the current tab still commits there (the draft is not lost).
+		await act(async () => field().focus());
+		await act(async () => {
+			const setter = Object.getOwnPropertyDescriptor(
+				dom.window.HTMLInputElement.prototype,
+				"value",
+			).set;
+			setter.call(field(), "https://typed.example/");
+			field().dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+			field().dispatchEvent(
+				new dom.window.KeyboardEvent("keydown", {
+					key: "Enter",
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+		});
 		assert.deepEqual(navigated, ["https://typed.example/"]);
 		await act(async () => root.unmount());
 	} finally {
@@ -597,7 +643,9 @@ test("StageA BODY route owns selected reload and distinct rapid new tabs, not a 
 				["new", null],
 			],
 		);
-		assert.equal(document.activeElement.id, "address");
+		// Cmd+T closes the popout and the start page's own field (inside the same
+		// root) takes focus; the rig's stand-in is the surface root.
+		assert.equal(document.activeElement.id, "surface");
 	} finally {
 		await act(async () => r.root.unmount());
 		r.finish();
@@ -636,7 +684,7 @@ test("StageA real pane ancestor header owns R/T; chat, modal, wrong modifiers, I
 		]);
 		await r.focus("pane-header");
 		await act(async () => {
-			release = suppressBrowserView("StageA-modal");
+			release = suppressBrowserView("dialog:StageA-modal");
 		});
 		await r.key("r");
 		await r.key("t");
@@ -772,7 +820,10 @@ test("StageA focused A survives hidden B mount/update/unmount and one incoming i
 			false,
 			"B cannot overwrite A's one main-process boolean",
 		);
-		assert.equal(document.activeElement.id, "address");
+		// S4b: the replacement tab is a start page, whose own field autofocuses on
+		// mount; the popout is lowered. This rig has no start page, so body is the
+		// honest focus owner after the new-tab close.
+		assert.equal(document.activeElement.id, "surface");
 		await r.key("r");
 		assert.equal(r.events.filter((e) => e[0] === "reload").length, 1);
 	} finally {
@@ -814,8 +865,151 @@ test("StageA loading and failed selected tabs keep BODY reload targeted and new 
 			[["new", null]],
 		);
 		assert.equal(r.tabs().length, 3);
-		assert.equal(document.activeElement.id, "address");
+		// The new tab is a start page with its own field (not modeled here). A
+		// BOOLEAN is the assertion subject: `assert.equal` on a DOM node prints the
+		// node on failure, and inspecting a live jsdom element can allocate GBs.
+		assert.equal(document.activeElement.id, "surface");
 	} finally {
+		await act(async () => r.root.unmount());
+		r.finish();
+	}
+});
+
+/*
+ * THE VIEW-SUPPRESSION REGISTRY CONFLATED TWO DIFFERENT FACTS (S4a).
+ *
+ * `availableRoots` refused every root while ANY registration was live, and the
+ * browser surface registers its OWN state pages there: the start page and the
+ * load-failure panel hide the NATIVE VIEW so their DOM can paint (design 11.3).
+ * That registration is not an overlay covering the browser - the browser is
+ * exactly what the user is looking at - so Cmd+L/T/R were dropped on those two
+ * states, and the renderer reported "focus left the browser" to main, which made
+ * main refuse the same keys on its side.
+ *
+ * The NEGATIVE CONTROL is the real modal case: an id the surface does not own
+ * must still take every chord away, including main's broadcast door.
+ */
+test("the browser's own state pages keep L/T/R and main's messages; a real modal takes them", async () => {
+	const r = await rig({ pane: true });
+	const releases = [];
+	try {
+		// EACH STATE ON ITS OWN. These are the surface's two self-registrations
+		// (`browser-surface.tsx`) pushed through the REAL shared registry, so
+		// ref-counting and id shape are the app's; a regression in either one must
+		// fail on its own line rather than hide behind the other.
+		for (const id of [
+			"browser-state:browser-start-page:test",
+			"browser-state:browser-load-failure:test",
+		]) {
+			let release;
+			await act(async () => {
+				release = suppressBrowserView(id);
+			});
+			await r.focus("toolbar");
+			const reloads = r.events.filter((e) => e[0] === "reload").length;
+			const tabs = r.events.filter((e) => e[0] === "new").length;
+			const activeTab = r.chrome.state.activeTabId;
+			await r.key("l");
+			assert.equal(
+				document.activeElement.id,
+				"address",
+				`Cmd+L reaches the address field (${id})`,
+			);
+			assert.equal(document.activeElement.selectionStart, 0);
+			assert.equal(
+				document.activeElement.selectionEnd,
+				"https://example.test/one".length,
+				`and selects what is there, so typing replaces it (${id})`,
+			);
+			await r.key("r");
+			await r.key("t");
+			assert.deepEqual(
+				r.events.filter((e) => e[0] === "reload").slice(reloads),
+				[["reload", false, activeTab]],
+				`Cmd+R reloads the browser's tab, never the app window (${id})`,
+			);
+			assert.deepEqual(
+				r.events.filter((e) => e[0] === "new").slice(tabs),
+				[["new", "a"]],
+				`Cmd+T opens a browser tab in the existing scope (${id})`,
+			);
+			// Cmd+T lands on a start page; the surface focuses the permanent row,
+			// which this rig models as the surface root.
+			assert.equal(document.activeElement.id, "surface");
+			await act(async () => release());
+		}
+
+		// BOTH AT ONCE: the filter has to be a union over the list, not a single
+		// prefix that happens to match. Main's broadcast door is the second door to
+		// the same owner and must find it while only self-registrations are live.
+		await act(async () => {
+			for (const id of [
+				"browser-state:browser-start-page:test",
+				"browser-state:browser-load-failure:test",
+			])
+				releases.push(suppressBrowserView(id));
+		});
+		const start = r.events.length;
+		await act(async () => r.incoming({ intent: "new-tab", origin: "chrome" }));
+		await r.flush(20);
+		assert.deepEqual(
+			r.events.slice(start).filter((e) => e[0] === "new"),
+			[["new", "a"]],
+			"main's broadcast door finds the same owner while only state pages hide the view",
+		);
+		assert.deepEqual(r.events.filter((e) => e[0] === "focus").at(-1), [
+			"focus",
+			true,
+		]);
+
+		// NEGATIVE CONTROL: a genuine overlay is a different fact.
+		await act(async () => {
+			for (const release of releases.splice(0)) release();
+		});
+		await act(async () => {
+			releases.push(suppressBrowserView("dialog:test"));
+		});
+		await r.focus("toolbar");
+		const modalStart = r.events.length;
+		await r.key("l");
+		await r.key("r");
+		await r.key("t");
+		await act(async () => r.incoming({ intent: "new-tab", origin: "chrome" }));
+		await r.flush(20);
+		assert.equal(
+			r.events.slice(modalStart).filter((e) => ["reload", "new"].includes(e[0]))
+				.length,
+			0,
+			"a dialog owns the keyboard: no browser command executes",
+		);
+		assert.equal(
+			document.activeElement.id,
+			"toolbar",
+			"and Cmd+L does not move focus into the address field",
+		);
+		assert.deepEqual(r.events.filter((e) => e[0] === "focus").at(-1), [
+			"focus",
+			false,
+		]);
+
+		// Releasing the dialog restores ownership; ref-counting leaves nothing behind.
+		await act(async () => {
+			for (const release of releases.splice(0)) release();
+		});
+		const reloads = r.events.filter((e) => e[0] === "reload").length;
+		await r.focus("toolbar");
+		await r.key("r");
+		assert.equal(
+			r.events.filter((e) => e[0] === "reload").length,
+			reloads + 1,
+			"the chords come back when the overlay closes",
+		);
+		assert.deepEqual(r.events.filter((e) => e[0] === "focus").at(-1), [
+			"focus",
+			true,
+		]);
+	} finally {
+		for (const release of releases.splice(0)) release();
 		await act(async () => r.root.unmount());
 		r.finish();
 	}
@@ -1004,6 +1198,78 @@ test("real renderer hook owns scoped DOM commands, focus lifecycle and queued ra
 	}
 });
 
+test("a Linux host gets Latin-1 primary chords on Ctrl, and Meta is not primary (MAJOR-3)", async () => {
+	/*
+	 * THE LANE THE MAC-ONLY RIG COULD NOT FAIL (agent review round 2, MAJOR-3).
+	 * The hook derived `darwin` from `chordPlatform()`'s truthiness, and that
+	 * helper answers `"mac" | "linux"` — two truthy strings — so every host was
+	 * read as a Mac. The rig hardcoded `MacIntel` and passed. This runs the same
+	 * shipped hook under a Linux `navigator.platform` and presses the primary
+	 * modifier the Linux table names: Ctrl for L/T/R/W/digits, while Cmd does
+	 * nothing. The Mac lane above is unchanged and still proves the other half.
+	 */
+	const r = await rig({
+		tabIds: [1, 3],
+		activeId: 1,
+		platform: "Linux x86_64",
+	});
+	const { events, key } = r;
+	const ctrl = { metaKey: false, ctrlKey: true };
+	try {
+		await r.focus("toolbar");
+		await key("l", ctrl);
+		assert.equal(
+			document.activeElement.id,
+			"address",
+			"Ctrl+L raises the address",
+		);
+
+		await r.focus("toolbar");
+		await key("t", ctrl);
+		assert.deepEqual(events.at(-1), ["new", "a"], "Ctrl+T opens a tab");
+
+		await r.focus("toolbar");
+		await key("r", ctrl);
+		assert.ok(
+			events.some((e) => e[0] === "reload" && e[1] === false),
+			"Ctrl+R reloads",
+		);
+
+		await r.focus("toolbar");
+		await key("2", ctrl);
+		assert.deepEqual(
+			events.filter((e) => e[0] === "activate").at(-1),
+			["activate", 3],
+			"Ctrl+2 selects the second tab",
+		);
+
+		await key("w", ctrl);
+		assert.deepEqual(
+			events.filter((e) => e[0] === "close").at(-1),
+			["close", 3],
+			"Ctrl+W closes the selected tab",
+		);
+
+		await r.focus("toolbar");
+		await key("f", ctrl);
+		assert.ok(
+			events.some((e) => e[0] === "page-control" && e[2] === "open"),
+			"Ctrl+F opens the find row",
+		);
+
+		// The OTHER half of the bug: on this host Meta is not primary, so the
+		// Mac spelling must not fire. A hook that still mapped everything to
+		// `darwin` would pass the Ctrl presses above only by accident if it read
+		// modifiers loosely; this pins the platform branch itself.
+		await r.focus("toolbar");
+		const before = events.length;
+		await key("l");
+		assert.equal(events.length, before, "Cmd+L is not a chord on Linux");
+	} finally {
+		r.finish();
+	}
+});
+
 test("keyboard close with focus ON the closing tab button keeps the browser as focus owner (UX U2)", async () => {
 	const r = await rig({ tabIds: [1, 3, 5], activeId: 5 });
 	const { events, key, flush } = r;
@@ -1071,7 +1337,7 @@ test("rapid double Cmd+W closes two different tabs, never the same one twice (UX
 	}
 });
 
-test("closing the last tab opens the fresh blank tab and puts the caret in the address bar", async () => {
+test("closing the last tab opens the fresh blank tab and keeps the browser as focus owner", async () => {
 	const r = await rig({ tabIds: [7], activeId: 7 });
 	const { events, key, flush } = r;
 	try {
@@ -1080,7 +1346,11 @@ test("closing the last tab opens the fresh blank tab and puts the caret in the a
 		await key("w");
 		await flush(40);
 		assert.deepEqual(events.filter((e) => e[0] === "new").at(-1), ["new", "a"]);
-		assert.equal(document.activeElement.id, "address");
+		// S4b: the replacement is a START PAGE, whose own field autofocuses on
+		// mount; the popout is lowered rather than focusing an address bar that no
+		// longer exists at rest. This rig has no start page, so the surface root is
+		// the honest focus owner here.
+		assert.equal(document.activeElement.id, "surface");
 		assert.deepEqual(events.filter((e) => e[0] === "focus").at(-1), [
 			"focus",
 			true,
@@ -1150,4 +1420,57 @@ test("page-open then chrome-repeat and toolbar repeat preserve first origin and 
 		await act(async () => r.root.unmount());
 		r.finish();
 	}
+});
+
+test("S5: chords share the menu's own-state in both directions", async () => {
+	const blocked = await rig({ ownState: true });
+	try {
+		await blocked.focus("toolbar");
+		await blocked.key("f", { metaKey: true });
+		await blocked.key("=", { metaKey: true });
+		assert.equal(
+			blocked.events.filter((e) => e[0] === "page-control").length,
+			0,
+			"a start/failure page refuses Find and zoom, like the disabled menu",
+		);
+	} finally {
+		blocked.finish();
+	}
+
+	// `about:blank` while a submitted navigation is loading is NOT own-state:
+	// the menu is enabled, so the same chord must reach main.
+	const loading = await rig({ ownState: false });
+	try {
+		await loading.focus("toolbar");
+		await loading.key("f", { metaKey: true });
+		assert.ok(
+			loading.events.some((e) => e[0] === "page-control" && e[2] === "open"),
+			"the loading blank page still opens Find",
+		);
+	} finally {
+		loading.finish();
+	}
+});
+
+test("S5: the surface hands the chords the same own-state as the menu", () => {
+	const surface = readFileSync(
+		"src/renderer/src/features/browser/components/browser-surface.tsx",
+		"utf8",
+	);
+	const chords = readFileSync(
+		"src/renderer/src/features/browser/hooks/use-browser-chords.ts",
+		"utf8",
+	);
+	assert.match(surface, /browserOwnState,\s*\);/, "the surface passes it in");
+	assert.match(
+		surface,
+		/canControlPage=\{!browserOwnState && activeTab !== null\}/,
+		"the menu reads the same fact",
+	);
+	assert.equal(
+		(chords.match(/if \(latest\.current\.browserOwnState\) return;/g) ?? [])
+			.length,
+		2,
+		"Find and zoom both take the shared guard",
+	);
 });

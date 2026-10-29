@@ -63,6 +63,8 @@
 
 import { Button } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ScanEye } from "lucide-react";
 import type { Ref } from "react";
@@ -256,7 +258,7 @@ const MonitorRowView = ({
 						title={cancelState.detail}
 						data-monitor-cancel-state="refused"
 					>
-						Cancel refused
+						{t("ui.chat.run_details.monitors.cancel_refused")}
 					</span>
 				)}
 				<Button
@@ -291,7 +293,9 @@ const MonitorRowView = ({
 						"disabled:text-ink-dim",
 					)}
 				>
-					{cancelState?.kind === "cancelled" ? "Cancelled" : "Cancel"}
+					{cancelState?.kind === "cancelled"
+						? t("ui.chat.run_details.monitors.cancelled")
+						: t("ui.chat.run_details.monitors.cancel")}
 				</Button>
 			</div>
 		</li>
@@ -323,6 +327,7 @@ export const RunDetailMonitors = ({
 	 */
 	cancel: MonitorCancelSection;
 }) => {
+	useI18nLocale();
 	const { rows, hidden } = visibleMonitors(details.monitors);
 	return (
 		<section ref={sectionRef} className={cn("flex flex-col pb-1.5")}>
@@ -338,7 +343,7 @@ export const RunDetailMonitors = ({
 				)}
 			>
 				<span className={cn("shrink-0 text-meta text-ink-muted")}>
-					Monitors
+					{t("ui.chat.run_details.monitors.title")}
 				</span>
 				<span
 					className={cn(
@@ -365,11 +370,11 @@ export const RunDetailMonitors = ({
 				 * hand-edited index, not through the shipping ceiling.
 				 */}
 				{hidden > 0 && (
-					<li className={cn("pr-3")}>
+					<li className={cn("pe-3")}>
 						<Disclosure
 							disabled={true}
 							summary={`${hidden} more monitor${hidden === 1 ? "" : "s"}`}
-							className={cn("pl-9 text-meta")}
+							className={cn("ps-9 text-meta")}
 						/>
 					</li>
 				)}

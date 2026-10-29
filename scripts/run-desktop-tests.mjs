@@ -202,6 +202,13 @@ if (explicitFlag === undefined) {
 	);
 }
 nodeArgs.push(`--import=${GUARD_PRELOAD.href}`);
+/*
+ * NEVER add `--test-force-exit` here. A test file can register tests after a
+ * top-level await, and force-exit makes the runner report a false green by
+ * leaving before that registration runs (the lane-bound test in
+ * `run-desktop-tests.test.mjs` caught it). Files that hang on an unsettled
+ * promise must release that promise in their own cleanup.
+ */
 nodeArgs.push(...args);
 
 /*

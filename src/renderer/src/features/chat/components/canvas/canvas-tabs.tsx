@@ -6,6 +6,8 @@ import {
 	DropdownMenuTrigger,
 	Tooltip,
 } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Check, ChevronDown, X } from "lucide-react";
 import {
@@ -93,6 +95,7 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 	onChangeActiveDocument,
 	onCloseDocument,
 }) => {
+	useI18nLocale();
 	const tabRefs = useRef(new Map<string, HTMLButtonElement>());
 	const stripRef = useRef<HTMLDivElement>(null);
 
@@ -246,7 +249,7 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 			<div
 				ref={stripRef}
 				role="tablist"
-				aria-label="Open documents"
+				aria-label={t("ui.canvas.tabs.open_documents")}
 				aria-orientation="horizontal"
 				/*
 				 * A TAB STRIP IS CHROME, NOT A TRACK. `bg-sunken` is the flat
@@ -279,7 +282,7 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 							// track, same 24px tab. A half-step taller here would be a
 							// second tab height for no reason a user could name.
 							className={cn(
-								"group flex h-6 shrink-0 items-center rounded-sm pr-0.5",
+								"group flex h-6 shrink-0 items-center rounded-sm pe-0.5",
 								"transition-colors duration-fast ease-out-quart",
 								isSelected ? "bg-surface" : "hover:bg-row-hover",
 							)}
@@ -322,8 +325,8 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 								onClick={() => onChangeActiveDocument(doc.id)}
 								onKeyDown={(event) => handleKeyDown(event, index)}
 								className={cn(
-									"max-w-45 truncate rounded-sm py-1 pr-1 pl-2",
-									"text-left font-medium text-body-sm",
+									"max-w-45 truncate rounded-sm py-1 pe-1 ps-2",
+									"text-start font-medium text-body-sm",
 									"transition-colors duration-fast ease-out-quart",
 									isSelected ? "text-ink" : "text-ink-muted",
 								)}
@@ -334,7 +337,9 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label={`Close ${labels.get(doc.id) ?? doc.title}`}
+								aria-label={t("ui.canvas.tabs.close", {
+									value: labels.get(doc.id) ?? doc.title,
+								})}
 								onClick={(e) => handleCloseTab(e, doc.id)}
 								className={cn(
 									"size-5 [&_svg]:size-3",
@@ -359,17 +364,17 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 
 			{documents.length > 1 && (
 				<DropdownMenu>
-					<Tooltip content="All open files">
+					<Tooltip content={t("ui.canvas.tabs.all_open_files")}>
 						<DropdownMenuTrigger asChild>
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label="All open files"
+								aria-label={t("ui.canvas.tabs.all_open_files")}
 								// No vertical margin: `icon-sm` is 28px, which already
 								// centres inside the 32px strip. Margins here would push
 								// the row past the tab track and make the strip's height
 								// depend on how many documents are open.
-								className={cn("mr-1 shrink-0 self-center")}
+								className={cn("me-1 shrink-0 self-center")}
 							>
 								<ChevronDown aria-hidden="true" />
 							</Button>

@@ -1,0 +1,15 @@
+{
+	"ui.shell.menubar.file": "Tệp",
+	"ui.shell.menubar.edit": "Chỉnh sửa",
+	"ui.shell.menubar.view": "Xem",
+	"ui.shell.menubar.window": "Cửa sổ",
+	"ui.shell.menubar.new_browser_tab": "Thẻ trình duyệt mới",
+	"ui.shell.menubar.reload": "Tải lại",
+	"ui.shell.menubar.force_reload": "Buộc tải lại",
+	"ui.shell.menubar.actual_size": "Kích thước thực",
+	"ui.shell.menubar.zoom_in": "Phóng to",
+	"ui.shell.menubar.zoom_out": "Thu nhỏ",
+	"ui.shell.menubar.close_tab_or_window": "Đóng thẻ hoặc cửa sổ",
+	"ui.shell.menubar.learn_more": "Tìm hiểu thêm",
+	"ui.shell.menubar.about": "Giới thiệu về {name}"
+}

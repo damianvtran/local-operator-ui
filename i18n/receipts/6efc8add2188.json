@@ -1,0 +1,28 @@
+{
+  "auditor": "reviewer",
+  "model": "deepseek/deepseek-flash",
+  "instance": "6efc8add2188",
+  "date": "2026-10-20",
+  "locale": "ur",
+  "status": "passed",
+  "scope": "ur/ui.library at 48df044e5f: six new ui.library.time.* keys audited at the on-disk bytes; the 152 prior keys are byte-identical to the target the 2e23db9ac7c0 receipt covered.",
+  "namespaces": {
+    "ui.library": {
+      "namespace": "ui.library",
+      "keys_read": 158,
+      "keys_audited_in_delta": 6,
+      "status": "passed",
+      "sha256": {
+        "en": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
+        "ur": "04e9d9e7224c859b31500dde60aceb16f825df33aecf1e23517eb1e62e4635ac"
+      },
+      "findings": [
+        {
+          "severity": "INFO",
+          "key": "ui.library.time.months_mo_ago",
+          "observation": "Month register: this locale has two established spellings - مہینہ/مہینے in ui.hub.comments.age.months, and invariant ماہ in ui.settings.configuration.retention_duration.month_count. The new key uses invariant ماہ, matching the settings duration register and the compactness constraint; both are grammatical."
+        }
+      ]
+    }
+  }
+}

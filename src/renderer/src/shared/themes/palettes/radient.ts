@@ -27,7 +27,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const radient: ThemeDefinition = {
 	id: "radient",
 	name: "Radient",
-	description: "Radient blue: deep navy ground with a soft blue accent.",
+	descriptionKey: "ui.settings.appearance.theme.radient",
 	palette: {
 		mode: "dark",
 

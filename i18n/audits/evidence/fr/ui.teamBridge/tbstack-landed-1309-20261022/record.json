@@ -1,0 +1,207 @@
+{
+  "audit_id": "tbstack-landed-1309-fr",
+  "date": "2026-10-22",
+  "locale": "fr",
+  "namespace": "ui.teamBridge",
+  "source_commit": "6631ee87aaa036a387493e51b6ce3716a8a8aad3",
+  "merge_parents": [
+    "946bf937fd9c158f20708fe069e8fb70c830b191",
+    "19f094810fcc26757efc2bf456f8a4b5437bb984"
+  ],
+  "status": "passed",
+  "result": "clean",
+  "keys_read": 173,
+  "keys_substantive": 29,
+  "auditor": {
+    "agent": "translation-auditor",
+    "label": "audit-landed-fr-es-vi",
+    "model": "openai/gpt-6-astra",
+    "instance": "f39d0c2ada5e-landed-1309-fr",
+    "session": "f39d0c2ada5e",
+    "job": "396a37b6695e",
+    "parent_session": "687384e07954"
+  },
+  "model_note": "Served model announced by this child runtime: openai/gpt-6-astra; no model fallback announced.",
+  "independence": "Independent child audit-landed-fr-es-vi; authored none of the reviewed translations. Git-object reads only; no repository edits, tests, builds, installs, worktrees or pushes.",
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "58594ba5908c2a3e5caaf839e6e4491e8ada46df72733212ed114b17112f94e7"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+      "sha256": "726c74126ec69a856d914ee3aa98d02ef97232b3ac704fa5e7310e965c9035ea"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "5daf30ba2344de56b9a26328939d7e62c516d34e30b5cf7fe27c10d15d93c2fb"
+    }
+  },
+  "references": {
+    "core_commit": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+    "glossary": {
+      "path": "i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "i18n/style-guides/fr.md",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    },
+    "contract": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    },
+    "rules": {
+      "path": "scripts/i18n/ledger-rules.mjs",
+      "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+    }
+  },
+  "union": {
+    "own": 144,
+    "integrated": 144,
+    "head": 173,
+    "shared": 115,
+    "added": 29,
+    "changed": 0,
+    "conflicts": [],
+    "union_exact": true
+  },
+  "all_eight_catalogues_and_context_exact_parent_union": true,
+  "raw_catalogue_values": {
+    "serialized_string_values_unchanged": true,
+    "checked_parent_entries": 288
+  },
+  "inherited_receipts": [
+    {
+      "path": "i18n/receipts/tbstack-r1-1309m-fr.json",
+      "receipt_sha256": "91a9e90a9bc4a9eb4e78ec1be954f8a72319d11844fb521f44c00132dc0c9011",
+      "source_head": "6dac4f5baa8e26da07370d244240e7acb8238e1f",
+      "instance": "tbstack-r1-1309m-fr",
+      "result": "clean",
+      "hashes_and_unchanged_values": {
+        "en": {
+          "sha256": "b027df099c805e7121cc74c80411959c6ea178abe7a6b9a9fd6b9cb35524e510",
+          "keys_verified_unchanged": 144
+        },
+        "fr": {
+          "sha256": "ae29837b879f3df0900fcdd71e7c47f7d62ba95bc5f6c5a55109ac98b2dced8a",
+          "keys_verified_unchanged": 144
+        },
+        "context": {
+          "sha256": "7062ca8351d00aba9c040eeae2a1d5f1cee83f6c4dd3dbcaab6da60c2aa5bd5b",
+          "keys_verified_unchanged": 144
+        }
+      }
+    },
+    {
+      "path": "i18n/receipts/tbstack-r1-1308m-fr.json",
+      "receipt_sha256": "6a2ba6b1d0d87033fbc15155ace22c2a571bb07b47fd427d1909b049260906dc",
+      "source_head": "2908b0a9f1ad0c7be87553cd2c12b20008ad0c31",
+      "instance": "tbstack-r1-1308m-fr",
+      "result": "clean",
+      "hashes_and_unchanged_values": {
+        "en": {
+          "sha256": "f9d6aa7afa46fd6b877e5fe1b3e8a276657445bf929f237a51b0726f6860d214",
+          "keys_verified_unchanged": 144
+        },
+        "fr": {
+          "sha256": "07241a949b415cc7f3175a7d6a07302fe4349d9f46f513b022d232364df2de99",
+          "keys_verified_unchanged": 144
+        },
+        "context": {
+          "sha256": "be847e5b61705864af0972446332cbed327f98f2d7f591c4a4de0d86f39e6f7b",
+          "keys_verified_unchanged": 144
+        }
+      }
+    },
+    {
+      "path": "i18n/receipts/tbstack-r1-1304m-fr.json",
+      "receipt_sha256": "96946ca7fea27373abbc8c43470f78c8d7deb509f54e5213d6bee43b5c7d6442",
+      "source_head": "12dddf52f78bd30704b48a8c856f2b69e1bef6e3",
+      "instance": "tbstack-r1-1304m-fr",
+      "result": "clean",
+      "hashes_and_unchanged_values": {
+        "en": {
+          "sha256": "281cb8adcc75e5bb4fcebf5c9112ab260bcf8ed2fbcf6bbcd6d04bfc3cfff41c",
+          "keys_verified_unchanged": 123
+        },
+        "fr": {
+          "sha256": "00f25eaca02107324037d83ead2c21144298d4cb704c31efb86e5cade2ea69a5",
+          "keys_verified_unchanged": 123
+        },
+        "context": {
+          "sha256": "f5cf60d75f5e8b8ecc378174bc9f9e5e158b14afb80cda504e1b61e921b5cafd",
+          "keys_verified_unchanged": 123
+        }
+      }
+    }
+  ],
+  "findings": [],
+  "analysis": {
+    "scope": "Landing-union-only audit; inherited keys read for combined context and hash/value continuity, not claimed as a fresh full linguistic audit. Identical shared values reused across the two heads.",
+    "accuracy_idiom_register_glossary": "vous and infinitive controls remain consistent. fil/Fil de discussion and réponse distinguish thread from reply; réaction/émoji distinguish a saved reaction from its symbol. image and planification/planifier retain their established attachment/scheduling meanings. The clock-time preposition à in replies.last fits the localized clock argument; category Smileys is an idiomatic category name, not drift from the general émoji term.",
+    "placeholders": "Every message parsed from exact source/target bytes; every target ICU branch retains source argument names/types, pound tokens, offsets, styles and markup-token multiset. No date/number skeleton or markup alteration found. replies.count preserves count; replies.last preserves time. Locale-specific plural categories checked separately.",
+    "icu": {
+      "parsed": 173,
+      "plural_messages": 6,
+      "categories": [
+        "one",
+        "many",
+        "other"
+      ],
+      "errors": [],
+      "missing_categories": []
+    },
+    "overflow": "Character counts are screening observations, not pixel measurements or findings. Picker is w-80/max viewport width; search is a full-width input, categories are icons with title/aria text, all/categories/choose are accessible labels. Thread title is visible. Native rendering and pseudo-localization not performed.",
+    "width_observations": [
+      {
+        "key": "ui.teamBridge.reactions.add",
+        "current": "Ajouter une réaction",
+        "en_chars": 12,
+        "target_chars": 20,
+        "disposition": "Rendered check required; no overflow measured. Keep current idiomatic copy unless actual geometry requires shortening."
+      },
+      {
+        "key": "ui.teamBridge.reactions.all",
+        "current": "Tous les émojis",
+        "en_chars": 9,
+        "target_chars": 15,
+        "disposition": "Accessible name/sr-only text; not a fixed-width visible text label."
+      },
+      {
+        "key": "ui.teamBridge.reactions.category3",
+        "current": "Nourriture et boissons",
+        "en_chars": 14,
+        "target_chars": 22,
+        "disposition": "Category icon tooltip/accessible name; not visible category-tab prose."
+      },
+      {
+        "key": "ui.teamBridge.reactions.search",
+        "current": "Rechercher un émoji",
+        "en_chars": 12,
+        "target_chars": 19,
+        "disposition": "Rendered check required; no overflow measured. Keep current idiomatic copy unless actual geometry requires shortening."
+      },
+      {
+        "key": "ui.teamBridge.replies.title",
+        "current": "Fil de discussion",
+        "en_chars": 6,
+        "target_chars": 17,
+        "disposition": "Rendered check required; no overflow measured. Keep current idiomatic copy unless actual geometry requires shortening."
+      }
+    ],
+    "rtl": "Not applicable to these LTR locales; all values NFC with no directional control characters."
+  },
+  "limitations": [
+    "No native or browser rendered-fit evidence; no runtime activation/release claim.",
+    "Prior rejected many nits retained where present; no new blocker/major/minor/nit found in the landing delta.",
+    "Shared inherited values reused across heads; 173 and 199 are branch-scoped key reads, not two independently retranslated inventories."
+  ],
+  "receipt_derivation": {"rules_from_head": "6631ee87aaa036a387493e51b6ce3716a8a8aad3", "context_hash_verified": true, "agent": "translation-auditor", "instance": "f39d0c2ada5e-landed-1309-fr", "model": "openai/gpt-6-astra", "result": "clean", "findings": {"blocker": 0, "major": 0, "minor": 0, "nit": 0}, "source_sha256": "58594ba5908c2a3e5caaf839e6e4491e8ada46df72733212ed114b17112f94e7", "target_sha256": "726c74126ec69a856d914ee3aa98d02ef97232b3ac704fa5e7310e965c9035ea", "receipt_sha256": "6aa43dfb328f98beb7ff3dbd7d87fae55cf454998e7abec03e6adb48c15936f6"},
+  "artifacts": [
+    {
+      "path": "i18n/receipts/tbstack-landed-1309-fr.json",
+      "sha256": "6aa43dfb328f98beb7ff3dbd7d87fae55cf454998e7abec03e6adb48c15936f6"
+    }
+  ]
+}

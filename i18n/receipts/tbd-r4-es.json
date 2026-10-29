@@ -1,0 +1,22 @@
+{
+  "auditor": "translation-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "tbd-r4-es",
+  "session": "22d11a212546",
+  "date": "2026-10-21",
+  "locale": "es",
+  "translator": "translator",
+  "namespaces": {
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 109,
+      "scope": "Inherited full-namespace coverage (109 keys) from tbd-r3-es; this round re-read the remediation key thread.intro_chief against frozen English/context and checked intro_person, intro_group, chief.label, chief.fallback, section.chiefs and builtin.agents_topic as direct regression surfaces. Exact proposed remediation verified; full 109-key parity, ICU parsing, placeholder names/types, es plural categories, NFC and bidi checks repeated. No full linguistic re-audit of unchanged keys.",
+      "sha256": {
+        "en": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+        "es": "83f83edf103c94c8f6cdbb4c678853fbcfb1d23a207adc9143dfb6497eea0bdd",
+        "context": "17b7e1450dc7fa529d8e2e684bb8653fcc4f6cf220bf8261631d078d26545de5"
+      },
+      "findings": []
+    }
+  }
+}

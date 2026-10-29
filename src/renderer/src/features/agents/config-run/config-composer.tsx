@@ -53,12 +53,15 @@ import {
 } from "@shared/components/composer";
 import { Button } from "@shared/components/ui/button";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, Square } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import type { RunTarget } from "./config-run-store";
 import type { ConfigRunHandle } from "./use-config-run";
 
 /**
@@ -87,14 +90,21 @@ const ASIDE_NOTICE_ID = "config-composer-note";
  * the notice band is that sentence's single carrier (round 2, D7), so repeating it
  * here would put the same 66-character sentence on the card twice, 8 px apart.
  */
-const DISABLED_GATE_LINE = "Configure agents by conversation";
+/* A FUNCTION, not a const: a module-level `t()` freezes the locale the process
+ * started in, and this line is read every time the gate is drawn. */
+const disabledGateLine = () => t("ui.agents.config.disabled_gate");
 
 /** Three things an operator actually asks for, as one-press examples. */
+/**
+ * The hero's three example requests, as catalogue keys rather than copy: a
+ * module-level English array would freeze at import, and these are the first
+ * thing a reader can click.
+ */
 const EXAMPLES = [
-	"A reviewer that only reads code",
-	"Add the coder twice to release-crew",
-	"A team called shipping with a manager and two coders",
-];
+	"ui.agents.config.examples.reads_code",
+	"ui.agents.config.examples.add_twice",
+	"ui.agents.config.examples.team_shipping",
+] as const;
 
 const STATE_DOT: Record<string, string> = {
 	idle: "bg-ink-dim",
@@ -131,10 +141,11 @@ function StateDot({ status, pulse }: { status: string; pulse: boolean }) {
  * runs at, so it could never have scrolled on its own anyway.
  */
 function RunActivity({ run }: { run: ConfigRunHandle }) {
+	useI18nLocale();
 	if (run.activity.length === 0) {
 		return (
 			<p className="text-meta text-ink-muted">
-				Nothing to show yet — the run has not called a tool.
+				{t("ui.agents.config.activity.empty")}
 			</p>
 		);
 	}
@@ -262,7 +273,9 @@ function DetailRegion({ children }: { children: ReactNode }) {
 			ref={ref}
 			tabIndex={overflowing ? 0 : undefined}
 			role={overflowing ? "region" : undefined}
-			aria-label={overflowing ? "Run details" : undefined}
+			aria-label={
+				overflowing ? t("ui.agents.config.run_details_region") : undefined
+			}
 			/*
 			 * THE BOUND CUTS TEXT, SO IT SAYS SO (design review round 2 D2): measured,
 			 * 72.5 px of a 1,133 px answer sliced a line through its glyphs with only a
@@ -312,17 +325,20 @@ function DetailRegion({ children }: { children: ReactNode }) {
 const STATUS_ROW = "mb-1 flex min-h-7 items-center gap-3";
 
 /** "1 definition" / "N definitions" - the count of rows a run touched. */
-const definitionsPhrase = (count: number) =>
-	count === 1 ? "1 definition" : `${count} definitions`;
+const definitionsPhrase = (count: number): string =>
+	t("ui.agents.config.definitions", { count });
 
 function ComposerStatus({
 	run,
 	about,
+	skill = false,
 	blockedReason,
 	hasDraft,
 	onClearAbout,
 	onDismiss,
 }: {
+	/** The Skills tab's box: its own About words and no Clear (see `ConfigComposer`). */
+	skill?: boolean;
 	run: ConfigRunHandle;
 	/**
 	 * Why the page is refusing input, and whether the box holds a draft. TOGETHER
@@ -335,11 +351,12 @@ function ComposerStatus({
 	 */
 	blockedReason?: string | null;
 	hasDraft: boolean;
-	about: { kind: "agent" | "team"; name: string } | null;
+	about: RunTarget | null;
 	onClearAbout: () => void;
 	/** Wraps `run.dismiss` so the caret lands back in the box (UX U8). */
 	onDismiss: () => void;
 }) {
+	useI18nLocale();
 	const [watching, setWatching] = useState(false);
 	const stopRef = useRef<HTMLButtonElement>(null);
 	const live = run.status === "running" || run.status === "stopping";
@@ -357,6 +374,20 @@ function ComposerStatus({
 	const reasonInRow = Boolean(blockedReason) && hasDraft && !showsRun;
 	const reasonBelowRow =
 		Boolean(blockedReason) && hasDraft && showsRun && !live;
+
+	/*
+	 * A RUN WHOSE TURN DIED HANDS FOCUS TO RETRY (#1458 UX r1 U3): Retry is the
+	 * one next act, and the reader was watching the box or nothing at all. Only
+	 * from there - focus elsewhere on the page is the reader's own, not taken.
+	 */
+	const retryRef = useRef<HTMLButtonElement>(null);
+	useEffect(() => {
+		if (run.status !== "error" || !run.turnFailed) return;
+		const active = document.activeElement;
+		const strip = retryRef.current?.closest('[data-testid="config-composer"]');
+		if (!active || active === document.body || strip?.contains(active))
+			retryRef.current?.focus({ preventScroll: true });
+	}, [run.status, run.turnFailed]);
 
 	/*
 	 * Escape focuses Stop while a run is live — the accelerator the chat composer
@@ -406,9 +437,16 @@ function ComposerStatus({
 								 * (`canRetry`) versus a run that ran and then could not be
 								 * read back.
 								 */
-								run.canRetry
-								? "Stopped with an error"
-								: "Finished with an error"
+								/*
+								 * A TURN THAT DIED (a session incident: the provider errored)
+								 * did not finish at all, and saying "Stopped" would read as the
+								 * operator's own Stop (#1458 UX r1 U3).
+								 */
+								run.turnFailed
+								? t("ui.agents.config.state.did_not_finish")
+								: run.canRetry
+									? "Stopped with an error"
+									: "Finished with an error"
 							: "";
 
 	return (
@@ -436,7 +474,9 @@ function ComposerStatus({
 							 */}
 							{run.status === "done" && run.touched.length > 0 ? (
 								<span className="sr-only">
-									{`. Configured ${definitionsPhrase(run.touched.length)}`}
+									{". "}
+									{t("ui.agents.config.result.configured")}{" "}
+									{definitionsPhrase(run.touched.length)}
 								</span>
 							) : null}
 						</span>
@@ -454,7 +494,9 @@ function ComposerStatus({
 								aria-hidden={run.status === "done" ? true : undefined}
 								className="shrink-0 text-meta text-ink-muted"
 							>
-								<span className="sr-only">Configured </span>
+								<span className="sr-only">
+									{t("ui.agents.config.result.configured")}{" "}
+								</span>
 								{definitionsPhrase(run.touched.length)}
 							</span>
 						) : null}
@@ -495,8 +537,7 @@ function ComposerStatus({
 										: "min-w-0 flex-1 truncate text-meta text-ink-dim"
 								}
 							>
-								Runs in the background. This does not appear in your
-								conversation.
+								{t("ui.agents.config.background_only")}
 							</span>
 						)}
 						{blockedReason ? (
@@ -532,28 +573,35 @@ function ComposerStatus({
 					// sentence itself is the paragraph BELOW the row (see `ComposerStatus`).
 					<span className="flex-1" aria-hidden="true" />
 				)}
-				<div className="ml-auto flex shrink-0 items-center gap-1">
+				<div className="ms-auto flex shrink-0 items-center gap-1">
 					{about ? (
 						<>
 							{/* Plain text, not an accent badge: the accent is spent on Send and the focus ring (D16). */}
 							<span
 								data-testid="config-composer-about"
 								// The name truncates at 224 px; the full words stay reachable (UX U8).
-								title={`About ${about.kind} ${about.name}`}
+								title={aboutLine(about, skill)}
 								className="max-w-56 truncate text-meta text-ink-muted"
 							>
-								About {about.kind} {about.name}
+								{aboutLine(about, skill)}
 							</span>
-							<Button
-								variant="ghost"
-								size="sm"
-								// The trailing control when no run is showing: `-mr-2` (the button's
-								// own `px-2`) puts its LABEL's last glyph on the column edge (D1).
-								className={showsRun ? undefined : TRAILING_GHOST}
-								onClick={onClearAbout}
-							>
-								Clear
-							</Button>
+							{/*
+							 * NO CLEAR ON THE SKILLS TAB (design spec §5.3): the target follows the
+							 * open skill by itself, and a skill run has no create, so an untargeted
+							 * box there could do nothing.
+							 */}
+							{skill ? null : (
+								<Button
+									variant="ghost"
+									size="sm"
+									// The trailing control when no run is showing: `-mr-2` (the button's
+									// own `px-2`) puts its LABEL's last glyph on the column edge (D1).
+									className={showsRun ? undefined : TRAILING_GHOST}
+									onClick={onClearAbout}
+								>
+									{t("ui.agents.config.action.clear")}
+								</Button>
+							)}
 						</>
 					) : null}
 					{showsRun && run.activity.length > 0 ? (
@@ -566,9 +614,9 @@ function ComposerStatus({
 							{watching ? (
 								<ChevronDown className="size-3.5" />
 							) : (
-								<ChevronRight className="size-3.5" />
+								<ChevronRight className="size-3.5 rtl:-scale-x-100" />
 							)}
-							Watch
+							{t("ui.agents.config.action.watch")}
 						</Button>
 					) : null}
 					{showsRun ? (
@@ -581,7 +629,9 @@ function ComposerStatus({
 								onClick={() => void run.stop()}
 							>
 								<Square className="size-3.5" />
-								{run.status === "stopping" ? "Stopping…" : "Stop"}
+								{run.status === "stopping"
+									? t("ui.agents.config.state.stopping")
+									: t("ui.agents.config.action.stop")}
 							</Button>
 						) : (
 							<Button
@@ -590,7 +640,7 @@ function ComposerStatus({
 								className={TRAILING_GHOST}
 								onClick={onDismiss}
 							>
-								Dismiss
+								{t("ui.agents.config.action.dismiss")}
 							</Button>
 						)
 					) : null}
@@ -635,8 +685,7 @@ function ComposerStatus({
 				<DetailRegion>
 					{run.attached ? (
 						<p className="mt-1 text-meta text-ink-muted">
-							Another configuration run was already going, so this page attached
-							to it. Your request was not sent — it is still in the box.
+							{t("ui.agents.config.status.attached")}
 						</p>
 					) : null}
 					{/*
@@ -655,7 +704,7 @@ function ComposerStatus({
 							data-testid="config-stop-refused"
 						>
 							<p className="text-body-sm text-danger">
-								The stop did not take — the run is still going.
+								{t("ui.agents.config.error.stop_refused")}
 							</p>
 							<p className="mt-0.5 text-meta text-ink-muted">{run.stopError}</p>
 						</div>
@@ -677,8 +726,8 @@ function ComposerStatus({
 						<div className="mt-2 space-y-1 border-hairline border-t pt-2 text-body-sm">
 							<p className="text-ink">
 								{run.results.length > 0
-									? "Stopped. Changes it had already made were kept."
-									: "Stopped. Nothing had been changed yet."}
+									? t("ui.agents.config.stopped.kept")
+									: t("ui.agents.config.stopped.nothing")}
 							</p>
 							{run.results.length > 0 ? (
 								<ul className="space-y-0.5">
@@ -687,7 +736,9 @@ function ComposerStatus({
 											key={`${result.target.kind}:${result.target.name}`}
 											className="text-ink-muted"
 										>
-											{result.created ? "Created " : "Changed "}
+											{result.created
+												? t("ui.agents.config.result.created")
+												: t("ui.agents.config.result.changed")}{" "}
 											<span className="text-ink">{result.target.name}</span>
 										</li>
 									))}
@@ -695,7 +746,9 @@ function ComposerStatus({
 							) : null}
 						</div>
 					) : null}
-					{run.status === "done" ? <RunSummary run={run} /> : null}
+					{run.status === "done" ? (
+						<RunSummary run={run} skill={skill} />
+					) : null}
 					{run.status === "error" && run.error ? (
 						<div className="mt-2 border-danger-border border-t pt-2">
 							<p className="text-body-sm text-danger">{run.error}</p>
@@ -725,22 +778,57 @@ function ComposerStatus({
 					 */}
 					{run.canRetry ? (
 						<Button
+							ref={retryRef}
 							variant="secondary"
 							size="sm"
 							data-testid="config-retry"
 							disabled={run.starting}
 							onClick={() => void run.retry()}
 						>
-							{run.starting ? "Sending…" : "Retry"}
+							{run.starting
+								? t("ui.agents.config.state.sending")
+								: t("ui.agents.config.action.retry")}
 						</Button>
 					) : null}
 					<p className="text-meta text-ink-muted">
-						Nothing else was changed by this run.
+						{t("ui.agents.config.summary.nothing_else")}
 					</p>
 				</div>
 			) : null}
 		</div>
 	);
+}
+
+/**
+ * The About line's words. A skill gets its own sentence (`ui.agents.skills.
+ * composer.about`); an agent or a team goes through `ui.agents.config.about`
+ * with its kind word KEYED, never the raw wire kind. Interpolating the wire
+ * word printed English mid-sentence in every other locale (design spec §5.3,
+ * E2: "Concerne : team shipping"), which the seven-locale audit measured.
+ */
+function aboutLine(about: RunTarget, skill: boolean): string {
+	return skill || about.kind === "skill"
+		? t("ui.agents.skills.composer.about", { name: about.name })
+		: t("ui.agents.config.about", {
+				kind: kindWord(about),
+				name: about.name,
+			});
+}
+
+/**
+ * The kind word for an About line and the `(kind)` suffix of a summary row
+ * (spec §5.4). Every kind is keyed; only `configSeedPrompt` below keeps the raw
+ * wire word because it is the sentence sent to the model, not interface copy.
+ */
+function kindWord(target: RunTarget): string {
+	switch (target.kind) {
+		case "skill":
+			return t("ui.agents.skills.composer.kind");
+		case "team":
+			return t("ui.agents.config.kind.team");
+		case "agent":
+			return t("ui.agents.config.kind.agent");
+	}
 }
 
 /**
@@ -753,12 +841,22 @@ function ComposerStatus({
  * empty list (the design's "zero touched entities" case), and an update whose
  * catalogue fields did not move says which fact it cannot see from here.
  */
-function RunSummary({ run }: { run: ConfigRunHandle }) {
+function RunSummary({
+	run,
+	skill = false,
+}: {
+	run: ConfigRunHandle;
+	/** On the Skills tab the zero-change sentence names a skill, not agents or teams. */
+	skill?: boolean;
+}) {
+	useI18nLocale();
 	if (run.results.length === 0) {
 		return (
 			<div className="mt-2 border-hairline border-t pt-2 text-body-sm">
 				<p className="text-ink-muted">
-					The run answered without changing any agent or team.
+					{skill
+						? t("ui.agents.skills.composer.no_changes")
+						: t("ui.agents.config.summary.no_changes")}
 				</p>
 				{/*
 				 * THE ANSWER ITSELF, and the request it answers. "The run answered" is a
@@ -771,7 +869,7 @@ function RunSummary({ run }: { run: ConfigRunHandle }) {
 				) : null}
 				{run.topic ? (
 					<p className="mt-1 text-meta text-ink-muted">
-						You asked: {run.topic}
+						{t("ui.agents.config.summary.you_asked", { topic: run.topic })}
 					</p>
 				) : null}
 			</div>
@@ -783,10 +881,15 @@ function RunSummary({ run }: { run: ConfigRunHandle }) {
 				{run.results.map((result) => (
 					<li key={`${result.target.kind}:${result.target.name}`}>
 						<span className="text-ink">
-							{result.created ? "Created " : "Updated "}
-							{result.target.name}
+							{result.created
+								? t("ui.agents.config.summary.created", {
+										name: result.target.name,
+									})
+								: t("ui.agents.config.summary.updated", {
+										name: result.target.name,
+									})}
 						</span>
-						<span className="text-ink-muted"> ({result.target.kind})</span>
+						<span className="text-ink-muted"> ({kindWord(result.target)})</span>
 						{result.changes.length > 0 ? (
 							<span className="text-ink-muted">
 								{": "}
@@ -794,9 +897,15 @@ function RunSummary({ run }: { run: ConfigRunHandle }) {
 							</span>
 						) : result.created ? null : (
 							<span className="text-ink-muted">
-								{
-									": its settings changed. The list does not show instructions, so open it to see what was written."
-								}
+								{": "}
+								{/*
+								 * A SKILL'S PANE REFRESHES ITSELF (design spec §5.4): the settle
+								 * invalidates the library, so "open it to see what was written" is
+								 * not the next act; the instructions on screen already are.
+								 */}
+								{result.target.kind === "skill"
+									? t("ui.agents.skills.composer.changed_below")
+									: t("ui.agents.config.summary.hidden_changes")}
 							</span>
 						)}
 					</li>
@@ -840,10 +949,8 @@ export const CONFIG_BOX_KEY = "agents-config";
  * sentence that missed one copy would leave a seeded draft the cleanup no longer
  * recognises as seeded, and the operator's next row click would keep it.
  */
-export const configSeedPrompt = (about: {
-	kind: "agent" | "team";
-	name: string;
-}): string => `Change the ${about.kind} ${about.name}: `;
+export const configSeedPrompt = (about: RunTarget): string =>
+	`Change the ${about.kind} ${about.name}: `;
 
 /**
  * THE ONE WRITER OF THE BOX'S TEXT OUTSIDE THE COMPOSER, and the fix for QA
@@ -865,7 +972,7 @@ export const configSeedPrompt = (about: {
  */
 export function askForChange(
 	run: ConfigRunHandle,
-	about: { kind: "agent" | "team"; name: string },
+	about: RunTarget,
 	prompt: string,
 ): void {
 	run.setAbout(about);
@@ -899,10 +1006,7 @@ export function askForChange(
  * clears the box only when it still holds exactly what `configSeedPrompt` wrote
  * for the target being left behind, and leaves a hand-typed request alone.
  */
-export function discardSeededConfigBox(about: {
-	kind: "agent" | "team";
-	name: string;
-}): void {
+export function discardSeededConfigBox(about: RunTarget): void {
 	const store = useConversationInputStore.getState();
 	if (
 		store.getCurrentInput(CONFIG_BOX_KEY).trim() ===
@@ -928,13 +1032,28 @@ export function ConfigComposer({
 	/** Names the row the next request is about, when one is selected. */
 	about,
 	onClearAbout,
+	skill = false,
+	focusToken = 0,
 }: {
 	run: ConfigRunHandle;
 	hero?: boolean;
 	blockedReason?: string | null;
-	about: { kind: "agent" | "team"; name: string } | null;
+	about: RunTarget | null;
 	onClearAbout: () => void;
+	/**
+	 * THE SKILLS TAB'S BOX (design spec §5). The same composer, run and strip as
+	 * Agents and Teams; the differences are words and one behaviour. The target
+	 * is set by OPENING an eligible skill rather than by a press, so the caret is
+	 * not pulled into the box on every row the reader arrows past (the #1443 rule
+	 * that focus stays on the row); a press of "Ask for a change" moves it with
+	 * `focusToken` instead. The About line, placeholder and label are keyed, and
+	 * there is no Clear.
+	 */
+	skill?: boolean;
+	/** Bumped by the page to put the caret in the box (the Skills tab's Ask press). */
+	focusToken?: number;
 }) {
+	useI18nLocale();
 	const inputRef = useRef<MessageInputHandle | null>(null);
 	const recordingProbe = useRadientCredentialProbe();
 	/*
@@ -960,7 +1079,10 @@ export function ConfigComposer({
 		cwd.length > 0 &&
 		desktopFeatureEnabled(capabilities.data, "draft_preview");
 	const preview = useQuery({
-		...draftPreviewQuery({ cwd, model: null }),
+		...draftPreviewQuery(
+			{ cwd, model: null },
+			desktopFeatureEnabled(capabilities.data, "draft_fast"),
+		),
 		enabled: draftPreviewOn,
 	});
 	/*
@@ -1046,7 +1168,7 @@ export function ConfigComposer({
 			? "Working on your request…"
 			: run.enabled
 				? undefined
-				: DISABLED_GATE_LINE;
+				: disabledGateLine();
 	/*
 	 * THE INVITATION IS THE SAME WORDS ON BOTH PANES (UX review round 3, U2). The
 	 * heading above this box says "Ask for an agent" or "Ask for a team" depending
@@ -1066,24 +1188,29 @@ export function ConfigComposer({
 	 * hero keeps its object-free words: it is a different arm, with the heading and
 	 * the chips standing beside it to say what the box is for.
 	 *
-	 * IT MUST FIT ON ONE LINE AT EVERY PANE WIDTH THE APP CAN PRODUCE (design review
-	 * round 2 D1 = QA Q1 = UX U3). The idle docked box is one row tall and does not
-	 * auto-grow, so a placeholder that wraps is clipped mid-sentence with a stray
-	 * scrollbar thumb in an empty box. The narrowest docked pane is 416 px: the
-	 * shell's sidebar docks from 1024 px at up to 320 px wide, and the roster is a
-	 * fixed 288 px. The box's text area is the pane less 88 px of insets (measured:
-	 * 328 px at 416, 388 px at 476). The previous 71-character sentence measured
-	 * 444 px and needed a 532 px pane; this one measures 301 px. It still names the job (a change) and, naming neither
-	 * object, cannot contradict whichever tab is open. Do not lengthen it without
-	 * re-running the pane-width sweep.
+	 * IT MUST STAY READABLE AT EVERY PANE WIDTH THE APP CAN PRODUCE (design review
+	 * round 2 D1 = QA Q1 = UX U3). Readable wrapping is accepted; clipping and
+	 * vertical overflow are not. The idle docked box has a fixed height and does
+	 * not auto-grow, so the native boundary check must inspect the wrapped result
+	 * rather than assume a one-line placeholder. The narrowest docked pane is
+	 * 392 px at native 1000 px: sidebar 320 + roster 288 + detail 392. The box's
+	 * content box is the pane less 88 px of insets: 304 px. Native QA measured the
+	 * unwrapped placeholder at 301.1709 px there, and its frame shows readable
+	 * wrapping with nothing clipped. scrollHeight == clientHeight == 55 proves no
+	 * vertical overflow, not a line count. The previous 71-character sentence
+	 * measured 444 px and needed a 532 px pane. This one still names the job (a
+	 * change) and, naming neither object, cannot contradict whichever tab is open.
+	 * Do not lengthen it without re-running the native pane-width boundary check.
 	 */
 	const placeholder = about
-		? `Change ${about.name}…`
+		? skill
+			? t("ui.agents.skills.composer.placeholder", { name: about.name })
+			: t("ui.agents.config.placeholder.about", { name: about.name })
 		: run.enabled
 			? hero
-				? "Describe what you want…"
-				: "Ask for a change, or describe something new…"
-			: DISABLED_GATE_LINE;
+				? t("ui.agents.config.placeholder.hero")
+				: t("ui.agents.config.placeholder.docked")
+			: disabledGateLine();
 
 	/*
 	 * "ASK FOR A CHANGE" ARRIVES FROM ELSEWHERE, so the caret has to land here.
@@ -1094,9 +1221,14 @@ export function ConfigComposer({
 	 */
 	const aboutKey = about ? `${about.kind}:${about.name}` : null;
 	useEffect(() => {
-		if (!aboutKey) return;
+		// On the Skills tab opening a row sets the target, so a target change is not
+		// a request for the caret (see `skill`); the press bumps `focusToken`.
+		if (!aboutKey || skill) return;
 		inputRef.current?.focusInput();
-	}, [aboutKey]);
+	}, [aboutKey, skill]);
+	useEffect(() => {
+		if (focusToken > 0) inputRef.current?.focusInput();
+	}, [focusToken]);
 
 	/**
 	 * DISMISS AND CLEAR PUT THE CARET BACK (UX U8). Both retire the control the
@@ -1127,7 +1259,9 @@ export function ConfigComposer({
 			data-testid="config-composer"
 		>
 			<div className="sr-only" id="config-composer-label">
-				Ask for an agent or team change
+				{skill
+					? t("ui.agents.skills.composer.label")
+					: t("ui.agents.config.composer.label")}
 			</div>
 			{/*
 			 * THE BOX IS THE APP'S OWN COMPOSER (Scope B, §3.1).
@@ -1148,6 +1282,14 @@ export function ConfigComposer({
 			 */}
 			<MessageInput
 				ref={inputRef}
+				/*
+				 * NOT WHILE A FAILED TURN'S RETRY IS UP (#1458 QA r2 Q9). The box stops
+				 * being refused the moment the run leaves `running`, and the composer's
+				 * own caret claim re-runs on that edge - so it took focus from Retry in
+				 * the same millisecond the strip gave it. Retry is the one next act
+				 * there; the claim comes back once the strip is dismissed or re-sent.
+				 */
+				autoFocus={!(run.status === "error" && run.turnFailed && run.canRetry)}
 				conversationId={boxKey}
 				messages={EMPTY_MESSAGES}
 				/*
@@ -1234,6 +1376,7 @@ export function ConfigComposer({
 						<ComposerStatus
 							run={run}
 							about={about}
+							skill={skill}
 							blockedReason={blockedReason}
 							hasDraft={hasDraft}
 							onClearAbout={clearAboutAndFocus}
@@ -1300,14 +1443,14 @@ export function ConfigComposer({
 								 */
 								variant="ghost"
 								size="sm"
-								className="-ml-2 h-auto max-w-full justify-start whitespace-normal break-words px-2 py-1 text-left text-body-sm text-ink-muted hover:bg-elevated hover:text-ink disabled:text-ink-disabled disabled:hover:bg-transparent"
+								className="-ml-2 h-auto max-w-full justify-start whitespace-normal break-words px-2 py-1 text-start text-body-sm text-ink-muted hover:bg-elevated hover:text-ink disabled:text-ink-disabled disabled:hover:bg-transparent"
 								disabled={disabled}
 								onClick={() => {
-									setBoxText(example);
+									setBoxText(t(example));
 									inputRef.current?.focusInput();
 								}}
 							>
-								{example}
+								{t(example)}
 							</Button>
 						))}
 					</div>

@@ -1,0 +1,20 @@
+{
+	"ui.chat.attachments.pending_caption": "ابھی نہیں بھیجا گیا",
+	"ui.chat.attachments.file_meta": "{type} · {size}",
+	"ui.chat.attachments.file_missing": "منتقل یا حذف شدہ",
+	"ui.chat.attachments.file_retained": "اب بھی منسلکات کے ذخیرے میں محفوظ ہے ({digest})",
+	"ui.chat.attachments.file_unnamed": "منسلک فائل",
+	"ui.chat.attachments.copy_path": "راستہ نقل کریں",
+	"ui.chat.attachments.path_copied": "راستہ نقل ہو گیا",
+	"ui.chat.attachments.file_missing_recovery": "فائل اب اس راستے پر موجود نہیں ہے۔",
+	"ui.chat.attachments.file_type_unknown": "فائل",
+	"ui.chat.attachments.copy_saved_path": "محفوظ شدہ نقل کا راستہ نقل کریں",
+	"ui.chat.attachments.saved_path_copied": "محفوظ شدہ نقل کا راستہ نقل ہو گیا",
+	"ui.chat.attachments.saved_copy_label": "محفوظ شدہ نقل",
+	"ui.chat.attachments.file_and_copy_missing": "محفوظ شدہ نقل بھی موجود نہیں ہے۔",
+	"ui.chat.attachments.open": "کھولیں",
+	"ui.chat.attachments.playback_position": "پلے بیک کا مقام",
+	"ui.chat.attachments.playback_rate": "پلے بیک کی رفتار",
+	"ui.chat.attachments.playback_rate_option": "{rate}x",
+	"ui.chat.attachments.volume": "آواز کا حجم"
+}

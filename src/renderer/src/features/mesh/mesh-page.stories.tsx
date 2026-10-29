@@ -34,7 +34,16 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, screen, userEvent, waitFor } from "@storybook/test";
 import type { DesktopResponse } from "../../../../shared/desktop-contract";
+import { MoveNotice } from "./mesh-actions";
+import { resolveDrop } from "./mesh-drop";
+import { meshGraph } from "./mesh-graph";
 import { MeshPage } from "./mesh-page";
+import {
+	type PeerLinkState,
+	type PeerRelayState,
+	networkTopology,
+	peerList,
+} from "./mesh-types";
 
 type BridgeRequest = { op: string; approvalId?: string };
 
@@ -49,6 +58,10 @@ const DEVICE_PEER = `d_${"b".repeat(32)}`;
 const DEVICE_THIRD = `d_${"c".repeat(32)}`;
 const DEVICE_FOURTH = `d_${"d".repeat(32)}`;
 const DEVICE_FIFTH = `d_${"e".repeat(32)}`;
+const DEVICE_SHARED_ONE = "d_0123456789abcdef0123456789abcdef";
+const DEVICE_SHARED_TWO = "d_0123456790abcdef0123456789abcde0";
+const LONG_DEVICE_NAME =
+	"studio workstation with a deliberately long name that must leave the device id visible";
 const NET_HOME = `n_${"1".repeat(24)}`;
 const NET_LAB = `n_${"2".repeat(24)}`;
 
@@ -97,6 +110,14 @@ const peer = (
 		unreachable_reason: string;
 		last_seen_at: number | null;
 		session_count: number;
+		link_state: PeerLinkState;
+		remote_relay: PeerRelayState;
+		attempts: Array<{
+			endpoint: string;
+			connected: boolean;
+			detail: string;
+			latency_ms: number | null;
+		}>;
 	}> = {},
 ) => ({
 	device_id,
@@ -595,10 +616,14 @@ export const OverlappingNetworks: Story = {
 
 /**
  * Every named state at once: a suspected identity, an unreachable device carrying
- * the backend's own reason, and a REVOKED membership drawn as a dashed edge.
+ * the backend's own reason, and a REVOKED membership the tab counts but does not
+ * draw as a device.
  *
  * The two devices that take a hue are the ones a reader has to find, which is what
- * the tab's first sentence promises ("where is the odd one out").
+ * the tab's first sentence promises ("where is the odd one out"). `old-laptop` is
+ * the counter-example the change is about: its membership is `active: false`, so
+ * it is an audit row behind the census band's revoked count - NOT a third device card
+ * beside a live peer, which is what the story drew before.
  */
 export const Misconfigured: Story = {
 	render: () => {
@@ -643,6 +668,234 @@ export const Misconfigured: Story = {
 			},
 		});
 		return <MeshPage />;
+	},
+};
+
+/**
+ * THE PEER'S RELAY IS NOT RUNNING: every dialable address answers TCP with a
+ * refusal (host up, nothing listening), and the second address times out.
+ *
+ * REAL INCIDENT VALUES, 0.82.3: `99.79.190.164:4097` refused and
+ * `172.31.22.23:4097` timed out, while the tab said `unreachable` and `no answer`
+ * for every other kind of silence too. The panel must now say the peer's relay is
+ * not running and show each address's own transport result. `session_count: 0`
+ * keeps the empty-conversation sentence on the device.
+ */
+/**
+ * THE RELAY-DOWN WORLD, shared by the canvas/panel frame and the list frame.
+ *
+ * The attempts satisfy the contract's rule for `not_listening`: no endpoint
+ * connected AND at least one refused TCP. The timeout beside the refusal is what
+ * makes the evidence honest - a reader sees that not every address failed the
+ * same way.
+ */
+function relayDownFixture() {
+	return {
+		networks: {
+			self_device_id: DEVICE_SELF,
+			networks: [
+				network(NET_HOME, "damian-mesh", [
+					member(DEVICE_SELF, { name: "damians-MacBook-Pro", role: "admin" }),
+					member(DEVICE_PEER, {
+						name: "cloud-node-1",
+						endpoints: ["99.79.190.164:4097", "172.31.22.23:4097"],
+						reachable: false,
+						reason:
+							"unreachable: 99.79.190.164:4097 connect_failed:ConnectionRefusedError; 172.31.22.23:4097 connect_failed:TimeoutError",
+					}),
+				]),
+			],
+		},
+		peers: {
+			self_device_id: DEVICE_SELF,
+			peers: [
+				peer(DEVICE_PEER, {
+					name: "cloud-node-1",
+					reachable: false,
+					link_state: "relay_down",
+					remote_relay: "not_listening",
+					attempts: [
+						{
+							endpoint: "99.79.190.164:4097",
+							connected: false,
+							detail: "connect_failed:ConnectionRefusedError",
+							latency_ms: null,
+						},
+						{
+							endpoint: "172.31.22.23:4097",
+							connected: false,
+							detail: "connect_failed:TimeoutError",
+							latency_ms: null,
+						},
+					],
+					unreachable_reason:
+						"unreachable: 99.79.190.164:4097 connect_failed:ConnectionRefusedError; 172.31.22.23:4097 connect_failed:TimeoutError",
+					session_count: 0,
+				}),
+			],
+			degraded: [],
+		},
+	};
+}
+
+export const RelayDown: Story = {
+	render: () => {
+		installBridge(relayDownFixture());
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_PEER);
+	},
+};
+
+/**
+ * THE SAME RELAY-DOWN WORLD IN THE LIST: the half of the evidence the panel frame
+ * cannot photograph.
+ *
+ * The list prints one `<endpoint> — <words>` line per address and the headline
+ * above them; this play presses the real List toggle and waits for the refusal's
+ * own word, so a regression that only dropped the list block fails the frame.
+ */
+export const RelayDownList: Story = {
+	render: () => {
+		installBridge(relayDownFixture());
+		/*
+		 * THE LIST IS THE RENDER, NOT A CLICK. The first attempt drove the toggle
+		 * in `play`; the evidence rig photographed the frame before the click
+		 * landed and committed a Canvas picture under the list's name (design
+		 * review round 1, D1). The tab's control still owns the state after mount.
+		 */
+		return <MeshPage initialPresentation="list" />;
+	},
+	play: async () => {
+		await screen.findByText("Sort devices by");
+		await screen.findByText("the peer's relay is not running");
+		await screen.findByText("99.79.190.164:4097 — nothing listening");
+	},
+};
+
+/**
+ * THE ADDRESS IS UNREACHABLE: no address answers, and the peer itself may be
+ * fine. Two timeouts are the evidence - no refusal, so the host never spoke.
+ *
+ * The point of the frame: this is not `relay not running` (nothing listened) and
+ * not `handshake refused` (something answered and then closed). The operator's
+ * next action is the address/route, not the peer's relay process.
+ */
+export const AddressUnreachable: Story = {
+	render: () => {
+		installBridge({
+			networks: {
+				self_device_id: DEVICE_SELF,
+				networks: [
+					network(NET_HOME, "damian-mesh", [
+						member(DEVICE_SELF, { name: "damians-MacBook-Pro", role: "admin" }),
+						member(DEVICE_PEER, {
+							name: "cloud-node-1",
+							endpoints: ["99.79.190.164:4097", "172.31.22.23:4097"],
+							reachable: false,
+							reason: "no answer",
+						}),
+					]),
+				],
+			},
+			peers: {
+				self_device_id: DEVICE_SELF,
+				peers: [
+					peer(DEVICE_PEER, {
+						name: "cloud-node-1",
+						reachable: false,
+						link_state: "address_unreachable",
+						remote_relay: "unknown",
+						attempts: [
+							{
+								endpoint: "99.79.190.164:4097",
+								connected: false,
+								detail: "connect_failed:TimeoutError",
+								latency_ms: null,
+							},
+							{
+								endpoint: "172.31.22.23:4097",
+								connected: false,
+								detail: "connect_failed:TimeoutError",
+								latency_ms: null,
+							},
+						],
+						unreachable_reason: "no answer",
+						session_count: 0,
+					}),
+				],
+				degraded: [],
+			},
+		});
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_PEER);
+		// THE THIRD STATE THE INCIDENT NAMED: address unreachable is its own word, not
+		// the generic "no answer". It appears on the node state line and in the panel.
+		expect(
+			(await screen.findAllByText("address unreachable")).length,
+		).toBeGreaterThan(0);
+	},
+};
+
+/**
+ * THE HANDSHAKE IS REFUSED: TCP connects, then the peer closes the handshake with
+ * no reason (it does not know this device, or the epoch disagrees).
+ *
+ * THE INCIDENT'S THIRD STATE, and the one the old tab could not distinguish from
+ * the other two: the address answered, so the relay is running, but the peer will
+ * not admit this device - an action on membership/epoch, not on the address or
+ * the relay process. The attempt is `connected: true`; the headline names the
+ * close rather than printing the raw detail token.
+ */
+export const HandshakeRefused: Story = {
+	render: () => {
+		installBridge({
+			networks: {
+				self_device_id: DEVICE_SELF,
+				networks: [
+					network(NET_HOME, "damian-mesh", [
+						member(DEVICE_SELF, { name: "damians-MacBook-Pro", role: "admin" }),
+						member(DEVICE_PEER, {
+							name: "cloud-node-1",
+							endpoints: ["99.79.190.164:4097"],
+							reachable: false,
+							reason: "handshake closed with no reason",
+						}),
+					]),
+				],
+			},
+			peers: {
+				self_device_id: DEVICE_SELF,
+				peers: [
+					peer(DEVICE_PEER, {
+						name: "cloud-node-1",
+						reachable: false,
+						link_state: "handshake_refused",
+						remote_relay: "running",
+						attempts: [
+							{
+								endpoint: "99.79.190.164:4097",
+								connected: true,
+								// TCP connected AND the attempt itself succeeded; the HANDSHAKE is
+								// what closed, which is why the row must read `answered`, not `no answer`.
+								detail: "ok",
+								latency_ms: 41,
+							},
+						],
+						unreachable_reason: "handshake closed with no reason",
+						session_count: 0,
+					}),
+				],
+				degraded: [],
+			},
+		});
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_PEER);
 	},
 };
 
@@ -829,6 +1082,47 @@ function actionFixture() {
 	};
 }
 
+/** Real wire reads for the compact identity states, with an optional local move. */
+function identityFixture(
+	rows: { id: string; name?: string; suspect?: boolean }[],
+	sessions: ReturnType<typeof sessionRow>[] = [],
+) {
+	const [self, ...peers] = rows;
+	return {
+		networks: {
+			self_device_id: self.id,
+			networks: [
+				network(
+					NET_HOME,
+					"identity-test-mesh",
+					rows.map((row, index) =>
+						member(row.id, {
+							name: row.name ?? "",
+							suspect: row.suspect ?? false,
+							role: index === 0 ? "admin" : "drive",
+							last_seen_at: 1_800_000_000,
+						}),
+					),
+				),
+			],
+		},
+		peers: {
+			self_device_id: self.id,
+			peers: peers.map((row) =>
+				peer(row.id, {
+					name: row.name ?? "",
+					last_seen_at: 1_800_000_000,
+					session_count: sessions.filter(
+						(session) => session.owner_device === row.id,
+					).length,
+				}),
+			),
+			degraded: [],
+		},
+		sessions,
+	};
+}
+
 /** Click the `⋯` menu on a session row and choose one of its items. */
 async function chooseFromSessionMenu(sessionId: string, label: string) {
 	const user = userEvent.setup();
@@ -868,6 +1162,307 @@ export const DevicePanel: Story = {
 		await openPanel(DEVICE_PEER);
 		await screen.findByText("Sweep 001", { exact: false });
 		await screen.findByText(/Conversations/);
+	},
+};
+
+const absentIdentityFixture = () =>
+	identityFixture([
+		{ id: DEVICE_SELF, name: "studio-mac" },
+		{ id: DEVICE_PEER },
+	]);
+
+const duplicateIdentityFixture = (
+	sessions: ReturnType<typeof sessionRow>[] = [],
+) =>
+	identityFixture(
+		[
+			{ id: DEVICE_SELF, name: "studio-mac" },
+			{ id: DEVICE_SHARED_ONE, name: "shared-node" },
+			{ id: DEVICE_SHARED_TWO, name: "shared-node" },
+		],
+		sessions,
+	);
+
+export const CompactAbsentName: Story = {
+	render: () => {
+		installBridge(absentIdentityFixture());
+		holdShutter(`[data-mesh-device="${DEVICE_PEER}"]`);
+		return <MeshPage />;
+	},
+	play: async () => {
+		const name = await screen.findByText("(unnamed device)");
+		const identity = name.closest("[data-mesh-device-identity]");
+		expect(identity).toHaveTextContent("d_bbbbbbbb…");
+		expect(identity?.querySelector("[data-mesh-device-id]")).toHaveAttribute(
+			"title",
+			DEVICE_PEER,
+		);
+	},
+};
+
+export const CompactAbsentNamePanel: Story = {
+	render: () => {
+		installBridge(absentIdentityFixture());
+		holdShutter(`[data-mesh-panel="${DEVICE_PEER}"]`);
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_PEER);
+		const panel = document.querySelector(`[data-mesh-panel="${DEVICE_PEER}"]`);
+		expect(panel).toHaveTextContent("(unnamed device)");
+		expect(panel).toHaveTextContent("d_bbbbbbbb…");
+		expect(panel?.querySelector("[data-mesh-device-id]")).toHaveAttribute(
+			"title",
+			DEVICE_PEER,
+		);
+	},
+};
+
+export const CompactDuplicateNames: Story = {
+	render: () => {
+		installBridge(duplicateIdentityFixture());
+		holdShutter(`[data-mesh-device="${DEVICE_SHARED_TWO}"]`);
+		return <MeshPage />;
+	},
+	play: async () => {
+		const names = await screen.findAllByText('"shared-node"');
+		expect(names).toHaveLength(2);
+		const first = names[0].closest("[data-mesh-device-identity]");
+		const second = names[1].closest("[data-mesh-device-identity]");
+		expect(first).toHaveTextContent("d_012345678…");
+		expect(second).toHaveTextContent("d_012345679…");
+		expect(first?.textContent).not.toEqual(second?.textContent);
+	},
+};
+
+export const CompactDuplicateNamesPanel: Story = {
+	render: () => {
+		installBridge(duplicateIdentityFixture());
+		holdShutter(`[data-mesh-panel="${DEVICE_SHARED_ONE}"]`);
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_SHARED_ONE);
+		const panel = document.querySelector(
+			`[data-mesh-panel="${DEVICE_SHARED_ONE}"]`,
+		);
+		expect(panel).toHaveTextContent('"shared-node"');
+		expect(panel).toHaveTextContent("d_012345678…");
+	},
+};
+
+export const CompactDuplicateNameActions: Story = {
+	render: () => {
+		installBridge(
+			duplicateIdentityFixture([sessionRow("01234567890a", "Identity move")]),
+		);
+		holdShutter('[role="menu"]', "shared-node");
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_SELF);
+		const user = userEvent.setup();
+		const trigger = await waitFor(() => {
+			const found = document.querySelector(
+				'[data-mesh-session-menu="01234567890a"]',
+			);
+			if (!found) throw new Error("the session menu is not mounted");
+			return found;
+		});
+		await user.click(trigger);
+		const items = await screen.findAllByRole("menuitem");
+		const moves = items.filter((item) =>
+			item.textContent?.startsWith("Move to"),
+		);
+		expect(moves).toHaveLength(2);
+		expect(moves[0].textContent).not.toEqual(moves[1].textContent);
+		expect(moves.map((item) => item.textContent).sort()).toEqual(
+			[
+				'Move to "shared-node" d_012345678…',
+				'Move to "shared-node" d_012345679…',
+			].sort(),
+		);
+	},
+};
+
+export const CompactLongNameTooltip: Story = {
+	render: () => {
+		installBridge(
+			identityFixture([
+				{ id: DEVICE_SELF, name: LONG_DEVICE_NAME },
+				{ id: DEVICE_PEER, name: "cloud-node-1" },
+			]),
+		);
+		holdShutter('[role="tooltip"]', LONG_DEVICE_NAME);
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_SELF);
+		const name = document.querySelector(
+			`[data-mesh-panel="${DEVICE_SELF}"] [data-mesh-device-name]`,
+		);
+		if (!name) throw new Error("the panel identity name is not mounted");
+		const user = userEvent.setup();
+		await user.hover(name);
+		const tooltip = await screen.findByRole("tooltip");
+		expect(tooltip).toHaveTextContent(`"${LONG_DEVICE_NAME}"`);
+	},
+};
+
+export const CompactDuplicateNameInviteDialog: Story = {
+	render: () => {
+		installBridge(duplicateIdentityFixture());
+		holdShutter('[role="dialog"]', DEVICE_SHARED_ONE);
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_SHARED_ONE);
+		const user = userEvent.setup();
+		await user.click(
+			await screen.findByRole("button", { name: "Invite to a network…" }),
+		);
+		const dialog = await screen.findByRole("dialog");
+		expect(dialog).toHaveTextContent(`"shared-node" ${DEVICE_SHARED_ONE}`);
+	},
+};
+
+export const CompactDuplicateNameRemoveDialog: Story = {
+	render: () => {
+		installBridge(duplicateIdentityFixture());
+		holdShutter('[role="dialog"]', DEVICE_SHARED_ONE);
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_SHARED_ONE);
+		const user = userEvent.setup();
+		await user.click(
+			await screen.findByRole("button", {
+				name: "Remove from identity-test-mesh…",
+			}),
+		);
+		const dialog = await screen.findByRole("dialog");
+		expect(dialog).toHaveTextContent(`"shared-node" ${DEVICE_SHARED_ONE}`);
+	},
+};
+
+export const DuplicateSourceRecallConfirm: Story = {
+	render: () => {
+		installBridge(
+			duplicateIdentityFixture([
+				sessionRow("01234567890b", "Duplicate recall", {
+					locality: "remote",
+					owner_device: DEVICE_SHARED_ONE,
+					owner_device_name: "shared-node",
+				}),
+			]),
+		);
+		holdShutter('[role="dialog"]', "d_012345678…");
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_SHARED_ONE);
+		await chooseFromSessionMenu("01234567890b", "Recall to this device");
+		const dialog = await screen.findByRole("dialog");
+		expect(dialog).toHaveTextContent(
+			'The copy on "shared-node" d_012345678… is deleted once this device has it.',
+		);
+	},
+};
+
+export const DuplicateSourceChipIdentity: Story = {
+	render: () => {
+		installBridge(
+			duplicateIdentityFixture([
+				sessionRow("01234567890b", "Duplicate chip", {
+					locality: "remote",
+					owner_device: DEVICE_SHARED_ONE,
+					owner_device_name: "shared-node",
+					live_state: "",
+				}),
+			]),
+		);
+		holdShutter(`[data-mesh-panel="${DEVICE_SHARED_ONE}"]`, "d_012345678…");
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_SHARED_ONE);
+		const chips = await screen.findAllByText('on "shared-node" d_012345678…', {
+			exact: false,
+		});
+		expect(chips).toHaveLength(1);
+		const canvasDevice = document.querySelector(
+			`[data-mesh-device="${DEVICE_SHARED_ONE}"]`,
+		);
+		const chip = canvasDevice?.querySelector(
+			'[data-mesh-session="01234567890b"]',
+		);
+		expect(chip?.getAttribute("title")).toContain('"shared-node" d_012345678…');
+		expect(chip?.getAttribute("aria-label")).toContain(
+			'"shared-node" d_012345678…',
+		);
+		const conversations = canvasDevice?.querySelector("ul[aria-label]");
+		expect(conversations?.getAttribute("aria-label")).toContain(
+			'"shared-node" d_012345678…',
+		);
+	},
+};
+
+export const DuplicateSuspectRefusalNotice: Story = {
+	render: () => {
+		const fixture = identityFixture(
+			[
+				{ id: DEVICE_SELF, name: "studio-mac" },
+				{ id: DEVICE_SHARED_ONE, name: "shared-node", suspect: true },
+				{ id: DEVICE_SHARED_TWO, name: "shared-node" },
+			],
+			[sessionRow("01234567890c", "Local drag")],
+		);
+		const graph = meshGraph({
+			topology: networkTopology(fixture.networks),
+			peers: peerList(fixture.peers),
+		});
+		const verdict = resolveDrop(
+			{
+				session: fixture.sessions[0],
+				ownerDeviceId: DEVICE_SELF,
+				ownerLabel: "studio-mac",
+			},
+			{ kind: "device", deviceId: DEVICE_SHARED_ONE },
+			{
+				selfDeviceId: DEVICE_SELF,
+				devices: new Map(graph.devices.map((device) => [device.id, device])),
+				networks: new Map(
+					graph.networks.map((network) => [network.id, network]),
+				),
+			},
+		);
+		if (verdict.kind !== "refused")
+			throw new Error("the suspect target did not produce a refusal");
+		return (
+			<section className="flex min-h-40 bg-surface p-6">
+				<MoveNotice
+					receipt={null}
+					canWait={false}
+					refusal={{
+						code: verdict.code,
+						sentence: verdict.sentence,
+						reach: "reach" in verdict ? verdict.reach : undefined,
+						status: null,
+						unconfirmed: false,
+					}}
+					onWait={() => {}}
+					onRecheck={() => {}}
+					onUndo={() => {}}
+					pending={false}
+				/>
+			</section>
+		);
+	},
+	play: async () => {
+		const notice = await screen.findByText('"shared-node" d_012345678…', {
+			exact: false,
+		});
+		expect(notice).toHaveTextContent("duplicated key");
 	},
 };
 
@@ -1328,6 +1923,40 @@ export const DragRefusedOverNetwork: Story = {
 	},
 };
 
+/**
+ * THE REFUSAL NOTICE WITH A REACH WORD, photographed on its own: the drag/recall
+ * the client refuses pre-flight because the peer's relay is not running.
+ *
+ * Before this pass the notice printed the machine code `unreachable`; the fix
+ * forwards `reach`, and this frame is the rendered proof of the longer label
+ * (design review, refusal-notice check: the drag-hover frame shows the tooltip,
+ * not this output). The sentence is the real `reach_refusal` shape.
+ */
+export const RefusalNotice: Story = {
+	render: () => (
+		<section className="flex min-h-40 flex-col gap-3 bg-surface p-6">
+			<h2 className="m-0 text-body-sm text-ink-dim">
+				Refusal notice — drag or recall refused before the request
+			</h2>
+			<MoveNotice
+				receipt={null}
+				canWait={false}
+				refusal={{
+					code: "unreachable",
+					sentence: "cloud-node-1: relay not running, so nothing was moved.",
+					reach: "relay not running",
+					status: null,
+					unconfirmed: false,
+				}}
+				onWait={() => {}}
+				onRecheck={() => {}}
+				onUndo={() => {}}
+				pending={false}
+			/>
+		</section>
+	),
+};
+
 /** The drop's question: the operation named, the loss stated, the copy offered. */
 export const MoveConfirm: Story = {
 	render: () => {
@@ -1557,7 +2186,10 @@ export const MoveRefusedBusy: Story = {
 		 * read as the refusal it is not.
 		 */
 		await openPanel(DEVICE_SELF);
-		await chooseFromSessionMenu("0123456789ab", "Move to cloud-node-1");
+		await chooseFromSessionMenu(
+			"0123456789ab",
+			'Move to "cloud-node-1" d_bbbbbbbb…',
+		);
 		// A busy session is refused by the CLIENT's own verdict, so no dialog opens: the
 		// notice carries the code, the sentence and the wait.
 		await screen.findByText(/Wait for the turn to finish/);
@@ -1674,7 +2306,10 @@ export const MoveBusyWaited: Story = {
 		};
 
 		await openPanel(DEVICE_SELF);
-		await chooseFromSessionMenu("0123456789ab", "Move to cloud-node-1");
+		await chooseFromSessionMenu(
+			"0123456789ab",
+			'Move to "cloud-node-1" d_bbbbbbbb…',
+		);
 		const user = userEvent.setup();
 		await user.click(
 			await screen.findByRole("button", {

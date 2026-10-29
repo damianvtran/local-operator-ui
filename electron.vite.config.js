@@ -67,6 +67,13 @@ export default defineConfig({
 		// No bytecode plugin here on purpose -- see the note above. It is absent
 		// rather than an empty spread, so the decision reads as one.
 		plugins: [externalizeDepsPlugin()],
+		/*
+		 * TWO PRELOADS. The app window's is `index`; S6b's card gets its own
+		 * purpose-built bridge so the smallest possible surface (two verbs) is the
+		 * one exposed to a second document. An explicit object input is required:
+		 * electron-vite otherwise builds the single default `index` entry and the
+		 * card's preload path would not exist at runtime.
+		 */
 		build: {
 			rollupOptions: {
 				input: {
@@ -74,6 +81,10 @@ export default defineConfig({
 					// The hidden voice page's own, narrow preload (plan D2). A
 					// sandboxed preload cannot require siblings, so it is its own entry.
 					"voice-page": resolve(__dirname, "src/preload/voice-page.ts"),
+					"browser-approvals-overlay": resolve(
+						__dirname,
+						"src/preload/browser-approvals-overlay.ts",
+					),
 				},
 			},
 		},
@@ -117,6 +128,39 @@ export default defineConfig({
 			// The app-owned voice page (plan D2/U1): in BOTH lists, for the mini
 			// view's reason above.
 			"voice-page": resolve(__dirname, "src/renderer/voice-page.html"),
+			/*
+			 * S1's inert address-overlay document. Listed in BOTH halves for the
+			 * reason the mini and console-capture documents are: this list is what
+			 * the dev server serves, and `rollupOptions.input` is what the BUILD
+			 * emits. Declaring only one ships a 404 at the first probe show, which
+			 * is exactly the failure mode the other two documents recorded. No JS
+			 * entry on purpose — the document is static by contract.
+			 */
+			addressOverlay: resolve(
+				__dirname,
+				"src/renderer/browser-address-overlay.html",
+			),
+			/*
+			 * S2's scripted mirror document. Unlike S1's inert document it has a real
+			 * module entry, so it MUST be in both halves of the config for the same
+			 * measured reason as the documents above: the dev server serves this list
+			 * and the BUILD emits `rollupOptions.input`. Declaring only one ships a
+			 * document whose script 404s at the first projection.
+			 */
+			addressOverlayList: resolve(
+				__dirname,
+				"src/renderer/browser-address-overlay-list.html",
+			),
+			/*
+			 * S6a's inert approvals card. Listed in BOTH halves for the same reason
+			 * as the address documents: this list serves it in development and
+			 * `rollupOptions.input` emits it in the build. A document declared in only
+			 * one half 404s in the other, which is how the S1 probe first failed.
+			 */
+			approvalsOverlay: resolve(
+				__dirname,
+				"src/renderer/browser-approvals-overlay.html",
+			),
 		},
 		build: {
 			// electron-vite defaults the renderer to minify:false on the assumption
@@ -158,6 +202,29 @@ export default defineConfig({
 					 */
 					mini: resolve(__dirname, "src/renderer/mini.html"),
 					"voice-page": resolve(__dirname, "src/renderer/voice-page.html"),
+					/*
+					 * S1's address-overlay document: the BUILD half of the pair above.
+					 * A static HTML input with no module script still gets emitted, and
+					 * the probe asserts `out/renderer/browser-address-overlay.html`
+					 * exists before launching the built app.
+					 */
+					addressOverlay: resolve(
+						__dirname,
+						"src/renderer/browser-address-overlay.html",
+					),
+					/*
+					 * S2's mirror document: the BUILD half of the pair above, with its own
+					 * module script and stylesheet emitted as assets.
+					 */
+					addressOverlayList: resolve(
+						__dirname,
+						"src/renderer/browser-address-overlay-list.html",
+					),
+					/* S6a's card: the BUILD half of the pair above. */
+					approvalsOverlay: resolve(
+						__dirname,
+						"src/renderer/browser-approvals-overlay.html",
+					),
 				},
 			},
 		},

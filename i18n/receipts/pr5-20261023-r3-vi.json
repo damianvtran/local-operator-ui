@@ -1,0 +1,72 @@
+{
+ "auditor": "task",
+ "model": "anthropic/claude-opus-5-5",
+ "model_note": "Served model anthropic/claude-opus-5-5 for the whole round-3 pass. No provider fallback occurred. The session runtime restarted at the start of this round (Python kernel reset), but the model did not change.",
+ "instance": "pr5-20261023-r3-vi",
+ "session": "fb125765ab49",
+ "parent_session": "1cfce255 (team lopdev manager; id prefix as exposed in this session's spawn chain)",
+ "date": "2026-10-23",
+ "locale": "vi",
+ "namespace": "ui.chat.asks",
+ "round": 3,
+ "status": "passed",
+ "result": "clean",
+ "keys_audited": 11,
+ "keys_substantive": 2,
+ "keys_verified_unchanged": 9,
+ "source_head": "b47b4dd8a2eabb935fe9a0f910b00387ac3109ce",
+ "previous_head": "7ecde120ded63e6c97e9593daf730513bbeb7e84",
+ "scope": "PR #1363 round-3 delta audit of ui.chat.asks for vi at b47b4dd8a: new key dismiss.in_flight and changed context.messages_since (design D4, the parenthetical names 'last message'). The other 9 keys were verified byte-identical to the round-2 audited target (parsed value comparison against 7ecde120d), so the round-2 linguistic verdict carries for them. ICU, placeholders, CLDR plural arms (rendered at 1, 2, 5 and 1,000,000), NFC and bidi were re-run over all 11 keys. The en context changed only for these two keys. No rendered-fit claim.",
+ "sha256": {
+  "en": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
+  "vi": "baaca7870e4ef1c067c06fe81a1d50d2c49e19d2df5a8a490b68739677108123",
+  "context": "218cc05ebbb63f375875be61cd418caa2d0aac8043bcc9346e19b521d3d37d7c"
+ },
+ "findings": [
+  {
+   "id": "vi-r3-i1",
+   "severity": "INFO",
+   "key": "ui.chat.asks.dismiss.in_flight / ui.chat.asks.context.messages_since",
+   "issue": "in_flight «Đang bỏ qua…» is the progressive of the trigger «Bỏ qua…». messages_since «(tin nhắn gần nhất lúc {time})» names the stamp per D4. Not counted."
+  }
+ ],
+ "history": [
+  {
+   "round": 2,
+   "path": "i18n/receipts/pr5-vi-r2.json",
+   "sha256": "9319d779cdfc98db29c44a8ba1ce60b09f4dcd587eb1bc1e81cdc26242531dc2",
+   "instance": "pr5-20261023-r2-vi",
+   "result": "clean",
+   "target_sha256": "0ba67ad1f9d2f91aebfcec1d2b40676715be3fd9e9ed94525f5b509d865d099d",
+   "context_sha256": "5e0c467aeb72a886d6f32ef8311b48b4c73b4bc39669b75441e878b98366542c",
+   "assembled_copy": "i18n/receipts/pr5-20261023-r2-vi.json (byte-identical)"
+  }
+ ],
+ "validation": {
+  "icu_errors": [],
+  "plural_arms": [
+   "other"
+  ],
+  "cldr_categories": [
+   "other"
+  ],
+  "arms_match_cldr": true,
+  "placeholders_match_en": true,
+  "key_parity": "11/11",
+  "nfc": true,
+  "bidi_controls": 0,
+  "plural_samples": {
+   "1": "1 tin nhắn của bạn kể từ khi câu hỏi này được đưa ra (tin nhắn gần nhất lúc 19:36)",
+   "2": "2 tin nhắn của bạn kể từ khi câu hỏi này được đưa ra (tin nhắn gần nhất lúc 19:36)",
+   "5": "5 tin nhắn của bạn kể từ khi câu hỏi này được đưa ra (tin nhắn gần nhất lúc 19:36)",
+   "1000000": "1.000.000 tin nhắn của bạn kể từ khi câu hỏi này được đưa ra (tin nhắn gần nhất lúc 19:36)"
+  },
+  "unchanged_keys_byte_identical_to_round2": true
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97",
+  "contract_docs_I18N_md_origin_main": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+ },
+ "independence": "Independent translation audit by the `task` member of team lopdev (session fb125765ab49), delegated by the team manager; the same independent auditor as rounds 1 and 2. This session produced none of the reviewed copy: the round-3 values were written by the coder in b47b4dd8a. It did not translate, edit, commit or push any catalogue, context file or ledger row, and wrote only its own receipts and evidence records. No MT, translation API or SDK was used. ICU parsing and plural rendering ran the worktree's existing intl-messageformat as validation, not as translation."
+}

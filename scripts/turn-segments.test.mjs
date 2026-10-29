@@ -21,6 +21,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { build } from "esbuild";
+import { RECORDS, TS, seq } from "./fixtures/record-tokens.mjs";
 import {
 	FakeJournal,
 	Reader,
@@ -90,6 +91,7 @@ const {
 	electAnswer,
 	EMPTY_TRANSCRIPT,
 	isCompletionMarker,
+	isFinalResponse,
 	isStatementRow,
 	labelOfSegment,
 	parseTranscriptDisplayMode,
@@ -107,160 +109,6 @@ const {
 } = await import(moduleUrl);
 
 /* ------------------------------- fixtures ------------------------------- */
-
-const TS = 1_000_000;
-
-/**
- * Tokens: U user, T tool, N narration (settled assistant text, NO `stopReason`),
- * A a settled assistant the provider DECLARED finished (`stopReason: "stop"`),
- * L the lead-in shape (settled text carried with its own `tool_calls`, so
- * `stopReason: "toolUse"`), S a STREAMING assistant, E an assistant that paints
- * nothing (tool calls only), W wake, P peer, J job_result, H hub_message,
- * X monitor_prompt, M terminal notice (Stopped with an error), K closed receipt
- * (complete notice, info), I session_incident, C compaction, O an info notice (no
- * completion), Q a quiet custom (mcp).
- *
- * `A` AND `L` CARRY THE PROVIDER'S PHASE DECLARATION, because the V4 rule reads it
- * (design note §1 and §2.2): `stop_reason: "stop"` is the model saying it had
- * FINISHED, and the durable reducer keeps exactly that field on a text-bearing row
- * (`transcript-reducer.ts:2264`). `N` deliberately carries no `stopReason` at all,
- * so the compat rule (an unknown phase is treated as absent) is asserted rather
- * than assumed.
- */
-const RECORDS = {
-	U: (id, i) => ({ kind: "user", id, ts: TS + i, text: "hi" }),
-	T: (id, i) => ({
-		kind: "tool",
-		id,
-		ts: TS + i,
-		toolName: "bash",
-		isError: false,
-		stopped: false,
-		neverSent: false,
-		notRunReason: null,
-		endedAt: null,
-		phase: "done",
-	}),
-	N: (id, i) => ({
-		kind: "assistant",
-		id,
-		ts: TS + i,
-		text: "text",
-		streaming: false,
-	}),
-	A: (id, i) => ({
-		kind: "assistant",
-		id,
-		ts: TS + i,
-		text: "text",
-		streaming: false,
-		stopReason: "stop",
-	}),
-	L: (id, i) => ({
-		kind: "assistant",
-		id,
-		ts: TS + i,
-		text: "text",
-		streaming: false,
-		stopReason: "toolUse",
-	}),
-	S: (id, i) => ({
-		kind: "assistant",
-		id,
-		ts: TS + i,
-		text: "text",
-		streaming: true,
-	}),
-	E: (id, i) => ({
-		kind: "assistant",
-		id,
-		ts: TS + i,
-		text: "",
-		streaming: false,
-	}),
-	W: (id, i) => ({ kind: "wake", id, ts: TS + i, text: "wake" }),
-	P: (id, i) => ({
-		kind: "peer",
-		id,
-		ts: TS + i,
-		body: "peer",
-		/*
-		 * The FULL sender shape the reducer's `peerFields` guarantees. It used to
-		 * be `{}` - a laxity nothing read until the quiet group's sender summary
-		 * called `peerIdentity` on it and `sender.cwd.replace` threw (the `P` arm's
-		 * crash pinned the contract harder than any comment had).
-		 */
-		sender: {
-			pid: "",
-			conversationName: "",
-			cwd: "",
-			sessionId: "",
-			modelLabel: "",
-		},
-	}),
-	J: (id, i) => custom(id, i, "job_result"),
-	H: (id, i) => custom(id, i, "hub_message"),
-	X: (id, i) => custom(id, i, "monitor_prompt"),
-	Q: (id, i) => custom(id, i, "session_mcp_unavailable"),
-	I: (id, i) => custom(id, i, "session_incident", "error"),
-	/*
-	 * The quiet-turn tokens (S2): `Z` is a SETTLED `no_reply` call (a close),
-	 * `R` the same call still running (not one). `Q` was taken by the MCP custom.
-	 */
-	Z: (id, i) => ({
-		kind: "tool",
-		id,
-		ts: TS + i,
-		toolName: "no_reply",
-		isError: false,
-		stopped: false,
-		neverSent: false,
-		notRunReason: null,
-		endedAt: null,
-		phase: "done",
-	}),
-	R: (id, i) => ({
-		kind: "tool",
-		id,
-		ts: TS + i,
-		toolName: "no_reply",
-		isError: false,
-		stopped: false,
-		neverSent: false,
-		notRunReason: null,
-		endedAt: null,
-		phase: "running",
-	}),
-	M: (id, i) => ({
-		kind: "notice",
-		id,
-		ts: TS + i,
-		text: "Stopped with an error",
-		level: "error",
-		complete: true,
-	}),
-	K: (id, i) => ({
-		kind: "notice",
-		id,
-		ts: TS + i,
-		text: "Completed",
-		level: "info",
-		complete: true,
-	}),
-	O: (id, i) => ({ kind: "notice", id, ts: TS + i, text: "n", level: "info" }),
-	C: (id, i) => ({ kind: "compaction", id, ts: TS + i, text: "Context" }),
-};
-
-function custom(id, i, customType, level = "info") {
-	return { kind: "custom", id, ts: TS + i, customType, level, text: "t" };
-}
-
-/** `seq("U T A")` -> records with ids `U0 T1 A2`. */
-const seq = (spec) =>
-	spec
-		.trim()
-		.split(/\s+/)
-		.map((token, index) => RECORDS[token](`${token}${index}`, index));
 
 const OPTS = { paints: paintsSomething, isStatement: isStatementRow };
 const PINNED = staysVisibleWhileCollapsed;
@@ -1001,13 +849,16 @@ test("F4: an absent `stopReason` keeps today's behaviour exactly (the compat rul
 	}
 });
 
-test("F5: no declared-finished row and no reader row ever leaves the visible set as rows arrive", () => {
+test("F5: no declared-finished row, reader row or response-cycle handover ever leaves the visible set as rows arrive", () => {
 	/*
-	 * Monotonicity, asserted over every prefix of each fixture: the two clauses that
-	 * protect a row are index-local, so a row that is visible at one prefix cannot
-	 * disappear when the next row lands. The only class that may leave `visible` is a
-	 * non-final COMMENTARY close (`cyclesOf` reclassifies it when a later close
-	 * arrives), which is the shipped intent, so the guard covers V3 and V4 rows.
+	 * Monotonicity, asserted over every prefix of each fixture. V3 and V4 are
+	 * index-local, so a row they protect cannot disappear when the next row lands.
+	 * V5 IS NOT INDEX-LOCAL - it pins a final response only inside a RESPONSE cycle
+	 * (review round 3, then round 4's C1: this assertion claimed every
+	 * `isFinalResponse` row, which is broader than the code) - so its membership is
+	 * read once from the FULL fixture's cycles. The only class that may leave
+	 * `visible` is a non-final COMMENTARY close (`cyclesOf` reclassifies it when a
+	 * later close arrives), which is the shipped intent.
 	 */
 	const specs = [
 		"U T A T T T A",
@@ -1015,24 +866,159 @@ test("F5: no declared-finished row and no reader row ever leaves the visible set
 		"U T T T A T T T A K",
 		"U T T T A W T A",
 		"U T T U T A",
+		"U F T T F T A",
+		"U A T T A",
 	];
 	for (const spec of specs) {
 		const records = seq(spec);
+		const responseCycleRows = new Set();
+		for (const cycle of cyclesOf(records, paintsSomething)) {
+			if (cycle.class !== "response") continue;
+			for (let i = cycle.start; i <= cycle.closeIndex; i += 1) {
+				responseCycleRows.add(i);
+			}
+		}
 		for (let n = 1; n <= records.length; n += 1) {
 			const slice = records.slice(0, n);
 			const result = partitionRun(slice, { ...OPTS, from: 1, pinned: PINNED });
 			slice.forEach((record, index) => {
 				if (index < 1) return;
 				const mustStay =
-					record.kind === "user" || reportsCompletedThought(record);
+					record.kind === "user" ||
+					reportsCompletedThought(record) ||
+					(isFinalResponse(record) && responseCycleRows.has(index));
 				if (!mustStay) return;
 				assert.ok(
 					result.visible.has(index),
-					`${spec} @${index}: a reader row or a declared-finished row left the visible set`,
+					`${spec} @${index}: a reader row or a response-cycle handover left the visible set`,
 				);
 			});
 		}
 	}
+});
+
+/*
+ * V5, THE OPERATOR'S RULE (2026-10-20): "all final responses to the user even in
+ * between should have the inline action bar". A final response is a settled
+ * text-bearing assistant row that carries no `tool_calls` of its own - the wire
+ * fact, not position, not `closesTurn`, not length. V5 keeps every such row on
+ * screen, so its bar survives the tool run around it being folded.
+ */
+test("F6: `isFinalResponse` is the calls fact and nothing else", () => {
+	const settled = {
+		kind: "assistant",
+		id: "a",
+		ts: 1,
+		text: "t",
+		streaming: false,
+	};
+	assert.equal(
+		isFinalResponse(settled),
+		true,
+		"settled, paints text, no calls",
+	);
+	assert.equal(
+		isFinalResponse({ ...settled, callsTools: false }),
+		true,
+		"an explicit `false` is the same fact as an absent field",
+	);
+	assert.equal(
+		isFinalResponse({ ...settled, callsTools: true }),
+		false,
+		"a row that carries its own calls is narration",
+	);
+	assert.equal(
+		isFinalResponse({ ...settled, streaming: true }),
+		false,
+		"a streaming prefix is not settled",
+	);
+	assert.equal(
+		isFinalResponse({ ...settled, text: "" }),
+		false,
+		"a row with no prose has nothing to hand over",
+	);
+	assert.equal(
+		isFinalResponse({ kind: "user", id: "u", ts: 1, text: "t", images: [] }),
+		false,
+		"only assistant rows are responses",
+	);
+	/*
+	 * THE PHASE IS NOT CONSULTED. The corpus's known residual - a `toolUse` row
+	 * with empty `tool_calls` - is a final response, and so are the `aborted` /
+	 * `length` rows the phase rule cannot see.
+	 */
+	for (const stopReason of ["stop", "toolUse", null, undefined, "aborted"]) {
+		assert.equal(
+			isFinalResponse({ ...settled, stopReason }),
+			true,
+			`stopReason ${String(stopReason)}: the calls fact is the whole rule`,
+		);
+	}
+});
+
+test("F7: a final response stays visible above the next tool run, and keeps the one answer", () => {
+	// U F T T A: F1 is an undeclared handover followed by calls - the
+	// todo-guardrail shape the phase rule alone could fold. V5 keeps it; the tool
+	// run still condenses; the elected answer is still the LAST close.
+	const p = partition("U F T T A");
+	assert.deepEqual(visibleIds(p), ["F1", "A4"], "both handovers stay");
+	assert.deepEqual(hiddenIds(p), [["T2", "T3"]], "only the tool run folds");
+	assert.equal(answerId(p), "A4", "one elected answer, the last close");
+	assert.deepEqual(
+		[...closingAnswerIds(p.records)],
+		["A4"],
+		"one foot and one stamp: `closesTurn` is untouched",
+	);
+	sound(p);
+	/*
+	 * THE HEAD-CUT RUN has no opening user row, so `from: 0` and the run's first
+	 * row is the handover itself. It must keep its bar - the open-tail clause
+	 * used to start at 1 and skipped exactly this row (round 4, C2).
+	 */
+	const headCut = seq("F T");
+	const cut = partitionRun(headCut, { ...OPTS, from: 0, pinned: PINNED });
+	assert.ok(cut.visible.has(0), "the head-cut handover keeps its bar");
+});
+
+test("F8: a final response's row survives collapse; a commentary row still folds", () => {
+	const records = seq("U F T T F");
+	const rows = buildRows(records, []);
+	const run = collapsePlan(rows, { live: false }).runs[0];
+	const inSegments = new Set(
+		run.segments.flatMap((segment) => segment.rows.map((row) => row.record.id)),
+	);
+	assert.equal(inSegments.has("F1"), false, "the first handover owns its bar");
+	assert.equal(inSegments.has("F4"), false, "and so does the second");
+	assert.deepEqual(
+		run.segments.map((segment) => segment.rows.map((row) => row.record.kind)),
+		[["tool", "tool"]],
+		"only the tool run between them is a folded span",
+	);
+	assert.equal(run.answerId, "F4", "the last handover is still the answer");
+
+	// The same turn with a COMMENTARY row where the tool run is: it folds.
+	const commentary = buildRows(seq("U F N T F"), []);
+	const folded = collapsePlan(commentary, { live: false }).runs[0];
+	assert.ok(
+		folded.segments.some((segment) =>
+			segment.rows.some((row) => row.record.id === "N2"),
+		),
+		"narration still folds into the span - the new clause did not un-hide it",
+	);
+});
+
+test("F9: a minor wake reply is never the only thing visible", () => {
+	// U F T W F: the reader's substantive handover (F1), then a call, then a wake
+	// reply that is short and is the elected answer (F4). The calls fact keeps F1,
+	// so the wake update cannot be all the reader sees.
+	const p = partition("U F T W F");
+	assert.deepEqual(
+		visibleIds(p),
+		["F1", "F4"],
+		"the substantive handover stays above the wake reply",
+	);
+	assert.equal(answerId(p), "F4", "and the wake reply is the one answer");
+	sound(p);
 });
 
 test("F3c: a genuine mid-work steer stays in place, and `Steered` becomes a backstop", () => {
@@ -2032,7 +2018,7 @@ test("by-response widens a commentary close the invariant need not keep, and ele
 	sound(widened);
 });
 
-test("by-turn is the shipped partition, byte-for-byte, whether the field is named or absent", () => {
+test("by-turn is the shipped partition apart from the declared V5 exception, whether the field is named or absent", () => {
 	/*
 	 * THE LOAD-BEARING CLAIM OF THE CHANGE: the default mode is not "the same
 	 * behaviour, roughly", it is the same partition. Every shape the decision table

@@ -14,6 +14,8 @@ import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 // @ts-ignore Path aliases don't work for Storybook root
 import { config } from "@renderer/shared/config";
 // @ts-ignore Path aliases don't work for Storybook root
+import { applyGlassFacts } from "@renderer/shared/hooks/use-window-glass";
+// @ts-ignore Path aliases don't work for Storybook root
 import { AuthProviders } from "@renderer/shared/providers/auth";
 // @ts-ignore Path aliases don't work for Storybook root
 import { FeatureFlagProvider } from "@renderer/shared/providers/feature-flags";
@@ -41,6 +43,8 @@ import {
 	setLocale,
 	subscribeLocale,
 } from "@shared/i18n";
+// @ts-ignore Path aliases don't work for Storybook root
+import { LocaleDirectionProvider } from "@shared/i18n/locale-direction";
 import type { Preview } from "@storybook/react";
 import {
 	QueryClient,
@@ -193,6 +197,63 @@ const ThemeFrame = ({
 };
 
 /**
+ * THE GLASS FRAME, applied to every story.
+ *
+ * The window glass is an Electron capability: MAIN resolves it before a window
+ * exists, and the renderer paints its answer as `data-glass` plus the
+ * `--lo-glass-*` alphas. Storybook has neither process, so before this frame a
+ * surface that only reveals its defects under glass - the Projects board's
+ * lane and column strip are the case that found this - could not be captured
+ * at all. The frame writes the SAME paint the shipped hook writes
+ * (`applyGlassFacts`), with the scheme read from the theme `ThemeFrame` has
+ * just applied, so the alphas are the shipped derivation rather than a
+ * hand-picked alpha.
+ *
+ * OFF BY DEFAULT, like `applyGlassFacts(null)`: every existing story keeps the
+ * flat frame it has always painted. An evidence run asks for glass through the
+ * preview's own `glass` arg (`?args=glass:on`), the same URL seam the theme
+ * and locale pins use. It sits OUTSIDE `ThemeFrame` on purpose: React runs a
+ * child's layout effect first, so the outer frame reads `classlist` and the
+ * palette AFTER the theme commit rather than one frame late.
+ */
+const GlassFrame = ({
+	glass,
+	glassIntensity,
+	ownsGlass,
+	theme,
+	children,
+}: {
+	glass: boolean;
+	glassIntensity: number;
+	/** The story's own meta decorator paints the document (Library's harness). */
+	ownsGlass: boolean;
+	theme: ThemeName;
+	children: ReactNode;
+}) => {
+	useLayoutEffect(() => {
+		/* Do not clear a paint a child decorator made on purpose. Storybook's
+		 * global decorator is OUTERMOST and React runs layout effects child-first,
+		 * so the off path would otherwise erase the Library harness's glass one
+		 * effect after it painted. */
+		if (!glass && ownsGlass) return;
+		const scheme =
+			getTheme(theme).theme.palette.mode === "dark" ? "dark" : "light";
+		applyGlassFacts(
+			glass
+				? {
+						mechanism: "vibrancy",
+						coverage: "full",
+						intensity: Math.min(100, Math.max(0, glassIntensity)),
+						material: "window",
+						scheme,
+					}
+				: null,
+		);
+	}, [glass, glassIntensity, ownsGlass, theme]);
+	return <>{children}</>;
+};
+
+/**
  * The locales an evidence run may pin.
  *
  * WHY THIS EXISTS. A locale change is user-visible and its risk is width (some
@@ -284,6 +345,52 @@ const LocaleFrame = ({
 	return <>{children}</>;
 };
 
+/**
+ * THE CHROME FRAME: one story arg that puts the document in a platform's chrome
+ * geometry, so a shell frame can be captured at the macOS lane the product
+ * actually ships instead of at `--chrome-strip-h: 0`.
+ *
+ * WHY IT IS AN ARG AND NOT A STORY DECORATOR. The lane, the sidebar pad and the
+ * route body are shell decisions; a story that wants the 32px strip must not
+ * re-spell the attributes the app's `main.tsx` writes. This is the one writer
+ * in Storybook, and it writes exactly the four facts `useWindowChrome` writes
+ * (mode, platform, leading, trailing) plus fullscreen=false. The CSS derives
+ * `--chrome-strip-h: 32px` from that pair, so the frame measures the same
+ * variable the window does.
+ *
+ * DRIVEN BY `?args=chrome:mac32`; `native` clears the attributes so every
+ * existing story keeps the geometry it had before this existed.
+ */
+const CHROME_ATTRS = [
+	"chromeMode",
+	"chromePlatform",
+	"chromeLeading",
+	"chromeTrailing",
+	"chromeFullscreen",
+] as const;
+
+const ChromeFrame = ({
+	chrome,
+	children,
+}: {
+	chrome: string;
+	children: ReactNode;
+}) => {
+	useLayoutEffect(() => {
+		const root = document.documentElement;
+		if (chrome !== "mac32") return;
+		root.dataset.chromeMode = "integrated";
+		root.dataset.chromePlatform = "mac";
+		root.dataset.chromeLeading = "false";
+		root.dataset.chromeTrailing = "false";
+		root.dataset.chromeFullscreen = "false";
+		return () => {
+			for (const name of CHROME_ATTRS) delete root.dataset[name];
+		};
+	}, [chrome]);
+	return <>{children}</>;
+};
+
 const preview: Preview = {
 	parameters: {
 		controls: {
@@ -304,14 +411,27 @@ const preview: Preview = {
 	argTypes: {
 		theme: { control: { type: "select" }, options: THEME_IDS },
 		locale: { control: { type: "select" }, options: LOCALE_IDS },
+		glass: { control: { type: "select" }, options: ["off", "on"] },
+		glassIntensity: { control: { type: "range", min: 0, max: 100, step: 1 } },
+		chrome: { control: { type: "select" }, options: ["native", "mac32"] },
 	},
-	args: { theme: DEFAULT_THEME, locale: DEFAULT_LOCALE },
+	args: {
+		theme: DEFAULT_THEME,
+		locale: DEFAULT_LOCALE,
+		glass: "off",
+		glassIntensity: 80,
+		chrome: "native",
+	},
 	decorators: [
 		(Story, context) => {
 			const queryClient = queryClientFor(context.id);
 			const theme = (context.args.theme as ThemeName) ?? DEFAULT_THEME;
 			const locale =
 				(context.args.locale as string | undefined) ?? DEFAULT_LOCALE;
+			const glass = context.args.glass === "on";
+			const glassIntensity = Number(context.args.glassIntensity ?? 80);
+			const chrome = (context.args.chrome as string | undefined) ?? "native";
+			const storyOwnsGlass = Boolean(context.parameters?.glass) && !glass;
 			const muiTheme = getTheme(theme).theme;
 
 			return (
@@ -333,11 +453,34 @@ const preview: Preview = {
 								>
 									<MuiThemeProvider theme={muiTheme}>
 										<CssBaseline />
-										<ThemeFrame theme={theme}>
-											<LocaleFrame locale={locale}>
-												<Story />
-											</LocaleFrame>
-										</ThemeFrame>
+										<GlassFrame
+											glass={glass}
+											glassIntensity={glassIntensity}
+											ownsGlass={storyOwnsGlass}
+											theme={theme}
+										>
+											<ThemeFrame theme={theme}>
+												<LocaleFrame locale={locale}>
+													{/*
+													 * RADIX'S DIRECTION COMES FROM THIS CONTEXT, NOT FROM `<html dir>`: a
+													 * menu's content is portalled out of the subtree that inherits the root
+													 * attribute, so without this provider every portalled surface measures
+													 * `ltr` in Urdu and every logical inset lands on the physical wrong edge
+													 * - measured on the device picker (design review round 1, D5): `ltr`,
+													 * `rect 747,38 320x416` before; `rtl`, `rect 537.5,38 320x416` after.
+													 * The app mounts the same provider around `App` in `main.tsx`, inside its
+													 * router. Here it sits INSIDE `LocaleFrame`, so the locale store is
+													 * already written when this provider reads it and the first frame is not
+													 * one frame of LTR.
+													 */}
+													<LocaleDirectionProvider>
+														<ChromeFrame chrome={chrome}>
+															<Story />
+														</ChromeFrame>
+													</LocaleDirectionProvider>
+												</LocaleFrame>
+											</ThemeFrame>
+										</GlassFrame>
 										<ThemedToastContainer
 											duration={context.parameters.toastDuration}
 										/>

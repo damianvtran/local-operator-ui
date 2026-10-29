@@ -89,15 +89,24 @@
  */
 
 import { Button, Tooltip } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	type AskDrawerCloseOptions,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
 import { PanelRightClose } from "lucide-react";
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import {
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+} from "react";
 import type { CanonicalFrontendState } from "../../../../../../shared/desktop-session-contract";
 import type {
+	AskDismissReason,
 	AskDraft,
 	AskOutcome,
 	AskPresentation,
@@ -251,6 +260,13 @@ export type AskDrawerProps = {
 	 * the whole-map body is built inside the card where the edit buffer lives.
 	 */
 	onRevise?: (askId: string, answers: Record<string, string[]>) => void;
+	/**
+	 * PUT AN OPEN ASK AWAY (harness PR #2833, SA-D5), addressed by ask id for the
+	 * same reason the three doors above are. Absent where the backend does not
+	 * advertise `features.ask_dismiss`, so the panel draws no button — the gate is
+	 * the CALLER's, resolved where the capabilities are.
+	 */
+	onDismiss?: (askId: string, reason: AskDismissReason) => void;
 	answering?: boolean;
 	/** This surface's own record of the asks it posted for: `AskOutcome`, passed through untouched. */
 	outcomes?: Record<string, AskOutcome | undefined>;
@@ -274,6 +290,15 @@ export type AskDrawerProps = {
 	conversationOf?: (row: AskPresentation) => string | null;
 	/** A story pins the clock so its frames are reproducible. */
 	nowMs?: number;
+	/**
+	 * THE NOTIFICATIONS TAB STRIP (decisions D9, design § 18), supplied by the
+	 * mount when `features.notifications` is advertised. `strip` draws under the
+	 * chrome bar; `body` REPLACES the asks body while a non-asks tab is chosen.
+	 * Absent means this drawer renders exactly as it did before the feature.
+	 * `action` draws in the chrome bar beside the scope line: the Updates list's
+	 * back-to-top chip lives there so it costs the list none of its height.
+	 */
+	tabs?: { strip: ReactNode; body: ReactNode | null; action?: ReactNode };
 };
 
 /**
@@ -289,13 +314,16 @@ export const AskDrawer = ({
 	onAnswer,
 	onDecline,
 	onRevise,
+	onDismiss,
 	answering = false,
 	outcomes,
 	drafts,
 	onDraftChange,
 	conversationOf,
 	nowMs,
+	tabs,
 }: AskDrawerProps) => {
+	useI18nLocale();
 	/*
 	 * THE VIEW IS READ THROUGH THIS DRAWER'S OWN OUTCOMES, so its `delivering` count
 	 * excludes a row the owner has already refused to change (design round 2, D7 =
@@ -410,7 +438,9 @@ export const AskDrawer = ({
 	 * the latch is spent.
 	 */
 	useEffect(() => {
-		if (closedOnce.current) return;
+		// With Notifications the panel also owns updates: an empty asks queue
+		// cannot close an Updates tab (or steal the tab strip after answering).
+		if (tabs || closedOnce.current) return;
 		/*
 		 * NOTHING TO SHOW IS `open === 0` AND NO ROWS, NOT ROWS ALONE (remediation round
 		 * 1, R1). A frame whose LIST the wire bound dropped but whose TALLY survived
@@ -449,7 +479,7 @@ export const AskDrawer = ({
 		 * effect could sit on a stale close verdict for exactly the frame the guard was
 		 * added for.
 		 */
-	}, [view.rows.length, view.open, frameUnread, onClose]);
+	}, [view.rows.length, view.open, frameUnread, onClose, tabs]);
 
 	/*
 	 * INTO THE DRAWER, and only for the user's own press: the mount must find focus
@@ -968,12 +998,16 @@ export const AskDrawer = ({
 		 */
 		<section
 			ref={rootRef}
-			aria-label={scope === "fleet" ? "All asks" : "This conversation's asks"}
+			aria-label={
+				scope === "fleet"
+					? t("ui.chat.asks.all_asks")
+					: t("ui.chat.asks.conversation_asks")
+			}
 			data-lo-ask-surfaces=""
 			data-glass-region="pane"
 			data-ask-drawer={scope}
 			tabIndex={-1}
-			className={cn("flex h-full flex-col bg-elevated")}
+			className={cn("panel-top-pad flex h-full flex-col bg-elevated")}
 			/*
 			 * Esc closes rather than declines (see the module note). Claimed with
 			 * `preventDefault` so the app-wide interrupt ladder does not also treat it as
@@ -1023,11 +1057,12 @@ export const AskDrawer = ({
 				>
 					{askScopeLine(scope, view)}
 				</span>
-				<Tooltip content="Close asks">
+				{tabs?.action}
+				<Tooltip content={t("ui.chat.asks.close_asks")}>
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Close asks"
+						aria-label={t("ui.chat.asks.close_asks")}
 						/*
 						 * THE PRESSED KIND (#1079): this is the control the user aimed at, so it
 						 * asks for an EMPTY SLOT rather than handing the pane it displaced back.
@@ -1037,7 +1072,7 @@ export const AskDrawer = ({
 						onClick={() => onClose({ dismissSlot: true })}
 						data-tour-tag="close-asks-button"
 					>
-						<PanelRightClose aria-hidden="true" />
+						<PanelRightClose aria-hidden="true" className="rtl:-scale-x-100" />
 					</Button>
 				</Tooltip>
 			</div>
@@ -1046,7 +1081,14 @@ export const AskDrawer = ({
 			 * shrink below its content so `overflow-y-auto` can actually take the overflow
 			 * (without it the drawer grows and the page scroller returns - the D1 defect).
 			 */}
-			<div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2">
+			{tabs?.strip}
+			{tabs?.body ?? null}
+			<div
+				className={cn(
+					"min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+					tabs?.body ? "hidden" : "flex",
+				)}
+			>
 				{/*
 				 * THE BODY, AND WHY THERE ARE THREE READINGS RATHER THAN TWO (remediation round
 				 * 1, D1). `AskPanel` draws the queue, its designed empty sentence and - R1 - the
@@ -1073,6 +1115,11 @@ export const AskDrawer = ({
 							onRevise === undefined
 								? undefined
 								: (task, answers) => onRevise(task.ask_id, answers)
+						}
+						onDismiss={
+							onDismiss === undefined
+								? undefined
+								: (task, reason) => onDismiss(task.ask_id, reason)
 						}
 						/*
 						 * THE CONVERSATION LINE IS THE FLEET'S OWN, and the CALLER supplies it (see

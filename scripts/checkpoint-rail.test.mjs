@@ -29,7 +29,7 @@ import React, { act } from "react";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { CheckpointRail, CHECKPOINT_CARD_OPEN_DELAY_MS, CHECKPOINT_CARD_CLOSE_DELAY_MS, CHECKPOINT_RAIL_LABEL } from "./src/renderer/src/features/chat/canonical/checkpoint-rail";',
+			'export { CheckpointRail, CHECKPOINT_CARD_OPEN_DELAY_MS, CHECKPOINT_CARD_CLOSE_DELAY_MS, CHECKPOINT_RAIL_LABEL, checkpointRailWindow, checkpointRailMarkTop, checkpointRailContentHeight, checkpointRailRevealScrollTop, RAIL_PITCH_PX, RAIL_TRACK_PAD_PX, RAIL_PORT_MAX_PX } from "./src/renderer/src/features/chat/canonical/checkpoint-rail"; export { setLocale } from "./src/i18n";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -74,6 +74,14 @@ const {
 	CHECKPOINT_CARD_OPEN_DELAY_MS,
 	CHECKPOINT_RAIL_LABEL,
 	CHECKPOINT_CARD_CLOSE_DELAY_MS,
+	checkpointRailWindow,
+	checkpointRailMarkTop,
+	checkpointRailContentHeight,
+	checkpointRailRevealScrollTop,
+	RAIL_PITCH_PX,
+	RAIL_TRACK_PAD_PX,
+	RAIL_PORT_MAX_PX,
+	setLocale,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 const { createRoot } = await import("react-dom/client");
@@ -377,18 +385,90 @@ test("ticks render from the manifest, in order, at the fixed pitch", async () =>
 			}),
 		);
 		await rail.render({ checkpoints: dense });
-		assert.equal(rail.ticks().length, 267);
+		/*
+		 * VIRTUALISED (conversation-first-paint P1): every checkpoint still owns a
+		 * row in the track's geometry, but only the port's window is mounted. The
+		 * true count rides the frame; the mounted marks are a CONTIGUOUS run of the
+		 * manifest (plus the pinned roving mark, the head here), in manifest order,
+		 * each placed at exactly the offset its in-flow row had.
+		 */
+		const frame = rail.document.querySelector("[data-rail-frame]");
+		assert.equal(frame.getAttribute("data-checkpoint-count"), "267");
+		const mounted = rail.ticks();
+		assert.ok(
+			mounted.length < 267,
+			`the dense rail is windowed: ${mounted.length} mounted`,
+		);
+		const indices = mounted.map((tick) =>
+			Number(tick.getAttribute("data-checkpoint-id").slice(1)),
+		);
 		assert.deepEqual(
-			rail.ticks().map((tick) => tick.getAttribute("data-checkpoint-id")),
-			dense.map((entry) => entry.id),
+			indices,
+			[...indices].sort((a, b) => a - b),
 			"DOM order is manifest order, so the dense rail reads top to bottom",
 		);
-		/* Fixed pitch: every row is the same height, so order is DOM order. */
-		for (const tick of rail.ticks()) {
+		/*
+		 * The seed latched on the 3-mark commit (a short track: tail 0), and growth
+		 * in the same session does not re-seed - so the port, and the window, stay
+		 * at the head, exactly where the unvirtualised rail left its port too.
+		 */
+		assert.equal(indices[0], 0, "the window covers the port at the head");
+		for (const [position, tick] of mounted.entries()) {
 			assert.ok(tick.className.includes("h-2.5"));
+			assert.equal(
+				tick.style.top,
+				`${24 + indices[position] * 10}px`,
+				"each mark sits at pad + index x pitch",
+			);
 		}
+		const track = rail.document.querySelector("[data-rail-track]");
+		assert.equal(
+			track.style.height,
+			`${267 * 10 + 48}px`,
+			"the spacer keeps the full list's height",
+		);
 	} finally {
 		await rail.close();
+	}
+});
+
+test("the memoised rail repaints on a live locale change (review round 1, M3)", async () => {
+	/*
+	 * THE RAIL RESOLVES ITS LABELS AT RENDER TIME and every one of them is
+	 * catalogue copy, so a language switch has to reach it. It is `memo`ised, and
+	 * its props do not change when the locale does: the parent's subscription
+	 * stops at that boundary unless the rail reads the store itself
+	 * (`useI18nLocale`, the subscription `chat-header` and `chat-sidebar` carry).
+	 * Without it this case fails with the English name still on the tick - the
+	 * defect M3 names, where the reader switches language and the rail keeps the
+	 * old one until it remounts.
+	 */
+	const checkpoints = [
+		completion({
+			id: "c1",
+			turn: 3,
+			naming: { state: "pending", name: null, summary: null },
+		}),
+	];
+	const rail = await mountRail({ checkpoints });
+	try {
+		assert.equal(
+			rail.tick("c1").getAttribute("aria-label"),
+			"Jump to turn 3 of 3",
+			"the English label is the baseline this case switches away from",
+		);
+		await act(async () => {
+			setLocale("fr");
+		});
+		await rail.flush();
+		assert.equal(
+			rail.tick("c1").getAttribute("aria-label"),
+			"Aller au tour 3 sur 3",
+			"the rail kept its language after the locale changed",
+		);
+	} finally {
+		await rail.close();
+		setLocale("en");
 	}
 });
 
@@ -407,10 +487,16 @@ test("a switch seeds the inbound port while the outbound mark is still reported 
 		checkpoint({ id: "u1", seq: 0 }),
 		completion({ id: "c1", turn: 1, seq: 50 }),
 	];
-	const inbound = [
-		checkpoint({ id: "v1", seq: 0 }),
-		completion({ id: "c2", turn: 1, seq: 50 }),
-	];
+	/*
+	 * 240 inbound marks: a 2448px track (24 + 240 x 10 + 24), written whole
+	 * and clamped by a 420px port to 2028. The inbound mark `v230` sits at 2324-2334,
+	 * inside that port past the follow's 24px pad.
+	 */
+	const inbound = Array.from({ length: 240 }, (_, index) =>
+		index % 2 === 0
+			? checkpoint({ id: `v${index}`, turn: index / 2 + 1, seq: index })
+			: completion({ id: `v${index}`, turn: (index + 1) / 2, seq: index }),
+	);
 	const rail = await mountRail({ sessionId: "s1", checkpoints: outbound });
 	try {
 		const frame = rail.document.querySelector("[data-rail-frame]");
@@ -422,23 +508,28 @@ test("a switch seeds the inbound port while the outbound mark is still reported 
 			get: () => position,
 			set: (value) => {
 				writes.push(value);
-				/* What a browser does with the write the seed makes (it writes the track's height). */
-				position = Math.min(value, 2465 - 420);
+				position = Math.min(value, 2448 - 420);
 			},
 		});
+		/*
+		 * `scrollHeight` is a TRAP, not a value: the seed computes the tail from
+		 * the fixed pitch (conversation-first-paint P1), and a read here is the
+		 * forced layout of the whole track that the 16k-mark profile measured.
+		 */
 		Object.defineProperty(frame, "scrollHeight", {
 			configurable: true,
-			value: 2465,
+			get: () => {
+				throw new Error("the port seed read scrollHeight (a forced layout)");
+			},
 		});
 		Object.defineProperty(frame, "clientHeight", {
 			configurable: true,
 			value: 420,
 		});
 		/*
-		 * Rectangles by identity, on the DOM's own prototype: the frame is the port,
-		 * the inbound mark sits 1900px into a 2465px track (inside it - past, say,
-		 * the 24px pad the follow reserves), and everything else measures zero. The
-		 * prototype is per-JSDOM, so no other case sees these numbers.
+		 * The follow places marks ARITHMETICALLY now (conversation-first-paint P1):
+		 * a rect read of a mark would need the mark mounted, and a windowed track
+		 * does not guarantee that. Any measurement is a failure here.
 		 */
 		Object.defineProperty(
 			rail.window.Element.prototype,
@@ -446,14 +537,7 @@ test("a switch seeds the inbound port while the outbound mark is still reported 
 			{
 				configurable: true,
 				value() {
-					if (this.hasAttribute("data-rail-frame")) {
-						return { top: 0, height: 420 };
-					}
-					if (this.getAttribute("data-checkpoint-id") === "v1") {
-						/* Viewport-relative, for a port already at its tail: content-space 2300. */
-						return { top: 255, height: 2 };
-					}
-					return { top: 0, height: 0 };
+					throw new Error("the rail measured a rect on the seed/follow path");
 				},
 			},
 		);
@@ -466,14 +550,14 @@ test("a switch seeds the inbound port while the outbound mark is still reported 
 		});
 		assert.deepEqual(
 			writes,
-			[2465],
+			[2448],
 			`the commit that paints the inbound ticks seeded the port to the tail: ${JSON.stringify(writes)}`,
 		);
 
-		/* The inbound mark arrives at content-space 2300 of a 2465px track: inside the port. */
+		/* The inbound mark arrives at content-space 2324 of a 2448px track: inside the port. */
 		writes.length = 0;
 		await rail.render({
-			activeId: "v1",
+			activeId: "v230",
 			checkpoints: inbound,
 			sessionId: "s2",
 		});
@@ -787,6 +871,234 @@ test("the rail names itself, as a vertical toolbar (UX round 1, U3)", async () =
 		assert.equal(root.getAttribute("role"), "toolbar");
 		assert.equal(root.getAttribute("aria-orientation"), "vertical");
 		assert.equal(root.getAttribute("aria-label"), CHECKPOINT_RAIL_LABEL);
+	} finally {
+		await rail.close();
+	}
+});
+
+/*
+ * THE VIRTUALISED TRACK (conversation-first-paint P1). The window, the seed and
+ * the reveal are arithmetic over the fixed pitch, so these arms pin the math at
+ * the sizes the brief names (0, 1, 267, 16,000) and then drive the rendered rail
+ * through the cases a window can break: a walk to an unmounted mark, a focused
+ * or previewed mark scrolling out of the window, and the seed never measuring.
+ */
+
+/** A frame whose geometry is a real port: scrollTop clamped to the track. */
+function fakePort(frame, contentHeight, clientHeight = RAIL_PORT_MAX_PX) {
+	let position = 0;
+	const writes = [];
+	Object.defineProperty(frame, "scrollTop", {
+		configurable: true,
+		get: () => position,
+		set: (value) => {
+			writes.push(value);
+			position = Math.max(0, Math.min(value, contentHeight - clientHeight));
+		},
+	});
+	Object.defineProperty(frame, "clientHeight", {
+		configurable: true,
+		value: clientHeight,
+	});
+	Object.defineProperty(frame, "scrollHeight", {
+		configurable: true,
+		get: () => {
+			throw new Error("scrollHeight read: a forced layout of the track");
+		},
+	});
+	return writes;
+}
+
+const many = (count) =>
+	Array.from({ length: count }, (_, index) =>
+		completion({ id: `m${index}`, turn: index + 1, seq: index }),
+	);
+
+test("the window math covers the port plus one port each side, at every size", () => {
+	/* The class pairs the virtualiser positions from (h-2.5, py-6, 420px max). */
+	assert.equal(RAIL_PITCH_PX, 10);
+	assert.equal(RAIL_TRACK_PAD_PX, 24);
+	assert.equal(RAIL_PORT_MAX_PX, 420);
+	assert.deepEqual(checkpointRailWindow(0, 0, false), { start: 0, end: 0 });
+	assert.deepEqual(checkpointRailWindow(0, 1, false), { start: 0, end: 1 });
+	assert.deepEqual(checkpointRailWindow(500, 1, false), { start: 0, end: 1 });
+	for (const count of [1, 267, 16_000]) {
+		for (const building of [false, true]) {
+			const height = checkpointRailContentHeight(count, building);
+			assert.equal(
+				height,
+				(building ? 2 : 0) + 48 + count * 10,
+				"the content height is the full list's",
+			);
+			const maxTop = Math.max(0, height - RAIL_PORT_MAX_PX);
+			for (const top of [0, 1, 319, 320, 4321, maxTop / 2, maxTop]) {
+				if (top > maxTop) continue;
+				const { start, end } = checkpointRailWindow(top, count, building);
+				assert.ok(start >= 0 && end <= count && start <= end);
+				/* Every mark intersecting [top - port, top + 2 port] is mounted. */
+				for (let index = 0; index < count; index += 1) {
+					const markTop = checkpointRailMarkTop(index, building);
+					const intersects =
+						markTop + RAIL_PITCH_PX > top - RAIL_PORT_MAX_PX &&
+						markTop < top + 2 * RAIL_PORT_MAX_PX;
+					if (intersects) {
+						assert.ok(
+							index >= start && index < end,
+							`N=${count} top=${top}: mark ${index} intersects the port band but is not mounted [${start}, ${end})`,
+						);
+					}
+				}
+				/* And the window is bounded: never more than a few ports of marks. */
+				assert.ok(
+					end - start <= (4 * RAIL_PORT_MAX_PX) / RAIL_PITCH_PX + 32 + 2,
+					`N=${count}: the window is bounded (${end - start})`,
+				);
+			}
+		}
+	}
+	/* Quantised: two scroll positions inside one block yield the same window. */
+	assert.deepEqual(
+		checkpointRailWindow(321, 16_000, false),
+		checkpointRailWindow(639, 16_000, false),
+	);
+});
+
+test("the reveal rule is the follow's: pad 24 inside the port, null when already inside", () => {
+	/* Mark 0 at 24..34 in a port at 0: already 24px clear of the top. */
+	assert.equal(checkpointRailRevealScrollTop(0, false, 0, 420), null);
+	/* Mark 100 at 1024..1034: below the port, lands 24px above its bottom. */
+	assert.equal(
+		checkpointRailRevealScrollTop(100, false, 0, 420),
+		1034 - 420 + 24,
+	);
+	/* Above the port: lands 24px below its top. */
+	assert.equal(checkpointRailRevealScrollTop(10, false, 1000, 420), 124 - 24);
+	assert.equal(checkpointRailRevealScrollTop(5, false, 300, 420), 74 - 24);
+});
+
+test("a 16,000-mark rail mounts a window, seeds the tail without measuring", async () => {
+	const rail = await mountRail({ checkpoints: [] });
+	try {
+		/* Nothing renders until the manifest answers: there is no frame to fake yet. */
+		assert.equal(rail.rail(), null);
+		const checkpoints = many(16_000);
+		/*
+		 * The first commit with marks windows at the TAIL estimate before the seed
+		 * runs, so the frame can be faked only after it; the seed's write is read
+		 * through jsdom's own scrollTop here, which is the same number.
+		 */
+		await rail.render({ checkpoints });
+		const frame = rail.document.querySelector("[data-rail-frame]");
+		assert.equal(frame.getAttribute("data-checkpoint-count"), "16000");
+		const ids = rail
+			.ticks()
+			.map((tick) => tick.getAttribute("data-checkpoint-id"));
+		assert.ok(ids.length < 200, `windowed: ${ids.length} marks mounted`);
+		assert.ok(
+			ids.includes("m15999"),
+			"the tail mark is mounted at first paint",
+		);
+		assert.ok(
+			ids.includes("m0"),
+			"and the roving head mark stays mounted (the tab stop)",
+		);
+		assert.equal(
+			rail.ticks().filter((tick) => tick.tabIndex === 0).length,
+			1,
+			"one tab stop, and it is mounted",
+		);
+		const height = checkpointRailContentHeight(16_000, false);
+		assert.equal(
+			rail.document.querySelector("[data-rail-track]").style.height,
+			`${height}px`,
+		);
+	} finally {
+		await rail.close();
+	}
+});
+
+test("roving to an unmounted mark scrolls it into the port and focuses it", async () => {
+	const rail = await mountRail({ checkpoints: [] });
+	try {
+		await rail.render({ checkpoints: many(16_000) });
+		const frame = rail.document.querySelector("[data-rail-frame]");
+		const writes = fakePort(frame, checkpointRailContentHeight(16_000, false));
+		/* Start from the port at the head, as a reader who pressed Home would. */
+		const active = () =>
+			rail.document.activeElement?.getAttribute("data-checkpoint-id") ?? null;
+		await rail.focusTick("m0");
+		assert.equal(active(), "m0");
+		/* End: m15999 is not mounted once the port is at the head... */
+		act(() => {
+			frame.scrollTop = 0;
+			frame.dispatchEvent(new rail.window.Event("scroll"));
+		});
+		await rail.flush();
+		assert.equal(
+			rail.tick("m15999"),
+			null,
+			"the far end is not mounted at the head",
+		);
+		writes.length = 0;
+		tickKey(rail, rail.tick("m0"), "End");
+		await rail.flush();
+		/* ...so the walk scrolls the port to it and focuses the mounted element. */
+		assert.equal(active(), "m15999", "End lands focus on the newest mark");
+		assert.deepEqual(
+			writes,
+			[checkpointRailMarkTop(15_999, false) + 5 - 210],
+			"the port scrolled to centre it, by arithmetic (the browser clamps to the tail)",
+		);
+		assert.equal(rail.tick("m15999").tabIndex, 0, "and it holds the tab stop");
+		/* Home from the tail: back across 16,000 marks in one press. */
+		tickKey(rail, rail.tick("m15999"), "Home");
+		await rail.flush();
+		assert.equal(active(), "m0", "Home lands focus on the oldest mark");
+		assert.equal(frame.scrollTop, 0, "and the port is back at the head");
+		/* ArrowDown walks into the window's next mark with no gap. */
+		tickKey(rail, rail.tick("m0"), "ArrowDown");
+		await rail.flush();
+		assert.equal(active(), "m1");
+	} finally {
+		await rail.close();
+	}
+});
+
+test("a focused mark and its open card stay mounted when the port scrolls away", async () => {
+	const rail = await mountRail({ checkpoints: [] });
+	try {
+		await rail.render({ checkpoints: many(16_000) });
+		const frame = rail.document.querySelector("[data-rail-frame]");
+		fakePort(frame, checkpointRailContentHeight(16_000, false));
+		await rail.focusTick("m15990");
+		assert.ok(rail.dialog(), "focus opened the card");
+		const focused = rail.tick("m15990");
+		/* The reader scrolls the rail's own port to the head with the wheel. */
+		act(() => {
+			frame.scrollTop = 0;
+			frame.dispatchEvent(new rail.window.Event("scroll"));
+		});
+		await rail.flush();
+		assert.equal(
+			rail.tick("m15990"),
+			focused,
+			"the focused mark was NOT remounted",
+		);
+		assert.equal(
+			rail.document.activeElement,
+			focused,
+			"focus did not fall to <body>",
+		);
+		assert.ok(rail.dialog(), "and its card's anchor is still in the DOM");
+		assert.ok(rail.tick("m0"), "while the head's window is now mounted");
+		assert.equal(rail.tick("m8000"), null, "and the middle is not");
+		/*
+		 * Close the card the reader's way before teardown: the blur's close timer
+		 * must fire inside this case's DOM, not after its globals are restored.
+		 */
+		act(() => focused.blur());
+		await sleep(CHECKPOINT_CARD_CLOSE_DELAY_MS + 40);
+		await rail.flush();
 	} finally {
 		await rail.close();
 	}

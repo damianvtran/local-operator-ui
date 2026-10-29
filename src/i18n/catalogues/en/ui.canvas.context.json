@@ -1,0 +1,1617 @@
+{
+	"ui.canvas.file_viewer.file_no_longer_exists_at": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-file-viewer.tsx; toast in the file viewer surface.",
+		"placeholders": {
+			"value": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.canvas.file_viewer.copy_its_path_from_the_row_s_menu_to_look_for_it_or_check_whether_the_ag": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-file-viewer.tsx; toast in the file viewer surface."
+	},
+	"ui.canvas.file_viewer.unknown_error_reading_file": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-file-viewer.tsx; interface copy in the file viewer surface."
+	},
+	"ui.canvas.file_viewer.ui_canvas_files_saveerror": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-file-viewer.tsx; toast in the file viewer surface."
+	},
+	"ui.canvas.goals_viewer.no_goals_completed_yet": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-goals-viewer.tsx; interface copy in the goals viewer surface."
+	},
+	"ui.canvas.goals_viewer.goals_appear_here_once_they_are_finished": {
+		"role": "status explanation",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-goals-viewer.tsx; status explanation in the goals viewer surface."
+	},
+	"ui.canvas.goals_viewer.no_goal_set_goal_text_to_set_one_finished_goals_are_kept_here": {
+		"role": "status explanation",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-goals-viewer.tsx; status explanation in the goals viewer surface."
+	},
+	"ui.canvas.goals_viewer.goals": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-goals-viewer.tsx; interface copy in the goals viewer surface."
+	},
+	"ui.canvas.goals_viewer.older_settled_goals_are_not_carried_here_this_list_is_capped": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-goals-viewer.tsx; interface copy in the goals viewer surface."
+	},
+	"ui.canvas.tabs.open_documents": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-tabs.tsx; accessible label in the tabs surface."
+	},
+	"ui.canvas.tabs.close": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-tabs.tsx; accessible label in the tabs surface.",
+		"placeholders": {
+			"value": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.canvas.tabs.all_open_files": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-tabs.tsx; tooltip in the tabs surface."
+	},
+	"ui.canvas.variables_viewer.the_backend_did_not_answer_so_this_chat_s_code_memory_could_not_be_read": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; interface copy in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.copied": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; tooltip in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.copy_value": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; tooltip in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.edit_variable": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; tooltip in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.this_variable_can_t_be_edited_because_its_type_is_not_yet_supported_for": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; tooltip in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.this_variable_s_name_can_t_be_edited_from_here_copy_it_to_the_session_un": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; tooltip in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.delete_variable": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; tooltip in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.loading_variables": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; interface copy in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.could_not_reach_the_backend": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; interface copy in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.update_the_backend_to_read_code_memory": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; interface copy in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.this_app_can_read_code_memory_the_backend_it_is_running_against_is_older": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; interface copy in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.code_memory_starts_when_you_send_your_first_message": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; interface copy in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.settings_then_application_updates_and_info_installs_the_newer_backend": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; interface copy in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.could_not_load_variables": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; interface copy in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.the_backend_does_not_have_a_chat_with_this_session_id": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; interface copy in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.this_chat_cannot_read_code_memory": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; interface copy in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.reading": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; interface copy in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.too_large_to_show_here": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; interface copy in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.this_chat_keeps_a_value_bigger_than_this_panel_can_list_so_nothing_is_sh": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; interface copy in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.no_code_memory_yet": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; interface copy in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.nothing_stored_yet": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; interface copy in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.it_fills_in_when_code_runs_in_this_chat": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; interface copy in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.when_the_agent_runs_code_for_you_the_values_it_keeps_around_between_step": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; interface copy in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.new_variable": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; interface copy in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.code_memory": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; interface copy in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.are_you_sure_you_want_to_delete_the_variable": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; interface copy in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.this_action_cannot_be_undone": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; interface copy in the variables viewer surface."
+	},
+	"ui.canvas.code_editor_diff.proposed_change": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in code-editor-diff.ts; interface copy in the code editor diff surface."
+	},
+	"ui.canvas.create_file_dialog.markdown_md": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.general": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.plain_text_txt": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.html_html": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.web_development": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.css_css": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.javascript_js": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.jsx_jsx": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.typescript_ts": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.tsx_tsx": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.python_py": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.backend_and_scripting": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.go_go": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.java_java": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.c_cs": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.php_php": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.ruby_rb": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.rust_rs": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.shell_script_sh": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.json_json": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.configuration": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.yaml_yaml": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.yaml_yml": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.xml_xml": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.toml_toml": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.ini_ini": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.env": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.dockerfile": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.c_c": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.other_languages": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.c_cpp": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.swift_swift": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.kotlin_kt": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.scala_scala": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.cancel": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.create_file": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.create_new_file": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.file_name": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.enter_file_name_e_g_my_new_script": {
+		"role": "input placeholder",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; input placeholder in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.file_type": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.pick_an_extension_or_type_one_that_is_not_listed": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; tooltip in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.select_or_type_an_extension": {
+		"role": "input placeholder",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; input placeholder in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.loading_file_types": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.location": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.change_the_working_directory_from_the_composer_to_create_the_file_elsewh": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.the_file_will_be_created_in_this_working_directory": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.file_already_exists": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.create_file_dialog.a_file_named_already_exists_do_you_want_to_overwrite_it": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface.",
+		"placeholders": {
+			"filename": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller.",
+			"filetype": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.canvas.document_freshness_bar.not_read_from_disk_yet": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in document-freshness-bar.tsx; interface copy in the document freshness bar surface."
+	},
+	"ui.canvas.document_freshness_bar.load_the_file_s_version_your_unsaved_edits_are_discarded": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in document-freshness-bar.tsx; interface copy in the document freshness bar surface."
+	},
+	"ui.canvas.document_freshness_bar.check_the_file_your_edits_are_kept": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in document-freshness-bar.tsx; interface copy in the document freshness bar surface."
+	},
+	"ui.canvas.document_freshness_bar.re_read_from_disk": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in document-freshness-bar.tsx; interface copy in the document freshness bar surface."
+	},
+	"ui.canvas.file_row.ui_canvas_files_fileactions": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in file-row.tsx; tooltip in the file row surface."
+	},
+	"ui.canvas.file_rows.images": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in file-rows.ts; interface copy in the file rows surface."
+	},
+	"ui.canvas.file_rows.video": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in file-rows.ts; interface copy in the file rows surface."
+	},
+	"ui.canvas.file_rows.sounds": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in file-rows.ts; interface copy in the file rows surface."
+	},
+	"ui.canvas.file_rows.documents": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in file-rows.ts; interface copy in the file rows surface."
+	},
+	"ui.canvas.file_rows.spreadsheets": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in file-rows.ts; interface copy in the file rows surface."
+	},
+	"ui.canvas.file_rows.presentations": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in file-rows.ts; interface copy in the file rows surface."
+	},
+	"ui.canvas.file_rows.code": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in file-rows.ts; interface copy in the file rows surface."
+	},
+	"ui.canvas.file_rows.archives": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in file-rows.ts; interface copy in the file rows surface."
+	},
+	"ui.canvas.file_rows.other": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in file-rows.ts; interface copy in the file rows surface."
+	},
+	"ui.canvas.file_viewer_state.open_in_default_app": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in file-viewer-state.tsx; interface copy in the file viewer state surface."
+	},
+	"ui.canvas.finder_files_view.ui_canvas_files_searchplaceholder": {
+		"role": "input placeholder",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in finder-files-view.tsx; input placeholder in the finder files view surface."
+	},
+	"ui.canvas.finder_files_view.ui_canvas_files_fileactions": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in finder-files-view.tsx; tooltip in the finder files view surface."
+	},
+	"ui.canvas.finder_files_view.ui_canvas_files_imageactions": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in finder-files-view.tsx; tooltip in the finder files view surface."
+	},
+	"ui.canvas.finder_layout.highlights": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in finder-layout.ts; interface copy in the finder layout surface."
+	},
+	"ui.canvas.finder_layout.working_files": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in finder-layout.ts; interface copy in the finder layout surface."
+	},
+	"ui.canvas.finder_layout.files": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in finder-layout.ts; interface copy in the finder layout surface."
+	},
+	"ui.canvas.finder_thumbnails.could_not_be_read": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in finder-thumbnails.ts; interface copy in the finder thumbnails surface."
+	},
+	"ui.canvas.html_preview.html_preview": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in html-preview.tsx; interface copy in the html preview surface.",
+		"placeholders": {
+			"title": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.canvas.image_preview.this_image_could_not_be_shown": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in image-preview.tsx; interface copy in the image preview surface."
+	},
+	"ui.canvas.image_preview.this_image_is_no_longer_in_the_session": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in image-preview.tsx; interface copy in the image preview surface."
+	},
+	"ui.canvas.image_preview.too_large_to_preview": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in image-preview.tsx; interface copy in the image preview surface."
+	},
+	"ui.canvas.image_preview.file_no_longer_exists": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in image-preview.tsx; interface copy in the image preview surface."
+	},
+	"ui.canvas.image_preview.this_image_could_not_be_opened": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in image-preview.tsx; interface copy in the image preview surface."
+	},
+	"ui.canvas.shell.documents": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in index.tsx; interface copy in the shell surface."
+	},
+	"ui.canvas.shell.files": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
+		"note": "Complete ICU message for the shell surface; dynamic values are composed without English fragment concatenation."
+	},
+	"ui.canvas.shell.variables": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in index.tsx; interface copy in the shell surface."
+	},
+	"ui.canvas.shell.goals": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
+		"note": "Complete ICU message for the shell surface; dynamic values are composed without English fragment concatenation."
+	},
+	"ui.canvas.shell.canvas_view": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in index.tsx; interface copy in the shell surface."
+	},
+	"ui.canvas.shell.canvas": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in index.tsx; accessible label in the shell surface."
+	},
+	"ui.canvas.shell.new_file_n": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in index.tsx; tooltip in the shell surface.",
+		"placeholders": {
+			"modifierkey": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.canvas.shell.open_file_from_disk_o": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in index.tsx; tooltip in the shell surface.",
+		"placeholders": {
+			"modifierkey": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.canvas.shell.close_canvas": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in index.tsx; tooltip in the shell surface."
+	},
+	"ui.canvas.shell.nothing_open_yet": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in index.tsx; interface copy in the shell surface."
+	},
+	"ui.canvas.shell.open_a_file_to_read_or_edit_it_here_files_the_agent_mentions_in_the_conv": {
+		"role": "status explanation",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in index.tsx; status explanation in the shell surface."
+	},
+	"ui.canvas.shell.browse_files": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in index.tsx; interface copy in the shell surface."
+	},
+	"ui.canvas.shell.open_file_from_disk": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in index.tsx; interface copy in the shell surface."
+	},
+	"ui.canvas.shell.new_file": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in index.tsx; interface copy in the shell surface."
+	},
+	"ui.canvas.shell.no_conversation_open": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in index.tsx; interface copy in the shell surface."
+	},
+	"ui.canvas.shell.start_a_conversation_with_an_agent_to_see_the_files_and_variables_it_is": {
+		"role": "status explanation",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in index.tsx; status explanation in the shell surface."
+	},
+	"ui.canvas.inline_edit.apply_all_enter": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; interface copy in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.apply_all_ctrl_enter": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; tooltip in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.error_accessing_microphone_please_ensure_microphone_permissions_are_gran": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; toast in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.dictation_is_not_available_on_this_device": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; toast in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.please_select_an_agent_first": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; toast in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.no_changes_were_needed": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; toast in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.failed_to_edit_file": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; toast in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.change": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; interface copy in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.of": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; interface copy in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.review_progress": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; accessible label in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.reviewing_now": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; interface copy in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.not_reviewed_yet": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; interface copy in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.change_125665": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; accessible label in the inline edit surface.",
+		"placeholders": {
+			"index": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller.",
+			"state": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.canvas.inline_edit.stop_reviewing": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; tooltip in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.previous_change": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; tooltip in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.next_change": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; tooltip in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.reject": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; interface copy in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.accept": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; interface copy in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.reject_all": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; interface copy in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.accept_all": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; interface copy in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.close": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; tooltip in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.processing_audio": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; interface copy in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.ask_for_an_edit": {
+		"role": "input placeholder",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; input placeholder in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.edit_instructions": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; accessible label in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.add_attachments": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; tooltip in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.start_recording_or_hold": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; tooltip in the inline edit surface.",
+		"placeholders": {
+			"shortcuttext": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller.",
+			"label": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.canvas.inline_edit.start_recording": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; accessible label in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.confirm_recording_enter": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; tooltip in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.confirm_recording": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; accessible label in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.cancel_recording_esc": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; tooltip in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.cancel_recording": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; accessible label in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.edit": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; tooltip in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.editing": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; interface copy in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.cancel_edit": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; tooltip in the inline edit surface."
+	},
+	"ui.canvas.pdf_preview.pdf": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in pdf-preview.tsx; interface copy in the pdf preview surface.",
+		"placeholders": {
+			"title": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.canvas.pdf_preview.opening": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in pdf-preview.tsx; interface copy in the pdf preview surface."
+	},
+	"ui.canvas.pdf_preview.too_large_to_preview": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in pdf-preview.tsx; interface copy in the pdf preview surface."
+	},
+	"ui.canvas.pdf_preview.file_no_longer_exists": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in pdf-preview.tsx; interface copy in the pdf preview surface."
+	},
+	"ui.canvas.pdf_preview.this_pdf_could_not_be_opened": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in pdf-preview.tsx; interface copy in the pdf preview surface."
+	},
+	"ui.canvas.spreadsheet_preview.the_file_changed_on_disk_so_this_save_was_not_written_use_the_row_above": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in spreadsheet-preview.tsx; toast in the spreadsheet preview surface."
+	},
+	"ui.canvas.spreadsheet_preview.spreadsheet_saved": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in spreadsheet-preview.tsx; toast in the spreadsheet preview surface."
+	},
+	"ui.canvas.spreadsheet_preview.failed_to_save_spreadsheet": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in spreadsheet-preview.tsx; toast in the spreadsheet preview surface.",
+		"placeholders": {
+			"value": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.canvas.use_file_freshness.no_longer_on_disk_showing_the_version_we_last_read": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in use-file-freshness.ts; interface copy in the use file freshness surface."
+	},
+	"ui.canvas.use_file_freshness.could_not_be_read_showing_the_version_we_last_read": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in use-file-freshness.ts; interface copy in the use file freshness surface."
+	},
+	"ui.canvas.use_file_freshness.could_not_be_re_read_showing_the_version_we_last_read": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in use-file-freshness.ts; interface copy in the use file freshness surface."
+	},
+	"ui.canvas.use_file_freshness.changed_on_disk_load_it_or_save_to_replace_it": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in use-file-freshness.ts; interface copy in the use file freshness surface."
+	},
+	"ui.canvas.use_file_freshness.your_save_replaced_the_change_on_disk": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in use-file-freshness.ts; interface copy in the use file freshness surface."
+	},
+	"ui.canvas.use_file_freshness.this_file_is_no_longer_on_disk_the_last_version_we_read_is_still_shown_a": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in use-file-freshness.ts; interface copy in the use file freshness surface."
+	},
+	"ui.canvas.use_file_freshness.this_file_could_not_be_read_the_last_version_we_read_is_still_shown_and": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in use-file-freshness.ts; interface copy in the use file freshness surface."
+	},
+	"ui.canvas.use_file_freshness.this_file_could_not_be_re_read_so_the_version_we_last_read_is_still_show": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in use-file-freshness.ts; interface copy in the use file freshness surface."
+	},
+	"ui.canvas.use_file_freshness.your_unsaved_edits_are_kept_until_the_app_quits_and_saving_is_paused_whi": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in use-file-freshness.ts; interface copy in the use file freshness surface."
+	},
+	"ui.canvas.use_file_freshness.your_save_replaced_the_version_that_had_changed_on_disk_re_read_the_file": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in use-file-freshness.ts; interface copy in the use file freshness surface."
+	},
+	"ui.canvas.use_file_freshness.up_to_date": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in use-file-freshness.ts; interface copy in the use file freshness surface."
+	},
+	"ui.canvas.use_file_freshness.no_local_file_access": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in use-file-freshness.ts; interface copy in the use file freshness surface."
+	},
+	"ui.canvas.use_file_freshness.the_file_s_version_was_re_read_from_disk_and_is_now_on_screen": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in use-file-freshness.ts; interface copy in the use file freshness surface."
+	},
+	"ui.canvas.use_file_freshness.already_up_to_date_the_file_is_unchanged": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in use-file-freshness.ts; interface copy in the use file freshness surface."
+	},
+	"ui.canvas.use_file_freshness.local_file_access_is_unavailable_so_there_is_nothing_to_re_read_from": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in use-file-freshness.ts; interface copy in the use file freshness surface."
+	},
+	"ui.canvas.use_file_freshness.local_file_access_is_unavailable_outside_the_desktop_app": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in use-file-freshness.ts; interface copy in the use file freshness surface."
+	},
+	"ui.canvas.variable_form_dialog.the_variable_could_not_be_saved_try_again": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in variable-form-dialog.tsx; interface copy in the variable form dialog surface."
+	},
+	"ui.canvas.variable_form_dialog.this_name_cannot_be_sent_use_up_to_128_characters_without_control_charac": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in variable-form-dialog.tsx; interface copy in the variable form dialog surface."
+	},
+	"ui.canvas.variable_form_dialog.edit_variable": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in variable-form-dialog.tsx; interface copy in the variable form dialog surface."
+	},
+	"ui.canvas.variable_form_dialog.new_variable": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in variable-form-dialog.tsx; interface copy in the variable form dialog surface."
+	},
+	"ui.canvas.variable_form_dialog.cancel": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in variable-form-dialog.tsx; interface copy in the variable form dialog surface."
+	},
+	"ui.canvas.variable_form_dialog.value_json_object": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in variable-form-dialog.tsx; interface copy in the variable form dialog surface."
+	},
+	"ui.canvas.variable_form_dialog.value_json_array": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in variable-form-dialog.tsx; interface copy in the variable form dialog surface."
+	},
+	"ui.canvas.variable_form_dialog.value_true_false": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in variable-form-dialog.tsx; interface copy in the variable form dialog surface."
+	},
+	"ui.canvas.variable_form_dialog.name_key": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in variable-form-dialog.tsx; interface copy in the variable form dialog surface."
+	},
+	"ui.canvas.variable_form_dialog.the_unique_identifier_for_the_variable_e_g_api_key_user_preference_canno": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in variable-form-dialog.tsx; tooltip in the variable form dialog surface."
+	},
+	"ui.canvas.variable_form_dialog.about_the_variable_name": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in variable-form-dialog.tsx; accessible label in the variable form dialog surface."
+	},
+	"ui.canvas.variable_form_dialog.e_g_my_variable_name": {
+		"role": "input placeholder",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in variable-form-dialog.tsx; input placeholder in the variable form dialog surface."
+	},
+	"ui.canvas.variable_form_dialog.type": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in variable-form-dialog.tsx; interface copy in the variable form dialog surface."
+	},
+	"ui.canvas.variable_form_dialog.example_key_example_value": {
+		"role": "input placeholder",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in variable-form-dialog.tsx; input placeholder in the variable form dialog surface."
+	},
+	"ui.canvas.variable_form_dialog.item1_item2": {
+		"role": "input placeholder",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in variable-form-dialog.tsx; input placeholder in the variable form dialog surface."
+	},
+	"ui.canvas.variable_form_dialog.true_or_false": {
+		"role": "input placeholder",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in variable-form-dialog.tsx; input placeholder in the variable form dialog surface."
+	},
+	"ui.canvas.variable_form_dialog.enter_variable_value": {
+		"role": "input placeholder",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in variable-form-dialog.tsx; input placeholder in the variable form dialog surface."
+	},
+	"ui.canvas.variable_form_dialog.enter_a_valid_json_structure": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in variable-form-dialog.tsx; interface copy in the variable form dialog surface."
+	},
+	"ui.canvas.video_preview.this_video_could_not_be_played": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in video-preview.tsx; interface copy in the video preview surface."
+	},
+	"ui.canvas.video_preview.this_video_is_no_longer_in_the_session": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in video-preview.tsx; interface copy in the video preview surface."
+	},
+	"ui.canvas.video_preview.too_large_to_preview": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in video-preview.tsx; interface copy in the video preview surface."
+	},
+	"ui.canvas.video_preview.file_no_longer_exists": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in video-preview.tsx; interface copy in the video preview surface."
+	},
+	"ui.canvas.wysiwyg_markdown_editor.bold_ctrl_b": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in wysiwyg-markdown-editor.tsx; interface copy in the wysiwyg markdown editor surface."
+	},
+	"ui.canvas.wysiwyg_markdown_editor.italic_ctrl_i": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in wysiwyg-markdown-editor.tsx; interface copy in the wysiwyg markdown editor surface."
+	},
+	"ui.canvas.wysiwyg_markdown_editor.strikethrough": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in wysiwyg-markdown-editor.tsx; interface copy in the wysiwyg markdown editor surface."
+	},
+	"ui.canvas.wysiwyg_markdown_editor.file_saved_replacing_the_change": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in wysiwyg-markdown-editor.tsx; toast in the wysiwyg markdown editor surface."
+	},
+	"ui.canvas.wysiwyg_markdown_editor.file_saved": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in wysiwyg-markdown-editor.tsx; toast in the wysiwyg markdown editor surface."
+	},
+	"ui.canvas.wysiwyg_markdown_editor.bullet_list": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in wysiwyg-markdown-editor.tsx; tooltip in the wysiwyg markdown editor surface."
+	},
+	"ui.canvas.wysiwyg_markdown_editor.numbered_list": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in wysiwyg-markdown-editor.tsx; tooltip in the wysiwyg markdown editor surface."
+	},
+	"ui.canvas.wysiwyg_markdown_editor.checklist": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in wysiwyg-markdown-editor.tsx; tooltip in the wysiwyg markdown editor surface."
+	},
+	"ui.canvas.wysiwyg_markdown_editor.insert_link": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in wysiwyg-markdown-editor.tsx; tooltip in the wysiwyg markdown editor surface."
+	},
+	"ui.canvas.wysiwyg_markdown_editor.more_formatting": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in wysiwyg-markdown-editor.tsx; tooltip in the wysiwyg markdown editor surface."
+	},
+	"ui.canvas.wysiwyg_markdown_editor.quote": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in wysiwyg-markdown-editor.tsx; interface copy in the wysiwyg markdown editor surface."
+	},
+	"ui.canvas.wysiwyg_markdown_editor.code_block": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in wysiwyg-markdown-editor.tsx; interface copy in the wysiwyg markdown editor surface."
+	},
+	"ui.canvas.wysiwyg_markdown_editor.insert_image": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in wysiwyg-markdown-editor.tsx; interface copy in the wysiwyg markdown editor surface."
+	},
+	"ui.canvas.wysiwyg_markdown_editor.insert_table": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in wysiwyg-markdown-editor.tsx; interface copy in the wysiwyg markdown editor surface."
+	},
+	"ui.canvas.wysiwyg_markdown_editor.undo_ctrl_z": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in wysiwyg-markdown-editor.tsx; tooltip in the wysiwyg markdown editor surface."
+	},
+	"ui.canvas.wysiwyg_markdown_editor.undo": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in wysiwyg-markdown-editor.tsx; accessible label in the wysiwyg markdown editor surface."
+	},
+	"ui.canvas.wysiwyg_markdown_editor.redo_ctrl_shift_z": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in wysiwyg-markdown-editor.tsx; tooltip in the wysiwyg markdown editor surface."
+	},
+	"ui.canvas.wysiwyg_markdown_editor.redo": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in wysiwyg-markdown-editor.tsx; accessible label in the wysiwyg markdown editor surface."
+	},
+	"ui.canvas.insert_image_dialog.cancel": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in insert-image-dialog.tsx; interface copy in the insert image dialog surface."
+	},
+	"ui.canvas.insert_image_dialog.insert_image": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in insert-image-dialog.tsx; interface copy in the insert image dialog surface."
+	},
+	"ui.canvas.insert_image_dialog.image_path_on_device": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in insert-image-dialog.tsx; interface copy in the insert image dialog surface."
+	},
+	"ui.canvas.insert_image_dialog.users_eren_documents_image_png": {
+		"role": "input placeholder",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in insert-image-dialog.tsx; input placeholder in the insert image dialog surface."
+	},
+	"ui.canvas.insert_image_dialog.insert": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in insert-image-dialog.tsx; interface copy in the insert image dialog surface."
+	},
+	"ui.canvas.insert_image_dialog.or": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in insert-image-dialog.tsx; interface copy in the insert image dialog surface."
+	},
+	"ui.canvas.insert_image_dialog.drag_and_drop_an_image_here_or_click_to_select_one": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in insert-image-dialog.tsx; interface copy in the insert image dialog surface."
+	},
+	"ui.canvas.insert_link_dialog.cancel": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in insert-link-dialog.tsx; interface copy in the insert link dialog surface."
+	},
+	"ui.canvas.insert_link_dialog.insert": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in insert-link-dialog.tsx; interface copy in the insert link dialog surface."
+	},
+	"ui.canvas.insert_link_dialog.insert_link": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in insert-link-dialog.tsx; interface copy in the insert link dialog surface."
+	},
+	"ui.canvas.insert_link_dialog.url": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in insert-link-dialog.tsx; interface copy in the insert link dialog surface."
+	},
+	"ui.canvas.insert_link_dialog.https_example_com": {
+		"role": "input placeholder",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in insert-link-dialog.tsx; input placeholder in the insert link dialog surface."
+	},
+	"ui.canvas.insert_link_dialog.text_to_display": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in insert-link-dialog.tsx; interface copy in the insert link dialog surface."
+	},
+	"ui.canvas.insert_link_dialog.link_text_optional": {
+		"role": "input placeholder",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in insert-link-dialog.tsx; input placeholder in the insert link dialog surface."
+	},
+	"ui.canvas.insert_table_popover.insert_table": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in insert-table-popover.tsx; interface copy in the insert table popover surface."
+	},
+	"ui.canvas.insert_table_popover.custom_size": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in insert-table-popover.tsx; interface copy in the insert table popover surface."
+	},
+	"ui.canvas.insert_table_popover.rows": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in insert-table-popover.tsx; accessible label in the insert table popover surface."
+	},
+	"ui.canvas.insert_table_popover.columns": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in insert-table-popover.tsx; accessible label in the insert table popover surface."
+	},
+	"ui.canvas.text_style_dropdown.paragraph": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in text-style-dropdown.tsx; interface copy in the text style dropdown surface."
+	},
+	"ui.canvas.text_style_dropdown.heading_1": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in text-style-dropdown.tsx; interface copy in the text style dropdown surface."
+	},
+	"ui.canvas.text_style_dropdown.heading_2": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in text-style-dropdown.tsx; interface copy in the text style dropdown surface."
+	},
+	"ui.canvas.text_style_dropdown.heading_3": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in text-style-dropdown.tsx; interface copy in the text style dropdown surface."
+	},
+	"ui.canvas.text_style_dropdown.heading_4": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in text-style-dropdown.tsx; interface copy in the text style dropdown surface."
+	},
+	"ui.canvas.text_style_dropdown.heading_5": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in text-style-dropdown.tsx; interface copy in the text style dropdown surface."
+	},
+	"ui.canvas.text_style_dropdown.heading_6": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in text-style-dropdown.tsx; interface copy in the text style dropdown surface."
+	},
+	"ui.canvas.text_style_dropdown.text_style": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in text-style-dropdown.tsx; accessible label in the text style dropdown surface."
+	},
+	"ui.canvas.variables_viewer.delete": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; interface copy in the variables viewer surface."
+	},
+	"ui.canvas.variables_viewer.cancel": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in canvas-variables-viewer.tsx; interface copy in the variables viewer surface."
+	},
+	"ui.canvas.view_name.view_shown_this_list_is_capped": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
+		"note": "Complete ICU message for the view name surface; dynamic values are composed without English fragment concatenation.",
+		"placeholders": {
+			"label": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
+			"counted": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
+			"noun": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
+			"pluralnoun": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
+		},
+		"plural_guidance": "Use native target-locale plural categories; English one/other is source grammar only."
+	},
+	"ui.canvas.close_copy.closed_your_edits_could_not_be_saved_and_are_kept_until_the_app_quits_op": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in close-copy.ts; interface copy in the close copy surface.",
+		"placeholders": {
+			"title": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.canvas.create_file_dialog.overwrite": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in create-file-dialog.tsx; interface copy in the create file dialog surface."
+	},
+	"ui.canvas.html_preview.preview": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in html-preview.tsx; interface copy in the html preview surface."
+	},
+	"ui.canvas.html_preview.edit": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in html-preview.tsx; interface copy in the html preview surface."
+	},
+	"ui.canvas.shell.browse_filesc0c547": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
+		"note": "Complete ICU message for the shell surface; dynamic values are composed without English fragment concatenation.",
+		"placeholders": {
+			"filecountvalue": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
+		}
+	},
+	"ui.canvas.inline_edit.accepted": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; interface copy in the inline edit surface."
+	},
+	"ui.canvas.inline_edit.rejected": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in inline-edit.tsx; interface copy in the inline edit surface."
+	},
+	"ui.canvas.variable_form_dialog.save": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in variable-form-dialog.tsx; interface copy in the variable form dialog surface."
+	},
+	"ui.canvas.variable_form_dialog.create": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in variable-form-dialog.tsx; interface copy in the variable form dialog surface."
+	},
+	"ui.canvas.variable_form_dialog.value": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in variable-form-dialog.tsx; interface copy in the variable form dialog surface."
+	},
+	"ui.canvas.wysiwyg_markdown_editor.proposed_change": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in wysiwyg-markdown-editor.tsx; interface copy in the wysiwyg markdown editor surface."
+	},
+	"ui.canvas.document_freshness_bar.modified": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in document-freshness-bar.tsx; interface copy in the document freshness bar surface.",
+		"placeholders": {
+			"formatcalendardatetime": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.canvas.wysiwyg_markdown_editor.header": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
+		"note": "Complete ICU message for the wysiwyg markdown editor surface; dynamic values are composed without English fragment concatenation.",
+		"placeholders": {
+			"j": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
+		}
+	},
+	"ui.canvas.wysiwyg_markdown_editor.cell": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
+		"note": "Complete ICU message for the wysiwyg markdown editor surface; dynamic values are composed without English fragment concatenation.",
+		"placeholders": {
+			"i": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
+			"j": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
+		}
+	},
+	"ui.canvas.insert_table_popover.table": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in insert-table-popover.tsx; interface copy in the insert table popover surface.",
+		"placeholders": {
+			"rows": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller.",
+			"cols": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.canvas.variables_viewer.count": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
+		"note": "Complete ICU message for the variables viewer surface; dynamic values are composed without English fragment concatenation.",
+		"placeholders": {
+			"count": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
+		},
+		"plural_guidance": "Use native target-locale plural categories; English one/other is source grammar only."
+	},
+	"ui.canvas.goals_viewer.count": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
+		"note": "Complete ICU message for the goals viewer surface; dynamic values are composed without English fragment concatenation.",
+		"placeholders": {
+			"count": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
+		},
+		"plural_guidance": "Use native target-locale plural categories; English one/other is source grammar only."
+	},
+	"ui.canvas.goals_viewer.count_shown": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
+		"note": "Complete ICU message for the goals viewer surface; dynamic values are composed without English fragment concatenation.",
+		"placeholders": {
+			"count": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
+		},
+		"plural_guidance": "Use native target-locale plural categories; English one/other is source grammar only."
+	},
+	"ui.canvas.file_rows.count": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
+		"note": "Complete ICU message for the file rows surface; dynamic values are composed without English fragment concatenation.",
+		"placeholders": {
+			"total": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
+		},
+		"plural_guidance": "Use native target-locale plural categories; English one/other is source grammar only."
+	},
+	"ui.canvas.file_rows.narrow_count": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
+		"note": "Complete ICU message for the file rows surface; dynamic values are composed without English fragment concatenation.",
+		"placeholders": {
+			"visible": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
+			"total": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
+		},
+		"plural_guidance": "Use native target-locale plural categories; English one/other is source grammar only."
+	},
+	"ui.canvas.view_name.view_empty": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
+		"note": "Complete ICU message for the view name surface; dynamic values are composed without English fragment concatenation.",
+		"placeholders": {
+			"label": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
+		}
+	},
+	"ui.canvas.view_name.view_count": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
+		"note": "Complete ICU message for the view name surface; dynamic values are composed without English fragment concatenation.",
+		"placeholders": {
+			"label": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
+			"counted": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
+			"noun": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
+			"pluralnoun": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
+		},
+		"plural_guidance": "Use native target-locale plural categories; English one/other is source grammar only."
+	},
+	"ui.canvas.shell.file": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
+		"note": "Complete ICU message for the shell surface; dynamic values are composed without English fragment concatenation."
+	},
+	"ui.canvas.shell.goal": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
+		"note": "Complete ICU message for the shell surface; dynamic values are composed without English fragment concatenation."
+	},
+	"ui.canvas.spreadsheet_preview.unknown_error": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve technical tokens.",
+		"note": "Complete message for the spreadsheet preview surface."
+	},
+	"ui.canvas.code_editor_diff.remove": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve technical tokens.",
+		"note": "Complete message for the code editor diff surface."
+	},
+	"ui.canvas.code_editor_diff.add": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve technical tokens.",
+		"note": "Complete message for the code editor diff surface."
+	},
+	"ui.canvas.wysiwyg_markdown_editor.remove": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve technical tokens.",
+		"note": "Complete message for the wysiwyg markdown editor surface."
+	},
+	"ui.canvas.wysiwyg_markdown_editor.add": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve technical tokens.",
+		"note": "Complete message for the wysiwyg markdown editor surface."
+	},
+	"ui.canvas.create_file_dialog.creating": {
+		"role": "button label",
+		"tone": "Plain, concise product language; preserve raw identifiers.",
+		"note": "Shown while the new canvas file is being created; preserve the three ASCII periods."
+	},
+	"ui.canvas.variable_form_dialog.saving": {
+		"role": "button label",
+		"tone": "Plain, concise product language; preserve raw identifiers.",
+		"note": "Shown while a canvas variable create/update is in flight."
+	},
+	"ui.canvas.files.attachments": {
+		"role": "section heading",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Canvas Files view: the section, pinned above the agent's files, listing every file and screenshot the user attached in this conversation."
+	},
+	"ui.canvas.files.attachmentsPartial": {
+		"role": "status",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Beside the Attachments heading when the list could only be built from the messages loaded so far (older backend or another device's conversation), so it may not be complete."
+	},
+	"ui.canvas.files.attachmentsPartialReason": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Hover text on the \"May be incomplete\" caption beside the Attachments heading: explains the list was built only from the messages loaded so far. One short sentence; no action is offered here."
+	},
+	"ui.canvas.files.attachmentsError": {
+		"role": "status",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Inline banner in the Canvas Files view when the attachment list could not be read; a Retry button follows it on the same line, so keep it short (about 30 characters) and do not include \"retry\" yourself."
+	},
+	"ui.canvas.files.attachmentsErrorReason": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Hover text on the \"Couldn't load attachments\" banner. \"Backend\" is the local Local Operator process the app talks to, not a remote server: use the catalogue's existing term for backend. \"Try again\" points at the Retry button beside the banner."
+	},
+	"ui.canvas.files.attachmentImage": {
+		"role": "label",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Name for a pasted screenshot/picture that has no file name."
+	},
+	"ui.canvas.files.attachmentTooltip": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Hover text on an attached file or pasted picture in the Attachments section: its name, a short content fingerprint, then who added it and where it is kept. Keep the two \" · \" separators and the order name, fingerprint, sentence.",
+		"placeholders": {
+			"name": "File name or the localized picture name (attachmentImage); shown verbatim",
+			"digest": "First characters of the saved copy's content hash, lowercase hex, e.g. 3f9a2c1b; never translate or reformat"
+		}
+	},
+	"ui.canvas.files.attachmentRetained": {
+		"role": "status",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Row meta: the attached file is no longer at its original path, but the app kept its own saved copy, which the row's actions use."
+	},
+	"ui.canvas.files.attachmentGone": {
+		"role": "status",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Row meta: the attached file is gone from its original path AND the app's saved copy is gone too; nothing can be opened."
+	},
+	"ui.canvas.files.attachmentGoneRecovery": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Second line of the error toast shown when the person opens an attachment whose original file AND the app's saved copy are both gone. Tells them what to do next: the row's menu still has the Copy path item (ui.chat.attachments.copy_path), so name that control with the catalogue's own label and menu term. One or two short sentences."
+	},
+	"ui.canvas.files.attachmentMeta": {
+		"role": "meta line",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Row meta: file size, then the short date it was attached.",
+		"placeholders": {
+			"size": "Formatted byte size, e.g. 286 KB",
+			"when": "Short localized date, e.g. Oct 27"
+		}
+	},
+	"ui.canvas.files.attachmentRefused": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; calm, not alarming.",
+		"note": "Says why an attached file the backend judged sensitive (an .env file, an SSH key) offers no file actions. It is shown in THREE places on the canvas Attachments section: (1) the last line of the row's hover text, under the identity line; (2) the row's own note line, in place of its size and date, while the row has keyboard focus, and as that note when the file has no saved copy - a single line that is TRUNCATED at the end, roughly half the row wide (about 25-35 characters show at the narrowest pane); (3) an info toast when the person presses Shift+F10 or the context-menu key on the row. 'secret' = a password, key or token, the same word the app uses for its secret store; 'file actions' = the row's path actions (Open file, Open folder, Copy file path). No trailing full stop: it is a line, not a sentence. Put the cause ('looks like a secret') first, so the truncated note keeps it. Length: no longer than the identity line above it in the hover text (name · digest · 'Attached by you, kept in this session'), about 60 characters, and never more than 70."
+	},
+	"ui.canvas.files.attachmentReadOnly": {
+		"role": "caption",
+		"tone": "Plain, quiet product language; a statement of fact, not a warning.",
+		"note": "One muted line above the text of an attached file opened in the canvas from the app's saved copy (the bytes the person sent, kept in this session). The view cannot be edited, and without this line typing into it looked broken. 'Read-only' = the person can read and select but not change it; 'saved copy' = the same term as the 'Saved copy' label on attachment cards; 'attachment' = a file the person attached to a message. Keep the read-only part first: it is what explains the ignored typing. No trailing full stop: it is a caption, not a sentence.",
+		"length": "One line in a 400 px canvas pane at 12 px: about 50 characters."
+	}
+}

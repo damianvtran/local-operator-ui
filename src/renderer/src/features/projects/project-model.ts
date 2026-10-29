@@ -263,38 +263,59 @@ export function formatProjectDay(
  * `progress_updated_at` is an epoch FLOAT in seconds (the store's machine
  * instant), and `nowMs` is the caller's clock in milliseconds — the caller
  * reads `Date.now()` once per render, the same rule `schedules-page.tsx`
- * states for its due labels. `""` for a record with no stamp: unknown is not
- * "0m ago", and a sentence built from this drops the age rather than inventing
- * one.
+ * states for its due labels. `{ kind: "unknown" }` for a record with no stamp:
+ * unknown is not "0m ago", and a sentence built from this drops the age rather
+ * than inventing one.
+ *
+ * A DISCRIMINATED TOKEN, not a display string. `progressAgePhrase` has to know
+ * whether the age is "just now" to decide between printing it and appending
+ * " ago", and it used to learn that by comparing the rendered phrase against
+ * `t("…just_now")` — false in every other language, where `just now` would
+ * become `just now ago`. The kind is the stable fact; `t()` only prints it.
  */
+export type ProgressAge =
+	| { kind: "unknown" }
+	| { kind: "now" }
+	| { kind: "elapsed"; text: string };
+
 export function progressAge(
 	updatedAtSeconds: number | null | undefined,
 	nowMs: number,
-): string {
-	if (updatedAtSeconds === null || updatedAtSeconds === undefined) return "";
+): ProgressAge {
+	if (updatedAtSeconds === null || updatedAtSeconds === undefined)
+		return { kind: "unknown" };
 	const seconds = Math.max(0, Math.floor(nowMs / 1000 - updatedAtSeconds));
-	if (seconds < 60) return t("ui.projects.project_model.just_now");
-	if (seconds < 3600)
-		return `${formatNumber(Math.floor(seconds / 60), { useGrouping: false })}m`;
-	if (seconds < 86400)
-		return `${formatNumber(Math.floor(seconds / 3600), { useGrouping: false })}h`;
-	return `${formatNumber(Math.floor(seconds / 86400), { useGrouping: false })}d`;
+	if (seconds < 60) return { kind: "now" };
+	return {
+		kind: "elapsed",
+		text:
+			seconds < 3600
+				? `${formatNumber(Math.floor(seconds / 60), { useGrouping: false })}m` // i18n: ignore compact duration token; the sentence wraps it through t()
+				: seconds < 86400
+					? `${formatNumber(Math.floor(seconds / 3600), { useGrouping: false })}h` // i18n: ignore compact duration token; the sentence wraps it through t()
+					: `${formatNumber(Math.floor(seconds / 86400), { useGrouping: false })}d`, // i18n: ignore compact duration token; the sentence wraps it through t()
+	};
 }
 
 /**
  * An age token as a sentence fragment: `just now`, or `<age> ago`.
  *
- * ONE RULE, TWO READERS. `progressAge` returns "just now" as a complete
- * phrase, and appending " ago" to it is the copy defect QA round 1's Q-1 read
- * live ("reported just now ago by the operator"): the list cell special-cased
- * the phrase and the detail's `progressLine` did not, so the two surfaces
- * spelled one fact two ways. This is the one place the rule lives now, and both
- * callers go through it.
+ * ONE RULE, TWO READERS. The `now` kind is a complete phrase, and appending
+ * " ago" to it is the copy defect QA round 1's Q-1 read live ("reported just
+ * now ago by the operator"): the list cell special-cased the phrase and the
+ * detail's `progressLine` did not, so the two surfaces spelled one fact two
+ * ways. This is the one place the rule lives now, and both callers go through
+ * it.
  */
-export function progressAgePhrase(age: string): string {
-	return age === t("ui.projects.project_model.just_now")
-		? t("ui.projects.project_model.just_now")
-		: t("ui.projects.project_model.age_ago", { age: String(age) });
+export function progressAgePhrase(age: ProgressAge): string {
+	switch (age.kind) {
+		case "unknown":
+			return "";
+		case "now":
+			return t("ui.projects.project_model.just_now");
+		case "elapsed":
+			return t("ui.projects.project_model.age_ago", { age: age.text });
+	}
 }
 
 /**
@@ -307,12 +328,12 @@ export function progressAgePhrase(age: string): string {
  * derived HERE for the same reason the phrase is: one rule, one place, and a
  * test can hold it.
  */
-export function boardProgressText(age: string): string {
-	return age
-		? t("ui.projects.project_model.reported_progressagephrase_age", {
+export function boardProgressText(age: ProgressAge): string {
+	return age.kind === "unknown"
+		? t("ui.projects.project_model.no_progress")
+		: t("ui.projects.project_model.reported_progressagephrase_age", {
 				progressAgePhrase_age: String(progressAgePhrase(age)),
-			})
-		: t("ui.projects.project_model.no_progress");
+			});
 }
 
 /**
@@ -366,11 +387,11 @@ export function progressLine(
 	const age = progressAge(view.progress_updated_at, nowMs);
 	const reporter = progressReporterLabel(view.progress_reported_by);
 	const parts = [
-		age
-			? t("ui.projects.project_model.reported_progressagephrase_age", {
+		age.kind === "unknown"
+			? "reported"
+			: t("ui.projects.project_model.reported_progressagephrase_age", {
 					progressAgePhrase_age: String(progressAgePhrase(age)),
-				})
-			: "reported",
+				}),
 	];
 	if (reporter)
 		parts.push(
@@ -1322,7 +1343,10 @@ export function milestoneSummaryLabel(
 	total: number,
 ): string {
 	if (total <= 0) return "";
-	return `${completed} of ${total} complete`;
+	return t("ui.projects.project_model.milestone_summary", {
+		completed,
+		total,
+	});
 }
 
 /** The to-dos a linked session reported, or `null` when it never did. */
@@ -1355,7 +1379,10 @@ export function todosAggregate(
 
 /** `3 open of 7`, the one spelling for a row's and the aggregate's counts. */
 export function todosCountLabel(summary: TodosSummary): string {
-	return `${summary.open} open of ${summary.total}`;
+	return t("ui.projects.project_model.todos_summary", {
+		open: summary.open,
+		total: summary.total,
+	});
 }
 
 /* ------------------------------------------------ slice 2: session actions -- */
@@ -1388,6 +1415,8 @@ export function defaultSendTarget(
  * (name + title), where it stands (the progress snippet, which IS the latest
  * history entry's text server-side), and what happens next.
  */
+// Model-facing prompt text deliberately stays English (RFC §2.7): this is
+// composed for the agent to read, not rendered as interface copy.
 export function startSessionPrompt(project: {
 	name: string;
 	title?: string | null;
@@ -1485,8 +1514,8 @@ function milestonesAre(count: number): string {
  */
 const DONE_GATE_TAIL =
 	"complete them, or pass force_done=true to close with them open";
-const DONE_GATE_TAIL_COPY =
-	"complete or remove the incomplete milestones, then mark it done";
+const doneGateTailCopy = (): string =>
+	t("ui.projects.project_model.done_gate_tail");
 /** The daemon's head, in the shape the gate raises it: count, plural, names. */
 const DONE_GATE_HEAD =
 	/^cannot set status 'done': (\d+) milestones? still incomplete \((.+)\) — /;
@@ -1506,7 +1535,7 @@ export function refusalCopy(message: string): string {
 		);
 	}
 	if (!message.includes(DONE_GATE_TAIL)) return message;
-	return message.replace(DONE_GATE_TAIL, DONE_GATE_TAIL_COPY);
+	return message.replace(DONE_GATE_TAIL, doneGateTailCopy());
 }
 
 /* ------------------------- the done-gate refusal, as a choice to make ---- */

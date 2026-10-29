@@ -1,0 +1,129 @@
+{
+ "locale": "ru",
+ "namespace": "ui.agents.config",
+ "audit_date": "2026-10-28",
+ "round": 3,
+ "checkout": {
+  "path": "/Users/damian/lo-audit-1439c",
+  "head": "ae918aa12a",
+  "pr": 1439
+ },
+ "key_count": 38,
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "2bee126eafdc",
+  "model": "anthropic/claude-sonnet-5-5",
+  "actual_model_source": "session header, no fallback",
+  "independent_from_translator_session": true
+ },
+ "input_sha256": {
+  "src/i18n/catalogues/en/ui.agents.config.json": "5f06618661e942dd8dc61f2f40dc7894f2048855e624fdc58ffe1aa0f5fcb7a6",
+  "src/i18n/catalogues/ru/ui.agents.config.json": "7e79a648d88847c7434e9d4bc2381a02cf29faeabef2e2609e9b0a95210fb30e",
+  "src/i18n/catalogues/en/ui.agents.config.context.json": "07de5b1c02c8c64c130da1cc532cf03c13f7ef462c9cdc27e34b1a5cf3215459",
+  "~/local-operator/i18n/glossary.md": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "~/local-operator/i18n/style-guides/ru.md": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+ },
+ "read_provenance": {
+  "catalogue_copy_via_read_public_copy": [
+   "src/i18n/catalogues/en/ui.agents.config.json (whole file, no key)",
+   "src/i18n/catalogues/ru/ui.agents.config.json (whole file, no key)"
+  ],
+  "context_docs_via_filesystem_not_catalogue_copy": [
+   "src/i18n/catalogues/en/ui.agents.config.context.json",
+   "~/local-operator/i18n/glossary.md",
+   "~/local-operator/i18n/style-guides/ru.md"
+  ],
+  "baseline_via_git": "git -C ~/local-operator-ui show origin/main:src/i18n/catalogues/{ru,en}/ui.agents.config.json",
+  "source_usage": "src/renderer/src/features/agents/config-run/config-composer.tsx (kindWord, aboutLine, summary suffix)",
+  "not_read": [
+   "~/qa/union-agents-config-*",
+   "~/qa/reaudit-1439",
+   "~/qa/reaudit3-1439 (other than writing here)",
+   "~/qa/fix-1439-*",
+   "~/qa/kind-1439"
+  ]
+ },
+ "checks": {
+  "key_parity_en_ru": "pass (38/38)",
+  "icu_placeholders": "pass ({kind},{name},{count},{topic} identical per key)",
+  "plural_categories": "pass (definitions: one/few/many/other, genitives correct: определение/определения/определений)",
+  "ellipsis_and_trailing_punctuation_parity": "pass",
+  "typography": "pass (em dash with spaces, U+2026, no Title Case, guillemets in placeholder.about)",
+  "glossary": "pass (agent=агент, team=команда, бэкенд consistent with ru catalogues, разговор for conversation)",
+  "about_with_bare_nouns": "pass: 'Контекст: агент {name}' / 'Контекст: команда {name}' read correctly; both nouns nominative, lowercase, no preposition needed; '(агент)' / '(команда)' suffix reads correctly",
+  "fit": "pass with note: placeholder.docked 45 chars Cyrillic will wrap in the 304px box (context accepts wrapping, forbids clipping); about span is tooltip-backed"
+ },
+ "findings": [
+  {
+   "id": "F1",
+   "severity": "MINOR",
+   "key": "ui.agents.config.examples.add_twice",
+   "current": "Добавьте агента coder дважды в release-crew",
+   "suggestion": "Добавьте агента coder дважды в команду release-crew",
+   "origin": "inherited from origin/main",
+   "note": "bare 'в release-crew' leaves the target type unstated; en has the same shape, so not a defect"
+  },
+  {
+   "id": "F2",
+   "severity": "MINOR",
+   "key": "ui.agents.config.disabled_gate",
+   "current": "Агенты настраиваются в разговоре",
+   "suggestion": "Агентов можно настраивать через разговор",
+   "origin": "inherited from origin/main",
+   "note": "'by conversation' is the means, 'в разговоре' reads as location; understandable"
+  },
+  {
+   "id": "F3",
+   "severity": "NIT",
+   "key": "ui.agents.config.placeholder.about / placeholder.docked",
+   "current": "Изменить «{name}»… / Запросите изменение…",
+   "suggestion": "keep; optionally align mood (both imperative) e.g. 'Измените «{name}»…'",
+   "origin": "introduced by this PR",
+   "note": "infinitive vs imperative mix mirrors en (Change/Ask); quotes added around data name are an acceptable ru choice, but ui.agents.config.about shows the name unquoted"
+  },
+  {
+   "id": "F4",
+   "severity": "NIT",
+   "key": "ui.agents.config.action.watch",
+   "current": "Шаги запуска",
+   "suggestion": "keep",
+   "origin": "introduced by this PR (en Watch -> Run steps, ru Показать шаги -> Шаги запуска)",
+   "note": "noun phrase, not infinitive per style guide, but mirrors en noun phrase and works as an aria-expanded toggle; no action"
+  }
+ ],
+ "counts": {
+  "BLOCKER": 0,
+  "MAJOR": 0,
+  "MINOR": 2,
+  "NIT": 2,
+  "introduced_by_pr": {
+   "BLOCKER": 0,
+   "MAJOR": 0,
+   "MINOR": 0,
+   "NIT": 2
+  },
+  "inherited": {
+   "BLOCKER": 0,
+   "MAJOR": 0,
+   "MINOR": 2,
+   "NIT": 0
+  }
+ },
+ "introduced_keys_verdict": {
+  "kind.agent": "ok",
+  "kind.team": "ok",
+  "placeholder.about": "ok",
+  "placeholder.docked": "ok",
+  "placeholder.hero": "ok",
+  "summary.hidden_changes (свойства->настройки)": "ok, improvement",
+  "action.watch": "ok"
+ },
+ "verdict": "passed",
+ "instance": "2bee126eafdc-ru",
+ "model": "anthropic/claude-sonnet-5-5",
+ "status": "passed",
+ "sha256": {
+  "ru": "7e79a648d88847c7434e9d4bc2381a02cf29faeabef2e2609e9b0a95210fb30e",
+  "en": "5f06618661e942dd8dc61f2f40dc7894f2048855e624fdc58ffe1aa0f5fcb7a6"
+ }
+}

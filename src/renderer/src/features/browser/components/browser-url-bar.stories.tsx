@@ -1,51 +1,61 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { BrowserPageMenu } from "./browser-page-menu";
 import { BrowserUrlBar } from "./browser-url-bar";
 
 /**
- * The URL bar and its Approvals control, in the three states the badge has
- * (docs/design/browser-approval-ux.md 5): no requests, one, three.
+ * The permanent address row (S5).
  *
- * WHY THE CONTROL NEEDS ITS OWN FRAMES. The badge is a requirement the operator
- * asked for twice, and its whole claim is a reading: the count sits at the
- * control's corner, `warningWash` with a `border-control` edge, and it does not
- * shove the label. A frame is the only thing that shows whether "Approvals" is
- * still legible under it — the contrast contract can prove the triple, not the
- * layout.
+ * One 37px in-flow band: Back, Forward, Reload/Stop, Home, the field with its
+ * site mark, the fixed 28px Approvals control and the overflow menu. The native
+ * suggestion list is a child view and is not part of these frames — a native
+ * `WebContentsView` cannot be captured in Storybook, and painting a DOM stand-in
+ * would be a claim about pixels this harness cannot make.
  *
- * The bar is captured against `canvas`, which is the ground it renders on in the
- * route (the banner above the page). The chat pane's header is the other ground
- * the badge appears on, and it is `surface`; both are asserted by the
- * `browser approvals badge` row in `scripts/contrast-contract.mjs`.
+ * `overlayMode="suspend"` is the Tier 1 state (the child is unavailable on
+ * Windows/Linux or after a failure): the field still works and the sentence is
+ * painted inside its trailing edge.
  */
 
-const bar = (waitingCount: number, downloadsDir: string | null = null) => ({
+const menu = (
+	<BrowserPageMenu
+		disabled={false}
+		canGoForward={false}
+		pageZoom={1}
+		waitingCount={0}
+		downloadsDir={null}
+		showForward={false}
+		showHome={false}
+		onForward={() => {}}
+		onHome={() => {}}
+		onFind={() => {}}
+		onPrint={() => {}}
+		onResetZoom={() => {}}
+		onOpenDownloads={() => {}}
+		onOpenApprovals={() => false}
+		showApprovalsFolded={false}
+		canControlPage
+	/>
+);
+
+const common = {
 	tabId: 1,
 	url: "https://login.example.com/session",
 	pendingUrl: null,
-	loading: false,
 	canGoBack: true,
 	canGoForward: false,
 	disabled: false,
+	loading: false,
 	onNavigate: () => {},
 	onBack: () => {},
 	onForward: () => {},
 	onReload: () => {},
 	onStop: () => {},
-	onOpenApprovals: () => {},
-	waitingCount,
-	// One state with the folder reachable and one without: the control renders only
-	// when the host has written a directory (review round 1, U2), so both are worth a
-	// frame.
-	downloadsDir,
-	onOpenDownloads: () => {},
-});
+	onHome: () => {},
+} as const;
 
 const meta = {
-	title: "Browser/URL bar",
+	title: "Browser/Address chrome",
 	component: BrowserUrlBar,
-	/* The badge sits half outside the control's box, so the story needs a little
-	   room around it: without padding the frame would clip the number the frame
-	   exists to show. */
 	decorators: [
 		(Story) => (
 			<div className="bg-canvas p-4">
@@ -57,46 +67,64 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Nothing is being asked, so there is no badge at all — the honest rendering
- * rather than a zero, which would read as a count of something. */
-export const NoBadge: Story = {
-	args: bar(0),
+/** Rest: the live URL is the value; nothing is focused. */
+export const Rest: Story = {
+	args: {
+		...common,
+		overlayMode: "popout",
+		anchor: { x: 0, width: 1120 },
+		menu,
+	},
 };
 
-/** One request waiting: the common case, and the narrowest the badge gets. */
-export const OneWaiting: Story = {
-	args: bar(1),
+/** Loading: Reload becomes Stop in the same slot and a trailing spinner shows. */
+export const Loading: Story = {
+	args: {
+		...common,
+		loading: true,
+		overlayMode: "popout",
+		anchor: { x: 0, width: 1120 },
+		menu,
+	},
 };
 
-/** Three waiting: the number the operator's queue exists to make visible. */
-export const ThreeWaiting: Story = {
-	args: bar(3),
+/** Tier 1: the list is unavailable; the sentence lives inside the field. */
+export const ListUnavailable: Story = {
+	args: {
+		...common,
+		overlayMode: "suspend",
+		anchor: { x: 0, width: 1120 },
+		menu,
+	},
 };
 
-/**
- * TWO DIGITS, the state that makes the badge's geometry load-bearing.
- *
- * The badge is `min-w-4` and grows with the number, anchored at the control's
- * inner top-right corner; at one digit it is 18px and at two it is ~24px. This is
- * the frame a reviewer needs to see that the wider pill still sits inside the URL
- * bar's own box rather than over its right edge (design round 2, D3 asked for it
- * by name), and it is the state a busy machine reaches in a minute.
- */
-export const TwoDigits: Story = {
-	args: bar(12),
-};
-
-/**
- * WITH A DOWNLOAD FOLDER, which is the state that carries the second control.
- *
- * The folder is reachable from the chrome for as long as the host has written one
- * (review round 1, U2): the strip's row can be dismissed or age out, and the
- * directory must still be one press away. This frame is what shows the two
- * controls sitting together without the badge or the address field losing room.
- */
-export const WithDownloadsFolder: Story = {
-	args: bar(
-		0,
-		"/Users/someone/Library/Application Support/Local Operator/browser/downloads/20260919-120000-session1",
-	),
+/** Narrow pane: Home folds into the overflow below 360px, Forward below 300. */
+export const Narrow: Story = {
+	args: {
+		...common,
+		hideForward: true,
+		hideHome: true,
+		overlayMode: "popout",
+		anchor: { x: 0, width: 330 },
+		menu: (
+			<BrowserPageMenu
+				disabled={false}
+				canGoForward
+				pageZoom={1}
+				waitingCount={2}
+				downloadsDir={null}
+				showForward
+				showHome
+				onForward={() => {}}
+				onHome={() => {}}
+				onFind={() => {}}
+				onPrint={() => {}}
+				onResetZoom={() => {}}
+				onOpenDownloads={() => {}}
+				onOpenApprovals={() => false}
+				showApprovalsFolded={false}
+				canControlPage
+			/>
+		),
+	},
 };

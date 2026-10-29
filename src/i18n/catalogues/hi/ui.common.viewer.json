@@ -1,0 +1,15 @@
+{
+	"ui.common.viewer.close": "{kind, select, image {तस्वीर बंद करें} asset {एसेट बंद करें} other {बंद करें}}",
+	"ui.common.viewer.next": "{kind, select, image {अगली तस्वीर} asset {अगला एसेट} other {अगला}}",
+	"ui.common.viewer.opening": "खोला जा रहा है…",
+	"ui.common.viewer.position": "{kind, select, image {तस्वीर {index, number, ::group-off} / {count, number, ::group-off}} asset {एसेट {index, number, ::group-off} / {count, number, ::group-off}} other {तस्वीर {index, number, ::group-off} / {count, number, ::group-off}}}",
+	"ui.common.viewer.previous": "{kind, select, image {पिछली तस्वीर} asset {पिछला एसेट} other {पिछला}}",
+	"ui.common.viewer.reset_view": "दृश्य रीसेट करें",
+	"ui.common.viewer.zoom_in": "ज़ूम बढ़ाएँ",
+	"ui.common.viewer.zoom_out": "ज़ूम घटाएँ",
+	"ui.common.viewer.image_lightbox.previous": "पिछला {medialabel}",
+	"ui.common.viewer.image_lightbox.next": "अगला {medialabel}",
+	"ui.common.viewer.image_lightbox.close": "{medialabel} बंद करें",
+	"ui.common.viewer.image_lightbox.asset_of": "कुल {count, number, ::group-off} में से एसेट {index, number, ::group-off}",
+	"ui.common.viewer.image_progress": "कुल {count, number, ::group-off} में से छवि {index, number, ::group-off}"
+}

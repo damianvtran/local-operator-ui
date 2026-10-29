@@ -1,0 +1,348 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "2a41a79633ed",
+  "date": "2026-10-19",
+  "locale": "ur",
+  "round": 1,
+  "section": 2,
+  "status": "changes_requested",
+  "scope": "Full independent copy audit of all 23 Section 2 namespaces; only findings-bearing namespaces failed the zero-findings rule.",
+  "fallback": "Pinned anthropic/claude-sonnet-5-5 was unavailable (provider quota); this run executed on openai/gpt-6.1-sol.",
+  "notes": "15 namespaces passed; eight namespaces had MINOR copy findings and were re-audited after remediation.",
+  "namespaces": {
+    "ui.settings": {
+      "namespace": "ui.settings",
+      "keys_read": 39,
+      "status": "passed",
+      "sha256": {
+        "en": "3395192289d49f4d4a4e64a072fbb394ca37e760f3d13fb2f2a295167ae4f571",
+        "ur": "a981c9c5ea27af46df6398b152d421ebc43223009e658007cd0475678bc14a14"
+      },
+      "findings": []
+    },
+    "ui.settings.account": {
+      "namespace": "ui.settings.account",
+      "keys_read": 34,
+      "status": "passed",
+      "sha256": {
+        "en": "90960d5e885e5b617af91b7249b64828a049c0b9631bf5da4562a8f8c2f5c066",
+        "ur": "d8959d021b12a8c173bab8e6864db2f971225b34e377ae0896df3353d42021d9"
+      },
+      "findings": []
+    },
+    "ui.settings.appearance": {
+      "namespace": "ui.settings.appearance",
+      "keys_read": 10,
+      "status": "passed",
+      "sha256": {
+        "en": "f5db8989cc542fededba171769b0fbaa940cec562de6eccc07347c0f41c784d1",
+        "ur": "738ce8236920a744aed3179f183ed15d61a732e93d88df9e33eba3ccc8efe30d"
+      },
+      "findings": []
+    },
+    "ui.settings.appearance.window_glass": {
+      "namespace": "ui.settings.appearance.window_glass",
+      "keys_read": 28,
+      "status": "changes_requested",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.settings.appearance.window_glass.unsupported_linux",
+          "problem": "compositor untranslated",
+          "expected": "کمپوزیٹر",
+          "evidence": "compositor left Latin"
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.settings.appearance.window_glass.unsupported_gpu",
+          "problem": "compositing/rasterisation untranslated",
+          "expected": "کمپوزٹنگ / راسٹرائزیشن",
+          "evidence": "both left Latin"
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.settings.appearance.window_glass.unsupported_backdrop_filter",
+          "problem": "renderer untranslated",
+          "expected": "رینڈرر",
+          "evidence": "renderer left Latin"
+        }
+      ],
+      "note": "Historical round-1 finding; remediated and re-audited in round 2. No hash recorded because the audited bytes were superseded."
+    },
+    "ui.settings.configuration": {
+      "namespace": "ui.settings.configuration",
+      "keys_read": 92,
+      "status": "changes_requested",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.settings.configuration.backend_setting_row.set_in_the_credential_manager_this_value_carries_inline_credentia",
+          "problem": "query parameters untranslated",
+          "expected": "کوئری پیرامیٹرز",
+          "evidence": "left Latin"
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.settings.configuration.retention_duration_control.exact_time",
+          "problem": "عین وقت means exact moment, not duration",
+          "expected": "متعین مدت",
+          "evidence": "duration control"
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.settings.configuration.delegated_retention_copy.removed",
+          "problem": "missing colon",
+          "expected": "ہٹائے گئے:",
+          "evidence": "sidecar requires colon"
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.settings.configuration.delegated_retention_copy.kept",
+          "problem": "missing colon",
+          "expected": "رکھے گئے:",
+          "evidence": "sidecar requires colon"
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.settings.configuration.delegated_retention_copy.when",
+          "problem": "missing colon",
+          "expected": "کب:",
+          "evidence": "sidecar requires colon"
+        }
+      ],
+      "note": "Historical round-1 finding; remediated and re-audited in round 2. No hash recorded because the audited bytes were superseded."
+    },
+    "ui.settings.imports": {
+      "namespace": "ui.settings.imports",
+      "keys_read": 74,
+      "status": "changes_requested",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.settings.imports.metadata_only_explain",
+          "problem": "rollout untranslated",
+          "expected": "رول آؤٹ",
+          "evidence": "left Latin"
+        }
+      ],
+      "note": "Historical round-1 finding; remediated and re-audited in round 2. No hash recorded because the audited bytes were superseded."
+    },
+    "ui.settings.model": {
+      "namespace": "ui.settings.model",
+      "keys_read": 32,
+      "status": "changes_requested",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.settings.model.system_prompt.last_modified",
+          "problem": "missing colon",
+          "expected": "آخری ترمیم:",
+          "evidence": "timestamp follows"
+        }
+      ],
+      "note": "Historical round-1 finding; remediated and re-audited in round 2. No hash recorded because the audited bytes were superseded."
+    },
+    "ui.settings.model.default_effort": {
+      "namespace": "ui.settings.model.default_effort",
+      "keys_read": 19,
+      "status": "passed",
+      "sha256": {
+        "en": "5a4a01952b8a4242730e336cf082dc926085ac126a147d8b44197e9f04fc3b29",
+        "ur": "05b6c5b9b6839f274fc6f1d69d97beb5f0003605541786aa7e8d8b900f3a2703"
+      },
+      "findings": []
+    },
+    "ui.settings.model.provider_callout": {
+      "namespace": "ui.settings.model.provider_callout",
+      "keys_read": 2,
+      "status": "passed",
+      "sha256": {
+        "en": "8d1871aa2d087f99694b77e9f946b33b549a9541525023347b78124f42bbf82f",
+        "ur": "191f45a75db44e3c201283de845427e8f74c341f4a24a84467b2cba495092384"
+      },
+      "findings": []
+    },
+    "ui.settings.navigation": {
+      "namespace": "ui.settings.navigation",
+      "keys_read": 22,
+      "status": "passed",
+      "sha256": {
+        "en": "b0db379acf4e4c13bed8f4fb3f7e551c0b1ebc3dd52ef4508a9797c5fdcf3dbc",
+        "ur": "8b368218a5d2d59821962a1bdf106f20d1425033583fed93300761ac4c7bddef"
+      },
+      "findings": []
+    },
+    "ui.settings.shortcuts": {
+      "namespace": "ui.settings.shortcuts",
+      "keys_read": 9,
+      "status": "passed",
+      "sha256": {
+        "en": "39560cc2eb681fae44113a3e237ea9a2a1d879366a34fae09e432abd42c765c9",
+        "ur": "76ba41971062ea23c514ca8866eda995441aee017e09babfd39bc0ec8d1c7f94"
+      },
+      "findings": []
+    },
+    "ui.settings.speech": {
+      "namespace": "ui.settings.speech",
+      "keys_read": 19,
+      "status": "changes_requested",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.settings.speech.speech_section.how_the_assistant_sounds_when_it_speaks_aloud",
+          "problem": "wrong sense (loud voice)",
+          "expected": "معاون بولتے وقت کیسا سنائی دے۔",
+          "evidence": "TTS description"
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.settings.speech.speech_section.available",
+          "problem": "parentheses replaced with quotes",
+          "expected": "(دستیاب)",
+          "evidence": "sidecar requires parentheses"
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.settings.speech.speech_section.not_available",
+          "problem": "parentheses replaced with quotes",
+          "expected": "(دستیاب نہیں)",
+          "evidence": "sidecar requires parentheses"
+        }
+      ],
+      "note": "Historical round-1 finding; remediated and re-audited in round 2. No hash recorded because the audited bytes were superseded."
+    },
+    "ui.settings.updates": {
+      "namespace": "ui.settings.updates",
+      "keys_read": 29,
+      "status": "changes_requested",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.settings.updates.app_updates_section.the_version_of_the_local_operator_api_server_backend_and_the_addr",
+          "problem": "daemon untranslated",
+          "expected": "ڈیمن",
+          "evidence": "left Latin"
+        }
+      ],
+      "note": "Historical round-1 finding; remediated and re-audited in round 2. No hash recorded because the audited bytes were superseded."
+    },
+    "ui.installer": {
+      "namespace": "ui.installer",
+      "keys_read": 18,
+      "status": "passed",
+      "sha256": {
+        "en": "35b34093f3d065acf26e96a4e9601cb2906bd9439230a7fa7f9fc9a43784f7a3",
+        "ur": "56f4592e19087d9ed520d574a935cd7c2911f06718225ec628b4e76eef89f4d1"
+      },
+      "findings": []
+    },
+    "ui.common.account": {
+      "namespace": "ui.common.account",
+      "keys_read": 18,
+      "status": "passed",
+      "sha256": {
+        "en": "72e2a848a2aa4b46ecdc0ede34ed5f59b280b73e3fc544d5e563ce22ab2743e0",
+        "ur": "5c8c19c9b6e72acca9b628402a1071b1b33834524f8cea0df28486e9df6f0289"
+      },
+      "findings": []
+    },
+    "ui.common.actions": {
+      "namespace": "ui.common.actions",
+      "keys_read": 6,
+      "status": "passed",
+      "sha256": {
+        "en": "bf151da8ad56c3b32b05be1d505764d3f4cfb72e9792f9ec68b8a570239f6976",
+        "ur": "d9df223929dcc855de64502619607581855bf54a1726438ecf0317f3db47f91f"
+      },
+      "findings": []
+    },
+    "ui.common.connection": {
+      "namespace": "ui.common.connection",
+      "keys_read": 10,
+      "status": "passed",
+      "sha256": {
+        "en": "d1acb6a1fae70e3f85255d880a91d9e35ed49a8bf7d04ef14722ce115d7c69bb",
+        "ur": "4155a465f78f7e45fdcf20433ab81fe615fe075f313ffa7fa7d4d1034e2b5cff"
+      },
+      "findings": []
+    },
+    "ui.common.editing": {
+      "namespace": "ui.common.editing",
+      "keys_read": 3,
+      "status": "passed",
+      "sha256": {
+        "en": "e7ddf3b75f3e46d6900aacab976f1180eb10fdb121b5f46d2dc231fd6b4f5bb5",
+        "ur": "d78d41bfa05e827ea46c9ae534972f3147778d2adfe4a797c4ce2fd1355bb3f0"
+      },
+      "findings": []
+    },
+    "ui.common.errors": {
+      "namespace": "ui.common.errors",
+      "keys_read": 4,
+      "status": "passed",
+      "sha256": {
+        "en": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
+        "ur": "f8cbc27aaab276fce5e993cfbf3e11bb5ca2c62c36ee2efaa4f8b53f33b7957f"
+      },
+      "findings": []
+    },
+    "ui.common.forms": {
+      "namespace": "ui.common.forms",
+      "keys_read": 27,
+      "status": "changes_requested",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.common.forms.panel_details.details",
+          "problem": "missing colon",
+          "expected": "تفصیلات:",
+          "evidence": "heading introduces content"
+        }
+      ],
+      "note": "Historical round-1 finding; remediated and re-audited in round 2. No hash recorded because the audited bytes were superseded."
+    },
+    "ui.common.loading": {
+      "namespace": "ui.common.loading",
+      "keys_read": 1,
+      "status": "passed",
+      "sha256": {
+        "en": "e629186e32cd51d7eb98dcd3e8f6587765447bd1da9bdba5c5d327ad2bdcd87e",
+        "ur": "2aa215125559f47b674ea5e9daa5dda19cb4c92a277193b6771c55b8e0916a6b"
+      },
+      "findings": []
+    },
+    "ui.common.models": {
+      "namespace": "ui.common.models",
+      "keys_read": 24,
+      "status": "passed",
+      "sha256": {
+        "en": "561e39a0105425d66cac7d7497306d740d79f7b2e3921424b1993f3405e08d77",
+        "ur": "125d1fe244a028c989b9ff90bdb7a282dc65e1f123f75f9d991f00f2a7044b68"
+      },
+      "findings": []
+    },
+    "ui.common.updates": {
+      "namespace": "ui.common.updates",
+      "keys_read": 127,
+      "status": "changes_requested",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.common.updates.check_for_updates_button.detail",
+          "problem": "parentheses replaced with quotes",
+          "expected": " ({attemptsText} کوشش)",
+          "evidence": "sidecar requires parentheses"
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.common.updates.update_notification.view_full_release_notes_for",
+          "problem": "prefix does not introduce following version",
+          "expected": "ریلیز کے مکمل نوٹس دیکھیں — ورژن ",
+          "evidence": "version follows"
+        }
+      ],
+      "note": "Historical round-1 finding; remediated and re-audited in round 2. No hash recorded because the audited bytes were superseded."
+    }
+  }
+}

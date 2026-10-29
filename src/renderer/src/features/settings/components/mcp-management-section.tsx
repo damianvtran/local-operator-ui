@@ -1265,7 +1265,7 @@ export const McpManagementSection: FC<{
 					<div className="relative">
 						<Search
 							aria-hidden="true"
-							className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-dim"
+							className="pointer-events-none absolute top-1/2 start-3 size-4 -translate-y-1/2 text-ink-dim"
 						/>
 						<Input
 							ref={searchRef}
@@ -1290,7 +1290,7 @@ export const McpManagementSection: FC<{
 							aria-label={t(
 								"ui.settings.integrations.mcp_management_section.search_integrations",
 							)}
-							className="pl-9"
+							className="ps-9"
 						/>
 					</div>
 				) : null}

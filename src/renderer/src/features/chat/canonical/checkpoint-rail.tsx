@@ -1,4 +1,5 @@
 import { Popover, PopoverAnchor, PopoverContent } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Check, CircleAlert, CircleDot, CircleSlash } from "lucide-react";
 import type {
@@ -21,10 +22,10 @@ import type {
 	CheckpointOutcome,
 } from "../../../../../shared/desktop-contract";
 import {
-	CHECKPOINT_GENERATING_NAME,
 	CHECKPOINT_MARK_CLASS,
 	CHECKPOINT_OUTCOME_LABELS,
 	checkpointAriaLabel,
+	checkpointGeneratingName,
 	checkpointLeadLabel,
 	checkpointMarkState,
 	checkpointNamingPending,
@@ -34,7 +35,7 @@ import {
 } from "./checkpoint-model";
 
 /**
- * The transcript's checkpoint rail: the right-edge overlay whose marks are the
+ * The transcript's checkpoint rail: the inline-end overlay whose marks are the
  * conversation's material checkpoints, with a hover card naming each one and a
  * press that jumps to it (design D5, slice UI-A; reworked 2026-09-29 on the
  * operator's feedback, dsh study `dsh-rail-study.md`).
@@ -42,7 +43,7 @@ import {
  * ## Geometry (dsh)
  *
  * One mark per checkpoint, drawn as a SHORT HORIZONTAL DASH (20x2px) in a
- * fixed 10px pitch, right-aligned inside a 28px frame at `right: 12px`, the
+ * fixed 10px pitch, inline-end-aligned inside a 28px frame at `inset-inline-end: 12px`, the
  * frame vertically centred with `max-height: min(band - 64px, 420px)` and its
  * own scroll (24px mask fades, no chrome) when the conversation outgrows it.
  * The rail hides below a 900px chat column: the marks need the transcript's
@@ -61,11 +62,33 @@ import {
  * exactly the two marks whose state flips (the dsh rule). The hover path never
  * measures, never scrolls the rail or the transcript, and never touches the
  * naming warm - the warm rides the card's own 120ms intent below, so a fly-
- * over still costs one gesture rather than one request per mark. The rail is
- * NOT virtualised in this cut: with marks as flat rows at a fixed pitch the
- * whole list is ~10px x N of static DOM, measured at N=267 (the density case
- * the old rail documented) before the decision - a virtualiser would add a
- * second scroll model for no frame time we could see in the trace.
+ * over still costs one gesture rather than one request per mark.
+ *
+ * ## Virtualised (conversation-first-paint, lane P1)
+ *
+ * The first cut mounted every mark, on a measurement taken at N=267. Real
+ * conversations reach thousands: a warm open of a 16,000-checkpoint session
+ * mounted 16,000 buttons inside the transcript's own commit (3,409 ms wall,
+ * 519 ms thread-CPU, 34k DOM nodes) and then forced a layout of all of them
+ * to read `scrollHeight` for the port seed (RENDERER-PROFILE.md §3-§6).
+ *
+ * The fixed pitch is what makes the cure cheap and exact rather than
+ * estimated: mark `i` sits at `RAIL_TRACK_PAD_PX + i * RAIL_PITCH_PX` (plus the
+ * building mark when it is shown), so the track is a spacer of `N x pitch`
+ * and only the marks inside the port plus one port either side are mounted,
+ * each absolutely placed at its own offset - the geometry a reader sees is the
+ * same pixels the full list produced, there is just less DOM behind them. No
+ * second scroll model exists: the frame's native scroll is the only one, and
+ * the window is a pure function of its `scrollTop` (`checkpointRailWindow`).
+ * Positions are computed, never measured, so neither the seed nor the follow
+ * needs a layout read of the track.
+ *
+ * Three marks are mounted even outside the window, because unmounting them
+ * would be observable: the ROVING mark (it is the toolbar's only tab stop - an
+ * unmounted one would drop the rail out of the tab order), the mark whose CARD
+ * is open (the popover's anchor) and the PREVIEWED mark (the pointer is on it).
+ * Unmounting a focused element also silently moves focus to `<body>`; the roving
+ * pin is what keeps a focused mark alive while the port scrolls away from it.
  *
  * ## States (dsh ladder, our tokens)
  *
@@ -98,6 +121,94 @@ import {
 /** Hover intent (D5): ~120 ms to open, ~80 ms to close. Exported for tests. */
 export const CHECKPOINT_CARD_OPEN_DELAY_MS = 120;
 export const CHECKPOINT_CARD_CLOSE_DELAY_MS = 80;
+
+/**
+ * The rail's fixed geometry, in CSS px. These restate the classes the marks and
+ * the track carry (`h-2.5`, `py-6`, the building mark's `h-0.5`, the frame's
+ * `max-h-[...420px]`) because the virtualiser POSITIONS marks from them instead
+ * of measuring: a class change that is not mirrored here would misplace every
+ * mark, so the rendered test pins the pairs together. The app never rescales
+ * the root font size (zoom scales CSS px and `scrollTop` alike), so rem-based
+ * classes and these px constants stay in step.
+ */
+export const RAIL_PITCH_PX = 10;
+export const RAIL_TRACK_PAD_PX = 24;
+export const RAIL_BUILDING_MARK_PX = 2;
+export const RAIL_PORT_MAX_PX = 420;
+/**
+ * The window moves in blocks of this many marks, so a scroll inside one block
+ * costs no render at all; the one-port overscan either side is what keeps the
+ * port filled while the block boundary is crossed.
+ */
+export const RAIL_WINDOW_BLOCK = 32;
+
+/** Where mark `index` starts, in the frame's scroll coordinates. */
+export function checkpointRailMarkTop(
+	index: number,
+	building: boolean,
+): number {
+	return (
+		(building ? RAIL_BUILDING_MARK_PX : 0) +
+		RAIL_TRACK_PAD_PX +
+		index * RAIL_PITCH_PX
+	);
+}
+
+/** The frame's whole scroll height for `count` marks: what `scrollHeight` reads. */
+export function checkpointRailContentHeight(
+	count: number,
+	building: boolean,
+): number {
+	return checkpointRailMarkTop(count, building) + RAIL_TRACK_PAD_PX;
+}
+
+/**
+ * Which marks to mount for a port scrolled to `scrollTop`: `[start, end)`.
+ *
+ * The port is never taller than `RAIL_PORT_MAX_PX` (the frame's own max-height),
+ * so `[scrollTop - port, scrollTop + 2 * port]` always covers the visible port
+ * plus one port either side WITHOUT reading `clientHeight` - which is why a
+ * resize of the column needs no observer here. `scrollTop` is quantised to
+ * `RAIL_WINDOW_BLOCK` marks first, so every `scrollTop` inside one block yields
+ * the SAME window and the scroll handler's setState is a no-op.
+ */
+export function checkpointRailWindow(
+	scrollTop: number,
+	count: number,
+	building: boolean,
+): { start: number; end: number } {
+	if (count <= 0) return { start: 0, end: 0 };
+	const blockPx = RAIL_WINDOW_BLOCK * RAIL_PITCH_PX;
+	const block = Math.floor(Math.max(0, scrollTop) / blockPx);
+	const fromPx = block * blockPx - RAIL_PORT_MAX_PX;
+	const toPx = (block + 1) * blockPx + 2 * RAIL_PORT_MAX_PX;
+	const origin = checkpointRailMarkTop(0, building);
+	const start = Math.max(0, Math.floor((fromPx - origin) / RAIL_PITCH_PX));
+	const end = Math.min(count, Math.ceil((toPx - origin) / RAIL_PITCH_PX));
+	return { start: Math.min(start, end), end };
+}
+
+/**
+ * The `scrollTop` that brings mark `index` inside the port with `pad` px clear
+ * of either edge, or `null` when it already is (the follow's rule, design round
+ * 2 D1: 24px is the mask's fade depth). Pure, so the follow and the keyboard
+ * reveal share one rule and neither measures the mark.
+ */
+export function checkpointRailRevealScrollTop(
+	index: number,
+	building: boolean,
+	scrollTop: number,
+	clientHeight: number,
+	pad = 24,
+): number | null {
+	const top = checkpointRailMarkTop(index, building);
+	const bottom = top + RAIL_PITCH_PX;
+	if (top < scrollTop + pad) return Math.max(0, top - pad);
+	if (bottom > scrollTop + clientHeight - pad) {
+		return bottom - clientHeight + pad;
+	}
+	return null;
+}
 
 /** The rail group's accessible name (UX round 1, U3 measured it absent). */
 export const CHECKPOINT_RAIL_LABEL = "Turn checkpoints";
@@ -188,7 +299,7 @@ const CompletionCard: FC<{ checkpoint: Checkpoint; turnCount: number }> = ({
 			</p>
 			{checkpointNamingPending(checkpoint) && (
 				<p className={cn("text-ink-dim text-meta")}>
-					{CHECKPOINT_GENERATING_NAME}
+					{checkpointGeneratingName()}
 				</p>
 			)}
 			{summary && (
@@ -223,6 +334,7 @@ const CheckpointMark = memo(function CheckpointMark({
 	checkpoint,
 	state,
 	label,
+	top,
 	roving,
 	registerTick,
 	onPreview,
@@ -236,6 +348,8 @@ const CheckpointMark = memo(function CheckpointMark({
 	checkpoint: Checkpoint;
 	state: ReturnType<typeof checkpointMarkState>;
 	label: string;
+	/** The row's offset inside the track's padding box (`pad + index x pitch`). */
+	top: number;
 	roving: boolean;
 	registerTick: (id: string, element: HTMLButtonElement | null) => void;
 	onPreview: (id: string) => void;
@@ -271,7 +385,10 @@ const CheckpointMark = memo(function CheckpointMark({
 			 * dash is 20x2 inside it. One row per checkpoint at a fixed pitch,
 			 * so a dense manifest cannot overlap two rows' targets.
 			 */
-			className={cn("group pointer-events-auto block h-2.5 w-7")}
+			className={cn(
+				"group pointer-events-auto absolute start-0 block h-2.5 w-7",
+			)}
+			style={{ top }}
 			onPointerMove={enter}
 			onPointerLeave={onPreviewEnd}
 			onFocus={() => onFocusMark(checkpoint.id)}
@@ -282,7 +399,7 @@ const CheckpointMark = memo(function CheckpointMark({
 			<span
 				aria-hidden="true"
 				className={cn(
-					"ml-auto mr-1.5 block h-0.5 w-5 origin-right rounded-full",
+					"ms-auto me-1.5 block h-0.5 w-5 origin-right rtl:origin-left rounded-full",
 					"transition-[transform,background-color] duration-fast ease-out-quart",
 					"motion-reduce:transition-none",
 					CHECKPOINT_MARK_CLASS[state],
@@ -312,6 +429,17 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 	activeId = null,
 }) => {
 	dbgRailRenders.count += 1;
+	/*
+	 * THE RAIL SUBSCRIBES TO THE LOCALE ITSELF (review round 1, M3). Every label
+	 * it paints is resolved at render time (`checkpointAriaLabel`,
+	 * `checkpointTurnLabel`, `checkpointLeadLabel`), so a language change must
+	 * re-render it — but the component is `memo`ised below and its props are
+	 * stable across a locale change, so the parent's own subscription (in
+	 * `CanonicalTranscriptPane`) stops at this boundary: without this line the
+	 * rail keeps the previous language until it remounts. The bare call is the
+	 * subscription; it returns a value this component does not otherwise need.
+	 */
+	useI18nLocale();
 	const cardElementId = useId();
 	const [previewId, setPreviewId] = useState<string | null>(null);
 	const [openCardId, setOpenCardId] = useState<string | null>(null);
@@ -326,6 +454,58 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 	checkpointsRef.current = checkpoints;
 	const tickElements = useRef(new Map<string, HTMLButtonElement>());
 	const frameRef = useRef<HTMLDivElement | null>(null);
+	/*
+	 * Id -> manifest index, once per manifest answer. The virtualiser places,
+	 * reveals and walks marks by INDEX (their offset is `index x pitch`), and an
+	 * O(1) lookup keeps the keyboard walk and the follow off a 16k-entry scan.
+	 */
+	const indexById = useMemo(
+		() => new Map(checkpoints.map((entry, index) => [entry.id, index])),
+		[checkpoints],
+	);
+	/*
+	 * Read through a ref by the follow, whose trigger must stay `activeId` /
+	 * `sessionId` only: re-running it on every manifest answer (a naming warm
+	 * lands a new array) would yank a reader who scrolled the rail by hand.
+	 */
+	const indexByIdRef = useRef(indexById);
+	indexByIdRef.current = indexById;
+	const buildingRef = useRef(building);
+	buildingRef.current = building;
+	/*
+	 * THE WINDOW'S PORT, quantised to a block (see `checkpointRailWindow`), and
+	 * owned per session. Before this session's port has been positioned (the
+	 * first commit with marks, or a switch that does not remount), the window is
+	 * computed for the TAIL - where the seed below is about to put the port - so
+	 * the very first render already mounts the marks the first paint shows and
+	 * the seed's own sync is a no-op set. Without that, the first commit would
+	 * mount the head, the seed would scroll to the tail, and the window would
+	 * have to swap in the same commit for no reason.
+	 */
+	const [port, setPort] = useState<{ sessionId: string; top: number }>({
+		sessionId: "",
+		top: 0,
+	});
+	const blockPx = RAIL_WINDOW_BLOCK * RAIL_PITCH_PX;
+	const syncPort = useCallback(
+		(top: number) => {
+			const quantised = Math.floor(Math.max(0, top) / blockPx) * blockPx;
+			setPort((current) =>
+				current.sessionId === sessionId && current.top === quantised
+					? current
+					: { sessionId, top: quantised },
+			);
+		},
+		[blockPx, sessionId],
+	);
+	const portTop =
+		port.sessionId === sessionId
+			? port.top
+			: Math.max(
+					0,
+					checkpointRailContentHeight(checkpoints.length, building) -
+						RAIL_PORT_MAX_PX,
+				);
 	const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -481,12 +661,35 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 			 * evidence the app's warm write is gone.
 			 */
 			seededFor.current = sessionId;
+			/* The follow may have found the mark inside the port and written nothing. */
+			syncPort(frame.scrollTop);
 			return;
 		}
 		if (seededFor.current === sessionId) return;
 		seededFor.current = sessionId;
-		/* Clamped by the browser: a track shorter than the port lands at 0. */
-		frame.scrollTop = frame.scrollHeight;
+		/*
+		 * THE TAIL IS COMPUTED, NOT READ (conversation-first-paint P1): this used
+		 * to write `frame.scrollHeight`, which forced a layout of every mounted mark
+		 * inside the transcript's own commit (the 16k-mark profile's forced layout).
+		 * The fixed pitch makes the track's height a closed form, so the seed reads
+		 * no geometry at all.
+		 */
+		/*
+		 * The FULL content height is written and the browser clamps it, exactly as
+		 * the `scrollHeight` write did - NOT `height - clientHeight`: the port is
+		 * fractional (measured 345.5 px at 1440x900) while `clientHeight` rounds to
+		 * an integer, so the subtraction landed half a pixel short of the true tail
+		 * and the end marks rendered 0.5 px off the pre-virtualisation frames.
+		 */
+		frame.scrollTop = checkpointRailContentHeight(checkpoints.length, building);
+		/*
+		 * The window follows in the SAME commit: a state update inside a layout
+		 * effect re-renders synchronously before paint, so the first painted
+		 * frame already holds the marks at the port it is showing. (The render
+		 * that preceded this already windowed at the tail - `portTopFor` - so in
+		 * practice this is a no-op set; it is here so the window is never a guess.)
+		 */
+		syncPort(frame.scrollTop);
 		/*
 		 * KEYED ON THE SESSION, NOT ONCE PER MOUNT (design round 3, D2's warm half):
 		 * a switch to a conversation that does not remount the rail kept the old
@@ -498,7 +701,7 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 		 * own; and the ref keeps a reader who has scrolled the port by hand from
 		 * being yanked back on every tick arrival.
 		 */
-	}, [activeId, checkpoints.length, sessionId]);
+	}, [activeId, building, checkpoints.length, sessionId, syncPort]);
 	/*
 	 * WHICH SESSION'S PORT HAS BEEN POSITIONED, as opposed to which session is
 	 * mounted. `useActiveCheckpoint` keeps its id in STATE, so after a switch it
@@ -513,20 +716,30 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 	useLayoutEffect(() => {
 		if (activeId === null) return;
 		const frame = frameRef.current;
-		const element = tickElements.current.get(activeId);
-		if (frame === null || element === undefined) return;
+		const index = indexByIdRef.current.get(activeId);
+		if (frame === null || index === undefined) return;
 		markedFor.current = sessionId;
-		const frameRect = frame.getBoundingClientRect();
-		const elementRect = element.getBoundingClientRect();
-		const top = elementRect.top - frameRect.top + frame.scrollTop;
-		const bottom = top + elementRect.height;
-		const pad = 24;
-		if (top < frame.scrollTop + pad) {
-			frame.scrollTop = Math.max(0, top - pad);
-		} else if (bottom > frame.scrollTop + frame.clientHeight - pad) {
-			frame.scrollTop = bottom - frame.clientHeight + pad;
-		}
-	}, [activeId, sessionId]);
+		/*
+		 * THE MARK'S OFFSET IS ARITHMETIC NOW (conversation-first-paint P1). The
+		 * rect read above (design round 2, D1) needed the active mark MOUNTED, and
+		 * with a windowed track it often is not - a reading position far from the
+		 * port would never be followed. The fixed pitch gives the same scroller-
+		 * space offset the rect delta measured, with no layout read and no element.
+		 */
+		const next = checkpointRailRevealScrollTop(
+			index,
+			buildingRef.current,
+			frame.scrollTop,
+			frame.clientHeight,
+		);
+		if (next !== null) frame.scrollTop = next;
+		/*
+		 * Synced even without a write: a pane that mounts with its mark already
+		 * known never runs the seed, and its window must still describe the port
+		 * the frame actually shows rather than the tail estimate.
+		 */
+		syncPort(frame.scrollTop);
+	}, [activeId, sessionId, syncPort]);
 
 	// Timers outliving the component would setState into nothing. One cleanup.
 	useEffect(() => () => clearTimers(), [clearTimers]);
@@ -544,16 +757,6 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 	const turnCount = useMemo(
 		() => checkpointTurnCount(checkpoints),
 		[checkpoints],
-	);
-	const labels = useMemo(
-		() =>
-			new Map(
-				checkpoints.map((entry) => [
-					entry.id,
-					checkpointAriaLabel(entry, turnCount),
-				]),
-			),
-		[checkpoints, turnCount],
 	);
 
 	/*
@@ -588,19 +791,55 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 	 */
 	const [rovingId, setRovingId] = useState<string | null>(null);
 	const rovingTickId =
-		rovingId && checkpoints.some((entry) => entry.id === rovingId)
+		rovingId && indexById.has(rovingId)
 			? rovingId
 			: (checkpoints[0]?.id ?? null);
+	/*
+	 * THE WALK CAN LAND ON A MARK THAT IS NOT MOUNTED (conversation-first-paint
+	 * P1): End on a 16k rail, or Home from the tail. A MOUNTED target is focused
+	 * exactly as before - Chromium's own focus scroll (centre-if-needed) is what
+	 * the pre-virtualisation rail used, and keeping it keeps the pixels. An
+	 * UNMOUNTED one gets that same centre-if-needed position written first,
+	 * arithmetically (the browser clamps it, which is what puts End at the true
+	 * tail), then the roving id moves - the roving mark is always mounted (see
+	 * `mountedIndices`), so the commit that follows has the element and the
+	 * layout effect below focuses it before paint, already inside the port, so
+	 * the native focus scroll then has nothing to do.
+	 */
+	const pendingFocus = useRef<string | null>(null);
 	const focusTickAt = useCallback(
 		(index: number) => {
 			const bounded = Math.max(0, Math.min(checkpoints.length - 1, index));
 			const target = checkpoints[bounded];
 			if (!target) return;
 			setRovingId(target.id);
-			tickElements.current.get(target.id)?.focus();
+			const element = tickElements.current.get(target.id);
+			if (element) {
+				element.focus();
+				return;
+			}
+			const frame = frameRef.current;
+			if (frame !== null) {
+				frame.scrollTop = Math.max(
+					0,
+					checkpointRailMarkTop(bounded, building) +
+						RAIL_PITCH_PX / 2 -
+						frame.clientHeight / 2,
+				);
+				syncPort(frame.scrollTop);
+			}
+			pendingFocus.current = target.id;
 		},
-		[checkpoints],
+		[building, checkpoints, syncPort],
 	);
+	useLayoutEffect(() => {
+		const id = pendingFocus.current;
+		if (id === null) return;
+		const element = tickElements.current.get(id);
+		if (!element) return;
+		pendingFocus.current = null;
+		element.focus();
+	});
 
 	/*
 	 * The preview lane. The ref is the STORM guard: a pointermove inside one
@@ -657,8 +896,8 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 				closeCard(0);
 				return;
 			}
-			const index = checkpoints.findIndex((entry) => entry.id === id);
-			if (index < 0) return;
+			const index = indexById.get(id);
+			if (index === undefined) return;
 			/*
 			 * The roving walk (U1). The arrows are claimed here rather than left
 			 * to bubble: the transcript's own scroller binds arrows for paging
@@ -689,8 +928,35 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 				focusTickAt(checkpoints.length - 1);
 			}
 		},
-		[checkpoints, closeCard, focusTickAt],
+		[checkpoints.length, closeCard, focusTickAt, indexById],
 	);
+
+	/*
+	 * The marks to mount: the port's window, plus the three pinned marks the
+	 * module doc names (roving, open card, preview) wherever they are. Ascending
+	 * index, so mounted DOM order stays manifest order - the order the existing
+	 * driver scenes and the keyboard walk read.
+	 */
+	const railWindow = checkpointRailWindow(
+		portTop,
+		checkpoints.length,
+		building,
+	);
+	const mountedIndices: number[] = [];
+	for (let index = railWindow.start; index < railWindow.end; index += 1) {
+		mountedIndices.push(index);
+	}
+	for (const pinned of [rovingTickId, openCardId, previewId]) {
+		const index = pinned === null ? undefined : indexById.get(pinned);
+		if (
+			index !== undefined &&
+			(index < railWindow.start || index >= railWindow.end) &&
+			!mountedIndices.includes(index)
+		) {
+			mountedIndices.push(index);
+		}
+	}
+	mountedIndices.sort((a, b) => a - b);
 
 	if (checkpoints.length === 0 && !building) return null;
 
@@ -717,7 +983,7 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 			 * above the scroller (z-auto), below the in-thread search overlay's 20.
 			 */
 			className={cn(
-				"pointer-events-none absolute inset-y-0 right-3 z-10 hidden w-7 select-none",
+				"pointer-events-none absolute inset-y-0 end-3 z-10 hidden w-7 select-none",
 				"flex-col justify-center",
 				"@[900px]/chatcol:flex",
 			)}
@@ -730,7 +996,19 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 			 */}
 			<div
 				data-rail-frame=""
+				/*
+				 * The TRUE mark count, for probes and driver scenes: with the track
+				 * windowed, counting `[data-checkpoint-id]` reads the mounted window,
+				 * not the manifest.
+				 */
+				data-checkpoint-count={checkpoints.length}
 				ref={frameRef}
+				/*
+				 * The only scroll model is the frame's native one; this just moves
+				 * the window with it. Quantised, so a scroll within one block of
+				 * marks is a bail-out set, not a render.
+				 */
+				onScroll={(event) => syncPort(event.currentTarget.scrollTop)}
 				className={cn(
 					"max-h-[min(calc(100%-4rem),420px)] w-7 overflow-y-auto overscroll-contain",
 					/*
@@ -756,7 +1034,7 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 						aria-hidden="true"
 						data-rail-building=""
 						className={cn(
-							"ml-auto mr-1.5 block h-0.5 w-5 animate-pulse-visible rounded-full bg-ink-dim",
+							"ms-auto me-1.5 block h-0.5 w-5 animate-pulse-visible rounded-full bg-ink-dim",
 						)}
 					/>
 				)}
@@ -769,33 +1047,54 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 				 * alone can move the last tick off the edge (scrollTop is already
 				 * clamped), which is what makes the padding the fix for both ends.
 				 */}
-				<div data-rail-track="" className="py-6">
-					{checkpoints.map((checkpoint) => (
-						<CheckpointMark
-							key={checkpoint.id}
-							checkpoint={checkpoint}
-							state={checkpointMarkState({
-								id: checkpoint.id,
-								previewId,
-								activeId,
-								loaded: loadedIds ? loadedIds.has(checkpoint.id) : true,
-							})}
-							label={labels.get(checkpoint.id) ?? ""}
-							roving={checkpoint.id === rovingTickId}
-							registerTick={registerTick}
-							onPreview={onPreview}
-							onPreviewEnd={onPreviewEnd}
-							onFocusMark={onFocusMark}
-							onBlurMark={onBlurMark}
-							onActivate={onActivate}
-							onKeyMark={onKeyMark}
-							describedBy={
-								cardOpen && openCardId === checkpoint.id
-									? cardElementId
-									: undefined
-							}
-						/>
-					))}
+				<div
+					data-rail-track=""
+					/*
+					 * THE SPACER (conversation-first-paint P1): the track keeps the
+					 * full list's height - `py-6` plus `N x pitch`, border-box as the
+					 * preflight sets it - so the frame scrolls exactly as far as it did
+					 * with every mark mounted, and each mounted mark is placed at the
+					 * offset its in-flow row had. Identical geometry, windowed DOM.
+					 */
+					className="relative py-6"
+					style={{
+						height: checkpoints.length * RAIL_PITCH_PX + 2 * RAIL_TRACK_PAD_PX,
+					}}
+				>
+					{mountedIndices.map((index) => {
+						const checkpoint = checkpoints[index];
+						return (
+							<CheckpointMark
+								key={checkpoint.id}
+								checkpoint={checkpoint}
+								top={RAIL_TRACK_PAD_PX + index * RAIL_PITCH_PX}
+								state={checkpointMarkState({
+									id: checkpoint.id,
+									previewId,
+									activeId,
+									loaded: loadedIds ? loadedIds.has(checkpoint.id) : true,
+								})}
+								/*
+								 * Built per MOUNTED mark rather than for the whole manifest:
+								 * a string, so `memo` still compares it by value.
+								 */
+								label={checkpointAriaLabel(checkpoint, turnCount)}
+								roving={checkpoint.id === rovingTickId}
+								registerTick={registerTick}
+								onPreview={onPreview}
+								onPreviewEnd={onPreviewEnd}
+								onFocusMark={onFocusMark}
+								onBlurMark={onBlurMark}
+								onActivate={onActivate}
+								onKeyMark={onKeyMark}
+								describedBy={
+									cardOpen && openCardId === checkpoint.id
+										? cardElementId
+										: undefined
+								}
+							/>
+						);
+					})}
 				</div>
 			</div>
 			<Popover

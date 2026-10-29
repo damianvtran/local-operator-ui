@@ -1,0 +1,1032 @@
+{
+	"ui.library.category.all": {
+		"role": "Library filter rail: category label",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: All. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 3 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.category.code": {
+		"role": "Library filter rail: category label",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Code. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 4 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.category.documents": {
+		"role": "Library filter rail: category label",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Documents. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 9 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.category.images": {
+		"role": "Library filter rail: category label",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Images. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 6 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.category.other": {
+		"role": "Library filter rail: category label",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Other. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 5 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.category.presentations": {
+		"role": "Library filter rail: category label",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Presentations. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 13 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.category.sounds": {
+		"role": "Library filter rail: category label",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Sounds. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 6 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.category.spreadsheets": {
+		"role": "Library filter rail: category label",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Spreadsheets. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 12 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.category.video": {
+		"role": "Library filter rail: category label",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Video. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 5 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.sort.created": {
+		"role": "Library sort menu: sort option label",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Date created. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 12 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.sort.kind": {
+		"role": "Library sort menu: sort option label",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Kind. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 4 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.sort.modified": {
+		"role": "Library sort menu: sort option label",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Date modified. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 13 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.sort.name": {
+		"role": "Library sort menu: sort option label",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Name. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 4 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.sort.organized": {
+		"role": "Library sort menu: sort option label",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Last organized. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 14 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.sort.recent": {
+		"role": "Library sort menu: sort option label",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Recently seen. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 13 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.sort.size": {
+		"role": "Library sort menu: sort option label",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Size. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 4 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.origin.created": {
+		"role": "Library card and rail: origin-group label (Generated, Created, Mentioned)",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Created. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 7 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.origin.generated": {
+		"role": "Library card and rail: origin-group label (Generated, Created, Mentioned)",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Generated. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 9 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.origin.mentioned": {
+		"role": "Library card and rail: origin-group label (Generated, Created, Mentioned)",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Mentioned. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 9 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.origin.other": {
+		"role": "Library card and rail: origin-group label (Generated, Created, Mentioned)",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Other. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 5 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.status.favorites": {
+		"role": "Library filter rail: independent status filter label",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Favorites. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 9 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.status.highlighted": {
+		"role": "Library filter rail: independent status filter label",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Highlighted. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 11 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.status.unorganized": {
+		"role": "Library filter rail: independent status filter label",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Unorganized. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 11 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.card.conversations": {
+		"role": "Library surface: conversations",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: {count, plural, one {{count} conversation} other {{count} conversations}}. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 73 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"count": "Runtime value passed by the Library page or preview."
+		},
+		"plural": "ICU plural: keep one/other and the count variable; Russian adds few/many."
+	},
+	"ui.library.card.highlighted": {
+		"role": "Library surface: highlighted",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Highlighted. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 11 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.composer.ask_placeholder": {
+		"role": "Library asset composer: placeholder, action or refusal",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Ask about this asset. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 20 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.composer.chat_about": {
+		"role": "Library asset composer: placeholder, action or refusal",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Chat about this asset: {title}. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 30 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"title": "Runtime value passed by the Library page or preview."
+		}
+	},
+	"ui.library.composer.continue_placeholder": {
+		"role": "Library asset composer: placeholder, action or refusal",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Continue the conversation. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 25 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.composer.could_not_start": {
+		"role": "Library asset composer: placeholder, action or refusal",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: The conversation could not be started.. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 38 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.composer.label": {
+		"role": "Library asset composer: placeholder, action or refusal",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Ask about this asset. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 20 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.composer.not_sent": {
+		"role": "Library asset composer: placeholder, action or refusal",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: The message was not sent.. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 25 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.composer.open_chat": {
+		"role": "Library asset composer: placeholder, action or refusal",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Open chat. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 9 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.composer.send": {
+		"role": "Library asset composer: placeholder, action or refusal",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Send. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 4 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.composer.unlink": {
+		"role": "Library asset composer: placeholder, action or refusal",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Unlink this conversation. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 24 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.filter.categories": {
+		"role": "Library surface: categories",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Categories. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 10 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.filter.clear_conversation": {
+		"role": "Library surface: clear conversation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Show every conversation. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 23 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.filter.clear_filters": {
+		"role": "Library surface: clear filters",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Clear filters. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 13 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.filter.one_conversation": {
+		"role": "Library surface: one conversation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: One conversation. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 16 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.filter.scope": {
+		"role": "Library filter rail: scope section label (not a filter)",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "Names the population the other filter rows count over, not a filter itself. Final artifacts is the desktop default; All inclusions is the whole catalog, including files merely mentioned or created in a conversation.",
+		"length": "English is 5 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.filter.scope_all": {
+		"role": "Library filter rail: scope option, all inclusions",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "Selects the whole catalog, including files merely mentioned or created in a conversation, not only final artifacts. A count renders beside the label.",
+		"length": "English is 14 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.filter.scope_final": {
+		"role": "Library filter rail: scope option, final artifacts",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "The desktop default: only final artifacts, excluding files merely mentioned or created in a conversation.",
+		"length": "English is 15 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.filter.source": {
+		"role": "Library surface: source",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Source. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 6 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.filter.status": {
+		"role": "Library surface: status",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Status. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 6 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.filter.tag_mode": {
+		"role": "Library surface: tag mode",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Tags match {mode}. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 17 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"mode": "Runtime value passed by the Library page or preview."
+		}
+	},
+	"ui.library.filter.tags": {
+		"role": "Library surface: tags",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Tags. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 4 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.grid.load_more": {
+		"role": "Library surface: load more",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Load more. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 9 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.grid.loading_more": {
+		"role": "Library surface: loading more",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Loading more. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 12 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.librarian.control_failed": {
+		"role": "Library header: Librarian status row and controls",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: The Librarian did not answer.. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 29 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.librarian.disabled": {
+		"role": "Library header: Librarian status row and controls",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Off. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 3 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.librarian.enabled": {
+		"role": "Library header: Librarian status row and controls",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Enabled. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 7 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.librarian.last_organized": {
+		"role": "Library header: Librarian status row and controls",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Last organized {at}. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 19 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"at": "Runtime value passed by the Library page or preview."
+		}
+	},
+	"ui.library.librarian.never_run": {
+		"role": "Library header: Librarian status row and controls",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Never run. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 9 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.librarian.open": {
+		"role": "Library header: Librarian status row and controls",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Open. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 4 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.librarian.organize_now": {
+		"role": "Library header: Librarian status row and controls",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Organize now. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 12 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.librarian.paused": {
+		"role": "Library header: Librarian status row and controls",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Paused. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 6 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.librarian.title": {
+		"role": "Library header: Librarian status row and controls",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Librarian. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 9 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.librarian.unorganized": {
+		"role": "Library header: Librarian status row and controls",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: {count, plural, one {{count} unorganized} other {{count} unorganized}}. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 70 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"count": "Runtime value passed by the Library page or preview."
+		},
+		"plural": "ICU plural: keep one/other and the count variable; Russian adds few/many."
+	},
+	"ui.library.menu.ask_about_asset": {
+		"role": "Library asset overflow menu: action or acknowledgement",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Ask about this asset. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 20 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.menu.asset_actions": {
+		"role": "Library asset overflow menu: action or acknowledgement",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Asset actions. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 13 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.menu.asset_actions_label": {
+		"role": "Library asset overflow menu: action or acknowledgement",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Actions for {name}. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 18 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"name": "Runtime value passed by the Library page or preview."
+		}
+	},
+	"ui.library.menu.asset_id_copied": {
+		"role": "Library asset overflow menu: action or acknowledgement",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Asset id copied. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 15 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.menu.copy_asset_id": {
+		"role": "Library asset overflow menu: action or acknowledgement",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Copy asset id. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 13 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.menu.copy_failed": {
+		"role": "Library asset overflow menu: action or acknowledgement",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Nothing was copied. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 18 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.menu.copy_path": {
+		"role": "Library asset overflow menu: action or acknowledgement",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Copy path. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 9 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.menu.download": {
+		"role": "Library asset overflow menu: action or acknowledgement",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Download. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 8 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.menu.edit_metadata": {
+		"role": "Library asset overflow menu: action or acknowledgement",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Edit metadata. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 13 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.menu.edit_tags": {
+		"role": "Library asset overflow menu: action or acknowledgement",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Edit tags. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 9 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.menu.favorite": {
+		"role": "Library asset overflow menu: action or acknowledgement",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Favorite. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 8 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.menu.open_source_conversation": {
+		"role": "Library asset overflow menu: action or acknowledgement",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Open source conversation. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 24 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.menu.path_copied": {
+		"role": "Library asset overflow menu: action or acknowledgement",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Path copied. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 11 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.menu.reveal_in_finder": {
+		"role": "Library asset overflow menu: action or acknowledgement",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Reveal in Finder. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 16 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.menu.save_a_copy": {
+		"role": "Library asset overflow menu: action or acknowledgement",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Save a copy. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 11 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.menu.save_failed": {
+		"role": "Library asset overflow menu: action or acknowledgement",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: The asset could not be saved.. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 29 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.menu.saved_a_copy": {
+		"role": "Library asset overflow menu: action or acknowledgement",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Saved a copy. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 12 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.menu.show_from_conversation": {
+		"role": "Library asset overflow menu: action or acknowledgement",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Show all assets from this conversation. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 38 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.menu.unfavorite": {
+		"role": "Library asset overflow menu: action or acknowledgement",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Unfavorite. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 10 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.page.building": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Building the catalog: {scanned} of {total} conversations. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 56 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"scanned": "Runtime value passed by the Library page or preview.",
+			"total": "Runtime value passed by the Library page or preview."
+		}
+	},
+	"ui.library.page.checking": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Checking the server's Library support. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 37 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.page.close_filters": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Close filters. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 13 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.page.empty_detail": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Files you create or highlight in conversations will appear here.. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 64 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.page.empty_title": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Your Library is empty. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 21 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.page.filters": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Filters. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 7 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.page.grid_view": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Grid view. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 9 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.page.list_view": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: List view. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 9 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.page.load_failed": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: The catalog could not be read.. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 30 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.page.no_matches": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: No assets match. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 15 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.page.no_matches_detail": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Clear a filter or change the search to see more.. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 48 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.page.retry": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Retry. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 5 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.page.reverse_order": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Reverse the order. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 17 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.page.search": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Search the Library. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 18 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.page.select_asset": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Select an asset to preview it. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 29 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.page.sort": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Sort. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 4 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.page.title": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Library. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 7 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.page.unavailable": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: This backend does not serve the Library. Update the backend to use it.. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 70 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.add_description": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Add a description. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 17 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.add_tag": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Add a tag. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 9 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.close": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Close the preview. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 17 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.could_not_load": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: This preview could not be loaded. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 32 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.description": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Description. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 11 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.download": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Download. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 8 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.fit": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Fit. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 3 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.from_conversation": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: From {title}. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 12 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"title": "Runtime value passed by the Library page or preview."
+		}
+	},
+	"ui.library.preview.go_to_slide": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Go to slide {index}. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 19 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"index": "Runtime value passed by the Library page or preview."
+		}
+	},
+	"ui.library.preview.loading": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Loading the preview. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 19 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.lock": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Lock this asset. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 15 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.missing_file": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Missing file. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 12 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.name": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Name. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 4 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.next_slide": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Next slide. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 10 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.not_saved": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: The change was not saved.. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 25 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.open": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Open. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 4 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.open_externally": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Open externally. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 15 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.organized_by": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Organized by {by} {at}. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 22 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"by": "Runtime value passed by the Library page or preview.",
+			"at": "Runtime value passed by the Library page or preview."
+		}
+	},
+	"ui.library.preview.pptx_failed": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: This presentation could not be rendered. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 39 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.pptx_failed_detail": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: The file may be corrupt or use a format this viewer does not understand.. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 72 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.pptx_loading": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Rendering the presentation: {percent}%. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 38 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"percent": "Runtime value passed by the Library page or preview."
+		}
+	},
+	"ui.library.preview.pptx_opening": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Opening the presentation. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 24 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.previous_slide": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Previous slide. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 14 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.retry": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Try again. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 9 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.reveal": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Reveal. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 6 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.sheet_name": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Sheet: {name}. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 13 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"name": "Runtime value passed by the Library page or preview."
+		}
+	},
+	"ui.library.preview.sheet_truncated": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Showing the first 200 rows.. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 27 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.sheet_unreadable": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: This spreadsheet could not be read.. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 35 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.slide_of": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Slide {index} of {count}. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 24 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"index": "Runtime value passed by the Library page or preview."
+		}
+	},
+	"ui.library.preview.tags": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Tags. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 4 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.tags_not_saved": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: The tags were not saved.. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 24 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.unlock": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Unlock this asset. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 17 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.unorganized": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Not organized yet. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 17 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.unsupported": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: A {kind} file has no in-app preview here.. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 41 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"kind": "Runtime value passed by the Library page or preview."
+		}
+	},
+	"ui.library.preview.zoom_in": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Zoom in. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 7 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.zoom_out": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Zoom out. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 8 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.page.back": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Back to Library. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 15 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.page.clear_all": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Clear all. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 9 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.page.load_more_failed": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Couldn't load more assets.. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 26 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.page.loaded_count": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: {loaded} of {total} assets. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 26 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"loaded": "Runtime value passed by the Library page or preview.",
+			"total": "Runtime value passed by the Library page or preview."
+		}
+	},
+	"ui.library.page.preview": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Asset preview. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 13 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.page.results": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Library results. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 15 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.page.resize_preview": {
+		"role": "Accessible name for the details drawer's left-edge resize separator",
+		"tone": "Direct action verb, concise desktop UI copy, sentence case.",
+		"note": "English source: Resize details drawer. Double-click to reset. Keep the reset instruction because Enter also resets for keyboard users.",
+		"length": "English is 45 source characters. Comparable width is preferred, but clarity comes first."
+	},
+	"ui.library.preview.unavailable": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: This asset isn't available. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 26 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.unavailable_detail": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: It may no longer be in the catalog.. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 35 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.pptx_preparing": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Preparing presentation…. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 23 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.read_only_markdown": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: This file is not on a writable local path, so the preview is read-only.. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 71 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.expand": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Open full view. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 14 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.page.more": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: More. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 4 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.page.more_destinations": {
+		"role": "Library page chrome: title, search, sort, state or navigation",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: More destinations. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 17 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.breadcrumb": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Library / {name}. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 16 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"name": "Runtime value passed by the Library page or preview."
+		}
+	},
+	"ui.library.preview.checking_file": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Checking the file…. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 18 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.details": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Details. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 7 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.composer.link_failed": {
+		"role": "Library surface: link failed",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Message sent, but the chat could not be linked: {message}. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 57 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"message": "Runtime value passed by the Library page or preview."
+		}
+	},
+	"ui.library.composer.link_failed_short": {
+		"role": "Library surface: link failed short",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Message sent, but the chat could not be linked.. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 47 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.composer.message_sent_link_failed": {
+		"role": "Library surface: message sent link failed",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Message sent. The chat link failed.. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 35 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.composer.retry_link": {
+		"role": "Library surface: retry link",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Retry link. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 10 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.pptx_text": {
+		"role": "Library surface: pptx text",
+		"tone": "Concise neutral desktop UI copy, sentence case.",
+		"note": "English source: Text.",
+		"length": "English is 4 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.preview.pptx_no_text": {
+		"role": "Library surface: pptx no text",
+		"tone": "Concise neutral desktop UI copy, sentence case.",
+		"note": "English source: This slide has no extractable text..",
+		"length": "English is 35 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.time.just_now": {
+		"role": "Library metadata: relative age of an asset or of the Librarian's last run",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: just now. Shown for anything under a minute old, in a narrow metadata slot.",
+		"length": "English is 8 source characters. Keep the same shape and a comparable width."
+	},
+	"ui.library.time.minutes_m_ago": {
+		"role": "Library metadata: relative age, minutes",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: {minutes, plural, one {{minutes, number, ::group-off}m ago} other {{minutes, number, ::group-off}m ago}}. The English form is deliberately compact (\"4m ago\"): a single unit letter, no space before it, and it sits in a narrow sidebar and metadata slot. This string is a FRAGMENT composed into a larger sentence by its caller (\"Last organized {at}\", \"Organized by {by} {at}\"), so it must read as an adverbial phrase on its own and must not become a full sentence.",
+		"length": "English is 104 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"minutes": "Whole minutes, floored by the caller; never negative."
+		},
+		"plural": "ICU plural: keep one/other and the minutes variable; French adds many, Russian adds few/many. The compact unit abbreviation is the point — do not spell the unit out."
+	},
+	"ui.library.time.hours_h_ago": {
+		"role": "Library metadata: relative age, hours",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: {hours, plural, one {{hours, number, ::group-off}h ago} other {{hours, number, ::group-off}h ago}}. A compact FRAGMENT composed into a larger sentence by its caller; see ui.library.time.minutes_m_ago.",
+		"length": "English is 98 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"hours": "Whole hours, floored by the caller; never negative."
+		},
+		"plural": "ICU plural: keep one/other and the hours variable; the compact unit abbreviation is the point."
+	},
+	"ui.library.time.days_d_ago": {
+		"role": "Library metadata: relative age, days",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: {days, plural, one {{days, number, ::group-off}d ago} other {{days, number, ::group-off}d ago}}. A compact FRAGMENT composed into a larger sentence by its caller; see ui.library.time.minutes_m_ago.",
+		"length": "English is 95 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"days": "Whole days, floored by the caller; never negative."
+		},
+		"plural": "ICU plural: keep one/other and the days variable; the compact unit abbreviation is the point."
+	},
+	"ui.library.time.months_mo_ago": {
+		"role": "Library metadata: relative age, months",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: {months, plural, one {{months, number, ::group-off}mo ago} other {{months, number, ::group-off}mo ago}}. A compact FRAGMENT composed into a larger sentence by its caller; see ui.library.time.minutes_m_ago. The English month unit is \"mo\" so it cannot be read as minutes.",
+		"length": "English is 103 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"months": "Whole months (30-day units), floored by the caller; never negative."
+		},
+		"plural": "ICU plural: keep one/other and the months variable. Use an unambiguous month word — a bare single-letter abbreviation can be read as minutes."
+	},
+	"ui.library.time.years_y_ago": {
+		"role": "Library metadata: relative age, years",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: {years, plural, one {{years, number, ::group-off}y ago} other {{years, number, ::group-off}y ago}}. A compact FRAGMENT composed into a larger sentence by its caller; see ui.library.time.minutes_m_ago.",
+		"length": "English is 98 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"years": "Whole years (12-month units), floored by the caller; never negative."
+		},
+		"plural": "ICU plural: keep one/other and the years variable; the compact unit abbreviation is the point."
+	}
+}

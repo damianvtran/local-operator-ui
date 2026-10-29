@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { after, before, test } from "node:test";
+import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 
 /*
@@ -36,6 +37,12 @@ const bundle = await build({
 	format: "esm",
 	platform: "node",
 	write: false,
+	/*
+	 * The module now resolves its copy through `t()` (`@shared/i18n`), so the
+	 * bundle needs the renderer's alias exactly as the desktop suite's other i18n
+	 * bundles do. esbuild cannot read tsconfig paths.
+	 */
+	alias: { "@shared": "./src/renderer/src/shared" },
 });
 const {
 	compactPath,
@@ -1110,6 +1117,22 @@ const rowsBundle = await build({
 	},
 	write: false,
 });
+/*
+ * A FILE URL, not a `data:` one: this bundle's import graph now reaches
+ * `t()` and therefore every English catalogue, and node refuses a data URL of
+ * that length ("Invalid URL"). The sibling bundles above stay on `data:` because
+ * their graphs do not pull the catalogue in.
+ */
+/* Inside the repo, not the OS temp dir: the bundle keeps `react` external, and a
+ * file under `/tmp` cannot resolve a bare specifier against this checkout's
+ * node_modules. Deleted as soon as it is imported. */
+const rowsBundlePath = join(
+	process.cwd(),
+	`.tmp-tool-row-rows-${process.pid}.mjs`,
+);
+await writeFile(rowsBundlePath, rowsBundle.outputFiles[0].text);
+const rowsLib = await import(pathToFileURL(rowsBundlePath).href);
+await unlink(rowsBundlePath).catch(() => undefined);
 const {
 	buildRows,
 	GAP,
@@ -1117,9 +1140,7 @@ const {
 	ledgerName,
 	paintsSomething,
 	splitFirstLine,
-} = await import(
-	`data:text/javascript;base64,${Buffer.from(rowsBundle.outputFiles[0].text).toString("base64")}`
-);
+} = rowsLib;
 
 const toolRecord = (id) => ({
 	kind: "tool",
@@ -1728,7 +1749,7 @@ test("the ledger row height is one number, not two that can drift", () => {
 	// to it: the app-wide disclosure default must still be the comfortable one.
 	assert.match(
 		source("src/renderer/src/shared/components/ui/disclosure.tsx"),
-		/const ROW = "flex min-h-6 w-full items-center gap-1\.5 py-0\.5 text-left"/,
+		/const ROW = "flex min-h-6 w-full items-center gap-1\.5 py-0\.5 text-start"/,
 		"the shared disclosure keeps its comfortable default",
 	);
 });
@@ -2136,6 +2157,8 @@ const detailBundle = await build({
 	format: "esm",
 	platform: "node",
 	write: false,
+	/* The module graph now reaches `t()` through the renderer alias. */
+	alias: { "@shared": resolve("src/renderer/src/shared") },
 });
 const {
 	EMPTY_SENDER,
@@ -2819,6 +2842,8 @@ const workingLineBundle = await build({
 	format: "esm",
 	platform: "node",
 	write: false,
+	/* The module graph now reaches `t()` through the renderer alias. */
+	alias: { "@shared": resolve("src/renderer/src/shared") },
 });
 const {
 	deriveWorkingLine,

@@ -1,0 +1,20 @@
+{
+	"ui.schedules.errors.agent_id_required": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: Agent ID is required to create a schedule."
+	},
+	"ui.schedules.errors.agent_id_missing": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: Agent ID is missing for submission."
+	},
+	"ui.schedules.errors.base_url_missing": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: Base URL for Local Operator API is not configured."
+	}
+}

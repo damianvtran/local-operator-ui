@@ -1,0 +1,144 @@
+{
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "7f3a1c9e",
+  "locale": "fr",
+  "round": 1,
+  "namespaces": {
+    "ui.agentMessages.settings": {
+      "status": "passed",
+      "keys_audited": 84,
+      "sha256": {
+        "en": "9f323c46102978c0fa60b8f006e4b380d78c18ab81a7205cd233438d867c5d5d",
+        "fr": "c6ccf348a17527a403bbf50ea51a2febd07367e29e29d2e016624367ae941b61"
+      },
+      "findings": [
+        {
+          "severity": "minor",
+          "key": "ui.agentMessages.settings.session.help",
+          "current": "Session qui peut être réveillée pour les nouveaux messages ; vide = badge seul.",
+          "proposed": "Session qui peut être réveillée pour les nouveaux messages ; vide = badge seul.",
+          "reason": "The space before « ; » is ASCII; the eight other ':'/'；' punctuation marks in these six fr files use U+202F, so this one breaks the locale's own typographic rule."
+        },
+        {
+          "severity": "minor",
+          "key": "ui.agentMessages.settings.allowlist.cue_listed_only",
+          "current": "Choisir « Uniquement les agents de mon choix » fait basculer les nouvelles conversations dans ce sens vers cette liste.",
+          "proposed": "Choisir « Uniquement les agents de mon choix » fait basculer les nouvelles conversations dans ce sens vers cette liste.",
+          "reason": "The guillemet inner spaces are ASCII; 64 of the 84 guillemet spaces in the shipped fr catalogue are U+202F, and only the older ui.chat.tags.json still uses plain spaces."
+        },
+        {
+          "severity": "minor",
+          "key": "ui.agentMessages.settings.allowlist.needs_entry",
+          "current": "Ajoutez au moins un agent ou une personne, ou choisissez « Toute mon organisation ».",
+          "proposed": "Ajoutez au moins un agent ou une personne, ou choisissez « Toute mon organisation ».",
+          "reason": "Same guillemet spacing drift as allowlist.cue_listed_only; the string must also quote the same option label, which it does."
+        }
+      ]
+    },
+    "ui.agents": {
+      "status": "passed",
+      "keys_audited": 0,
+      "sha256": {
+        "en": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "fr": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+      },
+      "findings": []
+    },
+    "ui.chat.transcript_copy": {
+      "status": "passed",
+      "keys_audited": 9,
+      "sha256": {
+        "en": "a81115a3e17a63068b79b4c66d86edaa1417a145f0b1fcc14d34deae8cd1734b",
+        "fr": "63e171769932144f01e8b9c99c89ceba055b98f66773eeafd656832a9ff923b6"
+      },
+      "findings": []
+    },
+    "ui.library": {
+      "status": "changes_requested",
+      "keys_audited": 152,
+      "sha256": {
+        "en": "009e864f684e85925001346dc382b5b04724d994f5b099a344f70827a2aa2b2a",
+        "fr": "ef0bd67c8de0acd5a805920703d7da5e6758e48ca5a93cba9b4212680a19e138"
+      },
+      "findings": [
+        {
+          "severity": "major",
+          "key": "ui.library.librarian.last_organized",
+          "current": "Dernier classement le {at}",
+          "proposed": "Dernier classement {at}",
+          "reason": "{at} is an age fragment, not a date: library-page.tsx:267 `relative()` returns \"5h ago\"/\"2d ago\", so the string renders \"Dernier classement le 5h ago\" — « le » is only valid before a date, and English carries no preposition."
+        },
+        {
+          "severity": "major",
+          "key": "ui.library.preview.organized_by",
+          "current": "Classé par {by} le {at}",
+          "proposed": "Classé par {by} {at}",
+          "reason": "{at} comes from library-model.ts:347 `relativeTime()` (\"2h ago\"/\"3d ago\") via library-preview.tsx:355, so the rendered line reads \"Classé par librarian le 2h ago\"; the inserted « le » makes it ungrammatical."
+        },
+        {
+          "severity": "minor",
+          "key": "ui.library.preview.from_conversation",
+          "current": "Depuis {title}",
+          "proposed": "De {title}",
+          "reason": "{title} is a conversation title used as a provenance link (library-preview.tsx:401-411); « depuis » is read temporally (\"since\") when it stands alone, while the control navigates back to that conversation."
+        },
+        {
+          "severity": "minor",
+          "key": "ui.library.filter.scope_all",
+          "current": "Tout ce qui est inclus",
+          "proposed": "Tout le catalogue",
+          "reason": "21 characters against 14 in English, in a filter rail that renders a count beside the label; the context defines the option as the whole catalog, so « Tout le catalogue » is both shorter and closer to the intent."
+        },
+        {
+          "severity": "nit",
+          "key": "ui.library.page.select_asset",
+          "current": "Sélectionnez un élément pour l’afficher en aperçu",
+          "proposed": "Sélectionnez un élément pour en voir l’aperçu",
+          "reason": "« afficher en aperçu » is not idiomatic; French expresses this with « voir l'aperçu de »."
+        }
+      ]
+    },
+    "ui.presence": {
+      "status": "passed",
+      "keys_audited": 9,
+      "sha256": {
+        "en": "7dc0d4c3bb4c18fb15501b630c7f1b2bc1f2f1ec8dabe131d3a3498b50a142a8",
+        "fr": "51605f7ba6988feab87f9fbc2f860219368178d2cb3e4cfc4873b8ca9e8a1a5e"
+      },
+      "findings": [
+        {
+          "severity": "minor",
+          "key": "ui.presence.minutes_ago",
+          "current": "il y a {count, number} min",
+          "proposed": "il y a {count, number} min — keep; run the rendered check at sidebar width, fall back to {count, number} min if it truncates",
+          "reason": "12 characters against 6 in English (\"4m ago\") for a fragment whose context says \"Keep the unit compact for narrow sidebar rows\"; hours_ago, days_ago and the composed link_down_compact (\"Lien coupé · il y a 4 min\", 25 chars vs 17) carry the same +100% growth."
+        }
+      ]
+    },
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 67,
+      "sha256": {
+        "en": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
+        "fr": "e5b020455c1d46d48e4aaf624d6b1224d06496865ed6af82e5828433941511e1"
+      },
+      "findings": [
+        {
+          "severity": "minor",
+          "key": "ui.teamBridge.composer.placeholder",
+          "current": "Écrire à cette conversation",
+          "proposed": "Écrire dans cette conversation",
+          "reason": "« écrire à » takes a person as recipient; a conversation is written in, not to, so the current wording reads translated."
+        },
+        {
+          "severity": "minor",
+          "key": "ui.teamBridge.unread.count",
+          "current": "{count, plural, one {{count} non lu} many {{count} de non lus} other {{count} non lus}}",
+          "proposed": "{count, plural, one {{count} non lu} many {{count} de non-lus} other {{count} non lus}}",
+          "reason": "The many branch renders at 1,000,000 as \"1000000 de non lus\": « de » needs a noun head, and the substantivized adjective takes a hyphen (« de non-lus »)."
+        }
+      ]
+    }
+  }
+}

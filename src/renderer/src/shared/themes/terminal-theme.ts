@@ -133,15 +133,55 @@ export const kebabRole = (role: string): string =>
  * unthemed cell rather than as a crash in a pane, and `missingTerminalRoles`
  * makes it assertable where a frame can be looked at.
  */
+/**
+ * Which of the two terminal surfaces this theme is for.
+ *
+ * `history` is the ended state (the pane's read-only reconstruction). It is a
+ * SEPARATE PALETTE DERIVATION rather than a CSS overlay for two reasons: opacity is
+ * banned as a state signal in this app (branding, "A view that is not the newest
+ * one" — it is unreadable on some grounds and invisible on others), and xterm paints
+ * into cells with parsed colours, so a `class` or a scrim on the host cannot reach
+ * what the program printed.
+ */
+export type TerminalSurfaceMode = "live" | "history";
+
+/**
+ * The role table for a mode.
+ *
+ * HISTORY DIMS THROUGH A ROLE STEP, NOT A SCRIM: the default foreground moves from
+ * `ink` to `inkMuted`, which every palette carries with its own contrast floor. The
+ * program's explicit ANSI colours are left alone — they are the program's
+ * vocabulary and a dimmed red is no longer the red the program asked for.
+ */
+const terminalThemeRoles = (
+	mode: TerminalSurfaceMode,
+): Record<TerminalThemeRole, string> =>
+	mode === "history"
+		? { ...TERMINAL_THEME_ROLES, foreground: "inkMuted" }
+		: TERMINAL_THEME_ROLES;
+
 export const readTerminalTheme = (
 	root: HTMLElement = document.documentElement,
+	mode: TerminalSurfaceMode = "live",
 ): ITheme => {
 	const styles = getComputedStyle(root);
 	const theme: Record<string, string> = {};
-	for (const role of Object.keys(TERMINAL_THEME_ROLES) as TerminalThemeRole[]) {
-		const value = resolveTerminalRole(styles, TERMINAL_THEME_ROLES[role]);
+	const roles = terminalThemeRoles(mode);
+	for (const role of Object.keys(roles) as TerminalThemeRole[]) {
+		const value = resolveTerminalRole(styles, roles[role]);
 		if (value) theme[role] = value;
 	}
+	/*
+	 * THE CARET IS HIDDEN IN CSS, NOT PAINTED AWAY (design round 1, D1).
+	 *
+	 * An earlier version painted both cursor colours as the ground, which hides the
+	 * block in every renderer but also paints the glyph UNDER the cursor in the ground
+	 * colour — a character vanished at the end of a recording. The history host now
+	 * carries `data-console-history` and the stylesheet makes the cursor cell
+	 * transparent while inheriting the row's ink; the theme deliberately leaves the
+	 * cursor roles as the live ones so a stylesheet that fails to load shows a visible
+	 * caret rather than an invisible glyph.
+	 */
 	/*
 	 * LOUD WHEN NOTHING RESOLVES, once per document theme.
 	 *

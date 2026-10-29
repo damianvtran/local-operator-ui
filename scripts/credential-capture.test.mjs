@@ -89,6 +89,7 @@ const {
 	credentialMarker,
 	credentialNamesFrom,
 	describeUnstored,
+	escapeHolds,
 	generateCredentialKey,
 	holdsCancelledToken,
 	isArmed,
@@ -780,10 +781,9 @@ test("a minted name dodges one the session's store already holds", () => {
 
 test("an Esc cancel reports the token it left inert, and an edit that moves it ends that", () => {
 	/*
-	 * The submission seam's half of §5 (QA round 1, Q2): the notice promises
-	 * "Enter will expose them", and the dispatcher then took the leading token as
-	 * the COMMAND — opening the picker and stripping the restored prose out of
-	 * the operator's sentence. The composer asks `holdsCancelledToken` instead,
+	 * The submission seam's half of §5 (QA round 1, Q2; UX round 2, U9): the words
+	 * written after a cancelled token are the operator's prose, not the command's
+	 * argument. The composer asks `holdsCancelledToken`,
 	 * which is a question about the buffer and so is cleared by precisely the
 	 * edits that move the token.
 	 */
@@ -792,34 +792,23 @@ test("an Esc cancel reports the token it left inert, and an edit that moves it e
 	composer.type("hunter2");
 	composer.escape();
 	const { token } = composer.state.lastCancel;
-	/*
-	 * `restored` IS PART OF THE TOKEN NOW (review round 3, MINOR 1). The submit seam
-	 * has to know whether this cancel put characters back — an empty span restores
-	 * nothing, so the words written after it are the operator's own prose, while a
-	 * span that held characters leaves a secret in the box — and the record of the
-	 * gesture is where that fact belongs, because nothing later can tell the two
-	 * apart from the buffer.
-	 */
-	/*
-	 * `restoredText` moved with the count (UX round 6, U24): the composer needed the
-	 * characters themselves to answer "is the run still in this draft?", because a count
-	 * alone let a cleared box and a fresh sentence be read as the run's draft. Both
-	 * halves of this pair assert it — the characters here, and the empty string for the
-	 * span that put nothing back.
-	 */
-	assert.deepEqual(token, {
-		span: { start: 0, end: 12 },
-		text: "/credential ",
-		restored: 7,
-		restoredText: "hunter2",
-	});
+	// The record carries the run and its offset only: a cancel restores nothing
+	// (2026-10-22), so there is no count and no restored text to carry.
+	assert.deepEqual(
+		token,
+		{
+			span: { start: 0, end: 12 },
+			text: "/credential ",
+		},
+		"a cancel DISCARDS (2026-10-22): a span that held characters reports the empty-span token",
+	);
+	assert.equal(composer.state.buffer, "/credential ");
 	assert.ok(holdsCancelledToken(composer.state.buffer, token));
-	// Prose written AROUND the restored characters leaves it standing — this is
-	// the draft the notice is about, and Enter must send it as it reads.
-	assert.ok(holdsCancelledToken("/credential hunter2 tonight", token));
+	// Prose written after the inert token leaves it standing.
+	assert.ok(holdsCancelledToken("/credential tonight", token));
 	// An edit that MOVES the token clears it.
-	assert.equal(holdsCancelledToken("please /credential hunter2", token), false);
-	assert.equal(holdsCancelledToken("/cred hunter2", token), false);
+	assert.equal(holdsCancelledToken("please /credential ", token), false);
+	assert.equal(holdsCancelledToken("/cred ", token), false);
 	assert.equal(holdsCancelledToken("", token), false);
 	// THE EMPTY-SPAN CANCEL REPORTS THE TOKEN TOO (UX round 2, U9), and the
 	// reason is that the promise and the SUBMIT rule are two different questions.
@@ -835,10 +824,7 @@ test("an Esc cancel reports the token it left inert, and an edit that moves it e
 	assert.deepEqual(empty.state.lastCancel.token, {
 		span: { start: 0, end: 12 },
 		text: "/credential ",
-		restored: 0,
-		restoredText: "",
 	});
-	assert.equal(empty.state.lastCancel.restored, 0);
 	// The characters the operator writes AFTER an empty-span cancel land after
 	// the run, so the run is still there — and that is the whole of U9: the same
 	// visible buffer behaved as prose when the span had held characters and as a
@@ -1333,25 +1319,35 @@ test("the index counts within the composer and resets to the next free number", 
  * ---------------------------------------------------------------------------
  */
 
-test("Esc restores the typed characters as plaintext and reports the length", () => {
+test("Esc DISCARDS the typed characters: none reach the buffer, the draft or the result", () => {
+	/*
+	 * The 2026-10-22 fix. The cancel used to unredact the value into the buffer as
+	 * plaintext, and the buffer is what the draft store persists, so a cancelled
+	 * credential reached localStorage. `cancelTypedCredential` is now only ever the
+	 * DISCARD (the composer holds the first Esc via `escapeHolds`), and its result
+	 * carries no trace of the value: not in the buffer, not as a count, not in the
+	 * token record. The harness's `draft()` is the persisted write, so its log is the
+	 * thing asserted.
+	 */
+	const secret = "dummy-not-a-secret-123";
 	const composer = harness();
 	composer.type("deploy with /credential ");
-	composer.type("hunter2");
+	composer.type(secret);
+	assert.ok(
+		escapeHolds(composer.state.capture),
+		"a span with characters holds its first Esc",
+	);
 	const result = composer.escape();
 	assert.ok(result.cancelled);
-	assert.equal(
-		composer.state.buffer,
-		"deploy with /credential hunter2",
-		"the characters come back as ordinary text; the token is left inert",
+	assert.equal(composer.state.buffer, "deploy with /credential ");
+	assert.equal(result.caret, "deploy with /credential ".length);
+	assert.ok(
+		!JSON.stringify(result).includes(secret),
+		"the result names no value",
 	);
-	assert.equal(
-		result.restored,
-		7,
-		"the announcement's length, never the value",
-	);
-	assert.equal(
-		unredactedNotice(result.restored),
-		"7 characters are now PLAIN TEXT in the composer — Enter will expose them",
+	assert.ok(
+		!composer.state.drafted.some((draft) => draft.includes(secret)),
+		"no persisted draft write ever carried the characters",
 	);
 	assert.equal(composer.state.payloads.size, 0, "nothing is held");
 	assert.equal(
@@ -1359,6 +1355,13 @@ test("Esc restores the typed characters as plaintext and reports the length", ()
 		false,
 		"and the arm ends with it",
 	);
+	assert.equal(escapeHolds(composer.state.capture), false);
+});
+
+test("an EMPTY span does not hold its Esc: one press ends the mode", () => {
+	const composer = harness();
+	composer.type("/credential ");
+	assert.equal(escapeHolds(composer.state.capture), false);
 });
 
 test("the ARMING POWER belongs to the completion and the keystroke, and to no other route", () => {
@@ -1412,11 +1415,6 @@ test("Esc on an empty span ends the mode and leaves the token inert", () => {
 	composer.type("/credential ");
 	const result = composer.escape();
 	assert.ok(result.cancelled);
-	assert.equal(
-		result.restored,
-		0,
-		"nothing to restore, so nothing to announce",
-	);
 	assert.equal(composer.state.buffer, "/credential ");
 	assert.equal(isArmed(composer.state.capture), false);
 	assert.equal(isTyping(composer.state.capture), false);
@@ -1910,7 +1908,7 @@ test("the notices are the TUI's own sentences", () => {
 	 */
 	assert.equal(
 		CREDENTIAL_TYPING_NOTICE,
-		"masked as you type — Enter turns it into a pill, Esc cancels",
+		"masked as you type — Enter makes a pill, Esc twice discards",
 	);
 	assert.ok(
 		!CREDENTIAL_TYPING_NOTICE.includes("chip"),

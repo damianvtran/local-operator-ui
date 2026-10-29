@@ -31,14 +31,14 @@
  *
  * Usage:
  *   node scripts/check-evidence-palettes.mjs            # every declared set
- *   node scripts/check-evidence-palettes.mjs <set-path> # one, under docs/evidence
+ *   node scripts/check-evidence-palettes.mjs <set-path> # one, under docs/evidence-frames
  */
 
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { isEntryPoint } from "./entry-point.mjs";
 
-/** Set path under `docs/evidence` -> the palettes its `--themes=` command names. */
+/** Set path under the IGNORED frames tree (`docs/evidence-frames`) -> the palettes its `--themes=` command names. */
 export const SET_BUDGETS = {
 	"chat-canonical-message-actions": [
 		"localOperatorLight",
@@ -75,7 +75,7 @@ const palettesOf = (dir) => {
  * strings, one per state directory that is not exactly the budget, plus one if
  * the set itself is missing. Empty means the set matches its record.
  */
-export function checkSetBudget(setPath, budget, root = "docs/evidence") {
+export function checkSetBudget(setPath, budget, root = "docs/evidence-frames") {
 	const setDir = join(root, setPath);
 	if (!existsSync(setDir))
 		return [`${setPath}: the set directory does not exist`];
@@ -108,8 +108,20 @@ export function checkSetBudget(setPath, budget, root = "docs/evidence") {
 	return problems;
 }
 
-/** Every declared set. Returns `{ sets, frames, problems }`. */
-export function checkPaletteBudgets(root = "docs/evidence", only = null) {
+/**
+ * Every declared set, under the FRAMES tree by default.
+ *
+ * Frames are rig output and are not committed, so this walk only has anything
+ * to compare on a checkout that has been captured - the frames moved here with
+ * the split, and a walk of `docs/evidence/` would now find no frames at all and
+ * report every set as missing.
+ *
+ * Returns `{ sets, frames, problems }`.
+ */
+export function checkPaletteBudgets(
+	root = "docs/evidence-frames",
+	only = null,
+) {
 	const names = only ? [only] : Object.keys(SET_BUDGETS);
 	const problems = [];
 	let frames = 0;

@@ -1,0 +1,51 @@
+{
+  "at": "2026-10-21T08:42:16.909Z",
+  "gitHead": "e99863a401612778bfb961a268a551bcddc86464",
+  "gitBranch": "feat/browser-address-overlay-s2",
+  "gitDirty": true,
+  "worktreeDiffSha256": "82e3d52ac1f04b03f11fbd5a5e320ccd36a7377c9ce0b58d4439c576e1656e26",
+  "hostLoad": 59.18798828125,
+  "node": "v26.5.0",
+  "electron": "44.3.0",
+  "artifacts": {
+    "main": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s1/out/main/index.js",
+      "sha256": "7d6cb1302509b7e29a83c7a6c8ce905d6e02c01c274bfb2d437504adf253355c",
+      "bytes": 5306240
+    },
+    "preload": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s1/out/preload/index.js",
+      "sha256": "dfd1ba8bf241a7b49cfc9e4e92835f546556690512ad7adcaff2aa66898319e6",
+      "bytes": 207742
+    },
+    "renderer": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/index.html",
+      "sha256": "4d9668051c42bfa0701b077d7e1f1232dc398e45474dc332265a109aac7e03b5",
+      "bytes": 3952
+    },
+    "overlayDocument": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay.html",
+      "sha256": "c93d84b0165dc7ac9eeb196c43e59abac1f78c160e3c36603a3c23b6c0c8e2cd",
+      "bytes": 1490
+    },
+    "listDocument": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html",
+      "sha256": "9c8bf7a57794c54e528aebad72f3b1eba8e226bc76c1eb889531b4a2b096e57e",
+      "bytes": 1680
+    }
+  },
+  "listDocument": {
+    "present": true,
+    "csp": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; font-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'",
+    "assets": [
+      "assets/addressOverlayList-BEh9WU4R.js",
+      "assets/addressOverlayList-8wdZRD_t.css"
+    ]
+  },
+  "overlayDocument": {
+    "csp": "default-src 'none'; script-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; style-src 'sha256-Q87sKOjrF+NCzi7TQoWNii1ThZysk1mvF9zCr/ugLF0='",
+    "hasScriptTag": false,
+    "hasAutofocus": false,
+    "hasUnsafeInline": false
+  }
+}

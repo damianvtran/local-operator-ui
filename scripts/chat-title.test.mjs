@@ -197,6 +197,63 @@ test("the draft branch is the draft's own name and never the row's", () => {
 	);
 });
 
+test("a draft that has already created a conversation names the conversation, not a new chat", () => {
+	/*
+	 * THE OPERATOR'S SCREEN (2026-10-22): "New chat with Minerva Development" over
+	 * a body that said the conversation was gone. The header branch keyed on
+	 * `draftKey` alone, so a stable `draft:team:<name>` row that had already
+	 * created a conversation still wore the new-chat sentence.
+	 */
+	assert.equal(
+		resolveChatTitle({
+			draftKey: "draft:team:minerva-development",
+			draftSessionId: "deadbeef0001",
+			draftTarget: "minerva-development",
+			liveTitle: "",
+			catalogueTitle: "An old chat",
+		}),
+		"An old chat",
+		"the row's remembered name is what the deleted conversation wore",
+	);
+	assert.equal(
+		resolveChatTitle({
+			draftKey: "draft:team:minerva-development",
+			draftSessionId: "aaaa11112222",
+			draftTarget: "minerva-development",
+			liveTitle: "Retention sweep notes",
+			catalogueTitle: "",
+		}),
+		"Retention sweep notes",
+		"and a live conversation shows its own title while the draft is still staged",
+	);
+	/*
+	 * THE FIRST SEND'S WINDOW (design review round 1's D1): the create writes
+	 * `sessionId` before the name exists, so the header must not fall to
+	 * "Untitled chat" while the team is a fact.
+	 */
+	assert.equal(
+		resolveChatTitle({
+			draftKey: "draft:team:minerva-development",
+			draftSessionId: "aaaa11112222",
+			draftTarget: "minerva-development",
+			liveTitle: "",
+			catalogueTitle: "",
+		}),
+		"minerva-development",
+	);
+	assert.equal(
+		resolveChatTitle({
+			draftKey: "draft:team:minerva-development",
+			draftSessionId: "aaaa11112222",
+			draftTarget: null,
+			liveTitle: "",
+			catalogueTitle: "",
+		}),
+		"New chat",
+		"an untargeted draft (⌘N) keeps the sentence it wore before the send, not Untitled chat (design round 2's D8)",
+	);
+});
+
 test("a streaming tick with an empty live title leaves the row's name standing", () => {
 	reset([{ session_id: "aaaa11112222", title: OPENER_NAME }]);
 	streamTick("aaaa11112222", "");

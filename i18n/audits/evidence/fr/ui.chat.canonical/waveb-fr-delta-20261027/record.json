@@ -1,0 +1,140 @@
+{
+ "locale": "fr",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-10-27",
+ "audit_id": "waveb-fr-delta-20261027",
+ "audit_kind": "delta",
+ "wave": "B",
+ "key_count": 8,
+ "auditor": {
+  "agent": "i18n-auditor",
+  "role": "independent translation auditor (delta round, wave B)",
+  "team": "lopdev",
+  "harness": "Local Operator",
+  "session": "c3a8965266e3",
+  "instance": "c3a8965266e3",
+  "model": "radient/auto",
+  "actual_model": "radient/auto",
+  "actual_model_source": "harness session header, 'Model: radient/auto' — a router alias; the upstream model is not exposed to this session",
+  "fallback": null,
+  "independent_from_translator": true,
+  "independent_from_translator_session": true,
+  "independence_basis": "This audit session wrote none of the fr wave-B amendments and holds no translator turn; it read them from the committed bytes at a5356ce91c and changed nothing but its own evidence. The translator's own declining note is adjudicated below rather than repeated."
+ },
+ "independence": {
+  "independent_from_translator": true,
+  "basis": "This audit session wrote none of the fr wave-B amendments and holds no translator turn; it read them from the committed bytes at a5356ce91c and changed nothing but its own evidence. The translator's own declining note is adjudicated below rather than repeated."
+ },
+ "head": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+ "audited_head": "0559f7f7d830752b0c5d118c2b1049f125b43bbb",
+ "prior_audit": {
+  "receipt": "i18n/receipts/fr-waveb-e6df79ee0c48.json",
+  "audit_id": "waveb-fr-20261027",
+  "record": "i18n/audits/evidence/fr/ui.chat.canonical/waveb-fr-20261027/record.json",
+  "verdict": "changes_requested"
+ },
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+   "sha256": "5bb6a6fe5dd64f70a4caf0812d3fa4b95c70bd49c12bd556ab0d827176ac4477"
+  },
+  "fr": {
+   "path": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+   "sha256": "8a5e69118ce5bc3432aaa493b2d0d01e7fc3199670083a79cb129ad379567885"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+   "sha256": "ea13112039dfed41998801904ccc88531f87452a7e3d7138ab09a5f48f9e65b2"
+  }
+ },
+ "scope": "Delta round, wave B, fr. All 62 wave-B keys across the nine namespaces: the 9 changed fr values (8 answers to the earlier findings, the two generic-verb labels among them, plus the pairing_guidance en-fix propagation) were re-read in full against the English source, its context sidecar, the render call sites, the glossary and the fr style guide; the other 53 values were proved byte-identical to the bytes the previous auditor signed off (delta-proof.json). Catalogue-level audit: no rendered frame, no browser, no native-speaker sign-off claimed.",
+ "delta": {
+  "fr_values_changed_at_this_head": [
+   "ui.chat.canonical.tool_row.generic_verb.running",
+   "ui.chat.canonical.tool_row.generic_verb.settled"
+  ],
+  "wave_keys_carried_byte_identical": 6,
+  "proof": "i18n/audits/evidence/fr/ui.chat.device/waveb-fr-delta-20261027/delta-proof.json"
+ },
+ "adjudications": {
+  "F-01": {
+   "prior_severity": "MAJOR",
+   "finding": "generic_verb.running was 'Appel en cours de', a calque that composed as 'Appel en cours de bash …'",
+   "verdict": "resolved",
+   "evidence": "Value is now 'Appel en cours :' — the 'en cours de <tool>' parse is gone, the U+202F is the guide's, and the label composes as 'Appel en cours : bash pnpm vitest run src/renderer'. The finding's width claim is OVERRULED as overstated: 16 cells sits inside the column's own English envelope (the verb table's longest values are 'Checking network status' 23, 'Checking network status'/'Unlinking session from' 22, 'Peeking at session'/'Finding references' 18), so a 16-cell fr verb is not new overflow. The sidecar's 'one word, no punctuation' tone is a source shape French cannot hold; the colon-label shape already exists in this catalogue ('Appels imbriqués :')."
+  },
+  "F-02": {
+   "prior_severity": "MINOR",
+   "finding": "generic_verb.settled was 'Appel de'",
+   "verdict": "resolved",
+   "evidence": "Now 'Appel :' — same label shape as the running sibling, 7 cells (the English 'Called' is 6)."
+  }
+ },
+ "en_source_delta": null,
+ "findings": [],
+ "current_report_verdict": {
+  "status": "passed",
+  "result": "clean",
+  "unresolved_blocker_major_count": 0,
+  "counts": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 0,
+   "nit": 0
+  },
+  "finding_ids": []
+ },
+ "artifacts": [
+  {
+   "path": "i18n/receipts/c3a8965266e3.json",
+   "sha256": "4fb616ed186079246990ab445ec5da24cfa8abddda1937cb7310ac0cb373792c",
+   "what": "the audit receipt this record's ledger row points at"
+  },
+  {
+   "path": "i18n/audits/evidence/fr/ui.chat.device/waveb-fr-delta-20261027/delta-proof.json",
+   "sha256": "267934db10254ff701ccbe2856f3f1dfc7db31120a0f78df5d6d30f7b0e07a6f",
+   "what": "parsed-JSON delta + byte-identical regression proof over the nine namespaces (en and fr)"
+  },
+  {
+   "path": "i18n/audits/evidence/fr/ui.chat.device/waveb-fr-delta-20261027/icu-audit.json",
+   "sha256": "45ae16bb6b388e8c6993678c8ad68fc6c6f0f61ba92accb11996591a00ad6b46",
+   "what": "all 62 values parsed and formatted with intl-messageformat 12.1.3; argument/branch/span parity"
+  },
+  {
+   "path": "i18n/audits/evidence/fr/ui.chat.device/waveb-fr-delta-20261027/rendered-fr.json",
+   "sha256": "84f6a0b316c8d9b9c5105c24d57e409222867a9bc98b9fed502c551b0883b6e7",
+   "what": "all 62 values rendered through the shipped t() under locale fr, plus the plural series"
+  },
+  {
+   "path": "i18n/audits/evidence/fr/ui.chat.device/waveb-fr-delta-20261027/audit.log",
+   "sha256": "28164b3c00468a5b8ac1f03fb41241837794a77f1e3afea059f0c2d564bca93f",
+   "what": "actual validator command output (execution log, not notes)"
+  },
+  {
+   "path": "i18n/audits/evidence/fr/ui.chat.device/waveb-fr-delta-20261027/ledger-assemble.log",
+   "sha256": "e2f5bab5546ea29a64700f626b54988b75e1056fc33bb66e37bc20314efbecbb",
+   "what": "the nine ledger-assemble runs, in a throwaway copy (execution log)"
+  },
+  {
+   "path": "i18n/audits/evidence/fr/ui.chat.device/waveb-fr-delta-20261027/ledger-check.log",
+   "sha256": "8448493eb416e87b8817d18f9698d001d7b1040346332404257b2967fae47970",
+   "what": "ledger-check over the assembled copy: zero findings for fr (execution log)"
+  },
+  {
+   "path": "i18n/audits/evidence/fr/ui.chat.device/waveb-fr-delta-20261027/ledger-rows.json",
+   "sha256": "2bef995fc79fbbbb40b535603fd0ff483a61a826b1b51c17dda9837fccb36901",
+   "what": "the nine assembled fr rows, exactly as ledger-assemble wrote them"
+  },
+  {
+   "path": "i18n/audits/evidence/fr/ui.chat.device/waveb-fr-delta-20261027/receipt-verify.json",
+   "sha256": "32ea07f61d068d0b751281141eb5c15eefc3fa369c50461dbf7b530839f9b8d5",
+   "what": "the shipped receipt re-derived through the repo's own deriveReceiptAudit against the committed bytes, for all nine namespaces"
+  }
+ ],
+ "audit_notes_not_execution_log": "Prose in this record (scope, adjudications, findings) is the auditor's judgement. Command output lives in the wave's audit.log; nothing here claims a run that log does not show.",
+ "known_limits": [
+  "Catalogue-level audit: no rendered frame, no browser run, no native-speaker sign-off.",
+  "Width judgements use cell counts and the column's own English envelope, not a measured frame.",
+  "The upstream model behind the radient/auto alias is not exposed to this session."
+ ]
+}

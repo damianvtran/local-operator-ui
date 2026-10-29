@@ -100,6 +100,12 @@ import type { PendingDesktopGate } from "../../../../shared/desktop-session-cont
  * existing reader keeps one import site.
  */
 import { BARE_OPTION_ORDINAL, approvalVerdict } from "./approval-words";
+/*
+ * TYPE-ONLY, so this module keeps its bundle independence: the dismissal's
+ * vocabulary lives with the rest of the queued-ask contract (`ask-queue.ts`),
+ * and an `import type` is erased rather than dragging that module's imports in.
+ */
+import type { AskDismissReason } from "./ask-queue";
 
 export {
 	APPROVAL_OPTIONS,
@@ -1334,6 +1340,50 @@ export const declineQueuedAsk = async (
 		sessionId,
 		askId: taskId,
 		decline: true,
+	};
+	try {
+		await send(request);
+		return { status: "sent" };
+	} catch (error) {
+		return { status: "failed", request, error };
+	} finally {
+		lock.release();
+	}
+};
+
+/**
+ * Dismiss an OPEN queued ask: put it away without answering it (harness SA-D5).
+ *
+ * A third door beside the answer and the decline, addressed the same way and
+ * behind the same one-answer-in-flight lock. The difference is what the owner
+ * is told: a decline says "decide yourself", a dismissal carries the operator's
+ * reason (`answered_in_chat` or `moot`) so the agent knows whether to take the
+ * answer from the conversation or to drop the ask.
+ *
+ * NO `delivered`/status PRE-CHECK, for the reason the two siblings state: the
+ * owner's fold decides, and its refusal sentence ("this ask is relayed from
+ * another session — answer it there, or dismiss it here", the already-dismissed
+ * repeat, a settled row) is what the card renders in place. A client-side test
+ * would be a second opinion about a race this process cannot see.
+ */
+export const dismissQueuedAsk = async (
+	deps: {
+		taskId: string;
+		reason: AskDismissReason;
+		sessionId?: string | null;
+		lock: SendLock;
+	},
+	send: (request: GateAnswerRequest) => Promise<unknown>,
+): Promise<AnswerOutcome> => {
+	const { taskId, reason, sessionId, lock } = deps;
+	if (!sessionId || !taskId) return { status: "refused" };
+	if (!lock.tryAcquire()) return { status: "refused" };
+	const request: GateAnswerRequest = {
+		op: "sessions.answer",
+		sessionId,
+		askId: taskId,
+		dismiss: true,
+		reason,
 	};
 	try {
 		await send(request);

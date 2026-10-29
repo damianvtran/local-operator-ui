@@ -806,6 +806,7 @@ const AppShell: FC<{
 								askScope="session"
 								consoleUnseenCount={0}
 								consoleUnseenPulsing={false}
+								consoleLiveCount={0}
 								fileCount={0}
 								codeOpened={0}
 								codeMentioned={0}

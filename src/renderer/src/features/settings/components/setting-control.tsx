@@ -57,11 +57,11 @@ import {
 	isFunctionKeyToken,
 } from "../../../../../shared/mini-view";
 import {
-	DESKTOP_HOTKEY_NEEDS_MODIFIER_COPY,
-	MACOS_DETECTION_BOUNDARY_COPY,
-	QUICK_SEND_SCOPE_COPY,
 	alternatesCopy,
+	desktopHotkeyNeedsModifierCopy,
+	macosDetectionBoundaryCopy,
 	priorArtCopy,
+	quickSendScopeCopy,
 	registrationCopy,
 } from "../../../mini-view/mini-copy";
 import { rendererPlatform } from "../../../mini-view/renderer-platform";
@@ -195,7 +195,7 @@ const DesktopHotkeyDetails = () => {
 			className="flex flex-col gap-0.5"
 			data-tour-tag="quick-send-registration"
 		>
-			<span className="text-meta text-ink-dim">{QUICK_SEND_SCOPE_COPY}</span>
+			<span className="text-meta text-ink-dim">{quickSendScopeCopy()}</span>
 			{registration ? (
 				<output
 					className={cn(
@@ -218,7 +218,7 @@ const DesktopHotkeyDetails = () => {
 			 */}
 			{platform === "mac" && registration?.status === "registered" ? (
 				<span className="text-meta text-ink-dim">
-					{MACOS_DETECTION_BOUNDARY_COPY}
+					{macosDetectionBoundaryCopy()}
 				</span>
 			) : null}
 			<span className="text-meta text-ink-dim">{alternatesCopy(platform)}</span>
@@ -298,7 +298,7 @@ const HotkeyInput = ({
 					if (!binding) return;
 					event.preventDefault();
 					if (desktop && !desktopChordAllowed(binding)) {
-						setRefusal(DESKTOP_HOTKEY_NEEDS_MODIFIER_COPY);
+						setRefusal(desktopHotkeyNeedsModifierCopy());
 						return;
 					}
 					setRefusal(null);
@@ -776,7 +776,7 @@ export const SettingControl = ({
 												 * carries `whitespace-nowrap` so it cannot break the row into
 												 * two lines beside the RTL label (UX U2).
 												 */
-												<span className="ml-2 shrink-0 text-caption text-ink-dim whitespace-nowrap">
+												<span className="ms-2 shrink-0 text-caption text-ink-dim whitespace-nowrap">
 													{t("ui.settings.language.general.unavailable_choice")}
 												</span>
 											)}

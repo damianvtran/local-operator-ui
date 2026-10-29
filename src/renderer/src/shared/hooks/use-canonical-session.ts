@@ -1,3 +1,5 @@
+import { subscribeLocale } from "../../../../i18n/locale";
+import { t } from "../../../../i18n/messages";
 /**
  * Canonical desktop session stream consumption.
  *
@@ -10,10 +12,11 @@
  *   with the OWNER epoch/sequence checked independently of the HTTP receipt
  *   cursor — the two cursors are different clocks.
  * - `event` frames carry typed canonical AgentEvents; a terminal event is what
- *   resolves the "Waiting to start" latch. The receipt cursor is for
- *   dedupe/reconnect — at the receipt and, per row, at the reducer's cursor
- *   gate (a re-delivered `message_update` is refused rather than appended) —
- *   and never for deciding what is newer paint state.
+ *   resolves the "Waiting to start" latch. The receipt cursor is a monotonic
+ *   high-water mark: a same-epoch frame at or behind it is stale and may not
+ *   repaint the transcript, including a reset replay that would otherwise
+ *   replace the whole viewport. Per-row cursor checks remain a second guard
+ *   for partial streaming updates.
  * - A `gap` frame (or any replay-with-gap open) says the receipt lost continuity:
  *   painted FRONTEND state is dropped, and the transcript's in-flight rows are
  *   KEPT and marked uncertain (`markLiveRecordsTruncated`) rather than erased,
@@ -31,6 +34,7 @@
  * measurable in the browser's own timeline rather than estimated.
  */
 
+import { applyJobDeltas } from "@features/chat/canonical/job-deltas";
 import {
 	type JournalOrderRead,
 	currentOrderRevision,
@@ -52,6 +56,7 @@ import {
 	EMPTY_TRANSCRIPT,
 	RECONCILE_TAIL_ENTRIES,
 	RECONCILE_TAIL_MAX_ENTRIES,
+	type TranscriptDocument,
 	type TranscriptImage,
 	type TranscriptState,
 	appendLocalNote,
@@ -109,6 +114,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { desktopRequestTimeoutMs } from "../../../../shared/desktop-contract";
 import {
 	acceptFrontendReplace,
+	isNewerDesktopFrame,
 	mergeCompletionAttention,
 } from "../../../../shared/desktop-session-contract";
 import type {
@@ -117,17 +123,25 @@ import type {
 	DesktopHistoryPage,
 	DesktopSessionFrame,
 	DesktopSnapshot,
+	DesktopStreamCursor,
 } from "../../../../shared/desktop-session-contract";
 import {
 	DESKTOP_STREAM_DETAIL,
-	HISTORY_UNREADABLE,
 	type SessionFailureNotice,
-	streamFailureNotice,
 } from "../../../../shared/desktop-stream-notice";
 import {
 	type LoadOlderOutcome,
 	createOlderLoader,
 } from "../../features/chat/canonical/load-older";
+/* The sentences are the renderer's: the shared module keeps the machine
+ * vocabulary and the classification (the copy it used to hold pulled every
+ * catalogue into the preload bundle). `noticeFor` is the re-resolution door a
+ * holder of a notice needs when the language changes under it. */
+import {
+	historyUnreadable,
+	noticeFor,
+	streamFailureNotice,
+} from "../../features/chat/canonical/session-failure-notice";
 /* The child-pulse rule (§ 5.3): the event set, the id rule and the bump. */
 import { applySubagentPulse, seedSubagentPulses } from "./subagent-pulse";
 
@@ -380,6 +394,62 @@ export type CanonicalSessionView = {
 	 */
 	failure: SessionFailureNotice | null;
 	/**
+	 * The live stream has told us it could not deliver deltas, and the painted
+	 * conversation may be behind the owner's.
+	 *
+	 * THE NOTICE THE VIEW WAS MISSING. The backend replaces any frame over its
+	 * 1 MiB socket cap with a passive notice; before this flag the desktop app
+	 * folded the notice's empty `changes`, painted a trace-tier line, and went on
+	 * claiming the conversation was live - a long-lived session froze with no
+	 * affordance. Set by a `frontend.update` carrying `degraded` or `paused`, or
+	 * by an `event` notice whose `action` is `reload`; cleared only by a frame
+	 * that can PROVE the view current again - a snapshot, a `frontend.replace`,
+	 * or an accepted `frontend.update` that carries neither flag.
+	 *
+	 * Deliberately NOT `status`: the stream is still open in the paused case, and
+	 * `status` already means "can the transport reach the owner" to the pane's
+	 * failure notice, the working line and the composer. Two facts, two fields;
+	 * the banner is the one surface that reads this one.
+	 */
+	liveUpdatesPaused: boolean;
+	/**
+	 * WHICH notice raised the banner, because the two have different proof
+	 * requirements for clearing it.
+	 *
+	 * A `frontend.update` notice means one delta was too large to send; the body
+	 * it carried is gone, but the next complete projection can replace it. An
+	 * `event` notice means a TRANSCRIPT fact was dropped (the incident is a lost
+	 * `agent_end`), and no later tick repairs it: only a full snapshot, an
+	 * accepted replacement, or the reader's reload proves the transcript whole.
+	 * Kept as its own field rather than inferred from copy or status, because a
+	 * clean roster tick arrives within a tick of the notice and must not take
+	 * the banner away on the event-origin path (UX round 1, U1).
+	 */
+	liveUpdatesNotice: "none" | "update" | "event";
+	/**
+	 * The last reload press spent the stream's retry budget without an answer.
+	 *
+	 * The band says so in the same place the paused sentence lives, so a press
+	 * that failed does not simply revert to a button with no explanation (UX
+	 * round 1, U5). Cleared by the next notice, the next press, and every frame
+	 * that proves the view current.
+	 */
+	liveUpdatesReloadFailed: boolean;
+	/**
+	 * A "Reload from history" press is out, and no frame has proved the view
+	 * current since.
+	 *
+	 * Its only job is the banner's own loading state: the press re-arms the
+	 * stream (a fresh subscription answers with a snapshot), and until that
+	 * snapshot lands the reader is owed the acknowledgement that their press did
+	 * something. A separate field from `liveUpdatesPaused` because the two have
+	 * different lifetimes - the press does not clear the banner, only the
+	 * answer does - and collapsing them would either hide the notice on a press
+	 * that failed or leave the button live for a second press that stacks
+	 * reconnects.
+	 */
+	liveUpdatesReloading: boolean;
+	/**
 	 * True while the painted rows came from the LOCAL PAINT CACHE rather than
 	 * from the owner (M2), which is what a notification click's first frame is.
 	 *
@@ -598,6 +668,23 @@ export type CanonicalSessionHandle = CanonicalSessionView & {
 	 * opened, or this one unmounted).
 	 */
 	retry: () => void;
+	/**
+	 * Repaint this conversation from authoritative history.
+	 *
+	 * The action behind the live-update banner's "Reload from history" control.
+	 * It re-opens the subscription WITHOUT a receipt cursor, which is what makes
+	 * the backend answer with a complete snapshot instead of resuming after the
+	 * frames the stream already dropped (`resync`'s own note). The snapshot is
+	 * then the frame that proves the view current and clears the banner; a
+	 * client-side clear at press time would take the notice away before anything
+	 * had repainted, which is the claim the banner exists to refuse.
+	 *
+	 * Echo rows and the composer's `sendUnsettled` survive because the repaint
+	 * MERGES: the snapshot's page is applied over the transcript the pane already
+	 * holds (`applyHistoryPage`, durable rows win by id), and the draft row that
+	 * carries the send lives in the store, which this action never touches.
+	 */
+	reloadFromHistory: () => void;
 	/**
 	 * Ask for the authoritative history read again, now.
 	 *
@@ -1529,6 +1616,13 @@ export type PendingSend = {
 	text: string;
 	images: TranscriptImage[];
 	/**
+	 * The document blocks the press uploaded. Carried with the entry for the same
+	 * reason `images` is: the row is painted from this entry on every mount, so a
+	 * row that lost its files on a remount would show a message short of what was
+	 * sent (contract v1 §5).
+	 */
+	documents: TranscriptDocument[];
+	/**
 	 * THE CLAIM'S OUTCOME IS KNOWN, and the entry is kept only to keep painting the
 	 * row (design review round 1's D1/D2, extended by what the re-shoot measured).
 	 * The server's complete read answered the claim NO (`resolveHeldFromServer`),
@@ -1611,7 +1705,16 @@ function applyPendingSend(
 	entry: PendingSend,
 ): void {
 	target((state) =>
-		appendPendingUser(state, entry.id, entry.text, entry.images),
+		appendPendingUser(
+			state,
+			entry.id,
+			entry.text,
+			entry.images,
+			// `now` is the fifth positional parameter; the echo's document blocks
+			// follow it, so the client stamp stays where callers already put it.
+			undefined,
+			entry.documents,
+		),
 	);
 	if (!entry.painted) {
 		entry.painted = true;
@@ -1683,6 +1786,8 @@ export function paintPendingSend(
 		id: string;
 		text: string;
 		images: TranscriptImage[];
+		/** Files the press already uploaded; absent means none. */
+		documents?: TranscriptDocument[];
 		onPainted?: () => void;
 		/** Only `resynthesisePendingSend`'s resolved arm passes this; see `settled`. */
 		settled?: boolean;
@@ -1711,6 +1816,7 @@ export function paintPendingSend(
 		id: send.id,
 		text: send.text,
 		images: send.images,
+		documents: send.documents ?? [],
 		onPainted: send.onPainted,
 		settled: send.settled,
 		submittedAt: send.submittedAt,
@@ -1968,7 +2074,24 @@ export function seedPendingSends(
 	if (!entries) return state;
 	let seeded = state;
 	for (const entry of entries.values()) {
-		seeded = appendPendingUser(seeded, entry.id, entry.text, entry.images);
+		/*
+		 * The files travel with the row here for the same reason `applyPendingSend`
+		 * passes them: the seed is what a freshly mounted pane paints FIRST, so a
+		 * seed that dropped them would show the message without its card until the
+		 * owner's durable row arrived - the exact window this function exists to
+		 * close for the row's text.
+		 */
+		seeded = appendPendingUser(
+			seeded,
+			entry.id,
+			entry.text,
+			entry.images,
+			// The clock stays the default (`now` = `Date.now()`); `documents` is the
+			// sixth parameter, after it, so passing the list here must not be read as
+			// a stamp - the sibling `applyPendingSend` says the same at its own call.
+			undefined,
+			entry.documents,
+		);
 	}
 	return seeded;
 }
@@ -2240,6 +2363,23 @@ function markPageBorn(
 	for (const entry of entries) pageBorn.add(entryRecordKey(entry));
 }
 
+/**
+ * Whether a frame is a JOURNAL-ORDER CORRECTION rather than frontend state.
+ *
+ * The bridge publishes `journal_order_ready` as an `event` frame whose payload
+ * names rows the journal has since placed, and it deliberately keeps those
+ * frames through the open handshake even when their receipt is at or below the
+ * snapshot's watermark - "a snapshot's sequence watermark cannot supersede an
+ * off-page correction" (`docs/DESKTOP_API.md`; the backend's own condition is
+ * `desktop_sessions.py::events`' `order_fact and not already_replayed`), because
+ * a bounded snapshot page need not contain the IDs the correction refers to.
+ *
+ * So the receipt high-water mark must not decide whether one is applied: its
+ * ordering is the JOURNAL's, not the stream's.
+ */
+const isJournalOrderCorrection = (frame: DesktopSessionFrame): boolean =>
+	frame.type === "event" && frame.payload?.type === "journal_order_ready";
+
 export function useCanonicalSessionStream(
 	sessionId: string | undefined,
 	enabled: boolean,
@@ -2460,6 +2600,13 @@ export function useCanonicalSessionStream(
 			terminal: null,
 			turnsCompleted: 0,
 			failure: null,
+			// A mount has received no stream notice yet, so nothing has said this
+			// view is behind. Setting it optimistically would paint a banner over
+			// every cold open and train the reader to ignore the one that matters.
+			liveUpdatesPaused: false,
+			liveUpdatesNotice: "none",
+			liveUpdatesReloadFailed: false,
+			liveUpdatesReloading: false,
 			/*
 			 * SEEDED, and only here. A panel mounted while a send for its own identity
 			 * is already painted must paint that row in its FIRST frame: on the
@@ -2558,6 +2705,42 @@ export function useCanonicalSessionStream(
 		},
 		[],
 	);
+	/*
+	 * THE VIEW IS A CALLER THAT HOLDS A NOTICE, SO IT RE-WORDS IT WHEN THE
+	 * LANGUAGE CHANGES (agent review round 1, M2). `session-failure-notice.ts`
+	 * resolves copy at call time - rather than freezing it into module constants -
+	 * precisely so the sentence a reader sees can follow the language they read.
+	 * The view stores the notice for as long as the failure is terminal (until a
+	 * retry succeeds or the panel remounts), so a switch made while the notice is
+	 * on screen used to leave the old language there: measured as stored English
+	 * after `setLocale("fr")`. Re-resolving from the notice's OWN `kind` and
+	 * committing the result keeps the one sentence authority intact; nothing here
+	 * knows the copy.
+	 *
+	 * WHY THE STORE'S LISTENER RATHER THAN `useI18nLocale()`: this hook is bundled
+	 * by dozens of component harnesses whose `react` stand-ins implement only the
+	 * five hooks the hook itself used. `useSyncExternalStore` is not one of them,
+	 * and widening every shim to add one subscription would be a larger change
+	 * than the bug. `subscribeLocale` is the store's own published seam (the same
+	 * one `console-mirror.tsx` uses), and `commitView` returning the SAME state
+	 * when the resolution has not changed makes a mount, or a locale the notice
+	 * already speaks, cost no render.
+	 */
+	useEffect(() => {
+		return subscribeLocale(() => {
+			commitView((current) => {
+				const { failure } = current;
+				// A notice built without a `kind` (a component fixture, a story) has
+				// nothing to re-resolve from and is left exactly as it was.
+				if (!failure?.kind) return current;
+				const next = noticeFor(failure.kind);
+				return next.statement === failure.statement &&
+					next.action === failure.action
+					? current
+					: { ...current, failure: next };
+			});
+		});
+	}, [commitView]);
 	/*
 	 * Which session the transcript IN `view` belongs to, so the reset effect
 	 * below can tell another session's rows from this one's own seeded echo.
@@ -2724,6 +2907,12 @@ export function useCanonicalSessionStream(
 	 * all.
 	 */
 	const retryRef = useRef<(() => void) | null>(null);
+	/**
+	 * The banner's reload, on `retryRef`'s lifetime rule: addressable only while
+	 * this effect owns the stream, so a press after a session switch cannot
+	 * reconnect the conversation the pane has left.
+	 */
+	const reloadRef = useRef<(() => void) | null>(null);
 	/*
 	 * `rehydrate`'s own door, on the same lifetime rule as `retryRef`: non-null
 	 * only while this effect owns the stream, so a click after the session
@@ -2738,11 +2927,30 @@ export function useCanonicalSessionStream(
 	 */
 	const historyReadsRef = useRef(0);
 	const generationRef = useRef(0);
+	/**
+	 * Identity of the LIVE SUBSCRIPTION, superseded on every `connect`.
+	 *
+	 * The session `generation` above answers "is this still the same visit", which
+	 * is the right question for an effect teardown and the wrong one for a queued
+	 * frame: a resync or a peer rebind opens a new subscription INSIDE one visit,
+	 * so a callback the old subscription already handed to the transport would
+	 * still pass a generation check. `connect` reads and increments this, and the
+	 * callback refuses anything that is not its own connection.
+	 */
+	const connectionRef = useRef(0);
 
 	useEffect(() => {
 		if (!sessionId || !enabled) return;
 		const generation = ++generationRef.current;
 		const orderFrameRevisions = new WeakMap<object, JournalOrderRead>();
+		/*
+		 * The frame pump's receipt high-water mark. It is LOCAL to this stream
+		 * effect, not the reconnect cursor: a fresh `open` starts a new receipt
+		 * domain, while the reconnect cursor survives to ask for the missing tail.
+		 * `receiptRef` below remains the published/reconnect cursor and is updated
+		 * only for frames accepted by this guard.
+		 */
+		let acceptedReceipt: { epoch: string; seq: number } | null = null;
 		/*
 		 * WHETHER A SNAPSHOT'S HISTORY PAGE IS FENCED OUT - THE PAGE, NEVER THE
 		 * FRAME. A snapshot is tagged with the order revision current when it was
@@ -3351,6 +3559,16 @@ export function useCanonicalSessionStream(
 			 */
 			const coldAtDispatch = viewRef.current.cold;
 			/*
+			 * THE RECEIPT THE PANE HAD WHEN THIS READ WENT OUT, captured beside the
+			 * other dispatch witnesses. It is what lets a page commit answer the one
+			 * question content cannot: was a row on screen written by a frame NEWER
+			 * than this read? (`applyHistoryPage`'s `readWitness`.)
+			 */
+			const receiptNow = receiptRef.current;
+			const readWitnessAtDispatch: DesktopStreamCursor | null = receiptNow
+				? { epoch: receiptNow.epoch, seq: receiptNow.seq }
+				: null;
+			/*
 			 * THE LABEL GOAL, the half the walk used to lack. It stopped as soon as a
 			 * page CONNECTED to a painted row, but the label gap needs a page that
 			 * reaches back to the OLDEST missing call's assistant row, which on a turn
@@ -3532,8 +3750,13 @@ export function useCanonicalSessionStream(
 					commitView((state) => ({
 						...state,
 						status: "unavailable",
-						failure: HISTORY_UNREADABLE,
+						failure: historyUnreadable(),
 						heldFrontend: null,
+						// The read gave up, so the banner's press has no answer coming.
+						...(state.liveUpdatesReloading
+							? { liveUpdatesReloadFailed: true }
+							: {}),
+						liveUpdatesReloading: false,
 					}));
 					return false;
 				} finally {
@@ -3608,6 +3831,13 @@ export function useCanonicalSessionStream(
 						authoritative: true,
 						orderRead,
 						peerSource: streamDeclaredNow(),
+						/*
+						 * The receipt the pane had when THIS read went out: a row a newer
+						 * live frame wrote must not be rewritten by an older answer
+						 * (`pageRowIsOlderThanLiveRow`). Captured at dispatch, not read
+						 * here, because the walk's own await may have let newer frames in.
+						 */
+						readWitness: readWitnessAtDispatch,
 					});
 					/*
 					 * THE IDS **THIS COMMIT** LABELLED ARE RELEASED IN THE SAME COMMIT, and
@@ -4401,6 +4631,12 @@ export function useCanonicalSessionStream(
 				for (const frame of frames) {
 					if (frame.type === "heartbeat") continue;
 					if (frame.type === "gap") {
+						/*
+						 * A gap has no receipt cursor of its own. It marks the replay
+						 * boundary, so the next `open` establishes a fresh high-water
+						 * mark rather than rejecting the reconnect's lower sequence.
+						 */
+						acceptedReceipt = null;
 						// Receipt continuity broke: the authoritative snapshot that follows
 						// is the only thing that can say what happened in the interval, so
 						// painted FRONTEND state is dropped and the view says "reconnecting"
@@ -4433,12 +4669,70 @@ export function useCanonicalSessionStream(
 					}
 					// From here the frame is a receipt with an epoch/seq cursor.
 					//
+					/*
+					 * THE OPEN FRAME'S `seq` IS A CUTOFF, NOT A STATE POSITION, so it
+					 * cannot seed the high-water mark: the bridge sets it to
+					 * `bridge.sequence` and then replays every retained frame with
+					 * `after_seq < seq <= cutoff` before the snapshot
+					 * (`docs/DESKTOP_API.md`). Seeding from it rejects the whole replay
+					 * AND the snapshot on every real open - the pane stuck at
+					 * "connecting". The mark is therefore CLEARED at the open, and what
+					 * makes that safe is the connection witness above: a superseded
+					 * subscription's frames can no longer arrive here, so a fresh
+					 * connection is free to restate the world from its own replay.
+					 */
+					if (frame.type === "open") {
+						acceptedReceipt = null;
+					} else if ("seq" in frame) {
+						// `"seq" in frame` is what narrows away the two cursor-less
+						// members (`gap`/`heartbeat`, both handled above); every remaining
+						// shape carries the receipt pair.
+						const cursor: DesktopStreamCursor = {
+							epoch: frame.epoch,
+							seq: frame.seq,
+						};
+						/*
+						 * A JOURNAL-ORDER CORRECTION IS ORDERED BY THE JOURNAL, NOT BY THIS
+						 * RECEIPT, AND IT MUST NOT BECOME THE RECEIPT.
+						 *
+						 * Why it may be applied below the watermark: the bridge sends those
+						 * AFTER the snapshot at or below its seq on purpose
+						 * (`desktop_sessions.py::events`' `frame["seq"] > snapshot["seq"] or
+						 * (order_fact and not already_replayed)`; `docs/DESKTOP_API.md`: "a
+						 * snapshot's sequence watermark cannot supersede an off-page
+						 * correction" - the frame is metadata-only and its IDs need not be in
+						 * a bounded page). Refusing it on seq alone is the #994 mis-ordering
+						 * returning.
+						 *
+						 * Why it may not ADVANCE the mark (agent review round 4): a
+						 * correction at 6 arriving after a snapshot at 7 would otherwise
+						 * lower the mark to 6, and the next genuinely stale frame at 7 - a
+						 * reset replay, a `message_start` - would be admitted, which is this
+						 * PR's own first bug reached through the new door. So it advances
+						 * neither `acceptedReceipt` nor the published `receiptRef`, and it is
+						 * the one frame type that can be applied while the mark stays put.
+						 */
+						const orderCorrection = isJournalOrderCorrection(frame);
+						if (
+							!orderCorrection &&
+							!isNewerDesktopFrame(acceptedReceipt, cursor, {
+								// The snapshot is the state AT the watermark, so it may sit on
+								// it (see the option's own note); nothing else may.
+								allowEqual: frame.type === "snapshot",
+							})
+						)
+							continue;
+						if (!orderCorrection) acceptedReceipt = cursor;
+					}
 					// The cursor as it stood BEFORE this frame is read first and kept
 					// beside the assignment, because `frontend.replace` below is ordered
 					// against it: checking the value this very frame is about to write
 					// would reject every replacement (remediation contract § C).
 					const priorCursor = receiptRef.current;
-					if (frame.type === "open" || "seq" in frame) {
+					if (
+						(frame.type === "open" || "seq" in frame) &&
+						!isJournalOrderCorrection(frame)
+					) {
 						receiptRef.current = { epoch: frame.epoch, seq: frame.seq };
 						next = { ...next, receipt: receiptRef.current };
 					}
@@ -4551,6 +4845,13 @@ export function useCanonicalSessionStream(
 									authoritative: true,
 									orderRead: dispatched,
 									peerSource: streamDeclaredNow(),
+									/*
+									 * The snapshot is the frame being folded, so its own cursor is
+									 * the witness: a row the batch's EARLIER frames (or the replay
+									 * before it) wrote is newer than this page and keeps its text.
+									 * `applyLiveSeed` follows and folds the seed's own events.
+									 */
+									readWitness: { epoch: frame.epoch, seq: frame.seq },
 								});
 								performance.mark("lop:open:history:end");
 								performance.measure(
@@ -4687,6 +4988,20 @@ export function useCanonicalSessionStream(
 								hydrated:
 									next.hydrated ||
 									(pageUsable && snapshot.history.entries.length > 0),
+								/*
+								 * A SNAPSHOT IS THE FIRST PROOF THE VIEW IS CURRENT AGAIN. It is the
+								 * frame a reconnect or a fresh subscription starts from, so whatever
+								 * the paused stream could not deliver is behind this point by
+								 * construction. Cleared here rather than in the resync itself: the
+								 * BANNER must outlive the press that asked (see
+								 * `reloadFromHistory`), and only the answer may take it down.
+								 */
+								liveUpdatesPaused: false,
+								liveUpdatesNotice: "none",
+								liveUpdatesReloadFailed: false,
+								// The answer arrived, so the press's own acknowledgement retires with
+								// the banner it was for.
+								liveUpdatesReloading: false,
 								transcript,
 							};
 							snapshotted = true;
@@ -4711,6 +5026,42 @@ export function useCanonicalSessionStream(
 					}
 					if (frame.type === "frontend.update") {
 						const update = frame.payload;
+						/*
+						 * A DEGRADED FRAME CARRIES NO `changes` AT ALL. The runtime's
+						 * `relay_frame_or_degraded` emits exactly `{epoch, sequence, degraded,
+						 * degraded_reason, paused}` when it sheds an oversized body, so the
+						 * whole handler reads the delta through one normalized object. The
+						 * pre-change spread tolerated `undefined`; anything added later must
+						 * not be the line that makes the feature's own frame throw (UX round 1,
+						 * U2).
+						 */
+						const changes = update.changes ?? {};
+						/*
+						 * THE STREAM'S OWN NOTICE, read BEFORE the state fold and independently
+						 * of its sequence gate. A degraded or paused frame is a statement about
+						 * the TRANSPORT (the backend replaced a frame over its 1 MiB cap, or
+						 * stopped publishing this session's deltas) rather than a delta about
+						 * the facade, so an older sequence does not make it untrue - and
+						 * swallowing it behind `next.frontend.sequence < update.sequence` is
+						 * how the view froze with no affordance in the first place.
+						 *
+						 * A NEW NOTICE ALWAYS RE-OPENS THE PRESS. `liveUpdatesReloading` is
+						 * hoisted out of the `!liveUpdatesPaused` guard: a second notice while
+						 * the banner is already up is the answer that the press did not repair
+						 * the stream, and leaving the flag true would replace the control with a
+						 * status word that never becomes pressable again (code review round 1,
+						 * M1). The origin is overwritten too: a later update-origin notice must
+						 * not inherit an event-origin notice's stricter clear rule.
+						 */
+						if (update.degraded === true || update.paused === true) {
+							next = {
+								...next,
+								liveUpdatesPaused: true,
+								liveUpdatesNotice: "update",
+								liveUpdatesReloading: false,
+								liveUpdatesReloadFailed: false,
+							};
+						}
 						if (!next.frontend) continue;
 						// An owner epoch rollover (a cold session's first owner binding,
 						// or a replaced owner) arrives as an update whose changes carry
@@ -4719,11 +5070,24 @@ export function useCanonicalSessionStream(
 						// some other epoch that does not announce itself is stale.
 						const rollover =
 							update.epoch !== next.ownerEpoch &&
-							update.changes.epoch === update.epoch;
+							changes.epoch === update.epoch;
+						/*
+						 * THE FULL-STATE SHAPE, read before the sequence gate. `changes`
+						 * carrying the epoch is what `replace_and_notify` publishes - the
+						 * backend's own shed-body re-seat - and it reuses the sequence the
+						 * degraded delta already consumed. Strictly-newer alone therefore
+						 * DROPS the one frame that repairs a degraded view, so a
+						 * same-sequence update is accepted only in this shape; an ordinary
+						 * delta at an equal sequence is still rejected as a replay (code
+						 * review round 3, MAJOR-1a).
+						 */
+						const fullState =
+							update.changes !== undefined && changes.epoch === update.epoch;
 						if (
 							rollover ||
 							(update.epoch === next.ownerEpoch &&
-								next.frontend.sequence < update.sequence)
+								(next.frontend.sequence < update.sequence ||
+									(next.frontend.sequence === update.sequence && fullState)))
 						) {
 							// Field deltas, not a full repaint: spread only the changed
 							// keys over the current state.
@@ -4735,10 +5099,26 @@ export function useCanonicalSessionStream(
 								ownerEpoch: rollover ? update.epoch : next.ownerEpoch,
 								frontend: {
 									...next.frontend,
-									...update.changes,
+									...changes,
+									/*
+									 * THE LIVE ROSTER'S DELTA, folded over the roster this view already
+									 * paints. `changes.jobs` (the snapshot's full list) OUTRANKS it when
+									 * both are present - see the module's own note - so the delta is
+									 * applied only when the update did not carry the whole list. `== null`
+									 * covers a producer that states an absent roster as null; folding a
+									 * delta over `null` would throw inside the frame loop.
+									 */
+									...(changes.jobs == null && update.job_deltas
+										? {
+												jobs: applyJobDeltas(
+													next.frontend.jobs ?? [],
+													update.job_deltas,
+												),
+											}
+										: {}),
 									attention: mergeCompletionAttention(
 										next.frontend.attention,
-										update.changes.attention,
+										changes.attention,
 										sessionId,
 									),
 									sequence: update.sequence,
@@ -4758,6 +5138,33 @@ export function useCanonicalSessionStream(
 									? { cold: update.cold }
 									: {}),
 							};
+							/*
+							 * THE CLEAR RULE IS ORIGIN-AWARE, because the two notices lose
+							 * different kinds of fact (code review round 2, MAJOR-1).
+							 *
+							 * An `"update"`-origin notice lost a frontend body, and a
+							 * full-state update at the SAME epoch - `replace_and_notify`, the
+							 * backend's own shed-body re-seat - restores exactly that body.
+							 * `changes.epoch === update.epoch` is the marker of the full-state
+							 * shape: an ordinary delta never carries the epoch. A rollover is a
+							 * special case of the same predicate, not a separate one.
+							 *
+							 * An `"event"`-origin notice lost a TRANSCRIPT fact. No update can
+							 * carry rows, so not even a rollover proves the transcript whole;
+							 * only a snapshot or an accepted replacement may clear it.
+							 */
+							if (
+								fullState &&
+								next.liveUpdatesNotice === "update" &&
+								next.liveUpdatesPaused
+							)
+								next = {
+									...next,
+									liveUpdatesPaused: false,
+									liveUpdatesNotice: "none",
+									liveUpdatesReloading: false,
+									liveUpdatesReloadFailed: false,
+								};
 						}
 						continue;
 					}
@@ -4786,6 +5193,11 @@ export function useCanonicalSessionStream(
 						 * branch is only about ACCEPTING the replacement: the next real owner
 						 * delta at sequence N+1 must still apply over a replacement at N, and
 						 * an ordinary stale delta must still be rejected.
+						 *
+						 * THE BANNER CLEARS INSIDE THIS ARM, not before it: a replacement for
+						 * another session or one refused as stale proves nothing about THIS
+						 * view, and clearing on it would retract the notice without a repaint -
+						 * exactly the claim the banner exists to refuse.
 						 */
 						if (
 							next.frontend &&
@@ -4817,12 +5229,46 @@ export function useCanonicalSessionStream(
 								},
 								ownerEpoch: replaced.epoch,
 								cold: frame.payload.cold,
+								...(next.liveUpdatesPaused
+									? {
+											liveUpdatesPaused: false,
+											liveUpdatesNotice: "none",
+											liveUpdatesReloading: false,
+											liveUpdatesReloadFailed: false,
+										}
+									: {}),
 							};
 						}
 						continue;
 					}
 					if (frame.type === "event") {
 						const eventType = String(frame.payload.type ?? "");
+						/*
+						 * THE SECOND NOTICE SHAPE. The bridge's paused stream is announced as
+						 * an `event` whose `action` is `reload`: not an AgentEvent, but the
+						 * same statement about the stream as `frontend.update.paused` and
+						 * the same banner. It is REMEMBERED AS EVENT-ORIGIN, because the
+						 * fact it names is a dropped transcript event: a clean roster tick
+						 * within the next second must not take the warning down (UX round 1,
+						 * U1), and only a snapshot, an accepted replacement, or the reader's
+						 * reload may.
+						 *
+						 * AND IT ENDS THE FRAME HERE. `applyEvent` paints a
+						 * `type: "notice"` payload as a transcript row, which would state
+						 * the same fact a second time beside the band that now owns it
+						 * (code review round 1, M4). `continue` is the whole fix: nothing
+						 * else in this frame is a transcript fact.
+						 */
+						if (frame.payload.action === "reload") {
+							next = {
+								...next,
+								liveUpdatesPaused: true,
+								liveUpdatesNotice: "event",
+								liveUpdatesReloading: false,
+								liveUpdatesReloadFailed: false,
+							};
+							continue;
+						}
 						if (TERMINAL_EVENTS.has(eventType)) {
 							next = {
 								...next,
@@ -5114,6 +5560,39 @@ export function useCanonicalSessionStream(
 
 		const connect = () => {
 			const sourceRead = journalOrderRead(viewRef.current.transcript);
+			/*
+			 * THE CONNECTION'S OWN IDENTITY, AND WHY A GENERATION IS NOT ENOUGH.
+			 * `generation` names the session VISIT; this names the SUBSCRIPTION. A
+			 * resync, a reopen, a peer rebind and a retry all open a new connection
+			 * while the visit stays the same, and a frame callback captured by the
+			 * OLD connection can still be queued when the new one opens (the preload
+			 * resolves its stream id through a promise, so a frame already delivered
+			 * to the handler can reach the consumer after `dispose()`).
+			 *
+			 * Without this, such a frame is accepted as ordinary state: it carries
+			 * the old connection's cursor, so a same-epoch high-water check reads it
+			 * as an advance, and a DIFFERENT epoch is accepted by definition (cross-
+			 * epoch frames are always applied, because an owner rebuild restarts the
+			 * numbering). Both directions let a superseded subscription's snapshot or
+			 * reset replace the paint its successor already committed - the reported
+			 * "history jumps back to an older state" arriving from a disposed stream
+			 * rather than from an out-of-order receipt.
+			 */
+			const connection = ++connectionRef.current;
+			/*
+			 * AND THE OLD CONNECTION'S QUEUED FRAMES ARE LEFT TO FLUSH. An earlier
+			 * draft of this guard flushed `pending` here and that was wrong twice:
+			 * the newest frames of the connection being replaced are exactly the
+			 * ones a re-render-triggered resync arrives on top of, so dropping them
+			 * discarded the snapshot of a stream that had just opened and left the
+			 * pane waiting for a first snapshot that had already been delivered.
+			 * That missing-frame path is reproduced by the review's timing probe;
+			 * CI also stopped mid-file behind an `act(...)` warning wall, but that
+			 * symptom is not proof of the mechanism or of a render loop. The frames
+			 * cannot be stale: `open` clears the receipt mark, and the callback
+			 * guard above refuses anything a superseded connection sends from here
+			 * on.
+			 */
 			clearSnapshotTimer();
 			snapshotTimer = window.setTimeout(() => {
 				snapshotTimer = 0;
@@ -5128,6 +5607,13 @@ export function useCanonicalSessionStream(
 					subscriptionId: null,
 					status: "unavailable",
 					failure: streamFailureNotice(DESKTOP_STREAM_DETAIL.ended),
+					// The connection is terminal for this attempt: no answer is coming for
+					// the banner's press, so the band must say the reload failed and give
+					// the control back.
+					...(current.liveUpdatesReloading
+						? { liveUpdatesReloadFailed: true }
+						: {}),
+					liveUpdatesReloading: false,
 					// A connection that accepted and then said nothing is the frozen-owner
 					// case, and it is TERMINAL for this attempt: the pane states the
 					// failure and offers Reconnect rather than holding readings over a
@@ -5172,6 +5658,13 @@ export function useCanonicalSessionStream(
 				},
 				(event) => {
 					if (generationRef.current !== generation) return;
+					/*
+					 * A SUPERSEDED CONNECTION COMMITS NOTHING - see `connection` at
+					 * `connect`. Checked before the event kind, because a queued `data`
+					 * frame and a queued `end` are the same hazard: the one would paint
+					 * an older projection and the other would tear down the successor.
+					 */
+					if (connectionRef.current !== connection) return;
 					// `end` and `error` are the same event for this consumer: the stream
 					// is gone. `end` is not ignorable, because the only paths that end a
 					// stream we did not ask to end are a transport failure or main's relay
@@ -5198,6 +5691,37 @@ export function useCanonicalSessionStream(
 						 * round trip on the latency path (M6).
 						 */
 						if (event.kind === "error" && event.status === 404) {
+							/*
+							 * A DRAFT'S BRIDGE IS NOT A CONVERSATION (the operator's report,
+							 * 2026-10-23). `isSession` is false when `sessionId` is the id a
+							 * `sessions.draft` mint handed this pane (`SessionPanel`'s
+							 * `sessionId ?? draft?.warmId`) - a registry bridge the pane streams on
+							 * only while it waits for the first send, never a conversation it could
+							 * lose. So a 404 here says the REGISTRY entry is gone (the daemon
+							 * restarted, or the draft expired) and nothing about any conversation:
+							 * the row has no `sessionId`, is a new chat, and the missing notice the
+							 * session arm below paints would contradict the header that says "New
+							 * chat with <team>".
+							 *
+							 * The store retires the dead id and re-mints the mint's request id
+							 * (`retireDraftWarm` carries the why): the next keystroke or send asks
+							 * fresh, and a replayed receipt cannot name this id again. The view
+							 * stays on its draft: no `missing`, no `unavailable`, no dropped paint -
+							 * the pane is a working new chat and the composer is untouched. The
+							 * subscription id goes with the closed stream; the effect re-runs on the
+							 * now-id-less stream and returns before opening anything.
+							 */
+							if (!isSession) {
+								if (sessionId)
+									useCanonicalSessionsStore
+										.getState()
+										.retireDraftWarm(sessionId);
+								commitView((current) => ({
+									...current,
+									subscriptionId: null,
+								}));
+								return;
+							}
 							// Its paint goes with it: a later click on the same id would
 							// otherwise paint rows for a transcript that no longer exists,
 							// with nothing to tell the reader they are fiction. Its expansions
@@ -5211,6 +5735,23 @@ export function useCanonicalSessionStream(
 								dropPaint(sessionId);
 								forgetTurnCollapseOpen(sessionId);
 								forgetWatchedRun(sessionId);
+								/*
+								 * AND A DRAFT THAT NAMED IT STOPS NAMING IT, BEFORE THE MISSING
+								 * STATE IS COMMITTED (the operator's report, 2026-10-22). A
+								 * staged draft's `sessionId` is a POINTER the pane resolves
+								 * (`panelSessionIdOfView`), not a conversation the user opened -
+								 * so when this host answers 404 the pointer is stale by definition
+								 * and the store owns retiring it (`retireDraftsForSession`). Doing
+								 * it here rather than in a view's effect is what keeps the terminal
+								 * notice off a screen that is supposed to be a NEW chat: the store
+								 * update lands in the same batch as the `missing` commit, so the
+								 * pane re-keys onto the draft and its first frame is a working
+								 * composer instead of "This conversation is gone". A 404 on a
+								 * conversation with no draft row is a no-op.
+								 */
+								useCanonicalSessionsStore
+									.getState()
+									.retireDraftsForSession(sessionId);
 							}
 							commitView((current) => ({
 								...current,
@@ -5218,6 +5759,10 @@ export function useCanonicalSessionStream(
 								status: "unavailable",
 								missing: true,
 								failure: null,
+								...(current.liveUpdatesReloading
+									? { liveUpdatesReloadFailed: true }
+									: {}),
+								liveUpdatesReloading: false,
 								// 404 is about the SESSION, so it is the one terminal state
 								// that must take the readings with it: the conversation this
 								// machine does not have has no model, no context window and no
@@ -5231,8 +5776,8 @@ export function useCanonicalSessionStream(
 						}
 						const detail =
 							event.kind === "error"
-								? (event.detail ?? "The event stream failed.")
-								: "The event stream closed unexpectedly.";
+								? (event.detail ?? t("ui.common.errors.event_stream_failed"))
+								: t("ui.common.errors.event_stream_closed");
 						// The subscription the watch lease names died with the stream. Held,
 						// it makes the lease keep posting a subscription id the backend no
 						// longer holds (the 422 the operator's log shows), so it is dropped
@@ -5246,6 +5791,12 @@ export function useCanonicalSessionStream(
 								// transport; the reader gets the product sentence for that
 								// condition instead (D1).
 								failure: streamFailureNotice(detail),
+								// The retry budget is spent: the banner's press has no answer left
+								// to wait for, so the band says it failed and re-arms the press.
+								...(current.liveUpdatesReloading
+									? { liveUpdatesReloadFailed: true }
+									: {}),
+								liveUpdatesReloading: false,
 								// The retry budget is spent, and that is the state R3 keeps
 								// terminal: what says the connection is not live is the
 								// failure notice and its Reconnect, so a reading held past it
@@ -5464,6 +6015,49 @@ export function useCanonicalSessionStream(
 		// the session changed (or after unmount) cannot re-open the old session.
 		retryRef.current = reopen;
 		/*
+		 * THE BANNER'S RELOAD. It is `resync` rather than `reopen`: the reader has
+		 * not reported a dead connection (the stream may be open and merely unable
+		 * to deliver deltas), so the repair is the one that discards the cursor and
+		 * asks for a complete projection - not the one that resets the retry
+		 * budget and the failure state as well.
+		 *
+		 * `liveUpdatesReloading` is written in the same commit as the press so the
+		 * control acknowledges it before the socket round trip; the banner itself
+		 * stays until a snapshot or a clean update proves the view current.
+		 */
+		reloadRef.current = () => {
+			/*
+			 * ONE PRESS, ONE RECONNECT. The button is `aria-disabled` while the
+			 * press is out, but a double click can beat the render, and two
+			 * cursor-less subscriptions would churn the stream for no question
+			 * (UX round 1, U8).
+			 */
+			if (viewRef.current.liveUpdatesReloading) return;
+			commitView((current) => ({
+				...current,
+				liveUpdatesReloading: true,
+				liveUpdatesReloadFailed: false,
+			}));
+			/*
+			 * THE SIBLING'S BUDGET, because this is the sibling's repair. A Reload
+			 * after the retry budget is spent must get a full window, not the one
+			 * attempt `resync` leaves it with (UX round 1, U5); the timers are
+			 * cancelled for the same reason `reopen` cancels them - a timer armed
+			 * before the press fires after it and opens a second subscription over
+			 * the first.
+			 */
+			attempt = 0;
+			if (retryTimer) {
+				window.clearTimeout(retryTimer);
+				retryTimer = 0;
+			}
+			if (recheckTimer) {
+				window.clearTimeout(recheckTimer);
+				recheckTimer = 0;
+			}
+			resync();
+		};
+		/*
 		 * `rehydrate` fires the walk `reopen` fires for an unhydrated view, without
 		 * the stream re-arm - the slot's "Try again" is a question about the
 		 * READ, not about the connection. Gated on `!hydrated` for the same reason
@@ -5527,6 +6121,7 @@ export function useCanonicalSessionStream(
 			generationRef.current += 1;
 			retryRef.current = null;
 			hydrateRef.current = null;
+			reloadRef.current = null;
 			ensurePeerRebindRef.current = null;
 			unsubscribePeerRebind();
 			if (sourceWaveTimerRef.current) {
@@ -5563,6 +6158,15 @@ export function useCanonicalSessionStream(
 		commitView,
 		sessionId,
 		enabled,
+		/*
+		 * `isSession` rides the deps because the 404 arm reads it: the same id
+		 * shape is a conversation for one pane and a draft's bridge for another,
+		 * and the answer decides whether a 404 is a verdict or a dead runtime. The
+		 * caller's answer is fixed for a mounted pane (`SessionPanel` passes
+		 * whether its own `sessionId` exists), so this adds the re-run the id's own
+		 * change already performs, never a second one.
+		 */
+		isSession,
 		journalOrder,
 		peerDeclarable,
 		peerScopedNow,
@@ -6578,6 +7182,15 @@ export function useCanonicalSessionStream(
 			const requested = sessionId;
 			refreshingTailRef.current = true;
 			const sourceRevision = currentOrderRevision(viewRef.current.transcript);
+			/*
+			 * The receipt when this refresh was dispatched: a row a NEWER live frame
+			 * wrote must not be rewritten by this answer (`pageRowIsOlderThanLiveRow`).
+			 * Copied, because `receiptRef` moves with every accepted frame.
+			 */
+			const receiptNow = receiptRef.current;
+			const tailWitness: DesktopStreamCursor | null = receiptNow
+				? { epoch: receiptNow.epoch, seq: receiptNow.seq }
+				: null;
 			try {
 				const page = await desktopResult<DesktopHistoryPage>({
 					op: "sessions.history",
@@ -6622,6 +7235,9 @@ export function useCanonicalSessionStream(
 								transcript: applyHistoryPage(current.transcript, page, {
 									keepPaging: true,
 									peerSource: streamDeclaredNow(),
+									// The receipt when this refresh was dispatched; see
+									// `pageRowIsOlderThanLiveRow`.
+									readWitness: tailWitness,
 								}),
 							},
 				);
@@ -6707,6 +7323,10 @@ export function useCanonicalSessionStream(
 
 	const retry = useCallback(() => {
 		retryRef.current?.();
+	}, []);
+
+	const reloadFromHistory = useCallback(() => {
+		reloadRef.current?.();
 	}, []);
 
 	const rehydrate = useCallback(() => {
@@ -6803,6 +7423,7 @@ export function useCanonicalSessionStream(
 			clearPendingModel,
 			retry,
 			rehydrate,
+			reloadFromHistory,
 		}),
 		[
 			view,
@@ -6818,6 +7439,7 @@ export function useCanonicalSessionStream(
 			clearPendingModel,
 			retry,
 			rehydrate,
+			reloadFromHistory,
 		],
 	);
 }

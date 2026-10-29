@@ -1,0 +1,19 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "99cb676d1abc-r2",
+  "locale": "vi",
+  "status": "passed",
+  "namespaces": {
+    "ui.library": {
+      "status": "passed",
+      "keys_audited": 158,
+      "sha256": {
+        "vi": "2e711e04ebd8aa383dd974f086cab03520e2a91df8fee846521fa9914a26d3dd",
+        "en": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5"
+      },
+      "note": "Round 2 re-audit of the two remediated keys (ui.library.page.more, ui.library.page.more_destinations). The other 156 keys are proved byte-identical to the 12d60b45 audited bytes: reversing exactly the two reported value changes reproduces sha256 12d60b45ede30c5ad388c1420d4dac5fb25d668fae15f7fc54d5dff011d265d6.",
+      "findings": []
+    }
+  }
+}

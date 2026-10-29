@@ -51,7 +51,8 @@ const bundle = await build({
 			 * the test builds the real classes rather than lookalikes.
 			 */
 			'export { DesktopControlError, UserFacingError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
-			'export { DESKTOP_REFUSAL_CODE, DESKTOP_REFUSAL_SENTENCE } from "./src/shared/desktop-contract";',
+			'export { DESKTOP_REFUSAL_CODE, DESKTOP_REFUSAL_COPY_KEY } from "./src/shared/desktop-contract";',
+			'export { t } from "./src/i18n";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -70,7 +71,8 @@ const {
 	aidaReservedAction,
 	DesktopControlError,
 	DESKTOP_REFUSAL_CODE,
-	DESKTOP_REFUSAL_SENTENCE,
+	DESKTOP_REFUSAL_COPY_KEY,
+	t,
 	UserFacingError,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -217,7 +219,7 @@ test("a failure's copy comes from the app's one copy path, never from the throw"
 				DESKTOP_REFUSAL_CODE.refused,
 			),
 		),
-		DESKTOP_REFUSAL_SENTENCE[DESKTOP_REFUSAL_CODE.refused],
+		t(DESKTOP_REFUSAL_COPY_KEY[DESKTOP_REFUSAL_CODE.refused]),
 		"a pairing refusal is answered in this app's words, never the daemon's",
 	);
 });
@@ -277,13 +279,35 @@ test("the rail's row is gated twice, and the second gate is the READ's enabled",
 
 test("Aida is the FIRST destination, above Agents (R3)", () => {
 	const nav = source(NAV);
-	const items = nav.indexOf("const navItems: NavItem[] = [");
-	const aida = nav.indexOf('tourTag: "nav-item-aida"');
-	const agents = nav.indexOf('tourTag: "nav-item-agents"');
-	assert.ok(items >= 0 && aida > items, "the row belongs to navItems");
+	/*
+	 * THE ORDER NOW LIVES IN THE MODEL, not in a literal array in the component:
+	 * the default arrangement is the first render, and customisation only
+	 * permutes it. R3 is therefore pinned where the default is stated - the id
+	 * tuple, which `DEFAULT_SIDEBAR_LAYOUT.visible` derives by filtering its
+	 * visible-region ids - and the row at its table entry in the component.
+	 */
+	const contract = source("src/shared/desktop-control-contract.ts");
+	const ids = contract.slice(
+		contract.indexOf("export const SIDEBAR_DESTINATION_IDS = ["),
+	);
+	assert.match(
+		ids,
+		/^export const SIDEBAR_DESTINATION_IDS = \[\s*"aida",/,
+		"R3: the default order starts with her, so the first render does too",
+	);
 	assert.ok(
-		aida < agents,
-		"R3: her row sits above Agents — a later insertion would satisfy every other pin here and fail the requirement",
+		ids.indexOf('"aida"') < ids.indexOf('"agents"'),
+		"and she precedes Agents in that order — a later insertion would satisfy every other pin here and fail the requirement",
+	);
+	assert.match(
+		nav,
+		/destinationItems\.set\("aida", \{/,
+		"the row is the destination table's entry for her id",
+	);
+	assert.ok(
+		nav.indexOf('destinationItems.set("aida"') <
+			nav.indexOf('destinationItems.set("agents"'),
+		"and the table defines her row before Agents' (the same default order)",
 	);
 	assert.match(nav, /icon: ChevronsUp,/, "R4's icon");
 	assert.match(
@@ -299,7 +323,7 @@ test("Aida is the FIRST destination, above Agents (R3)", () => {
 	assert.match(
 		nav,
 		/label: aidaName,/,
-		"the row's own label; the collapsed strip's tooltip reads the same string via renderNavRow",
+		"the row's own label; the collapsed strip's tooltip reads the same string via renderDestinationRowForWidth",
 	);
 });
 
@@ -314,8 +338,8 @@ test("the row's press RESOLVES rather than navigates, through the shared opener"
 	 */
 	assert.match(
 		nav,
-		/onClick=\{\(\) =>\s*item\.onSelect \? item\.onSelect\(\) : navigate\(item\.path\)\s*\}/,
-		"the button honours `onSelect` when the row has one",
+		/onClick=\{\(\) => \{\s*if \(suppressClickRef\.current\) \{\s*suppressClickRef\.current = false;\s*return;\s*\}\s*if \(item\.onSelect\) item\.onSelect\(\);\s*else navigate\(item\.path\);\s*\}\}/,
+		"the button honours `onSelect` when the row has one, and a drag's release is not a press",
 	);
 	assert.match(nav, /onSelect: selectAida,/, "and the row declares it");
 	assert.match(
@@ -422,7 +446,26 @@ test("the dispatcher's aida branch: capability fail-closed, and the send before 
 	assert.match(branch, /isRefusedBeforeAdmission\(error\)/);
 	assert.match(branch, /returnAidaText\(key, target, message\)/);
 	assert.match(branch, /if \(admitted === null\)/);
-	assert.match(branch, /SEND_FAILURE_COPY\.sendLock/);
+	/*
+	 * THE BUSY STATEMENT IS THE SAME FACT, UNDER THE SLICE'S OWN KEY. This used to
+	 * pin `SEND_FAILURE_COPY.sendLock`, whose entry read
+	 * `ui.chat.canonical.send_failure.send_lock` - "Your last message is still
+	 * sending." at `f8ecc7ddef^` - and the i18n slice replaced that read with
+	 * `t("ui.notices.chat.send_in_flight")` (the notice table the door's other
+	 * statements live in). So the pin names the KEY the component renders, and the
+	 * ENGLISH beside it in the shape the composer pins use, because either one
+	 * alone stops catching the failure it was written for: a reworded catalogue
+	 * entry leaves a key-only pin green, and an English-only pin survives the
+	 * component dropping the read.
+	 */
+	assert.match(branch, /t\("ui\.notices\.chat\.send_in_flight"\)/);
+	assert.equal(
+		JSON.parse(source("src/i18n/catalogues/en/ui.notices.json"))[
+			"ui.notices.chat.send_in_flight"
+		],
+		"Your last message is still sending.",
+		"the sentence the send-lock constant carried, now owned by this key",
+	);
 	/*
 	 * And the read the branch resolves through is gated on the capability: `UI
 	 * must not call the route below` (design § 3.4) is true of the READ too.

@@ -1,0 +1,136 @@
+renderer-driver: frame timezone pinned to America/New_York (ambient TZ=America/Toronto)
+[build] current: assets 2026-10-20T18:23:20.254Z >= sources 2026-10-20T17:28:03.307Z
+[note] abandoned scratch trees
+        3 seen, 0 owned by a live pid (kept), 3 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8131 (frame-src already lists it, media-src already lists it, img-src already lists it)
+  serve records 1 linked from /Users/damian/.local-operator/sessions/fb26384b780f/scratchpad/hub-skills-qa/core-home/.lop/run/serve   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui/.worktrees/hub-skills-state
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-92016
+  frames        /Users/damian/.local-operator/sessions/fb26384b780f/scratchpad/hub-skills-qa/frames-real
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-92016/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8131   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0_supports-color@8.1.1/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["filesFacts","hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","soundsArm","soundsEnd","soundsFacts","soundsScrub","soundsScrubFinish","soundsSpeech","stageLiveConsents","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8131","backend":"http://127.0.0.1:8131"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8131)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[PASS] window mode is headless and the window is never shown or focused
+[PASS] public fixture: the scope chip group is absent
+[note] loading frame
+        captured in flight
+[PASS] the library settles into a state this run can photograph
+[PASS] the library names its source explicitly
+[PASS] public fixture: library source explicitly names Public
+[note] library source line
+        "Public"
+[PASS] search narrows the rows to a miss
+[FAIL] the row's open press received the point (hit test)
+        {"hitTest":false}
+[PASS] the detail reader shows the skill's files
+[note] detail row
+        {"files":3,"name":"release-notes"}
+[PASS] gated pull: the create control is disabled and the detail names the missing credential
+[note] egress: capture securitypolicyviolation events
+        []
+[PASS] egress: zero CSP violations during the capture flow
+[note] egress: distinct renderer request origins
+        ["null","http://127.0.0.1:8127"]
+[FAIL] egress: every renderer request went to the stub origin or an app-local scheme
+        non-stub requests: ["http://127.0.0.1:8127/v1/skills?page=1&per_page=20","http://127.0.0.1:8127/v1/skills/skill-release-notes"]
+[PASS] egress: no renderer request names api.radienthq.com
+[note] egress: app process tree sockets (one instant)
+        pids 92023,92030,92031,92037,92040,92042,92049
+        COMMAND     PID   USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+        Electron  92023 damian   18u  IPv4 0x5c43331c5771480c      0t0  TCP 127.0.0.1:49275 (LISTEN)
+        Electron  92023 damian   38u  IPv4 0xc56b852d51b178bf      0t0  TCP 127.0.0.1:49273 (LISTEN)
+        Electron  92023 damian   61u  IPv4 0xed0ca12ef132aa14      0t0  TCP 127.0.0.1:49282->127.0.0.1:8131 (ESTABLISHED)
+        Electron  92023 damian   65u  IPv4 0xd51a9cc0ec12a4d0      0t0  TCP 127.0.0.1:49273->127.0.0.1:49283 (ESTABLISHED)
+        Electron  92023 damian   67u  IPv4 0x91a631b5c17ce31e      0t0  TCP 127.0.0.1:49273->127.0.0.1:49285 (ESTABLISHED)
+        Electron  92023 damian   68u  IPv4 0x8aa1d8ecc64f1fe1      0t0  TCP 127.0.0.1:49286->127.0.0.1:8131 (ESTABLISHED)
+        Electron  92023 damian   78u  IPv4 0xc6ee5e47ba011dc4      0t0  TCP 127.0.0.1:49287->127.0.0.1:8131 (ESTABLISHED)
+        Electron  92023 damian   79u  IPv4 0xbdb803c8726a6e9d      0t0  TCP 127.0.0.1:49288->127.0.0.1:8131 (ESTABLISHED)
+        Electron  92023 damian   93u  IPv4 0xb5cbe3cdb93f7a5c      0t0  TCP 127.0.0.1:49289 (LISTEN)
+        Electron  92023 damian   97u  IPv4 0x8d0c3dfbfc949d17      0t0  TCP 127.0.0.1:49291->127.0.0.1:8131 (ESTABLISHED)
+        Electron  92023 damian   98u  IPv4 0x543a369f16dd8314      0t0  TCP 127.0.0.1:49290->127.0.0.1:8131 (ESTABLISHED)
+        Electron  92023 damian   99u  IPv4 0xa703a61e1c064c76      0t0  TCP 127.0.0.1:49292 (LISTEN)
+        Electron  92023 damian  100u  IPv4  0x7e3f7a6b445cb57      0t0  TCP 127.0.0.1:49294->127.0.0.1:8131 (ESTABLISHED)
+        Electron  92023 damian  101u  IPv4 0xabe16cac1a6ef9d4      0t0  TCP 127.0.0.1:49295->127.0.0.1:8131 (ESTABLISHED)
+        Electron  92023 damian  102u  IPv4  0x37257ddc7a9d0f6      0t0  TCP 127.0.0.1:49296->127.0.0.1:8131 (ESTABLISHED)
+        Electron  92023 damian  103u  IPv4 0x5789ae63dc305ec6      0t0  TCP 127.0.0.1:49297->127.0.0.1:8131 (ESTABLISHED)
+        Electron  92023 damian  104u  IPv4 0x86a0f898ef77e364      0t0  TCP 127.0.0.1:49298->127.0.0.1:8131 (ESTABLISHED)
+        Electron  92023 damian  105u  IPv4 0xeb0ec3aa22d5ad23      0t0  TCP 127.0.0.1:49299->127.0.0.1:8131 (ESTABLISHED)
+        Electron  92023 damian  106u  IPv4 0x1a72948b69a60ec9      0t0  TCP 127.0.0.1:49300->127.0.0.1:8131 (ESTABLISHED)
+        Electron  92023 damian  107u  IPv4 0x1411074268a60fdb      0t0  TCP 127.0.0.1:49301->127.0.0.1:8131 (ESTABLISHED)
+        Electron  92023 damian  108u  IPv4 0xa13a69afc06b6ecb      0t0  TCP 127.0.0.1:49302->127.0.0.1:8131 (ESTABLISHED)
+        Electron  92023 damian  109u  IPv4 0x93c2fa989916d277      0t0  TCP 127.0.0.1:49303->127.0.0.1:8131 (ESTABLISHED)
+        Electron  92023 damian  110u  IPv4 0xe38f1b801a144f8e      0t0  TCP 127.0.0.1:49304->127.0.0.1:8131 (ESTABLISHED)
+        Electron  92023 damian  111u  IPv4 0xa87a64bc6cecf273      0t0  TCP 127.0.0.1:49305->127.0.0.1:8131 (ESTABLISHED)
+        Electron  92023 damian  112u  IPv4 0x3281aed1e83884d3      0t0  TCP 127.0.0.1:49306->127.0.0.1:8131 (ESTABLISHED)
+        Electron  92023 damian  113u  IPv4 0xfd136f9d6fefbb2b      0t0  TCP 127.0.0.1:49307->127.0.0.1:8131 (ESTABLISHED)
+        Electron  92023 damian  114u  IPv4 0xac17b1c48d9a4652      0t0  TCP 127.0.0.1:49308->127.0.0.1:8131 (ESTABLISHED)
+        Electron  92023 damian  115u  IPv4 0xb4967ec6135e3b85      0t0  TCP 127.0.0.1:49309->127.0.0.1:8131 (ESTABLISHED)
+        Electron  92023 damian  116u  IPv4 0xdc4c877bd299e0e9      0t0  TCP 127.0.0.1:49310->127.0.0.1:8131 (ESTABLISHED)
+        Electron  92023 damian  117u  IPv4 0xac7bc7e9888a56a8      0t0  TCP 127.0.0.1:49311->127.0.0.1:8131 (ESTABLISHED)
+        Electron  92031 damian   27u  IPv4 0xf10b7a1b15da5755      0t0  TCP 127.0.0.1:49313->127.0.0.1:8127 (ESTABLISHED)
+[PASS] egress: no non-loopback ESTABLISHED/SYN_SENT socket in the app's process tree (instantaneous probe, not a continuous audit)
+
+---- app log (tail) ----
+[window-mode] headless run launched by pid 92016; it quits when that process goes
+14:23:24.471 › mini-view: exerciser window created (dev driver armed; no registration in this mode)
+mini-view: exerciser window created (dev driver armed; no registration in this mode)
+14:23:24.471 › mini-view: not registered (window mode headless)
+mini-view: not registered (window mode headless)
+14:23:24.472 › [discovery] record directory /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-92016/config/run/serve (1 record(s))
+14:23:24.557 › [discovery] candidate http://127.0.0.1:8131 pid 82357 v0.73.16 prefix /Users/damian/local-operator/.venv (configured URL)
+14:23:24.557 › [discovery] picked http://127.0.0.1:8131 (pid 82357, v0.73.16, configured)
+14:23:24.579 › Attached to daemon http://127.0.0.1:8131 (pid 82357, v0.73.16, editable, record /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-92016/config/run/serve/82357.json)
+14:23:24.580 › Discovered a daemon; the backend manager is configured not to spawn or kill one.
+14:23:24.581 › [window-glass] launch gate platform=darwin supported=true default=true enabled=true intensity=80 reason=ok mechanism=vibrancy
+14:23:24.618 › Update service initialized. Dev mode: true, NPX install: false
+14:23:24.618 › Unpackaged instance: no packaged install state to leave alone.
+14:23:24.619 › Periodic update checks scheduled (every 5 minutes)
+14:23:24.619 › macOS auto-update requires app signing
+14:23:24.619 › [webauthn] Touch ID passkeys are off: unpackaged — an unpackaged run has no signature to carry the entitlement, so there is no group to configure
+14:23:24.627 › [browser] denied a media permission request from (unknown origin)
+14:23:24.628 › [browser] denied a media permission request from (unknown origin)
+14:23:24.628 › [browser] denied a web-app-installation permission request from (unknown origin)
+14:23:24.628 › [browser] denied a geolocation permission request from (unknown origin)
+14:23:24.638 › [shell-path] /bin/zsh reports PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin:/Users/damian/.cargo/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin
+14:23:24.638 › Shell environment variables loaded successfully. PATH: /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Applications/VMware Fusion.app/Contents/Public:/opt/homebrew/bin:/Users/damian/Library/Application Support/Local Operator/bin:/Users/damian/.bun/bin:/Users/damian/.local/bin:/Users/damian/.kimi-code/bin:/Users/damian/.cargo/bin:/Users/damian/.nvm/versions/node/v24.18.1/bin:/Users/damian/.pyenv/shims:/Users/damian/.pyenv/bin:/opt/homebrew/opt/python@3.14/libexec/bin:/opt/homebrew/opt/go@1.25/bin:/Users/damian/go/bin
+14:23:24.760 › [browser] denied a media permission request from (unknown origin)
+14:23:24.761 › [browser] denied a media permission request from (unknown origin)
+14:23:24.761 › [browser] denied a web-app-installation permission request from (unknown origin)
+14:23:24.761 › [browser] denied a geolocation permission request from (unknown origin)
+14:23:24.767 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+14:23:24.772 › [browser] host on 127.0.0.1:49289 (proto 1), profile /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-92016/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+Error occurred in handler for 'mini-view:registration-get': Error: This window cannot read the hotkey registration.
+    at /Users/damian/local-operator-ui/.worktrees/hub-skills-state/out/main/index.jsc:1:4601479
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+14:23:24.983 › [browser] tab 1 navigated to about:blank
+14:23:25.063 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+14:23:25.064 › Checking for UI updates...
+14:23:25.065 › Skip checkForUpdates because application is not packed and dev update config is not forced
+(node:92040) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 backend-status-changed listeners added to [IpcRenderer]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `Electron Helper (Renderer) --trace-warnings ...` to show where the warning was created)
+[window-mode] state: visible=false focused=false focusable=false size=1380x900 content=1380x900
+
+[PASS] no process from this run outlived its boot
+
+frames: hub-skills-1380x900-local-operator-dark-detail.png, hub-skills-1380x900-local-operator-dark-loading.png, hub-skills-1380x900-local-operator-dark-populated.png, hub-skills-1380x900-local-operator-dark-remote-empty.png, hub-skills-1380x900-local-operator-dark-search-empty.png, hub-skills-1380x900-local-operator-dark-signed-out.png
+frames directory: /Users/damian/.local-operator/sessions/fb26384b780f/scratchpad/hub-skills-qa/frames-real
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-92016/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-92016 (the frames are also in --out)
+
+2 CHECK(S) FAILED

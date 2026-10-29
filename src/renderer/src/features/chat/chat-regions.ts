@@ -26,6 +26,8 @@
  * region — they are the sidebar's own stops, not a fifth region.
  */
 
+import { t } from "@shared/i18n";
+
 /** The marker a region root carries. One attribute, so a walk is one query. */
 export const CHAT_REGION_ATTR = "data-chat-region";
 
@@ -65,13 +67,27 @@ export type ChatRegion = (typeof CHAT_REGIONS)[number];
  * composer's `form`). The top row is a `header` landmark, which takes its name
  * from the section it heads; there is nothing honest to add to it, and a
  * landmark named by nothing is still reachable by `F6`.
+ *
+ * WHY A FUNCTION RATHER THAN A `Record` OF STRINGS. A landmark name is read
+ * every time it is rendered, and the interface language can change under a
+ * live window (the language picker writes the backend setting and the renderer
+ * re-renders through `useI18nLocale`; nothing reloads). A table of strings
+ * built at module load would freeze whichever language the module was first
+ * imported under, leaving the composer announced in the old one — the same
+ * reason the other model modules resolve their copy inside the accessor rather
+ * than at import.
  */
-export const CHAT_REGION_LABEL: Record<ChatRegion, string> = {
-	sidebar: "Chats",
-	header: "Conversation",
-	transcript: "Conversation",
-	composer: "Message composer",
-};
+export function chatRegionLabel(region: ChatRegion): string {
+	switch (region) {
+		case "sidebar":
+			return t("ui.chat.sidebar.nav.chats");
+		case "composer":
+			return t("ui.chat.region.composer");
+		case "header":
+		case "transcript":
+			return t("ui.chat.region.conversation");
+	}
+}
 
 /** One step of the walk: forward, or back. */
 export type ChatRegionStep = 1 | -1;
@@ -275,6 +291,37 @@ export const chatRowActCap = (act: ChatRowAct, isMac: boolean): string => {
  */
 export const chatRowActCapJoined = (act: ChatRowAct, isMac: boolean): string =>
 	isMac ? `⌘+⇧+${act === "pin" ? "P" : "A"}` : chatRowActCap(act, isMac);
+
+/**
+ * `⌘⇧L` / `Ctrl+Shift+L` on a focused conversation row: open its Tags popover
+ * (sidebar tags v3, D8).
+ *
+ * NOT A `ChatRowAct`. Those chords press a control found on the row by its data
+ * attribute; there is no Tags control on the row (the spec keeps the row's acts
+ * cluster at its measured width), so this opens the popover directly. Bare `L`
+ * (Gmail, Linear) is impossible here for the reason `chatRowAct` states: a
+ * printable key on a row is type-to-filter. `primary+shift+l` is reserved in
+ * `RESERVED_CHORDS` in the same change, so no user binding can shadow it.
+ */
+export const chatTagsChord = (event: {
+	key: string;
+	metaKey: boolean;
+	ctrlKey: boolean;
+	shiftKey: boolean;
+	altKey: boolean;
+}): boolean =>
+	(event.metaKey || event.ctrlKey) &&
+	event.shiftKey &&
+	!event.altKey &&
+	event.key.toLowerCase() === "l";
+
+/** The chord as `KeyboardShortcut` prop text (split on `+`), as `chatRowActCapJoined`. */
+export const chatTagsChordCap = (isMac: boolean): string =>
+	isMac ? "⌘+⇧+L" : "Ctrl+Shift+L";
+
+/** The chord as printed prose (`⌘⇧L`), for a sentence rather than a key cap. */
+export const chatTagsChordText = (isMac: boolean): string =>
+	isMac ? "⌘⇧L" : "Ctrl+Shift+L";
 
 /** The attribute each row act's control carries, so the chord can find it. */
 export const CHAT_ROW_ACT_ATTR: Record<ChatRowAct, string> = {

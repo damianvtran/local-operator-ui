@@ -1,32 +1,34 @@
 /**
- * Which span of a draft is a `$skill` TOKEN rather than prose, for the
+ * Which spans of a draft are `$skill` TOKENS rather than prose, for the
  * composer's syntax highlight.
  *
  * The `$` sibling of `slashHighlightRuns`, and deliberately a separate builder
- * rather than an arm inside it: the two sigils' rules differ in every dimension
- * that matters here. A slash run lives on the FIRST CONTENT LINE and starts
- * with `/`; a skill run is the LEADING token of the whole draft (whitespace-only
- * before it — `skillTokenIsLeading`'s rule, `skill-token.ts:108-110`) and may
- * sit after blank lines, which is why this scan has no first-content-line
- * restriction. The shared part is the OUTPUT: the same run object, so the
- * mirror keeps one pipeline (`segmentsOf`, `runInkClass`) and the two families
- * cannot drift into two painters.
+ * rather than an arm inside it: a slash run lives on the FIRST CONTENT LINE and
+ * starts with `/`, while a skill token may sit anywhere a word boundary allows
+ * and there may be several in one draft. The shared part is the OUTPUT: the
+ * same run object, so the mirror keeps one pipeline (`segmentsOf`,
+ * `runInkClass`) and the two families cannot drift into two painters.
+ *
+ * THE TRIGGER IS THE SUBMIT'S OWN. `planSkillMentions` (the desktop port of
+ * `sigils.skill_mentions` plus `plan_attachments`' block idempotence) decides
+ * which tokens fire — boundary, name class, trailing-punctuation trim, case
+ * rule, dedupe and already-attached names all included — so a token
+ * cannot be painted resolved here and be prose at Enter. That is the whole
+ * reason this file does not re-derive the grammar: the previous version read
+ * only the leading token, and an inline `$research` that the send now expands
+ * would otherwise stay unpainted.
  *
  * THE STATES, from spec-reconciliation.md §2 (the manager-ratified contract;
  * `design-spec.md` §1.1 carries the same classes):
  *
- *   - RESOLVED (`skill`): leading, and the name is an exact case-insensitive
- *     member of the SETTLED vocabulary. Paints even while the skill list is
- *     open on the token, because membership is a verdict, not a prefix — the
- *     list cannot change it. Extent is the RESOLVER's name class
- *     `[A-Za-z0-9][A-Za-z0-9._-]*` (`skill-invocation.ts`'s `INVOCATION_RE`,
- *     tracking `invoke.py:100`), which is the span the SUBMIT will fire:
- *     `$research,` inks `research` resolved (the comma is outside the class, so
- *     the invocation fires), while `$research.` inks `research.` attempted (the
- *     dot is IN the class, so the parse swallows it and the invocation does
- *     not fire). Both corners are pinned by `scripts/skill-highlight.test.mjs`
- *     so a later "fix" cannot silently flip an honesty call (UX U6).
- *   - NO INK while the list OWNS the token: an unresolved name under the open
+ *   - RESOLVED (`skill`): a mention the plan accepts, ANYWHERE in the
+ *     draft. Paints even while the skill list is open on the token, because
+ *     membership is a verdict, not a prefix — the list cannot change it. Extent
+ *     is the resolver's: `$research,` inks `research` resolved (the comma is
+ *     outside the name class) while `$research.` now inks `research` too,
+ *     because the resolver trims the trailing dot and fires; the dot stays
+ *     prose. Both corners are pinned by `scripts/skill-highlight.test.mjs`.
+ *   - NO INK while the list OWNS the token: an unresolved token under the open
  *     list is a prefix in progress, not a typo (the slash `picking`
  *     suppression, `slash-highlight.ts:84-88`, and UX U4b) — the dim arrives
  *     only after the list closes. A resolved name paints through.
@@ -34,31 +36,47 @@
  *     vocabulary yet) or errored. `settled` folds both into one gate, because
  *     "do not flicker claims" is the same requirement in both states; the
  *     dim-at-rest must not flash while the load is in flight.
- *   - INERT (`skill-unknown`): leading, unresolved, the whole trimmed draft, a
- *     name carrying lowercase evidence (`$zzz` yes; `$5` and `$PATH` no —
- *     `skill-rank.ts`'s own inline-evidence rule, which is what keeps money and
- *     shell out). The whole-draft gate is load-bearing: in a longer sentence
- *     the same token could still be a sentence in progress, so it gets nothing.
- *   - NEUTRAL: everything else — money/shell, a `$` glued to its left context
- *     (`costs$5`, `a$b`), inline tokens in any state (only the anchor fires,
- *     `skill-invocation.ts:83-108`), and any token a slash context claims (a
- *     leading token cannot be claimed by construction: a claim needs a command
- *     word before it on the line, i.e. non-whitespace before the `$`).
+ *   - INERT (`skill-unknown`): unresolved, and the token IS the whole trimmed
+ *     draft, and it carries lowercase evidence (`$zzz` yes; `$5` and `$PATH` no
+ *     — `skill-rank.ts`'s own inline-evidence rule, which is what keeps money
+ *     and shell out). The whole-draft gate is load-bearing: in a longer
+ *     sentence the same token could still be a sentence in progress, so it gets
+ *     nothing. This is the TUI's own inert rule
+ *     (`widgets/editor.py:_compute_skill_runs`).
+ * - Neutral: everything else — money/shell, and a `$` glued to its left
+ *   context (`costs$5`, `a$b`), which the boundary rule never returns as a
+ *   token at all.
  *
- * WHY THE CHARSET GATE IS NOT RE-TESTED: the design's `^[A-Za-z0-9._-]+$`
- * narrowing on the inert state is the extent's own definition here — the word
- * is read AS that class, greedily — so re-testing it would be a tautology. The
- * lowercase-evidence gate is the one the design lists that is NOT implied, and
- * it is read through `hasLowercaseEvidence` so this file and the picker cannot
- * disagree about what evidence is.
+ * THE SURFACE RULE, AND WHY IT IS NOT THE TUI'S. `planSkillMentions` decides
+ * WHAT fires; `expands` decides WHERE a fire is possible on this host, and the
+ * two are separate because the hosts differ. Enter on `/team delivery
+ * $research` hands the argument to `sessions.command`; the backend admits the
+ * receipt's request itself, and the composer's submit seam — the only place
+ * that expands a skill — never runs. The TUI closes that split with
+ * `command_picker.skill_scan_region` plus `SKILL_SUBMIT_COMMANDS`: it expands
+ * the argument tail of `/team`, `/agent`, `/goal` and `/aida` as its own
+ * prompt. The desktop cannot port that faithfully. `/goal`'s argument is ALSO
+ * the stored goal text, so appending a block would mutate a durable operand;
+ * `/team` and `/agent` are admitted from a receipt the renderer does not
+ * compose; `/aida` sends through a branch with no skill plan. Expanding a
+ * command OPERAND is not the same act as expanding the message the composer
+ * sends, so the honest fallback is: no ink on a draft Enter dispatches as a
+ * command. The caller supplies `expands` from the same slash planner Enter
+ * uses, so the paint and the key cannot disagree.
+ *
+ * A leading slash word that is NOT a dispatchable command is prose on the
+ * desktop — the planner answers `send` and the text reaches the submit seam —
+ * so its mentions still paint, exactly as the TUI's `skill_scan_region`
+ * returns the whole buffer for the same shape.
  *
  * Pure and I/O-free, like its sibling: the whole rule is executable in
  * `scripts/skill-highlight.test.mjs` on the code the app ships.
  */
 
+import { planSkillMentions, skillNameSpans } from "./skill-invocation";
 import { hasLowercaseEvidence } from "./skill-rank";
 import type { SlashHighlightRun } from "./slash-highlight";
-import { pyTrim, pyTrimStart } from "./slash-token";
+import { pyTrim } from "./slash-token";
 
 export type SkillHighlightArgs = {
 	/** The draft the mirror paints, whole-buffer offsets. */
@@ -76,66 +94,59 @@ export type SkillHighlightArgs = {
 	 * ink only; a resolved token paints through it.
 	 */
 	picking: boolean;
+	/**
+	 * Whether Enter SENDS this draft as a message — the one surface on this
+	 * host where a `$name` expands. Read from the same slash planner the Enter
+	 * key reads; a draft that dispatches a command paints no skill ink.
+	 */
+	expands: boolean;
 };
-
-/** The first character of a resolvable name (`INVOCATION_RE`'s opening class). */
-const NAME_START = /[A-Za-z0-9]/;
-/** A name's continuation characters. */
-const NAME_TAIL = /[A-Za-z0-9._-]/;
-
-/**
- * The greedy `[A-Za-z0-9][A-Za-z0-9._-]*` run at `from`, or `null` when the
- * first character cannot start a name.
- *
- * Greedy on purpose, and the greedy read IS the resolver's: `parseSkillInvocation`
- * matches the same class with a trailing `*`, so `$research_extra` parses the
- * name `research_extra` (missing the vocabulary) rather than silently falling
- * back to `research` — the ink must mirror that swallow, not the shorter read.
- */
-function nameExtent(draft: string, from: number): string | null {
-	if (from >= draft.length || !NAME_START.test(draft[from])) return null;
-	let end = from + 1;
-	while (end < draft.length && NAME_TAIL.test(draft[end])) end++;
-	return draft.slice(from, end);
-}
 
 export function skillHighlightRuns({
 	draft,
 	vocabulary,
 	settled,
 	picking,
+	expands,
 }: SkillHighlightArgs): SlashHighlightRun[] {
 	// Loading, no vocabulary yet, or errored: no claims at all, and no dim
-	// flash while the read is in flight.
-	if (!settled) return [];
+	// flash while the read is in flight. `expands` is the surface gate: a
+	// slash command's line never reaches the seam that expands a skill.
+	if (!settled || !expands) return [];
 	/*
-	 * LEADING means whitespace-only before the token. Reading it as the length
-	 * of the leading separator run — `draft.length - pyTrimStart(draft).length`,
-	 * the same shape `firstContentLine` measures its start with — is the same
-	 * question `skillTokenIsLeading` asks by `pyTrim`, with the offset in hand
-	 * instead of a token; a character before the `$` that is not a Python
-	 * separator makes the first non-separator position land elsewhere, so glued
-	 * money (`costs$5`) and inline tokens (`fix this $research`) fail here for
-	 * the same reason.
+	 * The PLAN, not the raw mentions: a token inside a block that arrived with
+	 * the draft will not attach at submit, and a name the block already carries
+	 * will not attach a second time. Painting either resolved would be an ink
+	 * claim the send does not honour — the same reason this file reads the
+	 * submit's trigger at all.
 	 */
-	const start = draft.length - pyTrimStart(draft).length;
-	if (draft[start] !== "$") return [];
-	const word = nameExtent(draft, start + 1);
-	// A bare `$` (and `$-foo`): no name to judge. The picker may still open on
-	// it; the ink has nothing to claim.
-	if (word === null) return [];
-	const end = start + 1 + word.length;
-	const resolved = vocabulary.some(
-		(row) => row.name.toLowerCase() === word.toLowerCase(),
+	const mentions = planSkillMentions(
+		draft,
+		vocabulary.map((row) => row.name),
 	);
-	if (resolved) return [{ start, end, kind: "skill" }];
+	const runs: SlashHighlightRun[] = mentions.map((mention) => ({
+		start: mention.start,
+		end: mention.end,
+		kind: "skill",
+	}));
 	// Unresolved under the open list: a prefix in progress, not a typo.
-	if (picking) return [];
-	// The whole-draft gate: a token with text after it could be a sentence in
-	// progress, so its inertness is not yet a fact.
-	if (pyTrim(draft) !== draft.slice(start, end)) return [];
-	// Lowercase evidence — the one gate the extent does not imply. `$ZZZ` and
-	// `$5` stay unpainted; `$zzz` dims.
-	if (!hasLowercaseEvidence(word)) return [];
-	return [{ start, end, kind: "skill-unknown" }];
+	if (picking) return runs;
+	/*
+	 * The inert pass reads the raw spans, because the plan only returns
+	 * tokens that resolve. A token whose start the trigger accepted is skipped
+	 * so the two inks cannot paint the same characters.
+	 */
+	const resolvedStarts = new Set(mentions.map((mention) => mention.start));
+	const trimmed = pyTrim(draft);
+	for (const span of skillNameSpans(draft)) {
+		if (resolvedStarts.has(span.start)) continue;
+		// The whole-draft gate: a token with text around it could be a sentence
+		// in progress, so its inertness is not yet a fact.
+		if (draft.slice(span.start, span.end) !== trimmed) continue;
+		// Lowercase evidence — the one gate the extent does not imply. `$ZZZ`
+		// and `$5` stay unpainted; `$zzz` dims.
+		if (!hasLowercaseEvidence(span.name)) continue;
+		runs.push({ start: span.start, end: span.end, kind: "skill-unknown" });
+	}
+	return runs;
 }

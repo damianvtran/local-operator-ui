@@ -1,0 +1,29 @@
+{
+  "auditor": "i18n-auditor-fr",
+  "instance": "b8c9d0e1f2a3",
+  "model": "anthropic/claude-sonnet-5-5",
+  "locale": "fr",
+  "namespace": "ui.chat.tags",
+  "source_sha256": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+  "target_sha256": "6b731c9d4f552a5f78aa149ba41027ffa38c35c625f6323eb81c4c42eb86e686",
+  "status": "clean",
+  "findings": [],
+  "scope": "Independent re-audit of all 73 EN/FR pairs at refrozen bytes, focusing remediation on tag_usage and its plural edges; meaning, grammar, register, punctuation, length risk and ICU argument preservation reviewed. Rendered fit remains later QA.",
+  "checks": {
+    "key_pairs": 73,
+    "baseline_ref": "bf24fa9e5496af551c60532a87811b4dc550495c",
+    "baseline": "All 54 baseline values in EN and FR unchanged versus HEAD; 19 new keys in each.",
+    "delta_proof": "Removing only the new tag_usage many branch from current French bytes reconstructs prior audited SHA256 8b7ce8bfdd40ca9d8ea6e0ce9bdde5a69f0b9a8f0225f191209e12f6f2394515 exactly. All other French bytes unchanged; EN hash unchanged.",
+    "icu": "All 73 EN/FR pairs parsed with @formatjs/icu-messageformat-parser; unique argument sets match. All French messages formatted with intl-messageformat for 0,1,2,8,32,1000000: 438 successful formats.",
+    "tag_usage_actual": {
+      "0": "0 conversation",
+      "1": "1 conversation",
+      "2": "2 conversations",
+      "1000000": "1 000 000 de conversations"
+    },
+    "length_risk": "No new length risk beyond the extra “de ” at exact millions; dynamic-name and narrow-layout fit remains later rendered QA."
+  },
+  "remediation": "Prior MINOR FR-1 resolved by explicit many branch; executed million-count output confirms the correction.",
+  "model_provenance": "Current session model as supplied by runtime: anthropic/claude-sonnet-5-5. This new audit makes no fallback-model claim.",
+  "verdict": "clean; TERMINAL — zero BLOCKER, MAJOR, MINOR or NIT findings."
+}

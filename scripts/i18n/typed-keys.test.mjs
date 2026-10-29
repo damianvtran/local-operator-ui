@@ -63,6 +63,11 @@ before(() => {
 	assert.equal(exit, 0, "the generator refused the fixture catalogue");
 	tscBase = [
 		"--noEmit",
+		// TypeScript 7 discovers a tsconfig above the temp tree and otherwise
+		// rejects explicit input files with TS5112 before checking any call site.
+		// This fixture is intentionally standalone; its full strict flag set is
+		// declared here, so ancestor configuration must not enter the compile.
+		"--ignoreConfig",
 		"--strict",
 		"--target",
 		"es2020",

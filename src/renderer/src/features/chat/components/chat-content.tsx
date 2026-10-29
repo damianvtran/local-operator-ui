@@ -8,6 +8,15 @@ import { CodeReviewPane } from "@features/code-review/components/code-review-pan
 import { useCodeRequests } from "@features/code-review/hooks/use-code-requests";
 import { ConsolePane } from "@features/console/components/console-pane";
 import { useConsoleBlipPulse } from "@features/console/hooks/use-console-attention";
+import {
+	DrawerBackToTop,
+	DrawerTabs,
+	DrawerUpdates,
+	defaultDrawerTab,
+	useSessionUnreadUpdates,
+} from "@features/notifications/components/drawer-updates";
+import { useNotificationDrawerTab } from "@features/notifications/drawer-tab-store";
+import { useNotificationsEnabled } from "@features/notifications/notifications-api";
 import { useProviderStatus } from "@features/providers/use-provider-status";
 import {
 	desktopFeatureEnabled,
@@ -32,6 +41,8 @@ import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
 import { usePairingCause } from "@shared/hooks/use-pairing-cause";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /*
  * The mode-dependent classes on the canvas's wrapper below are the first
  * conditional class list in this file: every other one is a literal. `cn` rather
@@ -79,6 +90,7 @@ import { settleQueuedAdoption } from "../aside";
 import { gateIsSecret } from "../ask-answer";
 import type {
 	AskAnswerAttempt,
+	AskDismissReason,
 	AskDraft,
 	AskOutcome,
 	AskScope,
@@ -93,6 +105,7 @@ import {
 } from "../ask-queue";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import type { UndeliveredTurn } from "../canonical/canonical-transcript";
+import { LiveUpdatesPausedBanner } from "../canonical/live-updates-paused-banner";
 import { openFrameFacts } from "../canonical/open-frame";
 import {
 	canonicalTranscriptSpeaks,
@@ -100,6 +113,8 @@ import {
 } from "../canonical/transcript-pane";
 import { useMentionedFiles } from "../canonical/use-mentioned-files";
 import { useSessionFiles } from "../canonical/use-session-files";
+import { useUserAttachments } from "../canonical/use-user-attachments";
+import { attachmentRefusals } from "../canonical/user-attachments";
 import {
 	workingLineClaimed,
 	workingLineInputFor,
@@ -112,6 +127,7 @@ import {
 import {
 	CANVAS_PANE_MIN_PX,
 	CHAT_PANE_MIN_PX,
+	CHAT_SEAM_INSET_PX,
 	canvasDockWidth,
 	canvasPaneMode,
 	rightSlotDividerContract,
@@ -122,10 +138,12 @@ import type {
 } from "../draft-selection";
 import { useFleetAsks } from "../fleet-asks";
 import { codeReviewPaneNotice, runPaneNotice } from "../right-slot-notices";
+import type { SessionAskFrame } from "../session-asks";
 import type { Message } from "../types/message";
 import { useAskOpenPolicy } from "../use-ask-open-policy";
 import { AskDrawer } from "./asks/ask-drawer";
 import { Canvas } from "./canvas";
+import { combinedFileCount } from "./canvas/attachment-items";
 import { documentsForCanvas } from "./canvas/document-buffers";
 import { tabFollowingClose } from "./canvas/tab-selection";
 import { ChatHeader } from "./chat-header";
@@ -198,6 +216,14 @@ type ChatContentProps = {
 	 */
 	renameSessionId?: string;
 	onOpenOptions: () => void;
+	/**
+	 * The missing notice's way out, threaded from the page that owns `navigate`
+	 * (agent review round 1 / QA round 1, Q1). The transcript stages the fresh
+	 * draft through the store; this moves the ADDRESS with it. Optional because the
+	 * transcript also renders on surfaces with no route (stories, the run panel's
+	 * child reader), where there is nothing to navigate.
+	 */
+	onStartNewChat?: () => void;
 	isOptionsSidebarOpen: boolean;
 	onCloseOptions: () => void;
 	agentId: string;
@@ -301,6 +327,11 @@ type ChatContentProps = {
 	 */
 	sessionStatus?: {
 		frontend: CanonicalFrontendState | null;
+		/**
+		 * The ask lane's resolved frame (see `canonical.asks`); forwarded to the
+		 * composer so its chip reads the same queue as the drawer beside it.
+		 */
+		asks?: SessionAskFrame | null;
 		/** Catalogue source locality; absence is not proof of local serving. */
 		servingLocality?: "local" | "remote";
 		onCommand?: (invocation: SlashCommandInvocation) => void;
@@ -390,6 +421,23 @@ type ChatContentProps = {
 	 */
 	canonical: {
 		view: CanonicalSessionHandle;
+		/**
+		 * THE SESSION'S ASK FRAME, resolved ONCE by the page from the two reads that
+		 * can answer for it (`session-asks.ts`): the canonical snapshot when it
+		 * carries a claim, and the index-backed aggregate while a resumed
+		 * conversation's checkpoint is still claimless.
+		 *
+		 * `null` means the read is still in flight, which the drawer words as
+		 * "Reading the asks…" - never as the unsupported-runtime sentence. All four
+		 * ask surfaces in this pane read this field (and no longer re-derive the
+		 * queue from `view.frontend`), so they cannot disagree about whether the
+		 * queue is readable.
+		 *
+		 * Undefined only for a caller that owns no page (a story/rig); the pane then
+		 * falls back to `view.frontend`, which is the pre-fix reading and is why the
+		 * field is optional rather than a break for every mount.
+		 */
+		asks?: SessionAskFrame | null;
 		/**
 		 * Whether the owner's turn is still ALIVE - read through the hold:
 		 * `(frontend ?? heldFrontend)?.streaming`, defined once in the page that
@@ -551,6 +599,15 @@ type ChatContentProps = {
 		 * §10 rules out.
 		 */
 		onReviseAsk?: (askId: string, answers: Record<string, string[]>) => void;
+		/**
+		 * PUT AN OPEN ASK AWAY without answering it (harness PR #2833, SA-D5).
+		 *
+		 * Raised to `SessionPanel` beside its three siblings for their reason: the
+		 * shared lock and the refusal surface live there. ABSENT where the backend
+		 * does not advertise `features.ask_dismiss` — the page gates it, and the panel
+		 * then draws no button.
+		 */
+		onDismissAsk?: (askId: string, reason: AskDismissReason) => void;
 		/**
 		 * What `SessionPanel` knows about each queued ask it just answered, keyed by
 		 * ask id: the sentence the owner refused with, or `null` while it is live - and,
@@ -840,6 +897,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		deviceHold,
 		renameSessionId,
 		onOpenOptions,
+		onStartNewChat,
 		isOptionsSidebarOpen,
 		onCloseOptions,
 		agentId,
@@ -891,6 +949,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		mentionsUnsupported = false,
 		pulses,
 	}) => {
+		// Copy stays live across a backend locale change without touching tab state.
+		useI18nLocale();
 		const [isSmallView, setIsSmallView] = useState(false);
 		/*
 		 * THE COMPOSER'S TWO HOST SEAMS (the shared-composer lift). The credential
@@ -1390,10 +1450,46 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		// One inventory owns both the rail and the open canvas. Reading a disabled
 		// legacy scanner here made the rail deny files the backend already listed.
 		const indexedFiles = useSessionFiles(sessionId, true, turnTerminal);
-		const mentionedFileCount =
+		/*
+		 * The person's attachments, read ONCE here beside the file index: the live
+		 * records paint a new send immediately and the backend inventory supplies
+		 * the history that is not paged in. The rail, the Files segment and the
+		 * pinned Attachments section all read this one value.
+		 */
+		const userAttachments = useUserAttachments(
+			sessionId,
+			canonical?.view.transcript.records ?? null,
+			turnTerminal,
+		);
+		/*
+		 * What the inventory refused to copy out (Q1), for the transcript's
+		 * sent-file cards and pictures - painted from loaded records, which carry
+		 * no verdict of their own; keyed beyond the digest because an inline file
+		 * has none (QA R5 Q2). Memoised so the memoised rows compare equal.
+		 */
+		const attachmentItems = userAttachments.items;
+		// `verdicts` carries "not judged yet" (QA R6 Q3): no listing yet, or a
+		// send the listing has not seen, withholds every path action.
+		const attachmentVerdicts = userAttachments.verdicts;
+		const refusedAttachments = useMemo(
+			() =>
+				attachmentRefusals({
+					items: attachmentItems,
+					verdicts: attachmentVerdicts,
+				}),
+			[attachmentItems, attachmentVerdicts],
+		);
+		const mentionedFileCount = combinedFileCount(
 			indexedFiles.mode === "index"
 				? indexedFiles.total
-				: (canvasState ?? defaultCanvasState).mentionedFiles.length;
+				: (canvasState ?? defaultCanvasState).mentionedFiles.length,
+			indexedFiles.mode === "index"
+				? indexedFiles.rows.map((row) =>
+						row.ref.type === "artifact" ? row.ref.digest : null,
+					)
+				: [],
+			userAttachments,
+		);
 
 		// The slot's ONE default while nothing has been dragged
 		// (`DEFAULT_RIGHT_SLOT_WIDTH`, #872 follow-up): the run panel opens at the
@@ -1530,10 +1626,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * Reading this lane's own field here, rather than re-deriving the rule, is what
 		 * makes `askQueuePublished` the ONE vocabulary point it claims to be.
 		 */
-		const sessionAsksView = useMemo(
-			() => askQueueView(canonical?.view.frontend ?? null),
-			[canonical?.view.frontend],
-		);
+		/*
+		 * THE SESSION'S ASK FRAME, RESOLVED ONCE BY THE PAGE (`session-asks.ts`).
+		 * The fallback is only for a caller with no page (a story/rig): in the app
+		 * this field is always supplied, and it is what keeps a claimless resumed
+		 * snapshot from reading as a runtime that cannot queue asks.
+		 */
+		const askFrame =
+			canonical.asks === undefined
+				? (canonical?.view.frontend ?? null)
+				: canonical.asks;
+		const sessionAsksView = useMemo(() => askQueueView(askFrame), [askFrame]);
 		/*
 		 * THE QUEUED SECRET ASK'S COMPOSER HOOKUP (the operator's ask, `a-9e0c`).
 		 *
@@ -1631,9 +1734,23 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * Both scopes count ANSWERABLE asks, so a lapsed one pulls no attention (D10, D11):
 		 * the session read falls back to the tally only when its list is incomplete.
 		 */
+		/*
+		 * THE DOOR COUNTS LIVE ASKS PLUS THIS CONVERSATION'S UNREAD UPDATES when the
+		 * backend serves the reel (design § 18, contract § 6.5): one door answers
+		 * "what does this conversation need from me?". Without the capability the
+		 * second term is zero and the count is exactly today's.
+		 */
+		const notificationsEnabled = useNotificationsEnabled();
+		const sessionUnreadUpdates = useSessionUnreadUpdates(
+			sessionId ?? null,
+			notificationsEnabled,
+		);
+		const drawerTab = useNotificationDrawerTab((state) => state.tab);
+		const setDrawerTab = useNotificationDrawerTab((state) => state.setTab);
 		const headerAsksCount = headerAsksSession
 			? askAttentionCount(sessionAsksView)
 			: fleetAsks.outstanding;
+		const headerAsksUpdates = headerAsksSession ? sessionUnreadUpdates : 0;
 		const headerAsksOpen =
 			isAskDrawerOpen && askDrawerScope === headerAsksScope;
 		/*
@@ -1726,6 +1843,19 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			[consoleUnseenAll, sessionId],
 		);
 		const consoleUnseenPulsing = useConsoleBlipPulse(consoleUnseenMarks);
+		/*
+		 * THE CONSOLE'S LIVENESS FACT, for the rail item's active treatment. The pane
+		 * publishes the running count it already reads (`consoleLiveSurface`), so this
+		 * is a projection rather than a second subscription or a poll - the same
+		 * discipline the unseen marks above follow.
+		 */
+		const consoleLiveSurface = useUiPreferencesStore(
+			(s) => s.consoleLiveSurface,
+		);
+		const consoleLiveCount =
+			consoleLiveSurface !== null && consoleLiveSurface.sessionId === sessionId
+				? consoleLiveSurface.count
+				: 0;
 
 		/*
 		 * THE CODE REQUEST LEDGER, read here for the rail item's name and its
@@ -1889,6 +2019,25 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 */
 		const canvasDocked =
 			canvasPaneMode(paneRowWidth || Number.MAX_SAFE_INTEGER) === "docked";
+		/*
+		 * IS A SEPARATOR DRAWN ON THIS COLUMN'S RIGHT EDGE? Read from the SAME
+		 * open-flags and mode pairs the row's own `{... && (` blocks use, which is why
+		 * the two canvas families carry `canvasDocked` as well: the canvas and the ask
+		 * drawer draw their divider only while they DOCK, so `canvasDocked` alone -
+		 * "the row is wide enough to dock" - is true with no pane open at all, and
+		 * gating the inset on it alone insets every chat on a wide window.
+		 *
+		 * THE LIST IS HAND-KEPT, and a sixth occupant has to be added here beside its
+		 * `{... && (` block; `scripts/chat-pane-floors.test.mjs` pins the canvas half,
+		 * which is the one that was missing.
+		 */
+		const rightPaneDocked =
+			(isCanvasOpen && canvasDocked) ||
+			(sessionAsksOpen && canvasDocked) ||
+			isRunPanelOpen ||
+			isBrowserPaneOpen ||
+			isConsolePaneOpen ||
+			isCodeReviewPaneOpen;
 		const canvasWidth = useUiPreferencesStore((state) =>
 			resolveRightSlotWidth(paneRowWidth, state),
 		);
@@ -2217,11 +2366,41 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					 * transcript scroller now inherit rather than name one, and the
 					 * canonical user bubble carries a note. Each is annotated where it
 					 * sits.
+					 *
+					 * `panel-top-pad` because the chat route is a flush panel route
+					 * (`ChatPage`'s root, design round 1, D1): this column's `canvas`
+					 * ground starts at y0 under the transparent lane, and the pad is
+					 * what moves the header below the OS controls. It is padding, not
+					 * a margin, so the ground stays continuous through the strip.
 					 */}
 					<div
 						ref={chatContainerRef}
 						data-glass-region="canvas"
-						className="flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-canvas"
+						/*
+						 * THE SEAM INSET: 8px given back while a separator is drawn on this
+						 * column's inline-end edge, and it is a SCROLLBAR clearance rather than
+						 * spacing. `CHAT_SEAM_INSET_PX` carries the numbers and the reasoning
+						 * (the separator reaches 6px in, the bar is 8px wide and sat flush).
+						 *
+						 * AN INLINE STYLE, not a conditional class, for two reasons. This
+						 * element's class attribute is a literal thumbprint two guards read
+						 * (`lane-leading.test.mjs`: a full-height column wears `panel-top-pad`
+						 * and paints `bg-canvas`, matched as one string), and moving it into a
+						 * `cn(...)` call broke both of that file's cases; and the value is a
+						 * pixel measured against the band's reach, the same class of value
+						 * `PaneSlot` sets inline for its width.
+						 *
+						 * It sits on this inner surface rather than on the column itself so the
+						 * column's own box - the width the right pane's capacity is measured
+						 * against, and the element `chat-pane-floors.test.mjs` reads its floor
+						 * from - is untouched.
+						 */
+						style={
+							rightPaneDocked
+								? { paddingInlineEnd: CHAT_SEAM_INSET_PX }
+								: undefined
+						}
+						className="panel-top-pad flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-canvas"
 					>
 						{/* Chat header */}
 						{/*
@@ -2580,7 +2759,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										labelPending={canonical.view.labelPending}
 										labelHoldLate={canonical.view.labelHoldLate}
 										labelMarked={canonical.view.labelMarked}
+										refusedAttachments={refusedAttachments}
 										onReconnect={canonical.view.retry}
+										onStartNewChat={onStartNewChat}
 										// The two states a notification click paints before the
 										// owner answers: the rows may be this window's memory of
 										// the conversation rather than the owner's, or the
@@ -2611,6 +2792,47 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * docking it at the composer's top edge still holds for it alone.
 						 */}
 						{/*
+						 * THE PAUSED LIVE STREAM, directly above the composer (agent report:
+						 * a long-lived session froze with no affordance after a frame over
+						 * the backend's socket cap was replaced by a passive notice). It
+						 * sits on the composer band rather than inside the transcript's
+						 * scroller because it must stay visible while the reader scrolls:
+						 * the claim is about the view as a whole, and the control repaints
+						 * the view as a whole. `canonical` gates it exactly as it gates the
+						 * box below - a legacy path has no live stream to be paused.
+						 */}
+						{/*
+						 * THE SAME COLUMN CONTRACT AS THE DOCK AND THE COMPOSER, and the
+						 * SAME NESTING the dock uses: the host carries the 24px gutter, the
+						 * BAND carries the 810px measure. Putting both on one element made
+						 * the measure pay for the inset (810 - 48 = 762px), so the band sat
+						 * 24px inside the composer on each side at every wide column (design
+						 * round 2, D1; code M5 residual). The root carries no horizontal
+						 * padding of its own.
+						 *
+						 * HIDDEN FOR A MISSING SESSION: the transcript replaces itself with
+						 * "this conversation is no longer on this machine", and a paused
+						 * warning over a conversation that does not exist would be a claim
+						 * about nothing.
+						 */}
+						{canonical?.view.liveUpdatesPaused && !canonical.view.missing && (
+							<div
+								className={cn(
+									CHAT_COLUMN_CONTAINER,
+									CHAT_COLUMN_INSET,
+									"w-full shrink-0 pt-2",
+								)}
+							>
+								<LiveUpdatesPausedBanner
+									className={CHAT_MEASURE}
+									paused={canonical.view.liveUpdatesPaused}
+									reloading={canonical.view.liveUpdatesReloading}
+									reloadFailed={canonical.view.liveUpdatesReloadFailed}
+									onReload={canonical.view.reloadFromHistory}
+								/>
+							</div>
+						)}
+						{/*
 						 * THE BLOCKING DOCK, and the one rule a reader of both must know: once the
 						 * queue is on the wire, an ask-shaped `pending_gate` is the backend's
 						 * LEGACY MIRROR of an ask already in `asks[]`, so drawing it would show the
@@ -2629,6 +2851,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									key={gate.request_id}
 									className={CHAT_MEASURE}
 									gate={gate}
+									sessionId={sessionId}
 									onAnswer={canonical.onAnswer}
 									/*
 									 * The secret field's own door, forwarded untouched like `onAnswer`:
@@ -2703,7 +2926,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											CHAT_MEASURE,
 										)}
 									>
-										<span>Stopped</span>
+										<span>{t("ui.chat.action.stopped")}</span>
 										{stoppedRetryText !== null && (
 											<>
 												<span aria-hidden="true">·</span>
@@ -2715,7 +2938,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 													}
 													className="rounded-sm text-ink-muted underline-offset-2 transition-colors duration-fast ease-out-quart hover:text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
 												>
-													Retry
+													{t("ui.common.actions.retry")}
 												</button>
 											</>
 										)}
@@ -3063,6 +3286,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								currentWorkingDirectory={cwd}
 								fileCount={mentionedFileCount}
 								fileIndex={indexedFiles}
+								attachments={userAttachments}
 								scan={filesScan}
 								/*
 								 * The pane's goals come off the SAME canonical frontend the composer
@@ -3155,7 +3379,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							data-ask-mode={canvasDocked ? "docked" : "overlay"}
 						>
 							<AskDrawer
-								frontend={canonical?.view.frontend ?? null}
+								frontend={askFrame}
 								/*
 								 * SESSION-SCOPED, because this mount is the conversation's own: its rows
 								 * arrive on this session's frame and its answers go to this session.
@@ -3169,10 +3393,55 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * which is why this block is gated on it above.
 								 */
 								scope="session"
-								onClose={handleCloseAskDrawer}
+								tabs={
+									notificationsEnabled && sessionId
+										? (() => {
+												/*
+												 * Tab state is per drawer open (design § 18): `null`
+												 * resolves to the default every time it reopens.
+												 */
+												const tab =
+													drawerTab ??
+													defaultDrawerTab(
+														"session",
+														askAttentionCount(sessionAsksView),
+													);
+												return {
+													strip: (
+														<DrawerTabs
+															tab={tab}
+															asks={askAttentionCount(sessionAsksView)}
+															unreadUpdates={sessionUnreadUpdates}
+															sessionless={false}
+															onTab={(next) => {
+																if (next === "all") {
+																	/* The fleet scope IS this tab: the
+																	   shell's mount takes the slot. */
+																	setDrawerTab(null);
+																	setAskDrawerOpen(true, "fleet");
+																	return;
+																}
+																setDrawerTab(next);
+															}}
+														/>
+													),
+													body:
+														tab === "updates" ? (
+															<DrawerUpdates sessionId={sessionId} />
+														) : null,
+													action: <DrawerBackToTop tab={tab} />,
+												};
+											})()
+										: undefined
+								}
+								onClose={(options) => {
+									setDrawerTab(null);
+									handleCloseAskDrawer(options);
+								}}
 								onAnswer={canonical?.onAnswerAsk}
 								onDecline={canonical?.onDeclineAsk}
 								onRevise={canonical?.onReviseAsk}
+								onDismiss={canonical?.onDismissAsk}
 								answering={Boolean(canonical?.admitting)}
 								outcomes={canonical?.askOutcomes}
 								drafts={canonical?.askDrafts}
@@ -3454,9 +3723,11 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						   expression per fact, so the rail item and the menu row cannot disagree
 						   about which queue a press opens or how many are outstanding. */
 						askCount={headerAsksCount}
+						askUpdates={headerAsksUpdates}
 						askScope={headerAsksScope}
 						consoleUnseenCount={consoleUnseenMarks.length}
 						consoleUnseenPulsing={consoleUnseenPulsing}
+						consoleLiveCount={consoleLiveCount}
 						fileCount={mentionedFileCount}
 						codeOpened={codeGroups.opened.length}
 						codeMentioned={codeGroups.mentioned.length}

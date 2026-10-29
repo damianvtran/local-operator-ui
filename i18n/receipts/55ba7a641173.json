@@ -1,0 +1,42 @@
+{
+  "auditor": {
+    "agent": "reviewer",
+    "model": "deepseek/deepseek-flash",
+    "instance": "55ba7a641173"
+  },
+  "locale": "ru",
+  "namespace": "ui.library",
+  "status": "passed",
+  "date": "2026-10-20",
+  "sha256": {
+    "ru": "4a004038d1808cc9327668fe1d851f596794ce61cc58997a7829435a605a62e4",
+    "en": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5"
+  },
+  "scope": "Round-2 delta re-audit of ru/ui.library at the new target bytes: the five changed values (three fixes), byte-level proof the other 153 values are unchanged, placeholders and ::group-off re-checked, affected messages re-rendered through the shipped t().",
+  "findings": [],
+  "remediation": {
+    "previous_target_sha256": "98d2ff9a335e13c66dd92bad0b4d51301a45912fcb4599685bcfded95cbb8d41",
+    "previous_findings": [
+      {
+        "severity": "MINOR",
+        "key": "ui.library.page.building",
+        "status": "fixed",
+        "verified": "noun dropped; renders grammatically at 0/1/2/5/11/21/100/101/1000000 (1 из 1, 1 из 21)"
+      },
+      {
+        "severity": "MINOR",
+        "key": "ui.library.preview.read_only_markdown",
+        "status": "fixed",
+        "verified": "«не на локальном пути с правом записи»; exact new value matches"
+      },
+      {
+        "severity": "NIT",
+        "key": "ui.library.composer.link_failed",
+        "status": "fixed",
+        "verified": "«привязать чат» applied to link_failed, link_failed_short and message_sent_link_failed, matching retry_link/unlink"
+      }
+    ],
+    "unchanged_proof": "Reversing the five new values to the audited old values in the new file reproduces 98d2ff9a335e13c66dd92bad0b4d51301a45912fcb4599685bcfded95cbb8d41 byte-for-byte; 158 keys, identical order and key set; ::group-off count 20 unchanged.",
+    "checks": "generate.mjs --check byte-identical; check-strings.mjs ok; locale-parity 43/43; affected messages rendered through t()"
+  }
+}

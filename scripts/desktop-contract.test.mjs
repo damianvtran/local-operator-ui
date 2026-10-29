@@ -73,14 +73,65 @@ const {
 	desktopResult,
 	refusalDetail,
 	JOB_CANCEL_NOT_FOUND_COPY,
-	// Aliased: the session-variables bundle below binds the plain names, and a
-	// test registered before that top-level await resolves must not reach them
-	// (measured: TDZ under load when the runner starts tests early).
+	// Aliased: the session-variables bundle binds the plain names too. Both
+	// bundles now resolve before the first registration, so this alias keeps two
+	// namespaces from colliding rather than dodging a TDZ window.
 	desktopEndpoint: jobsCancelEndpoint,
 	desktopRequestSchema: jobsCancelSchema,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
+
+/*
+ * Built and imported HERE, above the first `test(` registration, rather than
+ * beside the tests that read it.
+ *
+ * `node:test` starts a top-level batch as soon as this module yields, so a
+ * module-level `await` sitting after a `test(` call lets the root `after` hook
+ * close the shared server while the file is still registering tests. Every
+ * registration made after that await then reaches a closed port, and the
+ * transport reports the ECONNREFUSED as a 503 - measured as 4/11 failures here
+ * at 4e2e51da78 against 0/6 at its parent. Hoisting the build takes the await
+ * out of the middle of registration; the tests that read these bindings are
+ * unchanged and still sit where they belong.
+ */
+const rendererBundle = await build({
+	stdin: {
+		contents:
+			'export * from "./src/renderer/src/shared/api/local-operator/session-variables-api"; export { desktopRequestSchema, desktopEndpoint, isWritableVariableKey } from "./src/shared/desktop-contract"; export { desktopFeatureEnabled } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	/*
+	 * `desktop-hooks` now reaches the composer's optional-client seam, and the
+	 * renderer's own `@shared` alias is what resolves it - the same aliasing
+	 * every sibling harness carries, and the reason a bare resolveDir is not
+	 * enough. Narrower than the wholesale alias on purpose: this bundle's other
+	 * specifiers are relative and must keep resolving the way they do.
+	 */
+	alias: {
+		"@shared/hooks/use-optional-query-client":
+			"./src/renderer/src/shared/hooks/use-optional-query-client.ts",
+	},
+});
+const {
+	listSessionVariables,
+	createSessionVariable,
+	updateSessionVariable,
+	deleteSessionVariable,
+	isWritableVariableKey,
+	desktopRequestSchema,
+	desktopEndpoint: rendererDesktopEndpoint,
+	// The capability gate the pins tests read: the SAME export the renderer bundle carries, so
+	// the test asks the shipped predicate rather than a restatement of it.
+	desktopFeatureEnabled,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(rendererBundle.outputFiles[0].text).toString("base64")}`
+);
+
 let server;
 let url;
 const seen = [];
@@ -2301,43 +2352,6 @@ test("sessions.interrupt reaches the interrupt route with request_id only", asyn
  * the read path and re-flattened the fixture with it.
  * ---------------------------------------------------------------------------
  */
-const rendererBundle = await build({
-	stdin: {
-		contents:
-			'export * from "./src/renderer/src/shared/api/local-operator/session-variables-api"; export { desktopRequestSchema, desktopEndpoint, isWritableVariableKey } from "./src/shared/desktop-contract"; export { desktopFeatureEnabled } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";',
-		resolveDir: process.cwd(),
-	},
-	bundle: true,
-	format: "esm",
-	platform: "node",
-	write: false,
-	/*
-	 * `desktop-hooks` now reaches the composer's optional-client seam, and the
-	 * renderer's own `@shared` alias is what resolves it - the same aliasing
-	 * every sibling harness carries, and the reason a bare resolveDir is not
-	 * enough. Narrower than the wholesale alias on purpose: this bundle's other
-	 * specifiers are relative and must keep resolving the way they do.
-	 */
-	alias: {
-		"@shared/hooks/use-optional-query-client":
-			"./src/renderer/src/shared/hooks/use-optional-query-client.ts",
-	},
-});
-const {
-	listSessionVariables,
-	createSessionVariable,
-	updateSessionVariable,
-	deleteSessionVariable,
-	isWritableVariableKey,
-	desktopRequestSchema,
-	desktopEndpoint: rendererDesktopEndpoint,
-	// The capability gate the pins tests read: the SAME export the renderer bundle carries, so
-	// the test asks the shipped predicate rather than a restatement of it.
-	desktopFeatureEnabled,
-} = await import(
-	`data:text/javascript;base64,${Buffer.from(rendererBundle.outputFiles[0].text).toString("base64")}`
-);
-
 const SESSION = "8fd6c6a40934";
 
 /** Serve fixed bodies through the renderer transport, as a backend would. */
@@ -3381,4 +3395,362 @@ test("the stream-subscribe IPC forwards the complete peer-source declaration, an
 		/Invalid stream subscription/,
 	);
 	assert.equal(seen.length, 1, "a refused declaration never reaches the relay");
+});
+
+test("team_bridge.conversations.members.add matches the desktop route's body shape", () => {
+	// The route takes the member array AS the body and tenant_id as a query
+	// parameter. Wrapping both in an object (the original mapping) answered 422
+	// before the handler ran; this pins the wire shape the route actually reads.
+	const endpoint = jobsCancelEndpoint({
+		op: "team_bridge.conversations.members.add",
+		conversation_id: "bcv_abc12345",
+		tenant_id: "tnt_1",
+		members: [{ account_id: "acc_b", kind: "human", display_label: "Bea" }],
+	});
+	assert.equal(endpoint.method, "POST");
+	assert.equal(
+		endpoint.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/members?tenant_id=tnt_1",
+	);
+	assert.deepEqual(endpoint.body, [
+		{ account_id: "acc_b", kind: "human", display_label: "Bea" },
+	]);
+});
+
+test("team_bridge account-scoped reads map scope=account and page on cursor", () => {
+	/*
+	 * The renderer's All organizations view sends `scope: "account"` through the
+	 * desktop op. Before the op schema accepted it, the strict member answered 422
+	 * `Invalid desktop operation.` before any HTTP, so the default view and the
+	 * sidebar badge could never load. These pin the wire shape the route reads:
+	 * the account page pages on `cursor`, while `before` belongs to a tenant page.
+	 */
+	// The op schema admits the account scope before the endpoint sees it; a
+	// strict member that omits it is the 422 this test exists to prevent.
+	assert.equal(
+		jobsCancelSchema.parse({ op: "team_bridge.unread", scope: "account" })
+			.scope,
+		"account",
+	);
+	assert.equal(
+		jobsCancelSchema.parse({
+			op: "team_bridge.conversations.list",
+			scope: "account",
+		}).scope,
+		"account",
+	);
+
+	const list = jobsCancelEndpoint({
+		op: "team_bridge.conversations.list",
+		scope: "account",
+		limit: 20,
+		cursor: "cursor_1",
+	});
+	assert.equal(list.method, "GET");
+	assert.equal(
+		list.path,
+		"/v1/desktop/team-bridge/conversations?scope=account&limit=20&cursor=cursor_1",
+	);
+
+	// The tenant page keeps its own `before`; the two paging parameters are not
+	// interchangeable.
+	const tenantPage = jobsCancelEndpoint({
+		op: "team_bridge.conversations.list",
+		tenant_id: "tnt_1",
+		before: "before_1",
+	});
+	assert.equal(
+		tenantPage.path,
+		"/v1/desktop/team-bridge/conversations?tenant_id=tnt_1&before=before_1",
+	);
+
+	const unread = jobsCancelEndpoint({
+		op: "team_bridge.unread",
+		scope: "account",
+	});
+	assert.equal(unread.method, "GET");
+	assert.equal(unread.path, "/v1/desktop/team-bridge/unread?scope=account");
+
+	// The tenant read keeps its existing shape; the two forms are alternatives.
+	const tenant = jobsCancelEndpoint({
+		op: "team_bridge.unread",
+		tenant_id: "tnt_1",
+	});
+	assert.equal(tenant.path, "/v1/desktop/team-bridge/unread?tenant_id=tnt_1");
+
+	// The account scope is never a tenant selector: both together are refused
+	// at the same boundary, as the route refuses them.
+	assert.throws(
+		() =>
+			jobsCancelSchema.parse({
+				op: "team_bridge.unread",
+				scope: "account",
+				tenant_id: "tnt_1",
+			}),
+		{ message: /An account-scoped read cannot name a tenant/ },
+	);
+	assert.throws(
+		() =>
+			jobsCancelSchema.parse({
+				op: "team_bridge.conversations.list",
+				scope: "account",
+				tenant_id: "tnt_1",
+			}),
+		{ message: /An account-scoped read cannot name a tenant/ },
+	);
+	// `before` beside the account scope is the request shape the route refuses;
+	// the op boundary refuses it too, and the test names the rule rather than
+	// accepting any throw.
+	assert.throws(
+		() =>
+			jobsCancelSchema.parse({
+				op: "team_bridge.conversations.list",
+				scope: "account",
+				before: "before_1",
+			}),
+		{ message: /An account-scoped page uses cursor, not before/ },
+	);
+});
+
+test("team_bridge directory is tenant-scoped and status is the shared status route", () => {
+	/*
+	 * The directory slice's two reads. `directory` names its tenant in the QUERY
+	 * and refuses an op without one: there is no account-wide directory in this
+	 * client, so a missing tenant must be a 422 at this boundary rather than a
+	 * server-default organization the reader never chose. `status` is the
+	 * existing status payload under the bridge namespace; an absent boundary is
+	 * no query at all, not the literal "undefined" the sibling settings op
+	 * emits when its boundary is missing.
+	 */
+	assert.throws(() => jobsCancelSchema.parse({ op: "team_bridge.directory" }));
+	const directory = jobsCancelEndpoint({
+		op: "team_bridge.directory",
+		tenant_id: "tnt_1",
+	});
+	assert.equal(directory.method, "GET");
+	assert.equal(
+		directory.path,
+		"/v1/desktop/team-bridge/directory?tenant_id=tnt_1",
+	);
+	// The tenant is an encoded query VALUE: a crafted id cannot add a second
+	// parameter or a path segment.
+	const crafted = jobsCancelEndpoint({
+		op: "team_bridge.directory",
+		tenant_id: "tnt_1&scope=account",
+	});
+	assert.equal(
+		crafted.path,
+		"/v1/desktop/team-bridge/directory?tenant_id=tnt_1%26scope%3Daccount",
+	);
+
+	const status = jobsCancelEndpoint({
+		op: "team_bridge.status",
+		boundary: "surface_open",
+	});
+	assert.equal(status.method, "GET");
+	assert.equal(
+		status.path,
+		"/v1/desktop/team-bridge/status?boundary=surface_open",
+	);
+	const bareStatus = jobsCancelEndpoint({ op: "team_bridge.status" });
+	assert.equal(bareStatus.path, "/v1/desktop/team-bridge/status");
+});
+
+test("team_bridge join adds the caller and notify rides the read route", () => {
+	/*
+	 * The discoverable-channel slice (agent-server #148) has two writes this
+	 * client owns. Join is the conversation domain's own POST .../join, with the
+	 * row's tenant in the body: in the merged view the rail scope is "all", so a
+	 * join that named no organization would be resolved by the server's default
+	 * — the one way a row could be joined under the wrong tenant.
+	 *
+	 * Notify is a field on the READ route, not a separate route. The op therefore
+	 * sends `notify` and no `seq`: choosing a preference must never advance the
+	 * cursor, and the body shape this test pins is exactly what the route reads.
+	 */
+	const join = jobsCancelEndpoint({
+		op: "team_bridge.conversations.join",
+		conversation_id: "bcv_abc12345",
+		tenant_id: "tnt_2",
+	});
+	assert.equal(join.method, "POST");
+	assert.equal(
+		join.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/join",
+	);
+	assert.deepEqual(join.body, { tenant_id: "tnt_2" });
+
+	const noTenant = jobsCancelEndpoint({
+		op: "team_bridge.conversations.join",
+		conversation_id: "bcv_abc12345",
+	});
+	assert.equal(noTenant.body, undefined);
+
+	const notify = jobsCancelEndpoint({
+		op: "team_bridge.conversations.notify",
+		conversation_id: "bcv_abc12345",
+		tenant_id: "tnt_2",
+		notify: "mention",
+	});
+	assert.equal(notify.method, "POST");
+	assert.equal(
+		notify.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/read",
+	);
+	assert.deepEqual(notify.body, { tenant_id: "tnt_2", notify: "mention" });
+	assert.equal(
+		"seq" in notify.body,
+		false,
+		"a preference write carries no seq",
+	);
+	assert.equal(
+		"muted" in notify.body,
+		false,
+		"the legacy flag is not sent beside notify",
+	);
+
+	// The closed set is the op boundary's, so a typo cannot reach the route.
+	assert.throws(() =>
+		jobsCancelSchema.parse({
+			op: "team_bridge.conversations.notify",
+			conversation_id: "bcv_abc12345",
+			notify: "loud",
+		}),
+	);
+	assert.throws(() =>
+		jobsCancelSchema.parse({
+			op: "team_bridge.conversations.notify",
+			conversation_id: "bcv_abc12345",
+		}),
+	);
+});
+
+test("team_bridge archive: the list takes a closed status and delete is a DELETE on the conversation", () => {
+	/*
+	 * Archive -> view archived -> permanent delete (agent-server radient-ml/agent-server#219,
+	 * local-operator #3005). The list's `status` is sent ONLY when asked, so the
+	 * default request is byte-identical to the one an older server already
+	 * answers. Delete is a DELETE on the conversation itself, not an action
+	 * on the lifecycle POST: a method that cannot be reached by mistyping an
+	 * `action`, and one the route's own owner-receipt guard covers.
+	 */
+	const live = jobsCancelEndpoint(
+		desktopRequestSchema.parse({
+			op: "team_bridge.conversations.list",
+			tenant_id: "tnt_2",
+		}),
+	);
+	assert.equal(
+		live.path,
+		"/v1/desktop/team-bridge/conversations?tenant_id=tnt_2",
+	);
+
+	const archived = jobsCancelEndpoint(
+		desktopRequestSchema.parse({
+			op: "team_bridge.conversations.list",
+			scope: "account",
+			status: "archived",
+		}),
+	);
+	assert.equal(archived.method, "GET");
+	assert.equal(
+		archived.path,
+		"/v1/desktop/team-bridge/conversations?scope=account&status=archived",
+	);
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "team_bridge.conversations.list",
+			status: "deleted",
+		}).success,
+		false,
+		"status is a closed set at the op boundary",
+	);
+
+	const del = jobsCancelEndpoint(
+		desktopRequestSchema.parse({
+			op: "team_bridge.conversations.delete",
+			conversation_id: "bcv_abc12345",
+			tenant_id: "tnt_2",
+			expected_account_id: "acc_a",
+		}),
+	);
+	assert.equal(del.method, "DELETE");
+	assert.equal(
+		del.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345?tenant_id=tnt_2&expected_account_id=acc_a",
+	);
+	assert.equal(del.body, undefined, "a delete carries no body");
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "team_bridge.conversations.lifecycle",
+			conversation_id: "bcv_abc12345",
+			action: "delete",
+		}).success,
+		false,
+		"delete is not a lifecycle action",
+	);
+});
+
+test("team_bridge threads: replies maps to the replies route and send carries thread_root_id", () => {
+	/*
+	 * Threads (agent-server #164, local-operator #2757). The replies op reads
+	 * one thread FORWARD (inclusive after_seq), and the send op forwards
+	 * thread_root_id only when set, so a channel-level post's body is byte-for-
+	 * byte what it was before threads and an older runtime never sees the key.
+	 */
+	const replies = jobsCancelEndpoint(
+		jobsCancelSchema.parse({
+			op: "team_bridge.messages.replies",
+			conversation_id: "bcv_abc12345",
+			message_id: "bcmsg_root0001",
+			tenant_id: "tnt_2",
+			limit: 50,
+			after_seq: 7,
+		}),
+	);
+	assert.equal(replies.method, "GET");
+	assert.equal(
+		replies.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/messages/bcmsg_root0001/replies?tenant_id=tnt_2&limit=50&after_seq=7",
+	);
+	const bare = jobsCancelEndpoint({
+		op: "team_bridge.messages.replies",
+		conversation_id: "bcv_abc12345",
+		message_id: "bcmsg_root0001",
+	});
+	assert.equal(
+		bare.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/messages/bcmsg_root0001/replies",
+	);
+	// The union is strict: a timeline cursor is not a thread cursor.
+	assert.throws(() =>
+		jobsCancelSchema.parse({
+			op: "team_bridge.messages.replies",
+			conversation_id: "bcv_abc12345",
+			message_id: "bcmsg_root0001",
+			before_seq: 3,
+		}),
+	);
+
+	const reply = jobsCancelEndpoint(
+		jobsCancelSchema.parse({
+			op: "team_bridge.messages.send",
+			conversation_id: "bcv_abc12345",
+			client_ref: "ref-1",
+			body: "on it",
+			thread_root_id: "bcmsg_root0001",
+		}),
+	);
+	assert.deepEqual(reply.body, {
+		client_ref: "ref-1",
+		body: "on it",
+		thread_root_id: "bcmsg_root0001",
+	});
+	const plain = jobsCancelEndpoint({
+		op: "team_bridge.messages.send",
+		conversation_id: "bcv_abc12345",
+		client_ref: "ref-2",
+		body: "hi",
+	});
+	assert.equal("thread_root_id" in plain.body, false);
 });

@@ -1,0 +1,16 @@
+{
+	"ui.chat.transcript_copy.block.logs": "Registros",
+	"ui.chat.transcript_copy.block.output": "Salida",
+	"ui.chat.transcript_copy.menu.copy_text": "Copiar texto",
+	"ui.chat.transcript_copy.menu.copy_markdown": "Copiar como Markdown",
+	"ui.chat.transcript_copy.menu.copy_selection": "Copiar selección",
+	"ui.chat.transcript_copy.role.assistant": "Asistente",
+	"ui.chat.transcript_copy.selection.quote": "Citar",
+	"ui.chat.transcript_copy.technical_details": "Detalles técnicos",
+	"ui.chat.transcript_copy.toast.copied_markdown": "Copiado como Markdown",
+	"ui.chat.transcript_copy.toast.copied_selection": "Selección copiada",
+	"ui.chat.transcript_copy.row.your_message": "Tu mensaje",
+	"ui.chat.transcript_copy.row.agent_message": "Mensaje del agente",
+	"ui.chat.transcript_copy.selection.copy": "Copiar selección",
+	"ui.chat.transcript_copy.selection.toolbar": "Acciones de la selección"
+}

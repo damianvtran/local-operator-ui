@@ -1,0 +1,449 @@
+{
+	"ui.chat.canonical.sound.batch_attachment_unavailable": {
+		"role": "status line under one row of a generated-sound batch whose audio attachment never materialised",
+		"tone": "plain statement, sentence case, one full stop",
+		"length": "One short sentence; it sits under the batch item's own label at the meta step.",
+		"note": "Renders in the transcript's sound batch in place of the player when the attachment is absent. It states the missing attachment, not a cause; do not add an error code or an apology.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.sound.player_failed": {
+		"role": "inline error line beside the shared sound player's transport",
+		"tone": "plain failure statement, sentence case, no trailing punctuation",
+		"length": "One short clause; it stays on the player's control line and must not wrap the row.",
+		"note": "Renders when the audio element reports a play error. It says the sound could not be played, not why or what to do next; the player stays in place so a retry is still possible.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.sound.stop.confirm_label": {
+		"role": "accessible name of the fieldset that holds the best-effort stop confirmation",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Three to four words.",
+		"note": "Screen-reader only: it names the confirmation group, not either button inside it. Do not name a single action here, or the group and its buttons announce the same thing.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.sound.stop.keep_waiting": {
+		"role": "safe-choice button in the sound stop confirmation",
+		"tone": "calm verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Dismisses the question and leaves the generation running. This is the choice the keyboard holds on open, so it must read as safe, not as a delay.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.sound.stop.question": {
+		"role": "question heading of the sound stop confirmation",
+		"tone": "direct question, sentence case, question mark kept in the message",
+		"length": "Three to four words.",
+		"note": "Asks whether to stop the generation that is currently producing sound. The warning below it explains that stopping is best-effort; do not fold that explanation into this question.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.sound.stop.request_stop": {
+		"role": "confirming button in the sound stop confirmation",
+		"tone": "direct verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Requests the stop the warning describes as best-effort. It is the charged action, so it must not read like a guaranteed cancellation.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.sound.stop.warning": {
+		"role": "warning paragraph under the sound stop question, described by the safe-choice button",
+		"tone": "factual, no hedged wording beyond the stated guarantee, sentence case",
+		"length": "Two to three sentences; it is the only thing that separates an informed stop from an accidental charge.",
+		"note": "States that the provider has no cancellation endpoint, that the generation continues and may be charged, and that stopping is best-effort. Every clause is load-bearing: dropping the charge clause turns this into a plain confirmation.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.adjust_placeholder": {
+		"role": "placeholder inside the one-line adjust field the supplement row opens on Adjust…",
+		"tone": "short instruction, sentence case, trailing ellipsis kept in the message",
+		"length": "Three words plus the ellipsis.",
+		"note": "The field takes a steer instruction for the graphic job. The ellipsis is part of the shipped copy, not decoration to add in JSX.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.details.attempts": {
+		"role": "diagnostic line in a failed supplement's Details disclosure, counting its attempts",
+		"tone": "label plus number, sentence case, no trailing punctuation",
+		"length": "Very short; it sits in a monospace diagnostic block.",
+		"note": "The count renders ungrouped exactly as the old raw interpolation did (0, 1, 1234 — never 1,234), hence ICU number ::group-off. A failed job can legitimately show 0.",
+		"placeholders": {
+			"count": "number of recorded attempts for the job; ungrouped digits"
+		}
+	},
+	"ui.chat.canonical.supplement.details.model": {
+		"role": "diagnostic line in a failed supplement's Details disclosure, naming the model that ran it",
+		"tone": "label plus model id, sentence case, no trailing punctuation",
+		"length": "Very short; it sits in a monospace diagnostic block.",
+		"note": "The name is a model identifier and stays untranslated. Keep the label and the separator exactly as they are so the diagnostic block reads as one list.",
+		"placeholders": {
+			"name": "the model id recorded on the job; a machine token, never translated"
+		}
+	},
+	"ui.chat.canonical.supplement.file_actions.open_in_canvas": {
+		"role": "menu item that opens the supplement's file in the Canvas pane",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Canvas is the product's own pane name and stays untranslated. Distinct from Open in default app: this one stays inside the app.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.file_actions.open_in_default_app": {
+		"role": "menu item that opens the supplement's file with the operating system's default application",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Four words.",
+		"note": "Names the OS default application rather than a specific program. Distinct from Open in canvas, which keeps the reader in the app.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.file_actions.reveal_in_finder": {
+		"role": "menu item that reveals the supplement's file in the OS file manager",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Finder is Apple's product name and stays in English in every locale, like other platform names; do not translate it to a generic word for file manager.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.frame.failed": {
+		"role": "headline of the supplement frame's fallback line when the graphic cannot render",
+		"tone": "plain failure statement, sentence case, no trailing punctuation",
+		"length": "One short clause.",
+		"note": "Replaces the frame on a settled block; the row's own retry control follows it after a middle dot. States the outcome, not the internal cause, which the data attribute carries for QA.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.frame.loading": {
+		"role": "screen-reader announcement while a graphic's frame has not painted yet",
+		"tone": "present-participle progress phrase, sentence case, trailing ellipsis kept",
+		"length": "Two words plus the ellipsis.",
+		"note": "Rendered in an sr-only output element; the visible shimmer is aria-hidden. The ellipsis is shipped copy, not JSX punctuation.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.frame.source": {
+		"role": "caption under a rendered graphic naming where its content came from; also the same element's tooltip",
+		"tone": "label plus source name, sentence case, no trailing punctuation",
+		"length": "One short line; the caption truncates and the tooltip carries the full text.",
+		"note": "The caption shows the source's display text and the tooltip shows the raw source; both must use this one message so the translated caption and its tooltip cannot disagree. The name is a file or document title and is never translated.",
+		"placeholders": {
+			"name": "the graphic's source display text (file name or document title)"
+		}
+	},
+	"ui.chat.canonical.supplement.preview_unavailable": {
+		"role": "refusal line inside an expanded supplement row whose HTML preview cannot be built",
+		"tone": "plain statement plus the recovery the reader has, sentence case",
+		"length": "Two short sentences; it replaces the preview, so it must not grow into a paragraph.",
+		"note": "The first sentence states the preview is unavailable; the second names the unsupported inputs; the third tells the reader to open the file. Keep all three: the final sentence is the only recovery offered.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.send": {
+		"role": "button that submits the supplement's adjust instruction",
+		"tone": "single verb, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Sends the text of the adjust field beside it to the running graphic job. Disabled while the field is empty; it never starts a new chat.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.connect_provider": {
+		"role": "button under a notice row that reports no provider is configured",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Opens the provider connection dialog over the current conversation. It must read as the fix for the notice above it, not as a general settings link.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.credential_lost": {
+		"role": "warning line inside an ask receipt whose named credential the session no longer holds",
+		"tone": "plain statement in the warning register, sentence case, full stop",
+		"length": "One sentence.",
+		"note": "Explains why the receipt's answer can no longer be acted on. It must not name the credential or its source; the receipt above already does.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.edit": {
+		"role": "button beside an undelivered user turn that reopens it for editing",
+		"tone": "single verb, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Puts the turn's text back in the composer without sending it. It sits beside Send again, so it must stay short enough for the pair to share one line.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.missing_session": {
+		"role": "headline of the pane notice for a conversation the backend says is gone",
+		"tone": "plain statement, sentence case, full stop",
+		"length": "One sentence.",
+		"note": "The pane's statement of why the composer takes nothing. The line below it gives the two causes, and Start a new chat is the action.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.missing_session_detail": {
+		"role": "second line of the missing-conversation notice, naming the two causes",
+		"tone": "plain explanation, sentence case, full stop",
+		"length": "One sentence.",
+		"note": "Says the conversation was deleted or belongs to a machine this app is not connected to. It is supporting detail under the headline, not a second claim.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.reconnect": {
+		"role": "button that reopens the conversation's event stream; used by both the source-unavailable notice and the session-failure notice",
+		"tone": "single verb, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "One key for both notices because they are never on screen together and both re-run the same reconnect. It must stay distinct from Retry, which re-probes a different API elsewhere in the shell.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.reconnecting": {
+		"role": "status line shown in the pane while the reconnect attempt is in flight",
+		"tone": "present-participle status, sentence case, no trailing ellipsis",
+		"length": "One word.",
+		"note": "The pane's only statement during the retry window, so it uses the reading register rather than the caption step. The shipped copy has no ellipsis; do not add one.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.send_again": {
+		"role": "button beside an undelivered user turn that resends it",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Resends the turn that failed to deliver. Disabled turns keep the same label and render in the muted ink rather than changing the words.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.source_unavailable": {
+		"role": "polite notice above the transcript when message order could not be confirmed with the source",
+		"tone": "plain, non-alarming statement; sentence case; full stop",
+		"length": "One sentence.",
+		"note": "Non-terminal: it must not imply the conversation is unreadable or that rows are wrong. Says the conversation is readable and only the order confirmation failed, with Reconnect beside it. Never reuse the failure notice's copy.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.stale_caption": {
+		"role": "caption above a cached transcript while a newer page is being checked for",
+		"tone": "calm status, sentence case, full stop; the em dash separates the two clauses",
+		"length": "One short sentence.",
+		"note": "States that what is on screen is the last saved view and that a check is running. The em dash is shipped punctuation: keep it inside the message, since word order differs between locales.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.start_new_chat": {
+		"role": "button in the missing-conversation notice that clears the pane for a fresh chat",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Four words.",
+		"note": "The recovery offered when the conversation is gone. It clears the active session rather than deleting anything.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.transcript.stopped_before_finishing": {
+		"role": "caption under an assistant answer whose generation was aborted",
+		"tone": "plain past-tense statement, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Marks the answer as incomplete. It is a statement about the answer, not an error and not an action; nothing here offers a retry.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.send_failure.unconfirmed": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Couldn't confirm your message was sent. Sending it again is safe."
+	},
+	"ui.chat.canonical.send_failure.unreachable": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Couldn't reach Local Operator. Your message may not have been sent."
+	},
+	"ui.chat.canonical.send_failure.busy": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: The agent is busy, so your message wasn't sent."
+	},
+	"ui.chat.canonical.send_failure.aside_not_answered": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: The aside was not answered."
+	},
+	"ui.chat.canonical.send_failure.aside_still_answering": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: The aside is still answering. Press Enter again once the answer is in."
+	},
+	"ui.chat.canonical.send_failure.retiring": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Local Operator is restarting, so your message wasn't sent. Try again in a moment."
+	},
+	"ui.chat.canonical.send_failure.not_ready": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: This chat isn't ready yet, so your message wasn't sent."
+	},
+	"ui.chat.canonical.send_failure.generic": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Your message wasn't sent."
+	},
+	"ui.chat.canonical.send_failure.gone": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: This conversation no longer exists, so your message wasn't sent."
+	},
+	"ui.chat.canonical.send_failure.send_lock": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Your last message is still sending."
+	},
+	"ui.chat.canonical.send_failure.gate_lock": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Answer the question above first."
+	},
+	"ui.chat.canonical.send_failure.queued_send": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Your message will send as soon as the conversation is ready."
+	},
+	"ui.chat.canonical.send_failure.late_delivery": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Your earlier message was delivered."
+	},
+	"ui.chat.canonical.send_failure.late_delivery_draft": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Your earlier message was delivered. What's here now hasn't been sent."
+	},
+	"ui.chat.canonical.send_failure.late_delivery_overlap": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Your earlier message was delivered. Its words are still in the box, so sending again would repeat them."
+	},
+	"ui.chat.canonical.untitled": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Untitled chat"
+	},
+	"ui.chat.canonical.this_chat": {
+		"role": "Send or conversation status",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: this chat"
+	},
+	"ui.chat.canonical.older_history.transport.short": "Narrow-column spelling of the row that says earlier messages are not loaded because the transport is down.",
+	"ui.chat.canonical.older_history.transport.long": "Full spelling of the transport-down row; also the screen-reader announcement.",
+	"ui.chat.canonical.older_history.failed.short": "Narrow-column spelling of the row for a failed load of earlier messages.",
+	"ui.chat.canonical.older_history.failed.long": "Full spelling of the failed-load row and its title attribute.",
+	"ui.chat.canonical.older_history.try_again": "Button that retries loading earlier messages.",
+	"ui.chat.canonical.older_history.loading": "Button label while earlier messages are loading; also the announcement.",
+	"ui.chat.canonical.older_history.load": "Button that loads the earlier messages when the transcript is idle.",
+	"ui.chat.canonical.older_history.windowed.title": "Row stating more history exists above and must be reached by scrolling.",
+	"ui.chat.canonical.older_history.windowed.title_gesture": "Full sentence for the windowed row, also used as its title attribute.",
+	"ui.chat.canonical.older_history.windowed.short_gesture": "Narrow-column spelling naming the scroll gesture.",
+	"ui.chat.canonical.older_history.unproven.short": "Narrow-column spelling of the row that says earlier history was never proven loaded.",
+	"ui.chat.canonical.older_history.unproven.long": "Full spelling of the unproven row and its title attribute.",
+	"ui.chat.canonical.older_history.conversation_start": "Row marking the oldest message, where nothing earlier exists.",
+	"ui.chat.canonical.placeholder.loading": {
+		"role": "visible caption under the transcript while a conversation is still loading",
+		"tone": "status phrase, sentence case, trailing ellipsis character (U+2026), no period",
+		"length": "Two words.",
+		"note": "The words are VISIBLE, not sr-only: a sighted reader needs a sentence naming the wait. Keep the single-character ellipsis rather than three dots. `text-ink-dim` clears the 4.5:1 floor on every ground.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.placeholder.region_label": {
+		"role": "accessible name of the loading placeholder's live region",
+		"tone": "status phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "The same phrase as the visible caption without the ellipsis: it is an utterance, not a sentence. A screen reader announces this region while the transcript hydrates.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.generic_verb.running": {
+		"role": "verb column of a running tool row whose tool has no verb of its own",
+		"tone": "present participle, lowercase, one word, no punctuation",
+		"length": "One word.",
+		"note": "The generic verb for a tool the verb table has never heard of, or an op-aware call whose operation is unknown. It claims only that the call is happening; any op-specific verb would be a guess. The tool's own name follows it, so the row still says which call it was.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.generic_verb.settled": {
+		"role": "verb column of a finished tool row whose tool has no verb of its own",
+		"tone": "past tense, sentence case, one word, no punctuation",
+		"length": "One word.",
+		"note": "The settled sibling of `Calling`. Claims only that the call happened; the tool's own name follows it.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.outcome.failed": {
+		"role": "the outcome word a failed tool row contributes to assistive tech, and to the row's trailing status",
+		"tone": "past participle, lowercase, one word, no punctuation",
+		"length": "One word.",
+		"note": "Drawn beside the outcome glyph and announced in place of it. It is a statement about the CALL, not about the agent.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.outcome.interrupted": {
+		"role": "the outcome word for a tool call the user stopped",
+		"tone": "past participle, lowercase, one word, no punctuation",
+		"length": "One word.",
+		"note": "Deliberately not `failed`: the user stopped the call, so reporting it as a failure would blame the agent for the reader's own decision.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.outcome.never_ran": {
+		"role": "the outcome word for a call the harness refused before it reached any tool",
+		"tone": "lowercase clause, no punctuation",
+		"length": "Two words.",
+		"note": "Not `failed`: there was no result to fail. It names what stopped the call before it was sent. Announced rather than silent because the row is the only carrier of that verdict.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.outcome.succeeded": {
+		"role": "the outcome word a successful tool row announces to assistive tech",
+		"tone": "past participle, lowercase, one word, no punctuation",
+		"length": "One word.",
+		"note": "Spoken, not drawn: a success draws no visible word, so this is the whole of what a reader with no screen hears for the outcome.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.image_gen.control.edit_and_restart": {
+		"role": "button label",
+		"tone": "Direct, two verbs.",
+		"note": "Shown on a finished or failed generation: it reopens the editable prompt and starts a new run from it. The edit happens before the run, so the label names both steps.",
+		"length": "Three words."
+	},
+	"ui.chat.canonical.image_gen.control.restart": {
+		"role": "button label",
+		"tone": "Direct, calm.",
+		"note": "Shown after a cancel: nothing failed, so this starts the same generation again rather than retrying an error. Same slot as the retry label, chosen by the card's state.",
+		"length": "One word."
+	},
+	"ui.chat.canonical.image_gen.control.stop": {
+		"role": "button label",
+		"tone": "Direct, calm.",
+		"note": "Stops a generation in flight. Deliberately not `Cancel`: cancellation is a REQUEST, best-effort once the provider is working, and a button saying `Cancel` would promise a stop the contract does not offer. The control's hint states which of the two promises it can keep.",
+		"length": "One word."
+	},
+	"ui.chat.canonical.image_gen.progress": {
+		"role": "progress name",
+		"tone": "plain",
+		"note": "Announced as the bar's value while an image generates."
+	},
+	"ui.chat.canonical.raw_information": {
+		"role": "pane heading",
+		"tone": "plain"
+	},
+	"ui.chat.canonical.security_notice.aria": {
+		"role": "section name",
+		"tone": "plain"
+	},
+	"ui.chat.canonical.security_notice.blocked": {
+		"role": "notice title",
+		"tone": "plain",
+		"note": "The guard stopped an action it judged risky."
+	},
+	"ui.chat.canonical.security_notice.show_code": {
+		"role": "disclosure summary",
+		"tone": "plain"
+	},
+	"ui.chat.canonical.tool_row.pending": {
+		"role": "screen-reader only",
+		"tone": "lowercase word",
+		"note": "Stands in for the animating ellipsis while a tool call is still running."
+	},
+	"ui.chat.canonical.transcript.load_failed": {
+		"role": "alert title",
+		"tone": "plain"
+	},
+	"ui.chat.canonical.turn_summary.completed": {
+		"role": "screen-reader only",
+		"tone": "lowercase word",
+		"note": "Announces the turn's end where the visible receipt is already on screen."
+	},
+	"ui.chat.canonical.turn_summary.took": {
+		"role": "receipt line",
+		"tone": "plain",
+		"note": "How long the turn ran.",
+		"placeholders": { "duration": "A formatted duration such as '4.2 s'." }
+	}
+}

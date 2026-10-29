@@ -249,6 +249,49 @@ export function reportsCompletedThought(record: TranscriptRecord): boolean {
 }
 
 /**
+ * Is this row a FINAL RESPONSE to the reader - the agent handing something over
+ * rather than narrating its own work?
+ *
+ * THE RULE IS `tool_calls`, and only `tool_calls`. An assistant message that
+ * carries its own calls is mid-turn narration/status commentary ("Reading the
+ * ledger first." followed by the call it announces); one that carries none is a
+ * handover, whether it is the turn's last row or not. The core states the same
+ * rule in `tui/narration.py::is_intermediate_narration`, and the reducer keeps
+ * the fact on the record (`TranscriptRecord.callsTools`, set from the journal
+ * payload and from `message_end`).
+ *
+ * WHY NOT POSITION, `closesTurn`, LENGTH OR A TEXT TEST. Every one of them is
+ * wrong on real journals: a wake reply mid-turn is short, mid-turn AND final; a
+ * 2,500-character "checking the ledger" paragraph is long AND commentary; and
+ * `closesTurn` elects ONE row per turn while the operator asked for a bar on
+ * EVERY final response, including the ones between tool calls. `stopReason`
+ * does not stand in for the call fact either: a `toolUse` with empty
+ * `tool_calls` is reachable and is a final response (the corpus behind PR #737
+ * records exactly one such row).
+ *
+ * SETTLED AND PAINTING TEXT, because a bar exists to copy/hand over prose: a
+ * streaming prefix is not settled, and a row with no text has nothing to offer
+ * (a tool-call-only row paints nothing at all - `paintsSomething` drops it).
+ * `stopReason` is deliberately NOT consulted, which is what makes this predicate
+ * WIDER than `reportsCompletedThought`: it also covers the `null` and
+ * `aborted`/`length` rows the phase clause cannot see.
+ *
+ * THE DIRECT TEXT CHECK rather than `paintsSomething`: that predicate lives in
+ * `transcript-rows.ts`, which imports this module for `closingAnswerIds`, and a
+ * second import edge would be a cycle. For an assistant record `paintsSomething`
+ * IS `Boolean(record.text)`, so this is the same fact stated once for the one
+ * kind it can be asked of - with the same predicate shape pinned beside it.
+ */
+export function isFinalResponse(record: TranscriptRecord): boolean {
+	return (
+		record.kind === "assistant" &&
+		!record.streaming &&
+		record.callsTools !== true &&
+		record.text.length > 0
+	);
+}
+
+/**
  * A durable COMPLETION MARKER: the notice the transcript paints for a completion
  * attention record (`Stopped with an error`, `Interrupted`, and the neutral
  * `closed` / `retired` receipts).
@@ -516,7 +559,7 @@ export type RunPartition = {
  * old rule kept exactly one close, so a turn that answered, was continued past, and
  * answered again hid the FIRST answer - the one carrying the substance - inside the
  * bar, and the reader had to expand it to read what the agent had already handed
- * over. The four clauses below are the invariant that replaces it, in row-list
+ * over. The five clauses below are the invariant that replaces it, in row-list
  * terms:
  *
  * - V1, a RESPONSE cycle's close: the agent answered something (the request, a job,
@@ -527,19 +570,43 @@ export type RunPartition = {
  *   used to be hidden with the work it steered and the bar had to say `Steered` to
  *   admit it (`labelOfSegment`); the surveyed harnesses all keep the reader's own
  *   message in place, and the cost is measured (11.6 % of runs gain one bar);
- * - V4, a settled row the provider declared finished (`reportsCompletedThought`).
+ * - V4, a settled row the provider declared finished (`reportsCompletedThought`);
+ * - V5, a FINAL RESPONSE (`isFinalResponse`) INSIDE A RESPONSE CYCLE: settled,
+ *   paints text, and carries no `tool_calls` of its own. This is the operator's
+ *   rule rather than the phase's (2026-10-20): a row that hands something to the
+ *   reader must keep its bar even when the harness continued past it, because
+ *   that is exactly the shape the todo guardrail manufactures -
+ *   "stop-then-more-work" - and the reader was being shown the later tool run
+ *   with the earlier handover folded away. THE CYCLE CLASS IS THE SECOND HALF
+ *   (round 3): a handover in a cycle that is ANSWERING something is the bar case,
+ *   while a COMMENTARY cycle's close is post-terminal chatter - pinning it made
+ *   a narration-only tail unfold. V2 still keeps the run's LAST close, so the one
+ *   commentary close that ends the run stays on screen.
  *
- * WHAT THE FOUR CLAUSES DO NOT COVER (the falsifier agent review round 1 on PR
- * #737 produced, and it is real): a COMMENTARY close that is neither the run's
- * last close (V2) nor `stop`-declared (V4), with no call after it, still hides -
+ * WHAT THE FIVE CLAUSES DO NOT COVER (the falsifier agent review round 1 on PR
+ * #737 produced, and it was real): a COMMENTARY close that is neither the run's
+ * last close (V2) nor `stop`-declared (V4), with no call after it, still hid -
  * e.g. `[N0][W][K][N3][N4]`, where `n3` is commentary and the row after it is
  * another assistant row, not a call. Incidence on this machine's journals: exactly
- * 1 row in the frozen 15,130-run corpus. It is kept as a known residual rather than
- * closed, because
- * the clause that would cover it - "any commentary close, visible" - would un-hide
- * the ambient chatter V1/V2 were already shaped to fold.
+ * 1 row in the frozen 15,130-run corpus. V5 CLOSES THAT RESIDUAL in the shape it
+ * was measured in, because that row carries no `tool_calls`, is therefore a final
+ * response by the wire's own reading, and sits in a cycle the wake/receipt
+ * inherited as a RESPONSE cycle - so the clause that would cover it is not "any
+ * commentary close, visible" (which would un-hide the ambient chatter V1/V2 were
+ * shaped to fold) but "any handover in a response cycle, visible".
  *
- * A V4 ROW IS STILL NOT A CLOSE. It is visible while the run has more work after
+ * WHAT V5 ADDS TO THE VISIBLE SET, measured on the same frozen corpus rather than
+ * assumed: rows that are settled, paint text, carry no calls, and declare
+ * something other than `stop` - exactly 1 `toolUse` row (the residual above),
+ * 0 rows with no stop reason, and at most 285 `aborted`/`length` rows - so at most
+ * 286 of 254,999 prose rows (0.11 %), and V5's cycle scope narrows that further -
+ * a commentary-cycle close is no longer pinned, so the frozen figure is an UPPER
+ * BOUND for the scoped clause rather than a re-measured count. Every row the
+ * clause still adds is a final response by the rule. The rows the condensation exists to fold are untouched: 233,783 `toolUse`
+ * rows carry their own `tool_calls`, and the 4 `stop` rows that carry calls were
+ * ALREADY visible under V4 - V5 neither adds nor removes them.
+ *
+ * A V4/V5 ROW IS STILL NOT A CLOSE. It is visible while the run has more work after
  * it, so it splits its segment without splitting its cycle - `isClose`, `cyclesOf`
  * and `electAnswer` are untouched, and the turn keeps exactly ONE answer to carry
  * `closesTurn` (the foot and the one stamp). The segment machinery already renders
@@ -552,12 +619,14 @@ export type RunPartition = {
  *
  * THE DISPLAY MODE WIDENS, AND ONLY WIDENS (issue #756). `mode` is the reader's
  * `by-turn` / `by-response` choice (`transcript-display-mode.ts`), and it is an
- * OPTIONAL FIELD whose absence means the shipped default: `from` and the four
- * clauses above are computed identically in both modes, so V1-V4 keep their
+ * OPTIONAL FIELD whose absence means the shipped default: `from` and the five
+ * clauses above are computed identically in both modes, so V1-V5 keep their
  * meaning and `answer` is elected once, before the mode is consulted. `by-turn`
- * is therefore byte-for-byte the partition this function always produced; in
- * `by-response` EVERY settled text-bearing row joins the visible set on top of
- * the clauses, so a turn that answered, was continued past and answered again
+ * is therefore the partition this function shipped, with ONE declared exception:
+ * V5 (`isFinalResponse`) keeps a handover the phase rule could not see visible
+ * in both modes. In `by-response` EVERY settled text-bearing row joins the
+ * visible set on top of the clauses, so a turn that answered, was continued past
+ * and answered again
  * shows both answers in place while its tool work still condenses. The widening
  * is one-directional by construction: nothing is ever REMOVED from `visible` for
  * a mode, so a row the invariant keeps stays kept, and the elected answer keeps
@@ -629,10 +698,68 @@ export function partitionRun(
 			visible.add(last.closeIndex);
 		}
 	}
+	const responseCycleRows = new Set<number>();
+	/*
+	 * V5 IS SCOPED TO A RESPONSE CYCLE (review round 3, finding 2). A handover in a
+	 * cycle that is ANSWERING something (the request, a job, a hub relay, a monitor
+	 * prompt) is the operator's bar case. A COMMENTARY cycle's close is a different
+	 * fact - post-terminal chatter - and pinning it made a narration-only tail
+	 * unfold (measured: `turn-collapse-model.test.mjs`'s post-terminal wake shape).
+	 * V2 still keeps the run's LAST close, so a commentary close that ends the run
+	 * stays on screen; only one that would otherwise fold does.
+	 *
+	 * A ROW IS A MEMBER OF THE CYCLE THAT CONTAINS IT, on its index range: every
+	 * emitted response cycle contributes `start..closeIndex`, and the OPEN TAIL
+	 * (rows after the last close, plus a run with no close at all) is covered
+	 * separately below. An anchor on `closeIndex` alone is not enough - a row that
+	 * is still being written has no close yet, and F5's monotonicity invariant
+	 * caught it (`U F T T F T A`: the row left the set when a step demoted it from
+	 * close to narration, before the cycle that owns it had a close).
+	 */
+	for (const cycle of cycles) {
+		if (cycle.class !== "response") continue;
+		for (let i = cycle.start; i <= cycle.closeIndex; i += 1) {
+			responseCycleRows.add(i);
+		}
+	}
+	/*
+	 * THE OPEN TAIL belongs to the cycle that will own it, and an unfinished cycle
+	 * has stated no close yet. `cyclesOf` only emits a cycle at a close, so two
+	 * shapes would otherwise lose their pin mid-stream: a run with no close at all
+	 * (its FIRST cycle is a response by `cyclesOf`'s head rule) and the rows after
+	 * the last response cycle's close, which are the cycle currently being written.
+	 * Both are covered here so a live handover does not vanish when the next call
+	 * arrives and reappear when its turn closes.
+	 *
+	 * THE TAIL STARTS AT 0, not 1: a head-cut run has no opening user row, so its
+	 * first row is a record whose own bar depends on this clause (round 4, C2 -
+	 * `partitionRun([F, T], { from: 0 })` lost `F0`).
+	 */
+	const last = cycles.at(-1);
+	const openTailFrom =
+		last === undefined
+			? 0
+			: last.class === "response"
+				? last.closeIndex + 1
+				: records.length;
+	for (let i = openTailFrom; i < records.length; i += 1) {
+		responseCycleRows.add(i);
+	}
 	records.forEach((record, index) => {
 		if (index < options.from) return;
 		if (record.kind === "user") visible.add(index);
-		else if (options.paints(record) && reportsCompletedThought(record)) {
+		else if (
+			options.paints(record) &&
+			/*
+			 * BOTH HALVES: V4 keeps the stop-declared lead-in rows the shape test
+			 * cannot see (they carry calls), and V5 keeps every handover the phase
+			 * declaration is missing - but only inside a RESPONSE cycle (see above).
+			 * Written as an OR rather than folded into one predicate so neither
+			 * clause can lose the population the other exists for.
+			 */
+			(reportsCompletedThought(record) ||
+				(isFinalResponse(record) && responseCycleRows.has(index)))
+		) {
 			visible.add(index);
 		}
 	});
@@ -737,7 +864,34 @@ export function quietGroupLabel(family: QuietGroupFamily): string {
 	}
 }
 
-export function labelOfSegment(
+/**
+ * WHAT A BAR IS, structurally, before any surface words it.
+ *
+ * WHY THE DECISION IS SEPARATE FROM THE WORD. The word (`Wake`, `Peer message`,
+ * `Steered`, `Job result`, `Ask`, the quiet group's family plural) is copy: this
+ * app's own choice, and another client says the same thing in its own catalogue
+ * and its own locale. What must not drift between clients is WHICH label a span
+ * earns - a span the desktop calls `Wake` and the phone calls `Peer message` is a
+ * partition disagreement dressed as a translation, and no fixture can catch it
+ * while the only exported answer is an English string. `labelOfSegment` is the
+ * one place that turns `SegmentLabelKind` into words, and the parity fixture
+ * (`scripts/generate-condense-parity.mjs`) compares the kind alone.
+ */
+export type SegmentLabelKind =
+	/** The span holds a `user` row: the reader steered mid-run. */
+	| { kind: "steered" }
+	/** The span opens a wake or a monitor prompt. */
+	| { kind: "wake" }
+	/** The span opens a peer row or a hub message. */
+	| { kind: "peer" }
+	/** The span opens a job result. */
+	| { kind: "job" }
+	/** Otherwise nameless, and holds the agent's own questions/answers. */
+	| { kind: "ask" }
+	/** The span IS a quiet group: the family is the bar's word. */
+	| { kind: "group"; family: QuietGroupFamily };
+
+export function segmentLabelKind(
 	records: readonly TranscriptRecord[],
 	cycles: readonly TurnCycle[],
 	span: SegmentSpan,
@@ -748,16 +902,16 @@ export function labelOfSegment(
 	 * simply does not fire, and the cycle opener's own label is used.
 	 */
 	group?: { family: QuietGroupFamily } | null,
-): string | null {
+): SegmentLabelKind | null {
 	for (let i = span.from; i <= span.to; i += 1) {
-		if (records[i].kind === "user") return "Steered";
+		if (records[i].kind === "user") return { kind: "steered" };
 	}
 	/* The group's word wins over any cycle opener: the span IS the group. */
 	if (group !== undefined && group !== null) {
-		return quietGroupLabel(group.family);
+		return { kind: "group", family: group.family };
 	}
 	const cycle = cycles.find(
-		(candidate) =>
+		(candidate: TurnCycle) =>
 			candidate.start <= span.to && span.to <= candidate.closeIndex,
 	);
 	/*
@@ -769,7 +923,7 @@ export function labelOfSegment(
 	let opener: TriggerKind | null = cycle?.initiators.at(-1) ?? null;
 	if (cycle === undefined) {
 		const previous = cycles.filter(
-			(candidate) => candidate.closeIndex < span.from,
+			(candidate: TurnCycle) => candidate.closeIndex < span.from,
 		);
 		for (
 			let i = (previous.at(-1)?.closeIndex ?? -1) + 1;
@@ -782,12 +936,12 @@ export function labelOfSegment(
 	switch (opener) {
 		case "wake":
 		case "monitor_prompt":
-			return "Wake";
+			return { kind: "wake" };
 		case "peer":
 		case "hub_message":
-			return "Peer message";
+			return { kind: "peer" };
 		case "job_result":
-			return "Job result";
+			return { kind: "job" };
 		default:
 			/*
 			 * THE ASK RECEIPTS GET A NAME OF THEIR OWN.
@@ -806,10 +960,42 @@ export function labelOfSegment(
 			 */
 			for (let i = span.from; i <= span.to; i += 1) {
 				const kind = records[i].kind;
-				if (kind === "ask_response" || kind === "ask_timeout") return "Ask";
+				if (kind === "ask_response" || kind === "ask_timeout")
+					return { kind: "ask" };
 			}
 			return null;
 	}
+}
+
+/** The bar's word for a label kind: this surface's own copy (see
+ * `SegmentLabelKind` for why the decision is not spelled here). */
+export function labelWordOf(kind: SegmentLabelKind | null): string | null {
+	switch (kind?.kind) {
+		case "steered":
+			return "Steered";
+		case "wake":
+			return "Wake";
+		case "peer":
+			return "Peer message";
+		case "job":
+			return "Job result";
+		case "ask":
+			return "Ask";
+		case "group":
+			return quietGroupLabel(kind.family);
+		default:
+			return null;
+	}
+}
+
+/** The decided label's word, in one call: the shape every renderer wants. */
+export function labelOfSegment(
+	records: readonly TranscriptRecord[],
+	cycles: readonly TurnCycle[],
+	span: SegmentSpan,
+	group?: { family: QuietGroupFamily } | null,
+): string | null {
+	return labelWordOf(segmentLabelKind(records, cycles, span, group));
 }
 
 /**

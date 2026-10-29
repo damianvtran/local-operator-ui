@@ -1,0 +1,6 @@
+{
+	"ui.chat.live_updates.paused": "Live updates are paused, so this conversation may be out of date.",
+	"ui.chat.live_updates.reload": "Reload from history",
+	"ui.chat.live_updates.reloading": "Reloading…",
+	"ui.chat.live_updates.reload_failed": "Couldn't reload this conversation. Try again."
+}

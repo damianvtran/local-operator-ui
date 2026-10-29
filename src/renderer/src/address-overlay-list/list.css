@@ -1,0 +1,184 @@
+/*
+ * S2's child-document styles: the in-flow address dock's numbers, painted in a
+ * document that does not load the app's stylesheet.
+ *
+ * WHY THE TOKENS ARRIVE AS VARIABLES: a second renderer does not inherit CSS
+ * custom properties, so main copies the resolved values from the real renderer's
+ * computed style into `--lo-*` on this document's root. The fallbacks below are
+ * the same opaque neutral the child paints with when no theme was sent; they are
+ * a safety net, not a theme claim (S4 owns final theming).
+ *
+ * TYPE DEVIATION (recorded in the brief): the app's Geist Mono is a 2.1 MB
+ * webfont and this document may load no font (`font-src 'none'`), so the mirror
+ * uses the system mono stack. A metric difference between the two surfaces is
+ * known and deliberate in S2.
+ */
+
+:root {
+	color-scheme: dark light;
+	--lo-elevated: #1b1f24;
+	--lo-ink: #e6e8ea;
+	--lo-ink-muted: #9aa0a6;
+	--lo-accent: #5b9dd9;
+	--lo-accent-wash: #23303d;
+	--lo-row-hover: #24282e;
+	--lo-hairline: #2f343b;
+	--lo-control: #3a4048;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+	background: var(--lo-elevated);
+	color: var(--lo-ink);
+	font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+	-webkit-font-smoothing: antialiased;
+}
+
+#address-list-root {
+	box-sizing: border-box;
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+	background: var(--lo-elevated);
+	/* The dock's bottom rule (1px control) is part of the block, not the rows. */
+	border-bottom: 1px solid var(--lo-control);
+}
+
+#address-list-header {
+	box-sizing: border-box;
+	display: flex;
+	flex: 0 0 28px;
+	height: 28px;
+	align-items: center;
+	padding: 0 12px;
+	border-bottom: 1px solid var(--lo-hairline);
+	color: var(--lo-ink-muted);
+	/* text-meta: 0.75rem */
+	font-size: 12px;
+	line-height: 1;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+#address-list-label {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+#address-list-viewport {
+	position: relative;
+	flex: 1 1 auto;
+	min-height: 0;
+	/* The dock's list padding: py-0.5, top and bottom. */
+	padding: 2px 0;
+	overflow: hidden;
+}
+
+#address-list-rows:empty {
+	display: none;
+}
+
+.lo-row {
+	box-sizing: border-box;
+	position: relative;
+	display: flex;
+	height: 35.5px;
+	flex: 0 0 35.5px;
+	align-items: center;
+	gap: 12px;
+	padding: 0 12px;
+	overflow: hidden;
+	background: transparent;
+}
+
+.lo-row:hover {
+	background: var(--lo-row-hover);
+}
+
+/*
+ * The active row's second, non-luminance cue. The wash alone is a contrast idea
+ * only; the 2px bar survives greyscale and low-vision rendering, and it is the
+ * exact pair the in-flow list uses for the row Enter will commit.
+ */
+.lo-row.is-active {
+	background: var(--lo-accent-wash);
+}
+
+.lo-row.is-active::before {
+	content: "";
+	position: absolute;
+	inset-block: 0;
+	inset-inline-start: 0;
+	width: 2px;
+	background: var(--lo-accent);
+}
+
+.lo-row-text {
+	min-width: 0;
+	flex: 0 1 auto;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	font-family: ui-monospace, Menlo, monospace;
+	/* text-mono-sm */
+	font-size: 12px;
+	color: var(--lo-ink);
+}
+
+/*
+ * A row that embeds the typed value (Open / Search): the sentence is UI type and
+ * only the value, which the child wraps in <bdi>, is the machine face. Same split
+ * as the page's own-state list (design D4); text-body-sm / text-mono-sm sizes.
+ */
+.lo-row-text.is-sentence {
+	font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+	font-size: 13px;
+}
+
+.lo-row-text.is-sentence bdi {
+	font-family: ui-monospace, Menlo, monospace;
+	font-size: 12px;
+}
+
+.lo-row-title {
+	/* A FLOOR, not zero: the title carries the open-tab source marker, and a
+	 * long URL could otherwise take the whole row and starve the marker to 0px,
+	 * making a tab row indistinguishable from a history row (design D3).
+	 * "Already open" measures 79.8px at 13px, so the floor is 8em (104px), which
+	 * fits the marker and its trailing space; the URL ellipsizes slightly earlier
+	 * instead. */
+	min-width: 8em;
+	/* The dock's `flex-1` is `1 1 0%`, not `auto`: with a zero basis the title
+	 * takes no width when the URL overflows, so the URL gets the row instead of
+	 * both fields shrinking proportionally (design review D1). */
+	flex: 1 1 0%;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	/* text-body-sm */
+	font-size: 13px;
+	color: var(--lo-ink-muted);
+}
+
+#address-list-notice {
+	box-sizing: border-box;
+	padding: 8px 12px;
+	color: var(--lo-ink-muted);
+	font-size: 13px;
+	/* The dock's `text-body-sm` line-height is 1.5 (design review D2). */
+	line-height: 1.5;
+	overflow-wrap: anywhere;
+}
+
+#address-list-notice[hidden] {
+	display: none;
+}

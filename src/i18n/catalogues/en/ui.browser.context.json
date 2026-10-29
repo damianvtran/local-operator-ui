@@ -779,6 +779,11 @@
 		"tone": "Short imperative",
 		"note": "Reloads the selected tab\u2019s current URL. Length: keep the content prop compact, around the English footprint; no hard cell cap is defined."
 	},
+	"ui.browser.browser_url_bar.page_menu": {
+		"role": "accessible control/region name \u2014 browser page menu trigger",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "The strip and popout overflow trigger, naming the menu of page actions (address, history, find, print, zoom, downloads, approvals). Keep it a short noun phrase naming the PAGE: a borrow of the settings glass-material segment label was rejected in review because a control name has different length and translation constraints from a segmented-tab label. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
 	"ui.browser.browser_url_bar.address": {
 		"role": "accessible control/region name \u2014 address and navigation bar",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
@@ -803,6 +808,16 @@
 		"role": "hover tooltip \u2014 address and navigation bar site-info indicator",
 		"tone": "Factual and restrained",
 		"note": "Site-info tooltip for an https page whose certificate could not be verified. Placeholders: origin = the page origin, preserve verbatim. Length: keep compact."
+	},
+	"ui.browser.page_context_menu.undo": {
+		"role": "menu item \u2014 page context menu",
+		"tone": "Factual and restrained",
+		"note": "Standard edit-history action for the field under the pointer; reverses the last edit. Length: keep compact."
+	},
+	"ui.browser.page_context_menu.redo": {
+		"role": "menu item \u2014 page context menu",
+		"tone": "Factual and restrained",
+		"note": "Standard edit-history action for the field under the pointer; reapplies the edit Undo reversed. Length: keep compact."
 	},
 	"ui.browser.page_context_menu.cut": {
 		"role": "menu item \u2014 page context menu",
@@ -1118,5 +1133,75 @@
 		"role": "content prop \u2014 address and navigation bar",
 		"tone": "concise, neutral, sentence case",
 		"note": "Tooltip naming the reset-zoom chord. shortcut is runtime technical data and stays unchanged."
+	},
+	"ui.browser.browser_url_bar.address_suggestions_available": {
+		"role": "status or explanatory text \u2014 address suggestions",
+		"tone": "concise, neutral, sentence case",
+		"note": "Screen-reader announcement when the suggestion list opens with alternatives. count is the number of visible rows, not the size of the history; the announcement is emitted once on the open transition, never per keystroke. Numeric formatting uses ICU number ::group-off on the count. Placeholders: count = alternative rows. Plural guidance: use the target locale's complete CLDR cardinal categories, preserving the count placeholder."
+	},
+	"ui.browser.browser_url_bar.address_suggestions_empty": {
+		"role": "empty-state text \u2014 address suggestions",
+		"tone": "quiet, factual, not an error",
+		"note": "Shown while the field is focused and the local browsing history (plus any open tab) has no HTTP(S) destination to offer yet. Not a loading state and not a network search. No placeholders."
+	},
+	"ui.browser.browser_url_bar.address_suggestions_blocked": {
+		"role": "status or explanatory text \u2014 address suggestions",
+		"tone": "plain, factual, not an alarm",
+		"note": "Shown while the field holds input the browser will not open: a blocked scheme (javascript:, data:, about:, an unknown scheme) or a file: URL. It states the rule before Enter, so the refusal is not a surprise. No placeholders."
+	},
+	"ui.browser.browser_url_bar.address_search_row": {
+		"role": "first row \u2014 address suggestions, search intent",
+		"tone": "plain, actionable, sentence case",
+		"note": "The first, highlighted row when the typed text is a search rather than a URL. It names the destination explicitly (DuckDuckGo) so the user knows where Enter will send the query. Placeholders: query = the user\u2019s typed text, already trimmed."
+	},
+	"ui.browser.browser_url_bar.address_suggestion_open_tab": {
+		"role": "secondary line of an address suggestion row",
+		"tone": "quiet, factual, sentence case",
+		"note": "Marks a suggestion that comes from a tab this browser still has open, rather than from the persistent history. It is a source marker, not an action: committing the row navigates the CURRENT tab to that URL, it does not switch tabs. Placeholders: title = the page title."
+	},
+	"ui.browser.browser_url_bar.address_suggestion_open_tab_untitled": {
+		"role": "secondary line of an address suggestion row",
+		"tone": "quiet, factual, sentence case",
+		"note": "The same source marker as address_suggestion_open_tab when the open tab has no page title yet. Committing the row navigates the current tab, not a tab switch. No placeholders."
+	},
+	"ui.browser.browser_url_bar.address_suggestions_label": {
+		"role": "accessible control/region name \u2014 address suggestions list",
+		"tone": "concise, neutral, sentence case",
+		"note": "Names the suggestion list when EVERY row comes from the persistent local history. It must never sit over a web-search row or an open-tab row: use address_suggestions_label_mixed for those. Keep the label short, around the English footprint. No placeholders."
+	},
+	"ui.browser.browser_url_bar.address_suggestions_label_mixed": {
+		"role": "accessible control/region name \u2014 address suggestions list",
+		"tone": "concise, neutral, sentence case",
+		"note": "Names the suggestion list when it contains anything other than persistent history \u2014 the DuckDuckGo search row, open-tab rows, or the empty state. It is deliberately neutral: it claims nothing about where the rows came from. Keep it short, around the English footprint. No placeholders."
+	},
+	"ui.browser.browser_url_bar.address_suggestions_no_match": {
+		"role": "empty-state text \u2014 address suggestions",
+		"tone": "quiet, factual, not an error",
+		"note": "Shown when browsing history exists but the typed prefix and titles match nothing. Distinct from the no-history message and from the unavailable message. No placeholders."
+	},
+	"ui.browser.browser_url_bar.address_suggestions_unavailable": {
+		"role": "status or explanatory text \u2014 address suggestions",
+		"tone": "plain, restrained; the field still works",
+		"note": "Shown ONLY when the local browsing-history read was rejected. Two short sentences: what failed, and that typed addresses still work. Not shown for a new tab, an empty history or a platform without the list. No placeholders."
+	},
+	"ui.browser.browser_url_bar.address_open_row": {
+		"role": "list row \u2014 address suggestions",
+		"tone": "plain imperative",
+		"note": "The first row when the typed text is a web address with no history or open-tab match: opens exactly what was typed. {address} is the user's own text, shown verbatim in quotes. Sits above the DuckDuckGo search row."
+	},
+	"ui.browser.browser_url_bar.address_suggestions_unavailable_platform": {
+		"role": "status text beside the address field",
+		"tone": "plain, restrained; the field still works",
+		"note": "Shown beside the field on a system where the native suggestions list does not exist (Windows and Linux today). States the situation and the action: Enter opens what was typed. 'This system' is the user's operating system. Keep it short enough to share the field with typed text. No placeholders."
+	},
+	"ui.browser.browser_url_bar.address_suggestions_unavailable_restart": {
+		"role": "status text beside the address field",
+		"tone": "plain, restrained; names the way out",
+		"note": "Shown beside the field when the suggestions list failed to start or crashed during this run. Names the action (Enter still opens what was typed) and the recovery (restart the app). Keep it short enough to share the field with typed text. No placeholders."
+	},
+	"ui.browser.browser_url_bar.address_suggestions_unavailable_narrow": {
+		"role": "status text beside the address field",
+		"tone": "plain, restrained",
+		"note": "Shown when the browser pane is too narrow to host the suggestions list. 'Pane' is the browser panel, not a window. States the action: Enter opens what was typed. Keep it short enough to share the field with typed text. No placeholders."
 	}
 }

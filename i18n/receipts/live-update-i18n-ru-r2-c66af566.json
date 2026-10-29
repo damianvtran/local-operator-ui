@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "live-update-i18n-ru-r2-c66af566",
+  "namespace": "ui.chat.live_updates",
+  "locale": "ru",
+  "keys_audited": 3,
+  "status": "passed",
+  "sha256": {
+    "ru": "825b2b684484f5f72bac6bc655cd4c05f906ff72a879c212fbdf268f58e2cb24",
+    "en": "a51ecfaed866a60d91b2e31493d44097e12d9978624d942e54f9ecdd87827760"
+  },
+  "scope": {
+    "base": "d98b597f150a74ed34bfcdefa641fc8ffe7571e1",
+    "head": "75236aa18e4042f85536162992ab3ead2d65613c",
+    "kind": "i18n remediation re-audit, 3 keys re-read",
+    "namespace": "ui.chat.live_updates",
+    "note": "Re-read all 3 keys in the file at head 75236aa18e; the only byte changes from d98b597f15 are the three flagged fixes (zh-CN paused and reloading, ru paused, ur reload). The English source is unchanged at a51ecfae…; core i18n/glossary.md and the locale style guide consulted; no rendered-frame or native-speaker pass claimed."
+  },
+  "findings": [],
+  "observations": [
+    "Round 2: the “диалог” finding is resolved — the file now reads “Обновления в реальном времени приостановлены, поэтому этот разговор может быть устаревшим.”, replacing “диалог” with the locale's established conversation noun “разговор”. Re-read all 3 keys; the only byte change from d98b597f15 is this value. No blocker/major; no placeholders.",
+    "The paused sentence is 90 characters vs 65 English (+38%), slightly above the guide's 20-30% band; flag ru for the same rendered check at the narrowest pane width; no copy change requested."
+  ],
+  "independence": "Did not author or translate these strings; read the catalogue bytes on disk and audited against the English source, the core glossary and the locale style guide.",
+  "date": "2026-10-21",
+  "round": 2
+}

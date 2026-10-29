@@ -35,7 +35,7 @@
  * reads, writes or dispatches anything.
  */
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import {
 	chmodSync,
 	lstatSync,
@@ -57,6 +57,17 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const SCRIPTS = dirname(
 	fileURLToPath(new URL("./entry-point.mjs", import.meta.url)),
 );
+
+// Invalid mode is rejected before plan(), file IO or runner launch. The CLI
+// must refuse identically via physical and symlink spellings, never silent0.
+const desktopShardRefusal = {
+	script: "desktop-test-shards.mjs",
+	args: ["invalid-mode"],
+	status: 1,
+	stdout: /^$/,
+	stderr:
+		/Desktop shard proof failed: Expected explicit plan \(metadata-only\), run, receipt or verify mode/,
+};
 
 /** A `package.json` shaped like this repository's: tab-indented, one version line. */
 const packageJson = (version) =>
@@ -166,7 +177,31 @@ function cases(root) {
 	mkdirSync(noPython, { recursive: true });
 	const scriptsScope = scriptsScopeRepo(root);
 	const classifier = classifierRepo(root);
+	/*
+	 * The payload scan's two answers, built from the shapes it exists for rather
+	 * than a paraphrase of them: an ordinary long line, which is a log a reader
+	 * can still read, and the multi-megabyte `data:` frame that stalled shard 2/3
+	 * at its 50-minute cap. The second is 8 MB of base64 on ONE line, which is
+	 * what the incident measured (8,264,707 bytes).
+	 */
+	const quietLog = join(root, "quiet-suite.log");
+	writeFileSync(
+		quietLog,
+		["# Subtest: an ordinary reading", `ok 1 - ${"x".repeat(64_000)}`, ""].join(
+			"\n",
+		),
+	);
+	const payloadLog = join(root, "payload-suite.log");
+	writeFileSync(
+		payloadLog,
+		[
+			"# Subtest: a superseded refusal ends the loop",
+			`#     at desktopResult (data:text/javascript;base64,${"QUJD".repeat(2_000_000)}:50450:21)`,
+			"",
+		].join("\n"),
+	);
 	return [
+		{ ...desktopShardRefusal, cwd: plain, env: {} },
 		{
 			// Reject the SHA before any Linux/compiler/dependency control can start.
 			// This is the diagnostic's own CLI verdict, not a blanket exemption.
@@ -242,6 +277,26 @@ function cases(root) {
 			stdout: /^$/,
 			stderr:
 				/asks-app-regression: --case needs <scenario> from .+ --leg control\|candidate and ASKS_APP_ROOT, ASKS_OUTPUT, ASKS_RECORDS/,
+		},
+		{
+			/*
+			 * The notifications native scene (`ci.yml`'s ephemeral GitHub-hosted macOS
+			 * leg), driven on its REFUSAL rather than its run: with none of the
+			 * sanctioning environment it names every missing condition on stderr and
+			 * exits 1 before the driver is imported, any backend is spawned or any
+			 * window could be shown. That refusal is the scene's whole safety
+			 * property - it must never take a person's foreground - so it is the half
+			 * worth pinning through both spellings; the run itself needs a compiled
+			 * app, a pinned core and a hosted runner, and exists only in that leg.
+			 */
+			script: "notifications-app-scene.mjs",
+			args: [],
+			cwd: plain,
+			env: {},
+			status: 1,
+			stdout: /^$/,
+			stderr:
+				/^notifications native scene refused: this environment cannot honestly own a foreground desktop\. Missing LOCAL_OPERATOR_UI_NATIVE_SCENE=notifications, CI=true, GITHUB_ACTIONS=true, RUNNER_ENVIRONMENT=github-hosted, .*LOCAL_OPERATOR_CORE_BIN, LOCAL_OPERATOR_CORE_PYTHON, LOCAL_OPERATOR_CORE_REF\. No headless fallback is taken/,
 		},
 		{
 			// The group, asked for WITHOUT the profile that authorizes it: the door stays
@@ -428,6 +483,20 @@ function cases(root) {
 			stderr: /^$/,
 		},
 		{
+			// The structural evidence gate CI runs: its checkout and its git reads
+			// come from its own module URL, so a run from a plain cwd answers about
+			// THIS tree - the verdict line names the tracked file count, which is
+			// the thing a silent no-op would leave missing.
+			script: "check-evidence-structure.mjs",
+			args: [],
+			cwd: plain,
+			env: {},
+			status: 0,
+			stdout:
+				/Evidence structure holds: \d+ tracked files under docs\/evidence\//,
+			stderr: /^$/,
+		},
+		{
 			// `ci.yml`'s Lint job, on a scratch repository whose `main` is HEAD: the whole
 			// verdict path runs (base resolution, merge base, changed-file scan) and
 			// answers in its own words, with no biome invocation to depend on and nothing
@@ -440,6 +509,31 @@ function cases(root) {
 			env: {},
 			status: 0,
 			stdout: /check-scripts-lint: no file under scripts\/ changed since main/,
+			stderr: /^$/,
+		},
+		{
+			// `ci.yml`'s payload-scan step, on the shape it must NOT complain about:
+			// an ordinary long line is not a payload, and a gate that fires on one is a
+			// gate the next reader routes around.
+			script: "ci-log-guard.mjs",
+			args: ["check", quietLog],
+			cwd: plain,
+			env: {},
+			status: 0,
+			stdout: /ci-log-guard: clean/,
+			stderr: /^$/,
+		},
+		{
+			// ...and on the shape it exists for: the 8 MB `data:` frame from the
+			// incident, named by rule, frame and the file it came from, in a finding
+			// short enough that a reader can act on it.
+			script: "ci-log-guard.mjs",
+			args: ["check", payloadLog],
+			cwd: plain,
+			env: {},
+			status: 1,
+			stdout:
+				/::error::ci-log-guard \[data-uri\][\s\S]*desktopResult[\s\S]*data-uri=1, oversized-line=1/,
 			stderr: /^$/,
 		},
 		{
@@ -894,5 +988,73 @@ test("every script a workflow invokes is driven here, or says why it needs no en
 			),
 			`${name} is exempt here as a script with nothing to resolve, but it compares process.argv[1] itself`,
 		);
+	}
+});
+
+test("desktop shard invalid-mode CLI refuses through physical and symlink paths", () => {
+	const root = mkdtempSync(join(tmpdir(), "desktop-shard-entry-"));
+	try {
+		const link = join(root, "scripts-link");
+		symlinkSync(SCRIPTS, link);
+		for (const base of [SCRIPTS, link]) {
+			let result;
+			try {
+				execFileSync(
+					process.execPath,
+					[join(base, desktopShardRefusal.script), ...desktopShardRefusal.args],
+					{
+						encoding: "utf8",
+						timeout: 2000,
+						maxBuffer: 16384,
+						stdio: ["ignore", "pipe", "pipe"],
+					},
+				);
+				result = { status: 0, stdout: "", stderr: "" };
+			} catch (error) {
+				result = error;
+			}
+			assert.equal(
+				result.status,
+				desktopShardRefusal.status,
+				"invalid CLI must execute, not silently exit0",
+			);
+			assert.match(result.stdout, desktopShardRefusal.stdout);
+			assert.match(result.stderr, desktopShardRefusal.stderr);
+		}
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test("desktop shard import stays neutral through physical and symlink paths", () => {
+	const root = mkdtempSync(join(tmpdir(), "desktop-shard-import-"));
+	try {
+		const link = join(root, "scripts-link");
+		symlinkSync(SCRIPTS, link);
+		for (const base of [SCRIPTS, link]) {
+			const output = spawnSync(
+				process.execPath,
+				[
+					"--input-type=module",
+					"-e",
+					`await import(${JSON.stringify(pathToFileURL(join(base, desktopShardRefusal.script)).href)})`,
+				],
+				{
+					encoding: "utf8",
+					timeout: 2000,
+					maxBuffer: 16384,
+					stdio: ["ignore", "pipe", "pipe"],
+				},
+			);
+			assert.equal(output.status, 0, "import must settle successfully");
+			assert.equal(
+				output.stdout,
+				"",
+				"import must not emit execution proof or run a suite",
+			);
+			assert.equal(output.stderr, "", "import must remain silent");
+		}
+	} finally {
+		rmSync(root, { recursive: true, force: true });
 	}
 });

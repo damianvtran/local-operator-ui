@@ -91,6 +91,8 @@ export type CanonicalImageProps = {
 	 * the open one instead.
 	 */
 	press?: NonNullable<ImageAttachmentProps["press"]>;
+	/** Path actions over a retained copy (`ImageAttachment`'s `pathActions`). */
+	pathActions?: ImageAttachmentProps["pathActions"];
 };
 
 export const CanonicalImage = ({
@@ -100,6 +102,7 @@ export const CanonicalImage = ({
 	size,
 	group,
 	press,
+	pathActions,
 }: CanonicalImageProps) => {
 	const source = useAttachmentUrl(image, scope);
 	if (source.state === "resolving") {
@@ -205,6 +208,7 @@ export const CanonicalImage = ({
 				 * `ImageAttachment` directly in the strip keeps one tile component.
 				 */
 				press={press}
+				pathActions={pathActions}
 				/*
 				 * The group door. The overlay is built HERE, not passed rendered,
 				 * because the layer's open state and the tile's focus-restore control

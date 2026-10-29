@@ -97,6 +97,8 @@ export type SessionCatalogueRow = {
 	pinned: boolean;
 	/** Durable assignments; absence supports backends predating session_tags. */
 	tags?: TagRef[];
+	/** Opaque assignment revision; older cores omit it. Compare only by equality. */
+	tags_revision?: string;
 	/** Explicit primary ID (a member of tags), or null for Untagged. */
 	primary?: string | null;
 	/**
@@ -189,6 +191,74 @@ export type SessionCatalogueRow = {
 	/** One sentence when `reachable` is false, in the backend's own words. */
 	unreachable_reason?: string;
 };
+
+/*
+ * `GET /v1/desktop/peers`'s LINK VERDICT, and the evidence behind it.
+ *
+ * WHY THIS LIVES IN THE SHARED CONTRACT rather than only beside the mesh
+ * normaliser (`features/mesh/mesh-types.ts` reads it): these are additive wire
+ * fields on a route every mesh surface consumes, and the distinction they carry
+ * is a transport fact rather than a presentation choice. A refused TCP connection,
+ * a timeout, and a TCP connection whose handshake closes with no reason are three
+ * different observations, and they call for three different operator actions: the
+ * first two mean the peer's relay is not listening or the address is unreachable
+ * (fix the peer's process, or its address), while the third means the peer's
+ * process answered and then refused THIS device (a membership/epoch problem).
+ * Collapsing them into `reachable: false` and one sentence is what made the Mesh
+ * tab tell all three stories with the same words.
+ *
+ * ABSENCE IS "NOT KNOWN", NEVER A DEFAULT. A backend older than these fields
+ * omits them, and every reader must render the older single sentence instead of
+ * inventing a verdict. `attempts` is the per-address evidence (one row per
+ * endpoint actually dialled); `remote_relay` is the backend's DERIVED reading of
+ * the peer's relay (`not_listening` when no endpoint connected AND at least one
+ * refused TCP — the host answered and nothing listened; the property's own doc
+ * carries the measured rule), not a probe this client performs; and `link_state`
+ * is the aggregate verdict.
+ */
+export type PeerLinkState =
+	| "reachable"
+	| "relay_down"
+	| "address_unreachable"
+	| "handshake_refused"
+	| "not_attempted"
+	| "no_endpoint"
+	| "not_a_member"
+	/**
+	 * CLIENT-ONLY, never sent by a conforming backend: the fallback a reader derives
+	 * from the old `reachable` boolean when `link_state` is absent. It deliberately
+	 * says only what the old wire could support, so no surface can present a refused
+	 * connection or a closed handshake as an observed fact this client never saw.
+	 */
+	| "unreachable_legacy";
+
+/** The peer relay's derived state, as the backend saw it on this read. */
+export type PeerRelayState = "running" | "not_listening" | "unknown";
+
+/** One address the relay dialled, and what that attempt observed. */
+export type PeerAttempt = {
+	endpoint: string;
+	/** True only when the wire said the TCP connection was established. */
+	connected: boolean;
+	/**
+	 * The backend's detail token: `ok`, `connect_failed:<Exception>`, `no_answer`,
+	 * `bad_endpoint`, `not_attempted`. An unrecognised token is shown verbatim rather
+	 * than guessed at.
+	 */
+	detail: string;
+	latency_ms: number | null;
+};
+
+/** Optional link facts on a peer row; absent means the backend did not answer. */
+export type PeerLinkFacts = {
+	link_state?: PeerLinkState;
+	/**
+	 * The backend's derived reading of the peer's relay: not_listening when no endpoint connected AND at least one refused TCP (the host was up and nothing listened); unknown otherwise.
+	 */
+	remote_relay?: PeerRelayState;
+	attempts?: PeerAttempt[];
+};
+
 /**
  * One hit from `sessions.search`, returned by the `session_search` capability
  * version 1.
@@ -561,6 +631,38 @@ export type PendingDesktopGate = {
 	 */
 	persist?: boolean;
 	/**
+	 * The session's EFFECTIVE approval mode, for the approval card's policy line.
+	 *
+	 * ADDITIVE and OPTIONAL: a backend older than the effective-policy contract
+	 * omits it, and the card then draws no line rather than guessing from the
+	 * pending request. The request can outlive a policy change, so the provenance
+	 * describes the session's current policy (as stamped by the runtime), not a
+	 * reading derived from this question.
+	 *
+	 * `""` is the core's NOT-STATED stamp (an ask card, an older runtime, or a
+	 * publisher that could not read the policy); it is treated exactly like an
+	 * absent field.
+	 */
+	approval_mode?: "ask" | "auto" | "";
+	/**
+	 * Where `approval_mode` came from: the machine default (`global`), this
+	 * conversation's own recorded choice (`session`), or the run's `--yolo` pin
+	 * (`pin`). Optional for the same version-skew reason as `approval_mode`; the
+	 * card omits its line when either field is absent. `""` is not stated.
+	 */
+	approval_provenance?: "global" | "session" | "pin" | "";
+	/**
+	 * The machine default (`tool_approval_mode`) when it differs from an effective
+	 * `session` override, so the card can name what the conversation overrides
+	 * (`Approvals: Ask — session override; global Auto.`).
+	 *
+	 * ADDITIVE and OPTIONAL: a backend that publishes provenance without the
+	 * default omits it, and the line then says `session override.` without
+	 * inventing a comparison. It is never read as the effective mode. `""` is
+	 * the core's not-stated stamp, like the two fields above.
+	 */
+	approval_global_mode?: "ask" | "auto" | "";
+	/**
 	 * The session's display name, for the notification banner only.
 	 *
 	 * ADDITIVE and OPTIONAL: absent on any backend older than the composed
@@ -722,6 +824,34 @@ export type PendingAsk = {
 	 * between a receipt and a promise.
 	 */
 	delivered?: boolean;
+	/**
+	 * How many messages the USER sent in this conversation after this ask was
+	 * queued, and the epoch-ms stamp of the latest one (SA-D7's manager override;
+	 * harness PR #2833).
+	 *
+	 * The pair is the card's honesty about a stale ask: an ask can sit open across
+	 * a conversation that has already moved past it, and a reader deciding whether
+	 * it is still worth answering needs to know the conversation kept going.
+	 *
+	 * ADDITIVE AND OPTIONAL, and absent is "cannot say" rather than zero: an older
+	 * runtime omits both keys, and a card that defaulted them to 0 would claim the
+	 * user had said nothing since the ask when the truth is it never asked. Both
+	 * keys travel together from the queue's projection (`(None, None)` when there
+	 * is no admitted user message to count), so a count without a stamp is a shape
+	 * this client does not render a line for.
+	 */
+	user_messages_since?: number | null;
+	last_user_message_at?: number | null;
+	/**
+	 * WHEN a dismissed ask was put away, and WHY (harness PR-4c, SA-D8). Optional and
+	 * absent on every wire this app could read before that release, INCLUDING the one
+	 * #2833 ships: a dismissal written by an older build carries neither key, and the
+	 * surfaces read absence as the contract's own "no reply was sent" rather than as a
+	 * reason. `dismissed_reason` is the wire's own vocabulary (`moot` |
+	 * `answered_in_chat`), narrowed at the reader (`askDismissReason`).
+	 */
+	dismissed_at?: number | null;
+	dismissed_reason?: string | null;
 	questions: PendingAskQuestion[];
 	/**
 	 * The answers, keyed by question id; each a LIST because a question may be
@@ -1131,6 +1261,8 @@ export type CanonicalSpendChannelRow = {
 
 /** The subagent/forked-children contribution already inside the grand total. */
 export type CanonicalSpendChildren = {
+	/** Additive payment split; absence means the child basis was not recorded. */
+	by_basis?: Record<string, number>;
 	/** Integer micro-USD; always a stated number (0 = stated zero). */
 	total_micro: number;
 	knowledge: "unknown" | "exact" | "partial" | "floor";
@@ -1288,6 +1420,15 @@ export type CanonicalSpendChannels = {
 	vocabulary?: CanonicalSpendVocabulary;
 };
 
+/** See `CanonicalFrontendState.effort_displacement`. Every key is untrusted wire text. */
+export type CanonicalEffortDisplacement = {
+	chosen?: string;
+	effective?: string;
+	selected?: string;
+	serving?: string;
+	note?: string;
+};
+
 export type CanonicalFrontendState = {
 	attention?: CompletionAttention;
 	state_version: number;
@@ -1341,6 +1482,22 @@ export type CanonicalFrontendState = {
 	effective_identity?: CanonicalEffectiveIdentity;
 	selected_model: CanonicalModel | null;
 	effective_model: CanonicalModel | null;
+	/**
+	 * The level the conversation CHOSE when it is NOT the level now serving.
+	 * Published by the backend's `frontend_state.effort_displacement`.
+	 *
+	 * The effort chip reads `effective_model`, so it correctly names the level
+	 * in force. But a fallback route (a chain entry pinning its own level, or a
+	 * ladder that clamps the choice) then makes `Max` read `High` with nothing
+	 * on screen saying why. The operator reported exactly that on a remote
+	 * session (2026-10-21). This block is that "why": `{chosen, effective,
+	 * selected, serving, note}`, where `note` is the backend's own sentence,
+	 * shared with the TUI notice, so no client words the fact differently.
+	 *
+	 * Optional and `{}`-when-nothing: an older host omits it, and both mean
+	 * "no displacement to report". Read it through `effortDisplacementNote`.
+	 */
+	effort_displacement?: CanonicalEffortDisplacement;
 	/**
 	 * Whether the model this session runs can still authenticate (see
 	 * `CanonicalModelAccess`). Optional: an older host omits it, and absence
@@ -1598,14 +1755,44 @@ export type CanonicalFrontendSync = {
  * the next reader of this wire does not have to rediscover it.
  */
 export type CanonicalContentBlock = {
-	/** Absent on durable rows: the encoder drops pydantic defaults. */
-	type?: "text" | "image";
+	/** Absent on durable rows: the encoder drops pydantic defaults. A document
+	 *  block is `type: "document"`; a legacy row that predates the discriminator
+	 *  carries `filename` beside `mime_type` and an `attachment` digest instead
+	 *  (contract v1 §5). */
+	type?: "text" | "image" | "document" | "artifact";
 	text?: string;
 	/** Inline base64. Live events always; durable rows only under 1 KiB. */
 	data?: string;
-	/** Attachment-store digest. Durable rows over 1 KiB. */
+	/** Attachment-store digest. Durable rows over 1 KiB. On an ARTIFACT block
+	 *  this is a declared field (the local copy), not an encoding detail. */
 	attachment?: string;
 	mime_type?: string;
+	// --- document fields (DocumentContent, attachment contract v1 §2/§5) ---
+	/** The file's display name. */
+	filename?: string;
+	/** The origin absolute path, display/provenance only. */
+	path?: string;
+	/** The attachment store's absolute path (the retained copy), when the row
+	 *  carries one. The missing state copies THIS, never the dead origin path. */
+	stored_path?: string;
+	/** Byte size of the original file. */
+	bytes?: number;
+	/** How the turn reached the model; historical metadata only. */
+	injection?: "native" | "extracted" | "reference";
+	// --- output-artifact fields (AttachmentContent) ---
+	/** "image" | "video" | "audio". REQUIRED on an artifact, so it is always
+	 *  present on durable rows (the encoder drops only defaults). */
+	kind?: string;
+	/** MIME of the cached bytes; the artifact's mime_type equivalent. */
+	content_type?: string;
+	/** Provider URL (provenance / re-fetch fallback). */
+	source_url?: string;
+	size_bytes?: number;
+	width?: number;
+	height?: number;
+	duration_s?: number;
+	/** Short display handle. Never a filesystem path. */
+	name?: string;
 };
 /**
  * One durable row as a page, a payload subset or a dependency subset carries
@@ -1822,6 +2009,52 @@ export type DesktopSessionFrame =
 				 * flip re-reads through `/history` as it always did.
 				 */
 				cold?: boolean;
+				/**
+				 * The bridge could not deliver this frame's real delta, and sent a passive
+				 * notice instead.
+				 *
+				 * WHY A FLAG RATHER THAN A NEW FRAME TYPE. The backend replaces any frame
+				 * larger than its 1 MiB socket cap with this notice, and the cap is a
+				 * transport fact about THIS frame rather than a new kind of state: an
+				 * older renderer that ignores the field still folds `changes` exactly as
+				 * before, so the frame stays additive and replay-compatible. A renderer
+				 * that reads it must say the view may be stale instead of silently
+				 * freezing - which is the measured defect this field is for (a long-lived
+				 * session stopped updating with only a quiet trace line to show for it).
+				 *
+				 * ABSENT MEANS HEALTHY: only `true` is a notice, and a daemon that
+				 * predates the field never sets it.
+				 */
+				degraded?: boolean;
+				/**
+				 * The bridge has STOPPED publishing this session's deltas, and a complete
+				 * snapshot is the only thing that will resume them.
+				 *
+				 * Distinct from `degraded` because the reader's action differs: a degraded
+				 * frame is one lost delta the next complete frame may repair, while a
+				 * paused stream stays paused until the client asks for history again. Both
+				 * raise the same banner - the honest claim is identical ("this may be
+				 * stale"); the difference is whether waiting can fix it.
+				 */
+				paused?: boolean;
+				/**
+				 * The live roster's DELTA form, replacing `changes.jobs` on a tick.
+				 *
+				 * WHY THE ROSTER IS NOT IN `changes` ANY MORE. It is the largest bounded
+				 * part of the frontend payload and the backend writes it on every tick;
+				 * re-sending the whole list both costs the socket cap and is the frame
+				 * class that used to be replaced by a passive notice. `changes.jobs`
+				 * remains the full list on a snapshot, and when an update carries BOTH
+				 * the full list wins (a producer that sends everything knows more than a
+				 * delta does). Additive: a daemon that predates the field keeps sending
+				 * `changes.jobs` and an older renderer ignores this one.
+				 */
+				job_deltas?: {
+					upserted?: Array<Record<string, unknown>>;
+					removed?: string[];
+					order?: string[];
+					roster_size?: number;
+				};
 				job_trajectory_appends: Record<string, never>;
 				job_trajectory_replacements: never[];
 			}
@@ -1860,7 +2093,15 @@ export type DesktopSessionFrame =
 				cold: boolean;
 			}
 	  >
-	| Receipt<"event", { type: string; [key: string]: unknown }>
+	/**
+	 * An `event` frame is normally a typed canonical AgentEvent the transcript
+	 * reducer paints. ONE shape is not: a bridge notice carrying
+	 * `action: "reload"`, which tells the viewer its delta stream could not be
+	 * delivered and the conversation should be re-read from history. It is read
+	 * by the same banner as the paused `frontend.update` flags (see
+	 * `use-canonical-session.ts`), never by `applyEvent`.
+	 */
+	| Receipt<"event", { type: string; action?: string; [key: string]: unknown }>
 	// Additive and replay-exempt: an older renderer falls through every branch
 	// of the frame loop, advances its receipt cursor on `seq`, and paints
 	// nothing. Deliberately NOT an `event`, which is a typed canonical
@@ -2047,6 +2288,28 @@ export type DesktopFeedFrame =
 			session_id: CanonicalSessionId;
 			payload: { revision: number };
 	  }
+	/**
+	 * THE NOTIFICATIONS REEL MOVED (notifications contract § 5.3): an item was
+	 * raised, updated, read or dismissed, or an open ask appeared or settled.
+	 *
+	 * A LEVEL, not a notification, like `catalogue`: invalidation only, carrying
+	 * the store's high-water mark as its revision plus the two counts the
+	 * sidebar badge reads, so a renderer can repaint the badge before its
+	 * refetch lands. Machine-wide (no `session_id`), at most once per backend
+	 * tick. Sent only by a backend advertising `features.notifications`; an
+	 * older renderer falls through every branch of its frame loop.
+	 */
+	| {
+			epoch: string;
+			seq: number;
+			type: "notifications";
+			payload: {
+				revision: number;
+				unread_count: number;
+				waiting_count: number;
+				waiting_unread_count: number;
+			};
+	  }
 	| {
 			epoch: string;
 			seq: number;
@@ -2089,6 +2352,52 @@ export type DesktopFeedFrame =
 
 /** The outer bridge cursor a desktop frame carries, as the client records it. */
 export type DesktopStreamCursor = { epoch: string; seq: number };
+
+/**
+ * Whether a frame is newer than the receipt high-water mark already accepted
+ * for this session view.
+ *
+ * The bridge assigns `seq` on ONE monotonically increasing receipt clock and
+ * puts replay BEFORE the authoritative snapshot. A late frame at or behind the
+ * mark is therefore already represented by the state the viewer accepted (or is
+ * an out-of-order delivery); it must not become a second, older paint commit.
+ * This is deliberately a RECEIPT check, not an owner `frontend.sequence` check:
+ * the two clocks are independent, and comparing them would reject valid paint.
+ *
+ * `open` is the boundary exception: a new subscription may use a new epoch and
+ * restart the sequence. The caller resets its high-water mark at that boundary;
+ * no comparison is meaningful across epochs. Same-epoch frames, including a
+ * replayed `history_delta(reset: true)`, are strict-greater-only.
+ */
+export function isNewerDesktopFrame(
+	prior: DesktopStreamCursor | null | undefined,
+	frame: DesktopStreamCursor,
+	options: {
+		/**
+		 * Accept a frame at the SAME receipt position. Only an authoritative frame
+		 * may ask for this, and the snapshot is the one that does.
+		 *
+		 * WHY IT IS NEEDED RATHER THAN TIDY. The bridge builds `open` from
+		 * `cutoff = bridge.sequence` and then replays every retained frame with
+		 * `after_seq < seq <= cutoff`, followed by the snapshot whose own `seq` is
+		 * the sequence read while it was built — so a replay can END on `cutoff`
+		 * and the snapshot then carries the very same number (`docs/DESKTOP_API.md`,
+		 * "the snapshot's `seq` is the watermark"). Under a strict `>` the snapshot
+		 * would be refused exactly when the replay had already reached the
+		 * watermark, and the pane would sit on the replay's rows with no
+		 * authoritative state - the "stuck at connecting" failure. Equal is not
+		 * older: the snapshot IS the state at that position.
+		 */
+		allowEqual?: boolean;
+	} = {},
+): boolean {
+	if (!prior) return true;
+	if (prior.epoch !== frame.epoch) return true;
+	return (
+		frame.seq > prior.seq ||
+		(options.allowEqual === true && frame.seq === prior.seq)
+	);
+}
 
 /**
  * Whether a live `frontend.replace` may be applied over the painted projection.

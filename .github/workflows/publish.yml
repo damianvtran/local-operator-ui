@@ -32,6 +32,15 @@ concurrency:
 
 env:
   NOTARIZE: 'true'
+  # The v0.40.0 macOS x64 leg died in `electron-vite build` at 106 s with
+  # "Reached heap limit Allocation failed" at ~1.97 GB: Node 22's default heap
+  # on a 64-bit runner is ~2 GB, and the window's added renderer code pushed
+  # the same build over it on the x64 pass while the arm64 pass still fit.
+  # The ceiling is a headroom statement, not an allocation: 4 GB sits inside
+  # the ~7 GB macOS runner and leaves the heap enough room for the one build
+  # that needs it; every runner in this matrix has at least 7 GB, so the
+  # ceiling is a headroom statement rather than an allocation.
+  NODE_OPTIONS: '--max-old-space-size=4096'
 
 permissions:
   contents: write

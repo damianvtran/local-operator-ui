@@ -121,6 +121,15 @@ for (const [key, value] of Object.entries(shims)) {
 }
 window.requestAnimationFrame = shims.requestAnimationFrame;
 window.cancelAnimationFrame = shims.cancelAnimationFrame;
+/*
+ * THE WINDOW AS WELL AS `globalThis`. The two are not the same object under
+ * jsdom, and the disclosure body reads `window.matchMedia` while this file's
+ * other consumers read the global - the same split the behaviour harness spells
+ * out on its own copy of these shims. The gap was invisible while every fixture
+ * run collapsed (a closed bar mounts no body); a run kept open by its own live
+ * rows mounts one, so the instrument now has to render that state.
+ */
+window.matchMedia ??= shims.matchMedia;
 window.Element.prototype.scrollIntoView = function scrollIntoView() {};
 const { createRoot } = await import("react-dom/client");
 const { act } = await import("react");

@@ -2079,7 +2079,22 @@ function childProcessBindings(raw) {
 function findChildProcessSites(files = mainProcessSources()) {
 	const sites = [];
 	for (const file of files) {
-		const raw = readFileSync(file, "utf8");
+		let raw;
+		try {
+			raw = readFileSync(file, "utf8");
+		} catch (error) {
+			/*
+			 * A LISTED FILE THAT NO LONGER EXISTS HAS NO SITES. The harness lanes run
+			 * concurrently inside one CI shard, and several of them build a transient
+			 * esbuild bundle next to their own sources: the walk lists it, the lane
+			 * that wrote it removes it, and the read lands on nothing. That is not a
+			 * gap in the scan - the vanished file is a bundle of sources this file
+			 * reads directly - so it is skipped. Any other read error is still a real
+			 * failure and must not be swallowed.
+			 */
+			if (error?.code === "ENOENT") continue;
+			throw error;
+		}
 		const source = blankComments(raw);
 		const { named, namespaces } = childProcessBindings(raw);
 		if (
@@ -2776,6 +2791,20 @@ const HARNESS_PYTHON_SPAWN_SITES = [
 		why: "the runtime's own `read_transcript_page`, driven against the isolated session copy; this is the site review R1 / QA Q0 caught inheriting the ambient environment, and it was run on the operator's machine to produce the fixture",
 	},
 	{
+		file: "scripts/notifications-app-scene.mjs",
+		name: "execFileSync",
+		index: 1,
+		env: /env:\s*pythonChildEnv\(\{/,
+		why: "seeds and reads the notifications store through the PINNED core's own interpreter (the native scene's ground truth for which revision a read committed); its config dir is the scene's isolated one, passed through `extra`",
+	},
+	{
+		file: "scripts/notifications-app-scene.mjs",
+		name: "spawn",
+		index: 1,
+		env: /env:\s*pythonChildEnv\(\{/,
+		why: "the pinned core's `local-operator serve` entry script, the native scene's backend; its HOME, config dir and desktop token are the scene's isolated ones, passed through `extra`",
+	},
+	{
 		file: "scripts/owned-serve-lifecycle.test.mjs",
 		name: "spawnSync",
 		index: 1,
@@ -3028,6 +3057,51 @@ test("the scan reads the CommonJS require binding a `.cjs` harness uses", () => 
 
 // ---------------------------------------------------------------------------
 // Which interpreter environment an instance uses
+
+/*
+ * THE SCAN MUST SURVIVE A FILE THAT VANISHES BETWEEN LIST AND READ. Harness lanes
+ * share one CI shard and several of them write a transient bundle under
+ * `scripts/` and remove it again; `harnessSources()` can list such a file a
+ * moment before its owner unlinks it. That is the shard-0 red this guards: the
+ * read threw ENOENT and took the whole lane down. A directory where a source is
+ * expected still has to fail - silently returning no sites would hide a scanner
+ * that stopped reading anything.
+ */
+test("a listed file that vanished before the read is skipped, and a real read error still throws", () => {
+	const root = mkdtempSync(join(tmpdir(), "lo-scan-vanish-"));
+	try {
+		const gone = join(root, "gone.cjs");
+		writeFileSync(
+			gone,
+			'const { spawnSync } = require("node:child_process");\nspawnSync("python3", ["-c", "x"]);\n',
+		);
+		const kept = join(root, "kept.cjs");
+		writeFileSync(
+			kept,
+			'const { spawnSync } = require("node:child_process");\nspawnSync("python3", ["-c", "x"]);\n',
+		);
+		// The list is taken while both exist; the unlink is the owner finishing.
+		const listed = [gone, kept];
+		rmSync(gone);
+		const sites = findChildProcessSites(listed);
+		assert.equal(
+			sites.length,
+			1,
+			`the surviving file is still scanned: ${JSON.stringify(sites.map((site) => site.file))}`,
+		);
+		assert.equal(sites[0].file, relative(process.cwd(), kept));
+
+		const notAFile = join(root, "a-directory.cjs");
+		mkdirSync(notAFile);
+		assert.throws(
+			() => findChildProcessSites([notAFile]),
+			/EISDIR/,
+			"a non-ENOENT read error is a failure, not an empty scan",
+		);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
 
 test("a packaged and an unpackaged instance never share a venv", () => {
 	for (const platform of ["darwin", "linux", "win32"]) {

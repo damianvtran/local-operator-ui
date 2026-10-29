@@ -1,0 +1,30 @@
+{
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "cce72b13e84e",
+  "date": "2026-10-20",
+  "locale": "fr",
+  "status": "passed",
+  "namespace": "ui.hub",
+  "sha256": {
+    "fr": "478256fadb24d2e8a8bfe4b17798b132f3560d5d803837edb9216752c968ee1e",
+    "en": "96d5e20f3f1efc19efa36210ea7799af8216a863d7b872c71d69e599d5e59a44"
+  },
+  "scope": "ui.hub.skills.*: download, unpull, unpull_title, unpull_body, unpull_failed, subscribe_failed, local_path, published_by, not_downloaded, subscribed_absent, pulled, manual, detached (13 keys) audited against English ui.hub.json",
+  "keys_audited": [
+    "download",
+    "unpull",
+    "unpull_title",
+    "unpull_body",
+    "unpull_failed",
+    "subscribe_failed",
+    "local_path",
+    "published_by",
+    "not_downloaded",
+    "subscribed_absent",
+    "pulled",
+    "manual",
+    "detached"
+  ],
+  "findings": []
+}

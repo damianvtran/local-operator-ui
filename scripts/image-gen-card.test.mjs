@@ -43,6 +43,7 @@ const bundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
+	alias: { "@shared": "./src/renderer/src/shared" },
 	write: false,
 });
 const {
@@ -153,6 +154,7 @@ test("a dictated or waiting call maps to queued, with the byte count it has", ()
 		imageGenCardView(tool({ phase: "composing", argumentBytes: 2458 })),
 		{
 			state: "queued",
+			material: "image",
 			composing: true,
 			argumentBytes: 2458,
 			queuePosition: null,
@@ -162,6 +164,7 @@ test("a dictated or waiting call maps to queued, with the byte count it has", ()
 		imageGenCardView(tool({ phase: "queued", argumentBytes: 2458 })),
 		{
 			state: "queued",
+			material: "image",
 			composing: false,
 			argumentBytes: 2458,
 			queuePosition: null,
@@ -197,6 +200,7 @@ test("the canonical payload reads into the frozen slots, field by field", () => 
 		),
 		{
 			state: "queued",
+			material: "image",
 			composing: false,
 			argumentBytes: 0,
 			queuePosition: 2,
@@ -2286,4 +2290,143 @@ test("batch title follows its material rather than assuming sound effects", () =
 	const html = markupOf(view);
 	assert.ok(html.includes("Voiceover batch"));
 	assert.ok(!html.includes("Sound effect batch"));
+});
+
+/*
+ * THE SOUND GENERATION'S SEAT (operator requirement, 2026-10-23). A voiceover
+ * or sound effect used to wait behind the image card's 240x160 rectangle and
+ * shimmer; a sound waits on a WAVEFORM built from the player's own recipe
+ * (`BAR_WIDTH` 4, 2px gaps, 2px radius), so the loader and the clip it becomes
+ * read as one object. The four states are the card's own and must differ:
+ * queued (static, disabled ink), running (pulsing, muted ink), failed (the
+ * band collapsed to its base line), stopped (at rest, muted ink) - and only
+ * the running one animates, because no vendor exposes a sound's progress.
+ */
+test("a sound generation waits on a waveform, never on the image rectangle", () => {
+	const running = markupOf({
+		state: "running",
+		material: "voiceover",
+		startedAtMs: 3,
+		progress: NO_PROGRESS,
+	});
+	assert.ok(
+		running.includes('data-sound-loading="running"'),
+		"the running sound card carries the waveform tile",
+	);
+	assert.equal(
+		running.includes("data-imagegen-tile"),
+		false,
+		"the image rectangle is not the sound's loader",
+	);
+	// INDETERMINATE: no fraction was carried, so no progressbar and no fill.
+	assert.equal(running.includes('role="progressbar"'), false);
+	// The player's recipe: a 4px bar and a 2px pitch, not an ad-hoc shape.
+	assert.ok(running.includes("width:4px"), "bars use the player's BAR_WIDTH");
+	assert.ok(
+		running.includes("margin-right:2px"),
+		"bars use the player's BAR_GAP",
+	);
+	assert.ok(
+		running.includes("animation-delay"),
+		"the pulse is a travelling wave",
+	);
+	// N2 (round 1): the band is the compact player's own 44px box, so the card
+	// does not shrink when the sound settles.
+	assert.ok(
+		running.includes("height: 44px") || running.includes("height:44px"),
+		"the loader is the player's height, not 12px taller",
+	);
+
+	const queued = markupOf({
+		state: "queued",
+		material: "sound-effect",
+		progress: NO_PROGRESS,
+	});
+	assert.ok(queued.includes('data-sound-loading="queued"'));
+	assert.equal(
+		queued.includes("animation-delay"),
+		false,
+		"queued is at rest: the provider has not been asked yet",
+	);
+	assert.notEqual(queued, running, "queued must not look like running");
+	// Through the REAL model: a queued voiceover call carries its material, so
+	// the queued seat is reachable from the wire's own record, not only from a
+	// hand-built view.
+	const queuedView = imageGenCardView(
+		tool({ toolName: "generate_voiceover", phase: "queued" }),
+	);
+	assert.equal(queuedView.material, "voiceover");
+	assert.ok(markupOf(queuedView).includes('data-sound-loading="queued"'));
+
+	const failed = markupOf({
+		state: "failed",
+		material: "sound-effect",
+		generating: true,
+		message: "The sound effect could not be generated.",
+		errorType: null,
+		progress: NO_PROGRESS,
+	});
+	assert.ok(failed.includes('data-sound-loading="failed"'));
+	assert.ok(
+		failed.includes("height:4px"),
+		"a failure produced no shape: the band is its base line",
+	);
+
+	const stopped = markupOf({
+		state: "cancelled",
+		material: "sound-effect",
+		generating: true,
+		message: "Stopped by the operator.",
+		progress: NO_PROGRESS,
+	});
+	assert.ok(stopped.includes('data-sound-loading="stopped"'));
+	/*
+	 * N1 (round 1): a reduced-motion reader gets the running band parked (the
+	 * CSS cap lands on its end keyframe), so RUNNING and STOPPED must differ in
+	 * more than motion. They do, by ink: muted vs dim.
+	 */
+	assert.ok(
+		running.includes("bg-ink-muted") && stopped.includes("bg-ink-dim"),
+		"the parked running frame and the stopped frame differ by ink",
+	);
+	assert.ok(
+		stopped.includes(
+			"provider has no cancellation endpoint; the generation continues and will be charged if it produces audio",
+		),
+		"the stop receipt's billing sentence is in the card, not only the transcript",
+	);
+	// And a plain cancelled sound states it ONCE: the receipt must not repeat
+	// the state line it already sits under.
+	const plain = markupOf({
+		state: "cancelled",
+		material: "sound-effect",
+		generating: true,
+		message: null,
+		progress: NO_PROGRESS,
+	});
+	assert.equal(
+		(plain.match(/no cancellation endpoint/g) ?? []).length,
+		1,
+		"the plain cancelled line is the receipt; no duplicate note",
+	);
+});
+
+test("images and videos keep the rectangular generating tile", () => {
+	for (const material of ["image", "video"]) {
+		const markup = markupOf({
+			state: "running",
+			material,
+			startedAtMs: 3,
+			progress: NO_PROGRESS,
+		});
+		assert.ok(
+			markup.includes("data-imagegen-tile"),
+			`${material} keeps the 3:2 rectangle`,
+		);
+		assert.equal(
+			markup.includes("data-sound-loading"),
+			false,
+			`${material} is not caught by the audio branch`,
+		);
+	}
 });

@@ -824,6 +824,17 @@ export function resolveLauncherWatchPlan(input: {
 	mode: WindowMode;
 	launcherPid: number;
 	env?: Record<string, string | undefined>;
+	/**
+	 * S3's visible probe: an `inactive` window that is launcher-bound like a
+	 * headless run. `inactive` is otherwise never watched — a person can close a
+	 * visible window, so nothing else needs to outlive a launcher for it. A probe
+	 * window has no person watching and is capped anyway; the watch is the second
+	 * containment, for the launcher dying inside the cap.
+	 *
+	 * Defaults to false, and the false branch is byte-identical to the pre-S3
+	 * output for every input, which is what the pinned window-mode table asserts.
+	 */
+	boundedVisibleProbe?: boolean;
 }): LauncherWatchPlan {
 	const env = input.env ?? {};
 	const keepAlive = (env[LAUNCHER_KEEP_ALIVE_ENV] ?? "").trim().toLowerCase();
@@ -835,10 +846,27 @@ export function resolveLauncherWatchPlan(input: {
 		};
 	}
 	if (input.mode !== "headless") {
+		if (input.mode !== "inactive" || input.boundedVisibleProbe !== true) {
+			return {
+				watch: false,
+				launcherPid: null,
+				reason: `window mode ${input.mode} is not launcher-bound: a person can close it`,
+			};
+		}
+		// The visible probe is the one visible run with nobody watching it. A
+		// detached one (pid 1) is already its own process group's problem; the
+		// 120 s cap still ends it, so the plan says what it did instead of guessing.
+		if (!Number.isInteger(input.launcherPid) || input.launcherPid <= 1) {
+			return {
+				watch: false,
+				launcherPid: null,
+				reason: "visible probe already detached (no launcher to outlive)",
+			};
+		}
 		return {
-			watch: false,
-			launcherPid: null,
-			reason: `window mode ${input.mode} is not launcher-bound: a person can close it`,
+			watch: true,
+			launcherPid: input.launcherPid,
+			reason: `visible probe launched by pid ${input.launcherPid}; it is capped and quits when that process goes`,
 		};
 	}
 	if (!Number.isInteger(input.launcherPid) || input.launcherPid <= 1) {

@@ -1,3 +1,5 @@
+import { t } from "../../../../i18n/messages";
+
 /**
  * @file speech-errors.ts
  * @description
@@ -35,7 +37,8 @@ export const SPEECH_FAILURE_DETAIL_PREFIX = "[speech]";
  * with, including a null body ("no audio data received" is the transport
  * describing itself; the reader is owed what happened and what to do).
  */
-export const SPEECH_FAILURE_COPY = "Couldn't speak this aloud. Try again.";
+export const speechFailureFallbackCopy = (): string =>
+	t("ui.common.errors.speech_failure");
 
 /**
  * The reader's sentence for a playback failure (autoplay refused, a decode
@@ -55,7 +58,8 @@ export const SPEECH_FAILURE_COPY = "Couldn't speak this aloud. Try again.";
  * highlight, not a message - "this message" named an object half the surfaces
  * do not have. The object-less form is true everywhere the press mounts.
  */
-export const SPEECH_PLAYBACK_COPY = "Couldn't speak this aloud. Try again.";
+export const speechPlaybackCopy = (): string =>
+	t("ui.common.errors.speech_failure");
 
 /**
  * The daemon's sentence for an `agent_id` its registry does not hold.
@@ -99,11 +103,29 @@ export const SPEECH_UNKNOWN_AGENT_COPY =
  * target - if the vendor sentences change before the daemon ships, this set
  * moves with them.
  */
-const DESIGNED_SPEECH_SENTENCES: ReadonlySet<string> = new Set([
-	"Your Radient sign-in has stopped working. Sign in again in Settings.",
-	"Your Radient credit balance is too low for speech. Add credits in the Radient Console to continue.",
-	"Speech is unavailable right now. Try again in a moment.",
-	"Speech is temporarily unavailable. Try again in a moment.",
+/*
+ * Keys are the daemon's frozen protocol sentences, not copy to render directly.
+ * Values resolve the same refusal through the catalogue at the moment it is
+ * shown. This preserves exact skew classification without freezing the UI to
+ * English or loosening the match to a substring.
+ */
+const DESIGNED_SPEECH_SENTENCES: ReadonlyMap<string, () => string> = new Map([
+	[
+		"Your Radient sign-in has stopped working. Sign in again in Settings.",
+		() => t("ui.common.errors.speech_radient_sign_in"),
+	],
+	[
+		"Your Radient credit balance is too low for speech. Add credits in the Radient Console to continue.",
+		() => t("ui.common.errors.speech_radient_credits"),
+	],
+	[
+		"Speech is unavailable right now. Try again in a moment.",
+		() => t("ui.common.errors.speech_unavailable"),
+	],
+	[
+		"Speech is temporarily unavailable. Try again in a moment.",
+		() => t("ui.common.errors.speech_temporarily_unavailable"),
+	],
 	/*
 	 * agent-server's own base 503 sentence, one hop upstream. The daemon
 	 * absorbs it into the extended sentence above, but during the window where
@@ -111,9 +133,15 @@ const DESIGNED_SPEECH_SENTENCES: ReadonlySet<string> = new Set([
 	 * that reaches the UI - and it is designed copy either way, so it is kept
 	 * rather than replaced by the fallback.
 	 */
-	"Speech is temporarily unavailable.",
-	"Sign in to Radient in Settings to enable speaking aloud.",
-	SPEECH_UNKNOWN_AGENT_COPY,
+	[
+		"Speech is temporarily unavailable.",
+		() => t("ui.common.errors.speech_unavailable_short"),
+	],
+	[
+		"Sign in to Radient in Settings to enable speaking aloud.",
+		() => t("ui.common.errors.speech_sign_in_enable"),
+	],
+	[SPEECH_UNKNOWN_AGENT_COPY, () => t("ui.common.errors.speech_unknown_agent")],
 	/*
 	 * The BYO vendor refusals (`local-operator` PR #1922 at its round-2
 	 * remediation head `e4f8d9e8`, `_VENDOR_REFUSAL_SENTENCES` formatted with
@@ -130,10 +158,22 @@ const DESIGNED_SPEECH_SENTENCES: ReadonlySet<string> = new Set([
 	 * response's `detail`, so a vendor sentence reaches this set verbatim). A
 	 * third vendor on the route is a third pair here, not a code change.
 	 */
-	"ElevenLabs refused your API key. Replace it.",
-	"Your ElevenLabs credit balance is too low for speech. Add credits with ElevenLabs to continue.",
-	"OpenAI refused your API key. Replace it.",
-	"Your OpenAI credit balance is too low for speech. Add credits with OpenAI to continue.",
+	[
+		"ElevenLabs refused your API key. Replace it.",
+		() => t("ui.common.errors.speech_elevenlabs_key"),
+	],
+	[
+		"Your ElevenLabs credit balance is too low for speech. Add credits with ElevenLabs to continue.",
+		() => t("ui.common.errors.speech_elevenlabs_credits"),
+	],
+	[
+		"OpenAI refused your API key. Replace it.",
+		() => t("ui.common.errors.speech_openai_key"),
+	],
+	[
+		"Your OpenAI credit balance is too low for speech. Add credits with OpenAI to continue.",
+		() => t("ui.common.errors.speech_openai_credits"),
+	],
 	/*
 	 * The two spellings `bcca80808` retired, kept as skew entries on the same
 	 * rule as agent-server's base 503 above: `local-operator` #1835 is not
@@ -144,8 +184,14 @@ const DESIGNED_SPEECH_SENTENCES: ReadonlySet<string> = new Set([
 	 * review round 4, MINOR-1). Remove them once the shipped daemon's floor is
 	 * past `bcca80808`.
 	 */
-	"Your Radient sign-in has stopped working. Sign in again in the settings page.",
-	"Sign in to Radient in the settings page to enable text to speech.",
+	[
+		"Your Radient sign-in has stopped working. Sign in again in the settings page.",
+		() => t("ui.common.errors.speech_radient_sign_in_legacy"),
+	],
+	[
+		"Sign in to Radient in the settings page to enable text to speech.",
+		() => t("ui.common.errors.speech_sign_in_enable_legacy"),
+	],
 ]);
 
 /**
@@ -157,9 +203,10 @@ const DESIGNED_SPEECH_SENTENCES: ReadonlySet<string> = new Set([
  */
 export function speechFailureCopy(error: unknown): string {
 	const raw = error instanceof Error ? error.message : String(error);
-	if (DESIGNED_SPEECH_SENTENCES.has(raw)) return raw;
+	const designed = DESIGNED_SPEECH_SENTENCES.get(raw);
+	if (designed) return designed();
 	console.error(`${SPEECH_FAILURE_DETAIL_PREFIX} ${raw}`);
-	return SPEECH_FAILURE_COPY;
+	return speechFailureFallbackCopy();
 }
 
 /**

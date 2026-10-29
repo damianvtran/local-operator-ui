@@ -18,7 +18,7 @@ const COLLAPSE_FILTER_RE =
 const BADGE_SR_ONLY_RE =
 	/\{badge > 0 && \(\s*<span className="sr-only">\{groupBadgeLabel\(badge\)\}<\/span>/;
 const DISCLOSURE_LABEL_RE =
-	/DISCLOSURE_LABELS|aria-label="Expand \$\{pending\.name\} chats"/;
+	/DISCLOSURE_LABELS|ui\.chat\.sidebar\.entity\.expand_chats/;
 
 /*
  * THE PAGED CATALOGUE, driven through the shipped store and the shipped
@@ -101,6 +101,16 @@ const bundle = await build({
 				 * resolution for this suite's shape - it reads a plain document with no
 				 * provider, exactly the condition the module exists for.
 				 */
+				/*
+				 * THE I18N CORE, resolved to its REAL file and to the CORE rather than the
+				 * renderer door: the paging model paints catalogue copy now, and the door
+				 * pulls `desktop-hooks` (a query client this node harness has no use for),
+				 * while `t` is the framework-free module's own export. The rendering suites
+				 * that paint through React keep using the door.
+				 */
+				builder.onResolve({ filter: /^@shared\/i18n$/ }, () => ({
+					path: `${process.cwd()}/src/i18n/index.ts`,
+				}));
 				builder.onResolve(
 					{ filter: /^@shared\/hooks\/use-optional-query-client$/ },
 					() => ({
@@ -1554,6 +1564,20 @@ test("the Show-more control names its group, joins the arrow-key idiom, and is f
 		"the press records where the reader was, so the answer can put them there",
 	);
 	assert.ok(
+		SIDEBAR_SRC.includes("data-entity-key={key}"),
+		"the group's disclosure carries its catalogue key, so the hand-back can find it",
+	);
+	assert.ok(
+		SIDEBAR_SRC.includes(
+			'`[data-disclosure][data-entity-key="${CSS.escape(pending.key)}"]`',
+		),
+		"the group is found by that key, so localized copy never enters the selector (review round 1, M4)",
+	);
+	assert.ok(
+		!SIDEBAR_SRC.includes("[data-disclosure][aria-label="),
+		"the disclosure's accessible name drifted back into being a lookup key",
+	);
+	assert.ok(
 		SIDEBAR_SRC.includes("target?.focus()"),
 		"and the answer moves focus somewhere deterministic",
 	);
@@ -1600,7 +1624,7 @@ test("the open conversation is kept in membership, and a collapse drops a group'
 
 test("the refusal holds its shape, and the badge announces its meaning (D4, D1, D5)", () => {
 	assert.ok(
-		SIDEBAR_SRC.includes("line-clamp-2 py-1 pl-7 text-meta text-ink-dim"),
+		SIDEBAR_SRC.includes("line-clamp-2 py-1 ps-7 text-meta text-ink-dim"),
 		"the refusal's sentence is clamped, so a long transport string cannot move the control",
 	);
 	assert.match(
@@ -1772,14 +1796,12 @@ test("the round-2 code paths are pinned in source", () => {
 		"the press's recovery looks in the region the group is drawn in (U2 = F1)",
 	);
 	assert.ok(
-		SIDEBAR_SRC.includes(
-			'groupRow?.querySelector<HTMLElement>("[data-disclosure]")',
-		),
+		SIDEBAR_SRC.includes("groupDisclosure ??"),
 		"and its fallback is the group's own control, which exists at exhaustion",
 	);
 	assert.ok(
 		DISCLOSURE_LABEL_RE.test(SIDEBAR_SRC),
-		"the group is matched by its disclosure's label, not by name-plus-badge text",
+		"the disclosure's name stays the catalogue's - it is copy the reader hears, never a lookup key (review round 1, M4)",
 	);
 	// All THREE refusal sites wear the one treatment: clamped sentence, Retry on its own
 	// line. Counted rather than eyeballed, because round 1 fixed one of them and the
@@ -1796,7 +1818,7 @@ test("the round-2 code paths are pinned in source", () => {
 	);
 	// The live region survives the swap (R2-5)
 	assert.ok(
-		SIDEBAR_SRC.includes('? "py-1 pl-7"\n\t\t\t\t\t\t\t\t\t: "sr-only"'),
+		SIDEBAR_SRC.includes('? "py-1 ps-7"\n\t\t\t\t\t\t\t\t\t: "sr-only"'),
 		"the group's sentence region is mounted in every state, so loading -> settled is announced",
 	);
 	// The total sentence reads the drawn count (R2-2)

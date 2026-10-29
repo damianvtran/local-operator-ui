@@ -2,6 +2,7 @@
 export type TagRef = { id: string; name: string };
 export type TagCategory = TagRef & { order: number; conversations: number };
 export type SessionTags = {
+	tags_revision?: string;
 	session_id: string;
 	tags: TagRef[];
 	primary: string | null;
@@ -10,11 +11,23 @@ export type TagRegistry = { tags: TagCategory[] };
 export type DesiredTag = { id?: string; name: string };
 
 import { z } from "zod";
+import type { WithoutParams } from "../i18n";
 import { agentMessagesBoundarySchema } from "./agent-messages-contract";
+import { DESKTOP_MESSAGE_MAX_FILES } from "./attachment-upload";
+// The sidebar's destination vocabulary is the same list the route validates
+// against, so the request schema below and the renderer's pure model cannot
+// disagree about what an id is.
+import { SIDEBAR_DESTINATION_IDS } from "./desktop-control-contract";
 // The feed's frame family lives beside the session stream's, so the two cannot
 // drift into disagreeing about the envelope they deliberately share.
 import type { DesktopFeedFrame } from "./desktop-session-contract";
 import { appendJournalOrderIds } from "./journal-order-query";
+import type {
+	TeamBridgeNotificationSender,
+	TeamBridgeNotifyAuthority,
+	TeamBridgeNotifyRequest,
+	TeamBridgeOpenResult,
+} from "./team-bridge-notify";
 
 const id = z
 	.string()
@@ -58,6 +71,11 @@ const supplementAnchor = z.string().min(1).max(128);
  * `invalid_cwd`) — the check belongs at the end that can actually resolve it.
  */
 const skillCwd = z.string().min(1).max(4096);
+const skillName = z
+	.string()
+	.min(1)
+	.max(128)
+	.regex(/^[A-Za-z0-9_.-]+$/);
 /*
  * The MCP field shapes, named once because the session route and the
  * sessionless catalog route accept the same server names, secret references and
@@ -144,10 +162,54 @@ const meshId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
  * is refused HERE, by name, rather than by the daemon's generic 422.
  */
 const approvalId = z.string().regex(/^ap_[0-9a-hjkmnp-tv-z]{1,64}$/);
+/**
+ * The Library's two opaque identifiers, bounded at the boundary.
+ *
+ * An asset id is `la_` + 16 hex characters (the design contract's derivation);
+ * a tag id is opaque today, so this accepts the route's own URL-safe shape
+ * without inventing a format the backend has not frozen. Both are encoded into
+ * a path segment by the endpoint mapper, so a `/` or `..` must not survive
+ * here even if a caller built the request by hand.
+ */
+const libraryAssetId = z.string().regex(/^la_[0-9a-f]{16}$/);
+const libraryTagId = z
+	.string()
+	.min(1)
+	.max(128)
+	.regex(/^[A-Za-z0-9_.:-]+$/);
+
 const sessionImage = z
 	.object({
 		data_b64: z.string().min(1).max(1_000_000),
 		mime_type: z.enum(["image/png", "image/jpeg", "image/gif", "image/webp"]),
+		/**
+		 * Where the image came from, when it came from disk. Provenance only: the
+		 * daemon carries it to `ImageContent.path` and every provider serializer
+		 * ignores it (attachment contract v1 §1.3). Absent on pasted images, which
+		 * have no path.
+		 */
+		origin_path: z.string().max(4096).optional(),
+	})
+	.strict();
+
+/**
+ * One uploaded file the message references (contract v1 §1.2, `Prompt.files`).
+ *
+ * The BYTES are not here: they live in the daemon's attachment store under
+ * `digest`, and the daemon resolves the reference at admission. Everything
+ * else is display/provenance - the filename a person recognises, the mime the
+ * daemon decided by content, the size, and the origin path - and each is
+ * optional because a reference is still valid without them. A digest that
+ * does not resolve is the daemon's refusal to raise; the UI has already
+ * refused before this body is built.
+ */
+const sessionFile = z
+	.object({
+		digest: z.string().regex(/^[0-9a-f]{32}$/),
+		name: z.string().max(1024).optional(),
+		mime_type: z.string().max(255).optional(),
+		bytes: z.number().int().min(0).optional(),
+		path: z.string().max(4096).optional(),
 	})
 	.strict();
 
@@ -169,7 +231,7 @@ export const DESKTOP_MESSAGE_MAX_CHARS = 200_000;
  * Most images one message-carrying op carries, in IMAGES.
  *
  * Named and exported rather than repeated as a literal because the renderer
- * has to agree with it: `encodeImageAttachments` applies the cap to every
+ * has to agree with it: `encodeAttachments` applies the cap to every
  * send it encodes, and a draft that staged more images than this used to be
  * sliced to the ceiling SILENTLY - a send left with fewer images than the
  * composer showed and nothing named the difference (design round 1 on issue
@@ -323,8 +385,8 @@ const importRequestFields = {
 /**
  * The model a NEW conversation will be born on, picked on the draft pane.
  *
- * Deliberately the same three fields, in the same spelling, that the canonical
- * frontend state publishes for a session's model (`CanonicalModel` in
+ * Deliberately the same fields, in the same spelling, that the canonical frontend
+ * state publishes for a session's model (`CanonicalModel` in
  * `desktop-session-contract.ts`): the draft's chips and the session's chips are
  * two readings of one fact, and a second spelling here would be the place the
  * two came to disagree. `reasoning_effort` is `null` for "no rung chosen",
@@ -340,6 +402,44 @@ const modelSelection = z
 		provider: z.string().min(1).max(128),
 		model_id: z.string().min(1).max(512),
 		reasoning_effort: z.string().min(1).max(64).nullable(),
+		/*
+		 * The FAST dial the conversation is born on (issue #1265), when the pane's
+		 * `/fast` picker asked for one.
+		 *
+		 * OPTIONAL, so the three orders a request can carry stay distinguishable:
+		 * an absent key is "nobody asked" - the body every caller sent before this
+		 * field existed - `true` asks for the tier, and `false` is the user picking
+		 * `Off` (the spec's own default, so it moves no byte on a backend that
+		 * carries the field). It is not DERIVED from the resolved spec here: a
+		 * renderer that copied the resolved dial onto every draft would assert a
+		 * choice nobody made, and the authority for "may this model be served
+		 * fast" is the backend's own `supports_fast_mode` clamp, which refuses
+		 * `true` with a 422.
+		 *
+		 * THIS IS THE RENDERER HALF OF A TWO-REPO CHANGE. The backend half is
+		 * `DraftModel.fast_mode` in `local-operator` (damianvtran/local-operator#2848,
+		 * `server/routes/desktop_sessions.py`), published as the capability
+		 * `features.draft_fast` (`server/features.py`) - the key this renderer reads
+		 * before it offers `/fast` on a draft (`DesktopFeature` in
+		 * `desktop-hooks.ts`, `draftSelectionRoute` in `picker-registry.tsx`).
+		 * VERIFY IT THERE, NOT BY DATE: the core's draft model is
+		 * `extra="forbid"`, so a backend that does not advertise `draft_fast`
+		 * refuses the WHOLE body - `422 {"detail": "The request has invalid
+		 * fields."}` against a core without the field - taking the model and the
+		 * effort rung down with the dial. A draft pick on such a backend is
+		 * prevented at the route rather than attempted, and a request that still
+		 * fails is REFUSED OUT LOUD by `FastPicker` (see `fastPickFailure`) and
+		 * nothing is recorded on the pane. The field stays declared here because
+		 * the draft route's own round trip is the one the backend must answer, and
+		 * a renderer that had to be rewritten for it would be the second spelling
+		 * this contract exists to prevent.
+		 *
+		 * `null` is accepted because a backend that carries the field spells "no
+		 * choice" that way (`fast_mode: bool | None`, the spelling this contract's
+		 * `null` mirrors), and the two spellings must mean one thing to every
+		 * reader.
+		 */
+		fast_mode: z.boolean().nullable().optional(),
 	})
 	.strict();
 /** What a draft pane's chips record, and what the wire carries. */
@@ -402,6 +502,16 @@ const teamFields = z
 	})
 	.strict();
 const chains = z.record(z.array(z.string().max(1024)).max(100));
+/*
+ * Team Bridge staged-attachment ids on a send or schedule. Four is the hub's
+ * per-message cap (D3) and is enforced here too so a renderer bug is refused
+ * before it costs a round trip; duplicates are refused because the hub binds
+ * each id exactly once and a repeated id would be a guaranteed 404.
+ */
+const teamBridgeAttachmentIds = z
+	.array(id)
+	.max(4)
+	.refine((ids) => new Set(ids).size === ids.length, "Duplicate attachment");
 // Mirrors ScheduleUnit in the renderer's api/local-operator/types.ts and the
 // backend's ScheduleUnit enum. Enumerated rather than free text so the value
 // cannot become a path or query fragment on its way to the server.
@@ -1108,7 +1218,101 @@ export function projectTagRule(tag: string): string | null {
 	return null;
 }
 
-const hubItemKind = z.enum(["agent", "team"]);
+/*
+ * The kinds the updates surface addresses. `skill` joined the same channel in
+ * core PR #2713, so the renderer's kind list and core's `Kind` are one list; a
+ * value here that core refuses would be a 422 a user could not tell from a bug.
+ */
+const hubItemKind = z.enum(["agent", "team", "skill"]);
+
+/*
+ * The sidebar customisation resource's wire schema (design contract § 2, § 4).
+ *
+ * `SIDEBAR_DESTINATION_IDS` is the one allow-list shared with the control DTOs
+ * and the renderer's pure model, so an id this schema accepts is an id the route
+ * accepts and the drag layer can name. `max(...)` rather than a pin to nine is
+ * deliberate: a legitimate write may carry FEWER ids (the route fills the rest
+ * from the default, and the design contract says so explicitly), while a list
+ * longer than the vocabulary is a different class of bug. What must never reach
+ * the wire is an id outside the list; duplicates are possible in the type but
+ * are refused by the route and removed by the client's sanitiser.
+ */
+const sidebarDestinationId = z.enum(SIDEBAR_DESTINATION_IDS);
+const sidebarLayoutSchema = z
+	.object({
+		visible: z.array(sidebarDestinationId).max(SIDEBAR_DESTINATION_IDS.length),
+		more: z.array(sidebarDestinationId).max(SIDEBAR_DESTINATION_IDS.length),
+	})
+	.strict();
+
+/*
+ * A notifications reel id (contract § 2.2): a `notify` row is `n_` plus 16
+ * lowercase base32 characters, an open ask is `ask:<session_id>:<ask_id>`. The
+ * id goes into a URL PATH for the detail read, so the pattern refuses `/`, `.`
+ * sequences and `%` rather than trusting `encodeURIComponent` alone.
+ */
+const notificationId = z
+	.string()
+	.min(3)
+	.max(256)
+	.regex(/^(?:n_[a-z2-7]{4,32}|ask:[A-Za-z0-9_-]+:[A-Za-z0-9_-]+)$/);
+
+/* The one-of-three target a read/dismiss write names (contract § 5.2). */
+const notificationsTarget = z.union([
+	z
+		.object({
+			items: z
+				.array(
+					z
+						.object({
+							id: notificationId,
+							revision: z.number().int().min(1),
+						})
+						.strict(),
+				)
+				.min(1)
+				.max(500),
+		})
+		.strict(),
+	z
+		.object({
+			sessionId,
+			throughSeq: z.number().int().min(0),
+			observed: z
+				.array(
+					z
+						.object({ id: notificationId, revision: z.number().int().min(1) })
+						.strict(),
+				)
+				.max(500),
+		})
+		.strict(),
+	z
+		.object({
+			all: z.literal(true),
+			throughSeq: z.number().int().min(0),
+			observed: z
+				.array(
+					z
+						.object({ id: notificationId, revision: z.number().int().min(1) })
+						.strict(),
+				)
+				.max(500),
+		})
+		.strict(),
+]);
+
+/* The seen route's `input_kind` for each renderer input kind (see the endpoint). */
+/*
+ * The renderer's short kind -> the route's DOM event name. `focus` is gone
+ * (decisions D12): a window focus-gain is not an input the operator performed in
+ * the pane, and core no longer accepts it.
+ */
+const SEEN_INPUT_KIND = {
+	pointer: "pointerdown",
+	key: "keydown",
+	wheel: "wheel",
+} as const;
 
 const desktopRequestUnion = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("capabilities") }).strict(),
@@ -1228,6 +1432,36 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			subscribe: z.boolean().optional(),
 			autoPush: z.boolean().optional(),
 			confirmPublicEgress: z.boolean().optional(),
+		})
+		.strict(),
+	/*
+	 * Membership without content: link a remote skill and subscribe to future
+	 * revisions, writing NO managed copy. Same identity fields as the pull and
+	 * none of its install policy -- a subscribe is subscribe-on/auto-push-off by
+	 * definition, and core never rewrites an existing link's policy from it.
+	 */
+	z
+		.object({
+			op: z.literal("hub.skillSubscribe"),
+			requestId,
+			hubId: id,
+			hubSource: z.string().min(1).max(2048),
+			visibility: z.enum(["public", "org"]),
+			tenantId: id.nullable(),
+			localAlias: profileName,
+		})
+		.strict(),
+	/*
+	 * Drop the managed copy while KEEPING the link, alias reservation, policy and
+	 * subscription. Deliberately addressed by `linkId` rather than by remote
+	 * identity: the copy belongs to one local link, and a re-resolution here could
+	 * name a different one after an alias/policy edit.
+	 */
+	z
+		.object({
+			op: z.literal("hub.skillUnpull"),
+			requestId,
+			linkId: z.string().min(1).max(256),
 		})
 		.strict(),
 	z
@@ -1730,6 +1964,29 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			fileId: z.string().regex(/^[a-f0-9]{16}$/),
 		})
 		.strict(),
+	/*
+	 * The files and pictures the PERSON attached (`features.session_attachments`).
+	 * A backend read over the whole journal because history pages arrive lazily,
+	 * newest first: a first-turn PDF is not in memory when the canvas opens, and a
+	 * list built from loaded rows alone would claim "nothing attached". Metadata
+	 * only - bytes stay on `sessions.attachment` (one binary transport).
+	 */
+	z
+		.object({
+			op: z.literal("sessions.userAttachments"),
+			sessionId,
+		})
+		.strict(),
+	// Copies one listed attachment's retained bytes to a real, named file in the
+	// session scratchpad, so open/reveal/copy-path have something an OS app opens
+	// (a pasted screenshot has no path; a moved file's store copy is a `.bin`).
+	z
+		.object({
+			op: z.literal("sessions.userAttachments.materialise"),
+			sessionId,
+			digest: z.string().regex(/^[a-f0-9]{32}$/),
+		})
+		.strict(),
 
 	z
 		.object({
@@ -1872,6 +2129,13 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			requestId,
 			text: z.string().max(DESKTOP_MESSAGE_MAX_CHARS),
 			images: z.array(sessionImage).max(DESKTOP_MESSAGE_MAX_IMAGES).optional(),
+			/**
+			 * Uploaded files this message references, bounded to the backend's
+			 * `Prompt.files` ceiling. Absent rather than empty when the send carries
+			 * none, so an older harness's `extra=forbid` sees a legacy body - the same
+			 * rule the optional fields below follow.
+			 */
+			files: z.array(sessionFile).max(DESKTOP_MESSAGE_MAX_FILES).optional(),
 			mode: z.enum(["prompt", "steer"]).optional(),
 			/*
 			 * HOW THE MESSAGE WAS PRODUCED (arch §4.2), and the harness gate is what
@@ -1978,6 +2242,27 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 * pre-judge that, it renders the owner's refusal.
 			 */
 			revise: z.boolean().optional(),
+			/**
+			 * PUT AN OPEN ASK AWAY instead of answering it (harness PR #2833, SA-D5).
+			 *
+			 * A modifier on the SAME `{ask_id}` body rather than a fourth op: a dismissal
+			 * is the same epoch-free queued-ask door an answer is, addressed by an id that
+			 * outlives any owner. Only `true` selects the shape — `false` is the same
+			 * statement as omitting it — and the shape rules below refuse it beside
+			 * answers/decline/revise, because no single body may answer and dismiss one ask.
+			 *
+			 * GATED ON `features.ask_dismiss` at the surface that offers the control: the
+			 * backend's `Answer` is `extra="forbid"`, so an older daemon answers 422 to this
+			 * field rather than ignoring it.
+			 */
+			dismiss: z.boolean().optional(),
+			/**
+			 * Why the operator put it away: `answered_in_chat` (the conversation already
+			 * answered it) or `moot` (no longer needed). Optional; the ask log records
+			 * `moot` when absent. Refused without `dismiss: true` — the same no-op rule
+			 * `revise` follows above.
+			 */
+			reason: z.enum(["answered_in_chat", "moot"]).optional(),
 		})
 		/*
 		 * A PLAIN `ZodObject`, with the mutual-exclusion rules on the UNION below.
@@ -2069,6 +2354,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("sessions.tags"),
+			expected_revision: z.string().optional(),
 			sessionId,
 			// Whole desired assignment, not a toggle; identity survives a display rename.
 			tags: z.array(z.string()),
@@ -2656,7 +2942,64 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 */
 			sessionId: sessionId.optional(),
 			cwd: skillCwd.optional(),
-			name: id.optional(),
+			/*
+			 * NOT `id`: core's route accepts `[A-Za-z0-9_.-]{1,128}` for a skill name
+			 * (`desktop_catalogues.skills`), and a discovered folder may carry a dot.
+			 * `id` would refuse that name here and the Skills tab's details read would
+			 * fail for a skill the list had just shown.
+			 */
+			name: skillName.optional(),
+		})
+		.strict(),
+	/*
+	 * THE SKILL LIBRARY'S WRITES (core `skill_write:1`, `desktop_catalogues.py`
+	 * `skill_create` / `skill_update` / `skill_remove`), for the Agents page's
+	 * Skills tab: Copy to my skills, the inline SKILL.md edit, and Remove.
+	 *
+	 * WHY `update` IS A WHOLE FILE SET. The route REPLACES the folder's files with
+	 * exactly what is sent, so a caller that sends `SKILL.md` alone deletes every
+	 * reference file. The tab therefore offers the inline edit only for a skill
+	 * whose detail read reported no reference files and an untruncated body; the
+	 * composer path (core's `skill` tool) owns partial edits. The bounds are the
+	 * route's `SkillFileIn` / `SkillUpdate` limits, so a request this schema
+	 * accepts is one the route can accept.
+	 *
+	 * `discardLocalChanges` is STRICT on the route (a lenient bool once turned a
+	 * typo into a destroyed edit), so it is a real boolean here too.
+	 */
+	z
+		.object({
+			op: z.literal("skills.create"),
+			requestId,
+			name: skillName,
+			copyFrom: skillName,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("skills.update"),
+			requestId,
+			name: skillName,
+			expectedFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+			files: z
+				.array(
+					z
+						.object({
+							path: z.string().min(1).max(240),
+							content: z.string().max(1024 * 1024),
+						})
+						.strict(),
+				)
+				.min(1)
+				.max(64),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("skills.remove"),
+			requestId,
+			name: skillName,
+			discardLocalChanges: z.boolean(),
 		})
 		.strict(),
 	z.object({ op: z.literal("sessions.failovers"), sessionId }).strict(),
@@ -2695,6 +3038,13 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 */
 			boundary: z.enum(["next_safe", "at_entry"]).optional(),
 			entryId: z.string().max(128).optional(),
+			/*
+			 * WHETHER THE CHILD SHOULD NAME ITSELF WITH A TAG. Optional and absent
+			 * on every released body: a renderer only sends it after the backend
+			 * advertises `session_tags_auto_tag` (`chat-auto-tag.ts`), because
+			 * `Fork` inherits `extra="forbid"` and an older core would answer 422.
+			 */
+			autoTag: z.boolean().optional(),
 		})
 		.strict(),
 	z
@@ -3191,6 +3541,393 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			consented_via: z.literal("dialog"),
 		})
 		.strict(),
+	/*
+	 * The settings section's four ops (RFC §5.2/§6.1). The enable op above is
+	 * the one-time dialog's narrower receipt; these carry the same
+	 * captured-account guard plus the states a returning user manages.
+	 *
+	 * `consented_via` is asserted by the client, not verified by the server: it
+	 * names the surface that showed the text, so the section must say
+	 * "settings" rather than borrow the dialog's value.
+	 */
+	z
+		.object({
+			op: z.literal("agent_messages.settings"),
+			tenant_id: id.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("agent_messages.settings.put"),
+			expected_account_id: id,
+			tenant_id: id.optional(),
+			consent_version: z.string().min(1).max(128).optional(),
+			// Never "default_on": only the hub's enrolment route may assert it and the
+			// runtime answers a client that tries with a 422 (runtime #2790).
+			consented_via: z.enum(["dialog", "settings"]).optional(),
+			label: z.string().min(1).max(128).optional(),
+			state: z.enum(["active", "paused", "disabled"]),
+		})
+		.strict(),
+	/*
+	 * The default-on banner's dismissal (runtime #2790). Idempotent and
+	 * local-only: the runtime records "seen" on this machine and the banner never
+	 * returns. No body, no tenant, no account guard - it changes no hub state, so
+	 * there is no account whose receipt could be stale.
+	 */
+	z
+		.object({ op: z.literal("agent_messages.onboarding.dismiss") })
+		.strict(),
+	z
+		.object({
+			op: z.literal("agent_messages.allowlist.get"),
+			tenant_id: id.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("agent_messages.allowlist.put"),
+			expected_account_id: id,
+			tenant_id: id.optional(),
+			// The server's own target model takes exactly one id and no `kind`;
+			// the read adds `kind`, which this client never sends back.
+			entries: z
+				.array(
+					z
+						.object({
+							direction: z.enum(["send", "receive"]),
+							effect: z.enum(["allow", "deny"]),
+							target: z
+								.object({
+									endpoint_id: id.optional(),
+									account_id: id.optional(),
+								})
+								.strict()
+								.refine(
+									(target) =>
+										Boolean(target.endpoint_id) !== Boolean(target.account_id),
+									"An allowlist target names exactly one of endpoint_id or account_id",
+								),
+						})
+						.strict(),
+				)
+				.max(200),
+		})
+		.strict(),
+	/*
+	 * The conversation domain (docs/TEAM-BRIDGE-CONVERSATIONS.md). These are
+	 * plain desktop pass-throughs: the server owns membership, consent,
+	 * joined_seq, screening and unread, and this client adds no policy of its
+	 * own. `client_ref` is required by the send route and is minted by the
+	 * caller so a retry is idempotent.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.list"),
+			/*
+			 * The account-wide read. `scope=account` is the ONE authorized read that
+			 * derives the caller's active memberships server-side; it is mutually
+			 * exclusive with `tenant_id` (refused in the union's `superRefine`), so
+			 * this client can never turn it into a caller-supplied tenant list.
+			 */
+			scope: z.literal("account").optional(),
+			tenant_id: id.optional(),
+			limit: z.number().int().min(1).max(100).optional(),
+			/*
+			 * The server's opaque compound position (base64 of version, tenant, id and
+			 * instant: ~190 characters), which the core route admits up to 512. A cap of
+			 * 64 refused every real cursor, so "Load more" on the Archived channels view
+			 * could never leave the renderer. `before` stays the legacy timestamp bound.
+			 */
+			cursor: z.string().min(1).max(512).optional(),
+			before: z.string().min(1).max(64).optional(),
+			/*
+			 * The lifecycle half (agent-server `status`). Omitted is the live list and
+			 * adds nothing to the route, so an older server sees the request it always
+			 * saw. `archived` is the Archived channels surface; what an organization
+			 * administrator may see there is the server's rule, not this client's.
+			 */
+			status: z.enum(["open", "archived"]).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.get"),
+			conversation_id: id,
+			tenant_id: id.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.create"),
+			expected_account_id: id.optional(),
+			tenant_id: id.optional(),
+			kind: z.enum(["dm", "group", "channel"]),
+			name: z.string().min(1).max(128).optional(),
+			topic: z.string().min(1).max(512).optional(),
+			visibility: z.enum(["private", "tenant"]).optional(),
+			agent_capable: z.boolean().optional(),
+			members: z
+				.array(
+					z
+						.object({
+							account_id: id,
+							kind: z.enum(["human", "agent"]),
+							endpoint_id: id.optional(),
+							display_label: z.string().min(1).max(64),
+						})
+						.strict(),
+				)
+				.max(500),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.lifecycle"),
+			expected_account_id: id.optional(),
+			tenant_id: id.optional(),
+			conversation_id: id,
+			action: z.enum(["archive", "unarchive", "join", "leave"]),
+		})
+		.strict(),
+	/*
+	 * Self-join and the notification preference are their own ops rather than
+	 * `lifecycle` actions: the tenant is part of the request (a merge-view row
+	 * can name a channel the caller has not joined, and the default tenant
+	 * would be the wrong organization), and `notify` is a value, not an
+	 * action. The join route is the conversation domain's existing
+	 * `POST .../join`; the tenant travels in its body for the same reason the
+	 * create/send/read bodies carry one. The notify op rides the READ route's
+	 * `notify` field (agent-server #148's shape): it sends no `seq`, so the
+	 * cursor cannot move as a side effect of choosing a notification level.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.join"),
+			expected_account_id: id.optional(),
+			conversation_id: id,
+			tenant_id: id.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.notify"),
+			expected_account_id: id.optional(),
+			conversation_id: id,
+			tenant_id: id.optional(),
+			notify: z.enum(["all", "mention", "mute"]),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.members.add"),
+			expected_account_id: id.optional(),
+			conversation_id: id,
+			tenant_id: id.optional(),
+			members: z
+				.array(
+					z
+						.object({
+							account_id: id,
+							kind: z.enum(["human", "agent"]),
+							endpoint_id: id.optional(),
+							display_label: z.string().min(1).max(64),
+						})
+						.strict(),
+				)
+				.min(1)
+				.max(500),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.members.remove"),
+			expected_account_id: id.optional(),
+			tenant_id: id.optional(),
+			conversation_id: id,
+			account_id: id,
+		})
+		.strict(),
+	/*
+	 * PERMANENT deletion of an ARCHIVED conversation (agent-server DELETE
+	 * /messaging/conversations/{id}). Irreversible, so it carries the same
+	 * captured-owner receipt as every other conversation write: the call is refused
+	 * before dispatch if the signed-in account is no longer the one that captured
+	 * the screen the person confirmed on. The server alone decides who may delete.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.delete"),
+			expected_account_id: id.optional(),
+			tenant_id: id.optional(),
+			conversation_id: id,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.consent"),
+			expected_account_id: id.optional(),
+			conversation_id: id,
+			account_id: id,
+			decision: z.enum(["accept", "decline"]),
+			consent_version: z.string().min(1).max(128),
+			tenant_id: id.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.messages.list"),
+			conversation_id: id,
+			tenant_id: id.optional(),
+			limit: z.number().int().min(1).max(100).optional(),
+			before_seq: z.number().int().nonnegative().optional(),
+			endpoint_id: id.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.reactions.toggle"),
+			conversation_id: id,
+			message_id: id,
+			tenant_id: id.optional(),
+			emoji: z.string().min(1),
+			active: z.boolean(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.messages.send"),
+			expected_account_id: id.optional(),
+			conversation_id: id,
+			tenant_id: id.optional(),
+			client_ref: id,
+			/* Empty only with `attachment_ids` (image-only); enforced in the refine below. */
+			body: z.string(),
+			agent_label: z.string().min(1).max(64).optional(),
+			/* Reply in this root message's thread; the hub validates the root. */
+			thread_root_id: id.optional(),
+			attachment_ids: teamBridgeAttachmentIds.optional(),
+		})
+		.strict(),
+	/*
+	 * One thread (root + replies, oldest-first) under the history gate. Paging
+	 * runs FORWARD with an inclusive `after_seq`, because a thread reads top-down.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.messages.replies"),
+			conversation_id: id,
+			message_id: id,
+			tenant_id: id.optional(),
+			limit: z.number().int().min(1).max(100).optional(),
+			after_seq: z.number().int().nonnegative().optional(),
+		})
+		.strict(),
+	z
+		.object({ op: z.literal("team_bridge.scheduled.list"), tenant_id: id })
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.scheduled.create"),
+			tenant_id: id,
+			conversation_id: id,
+			client_ref: id,
+			body: z.string(),
+			send_at: z.string().datetime({ offset: true }),
+			attachment_ids: teamBridgeAttachmentIds.optional(),
+			/* A scheduled REPLY. The core route carried this and the renderer's
+			   strict model did not, so scheduling a reply was unreachable (round
+			   12, minor c). Forwarded only when set, like a normal send. */
+			thread_root_id: id.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.scheduled.update"),
+			tenant_id: id,
+			scheduled_id: id,
+			body: z.string().optional(),
+			send_at: z.string().datetime({ offset: true }).optional(),
+			/* The WHOLE new set when present (`[]` removes every image); absent keeps it. */
+			attachment_ids: teamBridgeAttachmentIds.optional(),
+			/*
+			 * The hub version of the row this edit was derived from (agent-server
+			 * #223). The hub refuses the edit with 409 `concurrent_edit` when the
+			 * row has moved since, so a stale FIRST submit cannot erase another
+			 * device's change. Absent = the hub checks only its own read.
+			 */
+			expected_version: z.number().int().nonnegative().optional(),
+		})
+		.strict(),
+	/*
+	 * Discard one STAGED upload (a chip the author removed before sending). JSON,
+	 * not the media relay: there are no bytes either way. Idempotent 204 on the
+	 * hub, so a retry after a lost answer is harmless.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.attachments.delete"),
+			tenant_id: id,
+			conversation_id: id,
+			attachment_id: id,
+			/* REQUIRED by the runtime route: the captured owner this delete runs
+			   under. A delete with no receipt would be refused 422 anyway. */
+			expected_account_id: id,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.scheduled.cancel"),
+			tenant_id: id,
+			scheduled_id: id,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.read"),
+			expected_account_id: id.optional(),
+			conversation_id: id,
+			tenant_id: id.optional(),
+			seq: z.number().int().nonnegative().optional(),
+			muted: z.boolean().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.unread"),
+			/* The account aggregate: one read across every active membership. */
+			scope: z.literal("account").optional(),
+			tenant_id: id.optional(),
+		})
+		.strict(),
+	/*
+	 * The directory and the eligibility read (Team Bridge directory slice).
+	 *
+	 * `directory` is TENANT-SCOPED BY CONSTRUCTION: `tenant_id` is required, so
+	 * the renderer can never ask for "everyone in every organization" through
+	 * this op and there is no server-default tenant to resolve. That mirrors the
+	 * tenant-scoped read rule above (a read names one organization or the
+	 * account, never neither) while keeping the whole-account directory off the
+	 * wire: the rail's People section only exists for a selected organization.
+	 *
+	 * `status` is the existing bridge status payload under this namespace's own
+	 * op name. The boundary is optional because a page open is the only context
+	 * this surface reads from; when it is present it is the same enum the
+	 * `agent_messages.status` route validates, so the two spellings cannot
+	 * drift.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.directory"),
+			tenant_id: id,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.status"),
+			boundary: agentMessagesBoundarySchema.optional(),
+		})
+		.strict(),
 	z.object({ op: z.literal("settings.list") }).strict(),
 	z
 		.object({
@@ -3654,6 +4391,248 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			ttlS: z.number().int().min(1).max(3600).optional(),
 		})
 		.strict(),
+	/*
+	 * THE LIBRARY SURFACE (design contract § 4). One op per route, mirroring the
+	 * HTTP verbs exactly: a listing read, a detail read, a metadata patch, a tag
+	 * vocabulary family, an asset's tag set, the chat link pair, and the
+	 * Librarian control.
+	 *
+	 * WHY THE FILTER PARAMETERS ARE TYPED ENUMS HERE rather than strings: the
+	 * page's filter rail offers exactly these values, and a call site holding the
+	 * same union cannot build a request the route will silently ignore. The
+	 * sort default and order default remain the route's own - omitted fields are
+	 * not sent, so an older daemon answers its documented default.
+	 *
+	 * `library.list` is a control budget read, not a long read: the route answers
+	 * `building` within its own ~1.5 s budget while the index continues in the
+	 * background, and the page polls while that state holds.
+	 */
+	z
+		.object({
+			op: z.literal("library.list"),
+			/**
+			 * `final` (the desktop UI's default) keeps only highlighted or
+			 * generated artifacts; `all` is the whole catalog. Optional on the
+			 * wire so a backend that predates the parameter still answers.
+			 */
+			scope: z.enum(["final", "all"]).optional(),
+			q: z.string().max(512).optional(),
+			category: z.string().min(1).max(64).optional(),
+			kind: z.string().min(1).max(64).optional(),
+			origin_group: z.enum(["generated", "created", "mentioned"]).optional(),
+			origin: z.string().min(1).max(64).optional(),
+			tag: z.string().min(1).max(128).optional(),
+			tag_mode: z.enum(["all", "any"]).optional(),
+			highlighted: z.boolean().optional(),
+			organized: z.boolean().optional(),
+			favorite: z.boolean().optional(),
+			session: z.string().min(1).max(12).optional(),
+			/**
+			 * The same filter as a comma list: the backend's `session_id`
+			 * (`max_length=512`, each entry a session-id shape). The provenance
+			 * menu's "show all assets from this conversation" sends this form.
+			 */
+			session_id: z.string().min(1).max(512).optional(),
+			sort: z
+				.enum([
+					"recent",
+					"name",
+					"kind",
+					"size",
+					"created",
+					"modified",
+					"organized",
+				])
+				.optional(),
+			order: z.enum(["asc", "desc"]).optional(),
+			limit: z.number().int().min(1).max(200).optional(),
+			cursor: z.string().max(512).optional(),
+		})
+		.strict(),
+	z.object({ op: z.literal("library.get"), id: libraryAssetId }).strict(),
+	z
+		.object({
+			op: z.literal("library.update"),
+			id: libraryAssetId,
+			/*
+			 * A NESTED `fields` object for the same reason `projects.update` has one:
+			 * the editable set differs per surface, and a flat op would put every
+			 * future field at the top level of a union member. `archived` is accepted
+			 * at the boundary the contract names even though this release's desktop
+			 * surface does not expose it.
+			 */
+			fields: z
+				.object({
+					name: z.string().max(200).optional(),
+					description: z.string().max(2_000).optional(),
+					favorite: z.boolean().optional(),
+					locked: z.boolean().optional(),
+					archived: z.boolean().optional(),
+				})
+				.strict(),
+		})
+		.strict(),
+	z.object({ op: z.literal("library.tags") }).strict(),
+	z
+		.object({
+			op: z.literal("library.tags.create"),
+			name: z.string().trim().min(1).max(24),
+			category: z.string().min(1).max(64).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("library.tags.update"),
+			id: libraryTagId,
+			name: z.string().trim().min(1).max(24).optional(),
+			category: z.string().min(1).max(64).optional(),
+		})
+		.strict(),
+	z.object({ op: z.literal("library.tags.delete"), id: libraryTagId }).strict(),
+	z
+		.object({
+			op: z.literal("library.tags.merge"),
+			id: libraryTagId,
+			into: libraryTagId,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("library.tags.assign"),
+			id: libraryAssetId,
+			tags: z.array(libraryTagId).max(64),
+			primary: z.string().max(128).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("library.chat.link"),
+			id: libraryAssetId,
+			sessionId,
+		})
+		.strict(),
+	z
+		.object({ op: z.literal("library.chat.clear"), id: libraryAssetId })
+		.strict(),
+	z
+		.object({
+			op: z.literal("library.librarian"),
+			/** `status` is the read's own op; the other four are the writes. */
+			action: z.enum(["status", "open", "pause", "resume", "run"]).optional(),
+		})
+		.strict(),
+	/*
+	 * THE SIDEBAR LAYOUT RESOURCE (design contract § 2, § 4). One read and one
+	 * write, mirroring the two HTTP verbs: the resource is a single document, and
+	 * a patch vocabulary over a nine-entry ordered list would have to invent
+	 * operations for moves the client already knows how to compute.
+	 *
+	 * The write carries the WHOLE layout rather than a delta because the route
+	 * normalises and persists a complete document (last writer wins, atomic file
+	 * replace). Sending the full list is also what makes an optimistic write
+	 * self-describing on the retry path: the body a retry replays is the layout
+	 * the user saw, not a move that could be applied twice.
+	 */
+	z
+		.object({ op: z.literal("sidebar_layout.get") })
+		.strict(),
+	z
+		.object({
+			op: z.literal("sidebar_layout.set"),
+			layout: sidebarLayoutSchema,
+		})
+		.strict(),
+	/*
+	 * THE NOTIFICATIONS REEL (`/v1/desktop/notifications*`, notifications contract
+	 * § 5.2), APPENDED for the Projects reason: an older daemon has no routes, and
+	 * the client gates on `features.notifications` rather than on this schema.
+	 *
+	 * `notifications.list` carries the filters the ROUTE owns (state, source,
+	 * priority, session, cursor, limit); kind/priority/grouping chips the page
+	 * applies to the loaded set never reach the wire.
+	 */
+	z
+		.object({
+			op: z.literal("notifications.list"),
+			state: z.enum(["unread", "all", "dismissed"]).optional(),
+			source: z.enum(["notify", "ask"]).optional(),
+			priority: z.enum(["high", "normal", "low"]).optional(),
+			sessionId: sessionId.optional(),
+			throughSeq: z.number().int().min(0).optional(),
+			cursor: z.string().min(1).max(64).optional(),
+			limit: z.number().int().min(1).max(100).optional(),
+		})
+		.strict(),
+	z.object({ op: z.literal("notifications.get"), id: notificationId }).strict(),
+	z.object({ op: z.literal("notifications.count") }).strict(),
+	/*
+	 * READ / UNREAD / DISMISS / UNDISMISS, split into one op per VERB GROUP so the
+	 * foreground guard can name the read half alone (`FOREGROUND_RECEIPT_OPS`,
+	 * `src/main/desktop-ipc.ts`): `notifications.read` (read + unread) claims a
+	 * human saw something, `notifications.dismiss` (dismiss + undismiss) does not
+	 * and stays unguarded, exactly as `sessions.notified` is. Both reach the same
+	 * `PATCH` with the route's `op` field.
+	 *
+	 * EXACTLY ONE TARGET (contract § 5.2): `items` (each with the revision the
+	 * client RENDERED, so an update published after the render is skipped as
+	 * `stale_revision` rather than cleared), or `sessionId` + `throughSeq`, or
+	 * `all` + `throughSeq`. A sweep without a high-water mark could clear an item
+	 * that arrived after the click, which is the R10 hazard the token exists to
+	 * prevent.
+	 */
+	z
+		.object({
+			op: z.literal("notifications.read"),
+			verb: z.enum(["read", "unread"]),
+			target: notificationsTarget,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("notifications.dismiss"),
+			verb: z.enum(["dismiss", "undismiss"]),
+			target: notificationsTarget,
+		})
+		.strict(),
+	/*
+	 * PER-ITEM IN-VIEW EVIDENCE (contract § 6.4). Never a sweep: the items are the
+	 * ones whose anchor the renderer measured on screen, each with its token, and
+	 * the evidence names the input edge the server re-checks (`input_at_ms` is no
+	 * older than 120 s and no earlier than the item's `updated_at`). Guarded by
+	 * main's foreground check like every other read receipt.
+	 */
+	z
+		.object({
+			op: z.literal("notifications.seen"),
+			items: z
+				.array(
+					z
+						.object({
+							id: notificationId,
+							revision: z.number().int().min(1),
+							anchorId: z.string().min(1).max(256),
+							/*
+							 * PER ITEM (decisions D13): the moment THIS anchor became
+							 * ≥ 50 % visible. The server checks it against the row's own
+							 * `updated_at`, so one long-visible line cannot carry a
+							 * neighbour that arrived a second ago.
+							 */
+							visibleSinceMs: z.number().int().min(0),
+						})
+						.strict(),
+				)
+				.min(1)
+				.max(50),
+			evidence: z
+				.object({
+					sessionId,
+					inputKind: z.enum(["pointer", "key", "wheel"]),
+					inputAtMs: z.number().int().min(0),
+					visibleSinceMs: z.number().int().min(0),
+				})
+				.strict(),
+		})
+		.strict(),
 ]);
 
 /**
@@ -3673,7 +4652,50 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
  */
 export const desktopRequestSchema = desktopRequestUnion.superRefine(
 	(request, ctx) => {
-		if (request.op === "hub.skillPull" || request.op === "hub.skillPublish") {
+		/*
+		 * Image-only messages: an empty body is legal only when images carry the
+		 * message (contract §3, "body may be empty iff attachment_ids non-empty").
+		 * A PATCH that omits `body` keeps the stored one, so only an explicit
+		 * empty body needs a non-empty set beside it.
+		 */
+		if (
+			request.op === "team_bridge.messages.send" ||
+			request.op === "team_bridge.scheduled.create" ||
+			(request.op === "team_bridge.scheduled.update" &&
+				request.body !== undefined)
+		) {
+			if (
+				request.body?.trim() === "" &&
+				(request.attachment_ids?.length ?? 0) === 0
+			) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "A message needs text or an image", // i18n: ignore request-schema diagnostic
+					path: ["body"],
+				});
+				return;
+			}
+		}
+		// Guarded conversation writes never fall back to the token's default org.
+		// Legacy callers remain compatible; the new renderer requires the capability.
+		if (
+			request.op.startsWith("team_bridge.") &&
+			"expected_account_id" in request &&
+			request.expected_account_id &&
+			(!("tenant_id" in request) || !request.tenant_id)
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ["tenant_id"],
+				message: "Guarded conversation writes require an explicit tenant",
+			});
+			return;
+		}
+		if (
+			request.op === "hub.skillPull" ||
+			request.op === "hub.skillSubscribe" ||
+			request.op === "hub.skillPublish"
+		) {
 			if (
 				(request.visibility === "public" && request.tenantId !== null) ||
 				(request.visibility === "org" && !request.tenantId)
@@ -3804,6 +4826,42 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 			return;
 		}
 		/*
+		 * An account-scoped read names EITHER the account or one tenant, never both.
+		 * The route enforces the same rule; refusing it here means a malformed pair
+		 * never opens a socket, and it keeps `scope=account` from ever being read as
+		 * a caller-supplied tenant selector.
+		 */
+		if (
+			(request.op === "team_bridge.conversations.list" ||
+				request.op === "team_bridge.unread") &&
+			request.scope === "account" &&
+			request.tenant_id !== undefined
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "An account-scoped read cannot name a tenant",
+				path: ["scope"],
+			});
+			return;
+		}
+		/*
+		 * The account page pages on `cursor`; `before` is the tenant page's
+		 * parameter and the route refuses it beside `scope=account`. Refusing it
+		 * here keeps the renderer from composing a request the route rejects.
+		 */
+		if (
+			request.op === "team_bridge.conversations.list" &&
+			request.scope === "account" &&
+			request.before !== undefined
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "An account-scoped page uses cursor, not before",
+				path: ["before"],
+			});
+			return;
+		}
+		/*
 		 * AN ANSWER CARRIES ONE OF THREE SHAPES, and which one is decided by two
 		 * mutually exclusive selectors: `askId` (a queued ask) or `epoch`+`requestId`
 		 * (a gate). The rule lives HERE rather than on the member for the reason this
@@ -3829,7 +4887,32 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 				 * carries neither answers nor a decline is malformed rather than merely
 				 * empty, and the two together are contradictory rather than redundant.
 				 */
-				if (request.decline !== true && !request.answers)
+				/*
+				 * THE FOURTH SHAPE (harness PR #2833, SA-D5): an id and nothing else. It
+				 * returns before the answer-shape rules, because a dismissal has no answers
+				 * to require — and the fields it cannot honour are refused in words, the
+				 * backend's own `Answer.one_answer` rule restated at the client boundary.
+				 */
+				if (request.dismiss === true) {
+					if (
+						request.answers !== undefined ||
+						request.decline === true ||
+						request.revise === true
+					)
+						ctx.addIssue({
+							code: z.ZodIssueCode.custom,
+							message: "A dismissal carries no answers, decline or revise",
+							path: ["dismiss"],
+						});
+					return;
+				}
+				if (request.reason !== undefined)
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: "A reason applies to a dismissal",
+						path: ["reason"],
+					});
+				else if (request.decline !== true && !request.answers)
 					ctx.addIssue({
 						code: z.ZodIssueCode.custom,
 						message: "A queued-ask answer needs answers or decline",
@@ -3888,6 +4971,26 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 					code: z.ZodIssueCode.custom,
 					message: "revise applies to a queued ask",
 					path: ["revise"],
+				});
+			if (request.dismiss === true)
+				/*
+				 * A dismissal is addressed by `ask_id` alone, so on the gate shape the
+				 * field names no ask it could put away — refused rather than ignored, the
+				 * same rule `revise` just took. `dismiss: false` is deliberately NOT
+				 * refused: the backend states it is the same statement as omitting the
+				 * field, and a client stricter than the wire would refuse a body the
+				 * route answers.
+				 */
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "dismiss applies to a queued ask",
+					path: ["dismiss"],
+				});
+			if (request.reason !== undefined)
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "reason applies to a queued ask",
+					path: ["reason"],
 				});
 			return;
 		}
@@ -4152,6 +5255,87 @@ export const asideAdoptResultSchema = z
 export type AsideAdoptResult = z.infer<typeof asideAdoptResultSchema>;
 
 /**
+ * `GET /v1/desktop/skills` -> `result.data`, as the Agents page's Skills tab
+ * reads it (core `skill_library:1`, local-operator #2998).
+ *
+ * EVERY FIELD BEYOND `name` IS OPTIONAL ON PURPOSE. A backend that predates
+ * `skill_library` answers `{name, description}` rows with no `skill_detail`, and
+ * the tab is only OFFERED when the capability is present, but the page must still
+ * parse (and degrade, not crash) if a row arrives short: a missing `source` reads
+ * as unknown, a missing `installed` reads as installed. `passthrough` because the
+ * vocabulary is core's to extend (a sixth `source` label must not throw).
+ *
+ * `source` is a plain string fallback for the same reason `asideAdoptResultSchema`
+ * accepts an unheard-of status: the renderer labels the five it knows and shows
+ * nothing alarming for one it does not.
+ */
+export const skillRowSchema = z
+	.object({
+		name: z.string(),
+		description: z.string().nullish(),
+		source: z.string().nullish(),
+		link_id: z.string().nullish(),
+		editable: z.boolean().nullish(),
+		installed: z.boolean().nullish(),
+		fingerprint: z.string().nullish(),
+		form: z.string().nullish(),
+	})
+	.passthrough();
+export type SkillRowWire = z.infer<typeof skillRowSchema>;
+
+/**
+ * One reference file in a skill's details read. `preview` is the first 2048
+ * bytes (utf-8) or null; `preview_truncated` says the file is longer than it.
+ */
+export const skillFileSchema = z
+	.object({
+		path: z.string(),
+		size: z.number().nullish(),
+		preview: z.string().nullish(),
+		preview_truncated: z.boolean().nullish(),
+	})
+	.passthrough();
+
+/**
+ * The `name` arm's `skill_detail`.
+ *
+ * `body` is null when `body_in_detail` is true: the body is then the prefix
+ * `detail.slice(0, body_length)` of the SAME response's `detail` text, and
+ * `body_length` counts UTF-16 code units, i.e. exactly JavaScript's
+ * `String.length`, which is why the slice is correct here for astral characters
+ * and a Python code-point count would not be (core `build_detail`).
+ */
+export const skillDetailSchema = skillRowSchema
+	.extend({
+		body: z.string().nullish(),
+		body_in_detail: z.boolean().nullish(),
+		body_length: z.number().nullish(),
+		body_bytes: z.number().nullish(),
+		body_truncated: z.boolean().nullish(),
+		files: z.array(skillFileSchema).nullish(),
+		files_total: z.number().nullish(),
+		files_truncated: z.boolean().nullish(),
+		publish_budget: z
+			.object({ limit: z.number(), total: z.number() })
+			.passthrough()
+			.nullish(),
+	})
+	.passthrough();
+export type SkillDetailWire = z.infer<typeof skillDetailSchema>;
+
+export const skillsListResultSchema = z
+	.object({
+		skills: z.array(skillRowSchema),
+		scope: z.string().nullish(),
+		detail: z.string().nullish(),
+		skill_detail: skillDetailSchema.nullish(),
+		warning_count: z.number().nullish(),
+		version: z.string().nullish(),
+	})
+	.passthrough();
+export type SkillsListResult = z.infer<typeof skillsListResultSchema>;
+
+/**
  * The owner's TYPED refusal of an adopt: `409 {"detail": {"code":
  * "aside_adopt_refused", "reason": ..., "message": ...}}`.
  *
@@ -4183,9 +5367,18 @@ export function asideAdoptRefusedReason(
 }
 
 /**
- * The sentences a refusal composes into, one per code.
+ * The catalogue message a refusal composes into, one per code.
  *
- * NO sentence here names an update, and none tells the user to change what the
+ * WHY KEYS AND NOT SENTENCES. This table is the one place that says which
+ * pairing fact a refused control reports, and that mapping is shared contract -
+ * but the sentence a user reads is the renderer's copy and follows the active
+ * locale. Holding English prose here would make the shared half a second source
+ * of truth for wording the catalogue already owns (and a translation could
+ * never be reached through it). So the contract carries IDs and the renderer's
+ * `desktopRefusalSentence()` resolves them at draw time; `DESKTOP_MACHINE_DETAIL`
+ * below stays prose precisely because it is compared, never rendered.
+ *
+ * NO message here names an update, and none tells the user to change what the
  * app manages: every one of these codes is a PAIRING condition, and pairing is
  * the app's own business to re-establish (design § 3.1, § 4's falsifiable
  * prediction). The two that can only be repaired by re-claiming say so; the two
@@ -4200,15 +5393,17 @@ export function asideAdoptRefusedReason(
  * verbatim. Removing it is what keeps "which table words this condition" a
  * question with one answer (review round 1, MINOR-3; design round 1, D4).
  */
-export const DESKTOP_REFUSAL_SENTENCE: Record<DesktopRefusalCode, string> = {
+export const DESKTOP_REFUSAL_COPY_KEY: Record<
+	DesktopRefusalCode,
+	WithoutParams
+> = {
 	[DESKTOP_REFUSAL_CODE.noCredential]:
-		"This app is not paired with the running Local Operator server, so this control is unavailable.",
-	[DESKTOP_REFUSAL_CODE.refused]:
-		"This app's credential for the running Local Operator server was refused, so this control is unavailable.",
+		"ui.common.errors.desktop_refusal.no_credential",
+	[DESKTOP_REFUSAL_CODE.refused]: "ui.common.errors.desktop_refusal.refused",
 	[DESKTOP_REFUSAL_CODE.planeClosed]:
-		"The running Local Operator server does not accept this app's desktop controls.",
+		"ui.common.errors.desktop_refusal.plane_closed",
 	[DESKTOP_REFUSAL_CODE.transportFailed]:
-		"The Local Operator server did not answer this request.",
+		"ui.common.errors.desktop_refusal.transport_failed",
 };
 
 /**
@@ -4218,7 +5413,7 @@ export const DESKTOP_REFUSAL_SENTENCE: Record<DesktopRefusalCode, string> = {
  * machine vocabulary rather than copy: main emits them, and the renderer has to
  * tell them apart from the DAEMON's own 503 so that "the app holds no credential"
  * is never reported as "the server's plane is shut". They are carried in
- * `detail.message` and rendered only by {@link DESKTOP_REFUSAL_SENTENCE}.
+ * `detail.message` and rendered only through {@link DESKTOP_REFUSAL_COPY_KEY}.
  */
 export const DESKTOP_MACHINE_DETAIL = {
 	/*
@@ -5270,6 +6465,8 @@ const HUB_WRITE_OPS: ReadonlySet<string> = new Set([
 	"hub.push",
 	"hub.skillPublish",
 	"hub.skillPull",
+	"hub.skillSubscribe",
+	"hub.skillUnpull",
 	"hub.check",
 	"hub.applyAll",
 ]);
@@ -5281,6 +6478,8 @@ function hubWriteDeadlineMs(op: string): number | null {
 		case "hub.push":
 		case "hub.skillPublish":
 		case "hub.skillPull":
+		case "hub.skillSubscribe":
+		case "hub.skillUnpull":
 			return HUB_ITEM_WRITE_DEADLINE_MS;
 		case "hub.check":
 			return HUB_CHECK_DEADLINE_MS;
@@ -5418,6 +6617,15 @@ export const DESKTOP_FOREGROUND_REQUIRED_MESSAGE =
 const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"capabilities",
 	"agent_messages.status",
+	"agent_messages.settings",
+	"agent_messages.allowlist.get",
+	"team_bridge.conversations.list",
+	"team_bridge.conversations.get",
+	"team_bridge.messages.list",
+	"team_bridge.messages.replies",
+	"team_bridge.unread",
+	"team_bridge.directory",
+	"team_bridge.status",
 	"accounts.list",
 	"analytics.get",
 	"analytics.models",
@@ -5465,6 +6673,7 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"sessions.get",
 	"sessions.history",
 	"sessions.files",
+	"sessions.userAttachments",
 	"sessions.list",
 	"sessions.preview",
 	"sessions.report",
@@ -5819,6 +7028,62 @@ export type DesktopMediaRequest =
 			digest: string;
 	  }
 	/*
+	 * THE LIBRARY'S BYTES. Content and thumbnail are addressed by ASSET ID, never
+	 * by a caller path: the backend resolves the id to its indexed ref and
+	 * re-checks the denylist, so the renderer cannot turn a preview into a file
+	 * reader. They ride this relay rather than the JSON transport for the reason
+	 * the attachment ops above do - the envelope has nowhere to put bytes - and
+	 * an `<img src>` cannot carry the bearer the route requires.
+	 */
+	| { op: "library.content"; assetId: string; download?: boolean }
+	| { op: "library.thumbnail"; assetId: string; width?: number }
+	/*
+	 * TEAM BRIDGE IMAGE ATTACHMENTS. Upload stages one bounded image (raw bytes,
+	 * no filename or type: the hub sniffs); the read fetches one BOUND image by
+	 * its message, member-gated on the hub. Main validates every id and refuses a
+	 * non-png/jpeg answer (`main/desktop-media.ts`).
+	 */
+	| {
+			op: "team_bridge.attachment.upload";
+			tenantId: string;
+			conversationId: string;
+			/* The captured-owner receipt the runtime now REQUIRES on these routes:
+			   comparing an account to itself is not a guard, so it is the identity
+			   the view was authorized under, captured at the call site. */
+			expectedAccountId: string;
+	  }
+	| {
+			op: "team_bridge.attachment";
+			tenantId: string;
+			conversationId: string;
+			messageId: string;
+			attachmentId: string;
+			expectedAccountId: string;
+	  }
+	/*
+	 * Account avatars are private, content-addressed images. The renderer sends
+	 * typed ids/hash/size, never a URL. Main calls the closed core binary relay:
+	 * only core owns the hub credential. expectedAccountId is the commissioning
+	 * viewer, not the target; core verifies its authority before dispatch and
+	 * after receiving bytes. Older runtimes refuse with 404, leaving initials.
+	 */
+	| {
+			op: "team_bridge.avatar";
+			expectedAccountId: string;
+			accountId: string;
+			hash: string;
+			size: 64 | 256;
+	  }
+	/*
+	 * A Library audio asset's PRE-RENDER peaks, as the same `{version, bars,
+	 * peaks}` JSON a generated sound's attachment waveform route serves. Audio
+	 * assets that came from a session carry the sidecar the producer wrote; a
+	 * path-backed import has none and the route answers 404, which the card and
+	 * the drawer draw as the player's honest flat scrubber rather than a
+	 * synthesized shape.
+	 */
+	| { op: "library.waveform"; assetId: string }
+	/*
 	 * One supplement component's assembled HTML document (turn-supplements memo
 	 * §2.7, lane U-b), as `{ html }` JSON from
 	 * `/v1/desktop/sessions/{id}/supplements/{digest}/document`.
@@ -6061,6 +7326,26 @@ export type DesktopAPI = {
 	releaseWatchHeartbeat?: (args: {
 		sessionId: string;
 	}) => Promise<DesktopResponse>;
+	/**
+	 * Team Bridge banners. Optional like every Electron-only member: browser
+	 * development and Storybook mount the same renderer without a preload, and
+	 * the watcher must simply not exist there.
+	 *
+	 * `notify` is the renderer's composed display strings + the seq they belong
+	 * to; main validates and dedupes. `onOpen` is a payload-free wake-up: the
+	 * target stays parked in main until `pendingOpen` pulls it, so a click into a
+	 * loading or reloading renderer is not lost.
+	 */
+	teamBridge?: {
+		setAuthority: (authority: TeamBridgeNotifyAuthority) => Promise<void>;
+		notify: (input: TeamBridgeNotifyRequest) => Promise<{ shown: boolean }>;
+		syncDirectory: (input: {
+			tenantId: string;
+			members: TeamBridgeNotificationSender[];
+		}) => Promise<void>;
+		onOpen: (callback: () => void) => () => void;
+		pendingOpen: () => Promise<TeamBridgeOpenResult | null>;
+	};
 	/** Notification click -> open this conversation. Never answers a gate. */
 	/**
 	 * A notification click, with the conversation it names and - when the banner was
@@ -6339,6 +7624,12 @@ export type AuthOperation = {
 	 */
 	/** What the sign-in changed about the default model; only on `succeeded`. */
 	defaults_applied?: DefaultsApplied | null;
+	/**
+	 * Trusted recovery copy for a successful Radient login that kept local
+	 * choices. Older backends omit it; render as plain text, never substitute
+	 * the generic operation message or use it to change the success verdict.
+	 */
+	retained_notice?: string | null;
 	/** A device flow's one-time code, as its own field. */
 	user_code?: string | null;
 	/**
@@ -6654,6 +7945,25 @@ function harnessImportBody(
 	};
 }
 
+/** A query suffix that is empty when no tenant was selected, never `?tenant_id=`. */
+/** Bodyless and list-body mutations carry the same captured owner in their query. */
+function conversationOwnerQuery(request: {
+	tenant_id?: string;
+	expected_account_id?: string;
+}): string {
+	const query = new URLSearchParams();
+	if (request.tenant_id) query.set("tenant_id", request.tenant_id);
+	if (request.expected_account_id)
+		query.set("expected_account_id", request.expected_account_id);
+	return query.size ? `?${query.toString()}` : "";
+}
+
+function tenantQuery(tenantId: string | undefined): string {
+	return tenantId === undefined
+		? ""
+		: `?tenant_id=${encodeURIComponent(tenantId)}`;
+}
+
 export function desktopEndpoint(request: DesktopRequest): {
 	path: string;
 	method: string;
@@ -6842,6 +8152,28 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.confirmPublicEgress !== undefined
 						? { confirm_public_egress: request.confirmPublicEgress }
 						: {}),
+				},
+			};
+		case "hub.skillSubscribe":
+			return {
+				path: "/v1/desktop/hub/skills/subscribe",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					hub_id: request.hubId,
+					hub_source: request.hubSource,
+					visibility: request.visibility,
+					tenant_id: request.tenantId,
+					local_alias: request.localAlias,
+				},
+			};
+		case "hub.skillUnpull":
+			return {
+				path: "/v1/desktop/hub/skills/unpull",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					link_id: request.linkId,
 				},
 			};
 		case "hub.skillPublish":
@@ -7214,6 +8546,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/sessions/${encodeURIComponent(request.sessionId)}/files/${encodeURIComponent(request.fileId)}/materialise`,
 				method: "POST",
 			};
+		case "sessions.userAttachments":
+			return {
+				path: `/v1/desktop/sessions/${encodeURIComponent(request.sessionId)}/user-attachments`,
+				method: "GET",
+			};
+		case "sessions.userAttachments.materialise":
+			return {
+				path: `/v1/desktop/sessions/${encodeURIComponent(request.sessionId)}/user-attachments/${encodeURIComponent(request.digest)}/materialise`,
+				method: "POST",
+			};
 
 		case "sessions.history": {
 			const query = new URLSearchParams({
@@ -7329,6 +8671,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 					request_id: request.requestId,
 					text: request.text,
 					images: request.images ?? [],
+					...(request.files?.length ? { files: request.files } : {}),
 					mode: request.mode ?? "prompt",
 					/*
 					 * ABSENT, not empty, when the app has nothing to say: an older harness
@@ -7377,6 +8720,19 @@ export function desktopEndpoint(request: DesktopRequest): {
 						 * asserting an intent it does not have.
 						 */
 						...(request.revise === true ? { revise: true } : {}),
+						/*
+						 * The dismissal modifier and its reason, on the same absent-when-not-
+						 * asked-for rule: an older harness refuses the field outright
+						 * (`extra="forbid"`), so an ordinary answer must not carry it.
+						 */
+						...(request.dismiss === true
+							? {
+									dismiss: true,
+									...(request.reason !== undefined
+										? { reason: request.reason }
+										: {}),
+								}
+							: {}),
 					},
 				};
 			return {
@@ -7433,7 +8789,13 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/tags`,
 				method: "PUT",
-				body: { tags: request.tags, primary: request.primary },
+				body: {
+					tags: request.tags,
+					primary: request.primary,
+					...(request.expected_revision === undefined
+						? {}
+						: { expected_revision: request.expected_revision }),
+				},
 			};
 		case "sessions.pin":
 			return {
@@ -7929,6 +9291,35 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "GET",
 			};
 		}
+		case "skills.create":
+			return {
+				path: "/v1/desktop/skills",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					name: request.name,
+					copy_from: request.copyFrom,
+				},
+			};
+		case "skills.update":
+			return {
+				path: `/v1/desktop/skills/${encodeURIComponent(request.name)}`,
+				method: "PUT",
+				body: {
+					request_id: request.requestId,
+					expected_fingerprint: request.expectedFingerprint,
+					files: request.files,
+				},
+			};
+		case "skills.remove":
+			return {
+				path: `/v1/desktop/skills/${encodeURIComponent(request.name)}`,
+				method: "DELETE",
+				body: {
+					request_id: request.requestId,
+					discard_local_changes: request.discardLocalChanges,
+				},
+			};
 		case "sessions.failovers":
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/failovers`,
@@ -7963,6 +9354,12 @@ export function desktopEndpoint(request: DesktopRequest): {
 					 * `next_safe` fork sends no `entry_id` key at all.
 					 */
 					entry_id: request.entryId,
+					/*
+					 * Absent unless the capability gate admitted it; `undefined` is
+					 * dropped by `JSON.stringify`, so a released client's body stays
+					 * byte-identical and this key is the only difference.
+					 */
+					auto_tag: request.autoTag,
 				},
 			};
 		case "sessions.stop":
@@ -8148,6 +9545,338 @@ export function desktopEndpoint(request: DesktopRequest): {
 					consented_via: request.consented_via,
 				},
 			};
+		case "agent_messages.settings":
+			return {
+				path: `/v1/desktop/team-bridge/settings${tenantQuery(request.tenant_id)}`,
+				method: "GET",
+			};
+		case "agent_messages.settings.put":
+			return {
+				path: "/v1/desktop/team-bridge/settings",
+				method: "PUT",
+				body: {
+					expected_account_id: request.expected_account_id,
+					...(request.tenant_id === undefined
+						? {}
+						: { tenant_id: request.tenant_id }),
+					...(request.consent_version === undefined
+						? {}
+						: { consent_version: request.consent_version }),
+					...(request.consented_via === undefined
+						? {}
+						: { consented_via: request.consented_via }),
+					...(request.label === undefined ? {} : { label: request.label }),
+					state: request.state,
+				},
+			};
+		case "agent_messages.onboarding.dismiss":
+			return {
+				path: "/v1/desktop/team-bridge/onboarding/dismiss",
+				method: "POST",
+			};
+		case "agent_messages.allowlist.get":
+			return {
+				path: `/v1/desktop/team-bridge/allowlist${tenantQuery(request.tenant_id)}`,
+				method: "GET",
+			};
+		case "agent_messages.allowlist.put":
+			return {
+				path: "/v1/desktop/team-bridge/allowlist",
+				method: "PUT",
+				body: {
+					expected_account_id: request.expected_account_id,
+					...(request.tenant_id === undefined
+						? {}
+						: { tenant_id: request.tenant_id }),
+					entries: request.entries,
+				},
+			};
+		case "team_bridge.conversations.list": {
+			const query = new URLSearchParams();
+			if (request.scope === "account") query.set("scope", "account");
+			if (request.tenant_id) query.set("tenant_id", request.tenant_id);
+			if (request.limit !== undefined)
+				query.set("limit", String(request.limit));
+			if (request.cursor) query.set("cursor", request.cursor);
+			if (request.before) query.set("before", request.before);
+			if (request.status) query.set("status", request.status);
+			const suffix = query.size > 0 ? `?${query.toString()}` : "";
+			return {
+				path: `/v1/desktop/team-bridge/conversations${suffix}`,
+				method: "GET",
+			};
+		}
+		case "team_bridge.conversations.get":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}${tenantQuery(request.tenant_id)}`,
+				method: "GET",
+			};
+		case "team_bridge.conversations.create":
+			return {
+				path: "/v1/desktop/team-bridge/conversations",
+				method: "POST",
+				body: {
+					...(request.expected_account_id
+						? { expected_account_id: request.expected_account_id }
+						: {}),
+					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
+					kind: request.kind,
+					...(request.name ? { name: request.name } : {}),
+					...(request.topic ? { topic: request.topic } : {}),
+					...(request.visibility ? { visibility: request.visibility } : {}),
+					...(request.agent_capable === undefined
+						? {}
+						: { agent_capable: request.agent_capable }),
+					members: request.members,
+				},
+			};
+		case "team_bridge.conversations.lifecycle":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/${request.action}${request.action === "join" ? "" : conversationOwnerQuery(request)}`,
+				method: "POST",
+				...(request.action === "join" &&
+				(request.tenant_id || request.expected_account_id)
+					? {
+							body: {
+								...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
+								...(request.expected_account_id
+									? { expected_account_id: request.expected_account_id }
+									: {}),
+							},
+						}
+					: {}),
+			};
+		case "team_bridge.conversations.join":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/join`,
+				method: "POST",
+				...(request.tenant_id || request.expected_account_id
+					? {
+							body: {
+								...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
+								...(request.expected_account_id
+									? { expected_account_id: request.expected_account_id }
+									: {}),
+							},
+						}
+					: {}),
+			};
+		case "team_bridge.conversations.notify":
+			return {
+				/* The read route's notify field (agent-server #148); no `seq`, so
+				   this write cannot advance the cursor. */
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/read`,
+				method: "POST",
+				body: {
+					...(request.expected_account_id
+						? { expected_account_id: request.expected_account_id }
+						: {}),
+					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
+					notify: request.notify,
+				},
+			};
+		case "team_bridge.conversations.members.add": {
+			/* The route's body IS the member array and `tenant_id` is a query
+			   parameter (ConversationMemberIn list + tenant_id query). Wrapping
+			   both in an object, as this op used to, guaranteed a 422. */
+			const query = new URLSearchParams();
+			if (request.tenant_id) query.set("tenant_id", request.tenant_id);
+			if (request.expected_account_id)
+				query.set("expected_account_id", request.expected_account_id);
+			const suffix = query.size > 0 ? `?${query.toString()}` : "";
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/members${suffix}`,
+				method: "POST",
+				body: request.members,
+			};
+		}
+		case "team_bridge.conversations.delete":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}${conversationOwnerQuery(request)}`,
+				method: "DELETE",
+			};
+		case "team_bridge.conversations.members.remove":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/members/${encodeURIComponent(request.account_id)}${conversationOwnerQuery(request)}`,
+				method: "DELETE",
+			};
+		case "team_bridge.conversations.consent":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/members/${encodeURIComponent(request.account_id)}/consent`,
+				method: "POST",
+				body: {
+					...(request.expected_account_id
+						? { expected_account_id: request.expected_account_id }
+						: {}),
+					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
+					decision: request.decision,
+					consent_version: request.consent_version,
+				},
+			};
+		case "team_bridge.messages.list": {
+			const query = new URLSearchParams();
+			if (request.tenant_id) query.set("tenant_id", request.tenant_id);
+			if (request.limit !== undefined)
+				query.set("limit", String(request.limit));
+			if (request.before_seq !== undefined)
+				query.set("before_seq", String(request.before_seq));
+			if (request.endpoint_id) query.set("endpoint_id", request.endpoint_id);
+			const suffix = query.size > 0 ? `?${query.toString()}` : "";
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/messages${suffix}`,
+				method: "GET",
+			};
+		}
+		case "team_bridge.reactions.toggle": {
+			const path = `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/messages/${encodeURIComponent(request.message_id)}/reactions/${encodeURIComponent(request.emoji)}`;
+			return request.active
+				? {
+						path,
+						method: "PUT",
+						body: request.tenant_id ? { tenant_id: request.tenant_id } : {},
+					}
+				: {
+						path: `${path}${tenantQuery(request.tenant_id)}`,
+						method: "DELETE",
+					};
+		}
+		case "team_bridge.messages.send":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/messages`,
+				method: "POST",
+				body: {
+					...(request.expected_account_id
+						? { expected_account_id: request.expected_account_id }
+						: {}),
+					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
+					client_ref: request.client_ref,
+					body: request.body,
+					...(request.agent_label ? { agent_label: request.agent_label } : {}),
+					...(request.thread_root_id
+						? { thread_root_id: request.thread_root_id }
+						: {}),
+					...(request.attachment_ids?.length
+						? { attachment_ids: request.attachment_ids }
+						: {}),
+				},
+			};
+		case "team_bridge.scheduled.list":
+			return {
+				path: `/v1/desktop/team-bridge/scheduled?${new URLSearchParams({ tenant_id: request.tenant_id })}`,
+				method: "GET",
+			};
+		case "team_bridge.scheduled.create":
+			return {
+				path: "/v1/desktop/team-bridge/scheduled",
+				method: "POST",
+				body: {
+					tenant_id: request.tenant_id,
+					conversation_id: request.conversation_id,
+					client_ref: request.client_ref,
+					body: request.body,
+					send_at: request.send_at,
+					...(request.attachment_ids?.length
+						? { attachment_ids: request.attachment_ids }
+						: {}),
+					...(request.thread_root_id
+						? { thread_root_id: request.thread_root_id }
+						: {}),
+				},
+			};
+		case "team_bridge.scheduled.update":
+			return {
+				path: `/v1/desktop/team-bridge/scheduled/${encodeURIComponent(request.scheduled_id)}?${new URLSearchParams({ tenant_id: request.tenant_id })}`,
+				method: "PATCH",
+				body: {
+					...(request.body === undefined ? {} : { body: request.body }),
+					...(request.send_at === undefined
+						? {}
+						: { send_at: request.send_at }),
+					// `[]` is meaningful here (remove every image), so only absence is omitted.
+					...(request.attachment_ids === undefined
+						? {}
+						: { attachment_ids: request.attachment_ids }),
+					...(request.expected_version === undefined
+						? {}
+						: { expected_version: request.expected_version }),
+				},
+			};
+		case "team_bridge.attachments.delete":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/attachments/${encodeURIComponent(request.attachment_id)}?${new URLSearchParams({ tenant_id: request.tenant_id, expected_account_id: request.expected_account_id })}`,
+				method: "DELETE",
+			};
+		case "team_bridge.scheduled.cancel":
+			return {
+				path: `/v1/desktop/team-bridge/scheduled/${encodeURIComponent(request.scheduled_id)}?${new URLSearchParams({ tenant_id: request.tenant_id })}`,
+				method: "DELETE",
+			};
+		case "team_bridge.messages.replies": {
+			const query = new URLSearchParams();
+			if (request.tenant_id) query.set("tenant_id", request.tenant_id);
+			if (request.limit !== undefined)
+				query.set("limit", String(request.limit));
+			if (request.after_seq !== undefined)
+				query.set("after_seq", String(request.after_seq));
+			const suffix = query.size > 0 ? `?${query.toString()}` : "";
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/messages/${encodeURIComponent(request.message_id)}/replies${suffix}`,
+				method: "GET",
+			};
+		}
+		case "team_bridge.read":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/read`,
+				method: "POST",
+				body: {
+					...(request.expected_account_id
+						? { expected_account_id: request.expected_account_id }
+						: {}),
+					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
+					...(request.seq === undefined ? {} : { seq: request.seq }),
+					...(request.muted === undefined ? {} : { muted: request.muted }),
+				},
+			};
+		case "team_bridge.unread": {
+			const query = new URLSearchParams();
+			if (request.scope === "account") query.set("scope", "account");
+			else if (request.tenant_id) query.set("tenant_id", request.tenant_id);
+			const suffix = query.size > 0 ? `?${query.toString()}` : "";
+			return {
+				path: `/v1/desktop/team-bridge/unread${suffix}`,
+				method: "GET",
+			};
+		}
+		/*
+		 * The directory route is the LOCAL daemon's (`GET
+		 * /v1/desktop/team-bridge/directory`, local-operator #2712), which validates
+		 * `tenant_id` and forwards to the hub's `/v1/messaging/directory` itself.
+		 * The desktop transport sends every op to the daemon, so the hub path is not
+		 * reachable from here; addressing it directly made every directory read a
+		 * 404. `tenant_id` is encoded as a query value, so a crafted id can never
+		 * compose a second parameter or a path segment.
+		 */
+		case "team_bridge.directory":
+			return {
+				path: `/v1/desktop/team-bridge/directory?tenant_id=${encodeURIComponent(request.tenant_id)}`,
+				method: "GET",
+			};
+		/*
+		 * The same status route `agent_messages.status` reads, under the bridge
+		 * namespace. `boundary` is optional here (the page opens the surface but a
+		 * future caller may only need the platform state), so an absent boundary
+		 * sends no query at all rather than the literal `undefined` the sibling
+		 * op would emit for a missing value.
+		 */
+		case "team_bridge.status": {
+			const query = new URLSearchParams();
+			if (request.boundary) query.set("boundary", request.boundary);
+			const suffix = query.size > 0 ? `?${query.toString()}` : "";
+			return {
+				path: `/v1/desktop/team-bridge/status${suffix}`,
+				method: "GET",
+			};
+		}
 		case "settings.list":
 			return { path: "/v1/settings", method: "GET" };
 		case "settings.edit":
@@ -8187,6 +9916,129 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "PATCH",
 				body: { key: request.key, value: request.value },
 			};
+		/*
+		 * THE LIBRARY ROUTES (design contract § 4). The listing is the one op whose
+		 * arguments travel as a QUERY STRING: omitted filters are not sent at all,
+		 * so the route's documented defaults apply and an older daemon never sees
+		 * a parameter it does not know (FastAPI ignores unknown query parameters,
+		 * which is exactly why the page only offers the frozen set). Booleans are
+		 * `0|1` on this route, never `true|false`; the endpoint mapper is the one
+		 * place that spelling lives.
+		 *
+		 * `library.librarian` splits by `action`: the read is a GET, every write is
+		 * the POST whose body names the action. The request field cannot be called
+		 * `op` because that key already names the desktop operation.
+		 */
+		case "library.list": {
+			const query = new URLSearchParams();
+			if (request.scope) query.set("scope", request.scope);
+			if (request.q) query.set("q", request.q);
+			if (request.category) query.set("category", request.category);
+			if (request.kind) query.set("kind", request.kind);
+			if (request.origin_group) query.set("origin_group", request.origin_group);
+			if (request.origin) query.set("origin", request.origin);
+			if (request.tag) query.set("tag", request.tag);
+			if (request.tag_mode) query.set("tag_mode", request.tag_mode);
+			if (request.highlighted !== undefined)
+				query.set("highlighted", request.highlighted ? "1" : "0");
+			if (request.organized !== undefined)
+				query.set("organized", request.organized ? "1" : "0");
+			if (request.favorite !== undefined)
+				query.set("favorite", request.favorite ? "1" : "0");
+			if (request.session) query.set("session", request.session);
+			if (request.session_id) query.set("session_id", request.session_id);
+			if (request.sort) query.set("sort", request.sort);
+			if (request.order) query.set("order", request.order);
+			if (request.limit !== undefined)
+				query.set("limit", String(request.limit));
+			if (request.cursor) query.set("cursor", request.cursor);
+			const suffix = query.toString();
+			return {
+				path: `/v1/desktop/library/assets${suffix ? `?${suffix}` : ""}`,
+				method: "GET",
+			};
+		}
+		case "library.get":
+			return {
+				path: `/v1/desktop/library/assets/${encodeURIComponent(request.id)}`,
+				method: "GET",
+			};
+		case "library.update":
+			return {
+				path: `/v1/desktop/library/assets/${encodeURIComponent(request.id)}`,
+				method: "PATCH",
+				// Exactly the keys the caller included travel, so an omitted field is
+				// untouched and an empty string clears a description (the route's
+				// `model_fields_set` edit model).
+				body: request.fields,
+			};
+		case "library.tags":
+			return { path: "/v1/desktop/library/tags", method: "GET" };
+		case "library.tags.create":
+			return {
+				path: "/v1/desktop/library/tags",
+				method: "POST",
+				body: {
+					name: request.name,
+					...(request.category !== undefined
+						? { category: request.category }
+						: {}),
+				},
+			};
+		case "library.tags.update":
+			return {
+				path: `/v1/desktop/library/tags/${encodeURIComponent(request.id)}`,
+				method: "PATCH",
+				body: {
+					...(request.name !== undefined ? { name: request.name } : {}),
+					...(request.category !== undefined
+						? { category: request.category }
+						: {}),
+				},
+			};
+		case "library.tags.delete":
+			return {
+				path: `/v1/desktop/library/tags/${encodeURIComponent(request.id)}`,
+				method: "DELETE",
+			};
+		case "library.tags.merge":
+			return {
+				path: `/v1/desktop/library/tags/${encodeURIComponent(request.id)}/merge`,
+				method: "POST",
+				body: { into: request.into },
+			};
+		case "library.tags.assign":
+			return {
+				path: `/v1/desktop/library/assets/${encodeURIComponent(request.id)}/tags`,
+				method: "PUT",
+				body: {
+					tags: request.tags,
+					...(request.primary !== undefined
+						? { primary: request.primary }
+						: {}),
+				},
+			};
+		case "library.chat.link":
+			return {
+				path: `/v1/desktop/library/assets/${encodeURIComponent(request.id)}/chat`,
+				method: "PUT",
+				body: { session_id: request.sessionId },
+			};
+		case "library.chat.clear":
+			return {
+				path: `/v1/desktop/library/assets/${encodeURIComponent(request.id)}/chat`,
+				method: "DELETE",
+			};
+		case "library.librarian": {
+			const action = request.action ?? "status";
+			if (action === "status")
+				return { path: "/v1/desktop/librarian", method: "GET" };
+			return {
+				path: "/v1/desktop/librarian",
+				method: "POST",
+				body: { op: action },
+			};
+		}
 		/*
 		 * The Projects routes, in the store's own wire vocabulary: snake_case
 		 * bodies, the typed NAME in `confirm` for the delete (the route compares
@@ -8362,7 +10214,113 @@ export function desktopEndpoint(request: DesktopRequest): {
 					ttl_s: request.ttlS,
 				},
 			};
+		/*
+		 * The sidebar customisation resource (design contract § 4). A GET/PUT pair
+		 * on one route, with the layout in an envelope rather than as the bare body:
+		 * the route answers `{layout}` and accepts `{layout}`, so a future field
+		 * beside it is additive instead of a breaking shape change. The PUT sends
+		 * the stored ids verbatim - the client owns the order, the route owns
+		 * validation and the default fill - so nothing is re-sorted in transit.
+		 */
+		case "sidebar_layout.get":
+			return { path: "/v1/desktop/sidebar-layout", method: "GET" };
+		case "sidebar_layout.set":
+			return {
+				path: "/v1/desktop/sidebar-layout",
+				method: "PUT",
+				body: { layout: request.layout },
+			};
+		/*
+		 * The notifications reel (contract § 5.2). Bodies are snake_case like every
+		 * other desktop route; the two write ops share the PATCH and differ only in
+		 * the verb set the schema admits, which is what lets the foreground guard
+		 * name the read half alone.
+		 */
+		case "notifications.list": {
+			const query = new URLSearchParams();
+			if (request.state) query.set("state", request.state);
+			if (request.source) query.set("source", request.source);
+			if (request.priority) query.set("priority", request.priority);
+			if (request.sessionId) query.set("session_id", request.sessionId);
+			if (request.cursor) query.set("cursor", request.cursor);
+			if (request.throughSeq !== undefined)
+				query.set("through_seq", String(request.throughSeq));
+			if (request.limit !== undefined)
+				query.set("limit", String(request.limit));
+			return {
+				path: `/v1/desktop/notifications${query.size ? `?${query}` : ""}`,
+				method: "GET",
+			};
+		}
+		case "notifications.get":
+			return {
+				path: `/v1/desktop/notifications/${encodeURIComponent(request.id)}`,
+				method: "GET",
+			};
+		case "notifications.count":
+			return { path: "/v1/desktop/notifications/count", method: "GET" };
+		case "notifications.read":
+		case "notifications.dismiss":
+			return {
+				path: "/v1/desktop/notifications",
+				method: "PATCH",
+				body: {
+					op: request.verb,
+					...notificationsTargetBody(request.target),
+				},
+			};
+		case "notifications.seen":
+			return {
+				path: "/v1/desktop/notifications/seen",
+				method: "POST",
+				body: {
+					items: request.items.map((item) => ({
+						id: item.id,
+						revision: item.revision,
+						anchor_id: item.anchorId,
+						visible_since_ms: item.visibleSinceMs,
+					})),
+					evidence: {
+						surface: "desktop",
+						session_id: request.evidence.sessionId,
+						/*
+						 * The route's vocabulary is the DOM event names (contract § 6.4:
+						 * `pointerdown`, `keydown`, a user `wheel`, window `focus`); the
+						 * renderer's short kind is mapped here, at the one boundary.
+						 */
+						input_kind: SEEN_INPUT_KIND[request.evidence.inputKind],
+						input_at_ms: request.evidence.inputAtMs,
+						visible_since_ms: request.evidence.visibleSinceMs,
+					},
+				},
+			};
 	}
+}
+
+/** The PATCH body's target half, in the route's snake_case (contract § 5.2). */
+function notificationsTargetBody(
+	target: z.infer<typeof notificationsTarget>,
+): Record<string, unknown> {
+	if ("items" in target) {
+		return {
+			ids: target.items.map((item) => ({
+				id: item.id,
+				revision: item.revision,
+			})),
+		};
+	}
+	if ("sessionId" in target) {
+		return {
+			session_id: target.sessionId,
+			through_seq: target.throughSeq,
+			observed: target.observed,
+		};
+	}
+	return {
+		all: true,
+		through_seq: target.throughSeq,
+		observed: target.observed,
+	};
 }
 
 /**
@@ -8796,7 +10754,32 @@ export type DesktopToolCallStats = {
  * `/session` reads this and not a second `analytics.get` — a differing query
  * path would give a second aggregate.
  */
+/** Channel ledger rows are separate from the inference-only Cost stat. */
+export type DesktopSessionChannelRow = {
+	channel: string;
+	provider: string;
+	billing_basis: string;
+	cost_source: string;
+	units: number;
+	amount_micro: number | null;
+	calls: number;
+	known_calls: number;
+};
+
 export type DesktopSessionReport = {
+	/** Additive payment provenance; absent on older producers. */
+	channels?: DesktopSessionChannelRow[];
+	/** Subtree-only payment provenance, matching descendants_aggregate. */
+	descendants_by_basis?: Array<{
+		billing_basis: string;
+		aggregate: DesktopUsageAggregate;
+	}>;
+	by_model_basis?: Array<{
+		provider: string;
+		model_id: string;
+		billing_basis: string;
+		aggregate: DesktopUsageAggregate;
+	}>;
 	session_id: string;
 	/** `false` = the ledger could not be read. Nothing on the panel is then trustworthy. */
 	available: boolean;
@@ -8853,7 +10836,35 @@ export type DesktopInfoSessionLine = {
 	heartbeat_age_s: number;
 	rss_bytes: number | null;
 	footprint_bytes: number | null;
+	/**
+	 * ABSOLUTE epoch seconds — the transcript file's mtime, never an age. The
+	 * CLI's own table subtracts it (`time.time() - row["last_activity_s"]`), and
+	 * the desktop panel must do the same; formatting the stamp as a duration
+	 * renders a 56-year age (this panel's `20747d 4h ago`, the terminal's
+	 * `497932h`) on every stopped session.
+	 */
 	last_activity_s: number | null;
+	/*
+	 * The stop record the core adds with its session-exit work, declared here in
+	 * parallel. All three are OPTIONAL: an older backend sends none of them. The
+	 * core's no-record spelling is `stopped_at_s: null` with `stop_reason: ""` —
+	 * an empty token, not a null one — so the panel treats both as "nothing was
+	 * recorded" and prints no stop claim at all.
+	 */
+	/** When the session stopped, ABSOLUTE epoch seconds like `last_activity_s`. */
+	stopped_at_s?: number | null;
+	/**
+	 * The core's stop token (e.g. `idle-exit`), printed after a `reason:` label.
+	 * `""` when no stop was recorded — the core's own spelling, which the panel
+	 * reads exactly like an absent field.
+	 */
+	stop_reason?: string;
+	/**
+	 * The core's own flag for that stop. Carried so the contract matches the
+	 * wire whole; no row copy reads it, because the reason already names the
+	 * cause and a second sentence about the same stop would be a second claim.
+	 */
+	stop_requested?: boolean | null;
 	pending: string | null;
 	busy: boolean;
 	detached: boolean;

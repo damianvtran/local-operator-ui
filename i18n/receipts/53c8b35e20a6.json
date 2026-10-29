@@ -1,0 +1,66 @@
+{
+	"schema": 1,
+	"date": "2026-10-21",
+	"instance": "53c8b35e20a6",
+	"auditor": "i18n-auditor (independent translation auditor; not the translation author)",
+	"model": "deepseek/deepseek-flash",
+	"status": "clean-with-findings",
+	"result": "clean-with-findings",
+	"locales": [
+		"es",
+		"fr",
+		"hi",
+		"ru",
+		"ur",
+		"vi",
+		"zh-CN"
+	],
+	"independence": "Independent reviewer run; did not author, translate or edit any catalogue value, code or ledger row. Hashes, key-set comparisons and line-level deltas were derived here from the files on disk and from HEAD. The only files this run wrote are this receipt (scratchpad) and the ledger rows/receipt copy produced by scripts/i18n/ledger-assemble.mjs.",
+	"scope": {
+		"kind": "independent translation audit, S4b page-menu key",
+		"base": "6c488ca7a04b4e7b1daa5a5bdbab0025541ed469",
+		"head": "b3cbb894863a7a78526fb362fd78aec2b57a3a6e",
+		"working_tree_delta": "Uncommitted addition of ui.browser.browser_url_bar.page_menu to en, es, fr, hi, ru, ur, vi and zh-CN ui.browser.json (one inserted line per file; every other line byte-identical), plus the en ui.browser.context.json entry.",
+		"previous_audited_bytes": "HEAD b3cbb894863a equals the sha256 recorded in i18n/ledger.json for the English source and for every locale target.",
+		"keys_checked_per_catalogue": 231,
+		"keys_unchanged_since_prior_audit": 230,
+		"namespace": "ui.browser"
+	},
+	"namespaces": {
+		"ui.browser": {
+			"status": "clean-with-findings",
+			"result": "clean-with-findings",
+			"findings": [
+				{
+					"id": "U1",
+					"severity": "minor",
+					"locale": "ur",
+					"key": "ui.browser.browser_url_bar.page_menu",
+					"note": "Genitive case: the catalogue's own oblique form is صفحے (e.g. 'صفحے کا زوم', 'صفحے کے اوپر کی پٹی'), but the added label uses the direct form in 'صفحہ کے اختیارات'. Meaning is unambiguous and the label renders; recommend 'صفحے کے اختیارات' in a follow-up. Changing this file's bytes requires re-auditing this key."
+				}
+			],
+			"locales": [
+				"es",
+				"fr",
+				"hi",
+				"ru",
+				"ur",
+				"vi",
+				"zh-CN"
+			],
+			"keys_checked_per_catalogue": 231,
+			"keys_unchanged_since_prior_audit": 230,
+			"sha256": {
+				"en": "21e210af4f9662e9d82d44dd6a3e00cc396ad7303970e527fcc8d387af474b57",
+				"es": "58df1f2d4c9a3533f57eb3254f0dfe8102632a8bd9d7136f148ce57359651eab",
+				"fr": "b3e7a85234ea661dc1679f83243b5fc885d54d90624635692a12637fd48c9d25",
+				"hi": "e7c7f8840567fba7320e529db72d010e123490a59b755d3612f69478a569e342",
+				"ru": "382eebe287da833ca29cfde49dd530d02a7dee5391c216de28b0b2f07fd5d189",
+				"ur": "3d44288e334c67e8456c68e8791a099f9705b55a1cf988c74384178110cc072d",
+				"vi": "24dd282d676b13a21d80e15a00c9a3f952a02ba8272fbb7d593a3faf3267542f",
+				"zh-CN": "53b26388dc59f3ea0df998f740972ebd1e1eb3b1d7e26ac373d5f697e7b71aa9"
+			},
+			"delta_note": "Every locale file was compared line-by-line with its HEAD (previously audited) bytes: one insertion, no deletion, no replacement, no duplicate key, and the parsed key sets differ only by the added key. The en value is 'Page options'; the added translations are Opciones de página (es), Options de la page (fr), पेज विकल्प (hi), Параметры страницы (ru), صفحہ کے اختیارات (ur), Tùy chọn trang (vi), 页面选项 (zh-CN). Only the ur string carries a recorded finding."
+		}
+	}
+}

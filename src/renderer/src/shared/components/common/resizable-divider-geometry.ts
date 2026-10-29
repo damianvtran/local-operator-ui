@@ -46,6 +46,35 @@ export const KEYBOARD_STEP_COARSE = 64;
 export const growSign = (side: DividerSide): 1 | -1 =>
 	side === "right" || side === "bottom" ? 1 : -1;
 
+/**
+ * The pointer's travel, read along the INLINE axis.
+ *
+ * `dragTarget` speaks physical `+x` because that is what a pointer reports. A
+ * vertical handle in RTL sits on the other side of the panel it sizes: moving
+ * the pointer right at a sidebar boundary that stands on the window's right
+ * edge must SHRINK that sidebar, which is `-x` in the geometry's terms. The
+ * flip belongs here, beside `growSign`, rather than in a second sign rule in
+ * the component — the two must compose, and `sidebar-split.test.mjs` drives
+ * both directions.
+ */
+export const inlineDragDelta = (
+	delta: number,
+	direction: "ltr" | "rtl",
+): number => (direction === "rtl" ? -delta : delta);
+
+/**
+ * Swap the two inline-axis arrow names for an RTL vertical handle.
+ *
+ * LEFT and RIGHT are physical key names; "grow" and "shrink" are what the key
+ * map means, and in RTL those sit on the opposite keys. Horizontal handles
+ * size a height and never pass through here.
+ */
+export const swapHorizontalKey = (key: string): string => {
+	if (key === "ArrowLeft") return "ArrowRight";
+	if (key === "ArrowRight") return "ArrowLeft";
+	return key;
+};
+
 /** The clamp both of the separator's inputs share. */
 export const clampRegion = (value: number, min: number, max: number): number =>
 	Math.max(min, Math.min(max, value));

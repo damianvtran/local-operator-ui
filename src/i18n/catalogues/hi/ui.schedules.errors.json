@@ -1,0 +1,5 @@
+{
+	"ui.schedules.errors.agent_id_required": "शेड्यूल बनाने के लिए एजेंट ID ज़रूरी है।",
+	"ui.schedules.errors.agent_id_missing": "सबमिट करने के लिए एजेंट ID नहीं मिली।",
+	"ui.schedules.errors.base_url_missing": "Local Operator API के लिए बेस URL कॉन्फ़िगर नहीं है।"
+}

@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "date": "2026-10-19",
+  "instance": "d0e1f2a3b4c5",
+  "auditor": "i18n-auditor-ru",
+  "model": "openai/gpt-6.1-sol",
+  "model_provenance": "Actual fallback model used after anthropic/claude-sonnet-5-5 quota failure, as reported by the session model-switch event; no role/default pins changed.",
+  "locale": "ru",
+  "namespace": "ui.chat.tags",
+  "status": "passed",
+  "result": "clean",
+  "sha256": {
+    "en": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+    "ru": "5738510a615aac72a780de2a704c577fcb3f03d5ee19a72cd4c1cc41fa0552de"
+  },
+  "scope": "Independent RU V2-2 re-freeze audit: four remediation strings plus all-73-pair integrity/ICU checks. Unchanged linguistic review retained only after byte-compatibility proof.",
+  "previous_receipt": "i18n/receipts/d4e5f6a1b2c3.json",
+  "previous_target_sha256": "ab6e49a031977370c1f05f828b6cb8e9c9e81fe51beb9fd8c3f037ece766ea2c",
+  "baseline_head": "bf24fa9e5496af551c60532a87811b4dc550495c",
+  "findings": [],
+  "remediation": [
+    {
+      "finding": "RU-M1",
+      "status": "fixed",
+      "evidence": "selection_status now reads «Выбрано: {count}. Основной тег: {name}.», natural Russian aligned with existing primary-tag wording."
+    },
+    {
+      "finding": "RU-M2",
+      "status": "fixed",
+      "evidence": "create_helper, tag_usage and remote now consistently use разговор and its correct inflections."
+    }
+  ],
+  "audit": {
+    "hashes": "Both independently computed hashes match the requested frozen EN/RU bytes.",
+    "delta_proof": "Replacing only the four current values create_helper, selection_status, tag_usage and remote with their previously reviewed values reconstructs the exact previous RU file hash ab6e49a031977370c1f05f828b6cb8e9c9e81fe51beb9fd8c3f037ece766ea2c. Thus every other byte, not merely key count, remains unchanged.",
+    "baseline": "73 keys per file; all 54 baseline EN and RU values remain unchanged against git HEAD. The 19 new keys remain as previously verified.",
+    "pair_review": "All 73 pairs retain their reviewed meaning, grammar, register and punctuation: 69 byte-identical pairs carry forward the prior independent linguistic review; the four changed pairs were reread against EN and are correct.",
+    "icu": "All 73 EN/RU messages parse with installed intl-messageformat; key sets and argument-name sets match per pair. 730 RU formatting executions passed for counts 0,1,2,5,11,21,22,25,101,1.5.",
+    "plurals": "tag_usage contains one/few/many/other and executes as 0 разговоров, 1 разговор, 2 разговора, 5 разговоров, 11 разговоров, 21 разговор, 22 разговора, 25 разговоров, 101 разговор, 1,5 разговора. All forms correct. Baseline plural messages are unchanged and still parse/format.",
+    "primary_tag": "Executed selection_status with count=2/name=Работа: «Выбрано: 2. Основной тег: Работа.»; matches the established group_under/updated_grouped terminology.",
+    "length": "No new linguistic menu/toast length defect identified. Rendered fit is deferred to later QA; no screenshot or geometry claim."
+  },
+  "verdict": "clean — TERMINAL; zero blocker, major, minor or nit findings."
+}

@@ -1116,6 +1116,20 @@ test("native update handoff awaits owned cleanup before markers/watchdog/install
 			 * answer it, or the handler returns before the cleanup this test is about.
 			 */
 			app: { getVersion: () => "9.9.8", isPackaged: true },
+			/*
+			 * The handler now reads the MAIN locale store when it decides whether the
+			 * pending marker may carry a language. This slice is about the ORDER of the
+			 * owned cleanup against the marker, watchdog and install, so the harness
+			 * supplies the store's production initial state: `{ "en", "default" }`.
+			 * That keeps the marker language absent (the honest pre-negotiation shape)
+			 * while leaving the real locale ownership in `src/i18n/locale.ts`. The
+			 * validator is the same structural contract, present so a future case that
+			 * sets `source: "backend"` can exercise the branch rather than throw.
+			 */
+			currentLocaleState: () => ({ locale: "en", source: "default" }),
+			isLanguageTag: (value) =>
+				typeof value === "string" &&
+				/^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/.test(value),
 			writePendingInstallMarker: (_, marker) => {
 				actions.push("marker");
 				return marker;

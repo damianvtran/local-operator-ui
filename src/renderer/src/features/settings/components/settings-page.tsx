@@ -1,3 +1,4 @@
+import { openConversation } from "@features/chat/open-conversation";
 import { formatDayBucket } from "@features/chat/pickers/panels/formatters";
 import { parseTranscriptDisplayMode } from "@features/chat/transcript-display-mode";
 import { useOnboardingTour } from "@features/onboarding/hooks/use-onboarding-tour";
@@ -5,7 +6,6 @@ import { ProviderGrid } from "@features/providers/provider-grid";
 import { useProviderStatus } from "@features/providers/use-provider-status";
 import { pairingCardCopy } from "@shared/api/local-operator/backend-error";
 import type { ConfigUpdate } from "@shared/api/local-operator/types";
-import { useLaneLeadingColumn } from "@shared/components/common/chat-layout";
 import { EditableField } from "@shared/components/common/editable-field";
 import { PageHeader } from "@shared/components/common/page-header";
 import { RadientMark } from "@shared/components/common/radient-mark";
@@ -13,7 +13,13 @@ import { Spinner } from "@shared/components/common/spinner";
 import { ToggleSetting } from "@shared/components/common/toggle-setting";
 import { HostingSelect } from "@shared/components/hosting/hosting-select";
 import { ModelSelect } from "@shared/components/hosting/model-select";
-import { Alert, Button, Skeleton } from "@shared/components/ui";
+import {
+	Alert,
+	AlertDescription,
+	AlertTitle,
+	Button,
+	Skeleton,
+} from "@shared/components/ui";
 import { useConfig } from "@shared/hooks/use-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useCreditBalance } from "@shared/hooks/use-credit-balance";
@@ -46,6 +52,7 @@ import {
 	CreditCard,
 	ExternalLink,
 	Info,
+	MessageSquare,
 	Plug,
 	Settings,
 	SlidersHorizontal,
@@ -53,13 +60,24 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { VoiceSwitchSetting } from "./voice-switch-setting";
 import { WindowGlassSetting } from "./window-glass-setting";
 
+import {
+	AgentMessagesSettings,
+	useAgentMessagesSettingsAvailability,
+} from "@features/agent-messages/agent-messages-settings";
+import {
+	agentMessagesSectionMounted,
+	settingsRefusalSentence,
+} from "@features/agent-messages/agent-messages-settings-model";
+import { useAgentMessages } from "@features/agent-messages/use-agent-messages";
 import { LANGUAGE_SETTING_KEY } from "@shared/i18n";
+import type { AgentMessagesStatus } from "../../../../../shared/agent-messages-contract";
 import {
 	MODEL_EFFORT_SETTING_KEY,
+	TEAM_BRIDGE_ENABLED_SETTING_KEY,
 	sectionForSettingKey,
 } from "../promoted-setting-sections";
 import { AppUpdatesSection } from "./app-updates-section";
@@ -326,7 +344,6 @@ export const SettingsPage: FC = () => {
 	 * subscription is the point, and the t() calls below read the store directly.
 	 */
 	useI18nLocale();
-	const laneLeadingColumn = useLaneLeadingColumn("surface");
 	const glass = useWindowGlass();
 	const showAgentReasoning = useUiPreferencesStore(
 		(state) => state.showAgentReasoning,
@@ -413,12 +430,70 @@ export const SettingsPage: FC = () => {
 	const activeSessionId = useCanonicalSessionsStore(
 		(state) => state.activeSessionId,
 	);
+	// The CoS designation's options are the REAL canonical store, never a
+	// synthetic list; the section renders this same array.
+	const canonicalSessions = useCanonicalSessionsStore(
+		(state) => state.sessions,
+	);
+	/*
+	 * Agent messages is the one settings section whose existence is a server
+	 * decision (RFC §5.6). The hook subscribes to the shared status model and
+	 * latches the last observable answer; `status` is held across a forced
+	 * refresh so an action's re-read does not unmount the section mid-write.
+	 */
+	const agentMessagesAvailability = useAgentMessagesSettingsAvailability();
+	const {
+		accountId: agentMessagesAccountId,
+		snapshot: agentMessagesSnapshot,
+		model: agentMessagesModel,
+	} = useAgentMessages();
+	/*
+	 * The held status is scoped to the account it belongs to. A sign-in switch
+	 * must not leave the previous account's state rendering under the new
+	 * account's writes (round-1 R2), and a failed read must not resurrect it:
+	 * the page's error branch is the retry surface.
+	 */
+	const heldAgentMessagesStatus = useRef<{
+		accountId: string | null;
+		status: AgentMessagesStatus;
+	} | null>(null);
+	if (agentMessagesSnapshot.status) {
+		heldAgentMessagesStatus.current = {
+			accountId: agentMessagesAccountId,
+			status: agentMessagesSnapshot.status,
+		};
+	} else if (!agentMessagesSnapshot.checking) {
+		heldAgentMessagesStatus.current = null;
+	}
+	const agentMessagesStatus =
+		agentMessagesSnapshot.status ??
+		(heldAgentMessagesStatus.current?.accountId === agentMessagesAccountId
+			? heldAgentMessagesStatus.current.status
+			: null);
+	const agentMessagesSectionVisible = agentMessagesSectionMounted(
+		agentMessagesAvailability,
+		agentMessagesStatus,
+	);
+	const settingsSections = useMemo(
+		() =>
+			DEFAULT_SETTINGS_SECTIONS.filter(
+				(section) =>
+					section.id !== "agent-messages" ||
+					agentMessagesAvailability !== "absent",
+			),
+		[agentMessagesAvailability],
+	);
+	const refreshAgentMessages = useCallback(
+		() => agentMessagesModel.check("surface_open", true),
+		[agentMessagesModel],
+	);
 	const [activeSection, setActiveSection] = useState<string>("general");
 	const [isScrolling, setIsScrolling] = useState(false);
 	const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 	const contentContainerRef = useRef<HTMLDivElement>(null);
 	const { startTour: startOnboardingTour } = useOnboardingTour();
 	const location = useLocation();
+	const navigate = useNavigate();
 
 	const { data: credentialsData, refetch: refetchCredentials } =
 		useCredentials();
@@ -462,6 +537,7 @@ export const SettingsPage: FC = () => {
 		speech: useRef<HTMLDivElement>(null),
 		keyboard: useRef<HTMLDivElement>(null),
 		providers: useRef<HTMLDivElement>(null),
+		"agent-messages": useRef<HTMLDivElement>(null),
 		backend: useRef<HTMLDivElement>(null),
 		imports: useRef<HTMLDivElement>(null),
 		updates: useRef<HTMLDivElement>(null),
@@ -663,6 +739,10 @@ export const SettingsPage: FC = () => {
 		const targetSection = settingKey
 			? sectionForSettingKey(settingKey, "backend")
 			: sectionFromQuery;
+		// A link to a section this build does not show has nowhere to land; the
+		// rail has no row for it either.
+		if (targetSection === "agent-messages" && !agentMessagesSectionVisible)
+			return undefined;
 
 		const ref = targetSection ? sectionRefs[targetSection] : undefined;
 		if (!targetSection || !ref) return undefined;
@@ -740,7 +820,12 @@ export const SettingsPage: FC = () => {
 			observer.disconnect();
 			window.clearTimeout(deadline);
 		};
-	}, [location.search, sectionRefs, handleSelectSection]); // Rerun when URL search params change or refs are updated
+	}, [
+		location.search,
+		sectionRefs,
+		handleSelectSection,
+		agentMessagesSectionVisible,
+	]); // Rerun when URL search params change or refs are updated
 
 	// Handle updating a specific config field
 	const handleUpdateField = async (
@@ -977,7 +1062,8 @@ export const SettingsPage: FC = () => {
 		<div
 			data-glass-region="canvas"
 			data-glass-split=""
-			className="flex h-full w-full overflow-hidden bg-canvas"
+			/* A full-height panel: `canvas` from y0, columns pad themselves. */
+			className="panel-flush flex min-h-0 flex-1 overflow-hidden bg-canvas"
 		>
 			{/*
 			 * No edge on this wrapper any more. The rail is `surface` (see
@@ -1007,26 +1093,17 @@ export const SettingsPage: FC = () => {
 			 */}
 			<div
 				/*
-				 * The shell puts this rail's ground behind the window's top strip: the
-				 * rail is a leading column standing on `surface`, and nothing a route
-				 * renders can reach y0 itself (the column is inside two clipped
-				 * ancestors), so the lane above the shell's columns paints this
-				 * column's own ground across its width — without the hand-over the lane
-				 * would paint the CONTENT ground across the rail (the operator's report
-				 * of 2026-09-26, and again of 2026-09-27).
-				 *
-				 * The width is NOT restated there: the shell measures this element, which
-				 * is what keeps the two-width rule below (48px under 1040, 220 at and
-				 * above it) a single decision, and the ground is named once, here —
-				 * `chat-layout.tsx` states the contract.
+				 * The rail's own `surface` reaches y0 now: `SettingsSidebar` pads its
+				 * first row below the strip instead of the shell reserving a row above
+				 * it. The width stays the single two-width decision below (48px under
+				 * 1040, 220 at and above it).
 				 */
-				ref={laneLeadingColumn}
 				className="w-12 shrink-0 overflow-y-auto min-[1040px]:w-55"
 			>
 				<SettingsSidebar
 					activeSection={activeSection}
 					onSelectSection={handleSelectSection}
-					sections={DEFAULT_SETTINGS_SECTIONS}
+					sections={settingsSections}
 				/>
 			</div>
 
@@ -1035,7 +1112,13 @@ export const SettingsPage: FC = () => {
 				data-settings-content
 				data-glass-region="canvas-content"
 				data-tour-tag="settings-general-section"
-				className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8"
+				/*
+				 * `panel-scroll`: the pad sits OUTSIDE the scroller (as a margin),
+				 * so the scroll region's clip is the panel's content edge. A
+				 * `padding-top` on the scroller itself clips at its padding box and
+				 * would let scrolled text paint through the strip.
+				 */
+				className="panel-scroll flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8"
 			>
 				{/*
 				 * One measured column, centred, rather than two.
@@ -1555,6 +1638,80 @@ export const SettingsPage: FC = () => {
 							</div>
 						</SettingsSection>
 
+						{agentMessagesSectionVisible && (
+							<SettingsSection
+								title={t("ui.agentMessages.settings.section")}
+								icon={MessageSquare}
+								description={t("ui.agentMessages.settings.description")}
+								sectionRef={sectionRefs["agent-messages"]}
+								id="agent-messages"
+								/* A peer section, not a subsection of Backend settings
+								   (design round 1, D1): one decorative rule plus the
+								   page's section gap, no card. */
+								className="border-b border-hairline pb-8"
+							>
+								{agentMessagesStatus ? (
+									<AgentMessagesSettings
+										availability={agentMessagesAvailability}
+										status={agentMessagesStatus}
+										accountId={agentMessagesAccountId}
+										refusal={agentMessagesSnapshot.refusal}
+										onRefreshStatus={refreshAgentMessages}
+										sessions={canonicalSessions}
+										focus={settingFocusKey === TEAM_BRIDGE_ENABLED_SETTING_KEY}
+										/* The chief-of-staff hold's button goes through the
+										   one shared switch rule, so the URL moves with the
+										   store commit like every other entrance; the chat
+										   pane's composer takes focus on mount by itself.
+										   The status cache is dropped first so Settings'
+										   mount boundary on the way back reads the hold
+										   fresh and the notice clears once the owner has
+										   sent that message. */
+										onOpenSession={(sessionId) => {
+											agentMessagesModel.invalidateStatus();
+											void openConversation(navigate, sessionId);
+										}}
+									/>
+								) : agentMessagesSnapshot.refusal ? (
+									/*
+									 * The model keeps the refusal while a forced retry is
+									 * in flight, so this Alert — and its Retry — stays on
+									 * screen instead of the section blanking (R2-2).
+									 */
+									<Alert variant="warning">
+										<AlertTitle>
+											{t("ui.agentMessages.settings.error.title")}
+										</AlertTitle>
+										<AlertDescription>
+											{agentMessagesSnapshot.refusal.code !==
+												"client_unavailable" && (
+												<span className="block">
+													{settingsRefusalSentence(
+														agentMessagesSnapshot.refusal,
+													)}
+												</span>
+											)}
+											<span className="block">
+												{t("ui.agentMessages.settings.error.no_changes")}
+											</span>
+											<Button
+												className="mt-3"
+												variant="secondary"
+												onClick={() => void refreshAgentMessages()}
+											>
+												{t("ui.agentMessages.settings.error.retry")}
+											</Button>
+										</AlertDescription>
+									</Alert>
+								) : (
+									<div aria-busy="true" className="flex flex-col gap-3">
+										<Skeleton className="h-5 w-40" />
+										<Skeleton className="h-4 w-full max-w-xl" />
+									</div>
+								)}
+							</SettingsSection>
+						)}
+
 						<SettingsSection
 							title={t("ui.settings.navigation.settings_page.backend_settings")}
 							icon={Settings}
@@ -1566,6 +1723,7 @@ export const SettingsPage: FC = () => {
 							<BackendSettingsSection
 								hideInterfaceLanguage
 								hideModelEffort
+								hideAgentMessages
 								focusKey={
 									settingFocusKey &&
 									sectionForSettingKey(settingFocusKey, "backend") === "backend"

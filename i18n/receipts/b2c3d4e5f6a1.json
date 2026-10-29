@@ -1,0 +1,35 @@
+{
+  "auditor": "i18n-auditor-fr",
+  "instance": "b2c3d4e5f6a1",
+  "model": "openai/gpt-6.1-sol",
+  "locale": "fr",
+  "namespace": "ui.chat.tags",
+  "source_sha256": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+  "target_sha256": "8b7ce8bfdd40ca9d8ea6e0ce9bdde5a69f0b9a8f0225f191209e12f6f2394515",
+  "status": "clean-with-findings",
+  "model_provenance": "Actual audit performed with openai/gpt-6.1-sol after provider-quota fallback from anthropic/claude-sonnet-5-5; no claim of primary-model execution.",
+  "scope": "Independent full linguistic audit of all 73 English/French pairs, including 54 baseline values and 19 new picker/Manage keys. No application-code edits. Rendered fit excluded and reserved for later QA.",
+  "checks": {
+    "en_hash": "matched expected bytes",
+    "target_hash": "matched expected bytes",
+    "key_parity": 73,
+    "baseline_comparison": "All 54 pre-existing EN and FR values unchanged relative to git HEAD; comparison was parsed-value equality, not whitespace equality.",
+    "baseline_ref": "bf24fa9e5496af551c60532a87811b4dc550495c",
+    "new_keys": 19,
+    "icu": "All 73 pairs parsed with @formatjs/icu-messageformat-parser; unique argument sets agree. All 73 French messages formatted using intl-messageformat for count 0, 1, 2, 8, 32, 1000000 (438 executions).",
+    "linguistic": "Reviewed meaning, grammar, neutral register, agreement, punctuation, ICU plurals and placeholder preservation. Literal Untagged in name_reserved is correct per English context: server-reserved ASCII identifier, not localized group name.",
+    "length_risk": "No semantic length blocker. French remove/reorder instructions and dynamic-name toasts can expand; rendered fit remains later QA. registry_changed is 68 code units; staged_added template is 37, with user-name substitution still unbounded by this audit."
+  },
+  "findings": [
+    {
+      "id": "FR-1",
+      "severity": "MINOR",
+      "key": "ui.chat.tags.tag_usage",
+      "location": "src/i18n/catalogues/fr/ui.chat.tags.json:69",
+      "description": "The new usage plural omits the French many branch used for exact millions. Intl.PluralRules(fr).select(1000000) is many, but the message falls back to other and renders “1 000 000 conversations”, omitting the French “de” after million. The existing delete_description explicitly handles many. This is an extreme-count grammar issue, not loss of meaning or functionality.",
+      "suggestion": "Add a French many branch containing “# de conversations”; retain one/other and the count placeholder.",
+      "evidence": "intl-messageformat: tag_usage(0) = 0 conversation; (1) = 1 conversation; (2) = 2 conversations; (1000000) = 1 000 000 conversations."
+    }
+  ],
+  "verdict": "clean; TERMINAL — zero BLOCKER/MAJOR; one MINOR follow-up does not require another round."
+}

@@ -7,14 +7,16 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"maxSize": 2097152,
+		"maxSize": 3145728,
 		"ignore": [
 			"dist/**",
 			"out/**",
 			"node_modules/**",
 			"src/renderer/src/styles/themes.generated.css",
 			"src/main/browser/vendor/**",
-			"src/main/browser/actions/geometry-sources.gen.ts"
+			"src/main/browser/actions/geometry-sources.gen.ts",
+			"scripts/fixtures/condense.parity.json",
+			"scripts/fixtures/quiet-groups.parity.json"
 		]
 	},
 	"formatter": {

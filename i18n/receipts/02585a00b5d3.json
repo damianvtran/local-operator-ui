@@ -1,0 +1,27 @@
+{
+	"auditor": "reviewer",
+	"model": "deepseek/deepseek-flash",
+	"instance": "02585a00b5d3",
+	"locale": "zh-CN",
+	"round": 1,
+	"namespace": "ui.library",
+	"status": "passed",
+	"sha256": {
+		"en": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
+		"zh-CN": "a5c0458632425986ba1afa6a973a9c42f301b1723f6a219d5957a110aa71ac99"
+	},
+	"keys_audited": 6,
+	"scope": "PR #1254 ui.library zh-CN: the six new ui.library.time.* keys; the other 152 keys confirmed byte-identical to the 75428c035e bytes the prior receipt c94a2f70 audited",
+	"method": "Read the diff, then rendered every branch through the real t() path (scripts/library-model.test.mjs plus a scratch esbuild harness) instead of asserting against the catalogue JSON. Placeholders and the ::group-off skeleton are preserved verbatim in all six; zh-CN CLDR exposes only the `other` plural category, so an `other`-only ICU plural is the correct form. The six values match the established zh-CN house style exactly (ui.presence.just_now 刚刚, ui.hub.comments.age.* N个月前/N年前, ui.settings.integrations.integration_model.* {x, number, ::group-off}N分钟前).",
+	"findings": [
+		{
+			"severity": "minor",
+			"key": "ui.library.preview.organized_by",
+			"current": "由{by}整理于{at}",
+			"rendered": "由librarian整理于刚刚",
+			"reason": "REPRODUCED, not inferred: for an asset organized under 60s ago the new fragment composes into this unchanged template as \"由librarian整理于刚刚\". 刚刚 is a time ADVERB, so it cannot follow the preposition 于 (于 needs a time point, which is why 于2小时前 / 于3天前 render correctly). The fragment itself is right and is the house term used in four other namespaces, so the fix belongs to the template, not to ui.library.time.just_now.",
+			"disposition": "deferred — the template key is outside this PR's changed bytes and editing it would move the zh-CN target hash and require a fresh audit; a one-line follow-up (e.g. \"由{by}整理：{at}\") re-audited on its own is the clean path. Does NOT gate: a single MINOR with no blocker/major."
+		}
+	],
+	"unchanged_keys": "Confirmed at key level: 152 keys at 75428c035e, 158 now, 0 removed, 0 existing values changed, the 6 additions are exactly ui.library.time.*, and key order matches the English source. The prior row's hashes re-derive exactly from git show 75428c035e:both files, so c94a2f70 really did audit those bytes."
+}

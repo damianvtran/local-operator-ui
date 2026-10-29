@@ -1,0 +1,127 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "a76c19571acb",
+  "date": "2026-10-18",
+  "locale": "zh-CN",
+  "status": "passed",
+  "scope": "full independent pass, every key, at HEAD 1844a072210c29a34ea1462d0ee31333d4407575",
+  "namespaces": {
+    "ui.agents.settings": {
+      "namespace": "ui.agents.settings",
+      "status": "passed",
+      "sha256": {
+        "source": "2e2a8a28891db681fd72396a3b8323e8705e4ea9c0397e49237e3ed3f7e1a897",
+        "target": "760b658dcbfbbee1e35acd5951a11bd51b97bead6e562b91db1795eabccf14c2"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.agents.settings.security.this_prompt_is_directed_to_the_ai",
+          "issue": "The nested 智能体…智能体 sentence is stiff translationese in guidance meant to explain the two roles plainly.",
+          "current": "这些指令会发送给AI安全审核智能体，帮助它根据安全要求决定允许或阻止哪些操作。请以对另一个负责监督此智能体的智能体说话的方式编写，例如“允许所有git操作”“禁止智能体访问受限文件夹中的磁盘文件”。如果您频繁遇到安全拦截，可以修改这些指令以允许所需操作。",
+          "suggested": "这些指令会发送给AI安全审核智能体，帮助它根据安全要求决定允许或阻止哪些操作。请直接向负责监督当前智能体的安全审核智能体说明要求，例如“允许所有git操作”“禁止智能体访问受限文件夹中的磁盘文件”。如果您频繁遇到安全拦截，可以修改这些指令以允许所需操作。",
+          "reason": "The context distinguishes the reviewer from the working agent. 请以对另一个负责监督此智能体的智能体说话的方式编写 makes that simple distinction unnecessarily difficult to parse; the suggested wording retains all consequences and examples."
+        }
+      ]
+    },
+    "ui.agents.models": {
+      "namespace": "ui.agents.models",
+      "status": "passed",
+      "sha256": {
+        "source": "0775863598346b25001f9131bdf4bf207aba0d036858ce08b7cc49b00f44a540",
+        "target": "4abca46d5591664a5ae1b4a0fb9952a89128154868945e60ed231385173f6dec"
+      },
+      "findings": []
+    },
+    "ui.agents.dialogs": {
+      "namespace": "ui.agents.dialogs",
+      "status": "passed",
+      "sha256": {
+        "source": "99fc8672fbb4139aa2721542a8fb994506301b0c678d86c21439e939f5dd2bf4",
+        "target": "fdc6b780e6559bef221f3e04144a8d6731bb3294872bb7a31cf5f88752726446"
+      },
+      "findings": []
+    },
+    "ui.agents.navigation": {
+      "namespace": "ui.agents.navigation",
+      "status": "passed",
+      "sha256": {
+        "source": "23f591cd7c2d52c2563e0b5cbb4cbb2164f7cd01c2568b050738b3be976a5729",
+        "target": "1f0ab5462bbff08540f168ebb1dee709afc756005863f2ae1cbda9d20fdc4a52"
+      },
+      "findings": []
+    },
+    "ui.agents.refusals": {
+      "namespace": "ui.agents.refusals",
+      "status": "passed",
+      "sha256": {
+        "source": "457cb86efa40d800d2adf711ec2b4289d22b4b9013fd48189082c4b8808d3f20",
+        "target": "7e5b3edb6f6bfdcad310d079545c943c7ff492d283d96988f6a8b166714d45c8"
+      },
+      "findings": [
+        {
+          "severity": "NIT",
+          "key": "ui.agents.refusals.class.error.install_landed",
+          "issue": "The boundary space after an interpolated complete backend reason has been dropped.",
+          "current": "{reason}不过安装已成功，您现在可以编辑此智能体。",
+          "suggested": "{reason} 不过安装已成功，您现在可以编辑此智能体。",
+          "reason": "The task explicitly preserves source fragment-boundary spaces. reason may be an untranslated backend sentence as well as localized text, so its boundary should remain separate from the appended installation result."
+        }
+      ]
+    },
+    "ui.agents.starters": {
+      "namespace": "ui.agents.starters",
+      "status": "passed",
+      "sha256": {
+        "source": "7d7170328807a0ae0018bb69c4cd5fe49f6d5e47f7ca34484cf71b2a74612cec",
+        "target": "336f52d3df2af9ccdeacaaffe82be26f3c969b78fc7cf15b8ac814596614b173"
+      },
+      "findings": []
+    },
+    "ui.agents": {
+      "namespace": "ui.agents",
+      "status": "passed",
+      "sha256": {
+        "source": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "target": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+      },
+      "findings": []
+    },
+    "ui.code_review": {
+      "namespace": "ui.code_review",
+      "status": "passed",
+      "sha256": {
+        "source": "7344c8694a23662bfe3ae12205685cfa14851209d0685abbe463b9f513565085",
+        "target": "a685e851406ec08a864a3be03c37bfea6fc6d57d0fb6925cb679a633ca5c99bf"
+      },
+      "findings": []
+    },
+    "ui.command_palette": {
+      "namespace": "ui.command_palette",
+      "status": "passed",
+      "sha256": {
+        "source": "c48797d973f81dea023e5c89c40c83d8ae0a9cdfaeb2509f6cbc4e9fb8abd7c6",
+        "target": "dc7b82b8fb1fdd68c894119c7f654f2e3748835d39ebe1b9f2c26a1b4137b703"
+      },
+      "findings": [
+        {
+          "severity": "NIT",
+          "key": "ui.command_palette.command_palette.search_terms_are_limited_to",
+          "issue": "The source sentence-fragment boundary space has been dropped.",
+          "current": "搜索词最多为",
+          "suggested": "搜索词最多为 ",
+          "reason": "The explicit style contract requires sentence-fragment boundary spaces to survive. command-palette.tsx:1030-1035 concatenates this fragment, SESSION_SEARCH_MAX_CHARS, and the suffix without inserting spaces. Meaning is intact; this is a contract-level spacing nit, not a functional defect."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.command_palette.command_palette.characters_so_chats_are_matched_by_name",
+          "issue": "The source sentence-fragment boundary space has been dropped.",
+          "current": "个字符，因此仅按名称匹配对话。",
+          "suggested": " 个字符，因此仅按名称匹配对话。",
+          "reason": "The explicit style contract requires preserving fragment boundaries; this suffix is concatenated directly after SESSION_SEARCH_MAX_CHARS in command-palette.tsx:1033-1035. Restoring the leading boundary follows the task-specific exception to the normal Chinese no-space rule."
+        }
+      ]
+    }
+  }
+}

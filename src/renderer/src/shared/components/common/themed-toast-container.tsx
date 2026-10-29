@@ -15,16 +15,18 @@
  * component now renders once and never re-renders on a theme change.
  */
 
-import type { FC } from "react";
-import type { CSSProperties } from "react";
+import { t } from "@shared/i18n";
+import type { CSSProperties, FC } from "react";
 import { Toaster, type ToasterProps, toast } from "sonner";
+import type { TextDirection } from "../../../../../i18n/direction";
+import { useTextDirection } from "../../i18n/use-document-direction";
 
 /**
  * Inline values are the only thing sonner's unlayered stylesheet cannot beat.
  * Every referenced variable is one a shared primitive already uses as a
  * utility, so it is guaranteed present in the compiled `@theme` output.
  */
-const TOAST_THEME: CSSProperties = {
+const TOAST_THEME = {
 	"--normal-bg": "var(--color-elevated)",
 	"--normal-text": "var(--color-ink)",
 	"--normal-border": "var(--color-control)",
@@ -40,38 +42,28 @@ const TOAST_THEME: CSSProperties = {
 	boxShadow: "var(--shadow-overlay)",
 	fontSize: "var(--text-meta)",
 	padding: "12px 16px",
-	/*
-	 * The close button sits on the toast's top-RIGHT corner, straddling it: its
-	 * right edge 35% of its own width outside the toast's, its top edge the same
-	 * distance above it. That is the mirror image of sonner's own LTR placement,
-	 * which is why the transform below is the one sonner ships for RTL.
-	 *
-	 * `auto` rather than `unset`, and that value is the whole of the constraint.
-	 * Sonner declares these two properties on `html[dir='ltr']` and on
-	 * `[data-sonner-toaster][dir='ltr']` (`--toast-close-button-start: 0`,
-	 * `--toast-close-button-end: unset`) and consumes them on the close button as
-	 * `left: var(--toast-close-button-start); right: var(--toast-close-button-end);
-	 * top: 0`, so what is written here overrides an INHERITED value — and a custom
-	 * property is inherited by default, where `unset` means `inherit`. So `unset`
-	 * here did not clear the inherited `0`, it re-stated it: both insets resolved
-	 * to a length, and a 20px box with `width` set is the over-constrained case
-	 * where the browser keeps `left` and drops `right` in LTR. The button then sat
-	 * on the toast's LEFT edge and the RTL transform carried it 7px inward instead
-	 * of outward. `auto` is the value that governs nothing, which leaves
-	 * `right: 0px` as the single inset that does. Its colours come from the
-	 * `--gray*` variables above.
-	 */
-	"--toast-close-button-start": "auto",
-	"--toast-close-button-end": "0px",
-	"--toast-close-button-transform": "translate(35%, -35%)",
 } as CSSProperties;
+
+/**
+ * Sonner positions toasts and close buttons physically. Keep the established
+ * LTR placement, then reflect both across the inline axis for RTL locales.
+ * `auto` clears the inherited opposite inset; `unset` would inherit it again.
+ */
+export const toastThemeFor = (direction: TextDirection): CSSProperties =>
+	({
+		...TOAST_THEME,
+		"--toast-close-button-start": direction === "rtl" ? "0px" : "auto",
+		"--toast-close-button-end": direction === "rtl" ? "auto" : "0px",
+		"--toast-close-button-transform":
+			direction === "rtl" ? "translate(-35%, -35%)" : "translate(35%, -35%)",
+	}) as CSSProperties;
 
 /**
  * ThemedToastContainer component
  *
  * A wrapper around sonner's Toaster that applies theme-aware styling and includes a close button.
  *
- * THE APP'S ONE CONTAINER, mounted by `main.tsx` (bottom-right, standard styling).
+ * THE APP'S ONE CONTAINER, mounted by `main.tsx` (bottom-inline-end, standard styling).
  * `position` and `style` existed for a second container - the chat sidebar's own toast
  * lane, design D11 of `docs/design/sidebar-row-space.md` - and are gone with it
  * (2026-09-27, the lane's supersession entry in that document): the sidebar's
@@ -79,19 +71,32 @@ const TOAST_THEME: CSSProperties = {
  */
 export const ThemedToastContainer: FC<Pick<ToasterProps, "duration">> = ({
 	duration,
-}) => (
-	/* `duration` undefined preserves Sonner's production lifetime. Evidence stories
+}) => {
+	const direction = useTextDirection();
+	return (
+		/* `duration` undefined preserves Sonner's production lifetime. Evidence stories
 	   can hold their one real refusal without replaying mutations or altering error
 	   cooldowns. */
-	<Toaster
-		duration={duration}
-		position="bottom-right"
-		toastOptions={{
-			style: TOAST_THEME,
-			closeButton: true,
-		}}
-	/>
-);
+		<Toaster
+			duration={duration}
+			position={direction === "rtl" ? "bottom-left" : "bottom-right"}
+			dir={direction}
+			/*
+			 * SONNER'S OWN DEFAULTS ARE ENGLISH COPY ("Notifications", "Close toast"),
+			 * drawn on every toast and never visible to a translator. They are passed in
+			 * through `t()` instead, so the region and its close control follow the
+			 * interface language. The container composes its own name with the toast
+			 * hotkey after this string.
+			 */
+			containerAriaLabel={t("ui.common.layout.toasts.notifications")}
+			toastOptions={{
+				style: toastThemeFor(direction),
+				closeButton: true,
+				closeButtonAriaLabel: t("ui.common.layout.toasts.dismiss"),
+			}}
+		/>
+	);
+};
 
 export const showExampleToast = (message: string): void => {
 	toast(message);

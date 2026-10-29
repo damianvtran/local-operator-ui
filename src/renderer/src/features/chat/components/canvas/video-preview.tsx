@@ -4,6 +4,8 @@ import {
 } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
 import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type FC, memo, useMemo, useState } from "react";
 import {
@@ -82,6 +84,7 @@ const VideoPreviewComponent: FC<{ document: CanvasDocument }> = ({
 const ArtifactVideoPreview: FC<{ document: CanvasDocument }> = ({
 	document,
 }) => {
+	useI18nLocale();
 	const artifact = document.artifact;
 	const source = useAttachmentSource(
 		{
@@ -120,13 +123,15 @@ const ArtifactVideoPreview: FC<{ document: CanvasDocument }> = ({
 				) : null}
 			</ViewerChrome>
 			{source.state === "resolving" ? (
-				<FileViewerState quiet title="Opening…" />
+				<FileViewerState quiet title={t("ui.common.viewer.opening")} />
 			) : source.state === "missing" || playbackFailed ? (
 				<FileViewerState
 					title={
 						playbackFailed
-							? "This video could not be played"
-							: "This video is no longer in the session"
+							? t("ui.canvas.video_preview.this_video_could_not_be_played")
+							: t(
+									"ui.canvas.video_preview.this_video_is_no_longer_in_the_session",
+								)
 					}
 					detail={document.title}
 				/>
@@ -207,6 +212,7 @@ const RouteVideo: FC<{
 	version: string;
 	onUnavailable: () => void;
 }> = ({ document, version, onUnavailable }) => {
+	useI18nLocale();
 	const client = useMemo<LocalOperatorClient>(
 		() => createLocalOperatorClient(apiConfig.baseUrl),
 		[],
@@ -270,7 +276,7 @@ const RouteVideo: FC<{
 		>
 			{loaded ? null : (
 				<div className={cn("absolute inset-0")}>
-					<FileViewerState quiet title="Opening…" />
+					<FileViewerState quiet title={t("ui.common.viewer.opening")} />
 				</div>
 			)}
 			{url === null ? null : (
@@ -303,6 +309,7 @@ const RouteVideo: FC<{
  * other reason is "could not be played".
  */
 const BytesVideo: FC<{ document: CanvasDocument }> = ({ document }) => {
+	useI18nLocale();
 	const state = useFileBlobUrl(document.path, {
 		mtimeMs: document.lastAgentModified,
 		mimeType: mimeTypeForPath(document.path),
@@ -311,7 +318,7 @@ const BytesVideo: FC<{ document: CanvasDocument }> = ({ document }) => {
 	const [playbackFailed, setPlaybackFailed] = useState(false);
 
 	if (state.status === "loading") {
-		return <FileViewerState quiet title="Opening…" />;
+		return <FileViewerState quiet title={t("ui.common.viewer.opening")} />;
 	}
 	if (state.status === "unavailable" || playbackFailed) {
 		const tooLarge =
@@ -321,10 +328,10 @@ const BytesVideo: FC<{ document: CanvasDocument }> = ({ document }) => {
 			<FileViewerState
 				title={
 					tooLarge
-						? "Too large to preview"
+						? t("ui.canvas.video_preview.too_large_to_preview")
 						: gone
-							? "File no longer exists"
-							: "This video could not be played"
+							? t("ui.canvas.video_preview.file_no_longer_exists")
+							: t("ui.canvas.video_preview.this_video_could_not_be_played")
 				}
 				detail={
 					state.status === "unavailable"

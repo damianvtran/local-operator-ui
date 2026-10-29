@@ -23,8 +23,10 @@ const ROOT = process.cwd();
 
 const bundle = await build({
 	stdin: {
-		contents:
+		contents: [
 			'export * from "./src/renderer/src/features/chat/canonical/trace-fold-model";',
+			'export { isInternalReceipt, receiptFamilyOf } from "./src/renderer/src/features/chat/components/trace/receipt-row-model";',
+		].join("\n"),
 		resolveDir: ROOT,
 	},
 	alias: {
@@ -42,6 +44,7 @@ const {
 	FOLD_COUNT_LIMIT,
 	FOLD_MEDIA_LIMIT,
 	FOLD_MIN_ACTIONS,
+	FOLD_MIN_RECEIPTS,
 	actionClass,
 	foldCounts,
 	foldCountUnits,
@@ -52,9 +55,13 @@ const {
 	foldMediaSlots,
 	foldRuns,
 	foldSpan,
+	latchFoldedRuns,
 	foldSummary,
 	foldSummarySpec,
 	foldSummaryUnits,
+	isInternalReceipt,
+	receiptFamilyOf,
+	receiptFoldUnits,
 	turnFeet,
 } = await import(moduleUrl);
 
@@ -85,6 +92,7 @@ test("incoming receipts bridge actions without impersonating actions", () => {
 		durationOf: () => 1,
 		isFoldable: (r) => r.record.kind === "tool",
 		isReceipt: (r) => r.record.customType === "hub_message",
+		receiptSummaryOf: receiptFoldUnits,
 	};
 	const groups = foldRuns([row("a"), hub, row("b"), row("c")], options);
 	assert.equal(groups.length, 1);
@@ -94,17 +102,32 @@ test("incoming receipts bridge actions without impersonating actions", () => {
 	);
 	assert.equal(groups[0].actions.length, 3);
 	assert.equal(groups[0].failedCount, 0);
+	/*
+	 * A MIXED LINE IS COUNT UNITS, never a sentence glued to a noun inventory:
+	 * three `read` actions compose to `3 files`, and the receipt states its own
+	 * family - it does not inflate the action count.
+	 */
+	assert.deepEqual(groups[0].summary.units, ["3 files", "1 incoming message"]);
 	assert.equal(
 		foldRuns([row("a"), hub, row("b")], options).length,
 		3,
-		"two tools plus receipt must not reach three-action threshold",
+		"two tools plus a LONE receipt stay ordinary rows",
+	);
+	const receiptOnly = foldRuns(
+		[hub, { ...hub, record: { ...hub.record, id: "h2" } }],
+		options,
 	);
 	assert.equal(
-		foldRuns([hub, { ...hub, record: { ...hub.record, id: "h2" } }], options)
-			.length,
-		2,
-		"receipt-only grouping remains the upper quiet planner's contract",
+		receiptOnly.length,
+		1,
+		"two consecutive receipts fold under one header with no actions",
 	);
+	assert.deepEqual(
+		receiptOnly[0].rows.map((r) => r.record.id),
+		["h", "h2"],
+	);
+	assert.deepEqual(receiptOnly[0].actions, [], "receipts are never actions");
+	assert.deepEqual(receiptOnly[0].summary.units, ["2 incoming messages"]);
 	const boundary = {
 		record: { id: "u", kind: "user" },
 		gap: "trace",
@@ -113,6 +136,460 @@ test("incoming receipts bridge actions without impersonating actions", () => {
 	assert.equal(
 		foldRuns([row("a"), hub, boundary, row("b"), row("c")], options).length,
 		5,
+	);
+});
+
+/** A receipt row by custom type, and the two record kinds that are receipts. */
+const custom = (id, customType, extra = {}) => ({
+	record: { id, kind: "custom", customType, ...extra },
+	gap: "trace",
+	closesTurn: false,
+});
+const peerReceipt = (id) => ({
+	record: { id, kind: "peer" },
+	gap: "trace",
+	closesTurn: false,
+});
+const wakeReceipt = (id) => ({
+	record: { id, kind: "wake" },
+	gap: "trace",
+	closesTurn: false,
+});
+
+const receiptOptions = {
+	nameOf: () => "bash",
+	failedOf: () => false,
+	isFoldable: (r) => r.record.kind === "tool",
+	isReceipt: (r) => isInternalReceipt(r.record),
+	receiptSummaryOf: receiptFoldUnits,
+};
+
+test("the operator's job-result wall folds into ONE run", () => {
+	/*
+	 * The shape reproduced from session 8c2ff1914f44: a bash call, a job result,
+	 * a bash call, a job result, ... as separate rows, each receipt owning a
+	 * chevron. `job_result` used to be a BOUNDARY, so every segment restarted the
+	 * action count and the wall never folded. It is internal traffic now, and the
+	 * run is one group whose header states both what the turn did and what it was
+	 * told.
+	 */
+	const rows = [
+		row("a"),
+		custom("j1", "job_result"),
+		row("b"),
+		custom("j2", "job_result"),
+		row("c"),
+		custom("j3", "job_result"),
+	];
+	const groups = foldRuns(rows, receiptOptions);
+	assert.equal(groups.length, 1, "one run, not six rows");
+	assert.equal(groups[0].kind, "run");
+	assert.deepEqual(
+		groups[0].rows.map((r) => r.record.id),
+		["a", "j1", "b", "j2", "c", "j3"],
+		"the fold holds every row in arrival order",
+	);
+	assert.equal(groups[0].actions.length, 3, "three actions, never six");
+	assert.deepEqual(groups[0].summary.units, ["3 shell", "3 job results"]);
+	assert.equal(
+		groups[0].failedCount,
+		0,
+		"a receipt never contributes a failure",
+	);
+	assert.equal(groups[0].span, null, "a receipt never contributes a duration");
+	assert.equal(groups[0].live, null, "a receipt is never the live clause");
+});
+
+test("receipt families fold alone, and boundaries still split", () => {
+	assert.equal(
+		FOLD_MIN_RECEIPTS,
+		2,
+		"two receipts are the smallest wall worth a header",
+	);
+	const pair = foldRuns(
+		[peerReceipt("p1"), custom("h1", "hub_message")],
+		receiptOptions,
+	);
+	assert.equal(pair.length, 1, "two receipts with no actions fold");
+	assert.deepEqual(pair[0].actions, []);
+	assert.deepEqual(pair[0].summary.units, ["2 incoming messages"]);
+	assert.equal(
+		foldRuns([peerReceipt("p1"), row("a")], receiptOptions).length,
+		2,
+		"a lone receipt beside one action stays two rows",
+	);
+	assert.equal(
+		foldRuns([peerReceipt("p1"), row("a"), peerReceipt("p2")], receiptOptions)
+			.length,
+		3,
+		"two receipts AROUND a sub-threshold action stay ordinary rows: the receipt threshold is for pure receipt stretches",
+	);
+	const mixed = foldRuns(
+		[
+			peerReceipt("p1"),
+			custom("h1", "hub_message"),
+			custom("j1", "job_result"),
+			wakeReceipt("w1"),
+			custom("m1", "monitor_prompt"),
+		],
+		receiptOptions,
+	);
+	assert.equal(mixed.length, 1);
+	assert.deepEqual(mixed[0].summary.units, [
+		"2 incoming messages",
+		"1 job result",
+		"1 wake receipt",
+		"1 monitor prompt",
+	]);
+	/*
+	 * ARBITRARY CUSTOM NOTICES ARE BOUNDARIES, even an error-level one: folding an
+	 * incident under a count would hide the sentence that changed the plan.
+	 */
+	const incident = custom("n1", "session_incident", { level: "error" });
+	const split = foldRuns(
+		[
+			row("a"),
+			custom("j1", "job_result"),
+			row("b"),
+			custom("j2", "job_result"),
+			row("c"),
+			incident,
+		],
+		receiptOptions,
+	);
+	assert.deepEqual(
+		split.map((g) => g.kind),
+		["run", "row"],
+	);
+	assert.equal(split[1].row.record.id, "n1", "the notice is its own row");
+	/* A supplement and the agent's answer stay out of the run, exactly as #1190
+	 * requires: they are what the turn PRODUCED, not traffic it received. */
+	const supplement = {
+		record: { id: "s1", kind: "supplement" },
+		gap: "trace",
+		closesTurn: false,
+	};
+	const answer = {
+		record: { id: "ans", kind: "assistant" },
+		gap: "item",
+		closesTurn: true,
+	};
+	for (const boundaryRow of [supplement, answer]) {
+		const groups = foldRuns(
+			[
+				row("a"),
+				custom("j1", "job_result"),
+				row("b"),
+				custom("j2", "job_result"),
+				row("c"),
+				boundaryRow,
+			],
+			receiptOptions,
+		);
+		assert.deepEqual(
+			groups.map((g) => g.kind),
+			["run", "row"],
+			`${boundaryRow.record.kind} stays outside the fold`,
+		);
+		assert.equal(groups[1].row.record.id, boundaryRow.record.id);
+		assert.ok(
+			!groups[0].rows.some((r) => r.record.id === boundaryRow.record.id),
+			"the boundary row is not inside the run",
+		);
+	}
+});
+
+test("the live latch survives a window shrink and still forgets a row the store dropped (review round 1, F1)", () => {
+	/*
+	 * THE WINDOW IS NOT THE CONVERSATION. A snap, a widened page or a filter can
+	 * paint a frame whose slice omits a run the pane has already shown folded;
+	 * rebuilding the latch from that slice dropped its ids, the rows came back on
+	 * the next full pass and re-folded - the same open/close pair through another
+	 * door. The union retains across the shrink and prunes against the STORE.
+	 */
+	const foldedRun = foldRuns(
+		[row("t1"), custom("j1", "job_result"), custom("j2", "job_result")],
+		receiptOptions,
+	)[0];
+	assert.equal(foldedRun.kind, "run");
+
+	// The shrink: this pass paints no group at all, and the store still holds t1.
+	const shrunk = latchFoldedRuns(
+		new Set(["t1", "j1", "j2"]),
+		new Set(["t1", "j1", "j2", "elsewhere"]),
+		[],
+	);
+	assert.deepEqual(
+		[...shrunk].sort(),
+		["j1", "j2", "t1"],
+		"a pass with no run on screen does not forget the run it painted",
+	);
+
+	// The record leaves the store: the latch forgets it.
+	const dropped = latchFoldedRuns(new Set(["t1", "j1"]), new Set(["t1"]), []);
+	assert.deepEqual(
+		[...dropped],
+		["t1"],
+		"only ids the store still holds survive",
+	);
+
+	// And a fresh fold joins the set.
+	const joined = latchFoldedRuns(
+		new Set(["t1"]),
+		new Set(["t1", "x1", "x2", "x3"]),
+		foldRuns([row("x1"), row("x2"), row("x3")], receiptOptions),
+	);
+	assert.deepEqual(
+		[...joined].sort(),
+		["t1", "x1", "x2", "x3"],
+		"what this pass folded is added, not substituted",
+	);
+});
+
+test("a live run keeps the fold it has painted: a job response cannot reopen it (operator report, 2026-10-21)", () => {
+	/*
+	 * THE OSCILLATION. The licensing rule is positional ("the run's TRAILING
+	 * receipt stretch"), and a positional rule is not monotonic under append, so
+	 * one continuous run used to change shape on every job response:
+	 *
+	 *   [t1, j1, j2]                    -> fold        (bar over 3 rows)
+	 *   [t1, j1, j2, t2]                -> ordinary rows (the call ended the stretch)
+	 *   [t1, j1, j2, t2, j3, j4]        -> fold again
+	 *
+	 * The operator sees the group force itself open and close back, repeatedly,
+	 * with no reader action. While the turn is live, a run this pane has already
+	 * painted folded keeps folding; the latch records that fact and nothing else.
+	 */
+	const tools = (n, prefix = "t") =>
+		Array.from({ length: n }, (_, index) => row(`${prefix}${index}`));
+	const jobs = (n, prefix = "j") =>
+		Array.from({ length: n }, (_, index) =>
+			custom(`${prefix}${index}`, "job_result"),
+		);
+
+	const liveOptions = (latchedFoldIds) => ({
+		...receiptOptions,
+		liveTurn: true,
+		latchedFoldIds,
+	});
+
+	const first = foldRuns([...tools(1), ...jobs(2)], liveOptions(new Set()));
+	assert.equal(first.length, 1, "the wall folds on its trailing stretch");
+	assert.equal(first[0].kind, "run");
+	const latched = new Set(first[0].rows.map((row) => row.record.id));
+
+	const grew = [...tools(1), ...jobs(2), ...tools(1, "t2")];
+	const afterCall = foldRuns(grew, liveOptions(latched));
+	assert.equal(
+		afterCall.length,
+		1,
+		"the call that ends the receipt stretch does not dissolve the fold",
+	);
+	assert.equal(
+		afterCall[0].rows.length,
+		4,
+		"the fold grew to hold the new call instead of opening",
+	);
+	assert.deepEqual(
+		afterCall[0].summary.units,
+		["2 shell", "2 job results"],
+		"and its header counts the new call",
+	);
+
+	const withMore = [...grew, ...jobs(2, "j3")];
+	assert.equal(
+		foldRuns(withMore, liveOptions(latched)).length,
+		1,
+		"a further pair of job responses does not refold from scratch",
+	);
+
+	/*
+	 * THE LATCH IS LIVE-ONLY. On a settled list no latch is read, so the final
+	 * rows alone decide - including the head-pair negatives below, which must
+	 * stay ordinary rows.
+	 */
+	assert.deepEqual(
+		foldRuns(grew, receiptOptions).map((group) => group.kind),
+		["row", "row", "row", "row"],
+		"a settled run with one trailing-free call stays ordinary rows",
+	);
+
+	/*
+	 * AND THE HEAD-PAIR NEGATIVES HOLD LIVE TOO (agent review round 1, F2). The
+	 * change's only new input is live-only, so the pin has to be asked of a LIVE
+	 * pass with an empty latch: two receipts at the head still license nothing,
+	 * which is what keeps a call mountable for the turn bar. The latch can only
+	 * hold a shape this pane has ALREADY painted folded - it never licenses a
+	 * first fold - so these are unreachable from it on a fresh pass.
+	 */
+	for (const [label, rows] of [
+		["peer, peer, tool", [peerReceipt("p1"), peerReceipt("p2"), row("a")]],
+		["peer, tool, wake", [peerReceipt("p1"), row("a"), wakeReceipt("w1")]],
+		["peer, tool, peer", [peerReceipt("p1"), row("a"), peerReceipt("p2")]],
+	]) {
+		assert.deepEqual(
+			foldRuns(rows, liveOptions(new Set())).map((group) => group.kind),
+			rows.map(() => "row"),
+			`${label} stays ordinary rows on a live pass with no latch`,
+		);
+	}
+});
+
+test("a run folds on its TRAILING receipt stretch, never a head pair", () => {
+	/*
+	 * The operator's wall leaves `[call, receipt, receipt…]`: the work first,
+	 * then what it was told. Two adjacent receipts at the TAIL license the fold
+	 * below §E2's action threshold, while a receipt at the HEAD licenses
+	 * nothing - the 129-owner shape in `turn-collapse-behaviour.test.mjs` is
+	 * exactly `[peer, peer, tool]`, and folding that would hide the call the
+	 * reader's opened turn bar is pinned to mount.
+	 */
+	const tools = (n, prefix = "t") =>
+		Array.from({ length: n }, (_, index) => row(`${prefix}${index}`));
+	const jobs = (n, prefix = "j") =>
+		Array.from({ length: n }, (_, index) =>
+			custom(`${prefix}${index}`, "job_result"),
+		);
+
+	// The action threshold is already met here; the receipts join the same run.
+	const wall = foldRuns([...tools(2), ...jobs(5)], receiptOptions);
+	assert.equal(wall.length, 1, "two tools and five job results are one group");
+	assert.equal(wall[0].actions.length, 2, "five receipts are never actions");
+	assert.deepEqual(wall[0].summary.units, ["2 shell", "5 job results"]);
+
+	// Below the action threshold, the trailing stretch alone licenses the fold.
+	const tail = foldRuns([...tools(1), ...jobs(2)], receiptOptions);
+	assert.equal(tail.length, 1, "one call followed by two receipts folds");
+	assert.deepEqual(tail[0].summary.units, ["1 shell", "2 job results"]);
+	assert.deepEqual(
+		foldRuns(jobs(2), receiptOptions)[0].summary.units,
+		["2 job results"],
+		"a whole-run receipt wall is the same rule with no action side",
+	);
+
+	// Negatives: only the RUN'S TAIL licenses the fold.
+	for (const [label, rows] of [
+		["peer, tool, wake", [peerReceipt("p1"), row("a"), wakeReceipt("w1")]],
+		["peer, peer, tool", [peerReceipt("p1"), peerReceipt("p2"), row("a")]],
+		["peer, tool, peer", [peerReceipt("p1"), row("a"), peerReceipt("p2")]],
+	]) {
+		assert.deepEqual(
+			foldRuns(rows, receiptOptions).map((group) => group.kind),
+			rows.map(() => "row"),
+			`${label} stays ordinary rows: only a trailing stretch licenses the fold`,
+		);
+	}
+
+	const lone = foldRuns(
+		[...tools(2), custom("j1", "job_result")],
+		receiptOptions,
+	);
+	assert.deepEqual(
+		lone.map((group) => group.kind),
+		["row", "row", "row"],
+		"one trailing receipt beside two actions is still three ordinary rows",
+	);
+});
+
+test("every receipt in a mixed run is counted exactly once", () => {
+	const rows = [
+		peerReceipt("p1"),
+		custom("h1", "hub_message"),
+		custom("j1", "job_result"),
+		custom("j2", "job_result"),
+		wakeReceipt("w1"),
+		custom("m1", "monitor_prompt"),
+		row("a"),
+		row("b"),
+		row("c"),
+	];
+	const groups = foldRuns(rows, receiptOptions);
+	assert.equal(groups.length, 1);
+	const units = groups[0].summary.units;
+	const counted = units
+		.filter((unit) =>
+			/^\d+ (incoming|job result|wake|monitor prompt)/.test(unit),
+		)
+		.reduce((total, unit) => total + Number(unit.split(" ")[0]), 0);
+	const receipts = rows.filter((r) => isInternalReceipt(r.record)).length;
+	assert.equal(
+		counted,
+		receipts,
+		"the header's numbers equal the number of receipt rows behind the fold",
+	);
+	assert.deepEqual(units, [
+		"3 shell",
+		"2 incoming messages",
+		"2 job results",
+		"1 wake receipt",
+		"1 monitor prompt",
+	]);
+});
+
+test("an unknown receipt family is counted as `other receipts`, never dropped", () => {
+	/*
+	 * `receiptFoldUnits` and `receiptFamilyOf` are separate tables: a future
+	 * receipt kind classified but not yet given a unit would make the header's
+	 * numbers stop summing to the rows behind the fold. The fallback is the
+	 * count of rows no known family claimed, placed before the intent markers.
+	 */
+	assert.deepEqual(receiptFoldUnits([custom("f1", "future_receipt")]), [
+		"1 other receipt",
+	]);
+	assert.deepEqual(
+		receiptFoldUnits([
+			custom("f1", "future_receipt"),
+			custom("f2", "future_receipt"),
+			custom("j1", "job_result"),
+		]),
+		["1 job result", "2 other receipts"],
+		"known families keep their units and the remainder is stated",
+	);
+	assert.deepEqual(
+		receiptFoldUnits([
+			custom("f1", "future_receipt", { receipt: { expectsReply: true } }),
+		]),
+		["1 other receipt", "Reply requested"],
+		"the fallback sits with the family units, before the intent markers",
+	);
+});
+
+test("internal receipt classification is structural, and stays narrow", () => {
+	for (const record of [
+		{ kind: "peer" },
+		{ kind: "wake" },
+		{ kind: "custom", customType: "hub_message" },
+		{ kind: "custom", customType: "job_result" },
+		{ kind: "custom", customType: "monitor_prompt" },
+	]) {
+		assert.equal(
+			isInternalReceipt(record),
+			true,
+			`${JSON.stringify(record)} is internal traffic`,
+		);
+	}
+	for (const record of [
+		{ kind: "custom", customType: "session_incident" },
+		{ kind: "custom", customType: "session_mcp_unavailable" },
+		{ kind: "custom", customType: "code_request_event.v1" },
+		{ kind: "notice" },
+		{ kind: "assistant" },
+		{ kind: "supplement" },
+	]) {
+		assert.equal(
+			isInternalReceipt(record),
+			false,
+			`${JSON.stringify(record)} remains a boundary`,
+		);
+	}
+	assert.equal(receiptFamilyOf({ kind: "wake" }), "wake");
+	assert.equal(
+		receiptFamilyOf({ kind: "custom", customType: "job_result" }),
+		"job_result",
+	);
+	assert.equal(
+		receiptFamilyOf({ kind: "custom", customType: "monitor_prompt" }),
+		"monitor_prompt",
 	);
 });
 
@@ -378,6 +855,39 @@ test("the count line names the kinds in the app's own vocabulary", () => {
 		foldCounts([{ name: "sessions", failed: false }]),
 		"1 session",
 		"a session singularizes through its noun",
+	);
+	/* A `jobs` poll is a CHECK on a background job, never the result itself: the
+	 * receipt family now prints `N job results`, and a poll that counted as
+	 * `1 job` would read as the same unit one row above. */
+	assert.equal(
+		foldCounts([
+			{ name: "jobs", failed: false },
+			{ name: "jobs", failed: false },
+		]),
+		"2 job checks",
+	);
+	assert.equal(foldCounts([{ name: "jobs", failed: false }]), "1 job check");
+	assert.equal(
+		foldCounts([
+			{ name: "jobs", op: "list", failed: false },
+			{ name: "jobs", op: "peek", failed: false },
+		]),
+		"2 job checks",
+		"list and peek are checks on a job",
+	);
+	// `jobs cancel` stopped a job; the row verb is a cancellation and the fold
+	// says so (review round 1, R1-1), rather than claiming the run looked at it.
+	assert.equal(
+		foldCounts([{ name: "jobs", op: "cancel", failed: false }]),
+		"1 job cancellation",
+	);
+	assert.equal(
+		foldCounts([
+			{ name: "jobs", op: "CANCEL", failed: false },
+			{ name: "jobs", op: "cancel", failed: false },
+		]),
+		"2 job cancellations",
+		"the op is case-folded like every other wire token",
 	);
 	// `todo view` is a READ; counting it as an update was the false claim
 	// review round 1 closed (R1-6), so the family splits by op.

@@ -1,0 +1,28 @@
+{
+	"selector": "html[data-glass~=\"pane\"] main[data-glass-region=\"canvas-backing\"] [data-glass-region=\"pane\"] [data-glass-plane=\"band-backdrop\"]",
+	"assetsFound": 0,
+	"measurement": {
+		"matchesRule": false,
+		"plane": null,
+		"background": "rgb(29, 27, 25)",
+		"backdropFilter": "none",
+		"position": "sticky",
+		"top": "0px",
+		"height": 26,
+		"cellRect": {
+			"top": 391,
+			"bottom": 417
+		},
+		"scroller": {
+			"top": 383,
+			"bottom": 724,
+			"overflowY": "auto",
+			"maskImage": "linear-gradient(rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 0px, rgb(0, 0, 0) 100%, rgba(0, 0, 0, 0) 100%)"
+		},
+		"regionChain": [
+			"pane",
+			"canvas",
+			"canvas-backing"
+		]
+	}
+}

@@ -93,6 +93,19 @@
  * both ways on `scripts/linux/launcher.sh`: exit 1 each time), which is why the
  * gate decides it rather than passing a flag and hoping.
  */
+/**
+ * WHY `biome.json`'S `files.maxSize` IS 3 MiB (2026-10-22).
+ *
+ * It was 2 MiB, and `scripts/renderer-driver.mjs` sat at 2,096,584 bytes against
+ * a 2,097,152 ceiling - 568 bytes of headroom. Any scene added to that file
+ * therefore crossed it, and the only verdict this gate could give was a size
+ * error on a file it exists to process: not a finding about the change, and not
+ * fixable by editing the change. Biome 1.9.4 has no per-file override for
+ * `maxSize` (it is a top-level `files` option, and `overrides` has no `files`
+ * member), so the ceiling itself moves. It remains a guard against accidentally
+ * committing a giant generated file; splitting the 2 MiB driver is its own
+ * follow-up.
+ */
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -112,13 +125,16 @@ const SCOPE = "scripts";
 const NOTHING_PROCESSED = /No files were processed in the specified paths/;
 
 const USAGE = [
-	"usage: node scripts/check-scripts-lint.mjs [--since <ref>] [--biome <path>]",
+	"usage: node scripts/check-scripts-lint.mjs [--since <ref>] [--branch] [--biome <path>]",
 	"",
 	"  --since <ref>   compare against this ref (default: origin/main, then main;",
 	"                  LINT_SINCE is the environment spelling of the same thing).",
 	"                  On a pull request's merge commit pass its first parent -",
 	"                  --since HEAD^1 - which is the base the checkout was built",
 	"                  on. An empty value is refused, never read as absent.",
+	"  --branch       interpret the base as a branch target, not the first parent",
+	"                  of a synthetic CI merge. Compare the full change from the",
+	"                  target/HEAD merge base, regardless of local merge ordering.",
 	"  --biome <path>  the biome executable to run (default: node_modules/.bin/biome,",
 	"                  and the seam the test drives this gate through)",
 ].join("\n");
@@ -175,12 +191,15 @@ function parseArguments(argv) {
 		base: process.env.LINT_SINCE ?? "",
 		requested: process.env.LINT_SINCE !== undefined,
 		biome: "",
+		branch: false,
 		help: false,
 	};
 	for (let index = 0; index < argv.length; index += 1) {
 		const argument = argv[index];
 		if (argument === "--help" || argument === "-h") {
 			options.help = true;
+		} else if (argument === "--branch") {
+			options.branch = true;
 		} else if (argument === "--since" || argument === "--biome") {
 			const value = argv[index + 1] ?? "";
 			if (!value) throw new Error(`'${argument}' needs a value\n\n${USAGE}`);
@@ -424,7 +443,12 @@ function main(argv) {
 
 	const top = repoTop();
 	const { ref, commit } = resolveBase(top, options.base);
-	assertBaseIsWhatHeadWasBuiltOn(top, commit);
+	// Parent ordering identifies the target only for a synthetic CI merge. Local
+	// branches merge targets/stacks in either order; their first parent is usually
+	// feature history. The hook explicitly selects branch context, but still uses
+	// the target/HEAD fork point below, NEVER HEAD^1 (which drops earlier scripts).
+	// Keep the default strict: CI's frozen stale base must still be refused.
+	if (!options.branch) assertBaseIsWhatHeadWasBuiltOn(top, commit);
 	const base = mergeBase(top, commit);
 	const against = `${ref} (${base.slice(0, 7)})`;
 	if (base !== commit) {

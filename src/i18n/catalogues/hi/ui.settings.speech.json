@@ -1,0 +1,21 @@
+{
+	"ui.settings.speech.speech_section.try_again": "फिर कोशिश करें",
+	"ui.settings.speech.speech_section.retry": "फिर कोशिश करें",
+	"ui.settings.speech.speech_section.speaks_through": "आवाज़ का ज़रिया",
+	"ui.settings.speech.speech_section.availability": "उपलब्धता",
+	"ui.settings.speech.speech_section.the_setting_could_not_be_saved": "सेटिंग सहेजी नहीं जा सकी।",
+	"ui.settings.speech.speech_section.the_setting_could_not_be_reset": "सेटिंग रीसेट नहीं की जा सकी।",
+	"ui.settings.speech.speech_section.speech_voicing": "बोलने की आवाज़",
+	"ui.settings.speech.speech_section.how_the_assistant_sounds_when_it_speaks_aloud": "बोलकर सुनाते समय सहायक की आवाज़ कैसी हो।",
+	"ui.settings.speech.speech_section.speech_settings_could_not_be_loaded": "बोलने की सेटिंग्स लोड नहीं हो सकीं।",
+	"ui.settings.speech.speech_section.nothing_yet": "अभी कुछ नहीं",
+	"ui.settings.speech.speech_section.no_provider": "कोई प्रोवाइडर नहीं",
+	"ui.settings.speech.speech_section.available": "(उपलब्ध)",
+	"ui.settings.speech.speech_section.not_available": "(उपलब्ध नहीं)",
+	"ui.settings.speech.speech_settings_model.radient_pass": "Radient Pass",
+	"ui.settings.speech.speech_settings_model.no_provider": "कोई प्रोवाइडर नहीं",
+	"ui.settings.speech.speech_section.copy_backend_older_sentence": "यह बैकएंड आवाज़ का सरफ़ेस उपलब्ध नहीं कराता। सहायक की आवाज़ बदलने के लिए बैकएंड अपडेट करें।",
+	"ui.settings.speech.speech_section.copy_unavailable_sentence": "बोलने की उपलब्धता पढ़ी नहीं जा सकी।",
+	"ui.settings.speech.speech_section.ready": "तैयार",
+	"ui.settings.speech.speech_section.missing_voice_rows": "{count, plural, one {यह बैकएंड अभी {rows} रजिस्टर नहीं करता, इसलिए वह पंक्ति नहीं दिखाई जाती।} other {यह बैकएंड अभी {rows} रजिस्टर नहीं करता, इसलिए वे पंक्तियाँ नहीं दिखाई जातीं।}}"
+}

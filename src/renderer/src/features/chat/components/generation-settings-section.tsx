@@ -11,6 +11,8 @@ import type {
 import { EditableField } from "@shared/components/common/editable-field";
 import { SliderSetting } from "@shared/components/common/slider-setting";
 import { Button, Tooltip } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import type { UseMutationResult } from "@tanstack/react-query";
 import { Info, Settings, SlidersHorizontal } from "lucide-react";
@@ -69,6 +71,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 	refetchAgent,
 	updateAgentMutation,
 }) => {
+	useI18nLocale();
 	return (
 		/*
 		 * `gap-4` on the container, not margins on the rows: `SliderSetting`,
@@ -79,17 +82,17 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 		<div className="flex flex-col gap-4 pt-6">
 			<div>
 				<h3 className="flex items-center font-semibold text-heading text-ink">
-					<span className="mr-2 flex items-center rounded-sm bg-accent-wash p-1 text-accent">
+					<span className="me-2 flex items-center rounded-sm bg-accent-wash p-1 text-accent">
 						<SlidersHorizontal size={16} aria-hidden="true" />
 					</span>
-					Generation settings
-					<Tooltip content="Settings that control how the agent generates responses">
+					{t("ui.agents.settings.chat.generation_settings")}
+					<Tooltip content={t("ui.agents.settings.chat.generation_tooltip")}>
 						<Button
 							variant="ghost"
 							size="icon-sm"
 							type="button"
-							className="ml-1 text-accent"
-							aria-label="More info"
+							className="ms-1 text-accent"
+							aria-label={t("ui.common.actions.more_info")}
 						>
 							<Info aria-hidden="true" />
 						</Button>
@@ -97,17 +100,17 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 				</h3>
 
 				<p className="mt-1 text-body-sm text-ink-muted">
-					You can set custom values for these settings by updating the options
-					below. If not set, default values will be used that are optimized
-					based on user testing.
+					{t("ui.agents.settings.chat.set_custom_values_note")}
 				</p>
 			</div>
 
 			{/* Temperature Setting */}
 			{agent.temperature === null ? (
 				<UnsetSliderSetting
-					label="Temperature"
-					description="Controls randomness in responses (0.0-1.0). Higher values make output more random."
+					label={t("ui.agents.settings.chat.temperature")}
+					description={t(
+						"ui.agents.settings.chat.controls_randomness_in_responses_0_0_1",
+					)}
 					defaultValue={0.2}
 					onSetValue={async (value) => {
 						await updateAgentSetting(
@@ -124,8 +127,10 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			) : (
 				<SliderSetting
 					value={agent.temperature ?? 0.2}
-					label="Temperature"
-					description="Controls randomness in responses (0.0-1.0). Higher values make output more random."
+					label={t("ui.agents.settings.chat.temperature")}
+					description={t(
+						"ui.agents.settings.chat.controls_randomness_in_responses_0_0_1",
+					)}
 					min={0}
 					max={1}
 					step={0.01}
@@ -147,8 +152,10 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			{/* Top P Setting */}
 			{agent.top_p === null ? (
 				<UnsetSliderSetting
-					label="Top P"
-					description="Controls cumulative probability of tokens to sample from (0.0-1.0)."
+					label={t("ui.agents.settings.chat.top_p")}
+					description={t(
+						"ui.agents.settings.chat.controls_cumulative_probability_of_tokens_to_sample",
+					)}
 					defaultValue={0.9}
 					onSetValue={async (value) => {
 						await updateAgentSetting(
@@ -165,8 +172,10 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			) : (
 				<SliderSetting
 					value={agent.top_p ?? 0.9}
-					label="Top P"
-					description="Controls cumulative probability of tokens to sample from (0.0-1.0)."
+					label={t("ui.agents.settings.chat.top_p")}
+					description={t(
+						"ui.agents.settings.chat.controls_cumulative_probability_of_tokens_to_sample",
+					)}
 					min={0}
 					max={1}
 					step={0.01}
@@ -188,8 +197,10 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			{/* Top K Setting */}
 			{agent.top_k === null ? (
 				<UnsetSliderSetting
-					label="Top K"
-					description="Limits tokens to sample from at each step."
+					label={t("ui.agents.settings.chat.top_k")}
+					description={t(
+						"ui.agents.settings.chat.limits_tokens_to_sample_from_at_each",
+					)}
 					defaultValue={40}
 					onSetValue={async (value) => {
 						await updateAgentSetting(
@@ -206,8 +217,10 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			) : (
 				<SliderSetting
 					value={agent.top_k ?? 40}
-					label="Top K"
-					description="Limits tokens to sample from at each step."
+					label={t("ui.agents.settings.chat.top_k")}
+					description={t(
+						"ui.agents.settings.chat.limits_tokens_to_sample_from_at_each",
+					)}
 					min={1}
 					max={100}
 					step={1}
@@ -229,8 +242,10 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			{/* Max Tokens Setting */}
 			{agent.max_tokens === null ? (
 				<UnsetSliderSetting
-					label="Max tokens"
-					description="Maximum tokens to generate in response."
+					label={t("ui.agents.settings.chat.max_tokens")}
+					description={t(
+						"ui.agents.settings.chat.maximum_tokens_to_generate_in_response",
+					)}
 					defaultValue={4096}
 					onSetValue={async (value) => {
 						await updateAgentSetting(
@@ -247,8 +262,10 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			) : (
 				<SliderSetting
 					value={agent.max_tokens ?? 4096}
-					label="Max tokens"
-					description="Maximum tokens to generate in response."
+					label={t("ui.agents.settings.chat.max_tokens")}
+					description={t(
+						"ui.agents.settings.chat.maximum_tokens_to_generate_in_response",
+					)}
 					min={1}
 					max={8192}
 					step={1}
@@ -270,11 +287,13 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			{/* Stop Sequences Setting */}
 			{agent.stop === null ? (
 				<UnsetTextSetting
-					label="Stop sequences"
-					description="Sequences that will cause the model to stop generating text."
+					label={t("ui.agents.settings.chat.stop_sequences")}
+					description={t(
+						"ui.agents.settings.chat.sequences_that_will_cause_the_model_to",
+					)}
 					defaultValue={[]}
 					defaultDisplayText="empty"
-					icon={<Settings size={16} className="mr-2.5" aria-hidden="true" />}
+					icon={<Settings size={16} className="me-2.5" aria-hidden="true" />}
 					onSetValue={async () => {
 						await updateAgentSetting(
 							"stop",
@@ -290,8 +309,10 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			) : (
 				<EditableField
 					value={agent.stop?.join("\n") || ""}
-					label="Stop sequences"
-					placeholder="Enter stop sequences (one per line)..."
+					label={t("ui.agents.settings.chat.stop_sequences")}
+					placeholder={t(
+						"ui.agents.settings.chat.enter_stop_sequences_one_per_line",
+					)}
 					icon={<Settings size={16} />}
 					multiline
 					rows={3}
@@ -319,8 +340,10 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			{/* Frequency Penalty Setting */}
 			{agent.frequency_penalty === null ? (
 				<UnsetSliderSetting
-					label="Frequency penalty"
-					description="Reduces repetition by lowering likelihood of repeated tokens (-2.0 to 2.0)."
+					label={t("ui.agents.settings.chat.frequency_penalty")}
+					description={t(
+						"ui.agents.settings.chat.reduces_repetition_by_lowering_likelihood_of_repeated",
+					)}
 					defaultValue={0}
 					onSetValue={async (value) => {
 						await updateAgentSetting(
@@ -337,8 +360,10 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			) : (
 				<SliderSetting
 					value={agent.frequency_penalty ?? 0}
-					label="Frequency penalty"
-					description="Reduces repetition by lowering likelihood of repeated tokens (-2.0 to 2.0)."
+					label={t("ui.agents.settings.chat.frequency_penalty")}
+					description={t(
+						"ui.agents.settings.chat.reduces_repetition_by_lowering_likelihood_of_repeated",
+					)}
 					min={-2}
 					max={2}
 					step={0.01}
@@ -360,8 +385,10 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			{/* Presence Penalty Setting */}
 			{agent.presence_penalty === null ? (
 				<UnsetSliderSetting
-					label="Presence penalty"
-					description="Increases diversity by lowering likelihood of prompt tokens (-2.0 to 2.0)."
+					label={t("ui.agents.settings.chat.presence_penalty")}
+					description={t(
+						"ui.agents.settings.chat.increases_diversity_by_lowering_likelihood_of_prompt",
+					)}
 					defaultValue={0}
 					onSetValue={async (value) => {
 						await updateAgentSetting(
@@ -378,8 +405,10 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			) : (
 				<SliderSetting
 					value={agent.presence_penalty ?? 0}
-					label="Presence penalty"
-					description="Increases diversity by lowering likelihood of prompt tokens (-2.0 to 2.0)."
+					label={t("ui.agents.settings.chat.presence_penalty")}
+					description={t(
+						"ui.agents.settings.chat.increases_diversity_by_lowering_likelihood_of_prompt",
+					)}
 					min={-2}
 					max={2}
 					step={0.01}
@@ -401,11 +430,13 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			{/* Seed Setting */}
 			{agent.seed === null ? (
 				<UnsetTextSetting
-					label="Seed"
-					description="Random number seed for deterministic generation."
+					label={t("ui.agents.settings.chat.seed")}
+					description={t(
+						"ui.agents.settings.chat.random_number_seed_for_deterministic_generation",
+					)}
 					defaultValue={42}
 					defaultDisplayText="42"
-					icon={<Settings size={16} className="mr-2.5" aria-hidden="true" />}
+					icon={<Settings size={16} className="me-2.5" aria-hidden="true" />}
 					onSetValue={async () => {
 						await updateAgentSetting(
 							"seed",
@@ -421,8 +452,10 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			) : (
 				<EditableField
 					value={agent.seed?.toString() || ""}
-					label="Seed"
-					placeholder="Random number seed for deterministic generation"
+					label={t("ui.agents.settings.chat.seed")}
+					placeholder={t(
+						"ui.agents.settings.chat.random_number_seed_for_deterministic_generation",
+					)}
 					icon={<Settings size={16} />}
 					isSaving={savingField === "seed"}
 					onSave={async (value) => {
@@ -432,7 +465,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 
 						// Validate that the seed is a valid number if provided
 						if (value.trim() && Number.isNaN(seedValue as number)) {
-							showErrorToast("Seed must be a valid number");
+							showErrorToast(t("ui.notices.chat.seed_invalid"));
 							return;
 						}
 

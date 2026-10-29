@@ -1,0 +1,94 @@
+{
+	"ui.chat.attachments.pending_caption": {
+		"role": "caption under the composer chip row",
+		"tone": "short state phrase, sentence case",
+		"note": "The chips are staged, not sent. States the composer row is pending so a reader cannot mistake it for a sent file card."
+	},
+	"ui.chat.attachments.file_meta": {
+		"role": "type and size line on a file card",
+		"tone": "machine facts, middle dot separator, no sentence",
+		"note": "Preserve the separator and both placeholders. type is a short uppercase extension (PDF, MD); size is a formatted byte count."
+	},
+	"ui.chat.attachments.file_missing": {
+		"role": "existence verdict on a sent file card",
+		"tone": "two-word verdict, sentence case",
+		"note": "Shown when the origin path no longer exists on this machine. The recovery line follows it; this verdict must read as a fact about the original file, not as an error about the message."
+	},
+	"ui.chat.attachments.file_retained": {
+		"role": "retained-copy line under the missing verdict",
+		"tone": "one sentence",
+		"note": "Diagnostic detail shown in the recovery line's tooltip, not the default sentence (design round 1, D2). digest is the attachment store content address; do not translate or shorten the placeholder."
+	},
+	"ui.chat.attachments.file_unnamed": {
+		"role": "filename fallback on a file card",
+		"tone": "short noun phrase",
+		"note": "Only when a document block carried no filename."
+	},
+	"ui.chat.attachments.copy_path": {
+		"role": "accessible name of the copy control beside a sent file path",
+		"tone": "short imperative, sentence case",
+		"note": "Copies the full absolute path, not the truncated line shown on screen."
+	},
+	"ui.chat.attachments.path_copied": {
+		"role": "confirmation for the path copy control",
+		"tone": "short state phrase, sentence case",
+		"note": "Announced politely for two seconds after a successful copy; not a toast."
+	},
+	"ui.chat.attachments.file_missing_recovery": {
+		"role": "line under the missing verdict when the row has NO store path",
+		"tone": "one short sentence, sentence case",
+		"note": "The origin file is gone. Do not claim a saved copy here: without a store path the card cannot name or copy one (design round 2, D2)."
+	},
+	"ui.chat.attachments.file_type_unknown": {
+		"role": "type fallback on a file card with no readable extension or MIME subtype",
+		"tone": "single noun, sentence case",
+		"note": "Only when neither the filename nor the MIME type names a type."
+	},
+	"ui.chat.attachments.copy_saved_path": {
+		"role": "accessible name of the copy control in the missing state",
+		"tone": "short imperative, sentence case",
+		"note": "Copies the STORE path of the retained copy, not the origin path that no longer exists. Shown only when the row carries a store path."
+	},
+	"ui.chat.attachments.saved_path_copied": {
+		"role": "confirmation for the saved-copy copy control",
+		"tone": "short state phrase, sentence case",
+		"note": "Announced politely for two seconds after a successful copy of the retained copy's store path."
+	},
+	"ui.chat.attachments.saved_copy_label": {
+		"role": "label on the saved-copy row of a missing file card",
+		"tone": "short noun phrase, sentence case",
+		"note": "Introduces the attachment store path of the retained copy, which follows on the same row beside a copy control."
+	},
+	"ui.chat.attachments.file_and_copy_missing": {
+		"role": "status",
+		"tone": "Plain, concise product language; preserve placeholders exactly.",
+		"note": "Under 'Moved or deleted' on a sent file card: neither the original file nor the app's retained copy exists any more."
+	},
+	"ui.chat.attachments.open": {
+		"role": "link label",
+		"tone": "plain",
+		"note": "Opens an attachment this app cannot preview."
+	},
+	"ui.chat.attachments.playback_position": {
+		"role": "slider name",
+		"tone": "plain",
+		"note": "The audio attachment's seek bar."
+	},
+	"ui.chat.attachments.playback_rate": {
+		"role": "select name",
+		"tone": "plain"
+	},
+	"ui.chat.attachments.playback_rate_option": {
+		"role": "select option",
+		"tone": "plain",
+		"note": "The multiplier sign stays beside the number in every language; do not spell the word 'times'.",
+		"placeholders": {
+			"rate": "A multiplier such as 0.5, 1, 1.5 or 2."
+		}
+	},
+	"ui.chat.attachments.volume": {
+		"role": "slider name",
+		"tone": "plain",
+		"note": "The audio attachment's volume slider."
+	}
+}

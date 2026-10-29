@@ -307,6 +307,7 @@ const SignedIn: FC<{
 	brand: string;
 	verb: "Signed in to" | "Connected";
 	defaults: DefaultsApplied | null | undefined;
+	retainedNotice?: string | null;
 	unverified?: string | null;
 	onChangeModel?: () => void;
 	actionLabel: string;
@@ -340,6 +341,7 @@ const SignedIn: FC<{
 	brand,
 	verb,
 	defaults,
+	retainedNotice,
 	unverified,
 	onChangeModel,
 	actionLabel,
@@ -449,6 +451,16 @@ const SignedIn: FC<{
 					{t(
 						"ui.providers.provider_detail.the_sign_in_itself_finished_what_follows",
 					)}
+				</p>
+			) : null}
+			{retainedNotice?.trim() ? (
+				// Record references belong on separate lines; preserve the trusted
+				// indentation while allowing long tokens to wrap in narrow panels.
+				<p
+					className="min-w-0 whitespace-pre-wrap text-body-sm text-ink-muted [overflow-wrap:anywhere]"
+					data-retained-notice
+				>
+					{retainedNotice}
 				</p>
 			) : null}
 			{defaults?.receipt || defaults?.model_name ? (
@@ -1478,6 +1490,13 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 				brand={brand}
 				verb="Signed in to"
 				defaults={operation.defaults_applied}
+				// Recovery copy belongs to this successful Radient operation only;
+				// a generic message can contain provider diagnostics, not this receipt.
+				retainedNotice={
+					provider.id === "radient" && operation.provider === "radient"
+						? operation.retained_notice
+						: undefined
+				}
 				onChangeModel={onChangeModel}
 				// A completed OAuth operation is not a working grant. The refused
 				// Radient row still needs the existing re-auth flow; Done alone

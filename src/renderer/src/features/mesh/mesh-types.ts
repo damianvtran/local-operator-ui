@@ -45,6 +45,25 @@
 
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import { t } from "../../../../i18n/messages";
+import type {
+	PeerAttempt,
+	PeerLinkFacts,
+	PeerLinkState,
+	PeerRelayState,
+} from "../../../../shared/desktop-session-contract";
+
+/*
+ * The peer LINK vocabulary is the shared contract's (see
+ * `desktop-session-contract.ts`), re-exported here because this file is the
+ * feature's public wire-shape module: every mesh consumer imports the shapes from
+ * one place, and a second definition beside the contract is how the two dialects
+ * would drift apart.
+ */
+export type {
+	PeerAttempt,
+	PeerLinkState,
+	PeerRelayState,
+} from "../../../../shared/desktop-session-contract";
 
 /* ------------------------------------------------------------- coercions */
 
@@ -62,6 +81,16 @@ export function textOrNull(value: unknown): string | null {
 /** Epoch seconds, or `null`. Rejects `NaN`/`Infinity`, which `typeof` allows. */
 export function time(value: unknown): number | null {
 	return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+/** A nullable whole count: absence is not a measured zero. */
+export function nullableCount(value: unknown): number | null {
+	return typeof value === "number" &&
+		Number.isFinite(value) &&
+		value >= 0 &&
+		Number.isInteger(value)
+		? value
+		: null;
 }
 
 /** A whole count, or `0`. Negative and fractional answers are not counts. */
@@ -104,7 +133,7 @@ function records(value: unknown): Record<string, unknown>[] {
  * as given, that would draw two React children with one key at every reader of this
  * list.
  */
-export type PeerRow = {
+export type PeerRow = PeerLinkFacts & {
 	device_id: string;
 	name: string;
 	/** True when ANY shared network reached it on this read. */
@@ -118,7 +147,14 @@ export type PeerRow = {
 	 * publishes about a device - `size_class` is unimplemented and `PeerRow` has no
 	 * `kind` - so it is what a node's size may be ranked by, and it is NOT capacity.
 	 */
-	session_count: number;
+	session_count: number | null;
+	/**
+	 * The relay's verdict on a LOST link it is redialling (core `network/redial.py`),
+	 * or absent when the backend predates it or the link is up. `reconnecting` holds
+	 * for the relay's grace window (90 s AND three failed redials); only `down` is an
+	 * escalation. Absent is "no claim", never "connected".
+	 */
+	redial?: PeerRedial;
 	/**
 	 * ALWAYS `null` in this build, and honestly so: no link records a round trip, and
 	 * the backend's own comment explains that the only way to fill this would be a
@@ -126,6 +162,30 @@ export type PeerRow = {
 	 */
 	rtt_ms: number | null;
 };
+
+export type PeerRedial = {
+	state: "reconnecting" | "down";
+	attempts: number;
+	/** The lost link's last frame, epoch seconds: the tooltip's "last seen". */
+	last_frame_at: number | null;
+	next_retry_at: number | null;
+	/** The last redial failure in the backend's words; `""` when none yet. */
+	last_error: string;
+};
+
+/** A redial block, or `undefined` for `connected`/unknown/malformed. */
+function redial(value: unknown): PeerRedial | undefined {
+	if (!isRecord(value)) return undefined;
+	const state = value.state;
+	if (state !== "reconnecting" && state !== "down") return undefined;
+	return {
+		state,
+		attempts: count(value.attempts),
+		last_frame_at: time(value.last_frame_at),
+		next_retry_at: time(value.next_retry_at),
+		last_error: text(value.last_error),
+	};
+}
 
 export type PeerList = {
 	peers: PeerRow[];
@@ -189,6 +249,78 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
+ * The link verdicts a CONFORMING backend may send.
+ *
+ * `unreachable_legacy` is deliberately absent: it is this client's fallback for a
+ * backend that predates `link_state`, and accepting it off the wire would let the
+ * backend claim a derivation only this reader is entitled to make.
+ */
+const WIRE_LINK_STATES: readonly PeerLinkState[] = [
+	"reachable",
+	"relay_down",
+	"address_unreachable",
+	"handshake_refused",
+	"not_attempted",
+	"no_endpoint",
+	"not_a_member",
+];
+
+/**
+ * A peer's link verdict, derived ONLY when the wire did not send one.
+ *
+ * The fallback is exactly as strong as the old boolean: reachable, or an
+ * unclassified failure. It deliberately does NOT try to read refused-vs-timeout
+ * out of the aggregate `unreachable_reason` string - that would turn a sentence
+ * into an observed transport fact, and an unrecognised sentence or a new spelling
+ * would silently become a diagnosis. An unrecognised `link_state` from a newer
+ * backend falls back for the same reason: absent and unknown are both "not known".
+ */
+function linkState(value: unknown, reachable: boolean): PeerLinkState {
+	const state = text(value);
+	if ((WIRE_LINK_STATES as readonly string[]).includes(state))
+		return state as PeerLinkState;
+	return reachable ? "reachable" : "unreachable_legacy";
+}
+
+const RELAY_STATES: readonly PeerRelayState[] = [
+	"running",
+	"not_listening",
+	"unknown",
+];
+
+/** The relay reading when the wire sent one; absent stays absent (not a guess). */
+function remoteRelay(value: unknown): PeerRelayState | undefined {
+	const state = text(value);
+	return (RELAY_STATES as readonly string[]).includes(state)
+		? (state as PeerRelayState)
+		: undefined;
+}
+
+/**
+ * The per-address attempts, normalised, or `undefined` when the field is absent.
+ *
+ * AN EMPTY ARRAY IS NOT THE SAME AS AN ABSENT FIELD: the first says the backend
+ * dialled nothing (or reported nothing it dialled), the second says this backend
+ * has no attempts vocabulary at all. The renderer treats both as "no evidence" and
+ * falls back to the older single sentence, but the distinction is preserved so a
+ * future surface can tell the two apart. Entries without an endpoint are dropped -
+ * they name no address and cannot be evidence for one.
+ */
+function linkAttempts(value: unknown): PeerAttempt[] | undefined {
+	if (!Array.isArray(value)) return undefined;
+	return value
+		.filter(isRecord)
+		.map((raw) => ({
+			endpoint: text(raw.endpoint),
+			/* `true` ONLY when the wire said so: a missing flag is not a connection. */
+			connected: raw.connected === true,
+			detail: text(raw.detail),
+			latency_ms: time(raw.latency_ms),
+		}))
+		.filter((attempt) => attempt.endpoint !== "");
+}
+
+/**
  * `GET /v1/desktop/peers`, normalised.
  *
  * DEDUPED BY DEVICE ID, kept from #498 (addendum 2, A) even though the backend now
@@ -208,13 +340,22 @@ export function peerList(value: unknown): PeerList {
 		// claim with it, and neither value is "I do not know".
 		if (typeof raw.reachable !== "boolean") continue;
 		seen.add(deviceId);
+		const relay = remoteRelay(raw.remote_relay);
+		const attempts = linkAttempts(raw.attempts);
+		const redialing = raw.reachable ? undefined : redial(raw.redial);
 		peers.push({
 			device_id: deviceId,
 			name: text(raw.name),
 			reachable: raw.reachable,
+			// Always present on a normalised row: an absent wire verdict is DERIVED as
+			// `reachable`/`unreachable_legacy`, never left as a silent default.
+			link_state: linkState(raw.link_state, raw.reachable),
+			...(relay ? { remote_relay: relay } : {}),
+			...(attempts ? { attempts } : {}),
+			...(redialing ? { redial: redialing } : {}),
 			unreachable_reason: textOrNull(raw.unreachable_reason ?? raw.reason),
 			last_seen_at: time(raw.last_seen_at),
-			session_count: count(raw.session_count),
+			session_count: nullableCount(raw.session_count),
 			rtt_ms: time(raw.rtt_ms),
 		});
 	}
@@ -341,6 +482,9 @@ export type MeshSessionRow = {
 		label: string | null;
 		session: string | null;
 	};
+	active?: boolean;
+	waiting_on?: number | null;
+	jobs_running?: number | null;
 	subagents_running?: number | null;
 	subagents_queued?: number | null;
 };
@@ -440,8 +584,11 @@ export function sessionRows(value: unknown): MeshSessionRow[] {
 			archived: flag(raw.archived, false),
 			created_at: time(raw.created_at),
 			pinned: flag(raw.pinned, false),
-			subagents_running: time(raw.subagents_running),
-			subagents_queued: time(raw.subagents_queued),
+			...(typeof raw.active === "boolean" ? { active: raw.active } : {}),
+			waiting_on: nullableCount(raw.waiting_on),
+			jobs_running: nullableCount(raw.jobs_running),
+			subagents_running: nullableCount(raw.subagents_running),
+			subagents_queued: nullableCount(raw.subagents_queued),
 			...(status ? { status } : {}),
 			...(binding ? { binding } : {}),
 			...(openedBy ? { opened_by: openedBy } : {}),
@@ -563,6 +710,15 @@ export type MeshRefusal = {
 	code: string;
 	/** The route's OWN sentence. Never paraphrased, never composed over. */
 	sentence: string;
+	/**
+	 * The reach word of the device the refusal is about, when this client synthesised
+	 * the refusal with that device in hand (`mesh-drop.ts`'s pre-flight refusals).
+	 * Absent on a refusal from the route: there the sentence is the route's own, and
+	 * this client has no reach reading to add. The notice shows this in place of the
+	 * machine `code` when present, so `relay not running` and `address unreachable`
+	 * do not both arrive as the single word `unreachable`.
+	 */
+	reach?: string;
 	status: number | null;
 	/** True when the outcome is unknown and the request must not be repeated. */
 	unconfirmed: boolean;
@@ -589,7 +745,7 @@ export function meshRefusal(error: unknown): MeshRefusal {
 	const status = typeof held?.status === "number" ? held.status : null;
 	return {
 		code,
-		sentence: text(held?.message) || "the move was refused",
+		sentence: text(held?.message) || t("ui.mesh.errors.move_refused"),
 		status,
 		// A 503 IS the unconfirmed answer whatever code it carries, and a code with no
 		// status is one this process synthesised (the renderer's own deadline), which is
@@ -618,6 +774,52 @@ export function deviceLabel(device: {
 	return t("ui.mesh.mesh_types.device_suffix", {
 		suffix: text(device.device_id).slice(-6),
 	});
+}
+
+/**
+ * The name half of the security identity: real names are quoted, absence is not.
+ * JSON quoting also prevents a stored quote or newline from forging a second row.
+ */
+export function deviceDisplayName(device: { name?: string }): string {
+	const name = text(device.name);
+	return name ? JSON.stringify(name) : t("ui.mesh.mesh_types.unnamed_device");
+}
+
+/**
+ * A compact id that is unique within the graph being painted, not merely short.
+ * Eight leading hex digits are the normal budget; a shared prefix widens only the
+ * colliding ids until they differ. Without the displayed graph there is no sound
+ * way to abbreviate, so the full id is the fail-safe rather than a 32-bit guess.
+ */
+export function compactDeviceId(
+	deviceId: string,
+	displayedDeviceIds?: readonly string[],
+): string {
+	const id = text(deviceId);
+	if (!displayedDeviceIds) return id;
+	const others = displayedDeviceIds
+		.map(text)
+		.filter((candidate) => candidate.length > 0 && candidate !== id);
+	let length = Math.min(10, id.length);
+	while (
+		length < id.length &&
+		others.some((candidate) => candidate.startsWith(id.slice(0, length)))
+	) {
+		length += 1;
+	}
+	return length < id.length ? `${id.slice(0, length)}…` : id;
+}
+
+/** The one inline name+id spelling used by sentences, menus and dialogs. */
+export function deviceIdentityText(
+	device: { id: string; name?: string },
+	displayedDeviceIds?: readonly string[],
+	compact = false,
+): string {
+	const id = compact
+		? compactDeviceId(device.id, displayedDeviceIds)
+		: text(device.id);
+	return `${deviceDisplayName(device)} ${id}`;
 }
 
 /** A network's display label: its name, else the id's tail. */

@@ -38,7 +38,10 @@
  */
 
 import { retryDesktopQuery } from "@shared/api/local-operator/backend-error";
-import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import {
+	DesktopControlError,
+	desktopResult,
+} from "@shared/api/local-operator/desktop-api";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { useQuery } from "@tanstack/react-query";
 import type { PendingAsk } from "../../../../shared/desktop-session-contract";
@@ -209,16 +212,25 @@ export const FLEET_ASKS_UNAVAILABLE_FRONTEND: FleetAskFrontend = Object.freeze({
 
 /**
  * The drawer's frame for one state of the fleet read: the rows once it answers,
- * {@link FLEET_ASKS_UNAVAILABLE_FRONTEND} once it failed with no answer in hand,
- * and `null` (unread) while it is in flight. One function, so the hook and a test
+ * {@link FLEET_ASKS_UNAVAILABLE_FRONTEND} when the ROUTE ITSELF IS ABSENT, and
+ * `null` (unread) while it is in flight. One function, so the hook and a test
  * read the same three-way answer.
+ *
+ * WHY THE SECOND ARGUMENT IS `routeMissing` AND NOT `failed` (the resumed-ask
+ * fix, `session-asks.ts`). A failure with no answer in hand is not proof the
+ * route does not exist: a 503 while the backend restarts, a 504 deadline, or a
+ * transport failure all resolve eventually, and the drawer words the unavailable
+ * frame as a permanent statement about the runtime ("This runtime doesn't
+ * support queued asks"). Only a 404 - the server answering that there is no
+ * such route - may make that claim; every other failure keeps the loading state
+ * so the pending read can still complete.
  */
 export function fleetAskFrontendFor(
 	rows: readonly PendingAsk[] | null,
-	failed: boolean,
+	routeMissing: boolean,
 ): FleetAskFrontend | null {
 	if (rows !== null) return fleetAskFrontend(rows);
-	return failed ? FLEET_ASKS_UNAVAILABLE_FRONTEND : null;
+	return routeMissing ? FLEET_ASKS_UNAVAILABLE_FRONTEND : null;
 }
 
 export function fleetAskFrontend(
@@ -374,6 +386,39 @@ export function fleetAskSessionFor(
 		: null;
 }
 
+/**
+ * Whether the AGGREGATE ROUTE exists, as the read's own three-way answer.
+ *
+ * It is separate from `rows` because the two facts are learned at different
+ * moments: `rows === null` means only "no answer in hand yet", and a failure
+ * still has to be classified before any surface may call the runtime unsupported.
+ * `absent` is a 404 and nothing else; a 5xx/504/transport failure stays `unknown`,
+ * which is a read that may still resolve.
+ */
+export type FleetAsksCapability = "live" | "absent" | "unknown";
+
+/**
+ * THE ROUTE-EXISTENCE VERDICT, as a pure function so both directions are driven
+ * by a test rather than by the hook's closure (review R1-4).
+ *
+ * The split is the whole capability contract: only a 404 - the server saying
+ * there is no such route - may let a surface call this runtime unsupported.
+ * A 503 while the backend restarts, a 504 deadline, or a transport failure that
+ * never produced a response are all reads that may still answer, and reading
+ * them as absence would park the drawer's permanent "doesn't support queued
+ * asks" over a runtime that does. An answer in hand outranks a later failed
+ * refetch: `rows` non-null is `live` even while an error is set.
+ */
+export function fleetAsksCapability(
+	rows: readonly PendingAsk[] | null,
+	error: unknown,
+): FleetAsksCapability {
+	if (rows !== null) return "live";
+	return error instanceof DesktopControlError && error.status === 404
+		? "absent"
+		: "unknown";
+}
+
 /** What `useFleetAsks` answers: the rows, the badge count, and whether the route exists. */
 export type FleetAsks = {
 	/**
@@ -387,10 +432,17 @@ export type FleetAsks = {
 	outstanding: number;
 	/**
 	 * The drawer's own prop: `null` while the read is in flight, the rows once it
-	 * answers, and {@link FLEET_ASKS_UNAVAILABLE_FRONTEND} when it failed with no
-	 * answer in hand.
+	 * answers, and {@link FLEET_ASKS_UNAVAILABLE_FRONTEND} only when the route
+	 * itself answered 404. A transient failure stays `null` (unread): the drawer's
+	 * unavailable sentence is a claim about the runtime, and only absence of the
+	 * route substantiates it.
 	 */
 	frontend: FleetAskFrontend | null;
+	/**
+	 * The route's own three-way fact, so a caller resolving a SESSION frame can
+	 * tell a 404 from a read that has not answered (`session-asks.ts`).
+	 */
+	capability: FleetAsksCapability;
 	/** One row, by id, with its own conversation - the answer path's lookup. */
 	rowFor: (askId: string) => PendingAsk | null;
 };
@@ -412,22 +464,47 @@ export function useFleetAsks(): FleetAsks {
 			queryFn: async () =>
 				fleetAskRows(await desktopResult({ op: "asks.list" })),
 			/*
-			 * NO STALE WINDOW: the previous answer is what the badge was showing, and
-			 * the point of the poll is to move it. Zero here means a remount (a route
-			 * change) re-asks rather than repainting a count that may be a whole
-			 * interval old.
+			 * THE POLL IS THE FRESHNESS OWNER, AND A REMOUNT IS A REPAINT (the
+			 * resumed-ask fix). Opening a conversation, or the drawer over it, used to
+			 * remount this read into `staleTime: 0` + the default `refetchOnMount`, so
+			 * the surface started a COLD aggregate fetch exactly when the user was
+			 * waiting for rows - and the count it painted was whatever the previous
+			 * answer happened to hold until that fetch landed.
+			 *
+			 * `staleTime` is one poll interval: an answer is fresh for exactly as long
+			 * as the poll needs to replace it, so a remount inside the window paints
+			 * the cache instead of asking again, and a remount after it still paints
+			 * the cache (see `refetchOnMount`) while the 10 s poll catches up. The
+			 * interval stays the single cadence that moves the badge, which is what
+			 * makes "the count the drawer opens on" the same number the badge was
+			 * already showing.
 			 */
-			staleTime: 0,
+			staleTime: FLEET_ASKS_POLL_MS,
+			/*
+			 * NEVER FETCH ON MOUNT. With an answer in the cache this gives an immediate
+			 * paint; with none it still runs the query (React Query has no data to
+			 * serve). `refetchOnWindowFocus` is deliberately left on: a stale answer
+			 * restored after the window was away is worth one re-ask.
+			 */
+			refetchOnMount: false,
 			retry: retryDesktopQuery,
 			refetchInterval: FLEET_ASKS_POLL_MS,
 		},
 		client,
 	);
 	const rows = query.data ?? null;
+	/*
+	 * `retryDesktopQuery` has already spent its budget by the time
+	 * `query.error` is set, so a failure reaching here is settled enough to
+	 * classify - but the classification itself lives in `fleetAsksCapability`,
+	 * where a test can drive the 404 and non-404 directions without a hook.
+	 */
+	const capability = fleetAsksCapability(rows, query.error);
 	return {
 		rows,
 		outstanding: rows === null ? 0 : fleetAsksOutstanding(rows),
-		frontend: fleetAskFrontendFor(rows, query.isError),
+		capability,
+		frontend: fleetAskFrontendFor(rows, capability === "absent"),
 		rowFor: (askId) =>
 			rows === null ? null : (rows.find((row) => row.ask_id === askId) ?? null),
 	};

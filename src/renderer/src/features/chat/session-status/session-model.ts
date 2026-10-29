@@ -33,6 +33,7 @@
  * is what makes the segment's presence informative.
  */
 
+import { t } from "@shared/i18n";
 import type {
 	CanonicalEffectiveAccessState,
 	CanonicalFrontendState,
@@ -335,6 +336,83 @@ export function effortLevel(
 			return field.trim().toLowerCase();
 	}
 	return null;
+}
+
+/**
+ * The sentence that explains why the effort chip shows a level the user did
+ * not choose, or `null` when the choice is the level in force.
+ *
+ * WHY THIS EXISTS (operator report, 2026-10-21): a session set to `Max` showed
+ * `High` after a message with no explanation. The chip reads the EFFECTIVE spec
+ * on purpose (see this file's header), and a fallback route serving at its own
+ * level is a correct `High`. But a correct value with no reason looks like the
+ * dial moving on its own. The backend already states the reason
+ * (`effort_displacement`, the same sentence the TUI prints as a notice). Until
+ * now no desktop surface read it.
+ *
+ * The backend composes `note` once, so every client says the same words. The
+ * sentence is never re-derived from `chosen`/`effective`. One substitution is
+ * made: the two `provider/model_id` labels inside it are replaced with the
+ * models' own `display_name` when the frame carries one for that exact pair
+ * (design review: a raw slug beside the model chip's curated name reads as a
+ * second vocabulary for one model). The pair must match exactly, so a name is
+ * never put on a model it does not describe. A frame that carries a block
+ * without a usable `note`, or an older host that sends nothing, is `null`: no
+ * claim, and the chip renders exactly as before.
+ */
+export function effortDisplacementNote(
+	frontend: CanonicalFrontendState | null | undefined,
+): string | null {
+	const block = frontend?.effort_displacement;
+	const raw = block?.note;
+	if (typeof raw !== "string" || !raw.trim()) return null;
+	const labels = new Map<string, string>();
+	for (const spec of [frontend?.effective_model, frontend?.selected_model]) {
+		const name =
+			typeof spec?.display_name === "string" ? spec.display_name.trim() : "";
+		if (!spec || !name || !spec.provider || !spec.model_id) continue;
+		const slug = `${spec.provider}/${spec.model_id}`;
+		if (slug !== block?.serving && slug !== block?.selected) continue;
+		labels.set(slug, name);
+	}
+	if (!labels.size) return raw.trim();
+	// Match whole identifiers in ONE pass (review R1): `p/m` must never eat
+	// `p/m-mini`, and a display name containing another slug is prose, not a
+	// second substitution target. Sentence punctuation delimits the producer's
+	// identifiers; a dot inside a model id is not a delimiter.
+	const escaped = [...labels.keys()]
+		.sort((a, b) => b.length - a.length)
+		.map((slug) => slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+	const occurrences = new RegExp(
+		`(^|[\\s(])(${escaped.join("|")})(?=$|[\\s;,)\\]}]|\\.(?=\\s|$))`,
+		"g",
+	);
+	return raw
+		.trim()
+		.replace(
+			occurrences,
+			(_match, before, slug) => `${before}${labels.get(slug)}`,
+		);
+}
+
+/**
+ * The rung the conversation CHOSE while a displacement is in force, or `null`.
+ *
+ * The `/effort` picker marks the rung it would change. Its live reading is the
+ * EFFECTIVE spec (the status chip's field, so the two agree after a switch).
+ * While a fallback serves at another level, though, that reading is the level
+ * in force (`High`), not the selection (`Max`). The picker then ticked a rung
+ * the user never picked, and re-picking `Max` looked like a change. The
+ * backend's `chosen` is the conversation's own choice, so it outranks the live
+ * reading exactly while a displacement is published.
+ */
+export function effortChosenRung(
+	frontend: CanonicalFrontendState | null | undefined,
+): string | null {
+	const chosen = frontend?.effort_displacement?.chosen;
+	return typeof chosen === "string" && chosen.trim()
+		? chosen.trim().toLowerCase()
+		: null;
 }
 
 /**
@@ -941,11 +1019,13 @@ export function modelAccessPresentation(access: ModelAccessReading): {
 		? readings[effectiveState]
 		: [
 				legacyUnavailable
-					? `${label} is temporarily unavailable`
-					: `Not signed in to ${label}`,
+					? t("ui.chat.session_status.temporarily_unavailable", { label })
+					: t("ui.chat.session_status.not_signed_in", { label }),
 				legacyUnavailable
-					? "Your saved sign-in is still present. Try again later or choose another model."
-					: `This session runs ${label} without a working sign-in, so it cannot answer until you connect it.`,
+					? t("ui.chat.session_status.temporarily_unavailable_description")
+					: t("ui.chat.session_status.not_signed_in_description", {
+							label,
+						}),
 			];
 	const context: string[] = [];
 	if (effectiveState && access.observedAt !== undefined) {

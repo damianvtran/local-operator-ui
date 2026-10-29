@@ -40,6 +40,8 @@
  */
 
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { CircleCheck } from "lucide-react";
 import { type FC, type ReactNode, useRef } from "react";
@@ -229,6 +231,7 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 	group = null,
 	episode = null,
 }) => {
+	useI18nLocale();
 	/*
 	 * The count clause and the sentence behind it, derived once: the visible words
 	 * carry the marker the model's `partial` fact asks for, and the title/name say
@@ -268,6 +271,22 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 			?.focus();
 		onOpenChange(true);
 	};
+
+	/*
+	 * BACKSTOP: a bar with nothing to say is a bare check and chevron over an
+	 * expansion that shows nothing (a peer turn that ended on `no_reply`). The
+	 * plan declines to build one; this keeps any other path from painting it.
+	 */
+	if (
+		label === null &&
+		durationS === null &&
+		actionCount === 0 &&
+		group === null &&
+		episode === null &&
+		mediaCount === 0
+	) {
+		return null;
+	}
 
 	return (
 		<div
@@ -333,7 +352,7 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 					 * slot's pull are laid out from — stays exactly where it was; either
 					 * half alone would move the chevron 8px.
 					 */
-					"-ml-2 -mr-2 w-[calc(100%+1rem)] rounded-sm pl-2 pr-6",
+					"-ms-2 -me-2 w-[calc(100%+1rem)] rounded-sm ps-2 pe-6",
 					"hover:bg-row-hover",
 				)}
 				/*
@@ -423,7 +442,13 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 											className="shrink-0 text-body-sm text-ink-muted"
 											title={partial ? actionClauseTitle : undefined}
 										>
-											{actionClause}
+											{/*
+											 * The clause is an English count (`1 action`) rendered inside the
+											 * locale's paragraph; isolated so an RTL base cannot reorder the
+											 * number and its noun (design round 1, D4b). Translation of these
+											 * two strings is a catalogue change and out of this round.
+											 */}
+											<bdi>{actionClause}</bdi>
 										</span>
 									</>
 								)}
@@ -472,7 +497,9 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 								)}
 								{durationS !== null && (
 									<span className={cn("shrink-0 text-body-sm text-ink-muted")}>
-										Took {formatDuration(durationS)}
+										{t("ui.chat.canonical.turn_summary.took", {
+											duration: formatDuration(durationS),
+										})}
 									</span>
 								)}
 								{durationS !== null && actionCount > 0 && <Dot />}
@@ -488,7 +515,7 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 										title={partial ? actionClauseTitle : undefined}
 										aria-label={partial ? actionClauseTitle : undefined}
 									>
-										{actionClause}
+										<bdi>{actionClause}</bdi>
 									</span>
 								)}
 							</>
@@ -522,7 +549,9 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 							 * off the AX tree. A second live region would say the same fact twice,
 							 * in a surface that already has one voice for the list.
 							 */
-							<span className={cn("sr-only")}>completed</span>
+							<span className={cn("sr-only")}>
+								{t("ui.chat.canonical.turn_summary.completed")}
+							</span>
 						)}
 						{stampTs !== null && (
 							/*
@@ -534,7 +563,7 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 							 * round 1, D6 measured the two: foot 1043 vs bar 1007; the value edge is
 							 * the one the design round judged better).
 							 */
-							<span className={cn("ml-auto")}>
+							<span className={cn("ms-auto")}>
 								<TurnTimestamp timestamp={stampTs} scope="answer" />
 							</span>
 						)}

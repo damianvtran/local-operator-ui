@@ -53,6 +53,8 @@
  */
 
 import { Spinner } from "@shared/components/common/spinner";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	audioEngineElement,
@@ -115,6 +117,7 @@ export const SoundPlayer = ({
 	variant = "full",
 	className,
 }: SoundPlayerProps) => {
+	useI18nLocale();
 	/*
 	 * The engine's status, read through this widget's identity: another row's
 	 * press (or the speech store's) must not paint this row's spinner.
@@ -447,6 +450,14 @@ export const SoundPlayer = ({
 	return (
 		<div
 			data-sound-player={variant}
+			/*
+			 * The observable form of the honest-flat rule: `flat` is the honest
+			 * scrubber drawn for absent/malformed peaks, `stored` is a real
+			 * envelope. Pixels cannot state which one a canvas holds (a JSDOM
+			 * canvas has no context), so the marker is what a test and a story
+			 * can assert without inventing a shape.
+			 */
+			data-sound-peaks={peaks ? "stored" : "flat"}
 			data-sound-status={
 				errored
 					? "error"
@@ -547,7 +558,7 @@ export const SoundPlayer = ({
 					data-sound-error=""
 					className={cn("shrink-0 text-meta text-ink-muted")}
 				>
-					This sound could not be played
+					{t("ui.chat.canonical.sound.player_failed")}
 				</span>
 			) : null}
 		</div>

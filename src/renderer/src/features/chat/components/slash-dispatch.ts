@@ -46,16 +46,20 @@ import {
 	useAidaResolver,
 	useAidaTarget,
 } from "@features/aida/use-aida-target";
-import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import {
+	type DesktopCapabilities,
+	desktopResult,
+} from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
+	desktopFeatureState,
 	desktopKeys,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+import { t } from "@shared/i18n";
 import { useAsideStore } from "@shared/store/aside-store";
 import {
-	SEND_FAILURE_COPY,
 	admitChatDraft,
 	composerIdentityFor,
 	isRefusedBeforeAdmission,
@@ -92,7 +96,10 @@ import {
 	archiveDestinationApplies,
 } from "../chat-archived";
 import { DELETE_UNAVAILABLE_REASON } from "../delete-conversation";
-import type { DraftPickerDestination } from "../draft-selection";
+import type {
+	DraftPickerDestination,
+	DraftResolution,
+} from "../draft-selection";
 import {
 	MOVE_NOT_READY_REASON,
 	MOVE_UNAVAILABLE_REASON,
@@ -107,6 +114,8 @@ import type {
 import {
 	DESTINATIONS,
 	destinationNeedsSession,
+	draftSelectionCapability,
+	draftSelectionRoute,
 } from "../pickers/picker-registry";
 import { isNativeAction } from "../pickers/use-picker-backend";
 import type { Message } from "../types/message";
@@ -140,12 +149,24 @@ type SlashDispatchOptions = {
 	 * session yet.
 	 *
 	 * Present only where the backend can select for a draft. It is what the two
-	 * chips that CAN open on a draft open: `/model` and `/effort` are commands that
-	 * need a session to address, so a draft's pick cannot travel the command path
-	 * at all — it travels this one, into the SAME pickers, reading and writing the
-	 * pane's selection instead of a session's.
+	 * chips that CAN open on a draft open (`/model` and `/effort`), and — since
+	 * issue #1265 — what the typed `/fast` is presented with, because that dial has
+	 * no chip and its command would otherwise have no owner to address. All three
+	 * travel the draft route into the SAME pickers, reading and writing the pane's
+	 * selection instead of a session's.
 	 */
 	draftPicker?: DraftPickerSession;
+	/**
+	 * Where the pane's RESOLUTION is, while it has no reading yet (round 2, D7).
+	 *
+	 * `draftPicker` arrives only once the preview has answered, so the
+	 * pre-preview window was indistinguishable from a pane with no draft
+	 * capability at all - and its refusal said "needs an open conversation. Start
+	 * one first" about a pane that has everything except an answer. This is the
+	 * same value the strip paints (pending, or failed with a retry), so the
+	 * refusal and the reading cannot describe different states.
+	 */
+	draftResolution?: DraftResolution;
 	/**
 	 * Focus the composer's working-directory chip and open its menu.
 	 *
@@ -259,6 +280,112 @@ function draftPickerSpec(
 }
 
 /**
+ * The `data` a SESSIONLESS presentation of a picker has to carry, because the
+ * owner's round trip that would have supplied it cannot happen.
+ *
+ * `native_action` builds `premium_pricing=True` for `fast` unconditionally
+ * (`local_operator/server/utils/desktop_commands.py`), and a SESSION's picker
+ * reads it off that answer to decide whether the premium acknowledgement gates
+ * the `On` row. A draft pane has no owner frame to ask and no session to
+ * command, so the same constant is stated here instead: without it a draft would
+ * offer `On` with nothing acknowledging its price, which is the one thing the
+ * session's picker refuses to do (issue #1265).
+ *
+ * One function for the two doors that present a picker without a session (the
+ * typed command and `openDraftPicker`), so a row cannot gain the flag through
+ * one of them and lose it through the other.
+ *
+ * EXPORTED FOR THE SUITE, not for a second caller (agent review round 1, F3):
+ * the only thing that carries `premium_pricing` to a draft is this function, and
+ * the assertions that used to stand in for it matched pre-existing lines of the
+ * SESSION path, so the gate could have been deleted with the suite green. The
+ * two answers below are asserted directly, and the presenter's use of it is
+ * pinned as source.
+ */
+export function sessionlessActionData(
+	destination: string,
+): Record<string, unknown> {
+	return destination === "session.fast" ? { premium_pricing: true } : {};
+}
+
+/**
+ * What the dispatcher says when a draft-route row cannot open, in the words for
+ * WHY.
+ *
+ * Three states, and they were one sentence before (design review round 1, D2):
+ * `/fast on` on a new chat answered "needs an open conversation. Start one
+ * first", which (a) diagnoses a missing conversation the pane does not have and
+ * (b) recommends the dummy-message workaround issue #1265 exists to remove. The
+ * argument form is the only reason the bare route did not carry it, so the
+ * sentence names the form that works - and it only does so where that form
+ * WOULD work: `draftSelectionRoute` decides the bare form's answer, and its
+ * `draft_fast` condition is what makes "type `/fast` on its own" honest rather
+ * than a second false instruction on a backend that cannot carry the dial (agent
+ * review round 1, F1).
+ *
+ * EXPORTED FOR THE SUITE for the same reason `sessionlessActionData` is: the
+ * answers are copy a reader meets on a reachable path, and only the predicate's
+ * own answers were pinned. The test asserts each branch.
+ *
+ * THE CAPABILITY IS READ AS A STATE, not as a boolean (round 2, N3).
+ * `desktopFeatureEnabled` collapses three different facts into `false`, and only
+ * one of them is "update the service": `unknown` is a probe that has not
+ * answered, `unpaired` is a missing credential, and telling either reader to
+ * update sends them to the wrong repair. Each now gets its own sentence.
+ *
+ * AND A PANE WHOSE PREVIEW HAS NOT ANSWERED IS NOT "a pane with no
+ * conversation" (round 2, D7): the draft context is only handed over once the
+ * resolution lands, so the pre-preview window used to read the ordinary refusal.
+ * The pane's own resolution state is passed in for exactly that window, and says
+ * what the strip says ("Resolving the model") rather than diagnosing the pane.
+ */
+export function draftRouteRefusal(
+	name: string,
+	destination: string | undefined,
+	draft: DraftPickerSession | undefined,
+	capabilities: DesktopCapabilities | null | undefined,
+	resolution: DraftResolution | undefined,
+): string {
+	const ordinary = `/${name} needs an open conversation. Start one first.`;
+	/*
+	 * THE ROW'S OWN ROUTE IS ASKED FIRST (design review round 3, D8). The
+	 * resolution copy below is about THIS PANE's model, and it is only the answer
+	 * for a row whose pick would ride that model - which today means the one row
+	 * that declares a draft selection. Asked after the `!draft` block, as it was,
+	 * every session-addressed row inherited it: `/rename hello` on a resolving
+	 * new chat said its model was still resolving, which is true of nothing that
+	 * command needs.
+	 */
+	const capability = draftSelectionCapability(destination);
+	if (!capability) return ordinary;
+	/*
+	 * No draft context ON A ROW THAT HAS THE ROUTE: the picker is waiting for the
+	 * preview that would give it one, or that preview failed. The pane's own
+	 * resolution state is what tells those apart, and it is the same value the
+	 * strip paints.
+	 */
+	if (!draft) {
+		if (resolution?.status === "pending")
+			return `/${name} is waiting for this conversation's model to resolve. Try again in a moment.`;
+		if (resolution?.status === "failed")
+			return `/${name} needs this conversation's model, which was not resolved. Press Retry, then try again.`;
+		return ordinary;
+	}
+	switch (desktopFeatureState(capabilities, capability)) {
+		case "enabled":
+			return `/${name} takes no argument on a new chat. Type /${name} on its own to set it for the first message.`;
+		case "below-version":
+			return `/${name} is not available on this version of the Local Operator service. Update Local Operator, then try again.`;
+		case "unpaired":
+			/* The app's own words for a credential fact (`moveGateReason`). */
+			return `/${name} is not available: this app is not paired with the backend.`;
+		case "unknown":
+			/* Transient, and it is the service that has not answered - not the user. */
+			return `/${name} is waiting for the local service to answer. Try again in a moment.`;
+	}
+}
+
+/**
  * The slash spelling of a destination whose catalogue row is not in hand.
  *
  * Only used when `commands.list` has not answered — a backend that cannot serve
@@ -351,6 +478,7 @@ export function useSlashDispatch({
 	rebind,
 	focusComposer,
 	draftPicker,
+	draftResolution,
 	focusCwdChip,
 	moveSession,
 	moveReady,
@@ -662,7 +790,7 @@ export function useSlashDispatch({
 										 */
 										if (admitted === null) {
 											returnAidaText(key, target, message);
-											showInfoToast(SEND_FAILURE_COPY.sendLock);
+											showInfoToast(t("ui.notices.chat.send_in_flight"));
 										}
 									})
 									.catch((error) => {
@@ -683,7 +811,7 @@ export function useSlashDispatch({
 											showErrorToast(
 												placed
 													? aidaControlFailureCopy(error)
-													: `${SEND_FAILURE_COPY.sendLock} ${aidaControlFailureCopy(error)}`,
+													: `${t("ui.notices.chat.send_in_flight")} ${aidaControlFailureCopy(error)}`,
 											);
 											return;
 										}
@@ -1112,6 +1240,12 @@ export function useSlashDispatch({
 				spec: SlashCommandMeta,
 				commandArgs: string,
 			) => {
+				const carriedDraft = draftSelectionRoute(
+					spec.destination,
+					commandArgs,
+					draftPicker,
+					capabilities.data,
+				);
 				invoker.current =
 					document.activeElement instanceof HTMLElement
 						? document.activeElement
@@ -1125,7 +1259,9 @@ export function useSlashDispatch({
 						session_id: "",
 						args: commandArgs,
 						fields: [],
-						data: {},
+						// The premium gate a session's answer would have carried; see
+						// `sessionlessActionData`.
+						data: sessionlessActionData(spec.destination),
 					},
 					spec: draftPickerSpec(spec.destination, commandsQuery.data),
 					sessionId: "",
@@ -1135,6 +1271,16 @@ export function useSlashDispatch({
 					note,
 					dispatch: (invocation) => void dispatch(invocation),
 					rebind,
+					/*
+					 * THE DRAFT SELECTION ROUTE's presenter half (issue #1265): the
+					 * pane's own selection, so the dialog's pick resolves through
+					 * `sessions.preview` and records on the draft row instead of
+					 * addressing a session this pane does not have. Absent for the
+					 * sessionless rows, which read no selection at all — and the SAME
+					 * rule the gate above asked, so a row that passed the refusal can
+					 * never be presented without the context it passed for.
+					 */
+					...(carriedDraft ? { draft: carriedDraft } : {}),
 				});
 			};
 
@@ -1192,6 +1338,18 @@ export function useSlashDispatch({
 				const chartForm =
 					draftKind === "team" &&
 					(args === "chart" || args.startsWith("chart "));
+				/*
+				 * THE DRAFT SELECTION ROUTE's gate half (issue #1265): the pane's own
+				 * selection, when this row's pick is carried by it. Asked BEFORE the
+				 * refusal and again by the presenter below — one rule, see
+				 * `draftSelectionRoute`.
+				 */
+				const carriedDraft = draftSelectionRoute(
+					spec.destination,
+					args,
+					draftPicker,
+					capabilities.data,
+				);
 				if (destinationNeedsSession(spec.destination)) {
 					/*
 					 * THE REFUSAL SITS FIRST, AND THE DRAFT EXEMPTION NESTS INSIDE IT
@@ -1205,9 +1363,15 @@ export function useSlashDispatch({
 					 * chart` (the one form the draft route must not read as a name)
 					 * stays unexempted and refuses like any other ineligible row.
 					 */
-					if (!(draftKind && !chartForm)) {
+					if (!(draftKind && !chartForm) && !carriedDraft) {
 						note(
-							`/${spec.name} needs an open conversation. Start one first.`,
+							draftRouteRefusal(
+								spec.name,
+								spec.destination,
+								draftPicker,
+								capabilities.data,
+								draftResolution,
+							),
 							true,
 						);
 						return "consumed";
@@ -1593,6 +1757,26 @@ export function useSlashDispatch({
 			 * somewhere the page is no longer reading.
 			 */
 			noteAsideRefusal,
+			/*
+			 * The pane's own selection, read by `draftSelectionRoute` from BOTH sides of
+			 * the gate (issue #1265): the refusal exemption and the presenter must see
+			 * the same value, or a stale `dispatch` would exempt `/fast` and then mount
+			 * it without the context it was exempted for.
+			 */
+			draftPicker,
+			/*
+			 * And the document the route's FOURTH condition reads (agent review round 1,
+			 * F1): a `dispatch` closed over a capabilities answer from before the
+			 * negotiation landed would refuse `/fast` on a backend that had just started
+			 * advertising `draft_fast` — or, worse, open it on one that never had.
+			 */
+			capabilities.data,
+			/*
+			 * And the pane's resolution state, which the refusal copy reads (round 2,
+			 * D7): a closed-over stale value would keep diagnosing a pane the preview
+			 * had since answered (or stop saying it was still resolving).
+			 */
+			draftResolution,
 		],
 	);
 
@@ -1662,7 +1846,7 @@ export function useSlashDispatch({
 					session_id: "",
 					args: "",
 					fields: [],
-					data: {},
+					data: sessionlessActionData(destination),
 				},
 				spec: draftPickerSpec(destination, commandsQuery.data),
 				sessionId: "",

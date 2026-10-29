@@ -476,6 +476,70 @@ an empty box, while the transcript sat at `canvas` with nothing pointing at it.
 The accent is spent on what the user acts on (the send control's fill) and on
 focus, not on the frame of an empty field.
 
+### Panels: borderless, edge-to-edge, fading at the top
+
+A panel is a region that owns a ground beside the canvas — the app sidebar, a
+route's leading rail, a roster, a detail/dock pane. It is not a card, an input,
+a menu or a popover.
+
+- **No panel carries a border.** Separation is the ground ladder
+  (`canvas` → `surface` → `elevated`, or `sunken` for a well) plus spacing. A
+  1px rule over a tone step is a second, redundant mark. `border-control`
+  remains the boundary of an input, select, checkbox or outlined button, never
+  a panel edge.
+- **Full-height panels extend through the titlebar strip; no top inset on the
+  panel; the scroll region clips and fades under it.** A panel that owns its
+  ground (the app sidebar, a route's leading rail, the Library filter rail, the
+  asset-details dock, the right-slot panes and canvas tabs, the panel rail,
+  Team Bridge's columns) starts at y0 and paints its own ground through the
+  traffic lights' band. Its first content row is padded by
+  `--panel-top-pad` — the shell publishes `var(--chrome-strip-h)` on the
+  content column for every route, so no route needs its own inset and none may
+  compute one.
+  - The mechanism is two utilities in `styles/index.css`, defined once:
+    `panel-flush` on a route root that owns the whole window height (it cancels
+    the shell's ordinary-content pad) and `panel-top-pad` on a full-height
+    panel column (it pushes the column's first row below the strip while the
+    panel's ground keeps y0). A simple page that is not a panel needs neither:
+    the shell pads it once on `<main>`.
+  - The titlebar lane is a single transparent overlay for every route. It
+    reserves no height and paints no ground; there is no route opt-in, and
+    no gradient mirror of the columns. Only the drag surface and
+    `data-slot-edge` remain on it.
+  - **A scroll region must clip at the panel's content edge, so its pad sits
+    outside the scroller.** A scroll container's own `padding-top` clips at
+    its padding box, which lets scrolled text paint through the strip; the
+    panel pads, the scroller begins at y32, and the existing top fade
+    (`data-lo-sidebar-edge-cues`) stays on the scroller. A file name scrolling
+    in the Library dock disappears at the dock's content edge, not at y0. When
+    the panel's ROOT is the scroller, `panel-scroll` states the same contract
+    as a margin plus the matching height.
+  - The element that wears `panel-top-pad` is the element that paints the
+    panel's ground. A padded wrapper that owns no ground is the inset band this
+    rule exists to forbid, not a clearance: the padding is invisible only when
+    it sits inside the surface it belongs to. A content column nested inside a
+    grounded, `panel-flush` ancestor needs no ground of its own — and must not
+    take one, which would put a second tone step inside a single panel.
+- **Chrome controls are borderless too.** A grouped segmented control (for example the Library grid/list toggle) may keep one shared `border-control` boundary around the group; the edge belongs to the group affordance, not to each button. Search, sort and filter chrome takes the `elevated` ground on a `surface` panel and the shared accent focus ring; no resting stroke. Reserve `border-control` for a form field or an actual boundary a ground cannot express, never as decoration on a toolbar control.
+- **A scrolling panel fades at its top edge.** `data-lo-sidebar-edge-cues` on
+  the scroller uses the shared scroll-driven mask: content dissolves under the
+  top spacing rather than being cut by a hard boundary, and the fade is zero at
+  rest so the first row is not dimmed for no reason.
+- **A panel footer/composer sits outside the scroller.** The scroll container
+  ends above it; content never paints underneath it.
+- **Narrow windows replace, they do not overlay.** A detail rail that cannot
+  fit beside the content at its minimum width becomes the full-width route view;
+  the content and filter rail step aside. The filter rail collapses into its
+  sheet below 1200px. A panel never floats over another panel's content.
+
+The Library route is the reference: a flush `bg-canvas` page root, a
+full-height `bg-surface` filter rail and `bg-surface` asset-details dock, both
+padded by the shared utility, with `data-lo-sidebar-edge-cues` on the scrollers
+and no right rule. `scripts/lane-leading.test.mjs` enforces the panel inventory
+and the absence of route-column right rules; `scripts/panel-top-inset.test.mjs`
+enforces that no route computes its own titlebar inset; agent-facing detail is
+in `docs/AGENTS.md`.
+
 ### Accent
 
 One accent is spent about **three times per screen**. Primary action, active
@@ -1040,6 +1104,7 @@ opaque root behind opaque descendants.
 | Pressed (`active:bg-sunken`) | stays opaque `sunken` | a sub-200 ms state of the control, not a surface |
 | Primary buttons, avatars, brand mark, banners | unchanged, opaque | small deliberate marks, not grounds |
 | Sticky headers (scroll-under) | `data-glass-plane="band"`: the field overlay | a solid plate in a translucent column is the seam the operator reported; the band's own inks are contract rows |
+| Sticky headers over MOVING content (a section header that rows scroll under) | `data-glass-plane="band-backdrop"`: the pane's own `elevated` role, floored at the elevated alpha, plus a `backdrop-filter` blur | a 5% ink wash over moving content hides nothing, and the band's ground is whatever is scrolling under it, so the band needs an alpha FLOOR of its own - the count beside the label must clear 4.5:1 against it (design round 1's D1) |
 | Popout (quick send) | card ground `surface` at its floor raw; input a field; picker sheet solid | a single floating HUD on the window's material |
 
 **Planes, bands and lanes (round 3).** The operator's report: the left sidebar
@@ -1053,6 +1118,7 @@ be on glass:
 | Ground (a column: the pane root, the page canvas) | `data-glass-region` | the role alpha, one alpha-owning layer per region (unchanged) |
 | Plane (a scroll container, list body, viewer body, tab strip) | `data-glass-plane="clear"` | nothing: the region owns the alpha, and a second role fill is the opaque island the report is about |
 | Band (a sticky section header, a toolbar that masks what scrolls under it) | `data-glass-plane="band"` | the field overlay (ink 5%), the same step a track or a field wears |
+| Isolating band (a band whose content MOVES under it) | `data-glass-plane="band-backdrop"` | the pane's own ground role, floored at that role's alpha, with a `backdrop-filter` blur: the band's ground is the content passing under it, so a published alpha derived against a static ground is not enough for the ink on the band to clear its floor |
 | Block (a text-bearing card whose fill is its boundary) | `data-glass-block` | the derived veil (unchanged) |
 | Lane (a well that must read under veiled cards) | `data-glass-lane` | the derived scheme role at `pageAlpha * scale` (tracks the slider) |
 
@@ -1186,7 +1252,8 @@ equally important**, and the interface must not present them as though they are.
   the turn; a parked turn is unsettled, so nothing condenses). A finished turn
   also carries one turn-foot line (`Worked for 1m 12s · 8 actions`) — EXCEPT a
   turn that has condensed to ONE summary bar: there the foot stands down and the
-  bar IS the line (its own stamp replaces the foot's, one stamp per turn).
+  bar IS the line (its own stamp replaces the foot's, so the answer keeps one
+  stamp for the turn).
   A turn's hidden rows condense as SEGMENTS: one bar per contiguous hidden span,
   in place, around the rows that stay on screen (a compaction, a stop or incident
   marker, the turn's answer). When a pinned row splits the work into several

@@ -1,0 +1,90 @@
+/** Authored drafts are deliberately separate from inbound-body metadata. This
+ * shared lifecycle boundary is used by status clients even with no page mounted. */
+export const TEAM_BRIDGE_DRAFT_PREFIX = "team-bridge-authored-drafts:v1:";
+const PREFIX = TEAM_BRIDGE_DRAFT_PREFIX;
+const epochs = new Map<string, number>();
+/*
+ * Other account-owned, in-memory draft state (the composer's image previews)
+ * registers here so the SAME fence that erases stored drafts also drops it:
+ * a signed-out or replaced account must not leave its pictures in a module
+ * map for the next account to read. Listeners receive nothing - they drop
+ * everything - so no account id has to leave this module.
+ */
+const revocationListeners = new Set<() => void>();
+export function onDraftRevocation(listener: () => void): () => void {
+	revocationListeners.add(listener);
+	return () => revocationListeners.delete(listener);
+}
+const notifyRevocation = () => {
+	for (const listener of revocationListeners) listener();
+};
+export function draftAccountEpoch(accountId: string): number {
+	if (!epochs.has(accountId)) epochs.set(accountId, 0);
+	return epochs.get(accountId) ?? 0;
+}
+
+export function draftStorageKey(accountId: string, tenantId: string): string {
+	return `${PREFIX}${encodeURIComponent(accountId)}:${encodeURIComponent(tenantId)}`;
+}
+
+export function eraseAccountDrafts(
+	storage: Storage | null,
+	accountId: string,
+): void {
+	// Revocation still holds if browser storage itself refuses deletion.
+	epochs.set(accountId, draftAccountEpoch(accountId) + 1);
+	notifyRevocation();
+	const prefix = `${PREFIX}${encodeURIComponent(accountId)}:`;
+	if (!storage) return;
+	try {
+		for (const key of Object.keys(storage)) {
+			if (key.startsWith(prefix)) storage.removeItem(key);
+		}
+	} catch {
+		/* Account-scoped reads fail closed when browser storage is unavailable. */
+	}
+}
+
+/** SSR has no browser storage, and a browser policy can deny its getter.
+ * Never borrow Node's experimental ambient localStorage: it masked a render
+ * crash on CI's Node 22 and is not the signed-in app's authored-draft store. */
+export function browserDraftStorage(): Storage | null {
+	try {
+		return typeof window === "undefined" ? null : window.localStorage;
+	} catch {
+		return null;
+	}
+}
+
+/** An authoritative status response prunes every other account's drafts,
+ * including across app restarts. Pending/offline reads never mean sign-out.
+ * If browser storage is unavailable the account-scoped reader still fails
+ * closed; a storage refusal must not turn the status API into a failed read. */
+export function reconcileDraftAccount(
+	storage: Storage | null,
+	status: { account_id?: string | null; state?: unknown },
+): void {
+	if (status.state !== "signed_out" && !status.account_id) return;
+	const next =
+		status.state === "signed_out" ? null : (status.account_id ?? null);
+	// Revocation precedes disk cleanup: promises from an unmounted editor must
+	// not resurrect bodies even if storage removal fails or the account logs in again.
+	let revoked = false;
+	for (const [account, epoch] of epochs)
+		if (account !== next) {
+			epochs.set(account, epoch + 1);
+			revoked = true;
+		}
+	if (revoked || next === null) notifyRevocation();
+	// No storage means nothing on disk to clean; the revocation above (epochs
+	// and the in-memory preview listeners) has already happened regardless.
+	if (!storage) return;
+	try {
+		const allowed = next ? `${PREFIX}${encodeURIComponent(next)}:` : null;
+		for (const key of Object.keys(storage))
+			if (key.startsWith(PREFIX) && (!allowed || !key.startsWith(allowed)))
+				storage.removeItem(key);
+	} catch {
+		/* The draft editor reports storage unavailability; bodies never enter a status error or telemetry. */
+	}
+}

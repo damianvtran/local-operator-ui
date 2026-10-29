@@ -1,0 +1,20 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "e6acb20846bf",
+  "locale": "fr",
+  "status": "passed",
+  "namespace": "ui.console",
+  "sha256": {
+    "en": "c0aa99e935c874ff2bdbac467ca9278007d885efcd6aa4f6269e0d1132a975f9",
+    "target": "c7e9fe1123cdbcf895d866ba460d83d093e056e19c95b5206bdb23933a94967c"
+  },
+  "findings": [
+    {
+      "severity": "NIT",
+      "key": "ui.console.capacity.summary",
+      "issue": "Pre-existing and outside the four changed keys: the English term \"app\" renders here as \"l’app\", while five other keys of this namespace say \"application\" (four \"l’application\", one \"cette application\"), so one term has two French spellings.",
+      "suggestion": "{live, number, ::group-off} sur {limit, number, ::group-off} actifs dans l’application (the span truncates, so the extra cells are safe)"
+    }
+  ]
+}

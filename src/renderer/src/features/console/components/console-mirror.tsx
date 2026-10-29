@@ -1,3 +1,4 @@
+import { sessionSwitcherRunOpen } from "@features/session-switcher/use-session-switcher-keys";
 import { subscribeLocale, t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -92,8 +93,9 @@ export interface ConsoleMirrorProps {
 		visible: boolean;
 		theme: string;
 	}) => void;
-	/** Interactive (the pane) or a one-frame reconstruction (the capture view). */
-	mode?: "interactive" | "capture";
+	/** Interactive (the pane), a one-frame reconstruction (the capture view), or the
+	 * READ-ONLY history of a surface whose process has ended. */
+	mode?: "interactive" | "capture" | "history";
 	/** Called when main reports this surface's process exited, so the pane can say
 	 * so without waiting for its next listing (§12.3's rung 1 is the fact). */
 	onExit?: (exitCode: number) => void;
@@ -114,6 +116,19 @@ export interface ConsoleMirrorProps {
 	bytes?: Uint8Array;
 	className?: string;
 }
+
+/**
+ * HIDE THE CURSOR NATIVELY (D1/U6).
+ *
+ * A stylesheet rule on `.xterm-cursor` loses specificity to xterm's own injected
+ * cursor styling in the DOM renderer (measured: the computed background stayed the
+ * accent). DECTCEM is the terminal's own mechanism: `CSI ? 25 l` makes xterm stop
+ * rendering the cursor, and the mirror writes it to its own view only — never into
+ * the record, the log or the bytes main replays. The reverse (`CSI ? 25 h`) runs on
+ * the transition back to an interactive surface.
+ */
+const HIDE_CURSOR = "\x1b[?25l";
+const SHOW_CURSOR = "\x1b[?25h";
 
 /** Decode the base64 a `console-output` frame or a replay carries. */
 const decodeBytes = (base64: string): Uint8Array => {
@@ -169,6 +184,22 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 	 * an ownership invariant this file does not have will be wrong.
 	 */
 	const heldTerminalRef = useRef<Terminal | null>(null);
+	/** The terminal's palette derivation for the current mode. */
+	const themeMode = mode === "history" ? "history" : "live";
+	/**
+	 * WHAT RE-CONSTRUCTS THE TERMINAL, AND WHAT MUST NOT.
+	 *
+	 * `capture` is a different host (it paints supplied bytes once), so a switch to
+	 * or from it is a different terminal. `interactive` and `history` are the SAME
+	 * terminal in two states, and a process exit moves a surface from one to the
+	 * other while the user is typing at it — reconstructing there would dispose the
+	 * focused textarea, drop the keyboard, and replay the whole record a second time.
+	 * So the constructor keys on this, the mode is read through `modeRef`, and the
+	 * option effect below applies `disableStdin`/cursor as a transition.
+	 */
+	const constructionMode = mode === "capture" ? "capture" : "pane";
+	const modeRef = useRef(mode);
+	modeRef.current = mode;
 	exitRef.current = onExit;
 	settledRef.current = onSettled;
 	/*
@@ -226,16 +257,37 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 		 * when announcing output. Subscribe separately from terminal construction:
 		 * replacing a terminal on locale changes would discard its output/selection.
 		 */
+		// The mode THIS constructor sees; a later transition is applied by the option
+		// effect, never by building a second terminal. A capture host is never the
+		// pane and never transitions. Read BEFORE the strings assignment so the
+		// localization lifecycle slice in `console-i18n-fit.test.mjs` stays the
+		// library-strings setup it pins.
+		const initialMode =
+			constructionMode === "capture" ? "capture" : modeRef.current;
+		const initialThemeMode = initialMode === "history" ? "history" : "live";
 		Terminal.strings.promptLabel = t("ui.console.terminal.prompt_label");
 		Terminal.strings.tooMuchOutput = t("ui.console.terminal.too_much_output");
 		const term = new Terminal({
 			scrollback: 5000,
-			theme: readTerminalTheme(),
+			theme: readTerminalTheme(document.documentElement, initialThemeMode),
 			fontFamily: terminalFontFamily(),
 			fontSize: TERMINAL_FONT_SIZE,
 			allowProposedApi: true,
-			cursorBlink: mode === "interactive",
-			disableStdin: mode === "capture",
+			cursorBlink: initialMode === "interactive",
+			/*
+			 * STDIN IS OFF FOR BOTH NON-INTERACTIVE MODES, and switching it off is the
+			 * structural half of "an ended terminal takes no input": it stops xterm
+			 * encoding a keystroke at all rather than sending one main will refuse. The
+			 * pane adds the human half — a visible, announced sentence — because a
+			 * read-only terminal that swallows a key in silence is the same lie as the
+			 * caret the operator reported.
+			 */
+			disableStdin: initialMode !== "interactive",
+			/* The cursor is hidden by the history stylesheet, not painted away (D1):
+			 * a ground-painted cursor could blank a glyph under it. `none` covers the
+			 * unfocused half natively; the focused half is the CSS rule keyed on
+			 * `data-console-history` below. */
+			cursorInactiveStyle: initialMode === "history" ? "none" : "outline",
 			convertEol: false,
 			scrollOnUserInput: true,
 		});
@@ -308,6 +360,40 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 		};
 		term.attachCustomKeyEventHandler((event) => {
 			if (event.type !== "keydown") return true;
+			/*
+			 * CTRL+TAB AND CTRL+SHIFT+TAB ARE THE SWITCHER'S, HERE TOO (review F4, QA
+			 * Q1). xterm maps a tab to `\t`, so `Ctrl+Tab` only ever sent the shell a
+			 * plain tab - nothing of value is lost by handing the chord back - and it
+			 * was the one surface where the doc's "everywhere else they open the
+			 * switcher" was false: the terminal consumed the press before the app's
+			 * document listener saw it, so the overlay opened from every pane but this
+			 * one. Plain Tab stays the shell's, which is why this branch names the
+			 * modifier rather than the key alone.
+			 *
+			 * A RUN THAT IS ALREADY OPEN takes plain Tab as well: a run exists while
+			 * Control is held, so a Tab without it means Control's release went missing,
+			 * and the switcher's own lost-release rule (any press reporting Control up
+			 * ends the run) cannot fire from a key this terminal never lets through.
+			 * Only while a run is open - a shell keeps its completion key otherwise.
+			 *
+			 * The exceptions the focus rule names are untouched: the composer's slash
+			 * list and the canvas editor's list are not this terminal.
+			 */
+			if (event.key === "Tab" && (event.ctrlKey || sessionSwitcherRunOpen()))
+				return false;
+			/*
+			 * TAB AND ESCAPE BELONG TO THE APP ON A RECORDING (U1). A live shell owns
+			 * them (its programs read Tab and Esc), but an ended one has no program to
+			 * give them to, and xterm would otherwise `preventDefault` them — trapping a
+			 * keyboard user in dead history. Returning `false` leaves the event to the
+			 * page, so Tab moves focus to the strip/`+` and Escape reaches the pane's own
+			 * handling. Scroll keys (PgUp/PgDn/arrows) stay xterm's: they read history.
+			 */
+			if (
+				modeRef.current !== "interactive" &&
+				(event.key === "Tab" || event.key === "Escape")
+			)
+				return false;
 			return copyChord(event);
 		});
 		const onCopy = (event: ClipboardEvent) => {
@@ -327,7 +413,7 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 			setTerminal(null);
 			term.dispose();
 		};
-	}, [mode]);
+	}, [constructionMode]);
 
 	/*
 	 * The subscription: replay, then stream (§10.3).
@@ -408,7 +494,16 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 		 * the keystroke and the call, and a rejected promise per character would be an
 		 * unhandled rejection for a state the pane's own listing already shows.
 		 */
+		/*
+		 * WIRED ONCE, GATED AT THE CALL — not wired conditionally on the mode. The
+		 * subscription below must not re-run when a surface ends: that would
+		 * unsubscribe and resubscribe, replaying the whole record into a terminal that
+		 * already holds it. A keystroke on history reaches this handler (a readOnly
+		 * textarea still fires `onData`? it does not) and is refused here as the
+		 * second gate behind xterm's own `disableStdin`.
+		 */
 		const offData = terminal.onData((data) => {
+			if (modeRef.current !== "interactive") return;
 			void api.input(surface, data).catch(() => {});
 		});
 		/*
@@ -445,6 +540,9 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 				}
 				streaming = true;
 				for (const bytes of buffered.splice(0)) terminal.write(bytes);
+				// Replay may contain a program's own show-cursor sequence; the view's
+				// mode wins after the record is in.
+				if (modeRef.current === "history") terminal.write(HIDE_CURSOR);
 				settledRef.current?.(terminal);
 			})
 			.catch(() => {
@@ -460,7 +558,7 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 			disposed = true;
 			offOutput();
 			offExit();
-			offData.dispose();
+			offData?.dispose();
 			void api.unsubscribe(surface).catch(() => {});
 		};
 	}, [terminal, surface, bytes]);
@@ -503,6 +601,12 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 	 */
 	useEffect(() => {
 		if (!terminal || !focusRequest) return;
+		// A HISTORY terminal never takes the keyboard: its mirror holds a record, not
+		// a program, and focusing it would be the same false promise as painting a
+		// caret in it. The request is not consumed here because there is nothing in
+		// this pane that could spend it; a create arms its own token for the surface
+		// it makes.
+		if (mode !== "interactive") return;
 		/*
 		 * ONLY THE TERMINAL THIS MOUNT STILL HOLDS TAKES THE CARET, and this line is the
 		 * difference between a caret and a spent token in the dev loop (`pnpm dev`).
@@ -528,7 +632,7 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 		if (heldTerminalRef.current !== terminal) return;
 		terminal.focus();
 		focusTakenRef.current?.(focusRequest);
-	}, [terminal, focusRequest]);
+	}, [terminal, focusRequest, mode]);
 
 	/*
 	 * THE THEME, THE RECT AND THEIR ONE OBSERVER.
@@ -561,7 +665,29 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 		const host = hostRef.current;
 		if (!host) return;
 		const applyTheme = () => {
-			terminal.options.theme = readTerminalTheme();
+			terminal.options.theme = readTerminalTheme(
+				document.documentElement,
+				themeMode,
+			);
+		};
+		/**
+		 * THE MODE TRANSITION, APPLIED TO THE TERMINAL THAT IS ALREADY THERE.
+		 *
+		 * The same three options the constructor would have given a fresh terminal
+		 * (`disableStdin`, the cursor's blink and its unfocused style), set on the
+		 * live one when its surface ends or is replayed. The keyboard, the record in
+		 * the buffer and the selection all survive the transition, which is what makes
+		 * a shell exiting under a user's hands a state change rather than a remount.
+		 */
+		const applyMode = () => {
+			terminal.options.disableStdin = mode !== "interactive";
+			// The native hide/show; see `HIDE_CURSOR`. A capture is a static paint and
+			// owns no input, so it gets neither sequence.
+			if (mode !== "capture")
+				terminal.write(mode === "history" ? HIDE_CURSOR : SHOW_CURSOR);
+			terminal.options.cursorBlink = mode === "interactive";
+			terminal.options.cursorInactiveStyle =
+				mode === "history" ? "none" : "outline";
 		};
 		const send = () => {
 			const report = reportRef.current;
@@ -583,6 +709,7 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 			});
 		};
 		const refresh = () => {
+			applyMode();
 			applyTheme();
 			send();
 		};
@@ -598,12 +725,24 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 			resize.disconnect();
 			theme.disconnect();
 		};
-	}, [terminal, visible]);
+	}, [terminal, visible, themeMode, mode]);
 
 	return (
 		<div
 			ref={hostRef}
-			className={cn("h-full w-full overflow-hidden", className)}
+			/* The pane's ended-input guard addresses the mirror by this attribute rather
+			 * than by xterm's own `.xterm` class: the guard is about keys arriving at
+			 * the terminal's subtree, and a class internal to the renderer is not a
+			 * contract this app should key a behaviour on. */
+			data-console-mirror=""
+			/* HISTORY GROWS beside the pane's end marker; live and capture fill their
+			 * box outright. The difference is layout, not a second terminal: a `h-full`
+			 * history host would paint over the marker row the pane draws after it. */
+			className={cn(
+				"w-full overflow-hidden",
+				mode === "history" ? "min-h-0 grow" : "h-full",
+				className,
+			)}
 			/*
 			 * The mirror is not a control: it holds no border of its own and takes no
 			 * focus ring. Its ground is the terminal's own (`sunken`, §9) and the
@@ -612,6 +751,10 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 			 * lives.
 			 */
 			data-tour-tag="console-mirror"
+			/* The history stylesheet's own key: the cursor cell is hidden by CSS here
+			 * rather than by painting it in the ground colour (D1), and the focus ring
+			 * below is the one focus indicator a caret-less history can have (D2). */
+			data-console-history={mode === "history" ? "" : undefined}
 		/>
 	);
 };

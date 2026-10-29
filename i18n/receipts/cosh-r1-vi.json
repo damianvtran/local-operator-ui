@@ -1,0 +1,77 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "cosh-r1-vi",
+ "session": "967552f889d4",
+ "date": "2026-10-22",
+ "locale": "vi",
+ "translator": "translator",
+ "translator_session": "e9c81b30ad01",
+ "namespace": "ui.agentMessages.settings",
+ "status": "passed",
+ "keys_audited": 84,
+ "scope": "Base audit of the 84 pre-existing keys of a newly created full-namespace vi catalogue (scope expansion from the PR #1325 2-key delta because the locale had no file; coverage-allowance entries to be removed by shrink-only --update); hold.* excluded pending R1-1 English rewrite; catalogue audit only, not rendered-fit/activation/release.",
+ "scope_expansion": {
+  "reason": "vi had no ui.agentMessages.settings catalogue; its 84 pre-existing keys were covered only by i18n/coverage-allowance.json, so adding the 2 PR #1325 keys required creating the full namespace file, and all 84 pre-existing keys need a base audit before the allowance pair is removed.",
+  "approved_by": "operator (via coordinator), 2026-10-22",
+  "allowance_pair_removed": "vi/ui.agentMessages.settings (84 keys)"
+ },
+ "sha256": {
+  "en": "840f0821444e5e70af15435c82c43a1996db8be4f06cb59926a12f537794e2af",
+  "vi": "47805e43e52ae61ffe3c086b46a317ec0dbc1eb3c621e06eaed262535a09b614",
+  "context": "e51d33d9b5ef383755e084f64508c9f08b75cf9c1454faba07e7c03bf5f9c489"
+ },
+ "excluded_keys": [
+  "ui.agentMessages.settings.hold.chief_of_staff",
+  "ui.agentMessages.settings.hold.open"
+ ],
+ "findings": [
+  {
+   "severity": "MINOR",
+   "key": "ui.agentMessages.settings.consent.unavailable",
+   "current": "Không lấy được nội dung chấp thuận. Tin nhắn tác nhân chưa được bật.",
+   "proposed": "Chưa có nội dung chấp thuận. Tin nhắn tác nhân chưa được bật.",
+   "note": "The same English sentence already ships in vi as ui.agentMessages.dialog.consent_unavailable = «Chưa có nội dung chấp thuận…», and that file's context asks for consistency with Settings; the settings file uses «Không lấy được…» instead. Align one way or the other: either adopt the shipped dialog wording here, or keep this more accurate 'could not be read' wording and realign the dialog in a later pass."
+  },
+  {
+   "severity": "MINOR",
+   "key": "ui.agentMessages.settings.local.stays_enrolled",
+   "current": "Đăng ký của bạn vẫn có hiệu lực cho tài khoản này và các máy khác của bạn.",
+   "proposed": "Bạn vẫn tham gia tin nhắn tác nhân trên tài khoản này và các máy khác của bạn.",
+   "note": "In vi catalogues «đăng ký» already means sign-up (radient_account_section) and subscription («đăng ký theo dõi», hub). On a screen that also has a lapsed-plan state (F), «Đăng ký của bạn vẫn có hiệu lực» can read as 'your subscription is still active' rather than 'you are still enrolled in agent messages'."
+  },
+  {
+   "severity": "MINOR",
+   "key": "ui.agentMessages.settings.state.d_body",
+   "current": "Tin nhắn ngừng gửi và nhận ở cả hai chiều. Tin nhắn trong hàng đợi vẫn được giữ và bạn vẫn có thể trả lời các yêu cầu đang chờ. Tiếp tục không cần chấp thuận lại.",
+   "proposed": "Tin nhắn ngừng gửi và nhận ở cả hai chiều. Tin nhắn trong hàng đợi vẫn được giữ và bạn vẫn có thể trả lời các yêu cầu đang chờ. Khi tiếp tục, bạn không cần chấp thuận lại.",
+   "note": "The closing «Tiếp tục không cần chấp thuận lại.» copies the English bare-verb subject word for word and reads translated. A conditional clause is the native construction, and it keeps all three facts the context requires."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.agentMessages.settings.consent.via",
+   "current": "Thu thập tại",
+   "proposed": "Ghi nhận qua",
+   "note": "«Thu thập» (data collection) is understandable but stiff as a label before «Cài đặt»/«Hộp thoại làm quen». «Ghi nhận» matches how this file already says consent is recorded (state.e_body «được ghi nhận»)."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.agentMessages.settings.allowlist.allowed_heading",
+   "current": "Được phép",
+   "proposed": "Đã cho phép",
+   "note": "The paired headings are not parallel: «Được phép» (passive) sits next to «Đã chặn» (perfective active). The empty states already use the parallel forms «Chưa cho phép…» / «Chưa chặn ai.», so «Đã cho phép» completes the pair."
+  }
+ ],
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+ },
+ "validation": {
+  "independence": "Separate auditor session 967552f889d4, not the translator (e9c81b30ad01). Every value was read from the bytes on disk at worktree head 359a2f55ec, with the vi file uncommitted/untracked; no translator summary was relied on. Read-only throughout. One stray untracked helper file (.icu-audit-tmp.mjs) that I created by mistake was deleted at once, after cmp confirmed it was my own copy; git status afterwards showed only the pre-existing catalogue changes.",
+  "semantics": "All 84 in-scope keys were read side by side with the en value, the en context sidecar and their render sites in agent-messages-settings.tsx, agent-messages-settings-model.ts, settings-page.tsx and settings-sidebar.tsx. Feature noun «Tin nhắn tác nhân», «chấp thuận», «Bật»/«Bật lần nữa», «nội dung chấp thuận» and section/description match vi ui.agentMessages.json exactly. agent→«tác nhân», session→«phiên», wake→«thức dậy», approvals→«phê duyệt» and settings→«Cài đặt» follow the glossary/style guide. Register: «bạn» only, used sparingly, with no anh/chị, no «Vui lòng», no «!», and sentence case throughout. Invented terms reviewed: Reach→«Phạm vi liên lạc» is accepted; it is distinct from mesh 'Reach' «Khả năng kết nối», which is a different concept (network reachability), and agrees with the dialog's «liên hệ». Person→«Người dùng» is accepted, a standard rendering for an account holder. Identifier→«Mã định danh» is accepted, the standard vi term; row labels keep the locale's «ID …» pattern («ID tài khoản», «ID tác nhân» in schedules). badge→«huy hiệu» is accepted, the vi platform term for notification badges. «Hộp thoại làm quen» is accepted; it is consistent with the locale's onboarding «hướng dẫn làm quen». «Được phép / Đã chặn» is accepted in meaning, with a parallelism NIT filed. enrollment→«Đăng ký» is a MINOR finding because of the sign-up/subscription collision. state.f_*/turned_off_* stay actor-neutral, as the context requires. Key set and order are identical to en (86 = 86), and both excluded hold.* keys exist; they were not judged.",
+  "icu": "All 86 en and vi values parsed with @formatjs/icu-messageformat-parser from the worktree's node_modules: 0 parse failures and 0 argument-set mismatches. None of the 84 in-scope keys has any ICU argument, so their values are literal text. The only ICU message is the excluded hold.chief_of_staff, which keeps {count} with an other-only plural (vi other-only, per glossary §3); it was confirmed present and not judged.",
+  "typography": "UTF-8 without BOM, trailing newline, entire file NFC; no bidi controls, zero-width characters or NBSP. Curly quotes “ ” are used once (cue_listed_only, where they are needed to set off the quoted option label); there are no ASCII quotes and no '...'. Ellipsis is U+2026 (Saving…, bep_…, acc_…), em dash has surrounding spaces (session.none), and there is no space before punctuation. Orthography: «Xóa» uses the first-vowel tone mark, per the vi guide. Identifiers bep_…, acc_…, Radient and endpoint (Latin, sentence-initial capital in consent.no_record) are verbatim.",
+  "overflow": "Button labels read at their render sites: Bật (3), Bật lần nữa (11 vs 12), Tạm dừng (8 vs 5), Tiếp tục (8 vs 6), Tắt, Thêm, Xóa, Thử lại (7 vs 5), Lưu phạm vi liên lạc (20 vs 19). The segmented-control options «Mọi người trong tổ chức của tôi» (30 vs 25) and «Chỉ tác nhân tôi chọn» sit in a w-fit well. The Kind select trigger is w-32 with options «Tác nhân»/«Người dùng»; both are short. Nothing is materially longer than its en source in a fixed-width slot. Headings such as «Đang bật» (en 'On') and «Phạm vi liên lạc» (en 'Reach') are longer in ratio but render as unconstrained text. Rendered fit is not verified.",
+  "limitations": "Browser unavailable; no screenshots/rendered-fit claim. No catalogue/code edits."
+ }
+}

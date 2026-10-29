@@ -751,4 +751,414 @@ export type DesktopVoiceText = {
 export type DesktopVoiceControlResult = {
 	active: DesktopVoiceActive;
 	replaced: string | null;
+/*
+ * THE LIBRARY SURFACE'S WIRE DTOs (`/v1/desktop/library*` and
+ * `/v1/desktop/librarian`), mirrored from the frozen design contract
+ * (`docs/design/library.md` § 4 in the local-operator repository).
+ *
+ * SHAPES ARE COPIED FROM THE CONTRACT, NOT RE-DERIVED: `kind` and `category`
+ * are classified server-side by one pure module, and the desktop renderer must
+ * never grow a second opinion about which extension is a presentation. The
+ * same applies to `organized`, whose presence says the asset has been through
+ * the Librarian (or a user edit) and whose `by` names the actor.
+ *
+ * A `null` field means UNKNOWN/ABSENT and never a placeholder: `chat: null`
+ * says this asset has no linked conversation, `preview.pages: null` says the
+ * preview has no pagination (or is unsupported), and `organized: null` says
+ * nothing has organized this row yet. Rendering an empty string where one of
+ * these is null would make the composer or the tag editor claim a state the
+ * catalog never answered.
+ */
+export type DesktopLibraryKind =
+	| "image"
+	| "audio"
+	| "video"
+	| "pdf"
+	| "pptx"
+	| "docx"
+	| "markdown"
+	| "html"
+	| "spreadsheet"
+	| "text"
+	| "code"
+	| "other";
+
+export type DesktopLibraryCategory =
+	| "image"
+	| "sound"
+	| "document"
+	| "presentation"
+	| "video"
+	| "spreadsheet"
+	| "code"
+	| "other";
+
+export type DesktopLibraryOriginGroup = "generated" | "created" | "mentioned";
+
+export type DesktopLibrarySort =
+	| "recent"
+	| "name"
+	| "kind"
+	| "size"
+	| "created"
+	| "modified"
+	| "organized";
+
+/** One tag row, on the catalog listing and on an asset. `count` rides only listings. */
+export type DesktopLibraryTag = {
+	id: string;
+	name: string;
+	category: string;
+	count?: number;
+};
+
+/**
+ * Where an asset's bytes live.
+ *
+ * `path` is present only on this desktop plane (the relay projects
+ * `display_path` with `display=True` and drops the absolute path). `digest`
+ * names a content-addressed attachment. Callers on this plane must treat `path`
+ * as display-only: content and thumbnail bytes are fetched by asset id, never by
+ * a caller-supplied path.
+ */
+export type DesktopLibraryRef = {
+	type: "path" | "artifact";
+	path: string | null;
+	display_path: string;
+	digest: string | null;
+	content_type: string;
+};
+
+export type DesktopLibraryOccurrence = {
+	session_id: string;
+	session_title: string;
+	origin: string;
+	tool: string | null;
+	at: number;
+	intent: string | null;
+	/**
+	 * The transcript sequence range the occurrence covers, and the subagent run
+	 * it came from when it is one. The desktop chat route does not yet accept a
+	 * message anchor, so this release links to the conversation while carrying
+	 * the range for the surface that will.
+	 */
+	first_seq: number;
+	last_seq: number;
+	child_id: string | null;
+	/** A display override the backend may add for a peer/child occurrence. */
+	label: string | null;
+};
+
+/** One catalog row, as `library.list` and `library.get` answer it. */
+export type DesktopLibraryAsset = {
+	id: string;
+	ref: DesktopLibraryRef;
+	name: string;
+	/**
+	 * The server-derived fallback name (a de-slugged filename). Editable `name`
+	 * wins for display; the card's second line is deliberately THIS field so a
+	 * row the user has not named still reads as its file rather than as an empty
+	 * line.
+	 */
+	derived_name: string;
+	description: string;
+	kind: DesktopLibraryKind;
+	category: DesktopLibraryCategory;
+	origin: string;
+	origin_group: DesktopLibraryOriginGroup;
+	origins: string[];
+	tags: DesktopLibraryTag[];
+	primary_tag: string | null;
+	size_bytes: number;
+	width: number | null;
+	height: number | null;
+	duration_s: number | null;
+	created_at: number;
+	modified_at: number;
+	last_seen_at: number;
+	exists: boolean;
+	highlighted: boolean;
+	highlight_why: string | null;
+	occurrences: DesktopLibraryOccurrence[];
+	session_count: number;
+	chat: { session_id: string; title: string; updated_at: number } | null;
+	preview: {
+		state: "ready" | "unsupported";
+		mime_type: string | null;
+		pages: number | null;
+	};
+	organized: {
+		at: number;
+		by: string | null;
+		confidence: number | null;
+	} | null;
+	locked: boolean;
+	favorite: boolean;
+	archived: boolean;
+};
+
+/** The `library.list` answer. */
+export type DesktopLibraryList = {
+	state: "ready" | "building";
+	revision: number;
+	total: number;
+	counts: {
+		category: Record<string, number>;
+		origin_group: Record<string, number>;
+		kind: Record<string, number>;
+	};
+	tags: DesktopLibraryTag[];
+	rows: DesktopLibraryAsset[];
+	next_cursor: string | null;
+	cursor_reset: boolean;
+	scan: { sessions_total: number; sessions_scanned: number };
+	/**
+	 * Present once the Librarian package ships; before that the key is absent
+	 * or null (`LibraryListing` in the backend models), and the header draws no
+	 * status row rather than inventing "never run".
+	 */
+	librarian: DesktopLibrarianStatus | null;
+};
+
+/** The chat routes' answer: the asset id, the link it now holds (or null). */
+export type DesktopLibraryChatReceipt = {
+	asset_id: string;
+	chat: { session_id: string; title: string; updated_at: number } | null;
+	cleared: boolean;
+};
+
+/** The Librarian's status row, embedded in the listing and read by its own route. */
+export type DesktopLibrarianStatus = {
+	enabled: boolean;
+	session_id: string | null;
+	paused: boolean;
+	/** The display name the backend pins (defaults to "Librarian"). */
+	name?: string;
+	/** The structured last-run receipt; null before the first run. */
+	last_run?: {
+		at: number;
+		named: number;
+		tagged: number;
+		failed: number;
+	} | null;
+	/** Catalog-wide counts the status route knows; never derived from a page. */
+	library?: { total: number; unorganized: number };
+	/** Flat aliases the route also carries; read first, structured second. */
+	last_run_at: number | null;
+	last_summary: string | null;
+	unorganized?: number;
+};
+
+/**
+ * The fields `library.update` may write. Omitted keys leave their field alone.
+ *
+ * The bounds mirror `LibraryAssetPatch`: name 200 characters, description 2000.
+ * The editor enforces them before the write so an over-long paste is refused
+ * with copy in the field rather than as an opaque 422.
+ */
+export type DesktopLibraryUpdateFields = {
+	name?: string;
+	description?: string;
+	favorite?: boolean;
+	locked?: boolean;
+	archived?: boolean;
+};
+
+/** `library.list`'s `session_id`: one session id or a comma list. */
+export type DesktopLibrarySessionFilter = string;
+
+/**
+ * The sidebar's customisable destination rail (design contract § 1-§ 4).
+ *
+ * THE IDS ARE WIRE VOCABULARY, which is why they live here rather than being
+ * invented in the renderer: the route validates against this allow-list, and a
+ * second copy of ten strings in a component tree is exactly the kind of pair
+ * that drifts silently - a rename on one side would leave the other accepting a
+ * preference the backend refuses, or worse, storing one it silently drops. The
+ * renderer's pure model re-exports this tuple, so there is one spelling.
+ *
+ * ORDER IS THE DEFAULT ORDER, and it is load-bearing: `sanitizeSidebarLayout`
+ * re-inserts an id missing from a stored layout at its default position
+ * relative to the ids that remain, and that position is derived from this
+ * order. Changing the order here changes the default arrangement.
+ */
+export const SIDEBAR_DESTINATION_IDS = [
+	"aida",
+	"library",
+	"projects",
+	"agents",
+	"schedules",
+	"browser",
+	"team-bridge",
+	"agent-hub",
+	"mesh",
+	/*
+	 * APPENDED, NEVER INSERTED (notifications decisions D10). The tuple is wire
+	 * vocabulary shared with core `server/sidebar_layout.py`, and both sides only
+	 * grow it at the end. Where the row LANDS is not decided by this order but by
+	 * `DEFAULT_REGION_BY_ID` plus the explicit default rank in
+	 * `sidebar-destinations.ts` (`DEFAULT_RANK_BY_ID`), which places it under
+	 * Aida. An older core refuses this id on PUT, so the save path strips it
+	 * unless `features.notifications` is advertised (`stripUnadvertisedIds`).
+	 */
+	"notifications",
+] as const;
+
+/** The stable spelling of one destination, on the wire and in the store. */
+export type SidebarDestinationId = (typeof SIDEBAR_DESTINATION_IDS)[number];
+
+/**
+ * One stored arrangement: the ordered rail cut at one fold.
+ *
+ * `visible ++ more` is the single order a drag operates on; the boundary is
+ * `visible.length`, not a second container. All ten ids are stored even when a
+ * destination is temporarily unavailable (a capability gate removes it from the
+ * render, never from the stored order), so a preference survives an app or
+ * backend update that hides a destination and later restores it.
+ */
+export type DesktopSidebarLayout = {
+	visible: SidebarDestinationId[];
+	more: SidebarDestinationId[];
+};
+
+/** `GET`/`PUT /v1/desktop/sidebar-layout` answer with the normalised layout. */
+export type DesktopSidebarLayoutResponse = { layout: DesktopSidebarLayout };
+
+/*
+ * THE NOTIFICATIONS REEL (`/v1/desktop/notifications*`, notifications contract
+ * § 2.2 and § 5.2). One normalized item shape for both sources: a `notify` row
+ * an agent raised, and an OPEN ask projected into the reel (decisions D1:
+ * settled asks never appear in the list, only in an item's detail).
+ *
+ * Fields the backend may add later are tolerated by construction (these are
+ * TypeScript types over a JSON answer, not a strict parser). Optional fields
+ * are the ones an older L1 build or an ask row legitimately omits, and the
+ * renderer treats absence as "cannot say", never as a default value.
+ */
+export type DesktopNotificationPriority = "high" | "normal" | "low";
+
+/**
+ * How an item became read. `explicit` is a gesture; `in_view` is the per-item
+ * auto-read (contract § 6.4); `watching` is created-read because the operator
+ * was in the conversation when it arrived (contract § 6.2, decisions D3).
+ */
+export type DesktopNotificationReadVia = "explicit" | "in_view" | "watching";
+
+export type DesktopNotificationItem = {
+	/** `n_…` for a notify row, `ask:<session_id>:<ask_id>` for an open ask. */
+	id: string;
+	source: "notify" | "ask";
+	priority: DesktopNotificationPriority;
+	title: string;
+	/** First 160 characters of the body, or an ask's first question. */
+	excerpt: string;
+	/** Epoch milliseconds. */
+	created_at: number;
+	updated_at: number;
+	/** Machine-wide monotonic cursor; re-stamped on every write to the row. */
+	seq: number;
+	/** The ack token: a read or dismiss names the revision the client rendered. */
+	revision: number;
+	read: boolean;
+	read_via: DesktopNotificationReadVia | null;
+	dismissed: boolean;
+	repeat_count: number;
+	/** The notify collapse key, scoped by session. Absent on an ask. */
+	key?: string;
+	/** The `notify` tool call id: the transcript anchor. Absent on an ask. */
+	anchor_id?: string;
+	session: {
+		id: string;
+		title: string;
+		agent_id?: string;
+		live?: boolean;
+	};
+	projects?: { key: string; name: string; status?: string }[];
+	ask?: {
+		status: string;
+		deadline_at?: number | null;
+		question_count?: number;
+		dismissible?: boolean;
+	} | null;
+	actions?: { dismiss?: boolean; answer?: boolean; read?: boolean };
+};
+
+/** `GET /v1/desktop/notifications`. `waiting` is present on the first page only. */
+export type DesktopNotificationToken = { id: string; revision: number };
+
+export type DesktopNotificationsList = {
+	items: DesktopNotificationItem[];
+	/** Exact page observations; first page also includes its waiting ask refs. */
+	observed: DesktopNotificationToken[];
+	waiting?: DesktopNotificationItem[];
+	next_cursor?: string | null;
+	unread_count: number;
+	waiting_count: number;
+	/** Unread pending asks only: reading never removes an open ask. */
+	waiting_unread_count: number;
+	/** Max `seq` this answer saw: the `throughSeq` of a mark-all / by-session write. */
+	high_water: number;
+};
+
+/** `GET /v1/desktop/notifications/count`, and the feed frame's payload. */
+export type DesktopNotificationsCount = {
+	unread_count: number;
+	waiting_count: number;
+	/** Unread pending asks only: reading never removes an open ask. */
+	waiting_unread_count: number;
+	high_water: number;
+};
+
+export type DesktopNotificationHistoryEntry = {
+	revision: number;
+	at: number;
+	title: string;
+	excerpt: string;
+};
+
+/** `GET /v1/desktop/notifications/{id}`. */
+export type DesktopNotificationDetail = {
+	item: DesktopNotificationItem & {
+		body_md?: string;
+		links?: { label: string; url: string }[];
+	};
+	history: DesktopNotificationHistoryEntry[];
+	session: {
+		id: string;
+		title: string;
+		agent_id?: string;
+		live_state?: string;
+		cwd?: string;
+	};
+	/** The transcript entry at `anchor_id`, bounded; absent when unresolvable. */
+	anchor: { id: string; excerpt: string } | null;
+	projects: { key: string; name: string; status?: string }[];
+	/** That conversation's asks, the frozen `PendingAsk` wire rows. */
+	asks: Record<string, unknown>[];
+};
+
+/*
+ * Why a write left an id alone. The first four answer the PATCH; the rest are
+ * the seen route's re-checks of the evidence (contract § 6.4), each one a
+ * reason the item stays unread. Measured against the core branch's store
+ * (`notifications/*.py`) on 2026-10-25, not copied from the contract text.
+ */
+export type DesktopNotificationsSkipReason =
+	| "live_ask"
+	| "stale_revision"
+	| "unknown"
+	| "already"
+	| "anchor_mismatch"
+	| "no_fresh_evidence"
+	| "stale_evidence"
+	| "no_session";
+
+/** `PATCH /v1/desktop/notifications` and `POST …/seen`. */
+export type DesktopNotificationsWriteResult = {
+	waiting_count: number;
+	waiting_unread_count: number;
+	changed: string[];
+	skipped: { id: string; reason: DesktopNotificationsSkipReason }[];
+	unread_count: number;
+	high_water: number;
 };

@@ -397,11 +397,56 @@ const KEYCAP_DELTA_E = 2.0;
  * against the ground behind it.
  */
 const CONTROLS = [
+	// Source confirmation paints its remedy and diagnostic on warningWash;
+	// ground-only button/text checks do not cover either of these pairings.
+	{
+		name: "hub source confirmation remedy",
+		on: ["warningWash"],
+		fill: "accent",
+		border: "accent",
+		ink: "onAccent",
+	},
+	{
+		name: "hub source confirmation diagnostic",
+		on: ["canvas"],
+		fill: "warningWash",
+		border: "warningBorder",
+		ink: "inkMuted",
+	},
+
 	// Find is a chrome-band row, never a DOM panel over WebContentsView. Its
 	// standard Input uses the existing input-control contract; this pins the
 	// row's elevated ground, control rule and politely announced count.
 	{
 		name: "browser find row",
+		on: ["elevated"],
+		fill: "elevated",
+		border: "borderControl",
+		ink: "inkMuted",
+	},
+	// The address suggestion list is the second in-flow chrome band: it shares
+	// the bar's elevated ground and control rule, and its label/empty notice is
+	// muted ink. The rows themselves are already covered by the elevated-ground
+	// ink loop and the accent-wash state ground; this pins the container so a
+	// future fill/border edit cannot ship an unmeasured combination.
+	{
+		name: "browser address suggestions",
+		on: ["elevated"],
+		fill: "elevated",
+		border: "borderControl",
+		ink: "inkMuted",
+	},
+	/*
+	 * The S6a approvals card: another native child over live page content. Its
+	 * ground is the page underneath, which no palette enumeration can know, so
+	 * this row pins what the card controls itself — its elevated fill, its
+	 * control edge and its muted brand/detail ink — the same way the find row
+	 * pins its band. The count's accent ink and the title's `ink` are measured
+	 * by the elevated-ground ink loop; without this row a green run would say
+	 * nothing about the surface the card paints.
+	 */
+	{
+		name: "browser approvals card",
 		on: ["elevated"],
 		fill: "elevated",
 		border: "borderControl",
@@ -485,6 +530,52 @@ const CONTROLS = [
 		fill: "elevated",
 		border: null,
 		ink: "inkDim",
+		edge: false,
+	},
+	{
+		/*
+		 * TEAM BRIDGE'S BORDERLESS INITIAL PLATES (operator ask, 2026-10-26).
+		 * The message row, rail, compose suggestions and intro header use the
+		 * same fill. `mediaSurface` is the app's borderless-tile role rather than
+		 * `sunken`, whose ground step can disappear under a hovered row. The
+		 * plate has no control boundary: its initial is the readable mark and its
+		 * extent is a ground step, asserted on all four hosts below.
+		 *
+		 * The rail's account row draws the same plate since its own-avatar
+		 * change (design review round 1, D2): `surface` is its ground and
+		 * `rowHover` its pointer state, both hosts here.
+		 */
+		name: "team bridge person initial plate",
+		/*
+		 * THE FOUR HOSTS THE PLATE IS DRAWN ON, and `elevated` joined them in review
+		 * round 1 (M3): the compose suggestion's plate sits in the To: popover, which
+		 * is `elevated`, not a page ground. The selected rail row is deliberately NOT
+		 * listed: that ground takes `surface` (sibling row below), because this fill
+		 * bottoms out at 1.83 there - the design round's D1.
+		 */
+		on: ["canvas", "surface", "elevated", "rowHover"],
+		fill: "mediaSurface",
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	{
+		/*
+		 * THE PLATE ON A SELECTED RAIL ROW (design round 1, D1). `mediaSurface` is
+		 * the quiet step everywhere else, but a selected row's ground is
+		 * `rowSelected`, where it bottoms out at ΔE00 1.83 on the brand light palette
+		 * and falls under 3.0 on eight - the plate the design round saw fading into
+		 * the selection. `surface` is the role authored against that ground (ΔE00 >=
+		 * 3.18 on all 59 palettes) and holds `inkMuted` well clear of the floor, so
+		 * the selected row is the one state that steps the other way. No edge: the
+		 * operator asked for borderless plates, and this row is what replaces the
+		 * ring on the one host where a fill alone was not enough.
+		 */
+		name: "team bridge plate on a selected rail row",
+		on: ["rowSelected"],
+		fill: "surface",
+		border: null,
+		ink: "inkMuted",
 		edge: false,
 	},
 	{
@@ -1440,6 +1531,44 @@ const CONTROLS = [
 	},
 	{
 		/*
+		 * EVERY SIDEBAR ATTENTION COUNT (operator, 2026-10-28): the `emphasis` badge
+		 * variant as worn by the shared `AttentionBadge` - Aida, Browser, Mesh, Team
+		 * Bridge, Notifications, More's aggregate, and Team Bridge's channel / group
+		 * / people / organization unread pills. It began as the Notifications row's
+		 * alone (notifications decisions D5, 2026-10-25); the operator reversed D5
+		 * and made it the one attention register. A filled pill with no border, so
+		 * the EDGE IS CLAIMED: the fill is the whole boundary, and `accent` clears
+		 * the 3:1 non-text floor on all four rail grounds (4.24:1 worst, tokyoNight
+		 * on `rowSelected`), so this row keeps the default edge check rather than
+		 * `edge: false`. The numeral is `onAccent` on `accent`, 4.97:1 worst
+		 * (tokyoNightDay) against the 4.5:1 text floor the loop applies. Under the
+		 * window glass the fill is opaque, so the digit pair is unchanged, and the
+		 * fill against the `canvas` / `surface` glass composites is the same
+		 * `accent`-on-composite pair the "glass focus ring" assertion below holds
+		 * at 3:1 for every palette, tier and scheme.
+		 */
+		name: "rail attention badge (emphasis)",
+		/*
+		 * `elevated` and `accentWash` are the org switcher's MENU grounds: its
+		 * per-organization pills render inside `DropdownMenuRadioItem`, on the
+		 * menu panel and on the highlighted row (`dropdown-menu.tsx`). Measured
+		 * 4.51:1 at worst on both (tokyoNight / everforest, review of #1465 m2);
+		 * listed so the 3:1 floor is pinned rather than incidental.
+		 */
+		on: [
+			"canvas",
+			"surface",
+			"rowSelected",
+			"rowHover",
+			"elevated",
+			"accentWash",
+		],
+		fill: "accent",
+		border: null,
+		ink: "onAccent",
+	},
+	{
+		/*
 		 * THE SESSION ROW'S OUTSTANDING-ASKS MARK (operator ask, 2026-10-04) — the
 		 * sidebar row's "a queued question is waiting" glyph and count
 		 * (`chat-session-status.tsx`'s `ChatAsksOutstanding`).
@@ -1896,6 +2025,57 @@ const CONTROLS = [
 		ink: "inkMuted",
 		edge: false,
 	},
+	/*
+	 * THE LIBRARY SURFACE (desktop UI, 2026-10-18). Four triples the feature
+	 * actually paints, registered because role reuse alone is not proof: the
+	 * card's metadata sits on `surface` over the page's `canvas`, the thumbnail
+	 * well is `sunken` with a kind glyph, the origin badge is an opaque
+	 * `elevated` mark on the card, and the composer is an `elevated` field on
+	 * the preview's `canvas`. The card and composer have no edge at rest (the
+	 * hairline is decorative); the badge's edge is declared away for the same
+	 * reason the team avatar's is - its fill merges with a card ground on some
+	 * palettes, so the letters' own floor is the boundary that matters.
+	 */
+	{
+		name: "library card",
+		on: GROUNDS,
+		fill: "surface",
+		border: null,
+		ink: "ink",
+		edge: false,
+	},
+	{
+		name: "library card secondary",
+		on: ["surface"],
+		fill: "surface",
+		border: null,
+		ink: "inkDim",
+		edge: false,
+	},
+	{
+		name: "library thumbnail well",
+		on: ["surface", "canvas"],
+		fill: "sunken",
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	{
+		name: "library origin badge",
+		on: ["surface", "sunken"],
+		fill: "elevated",
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	{
+		name: "library composer field",
+		on: ["canvas", "surface"],
+		fill: "elevated",
+		border: null,
+		ink: "ink",
+		edge: false,
+	},
 ];
 
 /**
@@ -1949,6 +2129,16 @@ const ADJACENT = [
  * set of semantics that passes on average is not a set of semantics.
  */
 const GRAPHICS = [
+	{
+		/*
+		 * Team Bridge's agent plate draws a Bot GLYPH, not a text initial, so
+		 * this is the 3:1 icon-on-fill pair rather than a control-label row.
+		 * Its fill's separation from the hovered row is asserted below.
+		 */
+		name: "team bridge agent plate glyph",
+		on: ["mediaSurface"],
+		fg: "accent",
+	},
 	{
 		/*
 		 * The completion mark on a follow-up turn bar (`turn-summary.tsx`'s
@@ -2326,6 +2516,37 @@ const GRAPHICS = [
  * same element at different times.
  */
 const PERCEPTIBLE = [
+	{
+		/*
+		 * The no-border replacement for the message avatar's ring: this is the
+		 * assertion the old `border-control` was standing in for. In particular,
+		 * `rowHover` is a STATE ground, not a rung of the elevation ladder. The
+		 * media role's canvas floor alone would not prove that a hovered message
+		 * still shows its avatar.
+		 *
+		 * THE FLOOR IS THE FILE'S PERCEPTUAL ONE (review round 1, M3: this row shipped
+		 * at 1.5, weaker than every sibling). The measured minima across 59 palettes
+		 * are `canvas` 4.00 (oneDark), `surface` 5.96 (iceberg), `elevated` 7.89
+		 * (rosewood) and `rowHover` 3.70 (iceberg). The row used to quote 3.70 as THE
+		 * worst case; 3.70 is the worst of the hosts a plate actually rests on, and the
+		 * true worst pairing the role reaches is 1.83 against `rowSelected` on the
+		 * brand light palette - which is why a selected rail row takes `surface`
+		 * instead, asserted by the row above.
+		 *
+		 * The rail's account plate (`user-profile-sidebar.tsx`) is the same fill
+		 * on `surface` and `rowHover` since design review round 1 of the
+		 * own-avatar change, D2; it replaced that plate's `border-control` ring.
+		 */
+		name: "team bridge borderless person and agent plates",
+		role: "mediaSurface",
+		/* NOT `rowSelected`: that host is where this fill bottoms out (1.83), and the
+		   component does not paint a plate there - the selected rail row takes
+		   `surface`, asserted by the sibling row above. Listing it here would be a
+		   claim about a pairing the app never renders, and it would fail on the eight
+		   palettes where the wash and the selection share a rung. */
+		on: ["canvas", "surface", "elevated", "rowHover"],
+		minDeltaE: 3.0,
+	},
 	{
 		/*
 		 * An option ROW inside the docked question card (§F1), under the pointer or
@@ -3124,7 +3345,7 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/features/chat/pickers/picker-host.tsx",
 		/* `!option.disabled` joined this arm in review round 1 too (U2); see the
 		 * tint entry above for why the gate is the point rather than a drift. */
-		must: 'isPicked || (isHovered && !isActive && !option.disabled)) &&\n\t\t\t\t\t"outline-solid outline-1 -outline-offset-1 outline-control"',
+		must: 'isPicked || (isHovered && !isActive && !option.disabled)) &&\n\t\t\t\t\t\t"outline-solid outline-1 -outline-offset-1 outline-control"',
 		why: "the pointer's mark and the in-flight mark must be perceivable in every theme, which a wash-based mark is not: the role it needs is asserted as `picker row pointer mark` above, and this pin is what proves the row renders it (design D12) - for settable rows; a refused row carries neither half (review round 1, U2)",
 	},
 	{
@@ -3270,7 +3491,7 @@ const STRUCTURAL_CALL_SITES = [
 		 */
 		what: "chat session row current-row ground",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: '"min-w-0 grow text-left",',
+		must: '"min-w-0 grow text-start",',
 		why: "the button shares the wrapper with the mark and has to carry the ground as well, or the current conversation loses its mark on the element the pointer and the caret land on",
 	},
 	{
@@ -3287,7 +3508,7 @@ const STRUCTURAL_CALL_SITES = [
 		 */
 		what: "entity row current-row ground",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: 'className={cn(rowStyle, "flex-1 text-left", staged && rowCurrent)}',
+		must: 'className={cn(rowStyle, "flex-1 text-start", staged && rowCurrent)}',
 		why: "the element the pointer lands on has to carry the ground as well as the wrapper: a child's background paints over its parent's, so without this the current entity row is repainted `elevated` by the pointer and is indistinguishable from a hovered one",
 	},
 	{
@@ -3329,7 +3550,7 @@ const STRUCTURAL_CALL_SITES = [
 	{
 		what: "settings rail continuous resting surface",
 		file: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
-		must: '"relative flex h-8 w-full items-center rounded-sm bg-transparent text-left text-body-sm hover:bg-row-hover hover:text-ink"',
+		must: '"relative flex h-8 w-full items-center rounded-sm bg-transparent text-start text-body-sm hover:bg-row-hover hover:text-ink"',
 		why: "Current and inactive Settings destinations intentionally reveal the same surface; persistent selected fill belongs to chat, not this local navigation exception.",
 	},
 	{
@@ -3347,7 +3568,7 @@ const STRUCTURAL_CALL_SITES = [
 	{
 		what: "settings rail decorative gutter marker",
 		file: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
-		must: '"absolute left-1 top-1/2 size-1 -translate-y-1/2 rounded-full bg-accent"',
+		must: '"absolute start-1 top-1/2 size-1 -translate-y-1/2 rounded-full bg-accent"',
 		why: "The absolute dot is a shape cue when collapsed labels disappear, not a new boundary or a flex item that moves its neighbours.",
 	},
 	{
@@ -3396,16 +3617,20 @@ const STRUCTURAL_CALL_SITES = [
 		 * that component's own comment rather than by a row here, which is the
 		 * gap this entry closes for the canonical transcript.
 		 */
-		what: "transcript quote toolkit floating shell",
-		file: "src/renderer/src/features/chat/canonical/quote-toolkit.tsx",
+		what: "floating toolbar shell (quote, link, selection and row clusters)",
+		file: "src/renderer/src/shared/components/common/floating-toolbar.tsx",
 		/*
-		 * Verbatim, so it tracks the shell as written: the speak-aloud round added
-		 * the second control (Speak beside Quote) and with it the pair's `gap-0.5`
-		 * - the anatomy the link toolbar's own multi-button strip already carries.
-		 * The boundary this row protects is the `border border-hairline
-		 * bg-elevated` ground, which is unchanged.
+		 * Verbatim, so it tracks the shell as written. The shell used to live
+		 * inline in `quote-toolkit.tsx` and this row pinned that copy; the
+		 * operator's "they seem to be slightly different styles" report moved
+		 * it here so the quote strip, the link strip, the shared selection
+		 * strip and the row's own clusters cannot drift apart again. The
+		 * boundary this row protects is the `border border-hairline
+		 * bg-elevated` ground, and it is unchanged - only its address is. A
+		 * future edit that repaints the shell on the transcript's canvas now
+		 * fails here even though it would leave every palette row green.
 		 */
-		must: "z-10 flex h-8 items-center gap-0.5 rounded-md border border-hairline bg-elevated px-1",
+		must: "flex h-8 items-center gap-1 rounded-md border border-hairline bg-elevated px-1",
 		why: "the toolkit floats over prose and over a user bubble, so `elevated` plus a hairline is the whole of what makes it read as an object rather than as text that drifted; repainting it on the transcript's own canvas leaves it invisible against the reading column with every palette row still green",
 	},
 	{
@@ -5420,51 +5645,23 @@ for (const { id, palette: p } of palettes) {
 	}
 
 	/*
-	 * THE PLATE INSIDE A ROW, and the half of its guard a class cannot carry.
-	 *
-	 * The rail's account row hovers on `rowHover` and contains an element with a
-	 * ground of its own: the avatar plate, `bg-elevated` with a `border-control`
-	 * edge (`shared/components/navigation/user-profile-sidebar.tsx`). The pair
-	 * under the pointer collapses on the shipped values - `elevated` against
-	 * `rowHover` is byte-identical on `arcade` (ΔE00 0.00) and inside the field
-	 * floor on `gruvbox` 1.14, `obsidian` 1.21 and `everforest` 1.90, so hovering
-	 * the row turns the plate into a disc of the row's own hover colour - and it is
-	 * not a value to re-solve, because a row state IS a step of the panel it sits
-	 * on and some palette's state will always land on some rung.
-	 *
-	 * So the plate is legal the way a control here is: ONE OF ITS TWO EDGES
-	 * PERCEIVABLE, fill or boundary. The arms are different instruments and are
-	 * measured as such - the fill as a FIELD at `FIELD_SEPARATION_FLOOR` (the same
-	 * floor every other "is this fill distinguishable" pair in this file uses) and
-	 * the 1px boundary as a LINE at the non-text floor, because ΔE00 credits
-	 * chroma that a one-pixel edge cannot spend (the argument beside
-	 * `HAIRLINE_RATIO_FLOOR`). Either arm clearing is enough, and on exactly the
-	 * four palettes the fill fails the boundary is what clears: `borderControl` on
-	 * `rowHover` measures 3.18 (`arcade`), 3.13 (`gruvbox`), 3.27 (`obsidian`) and
-	 * 3.10 (`everforest`).
-	 *
-	 * The class half of this - that the plate still wears `border-control` rather
-	 * than a fill alone - is asserted in `scripts/chat-sidebar-selection.test.mjs`,
-	 * because a palette gate cannot see which class an element paints. The pair is
-	 * `rowHover` and not `rowSelected`: the account row is not a destination, so it
-	 * never paints `rowCurrent` (that file asserts it), which is also why
-	 * `rowSelected` may stay inside 2.0 of `elevated` on 16 palettes here without
-	 * this block saying anything about them.
+	 * THE RAIL'S ACCOUNT PLATE LEFT THIS PAIR in design review round 1 of the
+	 * own-avatar change (D2). It was `elevated` with a `border-control` edge, and
+	 * this block asked one of those two arms to clear `rowHover`. The operator
+	 * asked for borderless avatars and the ring visibly dropped away when the
+	 * photo landed, so the plate now wears Team Bridge's `mediaSurface` with no
+	 * edge, and its pairs are asserted where that fill already is: the
+	 * `team bridge borderless person and agent plates` row in `PERCEPTIBLE`
+	 * (`surface` and `rowHover` are two of its hosts) and the `team bridge person
+	 * initial plate` row in `CONTROLS` (`inkMuted` initials on the fill). The
+	 * account row is not a destination, so `rowSelected`, where that fill bottoms
+	 * out, is never under it; `scripts/chat-sidebar-selection.test.mjs` asserts
+	 * both the class and that scope.
 	 */
-	if (isHex(p.elevated) && isHex(p.rowHover) && isHex(p.borderControl)) {
-		assertions++;
-		const plateField = deltaE(p.elevated, p.rowHover);
-		const plateEdge = ratio(p.borderControl, p.rowHover);
-		if (plateField < FIELD_SEPARATION_FLOOR && plateEdge < FLOOR.nonText) {
-			fail(
-				`${id}: the account row's plate has no perceivable edge under the pointer — \`elevated\` ${p.elevated} is ΔE00 ${r2(plateField)} from \`rowHover\` ${p.rowHover} (need ${FIELD_SEPARATION_FLOOR}) and its \`borderControl\` edge ${p.borderControl} is ${r2(plateEdge)}:1 against that same fill (need ${FLOOR.nonText}:1), so the plate the pointer reveals is a disc of the row's own hover colour. Give the plate an edge the row's fill cannot overrun, or a fill the row's own step cannot land on`,
-			);
-		}
-	}
 
 	/*
-	 * THE SECOND PLATE INSIDE A ROW, and the state the account row's pair does not
-	 * have to answer: the agents sidebar's own row IS a destination, so it paints
+	 * THE PLATE INSIDE A DESTINATION ROW, the state the rail's account plate never
+	 * had to answer: the agents sidebar's own row IS a destination, so it paints
 	 * `rowCurrent` under a selection as well as `hover:bg-row-hover` under the
 	 * pointer (`features/agents/components/agents-sidebar.tsx`; both are asserted
 	 * from that call site in `scripts/chat-sidebar-selection.test.mjs`). Its avatar
@@ -7758,6 +7955,41 @@ for (const row of ROW_STATE_MEASURED_SHORTFALL) {
 						`${id}: glass chrome tab (${tier}/${scheme}) is ΔE00 ${r2(step)} off the band, floor 2.5`,
 					);
 			}
+		}
+	}
+	/*
+	 * THE ISOLATING BAND, which is the one band whose ground is MOVING.
+	 *
+	 * Every other band in the glass model sits on a STATIC ground - the pane's
+	 * own fill - so the published alpha is right for them and the rows above
+	 * cover it. A band that rows scroll UNDER has a ground that is whatever is
+	 * passing beneath it, and its alpha is therefore a CONTRACT: the count
+	 * beside the section label has to clear the 4.5 text floor against it,
+	 * whatever that content is.
+	 *
+	 * The contract asserts the floor's own claim, over EVERY palette and at
+	 * the WORST content colour (the extreme the scheme's ink contrasts
+	 * against: a white thumbnail under a dark band, a black one under a light
+	 * band), and it asserts the floor is not BELOW what the palettes need -
+	 * the same "re-derive, never hand-lower it" rule the alpha floors carry.
+	 */
+	for (const { id, palette } of palettes) {
+		const scheme = glassSchemeOf(palette);
+		const floor = committed.bandFloor?.[scheme];
+		if (floor === undefined) {
+			fail(`${id}: the isolating band's alpha floor is missing for ${scheme}`);
+			continue;
+		}
+		const backdrop = scheme === "dark" ? "#ffffff" : "#000000";
+		const band = glassComposite(palette.elevated, floor, backdrop);
+		for (const ink of GLASS_INKS) {
+			assertions++;
+			const needed = ink === "inkDim" ? GLASS_STATE_DIM_FLOOR : GLASS_INK_FLOOR;
+			const r = glassRatio(palette[ink], band);
+			if (r < needed)
+				fail(
+					`${id}: the isolating band (${scheme}) ${ink} on the band is ${r2(r)}:1, floor ${needed}`,
+				);
 		}
 	}
 	console.log(

@@ -1,0 +1,22 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "e81dd47e3e5c",
+  "date": "2026-10-19",
+  "locale": "ur",
+  "status": "passed",
+  "scope": "Post-merge English drift audit: ui.agentMessages.dialog.consent_changed lost \"below\"; full 16-key namespace read at the final en/ur bytes.",
+  "namespaces": {
+    "ui.agentMessages": {
+      "namespace": "ui.agentMessages",
+      "keys_read": 16,
+      "keys_audited_in_delta": 1,
+      "status": "passed",
+      "sha256": {
+        "en": "8dadc34125e9434d3994cff7518f72774bd486ce36edd505d34e21ef4c4f574b",
+        "ur": "3fc28406c6f976c3ce3b6fc2f4db2c491446e18ee1f37ad453a677d113808a0a"
+      },
+      "findings": []
+    }
+  }
+}

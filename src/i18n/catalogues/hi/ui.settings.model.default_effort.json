@@ -1,0 +1,21 @@
+{
+	"ui.settings.model.default_effort.label": "डिफ़ॉल्ट प्रयास",
+	"ui.settings.model.default_effort.placeholder": "प्रयास का स्तर चुनें",
+	"ui.settings.model.default_effort.busy": "डिफ़ॉल्ट प्रयास सहेजा जा रहा है",
+	"ui.settings.model.default_effort.model_default": "मॉडल का डिफ़ॉल्ट",
+	"ui.settings.model.default_effort.model_default_resolves": "इस मॉडल के लिए {level} पर चलता है।",
+	"ui.settings.model.default_effort.helper_ready": "नई बातचीतों पर लागू होता है। मॉडल का डिफ़ॉल्ट मॉडल को अपना स्तर खुद चुनने देता है।",
+	"ui.settings.model.default_effort.loading": "इस मॉडल के प्रयास के स्तर जाँचे जा रहे हैं…",
+	"ui.settings.model.default_effort.error": "इस मॉडल के प्रयास के स्तर पढ़े नहीं जा सके।",
+	"ui.settings.model.default_effort.no_model": "प्रयास के स्तर चुनने के लिए मॉडल चुनें।",
+	"ui.settings.model.default_effort.no_home": "आपका होम फ़ोल्डर अभी उपलब्ध नहीं है, इसलिए प्रयास के स्तर पढ़े नहीं जा सकते।",
+	"ui.settings.model.default_effort.settings_loading": "आपका सहेजा हुआ डिफ़ॉल्ट प्रयास जाँचा जा रहा है…",
+	"ui.settings.model.default_effort.settings_error": "आपका सहेजा हुआ डिफ़ॉल्ट प्रयास पढ़ा नहीं जा सका।",
+	"ui.settings.model.default_effort.unresolved": "इस मॉडल ने अभी अपने प्रयास के स्तर नहीं बताए हैं।",
+	"ui.settings.model.default_effort.empty": "इस मॉडल पर प्रयास बदला नहीं जा सकता।",
+	"ui.settings.model.default_effort.one_level": "इस मॉडल में प्रयास का एक स्तर है: {level}।",
+	"ui.settings.model.default_effort.one_level_sentinel": "इस मॉडल में प्रयास का कोई स्तर चुनने के लिए नहीं है: यह हमेशा अपने डिफ़ॉल्ट पर चलता है।",
+	"ui.settings.model.default_effort.clamped": "{level}, {model} पर उपलब्ध नहीं है। {resolved} इस्तेमाल हो रहा है।",
+	"ui.settings.model.default_effort.clamped_unset": "{level}, {model} पर उपलब्ध नहीं है। मॉडल का डिफ़ॉल्ट इस्तेमाल हो रहा है।",
+	"ui.settings.model.default_effort.save_failed": "आपका डिफ़ॉल्ट प्रयास सहेजा नहीं गया।"
+}

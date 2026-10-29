@@ -178,6 +178,20 @@ const LOCK_PATHS = new Set(["pnpm-lock.yaml", "pnpm-workspace.yaml"]);
 const EVIDENCE_PREFIX = "docs/evidence/";
 
 /**
+ * `docs/evidence-frames/**` - the capture rig's IGNORED output tree.
+ *
+ * Frames are regenerable and are not committed (`.gitignore`), so a path here
+ * is never "committed evidence": there is nothing under it for a job to read,
+ * and classifying it as the evidence category would claim the suite had an
+ * input it does not have. It is not prose either. The only way it can appear in
+ * a diff is a force-add - a deliberate act that re-materialises a whole capture
+ * set per worktree (955 MB at origin/main, measured 2026-10-20) - so it is
+ * classified `other`, which runs everything and prints the unknown-path
+ * warning. Fail-closed, and loud rather than inert.
+ */
+const FRAMES_PREFIX = "docs/evidence-frames/";
+
+/**
  * The scripts the `runtime-deps` job's own step runs. Named so that a change to
  * either keeps that job selected: the check is the allowlist (`pnpm
  * check-runtime-deps`) executed through `scripts/require-report.sh` so a silent
@@ -221,6 +235,7 @@ const RUNTIME_DEP_SCRIPTS = new Set([
  */
 export const EVIDENCE_SOURCES = new Set([
 	"scripts/capture-evidence.mjs",
+	"scripts/check-evidence-structure.mjs",
 	"scripts/check-evidence.mjs",
 	"scripts/chrome-keychain.mjs",
 	"scripts/color.mjs",
@@ -311,6 +326,20 @@ const MAIN_BUNDLE_ROOT_FILES = new Set([
 ]);
 
 /**
+ * Everything the language-coverage gate reads, and therefore everything whose
+ * change must re-run it.
+ *
+ * `src/i18n/**` is the catalogue tree and the generated key types;
+ * `i18n/**` is the shared language manifest plus `coverage-allowance.json` - the
+ * allowance is the one file the gate exists to police, so a diff that touches
+ * ONLY it (pure data, no code) must still run the growth comparison;
+ * `scripts/i18n/**` is the checker itself and the sibling gates `pnpm check-i18n`
+ * chains beside it. All three classify as `other`, which is why this is a path
+ * predicate rather than a category.
+ */
+const I18N_PREFIXES = ["src/i18n/", "i18n/", "scripts/i18n/"];
+
+/**
  * Whether the category table NAMED this path's tree, rather than reaching its
  * answer through the `other` catch-all. See `KNOWN_LIVE_PREFIXES`.
  */
@@ -349,6 +378,8 @@ export function categoryOf(path) {
 	const p = normalise(path);
 	if (!p) return CAT_OTHER;
 	if (p === ".github" || p.startsWith(".github/")) return CAT_CI;
+	if (p === "docs/evidence-frames" || p.startsWith(FRAMES_PREFIX))
+		return CAT_OTHER;
 	if (p === "docs/evidence" || p.startsWith(EVIDENCE_PREFIX))
 		return CAT_EVIDENCE;
 	if (p.startsWith("docs/")) return CAT_DOCS;
@@ -374,6 +405,7 @@ export const FLAGS = [
 	"unit",
 	"bytecode",
 	"evidence",
+	"i18n",
 	"runtime_deps",
 	"audit",
 	"pack",
@@ -391,14 +423,27 @@ export const FLAGS = [
  */
 export const JOB_FLAGS = {
 	lint: ["lint"],
+	"i18n-coverage": ["i18n", "types"],
 	"runtime-deps": ["runtime_deps"],
 	"check-types": ["types"],
 	test: ["unit"],
+	"desktop-tests-result": ["unit"],
 	"bytecode-build": ["bytecode"],
 	evidence: ["evidence"],
 	audit: ["audit"],
 	"npx-sanity-check": ["pack"],
 };
+
+/** Jobs whose CI condition is OR; every other job retains the original AND. */
+const JOB_FLAG_OPERATORS = {
+	"i18n-coverage": "some",
+};
+
+/** The single local equivalent of each job's CI flag predicate. */
+export function jobMatchesFlags(job, flags) {
+	const operator = JOB_FLAG_OPERATORS[job] ?? "every";
+	return JOB_FLAGS[job][operator]((flag) => flags[flag]);
+}
 
 /**
  * Jobs in `ci.yml` that take no scope flag, each with the reason. Everything in
@@ -452,6 +497,14 @@ export const PERMISSIVE_DEPS = [
  */
 export const JOB_COMMANDS = {
 	lint: ["pnpm lint", "pnpm lint:scripts"],
+	// The three halves of `pnpm check-i18n`, in the order CI runs them. The local
+	// added-copy and coverage halves resolve their base to `origin/main`; CI alone
+	// supplies `HEAD^1`, which is the only difference between the two runs.
+	"i18n-coverage": [
+		"pnpm check-i18n:catalogues",
+		"pnpm check-i18n:added-strings",
+		"pnpm check-i18n:coverage",
+	],
 	"runtime-deps": [
 		// The CI spelling, wrapper and all, because the wrapper is part of what the
 		// job verifies: `require-report.sh` refuses to read a silent success as a
@@ -478,6 +531,12 @@ export const JOB_COMMANDS = {
 	// the four `VITE_*` values the build config refuses to start without. CI
 	// substitutes placeholders; neither set ends up in a shipped artifact.
 	"bytecode-build": ["pnpm build"],
+	// The STRUCTURAL half of the evidence gate - the command CI's `Evidence
+	// Structure` job runs. It is cheap (a git listing, the manifest and one
+	// guard call) because the pixel sweep is NOT here: `pnpm check-evidence`
+	// decodes the captured frames tree, which is rig output in an ignored tree,
+	// so it runs at release on a captured checkout (AGENTS.md).
+	evidence: ["node scripts/check-evidence-structure.mjs"],
 };
 
 /**
@@ -486,6 +545,10 @@ export const JOB_COMMANDS = {
  * quietly narrower than it looks.
  */
 export const LOCAL_EXCLUSIONS = {
+	"desktop-tests-result":
+		"CI matrix result aggregation, no local suite execution. The existing test " +
+		"mapping already runs the full inventory once; this job validates the three " +
+		"same-head worker receipts and must not duplicate pnpm test:desktop locally.",
 	audit:
 		"no faithful local spelling. CI reads the critical-severity COUNT out of " +
 		"`pnpm audit --json` and tolerates every other advisory; a bare local " +
@@ -500,20 +563,6 @@ export const LOCAL_EXCLUSIONS = {
 		"launch leg installs the tarball through `npx` on a macOS runner. Neither " +
 		"belongs in a default local pass; `pnpm pack` and `node " +
 		"scripts/npx-smoke-test.mjs <tarball>` remain the manual spellings.",
-	evidence:
-		"the sweep pays a WHOLE-TREE DECODE of the committed frames - 15,553 of " +
-		"them, ~5 minutes locally and 11m27s on the runner - and admits ONE run " +
-		"per MACHINE through a permanent lease, exiting 75 DEFERRED (not failing) " +
-		"when another check holds it. On a fleet of concurrent sessions a local " +
-		"`check-changed` would therefore either spend five minutes on every " +
-		"evidence-touching diff or be locked out of its own gate. Excluded rather " +
-		"than kept as a gate that cries wolf, and the fast half of the SAME gate " +
-		"still runs locally and in CI: `scripts/evidence-manifest.test.mjs` binds " +
-		"the counts, the stamps and the declarations against the shipped manifest " +
-		"in under a second, under the `test` job. `pnpm check-evidence` remains the " +
-		"manual spelling - its 75 is the DEFERRED code `runJobs` reports as a " +
-		"deferral rather than a failure - and `ci.yml`'s `evidence` job is the " +
-		"whole-tree gate.",
 };
 
 /**
@@ -526,9 +575,10 @@ export const FLAG_REASONS = {
 	unit: "a changed path that is neither prose nor committed evidence, or a `docs/evidence/**` change (the desktop suite reads committed evidence at runtime)",
 	bytecode:
 		"a path compiled into the main bundle (`src/main/**`, `src/shared/**`, `src/i18n/**`, `scripts/vite-plugins/**`, `electron.vite.config.js`, `tsconfig.json`, `tsconfig.node.json`), the install (`package.json` or a lockfile), an unrecognised path, or `.github/**` (every flag is true there)",
-	evidence: `a \`docs/evidence/**\` change, one of the modules that produce the sweep's verdict (${[...EVIDENCE_SOURCES].join(", ")}), a palette change (the palettes ARE the grounds a frame is judged against), or a change to the install (\`package.json\` or a lockfile): \`sharp\`, the decoder the verdict is produced with, is a devDependency`,
+	evidence: `a \`docs/evidence/**\` change (the STRUCTURAL gate reads the tracked tree; the pixel sweep runs at release), one of the modules that produce the gate's verdict (${[...EVIDENCE_SOURCES].join(", ")}), a palette change (the palettes ARE the grounds a frame is judged against, so a ground that moves must be swept before the next tag), or a change to the install (\`package.json\` or a lockfile): \`sharp\`, the decoder the sweep uses at release, is a devDependency`,
 	runtime_deps:
 		"`package.json` or one of the scripts the runtime-dependency step executes (`scripts/check-runtime-deps.mjs`, `scripts/require-report.sh`)",
+	i18n: "a path under `src/i18n/**` (catalogues and generated key types), `i18n/**` (the language manifest or `coverage-allowance.json` — an allowance-only change is data and must still re-run the growth comparison) or `scripts/i18n/**` (the checker)",
 	audit: "`package.json` or a lockfile change",
 	pack: "a changed path that is neither prose nor committed evidence",
 };
@@ -674,6 +724,17 @@ export function flagsFor(categories, paths, releaseBump) {
 	const evidence = [...pathSet].some(
 		(path) => EVIDENCE_SOURCES.has(path) || path.startsWith(PALETTE_PREFIX),
 	);
+	/*
+	 * The language-coverage gate's selection (see `I18N_PREFIXES`). Fails closed
+	 * for the one diff that looks inert: an allowance-only change is data, sets no
+	 * other flag differently, and is exactly the change the gate must judge.
+	 * The install is in the predicate too: `pnpm check-i18n` executes script
+	 * definitions from `package.json` and its parser/compiler come from the
+	 * lockfile, so a manifest or lock change can change what the gate runs.
+	 */
+	const i18nPaths = [...pathSet].some((path) =>
+		I18N_PREFIXES.some((prefix) => path.startsWith(prefix)),
+	);
 
 	return {
 		lint: live,
@@ -682,6 +743,7 @@ export function flagsFor(categories, paths, releaseBump) {
 		bytecode: manifest || cats.has(CAT_LOCK) || mainBundleInput,
 		evidence:
 			cats.has(CAT_EVIDENCE) || evidence || manifest || cats.has(CAT_LOCK),
+		i18n: manifest || cats.has(CAT_LOCK) || i18nPaths,
 		runtime_deps:
 			manifest || [...pathSet].some((path) => RUNTIME_DEP_SCRIPTS.has(path)),
 		audit: manifest || cats.has(CAT_LOCK),
@@ -842,15 +904,16 @@ function warn(message, title) {
  * job id -> 'run' | 'skip' for the whole workflow, in `ci.yml` order.
  *
  * Every gated job is gated on all of its flags, so a job with two flags runs
- * only when both are true. Nothing in this workflow inherits a skip: each
+ * only when its flag predicate matches (AND by default, OR where CI uses `||`).
+ * Nothing in this workflow inherits a skip: each
  * gated job's `if:` carries its own `!cancelled()` and its own result clauses,
  * so a skipped `lint` cannot silently skip `npx-sanity-check`.
  */
 export function jobPlan(flags) {
 	const plan = {};
 	for (const job of Object.keys(UNGATED_JOBS)) plan[job] = "run";
-	for (const [job, jobFlags] of Object.entries(JOB_FLAGS)) {
-		plan[job] = jobFlags.every((flag) => flags[flag]) ? "run" : "skip";
+	for (const job of Object.keys(JOB_FLAGS)) {
+		plan[job] = jobMatchesFlags(job, flags) ? "run" : "skip";
 	}
 	return plan;
 }

@@ -106,8 +106,20 @@ const PICTURE_CLASS: Record<ImageSize, string> = {
 	].join(" "),
 };
 
+/**
+ * Path actions for a picture whose only bytes are a retained store copy (a
+ * user's pasted screenshot). `resolvePath` copies it out under a real name at
+ * action time; `onShowInCanvas` opens that copy. Absent, the picture keeps the
+ * per-kind set `image-actions.ts` gives its source string.
+ */
+export type ImagePathActions = {
+	resolvePath: () => Promise<string>;
+	onShowInCanvas?: () => void;
+};
+
 export type ImageAttachmentProps = BaseImageAttachmentProps & {
 	conversationId: string;
+	pathActions?: ImagePathActions;
 	/**
 	 * The overlay a press opens, when the caller owns it — the group carousel's
 	 * door (see `canonical-image.tsx`'s `group`). Receives the layer's open
@@ -215,7 +227,16 @@ const getFileName = (path: string): string => {
  * canonical surface takes the same shape through its `inline-block` wrapper.
  */
 export const ImageAttachment: FC<ImageAttachmentProps> = memo(
-	({ file, src, conversationId, label, size = "full", overlay, press }) => {
+	({
+		file,
+		src,
+		conversationId,
+		label,
+		size = "full",
+		overlay,
+		press,
+		pathActions,
+	}) => {
 		const [hasError, setHasError] = useState(false);
 		const [isLoaded, setIsLoaded] = useState(false);
 		/**
@@ -377,10 +398,13 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 		 * tab after every restart (see the `blob` row in `image-actions.ts`).
 		 */
 		const canvasKind = kind === "path" || kind === "data";
-		const canShowInCanvas = canvasKind && conversationId !== "";
+		const canShowInCanvas =
+			(canvasKind && conversationId !== "") ||
+			Boolean(pathActions?.onShowInCanvas);
 		const showMenu = hasImageActions(kind, {
 			canShowInCanvas,
 			source: src,
+			artifactPathActions: Boolean(pathActions),
 		});
 		/** The picture is a file on disk — the lightbox's copy tells them apart. */
 		const isLocalFile = kind === "path";
@@ -426,6 +450,18 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 					)}
 					src={src}
 					alt={name}
+					/*
+					 * The browser's own deferral and decode off the main thread. The
+					 * caller may already gate the READ (a feed tile mounts this only
+					 * near the viewport), but the painted `<img>` is the one element
+					 * that can still decode at paint time; `loading="lazy"` keeps a
+					 * burst of tiles from decoding ahead of their row, and
+					 * `decoding="async"` keeps the frames moving while they do. Both
+					 * are no-ops on a picture already in view and neither changes the
+					 * reserved box, so existing callers see the same layout.
+					 */
+					loading="lazy"
+					decoding="async"
 					onLoad={() => setIsLoaded(true)}
 					onError={handleError}
 				/>
@@ -532,7 +568,7 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 						 * state the reveal is for (UX round 3 U3-1, QA round 3 Q3-1; the
 						 * frame and the frame measurement are in the evidence README).
 						 */
-						className="file-actions-menu pointer-events-none absolute top-1 right-1 z-[2] opacity-0 transition-opacity duration-fast ease-out-quart group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 has-[[aria-expanded=true]]:pointer-events-auto has-[[aria-expanded=true]]:opacity-100"
+						className="file-actions-menu pointer-events-none absolute top-1 end-1 z-[2] opacity-0 transition-opacity duration-fast ease-out-quart group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 has-[[aria-expanded=true]]:pointer-events-auto has-[[aria-expanded=true]]:opacity-100"
 						onClick={(e) => {
 							e.stopPropagation();
 						}}
@@ -542,7 +578,11 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 							file={file}
 							src={src}
 							label={name}
-							onShowInCanvas={canShowInCanvas ? handleShowInCanvas : undefined}
+							onShowInCanvas={
+								pathActions?.onShowInCanvas ??
+								(canShowInCanvas ? handleShowInCanvas : undefined)
+							}
+							resolvePath={pathActions?.resolvePath}
 						/>
 					</div>
 				)}

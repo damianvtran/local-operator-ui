@@ -1,0 +1,62 @@
+{
+  "args": {
+    "prompt": "a short wooden door creak, close perspective",
+    "duration_s": 0.5
+  },
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Generated a sound effect (0.48s) with ElevenLabs (eleven_text_to_sound_v2) \u2014 attached to the session (digest d736c1f07f72f3b0bbd13c40871f37e4). Cost $0.002 (estimated from published rates; the provider reports no per-call figure)."
+      },
+      {
+        "type": "attachment",
+        "kind": "audio",
+        "content_type": "audio/mpeg",
+        "attachment": "d736c1f07f72f3b0bbd13c40871f37e4",
+        "source_url": null,
+        "size_bytes": 8820,
+        "width": null,
+        "height": null,
+        "duration_s": 0.48,
+        "name": "eleven-text-to-sound-v2-01.mp3"
+      }
+    ],
+    "details": {
+      "provider": "elevenlabs",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "a short wooden door creak, close perspective",
+      "request_id": null,
+      "cancel_handle": null,
+      "cost_usd": 0.002,
+      "cost_source": "rate_table",
+      "billing_basis": "estimated",
+      "cost_provenance": "elevenlabs eleven_text_to_sound_v2 at the central audio rate table (audio-rates@2026-10-17); an estimate from published vendor rates, not a billed figure",
+      "attempts": [
+        {
+          "route": "elevenlabs",
+          "outcome": "ok",
+          "reason_class": "",
+          "message": ""
+        }
+      ],
+      "audio": {
+        "format": "mp3",
+        "size_bytes": 8820,
+        "duration_s": 0.48
+      },
+      "artifacts": [
+        {
+          "digest": "d736c1f07f72f3b0bbd13c40871f37e4",
+          "kind": "audio",
+          "name": "eleven-text-to-sound-v2-01.mp3",
+          "content_type": "audio/mpeg",
+          "size_bytes": 8820,
+          "width": null,
+          "height": null,
+          "duration_s": 0.48
+        }
+      ]
+    }
+  }
+}

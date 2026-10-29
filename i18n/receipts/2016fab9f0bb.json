@@ -1,0 +1,584 @@
+{
+  "auditor": "i18n-auditor",
+  "agent": "i18n-auditor",
+  "model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "served_model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "fallback": "none",
+  "instance": "2016fab9f0bb",
+  "session": "2016fab9f0bb",
+  "date": "2026-10-23",
+  "audited_at_utc": "2026-10-24T03:04:18.384526+00:00",
+  "status": "changes_requested",
+  "verdict": "changes_requested",
+  "locale": "vi",
+  "commit": "03e1f5c34881dfaa169643f3022a7a45698e8a73",
+  "audit_round": "second independent audit at the same commit",
+  "keys_read": 341,
+  "namespace_count": 12,
+  "independence": {
+    "authored_translation": false,
+    "translator_session": "673311bac161",
+    "distinct_from_translator": true,
+    "translator_receipt_read": false,
+    "other_new_auditor_receipt_read_or_copied": false,
+    "repo_edits": false
+  },
+  "guidance": {
+    "core_repo": "/Users/damian/local-operator",
+    "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+    "glossary": {
+      "path": "i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "vi_style_guide": {
+      "path": "i18n/style-guides/vi.md",
+      "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+    },
+    "contract": [
+      "docs/I18N.md",
+      "docs/design/i18n.md §§2, 4, 6",
+      "scripts/i18n/ledger-assemble.mjs receipt contract",
+      "scripts/i18n/ledger-rules.mjs"
+    ]
+  },
+  "namespaces": {
+    "ui.providers": {
+      "status": "changes_requested",
+      "verdict": "changes_requested",
+      "keys_read": 189,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.providers.json",
+        "vi": "src/i18n/catalogues/vi/ui.providers.json",
+        "context": "src/i18n/catalogues/en/ui.providers.context.json"
+      },
+      "sha256": {
+        "en": "9981637a98afbcbc166d889b461795bae7685e42274f4d607b711f4b0f9085f2",
+        "vi": "14f5aeaf552bc9ec151cacfaf5979abbcb5f0eff1dd1f4dd0578b7a34773c5f9",
+        "context": "038afc45c25370cbea4d94aaf4c3cc822ac9956d02fd54cba70ea66e61a68d4d"
+      },
+      "findings": [
+        {
+          "id": "VI2-MAJOR-1",
+          "severity": "MAJOR",
+          "key": "ui.providers.provider_catalog.didn_t_confirm_the_sign_in",
+          "related_keys": [
+            "ui.providers.provider_detail.didn_t_confirm_the_sign_in"
+          ],
+          "file": "src/i18n/catalogues/vi/ui.providers.json:83,144",
+          "current": "{brand} đã từ chối xác nhận đăng nhập.",
+          "proposed": "{brand} chưa xác nhận đăng nhập.",
+          "reason": "Both generic unfinished-sign-in fallbacks can mean failure or no confirmation, so “đã từ chối” (“refused”) adds an unsupported provider refusal and overstates the known state."
+        },
+        {
+          "id": "VI2-MINOR-1",
+          "severity": "MINOR",
+          "key": "ui.providers.provider_detail.use_an_api_key_instead",
+          "file": "src/i18n/catalogues/vi/ui.providers.json:147",
+          "current": "Dùng khóa API",
+          "proposed": "Chuyển sang dùng khóa API",
+          "reason": "The failed-sign-in alternative drops “instead”, losing the switch away from the unsuccessful browser flow."
+        },
+        {
+          "id": "VI2-MINOR-2",
+          "severity": "MINOR",
+          "key": "ui.providers.provider_grid.no_providers_match_this_search",
+          "file": "src/i18n/catalogues/vi/ui.providers.json:168",
+          "current": "Không có nhà cung cấp nào khớp với tìm kiếm này.",
+          "proposed": "Không có nhà cung cấp khớp.",
+          "reason": "The compact single-line empty state is 48 codepoints versus English 31; the shorter Vietnamese preserves the search-empty meaning without the word-for-word tail."
+        },
+        {
+          "id": "VI2-NIT-2",
+          "severity": "NIT",
+          "key": "ui.providers.provider_detail.change",
+          "file": "src/i18n/catalogues/vi/ui.providers.json:99",
+          "current": "Thay đổi",
+          "proposed": "Đổi",
+          "reason": "The same one-word model action is “Đổi” in ui.command_palette and ui.onboarding, which is also the terser native label."
+        },
+        {
+          "id": "VI2-NIT-3",
+          "severity": "NIT",
+          "key": "ui.providers.provider_detail.this_app_could_not_confirm_the_sign",
+          "file": "src/i18n/catalogues/vi/ui.providers.json:96",
+          "current": "Ứng dụng này không xác nhận được thông tin đăng nhập đã lưu trên máy cho {brand}.",
+          "proposed": "Ứng dụng này không xác nhận được thông tin đăng nhập vào {brand} đã lưu trên máy này.",
+          "reason": "“trên máy cho {brand}” is a calque and drops the demonstrative; “đăng nhập vào {brand} … trên máy này” is natural and preserves the machine qualification."
+        }
+      ],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 1,
+        "minor": 2,
+        "nit": 2
+      }
+    },
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "verdict": "clean-with-findings",
+      "keys_read": 43,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+        "vi": "src/i18n/catalogues/vi/ui.chat.sidebar.json",
+        "context": "src/i18n/catalogues/en/ui.chat.sidebar.context.json"
+      },
+      "sha256": {
+        "en": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
+        "vi": "c24173b2471e61c46e86f7adbb87761112161714829189da26f4d7daac06721f",
+        "context": "fe5dc2a0fa4cb9b95ef5c1a30d57aee030fa5edf2b6b54b323562a1c63b8eb3a"
+      },
+      "findings": [
+        {
+          "id": "VI2-MINOR-4",
+          "severity": "MINOR",
+          "key": "ui.chat.sidebar.search.searching",
+          "file": "src/i18n/catalogues/vi/ui.chat.sidebar.json:40",
+          "current": "Đang tìm trong cuộc trò chuyện…",
+          "proposed": "Đang tìm cuộc trò chuyện…",
+          "reason": "Two existing command-palette keys use “Đang tìm cuộc trò chuyện…” for this exact English, and the added “trong” plus singular wording is less consistent with a multi-conversation search."
+        }
+      ],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      }
+    },
+    "ui.chat.pickers": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_read": 34,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+        "vi": "src/i18n/catalogues/vi/ui.chat.pickers.json",
+        "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+      },
+      "sha256": {
+        "en": "65f926679cefe21229f8d755f71d64381c5d6706c2d33c62cb63141e8f01352d",
+        "vi": "f00c49fa594ca81c6413d54e4040a208c11f56b280e1fe1e37ec607659acc498",
+        "context": "8d3fa914cd52768c98a75c4f41b903b86553335b27e406f98500eab7ff576e64"
+      },
+      "findings": [],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "verdict": "clean-with-findings",
+      "keys_read": 30,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "vi": "src/i18n/catalogues/vi/ui.chat.canonical.json",
+        "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+      },
+      "sha256": {
+        "en": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
+        "vi": "5944f46a2a6ecad8fc99ad78a28a912d417b027f0bfc4d929f3b118990db7cb7",
+        "context": "53145be31fe46bde6578d114653466dc5c6c932947460c10a0022c9e190d9a34"
+      },
+      "findings": [
+        {
+          "id": "VI2-MINOR-3",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.supplement.file_actions.reveal_in_finder",
+          "file": "src/i18n/catalogues/vi/ui.chat.canonical.json:14",
+          "current": "Hiển thị trong Finder",
+          "proposed": "Hiện trong Finder",
+          "reason": "The identical English action already maps to “Hiện trong Finder” in ui.library.menu.reveal_in_finder, so this introduces visible terminology drift."
+        },
+        {
+          "id": "VI2-NIT-4",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.supplement.preview_unavailable",
+          "file": "src/i18n/catalogues/vi/ui.chat.canonical.json:18",
+          "current": "Không xem trước được tại đây. HTML này cần tài nguyên hoặc nội dung tài liệu không được hỗ trợ. Mở tệp để xem.",
+          "proposed": "Không xem trước được tại đây. HTML này cần tài nguyên hoặc nội dung tài liệu mà ứng dụng không hỗ trợ. Mở tệp để xem.",
+          "reason": "The current modifier can attach “không được hỗ trợ” only to document content; the explicit relative clause covers both unsupported resources and content as the English intends."
+        }
+      ],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 1
+      }
+    },
+    "ui.chat.analytics": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_read": 11,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.analytics.json",
+        "vi": "src/i18n/catalogues/vi/ui.chat.analytics.json",
+        "context": "src/i18n/catalogues/en/ui.chat.analytics.context.json"
+      },
+      "sha256": {
+        "en": "6ac0bbfb50c8ef8c772f229868614aa8d07dfd9f659311d5d396cea5c4611159",
+        "vi": "fb5e6deac0f80014d7ea0e04ba84b92df9dfcfaeb226d02609e19f761e55ef87",
+        "context": "7c25af7f391fbaac6a1718a81b8b258c0b313ba46411f16e95691446828640ff"
+      },
+      "findings": [],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ui.chat.transcript_copy": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_read": 9,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.transcript_copy.json",
+        "vi": "src/i18n/catalogues/vi/ui.chat.transcript_copy.json",
+        "context": "src/i18n/catalogues/en/ui.chat.transcript_copy.context.json"
+      },
+      "sha256": {
+        "en": "a81115a3e17a63068b79b4c66d86edaa1417a145f0b1fcc14d34deae8cd1734b",
+        "vi": "784a15a3f17e16f6eb1459cb7b37057b6c953778922490d46893233c4adccec7",
+        "context": "955b217858b3ac8c2ab4a20e7ad47298c683698c5c65c0012f681ba6b23d4c8b"
+      },
+      "findings": [],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ui.presence": {
+      "status": "passed",
+      "verdict": "clean-with-findings",
+      "keys_read": 9,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.presence.json",
+        "vi": "src/i18n/catalogues/vi/ui.presence.json",
+        "context": "src/i18n/catalogues/en/ui.presence.context.json"
+      },
+      "sha256": {
+        "en": "7dc0d4c3bb4c18fb15501b630c7f1b2bc1f2f1ec8dabe131d3a3498b50a142a8",
+        "vi": "8eb97a5353d73b8940863570879f82cc605295bf73c66cef912aa6d18561703a",
+        "context": "f78dc27ea4c00befbb3b48ce6723230a23c6e4388bf5ace429c2b445447aae44"
+      },
+      "findings": [
+        {
+          "id": "VI2-NIT-1",
+          "severity": "NIT",
+          "key": "ui.presence.minutes_ago",
+          "related_keys": [
+            "ui.presence.hours_ago",
+            "ui.presence.days_ago",
+            "ui.presence.link_down_compact"
+          ],
+          "file": "src/i18n/catalogues/vi/ui.presence.json:7-9",
+          "current": {
+            "minutes": "{count, number} phút trước",
+            "hours": "{count, number} giờ trước",
+            "days": "{count, number} ngày trước"
+          },
+          "proposed": {
+            "minutes": "{count, number}p trước",
+            "hours": "{count, number}g trước",
+            "days": "rendered check before choosing a standard compact day abbreviation"
+          },
+          "reason": "Composed fixed-trailing labels measure 27 versus 18 codepoints for minutes/days and 26 versus 18 for hours, so the compact-unit sidecar needs a rendered fit check; do not truncate or adopt the day abbreviation without review."
+        }
+      ],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 1
+      }
+    },
+    "ui.common.file_actions": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_read": 5,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.file_actions.json",
+        "vi": "src/i18n/catalogues/vi/ui.common.file_actions.json",
+        "context": "src/i18n/catalogues/en/ui.common.file_actions.context.json"
+      },
+      "sha256": {
+        "en": "edac3001910c5ba03d5c0552f07c19baeb1bd1e8e9d3c0a6c178a693f9351233",
+        "vi": "d5ac91b0312dbf6ec94425768bd376cdbeb6b06c2e7b71134bb5c9c91f63ea02",
+        "context": "147274f1e573608ac78a0dc45aa14d14a5d2cf89efa953d4f4e012a7fae8d04b"
+      },
+      "findings": [],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ui.common.viewer": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_read": 4,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.viewer.json",
+        "vi": "src/i18n/catalogues/vi/ui.common.viewer.json",
+        "context": "src/i18n/catalogues/en/ui.common.viewer.context.json"
+      },
+      "sha256": {
+        "en": "660c7e185ebc22d37ecc9b5d02807428f87c477f86431f5cdb07fdec888b78bb",
+        "vi": "64b007eaa632166d3b54bd5f933f7c6693d836f6af6db64475cb80e4d8dffd65",
+        "context": "cd11be98d1d94cba927141b2b6b390af7fdc59a8519ea3ed18361cfd4930c2c9"
+      },
+      "findings": [],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ui.chat.tag_dialogs": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_read": 4,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.tag_dialogs.json",
+        "vi": "src/i18n/catalogues/vi/ui.chat.tag_dialogs.json",
+        "context": "src/i18n/catalogues/en/ui.chat.tag_dialogs.context.json"
+      },
+      "sha256": {
+        "en": "140fb44d94388706e24ba37c6910a6b753ce0f0701f44e78390a1fffb13c1506",
+        "vi": "d665ad4671f4ffd7748bbfabb31a5e24d4328e323b396fa7d9fc79558808c09b",
+        "context": "8f4cc8ca17d926c4f85f4226ff92e7c291babbe7e9868ebb8d9fceb5a8841987"
+      },
+      "findings": [],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_read": 2,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.run_details.json",
+        "vi": "src/i18n/catalogues/vi/ui.chat.run_details.json",
+        "context": "src/i18n/catalogues/en/ui.chat.run_details.context.json"
+      },
+      "sha256": {
+        "en": "7eea05d7c5b371e7969214abc7bd2961bf6c38fd3e5886e0957493b787878094",
+        "vi": "f55e2b740675c6977d3cdb860a4442f196b3f06a2bd2704ed2a915deade7d0b8",
+        "context": "eae93350935a597d66fe4931a40fed2fa9d40d0b01e03925d2cef22985f628d6"
+      },
+      "findings": [],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ui.chat.commentary_actions": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_read": 1,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.commentary_actions.json",
+        "vi": "src/i18n/catalogues/vi/ui.chat.commentary_actions.json",
+        "context": "src/i18n/catalogues/en/ui.chat.commentary_actions.context.json"
+      },
+      "sha256": {
+        "en": "77d6babd2e9fac04e95a550d25f4428e113144c160c34009b89e06608b812868",
+        "vi": "d5802ec3e8277221843269d702f08a1d1d7e8731792f34aa6e03960228c0072e",
+        "context": "20901db281f82c025243d688a14bfc490d1b5c01c7fd03e7d8788f35411c3ad1"
+      },
+      "findings": [],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    }
+  },
+  "findings": [],
+  "finding_counts": {
+    "blocker": 0,
+    "major": 1,
+    "minor": 4,
+    "nit": 4
+  },
+  "evidence": {
+    "key_context": {
+      "result": "PASS",
+      "detail": "341/341 keys read side by side; en/vi key sets and insertion order exact in all 12 namespaces; zero duplicate keys; all 341 context keys present with no extras."
+    },
+    "icu": {
+      "result": "PASS",
+      "detail": "All 341 en/vi messages parsed. Argument names/types, number skeletons, select arms, tag/pound structures and placeholder order matched. The sole branch-set delta was ui.chat.pickers.stop.confirm en one/other -> vi other, required by Vietnamese CLDR. No dropped or renamed placeholder."
+    },
+    "plurals": {
+      "result": "PASS",
+      "cldr": "Intl.PluralRules('vi') returned other for 0, 1, 2, 5, 21, 1234 and 1.5.",
+      "samples": [
+        {
+          "key": "ui.chat.pickers.stop.confirm",
+          "values": {
+            "0": "Dừng 0 phiên ngay",
+            "1": "Dừng 1 phiên ngay",
+            "2": "Dừng 2 phiên ngay",
+            "5": "Dừng 5 phiên ngay",
+            "21": "Dừng 21 phiên ngay",
+            "1234": "Dừng 1234 phiên ngay"
+          }
+        },
+        {
+          "key": "ui.providers.provider_catalog.more_providers_and",
+          "values": {
+            "0": "Nhà cung cấp khác: Provider A, Provider B và 0 nhà cung cấp nữa",
+            "1": "Nhà cung cấp khác: Provider A, Provider B và 1 nhà cung cấp nữa",
+            "2": "Nhà cung cấp khác: Provider A, Provider B và 2 nhà cung cấp nữa",
+            "5": "Nhà cung cấp khác: Provider A, Provider B và 5 nhà cung cấp nữa",
+            "21": "Nhà cung cấp khác: Provider A, Provider B và 21 nhà cung cấp nữa",
+            "1234": "Nhà cung cấp khác: Provider A, Provider B và 1234 nhà cung cấp nữa"
+          }
+        },
+        {
+          "key": "ui.providers.provider_detail.code_expiry",
+          "values": {
+            "0": "Mã hết hạn sau 0 phút",
+            "1": "Mã hết hạn sau 1 phút",
+            "2": "Mã hết hạn sau 2 phút",
+            "5": "Mã hết hạn sau 5 phút",
+            "21": "Mã hết hạn sau 21 phút",
+            "1234": "Mã hết hạn sau 1234 phút"
+          }
+        },
+        {
+          "key": "ui.providers.provider_detail.link_expiry",
+          "values": {
+            "0": "Liên kết hết hạn sau 0 phút",
+            "1": "Liên kết hết hạn sau 1 phút",
+            "2": "Liên kết hết hạn sau 2 phút",
+            "5": "Liên kết hết hạn sau 5 phút",
+            "21": "Liên kết hết hạn sau 21 phút",
+            "1234": "Liên kết hết hạn sau 1234 phút"
+          }
+        }
+      ],
+      "number_formatting": "vi grouped 1234 -> 1.234; group-off 1234 -> 1234; 1.5 -> 1,5. All scoped plural samples use other only."
+    },
+    "unicode_typography": {
+      "result": "PASS",
+      "detail": "341/341 NFC; zero combining-mark residue, bad open-syllable oa/uy tone placements, ASCII triple dots, straight double quotes, exclamation marks, bidi controls, or prose space-before-punctuation findings. Seven regex hits were ICU ::group-off syntax, not prose. English ASCII ... correctly became … in ui.chat.pickers.fork.search_placeholder."
+    },
+    "pseudo_localization": {
+      "result": "PASS",
+      "detail": "Independent AST-offset probe accented literal text, preserved every ICU control range, wrapped each message, and appended 35% expansion; all 341 pseudo messages parsed and formatted with zero failures. Sample at count=1234: ⟦Dừng 1234 phiên ngayđđđđđđđđđđđđđđđđđđđđđđđđ⟧. Corrected malformed-ICU negative control failed with EXPECT_ARGUMENT_CLOSING_BRACE. This is static/pseudo evidence, not rendered evidence."
+    },
+    "static_overflow": {
+      "result": "FINDINGS_RECORDED",
+      "method": "Representative ICU formatting, then Unicode codepoint counts; candidate threshold vi/en >=1.35 and delta >=4. This yielded 52 candidates for review, not 52 defects; wrapping prose and accessible labels were not automatically flagged.",
+      "samples": [
+        {
+          "key": "ui.providers.provider_grid.no_providers_match_this_search",
+          "en": 31,
+          "vi": 48,
+          "disposition": "VI2-MINOR-2; compact single-line context"
+        },
+        {
+          "key": "ui.presence.link_down_compact + minutes_ago",
+          "en": "Link down · 2m ago = 18",
+          "vi": "Mất liên kết · 2 phút trước = 27",
+          "disposition": "VI2-NIT-1; fixed shrink-0 trailing slot, rendered check required"
+        },
+        {
+          "key": "ui.presence.link_down_compact + hours_ago",
+          "en": "Link down · 2h ago = 18",
+          "vi": "Mất liên kết · 2 giờ trước = 26",
+          "disposition": "VI2-NIT-1"
+        },
+        {
+          "key": "ui.chat.sidebar.search.no_match",
+          "en": 38,
+          "vi": 64,
+          "disposition": "wrapping notice; no static defect finding"
+        },
+        {
+          "key": "ui.chat.sidebar.list.empty",
+          "en": 48,
+          "vi": 74,
+          "disposition": "wrapping empty state; no static defect finding"
+        }
+      ]
+    },
+    "english_retention": {
+      "result": "PASS",
+      "allowed": [
+        "Local Operator",
+        "Radient",
+        "Claude",
+        "ChatGPT",
+        "Moonshot",
+        "SuperGrok",
+        "Token Plan",
+        "Pro",
+        "Max",
+        "Plus",
+        "Canvas",
+        "Finder",
+        "API",
+        "URL",
+        "USD",
+        "HTML",
+        "Markdown",
+        "ID",
+        "Esc",
+        "token",
+        "[redacted]",
+        "ICU argument names/types and ::group-off"
+      ],
+      "retained_technical_terms": {
+        "native": 1,
+        "terminal": 1,
+        "tunnel": 1
+      },
+      "detail": "No whole-sentence English leakage. native, terminal and tunnel are isolated developer terms rather than untranslated prose; terminal has existing vi catalogue precedent. ui.providers.provider_grid.row_action is byte-identical only because it consists entirely of {action} and {brand}."
+    },
+    "rtl": {
+      "result": "NOT_APPLICABLE",
+      "detail": "Vietnamese is LTR; bidi-control scan nevertheless found zero controls."
+    },
+    "commands": [
+      {
+        "command": "node scripts/i18n/generate.mjs --check",
+        "result": "PASS: keys.gen.ts byte-identical to fresh generation."
+      },
+      {
+        "command": "pnpm check-i18n:catalogues",
+        "result": "PARTIAL/EXPECTED PRE-ASSEMBLY FAILURE: generation and 1336-file string ratchet passed; ledger-check reported exactly the 12 new namespaces without ledger entries. Manager assembly is pending; this is not counted as a translation finding."
+      },
+      {
+        "command": "node scripts/i18n/context-parity.mjs",
+        "result": "PASS: every English key covered apart from 131 existing allowed gaps in 4 namespaces; independent scoped check found 0 gaps in these 341 keys."
+      },
+      {
+        "command": "pnpm check-i18n:coverage",
+        "result": "PASS: 7 languages over 72 namespaces; 876 allowed keys across 61 pairs."
+      },
+      {
+        "command": "node --input-type=module < vi-second-mechanical.mjs",
+        "result": "PASS: 341 keys, 0 parse failures, 0 pseudo failures; one plural branch-set delta confirmed as required vi CLDR, no unexpected signature mismatch."
+      }
+    ],
+    "rendered": "UNVERIFIED: no real-app rendered, geometry, clipping, font or interaction claim made. Separate real-app gate remains required, especially for VI2-NIT-1 and pseudo-expansion outliers."
+  },
+  "artifacts": []
+}

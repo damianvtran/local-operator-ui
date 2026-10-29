@@ -612,7 +612,7 @@
 	"ui.hub.links.resolve_conflict": {
 		"role": "error status",
 		"tone": "plain, precise; a confirmation is deliberate and not silently reversible; no inference of source or scope",
-		"note": "Shown when the service refuses the confirmation because the stored origin has a DIFFERENT KNOWN scope. The old state is left byte-unchanged, so the copy must say nothing was changed and must not promise a retry that could overwrite. Not a generic failure; no raw provider/credential bytes. Wrap naturally; no fixed width cap."
+		"note": "A settled refusal of a source or publish scope that conflicts with the confirmed link. Explicitly states that nothing changed. Recovery is to Cancel and check the source and scope; a different source requires a separate local copy. Must not suggest retrying can overwrite the confirmed source or change permanent identity in place. No placeholders; prose wraps naturally."
 	},
 	"ui.hub.links.scope_label": {
 		"role": "form label",
@@ -663,6 +663,26 @@
 		"role": "body",
 		"tone": "plain, precise; safety statements must not weaken or promise success",
 		"note": "The irreversibility warning beside the confirm control, raised to a body-level callout (design D5-D12). Must not weaken: it states that a wrong source is permanent. No placeholders; wraps at a comfortable measure."
+	},
+	"ui.hub.links.unresolved_what": {
+		"role": "body",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The WHAT sentence of the source-confirmation card: it says the record IS linked to the hub while its source and scope are still unconfirmed, so the reader can tell what this is without inferring it. {item} is escaped UNTRUSTED user-authored display bytes, never authority and never interpolated as markup. Must not imply the link is broken, that the record is damaged, or that the hub is at fault."
+	},
+	"ui.hub.links.unresolved_why": {
+		"role": "body",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The WHY sentence: it states the consequence of an unconfirmed source - hub updates are not applied to this record until the source is confirmed. Must not weaken that consequence and must not promise that updates arrive anyway. {item} is escaped UNTRUSTED user-authored display bytes, never authority."
+	},
+	"ui.hub.links.unresolved_next": {
+		"role": "body",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The WHAT TO DO sentence: it names the one deliberate act and the scope that act carries, so the reader knows what to do without inferring it. No Public/current-organization inference: the scope is chosen by the operator, never assumed. No placeholders; wraps at a comfortable measure."
+	},
+	"ui.hub.links.hub_id": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "The hub id, labelled as a diagnostic and never as an origin: it identifies the hub-side record and says nothing about where this copy came from. {address} is a stable technical identifier and is not translated. Never rendered as a heading."
 	},
 	"ui.hub.conflict.title": {
 		"role": "heading",
@@ -748,5 +768,130 @@
 		"role": "mark state",
 		"tone": "plain, precise; safety statements must not weaken or promise success",
 		"note": "The aggregate mark's 'applied' state word (an operation completed). No placeholders."
+	},
+	"ui.hub.skills.download": {
+		"role": "button label",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. Download a copy once, without subscribing. Must not read as a subscription and must not imply later updates arrive by themselves."
+	},
+	"ui.hub.skills.unpull": {
+		"role": "button label",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. Removes the managed copy only. Never word it as unlink, unsubscribe or delete-from-hub."
+	},
+	"ui.hub.skills.unpull_title": {
+		"role": "heading",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. Confirm dialog title. {item} is the local alias, escaped display bytes."
+	},
+	"ui.hub.skills.unpull_body": {
+		"role": "body",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. States exactly what survives: link, alias, policy, subscription. Must not promise the files are recoverable from this app."
+	},
+	"ui.hub.skills.unpull_failed": {
+		"role": "error status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. A refusal or unconfirmed removal. No raw exception text; offers retry."
+	},
+	"ui.hub.skills.subscribe_failed": {
+		"role": "error status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. A subscribe that was not confirmed. No raw exception text; offers retry."
+	},
+	"ui.hub.skills.local_path": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. {path} is an absolute managed path, shown verbatim and not translated."
+	},
+	"ui.hub.skills.published_by": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. {publisher} is the hub's own field, shown verbatim when present; never synthesized."
+	},
+	"ui.hub.skills.not_downloaded": {
+		"role": "mark state",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. No link exists on this machine. Not an error and not a claim about the remote."
+	},
+	"ui.hub.skills.subscribed_absent": {
+		"role": "mark state",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. Subscription exists, no managed copy. Must not read as installed."
+	},
+	"ui.hub.skills.pulled": {
+		"role": "mark state",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. Copy exists and subscription is on."
+	},
+	"ui.hub.skills.manual": {
+		"role": "mark state",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. Copy exists, subscription off; manual pulls still work."
+	},
+	"ui.hub.skills.detached": {
+		"role": "mark state",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. Link exists with no copy and no subscription; the link is dormant."
+	},
+	"ui.hub.skills.update_available": {
+		"role": "mark state",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. The waiting state, in sentence case. Must not read as already applied."
+	},
+	"ui.hub.skills.update_applied": {
+		"role": "mark state",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. The finished state. Must stay distinct in WORDS from the waiting state; hue alone is not the distinction."
+	},
+	"ui.hub.skills.update_failed": {
+		"role": "mark state",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. A failed update and its next step. No raw exception text."
+	},
+	"ui.hub.skills.update_now": {
+		"role": "button label",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. Applies the waiting revision for this skill only."
+	},
+	"ui.hub.skills.download_help": {
+		"role": "supporting description",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. States that downloading does not change the subscription."
+	},
+	"ui.hub.skills.subscribe_help": {
+		"role": "supporting description",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. States that subscribing writes no files."
+	},
+	"ui.hub.skills.unsubscribe": {
+		"role": "button label",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. The named unsubscribe act. Must not imply deleting downloaded files."
+	},
+	"ui.hub.skills.unsubscribe_help": {
+		"role": "supporting description",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. Stopping updates keeps the downloaded copy."
+	},
+	"ui.hub.skills.public_hub": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. The public catalogue's own label, matching the scope control's wording; never a publisher."
+	},
+	"ui.hub.skills.count": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. The browse count ONLY. The scope is a separate translated label rendered beside it, never embedded as a governed noun the locale would have to decline; {count} is an ICU plural with the locale's own categories."
+	},
+	"ui.hub.skills.count_shared": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. The org-scope browse count. {organization} is a verified name, not a publisher; {count} is an ICU plural. The sentence must not require declining a shared scope noun."
+	},
+	"ui.hub.skills.inventory_unknown": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. Shown when the local links inventory (not the catalogue) could not be read. It must not read as 'not installed'; that is a fact only a successful read can establish."
 	}
 }

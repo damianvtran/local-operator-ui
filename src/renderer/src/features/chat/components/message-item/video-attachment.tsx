@@ -1,4 +1,6 @@
 import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { type FC, memo, useCallback, useState } from "react";
@@ -27,6 +29,7 @@ export type VideoAttachmentProps = BaseVideoAttachmentProps & {
  */
 export const VideoAttachment: FC<VideoAttachmentProps> = memo(
 	({ file, src, onClick, conversationId }) => {
+		useI18nLocale();
 		const [hasError, setHasError] = useState(false);
 		const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
 		const { setViewMode } = useCanvasStore();
@@ -181,7 +184,7 @@ export const VideoAttachment: FC<VideoAttachmentProps> = memo(
 				/>
 				{isLocalFile && (
 					<div
-						className="file-actions-menu invisible absolute right-1 top-1 z-[2] opacity-0 transition-[opacity,visibility] duration-fast ease-out-quart group-hover:visible group-hover:opacity-100"
+						className="file-actions-menu invisible absolute end-1 top-1 z-[2] opacity-0 transition-[opacity,visibility] duration-fast ease-out-quart group-hover:visible group-hover:opacity-100"
 						onClick={(e) => {
 							e.stopPropagation();
 						}}
@@ -189,8 +192,8 @@ export const VideoAttachment: FC<VideoAttachmentProps> = memo(
 					>
 						<FileActionsMenu
 							filePath={normalizedPath}
-							tooltip="File actions"
-							aria-label="File actions"
+							tooltip={t("ui.common.actions.file_actions_menu.file_actions")}
+							aria-label={t("ui.common.actions.file_actions_menu.file_actions")}
 							onShowInCanvas={handleShowInCanvas}
 						/>
 					</div>

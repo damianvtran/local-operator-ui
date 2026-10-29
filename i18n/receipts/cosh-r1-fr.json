@@ -1,0 +1,50 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "cosh-r1-fr",
+ "session": "fe2f6b5e60d7",
+ "date": "2026-10-22",
+ "locale": "fr",
+ "translator": "translator",
+ "translator_session": "f3e0161ad424",
+ "namespace": "ui.agentMessages.settings",
+ "status": "passed",
+ "keys_audited": 3,
+ "scope": "The three hold keys (hold.chief_of_staff, hold.chief_of_staff_unlinked, hold.open) of fr ui.agentMessages.settings at worktree HEAD 2fb94727d3906e2e2e44cbe91acf95c27aea5105 plus working-tree catalogue; the other 84 values verified byte-identical to HEAD and inherited from receipt 7f3a1c9e-r2.",
+ "sha256": {
+  "en": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
+  "fr": "306e842db2d36589a8b6fb764c3097b7c034cc923819af19b3e3c6fa486d5eb0",
+  "context": "0796c27031e5a3b9a600147e67e1341234f6ed0f5adfd3b7c4f7758a5bcff63d"
+ },
+ "findings": [
+  {
+   "id": "F1",
+   "severity": "NIT",
+   "key": "ui.agentMessages.settings.hold.open",
+   "current": "Écrire à la cheffe de cabinet",
+   "proposed": "Écrire à la cheffe de cabinet (no text change; confirm in a rendered check)",
+   "note": "29 characters against the 22-character English (+32%, above the fr guide's 15–25%) and five words against a two-to-three-word budget; the Button is whitespace-nowrap and shrink-0, so it cannot clip, but it narrows the wrapping notice beside it. No shorter phrasing keeps the role name the context asks for (« Lui écrire » would drop it; « Ouvrir sa conversation » would wrongly imply that opening is enough), so the text should stay as it is unless a rendered frame shows the notice squeezed."
+  }
+ ],
+ "inherited_receipt": {
+  "base": "2fb94727d3",
+  "path": "i18n/receipts/7f3a1c9e-r2.json",
+  "sha256": "3a791ebfb0bc2598474ca59c54b3398ae2eb9cb15277fc0c657ac100d5fac73e",
+  "keys_inherited": 84,
+  "base_target_sha256": "a347df5551387a7e97475865b93656b0ce7648176dcc3e6f14f5a0c17403acd1",
+  "unchanged_values_verified": 84
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+ },
+ "validation": {
+  "independence": "Auditor session fe2f6b5e60d7 is not the translator session f3e0161ad424 and authored none of these strings. Hashes of en, context, the fr target, the HEAD fr base (git show), the glossary and the inherited receipt all matched the brief. The fr style guide hash was recorded as read (none was given in the brief).",
+  "semantics": "hold.chief_of_staff says « Envoyez un message dans sa conversation pour le recevoir / les recevoir », and _unlinked says « Retrouvez sa conversation dans la barre latérale et envoyez-y un message … ». Both name sending as the release action, and neither implies that opening is enough or that the messages were refused, failed, read or lost (« attend/attendent »). « cheffe de cabinet » matches ui.onboarding greeting_done/greeting_owed (8 occurrences in fr, no « chef de cabinet » drift). The feminine form follows the English she/her persona in onboarding and is correct. « barre latérale » is the existing fr term for sidebar, « sa conversation » echoes onboarding, and « Écrire à » matches the repo precedent ui.projects.project_links.message_title « Écrire à {title} » for « Message {title} ». It renders 'Message' as a verb and implies navigation rather than sending. The notices say « votre cheffe de cabinet » and the button says « la cheffe de cabinet », which is natural and consistent. Register is vous, imperative and sentence case, per the style guide. « pour le recevoir » keeps the English's own implicit-subject construction, so it is not a defect.",
+  "icu": "Parsed en and fr with @formatjs/icu-messageformat-parser (worktree node_modules, run from the scratchpad). For both plural keys the only argument is `count`, the plural selector is `count`, and {count} appears as an argument in every arm (fr one/many/other, en one/other). hold.open has no arguments in either locale. Key set and order equal the English (87 keys); the 84 base keys are value-identical to HEAD, and the diff only appends the three hold keys.",
+  "plurals": "Intl.PluralRules('fr') gives one/many/other, which matches the arms and the guide; there is no `few`. Formatted with intl-messageformat (fr) for 0, 1, 2, 5, 21, 1000000, 1500000 and 2000000: 0 and 1 give « message attend … le recevoir »; 2, 5, 21 and 1500000 give « messages attendent … les recevoir »; 1000000 and 2000000 give « de messages attendent … les recevoir ». Verb and pronoun agree in every arm. As in the English source, {count} is a simple argument and renders without grouping (e.g. 1000000); this is source-driven and does not matter at realistic counts.",
+  "typography": "NFC; no bidi or control characters; trailing newline present; non-ASCII limited to precomposed é (U+00E9), É (U+00C9) and à (U+00E0); no : ; ! ? or quotes needing U+202F, and no straight apostrophes.",
+  "overflow": "Rendered fr length: hold.chief_of_staff is 99/104 characters (one/other) against en 98/102; hold.chief_of_staff_unlinked is 132/137 against 119/123 (+11%), inside a wrapping <p> where wrapping is fine. hold.open is 29 against 22 characters (+32%) in a nowrap, shrink-0 ghost button (F1, rendered check suggested).",
+  "limitations": "Browser unavailable; no screenshots/rendered-fit claim. No catalogue/code edits; no files created in the worktree."
+ }
+}

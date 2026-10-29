@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import {
+	existsSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
@@ -786,9 +787,9 @@ const fakeGitFor =
 const fakeDiff = (paths) => fakeGitFor({ diff: paths });
 
 const MOVED_FRAMES = [
-	"docs/evidence/chat-run-panel/mcp-key-saving/dracula.webp",
-	"docs/evidence/chat-run-panel/mcp-key-saving/dune.webp",
-	"docs/evidence/chat-run-panel/mcp-key-error/dune.webp",
+	"docs/evidence-frames/chat-run-panel/mcp-key-saving/dracula.webp",
+	"docs/evidence-frames/chat-run-panel/mcp-key-saving/dune.webp",
+	"docs/evidence-frames/chat-run-panel/mcp-key-error/dune.webp",
 ];
 
 const HONEST_PASS = {
@@ -812,9 +813,9 @@ const HONEST_PASS = {
  */
 const COMMITTED_FRAMES = [
 	...MOVED_FRAMES,
-	"docs/evidence/chat-run-panel/mcp-key-saving/obsidian.webp",
-	"docs/evidence/live/one/dracula.webp",
-	"docs/evidence/chat-trace/conversation/dracula.webp",
+	"docs/evidence-frames/chat-run-panel/mcp-key-saving/obsidian.webp",
+	"docs/evidence-frames/live/one/dracula.webp",
+	"docs/evidence-frames/chat-trace/conversation/dracula.webp",
 ];
 
 test("a tally that accounts for the pass's own diff passes", () => {
@@ -872,7 +873,7 @@ test("a width-suffixed directory is the story it belongs to", () => {
 			},
 		},
 		fakeDiff([
-			"docs/evidence/chat-older-history-slot/app-minimum-width@900/dracula.webp",
+			"docs/evidence-frames/chat-older-history-slot/app-minimum-width@900/dracula.webp",
 		]),
 	);
 	assert.deepEqual(out, []);
@@ -892,7 +893,7 @@ test("frames inside a declared set are not demanded of the pass's tally", () => 
 				refreshedStories: [],
 			},
 		},
-		fakeDiff(["docs/evidence/live/one/dracula.webp"]),
+		fakeDiff(["docs/evidence-frames/live/one/dracula.webp"]),
 	);
 	assert.deepEqual(out, []);
 });
@@ -957,8 +958,8 @@ test("frames HEAD holds outside the named directories are not this field's", () 
 		},
 		fakeGitFor({
 			lsTree: [
-				"docs/evidence/chat-trace/conversation/dracula.webp",
-				"docs/evidence/chat-trace/conversation/dune.webp",
+				"docs/evidence-frames/chat-trace/conversation/dracula.webp",
+				"docs/evidence-frames/chat-trace/conversation/dune.webp",
 			],
 		}),
 	);
@@ -978,7 +979,7 @@ test("frames inside a declared set are not demanded of the tally on HEAD's tree 
 					refreshedStories: [],
 				},
 			},
-			fakeGitFor({ lsTree: ["docs/evidence/live/one/dracula.webp"] }),
+			fakeGitFor({ lsTree: ["docs/evidence-frames/live/one/dracula.webp"] }),
 		),
 		[],
 	);
@@ -1019,7 +1020,7 @@ test("the capturer's own dir override still names the directory it writes", () =
 	 * written.
 	 */
 	const override = [
-		"docs/evidence/chat-tool-rows/expanded-overflow-narrow-end/dracula.webp",
+		"docs/evidence-frames/chat-tool-rows/expanded-overflow-narrow-end/dracula.webp",
 	];
 	assert.deepEqual(
 		partialCaptureFailures(
@@ -1081,6 +1082,32 @@ test("the SHIPPED manifest's counts describe the tree it ships in", () => {
 		stampFailures(manifest),
 		[],
 		"docs/evidence/manifest.json must describe the tree it ships in: re-derive frames/surfaces/themes from the tree, the way capture-evidence.mjs writes them",
+	);
+});
+
+test("an EMPTY frames tree stands the count guards down, like an absent one", (t) => {
+	/*
+	 * QA round 1, Q-3. `stampFailures` keys its tree half on whether the frames
+	 * tree holds FRAMES, not on whether the directory exists: `mkdir -p
+	 * docs/evidence-frames` (a rig that died before writing, or a checkout that
+	 * created the tree) is "no frames here", and firing the committed-count checks
+	 * on it reds a tree that simply has none. The pair below is the discriminating
+	 * control: empty passes, one frame present fails.
+	 */
+	const dir = mkdtempSync(join(tmpdir(), "lop-evidence-empty-tree-"));
+	scratch.push(dir);
+	const manifest = { frames: 7, surfaces: 1, themes: 1, supplementary: [] };
+	assert.deepEqual(
+		stampFailures(manifest, () => null, dir),
+		[],
+		"an empty frames tree must be read as 'no frames', not as a manifest that under-claims",
+	);
+	writeFileSync(join(dir, "localOperatorDark.webp"), "not-a-real-webp");
+	assert.ok(
+		stampFailures(manifest, () => null, dir).some((line) =>
+			/`frames` is 7/.test(line),
+		),
+		"a tree that DOES hold a frame must still fail the declared count",
 	);
 });
 
@@ -4085,7 +4112,19 @@ test("the manifest carries every top-level record this branch wrote", () => {
  * otherwise. Adding a set to that table is what opts it in; the table is a
  * transcription of each set README's own `--themes=` command.
  */
-test("every declared evidence set holds exactly the palettes its record documents", () => {
+test("every declared evidence set holds exactly the palettes its record documents", (t) => {
+	/*
+	 * The frames moved to the IGNORED frames tree with the evidence split, and
+	 * `checkPaletteBudgets` walks that tree: this is a capture-time check, so a
+	 * checkout that has never run the rig has no sets to compare and says so as a
+	 * skip rather than reporting every declared set as missing.
+	 */
+	if (!existsSync("docs/evidence-frames")) {
+		t.skip(
+			"no captured frames: docs/evidence-frames is rig output, so run node scripts/capture-evidence.mjs first",
+		);
+		return;
+	}
 	const { sets, frames, problems } = checkPaletteBudgets();
 	assert.deepEqual(
 		problems,

@@ -1,0 +1,17 @@
+{
+  "control_ref": "ab1ab8e65e9aee0835d72672a90cd12a082d4ecc",
+  "command": "node --test --test-name-pattern=\"every call site that paints a row state\" scripts/chat-sidebar-selection.test.mjs (untouched git-archive source control; shared private dependencies, no install)",
+  "actual_exit_code": 1,
+  "actual_failure": "9 rowCurrent painter files versus 7 ROW_STATE_GROUNDS files; missing library-card.tsx and library-filter-rail.tsx",
+  "byte_identical_main_files": [
+    "scripts/chat-sidebar-selection.test.mjs",
+    "src/renderer/src/features/library/components/library-card.tsx",
+    "src/renderer/src/features/library/components/library-filter-rail.tsx"
+  ],
+  "resolution": "Test-only: register two actual painter files with real row and surface expressions, plus direct list-row neighbor. Completeness assertion unchanged; no runtime Library edits.",
+  "source_sha256_at_control": {
+    "scripts/chat-sidebar-selection.test.mjs": "aaaf7882a63a423c9844c6f4dc03b7029cacae08cdf518757e5c709f917d67ba",
+    "src/renderer/src/features/library/components/library-card.tsx": "798cb01d5fb2970b2e4f2528406456646e7f138d77f098c3b9fcf0c11456f923",
+    "src/renderer/src/features/library/components/library-filter-rail.tsx": "7ea3c81a04c6de283e22dd21a5b97bd6424d10f4005c1ae9e03f2098c59a042d"
+  }
+}

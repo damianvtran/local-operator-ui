@@ -1,0 +1,29 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "c1a2cd6946cc",
+  "status": "passed",
+  "namespace": "ui.hub",
+  "sha256": {
+    "ur": "7c4bfee8f10d93558677150efb0b75e49b13dc329405367d2b35b319e97243c7",
+    "en": "1bc091755e451fb19f186c68367e243762ab6135c04e024e82b96e90776bae7b"
+  },
+  "findings": [],
+  "date": "2026-10-19",
+  "scope": "Four new ui.hub source-confirmation strings; semantic, placeholder, terminology and register audit",
+  "independence": "This auditor did not author or modify the translations. Temporary fallback model disclosed: openai/gpt-6.1-sol; initial session model anthropic/claude-sonnet-5-5 was replaced before substantive catalogue audit.",
+  "review": {
+    "ui.hub.links.unresolved_what": "Accurate: explicitly linked to Agent Hub, but app has not confirmed source and scope; no implication of damage or hub fault. {item} remains intact as the Urdu subject.",
+    "ui.hub.links.unresolved_why": "Accurate: until source confirmation, incoming hub updates are not applied to {item}; negation and temporal condition retained. {item} naturally precedes the Urdu postposition پر.",
+    "ui.hub.links.unresolved_next": "Accurate: polite imperative to confirm the source and choose the publication scope; does not assume public/private or an organization. The scope relationship is implicit naturally in this card context.",
+    "ui.hub.links.hub_id": "Accurate: diagnostic Agent Hub ID label, not source/origin; {address} preserved unchanged. آئی ڈی is the acceptable initialism ID in Urdu script."
+  },
+  "checks": {
+    "existing_entries": "Compared parsed Urdu catalogue to origin/main: exactly four additions; zero existing values changed or removed.",
+    "terminology": "Read the full Urdu ui.hub catalogue: Agent Hub at title/source_address; ماخذ at source_unavailable and resolve_title; اشاعت کا دائرہ at scope_label and sign_in_to_publish; تصدیق at resolve_action and source_not_confirmed. New strings follow these terms.",
+    "placeholders": "Exact per-key English/Urdu placeholder parity checked: {item}, {item}, none, {address}.",
+    "register": "Polite imperative کریں consistent with nearby actions; Urdu prose and punctuation natural. Urdu has no case distinction; product capitalization retained. No untranslated English prose in the four new values; Agent Hub is the product name, and اپ ڈیٹس is established catalogue usage for updates.",
+    "limitations": "Text-only incremental audit of four additions with full target namespace read for context; no rendered RTL/fit or native-speaker validation claimed."
+  },
+  "context_sha256": "9b6b805094177f87d612ad0d348bf8bd2445b6689728e6a601c993481b2dcdf5"
+}

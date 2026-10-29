@@ -1,0 +1,76 @@
+{
+  "audit_id": "tbr-20261021",
+  "date": "2026-10-21",
+  "locale": "zh-CN",
+  "namespace": "ui.teamBridge",
+  "source_commit": "c838523c627cde8408e30fb7ec4c1fb48390142a",
+  "source_note": "English catalogue and context frozen at c838523c62; later code-only commits on feat/tb-reactions do not change either file (hashes below re-verified).",
+  "translator": {
+    "agent": "translator",
+    "model": "anthropic/claude-opus-5-5",
+    "date": "2026-10-21",
+    "session": "bd2e5924642c",
+    "job": "c963252cda72"
+  },
+  "auditors": [
+    {
+      "agent": "translation-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "date": "2026-10-21",
+      "result": "clean",
+      "instance": "tbr-r1-zh-cn",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "receipt": "i18n/receipts/tbr-r1-zh-cn.json",
+      "receipt_sha256": "f233aef15297e88040f66e284750fbec03c8a68b67184b0c3b181e9fb2a017d7",
+      "scope": "Twenty-key reaction-picker delta (ui.teamBridge.reactions.*); inherits the base 2e16fb1456 full namespace audit for the other 109 unchanged values. Catalogue audit only, not rendered-fit, activation or release approval.",
+      "note": "Independent delta audit; inherited unchanged base coverage. No rendered-fit claim."
+    }
+  ],
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "69f741a64df96b85b00e2f389bcda35bbbcc7cc023c4e2f31c997ef64fc0b50c"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/zh-CN/ui.teamBridge.json",
+      "sha256": "f4c427fb1975c15fac1e2dc00ca3b7844605fd6ad1132b737412f3f1ac64b3d3"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "ad0eef37d14411e02b07a083f3873518362734fefd8caa930cf4196728b2ef84"
+    }
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    }
+  },
+  "independence": "Each translation-auditor run is a separate subagent session from the translator and from the coordinator; auditors never edited catalogues. Round-2 re-audits ran in new sessions distinct from round 1.",
+  "limitations": [
+    "Browser unavailable; no rendered-fit, screenshots, pseudo-localization or activation evidence claimed.",
+    "Static overflow risks noted in receipts (e.g. reactions.frequent heading, toneDefault select option) await a rendered check."
+  ],
+  "retained_rounds": [
+    {
+      "path": "i18n/receipts/tbr-r1-zh-cn.json",
+      "sha256": "f233aef15297e88040f66e284750fbec03c8a68b67184b0c3b181e9fb2a017d7",
+      "result": "clean",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    }
+  ]
+}

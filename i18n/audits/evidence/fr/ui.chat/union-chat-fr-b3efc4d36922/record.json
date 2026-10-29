@@ -1,0 +1,169 @@
+{
+  "audit_id": "union-chat-fr-b3efc4d36922",
+  "round": "union re-audit (wave A + wave B + base)",
+  "audit_kind": "independent-translation-union-reaudit",
+  "date": "2026-10-28",
+  "audit_date": "2026-10-28",
+  "locale": "fr",
+  "namespace": "ui.chat",
+  "head": "c5e19ecec883b45e281d696f06dac86bcb0d90f3",
+  "head_short": "c5e19ecec8",
+  "branch": "i18n-wave-a",
+  "pr": 1449,
+  "base": "1d631be71fb7a674b117aab61508d6dd822708b4",
+  "head_state": "committed at c5e19ecec8; audited from a read-only `git archive` export of that head (node_modules absolute-symlinked), not from the shared checkout (HEAD 20225f33d0, other untracked work present)",
+  "status": "passed",
+  "result": "clean",
+  "scope": "Union delta audit of fr/ui.chat at c5e19ecec8, the merge of i18n-wave-a with main 1d631be71f (which carries wave B). 142 keys = 115 base + 18 wave-A + 9 wave-B, pairwise disjoint. Every one of the 27 wave values is proved byte-identical to the bytes its wave audit bound (wave A 80ee119bbd/c31f2943 via receipt 6c78c3706206; wave B a5356ce91c/e9b9512e via receipt c3a8965266e3), and every base value to main pre-union. On top of the per-wave verdicts this audit read the union as one file: cross-wave term/register/punctuation consistency, ICU placeholder and type parity with a real intl-messageformat render under fr, NFC, bidi controls, backticks, English-identity and width hints.",
+  "key_count": 142,
+  "keys_read": 142,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "not disclosed to this session",
+    "date": "2026-10-27",
+    "note": "The wave-A fr values were authored on i18n-wave-a; the wave-B values were authorised in the wave-B lane. The shared git identity does not record either coder session, and this auditor is neither. Neither lane wrote any byte of this audit."
+  },
+  "auditors": [
+    {
+      "agent": "i18n-auditor",
+      "model": "radient/auto",
+      "session": "b3efc4d36922",
+      "team": "lopdev",
+      "instance": "union-chat-fr-b3efc4d36922",
+      "date": "2026-10-28",
+      "result": "clean",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "independent_from_translator_session": true,
+      "actual_model_source": "harness session header line 'Model: radient/auto' for session b3efc4d36922; transcript has message/custom entries only, with no [session incident] and no model-switch notice (the phrase matches exist only in prompt text and this audit's own tool output)",
+      "fallback": null,
+      "receipt": "i18n/receipts/union-ui-chat-fr-b3efc4d36922.json",
+      "receipt_sha256": "4f4527c430afd20d8076e290565eb8d94a500e82d9c9ed8191c7f732c76f642d"
+    }
+  ],
+  "model_note": "Served through the radient/auto router alias for the whole pass; the upstream provider/model behind the alias is not exposed to this session, and no fallback was observed. Recorded rather than guessed.",
+  "independence": "Independent audit by the i18n-auditor member of team lopdev (session b3efc4d36922), delegated by the team manager. This session produced none of the reviewed copy and edited no catalogue, context, script, ledger or receipt byte in the repository; it wrote only its own evidence bundle and a throwaway read-only export. No MT service, translation API or SDK was used; intl-messageformat ran as validation of the app's own render path, never to produce or compare copy.",
+  "predecessor_receipts": [
+    {
+      "receipt": "i18n/receipts/6c78c3706206.json",
+      "audit_id": "wavea-r2-20261027-fr",
+      "source_commit": "80ee119bbd1084ee873994a1f39db0c085c62083",
+      "sha256": {
+        "en": "1a1c9329a1a56ffda47b27da91e80fdf454751a4463b76f09ae9138d1ad0bcdc",
+        "fr": "c31f2943acee212ec915c385b5a0d2555e75f9470bb57ea2a29c2b28a8810537"
+      },
+      "carried": "18 wave-A fr values, proven byte-identical in the union"
+    },
+    {
+      "receipt": "i18n/receipts/c3a8965266e3.json",
+      "audit_id": "wave-b-delta (fr)",
+      "source_commit": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+      "sha256": {
+        "en": "4d07ed6de9382fdf1310fd70bf48be2602952538c1ddf43bda8972834760be04",
+        "fr": "e9b9512ea3310705de0ca91dc87a644a8aa742ab59a72f04e8216ae01bb256dd"
+      },
+      "carried": "9 wave-B fr values, proven byte-identical in the union"
+    }
+  ],
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.json",
+      "sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.context.json",
+      "sha256": "994de1d3c61cdc19ba61bb8b0995e4e96e17e80c531c9b3dafb4572d3c8bca3e"
+    },
+    "fr": {
+      "path": "src/i18n/catalogues/fr/ui.chat.json",
+      "sha256": "a0f70787c5faddb059246b07ed5266374945d6a2da0279ba5d0dae89efdcbe6d"
+    }
+  },
+  "current_bytes_match_audited_hashes": true,
+  "artifacts": [
+    {
+      "path": "i18n/audits/evidence/fr/ui.chat/union-chat-fr-b3efc4d36922/report.md",
+      "sha256": "3b70d22e244f7936834898838970d9be0884ea794c9739a312c11008c274c2e7"
+    },
+    {
+      "path": "i18n/audits/evidence/fr/ui.chat/union-chat-fr-b3efc4d36922/audit.log",
+      "sha256": "15285cdb3556a0db98bc563f92b28631966c41d3ccabb058c0bfb7d4cc8e68fc"
+    },
+    {
+      "path": "i18n/receipts/union-ui-chat-fr-b3efc4d36922.json",
+      "sha256": "4f4527c430afd20d8076e290565eb8d94a500e82d9c9ed8191c7f732c76f642d",
+      "role": "audit receipt the ledger row is assembled from"
+    }
+  ],
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    },
+    "contract": {
+      "path": "docs/I18N.md",
+      "sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+    },
+    "receipt_rules": {
+      "path": "scripts/i18n/ledger-rules.mjs",
+      "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+    }
+  },
+  "validation": {
+    "delta_proof": "tools/delta-proof.py: 18 checks, all PASS (base+18+9=142, disjoint; 27 wave values byte-identical to their audited bytes; 115 base values identical to main pre-union and the wave-A branch base)",
+    "context_union": "union 136 entries = e5f7c8daea's 127 + main's 9; agrees with e5f7 on all 127 and with main on all 118; 3 wave-A entries (checkpoint.turn, aria_agent_closed, aria_team_closed) differ from the wave-A-audited 1df3ad0e context because e5f7c8daea already rewrote them; fr values unchanged",
+    "gate_generate_check": "PASS - keys.gen.ts byte-identical to a fresh generation",
+    "gate_check_duplicates": "PASS - 889 files scanned, 0 duplicate keys",
+    "gate_context_parity": "PASS - 131 allowed gaps in 4 namespaces (shrink-only)",
+    "gate_locale_parity": "PASS - 44/44 tests (fr: no unknown keys, ICU parity, not an English stub)",
+    "gate_check_coverage": "PASS - 7 gated languages over 99 namespaces, 0 allowances",
+    "gate_ledger_check": "FAIL as designed - 21 diagnostics, exactly 7 locale x ui.chat union rows x 3, because the union file has no receipt yet; this receipt is the missing input",
+    "gate_union_parity_tool": "en and fr catalogues: no key missing from base or PR, no value difference. en context sibling: 3 value differences against the PR side (base has no entry), disclosed above.",
+    "icu_placeholder_parity": "142/142 keys, argument names and types identical, real @formatjs/icu-messageformat-parser 3.5.x",
+    "cldr_categories": "fr one/many/other only; `other` present in every plural; no `few`",
+    "icu_render": "147 message/argument combinations rendered under 'fr' with intl-messageformat 12.1.3, 0 failures, no leftover ICU",
+    "unicode_nfc": true,
+    "bidi_controls": 0,
+    "text_hygiene": "U+2019 apostrophes only, U+202F before ; : ! ? and inside « », no straight double quotes, no double spaces, leading/trailing whitespace parity",
+    "backticks": "none in this namespace on either side",
+    "english_identity": 0,
+    "maxcells_hints": "choose_model fr 17/18 cells; last_reading fr 14/16; no other hint in this namespace",
+    "rendered": false,
+    "rendered_note": "no frame captured; fit assessed from maxCells hints and call sites, not measured"
+  },
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "findings": [],
+  "observations_not_findings": [
+    "region.conversation = « Transcription » accepted: the role=log holds the messages, the fr nav landmark is « Conversations », and the same surface's setting says « Affichage de la transcription »; a second « Conversation » landmark is the worse outcome.",
+    "composer.status.goal_dismiss = « Ignorer » vs three base « Masquer » for EN Dismiss: the fr goal-dismiss family is « ignorer » throughout (ui.chat.pickers, ui.notices) and the Masquer keys hide banners; the corpus splits the same way elsewhere (7 ignorer / 8 masquer).",
+    "composer.status.monitors_action = « Ouvrir la surveillance » matches the destination's fr heading « Surveillance » (ui.chat.run_details.monitors.title).",
+    "The approval hint names the card's buttons « Approve ou Deny »: literal English labels drawn by APPROVAL_OPTIONS (approval-words.ts) and typed tokens yes/no/1/2; source-level gap, not a catalogue error.",
+    "header_identity.aria_agent_closed / aria_team_closed embed {reason}, an English UI-composed sentence mirroring a core cross-repo contract; passed through untranslated by design.",
+    "The union's context for checkpoint.turn, aria_agent_closed and aria_team_closed differs from the wave-A-audited 1df3ad0e sidecar; e5f7c8daea had rewritten those notes before the union. fr values unchanged; disclosed so no later reader assumes the old context hash still describes them.",
+    "Base-only, unchanged by this delta: skill_invocation.instructions_label « Instructions de compétence… » vs sibling « Instructions de la compétence {token} »; a future pass may align the article."
+  ],
+  "audit_notes_not_execution_log": [
+    "The judgements in report.md are audit notes, not command output.",
+    "Every command result quoted in audit.log was produced by this session on the exported bytes; nothing was reconstructed from memory.",
+    "check-strings.mjs scanned 0 files in the catalogue-only export and is not claimed as evidence; check-added-strings.mjs needs a git base and was not run."
+  ],
+  "limitations": [
+    "Copy audit only: no build, no rendered frame, no browser, no native-render claim.",
+    "No native-speaker sign-off is claimed; this is an independent agent read against the shipped fr catalogue, the fr style guide and the core glossary.",
+    "The English copy was read as the source, not audited as English.",
+    "The upstream model behind radient/auto is not exposed to this session.",
+    "The predecessor bundles were consumed as evidence (ids, bound hashes, findings) but not re-litigated as audits."
+  ]
+}

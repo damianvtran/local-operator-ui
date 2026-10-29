@@ -34,7 +34,8 @@ globalThis.localStorage = {
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { fleetAskRows, fleetAskFrontend, fleetAskFrontendFor, FLEET_ASKS_UNAVAILABLE_FRONTEND, fleetAsksOutstanding, fleetAsksBySession, fleetAskSessionFor, fleetAskConversationLabel, fleetAskConversationLabels, FLEET_ASKS_QUERY_KEY, FLEET_ASKS_POLL_MS } from "./src/renderer/src/features/chat/fleet-asks";',
+			'export { fleetAskRows, fleetAskFrontend, fleetAskFrontendFor, fleetAsksCapability, FLEET_ASKS_UNAVAILABLE_FRONTEND, fleetAsksOutstanding, fleetAsksBySession, fleetAskSessionFor, fleetAskConversationLabel, fleetAskConversationLabels, FLEET_ASKS_QUERY_KEY, FLEET_ASKS_POLL_MS } from "./src/renderer/src/features/chat/fleet-asks";',
+			'export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
 			'export { useUiPreferencesStore, persistedUiPreferences, resolveRightSlotWidth } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";',
 			'export { askScopeLine, askQueueView, ASK_ITEM_SELECTOR, ASK_RAIL_ITEM_SELECTOR } from "./src/renderer/src/features/chat/ask-queue";',
@@ -59,6 +60,8 @@ const {
 	fleetAskRows,
 	fleetAskFrontend,
 	fleetAskFrontendFor,
+	fleetAsksCapability,
+	DesktopControlError,
 	FLEET_ASKS_UNAVAILABLE_FRONTEND,
 	fleetAsksOutstanding,
 	fleetAsksBySession,
@@ -272,24 +275,75 @@ test("the drawer's frontend states the same count the badge does", () => {
 
 /* ------------------------------------------------- the correctness heart */
 
-test("a failed fleet read is a resolved frame publishing nothing, not an unread one (D4)", () => {
+test("a 404 is a resolved frame publishing nothing, while a transient failure stays unread (D4/R1-4)", () => {
 	/*
 	 * The rail's asks door is on every chat route now, so the fleet drawer can be
-	 * opened over a backend whose `asks.list` fails. `null` would read as UNREAD
-	 * ("Reading the asks…") forever; the failure is handed over as the resolved
-	 * `{asks: null, asks_open: null}` frame the drawer words as unsupported.
+	 * opened over a backend whose `asks.list` fails. Only a 404 is a statement
+	 * that the route does not exist, and only that hands over the resolved
+	 * `{asks: null, asks_open: null}` frame the drawer words as unsupported; a
+	 * 503 or a transport failure may still answer, so `null` keeps it UNREAD.
 	 */
 	const failed = fleetAskFrontendFor(null, true);
 	assert.equal(failed, FLEET_ASKS_UNAVAILABLE_FRONTEND);
 	const view = askQueueView(failed);
-	assert.equal(view.unread, false, "a failed read is not an unread frame");
+	assert.equal(view.unread, false, "a 404 answer is not an unread frame");
 	assert.equal(view.published, false, "and it publishes no queue");
-	// In flight: still unread, so the drawer says it is reading.
+	// In flight or transiently failed: still unread, so the drawer says it is reading.
 	assert.equal(fleetAskFrontendFor(null, false), null);
 	assert.equal(askQueueView(fleetAskFrontendFor(null, false)).unread, true);
 	// An answer in hand wins over a later failed refetch: the rows stay.
 	const rows = fleetAskRows([row()]);
 	assert.deepEqual(fleetAskFrontendFor(rows, true), fleetAskFrontend(rows));
+});
+
+test("the 404-vs-unknown classifier is driven in both directions (R1-4)", () => {
+	/*
+	 * This one line decides whether the app may say "this runtime doesn't support
+	 * queued asks". It lives in a pure function so both failure modes are pinned:
+	 * a real 404 classified as unknown would park a permanent "Reading the
+	 * asks…"; any 5xx classified as absent would make the false capability claim
+	 * this PR exists to remove.
+	 */
+	const missing = new DesktopControlError(404, "no such route");
+	const busy = new DesktopControlError(503, "backend restarting");
+	const deadline = new DesktopControlError(504, "deadline exceeded");
+	const transport = new DesktopControlError(
+		null,
+		"Desktop controls could not reach the backend process.",
+	);
+
+	assert.equal(fleetAsksCapability(null, missing), "absent");
+	for (const [label, error] of [
+		["503", busy],
+		["504", deadline],
+		["transport", transport],
+		["no error", null],
+		["a bare error", new Error("boom")],
+	]) {
+		assert.equal(
+			fleetAsksCapability(null, error),
+			"unknown",
+			`${label} is not proof the route is absent`,
+		);
+	}
+	assert.equal(
+		fleetAsksCapability([], missing),
+		"live",
+		"an answer in hand outranks a later failed refetch",
+	);
+
+	// And the mapping the drawer reads: absent -> the resolved frame; unknown -> unread.
+	assert.equal(
+		fleetAskFrontendFor(null, fleetAsksCapability(null, missing) === "absent"),
+		FLEET_ASKS_UNAVAILABLE_FRONTEND,
+	);
+	for (const error of [busy, deadline, transport, null]) {
+		assert.equal(
+			fleetAskFrontendFor(null, fleetAsksCapability(null, error) === "absent"),
+			null,
+			"a transient failure must stay unread",
+		);
+	}
 });
 
 test("an answer is addressed at the ROW's own conversation", () => {

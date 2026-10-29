@@ -1,0 +1,63 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "openai/gpt-6.1-sol",
+	"instance": "9d4e059e6be8",
+	"locale": "hi",
+	"round": 3,
+	"namespaces": {
+		"ui.settings.integrations": {
+			"status": "passed",
+			"keys_audited": 218,
+			"sha256": {
+				"en": "36b3507993a0466100ca099c3c1c2b2852d66a81b14f3685031f0a35dfa0f5b3",
+				"hi": "bb79efc807970d162a22960edd55b673e4066e1c1f9c02edccf15901ce1ef0e8"
+			},
+			"findings": []
+		},
+		"ui.settings.appearance.window_glass": {
+			"status": "passed",
+			"keys_audited": 28,
+			"sha256": {
+				"en": "d3c6e272273baab454200c41a25b21c451689ae9bf03329aa776dc1cb9f1b33a",
+				"hi": "e470faf53be46ae9abaa53810df980b309929129e1584cc877bff10cc72f73c2"
+			},
+			"findings": []
+		},
+		"ui.mesh": {
+			"status": "passed",
+			"keys_audited": 223,
+			"sha256": {
+				"en": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
+				"hi": "0d55018b996a5ddf1e61256e473a9dc3441863702022487ab8b829052020c452"
+			},
+			"findings": []
+		},
+		"ui.chat.header": {
+			"status": "passed",
+			"keys_audited": 10,
+			"sha256": {
+				"en": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
+				"hi": "93f87c0176ff38aaef1e3853bf1836a76266306928f4014c6be7974e719c0e71"
+			},
+			"findings": []
+		},
+		"ui.settings.appearance": {
+			"status": "passed",
+			"keys_audited": 10,
+			"sha256": {
+				"en": "f5db8989cc542fededba171769b0fbaa940cec562de6eccc07347c0f41c784d1",
+				"hi": "f38f8cb4e60a150f16d4b74d803550db79b90a2597869e6be6b9349901b95328"
+			},
+			"findings": []
+		},
+		"ui.projects": {
+			"status": "passed",
+			"keys_audited": 416,
+			"sha256": {
+				"en": "6b12f695845c3d01500291f5bc4eb50ea9b35e60c68bc69f21ee219c5f9d7f52",
+				"hi": "0278c51fe086bc7b96521c77dad6b6ab3b3d9ebb0f34aed4fc616ec7228a65d6"
+			},
+			"findings": []
+		}
+	}
+}

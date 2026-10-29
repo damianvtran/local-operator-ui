@@ -20,6 +20,8 @@ import {
 	join,
 	relative,
 } from "node:path";
+import { t } from "../i18n/index";
+import { isLanguageTag } from "../i18n/locale";
 import BUNDLED_RUNTIME_LAYOUT from "../shared/bundled-runtime-layout.json";
 import MACOS_ENTITLEMENT_POLICY from "../shared/macos-entitlement-policy.json";
 import {
@@ -445,24 +447,31 @@ export function installedBundleSealBlock(
 	 * is running with the break, so it cannot know that, and the suite holds a
 	 * negative guard on exactly this copy.
 	 */
+	/*
+	 * TWO ARMS PER SENTENCE rather than a version clause concatenated into one:
+	 * ICU arguments carry values, not grammar, so the arm that cannot name a
+	 * release is its own key and a translator can put "{version}" where that
+	 * language's word order wants it (docs/I18N.md): a clause spliced into a
+	 * sentence cannot be reordered by the language receiving it.
+	 */
 	const message =
 		context === "startup"
-			? "This copy of Local Operator did not pass its integrity check, so it can't repair itself."
+			? t("ui.updates.panel.seal.startup.message")
 			: version
-				? `This install of Local Operator can't be updated in place, so the update to version ${version} was stopped before the app quit.`
-				: "This install of Local Operator can't be updated in place, so the update was stopped before the app quit.";
+				? t("ui.updates.panel.seal.update.message_version", { version })
+				: t("ui.updates.panel.seal.update.message");
 	return {
 		code: "installed-bundle-not-sealed",
 		message,
 		remedy: {
-			text: "Quit Local Operator, then download a fresh copy and replace the app in Applications.",
+			text: t("ui.updates.panel.seal.remedy"),
 			url: DOWNLOAD_PAGE_URL,
 		},
 		detail: `${appBundlePath}: ${detail}`,
 		...(context === "startup"
 			? {
-					heading: "This copy of Local Operator needs replacing",
-					dismissLabel: "Not now",
+					heading: t("ui.updates.panel.seal.startup.heading"),
+					dismissLabel: t("ui.updates.panel.dismiss.not_now"),
 				}
 			: {}),
 	};
@@ -914,11 +923,6 @@ export function measureDirectoryBytes(root: string): number | null {
 	}
 }
 
-/** The version clause every refusal carries, so the user can quote it. */
-function versionClause(version: string | null | undefined): string {
-	return version ? ` to version ${version}` : "";
-}
-
 /**
  * Check a staged artifact against the metadata the updater already parsed.
  *
@@ -949,9 +953,13 @@ export function verifyStagedArtifact(input: {
 			ok: false,
 			block: {
 				code: "artifact-metadata-missing",
-				message: `The downloaded update${versionClause(version)} isn't listed in the release metadata, so it wasn't installed.`,
+				message: version
+					? t("ui.updates.panel.artifact.metadata_missing.message_version", {
+							version,
+						})
+					: t("ui.updates.panel.artifact.metadata_missing.message"),
 				remedy: {
-					text: "Check for updates again to re-download the release.",
+					text: t("ui.updates.panel.artifact.remedy"),
 				},
 				detail: `${name} has no matching entry in the update metadata.`,
 			},
@@ -964,9 +972,13 @@ export function verifyStagedArtifact(input: {
 			ok: false,
 			block: {
 				code: "download-verification-failed",
-				message: `The downloaded update${versionClause(version)} doesn't match the published release, so it wasn't installed.`,
+				message: version
+					? t("ui.updates.panel.artifact.mismatch.message_version", {
+							version,
+						})
+					: t("ui.updates.panel.artifact.mismatch.message"),
 				remedy: {
-					text: "Check for updates again to re-download the release.",
+					text: t("ui.updates.panel.artifact.remedy"),
 				},
 				detail: `${name} is ${input.actualSize} bytes; the release lists ${expectedSize}.`,
 			},
@@ -979,9 +991,13 @@ export function verifyStagedArtifact(input: {
 			ok: false,
 			block: {
 				code: "download-verification-failed",
-				message: `The downloaded update${versionClause(version)} doesn't match the published release, so it wasn't installed.`,
+				message: version
+					? t("ui.updates.panel.artifact.mismatch.message_version", {
+							version,
+						})
+					: t("ui.updates.panel.artifact.mismatch.message"),
 				remedy: {
-					text: "Check for updates again to re-download the release.",
+					text: t("ui.updates.panel.artifact.remedy"),
 				},
 				detail: `${name} sha512 ${input.actualSha512} does not match the release's ${expectedSha}.`,
 			},
@@ -1005,9 +1021,15 @@ export function verifyStagedArtifact(input: {
 			ok: false,
 			block: {
 				code: "insufficient-disk-space",
-				message: `There isn't enough free disk space to install the update${versionClause(version)}, so it wasn't installed.`,
+				message: version
+					? t("ui.updates.panel.disk.message_version", { version })
+					: t("ui.updates.panel.disk.message"),
 				remedy: {
-					text: `Free up about ${formatGiB(needed - input.freeBytes)}, then check for updates again.`,
+					// The size is formatted for the locale here and passed as a value, so
+					// the sentence keeps its own word order around it.
+					text: t("ui.updates.panel.disk.remedy", {
+						size: formatGiB(needed - input.freeBytes),
+					}),
 				},
 				detail: `Install needs ${formatGiB(needed)} (${footprint}); ${formatGiB(input.freeBytes)} free.`,
 			},
@@ -1219,15 +1241,17 @@ export function stagedSignatureBlock(
 		if (facts.embeddedProfile) return null;
 		return {
 			code: "artifact-cannot-launch",
-			heading: "The update couldn't be checked",
+			heading: t("ui.updates.panel.launch.heading"),
 			message: facts.version
-				? `The update to version ${facts.version} can't be checked for launch, so it wasn't installed.`
-				: "The downloaded update can't be checked for launch, so it wasn't installed.",
+				? t("ui.updates.panel.launch.check.message_version", {
+						version: facts.version,
+					})
+				: t("ui.updates.panel.launch.check.message"),
 			remedy: {
-				text: "Check for updates again to re-download the release.",
+				text: t("ui.updates.panel.artifact.remedy"),
 			},
 			detail: `${facts.artifactName} carries no ${EMBEDDED_PROVISIONING_PROFILE_PATH} and its signature could not be read.`,
-			dismissLabel: "Not now",
+			dismissLabel: t("ui.updates.panel.dismiss.not_now"),
 		};
 	}
 	const claimed = profileBackedEntitlementKeys(facts.entitlementsPlist);
@@ -1236,12 +1260,16 @@ export function stagedSignatureBlock(
 	return {
 		code: "artifact-cannot-launch",
 		message: facts.version
-			? `The update to version ${facts.version} can't be launched by macOS, so it wasn't installed.`
-			: "The downloaded update can't be launched by macOS, so it wasn't installed.",
+			? t("ui.updates.panel.launch.open.message_version", {
+					version: facts.version,
+				})
+			: t("ui.updates.panel.launch.open.message"),
 		remedy: {
 			text: facts.version
-				? `Keep using this copy, and skip version ${facts.version} if you download one by hand — the next release will be offered here as usual.`
-				: "Keep using this copy; the next release will be offered here as usual.",
+				? t("ui.updates.panel.launch.keep.message_version", {
+						version: facts.version,
+					})
+				: t("ui.updates.panel.launch.keep.message"),
 		},
 		// The facts a reader can check, and nothing else: which archive, which
 		// claim, which file macOS found missing. TN3125's rule (a restricted
@@ -1250,7 +1278,7 @@ export function stagedSignatureBlock(
 		// it in a mono column made the details block 44% of the panel (design
 		// round 1, D4). It belongs in this comment, not in the card.
 		detail: `${facts.artifactName} claims ${claimed.join(", ")} and carries no ${EMBEDDED_PROVISIONING_PROFILE_PATH}.`,
-		dismissLabel: "Not now",
+		dismissLabel: t("ui.updates.panel.dismiss.not_now"),
 	};
 }
 
@@ -1281,6 +1309,22 @@ export type PendingInstallMarker = {
 	 * field reads as `null` (i.e. "ask the job") rather than as unparseable.
 	 */
 	installerPid: number | null;
+	/**
+	 * The BACKEND-RESOLVED UI language at the moment of the quit, when there was
+	 * one - the tag the hold's notice and the watchdog's messages should speak.
+	 *
+	 * Optional and additive on purpose: a marker written by a version of this app
+	 * that predates the field is still a valid marker, and the parser's absence
+	 * rule (`undefined` here) is what tells the hold to fall back to the DEVICE
+	 * reading rather than to invent a language. Nothing writes a `manual` or
+	 * device guess into it: `update-service.ts` includes this field only while the
+	 * locale store's source is `backend`, which is the same owner the renderer
+	 * reads (`docs/I18N.md`).
+	 *
+	 * Rollback-safe: an older app reads this file with its own parser and ignores
+	 * unknown keys; a newer app reads an older file with the field absent.
+	 */
+	language?: string;
 };
 
 export function pendingInstallMarkerPath(dir: string): string {
@@ -1327,6 +1371,10 @@ export function parsePendingInstallMarker(
 			// same answer as the fallback's `null`: ask the install's own launchd job.
 			installerPid:
 				typeof parsed.installerPid === "number" ? parsed.installerPid : null,
+			// Strictly validated rather than copied: this value reaches ICU
+			// formatters, and the file is writable by anything. An unusable tag is
+			// the same answer as an absent field - fall back to the device reading.
+			...(isLanguageTag(parsed.language) ? { language: parsed.language } : {}),
 		};
 	} catch {
 		return null;
@@ -2453,9 +2501,12 @@ export function installFailurePayload(
 		: "";
 	if (options.cancelledByRelaunch === true) {
 		return {
-			message: `The update to version ${marker.targetVersion} was cancelled because Local Operator was opened while the update was installing. Version ${runningVersion} is still running.`,
+			message: t("ui.updates.panel.failure.cancelled.message", {
+				target: marker.targetVersion,
+				running: runningVersion,
+			}),
 			remedy: {
-				text: "Quit Local Operator and replace it in Applications with a fresh copy, or update again from the app — and leave it closed until the update finishes.",
+				text: t("ui.updates.panel.failure.cancelled.remedy"),
 				url: DOWNLOAD_PAGE_URL,
 			},
 			detail: `Install started ${startedText} from ${marker.artifactPath || "an unknown artifact"}. Squirrel cancels an install when an instance of the app is running.${logText}`,
@@ -2465,9 +2516,12 @@ export function installFailurePayload(
 		};
 	}
 	return {
-		message: `The update to version ${marker.targetVersion} didn't finish, so version ${runningVersion} is still running.`,
+		message: t("ui.updates.panel.failure.unfinished.message", {
+			target: marker.targetVersion,
+			running: runningVersion,
+		}),
 		remedy: {
-			text: "Quit Local Operator and replace it in Applications with a fresh copy, or update again from the app.",
+			text: t("ui.updates.panel.failure.unfinished.remedy"),
 			url: DOWNLOAD_PAGE_URL,
 		},
 		detail: `Install started ${startedText} from ${marker.artifactPath || "an unknown artifact"}.${logText}`,
@@ -2558,11 +2612,14 @@ export function installLaunchHoldNotice(
 ): InstallLaunchHoldNotice {
 	const relaunch =
 		options.relaunchEnsured === false
-			? "No relaunch could be arranged for this install, so start Local Operator by hand when it finishes."
-			: "Local Operator will open by itself when the install finishes.";
+			? t("ui.notices.main.update_hold_no_relaunch")
+			: t("ui.notices.main.update_hold_relaunch");
 	return {
-		title: "Local Operator is still updating",
-		body: `The update to version ${marker.targetVersion} is still installing — opening the app now would cancel it. ${relaunch} Clicking this notice will not open it any sooner.`,
+		title: t("ui.notices.main.update_hold_title"),
+		body: t("ui.notices.main.update_hold_body", {
+			version: marker.targetVersion,
+			relaunch,
+		}),
 	};
 }
 
@@ -2623,6 +2680,98 @@ export type WatchdogPlan = {
 	 */
 	hardTimeoutSeconds: number;
 };
+
+/**
+ * The literal the hold/notification copy uses for "the time since the app
+ * exited", substituted by the shell at the moment the line is shown.
+ *
+ * It is NOT an i18n placeholder that a translator can move arbitrarily: the
+ * generated script replaces this exact token with `%s` and feeds the shell's
+ * own elapsed reading into it. A translation that drops or duplicates it
+ * degrades to a sentence with no reading (or one empty reading), never to a
+ * broken script.
+ */
+export const WATCHDOG_ELAPSED_TOKEN = "{elapsed}";
+
+/** The five sentences the watchdog can show, in the caller's current locale. */
+export type WatchdogMessages = {
+	/** First wait notice; carries `WATCHDOG_ELAPSED_TOKEN`. */
+	appWait: string;
+	/** Escalation fallback; carries `WATCHDOG_ELAPSED_TOKEN`. */
+	appWaitFallback: string;
+	/** The app has exited and an install is under way. */
+	installing: string;
+	/** Soft bound reached with the install still running and the app gone. */
+	stillInstalling: string;
+	/** Hard bound reached with the app gone; the app is about to reopen. */
+	takingLonger: string;
+};
+
+/**
+ * The shipped messages, read from the catalogue at plan-build time.
+ *
+ * WHY AT BUILD TIME RATHER THAN IN THE SCRIPT. This script outlives the app and
+ * runs while the app's UI is gone: there is no process left to call `t()` when
+ * a notice fires, so the only moment the active locale is knowable is here.
+ * The values travel to the script through the ENVIRONMENT (see the plan's
+ * `env`), never through shell source: a translation is data, and interpolating
+ * data into a shell script is how a quote or a `$(...)` in a translated
+ * sentence becomes code. The elapsed token becomes a `printf` conversion with
+ * every `%` in the sentence escaped, so a translator's percent sign prints
+ * literally instead of consuming an argument.
+ */
+export function watchdogMessages(): WatchdogMessages {
+	return {
+		appWait: t("ui.notices.main.watchdog_app_wait", {
+			elapsed: WATCHDOG_ELAPSED_TOKEN,
+		}),
+		appWaitFallback: t("ui.notices.main.watchdog_app_wait_fallback", {
+			elapsed: WATCHDOG_ELAPSED_TOKEN,
+		}),
+		installing: t("ui.notices.main.watchdog_installing"),
+		stillInstalling: t("ui.notices.main.watchdog_still_installing"),
+		takingLonger: t("ui.notices.main.watchdog_taking_longer"),
+	};
+}
+
+type SplitElapsed = {
+	/** The sentence before its elapsed token. */
+	prefix: string;
+	/** Everything after the token; empty when it had none. */
+	suffix: string;
+	/** Whether the sentence carried the token at all. */
+	hasElapsed: boolean;
+};
+
+/**
+ * Split one translated sentence around its single elapsed token.
+ *
+ * WHY SPLIT RATHER THAN FORMAT (agent review round 2, M2-1). The script runs
+ * under `/bin/sh` and the sentence is translator-authored data. Passing it as
+ * `printf`'s FORMAT gives `printf` licence to interpret it: a leading `-n` is
+ * parsed as an option (the notice comes out empty), `%` consumes arguments, and
+ * backslash escapes - `\c` above all - truncate the rest of the line. Escaping
+ * `%` and `\` fixes those two by convention, but the format is still the one
+ * string a translation must never be. Splitting at the token and passing the
+ * halves as ARGUMENTS to a fixed `'%s%s%s'` removes the whole class: hyphens,
+ * backslashes, percent signs, command substitutions, backticks and Unicode in
+ * the sentence are bytes.
+ *
+ * Exactly one substitution is structural: only this token is replaced, by the
+ * shell's own `elapsed_text` reading, and `hasElapsed` says whether the sentence
+ * had it at all. A translation that drops or duplicates it is caught by the
+ * focused translation-gate test; at run time a dropped token prints the sentence
+ * without inventing a reading, rather than an empty or truncated notice.
+ */
+function splitElapsed(message: string): SplitElapsed {
+	const at = message.indexOf(WATCHDOG_ELAPSED_TOKEN);
+	if (at < 0) return { prefix: message, suffix: "", hasElapsed: false };
+	return {
+		prefix: message.slice(0, at),
+		suffix: message.slice(at + WATCHDOG_ELAPSED_TOKEN.length),
+		hasElapsed: true,
+	};
+}
 
 /**
  * Build the detached relaunch watchdog.
@@ -2827,9 +2976,19 @@ export function buildWatchdogPlan(input: {
 	 * only an absent key adds nothing to the environment at all.
 	 */
 	noNotifications?: string | null;
+	/**
+	 * The five notices, in the locale the caller has already applied. Defaults to
+	 * `watchdogMessages()` (the store's current locale), which is what production
+	 * passes; tests that drive the script substitute their own set, and the
+	 * escaping case deliberately hands hostile text through this seam.
+	 */
+	messages?: WatchdogMessages;
 	signals?: WatchdogSignals;
 }): WatchdogPlan {
 	const signals = input.signals ?? watchdogSignals(input.platform ?? "darwin");
+	const messages = input.messages ?? watchdogMessages();
+	const appWait = splitElapsed(messages.appWait);
+	const appWaitFallback = splitElapsed(messages.appWaitFallback);
 	const timeoutSeconds = input.timeoutSeconds ?? WATCHDOG_TIMEOUT_SECONDS;
 	const hardTimeoutSeconds =
 		input.hardTimeoutSeconds ?? WATCHDOG_HARD_TIMEOUT_SECONDS;
@@ -3034,7 +3193,28 @@ notify() {
 	# default spells "a run", not "the user's own app" - and only an ABSENT key
 	# arms. The "NAME+x" set-test (no colon) stays legal under set -u.
 	[ -n "\${LOCAL_OPERATOR_NO_NOTIFICATIONS+x}" ] && return 0
-	osascript -e 'on run argv' -e 'display notification (item 1 of argv) with title (item 2 of argv)' -e 'end run' "$1" "Local Operator" >/dev/null 2>&1 &
+	# THE FIXED TITLE GOES FIRST, the translated body second. osascript parses
+	# leading "-" arguments as its own options (-n is an illegal option and the
+	# notice is lost), and BSD option parsing stops at the first operand - so the
+	# non-hyphen title is what ends option parsing and the sentence is data from
+	# there. Measured on this macOS with the title first and a "-n ..." body.
+	osascript -e 'on run argv' -e 'display notification (item 2 of argv) with title (item 1 of argv)' -e 'end run' "Local Operator" "$1" >/dev/null 2>&1 &
+}
+# Compose a notice whose sentence carries the elapsed reading.
+#
+# THE SENTENCE IS AN ARGUMENT, NEVER THE FORMAT (R2 M2-1). A printf FORMAT
+# treats a leading "-" as an option, "%" as a conversion and backslash escapes -
+# "\c" truncates the line - as instructions, so a translated sentence could
+# print nothing or lose its end. This fixed format is the only string printf
+# interprets; prefix, elapsed reading and suffix are data. The flag says whether
+# the sentence carried the token, so a translation that dropped it prints the
+# sentence without inventing a reading.
+compose_elapsed() {
+	if [ -n "$2" ]; then
+		printf '%s%s%s' "$1" "$(elapsed_text)" "$3"
+	else
+		printf '%s' "$1"
+	fi
 }
 # launchctl list <label> exits 0 when the job is loaded and 113 when launchd has
 # no such job; every other status is not an answer at all. An unanswerable probe
@@ -3205,11 +3385,11 @@ while app_running; do
 	_waited=$(( $(now) - started ))
 	if [ "$app_wait_notice" -eq 0 ] && [ "$_waited" -ge ${appWaitNoticeSeconds} ]; then
 		app_wait_notice=1
-		notify "Waiting for Local Operator to close so the update can install (waiting $(elapsed_text)). No action is needed yet."
+		notify "$(compose_elapsed "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_PREFIX" "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_ELAPSED" "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_SUFFIX")"
 	fi
 	if [ "$app_wait_fallback" -eq 0 ] && [ "$_waited" -ge ${appWaitFallbackSeconds} ]; then
 		app_wait_fallback=1
-		notify "The update is still waiting for Local Operator to close (waiting $(elapsed_text)). If nothing happens, quit Local Operator (Force Quit if it does not respond) and leave it closed until it opens again by itself."
+		notify "$(compose_elapsed "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_PREFIX" "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_ELAPSED" "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_SUFFIX")"
 	fi
 	sleep ${intervalSeconds}
 done
@@ -3273,7 +3453,7 @@ fi
 #     there would be the original defect back again.
 if ! app_running; then
 	if [ "$signal_known" -eq 0 ] || install_live; then
-		notify "Installing the update. Keep Local Operator closed until it opens again by itself."
+		notify "$LO_UPDATE_WATCHDOG_MSG_INSTALLING"
 	fi
 fi
 # 3. Wait for the install to be decided - by the job going, or by the swap
@@ -3291,9 +3471,9 @@ while :; do
 			# elapsed reading; app gone -> the stay-closed copy, which is true there
 			# (an install this app spawned is live and the swap still needs quiet).
 			if app_running; then
-				notify "The update is still waiting for Local Operator to close (waiting $(elapsed_text)). If nothing happens, quit Local Operator (Force Quit if it does not respond) and leave it closed until it opens again by itself."
+				notify "$(compose_elapsed "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_PREFIX" "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_ELAPSED" "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_SUFFIX")"
 			else
-				notify "The update is still installing. Keep Local Operator closed; it will open again when the install finishes."
+				notify "$LO_UPDATE_WATCHDOG_MSG_STILL_INSTALLING"
 			fi
 		fi
 		break
@@ -3332,9 +3512,9 @@ if [ "$holding" -eq 1 ]; then
 			# the wait's own notices use; the app-gone arm keeps the notice the
 			# panel's copy expects (UX U10).
 			if app_running; then
-				notify "The update is still waiting for Local Operator to close (waiting $(elapsed_text)). If nothing happens, quit Local Operator (Force Quit if it does not respond) and leave it closed until it opens again by itself."
+				notify "$(compose_elapsed "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_PREFIX" "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_ELAPSED" "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_SUFFIX")"
 			else
-				notify "The update is taking longer than expected. Local Operator is opening again so you are not left without it — if it says the update is still installing, quit it and leave it closed until the install finishes."
+				notify "$LO_UPDATE_WATCHDOG_MSG_TAKING_LONGER"
 			fi
 			break
 		fi
@@ -3378,6 +3558,25 @@ exit 0
 			...(input.noNotifications != null
 				? { LOCAL_OPERATOR_NO_NOTIFICATIONS: input.noNotifications }
 				: {}),
+			/*
+			 * The five notices as DATA, not shell source. `notify` reads them from
+			 * these variables, so a quote, backtick, newline or `$(...)` in a
+			 * translated sentence is a byte in a notification rather than syntax in
+			 * the script. The two elapsed sentences are split at their token: each
+			 * half is an ARGUMENT to `compose_elapsed`'s fixed format, never a
+			 * format itself (R2 M2-1), and the flag records whether the token was
+			 * present so a translation that dropped it prints no fake reading.
+			 */
+			LO_UPDATE_WATCHDOG_MSG_APP_WAIT_PREFIX: appWait.prefix,
+			LO_UPDATE_WATCHDOG_MSG_APP_WAIT_SUFFIX: appWait.suffix,
+			LO_UPDATE_WATCHDOG_MSG_APP_WAIT_ELAPSED: appWait.hasElapsed ? "1" : "",
+			LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_PREFIX: appWaitFallback.prefix,
+			LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_SUFFIX: appWaitFallback.suffix,
+			LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_ELAPSED:
+				appWaitFallback.hasElapsed ? "1" : "",
+			LO_UPDATE_WATCHDOG_MSG_INSTALLING: messages.installing,
+			LO_UPDATE_WATCHDOG_MSG_STILL_INSTALLING: messages.stillInstalling,
+			LO_UPDATE_WATCHDOG_MSG_TAKING_LONGER: messages.takingLonger,
 			LO_UPDATE_WATCHDOG_APP_PID: String(input.appPid),
 			LO_UPDATE_WATCHDOG_APP_BUNDLE: input.appBundlePath,
 			LO_UPDATE_WATCHDOG_APP_NAME: input.executableName,

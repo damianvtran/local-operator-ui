@@ -816,6 +816,22 @@ export function glassPaintFor(input: {
 		 */
 		"--lo-glass-a-block-veil": String(GLASS_FLOORS.blockVeil[input.scheme]),
 		/*
+		 * THE ISOLATING BAND'S OWN ALPHA FLOOR, per scheme.
+		 *
+		 * A band over MOVING content - a sticky section header that rows scroll
+		 * under - has a ground that is whatever happens to be passing beneath it,
+		 * so its alpha is a contract rather than a style choice: the count beside
+		 * the label has to clear the 4.5 text floor against it, whatever scrolls
+		 * under. The floor is the smallest alpha at which that holds over the
+		 * worst content colour, derived over every palette by
+		 * `scripts/derive-glass-floors.mjs` and asserted by
+		 * `scripts/contrast-contract.mjs`.
+		 *
+		 * The ordinary bands do not need it: they sit on the pane's own static
+		 * ground, where the published alpha is right.
+		 */
+		"--lo-glass-a-band-floor": String(GLASS_FLOORS.bandFloor[input.scheme]),
+		/*
 		 * The LANE wash: a well behind veiled blocks cannot be an ink overlay (the
 		 * veil is already the one ink layer under the card's text), so it is a
 		 * palette role at an alpha that TRACKS the slider. The page's own alpha is

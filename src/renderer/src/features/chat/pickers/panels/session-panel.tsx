@@ -4,6 +4,8 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { Badge } from "@shared/components/ui/badge";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { type FC, useState } from "react";
@@ -39,6 +41,8 @@ import {
 	reportShapeProblem,
 	requestRows,
 	scopeSpan,
+	spendBasisLegend,
+	spendBasisTitle,
 	timingRows,
 	toolRates,
 	totalTokens,
@@ -98,15 +102,23 @@ const BarTable: FC<{
 	empty: string;
 	metric: SessionMetric;
 }> = ({ label, firstHeader, rows, withCalls, empty, metric }) => {
+	useI18nLocale();
 	const columns: Column<BarRow>[] = [
 		{ key: "row", header: firstHeader, cell: (row) => row.label },
 	];
 	if (withCalls) {
 		columns.push({
 			key: "calls",
-			header: "Calls",
+			header: t("ui.chat.pickers.session_panel.calls"),
 			numeric: true,
 			cell: (row) => formatCount(row.calls),
+		});
+	}
+	if (metric === "cost" && rows.some((row) => row.basis !== undefined)) {
+		columns.push({
+			key: "basis",
+			header: t("ui.chat.pickers.session_panel.basis"),
+			cell: (row) => row.basis ?? "—",
 		});
 	}
 	columns.push({
@@ -126,9 +138,11 @@ const BarTable: FC<{
 				<ProportionBar
 					fraction={row.fraction}
 					className="w-24"
-					srLabel={`${row.label}: ${formatPercent(row.fraction)} of this session's ${SESSION_METRIC_LABEL[
-						metric
-					].toLowerCase()}`}
+					srLabel={t("ui.chat.pickers.session_panel.of_this_session_s", {
+						label: row.label,
+						formatpercent: formatPercent(row.fraction),
+						value: SESSION_METRIC_LABEL[metric].toLowerCase(),
+					})}
 				/>
 			)}
 		/>
@@ -139,22 +153,44 @@ const OUTCOME_BADGE: Record<
 	"ok" | "failed" | "unknown",
 	{ variant: "neutral" | "danger"; label: string; className?: string }
 > = {
-	ok: { variant: "neutral", label: "ok" },
-	failed: { variant: "danger", label: "failed" },
+	get ok() {
+		return {
+			variant: "neutral" as const,
+			label: t("ui.chat.pickers.session_panel.ok"),
+		};
+	},
+	get failed() {
+		return {
+			variant: "danger" as const,
+			label: t("ui.chat.pickers.session_panel.failed"),
+		};
+	},
 	/*
 	 * Dim, not warning: an older ledger reports every row as unknown, and
 	 * deriving failure from the `outcome` LABEL painted an entire healthy
 	 * session in warning. `ok` is the only field that decides this.
 	 */
-	unknown: { variant: "neutral", label: "unknown", className: "text-ink-dim" },
+	get unknown() {
+		return {
+			variant: "neutral" as const,
+			label: t("ui.chat.pickers.session_panel.unknown"),
+			className: "text-ink-dim",
+		};
+	},
 };
 
 const ToolCallsSection: FC<{ report: DesktopSessionReport }> = ({ report }) => {
+	useI18nLocale();
 	const stats = report.tool_calls;
 	if (!stats) {
 		// `null` is "not measured" — a session predating tool-call recording —
 		// which is the opposite of a zeroed counter, so it never renders a rate.
-		return <PanelNotice kind="empty" text="Not measured for this session." />;
+		return (
+			<PanelNotice
+				kind="empty"
+				text={t("ui.chat.pickers.session_panel.not_measured_for_this_session")}
+			/>
+		);
 	}
 	const rates = toolRates(stats);
 	const faults = faultRows(stats);
@@ -168,28 +204,40 @@ const ToolCallsSection: FC<{ report: DesktopSessionReport }> = ({ report }) => {
 			 */}
 			<StatGrid>
 				<StatCard
-					label="Tool call validity"
+					label={t("ui.chat.pickers.session_panel.tool_call_validity")}
 					value={formatPercent(rates.validity)}
-					note={`${formatCount(rates.emitted)} emitted · ${formatCount(rates.excluded)} excluded`}
+					note={t("ui.chat.pickers.session_panel.emitted_excluded", {
+						formatcount: formatCount(rates.emitted),
+						formatcount2: formatCount(rates.excluded),
+					})}
 					fraction={rates.validity}
 				/>
 				<StatCard
-					label="Execution error rate"
+					label={t("ui.chat.pickers.session_panel.execution_error_rate")}
 					value={formatPercent(rates.executionErrorRate)}
-					note={`${formatCount(rates.emitted - rates.modelFaults)} dispatched`}
+					note={t("ui.chat.pickers.session_panel.dispatched", {
+						formatcount: formatCount(rates.emitted - rates.modelFaults),
+					})}
 					fraction={rates.executionErrorRate}
 				/>
 			</StatGrid>
 			{faults.length === 0 ? (
-				<PanelNotice kind="empty" text="No tool-call faults recorded." />
+				<PanelNotice
+					kind="empty"
+					text={t("ui.chat.pickers.session_panel.no_tool_call_faults_recorded")}
+				/>
 			) : (
 				<DataTable<{ key: string; count: number }>
-					label="Tool-call faults by name"
+					label={t("ui.chat.pickers.session_panel.tool_call_faults_by_name")}
 					columns={[
-						{ key: "fault", header: "Fault", cell: (row) => row.key },
+						{
+							key: "fault",
+							header: t("ui.chat.pickers.session_panel.fault"),
+							cell: (row) => row.key,
+						},
 						{
 							key: "count",
-							header: "Calls",
+							header: t("ui.chat.pickers.session_panel.calls"),
 							numeric: true,
 							cell: (row) => formatCount(row.count),
 						},
@@ -200,9 +248,11 @@ const ToolCallsSection: FC<{ report: DesktopSessionReport }> = ({ report }) => {
 			)}
 			{stats.nested_total > 0 ? (
 				<p className={cn("text-body-sm text-ink-muted")}>
-					Nested calls: {formatCount(stats.nested_total)} (
-					{formatCount(stats.nested_ok)} ok). They are a different population
-					and are counted in neither rate above.
+					{t("ui.chat.pickers.session_panel.nested_calls")}{" "}
+					{formatCount(stats.nested_total)} ({formatCount(stats.nested_ok)}{" "}
+					{t(
+						"ui.chat.pickers.session_panel.ok_they_are_a_different_population_and_are_counted_in_neither_rate_above",
+					)}
 				</p>
 			) : null}
 		</PanelStack>
@@ -220,7 +270,10 @@ export const SessionPanel: FC<SessionPanelProps> = ({
 	onMetricChange,
 	onClose,
 }) => {
-	const title = frontend?.conversation_title || "Untitled session";
+	useI18nLocale();
+	const title =
+		frontend?.conversation_title ||
+		t("ui.chat.pickers.session_panel.untitled_session");
 	const aggregate = report?.aggregate;
 	const contextTokens = frontend?.context_tokens ?? null;
 	const contextWindow = frontend?.context_window ?? null;
@@ -236,7 +289,10 @@ export const SessionPanel: FC<SessionPanelProps> = ({
 	);
 	const span = report
 		? scopeSpan(report)
-		: { first: "unknown", last: "unknown" };
+		: {
+				first: t("ui.chat.pickers.session_panel.unknown_value"),
+				last: t("ui.chat.pickers.session_panel.unknown_value"),
+			};
 	/*
 	 * A shape the panel cannot draw. Section-scoped, not whole-body — § 8 makes
 	 * `unavailable` replace the affected section's content, and § 6.2 reserves a
@@ -252,9 +308,11 @@ export const SessionPanel: FC<SessionPanelProps> = ({
 			open
 			onClose={onClose}
 			shell="panel"
-			bodyLabel="Session diagnostics region"
-			title="Session"
-			description="What this session has used, from one read of the local ledger."
+			bodyLabel={t("ui.chat.pickers.session_panel.session_diagnostics_region")}
+			title={t("ui.chat.pickers.session_panel.session")}
+			description={t(
+				"ui.chat.pickers.session_panel.what_this_session_has_used_from_one_read_of_the_local_ledger",
+			)}
 			toolbar={
 				showSections ? (
 					/*
@@ -269,12 +327,18 @@ export const SessionPanel: FC<SessionPanelProps> = ({
 					 */
 					<div className={cn("flex flex-wrap items-center gap-4")}>
 						<PickerSegment
-							label="Metric"
+							label={t("ui.chat.pickers.session_panel.metric")}
 							value={metric}
 							onChange={(value) => onMetricChange(value as SessionMetric)}
 							options={[
-								{ value: "tokens", label: "Tokens" },
-								{ value: "cost", label: "Cost" },
+								{
+									value: "tokens",
+									label: t("ui.chat.pickers.session_panel.tokens"),
+								},
+								{
+									value: "cost",
+									label: t("ui.chat.pickers.session_panel.cost"),
+								},
 							]}
 						/>
 					</div>
@@ -284,7 +348,9 @@ export const SessionPanel: FC<SessionPanelProps> = ({
 				gated ? (
 					<PanelNotice
 						kind="unavailable"
-						text="This backend cannot serve this panel yet. Update the backend and try again."
+						text={t(
+							"ui.chat.pickers.session_panel.this_backend_cannot_serve_this_panel_yet_update_the_backend_and_try_agai",
+						)}
 					/>
 				) : loading ? (
 					<PanelSkeleton shape="stats" />
@@ -293,7 +359,9 @@ export const SessionPanel: FC<SessionPanelProps> = ({
 				) : !report ? (
 					<PanelNotice
 						kind="unavailable"
-						text="The backend returned no report."
+						text={t(
+							"ui.chat.pickers.session_panel.the_backend_returned_no_report",
+						)}
 					/>
 				) : !report.available ? (
 					/*
@@ -304,7 +372,9 @@ export const SessionPanel: FC<SessionPanelProps> = ({
 					 */
 					<PanelNotice
 						kind="unavailable"
-						text="Could not read local usage records. Close and reopen to try again."
+						text={t(
+							"ui.chat.pickers.session_panel.could_not_read_local_usage_records_close_and_reopen_to_try_again",
+						)}
 					/>
 				) : (
 					<PanelStack>
@@ -315,44 +385,63 @@ export const SessionPanel: FC<SessionPanelProps> = ({
 							</p>
 						</div>
 						{showSections && aggregate && report ? (
-							<PanelSection title="Totals" meta={totalsMeta(report)}>
+							<PanelSection
+								title={t("ui.chat.pickers.session_panel.totals")}
+								meta={totalsMeta(report)}
+							>
 								<StatGrid>
 									<StatCard
-										label="Requests"
+										label={t("ui.chat.pickers.session_panel.requests")}
 										value={formatCount(aggregate.calls)}
 										note={
 											aggregate.ok_calls === aggregate.calls
 												? undefined
-												: `${formatCount(aggregate.calls - aggregate.ok_calls)} failed`
+												: t("ui.chat.pickers.session_panel.failed4d8830", {
+														formatcount: formatCount(
+															aggregate.calls - aggregate.ok_calls,
+														),
+													})
 										}
 									/>
 									<StatCard
-										label="Cost"
+										label={t("ui.chat.pickers.session_panel.cost")}
 										value={costValue(report)}
 										note={costNote(report)}
 									/>
 									<StatCard
-										label="Tokens"
+										label={t("ui.chat.pickers.session_panel.tokens")}
 										value={formatTokens(totalTokens(aggregate))}
-										note={`${formatTokens(aggregate.context_tokens)} in · ${formatTokens(aggregate.output_tokens)} out`}
+										note={t("ui.chat.pickers.session_panel.in_out", {
+											formattokens: formatTokens(aggregate.context_tokens),
+											formattokens2: formatTokens(aggregate.output_tokens),
+										})}
 									/>
 									<StatCard
-										label="Cache hit rate"
+										label={t("ui.chat.pickers.session_panel.cache_hit_rate")}
 										value={formatPercent(cacheHitRate(aggregate))}
-										note="of context from cache"
+										note={t(
+											"ui.chat.pickers.session_panel.of_context_from_cache",
+										)}
 										fraction={cacheHitRate(aggregate)}
 									/>
 								</StatGrid>
+								{spendBasisLegend(report) && (
+									<p className="mt-2 text-meta text-ink-muted">
+										{spendBasisTitle(report)}: {spendBasisLegend(report)}
+									</p>
+								)}
 							</PanelSection>
 						) : (
 							<PanelNotice
 								kind="empty"
-								text="No recorded requests for this session yet."
+								text={t(
+									"ui.chat.pickers.session_panel.no_recorded_requests_for_this_session_yet",
+								)}
 							/>
 						)}
 						<PanelSection
-							title="Context window"
-							meta="live · not from the ledger"
+							title={t("ui.chat.pickers.session_panel.context_window")}
+							meta={t("ui.chat.pickers.session_panel.live_not_from_the_ledger")}
 						>
 							<div className={cn("flex items-center gap-4")}>
 								<ProportionBar
@@ -368,88 +457,119 @@ export const SessionPanel: FC<SessionPanelProps> = ({
 									className={cn("min-w-0 max-w-96 flex-1")}
 									srLabel={
 										measured === null
-											? "Context window: not measured"
-											: `Context window: ${formatContextTokens(contextTokens ?? 0)} of ${formatWindow(contextWindow ?? 0)}, ${formatPercent(measured)}`
+											? t(
+													"ui.chat.pickers.session_panel.context_window_not_measured",
+												)
+											: t("ui.chat.pickers.session_panel.context_window_of", {
+													formatcontexttokens: formatContextTokens(
+														contextTokens ?? 0,
+													),
+													formatwindow: formatWindow(contextWindow ?? 0),
+													formatpercent: formatPercent(measured),
+												})
 									}
 								/>
 								<p
 									className={cn(
-										"ml-auto shrink-0 font-mono text-body-sm tabular-nums",
+										"ms-auto shrink-0 font-mono text-body-sm tabular-nums",
 										measured === null ? "text-ink-dim" : "text-ink",
 									)}
 								>
 									{measured === null
-										? "not measured"
+										? t("ui.chat.pickers.session_panel.not_measured")
 										: `${formatContextTokens(contextTokens ?? 0)} / ${formatWindow(contextWindow ?? 0)} (${formatPercent(measured)})`}
 									{frontend?.context_is_estimate === true ? (
-										<span className={cn("text-ink-muted")}> estimate</span>
+										<span className={cn("text-ink-muted")}>
+											{" "}
+											{t("ui.chat.pickers.session_panel.estimate")}
+										</span>
 									) : null}
 								</p>
 							</div>
 						</PanelSection>
 						{showSections && report ? (
 							<>
-								<PanelSection title="By model">
+								<PanelSection
+									title={t("ui.chat.pickers.session_panel.by_model")}
+								>
 									<BarTable
-										label="Usage by model in this session"
-										firstHeader="Model"
+										label={t(
+											"ui.chat.pickers.session_panel.usage_by_model_in_this_session",
+										)}
+										firstHeader={t("ui.chat.pickers.session_panel.model")}
 										rows={modelRows(report, metric)}
 										withCalls
-										empty="No model rows recorded for this session."
+										empty={t(
+											"ui.chat.pickers.session_panel.no_model_rows_recorded_for_this_session",
+										)}
 										metric={metric}
 									/>
 								</PanelSection>
-								<PanelSection title="By purpose">
+								<PanelSection
+									title={t("ui.chat.pickers.session_panel.by_purpose")}
+								>
 									{shapeProblem ? (
 										<PanelNotice kind="unavailable" text={shapeProblem} />
 									) : (
 										<BarTable
-											label="Usage by purpose in this session"
-											firstHeader="Purpose"
+											label={t(
+												"ui.chat.pickers.session_panel.usage_by_purpose_in_this_session",
+											)}
+											firstHeader={t("ui.chat.pickers.session_panel.purpose")}
 											rows={purposeRows(report, metric)}
 											withCalls
-											empty="No purpose rows recorded for this session."
+											empty={t(
+												"ui.chat.pickers.session_panel.no_purpose_rows_recorded_for_this_session",
+											)}
 											metric={metric}
 										/>
 									)}
 								</PanelSection>
 								<PanelSection
-									title="Where input went"
-									meta="≈ estimated split of context tokens"
+									title={t("ui.chat.pickers.session_panel.where_input_went")}
+									meta={t(
+										"ui.chat.pickers.session_panel.estimated_split_of_context_tokens",
+									)}
 								>
 									<BarTable
-										label="Estimated context split by component"
-										firstHeader="Component"
+										label={t(
+											"ui.chat.pickers.session_panel.estimated_context_split_by_component",
+										)}
+										firstHeader={t("ui.chat.pickers.session_panel.component")}
 										rows={components.rows}
 										withCalls={false}
-										empty="No component split recorded for this session."
+										empty={t(
+											"ui.chat.pickers.session_panel.no_component_split_recorded_for_this_session",
+										)}
 										metric="tokens"
 									/>
 								</PanelSection>
-								<PanelSection title="Timings">
+								<PanelSection
+									title={t("ui.chat.pickers.session_panel.timings")}
+								>
 									<DataTable<ReturnType<typeof timingRows>[number]>
-										label="Request timings"
+										label={t("ui.chat.pickers.session_panel.request_timings")}
 										columns={[
 											{
 												key: "phase",
-												header: "Phase",
+												header: t("ui.chat.pickers.session_panel.phase"),
 												cell: (row) => row.label,
 											},
 											{
 												key: "mean",
-												header: "Mean",
+												header: t("ui.chat.pickers.session_panel.mean"),
 												numeric: true,
 												cell: (row) => row.mean,
 											},
 											{
 												key: "range",
-												header: "Range",
+												header: t("ui.chat.pickers.session_panel.range"),
 												numeric: true,
 												cell: (row) => row.range,
 											},
 											{
 												key: "samples",
-												header: "Samples",
+												header: t("ui.chat.pickers.session_panel.samples"),
 												numeric: true,
 												cell: (row) => formatCount(row.samples),
 											},
@@ -458,47 +578,51 @@ export const SessionPanel: FC<SessionPanelProps> = ({
 										rowKey={(row) => row.key}
 									/>
 								</PanelSection>
-								<PanelSection title="Tool calls">
+								<PanelSection
+									title={t("ui.chat.pickers.session_panel.tool_calls")}
+								>
 									<ToolCallsSection report={report} />
 								</PanelSection>
 								<PanelSection
-									title="Recent requests"
-									meta={`newest first · ${formatCount(report.recent.length)} shown`}
+									title={t("ui.chat.pickers.session_panel.recent_requests")}
+									meta={t("ui.chat.pickers.session_panel.newest_first_shown", {
+										formatcount: formatCount(report.recent.length),
+									})}
 								>
 									<DataTable<ReturnType<typeof requestRows>[number]>
-										label="Recent requests"
+										label={t("ui.chat.pickers.session_panel.recent_requests")}
 										columns={[
 											{
 												key: "purpose",
-												header: "Purpose",
+												header: t("ui.chat.pickers.session_panel.purpose"),
 												cell: (row) => row.purpose,
 											},
 											{
 												key: "model",
-												header: "Model",
+												header: t("ui.chat.pickers.session_panel.model"),
 												cell: (row) => row.model,
 											},
 											{
 												key: "context",
-												header: "Context",
+												header: t("ui.chat.pickers.session_panel.context"),
 												numeric: true,
 												cell: (row) => row.context,
 											},
 											{
 												key: "output",
-												header: "Output",
+												header: t("ui.chat.pickers.session_panel.output"),
 												numeric: true,
 												cell: (row) => row.output,
 											},
 											{
 												key: "duration",
-												header: "Duration",
+												header: t("ui.chat.pickers.session_panel.duration"),
 												numeric: true,
 												cell: (row) => row.duration,
 											},
 											{
 												key: "outcome",
-												header: "Outcome",
+												header: t("ui.chat.pickers.session_panel.outcome"),
 												cell: (row) => {
 													const badge = OUTCOME_BADGE[row.state];
 													return (
@@ -517,18 +641,30 @@ export const SessionPanel: FC<SessionPanelProps> = ({
 										empty={
 											<PanelNotice
 												kind="empty"
-												text="No recent requests recorded for this session."
+												text={t(
+													"ui.chat.pickers.session_panel.no_recent_requests_recorded_for_this_session",
+												)}
 											/>
 										}
 									/>
 								</PanelSection>
-								<PanelSection title="Scope">
-									<Disclosure summary="Ledger coverage for this session">
+								<PanelSection title={t("ui.chat.pickers.session_panel.scope")}>
+									<Disclosure
+										summary={t(
+											"ui.chat.pickers.session_panel.ledger_coverage_for_this_session",
+										)}
+									>
 										<p className={cn("text-body-sm text-ink-muted")}>
-											Records run from {span.first} to {span.last}. Cost and
-											tokens above cover this session
+											{t("ui.chat.pickers.session_panel.records_run_from")}{" "}
+											{span.first} {t("ui.chat.pickers.session_panel.to")}{" "}
+											{span.last}
+											{t(
+												"ui.chat.pickers.session_panel.cost_and_tokens_above_cover_this_session",
+											)}
 											{hasDescendants(report)
-												? ", plus its subagents where the ledger could be walked"
+												? t(
+														"ui.chat.pickers.session_panel.plus_its_subagents_where_the_ledger_could_be_walked",
+													)
 												: ""}
 											.
 										</p>

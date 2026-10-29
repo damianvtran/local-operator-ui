@@ -55,7 +55,18 @@ const PAGE_SOURCE = readFileSync(CHAT_PAGE, "utf8");
  */
 const ERROR_COPY_ROW = /capabilities\.error\.message/;
 const NOTICE_ROW = /<p>\{notice\}<\/p>/;
-const RETRY_REFRESH = /Retry refresh/;
+/**
+ * The paragraphs' verb and the disconnected sentence live in the sidebar's own
+ * English catalogue now. Each assertion names the key the control renders AND
+ * the message a reader hears, so a key whose copy moved fails here rather than
+ * in a frame.
+ */
+const SIDEBAR_COPY = JSON.parse(
+	readFileSync("src/i18n/catalogues/en/ui.chat.sidebar.json", "utf8"),
+);
+const RETRY_REFRESH_KEY = "ui.chat.sidebar.list.retry_refresh";
+const RETRY_REFRESH = /t\("ui\.chat\.sidebar\.list\.retry_refresh"\)/;
+const OFFLINE_KEY = "ui.chat.sidebar.list.offline";
 const SHARED_GATE = "!stripSpeaksConnection";
 const BANNER_GATE = "!coveredByCompatibilityBanner";
 const PANE_BANNER_YIELD =
@@ -94,6 +105,11 @@ test("the capability paragraph stands down on the strip's own reading, and the b
 	const block = between("{capabilities.error &&", "\n\t\t\t{/*");
 	assert.match(block, ERROR_COPY_ROW);
 	assert.match(block, RETRY_REFRESH);
+	assert.equal(
+		SIDEBAR_COPY[RETRY_REFRESH_KEY],
+		"Retry refresh",
+		"the paragraph's verb moved: it reads `Retry refresh`, the strip's one re-read",
+	);
 	assert.ok(
 		block.includes(SHARED_GATE),
 		"the strip's own reading guards this block",
@@ -123,6 +139,11 @@ test("the withdrawn-gate paragraph takes the same stand-down", () => {
 	);
 	assert.match(block, NOTICE_ROW);
 	assert.match(block, RETRY_REFRESH);
+	assert.equal(
+		SIDEBAR_COPY[RETRY_REFRESH_KEY],
+		"Retry refresh",
+		"the withdrawn-gate paragraph's verb moved: it reads `Retry refresh`",
+	);
 	assert.equal(
 		block.includes('role="alert"'),
 		false,
@@ -171,10 +192,15 @@ test("the foot line and the two paragraphs read one predicate, not three", () =>
 		foot.includes(BANNER_GATE),
 		"the foot line must also yield to the compatibility banner",
 	);
-	const caption = between("feed.available &&", "Not connected");
+	const caption = between("feed.available &&", `t("${OFFLINE_KEY}")`);
 	assert.ok(
 		caption.includes(SHARED_GATE),
 		"the caption reads the same predicate (D30): with the strip up it stands down, and off /chat it speaks again",
+	);
+	assert.equal(
+		SIDEBAR_COPY[OFFLINE_KEY],
+		"Not connected to the backend — showing the last known state.",
+		"the caption's sentence moved: it still states the last-known state it is showing",
 	);
 });
 

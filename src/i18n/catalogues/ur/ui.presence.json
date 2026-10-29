@@ -1,0 +1,11 @@
+{
+	"ui.presence.unknown": "نامعلوم",
+	"ui.presence.link_down_last_seen": "لنک منقطع · آخری بار {age} دیکھا گیا",
+	"ui.presence.device_link_down": "لنک منقطع · {reason} · آخری بار {age} دیکھا گیا",
+	"ui.presence.device_unreachable": "ڈیوائس ناقابل رسائی",
+	"ui.presence.just_now": "ابھی",
+	"ui.presence.minutes_ago": "{count, number} منٹ پہلے",
+	"ui.presence.hours_ago": "{count, plural, one {{count, number} گھنٹہ پہلے} other {{count, number} گھنٹے پہلے}}",
+	"ui.presence.days_ago": "{count, number} دن پہلے",
+	"ui.presence.link_down_compact": "لنک منقطع · {age}"
+}

@@ -996,7 +996,10 @@ test("the loading indicator stays one small quiet mark", () => {
 	);
 	assert.match(
 		placeholder,
-		/aria-label="Loading conversation"/,
+		// The name comes from the catalogue now (wave B keyed this surface), so the
+		// pin is on the key the region reads, not on an English literal the file no
+		// longer carries; the catalogue's own value is the sentence.
+		/aria-label=\{t\("ui\.chat\.canonical\.placeholder\.region_label"\)\}/,
 		"the live region keeps its name",
 	);
 });

@@ -1,0 +1,51 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbd-r2-es",
+  "session": "22d11a212546",
+  "date": "2026-10-21",
+  "locale": "es",
+  "translator": "translator",
+  "namespaces": {
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 113,
+      "scope": "Whole es ui.teamBridge catalogue (113/113 keys) audited against en source, context sidecar, glossary and es style guide, with focus on the 27 keys added 2026-10-21; ICU, plural, NFC and bidi checks run in node.",
+      "sha256": {
+        "en": "0dfc0c5ed780b7b6e2cf2a560f007350ce4d17d512c39cce001a182bf43a09a7",
+        "es": "1efd5851f76896f7217b342ba9f05906b089de59614b71c3d281936386f338bf",
+        "context": "267fc1892bb84cd4d7dbab1ff86a8120e5ec07069d3437241cf45391c9fb2291"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.builtin.agents_topic",
+          "current": "El jefe de gabinete de cada miembro del equipo. Los agentes solo despiertan cuando se les menciona.",
+          "proposed": "Los jefes de gabinete del equipo. Los agentes solo despiertan si se les menciona.",
+          "note": "The channel holds every chief at once, so the generic plural is more natural than a distributive singular. It also avoids a singular masculine «El jefe» for an agent the product calls «jefa» (Aida). At 81 vs 99 chars it is also shorter in a header that may truncate."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.builtin.humans_topic",
+          "current": "Todas las personas de esta organización. Los mensajes de aquí notifican a todas ellas.",
+          "proposed": "Todas las personas de la organización. Cada mensaje notifica a todas.",
+          "note": "«Los mensajes de aquí notifican a todas ellas» reads translated: «de aquí» is colloquial and «todas ellas» is redundant. The proposal is idiomatic and drops from 86 to 69 chars in a header that may truncate."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.composer.placeholder_to",
+          "current": "Mensaje para {name}",
+          "proposed": "Escribe a {name}",
+          "note": "«Mensaje para {name}» reads like a label rather than an invitation to type. The proposal matches the sibling placeholder «Escribe un mensaje» and is shorter (16 vs 19 chars) where the context says the placeholder may truncate."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.unread.count",
+          "current": "{count, plural, one {{count} sin leer} many {{count} de mensajes sin leer} other {{count} sin leer}}",
+          "proposed": "{count, plural, one {{count} sin leer} many {{count} sin leer} other {{count} sin leer}}",
+          "note": "Only the many branch adds the noun «de mensajes». The «de» is needed only before a noun, so the many arm should match the noun-less one/other arms and keep the badge short. The branch is effectively unreachable (exactly 10⁶·n unread)."
+        }
+      ]
+    }
+  }
+}

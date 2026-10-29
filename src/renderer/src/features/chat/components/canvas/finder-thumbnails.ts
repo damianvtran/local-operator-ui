@@ -1,8 +1,10 @@
+import { t } from "@shared/i18n";
 import { createBlobUrl, revokeBlobUrl } from "@shared/lib/blob-url-cache";
 import { useEffect, useState } from "react";
 import { fetchAttachmentBlob } from "../../canonical/use-attachment-url";
 import type { CanvasDocument } from "../../types/canvas";
 import { mimeTypeForPath } from "../../utils/file-kind";
+import { blobFromDataUrl } from "../../utils/image-actions";
 
 /**
  * A bounded thumbnail working set, not thousands of original-media hooks.
@@ -57,6 +59,9 @@ export async function finderOriginal(document: CanvasDocument): Promise<Blob> {
 			},
 			document.artifact.digest,
 		);
+	// A user's just-sent picture is a data URI until the owner stores it; its
+	// bytes are already in the string (`attachment-items.ts`).
+	if (document.path.startsWith("data:")) return blobFromDataUrl(document.path);
 	const answer = await window.api.readFileBytes(document.path, READ_CAP);
 	if (!answer.success) throw new Error(answer.error ?? "Could not be read");
 	return new Blob([answer.data as BlobPart], {
@@ -158,7 +163,10 @@ function drain() {
 			} catch (error) {
 				publish(entry, {
 					state: "unavailable",
-					reason: error instanceof Error ? error.message : "Could not be read",
+					reason:
+						error instanceof Error
+							? error.message
+							: t("ui.canvas.finder_thumbnails.could_not_be_read"),
 				});
 			} finally {
 				entry.started = false;

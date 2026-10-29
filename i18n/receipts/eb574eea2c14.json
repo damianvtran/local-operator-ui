@@ -1,0 +1,27 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "openai/gpt-6.1-sol",
+	"instance": "eb574eea2c14",
+	"locale": "hi",
+	"round": 2,
+	"namespaces": {
+		"ui.browser": {
+			"status": "passed",
+			"keys_audited": 224,
+			"sha256": {
+				"en": "106e8aff158ee6957bdccf93bbae53e62a0724afdc406e8faa5743ced980d276",
+				"hi": "1fbfd6c2d67143ca58fdc35a3a4c203c91ffd1b489e90d79e58e879d29fcf934"
+			},
+			"findings": []
+		},
+		"ui.settings.imports": {
+			"status": "passed",
+			"keys_audited": 74,
+			"sha256": {
+				"en": "1f8b1941bd65b91c84b1b4c41bfb1406f0e4790936c8690b04bfd788b4a1b082",
+				"hi": "92586260bf13ec863bf900dadb3525e8cca43947a2430e91bd05a7890f4e6ca7"
+			},
+			"findings": []
+		}
+	}
+}

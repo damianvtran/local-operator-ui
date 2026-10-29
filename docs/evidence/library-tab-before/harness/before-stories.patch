@@ -1,0 +1,205 @@
+diff --git a/src/renderer/src/features/library/components/library.stories.tsx b/src/renderer/src/features/library/components/library.stories.tsx
+index 8ed407957b..9c0cec1925 100644
+--- a/src/renderer/src/features/library/components/library.stories.tsx
++++ b/src/renderer/src/features/library/components/library.stories.tsx
+@@ -19,6 +19,7 @@ import type { Meta, StoryObj } from "@storybook/react";
+ import type { FC, ReactNode } from "react";
+ import { useEffect, useLayoutEffect } from "react";
+ import { Route, Routes, useNavigate } from "react-router-dom";
++import { expect, userEvent, waitFor } from "@storybook/test";
+ import { glassPaintFor } from "../../../../../shared/window-glass";
+ import "../../../styles/index.css";
+ import "../../chat/components/story-electron-shim";
+@@ -26,6 +27,8 @@ import samplePptxUrl from "../../../../../../scripts/fixtures/library/sample.ppt
+ import type { DesktopLibraryAsset } from "../../../../../shared/desktop-control-contract";
+ import { NO_LIBRARY_FILTERS, filterAssets } from "../library-model";
+ import { LibraryPage } from "./library-page";
++import { LibraryPreview } from "./library-preview";
++import { useLibraryAsset } from "../hooks/use-library-queries";
+ 
+ const NOW = new Date(2026, 9, 18, 12, 0, 0).getTime();
+ const THEME_IDS = ["localOperatorDark", "localOperatorLight"];
+@@ -413,6 +416,27 @@ const install = () => {
+ 						"application/vnd.openxmlformats-officedocument.presentationml.presentation",
+ 					data: await PptxBytes(),
+ 				};
++			/*
++			 * THE BEFORE ARM'S PICTURE. Base's stub serves markdown for every
++			 * content read, which is honest for the document stories and paints a
++			 * broken-image icon for an image row - a state the product never
++			 * produces and the wrong "before" for the inert-media frame. This
++			 * branch serves a real SVG for image rows only; it is part of the
++			 * uncommitted scratch story, not of base.
++			 */
++			if (
++				stub.rows.find((item) => item.id === String(request.assetId ?? ""))
++					?.kind === "image"
++			) {
++				const svg =
++					'<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1f6f5f"/><stop offset="1" stop-color="#0b2b33"/></linearGradient></defs><rect width="1600" height="1000" fill="url(#g)"/><circle cx="1180" cy="300" r="220" fill="#e8c56a" opacity=".8"/><path d="M0 760 460 420 880 800 1240 560 1600 820V1000H0Z" fill="#0a1f24" opacity=".75"/><text x="80" y="140" font-family="Helvetica, Arial, sans-serif" font-size="52" fill="#ffffff" opacity=".9">Invoice illustration</text></svg>';
++				return {
++					status: 200,
++					kind: "bytes",
++					mimeType: "image/svg+xml",
++					data: new TextEncoder().encode(svg),
++				};
++			}
+ 			return {
+ 				status: 200,
+ 				kind: "bytes",
+@@ -745,3 +769,155 @@ export const InShellPreviewLinkedChat: Story = {
+ 			linkedChat: true,
+ 		}),
+ };
++
++/*
++ * THE BEFORE ARM OF PR #1259 (uncommitted scratch story).
++ *
++ * These stories render the SAME 440px docked preview surface as the PR's
++ * `PreviewInline*` stories, from base `c9bbfe25f0`'s code: `EditableField` and
++ * `TagsInputChips`, the labelled/bordered controls with the absolutely
++ * positioned pencil and Clear controls, and the inert media viewer. The ids are
++ * deliberately the same as the after arm's for the states that existed, so the
++ * capture tuples differ only in their selectors; `PreviewMediaInert` is the one
++ * new id, because the lightbox did not exist here to photograph.
++ *
++ * Nothing in this block is committed: it exists so the before frames come from
++ * the shipped before code rather than from a re-creation of it.
++ */
++const PreviewBeforeFromQuery: FC<{ row: DesktopLibraryAsset }> = ({ row }) => {
++	const detail = useLibraryAsset(row.id, true);
++	return (
++		<div className="flex h-screen justify-end bg-canvas">
++			<div className="flex h-full w-[440px] min-w-0 flex-col">
++				<LibraryPreview
++					asset={detail.data ?? row}
++					nowMs={NOW}
++					onClose={() => undefined}
++					onOpenConversation={() => undefined}
++					onFilterSession={() => undefined}
++					onAsk={() => undefined}
++					onToggleFavorite={() => undefined}
++					composerFocusSignal={0}
++					focusRequest={null}
++				/>
++			</div>
++		</div>
++	);
++};
++
++const previewBeforePane = (row: DesktopLibraryAsset) => {
++	stub = {
++		rows: [row, ...ROWS.filter((item) => item.id !== row.id)],
++		detail: row,
++		hang: false,
++		building: false,
++		failList: null,
++		media: "text",
++		linkedChat: false,
++	};
++	install();
++	return <PreviewBeforeFromQuery row={row} />;
++};
++
++const beforeControl = (label: string) => {
++	const node = document.querySelector<HTMLButtonElement>(
++		`button[aria-label="${label}"]`,
++	);
++	if (!node) throw new Error(`the ${label} control is not mounted`);
++	return node;
++};
++
++export const PreviewInlinePopulated: Story = {
++	render: () => previewBeforePane(ROWS[2]),
++};
++
++export const PreviewInlineNameHover: Story = {
++	render: () => previewBeforePane(ROWS[2]),
++};
++
++export const PreviewInlineLongName: Story = {
++	render: () =>
++		previewBeforePane({
++			...ROWS[2],
++			name: "March invoice reconciliation notes for the fourth quarter close",
++		}),
++};
++
++export const PreviewInlineNameEditing: Story = {
++	render: () => previewBeforePane(ROWS[2]),
++	play: async () => {
++		const user = userEvent.setup();
++		await user.click(await waitFor(() => beforeControl("Edit Name")));
++		await waitFor(() =>
++			expect(document.querySelector("header > div:first-child input")).toBeTruthy(),
++		);
++	},
++};
++
++export const PreviewInlineNameEscape: Story = {
++	render: () => previewBeforePane(ROWS[2]),
++	play: async () => {
++		const user = userEvent.setup();
++		await user.click(await waitFor(() => beforeControl("Edit Name")));
++		const input = await waitFor(() => {
++			const found = document.querySelector<HTMLInputElement>(
++				"header > div:first-child input",
++			);
++			if (!found) throw new Error("the name editor did not open");
++			return found;
++		});
++		await user.type(input, "changed");
++		await user.keyboard("{Escape}");
++		await waitFor(() =>
++			expect(document.querySelector("header > div:first-child input")).toBeNull(),
++		);
++		await waitFor(() =>
++			expect(document.body.textContent).toContain("March invoices"),
++		);
++	},
++};
++
++export const PreviewInlineDescriptionEditing: Story = {
++	render: () => previewBeforePane(ROWS[2]),
++	play: async () => {
++		const user = userEvent.setup();
++		await user.click(await waitFor(() => beforeControl("Edit Description")));
++		await waitFor(() =>
++			expect(document.querySelector("header textarea")).toBeTruthy(),
++		);
++	},
++};
++
++export const PreviewInlineEmptyTags: Story = {
++	render: () =>
++		previewBeforePane(
++			asset("la_0000000000000041", {
++				name: "Untagged note",
++				description: "",
++				tags: [],
++			}),
++		),
++	play: async () => {
++		await waitFor(() =>
++			expect(document.body.textContent).toContain("No tags added"),
++		);
++	},
++};
++
++export const PreviewMediaInert: Story = {
++	render: () => previewBeforePane(ROWS[0]),
++};
++
++/*
++ * The same inert picture at the composition the lightbox opens over: the page
++ * with the 440px dock, at 1280x900. This is the frame the after arm's
++ * `media-lightbox`/`media-lightbox-dismiss` pairs with; the direct wrapper
++ * above is the panel-only view of the same state.
++ */
++export const PreviewMediaInertPage: Story = {
++	render: () =>
++		page({
++			route: "/library/assets/la_0000000000000021",
++			view: "list",
++		}),
++};

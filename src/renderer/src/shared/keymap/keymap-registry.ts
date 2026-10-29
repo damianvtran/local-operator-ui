@@ -1,3 +1,5 @@
+import { t } from "../../../../i18n/messages";
+
 /**
  * The keyboard actions a user can assign, and the chords that are never assignable.
  *
@@ -70,43 +72,67 @@ export type KeymapAction = {
 export const KEYMAP_ACTIONS: readonly KeymapAction[] = [
 	{
 		id: "panel.console",
-		label: "Open console",
-		category: "Panels",
+		get label() {
+			return t("ui.settings.shortcuts.action.open_console");
+		},
+		get category() {
+			return t("ui.settings.shortcuts.category.panels");
+		},
 		defaultChord: "primary+j",
 		scope: "app",
 	},
 	{
 		id: "panel.canvas",
-		label: "Open canvas",
-		category: "Panels",
+		get label() {
+			return t("ui.settings.shortcuts.action.open_canvas");
+		},
+		get category() {
+			return t("ui.settings.shortcuts.category.panels");
+		},
 		defaultChord: "primary+shift+c",
 		scope: "app",
 	},
 	{
 		id: "panel.run",
-		label: "Open run details",
-		category: "Panels",
+		get label() {
+			return t("ui.settings.shortcuts.action.open_run_details");
+		},
+		get category() {
+			return t("ui.settings.shortcuts.category.panels");
+		},
 		defaultChord: null,
 		scope: "app",
 	},
 	{
 		id: "panel.ask",
-		label: "Open asks",
-		category: "Panels",
+		get label() {
+			return t("ui.settings.shortcuts.action.open_asks");
+		},
+		get category() {
+			return t("ui.settings.shortcuts.category.panels");
+		},
 		defaultChord: null,
 		scope: "app",
 	},
 	{
 		id: "panel.browser",
-		label: "Open browser",
-		category: "Panels",
+		get label() {
+			return t("ui.settings.shortcuts.action.open_browser");
+		},
+		get category() {
+			return t("ui.settings.shortcuts.category.panels");
+		},
 		defaultChord: null,
 		scope: "app",
 	},
 	{
 		id: "panel.code",
-		label: "Open code review",
-		category: "Panels",
+		get label() {
+			return t("ui.settings.shortcuts.action.open_code_review");
+		},
+		get category() {
+			return t("ui.settings.shortcuts.category.panels");
+		},
 		defaultChord: null,
 		scope: "app",
 	},
@@ -182,83 +208,148 @@ export const LEGACY_BROWSER_CHORDS: ReadonlySet<string> = new Set([
 	...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => `primary+${digit}`),
 ]);
 
-export const RESERVED_CHORDS: ReadonlyMap<string, string> = new Map([
-	// The main process's doors: the renderer never sees these presses, so a
-	// bound chord would be a key that does nothing and says nothing.
-	["primary+p", "Reserved: opens the command palette from anywhere."],
-	["primary+shift+p", "Reserved: opens the command palette on commands."],
-	["primary+shift+s", "Reserved: starts speech to text."],
-	// Renderer chords that fire app-wide and would double-fire beside a rail
-	// action.
-	["primary+k", "Reserved: opens the command palette on chats."],
-	["primary+n", "Reserved: starts a new chat."],
-	["primary+b", "Reserved: toggles the sidebar."],
-	// Focus-dependent: inside the browser surface these are page back/forward
-	// (`shared/browser-chord.ts`); everywhere else they move between chats.
-	[
-		"primary+[",
-		"Reserved: goes back in the browser, or between chats outside it.",
-	],
-	[
-		"primary+]",
-		"Reserved: goes forward in the browser, or between chats outside it.",
-	],
-	[
-		"primary+f",
-		"Reserved: finds in the browser page, or searches the transcript outside it.",
-	],
-	["primary+alt+up", "Reserved: walks up the chat regions."],
-	["primary+alt+down", "Reserved: walks down the chat regions."],
-	["primary+shift+a", "Reserved: archives the focused conversation."],
-	// Canvas-editor chords whose listeners are on `window` — the router's
-	// document-phase listener runs first, so a bound action would double-fire.
-	["primary+s", "Reserved: saves the canvas document."],
-	["primary+o", "Reserved: opens a file in the canvas."],
-	// The focused row's move: claimed only when the row offers it, unclaimed on
-	// the announce and rowId-null returns, so the router can see those presses.
-	["primary+shift+up", "Reserved: moves the focused chat up the pinned order."],
-	[
-		"primary+shift+down",
-		"Reserved: moves the focused chat down the pinned order.",
-	],
-	// Native text editing a focused field must keep.
-	["primary+c", "Reserved: copy."],
-	["primary+x", "Reserved: cut."],
-	["primary+v", "Reserved: paste."],
-	["primary+a", "Reserved: select all."],
-	["primary+z", "Reserved: undo."],
-	["primary+shift+z", "Reserved: redo."],
-	["primary+y", "Reserved: redo on Windows and Linux."],
-	// The browser surface's fixed chords (`shared/browser-chord.ts`, brief a1-8).
-	// Inside the browser the main-process hook and the DOM door claim these before
-	// any app binding can run, so an assignable one would be silently dead there.
-	// Reserved rather than "app bindings win in the browser" because the browser
-	// must keep Chrome muscle memory, and a refusal at capture time is the only
-	// moment the user can be told. Ctrl+Tab needs no row: `tab` is an end-edit key
-	// the grammar refuses, so it cannot be captured at all. Digits are listed per key: the grammar has no
-	// range, and `normalizeChord` is the single spelling Settings matches on.
-	["primary+r", "Reserved: reloads the browser page."],
-	[
-		"primary+shift+r",
-		"Reserved: reloads the browser page, ignoring the cache.",
-	],
-	["primary+t", "Reserved: opens a new browser tab."],
-	["primary+shift+t", "Reserved: reopens the last closed browser tab."],
-	["primary+l", "Reserved: focuses the browser address bar."],
-	...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit): [string, string] => [
-		`primary+${digit}`,
-		digit === 9
-			? "Reserved: switches to the last browser tab."
-			: `Reserved: switches to browser tab ${digit}.`,
-	]),
-	["primary+0", "Reserved: resets browser page zoom, or app zoom outside it."],
-	// Punctuation cannot be assigned by the current grammar; rows document the
-	// fixed native keys without widening what Settings can capture/store.
-	["primary+plus", "Reserved: zooms the browser page or app in."],
-	["primary+=", "Reserved: zooms the browser page or app in."],
-	["primary+-", "Reserved: zooms the browser page or app out."],
-	// The application menu's own chords.
-	["primary+q", "Reserved: quits the app."],
-	["primary+w", "Reserved: closes the browser tab, or the window outside it."],
-	["primary+m", "Reserved: minimises the window."],
-]);
+/*
+ * A string-valued Map whose messages resolve on each read. The public shape is
+ * load-bearing for keymap consumers and their inventory checks; eager t() at
+ * module import would freeze pre-negotiation English, while storing functions
+ * would break that API. Iteration resolves too, not just get(), so inventory
+ * checks and renderers see the same localized sentences.
+ */
+class LazyReservedChordMap extends Map<string, string> {
+	private readonly copy: ReadonlyMap<string, () => string>;
+
+	constructor(entries: Iterable<readonly [string, () => string]>) {
+		super();
+		this.copy = new Map(entries);
+	}
+
+	override get(chord: string): string | undefined {
+		return this.copy.get(chord)?.();
+	}
+
+	override has(chord: string): boolean {
+		return this.copy.has(chord);
+	}
+
+	override get size(): number {
+		return this.copy.size;
+	}
+
+	override *entries(): MapIterator<[string, string]> {
+		for (const [chord, copy] of this.copy) yield [chord, copy()];
+	}
+
+	override *keys(): MapIterator<string> {
+		yield* this.copy.keys();
+	}
+
+	override *values(): MapIterator<string> {
+		for (const copy of this.copy.values()) yield copy();
+	}
+
+	override forEach(
+		callback: (value: string, key: string, map: Map<string, string>) => void,
+		thisArg?: unknown,
+	): void {
+		for (const [chord, sentence] of this) {
+			callback.call(thisArg, sentence, chord, this);
+		}
+	}
+
+	override [Symbol.iterator](): MapIterator<[string, string]> {
+		return this.entries();
+	}
+}
+
+export const RESERVED_CHORDS: ReadonlyMap<string, string> =
+	new LazyReservedChordMap([
+		// The main process's doors: the renderer never sees these presses, so a
+		// bound chord would be a key that does nothing and says nothing.
+		["primary+p", () => t("ui.settings.shortcuts.reserved.palette_anywhere")],
+		[
+			"primary+shift+p",
+			() => t("ui.settings.shortcuts.reserved.palette_commands"),
+		],
+		[
+			"primary+shift+s",
+			() => t("ui.settings.shortcuts.reserved.speech_to_text"),
+		],
+		// Renderer chords that fire app-wide and would double-fire beside a rail
+		// action.
+		["primary+k", () => t("ui.settings.shortcuts.reserved.palette_chats")],
+		["primary+n", () => t("ui.settings.shortcuts.reserved.new_chat")],
+		["primary+b", () => t("ui.settings.shortcuts.reserved.toggle_sidebar")],
+		// Focus-dependent: inside the browser surface these are page back/forward
+		// (`shared/browser-chord.ts`); everywhere else they move between chats.
+		["primary+[", () => t("ui.settings.shortcuts.reserved.browser_back")],
+		["primary+]", () => t("ui.settings.shortcuts.reserved.browser_forward")],
+		["primary+f", () => t("ui.settings.shortcuts.reserved.find")],
+		[
+			"primary+alt+up",
+			() => t("ui.settings.shortcuts.reserved.chat_region_up"),
+		],
+		[
+			"primary+alt+down",
+			() => t("ui.settings.shortcuts.reserved.chat_region_down"),
+		],
+		["primary+shift+a", () => t("ui.settings.shortcuts.reserved.archive_chat")],
+		["primary+shift+l", () => t("ui.settings.shortcuts.reserved.chat_tags")],
+		// Canvas-editor chords whose listeners are on `window` — the router's
+		// document-phase listener runs first, so a bound action would double-fire.
+		["primary+s", () => t("ui.settings.shortcuts.reserved.canvas_save")],
+		["primary+o", () => t("ui.settings.shortcuts.reserved.canvas_open")],
+		// The focused row's move: claimed only when the row offers it, unclaimed on
+		// the announce and rowId-null returns, so the router can see those presses.
+		[
+			"primary+shift+up",
+			() => t("ui.settings.shortcuts.reserved.chat_move_up"),
+		],
+		[
+			"primary+shift+down",
+			() => t("ui.settings.shortcuts.reserved.chat_move_down"),
+		],
+		// Native text editing a focused field must keep.
+		["primary+c", () => t("ui.settings.shortcuts.reserved.copy")],
+		["primary+x", () => t("ui.settings.shortcuts.reserved.cut")],
+		["primary+v", () => t("ui.settings.shortcuts.reserved.paste")],
+		["primary+a", () => t("ui.settings.shortcuts.reserved.select_all")],
+		["primary+z", () => t("ui.settings.shortcuts.reserved.undo")],
+		["primary+shift+z", () => t("ui.settings.shortcuts.reserved.redo")],
+		["primary+y", () => t("ui.settings.shortcuts.reserved.redo_windows_linux")],
+		// The browser surface's fixed chords (`shared/browser-chord.ts`, brief a1-8).
+		// Inside the browser the main-process hook and the DOM door claim these before
+		// any app binding can run, so an assignable one would be silently dead there.
+		// Reserved rather than "app bindings win in the browser" because the browser
+		// must keep Chrome muscle memory, and a refusal at capture time is the only
+		// moment the user can be told. Ctrl+Tab needs no row: `tab` is an end-edit key
+		// the grammar refuses, so it cannot be captured at all. Digits are listed per key: the grammar has no
+		// range, and `normalizeChord` is the single spelling Settings matches on.
+		["primary+r", () => t("ui.settings.shortcuts.reserved.browser_reload")],
+		[
+			"primary+shift+r",
+			() => t("ui.settings.shortcuts.reserved.browser_reload_cache"),
+		],
+		["primary+t", () => t("ui.settings.shortcuts.reserved.browser_new_tab")],
+		[
+			"primary+shift+t",
+			() => t("ui.settings.shortcuts.reserved.browser_reopen_tab"),
+		],
+		["primary+l", () => t("ui.settings.shortcuts.reserved.browser_address")],
+		...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit): [string, () => string] => [
+			`primary+${digit}`,
+			digit === 9
+				? () => t("ui.settings.shortcuts.reserved.browser_last_tab")
+				: () =>
+						t("ui.settings.shortcuts.reserved.browser_numbered_tab", { digit }),
+		]),
+		["primary+0", () => t("ui.settings.shortcuts.reserved.zoom_reset")],
+		// Punctuation cannot be assigned by the current grammar; rows document the
+		// fixed native keys without widening what Settings can capture/store.
+		["primary+plus", () => t("ui.settings.shortcuts.reserved.zoom_in")],
+		["primary+=", () => t("ui.settings.shortcuts.reserved.zoom_in")],
+		["primary+-", () => t("ui.settings.shortcuts.reserved.zoom_out")],
+		// The application menu's own chords.
+		["primary+q", () => t("ui.settings.shortcuts.reserved.quit")],
+		["primary+w", () => t("ui.settings.shortcuts.reserved.close")],
+		["primary+m", () => t("ui.settings.shortcuts.reserved.minimise")],
+	]);

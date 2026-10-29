@@ -320,13 +320,14 @@ const bundle = await build({
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
 			export { ASK_ITEM_SELECTOR } from "./src/renderer/src/features/chat/ask-queue";
+			export { t } from "@shared/i18n";
 			export {
 				CREDENTIAL_ARMED_NOTICE,
 				CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE,
 				CREDENTIAL_EMPTY_SPAN_NOTICE,
 				CREDENTIAL_KEY_ALPHABET,
 				CREDENTIAL_TYPING_NOTICE,
-				HELD_TAKEN_BY,
+				CREDENTIAL_DISCARDED_NOTICE,
 				MASK_CELL,
 				unredactedNotice,
 			} from "./src/renderer/src/features/chat/components/credential-capture.ts";
@@ -370,10 +371,11 @@ const {
 	CREDENTIAL_EMPTY_SPAN_NOTICE,
 	CREDENTIAL_KEY_ALPHABET,
 	CREDENTIAL_TYPING_NOTICE,
-	HELD_TAKEN_BY,
+	CREDENTIAL_DISCARDED_NOTICE,
 	MASK_CELL,
 	unredactedNotice,
 	ASK_ITEM_SELECTOR,
+	t,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
@@ -1984,209 +1986,36 @@ test("a minted pill is persisted, and the value behind it never is", async () =>
 /* M6 — after an Escape the text the operator reads is what is sent     */
 /* ------------------------------------------------------------------ */
 
-test("a cancel that EXPOSED characters is HELD on Enter, never sent and never an argument (operator requirement)", async () => {
-	/*
-	 * THE PIN THIS ROUND MOVED, and it is worth being explicit about which one and
-	 * why. It used to read "after an empty-span Escape the leading token is prose"
-	 * and assert that the restored text was SENT — "what the notice promised Enter
-	 * would expose is what was sent". That is the round-2 U9 reading of the §5
-	 * exception, and on the shape it was written for it still holds (see the next
-	 * test: an EMPTY span, then a tail typed as prose, is still sent as the
-	 * operator's own sentence).
-	 *
-	 * What it also covered, and what UX round 1 measured as a BLOCKER on the live
-	 * app, is this shape: the characters really were masked, Escape unmasked them
-	 * (`21 characters are now PLAIN TEXT in the composer`), and the next Enter put
-	 * `/credential <the secret>` into the conversation — on this head and on `main`
-	 * alike. The first repair routed the draft to the DISPATCHER (the run's tail was
-	 * the command's argument, never the model's), which closed that leak but at the
-	 * operator's own cost: THEIR words after the token were consumed as the command's
-	 * argument and the receipt said so — the operator's complaint. The requirement
-	 * outranks that route, and both of the plan's old answers are wrong at this state:
-	 * dispatching consumes the words, and `send` puts the restored secret into a
-	 * message record. So the press is now HELD — nothing runs, nothing sends, the box
-	 * is kept — and ONE notice names the way out. The Q-1 security invariant is met by
-	 * the hold rather than by the dispatch.
-	 *
-	 * A DISPATCHER IS MOUNTED, which this test needed before this round too: with no
-	 * `onSlashCommand` the planner answers "send" for everything, so a rig without
-	 * one would pass on the broken code (round-1's lesson about vacuous pins).
-	 */
-	const ran = [];
-	const frame = await mount({
-		conversationId: "conv-6",
-		/*
-		 * A LIVE PANE, which is the shape UX round 1 measured the leak on and the one
-		 * whose sentence can promise the dialog: `paneHasSession` false gets the
-		 * dispatcher's own refusal clause instead (asserted at the end).
-		 */
-		sessionStatus: { frontend: null },
-		paneHasSession: true,
-		onSlashCommand: async (invocation) => {
-			ran.push(invocation);
-			return "consumed";
-		},
-	});
-	await type(frame, "/credential ");
-	await type(frame, "sk-live-CANARY-4417");
-	await esc(frame);
-	assert.equal(frame.value(), "/credential sk-live-CANARY-4417");
-	assert.match(
-		frame.notice(),
-		/PLAIN TEXT/,
-		"the app says these characters are exposed",
-	);
-
-	await clickSend(frame);
-	/*
-	 * THE HOLD: neither of the plan's old answers. The dispatcher is NOT handed the
-	 * run (its tail would be the command's argument — the complaint), and `send` is
-	 * NOT taken either (that would put the restored secret into a message record).
-	 */
-	assert.equal(
-		ran.length,
-		0,
-		"the exposed characters do NOT hand the run to the dispatcher any more",
-	);
-	assert.equal(
-		frame.sent.length,
-		0,
-		"and the characters the notice called exposed are in no message",
-	);
-	assert.ok(
-		!JSON.stringify(frame.sent).includes("CANARY"),
-		"and no sent payload carries them",
-	);
-	assert.equal(
-		frame.value(),
-		"/credential sk-live-CANARY-4417",
-		"the hold leaves the box exactly as the operator left it",
-	);
-	/*
-	 * AND IT SAYS SO (the hold is not the silent no-op QA round 3 Q3 banned). The
-	 * note names what happened and the way out, never the value, and does not promise
-	 * an argument receipt the press no longer produces (design round 1, D1).
-	 */
-	assert.equal(frame.notes.length, 1, "one sentence, on the same press");
-	assert.match(frame.notes[0], /still the credentials you cancelled/);
-	assert.match(frame.notes[0], /clear the box/);
-	assert.ok(
-		!/taken as its argument/.test(frame.notes[0]),
-		"and no argument receipt, because the words are not the command's",
-	);
-	assert.ok(
-		!frame.notes[0].includes("CANARY"),
-		"and the sentence never echoes the value",
-	);
-
-	/*
-	 * UX round 1's U4: the same press on a pane with NO conversation. The hold is a
-	 * property of the composer's own state, not of the dispatcher, so it takes the
-	 * same answer — one notice naming the way out, nothing run, nothing sent.
-	 */
-	const draft = [];
-	const sessionless = await mount({
-		conversationId: "conv-6-draft",
-		onSlashCommand: async (invocation) => {
-			draft.push(invocation);
-			return "consumed";
-		},
-	});
-	await type(sessionless, "/credential ");
-	await type(sessionless, "sk-live-CANARY-4417");
-	await esc(sessionless);
-	await clickSend(sessionless);
-	assert.equal(draft.length, 0, "the sessionless pane holds the same route");
-	assert.equal(sessionless.sent.length, 0, "and sends nothing");
-	assert.equal(sessionless.notes.length, 1);
-	assert.match(sessionless.notes[0], /still the credentials you cancelled/);
-	assert.match(sessionless.notes[0], /clear the box/);
-	assert.ok(
-		!/Name and Value fields/.test(sessionless.notes[0]),
-		"and the sentence does not promise a dialog that pane cannot open",
-	);
-});
-
-test("an Esc-cancelled credential's words are never taken as the command's argument (operator requirement)", async () => {
-	/*
-	 * THE OPERATOR'S OWN COMPLAINT, pinned as text, and the pin above it moved because
-	 * of it. After an Esc cancel the words typed after `/credential` were taken as the
-	 * command's argument — the dispatcher ran `/credential SEKRIT extra` and the receipt
-	 * said the words were its argument. The fix is to HOLD the press while the cancelled
-	 * token and its restored characters survive: nothing dispatches, nothing sends, the
-	 * box is unchanged, and one notice names the way out (not the silent no-op QA Q3
-	 * banned). The security invariant (a restored secret never reaches the model) is met
-	 * by the hold rather than by the dispatch route it used to be met by.
-	 *
-	 * Shape m1: `/credential ` + masked `SEKRIT` + Esc + ` extra` + Enter.
-	 */
-	const dispatch = [];
-	const frame = await mount({
-		conversationId: "conv-esc-m1",
-		paneHasSession: true,
-		sessionStatus: { frontend: null },
-		onSlashCommand: async (command) => {
-			dispatch.push(command);
-			return "consumed";
-		},
-	});
-	await type(frame, "/credential ");
-	await type(frame, "SEKRIT");
-	await esc(frame);
-	await type(frame, " extra");
-	const before = frame.value();
-	assert.ok(
-		before.includes("SEKRIT extra"),
-		"the box holds the restored words",
-	);
-	await enter(frame);
-	await settle();
-	assert.deepEqual(
-		dispatch,
-		[],
-		"nothing is dispatched with these words as its argument",
-	);
-	assert.equal(frame.sent.length, 0, "nothing is sent as a message");
-	assert.equal(frame.value(), before, "the box is left exactly as it was");
-	assert.equal(frame.notes.length, 1, "one notice, on the same press");
-	assert.match(frame.notes[0], /still the credentials you cancelled/);
-	assert.match(frame.notes[0], /clear the box/);
-	assert.ok(
-		!/taken as its argument/.test(frame.notes[0]),
-		"and no argument receipt",
-	);
-	assert.ok(
-		!String(frame.notes[0]).includes("SEKRIT"),
-		"the notice never echoes the value",
-	);
-
-	await clickSend(frame);
-	assert.deepEqual(dispatch, [], "the Send button takes the same held answer");
-	assert.equal(frame.sent.length, 0, "and sends nothing either");
-
-	/* Shape m1': `/credential x` + Esc(masked) + `mysecretname` + Enter → same. */
-	const dispatch2 = [];
-	const frame2 = await mount({
-		conversationId: "conv-esc-m1b",
-		paneHasSession: true,
-		sessionStatus: { frontend: null },
-		onSlashCommand: async (command) => {
-			dispatch2.push(command);
-			return "consumed";
-		},
-	});
-	await type(frame2, "/credential x");
-	await esc(frame2);
-	await type(frame2, "mysecretname");
-	const before2 = frame2.value();
-	await enter(frame2);
-	await settle();
-	assert.deepEqual(dispatch2, [], "the second shape is held too");
-	assert.equal(frame2.sent.length, 0, "and sends nothing");
-	assert.equal(frame2.value(), before2, "the box is unchanged");
-	assert.equal(frame2.notes.length, 1, "one notice");
-	assert.match(frame2.notes[0], /clear the box/);
-});
+/*
+ * RETIRED WITH THE ESC UNREDACT (operator-approved fix, 2026-10-22).
+ *
+ * The cases that stood here all took the same state as their SETUP: `/credential <secret>`
+ * + Esc, which wrote the characters back into the box as prose. That state no longer exists
+ * — the first Esc holds the mask, the second discards (see the "ESC NEVER PUTS A TYPED
+ * SECRET IN THE DOCUMENT" cases) — so each could only pass by reconstructing the leak the
+ * fix closes. What they pinned about the EMPTY-span cancel (the inert token, the caret, the
+ * no-re-arm rule) is still pinned by the empty-span cases above, which a discard now
+ * reaches as well. The held-press / restored-run machinery these exercised was keyed on
+ * a cancel record with restored characters, which no cancel produces any more, so it was
+ * unreachable and has been deleted (agent review round 1, R1-2). Retired, by name:
+ * - a cancel that EXPOSED characters is HELD on Enter, never sent and never an argument (operator requirement)
+ * - an Esc-cancelled credential's words are never taken as the command's argument (operator requirement)
+ * - an edit retires the disclosure, and the draft never carries a count it does not describe
+ * - the cancel's own record decides: an EMPTY span leaves prose, a span with characters does not
+ * - a retired count cannot ride a minted marker, across the mint and a reload
+ * - a real keystroke that moves a cancelled token hands it to the dispatcher (Q16)
+ * - the Escape's door is closed one keystroke later, at every caret (QA round 2, Q-1)
+ * - the unredact notice says what Enter will actually do (UX round 2, U7)
+ * - the undo announces the real characters it hands back, and a held press arms none (code review round 3, MAJOR 1; operator requirement)
+ * - a character typed in front of the cancelled token does not hand it to the model (QA round 4, Q-1)
+ * - a word an edit has broken does not hand the run to the model (QA round 5, Q-1)
+ * - a draft that no longer holds the run is prose, however much history the pane has (UX round 6, U24)
+ * - an edit that removes the slash sends the plaintext, and that is main's behaviour (code review round 6, MAJOR 1)
+ * - a live run keeps the record's reach, including over a slash the operator wrote (code review round 6, MINOR 1)
+ * - a restored run is the command only as a token, not as a substring (UX round 7, U27)
+ * - the held line is not claimed on the reload shape, where Enter really dispatches
+ * - a fresh hold after the notice's own remedy raises its own sentence
+ */
 
 test("a token the PICKER wrote is the dispatcher's wherever an edit moves it", async () => {
 	/*
@@ -2462,7 +2291,7 @@ test("the notice is tied to the field, sits ABOVE the composer box in the band's
 	);
 	assert.equal(
 		frame.notice(),
-		"masked as you type — Enter turns it into a pill, Esc cancels",
+		"masked as you type — Enter makes a pill, Esc twice discards",
 	);
 	assert.ok(
 		!/\bhidden\b/.test(idle.className),
@@ -2515,134 +2344,6 @@ test("the composer names the failed row's controls only while the row is on scre
 		"its sentence says the one thing the round measured as missing: how to reach them",
 	);
 });
-
-/*
- * THE DISCLOSURE IS RETIRED BY AN EDIT, AND IS NEVER PERSISTED WITH TEXT IT DOES
- * NOT DESCRIBE (UX round 3, U12; code review round 3, MINOR 1).
- *
- * Both halves in one case, because each half alone leaves the other broken: a
- * count that keeps describing text the operator has since changed survives a
- * reload as a plaintext draft under a sentence about different characters, and a
- * rendered sentence that cannot come down says so over a box holding nothing.
- * The numbers are the ones the UX round measured on the running app - four
- * backspaces after `/credential BACKSPACE-1`, and a select-all-Delete followed by
- * ordinary prose.
- */
-test("an edit retires the disclosure, and the draft never carries a count it does not describe", async () => {
-	const frame = await mount({ conversationId: "conv-retire" });
-	await openCapture(frame);
-	await type(frame, "BACKSPACE-1");
-	await esc(frame);
-	assert.equal(
-		frame.notice(),
-		unredactedNotice(11, HELD_TAKEN_BY),
-		"a LIVE cancel's own record answers the press, so the sentence still names the hold and its way out (agent review round 2, R5: this is the shape the sentinel is for)",
-	);
-	assert.equal(
-		frame.disclosure(),
-		11,
-		"and the count is persisted WITH the text it describes",
-	);
-
-	// Repro A: four backspaces take the box to "/credential BACKSPA".
-	for (let i = 0; i < 4; i++) await key(frame, { key: "Backspace" });
-	assert.equal(frame.value(), "/credential BACKSPA");
-	assert.equal(
-		frame.notice(),
-		"",
-		"the sentence comes down on the edit instead of still claiming eleven characters",
-	);
-	assert.equal(
-		frame.disclosure(),
-		0,
-		"and the count is not written beside the seven-character remnant",
-	);
-
-	// Repro B: cleared, retyped, and reloaded.
-	await type(frame, "hi /credential STALE-1");
-	assert.equal(
-		frame.disclosure(),
-		0,
-		"typing the characters back does not re-raise a count: the disclosure is retired for good by the first edit",
-	);
-	const field = frame.textarea();
-	await act(async () => {
-		field.setSelectionRange(0, field.value.length);
-	});
-	await key(frame, { key: "Delete" });
-	assert.equal(frame.value(), "");
-	assert.equal(frame.notice(), "", "an empty draft renders no sentence");
-	assert.equal(frame.disclosure(), 0, "and writes none");
-
-	await type(frame, "just some prose");
-	assert.equal(
-		frame.disclosure(),
-		0,
-		"ordinary prose is never written with a count it does not describe",
-	);
-	assert.equal(frame.notice(), "");
-
-	// The reload that used to bring the false sentence back.
-	const reloaded = await mount({
-		conversationId: "conv-retire",
-		keepWorld: true,
-		remount: true,
-	});
-	assert.equal(reloaded.value(), "just some prose");
-	assert.equal(
-		reloaded.notice(),
-		"",
-		"a reload restores the prose without the claim that it is plaintext secret characters",
-	);
-});
-/* ------------------------------------------------------------------ */
-/* Round 2 — U8/Q5, D2/U11/MAJOR-1, U9, U10                             */
-/* ------------------------------------------------------------------ */
-
-/*
- * WHAT THE OVERLAY ACTUALLY PAINTED, read off the DOM.
- *
- * The overlay is a background-only mirror of the textarea's own text, one
- * `<span>` per paint segment, so the segments ARE the paint: a marker that no
- * payload backs is either a `pill` span (painted) or a `plain` one (not).
- * Code review round 2 asked for exactly this — the round-1 pin asserted
- * `frame.value()`, which is the marker TEXT and is identical whether or not
- * anything is painted underneath it, so the sentence in its message ("the
- * remounted composer repaints the pill") could not be falsified by the pin.
- */
-const painted = () => {
-	const overlay = [
-		...window.document.querySelectorAll("div[aria-hidden='true']"),
-	].find((el) => el.classList.contains("-z-10"));
-	if (!overlay) return [];
-	return [...overlay.children].map((span) => ({
-		text: span.textContent,
-		pill: span.className.includes("bg-info-wash"),
-		/*
-		 * ROUND 3 (UX U13) SPLIT THE WARNING ROLE IN TWO, so the background no
-		 * longer identifies a span on its own: the armed TOKEN is the wash alone
-		 * (the ordinary word the operator just typed, marked), and the not-stored
-		 * CHIP is the wash PLUS an edge (a citation nothing holds, marked as one
-		 * the operator cannot rely on). The class list is what tells them apart,
-		 * and both are asserted below rather than collapsed into one flag.
-		 */
-		unbacked:
-			span.className.includes("bg-warning-wash") &&
-			span.className.includes("outline-warning-border"),
-		/*
-		 * THE EDGE'S STYLE, which round 4 made the not-stored chip's second
-		 * distinction (design round 4, D2; code review round 4, MINOR 2; UX round 4,
-		 * U17). Hue alone does not separate the chip from a live pill: measured over
-		 * the generated palettes the two washes sit at 1.00-1.63 fill contrast and a
-		 * greyscale reading of 34 vs 35 of 255. A dashed edge costs no token and
-		 * survives monochrome.
-		 */
-		dashed: span.className.includes("outline-dashed"),
-		armed:
-			span.className.includes("bg-warning-wash") &&
-			!span.className.includes("outline-warning-border"),
-	}));
-};
 
 test("a credential in a NEW chat's FIRST message is stored against the session the send created", async () => {
 	/*
@@ -2718,6 +2419,51 @@ test("a credential in a NEW chat's FIRST message is stored against the session t
 	);
 	assert.equal(posts[0].request.value, "sk-live-CANARY-4417");
 });
+
+/*
+ * WHAT THE OVERLAY ACTUALLY PAINTED, read off the DOM.
+ *
+ * The overlay is a background-only mirror of the textarea's own text, one
+ * `<span>` per paint segment, so the segments ARE the paint: a marker that no
+ * payload backs is either a `pill` span (painted) or a `plain` one (not).
+ * Code review round 2 asked for exactly this — the round-1 pin asserted
+ * `frame.value()`, which is the marker TEXT and is identical whether or not
+ * anything is painted underneath it, so the sentence in its message ("the
+ * remounted composer repaints the pill") could not be falsified by the pin.
+ */
+const painted = () => {
+	const overlay = [
+		...window.document.querySelectorAll("div[aria-hidden='true']"),
+	].find((el) => el.classList.contains("-z-10"));
+	if (!overlay) return [];
+	return [...overlay.children].map((span) => ({
+		text: span.textContent,
+		pill: span.className.includes("bg-info-wash"),
+		/*
+		 * ROUND 3 (UX U13) SPLIT THE WARNING ROLE IN TWO, so the background no
+		 * longer identifies a span on its own: the armed TOKEN is the wash alone
+		 * (the ordinary word the operator just typed, marked), and the not-stored
+		 * CHIP is the wash PLUS an edge (a citation nothing holds, marked as one
+		 * the operator cannot rely on). The class list is what tells them apart,
+		 * and both are asserted below rather than collapsed into one flag.
+		 */
+		unbacked:
+			span.className.includes("bg-warning-wash") &&
+			span.className.includes("outline-warning-border"),
+		/*
+		 * THE EDGE'S STYLE, which round 4 made the not-stored chip's second
+		 * distinction (design round 4, D2; code review round 4, MINOR 2; UX round 4,
+		 * U17). Hue alone does not separate the chip from a live pill: measured over
+		 * the generated palettes the two washes sit at 1.00-1.63 fill contrast and a
+		 * greyscale reading of 34 vs 35 of 255. A dashed edge costs no token and
+		 * survives monochrome.
+		 */
+		dashed: span.className.includes("outline-dashed"),
+		armed:
+			span.className.includes("bg-warning-wash") &&
+			!span.className.includes("outline-warning-border"),
+	}));
+};
 
 test("a marker whose payload did not survive is painted, and sent as the not-stored citation", async () => {
 	/*
@@ -2806,184 +2552,268 @@ test("a marker whose payload did not survive is painted, and sent as the not-sto
 	);
 });
 
-test("a restored draft still discloses the characters an Esc unredacted", async () => {
+test("a draft persisted by the pre-fix unredact still discloses its characters on arrival", async () => {
 	/*
-	 * Design round 2's D2: the live state discloses itself and the persisted one
-	 * did not, so a reload, a quit or a crash reached the one state §5 says must
-	 * never be silent — an ordinary-looking composer holding plaintext — and the
-	 * very next Enter exposed it. The characters are the operator's prose (§6) and
-	 * stay in the draft; the disclosure now travels with them.
+	 * Design round 2's D2, kept for the drafts that already exist. Before the
+	 * 2026-10-22 fix an Esc wrote the characters back as prose and persisted
+	 * `unredactedChars` beside them; no Esc writes either any more, but a draft saved
+	 * by an older build is still on disk and must not come back silent. Seeded
+	 * through the store's own writer rather than through the retired gesture.
 	 */
-	const frame = await mount({ conversationId: "conv-disclose" });
-	await openCapture(frame, { prose: "deploy with " });
-	await type(frame, "sk-live-CANARY-4417");
-	await esc(frame);
-	assert.equal(
-		frame.notice(),
-		unredactedNotice(19, HELD_TAKEN_BY),
-		"the live state discloses, as round 1 pinned — the hold named only while the cancel's own record answers the press (agent review round 2, R5)",
-	);
-
-	// The persisted draft carries the characters AND the count.
-	const raw = JSON.parse(
-		window.localStorage.getItem("conversation-input-store"),
-	).state.inputByConversation["conv-disclose"];
-	assert.equal(raw.currentInput, "deploy with /credential sk-live-CANARY-4417");
-	assert.equal(
-		raw.unredactedChars,
-		19,
-		"the count is persisted with the draft",
-	);
-
-	// A reload. Same conversation, empty payload map, characters restored.
+	const id = "conv-disclose-legacy";
+	await act(async () => {
+		useConversationInputStore
+			.getState()
+			.setCurrentInput(id, "deploy with /credential [redacted]", 19);
+	});
 	const reloaded = await mount({
-		conversationId: "conv-disclose",
+		conversationId: id,
 		keepWorld: true,
 		remount: true,
 	});
-	assert.equal(reloaded.value(), "deploy with /credential sk-live-CANARY-4417");
+	assert.equal(reloaded.value(), "deploy with /credential [redacted]");
 	assert.equal(
 		reloaded.notice(),
 		unredactedNotice(19),
-		"a restored draft with no live record says what its Enter really does — expose, not held (agent review round 2, R5, which INVERTS this pin from the round-1 head)",
+		"a restored draft with no live record says what its Enter really does",
 	);
 });
 
-test("the cancel's own record decides: an EMPTY span leaves prose, a span with characters does not", async () => {
-	/*
-	 * THIS PIN HAS MOVED TWICE, and both moves are the same question asked of a
-	 * different fact — so the third answer is the one written on the gesture itself.
-	 *
-	 * (1) Round 2's U9 reading was "an Esc-cancelled token is prose even when the span
-	 * was empty", asserted of a tail the operator types in the open: the escape leaves
-	 * an inert token, so what they write after it is their own sentence.
-	 * (2) QA round 2's Q-1 then measured the cost of the exception's own gate: it read
-	 * the DISCLOSURE, a whole-buffer equality that ANY keystroke clears, so
-	 * `/credential ` + Escape + one character + Enter put a plaintext secret into a
-	 * message record and a provider request — on that head and on `main` alike. The
-	 * branch's answer was to ask the planner for every draft holding a locked run,
-	 * which closed that door and, as code review round 3 measured, deleted the
-	 * operator's words on shape (1): `/credential ` + Escape + `mysecretname` + Enter
-	 * took the tail as the command's argument instead of sending their sentence.
-	 * (3) THIS HEAD asks the fact neither reading had: WHAT THE CANCEL ITSELF PUT BACK
-	 * (`token.restored`, recorded by `cancelTypedCredential` at the moment of the
-	 * gesture). An empty span restores nothing, so the words written after it are the
-	 * operator's by §5's own reading and go to the model; a span that HELD characters
-	 * restored a secret, and no later keystroke can make that untrue.
-	 *
-	 * Both directions are driven below, and the second is the one that must never
-	 * regress: a cancelled span whose characters came back keeps its tail out of the
-	 * message.
-	 */
-	const dispatch = [];
-	const prose = await mount({
-		onSlashCommand: async (command) => {
-			dispatch.push(command);
-			return "consumed";
-		},
-	});
-	await type(prose, "deploy with /credential ");
-	await esc(prose);
-	await type(prose, "mysecretname");
+/*
+ * ESC NEVER PUTS A TYPED SECRET IN THE DOCUMENT (operator-approved fix, 2026-10-22).
+ *
+ * The audit's finding: Esc used to unredact the held characters into the textarea as
+ * prose, and `persistDraft` then wrote that prose to `localStorage` — so a credential
+ * the operator CANCELLED sat in plaintext in the draft store. The required behaviour is
+ * neither "restore plaintext" nor "discard": the first Esc leaves the masked capture
+ * exactly as it was (cells in the box, value in memory, nothing written), and a second
+ * Esc discards it. Every assertion below reads the store the app actually writes and
+ * the box the operator actually sees, with a value no reader could mistake for a real
+ * secret.
+ */
+const DUMMY_SECRET = "dummy-not-a-secret-123";
+const HELD_NOTICE = /^Esc again discards it — still masked/;
+
+const persistedRaw = () =>
+	window.localStorage.getItem("conversation-input-store") ?? "";
+
+test("Esc during capture keeps the mask and the value, and writes no plaintext to the draft", async () => {
+	const frame = await mount({ conversationId: "conv-esc-masked" });
+	await openCapture(frame, { prose: "deploy with " });
+	await type(frame, DUMMY_SECRET);
+	const masked = frame.value();
 	assert.equal(
-		prose.value(),
-		"deploy with /credential mysecretname",
-		"the empty span restored nothing, so these are the words the operator wrote",
-	);
-	await enter(prose);
-	await settle();
-	assert.deepEqual(
-		dispatch,
-		[],
-		"nothing is dispatched for a bare cancelled token",
-	);
-	const sent = prose.sent.at(-1)[0];
-	assert.equal(
-		typeof sent === "string" ? sent : sent.text,
-		"deploy with /credential mysecretname",
-		"and their own sentence is what goes to the model",
+		masked,
+		`deploy with /credential ${MASK_CELL.repeat(DUMMY_SECRET.length)}`,
 	);
 
+	await esc(frame);
+	assert.equal(
+		frame.value(),
+		masked,
+		"the box still holds the mask cells, not the characters",
+	);
+	assert.ok(
+		!persistedRaw().includes(DUMMY_SECRET),
+		"no plaintext reached the persisted draft store",
+	);
+	assert.ok(
+		!(frame.draft() ?? "").includes(DUMMY_SECRET),
+		"and the conversation's own draft holds none either",
+	);
+	assert.match(
+		frame.notice(),
+		HELD_NOTICE,
+		"the notice says the capture is still held and what the next Esc does",
+	);
+
+	// The value is still in memory: Enter mints a pill of the full held length.
+	await enter(frame);
+	assert.equal(
+		frame.value(),
+		`deploy with [Credential #1, ${DUMMY_SECRET.length} chars] `,
+		"the held value survived the Esc and minted",
+	);
+	assert.ok(!persistedRaw().includes(DUMMY_SECRET));
+});
+
+test("a second Esc discards the capture, and no Esc path leaves plaintext anywhere", async () => {
+	const frame = await mount({ conversationId: "conv-esc-discard" });
+	await openCapture(frame, { prose: "deploy with " });
+	await type(frame, DUMMY_SECRET);
+	await esc(frame);
+	await esc(frame);
+	assert.equal(
+		frame.value(),
+		"deploy with /credential ",
+		"the cells are gone and the token is left inert, as an empty-span cancel leaves it",
+	);
+	assert.doesNotMatch(frame.notice(), HELD_NOTICE, "the capture is over");
+	assert.ok(!persistedRaw().includes(DUMMY_SECRET));
+	assert.equal(
+		frame.disclosure() ?? 0,
+		0,
+		"nothing was disclosed, so the draft carries no count",
+	);
+
+	// The undo stack: the composer's own undo key hands nothing back that was secret.
+	await undoKey(frame);
+	assert.ok(
+		!frame.value().includes(DUMMY_SECRET),
+		"undo restores no plaintext",
+	);
+	assert.ok(!persistedRaw().includes(DUMMY_SECRET));
+
+	// The discarded value is gone, not merely hidden: a fresh span mints nothing of it.
+	await type(frame, "x");
+	assert.ok(!frame.value().includes(MASK_CELL));
+	assert.ok(!persistedRaw().includes(DUMMY_SECRET));
+});
+
+test("an edit between the two Escapes re-arms the hold rather than discarding", async () => {
+	const frame = await mount({ conversationId: "conv-esc-edit" });
+	await openCapture(frame);
+	await type(frame, DUMMY_SECRET);
+	await esc(frame);
+	await type(frame, "4");
+	assert.equal(frame.notice(), CREDENTIAL_TYPING_NOTICE, "typing resumed");
+	await esc(frame);
+	assert.equal(
+		frame.value(),
+		`/credential ${MASK_CELL.repeat(DUMMY_SECRET.length + 1)}`,
+		"one Esc after an edit holds again; it does not discard",
+	);
+	assert.ok(!persistedRaw().includes(DUMMY_SECRET));
+});
+
+test("after a discard, the words typed past the inert token are the operator's sentence, as after an empty-span cancel (U9)", async () => {
 	/*
-	 * THE SECOND DIRECTION, moved to the held answer by the operator's requirement: the
-	 * span HELD characters, so neither of the plan's old answers may run — the tail is
-	 * NOT the dispatcher's argument any more (that consumed the operator's own words),
-	 * and it is NOT the model's either (that would put the restored secret in a message).
-	 * The press is HELD while the cancel's token is still the box's own — the caret end
-	 * below; a caret that edits the token BEFORE it moves the token and hands it back to
-	 * the dispatcher (the moved-token rule), and there the tail is consumed rather than
-	 * the model. Either way the secret is in no message: the invariant Q-1 closed, now
-	 * carried by the hold on the unmoved shape.
+	 * Round 2's U9 reading, kept: an Esc-cancelled token is inert, so what the operator
+	 * writes after it is their own prose and goes to the model rather than becoming the
+	 * command's argument. A discard now leaves exactly the empty-span shape, so the span
+	 * that HELD characters must answer the same way — and the discarded value must be in
+	 * no message, which is the half the retired held-press cases used to guard.
 	 */
-	const CANARY = "LOP_R4_EMPTY_SPAN_CANARY_31ba";
-	for (const at of [0, "end"]) {
-		/*
-		 * THE CARET DECIDES WHICH RULE OWNS THE PRESS, and the difference is pinned, not
-		 * incidental. At the END the edit lands AFTER the token, so the cancel's record is
-		 * still its own (the token unmoved) and the press is HELD — the operator's words are
-		 * not the command's argument, and the restored secret is not the model's. At offset
-		 * 0 the edit is inserted BEFORE the token, which MOVES it; a token an edit has moved
-		 * is ordinary again and the dispatcher may have it (the rule pinned by "after an
-		 * Escape the token stops suppressing once an edit moves it" and quality round 10),
-		 * so that caret keeps the dispatcher route this suite has always driven — and the Q-1
-		 * invariant still holds there, because the dispatcher consumes the tail rather than
-		 * the model.
-		 */
-		const ran = [];
+	for (const held of ["", DUMMY_SECRET]) {
+		const dispatch = [];
 		const frame = await mount({
-			conversationId: `conv-r4-span-${at}`,
-			paneHasSession: true,
-			sessionStatus: { frontend: null },
 			onSlashCommand: async (command) => {
-				ran.push(command);
+				dispatch.push(command);
 				return "consumed";
 			},
 		});
 		await type(frame, "deploy with /credential ");
-		await type(frame, CANARY);
+		if (held) {
+			await type(frame, held);
+			await esc(frame);
+		}
 		await esc(frame);
-		await placeCaret(frame, at === 0 ? 0 : frame.value().length);
-		await type(frame, "x");
-		const before = frame.value();
+		await type(frame, "mysecretname");
+		assert.equal(frame.value(), "deploy with /credential mysecretname");
 		await enter(frame);
 		await settle();
-		/*
-		 * NeITHER route may put the secret in a message: that is the invariant both carets
-		 * share, and it is the one that must never regress.
-		 */
+		assert.deepEqual(dispatch, [], `nothing dispatched (held: ${held !== ""})`);
+		const sent = frame.sent.at(-1)?.[0];
 		assert.equal(
-			frame.sent.length,
-			0,
-			`nothing is sent as a message (caret ${at})`,
+			typeof sent === "string" ? sent : sent?.text,
+			"deploy with /credential mysecretname",
+			"their own sentence is what goes to the model",
 		);
-		assert.ok(
-			!JSON.stringify(frame.sent).includes(CANARY),
-			`and no payload carries it (caret ${at})`,
-		);
-		if (at === 0) {
-			assert.equal(
-				ran.length,
-				1,
-				"a moved token is the dispatcher's (caret 0)",
-			);
-			assert.equal(ran[0].name, "credential");
-			assert.ok(ran[0].args.includes(CANARY));
-		} else {
-			assert.equal(
-				ran.length,
-				0,
-				"the unmoved token's press is HELD, not the dispatcher's (caret end)",
-			);
-			assert.equal(
-				frame.value(),
-				before,
-				"the box is left exactly as it was (caret end)",
-			);
-			assert.equal(frame.notes.length, 1, "one notice (caret end)");
-			assert.match(frame.notes[0], /still the credentials you cancelled/);
-		}
+		assert.ok(!JSON.stringify(frame.sent).includes(DUMMY_SECRET));
+		assert.ok(!persistedRaw().includes(DUMMY_SECRET));
 	}
 });
+
+test("a hold ends with its capture: a later identical capture is not pre-held (agent review round 1, R1-1)", async () => {
+	/*
+	 * The hold is keyed on (buffer, value). Left standing after the mint, a second
+	 * capture that reached the same buffer and value lit the held sentence before
+	 * any Esc, and its FIRST Esc then discarded with no warning (reproduced by the
+	 * round-1 reviewer). The hold must end wherever the capture leaves typing.
+	 */
+	const frame = await mount({ conversationId: "conv-esc-stale" });
+	await openCapture(frame);
+	await type(frame, DUMMY_SECRET);
+	await esc(frame);
+	assert.match(frame.notice(), HELD_NOTICE);
+	await enter(frame);
+	assert.equal(frame.value(), `[Credential #1, ${DUMMY_SECRET.length} chars] `);
+	// Clear the box and re-enter the same secret in the same shape.
+	await act(async () => {
+		writeValue(frame.textarea(), "", 0);
+	});
+	await settle();
+	await openCapture(frame);
+	await type(frame, DUMMY_SECRET);
+	assert.equal(
+		frame.notice(),
+		CREDENTIAL_TYPING_NOTICE,
+		"a fresh capture opens in the typing state, not pre-held",
+	);
+	await esc(frame);
+	assert.equal(
+		frame.value(),
+		`/credential ${MASK_CELL.repeat(DUMMY_SECRET.length)}`,
+		"its first Esc holds rather than discards",
+	);
+	assert.match(frame.notice(), HELD_NOTICE);
+});
+
+test("the second Esc says the value was discarded, and the next edit retires the line (design review round 1, D2)", async () => {
+	const frame = await mount({ conversationId: "conv-esc-discarded-line" });
+	await openCapture(frame, { prose: "deploy with " });
+	await type(frame, DUMMY_SECRET);
+	await esc(frame);
+	await esc(frame);
+	assert.equal(frame.value(), "deploy with /credential ");
+	assert.equal(frame.notice(), CREDENTIAL_DISCARDED_NOTICE);
+	assert.ok(
+		!frame.notice().includes(String(DUMMY_SECRET.length)),
+		"the line names no length",
+	);
+	await type(frame, "x");
+	assert.notEqual(
+		frame.notice(),
+		CREDENTIAL_DISCARDED_NOTICE,
+		"an edit retires it",
+	);
+	// An EMPTY-span Esc discarded nothing, so it owes no such line.
+	const empty = await mount({ conversationId: "conv-esc-empty-no-line" });
+	await openCapture(empty);
+	await esc(empty);
+	assert.notEqual(empty.notice(), CREDENTIAL_DISCARDED_NOTICE);
+});
+
+test("leaving a held capture by switch or reload persists no plaintext", async () => {
+	const frame = await mount({ conversationId: "conv-esc-leave" });
+	await openCapture(frame, { prose: "deploy with " });
+	await type(frame, DUMMY_SECRET);
+	await esc(frame);
+	// Blur: focus leaves the box with the capture held.
+	await act(async () => {
+		frame.textarea().blur();
+	});
+	await settle();
+	assert.ok(!persistedRaw().includes(DUMMY_SECRET), "blur writes nothing");
+	// A conversation switch, then back.
+	await mount({ conversationId: "conv-esc-elsewhere", keepWorld: true });
+	assert.ok(!persistedRaw().includes(DUMMY_SECRET), "a switch writes nothing");
+	// A full reload of the original conversation.
+	const reloaded = await mount({
+		conversationId: "conv-esc-leave",
+		keepWorld: true,
+		remount: true,
+	});
+	assert.ok(!reloaded.value().includes(DUMMY_SECRET));
+	assert.ok(!persistedRaw().includes(DUMMY_SECRET), "a reload finds none");
+	// And unmounting the composer entirely.
+	await act(async () => {
+		root?.unmount();
+	});
+	root = undefined;
+	assert.ok(!persistedRaw().includes(DUMMY_SECRET), "closing writes nothing");
+});
+
 test("an uncancelled /credential still dispatches, and keeps its arguments out of the box", async () => {
 	/*
 	 * The other direction, unchanged and deliberately so: `/credential <args>`
@@ -3294,163 +3124,6 @@ test("on an empty chat the composer is docked at the band's foot, and the senten
 	assert.equal(hiddenCopyOf(), null);
 });
 
-/*
- * THE MINT LANE CANNOT CARRY A STALE COUNT (code review round 4, NIT 2).
- *
- * The UX remediation claims a retired disclosure "cannot ride a minted marker
- * either", and until this case no test minted: the only new coverage was the
- * Esc → backspaces → cleared → prose → reload lane. The mechanism is by
- * construction (`applyCapture` writes `disclosureOver(buffer)`, which cannot
- * match a minted buffer), so this is coverage rather than a defect — but a claim
- * about a lane nothing exercises is exactly what the round-4 review flagged.
- *
- * The shape is QA's D-3, which is the live version of the same walk: a real Esc
- * leaves nineteen characters disclosed, the box is cleared with real keys and a
- * second capture is typed and minted, and the count the mint persists is 0 —
- * including across a reload, which is where a stale count used to come back.
- */
-test("a retired count cannot ride a minted marker, across the mint and a reload", async () => {
-	const frame = await mount({ conversationId: "conv-mint-lane" });
-	await openCapture(frame);
-	await type(frame, "sk-live-CANARY-4417");
-	await esc(frame);
-	assert.equal(
-		frame.disclosure(),
-		19,
-		"the Esc persists the count WITH the characters it describes",
-	);
-
-	// Clear the box with real keys, then mint a fresh capture into it.
-	const field = frame.textarea();
-	await act(async () => {
-		field.setSelectionRange(0, field.value.length);
-	});
-	await key(frame, { key: "Delete" });
-	assert.equal(frame.notice(), "", "the empty box discloses nothing");
-	await openCapture(frame);
-	await type(frame, "sk-live-CANARY-8888");
-	await enter(frame);
-	assert.match(
-		frame.value(),
-		/^\[Credential #1, 19 chars\] $/,
-		"the span minted a marker rather than sending",
-	);
-	assert.equal(
-		painted().filter((s) => s.pill).length,
-		1,
-		"and the marker is painted: a live pill, not the not-stored chip",
-	);
-	assert.equal(
-		frame.notice(),
-		"",
-		"the sentence is gone over a marker: the characters it described are not in the box any more",
-	);
-	assert.equal(
-		frame.disclosure(),
-		0,
-		"and the count the mint persisted is 0 — the stale nineteen can never ride this marker",
-	);
-
-	const reloaded = await mount({
-		conversationId: "conv-mint-lane",
-		keepWorld: true,
-		remount: true,
-		onSendMessage: async () => true,
-	});
-	assert.equal(reloaded.value(), "[Credential #1, 19 chars] ");
-	assert.equal(
-		reloaded.notice(),
-		"",
-		"a reload restores the marker without raising a claim about plaintext characters",
-	);
-	assert.equal(reloaded.disclosure(), 0, "and re-persists no count");
-});
-
-test("a real keystroke that moves a cancelled token hands it to the dispatcher (Q16)", async () => {
-	/*
-	 * QA round 8's Q16, driven the way the operator drives it: `/credential <secret>`
-	 * typed, Escape, then a REAL keystroke edit that moves the token (Home, then
-	 * characters through the composer's own key pipeline, with the value written the
-	 * way a browser writes it). The dispatch is the assertion — and it is the point,
-	 * because `/credential`'s arguments are REFUSED, so a secret can never land in
-	 * command text; `frame.sent.length === 0` is the property that says the secret
-	 * did not travel as prose.
-	 *
-	 * WHAT THIS CASE DOES NOT PIN, stated because review round 11 measured it: the
-	 * two mutations of the record's lifetime that Q16 is about — restoring the
-	 * arm-time clear, and testing the record's run rather than its word — leave this
-	 * case green, because the harness's edit path never produces the buffer state the
-	 * app reaches (a masked citation, or the token with its trailing space gone). The
-	 * harness proves the gesture survives an edit through the composer's own
-	 * handlers; the app-level half is QA's re-run on this head, and the record's
-	 * lifetime is keyed on the token's WORD for that reason (`message-input.tsx`).
-	 */
-	const ran = [];
-	const frame = await mount({
-		conversationId: "conv-q16-moved",
-		onSlashCommand: async (command) => {
-			ran.push(command);
-			return "consumed";
-		},
-	});
-	await type(frame, "/credential ");
-	await type(frame, "SECRET");
-	await esc(frame);
-	await key(frame, { key: "Home" });
-	for (const ch of "please ") {
-		await key(frame, { key: ch });
-	}
-	const field = frame.textarea();
-	await act(async () => {
-		const next = `please ${field.value}`;
-		writeValue(field, next, next.length);
-	});
-	await settle();
-	assert.equal(frame.value(), "please /credential SECRET");
-	await enter(frame);
-	await settle();
-	assert.equal(ran.length, 1, "the moved token reaches the dispatcher");
-	assert.equal(
-		frame.sent.length,
-		0,
-		"so the secret never travels as message text",
-	);
-
-	/*
-	 * AND WITH THE CARET INSIDE THE TOKEN, which is the state that fires the
-	 * capture's ARM. The record has to survive that re-sync too, because the arm is
-	 * the token's own consequence rather than a new gesture — this is the half the
-	 * app was failing on, and the harness reaches it only with the caret placed by
-	 * hand, which is why the suite stayed green while the app sent. Re-adding the
-	 * arm-time clear (M-Q16) is what this half fails on.
-	 */
-	const armed = await mount({
-		conversationId: "conv-q16-armed",
-		onSlashCommand: async (command) => {
-			ran.push(command);
-			return "consumed";
-		},
-	});
-	await type(armed, "/credential ");
-	await type(armed, "SECRET");
-	await esc(armed);
-	const armField = armed.textarea();
-	await act(async () => {
-		// `please /credential |SECRET` — the caret right after the token, which is
-		// the arm's own precondition.
-		writeValue(
-			armField,
-			"please /credential SECRET",
-			"please /credential ".length,
-		);
-	});
-	await settle();
-	await enter(armed);
-	await settle();
-	assert.equal(ran.length, 2, "the armed caret still reaches the dispatcher");
-	assert.equal(armed.sent.length, 0, "and the secret is not sent as text");
-});
-
 test("a token moved to the END of the buffer still reaches the dispatcher (round 12, MAJOR)", async () => {
 	/*
 	 * The record is built as the token PLUS its separator
@@ -3471,6 +3144,8 @@ test("a token moved to the END of the buffer still reaches the dispatcher (round
 	});
 	await type(frame, "/credential ");
 	await type(frame, "SECRET");
+	// Two presses: the first is held (the mask stays), the second discards.
+	await esc(frame);
 	await esc(frame);
 	const field = frame.textarea();
 	await act(async () => {
@@ -3574,7 +3249,11 @@ test("a refused composer is read-only rather than disabled, and refuses Enter it
 		"true",
 		"the refusal has to reach a screen reader through the attribute it has left",
 	);
-	assert.equal(field.placeholder, "This conversation is gone");
+	assert.equal(
+		field.placeholder,
+		t("ui.chat.composer.placeholder.unavailable"),
+		"the gone conversation's sentence is the catalogue's",
+	);
 
 	await type(missing, "still typing");
 	assert.equal(missing.value(), "", "a read-only field takes no edit");
@@ -3922,152 +3601,6 @@ test("a store reaches the host's invalidation seam for the picker's list (QA rou
 	);
 });
 
-test("the Escape's door is closed one keystroke later, at every caret (QA round 2, Q-1)", async () => {
-	/*
-	 * QA ROUND 2's MAJOR, and the shape is the one the app's own notice invites: the
-	 * Escape shows the characters as plain text so the operator can edit them, and ONE
-	 * keystroke later the old guard had already let go — `unredactedOverBuffer` is a
-	 * whole-buffer equality that any keystroke clears, while `holdsCancelledToken`
-	 * matches the cancelled token's own text (`/credential `) at its old offset and says
-	 * nothing about the secret. Measured on the real app: `POST /messages` with the
-	 * canary in the record and in the provider body, byte-identical on `main`.
-	 *
-	 * The first repair asked the planner whenever the draft holds a locked run, so nothing
-	 * depended on the disclosure bookkeeping — and that route is now retired by the
-	 * operator's requirement: the restored span's run is HELD, not dispatched, because the
-	 * dispatch consumed the operator's own words as the command's argument. The security
-	 * invariant Q-1 closed is unchanged and lives on the hold: nothing is sent, and the
-	 * box keeps the characters. Every shape below is driven at BOTH carets, and the pasted
-	 * provenance is driven with it, because the draft's arrival is what the exception used
-	 * to read — and an ARRIVAL carries no cancel record, so it keeps the planner's own
-	 * reading (the dispatcher's) to this day.
-	 */
-	const CANARY = "LOP_R2_EDIT_CANARY_4f66";
-	const edits = [
-		["one character appended", (frame) => type(frame, "x")],
-		[
-			"a character replaced inside the tail",
-			async (frame) => {
-				await key(frame, { key: "Backspace" });
-				await type(frame, "x");
-			},
-		],
-	];
-	for (const [label, edit] of edits) {
-		for (const at of [0, "end"]) {
-			const ran = [];
-			const frame = await mount({
-				conversationId: `conv-q1-${label.replace(/\W/g, "")}-${at}`,
-				paneHasSession: true,
-				sessionStatus: { frontend: null },
-				onSlashCommand: async (command) => {
-					ran.push(command);
-					return "consumed";
-				},
-			});
-			await type(frame, "please /credential ");
-			await type(frame, CANARY);
-			await esc(frame);
-			await placeCaret(frame, at === 0 ? 0 : frame.value().length);
-			await edit(frame);
-			const draft = frame.value();
-			await enter(frame);
-			await settle();
-			/*
-			 * THE CARET DECIDES, as in the record-decides case above: at the END the edit
-			 * leaves the token in place, so the press is HELD; at offset 0 the edit moves
-			 * the token, so the dispatcher owns it (a moved token is ordinary again) and its
-			 * tail is consumed rather than sent. Neither route may put the secret in a
-			 * message — that is the invariant Q-1 closed and it is asserted for both.
-			 */
-			assert.equal(
-				frame.sent.length,
-				0,
-				`${label} at caret ${at}: nothing is sent as a message`,
-			);
-			assert.ok(
-				!JSON.stringify(frame.sent).includes(CANARY),
-				`${label} at caret ${at}: and no sent payload carries it`,
-			);
-			if (at === 0) {
-				assert.equal(
-					ran.length,
-					1,
-					`${label} at caret 0: a moved token is the dispatcher's`,
-				);
-				assert.equal(ran[0].name, "credential", `${label} at caret 0`);
-				assert.ok(
-					ran[0].args.includes(CANARY),
-					`${label} at caret 0: its tail is consumed`,
-				);
-			} else {
-				assert.equal(
-					ran.length,
-					0,
-					`${label} at caret end: the run is HELD, not the dispatcher's`,
-				);
-				assert.equal(
-					frame.value(),
-					draft,
-					`${label} at caret end: the box keeps the characters the cancel put back`,
-				);
-				assert.equal(
-					frame.notes.length,
-					1,
-					`${label} at caret end: one notice`,
-				);
-				assert.match(frame.notes[0], /still the credentials you cancelled/);
-			}
-			/*
-			 * No assertion on the notice OUTSIDE the branch: the notice differs by caret
-			 * (the hold's sentence at the end, the dispatcher's receipt at offset 0), so a
-			 * check placed here would pin whichever caret happened to be described and fail
-			 * the other. Each branch above asserts its own.
-			 */
-		}
-	}
-
-	/*
-	 * The ARRIVAL provenance, edited after it arrived: no cancel, no record, no
-	 * disclosure — the planner's own reading of the draft. Both writes are the DOM's
-	 * own bulk route (`writeValue`), which is what a paste into an unarmed box, a
-	 * restored draft and a session switch all produce; the composer's KEYSTROKE route
-	 * would arm the capture and mask the tail instead, which is a different branch and
-	 * is pinned by the masked cases above.
-	 */
-	const pasted = [];
-	const frame = await mount({
-		conversationId: "conv-q1-paste",
-		paneHasSession: true,
-		sessionStatus: { frontend: null },
-		onSlashCommand: async (command) => {
-			pasted.push(command);
-			return "consumed";
-		},
-	});
-	const arrival = `please /credential ${CANARY}`;
-	await act(async () => {
-		writeValue(frame.textarea(), arrival, 0);
-	});
-	await settle();
-	const edited = `${arrival} and then finish`;
-	await act(async () => {
-		writeValue(frame.textarea(), edited, edited.length);
-	});
-	await settle();
-	assert.equal(
-		frame.value(),
-		edited,
-		"the edited arrival is what the box holds",
-	);
-	await enter(frame);
-	await settle();
-	assert.equal(pasted.length, 1, "the pasted draft's run is the dispatcher's");
-	assert.ok(pasted[0].args.startsWith(CANARY));
-	assert.equal(frame.sent.length, 0);
-	assert.ok(!JSON.stringify(frame.sent).includes(CANARY));
-});
-
 test("a restored masked draft offers no undo, and says the value is re-entered (UX round 2, U8)", async () => {
 	/*
 	 * U8's shape, and the one this suite can build: a draft that ARRIVED holding mask
@@ -4164,39 +3697,6 @@ test("the receipt names the dialog only where one opens (code review round 2, MI
 	assert.match(frame.notes[0], /to put the words back/);
 });
 
-test("the unredact notice says what Enter will actually do (UX round 2, U7)", async () => {
-	/*
-	 * The app's most trust-sensitive sentence, and the change made it false in the safe
-	 * direction: it promised an exposure that a locked run no longer performs. It is now
-	 * shape-dependent, read from the SAME planner call the press will use, and the two
-	 * variants are pinned as text.
-	 */
-	const locked = await mount({ conversationId: "conv-u7-locked" });
-	await type(locked, "please /credential ");
-	await type(locked, "U7-CANARY-1");
-	await esc(locked);
-	assert.equal(
-		locked.notice(),
-		"11 characters are now PLAIN TEXT in the composer — Enter is held: clear the box to release your words",
-		"a locked draft says what the press does with them",
-	);
-
-	/*
-	 * THE OTHER VARIANT IS THE HELPER'S OWN DEFAULT, and it is pinned as text rather
-	 * than driven, because on this head it is not reachable from a live disclosure: the
-	 * only three places a disclosure is set (the Escape, §6's restore, and the undo)
-	 * all describe a buffer that holds the credential token and a tail, so the planner
-	 * answers a locked run for every one of them. It stays as the sentence a caller
-	 * without the locked handoff gets — the host that knows nothing about credentials —
-	 * which is the same fallback that keeps `commandLockedWords` empty by default.
-	 */
-	assert.equal(
-		unredactedNotice(11),
-		"11 characters are now PLAIN TEXT in the composer — Enter will expose them",
-		"a caller with no locked run still gets the plain sentence",
-	);
-});
-
 test("the locked run's record is retired by events, not by content (code review round 2, MINOR 1)", async () => {
 	/*
 	 * The record used to hold the box's TEXT and restore only while the box still
@@ -4280,88 +3780,6 @@ test("the locked run's record is retired by events, not by content (code review 
 	assert.equal(second.value(), "", "and stays empty");
 });
 
-test("the undo announces the real characters it hands back, and a held press arms none (code review round 3, MAJOR 1; operator requirement)", async () => {
-	/*
-	 * THE PIN THIS FINDING EXISTS FOR: a state that is real AND undisclosed must not
-	 * exist. The undo puts the operator's own characters back — for a credential run,
-	 * that is a live value sitting in the box in plain text — and `plain` used to be
-	 * read off a LIVE mask's length, which is unreachable (a live span answers Enter by
-	 * minting), so the count was always 0, the announcement never fired, and the
-	 * restore was silent while its own code and the round-2 reply claimed otherwise.
-	 * `plain` is now the run's own argument count, so the notice fires wherever the
-	 * restore is real.
-	 *
-	 * TWO SHAPES ARE DRIVEN, and the operator's requirement moved the first. The ESCAPE's
-	 * own shape is HELD now — nothing is taken, no undo is armed, and the box keeps the
-	 * characters — so the shape MAJOR 1 is about (a real restore the operator cannot see)
-	 * is gone with the dispatch route. The ARRIVAL shape still dispatches (it carries no
-	 * cancel record), takes the run's tail, and its undo is real and must announce itself:
-	 * that half is the one this finding still pins.
-	 */
-	const CANARY = "LOP_R4_UNDO_CANARY_5c02";
-	const typedFrame = await mount({
-		conversationId: "conv-r4-undo-typed",
-		onSlashCommand: async () => "consumed",
-	});
-	await type(typedFrame, "please /credential ");
-	await type(typedFrame, CANARY);
-	await esc(typedFrame);
-	assert.equal(
-		typedFrame.notice(),
-		unredactedNotice(CANARY.length, HELD_TAKEN_BY),
-		"the Escape announces what it puts back",
-	);
-	/*
-	 * THE ESCAPE'S OWN SHAPE IS HELD NOW (operator requirement), so no undo is armed
-	 * for it: nothing was taken, the box still carries the operator's characters and the
-	 * restored secret, and the press names the way out. There is no undisclosed restore
-	 * on this shape because there is no restore at all — the state MAJOR 1 is about
-	 * (a real restore the operator cannot see) is gone with the dispatch route.
-	 */
-	const held = typedFrame.value();
-	await enter(typedFrame);
-	await settle();
-	assert.equal(
-		await undoKey(typedFrame),
-		false,
-		"nothing was taken, so there is no undo to claim",
-	);
-	assert.equal(
-		typedFrame.value(),
-		held,
-		"the held press keeps the operator's characters in the box",
-	);
-	assert.match(typedFrame.notes.at(-1), /still the credentials you cancelled/);
-	assert.ok(
-		!/to put the words back/.test(typedFrame.notes.at(-1)),
-		"and the sentence does not promise an undo a held press never armed",
-	);
-
-	const arrival = `please /credential ${CANARY}`;
-	const arrived = await mount({
-		conversationId: "conv-r4-undo-arrived",
-		onSlashCommand: async () => "consumed",
-	});
-	await act(async () => {
-		writeValue(arrived.textarea(), arrival, arrival.length);
-	});
-	await settle();
-	await enter(arrived);
-	await settle();
-	assert.equal(
-		await undoKey(arrived),
-		true,
-		"an arrival's undo is claimed too",
-	);
-	assert.equal(arrived.value(), arrival);
-	assert.equal(
-		arrived.notice(),
-		unredactedNotice(CANARY.length),
-		"and a restore of characters that were never hidden is announced on the same rule — plain, because an arrival arms no cancel record and so no hold",
-	);
-	assert.equal(arrived.disclosure(), CANARY.length);
-});
-
 test("a mask cell in the operator's own prose does not disarm the undo (code review round 3, MINOR 2)", async () => {
 	/*
 	 * `restorable` used to scan the WHOLE buffer for the mask character, so a `•` the
@@ -4403,241 +3821,6 @@ test("a mask cell in the operator's own prose does not disarm the undo (code rev
 		draft,
 		"and the operator's whole draft comes back",
 	);
-});
-
-test("a character typed in front of the cancelled token does not hand it to the model (QA round 4, Q-1)", async () => {
-	/*
-	 * QA ROUND 4's BLOCKER, on the shape the app's own notice invites and on the one
-	 * keystroke that used to break it: `/credential <value>` -> Escape -> Home -> ONE
-	 * character in front of the slash -> Enter.
-	 *
-	 * The character destroys the tokenizer's left boundary, so the planner's locked rule
-	 * found no word at all, the draft no longer started with `/` so the leading-slash
-	 * refusal had no part of it, and the press put the value into a message record and a
-	 * provider request body — the value the APP had just un-masked in its own notice. It
-	 * is pre-existing rather than a regression (byte-identical on `main`), and it is the
-	 * door this PR exists to close.
-	 *
-	 * Driven at four carets including column 0 and at both word spellings, because the
-	 * rule is asked of the DRAFT and a caret-led check has nothing to claim at either end
-	 * of it. The `see ` case is the contrast: a prefix that restores a whitespace boundary
-	 * planned as the command before this change and still does.
-	 */
-	const CANARY = "LOP_R4_PREFIX_CANARY_7c31";
-	for (const [word, prefix] of [
-		["credential", "x"],
-		["cred", "x"],
-		["credential", "see "],
-		["credential", "xplease "],
-	]) {
-		for (const at of [0, 1, "mid", "end"]) {
-			const ran = [];
-			const frame = await mount({
-				conversationId: `conv-q4-${word}-${at}-${prefix.trim() || "none"}`,
-				paneHasSession: true,
-				sessionStatus: { frontend: null },
-				onSlashCommand: async (command) => {
-					ran.push(command);
-					return "consumed";
-				},
-			});
-			await type(frame, `/${word} `);
-			await type(frame, CANARY);
-			await esc(frame);
-			await placeCaret(frame, 0);
-			await type(frame, prefix);
-			const draft = frame.value();
-			assert.ok(
-				draft.includes(CANARY),
-				`/${word} + ${JSON.stringify(prefix)} at caret ${at}: the box holds the characters`,
-			);
-			await placeCaret(
-				frame,
-				at === "end"
-					? draft.length
-					: at === "mid"
-						? Math.floor(draft.length / 2)
-						: at,
-			);
-			await enter(frame);
-			await settle();
-			assert.equal(
-				ran.length,
-				1,
-				`/${word} + ${JSON.stringify(prefix)} at caret ${at}: the run is the dispatcher's`,
-			);
-			assert.equal(
-				ran[0].name,
-				word,
-				`/${word} + ${JSON.stringify(prefix)} at caret ${at}`,
-			);
-			assert.ok(
-				ran[0].args.includes(CANARY.slice(0, -1)),
-				`/${word} + ${JSON.stringify(prefix)} at caret ${at}: and the words go as its argument`,
-			);
-			assert.equal(
-				frame.sent.length,
-				0,
-				`/${word} + ${JSON.stringify(prefix)} at caret ${at}: nothing is sent as a message`,
-			);
-			assert.ok(
-				!JSON.stringify(frame.sent).includes(CANARY),
-				`/${word} + ${JSON.stringify(prefix)} at caret ${at}: and no sent payload carries it`,
-			);
-			assert.ok(
-				!(frame.draft() ?? "").includes(CANARY),
-				`/${word} + ${JSON.stringify(prefix)} at caret ${at}: and the persisted draft holds no value`,
-			);
-			assert.ok(
-				!JSON.stringify(calls).includes(CANARY),
-				`/${word} + ${JSON.stringify(prefix)} at caret ${at}: and no credential was minted from it`,
-			);
-		}
-	}
-
-	/*
-	 * THE RECORD-LESS PROVENANCE OF THE SAME SHAPE — the DOM's own bulk route, no capture,
-	 * no cancel — and it is the RESIDUAL this fix deliberately keeps (the PR body states it):
-	 * without a record the boundary rule holds, so `x/credential <secret>` typed or pasted by
-	 * hand is prose and is sent, exactly as it is on `main`.
-	 *
-	 * It is not closable at this seam. The only fact that tells this draft apart from
-	 * `the docs/credential rotation policy is stale` is a cancel the app itself performed,
-	 * because as far as any rule over words can see, both are prose; reading an in-word slash
-	 * as the command for EVERY draft is what UX round 5 measured the cost of (U19, U20), and
-	 * it is what this commit un-did. So the pin says what the apparatus does and names why,
-	 * rather than asserting a safety this rule cannot have.
-	 */
-	const pasted = [];
-	const frame = await mount({
-		conversationId: "conv-q4-paste",
-		paneHasSession: true,
-		sessionStatus: { frontend: null },
-		onSlashCommand: async (command) => {
-			pasted.push(command);
-			return "consumed";
-		},
-	});
-	const arrival = `x/credential ${CANARY}`;
-	await act(async () => {
-		writeValue(frame.textarea(), arrival, 1);
-	});
-	await settle();
-	await enter(frame);
-	await settle();
-	assert.equal(
-		pasted.length,
-		0,
-		"with no record, an in-word slash is punctuation, so nothing dispatches",
-	);
-	assert.equal(
-		frame.sent.length,
-		1,
-		"and the draft is the operator's prose: it is sent, as it is on main",
-	);
-});
-
-test("a word an edit has broken does not hand the run to the model (QA round 5, Q-1)", async () => {
-	/*
-	 * QA ROUND 5's BLOCKER, on the same one-keystroke-after-the-app's-own-Escape invitation,
-	 * at the positions QA drove on the real app. Each leaves the box holding the characters
-	 * the Escape had just un-masked, with a word this planner's vocabulary can no longer see
-	 * and — for the inside cases — nothing the composer's own `recordWord` can see either, so
-	 * before this commit the gesture degraded to prose and the canary reached a message record
-	 * and a provider request body on this head, on the pre-fold head and on `main` alike.
-	 *
-	 * The cancel's own record is the only fact that survives those edits: it names the WORD
-	 * that was holding characters here. So the run is taken as that word's argument — the
-	 * dispatcher's business, never the model's — and every assertion below is the same shape
-	 * as the intact-word pin above: what ran, what was sent, what the store holds.
-	 */
-	const CANARY = "LOP_R5_BROKEN_WORD_CANARY_9f42";
-	const edits = [
-		["inside the word", { at: 12, type: "x" }],
-		["inside the word, later column", { at: 10, type: "z" }],
-		["immediately after the word", { at: 17, type: "x" }],
-		["one Backspace inside the word", { at: 12, backspace: true }],
-	];
-	for (const [label, edit] of edits) {
-		const ran = [];
-		const frame = await mount({
-			conversationId: `conv-q5-${label.replace(/\W/g, "")}`,
-			paneHasSession: true,
-			sessionStatus: { frontend: null },
-			onSlashCommand: async (command) => {
-				ran.push(command);
-				return "consumed";
-			},
-		});
-		await type(frame, "please /credential ");
-		await type(frame, CANARY);
-		await esc(frame);
-		await placeCaret(frame, edit.at);
-		if (edit.backspace) await key(frame, { key: "Backspace" });
-		else await type(frame, edit.type);
-		const draft = frame.value();
-		assert.ok(
-			draft.includes(CANARY),
-			`${label}: the box holds the characters the Escape un-masked`,
-		);
-		await enter(frame);
-		await settle();
-		assert.equal(ran.length, 1, `${label}: the run is the dispatcher's`);
-		assert.equal(ran[0].name, "credential", `${label}: as the recorded word`);
-		assert.ok(
-			ran[0].args.includes(CANARY.slice(0, -1)),
-			`${label}: and the characters go as its argument`,
-		);
-		assert.equal(
-			frame.sent.length,
-			0,
-			`${label}: nothing is sent as a message`,
-		);
-		assert.ok(
-			!JSON.stringify(frame.sent).includes(CANARY),
-			`${label}: and no sent payload carries it`,
-		);
-		assert.ok(
-			!(frame.draft() ?? "").includes(CANARY),
-			`${label}: nor does the persisted draft`,
-		);
-		assert.ok(
-			!JSON.stringify(calls).includes(CANARY),
-			`${label}: and no credential was minted from it`,
-		);
-	}
-
-	/*
-	 * The space-prefixed form and the form with a sentence after the run, both of which the
-	 * same edit reaches: the first is QA's `I6`, the second its `I7`.
-	 */
-	for (const [label, prefix, suffix] of [
-		["space-prefixed, inside the word", "see ", ""],
-		["with a sentence after the run", "please ", " and then ship it"],
-	]) {
-		const ran = [];
-		const frame = await mount({
-			conversationId: `conv-q5-${label.replace(/\W/g, "")}`,
-			paneHasSession: true,
-			sessionStatus: { frontend: null },
-			onSlashCommand: async (command) => {
-				ran.push(command);
-				return "consumed";
-			},
-		});
-		await type(frame, `${prefix}/credential `);
-		await type(frame, CANARY + suffix);
-		await esc(frame);
-		await placeCaret(frame, prefix.length + 7);
-		await type(frame, "x");
-		await enter(frame);
-		await settle();
-		assert.equal(ran.length, 1, `${label}: the run is the dispatcher's`);
-		assert.equal(ran[0].name, "credential", `${label}`);
-		assert.ok(ran[0].args.includes(CANARY.slice(0, -1)), `${label}`);
-		assert.equal(frame.sent.length, 0, `${label}: nothing is sent`);
-		assert.ok(!JSON.stringify(frame.sent).includes(CANARY), `${label}`);
-	}
 });
 
 test("an in-word slash in prose stays prose and still sends (UX round 5, U19/U20)", async () => {
@@ -4693,201 +3876,6 @@ test("an in-word slash in prose stays prose and still sends (UX round 5, U19/U20
 		);
 		assert.equal(frame.value(), "", "and the send emptied the box");
 	}
-});
-
-test("a draft that no longer holds the run is prose, however much history the pane has (UX round 6, U24)", async () => {
-	/*
-	 * UX ROUND 6's MAJOR, and the code reviewer's MINOR 1 — the same seam, filed from both
-	 * sides: the record's reach was keyed on the PANE'S HISTORY rather than on the draft's
-	 * text, so a user who cancelled a credential, cleared the box and wrote a fresh
-	 * sentence got the run's rule applied to the sentence — truncated to `the docs`, a
-	 * Credential dialog asking for a secret they do not have, and a line that could never
-	 * be sent (round 5's loop, on a draft holding NONE of the app's characters). The control
-	 * — the same sentence, no Escape — was never consumed.
-	 *
-	 * The bound is now the bytes: `carriesRestoredRun` hands the record's word to the
-	 * planner only while the run the cancel put back is still in the box, which is exactly
-	 * the state every shape this branch closes is in at its press. So this test pins the
-	 * property the reviewer asked for — a draft whose text no longer contains the restored
-	 * run is prose, however much history the pane has — by driving the exact steps and the
-	 * control in the same conversation shape.
-	 */
-	const CANARY = "LOP_R6_U24_CANARY_4a17";
-	const sentence = "the docs/credential rotation policy is stale";
-	for (const [label, withEscape] of [
-		["after an Escape and a cleared box", true],
-		["with no Escape at all (the control)", false],
-	]) {
-		const ran = [];
-		const frame = await mount({
-			conversationId: `conv-u24-${withEscape ? "escaped" : "control"}`,
-			paneHasSession: true,
-			sessionStatus: { frontend: null },
-			onSlashCommand: async (command) => {
-				ran.push(command);
-				return "consumed";
-			},
-		});
-		if (withEscape) {
-			await type(frame, "/credential ");
-			await type(frame, CANARY);
-			await esc(frame);
-			const held = frame.value();
-			assert.ok(
-				held.includes(CANARY),
-				`${label}: the app un-masked the characters`,
-			);
-			for (let i = 0; i < held.length; i++)
-				await key(frame, { key: "Backspace" });
-			assert.equal(frame.value(), "", `${label}: the box is cleared`);
-		}
-		await type(frame, sentence);
-		assert.equal(
-			frame.value(),
-			sentence,
-			`${label}: the sentence is what the box holds`,
-		);
-		await enter(frame);
-		await settle();
-		assert.equal(
-			ran.length,
-			0,
-			`${label}: no command was run over the sentence`,
-		);
-		assert.equal(frame.sent.length, 1, `${label}: the sentence is sent`);
-		const sentText = frame.sent.at(-1)[0];
-		assert.equal(
-			typeof sentText === "string" ? sentText : sentText.text,
-			sentence,
-			`${label}: in full, byte for byte`,
-		);
-		assert.equal(frame.value(), "", `${label}: and the send emptied the box`);
-	}
-});
-
-test("an edit that removes the slash sends the plaintext, and that is main's behaviour (code review round 6, MAJOR 1)", async () => {
-	/*
-	 * THE THIRD RESIDUAL, pinned rather than implied, and it is `main`'s behaviour:
-	 * measured on `3a5b66c54` in the same probe, the identical drafts — including the
-	 * intact `please /credential <plaintext>` — are `{kind:"send"}` there too.
-	 *
-	 * The rule speaks through slash tokens. Remove the slash, or the word, or the whole
-	 * token, and there is nothing left for it to see: the composer dispatches nothing and
-	 * the draft goes to the model as the operator's message. What this branch changes is
-	 * the family's SIZE — the shapes where a slash token survives (an edit in front of it,
-	 * inside the word, immediately after it) are all closed — and what it must not do is
-	 * claim the class. This test exists so the claim and the behaviour stay in the same
-	 * file, and so a later change to either one has to face the other.
-	 */
-	const CANARY = "LOP_R6_REMOVED_SLASH_CANARY_5d2c";
-	const deletions = [
-		["the slash deleted", 8, 1],
-		["the word deleted", 8, 11],
-		["the whole token deleted", 8, 12],
-	];
-	for (const [label, caret, count] of deletions) {
-		const ran = [];
-		const frame = await mount({
-			conversationId: `conv-r6-removed-${caret}-${count}`,
-			paneHasSession: true,
-			sessionStatus: { frontend: null },
-			onSlashCommand: async (command) => {
-				ran.push(command);
-				return "consumed";
-			},
-		});
-		await type(frame, "please /credential ");
-		await type(frame, CANARY);
-		await esc(frame);
-		await placeCaret(frame, caret);
-		for (let i = 0; i < count; i++) await key(frame, { key: "Backspace" });
-		const draft = frame.value();
-		assert.ok(
-			draft.includes(CANARY) && !draft.includes("/credential"),
-			`${label}: the box holds the characters with no locked word left`,
-		);
-		await enter(frame);
-		await settle();
-		assert.equal(
-			ran.length,
-			0,
-			`${label}: nothing is dispatched — main's behaviour`,
-		);
-		assert.equal(frame.sent.length, 1, `${label}: the draft is sent`);
-		assert.ok(
-			JSON.stringify(frame.sent).includes(CANARY),
-			`${label}: and the plaintext is what travels (this is the residual, not a claim)`,
-		);
-	}
-});
-
-test("a live run keeps the record's reach, including over a slash the operator wrote (code review round 6, MINOR 1)", async () => {
-	/*
-	 * THE WINDOW THE REVIEWER NAMED, pinned so it cannot widen without a test noticing:
-	 * while the box still holds the characters the app put back, the record's word is handed
-	 * to the planner, and the draft's first slash token is read as that word's run — so a
-	 * path the operator writes *around* the restored characters is taken as the token.
-	 *
-	 * That is the documented cost of the mechanism and it is bounded the same way every
-	 * other shape is: the characters are still in the box at the press, the tail goes to the
-	 * dispatcher rather than the model, the receipt says what happened and the undo returns
-	 * the words. The alternative is the leak this branch exists to close.
-	 */
-	const CANARY = "LOP_R6_WINDOW_CANARY_1b93";
-	const ran = [];
-	const frame = await mount({
-		conversationId: "conv-r6-window",
-		paneHasSession: true,
-		sessionStatus: { frontend: null },
-		onSlashCommand: async (command) => {
-			ran.push(command);
-			return "consumed";
-		},
-	});
-	await type(frame, "/credential ");
-	await type(frame, CANARY);
-	await esc(frame);
-	// The word is replaced with a path, so no locked word is left — only the run and a slash.
-	await placeCaret(frame, 12);
-	for (let i = 0; i < 11; i++) await key(frame, { key: "Backspace" });
-	await placeCaret(frame, 0);
-	await type(frame, "see src/button.tsx ");
-	const draft = frame.value();
-	assert.ok(
-		draft.includes(CANARY),
-		"the restored characters are still in the box",
-	);
-	assert.ok(
-		!draft.includes("/credential"),
-		"and no locked word is left to find",
-	);
-	await enter(frame);
-	await settle();
-	/*
-	 * REWRITTEN BY UX ROUND 7's U27, and this is the residual rather than a window now.
-	 *
-	 * This shape deletes the WORD out of `/credential ` and leaves its `/` against the
-	 * restored characters, so the draft is `see src/button.tsx /<the run>`: the run's left
-	 * context is no longer the space the cancel put it in, which is exactly the condition
-	 * U27 asks the bound to test (`standsAsToken`: start-or-whitespace on the left,
-	 * end-or-whitespace on the right). A rule that still claimed this draft would claim
-	 * `prod` inside `prod/staging` — the substring test U27 removed — so it is recorded
-	 * instead of covered: the draft is prose and its bytes travel as a message, which is
-	 * `main`'s behaviour for the same draft, measured here and stated in the body's
-	 * residual list. What is NOT recorded is the shape the round-6 pin was written for: a
-	 * live run whose own context survives is still the dispatcher's, and that is pinned by
-	 * the paste cells and the escaped-shape tests above.
-	 */
-	assert.equal(
-		ran.length,
-		0,
-		"the run's context was destroyed by the edit, so the draft is prose",
-	);
-	assert.equal(frame.sent.length, 1, "and it is sent");
-	assert.ok(
-		JSON.stringify(frame.sent).includes(CANARY),
-		"including the characters — main's behaviour for this draft, recorded as a residual",
-	);
 });
 
 test("a pasted credential run is the command, and a pasted sentence about a path is not (QA round 6, Q-1)", async () => {
@@ -5012,55 +4000,6 @@ test("a pasted credential run is the command, and a pasted sentence about a path
 		);
 	}
 });
-
-test("a restored run is the command only as a token, not as a substring (UX round 7, U27)", async () => {
-	/*
-	 * UX ROUND 7's MAJOR. The bound was `draft.includes(restoredText)` — no position, no
-	 * length, no word — so a SHORT restored value re-armed the exception on a sentence the
-	 * operator wrote afterwards: `/credential prod` -> Escape -> wipe -> `the prod/staging
-	 * split is stale` took the tail, truncated the sentence and opened a Credential dialog
-	 * asking for a secret that never existed.
-	 *
-	 * The rule is now this codebase's own tokenizer rule, the one `CREDENTIAL_TOKEN` spells:
-	 * start-or-whitespace on the left, end-or-whitespace on the right. `prod` inside
-	 * `prod/staging` fails on the right — the `/` is not whitespace — while a restored run
-	 * still standing where the cancel put it passes on both sides, which is the state every
-	 * shape this branch closes is in at its press. The positive half is pinned by this
-	 * branch's own escaped-shape tests; this is the negative half.
-	 */
-	const SHORT = "prod";
-	const sentence = "the prod/staging split is stale";
-	const ran = [];
-	const frame = await mount({
-		conversationId: "conv-u27-prod",
-		paneHasSession: true,
-		sessionStatus: { frontend: null },
-		onSlashCommand: async (command) => {
-			ran.push(command);
-			return "consumed";
-		},
-	});
-	await type(frame, "/credential ");
-	await type(frame, SHORT);
-	await esc(frame);
-	const held = frame.value();
-	assert.ok(held.includes(SHORT), "the app un-masked the characters");
-	for (let i = 0; i < held.length; i++) await key(frame, { key: "Backspace" });
-	assert.equal(frame.value(), "", "the box is cleared");
-	await type(frame, sentence);
-	await enter(frame);
-	await settle();
-	assert.equal(ran.length, 0, "no command runs over the operator's sentence");
-	assert.equal(frame.sent.length, 1, "the sentence is sent");
-	assert.ok(
-		JSON.stringify(frame.sent).includes(sentence),
-		"in full, byte for byte",
-	);
-});
-
-/* ------------------------------------------------------------------ */
-/* The layer, mounted on its own                                        */
-/* ------------------------------------------------------------------ */
 
 /*
  * THE DROP IS REPORTED AT THE COMMIT THAT REMOVES THE CONTROL (code review round 6, R6-1,
@@ -5200,154 +4139,6 @@ test("the geometry rig's strip floor is the layer's own number", async () => {
 	);
 });
 
-/*
- * R5's OWN SHAPE, PINNED AS THE DEFECT IT WAS (agent review round 2).
- *
- * The sentinel is a claim about what Enter does, and the composer used to read it
- * off the DISCLOSURE — which a reload keeps while the record that decides the press
- * dies with the instance. So the line promised "Enter is held" over a box whose Enter
- * DISPATCHES `/credential <secret>` and eats the trailing words as its argument, the
- * exact defect this change exists to close, under a sentence promising the opposite.
- * The two halves are asserted together on purpose: the sentence must not claim the
- * hold, AND the press must really dispatch — a test that only read the notice would
- * pass on a head where the press had changed and the sentence had not.
- */
-test("the held line is not claimed on the reload shape, where Enter really dispatches", async () => {
-	const CANARY = "LOP_R5_RELOAD_CANARY_77";
-	const ran = [];
-	const dispatch = async (command) => {
-		ran.push(command);
-		return "consumed";
-	};
-	const frame = await mount({
-		conversationId: "conv-r5-reload",
-		onSlashCommand: dispatch,
-	});
-	await openCapture(frame, { prose: "deploy with " });
-	await type(frame, CANARY);
-	await esc(frame);
-	assert.equal(
-		frame.notice(),
-		unredactedNotice(CANARY.length, HELD_TAKEN_BY),
-		"the LIVE cancel's record answers the press, so the line names the hold",
-	);
-
-	/*
-	 * A real reload: refs gone, the persisted draft and its count kept. This is the
-	 * shape the round-1 sentinel lied on.
-	 */
-	const reloaded = await mount({
-		conversationId: "conv-r5-reload",
-		keepWorld: true,
-		remount: true,
-		onSlashCommand: dispatch,
-	});
-	assert.equal(
-		reloaded.value(),
-		`deploy with /credential ${CANARY}`,
-		"the characters and the token survive the reload",
-	);
-	assert.equal(
-		reloaded.disclosure(),
-		CANARY.length,
-		"and so does the disclosure, which is why it could not decide the hold",
-	);
-	assert.equal(
-		reloaded.notice(),
-		unredactedNotice(CANARY.length),
-		"but the HOLD is not claimed: no record answers this press, so the line says what Enter really does",
-	);
-	assert.ok(
-		!/held/.test(reloaded.notice()),
-		"and the word 'held' — the whole lie — is absent",
-	);
-
-	/* The press proves the sentence right: it dispatches, taking the tail. */
-	await enter(reloaded);
-	await settle();
-	assert.equal(
-		ran.length,
-		1,
-		"Enter DISPATCHED on the reload shape, which is what the line now says",
-	);
-	assert.equal(ran[0]?.command?.name ?? ran[0]?.name, "credential");
-	assert.deepEqual(
-		reloaded.notes.length,
-		1,
-		"and the dispatch narrated itself, rather than a hold that never happened",
-	);
-});
-
-/*
- * R6's OWN SHAPE: the notice's OWN remedy, then the identical hold re-armed.
- *
- * The dedupe's reset lived only in `applyCapture`, and clearing the box with the
- * keyboard never runs it (the textarea `onChange` → `applyDomEdit` route clears the
- * record but not the ref). So the operator followed the app's named way out, re-armed
- * the same shape, and the second hold was SILENT — the box kept, nothing dispatched,
- * no sentence — which is the "dead Enter with no feedback" complaint un-suppressible.
- * The clear below is driven through the DOM edit route deliberately: that is the path
- * the remedy actually takes, and the path the reset was missing from.
- */
-test("a fresh hold after the notice's own remedy raises its own sentence", async () => {
-	const ran = [];
-	const frame = await mount({
-		conversationId: "conv-r6-rearm",
-		onSlashCommand: async (command) => {
-			ran.push(command);
-			return "consumed";
-		},
-	});
-	const REARM = "LOP_R6_REARM_CANARY_42";
-	await openCapture(frame, { prose: "deploy with " });
-	await type(frame, REARM);
-	await esc(frame);
-	await enter(frame);
-	await settle();
-	assert.equal(frame.notes.length, 1, "the first hold raised its sentence");
-	assert.match(frame.notes[0], /still the credentials you cancelled/);
-	assert.equal(ran.length, 0, "and nothing dispatched");
-
-	/* THE REMEDY THE SENTENCE ITSELF NAMES: clear the box. */
-	const field = frame.textarea();
-	await act(async () => {
-		writeValue(field, "", 0);
-	});
-	await settle();
-	assert.equal(frame.value(), "", "the box is empty, the notice answered");
-
-	/* Re-arm the IDENTICAL shape. */
-	await openCapture(frame, { prose: "deploy with " });
-	await type(frame, REARM);
-	await esc(frame);
-	assert.equal(
-		frame.notice(),
-		unredactedNotice(REARM.length, HELD_TAKEN_BY),
-		"the re-armed hold claims the hold again",
-	);
-	await enter(frame);
-	await settle();
-	assert.equal(
-		frame.notes.length,
-		2,
-		"a new hold owes its own sentence; the old one's must not suppress it",
-	);
-	assert.match(
-		frame.notes[1],
-		/still the credentials you cancelled/,
-		"and it is the same sentence, freshly raised",
-	);
-	assert.equal(
-		ran.length,
-		0,
-		"the re-armed press is still held, not dispatched",
-	);
-});
-
-/* ------------------------------------------------------------------ */
-/* The secret gate: the credential does not come through this box      */
-/* ------------------------------------------------------------------ */
-
 test("a secret gate refuses the composer the way an unavailable one is refused, and points at the ask panel's masked field", async () => {
 	/*
 	 * THE SECRET ASK'S COMPOSER CLOSURE. While a `secret` ask waits, the answer
@@ -5384,7 +4175,7 @@ test("a secret gate refuses the composer the way an unavailable one is refused, 
 	assert.equal(field.getAttribute("aria-disabled"), "true");
 	assert.equal(
 		field.placeholder,
-		"Answer the secret request in the asks panel",
+		t("ui.chat.composer.placeholder.secret_answer"),
 		"the empty refusal says where the answer goes",
 	);
 	assert.equal(

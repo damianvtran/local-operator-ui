@@ -1,0 +1,16 @@
+{
+	"ui.browser.chrome.approvals": "منظوریاں اور سائٹ کی رسائی",
+	"ui.browser.chrome.error_title": "صفحہ لوڈ نہیں ہو سکا",
+	"ui.browser.chrome.move_left": "ٹیب بائیں منتقل کریں",
+	"ui.browser.chrome.move_right": "ٹیب دائیں منتقل کریں",
+	"ui.browser.chrome.duplicate": "ٹیب کی نقل بنائیں",
+	"ui.browser.chrome.reload": "ٹیب دوبارہ لوڈ کریں",
+	"ui.browser.chrome.scroll_left": "ٹیب بائیں اسکرول کریں",
+	"ui.browser.chrome.scroll_right": "ٹیب دائیں اسکرول کریں",
+	"ui.browser.chrome.accessible_tab": "{title}{loading, select, yes{، لوڈ ہو رہا ہے} other{}}{failed, select, yes{، لوڈ نہیں ہو سکا} other{}}{owner, select, agent{، ایجنٹ کی ملکیت} shared{، ایجنٹ کے ساتھ مشترک} other{}}{waiting, select, none{} other{، درخواست {waiting} منتظر}}{restored, select, yes{، بحال شدہ} other{}}",
+	"ui.browser.chrome.invalid_order": "براؤزر ٹیب کی ترتیب درست نہیں۔",
+	"ui.browser.chrome.duplicate_refused": "صرف ویب صفحات کی نقل بن سکتی ہے۔",
+	"ui.browser.chrome.invalid_action": "براؤزر ٹیب کا اقدام درست نہیں۔",
+	"ui.browser.chrome.tab_gone": "وہ براؤزر ٹیب اب کھلا نہیں ہے۔",
+	"ui.browser.chrome.operation_failed": "{action, select, duplicate{ٹیب کی نقل نہیں بن سکی۔ آپ اس کے مینو سے دوبارہ کوشش کر سکتے ہیں۔} other{ٹیب دوبارہ لوڈ نہیں ہو سکا۔ آپ اس کے مینو سے دوبارہ کوشش کر سکتے ہیں۔}}"
+}

@@ -1,0 +1,4 @@
+{
+	"ui.settings.model.provider_callout.sentence": "登录提供商即可使用更多模型。现有的Claude、ChatGPT或Radient订阅可直接使用，无需API密钥。如需连接，请前往 ",
+	"ui.settings.model.provider_callout.providers_link": "模型提供商"
+}

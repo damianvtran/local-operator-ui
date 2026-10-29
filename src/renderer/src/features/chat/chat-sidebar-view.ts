@@ -61,6 +61,7 @@
  * claim, which is why there is no wire field.
  */
 
+import type { WithoutParams } from "@shared/i18n";
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import {
 	SIDEBAR_BASES,
@@ -101,15 +102,22 @@ export const SIDEBAR_SECTIONS: readonly SidebarSectionKey[] = [
 	"teams",
 ];
 
-/** The label each section prints. Sentence case; CSS sets the capitals. */
-export const SIDEBAR_SECTION_LABEL: Record<SidebarSectionKey, string> = {
-	pinned: "Pinned",
-	running: "Running",
-	today: "Today",
-	week: "This week",
-	older: "Older",
-	agents: "Agents",
-	teams: "Teams",
+/**
+ * The label each section prints. Sentence case; CSS sets the capitals.
+ *
+ * KEYS, NOT COPY, for the reason `CHAT_LIST_SECTION_LABEL` beside it states: a
+ * module-scope English table cannot follow a language switch, and it is the
+ * second place a section's name would be spelled. Resolved by `t()` where the
+ * heading is drawn.
+ */
+export const SIDEBAR_SECTION_LABEL: Record<SidebarSectionKey, WithoutParams> = {
+	pinned: "ui.chat.sidebar_view.section.pinned",
+	running: "ui.chat.sidebar_view.section.running",
+	today: "ui.chat.sidebar_view.section.today",
+	week: "ui.chat.sidebar_view.section.week",
+	older: "ui.chat.sidebar_view.section.older",
+	agents: "ui.chat.sidebar_view.section.agents",
+	teams: "ui.chat.sidebar_view.section.teams",
 };
 
 /**
@@ -437,6 +445,21 @@ export type SidebarView = {
 	/** Display-only: disabling grouping never removes durable assignments. */
 	tagsEnabled: boolean;
 	/**
+	 * Whether a DESKTOP fork asks the backend to name itself with a tag
+	 * (`docs/design/sidebar-tags-v2.md` §5.4). Default ON and persisted with the
+	 * rest of the view, because the preference is about the next fork, not about
+	 * what the tags list draws - which is why it is a sibling of `tagsEnabled`
+	 * rather than of `groupBy`.
+	 *
+	 * IT IS AN INTENT, NOT A PROMISE: a backend that predates the fork field is
+	 * never sent `auto_tag` (`chat-auto-tag.ts` owns the gate), and turning tags
+	 * off stops the flag at the request even while this stays true, so a reader
+	 * who re-enables tags gets their choice back rather than a silent reset.
+	 * Changing it later never rewrites an existing fork's sidecar - the backend
+	 * captures the intent at fork time.
+	 */
+	autoTagForks: boolean;
+	/**
 	 * Which clock the time sections and the row labels read.
 	 *
 	 * Declared beside `groupBy`/`orderBy` because it is a third, independent axis
@@ -466,6 +489,7 @@ export const DEFAULT_SIDEBAR_VIEW: SidebarView = {
 	pins: [],
 	groupBy: "section",
 	tagsEnabled: false,
+	autoTagForks: true,
 	basis: "active",
 	orderBy: "active-first",
 	loads: 0,
@@ -1341,6 +1365,16 @@ export function parseSidebarView(value: unknown): SidebarView {
 		order,
 		groupBy,
 		tagsEnabled: typeof raw.tagsEnabled === "boolean" ? raw.tagsEnabled : false,
+		/*
+		 * A stored non-boolean reads as the DEFAULT rather than as `false`: this
+		 * setting is opt-out, and the tampered-storage edge must not silently
+		 * disable the behaviour a fresh install has. `false` is only ever the
+		 * value a reader chose, which is what makes `off` durable.
+		 */
+		autoTagForks:
+			typeof raw.autoTagForks === "boolean"
+				? raw.autoTagForks
+				: DEFAULT_SIDEBAR_VIEW.autoTagForks,
 		basis,
 		orderBy,
 		loads,

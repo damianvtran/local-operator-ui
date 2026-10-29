@@ -12,6 +12,14 @@ export function hubReasonText(reason: string | null | undefined): string {
 			return t("ui.hub.status.unsupported");
 		case "baseline-unknown":
 			return t("ui.hub.status.baseline_unknown");
+		/*
+		 * The publish preview refuses this alias because an UNOWNED local skill
+		 * already holds it, not because two sources diverged - so it must not
+		 * borrow the merge-lineage sentence below. Name the local collision and
+		 * the choice it leaves the user (the existing local_exists copy).
+		 */
+		case "alias-occupied":
+			return t("ui.hub.skills.local_exists");
 		case "mixed-lineage":
 		case "origin-conflict":
 			return t("ui.hub.status.mixed_lineage");

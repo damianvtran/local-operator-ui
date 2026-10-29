@@ -4,6 +4,7 @@ import {
 	ipcMain,
 	shell,
 } from "electron";
+import { LANGUAGE_SETTING_KEY } from "../i18n/locale";
 import type { DesktopResponse } from "../shared/desktop-contract";
 import {
 	DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
@@ -14,6 +15,7 @@ import type { DesktopNotifier } from "./desktop-notifier";
 import type { DesktopStreamRelay } from "./desktop-stream";
 import { trustedDesktopFrame } from "./desktop-transport";
 import type { SupplementFrameMounts } from "./supplement-mounts";
+import type { TeamBridgeNotifier } from "./team-bridge-notifier";
 
 const OPERATION_ID = /^[a-zA-Z0-9_-]{1,128}$/;
 
@@ -41,6 +43,31 @@ function isAcceptedKeymapEdit(
 }
 
 /**
+ * Whether this request is a language write the backend ACCEPTED.
+ *
+ * Same split as `isAcceptedKeymapEdit`: the op and key are read from the
+ * REQUEST, acceptance from the RESPONSE. Crucially the VALUE is never read -
+ * an accepted write is a signal to re-read the backend's resolved tag, so a
+ * compromised or confused renderer that posts `ui`/`zh-CN` gains nothing but a
+ * round trip; a refused write changed nothing, so it triggers nothing.
+ *
+ * `settings.reset` is included because resetting the language row returns the
+ * setting to `auto`, which can resolve to a different tag than the one on screen.
+ */
+export function isAcceptedLanguageEdit(
+	input: unknown,
+	response: DesktopResponse,
+): boolean {
+	if (response.status < 200 || response.status >= 300) return false;
+	if (input === null || typeof input !== "object") return false;
+	const request = input as { op?: unknown; key?: unknown };
+	return (
+		(request.op === "settings.edit" || request.op === "settings.reset") &&
+		request.key === LANGUAGE_SETTING_KEY
+	);
+}
+
+/**
  * The ops that owe a VISIBLE, FOCUSED window before they may be sent.
  *
  * A set rather than two chained comparisons, because the match is by op NAME
@@ -53,6 +80,10 @@ function isAcceptedKeymapEdit(
 const FOREGROUND_RECEIPT_OPS: ReadonlySet<string> = new Set([
 	"sessions.seen",
 	"attention.seen",
+	// Notifications reel reads (contract § 5.2); `notifications.dismiss` is not
+	// a "seen" claim and stays unguarded, as `sessions.notified` does.
+	"notifications.read",
+	"notifications.seen",
 ]);
 
 /**
@@ -230,6 +261,31 @@ export function registerDesktopIPC(
 	 * tests pass none).
 	 */
 	supplementMounts?: SupplementFrameMounts,
+	/**
+	 * Team Bridge message banners. A SEPARATE owner from `notifier` because the
+	 * two have different vocabularies and different dedupe stores; both ride the
+	 * same sender gate below, which is the only place a renderer-supplied
+	 * payload can enter main.
+	 *
+	 * LAST ON PURPOSE: every existing caller passes the earlier parameters
+	 * positionally, and inserting this above one of them would silently turn a
+	 * `noteLeftSession` callback into a notifier argument in the JS harnesses.
+	 */
+	teamBridgeNotifier?: TeamBridgeNotifier,
+	/**
+	 * The language setting's write-through tap, the twin of the keymap one above.
+	 *
+	 * APPENDED after `teamBridgeNotifier` rather than placed beside its keymap
+	 * sibling, for the reason that parameter's own note gives: every existing
+	 * caller passes the earlier parameters positionally, and inserting one above
+	 * any of them would silently reinterpret a callback in the harnesses.
+	 *
+	 * It carries no payload. The callback re-reads the backend's resolved language
+	 * (`{ op: "capabilities" }`) rather than accepting whatever the renderer wrote,
+	 * because the setting has one owner and main only mirrors what the backend
+	 * answers.
+	 */
+	onLanguageSettingEdited?: () => void,
 ): void {
 	const opened = new Map<string, string>();
 	function authorize(event: IpcMainInvokeEvent): void {
@@ -261,6 +317,15 @@ export function registerDesktopIPC(
 			outcome.then(
 				(response) => {
 					if (isAcceptedKeymapEdit(input, response)) onKeymapSettingEdited();
+				},
+				() => {},
+			);
+		}
+		if (onLanguageSettingEdited) {
+			outcome.then(
+				(response) => {
+					if (isAcceptedLanguageEdit(input, response))
+						onLanguageSettingEdited();
 				},
 				() => {},
 			);
@@ -367,6 +432,59 @@ export function registerDesktopIPC(
 			 * pane's report survives this cleanup.
 			 */
 			noteLeftSession?.(args.sessionId);
+		});
+	}
+	/*
+	 * Team Bridge message banners: the one renderer -> main channel that may
+	 * raise an OS notification this app did not compose from a backend frame.
+	 *
+	 * The payload is validated in `TeamBridgeNotifier` before anything is
+	 * constructed, so an oversized string, an HTML-shaped one or a malformed id
+	 * rejects here rather than reaching the OS. The pending-open read is the
+	 * rare no-window half: a banner clicked after every window closed leaves its
+	 * target for the next renderer, which asks for it exactly once.
+	 */
+	if (teamBridgeNotifier) {
+		const watched = new WeakSet<IpcMainInvokeEvent["sender"]>();
+		const authorizeNotifications = (event: IpcMainInvokeEvent) => {
+			// Only the shell owns the auth journal, not an admitted auxiliary pane.
+			if (!isAdmittedSender(event, [{ window: window(), url: expectedUrl }])) {
+				throw new Error("This document cannot use Team Bridge notifications.");
+			}
+		};
+		ipcMain.handle("team-bridge:authority", (event, input: unknown) => {
+			authorizeNotifications(event);
+			if (!watched.has(event.sender)) {
+				watched.add(event.sender);
+				const contents = event.sender;
+				// Electron 44 emits did-start-navigation BEFORE the guard can cancel
+				// will-frame-navigate; cancellation has no commit event. Reset only
+				// on a committed document replacement, never on an attempted link.
+				// Frame/URL admission above still rejects departing/foreign frames.
+				contents.on(
+					"did-frame-navigate",
+					(_event, _url, _code, _text, mainFrame) => {
+						if (mainFrame) teamBridgeNotifier.resetAuthority();
+					},
+				);
+				contents.on("render-process-gone", () =>
+					teamBridgeNotifier.resetAuthority(),
+				);
+				contents.once("destroyed", () => teamBridgeNotifier.resetAuthority());
+			}
+			teamBridgeNotifier.setAuthority(input);
+		});
+		ipcMain.handle("team-bridge:notify", (event, input: unknown) => {
+			authorizeNotifications(event);
+			return teamBridgeNotifier.notify(input);
+		});
+		ipcMain.handle("team-bridge:directory", (event, input: unknown) => {
+			authorizeNotifications(event);
+			teamBridgeNotifier.syncDirectory(input);
+		});
+		ipcMain.handle("team-bridge:pending-open", (event) => {
+			authorizeNotifications(event);
+			return teamBridgeNotifier.takePendingOpen();
 		});
 	}
 	// Binary/multipart media relay. Bytes arrive as a structured-clone

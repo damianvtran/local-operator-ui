@@ -1,0 +1,129 @@
+{
+ "audit_id": "att-attachments-r2-20261021",
+ "date": "2026-10-21",
+ "locale": "es",
+ "namespace": "ui.teamBridge",
+ "source_commit": "8cf05961d64322fe64ebccd6282069c7f52f12f3",
+ "source_base": "cf1d7c616ca36bd48c0bf160d64a08514b7c2b08",
+ "scope": "Round-2 delta of #1314 (cf1d7c616c..8cf05961d6): 6 es values changed/added applying att-r1-es and design D1, including the changed en attachments.expired_staged and new attachments.expired_staged_retry / attachments.preview_unavailable. Other 165 values byte-unchanged and inherited from att-r1-es.",
+ "status": "audited",
+ "translator": {
+  "agent": "coder",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-10-21",
+  "session": "03594b2dcc02",
+  "job": "bc0c4b952eaa",
+  "commit": "cedfe88fc6"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "anthropic/claude-opus-5-5",
+   "date": "2026-10-21",
+   "result": "clean",
+   "instance": "att-r2-es",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/att-r2-es.json",
+   "receipt_sha256": "c2183c6e7d564c22cf781425d034a1ef06a2a8a96e032352b2704b2df460310c",
+   "scope": "Team Bridge image attachments round 2: remediation delta (6 keys) independently audited at head 8cf05961d6; all att-r1-es findings verified applied or superseded by the D1 source change. Catalogue audit only, not rendered-fit, activation or release approval.",
+   "note": "Round 2: no findings. All round-1 findings closed. No rendered-fit claim."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "att-r1-es",
+   "session": "f5b05da4cf25",
+   "job": "e56145b2fcf2",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 23,
+   "target_sha256": "cf5d345b07f1425343eb091cab1959f258695532177ad5f473036231a730eebb",
+   "findings": [
+    {
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.retry_load"
+    },
+    {
+     "severity": "NIT",
+     "key": "ui.teamBridge.attachments.remove"
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/att-r1-es.json",
+    "sha256": "d267d3689a22c7bb760db10ddadfddf11813ce2609606ad870e393a07eb922ba"
+   }
+  },
+  {
+   "round": 2,
+   "instance": "att-r2-es",
+   "session": "12aab7b684ab",
+   "job": "d8717b64c01a",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 6,
+   "target_sha256": "34ebfffbe978805ce0afa8a5e92cbfea3743587485494b3cb86c4cd4af51b8c9",
+   "findings": [],
+   "round1_dispositions": [
+    {
+     "finding": "r1 MINOR (no id)",
+     "keys": "retry_load",
+     "verified": "applied: 'Reintentar' (= list.retry and the chip retry verb)"
+    },
+    {
+     "finding": "r1 NIT (no id)",
+     "keys": "remove/retry",
+     "verified": "applied: 'Quitar: {label}' / 'Reintentar: {label}' (no space before colon, correct for es); composed tooltip 'Quitar: Imagen 2 de 3'"
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/att-r2-es.json",
+    "sha256": "c2183c6e7d564c22cf781425d034a1ef06a2a8a96e032352b2704b2df460310c"
+   }
+  }
+ ],
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/es/ui.teamBridge.json",
+   "sha256": "34ebfffbe978805ce0afa8a5e92cbfea3743587485494b3cb86c4cd4af51b8c9"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "09acfc1ecfb2533c8c340eb706b74b4f3ee68f367ad1bc60e41c06b549ca4f1a"
+  }
+ },
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/es.md",
+   "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+  }
+ },
+ "independence": "Translator (coder session 03594b2dcc02, job bc0c4b952eaa) and round-2 auditor (translation-auditor session 12aab7b684ab, job d8717b64c01a) are different agents in different sessions; the round-2 auditor is also distinct from the round-1 auditor session f5b05da4cf25. The auditor never edited catalogues, ran no git operations and did not run ledger-assemble.",
+ "limitations": [
+  "Browser not used; no rendered-fit, screenshots, glyph metrics, pseudo-localization or activation evidence claimed.",
+  "Round 2 covers the remediation delta and direct regression surfaces only; unchanged values rely on att-r1 and its inherited receipts."
+ ],
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/att-r1-es.json",
+   "sha256": "d267d3689a22c7bb760db10ddadfddf11813ce2609606ad870e393a07eb922ba"
+  },
+  {
+   "path": "i18n/receipts/att-r2-es.json",
+   "sha256": "c2183c6e7d564c22cf781425d034a1ef06a2a8a96e032352b2704b2df460310c"
+  }
+ ]
+}

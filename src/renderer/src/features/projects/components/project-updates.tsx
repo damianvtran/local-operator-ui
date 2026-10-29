@@ -18,148 +18,26 @@ import { t } from "@shared/i18n";
  * the age token beside it is for scanning. Two readings, one fact — the
  * transcript's own timestamp convention.
  *
- * ATTACHMENTS. Images render through the SAME frame and viewer every other
- * picture in this app uses (`AttachmentFrame`/`ImageAttachment` — expansion,
- * the moved/deleted sentence, the file-actions menu), reading bytes over IPC
- * from the stored copy's path (`useFileBlobUrl`, shared with the canvas
- * viewers). Data attachments render as the file-row idiom this app already
- * has — name, size, a glyph that is identification rather than a second
- * action — with `FileActionsMenu` carrying Open/Reveal/Copy. The whole card's
- * name is ALSO a button that opens the file in the OS, because a card whose
- * only affordance is a menu reads as decoration.
+ * ATTACHMENTS render through `ProjectUpdateAssets`: one grid per entry of the
+ * SAME attachment components chat uses — `ImageAttachment` thumbnails, video
+ * tiles, the canonical `SoundPlayer`, and the shared file tile — with the
+ * shared `ImageLightbox` as the one gallery for that entry's pictures and
+ * clips. The grid owns laziness (`useEverInView` gates every byte read), so a
+ * long history opens without reading its evidence up front; the reader of the
+ * components themselves lives in `project-update-assets.tsx`.
  */
 
-import { mimeTypeForPath } from "@features/chat/utils/file-kind";
-import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
-import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import { File } from "lucide-react";
 import type { FC } from "react";
 import { Fragment } from "react";
-import type {
-	DesktopProjectAttachment,
-	DesktopProjectUpdate,
-} from "../../../../../shared/desktop-control-contract";
-import {
-	AttachmentFrame,
-	BrokenAttachment,
-} from "../../chat/components/message-item/attachment-frame";
-import { ImageAttachment } from "../../chat/components/message-item/image-attachment";
+import type { DesktopProjectUpdate } from "../../../../../shared/desktop-control-contract";
 import { ProjectMarkdown } from "../project-markdown";
 import {
-	attachmentSizeText,
 	groupUpdatesByDay,
 	updateMetaTokens,
 	updatesCountLabel,
 } from "../project-model";
-
-/** The filename a card falls back to when the writer named nothing. */
-const PATH_SEPARATOR_REGEX = /[/\\]/;
-function attachmentName(attachment: DesktopProjectAttachment): string {
-	if (attachment.name) return attachment.name;
-	const parts = attachment.path.split(PATH_SEPARATOR_REGEX);
-	return parts[parts.length - 1] || t("ui.projects.project_updates.attachment");
-}
-
-const UpdateDataAttachment: FC<{ attachment: DesktopProjectAttachment }> = ({
-	attachment,
-}) => {
-	useI18nLocale();
-	const name = attachmentName(attachment);
-	const size = attachmentSizeText(attachment.bytes);
-	return (
-		<div className="flex w-fit max-w-full items-center gap-2.5 rounded-sm border border-hairline bg-surface px-3 py-2">
-			<button
-				type="button"
-				className="flex min-w-0 items-center gap-2.5 text-left"
-				onClick={() => {
-					void window.api?.openFile(attachment.path);
-				}}
-				title={t("ui.projects.project_updates.open_name", {
-					name: String(name),
-				})}
-			>
-				<File className="size-4 shrink-0 text-ink-dim" aria-hidden={true} />
-				<span className="truncate text-body-sm text-ink">{name}</span>
-			</button>
-			{size && (
-				<span className="shrink-0 text-meta text-ink-muted tabular-nums">
-					{size}
-				</span>
-			)}
-			{/*
-			 * ALWAYS VISIBLE, unlike the transcript card's hover reveal: a feed
-			 * entry can carry several attachments, this surface has no scroll
-			 * budget to save, and a control that exists only under the pointer is
-			 * the affordance nobody finds.
-			 */}
-			<FileActionsMenu
-				filePath={attachment.path}
-				aria-label={t("ui.projects.project_updates.file_actions_for_name", {
-					name: String(name),
-				})}
-			/>
-		</div>
-	);
-};
-
-const UpdateImageAttachment: FC<{ attachment: DesktopProjectAttachment }> = ({
-	attachment,
-}) => {
-	useI18nLocale();
-	const name = attachmentName(attachment);
-	const state = useFileBlobUrl(attachment.path, {
-		mimeType: mimeTypeForPath(attachment.name || attachment.path),
-		sizeBytes: attachment.bytes,
-	});
-	if (state.status === "ready") {
-		return (
-			<div className="inline-block max-w-full">
-				<ImageAttachment
-					file={attachment.path}
-					src={state.url}
-					label={name}
-					conversationId=""
-				/>
-			</div>
-		);
-	}
-	if (state.status === "loading") {
-		// The reserved box, so the entry never reflows when the picture lands
-		// (the frame's own design note).
-		return (
-			<AttachmentFrame>
-				<span className="sr-only">
-					{t("ui.projects.project_updates.loading")}
-					{name}
-				</span>
-			</AttachmentFrame>
-		);
-	}
-	// A stored copy is a path on disk, so the moved/renamed/deleted sentence is
-	// the honest one — the legacy caller's case, not the digest store's.
-	return <BrokenAttachment name={name} />;
-};
-
-const UpdateAttachments: FC<{ attachments: DesktopProjectAttachment[] }> = ({
-	attachments,
-}) => (
-	<div className="flex flex-wrap items-start gap-2">
-		{attachments.map((attachment) =>
-			attachment.kind === "image" ? (
-				<UpdateImageAttachment
-					key={`${attachment.path}:${attachment.added_at}`}
-					attachment={attachment}
-				/>
-			) : (
-				<UpdateDataAttachment
-					key={`${attachment.path}:${attachment.added_at}`}
-					attachment={attachment}
-				/>
-			),
-		)}
-	</div>
-);
+import { ProjectUpdateAssets } from "./project-update-assets";
 
 const UpdateEntry: FC<{ update: DesktopProjectUpdate; nowMs: number }> = ({
 	update,
@@ -181,7 +59,7 @@ const UpdateEntry: FC<{ update: DesktopProjectUpdate; nowMs: number }> = ({
 			)}
 			{update.text && <ProjectMarkdown>{update.text}</ProjectMarkdown>}
 			{update.attachments.length > 0 && (
-				<UpdateAttachments attachments={update.attachments} />
+				<ProjectUpdateAssets attachments={update.attachments} />
 			)}
 		</article>
 	);

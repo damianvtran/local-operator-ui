@@ -1,0 +1,55 @@
+{
+  "auditor": "reviewer (independent Urdu locale auditor)",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "f0a1b2c3d4e5",
+  "locale": "ur",
+  "date": "2026-10-19T15:57:38.278267+00:00",
+  "status": "passed",
+  "result": "clean",
+  "fallback": "Actual audit used openai/gpt-6.1-sol following anthropic quota exhaustion; no Urdu conclusions were inherited from the prior model.",
+  "independence": "Did not translate or edit the catalogue; independently compared English source, context and Urdu additions.",
+  "namespaces": {
+    "ui.chat.tags": {
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 73,
+      "new_keys_audited": 19,
+      "baseline_values_verified": 54,
+      "sha256": {
+        "en": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+        "ur": "1ebc41a63a56910daa408deebd50e875828ab7b88bb22b6d36a666dac37d4a5b",
+        "context": "ce20c5a796056d03f7dd17f55974982fd62fe2895ec8d7250679c07bee93f852"
+      },
+      "findings": []
+    }
+  },
+  "findings": [],
+  "evidence": {
+    "baseline_ref": "6913ef7e869cb331954a957161427e2872ec6575",
+    "baseline_note": "All 54 existing value UTF-8 bytes and original baseline lines preserved (only final baseline property gains a JSON comma). Local main does not contain this catalogue; baseline comparison is against HEAD, not a fabricated main comparison.",
+    "exact_additions": [
+      "create_failed",
+      "create_helper",
+      "create_name",
+      "create_pending",
+      "created_name",
+      "name_long",
+      "name_reserved",
+      "registry_changed",
+      "registry_count",
+      "registry_limit",
+      "remote",
+      "remove_named",
+      "renamed_name",
+      "reorder_filtered",
+      "selection_count",
+      "selection_limit",
+      "selection_status",
+      "staged_added",
+      "tag_usage"
+    ],
+    "icu": "Executed installed @formatjs/icu-messageformat-parser and intl-messageformat: all 73 messages parse/compile, argument names/types match English. Urdu Intl.PluralRules categories one/other; tag_usage rendered with counts 0,1,2,8,32.",
+    "linguistic": "Compared all 19 additions with English and context. Meaning, grammar, polite imperative register, count-limit distinction, durable-save versus staged-draft distinction, and literal reserved Untagged identifier are correct. Urdu plural گفتگو / گفتگوئیں is appropriate in standalone usage counts.",
+    "rtl_and_length": "Logical Urdu order is appropriate (8 میں سے {count}); Urdu punctuation and quoted interpolations retained. Examined mixed-script formatted name and reserved identifier samples. Copy is concise; no catalogue-specific menu/toast length defect identified. Rendered bidi isolation, glyph shaping, overflow and long-name wrapping were not validated: browser tool is unavailable in this role. This receipt is a linguistic/source audit, not rendered UI sign-off."
+  }
+}

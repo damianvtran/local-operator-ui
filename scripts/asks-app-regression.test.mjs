@@ -23,6 +23,7 @@ import {
 	ASKS_CONTROL_PINNED,
 	ASKS_RAIL_CLOSE_POST_STATE,
 	CASES,
+	CONTROL_BUILD_NODE_ARGS,
 	CONTROL_REUSE_PARTS,
 	controlReusePlan,
 	describeMainPreloadReuse,
@@ -593,9 +594,10 @@ test("the control revision is DERIVED, and satisfies the reuse assertion by cons
 	 *    unchanged for this case);
 	 *  - rebuild: this branch changes main, preload or the vite config (a window
 	 *    option, an IPC channel), so the control builds its own from its own source.
-	 * What is never legitimate is a differing lockfile: the control shares the
-	 * candidate's node_modules, so that is a different experiment, and the producer
-	 * refuses it. This test fails for that reason and no other.
+	 * A differing lockfile is legitimate for a reviewed dependency addition: the
+	 * control installs its own dependencies from its own lockfile instead of
+	 * sharing the candidate's node_modules. The plan must still REPORT it so the
+	 * manifest records which control experiment ran.
 	 */
 	const plan = controlReusePlan(
 		(spec) =>
@@ -606,11 +608,6 @@ test("the control revision is DERIVED, and satisfies the reuse assertion by cons
 		base,
 		"HEAD",
 	);
-	assert.equal(
-		plan.lockDiffers,
-		false,
-		`the lockfile differs between the control ${base} and HEAD: the control would run on dependencies it was not built for`,
-	);
 	const touched = execFileSync(
 		"git",
 		["diff", "--name-only", base, "HEAD", "--", ...CONTROL_REUSE_PARTS],
@@ -618,13 +615,55 @@ test("the control revision is DERIVED, and satisfies the reuse assertion by cons
 	).trim();
 	/* The plan and the diff are two spellings of one fact; they must agree. */
 	assert.equal(
+		plan.lockDiffers,
+		touched.split("\n").includes("pnpm-lock.yaml"),
+		`the lockfile plan (${plan.lockDiffers}) disagrees with the diff (${JSON.stringify(touched)})`,
+	);
+	assert.equal(
 		plan.reuse,
 		touched === "",
 		`the reuse plan (${plan.reuse ? "reuse" : `rebuild: ${plan.differing.join(", ")}`}) disagrees with the diff of the reused parts (${JSON.stringify(touched)})`,
 	);
 });
 
-test("controlReusePlan: identical trees reuse; a main/preload/config change rebuilds; a lockfile change is refused", () => {
+test("the isolated control builder has a bounded heap without changing global NODE_OPTIONS", () => {
+	assert.deepEqual(CONTROL_BUILD_NODE_ARGS, [
+		"--max-old-space-size=4096",
+		"--input-type=module",
+	]);
+	const source = readFileSync(
+		new URL("./asks-app-regression.mjs", import.meta.url),
+		"utf8",
+	);
+	assert.ok(
+		source.includes(
+			'await execute(process.execPath, [...CONTROL_BUILD_NODE_ARGS, "-e", code]',
+		),
+	);
+	const inherited = process.env.NODE_OPTIONS;
+	const env = { ...process.env, NODE_OPTIONS: "--max-old-space-size=128" };
+	const code = `import v8 from 'node:v8';console.log(JSON.stringify({heap:v8.getHeapStatistics().heap_size_limit,options:process.env.NODE_OPTIONS}));`;
+	const run = (args) => {
+		const child = spawnSync(process.execPath, [...args, "-e", code], {
+			encoding: "utf8",
+			env,
+			timeout: 15000,
+		});
+		assert.equal(child.status, 0, child.stderr);
+		return JSON.parse(child.stdout);
+	};
+	// A real low-heap control proves the explicit builder flag takes effect;
+	// reading V8's configured limit allocates no multi-gigabyte test heap.
+	const low = run(["--input-type=module"]);
+	const bounded = run(CONTROL_BUILD_NODE_ARGS);
+	assert.ok(low.heap < 256 * 1024 ** 2, JSON.stringify(low));
+	assert.ok(bounded.heap >= 4 * 1024 ** 3, JSON.stringify(bounded));
+	assert.ok(bounded.heap < 4.25 * 1024 ** 3, JSON.stringify(bounded));
+	assert.equal(bounded.options, env.NODE_OPTIONS);
+	assert.equal(process.env.NODE_OPTIONS, inherited);
+});
+
+test("controlReusePlan: identical trees reuse; a main/preload/config change rebuilds; a lockfile change installs control dependencies", () => {
 	const same = (spec) => `tree:${spec.split(":")[1]}`;
 	const plan0 = controlReusePlan(same, "ctl", "HEAD");
 	assert.deepEqual(plan0, { reuse: true, differing: [], lockDiffers: false });
@@ -645,7 +684,7 @@ test("controlReusePlan: identical trees reuse; a main/preload/config change rebu
 		assert.equal(p.lockDiffers, false, `${part} is a rebuild, not a refusal`);
 	}
 
-	/* The lockfile is the one part that is NOT redirected to a rebuild. */
+	/* A lockfile change rebuilds the control and installs its own dependencies. */
 	const lock = (spec) =>
 		spec.startsWith("ctl:") && spec.endsWith(":pnpm-lock.yaml")
 			? "other"

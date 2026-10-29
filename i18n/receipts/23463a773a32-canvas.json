@@ -1,0 +1,807 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "locale": "ru",
+  "locale_name": "Russian",
+  "batch": "canvas",
+  "pr": 1388,
+  "branch": "feat/i18n-canvas-batch",
+  "head": "82209cab3a9eeee4d6649d4b0015b73501b122e8",
+  "previous_head": "936e3a483b4d675c9827be5f40167da186f86900",
+  "base": "40462495827dfb0e1bfacb8643da805912493a5b",
+  "date": "2026-10-24",
+  "round": 2,
+  "auditor": {
+    "agent": "translation-auditor",
+    "harness": "Local Operator",
+    "team": "lopdev",
+    "session": "23463a773a32",
+    "instance": "23463a773a32-canvas",
+    "model": "radient/auto",
+    "model_provenance": "Harness session model tag radient/auto; no narrower underlying model id was exposed and no fallback was observed. No other model is claimed.",
+    "independence": "Independent auditor; different session from the translator and the implementer. Read-only pass over git objects at the recorded heads; this session edited no catalogue value and made no commit.",
+    "date": "2026-10-24"
+  },
+  "model": "radient/auto",
+  "instance": "23463a773a32-canvas",
+  "reference": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ru.md",
+      "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+    }
+  },
+  "previous_receipt": {
+    "path": "i18n/receipts/0f5238900a89-canvas.json",
+    "sha256": "795517b4a2b172eebf287e792f2c7be6376a24ceffa1c91ba6ecf530daadf4f8"
+  },
+  "audit_scope": "Remediation delta only: every ru value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical English/context hashes and the per-namespace target hashes recorded below.",
+  "independence_note": "Round 2 of the same auditor role that raised round 1; it verifies the applied values and reruns the mechanical checks, it does not re-audit unchanged copy.",
+  "remediation": {
+    "blocker: stop.confirm dropped count": {
+      "status": "FIXED",
+      "note": "RU-C2: {count, number, ::group-off} restored in every non-=1 branch; explicit =1 arm added so 21/31/101 state the count instead of «this session»."
+    },
+    "blocker: signed-out inversion": {
+      "status": "FIXED",
+      "note": "RU-C3: «Выход выполнен» now matches ui.settings.integrations.integration_model.signed_out."
+    },
+    "major: view_name case/count": {
+      "status": "FIXED",
+      "note": "RU-C1: label-first shape removes the «показано файлы» agreement failure and restores the count; residual minor R2-RU-CAN-01 (repeated label / 21 singular)."
+    },
+    "major: highlights glossary": {
+      "status": "FIXED",
+      "note": "RU-C4: finder_layout.highlights and its files-view satellite read «Выделенные»; actual favourites keep «Избранное» in ui.library.status.favorites."
+    },
+    "major: dots rule": {
+      "status": "FIXED",
+      "note": "RU-C5: the constraint now reads «имя не должно состоять только из точек»."
+    },
+    "major: info_model counters": {
+      "status": "FIXED",
+      "note": "RU-C6: runtimes/subagents are nominative plurals and count_noun is label-first, removing «субагента: 5 шт.»; residual minors R2-RU-CAN-02 and R2-RU-CAN-04, non-gating."
+    },
+    "major: new-build case": {
+      "status": "FIXED",
+      "note": "RU-C14: «новую сборку» after «переводится на»; the restart key keeps «на новой сборке» for the state sense."
+    },
+    "minor: refresh_from_providers": {
+      "status": "FIXED",
+      "note": "«Обновить у провайдеров»."
+    },
+    "minor: stalled": {
+      "status": "FIXED",
+      "note": "«приостановлено», aligned with the locale's paused/stalled register."
+    },
+    "minor: sign-in term": {
+      "status": "PARTIAL",
+      "note": "no_models_are_signed_in_yet fixed to «подключена»; sign_in_expired_run_login remains «Срок авторизации истёк» — open minor R2-RU-CAN-03."
+    },
+    "minor: ASCII ellipsis": {
+      "status": "FIXED",
+      "note": "Fork placeholder back to three ASCII periods."
+    },
+    "minor: sign-in parenthetical": {
+      "status": "FIXED",
+      "note": "Invariant «(требуется вход: N)» for every plural branch."
+    },
+    "minor: three compact labels": {
+      "status": "FIXED",
+      "note": "last_known, use_team and default_effort shortened to «Последние данные», «Использовать», «Рассуждения по умолчанию»."
+    },
+    "minor: saving spinner colon": {
+      "status": "FIXED",
+      "note": "slider/toggle/autocomplete saving all read «Сохранение: {label}»."
+    },
+    "nit: lightbox previous/next": {
+      "status": "FIXED",
+      "note": "«Предыдущее: {medialabel}» / «Следующее: {medialabel}», matching close's colon shape."
+    }
+  },
+  "mechanical_checks": {
+    "changed_keys_checked": 25,
+    "key_count_and_order_unchanged": true,
+    "nfc_normalised": "25/25",
+    "manual_bidi_controls": 0,
+    "icu_parse_failures": 0,
+    "placeholder_argument_drift": 0,
+    "number_skeleton_drift": 0,
+    "plural_branch_loss": 0,
+    "english_and_context_byte_identical": true,
+    "english_or_context_changes": [],
+    "json_formatting": "tabs and trailing newline preserved; no key added, removed or reordered",
+    "icu_structural_checks": {
+      "stop.confirm": "=1/one/few/many/other; count present (ungrouped) in every non-=1 branch; renders 1/2/5/21/101/1,5/0 correctly",
+      "view_count_and_view_shown": "counted and ::group-off present once outside the plural; plural branches render the noun/pluralnoun only",
+      "count_noun": "count present in all four branches; native ru one/few/many/other",
+      "show_all_supported_models_sign_in": "scopecount present in all four branches",
+      "all_changed_keys": "argument sets and ::group-off skeletons match English exactly"
+    },
+    "rendered_samples": {
+      "stop.confirm 1": "Остановить эту сессию сейчас",
+      "stop.confirm 2": "Остановить 2 сессии сейчас",
+      "stop.confirm 5": "Остановить 5 сессий сейчас",
+      "stop.confirm 21": "Остановить 21 сессию сейчас",
+      "view_count 1": "Файлы · файл: 1",
+      "view_count 3": "Файлы · файлы: 3",
+      "view_count 21": "Файлы · файл: 21",
+      "view_shown 4": "Цели · цели: 4 — показано не всё",
+      "count_noun 5": "рантаймы: 5",
+      "count_noun 21": "рантайм: 21",
+      "update rolling onto": "Сервер переводится на новую сборку.",
+      "signed_out": "Выход выполнен. Переменные окружения и другие учётные записи не затронуты."
+    }
+  },
+  "delta_table": [
+    {
+      "id": null,
+      "class": "consistency-satellite",
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.files.highlights",
+      "before": "Избранное",
+      "after": "Выделенные",
+      "status": "FIXED (satellite)",
+      "reason": "Satellite of RU-C4: the files view's section label is also built from item.highlighted."
+    },
+    {
+      "id": "RU-C4",
+      "class": "finding",
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.finder_layout.highlights",
+      "before": "Избранное",
+      "after": "Выделенные",
+      "status": "FIXED",
+      "reason": "Highlights now reads «Выделенные»; actual favourites keep «Избранное»."
+    },
+    {
+      "id": "RU-C5",
+      "class": "finding",
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.variable_form_dialog.this_name_cannot_be_sent_use_up_to_128_characters_without_control_charac",
+      "before": "Это имя нельзя отправить. Используйте не более 128 символов, без управляющих символов и не только из точек.",
+      "after": "Это имя нельзя отправить. Используйте не более 128 символов, без управляющих символов; имя не должно состоять только из точек.",
+      "status": "FIXED",
+      "reason": "The constraint now reads «имя не должно состоять только из точек»."
+    },
+    {
+      "id": "RU-C1",
+      "class": "finding",
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.view_name.view_count",
+      "before": "{label} · {counted, plural, one {{counted, number, ::group-off} {noun}} few {{pluralnoun}: {counted, number, ::group-off} шт.} many {{pluralnoun}: {counted, number, ::group-off} шт.} other {{pluralnoun}: {counted, number, ::group-off} шт.}}",
+      "after": "{label} · {counted, plural, one {{noun}} few {{pluralnoun}} many {{pluralnoun}} other {{pluralnoun}}}: {counted, number, ::group-off}",
+      "status": "FIXED",
+      "reason": "Label-first shape removes the «показано файлы» agreement failure and restores the count; residual minor R2-RU-CAN-01 (repeated label / 21 singular).",
+      "residual": "R2-RU-CAN-01"
+    },
+    {
+      "id": "RU-C1",
+      "class": "finding",
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.view_name.view_shown_this_list_is_capped",
+      "before": "{label} · показано {counted, plural, one {{counted, number, ::group-off} {noun}} few {{pluralnoun}: {counted, number, ::group-off} шт.} many {{pluralnoun}: {counted, number, ::group-off} шт.} other {{pluralnoun}: {counted, number, ::group-off} шт.}} — список ограничен",
+      "after": "{label} · {counted, plural, one {{noun}} few {{pluralnoun}} many {{pluralnoun}} other {{pluralnoun}}}: {counted, number, ::group-off} — показано не всё",
+      "status": "FIXED",
+      "reason": "Same shape with «— показано не всё»; residual minor R2-RU-CAN-01.",
+      "residual": "R2-RU-CAN-01"
+    },
+    {
+      "id": "RU-MIN-OVERFLOW",
+      "class": "finding",
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.destination_pickers.default_effort",
+      "before": "Глубина рассуждений по умолчанию",
+      "after": "Рассуждения по умолчанию",
+      "status": "FIXED",
+      "reason": "Compact label, 32→24 characters: «Рассуждения по умолчанию»."
+    },
+    {
+      "id": "RU-MIN-SIGNIN",
+      "class": "finding",
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.destination_pickers.no_models_are_signed_in_yet",
+      "before": "Ни одна модель ещё не авторизована.",
+      "after": "Ни одна модель ещё не подключена.",
+      "status": "FIXED",
+      "reason": "«Ни одна модель ещё не подключена.» removes the «авторизация» drift for this key."
+    },
+    {
+      "id": "RU-MIN-REFRESH",
+      "class": "finding",
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.destination_pickers.refresh_from_providers",
+      "before": "Обновить от провайдеров",
+      "after": "Обновить у провайдеров",
+      "status": "FIXED",
+      "reason": "«Обновить у провайдеров» is the idiomatic verb/preposition."
+    },
+    {
+      "id": "RU-MIN-PAREN",
+      "class": "finding",
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.destination_pickers.show_all_supported_models_sign_in",
+      "before": "{scopecount, plural, one {Показать все поддерживаемые модели ({scopecount, number, ::group-off} требуется вход)} few {Показать все поддерживаемые модели ({scopecount, number, ::group-off} требуют вход)} many {Показать все поддерживаемые модели ({scopecount, number, ::group-off} требуют вход)} other {Показать все поддерживаемые модели ({scopecount, number, ::group-off} требуют вход)}}",
+      "after": "{scopecount, plural, one {Показать все поддерживаемые модели (требуется вход: {scopecount, number, ::group-off})} few {Показать все поддерживаемые модели (требуется вход: {scopecount, number, ::group-off})} many {Показать все поддерживаемые модели (требуется вход: {scopecount, number, ::group-off})} other {Показать все поддерживаемые модели (требуется вход: {scopecount, number, ::group-off})}}",
+      "status": "FIXED",
+      "reason": "Invariant «(требуется вход: {scopecount})» is grammatical for every category."
+    },
+    {
+      "id": "RU-C3",
+      "class": "finding",
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.destination_pickers.signed_out_environment_variables_and_other_accounts_are_untouched",
+      "before": "Вход выполнен. Переменные окружения и другие учётные записи не затронуты.",
+      "after": "Выход выполнен. Переменные окружения и другие учётные записи не затронуты.",
+      "status": "FIXED",
+      "reason": "«Выход выполнен» replaces the inverted «Вход выполнен»."
+    },
+    {
+      "id": "RU-MIN-STALLED",
+      "class": "finding",
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.destination_pickers.stalled_send_a_message_to_continue",
+      "before": "остановлено — отправьте сообщение, чтобы продолжить",
+      "after": "приостановлено — отправьте сообщение, чтобы продолжить",
+      "status": "FIXED",
+      "reason": "«приостановлено» matches the locale's paused/stalled register."
+    },
+    {
+      "id": "RU-MIN-OVERFLOW",
+      "class": "finding",
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.destination_pickers.use_team",
+      "before": "Использовать команду",
+      "after": "Использовать",
+      "status": "FIXED",
+      "reason": "Compact submit label «Использовать» (20→11 characters)."
+    },
+    {
+      "id": "RU-MIN-ELLIPSIS",
+      "class": "finding",
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.fork.search_placeholder",
+      "before": "Попробуйте другой подход…",
+      "after": "Попробуйте другой подход...",
+      "status": "FIXED",
+      "reason": "Three ASCII periods restored per the source context."
+    },
+    {
+      "id": "RU-C6",
+      "class": "finding",
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.info_model.count_noun",
+      "before": "{count, plural, one {{count, number, ::group-off} {noun}} few {{pluralnoun}: {count, number, ::group-off} шт.} many {{pluralnoun}: {count, number, ::group-off} шт.} other {{pluralnoun}: {count, number, ::group-off} шт.}}",
+      "after": "{count, plural, one {{noun}: {count, number, ::group-off}} few {{pluralnoun}: {count, number, ::group-off}} many {{pluralnoun}: {count, number, ::group-off}} other {{pluralnoun}: {count, number, ::group-off}}}",
+      "status": "FIXED",
+      "reason": "Label-first shape removes the wrong genitive singular and «шт.»; residual minor R2-RU-CAN-02 (21/31/101 singular label).",
+      "residual": "R2-RU-CAN-02"
+    },
+    {
+      "id": null,
+      "class": "consistency-satellite",
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.info_model.of_did_not_report",
+      "before": "Без ответа: {formatcount}; всего: {plural}",
+      "after": "Без ответа: {formatcount}; {plural}",
+      "status": "FIXED (satellite)",
+      "reason": "Satellite of RU-C6: {plural} now carries the noun and count, so the old «всего:» prefix would double the colon."
+    },
+    {
+      "id": "RU-C6",
+      "class": "finding",
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.info_model.runtimes",
+      "before": "рантайма",
+      "after": "рантаймы",
+      "status": "FIXED",
+      "reason": "Nominative plural «рантаймы», correct as the facts label and in the counted phrase."
+    },
+    {
+      "id": "RU-C6",
+      "class": "finding",
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.info_model.subagents",
+      "before": "субагента",
+      "after": "субагенты",
+      "status": "FIXED",
+      "reason": "Nominative plural «субагенты»; no more «субагента: 5 шт.»."
+    },
+    {
+      "id": "RU-C2",
+      "class": "finding",
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.stop.confirm",
+      "before": "Остановить {count, plural, one {эту сессию} few {эти сессии} many {эти сессии} other {эту сессию}} сейчас",
+      "after": "Остановить {count, plural, =1 {эту сессию} one {{count, number, ::group-off} сессию} few {{count, number, ::group-off} сессии} many {{count, number, ::group-off} сессий} other {{count, number, ::group-off} сессии}} сейчас",
+      "status": "FIXED",
+      "reason": "Count and ::group-off restored in every non-=1 branch; explicit =1 arm keeps «this session» for exactly one and states 21/31/101."
+    },
+    {
+      "id": "RU-MIN-OVERFLOW",
+      "class": "finding",
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.usage_view_model.last_known",
+      "before": "Последние известные данные",
+      "after": "Последние данные",
+      "status": "FIXED",
+      "reason": "«Последние данные» (26→15 characters), matching the shipped short form."
+    },
+    {
+      "id": null,
+      "class": "consistency-satellite",
+      "namespace": "ui.common.forms",
+      "key": "ui.common.forms.autocomplete_field.saving",
+      "before": "Сохранение {label}",
+      "after": "Сохранение: {label}",
+      "status": "FIXED (satellite)",
+      "reason": "Satellite of RU-MIN-SAVING: same template family, same {label} parameter."
+    },
+    {
+      "id": "RU-MIN-SAVING",
+      "class": "finding",
+      "namespace": "ui.common.forms",
+      "key": "ui.common.forms.slider_setting.saving",
+      "before": "Сохранение {label}",
+      "after": "Сохранение: {label}",
+      "status": "FIXED",
+      "reason": "«Сохранение: {label}» makes the nominative label invariant."
+    },
+    {
+      "id": "RU-MIN-SAVING",
+      "class": "finding",
+      "namespace": "ui.common.forms",
+      "key": "ui.common.forms.toggle_setting.saving",
+      "before": "Сохранение {label}",
+      "after": "Сохранение: {label}",
+      "status": "FIXED",
+      "reason": "Same colon shape as the slider."
+    },
+    {
+      "id": "RU-C14",
+      "class": "finding",
+      "namespace": "ui.common.updates",
+      "key": "ui.common.updates.update_notification.the_new_build",
+      "before": "новой сборке",
+      "after": "новую сборку",
+      "status": "FIXED",
+      "reason": "Accusative «новую сборку» after «переводится на»; the restart key keeps the prepositional state sense."
+    },
+    {
+      "id": null,
+      "class": "consistency-satellite",
+      "namespace": "ui.common.viewer",
+      "key": "ui.common.viewer.image_lightbox.next",
+      "before": "Следующий материал: {medialabel}",
+      "after": "Следующее: {medialabel}",
+      "status": "FIXED (satellite)",
+      "reason": "Satellite of RU-NIT-LIGHTBOX: next and previous share one shape; close already used the colon."
+    },
+    {
+      "id": "RU-NIT-LIGHTBOX",
+      "class": "finding",
+      "namespace": "ui.common.viewer",
+      "key": "ui.common.viewer.image_lightbox.previous",
+      "before": "Предыдущий материал: {medialabel}",
+      "after": "Предыдущее: {medialabel}",
+      "status": "FIXED",
+      "reason": "«Предыдущее: {medialabel}» matches «Закрыть: {medialabel}» without the added «материал»."
+    }
+  ],
+  "namespaces": {
+    "ui.canvas": {
+      "namespace": "ui.canvas",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "verdict": "clean with findings — remediation verified; only minor/nit residuals, non-gating",
+      "keys_audited_in_delta": 5,
+      "file_keys": 347,
+      "sha256": {
+        "en": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
+        "ru": "1c7f54bc494bd60913de78fe490f5eb20587d05c10084944cdabcecfda6e37c4",
+        "context": "4bc0f2bc47d4b0e826ebb10ba78ff965c550debef54f47c912b9e257fd1784f8"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.canvas.json",
+        "target": "src/i18n/catalogues/ru/ui.canvas.json",
+        "context": "src/i18n/catalogues/en/ui.canvas.context.json"
+      },
+      "findings": [
+        {
+          "id": "R2-RU-CAN-01",
+          "severity": "minor",
+          "category": "idiom",
+          "key": "ui.canvas.view_name.view_count",
+          "related_keys": [
+            "ui.canvas.view_name.view_shown_this_list_is_capped"
+          ],
+          "current": "{label} · {counted, plural, one {{noun}} few {{pluralnoun}} many {{pluralnoun}} other {{pluralnoun}}}: {counted, number, ::group-off}",
+          "proposed": "{label} · {counted, number, ::group-off} (and the same with «— показано не всё» for view_shown, or use {pluralnoun} in the one branch)",
+          "reason": "The remediation fixed the wrong case and restored the count, but the label-first phrase still repeats the segment label: with label «Файлы» and pluralnoun «файлы» it renders «Файлы · файлы: 3» / «Цели · цели: 4». Russian `one` also selects 21/31/101, so the one branch renders «Файлы · файл: 21», which the old count-first one branch («21 файл») got right. Dropping the repeated noun (or using {pluralnoun} in every branch) removes both symptoms; whitespace and the cap clause are otherwise correct.",
+          "status": "open"
+        }
+      ],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "round1_findings_verified": [
+        {
+          "id": "RU-C1",
+          "severity": "major",
+          "key": "ui.canvas.view_name.view_shown_this_list_is_capped (+ view_count)",
+          "before": "{label} · показано {counted, plural, one {{counted} {noun}} few {{pluralnoun}: {counted} шт.} …}",
+          "after": "{label} · {counted, plural, one {{noun}} few {{pluralnoun}} …}: {counted} — показано не всё",
+          "status": "FIXED (residual minor R2-RU-CAN-01)"
+        },
+        {
+          "id": "RU-C4",
+          "severity": "major",
+          "key": "ui.canvas.finder_layout.highlights",
+          "before": "Избранное",
+          "after": "Выделенные",
+          "status": "FIXED"
+        },
+        {
+          "id": "RU-C5",
+          "severity": "major",
+          "key": "ui.canvas.variable_form_dialog.this_name_cannot_be_sent_use_up_to_128_characters_without_control_charac",
+          "before": "…без управляющих символов и не только из точек.",
+          "after": "…без управляющих символов; имя не должно состоять только из точек.",
+          "status": "FIXED"
+        }
+      ]
+    },
+    "ui.chat.pickers": {
+      "namespace": "ui.chat.pickers",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "verdict": "clean with findings — remediation verified; only minor/nit residuals, non-gating",
+      "keys_audited_in_delta": 14,
+      "file_keys": 720,
+      "sha256": {
+        "en": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+        "ru": "0c72dba18eae33e6c51cde626bf4bd89dd6992322b9e3624624de2caf0c1a4e2",
+        "context": "c921d3e37ce54288a18e2b45310034a0df0114f15c30e57133422018a00b38d9"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+        "target": "src/i18n/catalogues/ru/ui.chat.pickers.json",
+        "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+      },
+      "findings": [
+        {
+          "id": "R2-RU-CAN-02",
+          "severity": "minor",
+          "category": "grammar",
+          "key": "ui.chat.pickers.info_model.count_noun",
+          "related_keys": [],
+          "current": "{count, plural, one {{noun}: {count, number, ::group-off}} few {{pluralnoun}: {count, number, ::group-off}} many {{pluralnoun}: {count, number, ::group-off}} other {{pluralnoun}: {count, number, ::group-off}}}",
+          "proposed": "{count, plural, one {{pluralnoun}: {count, number, ::group-off}} few {{pluralnoun}: {count, number, ::group-off}} many {{pluralnoun}: {count, number, ::group-off}} other {{pluralnoun}: {count, number, ::group-off}}}",
+          "reason": "The remediation replaced the wrong genitive singular and «шт.» with a label-first shape, but Russian `one` covers 21 (and 31, 101, …), so the one branch renders «рантайм: 21» — a singular label with a plural count. Using {pluralnoun} in the one branch too gives the consistent label-first «рантаймы: 21»; the old count-first branch («21 рантайм») was grammatical, the new one is not. Minor and visible only in the Info panel's notes/meta.",
+          "status": "open"
+        },
+        {
+          "id": "R2-RU-CAN-03",
+          "severity": "minor",
+          "category": "glossary",
+          "key": "ui.chat.pickers.usage_view_model.sign_in_expired_run_login",
+          "related_keys": [],
+          "current": "Срок авторизации истёк — выполните /login {provider}",
+          "proposed": "Срок входа истёк — выполните /login {provider}",
+          "reason": "This is the second key named by round-1 minor «no_models_are_signed_in_yet / sign_in_expired_run_login: авторизация vs вход». The remediation changed only no_models_are_signed_in_yet; this value is byte-unchanged and is now the only «авторизац» left in the audited canvas namespaces, against the locale's established «вход» (Выполнен вход, Состояние входа, Вход в Radient…). Non-gating but the round-1 finding is not fully closed.",
+          "status": "open"
+        },
+        {
+          "id": "R2-RU-CAN-04",
+          "severity": "minor",
+          "category": "grammar",
+          "key": "ui.chat.pickers.info_model.runtime_trajectories",
+          "related_keys": [],
+          "current": "{runtimecount} · {bound}{trajectorycount}",
+          "proposed": "source-level: pass the bound separately or make the trajectory phrase accept «{bound}{count}» before the noun, so the rare state reads «рантаймы: 5 · траектории: ≥12»",
+          "reason": "Acknowledged residual in the remediation commit. With the new count_noun the rare unreported>0 state renders «рантаймы: 5 · ≥траектории: 12»: the lower-bound mark sits before the label instead of the number. The locale cannot reorder {bound} into {trajectorycount} without a source change; pre-existing shape, not a new blocker, deferred with reason.",
+          "status": "deferred"
+        }
+      ],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 3,
+        "nit": 0
+      },
+      "round1_findings_verified": [
+        {
+          "id": "RU-C2",
+          "severity": "blocker",
+          "key": "ui.chat.pickers.stop.confirm",
+          "before": "Остановить {count, plural, one {эту сессию} few {эти сессии} many {эти сессии} other {эту сессию}} сейчас",
+          "after": "Остановить {count, plural, =1 {эту сессию} one {{count, number, ::group-off} сессию} few {{count, number, ::group-off} сессии} many {{count, number, ::group-off} сессий} other {{count, number, ::group-off} сессии}} сейчас",
+          "status": "FIXED"
+        },
+        {
+          "id": "RU-C3",
+          "severity": "blocker",
+          "key": "ui.chat.pickers.destination_pickers.signed_out_environment_variables_and_other_accounts_are_untouched",
+          "before": "Вход выполнен. Переменные окружения и другие учётные записи не затронуты.",
+          "after": "Выход выполнен. Переменные окружения и другие учётные записи не затронуты.",
+          "status": "FIXED"
+        },
+        {
+          "id": "RU-C6",
+          "severity": "major",
+          "key": "ui.chat.pickers.info_model.runtimes (+ subagents, count_noun, sessions, trajectories)",
+          "before": "рантайма / субагента / {pluralnoun}: {count} шт.",
+          "after": "рантаймы / субагенты / {noun|pluralnoun}: {count}",
+          "status": "FIXED (residual minors R2-RU-CAN-02, -04)"
+        },
+        {
+          "id": "RU-MIN-REFRESH",
+          "severity": "minor",
+          "key": "ui.chat.pickers.destination_pickers.refresh_from_providers",
+          "before": "Обновить от провайдеров",
+          "after": "Обновить у провайдеров",
+          "status": "FIXED"
+        },
+        {
+          "id": "RU-MIN-STALLED",
+          "severity": "minor",
+          "key": "ui.chat.pickers.destination_pickers.stalled_send_a_message_to_continue",
+          "before": "остановлено — отправьте сообщение, чтобы продолжить",
+          "after": "приостановлено — отправьте сообщение, чтобы продолжить",
+          "status": "FIXED"
+        },
+        {
+          "id": "RU-MIN-SIGNIN",
+          "severity": "minor",
+          "key": "ui.chat.pickers.destination_pickers.no_models_are_signed_in_yet / ui.chat.pickers.usage_view_model.sign_in_expired_run_login",
+          "before": "Ни одна модель ещё не авторизована. / Срок авторизации истёк…",
+          "after": "Ни одна модель ещё не подключена. / Срок авторизации истёк…",
+          "status": "PARTIAL — no_models fixed; sign_in_expired_run_login open (R2-RU-CAN-03)"
+        },
+        {
+          "id": "RU-MIN-ELLIPSIS",
+          "severity": "minor",
+          "key": "ui.chat.pickers.fork.search_placeholder",
+          "before": "Попробуйте другой подход…",
+          "after": "Попробуйте другой подход...",
+          "status": "FIXED"
+        },
+        {
+          "id": "RU-MIN-PAREN",
+          "severity": "minor",
+          "key": "ui.chat.pickers.destination_pickers.show_all_supported_models_sign_in",
+          "before": "(… требуется вход)",
+          "after": "(требуется вход: {scopecount})",
+          "status": "FIXED"
+        },
+        {
+          "id": "RU-MIN-OVERFLOW",
+          "severity": "minor",
+          "key": "ui.chat.pickers.usage_view_model.last_known / destination_pickers.use_team / destination_pickers.default_effort",
+          "before": "Последние известные данные / Использовать команду / Глубина рассуждений по умолчанию",
+          "after": "Последние данные / Использовать / Рассуждения по умолчанию",
+          "status": "FIXED"
+        }
+      ]
+    },
+    "ui.common.actions": {
+      "namespace": "ui.common.actions",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean — remediation verified, no new findings",
+      "keys_audited_in_delta": 0,
+      "file_keys": 36,
+      "sha256": {
+        "en": "d65be7beac66c209a55db5d8a672ff8a8a743eea49ba21593120d4b8664603b2",
+        "ru": "56c5649c7e4b71e216cd9a770571726644fe8eb4da26fb237e964cea74097b40",
+        "context": "29a6cc54f8605ab2612775708bf5eb202a89e6708167d8a7c3f329a536b339db"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.actions.json",
+        "target": "src/i18n/catalogues/ru/ui.common.actions.json",
+        "context": "src/i18n/catalogues/en/ui.common.actions.context.json"
+      },
+      "findings": [],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "round1_findings_verified": []
+    },
+    "ui.common.forms": {
+      "namespace": "ui.common.forms",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean — remediation verified, no new findings",
+      "keys_audited_in_delta": 3,
+      "file_keys": 37,
+      "sha256": {
+        "en": "c87c16b1169f32105e017fd27eb80047446938b1b45046c28bcf693856898238",
+        "ru": "22324fd90e86d43ddee5a0d1ac515496fcaf49ca1cdc46603a6885ff3bf7879e",
+        "context": "c11472cc390fe7771e08dcd34bb633e63797f979a113feaa47d70d06daea38b4"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.forms.json",
+        "target": "src/i18n/catalogues/ru/ui.common.forms.json",
+        "context": "src/i18n/catalogues/en/ui.common.forms.context.json"
+      },
+      "findings": [],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "round1_findings_verified": [
+        {
+          "id": "RU-MIN-SAVING",
+          "severity": "minor",
+          "key": "ui.common.forms.slider_setting.saving / toggle_setting.saving",
+          "before": "Сохранение {label}",
+          "after": "Сохранение: {label}",
+          "status": "FIXED (satellite autocomplete_field.saving too)"
+        }
+      ]
+    },
+    "ui.common.layout": {
+      "namespace": "ui.common.layout",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean — remediation verified, no new findings",
+      "keys_audited_in_delta": 0,
+      "file_keys": 8,
+      "sha256": {
+        "en": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+        "ru": "58c4d7a152138cf8f9ddee54d631880d3ed2f7ce443b477573d71322dd1eb4ca",
+        "context": "318673c640a31e11f5249127c8ef5a76d63c16c3c191960824391d934766bd39"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.layout.json",
+        "target": "src/i18n/catalogues/ru/ui.common.layout.json",
+        "context": "src/i18n/catalogues/en/ui.common.layout.context.json"
+      },
+      "findings": [],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "round1_findings_verified": []
+    },
+    "ui.common.speech": {
+      "namespace": "ui.common.speech",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean — remediation verified, no new findings",
+      "keys_audited_in_delta": 0,
+      "file_keys": 5,
+      "sha256": {
+        "en": "fa6a973f1a6a36f25218e884174299ba154e124baaddc87594bd516c8d07d8f6",
+        "ru": "0cae5d5f726c1d3c606ca09730345b3c08b02234e083809151de4b84d29f9d3f",
+        "context": "740828525702d67b6ee0ecf7eb0a3f1582167989355bd12d0579d698b982267a"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.speech.json",
+        "target": "src/i18n/catalogues/ru/ui.common.speech.json",
+        "context": "src/i18n/catalogues/en/ui.common.speech.context.json"
+      },
+      "findings": [],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "round1_findings_verified": []
+    },
+    "ui.common.updates": {
+      "namespace": "ui.common.updates",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean — remediation verified, no new findings",
+      "keys_audited_in_delta": 1,
+      "file_keys": 135,
+      "sha256": {
+        "en": "1f81721263fa4c7d74219bd2c0af82b908bf2fb4491df074e99e2215ad00d667",
+        "ru": "7054a6a7ca46d82319c29dacc60895a76a62d46395e3cde995e856d053576e48",
+        "context": "cb4a160ef62b1760d4622b29c90e130cff1b4165ac770dab200ebc54eca38bee"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.updates.json",
+        "target": "src/i18n/catalogues/ru/ui.common.updates.json",
+        "context": "src/i18n/catalogues/en/ui.common.updates.context.json"
+      },
+      "findings": [],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "round1_findings_verified": [
+        {
+          "id": "RU-C14",
+          "severity": "major",
+          "key": "ui.common.updates.update_notification.the_new_build",
+          "before": "новой сборке",
+          "after": "новую сборку",
+          "status": "FIXED"
+        }
+      ]
+    },
+    "ui.common.viewer": {
+      "namespace": "ui.common.viewer",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean — remediation verified, no new findings",
+      "keys_audited_in_delta": 2,
+      "file_keys": 8,
+      "sha256": {
+        "en": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
+        "ru": "99f8f73c4ada32164bd8fe89b62a6d3cf17f1ee57071d74e9f16fb8da6a3ed3b",
+        "context": "8b324e966ddb4aaef92ec3b3465f8ac6a80982529bcbd3b45a3c1cf1f9b28dd8"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.viewer.json",
+        "target": "src/i18n/catalogues/ru/ui.common.viewer.json",
+        "context": "src/i18n/catalogues/en/ui.common.viewer.context.json"
+      },
+      "findings": [],
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "round1_findings_verified": [
+        {
+          "id": "RU-NIT-LIGHTBOX",
+          "severity": "nit",
+          "key": "ui.common.viewer.image_lightbox.previous (+ next)",
+          "before": "Предыдущий материал: {medialabel} / Следующий материал: {medialabel}",
+          "after": "Предыдущее: {medialabel} / Следующее: {medialabel}",
+          "status": "FIXED"
+        }
+      ]
+    }
+  },
+  "totals": {
+    "keys_audited_round1": 1079,
+    "findings_round1": {
+      "blocker": 2,
+      "major": 5,
+      "minor": 7,
+      "nit": 1
+    },
+    "findings_fixed": 14,
+    "findings_open": 1,
+    "findings_deferred": 0,
+    "new_findings_round2": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 2,
+      "nit": 0
+    },
+    "new_deferred_round2": {
+      "minor": 1
+    },
+    "changed_keys_rechecked": 25,
+    "consistency_satellites": 4
+  },
+  "status": "passed",
+  "verdict": "passed — both blockers and all five majors fixed on 82209cab3a; no blocker/major open. Two new minor residuals from the new label-first shape and one round-1 minor still open (non-gating); one source-constrained minor deferred. English and context bytes are unchanged.",
+  "result": "clean-with-findings",
+  "outside_scope_observations": [
+    "ui.chat.pickers.info_model.of_did_not_report changed as RU-C6 collateral: the source's «{formatcount} of {plural} did not report» now renders «Без ответа: 3; рантаймы: 5». It keeps the ratio readable but drops the explicit «of»; accepted, not a finding, because the old «всего:» prefix would double the colon once {plural} carries its own label.",
+    "Overflow: the three compact labels (last_known, use_team, default_effort) are materially shorter than round 1, but the implementer discloses that no rendered frame was captured. Character counts improved (26→15, 20→11, 32→24); the fit itself remains a rendered-check item, not a catalogue defect verified here."
+  ]
+}

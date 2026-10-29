@@ -325,7 +325,7 @@ test("U-9 a CSS comment is prose, and the rules that act on the chrome are decla
 	 * inside `App`. That source cannot express the native fallback (it knows the OS,
 	 * not the mode), cannot know where a Linux WM put its buttons, and does not exist
 	 * until React mounts - and root-level attributes are also the only thing that
-	 * reaches a PORTALED element, which the sidebar's overlay sheet is.
+	 * reaches a PORTALED element, which the command palette's Radix dialog is.
 	 */
 	assert.doesNotMatch(
 		css,
@@ -596,26 +596,49 @@ test("the shell renders the lane above the columns, and exactly one of it", () =
 		"src/renderer/src/shared/components/common/chat-layout.tsx",
 	);
 	/*
-	 * ORDER, not a count: the lane has to be ABOVE the columns, because that is what
-	 * makes the sidebar's brand row and the conversation title share one line (a lane
-	 * between them, or below them, is 32px of misalignment). The shell renders ONE
-	 * tree for all three sidebar modes (docked, strip, and the sheet over the pane),
-	 * so there is exactly one lane and it precedes the row wrapper.
+	 * ONE LANE, ALWAYS AN OVERLAY. There is no route branch: the lane used to be
+	 * a reserved row for every route and a transparent overlay for the few that
+	 * opted in (`flushTop`), and that opt-in is the defect this contract removes.
+	 * A single element is what makes "the lane is the drag surface" and "the
+	 * columns reach y0" true for every route at once.
 	 */
+	assert.equal(
+		shell.split('data-titlebar-lane=""').length - 1,
+		1,
+		"the shell must render exactly one lane; a second one is an arm that reintroduces the route opt-in",
+	);
 	const lane = shell.indexOf('data-titlebar-lane=""');
 	assert.notEqual(lane, -1, "the shell renders no lane");
+	const tagStart = shell.lastIndexOf("<div", lane);
+	const tagEnd = shell.indexOf("/>", lane);
+	const laneTag = shell.slice(tagStart, tagEnd);
+	assert.match(
+		laneTag,
+		/className="absolute inset-x-0 top-0 z-30 h-\[var\(--chrome-strip-h\)\]"/,
+		"the lane must be an absolute overlay at y0: a reserved row is the 32px band that starts every panel below the traffic lights",
+	);
+	assert.doesNotMatch(
+		laneTag,
+		/h-8 shrink-0|linear-gradient|style=/,
+		"the lane must reserve no height and paint no ground: the columns behind it own the strip, and the gradient is what only ever approximated them",
+	);
 	const rowAfterLane = shell.indexOf(
 		'className="flex min-h-0 flex-1 overflow-hidden"',
 	);
 	assert.notEqual(rowAfterLane, -1);
 	assert.ok(
 		lane < rowAfterLane,
-		"the lane must be the first child of the shell column, above the columns it insets",
+		"the lane must stay the first child of the shell column, above the columns it drags",
 	);
-	assert.equal(
-		shell.split('data-titlebar-lane=""').length - 1,
-		1,
-		"one shell tree, one lane - a second branch is how the overlay once dropped the pane",
+	assert.doesNotMatch(
+		shell,
+		/flushTop/,
+		"the route opt-in must be gone: the lane is an overlay for every route, and a prop that lifts some columns is how the next route is forgotten",
+	);
+	assert.doesNotMatch(
+		readSource("src/renderer/src/app.tsx"),
+		/flushTop/,
+		"`app.tsx` must not hand any route a lane exception",
 	);
 });
 

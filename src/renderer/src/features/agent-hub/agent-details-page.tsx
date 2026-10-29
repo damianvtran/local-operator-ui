@@ -18,6 +18,8 @@ import {
 	Tooltip,
 } from "@shared/components/ui";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { formatCalendarDate } from "@shared/utils/date-utils";
 import { formatDistanceToNowStrict } from "date-fns";
@@ -53,13 +55,26 @@ import { useMembershipsQuery } from "./hooks/use-memberships-query";
 /**
  * The headline for each failed action, so the sentence names what did not
  * happen rather than that "something" did not.
+ *
+ * A function rather than the module-level map this started as: the sentence is
+ * catalogue copy, and resolving it at module load would freeze the locale the
+ * app happened to boot in - a language change would repaint the page around an
+ * alert still speaking the old one.
  */
-const FAILURE_TITLES = {
-	like: "The like did not go through",
-	favourite: "The favourite did not go through",
-	download: "The download did not start",
-	delist: "The agent was not delisted",
-} as const;
+function failureTitle(
+	action: "like" | "favourite" | "download" | "delist",
+): string {
+	switch (action) {
+		case "like":
+			return t("ui.hub.detail.failure.like");
+		case "favourite":
+			return t("ui.hub.detail.failure.favourite");
+		case "download":
+			return t("ui.hub.detail.failure.download");
+		case "delist":
+			return t("ui.hub.detail.failure.delist");
+	}
+}
 
 const CountDisplay: React.FC<{ children: React.ReactNode }> = ({
 	children,
@@ -73,6 +88,7 @@ const CountDisplay: React.FC<{ children: React.ReactNode }> = ({
  * Renders the detailed view for a specific public agent.
  */
 export const AgentDetailsPage: React.FC = () => {
+	useI18nLocale();
 	const { agentId } = useParams<{ agentId: string }>();
 	const navigate = useNavigate();
 	const { isAuthenticated, user } = useRadientAuth();
@@ -261,7 +277,7 @@ export const AgentDetailsPage: React.FC = () => {
 	if (isLoading) {
 		return (
 			<div className="flex h-full items-center justify-center">
-				<Spinner label="Loading agent details" />
+				<Spinner label={t("ui.hub.detail.loading")} />
 			</div>
 		);
 	}
@@ -270,10 +286,10 @@ export const AgentDetailsPage: React.FC = () => {
 		return (
 			<div className="flex h-full items-center justify-center p-6">
 				<Alert variant="danger" className="max-w-2xl">
-					<AlertTitle>This agent could not be loaded</AlertTitle>
+					<AlertTitle>{t("ui.hub.detail.load_failed_title")}</AlertTitle>
 					<AlertDescription>
 						{backendLoadErrorMessage(
-							"The Radient agent catalogue did not answer.",
+							t("ui.hub.detail.load_failed_body"),
 							error,
 						)}
 					</AlertDescription>
@@ -285,7 +301,9 @@ export const AgentDetailsPage: React.FC = () => {
 							disabled={isFetching}
 							aria-busy={isFetching}
 						>
-							{isFetching ? "Trying…" : "Try again"}
+							{isFetching
+								? t("ui.hub.detail.trying")
+								: t("ui.common.actions.retry_again")}
 						</Button>
 					</div>
 				</Alert>
@@ -296,7 +314,7 @@ export const AgentDetailsPage: React.FC = () => {
 	if (!agent) {
 		return (
 			<div className="flex h-full items-center justify-center">
-				<p className="text-body text-ink">Agent not found.</p>
+				<p className="text-body text-ink">{t("ui.hub.detail.not_found")}</p>
 			</div>
 		);
 	}
@@ -309,9 +327,9 @@ export const AgentDetailsPage: React.FC = () => {
 						variant="ghost"
 						size="icon"
 						onClick={handleBack}
-						aria-label="Back to Agent hub"
+						aria-label={t("ui.hub.detail.back_aria")}
 					>
-						<ArrowLeft />
+						<ArrowLeft className="rtl:-scale-x-100" />
 					</Button>
 					<Avatar className="size-11 shrink-0">
 						<AvatarFallback>
@@ -341,7 +359,7 @@ export const AgentDetailsPage: React.FC = () => {
 					{!isOrgRow && (
 						<>
 							<Tooltip
-								content="Sign in to Radient to use this feature"
+								content={t("ui.hub.detail.sign_in_tooltip")}
 								disabled={isAuthenticated}
 							>
 								<span>
@@ -356,10 +374,10 @@ export const AgentDetailsPage: React.FC = () => {
 										}
 										aria-label={
 											!viewerStateKnown
-												? "Like state unavailable"
+												? t("ui.hub.viewer.like_unavailable")
 												: isLiked
-													? "Unlike agent"
-													: "Like agent"
+													? t("ui.hub.viewer.unlike")
+													: t("ui.hub.viewer.like")
 										}
 										className={cn(isLiked && "text-danger")}
 									>
@@ -369,7 +387,7 @@ export const AgentDetailsPage: React.FC = () => {
 								</span>
 							</Tooltip>
 							<Tooltip
-								content="Sign in to Radient to use this feature"
+								content={t("ui.hub.detail.sign_in_tooltip")}
 								disabled={isAuthenticated}
 							>
 								<span>
@@ -384,10 +402,10 @@ export const AgentDetailsPage: React.FC = () => {
 										}
 										aria-label={
 											!viewerStateKnown
-												? "Favourite state unavailable"
+												? t("ui.hub.viewer.favourite_unavailable")
 												: isFavourited
-													? "Unfavourite agent"
-													: "Favourite agent"
+													? t("ui.hub.viewer.unfavourite")
+													: t("ui.hub.viewer.favourite")
 										}
 										className={cn(isFavourited && "text-warning")}
 									>
@@ -398,14 +416,14 @@ export const AgentDetailsPage: React.FC = () => {
 							</Tooltip>
 						</>
 					)}
-					<Tooltip content="Download agent to your computer">
+					<Tooltip content={t("ui.hub.detail.download_tooltip")}>
 						<span>
 							<Button
 								variant="ghost"
 								size="icon"
 								onClick={handleDownload}
 								disabled={downloadMutation.isPending}
-								aria-label="Download agent"
+								aria-label={t("ui.hub.detail.download_aria")}
 								className="ml-1"
 							>
 								<Download />
@@ -421,14 +439,14 @@ export const AgentDetailsPage: React.FC = () => {
 					</Tooltip>
 
 					{isOwner && !isOrgRow && (
-						<Tooltip content="Permanently delist this agent from Agent hub">
+						<Tooltip content={t("ui.hub.detail.delist_tooltip")}>
 							<span>
 								<Button
 									variant="ghost"
 									size="icon"
 									onClick={() => setIsDelistDialogOpen(true)}
 									disabled={delistMutation.isPending}
-									aria-label="Delist agent"
+									aria-label={t("ui.hub.detail.delist_aria")}
 									className="ml-1 text-danger hover:bg-danger-wash hover:text-danger"
 								>
 									<Trash2 />
@@ -457,10 +475,7 @@ export const AgentDetailsPage: React.FC = () => {
 					className="mb-6 flex flex-wrap items-center gap-2 text-meta text-warning"
 					data-testid="agent-details-status-unknown"
 				>
-					<span>
-						Your likes and favourites could not be read, so this agent's viewer
-						state is not shown.
-					</span>
+					<span>{t("ui.hub.detail.viewer_unknown")}</span>
 					<Button
 						variant="ghost"
 						size="sm"
@@ -468,7 +483,9 @@ export const AgentDetailsPage: React.FC = () => {
 						disabled={viewerStateIsFetching}
 						aria-busy={viewerStateIsFetching}
 					>
-						{viewerStateIsFetching ? "Trying…" : "Try again"}
+						{viewerStateIsFetching
+							? t("ui.hub.detail.trying")
+							: t("ui.common.actions.retry_again")}
 					</Button>
 				</output>
 			)}
@@ -484,7 +501,7 @@ export const AgentDetailsPage: React.FC = () => {
 					className="mb-6"
 					data-testid="agent-details-error"
 				>
-					<AlertTitle>{FAILURE_TITLES[failedAction]}</AlertTitle>
+					<AlertTitle>{failureTitle(failedAction)}</AlertTitle>
 					<AlertDescription>
 						{agentActionFailureMessage(
 							failure.action,
@@ -496,7 +513,7 @@ export const AgentDetailsPage: React.FC = () => {
 					{failure.retry && (
 						<div className="mt-2">
 							<Button variant="outline" size="sm" onClick={failure.retry}>
-								Try again
+								{t("ui.common.actions.retry_again")}
 							</Button>
 						</div>
 					)}
@@ -513,23 +530,35 @@ export const AgentDetailsPage: React.FC = () => {
 				 * "the hub does not say".
 				 */}
 				<p>
-					Created by: {agent.account_metadata?.name ?? "Unknown"}
 					{agent.account_metadata?.email
-						? ` (${agent.account_metadata.email})`
-						: ""}
+						? t("ui.hub.detail.created_by_with_email", {
+								author:
+									agent.account_metadata.name ??
+									t("ui.hub.detail.unknown_author"),
+								email: agent.account_metadata.email,
+							})
+						: t("ui.hub.detail.created_by", {
+								author:
+									agent.account_metadata?.name ??
+									t("ui.hub.detail.unknown_author"),
+							})}
 				</p>
 				<p>
-					Created: {formatDistanceToNowStrict(new Date(agent.created_at))} ago (
-					{formatCalendarDate(agent.created_at)})
+					{t("ui.hub.detail.created", {
+						ago: formatDistanceToNowStrict(new Date(agent.created_at)),
+						date: formatCalendarDate(agent.created_at),
+					})}
 				</p>
 				<p>
-					Last modified: {formatDistanceToNowStrict(new Date(agent.updated_at))}{" "}
-					ago ({formatCalendarDate(agent.updated_at)})
+					{t("ui.hub.detail.last_modified", {
+						ago: formatDistanceToNowStrict(new Date(agent.updated_at)),
+						date: formatCalendarDate(agent.updated_at),
+					})}
 				</p>
 			</div>
 
 			<div className="mt-2 mb-8 leading-relaxed text-body text-ink">
-				{agent.description || "No description provided."}
+				{agent.description || t("ui.hub.detail.no_description")}
 			</div>
 
 			<Separator className="my-6" />
@@ -559,12 +588,12 @@ export const AgentDetailsPage: React.FC = () => {
 			<BaseDialog
 				open={isDelistDialogOpen}
 				onClose={() => setIsDelistDialogOpen(false)}
-				title="Delist this agent?"
+				title={t("ui.hub.detail.delist_title")}
 				maxWidth="xs"
 				actions={
 					<>
 						<SecondaryButton onClick={() => setIsDelistDialogOpen(false)}>
-							Cancel
+							{t("ui.common.actions.cancel")}
 						</SecondaryButton>
 						<PrimaryButton
 							onClick={() => {
@@ -574,9 +603,9 @@ export const AgentDetailsPage: React.FC = () => {
 							disabled={delistMutation.isPending}
 						>
 							{delistMutation.isPending ? (
-								<Spinner size="sm" label="Delisting agent" />
+								<Spinner size="sm" label={t("ui.hub.detail.delisting")} />
 							) : (
-								"Delist"
+								t("ui.hub.detail.delist_confirm")
 							)}
 						</PrimaryButton>
 					</>
@@ -602,8 +631,7 @@ export const AgentDetailsPage: React.FC = () => {
 					{/* Not "cannot be undone" followed by "you can re-upload it
 					    later" - a reader cannot tell from that how bad this is,
 					    and telling them exactly that is the dialog's whole job. */}
-					This takes "{displayName}" off the hub straight away, and nobody will
-					be able to download it. You can upload it again later.
+					{t("ui.hub.detail.delist_body", { name: displayName })}
 				</div>
 			</BaseDialog>
 		</div>

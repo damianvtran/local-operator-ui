@@ -1,0 +1,41 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "cosh-r1-es",
+ "session": "d43336f0c8a9",
+ "date": "2026-10-22",
+ "locale": "es",
+ "translator": "translator",
+ "translator_session": "06e53573af24",
+ "namespace": "ui.agentMessages.settings",
+ "status": "passed",
+ "keys_audited": 3,
+ "scope": "The three Chief-of-Staff hold keys added at 2fb94727 (hold.chief_of_staff, hold.chief_of_staff_unlinked, hold.open), read against en source, context entries, render site, glossary and es style guide; other 84 values verified byte-identical to HEAD.",
+ "sha256": {
+  "en": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
+  "es": "b83a0b0f408f9d748257bb7c2307a9517282346ef169b04c6adfe54d4a549f62",
+  "context": "0796c27031e5a3b9a600147e67e1341234f6ed0f5adfd3b7c4f7758a5bcff63d"
+ },
+ "findings": [],
+ "inherited_receipt": {
+  "base": "2fb94727d3",
+  "path": "i18n/receipts/b28d4e61-r2.json",
+  "sha256": "1a105061d61af7a578a2c47e558a798b212df9ff497f53ea766ee31e85cba26a",
+  "keys_inherited": 84,
+  "base_target_sha256": "3c56bdca74ccddae13622d94b2518165649b34a06df30638da2e13d28666ae04",
+  "unchanged_values_verified": 84
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+ },
+ "validation": {
+  "independence": "Auditor session d43336f0c8a9 did not produce these strings (translator session 06e53573af24); all claims checked against the catalogue bytes on disk.",
+  "semantics": "Both notices name sending as the remedy: 'Basta con escribirle una vez en su conversación' / 'Busca su conversación en la barra lateral y escríbele una vez'. 'Escribirle (a alguien)' is the standard chat idiom for sending someone a message, and 'una vez' keeps 'one message'. Neither notice says that opening the conversation is enough, or that messages were refused, failed, read or lost ('está/están esperando a'). 'Basta con' renders the sufficiency the English imperative implies, in a calm news tone. Register is tú throughout (tu, Busca, escríbele), matching the file and style guide. hold.open uses an infinitive ('Escribir a …') per the es action-label rule, carries the verb sense of 'Message' and does not suggest sending. Terms: 'jefa de gabinete' equals ui.onboarding greeting_done/greeting_owed (9 occurrences across es, no drift). 'barra lateral' equals ui.shell.sidebar_navigation.*. 'su conversación' matches onboarding greeting_done. 'mensaje(s)' is consistent with the file. Button and both notices share the verb escribir. Note: ui.teamBridge.people.message renders 'Message {name}' as 'Enviar un mensaje a {name}'. That is a different namespace and no glossary entry exists, so it is not counted as drift.",
+  "icu": "Parsed with @formatjs/icu-messageformat-parser from the worktree node_modules. en: plural(count){one,other}. es: plural(count){one,many,other}, with {count} present in every arm of both notices. hold.open has no arguments in en or es. No renamed or dropped placeholders.",
+  "plurals": "Intl.PluralRules('es') gives [one, many, other], which matches glossary and repo practice. Formatted with intl-messageformat at 0,1,2,5,21,1000000,1500000,2000000. 1→one: 'mensaje está … recibirlo'. 0/2/5/21/1500000→other: 'mensajes están … recibirlos'. 1000000/2000000→many: '… de mensajes están … recibirlos'. Verb, noun and clitic agree in every arm. {count} renders unformatted (e.g. '1000000') exactly as in en, a source-level choice outside this audit.",
+  "typography": "NFC; no bidi controls; no NBSP or zero-width characters; trailing newline present. Correct accents (está, están, conversación, escríbele). No '!'. Sentence case. Key set and order equal en (87). The file is the HEAD bytes with only the three keys appended. The other 84 values are byte-identical to `git show HEAD:` (base sha256 3c56bdca…ae04).",
+  "overflow": "Rendered notice length (count 1/2): chief_of_staff 98/102→111/114 chars (+12–13%); unlinked 119/123→125/128 (+4–5%), both within the es 15–25% norm, inside a wrapping flex-1 <p>. hold.open is 22→30 chars (+36%), above the norm. It is a shrink-0 ghost sm Button, so it will not truncate; the paragraph beside it gives up about 8 characters of width. No shorter wording keeps both the infinitive verb and the glossary term (the fr sibling is 29 chars). No finding raised; flagged for a rendered check at the narrowest Settings width.",
+  "limitations": "Browser unavailable; no screenshots/rendered-fit claim. No catalogue/code edits; no files created in the worktree."
+ }
+}

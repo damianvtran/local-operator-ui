@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -103,6 +104,13 @@ globalThis.__gapRequest = async (request) => {
 			command_id: request.requestId,
 			duplicate: false,
 		};
+	// The journal-order repair's authoritative read. Answered only by a case that
+	// scripts an owner (`globalThis.__gapGet`): a real owner answers it with a
+	// snapshot frame, and a case about order needs that answer to commit, or the
+	// repair loop never runs (PR #1436 QA round 1, Q5). Every other case keeps the
+	// historical empty answer.
+	if (request.op === "sessions.get" && globalThis.__gapGet)
+		return globalThis.__gapGet(request);
 	return {};
 };
 
@@ -127,7 +135,7 @@ const bundle = await build({
 			export { admitChatDraft, useCanonicalSessionsStore, draftIdentityFor } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { EMPTY_TRANSCRIPT, appendPendingUser, applyEvent, applyHistoryPage, sealDisjointBlock } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 			export { openFrameFacts } from "./src/renderer/src/features/chat/canonical/open-frame";
-			export { paintPendingSend } from "./src/renderer/src/shared/hooks/use-canonical-session";
+			export { paintPendingSend, resyncCanonicalSession } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { __resetPaintCache } from "./src/renderer/src/shared/store/paint-cache";
 			export { __resetPendingSends, __resetLabelGapBookkeeping } from "./src/renderer/src/shared/hooks/use-canonical-session";
 		`,
@@ -139,6 +147,7 @@ const bundle = await build({
 	write: false,
 	alias: {
 		"@shared": "./src/renderer/src/shared",
+		"@shared/i18n": "./src/i18n",
 		"@features": "./src/renderer/src/features",
 	},
 	plugins: [
@@ -171,9 +180,36 @@ const bundle = await build({
 		},
 	],
 });
-const hook = await import(
-	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+/*
+ * Imported from a file, never a `data:` URI. A module's URL is what V8 prints
+ * as the location of every stack frame inside it, so a ~7.6 MB bundle imported
+ * as base64 turns each logged stack (the hook's `console.warn` of a refused
+ * repair read, for one) into a 10 MB line: one case wrote about 80 MB and
+ * failed
+ * CI's `ci-log-guard` payload-line step (PR #1428 QA round 2, Q-1). This is a
+ * fixture property, not product behaviour; a file URL keeps frames short. The
+ * warning itself is left alone: this transport answers `sessions.get` only for
+ * a case that scripts an owner (`__gapGet`), because an answer has to state
+ * journal placement for every row, and only the order cases assert on that.
+ *
+ * The name matches `.gitignore`'s `scripts/_*.bundle.mjs`, so a killed run
+ * cannot leave a committable bundle behind; the pid keeps two concurrent runs
+ * from one checkout off each other's file. Unlinked as soon as the import
+ * resolves: V8 holds the compiled module, so the file is not needed after.
+ */
+const bundlePath = new URL(
+	`./_reconnect-page-gap-${process.pid}.bundle.mjs`,
+	import.meta.url,
 );
+let hook;
+try {
+	await writeFile(bundlePath, bundle.outputFiles[0].text);
+	hook = await import(bundlePath.href);
+} finally {
+	// Also cover a partial write: no failed import or failed write may leave a
+	// generated bundle behind for a later run to mistake for its own.
+	await unlink(bundlePath).catch(() => {});
+}
 const {
 	useCanonicalSessionStream,
 	admitChatDraft,
@@ -187,6 +223,7 @@ const {
 	applyHistoryPage,
 	sealDisjointBlock,
 	paintPendingSend,
+	resyncCanonicalSession,
 	openFrameFacts,
 } = hook;
 
@@ -530,6 +567,7 @@ function reset({ transcript, historyFaults = [] }) {
 	globalThis.__gapTimerCallbacks = [];
 	globalThis.__gapHistoryReads = 0;
 	globalThis.__gapHistoryFaults = historyFaults;
+	globalThis.__gapGet = undefined;
 	globalThis.__gapTail = (request) =>
 		request.beforeId === undefined
 			? transcript.tail(request.limit)
@@ -980,6 +1018,40 @@ const liveFrame = (type, id, extra = {}) => ({
 const historyReads = () =>
 	requests.filter((request) => request.op === "sessions.history").length;
 
+/**
+ * A mount whose subscription DECLARED the journal-order family.
+ *
+ * `journal_order_ready` is only applied by a pane that negotiated it (the
+ * capability is the pane's question, so the hook takes it as an option), which is
+ * exactly the population the correction-under-the-watermark defect affects.
+ */
+async function mountWithJournalOrder(sessionIdOf = () => SESSION_A) {
+	const runtime = makeRuntime();
+	let handle;
+	runtime.render = () => {
+		handle = useCanonicalSessionStream(
+			sessionIdOf(),
+			true,
+			true,
+			sessionIdOf(),
+			{
+				journalOrder: true,
+			},
+		);
+		return handle;
+	};
+	runtime.rerender();
+	return {
+		handle: () => handle,
+		row: (id) => handle.transcript.records.find((record) => record.id === id),
+		ids: () => ids(handle.transcript),
+		status: () => handle.status,
+		readings: () => handle.frontend ?? handle.heldFrontend,
+		// The keyed panel's own re-render, for a case that switches sessions.
+		rerender: () => runtime.rerender(),
+	};
+}
+
 async function mount(sessionIdOf = () => SESSION_A) {
 	const runtime = makeRuntime();
 	let handle;
@@ -1017,6 +1089,498 @@ async function mount(sessionIdOf = () => SESSION_A) {
 		rerender: () => runtime.rerender(),
 	};
 }
+
+/*
+ * RECEIPT-ORDER REGRESSIONS (operator report, 2026-10-26).
+ *
+ * The bridge emits replay frames before the snapshot, all on one monotonic
+ * `(epoch, seq)` cursor. A renderer may therefore see an older frame after a
+ * newer one only when delivery/reconnect work has made the older answer late;
+ * accepting it as a new commit is never a legitimate way to reconcile paint.
+ * These cases drive the REAL hook, not a reducer-only approximation, and record
+ * the row ids after every committed flush so a backwards transition is visible.
+ */
+test("a late reset replay cannot remove a newer live transcript tail", async () => {
+	const oldRows = Array.from({ length: 24 }, (_, index) =>
+		userRow(`old-${index}`, 1_700_000_000 + index, `old-${index}`),
+	);
+	const transcript = makeTranscript(oldRows);
+	reset({ transcript });
+	const panel = await mount();
+	const commits = [];
+	const capture = (source) => commits.push({ source, ids: panel.ids() });
+
+	deliver(openFrame(1, false));
+	deliver(
+		snapshotFrame(2, {
+			cursor: oldRows.at(-1).id,
+			entries: oldRows,
+			liveEvents: [],
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	capture("snapshot-old");
+
+	deliver(
+		eventFrame(3, {
+			type: "message_start",
+			message: { id: "live-new", role: "user", content: [{ text: "live" }] },
+		}),
+	);
+	await pump();
+	capture("live-new");
+
+	// This is the stale replay's shape: a full-history reset, not a small delta.
+	deliver(
+		eventFrame(2, {
+			type: "history_delta",
+			reset: true,
+			messages: oldRows.map((entry) => ({
+				id: entry.id,
+				role: "user",
+				content: [{ text: entry.payload.content[0].text }],
+			})),
+		}),
+	);
+	await pump();
+	capture("late-reset");
+	console.log("stale reset commits", JSON.stringify(commits));
+	assert.equal(panel.ids().at(-1), "live-new");
+	assert.equal(panel.ids().length, oldRows.length + 1);
+});
+
+test("a stale reset in the same flush cannot remove a live row", async () => {
+	const oldRows = Array.from({ length: 24 }, (_, index) =>
+		userRow(`old-${index}`, 1_700_000_000 + index, `old-${index}`),
+	);
+	reset({ transcript: makeTranscript(oldRows) });
+	const panel = await mount();
+	deliver(openFrame(1, false));
+	deliver(
+		snapshotFrame(2, {
+			cursor: oldRows.at(-1).id,
+			entries: oldRows,
+			liveEvents: [],
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	deliver(
+		eventFrame(3, {
+			type: "message_start",
+			message: { id: "live-new", role: "user", content: [{ text: "live" }] },
+		}),
+	);
+	// No pump between these deliveries: the guard must order frames within the
+	// flush too, not merely compare the last React-rendered state.
+	deliver(
+		eventFrame(2, {
+			type: "history_delta",
+			reset: true,
+			messages: oldRows.map((entry) => ({
+				id: entry.id,
+				role: "user",
+				content: [{ text: entry.payload.content[0].text }],
+			})),
+		}),
+	);
+	await pump();
+	assert.equal(panel.ids().at(-1), "live-new");
+});
+
+test("a superseded subscription's queued frames commit nothing", async () => {
+	/*
+	 * The connection-identity half of the same invariant. A resync, a reopen or a
+	 * peer rebind opens a new subscription INSIDE one session visit, so the
+	 * visit's `generation` still matches for a callback the old subscription had
+	 * already handed to the transport. Without a connection witness such a frame
+	 * is ordinary state - and after a `gap` frame it is exactly the shape that
+	 * repaints an older projection, because replay is open again and a snapshot
+	 * applies its page AND its readings wholesale.
+	 *
+	 * The stale payload deliberately disagrees with the row rather than stating a
+	 * prefix of it: a prefix is refused by the merge's own older-projection rule,
+	 * so it would not isolate THIS guard.
+	 */
+	const rows = Array.from({ length: 12 }, (_, index) =>
+		userRow(`r-${index}`, 1_700_000_000 + index, `r-${index}`),
+	);
+	reset({ transcript: makeTranscript(rows) });
+	const panel = await mount();
+	deliver(openFrame(1, false));
+	deliver(
+		snapshotFrame(2, {
+			cursor: rows.at(-1).id,
+			entries: rows,
+			liveEvents: [],
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	const NEW_TEXT = "The assembled answer, as the live stream ended it.";
+	deliver(
+		eventFrame(3, {
+			type: "message_end",
+			message: {
+				id: "a-live",
+				role: "assistant",
+				content: [{ type: "text", text: NEW_TEXT }],
+				stop_reason: "stop",
+			},
+		}),
+	);
+	await pump();
+	const liveRow = () => panel.row("a-live");
+	assert.equal(liveRow()?.text, NEW_TEXT, "the live end is the control");
+	const readingsBefore = panel.readings()?.sequence;
+
+	const superseded = subscriptions.filter((entry) => !entry.disposed).at(-1);
+	assert.ok(superseded, "the first subscription is still the live one");
+	resyncCanonicalSession(SESSION_A);
+	await pump();
+	assert.ok(superseded.disposed, "the resync disposed it");
+
+	// The queued frames of the dead connection, in their original order: a gap
+	// (which opens replay again) and then an older snapshot that carries a
+	// different, older answer for the same row and a different reading.
+	superseded.onEvent({
+		kind: "data",
+		data: JSON.stringify({ session_id: SESSION_A, type: "gap" }),
+	});
+	const stale = snapshotFrame(9, {
+		cursor: rows.at(-1).id,
+		entries: [...rows, userRow("a-live", 1_700_000_900, "x")],
+		liveEvents: [],
+		streaming: false,
+		hasMore: false,
+	});
+	stale.payload.frontend.snapshot.sequence = 99;
+	superseded.onEvent({
+		kind: "data",
+		data: JSON.stringify(stale),
+	});
+	await pump();
+	assert.equal(
+		liveRow()?.text,
+		NEW_TEXT,
+		"a superseded connection cannot rewrite a newer answer",
+	);
+	assert.equal(
+		panel.ids().filter((id) => id.startsWith("r-")).length,
+		rows.length,
+		"and its page cannot append the dead connection's rows",
+	);
+	assert.equal(
+		panel.readings()?.sequence,
+		readingsBefore,
+		"nor replace the readings the live connection published",
+	);
+	/*
+	 * THE SUCCESSOR IS SETTLED BEFORE THE CASE ENDS. This is the one case in the
+	 * file that leaves a SECOND subscription open (the resync's), and a pane whose
+	 * new connection never receives its snapshot is a pane holding work the rig
+	 * cannot see. Handing it the open+snapshot it is waiting for ends the case in
+	 * the state a real one reaches, instead of leaving a live connection and its
+	 * pending work behind for the rest of the shard's process.
+	 */
+	deliver(openFrame(10, false));
+	deliver(
+		snapshotFrame(11, {
+			cursor: rows.at(-1).id,
+			entries: rows,
+			liveEvents: [],
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	assert.equal(panel.status(), "live", "the successor connection settles");
+});
+
+test("the bridge's own open/replay/snapshot shapes apply: open carries the cutoff, not a floor", async () => {
+	/*
+	 * THE SHAPE A REAL BRIDGE SENDS (`docs/DESKTOP_API.md`, "the read envelope";
+	 * `server/utils/desktop_sessions.py::events`): the `open` frame's `seq` is the
+	 * CUTOFF the replay was built from, the retained frames are replayed at
+	 * `after_seq < seq <= cutoff`, and the snapshot carries the sequence read
+	 * while it was built - so a replay can end ON the watermark and the snapshot
+	 * then carries the same number.
+	 *
+	 * A high-water mark seeded from the open's own seq refuses that whole
+	 * handshake; one that accepts only strictly-newer frames still refuses the
+	 * snapshot at the watermark. Both failures leave a real conversation stuck at
+	 * "connecting", which no fixture built as `open(1)` + `snapshot(2)` can see.
+	 */
+	const rows = Array.from({ length: 8 }, (_, index) =>
+		userRow(`r-${index}`, 1_700_000_000 + index, `r-${index}`),
+	);
+
+	// 1. An idle reconnect: nothing retained, so `open` and `snapshot` share a seq.
+	reset({ transcript: makeTranscript(rows) });
+	let panel = await mount();
+	deliver(openFrame(7, false));
+	deliver(
+		snapshotFrame(7, {
+			cursor: rows.at(-1).id,
+			entries: rows,
+			liveEvents: [],
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	assert.equal(
+		panel.status(),
+		"live",
+		"an open and its snapshot sharing the cutoff still applies",
+	);
+	assert.equal(panel.ids().length, rows.length, "and the page is painted");
+
+	// 2. A gap-free reopen: replay ends ON the cutoff, then the snapshot does too.
+	reset({ transcript: makeTranscript(rows) });
+	panel = await mount();
+	deliver(openFrame(7, false));
+	deliver(
+		eventFrame(6, {
+			type: "message_start",
+			message: {
+				id: "replayed",
+				role: "user",
+				content: [{ text: "replayed" }],
+			},
+		}),
+	);
+	deliver(
+		eventFrame(7, {
+			type: "message_start",
+			message: {
+				id: "replayed-2",
+				role: "user",
+				content: [{ text: "second" }],
+			},
+		}),
+	);
+	deliver(
+		snapshotFrame(7, {
+			cursor: rows.at(-1).id,
+			entries: rows,
+			liveEvents: [],
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	assert.equal(panel.status(), "live", "the snapshot at the watermark applies");
+	assert.ok(
+		panel.ids().includes("replayed") && panel.ids().includes("replayed-2"),
+		"and the replay below the cutoff is not discarded",
+	);
+});
+
+test("a page dispatched before a live write cannot rewrite that row", async () => {
+	/*
+	 * THE WIRING HALF of `pageRowIsOlderThanLiveRow` (agent review round 2, m2):
+	 * the reducer's rule is worth nothing if the hook does not hand the page the
+	 * receipt it was dispatched at. A walk read that goes out and is answered
+	 * while a live frame settles the SAME row must keep the live text - the
+	 * owner's prepared window can carry the shorter projection it had when the
+	 * read started.
+	 */
+	const base = Array.from({ length: 10 }, (_, index) =>
+		userRow(`r-${index}`, 1_700_000_000 + index, `r-${index}`),
+	);
+	const PARTIAL = "Four invoices were late: 1042";
+	const FULL =
+		"Four invoices were late: 1042, 1088, 1103 and 1177. I have started chasing them.";
+	const transcript = makeTranscript(base);
+	reset({ transcript });
+
+	// The walk's answer, held until the live write has landed.
+	let release;
+	const held = new Promise((resolve) => {
+		release = resolve;
+	});
+	const realTail = globalThis.__gapTail;
+	globalThis.__gapTail = () => held;
+	try {
+		const panel = await mount();
+		deliver(openFrame(1, false));
+		// A page that stops SHORT of the journal tail is what owes the walk.
+		deliver(
+			snapshotFrame(2, {
+				cursor: base[4].id,
+				entries: base.slice(0, 5),
+				liveEvents: [],
+				streaming: true,
+				hasMore: true,
+			}),
+		);
+		await pump();
+		assert.ok(
+			globalThis.__gapHistoryReads > 0,
+			"the short page owes a reconcile read, which is the read under test",
+		);
+
+		// The live answer settles while that read is in flight.
+		deliver(
+			eventFrame(4, {
+				type: "message_end",
+				message: {
+					id: "a-live",
+					role: "assistant",
+					content: [{ type: "text", text: FULL }],
+					stop_reason: "stop",
+				},
+			}),
+		);
+		await pump();
+		assert.equal(
+			panel.row("a-live")?.text,
+			FULL,
+			"the live end is the control",
+		);
+
+		// The page the read was answered with: the same row, shorter, plus the
+		// rows behind it. Its dispatch was at receipt 2, so it loses.
+		release({
+			entries: [
+				...base,
+				row("a-live", 1_700_000_900, {
+					kind: "message",
+					role: "assistant",
+					content: [{ type: "text", text: PARTIAL }],
+					stop_reason: "stop",
+				}),
+			],
+			has_more: false,
+			cursor_missing: false,
+		});
+		await pump();
+		assert.equal(
+			panel.row("a-live")?.text,
+			FULL,
+			"a page read before the live write does not rewrite the row",
+		);
+	} finally {
+		/*
+		 * THE GATE IS RELEASED EVEN WHEN AN ASSERTION THREW - defensive cleanup,
+		 * on the repository's own rule that a file hanging on an unsettled promise
+		 * must release it in its own cleanup. The exact mechanism by which this
+		 * file wedged CI's shard 0 is NOT proven (the bisect proved only that the
+		 * file, and not the production change, was responsible: 55 minutes
+		 * against a 45-minute ceiling with `# fail 0`, and green once the file was
+		 * reverted). Releasing is idempotent; a second resolve is a no-op.
+		 */
+		release({ entries: [], has_more: false, cursor_missing: false });
+		globalThis.__gapTail = realTail;
+	}
+});
+
+test("a journal-order correction below the snapshot watermark is still applied", async () => {
+	/*
+	 * ROUND 3's M1, and the reason the receipt gate cannot be the whole story.
+	 *
+	 * The bridge keeps `journal_order_ready` frames through the open handshake
+	 * even when their receipt is at or BELOW the snapshot's watermark, and sends
+	 * them AFTER the snapshot: metadata source facts are not folded into
+	 * `frontend`, a bounded page need not carry the IDs they name, and a snapshot
+	 * "cannot supersede an off-page correction" (`docs/DESKTOP_API.md`;
+	 * `desktop_sessions.py::events`' `order_fact and not already_replayed`).
+	 * Refusing them by seq is #994's mis-ordering returning: rows keep the wrong
+	 * placement until an unrelated later correction happens to arrive.
+	 *
+	 * The two deliveries below differ ONLY in the correction's seq: 6 is behind
+	 * the snapshot's 7 and must apply anyway; 8 is ahead and is the control that
+	 * proves the gate is what would have dropped the first.
+	 */
+	const rows = Array.from({ length: 6 }, (_, index) =>
+		userRow(`r-${index}`, 1_700_000_000 + index, `r-${index}`),
+	);
+	const correction = (seq) =>
+		eventFrame(seq, {
+			type: "journal_order_ready",
+			journal_generation: "domain-after",
+			rows: [{ id: rows[1].id, journal_seq: 0 }],
+		});
+
+	reset({ transcript: makeTranscript(rows) });
+	let panel = await mountWithJournalOrder();
+	deliver(openFrame(5, false));
+	deliver(
+		snapshotFrame(7, {
+			cursor: rows.at(-1).id,
+			entries: rows,
+			liveEvents: [],
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	deliver(correction(6));
+	await pump();
+	assert.equal(
+		panel.handle().transcript.orderWantedGeneration,
+		"domain-after",
+		"a correction behind the watermark is applied, not dropped",
+	);
+	/*
+	 * AND IT DOES NOT BECOME THE MARK (agent review round 4). If a correction at 6
+	 * were allowed to lower the watermark, the frames it "proves" are behind us
+	 * would be admitted: the reset replay at 7 below must still be refused, and
+	 * the published reconnect receipt must still say 7, or a reconnect asks for a
+	 * tail it has already read.
+	 */
+	assert.equal(
+		panel.handle().receipt?.seq,
+		7,
+		"the correction does not lower the reconnect receipt",
+	);
+	deliver(
+		eventFrame(7, {
+			type: "history_delta",
+			history_generation: "g",
+			reset: true,
+			messages: [
+				{
+					id: rows[0].id,
+					role: "user",
+					content: [{ type: "text", text: "stale replacement" }],
+				},
+			],
+		}),
+	);
+	await pump();
+	assert.equal(
+		panel.row(rows[0].id)?.text,
+		"r-0",
+		"a stale reset at the watermark is still refused after the correction",
+	);
+
+	reset({ transcript: makeTranscript(rows) });
+	panel = await mountWithJournalOrder();
+	deliver(openFrame(5, false));
+	deliver(
+		snapshotFrame(7, {
+			cursor: rows.at(-1).id,
+			entries: rows,
+			liveEvents: [],
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	deliver(correction(8));
+	await pump();
+	assert.equal(
+		panel.handle().transcript.orderWantedGeneration,
+		"domain-after",
+		"the ahead-of-watermark control applies too",
+	);
+});
 
 test("a receipt gap keeps the answer being written, and a mid-turn join agrees with the end", async () => {
 	const plan = conversation({ withSteer: false, awayRows: 0 });
@@ -4139,3 +4703,450 @@ test("the pane asks for the open frame exactly when the capability says so (F6)"
 		);
 	}
 });
+
+/*
+ * AN OLDER PAGE READ WHILE THE OWNER'S INDEX IS BUILDING (operator report,
+ * 2026-10-26, session `7c8130c573dd`, on 0.44.0): yesterday's rows painted
+ * BELOW this afternoon's at the trailing end of a long, compacted manager
+ * session, and the order corrected itself on reload.
+ *
+ * The journal was in order. The shape that produces it: the open's page is
+ * READY (every row carries `journal_seq` under the current domain), then the
+ * reader scrolls up while the journal keeps growing - a 113 MB journal that is
+ * appended to every few seconds is the common case - so the owner's resident
+ * index is stale and the `before_id` page answers `building`: the right rows,
+ * no coordinates (`desktop_sessions.py::_journal_page`). Those rows reached the
+ * ranker with no placement of their own and were stamped as having ARRIVED
+ * behind the newest placed row, so they ranked after it; a live row then
+ * anchored behind them, and the late `journal_order_ready` correction moved
+ * both again. A continuation is older than every row the reader holds by
+ * construction (`before_id` is exclusive and is the reader's own cursor), so
+ * its rows belong above them until coordinates say exactly where.
+ *
+ * Recorded after EVERY commit: no commit may move a row already shown into a
+ * different position relative to another row already shown.
+ */
+test("an older page read while the owner's index is building lands above the tail and stays there", async (t) => {
+	const DAY = 86_400;
+	const yesterday = 1_792_960_000;
+	const today = yesterday + DAY;
+	const older = [
+		userRow("y-user", yesterday, "Yesterday's question."),
+		assistantRow("y-answer", yesterday + 1, "Yesterday's answer."),
+		toolRow("y-tool", yesterday + 2, "call-y", "bash", "ok"),
+		assistantRow("y-close", yesterday + 3, "Yesterday's close-out."),
+	];
+	const tail = [
+		{
+			id: "compaction-today",
+			ts: today,
+			type: "compaction",
+			payload: { summary: "s", tokens_before: 900000 },
+		},
+		row("peer-today", today + 1, {
+			kind: "custom",
+			custom_type: "peer_message",
+			details: { text: "A peer reported in an hour ago." },
+		}),
+		assistantRow("t-answer", today + 2, "This afternoon's answer."),
+		toolRow("t-tool", today + 3, "call-t", "bash", "ok"),
+		assistantRow("t-close", today + 4, "This afternoon's close-out."),
+	];
+	const journal = [...older, ...tail];
+	const seqOf = new Map(journal.map((entry, index) => [entry.id, index]));
+	const ready = (entries) =>
+		entries.map((entry) => ({ ...entry, journal_seq: seqOf.get(entry.id) }));
+	const transcript = makeTranscript(journal);
+	reset({ transcript });
+	/*
+	 * Until the reader scrolls, the owner's index is current: a tail-type read
+	 * (the open's reconcile walk) answers the same READY tail the snapshot
+	 * carried, so the only uncoordinated page in this case is the one under test.
+	 */
+	globalThis.__gapTail = () => ({
+		entries: ready(tail),
+		has_more: true,
+		cursor_missing: false,
+		journal_generation: "domain-today",
+		journal_order_state: "ready",
+	});
+	/*
+	 * The owner answers the repair read (`sessions.get`) with a snapshot frame,
+	 * as a real owner does (QA round 1, Q5): `ready` with `journal_ordinals` for
+	 * every requested id while its index is current, `building` (no domain, no
+	 * coordinates) once the reader has scrolled and the journal has outgrown it.
+	 * With no answer the repair loop threw and never ran in this case.
+	 */
+	let ownerReady = true;
+	globalThis.__gapGet = (request) => {
+		const asked = request.orderIds ?? [];
+		return snapshotFrame(20, {
+			cursor: tail.at(-1).id,
+			entries: ownerReady ? ready(tail) : tail,
+			liveEvents: [],
+			streaming: false,
+			hasMore: true,
+			openFrame: ownerReady
+				? {
+						journal_generation: "domain-today",
+						journal_order_state: "ready",
+						journal_ordinals: Object.fromEntries(
+							asked
+								.filter((id) => seqOf.has(id))
+								.map((id) => [id, seqOf.get(id)]),
+						),
+						journal_missing_ids: asked.filter((id) => !seqOf.has(id)),
+					}
+				: { journal_order_state: "building" },
+		});
+	};
+	const panel = await mountWithJournalOrder();
+	const commits = [];
+	const capture = (source) => commits.push({ source, ids: panel.ids() });
+
+	deliver(openFrame(1, false));
+	deliver(
+		snapshotFrame(2, {
+			cursor: tail.at(-1).id,
+			entries: ready(tail),
+			liveEvents: [],
+			streaming: false,
+			hasMore: true,
+			openFrame: {
+				journal_generation: "domain-today",
+				journal_order_state: "ready",
+			},
+		}),
+	);
+	await pump();
+	capture("open (ready page)");
+	assert.ok(panel.ids().includes("t-close"), "the open painted its page");
+
+	// The reader scrolls up; the index is stale, so the page carries no seqs.
+	ownerReady = false;
+	globalThis.__gapTail = (request) => ({
+		...transcript.pageBefore(request.beforeId, request.limit),
+		journal_order_state: "building",
+	});
+	await panel.handle().loadOlder();
+	await pump();
+	capture("load older (building)");
+
+	// Live rows while the coordinates are still owed: a peer message and a tool.
+	deliver(
+		eventFrame(3, {
+			type: "history_delta",
+			messages: [
+				{
+					id: "peer-live",
+					kind: "custom",
+					custom_type: "peer_message",
+					details: { text: "A peer reports in now." },
+				},
+			],
+		}),
+	);
+	await pump();
+	capture("live peer row");
+	deliver(
+		eventFrame(4, {
+			type: "message_end",
+			message: {
+				id: "live-answer",
+				role: "assistant",
+				content: [{ type: "text", text: "Live answer." }],
+				tool_calls: [],
+			},
+		}),
+	);
+	await pump();
+	capture("live assistant row");
+
+	// The owner's late correction for the older rows, then for the live ones.
+	deliver(
+		eventFrame(5, {
+			type: "journal_order_ready",
+			journal_generation: "domain-today",
+			rows: older.map((entry) => ({
+				id: entry.id,
+				journal_seq: seqOf.get(entry.id),
+			})),
+		}),
+	);
+	await pump();
+	capture("correction: older rows");
+	deliver(
+		eventFrame(6, {
+			type: "journal_order_ready",
+			journal_generation: "domain-today",
+			rows: [
+				{ id: "peer-live", journal_seq: journal.length },
+				{ id: "live-answer", journal_seq: journal.length + 1 },
+			],
+		}),
+	);
+	await pump();
+	capture("correction: live rows");
+
+	const series = commits
+		.map(({ source, ids: order }) => `  ${source}: ${order.join(" ")}`)
+		.join("\n");
+	// The commit series is the evidence, so a passing run prints it too.
+	t.diagnostic(`committed orders:\n${series}`);
+	const olderIds = older.map(recordIdOf);
+	const tailIds = tail.map(recordIdOf).filter((id) => panel.ids().includes(id));
+	const afterLoad = commits[1].ids;
+	assert.ok(
+		olderIds.every((id) => afterLoad.includes(id)),
+		`the older page painted\n${series}`,
+	);
+	assert.ok(
+		Math.max(...olderIds.map((id) => afterLoad.indexOf(id))) <
+			Math.min(...tailIds.map((id) => afterLoad.indexOf(id))),
+		`every row of the older page sits above every row of the tail\n${series}`,
+	);
+	// No commit reorders rows an earlier commit already showed.
+	for (let at = 1; at < commits.length; at++) {
+		const before = commits[at - 1].ids;
+		const after = commits[at].ids;
+		const shared = before.filter((id) => after.includes(id));
+		assert.deepEqual(
+			after.filter((id) => shared.includes(id)),
+			shared,
+			`"${commits[at].source}" reordered rows already shown\n${series}`,
+		);
+	}
+	assert.deepEqual(
+		panel.ids(),
+		[...olderIds, ...tailIds, "peer-live", "live-answer"],
+		`the settled order is the journal's\n${series}`,
+	);
+});
+
+/*
+ * A DOMAIN ROTATION AFTER A BUILDING CONTINUATION (PR #1436 review round 1,
+ * R1-M1 / QA Q2, QA scenarios S12 and S13).
+ *
+ * `Transcript.compact_file` rewrites the journal with `os.replace`. The new
+ * inode makes `refresh_index` do a full rescan under a fresh `uuid4`
+ * `journal_generation`, so every long, compacted session reaches this shape.
+ * The steps: the reader opens on a ready page, loads an older page while the
+ * index is `building`, and the journal grows and rotates. The pane then sees
+ * the new domain through a tail that covers only the newest rows. That happens
+ * through a same-pane reconnect (S12) or a session switch and cold reopen (S13).
+ * Then the owner places every older row in the new domain.
+ *
+ * Before the fix, the continuation rows carried a false "arrived behind the
+ * tail" anchor. After the rotation the old tail rows were anchored behind them,
+ * which closed a loop that kept the whole loop coordinate-less for good: the
+ * settled order stayed `n… y… t…` with nothing left to ask. The owner here
+ * answers the repair read (`sessions.get`) with a real snapshot frame, as a
+ * real owner does (QA round 1, Q5), so the repair path runs with real answers.
+ */
+async function rotationAfterBuildingContinuation(route) {
+	const older = [
+		userRow("y-user", 1_000, "Yesterday's question."),
+		assistantRow("y-answer", 1_001, "Yesterday's answer."),
+		assistantRow("y-close", 1_002, "Yesterday's close-out."),
+	];
+	const tail = [
+		userRow("t-user", 2_000, "This afternoon's question."),
+		assistantRow("t-answer", 2_001, "This afternoon's answer."),
+		assistantRow("t-close", 2_002, "This afternoon's close-out."),
+	];
+	const newer = [
+		userRow("n1", 3_000, "A new question."),
+		assistantRow("n2", 3_001, "A new answer."),
+		assistantRow("n3", 3_002, "A new close-out."),
+	];
+	const journal = [...older, ...tail, ...newer];
+	// The rescan numbers the rewritten journal afresh; any other seqs would do.
+	const seqIn = (generation, id) =>
+		journal.findIndex((entry) => entry.id === id) +
+		(generation === "domain-g1" ? 0 : 500);
+	const ready = (entries, generation) => ({
+		entries: entries.map((entry) => ({
+			...entry,
+			journal_seq: seqIn(generation, entry.id),
+		})),
+		has_more: true,
+		cursor_missing: false,
+		journal_generation: generation,
+		journal_order_state: "ready",
+	});
+	/*
+	 * The owner's answer to the repair read (`sessions.get`): a snapshot frame
+	 * carrying the domain's tail page, plus `journal_ordinals` for every
+	 * requested id the journal holds and `journal_missing_ids` for the rest.
+	 * That is the shape `transcript_index.apply_journal_order` writes.
+	 */
+	const owner =
+		(generation, page, state = "ready") =>
+		(request) => {
+			if (state === "building")
+				return snapshot(20, { entries: page, journal_order_state: "building" });
+			const answer = ready(page, generation);
+			const asked = request.orderIds ?? [];
+			const held = (id) => journal.some((entry) => entry.id === id);
+			answer.journal_ordinals = Object.fromEntries(
+				asked.filter(held).map((id) => [id, seqIn(generation, id)]),
+			);
+			answer.journal_missing_ids = asked.filter((id) => !held(id));
+			return snapshot(20, answer);
+		};
+	const transcript = makeTranscript([...older, ...tail]);
+	reset({ transcript });
+	globalThis.__gapTail = (request) =>
+		request.beforeId === undefined
+			? ready(tail, "domain-g1")
+			: {
+					...transcript.pageBefore(request.beforeId, request.limit),
+					journal_order_state: "building",
+				};
+	let sessionId = SESSION_A;
+	const panel = await mountWithJournalOrder(() => sessionId);
+	globalThis.__gapGet = (request) => owner("domain-g1", tail)(request);
+	const commits = [];
+	const capture = (source) => commits.push({ source, ids: panel.ids() });
+	const snapshot = (seq, page) =>
+		snapshotFrame(seq, {
+			cursor: page.entries.at(-1).id,
+			entries: page.entries,
+			liveEvents: [],
+			streaming: false,
+			hasMore: true,
+			// A `building` answer names no domain, so it carries no generation key.
+			openFrame: {
+				...(page.journal_generation
+					? { journal_generation: page.journal_generation }
+					: {}),
+				journal_order_state: page.journal_order_state,
+				...(page.journal_ordinals
+					? {
+							journal_ordinals: page.journal_ordinals,
+							journal_missing_ids: page.journal_missing_ids,
+						}
+					: {}),
+			},
+		});
+
+	deliver(openFrame(1, false));
+	deliver(snapshot(2, ready(tail, "domain-g1")));
+	await pump();
+	capture("open (ready, g1)");
+	// From the scroll on, the owner's g1 index is stale: every read it answers,
+	// the repair read included, is `building` and carries no coordinate.
+	globalThis.__gapGet = owner("domain-g1", tail, "building");
+	await panel.handle().loadOlder();
+	await pump();
+	capture("load older (building)");
+
+	// The journal grows and is rewritten: the owner now answers in g2, and a
+	// long journal's reads are bounded: the tail covers only the newest rows,
+	// and the reconcile walk's `before_id` read reaches only the newest rows it
+	// already holds (QA's S12 capped every tail-type read at 3 rows). The
+	// journal keeps growing, so that read finds the index stale again and
+	// answers `building`. The older page's rows are therefore NOT re-read: g2
+	// placement reaches them only through the repair read and the owner's
+	// correction, which is the shape that closed the anchor loop.
+	transcript.rows.push(...newer);
+	globalThis.__gapTail = (request) =>
+		request.beforeId === undefined
+			? ready(newer, "domain-g2")
+			: {
+					...transcript.pageBefore(
+						request.beforeId,
+						Math.min(request.limit, newer.length),
+					),
+					journal_order_state: "building",
+				};
+	// The repair read is a read of a still-growing journal too: `building`,
+	// until the owner's correction has placed every row.
+	globalThis.__gapGet = owner("domain-g2", newer, "building");
+	if (route === "reconnect") {
+		endStream();
+		await pump();
+		for (const fire of globalThis.__gapTimerCallbacks.splice(0)) fire();
+		await pump();
+	} else {
+		sessionId = SESSION_B;
+		panel.rerender();
+		await pump();
+		sessionId = SESSION_A;
+		panel.rerender();
+		await pump();
+	}
+	deliver(openFrame(10, true));
+	deliver(snapshot(11, ready(newer, "domain-g2")));
+	await pump();
+	capture(`${route} snapshot (g2 tail only)`);
+
+	// The owner's correction places every row in g2, delivered twice as a
+	// coalesced correction can be.
+	for (const seq of [12, 13]) {
+		deliver(
+			eventFrame(seq, {
+				type: "journal_order_ready",
+				journal_generation: "domain-g2",
+				rows: journal.map((entry) => ({
+					id: entry.id,
+					journal_seq: seqIn("domain-g2", entry.id),
+				})),
+			}),
+		);
+		await pump();
+		capture(`correction ${seq - 11}: every row in g2`);
+		// The correction is the owner's index catching up: its reads are ready.
+		globalThis.__gapGet = owner("domain-g2", newer);
+	}
+	return { commits, journal, panel };
+}
+
+for (const route of ["reconnect", "switch"]) {
+	test(`a rotation after a building continuation settles in journal order (${route})`, async (t) => {
+		const { commits, journal, panel } =
+			await rotationAfterBuildingContinuation(route);
+		const series = commits
+			.map(({ source, ids: order }) => `  ${source}: ${order.join(" ")}`)
+			.join("\n");
+		t.diagnostic(`committed orders:\n${series}`);
+		const journalIds = journal.map(recordIdOf);
+		const settled = journalIds.filter((id) => panel.ids().includes(id));
+		assert.deepEqual(settled, journalIds, `every row is painted\n${series}`);
+		// Once the new domain's coordinates land, the order is the journal's,
+		// and a replayed correction does not move it.
+		for (const commit of commits.slice(-2))
+			assert.deepEqual(
+				commit.ids.filter((id) => journalIds.includes(id)),
+				journalIds,
+				`"${commit.source}" is in journal order\n${series}`,
+			);
+		/*
+		 * No commit reorders the rows the reader held before the rotation (the
+		 * older page and the tail). The rotation's own transient is a different
+		 * shape and predates this PR: rows of the NEW tail may paint between them
+		 * until the correction (QA round 1, 5a). Its measure here: the newer rows
+		 * sit between the older page and the tail for one commit, where base
+		 * paints them above both.
+		 */
+		const held = journalIds.filter((id) => commits[1].ids.includes(id));
+		for (const commit of commits.slice(2))
+			assert.deepEqual(
+				commit.ids.filter((id) => held.includes(id)),
+				held,
+				`"${commit.source}" reordered the rows already shown\n${series}`,
+			);
+		// The older page painted above the tail when it loaded.
+		assert.deepEqual(
+			commits[1].ids,
+			["y-user", "y-answer", "y-close", "t-user", "t-answer", "t-close"],
+			`the older page sits above the tail\n${series}`,
+		);
+		// Nothing is left owed: the order is settled, not waiting on a sweep.
+		assert.equal(
+			panel.handle().transcript.journalGeneration,
+			"domain-g2",
+			`the pane is on the new domain\n${series}`,
+		);
+	});
+}

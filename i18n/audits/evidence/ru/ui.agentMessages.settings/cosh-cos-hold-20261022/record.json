@@ -1,0 +1,195 @@
+{
+ "audit_id": "cosh-cos-hold-20261022",
+ "date": "2026-10-22",
+ "locale": "ru",
+ "namespace": "ui.agentMessages.settings",
+ "source_commit": "2fb94727d3906e2e2e44cbe91acf95c27aea5105",
+ "source_base": "0f1e6dd538",
+ "scope": "NEW full-namespace catalogue (87 keys). Scope expansion approved by the operator on 2026-10-22: the locale had no ui.agentMessages.settings file (all 84 base keys sat in i18n/coverage-allowance.json), so the PR #1325 hold keys could not land alone. Round 1 audited the 84 base keys at en 840f0821…; round 2 audited the remediation and, first time, the 3 hold keys at en 2fb94727d3. The coverage-allowance pair was removed by a deletion-only `check-coverage.mjs --update`.",
+ "status": "audited",
+ "translator": {
+  "agent": "translator",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-10-22",
+  "session": "073cc3536c59",
+  "job": "fae70f38226a",
+  "remediation_jobs": [
+   "0fa9c8593701"
+  ]
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "anthropic/claude-opus-5-5",
+   "date": "2026-10-22",
+   "result": "clean",
+   "instance": "cosh-r2-ru",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/cosh-r2-ru.json",
+   "receipt_sha256": "3b76ed8bb1b9a2163fa4d70ef3a7e007c05e61edbe3799fbb12213d7884d5b6c",
+   "scope": "New full-namespace ru catalogue (scope expansion, operator-approved): 84 base keys audited in cosh-r1-ru (3 MINOR, 3 NIT, fixed); remediation plus first audit of the 3 hold keys at en 2fb94727d3 clean here. Catalogue audit only, not rendered-fit, activation or release approval.",
+   "note": "Independent audit; round 1 retained at i18n/receipts/cosh-r1-ru.json. Allowance pair ru/ui.agentMessages.settings removed. Record: i18n/audits/evidence/ru/ui.agentMessages.settings/cosh-cos-hold-20261022/."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "cosh-r1-ru",
+   "session": "2728570e45a1",
+   "job": "b18e1df7fef0",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 84,
+   "en_sha256": "840f0821444e5e70af15435c82c43a1996db8be4f06cb59926a12f537794e2af",
+   "context_sha256": "e51d33d9b5ef383755e084f64508c9f08b75cf9c1454faba07e7c03bf5f9c489",
+   "target_sha256": "b6d469500f277296ff5057d8d8d36eb2b5459bdf2a2a41ec4a7462d0820afd63",
+   "findings": [
+    {
+     "severity": "MINOR",
+     "key": "ui.agentMessages.settings.consent.changed"
+    },
+    {
+     "severity": "MINOR",
+     "key": "ui.agentMessages.settings.consent.via_dialog"
+    },
+    {
+     "severity": "MINOR",
+     "key": "ui.agentMessages.settings.local.stays_enrolled"
+    },
+    {
+     "severity": "NIT",
+     "key": "ui.agentMessages.settings.allowlist.allowed_heading"
+    },
+    {
+     "severity": "NIT",
+     "key": "ui.agentMessages.settings.allowlist.blocked_heading"
+    },
+    {
+     "severity": "NIT",
+     "key": "ui.agentMessages.settings.allowlist.listed_only"
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/cosh-r1-ru.json",
+    "sha256": "2462f94db03853c85cf9d9254f1d149f940e43bcf04079310c91299e55fa3ea9"
+   }
+  },
+  {
+   "round": 2,
+   "instance": "cosh-r2-ru",
+   "session": "2728570e45a1",
+   "job": "838bc1d70407",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 10,
+   "en_sha256": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
+   "context_sha256": "0796c27031e5a3b9a600147e67e1341234f6ed0f5adfd3b7c4f7758a5bcff63d",
+   "target_sha256": "7d8efca849197942b2a037f8f7ba52da011bbb568706875aa61a27a2c9037224",
+   "findings": [],
+   "remediation": [
+    {
+     "key": "ui.agentMessages.settings.consent.changed",
+     "r1_severity": "MINOR",
+     "disposition": "fixed",
+     "verified": true
+    },
+    {
+     "key": "ui.agentMessages.settings.consent.via_dialog",
+     "r1_severity": "MINOR",
+     "disposition": "fixed-alternative",
+     "verified": true
+    },
+    {
+     "key": "ui.agentMessages.settings.local.stays_enrolled",
+     "r1_severity": "MINOR",
+     "disposition": "fixed",
+     "verified": true
+    },
+    {
+     "key": "ui.agentMessages.settings.allowlist.allowed_heading",
+     "r1_severity": "NIT",
+     "disposition": "fixed",
+     "verified": true
+    },
+    {
+     "key": "ui.agentMessages.settings.allowlist.blocked_heading",
+     "r1_severity": "NIT",
+     "disposition": "fixed",
+     "verified": true
+    },
+    {
+     "key": "ui.agentMessages.settings.allowlist.listed_only",
+     "r1_severity": "NIT",
+     "disposition": "fixed",
+     "verified": true
+    },
+    {
+     "key": "ui.agentMessages.settings.allowlist.cue_listed_only",
+     "r1_severity": "NIT (knock-on of allowlist.listed_only)",
+     "disposition": "fixed",
+     "verified": true
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/cosh-r2-ru.json",
+    "sha256": "3b76ed8bb1b9a2163fa4d70ef3a7e007c05e61edbe3799fbb12213d7884d5b6c"
+   }
+  }
+ ],
+ "scope_expansion": {
+  "reason": "ru had no ui.agentMessages.settings catalogue; the 84 pre-existing keys were covered only by i18n/coverage-allowance.json, so the 2-key PR #1325 delta could not land without creating the full file, and the translator created all 86 keys.",
+  "approved_by": "operator (via coordinator), 2026-10-22",
+  "allowance_pair_removed": "ru/ui.agentMessages.settings (84 keys)"
+ },
+ "coverage_allowance": {
+  "removed_pair": "ru/ui.agentMessages.settings",
+  "keys_removed": 84,
+  "method": "node scripts/i18n/check-coverage.mjs --update (deletion-only)"
+ },
+ "english_revision_note": "The English for the hold keys was rewritten at 2fb94727d3 after code review R1-1 (opening the conversation releases nothing; the reader must send a message). First-pass hold translations made against 359a2f55ec (en 840f0821…) were discarded unaudited and retranslated; no audit of the discarded text is claimed.",
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.agentMessages.settings.json",
+   "sha256": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/ru/ui.agentMessages.settings.json",
+   "sha256": "7d8efca849197942b2a037f8f7ba52da011bbb568706875aa61a27a2c9037224"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.agentMessages.settings.context.json",
+   "sha256": "0796c27031e5a3b9a600147e67e1341234f6ed0f5adfd3b7c4f7758a5bcff63d"
+  }
+ },
+ "references": {
+  "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ru.md",
+   "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+  }
+ },
+ "independence": "Translator and auditor are different agents (translator vs translation-auditor) in different sessions; auditors never edited catalogues; the coordinator neither translated nor audited and only assembled evidence with scripts/i18n/ledger-assemble.mjs.",
+ "limitations": [
+  "No per-locale rendered-fit evidence recorded in this audit; hold.open sits in a shrink-0 ghost button beside a wrapping notice.",
+  "No pseudo-localization, native bidi rendering, activation or release evidence claimed."
+ ],
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/cosh-r1-ru.json",
+   "sha256": "2462f94db03853c85cf9d9254f1d149f940e43bcf04079310c91299e55fa3ea9"
+  },
+  {
+   "path": "i18n/receipts/cosh-r2-ru.json",
+   "sha256": "3b76ed8bb1b9a2163fa4d70ef3a7e007c05e61edbe3799fbb12213d7884d5b6c"
+  }
+ ]
+}

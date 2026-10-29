@@ -2363,10 +2363,16 @@
 		"length": "English is 6 source characters. Keep this as a compact single control/status label; prefer comparable width, do not add an explanatory sentence."
 	},
 	"ui.projects.project_updates.attachment": {
-		"role": "project updates: field, view or status label for “Attachment”",
-		"tone": "Concise neutral label, retaining English sentence case.",
-		"note": "English source: Attachment.  Markup and emphasized user names stay outside this message.",
-		"length": "English is 10 source characters. Keep this as a compact single control/status label; prefer comparable width, do not add an explanatory sentence."
+		"role": "project updates: fallback display name for an attachment that has no name and no usable final path segment",
+		"tone": "Single neutral noun in sentence case; short and generic.",
+		"note": "Read by attachmentName (project-update-assets.tsx:80-83) only when neither attachment.name nor the last segment of attachment.path is available, so this word stands in where a file name would and feeds the attachment tile and filmstrip labels. It is not a field, view or status label. Keep it a short generic noun for the file itself; the chosen word is displayed as the attachment’s name.",
+		"length": "English is 10 source characters. One short noun; prefer comparable width, and do not add punctuation or an explanatory sentence."
+	},
+	"ui.projects.project_updates.attachments": {
+		"role": "project updates: accessible name of the filmstrip that walks one update’s pictures and video clips inside the media lightbox",
+		"tone": "Concise plural noun label; sentence case, no trailing punctuation.",
+		"note": "Screen-reader-only name on the filmstrip list at the bottom of the update’s media lightbox. It names the whole set the strip walks, never one file, and the strip appears only when the update holds more than one image or clip. Distinct from the singular ui.projects.project_updates.attachment, which is the fallback display name for an attachment with neither a name nor a final path segment.",
+		"length": "English is 11 source characters. Keep it one short plural noun; it is a list name, not a sentence, and the strip adds no visible text."
 	},
 	"ui.projects.project_updates.file_actions_for_name": {
 		"role": "project updates: field, view or status label for “File actions for …”",
@@ -2396,6 +2402,59 @@
 		"length": "English is 11 source characters. Keep this as a compact single control/status label; prefer comparable width, do not add an explanatory sentence.",
 		"placeholders": {
 			"name": "Runtime binding on project-updates: name: String(name)"
+		}
+	},
+	"ui.projects.project_updates.play_name": {
+		"role": "project updates: accessible name and tooltip of a video thumbnail tile in an update’s attachment grid",
+		"tone": "Direct imperative; verb first, file name last, no colon or quotes.",
+		"note": "The tile shows a still of the clip with a decorative play glyph; this string is what a screen reader announces and what the mouse tooltip shows. Pressing it opens the update’s media lightbox at this clip. {name} is the attachment’s display name — a file name, kept verbatim.",
+		"length": "English is 11 source characters. A compact control label: verb plus name, not a sentence.",
+		"placeholders": {
+			"name": "Attachment display name (attachmentName in project-update-assets.tsx), passed as String(name); never translated."
+		}
+	},
+	"ui.projects.project_updates.preview_failed": {
+		"role": "project updates: first line of the error state in the in-app file preview dialog",
+		"tone": "Neutral factual sentence; no blame, no exclamation mark, no technical detail.",
+		"note": "Shown in the dialog body when the stored attachment could not be read. The raw filesystem error (which names the internal path and a syscall) is logged, never shown, so this line must stay reader-facing. It is immediately followed by ui.projects.project_updates.preview_moved as a second paragraph explaining the likely cause: translate the pair as two separate sentences and do not merge, reorder or drop either line.",
+		"length": "English is 30 source characters. One short sentence; the two error lines stay separate paragraphs."
+	},
+	"ui.projects.project_updates.preview_loading": {
+		"role": "project updates: transient status line in the body of the in-app file preview dialog",
+		"tone": "Quiet neutral status; keep the single-character ellipsis, no exclamation mark.",
+		"note": "Replaces the dialog body while the attachment is read through the desktop bridge, then gives way to the file’s contents. The dialog title already names the file, so the line carries no file name. English ends in the one-character ellipsis (…), not three periods.",
+		"length": "English is 16 source characters. Two words plus the ellipsis; it is a status, not a sentence."
+	},
+	"ui.projects.project_updates.preview_moved": {
+		"role": "project updates: second line of the error state in the in-app file preview dialog",
+		"tone": "Quiet tentative explanation; keep the hedge (“may have”) rather than asserting deletion.",
+		"note": "Follows ui.projects.project_updates.preview_failed as its own paragraph. “Its” refers to the file named in the dialog title, so the line must read as a continuation without repeating the name. It says only that the stored copy may have moved or been deleted — no path, error code or recovery instruction — and keeps both possibilities open.",
+		"length": "English is 46 source characters. One sentence; keep it the second, subordinate line of the two-line error."
+	},
+	"ui.projects.project_updates.preview_name": {
+		"role": "project updates: accessible name of a file tile that opens the in-app reader",
+		"tone": "Direct imperative; verb first, file name last, no colon or quotes.",
+		"note": "Used for the file kinds the dialog can render: markdown, JSON, plain text and logs, and code. The tile shows the file name — and its size when the backend reports one — as visible text, and this label is what a screen reader announces instead. Deliberately distinct from ui.projects.project_updates.open_name, used when a file with no in-app reader leaves to the OS application.",
+		"length": "English is 14 source characters. A compact control label: verb plus name, not a sentence.",
+		"placeholders": {
+			"name": "Attachment display name (attachmentName in project-update-assets.tsx), passed as String(name); never translated."
+		}
+	},
+	"ui.projects.project_updates.preview_unavailable": {
+		"role": "project updates: status line in the body of the in-app file preview dialog when the desktop bridge is absent",
+		"tone": "Neutral factual sentence; state the limitation plainly, without apology or error framing.",
+		"note": "Shown when window.api.readFile is not available — a browser development build has no bridge — so it describes where preview works, not a failure of this file. It must not suggest the file is missing or unreadable; that is the separate preview_failed/preview_moved state.",
+		"length": "English is 47 source characters. One sentence; keep the desktop app as the stated boundary."
+	},
+	"ui.projects.project_updates.show_asset_name": {
+		"role": "project updates: accessible name of one thumbnail button in the media lightbox filmstrip",
+		"tone": "Direct imperative; verb first, then the name, then the position clause after a comma; no trailing punctuation.",
+		"note": "The filmstrip at the bottom of an update’s media lightbox lists that update’s pictures and clips; this names the button for the asset at {index} of {count} so a screen-reader user can tell position in the set. Also used on placeholder tiles whose bytes have not loaded yet, and as the video tile’s tooltip. {index} and {count} are 1-based whole numbers already formatted as strings: keep the order and the comma, and never translate or re-case the numbers.",
+		"length": "English is 37 source characters. Keep the verb first, then the name, then the position clause after the comma; it is a control label, not a sentence.",
+		"placeholders": {
+			"name": "Attachment display name (attachmentName in project-update-assets.tsx); never translated.",
+			"index": "1-based position among the update’s image and video attachments, passed as String(index + 1).",
+			"count": "Total number of images and videos in the update, passed as String(count)."
 		}
 	},
 	"ui.projects.project_updates.updates": {
@@ -2859,5 +2918,31 @@
 		"tone": "Quiet factual statement; preserve the distinction between unavailable, refused and pending.",
 		"note": "English source: The request could not be confirmed..  Markup and emphasized user names stay outside this message.",
 		"length": "English is 35 source characters. Existing feedback may wrap; keep the same sentence/paragraph count, no additional instructions."
+	},
+	"ui.projects.project_model.milestone_summary": {
+		"role": "Hub update l",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: {completed} of {total} complete",
+		"placeholders": {
+			"completed": "Runtime value; preserve the placeholder and insert it without translation.",
+			"total": "Runtime value; preserve the placeholder and insert it without translation."
+		}
+	},
+	"ui.projects.project_model.todos_summary": {
+		"role": "Hub update l",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: {open} open of {total}",
+		"placeholders": {
+			"open": "Runtime value; preserve the placeholder and insert it without translation.",
+			"total": "Runtime value; preserve the placeholder and insert it without translation."
+		}
+	},
+	"ui.projects.project_model.done_gate_tail": {
+		"role": "Hub update l",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: complete or remove the incomplete milestones, then mark it done"
 	}
 }

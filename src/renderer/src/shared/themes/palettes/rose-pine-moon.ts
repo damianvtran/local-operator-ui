@@ -38,7 +38,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const rosePineMoon: ThemeDefinition = {
 	id: "rosePineMoon",
 	name: "Rosé Pine Moon",
-	description: "Rosé Pine lifted: the same rose and pine over a softer violet.",
+	descriptionKey: "ui.settings.appearance.theme.rose_pine_moon",
 	palette: {
 		mode: "dark",
 

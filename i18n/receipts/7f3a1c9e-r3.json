@@ -1,0 +1,27 @@
+{
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "7f3a1c9e-r3",
+  "locale": "fr",
+  "round": 3,
+  "namespaces": {
+    "ui.presence": {
+      "status": "passed",
+      "keys_audited": 9,
+      "sha256": {
+        "en": "7dc0d4c3bb4c18fb15501b630c7f1b2bc1f2f1ec8dabe131d3a3498b50a142a8",
+        "fr": "dacbfe606f26a97122f51c76f295e9b7e210635f17ac7c83df36a0f3c0b1fd8a"
+      },
+      "findings": []
+    },
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 67,
+      "sha256": {
+        "en": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
+        "fr": "e61bdf636f347e022d65c8641b95e34b1abd7fe637faf5485218265a18520a52"
+      },
+      "findings": []
+    }
+  }
+}

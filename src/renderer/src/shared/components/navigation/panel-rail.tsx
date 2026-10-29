@@ -67,6 +67,12 @@ export type PanelRailProps = {
 	 */
 	askCount: number;
 	/**
+	 * This conversation's unread notification updates (decisions D9): added to
+	 * the badge and named separately in the accessible name. 0 when the backend
+	 * does not serve the reel, which leaves the door exactly as it was.
+	 */
+	askUpdates?: number;
+	/**
 	 * Which queue the item's press opens - this conversation's or the fleet's -
 	 * riding the same `setAskDrawerOpen(open, scope)` seam the drawer reads.
 	 */
@@ -74,6 +80,16 @@ export type PanelRailProps = {
 	/** Console completions not yet looked at, and whether they still pulse. */
 	consoleUnseenCount: number;
 	consoleUnseenPulsing: boolean;
+	/**
+	 * Running console surfaces in THIS conversation, as the pane published them.
+	 *
+	 * THE ACTIVE TREATMENT FOLLOWS LIVENESS, not the pane's flag (operator report,
+	 * 2026-10-21: "0 live" still painted the console item as the active one). The
+	 * item is lit only when the slot holds the console AND a process is running; an
+	 * open pane showing restored history is a reader, not an active terminal, and
+	 * pressing the unlit item asks for a live one (`togglePanelRailItem`).
+	 */
+	consoleLiveCount: number;
 	/** Files the conversation has been seen to mention (the canvas item's dot). */
 	fileCount: number;
 	/** Rows in the ledger's Opened group (the name and tooltip clauses, §8). */
@@ -153,9 +169,11 @@ export const PanelRail: FC<PanelRailProps> = ({
 	readerChildId,
 	browserAttentionCount,
 	askCount,
+	askUpdates = 0,
 	askScope,
 	consoleUnseenCount,
 	consoleUnseenPulsing,
+	consoleLiveCount,
 	fileCount,
 	codeOpened,
 	codeMentioned,
@@ -304,7 +322,16 @@ export const PanelRail: FC<PanelRailProps> = ({
 		askScope,
 		askCount,
 		capFor("panel.ask"),
+		askUpdates,
 	);
+	const consoleActive = drawn === "console" && consoleLiveCount > 0;
+	/*
+	 * THE LABEL FOLLOWS THE PRESS, NOT THE LIGHT (m-5). The item toggles the pane
+	 * whenever it is drawn, so an unlit history/draft pane still says "Close console"
+	 * and its tooltip matches the act. `consoleActive` stays the paint and
+	 * `aria-pressed` fact; conflating them made the label promise an open while the
+	 * press closed.
+	 */
 	const terminal = consoleRailLabels(
 		drawn === "console",
 		consoleUnseenCount,
@@ -425,7 +452,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 					data-ask-scope={askScope}
 				>
 					<AsksScopeIcon scope={askScope} aria-hidden={true} />
-					{askCount > 0 && (
+					{askCount + askUpdates > 0 && (
 						/*
 						 * THE COUNT IN THE RAIL'S OWN REGISTER (#896, the issue's "styled like
 						 * the Browser and Console counts already on the rail"). The browser
@@ -437,7 +464,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 						 * match it - if the design round prefers the quiet register, this
 						 * block is where the change lands.
 						 */
-						<span className="pointer-events-none absolute -top-0.5 -right-0.5 flex">
+						<span className="pointer-events-none absolute -top-0.5 -end-0.5 flex">
 							<Badge
 								variant="attention"
 								shape="pill"
@@ -445,7 +472,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 								className="h-3.5 min-w-3.5 px-0.75 text-meta-sm leading-none ring-2 ring-surface"
 								data-tour-tag="ask-pane-badge"
 							>
-								{countLabel(askCount, 9)}
+								{countLabel(askCount + askUpdates, 9)}
 							</Badge>
 						</span>
 					)}
@@ -477,7 +504,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 						 * glyph's own cap ("9+") is unchanged. `ring-surface` because the ring
 						 * names the ground BEHIND the badge, and that is the rail's.
 						 */
-						<span className="pointer-events-none absolute -top-0.5 -right-0.5 flex">
+						<span className="pointer-events-none absolute -top-0.5 -end-0.5 flex">
 							<Badge
 								variant="attention"
 								shape="pill"
@@ -494,7 +521,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 					id="console"
 					label={terminal.tooltip}
 					ariaLabel={terminal.aria}
-					pressed={drawn === "console"}
+					pressed={consoleActive}
 					onClick={() => togglePanelRailItem("console", actionContext)}
 					data-tour-tag="console-pane-trigger"
 				>
@@ -503,7 +530,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 						<span
 							aria-hidden="true"
 							className={cn(
-								"absolute top-1 right-1 size-1.5 rounded-full",
+								"absolute top-1 end-1 size-1.5 rounded-full",
 								consoleUnseenPulsing
 									? "bg-accent animate-pulse-visible"
 									: "bg-ink-muted",
@@ -524,7 +551,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 					{fileCount > 0 && (
 						<span
 							aria-hidden="true"
-							className="absolute top-1 right-1 size-1.5 rounded-full bg-ink-muted"
+							className="absolute top-1 end-1 size-1.5 rounded-full bg-ink-muted"
 						/>
 					)}
 				</PanelRailItem>
@@ -556,7 +583,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 						<span
 							aria-hidden="true"
 							data-code-review-attention=""
-							className="absolute top-1 right-1 size-1.5 rounded-full bg-ink-muted"
+							className="absolute top-1 end-1 size-1.5 rounded-full bg-ink-muted"
 						/>
 					)}
 				</PanelRailItem>

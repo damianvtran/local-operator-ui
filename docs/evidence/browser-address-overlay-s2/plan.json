@@ -1,0 +1,298 @@
+[
+  {
+    "id": "P1",
+    "claim": "built S2 document exists with its script and stylesheet; its CSP equals the pinned one",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "document=true cspMatch=true assets=[\"assets/addressOverlayList-BEh9WU4R.js\",\"assets/addressOverlayList-8wdZRD_t.css\"] present=2/2 htmlSha=9c8bf7a57794",
+    "at": "2026-10-21T08:42:17.064Z"
+  },
+  {
+    "id": "G1",
+    "claim": "S2 off (S1 armed): the probe works and the projection channel is absent ('No handler')",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "state=shown s2.list=false projection={\"refused\":true,\"error\":\"Error invoking remote method 'dev-driver-address-overlay-project': Error: No handler registered for 'dev-driver-address-overlay-project'\"}",
+    "at": "2026-10-21T08:42:18.656Z"
+  },
+  {
+    "id": "G2a",
+    "claim": "S2 env alone: printed refusal, no controller",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "bridge=object line=[address-overlay] not armed: LOCAL_OPERATOR_UI_BROWSER_ADDRESS_OVERLAY_S2 needs LOCAL_OPERATOR_UI_BROWSER_ADDRESS_OVERLAY_S1=1: S2's list is a mirror inside S1's child, not a second child",
+    "at": "2026-10-21T08:42:23.835Z"
+  },
+  {
+    "id": "G2b",
+    "claim": "S1+S2 without the armed driver: printed refusal, no bridge",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "bridge=undefined line=[address-overlay] not armed: the address overlay needs the armed renderer dev driver; it has no user-facing trigger in S1",
+    "at": "2026-10-21T08:42:25.365Z"
+  },
+  {
+    "id": "G2c",
+    "claim": "S2=1 with a non-opt-in spelling: printed refusal",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "[address-overlay] not armed: LOCAL_OPERATOR_UI_BROWSER_ADDRESS_OVERLAY_S2=true is not an opt-in (accepted: 1); the address overlay stayed off",
+    "at": "2026-10-21T08:42:26.788Z"
+  },
+  {
+    "id": "G1b",
+    "claim": "S2 off: typing in the real address field invokes the missing projection channel at most once (latch stops the loop)",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "focused={\"ok\":true,\"active\":\"INPUT\"} afterType={\"content\":{\"x\":260,\"y\":214,\"width\":1120,\"height\":686},\"field\":{\"x\":460,\"y\":73,\"width\":880,\"height\":32},\"listTop\":110,\"dockOpen\":true,\"editing\":\"true\",\"value\":\"127.0.0.1:58796/?page=3\",\"candidates\":2,\"activeDescendant\":null,\"activeIndex\":-1,\"firstCandidateUrl\":\"http://127.0.0.1:58796/?page=2\",\"candidateUrls\":[\"http://127.0.0.1:58796/?page=2\",\"http://127.0.0.1:58796/?page=1\"]} end={\"content\":{\"x\":260,\"y\":214,\"width\":1120,\"height\":686},\"field\":{\"x\":460,\"y\":73,\"width\":880,\"height\":32},\"listTop\":110,\"dockOpen\":true,\"editing\":\"true\",\"value\":\"127.0.0.1:58796/?page=3\",\"candidates\":2,\"activeDescendant\":null,\"activeIndex\":-1,\"firstCandidateUrl\":\"http://127.0.0.1:58796/?page=2\",\"candidateUrls\":[\"http://127.0.0.1:58796/?page=2\",\"http://127.0.0.1:58796/?page=1\"]} pages=[\"about:blank\",\"file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/index.html#/browser\",\"file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/mini.html\",\"about:blank\",\"http://127.0.0.1:58796/?page=3\",\"file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay.html\"] unregisteredProjectionErrors=1 over 3s (pre-fix QA measured 386)",
+    "at": "2026-10-21T08:42:22.379Z"
+  },
+  {
+    "id": "P3",
+    "claim": "real input drivability: CDP can focus and type into the real address field in a focusable:false window",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "focus={\"ok\":true,\"active\":\"INPUT\"} afterType={\"content\":{\"x\":260,\"y\":214,\"width\":1120,\"height\":686},\"field\":{\"x\":460,\"y\":73,\"width\":880,\"height\":32},\"listTop\":110,\"dockOpen\":true,\"editing\":\"true\",\"value\":\"127.0.0.1:58875/?page=6\",\"candidates\":2,\"activeDescendant\":null,\"activeIndex\":-1,\"firstCandidateUrl\":\"http://127.0.0.1:58875/?page=5\",\"candidateUrls\":[\"http://127.0.0.1:58875/?page=5\",\"http://127.0.0.1:58875/?page=4\"]} diagnostics={\"notice\":null,\"entries\":3,\"urls\":[\"http://127.0.0.1:58875/?page=4\",\"http://127.0.0.1:58875/?page=5\",\"http://127.0.0.1:58875/?page=6\"],\"activeTabId\":2}",
+    "at": "2026-10-21T08:42:30.088Z"
+  },
+  {
+    "id": "A1",
+    "claim": "child x/width = field rect (±1 DIP), y = dock top, never over the field",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "child={\"x\":460,\"y\":110,\"width\":880,\"height\":104} field={\"x\":460,\"y\":73,\"width\":880,\"height\":32} listTop=110 expectedX=460",
+    "at": "2026-10-21T08:42:30.090Z"
+  },
+  {
+    "id": "A2",
+    "claim": "page bounds and visibility identical before/open/after",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "before={\"tabId\":2,\"presented\":true,\"bounds\":{\"x\":260,\"y\":214,\"width\":1120,\"height\":686},\"visible\":true} open={\"tabId\":2,\"presented\":true,\"bounds\":{\"x\":260,\"y\":214,\"width\":1120,\"height\":686},\"visible\":true}",
+    "at": "2026-10-21T08:42:30.091Z"
+  },
+  {
+    "id": "A3",
+    "claim": "child is last in contentView.children and visible",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "child={\"webContentsId\":6,\"visible\":true,\"bounds\":{\"x\":460,\"y\":110,\"width\":880,\"height\":104},\"order\":2,\"childCount\":3}",
+    "at": "2026-10-21T08:42:30.091Z"
+  },
+  {
+    "id": "A4",
+    "claim": "window resize while open re-anchors to the new field/dock geometry; no stale frame",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "via=window.resizeTo (browser-cdp failed: Error: {\"code\":-32601,\"message\":\"'Browser.setWindowBounds' wasn't found\"}) child={\"webContentsId\":6,\"visible\":true,\"bounds\":{\"x\":460,\"y\":110,\"width\":680,\"height\":104},\"order\":2,\"childCount\":3} field={\"x\":460,\"y\":73,\"width\":680,\"height\":32} listTop=110 page={\"x\":260,\"y\":214,\"width\":920,\"height\":606} hides={\"layout\":7,\"projection_hidden\":4}",
+    "at": "2026-10-21T08:42:35.052Z"
+  },
+  {
+    "id": "A5",
+    "claim": "zoom != 1 hides with reason 'zoomed' (pure gate)",
+    "mode": "driven",
+    "status": "asserted-only",
+    "evidence": "resolveAddressOverlayGate/projectOnce read getZoomFactor and hide at |z-1|>1e-3; the headless probe has no zoom verb, so no built-app observation",
+    "at": "2026-10-21T08:42:40.080Z"
+  },
+  {
+    "id": "A6",
+    "claim": "a projection for another tab is refused ('stale_tab') and hides",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "{\"ok\":true,\"value\":{\"accepted\":false,\"shown\":false,\"reason\":\"stale_tab\",\"bounds\":null}}",
+    "at": "2026-10-21T08:42:35.268Z"
+  },
+  {
+    "id": "A7",
+    "claim": "out-of-range/NaN/huge/negative/inconsistent/extra-key/oversize projections are refused (unit)",
+    "mode": "driven",
+    "status": "asserted-only",
+    "evidence": "unit tests drive sanitizeProjection/addressListBoundsFor with NaN, negative, oversize, extra-key, inconsistent-gap inputs",
+    "at": "2026-10-21T08:42:40.081Z"
+  },
+  {
+    "id": "R1-real",
+    "claim": "under real input the child's own measurement reports a 28 header and 35.5 rows",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "rowCount=2 header=28 rows=[{\"top\":2,\"height\":35.5},{\"top\":37.5,\"height\":35.5}]",
+    "at": "2026-10-21T08:42:30.092Z"
+  },
+  {
+    "id": "R1",
+    "claim": "1/3/5 rows render with 35.5 row height and 28 header; rowCount equals the model",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "[{\"n\":1,\"shown\":true,\"rowCount\":1,\"header\":28,\"heights\":[35.5],\"bounds\":{\"x\":460,\"y\":110,\"width\":880,\"height\":69},\"viewport\":40,\"scroll\":40,\"inner\":69,\"visual\":69,\"native\":{\"x\":460,\"y\":110,\"width\":880,\"height\":69}},{\"n\":3,\"shown\":true,\"rowCount\":3,\"header\":28,\"heights\":[35.5,35.5,35.5],\"bounds\":{\"x\":460,\"y\":110,\"width\":880,\"height\":140},\"viewport\":111,\"scroll\":111,\"inner\":140,\"visual\":140,\"native\":{\"x\":460,\"y\":110,\"width\":880,\"height\":140}},{\"n\":5,\"shown\":true,\"rowCount\":5,\"header\":28,\"heights\":[35.5,35.5,35.5,35.5,35.5],\"bounds\":{\"x\":460,\"y\":110,\"width\":880,\"height\":211},\"viewport\":182,\"scroll\":182,\"inner\":211,\"visual\":211,\"native\":{\"x\":460,\"y\":110,\"width\":880,\"height\":211}}]",
+    "at": "2026-10-21T08:42:38.399Z"
+  },
+  {
+    "id": "R2",
+    "claim": "each notice kind renders at 104 DIP; loading-with-no-rows is hidden",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "[{\"kind\":\"error\",\"shown\":true,\"height\":104,\"rowCount\":0},{\"kind\":\"hint\",\"shown\":true,\"height\":104,\"rowCount\":0},{\"kind\":\"empty\",\"shown\":true,\"height\":104,\"rowCount\":0},{\"kind\":\"no_match\",\"shown\":true,\"height\":104,\"rowCount\":0}]; loading-with-no-rows is hidden by the renderer's listVisible rule (projection visible:false is the same path: {\"accepted\":true,\"shown\":false,\"reason\":null,\"bounds\":null})",
+    "at": "2026-10-21T08:42:38.419Z"
+  },
+  {
+    "id": "R3",
+    "claim": "exactly one active row; its rect equals the parent's aria-activedescendant index (real input)",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "active=0 ariaIndex=0 activeRect={\"top\":2,\"height\":35.5}",
+    "at": "2026-10-21T08:42:30.452Z"
+  },
+  {
+    "id": "R3-synthetic",
+    "claim": "synthetic projection: exactly one active row and its rect at the documented offset (no parent ARIA)",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "active=1 rect={\"top\":37.5,\"height\":35.5} parentActiveIndex=-1 (synthetic projection: the real-input R3 row is the ARIA agreement)",
+    "at": "2026-10-21T08:42:38.424Z"
+  },
+  {
+    "id": "R4",
+    "claim": "hostile text is literal and capped; no img/script executes",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "{\"textLength\":512,\"titleLength\":34,\"imgs\":0,\"scripts\":1,\"pwned\":null,\"pwned2\":null,\"text\":\"<img src=x onerror=\\\"window.__pwned=1\\\">AA\"}",
+    "at": "2026-10-21T08:42:38.582Z"
+  },
+  {
+    "id": "R5",
+    "claim": "ru and ur header/notice (and ur rows, RTL) render with the catalogues' own strings (child pixels)",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "shots=[{\"label\":\"child-rows3\",\"path\":\"/Users/damian/.local-operator/sessions/6e1733a0114c/scratchpad/address-overlay-s2/native-r2/run/frames/child-rows3.png\",\"bytes\":54367},{\"label\":\"child-rows5-active\",\"path\":\"/Users/damian/.local-operator/sessions/6e1733a0114c/scratchpad/address-overlay-s2/native-r2/run/frames/child-rows5-active.png\",\"bytes\":86359},{\"label\":\"child-notice\",\"path\":\"/Users/damian/.local-operator/sessions/6e1733a0114c/scratchpad/address-overlay-s2/native-r2/run/frames/child-notice.png\",\"bytes\":13042},{\"label\":\"child-hostile\",\"path\":\"/Users/damian/.local-operator/sessions/6e1733a0114c/scratchpad/address-overlay-s2/native-r2/run/frames/child-hostile.png\",\"bytes\":16575},{\"label\":\"child-ru\",\"path\":\"/Users/damian/.local-operator/sessions/6e1733a0114c/scratchpad/address-overlay-s2/native-r2/run/frames/child-ru.png\",\"bytes\":15273},{\"label\":\"child-ur\",\"path\":\"/Users/damian/.local-operator/sessions/6e1733a0114c/scratchpad/address-overlay-s2/native-r2/run/frames/child-ur.png\",\"bytes\":13682},{\"label\":\"child-ur-rows\",\"path\":\"/Users/damian/.local-operator/sessions/6e1733a0114c/scratchpad/address-overlay-s2/native-r2/run/frames/child-ur-rows.png\",\"bytes\":53756},{\"label\":\"child-notice-narrow\",\"path\":\"/Users/damian/.local-operator/sessions/6e1733a0114c/scratchpad/address-overlay-s2/native-r2/run/frames/child-notice-narrow.png\",\"bytes\":13384}] urRowsActive={\"top\":37.5,\"height\":35.5}",
+    "at": "2026-10-21T08:42:38.882Z"
+  },
+  {
+    "id": "R5b",
+    "claim": "real-copy notice at a narrow field width stays inside the 104-DIP block (no clipping)",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "narrow={\"rootHeight\":104,\"noticeBottom\":65.5,\"viewportBottom\":103,\"text\":\"Address suggestions are unavailable.\"}",
+    "at": "2026-10-21T08:42:38.882Z"
+  },
+  {
+    "id": "R6",
+    "claim": "alpha theme is rejected and the opaque fallback is used",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "project={\"accepted\":true,\"shown\":true,\"reason\":null,\"bounds\":{\"x\":460,\"y\":110,\"width\":880,\"height\":104}} themeFact=fallback theme={\"kind\":\"rows\",\"rowCount\":2,\"active\":-1}",
+    "at": "2026-10-21T08:42:38.886Z"
+  },
+  {
+    "id": "C1",
+    "claim": "synthetic mouse down/up on row 0 commits through the renderer's real navigate",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "url=\"http://127.0.0.1:58875/?page=5\" committed=0->1 activeUrl=\"http://127.0.0.1:58875/?page=5\"",
+    "at": "2026-10-21T08:42:31.407Z"
+  },
+  {
+    "id": "C2",
+    "claim": "down row i / up row j commits nothing",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "commits=0->0 dropped={\"mouse_mismatch\":1}",
+    "at": "2026-10-21T08:42:39.086Z"
+  },
+  {
+    "id": "C3",
+    "claim": "stale seq is refused without hiding the newer model",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "{\"ok\":true,\"value\":{\"accepted\":false,\"shown\":true,\"reason\":\"stale_seq\",\"bounds\":null}}; the newer shown model is not hidden",
+    "at": "2026-10-21T08:42:39.088Z"
+  },
+  {
+    "id": "C3b",
+    "claim": "a probe click naming a row outside the applied model is refused and commits nothing",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "error=\"Error invoking remote method 'dev-driver-address-overlay': Error: address_overlay_click: row must be a rendered row index\" commits=0->0",
+    "at": "2026-10-21T08:42:39.091Z"
+  },
+  {
+    "id": "C4",
+    "claim": "candidate set change between project and click is dropped (unit)",
+    "mode": "driven",
+    "status": "asserted-only",
+    "evidence": "renderer hook drops a commit whose seq or candidate key no longer matches; covered by source contract, not driven here",
+    "at": "2026-10-21T08:42:40.081Z"
+  },
+  {
+    "id": "K1",
+    "claim": "ArrowDown/Enter/Escape/Tab drive the parent exactly as today and the mirror hides on each dismissal",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "arrowReopened=true escapeHidden=false enterTarget=\"http://127.0.0.1:58875/?page=5\" enterUrl=\"http://127.0.0.1:58875/?page=5\" enterHidden=false tabOpened=true tabHidden=false tabUrl=\"http://127.0.0.1:58875/?page=5\"->\"http://127.0.0.1:58875/?page=5\"",
+    "at": "2026-10-21T08:42:33.733Z"
+  },
+  {
+    "id": "K2",
+    "claim": "keys sent into the child are prevented, counted, and navigate nothing",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "keysBlocked=0->1 url=\"http://127.0.0.1:58875/?page=5\"->\"http://127.0.0.1:58875/?page=5\"",
+    "at": "2026-10-21T08:42:31.689Z"
+  },
+  {
+    "id": "X1",
+    "claim": "child has no node/electron/require; inline script blocked; navigation refused",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "{\"electron\":\"undefined\",\"process\":\"undefined\",\"require\":\"undefined\",\"ipc\":\"undefined\",\"api\":\"undefined\",\"rootAriaHidden\":\"true\",\"roles\":0,\"focusables\":0} nav={\"beforeUrl\":\"file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html\",\"afterUrl\":\"file:///Users/damian/local-operator-ui/.worktrees/browser-address-overlay-s1/out/renderer/browser-address-overlay-list.html\",\"pwned3\":null}",
+    "at": "2026-10-21T08:42:39.909Z"
+  },
+  {
+    "id": "L1",
+    "claim": "20 apply/hide cycles reuse one child; listener counts flat",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "childCreatedCount=1 childId=6->6 listeners={\"owner\":6,\"child\":10} hides={\"layout\":8,\"projection_hidden\":25,\"stale_tab\":1}",
+    "at": "2026-10-21T08:42:35.314Z"
+  },
+  {
+    "id": "L1-teardown",
+    "claim": "the S2 matrix boot stops with exit 0 and no survivors",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "exit={\"code\":0,\"signal\":null} survivors=[]",
+    "at": "2026-10-21T08:42:36.080Z"
+  },
+  {
+    "id": "V1",
+    "claim": "child-only pixels captured and viewed (rows3, rows5-active, notice, hostile, ru, ur)",
+    "mode": "driven",
+    "status": "PASS",
+    "evidence": "child-only CDP captures, viewed: child-rows3=54367B child-rows5-active=86359B child-notice=13042B child-hostile=16575B child-ru=15273B child-ur=13682B child-ur-rows=53756B child-notice-narrow=13384B",
+    "at": "2026-10-21T08:42:38.882Z"
+  },
+  {
+    "id": "V2",
+    "claim": "native-composite pixels (child over page)",
+    "mode": "blocked",
+    "status": "BLOCKED",
+    "evidence": "owner capture returns no child pixels; screen capture permission is denied (S1 spike)",
+    "at": "2026-10-21T08:42:40.081Z"
+  },
+  {
+    "id": "V3",
+    "claim": "native hit routing between sibling views",
+    "mode": "blocked",
+    "status": "BLOCKED",
+    "evidence": "sendInputEvent exercises the child, not macOS NSView hit-testing",
+    "at": "2026-10-21T08:42:40.081Z"
+  },
+  {
+    "id": "V4",
+    "claim": "IME, AX tree, visible-window focus, theme contrast",
+    "mode": "blocked",
+    "status": "BLOCKED",
+    "evidence": "no visible window, no IME, no AX tree in S2",
+    "at": "2026-10-21T08:42:40.081Z"
+  }
+]

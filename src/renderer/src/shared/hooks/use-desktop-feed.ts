@@ -154,6 +154,68 @@ export type DesktopFeedConnection = {
 	} | null;
 };
 
+/**
+ * The last `notifications` frame, held at MODULE scope.
+ *
+ * WHY NOT A FIELD ON `useDesktopFeed`'s ANSWER, like `codeRequestsRevision`.
+ * Every `useDesktopFeed()` call opens its own IPC subscription and reads
+ * `window` during render. The reel's consumers (the rail's count badge, the
+ * page, the drawer tab, the transcript's flag lines) are many and are mounted
+ * in places that must not grow either: the collapsed strip is pinned to exactly
+ * ONE subscription (`aida-rail-marks.test.mjs`), and the transcript is
+ * server-rendered by its paint tests, where `window` does not exist. So the
+ * frame rides the subscriptions that already exist - the app-level locale sync
+ * and the rail's keeper/list are always mounted - and a consumer reads it
+ * through `useSyncExternalStore`, which opens nothing and has a server snapshot.
+ *
+ * ONE RECORD PER FRAME, NOT PER SUBSCRIBER. Each existing subscription receives
+ * the same frame, so publication is deduplicated on the frame's identity
+ * (`epoch` + `seq`: the feed's sequence restarts per process, and its epoch is
+ * fresh per process). Identity, not `payload.revision`: an ask-queue change can
+ * arrive with an unchanged store revision and must still invalidate (R1/Q1).
+ */
+export type NotificationsFrame = {
+	/** `${epoch}:${seq}` - the frame's identity, unique across restarts. */
+	key: string;
+	revision: number;
+	unreadCount: number;
+	waitingCount: number;
+	waitingUnreadCount: number;
+};
+
+let latestNotificationsFrame: NotificationsFrame | null = null;
+const notificationsFrameListeners = new Set<() => void>();
+
+function publishNotificationsFrame(
+	frame: Extract<DesktopFeedFrame, { type: "notifications" }>,
+): void {
+	const key = `${frame.epoch}:${frame.seq}`;
+	// IPC dispatches one event to every listener before the next event, so the
+	// latest key is enough to collapse N subscribers' deliveries into one.
+	if (latestNotificationsFrame?.key === key) return;
+	latestNotificationsFrame = {
+		key,
+		revision: frame.payload.revision,
+		unreadCount: frame.payload.unread_count,
+		waitingCount: frame.payload.waiting_count,
+		waitingUnreadCount: frame.payload.waiting_unread_count,
+	};
+	for (const listener of notificationsFrameListeners) listener();
+}
+
+/** The `useSyncExternalStore` triple for the record above. */
+export const notificationsFrameRecord = {
+	subscribe(listener: () => void): () => void {
+		notificationsFrameListeners.add(listener);
+		return () => {
+			notificationsFrameListeners.delete(listener);
+		};
+	},
+	snapshot: (): NotificationsFrame | null => latestNotificationsFrame,
+	/* A server render has received no frame, by construction. */
+	serverSnapshot: (): NotificationsFrame | null => null,
+};
+
 export function useDesktopFeed(): DesktopFeedConnection {
 	const capabilities = useDesktopCapabilities();
 	const native = window.api?.desktop?.feed;
@@ -309,6 +371,16 @@ export function useDesktopFeed(): DesktopFeedConnection {
 					sessionId: frame.session_id,
 					revision: frame.payload.revision,
 				});
+				return;
+			}
+			/*
+			 * The notifications reel moved. Published to the module-scope record
+			 * below rather than to this call's state: see `notificationsFrameRecord`.
+			 * The invalidation belongs to the module that owns the reel's query keys,
+			 * and this hook stays free of query knowledge.
+			 */
+			if (frame.type === "notifications") {
+				publishNotificationsFrame(frame);
 				return;
 			}
 			/*

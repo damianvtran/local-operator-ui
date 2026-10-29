@@ -1,5 +1,7 @@
 import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
 import { ImageLightbox } from "@shared/components/common/image-lightbox";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -71,6 +73,7 @@ const getFileName = (path: string): string => {
  */
 export const FileAttachment: FC<FileAttachmentProps> = memo(
 	({ file, onClick, conversationId }) => {
+		useI18nLocale();
 		const [hasError, setHasError] = useState(false);
 		const [isLoaded, setIsLoaded] = useState(false);
 		/**
@@ -433,7 +436,7 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 				 * invalid HTML. */}
 				<button
 					type="button"
-					className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left"
+					className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-start"
 					onClick={handleClick}
 					title={`Click to open ${getFileName(file)}`}
 				>
@@ -449,8 +452,8 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 					<div className="file-actions-menu invisible opacity-0 transition-[opacity,visibility] duration-fast ease-out-quart group-hover:visible group-hover:opacity-100">
 						<FileActionsMenu
 							filePath={normalizedPath}
-							tooltip="File actions"
-							aria-label="File actions"
+							tooltip={t("ui.common.actions.file_actions_menu.file_actions")}
+							aria-label={t("ui.common.actions.file_actions_menu.file_actions")}
 							onShowInCanvas={handleClick}
 						/>
 					</div>

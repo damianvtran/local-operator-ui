@@ -57,5 +57,214 @@
 		"placeholders": {
 			"provider": "Configured hosting-provider name from user settings, verbatim."
 		}
+	},
+	"ui.common.connection.transport_failure": {
+		"role": "Connection error toast",
+		"tone": "Practical and reassuring.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Could not reach the server. Check that it is running, then try again."
+	},
+	"ui.common.connection.backend.remedy_outdated": {
+		"role": "Connection error toast",
+		"tone": "Practical and reassuring.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Update the server and try again."
+	},
+	"ui.common.connection.backend.diagnosis_unreachable": {
+		"role": "Connection error toast",
+		"tone": "Practical and reassuring.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The Local Operator server is not answering."
+	},
+	"ui.common.connection.backend.diagnosis_deadline": {
+		"role": "Connection error toast",
+		"tone": "Practical and reassuring.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The Local Operator server did not answer in time."
+	},
+	"ui.common.connection.backend.diagnosis_unauthorized": {
+		"role": "Connection error toast",
+		"tone": "Practical and reassuring.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: This app cannot authenticate to the running Local Operator server."
+	},
+	"ui.common.connection.backend.diagnosis_outdated": {
+		"role": "Connection error toast",
+		"tone": "Practical and reassuring.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The Local Operator server is older than this app expects."
+	},
+	"ui.common.connection.backend.pairing_successor": {
+		"role": "Connection error toast",
+		"tone": "Practical and reassuring.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The Local Operator server was replaced while this app was running. Pairing with the new one."
+	},
+	"ui.common.connection.backend.pairing_governed": {
+		"role": "Connection error toast",
+		"tone": "Practical and reassuring.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The Local Operator server on this machine is already managed by another program, so this app cannot use its settings, provider sign-in, slash commands or MCP management."
+	},
+	"ui.common.connection.backend.pairing_pre_handshake": {
+		"role": "Connection error toast",
+		"tone": "Practical and reassuring.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The Local Operator server on this machine is older than the pairing handshake this app uses, so this app cannot drive its controls. The server itself, and anything you run against it from the terminal, are unaffected."
+	},
+	"ui.common.connection.backend.pairing_credential_refused": {
+		"role": "Connection error toast",
+		"tone": "Practical and reassuring.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: This app's credential for the running Local Operator server was refused, so provider sign-in, settings, slash commands and MCP management are unavailable."
+	},
+	"ui.common.connection.backend.pairing_unpaired": {
+		"role": "Connection error toast",
+		"tone": "Practical and reassuring.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: This app is not paired with the running Local Operator server, so provider sign-in, settings, slash commands and MCP management are unavailable."
+	},
+	"ui.common.connection.backend.pane_successor": {
+		"role": "Connection error toast",
+		"tone": "Practical and reassuring.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: This conversation cannot be read here until the app finishes pairing with the replacement server. Your chats are still on that server."
+	},
+	"ui.common.connection.backend.pane_governed": {
+		"role": "Connection error toast",
+		"tone": "Practical and reassuring.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: This conversation cannot be read here: the server's desktop controls belong to another program. Your chats are still on that server."
+	},
+	"ui.common.connection.backend.pane_pre_handshake": {
+		"role": "Connection error toast",
+		"tone": "Practical and reassuring.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: This conversation cannot be read here: that server is older than the pairing handshake this app uses. Your chats are still on that server."
+	},
+	"ui.common.connection.backend.pane_credential_refused": {
+		"role": "Connection error toast",
+		"tone": "Practical and reassuring.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: This conversation cannot be read here: the server refused this app's credential. Your chats are still on that server."
+	},
+	"ui.common.connection.backend.pane_unpaired": {
+		"role": "Connection error toast",
+		"tone": "Practical and reassuring.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: This conversation cannot be read here: the app is not paired with the running server. Your chats are still on that server."
+	},
+	"ui.common.connection.backend.compatibility_unreachable": {
+		"role": "Connection error toast",
+		"tone": "Practical and reassuring.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: {diagnosis} Provider sign-in, settings, slash commands and MCP management need it running.",
+		"placeholders": {
+			"diagnosis": "Runtime value; preserve the placeholder and insert it without translation."
+		}
+	},
+	"ui.common.connection.backend.compatibility_unauthorized": {
+		"role": "Connection error toast",
+		"tone": "Practical and reassuring.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: This app cannot authenticate to the running Local Operator server, so provider sign-in, settings, slash commands and MCP management are unavailable."
+	},
+	"ui.common.connection.backend.compatibility_deadline": {
+		"role": "Connection error toast",
+		"tone": "Practical and reassuring.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: {diagnosis} Provider sign-in, settings, slash commands and MCP management need it answering.",
+		"placeholders": {
+			"diagnosis": "Runtime value; preserve the placeholder and insert it without translation."
+		}
+	},
+	"ui.common.connection.backend.compatibility_outdated": {
+		"role": "Connection error toast",
+		"tone": "Practical and reassuring.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The Local Operator server is older than this app expects, so provider sign-in, settings, slash commands and MCP management are off. {remedy}",
+		"placeholders": {
+			"remedy": "Runtime value; preserve the placeholder and insert it without translation."
+		}
+	},
+	"ui.common.connection.backend.compatibility_unknown": {
+		"role": "Connection error toast",
+		"tone": "Practical and reassuring.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Provider sign-in, settings, slash commands and MCP management are unavailable because the Local Operator server did not answer as expected."
+	},
+	"ui.common.connection.backend.compatibility_missing": {
+		"role": "Connection error toast",
+		"tone": "Practical and reassuring.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The Local Operator server is missing {features} support. Update it to enable those surfaces.",
+		"placeholders": {
+			"features": "Runtime value; preserve the placeholder and insert it without translation."
+		}
+	},
+	"ui.common.connection.backend.card_successor": {
+		"role": "Product status or action message",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Your settings could not be loaded: the app is pairing with the server that replaced the one it was using."
+	},
+	"ui.common.connection.backend.card_governed": {
+		"role": "Product status or action message",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Your settings could not be loaded: another program is managing this machine's Local Operator server, so this page cannot read or change them here."
+	},
+	"ui.common.connection.backend.card_pre_handshake": {
+		"role": "Product status or action message",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Your settings could not be loaded: the server this app is talking to is older than the pairing handshake, so this page cannot read them from it."
+	},
+	"ui.common.connection.backend.card_credential_refused": {
+		"role": "Product status or action message",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Your settings could not be loaded: the server refused this app's credential, so this page cannot read them from it."
+	},
+	"ui.common.connection.backend.card_unpaired": {
+		"role": "Product status or action message",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Your settings could not be loaded: this app is not paired with the running server, so this page cannot read them from it."
+	},
+	"ui.common.connection.session_loss.frame_too_large": {
+		"role": "statement of the notice shown when one stream frame exceeded the relay's size cap",
+		"tone": "statement plus the one action, sentence case, trailing period, em dash between them",
+		"length": "Twelve words.",
+		"note": "Says what the reader can do (reconnect), not what the relay did. Never name a byte count or the transport's own vocabulary.",
+		"placeholders": {}
+	},
+	"ui.common.connection.session_loss.history_unreadable": {
+		"role": "statement of the notice shown when the conversation's stored history could not be read",
+		"tone": "statement plus the one action, sentence case, trailing period, em dash between them",
+		"length": "Eleven words.",
+		"note": "The transcript must not claim to be empty in this state, so the sentence says the history could not be read. Distinct from an empty conversation.",
+		"placeholders": {}
+	},
+	"ui.common.connection.session_loss.lost": {
+		"role": "statement of the notice shown when the connection to the conversation is gone but both processes are alive",
+		"tone": "statement plus the one action, sentence case, trailing period, em dash between them",
+		"length": "Eleven words.",
+		"note": "The generic connection-loss sentence, used when the transport detail names nothing more specific. It asserts only what the app observed: the connection is gone. Never claim the conversation ended or was closed.",
+		"placeholders": {}
+	},
+	"ui.common.connection.session_loss.not_paired": {
+		"role": "statement of the notice shown when the app holds no credential for the backend it is talking to",
+		"tone": "statement of fact, sentence case, trailing period",
+		"length": "Eighteen words.",
+		"note": "Offers no action: the repair is main re-claiming the plane, which this notice cannot perform or promise. Do not add 'restart the app so it manages its own server' - the app is a client of whatever daemon runs.",
+		"placeholders": {}
+	},
+	"ui.common.connection.session_loss.server_down": {
+		"role": "statement of the notice shown when the app's own backend is not answering",
+		"tone": "statement plus two remedies, sentence case, trailing period, em dash before the remedies",
+		"length": "Twenty-one words.",
+		"note": "Distinct from the generic loss sentence because the remedy differs: reconnecting is worth pressing, and a server that stays down needs the app restarted. Both remainders are what the relay observed; never state a cause.",
+		"placeholders": {}
 	}
 }

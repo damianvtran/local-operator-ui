@@ -1,0 +1,37 @@
+{
+  "auditor": "i18n-auditor-vi",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "e1f2a3b4c5d6",
+  "locale": "vi",
+  "namespace": "ui.chat.tags",
+  "status": "passed",
+  "sha256": {
+    "en": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+    "vi": "4de3cdde2b12b0ff5bd1bf9b7c04c13edf9aacbbfd4bd259fc0b55513cb21b23"
+  },
+  "keys_audited": 73,
+  "baseline_keys_verified_unchanged": 54,
+  "new_keys_audited": 19,
+  "findings": [],
+  "checks": {
+    "remediation_delta": {
+      "previous_target_sha256": "0916543febe4afa3dfc2d6374aa4b5b0727f3acc8dfa75792679a7f63ebda3f1",
+      "changed_keys": [
+        "ui.chat.tags.selection_limit",
+        "ui.chat.tags.registry_limit",
+        "ui.chat.tags.create_failed",
+        "ui.chat.tags.reorder_filtered",
+        "ui.chat.tags.selection_status",
+        "ui.chat.tags.create_pending",
+        "ui.chat.tags.remote",
+        "ui.chat.tags.registry_changed"
+      ],
+      "verification": "Reconstructed prior catalogue by reversing exactly seven nhãn-to-thẻ substitutions and selection_status vào-to-trong; reserialization matches prior audited byte SHA-256 exactly, proving these are the only eight changed keys."
+    },
+    "language": "All 73 EN/VI pairs checked for meaning, grammar, neutral UI register, punctuation and placeholders. Seven terminology inconsistencies resolved with nhãn; selection_status now matches Nhóm vào. Prior VI-1 and VI-2 resolved.",
+    "icu": "All 73 EN/VI messages parsed with @formatjs/icu-messageformat-parser; argument sets match for every pair. Vietnamese CLDR plural category is other only; other-only branches and plain count are valid.",
+    "baseline": "All 54 HEAD baseline values unchanged; 19 new keys.",
+    "length": "No obvious textual menu/toast length blocker; rendered fit remains later QA scope, not claimed here.",
+    "provenance": "Actual model for this re-audit is anthropic/claude-sonnet-5-5; no fallback observed during this re-audit."
+  }
+}

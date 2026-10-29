@@ -1,12 +1,21 @@
 {
 	"ui.chat.header.actions": "Действия с разговором",
+	"ui.chat.header.archive_conversation": "Архивировать разговор",
 	"ui.chat.header.archived": "В архиве",
 	"ui.chat.header.archived_hint": "Этот разговор в архиве. Он скрыт из ваших чатов, пока вы не восстановите его.",
+	"ui.chat.header.cancel_rename": "Отменить переименование",
 	"ui.chat.header.close_run_details": "Закрыть сведения",
 	"ui.chat.header.conversation_name": "Название разговора",
 	"ui.chat.header.copy_id": "Копировать ID сессии",
 	"ui.chat.header.delete": "Удалить разговор…",
 	"ui.chat.header.move_device": "На другое устройство…",
+	"ui.chat.header.new_chat": "Новый чат",
+	"ui.chat.header.new_chat_with": "Новый чат с {target}",
 	"ui.chat.header.open_run_details": "Открыть сведения",
+	"ui.chat.header.rename_conversation": "Переименовать разговор",
+	"ui.chat.header.restore_conversation": "Восстановить разговор",
+	"ui.chat.header.saving_conversation_name": "Сохранение названия разговора",
+	"ui.chat.header.session_model_connect": "Подключить",
+	"ui.chat.header.session_model_switch": "Сменить модель",
 	"ui.chat.header.transcript_display": "Вид транскрипта"
 }

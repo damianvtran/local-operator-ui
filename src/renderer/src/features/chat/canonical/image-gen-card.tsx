@@ -76,6 +76,8 @@
  */
 
 import { Button, Progress } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	useCallback,
@@ -106,6 +108,7 @@ import {
 import { SoundBatch } from "./sound-batch";
 import { SoundStopConfirmation } from "./sound-stop-confirmation";
 import type { AttachmentScope } from "./use-attachment-url";
+import { BAR_BASE, BAR_WIDTH, waveformBars } from "./waveform-model";
 
 export type ImageGenCardProps = {
 	/** The mapped state, from `imageGenCardView`. The card reads nothing else. */
@@ -199,6 +202,109 @@ function GeneratingTile() {
 					"bg-no-repeat",
 				)}
 			/>
+		</div>
+	);
+}
+
+/**
+ * The audio generation's tile: a WAVEFORM, not the image loader's rectangle.
+ *
+ * WHY. A voiceover or a sound effect used to wait behind the image card's
+ * 240x160 3:2 picture box with the shimmer sweep, which told the reader a
+ * picture was coming. The artifact is a sound, so the loader wears the same
+ * band the finished `SoundPlayer` will: the recipe's 4px bars, 2px gaps and 2px
+ * radius from `waveform-model.ts`, at the player's own min-height. The card and
+ * its settled clip then read as ONE object resolving rather than two languages.
+ *
+ * INDETERMINATE ONLY, BY CONTRACT. No vendor exposes a progress fraction for
+ * sound, and this app must not invent one: the bars move to answer "alive", not
+ * "60% done", and no fill, percentage or determinate bar is drawn here. The
+ * FOUR STATES are the card's own and differ visibly:
+ *
+ *   queued    a static band at disabled ink - the READER's queue, not the
+ *             provider's work. (The image card draws no tile at all when queued
+ *             because a picture's shape is unknown before it exists; a sound's
+ *             seat is a band by construction, so showing the empty seat borrows
+ *             no running claim.)
+ *   running   the same band pulsing bar-by-bar at `ink-muted` - one indefinite
+ *             element, the surface's whole motion budget.
+ *   failed    the band collapsed to its base line: no shape was produced, and
+ *             the card's verbatim error sentence is the announcement.
+ *   stopped   the band at rest, at `ink-muted`, with the receipt sentence under
+ *             the state line (`soundStopReceipt`) - a stop asked of a provider
+ *             with no cancellation endpoint may still be billed.
+ *
+ * `aria-hidden`: the state line beside it is the announcement, exactly as the
+ * image tile's comment states.
+ */
+/*
+ * THE COMPACT PLAYER'S OWN HEIGHT. `SoundPlayer`'s control box is `min-h-11`
+ * (44px) in both variants, so a taller loader would make the card shrink 12px
+ * the moment the sound settles. The band and the player must occupy the same
+ * box for the "one object resolving" claim to survive the transition.
+ */
+const SOUND_TILE_HEIGHT = 44;
+const SOUND_TILE_WIDTH = 240;
+const SOUND_TILE_PADDING = 12;
+/** A deterministic envelope: the band's shape, never a claim about the sound. */
+const SOUND_LOADER_PEAKS = Array.from({ length: 240 }, (_, index) =>
+	Math.min(
+		1,
+		0.18 + Math.abs(Math.sin(index / 7) * Math.cos(index / 17)) * 0.72,
+	),
+);
+
+function SoundGeneratingTile({
+	state,
+}: {
+	state: "queued" | "running" | "failed" | "stopped";
+}) {
+	const bars = waveformBars(
+		SOUND_LOADER_PEAKS,
+		SOUND_TILE_WIDTH - SOUND_TILE_PADDING * 2,
+		SOUND_TILE_HEIGHT,
+	);
+	return (
+		<div
+			aria-hidden={true}
+			data-sound-loading-tile=""
+			data-sound-loading={state}
+			className={cn(
+				"relative flex w-[240px] max-w-full items-center overflow-hidden rounded-sm bg-sunken",
+			)}
+			style={{ height: SOUND_TILE_HEIGHT }}
+		>
+			<div
+				className={cn("flex w-full items-center")}
+				style={{
+					paddingLeft: SOUND_TILE_PADDING,
+					paddingRight: SOUND_TILE_PADDING,
+				}}
+			>
+				{bars.map((bar, index) => (
+					<span
+						key={bar.x}
+						data-sound-loading-bar=""
+						className={cn(
+							"shrink-0 rounded-[2px]",
+							state === "running"
+								? "animate-pulse-visible bg-ink-muted"
+								: state === "queued"
+									? "bg-ink-disabled"
+									: state === "stopped"
+										? "bg-ink-dim"
+										: "bg-ink-muted",
+						)}
+						style={{
+							width: BAR_WIDTH,
+							height: state === "failed" ? BAR_BASE : bar.height,
+							marginRight: bar === bars.at(-1) ? 0 : 2,
+							animationDelay:
+								state === "running" ? `${(index % 12) * 90}ms` : undefined,
+						}}
+					/>
+				))}
+			</div>
 		</div>
 	);
 }
@@ -392,14 +498,29 @@ function controlLabel(
 	 * vendor is working), and the button's own hint states which promise it can
 	 * keep — the queued case stops before the call, the running case only asks.
 	 * A control labelled "Cancel" would imply a guaranteed stop that the frozen
-	 * contract explicitly does not offer.
+	 * contract explicitly does not offer. The word lives in the catalogue, so the
+	 * reasoning that picked it is in that key's context note.
+	 *
+	 * Resolved per CALL, not at module load: `t()` reads the active locale each
+	 * time, so a card already on screen re-renders in the reader's language when
+	 * they switch it.
 	 */
-	if (kind === "cancel") return "Stop";
-	if (kind === "restart") return state === "failed" ? "Retry" : "Restart";
-	return "Edit and restart";
+	if (kind === "cancel") return t("ui.chat.canonical.image_gen.control.stop");
+	if (kind === "restart") {
+		/*
+		 * The failed case reuses the common action's `Retry`: nothing here failed in
+		 * a way the card owns, the prompt is retained, and a card-private key would
+		 * ship the same word seven more times for no reader's benefit.
+		 */
+		return state === "failed"
+			? t("ui.common.actions.retry")
+			: t("ui.chat.canonical.image_gen.control.restart");
+	}
+	return t("ui.chat.canonical.image_gen.control.edit_and_restart");
 }
 
 export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
+	useI18nLocale();
 	const [confirmStop, setConfirmStop] = useState(false);
 	const keepWaiting = useCallback(() => setConfirmStop(false), []);
 	const root = useRef<HTMLDivElement>(null);
@@ -454,6 +575,49 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 	 */
 	const generatingBody =
 		unsettled && (view.state === "running" || view.generating);
+	/*
+	 * THE SOUND TILE IS ITS OWN FOUR-STATE SEAT (see `SoundGeneratingTile`).
+	 * Image and video keep the rectangular `GeneratingTile`; a sound gets the
+	 * waveform in every state the card can be in, including QUEUED (where the
+	 * image rule draws nothing, because a picture has no shape yet; a sound's
+	 * seat is a band by construction, so the empty seat claims nothing).
+	 */
+	const material = "material" in view ? view.material : undefined;
+	const soundMaterial = material === "voiceover" || material === "sound-effect";
+	const soundTileState = !soundMaterial
+		? null
+		: view.state === "queued"
+			? "queued"
+			: view.state === "cancelling"
+				? view.generating
+					? "stopped"
+					: null
+				: generatingBody
+					? "running"
+					: view.state === "failed"
+						? "failed"
+						: view.state === "cancelled"
+							? "stopped"
+							: null;
+	/*
+	 * THE STOP RECEIPT, IN THE CARD. The state line carries the honest billing
+	 * sentence for a plain cancelled sound, but three paths replace it with
+	 * shorter words: a BATCH receipt's title, a wire-supplied `message`, and a
+	 * FAILED batch after a mid-flight stop. The fact that the provider has no
+	 * cancellation endpoint - and may still bill for audio it produces - must not
+	 * disappear behind those words, so it is rendered as its own note exactly
+	 * when the line does not already state it.
+	 */
+	const soundStopReceipt =
+		soundMaterial &&
+		(view.state === "failed"
+			? Boolean(view.batch?.some((item) => item.status === "cancelled"))
+			: view.state === "cancelled"
+				? Boolean(view.batch?.some((item) => item.status === "cancelled")) ||
+					Boolean(view.message)
+				: false)
+			? CANCEL_RUNNING_COPY
+			: null;
 	const logTail =
 		unsettled && view.progress.logs.length > 0
 			? view.progress.logs[view.progress.logs.length - 1]
@@ -465,7 +629,11 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 			data-imagegen-card={view.state}
 			className={cn("flex w-full flex-col gap-2")}
 		>
-			{generatingBody ? <GeneratingTile /> : null}
+			{soundTileState ? (
+				<SoundGeneratingTile state={soundTileState} />
+			) : generatingBody ? (
+				<GeneratingTile />
+			) : null}
 			{view.state === "failed" &&
 			(view.material === "voiceover" || view.material === "sound-effect") &&
 			view.errorType ? (
@@ -490,6 +658,7 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 			{view.state === "cancelled" && view.settlementCaption ? (
 				<NoteLine line={view.settlementCaption} />
 			) : null}
+			{soundStopReceipt ? <NoteLine line={soundStopReceipt} /> : null}
 			{soundRunning && confirmStop ? (
 				<SoundStopConfirmation
 					onKeepWaiting={keepWaiting}
@@ -525,7 +694,7 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 				 * so the card's media column reads as one edge.
 				 */
 				<Progress
-					aria-label="Image generation progress"
+					aria-label={t("ui.chat.canonical.image_gen.progress")}
 					className={cn("max-w-[240px]")}
 					value={Math.round(
 						Math.min(1, Math.max(0, view.progress.fraction)) * 100,

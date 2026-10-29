@@ -120,6 +120,37 @@ const bundle = await build({
 		 * bundle must find the client. */
 		"@tanstack/react-query",
 	],
+	/*
+	 * THE LOCALE HOOK, NEUTRALISED FOR THE DIRECT CALLS. `AskOptions` subscribes
+	 * to the locale now (so a language switch repaints it), and the cases below
+	 * call it as the plain function it also is — see the header: there is no
+	 * jsdom here, so the element tree is walked rather than mounted, and a hook
+	 * cannot run outside a render. The two alternatives are worse: dropping the
+	 * subscription from the component trades a real reactivity bug for a green
+	 * run, and adding a renderer changes the lockfile. The subscription itself is
+	 * proven in `scripts/i18n/locale-reactivity.test.mjs`; what THIS file still
+	 * exercises is the shipped tree and its handlers, with `t()` reading the real
+	 * store on every call.
+	 */
+	plugins: [
+		{
+			name: "ask-options-locale-standin",
+			setup(builder) {
+				builder.onResolve({ filter: /^@shared\/i18n\/use-locale$/ }, () => ({
+					path: "locale",
+					namespace: "ask-options-locale",
+				}));
+				builder.onLoad(
+					{ filter: /.*/, namespace: "ask-options-locale" },
+					() => ({
+						contents: `import { currentLocale } from "./src/i18n/locale";\nexport const useI18nLocale = () => currentLocale();`,
+						loader: "js",
+						resolveDir: process.cwd(),
+					}),
+				);
+			},
+		},
+	],
 });
 
 // Written to a real file rather than imported as a `data:` URL: React DOM's
@@ -663,8 +694,15 @@ test("an unresolvable typed approval answer renders the sentence, not an unconfi
 		.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
 	assert.match(
 		code,
-		/throw new UserFacingError\(\s*"Reply yes or no to answer the approval request\.",\s*ANSWER_NOT_SENT_CODE,?\s*\)/,
+		/throw new UserFacingError\(\s*t\("ui\.chat\.approval\.reply_required"\),\s*ANSWER_NOT_SENT_CODE,?\s*\)/,
 		"the approval branch must throw UserFacingError carrying ANSWER_NOT_SENT_CODE - a bare Error beside this sentence renders as an unknown outcome with a Retry that cannot work",
+	);
+	// The sentence itself now comes from the catalogue, so this pins the key that
+	// supplies it instead of the literal (i18n extraction; the copy was unkeyed).
+	assert.equal(
+		SENTENCE,
+		"Reply yes or no to answer the approval request.",
+		"the English catalogue value must stay the sentence this test asserts",
 	);
 	assert.doesNotMatch(
 		code,

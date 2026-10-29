@@ -73,8 +73,8 @@ test("locale subscription relabels an existing terminal without replacing output
 	assert.match(source, /return \(\) => \{\s*offLocale\(\);/);
 	assert.match(
 		source,
-		/\}, \[mode\]\);/,
-		"locale must not recreate the terminal effect",
+		/\}, \[constructionMode\]\);/,
+		"locale (and a mode transition) must not recreate the terminal effect",
 	);
 });
 

@@ -34,11 +34,14 @@ export function HubSkillPublication({
 	source,
 	verifiedCas,
 	enabled = true,
+	heading = true,
 }: {
 	scope: HubSkillScope;
 	source: string;
 	verifiedCas: boolean;
 	enabled?: boolean;
+	/** False when a dialog already names the surface (design round 2, D10). */
+	heading?: boolean;
 }) {
 	useI18nLocale();
 	const id = useId();
@@ -145,9 +148,11 @@ export function HubSkillPublication({
 	};
 	return (
 		<section className="flex min-w-0 flex-col gap-4" data-hub-skill-publication>
-			<h3 className="text-heading text-ink">
-				{t("ui.hub.skills.publish_title")}
-			</h3>
+			{heading && (
+				<h3 className="text-heading text-ink">
+					{t("ui.hub.skills.publish_title")}
+				</h3>
+			)}
 			<label htmlFor={`${id}-source`} className="text-body-sm text-ink">
 				{t("ui.hub.skills.select_authored")}
 			</label>

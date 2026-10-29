@@ -437,7 +437,14 @@ test("diagnostic CI stays retired while the manual utility remains registered", 
 		text.indexOf("  evidence:\n"),
 	);
 	assert.match(desktop, /timeout-minutes: 50/);
-	assert.equal((desktop.match(/pnpm test:desktop 2>&1/g) ?? []).length, 1);
+	assert.equal(
+		(desktop.match(/node scripts\/desktop-test-shards\.mjs run /g) ?? [])
+			.length,
+		1,
+	);
+	const shardSource = readFileSync("scripts/desktop-test-shards.mjs", "utf8");
+	assert.ok(shardSource.includes('pkg.scripts?.["test:desktop"]'));
+	assert.ok(shardSource.includes("[RUNNER, ...expected.shards[index]]"));
 });
 
 test("diagnostic tracer records actual isolated workers without environment values", () => {

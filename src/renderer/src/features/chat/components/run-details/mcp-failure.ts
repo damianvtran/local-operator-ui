@@ -58,9 +58,9 @@ import {
 	DesktopControlError,
 	UserFacingError,
 } from "@shared/api/local-operator/desktop-api";
+import { desktopRefusalSentence } from "@shared/api/local-operator/desktop-refusal-copy";
 import {
 	DESKTOP_MACHINE_DETAIL,
-	DESKTOP_REFUSAL_SENTENCE,
 	isDesktopRefusalCode,
 } from "../../../../../../shared/desktop-contract";
 import { MCP_CONTROL_WORD, type McpRemedy } from "./run-detail-model";
@@ -219,7 +219,7 @@ export function mcpFailure(
 	 */
 	if (isDesktopRefusalCode(error.code))
 		return {
-			message: `${lead}. ${DESKTOP_REFUSAL_SENTENCE[error.code]}`,
+			message: `${lead}. ${desktopRefusalSentence(error.code)}`,
 			detail: null,
 			cause: "server",
 			phase,

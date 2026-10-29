@@ -51,6 +51,8 @@
  */
 
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type ReactNode, useEffect, useState } from "react";
 import {
@@ -239,6 +241,14 @@ export type ToolRowProps = {
 	 * state of the same hold: static, textless, dim - see the cell below.
 	 */
 	summaryHold?: boolean;
+	/**
+	 * Let the summary WRAP instead of truncating. Default false, because a row's
+	 * object is a glance and one line is the glance; a RECEIPT whose sentence ends
+	 * in the ask id is the exception — truncated at a narrow width it lost exactly
+	 * the token that tells two receipts apart (UX round 1, U1), so that row asks
+	 * for its whole sentence at the cost of a second line.
+	 */
+	summaryWrap?: boolean;
 	outcome: ToolRowOutcome;
 	/**
 	 * How a `send` call's delivery ended, when the result stated it
@@ -492,17 +502,17 @@ const DiffCounters = ({
  * still takes its category ink. The user stopped the call, and reporting that
  * as a failure blames the agent for the user's own decision.
  */
-const OUTCOME_LABEL: Record<ToolRowOutcome, string> = {
+const OUTCOME_LABEL_KEY = {
 	running: "",
-	success: "succeeded",
-	error: "failed",
-	interrupted: "interrupted",
+	success: "ui.chat.canonical.tool_row.outcome.succeeded",
+	error: "ui.chat.canonical.tool_row.outcome.failed",
+	interrupted: "ui.chat.canonical.tool_row.outcome.interrupted",
 	// NOT "failed": the call produced no result to fail, and the harness's own
 	// verdict names what stopped it before it was sent to a tool. Announced
 	// rather than silent for the same reason `error` is: it is a settled outcome
 	// the row is the only carrier of, and a reader who cannot see the glyph would
 	// otherwise hear only the size.
-	"not-run": "never ran",
+	"not-run": "ui.chat.canonical.tool_row.outcome.never_ran",
 	// The partial states do not announce through the table: their sentence is
 	// `SEND_DELIVERY_LABEL`'s (`delivered, wake unconfirmed` / `delivery
 	// unconfirmed`), which says more than the drawn word and is rendered where
@@ -513,6 +523,18 @@ const OUTCOME_LABEL: Record<ToolRowOutcome, string> = {
 	// announce. Silence here is not the running row's silence — that one is
 	// covered by the working line, which names the running phase in turn.
 	receipt: "",
+} as const;
+
+/**
+ * The row's verdict word for `outcome`, resolved when the row renders.
+ *
+ * Keyed rather than literal, and resolved in a function rather than held in a
+ * table of English: a module-level `t()` freezes the locale the process started
+ * in, so the word would stay in the language the app launched with.
+ */
+const outcomeLabel = (outcome: ToolRowOutcome): string => {
+	const key = OUTCOME_LABEL_KEY[outcome];
+	return key === "" ? "" : t(key);
 };
 
 /** The row's clock ticks at 1Hz because it shows whole seconds (`CLOCK_INTERVAL_S`). */
@@ -618,7 +640,7 @@ const StatusCluster = ({
 	const word = partial
 		? (deliveryWord ?? null)
 		: failedLike
-			? (deliveryWord ?? OUTCOME_LABEL[outcome])
+			? (deliveryWord ?? outcomeLabel(outcome))
 			: null;
 	const wordInk = partial ? "text-warning" : "text-danger";
 	/*
@@ -784,8 +806,8 @@ const StatusCluster = ({
 				 */}
 				{/* Announced, never drawn twice: the failure word above is already
 				    text, so repeating it here would read the row's outcome out twice. */}
-				{!failedLike && OUTCOME_LABEL[outcome] ? (
-					<span className={cn("sr-only")}>{OUTCOME_LABEL[outcome]}</span>
+				{!failedLike && outcomeLabel(outcome) ? (
+					<span className={cn("sr-only")}>{outcomeLabel(outcome)}</span>
 				) : null}
 				{/* The partial states' SPOKEN sentence, which is longer than the word the
 				    row draws (`SEND_DELIVERY_LABEL`); the drawn word is `aria-hidden`
@@ -825,6 +847,7 @@ export const ToolRow = ({
 	summary,
 	summaryFallback = null,
 	summaryHold = false,
+	summaryWrap = false,
 	outcome,
 	deliveryState = null,
 	durationS,
@@ -836,6 +859,10 @@ export const ToolRow = ({
 	className,
 	media,
 }: ToolRowProps) => {
+	/* A subscription, not a value: `outcomeLabel` resolves through `t()` when the
+	 * row renders, and an interface-language switch has to repaint the verdict
+	 * word rather than wait for the next stream event. */
+	useI18nLocale();
 	const running = outcome === "running";
 	// The GROUND is gated on the `error` outcome alone, deliberately: see
 	// `neverSent` below, which states why a not-run row does not claim the wash.
@@ -922,7 +949,20 @@ export const ToolRow = ({
 					// reader scans for the result the quietest thing on a finished turn.
 					// The live/settled difference is the working line and the missing
 					// duration (§E7), not a dimmer summary.
-					"min-w-0 flex-1 truncate font-mono text-ink-muted text-mono-sm",
+					/*
+					 * TWO WHOLE STRINGS, not a base plus a token (#1363 CI, desktop shard 2/3):
+					 * the default must stay BYTE-IDENTICAL to what it was before this prop
+					 * existed - `tool-row.test.mjs` pins the rendered `min-w-0 flex-1
+					 * truncate` order, and a conditional token appended after the base
+					 * moved `truncate` behind `font-mono`, which that test read as "the
+					 * summary no longer truncates first" (CI, shard 2/3).
+					 * WRAP INSTEAD OF TRUNCATE on the rows that ask for it: a receipt's last
+					 * token is the ask id, and the ellipsis ate it. `break-words` keeps one
+					 * long token from overflowing the row.
+					 */
+					summaryWrap
+						? "min-w-0 flex-1 break-words whitespace-normal font-mono text-ink-muted text-mono-sm"
+						: "min-w-0 flex-1 truncate font-mono text-ink-muted text-mono-sm",
 				)}
 				// The name beside it has carried a `title` since it became truncatable;
 				// this cell truncates too, and at 390px the summary is the half that
@@ -997,10 +1037,19 @@ export const ToolRow = ({
 						>
 							…
 						</span>
-						<span className={cn("sr-only")}>pending</span>
+						<span className={cn("sr-only")}>
+							{t("ui.chat.canonical.tool_row.pending")}
+						</span>
 					</>
 				) : (
-					summaryText
+					/*
+					 * A TOOL SUMMARY IS MACHINE VOICE (design round 1, D2). It carries
+					 * paths and commands, and in an RTL paragraph a leading `/` is a neutral
+					 * character: `tmp/qa-rtl/ledger.md/` reordered the slash onto the far
+					 * side of the run. `dir="ltr"` on an isolated run keeps the token's own
+					 * order without imposing direction on the row it sits in.
+					 */
+					<bdi dir="ltr">{summaryText}</bdi>
 				)}
 			</span>
 			<DiffCounters added={added} removed={removed} />

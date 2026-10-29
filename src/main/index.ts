@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { electronApp, is, optimizer } from "@electron-toolkit/utils";
+import { electronApp, is } from "@electron-toolkit/utils";
 import {
 	BrowserWindow,
 	type BrowserWindowConstructorOptions,
@@ -13,6 +13,7 @@ import {
 	globalShortcut,
 	ipcMain,
 	nativeImage,
+	nativeTheme,
 	session,
 	shell,
 	systemPreferences,
@@ -21,6 +22,11 @@ import {
 } from "electron";
 import { PostHog } from "posthog-node";
 import icon from "../../resources/icon.png?asset";
+import { LANGUAGE_SETTING_KEY, subscribeLocale } from "../i18n/locale";
+import type {
+	AttachmentUploadResult,
+	AttachmentUploadSource,
+} from "../shared/attachment-upload";
 import {
 	BACKEND_RECONNECT_CHANNEL,
 	BACKEND_STATUS_CHANNEL,
@@ -57,6 +63,8 @@ import {
 	groundWithGlass,
 	windowGlassArgument,
 } from "../shared/window-glass";
+import { applicationMenuLabels } from "./application-menu-labels";
+import { uploadAttachment } from "./attachment-upload";
 import {
 	BackendInstaller,
 	BackendServiceManager,
@@ -76,6 +84,13 @@ import {
 	startBrowserHost,
 	stopBrowserHost,
 } from "./browser";
+import {
+	ADDRESS_OVERLAY_VISIBLE_MAX_MS,
+	addressListDocumentUrlFor,
+	addressOverlayDocumentUrlFor,
+	documentUrlFor,
+	resolveAddressOverlayGate,
+} from "./browser/address-overlay";
 import { runBrowserMenuAction } from "./browser/browser-chord";
 import {
 	CONSENT_ATTENTION_CHANNEL,
@@ -96,7 +111,9 @@ import {
 	headlessExerciserAllowed,
 	resolveDevDriverArming,
 } from "./dev-driver";
+import { readAttachArguments } from "./dev-driver-attach";
 import { registerDevDriverIPC } from "./dev-driver-ipc";
+import { shouldToggleDevTools } from "./dev-shortcuts";
 import {
 	listDirectory,
 	probeFiles,
@@ -110,6 +127,7 @@ import {
 	readQuickSendValue,
 	watchQuickSend,
 } from "./local-config";
+import { createMainLocale } from "./main-locale";
 import { type MiniView, createMiniView, miniViewUrlFor } from "./mini-view";
 import { paletteDoorChannel } from "./palette-door";
 import {
@@ -128,6 +146,9 @@ import {
 	installSupplementProtocol,
 	registerSupplementScheme,
 } from "./supplement-protocol";
+import { TeamBridgeNotificationImages } from "./team-bridge-notification-images";
+import { TeamBridgeNotifier } from "./team-bridge-notifier";
+import { TeamBridgeNotifyStore } from "./team-bridge-notify-store";
 import {
 	describeTelemetryLaunch,
 	resolveTelemetryLaunch,
@@ -570,17 +591,25 @@ function configureAboutPanel(): void {
 function createApplicationMenu(): void {
 	// Check if we're in development mode
 	const isDev = Boolean(process.env.ELECTRON_RENDERER_URL);
+	/*
+	 * Resolved per BUILD, not once at import: the labels live in the catalogue and
+	 * the main process's locale follows the backend (see `main-locale.ts`), so a
+	 * menu built before the backend answers must be rebuilt when it does. A
+	 * module-scope constant here would freeze the first language for the life of
+	 * the process.
+	 */
+	const labels = applicationMenuLabels();
 
 	// Define zoom functions
 
 	// Create menu template
 	const template: Electron.MenuItemConstructorOptions[] = [
 		{
-			label: "File",
+			label: labels.file,
 			submenu: [{ role: "quit" }],
 		},
 		{
-			label: "Edit",
+			label: labels.edit,
 			submenu: [
 				{ role: "undo" },
 				{ role: "redo" },
@@ -594,11 +623,31 @@ function createApplicationMenu(): void {
 			],
 		},
 		{
-			label: "View",
+			label: labels.view,
 			submenu: [
 				{
+					id: "app-new-tab",
+					label: labels.newBrowserTab,
+					accelerator: "CmdOrCtrl+T",
+					/*
+					 * THE NATIVE ACCELERATOR ROUTE FOR CMD+T, which had no menu item at all.
+					 * The browser owns the command through the same predicate as Reload
+					 * (`ownsPage` for a focused driven page, `ownsChrome` for browser chrome);
+					 * outside the browser this is deliberately a no-op, never a window close.
+					 * When the chrome's own `before-input-event` already claimed the press it
+					 * prevents this accelerator, so rapid/legit presses stay exactly once.
+					 */
+					click: (_item, target) =>
+						runBrowserMenuAction(
+							"new-tab",
+							target,
+							mainWindow,
+							routeBrowserMenu,
+						),
+				},
+				{
 					id: "app-reload",
-					label: "Reload",
+					label: labels.reload,
 					accelerator: "CmdOrCtrl+R",
 					click: (_item, target) =>
 						runBrowserMenuAction(
@@ -610,7 +659,7 @@ function createApplicationMenu(): void {
 				},
 				{
 					id: "app-force-reload",
-					label: "Force Reload",
+					label: labels.forceReload,
 					accelerator: "CmdOrCtrl+Shift+R",
 					click: (_item, target) =>
 						runBrowserMenuAction(
@@ -623,7 +672,7 @@ function createApplicationMenu(): void {
 				{ type: "separator" as const },
 				{
 					id: "app-actual-size",
-					label: "Actual Size",
+					label: labels.actualSize,
 					accelerator: "CmdOrCtrl+0",
 					click: (
 						_item: Electron.MenuItem,
@@ -636,7 +685,7 @@ function createApplicationMenu(): void {
 				},
 				{
 					id: "app-zoom-in",
-					label: "Zoom In",
+					label: labels.zoomIn,
 					accelerator: "CmdOrCtrl+Plus", // On macOS, this often requires Shift as well (Cmd+Shift+=)
 					click: (
 						_item: Electron.MenuItem,
@@ -651,7 +700,7 @@ function createApplicationMenu(): void {
 				},
 				{
 					id: "app-zoom-out",
-					label: "Zoom Out",
+					label: labels.zoomOut,
 					accelerator: "CmdOrCtrl+-",
 					click: (
 						_item: Electron.MenuItem,
@@ -669,7 +718,7 @@ function createApplicationMenu(): void {
 			],
 		},
 		{
-			label: "Window",
+			label: labels.window,
 			submenu: [
 				{ role: "minimize" },
 				{ role: "zoom" },
@@ -695,7 +744,7 @@ function createApplicationMenu(): void {
 								// browser TAB while the browser has focus and the WINDOW elsewhere,
 								// and a menu label cannot follow focus that lives in a page view
 								// (UX r1 U4). The roles it replaced were "Close Window"/"Close".
-								label: "Close Tab or Window",
+								label: labels.closeTabOrWindow,
 								accelerator: "CmdOrCtrl+W",
 								click: (_item, target) =>
 									runBrowserMenuAction(
@@ -715,7 +764,7 @@ function createApplicationMenu(): void {
 								// browser TAB while the browser has focus and the WINDOW elsewhere,
 								// and a menu label cannot follow focus that lives in a page view
 								// (UX r1 U4). The roles it replaced were "Close Window"/"Close".
-								label: "Close Tab or Window",
+								label: labels.closeTabOrWindow,
 								accelerator: "CmdOrCtrl+W",
 								click: (_item, target) =>
 									runBrowserMenuAction(
@@ -732,7 +781,7 @@ function createApplicationMenu(): void {
 			role: "help",
 			submenu: [
 				{
-					label: "Learn More",
+					label: labels.learnMore,
 					click: async () => {
 						await shell.openExternal("https://local-operator.com");
 					},
@@ -743,7 +792,10 @@ function createApplicationMenu(): void {
 
 	// Add developer tools option only in development mode
 	if (isDev) {
-		const viewMenu = template.find((menu) => menu.label === "View");
+		// Compared against the RESOLVED label rather than the word it used to be
+		// spelled with: the template now carries a catalogue value, and a literal
+		// here would silently stop matching once the locale moved.
+		const viewMenu = template.find((menu) => menu.label === labels.view);
 		if (viewMenu?.submenu && Array.isArray(viewMenu.submenu)) {
 			viewMenu.submenu.push(
 				{ type: "separator" as const },
@@ -766,7 +818,7 @@ function createApplicationMenu(): void {
 				 * phrasing and takes the name from `app.name` the way the role did.
 				 */
 				{
-					label: `About ${app.name}`,
+					label: labels.about(app.name),
 					click: () => {
 						if (resolveAboutPanelAction(windowLaunch.mode) === "suppress") {
 							// A line rather than silence: an action that nothing reached and a
@@ -1502,6 +1554,71 @@ const devDriverArming = resolveDevDriverArming({
 });
 const devDriverLine = describeDevDriverArming(devDriverArming);
 if (devDriverLine) console.log(devDriverLine);
+
+/*
+ * THE PAPERCLIP'S PICKER, REPLACED ONLY FOR AN ARMED DRIVER RUN. The queue is
+ * emptied by the first `show-open-dialog` it answers, so one press stages the
+ * paths this launch was told about and a second press opens the real dialog
+ * again rather than replaying the first answer. Unarmed launches parse nothing:
+ * an operator's own file dialog is never answered by a flag.
+ */
+const attachQueue = devDriverArming.armed
+	? readAttachArguments(process.argv)
+	: { paths: [], problems: [] };
+for (const problem of attachQueue.problems)
+	console.error(`[dev-driver] ${problem}`);
+if (devDriverArming.armed && attachQueue.paths.length > 0)
+	console.log(
+		`[dev-driver] attach queue: ${attachQueue.paths.length} path(s) will answer the next file dialog`,
+	);
+
+/*
+ * S1's address-overlay gate, resolved ONCE here for the same reason the window
+ * mode and the dev driver are: it is a fact about the LAUNCH, decided before a
+ * window or a host exists. It needs the exact opt-in AND the already-armed dev
+ * driver AND `headless`; anything else refuses with a printed reason. Pure in
+ * `browser/address-overlay.ts`, so its edges are asserted without an app.
+ *
+ * S3 adds one more opt-in (`…_VISIBLE=1`) on top of S1+S2: same pure function,
+ * `packaged: app.isPackaged` so an installed build can never arm it, and the only
+ * accepted mode becomes `inactive`. Nothing here re-derives those conditions; the
+ * `visible` field is read by the launcher watch, the lifetime cap and the host.
+ *
+ * Nothing here reaches the product: an ordinary launch has no opt-in, so the
+ * host receives no `addressOverlay` option, registers no probe channel and
+ * creates no native child. The in-flow address editor and its list are untouched.
+ */
+const addressOverlayGate = resolveAddressOverlayGate({
+	env: launchEnv,
+	devDriverArmed: devDriverArming.armed,
+	windowMode: windowLaunch.mode,
+	packaged: app.isPackaged,
+});
+/**
+ * S4b's product chrome, with no user-facing switch.
+ *
+ * DARWIN ONLY, and that is evidence rather than preference: every measured fact
+ * about the native child is macOS (S1–S3; the Windows/Linux rows are BLOCKED),
+ * so the other platforms keep the Tier 1 field-only popout. A probe launch wins:
+ * when `addressOverlayGate.enabled`, the probe's own channels and child are the
+ * ones wired, so an evidence run never shares a controller with the product.
+ */
+const addressOverlayProduct =
+	process.platform === "darwin" && !addressOverlayGate.enabled;
+if (addressOverlayProduct) {
+	console.log(
+		"[address-overlay] product chrome armed (darwin): permanent address row, native list child",
+	);
+}
+if (addressOverlayGate.asked) {
+	console.log(
+		addressOverlayGate.enabled
+			? addressOverlayGate.visible
+				? "[address-overlay] ARMED (S3 VISIBLE probe, inactive window, 120 s cap, no product path)"
+				: `[address-overlay] ARMED (S${addressOverlayGate.list ? "2 probe: mirror list" : "1 probe: native child"}, no product path)`
+			: `[address-overlay] not armed: ${addressOverlayGate.reason}`,
+	);
+}
 
 /*
  * The renderer's half of that decision, as `webPreferences` for whichever window
@@ -2444,6 +2561,29 @@ app
 		}
 
 		/*
+		 * THE MAIN PROCESS'S OWN LOCALE SOURCE (agent review round 1, R1-1).
+		 *
+		 * The banners this process raises are keyed copy now, so the process has to
+		 * know the language - and the only authoritative source is the backend
+		 * `language` setting, which is read through the SAME configured transport the
+		 * renderer's capabilities query uses. Priming the DEVICE reading here is the
+		 * RFC's pre-connection rule: a notification raised before the first
+		 * capabilities answer speaks the OS's language, not English. Refreshes are
+		 * wired below (backend ready, the feed's config frame, and an accepted
+		 * settings write), and each one re-reads instead of trusting a pushed value.
+		 *
+		 * Placed after the launch hold deliberately: that path has already applied
+		 * its own marker/device reading and is about to exit, so it pays for
+		 * nothing here.
+		 */
+		const mainLocale = createMainLocale({
+			app,
+			request: (request) => backendService.requestDesktop(request),
+			log: (message) => logger.info(message, LogFileType.BACKEND),
+		});
+		mainLocale.applyDevice();
+
+		/*
 		 * The app's own menu, installed BEFORE THIS HANDLER AWAITS ANYTHING.
 		 *
 		 * Why the position is load-bearing rather than tidy (code review round 1,
@@ -2464,6 +2604,18 @@ app
 		 */
 		configureAboutPanel();
 		createApplicationMenu();
+		/*
+		 * REBUILD THE MENU WHEN THE LANGUAGE MOVES. Electron installs one menu object
+		 * for the whole app, so a label resolved at build time keeps that language
+		 * until the template is rebuilt. `subscribeLocale` fires only on a real
+		 * CHANGE (`src/i18n/locale.ts` notifies nothing for a repeated identical
+		 * answer), so a re-read that agrees does not rebuild the menu under a click.
+		 *
+		 * The trigger is the main process's own locale mirror, which is the same
+		 * value `t()` renders here: a subscription to anything else would rebuild the
+		 * menu in a language the next label lookup does not agree with.
+		 */
+		subscribeLocale(createApplicationMenu);
 
 		/*
 		 * A headless run does not outlive the process that launched it.
@@ -2484,6 +2636,9 @@ app
 			mode: windowLaunch.mode,
 			launcherPid: process.ppid,
 			env: launchEnv,
+			// S3 only: the one visible run nobody is watching still must not
+			// outlive its launcher. False for every product launch.
+			boundedVisibleProbe: addressOverlayGate.visible,
 		});
 		logger.info(`[window-mode] ${launcher.reason}`, LogFileType.BACKEND);
 		if (windowLaunch.mode !== "normal") {
@@ -2499,7 +2654,27 @@ app
 					endHeadlessRun(message, detail),
 			});
 		}
-		if (windowLaunch.mode === "headless") {
+		/*
+		 * S3's hard cap. The launcher watch above covers the harness dying; this
+		 * covers the harness hanging, the operator walking away, and any path where
+		 * the visible probe's own reaping fails. It is deliberately the same
+		 * `endHeadlessRun` terminal every other non-product run takes — a bounded quit
+		 * with a deadline underneath it — rather than a bare `app.exit`, so the overlay
+		 * and the pages are disposed in their normal order first. `unref()`
+		 * because the cap must never be the reason a process is alive.
+		 */
+		if (addressOverlayGate.visible) {
+			const cap = setTimeout(() => {
+				endHeadlessRun(
+					`the visible address-overlay probe reached its ${ADDRESS_OVERLAY_VISIBLE_MAX_MS / 1000} s cap`,
+				);
+			}, ADDRESS_OVERLAY_VISIBLE_MAX_MS);
+			cap.unref();
+			console.log(
+				`[address-overlay] visible probe cap: ${ADDRESS_OVERLAY_VISIBLE_MAX_MS / 1000} s from launch`,
+			);
+		}
+		if (windowLaunch.mode === "headless" || addressOverlayGate.visible) {
 			/*
 			 * A signal is the case the graceful path does NOT reach on its own.
 			 * Chromium's SIGTERM shutdown closes the window and then leaves the
@@ -2514,7 +2689,7 @@ app
 				process.on(signal, () => endHeadlessRun(`received ${signal}`));
 			}
 		}
-		if (windowLaunch.mode !== "headless") {
+		if (windowLaunch.mode !== "headless" && !addressOverlayGate.visible) {
 			/*
 			 * SIGTERM DURING A QUIT IS A CONTRACT, NOT A SURPRISE (2026-10-11).
 			 *
@@ -2537,7 +2712,11 @@ app
 			 * default) - a person's `kill` keeps meaning exactly what it meant.
 			 * The headless modes keep the handlers above, which own SIGINT too;
 			 * this one is SIGTERM only because it is the escalator's signal.
-			 * `scripts/launcher-watch.test.mjs` pins the gate.
+			 * `scripts/launcher-watch.test.mjs` pins the gate. S3's visible probe is
+			 * excluded from this handler on purpose: it already registers the direct
+			 * handlers above (same lifetime contract as headless, plus its cap), and
+			 * registering both would let this one re-raise TERM into the handler that
+			 * just took it.
 			 */
 			const onSigtermDuringQuit = () => {
 				if (!quitState.isQuitting()) {
@@ -2577,11 +2756,18 @@ app
 			process.on("SIGINT", onSigint);
 		}
 
-		// Default open or close DevTools by F12 in development
-		// and ignore CommandOrControl + R in production.
-		// see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
+		// F12 toggles DevTools in development only. Not the toolkit's
+		// `optimizer.watchWindowShortcuts`: it also cancels Ctrl+R in packaged
+		// builds and Cmd/Ctrl+minus by default, so the Console never saw reverse
+		// search and Zoom Out never fired (#1085).
 		app.on("browser-window-created", (_, window) => {
-			optimizer.watchWindowShortcuts(window);
+			window.webContents.on("before-input-event", (event, input) => {
+				if (!shouldToggleDevTools(input, is.dev)) return;
+				event.preventDefault();
+				const { webContents } = window;
+				if (webContents.isDevToolsOpened()) webContents.closeDevTools();
+				else webContents.openDevTools({ mode: "undocked" });
+			});
 		});
 
 		// One guarded sender for every main-process caller, so a read receipt
@@ -2650,6 +2836,54 @@ app
 			// line is what tells that trigger apart from the other four.
 			reportRaise,
 		);
+		/*
+		 * Team Bridge message banners. A SEPARATE owner from the notifier above: its
+		 * vocabulary is the renderer's (a conversation and a sender label), not the
+		 * backend's composition, and its dedupe cursor is per conversation rather
+		 * than per backend dedupe key.
+		 *
+		 * The store is a small file in `userData`: only conversation ids and the
+		 * newest seq a banner was raised for. The window and the raise policy are
+		 * the same ones every other banner click uses, so a click lands where the
+		 * app already brings itself forward. `reopen` asks the app for a window the
+		 * only way it knows how (the Dock-click path); the target stays pending for
+		 * the new renderer to pull on mount.
+		 */
+		let notificationAvatarAvailable = false;
+		const notificationImages = new TeamBridgeNotificationImages({
+			enabled: () => notificationAvatarAvailable,
+			request: (input) => backendService.requestDesktopMedia(input, null),
+			theme: () => (nativeTheme.shouldUseDarkColors ? "dark" : "light"),
+			decode: (data) => {
+				const icon = nativeImage.createFromBuffer(Buffer.from(data));
+				return icon.isEmpty() ? undefined : icon;
+			},
+		});
+		const teamBridgeNotifier = new TeamBridgeNotifier({
+			images: notificationImages,
+			window: () => mainWindow,
+			show: windowLaunch.show,
+			icon: image,
+			store: new TeamBridgeNotifyStore(
+				join(app.getPath("userData"), "team-bridge-notifications.json"),
+				(message, error) =>
+					logger.warn(`${message}: ${String(error)}`, LogFileType.BACKEND),
+			),
+			host: {
+				signalOpen: () => {
+					const window = mainWindow;
+					if (window && !window.isDestroyed()) {
+						window.webContents.send("team-bridge:open");
+					}
+				},
+				reopen: () => app.emit("activate"),
+			},
+			present: (window) =>
+				raiseWindow(window, windowLaunch.show, {
+					trigger: "banner-click",
+					report: reportRaise,
+				}),
+		});
 		// Read `features.notification_contract` whenever the backend becomes
 		// reachable, NOT here: the desktop token is minted inside
 		// `backendService.start()` below, so a capability request issued now
@@ -2668,6 +2902,35 @@ app
 		// defers the legacy toast until the read settles, so nothing can slip
 		// through the window in between.
 		backendService.onBackendReady(() => {
+			// Negotiate outside delivery. A restarted/older core drops all image
+			// eligibility until its own capability answers; never 404-probe per event.
+			notificationAvatarAvailable = false;
+			notificationImages.clear();
+			void backendService
+				.requestDesktop({ op: "capabilities" })
+				.then((response) => {
+					const body = response.body as {
+						result?: { features?: Record<string, unknown> };
+					} | null;
+					notificationAvatarAvailable =
+						Number(
+							body?.result?.features?.team_bridge_notification_avatar ?? 0,
+						) >= 1;
+					// Gated on the capability reading TRUE after any backend-ready, not on a
+					// false -> true flip: this event cleared the cache just above, so the
+					// replay only refills what it emptied, and no path runs from cache
+					// completion back here. One reconciliation per negotiation, no retry.
+					if (notificationAvatarAvailable)
+						teamBridgeNotifier.replayDirectories();
+				})
+				.catch(() => undefined);
+			/*
+			 * And the main process's locale, for the same reason and on the same
+			 * transitions: a restarted or newly discovered backend can carry a
+			 * different `language` answer, and every later banner reads the store at
+			 * draw time.
+			 */
+			void mainLocale.refresh();
 			void desktopNotifier.refreshNotificationContract();
 			// The feed's own gate: it reads `features.desktop_feed` and opens
 			// nothing without it, so an older backend keeps the per-session path and
@@ -2701,6 +2964,26 @@ app
 		 */
 		const consoleCaptureUrl = consoleCaptureUrlFor(rendererUrl);
 		/*
+		 * S1's inert document, derived from the same trusted URL rather than spelled
+		 * a second time: a dev server on another port or a moved bundle cannot leave
+		 * the overlay pointing at a document that is not there. The host only receives
+		 * it when the gate passed; the URL itself is never renderer- or caller-supplied.
+		 */
+		const addressOverlayDocumentUrl =
+			addressOverlayGate.list || addressOverlayProduct
+				? addressListDocumentUrlFor(rendererUrl)
+				: addressOverlayDocumentUrlFor(rendererUrl);
+		/*
+		 * S6c: the approvals card is default-on. The kill switch is read in the
+		 * host (`approvalsOverlayEnabled`), so the trusted document URL is derived
+		 * on every launch and the host receives the option; setting the switch
+		 * makes the host create no controller and no child.
+		 */
+		const approvalsOverlayDocumentUrl = documentUrlFor(
+			rendererUrl,
+			"browser-approvals-overlay.html",
+		);
+		/*
 		 * The machine-wide feed's two consumers, and the split between them is the
 		 * design: main takes the notifications (so a completion banners with no
 		 * window at all — the operator's own reported case) and the window takes
@@ -2721,6 +3004,24 @@ app
 				if (frame.type === "notification") {
 					desktopNotifier.observe(frame.session_id, frame);
 					return;
+				}
+				/*
+				 * A config frame naming the language key is an INVALIDATION, not the
+				 * value: the payload's `language` is a convenience for clients that
+				 * mirror config, while the authoritative answer is the capabilities
+				 * read this triggers. Re-reading keeps one source of truth and means a
+				 * frame written by a foreign process cannot pin a tag of its choosing.
+				 *
+				 * BEFORE the window check on purpose: the frame matters with no window
+				 * at all (the app alive in the dock), and the locale store is main's,
+				 * not the renderer's. The frame is still forwarded below when a window
+				 * exists.
+				 */
+				if (
+					frame.type === "config" &&
+					frame.payload.changed_keys.includes(LANGUAGE_SETTING_KEY)
+				) {
+					void mainLocale.refresh();
 				}
 				const window = mainWindow;
 				if (!window || window.isDestroyed()) return;
@@ -3109,6 +3410,16 @@ app
 			 * and the guard are two halves of one decision and must share one list.
 			 */
 			supplementMounts,
+			teamBridgeNotifier,
+			/*
+			 * The language setting's write-through tap: an accepted `settings.edit` /
+			 * `settings.reset` of the language key re-reads the backend's resolved
+			 * tag instead of trusting the value the renderer sent. The setting is the
+			 * one owner; main only mirrors what the backend answers.
+			 */
+			() => {
+				void mainLocale.refresh();
+			},
 		);
 		/*
 		 * The app voice page's channels: admitted only for the live page's own
@@ -3298,12 +3609,31 @@ app
 		 */
 		ipcMain.handle(
 			"probe-files",
-			async (event, paths: unknown, cwd?: string): Promise<ProbedFile[]> => {
+			async (
+				event,
+				paths: unknown,
+				cwd?: string,
+				options?: { fresh?: boolean },
+			): Promise<ProbedFile[]> => {
 				authorizeLocalFileSender(event, "probe files");
 				const asked = Array.isArray(paths)
 					? paths.filter((path): path is string => typeof path === "string")
 					: [];
-				return await probeFiles(asked, cwd, app.getPath("home"));
+				/*
+				 * `fresh` is the watcher's opt-out of the answer cache (see
+				 * `probeFiles`); it is read as a strict boolean because the option
+				 * arrives over IPC, and anything else is the default - a caller
+				 * cannot turn caching off for everyone by sending garbage.
+				 */
+				const fresh = options?.fresh === true;
+				return await probeFiles(
+					asked,
+					cwd,
+					app.getPath("home"),
+					undefined,
+					undefined,
+					fresh,
+				);
 			},
 		);
 
@@ -3424,6 +3754,46 @@ app
 		);
 
 		/*
+		 * One composer attachment, read and POSTed to the daemon.
+		 *
+		 * The sender gate is the SAME as `read-file-bytes` above and for the same
+		 * reason: this channel turns a path into bytes leaving the machine. It is
+		 * additionally the only door that attaches the daemon's bearer token, so a
+		 * foreign frame that somehow acquired `window.api` could not reach the
+		 * attachment store without it.
+		 *
+		 * Answers a discriminant rather than throwing, because the composer renders
+		 * the `error` string in its refusal and a structured-clone-stripped Error
+		 * would arrive with nothing it can read.
+		 */
+		ipcMain.handle(
+			"upload-attachment",
+			async (
+				event,
+				source: AttachmentUploadSource,
+			): Promise<AttachmentUploadResult> => {
+				if (!isAdmittedSender(event, trustedLocalFileSenders())) {
+					return {
+						success: false,
+						code: "unreadable",
+						error: "This window cannot read local files.",
+					};
+				}
+				// Only the path form has a path to resolve; a pasted file's bytes
+				// arrive in the data URL it was stored as.
+				const resolved =
+					source.kind === "path"
+						? { ...source, path: resolveUserPath(source.path) }
+						: source;
+				return uploadAttachment({
+					source: resolved,
+					backendUrl: backendService.getBackendUrl(),
+					token: backendService.getDesktopToken(),
+				});
+			},
+		);
+
+		/*
 		 * Vetted, not forwarded: the renderer's `window.api.openExternal` takes any
 		 * string, and `shell.openExternal` launches whatever the OS maps the scheme
 		 * to. Every caller in the renderer passes an http(s) link (or an update
@@ -3526,6 +3896,16 @@ app
 			 * mini, and the broadcast latch below covers the platforms and
 			 * situations where focus still moves.
 			 */
+			// The armed rig's queue answers FIRST, before any window is needed: a
+			// paperclip press in a headless scene has a parent, but the answer must not
+			// depend on the dialog sheet's own plumbing. See `dev-driver-attach.ts`.
+			if (attachQueue.paths.length > 0) {
+				const filePaths = attachQueue.paths.splice(0);
+				console.log(
+					`[dev-driver] answered the file dialog with ${filePaths.length} queued path(s)`,
+				);
+				return { canceled: false, filePaths };
+			}
 			const parent = BrowserWindow.fromWebContents(event.sender) ?? mainWindow;
 			if (!parent) {
 				logger.error(
@@ -4265,6 +4645,27 @@ app
 					// document, and the preload every renderer in this app gets, which is what
 					// lets main feed the reconstruction to it.
 					consoleCaptureUrl,
+					// S1: only a gated headless probe arm gets this option at all. The
+					// URL is this app's own packaged document, not a caller's string.
+					...(addressOverlayGate.enabled || addressOverlayProduct
+						? {
+								addressOverlay: {
+									enabled: true,
+									list: addressOverlayGate.list || addressOverlayProduct,
+									visible: addressOverlayGate.visible,
+									product: addressOverlayProduct,
+									documentUrl: addressOverlayDocumentUrl,
+								},
+							}
+						: {}),
+					approvalsOverlay: {
+						enabled: true,
+						documentUrl: approvalsOverlayDocumentUrl,
+						preloadPath: join(
+							__dirname,
+							"../preload/browser-approvals-overlay.js",
+						),
+					},
 					preloadPath: join(__dirname, "../preload/index.js"),
 					/*
 					 * The console's surfaces are handed the user's own PATH, from the same

@@ -1,6 +1,8 @@
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { Button } from "@shared/components/ui/button";
 import { Tooltip } from "@shared/components/ui/tooltip";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type AsideStream, useAsideStore } from "@shared/store/aside-store";
 import { X } from "lucide-react";
@@ -275,13 +277,16 @@ const asideExchangeCap = (
  * the render says why it is inline and box-neutral.
  */
 const AsideQuestion: FC<{ question: string }> = ({ question }) => {
+	// `t()` reads the current locale at call time; this subscription is what makes
+	// the mounted exchange re-render when the language setting changes.
+	useI18nLocale();
 	const { replies, remainingContent } = useMemo(
 		() => parseReplies(question),
 		[question],
 	);
 	return (
 		<>
-			<span className="sr-only">Question: </span>
+			<span className="sr-only">{t("ui.chat.aside.question_label")} </span>
 			{/*
 			 * THE VISIBLE HALF OF THE SAME FACT (issue #763). The sr-only prefix
 			 * above is the reader's copy and stays; this is the one a sighted reader
@@ -305,13 +310,13 @@ const AsideQuestion: FC<{ question: string }> = ({ question }) => {
 			 * reads best, and the same meta-step, quiet marker idiom the ask card's
 			 * `Recommended` uses.
 			 */}
-			<span aria-hidden={true} className="mr-1 text-meta text-ink-dim">
-				You:
+			<span aria-hidden={true} className="me-1 text-meta text-ink-dim">
+				{t("ui.chat.aside.you_label")}{" "}
 			</span>
 			{replies.map((reply) => (
 				<span
 					key={reply.id}
-					className="mb-1 block border-hairline border-l-2 py-0.5 pl-2"
+					className="mb-1 block border-hairline border-s-2 py-0.5 ps-2"
 				>
 					{reply.text}
 				</span>
@@ -357,7 +362,9 @@ const AsideAnswer: FC<{
 			{stream.streaming &&
 				stream.text.length === 0 &&
 				stream.error === null && (
-					<p className="text-body-sm text-ink-muted">thinking…</p>
+					<p className="text-body-sm text-ink-muted">
+						{t("ui.chat.aside.thinking")}
+					</p>
 				)}
 			{/*
 			 * `role="alert"`: the ask failed and the user is waiting on it, so it is
@@ -386,6 +393,9 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 	);
 	const streams = useAsideStore((state) => state.streams);
 	const titleId = useId();
+	// Locale subscription for the panel's own copy (heading, close label, empty
+	// state, adopt control) — see the note in `AsideQuestion`.
+	useI18nLocale();
 	/** The blocked reason's own id, so the disabled control can name it (U9). */
 	const blockedId = useId();
 	/*
@@ -714,7 +724,7 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 			<div className="flex items-start justify-between gap-2">
 				<div className="flex flex-col">
 					<h2 id={titleId} className="text-body-sm text-ink">
-						Aside
+						{t("ui.chat.aside.title")}
 					</h2>
 					{/*
 					 * The feature's own contract sentence, borrowed verbatim from the TUI
@@ -723,14 +733,14 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 					 * second wording for it here would be a second promise.
 					 */}
 					<p className="text-meta text-ink-muted">
-						off the record — nothing here joins the conversation
+						{t("ui.chat.aside.off_record")}
 					</p>
 				</div>
 				<Button
 					variant="ghost"
 					size="icon-sm"
 					type="button"
-					aria-label="Close the aside"
+					aria-label={t("ui.chat.aside.close_label")}
 					onClick={() => {
 						closeAside(sessionId);
 						// The panel unmounts this control, so focus would fall to `<body>`:
@@ -778,7 +788,7 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 				 */
 				// biome-ignore lint/a11y/noNoninteractiveTabindex: the stop IS the remedy - the region scrolls and nothing inside it is focusable.
 				tabIndex={0}
-				aria-label="The aside exchange"
+				aria-label={t("ui.chat.aside.exchange_label")}
 				/*
 				 * `scrollbar-gutter: stable` is the measured cap's own constraint, and it is here
 				 * rather than at the cap: the cap grows with a box INSIDE the region, so the width
@@ -796,7 +806,7 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 			>
 				{attachment.turns.length === 0 ? (
 					<p className="text-body-sm text-ink-muted">
-						Type a question in the composer below — the answer lands here.
+						{t("ui.chat.aside.empty")}
 					</p>
 				) : (
 					attachment.turns.map((turn) => (
@@ -876,7 +886,7 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 								.finally(() => onReturnFocus?.());
 						}}
 					>
-						Add to conversation
+						{t("ui.chat.aside.add_to_conversation")}
 					</Button>
 					{/*
 					 * The chord, advertised rather than hidden: a keyboard-only user must

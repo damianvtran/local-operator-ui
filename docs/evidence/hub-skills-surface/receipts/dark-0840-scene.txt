@@ -1,0 +1,84 @@
+renderer-driver: frame timezone pinned to America/New_York (ambient TZ=America/Toronto)
+[build] current: assets 2026-10-20T18:23:20.254Z >= sources 2026-10-20T17:28:03.307Z
+[note] abandoned scratch trees
+        8 seen, 0 owned by a live pid (kept), 8 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8132 (frame-src already lists it, media-src already lists it, img-src already lists it)
+  serve records 1 linked from /Users/damian/.local-operator/sessions/fb26384b780f/scratchpad/hub-skills-qa/dark-home/.lop/run/serve   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui/.worktrees/hub-skills-state
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-4697
+  frames        /Users/damian/.local-operator/sessions/fb26384b780f/scratchpad/hub-skills-qa/frames-dark2
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-4697/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8132   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0_supports-color@8.1.1/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["filesFacts","hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","soundsArm","soundsEnd","soundsFacts","soundsScrub","soundsScrubFinish","soundsSpeech","stageLiveConsents","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8132","backend":"http://127.0.0.1:8132"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8132)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[PASS] window mode is headless and the window is never shown or focused
+[PASS] Skills gate fetch observer validates its own positive control
+[PASS] released-core fallback retains selected Agents and hides Skills entry/actions
+[note] Skills gate list/detail fetches
+        {"listFetches":{"armed":true,"total":0,"probeRecords":1,"callers":[]},"detailFetches":{"armed":true,"total":0,"probeRecords":1,"callers":[]}}
+[PASS] released-core fallback starts zero remote Skills list/detail queries
+[PASS] fallback panel geometry is observable without horizontal overflow
+[note] egress: capture securitypolicyviolation events
+        []
+[PASS] egress: zero CSP violations during the capture flow
+[note] egress: distinct renderer request origins
+        ["null"]
+[PASS] egress: every renderer request went to the stub origin or an app-local scheme
+        14 requests, origins ["null"]
+[PASS] egress: no renderer request names api.radienthq.com
+[note] egress: app process tree sockets (one instant)
+        pids 4716,4730,4731,4739,4746,4747,4756
+        COMMAND   PID   USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+        Electron 4716 damian   18u  IPv4 0x758a1781b48e405c      0t0  TCP 127.0.0.1:51261 (LISTEN)
+        Electron 4716 damian   22u  IPv4 0x8e59e3bd2a9f7d04      0t0  TCP 127.0.0.1:51274->127.0.0.1:8132 (ESTABLISHED)
+        Electron 4716 damian   24u  IPv4 0xfbd64ba129748404      0t0  TCP 127.0.0.1:51259->127.0.0.1:51273 (ESTABLISHED)
+        Electron 4716 damian   38u  IPv4 0x40c526682c5d8f1d      0t0  TCP 127.0.0.1:51259 (LISTEN)
+        Electron 4716 damian   61u  IPv4 0x306365c2de3c5a8b      0t0  TCP 127.0.0.1:51271->127.0.0.1:8132 (ESTABLISHED)
+        Electron 4716 damian   63u  IPv4 0xff124e3c7ce18fbc      0t0  TCP 127.0.0.1:51259->127.0.0.1:51272 (ESTABLISHED)
+        Electron 4716 damian   74u  IPv4 0x9ce9730152d60dad      0t0  TCP 127.0.0.1:51275->127.0.0.1:8132 (ESTABLISHED)
+        Electron 4716 damian   77u  IPv4 0xffd69e7435e1a477      0t0  TCP 127.0.0.1:51276->127.0.0.1:8132 (ESTABLISHED)
+        Electron 4716 damian   93u  IPv4 0x917ca0126ba01ad8      0t0  TCP 127.0.0.1:51278 (LISTEN)
+        Electron 4716 damian   97u  IPv4  0x8767d47e13bf75c      0t0  TCP 127.0.0.1:51280 (LISTEN)
+        Electron 4716 damian   98u  IPv4 0x30d67ad11b83a2de      0t0  TCP 127.0.0.1:51279->127.0.0.1:8132 (ESTABLISHED)
+        Electron 4716 damian   99u  IPv4 0x4a2676834a1dc63a      0t0  TCP 127.0.0.1:51283->127.0.0.1:8132 (ESTABLISHED)
+        Electron 4716 damian  100u  IPv4 0xf4cc99eeb8de8605      0t0  TCP 127.0.0.1:51281->127.0.0.1:8132 (ESTABLISHED)
+        Electron 4716 damian  101u  IPv4 0x89fa7d4944454300      0t0  TCP 127.0.0.1:51284->127.0.0.1:8132 (ESTABLISHED)
+        Electron 4716 damian  102u  IPv4 0xf985e0c978e9d1f7      0t0  TCP 127.0.0.1:51285->127.0.0.1:8132 (ESTABLISHED)
+        Electron 4716 damian  103u  IPv4 0xf868481bb1a3b746      0t0  TCP 127.0.0.1:51286->127.0.0.1:8132 (ESTABLISHED)
+        Electron 4716 damian  104u  IPv4 0xbefbed9c4f746ac7      0t0  TCP 127.0.0.1:51287->127.0.0.1:8132 (ESTABLISHED)
+        Electron 4716 damian  105u  IPv4 0xac62262fa6c74f92      0t0  TCP 127.0.0.1:51288->127.0.0.1:8132 (ESTABLISHED)
+        Electron 4716 damian  106u  IPv4 0x434ccd80d2022fa3      0t0  TCP 127.0.0.1:51289->127.0.0.1:8132 (ESTABLISHED)
+        Electron 4716 damian  107u  IPv4 0x6df762f95c0843ba      0t0  TCP 127.0.0.1:51290->127.0.0.1:8132 (ESTABLISHED)
+        Electron 4716 damian  108u  IPv4  0x37257ddc7a9d0f6      0t0  TCP 127.0.0.1:51291->127.0.0.1:8132 (ESTABLISHED)
+        Electron 4716 damian  109u  IPv4 0xab017012eb88d714      0t0  TCP 127.0.0.1:51292->127.0.0.1:8132 (ESTABLISHED)
+        Electron 4716 damian  110u  IPv4 0x543a369f16dd8314      0t0  TCP 127.0.0.1:51293->127.0.0.1:8132 (ESTABLISHED)
+        Electron 4716 damian  111u  IPv4 0x9bee6eeec776097e      0t0  TCP 127.0.0.1:51294->127.0.0.1:8132 (ESTABLISHED)
+        Electron 4716 damian  112u  IPv4 0x9c21c2ffd2f97c60      0t0  TCP 127.0.0.1:51295->127.0.0.1:8132 (ESTABLISHED)
+        Electron 4716 damian  113u  IPv4 0xbd3d5d23f3100676      0t0  TCP 127.0.0.1:51296->127.0.0.1:8132 (ESTABLISHED)
+        Electron 4716 damian  114u  IPv4 0xcd1bde66d1a0c4ed      0t0  TCP 127.0.0.1:51297->127.0.0.1:8132 (ESTABLISHED)
+        Electron 4716 damian  115u  IPv4 0x2668b08e04d5b56d      0t0  TCP 127.0.0.1:51298->127.0.0.1:8132 (ESTABLISHED)
+        Electron 4716 damian  116u  IPv4 0x24381fb36cfe3ee0      0t0  TCP 127.0.0.1:51299->127.0.0.1:8132 (ESTABLISHED)
+        Electron 4716 damian  117u  IPv4 0x4c445dbccc452c72      0t0  TCP 127.0.0.1:51300->127.0.0.1:8132 (ESTABLISHED)
+[PASS] egress: no non-loopback ESTABLISHED/SYN_SENT socket in the app's process tree (instantaneous probe, not a continuous audit)
+[PASS] no process from this run outlived its boot
+
+frames: hub-skills-1380x900-local-operator-dark-adapter-absent-agents.png
+frames directory: /Users/damian/.local-operator/sessions/fb26384b780f/scratchpad/hub-skills-qa/frames-dark2
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-4697/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-4697 (the frames are also in --out)
+
+ALL CHECKS PASSED

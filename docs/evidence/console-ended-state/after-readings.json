@@ -1,0 +1,959 @@
+{
+  "pairPort": 47391,
+  "when": "2026-10-22T11:07:31.985Z",
+  "report": [
+    {
+      "cell": "opened live",
+      "reading": {
+        "hash": "#/chat",
+        "paneOpen": true,
+        "mirror": true,
+        "banner": null,
+        "marker": null,
+        "announce": null,
+        "cursorCells": [
+          {
+            "rect": {
+              "x": 989,
+              "y": 109,
+              "width": 8,
+              "height": 17
+            },
+            "background": "rgb(56, 201, 106)",
+            "visibility": "visible",
+            "display": "inline-block",
+            "opacity": "1",
+            "text": " "
+          }
+        ],
+        "historyBox": {
+          "x": 740,
+          "y": 109,
+          "width": 596,
+          "height": 791,
+          "outlineWidth": "3px",
+          "outlineStyle": "none",
+          "outlineColor": "rgb(241, 238, 230)"
+        },
+        "markerTop": null,
+        "markerHeight": null,
+        "startCue": "",
+        "announceSeq": null,
+        "caret": {
+          "text": " ",
+          "color": "rgb(43, 39, 33)",
+          "background": "rgb(56, 201, 106)",
+          "blink": true,
+          "block": true
+        },
+        "screenColor": "rgb(241, 238, 230)",
+        "textareaReadOnly": false,
+        "rail": {
+          "pressed": "true",
+          "label": "Console (⌘J)",
+          "blip": false
+        },
+        "active": {
+          "tag": "textarea",
+          "class": "xterm-helper-textarea",
+          "inTerminal": true
+        },
+        "tabs": [
+          {
+            "text": "zsh",
+            "selected": "true",
+            "surface": "con:1:NeWNzgk5Fmv_1jyBWrvl5g"
+          }
+        ],
+        "paneText": "Console\nzsh\n1 live of 128 in the app\nzsh\ndamian@damians-MacBook-Pro ~ %  "
+      }
+    },
+    {
+      "cell": "ended, pane open",
+      "reading": {
+        "surface": "con:1:NeWNzgk5Fmv_1jyBWrvl5g",
+        "state": [
+          {
+            "surface": "con:1:NeWNzgk5Fmv_1jyBWrvl5g",
+            "session_id": "c2591d4cb61a",
+            "origin": "user",
+            "command": "zsh",
+            "argv_tail": "",
+            "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-ended-21202/home",
+            "cols": 74,
+            "rows": 41,
+            "running": false,
+            "exit_code": 1,
+            "exit_signal": null,
+            "end_reason": null,
+            "last_activity": 1792667211.497,
+            "live": true,
+            "agent_owned": false,
+            "last_actor": "user",
+            "secure": false,
+            "retain": true,
+            "sizing": "auto",
+            "displayed": true,
+            "last_mark": null
+          }
+        ],
+        "view": {
+          "hash": "#/chat",
+          "paneOpen": true,
+          "mirror": true,
+          "banner": "This terminal has ended\nexit code 1",
+          "marker": "End of history\nThis terminal is read-only. Select text to copy it.",
+          "announce": "",
+          "cursorCells": [],
+          "historyBox": {
+            "x": 740,
+            "y": 139,
+            "width": 596,
+            "height": 761,
+            "outlineWidth": "2px",
+            "outlineStyle": "solid",
+            "outlineColor": "rgb(131, 124, 109)"
+          },
+          "markerTop": 848,
+          "markerHeight": 52,
+          "startCue": "",
+          "announceSeq": "0",
+          "caret": null,
+          "screenColor": "rgb(241, 238, 230)",
+          "textareaReadOnly": true,
+          "rail": {
+            "pressed": "false",
+            "label": "Console (⌘J)",
+            "blip": false
+          },
+          "active": {
+            "tag": "textarea",
+            "class": "xterm-helper-textarea",
+            "inTerminal": true
+          },
+          "tabs": [
+            {
+              "text": "zsh\nexit 1",
+              "selected": "true",
+              "surface": "con:1:NeWNzgk5Fmv_1jyBWrvl5g"
+            }
+          ],
+          "paneText": "Console\nzsh\n0 live of 128 in the app · 1 kept\nzsh\nexit 1\nThis terminal has ended\nexit code 1\ndamian@damians-MacBook-Pro ~ % exit\n \nEnd of history\nThis terminal is read-only. Select text to copy it."
+        }
+      }
+    },
+    {
+      "cell": "history focused",
+      "reading": {
+        "view": {
+          "hash": "#/chat",
+          "paneOpen": true,
+          "mirror": true,
+          "banner": "This terminal has ended\nexit code 1",
+          "marker": "End of history\nThis terminal is read-only. Select text to copy it.",
+          "announce": "",
+          "cursorCells": [],
+          "historyBox": {
+            "x": 740,
+            "y": 139,
+            "width": 596,
+            "height": 761,
+            "outlineWidth": "2px",
+            "outlineStyle": "solid",
+            "outlineColor": "rgb(131, 124, 109)"
+          },
+          "markerTop": 848,
+          "markerHeight": 52,
+          "startCue": "",
+          "announceSeq": "0",
+          "caret": null,
+          "screenColor": "rgb(241, 238, 230)",
+          "textareaReadOnly": true,
+          "rail": {
+            "pressed": "false",
+            "label": "Console (⌘J)",
+            "blip": false
+          },
+          "active": {
+            "tag": "textarea",
+            "class": "xterm-helper-textarea",
+            "inTerminal": true
+          },
+          "tabs": [
+            {
+              "text": "zsh\nexit 1",
+              "selected": "true",
+              "surface": "con:1:NeWNzgk5Fmv_1jyBWrvl5g"
+            }
+          ],
+          "paneText": "Console\nzsh\n0 live of 128 in the app · 1 kept\nzsh\nexit 1\nThis terminal has ended\nexit code 1\ndamian@damians-MacBook-Pro ~ % exit\n \nEnd of history\nThis terminal is read-only. Select text to copy it."
+        },
+        "active": true,
+        "focusVisible": true
+      }
+    },
+    {
+      "cell": "ended, one key typed",
+      "reading": {
+        "hash": "#/chat",
+        "paneOpen": true,
+        "mirror": true,
+        "banner": "This terminal has ended\nexit code 1",
+        "marker": "End of history\nThis terminal is read-only. Select text to copy it.\nThis terminal has ended, so that key was not sent. Open a new console to type again.​",
+        "announce": "This terminal has ended, so that key was not sent. Open a new console to type again.​",
+        "cursorCells": [],
+        "historyBox": {
+          "x": 740,
+          "y": 139,
+          "width": 596,
+          "height": 761,
+          "outlineWidth": "2px",
+          "outlineStyle": "solid",
+          "outlineColor": "rgb(131, 124, 109)"
+        },
+        "markerTop": 848,
+        "markerHeight": 52,
+        "startCue": "",
+        "announceSeq": "1",
+        "caret": null,
+        "screenColor": "rgb(241, 238, 230)",
+        "textareaReadOnly": true,
+        "rail": {
+          "pressed": "false",
+          "label": "Console (⌘J)",
+          "blip": false
+        },
+        "active": {
+          "tag": "textarea",
+          "class": "xterm-helper-textarea",
+          "inTerminal": true
+        },
+        "tabs": [
+          {
+            "text": "zsh\nexit 1",
+            "selected": "true",
+            "surface": "con:1:NeWNzgk5Fmv_1jyBWrvl5g"
+          }
+        ],
+        "paneText": "Console\nzsh\n0 live of 128 in the app · 1 kept\nzsh\nexit 1\nThis terminal has ended\nexit code 1\ndamian@damians-MacBook-Pro ~ % exit\n \nEnd of history\nThis terminal is read-only. Select text to copy it.\nThis terminal has ended, so that key was not sent. Open a new console to type again.​"
+      }
+    },
+    {
+      "cell": "band geometry",
+      "reading": {
+        "beforeTop": 848,
+        "afterTop": 848
+      }
+    },
+    {
+      "cell": "ended, a second key typed",
+      "reading": {
+        "announceSeq": "2",
+        "announce": "This terminal has ended, so that key was not sent. Open a new console to type again.",
+        "firstSeq": "1"
+      }
+    },
+    {
+      "cell": "Tab on history",
+      "reading": {
+        "active": {
+          "tag": "button",
+          "inTerminal": false
+        }
+      }
+    },
+    {
+      "cell": "rail with 0 live, pane open",
+      "reading": {
+        "pressed": "false",
+        "label": "Console (⌘J)",
+        "blip": false
+      }
+    },
+    {
+      "cell": "reopen with nothing live",
+      "reading": {
+        "surfacesBefore": [
+          {
+            "surface": "con:1:NeWNzgk5Fmv_1jyBWrvl5g",
+            "running": false
+          }
+        ],
+        "surfacesAfter": [
+          {
+            "surface": "con:1:NeWNzgk5Fmv_1jyBWrvl5g",
+            "running": false
+          },
+          {
+            "surface": "con:2:cNaVUB3qwU8Aua1XjLZbCg",
+            "running": true
+          }
+        ],
+        "created": true,
+        "view": {
+          "hash": "#/chat",
+          "paneOpen": true,
+          "mirror": true,
+          "banner": null,
+          "marker": null,
+          "announce": null,
+          "cursorCells": [
+            {
+              "rect": {
+                "x": 989,
+                "y": 109,
+                "width": 8,
+                "height": 17
+              },
+              "background": "rgb(56, 201, 106)",
+              "visibility": "visible",
+              "display": "inline-block",
+              "opacity": "1",
+              "text": " "
+            }
+          ],
+          "historyBox": {
+            "x": 740,
+            "y": 109,
+            "width": 596,
+            "height": 791,
+            "outlineWidth": "3px",
+            "outlineStyle": "none",
+            "outlineColor": "rgb(241, 238, 230)"
+          },
+          "markerTop": null,
+          "markerHeight": null,
+          "startCue": "",
+          "announceSeq": null,
+          "caret": {
+            "text": " ",
+            "color": "rgb(43, 39, 33)",
+            "background": "rgb(56, 201, 106)",
+            "blink": true,
+            "block": true
+          },
+          "screenColor": "rgb(241, 238, 230)",
+          "textareaReadOnly": false,
+          "rail": {
+            "pressed": "true",
+            "label": "Console (⌘J)",
+            "blip": false
+          },
+          "active": {
+            "tag": "textarea",
+            "class": "xterm-helper-textarea",
+            "inTerminal": true
+          },
+          "tabs": [
+            {
+              "text": "zsh",
+              "selected": "true",
+              "surface": "con:2:cNaVUB3qwU8Aua1XjLZbCg"
+            },
+            {
+              "text": "zsh\nexit 1",
+              "selected": "false",
+              "surface": "con:1:NeWNzgk5Fmv_1jyBWrvl5g"
+            }
+          ],
+          "paneText": "Console\nzsh\n1 live of 128 in the app · 1 kept\nzsh\nzsh\nexit 1\ndamian@damians-MacBook-Pro ~ %  "
+        }
+      }
+    },
+    {
+      "cell": "one live and one ended",
+      "reading": {
+        "surfaceCount": [
+          2,
+          2
+        ],
+        "view": {
+          "hash": "#/chat",
+          "paneOpen": true,
+          "mirror": true,
+          "banner": null,
+          "marker": null,
+          "announce": null,
+          "cursorCells": [
+            {
+              "rect": {
+                "x": 989,
+                "y": 126,
+                "width": 8,
+                "height": 17
+              },
+              "background": "rgb(56, 201, 106)",
+              "visibility": "visible",
+              "display": "inline-block",
+              "opacity": "1",
+              "text": " "
+            }
+          ],
+          "historyBox": {
+            "x": 740,
+            "y": 109,
+            "width": 596,
+            "height": 791,
+            "outlineWidth": "3px",
+            "outlineStyle": "none",
+            "outlineColor": "rgb(241, 238, 230)"
+          },
+          "markerTop": null,
+          "markerHeight": null,
+          "startCue": "",
+          "announceSeq": null,
+          "caret": {
+            "text": " ",
+            "color": "rgb(43, 39, 33)",
+            "background": "rgb(56, 201, 106)",
+            "blink": true,
+            "block": true
+          },
+          "screenColor": "rgb(241, 238, 230)",
+          "textareaReadOnly": false,
+          "rail": {
+            "pressed": "true",
+            "label": "Console (⌘J)",
+            "blip": false
+          },
+          "active": {
+            "tag": "textarea",
+            "class": "xterm-helper-textarea",
+            "inTerminal": true
+          },
+          "tabs": [
+            {
+              "text": "zsh",
+              "selected": "true",
+              "surface": "con:2:cNaVUB3qwU8Aua1XjLZbCg"
+            },
+            {
+              "text": "zsh\nexit 1",
+              "selected": "false",
+              "surface": "con:1:NeWNzgk5Fmv_1jyBWrvl5g"
+            }
+          ],
+          "paneText": "Console\nzsh\n1 live of 128 in the app · 1 kept\nzsh\nzsh\nexit 1\n%                                                                         \ndamian@damians-MacBook-Pro ~ %  "
+        }
+      }
+    },
+    {
+      "cell": "all ended, user opens",
+      "reading": {
+        "surfacesBefore": [
+          {
+            "surface": "con:1:NeWNzgk5Fmv_1jyBWrvl5g",
+            "running": false
+          },
+          {
+            "surface": "con:2:cNaVUB3qwU8Aua1XjLZbCg",
+            "running": false
+          }
+        ],
+        "surfacesAfter": [
+          {
+            "surface": "con:1:NeWNzgk5Fmv_1jyBWrvl5g",
+            "running": false
+          },
+          {
+            "surface": "con:2:cNaVUB3qwU8Aua1XjLZbCg",
+            "running": false
+          },
+          {
+            "surface": "con:3:e4rpOcTqmnRrgfy4kqdxSw",
+            "running": true
+          }
+        ],
+        "created": true,
+        "view": {
+          "hash": "#/chat",
+          "paneOpen": true,
+          "mirror": true,
+          "banner": null,
+          "marker": null,
+          "announce": null,
+          "cursorCells": [
+            {
+              "rect": {
+                "x": 989,
+                "y": 109,
+                "width": 8,
+                "height": 17
+              },
+              "background": "rgb(56, 201, 106)",
+              "visibility": "visible",
+              "display": "inline-block",
+              "opacity": "1",
+              "text": " "
+            }
+          ],
+          "historyBox": {
+            "x": 740,
+            "y": 109,
+            "width": 596,
+            "height": 791,
+            "outlineWidth": "3px",
+            "outlineStyle": "none",
+            "outlineColor": "rgb(241, 238, 230)"
+          },
+          "markerTop": null,
+          "markerHeight": null,
+          "startCue": "",
+          "announceSeq": null,
+          "caret": {
+            "text": " ",
+            "color": "rgb(43, 39, 33)",
+            "background": "rgb(56, 201, 106)",
+            "blink": true,
+            "block": true
+          },
+          "screenColor": "rgb(241, 238, 230)",
+          "textareaReadOnly": false,
+          "rail": {
+            "pressed": "true",
+            "label": "Console (⌘J)",
+            "blip": false
+          },
+          "active": {
+            "tag": "textarea",
+            "class": "xterm-helper-textarea",
+            "inTerminal": true
+          },
+          "tabs": [
+            {
+              "text": "zsh",
+              "selected": "true",
+              "surface": "con:3:e4rpOcTqmnRrgfy4kqdxSw"
+            },
+            {
+              "text": "zsh\nexit 1",
+              "selected": "false",
+              "surface": "con:2:cNaVUB3qwU8Aua1XjLZbCg"
+            },
+            {
+              "text": "zsh\nexit 1",
+              "selected": "false",
+              "surface": "con:1:NeWNzgk5Fmv_1jyBWrvl5g"
+            }
+          ],
+          "paneText": "Console\nzsh\n1 live of 128 in the app · 2 kept\nzsh\nzsh\nexit 1\nzsh\nexit 1\ndamian@damians-MacBook-Pro ~ %  "
+        }
+      }
+    },
+    {
+      "cell": "ended while the pane was closed",
+      "reading": {
+        "pressed": "false",
+        "label": "Console (⌘J), 1 finished since you looked",
+        "blip": true
+      }
+    },
+    {
+      "cell": "unread mark through the open",
+      "reading": [
+        {
+          "at": 0,
+          "blip": true,
+          "selected": "con:3:e4rpOcTqmnRrgfy4kqdxSw",
+          "running": 1
+        },
+        {
+          "at": 120,
+          "blip": true,
+          "selected": "con:4:yrZWPGgJfJkoMyWUANETtg",
+          "running": 1
+        },
+        {
+          "at": 300,
+          "blip": true,
+          "selected": "con:4:yrZWPGgJfJkoMyWUANETtg",
+          "running": 1
+        },
+        {
+          "at": 700,
+          "blip": true,
+          "selected": "con:4:yrZWPGgJfJkoMyWUANETtg",
+          "running": 1
+        }
+      ]
+    },
+    {
+      "cell": "the ended row is looked at",
+      "reading": {
+        "endedRow": {
+          "surface": "con:3:e4rpOcTqmnRrgfy4kqdxSw",
+          "session_id": "c2591d4cb61a",
+          "origin": "user",
+          "command": "zsh",
+          "argv_tail": "",
+          "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-ended-21202/home",
+          "cols": 74,
+          "rows": 40,
+          "running": false,
+          "exit_code": 1,
+          "exit_signal": null,
+          "end_reason": null,
+          "last_activity": 1792667226.278,
+          "live": true,
+          "agent_owned": false,
+          "last_actor": "user",
+          "secure": false,
+          "retain": true,
+          "sizing": "auto",
+          "displayed": false,
+          "last_mark": null
+        },
+        "view": {
+          "hash": "#/chat",
+          "paneOpen": true,
+          "mirror": true,
+          "banner": "This terminal has ended\nexit code 1",
+          "marker": "End of history\nThis terminal is read-only. Select text to copy it.",
+          "announce": "",
+          "cursorCells": [],
+          "historyBox": {
+            "x": 740,
+            "y": 139,
+            "width": 596,
+            "height": 761,
+            "outlineWidth": "3px",
+            "outlineStyle": "none",
+            "outlineColor": "rgb(241, 238, 230)"
+          },
+          "markerTop": 848,
+          "markerHeight": 52,
+          "startCue": "",
+          "announceSeq": "0",
+          "caret": null,
+          "screenColor": "rgb(241, 238, 230)",
+          "textareaReadOnly": true,
+          "rail": {
+            "pressed": "true",
+            "label": "Console (⌘J)",
+            "blip": false
+          },
+          "active": {
+            "tag": "body",
+            "class": "",
+            "inTerminal": false
+          },
+          "tabs": [
+            {
+              "text": "zsh",
+              "selected": "false",
+              "surface": "con:4:yrZWPGgJfJkoMyWUANETtg"
+            },
+            {
+              "text": "zsh\nexit 1",
+              "selected": "true",
+              "surface": "con:3:e4rpOcTqmnRrgfy4kqdxSw"
+            },
+            {
+              "text": "zsh\nexit 1",
+              "selected": "false",
+              "surface": "con:2:cNaVUB3qwU8Aua1XjLZbCg"
+            },
+            {
+              "text": "zsh\nexit 1",
+              "selected": "false",
+              "surface": "con:1:NeWNzgk5Fmv_1jyBWrvl5g"
+            }
+          ],
+          "paneText": "Console\nzsh\n1 live of 128 in the app · 3 kept\nzsh\nzsh\nexit 1\nzsh\nexit 1\nzsh\nexit 1\nThis terminal has ended\nexit code 1\n%                                                                         \ndamian@damians-MacBook-Pro ~ % exit\n \nEnd of history\nThis terminal is read-only. Select text to copy it."
+        }
+      }
+    },
+    {
+      "cell": "a glyph under the history cursor",
+      "reading": {
+        "surface": "con:4:yrZWPGgJfJkoMyWUANETtg",
+        "view": {
+          "hash": "#/chat",
+          "paneOpen": true,
+          "mirror": true,
+          "banner": "This terminal has ended\nkilled by SIGKILL",
+          "marker": "End of history\nThis terminal is read-only. Select text to copy it.",
+          "announce": "",
+          "cursorCells": [],
+          "historyBox": {
+            "x": 740,
+            "y": 139,
+            "width": 596,
+            "height": 761,
+            "outlineWidth": "3px",
+            "outlineStyle": "none",
+            "outlineColor": "rgb(241, 238, 230)"
+          },
+          "markerTop": 848,
+          "markerHeight": 52,
+          "startCue": "",
+          "announceSeq": "0",
+          "caret": null,
+          "screenColor": "rgb(241, 238, 230)",
+          "textareaReadOnly": true,
+          "rail": {
+            "pressed": "true",
+            "label": "Console (⌘J)",
+            "blip": false
+          },
+          "active": {
+            "tag": "body",
+            "class": "",
+            "inTerminal": false
+          },
+          "tabs": [
+            {
+              "text": "zsh\nSIGKILL",
+              "selected": "true",
+              "surface": "con:4:yrZWPGgJfJkoMyWUANETtg"
+            },
+            {
+              "text": "zsh",
+              "selected": "false",
+              "surface": "con:5:YzEbdLdbhXDYIIAjtryh_g"
+            },
+            {
+              "text": "zsh\nexit 1",
+              "selected": "false",
+              "surface": "con:3:e4rpOcTqmnRrgfy4kqdxSw"
+            },
+            {
+              "text": "zsh\nexit 1",
+              "selected": "false",
+              "surface": "con:2:cNaVUB3qwU8Aua1XjLZbCg"
+            },
+            {
+              "text": "zsh\nexit 1",
+              "selected": "false",
+              "surface": "con:1:NeWNzgk5Fmv_1jyBWrvl5g"
+            }
+          ],
+          "paneText": "Console\nzsh\n1 live of 128 in the app · 4 kept\nzsh\nSIGKILL\nzsh\nzsh\nexit 1\nzsh\nexit 1\nzsh\nexit 1\nThis terminal has ended\nkilled by SIGKILL\n%                                                                         \ndamian@damians-MacBook-Pro ~ % printf ABC\nABC%                                                                      \ndamian@damians-MacBook-Pro ~ % \ndamian@damians-MacBook-Pro ~ % kill -9 $$\n \nEnd of history\nThis terminal is read-only. Select text to copy it."
+        }
+      }
+    },
+    {
+      "cell": "quit with a live surface",
+      "reading": {
+        "surface": "con:5:YzEbdLdbhXDYIIAjtryh_g",
+        "sidecar": {
+          "surface": "con:5:YzEbdLdbhXDYIIAjtryh_g",
+          "session_id": "c2591d4cb61a",
+          "origin": "user",
+          "command": "zsh",
+          "argv": [],
+          "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-ended-21202/home",
+          "cols": 74,
+          "rows": 46,
+          "created_at": 1792667231.777,
+          "last_seen_at": 1792667237.118,
+          "exit_code": 1,
+          "exit_signal": null,
+          "end_reason": null,
+          "truncated": false,
+          "exit_epoch": 1,
+          "secure": false,
+          "dropped_live_bytes": 0,
+          "dropped_grid_bytes": 0
+        }
+      }
+    },
+    {
+      "cell": "relaunch, restored surface selected",
+      "reading": {
+        "restored": {
+          "surface": "con:5:YzEbdLdbhXDYIIAjtryh_g",
+          "session_id": "c2591d4cb61a",
+          "origin": "user",
+          "command": "zsh",
+          "argv_tail": "",
+          "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-ended-21202/home",
+          "cols": 74,
+          "rows": 46,
+          "running": false,
+          "exit_code": 1,
+          "exit_signal": null,
+          "end_reason": null,
+          "last_activity": 1792667237.118,
+          "live": false,
+          "agent_owned": false,
+          "last_actor": null,
+          "secure": false,
+          "retain": true,
+          "sizing": "auto",
+          "displayed": false,
+          "last_mark": null
+        },
+        "sidecar": {
+          "surface": "con:5:YzEbdLdbhXDYIIAjtryh_g",
+          "session_id": "c2591d4cb61a",
+          "origin": "user",
+          "command": "zsh",
+          "argv": [],
+          "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-ended-21202/home",
+          "cols": 74,
+          "rows": 46,
+          "created_at": 1792667231.777,
+          "last_seen_at": 1792667237.118,
+          "exit_code": 1,
+          "exit_signal": null,
+          "end_reason": null,
+          "truncated": false,
+          "exit_epoch": 1,
+          "secure": false,
+          "dropped_live_bytes": 0,
+          "dropped_grid_bytes": 0
+        },
+        "view": {
+          "hash": "#/chat",
+          "paneOpen": true,
+          "mirror": true,
+          "banner": "This terminal has ended and its history was restored\nexit code 1",
+          "marker": "End of history\nThis terminal is read-only. Select text to copy it.",
+          "announce": "",
+          "cursorCells": [],
+          "historyBox": {
+            "x": 740,
+            "y": 139,
+            "width": 596,
+            "height": 761,
+            "outlineWidth": "3px",
+            "outlineStyle": "none",
+            "outlineColor": "rgb(241, 238, 230)"
+          },
+          "markerTop": 848,
+          "markerHeight": 52,
+          "startCue": "",
+          "announceSeq": "0",
+          "caret": null,
+          "screenColor": "rgb(241, 238, 230)",
+          "textareaReadOnly": true,
+          "rail": {
+            "pressed": "false",
+            "label": "Console (⌘J)",
+            "blip": false
+          },
+          "active": {
+            "tag": "textarea",
+            "class": "w-full whitespace-pre-wrap break-words px-1.5 py-1 text-body-sm block max-h-24 r",
+            "inTerminal": false
+          },
+          "tabs": [
+            {
+              "text": "zsh\nexit 1",
+              "selected": "true",
+              "surface": "con:5:YzEbdLdbhXDYIIAjtryh_g"
+            },
+            {
+              "text": "zsh\nSIGKILL",
+              "selected": "false",
+              "surface": "con:4:yrZWPGgJfJkoMyWUANETtg"
+            },
+            {
+              "text": "zsh\nexit 1",
+              "selected": "false",
+              "surface": "con:3:e4rpOcTqmnRrgfy4kqdxSw"
+            },
+            {
+              "text": "zsh\nexit 1",
+              "selected": "false",
+              "surface": "con:2:cNaVUB3qwU8Aua1XjLZbCg"
+            },
+            {
+              "text": "zsh\nexit 1",
+              "selected": "false",
+              "surface": "con:1:NeWNzgk5Fmv_1jyBWrvl5g"
+            }
+          ],
+          "paneText": "Console\nzsh\n0 live of 128 in the app · 5 kept\nzsh\nexit 1\nzsh\nSIGKILL\nzsh\nexit 1\nzsh\nexit 1\nzsh\nexit 1\nThis terminal has ended and its history was restored\nexit code 1\n%                                                                         \ndamian@damians-MacBook-Pro ~ %  \nEnd of history\nThis terminal is read-only. Select text to copy it."
+        }
+      }
+    }
+  ],
+  "frames": [
+    {
+      "name": "live-opened",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after-r2/live-opened.png",
+      "width": 2760,
+      "height": 1800,
+      "bytes": 575721
+    },
+    {
+      "name": "ended-pane-open",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after-r2/ended-pane-open.png",
+      "width": 2760,
+      "height": 1800,
+      "bytes": 597753
+    },
+    {
+      "name": "rail-zero-live",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after-r2/rail-zero-live.png",
+      "width": 2760,
+      "height": 1800,
+      "bytes": 597753
+    },
+    {
+      "name": "history-focused",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after-r2/history-focused.png",
+      "width": 2760,
+      "height": 1800,
+      "bytes": 597753
+    },
+    {
+      "name": "ended-key",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after-r2/ended-key.png",
+      "width": 2760,
+      "height": 1800,
+      "bytes": 610686
+    },
+    {
+      "name": "reopen-nothing-live",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after-r2/reopen-nothing-live.png",
+      "width": 2760,
+      "height": 1800,
+      "bytes": 578164
+    },
+    {
+      "name": "one-live-one-ended",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after-r2/one-live-one-ended.png",
+      "width": 2760,
+      "height": 1800,
+      "bytes": 579665
+    },
+    {
+      "name": "all-ended-open",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after-r2/all-ended-open.png",
+      "width": 2760,
+      "height": 1800,
+      "bytes": 580069
+    },
+    {
+      "name": "rail-unread-dot",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after-r2/rail-unread-dot.png",
+      "width": 2760,
+      "height": 1800,
+      "bytes": 560825
+    },
+    {
+      "name": "ended-row-looked-at",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after-r2/ended-row-looked-at.png",
+      "width": 2760,
+      "height": 1800,
+      "bytes": 603727
+    },
+    {
+      "name": "history-glyph-cursor",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after-r2/history-glyph-cursor.png",
+      "width": 2760,
+      "height": 1800,
+      "bytes": 628136
+    },
+    {
+      "name": "relaunch-restored",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after-r2/relaunch-restored.png",
+      "width": 2760,
+      "height": 1800,
+      "bytes": 609118
+    }
+  ]
+}

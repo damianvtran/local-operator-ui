@@ -425,7 +425,13 @@ test("the schema is closed: stray fields, bad kinds and bad ids are refused", ()
 	);
 	assert.equal(
 		parse({ op: "hub.apply", requestId: REQUEST, kind: "skill", name: "x" }),
+		true,
+		"core's Kind carries skills now: the same channel, not a parallel one",
+	);
+	assert.equal(
+		parse({ op: "hub.apply", requestId: REQUEST, kind: "widget", name: "x" }),
 		false,
+		"a kind neither side knows is still refused",
 	);
 	assert.equal(
 		parse({ op: "hub.apply", requestId: "nope", kind: "agent", name: "x" }),
@@ -567,7 +573,9 @@ test("every editor still reports scoped dirty state without replacing the draft"
 	const page = read(
 		"src/renderer/src/features/agents/components/agents-page.tsx",
 	);
-	assert.equal((page.match(/onDirtyChange=\{reportDirty\}/g) ?? []).length, 4);
+	// Five editors: agent, team (edit and create), agent create, and the Skills
+	// tab's inline SKILL.md edit.
+	assert.equal((page.match(/onDirtyChange=\{reportDirty\}/g) ?? []).length, 5);
 	assert.match(
 		page,
 		/dirtyIdentity !== null && dirtyIdentity === paneIdentity/,

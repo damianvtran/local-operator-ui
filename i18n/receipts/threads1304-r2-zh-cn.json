@@ -1,0 +1,80 @@
+{
+  "auditor": "translation-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "fallback": "openai/gpt-6.1-sol",
+  "model_provenance": "Harness-reported served model for the substantive PR #1304 audit, as supplied in the operator provenance correction; not independently re-queried in this metadata-only round.",
+  "instance": "threads1304-r2-zh-cn",
+  "session": "48c1c63e7228",
+  "date": "2026-10-21",
+  "locale": "zh-CN",
+  "translator": "translator",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 8,
+  "scope": "PR #1304 eight-key delta: replies.{action,title,close,count,last,empty,placeholder,more}, each prefixed ui.teamBridge.; inherited genuine base 2e16fb1456 audit for the other 109 values, verified unchanged. No full semantic re-audit of unchanged copy. Read actual English/target/context and rendered call-site roles in tb-threads only; no catalogue/code edits.",
+  "sha256": {
+    "en": "7de891f2cf03b7563747c440847c853f1c1356aa0a50480ec28eae347e6581e9",
+    "zh-CN": "9432d3e8bb4c53f99f9d557e9473c5b3f4fe93d4c7f41a4dfb834f6a5e95a8d3",
+    "context": "7c3c9e52a1a159b3e661ac2101fa57bbe1a1ed324d566b09eda403e96c8dfd8f"
+  },
+  "findings": [],
+  "inherited_receipt": {
+    "base": "2e16fb1456",
+    "path": "i18n/receipts/tbd-r4-zhcn.json",
+    "sha256": "85d1f0e0870d1a20d82e242187fbb7fba745a88189d98965e51010bd0e7125e9",
+    "keys_inherited": 109,
+    "unchanged_values_verified": 109,
+    "base_source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+    "base_target_sha256": "a461bd1121e50a3091f42da7ec75196ff94efa0eecc3e87bd99ea352d3e33672",
+    "status": "passed",
+    "full_coverage_receipt": {
+      "path": "i18n/receipts/tbd-r3-zhcn.json",
+      "sha256": "2497e3ff66cc4fec25dfcaf953f37ee8666bce7aff764d8c82bcecb77f0c76eb"
+    }
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+    "AGENTS": "a259e3cff9de9675176c0f6b03490526762735540e59f4d8255d0e99920a717f",
+    "audit_contract": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+  },
+  "validation": {
+    "independence": "Auditor did not produce translations and did not edit code or catalogues; independently read all eight target values and every plural arm beside frozen source/context.",
+    "semantic_register_terminology": "讨论串 names the nested thread, distinct from 对话; 回复 and message classifier 条 are correct. 发起讨论吧 is a natural empty-pane invitation, consistent with existing 打个招呼吧; not a claim to start a new top-level conversation. other-only count and no added inter-script spaces.",
+    "mechanical": "Actual @formatjs/icu-messageformat-parser AST and intl-messageformat formatting executed successfully. count is cardinal plural, offset zero, exact locale CLDR arm set, one active pound in every arm, no extra arguments/tags/styles. last has exactly one plain time argument, unchanged and last. Other six values parse only as literals. All eight values NFC, no prohibited bidi controls.",
+    "plural_arms_audited": 1,
+    "format_samples_count": [
+      0,
+      1,
+      2,
+      3,
+      5,
+      11,
+      21,
+      22,
+      25,
+      1.5,
+      1000000
+    ],
+    "time_sample": "10:30 AM inserted verbatim as argument test only, not a recommendation to hardcode this format.",
+    "fit_risks": [],
+    "fit_scope": "Static expansion screen uses code points, not glyph widths: flags >=25% and >=3 code-point expansion. Not a universal fit guarantee; CJK, Hindi and Urdu shaping require rendering. Action is icon tooltip/aria label; close is icon aria label, not a fixed visible text button. Title/empty/more/placeholder are in min-w-72 thread pane; count/last share summary row with avatars. Prioritize fr/vi title and vi empty/last, fr last/more; all fit risks above require rendered checks.",
+    "limitations": "Browser unavailable by instruction: no rendered frame, screenshot, geometry, overflow or native RTL/bidi fit claim; no activation/release approval."
+  },
+  "model_origin": "anthropic/claude-opus-5-5",
+  "fallback_disclosure": "The harness completion receipt for substantive audit job 3e1a2d41f992 reports openai/gpt-6.1-sol as the served model. Static model context reported anthropic/claude-opus-5-5; runtime completion provenance outranks that static context. Round 1 incorrectly claimed Opus with no fallback. This round corrects metadata only; no new semantic audit was performed.",
+  "job": "3e1a2d41f992",
+  "metadata_correction": {
+    "source_receipt": "/Users/damian/.local-operator/sessions/bd7da88fb715/scratchpad/thread-receipts/threads1304-r1-zh-cn.json",
+    "source_receipt_sha256": "a4b151a8258270888e0053f7b689a2d7e9d1de2def4754c726f52255417955b1",
+    "substantive_audit_job": "3e1a2d41f992",
+    "substantive_audit_session": "48c1c63e7228",
+    "note": "Metadata-only provenance correction. Original immutable r1 retained byte-identically. Audit evidence, findings, verdict, eight-key coverage, catalogue/context hashes, inherited 109-key coverage and fit limitations are carried unchanged. No new semantic audit, catalogue read, or code/catalogue edit in this round."
+  },
+  "translator_provenance": {
+    "model": "openai/gpt-6.1-sol",
+    "model_origin": "anthropic/claude-opus-5-5",
+    "source": "Operator-supplied report of translators’ harness completion runtime metadata; not independently re-queried in this metadata-only round.",
+    "fallback_disclosure": "Static translator prompts claimed anthropic/claude-opus-5-5; completion runtime reported openai/gpt-6.1-sol for this locale. Both origin and served-model provenance are retained."
+  }
+}

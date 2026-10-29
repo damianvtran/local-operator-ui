@@ -1,0 +1,579 @@
+{
+  "auditor": "i18n-auditor",
+  "team_role": "translation-auditor",
+  "model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "served_model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "fallback": "none",
+  "instance": "fe1eb48419c4",
+  "session": "fe1eb48419c4",
+  "date": "2026-10-23",
+  "audit": "Hindi UI completion round 1 — second fully independent audit",
+  "locale": "hi",
+  "commit": "678ff11a7a201c345ff6134c078b382ef8226477",
+  "status": "changes_requested",
+  "verdict": "changes_requested",
+  "keys_read": 170,
+  "finding_counts": {
+    "blocker": 0,
+    "major": 1,
+    "minor": 3,
+    "nit": 0
+  },
+  "independence": "Independent second auditor session fe1eb48419c4; supplied translator session was 93388133b0e0. This auditor did not author or edit the lane, did not read or copy the translator receipt or the other new audit receipt, and derived findings from git-object English/target/context bytes plus real parser/formatter execution. No repository file was edited.",
+  "references": {
+    "ui_docs": "docs/I18N.md and scripts/i18n/ledger-assemble.mjs RECEIPT CONTRACT at 678ff11a7a201c345ff6134c078b382ef8226477",
+    "core_contract": "local-operator docs/design/i18n.md §§2, 4, 6 at core revision 24dbccbb784bd1c9b690ce4601f489791ceacb09",
+    "glossary": {
+      "path": "local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "local-operator/i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    }
+  },
+  "evidence": {
+    "catalogue_parity": "170/170 English, Hindi and context entries read. Exact key sets and key order match in all 12 namespaces; 25 ICU argument/tag nodes have identical type, name, order, select/plural arms and number/date skeletons; zero missing, extra or renamed arguments and zero markup tags present.",
+    "real_checks": [
+      {
+        "command": "node --test scripts/i18n/locale-parity.test.mjs",
+        "actual": "exit 0; 43 tests, 43 pass, 0 fail; Hindi key/placeholder/non-stub checks included."
+      },
+      {
+        "command": "node scripts/i18n/generate.mjs --check",
+        "actual": "exit 0; src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+      },
+      {
+        "command": "node scripts/i18n/context-parity.mjs",
+        "actual": "exit 0; context-parity ok; all 170 scoped keys have sidecars (the reported 131 allowed gaps in 4 namespaces are outside this scope)."
+      },
+      {
+        "command": "node hi-second-mechanical.cjs (scratch)",
+        "actual": "exit 0; keys=170, ICU nodes=25, pluralMessages=1, selectMessages=1, Hindi CLDR=one,other, errors=0; pseudo parsed=170/170.",
+        "script_sha256": "f0c410032eecc5ad51a319831ce2f3487815a049c952093b580cb579a048d371",
+        "output_sha256": "98d28e2ccc26f895054dcfd651cb8213eaaa5e31a4810fc9b6b3a82dce33748d"
+      }
+    ],
+    "plural_cldr": {
+      "categories": [
+        "one",
+        "other"
+      ],
+      "samples": [
+        {
+          "key": "ui.chat.pickers.stop.confirm",
+          "count": 0,
+          "category": "one",
+          "en": "Stop 0 sessions now",
+          "hi": "अभी इस सत्र को रोकें"
+        },
+        {
+          "key": "ui.chat.pickers.stop.confirm",
+          "count": 1,
+          "category": "one",
+          "en": "Stop this session now",
+          "hi": "अभी इस सत्र को रोकें"
+        },
+        {
+          "key": "ui.chat.pickers.stop.confirm",
+          "count": 2,
+          "category": "other",
+          "en": "Stop 2 sessions now",
+          "hi": "अभी 2 सत्रों को रोकें"
+        },
+        {
+          "key": "ui.chat.pickers.stop.confirm",
+          "count": 1234,
+          "category": "other",
+          "en": "Stop 1234 sessions now",
+          "hi": "अभी 1234 सत्रों को रोकें"
+        }
+      ],
+      "number_samples": [
+        {
+          "n": 0,
+          "hi": "0",
+          "category": "one"
+        },
+        {
+          "n": 1,
+          "hi": "1",
+          "category": "one"
+        },
+        {
+          "n": 2,
+          "hi": "2",
+          "category": "other"
+        },
+        {
+          "n": 1234,
+          "hi": "1,234",
+          "category": "other"
+        },
+        {
+          "n": 1234567.5,
+          "hi": "12,34,567.5",
+          "category": "other"
+        }
+      ],
+      "semantic_result": "FAIL for n=0: Hindi selects one and says इस सत्र को although the picker has zero selected sessions; recorded as HI2-P1. The proposed =0 remedy was separately formatted for 0/1/2/1234 and produces the expected count-aware text."
+    },
+    "select": [
+      {
+        "key": "ui.chat.sidebar.pins.failure",
+        "argument": "action",
+        "option": "pin",
+        "en": "Could not pin “X”.",
+        "hi": "“X” पिन नहीं की जा सकी।"
+      },
+      {
+        "key": "ui.chat.sidebar.pins.failure",
+        "argument": "action",
+        "option": "unpin",
+        "en": "Could not unpin “X”.",
+        "hi": "“X” अनपिन नहीं की जा सकी।"
+      },
+      {
+        "key": "ui.chat.sidebar.pins.failure",
+        "argument": "action",
+        "option": "other",
+        "en": "Could not update “X”.",
+        "hi": "“X” अपडेट नहीं की जा सकी।"
+      }
+    ],
+    "pseudo_localization": {
+      "method": "AST literal-only static stress: insert Devanagari अ after every third letter/mark grapheme and wrap ⟦…⟧; leave non-literal ICU bytes untouched, then parse and compare full ICU signatures.",
+      "actual": "170/170 pseudo messages parsed with identical ICU signatures; formatted-grapheme expansion ratio range 1.219–2.0. This is parser/static evidence only, not runtime or rendered evidence."
+    },
+    "static_overflow": {
+      "method": "Format English and Hindi with identical representative arguments (count=2; other values=X), then count Intl.Segmenter grapheme cells. No scoped sidecar declares maxCells. Watch threshold: ratio >=1.25 and at least 2 additional cells. These are named for the separate rendered gate, not asserted overflows.",
+      "watch": [
+        {
+          "key": "ui.common.account.low_credits_dialog.plus_get",
+          "enCells": 9,
+          "hiCells": 16,
+          "ratio": 1.778,
+          "disposition": "Separate rendered-fit check; static formatted-grapheme ratio only, not a measured overflow."
+        },
+        {
+          "key": "ui.chat.canonical.transcript.edit",
+          "enCells": 4,
+          "hiCells": 7,
+          "ratio": 1.75,
+          "disposition": "Separate rendered-fit check; static formatted-grapheme ratio only, not a measured overflow."
+        },
+        {
+          "key": "ui.presence.minutes_ago",
+          "enCells": 6,
+          "hiCells": 8,
+          "ratio": 1.333,
+          "disposition": "Separate rendered-fit check; static formatted-grapheme ratio only, not a measured overflow."
+        },
+        {
+          "key": "ui.presence.hours_ago",
+          "enCells": 6,
+          "hiCells": 8,
+          "ratio": 1.333,
+          "disposition": "Separate rendered-fit check; static formatted-grapheme ratio only, not a measured overflow."
+        },
+        {
+          "key": "ui.presence.days_ago",
+          "enCells": 6,
+          "hiCells": 8,
+          "ratio": 1.333,
+          "disposition": "Separate rendered-fit check; static formatted-grapheme ratio only, not a measured overflow."
+        },
+        {
+          "key": "ui.chat.transcript_copy.menu.copy_markdown",
+          "enCells": 16,
+          "hiCells": 21,
+          "ratio": 1.313,
+          "disposition": "Separate rendered-fit check; static formatted-grapheme ratio only, not a measured overflow."
+        },
+        {
+          "key": "ui.chat.pickers.skills.loading",
+          "enCells": 7,
+          "hiCells": 9,
+          "ratio": 1.286,
+          "disposition": "Separate rendered-fit check; static formatted-grapheme ratio only, not a measured overflow."
+        },
+        {
+          "key": "ui.chat.pickers.logout.title",
+          "enCells": 8,
+          "hiCells": 10,
+          "ratio": 1.25,
+          "disposition": "Separate rendered-fit check; static formatted-grapheme ratio only, not a measured overflow."
+        },
+        {
+          "key": "ui.chat.analytics.sections.by_model",
+          "enCells": 8,
+          "hiCells": 10,
+          "ratio": 1.25,
+          "disposition": "Separate rendered-fit check; static formatted-grapheme ratio only, not a measured overflow."
+        },
+        {
+          "key": "ui.common.viewer.opening",
+          "enCells": 8,
+          "hiCells": 10,
+          "ratio": 1.25,
+          "disposition": "Separate rendered-fit check; static formatted-grapheme ratio only, not a measured overflow."
+        }
+      ]
+    },
+    "typography": "All 170 values: NFC deviations=0; no leading/trailing whitespace, ZWJ/ZWNJ, bidi controls, Devanagari digits or exclamation marks. Source terminal full stops map to danda; ASCII/Unicode ellipses, question marks, leading commas, source middots/em dashes and curly-quote counts pass. Manual nukta review found consistent फ़/ज़/ड़ spellings (e.g. फ़ाइल, सिर्फ़, ज़्यादा, ड्राफ़्ट) and no danda/typography finding.",
+    "english_leakage": {
+      "allowed_latin": [
+        "Local Operator",
+        "Radient",
+        "Radient Automatic",
+        "Radient Pass",
+        "Canvas",
+        "Finder",
+        "Markdown",
+        "HTML",
+        "ID",
+        "Esc",
+        "USD",
+        "[redacted]",
+        "ICU argument/select/skeleton tokens and placeholders"
+      ],
+      "identical_values": {
+        "ui.common.account.low_credits_dialog.detail": "${detail} USD — currency code plus placeholder",
+        "ui.common.account.low_credits_dialog.radient_pass": "Radient Pass — product name"
+      },
+      "untranslated_prose": "None found in 170 values."
+    },
+    "rtl": "Not applicable to LTR Hindi; bidi-control scan nevertheless found zero manual controls.",
+    "rendering": "Not performed. No screenshot, pixel-width, native font, clipping or real-app fit claim is made; the separate real-app gate must exercise the named static watch items and the stop-picker zero state after remediation.",
+    "repository_final_state": "git status --short was empty after all checks; HEAD remained 678ff11a7a201c345ff6134c078b382ef8226477."
+  },
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 43,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+        "hi": "src/i18n/catalogues/hi/ui.chat.sidebar.json",
+        "context": "src/i18n/catalogues/en/ui.chat.sidebar.context.json"
+      },
+      "sha256": {
+        "en": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
+        "hi": "75c694c9196e7838ec4ca67e17b9b5cfefd81c376acd4f2f06383fb84238088b",
+        "context": "fe5dc2a0fa4cb9b95ef5c1a30d57aee030fa5edf2b6b54b323562a1c63b8eb3a"
+      },
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "mechanical": "PASS: exact key/order/context parity; ICU signature and pseudo parse clean; typography scan clean.",
+      "semantic": "PASS: accuracy, idiom, polite आप register, glossary consistency and English-token review clean."
+    },
+    "ui.chat.pickers": {
+      "status": "changes_requested",
+      "verdict": "changes_requested",
+      "keys_audited": 34,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+        "hi": "src/i18n/catalogues/hi/ui.chat.pickers.json",
+        "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+      },
+      "sha256": {
+        "en": "65f926679cefe21229f8d755f71d64381c5d6706c2d33c62cb63141e8f01352d",
+        "hi": "f6c4b7276d9306a6ebef60e35d4ef3f871d96d88bc8def3eef2aa64edd245d9b",
+        "context": "8d3fa914cd52768c98a75c4f41b903b86553335b27e406f98500eab7ff576e64"
+      },
+      "finding_counts": {
+        "blocker": 0,
+        "major": 1,
+        "minor": 2,
+        "nit": 0
+      },
+      "findings": [
+        {
+          "id": "HI2-P1",
+          "severity": "MAJOR",
+          "key": "ui.chat.pickers.stop.confirm",
+          "path": "src/i18n/catalogues/hi/ui.chat.pickers.json:33",
+          "current": "अभी {count, plural, one {इस सत्र को} other {{count, number, ::group-off} सत्रों को}} रोकें",
+          "proposed": "अभी {count, plural, =0 {{count, number, ::group-off} सत्र को} one {इस सत्र को} other {{count, number, ::group-off} सत्रों को}} रोकें",
+          "reason": "Hindi CLDR routes 0 to one, so the visible zero-selection state falsely says “this session”; an explicit =0 arm preserves the existing one/other arms and renders 0 सत्र को accurately.",
+          "evidence": "intl-messageformat 12.1.3: n=0/category=one => अभी इस सत्र को रोकें; n=1 => अभी इस सत्र को रोकें; n=2/category=other => अभी 2 सत्रों को रोकें. destination-pickers.tsx:3106 derives chosen and :3168 always renders chosen.length, including 0; :3173 only disables submit. Proposed formatter samples: 0 => अभी 0 सत्र को रोकें; 1 => अभी इस सत्र को रोकें; 2 => अभी 2 सत्रों को रोकें; 1234 => अभी 1234 सत्रों को रोकें."
+        },
+        {
+          "id": "HI2-P2",
+          "severity": "MINOR",
+          "key": "ui.chat.pickers.credential.forget",
+          "path": "src/i18n/catalogues/hi/ui.chat.pickers.json:5",
+          "current": "भूलें",
+          "proposed": "भुलाएँ",
+          "reason": "The established Hindi Forget action is भुलाएँ in ui.browser.browser_approvals_dock.forget_this_site; भूलें is a less idiomatic intransitive calque and introduces terminology drift."
+        },
+        {
+          "id": "HI2-P3",
+          "severity": "MINOR",
+          "key": "ui.chat.pickers.credential.forget_confirmation",
+          "path": "src/i18n/catalogues/hi/ui.chat.pickers.json:6",
+          "current": "इस सत्र से {name} भूलें",
+          "proposed": "इस सत्र से {name} भुलाएँ",
+          "reason": "Use the same established भुलाएँ action as the existing Forget-site copy and the companion button so the confirmation names the destructive action idiomatically and consistently."
+        }
+      ],
+      "mechanical": "PASS: exact key/order/context parity; ICU signature and pseudo parse clean; typography scan clean.",
+      "semantic": "FAIL: see findings."
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 30,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "hi": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+        "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+      },
+      "sha256": {
+        "en": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
+        "hi": "b3c5cf01039c07ad21d37114244154686b9d04f32fd912a8b69ab101ecc593d5",
+        "context": "53145be31fe46bde6578d114653466dc5c6c932947460c10a0022c9e190d9a34"
+      },
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "mechanical": "PASS: exact key/order/context parity; ICU signature and pseudo parse clean; typography scan clean.",
+      "semantic": "PASS: accuracy, idiom, polite आप register, glossary consistency and English-token review clean."
+    },
+    "ui.common.account": {
+      "status": "passed",
+      "verdict": "clean-with-findings",
+      "keys_audited": 18,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.account.json",
+        "hi": "src/i18n/catalogues/hi/ui.common.account.json",
+        "context": "src/i18n/catalogues/en/ui.common.account.context.json"
+      },
+      "sha256": {
+        "en": "72e2a848a2aa4b46ecdc0ede34ed5f59b280b73e3fc544d5e563ce22ab2743e0",
+        "hi": "e02b0b36d4abe5c4f7e6fa652bf72cf5ec11133f4d02659bfca6c5f88525b2dd",
+        "context": "d3576fe1e83a51325e07df3b999a0e9c029c63b19aefad771edeb54be4dd3bcf"
+      },
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "findings": [
+        {
+          "id": "HI2-A1",
+          "severity": "MINOR",
+          "key": "ui.common.account.low_credits_dialog.unlock_the_full_power_of_local_operator_with",
+          "path": "src/i18n/catalogues/hi/ui.common.account.json:13",
+          "current": "Local Operator की पूरी क्षमता का उपयोग करें:",
+          "proposed": "Local Operator की पूरी क्षमता का उपयोग करने के लिए:",
+          "reason": "In the actual prefix + Radient Pass composition, के लिए preserves the English with-phrase as a means, whereas the imperative plus colon reads as an imperative followed by an appositive in Hindi."
+        }
+      ],
+      "mechanical": "PASS: exact key/order/context parity; ICU signature and pseudo parse clean; typography scan clean.",
+      "semantic": "PASS WITH FINDINGS: see findings."
+    },
+    "ui.chat.analytics": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 11,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.analytics.json",
+        "hi": "src/i18n/catalogues/hi/ui.chat.analytics.json",
+        "context": "src/i18n/catalogues/en/ui.chat.analytics.context.json"
+      },
+      "sha256": {
+        "en": "6ac0bbfb50c8ef8c772f229868614aa8d07dfd9f659311d5d396cea5c4611159",
+        "hi": "66e3fc0b92b8ecd18c84a395252ee305323aa4f475aa534c95f23217dcb5f4b0",
+        "context": "7c25af7f391fbaac6a1718a81b8b258c0b313ba46411f16e95691446828640ff"
+      },
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "mechanical": "PASS: exact key/order/context parity; ICU signature and pseudo parse clean; typography scan clean.",
+      "semantic": "PASS: accuracy, idiom, polite आप register, glossary consistency and English-token review clean."
+    },
+    "ui.chat.transcript_copy": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 9,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.transcript_copy.json",
+        "hi": "src/i18n/catalogues/hi/ui.chat.transcript_copy.json",
+        "context": "src/i18n/catalogues/en/ui.chat.transcript_copy.context.json"
+      },
+      "sha256": {
+        "en": "a81115a3e17a63068b79b4c66d86edaa1417a145f0b1fcc14d34deae8cd1734b",
+        "hi": "6cb139d2b9ca77d5984d840f96fb8a11f6a45bea7b903badd373255df4181884",
+        "context": "955b217858b3ac8c2ab4a20e7ad47298c683698c5c65c0012f681ba6b23d4c8b"
+      },
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "mechanical": "PASS: exact key/order/context parity; ICU signature and pseudo parse clean; typography scan clean.",
+      "semantic": "PASS: accuracy, idiom, polite आप register, glossary consistency and English-token review clean."
+    },
+    "ui.presence": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 9,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.presence.json",
+        "hi": "src/i18n/catalogues/hi/ui.presence.json",
+        "context": "src/i18n/catalogues/en/ui.presence.context.json"
+      },
+      "sha256": {
+        "en": "7dc0d4c3bb4c18fb15501b630c7f1b2bc1f2f1ec8dabe131d3a3498b50a142a8",
+        "hi": "4e8151ad012ae84995ddeeb019d8205aea681e924808cb0c4618750edd8fa666",
+        "context": "f78dc27ea4c00befbb3b48ce6723230a23c6e4388bf5ace429c2b445447aae44"
+      },
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "mechanical": "PASS: exact key/order/context parity; ICU signature and pseudo parse clean; typography scan clean.",
+      "semantic": "PASS: accuracy, idiom, polite आप register, glossary consistency and English-token review clean."
+    },
+    "ui.common.file_actions": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 5,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.file_actions.json",
+        "hi": "src/i18n/catalogues/hi/ui.common.file_actions.json",
+        "context": "src/i18n/catalogues/en/ui.common.file_actions.context.json"
+      },
+      "sha256": {
+        "en": "edac3001910c5ba03d5c0552f07c19baeb1bd1e8e9d3c0a6c178a693f9351233",
+        "hi": "55d2436b6494d53f1a9320fd0913d72a76436f7abe330f3fa2b220e883905ef7",
+        "context": "147274f1e573608ac78a0dc45aa14d14a5d2cf89efa953d4f4e012a7fae8d04b"
+      },
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "mechanical": "PASS: exact key/order/context parity; ICU signature and pseudo parse clean; typography scan clean.",
+      "semantic": "PASS: accuracy, idiom, polite आप register, glossary consistency and English-token review clean."
+    },
+    "ui.common.viewer": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 4,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.viewer.json",
+        "hi": "src/i18n/catalogues/hi/ui.common.viewer.json",
+        "context": "src/i18n/catalogues/en/ui.common.viewer.context.json"
+      },
+      "sha256": {
+        "en": "660c7e185ebc22d37ecc9b5d02807428f87c477f86431f5cdb07fdec888b78bb",
+        "hi": "c8331714ad3c229d3dedcda201bbaacedb812d2c41f8702bbd7c9d9febb58df0",
+        "context": "cd11be98d1d94cba927141b2b6b390af7fdc59a8519ea3ed18361cfd4930c2c9"
+      },
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "mechanical": "PASS: exact key/order/context parity; ICU signature and pseudo parse clean; typography scan clean.",
+      "semantic": "PASS: accuracy, idiom, polite आप register, glossary consistency and English-token review clean."
+    },
+    "ui.chat.tag_dialogs": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 4,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.tag_dialogs.json",
+        "hi": "src/i18n/catalogues/hi/ui.chat.tag_dialogs.json",
+        "context": "src/i18n/catalogues/en/ui.chat.tag_dialogs.context.json"
+      },
+      "sha256": {
+        "en": "140fb44d94388706e24ba37c6910a6b753ce0f0701f44e78390a1fffb13c1506",
+        "hi": "a16348b6812c7bbb0395d21c160d16f45fa78283a30db9ebfe98d54c2e641cab",
+        "context": "8f4cc8ca17d926c4f85f4226ff92e7c291babbe7e9868ebb8d9fceb5a8841987"
+      },
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "mechanical": "PASS: exact key/order/context parity; ICU signature and pseudo parse clean; typography scan clean.",
+      "semantic": "PASS: accuracy, idiom, polite आप register, glossary consistency and English-token review clean."
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 2,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.run_details.json",
+        "hi": "src/i18n/catalogues/hi/ui.chat.run_details.json",
+        "context": "src/i18n/catalogues/en/ui.chat.run_details.context.json"
+      },
+      "sha256": {
+        "en": "7eea05d7c5b371e7969214abc7bd2961bf6c38fd3e5886e0957493b787878094",
+        "hi": "1b5e0c349466a93d277f7e0d015cb4c75d06a962f8587cecc44e9ea1a4a0c35d",
+        "context": "eae93350935a597d66fe4931a40fed2fa9d40d0b01e03925d2cef22985f628d6"
+      },
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "mechanical": "PASS: exact key/order/context parity; ICU signature and pseudo parse clean; typography scan clean.",
+      "semantic": "PASS: accuracy, idiom, polite आप register, glossary consistency and English-token review clean."
+    },
+    "ui.chat.commentary_actions": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 1,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.commentary_actions.json",
+        "hi": "src/i18n/catalogues/hi/ui.chat.commentary_actions.json",
+        "context": "src/i18n/catalogues/en/ui.chat.commentary_actions.context.json"
+      },
+      "sha256": {
+        "en": "77d6babd2e9fac04e95a550d25f4428e113144c160c34009b89e06608b812868",
+        "hi": "497e7230b4cad9f2ab17b6c69a0e2a32d30803b93d14a9a7708919b18e2e575d",
+        "context": "20901db281f82c025243d688a14bfc490d1b5c01c7fd03e7d8788f35411c3ad1"
+      },
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "mechanical": "PASS: exact key/order/context parity; ICU signature and pseudo parse clean; typography scan clean.",
+      "semantic": "PASS: accuracy, idiom, polite आप register, glossary consistency and English-token review clean."
+    }
+  }
+}

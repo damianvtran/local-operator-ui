@@ -1,4 +1,6 @@
 import { Button } from "@shared/components/ui/button";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
 	useCallback,
 	useEffect,
@@ -93,6 +95,7 @@ export function SoundStopConfirmation({
 	onKeepWaiting: () => void;
 	onRequestStop: () => void;
 }) {
+	useI18nLocale();
 	const safeChoice = useRef<HTMLButtonElement>(null);
 	const warningId = useId();
 	useEffect(() => {
@@ -113,16 +116,14 @@ export function SoundStopConfirmation({
 	return (
 		<fieldset
 			data-sound-stop-confirmation=""
-			aria-label="Confirm stop request"
+			aria-label={t("ui.chat.canonical.sound.stop.confirm_label")}
 			className="flex flex-col items-start gap-2"
 		>
 			<p className="text-meta text-ink" aria-live="polite">
-				Stop this generation?
+				{t("ui.chat.canonical.sound.stop.question")}
 			</p>
 			<p id={warningId} className="text-body-sm text-ink-dim">
-				The provider has no cancellation endpoint. The generation continues and
-				will be charged if it produces audio. Stopping is best-effort; it does
-				not guarantee cancellation or no charge.
+				{t("ui.chat.canonical.sound.stop.warning")}
 			</p>
 			<div className="flex flex-wrap items-center gap-2">
 				<Button
@@ -132,10 +133,10 @@ export function SoundStopConfirmation({
 					size="sm"
 					onClick={onKeepWaiting}
 				>
-					Keep waiting
+					{t("ui.chat.canonical.sound.stop.keep_waiting")}
 				</Button>
 				<Button variant="secondary" size="sm" onClick={onRequestStop}>
-					Request stop
+					{t("ui.chat.canonical.sound.stop.request_stop")}
 				</Button>
 			</div>
 		</fieldset>

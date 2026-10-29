@@ -1,0 +1,840 @@
+{
+  "at": "2026-10-24T20:20:37.162Z",
+  "head": "eac97c9b7f0bbe2b39e8d278846a8e448b757ae9",
+  "scratch": "/Users/damian/.local-operator/sessions/c4aaba06f9e9/scratchpad/narrow-panel-proof-K9J6gE",
+  "rows": [
+    {
+      "id": "L-populated-light-full-width",
+      "status": "PASS",
+      "detail": {
+        "layout": "full",
+        "panel": {
+          "x": 0,
+          "y": 204.4,
+          "width": 264,
+          "height": 695.6,
+          "right": 264,
+          "bottom": 900
+        },
+        "content": {
+          "x": 0,
+          "y": 204.4,
+          "width": 0,
+          "height": 695.6,
+          "right": 0,
+          "bottom": 900
+        },
+        "row": {
+          "x": 0,
+          "y": 204.4,
+          "width": 264,
+          "height": 695.6,
+          "right": 264,
+          "bottom": 900
+        },
+        "position": "static",
+        "display": "flex",
+        "theme": "localOperatorLight",
+        "dark": false,
+        "panelHeight": 696,
+        "panelScrollHeight": 1934,
+        "expectedPanelHeight": 695.6
+      }
+    },
+    {
+      "id": "L-populated-light-reason-wrap",
+      "status": "PASS",
+      "detail": {
+        "reason": {
+          "text": "An agent from another session wants to open a-very-long-subdomain-for-the-narrow-panel-proof.example.test.",
+          "length": 106,
+          "clientWidth": 189,
+          "scrollWidth": 189,
+          "overflowWrap": "anywhere",
+          "lineWidths": [
+            {
+              "top": 767,
+              "width": 145.23
+            },
+            {
+              "top": 788,
+              "width": 48.7
+            },
+            {
+              "top": 790,
+              "width": 14.41
+            },
+            {
+              "top": 812,
+              "width": 172.8
+            },
+            {
+              "top": 833,
+              "width": 122.41
+            },
+            {
+              "top": 855,
+              "width": 129.6
+            },
+            {
+              "top": 854,
+              "width": 4.01
+            }
+          ]
+        },
+        "panelHeight": {
+          "client": 696,
+          "scroll": 1934
+        },
+        "displacement": {
+          "contentBefore": 264,
+          "contentAfter": 0,
+          "panelWidth": 264,
+          "rowWidth": 264
+        }
+      }
+    },
+    {
+      "id": "L-populated-light-allow-deny",
+      "status": "PASS",
+      "detail": {
+        "allow": {
+          "index": 2,
+          "tag": "browser-consent-once",
+          "text": "Allow once",
+          "disabled": false,
+          "rect": {
+            "x": 46,
+            "y": 538.16,
+            "width": 78.75,
+            "height": 28,
+            "right": 124.75,
+            "bottom": 566.16
+          },
+          "panel": {
+            "left": 0,
+            "top": 204.4,
+            "right": 264,
+            "bottom": 900
+          },
+          "insideHorizontally": true,
+          "insideVertically": true,
+          "hitSelf": true,
+          "hit": "BUTTON[browser-consent-once]"
+        },
+        "deny": {
+          "index": 6,
+          "tag": "browser-consent-deny",
+          "text": "Don't allow",
+          "disabled": false,
+          "rect": {
+            "x": 154.47,
+            "y": 538.16,
+            "width": 80.53,
+            "height": 28,
+            "right": 235,
+            "bottom": 566.16
+          },
+          "panel": {
+            "left": 0,
+            "top": 204.4,
+            "right": 264,
+            "bottom": 900
+          },
+          "insideHorizontally": true,
+          "insideVertically": true,
+          "hitSelf": true,
+          "hit": "BUTTON[browser-consent-deny]"
+        }
+      }
+    },
+    {
+      "id": "L-populated-light-grants",
+      "status": "PASS",
+      "detail": {
+        "revoke": {
+          "index": 7,
+          "tag": "browser-revoke-approval",
+          "text": "Revoke",
+          "disabled": false,
+          "rect": {
+            "x": 176.31,
+            "y": 538.23,
+            "width": 59.69,
+            "height": 28,
+            "right": 236,
+            "bottom": 566.23
+          },
+          "panel": {
+            "left": 0,
+            "top": 204.4,
+            "right": 264,
+            "bottom": 900
+          },
+          "insideHorizontally": true,
+          "insideVertically": true,
+          "hitSelf": true,
+          "hit": "BUTTON[browser-revoke-approval]"
+        },
+        "revokeAll": {
+          "index": 8,
+          "tag": "browser-revoke-all",
+          "text": "Revoke all site approvals",
+          "disabled": false,
+          "rect": {
+            "x": 13,
+            "y": 543.33,
+            "width": 231,
+            "height": 28,
+            "right": 244,
+            "bottom": 571.33
+          },
+          "panel": {
+            "left": 0,
+            "top": 204.4,
+            "right": 264,
+            "bottom": 900
+          },
+          "insideHorizontally": true,
+          "insideVertically": true,
+          "hitSelf": true,
+          "hit": "BUTTON[browser-revoke-all]"
+        }
+      }
+    },
+    {
+      "id": "L-populated-light-controls",
+      "status": "PASS",
+      "detail": {
+        "controlCount": 12,
+        "failures": []
+      }
+    },
+    {
+      "id": "L-populated-light-horizontal-overflow",
+      "status": "PASS",
+      "detail": {
+        "panel": {
+          "clientWidth": 255,
+          "scrollWidth": 255
+        },
+        "waitingRows": [
+          {
+            "clientWidth": 229,
+            "scrollWidth": 229,
+            "rect": {
+              "x": 14,
+              "y": 683.09,
+              "width": 229,
+              "height": 72.2,
+              "right": 243,
+              "bottom": 755.29
+            },
+            "children": [
+              {
+                "text": "1",
+                "left": 22,
+                "right": 39.73
+              },
+              {
+                "text": "a-very-long-subdomain-for-the-narrow-pan",
+                "left": 47.73,
+                "right": 175.52
+              },
+              {
+                "text": "Another session",
+                "left": 22,
+                "right": 235
+              },
+              {
+                "text": "expires in 10 minutes",
+                "left": 116.23,
+                "right": 235
+              }
+            ]
+          }
+        ],
+        "panelOverflow": false,
+        "rowOverflow": []
+      }
+    },
+    {
+      "id": "L-populated-dark-full-width",
+      "status": "PASS",
+      "detail": {
+        "layout": "full",
+        "panel": {
+          "x": 0,
+          "y": 179,
+          "width": 264,
+          "height": 721,
+          "right": 264,
+          "bottom": 900
+        },
+        "content": {
+          "x": 0,
+          "y": 179,
+          "width": 0,
+          "height": 721,
+          "right": 0,
+          "bottom": 900
+        },
+        "row": {
+          "x": 0,
+          "y": 179,
+          "width": 264,
+          "height": 721,
+          "right": 264,
+          "bottom": 900
+        },
+        "position": "static",
+        "display": "flex",
+        "theme": "localOperatorDark",
+        "dark": true,
+        "panelHeight": 721,
+        "panelScrollHeight": 1891,
+        "expectedPanelHeight": 721
+      }
+    },
+    {
+      "id": "L-populated-dark-reason-wrap",
+      "status": "PASS",
+      "detail": {
+        "reason": {
+          "text": "An agent from another session wants to open a-very-long-subdomain-for-the-narrow-panel-proof.example.test.",
+          "length": 106,
+          "clientWidth": 189,
+          "scrollWidth": 189,
+          "overflowWrap": "anywhere",
+          "lineWidths": [
+            {
+              "top": 741,
+              "width": 145.23
+            },
+            {
+              "top": 763,
+              "width": 48.7
+            },
+            {
+              "top": 765,
+              "width": 14.41
+            },
+            {
+              "top": 786,
+              "width": 172.8
+            },
+            {
+              "top": 808,
+              "width": 122.41
+            },
+            {
+              "top": 830,
+              "width": 129.6
+            },
+            {
+              "top": 828,
+              "width": 4.01
+            }
+          ]
+        },
+        "panelHeight": {
+          "client": 721,
+          "scroll": 1891
+        },
+        "displacement": {
+          "contentBefore": 264,
+          "contentAfter": 0,
+          "panelWidth": 264,
+          "rowWidth": 264
+        }
+      }
+    },
+    {
+      "id": "L-populated-dark-allow-deny",
+      "status": "PASS",
+      "detail": {
+        "allow": {
+          "index": 2,
+          "tag": "browser-consent-once",
+          "text": "Allow once",
+          "disabled": false,
+          "rect": {
+            "x": 46,
+            "y": 525.27,
+            "width": 78.75,
+            "height": 28,
+            "right": 124.75,
+            "bottom": 553.27
+          },
+          "panel": {
+            "left": 0,
+            "top": 179,
+            "right": 264,
+            "bottom": 900
+          },
+          "insideHorizontally": true,
+          "insideVertically": true,
+          "hitSelf": true,
+          "hit": "BUTTON[browser-consent-once]"
+        },
+        "deny": {
+          "index": 6,
+          "tag": "browser-consent-deny",
+          "text": "Don't allow",
+          "disabled": false,
+          "rect": {
+            "x": 154.47,
+            "y": 525.27,
+            "width": 80.53,
+            "height": 28,
+            "right": 235,
+            "bottom": 553.27
+          },
+          "panel": {
+            "left": 0,
+            "top": 179,
+            "right": 264,
+            "bottom": 900
+          },
+          "insideHorizontally": true,
+          "insideVertically": true,
+          "hitSelf": true,
+          "hit": "BUTTON[browser-consent-deny]"
+        }
+      }
+    },
+    {
+      "id": "L-populated-dark-grants",
+      "status": "PASS",
+      "detail": {
+        "revoke": {
+          "index": 7,
+          "tag": "browser-revoke-approval",
+          "text": "Revoke",
+          "disabled": false,
+          "rect": {
+            "x": 176.31,
+            "y": 525.53,
+            "width": 59.69,
+            "height": 28,
+            "right": 236,
+            "bottom": 553.53
+          },
+          "panel": {
+            "left": 0,
+            "top": 179,
+            "right": 264,
+            "bottom": 900
+          },
+          "insideHorizontally": true,
+          "insideVertically": true,
+          "hitSelf": true,
+          "hit": "BUTTON[browser-revoke-approval]"
+        },
+        "revokeAll": {
+          "index": 8,
+          "tag": "browser-revoke-all",
+          "text": "Revoke all site approvals",
+          "disabled": false,
+          "rect": {
+            "x": 13,
+            "y": 543.63,
+            "width": 231,
+            "height": 28,
+            "right": 244,
+            "bottom": 571.63
+          },
+          "panel": {
+            "left": 0,
+            "top": 179,
+            "right": 264,
+            "bottom": 900
+          },
+          "insideHorizontally": true,
+          "insideVertically": true,
+          "hitSelf": true,
+          "hit": "BUTTON[browser-revoke-all]"
+        }
+      }
+    },
+    {
+      "id": "L-populated-dark-controls",
+      "status": "PASS",
+      "detail": {
+        "controlCount": 12,
+        "failures": []
+      }
+    },
+    {
+      "id": "L-populated-dark-horizontal-overflow",
+      "status": "PASS",
+      "detail": {
+        "panel": {
+          "clientWidth": 255,
+          "scrollWidth": 255
+        },
+        "waitingRows": [
+          {
+            "clientWidth": 229,
+            "scrollWidth": 229,
+            "rect": {
+              "x": 14,
+              "y": 657.7,
+              "width": 229,
+              "height": 72.2,
+              "right": 243,
+              "bottom": 729.89
+            },
+            "children": [
+              {
+                "text": "1",
+                "left": 22,
+                "right": 39.73
+              },
+              {
+                "text": "a-very-long-subdomain-for-the-narrow-pan",
+                "left": 47.73,
+                "right": 175.52
+              },
+              {
+                "text": "Another session",
+                "left": 22,
+                "right": 235
+              },
+              {
+                "text": "expires in 10 minutes",
+                "left": 116.23,
+                "right": 235
+              }
+            ]
+          }
+        ],
+        "panelOverflow": false,
+        "rowOverflow": []
+      }
+    },
+    {
+      "id": "L-empty-state",
+      "status": "PASS",
+      "detail": {
+        "dark": {
+          "panel": {
+            "x": 0,
+            "y": 106,
+            "width": 264,
+            "height": 794,
+            "right": 264,
+            "bottom": 900
+          },
+          "content": {
+            "x": 0,
+            "y": 106,
+            "width": 0,
+            "height": 794,
+            "right": 0,
+            "bottom": 900
+          },
+          "row": {
+            "x": 0,
+            "y": 106,
+            "width": 264,
+            "height": 794,
+            "right": 264,
+            "bottom": 900
+          },
+          "layout": "full",
+          "position": "static",
+          "display": "flex",
+          "panelClientWidth": 255,
+          "panelClientHeight": 794,
+          "panelScrollWidth": 255,
+          "panelScrollHeight": 938,
+          "theme": "localOperatorDark",
+          "dark": true,
+          "reason": null,
+          "controlCount": 4,
+          "waitingRows": []
+        },
+        "light": {
+          "panel": {
+            "x": 0,
+            "y": 106,
+            "width": 264,
+            "height": 794,
+            "right": 264,
+            "bottom": 900
+          },
+          "content": {
+            "x": 0,
+            "y": 106,
+            "width": 0,
+            "height": 794,
+            "right": 0,
+            "bottom": 900
+          },
+          "row": {
+            "x": 0,
+            "y": 106,
+            "width": 264,
+            "height": 794,
+            "right": 264,
+            "bottom": 900
+          },
+          "layout": "full",
+          "position": "static",
+          "display": "flex",
+          "panelClientWidth": 255,
+          "panelClientHeight": 794,
+          "panelScrollWidth": 255,
+          "panelScrollHeight": 938,
+          "theme": "localOperatorLight",
+          "dark": false,
+          "reason": null,
+          "controlCount": 4,
+          "waitingRows": []
+        }
+      }
+    },
+    {
+      "id": "L-side-521-overflow",
+      "status": "PASS",
+      "detail": {
+        "layout": "side",
+        "panel": {
+          "x": 500,
+          "y": 151,
+          "width": 281,
+          "height": 749,
+          "right": 781,
+          "bottom": 900
+        },
+        "panelClientWidth": 272,
+        "panelScrollWidth": 272,
+        "waitingRows": [
+          {
+            "clientWidth": 246,
+            "scrollWidth": 246,
+            "rect": {
+              "x": 514,
+              "y": 165.2,
+              "width": 246,
+              "height": 50.8,
+              "right": 760,
+              "bottom": 215.99
+            },
+            "children": [
+              {
+                "text": "1",
+                "left": 522,
+                "right": 539.73
+              },
+              {
+                "text": "a-very-long-subdomain-for-the-narrow-pan",
+                "left": 547.73,
+                "right": 685.73
+              },
+              {
+                "text": "Another session",
+                "left": 522,
+                "right": 625.23
+              },
+              {
+                "text": "expires in 10 minutes",
+                "left": 633.23,
+                "right": 752
+              }
+            ]
+          }
+        ],
+        "rowOverflow": []
+      }
+    },
+    {
+      "id": "L-side-640-overflow",
+      "status": "PASS",
+      "detail": {
+        "layout": "side",
+        "panel": {
+          "x": 580,
+          "y": 151,
+          "width": 320,
+          "height": 749,
+          "right": 900,
+          "bottom": 900
+        },
+        "panelClientWidth": 311,
+        "panelScrollWidth": 311,
+        "waitingRows": [
+          {
+            "clientWidth": 285,
+            "scrollWidth": 285,
+            "rect": {
+              "x": 594,
+              "y": 551.7,
+              "width": 285,
+              "height": 50.8,
+              "right": 879,
+              "bottom": 602.49
+            },
+            "children": [
+              {
+                "text": "1",
+                "left": 602,
+                "right": 619.73
+              },
+              {
+                "text": "a-very-long-subdomain-for-the-narrow-pan",
+                "left": 627.73,
+                "right": 789.13
+              },
+              {
+                "text": "Another session",
+                "left": 602,
+                "right": 744.23
+              },
+              {
+                "text": "expires in 10 minutes",
+                "left": 752.23,
+                "right": 871
+              }
+            ]
+          }
+        ],
+        "rowOverflow": []
+      }
+    },
+    {
+      "id": "L-side-1020-overflow",
+      "status": "PASS",
+      "detail": {
+        "layout": "side",
+        "panel": {
+          "x": 896,
+          "y": 151,
+          "width": 384,
+          "height": 749,
+          "right": 1280,
+          "bottom": 900
+        },
+        "panelClientWidth": 375,
+        "panelScrollWidth": 375,
+        "waitingRows": [
+          {
+            "clientWidth": 349,
+            "scrollWidth": 349,
+            "rect": {
+              "x": 910,
+              "y": 512.7,
+              "width": 349,
+              "height": 50.8,
+              "right": 1259,
+              "bottom": 563.49
+            },
+            "children": [
+              {
+                "text": "1",
+                "left": 918,
+                "right": 935.73
+              },
+              {
+                "text": "a-very-long-subdomain-for-the-narrow-pan",
+                "left": 943.73,
+                "right": 1143.52
+              },
+              {
+                "text": "Another session",
+                "left": 1151.52,
+                "right": 1251
+              },
+              {
+                "text": "expires in 10 minutes",
+                "left": 1132.23,
+                "right": 1251
+              }
+            ]
+          }
+        ],
+        "rowOverflow": []
+      }
+    },
+    {
+      "id": "L-cold-start-route",
+      "status": "PASS",
+      "detail": {
+        "route": "entered #/browser and set 264 before waiting for the host bridge",
+        "sawAvailability": false,
+        "note": "the availability screen was not observed in this run; the row-absent → row-present transition is driven deterministically by browser-approvals-dock-width.test.mjs"
+      }
+    },
+    {
+      "id": "L-error-state",
+      "status": "BLOCKED",
+      "detail": {
+        "command": "open http://127.0.0.1:45999/",
+        "observed": "Error: open failed: 200 {\"id\":\"s6c-open\",\"ok\":false,\"error\":{\"code\":\"nav_failed\",\"message\":\"ERR_CONNECTION_REFUSED\",\"data\":{\"error_code\":-102}}}",
+        "reason": "the command returned a host open error (ERR_CONNECTION_REFUSED), not a renderer chrome.error and not a page navFailure. The dock has no error surface, and at 264 the page content that would paint a page-failure line is displaced to zero. host-error-dark is the unchanged panel after a refused host command, not a rendered error state.",
+        "frame": "host-error-dark"
+      }
+    },
+    {
+      "id": "L-loading-state",
+      "status": "BLOCKED",
+      "detail": {
+        "busySeen": false,
+        "frame": "post-decision-dark",
+        "reason": "the only loading cue the dock owns is the decision-busy spinner (browser-consent-busy), and the host answers inside the same paint; a CDP screenshot captured the post-decision panel, not the spinner. No persistent loading state exists to frame."
+      }
+    }
+  ],
+  "frames": [
+    {
+      "label": "empty-dark",
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-narrow-panel/docs/pr-evidence/browser-approvals-narrow-panel/frames/empty-dark.png"
+    },
+    {
+      "label": "empty-light",
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-narrow-panel/docs/pr-evidence/browser-approvals-narrow-panel/frames/empty-light.png"
+    },
+    {
+      "label": "populated-light",
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-narrow-panel/docs/pr-evidence/browser-approvals-narrow-panel/frames/populated-light.png"
+    },
+    {
+      "label": "populated-light-decisions",
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-narrow-panel/docs/pr-evidence/browser-approvals-narrow-panel/frames/populated-light-decisions.png"
+    },
+    {
+      "label": "populated-light-grants",
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-narrow-panel/docs/pr-evidence/browser-approvals-narrow-panel/frames/populated-light-grants.png"
+    },
+    {
+      "label": "populated-dark",
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-narrow-panel/docs/pr-evidence/browser-approvals-narrow-panel/frames/populated-dark.png"
+    },
+    {
+      "label": "populated-dark-decisions",
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-narrow-panel/docs/pr-evidence/browser-approvals-narrow-panel/frames/populated-dark-decisions.png"
+    },
+    {
+      "label": "populated-dark-grants",
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-narrow-panel/docs/pr-evidence/browser-approvals-narrow-panel/frames/populated-dark-grants.png"
+    },
+    {
+      "label": "side-521-dark",
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-narrow-panel/docs/pr-evidence/browser-approvals-narrow-panel/frames/side-521-dark.png"
+    },
+    {
+      "label": "side-640-dark",
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-narrow-panel/docs/pr-evidence/browser-approvals-narrow-panel/frames/side-640-dark.png"
+    },
+    {
+      "label": "side-1020-dark",
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-narrow-panel/docs/pr-evidence/browser-approvals-narrow-panel/frames/side-1020-dark.png"
+    },
+    {
+      "label": "host-error-dark",
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-narrow-panel/docs/pr-evidence/browser-approvals-narrow-panel/frames/host-error-dark.png"
+    }
+  ],
+  "mode": "headless"
+}

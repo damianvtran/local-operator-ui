@@ -51,7 +51,7 @@ import { withMockKeychain } from "./chrome-keychain.mjs";
 
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const ORIGIN = process.argv[2] ?? "http://localhost:5199";
-const OUT = process.argv[3] ?? "docs/evidence/ask-options-live";
+const OUT = process.argv[3] ?? "docs/evidence-frames/ask-options-live";
 const SESSION = process.argv[4] ?? "a1a1a1a1a1a1";
 /* The app's own default window (src/main/index.ts). A live frame is only worth
  * anything if it is the window the operator runs. */

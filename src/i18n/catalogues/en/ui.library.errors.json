@@ -1,0 +1,5 @@
+{
+	"ui.library.errors.preview_load": "This preview could not be loaded.",
+	"ui.library.errors.asset_read": "The asset content could not be read.",
+	"ui.library.errors.empty_bytes": "The bytes were empty."
+}

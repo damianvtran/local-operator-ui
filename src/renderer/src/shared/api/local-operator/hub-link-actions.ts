@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { desktopResult } from "./desktop-api";
 import { useHubActionStore } from "./hub-action-store";
@@ -206,7 +208,7 @@ export type HubSourceResolutionInput = {
  * The mutation reuses the same shared pending store as the link actions, keyed by
  * the local row, so a sidebar/detail pair cannot fire two confirmations at once.
  */
-export function useHubSourceResolution() {
+export function useHubSourceResolution(onResolved?: () => void) {
 	const client = useQueryClient();
 	const safety = useHubMutationSafety();
 	const mutation = useMutation({
@@ -234,6 +236,10 @@ export function useHubSourceResolution() {
 				safety.snapshot,
 			),
 		onSuccess: (response) => {
+			// Hook-level mutation callbacks finish even when replacing the inventory
+			// unmounts the diagnostic. A child effect cannot announce its own removal.
+			showSuccessToast(t("ui.hub.links.resolve_action_done"));
+			onResolved?.();
 			client.setQueryData(hubLinksKey, response.links);
 			client.setQueryData(["desktop", "hub-updates"], response.status);
 		},

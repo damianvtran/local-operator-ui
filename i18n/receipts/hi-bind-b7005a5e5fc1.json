@@ -1,0 +1,97 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "convergence-rebind",
+  "date": "2026-10-25",
+  "locale": "hi",
+  "namespace": "ui.chat.sidebar",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "content_audited_head": "ae40ebc959d9e3dbee6001f7e16d41f050af113e",
+  "instance": "hi-bind-b7005a5e5fc1",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); authored no catalogue value for PR #1403 and edited no catalogue or ledger",
+    "team": "lopdev",
+    "harness": "Local Operator",
+    "session": "8c59b09ca817",
+    "model": "deepseek/deepseek-flash",
+    "actual_model": "deepseek/deepseek-flash",
+    "model_source": "harness session banner (system prompt line 'Model: deepseek/deepseek-flash'); no fallback used",
+    "fallback": null,
+    "independence": "This run read the catalogue bytes with git show, wrote no translated value, edited no catalogue, English source, context sidecar, ledger or allowance file, and did not author any hi value under audit. The prior audit of these same bytes was instance hi-final-e09ed8ac568f, a different session; this receipt re-binds that audit's bytes at the post-merge head and re-raises its one still-present minor."
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "binding": "Current-byte convergence re-bind, not a fresh translation wave. The en, en.context and hi blobs for this namespace are byte-identical between the audited content head ae40ebc959 and the current PR head 0adbb37b94 (verified with git show + sha256 on the three files); the merge ab9bd739c2 integrated origin/main 91aa8f5f10 without touching this namespace. This receipt re-names the current bytes so the stale ledger row can be re-bound.",
+  "scope": "All 49 ui.chat.sidebar keys at current PR head 0adbb37b94, read against src/i18n/catalogues/en/ui.chat.sidebar.json and its context sidecar. The spread over origin/main is 6 keys (agents.builtin_offer, catalogue.total, catalogue.total_search, catalogue.total_search_clipped, groups.badge, section.current_chat).",
+  "sha256": {
+    "en": "ef1e1be1e56216cbace31a229d20979c2fc00fb43d15559a93605e33e900b171",
+    "hi": "b7005a5e5fc15f0c7abb3cd11db15c6dde25f9e06f12df8648aae41ed88db1e5",
+    "context": "0a5a1fc27e8d0cab8dfe9b086144a19969268403afded5a7a68036eaf5485339"
+  },
+  "keys_read": 49,
+  "key_set": "equal to English: 49/49, same key order, no extra or missing key, no English stub and no Latin-only value",
+  "icu": "Every value parsed with @formatjs/icu-messageformat-parser and compared by structure with English. Four plural messages keep the source's arguments and categories: agents.builtin_offer {count, plural, =0, one, =2, =3, =4, =5, =6, other}; catalogue.total_search and catalogue.total_search_clipped {shown, plural, one, other}; groups.badge {badge, plural, one, other}. pins.failure keeps its {action, select, pin, unpin, other} arms and quotes {title} with typographic quotes. Arguments preserved exactly: count, list, shown, total, max, query, action, title, badge. Number skeletons are the English ::group-off ones; the literal 500 in list.truncated_legacy stays an unformatted product fact as the sidecar requires.",
+  "icu_observations": [
+    {
+      "severity": "info",
+      "key": "ui.chat.sidebar.groups.badge",
+      "observation": "English writes the count with the ICU pound token (#); hi writes it as {badge, number, ::group-off}.",
+      "why_not_a_finding": "The argument is the same plural selector, both branches select identically, and the explicit skeleton matches every other hi counter (group-off is the house style for these integer counts). No placeholder is renamed or dropped, and no rendered value changes for realistic group sizes."
+    }
+  ],
+  "register": "Imperative controls use the polite करें/खोलें/बंद करें/हटाएँ forms, sentences address the user as आप where English says 'you', and the polite register is consistent across all 49 keys. बातचीत is used for conversation, चैट for chat, सत्र for session, संग्रहित for archived, and ID stays Latin, matching ui.chat.header and the rest of the hi catalogue.",
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    }
+  },
+  "prior_audit": {
+    "instance": "hi-final-e09ed8ac568f",
+    "receipt": "i18n/receipts/hi-final-e09ed8ac568f.json",
+    "receipt_sha256": "9feec7a6559cdc34239fc5abe7323eb76fdb1c3a81dfe3723b402735def4be4a",
+    "audited_head": "ae40ebc959d9e3dbee6001f7e16d41f050af113e",
+    "verdict": "clean-with-findings, 49/49 values, 0 blocker, 0 major, 1 minor (HI-FINAL-01)",
+    "byte_identity": "The prior receipt records exactly the en/hi/context hashes above; no byte moved between its head and the current head."
+  },
+  "method": [
+    "Read every value at the current head with git show and compared it side by side with the English source and the context sidecar's role/tone/length notes.",
+    "Verified key parity and key order in both directions (49 keys each) and rejected English stubs or untranslated Latin-only values.",
+    "Parsed all 49 messages with @formatjs/icu-messageformat-parser; compared argument names, plural/select categories, skeletons and tag/pound structure with English, and rendered the counters at 0/1/2/6/7/1000 with intl-messageformat in the hi locale.",
+    "Checked the hi CLDR categories from the repo's plural_rules.json (one covers 0 and 1; other from 2) and against the binding hi style guide.",
+    "Checked UTF-8/NFC, BOM, CRLF, duplicate keys, bidi controls, danda typography and the no-ASCII-ellipsis/no-ASCII-quotes house rules.",
+    "Proved the three blobs are byte-identical to the content head already audited by hi-final-e09ed8ac568f."
+  ],
+  "findings": [
+    {
+      "id": "HI-BIND-01",
+      "severity": "minor",
+      "key": "ui.chat.sidebar.catalogue.total",
+      "current": "कुल {total, number, ::group-off} चैट में से {shown, number, ::group-off} दिखाई जा रही हैं",
+      "proposed": "कुल {total, number, ::group-off} चैट में से {shown, number, ::group-off} {shown, plural, one {दिखाई जा रही है} other {दिखाई जा रही हैं}}",
+      "reason": "The static feminine-plural verb हैं agrees with the shown count, but hi CLDR `one` covers 0 and 1 (the binding style guide states \"0 फ़ाइल\" is singular), so the common one-chat state renders the ungrammatical \"कुल 1 चैट में से 1 दिखाई जा रही हैं\"; the same disagreement appears at 0. A plural on the already-present shown argument fixes only the 0/1 arm and leaves 2+ unchanged.",
+      "evidence": [
+        "en: Showing {shown, number, ::group-off} of {total, number, ::group-off} chats",
+        "hi current shown=1 total=1: कुल 1 चैट में से 1 दिखाई जा रही हैं",
+        "hi proposed shown=1 total=1: कुल 1 चैट में से 1 दिखाई जा रही है",
+        "hi current shown=0 total=0: कुल 0 चैट में से 0 दिखाई जा रही हैं",
+        "hi proposed shown=0 total=0: कुल 0 चैट में से 0 दिखाई जा रही है",
+        "hi plural_rules.json: 0 one, 1 one, 2 other; hi style guide: one covers 0 and 1"
+      ],
+      "disposition": "recorded, non-gating; fixing it changes the target hash and needs a one-key delta re-audit. Same defect the prior receipt raised as HI-FINAL-01, still present at the current bytes."
+    }
+  ],
+  "verdict": "clean-with-findings — 49/49 values read; 0 blocker, 0 major, 1 minor (HI-BIND-01, non-gating). The six delta values and the carried keys are accurate and idiomatic, the plural/select arms render correctly at 0/1/2/6/7/1000 except for the catalogue.total verb agreement, and no placeholder or skeleton was lost.",
+  "limitations": "Static catalogue audit only: no rendered screen was built or captured in this pass, so width checks are visual judgement against the sidecar's word-count notes, not measured pixels. No native-speaker sign-off is claimed."
+}

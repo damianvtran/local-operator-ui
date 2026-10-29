@@ -8,10 +8,15 @@
  * 1. NO DEFAULT-ALL. The selection starts empty and is only filled by explicit
  *    row presses or the explicit Select all control, which selects the visible
  *    filtered rows and nothing else.
- * 2. PREVIEW IS A GATE. A preview is built for one exact selection; changing the
- *    selection clears it, and `import` refuses unless the preview still matches.
+ * 2. PREVIEW IS A GATE. A preview is built for one exact selection, and `import`
+ *    refuses unless the preview still matches the current selection. The preview
+ *    is BUILT AUTOMATICALLY from the selection (debounced), so it is never
+ *    missing for long; while a rebuild is in flight the old one is marked stale
+ *    rather than thrown away, so the card updates in place.
  * 3. NO SILENT WRITE. Import additionally needs the acknowledgement checkbox, so
- *    one press cannot turn browsing into a copy.
+ *    one press cannot turn browsing into a copy. The acknowledgement is cleared
+ *    whenever the selection changes: a different set of conversations is a
+ *    different copy, and it has to be acknowledged again.
  */
 
 import { t } from "@shared/i18n";
@@ -67,6 +72,37 @@ export const ImportSettingsSection: FC = () => {
 	const [selectionNotice, setSelectionNotice] = useState<string | null>(null);
 	const [pollAttempt, setPollAttempt] = useState(0);
 	const sessionRequest = useRef(0);
+	/*
+	 * The generation of the preview build in flight. Same shape as
+	 * `sessionRequest` above, and for the same reason: a selection change can
+	 * start a second preview while the first is still running (the debounce
+	 * delays each build's START, it does not serialize them), and responses can
+	 * land out of order. Without this guard the older response overwrites the
+	 * newer one's preview and signature, and the screen sits at "Building the
+	 * preview..." with no retry and no way back.
+	 */
+	const previewRequest = useRef(0);
+	/*
+	 * The signature of the last preview build that FAILED. It is what stops the
+	 * automatic build from asking again for a selection whose build already
+	 * failed, which would hit a failing endpoint every 250ms for as long as the
+	 * selection stood. It is set only in the catch - a SUCCESS never records
+	 * here - and it is cleared wherever the preview it describes is dropped
+	 * (selection change, source change, Import more, Refresh, Retry).
+	 *
+	 * The guard that reads it also requires that no preview exists. A stale
+	 * preview must still rebuild: if this marker alone could satisfy the guard,
+	 * the screen would stay on the spinner forever after an out-of-order
+	 * response, which is exactly the bug this replaces.
+	 */
+	const [failedSignature, setFailedSignature] = useState<string | null>(null);
+	/*
+	 * The preview's own failure, kept separate from `error` because it is
+	 * rendered INSIDE the preview block, beside the acknowledgement it disables.
+	 * `error` stays the section-level banner for source, session and job
+	 * failures, which have no block of their own to live in.
+	 */
+	const [previewError, setPreviewError] = useState<string | null>(null);
 	const jobError = useRef<string | null>(null);
 	const jobActive = progress !== null && !TERMINAL.has(progress.state);
 
@@ -127,6 +163,8 @@ export const ImportSettingsSection: FC = () => {
 		setSelected(new Set());
 		setPreview(null);
 		setPreviewSignature(null);
+		setFailedSignature(null);
+		setPreviewError(null);
 		setConfirmed(false);
 		setResult(null);
 		setProgress(null);
@@ -135,9 +173,28 @@ export const ImportSettingsSection: FC = () => {
 
 	const resetSelection = useCallback((next: Set<string>) => {
 		setSelected(next);
-		setPreview(null);
-		setPreviewSignature(null);
+		/*
+		 * THE ACKNOWLEDGEMENT IS CLEARED ON EVERY SELECTION CHANGE, and that is
+		 * deliberate. "I understand these conversations will be copied into Local
+		 * Operator" is a statement about a SET of conversations; a different set
+		 * is a different copy, so the acknowledgement has to be re-stated for it.
+		 * The automatic preview arriving does not re-arm it either: a preview is
+		 * not a confirmation.
+		 *
+		 * The failure marker is dropped here for a different reason: it describes
+		 * a failure of the OLD selection. Keeping it would latch a selection that
+		 * failed, was changed away from, and then returned to.
+		 *
+		 * The preview is NOT cleared here: it stays in state and goes stale (its
+		 * signature no longer matches the selection). `previewStale` is what makes
+		 * the view drop the old numbers and show the build spinner, so stale
+		 * figures are never painted as if they described the new selection; the
+		 * preview's own value is what the state machine compares signatures
+		 * against.
+		 */
 		setConfirmed(false);
+		setFailedSignature(null);
+		setPreviewError(null);
 		setSelectionNotice(null);
 	}, []);
 
@@ -188,28 +245,100 @@ export const ImportSettingsSection: FC = () => {
 		preview !== null && previewSignature !== currentSignature;
 
 	const onPreview = useCallback(async () => {
+		/*
+		 * The guard is unreachable from the UI now: the preview block only
+		 * renders for a non-empty selection, and the preview is built
+		 * automatically from the selection rather than by a button. It stays as
+		 * the container's own invariant, not as a user-facing gate - a fired
+		 * guard can no longer read as "nothing happened" because there is no
+		 * control left to press.
+		 */
 		if (!activeSource || selected.size === 0) return;
+		/*
+		 * THE REQUEST GENERATION IS CAPTURED BEFORE THE AWAIT. Only the latest
+		 * build may write state: a superseded response must not overwrite the
+		 * newer preview, must not clear the newer build's spinner, and must not
+		 * record a failure for a selection that is no longer current.
+		 */
+		const request = ++previewRequest.current;
+		const signature = currentSignature;
 		setBusy("preview");
 		setError(null);
+		setPreviewError(null);
 		try {
 			const next = await previewImport({
 				sources: [activeSource],
 				sessionIds: { [activeSource]: [...selected].sort() },
 			});
+			if (request !== previewRequest.current) return;
 			setPreview(next);
-			setPreviewSignature(currentSignature);
+			/*
+			 * The signature captured with the request, not the one in this
+			 * closure: the response describes the selection that was asked for,
+			 * and pairing it with a newer signature would paint these counts as
+			 * if they described the new selection.
+			 */
+			setPreviewSignature(signature);
 		} catch (cause) {
+			if (request !== previewRequest.current) return;
 			setPreview(null);
 			setPreviewSignature(null);
-			setError(
+			setFailedSignature(signature);
+			setPreviewError(
 				t("ui.settings.imports.error_preview", { reason: reason(cause) }),
 			);
 		} finally {
-			setBusy(null);
+			if (request === previewRequest.current) setBusy(null);
 		}
 	}, [activeSource, currentSignature, selected]);
 
+	/*
+	 * THE PREVIEW IS BUILT AUTOMATICALLY, debounced.
+	 *
+	 * The operator's flow used to be three disconnected interactions: select a
+	 * conversation, scroll to a separate "Preview" section and press a button
+	 * that read "Preview" UNDER A HEADING THAT ALSO READ "Preview", then tick a
+	 * second, identically shaped empty checkbox in a third block before the
+	 * Import button came alive. A preview is a function of the selection, so
+	 * the selection now produces it; the debounce keeps a multi-row selection
+	 * (or Select all over twenty rows) from asking the core once per row.
+	 */
+	useEffect(() => {
+		if (!activeSource || selected.size === 0 || progress || result) return;
+		// A preview for exactly this selection already exists: nothing to build.
+		if (preview && previewSignature === currentSignature) return;
+		// This exact selection was already attempted and failed. The failure is
+		// on screen in the preview block with its own Retry, and a failing
+		// endpoint must not be hit every 250ms for as long as the selection
+		// stands. The guard also requires that no preview exists: a STALE
+		// preview must still rebuild, or an out-of-order response would wedge
+		// this effect here forever.
+		if (!preview && failedSignature === currentSignature) return;
+		const timer = setTimeout(() => {
+			void onPreview();
+		}, 250);
+		return () => clearTimeout(timer);
+	}, [
+		activeSource,
+		selected,
+		currentSignature,
+		preview,
+		previewSignature,
+		failedSignature,
+		progress,
+		result,
+		onPreview,
+	]);
+
 	const onImport = useCallback(async () => {
+		/*
+		 * The gate is the container's invariant, and it is also what the Import
+		 * button's `disabled` state is computed from - so a user cannot reach
+		 * this guard by pressing it. It cannot fire silently at the user, and
+		 * the reason the button is disabled is on screen beside it: the
+		 * acknowledgement is right above it, and the preview's own state is
+		 * stated in the block above that.
+		 */
 		if (
 			!activeSource ||
 			selected.size === 0 ||
@@ -313,6 +442,8 @@ export const ImportSettingsSection: FC = () => {
 		setSelected(new Set());
 		setPreview(null);
 		setPreviewSignature(null);
+		setFailedSignature(null);
+		setPreviewError(null);
 		setConfirmed(false);
 		setSelectionNotice(null);
 		setResult(null);
@@ -335,6 +466,13 @@ export const ImportSettingsSection: FC = () => {
 	const onRefresh = useCallback(async () => {
 		if (jobActive) return;
 		setSelectionNotice(null);
+		/*
+		 * Refresh is the user's "try that again" for this screen, so it drops the
+		 * record of a failed preview as well as reloading the data. Without this
+		 * the automatic build would keep refusing the same selection.
+		 */
+		setFailedSignature(null);
+		setPreviewError(null);
 		await loadSources();
 		if (activeSource) await loadSessions(activeSource);
 	}, [activeSource, jobActive, loadSessions, loadSources]);
@@ -345,6 +483,13 @@ export const ImportSettingsSection: FC = () => {
 			setPollAttempt((value) => value + 1);
 			return;
 		}
+		/*
+		 * A failed preview is rebuilt by asking again: the failed signature is
+		 * forgotten, which is what lets the automatic build run for this
+		 * selection again.
+		 */
+		setFailedSignature(null);
+		setPreviewError(null);
 		void onRefresh();
 	}, [jobActive, onRefresh]);
 
@@ -357,6 +502,7 @@ export const ImportSettingsSection: FC = () => {
 			selected={selected}
 			preview={preview}
 			previewStale={previewStale}
+			previewError={previewError}
 			confirmed={confirmed}
 			busy={busy}
 			error={error}
@@ -368,7 +514,6 @@ export const ImportSettingsSection: FC = () => {
 			onToggleSession={onToggleSession}
 			onSelectAll={onSelectAll}
 			onClearSelection={onClearSelection}
-			onPreview={() => void onPreview()}
 			onConfirmChange={setConfirmed}
 			onImport={() => void onImport()}
 			onCancel={() => void onCancel()}

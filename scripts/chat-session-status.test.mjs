@@ -6,7 +6,7 @@ const require = createRequire(import.meta.url);
 const result = await build({
 	stdin: {
 		contents:
-			'export { ChatSessionStatus, ChatAsksOutstanding } from "./src/renderer/src/features/chat/components/chat-session-status"; export { renderToStaticMarkup } from "react-dom/server"; export { createElement } from "react";',
+			'export { ChatSessionStatus, ChatAsksOutstanding } from "./src/renderer/src/features/chat/components/chat-session-status"; export { renderToStaticMarkup } from "react-dom/server"; export { createElement } from "react"; export { peerLinkDownLabel, peerLinkDownVisibleLabel } from "./src/renderer/src/features/mesh/peer-presence";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -25,6 +25,8 @@ new Function("module", "exports", "require", result.outputFiles[0].text)(
 const {
 	ChatSessionStatus,
 	ChatAsksOutstanding,
+	peerLinkDownLabel,
+	peerLinkDownVisibleLabel,
 	renderToStaticMarkup,
 	createElement,
 } = output.exports;
@@ -546,4 +548,136 @@ test("the row's own field answers when the caller has no read, and the caller wi
 	assert.match(asksMark({ row: asksRow(1) }), />1</);
 	assert.match(asksMark({ row: asksRow(5), open: 2 }), />2</);
 	assert.doesNotMatch(asksMark({ row: asksRow(5), open: 2 }), />5</);
+});
+
+test("waiting uses a static accent hourglass and the backend accessible name", () => {
+	const label = "Waiting on 2 jobs · 1 subagent running";
+	const html = render("waiting", false, label);
+	assert.match(html, /lucide-hourglass/);
+	assert.match(html, /text-accent/);
+	assert.doesNotMatch(html, /animate-spin/);
+	assert.match(html, /sr-only">Waiting on 2 jobs · 1 subagent running</);
+});
+
+test("a link-down remote row cannot draw or announce its last-known idle state", () => {
+	const html = renderToStaticMarkup(
+		createElement(ChatSessionStatus, {
+			row: {
+				session_id: "offline-fixture",
+				locality: "remote",
+				link_down: true,
+				last_seen_at: null,
+				status: { code: "idle", label: "Idle" },
+			},
+		}),
+	);
+	assert.match(html, /lucide-wifi-off/);
+	assert.match(html, /link down · last seen unknown/);
+	assert.doesNotMatch(html, /lucide-circle |Idle|animate-spin/);
+	const recovered = renderToStaticMarkup(
+		createElement(ChatSessionStatus, {
+			row: {
+				session_id: "offline-fixture",
+				locality: "remote",
+				link_down: false,
+				status: { code: "idle", label: "Idle" },
+			},
+		}),
+	);
+	assert.match(recovered, /lucide-circle /);
+	assert.doesNotMatch(recovered, /lucide-wifi-off|link down/);
+});
+
+test("remote glyph and sidebar age copy share the supplied list clock", () => {
+	const row = {
+		session_id: "clock-fixture",
+		locality: "remote",
+		link_down: true,
+		last_seen_at: 100,
+		status: { code: "idle", label: "Idle" },
+	};
+	const html = renderToStaticMarkup(
+		createElement(ChatSessionStatus, { row, nowSeconds: 340 }),
+	);
+	assert.match(html, /link down · last seen 4m ago/);
+	assert.equal(peerLinkDownLabel(row, 340), "link down · last seen 4m ago");
+	assert.equal(peerLinkDownVisibleLabel(row, 340), "Link down · 4m ago");
+	// A date far from the real clock proves the glyph is not consulting Date.now().
+	assert.doesNotMatch(html, /Idle|d ago/);
+});
+
+test("a remote delegating row renders the same three-bead primary mark", () => {
+	const html = renderToStaticMarkup(
+		createElement(ChatSessionStatus, {
+			row: {
+				session_id: "remote-delegating-fixture",
+				locality: "remote",
+				owner_device: "synthetic-peer",
+				status: { code: "delegating", label: "1 subagent running" },
+				subagents_running: 1,
+			},
+		}),
+	);
+	assert.equal((html.match(/<circle /g) ?? []).length, 3);
+	assert.match(html, /1 subagent running/);
+	assert.match(html, /text-accent/);
+	assert.doesNotMatch(html, /animate-spin|lucide-circle/);
+});
+
+test("not-attempted remote reach does not claim idle or link loss", () => {
+	const html = renderToStaticMarkup(
+		createElement(ChatSessionStatus, {
+			row: {
+				session_id: "not-asked-fixture",
+				locality: "remote",
+				link_down: false,
+				peer_reach: "not-attempted",
+				status: { code: "idle", label: "Idle" },
+			},
+		}),
+	);
+	assert.match(html, /not asked/);
+	assert.match(
+		html,
+		/lucide-circle-question-mark|lucide-help-circle|lucide-circle-help/,
+	);
+	assert.doesNotMatch(html, /Idle|link down|lucide-circle /);
+});
+
+/* The reconnecting cell's patterns, at TOP LEVEL per the scripts lint ratchet. */
+const WIFI_OFF_RE = /lucide-wifi-off/;
+const STALE_IDLE_RE = /lucide-circle |Idle/;
+const DIM_INK_RE = /text-ink-dim/;
+const WARNING_INK_RE = /text-warning/;
+const RECONNECTING_AGE_RE = /Reconnecting · 3m ago/;
+const LINK_DOWN_AGE_RE = /link down · last seen 3m ago/;
+
+test("a remote row inside the relay's redial grace says Reconnecting in dim ink", () => {
+	const row = {
+		session_id: "reconnecting-fixture",
+		locality: "remote",
+		link_down: true,
+		link_reconnecting: true,
+		last_seen_at: 100,
+		status: { code: "idle", label: "Idle" },
+	};
+	const html = renderToStaticMarkup(
+		createElement(ChatSessionStatus, { row, nowSeconds: 280 }),
+	);
+	// Still the lost-link SHAPE and still no stale idle claim...
+	assert.match(html, WIFI_OFF_RE);
+	assert.doesNotMatch(html, STALE_IDLE_RE);
+	// ...but quiet ink and the reconnecting sentence with a real last-seen age.
+	assert.match(html, DIM_INK_RE);
+	assert.doesNotMatch(html, WARNING_INK_RE);
+	assert.match(html, RECONNECTING_AGE_RE);
+	// Escalated: the same row once the relay says `down` is amber "link down".
+	const down = renderToStaticMarkup(
+		createElement(ChatSessionStatus, {
+			row: { ...row, link_reconnecting: false },
+			nowSeconds: 280,
+		}),
+	);
+	assert.match(down, WARNING_INK_RE);
+	assert.match(down, LINK_DOWN_AGE_RE);
 });

@@ -57,6 +57,18 @@ export const VENDORED_FILES = [
 		to: "driver/access-queue.ts",
 	},
 	{ from: "extension/src/driver/ax-compact.ts", to: "driver/ax-compact.ts" },
+	// Accessibility locators (`role=`/`label=`/`text=`): the parse and the match
+	// rules both hosts must share. A second copy of the matcher is how one
+	// spelling of `role=checkbox[name="Active"]` starts naming a different node
+	// on the other host.
+	{ from: "extension/src/driver/ax-locator.ts", to: "driver/ax-locator.ts" },
+	// The read-only DOM query's page function. It travels as SOURCE into the
+	// isolated world (geometry-sources.gen.ts captures it), so the same caps and
+	// the same password-value rule run on both hosts.
+	{
+		from: "extension/src/driver/element-query.ts",
+		to: "driver/element-query.ts",
+	},
 	{ from: "extension/src/driver/deadline.ts", to: "driver/deadline.ts" },
 	{ from: "extension/src/driver/errors.ts", to: "driver/errors.ts" },
 	// The file-transfer policy pair (design §10.4). Listed TOGETHER and in this order

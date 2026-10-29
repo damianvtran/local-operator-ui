@@ -31,7 +31,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const obsidian: ThemeDefinition = {
 	id: "obsidian",
 	name: "Obsidian",
-	description: "Monochrome: zinc near-black with an off-white accent.",
+	descriptionKey: "ui.settings.appearance.theme.obsidian",
 	palette: {
 		mode: "dark",
 

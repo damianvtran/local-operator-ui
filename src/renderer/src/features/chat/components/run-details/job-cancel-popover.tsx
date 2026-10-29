@@ -34,6 +34,8 @@
  * the keyboard handed back to Keep.
  */
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
@@ -54,6 +56,7 @@ export const JobCancelPopover = ({
 	onConfirm,
 	onCancel,
 }: JobCancelPopoverProps) => {
+	useI18nLocale();
 	const cardRef = useRef<HTMLDialogElement | null>(null);
 	const keepRef = useRef<HTMLButtonElement | null>(null);
 	/*
@@ -184,7 +187,7 @@ export const JobCancelPopover = ({
 					disabled={busy}
 					onClick={() => onCancel()}
 				>
-					Keep
+					{t("ui.chat.run_details.keep")}
 				</Button>
 				<Button
 					variant="danger"

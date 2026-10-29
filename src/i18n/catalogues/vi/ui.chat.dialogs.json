@@ -1,0 +1,12 @@
+{
+	"ui.chat.dialogs.delete_title": "Xóa cuộc trò chuyện này?",
+	"ui.chat.dialogs.delete_action": "Xóa",
+	"ui.chat.dialogs.archive_action": "Lưu trữ",
+	"ui.chat.dialogs.cancel": "Hủy",
+	"ui.chat.dialogs.options.clear_confirm": "Xóa",
+	"ui.chat.dialogs.options.clear_conversation": "Xóa cuộc trò chuyện",
+	"ui.chat.dialogs.options.clear_message": "Mọi tin nhắn trong đó sẽ bị xóa khỏi máy này và không thể hoàn tác. Bản thân tác nhân không bị ảnh hưởng.",
+	"ui.chat.dialogs.options.clear_title": "Xóa cuộc trò chuyện này?",
+	"ui.chat.dialogs.options.description": "Tùy chỉnh cài đặt cho tác nhân này",
+	"ui.chat.dialogs.options.title": "Tùy chọn trò chuyện"
+}

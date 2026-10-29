@@ -1,0 +1,36 @@
+{
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "7f3a1c9e-r2",
+  "locale": "fr",
+  "round": 2,
+  "namespaces": {
+    "ui.agentMessages.settings": {
+      "status": "passed",
+      "keys_audited": 84,
+      "sha256": {
+        "en": "9f323c46102978c0fa60b8f006e4b380d78c18ab81a7205cd233438d867c5d5d",
+        "fr": "a347df5551387a7e97475865b93656b0ce7648176dcc3e6f14f5a0c17403acd1"
+      },
+      "findings": []
+    },
+    "ui.library": {
+      "status": "passed",
+      "keys_audited": 152,
+      "sha256": {
+        "en": "009e864f684e85925001346dc382b5b04724d994f5b099a344f70827a2aa2b2a",
+        "fr": "86566d4a660fcb5303dd9331f859c354f7030cbbd2415245f654c9ef85bae562"
+      },
+      "findings": []
+    },
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 67,
+      "sha256": {
+        "en": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
+        "fr": "56649e849f7f8d016da2b468a4ebe2db4aed4a73fccbc38298d4a4c42bba8f70"
+      },
+      "findings": []
+    }
+  }
+}

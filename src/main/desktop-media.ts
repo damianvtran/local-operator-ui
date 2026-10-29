@@ -31,6 +31,24 @@ const id = z
 	.regex(/^[a-zA-Z0-9_-]+$/);
 
 const MAX_UPLOAD_BYTES = 16 * 1024 * 1024;
+/*
+ * Team Bridge image ceilings. The upload cap is the hub's own 5 MiB request
+ * bound (manager decision D3); the renderer already bounds to 1 MiB, so this is
+ * headroom that keeps a renderer bug from sending 16 MiB to a route that will
+ * refuse it. The download cap is the same number: a bound attachment can never
+ * be larger than the upload that created it, so anything bigger is not one.
+ */
+const TEAM_BRIDGE_ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024;
+/*
+ * The only picture types the hub stores (it sniffs and re-states them; D3).
+ * A fetched attachment answering any other type is refused here rather than
+ * handed to the renderer as a blob: `image/svg+xml` in particular is script-
+ * capable, and the renderer must never be the one deciding that.
+ */
+const TEAM_BRIDGE_ATTACHMENT_TYPES: ReadonlySet<string> = new Set([
+	"image/png",
+	"image/jpeg",
+]);
 const MAX_DOWNLOAD_BYTES = 32 * 1024 * 1024;
 
 const mediaRequestSchema = z.discriminatedUnion("op", [
@@ -142,6 +160,110 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			requestId: z.string().regex(REQUEST_ID_PATTERN),
 			text: z.string().min(1).max(16_000),
 			textOrigin: z.enum(["qwen_s2s", "local_moonshine"]).optional(),
+	/*
+	 * Team Bridge image attachments (image-attachments contract §3). Upload and
+	 * fetch ride THIS relay rather than the JSON transport for the reason every
+	 * op here does - bytes - and because the bearer must stay in main: the hub
+	 * route is member-gated, so the renderer cannot be handed a fetchable URL.
+	 * Every id is shape-checked because main builds the path from it.
+	 *
+	 * The upload is a raw `application/octet-stream` body, not multipart: the hub
+	 * ignores the client's type and filename (it sniffs the bytes), so sending
+	 * neither means neither can leak into a log or be trusted by mistake.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.attachment.upload"),
+			tenantId: id,
+			conversationId: id,
+			/* REQUIRED: the runtime route answers 422 without a captured-owner
+			   receipt, and comparing an account to itself is not a guard. Main
+			   refuses the request locally when it is absent, so no unguarded
+			   attachment call can be constructed. */
+			expectedAccountId: id,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.attachment"),
+			tenantId: id,
+			conversationId: id,
+			messageId: id,
+			attachmentId: id,
+			expectedAccountId: id,
+		})
+		.strict(),
+	/*
+	 * The Radient account avatar route is authenticated and member-gated. Main
+	 * does NOT own the hub bearer: core's AuthStore does. This operation uses
+	 * only core's closed binary relay, with the commissioning viewer receipt. The two sizes are the server's complete derivative
+	 * set, not a client-chosen resize parameter.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.avatar"),
+			expectedAccountId: id,
+			accountId: id,
+			hash: z.string().regex(/^[0-9a-f]{16}$/),
+			size: z.union([z.literal(64), z.literal(256)]),
+		})
+		.strict(),
+	// Sender composites stay on the private avatar authority: never a URL.
+	z
+		.object({
+			op: z.literal("team_bridge.notification_avatar"),
+			expectedAccountId: id,
+			tenantId: id,
+			accountId: id,
+			kind: z.enum(["person", "person_agent"]),
+			theme: z.enum(["light", "dark"]),
+			size: z.union([z.literal(64), z.literal(256)]),
+			initials: z
+				.string()
+				.max(4)
+				.refine((value) => /^[\p{L}\p{N}]{0,2}$/u.test(value.normalize("NFC"))),
+			avatar: z
+				.object({ account_id: id, hash: z.string().regex(/^[0-9a-f]{16}$/) })
+				.strict()
+				.optional(),
+		})
+		.strict(),
+	/*
+	 * The Library's content and thumbnail bytes. The asset id is shape-checked
+	 * here as well as by the backend route: this relay's premise is that
+	 * renderer code cannot pick a URL, and an unvalidated id would become a path
+	 * segment. The width is the thumbnail route's own ceiling (`w=480` is the
+	 * documented maximum), so a caller cannot ask the daemon for an unbounded
+	 * rasterisation.
+	 */
+	z
+		.object({
+			op: z.literal("library.content"),
+			assetId: z.string().regex(/^la_[0-9a-f]{16}$/),
+			/** `?download=1` asks the route for an attachment disposition. */
+			download: z.boolean().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("library.thumbnail"),
+			assetId: z.string().regex(/^la_[0-9a-f]{16}$/),
+			width: z.number().int().min(1).max(480).optional(),
+		})
+		.strict(),
+	/*
+	 * A Library audio asset's PRE-RENDER peaks sidecar, the same `{version,
+	 * bars, peaks}` document a generated sound's attachment route serves. It
+	 * rides this relay for the reason `library.content` does: the renderer must
+	 * not learn the store's layout or hold the bearer, and the asset id has to
+	 * be validated before it becomes a path segment. The route answers 404 when
+	 * the catalog has no sidecar for the asset (a path-backed file imported
+	 * rather than generated), which the renderer draws as its flat scrubber.
+	 */
+	z
+		.object({
+			op: z.literal("library.waveform"),
+			assetId: z.string().regex(/^la_[0-9a-f]{16}$/),
 		})
 		.strict(),
 ]);
@@ -149,7 +271,13 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 export type DesktopMediaRequest = z.infer<typeof mediaRequestSchema>;
 
 export type DesktopMediaResponse =
-	| { status: number; kind: "bytes"; mimeType: string; data: Uint8Array }
+	| {
+			status: number;
+			kind: "bytes";
+			mimeType: string;
+			data: Uint8Array;
+			cacheControl?: string;
+	  }
 	| { status: number; kind: "json"; body: unknown }
 	| {
 			status: number;
@@ -166,6 +294,14 @@ export type DesktopMediaResponse =
 			code?: DesktopRefusalCode;
 			/** A voice route's declared refusal (see `VOICE_REFUSAL_CODES`). */
 			voiceCode?: VoiceRefusalCode;
+			/**
+			 * `renderer_busy` is MAIN-ONLY, deliberately outside the shared
+			 * pairing-refusal table: core's composite route uses it for a transient
+			 * local overload (503) that the desktop answers with initials. It is a
+			 * fact about one core renderer, not a pairing condition, so it must not
+			 * become a sentence the renderer shows or a code other routes may claim.
+			 */
+			code?: DesktopRefusalCode | "renderer_busy";
 	  };
 
 function endpoint(request: DesktopMediaRequest): {
@@ -205,6 +341,54 @@ function endpoint(request: DesktopMediaRequest): {
 			};
 		case "voice.utterance":
 			return { path: "/v1/desktop/voice/utterance", method: "POST" };
+		case "library.content":
+			return {
+				path: `/v1/desktop/library/assets/${request.assetId}/content${request.download ? "?download=1" : ""}`,
+				method: "GET",
+			};
+		case "library.thumbnail":
+			return {
+				path: `/v1/desktop/library/assets/${request.assetId}/thumbnail?w=${request.width ?? 480}`,
+				method: "GET",
+			};
+		case "library.waveform":
+			return {
+				path: `/v1/desktop/library/assets/${request.assetId}/waveform`,
+				method: "GET",
+			};
+		case "team_bridge.attachment.upload":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${request.conversationId}/attachments?${new URLSearchParams({ tenant_id: request.tenantId, expected_account_id: request.expectedAccountId })}`,
+				method: "POST",
+			};
+		case "team_bridge.attachment":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${request.conversationId}/messages/${request.messageId}/attachments/${request.attachmentId}?${new URLSearchParams({ tenant_id: request.tenantId, expected_account_id: request.expectedAccountId })}`,
+				method: "GET",
+			};
+		case "team_bridge.notification_avatar": {
+			const query = new URLSearchParams({
+				tenant_id: request.tenantId,
+				expected_account_id: request.expectedAccountId,
+				kind: request.kind,
+				theme: request.theme,
+				size: String(request.size),
+				initials: request.initials,
+			});
+			if (request.avatar) {
+				query.set("v", request.avatar.hash);
+				query.set("avatar_account_id", request.avatar.account_id);
+			}
+			return {
+				path: `/v1/desktop/team-bridge/accounts/${request.accountId}/notification-avatar?${query}`,
+				method: "GET",
+			};
+		}
+		case "team_bridge.avatar":
+			return {
+				path: `/v1/desktop/team-bridge/accounts/${request.accountId}/avatar?${new URLSearchParams({ v: request.hash, size: String(request.size), expected_account_id: request.expectedAccountId })}`,
+				method: "GET",
+			};
 	}
 }
 
@@ -231,7 +415,12 @@ export async function requestDesktopMediaOutcome(
 	token: string | null,
 ): Promise<DesktopMediaOutcome> {
 	const parsed = mediaRequestSchema.safeParse(input);
-	if (!parsed.success) {
+	if (
+		!parsed.success ||
+		(parsed.data.op === "team_bridge.notification_avatar" &&
+			parsed.data.avatar &&
+			parsed.data.avatar.account_id !== parsed.data.accountId)
+	) {
 		// Never sent.
 		return {
 			response: {
@@ -267,6 +456,21 @@ export async function requestDesktopMediaOutcome(
 			answered: false,
 		};
 	}
+	if (
+		request.op === "team_bridge.attachment.upload" &&
+		bytes &&
+		bytes.byteLength > TEAM_BRIDGE_ATTACHMENT_MAX_BYTES
+	) {
+		// Never sent: the hub would answer 413 for the same bytes.
+		return {
+			response: {
+				status: 413,
+				kind: "error",
+				detail: "This image is too large.",
+			},
+			answered: false,
+		};
+	}
 	const target = endpoint(request);
 
 	let body: BodyInit | undefined;
@@ -276,10 +480,29 @@ export async function requestDesktopMediaOutcome(
 		request.op === "sessions.attachment" ||
 		request.op === "subagents.attachment" ||
 		request.op === "sessions.attachment.waveform" ||
-		request.op === "sessions.supplementDocument"
+		request.op === "sessions.supplementDocument" ||
+		request.op === "library.content" ||
+		request.op === "library.thumbnail" ||
+		request.op === "library.waveform" ||
+		request.op === "team_bridge.attachment" ||
+		request.op === "team_bridge.avatar" ||
+		request.op === "team_bridge.notification_avatar"
 	) {
 		// A GET carries no body; `fetch` rejects one outright.
 		body = undefined;
+	} else if (request.op === "team_bridge.attachment.upload") {
+		if (!bytes || bytes.byteLength === 0) {
+			return {
+				response: {
+					status: 422,
+					kind: "error",
+					detail: "An image is required.",
+				},
+				answered: false,
+			};
+		}
+		body = new Blob([bytes]);
+		contentType = "application/octet-stream";
 	} else if (request.op === "speech.create" || request.op === "speech.agent") {
 		body = JSON.stringify(request.request);
 		contentType = "application/json";
@@ -337,11 +560,127 @@ export async function requestDesktopMediaOutcome(
 				Authorization: `Bearer ${token}`,
 			},
 			body,
+			// Private avatars are cached only as authority-scoped renderer blobs.
+			// Neither Electron nor an intermediary may persist them across login.
+			...(request.op === "team_bridge.avatar" ||
+			request.op === "team_bridge.notification_avatar"
+				? { cache: "no-store" as const }
+				: {}),
 			redirect: "error",
-			signal: AbortSignal.timeout(120000),
+			signal: AbortSignal.timeout(
+				request.op === "team_bridge.notification_avatar" ? 1500 : 120000,
+			),
 		});
 		answered = true;
 		const responseType = response.headers.get("content-type") ?? "";
+		if (
+			request.op === "team_bridge.avatar" ||
+			request.op === "team_bridge.notification_avatar"
+		) {
+			const composite = request.op === "team_bridge.notification_avatar";
+			const mime = responseType.split(";")[0].trim().toLowerCase();
+			const refuse = (
+				status: number,
+				code?: "renderer_busy",
+			): DesktopMediaOutcome => ({
+				response: {
+					kind: "error",
+					status,
+					detail: "The avatar could not be read.",
+					...(code ? { code } : {}),
+				},
+				answered: true,
+			});
+			// Refusals (including an older runtime's 404) need no body. In
+			// particular, never buffer an unbounded JSON/HTML error as an image.
+			if (
+				!response.ok ||
+				!(composite
+					? mime === "image/png"
+					: TEAM_BRIDGE_ATTACHMENT_TYPES.has(mime)) ||
+				!response.body
+			) {
+				/* The composite's transient refusal is a coded JSON envelope, not an
+				 * image. Read ONLY that closed case, bounded like every other error
+				 * body; the consumer branches on detail.code (core review M1), never
+				 * on the status, which also means an unavailable local transport. */
+				let busy = false;
+				if (
+					composite &&
+					response.status === 503 &&
+					response.body &&
+					mime === "application/json"
+				) {
+					const reader = response.body.getReader();
+					let body = "";
+					try {
+						for (;;) {
+							const { done, value } = await reader.read();
+							if (done) break;
+							body += new TextDecoder().decode(value, { stream: true });
+							if (body.length > 16 * 1024) break;
+						}
+						if (body.length <= 16 * 1024) {
+							const envelope: unknown = JSON.parse(body);
+							busy =
+								typeof envelope === "object" &&
+								envelope !== null &&
+								"detail" in envelope &&
+								typeof envelope.detail === "object" &&
+								envelope.detail !== null &&
+								"code" in envelope.detail &&
+								envelope.detail.code === "renderer_busy";
+						}
+					} catch {
+						// A malformed refusal keeps the generic bounded-image failure.
+					} finally {
+						await reader.cancel().catch(() => undefined);
+					}
+				} else {
+					await response.body?.cancel();
+				}
+				return refuse(
+					response.ok ? 502 : response.status,
+					busy ? "renderer_busy" : undefined,
+				);
+			}
+			const limit = composite ? 256 * 1024 : 1024 * 1024;
+			const reader = response.body.getReader();
+			const chunks: Uint8Array[] = [];
+			let length = 0;
+			// Content-Length alone cannot bound a chunked (or dishonest) peer.
+			// Stop reading at the cap rather than allocate then inspect arrayBuffer.
+			try {
+				for (;;) {
+					const { done, value } = await reader.read();
+					if (done) break;
+					length += value.byteLength;
+					if (length > limit) {
+						await reader.cancel();
+						return refuse(502);
+					}
+					chunks.push(value);
+				}
+			} finally {
+				reader.releaseLock();
+			}
+			if (!length) return refuse(502);
+			const data = new Uint8Array(length);
+			let offset = 0;
+			for (const chunk of chunks) {
+				data.set(chunk, offset);
+				offset += chunk.byteLength;
+			}
+			return {
+				response: {
+					kind: "bytes",
+					status: response.status,
+					mimeType: mime,
+					data,
+				},
+				answered: true,
+			};
+		}
 		if (!response.ok) {
 			// Error bodies from the backend already suppress reflected secrets;
 			// still, only a short detail string is forwarded.
@@ -418,8 +757,29 @@ export async function requestDesktopMediaOutcome(
 				answered: true,
 			};
 		}
+		if (
+			request.op === "team_bridge.attachment" &&
+			!TEAM_BRIDGE_ATTACHMENT_TYPES.has(
+				responseType.split(";")[0].trim().toLowerCase(),
+			)
+		) {
+			// A member-gated picture route answering a non-picture is not one of
+			// ours; refuse it before any byte reaches the renderer (see the set).
+			return {
+				response: {
+					status: 502,
+					kind: "error",
+					detail: "The backend returned an unsupported image type.",
+				},
+				answered: true,
+			};
+		}
 		const buffer = new Uint8Array(await response.arrayBuffer());
-		if (buffer.byteLength > MAX_DOWNLOAD_BYTES) {
+		if (
+			buffer.byteLength > MAX_DOWNLOAD_BYTES ||
+			(request.op === "team_bridge.attachment" &&
+				buffer.byteLength > TEAM_BRIDGE_ATTACHMENT_MAX_BYTES)
+		) {
 			return {
 				response: {
 					status: 502,

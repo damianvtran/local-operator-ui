@@ -35,6 +35,21 @@ export interface ContentRect {
 	height: number;
 }
 
+/** The post-layout observation the fourth constructor callback receives.
+ *
+ * Deliberately COPIED (`contentRect` is a fresh object and the fields are
+ * primitives): an observer must not be able to mutate the registry's live
+ * rectangle, and a later pass must not rewrite a snapshot already delivered. */
+export interface LayoutSnapshot {
+	activeTabId: number | null;
+	/** The active tab's own presentation bit after this pass. */
+	presented: boolean;
+	contentRect: ContentRect | null;
+	/** Monotone per registry, so a consumer can tell "another pass" from "a pass
+	 * with the same values" without diffing objects. */
+	revision: number;
+}
+
 export interface TabRecord {
 	/** Host-minted, monotonic, stable for the tab's life. The `<n>` in the
 	 * surface token; the only id either actor is shown. */
@@ -242,13 +257,45 @@ export class TabRegistry {
 	private nextTabId = 1;
 	private activeTabId: number | null = null;
 	private visible = true;
+	/** WHY the view is hidden when it is: the renderer is painting one of the
+	 * browser's OWN state pages (start page, load failure), not an overlay that
+	 * covers the chrome band. Only shortcut ownership reads this. Presentation
+	 * reads `visible` alone, so a state page never makes a native view
+	 * "presented"; and every report overwrites it, so a reason cannot outlive the
+	 * hide it described. */
+	/** Why the view is hidden for the KEYBOARD: true only while the browser's own
+	 * state page is the reason, cleared when an overlay also hides it. */
+	private ownPageReason = false;
+	/** The browser's own content state (start page, failure), independent of any
+	 * overlay also hiding the view. Controls are refused on it. */
+	private ownStateContent = false;
 	private contentRect: ContentRect | null = null;
 	/** Tabs with a command in flight, keyed by tabId. See `lane`. */
 	private readonly busy = new Set<number>();
 	private readonly epochListeners: Array<
 		(tabId: number, epoch: number) => void
 	> = [];
+	/** Monotone count of layout passes, for an observer that needs identity, not
+	 * just values (S1's address overlay). */
+	private layoutRevision = 0;
 
+	/**
+	 * The fourth callback is a post-layout observer, optional and defaulted so
+	 * every existing three-argument construction is unchanged.
+	 *
+	 * WHY IT EXISTS: a native child positioned over a page has to know that the
+	 * presented tab, its presentation bit or the content rectangle moved. Polling
+	 * the registry would read a rectangle that is already stale, and `onChanged`
+	 * is deliberately NOT that signal (`setContentRect` does not call it). The
+	 * snapshot is copied and delivered after every pass — including null and
+	 * suppressed layouts — because "nothing is presented now" is exactly when a
+	 * stale overlay must hide.
+	 *
+	 * WHY IT CANNOT FAIL THE LAYOUT: page geometry is the product's behaviour and
+	 * an observer is infrastructure around it. A throwing observer is swallowed
+	 * here (the controller logs its own failure) so one experimental child can
+	 * never leave pages unlaid-out.
+	 */
 	constructor(
 		private readonly viewFactory: (
 			options: CreateTabOptions,
@@ -256,6 +303,7 @@ export class TabRegistry {
 		) => DriveableView,
 		private readonly onRemove: (tabId: number, webContentsId: number) => void,
 		private readonly onChanged: () => void,
+		private readonly onLayout: (snapshot: LayoutSnapshot) => void = () => {},
 	) {}
 
 	// ---- creation, addressing, listing ---------------------------------------
@@ -366,12 +414,20 @@ export class TabRegistry {
 		return null;
 	}
 
-	/** Native shortcut eligibility needs the main-owned chrome visibility fact,
-	 * not an active page's presentation bit: blank browser chrome still owns
-	 * New tab, while a real blocking overlay must refuse it. Read-only and
-	 * main-internal; no layout behavior or agent projection changes. */
+	/** Whether the browser's chrome band is the presented UI and therefore owns
+	 * the native shortcut keys (Cmd+L/T/R and the rest).
+	 *
+	 * NOT the same fact as "the native view is visible". The browser's own state
+	 * pages - start page, load-failure panel - hide the view ON PURPOSE so their
+	 * DOM can paint (design 11.3), and they are still the browser the user is
+	 * looking at. Reading `visible` alone dropped every chord on those two states,
+	 * and on main's side the press was not even consumed, so the app menu's Reload
+	 * reloaded the whole window. Only an overlay hide, or an unmounted surface (no
+	 * rect), takes the chords away. The native window floor in
+	 * `browserChromeOwnsChord` is untouched: this says whose keys they are, never
+	 * that the window is foreground. */
 	get chromeVisible(): boolean {
-		return this.visible && this.contentRect !== null;
+		return this.contentRect !== null && (this.visible || this.ownPageReason);
 	}
 
 	get activeTab(): TabRecord | null {
@@ -595,10 +651,40 @@ export class TabRegistry {
 	}
 
 	/** Full-window overlays hide the view (design 11.3): a native view paints
-	 * above all DOM, so an overlay is invisible unless the view goes away. */
-	setViewVisible(visible: boolean): void {
+	 * above all DOM, so an overlay is invisible unless the view goes away.
+	 *
+	 * `ownPage` separates the two reasons a hide can have, because they mean
+	 * opposite things for the KEYBOARD: an overlay (dialog, menu, picker) owns it,
+	 * while the browser's own start page / failure panel does not - that surface is
+	 * still the browser, and `chromeVisible` keeps its shortcuts. Normalised
+	 * against `visible` so the invariant held is "a reason only exists while the
+	 * view is hidden", never two facts that disagree. */
+	setViewVisible(
+		visible: boolean,
+		ownPage = false,
+		ownStatePage = ownPage,
+	): void {
 		this.visible = visible;
+		this.ownPageReason = !visible && ownPage;
+		this.ownStateContent = !visible && ownStatePage;
 		this.applyLayout();
+	}
+
+	/**
+	 * Whether an APP OVERLAY (menu, dialog, picker) is what hides this tab's view.
+	 *
+	 * The page is still the active, laid-out tab - our own chrome asked the view to
+	 * stand down so a DOM panel could be seen - and the difference matters to
+	 * `controlPage`: Find/Print/Reset zoom are chrome-initiated commands on the
+	 * page, and "hidden so our menu is visible" must not read as "this tab is
+	 * gone" (QA Q2-F1). A route teardown drops `contentRect` and an own-state page
+	 * (start/failure) sets `ownStateContent`, so neither qualifies — and it stays
+	 * set while an overlay hides the same page (QA Q3-1).
+	 */
+	hiddenByOverlay(tabId: number): boolean {
+		const record = this.tabs.get(tabId);
+		if (!record || record.tabId !== this.activeTabId) return false;
+		return this.contentRect !== null && !this.visible && !this.ownStateContent;
 	}
 
 	activate(tabId: number): void {
@@ -618,6 +704,26 @@ export class TabRegistry {
 				isActive && this.contentRect ? this.contentRect : BACKGROUND_VIEWPORT,
 			);
 			record.view.setVisible(record.presented);
+		}
+		this.layoutRevision += 1;
+		const rect = this.contentRect;
+		try {
+			this.onLayout({
+				activeTabId: this.activeTabId,
+				presented: active?.presented === true,
+				contentRect: rect
+					? {
+							x: rect.x,
+							y: rect.y,
+							width: rect.width,
+							height: rect.height,
+						}
+					: null,
+				revision: this.layoutRevision,
+			});
+		} catch {
+			// An observer must never interrupt page layout. The controller logs its
+			// own failures; this catch is the load-bearing last resort.
 		}
 	}
 

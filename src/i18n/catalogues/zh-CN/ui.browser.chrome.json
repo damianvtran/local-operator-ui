@@ -1,0 +1,16 @@
+{
+	"ui.browser.chrome.approvals": "审批与网站访问",
+	"ui.browser.chrome.error_title": "页面加载失败",
+	"ui.browser.chrome.move_left": "向左移动标签页",
+	"ui.browser.chrome.move_right": "向右移动标签页",
+	"ui.browser.chrome.duplicate": "复制标签页",
+	"ui.browser.chrome.reload": "重新加载标签页",
+	"ui.browser.chrome.scroll_left": "向左滚动标签栏",
+	"ui.browser.chrome.scroll_right": "向右滚动标签栏",
+	"ui.browser.chrome.accessible_tab": "{title}{loading, select, yes{，正在加载} other{}}{failed, select, yes{，加载失败} other{}}{owner, select, agent{，属于智能体} shared{，与智能体共享} other{}}{waiting, select, none{} other{，第{waiting}项请求待处理}}{restored, select, yes{，已恢复} other{}}",
+	"ui.browser.chrome.invalid_order": "浏览器标签页顺序无效。",
+	"ui.browser.chrome.duplicate_refused": "只能复制网页标签页。",
+	"ui.browser.chrome.invalid_action": "浏览器标签页操作无效。",
+	"ui.browser.chrome.tab_gone": "此浏览器标签页已关闭。",
+	"ui.browser.chrome.operation_failed": "{action, select, duplicate{无法复制标签页。可以从标签页菜单中重试。} other{无法重新加载标签页。可以从标签页菜单中重试。}}"
+}

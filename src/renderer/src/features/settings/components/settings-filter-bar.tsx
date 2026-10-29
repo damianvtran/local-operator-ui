@@ -93,7 +93,7 @@ export const SettingsFilterBar: FC<SettingsFilterBarProps> = ({
 				<div className={cn("relative", FIELD_WIDTH)}>
 					<Search
 						size={16}
-						className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-dim"
+						className="pointer-events-none absolute top-1/2 start-3 -translate-y-1/2 text-ink-dim"
 						aria-hidden="true"
 					/>
 					<Input
@@ -115,13 +115,13 @@ export const SettingsFilterBar: FC<SettingsFilterBarProps> = ({
 						aria-label={t(
 							"ui.settings.configuration.settings_filter_bar.search_settings",
 						)}
-						className="pl-9"
+						className="ps-9"
 					/>
 					{query && (
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							className="absolute top-1/2 right-1 -translate-y-1/2"
+							className="absolute top-1/2 end-1 -translate-y-1/2"
 							onClick={() => onQueryChange("")}
 							aria-label={t(
 								"ui.settings.configuration.settings_filter_bar.clear_search",
@@ -172,7 +172,7 @@ export const SettingsFilterBar: FC<SettingsFilterBarProps> = ({
 					</div>
 				</fieldset>
 
-				<div className="ml-auto flex items-center gap-2">
+				<div className="ms-auto flex items-center gap-2">
 					{/* The unsaved state, which is the whole of what changed about the
 				    save model. Both affordances act on every draft the section
 				    holds, including the ones inside a section the reader has

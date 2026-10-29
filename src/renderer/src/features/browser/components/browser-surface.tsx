@@ -6,11 +6,13 @@ import {
 	useSuppressedOverlayIds,
 } from "@shared/browser-view-policy";
 import { Spinner } from "@shared/components/common/spinner";
-import { Button } from "@shared/components/ui";
-import { t } from "@shared/i18n";
+import { Badge, countLabel } from "@shared/components/ui";
+import { Button, Tooltip } from "@shared/components/ui";
+import { currentLocale, resolveLanguage, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
-import { AlertTriangle, Globe, X } from "lucide-react";
+import { AlertTriangle, Globe, ShieldCheck, X } from "lucide-react";
 import type { FC } from "react";
 import {
 	useCallback,
@@ -21,7 +23,10 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { useBrowserChords } from "../hooks/use-browser-chords";
+import {
+	type AddressController,
+	useBrowserChords,
+} from "../hooks/use-browser-chords";
 import {
 	type BrowserTabView,
 	useBrowserChrome,
@@ -31,23 +36,34 @@ import {
 	requestsInScope,
 	useApprovalQueue,
 } from "../model/approval-queue-model";
-import { isStartPageUrl } from "../model/start-page";
+import { browserBridge } from "../model/browser-projection-store";
+import { browserOverlaySuppressing } from "../model/self-suppression";
+import { browserOwnStateFor } from "../model/start-page";
 import {
 	type SurfaceScope,
 	scopeFromKey,
 	scopeKey,
 	tabsInScope,
 } from "../model/tab-index-model";
+import { sessionDisplayName } from "../model/tab-index-model";
+import { useApprovalsDockWidth } from "../model/use-approvals-dock-width";
+import { BrowserApprovalsDialog } from "./browser-approvals-dialog";
 import { BrowserApprovalsDock } from "./browser-approvals-dock";
 import { defaultApprovalHeaderLabel } from "./browser-approvals-tray";
 import { BrowserConsentBar } from "./browser-consent-bar";
+import { requesterLabel } from "./browser-consent-request";
 import { BrowserFileTransferRow } from "./browser-file-transfer-row";
 import { BrowserFindRow } from "./browser-find-row";
 import { BrowserHandOverDialog } from "./browser-hand-over-dialog";
 import { BrowserLoadFailure } from "./browser-load-failure";
 import { BrowserNewTab } from "./browser-new-tab";
+import { BrowserPageMenu } from "./browser-page-menu";
 import { BrowserTabStrip } from "./browser-tab-strip";
-import { BrowserUrlBar } from "./browser-url-bar";
+import {
+	type AddressDismissIntent,
+	type AddressFocusRequest,
+	BrowserUrlBar,
+} from "./browser-url-bar";
 
 /**
  * The browser surface: everything that exists once per host.
@@ -121,6 +137,7 @@ import { BrowserUrlBar } from "./browser-url-bar";
 
 /** The rect in CSS pixels, rounded, because Electron positions a native view in
  * device-independent pixels and a fractional origin shows as a seam. */
+
 function measure(element: HTMLElement): {
 	x: number;
 	y: number;
@@ -209,6 +226,23 @@ export interface BrowserSurfaceProps {
 
 const DEFAULT_APPROVAL_HEADER = defaultApprovalHeaderLabel;
 
+/**
+ * The card's row label. `requesterLabel` deliberately names an unnamed session
+ * in the app's own words ("The agent in an untitled chat"), which leaves two
+ * untitled sessions indistinguishable; two rows then differ only by expiry (U10).
+ * Appending a short session discriminator to THAT fallback is the one piece of
+ * identity left; a named conversation still shows its title and nothing else.
+ */
+function cardRequesterLabel(
+	id: string,
+	sessions: ReadonlyArray<{ session_id: string; title?: string | null }>,
+): string {
+	const label = requesterLabel(id, sessions);
+	return sessionDisplayName(id, sessions) === id
+		? `${label} · ${id.slice(-4)}`
+		: label;
+}
+
 export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	tabScope,
 	requestScope,
@@ -258,9 +292,45 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		: t("ui.browser.browser_surface.new_tab");
 	const suppressed = useBrowserViewSuppressed();
 	const suppressedBy = useSuppressedOverlayIds();
+	/**
+	 * Whether something OTHER than this surface's own state pages is covering the
+	 * content area.
+	 *
+	 * The surface registers in the SAME registry every dialog, menu and tooltip
+	 * uses (that is the point: one policy), but the start page and the failure
+	 * panel are the browser, not an overlay over it. Two consumers need the
+	 * difference: the paused note below (an overlay's note must never hide the
+	 * browser's own panel) and main's shortcut ownership, which is told the reason
+	 * with the hide so Cmd+L/T/R survive those two states. The id list lives in
+	 * `model/self-suppression`, shared with the chord hook that filters the same
+	 * snapshot.
+	 */
+	const overlaySuppressing = browserOverlaySuppressing(suppressedBy);
 	const contentRef = useRef<HTMLDivElement | null>(null);
+	/**
+	 * The row the page and the dock share. Its width decides whether the side
+	 * layout still has room for both; measuring the row (not the viewport) is
+	 * what makes the pane's narrow width behave, including in a wide window.
+	 */
+	const { fullWidth: dockFullWidth, attachDockRow } = useApprovalsDockWidth();
 	const approvalsTriggerRef = useRef<HTMLButtonElement | null>(null);
+	/* The ⋯ trigger: at narrow widths the Approvals control is folded, so the
+	   dock has no shield to return focus to and falls back to the menu it came
+	   from (round-2 Q2-2). */
+	const pageMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
+	/* The DOM dock is the KILL-SWITCH FALLBACK only (S6d): it is mounted when the
+	   host built no native card. With the card available nothing sets this. */
 	const [dockOpen, setDockOpen] = useState(false);
+	/* The Approvals DIALOG (S6d): grants, revoke, revoke all, forget this site and
+	   clear browsing data, for the build whose approvals surface is the native
+	   corner card. A BaseDialog, so the overlay policy already hides the page
+	   while it is up: no page push and no extra native surface. */
+	const [approvalsDialogOpen, setApprovalsDialogOpen] = useState(false);
+
+	/* A menu-opened dock mounts while Radix is still closing; the heading focus is
+	   re-requested once the menu has handed focus back (round 3, U13). */
+	const [dockFocusRequest, setDockFocusRequest] = useState(0);
+
 	/** Which request's card is expanded. View state, defaulting to the attention
 	 * entry and then to the oldest — exactly the band's rule before this feature
 	 * (spec 4.1), never a second copy of main's queue. */
@@ -300,6 +370,98 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	);
 
 	const state = chrome.state;
+	/**
+	 * WHICH SURFACE THE SHIELD DESCRIBES. The native card (S6b) is the product
+	 * path when the launch built it; the DOM dock is the fallback. One boolean
+	 * feeds the button's selected style, aria-expanded and toggle, so the two
+	 * states cannot disagree.
+	 */
+	const nativeApprovalsCard = state?.approvalsCard;
+	const approvalsOpen = nativeApprovalsCard?.available
+		? Boolean(nativeApprovalsCard.open) || approvalsDialogOpen
+		: dockOpen;
+	/*
+	 * THE CARD'S LOCALE FOLLOWS THE APP, INCLUDING WHEN IT AUTO-PRESENTS (U5).
+	 * The renderer is the only side that resolves the locale, so it pushes the
+	 * resolved tag and direction to main whenever the route mounts or the locale
+	 * changes; without this the card rendered in `en` until the first explicit
+	 * open, because only `open()` carried the context.
+	 */
+	const locale = currentLocale();
+	/*
+	 * THE MODE COMES FROM THE APP'S OWN SIGNAL, not from the palette's name (F3):
+	 * nine shipped light palettes (alucard, catppuccinLatte, iceberg,
+	 * kanagawaLotus, linen, paper, rosePineDawn, sage, tokyoNightDay) do not
+	 * contain "light", and the old substring test painted all of them dark. The
+	 * exact palette name travels too, so the card paints in the user's palette
+	 * rather than localOperatorLight/Dark.
+	 */
+	const cardPalette =
+		typeof document !== "undefined"
+			? (document.documentElement.dataset.theme ?? null)
+			: null;
+	const cardTheme =
+		typeof document !== "undefined" &&
+		document.documentElement.classList.contains("dark")
+			? "dark"
+			: "light";
+	/*
+	 * WHO ASKED, resolved by the side that has the session titles (F2). The queue
+	 * carries only `requesterSessionId`; main cannot name a conversation, and the
+	 * queue's `requester` is an authority boundary. The map is memoised on the
+	 * ids so a projection tick with the same queue does not restart the card's
+	 * measurement.
+	 */
+	const requesterIdsKey = (state?.pendingConsent ?? [])
+		.map((row) => row.requesterSessionId ?? "")
+		.filter(Boolean)
+		.join("|");
+	const requesterLabels = useMemo(() => {
+		// The labels are catalogue text; touching the locale makes a language
+		// switch invalidate this map (requesterLabel has no locale parameter).
+		void locale;
+		const labels: Record<string, string> = {};
+		for (const id of requesterIdsKey.split("|")) {
+			if (id && !labels[id]) labels[id] = cardRequesterLabel(id, sessions);
+		}
+		return labels;
+		// `locale` is a dependency because `requesterLabel` formats through the
+		// catalogue: a language switch must relabel the map, not only re-push it.
+	}, [requesterIdsKey, sessions, locale]);
+	useEffect(() => {
+		if (!nativeApprovalsCard?.available) return;
+		void window.api?.browser.setApprovalsCardContext({
+			locale,
+			dir: resolveLanguage(locale).dir,
+			theme: cardTheme,
+			palette: cardPalette,
+			requesterLabels,
+		});
+	}, [
+		nativeApprovalsCard?.available,
+		locale,
+		cardTheme,
+		cardPalette,
+		requesterLabels,
+	]);
+	/*
+	 * KEYBOARD ENTRY IS THE SHIELD, AND CLOSING MUST GIVE IT BACK (U1). Close and
+	 * Escape focus the page in main; the shield is app DOM, not page content, so
+	 * the trigger button is focused here on the true→false transition. Without
+	 * this a keyboard user who opened the card had no way back into the chrome.
+	 */
+	const cardWasOpen = useRef(false);
+	useEffect(() => {
+		const isOpen = Boolean(nativeApprovalsCard?.open);
+		if (cardWasOpen.current && !isOpen) {
+			// At a folded row (< 300px) the toolbar control is not mounted and the
+			// card was reached from the page menu: fall back to that trigger so the
+			// close never drops to <body> (U2).
+			(approvalsTriggerRef.current ?? pageMenuTriggerRef.current)?.focus();
+		}
+		cardWasOpen.current = isOpen;
+	}, [nativeApprovalsCard?.open]);
+
 	// The scope filter, applied to the projection the strip, the URL bar and the
 	// waiting chips all read. `state?.tabs` is a fresh array per projection, so the
 	// filter is memoised on it rather than on `state`.
@@ -311,12 +473,130 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	const activeTab =
 		tabs.find((tab) => tab.tabId === state?.activeTabId) ?? null;
 	const addressRef = useRef<HTMLInputElement>(null);
+	/**
+	 * THE PERMANENT ROW'S FOCUS DOOR (S5).
+	 *
+	 * There is no second placement and no "raise": the field is always mounted, so
+	 * every entry point (Cmd+L, a printable seed, the start page's mount) asks the
+	 * row to take focus with a NONCE. `returnTo` is the origin of that request, and
+	 * it is what decides where Escape/Enter hand focus back.
+	 */
+	const [focusRequest, setFocusRequest] = useState<AddressFocusRequest | null>(
+		null,
+	);
+	const focusNonce = useRef(0);
+	const returnTo = useRef<"page" | "chrome">("chrome");
+	/** The row's box: the anchor the native suggestion child hangs from, and the
+	 * width that decides which controls fold into the overflow menu. */
+	const rowRef = useRef<HTMLDivElement | null>(null);
+	const [anchor, setAnchor] = useState<{ x: number; width: number } | null>(
+		null,
+	);
+	const [rowWidth, setRowWidth] = useState(0);
+
+	/*
+	 * ONE OWN-STATE FACT, TWO CONSUMERS (convergence round). The page menu and the
+	 * chord hook must agree on "this tab has no page to control": a start
+	 * projection (`""` included), a settled `about:blank`, or a failed load. In
+	 * particular `about:blank` while a submitted navigation is loading is NOT
+	 * own-state — the menu is enabled there, so the chords must be too.
+	 */
+	const navFailure = state?.navFailure ?? null;
+	const onStartPage = browserOwnStateFor(activeTab, chrome.pendingUrl);
+	const browserOwnState = onStartPage || navFailure !== null;
+
+	const chordRootRef = useRef<HTMLDivElement | null>(null);
+	/**
+	 * WHERE A DISMISSED EDIT HANDS FOCUS BACK.
+	 *
+	 * Escape and Enter on an untouched seed are a return to the PAGE whenever one
+	 * is presented (operator report, 2026-10-24): the field took the caret from
+	 * the page it was editing, and the request's origin cannot answer where it
+	 * belongs afterwards — a click into the field records `chrome` even with a
+	 * page right below it, which parked a keyboard user on the chord root behind
+	 * the page. The own-state test is the page fact, not the origin: a start page,
+	 * a settled `about:blank` or a failed load has nothing to type into, so the
+	 * chord root is still right. A committed navigation keeps the request-origin
+	 * rule; a main-decided dismissal never reaches this callback, because main
+	 * (or the press) has already put focus where it belongs. */
+	const returnBrowserFocus = useCallback(
+		(intent?: AddressDismissIntent) => {
+			if (intent === "escape" || intent === "cancel") {
+				if (browserOwnState) {
+					chordRootRef.current?.focus({ preventScroll: true });
+					return;
+				}
+				void browserBridge()
+					?.focusPage()
+					.catch(() => {});
+				return;
+			}
+			if (returnTo.current === "page") {
+				void browserBridge()
+					?.focusPage()
+					.catch(() => {});
+				return;
+			}
+			chordRootRef.current?.focus({ preventScroll: true });
+		},
+		[browserOwnState],
+	);
+
+	const raiseAddress = useCallback(
+		(options?: { origin?: "page" | "chrome"; seed?: string }) => {
+			returnTo.current = options?.origin ?? "chrome";
+			focusNonce.current += 1;
+			setFocusRequest({
+				nonce: focusNonce.current,
+				seed: options?.seed,
+				selectAll: options?.seed === undefined,
+			});
+		},
+		[],
+	);
+
+	const addressController = useRef<AddressController>({
+		raise: raiseAddress,
+	});
+	addressController.current = {
+		raise: raiseAddress,
+	};
+
 	const {
 		root: chordRoot,
 		closeTab,
 		findReturnToPage,
 		openFind,
-	} = useBrowserChords(chrome, tabs, hostSessionId, addressRef);
+	} = useBrowserChords(
+		chrome,
+		tabs,
+		hostSessionId,
+		addressController,
+		browserOwnState,
+	);
+
+	// The ROW's own band, remeasured on anything that can move it: the child list
+	// is positioned by main from this anchor, and a stale width would paint it
+	// under the wrong part of the row. The same measurement feeds the fold tiers
+	// (Home at <360, Forward at <300), so the menu can never show a duplicate of a
+	// control the row is currently painting.
+	useLayoutEffect(() => {
+		const element = rowRef.current;
+		if (!element) return;
+		const measureAnchor = (): void => {
+			const rect = element.getBoundingClientRect();
+			setAnchor({ x: Math.round(rect.left), width: Math.round(rect.width) });
+			setRowWidth(Math.round(rect.width));
+		};
+		measureAnchor();
+		const observer = new ResizeObserver(measureAnchor);
+		observer.observe(element);
+		window.addEventListener("resize", measureAnchor);
+		return () => {
+			observer.disconnect();
+			window.removeEventListener("resize", measureAnchor);
+		};
+	}, []);
 
 	// THE ONE CLOCK (spec 3.3). The queue model owns the 1s interval and the
 	// ordinal, so the tray, the dock, the tab chips and the badge cannot disagree.
@@ -361,16 +641,6 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			chrome.setContentRect(null);
 		};
 	}, [chrome.setContentRect]);
-
-	// ---- the overlay policy -------------------------------------------------
-	// One boolean → one IPC call → `setVisible(false)` on open and `(true)` on
-	// close (design 11.3). The strip and the URL bar are outside the view's rect,
-	// so they stay painted and the screen never looks empty. The approvals dock is
-	// deliberately NOT part of this: it narrows the content rect instead, which is
-	// the whole reason the queue lives in a dock rather than a sheet (spec §2).
-	useEffect(() => {
-		chrome.setViewVisible(!suppressed);
-	}, [chrome.setViewVisible, suppressed]);
 
 	// A banner click names the pending request; the band is already rendering it,
 	// so the only job here is to make sure this surface is showing current state.
@@ -461,16 +731,105 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		if (bandShowing || !wasShowing) return;
 		if (dockOpen) return;
 		if (document.activeElement !== document.body) return;
-		approvalsTriggerRef.current?.focus();
+		(approvalsTriggerRef.current ?? pageMenuTriggerRef.current)?.focus();
 	}, [bandShowing, dockOpen]);
+
+	/*
+	 * ANNOUNCE A NEW REQUEST WHEN THE CARD IS THE SURFACE (U4). The band this
+	 * replaces carried `aria-live="polite"` because it appears without the user's
+	 * action; with the native card the band is not mounted, the toolbar badge is
+	 * `aria-hidden` and the card document is a separate native view, so nothing in
+	 * the app renderer told a screen-reader user that an agent was waiting. This
+	 * visually hidden status says it with the existing toolbar-control sentence (no
+	 * new copy). Only an increase is an arrival: decreases clear the status without
+	 * replacing it with another positive count. The toolbar still carries the live
+	 * count; announcing 2 -> 1 here would repeat a dismissal as new work (Q2-2).
+	 * The region is always mounted, empty
+	 * first: a live region inserted already holding text is not reliably announced.
+	 */
+	const [approvalsAnnouncement, setApprovalsAnnouncement] = useState("");
+	const lastAnnouncedCount = useRef(0);
+	useEffect(() => {
+		const previous = lastAnnouncedCount.current;
+		lastAnnouncedCount.current = queue.count;
+		if (!nativeApprovalsCard?.available || queue.count === previous) return;
+		setApprovalsAnnouncement(
+			queue.count > previous
+				? t("ui.browser.browser_url_bar.approvals_waiting", {
+						count: queue.count,
+					})
+				: "",
+		);
+	}, [queue.count, nativeApprovalsCard?.available]);
 
 	const closeDock = useCallback(() => {
 		setDockOpen(false);
 		// Escape and the close button both return focus to the control that opened
 		// the dock (spec 4.2's keyboard contract), so a keyboard user is not dropped
 		// at the top of the document.
-		approvalsTriggerRef.current?.focus();
+		(approvalsTriggerRef.current ?? pageMenuTriggerRef.current)?.focus();
 	}, []);
+
+	/*
+	 * THE APPROVALS ROUTE, one rule for both entry points (S6d).
+	 *
+	 * With the native card available the toolbar control is the card's explicit
+	 * open WHEN THERE IS SOMETHING TO DECIDE, and the Approvals dialog otherwise:
+	 * a control that toggled an empty (hidden) card would be a dead button, and the
+	 * grants have no other toolbar home. The page menu always opens the dialog, so
+	 * grants stay reachable while requests are pending (the card does not list
+	 * them). Without the card (the kill switch, or a post-construction child
+	 * failure) it is the dock toggle it always was. `queue.count` is the
+	 * expiry-aware renderer count, the same number the badge shows, so the control
+	 * and its badge cannot disagree about "nothing is pending".
+	 *
+	 * Returns whether the request left a PANEL that wants the keyboard (the dock),
+	 * which the page menu reads to decide whether Radix may return focus to its
+	 * trigger. The card and the dialog manage their own focus, so they return
+	 * false.
+	 */
+	const openApprovalsRoute = useCallback(
+		(source: "toolbar" | "menu"): boolean => {
+			if (!nativeApprovalsCard?.available) {
+				const opening = !dockOpen;
+				setDockOpen(opening);
+				return opening;
+			}
+			if (source === "toolbar" && queue.count > 0) {
+				if (nativeApprovalsCard.open) {
+					void window.api?.browser.closeApprovalsCard();
+					return false;
+				}
+				const cardLocale = currentLocale();
+				void window.api?.browser.openApprovalsCard({
+					locale: cardLocale,
+					dir: resolveLanguage(cardLocale).dir,
+				});
+				return false;
+			}
+			setApprovalsDialogOpen(true);
+			// The page menu reads `true` as "a panel took focus, decline Radix's
+			// return to the trigger". A dialog is not that panel: it traps focus
+			// itself, and on close it names the control to return to
+			// (`returnFocusTo`). Radix's own return goes to the menu item, which
+			// unmounts with the menu, so the dialog does not rely on it (U2).
+			return false;
+		},
+		[
+			nativeApprovalsCard?.available,
+			nativeApprovalsCard?.open,
+			queue.count,
+			dockOpen,
+		],
+	);
+
+	/* A card that disappears (a post-construction child failure pushes
+	   `available: false`) takes the dialog's route with it: the dock fallback
+	   owns grants again, and a stale `true` must not reopen the dialog if the
+	   card ever returns. */
+	useEffect(() => {
+		if (!nativeApprovalsCard?.available) setApprovalsDialogOpen(false);
+	}, [nativeApprovalsCard?.available]);
 
 	const currentOrigin = activeTab ? originOfUrl(activeTab.url) : null;
 	// A failed load leaves Chromium's own surface in the view - blank, because
@@ -478,8 +837,6 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	// view has to go away for this panel to be visible at all (design 11.3). That is
 	// the same hide-and-restore lever the overlay policy uses; the id says which
 	// reason applied, so a paused page is never mistaken for a broken one.
-	const navFailure = state?.navFailure ?? null;
-	const suppressionIds = suppressedBy ? suppressedBy.split(",") : [];
 	// WHICH OF THE TWO EXPLANATIONS THE USER GETS WHEN BOTH ARE TRUE.
 	//
 	// A dialog can be open over a tab whose last load failed, and the two states say
@@ -490,22 +847,11 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	// panel. Letting the panel win instead left "close it to bring the page back"
 	// unreachable in exactly the state it was written for.
 	//
-	// `SELF_SUPPRESSION_IDS` is every registration THIS component makes. It is a
-	// list rather than one prefix because the start page (LOH-13 slice B) is a
-	// second one: its registration is in `suppressedBy` for exactly as long as the
-	// failure's is, so a filter that only knew the failure's prefix would read the
-	// start page's own registration as an overlay and hide the start page - which
-	// is what shipped in this slice's first cut, caught by reading the interstitial
-	// frame rather than the markup.
-	const SELF_SUPPRESSION_IDS = [
-		"browser-load-failure:",
-		// The start page's own registration (see the block below): listed here so it
-		// is not read as an overlay that hides the page it registers for.
-		"browser-start-page:",
-	];
-	const overlaySuppressing = suppressionIds.some(
-		(id) => id && !SELF_SUPPRESSION_IDS.some((prefix) => id.startsWith(prefix)),
-	);
+	// `overlaySuppressing` (above) is the filter, and it must stay one: every
+	// registration THIS component makes is the browser itself, so a filter that
+	// read one of them as "a dialog is open" would hide the state it registers for.
+	// The list lives in `model/self-suppression` because the chord hook needs the
+	// same answer; a second copy here is the drift that module prevents.
 	const showingFailure =
 		navFailure !== null &&
 		state !== null &&
@@ -514,7 +860,11 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	// Registered for the failure whether or not the panel is the thing on screen:
 	// while an overlay is up the view is hidden anyway, and releasing the
 	// registration behind a dialog would restore a blank Chromium surface over it.
-	useSuppressBrowserView(navFailure !== null, "browser-load-failure");
+	useSuppressBrowserView(
+		navFailure !== null,
+		"browser-state",
+		"browser-load-failure",
+	);
 
 	// THE START PAGE (LOH-13 slice B). A fresh or Home-returned tab sits on
 	// `about:blank`, whose native surface is a bare blank rectangle with no
@@ -535,11 +885,15 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	// landed non-blank url, it stayed set with the tab back on `about:blank`, so the
 	// start page was suppressed for good behind a blank view. Two things changed and
 	// make the term correct rather than dangerous. First, the note is RELEASED when
-	// an attempt is refused (`navigate` in the hook) and when a read shows the start
-	// state with nothing in flight (`refresh`) — so it can no longer outlive its
-	// attempt. Second, it is KEYED to the tab that made it (F3), so the hook only
-	// reports it for the active tab, and neither the round-2 leak across tabs nor a
-	// fresh tab reading another tab's state is possible.
+	// an attempt is refused (`navigate` in the hook), when a read lands a non-blank
+	// page for that same tab (`refresh`), and by the explicit `home`/`stop`
+	// controls — so it can no longer outlive its attempt. A start-state read
+	// deliberately does NOT release it: an accepted navigate looks identical to an
+	// idle start state until main pushes `did-start-loading`, so releasing there
+	// would clear a legitimate submit (F4). Second, it is KEYED to the tab that
+	// made it (F3), so the hook only reports it for the active tab, and neither the
+	// round-2 leak across tabs nor a fresh tab reading another tab's state is
+	// possible.
 	//
 	// WHY IT IS NEEDED AT ALL (F4). Without it the start page lingered over an
 	// ACCEPTED navigation for the window between the user's submit and main's own
@@ -547,13 +901,72 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	// `loading:false` for that tab, so a page the user had just launched was
 	// painted over by the start surface. The note is set synchronously on submit, so
 	// it closes exactly that window.
-	const onStartPage =
-		activeTab !== null &&
-		isStartPageUrl(activeTab.url) &&
-		!activeTab.loading &&
-		!chrome.pendingUrl;
+	// `onStartPage` is derived above with `browserOwnState`, so the row's menu and
+	// the chord hook cannot disagree about which tabs have a page to control.
 	const showingNewTab =
 		onStartPage && navFailure === null && !overlaySuppressing;
+
+	// ---- the overlay policy -------------------------------------------------
+	// One boolean → one IPC call → `setVisible(false)` on open and `(true)` on
+	// close (design 11.3). The strip and the URL bar are outside the view's rect,
+	// so they stay painted and the screen never looks empty. The approvals dock is
+	// deliberately NOT part of this: it narrows the content rect instead, which is
+	// the whole reason the queue lives in a dock rather than a sheet (spec §2).
+	//
+	// `ownPage` is the reason half: the view is hidden EITHER so an overlay can
+	// paint OR so the browser's own start/failure state can. It is a property of
+	// the STATE, not of `overlaySuppressing` — an overlay opened ON the start page
+	// is still a start page, and main must keep refusing page controls there
+	// (QA Q3-1: deriving it from the overlay filter turned the own-state refusal
+	// off the moment the ⋯ menu opened).
+	useEffect(() => {
+		chrome.setViewVisible(
+			!suppressed,
+			suppressed && !overlaySuppressing,
+			suppressed && browserOwnState,
+		);
+	}, [chrome.setViewVisible, suppressed, overlaySuppressing, browserOwnState]);
+
+	const overlayHealth = state?.addressOverlay;
+	const overlayMode: "popout" | "suspend" =
+		overlayHealth?.mode === "popout" ? "popout" : "suspend";
+
+	/*
+	 * THE START PAGE HAS ONE FIELD NOW (S5, ruling 2). It used to centre its own
+	 * input and Go button because the omnibox was hidden at rest. With a permanent
+	 * row those would be two address fields for one value, so the row takes focus
+	 * when the start state becomes current — a new tab, a Home press, a closed
+	 * tab's replacement — and it is seeded from `refusedUrl` when a navigation was
+	 * refused, which is the same "keep the address to correct" contract the start
+	 * page's own field used to carry.
+	 *
+	 * The effect is armed on the TRANSITION into the start state, not on every
+	 * render: a user who tabs away from the row to read the page must not have
+	 * focus pulled back. A later refused URL re-seeds once per distinct value.
+	 */
+	const startFocusArmed = useRef(false);
+	const lastRefusedSeed = useRef<string | null>(null);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the transition and the refused address are the triggers.
+	useEffect(() => {
+		/* KEYED ON `onStartPage`, NOT `showingNewTab` (round-1 MINOR-1): the latter
+		   also drops while an overlay suppresses the view, so closing any dialog on a
+		   new tab pulled focus into the row a second time. The start STATE did not
+		   change when the dialog opened, and it must not re-arm when it closes. */
+		if (!onStartPage) {
+			startFocusArmed.current = false;
+			lastRefusedSeed.current = null;
+			return;
+		}
+		const seed = chrome.refusedUrl ?? undefined;
+		if (
+			startFocusArmed.current &&
+			(seed === undefined || seed === lastRefusedSeed.current)
+		)
+			return;
+		startFocusArmed.current = true;
+		lastRefusedSeed.current = seed ?? null;
+		raiseAddress({ origin: "chrome", seed });
+	}, [onStartPage, chrome.refusedUrl]);
 	/*
 	 * WHETHER THE OPAQUE WEBVIEW IS WHAT THE BARS SIT ABOVE. Window glass keys the
 	 * route host's paint on this: with a live page the chrome band and the native
@@ -563,7 +976,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	 */
 	const glassLivePage =
 		navFailure === null && !onStartPage && state?.activeTabId != null;
-	useSuppressBrowserView(onStartPage, "browser-start-page");
+	useSuppressBrowserView(onStartPage, "browser-state", "browser-start-page");
 
 	// A reachable IPC bridge is not a ready browser. In particular, startup's
 	// empty projection must not offer New tab or claim the saved tabs are gone.
@@ -632,7 +1045,10 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		   conversation's, and the strip/client area above and below are continuous
 		   with it. */
 		<div
-			ref={chordRoot}
+			ref={(node) => {
+				chordRoot(node);
+				chordRootRef.current = node;
+			}}
 			// A programmatic rest-stop, not a control (UX U9): the keyboard close parks
 			// focus here so the chord keeps its owner when the closing tab button
 			// unmounts. `outline-none!` because Chromium counts a scripted `.focus()`
@@ -643,7 +1059,22 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			// `outline-none` exactly when "focus is moved there programmatically and a
 			// ring would be noise". Every focusable CHILD keeps its own ring.
 			tabIndex={-1}
-			className="flex h-full min-h-0 flex-col bg-elevated outline-none!"
+			/*
+			 * THE ROUTE HOST IS A FULL-HEIGHT PANEL and the pane host is not. On the
+			 * route the pane's ground reaches y0 (`panel-flush` cancels the shell's
+			 * ordinary-content pad). Its chrome child owns the titlebar clearance so
+			 * the reserved lane, tab track and permanent address row share one paint
+			 * owner instead of exposing the pane ground above the tab track. In the
+			 * slot the enclosing `browser-pane.tsx` column already pads from y0, so
+			 * `h-full` is right and a second pad here would double it. Both hosts stay
+			 * `relative` so the surface's own absolutes never escape to an unrelated
+			 * ancestor.
+			 */
+			className={
+				isRoutePage
+					? "panel-flush relative flex min-h-0 flex-1 flex-col bg-elevated outline-none!"
+					: "relative flex h-full min-h-0 flex-col bg-elevated outline-none!"
+			}
 			/* The pane ground of the Browser ROUTE (inside the pane slot the enclosing
 			   `pane` region already owns the alpha and this one is cleared as nested).
 			   `data-glass-split` only on the route host: nothing may paint beneath the
@@ -653,80 +1084,185 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			data-glass-chrome-live={isRoutePage && glassLivePage ? "" : undefined}
 			data-tour-tag={surfaceTag}
 		>
-			{/* THE STRIP CONSUMES THESE TWO HANDS, so they are passed through rather than
+			{/* ROUTE CHROME IS ONE OWNER: S5's permanent address row belongs in the
+			    same band as the strip, and the titlebar clearance must paint on that
+			    band rather than on the elevated pane. In a pane the enclosing column
+			    already owns the pad and alpha, so this wrapper adds neither. */}
+			<div
+				className={isRoutePage ? "panel-top-pad bg-sunken" : undefined}
+				data-glass-region={isRoutePage ? "chrome" : undefined}
+				data-browser-route-chrome={isRoutePage ? "" : undefined}
+			>
+				{/* THE STRIP CONSUMES THESE TWO HANDS, so they are passed through rather than
 			    `void`-ed: a close's own outcome is what bounds its caret restore (review
 			    round 2, A-2), and discarding it here would leave the one caller that needs
 			    the answer with nothing to read. Every other chrome call stays fired-and-
 			    forgotten, which is what `void` says. */}
-			<BrowserTabStrip
-				tabPanelId={tabPanelId}
-				tabs={tabs}
-				sessions={sessions}
-				activeTabId={state?.activeTabId ?? null}
-				waiting={queue.waiting}
-				onActivate={(tabId) => void chrome.activateTab(tabId)}
-				onClose={closeTab}
-				onCloseTabs={(intent) => chrome.closeTabs(intent)}
-				onNewTab={() => void chrome.newTab(hostSessionId)}
-				onReorder={(ids) => chrome.reorderTabs(ids)}
-				onTabAction={(id, action) => {
-					void chrome.actOnTab(id, action).then((outcome) => {
-						// A failed navigation still retains an active plain-user copy. Reveal
-						// an actual destination, never a refusal that created none; do not
-						// copy conversation association just to make the failure inspectable.
-						if (
-							outcome?.tabId != null &&
-							action === "duplicate" &&
-							tabScope !== "all"
-						)
-							onShowAllTabs?.();
-					});
-				}}
-				newTabLabel={newTabLabel}
-				onHandOver={(tab) => setHandOverTab(tab)}
-				onRevokeHandOver={(tabId) => void chrome.revokeHandOver(tabId)}
-			/>
-			<BrowserUrlBar
-				inputRef={addressRef}
-				tabId={state?.activeTabId ?? null}
-				url={state?.url ?? ""}
-				pendingUrl={chrome.pendingUrl}
-				loading={Boolean(state?.loading)}
-				canGoBack={Boolean(state?.canGoBack)}
-				canGoForward={Boolean(state?.canGoForward)}
-				disabled={tabs.length === 0}
-				onNavigate={(url) => void chrome.navigate(url)}
-				onBack={() => void chrome.history("back")}
-				onForward={() => void chrome.history("forward")}
-				onHome={() => void chrome.home()}
-				loadFailure={state?.navFailure ?? null}
-				onReload={() => void chrome.reload()}
-				onStop={() => void chrome.stop()}
-				onOpenApprovals={() => setDockOpen((open) => !open)}
-				waitingCount={queue.count}
-				triggerRef={approvalsTriggerRef}
-				// The durable route to the download folder (review round 1, U2): main's own path,
-				// present for as long as the host has written one, so the strip's row is free to be
-				// the notification it is meant to be.
-				downloadsDir={chrome.state?.transfers?.dir ?? null}
-				// WHAT THE DURABLE CONTROL SAYS IT OPENS (review round 2, U12): once the row has
-				// retired, this control is the only download-related thing on screen, and a user
-				// who was reading Chat during the transfer had no way in the app to learn that
-				// anything arrived. The newest save and the session count ride the projection,
-				// so the control cannot describe a save the host does not have.
-				downloadsRecent={chrome.state?.transfers?.recent ?? null}
-				onFind={() => void openFind("chrome")}
-				onPrint={() => {
-					if (state?.activeTabId != null)
-						void chrome.pageControl(state.activeTabId, "print");
-				}}
-				pageZoom={state?.pageControls?.zoom ?? 1}
-				onResetZoom={() => {
-					if (state?.activeTabId != null)
-						void chrome.pageControl(state.activeTabId, "reset");
-				}}
-				onOpenDownloads={() => void chrome.revealDownloads()}
-			/>
+				<div className="relative">
+					<BrowserTabStrip
+						tabPanelId={tabPanelId}
+						tabs={tabs}
+						sessions={sessions}
+						activeTabId={state?.activeTabId ?? null}
+						waiting={queue.waiting}
+						onActivate={(tabId) => void chrome.activateTab(tabId)}
+						onClose={closeTab}
+						onCloseTabs={(intent) => chrome.closeTabs(intent)}
+						onNewTab={() => void chrome.newTab(hostSessionId)}
+						onReorder={(ids) => chrome.reorderTabs(ids)}
+						onTabAction={(id, action) => {
+							void chrome.actOnTab(id, action).then((outcome) => {
+								// A failed navigation still retains an active plain-user copy. Reveal
+								// an actual destination, never a refusal that created none; do not
+								// copy conversation association just to make the failure inspectable.
+								if (
+									outcome?.tabId != null &&
+									action === "duplicate" &&
+									tabScope !== "all"
+								)
+									onShowAllTabs?.();
+							});
+						}}
+						newTabLabel={newTabLabel}
+						onHandOver={(tab) => setHandOverTab(tab)}
+						onRevokeHandOver={(tabId) => void chrome.revokeHandOver(tabId)}
+						onShowTabActionsMenu={chrome.showTabActionsMenu}
+					/>
+				</div>
+				{/* THE PERMANENT ADDRESS ROW (S5, LOH-13). One 37px in-flow band
+			    between the strip and the page: Back, Forward, Reload/Stop, Home, the
+			    field with its site mark, the fixed 28px Approvals control and the
+			    overflow menu. `rowRef` is the anchor the native suggestion child hangs
+			    from and the width that decides which controls fold; it replaces
+			    `stripRef` because the row is what the list is attached to now. */}
+				<BrowserUrlBar
+					rootRef={rowRef}
+					inputRef={addressRef}
+					tabId={state?.activeTabId ?? null}
+					url={state?.url ?? ""}
+					pendingUrl={chrome.pendingUrl}
+					loading={Boolean(state?.loading)}
+					canGoBack={Boolean(state?.canGoBack)}
+					canGoForward={Boolean(state?.canGoForward)}
+					disabled={tabs.length === 0}
+					hideForward={rowWidth > 0 && rowWidth < 300}
+					hideHome={rowWidth > 0 && rowWidth < 360}
+					startPage={onStartPage}
+					placeholder={
+						onStartPage
+							? t("ui.browser.browser_new_tab.address_placeholder")
+							: undefined
+					}
+					ownState={browserOwnState}
+					overlayReason={overlayHealth?.reason ?? null}
+					narrow={rowWidth > 0 && rowWidth < 360}
+					onNavigate={(url, expectedTabId) =>
+						void chrome.navigate(url, expectedTabId)
+					}
+					onBack={() => void chrome.history("back")}
+					onForward={() => void chrome.history("forward")}
+					onReload={() => void chrome.reload()}
+					onStop={() => void chrome.stop()}
+					onHome={() => void chrome.home()}
+					loadFailure={state?.navFailure ?? null}
+					overlayMode={overlayMode}
+					anchor={anchor}
+					focusRequest={focusRequest}
+					onDismiss={returnBrowserFocus}
+					onCommitted={returnBrowserFocus}
+					menu={
+						<>
+							{/* APPROVALS IS A FIXED 28px ROW CONTROL (S5 ruling 1 and 7):
+						    mounted with its space reserved, because a control that appears
+						    and disappears would reflow the field every time an agent asked
+						    for a site. Below a 300px row it FOLDS into ⋯ (round-1 D5): the
+						    field would otherwise fall under its text floor, and the menu
+						    item already carries the count. At this width that item is the
+						    ONLY route into a dock whose 25px column is unreadable; that is
+						    deferred to S6 (D11/U17), not fixed by widening here. Its ring
+						    rides the ROW ground,
+						    not `canvas`, or the halo reads as a lighter box against the
+						    strip it overhangs (D6). */}
+							{!(rowWidth > 0 && rowWidth < 300) && (
+								<span className="relative flex shrink-0 items-center">
+									<Tooltip
+										side="top"
+										align="end"
+										content={t("ui.browser.chrome.approvals")}
+									>
+										<Button
+											ref={approvalsTriggerRef}
+											variant={
+												queue.count > 0 || approvalsOpen ? "outline" : "ghost"
+											}
+											size="icon-sm"
+											className={approvalsOpen ? "bg-row-selected" : undefined}
+											onClick={() => openApprovalsRoute("toolbar")}
+											aria-expanded={approvalsOpen}
+											aria-label={
+												queue.count > 0
+													? t("ui.browser.browser_url_bar.approvals_waiting", {
+															count: queue.count,
+														})
+													: t("ui.browser.chrome.approvals")
+											}
+											data-tour-tag="browser-approvals"
+										>
+											<ShieldCheck aria-hidden className="size-3.5" />
+										</Button>
+									</Tooltip>
+									{queue.count > 0 && (
+										<span className="pointer-events-none absolute -top-0.5 -right-0.5">
+											{/* 2px per side: half the 4px gap above the control, so the
+										    badge's 2px ring stays inside the row (D6b). */}
+											<Badge
+												variant="attention"
+												shape="pill"
+												size="count"
+												className="ring-2 ring-elevated"
+												aria-hidden="true"
+												data-tour-tag="browser-approvals-badge"
+											>
+												{countLabel(queue.count, 99)}
+											</Badge>
+										</span>
+									)}
+								</span>
+							)}
+							<BrowserPageMenu
+								disabled={tabs.length === 0}
+								canGoForward={Boolean(state?.canGoForward)}
+								pageZoom={state?.pageControls?.zoom ?? 1}
+								waitingCount={queue.count}
+								downloadsDir={chrome.state?.transfers?.dir ?? null}
+								showForward={rowWidth > 0 && rowWidth < 300}
+								showHome={rowWidth > 0 && rowWidth < 360}
+								onForward={() => void chrome.history("forward")}
+								onHome={() => void chrome.home()}
+								onFind={() => void openFind("chrome")}
+								onPrint={() => {
+									if (state?.activeTabId != null)
+										void chrome.pageControl(state.activeTabId, "print");
+								}}
+								onResetZoom={() => {
+									if (state?.activeTabId != null)
+										void chrome.pageControl(state.activeTabId, "reset");
+								}}
+								onOpenDownloads={() => void chrome.revealDownloads()}
+								onOpenApprovals={() => openApprovalsRoute("menu")}
+								onDockOpened={() => setDockFocusRequest((n) => n + 1)}
+								triggerRef={pageMenuTriggerRef}
+								showApprovalsFolded={rowWidth > 0 && rowWidth < 300}
+								canControlPage={!browserOwnState && activeTab !== null}
+							/>
+						</>
+					}
+					// Suggestions are one list for the field: persistent history is
+					// session-agnostic, so there is no display scope to pass.
+					addressHistory={(request) => chrome.addressHistory(request)}
+					onStateChanged={chrome.onStateChanged}
+				/>
+			</div>
 			<BrowserFindRow chrome={chrome} returnToPage={findReturnToPage} />
 			{state?.pageControls?.notice && (
 				<output
@@ -764,28 +1300,40 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						: t("ui.browser.browser_surface.on_another_tab");
 				}}
 			/>
+			{nativeApprovalsCard?.available && (
+				<output
+					aria-live="polite"
+					className="sr-only"
+					data-tour-tag="browser-approvals-announcer"
+				>
+					{approvalsAnnouncement}
+				</output>
+			)}
 			{/* The band renders while there is anything to say: a live request, or a
 			    resolved row the user is still reading (spec 3.4's bounded memory). One
 			    pending request and no resolved rows is the common case and the tray then
 			    renders the card alone, which is the band the user already knows. */}
-			{(queue.rows.length > 0 || queue.resolved.length > 0) && (
-				// `aria-live` because this band appears without the user's action: the
-				// agent navigated, and the prompt must be announced rather than merely
-				// painted (design 9.2's whole reason for the bar).
-				<div aria-live="polite">
-					<BrowserConsentBar
-						rows={queue.rows}
-						resolved={queue.resolved}
-						selectedEntryId={selectedRow?.request.entryId ?? null}
-						onSelect={setSelectedEntryId}
-						busy={busy}
-						onDecide={decide}
-						dockOpen={dockOpen}
-						onToggleDock={() => setDockOpen((open) => !open)}
-						headerLabel={approvalHeaderLabel}
-					/>
-				</div>
-			)}
+			{/* The band is the kill-switch FALLBACK (S6d): with the native card it is
+			    not mounted at all, so nothing pushes the page down. */}
+			{!nativeApprovalsCard?.available &&
+				(queue.rows.length > 0 || queue.resolved.length > 0) && (
+					// `aria-live` because this band appears without the user's action: the
+					// agent navigated, and the prompt must be announced rather than merely
+					// painted (design 9.2's whole reason for the bar).
+					<div aria-live="polite">
+						<BrowserConsentBar
+							rows={queue.rows}
+							resolved={queue.resolved}
+							selectedEntryId={selectedRow?.request.entryId ?? null}
+							onSelect={setSelectedEntryId}
+							busy={busy}
+							onDecide={decide}
+							dockOpen={dockOpen}
+							onToggleDock={() => setDockOpen((open) => !open)}
+							headerLabel={approvalHeaderLabel}
+						/>
+					</div>
+				)}
 			{chrome.error && (
 				<output
 					className="flex items-center gap-2 border-control border-b bg-danger-wash px-3 py-1.5"
@@ -811,7 +1359,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			    dock opens. That is the design's whole point (`spec 2`): a native view
 			    cannot be CSS-scaled or overlaid, so the dock is in flow, and the
 			    `ResizeObserver` above re-reports on the same frame. */}
-			<div className="flex min-h-0 grow">
+			<div className="flex min-h-0 grow" ref={attachDockRow}>
 				{/* The content rect. The native view paints ABOVE this element, so
 				    everything below is visible only while the view is hidden — which is
 				    exactly why the treatment is a page title and one line rather than a
@@ -830,7 +1378,13 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 					/* The viewport host: the native page view paints over it, so its own
 					   ground is cleared and the pane above owns the alpha. */
 					data-glass-region="pane-leaf"
-					className="relative min-h-0 min-w-0 grow bg-elevated"
+					className={cn(
+						"relative min-h-0 min-w-0 grow bg-elevated",
+						// At full width the content is displaced to zero: clip its own
+						// states so a centered empty/failure message cannot paint over the
+						// panel that displaced it. The panel is in flow, not on top.
+						dockFullWidth && "overflow-hidden",
+					)}
 					data-tour-tag="browser-content"
 					id={tabPanelId}
 					role="tabpanel"
@@ -975,11 +1529,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						 * component, so each tab gets its own field seeded from its own
 						 * `refusedUrl` (which is itself already filtered to the active tab).
 						 */
-						<BrowserNewTab
-							key={activeTab?.tabId ?? "none"}
-							restoreAddress={chrome.refusedUrl}
-							onNavigate={(url) => void chrome.navigate(url)}
-						/>
+						<BrowserNewTab key={activeTab?.tabId ?? "none"} />
 					)}
 					{showingFailure && navFailure && (
 						<BrowserLoadFailure
@@ -988,28 +1538,63 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						/>
 					)}
 				</div>
-				<BrowserApprovalsDock
-					open={dockOpen}
-					rows={queue.rows}
-					resolved={queue.resolved}
-					selectedEntryId={pendingSelected?.entryId ?? null}
-					onSelect={setSelectedEntryId}
-					busy={busy}
-					onDecide={decide}
-					approvals={state?.approvals ?? []}
-					currentOrigin={currentOrigin}
-					onRevoke={(origin) =>
-						void runBusy(() => chrome.revokeApproval(origin))
-					}
-					onRevokeAll={() => void runBusy(() => chrome.revokeAllApprovals())}
-					onForgetSite={(origin) =>
-						void runBusy(() => chrome.forgetSite(origin))
-					}
-					onClearData={(what) => void runBusy(() => chrome.clearData(what))}
-					onClose={closeDock}
-					surfaceTag={dockSurfaceTag}
-				/>
+				{/* The dock is the FALLBACK, not a hidden second surface: when the native
+				    card exists this component is not mounted, so no `data-dock-layout`
+				    node and no dock title exist for a test or a user to find. */}
+				{!nativeApprovalsCard?.available && (
+					<BrowserApprovalsDock
+						open={dockOpen}
+						fullWidth={dockFullWidth}
+						focusRequest={dockFocusRequest}
+						rows={queue.rows}
+						resolved={queue.resolved}
+						selectedEntryId={pendingSelected?.entryId ?? null}
+						onSelect={setSelectedEntryId}
+						busy={busy}
+						onDecide={decide}
+						approvals={state?.approvals ?? []}
+						currentOrigin={currentOrigin}
+						onRevoke={(origin) =>
+							void runBusy(() => chrome.revokeApproval(origin))
+						}
+						onRevokeAll={() => void runBusy(() => chrome.revokeAllApprovals())}
+						onForgetSite={(origin) =>
+							void runBusy(() => chrome.forgetSite(origin))
+						}
+						onClearData={(what) => void runBusy(() => chrome.clearData(what))}
+						onClose={closeDock}
+						surfaceTag={dockSurfaceTag}
+					/>
+				)}
 			</div>
+			<BrowserApprovalsDialog
+				open={Boolean(nativeApprovalsCard?.available) && approvalsDialogOpen}
+				onClose={() => {
+					setApprovalsDialogOpen(false);
+				}}
+				waitingCount={queue.count}
+				returnFocusTo={() =>
+					approvalsTriggerRef.current ?? pageMenuTriggerRef.current
+				}
+				onReviewWaiting={() => {
+					// Close first: the dialog hides the page view (and with it the
+					// card), and the open below arms the card's explicit-open latch so
+					// it shows as soon as the page is presented again.
+					setApprovalsDialogOpen(false);
+					const cardLocale = currentLocale();
+					void window.api?.browser.openApprovalsCard({
+						locale: cardLocale,
+						dir: resolveLanguage(cardLocale).dir,
+					});
+				}}
+				approvals={state?.approvals ?? []}
+				currentOrigin={currentOrigin}
+				busy={busy}
+				onRevoke={(origin) => void runBusy(() => chrome.revokeApproval(origin))}
+				onRevokeAll={() => void runBusy(() => chrome.revokeAllApprovals())}
+				onForgetSite={(origin) => void runBusy(() => chrome.forgetSite(origin))}
+				onClearData={(what) => void runBusy(() => chrome.clearData(what))}
+			/>
 			<BrowserHandOverDialog
 				open={handOverTab !== null}
 				tab={handOverTab}

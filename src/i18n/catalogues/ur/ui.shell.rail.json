@@ -1,0 +1,22 @@
+{
+	"ui.shell.rail.ask.aria": "سوالات{chord}، {subject}",
+	"ui.shell.rail.ask.aria_count": "سوالات{chord}، {subject}، {count, plural, one {{countText} منتظر} other {{countText} منتظر}}",
+	"ui.shell.rail.browser.aria": "براؤزر{chord}",
+	"ui.shell.rail.browser.aria_count": "براؤزر{chord}، {count, plural, one {{countText} منتظر} other {{countText} منتظر}}",
+	"ui.shell.rail.browser.tooltip": "{state, select, open {براؤزر بند کریں{chord}} other {براؤزر کھولیں{chord}}}",
+	"ui.shell.rail.browser.tooltip_count": "{state, select, open {براؤزر بند کریں{chord}} other {براؤزر کھولیں{chord}}} — {count, plural, one {{countText} منظوری} other {{countText} منظوریاں}} منتظر",
+	"ui.shell.rail.canvas.aria": "Canvas{chord}",
+	"ui.shell.rail.canvas.aria_count": "Canvas{chord}، {count, plural, one {{countText} فائل} other {{countText} فائلیں}}",
+	"ui.shell.rail.canvas.tooltip": "{state, select, open {Canvas بند کریں{chord}} other {Canvas کھولیں{chord}}}",
+	"ui.shell.rail.canvas.tooltip_count": "{state, select, open {Canvas بند کریں{chord}} other {Canvas کھولیں{chord}}} — {count, plural, one {{countText} فائل} other {{countText} فائلیں}}",
+	"ui.shell.rail.code.aria": "کوڈ کا جائزہ{chord}{mark}",
+	"ui.shell.rail.code.aria_details": "کوڈ کا جائزہ{chord}، {details}{mark}",
+	"ui.shell.rail.code.mentioned": "{count, plural, one {{countText} ذکر شدہ} other {{countText} ذکر شدہ}}",
+	"ui.shell.rail.code.opened": "{count, plural, one {{countText} کھولی گئی} other {{countText} کھولی گئیں}}",
+	"ui.shell.rail.code.tooltip": "{state, select, open {کوڈ کا جائزہ بند کریں{chord}} other {کوڈ کا جائزہ کھولیں{chord}}}{mark}",
+	"ui.shell.rail.code.tooltip_details": "{state, select, open {کوڈ کا جائزہ بند کریں{chord}} other {کوڈ کا جائزہ کھولیں{chord}}} — {details}{mark}",
+	"ui.shell.rail.console.aria": "کنسول{chord}",
+	"ui.shell.rail.console.aria_count": "کنسول{chord}، {count, plural, one {آپ کے دیکھنے کے بعد {countText} مکمل} other {آپ کے دیکھنے کے بعد {countText} مکمل}}",
+	"ui.shell.rail.console.tooltip": "{state, select, open {کنسول بند کریں{chord}} other {کنسول کھولیں{chord}}}",
+	"ui.shell.rail.console.tooltip_count": "{state, select, open {کنسول بند کریں{chord}} other {کنسول کھولیں{chord}}} — {count, plural, one {آپ کے دیکھنے کے بعد {countText} مکمل} other {آپ کے دیکھنے کے بعد {countText} مکمل}}"
+}

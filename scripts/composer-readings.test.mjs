@@ -584,6 +584,48 @@ test("the pane's resolution state is wired to the strip, not merely supported by
 	);
 });
 
+test("a dial this backend cannot carry is SAID on this composer, not only filtered", () => {
+	/*
+	 * Round 3, code minor 2. The round-2 fix strips `fast_mode` at every sender, and
+	 * the whole point of a strip is that it is not silent - F1 rejected the silent
+	 * version. Deleting the pane's effect leaves every suite green, because
+	 * `draft-selection.test.mjs` asserts the CONSTANT's value and never its use.
+	 * These are the use: the sentence on the composer's muted line, the row it is
+	 * about, and the state gate that stops an unanswered probe or a missing pairing
+	 * claiming an update is needed.
+	 */
+	const page = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	);
+	assert.match(
+		page,
+		/draft\?\.model\?\.fast_mode === true[\s\S]{0,160}desktopFeatureState\(capabilities\.data, "draft_fast"\) === "below-version"/,
+		"the line is about a SET dial on a backend that cannot carry it, in the update case only",
+	);
+	assert.match(
+		page,
+		/setSendError\(FAST_UNAVAILABLE_SENTENCE\);[\s\S]{0,160}setSendErrorMuted\(true\);/,
+		"the sentence is said on the composer's muted line, the register for a statement of fact",
+	);
+	/*
+	 * AND IT NAMES ITSELF (QA round 2, Q1). Without a code it is byte-identical to
+	 * the lock answer's shape, and the flight rule cleared it on the next commit -
+	 * the line reached no screen in three QA runs. Both ends of that identity are
+	 * pinned: the pane states the code, and the retirement is TOLD the code.
+	 */
+	assert.match(
+		page,
+		/setSendError\(FAST_UNAVAILABLE_SENTENCE\);[\s\S]{0,160}setSendErrorCode\(FAST_UNAVAILABLE_CODE\);/,
+		"the fast-unavailable line carries its own code, not the lock answer's silence",
+	);
+	assert.match(
+		page,
+		/muted: sendErrorMuted,\s*code: sendErrorCode,/,
+		"the retirement is told which notice it is looking at, so it retires the lock answer only",
+	);
+});
+
 test("a session with no snapshot is still silent, not pending", () => {
 	// The states are the DRAFT's: a session that has not reported has a stream to
 	// report it, and claiming a resolution on its behalf would be a new lie.
@@ -789,18 +831,29 @@ test("the row right-justifies its controls whether or not the readings render", 
 		"the strip must render once; a second render is a second layout to keep in step",
 	);
 
-	// THE BLOCKER: the auto margin is on the group that always renders. `ml-auto`
-	// alone - not `ml-auto` plus a threshold override that hands it to a child
-	// which can return `null`. Three ordinary states null the cluster (no
+	// THE BLOCKER: the auto margin is on the group that always renders. `ms-auto`
+	// alone - not an auto margin plus a threshold override that hands it to a
+	// child which can return `null`. Three ordinary states null the cluster (no
 	// `frontend` yet, nothing known, the error boundary's empty fallback), and in
 	// those states a margin owned by the cluster leaves the row with NONE: the
 	// controls sat flush against the directory chip (round 1, BLOCKER 1).
+	//
+	// AND IT IS LOGICAL (`ms-`, not `ml-`): in an RTL row a physical left margin
+	// puts the row's free space on the far side of this group, where the readings
+	// sit flush against it - measured in the RTL evidence cell as G 2.0 and a
+	// hidden duration before this was fixed.
 	assert.ok(
-		controlsClasses.includes("ml-auto"),
+		controlsClasses.includes("ms-auto"),
 		"the controls group must carry the row's auto margin",
 	);
 	assert.ok(
-		!controlsClasses.some((c) => c.includes("chatcol:ml-")),
+		!controlsClasses.some((c) => c === "ml-auto"),
+		"the margin must be logical; a physical left margin breaks the RTL row's justification",
+	);
+	assert.ok(
+		!controlsClasses.some(
+			(c) => c.includes("chatcol:ml-") || c.includes("chatcol:ms-"),
+		),
 		"the controls' margin must not be conditional on the cluster's presence",
 	);
 	assert.ok(
@@ -906,7 +959,13 @@ test("the inline layout is a PAIRING, and neither half works alone", () => {
 	// painted sequence [attach][chip] [readings] [mic][send] out of a DOM whose
 	// first child is the cluster.
 	assert.match(strip, /"order-2 flex-nowrap"/);
-	assert.match(composer, /className="ml-auto flex order-3 items-center gap-1"/);
+	// The group's one live auto margin is LOGICAL (`ms-auto`, not `ml-auto`): a
+	// physical left margin puts the free space on the far side of the group in an
+	// RTL row, which the RTL evidence cell measures as a 2px gap and a hidden
+	// duration. `margin-inline-start` is the same margin in LTR and the mirrored
+	// one in RTL.
+	assert.match(composer, /className="ms-auto flex order-3 items-center gap-1"/);
+	assert.doesNotMatch(composer, /className="ml-auto flex order-3/);
 
 	// And the left group holds its width. Without this the chip's own `shrink-0`
 	// (which makes the NAME truncate first) let the group close around it, and the
@@ -1128,78 +1187,81 @@ test("a draft renders four fewer claims than a running session: no cost, no dura
 	assert.doesNotMatch(ran, /aria-label="Active time[^"]*"[^>]*aria-disabled/);
 });
 
-test("the narrow ladder sheds duration, then effort, then cost, then context - and nothing else may be shed", () => {
+test("the narrow ladder sheds effort, then cost, then context - the duration is measured, not a rung", () => {
 	const strip = readFileSync(
 		"src/renderer/src/features/chat/session-status/session-status-strip.tsx",
 		"utf8",
 	);
 
 	/*
-	 * THE LADDER (issue #918). Four rungs, in the terminal band's own
-	 * `_DROP_LADDER` order: the active-time reading first (it is the one
-	 * reading re-derivable from the transcript), then effort (a static
-	 * setting), then cost, and context last (the reading the band keeps the
-	 * longest). Each rung sheds below a container threshold, and one step
-	 * earlier while the composer draws a THIRD control box - the state half
-	 * of #788 - because that box costs the row 36px at every width.
+	 * THE LADDER (issue #918), with the duration out of it: effort (a static
+	 * setting) first, then cost, then context last (the reading the band keeps
+	 * the longest, because it predicts the operator's next action). Each rung
+	 * sheds below a container threshold, and one step earlier while the composer
+	 * draws a THIRD control box - the state half of #788 - because that box
+	 * costs the row 36px at every width.
 	 *
 	 * The thresholds are the fit points measured in
-	 * `docs/evidence/composer-readings-shed/` (frames and `numbers.json`),
-	 * each derived rung rounded onto the 5px grid its neighbours sit on and
-	 * clearing its fit by 0.5-8px (so the third-box rung of a pair lands
-	 * 30/35/35px above its two-box twin against the fits' uniform 36px
-	 * step); the class strings carry the ladder, so the values are asserted
-	 * here.
-	 * `hidden`, not `sr-only` - a shed reading does not exist, unlike the
-	 * chip's icon-only text, which is still readable by a screen reader.
+	 * `docs/evidence/composer-readings-shed/` (frames and `numbers.json`), each
+	 * derived rung rounded onto the 5px grid its neighbours sit on and clearing
+	 * its fit by 0.5-8px (so the third-box rung of a pair lands 30/35/35px above
+	 * its two-box twin against the fits' uniform 36px step); the class strings
+	 * carry the ladder, so the values are asserted here.
+	 *
+	 * WHY THE DURATION IS NOT ON IT. Its fit is a function of the readings' own
+	 * text, of the third box, and of `--lo-chat-measure` - which the operator
+	 * can drag, so the SAME 1024px column is a 778px row at the shipped 810px
+	 * cap and an 886px row at their 918px box. A container range can see none of
+	 * those, which is why this reading's visibility is MEASURED (`G >= D + 4`)
+	 * and its absence is asserted below: a rung reappearing here would silently
+	 * restore the breakpoint this change removed.
 	 */
 	assert.match(
 		strip,
-		/controlsThirdBox\s*\n?\s*\?\s*"hidden"\s*\n?\s*:\s*"@max-\[860px\]\/chatcol:hidden"/,
-		"duration is the first rung: shed on the state, and below container 860 at every narrower column (the two-line layout's 750 lower edge is retired)",
-	);
-	assert.match(
-		strip,
 		/controlsThirdBox\s*\n?\s*\?\s*"@max-\[780px\]\/chatcol:hidden"\s*\n?\s*:\s*"@max-\[750px\]\/chatcol:hidden"/,
-		"effort is the second rung, its third-box value 30px above its two-box one (each fit moves 36; the values round onto the 5px grid)",
+		"effort is the first rung, its third-box value 30px above its two-box one (each fit moves 36; the values round onto the 5px grid)",
 	);
 	assert.match(
 		strip,
 		/controlsThirdBox\s*\n?\s*\?\s*"@max-\[740px\]\/chatcol:hidden"\s*\n?\s*:\s*"@max-\[705px\]\/chatcol:hidden"/,
-		"cost is the third rung, same state step",
+		"cost is the second rung, same state step",
 	);
 	assert.match(
 		strip,
 		/controlsThirdBox\s*\n?\s*\?\s*"@max-\[675px\]\/chatcol:hidden"\s*\n?\s*:\s*"@max-\[640px\]\/chatcol:hidden"/,
 		"context is the last rung: when it goes, the row is down to the model alone",
 	);
-	/*
-	 * AND THE STATE'S HALF IS STILL UNCONDITIONAL (issue #788). While the
-	 * composer draws a THIRD box in the controls group - the Stop square, the
-	 * post-stop grace window's reserved slot, or a live recording's - the group
-	 * is 104px where the band was derived against 68, and no container query can
-	 * see a sibling appear, so every rung reads the state as well as the width:
-	 * the bare `hidden` for the duration, and for the three value readings a
-	 * third-box value one state step above its two-box twin - the fits move by
-	 * 36px, the values round onto the 5px grid, so the twins read 30/35/35px
-	 * apart (asserted above). `hidden`, never `sr-only`: a shed
-	 * reading does not exist, and a reading that still exists at zero size keeps
-	 * claiming to a screen reader.
-	 */
-	assert.doesNotMatch(strip, /@max-\[860px\]\/chatcol:sr-only/);
-	assert.doesNotMatch(strip, /chatcol:sr-only/);
 
 	/*
-	 * And the four rungs are the ONLY shed: this is the complete set of
-	 * `chatcol:hidden` strings in the file, so a `hidden` appearing on another
-	 * reading - or a fifth rung smuggled in - fails here. The held cluster's
-	 * mark is the one non-reading in the set: it is hidden below the wrap
-	 * threshold because it is a word, not a value, and the narrow row has width
-	 * only for the readings themselves; the statement survives on the group
-	 * name and the tooltips. The bare `hidden` rungs carry no `chatcol:` and so
-	 * are not part of this set - which is why the state's shed is asserted by
-	 * its own expression above rather than counted here.
+	 * THE DURATION HAS NO CLASS-BASED SHED AT ALL: no state term, no band, no
+	 * `display: none`. It is mounted whenever there is a duration to show, marked
+	 * with `data-lo-duration`, and its visibility is the measured `invisible`.
 	 */
+	const durationStart = strip.indexOf("data-lo-duration={true}");
+	assert.ok(
+		durationStart > 0,
+		"the duration reading must carry its own marker",
+	);
+	const durationBlock = strip.slice(durationStart, durationStart + 1600);
+	assert.doesNotMatch(durationBlock, /controlsThirdBox/);
+	assert.doesNotMatch(durationBlock, /chatcol:hidden/);
+	assert.doesNotMatch(durationBlock, /\bhidden\b/);
+	assert.match(
+		durationBlock,
+		/!durationFits && "invisible"/,
+		"the only shed the reading has is the measured visibility",
+	);
+
+	/*
+	 * And the three rungs are the ONLY range-hidden readings: this is the
+	 * complete set of `chatcol:hidden` strings in the file, so a `hidden`
+	 * appearing on another reading - or a fourth rung smuggled in - fails here.
+	 * The held cluster's mark is the one non-reading in the set: it is hidden
+	 * below the wrap threshold because it is a word, not a value, and the narrow
+	 * row has width only for the readings themselves; the statement survives on
+	 * the group name and the tooltips.
+	 */
+	assert.doesNotMatch(strip, /chatcol:sr-only/);
 	assert.deepEqual(
 		(strip.match(/[^\s"]*chatcol:hidden/g) ?? []).sort(),
 		[
@@ -1210,35 +1272,31 @@ test("the narrow ladder sheds duration, then effort, then cost, then context - a
 			"@max-[750px]/chatcol:hidden",
 			"@max-[750px]/chatcol:hidden",
 			"@max-[780px]/chatcol:hidden",
-			"@max-[860px]/chatcol:hidden",
 		].sort(),
-		"only the ladder's rungs and the held mark may be range-hidden, and the mark is not a reading",
+		"only the three rungs and the held mark may be range-hidden; the duration's visibility is measured",
 	);
 
 	/*
-	 * And the rungs only ever tighten as the ladder descends: each reading
-	 * gives up at a narrower column than the one before it, in BOTH state
-	 * columns, so the readings step out in order instead of flickering between
-	 * bands. Parsed from the literals asserted above - read in SHED order
-	 * (duration, effort, cost, context), which is not the file's own order
-	 * (that is the cluster's render order: effort, context, cost, duration) -
-	 * so a re-tuned threshold cannot silently invert the ladder.
+	 * And the rungs only ever tighten as the ladder descends: each reading gives
+	 * up at a narrower column than the one before it, in BOTH state columns, so
+	 * the readings step out in order instead of flickering between bands. Parsed
+	 * from the literals asserted above - read in SHED order (effort, cost,
+	 * context), which is not the file's own order (that is the cluster's render
+	 * order: effort, context, cost) - so a re-tuned threshold cannot silently
+	 * invert the ladder.
 	 */
 	const parsed = [
 		...strip.matchAll(
-			/controlsThirdBox\s*\n?\s*\?\s*"(?:hidden|@max-\[(\d+)px\]\/chatcol:hidden)"\s*\n?\s*:\s*"@max-\[(\d+)px\]\/chatcol:hidden"/g,
+			/controlsThirdBox\s*\n?\s*\?\s*"@max-\[(\d+)px\]\/chatcol:hidden"\s*\n?\s*:\s*"@max-\[(\d+)px\]\/chatcol:hidden"/g,
 		),
 	];
-	assert.equal(parsed.length, 4, "one rung per value reading");
-	const [effort, context, cost, duration] = parsed;
+	assert.equal(parsed.length, 3, "one rung per value reading");
+	const [effort, context, cost] = parsed;
 	/*
-	 * Group 1 is the third-box column's threshold and group 2 the idle one,
-	 * except for the duration, whose state column is the bare `hidden` (it
-	 * sheds at every width); it leads as the widest step.
+	 * Group 1 is the third-box column's threshold and group 2 the two-box one.
 	 */
 	const thresholds = [
 		Number.POSITIVE_INFINITY,
-		duration[2],
 		effort[1],
 		effort[2],
 		cost[1],
@@ -1259,14 +1317,18 @@ test("the shed's state comes from the row's own third-box predicate, computed on
 	);
 
 	/*
-	 * ONE PREDICATE, MANY READERS (issues #788 and #918). The strip sheds on
-	 * whether a third control box is drawn, and that is the same question the
-	 * slot's own JSX asks - so it is computed once, from the row's own terms,
-	 * and every reader takes it. A fix that restated the condition at the
-	 * strip's mount would drift the moment the slot's gate changed, which is
-	 * what these four terms and the two joins pin; the strip's four rungs are
-	 * the second family of readers, and a fifth reader would be a fifth place
-	 * for the state question to be answered.
+	 * ONE PREDICATE, MANY READERS (issues #788 and #918). Effort, cost and context
+	 * shed on whether a third control box is drawn, and that is the same question
+	 * the slot's own JSX asks - so it is computed once, from the row's own terms,
+	 * and every reader takes it. A fix that restated the condition at the strip's
+	 * mount would drift the moment the slot's gate changed, which is what these
+	 * four terms and the two joins pin; the strip's three rungs are the second
+	 * family of readers.
+	 *
+	 * THE DURATION IS NOT ONE OF THEM ANY MORE. Its visibility is measured against
+	 * the controls group's actual left edge, so the group carries a stable marker
+	 * and the strip finds it by that, not by this predicate or by a button's
+	 * translated label.
 	 */
 	assert.match(
 		row,
@@ -1285,6 +1347,9 @@ test("the shed's state comes from the row's own third-box predicate, computed on
 		/controlsThirdBox=\{controlsThirdBox\}/,
 		"the strip must be handed the predicate rather than re-deriving it",
 	);
+	// The strip's own marker for the measured-fit reading: the group is the row's
+	// right anchor, and the duration measures against its real left edge.
+	assert.match(row, /data-lo-composer-controls=\{true\}/);
 	/*
 	 * AND THE STRIP MUST ACCEPT IT. A prop the composer passes and the strip ignores
 	 * is the whole shed silently switched off, so the receiving half is pinned too.
@@ -1297,9 +1362,201 @@ test("the shed's state comes from the row's own third-box predicate, computed on
 	assert.match(strip, /controlsThirdBox = false,/);
 	assert.equal(
 		(strip.match(/controlsThirdBox\s*\?\s+"/g) ?? []).length,
-		4,
-		"exactly the four rungs switch on the row's predicate (a space or newline between the name and `?`, so the `?:` of the prop's type does not count)",
+		3,
+		"exactly the three value rungs switch on the row's predicate (a space or newline between the name and `?`, so the `?:` of the prop's type does not count)",
 	);
+});
+
+test("the duration's fit arithmetic is pure, and reads the row's own direction", async () => {
+	const { READING_GAP, inlineGap, durationFits } = await import(
+		"../src/renderer/src/features/chat/session-status/session-duration-fit.ts"
+	);
+
+	/*
+	 * THE GAP IS ONE NUMBER. The strip draws it with `gap-x-1` and the anchor and
+	 * the comparison cross it; this pins the pair so a change to one is a failing
+	 * test rather than a 4px silent drift.
+	 */
+	assert.equal(READING_GAP, 4, "gap-x-1 is 4px");
+	const strip = readFileSync(
+		"src/renderer/src/features/chat/session-status/session-status-strip.tsx",
+		"utf8",
+	);
+	assert.match(
+		strip,
+		/gap-x-1/,
+		"the strip's own gap class is the visual twin",
+	);
+
+	/*
+	 * LTR: the last reading is the rightmost, so the gap runs from its right edge
+	 * to the controls' left edge. RTL: the row is mirrored, so "last" is the
+	 * leftmost reading and the gap ends at the controls' RIGHT edge - the case the
+	 * first implementation got wrong, hiding the reading at every width in `ur`.
+	 */
+	assert.equal(inlineGap("ltr", 500, 620, 724), 120);
+	assert.equal(inlineGap("ltr", 620, 620, 724), 0);
+	assert.equal(inlineGap("rtl", 500, 396, 500), 0);
+	assert.equal(inlineGap("rtl", 500, 396, 380), 120);
+	assert.equal(inlineGap("rtl", 180, 396, 380), -200);
+
+	/*
+	 * THE FIT BOUNDARY, in both directions and at the real value: exactly
+	 * `width + gap` fits, a hair less does not. The comparison is on the gap, so
+	 * the direction's only job is producing it correctly.
+	 */
+	const boundaries = [
+		// LTR: the gap runs from the last reading's right edge to the controls' left.
+		{
+			direction: "ltr",
+			lastEdge: 500,
+			controlsLeft: 559,
+			controlsRight: 663,
+			width: 55,
+		},
+		// RTL: mirrored - from the last reading's left edge to the controls' right.
+		{
+			direction: "rtl",
+			lastEdge: 500,
+			controlsLeft: 441,
+			controlsRight: 441,
+			width: 55,
+		},
+	];
+	for (const {
+		direction,
+		lastEdge,
+		controlsLeft,
+		controlsRight,
+		width,
+	} of boundaries) {
+		// The gap is computed FROM that direction's own edges, so the loop exercises
+		// two different arithmetic paths rather than the same one twice.
+		const exact = inlineGap(direction, lastEdge, controlsLeft, controlsRight);
+		assert.equal(exact, width + READING_GAP, direction);
+		assert.equal(
+			durationFits(exact, width),
+			true,
+			`${direction} at the boundary`,
+		);
+		assert.equal(
+			durationFits(exact - 0.1, width),
+			false,
+			`${direction} a hair short`,
+		);
+		assert.equal(
+			durationFits(exact + 0.1, width),
+			true,
+			`${direction} a hair clear`,
+		);
+	}
+});
+
+test("the duration's visibility is measured from the row, not declared from a breakpoint or a state", () => {
+	const strip = readFileSync(
+		"src/renderer/src/features/chat/session-status/session-status-strip.tsx",
+		"utf8",
+	);
+
+	/*
+	 * THE MEASUREMENT'S WIRING. One boolean, false until the first measurement so
+	 * the only frame that could be wrong is the first - and it is measured in a
+	 * layout effect, before paint. The effect has NO dependency array on purpose:
+	 * the reading ticks at 1Hz and a digit can change its width, so every render
+	 * re-asks the question rather than caching an answer that the next tick can
+	 * falsify.
+	 */
+	assert.match(
+		strip,
+		/const \[durationFits, setDurationFits\] = useState\(false\);/,
+	);
+	assert.match(
+		strip,
+		/useLayoutEffect\(\(\) => \{\s*\n\s*measureDurationFit\(\);\s*\n\s*\}\);/,
+	);
+	/*
+	 * And the observer covers what no render in this component sees: the dragged
+	 * `--lo-chat-measure` (the ROW), a sibling reading's step (the STRIP), the
+	 * third control box (the CONTROLS), and a late face or a changed value (the
+	 * ELEMENT). Font readiness is asked once because a late face changes every
+	 * text width at once.
+	 */
+	assert.match(strip, /new ResizeObserver\(measureDurationFit\)/);
+	assert.match(strip, /\[strip\.parentElement, strip, controls, element\]/);
+	assert.match(strip, /document\.fonts\?\.ready\.then\(measureDurationFit\)/);
+
+	/*
+	 * THE DIRECTION IS RESOLVED FROM THE STRIP, and the arithmetic itself is the
+	 * pure module's: the last reading's inline-end edge, the controls' box, and
+	 * this reading's own width.
+	 */
+	assert.match(
+		strip,
+		/getComputedStyle\(strip\)\.direction === "rtl" \? "rtl" : "ltr"/,
+	);
+	assert.match(strip, /const gap = inlineGap\(/);
+	assert.match(
+		strip,
+		/gapFitsDuration\(gap, element\.getBoundingClientRect\(\)\.width\)/,
+	);
+	assert.match(strip, /durationFits as gapFitsDuration/);
+
+	/*
+	 * THE TWO FALLBACKS (QA round 1, Q1-2): a missing controls group leaves the
+	 * reading VISIBLE rather than hidden forever, and a row with no other visible
+	 * reading anchors on the strip's own inline-end edge instead of standing down.
+	 */
+	assert.match(
+		strip,
+		/if \(!controls\) \{\s*\n\s*setDurationFits\(true\);\s*\n\s*return;\s*\n\s*\}/,
+	);
+	assert.match(
+		strip,
+		/lastEdge = direction === "rtl" \? stripBox\.left : stripBox\.right;/,
+	);
+
+	/*
+	 * THE ANCHOR IS LOGICAL. `insetInlineStart` flips with the direction; a
+	 * physical `left` would put the reading on the wrong side in `ur`.
+	 */
+	assert.match(
+		strip,
+		/insetInlineStart: `calc\(100% \+ \$\{READING_GAP\}px\)`/,
+	);
+	assert.doesNotMatch(strip, /left-\[calc\(100%\+4px\)\]/);
+});
+
+test("a running session renders the duration reading; only the measurement may hide it", () => {
+	/*
+	 * THE OPERATOR'S REPORT AS MARKUP. While a turn runs `controlsThirdBox` is
+	 * true, and that fact used to remove this reading from the tree at EVERY
+	 * width. The element must be present, with its value, and with no
+	 * class-based hide on it: the state may reach it only through the measured
+	 * `invisible`, which the browser decides from the row's geometry.
+	 */
+	const running = renderStrip({
+		frontend: {
+			...DRAFT,
+			context_tokens: 131_000,
+			context_window: 1_000_000,
+			cumulative_parent_cost: 0.346,
+			cost_knowledge: "exact",
+			active_duration_s: 1225,
+			activity_started_at: null,
+		},
+		controlsThirdBox: true,
+	});
+	assert.match(running, /data-lo-duration/);
+	assert.match(running, /Active time: 20m25s\./);
+	assert.match(running, />20m25s</);
+	const element = running.match(
+		/<span data-lo-duration="true" class="([^"]*)"/,
+	);
+	assert.ok(element, "the duration element must be in the running markup");
+	assert.doesNotMatch(element[1], /\bhidden\b/);
+	const start = running.indexOf("data-lo-duration");
+	assert.ok(start > 0);
+	assert.doesNotMatch(running.slice(start, start + 700), /chatcol:hidden/);
 });
 
 test("the value readings hold their width; only the model name yields", () => {

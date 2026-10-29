@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { CircleAlert } from "lucide-react";
 import type { FC } from "react";
 /**
@@ -35,12 +37,13 @@ export const InvalidAttachment: FC<InvalidAttachmentProps> = ({
 	reason,
 	onOpen,
 }) => {
+	useI18nLocale();
 	return (
 		<div
 			className="mt-2 flex w-fit max-w-full items-center rounded-sm border border-warning-border bg-warning-wash px-3 py-2 text-warning"
 			title={`File not viewable: ${getFileName(file)}`}
 		>
-			<span className="mr-2 flex shrink-0 items-center">
+			<span className="me-2 flex shrink-0 items-center">
 				<CircleAlert size={14} />
 			</span>
 			<span className="max-w-full truncate text-body-sm">
@@ -52,9 +55,9 @@ export const InvalidAttachment: FC<InvalidAttachmentProps> = ({
 				<button
 					type="button"
 					onClick={onOpen}
-					className="ml-3 shrink-0 text-body-sm underline underline-offset-2"
+					className="ms-3 shrink-0 text-body-sm underline underline-offset-2"
 				>
-					Open
+					{t("ui.chat.attachments.open")}
 				</button>
 			) : null}
 		</div>

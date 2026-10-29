@@ -1,0 +1,6 @@
+expired signed URL negative control HTTP 403; requests=1
+{"root":"/Users/damian/.local-operator/sessions/4271c4615f16/scratchpad/recapture/sounds-native-Rqp1qi","fixture":{"digest":"b44d1c36b127e144f7c9062815b048bb","sessionId":"50a0facade01","bytes":26374,"releaseReplay":true},"harness":"/Users/damian/local-operator/.worktrees/sound-gen-fixed","backend":"http://127.0.0.1:52454","mode":"headless","safety":"zero-gain graph before element creation"}
+history preflight HTTP 200; /Users/damian/.local-operator/sessions/4271c4615f16/scratchpad/recapture/sounds-native-Rqp1qi/preflight-history.json
+PASS 7 frames, 7 distinct SHA-256
+PASS expired URL remains unused by the app: requests=1
+PASS sounds real-app scene: /Users/damian/.local-operator/sessions/4271c4615f16/scratchpad/recapture/sounds-native-Rqp1qi/frames; logs /Users/damian/.local-operator/sessions/4271c4615f16/scratchpad/recapture/sounds-native-Rqp1qi/scene.log

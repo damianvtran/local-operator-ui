@@ -16,6 +16,7 @@ import { useConsentAttentionLifetime } from "@features/browser/hooks/use-consent
 // imported: lazy-loading it would put a Suspense fallback on first paint.
 import { ArchiveConversationDialog } from "@features/chat/components/archive-conversation-dialog";
 import { ChatPage } from "@features/chat/components/chat-page";
+import { consoleRevealMayNavigate } from "@features/chat/composer-field";
 import { useHeldDraftResolution } from "@features/chat/hooks/use-held-draft-resolution";
 import { shouldStartNewChat } from "@features/chat/new-chat-shortcut";
 import { PanelOutlet } from "@features/chat/pickers/panel-outlet";
@@ -26,15 +27,18 @@ import { useConsoleAttention } from "@features/console/hooks/use-console-attenti
 /*
  * THE AMBIENT FEDERATED CATALOGUE (mesh §2.1's sidebar merge): mounted HERE, in
  * the shell rather than in the sidebar, because it must run per WINDOW and not
- * per route or per layout - the sidebar swaps for a strip under 1024px and
- * unmounts behind the sheet, and a read whose rows the sidebar depends on must
- * not pause because a layout mode changed. It renders null.
+ * per route or per layout - the persisted preference can replace the dock with
+ * its 56px strip at any window width, and a read whose rows the sidebar depends
+ * on must not pause because that navigation subtree changed. It renders null.
  */
 import { PeersCatalogueSync } from "@features/mesh/peers-catalogue";
 import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
 import { ConnectProviderDialog } from "@features/providers/connect-provider-dialog";
+import { SessionSwitcher } from "@features/session-switcher/components/session-switcher";
 import { LanguageDialog } from "@features/settings/components/language-dialog";
+import { useTeamBridgeNotificationOpen } from "@features/team-bridge/use-team-bridge-notification-open";
+import { useTeamBridgeNotifications } from "@features/team-bridge/use-team-bridge-notifications";
 import {
 	desktopFeatureEnabled,
 	desktopFeatureState,
@@ -46,6 +50,7 @@ import {
 } from "@shared/browser-consent-attention";
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { useI18nLocaleSync } from "@shared/i18n/locale-sync";
+import { useDocumentDirection } from "@shared/i18n/use-document-direction";
 import { useKeymapShortcuts } from "@shared/keymap/use-keymap-shortcuts";
 import { t } from "../../i18n/messages";
 
@@ -93,6 +98,32 @@ const SchedulesPage = lazy(() =>
 const ProjectsPage = lazy(() =>
 	import("@features/projects/components/projects-page").then((m) => ({
 		default: m.ProjectsPage,
+	})),
+);
+/*
+ * The Library page. Lazy like every other route, and mounted only when the
+ * backend advertises `features.library` (see the gate below): the nav row hides
+ * on the same predicate, so a hand-typed `/library` on an older backend falls
+ * to the catch-all rather than rendering a page whose first read 404s.
+ */
+const LibraryPage = lazy(() =>
+	import("@features/library/components/library-page").then((m) => ({
+		default: m.LibraryPage,
+	})),
+);
+/*
+ * The Notifications page, gated on `features.notifications` exactly as the
+ * Library is: the sidebar row hides on the same predicate, and below it a
+ * hand-typed `/notifications` falls to the catch-all.
+ */
+const NotificationsPage = lazy(() =>
+	import("@features/notifications/components/notifications-page").then((m) => ({
+		default: m.NotificationsPage,
+	})),
+);
+const TeamBridgePage = lazy(() =>
+	import("@features/team-bridge/team-bridge-page").then((m) => ({
+		default: m.TeamBridgePage,
 	})),
 );
 const BrowserPage = lazy(() =>
@@ -150,6 +181,13 @@ const App: FC = () => {
 	 * one-value reason; it renders nothing.
 	 */
 	useI18nLocaleSync();
+	/*
+	 * The document root's `dir`/`lang`, derived from the locale manifest and
+	 * re-written whenever the store moves. Mounted here, once, for the same
+	 * reason as the writer above: one document has one direction, and a second
+	 * mount would be a second subscriber competing to write it.
+	 */
+	useDocumentDirection();
 	const { pathname } = useLocation();
 	/*
 	 * The routes that already own a 40px row at the window's top: the chat surface
@@ -197,9 +235,9 @@ const App: FC = () => {
 	 * `ModelsInitializer` renders nothing, so it has nothing to register.
 	 */
 	useSuppressBrowserView(isCommandPaletteOpen, "command-palette");
-	useSuppressBrowserView(isCreateAgentDialogOpen, "create-agent-dialog");
+	useSuppressBrowserView(isCreateAgentDialogOpen, "dialog", "create-agent");
 	useSuppressBrowserView(isOnboardingActive, "onboarding");
-	useSuppressBrowserView(isLowCreditsDialogOpen, "low-credits");
+	useSuppressBrowserView(isLowCreditsDialogOpen, "dialog", "low-credits");
 	const navigate = useNavigate(); // For onAgentCreated
 
 	/*
@@ -261,6 +299,27 @@ const App: FC = () => {
 	 * most needs to be able to say.
 	 */
 	const meshState = desktopFeatureState(capabilities.data, "peers");
+	const libraryState = desktopFeatureState(capabilities.data, "library");
+	const notificationsState = desktopFeatureState(
+		capabilities.data,
+		"notifications",
+	);
+	/* The conversation surface rides the bridge capability: with the backend
+	   dark or older, `/team-bridge` falls through to the catch-all like any
+	   unknown path instead of rendering a page whose every read would 503. */
+	const bridgeState = desktopFeatureState(
+		capabilities.data,
+		"team_bridge_conversations",
+	);
+	/*
+	 * Team Bridge banners, watched in the SHELL because the page is the one place
+	 * a banner is not needed. The capability gate is the same one the route and
+	 * the rail row read; a backend without the conversation surface is never
+	 * polled for a route it does not have.
+	 */
+	useTeamBridgeNotifications(
+		desktopFeatureEnabled(capabilities.data, "team_bridge_conversations"),
+	);
 
 	const handleAgentCreated = (agent: { id: string; name: string }) => {
 		/*
@@ -430,6 +489,22 @@ const App: FC = () => {
 	}, [navigate, setActiveSession, setConsolePaneOpen, setConsoleActiveSurface]);
 
 	/*
+	 * A Team Bridge banner's click names an ORGANIZATION and a CONVERSATION. The
+	 * target is HELD until the capability gate has answered: the route is mounted
+	 * only for `team_bridge_conversations`, so navigating during the first
+	 * capability read would fall through the catch-all and lose the click. Once
+	 * the gate is open the route is the app's existing navigation path; the page
+	 * consumes the two parameters once and clears them.
+	 *
+	 * THE WAKE-UP CARRIES NO PAYLOAD. Main parks the target and sends a signal;
+	 * this effect PULLS the target, on mount and on every signal. That is what
+	 * makes a click into a loading or reloading renderer survive: if the signal is
+	 * dropped, the target is still in main, and the mount pull claims it. The pull
+	 * is one-shot, so a normal launch pays one cheap IPC call and nothing else.
+	 */
+	useTeamBridgeNotificationOpen(bridgeState === "enabled", navigate);
+
+	/*
 	 * AN AGENT'S `reveal`, handled in the shell because the shell is what knows
 	 * which conversation is on screen (design §10.4).
 	 *
@@ -459,13 +534,27 @@ const App: FC = () => {
 				payload.session_id !== displayedSessionId
 			)
 				return;
-			if (payload.mode === "open") setActiveSession(payload.session_id);
+			if (payload.mode === "open") {
+				// Typing: degrade to the `session` reveal, which does nothing for a
+				// conversation that is not on screen.
+				if (
+					!consoleRevealMayNavigate({
+						targetSessionId: payload.session_id,
+						displayedSessionId,
+						activeElement: document.activeElement,
+						commandPaletteOpen: isCommandPaletteOpen,
+					})
+				)
+					return;
+				setActiveSession(payload.session_id);
+			}
 			setConsoleActiveSurface(payload.surface);
 			setConsolePaneOpen(true);
 		});
 		return () => unsubscribe?.();
 	}, [
 		displayedSessionId,
+		isCommandPaletteOpen,
 		setActiveSession,
 		setConsolePaneOpen,
 		setConsoleActiveSurface,
@@ -644,7 +733,7 @@ const App: FC = () => {
 				 * the document element before the first render, from main's own fact
 				 * (`--lo-window-chrome`), and `useWindowChrome` keeps the live ones current.
 				 * Root-level also lets the attribute rules reach PORTALED elements, which the
-				 * sidebar's overlay sheet is.
+				 * command palette's Radix dialog is.
 				 */
 				data-titlebar-sidebar-collapsed={isSidebarCollapsed ? "true" : "false"}
 			>
@@ -706,6 +795,15 @@ const App: FC = () => {
 				 */}
 				<div className="flex min-h-0 flex-1 overflow-hidden">
 					{isCommandPaletteOpen && <CommandPalette />}
+					{/*
+					 * The Ctrl+Tab recent-session switcher. Mounted UNCONDITIONALLY beside the
+					 * palette rather than gated on its own open state: the keyboard listener is what
+					 * opens it, so a component that unmounted while closed would have nothing to
+					 * listen with (the palette's own hook lives out here for the same reason). It
+					 * renders null until a run paints, and answers to every route the window can
+					 * show.
+					 */}
+					<SessionSwitcher />
 
 					{/*
 					 * The shell's presenter for the machine panels, so `/info`, `/usage` and
@@ -811,9 +909,18 @@ const App: FC = () => {
 					<ChatLayout
 						sidebar={<SidebarNavigation />}
 						content={
+							/*
+							 * ORDINARY ROUTE CONTENT GETS THE STRIP'S PAD ONCE, HERE.
+							 *
+							 * `--panel-top-pad` is the content column's statement of the
+							 * OS controls' reach (set on every route by `ChatLayout`). A
+							 * page that is a full-height panel cancels this with
+							 * `panel-flush` and pads its own columns; every other page
+							 * inherits one inset and adds none of its own.
+							 */
 							<main
 								data-glass-region="canvas-backing"
-								className="flex grow flex-col overflow-hidden"
+								className="panel-top-pad flex grow flex-col overflow-hidden"
 							>
 								{/*
 								 * THE NON-CHAT ROUTES' DRAG BAND, WHERE THE LANE IS NOT.
@@ -873,6 +980,40 @@ const App: FC = () => {
 											element={<ProjectsPage />}
 										/>
 										<Route path="/browser" element={<BrowserPage />} />
+										{/* Mounted only with `features.library`: without it `/library`
+										    falls through to the catch-all, like any unknown path. */}
+										{/* `features.notifications`: below it `/notifications`
+										    falls through to the catch-all, like `/library`. */}
+										{notificationsState === "enabled" && (
+											<>
+												<Route
+													path="/notifications"
+													element={<NotificationsPage />}
+												/>
+												<Route
+													path="/notifications/:notificationId"
+													element={<NotificationsPage />}
+												/>
+											</>
+										)}
+										{libraryState === "enabled" && (
+											<>
+												<Route path="/library" element={<LibraryPage />} />
+												<Route
+													path="/library/assets/:assetId"
+													element={<LibraryPage />}
+												/>
+											</>
+										)}
+										{/* The Team Bridge page. The SIDEBAR row is the Library lane's
+										    overflow group (one nav file, one owner); this route makes the
+										    page reachable by URL and by that row the moment it lands.
+										    Mounted only with `features.team_bridge_conversations`:
+										    `team_bridge` alone is the pair lane, whose backends do
+										    not have these routes. */}
+										{bridgeState === "enabled" && (
+											<Route path="/team-bridge" element={<TeamBridgePage />} />
+										)}
 										{/* Mounted only with `features.peers`: without it `/mesh` falls through
 										    to the catch-all like any unknown path, rather than rendering a tab
 										    for a feature this backend does not have. */}

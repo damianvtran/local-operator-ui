@@ -1,0 +1,48 @@
+renderer-driver: frame timezone pinned to America/New_York (ambient TZ=America/Toronto)
+[build] current: assets 2026-10-20T10:58:15.094Z >= sources 2026-10-19T21:36:44.522Z
+[note] csp for this run's backend
+        out/renderer/index.html: http://127.0.0.1:52454 added to frame-src, media-src, img-src (build output only; src/ untouched)
+  serve records 1 linked from /Users/damian/.local-operator/sessions/4271c4615f16/scratchpad/recapture/sounds-native-Rqp1qi/config/run/serve   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui/.worktrees/sounds-recapture
+  scratch       /Users/damian/.local-operator/sessions/4271c4615f16/scratchpad/recapture/sounds-native-Rqp1qi/lo-renderer-driver-25602
+  frames        /Users/damian/.local-operator/sessions/4271c4615f16/scratchpad/recapture/sounds-native-Rqp1qi/frames
+  app cwd       /Users/damian/.local-operator/sessions/4271c4615f16/scratchpad/recapture/sounds-native-Rqp1qi/lo-renderer-driver-25602/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:52454   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0_supports-color@8.1.1/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["filesFacts","hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","soundsArm","soundsEnd","soundsFacts","soundsScrub","soundsScrubFinish","soundsSpeech","stageLiveConsents","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:52454","backend":"http://127.0.0.1:52454"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:52454)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] graph re-arm negative control refuses
+[PASS] Boolean(document.querySelector('[data-session-row="50a0facade01"]'))
+[PASS] Boolean(document.querySelector("[data-turn-summary]"))
+[PASS] Boolean(document.querySelector('[data-record-id="tool:sounds-call-1"] [data-sound-player] button'))
+[PASS] Boolean(document.querySelector('[data-sound-status="playing"]'))
+release voiceover facts (attempt 1) {"ownerId":"sound:b44d1c36b127e144f7c9062815b048bb","status":"playing","time":0.186863,"duration":1.578957,"paused":false,"gain":0,"inputRms":0.0808249478757425,"players":[{"status":"playing","clock":"0:00","clip":"inset(0px 88.5127% 0px 0px)","numeric":"tabular-nums"}],"rms":0,"src":"blob:file:///4157bee0-b787-4c1e-bccf-020a804070cf","nativeElements":0,"canvas":[]}
+[PASS] real MP3 advances silently
+earlier-turn facts {"ownerId":"sound:b44d1c36b127e144f7c9062815b048bb","status":"playing","time":1.361138,"duration":1.578957,"paused":false,"gain":0,"inputRms":0.000036000691261559584,"players":[{"status":"playing","clock":"0:01","clip":"inset(0px 14.16% 0px 0px)","numeric":"tabular-nums"}],"rms":0,"src":"blob:file:///4157bee0-b787-4c1e-bccf-020a804070cf","nativeElements":0,"canvas":[]}
+[PASS] the earlier artifact is still playing when state 6 is captured
+[PASS] Boolean(document.querySelector('[data-record-id="tool:sounds-call-2"] [data-sound-player] button'))
+[PASS] Boolean(document.querySelector('[data-record-id="tool:sounds-call-2"] [data-sound-status="playing"]'))
+release SFX facts {"ownerId":"sound:4454c2d9463ecec5dc0a5e46ae363aa5","status":"playing","time":0.17538,"duration":0.48,"paused":false,"gain":0,"inputRms":0.021914229053231683,"players":[{"status":"idle","clock":"0:00","clip":"inset(0px 100% 0px 0px)","numeric":"tabular-nums"},{"status":"playing","clock":"0:00","clip":"inset(0px 63.7188% 0px 0px)","numeric":"tabular-nums"}],"rms":0,"src":"blob:file:///d25204e3-e37c-406f-9158-c8aaeade1557","nativeElements":0,"canvas":[]}
+[PASS] Boolean(document.querySelector('[data-record-id="tool:release-byok-call"] [data-sound-player]'))
+[PASS] no process from this run outlived its boot
+
+frames: release-auto-duration-refusal.png, release-byok-result.png, release-earlier-turn-playing.png, release-sfx-idle.png, release-sfx-playing.png, release-voiceover-idle.png, release-voiceover-playing.png
+frames directory: /Users/damian/.local-operator/sessions/4271c4615f16/scratchpad/recapture/sounds-native-Rqp1qi/frames
+app log: /Users/damian/.local-operator/sessions/4271c4615f16/scratchpad/recapture/sounds-native-Rqp1qi/lo-renderer-driver-25602/app-scene.log
+scratch kept: /Users/damian/.local-operator/sessions/4271c4615f16/scratchpad/recapture/sounds-native-Rqp1qi/lo-renderer-driver-25602 (the frames are also in --out)
+
+ALL CHECKS PASSED

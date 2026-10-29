@@ -53,6 +53,7 @@ const Rail: FC<{
 	browserAttentionCount?: number;
 	askCount?: number;
 	askScope?: "session" | "fleet";
+	consoleLiveCount?: number;
 	consoleUnseenCount?: number;
 	consoleUnseenPulsing?: boolean;
 	fileCount?: number;
@@ -80,6 +81,7 @@ const Rail: FC<{
 	browserAttentionCount = 0,
 	askCount = 0,
 	askScope = "session",
+	consoleLiveCount = 0,
 	consoleUnseenCount = 0,
 	consoleUnseenPulsing = false,
 	fileCount = 0,
@@ -136,6 +138,7 @@ const Rail: FC<{
 				browserAttentionCount={browserAttentionCount}
 				askCount={askCount}
 				askScope={askScope}
+				consoleLiveCount={consoleLiveCount}
 				consoleUnseenCount={consoleUnseenCount}
 				consoleUnseenPulsing={consoleUnseenPulsing}
 				fileCount={fileCount}
@@ -234,8 +237,25 @@ export const ConsoleOpenBlip: Story = {
 	render: () => (
 		<Rail
 			open="isConsolePaneOpen"
+			consoleLiveCount={1}
 			consoleUnseenCount={1}
 			consoleUnseenPulsing={true}
+		/>
+	),
+};
+
+/**
+ * THE UNREAD DOT WITHOUT A LIVE SURFACE (D4): the state the operator reported. The
+ * item is unlit because nothing is running, and the dot still says a terminal in
+ * this conversation finished since the user last looked.
+ */
+export const ConsoleUnreadDot: Story = {
+	render: () => (
+		<Rail
+			open="isConsolePaneOpen"
+			consoleLiveCount={0}
+			consoleUnseenCount={1}
+			consoleUnseenPulsing={false}
 		/>
 	),
 };

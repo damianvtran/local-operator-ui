@@ -38,6 +38,7 @@ const bundle = await build({
 			export { admitChatDraft, useCanonicalSessionsStore, draftIdentityFor, isRefusedBeforeAdmission } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { paintPendingSend, seedPendingSends, movePendingSendIdentity, replacePendingSendText, resolvePendingSend, resolveObservedPendingSends, hasPendingSend, settlePendingSend, pendingSendForView, discardPendingSends, retractPendingUser, __registerEchoTarget, streamChangeKeepsTranscript } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { useMessageInput, COMPOSER_PLACEHOLDER, composerPlaceholder, clearSubmittedText, stagedPayloadOf } from "./src/renderer/src/shared/hooks/use-message-input";
+			export { t } from "./src/i18n/messages";
 			export { useConversationInputStore, mergeReturnedText, mergeReturnedPayload } from "./src/renderer/src/shared/store/conversation-input-store";
 			export { EMPTY_TRANSCRIPT, applyEvent } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 			export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
@@ -51,6 +52,7 @@ const bundle = await build({
 	// The renderer's aliases are tsconfig paths, not node resolutions.
 	alias: {
 		"@shared": "./src/renderer/src/shared",
+		"@shared/i18n": "./src/i18n",
 		"@features": "./src/renderer/src/features",
 	},
 	plugins: [
@@ -130,6 +132,7 @@ const {
 	streamChangeKeepsTranscript,
 	useMessageInput,
 	COMPOSER_PLACEHOLDER,
+	t,
 	composerPlaceholder,
 	clearSubmittedText,
 	mergeReturnedText,
@@ -1406,7 +1409,7 @@ test("R1: a clear at the paint cannot change what the request carries", async ()
 	 * composer reads is cleared at the echo, so anything that read the ROW after
 	 * that moment would see nothing. The request is built from the arguments the
 	 * press handed over - `buildSendPayload` for the words and the reply prefix,
-	 * `encodeImageAttachments` for the file paths - and this drives the real
+	 * `encodeAttachments` for the file paths - and this drives the real
 	 * `admitChatDraft` with a mounted transcript and a paint callback that clears
 	 * the row for real, then reads what reached the wire.
 	 */
@@ -1753,7 +1756,7 @@ test("MAJOR-1/Q-1: an unsettled send outranks `awaitingReply`, and the order is 
 			sendingUnsettled: true,
 			awaitingReply: true,
 		}),
-		COMPOSER_PLACEHOLDER.sending,
+		t(COMPOSER_PLACEHOLDER.sending),
 		"a send that has not settled must be able to say so with `awaitingReply` true - that is the app's own value on the canonical path, and reading it as `Waiting for the agent` is the defect QA executed",
 	);
 	/* And the moment after it settles, with the agent still answering. */
@@ -1763,7 +1766,7 @@ test("MAJOR-1/Q-1: an unsettled send outranks `awaitingReply`, and the order is 
 			sendingUnsettled: false,
 			awaitingReply: true,
 		}),
-		COMPOSER_PLACEHOLDER.waiting,
+		t(COMPOSER_PLACEHOLDER.waiting),
 		"once the send has settled the agent's sentence takes over, which is the half the operator asked for as the pair to this one",
 	);
 	assert.equal(
@@ -1772,7 +1775,7 @@ test("MAJOR-1/Q-1: an unsettled send outranks `awaitingReply`, and the order is 
 			sendingUnsettled: false,
 			awaitingReply: false,
 		}),
-		COMPOSER_PLACEHOLDER.idle,
+		t(COMPOSER_PLACEHOLDER.idle),
 		"and with no send in flight and nothing being answered the box invites a message again",
 	);
 	/* The three earlier terms keep the windows they had. */
@@ -1783,7 +1786,7 @@ test("MAJOR-1/Q-1: an unsettled send outranks `awaitingReply`, and the order is 
 			sendingUnsettled: true,
 			awaitingReply: true,
 		}),
-		COMPOSER_PLACEHOLDER.unavailable,
+		t(COMPOSER_PLACEHOLDER.unavailable),
 		"a conversation this machine does not have stays the first reading (design round 2, D3)",
 	);
 	assert.equal(
@@ -1793,7 +1796,7 @@ test("MAJOR-1/Q-1: an unsettled send outranks `awaitingReply`, and the order is 
 			sendingUnsettled: true,
 			awaitingReply: true,
 		}),
-		COMPOSER_PLACEHOLDER.busy,
+		t(COMPOSER_PLACEHOLDER.busy),
 		"a refused box keeps its own sentence",
 	);
 	assert.equal(
@@ -1803,7 +1806,7 @@ test("MAJOR-1/Q-1: an unsettled send outranks `awaitingReply`, and the order is 
 			sendingUnsettled: true,
 			awaitingReply: true,
 		}),
-		COMPOSER_PLACEHOLDER.answer,
+		t(COMPOSER_PLACEHOLDER.answer),
 		"and a pending question is what the box is for, whatever is in flight",
 	);
 });

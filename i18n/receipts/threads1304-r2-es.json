@@ -1,0 +1,111 @@
+{
+  "auditor": "translation-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "fallback": "openai/gpt-6.1-sol",
+  "model_provenance": "Harness-reported served model for the substantive PR #1304 audit, as supplied in the operator provenance correction; not independently re-queried in this metadata-only round.",
+  "instance": "threads1304-r2-es",
+  "session": "48c1c63e7228",
+  "date": "2026-10-21",
+  "locale": "es",
+  "translator": "translator",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 8,
+  "scope": "PR #1304 eight-key delta: replies.{action,title,close,count,last,empty,placeholder,more}, each prefixed ui.teamBridge.; inherited genuine base 2e16fb1456 audit for the other 109 values, verified unchanged. No full semantic re-audit of unchanged copy. Read actual English/target/context and rendered call-site roles in tb-threads only; no catalogue/code edits.",
+  "sha256": {
+    "en": "7de891f2cf03b7563747c440847c853f1c1356aa0a50480ec28eae347e6581e9",
+    "es": "a3e8880949b8b30e84c566e3ae602def5e1ecd909e887bb0fa7cf087795509be",
+    "context": "7c3c9e52a1a159b3e661ac2101fa57bbe1a1ed324d566b09eda403e96c8dfd8f"
+  },
+  "findings": [],
+  "inherited_receipt": {
+    "base": "2e16fb1456",
+    "path": "i18n/receipts/tbd-r4-es.json",
+    "sha256": "b06e9c976f832eeeba013442147c81173bf6c15122f9031e3c58c563edc58782",
+    "keys_inherited": 109,
+    "unchanged_values_verified": 109,
+    "base_source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+    "base_target_sha256": "83f83edf103c94c8f6cdbb4c678853fbcfb1d23a207adc9143dfb6497eea0bdd",
+    "status": "passed",
+    "full_coverage_receipt": {
+      "path": "i18n/receipts/tbd-r3-es.json",
+      "sha256": "7c165e92377f3ba2f46dc0699521908fbc71326fd9c6c7330401afdab135381c"
+    }
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39",
+    "AGENTS": "a259e3cff9de9675176c0f6b03490526762735540e59f4d8255d0e99920a717f",
+    "audit_contract": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+  },
+  "validation": {
+    "independence": "Auditor did not produce translations and did not edit code or catalogues; independently read all eight target values and every plural arm beside frozen source/context.",
+    "semantic_register_terminology": "hilo is distinct from conversación; respuesta/responder consistent. Infinitive action/more labels and tú placeholder Responde/empty Inicia are appropriate to their roles. one/many/other, including de respuestas, correct; colon has no preceding space.",
+    "mechanical": "Actual @formatjs/icu-messageformat-parser AST and intl-messageformat formatting executed successfully. count is cardinal plural, offset zero, exact locale CLDR arm set, one active pound in every arm, no extra arguments/tags/styles. last has exactly one plain time argument, unchanged and last. Other six values parse only as literals. All eight values NFC, no prohibited bidi controls.",
+    "plural_arms_audited": 3,
+    "format_samples_count": [
+      0,
+      1,
+      2,
+      3,
+      5,
+      11,
+      21,
+      22,
+      25,
+      1.5,
+      1000000
+    ],
+    "time_sample": "10:30 AM inserted verbatim as argument test only, not a recommendation to hardcode this format.",
+    "fit_risks": [
+      {
+        "key": "ui.teamBridge.replies.action",
+        "current": "Responder en el hilo",
+        "source_fixed_codepoints": 15,
+        "target_fixed_codepoints": 20,
+        "disposition": "Rendered check required; not an observed overflow defect."
+      },
+      {
+        "key": "ui.teamBridge.replies.last",
+        "current": "última respuesta: {time}",
+        "source_fixed_codepoints": 11,
+        "target_fixed_codepoints": 18,
+        "disposition": "Rendered check required; not an observed overflow defect."
+      },
+      {
+        "key": "ui.teamBridge.replies.placeholder",
+        "current": "Responde en el hilo",
+        "source_fixed_codepoints": 15,
+        "target_fixed_codepoints": 19,
+        "disposition": "Rendered check required; not an observed overflow defect."
+      },
+      {
+        "key": "ui.teamBridge.replies.count",
+        "current": "{count, plural, one {# respuesta} many {# de respuestas} other {# respuestas}}",
+        "sample": "2 respuestas",
+        "source_sample": "2 replies",
+        "source_fixed_codepoints": 9,
+        "target_fixed_codepoints": 12,
+        "disposition": "Rendered reply-summary row check required; not an observed overflow defect."
+      }
+    ],
+    "fit_scope": "Static expansion screen uses code points, not glyph widths: flags >=25% and >=3 code-point expansion. Not a universal fit guarantee; CJK, Hindi and Urdu shaping require rendering. Action is icon tooltip/aria label; close is icon aria label, not a fixed visible text button. Title/empty/more/placeholder are in min-w-72 thread pane; count/last share summary row with avatars. Prioritize fr/vi title and vi empty/last, fr last/more; all fit risks above require rendered checks.",
+    "limitations": "Browser unavailable by instruction: no rendered frame, screenshot, geometry, overflow or native RTL/bidi fit claim; no activation/release approval."
+  },
+  "model_origin": "anthropic/claude-opus-5-5",
+  "fallback_disclosure": "The harness completion receipt for substantive audit job 3e1a2d41f992 reports openai/gpt-6.1-sol as the served model. Static model context reported anthropic/claude-opus-5-5; runtime completion provenance outranks that static context. Round 1 incorrectly claimed Opus with no fallback. This round corrects metadata only; no new semantic audit was performed.",
+  "job": "3e1a2d41f992",
+  "metadata_correction": {
+    "source_receipt": "/Users/damian/.local-operator/sessions/bd7da88fb715/scratchpad/thread-receipts/threads1304-r1-es.json",
+    "source_receipt_sha256": "42ead7a7a12e0104b82f29db1a825253ee340bd6cd847bd5da5ca3a3c2994f01",
+    "substantive_audit_job": "3e1a2d41f992",
+    "substantive_audit_session": "48c1c63e7228",
+    "note": "Metadata-only provenance correction. Original immutable r1 retained byte-identically. Audit evidence, findings, verdict, eight-key coverage, catalogue/context hashes, inherited 109-key coverage and fit limitations are carried unchanged. No new semantic audit, catalogue read, or code/catalogue edit in this round."
+  },
+  "translator_provenance": {
+    "model": "openai/gpt-6.1-sol",
+    "model_origin": "anthropic/claude-opus-5-5",
+    "source": "Operator-supplied report of translators’ harness completion runtime metadata; not independently re-queried in this metadata-only round.",
+    "fallback_disclosure": "Static translator prompts claimed anthropic/claude-opus-5-5; completion runtime reported openai/gpt-6.1-sol for this locale. Both origin and served-model provenance are retained."
+  }
+}

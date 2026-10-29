@@ -83,11 +83,11 @@ test("the fixture renders as the panel's table, in this panel's ladder", () => {
 	// one consistent description.
 	assert.equal(
 		view.planClause,
-		"Includes $0.053 API-equivalent (covered by a plan, not charged).",
+		"Includes $0.053 plan-covered (API-equivalent, not charged).",
 	);
 	assert.equal(
 		view.basisLine,
-		"Billed $0.053 · API-equivalent $0.053 · Estimated $0.010 · $1.42 without a tracked basis yet ($0.520 subagent sessions) · 1 record without a price",
+		"Total $1.54+ · Billed $0.053 · API-equivalent $0.053 · Estimated $0.010 · $1.42 without a tracked basis yet ($0.520 subagent sessions) · 1 record without a price",
 	);
 	assert.deepEqual(
 		view.rows.map((row) => [row.name, row.spend, row.basis]),
@@ -155,7 +155,10 @@ test("a null amount and an unstately zero are words, never fabricated zeros", ()
 	// own `—` stands in the Basis cell where a record has none (D5).
 	assert.equal(view.rows[0].spend, PRICE_UNKNOWN_TEXT);
 	assert.equal(view.rows[0].basis, "—");
-	assert.equal(view.basisLine, "1 record without a price");
+	assert.equal(
+		view.basisLine,
+		"Total price unknown · 1 record without a price",
+	);
 });
 
 test("subscription dollars stay their own bucket and their own word", () => {
@@ -201,10 +204,13 @@ test("subscription dollars stay their own bucket and their own word", () => {
 	const view = channelsView(channels);
 	assert.ok(view);
 	assert.equal(view.total, "$1.50");
-	assert.equal(view.basisLine, "Billed $1.00 · API-equivalent $0.500");
+	assert.equal(
+		view.basisLine,
+		"Total $1.50 · Billed $1.00 · Included $0.500 (API-equivalent)",
+	);
 	assert.deepEqual(
 		view.rows.map((row) => row.basis),
-		["Billed", "API-equivalent"],
+		["Billed", "Included"],
 	);
 });
 

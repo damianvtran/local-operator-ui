@@ -1136,9 +1136,11 @@ export class DesktopNotifier {
 			notice.sessionId,
 			notice.surfaceName,
 			"",
-			notice.exitCode === null
-				? "Console finished"
-				: `Console exited with code ${notice.exitCode}`,
+			notice.exitSignal
+				? `Console killed by ${notice.exitSignal}`
+				: notice.exitCode === null
+					? "Console finished"
+					: `Console exited with code ${notice.exitCode}`,
 			false,
 			false,
 			notice.surface,

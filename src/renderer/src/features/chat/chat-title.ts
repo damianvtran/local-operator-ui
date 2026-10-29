@@ -45,6 +45,8 @@
  * to leave the existing name alone.
  */
 
+import { t } from "@shared/i18n";
+
 /**
  * What a conversation reads as before anyone has named it.
  *
@@ -74,18 +76,47 @@ export function isBlankTitle(title: string | null | undefined): boolean {
  * fallback. Live first is what keeps a real rename showing the moment it lands;
  * the catalogue second is what makes the header agree with the row the user
  * clicked, and it is a READ of that row — nothing here writes a name back.
+ *
+ * A DRAFT WITH A SESSION IS NOT A NEW CHAT (the operator's report, 2026-10-22).
+ * The branch used to key on `draftKey` alone, so a staged row that had already
+ * CREATED a conversation still wore "New chat with <team>" over a pane showing
+ * that conversation - and, once the conversation was deleted, over the
+ * missing-session notice. The header and the body were reading two facts
+ * (`activeDraftKey` here, the draft's `sessionId` in `panelSessionIdOfView`) and
+ * the screen said both. So the draft branch now states the new-chat sentence
+ * only while the row has no conversation to name; with one, the ordinary
+ * live/catalogue precedence names the conversation being shown (and a deleted
+ * one still gets its remembered name from the caller's `catalogueTitle`).
  */
 export function resolveChatTitle(input: {
 	draftKey?: string | null;
+	/** The conversation the staged row has already created, when it has one. */
+	draftSessionId?: string | null;
 	draftTarget?: string | null;
 	liveTitle?: string | null;
 	catalogueTitle?: string | null;
 }): string {
-	const { draftKey, draftTarget, liveTitle, catalogueTitle } = input;
-	if (draftKey)
-		return draftTarget ? `New chat with ${draftTarget}` : "New chat";
+	const { draftKey, draftSessionId, draftTarget, liveTitle, catalogueTitle } =
+		input;
+	if (draftKey && !draftSessionId)
+		return draftTarget
+			? t("ui.chat.header.new_chat_with", { target: draftTarget })
+			: t("ui.chat.header.new_chat");
 	if (!isBlankTitle(liveTitle)) return liveTitle as string;
 	if (!isBlankTitle(catalogueTitle)) return catalogueTitle as string;
+	/*
+	 * A CONVERSATION THAT HAS NO NAME YET KEEPS THE DRAFT'S OWN SENTENCE (design
+	 * review rounds 1 D1 and 2 D8). The create writes `sessionId` before the
+	 * message is acknowledged, and the name arrives a read later - so falling
+	 * straight through to `UNTITLED_CHAT` would blank the header to "Untitled
+	 * chat" for exactly the window the user is watching their first send. The
+	 * binding is the durable identity the header's description line already names,
+	 * so it is the honest stand-in for a targeted row; an UNTARGETED draft (⌘N,
+	 * the New-chat row) has no binding and keeps the sentence it wore before the
+	 * send: "New chat". "Untitled chat" is for a conversation that exists and has
+	 * no name, which is not this.
+	 */
+	if (draftKey) return draftTarget ?? t("ui.chat.header.new_chat");
 	return UNTITLED_CHAT;
 }
 

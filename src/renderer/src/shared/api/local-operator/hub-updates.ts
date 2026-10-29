@@ -1,3 +1,5 @@
+import { t } from "../../../../../i18n/messages";
+
 /**
  * The hub auto-update payload and the sentences the UI says about it.
  *
@@ -15,7 +17,33 @@
  * compile or, worse, render as `undefined`.
  */
 
-export type HubItemKind = "agent" | "team";
+/**
+ * Every kind the updates surface reports. `skill` arrived with core PR #2713,
+ * which brought skills onto the same channel as agents and teams rather than a
+ * parallel status story; a row for any other kind is an unknown-backend row and
+ * degrades through `hubMarkFor`'s default, not a crash.
+ */
+export type HubItemKind = "agent" | "team" | "skill";
+
+/** What one row of a kind is called in a sentence. */
+export const HUB_KIND_NOUN: Record<HubItemKind, string> = {
+	get agent() {
+		return t("ui.hub.updates.kind.agent");
+	},
+	get team() {
+		return t("ui.hub.updates.kind.team");
+	},
+	get skill() {
+		return t("ui.hub.updates.kind.skill");
+	},
+};
+
+/** Stable DOM section ids, not rendered copy; keep these tokens English. */
+export const HUB_SECTION: Record<HubItemKind, string> = {
+	agent: "agents",
+	team: "teams",
+	skill: "skills",
+};
 
 export type HubItemState =
 	| "up-to-date"
@@ -144,27 +172,40 @@ export function hubItemIndex(
  * D16); every other sentence is B6.4 verbatim.
  */
 export const HUB_ERROR_SENTENCE: Record<string, string> = {
-	"provider-error":
-		"Couldn't reach the model that merges this. It retries on its own; press Retry to try now.",
-	"model-unavailable":
-		"No model available for merging. Check Settings › Agent Hub.",
-	"prompt-too-long": "This one is too large to merge automatically.",
-	"merge-refused":
-		"The hub and your copy both changed the same part. Review it.",
-	"concurrent-edit": "It changed while updating. Try again.",
-	"hub-item-missing": "No longer available on the hub (or you lost access).",
+	get "provider-error"() {
+		return t("ui.hub.updates.error.provider");
+	},
+	get "model-unavailable"() {
+		return t("ui.hub.updates.error.model_unavailable");
+	},
+	get "prompt-too-long"() {
+		return t("ui.hub.updates.error.prompt_too_long");
+	},
+	get "merge-refused"() {
+		return t("ui.hub.updates.error.merge_refused");
+	},
+	get "concurrent-edit"() {
+		return t("ui.hub.updates.error.concurrent_edit");
+	},
+	get "hub-item-missing"() {
+		return t("ui.hub.updates.error.item_missing");
+	},
 	// Not in B6.4's table: these two classes reach the UI as a press outcome
 	// (a 401 answer, a write the backend could not finish) and would otherwise
 	// fall to the generic sentence, which names neither the cause nor the remedy.
-	"no-credential": "Sign in to Radient to update from the hub.",
+	get "no-credential"() {
+		return t("ui.hub.updates.error.no_credential");
+	},
 	// The backend raises this class for BOTH a failed hub fetch and a failed local
 	// write (one class, two directions), so the sentence names neither: it used to
 	// say "write", and the path that reaches it most often is a download (UX
 	// round 2, U12).
-	"hub-error": "The update didn't complete. Try again.",
+	get "hub-error"() {
+		return t("ui.hub.updates.error.hub");
+	},
 };
 
-const GENERIC_FAILURE = "Couldn't update this from the hub. Try again.";
+const genericFailure = (): string => t("ui.hub.updates.error.generic");
 
 /**
  * The sentence for a class, from the class alone and never from raw exception
@@ -176,7 +217,7 @@ export function hubClassSentence(
 	const known = errorClass
 		? HUB_ERROR_SENTENCE[errorClass.split("/")[0]]
 		: null;
-	return known ?? GENERIC_FAILURE;
+	return known ?? genericFailure();
 }
 
 /** The sentence for an item's failure, from its class and never from raw exception text. */
@@ -251,17 +292,17 @@ export function hubMarkFor(item: HubUpdateItem | undefined): HubMark | null {
 export function hubMarkLabel(name: string, mark: HubMark): string {
 	switch (mark.kind) {
 		case "available":
-			return `Update ${name} from the hub`;
+			return t("ui.hub.updates.mark.update", { name });
 		case "review":
-			return `Review the hub update for ${name}`;
+			return t("ui.hub.updates.mark.review", { name });
 		case "failed":
 			return mark.retryable
-				? `Retry the hub update for ${name}`
-				: `See why the hub update for ${name} failed`;
+				? t("ui.hub.updates.mark.retry", { name })
+				: t("ui.hub.updates.mark.failure_details", { name });
 		case "updating":
-			return `Updating ${name} from the hub`;
+			return t("ui.hub.updates.mark.updating", { name });
 		case "applied":
-			return `${name} was updated from the hub`;
+			return t("ui.hub.updates.mark.applied", { name });
 	}
 }
 
@@ -269,11 +310,13 @@ export function hubMarkLabel(name: string, mark: HubMark): string {
 export function hubMarkAction(mark: HubMark): string | null {
 	switch (mark.kind) {
 		case "available":
-			return "Click to update.";
+			return t("ui.hub.updates.action.update");
 		case "review":
-			return "Click to review.";
+			return t("ui.hub.updates.action.review");
 		case "failed":
-			return mark.retryable ? "Click to retry." : "Click to see details.";
+			return mark.retryable
+				? t("ui.hub.updates.action.retry")
+				: t("ui.hub.updates.action.details");
 		default:
 			return null;
 	}
@@ -288,10 +331,17 @@ export function hubAgo(
 	const then = Date.parse(iso);
 	if (!Number.isFinite(then)) return null;
 	const minutes = Math.max(0, Math.floor((now - then) / 60_000));
-	if (minutes < 1) return "just now";
-	if (minutes < 60) return `${minutes} min ago`;
+	if (minutes < 1) return t("ui.hub.updates.ago.now");
+	if (minutes < 60)
+		return t("ui.hub.updates.ago.minutes", {
+			count: minutes,
+		});
 	const hours = Math.floor(minutes / 60);
-	return hours < 24 ? `${hours} h ago` : null;
+	return hours < 24
+		? t("ui.hub.updates.ago.hours", {
+				count: hours,
+			})
+		: null;
 }
 
 /** Secondary text (tooltip / description): why it is there, and what pressing does. */
@@ -303,22 +353,24 @@ export function hubMarkDetail(
 	switch (mark.kind) {
 		case "available":
 			return mark.auto
-				? "A newer version is on the hub. It will update automatically."
+				? t("ui.hub.updates.detail.available_auto")
 				: needsDecision(item)
-					? "A newer version is on the hub. You changed this too, so it needs you."
-					: "A newer version is on the hub.";
+					? t("ui.hub.updates.detail.needs_decision")
+					: t("ui.hub.updates.detail.available");
 		case "review":
 			if (item.error_class) return hubErrorSentence(item);
 			return item.classification === "baseline-unknown"
-				? "A newer version is on the hub, and nothing records what you changed. It needs you."
-				: "A newer version is on the hub. You changed this too, so it needs you.";
+				? t("ui.hub.updates.detail.baseline_unknown")
+				: t("ui.hub.updates.detail.needs_decision");
 		case "failed":
 			return hubErrorSentence(item);
 		case "updating":
-			return "Merging the hub's version with yours.";
+			return t("ui.hub.updates.detail.updating");
 		case "applied": {
 			const ago = hubAgo(item.last_applied_at, now);
-			return ago ? `Updated ${ago}.` : "Updated from the hub.";
+			return ago
+				? t("ui.hub.updates.detail.applied_ago", { ago })
+				: t("ui.hub.updates.detail.applied");
 		}
 	}
 }
@@ -343,13 +395,13 @@ export function hubAvailableCount(
  * carried it too; and it was drawn per section, so a signed-out hub user read it
  * twice. The caller hosts it in ONE section.
  */
-export const HUB_SIGN_IN_LINE = "Sign in to Radient to get hub updates";
+const hubSignInText = (): string => t("ui.hub.updates.sign_in");
 
 export function hubSignInLine(updates: HubUpdates | undefined): string | null {
 	const needed = (updates?.items ?? []).some(
 		(item) => item.error_class === "no-credential",
 	);
-	return needed ? HUB_SIGN_IN_LINE : null;
+	return needed ? hubSignInText() : null;
 }
 
 /** A sentence a press leaves beside its control, so no press ends silently. */
@@ -370,41 +422,41 @@ export function hubReportNote(
 			// A decision the person made says what it did to the parts that differed.
 			if (prefer)
 				return {
-					message: `Updated. ${
+					message:
 						prefer === "local"
-							? "Where the hub and your copy differed, yours was kept."
-							: "Where the hub and your copy differed, the hub's was used."
-					} Your previous version is saved as a backup.`,
+							? t("ui.hub.updates.report.merged_local")
+							: t("ui.hub.updates.report.merged_remote"),
 					tone: "info",
 				};
 			return report.classification === "both-changed" ||
 				report.classification === "baseline-unknown"
 				? {
-						message:
-							"Merged with your edits. Your previous version is saved as a backup.",
+						message: t("ui.hub.updates.report.merged_edits"),
 						tone: "info",
 					}
 				: null;
 		}
 		case "unchanged":
 		case "up-to-date":
-			return { message: "Already up to date.", tone: "info" };
+			return { message: t("ui.hub.updates.report.unchanged"), tone: "info" };
 		case "would-merge":
 			return {
-				message: "Checked. It is ready to update; press it again to update.",
+				message: t("ui.hub.updates.report.would_merge"),
 				tone: "info",
 			};
 		case "needs-review":
 			return {
 				message:
 					report.classification === "baseline-unknown"
-						? "Nothing records what you changed, so this needs your review."
-						: "The hub and your copy both changed the same part. Review it.",
+						? t("ui.hub.updates.report.review_baseline")
+						: t("ui.hub.updates.error.merge_refused"),
 				tone: "info",
 			};
 		case "skipped":
 			return {
-				message: `Skipped. ${hubClassSentence(report.skipped_reason)}`,
+				message: t("ui.hub.updates.report.skipped", {
+					reason: hubClassSentence(report.skipped_reason),
+				}),
 				tone: "error",
 			};
 		default:
@@ -452,23 +504,46 @@ export function hubRollup(reports: readonly HubMergeReport[]): string {
 		}
 	}
 	const parts: string[] = [];
-	if (updated) parts.push(`${updated} updated`);
-	if (ready) parts.push(`${ready} ready to update`);
+	if (updated)
+		parts.push(
+			t("ui.hub.updates.rollup.updated", {
+				count: updated,
+			}),
+		);
+	if (ready)
+		parts.push(
+			t("ui.hub.updates.rollup.ready", {
+				count: ready,
+			}),
+		);
 	if (review.length) {
 		const named = review.filter(Boolean);
 		const who = named.length
 			? ` (${named.slice(0, 2).join(", ")}${named.length > 2 ? ` +${named.length - 2}` : ""})`
 			: "";
 		parts.push(
-			`${review.length} ${review.length === 1 ? "needs" : "need"} your review${who}`,
+			t("ui.hub.updates.rollup.review", {
+				count: review.length,
+				who,
+			}),
 		);
 	}
-	if (failed) parts.push(`${failed} couldn't be updated`);
-	if (skipped) parts.push(`${skipped} skipped`);
+	if (failed)
+		parts.push(
+			t("ui.hub.updates.rollup.failed", {
+				count: failed,
+			}),
+		);
+	if (skipped)
+		parts.push(
+			t("ui.hub.updates.rollup.skipped", {
+				count: skipped,
+			}),
+		);
 	if (!parts.length)
 		return same
-			? "Everything was already up to date."
-			: "Nothing needed updating.";
+			? t("ui.hub.updates.rollup.all_current")
+			: t("ui.hub.updates.rollup.nothing");
 	return `${parts.join(", ")}${cause ? `. ${cause}` : ""}`;
 }
 
@@ -477,11 +552,12 @@ export function hubCheckSentence(status: HubUpdates | undefined): string {
 	const waiting = (status?.items ?? []).filter(
 		(item) => item.state === "available",
 	).length;
-	const head = "Checked just now.";
-	if (!status) return head;
+	if (!status) return t("ui.hub.updates.check.checked");
 	if (status.credential === "none" && waiting === 0)
-		return `${head} ${HUB_SIGN_IN_LINE}.`;
+		return t("ui.hub.updates.check.sign_in");
 	return waiting
-		? `${head} ${waiting} ${waiting === 1 ? "update is" : "updates are"} on the hub.`
-		: `${head} Everything is up to date.`;
+		? t("ui.hub.updates.check.waiting", {
+				count: waiting,
+			})
+		: t("ui.hub.updates.check.current");
 }

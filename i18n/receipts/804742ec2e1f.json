@@ -1,0 +1,124 @@
+{
+ "schema": 1,
+ "date": "2026-10-20",
+ "instance": "804742ec2e1f",
+ "auditor": "i18n-auditor (independent translation auditor; not the translation author)",
+ "model": "deepseek/deepseek-flash",
+ "status": "clean-with-findings",
+ "result": "clean-with-findings",
+ "locales": [
+  "es",
+  "fr",
+  "hi",
+  "ru",
+  "ur",
+  "vi",
+  "zh-CN"
+ ],
+ "findings": [
+  {
+   "id": "I6",
+   "severity": "nit",
+   "locale": "es",
+   "key": "ui.browser.browser_url_bar.address_suggestions_available",
+   "note": "CLDR es `many` category absent. Only reachable at 1,000,000; the call site caps at 5 rows, so no rendered defect today. Recorded rather than churned; add the `many` branch only if the row cap ever grows past 999,999."
+  }
+ ],
+ "resolved_findings": [
+  {
+   "id": "I1",
+   "was_severity": "major",
+   "locale": "ur",
+   "key": "ui.browser.browser_url_bar.address_suggestions_available",
+   "status": "resolved",
+   "resolution": "one branch added for CLDR ur one/other; renders 1 تجویز دستیاب ہے at count=1",
+   "fixed_at": "35a3bbe740984be683f492e0ba44a592939984f7"
+  },
+  {
+   "id": "I2",
+   "was_severity": "minor",
+   "locale": "hi",
+   "key": "ui.browser.browser_url_bar.address_suggestions_unavailable",
+   "status": "resolved",
+   "resolution": "genitive restored: पते के सुझाव उपलब्ध नहीं हैं।",
+   "fixed_at": "35a3bbe740984be683f492e0ba44a592939984f7"
+  },
+  {
+   "id": "I3",
+   "was_severity": "minor",
+   "locale": "ur",
+   "key": "ui.browser.browser_url_bar.address_suggestions_unavailable",
+   "status": "resolved",
+   "resolution": "oblique genitive restored: پتے کی تجاویز دستیاب نہیں ہیں۔",
+   "fixed_at": "35a3bbe740984be683f492e0ba44a592939984f7"
+  },
+  {
+   "id": "I4",
+   "was_severity": "nit",
+   "locale": "zh-CN",
+   "key": "ui.browser.browser_url_bar.address_required",
+   "status": "resolved",
+   "resolution": "terminology aligned to 地址 (address bar vocabulary) from 网址",
+   "fixed_at": "35a3bbe740984be683f492e0ba44a592939984f7"
+  },
+  {
+   "id": "I5",
+   "was_severity": "nit",
+   "locale": "es",
+   "key": "ui.browser.browser_url_bar.address_suggestions_no_match",
+   "status": "resolved",
+   "resolution": "coincidentes -> que coincidan. The optional second half (aligning the preposition to the siblings' «de esta sesión») was not taken; that is a style preference, not an error.",
+   "fixed_at": "35a3bbe740984be683f492e0ba44a592939984f7"
+  }
+ ],
+ "independence": "Did not author, translate, or edit any catalogue value, code or ledger row. Counts, hashes and renders were derived here from the files at the audited head; the worktree was only read (git status clean after every command).",
+ "scope": {
+  "base": "70356afc91e2f2de8ccb57abeaf32cfcc242253c",
+  "head": "35a3bbe740984be683f492e0ba44a592939984f7",
+  "kind": "independent translation audit, correction round 2",
+  "namespace": "ui.browser",
+  "keys_reviewed": 6,
+  "keys_carried_unchanged": 224,
+  "note": "All 224 carried keys are byte-identical to the English and target bytes the ledger last audited (base target hashes equal the existing rows' target_sha256); only the six new ui.browser.browser_url_bar.address_* keys were translated and reviewed here."
+ },
+ "namespaces": {
+  "ui.browser": {
+   "status": "clean-with-findings",
+   "result": "clean-with-findings",
+   "findings": [
+    {
+     "id": "I6",
+     "severity": "nit",
+     "locale": "es",
+     "key": "ui.browser.browser_url_bar.address_suggestions_available",
+     "note": "CLDR es `many` category absent. Only reachable at 1,000,000; the call site caps at 5 rows, so no rendered defect today. Recorded rather than churned; add the `many` branch only if the row cap ever grows past 999,999."
+    }
+   ],
+   "locales": [
+    "es",
+    "fr",
+    "hi",
+    "ru",
+    "ur",
+    "vi",
+    "zh-CN"
+   ],
+   "keys_checked_per_catalogue": 230,
+   "keys_linguistically_reviewed": 6,
+   "context_keys_verified": 230,
+   "sha256": {
+    "en": "f6c42ec2a73a7c7417702aba8d053e5c08129cbf6037d7ee452eba50cb306624",
+    "es": "8403c5a919f6c71bdd4295330a18a1ed00d4b3eb05398963021d77fe9b4f6fa9",
+    "fr": "eb4eae2a8bc36fb9a83936ade3b55e29346a308889e1b9018444274ce0dc09a5",
+    "hi": "75165208c75636846b165e36dc1692f38266fade4a838a6d52f7957a6077a251",
+    "ru": "104468eb854bdac61d45b37b89fa03a678653828a79bf98688a891ecf2cabd1c",
+    "ur": "38ca064fcf9dcf94aaa4d2cf65b8d847d296fc53f7faebb32161ee1f9ab4d779",
+    "vi": "ab23c47abc958e7bcacd0e0a66da1e3711fbcf7adcccee0a31971065f87ad1ae",
+    "zh-CN": "067a30e04cba6add1951f42241647311cb9d4dc6936f2c0ad0143c1778476c8b",
+    "context": "ba5b97be8e2fd8273a503072117d003e9660012ede62011457ffff4b5397977b"
+   },
+   "note": "Key set/order (6 new keys at indices 173-178 in every catalogue), no duplicates, ICU argument names and number format specs preserved, CLDR plural categories checked against Intl.PluralRules for each locale, rendered through intl-messageformat at counts 1/2/5/21.",
+   "findings_note": "The single nit (I6) is es-only: CLDR es `many` is absent, reachable only at 1,000,000 while the call site caps the list at 5 rows. A multi-locale receipt shares one namespace block, so the count is the same on all seven rows; per-locale detail is in findings[].locale."
+  }
+ }
+}

@@ -495,6 +495,22 @@ export function updatedClause(updatedAtSec: number, nowMs: number): string {
 }
 
 /**
+ * The row's MARKER LINE: the relation tag, then what this session did to the
+ * ref, `·`-seamed - one string, derived once (the model file's own rule: one
+ * derived string per fact).
+ *
+ * WHY IT IS A DERIVATION AND NOT A JOIN IN THE COMPONENT. The row draws it
+ * and the row's ACCESSIBLE NAME says it (see `rowAriaLabel`), and two
+ * separate joins would be two chances to state the same fact two ways.
+ */
+export function rowTag(row: CodeRequestRow): string | null {
+	const parts = [relationTag(row), actedTag(row)].filter(
+		(tag): tag is string => tag !== null,
+	);
+	return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+/**
  * The line-A relation tag, only where a row needs disambiguating (§5).
  *
  * `opened` is the plain case and returns null; `mentioned` likewise (its
@@ -888,8 +904,78 @@ export function identityLabel(
 }
 
 /**
+ * The trailing separators of a project path, stripped before the last segment
+ * is taken: a path that ends in `/` names nothing after it.
+ */
+const TRAILING_SEPARATORS = /\/+$/;
+
+/**
+ * The REPO NAME: the last path segment of the forge's project path.
+ *
+ * WHY THE NAME IS DERIVED AND NOT STORED. The wire row carries one field,
+ * `project`, and its shape is the FORGE's, not the app's: `owner/repo` on
+ * GitHub and Gitea, `group/subgroup/project` on GitLab, `org/project/_git/repo`
+ * on Azure DevOps, a bare name on Gerrit. The operator reads a row by the
+ * repository it belongs to, and the PATH alone does not say it - a path
+ * truncated to `minervai/services/cor` reads as a directory, not as a repo,
+ * so the name was cut off exactly where the identity began.
+ *
+ * WHY THE LAST SEGMENT. A name is the shortest thing that identifies the
+ * repository to a human, and every one of those shapes ends in it: the GitHub
+ * repo, the GitLab project, the Azure repo, the Gerrit project. Splitting on
+ * the final `/` rather than assuming a fixed depth is what makes ONE rule
+ * cover four forges, and it is why a trailing separator is trimmed first
+ * (a path that ends in `/` names nothing after it).
+ *
+ * WHAT THIS IS NOT. The name is a DISPLAY derivation, never a substitute for
+ * the path: the accessible name and the identity's `title` keep the full
+ * `project`, because "which repository" and "which full path" are different
+ * questions and a screen reader is owed the whole of the second.
+ */
+export function repoName(project: string): string {
+	const trimmed = project.trim();
+	if (trimmed === "") return "";
+	const withoutTrailingSlash = trimmed.replace(TRAILING_SEPARATORS, "");
+	const lastSlash = withoutTrailingSlash.lastIndexOf("/");
+	return lastSlash === -1
+		? withoutTrailingSlash
+		: withoutTrailingSlash.slice(lastSlash + 1);
+}
+
+/**
+ * The FULL PATH for the line BELOW the identity, or null when there is
+ * nothing to put there.
+ *
+ * WHY A NULL AND NOT AN EMPTY STRING. The second line exists to carry the
+ * full path next to the name that identifies the repository, and a project
+ * with no separator IS its own name - so the line would repeat the name
+ * above it and say nothing. `null` is the absence of the line, and the row
+ * draws the line when this is a string.
+ *
+ * WHY IT LIVES HERE, BESIDE `repoName` (agent review round 1, R1-5): the
+ * model file's own header says "one derived string per fact ... so the
+ * stories, the components and any later test drive one implementation", and
+ * the predicate that decides whether the second line is drawn AT ALL is a
+ * derivation about the same project path as the name above it. A predicate
+ * in the component is a second implementation of a fact the model owns.
+ */
+export function pathLineFor(project: string): string | null {
+	const trimmed = project.trim();
+	if (trimmed === "") return null;
+	if (trimmed === repoName(project)) return null;
+	return project;
+}
+
+/**
  * The row's ACCESSIBLE NAME (agent review round 1, N4 / UX U4):
- * `<project> <#N>: <title>, <state>, <lane clauses>, opens in your browser`.
+ * `<project> <#N>: <title>, <state>, <relation>, <lane clauses>, opens in your
+ * browser`.
+ *
+ * The `<relation>` part is the marker line the row DRAWS, carried here so a
+ * screen reader never loses the one word that keeps a row from claiming to
+ * be opened when the backend never said so (QA round 2, Q-3). It is absent
+ * when the row carries no marker, and it comes from the same derivation the
+ * row draws (`rowTag`), so the two can never state the relation two ways.
  *
  * One derived string rather than the concatenated row text, because the
  * concatenation read lane clauses in visual order with no punctuation and
@@ -905,6 +991,16 @@ export function rowAriaLabel(row: CodeRequestRow): string {
 	const parts = [`${identityLabel(row)}: ${title}`];
 	const pill = statePill(row);
 	if (pill) parts.push(pill.label.toLowerCase());
+	/*
+	 * THE RELATION IS PART OF THE ROW'S NAME (QA round 2, Q-3). The marker
+	 * line is a VISUAL line - it yields where the row is tight - so a screen
+	 * reader that only had the identity, the state and the title could not
+	 * hear the one word that keeps a row from claiming to be opened when the
+	 * backend never said so (`unknown`). The marker is carried here, in the
+	 * same words the row draws, so the two can never disagree.
+	 */
+	const tag = rowTag(row);
+	if (tag) parts.push(tag);
 	const clauses = laneLines(row).map((line) => line.clause);
 	if (clauses.length > 0) {
 		parts.push(clauses.join("; "));

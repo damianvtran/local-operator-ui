@@ -52,12 +52,15 @@ import {
 	type PeerSender,
 	peerIdentity,
 } from "../components/trace/receipt-row-model";
+import type { HubReceipt } from "../components/trace/receipt-row-model";
 import { isPartialDelivery } from "../components/trace/tool-row-model";
 import type { TranscriptDisplayMode } from "../transcript-display-mode";
 import { isImageGenTool } from "./image-gen-card-model";
 import { freezeRecordDeep } from "./record-immutability";
 import {
+	type FoldCountSegment,
 	type FoldableAction,
+	foldCountSegments,
 	foldSummary,
 	workedSeconds,
 	workedSecondsOf,
@@ -77,6 +80,7 @@ import {
 } from "./transcript-rows";
 import {
 	type QuietGroupFamily,
+	type SegmentLabelKind,
 	type SegmentSpan,
 	type TriggerKind,
 	type TurnCycle,
@@ -84,10 +88,11 @@ import {
 	isQuietTurnCall,
 	isQuietTurnClose,
 	isTerminalMarker,
-	labelOfSegment,
+	labelWordOf,
 	partitionRun,
 	reportsCompletedThought,
 	segmentIsCompleted,
+	segmentLabelKind,
 	triggerOf,
 } from "./turn-segments";
 
@@ -291,6 +296,19 @@ export type QuietGroup = {
 	failed: number;
 	/** It is the tail and no later visible row exists (the group may still grow). */
 	open: boolean;
+	/**
+	 * Hub receipts in this group that ASK for a reply, and how many: state it only
+	 * when non-zero, and as a count because the bar states the number.
+	 *
+	 * WHY IT LIVES ON THE GROUP AT ALL. It is the phone's clause too: both surfaces
+	 * derive their bars from one definition (`quietGroupClauseFacts`), and a fact
+	 * only one of them can compute is a parity gap the shared fixture cannot see.
+	 * Read from the record's own durable hub shape (`receipt`), never re-derived
+	 * from the wire.
+	 */
+	replyRequested?: number;
+	/** Hub receipts in this group delivered as a STEER (same shape as above). */
+	steered?: number;
 	/** Every row of the group, in order. */
 	rowIds: string[];
 };
@@ -728,6 +746,21 @@ export function quietGroupOfSegment(
 	}
 	const rowIds: string[] = [];
 	for (let i = span.from; i <= span.to; i += 1) rowIds.push(records[i].id);
+	/*
+	 * THE RECEIPT FAMILIES' TWO DECIDED FACTS, from the trigger rows' own durable
+	 * hub shape. SPARSE, like the wire: a group with none carries no field, so a
+	 * surface that has none states no clause and the two cannot drift by presence.
+	 */
+	const receipts = triggers.filter(
+		(trigger): trigger is TranscriptRecord & { receipt?: HubReceipt } =>
+			"receipt" in trigger && trigger.receipt !== undefined,
+	);
+	const replyRequested = receipts.filter(
+		(trigger) => trigger.receipt?.expectsReply === true,
+	).length;
+	const steered = receipts.filter(
+		(trigger) => trigger.receipt?.steer === true,
+	).length;
 	return {
 		key: `qg:${records[span.from].id}`,
 		family: familyFinal,
@@ -739,7 +772,44 @@ export function quietGroupOfSegment(
 		failed,
 		open: options.open ?? span.to === records.length - 1,
 		rowIds,
+		...(replyRequested > 0 ? { replyRequested } : {}),
+		...(steered > 0 ? { steered } : {}),
 	};
+}
+
+/**
+ * THE SUMMARY CLAUSE FACTS a bar states, in order, as the shared contract.
+ *
+ * WHY THIS IS A SHARED DERIVATION, AND WHY IT LIVES HERE NOW. The clause set is the
+ * only part of a group a reader actually reads, and it is derived (never sent).
+ * While each surface decided its own conditions, the SAME group read
+ * `messages · 2 · 3 actions` on one client and bare `messages · 2` on another, and
+ * nothing caught it: the parity fixture pinned counts but no clause. The relay and
+ * the TUI ported this rule on 2026-10-16 while this app kept its own - so the
+ * fixture copies drifted apart and both suites stayed green for nine days. This is
+ * the definition the fixture now pins on both sides.
+ *
+ * The facts are clause IDENTIFIERS with their counts, not rendered text: a surface
+ * still owns its words and formatting, exactly as it owns the family word
+ * (`quietGroupLabel`). Count semantics match the group fields: `count` is TRIGGER
+ * rows, `actions` is non-quiet work rows.
+ */
+export function quietGroupClauseFacts(
+	group: QuietGroup,
+	options: { partial?: boolean } = {},
+): string[] {
+	const facts = [
+		`count:${options.partial ? `${group.count}+` : `${group.count}`}`,
+	];
+	/*
+	 * NONZERO, NOT A THRESHOLD: a group with ANY work states it, and a workless
+	 * group states no actions clause at all (never `0 actions`).
+	 */
+	if (group.actions) facts.push(`actions:${group.actions}`);
+	if (group.replyRequested)
+		facts.push(`reply_requested:${group.replyRequested}`);
+	if (group.steered) facts.push(`steered:${group.steered}`);
+	return facts;
 }
 
 /**
@@ -802,6 +872,12 @@ export type TurnSummaryFacts = {
 	firstFailedId: string | null;
 	/** The fold-style class sentence (`foldSummary`), or null with no actions. */
 	title: string | null;
+	/**
+	 * The same summary as STRUCTURED count segments (`FoldCountSegment`), beside
+	 * the words - the cross-surface fact a parity fixture compares (see
+	 * `FoldSummarySpec.countUnits` for why English cannot be the contract).
+	 */
+	countUnits: FoldCountSegment[];
 	/**
 	 * The quiet group this span IS, when it is one (design §5, rev 2): the bar over
 	 * a run of delivery receipts states the family's plural word, the count and the
@@ -1012,6 +1088,14 @@ export type SegmentPlan = {
 	afterAnswer: boolean;
 	/** The word ahead of the clauses (`Wake`, `Peer message`, `Steered`, ...), or null. */
 	label: string | null;
+	/**
+	 * The label's DECISION, before this surface's word for it. Shared with the
+	 * other clients' parity fixture, which must not compare English
+	 * (`SegmentLabelKind`): the phone says `Wake` in its own catalogue, and a span
+	 * one client labels and the other does not is a partition disagreement that no
+	 * string comparison can see.
+	 */
+	labelKind: SegmentLabelKind | null;
 	/** A settled follow-up: the bar carries the completion mark. */
 	completed: boolean;
 	/** Receipt-origin presentation facts; separate from shared QuietGroup >=2. */
@@ -2424,6 +2508,7 @@ function factsOf(
 		failed,
 		firstFailedId,
 		title: actions.length > 0 ? foldSummary(actions) : null,
+		countUnits: actions.length > 0 ? foldCountSegments(actions) : [],
 		group: options.group ?? null,
 	};
 }
@@ -2484,6 +2569,66 @@ function settledCloseOf(
 		}
 	}
 	return settled;
+}
+
+/**
+ * Does this run's OWN data say it is still being written?
+ *
+ * WHY THIS EXISTS BESIDE THE SETTLE LATCH (operator report, 2026-10-21). The
+ * latch was built on "the rows cannot state whether a turn will resume", which
+ * is true of exactly one window: the INTER-CYCLE gap, where a finished call and
+ * a dead run are the same rows. It is false for the rest of a live turn, and
+ * reading the pane's `live` flag alone there is what made a one-frame flicker
+ * out of every liveness dip:
+ *
+ * - an assistant row still `streaming` cannot be a finished turn's last word;
+ * - a tool row whose `phase` is not `done` has not reported its outcome, so the
+ *   turn that called it is still open.
+ *
+ * Both are facts about the run's own records, so anchoring on them is
+ * idempotent under `live`: the plan can only change when the rows change, which
+ * is the requirement this whole tier exists to hold. A dip (a tool-segment
+ * boundary) and a blank (the reconnect arm sets `frontend: null`, which drops
+ * `working` and even the latch's store key) both stop mattering here.
+ *
+ * WHEN IT RELEASES. The moment the last row stops claiming to be live: the
+ * streaming flag clears and the pending tool reports `done`. That is the pass
+ * on which a completed turn condenses - a real change in the data under the
+ * rows, not a sample of a flag.
+ *
+ * WHAT IT DELIBERATELY DOES NOT COVER. A run whose rows are all settled and
+ * whose turn has not resumed yet (the inter-cycle gap). Nothing in the rows can
+ * separate that from a run that has genuinely finished, so the pane's latch
+ * (`watchedRunId`) still owns it - see `collapsePlan`'s option.
+ *
+ * THE RELEASE IS THE ROW, AND THERE IS NO TIMEOUT (agent review round 1, F1).
+ * The normal operator is `agent_end`, which settles every streaming row and
+ * every non-`done` call (`transcript-reducer.ts`'s sweep), and a durable page
+ * always carries settled rows. The residue is a LOST TERMINAL FRAME - a process
+ * killed mid-turn with no `agent_end` and no `session_incident` - where the row
+ * keeps claiming to be live and this run therefore never condenses. That
+ * direction is chosen: a stale card that still says it is running is a wrong
+ * row the reader can see and act on, while folding rows on a wall clock would
+ * hide work under a bar the moment a slow call outlived the guess. The escape
+ * already exists in the data - any terminal marker (an error-level `custom`, a
+ * completion notice) condenses the run again - and a re-read of the session
+ * replaces the stale rows outright.
+ */
+function runStatesItsOwnLiveness(
+	records: readonly TranscriptRecord[],
+): boolean {
+	for (const record of records) {
+		if (record.kind === "assistant" && record.streaming === true) return true;
+		if (
+			record.kind === "tool" &&
+			(record.phase === "running" ||
+				record.phase === "composing" ||
+				record.phase === "queued")
+		) {
+			return true;
+		}
+	}
+	return false;
 }
 
 /**
@@ -2906,7 +3051,7 @@ function planRun(
 	 * watched (a fresh open, a finished transcript), which is what keeps the
 	 * idle-residual shape (R2) exactly as it was.
 	 */
-	const anchored = live || watched;
+	const anchored = live || watched || runStatesItsOwnLiveness(records);
 	const settledAt = anchored ? settledCloseOf(records, partition.cycles) : -1;
 	const liveFrom = anchored ? settledAt + 1 : -1;
 
@@ -3004,11 +3149,18 @@ function planRun(
 							: (runRows[span.to + 1] ?? segRows[segRows.length - 1]).record.id
 					}`;
 
-			const label =
-				labelOfSegment(records, partition.cycles, span, group) ??
+			/*
+			 * THE LABEL'S DECISION, THEN ITS WORD (`SegmentLabelKind`). A span the
+			 * model leaves nameless but which is a receipt episode opening on a notice
+			 * still reads `Job result` - the arm is the episode's own origin, so it
+			 * belongs beside the other kinds rather than in the renderer.
+			 */
+			const labelKind: SegmentLabelKind | null =
+				segmentLabelKind(records, partition.cycles, span, group) ??
 				(internal !== null && records[span.from].kind === "notice"
-					? "Job result"
+					? { kind: "job" }
 					: null);
+			const label = labelWordOf(labelKind);
 			/*
 			 * Only positive receipt-origin spans may compact while live. Settlement
 			 * is a lifecycle fact, not permission to show private work loosely.
@@ -3023,9 +3175,32 @@ function planRun(
 					span.to < liveFrom ||
 					groupKeepsItsBar ||
 					internal !== null);
-			if (internal === null && foldEligible) ordinarySlots.add(i);
+			const facts = factsOf(segRows, {
+				partial: !headLoaded,
+				headLoaded,
+				group,
+			});
+			/*
+			 * A SPAN WITH NOTHING TO SHOW IS NOT A BAR. `factsOf` excludes the quiet
+			 * call from the count, so a span that holds only a settled `no_reply`
+			 * (a peer-triggered turn that ended silently, whose opener record has
+			 * not - or not yet, on the live path - landed ahead of it) states no
+			 * label, no duration and no actions: a bare check and chevron over rows
+			 * that paint nothing. It stays loose, where those rows are invisible, and
+			 * it does so the same way live and on reload because it reads only the
+			 * span's own facts. A labelled bar, a group and an episode are untouched.
+			 */
+			const hasNothingToShow =
+				label === null &&
+				internal === null &&
+				group === null &&
+				facts.actions === 0 &&
+				facts.durationS === null;
+			if (internal === null && foldEligible && !hasNothingToShow)
+				ordinarySlots.add(i);
 			const collapsedHere =
 				foldEligible &&
+				!hasNothingToShow &&
 				!(
 					focusHold !== null &&
 					!openRuns.has(key) &&
@@ -3039,6 +3214,7 @@ function planRun(
 				gap: segmentGap(segRows[0], span.from > from),
 				afterAnswer,
 				label,
+				labelKind,
 				internal,
 				completed: internal?.live
 					? false
@@ -3055,11 +3231,7 @@ function planRun(
 					i === nearest && answerAt !== null && preAnswerCount === 1
 						? records[answerAt].ts
 						: null,
-				facts: factsOf(segRows, {
-					partial: !headLoaded,
-					headLoaded,
-					group,
-				}),
+				facts,
 			};
 		},
 	);

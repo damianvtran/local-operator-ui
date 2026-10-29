@@ -1,0 +1,138 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "deepseek/deepseek-flash",
+	"actual_model_source": "harness session model (system prompt: deepseek/deepseek-flash); no fallback used",
+	"instance": "5bb0b059e0c8",
+	"instance_source": "Local Operator session id 5bb0b059e0c8; this audit ran as i18n-auditor and did not author or edit the catalogue",
+	"independent_from_translator_session": true,
+	"independence_basis": "The task states a different agent translated the 22-key ui.mesh delta; this auditor did not translate it and only read the catalogue. The task is a re-run after the previous attempt was lost to ENOSPC; it is not a second independent auditor instance.",
+	"date": "2026-10-19",
+	"locale": "hi",
+	"status": "passed",
+	"namespace": "ui.mesh",
+	"round": 1,
+	"audit_kind": "namespace-delta",
+	"key_count": 245,
+	"new_key_count": 22,
+	"worktree": "~/local-operator-ui/.worktrees/mesh-link-states (branch fix/mesh-link-states, PR #1225); hashes bind the working-tree translation as audited",
+	"scope": "hi ui.mesh: all 245 values read; the 22 new keys (mesh_drop.reach_refusal, mesh_drop.owner_reach_refusal, mesh_graph.handshake_refused_count, mesh_graph.relay_down_count, mesh_reach.relay_not_running, mesh_reach.handshake_refused, mesh_reach.address_unreachable, mesh_reach.no_endpoint, mesh_reach.not_a_member, mesh_reach.attempt_bad_address, mesh_reach.attempt_could_not_connect, mesh_reach.addresses_tried, mesh_reach.attempt_answered, mesh_reach.attempt_nothing_listening, mesh_reach.attempt_no_answer, mesh_reach.attempt_not_tried, mesh_reach.peer_relay_not_running, mesh_reach.peer_closed_handshake, mesh_graph.address_unreachable_count, mesh_graph.no_endpoint_count, mesh_graph.not_a_member_count, mesh_reach.handshake_refused_hint) audited against the English source and context. The catalogue was not edited.",
+	"note": "hi ui.mesh 22-key delta + full 245-value read: 0 counted BLOCKER/MAJOR/MINOR/NIT; 1 out-of-delta nit observation. Receipt i18n/receipts/5bb0b059e0c8.json.",
+	"style_guide": {
+		"path": "~/local-operator/i18n/style-guides/hi.md",
+		"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+		"glossary_path": "~/local-operator/i18n/glossary.md",
+		"glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+		"note": "The UI checkout has no local i18n/glossary.md or i18n/style-guides/; docs/I18N.md points at the core repository, so the core hi guide and glossary above are the binding inputs."
+	},
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.mesh.json",
+			"sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.mesh.context.json",
+			"sha256": "4ceb0a871d50757e49e8079b0446a91fe7fc4ad571f54479a056632cd1f1d533"
+		},
+		"hi": {
+			"path": "src/i18n/catalogues/hi/ui.mesh.json",
+			"sha256": "db1a9eadeb724933bc12f0fed387188f57906179ec1da9b16fee621ab1d4ceaf"
+		}
+	},
+	"artifacts": [
+		{
+			"path": "i18n/receipts/5bb0b059e0c8.json",
+			"role": "immutable audit receipt; the ledger row records its sha256"
+		}
+	],
+	"namespaces": {
+		"ui.mesh": {
+			"status": "passed",
+			"keys_audited": 245,
+			"new_keys_audited": 22,
+			"sha256": {
+				"en": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
+				"hi": "db1a9eadeb724933bc12f0fed387188f57906179ec1da9b16fee621ab1d4ceaf"
+			},
+			"context_sha256": "4ceb0a871d50757e49e8079b0446a91fe7fc4ad571f54479a056632cd1f1d533",
+			"findings": [],
+			"dimensions": {
+				"mechanical": "PASS. Valid JSON; 245 unique keys; 245/245 English keys present and no extra keys; all 22 new values parse with @formatjs/icu-messageformat-parser and preserve every placeholder name/type ({device}, {reach}, {reason}, {count}); the new count plurals carry hi one/other and the English number skeleton ::group-off; no markup, backticks, commands, flags, paths or identifiers in the new copy.",
+				"accuracy": "PASS. All 22 new values preserve meaning, including the two refusal sentences (nothing moved / could not hand over), every negative reach state (relay not running, handshake refused, address unreachable, no address to dial, not a member, no answer, not tried, nothing listening) and the membership/epoch recovery hint. No omission, addition, negation or polarity error; the hint says check, never asserts a cause, as the context requires.",
+				"idiom_and_register": "PASS. Polite आप register and imperative forms (जाँचें) per the hi style guide; no तुम/तू, no कृपया padding, no exclamation marks; labels are terse noun phrases and full sentences take danda. Reads as product copy, not a literal calque.",
+				"terminology": "PASS. relay = रिले, handshake = हैंडशेक, peer = पीयर and epoch = epoch match the existing hi ui.mesh values and the hi style guide; Local Operator, read/drive/admin, id and epoch stay as source; endpoint is not a visible term in the new copy and address is rendered पता. The glossary's hi terms (सत्र, स्वीकृतियाँ, निगरानी, संपीडन, उप-एजेंट) are untouched by the delta.",
+				"fit": "PASS by source inspection. ui.mesh.context.json defines no maxCells/maxChars for this namespace. The longest new reach label is डायल करने योग्य पता नहीं (24 code points vs 18 en); no rendered frame or geometry was captured, so this is not a demonstrated overflow and no fit finding is counted. The hint is 132 code points vs 142 en and sits in the device panel where the context says there is room.",
+				"rtl": "N/A for hi (LTR).",
+				"nfc": "PASS. Every value is NFC-normalised; zero bidi/format control characters (U+200E/200F/202A-202E/2066-2069), zero ZWJ/ZWNJ, and the file's nukta spellings (ज़, फ़) use the same NFC form as the rest of the hi catalogues."
+			}
+		}
+	},
+	"mechanical": {
+		"json": "valid JSON; 245 unique keys; no duplicate members",
+		"parity": "245/245 English keys present; no added or dropped keys; the delta is additive only (22 added, 0 existing values changed)",
+		"placeholders": "all 245 values checked with @formatjs/icu-messageformat-parser; every argument name and type matches the English source after ignoring the extra hi plural arm; the five new count messages add the required hi one arm and preserve {count, number, ::group-off} in both arms",
+		"icu": "all new plural/select structures parse; hi one/other present; no # or renamed arguments; byte-identical ::group-off skeletons",
+		"markup": "none in the new copy; no backtick code, commands, flags, paths or identifiers",
+		"unicode": "all values NFC; zero Cf/bidi control characters; no Devanagari or Arabic-Indic digits; no leading/trailing/double spaces, NBSP or NNBSP in the new values",
+		"execution": [
+			{
+				"command": "node --test scripts/i18n/locale-parity.test.mjs",
+				"exit": 0,
+				"result": "43/43 tests passed, including all six [hi] checks: ships at least one message; each key in at most one namespace file; carries every English key; names only English keys; preserves every ICU placeholder; not an English stub."
+			},
+			{
+				"command": "node scripts/i18n/context-parity.mjs",
+				"exit": 0,
+				"result": "ok — every English key is covered, apart from 196 allowed gaps in 6 namespaces; 8 ui.mesh allowance keys are now covered and --update would drop them. Not a hi defect."
+			},
+			{
+				"command": "node scripts/i18n/check-strings.mjs",
+				"exit": 0,
+				"result": "ok — 1260 files scanned, 762 literals at or below baseline, 16 advisory findings (none in ui.mesh)."
+			},
+			{
+				"command": "node scripts/i18n/generate.mjs --check",
+				"exit": 1,
+				"result": "keys.gen.ts is stale globally. Regenerating to scratch and diffing the result shows the only difference is the untracked ur/ui.mesh bundle (6 diff lines: one import and the ur map entry); the 22 hi keys are already present in keys.gen.ts. This is the worktree's untracked ur locale, not a hi translation defect."
+			},
+			{
+				"command": "node scripts/i18n/ledger-check.mjs",
+				"exit": 1,
+				"result": "pre-audit state: hi/ui.mesh has stale source and target hashes (ledger 6b1a7e74…/0d55018b…, files 876ba5b9…/db1a9ead…), exactly the delta this receipt covers. vi/ui.mesh is changes_requested and ur/ui.mesh has no ledger entry; both are outside this hi audit."
+			}
+		]
+	},
+	"second_pass": {
+		"performed": false,
+		"reason": "ui.mesh is not one of the named high-visibility groups (onboarding, errors, settings). This is a re-run by the same auditor after the previous attempt was lost to ENOSPC, not a second independent auditor instance."
+	},
+	"limits": [
+		"Source-only translation audit; no rendered-frame or pseudo-localization run. Fit was judged from the source lengths and context sidecar, not a screenshot.",
+		"No translation API, SDK or MT service was used; the verdict is native-language reasoning and repo checks only.",
+		"Out-of-delta pre-existing values were read for consistency but are not counted as findings; no BLOCKER/MAJOR/MINOR/NIT finding is recorded against the 22-key delta.",
+		"The generated keys.gen.ts staleness is caused by the untracked ur locale directory in this worktree and must be regenerated before merge; it is not evidence that the hi catalogue is stale.",
+		"ledger-check is expected to fail until the ledger row is refreshed from this receipt; no ledger row was edited by this auditor."
+	],
+	"out_of_delta_observations": [
+		{
+			"keys": [
+				"ui.mesh.mesh_graph.suspected_count",
+				"ui.mesh.mesh_graph.reached_count",
+				"ui.mesh.mesh_graph.no_answer_count",
+				"ui.mesh.mesh_graph.not_asked_count",
+				"ui.mesh.mesh_graph.unknown_count",
+				"ui.mesh.mesh_list.revoked_count",
+				"ui.mesh.mesh_list.show_all_panel",
+				"ui.mesh.mesh_approvals_tray.failed_count"
+			],
+			"observation": "Pre-existing (byte-identical to HEAD, not part of this delta): these eight plural messages carry only the `other` arm, while the hi style guide names one/other and the five new count keys correctly add `one`. Their text is invariant between 1 and many, so ICU's other fallback renders correctly; recorded as an out-of-delta consistency observation, not counted.",
+			"severity": "nit",
+			"counted_in_findings": false
+		}
+	],
+	"current_report_verdict": {
+		"status": "passed",
+		"unresolved_blocker_major_count": 0,
+		"finding_ids": []
+	},
+	"audit_notes_not_execution_log": "The execution array above records commands actually run in this worktree and their actual exit status/output. No command output was reconstructed from memory; the ledger-check and generate-check failures are reported as observed, with their causes separated from the hi translation verdict."
+}

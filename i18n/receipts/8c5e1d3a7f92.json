@@ -1,0 +1,37 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "8c5e1d3a7f92",
+  "date": "2026-10-18",
+  "locale": "vi",
+  "status": "passed",
+  "namespaces": {
+    "ui.browser": {
+      "namespace": "ui.browser",
+      "status": "passed",
+      "sha256": {
+        "source": "106e8aff158ee6957bdccf93bbae53e62a0724afdc406e8faa5743ced980d276",
+        "target": "108f4be5e1a96cda39b1566334a08aa3c6630ae6abb0bafe088e6009171c3e37"
+      },
+      "findings": []
+    },
+    "ui.browser.chrome": {
+      "namespace": "ui.browser.chrome",
+      "status": "passed",
+      "sha256": {
+        "source": "73793572e5e36b8bbc8df6c1f27fb98083634b3b9e3cbd05ede27da4813c656c",
+        "target": "240e1618b11dc5d90b3b4c614c8588977716a6e1b9d9dcf5998d292424a2959e"
+      },
+      "findings": []
+    },
+    "ui.mesh": {
+      "namespace": "ui.mesh",
+      "status": "passed",
+      "sha256": {
+        "source": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
+        "target": "d4fcd6302405c2ea6c407ae3e80cfd9c5509c9735b1a668d2c4bb6192f8735ed"
+      },
+      "findings": []
+    }
+  }
+}

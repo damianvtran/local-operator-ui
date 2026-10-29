@@ -1,0 +1,54 @@
+{
+	"ui.common.layout.chat_layout.resize_the_sidebar": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in chat-layout.tsx; interface copy in the chat layout surface.",
+		"placeholders": {
+			"sidebartogglecap": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in chat-layout.tsx; interface copy in the chat layout surface."
+	},
+	"ui.common.layout.sidebar_header.search_agents": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in sidebar-header.tsx; interface copy in the sidebar header surface."
+	},
+	"ui.common.layout.sidebar_header.create_a_new_agent": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in sidebar-header.tsx; tooltip in the sidebar header surface."
+	},
+	"ui.common.layout.sidebar_header.import_an_agent_from_a_zip_file": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in sidebar-header.tsx; tooltip in the sidebar header surface."
+	},
+	"ui.common.layout.sidebar_header.import_agent": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in sidebar-header.tsx; accessible label in the sidebar header surface."
+	},
+	"ui.common.layout.sidebar_header.new_agent": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in sidebar-header.tsx; accessible label in the sidebar header surface."
+	},
+	"ui.common.layout.toasts.dismiss": {
+		"role": "accessible name of the close button on a toast",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "The toast region is a live region; every toast carries the same close control, so the name must not include the toast's own message. Supplied to the toaster rather than left to the component's English default.",
+		"placeholders": {}
+	},
+	"ui.common.layout.toasts.notifications": {
+		"role": "accessible name of the toast region itself",
+		"tone": "plural noun, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "The toaster appends the keyboard shortcut to this name, so it must read as a region label on its own and carry no punctuation or shortcut of its own.",
+		"placeholders": {}
+	}
+}

@@ -61,6 +61,18 @@ export type HubLink = {
 	eligibility: { can_auto_push: boolean; reason: string | null };
 	baseline_state: HubRecordedBy;
 	remote_revision: string | null;
+	/**
+	 * Whether the managed copy exists on this machine.
+	 *
+	 * Membership and content are independent facts (core PR #2713): a subscribed
+	 * skill can have no copy at all. Absent from a row that predates the field, so
+	 * every read goes through `hubLinkContentState` -- reading the field directly
+	 * would turn "old backend" into "not installed" and offer a Download that
+	 * already happened.
+	 */
+	content_state?: "present" | "absent" | (string & {});
+	/** Absolute managed path; present only when the copy exists. */
+	local_path?: string | null;
 	auto_will_apply: boolean;
 	auto_will_push: boolean;
 	pull: HubDirectionStatus;
@@ -81,6 +93,18 @@ export type HubUnresolvedLink = {
 	/** A diagnostic, NOT an origin, writable policy, grant or synthetic link ID. */
 	reason: "source-unresolved";
 };
+/**
+ * The link's content fact, normalized against older rows that omit the field.
+ *
+ * Core writes `content_state` on every skill link row now; a server from before
+ * that field reported the copy implicitly by linking at all, so a missing value
+ * is "present", which is also core's own default on read.
+ */
+export function hubLinkContentState(
+	link: Pick<HubLink, "content_state">,
+): "present" | "absent" {
+	return link.content_state === "absent" ? "absent" : "present";
+}
 export type HubLinks = { links: HubLink[]; unresolved: HubUnresolvedLink[] };
 /**
  * The result of an explicit source confirmation on a legacy unknown-origin row

@@ -90,7 +90,9 @@ const bundle = await build({
 			import { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
 			import { aidaStatusKey } from "./src/renderer/src/features/aida/use-aida-target";
 			import { desktopKeys } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";
-			export { aidaMissedMessages, aidaWorking, useCanonicalSessionsStore, useUiPreferencesStore, aidaStatusKey, desktopKeys, SidebarNavigation, ChatLayout, MemoryRouter, QueryClient, QueryClientProvider };
+			import { sidebarLayoutKeys } from "./src/renderer/src/shared/api/local-operator/sidebar-layout";
+			import { DEFAULT_SIDEBAR_LAYOUT } from "./src/renderer/src/shared/components/navigation/sidebar-destinations";
+			export { aidaMissedMessages, aidaWorking, useCanonicalSessionsStore, useUiPreferencesStore, aidaStatusKey, desktopKeys, sidebarLayoutKeys, DEFAULT_SIDEBAR_LAYOUT, SidebarNavigation, ChatLayout, MemoryRouter, QueryClient, QueryClientProvider };
 			export const el = createElement;
 		`,
 		resolveDir: process.cwd(),
@@ -149,6 +151,8 @@ const {
 	useUiPreferencesStore,
 	aidaStatusKey,
 	desktopKeys,
+	sidebarLayoutKeys,
+	DEFAULT_SIDEBAR_LAYOUT,
 	SidebarNavigation,
 	ChatLayout,
 	MemoryRouter,
@@ -319,7 +323,21 @@ test("the working mark is per session, and answerless inputs count false", () =>
  * gets a FRESH window, and the store is written through the bundle's own module
  * instance - the one the rail renders from.
  */
-const mountRail = async ({ collapsed, row, name, feed = false }) => {
+/*
+ * `layout` (optional) is a stored sidebar layout, answered as a successful read
+ * of a backend advertising `sidebar_layout` v1 - the only way the rail honours a
+ * layout rather than its shipped default - and `moreOpen` the persisted state of
+ * the More group. The More cases fold Aida into More with them, because her
+ * count is the one this harness can raise through a real data path.
+ */
+const mountRail = async ({
+	collapsed,
+	row,
+	name,
+	feed = false,
+	layout,
+	moreOpen = false,
+}) => {
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 		pretendToBeVisual: true,
 		/*
@@ -407,7 +425,10 @@ const mountRail = async ({ collapsed, row, name, feed = false }) => {
 	});
 
 	useCanonicalSessionsStore.setState({ sessions: [row] });
-	useUiPreferencesStore.setState({ isSidebarCollapsed: collapsed });
+	useUiPreferencesStore.setState({
+		isSidebarCollapsed: collapsed,
+		sidebarOverflowExpanded: moreOpen,
+	});
 	/*
 	 * The desktop feed bridge, when the case asks for it: the strip's keeper
 	 * mounts `useDesktopFeed`, whose subscription is what merges frames into
@@ -436,8 +457,13 @@ const mountRail = async ({ collapsed, row, name, feed = false }) => {
 	});
 	client.setQueryData(desktopKeys.capabilities, {
 		desktop_available: true,
-		features: feed ? { aida: 1, desktop_feed: 1 } : { aida: 1 },
+		features: {
+			aida: 1,
+			...(feed ? { desktop_feed: 1 } : {}),
+			...(layout ? { sidebar_layout: 1 } : {}),
+		},
 	});
+	if (layout) client.setQueryData(sidebarLayoutKeys.layout, layout);
 	client.setQueryData(aidaStatusKey, {
 		enabled: true,
 		session_id: AIDA_ID,
@@ -630,17 +656,51 @@ test("collapsed: the count is a corner mark on the icon, not a pill beside it (#
 	}
 });
 
-test("expanded: the count keeps its in-flow trailing slot (the #1083 fix is the strip's alone)", async () => {
+test("expanded: the count keeps an in-flow trailing slot, after the menu lane (the #1083 fix is the strip's alone)", async () => {
 	const { markup, teardown } = await mountRail({
 		collapsed: false,
 		row: herRow(unseen()),
 	});
 	try {
-		const { button, slot } = badgePlacement(markup);
-		assert.equal(slot?.parentElement, button, "a direct child of the row");
+		const doc = new JSDOM(markup).window.document;
+		const row = doc.querySelector('[data-sidebar-row="aida"]');
+		const button = row?.querySelector('[data-tour-tag="nav-item-aida"]');
+		const badge = row?.querySelector('[data-tour-tag="nav-aida-badge"]');
+		const slot = badge?.parentElement ?? null;
 		assert.ok(
-			classesOf(slot).includes("ml-auto"),
-			"pushed to the trailing edge",
+			row !== null && button !== null && slot !== null,
+			"the expanded row draws its count",
+		);
+		/*
+		 * DESIGN ROUND 1, D1 moved the mark OUT of the main button and behind the
+		 * ellipsis lane: inside the button it sat 26px in from the row's edge, in a
+		 * second trailing column from More's chevron. The intent of the #1083 pin
+		 * is unchanged - the expanded count is an in-flow mark at the row's
+		 * trailing edge - so it is read at its new address.
+		 */
+		assert.equal(
+			slot.closest("button"),
+			null,
+			"the mark sits outside the main button",
+		);
+		assert.notEqual(
+			button.compareDocumentPosition(slot) & 4,
+			0,
+			"and after it in the row's flow",
+		);
+		assert.equal(
+			row.lastElementChild,
+			slot,
+			"and it is the row's LAST child - after the ellipsis lane, which this harness cannot draw because it mounts without the layout capability",
+		);
+		assert.ok(
+			classesOf(slot).includes("pe-2"),
+			"at the same 8px inset the More chevron takes",
+		);
+		assert.ok(
+			!classesOf(slot).includes("ml-auto") &&
+				!classesOf(slot).includes("mr-auto"),
+			"and not to a physical side, which would strand the count on the wrong edge in RTL",
 		);
 		assert.ok(!classesOf(slot).includes("absolute"), "and in flow");
 	} finally {
@@ -780,7 +840,7 @@ const NAV =
 const PANEL_RAIL =
 	"src/renderer/src/shared/components/navigation/panel-rail.tsx";
 const URL_BAR =
-	"src/renderer/src/features/browser/components/browser-url-bar.tsx";
+	"src/renderer/src/features/browser/components/browser-surface.tsx";
 const APPROVALS_DOCK =
 	"src/renderer/src/features/browser/components/browser-approvals-dock.tsx";
 const BADGE = "src/renderer/src/shared/components/ui/badge.tsx";
@@ -836,20 +896,29 @@ test("the primitive takes the ROW's tag, and the name reads the ROW's words", ()
 });
 
 /*
- * THE RAIL'S COUNTED REGISTER (operator ask, 2026-09-30): the rail badge is the
- * quiet mark — borderless, a subtle `elevated` disc, and the count family's own
- * muted numeral — while the bordered `attention` mark stays where the ring is
+ * THE RAIL'S COUNTED REGISTER. It was the quiet mark (operator ask,
+ * 2026-09-30), then Notifications alone went loud (decisions D5, 2026-10-25);
+ * on 2026-10-28 the operator reversed D5 and EVERY rail attention count became
+ * the shared accent `AttentionBadge` (`emphasis`: accent fill, on-accent digit,
+ * no border). `sidebar-attention-badge.test.mjs` pins the wiring and renders the
+ * component; this test keeps the primitive halves - the quiet variant still
+ * exists for non-count marks (Team Bridge's preview chip, the team avatar
+ * bubble) and the bordered `attention` mark stays where the ring is
  * load-bearing (the chat header's globe, the URL bar). Both halves are pinned,
- * because the failure this test exists for is a later edit that "quietens" one
- * and takes the other with it, or that reaches for the quiet register where the
- * ring is what separates the mark from neighbouring glyphs.
+ * because the failure this test exists for is a later edit that changes one
+ * register and takes another with it.
  */
-test("the rail draws the quiet register, and the bordered mark is left where the ring is load-bearing", () => {
+test("the rail draws the shared accent badge, and the bordered mark is left where the ring is load-bearing", () => {
 	const nav = code(NAV);
 	assert.match(
 		nav,
+		/<AttentionBadge\b/,
+		"the rail badge is the shared accent badge, not a per-row register",
+	);
+	assert.doesNotMatch(
+		nav,
 		/variant="attentionQuiet"/,
-		"the rail badge is the quiet register, not the bordered one",
+		"no rail count falls back to the quiet register",
 	);
 	const badge = code(BADGE);
 	const quiet = badge.match(/attentionQuiet:\s*"([^"]+)"/)?.[1] ?? "";
@@ -969,3 +1038,123 @@ test("the working selector reads the one busy code, not a second working rule", 
 		"live by subscription, the same shape the count owns",
 	);
 });
+
+/* ------------------------------------------- More's aggregate, open vs closed */
+
+/*
+ * MORE'S SUM IS DRAWN ONLY WHILE THE GROUP IS CLOSED (design follow-up to #1465,
+ * D2). Aida is folded into More through a stored layout, so her one missed
+ * message is the hidden count: closed, More carries it; open, her own row does
+ * and More draws nothing - the same attention is never drawn twice. The
+ * control's NAME keeps the count in both states, because it describes what the
+ * group holds, not what is painted on it. Checked at both widths: the expanded
+ * row and the collapsed strip are separate render branches.
+ */
+const aidaInMore = () => ({
+	visible: DEFAULT_SIDEBAR_LAYOUT.visible.filter((id) => id !== "aida"),
+	more: ["aida", ...DEFAULT_SIDEBAR_LAYOUT.more],
+});
+
+const moreControl = (markup) =>
+	new JSDOM(markup).window.document.querySelector("[data-sidebar-more]");
+
+for (const collapsed of [false, true]) {
+	const width = collapsed ? "collapsed" : "expanded";
+
+	test(`${width}, More closed: More carries the hidden count, and Aida's row is not drawn`, async () => {
+		const { markup, teardown } = await mountRail({
+			collapsed,
+			row: herRow(unseen()),
+			layout: aidaInMore(),
+			moreOpen: false,
+		});
+		try {
+			const more = moreControl(markup);
+			assert.ok(more, "the More control is drawn");
+			assert.equal(more.getAttribute("aria-expanded"), "false");
+			const badge = more.querySelector('[data-tour-tag="nav-more-badge"]');
+			assert.ok(badge, "More draws the summed badge while closed");
+			assert.equal(badge.textContent, "1");
+			assert.ok(
+				!markup.includes('data-tour-tag="nav-aida-badge"'),
+				"her row is folded away, so its own badge is not drawn",
+			);
+		} finally {
+			await teardown();
+		}
+	});
+
+	test(`${width}, More open: the hidden row carries the count and More draws none, but keeps it in its name`, async () => {
+		const closed = await mountRail({
+			collapsed,
+			row: herRow(unseen()),
+			layout: aidaInMore(),
+			moreOpen: false,
+		});
+		const closedName = moreControl(closed.markup)?.getAttribute("aria-label");
+		await closed.teardown();
+
+		const { markup, teardown } = await mountRail({
+			collapsed,
+			row: herRow(unseen()),
+			layout: aidaInMore(),
+			moreOpen: true,
+		});
+		try {
+			const more = moreControl(markup);
+			assert.ok(more, "the More control is drawn");
+			assert.equal(more.getAttribute("aria-expanded"), "true");
+			assert.equal(
+				more.querySelector("[data-attention-badge]"),
+				null,
+				"More draws no badge while open",
+			);
+			assert.ok(
+				markup.includes('data-tour-tag="nav-aida-badge"'),
+				"the revealed row draws its own badge",
+			);
+			assert.match(
+				closedName ?? "",
+				/1/,
+				`the closed control's name states the count (${closedName})`,
+			);
+			assert.equal(
+				more.getAttribute("aria-label"),
+				closedName,
+				"and the open control's name is the same sentence",
+			);
+		} finally {
+			await teardown();
+		}
+	});
+}
+
+/*
+ * ZERO DRAWS NO NODE AT THE CALL SITE (design follow-up to #1465, D3). The
+ * component's own zero rule is pinned in `sidebar-attention-badge.test.mjs`;
+ * this pins the CALL SITES, so a future `count ?? 0` or a wrapper that always
+ * renders cannot bring back a column of empty or `0` marks. Both widths, More
+ * closed (the state in which More would carry a sum), nothing waiting anywhere.
+ */
+for (const collapsed of [false, true]) {
+	test(`${collapsed ? "collapsed" : "expanded"}, nothing waiting: no badge node anywhere in the rail, More included`, async () => {
+		const { markup, teardown } = await mountRail({
+			collapsed,
+			row: herRow(unseen({ unseen: false })),
+			layout: aidaInMore(),
+			moreOpen: false,
+		});
+		try {
+			const doc = new JSDOM(markup).window.document;
+			assert.ok(doc.querySelector("[data-sidebar-more]"), "More is drawn");
+			assert.equal(
+				doc.querySelectorAll("[data-attention-badge]").length,
+				0,
+				"no attention badge node at all",
+			);
+			assert.equal(doc.querySelector('[data-tour-tag="nav-more-badge"]'), null);
+		} finally {
+			await teardown();
+		}
+	});
+}

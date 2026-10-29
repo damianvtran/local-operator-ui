@@ -1,0 +1,169 @@
+{
+	"auditor": "translation-auditor",
+	"model": "deepseek/deepseek-flash",
+	"actual_model_source": "harness session model (system prompt: deepseek/deepseek-flash); no fallback or alternate model was used for this audit",
+	"instance": "e4bca926019d",
+	"instance_source": "generated 12-hex audit-run id, checked against every file in i18n/receipts/ and every instance in i18n/ledger.json before use",
+	"independent_from_translator": true,
+	"independence_basis": "The 14 ui.shell values and the ui.command_palette Agent Hub case change were written by a separate translator job in the parent sidebar session. This auditor read the catalogues only: it authored or edited no catalogue value, no ledger row and no renderer code.",
+	"date": "2026-10-20",
+	"worktree": "~/local-operator-ui/.worktrees/sidebar-customisation (origin/main 0b63a206df plus the uncommitted sidebar-customisation work; catalogues audited exactly as they are on disk at 2026-10-20 23:52 EDT)",
+	"scope": "Independent audit of the sidebar-customisation copy across fr, es, zh-CN, ru, vi, hi and ur. ui.shell: all 43 keys read per locale, with the 14 new ui.shell.sidebar_navigation keys (more_waiting, more_working, row_actions, move_up, move_down, move_to_more, show_in_sidebar, reset_layout, move_note, move_to_more_note, show_in_sidebar_note, reset_note, drag_armed, save_failed) audited against the English source and its context sidecar. ui.command_palette: all 75 keys read per locale for the Agent Hub source-case change (Agent hub -> Agent Hub) and whole-namespace consistency. Key-set equality, placeholders, ICU categories, address form, glossary terms (Agent Hub, Team Bridge, More, sidebar, section), RTL and width were checked. No catalogue file was edited and i18n/ledger.json was not touched.",
+	"locales": [
+		"fr",
+		"es",
+		"zh-CN",
+		"ru",
+		"vi",
+		"hi",
+		"ur"
+	],
+	"keys_read": {
+		"ui.shell": 43,
+		"ui.command_palette": 75,
+		"locales": 7,
+		"translated_values": 826,
+		"english_source_values": 118
+	},
+	"method": "Read the English source and each target catalogue side by side, namespace by namespace, then checked mechanically with a scratch ICU parser: key-set equality, every {placeholder} and every plural branch's placeholder set, plural categories against CLDR (fr/es one-many-other, zh-CN/vi other, ru one-few-many-other, hi/ur one-other), and cell widths. Idiom and register were judged against the rendered call site (aria-label, dropdown menu item, live-region announcement, toast) and against the established term in other namespaces of the same locale: ui.library.page.more for the More label, ui.chat.sidebar_view.move_up/move_down and ui.chat.tags.move_up for reorder wording, ui.settings.integrations.integration_row.more_actions_for_name for 'Actions for {name}', and every *sidebar* key for 'sidebar'. Agent Hub was compared across ui.shell, ui.command_palette and hub.skills.public_hub. All rc values are from the files on disk at the hashes recorded below.",
+	"style_guide": {
+		"glossary_path": "~/local-operator/i18n/glossary.md",
+		"glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+		"per_locale_guides": {
+			"fr": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39",
+			"es": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39",
+			"zh-CN": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+			"ru": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465",
+			"vi": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97",
+			"hi": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+			"ur": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+		},
+		"note": "The UI checkout has no local i18n/glossary.md or style guides; the core repository's binding glossary and per-locale guides were used, as docs/I18N.md directs."
+	},
+	"namespaces": {
+		"ui.shell": {
+			"status": "passed",
+			"keys_audited": 43,
+			"sha256": {
+				"fr": "1ed870c3a8b0fb4eedc7d0479ba5985f1d567de1834e6c4ee79c6e6cff07d25c",
+				"es": "75128803e42f09a94918236f51cc13da79791be77f8ce407cd4f7cbd674f0457",
+				"zh-CN": "30e8cb8ce2ab975499410424169a74daee4e8c33ec764246265c3d17240b30c0",
+				"ru": "5cbe5c9e9ec094e5e182a50dff66d2172c6760198abe071c438ccc86fcdc6cc1",
+				"vi": "011b3bdb11ce2badf4fbff76bbdb6bafe5d474745ffb816e74bd1253a84d7210",
+				"hi": "9cef3b9bb9e822ba4c5ad16df4e9040c1704909a5ecc7b5806aeaad8945aa0cd",
+				"ur": "81dd63881cd9d98a261878f7404dd687cad18315215ee1744082da26da0b86d6",
+				"en": "d7a160a03c6ed57080add996bab52ad2a1100a5747ebb5c979b17e631c56c244"
+			},
+			"findings": [],
+			"locales": {
+				"fr": {
+					"status": "passed",
+					"keys_audited": 43
+				},
+				"es": {
+					"status": "passed",
+					"keys_audited": 43
+				},
+				"zh-CN": {
+					"status": "passed",
+					"keys_audited": 43
+				},
+				"ru": {
+					"status": "passed",
+					"keys_audited": 43
+				},
+				"vi": {
+					"status": "passed",
+					"keys_audited": 43
+				},
+				"hi": {
+					"status": "passed",
+					"keys_audited": 43
+				},
+				"ur": {
+					"status": "passed",
+					"keys_audited": 43
+				}
+			}
+		},
+		"ui.command_palette": {
+			"status": "passed",
+			"keys_audited": 75,
+			"sha256": {
+				"fr": "9badf404c82ce83c940005ecb4a4993fe98275f0fe7583072b0f56aeae2e7f9f",
+				"es": "853d877c8fcfe494e9b34208da9313112bf24c00a8a89f443ee5a7b12865d255",
+				"zh-CN": "1c85b9bf4bf6bf8860000fa9fd93b3e8d6f216b3f7d9d90febf34b05ca8f0aa1",
+				"ru": "2a294ecae827daa08eb1557f2743c254edf37a1e1f7a983cc62bf0d3f2948093",
+				"vi": "8799dbe395ca186c43c40ce8b1c8b0bb81a08923524afe60340a1daa45984890",
+				"hi": "f9c706b077306a6dbea5e589455bb7736904b1fbe3083ea35b2bf912cef42ba6",
+				"ur": "7de3fc3edf1e296b00006156d89278ba78a3a84d136d3fd26023b306e04f4919",
+				"en": "9f311ccb7725a7ca97bfcb58dcb92e86b69a38f38ec9a5c72111f4986c055643"
+			},
+			"findings": [],
+			"locales": {
+				"fr": {
+					"status": "passed",
+					"keys_audited": 75
+				},
+				"es": {
+					"status": "passed",
+					"keys_audited": 75
+				},
+				"zh-CN": {
+					"status": "passed",
+					"keys_audited": 75
+				},
+				"ru": {
+					"status": "passed",
+					"keys_audited": 75
+				},
+				"vi": {
+					"status": "passed",
+					"keys_audited": 75
+				},
+				"hi": {
+					"status": "passed",
+					"keys_audited": 75
+				},
+				"ur": {
+					"status": "passed",
+					"keys_audited": 75
+				}
+			}
+		}
+	},
+	"findings": [],
+	"observations": [
+		{
+			"locale": "fr",
+			"key": "ui.shell.sidebar_navigation.drag_armed",
+			"not_a_finding": true,
+			"note": "fr uses 'Esc' here. The catalogue is already split: three hint labels use 'Échap' (common.forms.editable_field.cancel_escape, chat.composer.cancel_recording_hint, chat.composer.stop_work_hint) and three settings sentences use 'Esc annule'. This new sentence follows the settings-sentence pattern, so it is accepted; if fr standardises on 'Échap' later, change the six together rather than this one alone."
+		},
+		{
+			"locale": "hi",
+			"key": "ui.shell.sidebar_navigation.move_to_more",
+			"not_a_finding": true,
+			"note": "hi renders the added classifier as 'सेक्शन' (also in move_to_more_note), while ui.chat.sidebar_view.sections uses 'खंड'. English has no 'section' word in either key, both Hindi words are current, and 'और सेक्शन' reads naturally in a menu; recorded for the next hi terminology pass, not as a defect."
+		},
+		{
+			"locale": "all",
+			"key": "ui.shell.sidebar_navigation.*",
+			"not_a_finding": true,
+			"note": "Width: the largest target-to-English deltas are ru reset_layout 36 cells vs 20, fr save_failed 61 vs 34, ur move_to_more_note 40 vs 21, and fr move_up 21 vs 7. None is a visible sidebar row label: more_waiting/more_working and row_actions are aria-labels, move_up/move_down/move_to_more/show_in_sidebar/reset_layout are dropdown menu items, the *_note keys and drag_armed are live-region text, and save_failed is a toast. No destination-row width budget is affected; the menu and toast should still be looked at in the rendered pass."
+		},
+		{
+			"locale": "ur",
+			"key": "ui.shell.sidebar_navigation.drag_armed",
+			"not_a_finding": true,
+			"note": "RTL pass: every ur sentence ends with '۔' and uses '،' commas; the only Latin run is 'Esc', which the render layer isolates per glossary section 3. No punctuation placed inside a placeholder, no direction-sensitive token and no parenthesis reordering."
+		},
+		{
+			"locale": "ur",
+			"key": "ui.command_palette.use_palette_sources.agent_hub",
+			"not_a_finding": true,
+			"note": "ur keeps 'Agent Hub' in Latin in both ui.shell and ui.command_palette, consistent with hub.skills.public_hub ('عوامی Agent Hub') and with how fr/es/zh-CN keep Team Bridge in English. The English title-case change therefore needs no ur byte change."
+		}
+	],
+	"verdict": "ui.shell: passed for all seven locales (43 keys each; 14 new keys verified for placeholders, ICU categories, register and glossary terms, 29 pre-existing keys re-read for consistency). ui.command_palette: passed for all seven locales (75 keys each; the Agent Hub case change is consistent with each locale's own rendering and with the other namespaces). Overall: clean - 826 translated values read, 0 blocker, 0 major, 0 minor, 0 nit. The five observations are notes, not defects."
+}

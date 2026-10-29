@@ -1,0 +1,51 @@
+{
+  "backend": "http://127.0.0.1:8131",
+  "observations": {
+    "connectDialogDismissedBy": "Skip for now",
+    "connectDialogGone": true,
+    "tabs": [
+      "Agents",
+      "Teams",
+      "Skills"
+    ],
+    "skillsTabPresent": true,
+    "cards": 2,
+    "libraryText": "SkillsPublicSearch skillsSearch covers this loaded page.release-notesDraft release notes from a merged PR list.PublicNot downloadedtranscript-auditAudit a transcript for policy contradictions.PublicNot downloadedPublish a skillAuthored skillAuthored skillbrowser-qacode-reviewdata-analysisdesign-qaengineering-principlesfinancial-analysisfrontend-designlean-formalizationpergamon-municipal-officialsresponding-to-reviewschedulingskill-authoringsystematic-debuggingtest-driven-developmentverification-before-completionwritingLocal aliasSkills support up to 64 UTF-8 text files, 200 KiB per file and 1 MiB in total. Scripts are never run when publishing or pulling.New links subscribe to incoming updates. Auto-push stays off until enabled for this destination.SubscribeReceive updates from Public. Manual pull stays available.Auto-pushPublish local changes to Public automatically when safe.The destination has not verified safe automatic publication.Preview publishPublish reviewed changes",
+    "sourceLine": "Public",
+    "cardTexts": [
+      "release-notesDraft release notes from a merged PR list.PublicNot downloaded",
+      "transcript-auditAudit a transcript for policy contradictions.PublicNot downloaded"
+    ],
+    "cardHitTest": true,
+    "detailOpened": true,
+    "detail": {
+      "description": "Draft release notes from a merged PR list.",
+      "localPath": null,
+      "alias": "release-notes",
+      "fileSummaries": [
+        "SKILL.md",
+        "references/notes.md",
+        "scripts/run.sh"
+      ],
+      "panelText": "SkillsPublicSearch skillsSearch covers this loaded page.release-notesDraft release notes from a merged PR list.PublicNot downloadedtranscript-auditAudit a transcript for policy contradictions.PublicNot downloadedrelease-notesPublicDraft release notes from a merged PR list.Not downloaded · Remote revision: 1 · \"rev-pub-1\"Files included3 files includedSKILL.md---\nname: release-notes\ndescription: Draft release notes from a merged PR list.\n---\n\n# release-notes\n\nVersion one of the stub body.\nreferences/notes.mdReference notes for release-notes, revision 1.\nscripts/run.sh#!/bin/sh\necho stub-revision-1\nLocal aliasCreate a separate local copy with its own source and policy. Existing copies are not overwritten.Download onceSubscribeNew links subscribe to incoming updates. Auto-push stays off until enabled for this destination.SubscribeReceive updates from Public. Manual pull stays available.Auto-pushPublish local changes to Public automatically when safe.Create linked copySign in to the hub before trying this action.Publish a skillAuthored skillAuthored skillbrowser-qacode-reviewdata-analysisdesign-qaengineering-principlesfinancial-analysisfrontend-designlean-formalizationpergamon-municipal-officialsresponding-to-reviewschedulingskill-authoringsystematic-debuggingtest-driven-developmentverification-before-completionwritingLocal aliasSkills support up to 64 UTF-8 text files, 200 KiB per file and 1 MiB in total. Scripts are never run when publishing or pulling.New links subscribe to incoming updates. Auto-push stays off until enabled for this destination.SubscribeReceive updates from "
+    },
+    "download": {
+      "present": true,
+      "disabled": true,
+      "label": "Download once"
+    },
+    "subscribeButton": {
+      "present": true,
+      "disabled": true
+    },
+    "noCredentialSentence": "Sign in to the hub before trying this action.",
+    "downloadInView": {
+      "top": 519,
+      "bottom": 551,
+      "viewport": 900
+    }
+  }
+}
+frames: /Users/damian/.local-operator/sessions/fb26384b780f/scratchpad/hub-skills-qa/frames-surface
+
+[surface scene done] stopping 1 app(s) this run started

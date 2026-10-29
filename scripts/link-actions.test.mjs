@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
+import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 
 /*
@@ -20,6 +24,35 @@ import { build } from "esbuild";
  * half depends on.
  */
 
+/*
+ * Import the bundle from a short temporary FILE, not a `data:` URI.
+ *
+ * The bundle is a few hundred KB of base64, and a `data:` specifier is named in
+ * every diagnostic that touches this module: a probe that throws, a rejected
+ * promise whose stack names the module, an assertion that renders the frame.
+ * Writing the specifier puts the whole bundle on one log line, and a log line
+ * that size is a log nobody can read - the failure class that stalled Desktop
+ * Tests shard 2/3 at its ceiling (see `scripts/ci-log-guard.mjs`).
+ *
+ * Measured on a GREEN run: Desktop Tests shard 2/3, run 40181028498 job
+ * 121131988804, contains two lines of 3,933,710 and 3,933,712 bytes, both
+ * `at probeTarget(s) (data:text/javascript;base64,...)` frames from this file.
+ * Neither failed the suite; both made that job's log unreadable at a glance.
+ *
+ * A file URL is short, so the same failure reads `/tmp/lop-link-XXXX/link-actions.mjs:58851`.
+ * The import semantics are unchanged: same source, same module graph, same
+ * evaluation. The directory lives for the process, like #1407's ack fixture.
+ */
+let bundleDirPromise;
+function importBundle(source, name) {
+	bundleDirPromise ??= mkdtemp(join(tmpdir(), "lop-link-"));
+	return bundleDirPromise.then(async (dir) => {
+		const file = join(dir, name);
+		await writeFile(file, source, "utf8");
+		return import(pathToFileURL(file).href);
+	});
+}
+
 const bundle = await build({
 	stdin: {
 		contents: `
@@ -27,6 +60,7 @@ const bundle = await build({
 				classifyHref,
 				clickDecision,
 				canvasActionFor,
+				claimFirstScan,
 				evidenceFor,
 				hasHighlight,
 				forgetProbe,
@@ -61,6 +95,7 @@ const bundle = await build({
 globalThis.Node = { ELEMENT_NODE: 1 };
 
 const {
+	claimFirstScan,
 	classifyHref,
 	clickDecision,
 	canvasActionFor,
@@ -77,9 +112,7 @@ const {
 	selectionWhollyWithin,
 	subscribeProbes,
 	LINK_TARGET_ATTR,
-} = await import(
-	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-);
+} = await importBundle(bundle.outputFiles[0].text, "link-actions.mjs");
 
 /* ------------------------------------------------------------- classifyHref */
 
@@ -1040,4 +1073,162 @@ test("a highlight in another turn is not this turn's link", () => {
 	assert.equal(selectionLinkIn(turnA), null);
 	assert.equal(selectionLinkIn(turnB), linkB);
 	assert.equal(selectionLinkIn(null), null);
+});
+
+/* ------------------------------------ round 2, review R2-1: stale negatives */
+
+test("a NEW document re-asks the negatives it names; a remount never does (R2-1)", async () => {
+	/*
+	 * THE FLOW THAT WAS BROKEN. Message A lists deliverables before the tool
+	 * writes them, so the pre-scan caches `exists: false` for each name; message
+	 * B lists the same names after the files exist. The old cache read its own
+	 * negative and B stayed plain for the rest of the session, and plain text
+	 * has no failed click to evict it.
+	 *
+	 * The fix is keyed on the DOCUMENT, not on a clock: the first scan of a new
+	 * document re-asks its cached negatives, a remount of the same document
+	 * re-asks nothing, and an "exists" answer is never re-asked at all.
+	 */
+	resetProbeCache();
+	const A =
+		"I'll write the deliverables to `~/out/`:\n- report.pdf\n- data.xlsx";
+	const B = "Done. Files are in `~/out/`:\n- report.pdf\n- data.xlsx";
+	const suspects = ["~/out/report.pdf", "~/out/data.xlsx"];
+	let onDisk = false;
+	const asked = [];
+	const ask = async (paths) => {
+		asked.push([...paths]);
+		return paths.map((path) => ({ exists: onDisk, isFile: true }));
+	};
+
+	// A paints before the tool runs: both names are asked and answered missing.
+	await probeTargets(suspects, ask, 64, claimFirstScan(A));
+	assert.equal(evidenceFor("~/out/report.pdf"), "missing");
+	assert.deepEqual(asked, [suspects]);
+
+	// A re-renders (a virtualized remount, another row's answer): no new ask.
+	await probeTargets(suspects, ask, 64, claimFirstScan(A));
+	assert.equal(asked.length, 1, "a remount of the same document asks nothing");
+
+	// The files are written, and B paints: both names are asked AGAIN...
+	onDisk = true;
+	await probeTargets(suspects, ask, 64, claimFirstScan(B));
+	assert.equal(asked.length, 2, "a new document re-asks the negatives");
+	// ...and BOTH rows now read "exists" from the one cache.
+	assert.equal(evidenceFor("~/out/report.pdf"), "exists");
+	assert.equal(evidenceFor("~/out/data.xlsx"), "exists");
+
+	// Settled: an "exists" answer is as sticky as it ever was.
+	await probeTargets(suspects, ask, 64, claimFirstScan(`${B} (later)`));
+	assert.equal(asked.length, 2, "an exists answer is never re-asked");
+});
+
+test("a re-check is deduped against the ask already in flight (R2-1)", async () => {
+	/*
+	 * The storm guard: two documents naming the same missing spelling paint in
+	 * the same frame, and both are first scans. The in-flight set, not the
+	 * cache, is what stops the second stat - main stats synchronously on its
+	 * own event loop, so a duplicate batch is an app-wide stall.
+	 */
+	resetProbeCache();
+	await probeTargets(["~/out/report.pdf"], async () => [
+		{ exists: false, isFile: false },
+	]);
+	const asked = [];
+	let release = () => {};
+	const ask = (paths) => {
+		asked.push([...paths]);
+		return new Promise((resolve) => {
+			release = () =>
+				resolve(paths.map(() => ({ exists: true, isFile: true })));
+		});
+	};
+	const first = probeTargets(["~/out/report.pdf"], ask, 64, true);
+	const second = probeTargets(["~/out/report.pdf"], ask, 64, true);
+	release();
+	await Promise.all([first, second]);
+	assert.deepEqual(asked, [["~/out/report.pdf"]]);
+	assert.equal(claimFirstScan("doc one"), true);
+	assert.equal(claimFirstScan("doc one"), false);
+});
+
+test("R3-1: a re-check that comes back STILL missing notifies nobody", async () => {
+	/*
+	 * The re-render storm: every new message naming a cached negative re-asks
+	 * it, and round 2 announced the identical "missing" to every subscriber -
+	 * each mounted row naming the spelling re-parsed on every later message.
+	 * Here 101 documents name `/health`, each subscribed like `useLinkEvidence`
+	 * (armed on its own suspects, ticking on a landed one), and the disk keeps
+	 * answering missing. Only an answer that CHANGES the cache may tick a row.
+	 */
+	resetProbeCache();
+	let asks = 0;
+	const ask = async (paths) => {
+		asks += 1;
+		return paths.map(() => ({ exists: false, isFile: false }));
+	};
+	let ticks = 0;
+	const stops = [];
+	for (let k = 0; k < 101; k += 1) {
+		stops.push(
+			subscribeProbes((landed) => {
+				if (landed.includes("/health")) ticks += 1;
+			}),
+		);
+		await probeTargets(
+			["/health"],
+			ask,
+			64,
+			claimFirstScan(`Step ${k}: the /health check`),
+		);
+	}
+	assert.equal(asks, 101, "each NEW document still re-asks its negative once");
+	assert.equal(ticks, 1, "only the first answer changed what was known");
+
+	// A real change still reaches every row naming the spelling.
+	ticks = 0;
+	await probeTargets(
+		["/health"],
+		async (paths) => paths.map(() => ({ exists: true, isFile: false })),
+		64,
+		claimFirstScan("the /health route exists now"),
+	);
+	assert.equal(ticks, 101, "an answer that moved re-renders every armed row");
+	for (const stop of stops) stop();
+});
+
+test("R3-3a: a re-check meeting a STALE in-flight ask asks again after it lands", async () => {
+	/*
+	 * A's ask went out before the tool wrote the file; B mounts (a first scan)
+	 * while that ask is still in flight. Round 2 skipped the in-flight spelling
+	 * and so spent B's one re-check sending nothing: A's stale "missing" landed
+	 * and both rows stayed plain while the file existed. B now waits for A's
+	 * flight and asks once more.
+	 */
+	resetProbeCache();
+	let onDisk = false;
+	const asked = [];
+	const ask = async (paths) => {
+		asked.push([...paths]);
+		const answer = onDisk; // read when the stat RUNS, like main does
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		return paths.map(() => ({ exists: answer, isFile: true }));
+	};
+	const A = probeTargets(["~/out/a.pdf"], ask, 64, claimFirstScan("doc A"));
+	onDisk = true; // the tool writes the file while A's stat is in flight
+	const B = probeTargets(["~/out/a.pdf"], ask, 64, claimFirstScan("doc B"));
+	await Promise.all([A, B]);
+	assert.equal(evidenceFor("~/out/a.pdf"), "exists");
+	assert.deepEqual(asked, [["~/out/a.pdf"], ["~/out/a.pdf"]]);
+
+	// Twenty more first scans while one ask is in flight still cost ONE re-ask.
+	resetProbeCache();
+	onDisk = false;
+	asked.length = 0;
+	const first = probeTargets(["/tmp/x.pdf"], ask, 64, claimFirstScan("c0"));
+	const rest = Array.from({ length: 20 }, (_, k) =>
+		probeTargets(["/tmp/x.pdf"], ask, 64, claimFirstScan(`c${k + 1}`)),
+	);
+	await Promise.all([first, ...rest]);
+	assert.equal(asked.length, 2, "one flight, then one shared re-ask");
 });

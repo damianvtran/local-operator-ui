@@ -30,7 +30,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { ciClause, laneStateClause, roundSegments, laneLines, commentClause, linkOnlyRemedy, toolOutputNote, forgeSigil, identityLabel, rowAriaLabel, attentionCause, needsAttention, rowHasPendingCi, chipClause, coolingClauses, groupRows, laneSegmentTone, refreshCaption, rowNotice, fetchStateOf, rowIsLoading, PENDING_REVEAL_MS } from "./src/renderer/src/features/code-review/code-review-model";',
+			'export { ciClause, laneStateClause, roundSegments, laneLines, commentClause, linkOnlyRemedy, toolOutputNote, forgeSigil, identityLabel, repoName, pathLineFor, rowAriaLabel, rowTag, attentionCause, needsAttention, rowHasPendingCi, chipClause, coolingClauses, groupRows, laneSegmentTone, refreshCaption, rowNotice, fetchStateOf, rowIsLoading, PENDING_REVEAL_MS } from "./src/renderer/src/features/code-review/code-review-model";',
 			'export { intervalFor, SCAN_POLL_MS, codeRequestsEnabled, appliedAfterFrame, chipState } from "./src/renderer/src/features/code-review/hooks/use-code-requests";',
 			'export { populatedRows, linkOnlyList, couldNotRefreshList, pendingList, staleList, rateLimitedList, viaRows } from "./src/renderer/src/features/code-review/code-review-fixtures";',
 		].join("\n"),
@@ -63,7 +63,10 @@ const {
 	toolOutputNote,
 	forgeSigil,
 	identityLabel,
+	repoName,
+	pathLineFor,
 	rowAriaLabel,
+	rowTag,
 	attentionCause,
 	needsAttention,
 	rowHasPendingCi,
@@ -96,6 +99,7 @@ const {
  */
 const ROW_ARIA_FULL =
 	/^damianvtran\/local-operator #1904: feat: a thing, open, Round 2 · remediation posted · awaiting re-review, opens in your browser$/;
+const ROW_ARIA_DEEP_PATH = /^minervaai\/services\/core !276: /;
 const COOLING_GITHUB_LINE = /^GitHub rate-limited until /;
 
 /* ------------------------------------------------------------------ shapes */
@@ -467,6 +471,151 @@ test("GitLab identities use !N and the aria name says where the press goes", () 
 		}),
 	);
 	assert.match(label, ROW_ARIA_FULL);
+});
+
+/*
+ * THE REPO NAME (the operator's ask): the identity line shows the NAME - the
+ * last segment of the forge's project path - because the path truncated at the
+ * slot's width cut the name off exactly where the identity began.
+ *
+ * The path shapes below are the FORGE's, not the app's: GitHub and Gitea carry
+ * `owner/repo`, GitLab carries a subgroup path, Azure DevOps carries
+ * `org/project/_git/repo`, and Gerrit carries a bare project name. ONE rule -
+ * the last segment - has to cover all four, or the pane's own identity means
+ * something different on each forge.
+ */
+test("the repo NAME is the last segment of the forge's project path", () => {
+	// GitHub / Gitea: `owner/repo`.
+	assert.equal(repoName("owner/repo"), "repo");
+	// GitLab with a subgroup: `group/subgroup/project`.
+	assert.equal(repoName("group/subgroup/project"), "project");
+	// Azure DevOps: `org/project/_git/repo` - `_git` is a segment, not a marker.
+	assert.equal(repoName("org/project/_git/repo"), "repo");
+	// Gerrit: a bare project name, with no separator at all.
+	assert.equal(repoName("platform-core"), "platform-core");
+	// A trailing separator names nothing after it.
+	assert.equal(repoName("owner/repo/"), "repo");
+	// Nothing is nothing - a row with no project has no name to show.
+	assert.equal(repoName(""), "");
+	assert.equal(repoName("   "), "");
+});
+
+/*
+ * THE PATH LINE'S PREDICATE (agent review round 1, R1-5).
+ *
+ * The second line under the identity exists to carry the full path beside
+ * the name that identifies the repository. A project with NO separator IS its
+ * own name, so the line would repeat the name above it and say nothing - and
+ * that rule is a derivation about the same project path as the name above
+ * it, so it lives in the model beside `repoName` and is tested here.
+ *
+ * The trailing-separator case is the one that distinguishes the two
+ * derivations: `repoName("owner/repo/")` is `repo`, but the path that would
+ * be drawn is the whole `owner/repo/`, which is not the name - so the line
+ * IS drawn, and it carries the path as it came.
+ */
+test("the path line is drawn only when the path says more than the name", () => {
+	// A path with a separator: the line carries the whole path.
+	assert.equal(pathLineFor("owner/repo"), "owner/repo");
+	assert.equal(pathLineFor("group/subgroup/project"), "group/subgroup/project");
+	assert.equal(pathLineFor("org/project/_git/repo"), "org/project/_git/repo");
+	// A bare name IS its own name: no line, because it would repeat it.
+	assert.equal(pathLineFor("platform-core"), null);
+	assert.equal(pathLineFor(""), null);
+	assert.equal(pathLineFor("   "), null);
+	// A trailing separator: the name is `repo`, the path is not - the line
+	// is drawn, and it carries the path AS IT CAME.
+	assert.equal(repoName("owner/repo/"), "repo");
+	assert.equal(pathLineFor("owner/repo/"), "owner/repo/");
+});
+
+/*
+ * THE FULL PATH IS NEVER LOST (the pin beside the name derivation).
+ *
+ * The NAME is a DISPLAY derivation: the accessible name and the identity's
+ * `title` still carry the whole project path, because "which repository" and
+ * "which full path" are different questions and a screen reader is owed the
+ * whole of the second. This test is what stops the name from quietly
+ * REPLACING the path in the accessible name - the failure a display-only
+ * change invites.
+ */
+test("the row's accessible name keeps the FULL project path, not the repo name", () => {
+	const deep = row({
+		key: "gl:276",
+		forge: "gitlab",
+		project: "minervaai/services/core",
+		number: 276,
+		summary: {
+			state: "open",
+			draft: false,
+			title: "feat(core): a thing",
+			head_sha: "a",
+			updated_at: 1,
+			ci: gitlabCi("success"),
+		},
+	});
+	assert.equal(repoName(deep.project), "core");
+	assert.equal(identityLabel(deep), "minervaai/services/core !276");
+	const label = rowAriaLabel(deep);
+	assert.match(label, ROW_ARIA_DEEP_PATH);
+	assert.ok(
+		!label.startsWith("core "),
+		"the accessible name must not carry the bare repo name in place of the path",
+	);
+});
+
+/*
+ * THE RELATION IS IN THE ROW'S NAME (QA round 2, Q-3).
+ *
+ * The marker line is a VISUAL line: it yields where the row is tight, and a
+ * screen reader that only had the identity, the state and the title could
+ * not hear the one word that keeps a row from claiming to be opened when the
+ * backend never said so. The marker is therefore carried in the accessible
+ * name, in the same words the row draws - and the two come from ONE
+ * derivation (`rowTag`), so the row and its name can never state the
+ * relation two ways.
+ */
+/* The regexes live at the top level of the file (biome's `useTopLevelRegex`),
+ * and this file already keeps its own above the cases. */
+const UNKNOWN_MARKER = /unknown — possibly opened/;
+const VIA_MARKER = /via subagent coder › reviewer/;
+const NO_VIA = /via subagent/;
+
+test("the accessible name carries the relation marker the row draws", () => {
+	// The truth case: `unknown` is the backend's word, and the pane never
+	// re-derives it into `opened`.
+	const unknown = row({ key: "gh:1999", relation: "unknown", via: null });
+	assert.equal(rowTag(unknown), "unknown — possibly opened");
+	assert.match(
+		rowAriaLabel(unknown),
+		UNKNOWN_MARKER,
+		"the accessible name must carry the relation a screen reader would otherwise never hear",
+	);
+	// The relation in the label is the marker the row DRAWS, not a second
+	// statement of it: the one derivation, carried.
+	assert.ok(
+		rowAriaLabel(unknown).includes(rowTag(unknown)),
+		"the accessible name must carry the marker line the row draws, whole",
+	);
+
+	// The propagation path is a marker too, and is carried the same way.
+	const via = row({
+		key: "gh:2201",
+		relation: "opened",
+		via: { agent_role: "coder", path: ["coder", "reviewer"] },
+	});
+	assert.equal(rowTag(via), "via subagent coder › reviewer");
+	assert.match(rowAriaLabel(via), VIA_MARKER);
+	assert.ok(
+		rowAriaLabel(via).includes(rowTag(via)),
+		"the accessible name must carry the marker line the row draws, whole",
+	);
+
+	// A row with no marker carries none: the name is not padded with a
+	// relation that does not exist.
+	const plain = row({ key: "gh:1904", relation: "opened", via: null });
+	assert.equal(rowTag(plain), null);
+	assert.doesNotMatch(rowAriaLabel(plain), NO_VIA);
 });
 
 test("groupRows survives a null mention.last_at (the F2 NaN class)", () => {

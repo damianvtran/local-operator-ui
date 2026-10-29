@@ -96,3 +96,21 @@ scripts/_*.bundle.cjs
 # (`scripts/capture-docs-library.mjs` writes `docs-library-captures/` beside the
 # repo root). Regenerable from the rig, so it stays out of the repo.
 docs-library-captures
+
+# The evidence capture rigs' frames (`scripts/capture-evidence.mjs` and the
+# live-app rigs beside it write `docs/evidence-frames/`). The manifest, each
+# set's README and the proof JSONs stay tracked in `docs/evidence/`; the pixels
+# do not. Regenerable from the rig, so it stays out of the repo.
+docs/evidence-frames
+
+# Frames left at the PRE-SPLIT path in checkouts made before that split. The
+# untracking commit removed them from the index but deliberately left the files
+# on disk, so without these rules every existing worktree reports ~20k
+# untracked files and a `git add -A` would put the frames straight back. They
+# are the same regenerable rig output as the tree above; tracked READMEs and
+# proof JSONs under `docs/evidence/` are unaffected, because ignore rules do not
+# apply to tracked files.
+docs/evidence/**/*.webp
+docs/evidence/**/*.png
+docs/evidence/**/*.jpg
+docs/evidence/**/*.jpeg

@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "live-update-i18n-ur-r2-30eac3f7",
+  "namespace": "ui.chat.live_updates",
+  "locale": "ur",
+  "keys_audited": 3,
+  "status": "passed",
+  "sha256": {
+    "ur": "d300d52750824810df2e5af56b7c658f29b45cdfbbe11e51bba0a7f61da5391a",
+    "en": "a51ecfaed866a60d91b2e31493d44097e12d9978624d942e54f9ecdd87827760"
+  },
+  "scope": {
+    "base": "d98b597f150a74ed34bfcdefa641fc8ffe7571e1",
+    "head": "75236aa18e4042f85536162992ab3ead2d65613c",
+    "kind": "i18n remediation re-audit, 3 keys re-read",
+    "namespace": "ui.chat.live_updates",
+    "note": "Re-read all 3 keys in the file at head 75236aa18e; the only byte changes from d98b597f15 are the three flagged fixes (zh-CN paused and reloading, ru paused, ur reload). The English source is unchanged at a51ecfae…; core i18n/glossary.md and the locale style guide consulted; no rendered-frame or native-speaker pass claimed."
+  },
+  "findings": [],
+  "observations": [
+    "Round 2: the “تاریخ” finding is resolved — the file now reads “تاریخچہ سے دوبارہ لوڈ کریں”, replacing the date word “تاریخ” with the locale's established history noun “تاریخچہ”. Re-read all 3 keys; the only byte change from d98b597f15 is this value. RTL remains clean: no manual bidi control characters, final ۔, comma ،, and no embedded Latin run. No blocker/major; no placeholders."
+  ],
+  "independence": "Did not author or translate these strings; read the catalogue bytes on disk and audited against the English source, the core glossary and the locale style guide.",
+  "date": "2026-10-21",
+  "round": 2
+}

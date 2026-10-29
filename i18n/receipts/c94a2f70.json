@@ -1,0 +1,62 @@
+{
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "c94a2f70",
+  "locale": "zh-CN",
+  "round": 1,
+  "namespaces": {
+    "ui.agentMessages.settings": {
+      "status": "passed",
+      "keys_audited": 84,
+      "sha256": {
+        "en": "9f323c46102978c0fa60b8f006e4b380d78c18ab81a7205cd233438d867c5d5d",
+        "zh-CN": "b356a5c32b30fd5dd68bdf95335bfe7e17ad6a1832a882c29415ce57e3ddfa7e"
+      },
+      "findings": []
+    },
+    "ui.chat.transcript_copy": {
+      "status": "passed",
+      "keys_audited": 9,
+      "sha256": {
+        "en": "a81115a3e17a63068b79b4c66d86edaa1417a145f0b1fcc14d34deae8cd1734b",
+        "zh-CN": "1f6c0e7cdc5b6e8d895c2a171afb9b1bd9a54e503092d5a3df69a0122eaabf7b"
+      },
+      "findings": []
+    },
+    "ui.library": {
+      "status": "passed",
+      "keys_audited": 152,
+      "sha256": {
+        "en": "009e864f684e85925001346dc382b5b04724d994f5b099a344f70827a2aa2b2a",
+        "zh-CN": "bef961112be6b8fcbf34d87174c7798111c4a869eb60e84f11e429de983b21a6"
+      },
+      "findings": []
+    },
+    "ui.presence": {
+      "status": "passed",
+      "keys_audited": 9,
+      "sha256": {
+        "en": "7dc0d4c3bb4c18fb15501b630c7f1b2bc1f2f1ec8dabe131d3a3498b50a142a8",
+        "zh-CN": "e4b33ec477bfaffafb80c2c6caba05c30d33749f83dadef7826672bab73e3423"
+      },
+      "findings": []
+    },
+    "ui.teamBridge": {
+      "status": "changes_requested",
+      "keys_audited": 67,
+      "sha256": {
+        "en": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
+        "zh-CN": "98cf8842c5d7feb948e2948ce0c5bec6a65803f5e0e9774822b022dd698df0b5"
+      },
+      "findings": [
+        {
+          "severity": "major",
+          "key": "ui.teamBridge.page.title",
+          "current": "团队互通",
+          "proposed": "Team Bridge",
+          "reason": "The English context sidecar declares \"Team Bridge\" the product surface name, \"kept as-is — never translate the words separately\"; fr and es both keep it untranslated and glossary §1 keeps surface names identical across locales. The same rendered name also appears in ui.teamBridge.nav.label and inside ui.teamBridge.nav.unread, which need the same change."
+        }
+      ]
+    }
+  }
+}

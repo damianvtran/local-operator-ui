@@ -1,0 +1,23 @@
+{
+	"ui.hub.taxonomy.category.investment": "निवेश",
+	"ui.hub.taxonomy.category.accounting": "लेखांकन",
+	"ui.hub.taxonomy.category.healthcare": "स्वास्थ्य सेवा",
+	"ui.hub.taxonomy.category.legal": "कानूनी",
+	"ui.hub.taxonomy.category.software": "सॉफ़्टवेयर",
+	"ui.hub.taxonomy.category.security": "सुरक्षा",
+	"ui.hub.taxonomy.category.role_play": "रोल प्ले",
+	"ui.hub.taxonomy.category.personal_assistance": "निजी सहायता",
+	"ui.hub.taxonomy.category.education": "शिक्षा",
+	"ui.hub.taxonomy.category.marketing": "मार्केटिंग",
+	"ui.hub.taxonomy.category.sales": "बिक्री",
+	"ui.hub.taxonomy.category.research": "शोध",
+	"ui.hub.taxonomy.category.analysis": "विश्लेषण",
+	"ui.hub.taxonomy.category.management": "प्रबंधन",
+	"ui.hub.taxonomy.category.social_media": "सोशल मीडिया",
+	"ui.hub.taxonomy.category.other": "अन्य",
+	"ui.hub.taxonomy.heading": "श्रेणियाँ",
+	"ui.hub.taxonomy.all": "सभी श्रेणियाँ",
+	"ui.hub.taxonomy.origin.named": "{name} के साथ साझा, सार्वजनिक हब पर नहीं",
+	"ui.hub.taxonomy.origin.unnamed": "एक संगठन के साथ साझा, सार्वजनिक हब पर नहीं",
+	"ui.hub.taxonomy.origin.organization": "संगठन"
+}

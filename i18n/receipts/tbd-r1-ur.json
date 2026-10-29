@@ -1,0 +1,65 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "tbd-r1-ur",
+  "session": "au-ur2",
+  "date": "2026-10-21",
+  "locale": "ur",
+  "translator": "translator",
+  "namespaces": {
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 109,
+      "scope": "Full first audit of all 109 keys of the new ur catalogue against en source, context sidecar, glossary and ur style guide; key set, ICU placeholders (parsed with @formatjs), bidi controls, forbidden scripts and NFC verified in the bytes.",
+      "sha256": {
+        "en": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+        "ur": "96dc5773aed649554571187c223f854d52ce61db3ffb90ac49a6acfd631dcc92",
+        "context": "17b7e1450dc7fa529d8e2e684bb8653fcc4f6cf220bf8261631d078d26545de5"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.row.menu",
+          "current": "{name} کے مزید اعمال",
+          "proposed": "{name} کے مزید اقدامات",
+          "note": "Same English \"More actions for {name}\" is rendered as اقدامات in ui.settings.integrations (integration_row.more_actions_for_name); اعمال drifts from it and reads as \"deeds\"."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.thread.yesterday",
+          "current": "کل",
+          "proposed": "گزشتہ روز",
+          "note": "کل means both yesterday and tomorrow in Urdu, and ui.projects project_model.yesterday already uses گزشتہ روز for the same English term."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.notify.mention",
+          "current": "ذکر",
+          "proposed": "صرف ذکر",
+          "note": "Bare ذکر (\"remembrance/mention\") is cryptic as a notification-level option; the sibling catalogues use ذکر شدہ for mentioned items. Optional, check against the Mute and All messages options in a rendered pass."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.menu.unmute",
+          "current": "خاموشی ختم کریں",
+          "proposed": "گفتگو کی خاموشی ختم کریں",
+          "note": "English is \"Unmute conversation\" and menu.mute keeps گفتگو, so the pair is asymmetric and the unmute item drops its object. The menu label gives the context, so this is cosmetic."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.people.bridge_off",
+          "current": "ابھی Team Bridge فعال نہیں کیا",
+          "proposed": "اس نے ابھی Team Bridge فعال نہیں کیا",
+          "note": "The subject is dropped, and the string is a tooltip and assistive description that can be read without the row. Add اس نے so it is a complete sentence."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.notify.label",
+          "current": "اطلاع کی ترجیحات",
+          "proposed": "اطلاعات کی ترجیحات",
+          "note": "The plural اطلاعات is the usual form for notification settings (compare ui.settings.updates اپ ڈیٹ کی اطلاعات). notify.error carries the same singular."
+        }
+      ]
+    }
+  }
+}

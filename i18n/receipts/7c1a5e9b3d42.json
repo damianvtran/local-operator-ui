@@ -1,0 +1,34 @@
+{
+  "auditor": "i18n-auditor-zh",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "7c1a5e9b3d42",
+  "date": "2026-10-18",
+  "locale": "zh-CN",
+  "namespace": "ui.chat.tags",
+  "status": "clean-with-findings",
+  "sha256": {
+    "en": "2d300213e1eb2712e757fa820867fc50c58ef98c4dcf5ca540ad593cf450d0fe",
+    "zh-CN": "3140c3250e1652cd338af2194f10d75732b971f370ac1daf9b8adcb5dd3fb5ba"
+  },
+  "independence": "Independent auditor; not the implementer or translator.",
+  "model_provenance": "Actual audit performed by openai/gpt-6.1-sol after anthropic quota fallback; no substantive audit performed on the prior model.",
+  "scope": "All 54 English/Simplified Chinese pairs, including the 12-key drag/move/remove/undo delta.",
+  "checks": {
+    "frozen_hashes": "Both expected hashes recomputed and matched before review and receipt creation.",
+    "preservation": "All 42 prior values match the git index catalogue verbatim; HEAD does not contain the catalogue, so the staged 42-key catalogue is the preservation baseline.",
+    "language": "Reviewed meaning, Simplified Chinese register, grammar, measure words, punctuation, quotes, Untagged/primary-tag/move/remove/undo distinctions and static length risk across all 54 pairs.",
+    "icu": "54 pairs parsed with @formatjs/icu-messageformat-parser; identical argument sets; all Chinese messages formatted with intl-messageformat at count=0,1,2,12. Explicit =1 in remove_all correctly preserves the singular action in Chinese.",
+    "context": "Read move_armed announcements and remove_all menu call sites in chat-sidebar.tsx.",
+    "rendered_fit": "Not verified: this role has no browser tool. Static copy-length review found no blocker/major; this receipt does not assert measured menu/sidebar/toast fit."
+  },
+  "findings": [
+    {
+      "id": "ZH-N1",
+      "severity": "nit",
+      "key": "ui.chat.tags.move_menu",
+      "description": "The new label uses a single U+2026 ellipsis (移至标签…), while existing Chinese menu labels menu/manage/new consistently use the Chinese double ellipsis (……). Meaning and action remain clear.",
+      "recommendation": "In a future copy-polish change, use 移至标签…… for consistency with the preserved Chinese menu labels.",
+      "disposition": "Non-gating; frozen catalogue left unchanged."
+    }
+  ]
+}

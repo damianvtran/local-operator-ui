@@ -1,0 +1,266 @@
+{
+  "schema": 1,
+  "audit_kind": "independent-namespace-delta-translation-audit",
+  "date": "2026-10-24",
+  "locale": "es",
+  "batch": "extract",
+  "pr": "#1403",
+  "branch": "feat/i18n-key-remaining-copy",
+  "round": 2,
+  "audited_head": "d082bd9595dcc41018b86f22a26fa7f3ae4e891f",
+  "previous_head": "f517ec48995e5bc087ca63c9975ddbe9ce1f0c7c",
+  "remediation_commit": "78a56f6a19b131eff101e3d6328b98a94ddbf2de",
+  "remediation_parent": "888e1859c40eacf98c4849a4cde85b8d07a046ad",
+  "base": "3d0e9010d71c00662902971e4bd6888f7a8f6f1c",
+  "round1_base": "fdd494d3926d7cdf6f47cda4cd7a05301231f127",
+  "instance": "es-extract-a815d841bd5d-r2",
+  "session": "a815d841bd5d",
+  "auditor": {
+    "agent": "translation-auditor",
+    "instance": "es-extract-a815d841bd5d-r2",
+    "session": "a815d841bd5d",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "harness session model (system prompt: Model: deepseek/deepseek-flash); no fallback used",
+    "fallback": null,
+    "independent_from_translators": true,
+    "independence_basis": "Separate session from the es translator lane; the remediation commit 78a56f6a was authored by the integrator. This audit read the es and en catalogues and context sidecars from git objects at the PR head, translated nothing and edited no catalogue."
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/es.md",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca8"
+    },
+    "path_note": "The round-1 receipt wrote the core paths as local_operator/i18n/...; at round 2 the same files are i18n/... in the core checkout, and both sha256 values match the round-1 references exactly."
+  },
+  "supersedes": {
+    "receipt": "i18n/receipts/es-extract-979302629cb5.json",
+    "sha256": "24489f0b58576eb35921b60f6e75305a017ed6654856f3d5a5fc040b23042494"
+  },
+  "scope": "Round 2 re-audits only the two es namespaces the remediation touched, ui.chat.composer and ui.chat.directory, value-by-value against English and the context sidecars at the PR head d082bd9595; it verifies the five other namespaces are byte-identical to the round-1 receipt and carries their round-1 verdicts. The remediation diff f517ec48..d082bd95 for es is exactly three values in two files (2 composer, 1 directory); no keys, key order, English or context bytes changed.",
+  "method": [
+    "Read both changed namespaces in full at head (66 + 43 = 109 keys) and compared every value with its English source and context sidecar.",
+    "Diffed es catalogues f517ec48..d082bd95: exactly three values changed (wake_with_summary, tip.mention_file, menu.browse); no key added, removed or reordered (66/43 keys; en and es key order identical).",
+    "Parsed all 109 values with @formatjs/icu-messageformat-parser and compared structural ASTs: 0 argument/plural/select/skeleton deltas in the batch. The single AST difference in the namespace, composer.secret_confirm_chars, is the pre-existing es many category, correct for Spanish and outside the batch (carried from round 1).",
+    "Verified every placeholder byte-exactly, including {path}, {shortcut}, {pushToTalk} and the plural # branches.",
+    "Checked widths against the context budgets: wake_with_summary 40/42, tip.mention_file 54/59, menu.browse 20 characters vs 24 in English; no overflow.",
+    "Scanned register: tú imperatives (Despiértame, Revisa, Programa, Crea, Activa) in the suggestion pool, lowercase action sentences in the tip row, sentence case and no trailing period; the changed values match their pools.",
+    "Checked glossary consistency: directorio for directory (20 other es strings, e.g. Directorio de trabajo) vs carpeta for folder; Examinar for a file-picker Browse vs explorar for explore; chat, recurso, turno, estimated and runtime follow the established es house terms.",
+    "Verified the five unchanged namespaces by sha256 of en, es and context bytes at head against the round-1 receipt: all 15 hashes match, so their round-1 verdicts are carried without re-reading values.",
+    "Read the parity-gate diff at head: the two global IDENTICAL_OK program_files rows are gone and the exemptions are now locale-scoped (fr, hi, ru, vi, ur, zh-CN). es needs no exemption because its values are translated, so the stub gate accepts them.",
+    "Read the PR body at head: the ten-identifier claim is corrected to seven byte-identical path segments plus three Windows folder names that follow the platform display name, literal in fr/hi/ru/vi/ur/zh-CN and localized in es, each exemption scoped to the locales that make that claim."
+  ],
+  "remediation_verification": [
+    {
+      "id": "E1",
+      "status": "fixed",
+      "key": "ui.chat.composer.suggestion.wake_with_summary",
+      "previous": "Despiértame mañana con un resumen",
+      "current": "Despiértame por la mañana con un resumen",
+      "english": "Wake me tomorrow morning with a summary",
+      "verification": "por la mañana restores the time of day the English asks for; 40/42 characters; sentence case, no trailing punctuation; the sibling suggestion.schedule_mornings already uses por la mañana."
+    },
+    {
+      "id": "E2",
+      "status": "fixed",
+      "key": "ui.chat.composer.tip.mention_file",
+      "previous": "escribe @ para mencionar un archivo de esta carpeta",
+      "current": "escribe @ para mencionar un archivo de este directorio",
+      "english": "type @ to point the agent at a file in this directory",
+      "verification": "directorio matches 20 other es strings for the English directory; carpeta is the es word for folder; 54/59 characters; lowercase action sentence, no trailing period."
+    },
+    {
+      "id": "E3",
+      "status": "fixed",
+      "key": "ui.chat.directory.menu.browse",
+      "previous": "Buscar directorio...",
+      "current": "Examinar directorio…",
+      "english": "Browse for directory...",
+      "verification": "Examinar is the Spanish file-dialog verb for Browse; Buscar promised a search box. The typographic ellipsis follows the es style guide and the 133-value house usage; 20 characters vs 24 in English. The adjacent menu.enter_custom still uses ASCII dots — recorded as nit E5."
+    },
+    {
+      "id": "E4",
+      "status": "resolved-by-design",
+      "keys": [
+        "ui.chat.directory.folder.program_files",
+        "ui.chat.directory.folder.program_files_x86"
+      ],
+      "current": [
+        "Archivos de programa",
+        "Archivos de programa (x86)"
+      ],
+      "unchanged_since_round1": true,
+      "verification": "No es catalogue change is needed: the per-key en sidecar says to translate the name the platform file manager shows, and Microsoft/Spanish-Windows evidence shows Archivos de programa / Archivos de programa (x86). The defect was the stated invariant and the global exemption, not the Spanish. At head the global IDENTICAL_OK rows are removed, the exemptions are locale-scoped, and the PR body now states the seven-path/three-folder rule correctly. See https://learn.microsoft.com/es-es/answers/questions/2495368/como-encontrar-program-files and https://www.samlogic.net/articles/program-files-folder-different-languages.htm."
+    }
+  ],
+  "namespaces": {
+    "ui.chat.composer": {
+      "batch_keys": 30,
+      "head_keys": 66,
+      "sha256": {
+        "en": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
+        "es": "916b7e8b760c5df95dba90b48cbb82738a8f6295f39473269890ab27541d98eb",
+        "context": "85ef8b6622f33788650bdbb7462b78d29b753291d2e4a3ca64ac344d77e9ce0c"
+      },
+      "changed_since_round1": true,
+      "bytes_match_round1_receipt": false,
+      "identical_values": 0,
+      "status": "passed",
+      "findings": [],
+      "keys_read_this_round": 66,
+      "carried_from_round1": false
+    },
+    "ui.chat.device": {
+      "batch_keys": 14,
+      "head_keys": 14,
+      "sha256": {
+        "en": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
+        "es": "7d52e6d1826544836d4c9c0e37bba2edfc05b153c2a993b2cf745b88c40dd946",
+        "context": "011a317e02583cb0485a8cb03ae2892607d118d005a7b1fc1118c60f557352ce"
+      },
+      "changed_since_round1": false,
+      "bytes_match_round1_receipt": true,
+      "identical_values": 0,
+      "status": "passed",
+      "findings": [],
+      "keys_read_this_round": 0,
+      "carried_from_round1": true,
+      "round1_status": "passed",
+      "round1_findings": []
+    },
+    "ui.chat.dialogs": {
+      "batch_keys": 6,
+      "head_keys": 10,
+      "sha256": {
+        "en": "05f2c86f08148e7ba94a3536861958cbed9e0b3b0f25292d8c7f0f64eef82493",
+        "es": "b3fd09f534cbe3f5f74bd59dc0fa66ff266df8b63e45060f002b1d8132defcc1",
+        "context": "2cc1cccec0e40f46106cc862422c7cb7770e99fe8b54ad5820ed6c722444e299"
+      },
+      "changed_since_round1": false,
+      "bytes_match_round1_receipt": true,
+      "identical_values": 0,
+      "status": "passed",
+      "findings": [],
+      "keys_read_this_round": 0,
+      "carried_from_round1": true,
+      "round1_status": "passed",
+      "round1_findings": []
+    },
+    "ui.chat.directory": {
+      "batch_keys": 43,
+      "head_keys": 43,
+      "sha256": {
+        "en": "911d137202d2dbca8c18d3536a7da10019424181a42c44817774da07cfef57ec",
+        "es": "99582ad1395e9d91b3e7c0e2dee1c98492aca37b149d8a3f729cc5d1c92cf3a5",
+        "context": "8e224faff8632471b3a0cb34aa420d90b3a97230b8f3fd3d6c0c13bcdd0a16a8"
+      },
+      "changed_since_round1": true,
+      "bytes_match_round1_receipt": false,
+      "identical_values": 8,
+      "status": "passed",
+      "findings": [
+        {
+          "id": "E5",
+          "severity": "nit",
+          "namespace": "ui.chat.directory",
+          "key": "ui.chat.directory.menu.enter_custom",
+          "current": "Escribir una ruta personalizada...",
+          "proposed": "Escribir una ruta personalizada…",
+          "reason": "Direct neighbor of E3: menu.browse now ends in U+2026 while this adjacent row in the same menu still uses three ASCII periods. The es style guide mandates '…', 133 es values already use it, and every other locale that localized these two rows (fr, ru, vi, ur, zh-CN) uses the same ellipsis on both; hi is internally consistent with ASCII. One-character polish, non-gating."
+        }
+      ],
+      "keys_read_this_round": 43,
+      "carried_from_round1": false
+    },
+    "ui.chat": {
+      "batch_keys": 36,
+      "head_keys": 44,
+      "sha256": {
+        "en": "346506195ffc36897dee351eb12a47aab4c21acdf3062710392eb0086024b442",
+        "es": "33f6d45403156e0b4b88c45dfa7ae21dcc01fadaaade7dcd31c89ef2a4cdf321",
+        "context": "e2f4f6310081e9c54efd893faf10f34eb7bcc5101337a0f4d96a49bdf6dab424"
+      },
+      "changed_since_round1": false,
+      "bytes_match_round1_receipt": true,
+      "identical_values": 1,
+      "status": "passed",
+      "findings": [],
+      "keys_read_this_round": 0,
+      "carried_from_round1": true,
+      "round1_status": "passed",
+      "round1_findings": []
+    },
+    "ui.chat.sidebar": {
+      "batch_keys": 1,
+      "head_keys": 44,
+      "sha256": {
+        "en": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
+        "es": "6c80a46c6c7dd83a67bd1c5521bfbde38b36d2883ae7c91439a9d74a14b3b84d",
+        "context": "4c7581e198d0fcc05a2ce61a0e569c550d126e352e2956830ceee34f6ed6b0de"
+      },
+      "changed_since_round1": false,
+      "bytes_match_round1_receipt": true,
+      "identical_values": 0,
+      "status": "passed",
+      "findings": [],
+      "keys_read_this_round": 0,
+      "carried_from_round1": true,
+      "round1_status": "passed",
+      "round1_findings": []
+    },
+    "ui.common.viewer": {
+      "batch_keys": 4,
+      "head_keys": 8,
+      "sha256": {
+        "en": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
+        "es": "8cf0db58a6fa91720ec802b8c0f452175d5ec1cd5431e6e9ba6aa8e9176b0232",
+        "context": "e754ce6c5403f7fc27c1b7d768f25626ecc77be9886eaec1e12fdeed267514d5"
+      },
+      "changed_since_round1": false,
+      "bytes_match_round1_receipt": true,
+      "identical_values": 0,
+      "status": "passed",
+      "findings": [],
+      "keys_read_this_round": 0,
+      "carried_from_round1": true,
+      "round1_status": "passed",
+      "round1_findings": []
+    }
+  },
+  "finding_summary": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+  },
+  "totals": {
+    "keys_read_this_round": 109,
+    "batch_keys_reaudited": 73,
+    "batch_keys_carried": 61,
+    "head_keys_reaudited": 109,
+    "head_keys_carried": 120,
+    "head_keys_covered": 229,
+    "namespaces": 7,
+    "identical_values": 9,
+    "maxcells_overflow": 0
+  },
+  "verdict": "clean-with-findings — E1 and E2 are fixed exactly as proposed; E3 is fixed as proposed with the typographic ellipsis the es style guide requires; E4 needs no es change and is closed by design: the values are the Spanish Windows display names, the parity gate now scopes the identical-value exemption per locale, and the PR body was corrected. The five unchanged namespaces are byte-identical to the round-1 receipt. One new non-gating nit (E5) remains on the adjacent menu row ASCII ellipsis; no blocker or major.",
+  "notes": {
+    "E1": "The suggestion pool uses tú imperatives and no trailing punctuation; wake_with_summary now matches schedule_mornings por la mañana and stays inside the 42-cell budget at 40.",
+    "E2": "directorio is the house term for the English directory (20 other es strings); carpeta appears in the browser download copy for folder, a different source term.",
+    "E3": "Examinar is the standard Spanish file-picker verb; the only other browse rendering is explorar habilidades (explore skills), a different sense. The file menu now mixes U+2026 on this row with ASCII dots on enter_custom (E5).",
+    "E5": "Direct neighbor of E3, not a re-audit of unchanged copy: one-character polish, non-gating, no third round requested.",
+    "unchanged_namespaces": "ui.chat.device, ui.chat.dialogs, ui.chat, ui.chat.sidebar and ui.common.viewer kept all 15 en/es/context hashes from the round-1 receipt; their round-1 statuses were passed with no findings and are carried.",
+    "identical_values": "9 identical values remain: the eight filesystem identifiers in ui.chat.directory (etc, media, mnt, opt, ProgramData, srv, usr, var) and Chat in ui.chat; the identifiers are covered by the global gate rows and Chat is the audited es house term.",
+    "icu": "109 keys parsed with @formatjs/icu-messageformat-parser; zero structural deltas in the batch. The one namespace-level delta, composer.secret_confirm_chars, is the pre-existing es many category (correct for Spanish) and is not in the batch.",
+    "widths": "wake_with_summary 40/42, tip.mention_file 54/59, menu.browse 20 characters vs 24 in English; no overflow."
+  },
+  "limitations": "Static catalogue audit only: no rendered frame was built or captured, so maxCells headroom is arithmetic rather than measured pixels. es is LTR, so RTL checks do not apply. The es parity test was not executed against the PR head because that would require checking out the branch; the gate scoping was read from the head test file and the PR body, and execution remains QA/CI evidence. No catalogue, English, ledger, allowance or generated file was edited; this receipt is the only file written by this audit."
+}

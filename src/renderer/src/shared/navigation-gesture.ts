@@ -123,3 +123,19 @@ export function navigationShortcutLabel(
 	const bracket = direction === "back" ? "[" : "]";
 	return isMac ? `⌘${bracket}` : `Ctrl+${bracket}`;
 }
+
+/**
+ * The one platform test behind every chord caption.
+ *
+ * The browser surface and the chords hook each carried their own copy of this
+ * regex, and the two drive different things — the surface's copy captions the
+ * strip's address trigger, the hook's decides how a physical chord is read — so
+ * a drift between them would show a Mac glyph for a chord that fires the Linux
+ * path (nit round 1, NIT-3). One export, one answer.
+ */
+export const MAC_PLATFORM = /Mac|iPhone|iPad/;
+
+/** `"mac" | "linux"`, the two platforms the chord tables are written for. */
+export function chordPlatform(): "mac" | "linux" {
+	return MAC_PLATFORM.test(navigator.platform) ? "mac" : "linux";
+}

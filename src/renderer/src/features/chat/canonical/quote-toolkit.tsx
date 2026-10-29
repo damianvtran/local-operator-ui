@@ -1,9 +1,9 @@
 /**
- * The Quote control on a canonical transcript turn: one affordance, raised by a
- * highlight, floating above the highlighted frame.
+ * The selection strip on a canonical transcript turn: Quote, Copy and Speak,
+ * raised by a highlight and floating over the highlighted frame.
  *
- * WHAT IT IS, AND WHAT IT DELIBERATELY IS NOT. One control, the same visual
- * object as `message-controls.tsx`'s strip on the legacy transcript, because two
+ * WHAT IT IS, AND WHAT IT DELIBERATELY IS NOT. One strip, the same visual object
+ * as `message-controls.tsx`'s strip on the legacy transcript, because two
  * floating toolbars that look different is a defect rather than a style choice.
  *
  * SPEAK NOW RIDES ALONG (the speak-aloud round), and the reason the old ruling
@@ -17,11 +17,12 @@
  * and the store keys it `sel:<conversationId>:<fnv1a(text)>`, so two different
  * highlights cannot claim each other's busy or playing state.
  *
- * COPY STILL DOES NOT. The message strip's copy is per-message and this
- * control's subject is a Range, not a record; the selection's own copy gesture
- * is the platform's (Cmd/Ctrl+C), and inlining a second semantics here - which
- * of html/text/flavors the write carries - is the second implementation the
- * same § 9 refuses. The operator's ask for this surface was speech.
+ * COPY RIDES ALONG NOW. The selection round needed Copy beside Quote and one
+ * Speak, and splitting it into a second strip is the duplication this component
+ * exists to prevent. The press re-reads the same Range as Quote (`copyTarget`
+ * on the highlighted text), so the strip's subject stays the highlight rather
+ * than the row; the message's own Copy is still the per-record control in
+ * `AnswerActionRow`, and `Copy as Markdown` remains the record menu's job.
  *
  * THE TRIGGER IS THE HIGHLIGHT, AND NOTHING ELSE (the operator's first ask:
  * "The quote button should only show up when highlighting a section, not just
@@ -65,12 +66,15 @@
  * what a press that leaves focus behind costs.
  */
 
+import { FloatingToolbar } from "@shared/components/common/floating-toolbar";
 import {
 	SpeakButton,
 	useSpeakControl,
 	useSpeakDismissal,
 } from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { clipForSpeech } from "@shared/lib/speech-clip";
 import { useSpeechBindingFor } from "@shared/lib/speech-target";
 import { cn } from "@shared/lib/utils";
@@ -79,9 +83,11 @@ import {
 	selectionSpeechKey,
 	useSpeechStore,
 } from "@shared/store/speech-store";
-import { Quote } from "lucide-react";
+import { Check, Copy, Quote } from "lucide-react";
 import type { FC } from "react";
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { copyTarget } from "../utils/link-open";
+import { COPY_FEEDBACK_MS } from "./message-actions";
 import { QUOTE_TOOLKIT_ATTR, quoteSelectionIn } from "./quote-model";
 import { useFloatingControl } from "./use-floating-control";
 import { useHighlightText } from "./use-highlight-text";
@@ -113,12 +119,20 @@ type QuoteToolkitProps = {
 	 * "this row has words to offer" belongs.
 	 */
 	turnRef: { readonly current: HTMLElement | null };
+	/**
+	 * Whether Quote may be offered for this turn's highlight. Assistant prose is
+	 * the only quotable surface in the transcript; the user's own bubble gets the
+	 * same strip for Copy and Speak but no Quote (design round 2, D1).
+	 */
+	allowQuote?: boolean;
 };
 
 export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 	conversationId,
 	turnRef,
+	allowQuote = true,
 }) => {
+	useI18nLocale();
 	/*
 	 * The reader's highlight of this turn, through the shared gate
 	 * (`use-highlight-text.ts`): TEXT rather than the boolean this used to store,
@@ -131,6 +145,79 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 	const { text: highlight, clear: clearHighlight } = useHighlightText(turnRef);
 	const owns = highlight !== null;
 	const handleQuote = useQuotePress(conversationId, turnRef);
+	/*
+	 * THE TURN'S OWN CONTROLS STAND DOWN WHILE THIS STRIP OWNS THE HIGHLIGHT.
+	 * The response and user gutter overlays sit in the same seat the strip now
+	 * uses (the outer gutter / the trailing edge), and they are later in the
+	 * DOM with pointer-events-auto on hover - so a Quote press could land on the
+	 * response Copy instead. The marker is on the row, and the stylesheet keys
+	 * the same suppression off the COLUMN's `data-lo-selection-live` as well (a
+	 * selection the quote toolkit does not own still owns the seat); visibility
+	 * (not display) preserves zero layout and pointer-events:none takes the
+	 * controls out of the hit test.
+	 */
+	useEffect(() => {
+		const turn = turnRef.current;
+		if (!turn || !owns) return;
+		const row = turn.closest("[data-record-id]") ?? turn;
+		const controls = [
+			...row.querySelectorAll(
+				/*
+				 * EVERY ROW TOOLBAR IN THE TURN IS A SEAT, and leaving one out is this
+				 * defect: in the original case a response row's overlay and a user row's
+				 * overlay stood down while the answer's Copy/Speak/Fork row kept painting
+				 * at the far right, so a drag showed the selection strip AND a row toolbar
+				 * at once (measured: 84 of 87 drag frames on the base tree). The row's OWN toolbar
+				 * is a fallback for "no selection"; a selection strip is the toolbar for
+				 * "selection", and only one of the two may be on screen.
+				 *
+				 * `[data-lo-response-actions]` is the FOURTH seat (the non-closing final
+				 * response's in-flow row, restored by the operator's 2026-10-20 rule) and
+				 * `[data-lo-gutter-actions]` is the in-between commentary overlay: all
+				 * four markers are listed because all four paint in a turn.
+				 */
+				"[data-lo-gutter-actions], [data-lo-user-actions], [data-lo-answer-actions], [data-lo-response-actions]",
+			),
+		];
+		row.setAttribute("data-lo-selection-active", "");
+		for (const control of controls) {
+			control.setAttribute("inert", "");
+			control.setAttribute("aria-hidden", "true");
+		}
+		return () => {
+			row.removeAttribute("data-lo-selection-active");
+			for (const control of controls) {
+				control.removeAttribute("inert");
+				control.removeAttribute("aria-hidden");
+			}
+		};
+	}, [owns, turnRef]);
+	/*
+	 * Copy is the third press that acts on the same highlight. It is deliberately
+	 * here rather than in the shared selection toolbar: one highlight gets one
+	 * strip (design round 2, D1), and the strip that already owns Quote and Speak
+	 * is this one. The press re-reads the range at press time for the same reason
+	 * Quote does - the strip can outlive the drag that raised it.
+	 */
+	const [copied, setCopied] = useState(false);
+	const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	useEffect(
+		() => () => {
+			if (resetTimer.current !== null) clearTimeout(resetTimer.current);
+		},
+		[],
+	);
+	const handleCopy = useCallback(async () => {
+		const text = quoteSelectionIn(turnRef.current)?.text ?? highlight;
+		if (!text) return;
+		if (!(await copyTarget(text))) return;
+		setCopied(true);
+		if (resetTimer.current !== null) clearTimeout(resetTimer.current);
+		resetTimer.current = setTimeout(() => {
+			resetTimer.current = null;
+			setCopied(false);
+		}, COPY_FEEDBACK_MS);
+	}, [highlight, turnRef]);
 	const { controlRef, placement } = useFloatingControl({
 		turnRef,
 		visible: owns,
@@ -213,9 +300,10 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 	if (!owns) return null;
 
 	return (
-		<div
+		<FloatingToolbar
 			{...{ [QUOTE_TOOLKIT_ATTR]: "" }}
 			ref={controlRef}
+			label={t("ui.chat.transcript_copy.selection.toolbar")}
 			/*
 			 * `invisible` rather than an unmount, for the frames before the first
 			 * measurement and while the highlight's own first line is off screen:
@@ -224,39 +312,55 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 			 * the layout and still takes the control out of the tab order, so
 			 * there is no orphaned stop in that window either.
 			 */
-			className={cn(
-				// Slack's and Linear's floating selection toolbar: a small group
-				// that covers nothing, rather than a strip reserved beside every
-				// message, so nothing is reserved and the turn rhythm is unchanged
-				// whether or not the control is up. The `elevated` ground plus a
-				// hairline is what makes it read as floating over the prose - § 2
-				// keeps the one shadow for objects that genuinely leave the flow.
-				"absolute z-10 flex h-8 items-center gap-0.5 rounded-md border border-hairline bg-elevated px-1",
-				!placement && "invisible",
-			)}
+			className={cn("absolute z-20", !placement && "invisible")}
 			style={
 				placement ? { top: placement.top, left: placement.left } : undefined
 			}
-			onMouseDown={(event) => event.preventDefault()}
 		>
+			{allowQuote && (
+				<Tooltip
+					content="Quote"
+					/*
+					 * The tooltip takes the opposite side to the control, because the
+					 * control sits BELOW the highlight when there was no room above it -
+					 * and a tooltip that always opened upwards would cover the very text
+					 * the reader just highlighted.
+					 */
+					side={placement?.placement === "below" ? "bottom" : "top"}
+				>
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label={t("ui.chat.transcript_copy.selection.quote")}
+						className="text-ink-dim hover:bg-accent-wash hover:text-accent"
+						onClick={handleQuote}
+					>
+						<Quote />
+					</Button>
+				</Tooltip>
+			)}
 			<Tooltip
-				content="Quote"
-				/*
-				 * The tooltip takes the opposite side to the control, because the
-				 * control sits BELOW the highlight when there was no room above it -
-				 * and a tooltip that always opened upwards would cover the very text
-				 * the reader just highlighted.
-				 */
+				content={
+					copied
+						? t("ui.chat.transcript_copy.toast.copied_selection")
+						: t("ui.chat.transcript_copy.selection.copy")
+				}
 				side={placement?.placement === "below" ? "bottom" : "top"}
 			>
 				<Button
 					variant="ghost"
 					size="icon-sm"
-					aria-label="Quote"
+					aria-label={
+						copied
+							? t("ui.chat.transcript_copy.toast.copied_selection")
+							: t("ui.chat.transcript_copy.selection.copy")
+					}
 					className="text-ink-dim hover:bg-accent-wash hover:text-accent"
-					onClick={handleQuote}
+					onClick={() => {
+						void handleCopy();
+					}}
 				>
-					<Quote />
+					{copied ? <Check /> : <Copy />}
 				</Button>
 			</Tooltip>
 			{/*
@@ -269,6 +373,6 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 				control={speakControl}
 				side={placement?.placement === "below" ? "bottom" : "top"}
 			/>
-		</div>
+		</FloatingToolbar>
 	);
 };

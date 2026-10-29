@@ -110,7 +110,8 @@ const { useCanonicalSessionsStore: store, placementHeldIds } = module;
  */
 const typesBundle = await build({
 	stdin: {
-		contents: 'export * from "./src/renderer/src/features/mesh/mesh-types";',
+		contents:
+			'export * from "./src/renderer/src/features/mesh/mesh-types"; export * from "./src/renderer/src/features/mesh/peer-presence";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -143,6 +144,8 @@ function reset() {
 		pinFacts: {},
 		archiveFacts: {},
 		placementFacts: {},
+		peerDeviceFacts: {},
+		peerDeviceSnapshotAt: 0,
 		forgotten: {},
 		activeSessionId: null,
 		answerSeq: 0,
@@ -415,4 +418,231 @@ test("the normaliser carries the fields the sidebar's row reads", () => {
 		"an object that did not arrive is omitted, not invented",
 	);
 	assert.equal("binding" in sparse[0], false);
+});
+
+test("device facts override held reachable rows, preserve slot/status, and clear on recovery", () => {
+	reset();
+	const original = remoteRow("presence-fixture");
+	const first = store.getState().beginAnswer();
+	land([original], first);
+	const downAt = store.getState().beginAnswer();
+	store.getState().settlePeerCatalogue([], downAt, {
+		d_node: {
+			reachable: false,
+			last_seen_at: 100,
+			reason: "relay timeout",
+			at: downAt,
+		},
+	});
+	let held = store.getState().sessions[0];
+	assert.equal(held.session_id, original.session_id);
+	assert.deepEqual(held.status, original.status);
+	assert.equal(held.link_down, true);
+	assert.equal(held.reachable, false);
+	assert.equal(held.last_seen_at, 100);
+	assert.equal(held.link_down_reason, "relay timeout");
+	// A late old peer answer and stale session reachable=true cannot revive the link.
+	store.getState().settlePeerCatalogue([original], first, {
+		d_node: {
+			reachable: true,
+			last_seen_at: 90,
+			reason: null,
+			at: first,
+		},
+	});
+	assert.equal(store.getState().sessions[0].link_down, true);
+	const recoveredAt = store.getState().beginAnswer();
+	store.getState().settlePeerCatalogue([original], recoveredAt, {
+		d_node: {
+			reachable: true,
+			last_seen_at: 200,
+			reason: null,
+			at: recoveredAt,
+		},
+	});
+	held = store.getState().sessions[0];
+	assert.equal(held.link_down, false);
+	assert.equal(held.reachable, true);
+	assert.equal(held.link_down_reason, null);
+	assert.deepEqual(held.status, original.status);
+});
+
+test("peer device map rejects late answers and never mutates local or unknown-owner rows", () => {
+	const down = {
+		reachable: false,
+		last_seen_at: 100,
+		reason: "timeout",
+		at: 3,
+	};
+	const up = { reachable: true, last_seen_at: 200, reason: null, at: 4 };
+	const held = { d_node: down };
+	const stale = meshTypes.mergePeerDeviceFacts(held, {
+		d_node: { ...up, at: 2 },
+	});
+	assert.equal(stale.d_node, down);
+	assert.equal(held.d_node, down);
+	const recovered = meshTypes.mergePeerDeviceFacts(stale, { d_node: up });
+	assert.equal(recovered.d_node, up);
+	const local = localRow("local-fixture");
+	assert.equal(meshTypes.applyPeerDeviceFact(local, held), local);
+	const unknown = remoteRow("unknown-fixture", { owner_device: "unknown" });
+	assert.equal(meshTypes.applyPeerDeviceFact(unknown, held), unknown);
+});
+
+test("peer-only refresh and a replayed old session answer cannot resurrect a real deletion", async () => {
+	reset();
+	const original = remoteRow("delete-peer-fixture");
+	const at = store.getState().beginAnswer();
+	land([original], at);
+	const deleted = await store.getState().deleteSession(original.session_id);
+	assert.deepEqual(deleted, { ok: true });
+	assert.equal(calls.at(-1).op, "sessions.delete");
+	assert.equal(store.getState().sessions.length, 0);
+	const peersAt = store.getState().beginAnswer();
+	store.getState().settlePeerCatalogue(
+		[],
+		0,
+		{
+			d_node: {
+				reachable: false,
+				last_seen_at: 100,
+				reason: "timeout",
+				at: peersAt,
+			},
+		},
+		peersAt,
+	);
+	assert.equal(store.getState().sessions.length, 0);
+	land([original], at);
+	assert.equal(store.getState().sessions.length, 0);
+	assert.ok(store.getState().forgotten[original.session_id]);
+});
+
+test("an old remote upsert never overwrites a newer local placement", () => {
+	reset();
+	const original = remoteRow("moved-home-fixture");
+	const at = store.getState().beginAnswer();
+	land([original], at);
+	store.getState().settlePlacement(original.session_id, {
+		locality: "local",
+		owner_device: "",
+	});
+	land([original], at);
+	assert.equal(
+		store.getState().placementFacts[original.session_id].locality,
+		"local",
+	);
+	assert.equal(store.getState().sessions[0].locality, "local");
+});
+
+test("complete peer snapshots prune removed devices and order absence against late answers", () => {
+	reset();
+	const original = remoteRow("removed-device-fixture");
+	const at = store.getState().beginAnswer();
+	land([original], at);
+	const downAt = store.getState().beginAnswer();
+	const down = {
+		reachable: false,
+		last_seen_at: 100,
+		reason: "timeout",
+		at: downAt,
+	};
+	store.getState().settlePeerCatalogue([], 0, { d_node: down }, downAt);
+	assert.equal(store.getState().sessions[0].link_down, true);
+	const removedAt = store.getState().beginAnswer();
+	store.getState().settlePeerCatalogue([], 0, {}, removedAt);
+	assert.deepEqual(store.getState().peerDeviceFacts, {});
+	assert.equal(store.getState().sessions.length, 0);
+	store.getState().settlePeerCatalogue([], 0, { d_node: down }, downAt);
+	assert.deepEqual(store.getState().peerDeviceFacts, {});
+	assert.equal(store.getState().peerDeviceSnapshotAt, removedAt);
+	const recoveryAt = store.getState().beginAnswer();
+	store.getState().settlePeerCatalogue(
+		[],
+		0,
+		{
+			d_node: {
+				reachable: true,
+				last_seen_at: 200,
+				reason: null,
+				at: recoveryAt,
+			},
+		},
+		recoveryAt,
+	);
+	land([original], store.getState().beginAnswer());
+	assert.equal(store.getState().sessions[0].link_down, false);
+	assert.equal(store.getState().sessions[0].reachable, true);
+});
+
+test("removal lapses a held link mark even when a newer placement protects its row", () => {
+	reset();
+	land([remoteRow("protected-removal")], store.getState().beginAnswer());
+	const downAt = store.getState().beginAnswer();
+	store.getState().settlePeerCatalogue(
+		[],
+		0,
+		{
+			d_node: {
+				reachable: false,
+				last_seen_at: 100,
+				reason: "timeout",
+				at: downAt,
+			},
+		},
+		downAt,
+	);
+	const removalAt = store.getState().beginAnswer();
+	store.getState().settlePlacement("protected-removal", {
+		locality: "remote",
+		owner_device: "d_node",
+	});
+	store.getState().settlePeerCatalogue([], 0, {}, removalAt);
+	assert.equal(store.getState().sessions.length, 1);
+	assert.equal(store.getState().sessions[0].link_down, false);
+	assert.equal(store.getState().sessions[0].peer_reach, "unknown");
+});
+
+test("a relay redial verdict softens link-down to reconnecting, then escalates", () => {
+	reset();
+	const original = remoteRow("redial-fixture");
+	land([original], store.getState().beginAnswer());
+	const graceAt = store.getState().beginAnswer();
+	store.getState().settlePeerCatalogue([], graceAt, {
+		d_node: {
+			reachable: false,
+			last_seen_at: 100,
+			reason: "timeout",
+			redial_state: "reconnecting",
+			at: graceAt,
+		},
+	});
+	let held = store.getState().sessions[0];
+	assert.equal(held.link_down, true, "every link-down guard still holds");
+	assert.equal(held.link_reconnecting, true);
+	assert.equal(held.last_seen_at, 100);
+	const downAt = store.getState().beginAnswer();
+	store.getState().settlePeerCatalogue([], downAt, {
+		d_node: {
+			reachable: false,
+			last_seen_at: 100,
+			reason: "timeout",
+			redial_state: "down",
+			at: downAt,
+		},
+	});
+	held = store.getState().sessions[0];
+	assert.equal(held.link_down, true);
+	assert.equal(held.link_reconnecting, false);
+	// An older backend sends no verdict: link-down stays loud, as before.
+	const legacyAt = store.getState().beginAnswer();
+	store.getState().settlePeerCatalogue([], legacyAt, {
+		d_node: {
+			reachable: false,
+			last_seen_at: 100,
+			reason: "timeout",
+			at: legacyAt,
+		},
+	});
+	assert.equal(store.getState().sessions[0].link_reconnecting, false);
 });

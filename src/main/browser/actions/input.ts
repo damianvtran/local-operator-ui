@@ -3,6 +3,11 @@ import { BrowserHostError } from "../errors";
 import { sleep } from "../policy/adapter";
 import type { TabRecord } from "../registry";
 import { settle } from "../settle";
+import {
+	locatorSuggestions,
+	parseLocator,
+	resolveLocator,
+} from "../vendor/driver/ax-locator";
 import { type BrowserActionContext, stringParam } from "./context";
 import {
 	CONTENTEDITABLE_SELECTOR,
@@ -23,7 +28,7 @@ import {
 	sendIn,
 } from "./frames";
 import { pageOf } from "./gate";
-import { nodeIdForSelector } from "./page";
+import { nodeIdForSelector, readAccessibilityTree } from "./page";
 
 /**
  * The interaction actions: `click` and `type`.
@@ -198,6 +203,13 @@ const SNAPSHOT_REF = /^e\d+$/;
 export interface ResolvedNode {
 	nodeId: number;
 	objectId: string;
+	/** How the target was named, when the caller should be told what the host
+	 * actually resolved (locators only: a ref and a CSS selector already name
+	 * the element to the caller, and their result copy is pinned). */
+	resolvedBy?: "locator";
+	role?: string;
+	name?: string;
+	matched?: number;
 	/** The child session the node lives in; absent for the page's own session
 	 * (which includes a same-site frame's in-process document). */
 	sessionId?: string;
@@ -205,9 +217,41 @@ export interface ResolvedNode {
 	frame?: FrameScope;
 }
 
+/** How a resolution may touch the page beyond naming the node. */
+export interface ResolveOptions {
+	/**
+	 * Scroll the node (and the frame chain holding it) into view before resolving.
+	 * Default `true`: `click` and `type` act on what is on screen, so they need the
+	 * element brought into the viewport.
+	 *
+	 * `upload` passes `false`. `DOM.scrollIntoViewIfNeeded` is a LAYOUT step, and
+	 * Chromium refuses it for a node with no layout object — answering `Node does not
+	 * have a layout object`, which surfaces as `internal` — and a file input hidden
+	 * with `display:none` (the React/Slack/GitHub pattern: a button calls
+	 * `input.click()`) has exactly none. `DOM.setFileInputFiles` needs only the node,
+	 * never its geometry, so the upload path must not depend on layout at all. Every
+	 * other part of the resolution — the epoch rule, locator and ref lookup, frame
+	 * hops, denial checks and `element_not_found` diagnostics — is unchanged.
+	 */
+	scroll?: boolean;
+}
+
 /** Results carry the frame's origin whenever the target is not in the top
  * document: approval is per top-level origin, so the agent and the transcript
  * must see when the text went to a third-party frame (ARCH-1, consent). */
+function resolvedFields(node: ResolvedNode): Record<string, unknown> {
+	return node.resolvedBy === "locator"
+		? {
+				resolved: {
+					by: "locator",
+					role: node.role ?? "",
+					name: node.name ?? "",
+					matched: node.matched ?? 1,
+				},
+			}
+		: {};
+}
+
 function frameFields(node: ResolvedNode): Record<string, unknown> {
 	return node.frame ? { frame_origin: node.frame.origin ?? "" } : {};
 }
@@ -237,7 +281,9 @@ export async function resolveNode(
 	ctx: BrowserActionContext,
 	record: TabRecord,
 	target: string,
+	options: ResolveOptions = {},
 ): Promise<ResolvedNode> {
+	const scroll = options.scroll !== false;
 	const view = record.view;
 	const contents = view.webContents;
 
@@ -249,7 +295,7 @@ export async function resolveNode(
 				"the page navigated since that snapshot; take a new snapshot and retry",
 			);
 		}
-		if (ref.frameId) return resolveFrameRef(ctx, contents, target, ref);
+		if (ref.frameId) return resolveFrameRef(ctx, contents, target, ref, scroll);
 		await ctx.cdp.send(contents, "DOM.getDocument", { depth: 0 });
 		const pushed = await ctx.cdp.send<{ nodeIds?: number[] }>(
 			contents,
@@ -260,13 +306,64 @@ export async function resolveNode(
 		if (pushedId === undefined) {
 			throw new BrowserHostError("element_not_found", "snapshot ref is stale");
 		}
-		return finishTop(ctx, contents, target, pushedId, ref.frameOrigin);
+		return finishTop(ctx, contents, target, scroll, pushedId, ref.frameOrigin);
+	}
+
+	// Accessibility locators are resolved BEFORE the CSS path: `role=`,
+	// `label=` and `text=` are not valid CSS, so parsing first cannot shadow a
+	// selector, and the framework-generated-id case never reaches
+	// `DOM.querySelector` at all.
+	//
+	// TOP DOCUMENT ONLY, and that is a MEASURED property rather than a promise
+	// (agent review round 1, R1-1). `Accessibility.getFullAXTree` on the page's
+	// session returns the ROOT frame's tree: driven against the built app on
+	// 2026-10-23 over `iframe#pay-frame` (same site, port 8766) holding a button
+	// named "Pay now", `click text="Pay now"` answered `element_not_found` while
+	// `snapshot` showed the frame's contents through its own sessions. So a
+	// locator cannot land in a frame, cannot bypass `assertFrameNotDenied`, and
+	// cannot mis-report `frame_origin`. A caller that needs a frame keeps the
+	// explicit `>>>` hop syntax, which the CSS path below serves.
+	const locator = parseLocator(target);
+	if (locator) {
+		const nodes = await readAccessibilityTree(ctx, contents);
+		const hit = resolveLocator(nodes, locator);
+		if (!hit) {
+			// The measured loop: nine CSS guesses, each a whole tool call, each
+			// answering only "element not found". Candidates turn one wrong guess
+			// into one correction.
+			throw new BrowserHostError(
+				"element_not_found",
+				`no element matches ${target}`,
+				{ candidates: locatorSuggestions(nodes, target), matched: 0 },
+			);
+		}
+		await ctx.cdp.send(contents, "DOM.getDocument", { depth: 0 });
+		const pushed = await ctx.cdp.send<{ nodeIds?: number[] }>(
+			contents,
+			"DOM.pushNodesByBackendIdsToFrontend",
+			{ backendNodeIds: [hit.backendNodeId] },
+		);
+		const nodeId = pushed?.nodeIds?.[0];
+		if (nodeId === undefined) {
+			throw new BrowserHostError(
+				"element_not_found",
+				`${target} is no longer in the document`,
+			);
+		}
+		const resolved = await finishTop(ctx, contents, target, scroll, nodeId);
+		return {
+			...resolved,
+			resolvedBy: "locator",
+			role: hit.role,
+			name: hit.name,
+			matched: hit.matched,
+		};
 	}
 
 	const hops = parseFrameHops(target);
 	if (hops) {
 		const hit = await resolveHops(ctx, contents, hops);
-		return finishInFrame(ctx, contents, target, hit.scope, hit.nodeId);
+		return finishInFrame(ctx, contents, target, scroll, hit.scope, hit.nodeId);
 	}
 
 	let nodeId: number;
@@ -309,11 +406,12 @@ export async function resolveNode(
 			ctx,
 			contents,
 			target,
+			scroll,
 			matches[0].scope,
 			matches[0].nodeId,
 		);
 	}
-	return finishTop(ctx, contents, target, nodeId);
+	return finishTop(ctx, contents, target, scroll, nodeId);
 }
 
 /** Why a frame search was not exhaustive, in the refusal's words. */
@@ -343,12 +441,17 @@ async function finishTop(
 	ctx: BrowserActionContext,
 	contents: DriveableView["webContents"],
 	target: string,
+	scroll: boolean,
 	nodeId: number,
 	frameOrigin?: string,
 ): Promise<ResolvedNode> {
 	if (frameOrigin !== undefined)
 		assertFrameNotDenied(ctx, { origin: frameOrigin });
-	await ctx.cdp.send(contents, "DOM.scrollIntoViewIfNeeded", { nodeId });
+	// Skipped for `upload` (see `ResolveOptions.scroll`): the scroll is the one
+	// layout-dependent command on this path, and it throws for a `display:none` node.
+	if (scroll) {
+		await ctx.cdp.send(contents, "DOM.scrollIntoViewIfNeeded", { nodeId });
+	}
 	const resolved = await ctx.cdp.send<{ object?: { objectId?: string } }>(
 		contents,
 		"DOM.resolveNode",
@@ -375,20 +478,23 @@ async function finishInFrame(
 	ctx: BrowserActionContext,
 	contents: DriveableView["webContents"],
 	target: string,
+	scroll: boolean,
 	scope: FrameScope,
 	nodeId: number,
 ): Promise<ResolvedNode> {
 	// Before ANY command in the frame: a denied origin is neither scrolled, resolved
 	// nor touched (review round 1, M1).
 	assertFrameNotDenied(ctx, scope);
-	for (const hop of scope.hops) {
-		await sendIn(ctx, contents, hop.sessionId, "DOM.scrollIntoViewIfNeeded", {
-			nodeId: hop.nodeId,
+	if (scroll) {
+		for (const hop of scope.hops) {
+			await sendIn(ctx, contents, hop.sessionId, "DOM.scrollIntoViewIfNeeded", {
+				nodeId: hop.nodeId,
+			}).catch(() => undefined);
+		}
+		await sendIn(ctx, contents, scope.sessionId, "DOM.scrollIntoViewIfNeeded", {
+			nodeId,
 		}).catch(() => undefined);
 	}
-	await sendIn(ctx, contents, scope.sessionId, "DOM.scrollIntoViewIfNeeded", {
-		nodeId,
-	}).catch(() => undefined);
 	const resolved = await sendIn<{ object?: { objectId?: string } }>(
 		ctx,
 		contents,
@@ -414,6 +520,7 @@ async function resolveFrameRef(
 	contents: DriveableView["webContents"],
 	target: string,
 	ref: TabRecord["refs"][string],
+	scroll: boolean,
 ): Promise<ResolvedNode> {
 	// Refused before attaching when the snapshot already named a denied origin;
 	// checked again below against the document actually there now.
@@ -434,18 +541,20 @@ async function resolveFrameRef(
 	// selector paths do through their hops (review round 1, n1; ARCH-1 §7). Best
 	// effort: the owner of a frame nested in another out-of-process frame lives in
 	// THAT frame's session, where the page session's lookup fails harmlessly.
-	await ctx.cdp
-		.send<{ backendNodeId?: number }>(contents, "DOM.getFrameOwner", {
-			frameId: ref.frameId,
-		})
-		.then((owner) =>
-			owner?.backendNodeId
-				? ctx.cdp.send(contents, "DOM.scrollIntoViewIfNeeded", {
-						backendNodeId: owner.backendNodeId,
-					})
-				: undefined,
-		)
-		.catch(() => undefined);
+	if (scroll) {
+		await ctx.cdp
+			.send<{ backendNodeId?: number }>(contents, "DOM.getFrameOwner", {
+				frameId: ref.frameId,
+			})
+			.then((owner) =>
+				owner?.backendNodeId
+					? ctx.cdp.send(contents, "DOM.scrollIntoViewIfNeeded", {
+							backendNodeId: owner.backendNodeId,
+						})
+					: undefined,
+			)
+			.catch(() => undefined);
+	}
 	const pushed = await ctx.cdp.send<{ nodeIds?: number[] }>(
 		contents,
 		"DOM.pushNodesByBackendIdsToFrontend",
@@ -460,6 +569,7 @@ async function resolveFrameRef(
 		ctx,
 		contents,
 		target,
+		scroll,
 		{
 			sessionId: rooted.sessionId,
 			frameTargetId: ref.frameId,
@@ -528,6 +638,7 @@ export async function click(
 	return {
 		navigated: navigationSeen || after.url !== before,
 		...frameFields(node),
+		...resolvedFields(node),
 		...after,
 	};
 }
@@ -545,7 +656,12 @@ export async function type(
 	const typed = await typeInto(ctx, contents, node, text, target);
 	if (typed) {
 		ctx.registry.touch(record);
-		return { ...typed, ...frameFields(node), ...pageOf(record.view) };
+		return {
+			...typed,
+			...frameFields(node),
+			...resolvedFields(node),
+			...pageOf(record.view),
+		};
 	}
 	// Nothing on this node can hold typed text. If it is an iframe ELEMENT, the
 	// field the agent means is inside it: descend to the focused editable or the

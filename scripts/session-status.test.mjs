@@ -75,6 +75,12 @@ const bundle = await build({
 	format: "esm",
 	platform: "node",
 	write: false,
+	/*
+	 * The module now resolves its copy through `t()` (`@shared/i18n`), so the
+	 * bundle needs the renderer's alias exactly as the desktop suite's other i18n
+	 * bundles do. esbuild cannot read tsconfig paths.
+	 */
+	alias: { "@shared": "./src/renderer/src/shared" },
 });
 const {
 	bandYieldsToRadientIssue,
@@ -96,6 +102,8 @@ const {
 	contextTooltipLines,
 	costTooltip,
 	cumulativeCostKnowledge,
+	effortChosenRung,
+	effortDisplacementNote,
 	effortDisplay,
 	effortQueryModel,
 	effortState,
@@ -474,7 +482,7 @@ test("the fixture's breakdown is composed, row for row", () => {
 	// (D1/D2).
 	assert.equal(
 		breakdown.summary,
-		"Billed $0.053 · API-equivalent $0.053 · Estimated $0.010 · $1.42 without a tracked basis yet ($0.520 subagent sessions) · 1 record without a price",
+		"Total ≥$1.54 · Billed $0.053 · API-equivalent $0.053 · Estimated $0.010 · $1.42 without a tracked basis yet ($0.520 subagent sessions) · 1 record without a price",
 	);
 	assert.deepEqual(
 		breakdown.rows.map((row) => [row.name, row.amount, row.basis]),
@@ -547,14 +555,14 @@ test("an object without the sections keeps the plan gloss and today's body", () 
 	const breakdown = channelBreakdown(cost.channels);
 	assert.equal(
 		breakdown.planClause,
-		"Includes $0.053 API-equivalent (covered by a plan, not charged).",
+		"Includes $0.053 plan-covered (API-equivalent, not charged).",
 	);
 	assert.deepEqual(breakdown.byAgent, []);
 	assert.deepEqual(breakdown.bySource, []);
 	assert.deepEqual(breakdown.notes, []);
 	assert.equal(
 		breakdown.summary,
-		"Billed $0.053 · API-equivalent $0.053 · Estimated $0.010 · $1.42 without a tracked basis yet ($0.520 subagent sessions) · 1 record without a price",
+		"Total ≥$1.54 · Billed $0.053 · Included $0.053 (API-equivalent) · Estimated $0.010 · $1.42 without a tracked basis yet ($0.520 subagent sessions) · 1 record without a price",
 	);
 	assert.equal(breakdown.rows.length, 5);
 });
@@ -783,11 +791,14 @@ test("a channel row with no sizeable amount is a fact with its own words", () =>
 		breakdown.rows.map((row) => [row.name, row.amount, row.basis]),
 		[
 			["TTS · radient", PRICE_UNKNOWN_TEXT, ""],
-			["Image · openai-sub/gpt-image-2", "$0.053", "API-equivalent"],
+			["Image · openai-sub/gpt-image-2", "$0.053", "Included"],
 		],
 	);
 	// The count carries the noun; the row carries the amount's own words.
-	assert.equal(breakdown.summary, "Billed $0.053 · 1 record without a price");
+	assert.equal(
+		breakdown.summary,
+		"Total ≥$0.053 · Billed $0.053 · 1 record without a price",
+	);
 });
 
 test("subscription money never joins billed, and the words keep them apart", () => {
@@ -841,12 +852,15 @@ test("subscription money never joins billed, and the words keep them apart", () 
 	);
 	assert.equal(cost.text, "$1.50");
 	const breakdown = channelBreakdown(cost.channels);
-	assert.equal(breakdown.summary, "Billed $1.00 · API-equivalent $0.500");
+	assert.equal(
+		breakdown.summary,
+		"Total $1.50 · Billed $1.00 · Included $0.500 (API-equivalent)",
+	);
 	assert.deepEqual(
 		breakdown.rows.map((row) => [row.name, row.amount, row.basis]),
 		[
 			["Image · radient", "$1.00", "Billed"],
-			["Image · openai-sub", "$0.500", "API-equivalent"],
+			["Image · openai-sub", "$0.500", "Included"],
 		],
 	);
 });
@@ -2540,15 +2554,23 @@ test("the picker is wired to the shared predicate, not to a copy of the read", (
 	);
 	// The honest branch and the fixed-effort branch must BOTH remain reachable:
 	// deleting either is how this regresses without the import disappearing.
-	assert.match(picker, /has not reported its effort levels yet/);
-	assert.match(picker, /has no adjustable effort/);
+	assert.match(
+		picker,
+		/has_not_reported_its_effort_levels_yet/,
+		"the honest unresolved branch keeps its key",
+	);
+	assert.match(
+		picker,
+		/has_no_adjustable_effort/,
+		"the fixed-effort branch keeps its key",
+	);
 	// The claim must be gated on the predicate, never on the empty read alone -
 	// deriving it from `options.length` is the defect U12 named.
 	const gate = picker.slice(
 		picker.indexOf("const unresolved = specUnresolved"),
 	);
-	const honest = gate.indexOf("has not reported its effort levels yet");
-	const fixed = gate.indexOf("has no adjustable effort");
+	const honest = gate.indexOf("has_not_reported_its_effort_levels_yet");
+	const fixed = gate.indexOf("has_no_adjustable_effort");
 	assert.ok(
 		honest > 0 && fixed > honest,
 		"unresolved must be tested before the capability claim",
@@ -2586,12 +2608,15 @@ test("both pickers describe a row in the backend's words, not the live_state tok
 	);
 	// Both consumers of the shared read use the same rule. Spelled separately per
 	// string so that deleting either call site is a failure rather than a comment.
-	assert.match(picker, /sessionActivity\(row, "cold \(no owner running\)"\)/);
+	assert.match(
+		picker,
+		/sessionActivity\(\s*row,\s*t\("ui\.chat\.pickers\.destination_pickers\.cold_no_owner_running"\),\s*\)/,
+	);
 	assert.match(
 		picker,
 		// Whitespace-tolerant: the formatter wraps a call whose arguments overrun the
 		// line, and what is being asserted is the call rather than its layout.
-		/sessionActivity\(\s*row,\s*"cold, reopens on the next message",?\s*\)/,
+		/sessionActivity\(\s*row,\s*t\(\s*"ui\.chat\.pickers\.destination_pickers\.cold_reopens_on_the_next_message",?\s*\),\s*\)/,
 	);
 	// And the exact expression the finding named is gone — `row.live_state` may
 	// still be asked WHICH branch to take, but it may not be printed.
@@ -3093,5 +3118,140 @@ test("the real page/content/composer wires the tested serving context and decisi
 		composer.includes(
 			"!modelAccessOwnsRadientStatus(modelAccess) && radientIssueBlock",
 		),
+	);
+});
+
+test("effortDisplacementNote: the backend's reason, or no claim", () => {
+	// Operator report, 2026-10-21: `Max` read `High` after a send with nothing
+	// saying why. The backend's own sentence is what the chip shows; it is never
+	// re-derived here, so the TUI notice and the desktop say the same words.
+	const note =
+		"Effort: high on anthropic/claude-sonnet-5-5; max resumes on deepseek/deepseek-flash.";
+	assert.equal(
+		effortDisplacementNote({
+			effort_displacement: {
+				chosen: "max",
+				effective: "high",
+				selected: "deepseek/deepseek-flash",
+				serving: "anthropic/claude-sonnet-5-5",
+				note: `  ${note} `,
+			},
+		}),
+		note,
+	);
+	// No displacement, an older host that omits the key, a block with no usable
+	// sentence, and no frame at all are all the same answer: nothing to say.
+	for (const frontend of [
+		{ effort_displacement: {} },
+		{},
+		{ effort_displacement: { chosen: "max", effective: "high" } },
+		{ effort_displacement: { note: 7 } },
+		{ effort_displacement: { note: "   " } },
+		null,
+		undefined,
+	]) {
+		assert.equal(
+			effortDisplacementNote(frontend),
+			null,
+			JSON.stringify(frontend),
+		);
+	}
+});
+
+test("effortDisplacementNote: catalog names replace the slugs they describe", () => {
+	// Design review: the model chip reads the curated name, so a raw
+	// `provider/model_id` in the same chip's tooltip is a second vocabulary.
+	const frontend = {
+		selected_model: {
+			provider: "acme",
+			model_id: "flash-1",
+			display_name: "Acme Flash",
+		},
+		effective_model: {
+			provider: "anthropic",
+			model_id: "claude-sonnet-5-5",
+			display_name: "Claude Sonnet 5.5",
+		},
+		effort_displacement: {
+			chosen: "max",
+			effective: "high",
+			selected: "acme/flash-1",
+			serving: "anthropic/claude-sonnet-5-5",
+			note: "Effort: high on anthropic/claude-sonnet-5-5; max resumes on acme/flash-1.",
+		},
+	};
+	assert.equal(
+		effortDisplacementNote(frontend),
+		"Effort: high on Claude Sonnet 5.5; max resumes on Acme Flash.",
+	);
+	// A spec with no name, or one whose pair the block does not name, leaves
+	// the backend's words alone: a name is never put on another model.
+	assert.equal(
+		effortDisplacementNote({
+			...frontend,
+			selected_model: { provider: "acme", model_id: "flash-1" },
+			effective_model: {
+				provider: "other",
+				model_id: "m",
+				display_name: "Other",
+			},
+		}),
+		frontend.effort_displacement.note,
+	);
+});
+
+test("effortChosenRung: the picker marks the CHOICE while displaced", () => {
+	// Max chosen, High in force: the `/effort` picker ticks `max`, the rung the
+	// user picked and the one a tick would keep.
+	assert.equal(
+		effortChosenRung({
+			effort_displacement: { chosen: " MAX ", effective: "high", note: "x" },
+		}),
+		"max",
+	);
+	for (const frontend of [{}, { effort_displacement: {} }, null, undefined]) {
+		assert.equal(effortChosenRung(frontend), null, JSON.stringify(frontend));
+	}
+});
+
+test("effort names: overlapping identifiers in both directions and no cascading labels", () => {
+	const run = (serving, selected, servingName, selectedName) =>
+		effortDisplacementNote({
+			effective_model: {
+				provider: "openai",
+				model_id: serving,
+				display_name: servingName,
+			},
+			selected_model: {
+				provider: "openai",
+				model_id: selected,
+				display_name: selectedName,
+			},
+			effort_displacement: {
+				serving: `openai/${serving}`,
+				selected: `openai/${selected}`,
+				note: `Effort: high on openai/${serving}; max resumes on openai/${selected}.`,
+			},
+		});
+	assert.equal(
+		run("gpt-5", "gpt-5-mini", "GPT 5", "GPT 5 Mini"),
+		"Effort: high on GPT 5; max resumes on GPT 5 Mini.",
+	);
+	assert.equal(
+		run("gpt-5-mini", "gpt-5", "GPT 5 Mini", "GPT 5"),
+		"Effort: high on GPT 5 Mini; max resumes on GPT 5.",
+	);
+	assert.equal(
+		run(
+			"gpt-5",
+			"gpt-5-mini",
+			"Label containing openai/gpt-5-mini",
+			"GPT 5 Mini",
+		),
+		"Effort: high on Label containing openai/gpt-5-mini; max resumes on GPT 5 Mini.",
+	);
+	assert.equal(
+		run("gpt-5.1", "gpt-5.1-mini", "GPT 5.1", "Mini"),
+		"Effort: high on GPT 5.1; max resumes on Mini.",
 	);
 });

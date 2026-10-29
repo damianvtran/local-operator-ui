@@ -1,9 +1,12 @@
+import { useMeasuredBrowserViewPanel } from "@shared/browser-view-policy";
+import { composeRefs } from "@shared/lib/compose-refs";
 import { cn } from "@shared/lib/utils";
 import { ContextMenu as ContextMenuPrimitive } from "radix-ui";
 import {
 	type ComponentPropsWithoutRef,
 	type ElementRef,
 	forwardRef,
+	useMemo,
 } from "react";
 
 /**
@@ -96,16 +99,23 @@ const itemClasses = [
 export const ContextMenuContent = forwardRef<
 	ElementRef<typeof ContextMenuPrimitive.Content>,
 	ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Content>
->(({ className, ...props }, ref) => (
-	<ContextMenuPrimitive.Portal>
-		<ContextMenuPrimitive.Content
-			ref={ref}
-			data-titlebar-no-drag=""
-			className={cn(panelClasses, "min-w-56", className)}
-			{...props}
-		/>
-	</ContextMenuPrimitive.Portal>
-));
+>(({ className, ...props }, ref) => {
+	const panelRef = useMeasuredBrowserViewPanel<HTMLDivElement>("context-menu");
+	const composedRef = useMemo(
+		() => composeRefs(ref, panelRef),
+		[ref, panelRef],
+	);
+	return (
+		<ContextMenuPrimitive.Portal>
+			<ContextMenuPrimitive.Content
+				ref={composedRef}
+				data-titlebar-no-drag=""
+				className={cn(panelClasses, "min-w-56", className)}
+				{...props}
+			/>
+		</ContextMenuPrimitive.Portal>
+	);
+});
 ContextMenuContent.displayName = "ContextMenuContent";
 
 export const ContextMenuItem = forwardRef<
@@ -121,7 +131,7 @@ export const ContextMenuItem = forwardRef<
 		ref={ref}
 		className={cn(
 			itemClasses,
-			inset && "pl-8",
+			inset && "ps-8",
 			destructive && "text-danger data-[highlighted]:bg-danger-wash",
 			className,
 		)}

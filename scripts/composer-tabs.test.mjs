@@ -98,6 +98,8 @@ const bundle = await build({
 			import { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
 			import { goalStateWord, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS } from "./src/renderer/src/features/chat/pickers/session-commands";
 			import { goalCapability } from "./src/shared/desktop-session-contract";
+			import { goalJudgeStall } from "./src/shared/goal-judge-stall";
+			import { clearRegisteredCatalogues, currentLocale, registerCatalogue, setLocale } from "./src/i18n/index";
 
 			export const renderRow = (props) =>
 				renderToStaticMarkup(createElement(ComposerStatusRow, props));
@@ -136,7 +138,7 @@ const bundle = await build({
 				);
 			export { GoalPicker };
 			export { toasts };
-			export { askChipClause, askDeadlineShortText, askQueueView, AskDrawer, ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalDoneLabel, goalDismissLabel, goalDoneToastText, goalStalledNote, goalClearedText, goalStateWord, goalCapability, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, monitorsChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, monitorClause, scrollRegionToTop, useUiPreferencesStore };
+			export { askChipClause, askDeadlineShortText, askQueueView, AskDrawer, ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalDoneLabel, goalDismissLabel, goalDoneToastText, goalStalledNote, goalClearedText, goalStateWord, goalCapability, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, monitorsChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, monitorClause, scrollRegionToTop, useUiPreferencesStore, goalJudgeStall, setLocale, registerCatalogue, clearRegisteredCatalogues, currentLocale };
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -245,6 +247,11 @@ const {
 	monitorClause,
 	scrollRegionToTop,
 	useUiPreferencesStore,
+	goalJudgeStall,
+	setLocale,
+	registerCatalogue,
+	clearRegisteredCatalogues,
+	currentLocale,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
@@ -594,7 +601,8 @@ test("the goal chip is a disclosure, closed, with the primitive's own wiring", (
 	});
 	// Closed by default, per branding's disclosure rule, and it says so.
 	assert.match(markup, /aria-expanded="false"/);
-	assert.match(markup, /aria-controls="[^"]+"/);
+	// The closed body is absent; an always-present relationship would dangle.
+	assert.doesNotMatch(markup, /aria-controls=/);
 	/*
 	 * The body is mounted only while open, which is what keeps the tab stop this
 	 * row adds (`tabIndex={0}` on the scrollable body) out of the ordinary
@@ -1008,8 +1016,8 @@ test("the first chip cancels its own padding, whichever chip is first", () => {
 	 * activity chip and no goal. The assertion is over the rendered class string, so
 	 * it is the behaviour and not this file's belief about it.
 	 */
-	const firstClass = "-ml-1.5";
-	const count = (markup) => (markup.match(/-ml-1\.5/g) ?? []).length;
+	const firstClass = "-ms-1.5";
+	const count = (markup) => (markup.match(/-ms-1\.5/g) ?? []).length;
 
 	// No goal: the plan chip leads.
 	const planFirst = renderRow({
@@ -1415,7 +1423,7 @@ test("the ask item leads the row when nothing stands ahead of it", () => {
 		frontend: askFrontend([wireAsk("a-1")]),
 		runDetails: NO_DETAILS,
 	});
-	assert.ok(askFirst.indexOf("data-status-asks") < askFirst.indexOf("-ml-1.5"));
+	assert.ok(askFirst.indexOf("data-status-asks") < askFirst.indexOf("-ms-1.5"));
 });
 
 test("the ask item renders only where the host wires the door", () => {
@@ -2047,7 +2055,11 @@ test("the row's own layout: each flexible chip owns a line, and the alignment de
 	 * but a second label span would.
 	 */
 	assert.doesNotMatch(source, /chatcol:sr-only/);
-	tokens('"shrink-0"', 'goalStalled && "text-ink"', "{GOAL_LABEL}");
+	tokens(
+		'"shrink-0"',
+		'goalStalled && "text-ink"',
+		'{t("ui.chat.composer.status.goal_label")}',
+	);
 
 	/*
 	 * The row owns the first-chip rule (design review round 1, D5): one constant,
@@ -2056,7 +2068,7 @@ test("the row's own layout: each flexible chip owns a line, and the alignment de
 	 * each chip asks whether IT is the first one, and the plan chip's own term still
 	 * reads the same way it did with two chips.
 	 */
-	assert.match(source, /const FIRST_CHIP = "-ml-1\.5";/);
+	assert.match(source, /const FIRST_CHIP = "-ms-1\.5";/);
 	/*
 	 * The goal is no longer a chip that ASKS whether it is first: it is the row's
 	 * first item whenever it renders, and the cancellation it wears is the same
@@ -2278,7 +2290,10 @@ test("the expanded body caps itself, keeps the author's breaks, and carries its 
 	assert.doesNotMatch(source, /max-h-32/);
 	assert.match(source, /whitespace-pre-wrap break-words/);
 	assert.match(source, /role="group"/);
-	assert.match(source, /aria-label="Session goal"/);
+	assert.match(
+		source,
+		/aria-label=\{t\("ui\.chat\.composer\.status\.session_goal"\)\}/,
+	);
 	assert.match(source, /tabIndex=\{0\}/);
 	/*
 	 * The plan chip REVEALS and is not a toggle: no `aria-pressed` and no pressed
@@ -4119,17 +4134,27 @@ test("the two outcomes that speak do so in the person's own words", () => {
 	 */
 	assert.match(row, /if \(result\.result\.tone === "error"\)/);
 	assert.match(row, /showErrorToast\(result\.result\.text\);/);
-	for (const prefix of [
-		"Could not clear the goal",
-		"Could not stop the loop",
-		"Could not clear the loop",
-		"Could not restore the goal",
+	/*
+	 * The prefixes are catalogue entries now (agent review round 1, R1-2/R1-3):
+	 * the pin asserts each KEY is what the row passes, and asserts the English
+	 * catalogue still carries the sentence the pin was written for - so a reword
+	 * has to be made in the catalogue rather than smuggled through the source.
+	 */
+	const notices = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.notices.json", "utf8"),
+	);
+	for (const [key, prefix] of [
+		["ui.notices.chat.goal_clear_failed", "Could not clear the goal"],
+		["ui.notices.chat.loop_stop_failed", "Could not stop the loop"],
+		["ui.notices.chat.loop_clear_failed", "Could not clear the loop"],
+		["ui.notices.chat.goal_restore_failed", "Could not restore the goal"],
 	]) {
 		assert.match(
 			row,
-			new RegExp(`"${prefix}"`),
-			`${prefix} is the failure prefix`,
+			new RegExp(`t\\("${key.replaceAll(".", "\\.")}"\\)`),
+			`${key} is the failure prefix`,
 		);
+		assert.equal(notices[key], prefix, `${key} changed its English wording`);
 	}
 	/*
 	 * AND THE GOAL'S CLEAR IS THE ONE SUCCESS THAT ALSO SPEAKS (agent review round 1,
@@ -4147,11 +4172,13 @@ test("the two outcomes that speak do so in the person's own words", () => {
 		/showInfoToast\(goalClearedText\(settled\), \{/,
 		"the confirmation names what it cleared (UX round 2, U7)",
 	);
-	assert.match(row, /label: GOAL_UNDO_TEXT,/);
+	// The undo's label and the restore's failure prefix are catalogue entries:
+	// one entry per sentence, shared with the other Undo surfaces (R1-2/R1-3).
+	assert.match(row, /label: t\("ui\.notices\.chat\.undo"\)/);
 	assert.match(row, /onClick: \(\) => void restoreGoal\(settled\)/);
 	assert.match(
 		row,
-		/goalCommand\.run\(GOAL_COMMAND, text, GOAL_UNDO_FAILURE\)/,
+		/goalCommand\.run\(\s*GOAL_COMMAND,\s*text,\s*t\("ui\.notices\.chat\.goal_restore_failed"\)/,
 	);
 	/*
 	 * EACH CONTROL OWNS ITS OWN CHANNEL (agent review round 2, MINOR 2): one hook meant
@@ -4179,7 +4206,7 @@ test("the two outcomes that speak do so in the person's own words", () => {
 	// The pair the two controls dispatch, and neither of them is a label.
 	assert.match(
 		row,
-		/runDismiss\(\s*goalCommand,\s*GOAL_COMMAND,\s*GOAL_CLEAR_ARGS,\s*GOAL_CLEAR_FAILURE,\s*\)/,
+		/runDismiss\(\s*goalCommand,\s*GOAL_COMMAND,\s*GOAL_CLEAR_ARGS,\s*t\("ui\.notices\.chat\.goal_clear_failed"\),\s*\)/,
 	);
 	assert.match(
 		row,
@@ -5254,6 +5281,67 @@ test("the lifecycle's derived strings, one per state", () => {
 	);
 });
 
+/*
+ * THE WIRE'S SENTINELS ARE PROTOCOL, NOT COPY (chat audit Z3). `goal_judge.reason`
+ * arrives in English from `session/goal_judge.py`; a catalogue may translate the
+ * SENTENCE, but it may never move the phrase the classification runs on. The map
+ * installed below is what a translated chat catalogue carries for these two keys:
+ * with it active, the breaker and the cap must still resolve to their own
+ * sentences rather than to the unnamed fallback.
+ *
+ * THIS IS THE REGRESSION THE SOURCE FIX CLOSES. A comparison that reads `t()`
+ * passes in English and fails here, which is exactly how the bug reached locale
+ * review; the pin is on the decision (`goalJudgeStall`) and on the sentence the
+ * transition announces (`goalStalledNote`), because those are the two places the
+ * extraction had coupled to copy.
+ */
+test("the stall phrases are matched as protocol, not through the catalogue", () => {
+	const previous = currentLocale();
+	setLocale("xx-test");
+	registerCatalogue("xx-test", {
+		"ui.chat.composer.composer_status_row.judge_could_not_decide":
+			"评判器无法判定",
+		"ui.chat.composer.composer_status_row.stopped_after": "停止于 ",
+	});
+	try {
+		// The wire's own phrases, unchanged by the catalogue above.
+		assert.deepEqual(goalJudgeStall("judge could not decide"), {
+			code: "judge_could_not_decide",
+		});
+		assert.deepEqual(goalJudgeStall("stopped after 12 continuations"), {
+			code: "continuation_cap",
+			count: "12",
+		});
+		// The cap's shape with no readable count is still the cap, with no count.
+		assert.deepEqual(goalJudgeStall("stopped after twelve continuations"), {
+			code: "continuation_cap",
+			count: null,
+		});
+		assert.equal(
+			goalStalledNote("judge could not decide"),
+			"goal stalled: judge could not decide — send a message to continue",
+		);
+		assert.equal(
+			goalStalledNote("stopped after 12 continuations"),
+			"goal stalled: stopped after 12 continuations — send a message to continue",
+		);
+		/*
+		 * And an unrelated status stays unnamed: the catalogue must not turn a
+		 * reason this build does not know into one it claims to.
+		 */
+		assert.deepEqual(goalJudgeStall("a bound added after this build"), {
+			code: "unnamed",
+		});
+		assert.equal(
+			goalStalledNote("a bound added after this build"),
+			"goal stalled: auto-continuation stopped — send a message to continue",
+		);
+	} finally {
+		clearRegisteredCatalogues();
+		setLocale(previous);
+	}
+});
+
 /* ---------------------------------------------------------------- */
 /* The `/goal --history` receipt, and where its lines go             */
 /* ---------------------------------------------------------------- */
@@ -5780,9 +5868,9 @@ test("the standing facts order the wakes before the watches", () => {
 		frontend: frontend(""),
 		runDetails: monitorsOf([wireMonitor("m1", "loom-pr-1710", 60_000)]),
 	});
-	assert.equal((only.match(/-ml-1\.5/g) ?? []).length, 1);
+	assert.equal((only.match(/-ms-1\.5/g) ?? []).length, 1);
 	assert.ok(
-		only.indexOf("data-status-monitors") < only.indexOf("-ml-1.5"),
+		only.indexOf("data-status-monitors") < only.indexOf("-ms-1.5"),
 		"the monitor chip renders before its own padding cancellation",
 	);
 });
@@ -6081,5 +6169,151 @@ test("the chip PAINTS the model's clause, so the JSX cannot compose a second one
 		);
 	} finally {
 		cleanup();
+	}
+});
+
+/*
+ * THE ROW'S OWN STRINGS, AS THE CATALOGUES HOLD THEM.
+ *
+ * The row's copy lives in `ui.chat.json` under `ui.chat.composer.status` — the
+ * namespace its `session_goal` entry already used — plus the one entry it SHARES
+ * with the session-goal picker (`ui.chat.pickers.goal.clear`): clearing the goal
+ * is one act on one value, and a second key for it is how the picker and the chip
+ * above it come to print one action two ways.
+ */
+const CHAT_CATALOGUE = JSON.parse(
+	readFileSync("src/i18n/catalogues/en/ui.chat.json", "utf8"),
+);
+const PICKERS_CATALOGUE = JSON.parse(
+	readFileSync("src/i18n/catalogues/en/ui.chat.pickers.json", "utf8"),
+);
+const ES_PICKERS_CATALOGUE = JSON.parse(
+	readFileSync("src/i18n/catalogues/es/ui.chat.pickers.json", "utf8"),
+);
+
+/*
+ * WHY THIS PINS THE KEY AND THE ENGLISH TOGETHER. The row used to hold its labels
+ * in module constants (`const LOOP_CLEAR_TEXT = "Clear loop"`), which is not a
+ * style preference: a value captured at import is fixed to whichever locale was
+ * active then, so no later locale change can reach it, and `check-strings` cannot
+ * see it either (a module constant is not a JSX text node). The extraction moved
+ * those words into the catalogue and left the builders as functions, so `t()` runs
+ * each time a label is BUILT — the contract `@shared/i18n`'s formatters keep, and
+ * the reason the row subscribes with `useI18nLocale()`.
+ *
+ * The pair (the key the source asks for, the English the catalogue holds) is the
+ * shape the notices extraction uses: a reword that moves the catalogue without the
+ * call site moving, or a call site that silently drops back to a literal, both fail
+ * here.
+ */
+test("the row's labels are catalogue keys, and the English still says what they said", () => {
+	const source = code(ROW);
+	const entries = [
+		["ui.chat.composer.status.goal_label", "Goal:"],
+		["ui.chat.composer.status.loop_label", "Loop:"],
+		["ui.chat.composer.status.goal_expand", "Expand the session goal"],
+		["ui.chat.composer.status.goal_collapse", "Collapse the session goal"],
+		["ui.chat.composer.status.plan_action", "Open the plan in run details"],
+		[
+			"ui.chat.composer.status.subagents_action",
+			"Open the subagents in run details",
+		],
+		["ui.chat.composer.status.jobs_action", "Open the jobs in run details"],
+		["ui.chat.composer.status.wakes_action", "Open the wakes in run details"],
+		[
+			"ui.chat.composer.status.monitors_action",
+			"Open the monitors in run details",
+		],
+		["ui.chat.composer.status.loop_stop", "Stop loop"],
+		["ui.chat.composer.status.loop_clear", "Clear loop"],
+		["ui.chat.composer.status.goal_done", "Done"],
+		["ui.chat.composer.status.goal_dismiss", "Dismiss"],
+		["ui.chat.composer.status.goal_done_name", "Mark the goal done"],
+		["ui.chat.composer.status.goal_dismiss_name", "Dismiss the finished goal"],
+		[
+			"ui.chat.composer.status.goal_dismiss_keep",
+			"it stays in the goal history",
+		],
+		[
+			"ui.chat.composer.status.loop_progress_of_turns",
+			"{completed, number, ::group-off} of {total, number, ::group-off} turns",
+		],
+		[
+			"ui.chat.composer.status.loop_progress_turns",
+			"{count, plural, one {# turn} other {# turns}}",
+		],
+	];
+	for (const [key, english] of entries) {
+		assert.ok(
+			source.includes(`t("${key}"`),
+			`the row does not ask the catalogue for ${key}`,
+		);
+		assert.equal(
+			CHAT_CATALOGUE[key],
+			english,
+			`${key} changed its English wording`,
+		);
+	}
+	/*
+	 * THE SHARED ENTRY IS SHARED, not duplicated: the row reads the picker's key,
+	 * and no `ui.chat.composer.status.goal_clear` exists beside it.
+	 */
+	assert.ok(source.includes('t("ui.chat.pickers.goal.clear")'));
+	assert.equal(PICKERS_CATALOGUE["ui.chat.pickers.goal.clear"], "Clear goal");
+	assert.equal(
+		CHAT_CATALOGUE["ui.chat.composer.status.goal_clear"],
+		undefined,
+		"one act, one key: a second copy of Clear goal is how the two surfaces drift",
+	);
+	/*
+	 * AND NO LITERAL SURVIVES IN THE SOURCE. This is the half the literal ratchet
+	 * never covered: none of these strings was ever a JSX text node, so the row
+	 * looked extracted while every locale still rendered English.
+	 */
+	for (const literal of [
+		"Clear goal",
+		"Stop loop",
+		"Clear loop",
+		"Goal:",
+		"Loop:",
+		"Mark the goal done",
+		"Dismiss the finished goal",
+		"Open the plan in run details",
+	]) {
+		assert.ok(
+			!source.includes(`"${literal}"`),
+			`${literal} is still a source literal, not a catalogue entry`,
+		);
+	}
+});
+
+test("the row's labels follow the active locale, read when the label is built", () => {
+	/*
+	 * A REAL CATALOGUE RATHER THAN A FIXTURE. The row shares `Clear goal` with the
+	 * goal picker, and that entry is translated in every shipped locale — so this
+	 * proves the render path reads the store at call time instead of a value frozen
+	 * at import, with copy no one wrote for the test. The entries added alongside it
+	 * are untranslated for now and fall back to English per key, which is the
+	 * behaviour the coverage ledger records.
+	 */
+	const translated = ES_PICKERS_CATALOGUE["ui.chat.pickers.goal.clear"];
+	assert.ok(
+		translated && translated !== "Clear goal",
+		"the es catalogue does not translate the shared entry",
+	);
+	const previous = currentLocale();
+	try {
+		setLocale("es");
+		assert.equal(goalClearLabel("Ship it"), `${translated} — Ship it`);
+		const markup = renderRow({
+			frontend: frontendWith({ goal: "Ship it", goal_status: "active" }),
+			runDetails: null,
+		});
+		assert.ok(
+			markup.includes(translated),
+			"the rendered row does not carry the locale's own word",
+		);
+	} finally {
+		setLocale(previous);
 	}
 });

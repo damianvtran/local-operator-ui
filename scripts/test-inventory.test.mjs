@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { test } from "node:test";
+import { inventory } from "./desktop-test-shards.mjs";
 
 /*
  * Every `scripts/*.test.mjs` runs somewhere CI runs, or says why not.
@@ -48,15 +49,13 @@ const EXEMPT = {
 		"`pnpm test:window-glass` - boots the BUILT app headless and reads the glass's effective alpha back over CDP, so it needs `pnpm build` first (it skips with a stated reason when `out/` is absent) and, like the window-guards suite, a display on Linux; the pure decisions are in `window-glass.test.mjs`, which test:desktop does run.",
 	"scripts/session-cookie-electron.test.mjs":
 		"`pnpm test:session-cookies` — it boots the REAL Electron binary twice, which no CI step does today; a pre-existing gap, recorded rather than papered over.",
+	"scripts/chat-tag-dialogs-immediate.test.mjs":
+		"`pnpm test:tag-dialogs` — its own step in the Desktop Tests job (ci.yml), run BEFORE `pnpm test:desktop` so its process exits and releases memory first. It bundles the shipped renderer with esbuild and drives it in jsdom; inside the desktop lane its peak landed on the files already resident there and the process group was killed at 9.7 GB against the 7.8 GB budget (main's suite passes at 851aea1).",
 };
 
 test("every scripts/*.test.mjs is run by test:desktop or exempt with a reason", () => {
 	const pkg = JSON.parse(readFileSync("package.json", "utf8"));
-	const listed = new Set(
-		(
-			pkg.scripts["test:desktop"].match(/scripts\/[\w.-]+\.test\.mjs/g) ?? []
-		).map((path) => path.replace(/\\/g, "/")),
-	);
+	const listed = new Set(inventory(pkg.scripts["test:desktop"]));
 	const files = readdirSync("scripts")
 		.filter((name) => name.endsWith(".test.mjs"))
 		.map((name) => `scripts/${name}`)

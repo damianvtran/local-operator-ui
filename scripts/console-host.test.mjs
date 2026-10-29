@@ -217,6 +217,8 @@ const {
 	LIVE_PENDING_MAX_BYTES,
 	MAX_INPUT_BYTES,
 	CLOSE_GRACE_MS,
+	QUIT_SIGNAL_GRACE_MS,
+	QUIT_EXIT_CAPTURE_MS,
 	ConsoleHistory,
 	fileStem,
 	historyRoot,
@@ -332,9 +334,10 @@ class FakePty {
 		for (const listener of this.dataListeners) listener(text);
 	}
 
-	/** The process ended. */
-	exit(code) {
-		for (const listener of this.exitListeners) listener({ exitCode: code });
+	/** The process ended, optionally by a signal (node-pty's shape). */
+	exit(code, signal) {
+		for (const listener of this.exitListeners)
+			listener({ exitCode: code, signal });
 	}
 }
 
@@ -360,6 +363,7 @@ function makeHost({
 	spawn,
 	policy,
 	nativeCapacity,
+	onExit,
 } = {}) {
 	const registry = new ConsoleRegistry({ policy });
 	const spawned = [];
@@ -370,6 +374,7 @@ function makeHost({
 		history,
 		env,
 		now,
+		onExit,
 		spawn: (options) => {
 			const pty = spawn ? spawn(options) : new FakePty(options);
 			spawned.push({ pty, options });
@@ -2575,6 +2580,8 @@ test("history round-trips a surface's bytes and its parameters", () => {
 		created_at: 1,
 		last_seen_at: 2,
 		exit_code: null,
+		exit_signal: null,
+		end_reason: null,
 		truncated: false,
 		exit_epoch: 0,
 	};
@@ -2635,6 +2642,8 @@ test("a log past the rotate bound is rewritten to the retained window, and says 
 		created_at: 1,
 		last_seen_at: 1,
 		exit_code: null,
+		exit_signal: null,
+		end_reason: null,
 		truncated: false,
 		exit_epoch: 0,
 	};
@@ -4543,4 +4552,294 @@ test("every renderer document is declared for the build, and the mini view for b
 			`${spelling} must be declared in BOTH the renderer's dev input and rollupOptions.input (found ${occurrences}): declaring only one served the page in development and shipped nothing`,
 		);
 	}
+});
+
+/* ------------------------------------------------------------------ quit */
+
+/**
+ * QUIT-TIME DISPOSAL OBSERVES THE EXIT (operator report, 2026-10-21).
+ *
+ * `dispose` used to persist the sidecar with `exit_code: null` and THEN kill the
+ * pty, so the next launch restored "exit code not observed" for a surface the app
+ * itself had closed — a status that was never really unknown. These cells drive
+ * the real disposal path with the fake pty and read the sidecar it wrote.
+ */
+test("quit records the exit status of a surface the app closes", async () => {
+	const root = historyRoot(scratch());
+	const history = new ConsoleHistory(root);
+	const { host, spawned } = makeHost({ history });
+	const created = host.create({
+		sessionId: "session-quit",
+		origin: "user",
+		retain: true,
+	});
+	const pty = spawned[0].pty;
+	// The fake pty's `kill` records signals only; this one answers the signal the
+	// way a shell does, one microtask later, so `dispose` can observe the wait.
+	pty.kill = function kill(signal = "SIGTERM") {
+		this.signals.push(signal);
+		queueMicrotask(() => this.exit(129));
+	};
+	await host.dispose();
+	const meta = JSON.parse(
+		readFileSync(sidecarPath(root, "session-quit", created.surface), "utf8"),
+	);
+	assert.equal(meta.exit_code, 129, "the observed status is persisted");
+	assert.equal(
+		meta.end_reason,
+		null,
+		"an observed exit needs no reason: the code is the answer",
+	);
+	assert.deepEqual(
+		pty.signals,
+		["SIGTERM"],
+		"an exit inside the grace is not escalated",
+	);
+});
+
+test("quit records app_quit when the exit cannot be observed, and the next launch reads it", async () => {
+	const root = historyRoot(scratch());
+	const history = new ConsoleHistory(root);
+	const { host, spawned } = makeHost({ history });
+	const created = host.create({
+		sessionId: "session-quit-unobserved",
+		origin: "user",
+		retain: true,
+	});
+	const pty = spawned[0].pty;
+	// A process that refuses to report an exit even after SIGKILL: the bound is the
+	// only thing that ends this wait.
+	pty.kill = function kill(signal = "SIGTERM") {
+		this.signals.push(signal);
+	};
+	const started = Date.now();
+	await host.dispose();
+	const elapsed = Date.now() - started;
+	assert.ok(
+		elapsed >= QUIT_SIGNAL_GRACE_MS,
+		`the quit grace was actually waited (${elapsed} ms)`,
+	);
+	assert.ok(
+		elapsed < QUIT_SIGNAL_GRACE_MS + QUIT_EXIT_CAPTURE_MS + 500,
+		`and the whole quit stays inside the app's awaited budget plus timer slack (${elapsed} ms)`,
+	);
+	assert.deepEqual(
+		pty.signals,
+		["SIGTERM", "SIGKILL"],
+		"the escalation path is the close path's, not a fresh invention",
+	);
+	const meta = JSON.parse(
+		readFileSync(
+			sidecarPath(root, "session-quit-unobserved", created.surface),
+			"utf8",
+		),
+	);
+	assert.equal(
+		meta.exit_code,
+		null,
+		"nothing was observed, and the sidecar says so",
+	);
+	assert.equal(
+		meta.end_reason,
+		"app_quit",
+		"and the app says it closed the terminal, instead of \u201cnobody looked\u201d",
+	);
+
+	// The read side: a sidecar written by a previous launch is adopted, and the
+	// listing carries the reason the pane's banner needs.
+	const restored = makeHost({ history });
+	try {
+		const loaded = restored.host;
+		const [entry] = history.listMetadata();
+		loaded.restore(entry);
+		const listing = loaded
+			.list()
+			.find((row) => row.surface === created.surface);
+		assert.equal(listing.end_reason, "app_quit");
+		assert.equal(listing.exit_code, null);
+	} finally {
+		await restored.host.dispose(false);
+	}
+});
+
+test("a signalled exit records the signal, not a clean zero (Q-3)", async () => {
+	const root = historyRoot(scratch());
+	const history = new ConsoleHistory(root);
+	const { host, spawned } = makeHost({ history });
+	const created = host.create({
+		sessionId: "session-signal",
+		origin: "user",
+		retain: true,
+	});
+	const pty = spawned[0].pty;
+	pty.exit(0, 9);
+	const listing = host.list().find((row) => row.surface === created.surface);
+	assert.equal(
+		listing.exit_code,
+		0,
+		"node-pty reports zero for a signalled pty",
+	);
+	assert.equal(
+		listing.exit_signal,
+		"SIGKILL",
+		"and the signal name is what makes the kill distinguishable",
+	);
+	host.flush(created.surface);
+	const meta = JSON.parse(
+		readFileSync(sidecarPath(root, "session-signal", created.surface), "utf8"),
+	);
+	assert.equal(
+		meta.exit_signal,
+		"SIGKILL",
+		"the sidecar carries it across a relaunch",
+	);
+	await host.dispose(false);
+
+	const restored = makeHost({ history });
+	try {
+		const [entry] = history.listMetadata();
+		restored.host.restore(entry);
+		const row = restored.host
+			.list()
+			.find((candidate) => candidate.surface === created.surface);
+		assert.equal(row.exit_signal, "SIGKILL");
+	} finally {
+		await restored.host.dispose(false);
+	}
+});
+
+test("quitting does not raise the completion seam for the terminals it closes (M-1)", async () => {
+	let completions = 0;
+	const { host, spawned } = makeHost({
+		onExit: () => {
+			completions += 1;
+		},
+	});
+	host.create({
+		sessionId: "session-quit-seam",
+		origin: "user",
+		retain: false,
+	});
+	const pty = spawned[0].pty;
+	pty.kill = function kill(signal = "SIGTERM") {
+		this.signals.push(signal);
+		queueMicrotask(() => this.exit(129, 15));
+	};
+	await host.dispose();
+	assert.equal(
+		completions,
+		0,
+		"the exit was observed and persisted, but the app going away is not a completion",
+	);
+});
+
+test("an ordinary exit still raises the completion seam, with the signal when one ended it (M-1)", async () => {
+	const exits = [];
+	const { host, spawned } = makeHost({
+		onExit: (event) => {
+			exits.push(event);
+		},
+	});
+	const created = host.create({
+		sessionId: "session-exit-seam",
+		origin: "user",
+		retain: false,
+	});
+	spawned[0].pty.exit(0, 15);
+	assert.deepEqual(exits, [
+		{
+			surface: created.surface,
+			sessionId: "session-exit-seam",
+			exitCode: 0,
+			exitSignal: "SIGTERM",
+		},
+	]);
+	await host.dispose(false);
+});
+
+test("a create that arrives during the dispose settle is refused by name (m-2)", async () => {
+	const { host, spawned } = makeHost();
+	host.create({ sessionId: "session-dispose", origin: "user", retain: false });
+	const pty = spawned[0].pty;
+	pty.kill = function kill(signal = "SIGTERM") {
+		this.signals.push(signal);
+	};
+	const disposing = host.dispose();
+	assert.throws(
+		() => host.create({ sessionId: "session-dispose", origin: "user" }),
+		(error) =>
+			error?.code === "console_unavailable" &&
+			error?.data?.reason === "host_disposing",
+		"the pane's create path gets a typed refusal instead of a handle nobody keeps",
+	);
+	await disposing;
+});
+
+test("the quit bound runs across surfaces, not one after another (m-4)", async () => {
+	const root = historyRoot(scratch());
+	const history = new ConsoleHistory(root);
+	const { host, spawned } = makeHost({ history });
+	const first = host.create({
+		sessionId: "session-two-quit",
+		origin: "user",
+		retain: true,
+	});
+	const second = host.create({
+		sessionId: "session-two-quit",
+		origin: "user",
+		retain: true,
+	});
+	for (const { pty } of spawned) {
+		pty.kill = function kill(signal = "SIGTERM") {
+			this.signals.push(signal);
+		};
+	}
+	const started = Date.now();
+	await host.dispose();
+	const elapsed = Date.now() - started;
+	assert.ok(
+		elapsed < 1_800,
+		`two unobservable exits cost one bound, not two (${elapsed} ms)`,
+	);
+	assert.ok(
+		elapsed < 2 * (QUIT_SIGNAL_GRACE_MS + QUIT_EXIT_CAPTURE_MS),
+		"a serial implementation would spend both bounds",
+	);
+	for (const created of [first, second]) {
+		const meta = JSON.parse(
+			readFileSync(
+				sidecarPath(root, "session-two-quit", created.surface),
+				"utf8",
+			),
+		);
+		assert.equal(meta.exit_code, null);
+		assert.equal(meta.end_reason, "app_quit");
+	}
+});
+
+test("a legacy sidecar with no reason keeps the honest unknown, rather than inventing one", async () => {
+	const root = historyRoot(scratch());
+	const history = new ConsoleHistory(root);
+	const surface = "con:1:legacy";
+	// What a build before this field wrote: no `end_reason` key at all.
+	history.writeMeta({
+		surface,
+		session_id: "session-legacy",
+		origin: "user",
+		command: "zsh",
+		argv: [],
+		cwd: "/tmp",
+		cols: 80,
+		rows: 24,
+		created_at: 1,
+		last_seen_at: 2,
+		exit_code: null,
+		truncated: false,
+		exit_epoch: 0,
+	});
+	assert.equal(
+		history.listMetadata()[0].end_reason,
+		null,
+		"parseMeta normalises the absent field to null, the UI's \u201cnot observed\u201d",
+	);
 });

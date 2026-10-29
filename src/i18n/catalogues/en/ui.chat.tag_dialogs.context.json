@@ -1,0 +1,22 @@
+{
+	"ui.chat.tag_dialogs.deleted_name": {
+		"role": "tag dialog copy",
+		"tone": "concise, neutral sentence case",
+		"note": "Past-tense confirmation announced after the delete write succeeds. Preserve the {name} argument."
+	},
+	"ui.chat.tag_dialogs.created_assigned": {
+		"role": "tag dialog copy",
+		"tone": "concise, neutral sentence case",
+		"note": "Confirms the new tag was created and assigned to the conversation in one action. Preserve the {name} argument."
+	},
+	"ui.chat.tag_dialogs.assign_created_failed": {
+		"role": "tag dialog copy",
+		"tone": "concise, neutral sentence case",
+		"note": "The registry write succeeded but assigning the new tag did not. Says the tag exists and how to add it, so the user does not retry Create and hit a duplicate. Preserve the {name} argument."
+	},
+	"ui.chat.tag_dialogs.changed_elsewhere": {
+		"role": "tag dialog copy",
+		"tone": "concise, neutral sentence case",
+		"note": "Announced after a 409: another client changed this conversation's tags. States that the list has already been refreshed to their values and that the next selection is a deliberate retry, so the user does not read it as an unexplained failure or as their edit having been applied."
+	}
+}

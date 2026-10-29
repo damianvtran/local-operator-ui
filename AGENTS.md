@@ -53,6 +53,9 @@ output. The short version of the parts most often got wrong:
   `box-shadow`** — this app is mostly scroll containers, and box-shadow rings
   get clipped by `overflow: hidden`.
 - **Nothing lifts, scales or translates on hover.** Hover is a colour step.
+- **Attention counts use the shared accent badge; totals use the subtle numeral.**
+  (`AttentionBadge` in `shared/components/ui/attention-badge.tsx`, operator
+  2026-10-28.)
 - **Agent output has a hierarchy** (§ 7): a question for the user is the most
   prominent thing on screen; internal reasoning is hidden by default. A
   completed action is one quiet line, not a card.
@@ -72,6 +75,42 @@ over component triples (ground + fill + border + ink) rather than token pairs.
 `CONTROLS` in `scripts/contrast-contract.mjs`** — green output about a
 component nobody listed is not evidence about that component.
 
+### Panels run to the window edge
+
+These are rules with their reason, not a checklist. A surface that understands
+why will get the next case right where a checklist would not name it.
+
+- **A panel is full-height and starts at y0, including under the invisible
+  titlebar.** The mechanism is two utilities in `styles/index.css`:
+  `panel-flush` on a route root that owns the whole window height, and
+  `panel-top-pad` on a full-height panel column. The lane is a single
+  transparent overlay that reserves no height, so there is no route opt-in and
+  no per-route inset to compute. Never inset a panel or give
+  it a top margin to clear the traffic lights. The clearance is **padding inside the panel**, so the panel's own
+  ground reaches the window edge while its content starts below the controls.
+  The difference is visible in one direction only: padding is invisible, an
+  offset panel is a band. This was reported three times (the Library sidebar,
+  the canvas right bar, and Team Bridge) and each time the bug was the same
+  relocation — the space existed, but outside the surface that should own it.
+  **The element that wears `panel-top-pad` must be the same box that paints the
+  panel's ground.** A padded wrapper with no ground of its own is exactly the
+  band this rule forbids; a content column inside a grounded, `panel-flush`
+  ancestor needs no ground of its own, and adding one there is a second tone
+  step where the panel already has one.
+- **Separate panels by ground value, never by a line.** A rule between two
+  panels is a second mark over a tone step; the tone step already tells the
+  eye where one ends. The operator has asked for the border's removal three
+  times, so a new `border-l`/`border-r` on a panel is a regression by
+  construction.
+- **A translucent panel must still occlude what scrolls beneath it.** A sticky
+  header whose ground lets rows bleed through is not "glass"; it is a
+  readability failure. Use the panel's ground (and its blur, where the theme
+  asks) so the content behind is hidden, not merely dimmed.
+- **Scrollbars sit outside the content constraint.** Size the content column
+  so its scrollbar occupies the gutter rather than narrowing the measure; a
+  scrollbar inside the padding makes text reflow when it appears, which reads
+  as a jump.
+
 ### One trap worth knowing
 
 Always route `className` through `cn` from `@shared/lib/utils`. It registers
@@ -80,9 +119,33 @@ role in the same call collide and one is dropped **silently** — the component
 still looks right because colour inherits from `body`, until it renders on a
 ground where it does not.
 
-## Internationalization: maintainer pointer
+## Internationalization: mandatory policy
+
+**No new user-facing copy ships unkeyed, and no new feature ships in English
+only.** These rules are gates, not aspirations.
+
+- **All user-facing copy goes through `t()`.** No hardcoded strings in JSX text,
+  props, `aria-label`, `placeholder`, `title`, `alt`, toasts, dialogs, menus or
+  window copy. English is just another catalogue; there is no direct-string path.
+- **Every key, every language.** `i18n/languages.json` is the machine-readable
+  manifest of supported languages, shared byte-for-byte with the core repo;
+  read it, do not infer the set from locale directories. Every new or changed
+  key must exist in every language whose status is `supported` - including
+  languages added later. A feature is not done until it is localized in all of
+  them; English-only is a missing feature, not a follow-up.
+- **Idiomatic, never literal.** Translations are produced by an LLM translator
+  and reviewed by a different, independent auditor agent - never the same agent.
+  Follow the core glossary and each locale's style guide; preserve placeholders,
+  ICU syntax, plural/select arms and `<Trans>` tags exactly. RTL locales follow
+  the direction rules and must never contain manual bidi control characters.
+- **Adding a language** means a manifest row, a style guide and audited ledger
+  rows for every namespace. **Removing one** is a product decision, never a
+  cleanup an agent makes on its own.
+- **Generated files are hands-off.** `src/i18n/keys.gen.ts` and any shipped-locale
+  data are generated; never hand-edit them. Regenerate instead.
 
 Read `docs/I18N.md` for the contributor HOWTO and audit-evidence contract.
+The mechanics:
 
 - **Core:** `src/i18n/` owns the typed catalogue, ICU-message `t()` and locale-aware
   formatters; React bindings live in `src/renderer/src/shared/i18n/`. Use `t()` for
@@ -98,28 +161,47 @@ Read `docs/I18N.md` for the contributor HOWTO and audit-evidence contract.
   use `setLocale()` as a production override; backend choices own availability.
 - **Add a string:** put a stable semantic `ui.<area>.<name>` key in
   `src/i18n/catalogues/en/ui.<area>.json` (for example
-  `ui.settings.language.external_notice` in `ui.settings.json`). Use ICU
-  placeholders for values/plurals rather than concatenated sentences; optional
-  sibling `ui.<area>.context.json` files describe translator context, not keys.
-  Run `node scripts/i18n/generate.mjs` and commit `src/i18n/keys.gen.ts` with the
+  `ui.settings.language.external_notice` in `ui.settings.json`), and translate it
+  into every language whose status is `supported` in `i18n/languages.json`,
+  following the locale's style guide. Use ICU placeholders for values/plurals
+  rather than concatenated sentences; optional sibling
+  `ui.<area>.context.json` files describe translator context, not keys. Run
+  `node scripts/i18n/generate.mjs` and commit `src/i18n/keys.gen.ts` with the
   catalogue change. `t()`'s generated types reject unknown keys and missing,
   extra-on-bare-key or wrongly typed parameters at compile time.
-- **Add a locale:** mirror the namespace files under
-  `src/i18n/catalogues/<locale>/`, preserving English keys and ICU arguments.
-  The generator discovers every present locale directory and emits
-  `bundledCatalogues` (`en` aliases `bundledEnglish`). Regenerate before the
-  backend can select the tag and coordinate backend eligibility/rollout: a
+- **Add a locale:** add its row to `i18n/languages.json` and mirror the
+  namespace files under `src/i18n/catalogues/<locale>/`, preserving English keys
+  and ICU arguments. The generator discovers every present locale directory and
+  emits `bundledCatalogues` (`en` aliases `bundledEnglish`). Regenerate before
+  the backend can select the tag and coordinate backend eligibility/rollout: a
   directory alone is not audited activation. Do not hand-edit generated types
   for translations.
-- **Commands/gate:** `pnpm check-i18n` runs generator freshness (`--check`) plus
-  `scripts/i18n/check-strings.mjs`; `pnpm check-types` checks typed call sites.
-  The scanner ratchets literal JSX text and copy attributes against
-  `i18n/baseline.json`: only its `enforced` prefixes block, other areas remain
-  advisory. Lower ceilings with `node scripts/i18n/check-strings.mjs --update
-  <paths>` when extracting copy; exemptions in `i18n/allowlist.json` or
-  `i18n: ignore` comments require a reason. It does not yet scan every string
-  expression. No locale-management CLI is defined in this UI repo; these are
-  its existing developer commands, not a client-side language-setting command.
+- **Commands/gate:** `pnpm check-i18n` runs generator freshness (`--check`),
+  `scripts/i18n/check-strings.mjs`, the ledger and context gates, and
+  `scripts/i18n/check-coverage.mjs`, which fails when a `supported` manifest
+  language is missing an English key — key by key, so a new key added inside
+  an already-incomplete namespace cannot slip through. Known gaps live in
+  `i18n/coverage-allowance.json`, one `(locale, namespace)` entry per reason
+  with the exact sorted missing key IDs, an owner and a payoff (ticket or ISO
+  date). That list is shrink-only: a listed key that is no longer missing fails
+  until `--update` drops it, and the check fails when the allowance grows
+  relative to the base branch. CI runs this gate in the `Language Coverage` job
+  for any change under `src/i18n/**`, `i18n/**` or `scripts/i18n/**` — including
+  an allowance-only edit — with the comparison base taken from the pull
+  request, so the policy is enforced at merge rather than by convention.
+  `pnpm check-types` checks typed call sites. The
+  scanner ratchets literal JSX text and copy attributes against
+  `i18n/baseline.json`, and every finding blocks: there is no advisory scope.
+  A file with counted literals and no recorded entry fails rather than starting
+  at zero, so a new file is covered from its first commit — capture it with a
+  reviewed `node scripts/i18n/check-strings.mjs --init --force`, whose
+  added/raised/pruned summary is the baseline diff a reviewer reads. Lower
+  ceilings with `node scripts/i18n/check-strings.mjs --update <paths>` when
+  extracting copy; the only exemptions are `i18n/allowlist.json` entries and
+  `i18n: ignore` comments, both of which require a reason. It does not yet scan
+  every string expression. No locale-management CLI is defined in this UI repo;
+  these are its existing developer commands, not a client-side
+  language-setting command.
 
 ## Useful Commands
 
@@ -153,6 +235,15 @@ Read `docs/I18N.md` for the contributor HOWTO and audit-evidence contract.
 - Regenerate theme CSS: `pnpm gen-themes`
 - Bundle size: `pnpm bundle-size`, `pnpm startup-closure`
 - Component gallery: `pnpm storybook`
+- Storybook cache: Storybook 8.6 never evicts `node_modules/.cache/storybook` (one
+  hash-named dir per config dir, i.e. per worktree; 85 / 6 GiB by `du` in six days), so
+  `.storybook/main.ts` runs `scripts/storybook-cache-prune.mjs` at every start: entries
+  older than 48 h go, then oldest-first down to 40, never one touched in the last 6 h or
+  the current run's. It is all regenerable and fails open. Off: `STORYBOOK_CACHE_PRUNE=off`;
+  tune: `STORYBOOK_CACHE_MAX_AGE_HOURS` / `_MAX_ENTRIES` / `_MIN_KEEP_HOURS`.
+- Storybook for a rig or a QA lane: `node scripts/with-storybook.mjs -- <command>`
+  (see the rig rules below) boots one, exports `STORYBOOK_ORIGIN`, and stops its whole
+  process group on every exit path - do not leave a bare `storybook dev` running.
 - Fold an evidence stamp after a merge: `pnpm evidence:fold` (resolves
   `docs/evidence/manifest.json` per field, re-derives the counts from the merged
   tree, runs the guards and stages the result - one commit per fold).
@@ -162,7 +253,10 @@ Read `docs/I18N.md` for the contributor HOWTO and audit-evidence contract.
   resolves a MERGE and nothing else - a rebase, cherry-pick or stash-pop still stops
   on the manifest, by design (see the evidence section below).
 
-`pnpm check-evidence` admits **one sweep per machine**, across worktrees and
+`pnpm check-evidence` is the PIXEL sweep, and it runs where the frames are: it is
+not in CI (a fresh checkout has no frames tree) and its CI half is
+`node scripts/check-evidence-structure.mjs`; on this fleet it is the release
+path's step 2b. It admits **one sweep per machine**, across worktrees and
 isolated `HOME`/`TMPDIR` runs. It requires Python 3 with POSIX `flock` (macOS/Linux)
 and uses the permanent `/tmp/local-operator-ui-check-evidence.lock` file. A busy
 lease exits **75** with `DEFERRED` and checks no frames; retry after the owner
@@ -398,15 +492,7 @@ answered against EVERY local ref, of which this machine carries around a thousan
 branch passes locally and dies in a fresh clone. Five citation failures shipped
 behind a local green for exactly that reason (design review round 2, D2b).
 
-**The sweep's citation half is checked NOWHERE on this fleet today, and the wired job says so.** `ci.yml`'s
-`evidence` job runs on `actions/checkout`'s depth-1 clone, where every citation in
-the manifest reads as missing at once - which says the CLONE is truncated, not that
-the commits are gone. `pnpm check-evidence` therefore judges only the citations
-that clone can answer and prints NOTHING about the rest: a stand-down notice on
-100% of runs is a standing excuse that reads as a covered check, the same
-green-by-absence the job's wiring was added to remove, one level up. The scope is
-declared where a reader meets the gate - the step's own name (`Sweep the committed
-frames (citations unchecked on shallow clones)`) and `citationWalk`'s paragraph.
+**The sweep's citation half is checked NOWHERE on this fleet today, and that is stated where the sweep runs.** `ci.yml`'s `Evidence Structure` job does not run the sweep at all any more (the pixel half moved to the release path, step 2b). When a release owner runs `pnpm check-evidence` on this machine the checkout is SHALLOW - every checkout here is - so every citation in the manifest reads as missing at once, which says the CLONE is truncated, not that the commits are gone. `pnpm check-evidence` therefore judges only the citations that clone can answer and prints NOTHING about the rest: a stand-down notice on 100% of runs is a standing excuse that reads as a covered check, the same green-by-absence the job's wiring was added to remove, one level up. The scope is declared where a reader meets the gate - the release step's own paragraph and `citationWalk`'s - and `git fetch --unshallow` is what answers it.
 
 **"Local-only" would UNDERSTATE that, and this is the trap to hold on to: every
 checkout on this fleet is shallow, not just CI's.** `git rev-parse
@@ -420,9 +506,13 @@ fetch --unshallow` before the run, and the synthetic manifests in
 the citations.
 
 Do not put the whole-tree sweep on the local `check-changed` path either: it is a
-whole-tree decode of every committed frame behind a machine-wide lease, so it is in
-`LOCAL_EXCLUSIONS` with the fast half of the same gate still running under `test`,
-and its lease's exit 75 is a DEFERRAL the runner names rather than a failure.
+whole-tree decode of the captured frame set behind a machine-wide lease, and its
+lease's exit 75 is a DEFERRAL the runner names rather than a failure. What IS on
+that path is the cheap half: `node scripts/check-evidence-structure.mjs` (the
+`evidence` job's own command, so local and CI cannot drift), which asserts the
+tracked structure and never decodes. The pixel sweep lives on the release path -
+step 2b of *The window, and the release owner's procedure* - because that is
+where a checkout with frames exists.
 
 **A frame is judged by its NAME, not by its container - and the rest are COUNTED.**
 `check-evidence.mjs`'s `frames()` judges any frame whose filename names a theme
@@ -1565,6 +1655,10 @@ pairing rather than to explain it.
 
 What follows for a run:
 
+- **Boot the Storybook through `scripts/with-storybook.mjs`**
+  (`node scripts/with-storybook.mjs -- <command>`): it owns the server's process
+  group and tears it down on exit, failure and SIGINT/SIGTERM/SIGHUP, so no dev
+  server outlives its run.
 - **Open a story through the manager URL that carries the token**, never a bare
   `iframe.html?id=…` as the page's top-level URL: the bare form is the one the server
   channel refuses, and that refusal is what each reload was paired with.
@@ -2299,6 +2393,44 @@ gh pr edit <claim-pr-number> --title 'chore(release): bump version to X.Y.Z'
 gh pr ready <claim-pr-number>
 MERGE_SHA=$(gh pr view <claim-pr-number> --json mergeCommit --jq .mergeCommit.oid)
 
+# 2b. THE PIXEL SWEEP, before the tag - on a checkout that HAS the frames.
+#     Frames are rig output in the ignored `docs/evidence-frames/` and are not
+#     committed, so a fresh CI checkout has none: `ci.yml`'s `Evidence Structure`
+#     job checks the tracked structure (no committed frames, the manifest and its
+#     declarations, the proof artefacts) and CANNOT judge a pixel. The pixels are
+#     checked HERE, and this is a MOVE from every-PR CI to release-time, not a
+#     coverage claim.
+#
+#     THE FRAMES TREE IS NOT REGENERABLE FOR MOST SETS. `node
+#     scripts/capture-evidence.mjs` regenerates only the story-covered sets -
+#     111 STORIES prefixes against 230 declared sets - while 205 of the 230 sets
+#     have a top-level directory outside that table (189 distinct directories,
+#     4,319 frame containers): live-app captures, hand-taken PNG pairs and rigs
+#     with no producer in `scripts/` (`schedules-page-before` 300 frames,
+#     `right-slot-memory` 120, `sidebar-tags-v2-2` 46 including its 11 `.jpg`,
+#     which the manifest counts in `unjudgedFrames`). A capture-only tree
+#     therefore fails the sweep's arithmetic; dropping just `sidebar-tags-v2-2`
+#     moves `unjudgedFrames.insideDeclaredSets` 803 -> 757.
+#
+#     SO THE TREE IS SEEDED ONCE, from a checkout that already carries the
+#     frames: a pre-split checkout still has every frame at `docs/evidence/`
+#     (`git rm --cached` leaves the files), and the split's own working tree has
+#     them under `docs/evidence-frames/`. Copy that tree once (APFS clone: no new
+#     bytes) into the release worktree. This is a ONE-TIME migration step, not
+#     part of every release - a worktree that already holds the tree needs only
+#     the sweep below.
+cp -Rc <captured-checkout>/docs/evidence-frames "$WT/docs/evidence-frames"
+cd "$WT" && node scripts/check-evidence.mjs
+#    Record, in the release PR body and the Release notes' evidence section:
+#      `tree under review: src=... scripts=...`
+#      `Evidence holds: <n> frames are pictures of their own theme (worst ...)`
+#    IF THE FRAMES TREE IS ABSENT OR EMPTY, THE SWEEP IS NOT PERFORMED: record
+#    `pixel sweep: not performed (no frames tree)` and do NOT claim the release
+#    was pixel-checked. `check-evidence.mjs` exits 1 and says which it found; that
+#    refusal is the honest reading of "cannot check", not a verdict. The sweep
+#    takes the machine-wide lease and exits 75 when another holds it - retry
+#    rather than reading 75 as a verdict.
+
 # 3. RE-DERIVE the window here, then tag and Release in ONE step on that SHA, notes
 #    hand-written from the template. Anything merged since step 1 rides this tag —
 #    the tag names a SHA and everything reachable from it ships — so this is the
@@ -2756,3 +2888,23 @@ only strips it for `@me` and `@copilot`), preferring the owner set recorded in
 `gh api repos/damianvtran/local-operator-ui/collaborators`, since a handle without
 write access is silently ignored by an approval rule. Tagging a person in a
 *comment* is what says the PR is waiting on them, so neither is done casually.
+
+
+### Desktop CI capacity partitions
+
+The `test` job uses three deterministic file-count partitions of the explicit
+`package.json` `test:desktop` inventory. Local `pnpm test:desktop` still runs the
+whole inventory once through the existing guarded runner. CI delegates each
+partition to that same runner with the same concurrency, memory and lane guards;
+three workers are extra capacity, not measured runtime balancing, a hung-lane
+cure, or a memory-leak fix. The 50-minute cap and cancellation policy do not change.
+Tag-dialog tests and the existing native QA bundle are owned by shard 0 only.
+
+The stable required result remains **Desktop Tests** (`desktop-tests-result`).
+It consumes all three same-head/checkout/inventory receipts, rejects missing,
+failed or cancelled work, and reconstructs the disjoint complete file inventory.
+An explicit false unit scope skips the workers/result; unknown classification or
+failed workers cannot become a green aggregate. The result is a CI-only local
+exclusion because `check-changed` already runs the full desktop command once;
+adding a second local suite command would duplicate the most expensive gate.
+Queue demand rises by two runners and no completion-time guarantee is implied.

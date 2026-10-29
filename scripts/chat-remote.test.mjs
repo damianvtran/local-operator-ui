@@ -30,6 +30,11 @@ const bundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
+	/*
+	 * `chat-device-model` resolves its placement sentences through `t()`; the
+	 * alias is what keeps this suite bundling the real renderer module.
+	 */
+	alias: { "@shared": "./src/renderer/src/shared" },
 	write: false,
 });
 const {
@@ -161,7 +166,8 @@ test("the sidebar draws the reserved cell, the split lines, and no separate sect
 	);
 	assert.match(
 		SIDEBAR,
-		/row\.locality === "remote" && \(\s*<ChatRemoteMark unreachable=\{row\.reachable === false\} \/>/,
+		/row\.locality === "remote" && \(\s*<ChatRemoteMark\s+unreachable=\{row\.link_down === true \|\| row\.reachable === false\}\s*\/>/,
+		"a remote row is unreachable when its link is down, even if the last reachable read said true",
 	);
 	const clause = SIDEBAR.slice(
 		SIDEBAR.indexOf("const remoteHost = remote"),

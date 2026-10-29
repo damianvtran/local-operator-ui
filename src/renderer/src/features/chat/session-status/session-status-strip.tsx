@@ -1,8 +1,18 @@
 import { Spinner } from "@shared/components/common/spinner";
 import { Tooltip } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { Zap } from "lucide-react";
-import { type FC, type ReactNode, useEffect, useState } from "react";
+import { Info, Zap } from "lucide-react";
+import {
+	type FC,
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import type {
 	CanonicalFrontendState,
 	CanonicalModel,
@@ -20,6 +30,7 @@ import {
 	type SessionCostInput,
 	type SpendChannelsReading,
 	channelBreakdown,
+	childBasisLine,
 	costTooltip,
 	sessionCost,
 } from "./session-cost";
@@ -30,7 +41,14 @@ import {
 	formatDuration,
 } from "./session-duration";
 import {
+	READING_GAP,
+	type ReadingDirection,
+	durationFits as gapFitsDuration,
+	inlineGap,
+} from "./session-duration-fit";
+import {
 	bandReadings,
+	effortDisplacementNote,
 	effortDisplay,
 	effortState,
 	fastModeState,
@@ -99,10 +117,11 @@ import {
  * `docs/evidence/composer-readings-shed/`.
  *
  * The ladder is a container query on `@container/chatcol`, not a viewport
- * breakpoint, because what narrows is the column; and it is stated on the
- * STATE as well as the width, because a third control box costs the row 36px
- * and no container query can see a sibling appear (issue #788; see the
- * duration reading's comment).
+ * breakpoint, because what narrows is the column; effort, cost and context are
+ * also stated on the STATE as well as the width, because a third control box
+ * costs the row 36px and no container query can see a sibling appear (issue
+ * #788). The duration reading is NOT on this ladder: it is measured against the
+ * row's own free gap (see its comment).
  *
  * Nothing else yields, and nothing is compacted: a truncated value reading
  * (`≥$0.0…`, `52.5%/40…`) would be a false or unverifiable claim (§ 8), so a
@@ -247,19 +266,33 @@ export type SessionStatusStripProps = {
 	 * strip that guessed it from its own props would be a second authority for
 	 * when a Stop is on screen.
 	 *
-	 * WHY IT EXISTS (issue #788). The active-time reading's shed rule is a
-	 * container query, and a container query can see the column narrow but not a
-	 * SIBLING appear. The group is 68px idle (mic + Send) and 104px whenever a
-	 * third box is drawn - the Stop square while a turn runs, the invisible
+	 * WHY IT EXISTS (issue #788). The three width ladders (effort, cost, context)
+	 * are container queries, and a container query can see the column narrow but
+	 * not a SIBLING appear. The group is 68px idle (mic + Send) and 104px whenever
+	 * a third box is drawn - the Stop square while a turn runs, the invisible
 	 * `data-interrupt-slot` through the post-stop grace window, and the recording
-	 * pair, which reserves the same slot. The threshold below was derived against
-	 * the 68px pair, so above its band the reading came back into a row whose
+	 * pair, which reserves the same slot. Their thresholds were derived against
+	 * the 68px pair, so above the band a reading came back into a row whose
 	 * controls had grown by 36px and overran them; and because the composer box is
 	 * capped at `--lo-chat-measure` the row does not grow with the column, so no
-	 * wider band exists that would fit. The reading therefore sheds on the STATE as
-	 * well as the width. See the reading's own comment for the measurements.
+	 * wider band exists that would fit. Those three ladders therefore carry a
+	 * state pair as well as a width.
+	 *
+	 * THE DURATION IS NOT ONE OF ITS READERS ANY MORE. Its fit is measured against
+	 * the row's real free gap (`data-lo-composer-controls`), so this flag is the
+	 * three value ladders' input and only theirs; a running turn is not a reason
+	 * to hide a live number.
 	 */
 	controlsThirdBox?: boolean;
+	/*
+	 * THE ROW'S OTHER HALF, BY CONTRACT. The duration reading's visibility is
+	 * measured against the composer's controls group, which is the strip's own
+	 * sibling inside one row. A surface that renders this strip inside a row is
+	 * contracted to put `data-lo-composer-controls` on that group; without the
+	 * marker the measurement stands down and the reading stays VISIBLE (never
+	 * hidden on a missing anchor), so a forgotten marker degrades to the reading
+	 * being drawn rather than to the defect this change removed.
+	 */
 	/**
 	 * Whether the backend advertises `features.cost_channels` — the gate for the
 	 * published per-channel spend (the cost-channels project's wire object).
@@ -469,12 +502,27 @@ export const FAST_MODE_ON_NOTE = "Fast mode on";
  *
  * The primitive's 256 px measure wrapped every breakdown row onto two lines
  * with its amount orphaned behind a dangling dash (measured: 34.8 px per row;
- * design round 1, D3). 22 rem leaves the longest fixture name
+ * design round 1, D3). 24 rem leaves the longest fixture name
  * (`Inference · anthropic/claude-sonnet-5-5`) and its amount on ONE line with
- * room to spare, inside the 320-360 px the design asked for; every other
+ * room for the unbroken API-equivalent qualifier (payment-basis D1); every other
  * tooltip in the app keeps the primitive's own measure.
  */
-const CHANNEL_TOOLTIP_WIDTH = "max-w-[22rem]";
+const CHANNEL_TOOLTIP_WIDTH = "max-w-[24rem]";
+const API_EQUIVALENT_UNIT =
+	/(\(API-equivalent(?:, not charged)?\)|API-equivalent)/gi;
+
+/** Keep the honesty qualifier intact at native tooltip widths, without shrinking type. */
+function basisTooltipText(text: string | null): ReactNode {
+	return text?.split(API_EQUIVALENT_UNIT).map((part, index) =>
+		index % 2 === 1 ? (
+			<span key={`${index}:${part}`} className="whitespace-nowrap">
+				{part}
+			</span>
+		) : (
+			part
+		),
+	);
+}
 
 /**
  * The channel variant of the spend tooltip: the published breakdown, then the
@@ -519,8 +567,16 @@ const ChannelTooltipBody: FC<{
 		<span className="flex flex-col gap-1">
 			<span className="font-mono text-mono-sm text-ink">{cost.text}</span>
 			<span className="text-ink-muted">{costTooltip(cost)}</span>
+			{!breakdown.byAgent.some((entry) => entry.channel === "subagents") &&
+				childBasisLine(reading) && (
+					<span className="text-ink-muted">
+						{basisTooltipText(childBasisLine(reading))}
+					</span>
+				)}
 			{breakdown.planClause && (
-				<span className="text-ink-muted">{breakdown.planClause}</span>
+				<span className="text-ink-muted">
+					{basisTooltipText(breakdown.planClause)}
+				</span>
 			)}
 			{/*
 			 * The agent split (parent vs subagents): one line per entry, no
@@ -535,7 +591,12 @@ const ChannelTooltipBody: FC<{
 						>
 							<span className="min-w-0">{entry.name}</span>
 							<span className="shrink-0 font-mono text-mono-sm">
-								{entry.amount}
+								{basisTooltipText(
+									entry.channel === "subagents"
+										? (childBasisLine(reading)?.replace(/^Subagents /, "") ??
+												entry.amount)
+										: entry.amount,
+								)}
 							</span>
 						</span>
 					))}
@@ -573,7 +634,7 @@ const ChannelTooltipBody: FC<{
 							</span>
 							{entry.markers && (
 								<span className="text-ink-dim text-meta-sm">
-									{entry.markers}
+									{basisTooltipText(entry.markers)}
 								</span>
 							)}
 						</span>
@@ -597,7 +658,9 @@ const ChannelTooltipBody: FC<{
 			 * opening clause rather than its own statement.
 			 */}
 			{breakdown.summary && (
-				<span className="mt-1 text-ink-muted">{breakdown.summary}</span>
+				<span className="mt-1 text-ink-muted">
+					{basisTooltipText(breakdown.summary)}
+				</span>
 			)}
 			{/*
 			 * The rows are their own group, spaced off the prose above so the
@@ -939,7 +1002,7 @@ function effortReason(
 	if (!adjustable) return null;
 	if (openable)
 		return draft ? "Change it. It applies to this conversation." : "Change it.";
-	if (draft) return DRAFT_EFFORT_LINE;
+	if (draft) return draftEffortLine();
 	return COMMANDS_OFF;
 }
 
@@ -956,34 +1019,44 @@ function effortReason(
  * session whose transcript carries no receipts, a state that fills in on its
  * own, where a draft's fills in because the user sends the first message.
  */
-const DRAFT_CONTEXT_LINE =
-	"Nothing measured yet. The window fills as the conversation runs.";
-const DRAFT_CONTEXT_TOOLTIP = ["Context", DRAFT_CONTEXT_LINE];
-// The same sentence as one utterance, which is why it starts lower-case.
-const DRAFT_CONTEXT_LABEL =
-	"Context: nothing measured yet. The window fills as the conversation runs.";
+/* FUNCTIONS, not constants: a module-level `t()` freezes the locale the process
+ * started in, and these three strings are read every time a draft's reading is
+ * drawn. The tooltip's first line is the word "Context" as a heading, which is
+ * why it is prose and not a reading. */
+const draftContextTooltip = (): [string, string] => [
+	t("ui.chat.session_status.context_heading"),
+	t("ui.chat.session_status.nothing_measured_yet"),
+];
+// The same fact as one utterance, which is why it starts lower-case after the colon.
+const draftContextLabel = () =>
+	t("ui.chat.session_status.context_nothing_measured_tooltip");
 
 /**
  * The effort reading's sentence on a draft: the ladder is real, the choice is
  * not available yet.
  */
-const DRAFT_EFFORT_LINE = "Set once the conversation starts.";
+const draftEffortLine = () => t("ui.chat.session_status.conversation_starting");
 
-export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
-	frontend,
-	onCommand,
-	effortEntities,
-	pendingModel = null,
-	draft = false,
-	held = false,
-	contextHeld = false,
-	onOpenDraftPicker,
-	draftResolution,
-	readingsDropped = false,
-	controlsThirdBox = false,
-	costChannels = false,
-	className,
-}) => {
+/**
+ * Snapshot presence is a component boundary, not a branch around hooks.
+ * A conversation opens with no frontend reading, receives one from the stream,
+ * and may lose it on reconnect. Returning before the duration/measurement hooks
+ * in the SAME fiber made that normal absent → present transition throw React
+ * #310 and replace the composer with its error boundary. Mount the readings
+ * child only while this surface has something to render: it always executes
+ * the same hooks, and losing the reading unmounts its active-time interval and
+ * ResizeObserver rather than leaving a clock running for an absent snapshot.
+ * The boundary adds no DOM and changes none of the duration inputs/readings.
+ */
+export const SessionStatusStrip: FC<SessionStatusStripProps> = (props) => {
+	const {
+		frontend,
+		draft = false,
+		draftResolution,
+		readingsDropped = false,
+		className,
+	} = props;
+	useI18nLocale();
 	/*
 	 * A draft with no snapshot is a pane whose resolution has not answered yet,
 	 * which is a STATE rather than nothing to say (UX U3): it renders the pending
@@ -1018,6 +1091,25 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 		}
 		return null;
 	}
+
+	return <SessionStatusReadings {...props} />;
+};
+
+const SessionStatusReadings: FC<SessionStatusStripProps> = ({
+	frontend,
+	onCommand,
+	effortEntities,
+	pendingModel = null,
+	draft = false,
+	held = false,
+	contextHeld = false,
+	onOpenDraftPicker,
+	draftResolution,
+	controlsThirdBox = false,
+	costChannels = false,
+	className,
+}) => {
+	useI18nLocale();
 
 	/*
 	 * The dispatcher a reading may use, or `undefined` when nothing here opens.
@@ -1071,6 +1163,16 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	const fastOn = fastModeState(model) === "on";
 	const effort = reconcileEffort(effortState(readings.effort), effortEntities);
 	/*
+	 * WHY THE CHIP'S LEVEL IS NOT THE ONE THE USER PICKED, when that is the case
+	 * (operator report, 2026-10-21: `Max` read `High` after a send, with nothing
+	 * saying why). The chip keeps naming the level IN FORCE, which is its job.
+	 * This adds the reason beside it: the backend's own displacement sentence,
+	 * on the tooltip and in the accessible name, plus a mark on the chip so the
+	 * difference is visible without hovering. Never on a draft: a draft has no
+	 * serving model to be displaced from.
+	 */
+	const effortNote = draft ? null : effortDisplacementNote(frontend);
+	/*
 	 * The four readings that come off the snapshot, asked for a pane that has no
 	 * snapshot yet. A blank `SessionCostInput` answers the same "no spend" the
 	 * preview's own zeros answer, and `contextReading` of absent tokens is its
@@ -1100,6 +1202,169 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 		duration?.banked ?? 0,
 		duration?.startedAt ?? null,
 	);
+	/*
+	 * THE DURATION'S FIT IS MEASURED FROM THE ROW, not declared from a width or a
+	 * state.
+	 *
+	 * The rule this replaces had two halves, and each failed in the opposite
+	 * direction. The state half - `hidden` while `controlsThirdBox` - hid a live
+	 * number at EVERY width: the operator's report. The width half - a
+	 * `@max-[860px]/chatcol` breakpoint - cannot express what actually decides
+	 * the fit: the gap between the readings and the controls. That gap depends on
+	 * the readings' own text, on whether the third (Stop) box is drawn, and on
+	 * `--lo-chat-measure`, the composer box's cap. The cap is the reason a
+	 * breakpoint cannot be right even in principle: the operator's own report is
+	 * at a dragged 918px box, so a 1024px column draws a 778px row at the shipped
+	 * 810px cap and an 886px row at theirs. A container query cannot see the drag
+	 * (the column does not move) and no breakpoint can see the readings' text.
+	 *
+	 * So this reading is always mounted when there is a duration to show, laid out
+	 * but OUT OF FLOW: absolutely positioned 4px past the last reading (the
+	 * existing `gap-x-1`, not a new concession), and `invisible` - visibility,
+	 * never display - when it does not fit. Out of flow in both states, so showing
+	 * it cannot reflow the row, cannot shrink the model, and cannot feed its own
+	 * measurement. That is the anti-oscillation property: the row's layout is
+	 * identical whether this reading is drawn or not, so a successful measurement
+	 * cannot turn into a failed one by drawing.
+	 *
+	 * `G` is the free gap between the controls and the LAST VISIBLE non-duration
+	 * reading, in the row's INLINE direction: `controls.left - last.right` in LTR,
+	 * `last.left - controls.right` in RTL. `D` is this reading's own box width. It
+	 * fits when `G >= D + 4`. All three come from `getBoundingClientRect` at full
+	 * precision, from the same DOM the reader sees, and the arithmetic itself lives
+	 * in `session-duration-fit.ts` so both directions are unit-tested.
+	 *
+	 * WHY EVERY RENDER AND A RESIZE OBSERVER. The value ticks at 1Hz and its text
+	 * can change width (a digit, a unit); a reading can be shed by the ladder below
+	 * as the column narrows; the third control box can appear; and the measure can
+	 * be dragged while the column stays put. The layout effect measures every
+	 * render before paint, so a tick never paints at a stale fit; the observer
+	 * catches the changes no render in this component sees (a sibling's box, a
+	 * font, the dragged cap), and font readiness is asked once because a late face
+	 * changes every text width at once.
+	 *
+	 * The state is `false` until the first measurement, so the one frame that could
+	 * be wrong is the first - and it is measured before it paints.
+	 */
+	const stripRef = useRef<HTMLDivElement>(null);
+	const [durationFits, setDurationFits] = useState(false);
+	const measureDurationFit = useCallback(() => {
+		const strip = stripRef.current;
+		if (!strip) return;
+		/*
+		 * The reading is found by its own hook, not by position: it is the last
+		 * child in DOM order today, but the whole point of the measurement is that
+		 * the row's contents move.
+		 */
+		const element = strip.querySelector<HTMLElement>("[data-lo-duration]");
+		if (!element) return;
+		/*
+		 * The controls group, by the composer's own marker rather than by a
+		 * button's translated label: the group is the row's inline-end anchor, and
+		 * its width is what the third box changes.
+		 */
+		const controls = strip.parentElement?.querySelector<HTMLElement>(
+			"[data-lo-composer-controls]",
+		);
+		/*
+		 * A MISSING CONTROLS GROUP MEANS "NOT MEASURABLE", NOT "NO ROOM" (QA round
+		 * 1, Q1-2). A parent that renders this strip is contracted to mark the
+		 * group, but a surface that forgets must not silently erase a live number
+		 * at every width - which is the failure this whole change removes. So the
+		 * reading defaults to VISIBLE and the measurement stands down, rather than
+		 * hiding on an absent anchor.
+		 */
+		if (!controls) {
+			setDurationFits(true);
+			return;
+		}
+		/*
+		 * THE DIRECTION IS THE STRIP'S, NOT THE APP'S ASSUMPTION. `ur` is a shipped
+		 * locale, and `dir="rtl"` mirrors the row: the "last" reading is the
+		 * LEFTMOST one and the free gap ends at the controls' RIGHT edge. A
+		 * physical rule hid this reading at every width in that locale while the
+		 * LTR frames passed, which is why the arithmetic lives in
+		 * `session-duration-fit.ts` and is tested in both directions.
+		 */
+		const direction: ReadingDirection =
+			getComputedStyle(strip).direction === "rtl" ? "rtl" : "ltr";
+		let lastEdge: number | null = null;
+		for (const child of strip.children) {
+			if (child === element) continue;
+			/* A shed reading is `display: none`; a hidden one is not the reading
+			   this reading follows, so neither can anchor the gap. */
+			if (getComputedStyle(child).visibility === "hidden") continue;
+			const box = child.getBoundingClientRect();
+			if (box.width <= 0.5 || box.height <= 0.5) continue;
+			/*
+			 * The edge nearest the controls: the reading's right in LTR, its left in
+			 * RTL. Tracked as the inline-end extreme, so the anchor below and this
+			 * loop agree about which reading is "last".
+			 */
+			const edge = direction === "rtl" ? box.left : box.right;
+			lastEdge =
+				lastEdge === null
+					? edge
+					: direction === "rtl"
+						? Math.min(lastEdge, edge)
+						: Math.max(lastEdge, edge);
+		}
+		/*
+		 * NO OTHER VISIBLE READING: the strip's own inline-end edge is the anchor.
+		 * It is the same edge the last reading would contribute (the cluster is
+		 * shrink-to-fit), so a one-reading row measures instead of leaving the
+		 * reading hidden by a missing term (QA round 1, Q1-2).
+		 */
+		if (lastEdge === null) {
+			const stripBox = strip.getBoundingClientRect();
+			lastEdge = direction === "rtl" ? stripBox.left : stripBox.right;
+		}
+		const controlBox = controls.getBoundingClientRect();
+		const gap = inlineGap(
+			direction,
+			lastEdge,
+			controlBox.left,
+			controlBox.right,
+		);
+		setDurationFits(
+			gapFitsDuration(gap, element.getBoundingClientRect().width),
+		);
+	}, []);
+	/*
+	 * NO DEPENDENCY ARRAY, deliberately: this runs after every render, which is what
+	 * makes a 1Hz tick or a value that changes width re-measure before the frame is
+	 * painted. `setDurationFits` is a no-op when the boolean did not change, so the
+	 * extra renders settle here rather than looping.
+	 */
+	useLayoutEffect(() => {
+		measureDurationFit();
+	});
+	/*
+	 * The observers cover the changes no render inside this component can see: the
+	 * ROW (a dragged `--lo-chat-measure` changes its width while the column stays
+	 * put), the STRIP (a sibling reading appears or is shed), the CONTROLS (the
+	 * third box appears on a stop, and the group's own width changes with it), and
+	 * the DURATION itself (its text or the face it is set in). Installed only when
+	 * there is a duration to measure, and reinstalled when that changes.
+	 */
+	const hasDuration = duration !== null;
+	useEffect(() => {
+		if (!hasDuration) return;
+		const strip = stripRef.current;
+		if (!strip) return;
+		const element = strip.querySelector<HTMLElement>("[data-lo-duration]");
+		const controls = strip.parentElement?.querySelector<HTMLElement>(
+			"[data-lo-composer-controls]",
+		);
+		const observer = new ResizeObserver(measureDurationFit);
+		for (const target of [strip.parentElement, strip, controls, element]) {
+			if (target) observer.observe(target);
+		}
+		/* A late face changes every text width at once; the promise never rejects
+		   in a way this reading needs to answer. */
+		document.fonts?.ready.then(measureDurationFit).catch(() => {});
+		return () => observer.disconnect();
+	}, [hasDuration, measureDurationFit]);
 	/*
 	 * Which readings can open, and through which opener.
 	 *
@@ -1152,12 +1417,19 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 
 	return (
 		<div
+			ref={stripRef}
 			className={cn(
 				// `-mx-1.5` cancels the readings' own inner padding so the strip's
 				// text aligns with the composer's text rather than sitting 6px in.
 				// The padding has to be on the readings themselves, because it is
 				// what gives their hover fill a body to be.
-				"-mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5",
+				//
+				// `relative` is the containing block for the duration reading, which
+				// is out of flow (see the measured-fit note above): the reading is
+				// anchored one gap past the strip's INLINE-END edge (its right in
+				// LTR, its left in RTL), which is the last visible reading's edge
+				// because the duration contributes no in-flow width.
+				"relative -mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5",
 				/*
 				 * Where the cluster sits in the composer's button row.
 				 *
@@ -1165,8 +1437,8 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 				 * that used to give the cluster a line of its own below 750px of
 				 * column are gone with the two-line control row (design round 2,
 				 * D21 - the note below); what the narrow row does instead is give up
-				 * readings, one measured step at a time, on the ladder stated with
-				 * the duration reading (issue #918). A draft, a live session and a
+				 * readings, one measured step at a time, on the ladder below (issue
+				 * #918). A draft, a live session and a
 				 * restored one all take this rule; only the contents vary (R15).
 				 *
 				 * The ladder's steps are container queries on `@container/chatcol`
@@ -1248,7 +1520,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			 *
 			 * BELOW 750px OF COLUMN IT IS HIDDEN, AND THAT IS STATED RATHER THAN
 			 * DISCOVERED: the row's narrow states are already giving readings up
-			 * (the ladder beside the duration reading), and this mark is not one
+			 * (the ladder below), and this mark is not one
 			 * of the readings - a word would spend width the values need. The
 			 * statement is not lost at that width: the group name above
 			 * carries it to assistive technology and the tooltips carry it to a
@@ -1260,7 +1532,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			 */}
 			{held && (
 				<span className="shrink-0 text-meta text-ink-dim @max-[750px]/chatcol:hidden">
-					Last reading
+					{t("ui.chat.session_status.last_reading")}
 				</span>
 			)}
 			{identity && (
@@ -1360,19 +1632,21 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			 */}
 			{chooseModel && (
 				<Reading
-					label="Model: none resolved yet. Choose the model this conversation will run on."
+					label={t("ui.chat.session_status.model_none_resolved_tooltip")}
 					tooltip={
 						<TooltipLines
 							lines={[
-								"No model resolved yet",
-								"Choose the model this conversation will run on",
+								t("ui.chat.session_status.no_model_resolved"),
+								t("ui.chat.session_status.choose_model_tooltip"),
 							]}
 						/>
 					}
 					onOpen={openModel}
 					className="shrink-0"
 				>
-					<span className="truncate">Choose a model</span>
+					<span className="truncate">
+						{t("ui.chat.session_status.choose_model")}
+					</span>
 				</Reading>
 			)}
 			{/*
@@ -1471,7 +1745,11 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 				<Reading
 					label={[
 						`Reasoning effort: ${effortDisplay(effort.label)}.`,
+						// The action BEFORE the reason (design review): "… resumes on
+						// X. Change it." read as though the instruction applied to
+						// the fallback sentence rather than to the effort level.
 						effortReason(draft, effort.adjustable, Boolean(openEffort)),
+						effortNote,
 					]
 						.filter(Boolean)
 						.join(" ")}
@@ -1479,8 +1757,11 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 						<TooltipLines
 							lines={[
 								effortDisplay(effort.label),
+								// The reason comes FIRST after the value: it answers the
+								// question the mark raised, before the ladder detail.
+								...(effortNote ? [effortNote] : []),
 								...(draft && effort.adjustable && !openEffort
-									? [DRAFT_EFFORT_LINE]
+									? [draftEffortLine()]
 									: [effort.detail]),
 							]}
 						/>
@@ -1492,10 +1773,10 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					onOpen={openEffort}
 					held={held}
 					/*
-					 * The ladder's second rung (issue #918; the order and the fit
-					 * points are in the duration reading's comment). A static setting
-					 * the user chose goes before the live numbers, so effort is the
-					 * first reading given up after the duration.
+					 * The ladder's FIRST rung (issue #918; the order and the fit points
+					 * are in `docs/evidence/composer-readings-shed/README.md`). A static
+					 * setting the user chose goes before the live numbers, so effort is
+					 * the first reading given up.
 					 */
 					className={
 						controlsThirdBox
@@ -1507,15 +1788,31 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					 * The level is a machine-reported value, not prose, so it is
 					 * monospace like every other value in this row.
 					 */}
-					<span className="font-mono text-mono-sm">
+					<span
+						className={cn(
+							"font-mono text-mono-sm",
+							/*
+							 * `warning` is the role for "read this, nothing has broken"
+							 * (docs/branding.md § 3; the same reading `wedged` takes in
+							 * `chat-session-status.tsx`). Colour is never the only
+							 * channel: the `Info` glyph beside it is the shape, so the mark
+							 * survives a colour-blind reading. Both are `aria-hidden`
+							 * because the sentence already rides the accessible name.
+							 */
+							effortNote && "inline-flex items-center gap-1 text-warning",
+						)}
+					>
 						{effortDisplay(effort.label)}
+						{effortNote && (
+							<Info aria-hidden="true" className="size-3 shrink-0" />
+						)}
 					</span>
 				</Reading>
 			)}
 			<Reading
 				label={
 					draft
-						? DRAFT_CONTEXT_LABEL
+						? draftContextLabel()
 						: reading.status === "no-reading"
 							? `Context: no reading yet. ${contextBreakdownLine("no-reading", Boolean(sessionDispatch), held || contextHeld)}`
 							: `Context: ${reading.spelling}${
@@ -1532,7 +1829,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 						mono={reading.status !== "no-reading"}
 						lines={
 							draft
-								? DRAFT_CONTEXT_TOOLTIP
+								? draftContextTooltip()
 								: [
 										...contextTooltipLines(
 											reading,
@@ -1556,8 +1853,9 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 				}
 				held={held || contextHeld}
 				/*
-				 * The ladder's last rung (issue #918; the order and the fit points
-				 * are in the duration reading's comment). The terminal band keeps the
+				 * The ladder's LAST rung (issue #918; the order and the fit points are
+				 * in `docs/evidence/composer-readings-shed/README.md`). The terminal
+				 * band keeps the
 				 * context number the longest - it predicts the operator's next
 				 * action - so it is the last reading to step out of the row: when it
 				 * goes, the row is down to the model alone.
@@ -1587,7 +1885,9 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 						 * distinction between a measurement and a guess.
 						 */}
 						{reading.status === "estimate" && (
-							<span className="ml-1 text-ink-dim">estimate</span>
+							<span className="ms-1 text-ink-dim">
+								{t("ui.chat.session_status.estimate")}
+							</span>
 						)}
 					</span>
 				)}
@@ -1611,10 +1911,10 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					readout
 					held={held}
 					/*
-					 * The ladder's third rung (issue #918; the order and the fit
-					 * points are in the duration reading's comment). Cost outlasts
-					 * effort - a static setting - and yields before context, which the
-					 * terminal band keeps longest.
+					 * The ladder's SECOND rung (issue #918; the order and the fit points
+					 * are in `docs/evidence/composer-readings-shed/README.md`). Cost
+					 * outlasts effort - a static setting - and yields before context, which
+					 * the terminal band keeps longest.
 					 */
 					className={
 						controlsThirdBox
@@ -1629,203 +1929,122 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 				</Reading>
 			)}
 			{/*
-			 * Active processing time, LAST in the cluster and the first thing shed.
+			 * Active processing time, LAST in the cluster.
 			 *
-			 * Render order and shed order are different facts and the band keeps
+			 * RENDER ORDER AND SHED ORDER ARE DIFFERENT FACTS, and the band keeps
 			 * them apart: its right group ends `… context · cost · duration`, and
-			 * its own drop ladder sheds duration first, because it is the one
+			 * its own drop ladder sheds duration first because it is the one
 			 * reading re-derivable from the transcript (`status_line.py`,
-			 * `_DROP_LADDER[0]`), then - across the rungs this row has - effort (a
-			 * static setting), then cost, and context last, which that ladder
-			 * ranks as the reading that predicts the operator's next action. The
-			 * strip copies both orderings, and the narrow ladder below is that shed
-			 * order spread across the column's widths, one measured step per
-			 * reading. Sitting outboard also means the one value that moves while
-			 * the user watches grows into the row's free space rather than into
-			 * another reading.
+			 * `_DROP_LADDER[0]`). THIS ROW DOES NOT APPLY THAT SHED-FIRST RANKING.
+			 * The measured rule alone decides whether the duration is drawn - which
+			 * it can be while effort, cost and context are shed (measured: running,
+			 * column 700), because the row's free gap, not the TUI's priority order,
+			 * is what governs it. Whether the duration SHOULD rank first here is a
+			 * design question this change leaves open (the TUI has its own
+			 * separately scoped running-priority note); it is not re-derived here. The ladder's other
+			 * three rungs (effort, then cost, then context) are container ranges,
+			 * and a range can only answer "how wide is the column". The duration's
+			 * fit depends on three things a container range cannot see: the
+			 * readings' own text, whether the controls group is carrying the third
+			 * (Stop) box, and `--lo-chat-measure` - the composer box's cap, which
+			 * is the row's width and which the operator can drag. Their own report
+			 * is at a 918px box: a 1024px column draws a 778px row at the shipped
+			 * 810px cap and an 886px row at theirs. Same column, 108px more row,
+			 * opposite verdict for the same reading - so a breakpoint is wrong in
+			 * principle, not merely imprecise.
 			 *
-			 * The drop is a container-range query rather than a wrap, because a
-			 * wrap above the threshold is what put the microphone and send on a
-			 * second line — the defect this PR's own D1/D8 round fixed. `hidden`
-			 * rather than `sr-only`: a shed reading does not exist, and the band
-			 * renders it as absent rather than as something a screen reader still
-			 * hears (the chip's icon-only form is the opposite case, and uses
-			 * `sr-only` for that reason).
+			 * WHY IT IS OUT OF FLOW. This reading is always mounted when there is
+			 * a duration to show, positioned absolutely one gap past the strip's
+			 * INLINE-END edge (`insetInlineStart: calc(100% + 4px)`, the same 4px
+			 * as `gap-x-1`; that is `left` in LTR and `right` in RTL), and hidden
+			 * with `invisible` - visibility, never display - when it does not
+			 * fit. Out of flow in BOTH states, so drawing it cannot
+			 * reflow the row, cannot shrink the model, and cannot feed its own
+			 * measurement: a successful measurement cannot turn into a failed one
+			 * by drawing. That is the property the old in-flow ladder did not need
+			 * because it never measured, and the one an in-flow rule could not have
+			 * (show -> reflow -> no longer fits -> hide would oscillate).
 			 *
-			 * TWO WAYS TO BE SHED, and the second one is issue #788. The band below
-			 * answers "is the COLUMN narrow"; `controlsThirdBox` answers "is the row's
-			 * controls group wider than the pair this band was derived against" — a
-			 * question no container query can ask, because what changed is a SIBLING
-			 * appearing rather than the container shrinking.
+			 * THE MEASUREMENT, in full precision, is `G >= D + 4`: G is the free
+			 * gap between the controls group and the LAST VISIBLE non-duration
+			 * reading in the row's INLINE direction (`inlineGap(direction, ...)`:
+			 * `controls.left - last.right` in LTR, `last.left - controls.right` in
+			 * RTL), D is this reading's own box. Both are read off the rendered
+			 * DOM in a layout effect that runs on every render (the
+			 * value ticks at 1Hz and a digit can change the width), with a
+			 * ResizeObserver on the row, the strip, the controls and this reading
+			 * for what a render cannot see: the dragged measure, a sibling
+			 * reading's step, the third box, a late font.
 			 *
-			 * MEASURED, not guessed, and re-derived for #788 and again for #918: every
-			 * number below is read off `getBoundingClientRect` by
-			 * `scripts/composer-readings-geometry.mjs`, the same rig in both themes on
-			 * both trees, at the fixtures that file names.
-			 * THREE CORRECTIONS to the arithmetic this comment used to carry, which was
-			 * not wrong about the cluster but was wrong about the row it sits in:
+			 * NOTHING IS SACRIFICED TO MAKE IT FIT. The model is not shortened, the
+			 * spacing is not tightened, and no other reading is shed; when the row
+			 * genuinely has no room the reading is invisible and the row keeps its
+			 * numbers. The state is not an input: a running turn, a recording, and
+			 * the 500ms post-stop grace window all go through the same measured
+			 * predicate. The grace window's reserved slot is inside the controls
+			 * group, so its width is counted while it is held; when the window
+			 * expires the group narrows, G grows, and the reading may appear
+			 * without moving the row - which is correct and deliberate.
 			 *
-			 *  1. THE CONTROLS ARE 68px IDLE AND 104px WHENEVER A THIRD BOX IS DRAWN.
-			 *     68 is mic + Send (32 + 4 + 32). The third box is the Stop square (the
-			 *     row draws it while `canonicalStop.active`), or the invisible
-			 *     `data-interrupt-slot` through the post-stop grace window, or the slot a
-			 *     live recording reserves — 32·3 + 4·2 = 104.
+			 * THE ROW'S OTHER THREE LADDERS ARE UNCHANGED (issue #918): effort,
+			 * then cost, then context, each on its own container value in the
+			 * classes beside this reading. Measured fit is not extended to them
+			 * here: the defect is this reading's absence while it ticks, and moving
+			 * three ladders at once would be a second change wearing this one's
+			 * name. Their comments carry their own fit points.
 			 *
-			 *  2. THE QUERY RESOLVES AGAINST THE COMPOSER BAND'S CONTENT BOX, NOT THE
-			 *     COLUMN. `CHAT_COLUMN_CONTAINER` is applied on the band as well as on
-			 *     the chat column, and the NEAREST ancestor of that name wins, so
-			 *     `@max-[860px]/chatcol` sees the band's *content* box — the column
-			 *     minus its `px-6` inset (48) — and this band's upper edge lands at a
-			 *     908px COLUMN. Measured: the reading returns at column 908 (container
-			 *     860) and not at 900 (container 852). The lower edge is therefore a
-			 *     798px column.
-			 *
-			 *  3. THE ROW DOES NOT GROW WITH THE COLUMN. The composer box is
-			 *     `@min-[750px]/chatcol:max-w-[var(--lo-chat-measure)]` — 810px shipped
-			 *     (`styles/index.css`) — with `p-4`, so from an 858px column up the row
-			 *     is 778px at EVERY width: measured 778 at columns 908, 1024, 1200 and
-			 *     1600 alike. Past that cap the cluster gains nothing from a wider
-			 *     window, which is why this shed has to be a state and not a wider band.
-			 *
-			 * AGAINST THOSE NUMBERS. Idle, at the band's own upper edge (container 860,
-			 * column 908), the fullest four-reading cluster plus this reading comes to
-			 * rest 2px clear of the controls' left edge — the model name squeezed to
-			 * 82.8px and the chip at its 261px cap — so 860 is still the right upper edge
-			 * for the two-box row and the band itself is unchanged. Running, at the same
-			 * width, this reading's own box lands 7.2-8.2px PAST the controls' left edge
-			 * with the model name already AT its 56px floor: the 36px the third box
-			 * costs is 36px the row does not have, and at column 1200 the overrun is
-			 * still 8.2px because the row is still 778. So the reading sheds whenever
-			 * the third box is drawn, at EVERY width — including below the band's lower
-			 * edge, where the two-box row sheds it too since #918 (the ladder below).
-			 *
-			 * IT SHEDS ON THE STATE ALONE, and that is a cost rather than a nicety: the
-			 * predicate is unconditional on the cluster's own width, so a running row
-			 * that HAD room loses the reading too — measured after, the rightmost
-			 * reading ends 68.2px clear of the controls on `running-plain-908` and 28.2px
-			 * clear on `running-issue-908` (against 16.0 and 2.0 before), so 28-68px of
-			 * the row sits unused while a live, ticking reading is hidden. The
-			 * alternative is a measurement of the cluster's own width, which CSS cannot
-			 * make here, and the band's own shed has the same shape (it drops the
-			 * reading at container 860 with 2.4px to spare), so the state rule follows
-			 * this row's existing precedent rather than inventing a finer one.
-			 *
-			 * WHAT THAT COSTS, stated as what is TRUE rather than as what would be
-			 * reassuring: while a turn runs, the session's ACTIVE TIME IS NOT SHOWN
-			 * ANYWHERE IN THIS APP. This strip is its only renderer — no other module
-			 * reads `active_duration_s`, `useActiveSeconds` or `session-duration` (the
-			 * transcript's own clocks measure the turn or the phase, which is a
-			 * different number) — so there is no press that brings it back and no
-			 * neighbouring surface that carries it. It returns by itself the moment the
-			 * turn ends and the third box goes with it, and that is the whole of the
-			 * mitigation. The alternative is this reading painting over a control, and
-			 * the row's ladder already ranks active time the first thing shed. The
-			 * measure is one fixed 810px now (a width a reader could drag it to, and
-			 * that would have left room for this reading, was removed in #895), so there
-			 * is no wider row to consult: the shed is on the STATE, which is what issue
-			 * #788's own second option asks for and the only one a container query
-			 * cannot do.
-			 *
-			 * AND IT REFLOWS THE CLUSTER AT THE TURN BOUNDARY, which no frame in this
-			 * change's set can settle: because the shed frees ~36px at the same instant
-			 * the third box appears, the model chip expands with it — measured 56 ->
-			 * 84.5px at a 908px column — and the readings downstream shift ~28px; both
-			 * move back at turn end, and again when the 500ms grace window releases the
-			 * reserved box. It is derived from the numbers rather than photographed (this
-			 * rig mounts one state and cannot hold a transition), and the band's own shed
-			 * has no transition either, so this row's precedent argues for leaving it.
-			 * Recorded because it is motion a reader sees at every send and every stop.
-			 *
-			 * THE NARROW ROW SHEDS TOO, which is issue #918 - the residual #788 left
-			 * open. Before it, this reading was shed only inside the band (and on the
-			 * third box at every width), so at every column below the band the cluster
-			 * carried every reading into a row that could not hold them; measured at
-			 * the fullest fixture, reading-over-control ran +201.5px at a 480 column
-			 * (idle; +195.8 running), +149.5/+147.8 at 560, +69.5/+67.8 at 640,
-			 * +129.2/+127.5 at 700, +29.5 running at 798 - frames and `numbers.json`
-			 * in `docs/evidence/composer-readings-shed/`.
-			 *
-			 * The fix is the ladder, not a wider band (there is no wider band - the row
-			 * is 778px at every column from 858 up, so no width exists at which the
-			 * fullest cluster fits beside the controls; that is #788's own finding), and
-			 * the band's `@min-[750px]` half is retired with it: 750 was the TWO-LINE
-			 * layout's threshold, and giving the cluster its own line was what let the
-			 * narrow case carry every reading - a premise D21's one 32px row at every
-			 * width had already retired. So the width half is now one range - shed
-			 * below container 860, the whole narrow side included - and the other three
-			 * readings step out after it as the column narrows: effort, then cost,
-			 * context last, each on its own measured fit point (their classes carry the
-			 * container values; the fit-point table is in the set's README). Nothing
-			 * paints under the controls at any column now, idle or running.
-			 *
-			 * THE LADDER IS COARSER THAN THE DEFECT NEEDS, stated as what is measured
-			 * rather than as reassurance: each rung has no measurement of the cluster's
-			 * own width to answer, so it sits at the widest fit point its step must
-			 * serve and hides the reading for the whole span below it - measured, the
-			 * last rung returns context at a 723px column running (688 idle) where it
-			 * would fit from ~596 (560). A finer rule would have to read the cluster's
-			 * own width, which CSS cannot do, and this row's precedent is the same
-			 * trade (see the state half below); the alternative - a compacted spelling
-			 * for the narrow case - is rejected because the ladder already reaches a
-			 * clean row, and a compact value is a second voice for a number the
-			 * tooltip states in full.
-			 *
-			 * AND A FOURTH ROW-BUDGET STATE THIS SHED DOES NOT COVER, recorded here
-			 * because it is the same class of note and is PRE-EXISTING: while the
-			 * composer is acquiring the recorder (`isPreparing`) the controls group grows
-			 * a caption beside the controls — `Starting recording`, `message-input.tsx`,
-			 * `shrink-0`, measured 112.6x19.5px in `docs/evidence/stt-instant-ack`. The
-			 * group's growth there is TEXT rather than a box, so no third 32px box is
-			 * drawn and `controlsThirdBox` is false; against this row's own slack that
-			 * bill is larger than any third box's and would put the readings' last ~86px
-			 * into the caption's box. It is not this change's to pay: the caption is on
-			 * the base tree, the base carries the same overlap, and the caption's own
-			 * evidence set photographed a composer with no readings cluster at all. A
-			 * bounded follow-up rig could settle the residual; this change does not claim
-			 * it.
+			 * A FOURTH ROW-BUDGET CASE, recorded because it is the same class of
+			 * note and is PRE-EXISTING: while the composer is acquiring the
+			 * recorder (`isPreparing`) the controls group grows a caption beside
+			 * the controls - `Starting recording`, `message-input.tsx`,
+			 * `shrink-0`, measured 112.6x19.5px in `docs/evidence/stt-instant-ack`.
+			 * That caption is INSIDE the marked controls group, so its width is
+			 * part of G and this reading will step out of its way; the other three
+			 * readings have no measurement and keep the pre-existing residual,
+			 * which this change neither fixes nor claims.
 			 */}
 			{duration && (
-				<Reading
-					label={`Active time: ${formatDuration(activeSeconds)}. ${DURATION_LABEL_EXPLANATION}`}
-					tooltip={
-						<TooltipLines
-							lines={[formatDuration(activeSeconds), DURATION_EXPLANATION]}
-						/>
-					}
-					// Inert, like the spend beside it and like the band's own: it opens
-					// nothing, and this is the reading the band ranks least actionable.
-					// A readout rather than a disabled button for the same reason the
-					// cost is one — there is no picker for it to be unavailable FOR.
-					readout
-					held={held}
+				<span
+					data-lo-duration={true}
+					className={cn("absolute top-0", !durationFits && "invisible")}
 					/*
-					 * TWO WAYS TO BE SHED, and each is unconditional within its half.
-					 * `hidden` with no range query is the state's, and it is the whole
-					 * of the #788 fix: a container query can only ask how wide the
-					 * COLUMN is, and the fact that shrank this row's budget - a third
-					 * control box - is a fact about state rather than width. The
-					 * width's is one range now: shed below container 860, at every
-					 * narrower column - it spans the old band's range, where five
-					 * readings do not fit the two-box row below container ~781, and
-					 * above that fit it keeps the band's 860 edge rather than
-					 * re-deriving an idle-only value (one value serves both states),
-					 * and it continues below 750 because the two-line layout that
-					 * made room for this reading is gone (issue #918). No `cn`
-					 * merging is needed — the two are mutually exclusive strings.
+					 * THE ANCHOR IS LOGICAL, because the row is. `insetInlineStart` is
+					 * `left` in LTR and `right` in RTL, so the reading always hangs one
+					 * reading-gap past the strip's INLINE-END edge - the edge the last
+					 * visible reading ends on in either direction. `top-0` stays physical:
+					 * the block axis is not mirrored. The anchor and the measured gap use
+					 * the same edge by construction; `after/numbers.json` records
+					 * `anchorDelta` per cell (zero in every captured one).
 					 */
-					className={
-						controlsThirdBox ? "hidden" : "@max-[860px]/chatcol:hidden"
-					}
+					style={{
+						insetInlineStart: `calc(100% + ${READING_GAP}px)`,
+					}}
 				>
-					{/*
-					 * `tabular-nums`: the digits change once a second, and a
-					 * proportional `1` would shift the reading's width under the
-					 * reader as the number ticks.
-					 */}
-					<span className="font-mono text-mono-sm tabular-nums">
-						{formatDuration(activeSeconds)}
-					</span>
-				</Reading>
+					<Reading
+						label={`Active time: ${formatDuration(activeSeconds)}. ${DURATION_LABEL_EXPLANATION}`}
+						tooltip={
+							<TooltipLines
+								lines={[formatDuration(activeSeconds), DURATION_EXPLANATION]}
+							/>
+						}
+						// Inert, like the spend beside it and like the band's own: it
+						// opens nothing, and this is the reading the band ranks least
+						// actionable. A readout rather than a disabled button for the
+						// same reason the cost is one - there is no picker for it to be
+						// unavailable FOR.
+						readout
+						held={held}
+					>
+						{/*
+						 * `tabular-nums`: the digits change once a second, and a
+						 * proportional `1` would shift the reading's width under the
+						 * reader as the number ticks.
+						 */}
+						<span className="font-mono text-mono-sm tabular-nums">
+							{formatDuration(activeSeconds)}
+						</span>
+					</Reading>
+				</span>
 			)}
 		</div>
 	);

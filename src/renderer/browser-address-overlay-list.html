@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Local Operator Address Overlay List</title>
+    <!--
+      S2's visual mirror of the in-flow address list (docs/design/browser-address-overlay.md).
+      This document is a PRESENTATION SURFACE, not an accessible control: the whole
+      root is aria-hidden, there are no roles, no focus targets and no keyboard
+      path. The real combobox is the app's own input, which keeps DOM focus, IME and
+      every key; S3/S4 own any accessible-overlay claim.
+
+      CSP: `default-src 'none'` denies every capability the document does not need.
+      Script and style are external files emitted by the app's own build
+      (`script-src 'self'`, `style-src 'self'`), so there is no inline-script
+      allowance and no hash to keep in sync. The document makes no requests:
+      fonts are system fonts and `img-src`/`font-src`/`connect-src` are 'none'.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; font-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+  </head>
+  <body>
+    <div id="address-list-root" aria-hidden="true">
+      <div id="address-list-header"><span id="address-list-label"></span></div>
+      <div id="address-list-viewport">
+        <div id="address-list-rows"></div>
+        <div id="address-list-notice"></div>
+      </div>
+    </div>
+    <script type="module" src="/src/address-overlay-list/main.ts"></script>
+  </body>
+</html>

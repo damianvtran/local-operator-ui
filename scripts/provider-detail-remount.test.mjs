@@ -130,10 +130,14 @@ const ops = [];
 const opsOf = (op) => ops.filter((entry) => entry.op === op);
 
 let currentProvider = "anthropic";
+// Override only this recovery matrix, leaving the existing backend fixtures intact.
+let retainedReply = null;
+let retainedRead = null;
+let retainedReads = 0;
+const ok = (result) => ({ status: 200, body: { result } });
 globalThis.window.api = {
 	desktop: {
 		request: async (request) => {
-			const ok = (result) => ({ status: 200, body: { result } });
 			switch (request.op) {
 				case "capabilities":
 					return ok({
@@ -177,8 +181,21 @@ globalThis.window.api = {
 					ops.push({ op: "auth.key", provider: request.provider });
 					return ok(keyReply);
 				case "auth.start":
+					if (retainedReply) {
+						return ok(
+							snapshot("starting", {
+								provider: currentProvider,
+								retained_notice: null,
+							}),
+						);
+					}
 					return ok(deviceFixture ? deviceSnapshot() : snapshot("starting"));
 				case "auth.status":
+					if (retainedRead) {
+						retainedReads += 1;
+						return retainedRead;
+					}
+					if (retainedReply) return ok(retainedReply);
 					if (deviceFixture) return ok(deviceSnapshot());
 					polls += 1;
 					if (polls === 1) {
@@ -327,7 +344,7 @@ CENSUS.push({
 });
 const rowFor = (id) => CENSUS.find((row) => row.id === id);
 
-const mount = async (t) => {
+const mount = async (t, onChangeModel) => {
 	/*
 	 * The tree is allocated FIRST and the teardown registered after it, because the
 	 * callback below closes over `mounted`: registering a teardown that dereferences
@@ -357,7 +374,11 @@ const mount = async (t) => {
 				createElement(
 					QueryClientProvider,
 					{ client: mounted.client },
-					createElement(ProviderDetail, { key, provider: rowFor(id) }),
+					createElement(ProviderDetail, {
+						key,
+						provider: rowFor(id),
+						onChangeModel,
+					}),
 				),
 			);
 		});
@@ -413,6 +434,192 @@ const trackedTest = (name, body) =>
 			throw error;
 		}
 	});
+
+// Exact trusted backend template; only the record IDs are synthetic.
+const RETAINED_NOTICE = [
+	"Retained Radient sign-ins (unavailable):",
+	"  [101] Account could not be verified; record retained.",
+	"  [202] Account could not be verified; record retained.",
+	"  Sign in to the account you want to use:",
+	"  /login radient in the app; local-operator login radient in a terminal.",
+	"  Older records have not been deleted or assigned to that account.",
+].join("\n");
+const SIGN_IN_COMPLETE = "Sign-in complete.";
+const PRESERVED_DISABLED =
+	"Sign-in verified; the existing credential remains unavailable. Its saved disabled state was preserved.";
+const GENERIC_FAILURE = "Sign-in failed. Check the provider and try again.";
+
+for (const fixture of [
+	{
+		name: "successful Radient recovery",
+		notice: RETAINED_NOTICE,
+		visible: true,
+	},
+	{ name: "old backend omits notice" },
+	{ name: "null notice", notice: null },
+	// Defensive controls below are not values produced by the trusted template.
+	{ name: "blank notice", notice: " \n\t " },
+	{
+		name: "notice is text, not HTML or Markdown",
+		notice:
+			'<img src=x onerror="alert(1)"> **kept** [settings](https://example.com)',
+		visible: true,
+	},
+	{
+		name: "preserved-disable failure keeps its failure message",
+		state: "failed",
+		message: PRESERVED_DISABLED,
+		notice: null,
+	},
+	{
+		name: "generic exception keeps the sanitized failure message",
+		state: "failed",
+		message: GENERIC_FAILURE,
+		notice: null,
+	},
+	{ name: "cancelled operation", state: "cancelled", notice: null },
+	{ name: "unrelated provider", provider: "anthropic", notice: null },
+	{
+		name: "Radient payload on unrelated provider",
+		provider: "anthropic",
+		operationProvider: "radient",
+		notice: RETAINED_NOTICE,
+	},
+	{
+		name: "unrelated payload on Radient panel",
+		operationProvider: "anthropic",
+		notice: null,
+	},
+]) {
+	trackedTest(`retained notice: ${fixture.name}`, async (t) => {
+		currentProvider = fixture.provider ?? "radient";
+		retainedReply = snapshot(fixture.state ?? "succeeded", {
+			provider: fixture.operationProvider ?? currentProvider,
+			message: fixture.message ?? (fixture.state ? "" : SIGN_IN_COMPLETE),
+			defaults_applied: {
+				hosting: currentProvider,
+				model: "auto",
+				model_name: "Auto",
+				receipt: "Existing default model unchanged.",
+			},
+			...(Object.hasOwn(fixture, "notice")
+				? { retained_notice: fixture.notice }
+				: {}),
+		});
+		t.after(() => {
+			retainedReply = null;
+		});
+		let modelChanges = 0;
+		const mounted = await mount(t, () => {
+			modelChanges += 1;
+		});
+		await mounted.render(currentProvider, "recovery");
+		await clickButton(mounted, "Continue in browser");
+		const state = fixture.state ? "unfinished" : "succeeded";
+		await waitFor(() => mounted.find(`[data-sign-in-state="${state}"]`), state);
+		const notice = mounted.find("[data-retained-notice]");
+		assert.equal(
+			Boolean(notice),
+			Boolean(fixture.visible),
+			"absent notices allocate no element or gap",
+		);
+		if (fixture.visible) {
+			assert.equal(notice.textContent, fixture.notice);
+			// jsdom proves the DOM contract, not computed Tailwind layout.
+			assert.ok(notice.classList.contains("whitespace-pre-wrap"));
+			assert.ok(notice.classList.contains("[overflow-wrap:anywhere]"));
+			assert.ok(notice.classList.contains("min-w-0"));
+			if (fixture.notice === RETAINED_NOTICE) {
+				assert.equal(notice.textContent.split("\n").length, 6);
+				assert.ok(notice.textContent.includes("\n  [101] "));
+				assert.ok(notice.textContent.includes("\n  [202] "));
+			}
+			assert.equal(
+				notice.querySelector("img, a, strong"),
+				null,
+				"wire copy is never parsed as markup",
+			);
+		}
+		if (!fixture.state) {
+			assert.ok(mounted.text().includes("Existing default model unchanged."));
+			assert.ok(!mounted.text().includes(SIGN_IN_COMPLETE));
+			await clickButton(mounted, "Change");
+			assert.equal(
+				modelChanges,
+				1,
+				"existing model-choice action remains wired",
+			);
+			await mounted.render(currentProvider, "recovery-remounted");
+			assert.equal(
+				Boolean(mounted.find("[data-retained-notice]")),
+				Boolean(fixture.visible),
+				"the hook retains the receipt through the row-move remount",
+			);
+			if (currentProvider === "radient") {
+				// The fixture's provider row stays signed out: its existing readiness
+				// action must not be replaced by Done merely because login settled.
+				assert.ok(mounted.text().includes("Sign in again"));
+			} else {
+				await clickButton(mounted, "Done");
+				assert.ok(mounted.find('[data-sign-in-state="idle"]'));
+				assert.equal(mounted.find("[data-retained-notice]"), null);
+			}
+		} else if (fixture.state === "failed") {
+			assert.ok(mounted.text().includes(fixture.message));
+			assert.equal(mounted.find('[data-sign-in-state="succeeded"]'), null);
+		}
+	});
+}
+
+for (const leave of ["cancel", "switch-provider"]) {
+	trackedTest(
+		`late retained notice cannot repaint after ${leave}`,
+		async (t) => {
+			currentProvider = "radient";
+			retainedReply = snapshot("waiting", {
+				provider: "radient",
+				retained_notice: null,
+			});
+			let release;
+			retainedReads = 0;
+			retainedRead = new Promise((resolve) => {
+				release = resolve;
+			});
+			t.after(() => {
+				retainedReply = null;
+				retainedRead = null;
+			});
+			const mounted = await mount(t);
+			await mounted.render("radient", "radient-row");
+			await clickButton(mounted, "Continue in browser");
+			await waitFor(
+				() =>
+					retainedReads > 0 && mounted.find('[data-sign-in-state="starting"]'),
+				"pending status read",
+			);
+			if (leave === "cancel") {
+				await clickButton(mounted, "Cancel");
+			} else {
+				currentProvider = "anthropic";
+				await mounted.render("anthropic", "other-row");
+			}
+			await act(async () => {
+				release(
+					ok(
+						snapshot("succeeded", {
+							provider: "radient",
+							message: SIGN_IN_COMPLETE,
+							retained_notice: RETAINED_NOTICE,
+						}),
+					),
+				);
+			});
+			assert.equal(mounted.find("[data-retained-notice]"), null);
+			assert.equal(mounted.find('[data-sign-in-state="succeeded"]'), null);
+			assert.ok(!mounted.text().includes(RETAINED_NOTICE));
+		},
+	);
+}
 
 trackedTest(
 	"a completed sign-in survives the remount the row move causes",

@@ -302,10 +302,13 @@ test("the user turn carries the copy row under its bubble, and only the answer s
 	/*
 	 * The mount site, not just the presence: the row is a SIBLING OF THE BUBBLE
 	 * ROW inside the turn's column, which is what makes it read under the
-	 * message rather than beside it.
+	 * message rather than beside it. Since the stamp joined it on that line
+	 * (operator, 2026-10-20) the toolbar's parent is the LINE, and the line's
+	 * previous sibling is the bubble's row.
 	 */
+	const line = row.parentElement;
 	assert.match(
-		row.previousElementSibling?.textContent ?? "",
+		line?.previousElementSibling?.textContent ?? "",
 		/Is the March import finished\?/,
 		"the row sits directly under the bubble",
 	);
@@ -327,7 +330,7 @@ test("the user turn carries the copy row under its bubble, and only the answer s
 		"revealed by the turn's hover",
 	);
 	assert.ok(
-		row.parentElement?.classList.contains("group"),
+		line?.parentElement?.classList.contains("group"),
 		"the column above is the group",
 	);
 	await unmount();

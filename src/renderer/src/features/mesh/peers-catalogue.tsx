@@ -39,12 +39,19 @@
  * sharing) and the store writes no session row for them.
  */
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
-import { type FC, useEffect } from "react";
-import { useMeshMembership, useMeshSessions } from "./mesh-store";
+import { type FC, useEffect, useRef } from "react";
+import {
+	useMeshMembership,
+	useMeshSessions,
+	useMeshPeers as usePeers,
+} from "./mesh-store";
 import { toCatalogueRow } from "./mesh-types";
 
 export const PeersCatalogueSync: FC<{ enabled: boolean }> = ({ enabled }) => {
 	const membership = useMeshMembership(enabled);
+	const peers = usePeers(enabled && membership === "member", {
+		stamp: () => useCanonicalSessionsStore.getState().beginAnswer(),
+	});
 	const read = useMeshSessions(enabled && membership === "member", {
 		poll: true,
 		stamp: () => useCanonicalSessionsStore.getState().beginAnswer(),
@@ -52,9 +59,32 @@ export const PeersCatalogueSync: FC<{ enabled: boolean }> = ({ enabled }) => {
 	const settle = useCanonicalSessionsStore(
 		(state) => state.settlePeerCatalogue,
 	);
+	const consumedSessions = useRef(0);
+	const consumedPeers = useRef(0);
 	useEffect(() => {
-		if (!read.data) return;
+		if (!read.data || read.data.requestedAt <= consumedSessions.current) return;
+		consumedSessions.current = read.data.requestedAt;
 		settle(read.data.rows.map(toCatalogueRow), read.data.requestedAt);
 	}, [read.data, settle]);
+	useEffect(() => {
+		if (!peers.data || peers.data.requestedAt <= consumedPeers.current) return;
+		consumedPeers.current = peers.data.requestedAt;
+		const deviceFacts = Object.fromEntries(
+			peers.data.peers.map((peer) => [
+				peer.device_id,
+				{
+					reachable: peer.reachable,
+					last_seen_at: peer.last_seen_at,
+					reason: peer.unreachable_reason,
+					session_count: peer.session_count,
+					redial_state: peer.redial?.state ?? null,
+					at: peers.data.requestedAt,
+				},
+			]),
+		);
+		// A peer snapshot has its own lifetime. Never replay a cached sessions page
+		// just because device reachability changed after a delete or a move.
+		settle([], 0, deviceFacts, peers.data.requestedAt);
+	}, [peers.data, settle]);
 	return null;
 };

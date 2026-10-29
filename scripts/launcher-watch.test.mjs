@@ -301,12 +301,17 @@ test("every way a headless run can end is bounded by the same deadline", () => {
 	);
 	// ...and it is inside the headless gate, not on a path the shipped app runs:
 	// the signal handler is installed after the gate that names the mode, and a
-	// bare handler outside it is asserted absent below.
+	// bare handler outside it is asserted absent below. S3's visible probe takes
+	// the SAME lifetime contract (it is a visible run nobody is watching, capped
+	// at 120 s), so that gate names `addressOverlayGate.visible` too — the pin
+	// follows the condition rather than being loosened to "some if".
 	const loopAt = index.indexOf("for (const signal of");
-	const gateAt = index.indexOf('if (windowLaunch.mode === "headless") {');
+	const gateAt = index.indexOf(
+		'if (windowLaunch.mode === "headless" || addressOverlayGate.visible) {',
+	);
 	assert.ok(
 		gateAt !== -1 && loopAt > gateAt,
-		"the SIGTERM/SIGINT handlers are no longer behind the headless gate",
+		"the SIGTERM/SIGINT handlers are no longer behind the headless/visible gate",
 	);
 	wired(
 		"the signal handler",
@@ -322,6 +327,18 @@ test("every way a headless run can end is bounded by the same deadline", () => {
 		"the window-close path",
 		/\[window-mode\] all windows closed in a headless run; quitting/,
 	);
+	// S3's visible probe: same watch, same bounded quit, and a cap that must never
+	// be what keeps the process alive. Pinned here because the wiring lives in
+	// `index.ts` and no unit can boot a visible window to observe it.
+	wired(
+		"the visible launcher watch",
+		/boundedVisibleProbe: addressOverlayGate\.visible,/,
+	);
+	wired(
+		"the visible cap",
+		/if \(addressOverlayGate\.visible\) \{[\s\S]{0,700}?ADDRESS_OVERLAY_VISIBLE_MAX_MS\)/,
+	);
+	wired("the visible cap's unref", /cap\.unref\(\);/);
 	// And the signal path is not wired into the shipped app as a bare headless
 	// exit: outside the headless gate, SIGTERM is handled ONLY by the quit-gated
 	// handler pinned in the sibling test below.
@@ -350,11 +367,13 @@ test("every way a headless run can end is bounded by the same deadline", () => {
  */
 test("SIGTERM during a quit is a logged exit, and only during a quit", () => {
 	const index = codeText(join(process.cwd(), "src", "main", "index.ts"));
-	// A non-headless gate, not a bare registration...
+	// A non-headless gate, not a bare registration — and S3's visible probe is
+	// excluded as well: it already registers the direct handlers above, so this
+	// one would re-raise TERM into the handler that just took it.
 	assert.match(
 		index,
-		/if \(windowLaunch\.mode !== "headless"\) \{/,
-		"the quit-gated TERM handler must sit behind the non-headless gate",
+		/if \(windowLaunch\.mode !== "headless" && !addressOverlayGate\.visible\) \{/,
+		"the quit-gated TERM handler must sit behind the non-headless, non-visible gate",
 	);
 	// ...whose handler is the quit-state shape, not a second headless exit:
 	assert.match(index, /const onSigtermDuringQuit = \(\) => \{/);

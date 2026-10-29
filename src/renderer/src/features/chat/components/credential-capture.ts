@@ -136,6 +136,7 @@ export const MASK_CELL = "\u2022";
  * module is bundled from source by `scripts/soft-breaks.test.mjs` with no alias
  * map, and `ask-answer.ts` reads `@shared`.
  */
+import { t } from "../../../../../i18n";
 import { approvalAnswerValue } from "../approval-words";
 import { SEPARATOR, SEPARATOR_CLASS, pyTrim } from "./slash-token";
 
@@ -1219,64 +1220,26 @@ export function mintTypedCredential(args: {
 }
 
 /**
- * A token the composer knows it has just cancelled: the exact run, where it sat when
- * the cancel produced it, and HOW MANY CHARACTERS THAT CANCEL PUT BACK
- * (`cancelTypedCredential`).
+ * A token the composer knows it has just cancelled: the exact run, and where it sat
+ * when the cancel produced it (`cancelTypedCredential`).
  *
- * The span is the ARRIVAL position, not a live one — see
- * {@link holdsCancelledToken}, which is the only thing that reads it.
- *
- * `restored` IS THE HALF THE SUBMIT SEAM NEEDS, and it is here rather than in a
- * ref of its own because it is the same gesture's fact: the record says which run
- * was cancelled, and the count says whether that run was holding characters. An
- * EMPTY span restores nothing, so the words the operator writes after it are
- * theirs by §5's own reading and the composer sends them as prose — refused
- * outright where the draft OPENS with the token, by the leading-slash policy, in
- * which case the words are kept and nothing is sent (UX round 4, U16); a span with
- * characters in it restores a secret, and no later keystroke can make that untrue (review
- * round 3, MINOR 1 — the disclosure this seam used to read is a whole-buffer
- * equality that any keystroke clears, which is exactly how one keystroke after an
- * Escape put a secret in a message record).
+ * The span is the ARRIVAL position, not a live one; see
+ * {@link holdsCancelledToken}, which is the only thing that reads it. A cancel
+ * restores no characters any more (2026-10-22), so the record no longer carries a
+ * count or the restored text: the words written after an inert token are always the
+ * operator's own prose (§5's U9 reading).
  */
 export type CancelledToken = {
 	span: Span;
 	text: string;
-	restored: number;
-	/**
-	 * THE CHARACTERS THE CANCEL PUT BACK, verbatim — the run the operator is now
-	 * looking at, kept beside the count because one question cannot be answered
-	 * without it: "is that run still in this draft?" (UX round 6, U24).
-	 *
-	 * The count alone could not answer it. A composer that knows only *how many*
-	 * characters came back hands the record's word to the planner for any draft of
-	 * at least that length, so a user who cancels a credential, clears the box and
-	 * writes a fresh sentence got the run's rule applied to the sentence — a
-	 * truncation, a Credential dialog for a secret they do not have, and a line that
-	 * could never be sent (the loop UX round 5 filed as U20, back on a draft holding
-	 * none of the app's characters). The byte comparison is what makes the record's
-	 * reach a fact about the draft in front of the operator rather than about what
-	 * the pane has seen.
-	 *
-	 * WHY HOLDING IT IS NOT A NEW DISCLOSURE SEAM: at this point the app has already
-	 * un-masked these characters into the document — that is what the cancel DID, and
-	 * the notice says so — so this is a reference to what the box is showing, not a
-	 * second copy the operator cannot see. It lives on a ref, is never persisted to
-	 * the draft store, never enters history, telemetry or the transcript, and is
-	 * dropped with the record. The masked state's own invariant (the value lives in
-	 * {@link Capture} and nowhere else) is untouched: this is the state *after* the
-	 * mask is gone.
-	 */
-	restoredText: string;
 };
 
-/** What an Escape cancel produced: the plaintext back, and nothing else. */
+/** What an Escape cancel produced: the buffer with the span discarded. */
 export type CancelResult = {
 	cancelled: boolean;
 	capture: Capture;
 	buffer: string;
 	caret: number;
-	/** How many characters were restored, for the announcement. Never the value. */
-	restored: number;
 	/**
 	 * The inert token run the cancel left in the buffer, or `null` when the buffer
 	 * holds no arming token to leave inert.
@@ -1308,28 +1271,57 @@ export type CancelResult = {
 };
 
 /**
- * Esc while TYPING: give the operator their characters back.
+ * Whether an Esc on this capture is HELD rather than acted on: a span with
+ * characters in it.
  *
- * UNREDACTS RATHER THAN DISCARDS (`_cancel_credential_typing`,
- * `editor.py:6419-6500`). An operator who typed a long secret and pressed Esc
- * because they meant it as prose gets exactly what they typed; an operator who
- * wanted it gone deletes it with the keystrokes they would use for any other
- * text. Discarding silently would be unrecoverable in the one direction that
- * matters — retyping a secret is precisely what an operator cannot do from
- * memory.
+ * THE FIRST ESC CHANGES NOTHING, AND THAT IS THE FIX (operator-approved,
+ * 2026-10-22). This port used to follow the TUI and UNREDACT on Esc — write the
+ * held characters back into the buffer as prose. The buffer is what the draft
+ * store persists, so a credential the operator had just CANCELLED was written to
+ * `localStorage` in plaintext: the one disclosure the module's load-bearing
+ * invariant (top of file) exists to close, re-opened by the gesture meant to back
+ * out of it. Discarding on the first press is the other easy answer and the wrong
+ * one: a single stray Esc would throw away a long secret the operator cannot
+ * retype from memory, with no way back.
  *
- * This is the ONLY route by which a typed secret enters the document, and it is
- * the operator explicitly asking for it: at that point it is their prose, not a
- * credential. The arm ends with it, because leaving the token armed would put
- * the composer in a state where the next paste is still swallowed as a
- * credential after the operator has visibly backed out.
+ * So the first Esc keeps the capture exactly as it is — cells in the buffer, the
+ * value in {@link Capture.value}, nothing written — and the composer says what the
+ * next press does. A SECOND Esc on the same buffer is the explicit request, and it
+ * DISCARDS ({@link cancelTypedCredential}). Deleting the cells by hand already
+ * empties the value through {@link maskEdit}, so that route needs nothing new and
+ * reaches the same empty-span cancel.
+ *
+ * An EMPTY span holds nothing worth protecting, so its Esc is not held: one press
+ * ends the mode, exactly as before (the TUI's R1/U2 no-re-arm case).
+ */
+export const escapeHolds = (capture: Capture): boolean =>
+	isTyping(capture) && capture.value !== "";
+
+/**
+ * Esc while TYPING, the press that actually ends the capture: DISCARD the held
+ * characters and leave the token inert.
+ *
+ * DISCARDS RATHER THAN UNREDACTS, which is a deliberate departure from the TUI
+ * (`_cancel_credential_typing`, `editor.py:6419-6500`, writes the characters
+ * back as prose). The unredact was the ONLY route by which a typed secret entered
+ * the document, and the document is what the draft store persists — so every Esc
+ * cancel put a plaintext credential on disk. The recovery the unredact offered
+ * ("retyping a secret is what an operator cannot do from memory") is kept by
+ * {@link escapeHolds} instead: a single stray press changes nothing, and only a
+ * second one — or deleting the cells — reaches here with characters held.
+ *
+ * The result is therefore always the empty-span shape: the mask cells come out of
+ * the buffer, the caret lands where they started, and the value
+ * is dropped with the capture. The arm ends with it, because leaving the token
+ * armed would put the composer in a state where the next paste is still
+ * swallowed as a credential after the operator has visibly backed out.
  *
  * THE EMPTY-SPAN CASE IS THE SAME CANCEL and is called out because it is the
  * regression the TUI shipped twice (`editor.py:6146-6155`): with no characters
  * to restore, a cancel that re-entered the arm sync found `/credential ` still
  * ending its own line — still matching the predicate — and RE-ARMED, so Esc was
  * inert and the prose typed next became a credential. The disarm here is
- * unconditional and `restored: 0` owes no announcement.
+ * unconditional, and a discard owes no announcement.
  *
  * The token and its delimiting space are left behind as inert literal text:
  * they are visible, they are not a mode, and the next typed character makes the
@@ -1348,24 +1340,18 @@ export function cancelTypedCredential(
 			capture,
 			buffer,
 			caret: 0,
-			restored: 0,
 			token: null,
 		};
 	}
-	const restoredText = capture.value;
-	const next = unredactedBuffer(buffer, capture);
 	const tokenStart = capture.arm === null ? span.start : capture.arm.start;
 	return {
 		cancelled: true,
 		capture: IDLE_CAPTURE,
-		buffer: next,
-		caret: span.start + restoredText.length,
-		restored: charCount(restoredText),
+		buffer: buffer.slice(0, span.start) + buffer.slice(span.end),
+		caret: span.start,
 		token: {
 			span: { start: tokenStart, end: span.start },
 			text: buffer.slice(tokenStart, span.start),
-			restored: charCount(restoredText),
-			restoredText,
 		},
 	};
 }
@@ -2069,7 +2055,7 @@ export const CREDENTIAL_CLEAR_UNDO_LABEL = "Undo";
  * number the control's accessible name carries.
  */
 export const clearedToastLine = (index: number): string =>
-	`Credential #${index} removed`;
+	t("ui.notices.credentials.removed", { index });
 
 /** Which sentence the composer's notice line carries, as one decision. */
 export type ComposerNoticeInput = {
@@ -2208,7 +2194,7 @@ export function restoreClearedCredential(args: {
  * verb that stored them, so this is the operator's half.
  */
 export const storedNotice = (keys: readonly string[]): string =>
-	`Stored ${keys.join(", ")}. Injected into every bash command as an environment variable; the agent cannot read the value.`;
+	t("ui.notices.credentials.stored", { keys: keys.join(", ") });
 
 /**
  * The notice for a store that ANSWERED and refused the write (§9.4), naming
@@ -2226,8 +2212,10 @@ export const storedNotice = (keys: readonly string[]): string =>
  * stored" is a claim this one may not make on silence's behalf.
  */
 export function unstoredNotice(keys: readonly string[]): string {
-	const noun = keys.length === 1 ? "credential" : "credentials";
-	return `${keys.length} ${noun} could not be stored (${[...keys].sort().join(", ")}); the agent has been told so. Paste the value again after /credential to retry.`;
+	return t("ui.notices.credentials.unstored", {
+		count: keys.length,
+		keys: [...keys].sort().join(", "),
+	});
 }
 
 /**
@@ -2309,8 +2297,10 @@ export const unconfirmedHover = (citation: string): string =>
  * again.
  */
 export function unconfirmedNotice(keys: readonly string[]): string {
-	const noun = keys.length === 1 ? "credential" : "credentials";
-	return `${keys.length} ${noun} could not be confirmed as stored (${[...keys].sort().join(", ")}); the agent has been told to check before using it. ${UNCONFIRMED_OPERATOR_MOVE}`;
+	return t("ui.notices.credentials.unconfirmed", {
+		count: keys.length,
+		keys: [...keys].sort().join(", "),
+	});
 }
 
 /** Shown while the token is seated and the secret has not started arriving. */
@@ -2339,9 +2329,19 @@ export const CREDENTIAL_ARMED_NOTICE =
  * everywhere else, so the copy and the code now use one word for one thing.
  * The substitution is five characters shorter than the rung it replaces, so the
  * overflow behaviour the comment below describes cannot regress on it.
+ *
+ * "ESC TWICE DISCARDS IT", NOT "ESC CANCELS" (design review round 1, D1). One Esc
+ * holds the capture rather than ending it ({@link escapeHolds}), so a sentence
+ * promising that Esc cancels was false on the first press. The verb is the same one
+ * the held sentence and the discard line use, so the three read as one gesture.
+ * "makes a pill" rather than "turns it into a pill", here and in the held sentence:
+ * at the 440px small-view rung the 70-character wording wrapped to two lines where
+ * the held sentence took one, so the first Esc moved the box up 19.5px (measured,
+ * design review round 1, D4). Both now fit one line at that rung, so the press
+ * changes the words and nothing else.
  */
 export const CREDENTIAL_TYPING_NOTICE =
-	"masked as you type — Enter turns it into a pill, Esc cancels";
+	"masked as you type — Enter makes a pill, Esc twice discards";
 
 /**
  * The same state with NOTHING typed into the span yet, where Enter does
@@ -2370,6 +2370,32 @@ export const CREDENTIAL_EMPTY_SPAN_NOTICE =
 	"masked — Enter opens the credential picker; type or paste the secret into this span";
 
 /**
+ * Shown after the FIRST Esc on a span with characters in it ({@link escapeHolds}).
+ *
+ * The frame cannot say this on its own: the box looks exactly as it did before
+ * the press, so without a sentence the operator reads Esc as broken and presses it
+ * again — which now discards. Naming both keys keeps that second press a choice
+ * rather than a reflex, and keeps the way forward (the pill) one keystroke away.
+ *
+ * THE CONSEQUENCE LEADS the sentence (design review round 1, D3): it is the one
+ * change on screen after the press, so its first words are the ones that differ
+ * from the typing sentence. The composer also paints the held span in the warning
+ * role, so the state reads without the sentence.
+ */
+export const CREDENTIAL_ESCAPE_HELD_NOTICE =
+	"Esc again discards it — still masked, Enter makes a pill";
+
+/**
+ * Shown once, after the SECOND Esc discarded a held value (design review round 1,
+ * D2): the box no longer shows the cells, and a reflexive double-press would
+ * otherwise land on a box that silently lost something it cannot get back. No value
+ * and no length, the same rule as every other credential sentence. The next edit
+ * retires it.
+ */
+export const CREDENTIAL_DISCARDED_NOTICE =
+	"credential discarded — nothing was stored or sent";
+
+/**
  * The empty-span form for a pane with no session yet; see
  * {@link CREDENTIAL_EMPTY_SPAN_NOTICE}.
  *
@@ -2390,62 +2416,27 @@ export const CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE =
 	"masked — Enter runs /credential, which needs an open conversation; type or paste the secret into this span";
 
 /**
- * Said after Esc unredacts a typed secret back into the composer as plaintext
- * (`CREDENTIAL_UNREDACTED_NOTICE`, `app.py:2203`).
+ * Said while the box holds characters a credential gesture put there as plain text:
+ * the locked-run undo handing back what the operator typed unmasked, or a draft a
+ * PRE-2026-10-22 build persisted after an Esc unredact (`unredactedChars`), re-raised
+ * on arrival so it does not come back silent. No Esc writes characters into the box
+ * any more (§5). The length comes from the count and never from the value.
  *
- * The unredact is the only exit that leaves the secret IN the buffer, and the
- * frame cannot say so on its own — the masking notice goes and the composer
- * looks ordinary while holding a credential, and the very next Enter re-commits
- * the exact leak this feature closes (measured in the TUI: byte-identical to
- * the pre-fix base). It names what is true NOW and what the next keystroke does,
- * in that order, because the operator's hand is already moving toward Enter. The
- * length comes from the count and never from the value.
- *
- * "EXPOSE" RATHER THAN "SEND" because the consequence is shape-dependent: a
- * capture mid-prose means Enter genuinely sends the line to the model, while a
- * capture that was the WHOLE line leaves the token that dispatches the picker —
- * and where that token is a COMMAND-LOCKED word, Enter takes the restored
- * characters as the command's argument and sends nothing at all (UX round 2, U7).
- *
- * `takenBy` is that last case, and it is the CALLER's word rather than a flag here:
- * the sentence has to name what will take them, so "expose" is false in the
- * direction that matters. Only the caller has the planner — the composer asks it for
- * the same locked run the press will take — and asking in here would be a second
- * decision about which word owns the line.
- *
- * THE CALLER MUST ASK THE PRESS'S OWN QUESTION (agent review round 2, R5). `takenBy`
- * is a claim about what Enter does, and the composer reads it off a state the app
- * persists — the disclosure — while the hold is a fact about a ref that dies on a
- * reload. So the argument is `HELD_TAKEN_BY` on exactly the draft whose press
- * `planForDraft` answers `held` for (the composer's `holdsHeldPress`), never on the
- * disclosure's mere presence: the disclosure outliving the record is precisely the
- * shape where this sentence would promise a hold that is not there and Enter
- * dispatches the secret as a command's argument instead.
+ * "EXPOSE" because on such a draft Enter sends what the box shows. The variants that
+ * named a hold or a command taking the tail (`takenBy`) existed for a live cancel
+ * record with restored characters, which no cancel produces now, and were deleted
+ * with that machinery (agent review round 1, R1-2).
  */
-/**
- * The `takenBy` value that means "the press is HELD" rather than "command /X owns the tail".
- *
- * The composer cannot name a command here any more: after an Esc cancel whose span held
- * characters the press is HELD (nothing runs, nothing sends), so "Enter will take them as
- * /credential's argument" is a sentence about a route this change retired. The value is a
- * sentinel, not a command name, because the sentence it selects is not about any command.
- */
-export const HELD_TAKEN_BY = "\u0000held";
-
-export const unredactedNotice = (length: number, takenBy?: string): string =>
-	takenBy === undefined
-		? `${length} characters are now PLAIN TEXT in the composer — Enter will expose them`
-		: takenBy === HELD_TAKEN_BY
-			? `${length} characters are now PLAIN TEXT in the composer — Enter is held: clear the box to release your words`
-			: `${length} characters are now PLAIN TEXT in the composer — Enter will take them as /${takenBy}'s argument, not send them`;
+export const unredactedNotice = (length: number): string =>
+	`${length} characters are now PLAIN TEXT in the composer — Enter will expose them`;
 
 /**
  * The buffer with a LIVE mask replaced by the characters it stands for.
  *
- * ONE RULE, TWO CALLERS, and they are the same rule: Escape unredacts a typed span
- * (`cancelTypedCredential`), and the undo a locked run owes the user has to return
- * the characters they TYPED rather than the mask cells the composer painted over
- * them (UX round 2, U8). A restore that put the bullets back would be a box that
+ * ONE CALLER: the undo a locked run owes the user, which has to return the
+ * characters they TYPED rather than the mask cells the composer painted over them
+ * (UX round 2, U8). Escape was the other caller until 2026-10-22; it discards now
+ * (`cancelTypedCredential`) and never writes characters into the buffer. A restore that put the bullets back would be a box that
  * looks recovered and holds nothing: the user types beside them and gets plain text
  * next to characters that stand for nothing, which is a worse state than the silence
  * the undo replaced,

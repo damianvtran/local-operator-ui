@@ -1,0 +1,58 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "cosh-r1-hi",
+ "session": "7573fba8f85f",
+ "date": "2026-10-22",
+ "locale": "hi",
+ "translator": "translator",
+ "translator_session": "8b5899d65f7c",
+ "namespace": "ui.agentMessages.settings",
+ "status": "passed",
+ "keys_audited": 3,
+ "scope": "The three hold keys (hold.chief_of_staff, hold.chief_of_staff_unlinked, hold.open) added at 2fb94727d3, audited against the English source, context, render site, glossary and hi style guide; the other 84 values were checked byte-identical to the base.",
+ "sha256": {
+  "en": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
+  "hi": "811a19b758a23ac21857713bb892ef6daea6944f4547a005e66c68704aca00ce",
+  "context": "0796c27031e5a3b9a600147e67e1341234f6ed0f5adfd3b7c4f7758a5bcff63d"
+ },
+ "findings": [
+  {
+   "id": "F1",
+   "severity": "MINOR",
+   "key": "ui.agentMessages.settings.hold.chief_of_staff",
+   "current": "{count, plural, one {आपके चीफ़ ऑफ़ स्टाफ के लिए {count} संदेश इंतज़ार में है। उसे पाने के लिए उस बातचीत में एक संदेश भेजें।} other {आपके चीफ़ ऑफ़ स्टाफ के लिए {count} संदेश इंतज़ार में हैं। उन्हें पाने के लिए उस बातचीत में एक संदेश भेजें।}}",
+   "proposed": "{count, plural, one {आपकी चीफ़ ऑफ़ स्टाफ के लिए {count} संदेश इंतज़ार में है। उसे पाने के लिए उस बातचीत में एक संदेश भेजें।} other {आपकी चीफ़ ऑफ़ स्टाफ के लिए {count} संदेश इंतज़ार में हैं। उन्हें पाने के लिए उस बातचीत में एक संदेश भेजें।}}",
+   "note": "Hindi possessives agree with the possessed noun's gender, and hi ui.onboarding greeting_done/greeting_owed establish the chief of staff as feminine ('{name} आपकी चीफ़ ऑफ़ स्टाफ हैं', 'कहेंगी'), so masculine oblique 'आपके' here switches her gender between screens; feminine 'आपकी' stays unchanged before 'के लिए'. The term itself is byte-identical to onboarding, the meaning is correct and the reader is not misled about the action."
+  },
+  {
+   "id": "F2",
+   "severity": "MINOR",
+   "key": "ui.agentMessages.settings.hold.chief_of_staff_unlinked",
+   "current": "{count, plural, one {आपके चीफ़ ऑफ़ स्टाफ के लिए {count} संदेश इंतज़ार में है। उसे पाने के लिए साइडबार में वह बातचीत खोजें और उसमें एक संदेश भेजें।} other {आपके चीफ़ ऑफ़ स्टाफ के लिए {count} संदेश इंतज़ार में हैं। उन्हें पाने के लिए साइडबार में वह बातचीत खोजें और उसमें एक संदेश भेजें।}}",
+   "proposed": "{count, plural, one {आपकी चीफ़ ऑफ़ स्टाफ के लिए {count} संदेश इंतज़ार में है। उसे पाने के लिए साइडबार में वह बातचीत खोजें और उसमें एक संदेश भेजें।} other {आपकी चीफ़ ऑफ़ स्टाफ के लिए {count} संदेश इंतज़ार में हैं। उन्हें पाने के लिए साइडबार में वह बातचीत खोजें और उसमें एक संदेश भेजें।}}",
+   "note": "Same gender drift as F1 (masculine 'आपके' vs the feminine 'आपकी' that onboarding establishes); fix both notices together so they stay consistent."
+  }
+ ],
+ "inherited_receipt": {
+  "base": "2fb94727d3",
+  "path": "i18n/receipts/018e45d9d582.json",
+  "sha256": "3aa95d362b9463e82d53d42e41260f586cb83ae1eb409d248303fcbbacd26849",
+  "keys_inherited": 84,
+  "base_target_sha256": "71a453efe6f7facc6e66bfe45b1c52b7a85c9c51b3051125d3ef6ea6613cb517",
+  "unchanged_values_verified": 84
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+ },
+ "validation": {
+  "independence": "Auditor session 7573fba8f85f did not produce these strings (translator session 8b5899d65f7c). All judgements come from reading the catalogue bytes, not the translator's summary.",
+  "semantics": "Both notices say a message is waiting (इंतज़ार में है/हैं) and that the reader must send one message (एक संदेश भेजें) in that conversation to receive it/them (उसे/उन्हें पाने के लिए). Neither says that opening the conversation is enough, or that anything was refused, failed, read or lost. The unlinked notice points to the sidebar (खोजें) and has no button reference. hold.open 'चीफ़ ऑफ़ स्टाफ को संदेश भेजें' is a polite imperative, the same verb phrase as the notices. The term चीफ़ ऑफ़ स्टाफ is byte-identical to hi ui.onboarding greeting_done/greeting_owed, and साइडबार matches ui.shell and onboarding. संदेश/बातचीत match the rest of the file, and the address form is आप throughout.",
+  "icu": "Parsed en and hi with @formatjs/icu-messageformat-parser: both plural keys have a single plural argument 'count' with arms one/other, and {count} appears in every arm. hold.open has no arguments in either language. Key set and order equal English (87 keys), and the 84 base values are byte-identical to git show HEAD (base sha256 71a453ef…).",
+  "plurals": "Intl.PluralRules('hi') gives [one, other], matching repo practice and the style guide (one covers 0 and 1). Formatted with intl-messageformat for counts 0, 1, 2, 5, 21 and 1000000: count 1 gives है + उसे and counts 2 and up give हैं + उन्हें, so the agreement is correct. {count} is a bare argument, so 1000000 renders ungrouped, the same as the English source.",
+  "typography": "Whole file is NFC with a trailing newline. No bidi controls, ZWJ/ZWNJ or BOM in the hold keys. Nukta is written as combining U+093C (no precomposed U+0958–095F), matching onboarding bytes. Danda । is used with no preceding space.",
+  "overflow": "hold.open has 29 code points and 17 grapheme clusters against 22 English characters, so it is not materially longer. The button is shrink-0, so any extra width wraps the flex-1 <p> rather than truncating the label. A rendered-fit check is still recommended. The notices wrap by design.",
+  "limitations": "Browser unavailable; no screenshots/rendered-fit claim. No catalogue/code edits; no files created in the worktree."
+ }
+}

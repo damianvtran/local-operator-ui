@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * Slider Setting Component
  *
@@ -119,6 +121,7 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 	icon: Icon,
 	isSaving = false,
 }) => {
+	useI18nLocale();
 	const [sliderValue, setSliderValue] = useState<number>(value);
 	const [inputValue, setInputValue] = useState<string>(value.toString());
 	const [isEditing, setIsEditing] = useState(false);
@@ -297,7 +300,12 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 
 				<div className="flex shrink-0 items-center gap-2">
 					{isSaving ? (
-						<Spinner size="md" label={`Saving ${label}`} />
+						<Spinner
+							size="md"
+							label={t("ui.common.forms.slider_setting.saving", {
+								label: label,
+							})}
+						/>
 					) : (
 						<>
 							<Input
@@ -314,7 +322,7 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 								disabled={isSaving}
 								aria-labelledby={labelId}
 								aria-describedby={description ? descriptionId : undefined}
-								className="w-18 text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+								className="w-18 text-end [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
 							/>
 							{unit && (
 								<span className="shrink-0 text-meta text-ink-dim">{unit}</span>

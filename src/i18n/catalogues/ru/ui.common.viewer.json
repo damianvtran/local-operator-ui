@@ -1,0 +1,15 @@
+{
+	"ui.common.viewer.close": "{kind, select, image {Закрыть изображение} asset {Закрыть файл} other {Закрыть}}",
+	"ui.common.viewer.next": "{kind, select, image {Следующее изображение} asset {Следующий файл} other {Далее}}",
+	"ui.common.viewer.opening": "Открытие…",
+	"ui.common.viewer.position": "{kind, select, image {Изображение {index, number, ::group-off} из {count, number, ::group-off}} asset {Файл {index, number, ::group-off} из {count, number, ::group-off}} other {Изображение {index, number, ::group-off} из {count, number, ::group-off}}}",
+	"ui.common.viewer.previous": "{kind, select, image {Предыдущее изображение} asset {Предыдущий файл} other {Назад}}",
+	"ui.common.viewer.reset_view": "Сбросить вид",
+	"ui.common.viewer.zoom_in": "Увеличить",
+	"ui.common.viewer.zoom_out": "Уменьшить",
+	"ui.common.viewer.image_lightbox.previous": "Предыдущее: {medialabel}",
+	"ui.common.viewer.image_lightbox.next": "Следующее: {medialabel}",
+	"ui.common.viewer.image_lightbox.close": "Закрыть: {medialabel}",
+	"ui.common.viewer.image_lightbox.asset_of": "Материал {index, number, ::group-off} из {count, number, ::group-off}",
+	"ui.common.viewer.image_progress": "Изображение {index, number, ::group-off} из {count, number, ::group-off}"
+}

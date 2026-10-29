@@ -46,7 +46,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const rosePine: ThemeDefinition = {
 	id: "rosePine",
 	name: "Rosé Pine",
-	description: "Dusty rose and muted pine on a deep plum night.",
+	descriptionKey: "ui.settings.appearance.theme.rose_pine",
 	palette: {
 		mode: "dark",
 

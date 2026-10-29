@@ -1,0 +1,103 @@
+{
+ "audit_id": "cosh-cos-hold-20261022",
+ "date": "2026-10-22",
+ "locale": "es",
+ "namespace": "ui.agentMessages.settings",
+ "source_commit": "2fb94727d3906e2e2e44cbe91acf95c27aea5105",
+ "source_base": "0f1e6dd538",
+ "scope": "3 hold keys of PR #1325 at en 2fb94727d3 (git diff origin/main...2fb94727d3): hold.chief_of_staff, hold.chief_of_staff_unlinked (new), hold.open. The other 84 values are inherited unchanged from b28d4e61-r2.",
+ "status": "audited",
+ "translator": {
+  "agent": "translator",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-10-22",
+  "session": "06e53573af24",
+  "job": "9f00782ce38f",
+  "remediation_jobs": [
+   "87f46fd8a01b"
+  ]
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "anthropic/claude-opus-5-5",
+   "date": "2026-10-22",
+   "result": "clean",
+   "instance": "cosh-r1-es",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/cosh-r1-es.json",
+   "receipt_sha256": "9fea92b2e10cce35b2219e706623f37f4aa2c20594e6d65d26d15c1ed35323fb",
+   "scope": "Agent-messages chief-of-staff hold: 3-key delta (hold.chief_of_staff, hold.chief_of_staff_unlinked, hold.open) at en 2fb94727d3, independently audited clean; other 84 values inherited unchanged (b28d4e61-r2). Catalogue audit only, not rendered-fit, activation or release approval.",
+   "note": "Independent delta audit, clean in round 1 so no round 2. Record: i18n/audits/evidence/es/ui.agentMessages.settings/cosh-cos-hold-20261022/."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "cosh-r1-es",
+   "session": "d43336f0c8a9",
+   "job": "151e6394e7b8",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 3,
+   "en_sha256": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
+   "context_sha256": "0796c27031e5a3b9a600147e67e1341234f6ed0f5adfd3b7c4f7758a5bcff63d",
+   "target_sha256": "b83a0b0f408f9d748257bb7c2307a9517282346ef169b04c6adfe54d4a549f62",
+   "findings": [],
+   "receipt": {
+    "path": "i18n/receipts/cosh-r1-es.json",
+    "sha256": "9fea92b2e10cce35b2219e706623f37f4aa2c20594e6d65d26d15c1ed35323fb"
+   }
+  }
+ ],
+ "inherited_receipt": {
+  "base": "2fb94727d3",
+  "path": "i18n/receipts/b28d4e61-r2.json",
+  "sha256": "1a105061d61af7a578a2c47e558a798b212df9ff497f53ea766ee31e85cba26a",
+  "keys_inherited": 84,
+  "base_target_sha256": "3c56bdca74ccddae13622d94b2518165649b34a06df30638da2e13d28666ae04",
+  "unchanged_values_verified": 84
+ },
+ "english_revision_note": "The English for the hold keys was rewritten at 2fb94727d3 after code review R1-1 (opening the conversation releases nothing; the reader must send a message). First-pass hold translations made against 359a2f55ec (en 840f0821…) were discarded unaudited and retranslated; no audit of the discarded text is claimed.",
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.agentMessages.settings.json",
+   "sha256": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/es/ui.agentMessages.settings.json",
+   "sha256": "b83a0b0f408f9d748257bb7c2307a9517282346ef169b04c6adfe54d4a549f62"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.agentMessages.settings.context.json",
+   "sha256": "0796c27031e5a3b9a600147e67e1341234f6ed0f5adfd3b7c4f7758a5bcff63d"
+  }
+ },
+ "references": {
+  "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/es.md",
+   "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+  }
+ },
+ "independence": "Translator and auditor are different agents (translator vs translation-auditor) in different sessions; auditors never edited catalogues; the coordinator neither translated nor audited and only assembled evidence with scripts/i18n/ledger-assemble.mjs.",
+ "limitations": [
+  "No per-locale rendered-fit evidence recorded in this audit; hold.open sits in a shrink-0 ghost button beside a wrapping notice.",
+  "No pseudo-localization, native bidi rendering, activation or release evidence claimed."
+ ],
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/cosh-r1-es.json",
+   "sha256": "9fea92b2e10cce35b2219e706623f37f4aa2c20594e6d65d26d15c1ed35323fb"
+  }
+ ]
+}

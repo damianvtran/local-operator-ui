@@ -84,8 +84,9 @@ const bundle = await build({
 			'export { AskPanel } from "./src/renderer/src/features/chat/components/asks/ask-panel";',
 			'export { askQueueView, askChipCountClause, askRevisionDraft, askAnswerMap, presentAsk, askStatusText, askStatusWord } from "./src/renderer/src/features/chat/ask-queue";',
 			'export { ASK_LATE_UNDELIVERED_TEXT, askRefusalIsOwner, askRefusalSentence, askScopeLine } from "./src/renderer/src/features/chat/ask-queue";',
+			'export { t } from "./src/i18n";',
 			'export { DesktopControlError, desktopResult } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
-			'export { DESKTOP_LOST_SIGHT_CODE, DESKTOP_MACHINE_DETAIL, DESKTOP_REFUSAL_CODE, DESKTOP_REFUSAL_SENTENCE, RUNTIME_BUSY_CODE, desktopRequestDeadlineDetail } from "./src/shared/desktop-contract";',
+			'export { DESKTOP_LOST_SIGHT_CODE, DESKTOP_MACHINE_DETAIL, DESKTOP_REFUSAL_CODE, DESKTOP_REFUSAL_COPY_KEY, RUNTIME_BUSY_CODE, desktopRequestDeadlineDetail } from "./src/shared/desktop-contract";',
 			'export { reviseQueuedAsk, answerQueuedAsk, createSendLock } from "./src/renderer/src/features/chat/ask-answer";',
 			'export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";',
 		].join("\n"),
@@ -151,7 +152,8 @@ const {
 	DESKTOP_LOST_SIGHT_CODE,
 	DESKTOP_MACHINE_DETAIL,
 	DESKTOP_REFUSAL_CODE,
-	DESKTOP_REFUSAL_SENTENCE,
+	DESKTOP_REFUSAL_COPY_KEY,
+	t,
 	RUNTIME_BUSY_CODE,
 	desktopRequestDeadlineDetail,
 	reviseQueuedAsk,
@@ -629,7 +631,7 @@ test("the refusal verdict is the classification, not the sentence's spelling", a
 	assert.equal(askRefusalIsOwner(transportFailed), false);
 	assert.equal(
 		askRefusalSentence(transportFailed),
-		DESKTOP_REFUSAL_SENTENCE[DESKTOP_REFUSAL_CODE.transportFailed],
+		t(DESKTOP_REFUSAL_COPY_KEY[DESKTOP_REFUSAL_CODE.transportFailed]),
 	);
 	// C. main's own deadline fired: a 504 `deadline_exceeded`, which is nobody's
 	// verdict on this ask - the request may still be running.

@@ -1,6 +1,8 @@
 import { NOTICE_BAND } from "@shared/components/common/notice-band";
 import { Alert, Button } from "@shared/components/ui";
 import { useConnectivityStatus } from "@shared/hooks/use-connectivity-status";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	type OfflineConfirmation,
@@ -70,6 +72,7 @@ export const ChatStatusStripView = ({
 	outcome = null,
 	onRetry,
 }: ChatStatusStripViewProps) => {
+	useI18nLocale();
 	const key = chatStatusKey(display);
 	const collapsed = key !== null && dismissedKey === key;
 
@@ -186,7 +189,7 @@ export const ChatStatusStripView = ({
 									"text-ink-muted hover:text-ink",
 									"focus-visible:outline-2 focus-visible:outline-accent",
 								)}
-								aria-label="Dismiss"
+								aria-label={t("ui.chat.status_strip.dismiss")}
 							>
 								<X aria-hidden="true" className="size-3.5" />
 							</button>
@@ -206,6 +209,13 @@ export const ChatStatusStripView = ({
  * reconnect IPC - and nothing about how the strip looks.
  */
 export const ChatStatusStrip = () => {
+	/*
+	 * The sentences in `display` resolve through `t()` inside the memo below, so
+	 * the locale is a DEPENDENCY of that memo and not only a re-render trigger:
+	 * without it a language switch would leave the old sentence on screen until
+	 * the connection changed.
+	 */
+	const locale = useI18nLocale();
 	const { connectivityIssue, serverSnapshot, refetchServerStatus } =
 		useConnectivityStatus();
 
@@ -249,6 +259,7 @@ export const ChatStatusStrip = () => {
 			? connectivityIssue
 			: null;
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` IS read - by `t()` inside the builder, which the linter cannot follow. Without it a language switch leaves the old sentence on screen until the connection changes.
 	const display = useMemo(
 		() =>
 			chatStatusDisplay({
@@ -256,7 +267,7 @@ export const ChatStatusStrip = () => {
 				server: serverSnapshot,
 				internetOffline,
 			}),
-		[cause, serverSnapshot, internetOffline],
+		[cause, serverSnapshot, internetOffline, locale],
 	);
 
 	/*

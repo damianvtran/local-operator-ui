@@ -1,0 +1,37 @@
+{
+	"ui.common.file_actions.copy_file_path": {
+		"role": "file actions menu item that copies the file's path to the clipboard",
+		"tone": "verb phrase plus object, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Copies the path, not the file. The same menu lists Open file and Open folder above it, so the three must stay distinguishable.",
+		"placeholders": {}
+	},
+	"ui.common.file_actions.open_file": {
+		"role": "file actions menu item that opens the file with the operating system's default application",
+		"tone": "verb phrase plus object, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Opens the file itself. Distinct from Open folder, which reveals its containing directory.",
+		"placeholders": {}
+	},
+	"ui.common.file_actions.open_folder": {
+		"role": "file actions menu item that reveals the file's containing folder",
+		"tone": "verb phrase plus object, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Opens the parent directory rather than the file. It must not share wording with Open file beyond the word Open, or the two entries read as one action twice.",
+		"placeholders": {}
+	},
+	"ui.common.file_actions.preview": {
+		"role": "file actions menu item that opens the file in the in-app viewer",
+		"tone": "single noun, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Only offered for kinds the in-app viewer can draw. It is a preview inside the app, never an OS open.",
+		"placeholders": {}
+	},
+	"ui.common.file_actions.show_in_canvas": {
+		"role": "file actions menu item that opens the file in the Canvas pane",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Canvas is the product's own pane name and stays untranslated. Distinct from Preview, which the file's own viewer opens.",
+		"placeholders": {}
+	}
+}

@@ -1,0 +1,107 @@
+{
+ "audit_id": "wave-b-delta-20261027",
+ "locale": "ru",
+ "namespace": "ui.chat.device",
+ "audit_date": "2026-10-27",
+ "source_commit": "a5356ce91c4f37bf4c4d1c4518070e3a9b2505cb",
+ "delta_base_commit": "0559f7f7d830752b0c5d118c2b1049f125b43bbb",
+ "scope": "wave B delta at a5356ce91c: no ru value changed; all 11 wave-B ru values proved byte-identical to the audited bytes at 0559f7f7d8; the English source changed here (pairing_guidance code span closed) and the ru render was re-checked through intl-messageformat",
+ "audit_kind": "delta",
+ "whole_file_audited": false,
+ "wave_b_key_count": 11,
+ "namespace_key_count": 25,
+ "changed_values_audited": [
+  "en:ui.chat.device.sentence.pairing_guidance"
+ ],
+ "unchanged_wave_b_values_verified_byte_identical": 11,
+ "namespace_keys_identical_to_audited_bytes": 25,
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "99a6b1da62c4",
+  "model": "radient/auto",
+  "model_route": "radient/auto",
+  "served_model": "not exposed by this harness build",
+  "actual_model_source": "harness session header `Model: radient/auto` (session 99a6b1da62c4); the resolved backend model id is not exposed to the session",
+  "fallback": "none observed",
+  "effort": "auto",
+  "independent_from_translator_session": true,
+  "authored_translation": false,
+  "edited_catalogues": false,
+  "repo_edits": false
+ },
+ "independence": {
+  "authored_translation": false,
+  "translated_these_namespaces": false,
+  "translator_identity": "ui.chat.status: i18n-translator / radient/auto (supplied by the requesting session, 2026-10-27). The other eight rows keep the historical translator identity ledger-assemble preserves; no translator of the amended bytes was named to this auditor.",
+  "distinct_from_translator": true,
+  "catalogue_bytes_unchanged_by_this_audit": true
+ },
+ "guidance": {
+  "glossary": {
+   "path": "/Users/damian/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "ru_style_guide": {
+   "path": "/Users/damian/local-operator/i18n/style-guides/ru.md",
+   "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+  }
+ },
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.device.json",
+   "sha256": "0d4c357edbb9a67d015301f263e3892f752aca9ee63a3d5c737bf12a9ac6375a"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.device.context.json",
+   "sha256": "b3f41c2c587de6559aa52fe15ab2cfdda521df44b770b76ac8160855fd5c4a7a"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/ru/ui.chat.device.json",
+   "sha256": "f07dc132a7453e5c67fafcaca1af98d4daf6e429dc67466688d6c3681638d32f"
+  }
+ },
+ "artifacts": [
+  {
+   "path": "i18n/audits/evidence/ru/ui.chat.device/wave-b-delta-20261027/audit.log",
+   "sha256": "4392b5eb5b62728085c5dfe34d3bdfa51e367904aab032ceda3522d9041e38ff",
+   "kind": "execution log (delta, gates, ICU parity, second pass, ledger probe)"
+  },
+  {
+   "path": "i18n/receipts/99a6b1da62c4.json",
+   "sha256": "cd29f991e8bb41ef60c5b233bcbdcd6e67d6bba96bd2bcda189e27364683d67b",
+   "kind": "audit receipt (nine namespace blocks)"
+  }
+ ],
+ "findings": [],
+ "finding_ids": [],
+ "current_report_verdict": {
+  "status": "passed",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [],
+  "unresolved_findings": []
+ },
+ "observations": [
+  {
+   "id": "RU-WBD-O6",
+   "scope": "english-source-fix",
+   "key": "ui.chat.device.sentence.pairing_guidance",
+   "detail": "The English value gained its closing backtick in this commit (3 -> 4). The ru value was already balanced (4) and is byte-identical across the commit; rendering it with the real formatter gives 4 literal backticks and a literal <token> (the ASCII apostrophes are ICU quoting and are consumed exactly as in English). Verified, not assumed.",
+   "evidence": "audit.log section C"
+  },
+  {
+   "id": "RU-WBD-O7",
+   "scope": "ledger-provenance",
+   "key": "i18n/ledger.json (all nine ru rows)",
+   "detail": "Because every one of the nine ru catalogue files changed after its last audited bytes, NO carried-forward block is possible: ledger-rules binds each namespace block to the whole-file English AND target sha256, and all nine row pairs are stale at head (ledger-check: 25 ru findings before the rows are re-recorded, 1 of them 'ui.chat.status shipped without a ledger entry'). Hence a fresh nine-namespace receipt at full 62-key scope. CAVEAT for the coordinator: ledger-assemble preserves an existing row's historical `translator` identity (so ru/ui.chat keeps i18n-translator/deepseek-flash dated 2026-10-18 even though wave B amended its bytes); that is the tool's designed behaviour and matches what the other six locales will get. Updating translator provenance would be a deliberate hand edit, and should be done for all locales or none - I have not done it.",
+   "evidence": "audit.log section I; ledger-check-before.log"
+  },
+  {
+   "id": "RU-WBD-O8",
+   "scope": "carried-observation",
+   "key": "ui.chat.device.sentence.move_in_flight",
+   "detail": "The prior audit's RU-WB-O4 stands unchanged: a user-supplied network name is inserted raw into «перемещается на {name}», which an adversarial name can bend. The value is byte-identical to the audited bytes, so it is not re-opened as a finding here; the locale-pattern note carries forward.",
+   "evidence": "diff-wave-b.json (this key unchanged), icu-ru.json render row"
+  }
+ ],
+ "audit_notes_not_execution_log": "The prose fields (scope, findings, observations) are this auditor's judgement. The commands and their output are in audit.log, which is execution output, not prose. No translated value was edited by this audit; the catalogue bytes it records are the committed bytes at the head above, verified with `git show <sha>:<path> | shasum -a 256`."
+}

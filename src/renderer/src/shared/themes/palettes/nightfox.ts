@@ -41,7 +41,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const nightfox: ThemeDefinition = {
 	id: "nightfox",
 	name: "Nightfox",
-	description: "Nordfox night: slate blue under a pale azure accent.",
+	descriptionKey: "ui.settings.appearance.theme.nightfox",
 	palette: {
 		mode: "dark",
 

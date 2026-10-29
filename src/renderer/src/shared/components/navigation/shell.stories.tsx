@@ -293,6 +293,17 @@ const DESKTOP_CAPABILITIES = {
 		settings: 1,
 		agents_config: 1,
 		session_interrupt: 1,
+		/*
+		 * The operator's IA asks for Library and Projects in the primary rows;
+		 * the shell fixture advertises both so the evidence frames show the real
+		 * order rather than a column that silently omitted two destinations.
+		 */
+		library: 1,
+		projects: 1,
+		/* The Team Bridge row joins the More group only when the backend
+		   publishes the conversation surface; the shell fixture advertises it so
+		   the nav evidence frames show the real group. */
+		team_bridge_conversations: 1,
 	},
 };
 
@@ -342,6 +353,19 @@ const desktopRoute = async (
 			return desktopOk(DESKTOP_CAPABILITIES);
 		case "config.get":
 			return desktopOk(CONFIG);
+		case "team_bridge.unread":
+			/* One account-wide read; the count the row carries in these frames. */
+			return desktopOk({
+				total: 3,
+				organizations: [
+					{
+						tenant_id: "tnt_story",
+						tenant_name: "Story org",
+						unread: 3,
+						eligible: true,
+					},
+				],
+			});
 		case "instructions.get":
 			return desktopOk({
 				content: SYSTEM_PROMPT_CONTENT,
@@ -589,7 +613,7 @@ const ShellFrame: FC<{ children: ReactNode; windows?: boolean }> = ({
 			<ChatLayout
 				sidebar={<SidebarNavigation />}
 				content={
-					<main className="flex min-w-0 grow flex-col overflow-hidden">
+					<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden">
 						{children}
 					</main>
 				}
@@ -739,6 +763,57 @@ export const AgentsEmpty: Story = {
  */
 export const RailCollapsed: Story = {
 	render: () => <AgentsShell agentId={AGENTS[0].id} collapsed />,
+};
+
+/**
+ * The More group, collapsed and expanded.
+ *
+ * It renders the REAL rail inside `ChatLayout` - the composition `app.tsx`
+ * draws - so the frames show the bottom group, its ellipsis, the chevron and
+ * the revealed Agent Hub/Mesh rows exactly as the app arranges them. The
+ * preference is persisted in the app's store; these stories state both values
+ * explicitly and restore the default afterwards so one frame cannot leak into
+ * the next.
+ */
+const NavOverflowState: FC<{
+	open: boolean;
+	collapsed?: boolean;
+}> = ({ open, collapsed = false }) => {
+	const setOverflow = useUiPreferencesStore(
+		(state) => state.setSidebarOverflowExpanded,
+	);
+	const setCollapsed = useUiPreferencesStore(
+		(state) => state.setSidebarCollapsed,
+	);
+	useLayoutEffect(() => {
+		setOverflow(open);
+		setCollapsed(collapsed);
+		return () => {
+			setOverflow(false);
+			setCollapsed(false);
+		};
+	}, [open, collapsed, setOverflow, setCollapsed]);
+	return (
+		<ShellFrame>
+			<AgentsPage />
+		</ShellFrame>
+	);
+};
+
+export const NavMoreCollapsed: Story = {
+	render: () => <NavOverflowState open={false} />,
+};
+
+export const NavMoreExpanded: Story = {
+	render: () => <NavOverflowState open />,
+};
+
+export const NavMoreStripExpanded: Story = {
+	render: () => <NavOverflowState open collapsed />,
+};
+
+export const NavMoreStripCollapsed: Story = {
+	render: () => <NavOverflowState open={false} collapsed />,
 };
 
 /* ------------------------------------------------------------------ *
@@ -923,7 +998,12 @@ const ConversationStandIn = ({
 	return (
 		<div
 			data-tour-tag="chat-column"
-			className="w-0 min-w-[480px] flex-1 flex h-full min-h-0 flex-col overflow-hidden"
+			/*
+			 * `panel-top-pad bg-canvas`, as `chat-content.tsx`'s column: under the
+			 * flush row this column's ground starts at y0 and its own pad moves the
+			 * header below the OS controls.
+			 */
+			className="panel-top-pad w-0 min-w-[480px] flex-1 flex h-full min-h-0 flex-col overflow-hidden bg-canvas"
 		>
 			<ChatHeader
 				agentName="Core"
@@ -1160,11 +1240,18 @@ const ChatShellFrame: FC<{
 			<ChatLayout
 				sidebar={<SidebarNavigation />}
 				content={
-					<main className="flex min-w-0 grow flex-col overflow-hidden">
+					<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden">
+						{/*
+						 * The pane row stands in for `ChatPage`'s root, so it is the chat
+						 * route's flush root as that is (design round 1, D1): it cancels
+						 * `<main>`'s pad so the conversation, the slot's pane and the rail
+						 * all start at y0 and each pads itself once. `flex-1`, not `h-full`,
+						 * so the negative margin is absorbed rather than lost at the bottom.
+						 */}
 						<div
 							ref={rowRef}
 							data-tour-tag="pane-row"
-							className="flex h-full min-h-0 w-full overflow-hidden"
+							className="panel-flush flex min-h-0 w-full flex-1 overflow-hidden"
 						>
 							<ConversationStandIn
 								details={details}

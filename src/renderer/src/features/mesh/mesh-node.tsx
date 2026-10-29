@@ -10,8 +10,8 @@
  *
  * WHAT A NODE MAY SAY is the plan's §5 node contract: a title, ONE stat line, and -
  * for the states that mean something - the state in words. Colour is never the only
- * channel (WCAG 1.4.1): the three states that are not the ordinary case take a hue
- * AND a word, exactly as `chat-session-status.tsx` already does for sessions.
+ * channel (WCAG 1.4.1): a state that is not the ordinary case takes a hue AND a
+ * word, exactly as `chat-session-status.tsx` already does for sessions.
  *
  * ## Slice 2: the node became a CONTAINER, and the chips are why
  *
@@ -39,6 +39,7 @@ import { t } from "../../../../i18n/messages";
 import { DRAG_THRESHOLD_PX } from "./mesh-drag";
 import type { DeviceState, MeshDevice, MeshNetwork } from "./mesh-graph";
 import { conversationUnit, deviceStatLine } from "./mesh-graph";
+import { MeshDeviceIdentity } from "./mesh-identity";
 import {
 	DEVICE_HEIGHT,
 	NETWORK_HEIGHT,
@@ -56,6 +57,7 @@ import {
 } from "./mesh-reach";
 import { sessionStripeKey } from "./mesh-sessions";
 import type { ChipStripeKey, DeviceSessions } from "./mesh-sessions";
+import { deviceDisplayName, deviceIdentityText } from "./mesh-types";
 import type { MeshSessionRow } from "./mesh-types";
 
 /**
@@ -80,15 +82,25 @@ import type { MeshSessionRow } from "./mesh-types";
  * `#38c96a` against `success` `#57c785` measure ΔE00 5.07 apart on `localOperatorDark`
  * and 2.22 on `localOperatorLight`, the same green to the eye - so a graph whose own
  * device and whose healthy nodes are those two has no status channel left. `reached`
- * is therefore the quiet case, `not-attempted` and `unknown` take no hue at all (an
- * app's own limit and an absent read are neither of them the device's failure), and
- * `unanswered` is the one probe result that earns `warning`.
+ * is therefore the quiet case, `not-attempted`, `unknown`, `no-endpoint` and
+ * `not-a-member` take no hue at all (an app's own limit, an absent read, an
+ * unpublished address and a membership fact are none of them the device's failure),
+ * and the four OBSERVED transport failures (`unanswered`, `relay-down`,
+ * `handshake-refused`, `address-unreachable`) earn `warning` - told apart by word
+ * and glyph, never by a second hue.
  */
 const REACH_STRIPE: Record<DeviceReach, string> = {
 	self: "border-l-hairline",
 	// `border-control` is already the node's edge, so the resting stripe takes the
 	// decorative hairline rather than a second, louder line.
 	reached: "border-l-hairline",
+	// The four OBSERVED transport failures take amber; the word on the state line
+	// tells them apart, so colour is never the only channel and no extra hue is spent.
+	"relay-down": "border-l-warning",
+	"handshake-refused": "border-l-warning",
+	"address-unreachable": "border-l-warning",
+	"no-endpoint": "border-l-hairline",
+	"not-a-member": "border-l-hairline",
 	unanswered: "border-l-warning",
 	"not-attempted": "border-l-hairline",
 	unknown: "border-l-hairline",
@@ -116,6 +128,8 @@ function nodeStripe(device: MeshDevice): string {
 const STATE_RING: Record<DeviceState, string | null> = {
 	self: "ring-2 ring-accent",
 	reachable: null,
+	relay_down: null,
+	handshake_refused: null,
 	unreachable: null,
 	suspect: null,
 };
@@ -167,7 +181,12 @@ export function deviceNodeName(
 	nowSeconds: number,
 	activity: string | null,
 ): string {
-	return [device.label, deviceStatLine(device, nowSeconds), activity]
+	return [
+		deviceDisplayName(device),
+		device.id,
+		deviceStatLine(device, nowSeconds),
+		activity,
+	]
 		.filter(Boolean)
 		.join(", ");
 }
@@ -287,22 +306,34 @@ export const MeshNetworkNode: FC<NetworkNodeProps> = ({
 				</span>
 				<span
 					/*
-					 * The member count, and `epoch` as the element's `title` rather than as a
-					 * second line: a lane has one line of room, and the epoch is the fact a
-					 * reader consults once (when something was revoked) rather than the one
-					 * they scan. Keeping it in the title spends no vertical space and keeps
-					 * the number on screen - the plan § 5's node contract, and #498's design
-					 * round 1, D10.
+					 * The LIVE member count, then the revoked count as its own clause, and
+					 * `epoch` as the element's `title` rather than as a second line: a lane
+					 * has one line of room, and the epoch is the fact a reader consults once
+					 * (when something was revoked) rather than the one they scan. Keeping it
+					 * in the title spends no vertical space and keeps the number on screen -
+					 * the plan § 5's node contract, and #498's design round 1, D10.
+					 *
+					 * WHY THIS IS TEXT AND NOT THE DISCLOSURE: a lane is a heading-like
+					 * row with a fixed height in the solved geometry, and the shared
+					 * disclosure's body renders in flow - opening one here would grow a box
+					 * the layout has already priced. The tab's census band above the canvas
+					 * carries the one count that opens into the audit rows
+					 * (`mesh-revoked.tsx`); this lane only reports its network's share.
 					 */
 					title={t("ui.mesh.mesh_list.epoch", { epoch: network.epoch })}
 					className="block truncate text-meta text-ink-dim"
 				>
 					{t("ui.mesh.mesh_graph.device_count", { count: network.memberCount })}
-					{network.revokedCount > 0
-						? t("ui.mesh.mesh_list.revoked_count", {
+					{/* The revoked clause's separator is markup, not the copy's leading space: see
+					 * `mesh-list.tsx` (design review round 1, D2). */}
+					{network.revokedCount > 0 ? (
+						<>
+							{" · "}
+							{t("ui.mesh.mesh_list.revoked_count", {
 								count: network.revokedCount,
-							})
-						: ""}
+							})}
+						</>
+					) : null}
 				</span>
 			</span>
 		</li>
@@ -311,6 +342,8 @@ export const MeshNetworkNode: FC<NetworkNodeProps> = ({
 
 type DeviceNodeProps = {
 	device: MeshDevice;
+	/** Every id on this canvas, so equal names cannot hide a compact-id collision. */
+	deviceIds: readonly string[];
 	x: number;
 	y: number;
 	nowSeconds: number;
@@ -338,6 +371,7 @@ type DeviceNodeProps = {
 };
 export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 	device,
+	deviceIds,
 	x,
 	y,
 	nowSeconds,
@@ -464,7 +498,7 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 					 * coordinates (`DEVICE_HEIGHT`), and `justify-between` absorbs the fractions of a
 					 * line so those three rows cannot add up to 96.4 px and push the next node down.
 					 */
-					"flex w-full flex-col justify-between rounded-t-[5px] px-3 pt-2 pb-2 text-left",
+					"flex w-full flex-col justify-between rounded-t-[5px] px-3 pt-2 pb-2 text-start",
 					// A CONTROL'S CURSOR (UX review round 1, U6): this is the click-to-inspect target
 					// and Tailwind's preflight leaves buttons at `cursor: default`, so the title
 					// read like a label. `cursor-pointer` is the app's own spelling.
@@ -485,9 +519,13 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 						aria-hidden="true"
 						className="size-4 shrink-0 text-ink-muted"
 					/>
-					<span className="min-w-0 flex-1 truncate text-body-sm text-ink">
-						{device.label}
-					</span>
+					<MeshDeviceIdentity
+						className="min-w-0 flex-1 text-body-sm text-ink"
+						deviceId={device.id}
+						deviceIds={deviceIds}
+						name={device.name}
+						compact
+					/>
 					{device.suspect && (
 						<ShieldAlert
 							aria-hidden="true"
@@ -566,7 +604,7 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 			 */}
 			<ul
 				aria-label={t("ui.mesh.mesh_node.conversations_on", {
-					device: device.label,
+					device: deviceIdentityText(device, deviceIds, true),
 				})}
 				className={cn(
 					/*
@@ -599,7 +637,7 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 					<SessionChip
 						key={session.id}
 						session={session}
-						ownerLabel={device.label}
+						ownerLabel={deviceIdentityText(device, deviceIds, true)}
 						ownerReach={reach}
 						ownerReachable={device.reachable}
 						moving={movingSessionId === session.id}
@@ -755,7 +793,7 @@ const SessionChip: FC<SessionChipProps> = ({
 					 * THE TEXT MOVED INTO ITS OWN SPAN with that change: a flex container cannot
 					 * ellipsise its own text, so the truncation lives on the one span that still can.
 					 */
-					"flex min-h-6 w-full max-w-32 items-center rounded-sm border border-hairline bg-surface px-1.5 text-left text-meta text-ink-muted",
+					"flex min-h-6 w-full max-w-32 items-center rounded-sm border border-hairline bg-surface px-1.5 text-start text-meta text-ink-muted",
 					// THE CURSOR SAYS IT CAN BE GRABBED (UX review round 1, U6): the chips are
 					// the draggable things and the only cue was a `title` tooltip the reader had
 					// to wait for. `cursor-pointer` is the app's own spelling for a control.

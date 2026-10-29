@@ -695,10 +695,29 @@ test("the publish dialog offers the org target and disables a plan-blocked one",
 		/\{blockedTargets\.map\(\(org\) => \(/,
 		"a plan-blocked org is listed rather than omitted, so its absence is not silent",
 	);
+	/*
+	 * The reason rides the label of the DISABLED item, and the wording is catalogue
+	 * copy. The pin is therefore the two key references the item is built from plus
+	 * the English those keys carry: the component can stop rendering the reason, or
+	 * the English can stop saying it, and each fails here on its own.
+	 */
 	assert.match(
 		dialog,
-		/\{org\.tenant_name \|\| "Organization"\} \(upgrade needed\)/,
+		/\{org\.tenant_name \|\| t\("ui\.hub\.pages\.scope\.org_label"\)\}\{" "\}\s*\{t\("ui\.agents\.upload\.target\.upgrade"\)\}/,
 		"the blocked item carries the reason in its own label",
+	);
+	const uploadCopy = JSON.parse(
+		read("src/i18n/catalogues/en/ui.agents.upload.json"),
+	);
+	assert.equal(
+		uploadCopy["ui.agents.upload.target.upgrade"],
+		"(upgrade needed)",
+	);
+	assert.equal(
+		JSON.parse(read("src/i18n/catalogues/en/ui.hub.pages.json"))[
+			"ui.hub.pages.scope.org_label"
+		],
+		"Organization",
 	);
 	assert.match(
 		dialog,
@@ -729,19 +748,53 @@ test("the dialog's title and submit label describe the selected target", () => {
 	const dialog = read(
 		"src/renderer/src/features/agents/components/upload-agent-dialog.tsx",
 	);
+	/*
+	 * KEYED COPY MOVED THE SENTENCE, NOT THE CLAIM. The claim is that an
+	 * organization selection names the ORGANIZATION rather than "the Agent hub",
+	 * and it now has two independent ways to regress: the org arm can call the
+	 * public key, or the English the org key carries can stop naming a
+	 * destination. A pin on the rendered sentence therefore has to read BOTH —
+	 * the arm's key choice here, and the catalogue entry's English below — or a
+	 * swap on either side passes unobserved.
+	 */
 	assert.match(
 		dialog,
-		/published\.orgName\s*\?\s*`Published "\$\{agentName\}" to \$\{published\.orgName\}`/,
+		/published\.orgName\s*\)\s*\{\s*return\s+t\(\s*"ui\.agents\.upload\.title\.published_org",\s*\{\s*name:\s*agentName,\s*destination:\s*published\.orgName,/,
 		"the receipt names the organization, not the hub",
 	);
 	assert.match(
 		dialog,
-		/targetIsOrg\s*\?\s*`Publish "\$\{agentName\}" to \$\{targetDisplayName\}\?`/,
+		/targetIsOrg\s*\)\s*\{\s*return\s+t\(\s*"ui\.agents\.upload\.title\.publish_org",\s*\{\s*name:\s*agentName,\s*destination:\s*targetDisplayName,/,
 		"the pre-submit title names the organization",
 	);
+	const uploadCopy = JSON.parse(
+		read("src/i18n/catalogues/en/ui.agents.upload.json"),
+	);
+	for (const key of [
+		"ui.agents.upload.title.published_org",
+		"ui.agents.upload.title.publish_org",
+	]) {
+		assert.match(
+			uploadCopy[key],
+			/\{destination\}/,
+			`${key} still puts the organization's name in the sentence`,
+		);
+		assert.doesNotMatch(
+			uploadCopy[key],
+			/Agent Hub/i,
+			`${key} names the organization, not the hub`,
+		);
+	}
+	/*
+	 * ANCHORED ON THE TERNARY'S COLON, NOT ON THE EXPRESSION ALONE. The WHY comment
+	 * above the control quotes `listing && !targetIsOrg` verbatim, so a bare
+	 * /listing && !targetIsOrg/ is satisfied by that prose: deleting the guard from
+	 * the code left this pin green (measured, mutation c). The colon before it
+	 * exists only in the code.
+	 */
 	assert.match(
 		dialog,
-		/listing && !targetIsOrg/,
+		/:\s*listing && !targetIsOrg\s*\?/,
 		"`Update listing` is only true of a PUBLIC listing, because an org publication is always new",
 	);
 });
@@ -1087,7 +1140,18 @@ test("both refusal sections agree on severity, and both retries are filled contr
 		roster,
 		/aria-hidden="true"\s+className="flex flex-col divide-y divide-hairline"\s+data-testid="org-teams-loading"/,
 	);
-	assert.match(page, /statusSentence = "Loading teams…"/);
+	// The loading line is catalogue copy: the key the page renders, and the English
+	// that key carries.
+	assert.match(
+		page,
+		/statusSentence = t\("ui\.hub\.pages\.status\.loading_teams"\);/,
+	);
+	assert.equal(
+		JSON.parse(read("src/i18n/catalogues/en/ui.hub.pages.json"))[
+			"ui.hub.pages.status.loading_teams"
+		],
+		"Loading teams…",
+	);
 });
 
 test("the roster renders a coded pull refusal through the shared treatment", () => {
@@ -1134,11 +1198,21 @@ test("the plan remedy names the Team plan and the console", () => {
 	for (const source of [page, roster, failure]) {
 		assert.doesNotMatch(source, /active team plan/);
 	}
-	// C5: plan activation happens in the console, and the sentence says so.
+	// C5: plan activation happens in the console, and the sentence says so. The
+	// roster's and the table's wording is catalogue copy, so the source pins follow
+	// the KEYS and the catalogue pins check the wording itself.
 	assert.match(page, /can activate it in the Radient console/);
-	assert.match(roster, /can activate it in the Radient console/);
+	assert.match(roster, /t\("ui\.hub\.teams\.org\.plan_body"/);
+	assert.match(
+		read("src/i18n/catalogues/en/ui.hub.teams.json"),
+		/can activate it in the Radient console/,
+	);
 	assert.match(
 		failure,
+		/t\("ui\.agents\.publication\.team_plan_required\.body"/,
+	);
+	assert.match(
+		read("src/i18n/catalogues/en/ui.agents.publication.json"),
 		/activate it in the Radient console, then publish again/,
 	);
 	// C4: the plural branch reads as a plural. It lives in the DIALOG, beside the
@@ -1595,14 +1669,51 @@ test("each scope reads its own team list, and neither reads the other's", () => 
 
 test("the status sentence names the scope, and the pager keeps its labels", () => {
 	const page = read("src/renderer/src/features/agent-hub/agent-hub-page.tsx");
-	assert.match(page, /"in the public hub"/);
-	assert.match(page, /`shared with \$\{orgName \?\? "this organization"\}`/);
+	// Both scope phrases are catalogue copy now, so each is pinned twice: the key
+	// the page renders, and the English the key carries.
+	assert.match(page, /t\("ui\.hub\.pages\.status\.scope\.public"\)/);
+	assert.match(
+		page,
+		/t\("ui\.hub\.pages\.status\.scope\.shared_with", \{\s*org: orgName \?\? t\("ui\.hub\.pages\.scope\.org_unnamed"\)/,
+	);
+	const pagesCopy = JSON.parse(
+		read("src/i18n/catalogues/en/ui.hub.pages.json"),
+	);
+	assert.equal(
+		pagesCopy["ui.hub.pages.status.scope.public"],
+		"in the public hub",
+	);
+	assert.equal(
+		pagesCopy["ui.hub.pages.status.scope.shared_with"],
+		"shared with {org}",
+	);
+	assert.equal(
+		pagesCopy["ui.hub.pages.scope.org_unnamed"],
+		"this organization",
+	);
 	assert.match(page, /data-testid="agent-hub-status"/);
 	const pager = read(
 		"src/renderer/src/features/agent-hub/components/hub-pager.tsx",
 	);
-	assert.match(pager, /aria-label="Previous page"/);
-	assert.match(pager, /aria-label="Next page"/);
+	assert.match(
+		pager,
+		/aria-label=\{t\("ui\.common\.forms\.compact_pagination\.previous_page"\)\}/,
+	);
+	assert.match(
+		pager,
+		/aria-label=\{t\("ui\.common\.forms\.compact_pagination\.next_page"\)\}/,
+	);
+	const formsCopy = JSON.parse(
+		read("src/i18n/catalogues/en/ui.common.forms.json"),
+	);
+	assert.equal(
+		formsCopy["ui.common.forms.compact_pagination.previous_page"],
+		"Previous page",
+	);
+	assert.equal(
+		formsCopy["ui.common.forms.compact_pagination.next_page"],
+		"Next page",
+	);
 	assert.match(pager, /min-h-13/);
 	// The sidebar's stepper is not the hub's footer any more, and is untouched.
 	assert.doesNotMatch(page, /import \{ CompactPagination \}/);
@@ -1656,7 +1767,13 @@ test("no surface still says the public hub lists agents only", async () => {
 	// The library STATES what the catalogue is and that pulling is the act this
 	// surface owns, which is the copy the notice's premise had replaced.
 	const library = read(`${feature}/components/public-teams-library.tsx`);
-	assert.match(library, /Public teams are published to the hub/);
+	// The statement is catalogue copy: the key the library renders, and the English
+	// the key carries.
+	assert.match(library, /t\("ui\.hub\.teams\.public\.intro"\)/);
+	assert.match(
+		read("src/i18n/catalogues/en/ui.hub.teams.json"),
+		/Public teams are published to the hub/,
+	);
 	assert.match(library, /agent-hub-public-teams-search/);
 });
 
@@ -1687,14 +1804,25 @@ test("the pager and the roster hand focus to a surviving control", () => {
  * declare. Freshness of a blob's pixels is what the re-shoot commit and its
  * message are for; a missing or orphaned frame is what this catches.
  */
-test("every agent-hub-page state holds one frame per sweep theme", async () => {
+test("every agent-hub-page state holds one frame per sweep theme", async (t) => {
 	const { readdirSync, existsSync } = await import("node:fs");
 	const table = read("scripts/capture-evidence.mjs");
 	const registered = [
 		...table.matchAll(/^\t\["agent-hub-page--([a-z0-9-]+)",/gm),
 	].map((match) => match[1]);
 	assert.ok(registered.length >= 27, "the table registers the hub's states");
-	const root = "docs/evidence/agent-hub-page";
+	/*
+	 * The IGNORED frames tree: a frame is rig output and is no longer committed
+	 * (`docs/evidence-frames`), so a clean checkout has none and this cell can
+	 * only be asked where a capture has been taken.
+	 */
+	const root = "docs/evidence-frames/agent-hub-page";
+	if (!existsSync(root)) {
+		t.skip(
+			"no captured frames: docs/evidence-frames is rig output, so run node scripts/capture-evidence.mjs first",
+		);
+		return;
+	}
 	const onDisk = readdirSync(root, { withFileTypes: true })
 		.filter((entry) => entry.isDirectory())
 		.map((entry) => entry.name);

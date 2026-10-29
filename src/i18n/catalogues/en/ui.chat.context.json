@@ -1,4 +1,333 @@
 {
+	"ui.chat.action.stopped": {
+		"role": "status word after a turn was stopped",
+		"tone": "past participle, sentence case, no trailing punctuation",
+		"note": "Follows the turn's own stop control, so it names what the reader did rather than a failure.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_collapse": {
+		"role": "accessible name of the session goal while its disclosure is open; the press closes it",
+		"tone": "imperative verb phrase, sentence case, no trailing punctuation",
+		"note": "The goal's own text follows after an em dash, so this string carries no final punctuation. 'Session goal' is the region's name, kept identical to the expand arm's.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_dismiss": {
+		"role": "visible word on the control that puts a finished goal's chip away",
+		"tone": "one verb, sentence case, no trailing punctuation",
+		"note": "Not a deletion: the finished goal stays in the goal history, which the longer name states. This word sits on a 24px row and is dropped below the narrow column floor, where the control keeps its icon and accessible name.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_dismiss_keep": {
+		"role": "middle clause of the finished goal's dismiss accessible name",
+		"tone": "declarative clause, lower-case start, no trailing punctuation",
+		"note": "Relays that the dismissal hides the row and keeps the record. It is joined between em dashes, so it stays lower case and takes no full stop.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_dismiss_name": {
+		"role": "head of the finished goal's dismiss tooltip and accessible name",
+		"tone": "imperative verb phrase, sentence case, no trailing punctuation",
+		"note": "Followed by the keep clause and the goal itself, both after em dashes. It names dismissing the chip, not deleting the record that the next clause says survives.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_done": {
+		"role": "visible word on the control that records the goal as done",
+		"tone": "one verb, sentence case",
+		"note": "It marks the goal finished and records the decision; it is not a dismissing 'Done' from a dialog. A separate longer key names the action for screen readers, because 'Done' alone would not say what is done.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_done_name": {
+		"role": "head of the goal's done control in its accessible name and tooltip",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"note": "The goal text follows after a dash. Nothing is destroyed: the record stays in the goal history.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_expand": {
+		"role": "accessible name of the session goal while its disclosure is closed; the press opens it",
+		"tone": "imperative verb phrase, sentence case, no trailing punctuation",
+		"note": "The goal's own text follows after an em dash. 'Session goal' is the region's name, identical in both arms so the name does not change identity when it opens.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.goal_label": {
+		"role": "visible label at the head of the session goal chip",
+		"tone": "noun with a colon, sentence case",
+		"note": "The row's chips lead with the fact's name and a colon; the disambiguating words live in the accessible names.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.jobs_action": {
+		"role": "head of the jobs chip's tooltip and accessible name",
+		"tone": "imperative verb phrase plus the destination section, sentence case, no trailing punctuation",
+		"note": "The count and state clauses follow after an em dash. 'Open' moves the reader to the run pane's Jobs section instead of disclosing something in place.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.loop_clear": {
+		"role": "action label on the loop chip's dismiss control once the loop has settled",
+		"tone": "verb plus object, sentence case, no trailing punctuation",
+		"note": "The settled state is cleared, never stopped - 'Stop' belongs to the running state only. This press sends no command: it clears the row's own acknowledgement of a settled loop.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.loop_label": {
+		"role": "visible label at the head of the loop chip",
+		"tone": "noun with a colon, sentence case",
+		"note": "The wire's own status word follows, untranslated, so the chip and the loop picker spell one state the same way.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.loop_progress_of_turns": {
+		"role": "turn progress clause inside the loop chip and its accessible name",
+		"tone": "two counts with a trailing noun",
+		"note": "Rendered after a comma that follows the wire's status word. Keep both numbers and the noun; the wording is a fact about turns completed out of the loop's allowance.",
+		"placeholders": {
+			"completed": "number of turns the loop has completed",
+			"total": "number of turns the loop was allowed"
+		}
+	},
+	"ui.chat.composer.status.loop_progress_turns": {
+		"role": "turn count clause inside the loop chip when the loop carries no allowance",
+		"tone": "a counted noun, pluralized by the locale's own rules",
+		"note": "Rendered after a comma that follows the wire's status word. Plural categories are the locale's own; do not copy English's two-arm shape.",
+		"placeholders": {
+			"count": "number of turns completed so far"
+		}
+	},
+	"ui.chat.composer.status.loop_stop": {
+		"role": "action label on the loop chip's dismiss control while the loop is running",
+		"tone": "verb plus object, sentence case, no trailing punctuation",
+		"note": "The running state is stopped; a settled loop is cleared instead, which is a separate key. The loop picker's own primary button says 'Cancel loop' - that dialog is a different control and does not share this wording.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.monitors_action": {
+		"role": "head of the monitors chip's tooltip and accessible name",
+		"tone": "imperative verb phrase plus the destination section, sentence case, no trailing punctuation",
+		"note": "The armed-monitor count clause follows after an em dash. 'Open' moves the reader to the run pane's Monitors section instead of disclosing something in place; the plural matches that section's own heading.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.plan_action": {
+		"role": "head of the plan chip's tooltip and accessible name",
+		"tone": "imperative verb phrase plus the destination section, sentence case, no trailing punctuation",
+		"note": "The to-do count clause follows after an em dash. 'Open' moves the reader to the run pane's To-dos section instead of disclosing something in place.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.session_goal": {
+		"role": "accessible name of the region that holds the authored session goal",
+		"tone": "noun phrase, sentence case",
+		"note": "A group name, not a heading: the goal is one authored paragraph that a keyboard reader must be able to scroll.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.subagents_action": {
+		"role": "head of the subagents chip's tooltip and accessible name",
+		"tone": "imperative verb phrase plus the destination section, sentence case, no trailing punctuation",
+		"note": "The count and state clauses follow after an em dash. 'Open' moves the reader to the run pane's Subagents section instead of disclosing something in place.",
+		"placeholders": {}
+	},
+	"ui.chat.composer.status.wakes_action": {
+		"role": "head of the wakes chip's tooltip and accessible name",
+		"tone": "imperative verb phrase plus the destination section, sentence case, no trailing punctuation",
+		"note": "The armed-schedule count clause follows after an em dash. 'Open' moves the reader to the run pane's Wakes section instead of disclosing something in place.",
+		"placeholders": {}
+	},
+	"ui.chat.header_identity.loading": {
+		"role": "loading line under the header identity search",
+		"tone": "present participle plus the item kind, trailing ellipsis",
+		"note": "`kind` selects agents or teams. Live region is the parent's; this is the visible sentence.",
+		"placeholders": {
+			"kind": "selects the item kind: `agents` or `teams`. Keep every arm."
+		}
+	},
+	"ui.chat.header_identity.no_matches": {
+		"role": "empty state under the header identity search",
+		"tone": "one sentence in the app's quoted-query style",
+		"note": "`{query}` is the reader's own search text, echoed verbatim between curly quotes. Do not translate the query.",
+		"placeholders": {
+			"query": "the reader's own search text, echoed verbatim. Never translate or trim it."
+		}
+	},
+	"ui.chat.header_identity.search": {
+		"role": "accessible name and placeholder of the header identity search field",
+		"tone": "verb plus the item kind",
+		"note": "`kind` selects agents or teams so the noun and its article can inflect. Names what the field searches, not the page it lives on.",
+		"placeholders": {
+			"kind": "selects the item kind: `agents` or `teams`. Keep every arm."
+		}
+	},
+	"ui.chat.hub_update.check_now": {
+		"role": "tooltip and accessible name of the hub refresh control",
+		"tone": "short imperative, sentence case",
+		"note": "Re-reads the hub for newer agent, team and skill versions; it downloads nothing by itself.",
+		"placeholders": {}
+	},
+	"ui.chat.hub_update.dismiss": {
+		"role": "visible caption of the control that dismisses the hub update summary",
+		"tone": "one word, sentence case",
+		"note": "Removes the summary line from the sidebar; it does not cancel an update in flight.",
+		"placeholders": {}
+	},
+	"ui.chat.hub_update.dismiss_summary": {
+		"role": "accessible name of the control that dismisses the hub update summary",
+		"tone": "verb phrase, sentence case",
+		"note": "The visible control says Dismiss; this name says what is being dismissed.",
+		"placeholders": {}
+	},
+	"ui.chat.hub_update.update_all": {
+		"role": "update-all control caption",
+		"tone": "verb phrase with a count, sentence case",
+		"note": "The count is how many updates the press would apply. Keep the parentheses.",
+		"placeholders": {
+			"count": "number of updates the press would apply."
+		}
+	},
+	"ui.chat.hub_update.update_all_label": {
+		"role": "accessible name of the update-all control",
+		"tone": "verb phrase with a count and the item kind",
+		"note": "`kind` selects the noun (agents, teams, skills) so each language can inflect it; the count is how many updates would be applied. Everything in ONE message because the noun and the count agree with each other.",
+		"placeholders": {
+			"count": "number of updates the press would apply.",
+			"kind": "selects the item kind: `agents`, `teams` or `skills`."
+		}
+	},
+	"ui.chat.hub_update.updating": {
+		"role": "update-all control caption while the update runs",
+		"tone": "present participle, sentence case, trailing ellipsis",
+		"note": "Shown in place of the count while a hub update is in flight.",
+		"placeholders": {}
+	},
+	"ui.chat.provider_error.action.open_provider_settings": {
+		"role": "action on any other provider error",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"note": "Opens the provider settings grid. The subject is a per-provider setting surface, not the reader's account.",
+		"placeholders": {}
+	},
+	"ui.chat.provider_error.action.open_radient_account": {
+		"role": "action on a Radient billing error",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"note": "Opens the account surface that shows the balance and the top-up entry. `Radient` is the product name and stays untranslated; `account` is the reader's own account.",
+		"placeholders": {}
+	},
+	"ui.chat.provider_error.action.sign_in_radient": {
+		"role": "action on a provider error that is Radient's own sign-in failure",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"note": "`Radient` is the product name and stays untranslated; `Sign in` is the action. Only shown when the failing provider is Radient itself.",
+		"placeholders": {}
+	},
+	"ui.chat.provider_error.headline.out_of_credits": {
+		"role": "headline on an out-of-credits provider error",
+		"tone": "statement with the vendor's own body",
+		"note": "`{status}` already carries its leading space and parentheses (` (HTTP 402)`), so do not add punctuation around it. `{body}` is the provider's own sentence, shown verbatim and never translated. `Out of credits` is the app's own diagnosis.",
+		"placeholders": {
+			"status": "the HTTP status with its own parentheses and a leading space, or an empty string.",
+			"body": "the provider's own sentence, taken from the wire. Never translate or paraphrase it."
+		}
+	},
+	"ui.chat.provider_error.headline.out_of_credits_refused": {
+		"role": "headline on an out-of-credits error with no body",
+		"tone": "statement",
+		"note": "Used when the relay gave a status but no body. `Radient` is the product name and stays untranslated. `{status}` carries its own leading space and parentheses.",
+		"placeholders": {
+			"status": "the HTTP status with its own parentheses and a leading space, or an empty string."
+		}
+	},
+	"ui.chat.question_dock.asking": {
+		"role": "collapsed question pill caption",
+		"tone": "short status sentence, no trailing punctuation",
+		"note": "Says the agent is waiting on an answer. The pill also carries `Show` beside it.",
+		"placeholders": {}
+	},
+	"ui.chat.question_dock.from_agent_label": {
+		"role": "accessible name of the expanded question card",
+		"tone": "noun phrase, sentence case",
+		"note": "Landmark name for the card holding the agent's question and its options.",
+		"placeholders": {}
+	},
+	"ui.chat.question_dock.secret_answer_label": {
+		"role": "accessible name of the secret-answer form",
+		"tone": "noun phrase, sentence case",
+		"note": "This form appears only when the agent has asked for a secret; the value is masked and never written to the transcript.",
+		"placeholders": {}
+	},
+	"ui.chat.question_dock.secret_note": {
+		"role": "reassurance line above the secret field",
+		"tone": "one sentence, sentence case, trailing period",
+		"note": "Claims three checkable things: the field masks the value, the value goes only to the asking agent, and the app keeps no record of it in the transcript. The em dash separates the masking claim from where the value goes.",
+		"placeholders": {}
+	},
+	"ui.chat.question_dock.secret_placeholder": {
+		"role": "placeholder inside the masked secret field",
+		"tone": "short imperative, sentence case",
+		"note": "The value is pasted rather than typed on purpose: the clipboard path is the one the dock is designed around.",
+		"placeholders": {}
+	},
+	"ui.chat.question_dock.secret_value_label": {
+		"role": "accessible name of the masked secret field",
+		"tone": "short noun phrase",
+		"note": "The field is a password input; its content is masked as typed.",
+		"placeholders": {}
+	},
+	"ui.chat.question_dock.send": {
+		"role": "submit control under the secret field",
+		"tone": "one word, sentence case",
+		"note": "Sends the secret answer to the asking agent.",
+		"placeholders": {}
+	},
+	"ui.chat.question_dock.show": {
+		"role": "collapsed question pill action word",
+		"tone": "one word, sentence case",
+		"note": "Second half of the pill: what pressing it does.",
+		"placeholders": {}
+	},
+	"ui.chat.question_dock.show_question_label": {
+		"role": "accessible name of the collapsed question pill",
+		"tone": "verb phrase, sentence case",
+		"note": "Expands the agent's question back into the dock; it does not answer it.",
+		"placeholders": {}
+	},
+	"ui.chat.quota_notice.dismiss": {
+		"role": "control that dismisses the quota notice",
+		"tone": "one word, sentence case",
+		"note": "Dismisses the notice for this conversation; it does not change the quota.",
+		"placeholders": {}
+	},
+	"ui.chat.reply.remove": {
+		"role": "accessible name of the control that removes a staged reply",
+		"tone": "verb phrase, sentence case",
+		"note": "The control is an X icon; it removes this quoted reply from the draft, not from the transcript.",
+		"placeholders": {}
+	},
+	"ui.chat.reply.replying_to": {
+		"role": "label on a quoted reply staged above the composer",
+		"tone": "gerund phrase, sentence case, no trailing punctuation",
+		"note": "Announces that the message being sent quotes another message.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.choose_model": {
+		"role": "model chip caption when no model is resolved",
+		"tone": "verb phrase, sentence case",
+		"note": "Invites the reader to pick the model this conversation will run on; the chip opens the model picker. The chip truncates at narrow widths; maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {},
+		"maxCells": 18
+	},
+	"ui.chat.session_status.choose_model_tooltip": {
+		"role": "tooltip on the model chip when no model is resolved",
+		"tone": "imperative sentence, sentence case",
+		"note": "Explains what the chip's press does: opens the picker for this conversation's model.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.estimate": {
+		"role": "qualifier on an estimated reading",
+		"tone": "one word, lowercase",
+		"note": "Marks a number the app estimated rather than read from the provider. Lowercase on purpose: it sits inline after the figure.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.last_reading": {
+		"role": "mark beside a reading taken before a reconnect",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"note": "Qualifies the numbers beside it: they were measured before the connection dropped and are not live. The chip truncates at narrow widths; maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {},
+		"maxCells": 16
+	},
+	"ui.chat.session_status.no_model_resolved": {
+		"role": "tooltip when a conversation has no model yet",
+		"tone": "short statement, sentence case",
+		"note": "Shown on the model chip in a new conversation before the backend has resolved a model.",
+		"placeholders": {}
+	},
 	"ui.chat.skill_invocation.instructions_label": {
 		"role": "label above the skill instructions a `$name` invocation sent",
 		"tone": "noun phrase, sentence case, no trailing punctuation",
@@ -8,5 +337,302 @@
 		"role": "accessible name of the control that expands a `$name` invocation's header (a button whose visible summary is the token, a separator and the skill's one-line purpose)",
 		"tone": "noun phrase naming the control's content, sentence case, no trailing punctuation",
 		"note": "Read by a screen reader INSTEAD of the visible summary, which is a token plus a purpose sentence that can run to 150 characters - the name says what the press opens. `{token}` is the invocation's resolved skill token including its leading `$` (for example `$seal-demo`), so the translation keeps the placeholder and does not add or drop the sign. The purpose sentence stays visible on the row and in its `title`."
+	},
+	"ui.chat.status_strip.dismiss": {
+		"role": "accessible name of the control that dismisses a status strip notice",
+		"tone": "one word, sentence case",
+		"note": "The control is an X icon; it hides this notice and does not fix what it reports.",
+		"placeholders": {}
+	},
+	"ui.chat.tabs.chat": {
+		"role": "tab label",
+		"tone": "one word, sentence case",
+		"note": "Switches the conversation pane to the rendered conversation.",
+		"placeholders": {}
+	},
+	"ui.chat.tabs.raw": {
+		"role": "tab label",
+		"tone": "one word, sentence case",
+		"note": "Switches the conversation pane to the raw message payload; `Raw` is the app's established word for machine JSON.",
+		"placeholders": {}
+	},
+	"ui.chat.mermaid.zoom_in": "Diagram control tooltip and accessible name for the zoom-in button.",
+	"ui.chat.mermaid.zoom_out": "Diagram control tooltip and accessible name for the zoom-out button.",
+	"ui.chat.mermaid.pan": "Accessible name for the pan (hand) control on a diagram.",
+	"ui.chat.mermaid.pan_hint": "Tooltip explaining that the diagram is dragged to pan it.",
+	"ui.chat.mermaid.reset_view": "Diagram control tooltip and accessible name that restores zoom and pan.",
+	"ui.chat.mermaid.save_svg": "Diagram control tooltip and accessible name that downloads the diagram as an SVG file.",
+	"ui.chat.mermaid.copied": "Brief confirmation state of the copy control, after the diagram source was copied.",
+	"ui.chat.mermaid.copy_text": "Tooltip and accessible name of the control that copies the mermaid source.",
+	"ui.chat.mermaid.error_title": "Heading of the danger alert shown when a diagram cannot be parsed or rendered.",
+	"ui.chat.mermaid.unexpected_error": "Fallback sentence shown when the render failed without a message of its own.",
+	"ui.chat.mermaid.error_contained": "Reassurance that the failure did not break the rest of the conversation.",
+	"ui.chat.mermaid.chart_label": "Small label above the raw diagram source shown in the error alert.",
+	"ui.chat.mermaid.loading": "Placeholder while the diagram is being rendered.",
+	"ui.chat.mermaid.rendering_error": "Heading of the alert for a failure inside the render path.",
+	"ui.chat.mermaid.render_failed": "Body of the alert for a failure inside the render path.",
+	"ui.chat.mermaid.fullscreen": "Tooltip on the control that opens the diagram fullscreen.",
+	"ui.chat.mermaid.open_fullscreen": "Accessible name of the control that opens the diagram fullscreen.",
+	"ui.chat.mermaid.diagram_title": "Title of the fullscreen dialog that holds a diagram.",
+	"ui.chat.mermaid.close_fullscreen": "Tooltip and accessible name that closes the fullscreen diagram dialog.",
+	"ui.chat.aside.question_label": "Screen-reader label that introduces the question in an aside exchange.",
+	"ui.chat.aside.you_label": "Visible quiet marker naming the asker of the aside question.",
+	"ui.chat.aside.thinking": "Placeholder while the aside answer is still streaming.",
+	"ui.chat.aside.title": "Heading of the aside panel: an off-the-record exchange beside the conversation.",
+	"ui.chat.aside.off_record": "Sub-heading stating that the aside is not part of the conversation.",
+	"ui.chat.aside.close_label": "Accessible name of the control that closes the aside panel.",
+	"ui.chat.aside.exchange_label": "Accessible name of the scrollable region holding the aside question and answers.",
+	"ui.chat.aside.empty": "Empty state of the aside panel before any question was asked.",
+	"ui.chat.aside.add_to_conversation": "Action that adopts the aside answer into the conversation.",
+	"ui.chat.error_block.heading": "Label above the danger block that shows raw error output.",
+	"ui.chat.error_block.link.settings": "Link text inside a suggestion sentence pointing at the settings page.",
+	"ui.chat.error_block.link.providers": "Link text pointing at the Providers section of settings.",
+	"ui.chat.error_block.provider.before": "First half of the sentence; a settings link follows, then `provider.after`.",
+	"ui.chat.error_block.provider.after": "Second half of the sentence, after the settings link. 'Radient' is a product name and stays English.",
+	"ui.chat.error_block.model.before": "First half of the sentence; a settings link follows, then `model.after`.",
+	"ui.chat.error_block.model.after": "Second half of the sentence, after the settings link. 'Radient' is a product name and stays English.",
+	"ui.chat.error_block.rate_limit.before": "First half of the rate-limit sentence; a settings link follows, then one of the two `after` keys.",
+	"ui.chat.error_block.rate_limit.after": "Second half of the rate-limit sentence, after the settings link. 'Radient Pass' is a product name and stays English.",
+	"ui.chat.error_block.rate_limit.all_after": "Second half of the rate-limit sentence for the hyphenated wire variant, after the settings link.",
+	"ui.chat.error_block.invalid_key.before": "First half of the invalid-key sentence; the Providers link follows, then `invalid_key.after` which starts with a comma.",
+	"ui.chat.error_block.invalid_key.after": "Second half of the invalid-key sentence; starts with a comma because it follows the link directly.",
+	"ui.chat.error_block.unavailable.before": "First half of the unavailable-model sentence; a settings link follows, then `unavailable.after`.",
+	"ui.chat.error_block.unavailable.after": "Second half of the unavailable-model sentence, after the settings link. 'Radient' is a product name and stays English.",
+	"ui.chat.error_block.schema.before": "First paragraph of the schema-failure suggestion, before a line break.",
+	"ui.chat.error_block.schema.after_before": "Start of the second paragraph; a settings link follows, then `schema.after`.",
+	"ui.chat.error_block.schema.after": "Second half of the schema paragraph, after the settings link. 'Radient Automatic' is a product name and stays English.",
+	"ui.chat.approval.reply_required": "Error shown when an approval answer is neither yes/no nor a listed option.",
+	"ui.chat.question_dock.hint.approval": "Hint under an approval card naming all three exits.",
+	"ui.chat.question_dock.hint.approval_held": "Held-state hint: the card's own buttons cannot send until the outcome is known.",
+	"ui.chat.question_dock.hint.prefix": "Prefix for a multi-question ask; trailing space is intentional, the sentence follows.",
+	"ui.chat.question_dock.hint.secret": "Hint for a secret answer: the card's own field, Enter, and the dock's collapse.",
+	"ui.chat.question_dock.hint.secret_held": "Held-state secret hint: nothing can send, only the card's own Escape works.",
+	"ui.chat.question_dock.hint.type": "Hint when the question offers no options.",
+	"ui.chat.question_dock.hint.options": "Hint when options are offered; {digits} is a precomputed key range such as '1-3'.",
+	"ui.chat.session_status.context_heading": {
+		"role": "the word Context as a proportional-heading line in the draft context tooltip",
+		"tone": "noun, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "A heading, not a sentence: the tooltip draws it as prose (never monospace) over the sentence below it. It names the reading the control shows.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.context_nothing_measured_tooltip": {
+		"role": "accessible name of the context reading on a draft conversation",
+		"tone": "one utterance leading with the word Context, comma after it, two sentences, trailing period",
+		"length": "Fourteen words.",
+		"note": "The same fact the tooltip states, written as ONE utterance for screen readers. 'No reading yet' would also be true of a resumed session and is deliberately not used: a draft's window fills because the user sends the first message.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.conversation_starting": {
+		"role": "the effort reading's line on a draft, before any conversation exists",
+		"tone": "statement, sentence case, trailing period",
+		"length": "Six words.",
+		"note": "The reasoning-effort ladder is real but not yet available on a draft, so the line says when it becomes so. It must not read as an instruction.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.model_none_resolved_tooltip": {
+		"role": "accessible name of the model reading when the backend resolved a model that names none",
+		"tone": "one utterance leading with the word Model, colon after it, two sentences, trailing period",
+		"length": "Fifteen words.",
+		"note": "Only the RESOLVED-no-model state says this: a resolution still in flight, or one that failed, are drawn by their own readings. The second sentence is the offer the control performs.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.not_signed_in": {
+		"role": "title of the model-access band when this session runs a provider with no working sign-in",
+		"tone": "statement of fact, sentence case, no trailing punctuation",
+		"length": "Four words plus the provider name.",
+		"note": "The provider's display label is carried by the placeholder and must stay verbatim. The temporary-unavailability arm has its own title and is selected before this one.",
+		"placeholders": {
+			"label": "the provider's display label as the app received it, e.g. Radient. A product name: keep it verbatim, never translate it."
+		}
+	},
+	"ui.chat.session_status.not_signed_in_description": {
+		"role": "the sentence under the not-signed-in title, naming the remedy",
+		"tone": "statement plus the remedy, sentence case, trailing period",
+		"length": "Twenty words plus the provider name.",
+		"note": "Says what is true of the session rather than what the reader did: the sign-in is missing on this machine, and connecting it is the fix. It must not blame an expired credential — that is the sibling arm's sentence.",
+		"placeholders": {
+			"label": "the provider's display label as the app received it. A product name: keep it verbatim, never translate it."
+		}
+	},
+	"ui.chat.session_status.nothing_measured_yet": {
+		"role": "the sentence under the Context heading in the draft context tooltip",
+		"tone": "statement plus the reason, sentence case, trailing period",
+		"length": "Eleven words.",
+		"note": "Names the fact and the reason. The window is the context window; it fills as the conversation runs, which is why a draft has nothing in it.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.temporarily_unavailable": {
+		"role": "title of the model-access band when the provider is temporarily refusing access",
+		"tone": "statement of fact, sentence case, no trailing punctuation",
+		"length": "Four words plus the provider name.",
+		"note": "The transient arm of the not-signed-in title, selected first when the wire reports `temporarily_unavailable`. The difference from `Not signed in to {label}` matters: nothing was revoked, so the reader should retry rather than reconnect.",
+		"placeholders": {
+			"label": "the provider's display label as the app received it. A product name: keep it verbatim."
+		}
+	},
+	"ui.chat.session_status.temporarily_unavailable_description": {
+		"role": "the sentence under the temporarily-unavailable title",
+		"tone": "reassurance plus two remedies, sentence case, trailing period",
+		"length": "Thirteen words.",
+		"note": "Says the credential is still saved, which is the fact that makes retrying reasonable. Never imply the sign-in was lost or expired.",
+		"placeholders": {}
+	},
+	"ui.chat.checkpoint.turn": {
+		"role": "the structural identity of one turn in the conversation, shown on the run-details rail",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Four words.",
+		"note": "Also restated inside the rail tick's accessible name, but not by embedding this message: `jump_agent` / `jump_user` carry {turn} and {total} in their own sentences, so the word order and the turn noun are each message's own — write a noun phrase here and do not assume it will sit inside a longer sentence. Both numbers are ordinal-safe counts of turns, not messages.",
+		"placeholders": {
+			"turn": "the turn's 1-based position in the conversation",
+			"total": "the number of turns in the conversation"
+		}
+	},
+	"ui.chat.checkpoint.jump_agent": {
+		"role": "accessible name of a run-details tick that jumps to an agent turn that has a title",
+		"tone": "action plus the destination, sentence case, then the title after a comma",
+		"length": "Up to a short sentence; the title can be long.",
+		"note": "{turn} and {total} are the same two numbers the tick's visible identity line shows; the turn noun and its word order belong to this sentence. {name} is the turn's own generated title and is never translated.",
+		"placeholders": {
+			"turn": "the turn's 1-based position in the conversation",
+			"total": "the number of turns in the conversation",
+			"name": "the turn's own title"
+		}
+	},
+	"ui.chat.checkpoint.jump_agent_unnamed": {
+		"role": "accessible name of a run-details tick that jumps to an agent turn that has no title yet",
+		"tone": "action plus the destination, sentence case",
+		"length": "Up to a short sentence.",
+		"note": "Same tick as ui.chat.checkpoint.jump_agent while the turn is still unnamed; the title is simply absent, never substituted.",
+		"placeholders": {
+			"turn": "the turn's 1-based position in the conversation",
+			"total": "the number of turns in the conversation"
+		}
+	},
+	"ui.chat.checkpoint.jump_user": {
+		"role": "accessible name of a run-details tick that jumps to the reader's own message",
+		"tone": "action plus the destination and a time, sentence case",
+		"length": "Up to a short sentence.",
+		"note": "{turn} and {total} are the same two numbers the tick's visible identity line shows. {clock} is a clock time already formatted by the locale-aware time formatter, not a pattern.",
+		"placeholders": {
+			"turn": "the turn's 1-based position in the conversation",
+			"total": "the number of turns in the conversation",
+			"clock": "the locale-formatted time of the message"
+		}
+	},
+	"ui.chat.checkpoint.jump_user_no_clock": {
+		"role": "accessible name of a run-details tick that jumps to the reader's own message when no time is known",
+		"tone": "action plus the destination, sentence case",
+		"length": "Up to a short sentence.",
+		"note": "The clock half is omitted rather than invented when the message carries no usable timestamp.",
+		"placeholders": {
+			"turn": "the turn's 1-based position in the conversation",
+			"total": "the number of turns in the conversation"
+		}
+	},
+	"ui.chat.header_identity.no_agent": {
+		"role": "chip label meaning no agent is attached to the open conversation",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "It is an assign affordance, not a status claim about a named-but-unknown agent: pressing it opens the agent picker. The same words appear inside the control's accessible name.",
+		"placeholders": {}
+	},
+	"ui.chat.header_identity.no_team": {
+		"role": "chip label meaning no team is attached to the open conversation",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "The team twin of ui.chat.header_identity.no_agent: pressing it opens the team picker. A closed seat never shows this label.",
+		"placeholders": {}
+	},
+	"ui.chat.header_identity.assign_agent": {
+		"role": "tooltip of the header chip while no agent is attached",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Tooltip only: the same act is spelled inside the chip's accessible name (ui.chat.header_identity.aria_agent_assign), so keep the verb consistent between the two.",
+		"placeholders": {}
+	},
+	"ui.chat.header_identity.assign_team": {
+		"role": "tooltip of the header chip while no team is attached",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Tooltip only: the same act is spelled inside the chip's accessible name (ui.chat.header_identity.aria_team_assign), so keep the verb consistent between the two.",
+		"placeholders": {}
+	},
+	"ui.chat.header_identity.aria_agent_assign": {
+		"role": "accessible name of the header agent chip while no agent is attached",
+		"tone": "role and state, then the action, separated by periods",
+		"length": "Up to a short sentence.",
+		"note": "A whole sentence, not a concatenation: {label} is the chip's visible label (usually the no-agent phrase) and must appear verbatim so voice control keeps matching the control.",
+		"placeholders": {
+			"label": "the chip's own visible label"
+		}
+	},
+	"ui.chat.header_identity.aria_agent_switch": {
+		"role": "accessible name of the header agent chip while an agent is attached",
+		"tone": "role and state, then the action, separated by periods",
+		"length": "Up to a short sentence.",
+		"note": "The assigned-state twin of aria_agent_assign; the visible agent name is {label} and must appear verbatim.",
+		"placeholders": {
+			"label": "the attached agent's own display name"
+		}
+	},
+	"ui.chat.header_identity.aria_agent_closed": {
+		"role": "accessible name of the header agent chip while the runtime has closed the seat",
+		"tone": "role and state, then the reason, separated by periods",
+		"length": "Up to a sentence; the reason is backend prose.",
+		"note": "{reason} is a sentence this UI composes itself (`identityAgentClosedCaption` in `chat-header-identity-menu-model.ts`) to mirror core's `team_owns_the_agent_slot_message` byte for byte — core's docstring names this UI as keying on the exact words, so it is a cross-repo contract, NOT backend text: never translate or paraphrase it.",
+		"placeholders": {
+			"label": "the attached agent's own display name",
+			"reason": "the runtime-served closure sentence"
+		}
+	},
+	"ui.chat.header_identity.aria_team_assign": {
+		"role": "accessible name of the header team chip while no team is attached",
+		"tone": "role and state, then the action, separated by periods",
+		"length": "Up to a short sentence.",
+		"note": "The team twin of aria_agent_assign; {label} is the chip's visible label and must appear verbatim.",
+		"placeholders": {
+			"label": "the chip's own visible label"
+		}
+	},
+	"ui.chat.header_identity.aria_team_switch": {
+		"role": "accessible name of the header team chip while a team is attached",
+		"tone": "role and state, then the action, separated by periods",
+		"length": "Up to a short sentence.",
+		"note": "The assigned-state twin of aria_team_assign; the visible team name is {label} and must appear verbatim.",
+		"placeholders": {
+			"label": "the attached team's own display name"
+		}
+	},
+	"ui.chat.header_identity.aria_team_closed": {
+		"role": "accessible name of the header team chip while the runtime has closed the seat",
+		"tone": "role and state, then the reason, separated by periods",
+		"length": "Up to a sentence; the reason is backend prose.",
+		"note": "{reason} is a sentence this UI composes itself (`identityAgentClosedCaption` in `chat-header-identity-menu-model.ts`) to mirror core's `team_owns_the_agent_slot_message` byte for byte — a cross-repo contract, not backend text: passed through unchanged, never translated.",
+		"placeholders": {
+			"label": "the attached team's own display name",
+			"reason": "the runtime-served closure sentence"
+		}
+	},
+	"ui.chat.region.composer": {
+		"role": "accessible name of the composer landmark",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Screen-reader only: it names the form region the message field lives in, and the F6 region walk reads it back. Not a placeholder and not a button label.",
+		"placeholders": {}
+	},
+	"ui.chat.region.conversation": {
+		"role": "accessible name of the transcript landmark and of the chat header landmark",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Screen-reader only: the transcript's role=log region and the header landmark share it because both head the same conversation. It names the region, not a tab.",
+		"placeholders": {}
+	},
+	"ui.chat.checkpoint.generating_name": {
+		"role": "line on a run-details card while the turn's title is still being generated",
+		"tone": "plain progress statement, sentence case, trailing ellipsis as shown",
+		"length": "Two words plus an ellipsis.",
+		"note": "A temporary line, replaced by the generated title when it lands. The ellipsis is part of the source string; keep it as the locale's own ellipsis character.",
+		"placeholders": {}
 	}
 }

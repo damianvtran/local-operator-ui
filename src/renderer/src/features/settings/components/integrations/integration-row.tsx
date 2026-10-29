@@ -39,10 +39,8 @@ import type { FC, KeyboardEvent, Ref } from "react";
 import type { McpCatalogOperation } from "../../../../../../shared/desktop-control-contract";
 import {
 	type IntegrationRow as IntegrationRowData,
-	NOT_CONNECTED_EXPLANATION_KEY,
 	type OverflowItem,
 	type PrimaryAction,
-	READY_EXPLANATION_KEY,
 	type RowMemories,
 	type StatusTone,
 	integrationMeta,
@@ -82,17 +80,6 @@ const STATUS_INK: Record<StatusTone, string> = {
 	 */
 	neutral: "text-ink-dim",
 };
-
-/** The tooltip a status carries, when it needs one at all. */
-// Resolve both the status and its explanation in the same locale at render
-// time. The English compatibility constants remain exported for older callers.
-function statusExplanation(label: string): string | undefined {
-	if (label === t("ui.settings.integrations.integration_model.ready"))
-		return t(READY_EXPLANATION_KEY);
-	if (label === t("ui.settings.integrations.integration_model.not_connected"))
-		return t(NOT_CONNECTED_EXPLANATION_KEY);
-	return undefined;
-}
 
 /** A question the row asks inline before a destructive or account change. */
 export type RowConfirm = { kind: "remove" | "sign_out" } | null;
@@ -208,25 +195,27 @@ export const IntegrationRow: FC<IntegrationRowProps> = ({
 					</span>
 					<span className="truncate text-ink-dim text-meta">
 						{meta.map((part, index) => (
-							<span key={part}>
+							<span key={part.text}>
 								{index > 0 ? " · " : null}
 								{/* The source file is the tooltip of the "Imported from" part:
-								    the path is where it is fixed, and quiet until asked for. */}
-								{part.startsWith("Imported from") && row.source.path ? (
+								    the path is where it is fixed, and quiet until asked for.
+								    `importSource` is the model's structural flag, not a match on
+								    the rendered sentence: the sentence is catalogue copy. */}
+								{part.importSource && row.source.path ? (
 									<Tooltip content={compactPath(row.source.path)}>
 										<span className="underline decoration-dotted underline-offset-2">
-											{part}
+											{part.text}
 										</span>
 									</Tooltip>
 								) : (
-									part
+									part.text
 								)}
 							</span>
 						))}
 					</span>
 				</div>
-				{statusExplanation(status.label) ? (
-					<Tooltip content={statusExplanation(status.label)}>
+				{status.explanation ? (
+					<Tooltip content={status.explanation}>
 						<span className={cn("shrink-0 text-body-sm", statusInk)}>
 							{status.label}
 						</span>
@@ -292,7 +281,7 @@ export const IntegrationRow: FC<IntegrationRowProps> = ({
 			{status.detail ? (
 				<p
 					className={cn(
-						"pl-7 text-body-sm",
+						"ps-7 text-body-sm",
 						status.tone === "danger" ? "text-ink-muted" : "text-ink-dim",
 					)}
 				>
@@ -302,7 +291,7 @@ export const IntegrationRow: FC<IntegrationRowProps> = ({
 			{failure ? (
 				<p
 					className={cn(
-						"pl-7 text-body-sm",
+						"ps-7 text-body-sm",
 						// Same rule as the status words: `danger` text is under 4.5:1 on
 						// a deep-linked row's ground in six palettes.
 						highlighted ? "text-ink" : "text-danger",
@@ -313,7 +302,7 @@ export const IntegrationRow: FC<IntegrationRowProps> = ({
 				</p>
 			) : null}
 			{confirm ? (
-				<div className="flex flex-wrap items-center gap-2 pl-7">
+				<div className="flex flex-wrap items-center gap-2 ps-7">
 					<span className="text-body-sm text-ink">
 						{confirm.kind === "remove"
 							? t("ui.settings.integrations.integration_row.remove_name", {

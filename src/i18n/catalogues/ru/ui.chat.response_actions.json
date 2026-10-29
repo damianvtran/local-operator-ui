@@ -1,0 +1,7 @@
+{
+	"ui.chat.response_actions.label": "Действия с ответом",
+	"ui.chat.response_actions.answer_label": "Действия с финальным ответом",
+	"ui.chat.response_actions.copied": "Скопировано",
+	"ui.chat.response_actions.copy": "Копировать",
+	"ui.chat.response_actions.yours_label": "Действия с вашим сообщением"
+}

@@ -487,6 +487,16 @@ export function installDevDriver(): string[] {
 							undelivered: draft.undelivered !== undefined,
 							submitted: draft.submittedText !== undefined,
 							admissionAttempted: draft.admissionAttempted === true,
+							/*
+							 * THE SELECTION THE FIRST TURN WILL BE BORN ON, as the pane holds it
+							 * (issue #1265). The booleans beside it say a draft has a row; this
+							 * says what `sessions.create` will carry, which is the only way a
+							 * scene can require that a picker's own sentence and the pane's
+							 * record agree — the silent-drop class where a dialog claims a
+							 * dial the first turn never gets. The wire fields only, never the
+							 * draft's text: that is the user's.
+							 */
+							model: draft.model ?? null,
 						},
 					]),
 				),

@@ -1,0 +1,95 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "current-byte-rebind",
+  "locale": "ur",
+  "locale_name": "Urdu",
+  "namespace": "ui.common.errors",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "merge": "ab9bd739c21ebc24c22b9d4fb25ce78a43c4fede",
+  "merge_parents": {
+    "branch": "d784571d9017c2958a80c51808b2ace64e3f76ba",
+    "main": "91aa8f5f10797184d01c41143d1a3645176b566b"
+  },
+  "date": "2026-10-25",
+  "auditor": {
+    "agent": "translation-auditor",
+    "harness": "Local Operator",
+    "team": "lopdev",
+    "session": "99a1b4247dd3",
+    "instance": "ur-bind-62303bdffebd",
+    "model": "deepseek/deepseek-flash",
+    "model_provenance": "Harness session model tag deepseek/deepseek-flash; no fallback was observed or reported and no role or default pin was changed. No other model is claimed.",
+    "independence": "Independent auditor: this session authored no catalogue, ledger, allowance or code change for PR #1403 and made no commit. It read the bytes from git objects at the recorded head, wrote only this receipt, and edited no catalogue, ledger or existing receipt. Different session from both the translator and the prior auditor of this namespace.",
+    "date": "2026-10-25"
+  },
+  "instance": "ur-bind-62303bdffebd",
+  "model": "deepseek/deepseek-flash",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "findings_count": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "observations": [
+    "Merged bytes are byte-identical to the branch parent d784571d90; the four desktop_refusal keys are new versus main. Key order equals English. The four 'running server' participles agree with سرور in their respective oblique/nominative cases (چل رہے … سے / کے لیے / نے; چل رہا … nominative)."
+  ],
+  "sha256": {
+    "en": "79e061d415b61aed65c06e6800b379b332048a200d8d88f6cbbf4647eba593db",
+    "ur": "62303bdffebdd663771b4cf53866e580aaf11a4b333eca39c6af32e840ae33e2"
+  },
+  "context_sha256": "33432e29556ed7d91eac12edeff1998b623da3fcb48e3515b045e1e0b5c84049",
+  "reference": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+    }
+  },
+  "supersedes": {
+    "recorded_source_sha256": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
+    "recorded_target_sha256": "f8cbc27aaab276fce5e993cfbf3e11bb5ca2c62c36ee2efaa4f8b53f33b7957f",
+    "auditor_instance": "2a41a79633ed",
+    "receipt": "i18n/receipts/2a41a79633ed.json",
+    "why": "The merged bytes no longer match the recorded pair; this receipt names the current bytes so ledger-assemble can move the old audit to superseded and bind the new one."
+  },
+  "scope": "All 8 keys at the merged bytes, read against the English source and the en context sidecar. The merged ur file is byte-identical to branch parent d784571d90 and adds four desktop_refusal keys versus main.",
+  "method": "Manual side-by-side read of every ur value against its en value and context; mechanical checks: key parity both directions and key order, ICU parse and normalised placeholder/select/plural/skeleton comparison with @formatjs, bidi-control and punctuation scan, byte hashes from git objects, and for the sidebar rendered outputs at counts 0/1/2/1000 with intl-messageformat. For the viewer, per-key union provenance against both merge parents.",
+  "checks": {
+    "keys_read": 8,
+    "key_parity": {
+      "missing_vs_english": [],
+      "extra_vs_english": [],
+      "key_set_equals_english": true,
+      "key_order_equals_english": true
+    },
+    "icu": {
+      "messages_parsed_both_locales": 16,
+      "parser": "@formatjs/icu-messageformat-parser 3.5.21",
+      "placeholders_and_arms_preserved": true,
+      "keys_with_mismatch": 0,
+      "mismatches": [],
+      "exceptions": [],
+      "ur_plural_categories": "one/other",
+      "skeletons_preserved": true,
+      "note": "Normalised comparison: an en # inside a plural arm and an ur {arg, number, ::group-off} of that plural's own argument are the same value; the only such substitution is groups.badge. Executed with @formatjs/icu-messageformat-parser 3.5.21; output recorded in this receipt."
+    },
+    "rtl": {
+      "manual_bidi_controls": 0,
+      "ascii_exclamation_question_semicolon_danda": 0,
+      "ellipsis_u2026": true
+    },
+    "bytes": {
+      "branch_parent_byte_identical": true,
+      "branch_parent": "d784571d9017c2958a80c51808b2ace64e3f76ba"
+    }
+  }
+}

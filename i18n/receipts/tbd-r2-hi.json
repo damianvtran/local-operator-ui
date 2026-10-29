@@ -1,0 +1,37 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbd-r2-hi",
+  "session": "2e6dc2959949",
+  "date": "2026-10-21",
+  "locale": "hi",
+  "translator": "translator",
+  "namespaces": {
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 109,
+      "scope": "All 109 ui.teamBridge values in hi, read beside the en source and context frozen at 7bf957741a. The 9 new keys got a full review; the 100 carried keys were re-read with round-1 findings checked. Byte checks: key set and order, ICU placeholders and plural arms, bidi and zero-width characters, NFC, nukta, danda.",
+      "sha256": {
+        "en": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+        "hi": "c8e3426b68fea885d9e5f5da4d7f6f2ca5f7750e29d449dc9aad4a58a671b089",
+        "context": "17b7e1450dc7fa529d8e2e684bb8653fcc4f6cf220bf8261631d078d26545de5"
+      },
+      "findings": [
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.create.channel_description",
+          "current": "आपके संगठन में कोई भी चैनल ढूँढकर उसमें जुड़ सकता है। लोगों और एजेंटों को अभी जोड़ें या बाद में।",
+          "proposed": "आपके संगठन में कोई भी चैनल ढूँढकर उससे जुड़ सकता है। लोगों और एजेंटों को अभी जोड़ें या बाद में।",
+          "note": "Joining a channel is “चैनल से जुड़ना” in preview.join_error, so “उसमें जुड़ सकता है” drifts in postposition. Using “उससे” keeps the join phrasing consistent."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.thread.intro_group",
+          "current": "आपका पहला संदेश {names} के साथ बातचीत शुरू करेगा।",
+          "proposed": "आपके पहले संदेश से {names} के साथ बातचीत शुरू होगी।",
+          "note": "Making an inanimate “message” the subject of शुरू करेगा is an English calque. Hindi says the conversation “begins from” the first message (से … शुरू होगी). {names} is preserved."
+        }
+      ]
+    }
+  }
+}

@@ -80,6 +80,7 @@ import {
 import type { MeshGraph } from "./mesh-graph";
 import { meshSummary } from "./mesh-graph";
 import { MeshList } from "./mesh-list";
+import { MeshRevoked } from "./mesh-revoked";
 import { deviceSessionTotal } from "./mesh-sessions";
 import {
 	type MeshReads,
@@ -97,10 +98,14 @@ import {
 	useNetworkInvite,
 	useNetworkMemberRemove,
 } from "./mesh-store";
-import type { MeshRefusal, MeshSessionRow } from "./mesh-types";
+import {
+	type MeshRefusal,
+	type MeshSessionRow,
+	deviceIdentityText,
+} from "./mesh-types";
 
 const PRESENTATIONS = ["canvas", "list"] as const;
-type Presentation = (typeof PRESENTATIONS)[number];
+export type Presentation = (typeof PRESENTATIONS)[number];
 
 const PRESENTATION_LABEL: Record<Presentation, string> = {
 	get canvas() {
@@ -151,6 +156,16 @@ type MoveReport =
 export const MeshSurface: FC<{
 	state: MeshViewState;
 	graph: MeshGraph | null;
+	/**
+	 * WHICH PRESENTATION THE TAB OPENS ON, and the one caller that sets it is a
+	 * STORY. The tab's own `Canvas | List` control owns this state from mount
+	 * onward, so the route never passes it; a story needs the List frame to be a
+	 * property of the render rather than of a click that the evidence rig may
+	 * photograph before it lands (the relay-down-list capture proved that: the
+	 * play clicked List, the frame showed Canvas). Defaulting to `canvas` keeps
+	 * every existing call byte-identical.
+	 */
+	initialPresentation?: Presentation;
 	nowSeconds: number;
 	/** A read is in flight over drawn data: the quiet header affordance. */
 	checking: boolean;
@@ -199,6 +214,8 @@ export const MeshSurface: FC<{
 	onDropRefused: (refusal: {
 		code: string;
 		sentence: string;
+		/** The client's reach word, present when the drag had the device in hand. */
+		reach?: string;
 		remedy: Remedy | null;
 		plan: MovePlan | null;
 	}) => void;
@@ -213,12 +230,12 @@ export const MeshSurface: FC<{
 	invite: {
 		open: boolean;
 		deviceId?: string;
-		deviceLabel: string | null;
+		deviceName?: string;
 		options: { id: string; label: string }[];
 	} | null;
 	onOpenInvite: (ask: {
 		deviceId?: string;
-		deviceLabel: string | null;
+		deviceName?: string;
 	}) => void;
 	onInvite: (ask: {
 		networkId: string;
@@ -234,13 +251,13 @@ export const MeshSurface: FC<{
 		networkId: string;
 		networkLabel: string;
 		deviceId: string;
-		deviceLabel: string;
+		deviceName?: string;
 	} | null;
 	onOpenRemove: (ask: {
 		networkId: string;
 		networkLabel: string;
 		deviceId: string;
-		deviceLabel: string;
+		deviceName?: string;
 	}) => void;
 	onRemove: (confirm: string) => void;
 	onCloseRemove: () => void;
@@ -249,6 +266,7 @@ export const MeshSurface: FC<{
 	removed: { removed: string; epoch: number } | null;
 }> = ({
 	state,
+	initialPresentation = "canvas",
 	graph,
 	nowSeconds,
 	checking,
@@ -286,7 +304,8 @@ export const MeshSurface: FC<{
 	removed,
 }) => {
 	useI18nLocale();
-	const [presentation, setPresentation] = useState<Presentation>("canvas");
+	const [presentation, setPresentation] =
+		useState<Presentation>(initialPresentation);
 	const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
 
 	const summary = graph ? meshSummary(graph) : "";
@@ -352,7 +371,13 @@ export const MeshSurface: FC<{
 				{
 					session,
 					ownerDeviceId,
-					ownerLabel: owner?.label ?? session.owner_device_name,
+					ownerLabel: owner
+						? deviceIdentityText(
+								owner,
+								graph.devices.map((device) => device.id),
+								true,
+							)
+						: session.owner_device_name,
 				},
 				{ kind: "device", deviceId: destination.deviceId },
 				context,
@@ -361,6 +386,7 @@ export const MeshSurface: FC<{
 				onDropRefused({
 					code: verdict.code,
 					sentence: verdict.sentence,
+					reach: verdict.reach,
 					remedy: verdict.remedy,
 					plan: verdict.plan ?? null,
 				});
@@ -455,6 +481,7 @@ export const MeshSurface: FC<{
 									<button
 										key={option}
 										type="button"
+										data-mesh-presentation={option}
 										aria-pressed={presentation === option}
 										disabled={state.kind !== "ready"}
 										onClick={() => setPresentation(option)}
@@ -583,13 +610,22 @@ export const MeshSurface: FC<{
 					 */}
 					<div className="flex min-h-[22rem] flex-1 gap-4">
 						<div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-							<p
+							{/*
+							 * THE CENSUS AND THE REVOKED COUNT ARE ONE LINE. The count is not a
+							 * second sentence beside the census: it continues it, as the lane and the
+							 * list heading continue their device counts, and it is the one control
+							 * that opens the audit rows. A `<div>` rather than a `<p>` because the
+							 * shared disclosure is block-level markup a paragraph may not contain -
+							 * the band is a sentence, not a paragraph element.
+							 */}
+							<div
 								id={summaryId}
 								className="text-meta text-ink-muted"
 								data-mesh-summary=""
 							>
-								{summary}
-							</p>
+								<span>{summary}</span>
+								<MeshRevoked revoked={graph.revoked} />
+							</div>
 							{staleError && (
 								<Alert variant="warning">
 									<p>{staleError}</p>
@@ -670,6 +706,7 @@ export const MeshSurface: FC<{
 						{selectedDevice && (
 							<DevicePanel
 								device={selectedDevice}
+								deviceIds={graph.devices.map((device) => device.id)}
 								sessions={
 									held.byDevice.get(selectedDevice.id) ?? {
 										rows: [],
@@ -690,7 +727,7 @@ export const MeshSurface: FC<{
 								onInvite={(device) =>
 									onOpenInvite({
 										deviceId: device.id,
-										deviceLabel: device.label,
+										deviceName: device.name,
 									})
 								}
 								onRemoveMember={(device, networkId) => {
@@ -701,7 +738,7 @@ export const MeshSurface: FC<{
 										networkId,
 										networkLabel: network?.label ?? networkId,
 										deviceId: device.id,
-										deviceLabel: device.label,
+										deviceName: device.name,
 									});
 								}}
 								onShowInList={(deviceId) => {
@@ -729,7 +766,7 @@ export const MeshSurface: FC<{
 					open={invite.open}
 					options={invite.options}
 					deviceId={invite.deviceId}
-					deviceLabel={invite.deviceLabel}
+					deviceName={invite.deviceName}
 					onClose={onCloseInvite}
 					onInvite={onInvite}
 					pending={inviteBusy}
@@ -742,7 +779,8 @@ export const MeshSurface: FC<{
 				<RemoveMemberDialog
 					open={remove.open}
 					networkLabel={remove.networkLabel}
-					deviceLabel={remove.deviceLabel}
+					deviceId={remove.deviceId}
+					deviceName={remove.deviceName}
 					onClose={onCloseRemove}
 					onConfirm={onRemove}
 					pending={removeBusy}
@@ -780,13 +818,17 @@ const emptyPlan: MovePlan = {
  * the same destination the catch-all gives - rather than drawing a tab for a feature
  * the backend no longer advertises.
  */
-export const MeshPage: FC = () => {
+export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
+	initialPresentation,
+}) => {
 	useI18nLocale();
 	const capabilities = useDesktopCapabilities();
 	const enabled = desktopFeatureState(capabilities.data, "peers") === "enabled";
 	const canMove =
 		desktopFeatureState(capabilities.data, "session_transfer") === "enabled";
-	const peers = useMeshPeers(enabled);
+	const peers = useMeshPeers(enabled, {
+		stamp: () => useCanonicalSessionsStore.getState().beginAnswer(),
+	});
 	const networks = useMeshNetworks(enabled);
 	/*
 	 * THE TAB RIDES THE AMBIENT OBSERVER (`peers-catalogue.tsx`, mounted in the
@@ -873,7 +915,7 @@ export const MeshPage: FC = () => {
 	const [moveReport, setMoveReport] = useState<MoveReport | null>(null);
 	const [inviteAsk, setInviteAsk] = useState<{
 		deviceId?: string;
-		deviceLabel: string | null;
+		deviceName?: string;
 	} | null>(null);
 	const [inviteReceipt, setInviteReceipt] = useState<{
 		token_path: string;
@@ -884,7 +926,7 @@ export const MeshPage: FC = () => {
 		networkId: string;
 		networkLabel: string;
 		deviceId: string;
-		deviceLabel: string;
+		deviceName?: string;
 	} | null>(null);
 	const [removed, setRemoved] = useState<{
 		removed: string;
@@ -1021,10 +1063,15 @@ export const MeshPage: FC = () => {
 		return graph.networks
 			.filter((network) => {
 				if (!device) return true;
-				const membership = device.memberships.find(
+				/*
+				 * A network the device is not a LIVE member of is offered: `meshGraph`
+				 * carries only live memberships, so a revoked one is absent here and the
+				 * invite can be issued again (admission is two-sided, so the presence of a
+				 * tombstone never implied one).
+				 */
+				return !device.memberships.some(
 					(candidate) => candidate.networkId === network.id,
 				);
-				return !membership || !membership.active;
 			})
 			.map((network) => ({ id: network.id, label: network.label }));
 	}, [graph, inviteAsk]);
@@ -1042,6 +1089,7 @@ export const MeshPage: FC = () => {
 
 	return (
 		<MeshSurface
+			initialPresentation={initialPresentation}
 			state={state}
 			graph={graph}
 			nowSeconds={nowSeconds}
@@ -1080,6 +1128,7 @@ export const MeshPage: FC = () => {
 					refusal: {
 						code: refusal.code,
 						sentence: refusal.sentence,
+						reach: refusal.reach,
 						status: null,
 						unconfirmed: false,
 					},
@@ -1126,7 +1175,7 @@ export const MeshPage: FC = () => {
 					: {
 							open: true,
 							deviceId: inviteAsk.deviceId,
-							deviceLabel: inviteAsk.deviceLabel,
+							deviceName: inviteAsk.deviceName,
 							options: inviteOptions,
 						}
 			}
@@ -1159,7 +1208,7 @@ export const MeshPage: FC = () => {
 							networkId: removeAsk.networkId,
 							networkLabel: removeAsk.networkLabel,
 							deviceId: removeAsk.deviceId,
-							deviceLabel: removeAsk.deviceLabel,
+							deviceName: removeAsk.deviceName,
 						}
 			}
 			onOpenRemove={(ask) => {

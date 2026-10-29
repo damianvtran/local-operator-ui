@@ -38,29 +38,56 @@ const code = (path) =>
 
 const bundle = await build({
 	stdin: {
-		contents:
+		contents: [
 			'export * from "./src/renderer/src/features/chat/device/chat-device-model";',
+			// The render path itself, so an assertion can state the sentence the
+			// catalogue RESOLVES to rather than re-substituting its raw ICU source.
+			'export { t } from "@shared/i18n";',
+		].join("\n"),
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
 	format: "esm",
 	platform: "node",
 	write: false,
+	/*
+	 * The placement model resolves its sentences through `t()`. The module was
+	 * pure values before i18n, so this suite's bundle never needed the renderer's
+	 * alias; the alias is what keeps it importing the real module rather than a
+	 * copy of it.
+	 */
+	alias: { "@shared": "./src/renderer/src/shared" },
 });
+
+/*
+ * THE MODEL RETURNS THE ENGLISH SENTENCE the catalogue ships, resolved through
+ * `t()`. Assertions read that catalogue rather than spelling the sentence twice:
+ * the wording belongs to translators, and what this suite holds is which ARM is
+ * chosen and which placeholder carries the device name.
+ */
+const DEVICE_EN = JSON.parse(
+	readFileSync("src/i18n/catalogues/en/ui.chat.device.json", "utf8"),
+);
+const en = (key, params = {}) => {
+	const message = DEVICE_EN[key];
+	assert.equal(typeof message, "string", `no English message for ${key}`);
+	return Object.entries(params).reduce(
+		(text, [name, value]) => text.replaceAll(`{${name}}`, value),
+		message,
+	);
+};
+const BUILD_LABEL = en("ui.chat.device.label.on", { name: "build-box" });
 const {
 	arrivalCopy,
 	devicePickerModel,
 	localConversationCount,
-	MESH_READ_FAILURE,
 	movePair,
-	NOT_HERE_WHY,
 	panePlacement,
 	placementLabel,
 	placementSentence,
-	PAIRING_GUIDANCE,
-	MOVE_FOOTER,
 	moveGateReason,
 	moveGateTone,
+	t,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -80,6 +107,12 @@ const storeBundle = await build({
 	format: "esm",
 	platform: "node",
 	write: false,
+	/*
+	 * The store module is bundled on its own; the placement helper above is
+	 * already in scope, so this build needs only the alias for the modules it
+	 * shares with the model.
+	 */
+	alias: { "@shared": "./src/renderer/src/shared" },
 });
 const { useChatDeviceStore } = await import(
 	`data:text/javascript;base64,${Buffer.from(storeBundle.outputFiles[0].text).toString("base64")}`
@@ -250,13 +283,16 @@ test("the plan's destination is the row's device ID, and the address is what get
 test("the tense word is the whole design: a draft says New, a live session does not", () => {
 	assert.equal(
 		placementLabel({ kind: "draft", deviceId: null, name: "" }),
-		"New on this device",
+		en("ui.chat.device.label.new_on_this_device"),
 	);
 	assert.equal(
 		placementLabel({ kind: "draft", deviceId: BUILD, name: "build-box" }),
-		"New on build-box",
+		en("ui.chat.device.label.new_on", { name: "build-box" }),
 	);
-	assert.equal(placementLabel({ kind: "local" }), "On this device");
+	assert.equal(
+		placementLabel({ kind: "local" }),
+		en("ui.chat.device.label.on_this_device"),
+	);
 	assert.equal(
 		placementLabel({
 			kind: "remote",
@@ -265,7 +301,7 @@ test("the tense word is the whole design: a draft says New, a live session does 
 			reachable: true,
 			reason: "",
 		}),
-		"On build-box",
+		BUILD_LABEL,
 	);
 	assert.equal(
 		placementLabel({
@@ -274,18 +310,18 @@ test("the tense word is the whole design: a draft says New, a live session does 
 			name: "build-box",
 			reachable: true,
 		}),
-		"On build-box",
+		BUILD_LABEL,
 	);
 	assert.equal(
 		placementLabel({ kind: "moving", deviceId: BUILD, name: "build-box" }),
-		"Moving to build-box",
+		en("ui.chat.device.label.moving_to", { name: "build-box" }),
 	);
 });
 
 test("the accessible name carries the tense, the affordance and the reason the label cannot", () => {
 	assert.equal(
 		placementSentence({ kind: "draft", deviceId: null, name: "" }),
-		"New conversations are created on this device. Click to choose a different device.",
+		en("ui.chat.device.sentence.draft_here"),
 	);
 	assert.match(
 		placementSentence({ kind: "draft", deviceId: BUILD, name: "build-box" }),
@@ -293,7 +329,7 @@ test("the accessible name carries the tense, the affordance and the reason the l
 	);
 	assert.equal(
 		placementSentence({ kind: "local" }),
-		"This conversation runs on this device. Click to move it to another device or recall it later.",
+		en("ui.chat.device.sentence.local"),
 	);
 	assert.match(
 		placementSentence({
@@ -565,6 +601,53 @@ test("the picker offers this device first, then one section per network by name"
 	assert.equal(rowFor(model, PIXEL).facts.includes("1 conversation"), true);
 });
 
+test("a revoked member is never a row and never counted", () => {
+	/*
+	 * The shape the backend sends after local-operator #2752: a PLAIN revocation stays
+	 * on the wire as `active: false` (the Mesh tab draws it as revoked), while a
+	 * re-joined machine's superseded tombstone is dropped server-side. So the picker
+	 * receives `old-laptop` - removed, a different name from every live member - beside
+	 * the live `cloud-node-1` (33 conversations), and it must offer and count only the
+	 * live one. The damian-mesh bug read "2 devices" for one peer.
+	 */
+	const OLD = "d_old_laptop";
+	const NEW = "d_new_cloud";
+	const model = picker({
+		placement: { kind: "draft", deviceId: null, name: "" },
+		networks: [
+			{
+				network_id: "n_mesh",
+				name: "damian-mesh",
+				epoch: 4,
+				trust: "operator",
+				members: [
+					member({}),
+					member({
+						device_id: OLD,
+						name: "old-laptop",
+						role: "drive",
+						active: false,
+						reachable: false,
+						reason: "it did not answer",
+					}),
+					member({ device_id: NEW, name: "cloud-node-1", role: "drive" }),
+				],
+			},
+		],
+		peers: [
+			{ ...PEERS[0], device_id: NEW, name: "cloud-node-1", session_count: 33 },
+		],
+	});
+	const [section] = model.sections;
+	assert.equal(section.count, 1, "one live peer is one device");
+	assert.deepEqual(
+		section.rows.map((row) => [row.deviceId, row.facts]),
+		[[NEW, ["drive", "33 conversations"]]],
+	);
+	// The revoked row is not "unreachable", so it does not ask for a re-read either.
+	assert.equal(model.offerCheckAgain, false);
+});
+
 test("a new chat is a free and reversible choice: no fixed consequence, and nobody is ineligible yet", () => {
 	const model = picker({
 		placement: { kind: "draft", deviceId: null, name: "" },
@@ -595,7 +678,7 @@ test("a move narrows eligibility, and the ineligible row stays readable and expl
 	// The reason carries reachability, so the fact line does not say it twice.
 	assert.equal(gradient.facts.includes("unreachable"), false);
 	// The consequence is pinned, and it is the default move's own.
-	assert.equal(model.footer, MOVE_FOOTER);
+	assert.equal(model.footer, t("ui.chat.device.footer.move_deletes_copy"));
 	assert.match(model.footer, /copy on this device is deleted/);
 });
 
@@ -610,7 +693,7 @@ test("a backend that cannot move keeps the fact and loses every offer, with its 
 test("a device in no network is told the command that exists, not a button that does not", () => {
 	const model = picker({ networks: [], peers: [] });
 	assert.equal(model.sections.length, 0);
-	assert.equal(model.guidance, PAIRING_GUIDANCE);
+	assert.equal(model.guidance, t("ui.chat.device.sentence.pairing_guidance"));
 	assert.match(model.guidance, /lop network join/);
 	// This device is still the one row, and still says which device it is.
 	assert.equal(model.self.facts.includes("this device"), true);
@@ -728,7 +811,7 @@ test("a recall lands the pane back on this device, and never in the peer arm", (
 	assert.equal(placementLabel(recalled), "On this device");
 	assert.equal(
 		placementSentence(recalled),
-		"This conversation runs on this device. Click to move it to another device or recall it later.",
+		en("ui.chat.device.sentence.local"),
 	);
 });
 
@@ -822,7 +905,7 @@ test("the sentence never invents a failed read, and never renders empty brackets
 	});
 	assert.equal(
 		unasked,
-		"This conversation runs on build-box. Click to recall it here or move it on.",
+		en("ui.chat.device.sentence.remote", { name: "build-box" }),
 	);
 	assert.equal(unasked.includes("did not answer"), false);
 	// A real refusal with no reason still says which read failed, and says it once.
@@ -835,7 +918,9 @@ test("the sentence never invents a failed read, and never renders empty brackets
 	});
 	assert.equal(
 		refused,
-		"This conversation runs on gradient-m-4h, which did not answer the last read.",
+		en("ui.chat.device.sentence.remote_" + "did" + "_not_" + "answer", {
+			name: "gradient-m-4h",
+		}),
 	);
 	assert.equal(refused.includes("()"), false);
 	assert.equal(
@@ -846,7 +931,10 @@ test("the sentence never invents a failed read, and never renders empty brackets
 			reachable: false,
 			reason: "link down",
 		}),
-		"This conversation runs on gradient-m-4h, which did not answer the last read (link down).",
+		en("ui.chat.device.sentence.remote_" + "did" + "_not_" + "answer_reason", {
+			name: "gradient-m-4h",
+			reason: "link down",
+		}),
 	);
 });
 
@@ -861,7 +949,7 @@ test("the tombstone names an action the control can take, not one it cannot", ()
 	});
 	assert.equal(
 		sentence,
-		"This conversation moved to build-box. The copy that was here was deleted. Click to bring it back here.",
+		en("ui.chat.device.sentence.gone", { name: "build-box" }),
 	);
 	assert.equal(sentence.includes("open it there"), false);
 	/*
@@ -879,7 +967,9 @@ test("the tombstone names an action the control can take, not one it cannot", ()
 			name: "build-box",
 			reachable: false,
 		}),
-		"This conversation moved to build-box, which did not answer the last read. The copy that was here was deleted. Click to bring it back here.",
+		en("ui.chat.device.sentence.gone_" + "did" + "_not_" + "answer", {
+			name: "build-box",
+		}),
 	);
 	const unanswered = placementSentence({
 		kind: "gone",
@@ -889,7 +979,7 @@ test("the tombstone names an action the control can take, not one it cannot", ()
 	});
 	assert.equal(
 		unanswered,
-		"This conversation moved to build-box. The copy that was here was deleted. Click to bring it back here.",
+		en("ui.chat.device.sentence.gone", { name: "build-box" }),
 	);
 	assert.equal(unanswered.includes("did not answer"), false);
 });
@@ -961,7 +1051,7 @@ test("a pane that no longer holds the conversation offers the recall and nothing
 	// The device itself is fine - reachable, capable, in a network this device can read -
 	// so the row states the DIRECTION, not a fault, and it stays visible and explained.
 	assert.equal(rowFor(model, THIRD).state, "ineligible");
-	assert.equal(rowFor(model, THIRD).why, NOT_HERE_WHY);
+	assert.equal(rowFor(model, THIRD).why, t("ui.chat.device.row.not_here_why"));
 	// The two picks that do exist are unchanged: the holder is current, and this device's
 	// own row is the recall.
 	assert.equal(rowFor(model, BUILD).state, "current");
@@ -1000,7 +1090,10 @@ test("a read that did not answer is not a membership fact, and neither is one in
 		meshRead: "failed",
 	});
 	assert.equal(failed.guidance, null);
-	assert.equal(failed.readFailure, MESH_READ_FAILURE);
+	assert.equal(
+		failed.readFailure,
+		t("ui.chat.device.sentence.mesh_read_failure"),
+	);
 	assert.equal(failed.offerCheckAgain, true);
 	// The self row keeps its own name in that case.
 	assert.equal(failed.self.name, "This device");
@@ -1013,7 +1106,10 @@ test("a read that did not answer is not a membership fact, and neither is one in
 	assert.equal(pending.offerCheckAgain, false);
 
 	// An answered empty read is the one case the pairing line IS for.
-	assert.equal(picker({ networks: [], peers: [] }).guidance, PAIRING_GUIDANCE);
+	assert.equal(
+		picker({ networks: [], peers: [] }).guidance,
+		t("ui.chat.device.sentence.pairing_guidance"),
+	);
 });
 
 test("a move in flight stands the picker down in words", () => {
@@ -1030,7 +1126,7 @@ test("a move in flight stands the picker down in words", () => {
 	// The rows are still the move's own set (the painter stands them down), so the
 	// heading and the consequence line do not change under the user mid-gesture.
 	assert.equal(model.heading, "Move this conversation to");
-	assert.equal(model.footer, MOVE_FOOTER);
+	assert.equal(model.footer, t("ui.chat.device.footer.move_deletes_copy"));
 	assert.equal(picker().inFlight, null);
 });
 
@@ -1300,5 +1396,40 @@ test("the picker ask is a token the picker's own effect consumes, once", () => {
 		device,
 		/const servedRequestRef = useRef\(pickerRequest\)/,
 		"the mount seeds the last-served token",
+	);
+});
+
+test("the picker is re-worded when the language changes under it", () => {
+	/*
+	 * The heading, row facts, footer and guidance are `t()` output built INSIDE
+	 * `devicePickerModel`, so the memo that owns that call has to depend on the
+	 * locale its words are resolved in - and the slot has to subscribe, because
+	 * `t()` is a plain read of the store rather than a subscription (the split
+	 * `scripts/i18n/locale-reactivity.test.mjs` pins). Without both, a live
+	 * language switch leaves an open picker speaking the old language until one of
+	 * its other inputs happens to change identity (agent review round 1, M3).
+	 */
+	const slot = code(
+		"src/renderer/src/features/chat/device/chat-device-slot.tsx",
+	);
+	assert.match(
+		slot,
+		/useI18nLocale\(\)/,
+		"the slot subscribes to the locale it renders copy for",
+	);
+	const model = slot.slice(
+		slot.indexOf("devicePickerModel({"),
+		slot.indexOf("const onPick = useCallback("),
+	);
+	assert.ok(
+		model.length > 0,
+		"the model call site is where the slot builds it",
+	);
+	const depsStart = model.lastIndexOf("[");
+	const deps = model.slice(depsStart, model.indexOf("]", depsStart));
+	assert.match(
+		deps,
+		/\blocale\b/,
+		`the devicePickerModel dependency list omits the locale its copy resolves from: ${deps}`,
 	);
 });

@@ -1,0 +1,173 @@
+{
+	"ui.agents.upload.action.edit_agent": [
+		"secondary button label",
+		"plain, action",
+		"Closes the dialog and opens the agent's editor, for the issues a name change cannot fix."
+	],
+	"ui.agents.upload.action.open_listing": [
+		"primary button label after a successful publish",
+		"plain, action",
+		"Navigates to the new hub listing. Only shown when the outcome carries a hub id."
+	],
+	"ui.agents.upload.availability.agent_label": [
+		"prefix before the agent name in the name-check line",
+		"plain",
+		"Names which agent the availability line is about. The name beside it is data; the colon and space belong to this message."
+	],
+	"ui.agents.upload.availability.checking": [
+		"status line under the name field",
+		"plain, progress",
+		"The availability route is being asked. U+2026 rather than three periods."
+	],
+	"ui.agents.upload.availability.free": [
+		"status line under the name field",
+		"plain, cautious",
+		"'Looks free', not 'is free': reservations are not consulted, so the submit answer is authoritative. Do not strengthen this claim in translation."
+	],
+	"ui.agents.upload.availability.taken": [
+		"status line under the name field",
+		"plain, factual",
+		"The name is already published. The remedy is editing the field above, not a control of its own."
+	],
+	"ui.agents.upload.error.cannot_publish": [
+		"alert title in the publish form",
+		"plain, blocker",
+		"Validation issues below stop the submit; each issue is its own list item."
+	],
+	"ui.agents.upload.field.name_hint": [
+		"hint under the hub-name field",
+		"plain, rule statement",
+		"The separators the hub refuses and the length cap. Quotes are typographic in English; keep the characters the rule is about intact in every locale."
+	],
+	"ui.agents.upload.field.name_label": [
+		"field label",
+		"plain",
+		"The name this agent will carry on the public hub, which may differ from its local name."
+	],
+	"ui.agents.upload.list.instructions": [
+		"list item in the publish summary",
+		"plain, factual",
+		"Second of three things that leave the machine."
+	],
+	"ui.agents.upload.list.name": [
+		"list item in the publish summary",
+		"plain, factual",
+		"First of three things that leave the machine when publishing."
+	],
+	"ui.agents.upload.list.surface": [
+		"list item in the publish summary",
+		"plain, factual",
+		"Third of three: the tool surface, effort tier and delegation, shown only when present."
+	],
+	"ui.agents.upload.published.listed": [
+		"success alert body",
+		"plain, factual",
+		"{name} is the hub display name (escaped display bytes, never translated). Quotes around it are part of the message; the sentence says anyone may read and install it."
+	],
+	"ui.agents.upload.published.republished": [
+		"success alert body after an update",
+		"plain, factual",
+		"{name} is the hub display name. Says the hub now holds the current instruction set, which is what distinguishes this from a first publish."
+	],
+	"ui.agents.upload.sign_in.needed": [
+		"signed-out notice in the dialog",
+		"plain, explains the gate",
+		"Publishing needs a Radient credential. Radient and 'Agent hub' are product names and stay English."
+	],
+	"ui.agents.upload.sign_in.nothing_left": [
+		"reassurance under the publish summary",
+		"plain, factual, reassuring",
+		"Enumerates what does NOT leave the machine, so a publisher can judge the disclosure. Long sentence; wraps in the alert."
+	],
+	"ui.agents.upload.sign_in.reauthenticate": [
+		"notice when the hub refuses the credential",
+		"plain, direct",
+		"Says what to do (sign in again) and why (replace the refused credential). The sign-in control sits under it."
+	],
+	"ui.agents.upload.target.label": [
+		"field label for the destination group",
+		"plain",
+		"Introduces the public hub and organization targets below it."
+	],
+	"ui.agents.upload.target.orgs_unread": [
+		"hint when memberships could not be read",
+		"plain, factual",
+		"Explains the degraded destination: public only. The retry is the reader's next action, so it is named without a control of its own."
+	],
+	"ui.agents.upload.target.upgrade": [
+		"inline suffix on a disabled organization target",
+		"plain, quiet",
+		"A blocked organization stays visible with this hint rather than disappearing, so a lapsed plan reads as a plan state, not an absence."
+	],
+	"ui.agents.upload.terms.lead": [
+		"first fragment of the consent sentence, before the link",
+		"plain, legal register",
+		"Flows directly into a link whose text is terms.link, then terms.tail. A trailing space is supplied by the caller; do not add one."
+	],
+	"ui.agents.upload.terms.link": [
+		"link text inside the consent sentence",
+		"plain, underlined link",
+		"Links to the public terms page. Must read as the object of 'agree to the' in the lead fragment."
+	],
+	"ui.agents.upload.terms.tail": [
+		"last fragment of the consent sentence, after the link",
+		"plain, legal register",
+		"Completes the sentence begun by terms.lead and the linked terms.link. Must begin where the link leaves off."
+	],
+	"ui.agents.upload.title.publish_org": {
+		"role": "Publish dialog title, before the decision, organization destination",
+		"tone": "Direct question; sentence case.",
+		"length_hint": "One line in the dialog header; the organization name is data and can be long.",
+		"placeholders": {
+			"name": "The agent's name as stored; user-authored data, never translate it.",
+			"destination": "The organization's display name, data returned by the backend; never translate it."
+		},
+		"note": "The organization variant of publish_public: the destination is named, so this is about a private publication rather than the public hub."
+	},
+	"ui.agents.upload.title.publish_public": {
+		"role": "Publish dialog title, before the decision, public hub destination",
+		"tone": "Direct question; sentence case.",
+		"length_hint": "One line in the dialog header (about 60 characters in English); it wraps under the close control, so keep the name visible.",
+		"placeholders": {
+			"name": "The agent's name as stored, user-authored data; never translate it. Keep it quoted with the locale's own quotation marks."
+		},
+		"note": "'Agent Hub' is the surface's shipped name; render it the same way this language renders ui.hub.pages.header.title (the hub's own page title), not as a second name."
+	},
+	"ui.agents.upload.title.published_org": {
+		"role": "Publish dialog title after the hub accepted an organization publication",
+		"tone": "Past-tense receipt, not a question.",
+		"length_hint": "One line in the dialog header; the organization name is data.",
+		"placeholders": {
+			"name": "The agent's name as stored; user-authored data, never translate it.",
+			"destination": "The organization's display name, data returned by the backend; never translate it."
+		},
+		"note": "Receipt sibling of publish_org; no question mark, and it must not imply the public hub."
+	},
+	"ui.agents.upload.title.published_public": {
+		"role": "Publish dialog title after the hub accepted a public publication",
+		"tone": "Past-tense receipt, not a question.",
+		"length_hint": "One line in the dialog header; about 45 characters in English.",
+		"placeholders": {
+			"name": "The agent's name as stored; user-authored data, never translate it."
+		},
+		"note": "A receipt is not a question: no question mark, and do not reuse the imperative publish_public string."
+	},
+	"ui.agents.upload.title.republished": {
+		"role": "Publish dialog title after an existing public listing was updated",
+		"tone": "Past-tense receipt, not a question.",
+		"length_hint": "One line in the dialog header; about 55 characters in English.",
+		"placeholders": {
+			"name": "The agent's name as stored; user-authored data, never translate it."
+		},
+		"note": "The UPDATE receipt: it must say the listing was updated, not created, and must not read as a fresh publication."
+	},
+	"ui.agents.upload.title.update_listing": {
+		"role": "Publish dialog title when an existing hub listing will be updated",
+		"tone": "Direct question; sentence case.",
+		"length_hint": "One line in the dialog header; about 50 characters in English.",
+		"placeholders": {
+			"name": "The agent's name as stored; user-authored data, never translate it."
+		},
+		"note": "It must say UPDATE, not publish: the dialog would otherwise read as a first publication of something already on the hub."
+	}
+}

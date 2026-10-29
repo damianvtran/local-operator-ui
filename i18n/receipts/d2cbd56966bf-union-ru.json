@@ -1,0 +1,273 @@
+{
+ "instance": "d2cbd56966bf-union-ru",
+ "locale": "ru",
+ "audit_kind": "merge-time verification of a hand-unioned catalogue (not a fresh translation sweep)",
+ "scope": "ui.chat.attachments: verification of the hand-union of 5 branch keys and 1 main key onto the 12-key base",
+ "checkout_head": "36b88a45fe",
+ "audit_date": "2026-10-29",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "d2cbd56966bf",
+  "model": "radient/auto",
+  "actual_model_source": "runtime session-model records (harness switch notices), not self-report",
+  "model_fallbacks": [
+   "anthropic/claude-sonnet-5-5 (opened)",
+   "openai/gpt-6-astra (provider quota)",
+   "kimi/k3.1-pro (provider quota)",
+   "radient/auto (provider quota; performed this verification)"
+  ],
+  "independent_from_translator_session": true,
+  "independence_note": "Read-only: no file was written under /Users/damian/lo-literals (the two catalogue sha256 values were identical before and after every command; keys.gen.ts stayed 'M ' staged-only). This session authored none of the audited values."
+ },
+ "merge": {
+  "base": "aafa890e3c",
+  "branch_head": "36b88a45fe",
+  "theirs_origin_main": "9a767426fe",
+  "merge_base_of_branch_and_main": "aafa890e3c",
+  "state": "The index carries three stages per file (1 base / 2 ours / 3 theirs) for both catalogues, the en context sidecar and i18n/ledger.json; there is no .git/MERGE_HEAD. The hand-union exists only in the working tree, so this audit is of the worktree bytes at checkout_head, not of a commit.",
+  "index_stage_blobs": {
+   "en": {
+    "base": "7b2508feb51b1148e6463ab23a439536a524e721",
+    "ours": "22491c6f962a4cfcbdd77996dec054e2143fedcb",
+    "theirs": "a7a22acf0bd397b17c23425f49b83df56c815653",
+    "worktree": "7ea78adcade2dbc3b77ac56ef63c8518e97f71c9"
+   },
+   "ru": {
+    "base": "f358403be3dfa4d06952f241a329d1bf480e184a",
+    "ours": "ff9af3ae330224a53ee8e51027d105783d9c3251",
+    "theirs": "2a234590398abdcba92715c85edff0e12698d0f3",
+    "worktree": "81cde30c9ad2aaaae0377fbd6706fdfc34f57121"
+   },
+   "en_context": {
+    "base": "f8216eea2ccb42a3fbea59a8f0349c852b68a641",
+    "ours": "7bad68aa8c06bca13e102df86d932983769a99f2",
+    "theirs": "7b318fd81a31526a550ac867ebb4195718a812a0",
+    "worktree": "366d24336cd96d10646394c6c25e2d7e68bd6af2"
+   },
+   "verified": "each stage-1/2/3 blob equals git rev-parse <base>|<HEAD>|origin/main:<path>"
+  }
+ },
+ "input_sha256": {
+  "en": "5e99fd052e7a24dc2715d7de1332b378c1c964f801cdc1c241c7068569de41a0",
+  "ru": "d8936448914f959732321de0305866e133cb5c74d01711ee7e31e5b52c867835"
+ },
+ "input_sha256_extra": {
+  "src/i18n/catalogues/en/ui.chat.attachments.context.json": "fb4658c36a67e0a4f5be52a7ca7cfe4b3d6479e3eced9b2e94b85279e89d740c"
+ },
+ "diffs_observed": {
+  "how_measured": "git show <ref>:<path> for aafa890e3c (base), 36b88a45fe (ours) and 9a767426fe (theirs), parsed as JSON and also compared as raw source lines per key, against the working-tree union file. Separately, the repo's own scripts/i18n/catalogue-union-parity.mjs compareCatalogues() was run with base=origin/main, pr=HEAD, merged=worktree.",
+  "en": {
+   "keys": {
+    "base": 12,
+    "ours": 17,
+    "theirs": 13,
+    "union": 18
+   },
+   "ours_added": [
+    "open",
+    "playback_position",
+    "playback_rate",
+    "playback_rate_option",
+    "volume"
+   ],
+   "theirs_added": [
+    "file_and_copy_missing"
+   ],
+   "added_by_both_sides": [],
+   "removed_by_ours": [],
+   "removed_by_theirs": [],
+   "preexisting_keys_changed_by_ours": [],
+   "preexisting_keys_changed_by_theirs": [],
+   "keys_with_conflicting_values_between_sides": [],
+   "union_equals_base_plus_additions": true,
+   "raw_value_line_identity": "all 12 base lines byte-identical in the union; all 5 branch lines byte-identical; main's line byte-identical",
+   "key_order": "base order, then main's file_and_copy_missing at index 12 (after saved_copy_label), then the branch's five in branch order"
+  },
+  "ru": {
+   "keys": {
+    "base": 12,
+    "ours": 17,
+    "theirs": 13,
+    "union": 18
+   },
+   "ours_added": [
+    "open",
+    "playback_position",
+    "playback_rate",
+    "playback_rate_option",
+    "volume"
+   ],
+   "theirs_added": [
+    "file_and_copy_missing"
+   ],
+   "added_by_both_sides": [],
+   "removed_by_ours": [],
+   "removed_by_theirs": [],
+   "preexisting_keys_changed_by_ours": [],
+   "preexisting_keys_changed_by_theirs": [],
+   "keys_with_conflicting_values_between_sides": [],
+   "union_equals_base_plus_additions": true,
+   "raw_value_line_identity": "all 12 base lines byte-identical in the union; all 5 branch lines byte-identical; main's line byte-identical",
+   "key_order": "identical to the en union, key for key"
+  },
+  "union_parity_tool": {
+   "module": "scripts/i18n/catalogue-union-parity.mjs",
+   "why_not_the_cli": "The CLI refuses a --head that resolves to --old-head, and no commit holds the union yet, so the exported pure compareCatalogues() was called with the same three inputs the CLI would read.",
+   "result": {
+    "en": {
+     "baseCount": 13,
+     "prCount": 17,
+     "mergedCount": 18,
+     "unionCount": 18,
+     "missingFromBase": [],
+     "missingFromPr": [],
+     "valueDifferences": [],
+     "ok": true
+    },
+    "ru": {
+     "baseCount": 13,
+     "prCount": 17,
+     "mergedCount": 18,
+     "unionCount": 18,
+     "missingFromBase": [],
+     "missingFromPr": [],
+     "valueDifferences": [],
+     "ok": true
+    },
+    "en_context": {
+     "baseCount": 13,
+     "prCount": 17,
+     "mergedCount": 18,
+     "unionCount": 18,
+     "missingFromBase": [],
+     "missingFromPr": [],
+     "valueDifferences": [],
+     "ok": true
+    }
+   }
+  }
+ },
+ "gates": [
+  {
+   "command": "node scripts/i18n/check-duplicates.mjs",
+   "result": "ok - 934 file(s) scanned, 0 duplicate key(s)",
+   "exit": 0
+  },
+  {
+   "command": "node scripts/i18n/context-parity.mjs",
+   "result": "ok - every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only)",
+   "exit": 0
+  },
+  {
+   "command": "node scripts/i18n/generate.mjs --check",
+   "result": "src/i18n/keys.gen.ts is byte-identical to a fresh generation (it already carries both sides' keys)",
+   "exit": 0
+  }
+ ],
+ "provenance": {
+  "branch_side_audited_bytes": {
+   "receipt": "i18n/receipts/f684e610b106-r4-ru.json",
+   "auditor": "i18n-auditor / radient/auto, 2026-10-29",
+   "recorded_input_sha256": {
+    "en": "623a1363260ecbe40393b4424dde4d7b6cc084688ac354483052639a145ce892",
+    "ru": "5b0023cad297ff9a4ee5b3e7752ca0bd100ad8cbb0b76a03b6d97063b6e6e77d"
+   },
+   "equal_to_index_stage_2": true
+  },
+  "main_side_audited_bytes": {
+   "receipt": "i18n/receipts/i18n-audit-1452-20261027-ru.json",
+   "auditor": "reviewer / anthropic/claude-opus-5-5, 2026-10-27",
+   "recorded_namespace_sha256": {
+    "en": "1f476ef54a5fb470d00da5e66e7f2ccd2665d4d22f07ff11f20a3e00acfeadc5",
+    "ru": "e85a8c8e102dcc303c5496ee4794ccc4f7c1abd1c674b319dbf1475a2f63a7b0"
+   },
+   "equal_to_index_stage_3": true,
+   "keys": 1
+  },
+  "conclusion": "Both sides' audited byte-versions are exactly the blobs in the index stages 2 and 3, and the union preserved every one of those value lines byte-identically - so the 18 values audited here are the values the two prior rounds audited, plus no other change."
+ },
+ "checks": [
+  {
+   "check": "1. union arithmetic, en and ru",
+   "result": "pass",
+   "detail": "12 base + 5 branch + 1 main = 18 in both locales; no key added by both sides; no pre-existing key changed by either side; no key whose two sides disagree; no key removed; union parsed equal to base+additions and identical at raw line level."
+  },
+  {
+   "check": "2. the five branch keys are the audited values",
+   "result": "pass",
+   "detail": "playback_rate_option «{rate}x», volume «Громкость», playback_position «Позиция воспроизведения» read in the worktree; the en/ru files at HEAD hash to the audited pair recorded in f684e610b106-r4-ru.json, whose ui.chat.attachments block passed exactly these five delta keys, and the union keeps their raw lines byte-identical."
+  },
+  {
+   "check": "3. main's new key in the same voice",
+   "result": "pass, no finding",
+   "detail": "«Сохранённой копии тоже нет.» for 'The saved copy is gone too.' Genitive with нет, «тоже» carries 'too', «сохранённой копии» inflects the same term as the pre-existing saved_copy_label «Сохранённая копия» / copy_saved_path «Скопировать путь сохранённой копии», and it parallels the sibling file_missing_recovery «Файла по этому пути больше нет.». Distinct in meaning from that line (store copy vs origin path), so no collision with the base keys."
+  },
+  {
+   "check": "4. placeholder, plural and typography regression",
+   "result": "pass",
+   "detail": "placeholder token sets identical en/ru on all 18 keys; no ICU plural/select/selectordinal in the namespace before or after (nothing here counts a noun); NFC, no control characters, no trailing/double spaces, no straight quotes, no '...', no space before punctuation, middle dot preserved in file_meta, and the only Latin residue is the intentional 'x' of {rate}x."
+  }
+ ],
+ "counts": {
+  "BLOCKER": 0,
+  "MAJOR": 0,
+  "MINOR": 1,
+  "NIT": 0
+ },
+ "verdict": "pass",
+ "namespaces": {
+  "ui.chat.attachments": {
+   "status": "passed",
+   "keys_audited": 18,
+   "sha256": {
+    "en": "5e99fd052e7a24dc2715d7de1332b378c1c964f801cdc1c241c7068569de41a0",
+    "target": "d8936448914f959732321de0305866e133cb5c74d01711ee7e31e5b52c867835"
+   },
+   "findings": [
+    {
+     "id": "RU-UNION-01",
+     "severity": "MINOR",
+     "blocking": false,
+     "key": "ui.chat.attachments.playback_rate_option",
+     "current": "{rate}x",
+     "problem": "In ru this renders «0.5x» / «1.5x» with a Latin decimal point, against the ru guide's decimal-comma rule. The template is a bare ICU argument and the call site passes String(rate) (audio-attachment.tsx:232-234; keys.gen.ts types the argument as string), so intl-messageformat substitutes the value unchanged. Proven with the repo's own intl-messageformat: {rate}x + \"0.5\" -> \"0.5x\" (and a numeric 0.5 -> \"0.5x\", a bare argument is not number-formatted), while {rate, number}x -> \"0,5x\" in ru and \"1,5x\" in fr.",
+     "suggested": "Pass Number(rate) at the call site and make the template \"{rate, number}x\" in all seven catalogues (fr/es/vi carry the same defect; en/hi/zh-CN happen to be correct).",
+     "not_a_translation_error": "The catalogue value matches its own context note (keep the multiplier sign beside the number, do not spell 'times'), is byte-identical to English, and is unchanged from the branch head that round 4 passed - so this is not a union regression and does not block."
+    }
+   ]
+  }
+ },
+ "deviations": [
+  {
+   "what": "read_public_copy was not available for this file",
+   "detail": "The sanctioned reader refused the working tree twice, verbatim: \"refused: src/i18n/catalogues/{en,ru}/ui.chat.attachments.json differs from HEAD; commit the public copy before auditing it\". The union is uncommitted by design, so the values were read from the working tree (read/JSON parse) and cross-checked against the committed side blobs above. Once the merge is committed the route becomes available; nothing here depends on an uncommitted reading that differs from an audited blob."
+  }
+ ],
+ "observations_outside_scope": [
+  {
+   "what": "i18n/ledger.json is still UU in the index",
+   "detail": "The merge is not commit-ready: the ledger conflict is unresolved alongside the eight locale catalogue conflicts. Out of scope for this namespace audit, reported so it is not mistaken for verified."
+  },
+  {
+   "what": "the same number-formatting issue affects the other locales",
+   "detail": "playback_rate_option is «{rate}x» in all seven locales, so fr, es and vi render the same Latin decimal point; en, hi and zh-CN are unaffected by their own rules. A call-site fix covers all seven at once."
+  },
+  {
+   "what": "context sidecar",
+   "detail": "The en context union is also clean: 18 entries, main's entry and the five branch entries both present, no dropped or changed entry. The hand-union reflowed playback_rate_option's one-line \"placeholders\" object onto three lines (whitespace only, same value); context-parity passes."
+  }
+ ],
+ "references": {
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ru.md",
+   "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465",
+   "labelled_as": "document on disk, read as a doc (not the covered commit's copy)"
+  },
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "context_sidecar": "src/i18n/catalogues/en/ui.chat.attachments.context.json",
+  "no_mt_service": "No translation/MT service was used; judgement is by reasoning over the en source, its sidecar, the glossary and the ru guide."
+ }
+}

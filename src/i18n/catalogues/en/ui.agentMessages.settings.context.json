@@ -1,0 +1,650 @@
+{
+	"ui.agentMessages.settings.section": {
+		"role": "settings section title and sidebar label",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Names the feature with its product noun. This is the one noun every agent-messages surface uses; never 'team chat'. Reused for the sidebar rail item and the section heading."
+	},
+	"ui.agentMessages.settings.description": {
+		"role": "settings section description",
+		"tone": "sentence case, plain, second person",
+		"length": "One sentence; may wrap to two lines.",
+		"placeholders": {},
+		"note": "One sentence under the section heading. States that the agent exchanges messages with other members' agents inside the reader's organization; it is not a marketing claim."
+	},
+	"ui.agentMessages.settings.off_by_default": {
+		"role": "on-ramp helper text",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Sits under the Enable action in state B. States the default plainly so enabling is understood as a choice."
+	},
+	"ui.agentMessages.settings.state.b_title": {
+		"role": "on-ramp (state B) heading",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "State B is an eligible account with no endpoint yet. The heading names the current state, the body says what enabling adds. Nothing here may claim the feature is already on."
+	},
+	"ui.agentMessages.settings.state.b_body": {
+		"role": "on-ramp (state B) body",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "State B is an eligible account with no endpoint yet. The heading names the current state, the body says what enabling adds. Nothing here may claim the feature is already on."
+	},
+	"ui.agentMessages.settings.state.c_title": {
+		"role": "enabled (state C) heading",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "State C is an active endpoint. The heading is the shortest possible 'On'; the body states the two-way flow without implying a guarantee of delivery."
+	},
+	"ui.agentMessages.settings.state.c_body": {
+		"role": "enabled (state C) body",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "State C is an active endpoint. The heading is the shortest possible 'On'; the body states the two-way flow without implying a guarantee of delivery."
+	},
+	"ui.agentMessages.settings.state.d_title": {
+		"role": "paused (state D) heading",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "State D is the user pause. The body must keep three facts: traffic stops both ways, queued messages stay, and resume needs no new consent."
+	},
+	"ui.agentMessages.settings.state.d_body": {
+		"role": "paused (state D) body",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "State D is the user pause. The body must keep three facts: traffic stops both ways, queued messages stay, and resume needs no new consent."
+	},
+	"ui.agentMessages.settings.state.e_title": {
+		"role": "opted out (state E) heading",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "State E is a user opt-out. The body says turning on again records fresh consent, so the reader is not surprised by the consent text reappearing."
+	},
+	"ui.agentMessages.settings.state.e_body": {
+		"role": "opted out (state E) body",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "State E is a user opt-out. The body says turning on again records fresh consent, so the reader is not surprised by the consent text reappearing."
+	},
+	"ui.agentMessages.settings.state.f_title": {
+		"role": "killed/lapsed (state F) heading",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "State F is an organization kill or a lapsed plan with a retained endpoint. The wire exposes no actor, so the copy names only 'your organization' and never guesses admin versus operations. History stays readable."
+	},
+	"ui.agentMessages.settings.state.f_body": {
+		"role": "killed/lapsed (state F) body",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "State F is an organization kill or a lapsed plan with a retained endpoint. The wire exposes no actor, so the copy names only 'your organization' and never guesses admin versus operations. History stays readable."
+	},
+	"ui.agentMessages.settings.state.turned_off_title": {
+		"role": "neutral banner title for state F",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "The plain statement of state F. It is neutral for both an organization kill and a lapsed plan, because the wire cannot tell them apart."
+	},
+	"ui.agentMessages.settings.state.turned_off_org": {
+		"role": "state F actor line",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "The only actor the wire can honestly name. Do not invent 'an administrator' or 'Radient operations'."
+	},
+	"ui.agentMessages.settings.state.read_only": {
+		"role": "consent record read-only note",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Rendered beside the retained consent record in state F. It explains why the record has no edit or renew control there."
+	},
+	"ui.agentMessages.settings.action.enable": {
+		"role": "state action button label",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "A button label. Sentence case, verb first, no punctuation. The same action is labelled identically wherever it appears."
+	},
+	"ui.agentMessages.settings.action.enable_again": {
+		"role": "state action button label",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "A button label. Sentence case, verb first, no punctuation. The same action is labelled identically wherever it appears."
+	},
+	"ui.agentMessages.settings.action.pause": {
+		"role": "state action button label",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "A button label. Sentence case, verb first, no punctuation. The same action is labelled identically wherever it appears."
+	},
+	"ui.agentMessages.settings.action.resume": {
+		"role": "state action button label",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "A button label. Sentence case, verb first, no punctuation. The same action is labelled identically wherever it appears."
+	},
+	"ui.agentMessages.settings.action.turn_off": {
+		"role": "state action button label",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "A button label. Sentence case, verb first, no punctuation. The same action is labelled identically wherever it appears."
+	},
+	"ui.agentMessages.settings.local.label": {
+		"role": "machine-local enable switch label",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Names the MACHINE-LOCAL preference, distinct from server consent. It is a switch label, two to four words, sentence case."
+	},
+	"ui.agentMessages.settings.local.stays_enrolled": {
+		"role": "machine-local switch helper",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Sits under the local switch in state C. Turning the local switch off must not read as revoking enrollment: the account stays enrolled on other machines."
+	},
+	"ui.agentMessages.settings.saving": {
+		"role": "in-flight button label",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Shown while a settings write is pending. Keep it short enough not to resize the button."
+	},
+	"ui.agentMessages.settings.consent.show": {
+		"role": "consent record label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "The disclosure control that reveals the served consent text verbatim. The text is server-authored; this label only opens it."
+	},
+	"ui.agentMessages.settings.consent.version": {
+		"role": "consent record label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "A field label for the consent version string, e.g. bridge_consent_v1. The value is machine text and is never translated."
+	},
+	"ui.agentMessages.settings.consent.via": {
+		"role": "consent record label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "A field label naming the surface that collected consent."
+	},
+	"ui.agentMessages.settings.consent.at": {
+		"role": "consent record label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "A field label for the consent timestamp."
+	},
+	"ui.agentMessages.settings.consent.via_dialog": {
+		"role": "consent record label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "The value shown for consent collected by the one-time onboarding dialog."
+	},
+	"ui.agentMessages.settings.consent.via_settings": {
+		"role": "consent record label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "The value shown for consent collected by this Settings section."
+	},
+	"ui.agentMessages.settings.consent.no_record": {
+		"role": "consent record label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Shown when an endpoint has no consent record. A factual absence, not an error."
+	},
+	"ui.agentMessages.settings.consent.renew": {
+		"role": "consent record label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "A warning when the stored consent is no longer the served version. It must direct the reader to the enable/renew action, never claim consent covers the new text."
+	},
+	"ui.agentMessages.settings.consent.unavailable": {
+		"role": "consent record label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Shown in state B or E when the served consent text could not be read. Enabling is disabled in that state; the sentence says nothing was enabled."
+	},
+	"ui.agentMessages.settings.consent.changed": {
+		"role": "consent record label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "The recovery sentence after a consent_version_unknown refusal. It asks for a fresh read and a NEW click; it must not imply an automatic retry."
+	},
+	"ui.agentMessages.settings.allowlist.title": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.description": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.level": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.send": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.receive": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.anyone": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.listed_only": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.cue_listed_only": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.cue_remove": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.cue_deny": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.allowed_heading": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.allowed_empty": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.blocked_heading": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.blocked_empty": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.add": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.add_allowed": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.add_blocked": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.kind": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.kind_agent": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.kind_person": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.identifier": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.identifier_empty": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.identifier_long": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.identifier_invalid": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.remove": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.save": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.needs_entry": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.allowlist.unchanged": {
+		"role": "reach editor label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the reach editor."
+	},
+	"ui.agentMessages.settings.session.title": {
+		"role": "CoS designation label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the session designation."
+	},
+	"ui.agentMessages.settings.session.help": {
+		"role": "CoS designation label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the session designation."
+	},
+	"ui.agentMessages.settings.session.none": {
+		"role": "CoS designation label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the session designation."
+	},
+	"ui.agentMessages.settings.session.unavailable": {
+		"role": "CoS designation label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Part of the session designation."
+	},
+	"ui.agentMessages.settings.dark.title": {
+		"role": "dark-launch panel copy",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Dark-launch panel."
+	},
+	"ui.agentMessages.settings.dark.body": {
+		"role": "dark-launch panel copy",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Dark-launch panel."
+	},
+	"ui.agentMessages.settings.dark.nothing_enabled": {
+		"role": "dark-launch panel copy",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Dark-launch panel."
+	},
+	"ui.agentMessages.settings.error.title": {
+		"role": "error surface label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Error surface copy."
+	},
+	"ui.agentMessages.settings.error.retry": {
+		"role": "error surface label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Error surface copy."
+	},
+	"ui.agentMessages.settings.error.unreadable": {
+		"role": "error surface label/sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Error surface copy."
+	},
+	"ui.agentMessages.settings.refusal.sign_in": {
+		"role": "refusal sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Refusal surface copy."
+	},
+	"ui.agentMessages.settings.refusal.not_available": {
+		"role": "refusal sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Refusal surface copy."
+	},
+	"ui.agentMessages.settings.refusal.disabled": {
+		"role": "refusal sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Refusal surface copy."
+	},
+	"ui.agentMessages.settings.refusal.rate_limited": {
+		"role": "refusal sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Refusal surface copy."
+	},
+	"ui.agentMessages.settings.refusal.invalid_request": {
+		"role": "refusal sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Refusal surface copy."
+	},
+	"ui.agentMessages.settings.refusal.generic": {
+		"role": "refusal sentence",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Refusal surface copy."
+	},
+	"ui.agentMessages.settings.allowlist.read_only": {
+		"role": "read-only note in the reach editor",
+		"tone": "sentence case, factual, no blame",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "Shown when the status says read_only (state F). Explains why the level controls, add/remove rows and Save are disabled rather than letting the reader press a write the server refuses."
+	},
+	"ui.agentMessages.settings.allowlist.agent_id": {
+		"role": "allowlist row label",
+		"tone": "sentence case, plain, factual",
+		"length": "One short line or sentence.",
+		"placeholders": {},
+		"note": "Names the identifier type on an allowed/blocked row. The wire carries only an endpoint id; this label makes the machine identifier honest rather than presenting it as a person."
+	},
+	"ui.agentMessages.settings.allowlist.person_id": {
+		"role": "allowlist row label",
+		"tone": "sentence case, plain, factual",
+		"length": "One short line or sentence.",
+		"placeholders": {},
+		"note": "Names the identifier type on a person-targeted row. The wire carries only an account id; do not invent a display name."
+	},
+	"ui.agentMessages.settings.allowlist.identifier_help_agent": {
+		"role": "add-entry input help",
+		"tone": "sentence case, plain, factual",
+		"length": "One short line or sentence.",
+		"placeholders": {},
+		"note": "Explains that the input expects an agent endpoint id and shows its prefix. The id itself is never translated."
+	},
+	"ui.agentMessages.settings.allowlist.identifier_help_person": {
+		"role": "add-entry input help",
+		"tone": "sentence case, plain, factual",
+		"length": "One short line or sentence.",
+		"placeholders": {},
+		"note": "Explains that the input expects a person's account id and shows its prefix. The id itself is never translated."
+	},
+	"ui.agentMessages.settings.error.no_changes": {
+		"role": "read-failure reassurance",
+		"tone": "sentence case, plain, factual",
+		"length": "One short line or sentence.",
+		"placeholders": {},
+		"note": "States that a failed settings read changed nothing, then asks the reader to retry for the current status. Never implies messages were disabled or enabled."
+	},
+	"ui.agentMessages.settings.hold.chief_of_staff": {
+		"role": "informational notice at the top of the Agent messages settings section, shown beside a button that opens the conversation",
+		"tone": "sentence case, calm, second person; news, not an error",
+		"length": "Two short sentences; may wrap to two lines beside a button.",
+		"placeholders": {
+			"count": "number of incoming agent messages waiting; a positive integer, never 0"
+		},
+		"note": "Incoming messages from other members' agents are held on this computer because the reader's chief of staff (the designated assistant conversation) has never been used. Merely opening the conversation releases nothing: the reader has to send one message of their own in it, and the held messages are then delivered. 'Chief of staff' is the product's name for that assistant role; say it once here (the button beside it says it again) and never use the assistant's personal name. 'That conversation' is the chief of staff's conversation. Plural forms matter: 'it'/'them' follows the count. Never say the messages were refused, failed, read or lost."
+	},
+	"ui.agentMessages.settings.hold.chief_of_staff_unlinked": {
+		"role": "informational notice at the top of the Agent messages settings section, shown with NO button",
+		"tone": "sentence case, calm, second person; news, not an error",
+		"length": "Two short sentences; may wrap to two lines.",
+		"placeholders": {
+			"count": "number of incoming agent messages waiting; a positive integer, never 0"
+		},
+		"note": "The same situation as ui.agentMessages.settings.hold.chief_of_staff, for when this screen cannot tell which conversation is the chief of staff, so there is no button. It tells the reader where to find it instead: the conversation list in the app's sidebar. Sending one message of their own there releases the held messages; opening it alone does not. Never say the messages were refused, failed, read or lost."
+	},
+	"ui.agentMessages.settings.hold.open": {
+		"role": "button label beside the waiting-messages notice",
+		"tone": "sentence case, imperative verb first",
+		"length": "Two to three words; must fit a small button.",
+		"placeholders": {},
+		"note": "Opens the chief-of-staff conversation with its message box ready, so the reader can send the one message that releases the held messages. 'Message' is a verb here. A navigation action, not a confirmation; it sends nothing by itself."
+	},
+	"ui.agentMessages.settings.default_on.b_title": {
+		"role": "settings heading when no endpoint exists yet under default-on",
+		"tone": "sentence case, plain",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Replaces the opt-in 'off' heading. Must not offer or imply an Enable action. 'Team Bridge' stays in English."
+	},
+	"ui.agentMessages.settings.default_on.b_body": {
+		"role": "settings body under the default-on not-yet-set-up heading",
+		"tone": "plain, second person",
+		"length": "One or two sentences.",
+		"placeholders": {},
+		"note": "Says it turns on automatically and that nothing is sent when it does. No call to action."
+	},
+	"ui.agentMessages.settings.default_on.e_body": {
+		"role": "settings body after the member turned Team Bridge off under default-on",
+		"tone": "plain, second person",
+		"length": "Two short sentences.",
+		"placeholders": {},
+		"note": "Points to the consent text below and to the explicit turn-on-again path, without the word Enable."
+	},
+	"ui.agentMessages.settings.action.turn_on_again": {
+		"role": "settings button to turn Team Bridge back on after turning it off",
+		"tone": "imperative, sentence case",
+		"length": "Two or three words.",
+		"placeholders": {},
+		"note": "The explicit way back after Turn off under default-on. Deliberately not named Enable."
+	},
+	"ui.agentMessages.settings.consent.via_default_on": {
+		"role": "consent record value: how consent was collected",
+		"tone": "noun phrase, sentence case",
+		"length": "Two or three words, shown in a small grid.",
+		"placeholders": {},
+		"note": "Value for the 'Collected in' row when the runtime enrolled the member automatically."
+	}
+}

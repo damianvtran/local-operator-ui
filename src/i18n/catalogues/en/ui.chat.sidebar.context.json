@@ -1,0 +1,457 @@
+{
+	"ui.chat.sidebar.agents.clear_filter": {
+		"role": "accessible name of the button that empties the agent roster filter",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Screen-reader only: the control shows an X icon and sits inside the Agents section's filter field. It clears the roster filter (not the global chat search field elsewhere in the same column).",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.agents.create": {
+		"role": "row that opens the profile authoring page for a new agent",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Last row of the Agents section. It navigates to the same authoring page the command palette opens; it does not create anything inline.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.agents.dismiss_offer": {
+		"role": "accessible name of the button that dismisses the built-in agents suggestion",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Four words.",
+		"note": "Screen-reader only: the control is a bare X beside the 'No agents yet' sentence. Dismissing hides the offer of packaged agent profiles for this user and is persisted.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.agents.empty": {
+		"role": "empty-state sentence for a user with no agent profiles",
+		"tone": "plain statement, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Sits in the Agents section above the built-in agents offer. It states the user's own roster is empty; it is not an error and not a claim that none exist at all.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.agents.filter": {
+		"role": "shared accessible name and placeholder of the agent roster filter field",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "One message used twice on the same input: its aria-label and its placeholder. The field only appears once the roster is longer than the section's row cap, so it narrows agents, not chats.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.agents.loading": {
+		"role": "progress sentence while the agent profiles are being read",
+		"tone": "present-participle status, sentence case, trailing ellipsis",
+		"length": "Two words plus an ellipsis.",
+		"note": "Live-region text inside the expanded Agents section while its profile read is in flight; it replaces the roster rows for that moment.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.agents.no_match": {
+		"role": "empty-state sentence when the agent roster filter matches nothing",
+		"tone": "plain statement, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Renders under the roster filter in place of the rows. It is about the typed filter, not about the user owning no agents (that state has its own sentence).",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.agents.builtin_offer": {
+		"role": "sentence offering the packaged built-in agent profiles for installation",
+		"tone": "informative two-sentence offer, sentence case, second person",
+		"length": "Around twenty words, plus the names.",
+		"note": "Sits under the Agents section when the backend offers packaged profiles the user has not installed. The count selects an arm so the spelled number matches the grammar ('One … is', 'Two … are'); counts above six print as a digit. The pronoun in the second sentence follows the count ('it' for one, 'them' for more). Entries after the em dash are the agents' own names and must stay verbatim.",
+		"placeholders": {
+			"count": "how many built-in agents are on offer; selects the plural arm and is printed as a digit in the arms above six",
+			"list": "the offered agents' own display names, already joined with commas and the conjunction; keep them verbatim and never translate a name"
+		}
+	},
+	"ui.chat.sidebar.catalogue.total": {
+		"role": "sentence stating how much of the chat catalogue the flat list is drawing",
+		"tone": "plain status statement, sentence case, no trailing punctuation",
+		"length": "Six words plus two numbers.",
+		"note": "Renders under the flat chat list on a paged backend. The numerator is the rows actually drawn, the denominator the server's census of the whole catalogue; both are numbers and carry no plural word of their own.",
+		"placeholders": {
+			"shown": "how many chats the list is currently drawing. A number; never translate, reorder or format it here.",
+			"total": "how many chats the whole catalogue holds, as the server counted them. A number; never translate it."
+		}
+	},
+	"ui.chat.sidebar.catalogue.total_search": {
+		"role": "sentence stating how much of a searched chat catalogue the flat list is drawing",
+		"tone": "plain status statement, sentence case, no trailing punctuation",
+		"length": "Seven words plus two numbers.",
+		"note": "The searchable form of the catalogue total: the numerator is the matches drawn and the denominator the whole catalogue, so the noun names what the first number counts. The noun pluralises on the shown count.",
+		"placeholders": {
+			"shown": "how many matching chats the list is drawing; also selects the plural arm for `match`. A number; never translate it.",
+			"total": "how many chats the whole catalogue holds. A number; never translate it."
+		}
+	},
+	"ui.chat.sidebar.catalogue.total_search_clipped": {
+		"role": "sentence stating how much of a searched chat catalogue the flat list is drawing when the answer is capped",
+		"tone": "plain status statement, sentence case, no trailing punctuation",
+		"length": "Seven words plus two numbers.",
+		"note": "The clipped form of the searched total: the trailing `+` marks the numerator as a floor because the search itself was capped, matching the badge elsewhere in the panel. Keep the `+` attached to the first number.",
+		"placeholders": {
+			"shown": "the floor on how many matching chats exist; also selects the plural arm for `match`. A number; never translate it.",
+			"total": "how many chats the whole catalogue holds. A number; never translate it."
+		}
+	},
+	"ui.chat.sidebar.drafts.clear_all": {
+		"role": "button that clears every settled unsent draft",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Visible label in the drafts block's action row. It applies to the drafts listed beside it and never touches sent messages; the accessible name of the same control is the longer 'Clear all drafts'.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.drafts.clear_all_label": {
+		"role": "accessible name of the button that clears every settled unsent draft",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Screen-reader name of the drafts block's trash control, which also carries a visible 'Clear all'. The longer form names the object so the two controls in the column cannot be confused.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.groups.badge": {
+		"role": "what a collaboration group's chat-count badge means, for its title and screen-reader name",
+		"tone": "plain statement, sentence case, no trailing punctuation",
+		"length": "Five words plus one number.",
+		"note": "The badge shows a group's census - how many chats the group HOLDS - which is a different number from the section heading's count of rows drawn. The sentence is also the only way that number reaches a screen reader, because the badge sits inside buttons whose aria-labels replace their children. Uses a plural so a single-chat group reads \"1 chat\", not \"1 chats\".",
+		"placeholders": {
+			"badge": "number"
+		}
+	},
+	"ui.chat.sidebar.header.create": {
+		"role": "accessible name of the header button that opens the create menu",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Four words.",
+		"note": "Names the band control that reveals two rows: creating an agent and creating a team. It is a menu door, not a form; the tooltip repeats it.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.header.create_agent": {
+		"role": "menu row that opens the new-agent authoring page",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "One of the two rows under the header's create control. It navigates to the authoring page; it does not open a dialog here.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.header.create_team": {
+		"role": "menu row that opens the new-team authoring page",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "The second row under the header's create control, beside 'New agent'. Same authoring-page navigation as the Agents page's own create rows.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.header.open_agent": {
+		"role": "accessible name of the header button that jumps to an agent",
+		"tone": "verb phrase, sentence case, trailing ellipsis",
+		"length": "Two words plus an ellipsis.",
+		"note": "The ellipsis signals that a command palette opens rather than an immediate navigation. It opens the palette on its agents scope with the field ready, so an agent can be picked by name.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.header.search": {
+		"role": "shared accessible name of the search toggle and of the filter field it opens",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Four words.",
+		"note": "One message used twice in the header band: the icon button's aria-label and the input's aria-label once the field is shown. It names both scopes the query narrows - conversations and agents - so it cannot be shortened to 'Search'.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.header.view_options": {
+		"role": "accessible name of the header button that opens the view-options popover",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Opens the popover that reorders and caps the sidebar's sections. The button takes a filled state when the view differs from the default.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.list.connecting": {
+		"role": "status sentence while the desktop capability read is in flight",
+		"tone": "present-participle status, sentence case, trailing ellipsis",
+		"length": "Three words plus an ellipsis.",
+		"note": "Live-region line at the top of the chats list on a cold start, before any row can be drawn. It is about talking to the backend, not about the network mesh.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.list.empty": {
+		"role": "cold-start empty-state sentence for the chats list",
+		"tone": "plain instruction, sentence case, trailing period",
+		"length": "Nine words.",
+		"note": "Renders only when the list has no rows, is not loading, and no query is active. 'New chat' is the name of a control in this panel, not a generic phrase, so it stays capitalised.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.list.loading_more": {
+		"role": "progress sentence at the end of an expanded group's rows",
+		"tone": "present-participle status, sentence case, trailing ellipsis",
+		"length": "Two words plus an ellipsis.",
+		"note": "Live-region line under a section's rows while its next page is being fetched. It replaces the explicit 'show more' row for that moment.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.list.offline": {
+		"role": "status sentence when the feed is disconnected",
+		"tone": "plain statement, sentence case, trailing period",
+		"length": "Eleven words.",
+		"note": "Renders in the list's register when banners and marks are not arriving; everything already on screen stays true. The em dash separates the state from what is being shown, and the sentence must not imply data was lost.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.list.retry_refresh": {
+		"role": "button that re-asks for the list's own read",
+		"tone": "verb pair, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Used three times in this panel: beside a failed capability read, beside a withdrawn-gate notice, and in the list's combined error block. It is deliberately distinct from the connection strip's plain 'Retry', which re-negotiates rather than re-reads.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.list.truncated_legacy": {
+		"role": "notice that the chats list is capped on a backend that cannot page",
+		"tone": "plain statement, sentence case, trailing period",
+		"length": "Twelve words.",
+		"note": "Renders only when the daemon cannot page and the list was truncated. The figure 500 is the legacy list cap and is stated as a fixed product fact, not interpolated, so it must not be reformatted as a number placeholder.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.nav.chats": {
+		"role": "accessible name of the conversation sidebar's navigation landmark",
+		"tone": "noun, sentence case, no trailing punctuation",
+		"length": "One word.",
+		"note": "Labels the nav element that holds both the chats list and the agents and teams sections, so a screen reader can jump to the whole sidebar.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.pins.drag_title": {
+		"role": "tooltip on the drag handle that reorders pinned conversations",
+		"tone": "instruction pair, sentence case, no trailing punctuation",
+		"length": "Five words.",
+		"note": "The handle is decorative to assistive technology (aria-hidden, tabIndex -1); the same reordering is offered by the row menu's Move items. Esc cancels an in-flight drag, and the middot separates the two instructions.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.pins.failure": {
+		"role": "sentence naming a failed pin or unpin and the conversation it targeted",
+		"tone": "plain failure statement, sentence case, trailing period",
+		"length": "One short sentence; the title can be long.",
+		"note": "Renders in a warning line above the list until the next pin attempt. The select picks the verb that matches the attempted direction, so the verb must live inside each arm rather than being composed from a translated noun. The title is the user's own conversation title, wrapped in typographic quotes.",
+		"placeholders": {
+			"action": "pin or unpin, the attempted direction; selects the arm, never rendered as a word",
+			"title": "the conversation's own title, kept inside the quotes"
+		}
+	},
+	"ui.chat.sidebar.row.archived_suffix": {
+		"role": "screen-reader suffix marking a row as archived",
+		"tone": "qualifier, lower case, no trailing punctuation",
+		"length": "One word plus the comma that joins it to the row's title.",
+		"note": "Follows the row's title inside the accessible name, after an aria-hidden archive glyph. The comma is part of the message because list punctuation differs by locale; the visible tooltip states the same fact.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.row.in_conversation": {
+		"role": "visible qualifier marking a row that matched inside a conversation",
+		"tone": "prepositional phrase, lower case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Rendered after a decorative middot in the row's meta line, and aria-hidden: the sentence a screen reader hears is the sr-only 'matched in conversation'. It explains why a row is in a filtered list when its title does not contain the query.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.row.matched_in_conversation": {
+		"role": "screen-reader sentence explaining a conversation-body match",
+		"tone": "qualifier, lower case, no trailing punctuation",
+		"length": "Three words plus the comma that joins it to the row's title.",
+		"note": "Rendered sr-only beside the aria-hidden visible mark, so the fact is announced once. It is a separate sentence from the visible 'in conversation', which is why both keys exist.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.row.not_sent": {
+		"role": "visible state mark on a draft that was never sent",
+		"tone": "state phrase, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Rendered after a decorative middot in the row's meta line. It states that the draft has no backend record yet; the row's own tooltip carries the longer explanation.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.row_menu.copy_id": {
+		"role": "row context-menu item that puts the session id on the clipboard",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Copies the owning device's session id, which can be handed to a sessions or send call. It carries no keyboard chord because the app binds none for it.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.row_menu.fork": {
+		"role": "row context-menu item that forks the conversation",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Renders only on a local row when the fork capability is present. It navigates into the chat pane's fork flow rather than copying anything here.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.row_menu.move_down": {
+		"role": "row context-menu item that moves a pinned conversation one slot down",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "The single-pointer path for reordering pins; the keyboard chord is printed inside the item and is not part of this message. It is disabled with a reason at the end of the pinned list.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.row_menu.move_up": {
+		"role": "row context-menu item that moves a pinned conversation one slot up",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "The counterpart of 'Move conversation down' and the single-pointer path for reordering pins. The chord inside the item comes from the app's binding table, not from this message.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.row_menu.rename": {
+		"role": "row context-menu item that opens the rename panel for the conversation",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Opens the same rename panel the pane's own control uses, seeded with the row's title. It is an act on every row the menu is drawn on, including one never opened.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.search.clear": {
+		"role": "accessible name of the button that empties the chat filter field",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Screen-reader only: the control is an X inside the field. It clears the list's query and is rendered only while a query exists; it is not the agent roster's clear control.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.search.include_archived": {
+		"role": "checkbox label that widens the current search to archived conversations",
+		"tone": "verb phrase as a label, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Rendered beside the search field only while a query is active and the archive capability is present. Unticked keeps archived rows out of every list; it widens the search rather than opening a section.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.search.names_only": {
+		"role": "notice that the backend can only match conversation names",
+		"tone": "plain explanation, sentence case, trailing period",
+		"length": "Twelve words.",
+		"note": "Renders under the search field when the backend advertises no conversation search. 'Local Operator' is the product name and is never translated; the remedy it names is updating the app.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.search.no_match": {
+		"role": "empty-result sentence for a query the conversation search answered",
+		"tone": "plain statement, sentence case, trailing period",
+		"length": "One short sentence; the query can be long.",
+		"note": "Rendered only when the conversation search actually ran and answered this exact query; a names-only or failed backend gets the notice instead. The query is quoted with typographic quotes, which belong to the sentence.",
+		"placeholders": {
+			"query": "the user's own typed search text, trimmed; never translated"
+		}
+	},
+	"ui.chat.sidebar.search.placeholder": {
+		"role": "placeholder of the chat and agent filter field",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Four words.",
+		"note": "The field is drawn only while filtering; this text is the example content, while the field's accessible name is the header's 'Search chats and agents'. It must say it filters both scopes.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.search.searching": {
+		"role": "status sentence while a conversation search is in flight",
+		"tone": "present-participle status, sentence case, trailing ellipsis",
+		"length": "Two words plus an ellipsis.",
+		"note": "Renders under the field during the debounce and round trip, while the list legitimately holds name matches only. It names the wait rather than filling it with the previous query's hits.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.search.too_long": {
+		"role": "notice that the query exceeds the search contract's limit",
+		"tone": "plain explanation, sentence case, trailing period",
+		"length": "Two sentences, about twenty words.",
+		"note": "Rendered instead of the names-only notice when the typed query is past the backend's bound; the request is refused before it is made, so no Retry is offered. The limit is rendered ungrouped to match the raw constant the source printed.",
+		"placeholders": {
+			"max": "the contract's character limit, an integer; ICU number with grouping disabled"
+		}
+	},
+	"ui.chat.sidebar.search.unavailable": {
+		"role": "notice that the conversation search failed and the rows are name matches",
+		"tone": "plain explanation, sentence case, trailing period",
+		"length": "Eleven words.",
+		"note": "Renders under the field when the conversation search request errored; a Retry button follows it outside this message, separated by a space, so the sentence must not end with one.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.section.current_chat": {
+		"role": "heading of the one-row section that holds the conversation being viewed",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Section heading, upper-cased by CSS. It names a single row that the page bound would otherwise withhold, so it is a place in the list, not a second list or a chip. Uses the same wording as UI copy elsewhere that names the open conversation.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.teams.create": {
+		"role": "row that opens the team authoring page",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Last row of the Teams section, below the team rows. It navigates to the authoring page the command palette also opens.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.teams.loading": {
+		"role": "progress sentence while the team list is being read",
+		"tone": "present-participle status, sentence case, trailing ellipsis",
+		"length": "Two words plus an ellipsis.",
+		"note": "Live-region text inside the expanded Teams section while its read is in flight; it replaces the team rows for that moment.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.entity.collapse_chats": {
+		"role": "accessible name of the disclosure control that collapses an agent's or team's chats in the sidebar",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Three words plus the entity name.",
+		"note": "The name is the agent or team's own display name and is never translated. The control is the chevron at the start of the entity row; this label is the expanded state.",
+		"placeholders": {
+			"name": "the agent or team's own display name"
+		}
+	},
+	"ui.chat.sidebar.entity.expand_chats": {
+		"role": "accessible name of the disclosure control that expands an agent's or team's chats in the sidebar",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Three words plus the entity name.",
+		"note": "The collapsed state of the same chevron; the name is the agent or team's own display name and is never translated.",
+		"placeholders": {
+			"name": "the agent or team's own display name"
+		}
+	},
+	"ui.chat.sidebar.entity.manage": {
+		"role": "accessible name of the sidebar row control that opens the entity's management page",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "One word plus the entity name.",
+		"note": "Screen-reader only: the control is a bare ellipsis glyph on an agent or team row. It navigates to that profile's page; it opens no menu here.",
+		"placeholders": {
+			"name": "the agent or team's own display name"
+		}
+	},
+	"ui.chat.sidebar.entity.pin": {
+		"role": "accessible name of the sidebar control that lifts an agent to the top of its section",
+		"tone": "verb phrase, sentence case, typographic quotes around the name, no trailing punctuation",
+		"length": "One word plus the name.",
+		"note": "The label states the STATE (pinned or not), not the press: aria-pressed carries the toggle, and the tooltip carries the action. The name is the agent's own display name and stays inside typographic quotes.",
+		"placeholders": {
+			"name": "the agent's own display name, inside typographic quotes"
+		}
+	},
+	"ui.chat.sidebar.entity.unpin": {
+		"role": "action tooltip on the pin control of an already-pinned sidebar agent",
+		"tone": "verb phrase, sentence case, typographic quotes around the name, no trailing punctuation",
+		"length": "Two words plus the name.",
+		"note": "Tooltip only: it states what the next press does. The accessible name stays the constant 'Pin “name”' with aria-pressed reporting the state.",
+		"placeholders": {
+			"name": "the agent's own display name, inside typographic quotes"
+		}
+	},
+	"ui.chat.sidebar.row_menu.archive": {
+		"role": "row context-menu item that archives the conversation",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "The same act as the header's archive item, on the row that names the conversation. The item becomes 'Unarchive conversation' while the row is archived.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.row_menu.pin": {
+		"role": "row context-menu item that pins the conversation",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Moves the conversation into the pinned section above the list. Rendered only on rows whose pin state is known; the item becomes 'Unpin conversation' while pinned.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.row_menu.unarchive": {
+		"role": "row context-menu item that restores an archived conversation",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "The archived-state face of the row's archive item: it clears the archive mark.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.row_menu.unpin": {
+		"role": "row context-menu item that unpins the conversation",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "The pinned-state face of the row's pin item: it returns the conversation to the time-ordered list.",
+		"placeholders": {}
+	},
+	"ui.chat.sidebar.pins.pin_label": {
+		"role": "accessible name and tooltip of the pin control on a conversation row in the pinned section",
+		"tone": "verb plus the title in typographic quotes, no trailing punctuation",
+		"length": "Two words plus the title.",
+		"note": "The action, never the state: pressing pins the conversation, and the pressed state is reported by aria-pressed. The same string is the accessible name and the tooltip.",
+		"placeholders": {
+			"title": "the conversation's own title, inside typographic quotes"
+		}
+	},
+	"ui.chat.sidebar.pins.unpin_label": {
+		"role": "accessible name and tooltip of the pin control on an already-pinned conversation row",
+		"tone": "verb plus the title in typographic quotes, no trailing punctuation",
+		"length": "Two words plus the title.",
+		"note": "The pinned-state face of the same control: pressing returns the conversation to its time-ordered place.",
+		"placeholders": {
+			"title": "the conversation's own title, inside typographic quotes"
+		}
+	}
+}

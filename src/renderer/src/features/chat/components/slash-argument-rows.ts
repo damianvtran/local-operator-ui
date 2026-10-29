@@ -16,7 +16,10 @@
  * what this thing IS versus where it stands right now.
  */
 
-import type { DesktopCapabilities } from "../../../../../shared/desktop-contract";
+import type {
+	DesktopCapabilities,
+	TagCategory,
+} from "../../../../../shared/desktop-contract";
 import type { McpCatalogVerb } from "../../../../../shared/desktop-control-contract";
 import type { DesktopFeature } from "../../../shared/api/local-operator/desktop-hooks";
 /*
@@ -28,6 +31,18 @@ import type { DesktopFeature } from "../../../shared/api/local-operator/desktop-
  */
 import { teamDisplayName } from "../../../shared/api/local-operator/team-display";
 import { brandOf } from "../../providers/provider-catalog";
+/*
+ * The picker's own validation, limits and duplicate rule. Imported rather than
+ * restated so a slash create and a dialog create cannot disagree about what
+ * the store accepts; the module is plain TypeScript, so the node harness that
+ * bundles this file needs no alias for it.
+ */
+import {
+	TAG_REGISTRY_LIMIT,
+	TAG_SELECTION_LIMIT,
+	hasTagName,
+	tagNameIssue,
+} from "../chat-tag-picker";
 import { activeModelForDefault } from "../pickers/model-default-settings";
 import { effortDisplay } from "../session-status/session-model";
 import { pyTrim } from "./slash-token";
@@ -74,6 +89,27 @@ export type ArgumentRow = {
 	 */
 	connected?: boolean;
 	current?: boolean;
+	/**
+	 * Applied membership, for the tag source only. Rendered as the fixed-width
+	 * `[x]`/`[ ]` marker rather than the `current` bullet: the bullet means "the
+	 * value this conversation already holds" on every catalogue, while a tag row
+	 * needs a visible binary that does not depend on colour and does not read as
+	 * the listbox's navigation cursor.
+	 */
+	applied?: boolean;
+	/** The tag's stable id. `value` is the NAME a person reads; this is the id
+	 * every write takes, so a rename cannot turn a pick into a different tag. */
+	tagId?: string;
+	/** The tag that currently controls sidebar grouping, when it is this row. */
+	primary?: boolean;
+	/**
+	 * This row is the explicit create-and-apply action, not a catalogue value.
+	 * It is deliberately an ARGUMENT row rather than the `ArgumentActionRow`
+	 * kind: that kind carries model-default's own payload and one hardcoded
+	 * action id, and widening it for a second operation would put two unrelated
+	 * writes behind one narrow type. Its `value` is the name to create.
+	 */
+	create?: boolean;
 	/**
 	 * The team's ADDRESS — its slug — when `name` displays a LABEL instead.
 	 *
@@ -183,6 +219,21 @@ export function shouldRunArgumentAction(
  *     not), which is exactly why this is a renderer source and not a sixth
  *     backend id.
  */
+/**
+ * The tag list's declaration, shared by the destination table and the tests.
+ *
+ * It lives beside the row shaper rather than in `picker-registry.tsx` because
+ * that module imports every picker component and cannot be bundled by the node
+ * harness; a constant the contract test has to read from source would be a
+ * second answer to "does this list run" waiting to drift.
+ */
+export const TAG_INLINE_ARGUMENT = {
+	source: "session-tags",
+	nameThenMessage: false,
+	runs: true,
+	requires: "session_tags",
+} as const;
+
 export type EntityArgumentSource =
 	| "model"
 	| "effort"
@@ -208,7 +259,11 @@ export type SessionlessArgumentSource =
 export type BackendArgumentSource =
 	| EntityArgumentSource
 	| SessionlessArgumentSource;
-export type RendererArgumentSource = "theme" | "title-refresh";
+export type RendererArgumentSource =
+	| "theme"
+	| "title-refresh"
+	/** The current conversation's tags and the registry, from the tag store. */
+	| "session-tags";
 export type ArgumentSource = BackendArgumentSource | RendererArgumentSource;
 
 /**
@@ -228,6 +283,7 @@ export type ArgumentSource = BackendArgumentSource | RendererArgumentSource;
 export const RENDERER_LOCAL_SOURCES: ReadonlySet<ArgumentSource> = new Set([
 	"theme",
 	"title-refresh",
+	"session-tags",
 ]);
 
 /** Whether this source's rows are available with no session and no transport. */
@@ -555,6 +611,9 @@ export const ARGUMENT_SOURCE_LABEL: Record<ArgumentSource, string> = {
 	 * and it keeps the plural-noun shape of its siblings.
 	 */
 	"title-refresh": "Options",
+	/* The conversation's own tags, a renderer-local list. "Tags" is the same word
+	   the command and the sidebar use for the same subject. */
+	"session-tags": "Tags",
 };
 
 /**
@@ -1250,6 +1309,14 @@ export function argumentRows(
 				};
 			});
 		/*
+		 * Shaped by `tagArgumentRows` instead: membership, the primary flag and the
+		 * frozen order are three inputs this signature does not carry. Returning an
+		 * empty list keeps the switch total rather than inventing a half-answer a
+		 * later caller could mistake for the real one.
+		 */
+		case "session-tags":
+			return [];
+		/*
 		 * The one case that ignores its inputs, and the comment says so rather than
 		 * leaving a reader to wonder whether `entities` is a bug.
 		 *
@@ -1265,4 +1332,141 @@ export function argumentRows(
 		case "title-refresh":
 			return titleRefreshRows();
 	}
+}
+
+/**
+ * The current conversation's tag rows, in a FROZEN order.
+ *
+ * ORDER IS THE POINT. The list shows applied rows first (registry order inside
+ * each partition), but the order is captured by the caller and held while the
+ * list is open: a toggle would otherwise move the row under the cursor, and the
+ * TUI's own rule is that an explicit choice survives a mutation of the same
+ * candidate set (`command_picker.py:1728`). The `applied` FLAG updates in
+ * place; the row does not move.
+ *
+ * `value` is the tag NAME because that is what a person reads and what the
+ * matcher scores; `tagId` is what every write takes. The two are deliberately
+ * separate: the registry is editable elsewhere, and a stale name must not
+ * become a stale id.
+ */
+export function tagArgumentRows(
+	categories: readonly TagCategory[],
+	selected: readonly string[],
+	primary: string | null,
+	order: readonly string[],
+): ArgumentRow[] {
+	const byId = new Map(categories.map((tag) => [tag.id, tag]));
+	const held = new Set(selected);
+	/*
+	 * A registry refresh can add or delete categories while the list is open.
+	 * Deleted ids disappear; new ids are appended in registry order rather than
+	 * dropped, so a tag created by another client is still offered.
+	 */
+	const ordered = [
+		...order.flatMap((id) => {
+			const tag = byId.get(id);
+			return tag ? [tag] : [];
+		}),
+		...categories.filter((tag) => !order.includes(tag.id)),
+	];
+	return ordered.map((tag) => ({
+		value: tag.name,
+		name: tag.name,
+		applied: held.has(tag.id),
+		tagId: tag.id,
+		primary: primary === tag.id,
+	}));
+}
+
+/**
+ * The one explicit create-and-apply row, or null when the query must not offer
+ * one.
+ *
+ * Existing exact names ALWAYS win (`hasTagName`): the create action can never
+ * be a second spelling of a tag that already exists. Validation and the two
+ * caps reuse the same helpers and limits the merged dialog uses, so the slash
+ * row cannot create what the dialog would refuse. `label` and `description`
+ * arrive translated from the caller, keeping this module locale-free and
+ * bundleable by the node harness.
+ */
+export function tagCreateRow(
+	categories: readonly TagCategory[],
+	selected: readonly string[],
+	query: string,
+	label: string,
+	description: string,
+): ArgumentRow | null {
+	const name = query.trim();
+	if (!name || tagNameIssue(name) || hasTagName(categories, name)) return null;
+	if (categories.length >= TAG_REGISTRY_LIMIT) return null;
+	if (selected.length >= TAG_SELECTION_LIMIT) return null;
+	return {
+		value: name,
+		name: label,
+		description,
+		create: true,
+	};
+}
+
+/**
+ * What a pick of a tag row does.
+ *
+ * `run: false` is Tab, or an ambiguous Enter: it keeps the existing completion
+ * semantics (write the name, mutate nothing) so the first keystroke can never
+ * toggle a fuzzy survivor. A running pick is a toggle for a registry row and a
+ * create for the explicit action; there is no third mutation path.
+ */
+export function tagPickAction(
+	row: ArgumentRow,
+	run: boolean,
+): "complete" | "create" | "toggle" | "none" {
+	if (!run) return "complete";
+	if (row.create) return "create";
+	if (row.tagId) return "toggle";
+	return "none";
+}
+
+/**
+ * Applied rows first, registry order inside each partition.
+ *
+ * Extracted so the ordering rule is executable by the node harness instead of
+ * living only inside the hook's memo. It is called once per registry/session by
+ * the composer, never per toggle: see `tagArgumentRows` for why the order is
+ * frozen after that.
+ */
+export function appliedFirstTagIds(
+	categories: readonly TagCategory[],
+	selected: readonly string[],
+): string[] {
+	const held = new Set(selected);
+	return [...categories]
+		.sort((a, b) => Number(held.has(b.id)) - Number(held.has(a.id)))
+		.map((tag) => tag.id);
+}
+
+/** A frozen order and the registry/session signature it was derived under. */
+export type FrozenTagOrder = { signature: string; order: string[] };
+
+/**
+ * Freeze the applied-first order for one registry and conversation.
+ *
+ * WHY A CONTENT SIGNATURE. Every successful assignment refetches the registry,
+ * and `fetchCategories` installs a FRESH ARRAY even when the content is
+ * identical. Keying the order on that array identity re-partitions the list one
+ * store round-trip after the user's own Enter, so the marker moves and the next
+ * Enter toggles a tag the user was not on (review round 1, F1). The signature is
+ * therefore the conversation plus the registry's ids in registry order: a
+ * refetch of unchanged content keeps the previous order, while a genuinely
+ * different registry (a tag created, deleted or reordered) or another
+ * conversation re-partitions.
+ */
+export function freezeTagOrder(
+	previous: FrozenTagOrder | null,
+	sessionId: string,
+	categories: readonly TagCategory[],
+	selected: readonly string[],
+): FrozenTagOrder {
+	const signature = `${sessionId}\u0000${categories.map((tag) => tag.id).join("\u0000")}`;
+	if (previous !== null && previous.signature === signature) return previous;
+	return { signature, order: appliedFirstTagIds(categories, selected) };
 }

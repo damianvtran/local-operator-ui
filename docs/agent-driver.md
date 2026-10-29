@@ -44,11 +44,115 @@ new-chat` drives the app-wide `⌘N` with a real CDP key chord
 plus the two presses that are deliberately not it (`⌘⇧N`, a bare `n`); without,
 the gate — the same press changing nothing, because the shortcut takes the New
 chat row's own `session_catalogue` gate and a driver run has no backend.
+**`--scene stale-team-draft` photographs the team New-chat defect (2026-10-22):**
+a page whose header says "New chat with <team>" while the body says the
+conversation is gone. It seeds the persisted pair that produces it — the team's
+stable `draft:team:<name>` row carrying the `sessionId` its create wrote,
+`activeDraftKey` naming that row, and a tombstone for the id — then reloads and
+asserts the three things one click must end with: no missing-session notice, an
+editable composer, and the dead pointer retired before the first paint. It needs
+`--backend`, because the composer it measures replaces the capability refusal a
+backend-less run paints. The press itself is the store's own rule and is driven
+by `scripts/team-new-chat-stale-draft.test.mjs`; a run-owned daemon has no
+authored team for the sidebar to list. Its before/after pair is committed under
+`docs/pr-evidence/team-new-chat-stale-draft/`.
+
+**`--scene team-newchat` photographs TWO team New-chat defects, in four
+modes.** (2026-10-23). *Draft modes:* a REPLAYED draft receipt. The stable team
+row's `draftRequestId` persists across launches, and a daemon that restarted (or
+a draft that expired) replays the id it minted the first time — an id its
+registry no longer serves. The pane streams on `sessionId ?? draft.warmId`, so
+its bridge 404s; the base tree read that as a missing conversation and painted
+"This conversation is no longer on this machine" under a header that says "New
+chat with <team>". The scene seeds the operator's persisted row (a stable
+`draft:team:<name>` with the request id, no `sessionId`), reloads, types a single
+`C` through CDP's input pipeline, and reports the route, the header, the notice,
+the composer, the row's own state and the id the daemon answered for the seeded
+request. `--expect broken` (the base tree) asserts the notice appeared, the row
+still holds the request id, and an in-page probe catches the notice being painted
+and the box refused; `--expect fresh` (the fix) asserts no notice, the `C` still
+in an editable box with the caret, a re-minted request id, and a first send that
+reaches the transcript with the entered-to-rendered milliseconds reported. It
+also installs the probe over the 404 → retire → next-mint window (DOM mutations,
+animation frames and the store's own persisted writes) and holds the first frame
+after the answer beside the settled one, so "no notice" is a statement about the
+window rather than about one screenshot. `--expect immediate` races a send into
+that window and reports the outcome. *Carry mode:* `--expect carry` drives a
+GENUINELY missing conversation (a real route to a 12-hex id the daemon does not
+serve) whose composer holds text and a chip, presses the notice's own
+**Start a new chat** (keyboard first, pointer fallback, both reported), and reads
+back the new chat's route, composer, caret, chip and the dead identity's row;
+then it reloads to prove the way out survives and sends the carried text once.
+The draft modes need `--backend`, `--backend-records`, `--team <name>`,
+`--draft-request-id <uuid>` and `--seed-onboarding-complete`; `carry` needs the
+same except the receipt, and the daemon's 404 in the draft modes must be real:
+the precondition minted the receipt, materialised a conversation on it, deleted
+that conversation and restarted the daemon.
+
 `--scene none` boots and arms the driver without running a
 scene. `--window-size WxH` sets the window (default 1380x900, the app's own
 default). The scratch tree is kept and its path printed; `--clean` removes it,
 `--out <dir>` puts frames somewhere you choose.
 
+**`--scene sidebar-docking` exercises #1077 against a populated synthetic
+conversation on an isolated daemon.** It drives the real Cmd/Ctrl+B chord and
+the strip/dock pointer controls through CDP at 1380, 1023 and 800 CSS px, checks
+the persisted preference and the absence of a sheet, and reads sidebar/chat/rail
+boxes plus document overflow. At 800 with a stored 320px width the drawn dock is
+capped to 276px so the 480px chat floor and 44px rail still fit; widening
+restores 320 without rewriting storage. It also checks the separate canvas
+fit-yield and captures settled dark/light frames. The base tree is the negative
+control: the same scene records its forced strip and overlay failures before the
+head-only matrix continues. Viewport changes use `Emulation.setDeviceMetricsOverride`,
+so the recorded CSS viewport is the asserted size; native-window resize and
+process-restart persistence are independent QA's lanes. The scene requires
+`--backend`, `--backend-records`, `--session <id>`,
+`--seed-onboarding-complete`, and the mock transcript marker named in
+`scripts/sidebar-docking-scene.mjs`.
+
+**`--scene attach` presses the composer's paperclip and proves what it stages
+(`--attach <absolute-path>`, repeatable).** The attach path is `handleAttachFile`
+-> `show-open-dialog` -> `addAttachment`; the one step a headless CDP scene cannot
+perform is the native picker's answer, so an armed launch that was given
+`--attach` has main return those queued paths from `show-open-dialog`
+(`src/main/dev-driver-attach.ts`) and **only that answer is replaced** — the
+press, the IPC round trip, the store write and the rendered chips are the app's
+own. The scene opens a conversation on its own daemon, presses
+`[data-tour-tag="chat-input-attach-file-button"]`, and asserts: the persisted
+`conversation-input-store` row holds exactly the paths given, in order; one
+`[data-attachment-id]` chip is on screen per path; the row carries the pending
+caption; and the app log names the queue-answered dialog. It does not prove that
+the OS picker opens or that a person can choose a file through it — say so beside
+the frame rather than implying it. `--attach` is refused for a relative path, and
+the queue is read only when the dev-driver bridge is armed.
+
+**`--attach-prompt "<text>"` sends after staging, so the scene proves the
+paperclip reaches an answer.** The prompt is typed into the composer's real field
+and the real `Send message` control is pressed; the run then waits for the
+daemon's own transcript (not the painted echo) to carry the prompt as a user row.
+It waits for the turn to SETTLE - the snapshot's `streaming` and
+`last_turn_outcome`, not the first assistant row with text, which a tool-using
+turn can emit mid-turn - then reports the session id, the row's `document`
+block(s) and the settled final text, and asserts that each staged file arrived
+as a document block and that the assistant turn completed. `--attach-expect-answer "<substring>"` adds a
+substring check on that final text. This path needs a daemon that serves
+`POST /v1/desktop/attachments` **and** a provider that can answer; a daemon
+without either is refused by the send, and the scene reports that refusal rather
+than a staged-only pass.
+
+```bash
+pnpm build
+node scripts/renderer-driver.mjs --scene attach \
+  --backend http://127.0.0.1:<port> --attach /abs/path/report.pdf \
+  --seed-onboarding-complete --out /tmp/frames
+
+# the answer path QA runs
+node scripts/renderer-driver.mjs --scene attach \
+  --backend http://127.0.0.1:<port> --attach /abs/path/report.pdf \
+  --attach-prompt "Summarise this PDF in one line." \
+  --attach-expect-answer "<expected substring>" \
+  --seed-onboarding-complete --out /tmp/frames
+```
 **`--scene authoring-refresh` is the one scene whose write comes from OUTSIDE the
 app.** Its subject is an agent creating a team or a profile on the backend, so
 the write is an HTTP request from this script's own Node process to the
@@ -329,6 +433,73 @@ Two mistakes are recorded here because they are the two ways this gate fails:
   `HOME`/config as well as on the same config — so the requirement is one profile
   per launch, which is what the harness does, and not serialisation of runs.
 
+## The address-overlay probe's own opt-ins
+
+The browser's address-overlay child (`src/main/browser/address-overlay.ts`) is not
+the dev driver and is not armed by it: it has its own exact-`1` opt-ins, each an
+increment on the one before, and every refusal prints
+`[address-overlay] not armed: <reason>` on stdout.
+
+| Variable | Arms | Extra requirements |
+| --- | --- | --- |
+| `LOCAL_OPERATOR_UI_BROWSER_ADDRESS_OVERLAY_S1` | the inert native child | armed dev driver, `headless` |
+| `…_S2` | the mirror list inside that child | S1, armed driver, `headless` |
+| `…_VISIBLE` | one **visible** probe run of that mirror | S1 + S2, armed driver, `--window-mode=inactive`, unpackaged |
+
+`…_VISIBLE` is the only one that puts anything on the operator's screen, so it
+is also the only one with containment of its own:
+
+- **never a default and never product surface** — absent on every ordinary
+  launch, refused in `normal` (the product's own mode), refused in `headless`
+  (a headless run labelled “visible” would misattribute its evidence), refused in
+  a packaged build;
+- **launcher-bound** — `inactive` is normally not watched (`resolveLauncherWatchPlan`
+  treats a visible window as closeable by a person), but a visible probe passes
+  `boundedVisibleProbe: true` and quits when its launcher goes;
+- **capped at 120 s** — `ADDRESS_OVERLAY_VISIBLE_MAX_MS`, `unref`'d, ending in the
+  same bounded `endHeadlessRun` quit every other non-product run takes;
+- **one self-contained command.** `node scripts/browser-address-overlay-probe.mjs
+  --s3-visible --window-mode=inactive --out <dir>` refuses to start without that
+  argv, without its own environment opt-in, or without a TTY. It proves the
+  headless/normal refusals first, opens one `inactive` window, asks five
+  numbered questions, then reaps its exact pid tree and writes `teardown.json`.
+  Nothing here calls `screencapture`, `desktopCapturer` or any other capture API
+  that could raise a TCC prompt: a composite-pixel claim is the operator's eyes
+  or an operator-supplied screenshot, and an unattended run marks those rows
+  BLOCKED rather than passing them.
+
+The headless half is `--s3` (and `--s2` for the mirror alone). `--s3` re-runs the
+S2 matrix on the current head as its regression surface and adds the focus, IME
+and accessibility rows; `docs/design/browser-address-overlay.md` holds what those
+rows do and do not establish.
+
+## The approvals card's kill switch (S6d)
+
+The native approvals card is a **product surface and on by default**. Exactly
+`LOCAL_OPERATOR_UI_BROWSER_APPROVALS_OVERLAY_DISABLE=1` restores the DOM dock and
+band for that launch; an absent value or any other value (`0`, `true`, empty)
+leaves the card on. The old opt-in (`..._OVERLAY_S6A=1`) is gone and is ignored.
+The switch is read once in the browser host (`approvalsOverlayEnabled`), so a
+disabled launch creates **no card controller and no `WebContentsView` child at
+all**; it is not a hidden view. A rig that measures the dock (the narrow-panel
+proof) must therefore set the switch, or the dock is not mounted.
+
+Fallback rules: the child is opaque on non-darwin (the opaque-square fallback),
+and if the child cannot be created, fails to load, or its renderer process goes
+away after construction, the host latches the card off and pushes
+`approvalsCard.available: false`, which mounts the dock and band again.
+
+Routes with the card available: the toolbar Approvals control opens the card
+(explicit open, may focus; a second press closes it) while a request is pending,
+and opens the **Approvals dialog** (grants, revoke, revoke all, forget this
+site, clear browsing data) when nothing is pending; the page menu's Approvals
+item always opens the dialog. The dialog is a `BaseDialog`, so the overlay policy
+hides the page view and the card while it is up. The dock component and the
+consent band are not mounted while the card is available.
+
+The card is **not** claimed at native-composite, ring-hit-routing or VoiceOver
+parity (see `docs/design/browser-approvals-card.md`, BLOCKED list).
+
 ## Isolation: what the run cannot reach
 
 A driver run happens on the operator's desktop, next to his real app. Every path
@@ -589,6 +760,22 @@ rule:
   `hidden`, or a real user's typing — the run's renderer reports `visible`, and
   the dirty-suppression half is covered against the shipped module by
   `scripts/canvas-file-freshness.test.mjs`.
+
+- **`mesh-tab`** — the Mesh tab's device census against a live daemon, and the
+  one scene that reads its expectation from the DAEMON rather than from a
+  fixture. `--mesh-expect tombstones` is the base tree, which drew every member
+  id as a device node, so a revoked membership (`active: false`, a tombstone the
+  relay keeps for audit) appeared as a peer that had not answered;
+  `--mesh-expect collapsed` is the fixed tree, which draws only devices with an
+  active membership and carries the revoked memberships in one inspectable
+  count. The scene asks `/v1/desktop/networks` for the same rows the app renders,
+  derives the live ids and the tombstone ids, and refuses to run on a mesh with
+  no revoked membership: a pair photographed on a clean mesh would not be
+  evidence about this defect. It captures the canvas and the list in the
+  `--theme` this run claims, then opens the revoked count with a real press and
+  photographs the audit rows. What it cannot prove: that a tombstone was created
+  through this UI (the daemon's fixture predates the run), and that the relay's
+  90-day retention pruned anything.
 
 - **It is isolated from the operator's state, not from the network.** The run
   reaches no backend — the scratch `.env` points the app at a port the script

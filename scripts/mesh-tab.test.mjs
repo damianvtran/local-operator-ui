@@ -116,6 +116,9 @@ const {
 	networkTopology,
 	meshGraph,
 	meshSummary,
+	deviceDisplayName,
+	deviceIdentityText,
+	compactDeviceId,
 	deviceStatLine,
 	meshNodeCount,
 	assignSlots,
@@ -141,6 +144,7 @@ const {
 	deviceReach,
 	reachWords,
 	reachSentence,
+	attemptWords,
 	deviceActivity,
 	REACH_INK,
 	NOT_ATTEMPTED_SENTENCES,
@@ -159,6 +163,7 @@ const {
 	deviceSessionTotal,
 	resolveDrop,
 	planConfirm,
+	moveOptionCaption,
 	hoverSentence,
 	DRAG_THRESHOLD_PX,
 	IDLE_DRAG,
@@ -228,9 +233,7 @@ const overlapping = () => ({
 					name: "workshop-mini",
 					// The wire's own agreement: a device that is not reachable is not reachable on
 					// any membership either (the relay answers both reads from one peer table).
-					// The MISMATCHED pair is pinned in its own test below, where the rule - a
-					// membership or a peer row can only ever CONFIRM reachability - is the
-					// subject rather than an accident of a fixture.
+					// A stale membership disagreeing with a fresh peer answer is covered below.
 					reachable: false,
 					reason: "no route to it",
 					last_seen_at: 1_700_000_000,
@@ -456,22 +459,46 @@ test("state precedence: self, then a suspected identity, then unreachable", () =
 	assert.ok(base, "fixture sanity");
 });
 
-test("the peer catalogue can only ever CONFIRM reachability, never withdraw it", () => {
-	const members = [member(DEVICE_B)];
-	const graph = meshGraph({
-		topology: networkTopology({ networks: [network(NET_ONE, members)] }),
-		peers: peerList({ peers: [peer(DEVICE_B, { reachable: false })] }),
+test("a peer-link answer overrides stale membership reachability and clears on recovery", () => {
+	const topology = networkTopology({
+		networks: [network(NET_ONE, [member(DEVICE_B)])],
 	});
+	const down = meshGraph({
+		topology,
+		peers: peerList({
+			peers: [
+				peer(DEVICE_B, {
+					reachable: false,
+					session_count: null,
+					unreachable_reason: "relay timeout",
+					last_seen_at: 100,
+				}),
+			],
+		}),
+	}).devices[0];
+	assert.equal(down.reachable, false);
+	assert.equal(down.state, "unreachable");
+	assert.equal(down.sessionCount, null);
+	assert.equal(mesh.conversationCountLabel(down.sessionCount), "unknown");
 	assert.equal(
-		graph.devices[0].reachable,
-		true,
-		"the relay dials a device: one membership answering is a fact about the device",
+		mesh.conversationsLinkDown(down, 340),
+		"Link down · relay timeout · last seen 4m ago",
 	);
-	assert.equal(
-		graph.devices[0].reason,
-		"",
-		"a reachable device carries no reason",
-	);
+	const up = meshGraph({
+		topology,
+		peers: peerList({
+			peers: [
+				peer(DEVICE_B, {
+					reachable: true,
+					session_count: 0,
+					last_seen_at: 340,
+				}),
+			],
+		}),
+	}).devices[0];
+	assert.equal(up.reachable, true);
+	assert.equal(mesh.conversationCountLabel(up.sessionCount), "0");
+	assert.equal(mesh.conversationsLinkDown(up, 340), null);
 });
 
 test("an unreachable device carries the backend's own reason", () => {
@@ -594,8 +621,240 @@ test("a device nobody dialled is `not asked`, and never `unreachable` (D2)", () 
 	assert.equal(
 		[...Object.entries(REACH_INK)].filter(([, ink]) => ink === "text-warning")
 			.length,
-		1,
-		"exactly one reach state spends the warning hue, and it is the one the relay answered",
+		4,
+		"the four OBSERVED transport failures spend the warning hue (unanswered, relay down, handshake refused, address unreachable); their distinction is carried in words and glyphs, and no-endpoint/not-a-member/not-attempted/unknown take no hue",
+	);
+});
+
+test("refused TCP, a timeout and a closed handshake are three states, not one", () => {
+	/*
+	 * THE INCIDENT'S THREE CASES (mesh link resilience). The backend now publishes
+	 * `link_state` plus the per-address `attempts`; before it did, every one of these
+	 * arrived as `reachable: false` and one sentence, so the tab told the operator to
+	 * look for one problem when there were three. This executes the wire shapes the
+	 * three stories photograph.
+	 */
+	const relayDown = peerList({
+		peers: [
+			peer(DEVICE_B, {
+				reachable: false,
+				link_state: "relay_down",
+				remote_relay: "not_listening",
+				unreachable_reason:
+					"unreachable: 99.79.190.164:4097 connect_failed:ConnectionRefusedError",
+				attempts: [
+					{
+						endpoint: "99.79.190.164:4097",
+						connected: false,
+						detail: "connect_failed:ConnectionRefusedError",
+						latency_ms: null,
+					},
+					{
+						endpoint: "172.31.22.23:4097",
+						connected: false,
+						detail: "connect_failed:TimeoutError",
+						latency_ms: null,
+					},
+				],
+			}),
+		],
+	});
+	assert.equal(relayDown.peers[0].link_state, "relay_down");
+	assert.equal(relayDown.peers[0].remote_relay, "not_listening");
+	assert.deepEqual(
+		relayDown.peers[0].attempts.map((attempt) => attempt.detail),
+		["connect_failed:ConnectionRefusedError", "connect_failed:TimeoutError"],
+		"the per-address evidence survives the normaliser in wire order",
+	);
+	const relayGraph = meshGraph({
+		topology: networkTopology({
+			networks: [network(NET_ONE, [member(DEVICE_B, { reachable: false })])],
+		}),
+		peers: relayDown,
+	});
+	const relayDevice = relayGraph.devices[0];
+	assert.equal(relayDevice.state, "relay_down");
+	assert.equal(deviceReach(relayDevice), "relay-down");
+	assert.equal(deviceStatLine(relayDevice, 1_700_000_100), "relay not running");
+	assert.equal(reachWords(deviceReach(relayDevice)), "relay not running");
+	assert.equal(
+		attemptWords("connect_failed:ConnectionRefusedError"),
+		"nothing listening",
+		"the exception class never reaches the screen",
+	);
+	assert.equal(attemptWords("connect_failed:TimeoutError"), "no answer");
+	assert.equal(attemptWords("ok"), "answered");
+	assert.equal(attemptWords("bad_endpoint"), "bad address");
+	assert.equal(
+		attemptWords("connect_failed:gaierror"),
+		"could not connect",
+		"an open exception family is never printed as a class name",
+	);
+	assert.equal(attemptWords("some_future_detail"), "some_future_detail");
+
+	const refusedHandshake = peerList({
+		peers: [
+			peer(DEVICE_C, {
+				reachable: false,
+				link_state: "handshake_refused",
+				remote_relay: "running",
+				unreachable_reason: "handshake closed with no reason",
+				attempts: [
+					{
+						endpoint: "99.79.190.164:4097",
+						connected: true,
+						detail: "ok",
+						latency_ms: 41,
+					},
+				],
+			}),
+		],
+	});
+	const handshakeGraph = meshGraph({
+		topology: networkTopology({
+			networks: [network(NET_ONE, [member(DEVICE_C, { reachable: false })])],
+		}),
+		peers: refusedHandshake,
+	});
+	const handshakeDevice = handshakeGraph.devices[0];
+	assert.equal(handshakeDevice.state, "handshake_refused");
+	assert.equal(deviceReach(handshakeDevice), "handshake-refused");
+	assert.equal(
+		deviceStatLine(handshakeDevice, 1_700_000_100),
+		"handshake refused",
+	);
+	assert.equal(
+		refusedHandshake.peers[0].attempts[0].connected,
+		true,
+		"the attempt connected; the HANDSHAKE is what closed",
+	);
+	assert.equal(
+		attemptWords(refusedHandshake.peers[0].attempts[0].detail),
+		"answered",
+		"so the row says `answered`, never `no answer`, under the handshake headline",
+	);
+	assert.equal(
+		attemptWords(relayDown.peers[0].attempts[1].detail),
+		"no answer",
+		"and an attempt that never connected keeps the opposite word",
+	);
+
+	/*
+	 * AN OLDER BACKEND HAS NO LINK VOCABULARY, and the client must derive only what
+	 * the old boolean supported: `unreachable_legacy`, which maps to the generic
+	 * `unreachable` state and the old `no answer` words. It must never guess one of
+	 * the new verdicts from the aggregate sentence.
+	 */
+	const legacy = peerList({
+		peers: [
+			peer(DEVICE_D, {
+				reachable: false,
+				unreachable_reason:
+					"unreachable: 99.79.190.164:4097 connect_failed:ConnectionRefusedError",
+			}),
+		],
+	});
+	assert.equal(legacy.peers[0].link_state, "unreachable_legacy");
+	assert.equal(legacy.peers[0].attempts, undefined);
+	const legacyGraph = meshGraph({
+		topology: networkTopology({
+			networks: [network(NET_ONE, [member(DEVICE_D, { reachable: false })])],
+		}),
+		peers: legacy,
+	});
+	assert.equal(legacyGraph.devices[0].state, "unreachable");
+	assert.equal(
+		deviceStatLine(legacyGraph.devices[0], 1_700_000_100),
+		"no answer",
+		"a legacy row is never presented as a refused connection it did not observe",
+	);
+});
+
+test("address, no-endpoint and membership verdicts keep their own words", () => {
+	/*
+	 * THE OTHER THREE VERDICTS the wire can send. `address_unreachable` is a dialled
+	 * address that never answered; `no_endpoint` means nothing was dialled; and
+	 * `not_a_member` is a membership/access fact. Folding any of them into `no answer`
+	 * is the same conflation the relay-down fix exists to remove.
+	 */
+	for (const [id, linkState, reach, words] of [
+		[
+			DEVICE_D,
+			"address_unreachable",
+			"address-unreachable",
+			"address unreachable",
+		],
+		[DEVICE_E, "no_endpoint", "no-endpoint", "no address to dial"],
+		[`d_${"f".repeat(32)}`, "not_a_member", "not-a-member", "not a member"],
+	]) {
+		const graph = meshGraph({
+			topology: networkTopology({
+				networks: [network(NET_ONE, [member(id, { reachable: false })])],
+			}),
+			peers: peerList({
+				peers: [
+					peer(id, {
+						reachable: false,
+						link_state: linkState,
+						unreachable_reason: "",
+					}),
+				],
+			}),
+		});
+		const device = graph.devices[0];
+		assert.equal(deviceReach(device), reach);
+		assert.equal(deviceStatLine(device, 1_700_000_100), words);
+		assert.equal(reachWords(deviceReach(device)), words);
+	}
+});
+
+test("the summary names each observed failure class, never one `unreachable`", () => {
+	const graph = meshGraph({
+		topology: networkTopology({
+			networks: [
+				network(NET_ONE, [
+					member(DEVICE_B, { reachable: false }),
+					member(DEVICE_C, { reachable: false }),
+					member(DEVICE_D, { reachable: false }),
+					member(DEVICE_E, { reachable: false }),
+					member(`d_${"f".repeat(32)}`, { reachable: false }),
+				]),
+			],
+		}),
+		peers: peerList({
+			peers: [
+				peer(DEVICE_B, {
+					reachable: false,
+					link_state: "relay_down",
+					remote_relay: "not_listening",
+					unreachable_reason: "no answer",
+				}),
+				peer(DEVICE_C, {
+					reachable: false,
+					unreachable_reason: "no route to it",
+				}),
+				peer(DEVICE_D, {
+					reachable: false,
+					link_state: "address_unreachable",
+					unreachable_reason: "",
+				}),
+				peer(DEVICE_E, {
+					reachable: false,
+					link_state: "no_endpoint",
+					unreachable_reason: "",
+				}),
+				peer(`d_${"f".repeat(32)}`, {
+					reachable: false,
+					link_state: "not_a_member",
+					unreachable_reason: "",
+				}),
+			],
+		}),
+	});
+	assert.equal(
+		meshSummary(graph),
+		"1 network · 5 devices · 1 relay down · 1 address unreachable · 1 no address to dial · 1 not a member · 1 no answer",
+		"a mixed failure census names every verdict; none is folded into one `unreachable`",
 	);
 });
 
@@ -621,7 +880,7 @@ test("the summary line is a sentence about this mesh, and this device", () => {
 	const graph = meshGraph({ topology, peers });
 	assert.equal(
 		meshSummary(graph),
-		"2 networks · 3 devices · 1 reached · 1 no answer · this device is device …aaaaaa",
+		"2 networks · 3 devices · 1 reached · 1 no answer · this device is (unnamed device) d_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		"counted by REACH (mesh redesign, D3), so an unanswered device is not filed as a failure it never was",
 	);
 	/*
@@ -666,7 +925,7 @@ test("the summary line is a sentence about this mesh, and this device", () => {
 	});
 	assert.equal(
 		meshSummary(census),
-		"1 network · 4 devices · 1 of them suspected · 2 no answer · 1 unknown · this device is device …aaaaaa",
+		"1 network · 4 devices · 1 of them suspected · 2 no answer · 1 unknown · this device is (unnamed device) d_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		"the suspect fact is a qualifier on the census, and `unknown` is named so the six counts can be added up",
 	);
 });
@@ -741,6 +1000,85 @@ test("the node draws a rail and a state line, and the sentence moved to its name
 		/deviceNodeStatLine/,
 		"there is no second, node-width rendering of the sentence left to drift from the first",
 	);
+});
+
+test("member identity quotes real names and keeps absence visually distinct", () => {
+	assert.equal(deviceDisplayName({ name: "shared-node" }), '"shared-node"');
+	assert.equal(
+		deviceDisplayName({ name: "(unnamed device)" }),
+		'"(unnamed device)"',
+		"a real name cannot impersonate the absent-name state",
+	);
+	assert.equal(deviceDisplayName({ name: "" }), "(unnamed device)");
+	assert.equal(deviceDisplayName({}), "(unnamed device)");
+	assert.equal(
+		deviceDisplayName({ name: 'a "quoted"\nname' }),
+		'"a \\"quoted\\"\\nname"',
+		"stored quotes and newlines cannot forge another visual row",
+	);
+});
+
+test("member identity text always carries the authenticated id", () => {
+	const first = { id: DEVICE_A, name: "shared-node" };
+	const second = { id: DEVICE_B, name: "shared-node" };
+	const firstText = deviceIdentityText(first);
+	const secondText = deviceIdentityText(second);
+	assert.equal(firstText, `"shared-node" ${DEVICE_A}`);
+	assert.equal(secondText, `"shared-node" ${DEVICE_B}`);
+	assert.notEqual(
+		firstText,
+		secondText,
+		"equal stored names cannot make summary or action labels interchangeable",
+	);
+	const graph = meshGraph({
+		topology: networkTopology({
+			self_device_id: DEVICE_A,
+			networks: [
+				{
+					network_id: NET_ONE,
+					name: "identity-test-mesh",
+					epoch: 1,
+					trust: "active",
+					members: [first, second].map((device) =>
+						member(device.id, { name: device.name }),
+					),
+				},
+			],
+		}),
+		peers: peerList({ self_device_id: DEVICE_A, peers: [] }),
+	});
+	assert.ok(
+		meshSummary(graph).endsWith(`this device is ${firstText}`),
+		"the real summary producer uses that same identity, not the raw stored name",
+	);
+});
+
+test("compact member ids widen on collisions and fail safe without graph context", () => {
+	const displayed = [DEVICE_A, DEVICE_B];
+	assert.equal(compactDeviceId(DEVICE_A, displayed), "d_aaaaaaaa…");
+	assert.equal(compactDeviceId("d_short", ["d_short"]), "d_short");
+	assert.notEqual(
+		compactDeviceId(DEVICE_A, displayed),
+		compactDeviceId(DEVICE_B, displayed),
+	);
+	assert.equal(
+		compactDeviceId(DEVICE_A),
+		DEVICE_A,
+		"a caller that cannot see the other ids must not guess at a unique prefix",
+	);
+
+	const samePrefix = "d_0123456789abcdef0123456789abcdef";
+	const samePrefixOther = "d_0123456789abcdef0123456789abcde0";
+	const colliding = [samePrefix, samePrefixOther];
+	const compactA = compactDeviceId(samePrefix, colliding);
+	const compactB = compactDeviceId(samePrefixOther, colliding);
+	assert.notEqual(compactA, compactB);
+	assert.equal(compactA, samePrefix);
+	assert.equal(compactB, samePrefixOther);
+
+	const widened = ["d_012345678abcdef", "d_012345679abcdef"];
+	assert.equal(compactDeviceId(widened[0], widened), "d_012345678…");
+	assert.equal(compactDeviceId(widened[1], widened), "d_012345679…");
 });
 
 /* --------------------------------------------------------------- positions */
@@ -1851,7 +2189,7 @@ test("the Mesh rail row is gated on MEMBERSHIP, and the route on the capability"
 	);
 	assert.match(
 		nav,
-		/\.\.\.\(meshMembership === "member"\s*\?\s*\[\s*\{\s*icon: Network,\s*label: t\("ui\.shell\.sidebar_navigation\.mesh"\),\s*path: "\/mesh",/,
+		/if \(meshMembership === "member"\) \{\s*destinationItems\.set\("mesh", \{\s*icon: Network,\s*label: t\("ui\.shell\.sidebar_navigation\.mesh"\),\s*path: "\/mesh",/,
 		"a row appears only for a device KNOWN to be in a mesh - not for an unknown or empty answer",
 	);
 	assert.doesNotMatch(
@@ -2645,12 +2983,18 @@ test("the page keeps the last good read painted and never zeroes a fact", () => 
 
 /* --------------------------------------------- the facts the frames taught */
 
-test("one quantity, one number: a network's members and the device nodes agree", () => {
+test("one quantity, one number: a network's LIVE members are the device nodes", () => {
 	/*
 	 * Caught by LOOKING at the first capture of this set, which is why it is a test
 	 * now: the network node read "3 devices" beside a summary line reading "4 devices"
-	 * on one screen, because the node counted ACTIVE memberships and the summary counts
-	 * device nodes. Both now count members, and the revoked ones are named as such.
+	 * on one screen, because the node counted one set of memberships and the summary
+	 * counted another. The lane must count the device nodes drawn under it.
+	 *
+	 * AND A REVOKED MEMBERSHIP IS NOT ONE OF THOSE NODES (the revoked-tombstone
+	 * change): the tab drew a tombstone as a peer that had not answered, which is a
+	 * claim the wire never made. `memberCount` is the live set, `revokedCount` carries
+	 * the tombstones, and `graph.revoked` names each one - so the audit fact survives
+	 * while the false impression does not.
 	 */
 	const graph = meshGraph({
 		topology: networkTopology({
@@ -2659,44 +3003,88 @@ test("one quantity, one number: a network's members and the device nodes agree",
 				network(NET_ONE, [
 					member(DEVICE_A),
 					member(DEVICE_B),
-					member(DEVICE_C, { active: false }),
+					member(DEVICE_C, {
+						active: false,
+						name: "cloud-node-1",
+					}),
 				]),
 			],
 		}),
 		peers: peerList({ self_device_id: DEVICE_A, peers: [] }),
 	});
-	assert.equal(graph.networks[0].memberCount, 3, "members, revoked included");
+	assert.equal(
+		graph.networks[0].memberCount,
+		2,
+		"live members: the nodes drawn",
+	);
 	assert.equal(graph.networks[0].revokedCount, 1);
 	assert.equal(
 		graph.devices.length,
 		graph.networks[0].memberCount,
-		"the node count and the member count are the same quantity said twice",
+		"the node count and the live member count are the same quantity said twice",
+	);
+	assert.deepEqual(
+		graph.revoked.map((member) => [
+			member.deviceId,
+			member.label,
+			member.networkId,
+		]),
+		[[DEVICE_C, "cloud-node-1", NET_ONE]],
+		"the tombstone is an audit row that still names the burned id and its network",
 	);
 });
 
-test("a device whose every membership is revoked says so, not 'no sessions'", () => {
+test("a revoked membership is an audit row, not a device that failed to answer", () => {
 	const graph = meshGraph({
 		topology: networkTopology({
 			self_device_id: DEVICE_A,
 			networks: [
 				network(NET_ONE, [
 					member(DEVICE_A),
-					member(DEVICE_C, { active: false }),
+					member(DEVICE_C, { active: false, name: "cloud-node-1" }),
 				]),
 			],
 		}),
-		peers: peerList({ self_device_id: DEVICE_A, peers: [] }),
+		peers: peerList({
+			self_device_id: DEVICE_A,
+			peers: [
+				peer(DEVICE_C, {
+					name: "cloud-node-1",
+					reachable: false,
+					unreachable_reason: "no route to it",
+					session_count: 0,
+				}),
+			],
+		}),
 	});
-	const revoked = graph.devices.find((device) => device.id === DEVICE_C);
-	assert.ok(revoked);
 	assert.equal(
-		deviceStatLine(revoked, 1_700_000_000),
-		"revoked membership",
-		"a burned device id is never admitted again, so this is the state the node must name",
+		graph.devices.some((device) => device.id === DEVICE_C),
+		false,
+		"a tombstone must not be drawn as a device: the id is burned and nothing dials it",
+	);
+	assert.equal(
+		graph.edges.some((edge) => edge.deviceId === DEVICE_C),
+		false,
+		"and no edge may join it to a network it left",
 	);
 	/*
-	 * And the same device with one live membership elsewhere is NOT revoked: the
-	 * membership is per network, so the node may only claim what every membership says.
+	 * THE PEER ROW IS NOT 'UNMATCHED' EITHER. The relay's peer read still names a
+	 * tombstone; before this change that row matched the node. Filing it under
+	 * `unmatchedPeers` now would claim this device's records lack a device whose
+	 * revoked membership is exactly the record of it.
+	 */
+	assert.equal(
+		graph.unmatchedPeers.some((row) => row.device_id === DEVICE_C),
+		false,
+		"the tombstone's peer row is answered by the revoked membership, not unmatched",
+	);
+	assert.equal(graph.revoked[0].label, "cloud-node-1");
+	assert.equal(graph.revoked[0].role, "drive");
+
+	/*
+	 * AND A DEVICE WITH ONE LIVE MEMBERSHIP ELSEWHERE IS A NODE: the membership is per
+	 * network, so the node exists for the live one and the revoked one is still filed
+	 * as an audit row rather than silently dropped.
 	 */
 	const mixed = meshGraph({
 		topology: networkTopology({
@@ -2712,9 +3100,22 @@ test("a device whose every membership is revoked says so, not 'no sessions'", ()
 		peers: peerList({ self_device_id: DEVICE_A, peers: [] }),
 	});
 	const alive = mixed.devices.find((device) => device.id === DEVICE_C);
-	assert.ok(alive);
-	assert.notEqual(deviceStatLine(alive, 1_700_000_000), "revoked membership");
-	assert.equal(alive.memberships.length, 2);
+	assert.ok(alive, "a live membership keeps the device a node");
+	assert.deepEqual(
+		alive.memberships.map((membership) => membership.networkId),
+		[NET_TWO],
+		"the node's memberships are the live ones; a revoked network is not a link",
+	);
+	assert.deepEqual(
+		mixed.revoked.map((member) => [member.deviceId, member.networkId]),
+		[[DEVICE_C, NET_ONE]],
+		"and the revoked membership is still on the record",
+	);
+	assert.equal(
+		mixed.edges.filter((edge) => edge.deviceId === DEVICE_C).length,
+		1,
+		"one edge for the one live membership",
+	);
 });
 
 /* ---------------------------------------------------- the review-round fixes */
@@ -2978,7 +3379,7 @@ test("the drop matrix: only a valid target accepts, and the verb names the opera
 	assert.equal(offload.kind, "plan");
 	assert.equal(offload.plan.to, PEER);
 	assert.equal(offload.plan.keep, false);
-	assert.match(offload.plan.verb, /^Move to devon-laptop$/);
+	assert.equal(offload.plan.verb, 'Move to "devon-laptop" d_bbbbbbbb…');
 	assert.equal(offload.alternatives.length, 1);
 	assert.equal(
 		offload.alternatives[0].keep,
@@ -2986,7 +3387,10 @@ test("the drop matrix: only a valid target accepts, and the verb names the opera
 		"the reversible half is offered",
 	);
 	assert.equal(offload.alternatives[0].lost, null, "a copy loses nothing");
-	assert.match(offload.plan.lost, /deleted once devon-laptop has it/);
+	assert.equal(
+		offload.plan.lost,
+		'The copy on this device is deleted once "devon-laptop" d_bbbbbbbb… has it.',
+	);
 
 	// A recall: the opposite protocol, through the same route.
 	const recall = resolveDrop(
@@ -3032,10 +3436,223 @@ test("the drop matrix: only a valid target accepts, and the verb names the opera
 	);
 });
 
-test("the two facts that outrank reachability refuse the drop before the route is asked", () => {
+function duplicateDropContext(suspect = false) {
+	const graph = meshGraph({
+		topology: networkTopology({
+			self_device_id: SELF,
+			networks: [
+				{
+					network_id: NET_HOME,
+					name: "identity-test-mesh",
+					epoch: 1,
+					trust: "active",
+					members: [
+						member(SELF, { name: "studio-mac" }),
+						...[PEER, THIRD].map((id) =>
+							member(id, {
+								name: "shared-node",
+								suspect,
+								capabilities: ["sessions", "transfer"],
+							}),
+						),
+					],
+				},
+			],
+		}),
+		peers: peerList({
+			self_device_id: SELF,
+			peers: [PEER, THIRD].map((device_id) => ({
+				device_id,
+				name: "shared-node",
+				reachable: true,
+				session_count: 1,
+			})),
+		}),
+	});
+	return {
+		selfDeviceId: graph.selfDeviceId,
+		devices: new Map(graph.devices.map((device) => [device.id, device])),
+		networks: new Map(graph.networks.map((network) => [network.id, network])),
+	};
+}
+
+test("duplicate recall sources have distinct destructive loss sentences", () => {
+	const context = duplicateDropContext();
+	const losses = [PEER, THIRD].map((ownerId) => {
+		const remote = session({
+			locality: "remote",
+			owner_device: ownerId,
+			owner_device_name: "shared-node",
+		});
+		const verdict = resolveDrop(
+			// Deliberately supply the old raw label: the resolver must not trust it.
+			drag(remote, ownerId, "shared-node"),
+			{ kind: "device", deviceId: SELF },
+			context,
+		);
+		assert.equal(verdict.kind, "plan");
+		return verdict.plan.lost;
+	});
+	assert.deepEqual(losses, [
+		'The copy on "shared-node" d_bbbbbbbb… is deleted once this device has it.',
+		'The copy on "shared-node" d_eeeeeeee… is deleted once this device has it.',
+	]);
+	assert.notEqual(losses[0], losses[1]);
+
+	for (const file of ["mesh-page.tsx", "mesh-card.tsx", "mesh-canvas.tsx"]) {
+		assert.ok(
+			!source(`src/renderer/src/features/mesh/${file}`).includes(
+				"owner?.label",
+			),
+			`${file} must not reintroduce the raw owner-label bypass`,
+		);
+	}
+});
+
+test("each move option's caption names the copy its own direction deletes (UX U1)", () => {
+	// UX review round 1, U1: the recall dialog's body named the OWNER's copy as
+	// deleted while the preselected option said "the copy here is deleted" - here
+	// being the device that gains it. Each caption is pinned from a real resolver
+	// verdict, so a direction-blind caption cannot pass on either arm.
+	const context = duplicateDropContext();
+	const recall = resolveDrop(
+		drag(
+			session({
+				locality: "remote",
+				owner_device: PEER,
+				owner_device_name: "shared-node",
+			}),
+			PEER,
+			"shared-node",
+		),
+		{ kind: "device", deviceId: SELF },
+		context,
+	);
+	const outbound = resolveDrop(
+		drag(session(), SELF, "studio-mac"),
+		{ kind: "device", deviceId: PEER },
+		context,
+	);
+	assert.equal(recall.kind, "plan");
+	assert.equal(outbound.kind, "plan");
+	assert.equal(recall.plan.to, "local");
+	assert.notEqual(outbound.plan.to, "local");
+
+	const captions = (verdict) =>
+		[verdict.plan, ...verdict.alternatives].map((option) => [
+			option.keep ? "copy" : "move",
+			moveOptionCaption(option),
+		]);
+	assert.deepEqual(captions(recall), [
+		["move", "the copy there is deleted once it arrives here"],
+		["copy", "the original stays where it is"],
+	]);
+	assert.deepEqual(captions(outbound), [
+		["move", "the copy here is deleted once it arrives"],
+		["copy", "the original stays where it is"],
+	]);
+	// The recall caption and the body it sits under name the same, remote copy.
+	assert.match(
+		recall.plan.lost,
+		/^The copy on "shared-node" d_bbbbbbbb… is deleted/,
+	);
+
+	// The dialog paints the helper, not a second, direction-blind branch.
+	const actions = source("src/renderer/src/features/mesh/mesh-actions.tsx");
+	assert.match(actions, /\{moveOptionCaption\(option\)\}/);
+	assert.ok(
+		!actions.includes("ui.mesh.mesh_actions.the_copy_here_is_deleted_once_it"),
+		"mesh-actions.tsx must not pick a deletion caption without the plan's direction",
+	);
+});
+
+test("absent recall owners are named by their full id, not the caller's text", () => {
+	// Agent review round 3 F1 / QA round 3 Q-1: an owner the graph does not hold
+	// has no graph to prove a short prefix unique, so its full id is what tells two
+	// same-named owners apart in the destructive confirmation.
+	const context = duplicateDropContext();
+	const ABSENT_ONE = `d_${"1".repeat(32)}`;
+	const ABSENT_TWO = `d_${"2".repeat(32)}`;
+	const lossFor = (ownerId, ownerName, suppliedLabel) => {
+		const verdict = resolveDrop(
+			drag(
+				session({
+					locality: "remote",
+					owner_device: ownerId,
+					owner_device_name: ownerName,
+				}),
+				ownerId,
+				suppliedLabel,
+			),
+			{ kind: "device", deviceId: SELF },
+			context,
+		);
+		assert.equal(verdict.kind, "plan");
+		return verdict.plan.lost;
+	};
+
+	assert.equal(context.devices.has(ABSENT_ONE), false);
+	assert.equal(context.devices.has(ABSENT_TWO), false);
+	const absent = [ABSENT_ONE, ABSENT_TWO].map((ownerId) =>
+		lossFor(ownerId, "shared-node", "shared-node"),
+	);
+	assert.deepEqual(absent, [
+		`The copy on "shared-node" ${ABSENT_ONE} is deleted once this device has it.`,
+		`The copy on "shared-node" ${ABSENT_TWO} is deleted once this device has it.`,
+	]);
+	assert.notEqual(absent[0], absent[1]);
+
+	// An empty wire name reads as absence, never as a quoted empty name.
+	assert.equal(
+		lossFor(ABSENT_ONE, "", ""),
+		`The copy on (unnamed device) ${ABSENT_ONE} is deleted once this device has it.`,
+	);
+
+	// Caller text that merely LOOKS formatted is not identity: a spoofed label
+	// naming another device's id cannot replace the owner's own id.
+	assert.equal(
+		lossFor(ABSENT_ONE, "shared-node", `"shared-node" ${ABSENT_TWO}`),
+		absent[0],
+	);
+
+	// Known-owner control: a graph-resident owner keeps the graph-unique compact
+	// id, so the absent branch's full id is not leaking into the ordinary case.
+	assert.equal(
+		lossFor(PEER, "shared-node", `"shared-node" ${ABSENT_TWO}`),
+		'The copy on "shared-node" d_bbbbbbbb… is deleted once this device has it.',
+	);
+});
+
+test("duplicate suspect targets have distinct refusal identities", () => {
+	const context = duplicateDropContext(true);
+	const sentences = [PEER, THIRD].map((deviceId) => {
+		const verdict = resolveDrop(
+			drag(session(), SELF, SELF_LABEL),
+			{ kind: "device", deviceId },
+			context,
+		);
+		assert.equal(verdict.kind, "refused");
+		assert.equal(verdict.code, "suspect_device");
+		return verdict.sentence;
+	});
+	assert.match(sentences[0], /"shared-node" d_bbbbbbbb…/);
+	assert.match(sentences[1], /"shared-node" d_eeeeeeee…/);
+	assert.notEqual(sentences[0], sentences[1]);
+	assert.ok(
+		!source("src/renderer/src/features/mesh/mesh-node.tsx").includes(
+			"ownerLabel={device.label}",
+		),
+	);
+	assert.ok(
+		!source("src/renderer/src/features/mesh/mesh-card.tsx").includes(
+			"chipFact(session, device.label",
+		),
+	);
+});
+
+test("a suspect identity refuses the drop before the route is asked, and a burned id is not a device", () => {
 	const { context } = dropFixture();
 	const payload = drag(session(), SELF, SELF_LABEL);
-	const local = session();
 	const suspect = resolveDrop(
 		payload,
 		{ kind: "device", deviceId: SUSPECT },
@@ -3046,24 +3663,31 @@ test("the two facts that outrank reachability refuse the drop before the route i
 		"suspect_device",
 		"a duplicated key is a security fact",
 	);
+	/*
+	 * `revoked_membership` WAS THE SECOND CLIENT-LOCAL REFUSAL and is gone with the
+	 * tombstone nodes: a revoked id is no longer a target the canvas draws, so a
+	 * drop on one cannot happen. If a stale id reaches this model it resolves as
+	 * `unknown_device` - the same answer as any identity no membership admits - and
+	 * that is the truthful one, not a refusal about a membership the reader cannot
+	 * see.
+	 */
 	const burned = resolveDrop(
 		payload,
 		{ kind: "device", deviceId: BURNED },
 		context,
 	);
-	assert.equal(burned.code, "revoked_membership");
+	assert.equal(burned.code, "unknown_device");
 	/*
-	 * The client's two are NOT spelled as move codes: `MOVE_REFUSAL_CODES` has no
-	 * `suspect_device` and no `revoked_membership`, so a reader can tell which side
-	 * decided - the route saying no, or this app refusing to ask.
-	 */
-	/*
-	 * The two client-local codes are the APP's, and the file says so where it names
-	 * them: the alternative - a mirrored copy of the backend's `MOVE_REFUSAL_CODES` -
-	 * is a list that drifts silently, and the route is the only thing that owns it.
+	 * `suspect_device` is NOT spelled as a move code: `MOVE_REFUSAL_CODES` has no
+	 * such entry, so a reader can tell which side decided - the route saying no, or
+	 * this app refusing to ask.
+	 *
+	 * The client-local code is the APP's, and the file says so where it names it: the
+	 * alternative - a mirrored copy of the backend's `MOVE_REFUSAL_CODES` - is a list
+	 * that drifts silently, and the route is the only thing that owns it.
 	 */
 	const drop = source("src/renderer/src/features/mesh/mesh-drop.ts");
-	assert.match(drop, /client-side two are named/);
+	assert.match(drop, /this client's/);
 	assert.match(drop, /not_a_device/);
 });
 
@@ -3321,7 +3945,7 @@ test("the chip's spoken fact reads the reach model, and its stripe the same reac
 	const card = source("src/renderer/src/features/mesh/mesh-card.tsx");
 	assert.match(
 		card,
-		/chipFact\(session, device\.label, deviceReach\(device\)\)/,
+		/chipFact\(\s*session,\s*deviceIdentityText\(device, deviceIds, true\),\s*deviceReach\(device\),?\s*\)/,
 	);
 });
 
@@ -3641,6 +4265,49 @@ test("the one gesture the protocol refuses is not a drag, and every drag has a m
 	);
 });
 
+test("the client's reach word survives both forwarding layers", () => {
+	/*
+	 * ROUND-2 MAJOR: `resolveDrop` computed `reach`, the notice rendered
+	 * `refusal.reach ?? refusal.code`, and both layers in between dropped it - so
+	 * a relay-down drag still printed the machine code `unreachable` under a
+	 * sentence saying "relay not running". The leaf expression was pinned; the
+	 * forwarding was not. Pin both halves: the verdict carries the word, and the
+	 * two call sites pass it.
+	 */
+	const { context } = dropFixture();
+	const peer = context.devices.get(PEER);
+	context.devices.set(PEER, {
+		...peer,
+		state: "relay_down",
+		reachable: false,
+		linkState: "relay_down",
+		remoteRelay: "not_listening",
+		reason:
+			"unreachable: 99.79.190.164:4097 connect_failed:ConnectionRefusedError",
+	});
+	const verdict = resolveDrop(
+		drag(session(), SELF, SELF_LABEL),
+		{ kind: "device", deviceId: PEER },
+		context,
+	);
+	assert.equal(verdict.kind, "refused");
+	assert.equal(
+		verdict.reach,
+		"relay not running",
+		"the refusal carries the device's own reach word, not the code",
+	);
+	assert.match(
+		source("src/renderer/src/features/mesh/mesh-canvas.tsx"),
+		/reach: decided\.reach,/,
+		"the canvas forwards it",
+	);
+	assert.match(
+		source("src/renderer/src/features/mesh/mesh-page.tsx"),
+		/reach: verdict\.reach,/,
+		"the page's own drop path forwards it",
+	);
+});
+
 test("a refusal is rendered from the receipt rather than paraphrased", () => {
 	const actions = source("src/renderer/src/features/mesh/mesh-actions.tsx");
 	assert.match(
@@ -3650,8 +4317,8 @@ test("a refusal is rendered from the receipt rather than paraphrased", () => {
 	);
 	assert.match(
 		actions,
-		/\{refusal\?\.code\}/,
-		"with its code beside it, so a support conversation and a log agree",
+		/\{refusal\?\.reach \?\? refusal\?\.code\}/,
+		"with the client's reach word when it has one (the pre-flight refusal has the device in hand), and the route's code otherwise - so a log still agrees with the machine vocabulary",
 	);
 	assert.match(actions, /ui\.mesh\.mesh_actions\.wait_for_the_turn_to_finish/);
 	/*
@@ -4418,4 +5085,65 @@ test("mesh extraction keeps pinned labels and source-language plural fallback", 
 		mesh.clearRegisteredCatalogues();
 		restoreLocale();
 	}
+});
+
+test("nullable counts preserve unknown versus zero and reject timestamp-shaped invalid counts", () => {
+	for (const value of [
+		null,
+		undefined,
+		-1,
+		1.5,
+		Number.NaN,
+		Number.POSITIVE_INFINITY,
+		"2",
+	]) {
+		assert.equal(mesh.nullableCount(value), null);
+	}
+	assert.equal(mesh.nullableCount(0), 0);
+	assert.equal(mesh.nullableCount(2), 2);
+	const [row] = mesh.sessionRows({
+		sessions: [
+			{
+				id: "count-fixture",
+				locality: "remote",
+				owner_device: DEVICE_B,
+				subagents_running: -2,
+				subagents_queued: 1.5,
+				waiting_on: 2,
+				jobs_running: 0,
+			},
+		],
+	});
+	assert.equal(row.subagents_running, null);
+	assert.equal(row.subagents_queued, null);
+	assert.equal(row.waiting_on, 2);
+	assert.equal(row.jobs_running, 0);
+});
+
+test("reach-state story neighbors distinguish suspect unanswered from not-attempted", () => {
+	const oldLaptop = {
+		state: "suspect",
+		suspect: true,
+		reachable: false,
+		reason: "no route to it",
+		sessionCount: null,
+		lastSeenAt: 100,
+	};
+	assert.equal(mesh.deviceReach(oldLaptop), "unanswered");
+	assert.equal(
+		mesh.conversationsLinkDown(oldLaptop, 340),
+		"Link down · no route to it · last seen 4m ago",
+	);
+	const buildBox = {
+		...oldLaptop,
+		state: "unreachable",
+		suspect: false,
+		reason: mesh.NOT_ATTEMPTED_SENTENCES[0],
+	};
+	assert.equal(mesh.deviceReach(buildBox), "not-attempted");
+	assert.match(mesh.conversationsLinkDown(buildBox, 340), /^not asked/);
+	assert.doesNotMatch(mesh.conversationsLinkDown(buildBox, 340), /Link down/);
+	const unknown = { ...buildBox, reason: "" };
+	assert.equal(mesh.deviceReach(unknown), "unknown");
+	assert.equal(mesh.conversationsLinkDown(unknown, 340), "unknown");
 });

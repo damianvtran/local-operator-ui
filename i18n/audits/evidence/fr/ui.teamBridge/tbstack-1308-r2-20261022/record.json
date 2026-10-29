@@ -1,0 +1,147 @@
+{
+ "audit_id": "tbstack-1308-r2-20261022",
+ "date": "2026-10-22",
+ "locale": "fr",
+ "namespace": "ui.teamBridge",
+ "source_commit": "ccc416f47d3a86a5857a603d735a5bb7dcaf7b40",
+ "source_base": "9aa14137dec1562dac0ee72a5f056010d5438432",
+ "round": 2,
+ "prior_audited_head": "36b7a7ad880156fd104be82fed6df61914d02c4b",
+ "scope": "PR #1308 ui.teamBridge at head ccc416f47d3a86a5857a603d735a5bb7dcaf7b40: round-2 delta audit of fr after the remediation commit (parent 36b7a7ad880156fd104be82fed6df61914d02c4b, the r1-audited head). Delta = removal of ui.teamBridge.actions.more (141 -> 140 keys; also removed from en and the en context file); no fr value changed. Every one of the other 140 fr values is byte-identical to the r1-audited bytes (line-level comparison). Catalogue audit only, not rendered-fit, activation or release approval.",
+ "status": "audited",
+ "translator": {
+  "agent": "translator",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-10-21",
+  "session": "f891af4def29",
+  "job": "488a4e87df21"
+ },
+ "delta_translator": {
+  "agent": "coder",
+  "role": "PR implementer, remediation commit",
+  "commit": "ccc416f47d3a86a5857a603d735a5bb7dcaf7b40",
+  "session": null,
+  "job": null,
+  "model": null,
+  "note": "Not recorded in the commit; the coordinator holds the job id.",
+  "keys_removed": [
+   "ui.teamBridge.actions.more"
+  ]
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "anthropic/claude-sonnet-5-5",
+   "date": "2026-10-22",
+   "result": "clean",
+   "instance": "tbstack-r2-1308-fr",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/tbstack-r2-1308-fr.json",
+   "receipt_sha256": "f6a7fbc96e5855aabe2031bd3913e67fe6ae7b814c2abf0183fba09f2c65a5be",
+   "scope": "Team Bridge #1308 round-2 delta at ccc416f47d: ui.teamBridge.actions.more removed (141->140); no value changed; other values byte-identical to the r1-audited bytes. Catalogue audit only.",
+   "note": "Independent r2 delta audit, 0 findings. Record: i18n/audits/evidence/fr/ui.teamBridge/tbstack-1308-r2-20261022/."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "tbstack-r1-1308-fr",
+   "session": "c0d3d761bdad",
+   "job": "cc3ccc31983c",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 141,
+   "keys_substantive": 2,
+   "en_sha256": "4d2a67968bcf6f26304373a6a00ba2b7410fdb70bd7604db3e40e13cc08f5ee2",
+   "context_sha256": "acaafc94d150a362dfaf7c90553b250b2704e4a78bb37b9bf25eead51da1464c",
+   "target_sha256": "38638efe5066b2358e5f39278af89b51aa7de50e030f245f6bb9b85a9093fc5e",
+   "findings": [],
+   "receipt": {
+    "path": "i18n/receipts/tbstack-r1-1308-fr.json",
+    "sha256": "c0b37604af9d439f1d7fcfebe56850ce4d3204b55667bffa670f4110ef07cd1b"
+   }
+  },
+  {
+   "round": 2,
+   "instance": "tbstack-r2-1308-fr",
+   "session": "49e8f4a105c2",
+   "job": "5da05281d696",
+   "model": "anthropic/claude-sonnet-5-5",
+   "status": "passed",
+   "keys_audited": 140,
+   "keys_substantive": 0,
+   "en_sha256": "f940f0c6b7bd896e49c691c1afa4cdb21a0c7dcf8179b81e3c9071503f168448",
+   "context_sha256": "2c60cbbbf0164f2a888809eeb8e3eddb11dc6c8bf9bbb2176b3687542acb4843",
+   "target_sha256": "607c19eb57e813e849639bbe93f19583d5580a83e9a5d9c1d0376dacf2cee515",
+   "findings": [],
+   "r1_findings_disposition": [],
+   "receipt": {
+    "path": "i18n/receipts/tbstack-r2-1308-fr.json",
+    "sha256": "f6a7fbc96e5855aabe2031bd3913e67fe6ae7b814c2abf0183fba09f2c65a5be"
+   }
+  }
+ ],
+ "inherited_receipts": [
+  {
+   "base": "36b7a7ad88",
+   "base_commit": "36b7a7ad880156fd104be82fed6df61914d02c4b",
+   "path": "i18n/receipts/tbstack-r1-1308-fr.json",
+   "sha256": "c0b37604af9d439f1d7fcfebe56850ce4d3204b55667bffa670f4110ef07cd1b",
+   "instance": "tbstack-r1-1308-fr",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "base_source_sha256": "4d2a67968bcf6f26304373a6a00ba2b7410fdb70bd7604db3e40e13cc08f5ee2",
+   "base_target_sha256": "38638efe5066b2358e5f39278af89b51aa7de50e030f245f6bb9b85a9093fc5e",
+   "keys_inherited": 140,
+   "unchanged_values_verified": 140
+  }
+ ],
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "f940f0c6b7bd896e49c691c1afa4cdb21a0c7dcf8179b81e3c9071503f168448"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+   "sha256": "607c19eb57e813e849639bbe93f19583d5580a83e9a5d9c1d0376dacf2cee515"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "2c60cbbbf0164f2a888809eeb8e3eddb11dc6c8bf9bbb2176b3687542acb4843"
+  }
+ },
+ "references": {
+  "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/fr.md",
+   "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+  }
+ },
+ "independence": "Auditor is translation-auditor subagent session 49e8f4a105c2 (job 5da05281d696, label i18n-audit-1308-r2, parent session 687384e07954), a different session from the r1 auditor and from the implementer. The remediation commit ccc416f47d was authored by the PR implementer; its subagent session/job is not recorded in the commit, so translator_session/translator_job are null rather than guessed. Every byte was read with `git show <sha>:<path>` from ~/local-operator-ui; no checkout, worktree or repo file was edited. The ledger is assembled by the coordinator with scripts/i18n/ledger-assemble.mjs, not by the auditor.",
+ "limitations": [
+  "Catalogue audit only. No rendered-fit, screenshot, pseudo-localization, native-bidi, activation or release evidence is claimed.",
+  "Inherited values rest on the r1 receipt and its own inheritance chain; this round re-verified their bytes, not their translation quality.",
+  "Ledger row assembly pending; valid for the target_sha256 above only."
+ ],
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/tbstack-r1-1308-fr.json",
+   "sha256": "c0b37604af9d439f1d7fcfebe56850ce4d3204b55667bffa670f4110ef07cd1b",
+   "note": "r1 audited the 36b7a7ad88 bytes; superseded by the r2 bytes, kept as history"
+  }
+ ]
+}

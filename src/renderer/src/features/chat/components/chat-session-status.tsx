@@ -10,11 +10,17 @@ import {
 	Clock,
 	EqualApproximately,
 	HelpCircle,
+	Hourglass,
 	LoaderCircle,
 	MessageCircleQuestion,
 	MessageSquare,
 	Pause,
+	WifiOff,
 } from "lucide-react";
+import {
+	peerLinkDownLabel,
+	peerUncertainLabel,
+} from "../../mesh/peer-presence";
 import { asksOutstandingLabel } from "../ask-queue";
 
 /** Resting codes that legitimately render as a plain ring. */
@@ -292,14 +298,21 @@ export function SubagentRunningMark({
 	);
 }
 
-export function ChatSessionStatus({ row }: { row: CanonicalSessionRow }) {
+export function ChatSessionStatus({
+	row,
+	nowSeconds = Date.now() / 1000,
+}: { row: CanonicalSessionRow; nowSeconds?: number }) {
 	const code = row.status?.code;
 	/*
 	 * `delegating`'s mark is the RUNNING MARK below rather than a Lucide icon:
 	 * the glyph slot renders one or the other, and the chain underneath is not
 	 * asked for an icon on this code (see `SubagentRunningMark`).
 	 */
-	const delegating = code === "delegating";
+	const linkDown = row.locality === "remote" && row.link_down === true;
+	// Same shape (the link IS lost), quieter ink: amber is the escalation.
+	const reconnecting = linkDown && row.link_reconnecting === true;
+	const uncertainLabel = peerUncertainLabel(row);
+	const delegating = !uncertainLabel && !linkDown && code === "delegating";
 	/*
 	 * WHAT THIS ROW IS DRAWING, asked of the ONE predicate (`unreadMarkKind`) the
 	 * accessible name below, the sidebar row's tooltip and the bulk control's
@@ -313,98 +326,112 @@ export function ChatSessionStatus({ row }: { row: CanonicalSessionRow }) {
 	// Completion is still the outcome after reading it; only its attention
 	// mark rests. Keep failures, work and pending gates independent of receipts.
 	const unseenCompletion = unreadMark === "complete";
-	const Icon =
-		code === "busy"
-			? LoaderCircle
-			: code === "approval" || code === "answer" || code === "error"
-				? CircleAlert
-				: /*
-					 * `wedged` WEARS A MARK OF ITS OWN, and that is the fix rather than a
-					 * flourish. It used to share `CircleAlert` with `error`, so an owner that
-					 * had merely stopped reporting and a turn that had actually broken drew
-					 * byte-identical output — and the two ask opposite things of a reader
-					 * (reopen the failed one; do not expect a message to land in the silent
-					 * one). Colour cannot carry the difference either: this app and the TUI
-					 * share one brand ramp, and the measurement recorded for the same
-					 * `warning`/`danger` pair collapses the two inks under deuteranopia
-					 * (`session_picker.py:563-569`). SHAPE IS THE SIGNAL, so the state gets
-					 * a silhouette that shares no stroke with the alert ring — two
-					 * horizontal waves, which is this app's `EqualApproximately` and the
-					 * TUI's `≈` for the same state.
-					 *
-					 * WHY NOT THE NEAR MISSES: `WifiOff` belongs to the app's
-					 * daemon-connection vocabulary for a different fact with a different
-					 * remedy (`shared/backend-status.ts`); `HelpCircle` already means "a code
-					 * this build does not know" two branches below; and
-					 * `CircleDashed`/`CircleDotDashed` would put a second RING in the amber
-					 * class beside `approval`/`answer`, which is the grouping failure the
-					 * TUI's marker register warns about.
-					 *
-					 * IT STAYS STATIC while `busy` spins. Nothing about this state is
-					 * turning: the runtime's beat stopped landing, and an animation here
-					 * would both borrow the busy reading and assert an activity the stale
-					 * heartbeat cannot support.
-					 */
-					code === "wedged"
-					? EqualApproximately
-					: code === "interrupted" || code === "dormant"
-						? Pause
-						: code === "complete"
-							? unseenCompletion
-								? Check
-								: Circle
-							: code === "scheduled"
-								? Clock
-								: code === "attached"
-									? MessageSquare
-									: // A `delegating` row never reads this chain: its glyph slot draws
-										// the RUNNING MARK instead (`SubagentRunningMark` below), because the
-										// share glyph read as an action on a row whose mark is a state
-										// (issue #840).
-										KNOWN_RESTING.has(code ?? "recent")
-										? Circle
-										: HelpCircle;
-	const ink =
-		code === "busy"
-			? // LIVENESS IS `accent` (or motion). It was `info` here and the accent
-				// in the transcript, so one fact wore two hues depending on which
-				// surface carried it — and `info` means "here is a fact" on the six
-				// sites that own it. Motion still carries the state on its own; the
-				// accent is the second channel, not the only one.
-				"text-accent motion-safe:animate-spin"
-			: code === "wedged"
-				? /*
-					 * `warning`, not `danger`, and the product already agreed with itself
-					 * about this everywhere except here: `warning` is the role reserved
-					 * for "read this, nothing has broken" — the same reading that moved
-					 * `interrupted` off danger — and it is what the `/info` badge
-					 * (`pickers/panels/info-panel.tsx`) and the connectivity banner
-					 * already render for this state. The row was the outlier.
-					 *
-					 * NO NEW TOKEN, so no palette edit, no `gen-themes` run and no row in
-					 * `scripts/contrast-contract.mjs`: `warning` is an existing semantic
-					 * with a measured 4.5:1 text floor (docs/branding.md § 3), and this is
-					 * an ink on an icon rather than a component fill/border triple.
-					 *
-					 * NOT `text-ink-dim`: the state changes what the user can expect of
-					 * the row — their next message may silently not land — so it stays
-					 * louder than a resting row, which is also why it must not be quieter
-					 * than `busy`.
-					 */
-					"text-warning"
-				: code === "error"
-					? "text-danger"
-					: code === "approval" || code === "answer" || code === "interrupted"
-						? "text-warning"
-						: unseenCompletion
-							? "text-success"
-							: // The accent role, and STATIC on purpose: `busy` owns the spinner in
-								// this slot, and a second animated mark would make two different
-								// states read as one. Delegating is a state of the session, not
-								// activity within it, so it holds still.
-								code === "delegating"
-								? "text-accent"
-								: "text-ink-dim";
+	const Icon = uncertainLabel
+		? HelpCircle
+		: linkDown
+			? WifiOff
+			: code === "waiting"
+				? Hourglass
+				: code === "busy"
+					? LoaderCircle
+					: code === "approval" || code === "answer" || code === "error"
+						? CircleAlert
+						: /*
+							 * `wedged` WEARS A MARK OF ITS OWN, and that is the fix rather than a
+							 * flourish. It used to share `CircleAlert` with `error`, so an owner that
+							 * had merely stopped reporting and a turn that had actually broken drew
+							 * byte-identical output — and the two ask opposite things of a reader
+							 * (reopen the failed one; do not expect a message to land in the silent
+							 * one). Colour cannot carry the difference either: this app and the TUI
+							 * share one brand ramp, and the measurement recorded for the same
+							 * `warning`/`danger` pair collapses the two inks under deuteranopia
+							 * (`session_picker.py:563-569`). SHAPE IS THE SIGNAL, so the state gets
+							 * a silhouette that shares no stroke with the alert ring — two
+							 * horizontal waves, which is this app's `EqualApproximately` and the
+							 * TUI's `≈` for the same state.
+							 *
+							 * WHY NOT THE NEAR MISSES: `WifiOff` is reserved for a lost link
+							 * (to the daemon or a remote owner), not a wedged session on a
+							 * reachable device; `HelpCircle` already means "a code
+							 * this build does not know" two branches below; and
+							 * `CircleDashed`/`CircleDotDashed` would put a second RING in the amber
+							 * class beside `approval`/`answer`, which is the grouping failure the
+							 * TUI's marker register warns about.
+							 *
+							 * IT STAYS STATIC while `busy` spins. Nothing about this state is
+							 * turning: the runtime's beat stopped landing, and an animation here
+							 * would both borrow the busy reading and assert an activity the stale
+							 * heartbeat cannot support.
+							 */
+							code === "wedged"
+							? EqualApproximately
+							: code === "interrupted" || code === "dormant"
+								? Pause
+								: code === "complete"
+									? unseenCompletion
+										? Check
+										: Circle
+									: code === "scheduled"
+										? Clock
+										: code === "attached"
+											? MessageSquare
+											: // A `delegating` row never reads this chain: its glyph slot draws
+												// the RUNNING MARK instead (`SubagentRunningMark` below), because the
+												// share glyph read as an action on a row whose mark is a state
+												// (issue #840).
+												KNOWN_RESTING.has(code ?? "recent")
+												? Circle
+												: HelpCircle;
+	const ink = uncertainLabel
+		? "text-ink-dim"
+		: linkDown
+			? reconnecting
+				? "text-ink-dim"
+				: "text-warning"
+			: code === "waiting"
+				? "text-accent"
+				: code === "busy"
+					? // LIVENESS IS `accent` (or motion). It was `info` here and the accent
+						// in the transcript, so one fact wore two hues depending on which
+						// surface carried it — and `info` means "here is a fact" on the six
+						// sites that own it. Motion still carries the state on its own; the
+						// accent is the second channel, not the only one.
+						"text-accent motion-safe:animate-spin"
+					: code === "wedged"
+						? /*
+							 * `warning`, not `danger`, and the product already agreed with itself
+							 * about this everywhere except here: `warning` is the role reserved
+							 * for "read this, nothing has broken" — the same reading that moved
+							 * `interrupted` off danger — and it is what the `/info` badge
+							 * (`pickers/panels/info-panel.tsx`) and the connectivity banner
+							 * already render for this state. The row was the outlier.
+							 *
+							 * NO NEW TOKEN, so no palette edit, no `gen-themes` run and no row in
+							 * `scripts/contrast-contract.mjs`: `warning` is an existing semantic
+							 * with a measured 4.5:1 text floor (docs/branding.md § 3), and this is
+							 * an ink on an icon rather than a component fill/border triple.
+							 *
+							 * NOT `text-ink-dim`: the state changes what the user can expect of
+							 * the row — their next message may silently not land — so it stays
+							 * louder than a resting row, which is also why it must not be quieter
+							 * than `busy`.
+							 */
+							"text-warning"
+						: code === "error"
+							? "text-danger"
+							: code === "approval" ||
+									code === "answer" ||
+									code === "interrupted"
+								? "text-warning"
+								: unseenCompletion
+									? "text-success"
+									: // The accent role, and STATIC on purpose: `busy` owns the spinner in
+										// this slot, and a second animated mark would make two different
+										// states read as one. Delegating is a state of the session, not
+										// activity within it, so it holds still.
+										code === "delegating"
+										? "text-accent"
+										: "text-ink-dim";
 	return (
 		/*
 		 * NO `title` ON THIS SPAN (review round 1, MINOR 1). It used to carry
@@ -424,7 +451,9 @@ export function ChatSessionStatus({ row }: { row: CanonicalSessionRow }) {
 				<Icon className={cn("size-4", ink)} aria-hidden="true" />
 			)}
 			<span className="sr-only">
-				{row.status?.label ?? "Recent"}
+				{linkDown
+					? peerLinkDownLabel(row, nowSeconds)
+					: (uncertainLabel ?? row.status?.label ?? "Recent")}
 				{/*
 				 * THE UNREAD SEMANTIC IS AN INK STEP, so on its own it tells a screen
 				 * reader nothing — the arrival is visible only to someone looking at

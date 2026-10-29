@@ -17,6 +17,10 @@ const bundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@shared/i18n": "./src/i18n",
+	},
 	write: false,
 });
 const reducer = await import(
@@ -258,11 +262,41 @@ test("the turn end stamps whatever it settles, aborted or not", () => {
 	assert.equal(aborted.records[0].streaming, false);
 	assert.equal(aborted.records[0].stopReason, "aborted");
 	assert.equal(aborted.records[0].settledAt, 5);
+	/*
+	 * C3 (review round 1): this settle must STATE the final-response fact rather
+	 * than leave it absent. An aborted stream never assembled calls, so its text
+	 * is a handover - and the type's absence rule is for hand-built fixtures, not
+	 * for a live path.
+	 */
 	assert.equal(
-		applyEvent(stream(), { type: "agent_end", aborted: false }, 7).records[0]
-			.settledAt,
+		aborted.records[0].kind,
+		"assistant",
+		"the settled row is the assistant stream",
+	);
+	assert.equal(
+		aborted.records[0].callsTools,
+		false,
+		"an aborted stream settles as a final response",
+	);
+	const cleanEnd = applyEvent(
+		stream(),
+		{ type: "agent_end", aborted: false },
+		7,
+	);
+	assert.equal(
+		cleanEnd.records[0].settledAt,
 		7,
 		"a clean end that lost its `message_end` settles the same way",
+	);
+	assert.equal(
+		cleanEnd.records[0].kind,
+		"assistant",
+		"and the row is the assistant stream",
+	);
+	assert.equal(
+		cleanEnd.records[0].callsTools,
+		false,
+		"and states the same fact on a clean end",
 	);
 });
 
@@ -4846,6 +4880,104 @@ test("an anchor of epoch 0 is no anchor, so a settling frame is refused whatever
 	);
 });
 
+test("a page read before a live write cannot rewrite the row, and a later read can", () => {
+	/*
+	 * THE OPERATOR'S FLICKER, at the merge that decides it (report, 2026-10-26:
+	 * "the history jitters back to an earlier state of an agent response, then
+	 * returns to the latest").
+	 *
+	 * Neither content nor timestamps can order two sources, and both of the two
+	 * obvious tests are wrong: "the page disagrees" is also what a CORRECTION
+	 * looks like, and "the page is shorter" is also what a correction that
+	 * SHORTENS an answer looks like. So the merge compares clocks the caller can
+	 * witness: the row carries the live frame that wrote it, and the read carries
+	 * the receipt the pane had when it was dispatched.
+	 */
+	const older =
+		"Four invoices were late: 1042, 1088, 1103 and 1177. I have started chasing them.";
+	const live = applyEvent(
+		applyHistoryPage(
+			EMPTY_TRANSCRIPT,
+			pageOf([messageEntry("a1", 1_760_000_000, assistant("a1", ""))]),
+		),
+		{
+			type: "message_end",
+			message: { ...assistant("a1", older), stop_reason: "stop" },
+		},
+		5_000,
+		{ frame: { epoch: "e", seq: 5 } },
+	);
+	assert.equal(live.records.at(-1).text, older, "the live end is the control");
+	assert.deepEqual(
+		"frame" in live.records.at(-1) ? live.records.at(-1).frame : null,
+		{ epoch: "e", seq: 5 },
+		"the settled row keeps the frame that wrote it",
+	);
+
+	// A read dispatched at seq 2 was answered from a source that had not seen the
+	// live write, so its mid-stream projection cannot rewrite the row.
+	const stalePage = pageOf([
+		messageEntry("a1", 1_759_999_000, assistant("a1", older.slice(0, 40))),
+	]);
+	assert.equal(
+		applyHistoryPage(live, stalePage, {
+			readWitness: { epoch: "e", seq: 2 },
+		}).records.at(-1).text,
+		older,
+		"a shorter mid-stream projection from an older read keeps the newer text",
+	);
+
+	/*
+	 * AND THE CORRECTION STILL LANDS, including one that SHORTENS the answer -
+	 * the case a prefix test cannot tell apart from a stale projection. This read
+	 * went out after the live write, so its answer is the authority.
+	 */
+	const corrected = "Four invoices were late: 1042 and 1088.";
+	const laterPage = pageOf([
+		messageEntry("a1", 1_760_000_100, assistant("a1", corrected)),
+	]);
+	assert.equal(
+		applyHistoryPage(live, laterPage, {
+			readWitness: { epoch: "e", seq: 9 },
+		}).records.at(-1).text,
+		corrected,
+		"a suffix-deleting correction from a later read replaces the answer",
+	);
+
+	// A different epoch is a replaced owner: its numbering says nothing here, and
+	// the page keeps durable-wins-by-id rather than being refused.
+	assert.equal(
+		applyHistoryPage(live, laterPage, {
+			readWitness: { epoch: "other", seq: 1 },
+		}).records.at(-1).text,
+		corrected,
+		"a cross-epoch witness does not suppress the page",
+	);
+
+	// No witness at all: a first hydration has no clock to compare, so the page
+	// is applied exactly as it always was.
+	assert.equal(
+		applyHistoryPage(live, laterPage).records.at(-1).text,
+		corrected,
+		"an unwitnessed page keeps durable-wins-by-id",
+	);
+
+	/*
+	 * AND THE BOUNDARY IS STRICT (agent review round 2, m1). A read dispatched AT
+	 * the very receipt that wrote the row has seen that write - the bridge answers
+	 * the state as of the position it was asked at - so it may correct the row.
+	 * Changing `>` to `>=` here would silently forbid every same-position
+	 * correction, and nothing else in this suite would notice.
+	 */
+	assert.equal(
+		applyHistoryPage(live, laterPage, {
+			readWitness: { epoch: "e", seq: 5 },
+		}).records.at(-1).text,
+		corrected,
+		"a read at the row's own receipt has seen it and may correct it",
+	);
+});
+
 test("a history_delta that states reset replaces the viewport it cannot extend", () => {
 	// Two of the three producers send the WHOLE history with `reset=True`
 	// (`HistoryDeltaEvent.reset`: "a replay-changing generation cannot be appended
@@ -7803,6 +7935,10 @@ const devBundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@shared/i18n": "./src/i18n",
+	},
 	write: false,
 	define: { "import.meta.env": '{"DEV":true}' },
 });

@@ -1,0 +1,6 @@
+{
+	"ui.chat.live_updates.paused": "Обновления в реальном времени приостановлены, поэтому этот разговор может быть устаревшим.",
+	"ui.chat.live_updates.reload": "Перезагрузить из истории",
+	"ui.chat.live_updates.reloading": "Перезагрузка…",
+	"ui.chat.live_updates.reload_failed": "Не удалось перезагрузить этот разговор. Повторите попытку."
+}

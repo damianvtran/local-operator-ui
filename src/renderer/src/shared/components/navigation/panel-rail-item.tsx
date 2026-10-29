@@ -1,4 +1,5 @@
-import { Button, Tooltip } from "@shared/components/ui";
+import { BrowserSafeTooltip, Button } from "@shared/components/ui";
+import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { cn } from "@shared/lib/utils";
 import {
 	type ButtonHTMLAttributes,
@@ -79,58 +80,39 @@ export type PanelRailItemProps = Omit<
  * comment records (design round 2, D2-1).
  */
 const LIT =
-	"bg-row-selected text-accent hover:bg-row-selected hover:text-accent active:bg-row-selected active:text-accent before:absolute before:inset-y-1 before:-left-[6px] before:w-0.5 before:rounded-full before:bg-accent";
+	"bg-row-selected text-accent hover:bg-row-selected hover:text-accent active:bg-row-selected active:text-accent before:absolute before:inset-y-1 before:-start-[6px] before:w-0.5 before:rounded-full before:bg-accent";
 const IDLE =
 	"text-ink-muted hover:bg-row-hover hover:text-ink active:bg-row-hover active:text-ink";
 
 export const PanelRailItem = forwardRef<HTMLButtonElement, PanelRailItemProps>(
 	({ id, label, ariaLabel, pressed, children, className, ...props }, ref) => {
+		const direction = useTextDirection();
 		const rail = useContext(PanelRailRovingContext);
 		const register = rail?.register;
 		useLayoutEffect(() => register?.(id), [register, id]);
 		/*
-		 * A RAIL TOOLTIP IS PAINTED OVER THE NATIVE BROWSER VIEW (design D1). The
-		 * tooltips open `left`, into the pane, and with the Browser pane open that is
-		 * the `WebContentsView`'s rect: a native view paints above ALL DOM, so the
-		 * only visible label of three icon-only controls would vanish in the most-used
-		 * state. The repo's own answer is the policy registry (`browser-view-policy`,
-		 * the same call the pickers and the tab strip's menu make for a popover opened
-		 * inside the pane area): hide the view for the span the tooltip is open.
-		 * Scoped to that span and to this item (`useId`-suffixed, ref-counted), so a
-		 * stray hover blanks the page for the tooltip's lifetime only and nothing is
-		 * ever left suppressed - the registration is released by the effect cleanup
-		 * on close, on unmount, and when the item goes absent. The cost is the page
-		 * flash the policy header names as unmeasured (probe P11).
+		 * THE LABEL IS CONDITIONAL ON A VIEW BEING MOUNTED (S5 round 1, D2/U2).
 		 *
-		 * AND ONLY WHEN IT REACHES THE VIEW (design round 2, D11). At the 1280x900
-		 * geometry the round measured (the four-item rail), only the LAST item's tooltip
-		 * (Canvas) overlapped the view's rect; the others ended above it, and on a draft
-		 * none does, so registering for all of them blanked the page for a hint that never
-		 * touched it. #896 added a FIFTH item above the lower three, which shifts each
-		 * lower tooltip down by one pitch: which items cross the view's top edge is the
-		 * measurement's to say (the evidence pass re-derives the numbers), and the
-		 * mechanism never assumed a fixed count. `useSuppressBrowserViewWhileReaching`
-		 * measures the open tooltip's painted box against the rect the browser surface
-		 * reports to main, and ends the registration on pointer-leave / window blur as
-		 * well as on close (a tooltip left open by an exit through the window edge would
-		 * otherwise hold the page blank until the pointer returned).
-		 *
-		 * The shared `Tooltip` now makes that measured registration for every tooltip that
-		 * reaches the view (the sidebar's conversation flyout had the same occlusion,
-		 * opening `right`); this item only names its registrations, so the paused page and
-		 * the tests can still tell a rail tooltip from the rest.
+		 * The rail is a 44px column at the window's trailing edge, so the only place
+		 * a label can open is LEFT — into the pane, which WITH THE BROWSER OPEN is
+		 * the native view's rect. A tooltip may not pause the page, and nothing can
+		 * be repositioned inside 44px, so on that route the `aria-label` is the
+		 * channel. On every other route there is no view under the pane at all, and
+		 * the label is exactly what it always was; deleting it globally regressed
+		 * every chat, schedule and settings screen (round-1 D2).
 		 */
 		return (
-			/* Tooltips open TOWARD the pane (`left`): the rail is at the window's edge, so
-			   the other three sides either leave the window or cover a sibling item. */
-			<Tooltip content={label} side="left" overlayName="panel-rail-tooltip">
+			<BrowserSafeTooltip
+				content={label}
+				side={direction === "rtl" ? "right" : "left"}
+			>
 				<Button
 					ref={ref}
 					variant="ghost"
 					size="icon"
 					data-panel-rail-item={id}
 					data-titlebar-no-drag=""
-					aria-label={ariaLabel}
+					aria-label={ariaLabel ?? label}
 					aria-pressed={pressed}
 					tabIndex={rail ? (rail.roving === id ? 0 : -1) : undefined}
 					className={cn(
@@ -142,7 +124,7 @@ export const PanelRailItem = forwardRef<HTMLButtonElement, PanelRailItemProps>(
 				>
 					{children}
 				</Button>
-			</Tooltip>
+			</BrowserSafeTooltip>
 		);
 	},
 );

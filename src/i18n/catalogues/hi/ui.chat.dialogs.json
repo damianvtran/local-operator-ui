@@ -1,0 +1,12 @@
+{
+	"ui.chat.dialogs.delete_title": "यह बातचीत हटाएँ?",
+	"ui.chat.dialogs.options.clear_confirm": "मिटाएँ",
+	"ui.chat.dialogs.options.clear_conversation": "बातचीत मिटाएँ",
+	"ui.chat.dialogs.options.clear_message": "इसके सभी संदेश इस कंप्यूटर से हट जाते हैं, और उन्हें वापस नहीं लाया जा सकता। एजेंट पर कोई असर नहीं पड़ता।",
+	"ui.chat.dialogs.options.clear_title": "यह बातचीत मिटाएँ?",
+	"ui.chat.dialogs.options.description": "इस एजेंट की सेटिंग्स बदलें",
+	"ui.chat.dialogs.options.title": "चैट विकल्प",
+	"ui.chat.dialogs.delete_action": "हटाएँ",
+	"ui.chat.dialogs.archive_action": "संग्रहित करें",
+	"ui.chat.dialogs.cancel": "रद्द करें"
+}

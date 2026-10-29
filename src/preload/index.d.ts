@@ -5,8 +5,20 @@ import type {
 	BackendUpdateCompletion,
 	BackendUpdateErrorReport,
 } from "../main/update-service";
+import type {
+	AttachmentUploadResult,
+	AttachmentUploadSource,
+} from "../shared/attachment-upload";
 import type { DaemonStatusSnapshot } from "../shared/backend-status";
+import type {
+	AddressHistoryRequest,
+	AddressHistoryResponse,
+} from "../shared/browser-address-history";
 import type { HumanTabActionOutcome } from "../shared/browser-tab-action";
+import type {
+	TabActionsMenuRequest,
+	TabActionsMenuSelection,
+} from "../shared/browser-tab-actions-menu";
 import type {
 	DesktopAPI,
 	DirectoryListing,
@@ -145,12 +157,35 @@ declare global {
 				setChordFocus: (focused: boolean) => Promise<void>;
 				reopenTab: (sessionId?: string | null) => Promise<unknown>;
 				focusPage: () => Promise<void>;
+				/** S6b: the native approvals card. The renderer passes the resolved
+				 * locale and direction; main has no catalogue. */
+				openApprovalsCard: (input: {
+					locale?: string;
+					dir?: "ltr" | "rtl";
+					theme?: "light" | "dark";
+					palette?: string | null;
+				}) => Promise<unknown>;
+				closeApprovalsCard: () => Promise<unknown>;
+				setApprovalsCardContext: (input: {
+					locale?: string;
+					dir?: "ltr" | "rtl";
+					theme?: "light" | "dark";
+					palette?: string | null;
+					requesterLabels?: Readonly<Record<string, string>>;
+				}) => Promise<unknown>;
 				onChord: (
 					callback: (
 						message: import("../shared/browser-chord").BrowserChordMessage,
 					) => void,
 				) => () => void;
 				state: () => Promise<unknown>;
+				/** S4b's product popout: a display projection in, a validated commit
+				 * or a main-decided dismissal out. Absent on a launch with no
+				 * controller (pre-S4b builds, tests). */
+				addressOverlay: {
+					project: (payload: unknown) => Promise<unknown>;
+					onEvent: (callback: (event: unknown) => void) => () => void;
+				};
 				/** `sessionId` attributes the new tab to the conversation it was opened
 				 * from; `null` (and absent) mean it belongs to no conversation. */
 				reorderTabs: (ids: number[]) => Promise<unknown>;
@@ -158,13 +193,25 @@ declare global {
 					tabId: number,
 					action: "duplicate" | "reload" | "mute" | "unmute",
 				) => Promise<HumanTabActionOutcome>;
+				/** The tab strip's actions menu, popped as a NATIVE menu by main.
+				 * Resolves with the selected item id, or null when the menu was
+				 * dismissed (or cannot be shown, as in a headless run). */
+				tabActionsMenu: (
+					request: TabActionsMenuRequest,
+				) => Promise<TabActionsMenuSelection>;
 				newTab: (sessionId?: string | null) => Promise<unknown>;
 				closeTab: (tabId: number) => Promise<unknown>;
 				/** A bulk close. `{ mode: "ids", tabIds }`, or `{ mode: "conversation",
 				 * sessionId }` which main resolves against the live registry. */
 				closeTabs: (intent: unknown) => Promise<unknown>;
 				activateTab: (tabId: number) => Promise<unknown>;
-				navigate: (url: string) => Promise<unknown>;
+				/** Local address suggestions. The expected tab is the one the field's
+				 * draft belongs to; main refuses a request for a tab that is no longer
+				 * active. */
+				addressHistory: (
+					request: AddressHistoryRequest,
+				) => Promise<AddressHistoryResponse>;
+				navigate: (url: string, expectedTabId?: number) => Promise<unknown>;
 				/** Home: no argument, because main owns the start state. */
 				home: () => Promise<unknown>;
 				reload: (hard?: boolean) => Promise<unknown>;
@@ -176,7 +223,15 @@ declare global {
 				setContentRect: (
 					rect: { x: number; y: number; width: number; height: number } | null,
 				) => Promise<unknown>;
-				setViewVisible: (visible: boolean) => Promise<unknown>;
+				setViewVisible: (
+					visible: boolean,
+					/** Why the view is hidden, when it is: the browser's own state
+					 * page rather than an overlay. See `registry.ts:chromeVisible`. */
+					ownPage?: boolean,
+					/** The browser's own content state even while an overlay hides it;
+					 * controls are refused on it (QA Q3-1). */
+					ownStatePage?: boolean,
+				) => Promise<unknown>;
 				handOver: (tabId: number, sessionId: string) => Promise<unknown>;
 				revokeHandOver: (tabId: number) => Promise<unknown>;
 				respondToConsent: (
@@ -439,10 +494,22 @@ declare global {
 				maxBytes?: number,
 			) => Promise<ReadFileBytesResponse>;
 			/**
+			 * Upload one composer attachment to the daemon's attachment store. Main owns
+			 * the read and the multipart POST; the renderer receives the stored record
+			 * or a typed refusal carrying the sentence it renders (contract v1 §1.1).
+			 */
+			uploadAttachment: (
+				source: AttachmentUploadSource,
+			) => Promise<AttachmentUploadResult>;
+			/**
 			 * Resolve and stat a batch of paths, returning the RESOLVED path each one
 			 * maps to. That resolved path is the Files panel's identity for a file.
 			 */
-			probeFiles: (paths: string[], cwd?: string) => Promise<ProbedFile[]>;
+			probeFiles: (
+				paths: string[],
+				cwd?: string,
+				options?: { fresh?: boolean },
+			) => Promise<ProbedFile[]>;
 			/**
 			 * One directory's listable entries, sorted by name, at most
 			 * `DIRECTORY_ENTRY_LIMIT` of them per call.

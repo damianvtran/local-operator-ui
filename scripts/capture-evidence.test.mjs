@@ -51,10 +51,18 @@ const THEME_SETTLE_REFUSAL = /positive whole number of milliseconds/;
 const THEME_SETTLE_JOINED = /joined with '='/;
 const MODULE_LOADED = /loaded/;
 
+/*
+ * The two trees a capture now writes, modelled as the rig writes them: frames
+ * under `out`, the manifest beside them in the TRACKED tree (`manifestDir`).
+ * The split is why `clearSweptFrames` takes the second directory - a sweep that
+ * read the manifest out of its own output would find it gone after the first
+ * run, and the preservation rule would silently stop preserving anything.
+ */
 const build = () => {
 	const out = mkdtempSync(join(tmpdir(), "lo-sweep-"));
-	const write = (rel, body = "x") => {
-		const path = join(out, rel);
+	const manifestDir = mkdtempSync(join(tmpdir(), "lo-sweep-manifest-"));
+	const write = (rel, body = "x", dir = out) => {
+		const path = join(dir, rel);
 		mkdirSync(join(path, ".."), { recursive: true });
 		writeFileSync(path, body);
 	};
@@ -64,6 +72,7 @@ const build = () => {
 			frames: 3,
 			supplementary: [{ path: "kept-set", frames: 1 }],
 		}),
+		manifestDir,
 	);
 	// The sweep's own output: regenerated on every run, so it goes.
 	write("swept-story/localOperatorDark.webp");
@@ -73,12 +82,12 @@ const build = () => {
 	write("swept-story/png-pair/after-1380.png");
 	// Declared: this script cannot re-derive it.
 	write("kept-set/localOperatorDark.webp");
-	return out;
+	return { out, manifestDir };
 };
 
 test("a sweep takes its frames and nothing else", () => {
-	const out = build();
-	const supplementary = clearSweptFrames(out);
+	const { out, manifestDir } = build();
+	const supplementary = clearSweptFrames(out, manifestDir);
 
 	assert.deepEqual(supplementary, [{ path: "kept-set", frames: 1 }]);
 	// (1) the declared set survives, frame and all
@@ -95,18 +104,23 @@ test("a sweep takes its frames and nothing else", () => {
 		existsSync(join(out, "swept-story/png-pair/after-1380.png")),
 		"a frame this script does not write is not part of its output",
 	);
-	// The manifest stays until the run replaces it, so a crash inside the sweep
-	// leaves a stale-but-honest declaration rather than none.
-	assert.ok(existsSync(join(out, "manifest.json")));
+	// The manifest stays in the TRACKED tree until the run replaces it, so a
+	// crash inside the sweep leaves a stale-but-honest declaration rather than
+	// none - and the sweep never reaches it, because it is not in `out`.
+	assert.ok(existsSync(join(manifestDir, "manifest.json")));
+	assert.ok(
+		!existsSync(join(out, "manifest.json")),
+		"the manifest was written into the frames tree: that is the pre-split layout, and the next sweep would delete the declaration with the frames",
+	);
 	assert.equal(
-		JSON.parse(readFileSync(join(out, "manifest.json"), "utf8")).frames,
+		JSON.parse(readFileSync(join(manifestDir, "manifest.json"), "utf8")).frames,
 		3,
 	);
 });
 
 test("a directory the sweep empties is removed, one that still holds prose is not", () => {
-	const out = build();
-	clearSweptFrames(out);
+	const { out, manifestDir } = build();
+	clearSweptFrames(out, manifestDir);
 	// `swept-story` keeps its README, so it stays; `png-pair` holds a PNG, so it
 	// stays too. Nothing here asserts the reverse - a directory left holding only
 	// frames must go, which is the stale-surface case.
@@ -114,10 +128,14 @@ test("a directory the sweep empties is removed, one that still holds prose is no
 	assert.ok(existsSync(join(out, "swept-story/png-pair")));
 
 	const bare = mkdtempSync(join(tmpdir(), "lo-sweep-bare-"));
+	const bareManifest = mkdtempSync(join(tmpdir(), "lo-sweep-bare-manifest-"));
 	mkdirSync(join(bare, "gone-story"), { recursive: true });
 	writeFileSync(join(bare, "gone-story", "localOperatorDark.webp"), "x");
-	writeFileSync(join(bare, "manifest.json"), JSON.stringify({ frames: 1 }));
-	clearSweptFrames(bare);
+	writeFileSync(
+		join(bareManifest, "manifest.json"),
+		JSON.stringify({ frames: 1 }),
+	);
+	clearSweptFrames(bare, bareManifest);
 	assert.ok(
 		!existsSync(join(bare, "gone-story")),
 		"a surface whose frames all went does not stay behind empty",

@@ -1,0 +1,12 @@
+{
+	"ui.hub.viewer.favourite": "Thêm tác nhân vào mục yêu thích",
+	"ui.hub.viewer.favourite_signed_out": "Đăng nhập vào Radient để thêm tác nhân vào mục yêu thích",
+	"ui.hub.viewer.favourite_unavailable": "Trạng thái yêu thích không khả dụng",
+	"ui.hub.viewer.favourite_unknown": "Không đọc được mục yêu thích của bạn nên tác nhân này không hiển thị là chưa yêu thích.",
+	"ui.hub.viewer.like": "Thích tác nhân",
+	"ui.hub.viewer.like_signed_out": "Đăng nhập vào Radient để thích tác nhân",
+	"ui.hub.viewer.like_unavailable": "Trạng thái lượt thích không khả dụng",
+	"ui.hub.viewer.like_unknown": "Không đọc được các lượt thích của bạn nên tác nhân này không hiển thị là chưa thích.",
+	"ui.hub.viewer.unfavourite": "Bỏ tác nhân khỏi mục yêu thích",
+	"ui.hub.viewer.unlike": "Bỏ thích tác nhân"
+}

@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "date": "2026-10-19",
+  "instance": "d4e5f6a1b2c3",
+  "auditor": "i18n-auditor-ru",
+  "model": "openai/gpt-6.1-sol",
+  "model_provenance": "Actual fallback disclosed by the session model-switch event: openai/gpt-6.1-sol after anthropic/claude-sonnet-5-5 provider quota failure. No role/default configuration changed.",
+  "locale": "ru",
+  "namespace": "ui.chat.tags",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "sha256": {
+    "en": "2ceb3d8a5e4592916fce55ab7eeee5f4654f2d2394cbdb74be89aff2e73ab1be",
+    "ru": "ab6e49a031977370c1f05f828b6cb8e9c9e81fe51beb9fd8c3f037ece766ea2c"
+  },
+  "scope": "Independent V2-2 linguistic audit of all 73 EN/RU pairs, with 19 new picker/Manage keys; baseline comparison against git HEAD. No other locale audited.",
+  "baseline_head": "bf24fa9e5496af551c60532a87811b4dc550495c",
+  "findings": [
+    {
+      "id": "RU-M1",
+      "severity": "minor",
+      "key": "ui.chat.tags.selection_status",
+      "location": "src/i18n/catalogues/ru/ui.chat.tags.json:68",
+      "detail": "«Группировать под {name}» is a literal English-calque construction and reads less naturally than the established Russian primary-tag wording. The meaning remains recoverable; placeholders are correct.",
+      "recommendation": "Use «Выбрано: {count}. Основной тег: {name}.» to align with group_under and updated_grouped."
+    },
+    {
+      "id": "RU-M2",
+      "severity": "minor",
+      "keys": [
+        "ui.chat.tags.create_helper",
+        "ui.chat.tags.tag_usage",
+        "ui.chat.tags.remote"
+      ],
+      "location": "src/i18n/catalogues/ru/ui.chat.tags.json:59,69,71",
+      "detail": "The new copy uses «беседа/беседы/бесед» while all baseline conversation copy in this namespace uses «разговор/разговоры». Both are valid, but switching the entity term within one dialog is inconsistent.",
+      "recommendation": "Prefer the established «разговор» terminology in these three new strings; preserve all Russian plural branches."
+    }
+  ],
+  "audit": {
+    "pair_review": "Read all 73 EN/RU pairs for meaning, grammar, register, punctuation, action wording and dynamic-name handling. No blocker or major found; two correctness-preserving language improvements recorded.",
+    "key_integrity": "73/73 keys match EN. Exactly the requested 19 new suffixes in both files; all 54 baseline EN and RU values unchanged against HEAD.",
+    "icu_execution": "Using installed intl-messageformat: all 73 EN/RU messages parse, argument-name sets match per pair, and all 73 RU messages format for counts 0,1,2,5,11,21,22,25,101,1.5 (730 executions).",
+    "plural_review": "tag_usage explicitly supports Russian one/few/many/other: 1 беседа, 2 беседы, 5 бесед, 21 беседа, 22 беседы, 1,5 беседы. Baseline delete_description uses the correct governed genitive forms. Baseline remove_all intentionally uses exact =1 and other: 1 is singular action; 21 remains plural action. Count badges omit nouns and need no plural branches.",
+    "reserved_name": "Confirmed chat-tag-picker.ts rejects the literal case-insensitive name untagged; retaining «Untagged» in name_reserved is accurate even though the display label is localized «Без тега».",
+    "length_risk": "No new menu/toast copy is linguistically overlong enough to report a defect. reorder_filtered and registry_changed are longer feedback strings; user-authored names remain unbounded. Rendered wrapping/clipping and accessible-name presentation are explicitly left to later QA; no rendered-fit claim.",
+    "register_punctuation": "Neutral formal imperatives remain consistent; guillemets, ellipses, ranges, periods and name/count placeholders preserve intent."
+  },
+  "verdict": "clean — TERMINAL; zero blocker/major. The two minor findings are non-gating follow-ups."
+}

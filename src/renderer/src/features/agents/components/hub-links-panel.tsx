@@ -14,9 +14,11 @@ import {
 	type HubLinkKind,
 	type HubUnresolvedLink,
 	baselineIsKnown,
+	hubLinkContentState,
 	linksForLocalItem,
 } from "@shared/api/local-operator/hub-links";
 import { HubMutationUpgradeRequired } from "@shared/api/local-operator/hub-mutation-safety";
+import { Alert, AlertTitle } from "@shared/components/ui/alert";
 import { Button } from "@shared/components/ui/button";
 import { Checkbox } from "@shared/components/ui/checkbox";
 import {
@@ -33,7 +35,6 @@ import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { formatDateTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { showSuccessToast } from "@shared/utils/toast-manager";
 import { useEffect, useId, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { hubLinkView } from "../hub-link-adapter";
@@ -271,7 +272,17 @@ export function HubLinkGroup({ link }: { link: HubLink }) {
 				<Button
 					variant="outline"
 					size="sm"
-					disabled={busy || !actions.canWrite}
+					/*
+					 * NOTHING TO PREVIEW INTO WITHOUT A COPY (QA r1 Q3 / UX U1): on a
+					 * subscribed-but-not-installed skill core answers this dry run 422
+					 * ("did not complete"), a dead end in developer words. The way in
+					 * is the pane's own Download; this waits for a copy to exist.
+					 */
+					disabled={
+						busy ||
+						!actions.canWrite ||
+						(link.kind === "skill" && hubLinkContentState(link) === "absent")
+					}
 					onClick={() =>
 						run({ action: "apply", linkId: link.link_id, preview: true })
 					}
@@ -510,6 +521,7 @@ export function HubUnresolvedSource({
 	isAuthenticated,
 	onSignIn,
 	initialOpen,
+	onResolved,
 }: {
 	row: HubUnresolvedLink;
 	/** The approved/configured credential-free source this app already holds. */
@@ -521,6 +533,7 @@ export function HubUnresolvedSource({
 	onSignIn: () => void;
 	/** Opened on arrival for a `?resolve=1` deep link from the sidebar affordance. */
 	initialOpen?: boolean;
+	onResolved?: () => void;
 }) {
 	useI18nLocale();
 	const [open, setOpen] = useState(initialOpen ?? false);
@@ -531,7 +544,7 @@ export function HubUnresolvedSource({
 	 * of inaction, which is exactly what this control must not do.
 	 */
 	const [target, setTarget] = useState<string>("");
-	const resolution = useHubSourceResolution();
+	const resolution = useHubSourceResolution(onResolved);
 	/*
 	 * Focus moves INTO the confirmation region when it opens, so a deliberate
 	 * irreversible act is not one keystroke from a control the reader cannot see
@@ -544,19 +557,15 @@ export function HubUnresolvedSource({
 	 * never a keystroke from an unseen control), and CANCEL returns focus to the
 	 * opener so the reader is not dropped back to `body`.
 	 */
+	const returnToOpener = useRef(false);
 	useEffect(() => {
 		if (open) resolveRegionRef.current?.focus();
+		else if (returnToOpener.current) {
+			// Cancel's opener exists only AFTER the close commit, not in its handler.
+			returnToOpener.current = false;
+			openerRef.current?.focus();
+		}
 	}, [open]);
-	/*
-	 * UX U4': a completed confirmation is announced, not merely reflected in the
-	 * button's own label - a polite toast is the one channel that tells a
-	 * screen-reader user the act succeeded after the region unmounts. Fired once
-	 * per success transition.
-	 */
-	useEffect(() => {
-		if (resolution.isSuccess)
-			showSuccessToast(t("ui.hub.links.resolve_action_done"));
-	}, [resolution.isSuccess]);
 	const targetIsOrg = target !== "public" && target !== "";
 	const org = targetIsOrg
 		? organizations.find((candidate) => candidate.tenant_id === target)
@@ -567,60 +576,132 @@ export function HubUnresolvedSource({
 	const destinationKnown = target !== "" && (!targetIsOrg || !!org);
 	const chose = destinationKnown && (targetIsOrg || target === "public");
 	return (
+		/*
+		 * ONE CARD, IN THE RECORD'S OWN COLUMN (operator report, 2026-10-19:
+		 * "it's weird showing up above the title of the agent and it doesn't
+		 * have the same width as the agent view constraint, it's not immediately
+		 * clear what it's saying and what you're supposed to do").
+		 *
+		 * The page passes this block into the record's pane, below its title, so
+		 * it is part of the record it describes rather than a banner over it, and
+		 * it inherits the pane's measure instead of carrying a second one.
+		 *
+		 * THE ACT SITS BELOW THE CARD, NOT INSIDE IT. The card is the warning
+		 * wash, and the only control the contrast contract asserts on that wash
+		 * is a filled primary (the "primary remedy on the warning wash" row);
+		 * an outlined control or an input field painted on the wash would be an
+		 * unasserted pairing. The scope chooser and its buttons therefore sit on
+		 * the pane's own ground, immediately under the card that explains them.
+		 */
 		<section
-			className="flex min-w-0 flex-col gap-1 py-3"
+			className="flex min-w-0 flex-col gap-3"
 			data-hub-source-unresolved={row.local_id}
 		>
-			{resolution.upgradeMessage && (
-				<output className="block text-meta text-warning" data-hub-core-upgrade>
-					{resolution.upgradeMessage}
-				</output>
-			)}
-			<h4 className="break-words text-body-sm text-ink">{row.name}</h4>
-			{/*
-			 * Design D5-D12: name the STATE, not the bare hub id. The id is a
-			 * diagnostic, not an origin, so it moves beside the label rather than
-			 * being the row's heading (the h4/h3 flip is fixed by this being a label
-			 * and the id a muted detail).
-			 */}
-			<p className="text-body-sm text-warning" data-hub-unresolved-label>
-				{t("ui.hub.links.source_not_confirmed")}
-			</p>
-			<p className="break-all text-mono-sm text-ink-dim">
-				{t("ui.hub.links.source_address", { address: row.hub_id })}
-			</p>
-			{/*
-			 * SOURCE CONFIRMATION, stated by the operator, never inferred.
-			 *
-			 * The row is a diagnostic with no origin, so the only honest way to give
-			 * it one is an explicit act that names the source AND the scope. The
-			 * app contributes the one approved source it already holds; the operator
-			 * chooses Public or one of their VERIFIED organizations. The service owns
-			 * the real identity/link computation and refuses a conflicting known scope
-			 * (`origin-conflict`), so this control never fabricates a link or a policy.
-			 */}
+			<Alert variant="warning" className="p-4">
+				<div className="flex flex-col gap-3">
+					{resolution.upgradeMessage && (
+						<output
+							className="block text-meta text-warning"
+							data-hub-core-upgrade
+						>
+							{resolution.upgradeMessage}
+						</output>
+					)}
+					{/*
+					 * THE STATE IS THE TITLE; THE ITEM IS THE HEADING.
+					 *
+					 * Design D5-D12 named the state rather than the bare hub id, and
+					 * the id stays a diagnostic - a muted mono line, never a heading.
+					 * The heading is the ITEM, at the level under the record's own
+					 * title (h3): the card lives inside the record now, so it does
+					 * not skip a level the way the old h4 did.
+					 */}
+					<AlertTitle data-hub-unresolved-label>
+						{t("ui.hub.links.source_not_confirmed")}
+					</AlertTitle>
+					<h3 className="break-words text-body-sm font-medium text-ink">
+						{row.name}
+					</h3>
+					{/*
+					 * WHAT / WHY / WHAT TO DO, in that order and in the reader's own
+					 * words. The block used to say "Source not confirmed" and stop:
+					 * a state with no consequence and no next step, which is what
+					 * "not immediately clear what it's saying and what you're
+					 * supposed to do" describes.
+					 */}
+					<p className="text-body-sm text-ink">
+						{t("ui.hub.links.unresolved_what", { item: row.name })}
+					</p>
+					<p className="text-body-sm text-ink">
+						{t("ui.hub.links.unresolved_why", { item: row.name })}
+					</p>
+					<p className="text-body-sm text-ink">
+						{t("ui.hub.links.unresolved_next")}
+					</p>
+					{/*
+					 * THE SOURCE ADDRESS IS A FACT; THE HUB ID IS A DIAGNOSTIC.
+					 *
+					 * The two used to be conflated - the id was labelled "Hub
+					 * source", which reads like an origin rather than the
+					 * identifier it is - so the id now says what it is, and the one
+					 * approved address this app already holds is stated beside it.
+					 */}
+					<p className="text-meta text-ink-muted">
+						{t("ui.hub.links.source_address", { address: source })}
+					</p>
+					<p className="break-all text-mono-sm text-ink-muted">
+						{t("ui.hub.links.hub_id", { address: row.hub_id })}
+					</p>
+					{/*
+					 * THE IRREVERSIBILITY WARNING IS SECONDARY NOW. The sentence is
+					 * unchanged - it states a permanent consequence - but it is a
+					 * quiet line, because the card around it is now the loud thing
+					 * and the state on it is what the reader has to act on.
+					 */}
+					<p className="text-meta text-ink-muted">
+						{t("ui.hub.links.resolve_irreversible")}
+					</p>
+					{/*
+					 * SOURCE CONFIRMATION, stated by the operator, never inferred.
+					 *
+					 * The row is a diagnostic with no origin, so the only honest way
+					 * to give it one is an explicit act that names the source AND
+					 * the scope. The app contributes the one approved source it
+					 * already holds; the operator chooses Public or one of their
+					 * VERIFIED organizations. The service owns the real
+					 * identity/link computation and refuses a conflicting known
+					 * scope (`origin-conflict`), so this control never fabricates a
+					 * link or a policy.
+					 *
+					 * The opener is a FILLED primary because it is painted on the
+					 * warning wash, and that is the one control the contract
+					 * asserts there. It is the card's remedy, and it is the only
+					 * primary on screen while the region below is closed.
+					 */}
+					{open ? null : (
+						<Button
+							ref={openerRef}
+							variant="primary"
+							size="sm"
+							className="self-start"
+							onClick={() => setOpen(true)}
+						>
+							{t("ui.hub.links.resolve_action")}
+						</Button>
+					)}
+				</div>
+			</Alert>
 			{open ? (
 				<div
 					ref={resolveRegionRef}
 					tabIndex={-1}
-					className="mt-1 flex flex-col gap-2 outline-none"
+					className="flex flex-col gap-2 outline-none"
 				>
-					<h5 className="text-body-sm text-ink">
+					<h4 className="text-body-sm text-ink">
 						{t("ui.hub.links.resolve_title")}
-					</h5>
+					</h4>
 					<p className="text-meta text-ink-muted">
 						{t("ui.hub.links.resolve_description", { item: row.name })}
-					</p>
-					<code className="break-all text-mono-sm text-ink-muted">
-						{source}
-					</code>
-					{/*
-					 * Design D5-D12: the irreversibility warning is a body-level
-					 * callout in warning ink, not a quiet meta line — it states a
-					 * permanent consequence and must read like one.
-					 */}
-					<p className="rounded-md border border-warning/40 bg-warning/5 px-3 py-2 text-body-sm text-warning">
-						{t("ui.hub.links.resolve_irreversible")}
 					</p>
 					{isAuthenticated ? (
 						<label className="text-body-sm text-ink">
@@ -670,8 +751,8 @@ export function HubUnresolvedSource({
 							variant="outline"
 							disabled={resolution.isPending}
 							onClick={() => {
+								returnToOpener.current = true;
 								setOpen(false);
-								openerRef.current?.focus();
 							}}
 						>
 							{t("ui.hub.subscriptions.cancel")}
@@ -726,17 +807,7 @@ export function HubUnresolvedSource({
 						</p>
 					) : null}
 				</div>
-			) : (
-				<Button
-					ref={openerRef}
-					variant="outline"
-					size="sm"
-					className="mt-1 self-start"
-					onClick={() => setOpen(true)}
-				>
-					{t("ui.hub.links.resolve_action")}
-				</Button>
-			)}
+			) : null}
 		</section>
 	);
 }
@@ -828,41 +899,43 @@ export function HubLinksPanel({
 	};
 	const groupOnOff = (value: (link: HubLink) => boolean) =>
 		agreeOn(value) ? onOff(value(rows[0])) : t("ui.hub.links.mixed");
+	/*
+	 * THE SUMMARY IS COMPOSED FROM THE ROWS, so it needs a row. A record whose
+	 * ONLY hub state is an unresolved diagnostic has no link row at all, and
+	 * reading `rows[0]` there is a crash, not an empty string - the summary is
+	 * only ever drawn inside the disclosure, which is only drawn when there ARE
+	 * rows, so the guard is what keeps the two in step.
+	 */
 	const summaryState = (() => {
-		if (rows.length > 0) {
-			const first = rows[0];
-			const origins =
-				rows.length > 1
-					? ` · ${t("ui.hub.links.sources_count", { count: rows.length })}`
-					: "";
-			return `${hubLinkSourceName(first)}${origins} · ${t(
-				"ui.hub.subscriptions.subscribe",
-			)} ${groupOnOff((link) => link.policy.subscribe)} · ${t(
-				"ui.hub.subscriptions.auto_push",
-			)} ${groupOnOff((link) => link.policy.auto_push)}`;
-		}
-		if (unresolved.length > 0) {
-			const count =
-				unresolved.length > 1
-					? ` · ${t("ui.hub.links.links_count", { count: unresolved.length })}`
-					: "";
-			return `${t("ui.hub.links.source_not_confirmed")}${count}`;
-		}
-		return t("ui.hub.links.empty");
+		if (rows.length === 0) return "";
+		const first = rows[0];
+		const origins =
+			rows.length > 1
+				? ` · ${t("ui.hub.links.sources_count", { count: rows.length })}`
+				: "";
+		return `${hubLinkSourceName(first)}${origins} · ${t(
+			"ui.hub.subscriptions.subscribe",
+		)} ${groupOnOff((link) => link.policy.subscribe)} · ${t(
+			"ui.hub.subscriptions.auto_push",
+		)} ${groupOnOff((link) => link.policy.auto_push)}`;
 	})();
 	/*
-	 * Auto-open ONLY when a row needs the reader: an unresolved diagnostic, or a
-	 * direction in a state that asks for attention (`available` wants an apply;
-	 * `failed` wants a retry). A healthy/idle link stays collapsed, which is the
-	 * acceptance criterion: a healthy link must not displace primary content.
+	 * Auto-open ONLY when a row needs the reader: a direction in a state that
+	 * asks for attention (`available` wants an apply; `failed` wants a retry). A
+	 * healthy/idle link stays collapsed, which is the acceptance criterion: a
+	 * healthy link must not displace primary content.
+	 *
+	 * The source-confirmation half of this rule moved with the unresolved row
+	 * itself. That row is no longer a line inside this disclosure - it is the
+	 * card the record's pane carries (see `HubUnresolvedSource`) - so the act it
+	 * asks for is visible without anything being opened, and the disclosure
+	 * here holds only the link rows and opens only for them.
 	 */
-	const needsAttention =
-		unresolved.length > 0 ||
-		rows.some((link) =>
-			[link.pull.state, link.push.state].some(
-				(state) => state === "available" || state === "failed",
-			),
-		);
+	const needsAttention = rows.some((link) =>
+		[link.pull.state, link.push.state].some(
+			(state) => state === "available" || state === "failed",
+		),
+	);
 	/*
 	 * CODE MINOR-C: the panel's own open state, hoisted OUT of `Disclosure`.
 	 * `needsAttention` is known only after the async inventory answers, but
@@ -871,66 +944,114 @@ export function HubLinksPanel({
 	 * payload. One state here, synced on the transition INTO attention, opens on
 	 * the answer without a second owner fighting the reader's clicks.
 	 */
+	const panelRef = useRef<HTMLDivElement>(null);
+	const [resolutionCompleted, setResolutionCompleted] = useState(false);
+	useEffect(() => {
+		if (!resolutionCompleted || rows.length === 0) return;
+		// The diagnostic disappears on success. Its surviving link disclosure,
+		// rather than BODY or a detached confirm button, owns the next keyboard step.
+		panelRef.current
+			?.querySelector<HTMLButtonElement>("button[aria-expanded]")
+			?.focus();
+		setResolutionCompleted(false);
+	}, [resolutionCompleted, rows]);
 	const [open, setOpen] = useState(needsAttention);
 	const wasAttention = useRef(needsAttention);
 	useEffect(() => {
 		if (needsAttention && !wasAttention.current) setOpen(true);
 		wasAttention.current = needsAttention;
 	}, [needsAttention]);
-	return (
-		<Disclosure
-			open={open}
-			onOpenChange={setOpen}
-			summary={`${t("ui.hub.links.title")} · ${summaryState}`}
-			className="min-w-0"
-			data-hub-links-panel
-		>
-			{inventory.isLoading ? (
-				<output className="text-body-sm text-ink-muted">
-					{t("ui.hub.links.loading")}
-				</output>
-			) : inventory.error && !inventory.data ? (
-				<div>
-					<p role="alert" className="text-body-sm text-danger">
-						{t("ui.hub.links.load_failed")}
-					</p>
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={() => void inventory.refetch()}
-					>
-						{t("ui.hub.links.retry")}
-					</Button>
-				</div>
-			) : rows.length === 0 && unresolved.length === 0 ? (
-				<p className="text-body-sm text-ink-muted">{t("ui.hub.links.empty")}</p>
-			) : (
-				<div className="divide-y divide-hairline">
-					{rows.map((link) => (
-						<HubLinkGroup key={link.link_id} link={link} />
-					))}
-					{unresolved.map((row) => (
-						<HubUnresolvedSource
-							/* CODE MINOR-E: the key carries the request timestamp, so a
-							 * SECOND `?resolve=1` press for the SAME already-open row
-							 * REMOUNTS the region open/focused instead of no-opping on
-							 * mount-only state (`initialOpen` seeds `useState` once). */
-							key={`${row.kind}:${row.local_id}:${resolveRequest}`}
-							row={row}
-							source={approvedSource}
-							organizations={organizations}
-							isAuthenticated={isAuthenticated}
-							onSignIn={() => navigate("/settings")}
-							initialOpen={openResolve}
-						/>
-					))}
-				</div>
-			)}
-			{inventory.error && inventory.data && (
-				<p role="alert" className="text-meta text-warning">
+	/*
+	 * QUIET BY DEFAULT (operator report, 2026-10-19).
+	 *
+	 * The panel used to draw a "Hub links - Not linked to the hub" disclosure on
+	 * EVERY record - above the record's title, at a measure of its own - so a
+	 * record with no hub presence at all carried a line about having none. A
+	 * record that has no link and nothing to act on now says NOTHING: the two
+	 * surfaces below are the only ones that can be true of it.
+	 *
+	 * The three early returns below are the whole of that rule, in the order the
+	 * reader meets them:
+	 *
+	 *  - the capability is off: there is no hub panel to draw at all;
+	 *  - the inventory has not answered yet: a loading line for every record
+	 *    that will turn out to have no link is a flash of noise, not a state;
+	 *  - the read FAILED: this one is said out loud, with the retry, because
+	 *    hiding a failure behind a collapsed disclosure is how a broken
+	 *    inventory reads as a quiet record.
+	 */
+	if (inventory.isLoading) return null;
+	if (inventory.error && !inventory.data) {
+		return (
+			<div className="flex flex-col items-start gap-2">
+				<p role="alert" className="text-body-sm text-danger">
 					{t("ui.hub.links.load_failed")}
 				</p>
-			)}
-		</Disclosure>
+				<Button
+					variant="outline"
+					size="sm"
+					onClick={() => void inventory.refetch()}
+				>
+					{t("ui.hub.links.retry")}
+				</Button>
+			</div>
+		);
+	}
+	if (rows.length === 0 && unresolved.length === 0) return null;
+	return (
+		/*
+		 * THE PANE-SCOPED MARKER. `Disclosure` does not forward unknown props to
+		 * its root, so the marker lives on this wrapper - it is what lets the
+		 * evidence scene find THIS panel's own trigger instead of the first
+		 * expander in the pane, which is now some other control (the panel sits
+		 * below the record's title, so the record's own disclosures come first).
+		 */
+		<div
+			ref={panelRef}
+			className="flex min-w-0 flex-col gap-3"
+			data-hub-links-panel
+		>
+			{/*
+			 * THE UNRESOLVED ROW IS A CARD, NOT A LINE IN THE DISCLOSURE. It is
+			 * the one thing on this surface that asks the reader to ACT, and an
+			 * act must not sit behind a summary line the reader has to expand to
+			 * find - nor behind a second, differently-measured column of its own.
+			 */}
+			{unresolved.map((row) => (
+				<HubUnresolvedSource
+					/* CODE MINOR-E: the key carries the request timestamp, so a
+					 * SECOND `?resolve=1` press for the SAME already-open row
+					 * REMOUNTS the region open/focused instead of no-opping on
+					 * mount-only state (`initialOpen` seeds `useState` once). */
+					key={`${row.kind}:${row.local_id}:${resolveRequest}`}
+					row={row}
+					source={approvedSource}
+					organizations={organizations}
+					isAuthenticated={isAuthenticated}
+					onSignIn={() => navigate("/settings")}
+					initialOpen={openResolve}
+					onResolved={() => setResolutionCompleted(true)}
+				/>
+			))}
+			{rows.length > 0 ? (
+				<Disclosure
+					open={open}
+					onOpenChange={setOpen}
+					summary={`${t("ui.hub.links.title")} · ${summaryState}`}
+					className="min-w-0"
+				>
+					<div className="divide-y divide-hairline">
+						{rows.map((link) => (
+							<HubLinkGroup key={link.link_id} link={link} />
+						))}
+					</div>
+					{inventory.error && inventory.data && (
+						<p role="alert" className="text-meta text-warning">
+							{t("ui.hub.links.load_failed")}
+						</p>
+					)}
+				</Disclosure>
+			) : null}
+		</div>
 	);
 }

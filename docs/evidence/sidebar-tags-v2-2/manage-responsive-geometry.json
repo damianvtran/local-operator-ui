@@ -1,0 +1,14 @@
+{
+  "manage-narrow-320x568": {
+    "url": "http://localhost:6044/?path=/story/chat-sidebar-tags--manage-dense&args=theme:localOperatorLight;locale:en&globals=viewport:mobile1;viewportRotated:!false",
+    "actual": [
+      "    - Iframe \"V2-2 measured viewport 320x568; dialog 288x536; body 311/2568; footer true; overflowX false;\""
+    ]
+  },
+  "manage-short-568x320": {
+    "url": "http://localhost:6044/?path=/story/chat-sidebar-tags--manage-dense&args=theme:localOperatorLight;locale:en&globals=viewport:mobile1;viewportRotated:true",
+    "actual": [
+      "    - Iframe \"V2-2 measured viewport 568x320; dialog 420x288; body 107/2479; footer true; overflowX false;\""
+    ]
+  }
+}

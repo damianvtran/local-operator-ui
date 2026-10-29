@@ -1,0 +1,91 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "d4b9e27c5a18",
+  "date": "2026-10-18",
+  "locale": "vi",
+  "status": "passed",
+  "namespaces": {
+    "ui.agents.settings": {
+      "namespace": "ui.agents.settings",
+      "status": "passed",
+      "sha256": {
+        "source": "2e2a8a28891db681fd72396a3b8323e8705e4ea9c0397e49237e3ed3f7e1a897",
+        "target": "d86b3738e48cb4dc359ceead78051b9085fb0c70e6776d7e2bcfb36a1356d378"
+      },
+      "findings": []
+    },
+    "ui.agents.models": {
+      "namespace": "ui.agents.models",
+      "status": "passed",
+      "sha256": {
+        "source": "0775863598346b25001f9131bdf4bf207aba0d036858ce08b7cc49b00f44a540",
+        "target": "139c73c65afd721b167da3d386d944f569dc65d8e46208ba8de24476fbec3591"
+      },
+      "findings": []
+    },
+    "ui.agents.dialogs": {
+      "namespace": "ui.agents.dialogs",
+      "status": "passed",
+      "sha256": {
+        "source": "99fc8672fbb4139aa2721542a8fb994506301b0c678d86c21439e939f5dd2bf4",
+        "target": "9497a858411b0ceac10afc56fa49fef9f4c5b97b1c9577e9b2282dcbdb6753b1"
+      },
+      "findings": []
+    },
+    "ui.agents.navigation": {
+      "namespace": "ui.agents.navigation",
+      "status": "passed",
+      "sha256": {
+        "source": "23f591cd7c2d52c2563e0b5cbb4cbb2164f7cd01c2568b050738b3be976a5729",
+        "target": "bf04f1173a76db85b0ae2e1683ad0eb1e4ce368a7e9a10d1160534692210d200"
+      },
+      "findings": []
+    },
+    "ui.agents.refusals": {
+      "namespace": "ui.agents.refusals",
+      "status": "passed",
+      "sha256": {
+        "source": "457cb86efa40d800d2adf711ec2b4289d22b4b9013fd48189082c4b8808d3f20",
+        "target": "e90c7403a6f85abfe973ed3faac1ebec011c31f6563e9bdb5b09d1c8d139391e"
+      },
+      "findings": []
+    },
+    "ui.agents.starters": {
+      "namespace": "ui.agents.starters",
+      "status": "passed",
+      "sha256": {
+        "source": "7d7170328807a0ae0018bb69c4cd5fe49f6d5e47f7ca34484cf71b2a74612cec",
+        "target": "ee6b12cf07c6446cc9046125b91e97b0195b0951fdc2a57624c44f5329f6688d"
+      },
+      "findings": []
+    },
+    "ui.code_review": {
+      "namespace": "ui.code_review",
+      "status": "passed",
+      "sha256": {
+        "source": "7344c8694a23662bfe3ae12205685cfa14851209d0685abbe463b9f513565085",
+        "target": "d73e5b5596d0a2094034981380f0da2c25d97629851395dcda23c39ad7b61eb3"
+      },
+      "findings": []
+    },
+    "ui.command_palette": {
+      "namespace": "ui.command_palette",
+      "status": "passed",
+      "sha256": {
+        "source": "c48797d973f81dea023e5c89c40c83d8ae0a9cdfaeb2509f6cbc4e9fb8abd7c6",
+        "target": "8799dbe395ca186c43c40ce8b1c8b0bb81a08923524afe60340a1daa45984890"
+      },
+      "findings": []
+    },
+    "ui.agents": {
+      "namespace": "ui.agents",
+      "status": "passed",
+      "sha256": {
+        "source": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "target": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+      },
+      "findings": []
+    }
+  }
+}

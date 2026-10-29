@@ -37,6 +37,14 @@ const code = (path) =>
 
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
 /**
+ * The search block's accessible name and the Include archived label come from the
+ * sidebar's English catalogue now: the slice is anchored on the key the control
+ * renders, and the copy is read from the message the user actually hears.
+ */
+const SIDEBAR_COPY = JSON.parse(
+	read("src/i18n/catalogues/en/ui.chat.sidebar.json"),
+);
+/**
  * The surface the archive and discard messages are raised by since 2026-09-27: the
  * always-mounted component beside the global container (`main.tsx`), which replaced
  * the panel's own toast lane (operator request; `docs/design/sidebar-row-space.md`
@@ -229,7 +237,7 @@ test("the archived row carries a marker that is not in the contested trailing sl
 	 * query is on screen - or be dropped from the row that most needs both.
 	 */
 	const markerAt = rows.indexOf("<Archive");
-	const titleAt = rows.lastIndexOf('{row.title || "Untitled chat"}');
+	const titleAt = rows.lastIndexOf("{conversationTitleForDisplay(row.title)}");
 	assert.ok(
 		markerAt !== -1 && titleAt !== -1 && markerAt < titleAt,
 		"the marker must precede the title's span, outside the trailing slot's rule",
@@ -239,8 +247,13 @@ test("the archived row carries a marker that is not in the contested trailing sl
 test("the Include archived control is inside the search block and only while a query exists", () => {
 	const block = between(
 		SIDEBAR,
-		'aria-label="Search chats and agents"',
+		'aria-label={t("ui.chat.sidebar.header.search")}',
 		"overLong &&",
+	);
+	assert.equal(
+		SIDEBAR_COPY["ui.chat.sidebar.header.search"],
+		"Search chats and agents",
+		"the search control's name moved: it reads `Search chats and agents`",
 	);
 	/*
 	 * The control's own render rule mirrors the clear control's: with an empty box
@@ -252,7 +265,15 @@ test("the Include archived control is inside the search block and only while a q
 	assert.match(block, /<Checkbox/);
 	assert.match(block, /id=\{INCLUDE_ARCHIVED_ID\}/);
 	assert.match(block, /htmlFor=\{INCLUDE_ARCHIVED_ID\}/);
-	assert.match(block, /Include archived/);
+	assert.ok(
+		block.includes('t("ui.chat.sidebar.search.include_archived")'),
+		"the Include archived control no longer renders its message",
+	);
+	assert.equal(
+		SIDEBAR_COPY["ui.chat.sidebar.search.include_archived"],
+		"Include archived",
+		"the control's label moved: it reads `Include archived`",
+	);
 	// The id is a constant used twice rather than two inline strings: a label whose
 	// `for` names no input is an accessible name that silently disappears.
 	assert.match(
@@ -389,14 +410,27 @@ test("a refused press is reported once, as an ordinary sonner toast, with a retr
 	assert.match(failure, /setArchiveUndo\(null\)/);
 	assert.match(failure, /clearArchiveFailure\(\)/);
 	/*
-	 * LIFETIMES ARE SONNER'S, NOT A PANEL CLOCK (2026-09-27). The draws carry the
-	 * documented durations - the refusal's ten seconds, the offer's eight - and the
-	 * entry's life pauses while the reader holds it, which the `Infinity` + clock pair
-	 * could not do. The value is cleared when its MESSAGE ends, so nothing re-draws
-	 * later: both ending routes (timed end, the close button/swipe) call `settle`.
+	 * LIFETIMES ARE SONNER'S, NOT A PANEL CLOCK (2026-09-27), AND A LOCALE REDRAW
+	 * KEEPS THE ORIGINAL DEADLINE (R1-5). The draw now passes the REMAINING life:
+	 * `raisedAt + duration - Date.now()` when the same message is being redrawn in a
+	 * new language, and the documented constant - the refusal's ten seconds, the
+	 * offer's eight - for a new message. Asserting only a literal `duration:` would
+	 * pass while the redraw silently re-armed the timer, which is the bug this pair
+	 * exists to catch.
 	 */
-	assert.match(failure, /duration: ARCHIVE_FAILURE_TOAST_MS/);
-	assert.match(failure, /duration: ARCHIVE_UNDO_TOAST_MS/);
+	assert.match(
+		failure,
+		/const duration = sameMessage\s*\?\s*raised\.raisedAt \+ raised\.duration - Date\.now\(\)\s*:\s*ARCHIVE_FAILURE_TOAST_MS;/,
+	);
+	assert.match(
+		failure,
+		/const duration = sameMessage\s*\?\s*raised\.raisedAt \+ raised\.duration - Date\.now\(\)\s*:\s*ARCHIVE_UNDO_TOAST_MS;/,
+	);
+	assert.equal(
+		failure.match(/id: ARCHIVE_TOAST_ID,\s*\n\s*duration,/g)?.length,
+		2,
+		"both draws pass the computed remaining lifetime through to sonner",
+	);
 	assert.doesNotMatch(
 		code(TOASTS),
 		/Number\.POSITIVE_INFINITY|ARCHIVE_TOAST_PERSISTENT/,
@@ -411,7 +445,10 @@ test("a refused press is reported once, as an ordinary sonner toast, with a retr
 	 * merged into the dying entry and destroyed inside sonner's own unmount window.
 	 * Both actions therefore only send their write; the replacement is sonner's update.
 	 */
-	for (const label of ['label: "Retry"', 'label: "Undo"']) {
+	for (const label of [
+		'label: t("ui.common.actions.retry")',
+		'label: t("ui.notices.chat.undo")',
+	]) {
 		const at = failure.indexOf(label);
 		assert.notEqual(at, -1, `${label} is not in the archive effect`);
 		const press = failure.slice(at, failure.indexOf("setSessionArchived", at));
@@ -449,7 +486,7 @@ test("the offer's card truncates its NAME and can never truncate the verb (agent
 	// The name and the verb are two elements: a single string that overflows loses its
 	// TAIL, and the tail of `“<title>” archived.` is the verb.
 	assert.match(offer, /archiveOfferedName\(archiveUndo\.title\)/);
-	assert.match(offer, /ARCHIVE_OFFERED_VERB/);
+	assert.match(offer, /archiveOfferedVerb\(\)/);
 	assert.match(offer, /className=\{cn\("min-w-0 truncate"\)\}/);
 	assert.equal(
 		offer.includes("archiveOfferedText"),
@@ -635,9 +672,11 @@ test("the header's menu is the session's actions, and its delete only ASKS", () 
 	// Fail-closed and whole: with neither capability there is no trigger at all,
 	// rather than a menu advertising items that do nothing.
 	assert.match(menu, /<DropdownMenuTrigger/);
-	// Archive and unarchive are one item whose label follows the state.
-	assert.match(menu, /Archive conversation/);
-	assert.match(menu, /Restore conversation/);
+	// Archive and unarchive are one item whose label follows the state, and the
+	// label is the catalogue's (i18n wave A) - pinning the key keeps the
+	// assertion true in every locale.
+	assert.match(menu, /ui\.chat\.header\.archive_conversation/);
+	assert.match(menu, /ui\.chat\.header\.restore_conversation/);
 	assert.match(menu, /onSetArchived\?\.\(!archived\)/);
 	/*
 	 * Delete is painted in the danger ink and does NOT delete: it asks the pane to

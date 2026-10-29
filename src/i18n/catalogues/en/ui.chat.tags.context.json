@@ -1,168 +1,133 @@
 {
 	"ui.chat.tags.label": {
-		"role": "tag dialog or sidebar control",
+		"role": "tag popover or sidebar control",
 		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+		"note": "Anchored 224–280px tag popover, sidebar group header or inline tag editor; allow wrapping. Names are user-authored; counts are conversation counts."
 	},
 	"ui.chat.tags.menu": {
-		"role": "tag dialog or sidebar control",
+		"role": "tag popover or sidebar control",
 		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+		"note": "Anchored 224–280px tag popover, sidebar group header or inline tag editor; allow wrapping. Names are user-authored; counts are conversation counts."
 	},
 	"ui.chat.tags.group": {
-		"role": "tag dialog or sidebar control",
+		"role": "tag popover or sidebar control",
 		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
-	},
-	"ui.chat.tags.manage": {
-		"role": "tag dialog or sidebar control",
-		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+		"note": "Anchored 224–280px tag popover, sidebar group header or inline tag editor; allow wrapping. Names are user-authored; counts are conversation counts."
 	},
 	"ui.chat.tags.mode_hint": {
-		"role": "tag dialog or sidebar control",
+		"role": "tag popover or sidebar control",
 		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+		"note": "Anchored 224–280px tag popover, sidebar group header or inline tag editor; allow wrapping. Names are user-authored; counts are conversation counts."
 	},
 	"ui.chat.tags.use_time": {
-		"role": "tag dialog or sidebar control",
+		"role": "tag popover or sidebar control",
 		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+		"note": "Anchored 224–280px tag popover, sidebar group header or inline tag editor; allow wrapping. Names are user-authored; counts are conversation counts."
+	},
+	"ui.chat.tags.auto_tag": {
+		"role": "View-options Tags group switch label",
+		"tone": "concise, neutral sentence case",
+		"note": "Names a fork of a conversation, not software forking. Shown only while the Tags switch is on; the switch itself is on by default."
+	},
+	"ui.chat.tags.auto_tag_help": {
+		"role": "View-options helper under the Auto-tag forked sessions switch",
+		"tone": "concise, neutral sentence case",
+		"note": "Explains that only the reader's existing tag vocabulary is used and only when the fork is named. Do not promise new tags are created."
 	},
 	"ui.chat.tags.discovery": {
 		"role": "accessible description for the Tags switch",
 		"tone": "concise, neutral sentence case",
-		"note": "Shift+F10 and Fn are literal keyboard names; most Mac keyboards need Fn."
-	},
-	"ui.chat.tags.picker_title": {
-		"role": "assignment modal title",
-		"tone": "concise, neutral sentence case",
-		"note": "title is the conversation name; preserve quotation marks and do not shorten its accessible name."
-	},
-	"ui.chat.tags.picker_description": {
-		"role": "tag dialog or sidebar control",
-		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+		"note": "Screen-reader-only hint for the Group chats by tag switch. Command+Shift+L and Ctrl+Shift+L are literal key names; keep both. Tags… is the row menu item name."
 	},
 	"ui.chat.tags.search": {
-		"role": "tag dialog or sidebar control",
+		"role": "tag popover or sidebar control",
 		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+		"note": "Anchored 224–280px tag popover, sidebar group header or inline tag editor; allow wrapping. Names are user-authored; counts are conversation counts."
 	},
 	"ui.chat.tags.empty": {
-		"role": "tag dialog or sidebar control",
+		"role": "tag popover or sidebar control",
 		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+		"note": "Anchored 224–280px tag popover, sidebar group header or inline tag editor; allow wrapping. Names are user-authored; counts are conversation counts."
 	},
 	"ui.chat.tags.loading": {
-		"role": "tag dialog or sidebar control",
+		"role": "tag popover or sidebar control",
 		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+		"note": "Anchored 224–280px tag popover, sidebar group header or inline tag editor; allow wrapping. Names are user-authored; counts are conversation counts."
 	},
 	"ui.chat.tags.applying": {
-		"role": "tag dialog or sidebar control",
+		"role": "tag popover or sidebar control",
 		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+		"note": "Anchored 224–280px tag popover, sidebar group header or inline tag editor; allow wrapping. Names are user-authored; counts are conversation counts."
 	},
 	"ui.chat.tags.retry": {
-		"role": "tag dialog or sidebar control",
+		"role": "tag popover or sidebar control",
 		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+		"note": "Anchored 224–280px tag popover, sidebar group header or inline tag editor; allow wrapping. Names are user-authored; counts are conversation counts."
 	},
 	"ui.chat.tags.cancel": {
-		"role": "tag dialog or sidebar control",
+		"role": "tag popover or sidebar control",
 		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
-	},
-	"ui.chat.tags.apply": {
-		"role": "tag dialog or sidebar control",
-		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
-	},
-	"ui.chat.tags.clear": {
-		"role": "tag dialog or sidebar control",
-		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
-	},
-	"ui.chat.tags.new": {
-		"role": "tag dialog or sidebar control",
-		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+		"note": "Anchored 224–280px tag popover, sidebar group header or inline tag editor; allow wrapping. Names are user-authored; counts are conversation counts."
 	},
 	"ui.chat.tags.new_name": {
-		"role": "tag dialog or sidebar control",
+		"role": "tag popover or sidebar control",
 		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+		"note": "Anchored 224–280px tag popover, sidebar group header or inline tag editor; allow wrapping. Names are user-authored; counts are conversation counts."
 	},
 	"ui.chat.tags.add": {
-		"role": "tag dialog or sidebar control",
+		"role": "tag popover or sidebar control",
 		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+		"note": "Anchored 224–280px tag popover, sidebar group header or inline tag editor; allow wrapping. Names are user-authored; counts are conversation counts."
 	},
 	"ui.chat.tags.primary": {
-		"role": "tag dialog or sidebar control",
+		"role": "tag popover or sidebar control",
 		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
-	},
-	"ui.chat.tags.group_under": {
-		"role": "tag dialog or sidebar control",
-		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+		"note": "Anchored 224–280px tag popover, sidebar group header or inline tag editor; allow wrapping. Names are user-authored; counts are conversation counts."
 	},
 	"ui.chat.tags.untagged": {
-		"role": "tag dialog or sidebar control",
+		"role": "tag popover or sidebar control",
 		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+		"note": "Anchored 224–280px tag popover, sidebar group header or inline tag editor; allow wrapping. Names are user-authored; counts are conversation counts."
 	},
 	"ui.chat.tags.rename": {
-		"role": "tag dialog or sidebar control",
+		"role": "tag popover or sidebar control",
 		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
-	},
-	"ui.chat.tags.save": {
-		"role": "tag dialog or sidebar control",
-		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+		"note": "Anchored 224–280px tag popover, sidebar group header or inline tag editor; allow wrapping. Names are user-authored; counts are conversation counts."
 	},
 	"ui.chat.tags.delete": {
-		"role": "tag dialog or sidebar control",
+		"role": "tag popover or sidebar control",
 		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+		"note": "Anchored 224–280px tag popover, sidebar group header or inline tag editor; allow wrapping. Names are user-authored; counts are conversation counts."
 	},
 	"ui.chat.tags.delete_tag": {
-		"role": "tag dialog or sidebar control",
+		"role": "tag popover or sidebar control",
 		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+		"note": "Anchored 224–280px tag popover, sidebar group header or inline tag editor; allow wrapping. Names are user-authored; counts are conversation counts."
 	},
 	"ui.chat.tags.delete_title": {
-		"role": "tag dialog or sidebar control",
+		"role": "tag popover or sidebar control",
 		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+		"note": "Anchored 224–280px tag popover, sidebar group header or inline tag editor; allow wrapping. Names are user-authored; counts are conversation counts."
 	},
 	"ui.chat.tags.delete_description": {
 		"role": "local deletion confirmation",
 		"tone": "concise, neutral sentence case",
-		"note": "count is distinct conversations, not assignments; deletion occurs only on Apply; preserve the oldest-remaining-tag consequence."
+		"note": "count is distinct conversations, not assignments. Inline delete confirmation; confirming deletes the tag immediately, never the conversations. No Apply step."
 	},
 	"ui.chat.tags.move_up": {
-		"role": "tag dialog or sidebar control",
+		"role": "tag popover or sidebar control",
 		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+		"note": "Anchored 224–280px tag popover, sidebar group header or inline tag editor; allow wrapping. Names are user-authored; counts are conversation counts."
 	},
 	"ui.chat.tags.move_down": {
-		"role": "tag dialog or sidebar control",
+		"role": "tag popover or sidebar control",
 		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
-	},
-	"ui.chat.tags.manage_description": {
-		"role": "tag dialog or sidebar control",
-		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+		"note": "Anchored 224–280px tag popover, sidebar group header or inline tag editor; allow wrapping. Names are user-authored; counts are conversation counts."
 	},
 	"ui.chat.tags.rename_label": {
-		"role": "tag dialog or sidebar control",
+		"role": "tag popover or sidebar control",
 		"tone": "concise, neutral sentence case",
-		"note": "420px viewport-bounded modal; names may be long. Dynamic values are user-authored names or conversation counts."
+		"note": "Anchored 224–280px tag popover, sidebar group header or inline tag editor; allow wrapping. Names are user-authored; counts are conversation counts."
 	},
 	"ui.chat.tags.no_matches": {
 		"role": "filtered picker empty state",
@@ -181,28 +146,173 @@
 		"role": "draft name validation error",
 		"tone": "concise and actionable"
 	},
-	"ui.chat.tags.updated_grouped": {
-		"role": "success toast",
-		"tone": "concise confirmation",
-		"note": "tag is the confirmed primary tag name"
+	"ui.chat.tags.removed_all": {
+		"note": "Success toast after clearing every tag and the primary in one write."
 	},
-	"ui.chat.tags.updated_untagged": {
-		"role": "success toast",
-		"tone": "concise confirmation"
+	"ui.chat.tags.remove_all": {
+		"note": "Row-menu action. Count is DISTINCT assigned tags: singular removes one tag; plural removes all assignments."
 	},
-	"ui.chat.tags.none_yet": {
-		"role": "compact View options empty-state helper",
-		"tone": "concise",
-		"note": "One line at the narrow sidebar; Manage tags remains the action."
+	"ui.chat.tags.changed_elsewhere": {
+		"note": "409 revision conflict; authoritative tags are refreshed, never silently retried."
 	},
-	"ui.chat.tags.manage_title": {
-		"role": "management modal heading",
-		"tone": "noun phrase",
-		"note": "No ellipsis: this names the open dialog, not its launch action."
+	"ui.chat.tags.move_armed": {
+		"note": "Live announcement when a conversation row arms after a hold. Name is the conversation title."
 	},
-	"ui.chat.tags.apply_deletion_first": {
-		"role": "registry draft validation error",
-		"tone": "actionable",
-		"note": "name is a category deleted and recreated in one draft. Two Apply operations are needed so the backend does not reuse its ID and keep assignments."
+	"ui.chat.tags.move_cancelled": {
+		"note": "Live announcement after Escape, blur, pointer cancellation, or an ineligible drop. No write."
+	},
+	"ui.chat.tags.undo": {
+		"note": "Toast action restoring assignments with the revision returned by the original write."
+	},
+	"ui.chat.tags.move_undone": {
+		"note": "Live announcement only after Undo succeeds."
+	},
+	"ui.chat.tags.move_failed": {
+		"note": "Move-specific failure and retry guidance; never substitutes for the revision-conflict message."
+	},
+	"ui.chat.tags.selection_count": {
+		"role": "Picker / staged Manage selection count",
+		"tone": "concise, neutral sentence case",
+		"note": "Bounded tag dialog feedback. Preserve ICU arguments; names are user-authored and counts are nonnegative integers. selection count."
+	},
+	"ui.chat.tags.create_name": {
+		"role": "Picker / staged Manage create name",
+		"tone": "concise, neutral sentence case",
+		"note": "Explicit standalone button outside listbox. Only activation creates; Enter in unmatched search never creates. name is user-authored, 1–24 Unicode code points."
+	},
+	"ui.chat.tags.create_helper": {
+		"role": "Picker / staged Manage create helper",
+		"tone": "concise, neutral sentence case",
+		"note": "Always visible below Create before activation. Registry creation is durable for all conversations, even when conversation assignment is cancelled."
+	},
+	"ui.chat.tags.selection_limit": {
+		"role": "Picker / staged Manage selection limit",
+		"tone": "concise, neutral sentence case",
+		"note": "Assignment limit is eight, distinct from registry capacity of thirty-two. Selected options remain removable."
+	},
+	"ui.chat.tags.registry_limit": {
+		"role": "Picker / staged Manage registry limit",
+		"tone": "concise, neutral sentence case",
+		"note": "Shared category registry capacity, not selection count. Only creation disabled; existing tags remain editable."
+	},
+	"ui.chat.tags.name_long": {
+		"role": "Picker / staged Manage name long",
+		"tone": "concise, neutral sentence case",
+		"note": "Bounded tag dialog feedback. Preserve ICU arguments; names are user-authored and counts are nonnegative integers. name long."
+	},
+	"ui.chat.tags.name_reserved": {
+		"role": "Picker / staged Manage name reserved",
+		"tone": "concise, neutral sentence case",
+		"note": "Literal ASCII name Untagged is reserved case-insensitively by server; do not translate this identifier to the localized empty-group label."
+	},
+	"ui.chat.tags.create_failed": {
+		"role": "Picker / staged Manage create failed",
+		"tone": "concise, neutral sentence case",
+		"note": "Registry creation failure, not assignment Apply; retry reloads authoritative registry before another write."
+	},
+	"ui.chat.tags.remove_named": {
+		"role": "Picker / staged Manage remove named",
+		"tone": "concise, neutral sentence case",
+		"note": "Bounded tag dialog feedback. Preserve ICU arguments; names are user-authored and counts are nonnegative integers. remove named."
+	},
+	"ui.chat.tags.created_name": {
+		"role": "Picker / staged Manage created name",
+		"tone": "concise, neutral sentence case",
+		"note": "Bounded tag dialog feedback. Preserve ICU arguments; names are user-authored and counts are nonnegative integers. created name."
+	},
+	"ui.chat.tags.selection_status": {
+		"role": "Tag picker selection status",
+		"tone": "concise, neutral sentence case",
+		"note": "Polite live announcement after toggle/removal or primary change. name is resulting primary, or localized Untagged."
+	},
+	"ui.chat.tags.remote": {
+		"role": "Picker / staged Manage remote",
+		"tone": "concise, neutral sentence case",
+		"note": "Bounded tag dialog feedback. Preserve ICU arguments; names are user-authored and counts are nonnegative integers. remote."
+	},
+	"ui.chat.tags.renamed_name": {
+		"role": "Picker / staged Manage renamed name",
+		"tone": "concise, neutral sentence case",
+		"note": "Bounded tag dialog feedback. Preserve ICU arguments; names are user-authored and counts are nonnegative integers. renamed name."
+	},
+	"ui.chat.tags.registry_changed": {
+		"role": "Picker / staged Manage registry changed",
+		"tone": "concise, neutral sentence case",
+		"note": "A live registry refresh removed/changed a draft tag. Surviving draft and assignment order retained."
+	},
+	"ui.chat.tags.dropped_on": {
+		"role": "sidebar tag surface",
+		"tone": "concise, neutral sentence case",
+		"note": "Toast after a conversation is dragged onto a tag group: the tag is ADDED (other tags stay) and becomes the group the conversation is shown under. Do not translate as \"moved to\"."
+	},
+	"ui.chat.tags.show_under": {
+		"role": "sidebar tag surface",
+		"tone": "concise, neutral sentence case",
+		"note": "Sidebar tags v3: an anchored popover beside a chat row (224-280px wide), a 28px group subheader, or the tag footer under the chat list. Names are user-authored and may be long; counts are nonnegative integers. Preserve ICU arguments."
+	},
+	"ui.chat.tags.shown_under": {
+		"role": "sidebar tag surface",
+		"tone": "concise, neutral sentence case",
+		"note": "Sidebar tags v3: an anchored popover beside a chat row (224-280px wide), a 28px group subheader, or the tag footer under the chat list. Names are user-authored and may be long; counts are nonnegative integers. Preserve ICU arguments."
+	},
+	"ui.chat.tags.shown_untagged": {
+		"role": "sidebar tag surface",
+		"tone": "concise, neutral sentence case",
+		"note": "Sidebar tags v3: an anchored popover beside a chat row (224-280px wide), a 28px group subheader, or the tag footer under the chat list. Names are user-authored and may be long; counts are nonnegative integers. Preserve ICU arguments."
+	},
+	"ui.chat.tags.hidden": {
+		"role": "sidebar tag surface",
+		"tone": "concise, neutral sentence case",
+		"note": "Sidebar tags v3: an anchored popover beside a chat row (224-280px wide), a 28px group subheader, or the tag footer under the chat list. Names are user-authored and may be long; counts are nonnegative integers. Preserve ICU arguments."
+	},
+	"ui.chat.tags.show_groups": {
+		"role": "sidebar tag surface",
+		"tone": "concise, neutral sentence case",
+		"note": "Sidebar tags v3: an anchored popover beside a chat row (224-280px wide), a 28px group subheader, or the tag footer under the chat list. Names are user-authored and may be long; counts are nonnegative integers. Preserve ICU arguments."
+	},
+	"ui.chat.tags.header_actions": {
+		"role": "sidebar tag surface",
+		"tone": "concise, neutral sentence case",
+		"note": "Sidebar tags v3: an anchored popover beside a chat row (224-280px wide), a 28px group subheader, or the tag footer under the chat list. Names are user-authored and may be long; counts are nonnegative integers. Preserve ICU arguments."
+	},
+	"ui.chat.tags.header_first": {
+		"role": "sidebar tag surface",
+		"tone": "concise, neutral sentence case",
+		"note": "Sidebar tags v3: an anchored popover beside a chat row (224-280px wide), a 28px group subheader, or the tag footer under the chat list. Names are user-authored and may be long; counts are nonnegative integers. Preserve ICU arguments."
+	},
+	"ui.chat.tags.header_last": {
+		"role": "sidebar tag surface",
+		"tone": "concise, neutral sentence case",
+		"note": "Sidebar tags v3: an anchored popover beside a chat row (224-280px wide), a 28px group subheader, or the tag footer under the chat list. Names are user-authored and may be long; counts are nonnegative integers. Preserve ICU arguments."
+	},
+	"ui.chat.tags.moved_tag": {
+		"role": "sidebar tag surface",
+		"tone": "concise, neutral sentence case",
+		"note": "Sidebar tags v3: an anchored popover beside a chat row (224-280px wide), a 28px group subheader, or the tag footer under the chat list. Names are user-authored and may be long; counts are nonnegative integers. Preserve ICU arguments."
+	},
+	"ui.chat.tags.new_tag": {
+		"role": "sidebar tag surface",
+		"tone": "concise, neutral sentence case",
+		"note": "Sidebar tags v3: an anchored popover beside a chat row (224-280px wide), a 28px group subheader, or the tag footer under the chat list. Names are user-authored and may be long; counts are nonnegative integers. Preserve ICU arguments."
+	},
+	"ui.chat.tags.name_placeholder": {
+		"role": "sidebar tag surface",
+		"tone": "concise, neutral sentence case",
+		"note": "Sidebar tags v3: an anchored popover beside a chat row (224-280px wide), a 28px group subheader, or the tag footer under the chat list. Names are user-authored and may be long; counts are nonnegative integers. Preserve ICU arguments."
+	},
+	"ui.chat.tags.unused": {
+		"role": "sidebar tag surface",
+		"tone": "concise, neutral sentence case",
+		"note": "Sidebar tags v3: an anchored popover beside a chat row (224-280px wide), a 28px group subheader, or the tag footer under the chat list. Names are user-authored and may be long; counts are nonnegative integers. Preserve ICU arguments."
+	},
+	"ui.chat.tags.empty_title": {
+		"role": "sidebar tag surface",
+		"tone": "concise, neutral sentence case",
+		"note": "Sidebar tags v3: an anchored popover beside a chat row (224-280px wide), a 28px group subheader, or the tag footer under the chat list. Names are user-authored and may be long; counts are nonnegative integers. Preserve ICU arguments."
+	},
+	"ui.chat.tags.empty_hint": {
+		"role": "sidebar tag surface",
+		"tone": "concise, neutral sentence case",
+		"note": "First-use line under the chat list. The action creates a TAG, not a conversation; make the referent explicit if ambiguous. {chord} is a literal keyboard chord such as ⌘⇧L or Ctrl+Shift+L; do not translate it."
 	}
 }

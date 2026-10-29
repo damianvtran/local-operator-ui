@@ -1,0 +1,132 @@
+{
+ "auditor": {
+  "agent": "i18n-auditor",
+  "role": "independent translation auditor (team lopdev, wave A delta); authored and amended none of the reviewed copy",
+  "team": "lopdev",
+  "harness": "Local Operator",
+  "session": "eb62f05b28e1",
+  "model": "radient/auto",
+  "actual_model": "radient/auto",
+  "actual_model_source": "The harness session header this run reports «Model: radient/auto» — a routing alias, so the concrete provider/model id behind it is not disclosed in-session. No fallback was selected, configured or observed.",
+  "fallback": null,
+  "independent_from_translator": true,
+  "independence_basis": "Separate session eb62f05b28e1 launched by the lopdev manager for this delta audit; the translator ran in a different agent instance and authored the remediation commit 80ee119bbd. This session wrote no translated value, edited no catalogue, context sidecar, English source, ledger, allowance or generated file, and read the copy only from the git archive of 80ee119bbd."
+ },
+ "instance": "wave-a-vi-delta-eb62f05b28e1",
+ "session": "eb62f05b28e1",
+ "date": "2026-10-27",
+ "locale": "vi",
+ "branch": "i18n-wave-a",
+ "head": "80ee119bbd1084ee873994a1f39db0c085c62083",
+ "parent_head": "a81c00cdda2667dc6b094128ff47ec72d0c4d095",
+ "round": 2,
+ "round_scope": "delta: the amended value plus the 37 wave-A values re-verified byte-identical; full re-record of all four namespaces (the receipt format carries per-namespace verdicts and hashes, but no carried-forward block, so nothing is carried)",
+ "scope": "Wave A vi delta audit at 80ee119bbd of the 38 wave-A keys in ui.chat (18), ui.chat.header (5), ui.chat.response_actions (4) and ui.chat.sidebar (11), read against the English source, its context sidecars and the call sites that consume each value. One value changed since a81c00cdda (ui.chat.region.conversation «Cuộc trò chuyện» -> «Khung trò chuyện», resolving round-1 vi-wa-1); the other 37 are byte-identical. Catalogue-only: no build, browser, render or activation evidence.",
+ "status": "passed",
+ "namespaces": {
+  "ui.chat": {
+   "namespace": "ui.chat",
+   "status": "passed",
+   "en_sha256": "1a1c9329a1a56ffda47b27da91e80fdf454751a4463b76f09ae9138d1ad0bcdc",
+   "vi_sha256": "008ac443d140f40f0de80165ccb014348123fe2084089eb4de0bd2240ce00bae",
+   "keys_audited": 18,
+   "target_bytes_changed_since_previous_round": true,
+   "findings": [
+    {
+     "id": "vi-wa-1",
+     "severity": "INFO",
+     "key": "ui.chat.region.conversation",
+     "issue": "ROUND-1 FINDING, RESOLVED AT THIS HEAD. Raised as MINOR at a81c00cdda: «Cuộc trò chuyện» was byte-identical to ui.chat.sidebar.nav.chats, so the F6 walk announced one name for the nav and the transcript. The head under audit carries the translator's «Khung trò chuyện»; this auditor re-read the value and accepts it. Recorded as INFO because the value being audited is the fixed one and no unresolved finding remains — the round-1 severity above is kept verbatim so the downgrade cannot be mistaken for a clean first pass."
+    },
+    {
+     "id": "vi-wa-i1",
+     "severity": "INFO",
+     "key": "ui.chat.checkpoint.jump_user / ui.chat.checkpoint.jump_user_no_clock",
+     "issue": "{clock} is supplied by checkpointClockLabel() as 12-hour «h:mm AM/PM», while the vi guide's numbers/dates section specifies 24-hour times. Code-level format outside the catalogue; the vi value consumes {clock} as given. Unchanged at this head, not counted."
+    },
+    {
+     "id": "vi-wa-i2",
+     "severity": "INFO",
+     "key": "ui.chat.header_identity.aria_agent_assign / ui.chat.header_identity.aria_agent_closed",
+     "issue": "With {label} = «Không có tác nhân» the sentence reads «Tác nhân: Không có tác nhân. Gán tác nhân»; the repetition is inherited from the English design («Agent: No agent. Assign an agent») and the sidecar requires {label} verbatim for voice-control matching. Not counted."
+    },
+    {
+     "id": "vi-wa-i3",
+     "severity": "INFO",
+     "key": "ui.chat.header_identity.no_agent",
+     "issue": "«Không có tác nhân» is 17 cells against English 8. The chip is min-w-0 max-w-[24ch] truncate, so it renders whole (17 <= 24) and the conversation title yields instead; no overflow in the styles. No rendered-frame claim. Not counted."
+    },
+    {
+     "id": "vi-wa-i7",
+     "severity": "INFO",
+     "key": "ui.chat.region.conversation",
+     "issue": "The header and transcript landmarks deliberately share one accessible name (chat-regions.ts maps both onto this key; the English sidecar records the sharing). The vi walk therefore announces «Khung trò chuyện» twice in one F6 cycle, exactly as English announces «Conversation» twice. Design, not translation. Not counted."
+    }
+   ]
+  },
+  "ui.chat.header": {
+   "namespace": "ui.chat.header",
+   "status": "passed",
+   "en_sha256": "e759664b305988c9eca049a767384ecb9473ad673a41d01c15e65d2e1e257a4d",
+   "vi_sha256": "43eedd65728fd38484116e745c05430e9c771def2674e68df4ed8c83eda1db9a",
+   "keys_audited": 5,
+   "target_bytes_changed_since_previous_round": false,
+   "findings": [
+    {
+     "id": "vi-wa-i4",
+     "severity": "INFO",
+     "key": "ui.chat.header.restore_conversation",
+     "issue": "Shares «Khôi phục cuộc trò chuyện» with ui.chat.sidebar.row_menu.unarchive (the two surfaces never render together). Unchanged at this head, not counted."
+    }
+   ]
+  },
+  "ui.chat.response_actions": {
+   "namespace": "ui.chat.response_actions",
+   "status": "passed",
+   "en_sha256": "8c23ba6a5b509c13d878c05aed0454026a6960566b043f5e983008dee93bcb18",
+   "vi_sha256": "01df25b03593593f7984679b638b70185343025a03fc10f48987ab40ca1c3291",
+   "keys_audited": 4,
+   "target_bytes_changed_since_previous_round": false,
+   "findings": [
+    {
+     "id": "vi-wa-i5",
+     "severity": "INFO",
+     "key": "ui.chat.response_actions.answer_label / ui.chat.response_actions.yours_label",
+     "issue": "«Thao tác với câu trả lời» and «Thao tác với tin nhắn của bạn» stay distinct as the sidecar requires, and «Thao tác với X» matches the existing ui.browser.browser_tab_strip.tab_actions pattern. Not counted."
+    }
+   ]
+  },
+  "ui.chat.sidebar": {
+   "namespace": "ui.chat.sidebar",
+   "status": "passed",
+   "en_sha256": "7901d0902c1dff11a5f4aca6138ac1dc05268c82ea1561e4c81bc106fcb00353",
+   "vi_sha256": "a61f68e6cf27329937640e12f3d115c1a700e617ae3dbbbfc12ef644681afe6b",
+   "keys_audited": 11,
+   "target_bytes_changed_since_previous_round": false,
+   "findings": [
+    {
+     "id": "vi-wa-i6",
+     "severity": "INFO",
+     "key": "ui.chat.sidebar.row_menu.unarchive / ui.chat.sidebar.row_menu.unpin / ui.chat.sidebar.row_menu.archive",
+     "issue": "The longest new menu item «Khôi phục cuộc trò chuyện» is 25 cells; the existing vi row menu already carries «Chuyển cuộc trò chuyện xuống» (27) and «Tách nhánh cuộc trò chuyện» (26). No overflow finding; no rendered-frame claim. Not counted."
+    }
+   ]
+  }
+ },
+ "records": {
+  "ui.chat": "i18n/audits/evidence/vi/ui.chat/wave-a-vi-delta-20261027/record.json",
+  "ui.chat.header": "i18n/audits/evidence/vi/ui.chat.header/wave-a-vi-delta-20261027/record.json",
+  "ui.chat.response_actions": "i18n/audits/evidence/vi/ui.chat.response_actions/wave-a-vi-delta-20261027/record.json",
+  "ui.chat.sidebar": "i18n/audits/evidence/vi/ui.chat.sidebar/wave-a-vi-delta-20261027/record.json"
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+ },
+ "independence": "Independent audit: this session produced none of the 38 values and amended none (the remediation commit is the translator's). It edited no catalogue byte and wrote only its own receipt and evidence records. No MT, translation API or SDK was used; ICU parsing and rendering ran the repository's own installed parser and intl-messageformat as a structural validator, never as a translation source.",
+ "limitations": [
+  "Catalogue-only audit; no build, test, install, browser, render, activation or pixel evidence.",
+  "Width statements are cell counts from the catalogue strings plus styles read from source, not measured pixels.",
+  "The {reason} placeholder is backend-served English prose at runtime; only the surrounding pattern is translatable and was audited as such."
+ ]
+}

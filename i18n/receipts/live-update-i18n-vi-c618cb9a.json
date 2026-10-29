@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "live-update-i18n-vi-c618cb9a",
+  "namespace": "ui.chat.live_updates",
+  "locale": "vi",
+  "keys_audited": 3,
+  "status": "passed",
+  "sha256": {
+    "vi": "bd9b2991175b416bc28f13984051e195620dd022465b78c706102b59f10a6172",
+    "en": "a51ecfaed866a60d91b2e31493d44097e12d9978624d942e54f9ecdd87827760"
+  },
+  "scope": {
+    "base": "ac74fae7ae4aa9baead432ee901652952ca9a2a7",
+    "head": "d98b597f150a74ed34bfcdefa641fc8ffe7571e1",
+    "kind": "i18n delta audit, 3 new keys",
+    "namespace": "ui.chat.live_updates",
+    "note": "Read from disk at head d98b597f15; the ui.chat.live_updates files are byte-identical to their introduction in f602ca8794 (git diff HEAD is empty). Core i18n/glossary.md and the locale style guide consulted; no rendered-frame or native-speaker pass claimed. The English file on disk reads 'Live updates are paused, so this conversation may be out of date.' — the audit used those bytes, not the brief's 'This view may be out of date' variant."
+  },
+  "findings": [],
+  "observations": [
+    "Clean: all 3 keys accurate and idiomatic; “Đang tải lại…” is the natural progressive status and the ellipsis is preserved; no placeholders. The paused sentence is 78 characters vs 65 English (+20%), within normal vi expansion."
+  ],
+  "independence": "Did not author or translate these strings; read the catalogue bytes on disk and audited against the English source, the core glossary and the locale style guide.",
+  "date": "2026-10-21"
+}

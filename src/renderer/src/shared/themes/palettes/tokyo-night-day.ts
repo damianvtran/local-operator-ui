@@ -48,7 +48,7 @@ import type { ThemeDefinition } from "../palette-contract";
 export const tokyoNightDay: ThemeDefinition = {
 	id: "tokyoNightDay",
 	name: "Tokyo Night Day",
-	description: "Tokyo Night at noon — cool paper under the same neon hues.",
+	descriptionKey: "ui.settings.appearance.theme.tokyo_night_day",
 	palette: {
 		mode: "light",
 

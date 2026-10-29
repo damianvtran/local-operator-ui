@@ -217,6 +217,8 @@ export type SpendChannelsReading = {
 	 * rendered as the share of the not-tracked money that is subagent sessions.
 	 */
 	childrenMicro: number | null;
+	/** Published child payment split; null preserves older producers. */
+	childrenByBasis: Array<{ basis: string; micro: number }> | null;
 	/** The children block's own rung; decides the remainder's floor mark. */
 	childrenKnowledge: CostKnowledge;
 	/** One entry per published row, spelled (see `ChannelBreakdownRow`). */
@@ -393,7 +395,7 @@ function microUsdText(micro: number): string {
  */
 const BASIS_WORDS: Record<string, string> = {
 	billed: "billed",
-	subscription_api_equivalent: "API-equivalent",
+	subscription_api_equivalent: "Included",
 	estimated: "estimated",
 	not_tracked: "not tracked",
 };
@@ -608,6 +610,18 @@ export function channelBasisWords(
 	];
 }
 
+/** Child provenance is published separately: never infer it from the parent rows. */
+export function childBasisLine(reading: SpendChannelsReading): string | null {
+	if (reading.childrenMicro === null || reading.childrenMicro <= 0) return null;
+	const bases = reading.childrenByBasis;
+	const words = bases?.map(({ basis }) =>
+		basis === "not_tracked_micro" || basis === "not_tracked"
+			? "without a tracked basis yet"
+			: `${capitalise(channelBasisLabel(basis, reading.vocabulary))}${basis === "subscription_api_equivalent" && !/api-equivalent/i.test(channelBasisLabel(basis, reading.vocabulary)) ? " (API-equivalent)" : ""}`,
+	);
+	return `Subagents ${isFloorKnowledge(reading.childrenKnowledge) ? FLOOR_MARK : ""}${microUsdText(reading.childrenMicro)} · ${words?.length ? words.join(" · ") : bases === null ? "without a tracked basis yet" : "basis unavailable"}`;
+}
+
 /** One published row as a `ChannelBreakdownRow`. */
 function channelRow(
 	row: CanonicalSpendChannelRow,
@@ -663,7 +677,9 @@ function channelBasisMarkers(
 				.map(
 					(basis) =>
 						publishedBasisMarker(vocabulary, basis) ??
-						channelBasisLabel(basis, vocabulary),
+						(basis === "subscription_api_equivalent" && !vocabulary
+							? "Included · API-equivalent"
+							: channelBasisLabel(basis, vocabulary)),
 				),
 		),
 	];
@@ -841,6 +857,18 @@ export function channelsReading(value: unknown): SpendChannelsReading | null {
 			children && typeof children === "object"
 				? finite(children.total_micro)
 				: null,
+		childrenByBasis:
+			children?.by_basis && typeof children.by_basis === "object"
+				? Object.entries(children.by_basis)
+						.filter(
+							(entry): entry is [string, number] =>
+								typeof entry[1] === "number" &&
+								Number.isFinite(entry[1]) &&
+								entry[1] > 0 &&
+								entry[0] !== "not_tracked_calls",
+						)
+						.map(([basis, micro]) => ({ basis, micro }))
+				: null,
 		childrenKnowledge:
 			children && typeof children === "object"
 				? rung(children.knowledge)
@@ -902,15 +930,34 @@ export function channelSummaryLine(
 	money: (micro: number) => string,
 	markFloor: (text: string) => string,
 ): string | null {
-	const parts = reading.byBasis.map(
-		(bucket) =>
-			`${capitalise(channelBasisLabel(bucket.basis, reading.vocabulary))} ${money(bucket.micro)}`,
-	);
+	const unstated =
+		reading.knowledge === "unknown" ||
+		(reading.totalMicro === 0 && reading.knowledge !== "exact");
+	const total = unstated
+		? PRICE_UNKNOWN_TEXT
+		: reading.knowledge === "exact"
+			? money(reading.totalMicro)
+			: markFloor(money(reading.totalMicro));
+	const parts = [
+		`Total ${total}`,
+		...reading.byBasis.map(
+			(bucket) =>
+				`${capitalise(channelBasisLabel(bucket.basis, reading.vocabulary))} ${money(bucket.micro)}${bucket.basis === "subscription_api_equivalent" && !/api-equivalent/i.test(channelBasisLabel(bucket.basis, reading.vocabulary)) ? " (API-equivalent)" : ""}`,
+		),
+	];
 	const remainder = reading.notTrackedMicro;
 	if (remainder > 0) {
+		const untrackedChildren =
+			reading.childrenByBasis === null
+				? reading.childrenMicro
+				: reading.childrenByBasis.find(
+						(bucket) =>
+							bucket.basis === "not_tracked_micro" ||
+							bucket.basis === "not_tracked",
+					)?.micro;
 		const children =
-			reading.childrenMicro !== null && reading.childrenMicro > 0
-				? ` (${money(reading.childrenMicro)} subagent sessions)`
+			untrackedChildren != null && untrackedChildren > 0
+				? ` (${money(untrackedChildren)} subagent sessions)`
 				: "";
 		/*
 		 * The mark lands on the MONEY, not the sentence: the panel's register is
@@ -951,8 +998,8 @@ function remainderIsFloor(reading: SpendChannelsReading): boolean {
 }
 
 /**
- * The plan-funded gloss: `Includes $0.053 API-equivalent (covered by a plan,
- * not charged).`, or null.
+ * The fallback plan-funded gloss: `Includes $0.053 plan-covered
+ * (API-equivalent, not charged).`, or null.
  *
  * `API-equivalent` is jargon the total's reader cannot be assumed to know, and
  * the number beside it is money that was never charged — the one thing the
@@ -967,7 +1014,7 @@ export function channelPlanClause(
 		(bucket) => bucket.basis === "subscription_api_equivalent",
 	);
 	if (!plan) return null;
-	return `Includes ${money(plan.micro)} API-equivalent (covered by a plan, not charged).`;
+	return `Includes ${money(plan.micro)} plan-covered (API-equivalent, not charged).`;
 }
 
 /** The strip-ladder breakdown the tooltip renders. */

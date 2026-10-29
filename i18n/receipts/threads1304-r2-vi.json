@@ -1,0 +1,128 @@
+{
+  "auditor": "translation-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "fallback": "openai/gpt-6.1-sol",
+  "model_provenance": "Harness-reported served model for the substantive PR #1304 audit, as supplied in the operator provenance correction; not independently re-queried in this metadata-only round.",
+  "instance": "threads1304-r2-vi",
+  "session": "48c1c63e7228",
+  "date": "2026-10-21",
+  "locale": "vi",
+  "translator": "translator",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 8,
+  "scope": "PR #1304 eight-key delta: replies.{action,title,close,count,last,empty,placeholder,more}, each prefixed ui.teamBridge.; inherited genuine base 2e16fb1456 audit for the other 109 values, verified unchanged. No full semantic re-audit of unchanged copy. Read actual English/target/context and rendered call-site roles in tb-threads only; no catalogue/code edits.",
+  "sha256": {
+    "en": "7de891f2cf03b7563747c440847c853f1c1356aa0a50480ec28eae347e6581e9",
+    "vi": "409c2e8a9e2f92d2c3590ec02033c6b1174fa27ad07a9813f399b33761d782fd",
+    "context": "7c3c9e52a1a159b3e661ac2101fa57bbe1a1ed324d566b09eda403e96c8dfd8f"
+  },
+  "findings": [],
+  "inherited_receipt": {
+    "base": "2e16fb1456",
+    "path": "i18n/receipts/tbd-r2-vi.json",
+    "sha256": "b06b33c45ad38222050412836b2f095a369eab4905066f0e96b9443045851bd8",
+    "keys_inherited": 109,
+    "unchanged_values_verified": 109,
+    "base_source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+    "base_target_sha256": "71339f089127558ebe551d701ab8fbb394322a61bb44843002310cb294195fdc",
+    "status": "passed"
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97",
+    "AGENTS": "a259e3cff9de9675176c0f6b03490526762735540e59f4d8255d0e99920a717f",
+    "audit_contract": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+  },
+  "validation": {
+    "independence": "Auditor did not produce translations and did not edit code or catalogues; independently read all eight target values and every plural arm beside frozen source/context.",
+    "semantic_register_terminology": "luồng trò chuyện / luồng names the nested thread, distinct from cuộc trò chuyện. Short luồng is the contextual abbreviation of the same term, not a different concept. trả lời / câu trả lời consistent; no plural agreement required (other only). Hãy invitation matches the existing empty-state voice; NFC retained.",
+    "mechanical": "Actual @formatjs/icu-messageformat-parser AST and intl-messageformat formatting executed successfully. count is cardinal plural, offset zero, exact locale CLDR arm set, one active pound in every arm, no extra arguments/tags/styles. last has exactly one plain time argument, unchanged and last. Other six values parse only as literals. All eight values NFC, no prohibited bidi controls.",
+    "plural_arms_audited": 1,
+    "format_samples_count": [
+      0,
+      1,
+      2,
+      3,
+      5,
+      11,
+      21,
+      22,
+      25,
+      1.5,
+      1000000
+    ],
+    "time_sample": "10:30 AM inserted verbatim as argument test only, not a recommendation to hardcode this format.",
+    "fit_risks": [
+      {
+        "key": "ui.teamBridge.replies.action",
+        "current": "Trả lời trong luồng",
+        "source_fixed_codepoints": 15,
+        "target_fixed_codepoints": 19,
+        "disposition": "Rendered check required; not an observed overflow defect."
+      },
+      {
+        "key": "ui.teamBridge.replies.title",
+        "current": "Luồng trò chuyện",
+        "source_fixed_codepoints": 6,
+        "target_fixed_codepoints": 16,
+        "disposition": "Rendered check required; not an observed overflow defect."
+      },
+      {
+        "key": "ui.teamBridge.replies.close",
+        "current": "Đóng luồng trò chuyện",
+        "source_fixed_codepoints": 12,
+        "target_fixed_codepoints": 21,
+        "disposition": "Rendered check required; not an observed overflow defect."
+      },
+      {
+        "key": "ui.teamBridge.replies.last",
+        "current": "trả lời gần nhất lúc {time}",
+        "source_fixed_codepoints": 11,
+        "target_fixed_codepoints": 21,
+        "disposition": "Rendered check required; not an observed overflow defect."
+      },
+      {
+        "key": "ui.teamBridge.replies.empty",
+        "current": "Chưa có câu trả lời nào. Hãy bắt đầu luồng trò chuyện.",
+        "source_fixed_codepoints": 33,
+        "target_fixed_codepoints": 54,
+        "disposition": "Rendered check required; not an observed overflow defect."
+      },
+      {
+        "key": "ui.teamBridge.replies.placeholder",
+        "current": "Trả lời trong luồng",
+        "source_fixed_codepoints": 15,
+        "target_fixed_codepoints": 19,
+        "disposition": "Rendered check required; not an observed overflow defect."
+      },
+      {
+        "key": "ui.teamBridge.replies.count",
+        "current": "{count, plural, other {# câu trả lời}}",
+        "sample": "2 câu trả lời",
+        "source_sample": "2 replies",
+        "source_fixed_codepoints": 9,
+        "target_fixed_codepoints": 13,
+        "disposition": "Rendered reply-summary row check required; not an observed overflow defect."
+      }
+    ],
+    "fit_scope": "Static expansion screen uses code points, not glyph widths: flags >=25% and >=3 code-point expansion. Not a universal fit guarantee; CJK, Hindi and Urdu shaping require rendering. Action is icon tooltip/aria label; close is icon aria label, not a fixed visible text button. Title/empty/more/placeholder are in min-w-72 thread pane; count/last share summary row with avatars. Prioritize fr/vi title and vi empty/last, fr last/more; all fit risks above require rendered checks.",
+    "limitations": "Browser unavailable by instruction: no rendered frame, screenshot, geometry, overflow or native RTL/bidi fit claim; no activation/release approval."
+  },
+  "model_origin": "anthropic/claude-opus-5-5",
+  "fallback_disclosure": "The harness completion receipt for substantive audit job 3e1a2d41f992 reports openai/gpt-6.1-sol as the served model. Static model context reported anthropic/claude-opus-5-5; runtime completion provenance outranks that static context. Round 1 incorrectly claimed Opus with no fallback. This round corrects metadata only; no new semantic audit was performed.",
+  "job": "3e1a2d41f992",
+  "metadata_correction": {
+    "source_receipt": "/Users/damian/.local-operator/sessions/bd7da88fb715/scratchpad/thread-receipts/threads1304-r1-vi.json",
+    "source_receipt_sha256": "2af6bc8c511ed294fe0cc3d55b1add6abe3f35ec9093834168eea8b477fe058b",
+    "substantive_audit_job": "3e1a2d41f992",
+    "substantive_audit_session": "48c1c63e7228",
+    "note": "Metadata-only provenance correction. Original immutable r1 retained byte-identically. Audit evidence, findings, verdict, eight-key coverage, catalogue/context hashes, inherited 109-key coverage and fit limitations are carried unchanged. No new semantic audit, catalogue read, or code/catalogue edit in this round."
+  },
+  "translator_provenance": {
+    "model": "openai/gpt-6.1-sol",
+    "model_origin": "anthropic/claude-opus-5-5",
+    "source": "Operator-supplied report of translators’ harness completion runtime metadata; not independently re-queried in this metadata-only round.",
+    "fallback_disclosure": "Static translator prompts claimed anthropic/claude-opus-5-5; completion runtime reported openai/gpt-6.1-sol for this locale. Both origin and served-model provenance are retained."
+  }
+}

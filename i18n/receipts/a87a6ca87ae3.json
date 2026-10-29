@@ -1,0 +1,217 @@
+{
+	"schema": 1,
+	"kind": "translation-audit-receipt",
+	"locale": "es",
+	"locale_name": "Spanish",
+	"batch": "agents-surfaces",
+	"round": 3,
+	"branch": "i18n-agents-pages",
+	"head": "91231e66c9",
+	"head_note": "Worktree ~/local-operator-ui/.worktrees/i18n-agents-pages at HEAD 91231e66c955197e86cec5b1bf7c6f488eff48de. The es catalogues remain uncommitted untracked candidates; every hash below was recomputed from disk, and re-verified immediately before this file was written. Scope was bound by <scratchpad>/agents-r3-hashes.txt (session 3ef6295a5545) and all nine in-scope hashes matched it on entry.",
+	"date": "2026-10-26",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"harness": "Local Operator",
+		"team": "lopdev",
+		"session": "a87a6ca87ae3",
+		"instance": "a87a6ca87ae3",
+		"model": "radient/auto",
+		"actual_model_source": "Harness session route advertised as 'Model: radient/auto' (system prompt). No provider fallback was signalled or used in this run; no concrete provider model is claimed.",
+		"fallback": null,
+		"independence": "Independent auditor: a different agent and session from the translator, and a different session from the round-1 (859f1e33bbd3) and round-2 (c6732d07a0de) auditors. Wrote and edited no catalogue value, made no ledger or git write, and judged the current bytes before reading the translator's account of them (which arrived in the task text, after the measurements below were taken).",
+		"independent_from_translator_session": true
+	},
+	"model": "radient/auto",
+	"instance": "a87a6ca87ae3",
+	"reference": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/es.md",
+			"sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+		}
+	},
+	"method": {
+		"scope": "Round-3 focused re-audit of the three namespaces whose round-2 verdict was changes_requested, on the CURRENT bytes bound by hash. ui.agents.detail, ui.hub.pages, ui.agents.teams, ui.agents.upload and ui.agents.config were passed unchanged in round 2 and were not re-audited.",
+		"nothing_else_moved": "The English source and context sidecars of all three namespaces are byte-identical to my round-2 receipt (en 38a713b6 / 32d6df8d / 20056e56; context 4b761bfa / 9a6f5f35 / 69ceeff1), so the change is target-only. The round-2 target bytes were never committed and no copy was kept, so a byte diff was impossible; instead every one of the 165 keys in the three namespaces was re-read against its English source and sidecar. The only unchanged-text concern I can name is ES-R3-O1 (hub.teams manager wording, already accepted in round 2); I cannot prove byte-identity for the remaining keys, only that each still carries its English meaning.",
+		"fit": "Real measurement, not arithmetic on a guess: a CoreText harness (swiftc, NSFont.systemFont(ofSize:12,weight:.regular/.medium), CTLineGetTypographicBounds) run on this machine, with the call site's box read from agents-page.tsx:666 and button.tsx (base 'whitespace-nowrap font-medium', size sm 'h-7 gap-1 px-2 text-meta'), text-meta = 0.75rem from styles/index.css. Row budget: 288 - 32 (px-4) - 4 (p-0.5) - 6 (three gap-0.5) = 246px; four px-2 buttons consume 16px each, so text must total <= 182px and no item may exceed its 61.5px share without pushing the row (flex min-content floors, so overflow shows as spill past the well).",
+		"icu": "All 165 en/es values parsed with @formatjs/icu-messageformat-parser (requiresOtherClause). Argument names, tag names, plural and select variables and option sets compared per key: 0 divergences other than es legitimately adding `many`. The two plurals (ui.hub.teams.member_count, ui.hub.teams.public.match_line) carry one/many/other, matching Intl.PluralRules('es') = one,many,other; no `few` arm, no arm dropped from English.",
+		"mechanical": "Valid JSON; key set AND order identical to English in all three namespaces; all three targets NFC; no manual bidi controls; no ASCII three-dot ellipsis; no space indentation (tabs only); exactly one trailing newline in each target and context sidecar; no value in the three namespaces contains a backtick (0 of 330), so no code-span parity risk arises here; placeholder and tag parity is covered by the `icu` method above.",
+		"gates": "Ran from the repo root on these bytes: node --test --test-name-pattern='\\[es\\]' scripts/i18n/locale-parity.test.mjs -> 6 tests, 6 pass, 0 fail; node scripts/i18n/context-parity.mjs -> ok (131 allowed shrink-only gaps in 4 namespaces); node scripts/i18n/check-duplicates.mjs -> ok, 835 files, 0 duplicate keys; node scripts/i18n/generate.mjs --check -> src/i18n/keys.gen.ts byte-identical to a fresh generation.",
+		"limits": "No build, no render and no browser pass: the fit judgement is a CoreText width measurement against the real class geometry, not a screenshot. Not asked for, and the round-2 finding was itself a width measurement.",
+		"audit_notes_not_execution_log": "The method and notes here describe what was run in this session; the raw command output was not committed. The four gates above are reproducible verbatim from the repo root."
+	},
+	"totals": {
+		"keys_audited": 165,
+		"namespaces": 3,
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0,
+		"observations": 1,
+		"namespaces_passed": 3,
+		"namespaces_changes_requested": 0
+	},
+	"current_report_verdict": {
+		"status": "passed",
+		"unresolved_blocker_major_count": 0,
+		"finding_ids": [
+			"ES-R2-P1",
+			"ES-R2-H1",
+			"ES-R2-B1",
+			"ES-R2-B2",
+			"ES-R2-B3",
+			"ES-R2-H2"
+		],
+		"note": "P1, H1, B1, B2 and B3 are fixed on the current bytes; H2 remains only as the non-gating observation ES-R3-O1, which does not gate a passed verdict."
+	},
+	"round2_dispositions": [
+		{
+			"id": "ES-R2-P1",
+			"severity": "major",
+			"status": "fixed",
+			"evidence": "Todos 35.0 + Integrados 62.4 + Míos 27.5 + Del hub 44.3 = 169.1px text + 64px padding = 233.1px against the 246px row (12.9px slack), measured in SF Pro Medium 12px. My own round-2 proposal measures 249.6px at that weight, so the translator was right to reject it."
+		},
+		{
+			"id": "ES-R2-H1",
+			"severity": "major",
+			"status": "fixed",
+			"evidence": "One term: Hacer pull / Haciendo pull… / Hacer pull del equipo {name} / No se pudo hacer pull … / Al hacer pull de uno … / … para hacer pull de un equipo …; aria name keeps the visible label."
+		},
+		{
+			"id": "ES-R2-B1",
+			"severity": "major",
+			"status": "fixed",
+			"evidence": "All 8 refusal keys use pull; 11/11 pull.* bodies whose English says downloaded keep descargar; 0 non-pull.* keys use descargar; same split as shipped ui.hub.json."
+		},
+		{
+			"id": "ES-R2-B2",
+			"severity": "minor",
+			"status": "fixed",
+			"evidence": "'si el hub ha cambiado de dirección' in hub_unavailable.body and body_pull; the 'se ha movido' calque is gone."
+		},
+		{
+			"id": "ES-R2-B3",
+			"severity": "nit",
+			"status": "fixed",
+			"evidence": "'acosar, amenazar o dirigirse contra personas' — target no longer says atacar."
+		},
+		{
+			"id": "ES-R2-H2",
+			"severity": "minor",
+			"status": "carried_forward_non_gating",
+			"evidence": "Responsable/Responsable: unchanged and accepted as wording; the open item is a cross-surface guide row, recorded as ES-R3-O1."
+		},
+		{
+			"id": "ES-R2-U1",
+			"severity": "nit",
+			"status": "out_of_scope_this_round",
+			"evidence": "ui.hub.pages.sort.most_favourited was passed in round 2 and that namespace did not change; not re-audited here."
+		}
+	],
+	"namespaces": {
+		"ui.agents.pages": {
+			"namespace": "ui.agents.pages",
+			"keys_audited": 22,
+			"file_keys": {
+				"en": 22,
+				"es": 22
+			},
+			"status": "passed",
+			"result": "clean",
+			"verdict": "clean",
+			"sha256": {
+				"en": "38a713b6cc4a63532543924cfdd2093b11c3618c31fc6266d28e20b84572feb5",
+				"es": "ae902f2c021690405716f966300d7ce79919840e7819eddb1a5d51bde530f04c",
+				"context": "4b761bfa8eeeddf3689a2160e8249b153c095368b6f6fe3df7046052d95d2642"
+			},
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.agents.pages.json",
+				"target": "src/i18n/catalogues/es/ui.agents.pages.json",
+				"context": "src/i18n/catalogues/en/ui.agents.pages.context.json"
+			},
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"notes": "ES-R2-P1 (fit, the four scope labels) is RESOLVED and the wording changed. Re-measured here with CoreText/NSFont.systemFont at 12px font-medium (the Button base class) against the real call site: agents-page.tsx:666 column w-72 (288px) px-4, well flex gap-0.5 p-0.5 -> 246px for four size=sm Buttons (px-2, whitespace-nowrap). Current set Todos 35.0 + Integrados 62.4 + Míos 27.5 + Del hub 44.3 = 169.1px text, +64px padding = 233.1px, 12.9px slack of 246px: the translator's 233.1/246 reproduces exactly. My round-2 proposal (Todos/Integrados/Propios/Del hub) reproduces at 245.0px regular but 249.6px at font-medium, 3.6px OVER the row - my round-2 figure omitted the weight, so the translator's rejection is correct and Míos is the working fix. The labels now agree with their empty states (empty.custom 'No hay agentes míos.', empty.installed 'No hay agentes del hub.', empty.builtin 'No hay agentes integrados.'), and Integrados matches the shipped action.install_builtin 'Instalar la versión integrada'. SCOPE_LABEL key order renders Todos | Míos | Del hub | Integrados, the order the translator quoted. No other key changed.",
+			"findings": []
+		},
+		"ui.hub.teams": {
+			"namespace": "ui.hub.teams",
+			"keys_audited": 47,
+			"file_keys": {
+				"en": 47,
+				"es": 47
+			},
+			"status": "passed",
+			"result": "clean",
+			"verdict": "clean",
+			"sha256": {
+				"en": "32d6df8db5c9226cd9a3e4d57f7bf12a14579ad266feaa3a914c4cfdddad9ad5",
+				"es": "19cfae6a6ccac69ed022387b8305819ff74fd8d9e0b7e90e39fa2d7fa28e0c18",
+				"context": "9a6f5f35045687eab48c7491086b759c06d5ad635e93cdfdbcaf2f663acd6651"
+			},
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.hub.teams.json",
+				"target": "src/i18n/catalogues/es/ui.hub.teams.json",
+				"context": "src/i18n/catalogues/en/ui.hub.teams.context.json"
+			},
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"notes": "ES-R2-H1 (pull terminology) RESOLVED as ONE term across button, aria name and refusals: pull 'Hacer pull' (infinitive per the es action-label rule, inflecting around the kept-English verb), pulling 'Haciendo pull…', pull_target 'Hacer pull del equipo {name}' keeps the visible label (label-in-name), pull_failed 'No se pudo hacer pull de “{name}”.', public.pull_failed, public.pull_no_signin, public.intro 'Al hacer pull de uno, se copia…' and public.sign_in_hint '…para hacer pull de un equipo…'. The other 39 keys were re-read against English and the sidecar: meaning unchanged. ES-R2-H2 (Manager -> Responsable) is carried forward as a non-gating observation, not a defect: the wording was accepted in round 2; what remains is a cross-surface term record (ui.projects.project_start_session.team_manager_manager prints 'manager:').",
+			"findings": [
+				{
+					"id": "ES-R3-O1",
+					"severity": "observation",
+					"category": "terminology",
+					"keys": [
+						"ui.hub.teams.manager",
+						"ui.hub.teams.manager_label"
+					],
+					"current": "Responsable / Responsable:",
+					"problem": "Carried forward from ES-R2-H2, unchanged and non-gating: the wording is good Spanish and consistent inside this batch, but the shipped projects surface still prints the English 'manager:' (ui.projects.project_start_session.team_manager_manager = 'Equipo · manager: {manager}'). What is missing is a recorded es-guide row picking the winner across surfaces, not a better word here.",
+					"proposed": "Record `manager -> responsable` in i18n/style-guides/es.md and align the shipped projects string, or keep 'manager' here for cross-surface consistency. Not gating."
+				}
+			]
+		},
+		"ui.agents.publication": {
+			"namespace": "ui.agents.publication",
+			"keys_audited": 96,
+			"file_keys": {
+				"en": 96,
+				"es": 96
+			},
+			"status": "passed",
+			"result": "clean",
+			"verdict": "clean",
+			"sha256": {
+				"en": "20056e5654c004bef9318bf91531cb0cbc349d6242f6c49ba4801eb5d4605f39",
+				"es": "6866e3cef2b7f29ab2a131b494cc5ee489258e1df706030faf474d0363e98141",
+				"context": "69ceeff1e7162764e13c6d5fdee8e7a9f1184f1ab8209839a34e64ce6c486f90"
+			},
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.agents.publication.json",
+				"target": "src/i18n/catalogues/es/ui.agents.publication.json",
+				"context": "src/i18n/catalogues/en/ui.agents.publication.context.json"
+			},
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"notes": "ES-R2-B1 RESOLVED on all 8 keys it named (hub_unauthorized.body_pull, hub_unavailable.body_pull and headline_pull, insufficient_role.body_pull and body_with_role_pull, local_failure.headline_pull, not_a_member.body_pull, team_plan_required.body_pull). The 11 pull.* bodies whose English says downloaded/download kept descargar (11 of 11, zero non-pull.* key uses descargar), matching the shipped split in ui.hub.json: git/hub update = pull (ui.hub.subscriptions.pull 'Pull ahora'), file copy = Descargar (ui.hub.skills.pull_title 'Download {item}' -> 'Descargar {item}'). ES-R2-B2 RESOLVED: 'si el hub ha cambiado de dirección' replaces the 'se ha movido' calque. ES-R2-B3 RESOLVED: 'dirigirse contra personas' replaces 'atacar'. All 96 keys re-read against English and the sidecar; no other key changed meaning.",
+			"findings": []
+		}
+	},
+	"revision": "v1 corrected in place before first use, by the same auditor and instance: two sentences in method.nothing_else_moved and method.mechanical overstated their evidence (a non-existent second hub.teams observation; an unexplained '19'). No verdict, hash, note, finding or disposition changed."
+}

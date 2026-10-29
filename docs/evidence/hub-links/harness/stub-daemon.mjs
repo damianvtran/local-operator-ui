@@ -71,7 +71,12 @@ const INSTANCE_ID = randomUUID();
 const startedAt = Date.now() / 1000;
 
 /** One approved, credential-free source. The panel contributes exactly this. */
-const SOURCE = "https://hub.radient.local";
+/**
+ * The hub source the fixture's links name. Default keeps the historic value;
+ * the Skills scene passes the same loopback base the app is built against, so
+ * its links JOIN the catalogue rows instead of reading as a foreign origin.
+ */
+const SOURCE = arg("source", "https://hub.radient.local");
 const TENANT_ID = "org-minerva";
 const TENANT_NAME = "Minerva";
 
@@ -238,6 +243,19 @@ const unresolved = [
 		reason: "source-unresolved",
 	},
 	/*
+	 * The TEAM half of the same legacy shape. The resolve arm's domain is
+	 * `agent|team` (core `HubApply.kind`), and until this fixture existed NO row
+	 * exercised the team half - so the confirmation card was never photographed
+	 * on a team pane, where the block describes a TEAM rather than an agent.
+	 */
+	{
+		kind: "team",
+		local_id: "team-legacy",
+		name: "legacy-team",
+		hub_id: "hub-team-legacy",
+		reason: "source-unresolved",
+	},
+	/*
 	 * An unresolved-only item (no row in `links`): the roster must show the
 	 * "source not confirmed" affordance for it (CODE MAJOR-B).
 	 */
@@ -249,9 +267,6 @@ const unresolved = [
 		reason: "source-unresolved",
 	},
 ];
-
-/** Whether the source confirmation has been accepted for the legacy row. */
-let legacyResolved = false;
 
 /** v1 vs unsupported: the library reads capability off the response contract. */
 const skillContract = () =>
@@ -601,11 +616,22 @@ const route = async (method, pathname, query, body) => {
 				 * affordance (CODE MAJOR-B) is for exactly this case.
 				 */
 				{ name: "legacy-solo", source: "custom", description: "" },
+				/*
+				 * A record with NO hub presence at all: no link row and no
+				 * unresolved diagnostic, so the panel has nothing to say about it
+				 * and must say NOTHING rather than draw a "not linked" line.
+				 */
+				{ name: "loner", source: "custom", description: "" },
 			],
 		});
 	}
 	if (method === "GET" && pathname === "/v1/desktop/teams") {
-		return ok({ teams: [{ name: "lopdev", description: "" }] });
+		return ok({
+			teams: [
+				{ name: "lopdev", description: "" },
+				{ name: "legacy-team", description: "" },
+			],
+		});
 	}
 	const profileMatch = pathname.match(/^\/v1\/desktop\/profiles\/([^/]+)$/);
 	if (method === "GET" && profileMatch) {
@@ -626,7 +652,9 @@ const route = async (method, pathname, query, body) => {
 						? "agent-legacy"
 						: name === "legacy-solo"
 							? "agent-legacy-solo"
-							: "agent-2",
+							: name === "loner"
+								? "agent-loner"
+								: "agent-2",
 			description: "",
 			instructions: "",
 			tools: [],
@@ -640,7 +668,9 @@ const route = async (method, pathname, query, body) => {
 		const name = decodeURIComponent(teamMatch[1]);
 		return ok({
 			name,
-			id: "team-1",
+			// The legacy team carries its own id: the panel narrows `unresolved`
+			// to the CURRENT record by local id, so a second team needs a second id.
+			id: name === "legacy-team" ? "team-legacy" : "team-1",
 			description: "",
 			manager: "manager",
 			members: [],
@@ -710,6 +740,11 @@ const route = async (method, pathname, query, body) => {
 					},
 				};
 			}
+			// The solo fixture represents a stored, conflicting scope. Refusal must
+			// leave inventory untouched so the UI can keep its recovery controls.
+			if (row.name === "legacy-solo") {
+				return { status: 409, body: { detail: { code: "origin-conflict" } } };
+			}
 			const isOrg = body.visibility === "org";
 			const adopted = {
 				link_id: `link-${row.local_id}`,
@@ -733,11 +768,10 @@ const route = async (method, pathname, query, body) => {
 				pull: direction({ state: "idle" }),
 				push: direction({ state: "idle", enabled: false }),
 			};
-			if (!legacyResolved) {
-				legacyResolved = true;
-				unresolved.length = 0;
-				links.push(adopted);
-			}
+			// Confirming one record cannot erase another record's outstanding
+			// diagnostic. Keep the team/error fixtures available after agent success.
+			unresolved.splice(unresolved.indexOf(row), 1);
+			links.push(adopted);
 			return ok({
 				reports: [],
 				/*

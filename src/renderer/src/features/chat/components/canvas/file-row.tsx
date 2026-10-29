@@ -17,6 +17,8 @@ import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
 import { Tooltip } from "@shared/components/ui";
 import { useEverInView } from "@shared/hooks/use-ever-in-view";
 import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	Archive,
@@ -349,6 +351,7 @@ const FileRowItemComponent = ({
 	onOpen,
 	buttonRef,
 }: FileRowItemProps) => {
+	useI18nLocale();
 	const { document } = row;
 	/*
 	 * The full path, not the name. The name is already on the row, and where two
@@ -411,7 +414,7 @@ const FileRowItemComponent = ({
 					 * which is what makes it read as a row rather than as a chip.
 					 */
 					className={cn(
-						"flex h-9 w-full items-center gap-2 rounded-sm py-0 pr-8 pl-2 text-left",
+						"flex h-9 w-full items-center gap-2 rounded-sm py-0 pe-8 ps-2 text-start",
 					)}
 				>
 					<span className={cn("flex w-7 shrink-0 items-center justify-center")}>
@@ -475,7 +478,7 @@ const FileRowItemComponent = ({
 					 */}
 					{row.missing ? (
 						<span className={cn("shrink-0 text-meta text-ink-dim")}>
-							No longer on disk
+							{t("ui.canvas.files.missing")}
 						</span>
 					) : row.size ? (
 						<span
@@ -492,7 +495,7 @@ const FileRowItemComponent = ({
 			{(isLocalFile || artifact) && (
 				<div
 					className={cn(
-						"absolute top-1/2 right-1 z-10 -translate-y-1/2",
+						"absolute top-1/2 end-1 z-10 -translate-y-1/2",
 						/*
 						 * Revealed on hover or keyboard focus, like every other row action
 						 * in the app, and `group-focus-within` is what keeps it reachable
@@ -530,14 +533,14 @@ const FileRowItemComponent = ({
 								)
 							}
 							onShowInCanvas={() => onOpen(document)}
-							tooltip="File actions"
-							aria-label="File actions"
+							tooltip={t("ui.canvas.file_row.ui_canvas_files_fileactions")}
+							aria-label={t("ui.canvas.file_row.ui_canvas_files_fileactions")}
 						/>
 					) : (
 						<FileActionsMenu
 							filePath={stripFileUrl(document.path)}
-							tooltip="File actions"
-							aria-label="File actions"
+							tooltip={t("ui.canvas.file_row.ui_canvas_files_fileactions")}
+							aria-label={t("ui.canvas.file_row.ui_canvas_files_fileactions")}
 							onShowInCanvas={() => onOpen(document)}
 						/>
 					)}

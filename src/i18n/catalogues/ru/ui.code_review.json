@@ -73,5 +73,6 @@
 	"ui.code_review.row.opens_browser": "откроется в вашем браузере",
 	"ui.code_review.row.refresh_error": "Не удалось обновить: {error}",
 	"ui.code_review.row.stale_error": "Устарело — последнее известное, не текущее: {error}",
-	"ui.code_review.tool.more": "{count, plural, one {ещё {countText}{capped} в выводе инструмента} few {ещё {countText}{capped} в выводе инструмента} many {ещё {countText}{capped} в выводе инструмента} other {ещё {countText}{capped} в выводе инструмента}}"
+	"ui.code_review.tool.more": "{count, plural, one {ещё {countText}{capped} в выводе инструмента} few {ещё {countText}{capped} в выводе инструмента} many {ещё {countText}{capped} в выводе инструмента} other {ещё {countText}{capped} в выводе инструмента}}",
+	"ui.code_review.refresh.try_again": "повторить"
 }

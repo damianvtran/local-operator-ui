@@ -66,6 +66,8 @@
  */
 
 import { Button, Input } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { MessageCircleQuestion } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -73,6 +75,7 @@ import type { PendingDesktopGate } from "../../../../../../shared/desktop-sessio
 import { APPROVAL_OPTIONS, gateIsSecret } from "../../ask-answer";
 import { composerField, focusComposer } from "../../composer-field";
 import { MarkdownRenderer } from "../markdown-renderer";
+import { ApprovalEscape } from "./approval-escape";
 import { AskOptions } from "./ask-options";
 
 export type QuestionDockProps = {
@@ -120,6 +123,14 @@ export type QuestionDockProps = {
 		 */
 		muted?: boolean;
 	} | null;
+	/**
+	 * The session this gate belongs to. `PendingDesktopGate` carries the request,
+	 * not the session, and the approval card's policy handles address the LIVE
+	 * gate by session id (`/approvals auto`), so the panel passes it here. Absent
+	 * on a surface with no session (a draft, a story): the handles are then not
+	 * rendered at all, because there is no gate to address.
+	 */
+	sessionId?: string;
 	/** Extra classes on the dock's outer box (the caller owns the measure). */
 	className?: string;
 };
@@ -168,11 +179,19 @@ export const questionDockHint = (
 		 * scopes are the point, so the clause is the dock's own.
 		 */
 		return held
-			? "Answer from the composer instead: type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn."
-			: "Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.";
+			? t("ui.chat.question_dock.hint.approval_held")
+			: t("ui.chat.question_dock.hint.approval");
+	/*
+	 * The prefix is its own message so the numbering follows the locale’s
+	 * own `1 of N` idiom instead of being assembled here; every sentence below
+	 * takes it as `{prefix}` and receives "" when there is one question.
+	 */
 	const prefix =
 		gate.question_total > 1
-			? `Question ${gate.question_index + 1} of ${gate.question_total}. `
+			? t("ui.chat.question_dock.hint.prefix", {
+					index: String(gate.question_index + 1),
+					total: String(gate.question_total),
+				})
 			: "";
 	/*
 	 * THE SECRET SENTENCE, and what it may name: the field the card draws (type
@@ -199,12 +218,13 @@ export const questionDockHint = (
 	 */
 	if (gate.kind === "ask" && gateIsSecret(gate))
 		return held
-			? `${prefix}Held while this answer's fate is unknown — it may have landed, so nothing can send again · Esc in the card hides it`
-			: `${prefix}Type or paste the secret above · Enter sends · Esc hides`;
-	if (gate.options.length === 0) return `${prefix}Type your answer below.`;
+			? t("ui.chat.question_dock.hint.secret_held", { prefix })
+			: t("ui.chat.question_dock.hint.secret", { prefix });
+	if (gate.options.length === 0)
+		return t("ui.chat.question_dock.hint.type", { prefix });
 	const digits =
 		gate.options.length === 1 ? "1" : `1-${Math.min(gate.options.length, 9)}`;
-	return `${prefix}Up/Down choose · Enter or ${digits} answers · Esc hides · or type your own answer below`;
+	return t("ui.chat.question_dock.hint.options", { prefix, digits });
 };
 
 /**
@@ -274,11 +294,12 @@ const SecretAnswer = ({
 	/** Submit the typed value; absent where the surface cannot answer. */
 	onAnswer?: (value: string) => void;
 }) => {
+	useI18nLocale();
 	const ready = value.trim().length > 0 && !busy && Boolean(onAnswer);
 	return (
 		<form
 			data-ask-secret=""
-			aria-label="Secret answer"
+			aria-label={t("ui.chat.question_dock.secret_answer_label")}
 			className="flex flex-col gap-2"
 			onSubmit={(event) => {
 				event.preventDefault();
@@ -297,13 +318,13 @@ const SecretAnswer = ({
 			 * paints no record of it in the transcript.
 			 */}
 			<p className="text-ink-dim text-meta">
-				Hidden as you type — sent to the agent, not shown in the transcript.
+				{t("ui.chat.question_dock.secret_note")}
 			</p>
 			<div className="flex items-center gap-2">
 				<Input
 					type="password"
-					aria-label="Secret value"
-					placeholder="Paste the secret"
+					aria-label={t("ui.chat.question_dock.secret_value_label")}
+					placeholder={t("ui.chat.question_dock.secret_placeholder")}
 					autoComplete="off"
 					autoCapitalize="none"
 					autoCorrect="off"
@@ -316,7 +337,7 @@ const SecretAnswer = ({
 					className="min-w-0 flex-1"
 				/>
 				<Button type="submit" variant="primary" disabled={!ready}>
-					Send
+					{t("ui.chat.question_dock.send")}
 				</Button>
 			</div>
 		</form>
@@ -329,8 +350,10 @@ export const QuestionDock = ({
 	onAnswerSecret,
 	answering = false,
 	answer = null,
+	sessionId,
 	className,
 }: QuestionDockProps) => {
+	useI18nLocale();
 	const key = questionKeyOf(gate);
 	const [collapsedKey, setCollapsedKey] = useState<string | null>(null);
 	const collapsed = collapsedKey === key;
@@ -475,7 +498,7 @@ export const QuestionDock = ({
 				 */}
 				<button
 					type="button"
-					aria-label="Show the agent's question"
+					aria-label={t("ui.chat.question_dock.show_question_label")}
 					onClick={() => {
 						setCollapsedKey(null);
 						setExpandedByPress(true);
@@ -489,11 +512,13 @@ export const QuestionDock = ({
 						aria-hidden={true}
 						className="size-3.5 text-accent"
 					/>
-					<span>The agent is asking</span>
+					<span>{t("ui.chat.question_dock.asking")}</span>
 					<span aria-hidden={true} className="text-ink-dim">
 						·
 					</span>
-					<span className="text-ink-muted">Show</span>
+					<span className="text-ink-muted">
+						{t("ui.chat.question_dock.show")}
+					</span>
 				</button>
 			</div>
 		);
@@ -503,7 +528,7 @@ export const QuestionDock = ({
 		<div className={cn("pb-2", className)} data-lo-question-dock="expanded">
 			<section
 				ref={cardRef}
-				aria-label="Question from the agent"
+				aria-label={t("ui.chat.question_dock.from_agent_label")}
 				/*
 				 * Focusable by pointer (`-1`, not in the Tab order): a press anywhere on
 				 * the card makes it the focus scope, so Escape reaches the handler
@@ -588,12 +613,28 @@ export const QuestionDock = ({
 				 * across the whole window between a press and the gate moving.
 				 */}
 				{gate.kind === "approval" && (
-					<AskOptions
-						options={APPROVAL_OPTIONS}
-						requestId={gate.request_id}
-						busy={busy}
-						onAnswer={(label) => onAnswer?.(label)}
-					/>
+					<>
+						<AskOptions
+							options={APPROVAL_OPTIONS}
+							requestId={gate.request_id}
+							busy={busy}
+							onAnswer={(label) => onAnswer?.(label)}
+						/>
+						{/*
+						 * THE POLICY HANDLES, kept BELOW the pair the card exists for. They
+						 * own their own busy state, so a policy call in flight disables only
+						 * these two links; a policy failure never disables Approve or Deny.
+						 * They are absent where there is no session to address.
+						 */}
+						{sessionId ? (
+							<ApprovalEscape
+								sessionId={sessionId}
+								approvalMode={gate.approval_mode}
+								approvalProvenance={gate.approval_provenance}
+								approvalGlobalMode={gate.approval_global_mode}
+							/>
+						) : null}
+					</>
 				)}
 				<p className="text-ink-dim text-meta">{questionDockHint(gate, held)}</p>
 				{/*

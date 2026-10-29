@@ -44,12 +44,17 @@ import {
 	useAgentStatusesQuery,
 } from "./hooks/use-agent-statuses-query";
 import { useDebouncedValue } from "./hooks/use-debounced-value";
+import { type HubSkillScope, useRemoteSkills } from "./hooks/use-hub-skills";
 import { useMembershipsQuery } from "./hooks/use-memberships-query";
 import { useOrgTeamsQuery } from "./hooks/use-org-teams-query";
 import {
 	type PublicAgentSort,
 	usePublicAgentsQuery,
 } from "./hooks/use-public-agents-query";
+import {
+	PUBLIC_TEAMS_PER_PAGE,
+	usePublicTeamsQuery,
+} from "./hooks/use-public-teams-query";
 import { orgRefusalFromError, usableOrgs } from "./org-access";
 import { orgSurfaceNotice, orgSurfaceReady } from "./org-surface-gate";
 
@@ -62,43 +67,61 @@ import { orgSurfaceNotice, orgSurfaceReady } from "./org-surface-gate";
  * upstream, so an option this control offered that the API does not implement
  * would be a sort that does not happen.
  */
+/**
+ * The sort options' WORDS, as catalogue keys. A union of literals rather than
+ * `MessageKey`, because `t()` only accepts a bare key when the message takes no
+ * arguments and the compiler must be able to see that from the type.
+ */
+type SortLabel =
+	| "ui.hub.pages.sort.most_downloaded"
+	| "ui.hub.pages.sort.most_liked"
+	| "ui.hub.pages.sort.most_favourited"
+	| "ui.hub.pages.sort.newest"
+	| "ui.hub.pages.sort.recently_updated"
+	| "ui.hub.pages.sort.name_asc";
+
 const SORT_OPTIONS: {
 	value: string;
-	label: string;
+	label: SortLabel;
 	sort: PublicAgentSort;
 	order: "asc" | "desc";
 }[] = [
 	{
 		value: "download_count:desc",
-		label: "Most downloaded",
+		label: "ui.hub.pages.sort.most_downloaded",
 		sort: "download_count",
 		order: "desc",
 	},
 	{
 		value: "like_count:desc",
-		label: "Most liked",
+		label: "ui.hub.pages.sort.most_liked",
 		sort: "like_count",
 		order: "desc",
 	},
 	{
 		value: "favourite_count:desc",
-		label: "Most favourited",
+		label: "ui.hub.pages.sort.most_favourited",
 		sort: "favourite_count",
 		order: "desc",
 	},
 	{
 		value: "created_at:desc",
-		label: "Newest",
+		label: "ui.hub.pages.sort.newest",
 		sort: "created_at",
 		order: "desc",
 	},
 	{
 		value: "updated_at:desc",
-		label: "Recently updated",
+		label: "ui.hub.pages.sort.recently_updated",
 		sort: "updated_at",
 		order: "desc",
 	},
-	{ value: "name:asc", label: "Name (A to Z)", sort: "name", order: "asc" },
+	{
+		value: "name:asc",
+		label: "ui.hub.pages.sort.name_asc",
+		sort: "name",
+		order: "asc",
+	},
 ];
 
 /**
@@ -111,8 +134,8 @@ const SORT_OPTIONS: {
  * the control that says which question is being asked.
  */
 const SEARCH_SCOPES = [
-	{ value: "name", label: "Name" },
-	{ value: "description", label: "Description" },
+	{ value: "name", label: "ui.hub.pages.search_field.name" },
+	{ value: "description", label: "ui.hub.pages.search_field.description" },
 ] as const;
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -338,39 +361,116 @@ export const AgentHubPage: React.FC = () => {
 	const hasFilters = selectedCategory !== null || debouncedSearch !== "";
 
 	/*
-	 * THE TEAMS READ RIDES SCOPE ENTRY, not the Teams tab.
+	 * THE TEAMS READS RIDE SCOPE ENTRY, not the Teams tab.
 	 *
-	 * Eager on purpose: the tab carries its count ("Teams 2") so the split is
-	 * legible without visiting it, and that number cannot exist without the read.
-	 * It costs nothing over the old layout, which mounted the roster (and so read
-	 * the list) on every org-scope entry too. `OrgTeamsList` calls the same hook
-	 * with the same key, so the two observers share ONE request; a tab switch
-	 * re-issues neither list (`staleTime` five minutes, focus refetch off), and a
+	 * Eager on purpose, in BOTH scopes: the tab carries its count ("Teams 2") so
+	 * the split is legible without visiting it, and that number cannot exist
+	 * without the read. The organization's roster was already read on every
+	 * org-scope entry before the tab existed; the public listing is one anonymous
+	 * page-1 read per public-scope entry, less than the agent grid beside it.
+	 *
+	 * ONE READ PER SCOPE. `OrgTeamsList` and `PublicTeamsLibrary` call the same
+	 * hooks with the same keys as the two observers here, so the tab and the list
+	 * it labels share ONE cache entry and cannot disagree about the number they
+	 * both paint. The public key is `(page, perPage)`, so the count observes PAGE
+	 * 1 with the library's own page size (`PUBLIC_TEAMS_PER_PAGE`): the entry the
+	 * library registers when it mounts. A later page is a separate entry, but
+	 * `total_records` is page-independent, so the count stays right while the
+	 * reader pages. `staleTime` five minutes and focus refetch off mean a tab
+	 * switch or a scope flip inside that window re-issues neither list, and a
 	 * refused read is not re-issued by the roster mounting either
-	 * (`retryOnMount: false` in the hook - QA round 1, Q1). The public scope passes
-	 * no tenant, so THIS query is disabled and issues zero reads: the public
-	 * catalogue has a query of its own (`usePublicTeamsQuery`, read by the library
-	 * the public Teams view mounts), which the tab's count deliberately does not
-	 * observe - its total is already on the library's own line, and a second
-	 * observer here would re-issue the read every time the library pages.
+	 * (`retryOnMount: false` in the org hook - QA round 1, Q1).
 	 *
-	 * The count is the number of rows LOADED: `org_teams.list` returns the whole
-	 * unpaginated roster and reports no total, so no other number exists to show.
+	 * THE ORG COUNT IS THE NUMBER OF ROWS LOADED: `org_teams.list` returns the
+	 * whole unpaginated roster and reports no total, so no other number exists to
+	 * show. THE PUBLIC COUNT IS THE CATALOGUE'S TOTAL, never the rows on screen:
+	 * that listing is paginated, so a page of three rows under a catalogue of nine
+	 * must say nine. `null` is "no number yet" and renders nothing, exactly like
+	 * the other two counts; zero is a real total and renders `0`.
 	 */
 	const teamsQuery = useOrgTeamsQuery({ tenantId: orgScopeId });
+	const publicTeamsQuery = usePublicTeamsQuery({
+		page: 1,
+		perPage: PUBLIC_TEAMS_PER_PAGE,
+		/*
+		 * The public catalogue is a different catalogue from the organization's, and
+		 * nothing visible in an org scope reads its number: in that scope the tab is
+		 * the roster's length. Disabled rather than merely unused, so entering an
+		 * organization does not issue a read it never paints - and re-enabling it on
+		 * the way back does not refetch either, because the cached entry is still
+		 * fresh (`staleTime`).
+		 */
+		enabled: scope === PUBLIC_SCOPE,
+	});
+	const orgTeamsCount =
+		orgScopeId && teamsQuery.isSuccess ? teamsQuery.teams.length : null;
+	const publicTeamsCount = publicTeamsQuery.isSuccess
+		? (publicTeamsQuery.pagination?.totalRecords ?? null)
+		: null;
 	/*
 	 * THE TEAMS COUNT IS SUPPRESSED UNDER THE SAME FILTER AS THE AGENTS ONE (UX
-	 * round 2, U11). It is not a filtered number - `org_teams.list` takes no
-	 * filters - but leaving it up while "Agents" went bare read as an asymmetric
-	 * pair ("Agents   Teams 2") with nothing saying which quiet count meant what.
-	 * Both tabs now say nothing while a search or category is active, and the
-	 * status line carries the filtered figure; the counts come back the moment the
-	 * filter is cleared.
+	 * round 2, U11). It is not a filtered number - neither teams listing takes a
+	 * hub-side filter - but leaving it up while "Agents" went bare read as an
+	 * asymmetric pair ("Agents   Teams 2") with nothing saying which quiet count
+	 * meant what. Both tabs now say nothing while a search or category is active,
+	 * and the status line carries the filtered figure; the counts come back the
+	 * moment the filter is cleared.
 	 */
-	const teamsCount =
-		orgScopeId && teamsQuery.isSuccess && !hasFilters
-			? teamsQuery.teams.length
-			: null;
+	const teamsTabCount = hasFilters
+		? null
+		: scope === PUBLIC_SCOPE
+			? publicTeamsCount
+			: orgTeamsCount;
+
+	/*
+	 * THE SKILLS READ ALSO RIDES SCOPE ENTRY, for the same reason the teams one
+	 * does: the tab carries its count, and a count cannot exist without the read.
+	 * It is enabled exactly when the Skills tab is offered (`hub_skills` present,
+	 * the same capability gate the strip renders on), under the same
+	 * `signedIn`/`accessible` pair the library itself passes - the public
+	 * catalogue is an anonymous read, so a signed-out viewer still gets a number,
+	 * while the organization's catalogue goes through the credential proxy and
+	 * must not be asked for without a credential or a usable scope.
+	 *
+	 * PAGE 1 IS DELIBERATE. `HubSkillsLibrary`'s first page registers the SAME
+	 * query key (scope + page), so React Query serves ONE cache entry to both
+	 * observers and the tab cannot disagree with the list it labels. A later page
+	 * is a separate entry, but `total` comes from `total_records`, which is
+	 * page-independent.
+	 *
+	 * THE COUNT IS THE CATALOGUE'S TOTAL, never the rows on screen: the public
+	 * listing is paginated at twenty rows, so `rows.length` would print "20" for
+	 * any catalogue of twenty or more. The organization's listing is unpaginated,
+	 * so its length IS the total; the hook states both readings in one field.
+	 */
+	const skillsScope: HubSkillScope =
+		scope === PUBLIC_SCOPE
+			? { visibility: "public", tenantId: null, organization: null }
+			: { visibility: "org", tenantId: scope, organization: orgName };
+	const skillsAccessible =
+		scopeIsAvailable && (scope === PUBLIC_SCOPE || orgSurfaceReady(orgState));
+	const skillsQuery = useRemoteSkills(
+		skillsScope,
+		1,
+		skillsAvailable &&
+			skillsAccessible &&
+			(scope === PUBLIC_SCOPE || isAuthenticated),
+	);
+	/*
+	 * `null` is "no number yet" and renders nothing, exactly like the other two
+	 * counts; zero is a real total and renders `0`. The public catalogue held
+	 * exactly zero when this count was added, and a blank tab reads as loading or
+	 * broken rather than as an empty catalogue.
+	 *
+	 * NOT SUPPRESSED UNDER `hasFilters`, unlike the agents and teams counts. Those
+	 * two go quiet because the agents total answers the QUERY and changes under
+	 * the search box (UX round 2, U11); the skill catalogue has no hub-side filter
+	 * at all - the library's own box narrows the rendered rows locally - so a
+	 * filter left active on the Agents view says nothing about this number, and
+	 * blanking a fact this page holds would restore exactly the ambiguity the
+	 * count exists to remove.
+	 */
+	const skillsCount = skillsQuery.isSuccess ? skillsQuery.data.total : null;
 
 	/*
 	 * Publishing INTO an organization needs the admin rank or above (§4.4), so the
@@ -634,10 +734,19 @@ export const AgentHubPage: React.FC = () => {
 	 * layout (D1).
 	 */
 	const scopePhrase = orgScopeId
-		? `shared with ${orgName ?? "this organization"}`
-		: "in the public hub";
-	const countPhrase = (count: number, noun: string) =>
-		`${count} ${noun}${count === 1 ? "" : "s"} ${scopePhrase}`;
+		? t("ui.hub.pages.status.scope.shared_with", {
+				org: orgName ?? t("ui.hub.pages.scope.org_unnamed"),
+			})
+		: t("ui.hub.pages.status.scope.public");
+	/*
+	 * One whole sentence per record kind rather than a noun with an "s" appended:
+	 * the plural rule, and the way a count joins the scope phrase, are the locale's
+	 * to decide, not this file's.
+	 */
+	const countPhrase = (count: number, noun: "agent" | "team") =>
+		noun === "team"
+			? t("ui.hub.pages.status.count.teams", { count, scope: scopePhrase })
+			: t("ui.hub.pages.status.count.agents", { count, scope: scopePhrase });
 	let statusSentence: string;
 	if (view === "skills") {
 		statusSentence = "\u00a0"; // The sibling owns its source/count/loading line.
@@ -649,28 +758,34 @@ export const AgentHubPage: React.FC = () => {
 		 * replaced). A non-breaking space, not "", so the line keeps its box (D1).
 		 */
 		if (!orgScopeId) statusSentence = "\u00a0";
-		else if (teamsQuery.isLoading) statusSentence = "Loading teams…";
-		else if (teamsCount !== null)
-			statusSentence = countPhrase(teamsCount, "team");
+		else if (teamsQuery.isLoading)
+			statusSentence = t("ui.hub.pages.status.loading_teams");
+		else if (teamsTabCount !== null)
+			statusSentence = countPhrase(teamsTabCount, "team");
 		/*
 		 * A refused or failed read still says WHOSE view this is (agent review
 		 * round 1, m5): the line used to go to zero height here and the roster's
 		 * alert landed 17px higher than in every other state.
-		 */ else statusSentence = `Teams ${scopePhrase}`;
+		 */ else
+			statusSentence = t("ui.hub.pages.status.teams_scope", {
+				scope: scopePhrase,
+			});
 	} else if (isColdLoading) {
-		statusSentence = "Loading agents…";
+		statusSentence = t("ui.hub.pages.status.loading_agents");
 	} else if (pagination) {
 		statusSentence = countPhrase(pagination.totalRecords, "agent");
 	} else {
-		statusSentence = `Agents ${scopePhrase}`;
+		statusSentence = t("ui.hub.pages.status.agents_scope", {
+			scope: scopePhrase,
+		});
 	}
 
 	return (
 		/* `gap-8`: `PageHeader` no longer ships its own bottom margin. */
 		<div className="flex h-full flex-col gap-8 p-6">
 			<PageHeader
-				title="Agent hub"
-				subtitle="Discover and download community agents on Radient"
+				title={t("ui.hub.pages.header.title")}
+				subtitle={t("ui.hub.pages.header.subtitle")}
 				icon={Store}
 			/>
 			{/*
@@ -710,7 +825,7 @@ export const AgentHubPage: React.FC = () => {
 						className="max-w-2xl"
 						data-testid="agent-hub-org-unavailable"
 					>
-						<AlertTitle>Organizations are unavailable</AlertTitle>
+						<AlertTitle>{t("ui.hub.pages.orgs_unavailable")}</AlertTitle>
 						<AlertDescription>{orgNotice}</AlertDescription>
 					</Alert>
 				)}
@@ -745,36 +860,42 @@ export const AgentHubPage: React.FC = () => {
 					data-testid="agent-hub-browse-bar"
 				>
 					<Tabs value={view} onValueChange={(next) => setView(next as HubView)}>
-						<TabsList aria-label="Browse the hub by type">
+						<TabsList aria-label={t("ui.hub.pages.browse_aria")}>
 							{(
 								[
 									"agents",
 									"teams",
 									...(skillsAvailable ? ["skills" as const] : []),
 								] as HubView[]
-							).map((value) => (
-								<TabsTrigger
-									key={value}
-									value={value}
-									id={VIEW_TAB_IDS[value]}
-									/* The panel below is one element for both views; only the selected tab claims it. */
-									aria-controls={view === value ? VIEW_PANEL_ID : undefined}
-									data-testid={`agent-hub-view-${value}`}
-								>
-									{value === "agents"
-										? "Agents"
+							).map((value) => {
+								const tabCount =
+									value === "agents"
+										? agentsTabCount
 										: value === "teams"
-											? "Teams"
-											: t("ui.hub.skills.title")}
-									{value !== "skills" &&
-										(value === "agents" ? agentsTabCount : teamsCount) !==
-											null && (
+											? teamsTabCount
+											: skillsCount;
+								return (
+									<TabsTrigger
+										key={value}
+										value={value}
+										id={VIEW_TAB_IDS[value]}
+										/* The panel below is one element for both views; only the selected tab claims it. */
+										aria-controls={view === value ? VIEW_PANEL_ID : undefined}
+										data-testid={`agent-hub-view-${value}`}
+									>
+										{value === "agents"
+											? t("ui.hub.pages.tab.agents")
+											: value === "teams"
+												? t("ui.hub.pages.tab.teams")
+												: t("ui.hub.skills.title")}
+										{tabCount !== null && (
 											<span className="min-w-[2ch] font-normal text-ink-dim tabular-nums">
-												{value === "agents" ? agentsTabCount : teamsCount}
+												{tabCount}
 											</span>
 										)}
-								</TabsTrigger>
-							))}
+									</TabsTrigger>
+								);
+							})}
 						</TabsList>
 					</Tabs>
 					{/*
@@ -803,23 +924,26 @@ export const AgentHubPage: React.FC = () => {
 							 * `aria-hidden` rather than announced twice.
 							 */}
 							<span aria-hidden="true" className="text-meta text-ink-muted">
-								Showing
+								{t("ui.hub.pages.scope_label")}
 							</span>
 							<fieldset
 								className="m-0 min-w-0 border-0 p-0"
 								data-testid="agent-hub-scope"
 							>
-								<legend className="sr-only">Show the hub of</legend>
+								<legend className="sr-only">
+									{t("ui.hub.pages.scope_legend")}
+								</legend>
 								<div className="flex flex-wrap gap-0.5 rounded-md bg-sunken p-0.5">
 									{[
 										{
 											value: PUBLIC_SCOPE,
-											label: "Public hub",
+											label: t("ui.hub.pages.scope.public"),
 											Icon: Globe,
 										},
 										...selectableOrgs.map((org) => ({
 											value: org.tenant_id,
-											label: org.tenant_name || "Organization",
+											label:
+												org.tenant_name || t("ui.hub.pages.scope.org_label"),
 											Icon: Building2,
 										})),
 									].map(({ value, label, Icon }) => (
@@ -937,8 +1061,8 @@ export const AgentHubPage: React.FC = () => {
 											 * right already says which field is searched, and a placeholder
 											 * derived from it was the same sentence twice.
 											 */
-											placeholder="Search agents"
-											aria-label="Search agents"
+											placeholder={t("ui.hub.pages.search.placeholder")}
+											aria-label={t("ui.hub.pages.search.aria")}
 											className="h-8 min-w-0 flex-1 border-0 bg-transparent outline-none"
 											data-testid="agent-hub-search"
 										/>
@@ -954,7 +1078,7 @@ export const AgentHubPage: React.FC = () => {
 												 * that. `w-auto` because the trigger's own variant is full-width.
 												 */
 												className="w-auto shrink-0 border-y-0 border-l border-hairline border-r-0 bg-transparent pl-2 outline-none"
-												aria-label="Search in"
+												aria-label={t("ui.hub.pages.search.scope_aria")}
 												data-testid="agent-hub-search-scope"
 											>
 												<SelectValue />
@@ -962,7 +1086,7 @@ export const AgentHubPage: React.FC = () => {
 											<SelectContent>
 												{SEARCH_SCOPES.map((scope) => (
 													<SelectItem key={scope.value} value={scope.value}>
-														{scope.label}
+														{t(scope.label)}
 													</SelectItem>
 												))}
 											</SelectContent>
@@ -971,7 +1095,7 @@ export const AgentHubPage: React.FC = () => {
 									<Select value={sortValue} onValueChange={setSortValue}>
 										<SelectTrigger
 											className="w-48"
-											aria-label="Sort agents"
+											aria-label={t("ui.hub.pages.sort.aria")}
 											data-testid="agent-hub-sort"
 										>
 											<SelectValue />
@@ -979,7 +1103,7 @@ export const AgentHubPage: React.FC = () => {
 										<SelectContent>
 											{SORT_OPTIONS.map((option) => (
 												<SelectItem key={option.value} value={option.value}>
-													{option.label}
+													{t(option.label)}
 												</SelectItem>
 											))}
 										</SelectContent>
@@ -1023,7 +1147,9 @@ export const AgentHubPage: React.FC = () => {
 								{view === "agents" && isRefreshing ? (
 									<>
 										{" "}
-										<span data-testid="agent-hub-updating">Updating…</span>
+										<span data-testid="agent-hub-updating">
+											{t("ui.hub.pages.updating")}
+										</span>
 									</>
 								) : null}
 							</p>
@@ -1048,10 +1174,7 @@ export const AgentHubPage: React.FC = () => {
 											className="mb-3 flex flex-wrap items-center gap-2 text-meta text-warning"
 											data-testid="agent-hub-status-unknown"
 										>
-											<span>
-												Your likes and favourites could not be read, so no card
-												shows a viewer state.
-											</span>
+											<span>{t("ui.hub.pages.viewer_unknown")}</span>
 											<Button
 												variant="ghost"
 												size="sm"
@@ -1059,7 +1182,9 @@ export const AgentHubPage: React.FC = () => {
 												disabled={viewerStateIsFetching}
 												aria-busy={viewerStateIsFetching}
 											>
-												{viewerStateIsFetching ? "Trying…" : "Try again"}
+												{viewerStateIsFetching
+													? t("ui.common.actions.retrying")
+													: t("ui.common.actions.retry_again")}
 											</Button>
 										</output>
 									)}
@@ -1376,7 +1501,7 @@ export const AgentHubPage: React.FC = () => {
 																variant="secondary"
 																onClick={() => navigate("/agents")}
 															>
-																Publish an agent
+																{t("ui.hub.pages.publish")}
 															</Button>
 														)}
 													</div>

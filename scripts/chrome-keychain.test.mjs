@@ -296,6 +296,12 @@ const CHROME_LAUNCH_SITES = [
 		"measures the backend settings region's height, row pitch, full-width controls and focusables from the live DOM; its first spawn is the vite server that serves the page",
 	),
 	guarded(
+		"scripts/import-settings-geometry.mjs",
+		"spawn",
+		2,
+		"measures the Import conversations surface's three reported defects - the app shell root's scrollTop across an automatic preview build, the selected row's state, and the interaction count to an enabled Import - across the arrival, selected, built, pending, failure, completion, glass, narrow and light states; its first spawn is the vite server that serves the page",
+	),
+	guarded(
 		"scripts/chat-alignment-geometry.mjs",
 		"spawn",
 		1,
@@ -414,6 +420,12 @@ const CHROME_LAUNCH_SITES = [
 		"spawn",
 		1,
 		"plays the composer cluster's gestures with real key events - the draft-safe recall walk, the `$` list's open/accept/send, and the qualified /theme submit - and photographs what the composer dispatched",
+	),
+	guarded(
+		"scripts/selection-toolbar-flicker-proof.mjs",
+		"spawn",
+		1,
+		"records the selection-toolbar state machine frame by frame - slow drag, plain click, hover - in one private headless Chrome, for the before/after pair on the flicker fix",
 	),
 	guarded(
 		"scripts/usage-real-evidence.mjs",
@@ -552,6 +564,12 @@ const CHROME_LAUNCH_SITES = [
 		"spawn",
 		1,
 		"runs the supplement mount's escape attempts - script execution, parent/top DOM, cookies, storage, bridge, navigation, popup, form, download, blob self-nav, clipboard, fullscreen, fetch/xhr/beacon/websocket/img/import/file - against the app's own sandbox from one private headless Chrome, its target server and profile its own and everything reaped by exact pid",
+	),
+	guarded(
+		"docs/evidence/library-tab/harness/measure-claims.mjs",
+		"spawn",
+		1,
+		"measures the Library preview states' claims from the live DOM - each case navigating the real Storybook story, waiting for its hook and driving the gesture through CDP pointer and key events - one private headless Chrome for the whole run, its profile under the system temp dir and its process group reaped by exact pid (registered by this PR's review remediation: an unlisted launch site fails Desktop Tests)",
 	),
 ];
 

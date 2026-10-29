@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "live-update-i18n-es-15d3021f",
+  "namespace": "ui.chat.live_updates",
+  "locale": "es",
+  "keys_audited": 3,
+  "status": "passed",
+  "sha256": {
+    "es": "b63039ca383c37cf3944ea8f39c16d084262adc63b6a95d869c9657d6b8bbd48",
+    "en": "a51ecfaed866a60d91b2e31493d44097e12d9978624d942e54f9ecdd87827760"
+  },
+  "scope": {
+    "base": "ac74fae7ae4aa9baead432ee901652952ca9a2a7",
+    "head": "d98b597f150a74ed34bfcdefa641fc8ffe7571e1",
+    "kind": "i18n delta audit, 3 new keys",
+    "namespace": "ui.chat.live_updates",
+    "note": "Read from disk at head d98b597f15; the ui.chat.live_updates files are byte-identical to their introduction in f602ca8794 (git diff HEAD is empty). Core i18n/glossary.md and the locale style guide consulted; no rendered-frame or native-speaker pass claimed. The English file on disk reads 'Live updates are paused, so this conversation may be out of date.' — the audit used those bytes, not the brief's 'This view may be out of date' variant."
+  },
+  "findings": [],
+  "observations": [
+    "Clean: all 3 keys accurate, idiomatic and in the infinitive action register; ellipsis preserved; no placeholders.",
+    "“en directo” was checked against “en vivo”; it is standard Spanish rather than a defect. The paused sentence is 100 characters vs 65 English (+54%), above the guide's 15-25% expectation — the banner's text cell wraps (flex-1 min-w-0) and the button is shrink-0, so flag es for a rendered check at the narrowest pane width; the button label is 27 characters vs 19 English; flag both for the same rendered check, no copy change requested."
+  ],
+  "independence": "Did not author or translate these strings; read the catalogue bytes on disk and audited against the English source, the core glossary and the locale style guide.",
+  "date": "2026-10-21"
+}

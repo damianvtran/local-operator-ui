@@ -49,10 +49,20 @@ export const GuardUnavailable: Story = {
 };
 export const Refused: Story = {
 	args: {
-		canEnable: false,
+		canEnable: true,
 		refusal: {
 			code: "messaging_unavailable",
 			message: "Agent messages are unavailable. Try again later.",
+		},
+	},
+};
+export const LocalFailure: Story = {
+	args: {
+		canEnable: false,
+		confirmed: true,
+		refusal: {
+			code: "local_setup_failed",
+			message: "Setup on this machine did not finish.",
 		},
 	},
 };

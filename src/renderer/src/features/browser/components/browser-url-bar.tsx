@@ -1,11 +1,5 @@
 import { Spinner } from "@shared/components/common/spinner";
-import {
-	Badge,
-	Button,
-	Input,
-	Tooltip,
-	countLabel,
-} from "@shared/components/ui";
+import { Button, Input, Tooltip } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { chordCaption } from "@shared/keymap/keymap-chord";
@@ -15,176 +9,207 @@ import {
 	ArrowLeft,
 	ArrowRight,
 	File,
-	FolderOpen,
 	Globe,
 	Home,
 	Lock,
-	LockOpen,
-	Printer,
+	LockKeyholeOpen,
 	RotateCw,
-	Search,
-	ShieldCheck,
 	X,
 } from "lucide-react";
-import type { FC, KeyboardEvent, Ref } from "react";
-import { useState } from "react";
+import type {
+	ChangeEvent,
+	CompositionEvent,
+	FC,
+	FocusEvent,
+	KeyboardEvent,
+	ReactNode,
+	Ref,
+	SyntheticEvent,
+} from "react";
+import {
+	useCallback,
+	useEffect,
+	useId,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import type {
+	AddressHistoryRequest,
+	AddressHistoryResponse,
+} from "../../../../../shared/browser-address-history";
+import { useAddressAutocomplete } from "../hooks/use-address-autocomplete";
 import type { LoadFailureView } from "../hooks/use-browser-chrome";
+import {
+	type AddressRow,
+	type AddressSearchRow,
+	type AddressTypedRow,
+	type InlineCompletion,
+	addressIntent,
+	canInlineComplete,
+	defaultActiveIndex,
+	displayValue,
+	embedValue,
+	isGeneratedSuffixSelected,
+	isolateBidi,
+	moveActive,
+	rowTarget,
+	searchUrl,
+	suggestAddresses,
+	usableRawAddress,
+} from "../model/address-autocomplete";
 import { isSecurityLoadFailure, siteInfoForUrl } from "../model/site-info";
+import { useAddressOverlayMirror } from "../overlay/use-address-overlay-mirror";
+
+const FILE_SCHEME = /^file:/i;
 
 /**
- * The URL bar and the navigation controls. Design: docs/design/ui-browser-tab.md
- * 6.1 (the controls, and the typed-URL asymmetry), 11.2 (branding roles).
+ * A press inside a portalled overlay is chrome interacting with chrome, not a
+ * press into the page behind the row. The selector is the established one for
+ * "this node is not where its trigger lives" (see `ask-drawer` and
+ * `use-inline-edit`); the address row's own overflow menu and every tooltip
+ * render through it.
+ */
+function isPortalledChromeTarget(target: Node): boolean {
+	const element = target instanceof Element ? target : target.parentElement;
+	return (
+		element !== null &&
+		element.closest("[data-radix-popper-content-wrapper]") !== null
+	);
+}
+
+/**
+ * The browser's address row: ONE placement, permanently in flow between the tab
+ * strip and the page (S5, LOH-13).
  *
- * THE DISPLAY RULE, which is the whole of §6.1's URL-bar paragraph: the field
- * shows the ACTIVE TAB'S LIVE URL, updated from navigation events, "never from
- * what was requested". So a redirect to a login page shows the login page, and a
- * failed navigation shows where the tab actually is rather than where it was
- * asked to go. The host publishes that live value (`chromeState().url`), and this
- * component never derives it from the last thing it sent.
+ * The row is 37px (4px pad + 28px controls + 4px pad + the 1px rule) and holds
+ * Back, Forward, Reload/Stop, Home, the address field with its site mark, the
+ * fixed 28px Approvals control and the overflow menu. The suggestion rows are
+ * NOT here — they are the native child anchored to this row — so this component
+ * owns the input, DOM focus, IME, undo, the keys and the accessible combobox,
+ * exactly as S3 established.
  *
- * THE EDITING RULE, and why it is not optional: an incoming live URL must never
- * overwrite what the user is typing. A field that reverted mid-keystroke would
- * make typing a URL impossible on any page with a timer or a redirect. So the
- * draft takes over while the field is dirty, and returns to the live URL on
- * commit, on Escape, and on blur.
+ * THERE IS NO SECOND PLACEMENT ANY MORE. The S4b popout and its Tier 2 in-flow
+ * fallback both existed because the field was only mounted while raised; with a
+ * permanent field there is nothing to raise, nothing to fall back to, and one
+ * code path instead of two views of the same row.
  *
- * THE TYPED-URL ASYMMETRY, stated in the UI because it is a real property of the
- * gate rather than a bug (§6.1, §9): the user typing their own URL is the
- * consent and is not gated, while the agent's navigation to the same origin still
- * prompts. The strip's consent bar says so in words when it appears, so a user
- * who can reach a site the agent cannot does not read it as a broken agent.
- *
- * Non-`http(s)` input is refused by the HOST, not by a second check here
- * (design 6.1's "mirroring `_BROWSER_SCHEMES`"): one implementation of the
- * scheme rule, and its refusal is what the band shows.
- *
- * THE APPROVALS CONTROL, and what it replaced (browser-approval-ux.md 4.3, 5).
- * The old control was a bare `Sites` label carrying a count of records with
- * `scope !== "deny"` — the number of things already GRANTED, which says nothing
- * about what is WAITING and is the wrong number to make a demand of. It becomes
- * an icon plus the label `Approvals`, `variant="outline" size="sm"` unchanged
- * (the "outline control" contrast row already covers the button itself), and the
- * number it carries is the live request count, drawn as the numbered badge of §5.
- * The approved count moves into the dock's header ("4 sites approved"), which is
- * where a fact that is not a demand belongs.
- *
- * The badge is a SIBLING rather than a child of the button, so the control's own
- * label is untouched and the number sits in the corner the operator asked for
- * ("at the corner of the button"). `aria-label` carries the same number as words,
- * so a screen reader hears "Approvals, 3 waiting" rather than a stranded digit.
+ * THE DISPLAY RULE: the field shows the tab's LIVE url, never the requested one.
+ * THE EDITING RULE: an incoming live url never overwrites a draft.
  */
 
+/**
+ * A request from the surface to move focus into the row.
+ *
+ * The row is always mounted now, so "raise" is not a mount and the old
+ * mount-only selection effect has nothing to run on. Cmd+L, a printable seed
+ * and the start page's mount all emit a NONCE, and the row applies the request
+ * in a layout effect: focus, then either seed the draft (caret at end) or
+ * select the live URL. A nonce rather than a boolean so a second Cmd+L while
+ * the row already has focus still re-selects.
+ */
+export interface AddressFocusRequest {
+	nonce: number;
+	seed?: string;
+	selectAll: boolean;
+}
+
+/**
+ * Why the row gave an edit up without navigating.
+ *
+ * `escape` (Escape) and `cancel` (Enter on an untouched seed) are the reader
+ * leaving the field: the surface requests page focus whenever one is presented,
+ * regardless of where the request that raised the field came from, and falls
+ * back to the chord root on the start page. The row cannot know whether the tab
+ * has a page, so it names the intent and the surface decides.
+ */
+export type AddressDismissIntent = "escape" | "cancel";
+
 export interface BrowserUrlBarProps {
-	/** Chrome focus only; never a window activation. */
+	/** The row root, for the surface's anchor measurement (the native suggestion
+	 * child hangs from this box). Its own element rather than a wrapper so the
+	 * "exactly one element between strip and page" predicate is literally true. */
+	rootRef?: Ref<HTMLDivElement>;
 	inputRef?: Ref<HTMLInputElement>;
-	pageZoom?: number;
-	onFind?: () => void;
-	/**
-	 * Home (LOH-13): return the active tab to the browser's start state.
-	 * Optional like `onFind` so a host without the intent (a story, a test
-	 * harness) renders no control rather than a dead one; the real surface
-	 * always passes it. It carries no URL — main owns the start state.
-	 */
-	onHome?: () => void;
-	/**
-	 * The active tab's recorded load failure, when its last navigation failed
-	 * (U1). The site-info register reads it for exactly one purpose: an https
-	 * page whose own load failed - above all on a certificate error - must not
-	 * keep the closed lock. Optional so a host without the projection (a
-	 * story, a harness) renders the scheme register as before.
-	 */
-	loadFailure?: LoadFailureView | null;
-	onResetZoom?: () => void;
-	/** Print the active page (LOH-13 slice C). A toolbar button beside Find
-	 * rather than a new menu: the url bar is where this app's other
-	 * page-scoped human controls (find, zoom reset) already live, and the
-	 * frozen brief invents no print menu. Optional like `onFind` so a host
-	 * without the intent renders no control rather than a dead one. The
-	 * action itself is main's `webContents.print` with the OS dialog as the
-	 * consent (`page-controls.ts`). */
-	onPrint?: () => void;
-	/** The active tab. A typed draft belongs to ONE tab: see `draft` below. */
 	tabId: number | null;
 	url: string;
-	/** Where the user asked to go, while the tab has not committed it. Shown as the
-	 * placeholder and never as the value: see the comment on `askedFor` below. */
 	pendingUrl: string | null;
 	loading: boolean;
 	canGoBack: boolean;
 	canGoForward: boolean;
 	disabled: boolean;
-	onNavigate: (url: string) => void;
+	/** Narrow-pane fold tiers (design §8): below 360px Home moves into the
+	 * overflow menu, below 300px Forward does too. Back and Reload/Stop never
+	 * fold — they are the two controls a stuck page needs. */
+	hideForward?: boolean;
+	hideHome?: boolean;
+	onNavigate: (url: string, expectedTabId?: number) => void;
 	onBack: () => void;
 	onForward: () => void;
 	onReload: () => void;
 	onStop: () => void;
-	onOpenApprovals: () => void;
-	/** How many requests are waiting for an answer. Zero draws no badge at all —
-	 * the honest rendering of "nothing is being asked" (§3.3). */
-	waitingCount: number;
-	/** The Approvals control itself, so the dock can return focus to it when Escape
-	 * closes the dock. A ref rather than a callback because the surface owns both
-	 * ends of that exchange. */
-	triggerRef?: Ref<HTMLButtonElement>;
-	/**
-	 * The directory the host writes downloads into, or null when it has never
-	 * written one.
-	 *
-	 * WHY THE FOLDER IS REACHABLE FROM HERE AT ALL (review round 1, U2, D2). The
-	 * strip's row is a NOTIFICATION: it is dismissed by a press and it retires by
-	 * age (U7), and both of those are right for a line about what just happened —
-	 * but until this control existed, the row was also the ONLY route to the files,
-	 * so dismissing it made the user's download unreachable from inside the app.
-	 * The row carries the path now, and this is the durable half: one control that
-	 * opens the same directory main opens, for as long as the host has written
-	 * anything, whether or not any row is on screen.
-	 *
-	 * It renders ONLY when a directory exists: a control that opens a folder a build
-	 * cannot have written is a promise the app cannot keep, and the honest degrade
-	 * for a host that predates the feature is no control at all.
-	 */
-	downloadsDir: string | null;
-	/** The newest save into that directory, and how many have been saved in this app
-	 * run (review round 2, U12; the count's premise corrected in round 3, M-1). Rides
-	 * the same projection as `downloadsDir` so the control cannot describe a save the
-	 * row does not have; `null` when nothing has been saved yet, which leaves the label
-	 * as it was. */
-	downloadsRecent?: { name: string; count: number } | null;
-	/** Open that directory. Takes no path — main decides which one. */
-	onOpenDownloads: () => void;
+	onHome?: () => void;
+	loadFailure?: LoadFailureView | null;
+	/** The popout's ⋯ menu, rendered after the field. */
+	menu?: ReactNode;
+	/** `popout` mirrors rows into the native child; `suspend` is Tier 1, where
+	 * the field works and the list does not. */
+	overlayMode: "popout" | "suspend";
+	/** The strip's measured band for the projection. */
+	anchor: { x: number; width: number } | null;
+	/** A focus/seed request from the surface; see `AddressFocusRequest`. */
+	focusRequest?: AddressFocusRequest | null;
+	/** The active tab is the start page: Reload and Home act on nothing there, so
+	 * they are disabled rather than offering a press with no visible effect. */
+	startPage?: boolean;
+	/** The field's placeholder when empty (the start page's `example.com`). */
+	placeholder?: string;
+	/** The row is too narrow for the hint sentence to sit beside typed text: keep
+	 * it as the field's description only (round 3, U18). */
+	narrow?: boolean;
+	/** The tab is a browser-owned state (start page, load failure). No native page
+	 * competes for the pixels there - the start page is DOM and main hides the
+	 * page view - so the suggestion list paints as a DOM listbox anchored under the
+	 * field instead of a native child (which main cannot show while the page is not
+	 * presented). It is the SAME rows, active descendant and commit path as the
+	 * native mirror; it is never "unavailable". */
+	ownState?: boolean;
+	/** Why main's address overlay is not in `popout` mode (`addressOverlay.reason`
+	 * from the projection): `platform` is a platform without the native list
+	 * (Windows/Linux, Tier 1), anything else a child that failed or a controller
+	 * that was disposed. Only read while `overlayMode` is `suspend`. */
+	overlayReason?: string | null;
+	/** Escape or Enter on an untouched draft: abandon the draft and hand focus
+	 * back. The intent is escape or cancel; the surface requests page focus for
+	 * both whenever a page is presented, and falls back to the chord root on the
+	 * start page / own state. */
+	onDismiss?: (intent: AddressDismissIntent) => void;
+	/** A commit happened: return focus per the surface's origin rule. */
+	onCommitted?: () => void;
+	addressHistory?: (
+		request: AddressHistoryRequest,
+	) => Promise<AddressHistoryResponse>;
+	onStateChanged?: (listener: () => void) => () => void;
 }
 
-/** What the durable folder control says it opens (review round 2, U12).
- *
- * WHY IT IS A SENTENCE AND NOT A LIST: §16.4's rule is against a per-file list with
- * per-file actions, and this control has one action — open the folder. Naming the
- * newest file and how many have been saved in this app run is what turns an icon
- * into an answer to "did anything arrive while I was reading Chat", which is the
- * state U12 is about. The count is the host's own SESSION total rather than a window
- * over its note buffer, which is why the wording can promise "this session" — the
- * first draft derived it from the notes and the summary vanished after four later
- * decisions, which is exactly when a user would be looking for it. */
-function downloadsLabel(
-	recent: { name: string; count: number } | null,
-): string {
-	if (!recent)
-		return t("ui.browser.browser_file_transfer_row.open_downloads_folder");
-	return recent.count > 1
-		? t("ui.browser.browser_url_bar.newest_download", {
-				name: recent.name,
-				count: recent.count,
-			})
-		: t("ui.browser.browser_url_bar.latest_download", { name: recent.name });
-}
+/** Top-level because a function-scope regex literal is rebuilt on every call;
+ * Biome's performance rule is about exactly that. */
+const HTTP_SCHEME = /^https?:\/\//;
+const TRAILING_SLASH = /\/$/;
 
-/** `about:blank` is what a new tab starts on and is what a browser shows as an
- * EMPTY bar. Rendering the literal string would make every new tab look like it
- * had navigated somewhere. */
+/** The display spelling of a URL: the scheme and a bare trailing slash go. */
 export function displayUrl(url: string): string {
-	return url === "about:blank" ? "" : url;
+	if (!url || url === "about:blank") {
+		// A blank tab has no address to show; the row's placeholder carries the start
+		// page's hint (one field since S5).
+		return "";
+	}
+	return url.replace(HTTP_SCHEME, "").replace(TRAILING_SLASH, "");
 }
 
 export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
+	rootRef,
 	inputRef,
 	tabId,
 	url,
@@ -193,42 +218,72 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	canGoBack,
 	canGoForward,
 	disabled,
+	hideForward = false,
+	hideHome = false,
+	startPage = false,
 	onNavigate,
 	onBack,
 	onForward,
 	onReload,
 	onStop,
-	onOpenApprovals,
-	waitingCount,
-	triggerRef,
-	downloadsDir,
-	downloadsRecent,
-	onOpenDownloads,
-	pageZoom = 1,
-	onFind,
-	onPrint,
 	onHome,
 	loadFailure = null,
-	onResetZoom,
+	menu,
+	overlayMode,
+	anchor,
+	focusRequest = null,
+	placeholder,
+	narrow = false,
+	ownState = false,
+	overlayReason = null,
+	onDismiss,
+	onCommitted,
+	addressHistory,
+	onStateChanged,
 }) => {
-	/**
-	 * THE DRAFT BELONGS TO ITS TAB (UX r1 U1). The keyboard can change the active
-	 * tab (Cmd+2, Ctrl+Tab, Cmd+W, Cmd+T, Cmd+Shift+T) while this field still has
-	 * focus, so a bare string would keep showing tab A's text over tab B and the
-	 * blur that follows would commit it INTO tab B, navigating it away. Pairing the
-	 * text with the tab it was typed for makes a tab change discard the draft by
-	 * construction: no effect, no reset call, and no state in which the field says
-	 * one tab while the host is on another. It also matches Chrome and Safari,
-	 * where an omnibox draft is per-tab. Precisely: a switch HIDES the draft, it
-	 * does not erase it, so returning to that tab while this field still has
-	 * focus shows the old text again (and blur commits it there, to the tab it
-	 * was typed for). It is only ever lost by an edit, Enter, Escape or blur.
-	 */
 	useI18nLocale();
+	/**
+	 * The row's own box. `rootRef` is the surface's anchor handle and the same
+	 * node; keeping an internal ref means the outside-press rule still knows where
+	 * the row is when the component renders without one (stories, the DOM tests).
+	 */
+	const rowEl = useRef<HTMLDivElement | null>(null);
+	/** Stable across renders: a callback ref with a new identity detaches and
+	 * re-attaches on every render, which also re-runs the surface's anchor
+	 * measurement. */
+	const setRowEl = useCallback(
+		(node: HTMLDivElement | null): void => {
+			rowEl.current = node;
+			if (typeof rootRef === "function") rootRef(node);
+			else if (rootRef)
+				(rootRef as { current: HTMLDivElement | null }).current = node;
+		},
+		[rootRef],
+	);
+	/**
+	 * A pane narrower than main's list floor cannot host a usable child, so main
+	 * refuses the projection and the field is all there is. Without this the
+	 * mirror re-projected the same refused frame about sixty times a second and
+	 * never told the user why (nit round 1, MINOR-5): the refusal is now a state,
+	 * and the field announces the field-only answer. ANY anchor width change
+	 * clears it, because that is the one fact that can make the child usable
+	 * again.
+	 */
+	const [narrowAnchor, setNarrowAnchor] = useState(false);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the width is the trigger; reading it is the point.
+	useEffect(() => {
+		setNarrowAnchor(false);
+	}, [anchor?.width]);
+	const mode: "popout" | "suspend" =
+		narrowAnchor || overlayMode !== "popout" ? "suspend" : "popout";
 	const [typed, setTyped] = useState<{
 		tabId: number | null;
 		text: string;
 	} | null>(null);
+	/** Whether the current draft came from the user at all. Focus seeds the
+	 * field with the live URL; that seed is not a query (UX U1), and only a
+	 * `change`/composition/undo can make it one. */
+	const [edited, setEdited] = useState(false);
 	const draft = typed && typed.tabId === tabId ? typed.text : null;
 	const setDraft = (
 		next: string | null | ((current: string | null) => string | null),
@@ -236,6 +291,84 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		const resolved = typeof next === "function" ? next(draft) : next;
 		setTyped(resolved === null ? null : { tabId, text: resolved });
 	};
+
+	/*
+	 * Address suggestions are a snapshot for THIS focused edit. `addressHistory`
+	 * is absent outside Electron (a story, a static render), and the field then
+	 * behaves exactly as it did before this feature: no list, no dead control.
+	 */
+	/**
+	 * The list exists only where there is something that can paint it.
+	 *
+	 * `suspend` is the Tier 1 child-unavailable state (the field works, the list
+	 * does not; Windows and Linux stay here). It must not fetch history it has no
+	 * surface for, because a query with no presenter is work whose result nobody
+	 * sees.
+	 *
+	 * OWN-STATE HAS A PRESENTER OF ITS OWN: the DOM listbox below. It does not
+	 * depend on the native child, so it works in `suspend` too (a Windows new tab
+	 * gets its list even though a Windows page does not).
+	 */
+	const domList = ownState && addressHistory !== undefined;
+	const suggestionsEnabled =
+		addressHistory !== undefined && (domList || mode === "popout");
+	const inputEl = useRef<HTMLInputElement | null>(null);
+
+	/**
+	 * False once THIS popout/bar is unmounting. React removes the focused input
+	 * during an unmount, which fires a blur; running the blur handler then would
+	 * schedule state on a component that no longer exists (and leaves an `act()`
+	 * waiting for a render that can never happen). The popout closing is the
+	 * surface's decision, not a blur event's.
+	 */
+	const activeRef = useRef(true);
+	useLayoutEffect(() => {
+		activeRef.current = true;
+		return () => {
+			activeRef.current = false;
+		};
+	}, []);
+	const setInputEl = (node: HTMLInputElement | null): void => {
+		inputEl.current = node;
+		if (typeof inputRef === "function") inputRef(node);
+		else if (inputRef)
+			(inputRef as { current: HTMLInputElement | null }).current = node;
+	};
+	const [completion, setCompletion] = useState<InlineCompletion | null>(null);
+	const completionRef = useRef<InlineCompletion | null>(null);
+	completionRef.current = completion;
+	const [activeIndex, setActiveIndex] = useState(-1);
+	/** The row the user explicitly arrowed to, and the query it belonged to.
+	 * A late answer for the SAME query keeps that row selected when it is still
+	 * present; a new query (or a vanished row) falls back to the default. */
+	const explicitSelection = useRef<{ query: string; key: string } | null>(null);
+	/** The destination an accepted suffix came from. The field's text after
+	 * acceptance is the display spelling (no scheme), which is not enough to
+	 * navigate: Enter must use the canonical HTTP(S) target the suggestion was
+	 * built from, or a typed `127.0.0.1:8080` gets HTTPS-upgraded and fails. */
+	const [acceptedTarget, setAcceptedTarget] = useState<{
+		tabId: number | null;
+		raw: string;
+		targetUrl: string;
+	} | null>(null);
+	const [dismissedForText, setDismissedForText] = useState<string | null>(null);
+	const [composing, setComposing] = useState(false);
+	const composingRef = useRef(false);
+	const [caretRequest, setCaretRequest] = useState(0);
+	const [announcement, setAnnouncement] = useState("");
+	const listId = useId();
+	const listLabelId = `${listId}-label`;
+	const noticeId = `${listId}-notice`;
+	const siteDescId = `${listId}-site`;
+	const unavailableId = `${listId}-unavailable`;
+	const optionId = (index: number): string => `${listId}-option-${index}`;
+	/** User edits only. Accepting a generated suffix is deliberately NOT an edit
+	 * here: undo must return the text the user typed, not the model's proposal. */
+	const undoRef = useRef<{ stack: string[]; redo: string[] }>({
+		stack: [],
+		redo: [],
+	});
+	const wasListOpen = useRef(false);
 	/*
 	 * The chord captions (issue #675's round-1 review, U5): the product caps
 	 * every other chord on the control that owns it (`sidebarToggleCap`,
@@ -247,8 +380,6 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 	// Glyph AND `aria-keyshortcuts` from the same chord id (design D-PR5).
 	const reload = chordCaption("primary+r", isMac ? "mac" : "linux");
-	const find = chordCaption("primary+f", isMac ? "mac" : "linux");
-	const resetZoom = chordCaption("primary+0", isMac ? "mac" : "linux");
 	const address = chordCaption("primary+l", isMac ? "mac" : "linux");
 	const backChord = navigationShortcutLabel("back", isMac);
 	const forwardChord = navigationShortcutLabel("forward", isMac);
@@ -297,7 +428,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		siteInfo.kind === "secure"
 			? Lock
 			: siteInfo.kind === "not-secure" || siteInfo.kind === "unverified"
-				? LockOpen
+				? LockKeyholeOpen
 				: siteInfo.kind === "file"
 					? File
 					: Globe;
@@ -313,42 +444,1083 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	// plus a string so there is no state where the flag says editing and the value
 	// is stale — and so a live URL that changes while the field is pristine needs no
 	// effect to be picked up: the live value IS the value.
-	const value = draft ?? live;
+	//
+	// THE RAW/COMPLETION SPLIT is what keeps a generated suffix from ever being
+	// mistaken for typed text: the draft is user-authored, the completion is a
+	// separate overlay the field renders into the real input and selects. Every
+	// commit path reads `targetUrl` from the completion, never the displayed value.
+	const raw = draft ?? live;
+	/*
+	 * AN UNTOUCHED DRAFT IS NOT A QUERY (UX U1). The popout mounts with the live
+	 * URL as its draft and fully selected. That text is the page's address, not
+	 * something the user typed into the suggestion field: treating it as a query
+	 * put `Search DuckDuckGo for "intranet/wiki"` first and selected, so Cmd+L
+	 * then Enter sent an internal hostname to a third party. The empty query is
+	 * the top-history list; Enter on this state dismisses, and only text the
+	 * user edited can become a search.
+	 */
+	const untouchedDraft = draft !== null && !edited;
+	// Only user-authored text is a query. A Cmd+L field seeded with the live URL
+	// has not been typed into, and a printable-character seed HAS (that is how
+	// the popout opened).
+	const query = edited ? raw : "";
+	// The hook needs `query`, and it must stay above every conditional return:
+	// the order of hooks is the component's identity.
+	const autocomplete = useAddressAutocomplete({
+		tabId,
+		query,
+		requestHistory:
+			addressHistory ??
+			(() =>
+				Promise.reject(
+					new Error(t("ui.browser.errors.address_history_unavailable")),
+				)),
+		subscribe: onStateChanged ?? (() => () => {}),
+		enabled: suggestionsEnabled,
+	});
+	const currentCompletion =
+		completion && completion.raw === raw ? completion : null;
+	const value = currentCompletion ? currentCompletion.text : raw;
 	const editing = draft !== null;
+	/**
+	 * WHY THE LIST IS NOT THERE, or null when it is (or simply has nothing to
+	 * say). "Unavailable" is only ever said for a REAL failure, and each cause names
+	 * itself and what the user can do: one sentence for every cause sent the
+	 * operator hunting for a history fault on a plain new tab (the hint used to read
+	 * "unavailable" for any browser-owned state).
+	 *   - `platform`: this platform has no native list (Tier 1; Windows/Linux);
+	 *   - `restart`: the native child failed or was disposed (main's `reason`);
+	 *   - `narrow`: the pane is below the list's width floor.
+	 * Own-state never gets one of these: its DOM list needs no native child. A
+	 * rejected history READ is a separate fact (`autocomplete.error`) that the list
+	 * itself says - the DOM list, or the native child's notice - so it is not a
+	 * hint pill as well.
+	 */
+	// A NULL reason with `suspend` is the moment before main's first projection
+	// reaches the surface (it reads `popout` only once it has the state): it names
+	// no cause, so it says nothing rather than blaming the platform.
+	const standingKind: "platform" | "restart" | "narrow" | null = domList
+		? null
+		: overlayMode !== "popout"
+			? overlayReason === null
+				? null
+				: overlayReason === "platform"
+					? "platform"
+					: "restart"
+			: narrowAnchor
+				? "narrow"
+				: null;
+	const standingText =
+		standingKind === "platform"
+			? t("ui.browser.browser_url_bar.address_suggestions_unavailable_platform")
+			: standingKind === "restart"
+				? t(
+						"ui.browser.browser_url_bar.address_suggestions_unavailable_restart",
+					)
+				: standingKind === "narrow"
+					? t(
+							"ui.browser.browser_url_bar.address_suggestions_unavailable_narrow",
+						)
+					: null;
+	/** The sentence rides the field at rest (a standing fact of this platform or a
+	 * failed child) and once the user types (their text is what has no list). */
+	const hintShown = standingText !== null && (!editing || raw.length > 0); /*
+	 * THE ONE LIVE PATH FOR THE SENTENCE (round-4 Q4-2). The hint itself is a
+	 * description, not a live region: a region that also carried text on mount
+	 * would speak twice in suspend, where `announcement` already exists and was
+	 * measured saying "1 suggestion available" while the field was actually
+	 * unavailable. Route the sentence through that existing polite region, which
+	 * announces the transition once and is silent otherwise.
+	 */
+	useEffect(() => {
+		if (!hintShown || standingText === null) return;
+		setAnnouncement(standingText);
+	}, [hintShown, standingText]);
+	const hintPainted = hintShown && !narrow;
+	const suggestions = useMemo(
+		() =>
+			suggestAddresses(autocomplete.entries, query, {
+				inlineShown: currentCompletion !== null,
+				offerTyped: editing,
+			}),
+		[autocomplete.entries, query, currentCompletion, editing],
+	);
+	/** The header must be true for the rows it sits over: a search row or an
+	 * open-tab row under "From your history" is a false claim (design D1), so the
+	 * mixed list gets its own sentence. Empty uses the mixed/neutral sentence.
+	 * A rejected history read replaces it: the rows beneath are then only the
+	 * typed address and the search (there is no history to be "from"), and the
+	 * failure has to be said where the user is looking - the rows view of the
+	 * native child has no notice line. A typed-address row is not history either,
+	 * so it also makes the list "Suggestions". */
+	const listLabel = t(
+		autocomplete.error
+			? "ui.browser.browser_url_bar.address_suggestions_unavailable"
+			: suggestions.rows.length > 0 &&
+					suggestions.rows.every(
+						(row) =>
+							row.kind === "candidate" && row.candidate.source === "history",
+					)
+				? "ui.browser.browser_url_bar.address_suggestions_label"
+				: "ui.browser.browser_url_bar.address_suggestions_label_mixed",
+	);
+	/**
+	 * Row copy. The model owns no user-facing strings, and a live-tab row is
+	 * marked in its TITLE line rather than by a section heading: the native
+	 * overlay's row protocol is uniform height and S4b owns it, so a heading row
+	 * would be a selectable row the child cannot paint in its own model.
+	 */
+	/**
+	 * A row that embeds the user's own value (the typed-address and search rows),
+	 * formatted with the value either wrapped in FSI/PDI (`isolated`: the page DOM
+	 * copy, where the isolate is a control in the text) or plain (the native child,
+	 * which main strips controls from and which is told the span instead). The value
+	 * is `displayValue`d first: display only, the commit target stays raw.
+	 */
+	const embeddedRow = (
+		row: AddressSearchRow | AddressTypedRow,
+		isolated: boolean,
+	): ReturnType<typeof embedValue> => {
+		const typedValue = displayValue(
+			row.kind === "search" ? row.query : row.address,
+		);
+		return embedValue(
+			(value) =>
+				row.kind === "search"
+					? t("ui.browser.browser_url_bar.address_search_row", {
+							query: value,
+						})
+					: t("ui.browser.browser_url_bar.address_open_row", {
+							address: value,
+						}),
+			isolated ? isolateBidi(typedValue) : typedValue,
+		);
+	};
+	const rowText = (row: AddressRow): string =>
+		row.kind === "candidate"
+			? row.candidate.displayText
+			: embeddedRow(row, true).text;
+	/**
+	 * The native child's copy of a row's text: PLAIN (no FSI/PDI, which main
+	 * strips) plus the span of the user's own value, for the two rows that embed
+	 * one. The page DOM rows keep the FSI/PDI isolates; the child gets the same
+	 * sentence with the isolation expressed as a range.
+	 */
+	const mirrorRowText = (
+		row: AddressRow,
+	): { text: string; isolate?: { start: number; end: number } } => {
+		if (row.kind === "candidate") return { text: row.candidate.displayText };
+		const embedded = embeddedRow(row, false);
+		return embedded.isolate
+			? { text: embedded.text, isolate: embedded.isolate }
+			: { text: embedded.text };
+	};
+	/**
+	 * The page DOM row's three runs, so ONLY the typed address is monospace (design
+	 * D4: "monospace is machine voice only") while the sentence around it is UI
+	 * type. The FSI/PDI stay in the text nodes either side of the value, so
+	 * `textContent` is exactly `rowText` and the isolation does not depend on the
+	 * element.
+	 */
+	const rowRuns = (
+		row: AddressSearchRow | AddressTypedRow,
+	): { head: string; value: string; tail: string } | null => {
+		const { text, isolate } = embeddedRow(row, true);
+		if (!isolate) return null;
+		return {
+			head: text.slice(0, isolate.start + 1),
+			value: text.slice(isolate.start + 1, isolate.end - 1),
+			tail: text.slice(isolate.end - 1),
+		};
+	};
+	const rowSubtitle = (row: AddressRow): string => {
+		if (row.kind === "search" || row.kind === "typed") return "";
+		if (row.candidate.source !== "tab") return row.candidate.title;
+		return row.candidate.title.length > 0
+			? t("ui.browser.browser_url_bar.address_suggestion_open_tab", {
+					title: row.candidate.title,
+				})
+			: t("ui.browser.browser_url_bar.address_suggestion_open_tab_untitled");
+	};
+	const rowKey = (row: AddressRow): string =>
+		row.kind === "search"
+			? `search:${row.targetUrl}`
+			: row.kind === "typed"
+				? `typed:${row.targetUrl}`
+				: row.candidate.url;
+	/** The option spoken by assistive tech. A tab row appends its source mark:
+	 * the native child is `aria-hidden`, so without this the open-tab/history
+	 * distinction would be sighted-only (design D6). */
+	const rowAccessibleText = (row: AddressRow): string => {
+		const text = rowText(row);
+		if (row.kind !== "candidate" || row.candidate.source !== "tab") return text;
+		const source = rowSubtitle(row);
+		return source.length > 0 ? `${text} — ${source}` : text;
+	};
+	/**
+	 * A REFUSED INPUT IS ITS OWN FACT, and it is announced whatever the history
+	 * read is doing: it explains what Enter will not do, not what the list holds.
+	 */
+	const refusedInput =
+		suggestions.intent === "blocked" ||
+		// The FILE_SCHEME arm must read the USER's text, not the focus seed: a
+		// `file:` live URL is a page you are on, not an address typed into the
+		// field, and announcing the refusal on focus alone was false (R1-2).
+		(edited && FILE_SCHEME.test(raw.trim()));
+	// A dismissal suppresses the list until the text changes. Without this, the
+	// first Escape restored the raw text but left the rows on screen — the copy
+	// promised a dismissal the layout did not perform.
+	const suppressed = dismissedForText !== null && dismissedForText === raw;
+	/*
+	 * THE EMPTY STATE IS NOT A PANEL (operator decision, 2026-10-24).
+	 *
+	 * Focus used to raise the native suggestion child and paint "No browsing
+	 * history yet." over the page for a field with nothing to suggest — one press
+	 * into permanent chrome and the page was covered by a list nobody asked for,
+	 * whose only exit was a dismissal that had to be invented. A focused field
+	 * with an empty history now shows nothing: no child, no notice, no
+	 * `aria-expanded`.
+	 *
+	 * The notice survives where it explains something: a NON-EMPTY query with no
+	 * match, an unavailable read, and a refused input. The old empty-string arm of
+	 * `listNotice` is therefore unreachable from this component (the catalogue
+	 * entry stays; it is not this change's to delete).
+	 */
+	const listVisible =
+		suggestionsEnabled &&
+		editing &&
+		!composing &&
+		!suppressed &&
+		(autocomplete.error ||
+			refusedInput ||
+			suggestions.rows.length > 0 ||
+			(query.length > 0 && !autocomplete.loading));
+	const listNotice = autocomplete.error
+		? t("ui.browser.browser_url_bar.address_suggestions_unavailable")
+		: refusedInput
+			? t("ui.browser.browser_url_bar.address_suggestions_blocked")
+			: query.length === 0
+				? t("ui.browser.browser_url_bar.address_suggestions_empty")
+				: t("ui.browser.browser_url_bar.address_suggestions_no_match");
+	/** The standing/unavailable sentence as the field's own tooltip: the pill is
+	 * capped at 45% of the field and cuts the action off the end of a long
+	 * sentence, and it is `pointer-events-none` so it cannot be hovered itself. */
+	const standingTitle = hintShown ? (standingText ?? undefined) : undefined;
 
-	const commit = (): void => {
-		// A blank field is not a navigation: clearing the bar and clicking away must
-		// not load anything, and `next` being undefined (not editing) does nothing.
-		const next = draft?.trim();
-		if (next && next !== live) onNavigate(next);
+	/**
+	 * THE LIST IS INSET TO THE FIELD, NOT THE PANE.
+	 *
+	 * The alternatives are a sibling of the toolbar and must stay IN FLOW (a
+	 * portal or `position: fixed` list paints UNDER the native page view, see
+	 * the list's own note below), so without this they take the pane's full
+	 * width and their rows are wider than the field they belong to.
+	 *
+	 * The inset is READ OFF THE ADDRESS FIELD rather than derived from the
+	 * controls' widths: what sits around the field changes at runtime (the
+	 * downloads folder appears once the host knows one, the zoom reset only
+	 * while the page is zoomed, the Approvals control widens with its label),
+	 * so any hard-coded pixel budget is wrong the first time one of them
+	 * changes. Margins keep the row in the flow, and the observer re-measures
+	 * on a pane resize or a control appearing - neither of which re-renders
+	 * this component.
+	 *
+	 * Sub-pixel values are kept: an inset rounded to integers can leave a 1px
+	 * gutter on one side at a fractional pane width.
+	 *
+	 * THE DOCK IS ALWAYS MOUNTED, so this runs on mount and the margins are in
+	 * place in the CLOSED state too. Measuring only while open would be enough
+	 * for the rows but not for the dock's own box: the closed blank band would
+	 * span the pane and then snap to the field's bounds on the first keystroke.
+	 */
+	/**
+	 * WHY THE OPTIONS VIEWPORT IS RESET ON EVERY QUERY CHANGE (review A-1/Q-1):
+	 * the 75px viewport is smaller than the list, so a `scrollTop` left over from
+	 * the previous query would open the next result set part-way down - top rows
+	 * hidden, no active row, and nothing on screen explaining the offset. The
+	 * reset is unconditional (a caret moved to the start leaves no active row,
+	 * and a background refresh can replace the set without any keystroke), which
+	 * is why it does not ride on the active-row scroll effect.
+	 */
+	/** Record USER-AUTHORED text only. Accepting a suffix is not an edit, so it
+	 * never enters this stack: undo must return what the user typed. */
+	const recordEdit = (next: string): void => {
+		const undo = undoRef.current;
+		if (undo.stack.length === 0) undo.stack.push(raw);
+		if (undo.stack[undo.stack.length - 1] !== next) {
+			undo.stack.push(next);
+			undo.redo = [];
+		}
+	};
+
+	const clearGenerated = (): void => {
+		setCompletion(null);
+		setActiveIndex(-1);
+	};
+
+	/**
+	 * Whether this edit was given up without a commit. Read by `compositionEnd`:
+	 * the browser can deliver a late `compositionend` after a press/main dismissal
+	 * has already blurred the field, and its interim value belongs to a draft the
+	 * row no longer owns. Cleared on the next `focus()`, which is what makes the
+	 * next edit ordinary again.
+	 */
+	const editDismissedRef = useRef(false);
+	const abandon = (): void => {
+		// THE EDIT ENDED, NOT JUST ITS DRAFT. The DOM input otherwise stays
+		// `document.activeElement` after focus was handed to the page, and paints
+		// the focus outline over a field nobody is editing (design round 1, D1).
+		// `abandon()` has already cleared the draft, so the null-`relatedTarget`
+		// blur branch below only clears the generated suffix.
+		editDismissedRef.current = true;
+		setAcceptedTarget(null);
 		setDraft(null);
+		clearGenerated();
+		setDismissedForText(null);
+		inputEl.current?.blur();
+	};
+	/** The listener below must run the LATEST abandonment without re-subscribing
+	 * on every render; `abandon` changes identity each time. */
+	const abandonRef = useRef(abandon);
+	abandonRef.current = abandon;
+
+	/*
+	 * A REAL POINTER PRESS OUTSIDE THE ROW ENDS THE EDIT (operator report,
+	 * 2026-10-24).
+	 *
+	 * Neither existing dismissal covers it: a press on non-focusable chrome (a
+	 * panel's prose, the workspace ground, the tab strip's empty band) produces no
+	 * blur at all, and a blur with a NULL `relatedTarget` is deliberately kept —
+	 * that value is also a native page click and a window deactivation. The press
+	 * itself is the one signal that names where the user went, so it is read in
+	 * the CAPTURE phase (a control that stops propagation is still a press) and
+	 * the edit is abandoned exactly as Escape abandons it.
+	 *
+	 * WHAT IS EXCLUDED, and why: the row's own box (pressing the field, a row
+	 * control or the accessible list is not leaving), and portalled chrome — a
+	 * Radix menu or tooltip content lives outside the row in the DOM but is part
+	 * of it in the interface. No `onDismiss` is called: the press has already
+	 * decided where the caret goes, and moving it would steal that decision.
+	 *
+	 * IT LISTENS WHILE THE FIELD IS EDITING, NOT ONLY WHILE THE LIST IS VISIBLE
+	 * (review round 1, R1-1): the list is closed during IME composition and before
+	 * the first history answer, and a press in either window used to reach nothing,
+	 * so `compositionend` or the late answer re-raised the child after focus had
+	 * left. Attaching on `editing` also costs nothing when the list is closed: the
+	 * press calls the same abandonment (draft, completion, dismissed state, DOM
+	 * focus) and the child is never shown.
+	 */
+	useEffect(() => {
+		if (!editing) return;
+		const onPointerDown = (event: PointerEvent): void => {
+			const target = event.target;
+			if (!(target instanceof Node)) return;
+			if (rowEl.current?.contains(target)) return;
+			if (isPortalledChromeTarget(target)) return;
+			abandonRef.current();
+		};
+		document.addEventListener("pointerdown", onPointerDown, true);
+		return () => {
+			document.removeEventListener("pointerdown", onPointerDown, true);
+		};
+	}, [editing]);
+
+	const commit = (target: string): void => {
+		setAcceptedTarget(null);
+		// An explicit candidate, an accepted suffix or a typed address. The
+		// expected tab is the draft's own, so main refuses a commit that raced a
+		// tab switch instead of loading the new tab with the old address.
+		onNavigate(target, tabId ?? undefined);
+		setDraft(null);
+		clearGenerated();
+		setDismissedForText(null);
+		// A commit ends the edit: drop DOM focus (the surface then returns it per
+		// its origin rule) and refuse a late composition commit.
+		editDismissedRef.current = true;
+		inputEl.current?.blur();
+		onCommitted?.();
+	};
+
+	/** Right/End accept the generated suffix WITHOUT navigating. */
+	const acceptSuffix = (): void => {
+		const current = completionRef.current;
+		if (!current) return;
+		setAcceptedTarget({
+			tabId,
+			raw: current.text,
+			targetUrl: current.targetUrl,
+		});
+		setDraft(current.text);
+		clearGenerated();
+		setDismissedForText(null);
+		setCaretRequest((count) => count + 1);
+	};
+
+	const undoEdit = (): void => {
+		setAcceptedTarget(null);
+		setEdited(true);
+		const undo = undoRef.current;
+		if (undo.stack.length <= 1) return;
+		undo.redo.push(undo.stack.pop() as string);
+		setDraft(undo.stack[undo.stack.length - 1]);
+		clearGenerated();
+		setDismissedForText(null);
+		setCaretRequest((count) => count + 1);
+	};
+
+	const redoEdit = (): void => {
+		setAcceptedTarget(null);
+		setEdited(true);
+		const undo = undoRef.current;
+		const next = undo.redo.pop();
+		if (next === undefined) return;
+		undo.stack.push(next);
+		setDraft(next);
+		clearGenerated();
+		setDismissedForText(null);
+		setCaretRequest((count) => count + 1);
+	};
+
+	/**
+	 * S4b's native list mirror.
+	 *
+	 * The field row is parent DOM and the list is a native child at the strip's
+	 * width. This hook sends only display strings and the strip's measured band;
+	 * a row click comes back as `{seq,index}` and is re-validated against the
+	 * candidates this renderer still has before it reaches `commit()`.
+	 */
+	useAddressOverlayMirror({
+		// Never in own-state: main refuses every projection while the page is not
+		// presented, and the DOM listbox is the presenter there.
+		enabled: suggestionsEnabled && !domList,
+		tabId,
+		visible: listVisible,
+		active: activeIndex,
+		rows: suggestions.rows.map((row) => ({
+			...mirrorRowText(row),
+			title: rowSubtitle(row),
+			key: rowKey(row),
+		})),
+		noticeKind: autocomplete.error
+			? "error"
+			: query.length === 0 && !refusedInput
+				? "empty"
+				: "no_match",
+		noticeText: listNotice,
+		label: listLabel,
+		anchor,
+		onCommit: (index) => {
+			// The child sends back only `{seq,index}`; the destination is resolved
+			// here, against the SAME row list the child painted, so the visible row
+			// and the committed row cannot disagree.
+			const target = rowTarget(suggestions, index);
+			if (target) commit(target);
+		},
+		onDismiss: () => {
+			// MAIN DECIDED THE LIST COMES DOWN (page focus, page pointer, navigation).
+			// Abandoning the edit HERE is what stops the next projection frame from
+			// re-raising the child: the mirror is `listVisible`, which is `editing`,
+			// and a callback that only returned focus left the field editing.
+			// Measured on the baseline: with a `page` origin the focus return is a
+			// no-op in an unfocused window, so the draft survived and re-projected.
+			//
+			// IT IS FOCUS-NEUTRAL, DELIBERATELY: for a page click main has just
+			// focused the page, and the surface's origin rule (chrome for a field
+			// click) would then focus the chord root and take focus OUT of the page
+			// the user just pressed. The press already chose the target, and a
+			// navigation/tab change chose its own. No `onDismiss` here.
+			abandon();
+		},
+		onUnavailable: () => setNarrowAnchor(true),
+	});
+
+	/**
+	 * Ordinary typing is the ONLY change that regenerates a completion.
+	 *
+	 * Paste, drop, deletion and undo/redo clear it and wait for the next eligible
+	 * keystroke (the proposal's matrix). The dismissed mark is cleared as soon as
+	 * the text differs from the text the user dismissed.
+	 */
+	const change = (event: ChangeEvent<HTMLInputElement>): void => {
+		/*
+		 * A LATE IME `input` AFTER THE EDIT ENDED IS NOT AN EDIT (review round 2,
+		 * R2-1). `compositionend` is not the only event that can arrive after a
+		 * press/commit/Enter blurred the field: Chromium can deliver the `input`
+		 * that commits the composition before (or after) it, and this handler used
+		 * to write `edited`/`draft` and re-raise the child with nothing focused.
+		 * The ownership test is shared with `compositionEnd`.
+		 *
+		 * THE VALUE IS RESTORED HERE because there is no state write to re-render
+		 * from once the edit is over: the browser has already written the late text
+		 * into the DOM, and the blurred field would keep it until something else
+		 * rendered.
+		 */
+		if (
+			editDismissedRef.current ||
+			document.activeElement !== event.currentTarget
+		) {
+			event.currentTarget.value = raw;
+			return;
+		}
+		setAcceptedTarget(null);
+		setEdited(true);
+		const next = event.target.value;
+		const input = event.currentTarget;
+		const inputType = (event.nativeEvent as InputEvent).inputType ?? "";
+		setDraft(next);
+		// IME intermediate values are not user edits to preserve; the composition's
+		// final value is recorded once, at `compositionEnd`.
+		if (!composingRef.current) recordEdit(next);
+		if (composingRef.current || inputType !== "insertText") {
+			clearGenerated();
+			return;
+		}
+		const stillDismissed = dismissedForText === next;
+		if (dismissedForText !== null && !stillDismissed) setDismissedForText(null);
+		const eligible = canInlineComplete({
+			raw: next,
+			selectionStart: input.selectionStart,
+			selectionEnd: input.selectionEnd,
+			composing: false,
+			dismissedForText: stillDismissed ? next : null,
+			completionText: null,
+		});
+		const ranked = suggestAddresses(autocomplete.entries, next);
+		setCompletion(eligible ? ranked.inline : null);
+		// The default highlight for what THIS keystroke produced, not -1: the
+		// key-based effect below only re-runs when the row set changes, and a
+		// keystroke that leaves it unchanged (the next letter of a completion already
+		// on screen) would otherwise lose the highlight the previous one set
+		// (measured in the built app, UX U1).
+		setActiveIndex(
+			defaultActiveIndex(
+				suggestAddresses(autocomplete.entries, next, {
+					inlineShown: eligible && ranked.inline !== null,
+					offerTyped: true,
+				}),
+			),
+		);
+	};
+
+	/** A cursor move that is not the generated suffix cancels the completion
+	 * without touching the raw draft. Collapsed at the end is ordinary typing, not
+	 * a move, and must not clear the completion the change just made. */
+	const select = (event: SyntheticEvent<HTMLInputElement>): void => {
+		const input = event.currentTarget;
+		const current = completionRef.current;
+		if (!current) return;
+		if (
+			input.selectionStart === input.selectionEnd &&
+			input.selectionStart === input.value.length
+		)
+			return;
+		if (
+			isGeneratedSuffixSelected({
+				raw: current.raw,
+				selectionStart: input.selectionStart,
+				selectionEnd: input.selectionEnd,
+				completionText: current.text,
+			})
+		)
+			return;
+		clearGenerated();
+	};
+
+	const compositionStart = (): void => {
+		composingRef.current = true;
+		setComposing(true);
+		clearGenerated();
+	};
+
+	const compositionEnd = (event: CompositionEvent<HTMLInputElement>): void => {
+		composingRef.current = false;
+		setComposing(false);
+		/*
+		 * A LATE COMMIT AFTER THE EDIT ENDED IS NOT AN EDIT (review round 1, R1-1).
+		 * `compositionend` can arrive after an outside press or a main dismissal has
+		 * already blurred the field (a blur can even commit the IME), and its value
+		 * then belongs to a draft this row has given up. Adopting it re-seeded
+		 * `edited`/`draft` and could raise the suggestion child after focus had left.
+		 * Only a field that still owns focus and an un-dismissed edit may adopt; the
+		 * same ownership test guards `change()` (review round 2, R2-1).
+		 */
+		if (
+			editDismissedRef.current ||
+			document.activeElement !== event.currentTarget
+		)
+			return;
+		const next = event.currentTarget.value;
+		setEdited(true);
+		setDraft(next);
+		recordEdit(next);
+		clearGenerated();
+	};
+
+	const focus = (): void => {
+		editDismissedRef.current = false;
+		if (draft === null) setEdited(false);
+		setDraft((current) => current ?? live);
+		undoRef.current = { stack: [live], redo: [] };
+		clearGenerated();
+		setDismissedForText(null);
+		autocomplete.onFocus();
+	};
+
+	/** BLUR NEVER NAVIGATES. This is the first interaction rule the feature had to
+	 * change: with suggestions on screen, clicking the page is a dismissal, not a
+	 * commitment of text the user never accepted. */
+	const blur = (event: FocusEvent<HTMLInputElement>): void => {
+		if (!activeRef.current) return;
+		autocomplete.onBlur();
+		/*
+		 * A NULL `relatedTarget` IS AMBIGUOUS (design §4, F6): it can be a click on
+		 * the native page, a click on the child row, or the window losing
+		 * activation. Main resolves the first two (page focus, child mouse-down
+		 * focus-back), and a window deactivation must NOT throw the draft away. So
+		 * the row only drops the draft when focus moves to a node the document can
+		 * name.
+		 */
+		if (event.relatedTarget === null) {
+			// The draft survives a window deactivation, but a generated suffix is
+			// not part of what the user typed: the field must show the raw draft
+			// when it comes back, not a proposal nobody accepted.
+			clearGenerated();
+			return;
+		}
+		setAcceptedTarget(null);
+		setDraft(null);
+		clearGenerated();
+		setDismissedForText(null);
 	};
 
 	const keyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
+		if (event.nativeEvent.isComposing || composingRef.current) return;
+		const input = event.currentTarget;
+		const current =
+			completionRef.current && completionRef.current.raw === raw
+				? completionRef.current
+				: null;
+		const suffixSelected =
+			current !== null &&
+			isGeneratedSuffixSelected({
+				raw: current.raw,
+				selectionStart: input.selectionStart,
+				selectionEnd: input.selectionEnd,
+				completionText: current.text,
+			});
+
 		if (event.key === "Enter") {
 			event.preventDefault();
-			commit();
+			// An untouched seed is the live URL, not a commitment: Enter with NO
+			// highlighted row abandons the draft, returns focus and navigates
+			// NOTHING (UX U1/U9). The active-row check comes FIRST in the next
+			// branch: Cmd+L then ArrowDown is an explicit choice of a history row,
+			// and Enter must commit it whatever the draft state (U8).
+			if (untouchedDraft && activeIndex < 0) {
+				abandon();
+				onDismiss?.("cancel");
+				return;
+			}
+			// The classification and the commit path agree here: blocked text and a
+			// non-web scheme are refused BEFORE anything can navigate them, with
+			// the same sentence the list already shows (UX U5).
+			if (refusedInput) {
+				setAnnouncement(
+					t("ui.browser.browser_url_bar.address_suggestions_blocked"),
+				);
+				return;
+			}
+			if (activeIndex >= 0) {
+				const target = rowTarget(suggestions, activeIndex);
+				if (target) {
+					commit(target);
+					return;
+				}
+			}
+			if (
+				acceptedTarget !== null &&
+				acceptedTarget.tabId === tabId &&
+				acceptedTarget.raw === raw
+			) {
+				commit(acceptedTarget.targetUrl);
+				return;
+			}
+			if (current) {
+				commit(current.targetUrl);
+				return;
+			}
+			const next = usableRawAddress(raw);
+			if (!next) {
+				abandon();
+				// THE KEYBOARD MUST LAND SOMEWHERE. Abandoning without the surface's
+				// handoff left focus on `<body>`: the upshot was a dead keyboard after
+				// Enter on a blank/control-char draft (review round 2, U3-2). Same
+				// cancel intent as untouched Enter; the surface sends it to the page
+				// when one is presented, else to the chord root.
+				onDismiss?.("cancel");
+				return;
+			}
+			// ENTER PRECEDENCE, in the code's own order: (1) a highlighted row
+			// commits that row — the search row searches, a candidate row
+			// navigates, and the typed-address row (URL intent with no match at
+			// all, the highlighted default there) navigates the trimmed text exactly
+			// as step (5) would; (2) an accepted suffix commits its canonical target;
+			// (3) a displayed inline completion commits its canonical target;
+			// (4) with none of those, search intent commits the DuckDuckGo URL;
+			// (5) otherwise the raw text is navigated (or, equal to the live URL,
+			// dismisses). The search row is normally highlighted by default, so
+			// (4) is the safety net for a dismissal that left no row selected.
+			if (addressIntent(next) === "search") {
+				commit(searchUrl(next));
+				return;
+			}
+			if (next !== live) commit(next);
+			else {
+				setDraft(null);
+				clearGenerated();
+			}
 			return;
 		}
+
 		if (event.key === "Escape") {
-			// Escape abandons the edit rather than navigating: it is the one key a
-			// user reaches for when they have typed the wrong thing.
 			event.preventDefault();
-			setDraft(null);
+			/*
+			 * ONE STAGE in the row (design §4). The old two-stage Escape existed to
+			 * let an accepted inline suffix survive the list's dismissal, but the only
+			 * commitment is Enter or a row, so there is nothing to preserve: Escape
+			 * discards the draft and returns focus.
+			 */
+			abandon();
+			/* ESCAPE IS A RETURN TO THE PAGE when one is presented (operator
+			 * report, 2026-10-24): the field took the caret from the page, and the
+			 * request's origin does not answer where it should go back to — a click
+			 * into the field is chrome origin even with a page right below it. The
+			 * surface reads the intent and decides (own-state falls back to the
+			 * chord root); this row cannot see whether the tab has a page. */
+			onDismiss?.("escape");
+			return;
+		}
+
+		if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+			// Arrow keys move over the UNIFIED rows, search row included: a key that
+			// skips the first row makes the highlighted row and the row the user
+			// believes they are on disagree.
+			if (suggestions.rows.length === 0) return;
+			event.preventDefault();
+			const nextIndex = moveActive(
+				activeIndex,
+				event.key === "ArrowDown" ? 1 : -1,
+				suggestions.rows.length,
+			);
+			const selected = suggestions.rows[nextIndex];
+			explicitSelection.current = selected
+				? { query, key: rowKey(selected) }
+				: null;
+			// An arrow starts explicit row navigation: the field must stop showing
+			// a suffix that names a different destination than the highlighted row
+			// Enter will commit (UX U6). Clearing the completion makes the inline
+			// target a row again, so resolve the selection BY KEY in the expanded
+			// list rather than keeping an index that now points at a different row.
+			if (current) {
+				setCompletion(null);
+				const expanded = suggestAddresses(autocomplete.entries, query, {
+					inlineShown: false,
+				}).rows;
+				const expandedIndex = selected
+					? expanded.findIndex((row) => rowKey(row) === rowKey(selected))
+					: -1;
+				setActiveIndex(expandedIndex);
+			} else {
+				setActiveIndex(nextIndex);
+			}
+			return;
+		}
+
+		if (event.key === "ArrowRight" || event.key === "End") {
+			if (suffixSelected) {
+				event.preventDefault();
+				acceptSuffix();
+				return;
+			}
+			if (current) clearGenerated();
+			return;
+		}
+
+		if (event.key === "ArrowLeft" || event.key === "Home") {
+			if (current) clearGenerated();
+			return;
+		}
+
+		if (event.key === "Backspace" || event.key === "Delete") {
+			if (suffixSelected) {
+				event.preventDefault();
+				setDraft(current.raw);
+				clearGenerated();
+				setDismissedForText(current.raw);
+				setCaretRequest((count) => count + 1);
+			}
+			return;
+		}
+
+		if (event.key === "Tab") {
+			// Tab moves focus; it never commits an unaccepted suffix. Clear the
+			// generated text first so the blurred value is the draft.
+			if (current || listVisible) {
+				clearGenerated();
+				setDismissedForText(raw);
+			}
+			return;
+		}
+
+		const primary = event.metaKey || event.ctrlKey;
+		if (primary && !event.altKey && (event.key === "z" || event.key === "Z")) {
+			event.preventDefault();
+			if (event.shiftKey) redoEdit();
+			else undoEdit();
+			return;
+		}
+		if (
+			event.ctrlKey &&
+			!event.metaKey &&
+			(event.key === "y" || event.key === "Y")
+		) {
+			event.preventDefault();
+			redoEdit();
 		}
 	};
 
-	return (
-		/* The bar's ground is the PANE's (`canvas/index.tsx`): it is the first row of
-		   the drawer's body, so it wears the drawer's rung and is continuous with the
-		   content area below it, with the strip's own rule the only line above. */
+	// A background refresh can shrink the alternatives under a row the keyboard
+	// has already selected, or swap a same-length set for different URLs. Reset
+	// the active row and the viewport's offset together: an active descendant
+	// naming a vanished row and a scroll offset belonging to the previous set are
+	// the same stale state, and the URL KEY catches swaps the count cannot.
+	// `inlineRow` is part of the key: the promoted completion row has the SAME key
+	// whether or not the completion is on screen yet, so without it the highlight
+	// would not follow the completion appearing after the history answer.
+	const candidateKey = `${suggestions.inlineRow ? "inline" : "list"}|${suggestions.rows.map(rowKey).join("\n")}`;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `candidateKey` is the trigger, not a value the body reads - the URL SET changing is what must reset the selection and the scroll, and a same-length swap changes no count.
+	useEffect(() => {
+		// AN EXPLICIT SELECTION SURVIVES A LATE ANSWER for the same query (UX U4):
+		// the user arrowed to a row while the previous list was still on screen,
+		// and the answer that lands afterwards must not snap the highlight back to
+		// the search row. Keep it when the same row key is still in the set.
+		const prior = explicitSelection.current;
+		if (prior && prior.query === query) {
+			const index = suggestions.rows.findIndex(
+				(row) => rowKey(row) === prior.key,
+			);
+			if (index >= 0) {
+				setActiveIndex(index);
+				return;
+			}
+		}
+		// Otherwise (review A-4) a changed SET is a new list: a same-length swap
+		// can leave the old index naming a row the new query never ranked, and
+		// Enter would commit that unseen destination. The search row is the
+		// default when present, and the typed-address row is the same default for a
+		// URL-shaped input that matched nothing (it is the destination Enter has
+		// always navigated); no explicit selection otherwise.
+		explicitSelection.current = null;
+		setActiveIndex(defaultActiveIndex(suggestions));
+	}, [candidateKey]);
+
+	// The completion is REAL SELECTED TEXT, set here rather than overlaid: the
+	// user's next keystroke replaces the selection, and Right accepts it.
+	useLayoutEffect(() => {
+		const element = inputEl.current;
+		if (!element || document.activeElement !== element) return;
+		if (currentCompletion) {
+			element.setSelectionRange(
+				currentCompletion.raw.length,
+				currentCompletion.text.length,
+				"forward",
+			);
+			return;
+		}
+		if (caretRequest === 0) return;
+		const end = element.value.length;
+		element.setSelectionRange(end, end);
+	}, [currentCompletion, caretRequest]);
+
+	// Polite, and only on an OPEN transition: a count per keystroke is the
+	// per-keystroke spam the proposal forbids. The list's own live region carries
+	// empty/error states too.
+	useEffect(() => {
+		if (listVisible && !wasListOpen.current) {
+			if (autocomplete.error) {
+				setAnnouncement(
+					t("ui.browser.browser_url_bar.address_suggestions_unavailable"),
+				);
+			} else if (suggestions.rows.length > 0) {
+				setAnnouncement(
+					t("ui.browser.browser_url_bar.address_suggestions_available", {
+						count: suggestions.rows.length,
+					}),
+				);
+			} else if (!autocomplete.loading) {
+				setAnnouncement(listNotice);
+			}
+		} else if (!listVisible && wasListOpen.current) {
+			setAnnouncement("");
+		}
+		wasListOpen.current = listVisible;
+	}, [
+		listVisible,
+		autocomplete.error,
+		autocomplete.loading,
+		listNotice,
+		suggestions.rows.length,
+	]);
+
+	// THE FOCUS CONTRACT, ON A NONCE (S5). The row is permanently mounted, so a
+	// raise cannot be "this instance mounted": Cmd+L selects the live URL, a typed
+	// seed leaves the caret after the character, and a second Cmd+L re-selects. A
+	// seed also makes the draft USER-AUTHORED (`edited`), which is what keeps it
+	// from being read as an untouched live URL.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the nonce is the trigger; reading the seed and selection is the point.
+	useLayoutEffect(() => {
+		const element = inputEl.current;
+		if (!element) return;
+		element.focus({ preventScroll: true });
+		if (focusRequest?.seed !== undefined) {
+			setEdited(true);
+			setDraft(focusRequest.seed);
+			const end = focusRequest.seed.length;
+			element.setSelectionRange(end, end);
+		} else if (focusRequest?.selectAll) {
+			element.select();
+		}
+	}, [focusRequest?.nonce]);
+
+	// Tier 1 is a fact the user must be told once, not a silent missing list.
+	useEffect(() => {
+		if (standingText !== null) setAnnouncement(standingText);
+	}, [standingText]);
+
+	/**
+	 * THE ONE LISTBOX. The native child paints rows for a presented page and this
+	 * element carries the accessible contract (options, `aria-selected`, the ids
+	 * `aria-activedescendant` names). In own-state the same element is also the
+	 * VISIBLE list (`visible`): rows get a real look and a press commits through
+	 * the same `commit(rowTarget(...))` the native child's `{seq,index}` event
+	 * uses, so the visible row and the committed row cannot disagree.
+	 */
+	const listboxEl = (
+		// biome-ignore lint/a11y/useFocusableInteractive: DOM focus stays in the input; the listbox is reached through aria-activedescendant.
+		// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a listbox cannot be a native <select> and must stay a list of options.
+		// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox list cannot be a native <select>.
 		<div
-			/* A CHROME BAND with the strip above it: on the Browser route it wears the
-			 * app sidebar's paint (surface at its floor, raw over the desktop); inside a
-			 * conversation's rail pane it clears into the pane's own alpha (one
-			 * alpha-owning layer). */
+			id={listId}
+			// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox list cannot be a native <select>.
+			role="listbox"
+			aria-labelledby={listLabelId}
+			data-address-suggestions-list
+			className={domList ? "py-0.5" : undefined}
+		>
+			{suggestions.rows.map((row, index) => (
+				// biome-ignore lint/a11y/useFocusableInteractive: DOM focus stays in the input; the active option is announced through aria-activedescendant.
+				// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox list cannot be a native <select>.
+				// biome-ignore lint/a11y/useKeyWithClickEvents: the keyboard path is the combobox input (ArrowUp/Down + Enter); an option is never a tab stop.
+				<div
+					key={rowKey(row)}
+					id={optionId(index)}
+					// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox list cannot be a native <select>.
+					role="option"
+					aria-selected={index === activeIndex}
+					data-address-suggestion
+					data-address-suggestion-search={
+						row.kind === "search" ? "true" : undefined
+					}
+					data-address-suggestion-typed={
+						row.kind === "typed" ? "true" : undefined
+					}
+					data-address-suggestion-source={
+						row.kind === "candidate" ? row.candidate.source : undefined
+					}
+					data-address-suggestion-url={
+						row.kind === "candidate" ? row.candidate.url : undefined
+					}
+					className={
+						domList
+							? cn(
+									"relative flex h-[35.5px] items-center gap-3 overflow-hidden px-3",
+									// The active wash outranks hover (D8), as `.lo-row.is-active`
+									// outranks `:hover` in the native child.
+									index === activeIndex
+										? "bg-accent-wash"
+										: "hover:bg-row-hover",
+								)
+							: undefined
+					}
+					// Keep DOM focus in the field: a press that blurred it would abandon
+					// the edit before the click could commit.
+					onMouseDown={domList ? (event) => event.preventDefault() : undefined}
+					onClick={
+						domList
+							? () => {
+									const target = rowTarget(suggestions, index);
+									if (target) commit(target);
+								}
+							: undefined
+					}
+				>
+					{domList ? (
+						<>
+							{index === activeIndex && (
+								<span
+									aria-hidden
+									className="absolute inset-y-0 start-0 w-0.5 bg-accent"
+								/>
+							)}
+							{row.kind === "candidate" ? (
+								<span className="min-w-0 shrink truncate font-mono text-mono-sm text-ink">
+									{rowText(row)}
+								</span>
+							) : (
+								<span className="min-w-0 shrink truncate text-body-sm text-ink">
+									{(() => {
+										// Sentence in UI type, ONLY the address in the machine face.
+										const runs = rowRuns(row);
+										return runs ? (
+											<>
+												{runs.head}
+												<span className="font-mono text-mono-sm">
+													{runs.value}
+												</span>
+												{runs.tail}
+											</>
+										) : (
+											rowText(row)
+										);
+									})()}
+								</span>
+							)}
+							{rowSubtitle(row).length > 0 && (
+								// The 8em floor the native child's title column has (design
+								// D3): without it a long URL starves the "Already open"
+								// marker to a few pixels.
+								<span className="min-w-[8em] flex-1 truncate text-body-sm text-ink-muted">
+									{rowSubtitle(row)}
+								</span>
+							)}
+						</>
+					) : (
+						rowAccessibleText(row)
+					)}
+				</div>
+			))}
+		</div>
+	);
+
+	return (
+		<div
+			ref={setRowEl}
+			/* A CHROME BAND, permanent and in flow between the strip and the page:
+			   4px pad + 28px controls + 4px pad + the 1px rule = 37px. The rule is
+			   `border-control` rather than `hairline` because it is the only separator
+			   against a white page (3.30:1 dark / 3.92:1 light; hairline would be
+			   1.23:1 and fail as an edge). */
 			data-glass-region="chrome"
-			className="flex items-center gap-1 border-control border-b bg-elevated px-2 py-1"
+			className="flex h-[37px] w-full items-center gap-1 border-control border-b bg-elevated px-2 py-1"
 			data-tour-tag="browser-url-bar"
 		>
 			<Tooltip
@@ -368,33 +1540,32 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					<ArrowLeft aria-hidden className="size-4" />
 				</Button>
 			</Tooltip>
-			<Tooltip
-				content={t("ui.browser.browser_url_bar.forward_shortcut", {
-					shortcut: forwardChord,
-				})}
-			>
-				<Button
-					variant="ghost"
-					size="icon-sm"
-					aria-label={t("ui.browser.browser_url_bar.forward")}
-					aria-keyshortcuts={forwardChord}
-					disabled={disabled || !canGoForward}
-					onClick={onForward}
-					data-tour-tag="browser-forward"
+			{!hideForward && (
+				<Tooltip
+					content={t("ui.browser.browser_url_bar.forward_shortcut", {
+						shortcut: forwardChord,
+					})}
 				>
-					<ArrowRight aria-hidden className="size-4" />
-				</Button>
-			</Tooltip>
-			{/* One control that changes role rather than two buttons: a browser
-			    shows stop while loading and reload otherwise, and two buttons where
-			    only one is ever enabled is a control that lies about its own state. */}
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label={t("ui.browser.browser_url_bar.forward")}
+						aria-keyshortcuts={forwardChord}
+						disabled={disabled || !canGoForward}
+						onClick={onForward}
+						data-tour-tag="browser-forward"
+					>
+						<ArrowRight aria-hidden className="size-4" />
+					</Button>
+				</Tooltip>
+			)}
 			{loading ? (
 				<Tooltip content={t("ui.browser.browser_url_bar.stop_loading")}>
 					<Button
 						variant="ghost"
 						size="icon-sm"
 						aria-label={t("ui.browser.browser_url_bar.stop_loading")}
-						disabled={disabled}
+						disabled={disabled || startPage}
 						onClick={onStop}
 						data-tour-tag="browser-stop"
 					>
@@ -408,7 +1579,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						size="icon-sm"
 						aria-label={t("ui.browser.browser_url_bar.reload")}
 						aria-keyshortcuts={reload.aria}
-						disabled={disabled}
+						disabled={disabled || startPage}
 						onClick={onReload}
 						data-tour-tag="browser-reload"
 					>
@@ -416,18 +1587,15 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					</Button>
 				</Tooltip>
 			)}
-			{onHome && (
-				<Tooltip
-					content={t("ui.browser.browser_url_bar.home_destination")}
-					side="top"
-				>
+			{onHome && !hideHome && (
+				<Tooltip content={t("ui.browser.browser_url_bar.home")} side="top">
 					<Button
 						type="button"
 						size="icon-sm"
 						variant="ghost"
 						className="text-ink-muted hover:bg-control-hover hover:text-ink"
 						aria-label={t("ui.browser.browser_url_bar.home")}
-						disabled={disabled}
+						disabled={disabled || startPage}
 						onClick={onHome}
 						data-tour-tag="browser-home"
 					>
@@ -435,120 +1603,14 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					</Button>
 				</Tooltip>
 			)}
-			{downloadsDir && (
-				// The durable route to the files (review round 1, U2): the strip's row can
-				// be dismissed or age out, and this is what makes that allowed. Placed with
-				// the navigation controls rather than beside Approvals because it is a
-				// browser affordance, not a consent one.
-				//
-				// AND IT CARRIES THE NEWEST SAVE (review round 2, U12). An icon-only control
-				// answers "where do downloads go" and nothing else, so a user who was in Chat
-				// when the transfer happened had no way in the app to learn that anything
-				// arrived — the row is the only account of it and the row retires. The label
-				// now names the newest file and how many this session has saved, on HOVER and on
-				// FOCUS (the same tooltip mechanism the rest of the toolbar uses, so a keyboard
-				// user reaches it by tabbing). It is still not a per-file list (§16.4) and it
-				// still opens the same directory: the sentence is the row's own facts, moved to
-				// the one surface that outlives it.
-				//
-				// AND THE COUNT IS THE SESSION TOTAL, not the note window this first draft of
-				// the sentence was worded for (review round 3, M-1). The host keeps its summary
-				// for the life of the process and writes it from the same call that writes the
-				// note (`downloads.ts`, the `note` writer), so the tooltip can promise "this
-				// session" and does — `downloadsLabel` below states the same premise. The
-				// draft's "recently rather than this session" rationale was left behind when the
-				// count moved, and it contradicted the copy the user reads.
-				<Tooltip content={downloadsLabel(downloadsRecent ?? null)}>
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label={t(
-							"ui.browser.browser_file_transfer_row.open_downloads_folder",
-						)}
-						onClick={onOpenDownloads}
-						data-tour-tag="browser-downloads-folder"
-					>
-						<FolderOpen aria-hidden className="size-4" />
-					</Button>
-				</Tooltip>
-			)}
-			{onFind && (
-				<Tooltip
-					content={t("ui.browser.browser_url_bar.find_in_page_shortcut", {
-						shortcut: find.glyph,
-					})}
-					side="top"
-				>
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label={t("ui.browser.browser_url_bar.find_in_page")}
-						aria-keyshortcuts={find.aria}
-						disabled={disabled}
-						onClick={onFind}
-						data-tour-tag="browser-find"
-					>
-						<Search aria-hidden className="size-4" />
-					</Button>
-				</Tooltip>
-			)}
-			{onPrint && (
-				<Tooltip
-					content={t("ui.browser.browser_url_bar.print_page")}
-					side="top"
-				>
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label={t("ui.browser.browser_url_bar.print_page")}
-						disabled={disabled}
-						onClick={onPrint}
-						data-tour-tag="browser-print"
-					>
-						<Printer aria-hidden className="size-4" />
-					</Button>
-				</Tooltip>
-			)}
-			{pageZoom !== 1 && (
-				<Tooltip
-					content={t("ui.browser.browser_url_bar.reset_page_zoom_shortcut", {
-						shortcut: resetZoom.glyph,
-					})}
-					side="top"
-				>
-					<Button
-						variant="ghost"
-						size="sm"
-						aria-label={t("ui.browser.browser_url_bar.page_zoom_reset", {
-							zoom: Math.round(pageZoom * 100),
-						})}
-						aria-keyshortcuts={resetZoom.aria}
-						onClick={onResetZoom}
-						data-tour-tag="browser-zoom"
-					>
-						{Math.round(pageZoom * 100)}%
-					</Button>
-				</Tooltip>
-			)}
-			<div className="relative min-w-0 grow">
-				{/* SITE-INFO, INSIDE THE FIELD'S LEFT EDGE (the frozen design brief
-				    places the security/origin register there, not as a toolbar
-				    button): a read-only mark, so it is a labelled span the tooltip
-				    can hang from - never a button, because pressing it does nothing
-				    and a control that does nothing misleads. Its tooltip opens
-				    above the field like Back/Reload's, over empty chrome, so the
-				    native page view cannot cover it. The field's own left padding
-				    makes room for it. */}
+			<div className="@container/addressfield relative min-w-0 grow">
 				<Tooltip content={siteInfoLabel} side="top">
-					{/* Keyboard-reachable WITHOUT becoming a control (m1/U2): tabIndex
-					    makes the mark a Tab stop so its tooltip - the origin in words -
-					    is reachable without a pointer (Radix opens on focus), while
-					    role/absence of any handler keep it read-only: it takes focus
-					    only to be read, and pressing keys on it does nothing. */}
+					{/* NOT A TAB STOP (round-1 U4): the mark has no action, so it is
+					    described from the field (`aria-describedby`) and keeps its
+					    pointer tooltip, without a keyboard stop between Home and the
+					    field for the same information. */}
 					<span
 						role="img"
-						// biome-ignore lint/a11y/noNoninteractiveTabindex: focus is taken only to be READ (the tooltip is the origin in words); the mark has no action, and a button that does nothing would mislead.
-						tabIndex={0}
 						aria-label={siteInfoLabel}
 						data-site-info={siteInfo.kind}
 						className={cn(
@@ -559,128 +1621,166 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						<SiteInfoIcon aria-hidden className="size-3.5" />
 					</span>
 				</Tooltip>
-
-				{/* NO VISIBLE TOOLTIP ON THIS FIELD (design D-PR9, UX U10). The field sits
-				    directly above the content rect, and every placement of a DOM tooltip
-				    that clears the chrome band (below the field) lands INSIDE the rect
-				    the native page view covers: `shared/browser-view-policy.ts` states
-				    that a `WebContentsView` paints above all DOM, so with a page showing
-				    the panel would be invisible, and a headless `capturePage` frame
-				    (which excludes the view) cannot show that. The alternatives are worse:
-				    above the field it covers the active tab's title (measured in the round-1
-				    re-capture), and hiding the view on every hover flashes the page. The
-				    chord copy stays machine-readable through `aria-keyshortcuts`, the
-				    field is labelled "Address", and the Back, Reload and tab tooltips
-				    (all over empty chrome, above the content rect) still show their
-				    chords. `scripts/browser-chord-renderer.test.mjs` pins that no tooltip
-				    wraps this field. */}
+				<span id={siteDescId} className="sr-only">
+					{siteInfoLabel}
+				</span>
 				<Input
-					ref={inputRef}
+					ref={setInputEl}
+					inputSize="sm"
 					aria-keyshortcuts={address.aria}
 					value={value}
 					disabled={disabled}
-					onChange={(event) => setDraft(event.target.value)}
+					role="combobox"
+					aria-autocomplete="both"
+					aria-expanded={listVisible}
+					aria-controls={
+						listVisible && suggestions.rows.length > 0 ? listId : undefined
+					}
+					aria-describedby={
+						[
+							siteDescId,
+							hintShown ? unavailableId : null,
+							listVisible && suggestions.rows.length === 0 ? noticeId : null,
+						]
+							.filter(Boolean)
+							.join(" ") || undefined
+					}
+					aria-activedescendant={
+						activeIndex >= 0 && suggestions.rows[activeIndex]
+							? optionId(activeIndex)
+							: undefined
+					}
+					dir="ltr"
+					onChange={change}
 					onKeyDown={keyDown}
-					onFocus={() => {
-						setDraft((current) => current ?? live);
-					}}
-					onBlur={() => {
-						commit();
-					}}
+					onSelect={select}
+					onCompositionStart={compositionStart}
+					onCompositionEnd={compositionEnd}
+					onFocus={focus}
+					onBlur={blur}
 					spellCheck={false}
 					autoComplete="off"
 					aria-label={t("ui.browser.browser_url_bar.address")}
-					// Only while the tab has nothing to show: the moment it commits, the
-					// live value replaces this and the placeholder is gone.
-					placeholder={loading && !live ? (pendingUrl ?? undefined) : undefined}
+					title={standingTitle}
+					placeholder={
+						loading && !live ? (pendingUrl ?? undefined) : placeholder
+					}
 					data-tour-tag="browser-address"
-					// Offset 1, not the global 2 (design D-PR4): the toolbar's `py-1` + `gap-1`
-					// is exactly the global ring's offset + width, so Cmd+L (now the routine
-					// way to focus this field) drew the ring flush against the strip rule,
-					// the toolbar rule and the Approvals border. `!` because the global ring
-					// rule is unlayered and outranks a utility; `Input` `sm` does the same.
+					data-address-editing={editing ? "true" : "false"}
+					data-address-loading={autocomplete.loading ? "true" : "false"}
+					data-address-suppressed={suppressed ? "true" : "false"}
+					data-address-candidates={String(suggestions.candidates.length)}
+					data-address-rows={String(suggestions.rows.length)}
 					className={cn(
 						"pr-7 pl-8 focus-visible:outline-offset-1!",
-						editing && "font-mono text-mono-sm",
+						editing ? "font-mono text-mono-sm" : "text-ellipsis",
+						/* A LONG ADDRESS MUST NOT RUN UNDER THE HINT (Q5-1): the pill
+						   reserves its own trailing run in the field's CONTENT box, so
+						   the text scrolls in the space that remains. Below the narrow
+						   breakpoint the pill is `sr-only` and needs no reservation. */
+						hintPainted &&
+							/* FIELD width is the gate, not row width (Q5-1): the pill
+							   and its run only exist in a field of at least 342 px; the
+							   clamp keeps a 160 px field floor above that. */
+							"@[342px]/addressfield:pr-[min(378px,max(0px,calc(100%-10rem)))]",
 					)}
 				/>
-				{/* THE IN-FIELD LOADING SPINNER (brief 2.4: "in-field spinner + the
-				    omnibox placeholder showing the destination"). The field's `pr-7`
-				    already reserved this slot and nothing occupied it, so the whole
-				    loading signal lived in the strip - which a user looking at the
-				    field they just typed into does not see. It is a read-only mark,
-				    not a control: `pointer-events-none` and `aria-hidden`, because
-				    the strip's own per-tab spinner and the stop button's
-				    "Stop loading" label are what carry the state for a screen
-				    reader. Hidden while the field is being edited so it never sits
-				    over the caret. */}
 				{loading && !editing && (
 					<span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2">
 						<Spinner size="xs" />
 					</span>
 				)}
-			</div>
-			{/* The quiet icon still needs a sighted name. End-aligned/top keeps
-                this shared tooltip in chrome, not under the native page view. */}
-			<div className="relative shrink-0">
-				<Tooltip
-					side="top"
-					align="end"
-					content={t("ui.browser.chrome.approvals")}
-				>
-					<Button
-						ref={triggerRef}
-						variant={waitingCount > 0 ? "outline" : "ghost"}
-						size={waitingCount > 0 ? "sm" : "icon-sm"}
-						onClick={onOpenApprovals}
-						disabled={disabled}
-						// `pr-5` so the badge, which sits over the control's top-right corner, never
-						// covers the label (§5.1). `pr-4` cleared one digit by 16px and TWO by
-						// only ~6px, and two is the reachable maximum (the queue cap is 16), so
-						// the reserve is sized for the worst case rather than the common one
-						// (design round 3, D17: at two digits the badge's left arc came within 6px
-						// of the last glyph of `Approvals`).
-						className={waitingCount > 0 ? "pr-5" : undefined}
-						aria-label={
-							waitingCount > 0
-								? t("ui.browser.browser_url_bar.approvals_waiting", {
-										count: waitingCount,
-									})
-								: t("ui.browser.chrome.approvals")
+				{/* TIER 1 IS TOLD, NOT HINTED (UX U5), and the telling lives INSIDE the
+				    field. Beside it was a second control-shaped box that cost the field
+				    width every time the list was unavailable (S4b U5); the permanent row
+				    cannot afford that, and the sentence belongs to the field that still
+				    works. `pointer-events-none` keeps the input clickable underneath. */}
+				{hintShown && (
+					<span
+						id={unavailableId}
+						/* AT reaches it through `aria-describedby`; the suspend copy is
+						   already announced by the field's own status sentence, so this
+						   node must not be a second live region (round 3, U18). Below the
+						   width the sentence can share with typed text it is description
+						   only, never painted over the address. */
+						className={
+							narrow
+								? "sr-only"
+								: "hidden pointer-events-none absolute top-1/2 right-7 max-w-[45%] -translate-y-1/2 truncate rounded-sm bg-elevated px-1 text-meta text-ink-dim @[342px]/addressfield:block"
 						}
-						data-tour-tag="browser-approvals"
+						data-tour-tag="browser-address-unavailable"
 					>
-						<ShieldCheck aria-hidden className="size-3.5" />
-						{waitingCount > 0 &&
-							t("ui.browser.browser_approvals_dock.approvals")}
-					</Button>
-				</Tooltip>
-				{waitingCount > 0 && (
-					// POSITION IS THE OPERATOR'S — "at the corner of the button" — but it no
-					// longer paints OUTSIDE the surface (design round 2, D3). It used to sit on
-					// the control's outer corner (`-translate-y-1/2 translate-x-1/2`), which
-					// put 7px of it past the bar's own `px-2` box; the Approvals control is
-					// the bar's last element and that box is the window's right edge, so in
-					// the running app the far arc of the circle was outside the window and
-					// only the numeral survived (measured in situ at 1380x868: the fill
-					// reached the frame's last pixel column). The offset is inward now, and
-					// the ring names the ground behind the badge so the overlap reads as an
-					// object on top of the control rather than a notch cut out of its stroke.
-					// `rounded-full` and `tabular-nums` so the count does not change width as
-					// it is decided down.
-					<span className="pointer-events-none absolute -top-1.5 -right-1.5">
-						<Badge
-							variant="attention"
-							shape="pill"
-							size="count"
-							className="ring-2 ring-canvas"
-							data-tour-tag="browser-approvals-badge"
-						>
-							{countLabel(waitingCount)}
-						</Badge>
+						{standingText}
 					</span>
 				)}
+				{domList && listVisible && (
+					/* THE OWN-STATE LIST IS PLAIN DOM, ANCHORED UNDER THE FIELD. A new tab
+					   or a load failure has no native page competing for the pixels (the
+					   start page is DOM and main hides the page view), and main refuses
+					   every native projection there, so the list is an ordinary
+					   absolutely-positioned listbox over the start content: field width,
+					   leaves the flow (the 37px band and the 0px rest-state hold), and
+					   inside `rowEl` so a press on it is INSIDE for the outside-press
+					   rule. It registers no native-view suppression: nothing here touches
+					   the page view. */
+					<div
+						// `border-control`, the role the contrast contract registers for
+						// "browser address suggestions" (design D7); the hairline measured
+						// 1.23:1 on this ground. The press handler is on the CONTAINER so
+						// the header, the padding and the border keep the field's focus
+						// too: a press there used to blur the field and discard the draft
+						// (QA Q2).
+						className="absolute start-0 end-0 top-[calc(100%+5px)] z-20 overflow-hidden rounded-md border border-control bg-elevated shadow-overlay"
+						data-tour-tag="browser-address-suggestions"
+						data-address-list-placement="dom"
+						onMouseDown={(event) => event.preventDefault()}
+					>
+						{suggestions.rows.length > 0 ? (
+							<>
+								<div
+									id={listLabelId}
+									// The full sentence as a title: a failed-read header is two
+									// sentences and the reassuring half is what ellipsis cuts
+									// (design D5).
+									title={listLabel}
+									className="flex h-7 items-center truncate border-hairline border-b px-3 text-meta text-ink-muted"
+								>
+									{listLabel}
+								</div>
+								{listboxEl}
+							</>
+						) : (
+							<p
+								aria-hidden="true"
+								className="px-3 py-2 text-body-sm text-ink-muted"
+							>
+								{listNotice}
+							</p>
+						)}
+					</div>
+				)}
 			</div>
+			{menu}
+			{/* THE ACCESSIBLE LIST lives in the parent and is clipped, never in flow:
+			    the visual rows are the native child, which is `aria-hidden`. One
+			    option per mirrored row keeps `aria-activedescendant` and the row
+			    the user actually presses naming the same candidate. In own-state the
+			    SAME listbox is the visible one (see `ownStateList` in the field). */}
+			{listVisible && suggestions.rows.length > 0 && !domList && (
+				<div className="sr-only" data-tour-tag="browser-address-suggestions">
+					<span id={listLabelId}>{listLabel}</span>
+					{listboxEl}
+				</div>
+			)}
+			{suggestions.rows.length === 0 && (
+				<span id={noticeId} className="sr-only">
+					{listNotice}
+				</span>
+			)}
+			{/* biome-ignore lint/a11y/useSemanticElements: a politer live region is a role=status span. */}
+			<span className="sr-only" role="status" aria-live="polite">
+				{announcement}
+			</span>
 		</div>
 	);
 };

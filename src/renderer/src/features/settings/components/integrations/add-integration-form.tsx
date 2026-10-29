@@ -84,9 +84,11 @@ export type AddIntegrationFormProps = {
  * It names no chat command, and no monospace (`U13`, round 2): a settings user
  * has no reason to know a slash command, and the machine voice is for a token
  * they would type. "Reload integrations" is the action in the chat's own words.
+ *
+ * A KEY resolved at render, not the sentence: a module-scope `t()` froze
+ * whichever locale was active at import, so a live language switch left the
+ * note in English (review round 1, nit).
  */
-export const ADD_INTEGRATION_PICKUP_NOTE =
-	"New chats can use it right away. Open chats pick it up when you start a new chat or reload integrations there.";
 const ADD_INTEGRATION_PICKUP_NOTE_KEY =
 	"ui.settings.integrations.add_integration_form.copy_add_integration_pickup_note";
 
@@ -94,10 +96,10 @@ const ADD_INTEGRATION_PICKUP_NOTE_KEY =
  * One line on which transport to pick, because the pair does not explain itself
  * (N2): a user who has an `npx` line from a README has no way to know whether
  * that is "Local command" or a URL.
+ *
+ * A key for the same reason as the form note above.
  */
-export const TRANSPORT_HINT =
-	"Most services give you a URL. Use Local command when their setup says npx or uvx.";
-const TRANSPORT_HINT_KEY =
+export const TRANSPORT_HINT_KEY =
 	"ui.settings.integrations.add_integration_form.copy_transport_hint";
 
 export const AddIntegrationForm: FC<AddIntegrationFormProps> = ({

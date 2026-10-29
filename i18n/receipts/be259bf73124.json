@@ -1,0 +1,147 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "model_provenance": {
+    "initial_model": "deepseek/deepseek-flash",
+    "actual_audit_model": "deepseek/deepseek-flash",
+    "automatic_fallback": "none observed"
+  },
+  "instance": "be259bf73124",
+  "date": "2026-10-20",
+  "round": 9,
+  "namespace": "ui.hub",
+  "locale": "fr",
+  "status": "passed",
+  "verdict": "clean",
+  "independence": "Independent auditor; did not translate, edit, stage or commit any repository file. Read-only pass over the worktree at the recorded head.",
+  "scope": {
+    "repository": "damianvtran/local-operator-ui",
+    "pr": 1269,
+    "worktree": "/Users/damian/local-operator-ui/.worktrees/hub-skills-state",
+    "head": "e8d2963cddaf4db47606a996cd416a2166e48078",
+    "worktree_state": "round-9 key addition present uncommitted in the working tree; auditor made no writes to the repository",
+    "focus": "One new key ui.hub.skills.inventory_unknown: key-set parity across all eight catalogues, semantic/idiom/register/glossary/punctuation/length audit of the seven targets, and byte-identity spot-check of the 49 previously audited keys.",
+    "keys_in_namespace": 50,
+    "keys_semantically_audited": 1,
+    "keys_verified_unchanged": 49
+  },
+  "sha256": {
+    "fr": "3b4468571ff86d11cb6b89fd500b16fe10a5a6bf16edf52209099f32d6911f25",
+    "en": "16f600aa3e0900651df1537b6d0013f438a322994d073cc38afa933e122bfa52"
+  },
+  "required_sources": {
+    "ui_howto": {
+      "path": "docs/I18N.md",
+      "sha256": "f6699c1015a16cbf782bbd008a28c50edd63ade3e98f84be2d41dec6b14b95db"
+    },
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    }
+  },
+  "keys_audited": [
+    "ui.hub.skills.title",
+    "ui.hub.skills.empty",
+    "ui.hub.skills.search_empty",
+    "ui.hub.skills.loading",
+    "ui.hub.skills.unavailable",
+    "ui.hub.skills.remote_empty",
+    "ui.hub.skills.scope",
+    "ui.hub.skills.pull_title",
+    "ui.hub.skills.pull_help",
+    "ui.hub.skills.pull_failed",
+    "ui.hub.skills.policy_pending",
+    "ui.hub.skills.publish_title",
+    "ui.hub.skills.select_authored",
+    "ui.hub.skills.revision",
+    "ui.hub.skills.file_count",
+    "ui.hub.skills.files",
+    "ui.hub.skills.text_limits",
+    "ui.hub.skills.local_exists",
+    "ui.hub.skills.initial_policy_description",
+    "ui.hub.skills.search",
+    "ui.hub.skills.search_loaded",
+    "ui.hub.skills.open_detail",
+    "ui.hub.skills.catalogue_failed",
+    "ui.hub.skills.installed_alias",
+    "ui.hub.skills.session_selection",
+    "ui.hub.skills.download",
+    "ui.hub.skills.unpull",
+    "ui.hub.skills.unpull_title",
+    "ui.hub.skills.unpull_body",
+    "ui.hub.skills.unpull_failed",
+    "ui.hub.skills.subscribe_failed",
+    "ui.hub.skills.local_path",
+    "ui.hub.skills.published_by",
+    "ui.hub.skills.not_downloaded",
+    "ui.hub.skills.subscribed_absent",
+    "ui.hub.skills.pulled",
+    "ui.hub.skills.manual",
+    "ui.hub.skills.detached",
+    "ui.hub.skills.update_available",
+    "ui.hub.skills.update_applied",
+    "ui.hub.skills.update_failed",
+    "ui.hub.skills.update_now",
+    "ui.hub.skills.download_help",
+    "ui.hub.skills.subscribe_help",
+    "ui.hub.skills.unsubscribe",
+    "ui.hub.skills.unsubscribe_help",
+    "ui.hub.skills.public_hub",
+    "ui.hub.skills.count",
+    "ui.hub.skills.count_shared",
+    "ui.hub.skills.inventory_unknown"
+  ],
+  "checks": {
+    "on_disk_sha256_matches_brief": true,
+    "key_set_parity": {
+      "ui.hub.skills.*": {
+        "english": 50,
+        "target": 50,
+        "missing": [],
+        "extra": []
+      },
+      "whole_catalogue": {
+        "english": 179,
+        "target": 179
+      }
+    },
+    "delta_vs_head": {
+      "added": [
+        "ui.hub.skills.inventory_unknown"
+      ],
+      "removed": [],
+      "changed_values": 0
+    },
+    "previous_audit_spot_check": {
+      "ledger_instance": "6444bd85b1ac",
+      "ledger_round": "round 8",
+      "ledger_audited_target_sha256": "ab1fcdba6028d0f8d44aab114fc6936c49160150871269109c67cc8d59cc35b0",
+      "head_blob_sha256": "ab1fcdba6028d0f8d44aab114fc6936c49160150871269109c67cc8d59cc35b0",
+      "match": true,
+      "keys_verified_unchanged": 49,
+      "method": "Whole-file SHA-256 equals the ledger audited target hash; independently, a key-by-key JSON value comparison against HEAD reports 0 changed values."
+    },
+    "placeholder_integrity": "No placeholders, ICU plural/select branches, number/date skeletons or markup tokens in the key.",
+    "nfc": true,
+    "bidi_controls": "not applicable (no RTL content)",
+    "punctuation": "full stop (.) matching the English terminal period",
+    "length": {
+      "english_chars": 23,
+      "target_chars": 26,
+      "existing_status_slot_max_chars": 34
+    },
+    "glossary": "link -> lien; state -> état (status -> statut, cf. ui.hub.status.unknown). Consistent with the namespace."
+  },
+  "findings": [],
+  "findings_count": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  }
+}

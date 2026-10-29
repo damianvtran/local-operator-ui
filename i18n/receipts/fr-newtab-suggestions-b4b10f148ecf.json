@@ -1,0 +1,118 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "audit_kind": "fresh-namespace-delta",
+ "locale": "fr",
+ "namespace": "ui.browser",
+ "pr": null,
+ "branch": "fix/newtab-address-suggestions",
+ "instance": "fr-newtab-suggestions-b4b10f148ecf",
+ "auditor": {
+  "agent": "translation-auditor",
+  "role": "independent translation auditor (team lopdev); authored no catalogue value for this branch and edited no repo file",
+  "instance": "fr-newtab-suggestions-b4b10f148ecf",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_note": "FALLBACK OBSERVED: the session started on deepseek/deepseek-flash and the harness switched to anthropic/claude-sonnet-5-5 mid-run (provider failure: quota HTTP 402). The diff derivation and catalogue reads were first issued on deepseek-flash; every judgement, the ICU parse, the bidi rendering and this receipt were produced on anthropic/claude-sonnet-5-5.",
+  "independence": "Read-only on the repo (worktree newtab-suggestions at 80a1c3224e). Wrote no catalogue value, edited no catalogue, English source, context sidecar, ledger or allowance, ran no ledger tool. Wrote only this receipt under the session scratchpad."
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "verdict": "Accurate, vouvoiement consistent (Appuyez sur Entrée), typographic ’ and « » match neighbours. Overflow is the only finding.",
+ "findings": [
+  {
+   "severity": "MINOR",
+   "key": "ui.browser.browser_url_bar.address_suggestions_unavailable_narrow",
+   "current": "Ce panneau est trop étroit pour afficher des suggestions. Appuyez sur Entrée pour ouvrir ce que vous avez saisi.",
+   "problem": "First sentence 57 chars against English 40 (+43%); truncated in the pill.",
+   "proposed": "Panneau trop étroit pour les suggestions. Appuyez sur Entrée pour ouvrir votre saisie.",
+   "reason": "First sentence 41 chars; 'votre saisie' is also shorter than 'ce que vous avez saisi'. Vouvoiement kept."
+  },
+  {
+   "severity": "MINOR",
+   "key": "ui.browser.browser_url_bar.address_suggestions_unavailable_platform",
+   "current": "Les suggestions ne s’affichent pas sur ce système. Appuyez sur Entrée pour ouvrir ce que vous avez saisi.",
+   "problem": "First sentence 50 chars against English 40 (+25%); full string 105 vs 76.",
+   "proposed": "Suggestions non affichées sur ce système. Appuyez sur Entrée pour ouvrir votre saisie.",
+   "reason": "First sentence 41 chars, same meaning."
+  },
+  {
+   "severity": "MINOR",
+   "key": "ui.browser.browser_url_bar.address_suggestions_unavailable",
+   "current": "Impossible de lire votre historique de navigation. Les adresses saisies fonctionnent toujours.",
+   "problem": "First sentence 50 chars against English 36 (+39%); neighbours say 'historique' alone ('De votre historique').",
+   "proposed": "Impossible de lire votre historique. Les adresses saisies fonctionnent toujours.",
+   "reason": "First sentence 36 chars, aligned with the neighbouring glossary form."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.browser.browser_url_bar.address_suggestions_unavailable_restart",
+   "current": "La liste de suggestions ne fonctionne plus. Appuyez sur Entrée pour ouvrir ce que vous avez saisi, ou redémarrez Local Operator.",
+   "problem": "Whole string is 128 chars against English 100 (+28%); only the aria description carries the tail, so this is not a visible-truncation problem, just the longest string in the set.",
+   "proposed": "La liste de suggestions s’est arrêtée. Appuyez sur Entrée pour ouvrir votre saisie, ou redémarrez Local Operator.",
+   "reason": "Optional: 'ne fonctionne plus' reads as a standing state, 's’est arrêtée' matches 'stopped working' as an event; also shorter."
+  }
+ ],
+ "finding_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 3,
+  "nit": 1
+ },
+ "checks": {
+  "keys_audited": 5,
+  "key_set_equals_english": true,
+  "namespace_keys": 241,
+  "placeholders": "@formatjs/icu-messageformat-parser parse of all 5 values: address_open_row carries exactly one argument {address}, byte-intact; the other four carry no argument and no ICU/markup construct, same as English.",
+  "first_sentence_chars_vs_en": {
+   "address_suggestions_unavailable": [
+    36,
+    50
+   ],
+   "address_suggestions_unavailable_narrow": [
+    40,
+    57
+   ],
+   "address_suggestions_unavailable_platform": [
+    40,
+    50
+   ],
+   "address_suggestions_unavailable_restart": [
+    37,
+    43
+   ]
+  },
+  "full_chars_vs_en": {
+   "address_open_row": [
+    16,
+    20
+   ],
+   "address_suggestions_unavailable": [
+    64,
+    94
+   ],
+   "address_suggestions_unavailable_platform": [
+    76,
+    105
+   ],
+   "address_suggestions_unavailable_restart": [
+    100,
+    128
+   ],
+   "address_suggestions_unavailable_narrow": [
+    76,
+    112
+   ]
+  }
+ },
+ "overflow_context": "Rendering context (renderer/src/features/browser/components/browser-url-bar.tsx ~1597-1612): the three standing sentences paint in a single-line `truncate` pill, max-w-[45%] of the address field, text-meta (12px), shown from a 342px field up. The full text is the aria-describedby description. Only the FIRST sentence can realistically be seen, so first-sentence length is the budget that matters.",
+ "sha256": {
+  "fr": "d44bfc4d23be0328a3846d1eaa5f3f1492a9beb05f47213268d4eaaae818ddeb",
+  "en": "9c26625772886bffa1392176565485cad451be8f2644519b1a939d863667aa81"
+ },
+ "context_sha256": "aa83f0ec3e7d31793e54915a97955c49d2e788f7b926e26746ed46cc5f5a6e9b",
+ "scope": "ui.browser, the 5 keys this commit added or changed (address_open_row new; address_suggestions_unavailable changed; address_suggestions_unavailable_platform / _restart / _narrow new) read against src/i18n/catalogues/en/ui.browser.json and en/ui.browser.context.json, plus the surrounding browser_url_bar / browser_pane / browser_find_row / browser_tab_strip keys as register and glossary precedent. Diff derived from `git diff 2d4ba7c434..80a1c3224e -- src/i18n/catalogues`. 5 audited keys per locale; key set of the namespace equals English (241/241).",
+ "date": "2026-10-26",
+ "head": "80a1c3224e",
+ "head_full": "80a1c3224e2dbb2cafd154acda1ab3ef836c17b3",
+ "base": "2d4ba7c434"
+}

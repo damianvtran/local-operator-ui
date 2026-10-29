@@ -222,15 +222,37 @@ gate is the *first* branch, ahead of every size and whitespace rule:
 
 **Esc** depends on which sub-state you are in, and only one of them disarms:
 
-- **typing** (the space was typed: open span, empty or not) → **cancel**: the
-  held characters are written back into the buffer **as ordinary text** — the
-  only route by which a typed secret enters the document — the arm ends, and the
-  operator is told, in the TUI's words, that the characters are now plain text
-  and Enter will expose them (`CREDENTIAL_UNREDACTED_NOTICE`, "… characters are
-  now PLAIN TEXT in the composer — Enter will expose them"). The `/credential `
-  token is left behind as inert literal text. With no characters to restore the
-  cancel still ends the mode (the TUI's R1/U2 regression: it used to re-arm
-  itself and capture the prose that followed).
+- **typing, with characters held** → the FIRST Esc is **held**: the box text is
+  unchanged (the mask cells stay, the value stays in `Capture.value`, the draft is not
+  written), the masked span repaints in the not-stored register (dashed warning edge),
+  and the sentence above the box becomes `Esc again discards it — still masked, Enter
+  makes a pill` (`escapeHolds`, `CREDENTIAL_ESCAPE_HELD_NOTICE`). The typing
+  sentence before it already reads `… Esc twice discards`, so the first press is not
+  a surprise. A **second** Esc on the same state **discards**: the cells come out of the
+  buffer, the value is dropped, the arm ends, the `/credential ` token is left behind as
+  inert literal text, and the line reads `credential discarded — nothing was stored or
+  sent` until the next edit (`CREDENTIAL_DISCARDED_NOTICE`). The token stays because it
+  is what the operator typed and because an empty-span cancel has always left it; both
+  cancels look the same. Any edit between the two presses ends the hold, and so does any
+  route out of typing (mint, send, a whole-buffer replacement, a conversation switch),
+  so a later capture never opens pre-held. Deleting the cells by hand reaches the same
+  empty span through `maskEdit`.
+  **This replaces the TUI's unredact** (operator-approved, 2026-10-22). The port used
+  to follow `_cancel_credential_typing` and write the held characters back as ordinary
+  text, which was the only route by which a typed secret entered the document — and
+  the document is what the draft store persists, so every cancelled credential sat in
+  `localStorage` in plaintext. The hold keeps what the unredact was for (one stray
+  press must not throw away a secret the operator cannot retype) without the leak.
+  The held-press / restored-run submit rules that the unredact needed were deleted
+  with it: they keyed on a cancel record carrying restored characters, which no cancel
+  produces any more.
+  **HISTORICAL from here to the end of §5's Esc bullets.** The bullets below describe
+  the unredact era (QA/UX rounds 1-4 of PR #238) and are kept as the record of why the
+  submit seam has the shape it has. What still holds today: the cancelled token is
+  inert to submit, and the words written after it are the operator's prose (U9).
+- **typing, empty span** → **cancel**: the arm ends and nothing is held. With no
+  characters to restore the cancel still ends the mode (the TUI's R1/U2 regression: it
+  used to re-arm itself and capture the prose that followed).
 - **The cancel's own edit is suspended from the sync** (`_cancel_credential_typing`,
   `editor.py:6452`), and the port needs the equivalent for the EMPTY sub-state: a
   cancel that restores nothing produces no buffer change, so an edit the cancel
@@ -330,13 +352,17 @@ gate is the *first* branch, ahead of every size and whitespace rule:
   is enforced at the capture's own writes as well as at `handleChange`: a write
   gated on the render-time `draftHeld` flag alone missed the mint, which lands
   in the same tick while the mask is still open (QA round 1, Q1).
-- **What IS persisted, in every state the capture ends in.** The marker text
-  (it holds no secret), and — deliberately — the **Esc-restored plaintext**. The
-  unredact turns the characters back into the operator's prose, and prose is
-  what a draft keeps; leaving it out kept a secret off disk but made a crash or
-  a quit come back holding the inert `/credential ` the operator had just
-  cancelled, with their line gone (UX round 1, U4). §5's own words for that
-  state are the answer: after the unredact it is not a credential.
+- **What IS persisted, in every state the capture ends in.** The marker text (it
+  holds no secret) and the inert `/credential ` token a cancel leaves. **No typed
+  characters are ever persisted**: since 2026-10-22 Esc holds and then discards rather
+  than unredacting (§5), so there is no plaintext state for a draft to keep.
+  **HISTORICAL:** until then the Esc-restored plaintext was persisted deliberately, on
+  the reading that after the unredact it was the operator's prose (UX round 1, U4).
+  That reading is what put cancelled secrets in `localStorage`. The disclosure
+  paragraphs below describe that era. `unredactedChars` survives for two cases: a draft
+  an older build persisted after an Esc, re-raised on arrival, and the locked-run undo,
+  which hands back characters the operator typed unmasked and were already in the draft.
+  No Esc writes it.
   **The disclosure is persisted WITH those characters and re-raised when they
   come back** — the count, never the value and never the sentence. §5 says the
   unredacted state must never be silent, and once §6 decided to keep the
@@ -645,8 +671,9 @@ here is intended to be the TUI's behaviour rather than an accident of the port.
    by construction: it sees this composer's in-flight keys and knows of no
    session names at all (§9).
 3. **Draft persistence while typing**, as §6 states: the masked window is not
-   written, and every state the capture ENDS in is — the marker text and the
-   Esc-restored plaintext included.
+   written, and every state the capture ENDS in is — the marker text and the inert
+   token; no typed characters (the Esc-restored plaintext this once listed is gone
+   with the unredact, §5).
 4. **The submit seam for a first message (added in round 1).** The TUI's session
    always exists, so storing a cited credential before the send is always
    possible. Here a draft pane has no session until the send creates one, so

@@ -22,23 +22,49 @@
  */
 
 import enUiAgentMessages from "./catalogues/en/ui.agentMessages.json";
+import enUiAgentMessagesSettings from "./catalogues/en/ui.agentMessages.settings.json";
+import enUiAgentsConfig from "./catalogues/en/ui.agents.config.json";
+import enUiAgentsDetail from "./catalogues/en/ui.agents.detail.json";
 import enUiAgentsDialogs from "./catalogues/en/ui.agents.dialogs.json";
 import enUiAgents from "./catalogues/en/ui.agents.json";
 import enUiAgentsModels from "./catalogues/en/ui.agents.models.json";
 import enUiAgentsNavigation from "./catalogues/en/ui.agents.navigation.json";
+import enUiAgentsPages from "./catalogues/en/ui.agents.pages.json";
+import enUiAgentsPublication from "./catalogues/en/ui.agents.publication.json";
 import enUiAgentsRefusals from "./catalogues/en/ui.agents.refusals.json";
 import enUiAgentsSettings from "./catalogues/en/ui.agents.settings.json";
+import enUiAgentsSkills from "./catalogues/en/ui.agents.skills.json";
 import enUiAgentsStarters from "./catalogues/en/ui.agents.starters.json";
+import enUiAgentsTeams from "./catalogues/en/ui.agents.teams.json";
+import enUiAgentsUpload from "./catalogues/en/ui.agents.upload.json";
 import enUiBrowserChrome from "./catalogues/en/ui.browser.chrome.json";
+import enUiBrowserErrors from "./catalogues/en/ui.browser.errors.json";
 import enUiBrowser from "./catalogues/en/ui.browser.json";
 import enUiCanvas from "./catalogues/en/ui.canvas.json";
+import enUiChatAnalytics from "./catalogues/en/ui.chat.analytics.json";
+import enUiChatAsks from "./catalogues/en/ui.chat.asks.json";
+import enUiChatAttachments from "./catalogues/en/ui.chat.attachments.json";
+import enUiChatCanonical from "./catalogues/en/ui.chat.canonical.json";
+import enUiChatCommentaryActions from "./catalogues/en/ui.chat.commentary_actions.json";
 import enUiChatComposer from "./catalogues/en/ui.chat.composer.json";
 import enUiChatComposerMedia from "./catalogues/en/ui.chat.composer_media.json";
+import enUiChatDevice from "./catalogues/en/ui.chat.device.json";
 import enUiChatDialogs from "./catalogues/en/ui.chat.dialogs.json";
+import enUiChatDirectory from "./catalogues/en/ui.chat.directory.json";
 import enUiChatHeader from "./catalogues/en/ui.chat.header.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
+import enUiChatLiveUpdates from "./catalogues/en/ui.chat.live_updates.json";
+import enUiChatPickers from "./catalogues/en/ui.chat.pickers.json";
+import enUiChatRadientSession from "./catalogues/en/ui.chat.radient_session.json";
+import enUiChatResponseActions from "./catalogues/en/ui.chat.response_actions.json";
+import enUiChatRunDetails from "./catalogues/en/ui.chat.run_details.json";
+import enUiChatSidebar from "./catalogues/en/ui.chat.sidebar.json";
 import enUiChatSidebarView from "./catalogues/en/ui.chat.sidebar_view.json";
+import enUiChatStatus from "./catalogues/en/ui.chat.status.json";
+import enUiChatTagDialogs from "./catalogues/en/ui.chat.tag_dialogs.json";
 import enUiChatTags from "./catalogues/en/ui.chat.tags.json";
+import enUiChatThreadSearch from "./catalogues/en/ui.chat.thread_search.json";
+import enUiChatTranscriptCopy from "./catalogues/en/ui.chat.transcript_copy.json";
 import enUiChatVoice from "./catalogues/en/ui.chat.voice.json";
 import enUiCodeReview from "./catalogues/en/ui.code_review.json";
 import enUiCommandPalette from "./catalogues/en/ui.command_palette.json";
@@ -47,19 +73,40 @@ import enUiCommonActions from "./catalogues/en/ui.common.actions.json";
 import enUiCommonConnection from "./catalogues/en/ui.common.connection.json";
 import enUiCommonEditing from "./catalogues/en/ui.common.editing.json";
 import enUiCommonErrors from "./catalogues/en/ui.common.errors.json";
+import enUiCommonFileActions from "./catalogues/en/ui.common.file_actions.json";
 import enUiCommonForms from "./catalogues/en/ui.common.forms.json";
+import enUiCommonLayout from "./catalogues/en/ui.common.layout.json";
 import enUiCommonLoading from "./catalogues/en/ui.common.loading.json";
 import enUiCommonModels from "./catalogues/en/ui.common.models.json";
+import enUiCommonSpeech from "./catalogues/en/ui.common.speech.json";
+import enUiCommonTime from "./catalogues/en/ui.common.time.json";
 import enUiCommonUpdates from "./catalogues/en/ui.common.updates.json";
+import enUiCommonViewer from "./catalogues/en/ui.common.viewer.json";
+import enUiConsoleErrors from "./catalogues/en/ui.console.errors.json";
 import enUiConsole from "./catalogues/en/ui.console.json";
+import enUiHubCard from "./catalogues/en/ui.hub.card.json";
 import enUiHubComments from "./catalogues/en/ui.hub.comments.json";
+import enUiHubDetail from "./catalogues/en/ui.hub.detail.json";
 import enUiHub from "./catalogues/en/ui.hub.json";
+import enUiHubPages from "./catalogues/en/ui.hub.pages.json";
 import enUiHubTaxonomy from "./catalogues/en/ui.hub.taxonomy.json";
+import enUiHubTeams from "./catalogues/en/ui.hub.teams.json";
+import enUiHubUpdates from "./catalogues/en/ui.hub.updates.json";
+import enUiHubViewer from "./catalogues/en/ui.hub.viewer.json";
 import enUiInstaller from "./catalogues/en/ui.installer.json";
+import enUiLibraryErrors from "./catalogues/en/ui.library.errors.json";
+import enUiLibrary from "./catalogues/en/ui.library.json";
+import enUiMeshErrors from "./catalogues/en/ui.mesh.errors.json";
 import enUiMesh from "./catalogues/en/ui.mesh.json";
+import enUiMiniView from "./catalogues/en/ui.miniView.json";
+import enUiNotices from "./catalogues/en/ui.notices.json";
+import enUiNotifications from "./catalogues/en/ui.notifications.json";
+import enUiNotificationsOperation from "./catalogues/en/ui.notifications.operation.json";
 import enUiOnboarding from "./catalogues/en/ui.onboarding.json";
+import enUiPresence from "./catalogues/en/ui.presence.json";
 import enUiProjects from "./catalogues/en/ui.projects.json";
 import enUiProviders from "./catalogues/en/ui.providers.json";
+import enUiSchedulesErrors from "./catalogues/en/ui.schedules.errors.json";
 import enUiSchedules from "./catalogues/en/ui.schedules.json";
 import enUiSettingsAccount from "./catalogues/en/ui.settings.account.json";
 import enUiSettingsAppearance from "./catalogues/en/ui.settings.appearance.json";
@@ -77,24 +124,55 @@ import enUiSettingsSpeech from "./catalogues/en/ui.settings.speech.json";
 import enUiSettingsUpdates from "./catalogues/en/ui.settings.updates.json";
 import enUiSettingsVoice from "./catalogues/en/ui.settings.voice.json";
 import enUiShell from "./catalogues/en/ui.shell.json";
+import enUiShellMenubar from "./catalogues/en/ui.shell.menubar.json";
 import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
+import enUiTeamBridgeArchive from "./catalogues/en/ui.teamBridge.archive.json";
+import enUiTeamBridge from "./catalogues/en/ui.teamBridge.json";
+import enUiUpdatesPanel from "./catalogues/en/ui.updates.panel.json";
 import esUiAgentMessages from "./catalogues/es/ui.agentMessages.json";
+import esUiAgentMessagesSettings from "./catalogues/es/ui.agentMessages.settings.json";
+import esUiAgentsConfig from "./catalogues/es/ui.agents.config.json";
+import esUiAgentsDetail from "./catalogues/es/ui.agents.detail.json";
 import esUiAgentsDialogs from "./catalogues/es/ui.agents.dialogs.json";
+import esUiAgents from "./catalogues/es/ui.agents.json";
 import esUiAgentsModels from "./catalogues/es/ui.agents.models.json";
 import esUiAgentsNavigation from "./catalogues/es/ui.agents.navigation.json";
+import esUiAgentsPages from "./catalogues/es/ui.agents.pages.json";
+import esUiAgentsPublication from "./catalogues/es/ui.agents.publication.json";
 import esUiAgentsRefusals from "./catalogues/es/ui.agents.refusals.json";
 import esUiAgentsSettings from "./catalogues/es/ui.agents.settings.json";
+import esUiAgentsSkills from "./catalogues/es/ui.agents.skills.json";
 import esUiAgentsStarters from "./catalogues/es/ui.agents.starters.json";
+import esUiAgentsTeams from "./catalogues/es/ui.agents.teams.json";
+import esUiAgentsUpload from "./catalogues/es/ui.agents.upload.json";
 import esUiBrowserChrome from "./catalogues/es/ui.browser.chrome.json";
+import esUiBrowserErrors from "./catalogues/es/ui.browser.errors.json";
 import esUiBrowser from "./catalogues/es/ui.browser.json";
 import esUiCanvas from "./catalogues/es/ui.canvas.json";
+import esUiChatAnalytics from "./catalogues/es/ui.chat.analytics.json";
+import esUiChatAsks from "./catalogues/es/ui.chat.asks.json";
+import esUiChatAttachments from "./catalogues/es/ui.chat.attachments.json";
+import esUiChatCanonical from "./catalogues/es/ui.chat.canonical.json";
+import esUiChatCommentaryActions from "./catalogues/es/ui.chat.commentary_actions.json";
 import esUiChatComposer from "./catalogues/es/ui.chat.composer.json";
 import esUiChatComposerMedia from "./catalogues/es/ui.chat.composer_media.json";
+import esUiChatDevice from "./catalogues/es/ui.chat.device.json";
 import esUiChatDialogs from "./catalogues/es/ui.chat.dialogs.json";
+import esUiChatDirectory from "./catalogues/es/ui.chat.directory.json";
 import esUiChatHeader from "./catalogues/es/ui.chat.header.json";
 import esUiChat from "./catalogues/es/ui.chat.json";
+import esUiChatLiveUpdates from "./catalogues/es/ui.chat.live_updates.json";
+import esUiChatPickers from "./catalogues/es/ui.chat.pickers.json";
+import esUiChatRadientSession from "./catalogues/es/ui.chat.radient_session.json";
+import esUiChatResponseActions from "./catalogues/es/ui.chat.response_actions.json";
+import esUiChatRunDetails from "./catalogues/es/ui.chat.run_details.json";
+import esUiChatSidebar from "./catalogues/es/ui.chat.sidebar.json";
 import esUiChatSidebarView from "./catalogues/es/ui.chat.sidebar_view.json";
+import esUiChatStatus from "./catalogues/es/ui.chat.status.json";
+import esUiChatTagDialogs from "./catalogues/es/ui.chat.tag_dialogs.json";
 import esUiChatTags from "./catalogues/es/ui.chat.tags.json";
+import esUiChatThreadSearch from "./catalogues/es/ui.chat.thread_search.json";
+import esUiChatTranscriptCopy from "./catalogues/es/ui.chat.transcript_copy.json";
 import esUiCodeReview from "./catalogues/es/ui.code_review.json";
 import esUiCommandPalette from "./catalogues/es/ui.command_palette.json";
 import esUiCommonAccount from "./catalogues/es/ui.common.account.json";
@@ -102,19 +180,40 @@ import esUiCommonActions from "./catalogues/es/ui.common.actions.json";
 import esUiCommonConnection from "./catalogues/es/ui.common.connection.json";
 import esUiCommonEditing from "./catalogues/es/ui.common.editing.json";
 import esUiCommonErrors from "./catalogues/es/ui.common.errors.json";
+import esUiCommonFileActions from "./catalogues/es/ui.common.file_actions.json";
 import esUiCommonForms from "./catalogues/es/ui.common.forms.json";
+import esUiCommonLayout from "./catalogues/es/ui.common.layout.json";
 import esUiCommonLoading from "./catalogues/es/ui.common.loading.json";
 import esUiCommonModels from "./catalogues/es/ui.common.models.json";
+import esUiCommonSpeech from "./catalogues/es/ui.common.speech.json";
+import esUiCommonTime from "./catalogues/es/ui.common.time.json";
 import esUiCommonUpdates from "./catalogues/es/ui.common.updates.json";
+import esUiCommonViewer from "./catalogues/es/ui.common.viewer.json";
+import esUiConsoleErrors from "./catalogues/es/ui.console.errors.json";
 import esUiConsole from "./catalogues/es/ui.console.json";
+import esUiHubCard from "./catalogues/es/ui.hub.card.json";
 import esUiHubComments from "./catalogues/es/ui.hub.comments.json";
+import esUiHubDetail from "./catalogues/es/ui.hub.detail.json";
 import esUiHub from "./catalogues/es/ui.hub.json";
+import esUiHubPages from "./catalogues/es/ui.hub.pages.json";
 import esUiHubTaxonomy from "./catalogues/es/ui.hub.taxonomy.json";
+import esUiHubTeams from "./catalogues/es/ui.hub.teams.json";
+import esUiHubUpdates from "./catalogues/es/ui.hub.updates.json";
+import esUiHubViewer from "./catalogues/es/ui.hub.viewer.json";
 import esUiInstaller from "./catalogues/es/ui.installer.json";
+import esUiLibraryErrors from "./catalogues/es/ui.library.errors.json";
+import esUiLibrary from "./catalogues/es/ui.library.json";
+import esUiMeshErrors from "./catalogues/es/ui.mesh.errors.json";
 import esUiMesh from "./catalogues/es/ui.mesh.json";
+import esUiMiniView from "./catalogues/es/ui.miniView.json";
+import esUiNotices from "./catalogues/es/ui.notices.json";
+import esUiNotifications from "./catalogues/es/ui.notifications.json";
+import esUiNotificationsOperation from "./catalogues/es/ui.notifications.operation.json";
 import esUiOnboarding from "./catalogues/es/ui.onboarding.json";
+import esUiPresence from "./catalogues/es/ui.presence.json";
 import esUiProjects from "./catalogues/es/ui.projects.json";
 import esUiProviders from "./catalogues/es/ui.providers.json";
+import esUiSchedulesErrors from "./catalogues/es/ui.schedules.errors.json";
 import esUiSchedules from "./catalogues/es/ui.schedules.json";
 import esUiSettingsAccount from "./catalogues/es/ui.settings.account.json";
 import esUiSettingsAppearance from "./catalogues/es/ui.settings.appearance.json";
@@ -131,24 +230,55 @@ import esUiSettingsShortcuts from "./catalogues/es/ui.settings.shortcuts.json";
 import esUiSettingsSpeech from "./catalogues/es/ui.settings.speech.json";
 import esUiSettingsUpdates from "./catalogues/es/ui.settings.updates.json";
 import esUiShell from "./catalogues/es/ui.shell.json";
+import esUiShellMenubar from "./catalogues/es/ui.shell.menubar.json";
 import esUiShellRail from "./catalogues/es/ui.shell.rail.json";
+import esUiTeamBridgeArchive from "./catalogues/es/ui.teamBridge.archive.json";
+import esUiTeamBridge from "./catalogues/es/ui.teamBridge.json";
+import esUiUpdatesPanel from "./catalogues/es/ui.updates.panel.json";
 import frUiAgentMessages from "./catalogues/fr/ui.agentMessages.json";
+import frUiAgentMessagesSettings from "./catalogues/fr/ui.agentMessages.settings.json";
+import frUiAgentsConfig from "./catalogues/fr/ui.agents.config.json";
+import frUiAgentsDetail from "./catalogues/fr/ui.agents.detail.json";
 import frUiAgentsDialogs from "./catalogues/fr/ui.agents.dialogs.json";
+import frUiAgents from "./catalogues/fr/ui.agents.json";
 import frUiAgentsModels from "./catalogues/fr/ui.agents.models.json";
 import frUiAgentsNavigation from "./catalogues/fr/ui.agents.navigation.json";
+import frUiAgentsPages from "./catalogues/fr/ui.agents.pages.json";
+import frUiAgentsPublication from "./catalogues/fr/ui.agents.publication.json";
 import frUiAgentsRefusals from "./catalogues/fr/ui.agents.refusals.json";
 import frUiAgentsSettings from "./catalogues/fr/ui.agents.settings.json";
+import frUiAgentsSkills from "./catalogues/fr/ui.agents.skills.json";
 import frUiAgentsStarters from "./catalogues/fr/ui.agents.starters.json";
+import frUiAgentsTeams from "./catalogues/fr/ui.agents.teams.json";
+import frUiAgentsUpload from "./catalogues/fr/ui.agents.upload.json";
 import frUiBrowserChrome from "./catalogues/fr/ui.browser.chrome.json";
+import frUiBrowserErrors from "./catalogues/fr/ui.browser.errors.json";
 import frUiBrowser from "./catalogues/fr/ui.browser.json";
 import frUiCanvas from "./catalogues/fr/ui.canvas.json";
+import frUiChatAnalytics from "./catalogues/fr/ui.chat.analytics.json";
+import frUiChatAsks from "./catalogues/fr/ui.chat.asks.json";
+import frUiChatAttachments from "./catalogues/fr/ui.chat.attachments.json";
+import frUiChatCanonical from "./catalogues/fr/ui.chat.canonical.json";
+import frUiChatCommentaryActions from "./catalogues/fr/ui.chat.commentary_actions.json";
 import frUiChatComposer from "./catalogues/fr/ui.chat.composer.json";
 import frUiChatComposerMedia from "./catalogues/fr/ui.chat.composer_media.json";
+import frUiChatDevice from "./catalogues/fr/ui.chat.device.json";
 import frUiChatDialogs from "./catalogues/fr/ui.chat.dialogs.json";
+import frUiChatDirectory from "./catalogues/fr/ui.chat.directory.json";
 import frUiChatHeader from "./catalogues/fr/ui.chat.header.json";
 import frUiChat from "./catalogues/fr/ui.chat.json";
+import frUiChatLiveUpdates from "./catalogues/fr/ui.chat.live_updates.json";
+import frUiChatPickers from "./catalogues/fr/ui.chat.pickers.json";
+import frUiChatRadientSession from "./catalogues/fr/ui.chat.radient_session.json";
+import frUiChatResponseActions from "./catalogues/fr/ui.chat.response_actions.json";
+import frUiChatRunDetails from "./catalogues/fr/ui.chat.run_details.json";
+import frUiChatSidebar from "./catalogues/fr/ui.chat.sidebar.json";
 import frUiChatSidebarView from "./catalogues/fr/ui.chat.sidebar_view.json";
+import frUiChatStatus from "./catalogues/fr/ui.chat.status.json";
+import frUiChatTagDialogs from "./catalogues/fr/ui.chat.tag_dialogs.json";
 import frUiChatTags from "./catalogues/fr/ui.chat.tags.json";
+import frUiChatThreadSearch from "./catalogues/fr/ui.chat.thread_search.json";
+import frUiChatTranscriptCopy from "./catalogues/fr/ui.chat.transcript_copy.json";
 import frUiCodeReview from "./catalogues/fr/ui.code_review.json";
 import frUiCommandPalette from "./catalogues/fr/ui.command_palette.json";
 import frUiCommonAccount from "./catalogues/fr/ui.common.account.json";
@@ -156,19 +286,40 @@ import frUiCommonActions from "./catalogues/fr/ui.common.actions.json";
 import frUiCommonConnection from "./catalogues/fr/ui.common.connection.json";
 import frUiCommonEditing from "./catalogues/fr/ui.common.editing.json";
 import frUiCommonErrors from "./catalogues/fr/ui.common.errors.json";
+import frUiCommonFileActions from "./catalogues/fr/ui.common.file_actions.json";
 import frUiCommonForms from "./catalogues/fr/ui.common.forms.json";
+import frUiCommonLayout from "./catalogues/fr/ui.common.layout.json";
 import frUiCommonLoading from "./catalogues/fr/ui.common.loading.json";
 import frUiCommonModels from "./catalogues/fr/ui.common.models.json";
+import frUiCommonSpeech from "./catalogues/fr/ui.common.speech.json";
+import frUiCommonTime from "./catalogues/fr/ui.common.time.json";
 import frUiCommonUpdates from "./catalogues/fr/ui.common.updates.json";
+import frUiCommonViewer from "./catalogues/fr/ui.common.viewer.json";
+import frUiConsoleErrors from "./catalogues/fr/ui.console.errors.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
+import frUiHubCard from "./catalogues/fr/ui.hub.card.json";
 import frUiHubComments from "./catalogues/fr/ui.hub.comments.json";
+import frUiHubDetail from "./catalogues/fr/ui.hub.detail.json";
 import frUiHub from "./catalogues/fr/ui.hub.json";
+import frUiHubPages from "./catalogues/fr/ui.hub.pages.json";
 import frUiHubTaxonomy from "./catalogues/fr/ui.hub.taxonomy.json";
+import frUiHubTeams from "./catalogues/fr/ui.hub.teams.json";
+import frUiHubUpdates from "./catalogues/fr/ui.hub.updates.json";
+import frUiHubViewer from "./catalogues/fr/ui.hub.viewer.json";
 import frUiInstaller from "./catalogues/fr/ui.installer.json";
+import frUiLibraryErrors from "./catalogues/fr/ui.library.errors.json";
+import frUiLibrary from "./catalogues/fr/ui.library.json";
+import frUiMeshErrors from "./catalogues/fr/ui.mesh.errors.json";
 import frUiMesh from "./catalogues/fr/ui.mesh.json";
+import frUiMiniView from "./catalogues/fr/ui.miniView.json";
+import frUiNotices from "./catalogues/fr/ui.notices.json";
+import frUiNotifications from "./catalogues/fr/ui.notifications.json";
+import frUiNotificationsOperation from "./catalogues/fr/ui.notifications.operation.json";
 import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
+import frUiPresence from "./catalogues/fr/ui.presence.json";
 import frUiProjects from "./catalogues/fr/ui.projects.json";
 import frUiProviders from "./catalogues/fr/ui.providers.json";
+import frUiSchedulesErrors from "./catalogues/fr/ui.schedules.errors.json";
 import frUiSchedules from "./catalogues/fr/ui.schedules.json";
 import frUiSettingsAccount from "./catalogues/fr/ui.settings.account.json";
 import frUiSettingsAppearance from "./catalogues/fr/ui.settings.appearance.json";
@@ -185,28 +336,161 @@ import frUiSettingsShortcuts from "./catalogues/fr/ui.settings.shortcuts.json";
 import frUiSettingsSpeech from "./catalogues/fr/ui.settings.speech.json";
 import frUiSettingsUpdates from "./catalogues/fr/ui.settings.updates.json";
 import frUiShell from "./catalogues/fr/ui.shell.json";
+import frUiShellMenubar from "./catalogues/fr/ui.shell.menubar.json";
 import frUiShellRail from "./catalogues/fr/ui.shell.rail.json";
+import frUiTeamBridgeArchive from "./catalogues/fr/ui.teamBridge.archive.json";
+import frUiTeamBridge from "./catalogues/fr/ui.teamBridge.json";
+import frUiUpdatesPanel from "./catalogues/fr/ui.updates.panel.json";
+import hiUiAgentMessages from "./catalogues/hi/ui.agentMessages.json";
+import hiUiAgentMessagesSettings from "./catalogues/hi/ui.agentMessages.settings.json";
+import hiUiAgentsConfig from "./catalogues/hi/ui.agents.config.json";
+import hiUiAgentsDetail from "./catalogues/hi/ui.agents.detail.json";
+import hiUiAgentsDialogs from "./catalogues/hi/ui.agents.dialogs.json";
+import hiUiAgents from "./catalogues/hi/ui.agents.json";
+import hiUiAgentsModels from "./catalogues/hi/ui.agents.models.json";
+import hiUiAgentsNavigation from "./catalogues/hi/ui.agents.navigation.json";
+import hiUiAgentsPages from "./catalogues/hi/ui.agents.pages.json";
+import hiUiAgentsPublication from "./catalogues/hi/ui.agents.publication.json";
+import hiUiAgentsRefusals from "./catalogues/hi/ui.agents.refusals.json";
+import hiUiAgentsSettings from "./catalogues/hi/ui.agents.settings.json";
+import hiUiAgentsSkills from "./catalogues/hi/ui.agents.skills.json";
+import hiUiAgentsStarters from "./catalogues/hi/ui.agents.starters.json";
+import hiUiAgentsTeams from "./catalogues/hi/ui.agents.teams.json";
+import hiUiAgentsUpload from "./catalogues/hi/ui.agents.upload.json";
+import hiUiBrowserChrome from "./catalogues/hi/ui.browser.chrome.json";
+import hiUiBrowserErrors from "./catalogues/hi/ui.browser.errors.json";
+import hiUiBrowser from "./catalogues/hi/ui.browser.json";
+import hiUiCanvas from "./catalogues/hi/ui.canvas.json";
+import hiUiChatAnalytics from "./catalogues/hi/ui.chat.analytics.json";
+import hiUiChatAsks from "./catalogues/hi/ui.chat.asks.json";
+import hiUiChatAttachments from "./catalogues/hi/ui.chat.attachments.json";
+import hiUiChatCanonical from "./catalogues/hi/ui.chat.canonical.json";
+import hiUiChatCommentaryActions from "./catalogues/hi/ui.chat.commentary_actions.json";
+import hiUiChatComposer from "./catalogues/hi/ui.chat.composer.json";
+import hiUiChatComposerMedia from "./catalogues/hi/ui.chat.composer_media.json";
+import hiUiChatDevice from "./catalogues/hi/ui.chat.device.json";
+import hiUiChatDialogs from "./catalogues/hi/ui.chat.dialogs.json";
+import hiUiChatDirectory from "./catalogues/hi/ui.chat.directory.json";
+import hiUiChatHeader from "./catalogues/hi/ui.chat.header.json";
+import hiUiChat from "./catalogues/hi/ui.chat.json";
+import hiUiChatLiveUpdates from "./catalogues/hi/ui.chat.live_updates.json";
+import hiUiChatPickers from "./catalogues/hi/ui.chat.pickers.json";
+import hiUiChatRadientSession from "./catalogues/hi/ui.chat.radient_session.json";
+import hiUiChatResponseActions from "./catalogues/hi/ui.chat.response_actions.json";
+import hiUiChatRunDetails from "./catalogues/hi/ui.chat.run_details.json";
+import hiUiChatSidebar from "./catalogues/hi/ui.chat.sidebar.json";
+import hiUiChatSidebarView from "./catalogues/hi/ui.chat.sidebar_view.json";
+import hiUiChatStatus from "./catalogues/hi/ui.chat.status.json";
+import hiUiChatTagDialogs from "./catalogues/hi/ui.chat.tag_dialogs.json";
+import hiUiChatTags from "./catalogues/hi/ui.chat.tags.json";
+import hiUiChatThreadSearch from "./catalogues/hi/ui.chat.thread_search.json";
+import hiUiChatTranscriptCopy from "./catalogues/hi/ui.chat.transcript_copy.json";
+import hiUiCodeReview from "./catalogues/hi/ui.code_review.json";
+import hiUiCommandPalette from "./catalogues/hi/ui.command_palette.json";
+import hiUiCommonAccount from "./catalogues/hi/ui.common.account.json";
+import hiUiCommonActions from "./catalogues/hi/ui.common.actions.json";
+import hiUiCommonConnection from "./catalogues/hi/ui.common.connection.json";
+import hiUiCommonEditing from "./catalogues/hi/ui.common.editing.json";
+import hiUiCommonErrors from "./catalogues/hi/ui.common.errors.json";
+import hiUiCommonFileActions from "./catalogues/hi/ui.common.file_actions.json";
+import hiUiCommonForms from "./catalogues/hi/ui.common.forms.json";
+import hiUiCommonLayout from "./catalogues/hi/ui.common.layout.json";
+import hiUiCommonLoading from "./catalogues/hi/ui.common.loading.json";
+import hiUiCommonModels from "./catalogues/hi/ui.common.models.json";
+import hiUiCommonSpeech from "./catalogues/hi/ui.common.speech.json";
+import hiUiCommonTime from "./catalogues/hi/ui.common.time.json";
+import hiUiCommonUpdates from "./catalogues/hi/ui.common.updates.json";
+import hiUiCommonViewer from "./catalogues/hi/ui.common.viewer.json";
+import hiUiConsoleErrors from "./catalogues/hi/ui.console.errors.json";
 import hiUiConsole from "./catalogues/hi/ui.console.json";
+import hiUiHubCard from "./catalogues/hi/ui.hub.card.json";
+import hiUiHubComments from "./catalogues/hi/ui.hub.comments.json";
+import hiUiHubDetail from "./catalogues/hi/ui.hub.detail.json";
+import hiUiHub from "./catalogues/hi/ui.hub.json";
+import hiUiHubPages from "./catalogues/hi/ui.hub.pages.json";
+import hiUiHubTaxonomy from "./catalogues/hi/ui.hub.taxonomy.json";
+import hiUiHubTeams from "./catalogues/hi/ui.hub.teams.json";
+import hiUiHubUpdates from "./catalogues/hi/ui.hub.updates.json";
+import hiUiHubViewer from "./catalogues/hi/ui.hub.viewer.json";
+import hiUiInstaller from "./catalogues/hi/ui.installer.json";
+import hiUiLibraryErrors from "./catalogues/hi/ui.library.errors.json";
+import hiUiLibrary from "./catalogues/hi/ui.library.json";
+import hiUiMeshErrors from "./catalogues/hi/ui.mesh.errors.json";
+import hiUiMesh from "./catalogues/hi/ui.mesh.json";
+import hiUiMiniView from "./catalogues/hi/ui.miniView.json";
+import hiUiNotices from "./catalogues/hi/ui.notices.json";
+import hiUiNotifications from "./catalogues/hi/ui.notifications.json";
+import hiUiNotificationsOperation from "./catalogues/hi/ui.notifications.operation.json";
 import hiUiOnboarding from "./catalogues/hi/ui.onboarding.json";
+import hiUiPresence from "./catalogues/hi/ui.presence.json";
+import hiUiProjects from "./catalogues/hi/ui.projects.json";
+import hiUiProviders from "./catalogues/hi/ui.providers.json";
+import hiUiSchedulesErrors from "./catalogues/hi/ui.schedules.errors.json";
+import hiUiSchedules from "./catalogues/hi/ui.schedules.json";
+import hiUiSettingsAccount from "./catalogues/hi/ui.settings.account.json";
+import hiUiSettingsAppearance from "./catalogues/hi/ui.settings.appearance.json";
+import hiUiSettingsAppearanceWindowGlass from "./catalogues/hi/ui.settings.appearance.window_glass.json";
+import hiUiSettingsConfiguration from "./catalogues/hi/ui.settings.configuration.json";
+import hiUiSettingsImports from "./catalogues/hi/ui.settings.imports.json";
+import hiUiSettingsIntegrations from "./catalogues/hi/ui.settings.integrations.json";
 import hiUiSettings from "./catalogues/hi/ui.settings.json";
+import hiUiSettingsModelDefaultEffort from "./catalogues/hi/ui.settings.model.default_effort.json";
+import hiUiSettingsModel from "./catalogues/hi/ui.settings.model.json";
+import hiUiSettingsModelProviderCallout from "./catalogues/hi/ui.settings.model.provider_callout.json";
+import hiUiSettingsNavigation from "./catalogues/hi/ui.settings.navigation.json";
+import hiUiSettingsShortcuts from "./catalogues/hi/ui.settings.shortcuts.json";
+import hiUiSettingsSpeech from "./catalogues/hi/ui.settings.speech.json";
+import hiUiSettingsUpdates from "./catalogues/hi/ui.settings.updates.json";
+import hiUiShell from "./catalogues/hi/ui.shell.json";
+import hiUiShellMenubar from "./catalogues/hi/ui.shell.menubar.json";
+import hiUiShellRail from "./catalogues/hi/ui.shell.rail.json";
+import hiUiTeamBridgeArchive from "./catalogues/hi/ui.teamBridge.archive.json";
+import hiUiTeamBridge from "./catalogues/hi/ui.teamBridge.json";
+import hiUiUpdatesPanel from "./catalogues/hi/ui.updates.panel.json";
 import ruUiAgentMessages from "./catalogues/ru/ui.agentMessages.json";
+import ruUiAgentMessagesSettings from "./catalogues/ru/ui.agentMessages.settings.json";
+import ruUiAgentsConfig from "./catalogues/ru/ui.agents.config.json";
+import ruUiAgentsDetail from "./catalogues/ru/ui.agents.detail.json";
 import ruUiAgentsDialogs from "./catalogues/ru/ui.agents.dialogs.json";
 import ruUiAgents from "./catalogues/ru/ui.agents.json";
 import ruUiAgentsModels from "./catalogues/ru/ui.agents.models.json";
 import ruUiAgentsNavigation from "./catalogues/ru/ui.agents.navigation.json";
+import ruUiAgentsPages from "./catalogues/ru/ui.agents.pages.json";
+import ruUiAgentsPublication from "./catalogues/ru/ui.agents.publication.json";
 import ruUiAgentsRefusals from "./catalogues/ru/ui.agents.refusals.json";
 import ruUiAgentsSettings from "./catalogues/ru/ui.agents.settings.json";
+import ruUiAgentsSkills from "./catalogues/ru/ui.agents.skills.json";
 import ruUiAgentsStarters from "./catalogues/ru/ui.agents.starters.json";
+import ruUiAgentsTeams from "./catalogues/ru/ui.agents.teams.json";
+import ruUiAgentsUpload from "./catalogues/ru/ui.agents.upload.json";
 import ruUiBrowserChrome from "./catalogues/ru/ui.browser.chrome.json";
+import ruUiBrowserErrors from "./catalogues/ru/ui.browser.errors.json";
 import ruUiBrowser from "./catalogues/ru/ui.browser.json";
 import ruUiCanvas from "./catalogues/ru/ui.canvas.json";
+import ruUiChatAnalytics from "./catalogues/ru/ui.chat.analytics.json";
+import ruUiChatAsks from "./catalogues/ru/ui.chat.asks.json";
+import ruUiChatAttachments from "./catalogues/ru/ui.chat.attachments.json";
+import ruUiChatCanonical from "./catalogues/ru/ui.chat.canonical.json";
+import ruUiChatCommentaryActions from "./catalogues/ru/ui.chat.commentary_actions.json";
 import ruUiChatComposer from "./catalogues/ru/ui.chat.composer.json";
 import ruUiChatComposerMedia from "./catalogues/ru/ui.chat.composer_media.json";
+import ruUiChatDevice from "./catalogues/ru/ui.chat.device.json";
 import ruUiChatDialogs from "./catalogues/ru/ui.chat.dialogs.json";
+import ruUiChatDirectory from "./catalogues/ru/ui.chat.directory.json";
 import ruUiChatHeader from "./catalogues/ru/ui.chat.header.json";
 import ruUiChat from "./catalogues/ru/ui.chat.json";
+import ruUiChatLiveUpdates from "./catalogues/ru/ui.chat.live_updates.json";
+import ruUiChatPickers from "./catalogues/ru/ui.chat.pickers.json";
+import ruUiChatRadientSession from "./catalogues/ru/ui.chat.radient_session.json";
+import ruUiChatResponseActions from "./catalogues/ru/ui.chat.response_actions.json";
+import ruUiChatRunDetails from "./catalogues/ru/ui.chat.run_details.json";
+import ruUiChatSidebar from "./catalogues/ru/ui.chat.sidebar.json";
 import ruUiChatSidebarView from "./catalogues/ru/ui.chat.sidebar_view.json";
+import ruUiChatStatus from "./catalogues/ru/ui.chat.status.json";
+import ruUiChatTagDialogs from "./catalogues/ru/ui.chat.tag_dialogs.json";
 import ruUiChatTags from "./catalogues/ru/ui.chat.tags.json";
+import ruUiChatThreadSearch from "./catalogues/ru/ui.chat.thread_search.json";
+import ruUiChatTranscriptCopy from "./catalogues/ru/ui.chat.transcript_copy.json";
 import ruUiCodeReview from "./catalogues/ru/ui.code_review.json";
 import ruUiCommandPalette from "./catalogues/ru/ui.command_palette.json";
 import ruUiCommonAccount from "./catalogues/ru/ui.common.account.json";
@@ -214,19 +498,40 @@ import ruUiCommonActions from "./catalogues/ru/ui.common.actions.json";
 import ruUiCommonConnection from "./catalogues/ru/ui.common.connection.json";
 import ruUiCommonEditing from "./catalogues/ru/ui.common.editing.json";
 import ruUiCommonErrors from "./catalogues/ru/ui.common.errors.json";
+import ruUiCommonFileActions from "./catalogues/ru/ui.common.file_actions.json";
 import ruUiCommonForms from "./catalogues/ru/ui.common.forms.json";
+import ruUiCommonLayout from "./catalogues/ru/ui.common.layout.json";
 import ruUiCommonLoading from "./catalogues/ru/ui.common.loading.json";
 import ruUiCommonModels from "./catalogues/ru/ui.common.models.json";
+import ruUiCommonSpeech from "./catalogues/ru/ui.common.speech.json";
+import ruUiCommonTime from "./catalogues/ru/ui.common.time.json";
 import ruUiCommonUpdates from "./catalogues/ru/ui.common.updates.json";
+import ruUiCommonViewer from "./catalogues/ru/ui.common.viewer.json";
+import ruUiConsoleErrors from "./catalogues/ru/ui.console.errors.json";
 import ruUiConsole from "./catalogues/ru/ui.console.json";
+import ruUiHubCard from "./catalogues/ru/ui.hub.card.json";
 import ruUiHubComments from "./catalogues/ru/ui.hub.comments.json";
+import ruUiHubDetail from "./catalogues/ru/ui.hub.detail.json";
 import ruUiHub from "./catalogues/ru/ui.hub.json";
+import ruUiHubPages from "./catalogues/ru/ui.hub.pages.json";
 import ruUiHubTaxonomy from "./catalogues/ru/ui.hub.taxonomy.json";
+import ruUiHubTeams from "./catalogues/ru/ui.hub.teams.json";
+import ruUiHubUpdates from "./catalogues/ru/ui.hub.updates.json";
+import ruUiHubViewer from "./catalogues/ru/ui.hub.viewer.json";
 import ruUiInstaller from "./catalogues/ru/ui.installer.json";
+import ruUiLibraryErrors from "./catalogues/ru/ui.library.errors.json";
+import ruUiLibrary from "./catalogues/ru/ui.library.json";
+import ruUiMeshErrors from "./catalogues/ru/ui.mesh.errors.json";
 import ruUiMesh from "./catalogues/ru/ui.mesh.json";
+import ruUiMiniView from "./catalogues/ru/ui.miniView.json";
+import ruUiNotices from "./catalogues/ru/ui.notices.json";
+import ruUiNotifications from "./catalogues/ru/ui.notifications.json";
+import ruUiNotificationsOperation from "./catalogues/ru/ui.notifications.operation.json";
 import ruUiOnboarding from "./catalogues/ru/ui.onboarding.json";
+import ruUiPresence from "./catalogues/ru/ui.presence.json";
 import ruUiProjects from "./catalogues/ru/ui.projects.json";
 import ruUiProviders from "./catalogues/ru/ui.providers.json";
+import ruUiSchedulesErrors from "./catalogues/ru/ui.schedules.errors.json";
 import ruUiSchedules from "./catalogues/ru/ui.schedules.json";
 import ruUiSettingsAccount from "./catalogues/ru/ui.settings.account.json";
 import ruUiSettingsAppearance from "./catalogues/ru/ui.settings.appearance.json";
@@ -243,34 +548,376 @@ import ruUiSettingsShortcuts from "./catalogues/ru/ui.settings.shortcuts.json";
 import ruUiSettingsSpeech from "./catalogues/ru/ui.settings.speech.json";
 import ruUiSettingsUpdates from "./catalogues/ru/ui.settings.updates.json";
 import ruUiShell from "./catalogues/ru/ui.shell.json";
+import ruUiShellMenubar from "./catalogues/ru/ui.shell.menubar.json";
 import ruUiShellRail from "./catalogues/ru/ui.shell.rail.json";
+import ruUiTeamBridgeArchive from "./catalogues/ru/ui.teamBridge.archive.json";
+import ruUiTeamBridge from "./catalogues/ru/ui.teamBridge.json";
+import ruUiUpdatesPanel from "./catalogues/ru/ui.updates.panel.json";
+import urUiAgentMessages from "./catalogues/ur/ui.agentMessages.json";
+import urUiAgentMessagesSettings from "./catalogues/ur/ui.agentMessages.settings.json";
+import urUiAgentsConfig from "./catalogues/ur/ui.agents.config.json";
+import urUiAgentsDetail from "./catalogues/ur/ui.agents.detail.json";
+import urUiAgentsDialogs from "./catalogues/ur/ui.agents.dialogs.json";
+import urUiAgents from "./catalogues/ur/ui.agents.json";
+import urUiAgentsModels from "./catalogues/ur/ui.agents.models.json";
+import urUiAgentsNavigation from "./catalogues/ur/ui.agents.navigation.json";
+import urUiAgentsPages from "./catalogues/ur/ui.agents.pages.json";
+import urUiAgentsPublication from "./catalogues/ur/ui.agents.publication.json";
+import urUiAgentsRefusals from "./catalogues/ur/ui.agents.refusals.json";
+import urUiAgentsSettings from "./catalogues/ur/ui.agents.settings.json";
+import urUiAgentsSkills from "./catalogues/ur/ui.agents.skills.json";
+import urUiAgentsStarters from "./catalogues/ur/ui.agents.starters.json";
+import urUiAgentsTeams from "./catalogues/ur/ui.agents.teams.json";
+import urUiAgentsUpload from "./catalogues/ur/ui.agents.upload.json";
+import urUiBrowserChrome from "./catalogues/ur/ui.browser.chrome.json";
+import urUiBrowserErrors from "./catalogues/ur/ui.browser.errors.json";
+import urUiBrowser from "./catalogues/ur/ui.browser.json";
+import urUiCanvas from "./catalogues/ur/ui.canvas.json";
+import urUiChatAnalytics from "./catalogues/ur/ui.chat.analytics.json";
+import urUiChatAsks from "./catalogues/ur/ui.chat.asks.json";
+import urUiChatAttachments from "./catalogues/ur/ui.chat.attachments.json";
+import urUiChatCanonical from "./catalogues/ur/ui.chat.canonical.json";
+import urUiChatCommentaryActions from "./catalogues/ur/ui.chat.commentary_actions.json";
+import urUiChatComposer from "./catalogues/ur/ui.chat.composer.json";
+import urUiChatComposerMedia from "./catalogues/ur/ui.chat.composer_media.json";
+import urUiChatDevice from "./catalogues/ur/ui.chat.device.json";
+import urUiChatDialogs from "./catalogues/ur/ui.chat.dialogs.json";
+import urUiChatDirectory from "./catalogues/ur/ui.chat.directory.json";
+import urUiChatHeader from "./catalogues/ur/ui.chat.header.json";
+import urUiChat from "./catalogues/ur/ui.chat.json";
+import urUiChatLiveUpdates from "./catalogues/ur/ui.chat.live_updates.json";
+import urUiChatPickers from "./catalogues/ur/ui.chat.pickers.json";
+import urUiChatRadientSession from "./catalogues/ur/ui.chat.radient_session.json";
+import urUiChatResponseActions from "./catalogues/ur/ui.chat.response_actions.json";
+import urUiChatRunDetails from "./catalogues/ur/ui.chat.run_details.json";
+import urUiChatSidebar from "./catalogues/ur/ui.chat.sidebar.json";
+import urUiChatSidebarView from "./catalogues/ur/ui.chat.sidebar_view.json";
+import urUiChatStatus from "./catalogues/ur/ui.chat.status.json";
+import urUiChatTagDialogs from "./catalogues/ur/ui.chat.tag_dialogs.json";
+import urUiChatTags from "./catalogues/ur/ui.chat.tags.json";
+import urUiChatThreadSearch from "./catalogues/ur/ui.chat.thread_search.json";
+import urUiChatTranscriptCopy from "./catalogues/ur/ui.chat.transcript_copy.json";
+import urUiCodeReview from "./catalogues/ur/ui.code_review.json";
+import urUiCommandPalette from "./catalogues/ur/ui.command_palette.json";
+import urUiCommonAccount from "./catalogues/ur/ui.common.account.json";
+import urUiCommonActions from "./catalogues/ur/ui.common.actions.json";
+import urUiCommonConnection from "./catalogues/ur/ui.common.connection.json";
+import urUiCommonEditing from "./catalogues/ur/ui.common.editing.json";
+import urUiCommonErrors from "./catalogues/ur/ui.common.errors.json";
+import urUiCommonFileActions from "./catalogues/ur/ui.common.file_actions.json";
+import urUiCommonForms from "./catalogues/ur/ui.common.forms.json";
+import urUiCommonLayout from "./catalogues/ur/ui.common.layout.json";
+import urUiCommonLoading from "./catalogues/ur/ui.common.loading.json";
+import urUiCommonModels from "./catalogues/ur/ui.common.models.json";
+import urUiCommonSpeech from "./catalogues/ur/ui.common.speech.json";
+import urUiCommonTime from "./catalogues/ur/ui.common.time.json";
+import urUiCommonUpdates from "./catalogues/ur/ui.common.updates.json";
+import urUiCommonViewer from "./catalogues/ur/ui.common.viewer.json";
+import urUiConsoleErrors from "./catalogues/ur/ui.console.errors.json";
+import urUiConsole from "./catalogues/ur/ui.console.json";
+import urUiHubCard from "./catalogues/ur/ui.hub.card.json";
+import urUiHubComments from "./catalogues/ur/ui.hub.comments.json";
+import urUiHubDetail from "./catalogues/ur/ui.hub.detail.json";
+import urUiHub from "./catalogues/ur/ui.hub.json";
+import urUiHubPages from "./catalogues/ur/ui.hub.pages.json";
+import urUiHubTaxonomy from "./catalogues/ur/ui.hub.taxonomy.json";
+import urUiHubTeams from "./catalogues/ur/ui.hub.teams.json";
+import urUiHubUpdates from "./catalogues/ur/ui.hub.updates.json";
+import urUiHubViewer from "./catalogues/ur/ui.hub.viewer.json";
+import urUiInstaller from "./catalogues/ur/ui.installer.json";
+import urUiLibraryErrors from "./catalogues/ur/ui.library.errors.json";
+import urUiLibrary from "./catalogues/ur/ui.library.json";
+import urUiMeshErrors from "./catalogues/ur/ui.mesh.errors.json";
+import urUiMesh from "./catalogues/ur/ui.mesh.json";
+import urUiMiniView from "./catalogues/ur/ui.miniView.json";
+import urUiNotices from "./catalogues/ur/ui.notices.json";
+import urUiNotifications from "./catalogues/ur/ui.notifications.json";
+import urUiNotificationsOperation from "./catalogues/ur/ui.notifications.operation.json";
+import urUiOnboarding from "./catalogues/ur/ui.onboarding.json";
+import urUiPresence from "./catalogues/ur/ui.presence.json";
+import urUiProjects from "./catalogues/ur/ui.projects.json";
+import urUiProviders from "./catalogues/ur/ui.providers.json";
+import urUiSchedulesErrors from "./catalogues/ur/ui.schedules.errors.json";
+import urUiSchedules from "./catalogues/ur/ui.schedules.json";
+import urUiSettingsAccount from "./catalogues/ur/ui.settings.account.json";
+import urUiSettingsAppearance from "./catalogues/ur/ui.settings.appearance.json";
+import urUiSettingsAppearanceWindowGlass from "./catalogues/ur/ui.settings.appearance.window_glass.json";
+import urUiSettingsConfiguration from "./catalogues/ur/ui.settings.configuration.json";
+import urUiSettingsImports from "./catalogues/ur/ui.settings.imports.json";
+import urUiSettingsIntegrations from "./catalogues/ur/ui.settings.integrations.json";
+import urUiSettings from "./catalogues/ur/ui.settings.json";
+import urUiSettingsModelDefaultEffort from "./catalogues/ur/ui.settings.model.default_effort.json";
+import urUiSettingsModel from "./catalogues/ur/ui.settings.model.json";
+import urUiSettingsModelProviderCallout from "./catalogues/ur/ui.settings.model.provider_callout.json";
+import urUiSettingsNavigation from "./catalogues/ur/ui.settings.navigation.json";
+import urUiSettingsShortcuts from "./catalogues/ur/ui.settings.shortcuts.json";
+import urUiSettingsSpeech from "./catalogues/ur/ui.settings.speech.json";
+import urUiSettingsUpdates from "./catalogues/ur/ui.settings.updates.json";
+import urUiShell from "./catalogues/ur/ui.shell.json";
+import urUiShellMenubar from "./catalogues/ur/ui.shell.menubar.json";
+import urUiShellRail from "./catalogues/ur/ui.shell.rail.json";
+import urUiTeamBridgeArchive from "./catalogues/ur/ui.teamBridge.archive.json";
+import urUiTeamBridge from "./catalogues/ur/ui.teamBridge.json";
+import urUiUpdatesPanel from "./catalogues/ur/ui.updates.panel.json";
+import viUiAgentMessages from "./catalogues/vi/ui.agentMessages.json";
+import viUiAgentMessagesSettings from "./catalogues/vi/ui.agentMessages.settings.json";
+import viUiAgentsConfig from "./catalogues/vi/ui.agents.config.json";
+import viUiAgentsDetail from "./catalogues/vi/ui.agents.detail.json";
+import viUiAgentsDialogs from "./catalogues/vi/ui.agents.dialogs.json";
+import viUiAgents from "./catalogues/vi/ui.agents.json";
+import viUiAgentsModels from "./catalogues/vi/ui.agents.models.json";
+import viUiAgentsNavigation from "./catalogues/vi/ui.agents.navigation.json";
+import viUiAgentsPages from "./catalogues/vi/ui.agents.pages.json";
+import viUiAgentsPublication from "./catalogues/vi/ui.agents.publication.json";
+import viUiAgentsRefusals from "./catalogues/vi/ui.agents.refusals.json";
+import viUiAgentsSettings from "./catalogues/vi/ui.agents.settings.json";
+import viUiAgentsSkills from "./catalogues/vi/ui.agents.skills.json";
+import viUiAgentsStarters from "./catalogues/vi/ui.agents.starters.json";
+import viUiAgentsTeams from "./catalogues/vi/ui.agents.teams.json";
+import viUiAgentsUpload from "./catalogues/vi/ui.agents.upload.json";
+import viUiBrowserChrome from "./catalogues/vi/ui.browser.chrome.json";
+import viUiBrowserErrors from "./catalogues/vi/ui.browser.errors.json";
+import viUiBrowser from "./catalogues/vi/ui.browser.json";
+import viUiCanvas from "./catalogues/vi/ui.canvas.json";
+import viUiChatAnalytics from "./catalogues/vi/ui.chat.analytics.json";
+import viUiChatAsks from "./catalogues/vi/ui.chat.asks.json";
+import viUiChatAttachments from "./catalogues/vi/ui.chat.attachments.json";
+import viUiChatCanonical from "./catalogues/vi/ui.chat.canonical.json";
+import viUiChatCommentaryActions from "./catalogues/vi/ui.chat.commentary_actions.json";
+import viUiChatComposer from "./catalogues/vi/ui.chat.composer.json";
+import viUiChatComposerMedia from "./catalogues/vi/ui.chat.composer_media.json";
+import viUiChatDevice from "./catalogues/vi/ui.chat.device.json";
+import viUiChatDialogs from "./catalogues/vi/ui.chat.dialogs.json";
+import viUiChatDirectory from "./catalogues/vi/ui.chat.directory.json";
+import viUiChatHeader from "./catalogues/vi/ui.chat.header.json";
+import viUiChat from "./catalogues/vi/ui.chat.json";
+import viUiChatLiveUpdates from "./catalogues/vi/ui.chat.live_updates.json";
+import viUiChatPickers from "./catalogues/vi/ui.chat.pickers.json";
+import viUiChatRadientSession from "./catalogues/vi/ui.chat.radient_session.json";
+import viUiChatResponseActions from "./catalogues/vi/ui.chat.response_actions.json";
+import viUiChatRunDetails from "./catalogues/vi/ui.chat.run_details.json";
+import viUiChatSidebar from "./catalogues/vi/ui.chat.sidebar.json";
+import viUiChatSidebarView from "./catalogues/vi/ui.chat.sidebar_view.json";
+import viUiChatStatus from "./catalogues/vi/ui.chat.status.json";
+import viUiChatTagDialogs from "./catalogues/vi/ui.chat.tag_dialogs.json";
+import viUiChatTags from "./catalogues/vi/ui.chat.tags.json";
+import viUiChatThreadSearch from "./catalogues/vi/ui.chat.thread_search.json";
+import viUiChatTranscriptCopy from "./catalogues/vi/ui.chat.transcript_copy.json";
+import viUiCodeReview from "./catalogues/vi/ui.code_review.json";
+import viUiCommandPalette from "./catalogues/vi/ui.command_palette.json";
+import viUiCommonAccount from "./catalogues/vi/ui.common.account.json";
+import viUiCommonActions from "./catalogues/vi/ui.common.actions.json";
+import viUiCommonConnection from "./catalogues/vi/ui.common.connection.json";
+import viUiCommonEditing from "./catalogues/vi/ui.common.editing.json";
+import viUiCommonErrors from "./catalogues/vi/ui.common.errors.json";
+import viUiCommonFileActions from "./catalogues/vi/ui.common.file_actions.json";
+import viUiCommonForms from "./catalogues/vi/ui.common.forms.json";
+import viUiCommonLayout from "./catalogues/vi/ui.common.layout.json";
+import viUiCommonLoading from "./catalogues/vi/ui.common.loading.json";
+import viUiCommonModels from "./catalogues/vi/ui.common.models.json";
+import viUiCommonSpeech from "./catalogues/vi/ui.common.speech.json";
+import viUiCommonTime from "./catalogues/vi/ui.common.time.json";
+import viUiCommonUpdates from "./catalogues/vi/ui.common.updates.json";
+import viUiCommonViewer from "./catalogues/vi/ui.common.viewer.json";
+import viUiConsoleErrors from "./catalogues/vi/ui.console.errors.json";
 import viUiConsole from "./catalogues/vi/ui.console.json";
+import viUiHubCard from "./catalogues/vi/ui.hub.card.json";
+import viUiHubComments from "./catalogues/vi/ui.hub.comments.json";
+import viUiHubDetail from "./catalogues/vi/ui.hub.detail.json";
+import viUiHub from "./catalogues/vi/ui.hub.json";
+import viUiHubPages from "./catalogues/vi/ui.hub.pages.json";
+import viUiHubTaxonomy from "./catalogues/vi/ui.hub.taxonomy.json";
+import viUiHubTeams from "./catalogues/vi/ui.hub.teams.json";
+import viUiHubUpdates from "./catalogues/vi/ui.hub.updates.json";
+import viUiHubViewer from "./catalogues/vi/ui.hub.viewer.json";
+import viUiInstaller from "./catalogues/vi/ui.installer.json";
+import viUiLibraryErrors from "./catalogues/vi/ui.library.errors.json";
+import viUiLibrary from "./catalogues/vi/ui.library.json";
+import viUiMeshErrors from "./catalogues/vi/ui.mesh.errors.json";
+import viUiMesh from "./catalogues/vi/ui.mesh.json";
+import viUiMiniView from "./catalogues/vi/ui.miniView.json";
+import viUiNotices from "./catalogues/vi/ui.notices.json";
+import viUiNotifications from "./catalogues/vi/ui.notifications.json";
+import viUiNotificationsOperation from "./catalogues/vi/ui.notifications.operation.json";
 import viUiOnboarding from "./catalogues/vi/ui.onboarding.json";
+import viUiPresence from "./catalogues/vi/ui.presence.json";
+import viUiProjects from "./catalogues/vi/ui.projects.json";
+import viUiProviders from "./catalogues/vi/ui.providers.json";
+import viUiSchedulesErrors from "./catalogues/vi/ui.schedules.errors.json";
+import viUiSchedules from "./catalogues/vi/ui.schedules.json";
+import viUiSettingsAccount from "./catalogues/vi/ui.settings.account.json";
+import viUiSettingsAppearance from "./catalogues/vi/ui.settings.appearance.json";
+import viUiSettingsAppearanceWindowGlass from "./catalogues/vi/ui.settings.appearance.window_glass.json";
+import viUiSettingsConfiguration from "./catalogues/vi/ui.settings.configuration.json";
+import viUiSettingsImports from "./catalogues/vi/ui.settings.imports.json";
+import viUiSettingsIntegrations from "./catalogues/vi/ui.settings.integrations.json";
 import viUiSettings from "./catalogues/vi/ui.settings.json";
+import viUiSettingsModelDefaultEffort from "./catalogues/vi/ui.settings.model.default_effort.json";
+import viUiSettingsModel from "./catalogues/vi/ui.settings.model.json";
+import viUiSettingsModelProviderCallout from "./catalogues/vi/ui.settings.model.provider_callout.json";
+import viUiSettingsNavigation from "./catalogues/vi/ui.settings.navigation.json";
+import viUiSettingsShortcuts from "./catalogues/vi/ui.settings.shortcuts.json";
+import viUiSettingsSpeech from "./catalogues/vi/ui.settings.speech.json";
+import viUiSettingsUpdates from "./catalogues/vi/ui.settings.updates.json";
+import viUiShell from "./catalogues/vi/ui.shell.json";
+import viUiShellMenubar from "./catalogues/vi/ui.shell.menubar.json";
+import viUiShellRail from "./catalogues/vi/ui.shell.rail.json";
+import viUiTeamBridgeArchive from "./catalogues/vi/ui.teamBridge.archive.json";
+import viUiTeamBridge from "./catalogues/vi/ui.teamBridge.json";
+import viUiUpdatesPanel from "./catalogues/vi/ui.updates.panel.json";
+import zhCNUiAgentMessages from "./catalogues/zh-CN/ui.agentMessages.json";
+import zhCNUiAgentMessagesSettings from "./catalogues/zh-CN/ui.agentMessages.settings.json";
+import zhCNUiAgentsConfig from "./catalogues/zh-CN/ui.agents.config.json";
+import zhCNUiAgentsDetail from "./catalogues/zh-CN/ui.agents.detail.json";
+import zhCNUiAgentsDialogs from "./catalogues/zh-CN/ui.agents.dialogs.json";
+import zhCNUiAgents from "./catalogues/zh-CN/ui.agents.json";
+import zhCNUiAgentsModels from "./catalogues/zh-CN/ui.agents.models.json";
+import zhCNUiAgentsNavigation from "./catalogues/zh-CN/ui.agents.navigation.json";
+import zhCNUiAgentsPages from "./catalogues/zh-CN/ui.agents.pages.json";
+import zhCNUiAgentsPublication from "./catalogues/zh-CN/ui.agents.publication.json";
+import zhCNUiAgentsRefusals from "./catalogues/zh-CN/ui.agents.refusals.json";
+import zhCNUiAgentsSettings from "./catalogues/zh-CN/ui.agents.settings.json";
+import zhCNUiAgentsSkills from "./catalogues/zh-CN/ui.agents.skills.json";
+import zhCNUiAgentsStarters from "./catalogues/zh-CN/ui.agents.starters.json";
+import zhCNUiAgentsTeams from "./catalogues/zh-CN/ui.agents.teams.json";
+import zhCNUiAgentsUpload from "./catalogues/zh-CN/ui.agents.upload.json";
+import zhCNUiBrowserChrome from "./catalogues/zh-CN/ui.browser.chrome.json";
+import zhCNUiBrowserErrors from "./catalogues/zh-CN/ui.browser.errors.json";
+import zhCNUiBrowser from "./catalogues/zh-CN/ui.browser.json";
+import zhCNUiCanvas from "./catalogues/zh-CN/ui.canvas.json";
+import zhCNUiChatAnalytics from "./catalogues/zh-CN/ui.chat.analytics.json";
+import zhCNUiChatAsks from "./catalogues/zh-CN/ui.chat.asks.json";
+import zhCNUiChatAttachments from "./catalogues/zh-CN/ui.chat.attachments.json";
+import zhCNUiChatCanonical from "./catalogues/zh-CN/ui.chat.canonical.json";
+import zhCNUiChatCommentaryActions from "./catalogues/zh-CN/ui.chat.commentary_actions.json";
+import zhCNUiChatComposer from "./catalogues/zh-CN/ui.chat.composer.json";
+import zhCNUiChatComposerMedia from "./catalogues/zh-CN/ui.chat.composer_media.json";
+import zhCNUiChatDevice from "./catalogues/zh-CN/ui.chat.device.json";
+import zhCNUiChatDialogs from "./catalogues/zh-CN/ui.chat.dialogs.json";
+import zhCNUiChatDirectory from "./catalogues/zh-CN/ui.chat.directory.json";
+import zhCNUiChatHeader from "./catalogues/zh-CN/ui.chat.header.json";
+import zhCNUiChat from "./catalogues/zh-CN/ui.chat.json";
+import zhCNUiChatLiveUpdates from "./catalogues/zh-CN/ui.chat.live_updates.json";
+import zhCNUiChatPickers from "./catalogues/zh-CN/ui.chat.pickers.json";
+import zhCNUiChatRadientSession from "./catalogues/zh-CN/ui.chat.radient_session.json";
+import zhCNUiChatResponseActions from "./catalogues/zh-CN/ui.chat.response_actions.json";
+import zhCNUiChatRunDetails from "./catalogues/zh-CN/ui.chat.run_details.json";
+import zhCNUiChatSidebar from "./catalogues/zh-CN/ui.chat.sidebar.json";
+import zhCNUiChatSidebarView from "./catalogues/zh-CN/ui.chat.sidebar_view.json";
+import zhCNUiChatStatus from "./catalogues/zh-CN/ui.chat.status.json";
+import zhCNUiChatTagDialogs from "./catalogues/zh-CN/ui.chat.tag_dialogs.json";
+import zhCNUiChatTags from "./catalogues/zh-CN/ui.chat.tags.json";
+import zhCNUiChatThreadSearch from "./catalogues/zh-CN/ui.chat.thread_search.json";
+import zhCNUiChatTranscriptCopy from "./catalogues/zh-CN/ui.chat.transcript_copy.json";
+import zhCNUiCodeReview from "./catalogues/zh-CN/ui.code_review.json";
+import zhCNUiCommandPalette from "./catalogues/zh-CN/ui.command_palette.json";
+import zhCNUiCommonAccount from "./catalogues/zh-CN/ui.common.account.json";
+import zhCNUiCommonActions from "./catalogues/zh-CN/ui.common.actions.json";
+import zhCNUiCommonConnection from "./catalogues/zh-CN/ui.common.connection.json";
+import zhCNUiCommonEditing from "./catalogues/zh-CN/ui.common.editing.json";
+import zhCNUiCommonErrors from "./catalogues/zh-CN/ui.common.errors.json";
+import zhCNUiCommonFileActions from "./catalogues/zh-CN/ui.common.file_actions.json";
+import zhCNUiCommonForms from "./catalogues/zh-CN/ui.common.forms.json";
+import zhCNUiCommonLayout from "./catalogues/zh-CN/ui.common.layout.json";
+import zhCNUiCommonLoading from "./catalogues/zh-CN/ui.common.loading.json";
+import zhCNUiCommonModels from "./catalogues/zh-CN/ui.common.models.json";
+import zhCNUiCommonSpeech from "./catalogues/zh-CN/ui.common.speech.json";
+import zhCNUiCommonTime from "./catalogues/zh-CN/ui.common.time.json";
+import zhCNUiCommonUpdates from "./catalogues/zh-CN/ui.common.updates.json";
+import zhCNUiCommonViewer from "./catalogues/zh-CN/ui.common.viewer.json";
+import zhCNUiConsoleErrors from "./catalogues/zh-CN/ui.console.errors.json";
 import zhCNUiConsole from "./catalogues/zh-CN/ui.console.json";
+import zhCNUiHubCard from "./catalogues/zh-CN/ui.hub.card.json";
+import zhCNUiHubComments from "./catalogues/zh-CN/ui.hub.comments.json";
+import zhCNUiHubDetail from "./catalogues/zh-CN/ui.hub.detail.json";
+import zhCNUiHub from "./catalogues/zh-CN/ui.hub.json";
+import zhCNUiHubPages from "./catalogues/zh-CN/ui.hub.pages.json";
+import zhCNUiHubTaxonomy from "./catalogues/zh-CN/ui.hub.taxonomy.json";
+import zhCNUiHubTeams from "./catalogues/zh-CN/ui.hub.teams.json";
+import zhCNUiHubUpdates from "./catalogues/zh-CN/ui.hub.updates.json";
+import zhCNUiHubViewer from "./catalogues/zh-CN/ui.hub.viewer.json";
+import zhCNUiInstaller from "./catalogues/zh-CN/ui.installer.json";
+import zhCNUiLibraryErrors from "./catalogues/zh-CN/ui.library.errors.json";
+import zhCNUiLibrary from "./catalogues/zh-CN/ui.library.json";
+import zhCNUiMeshErrors from "./catalogues/zh-CN/ui.mesh.errors.json";
+import zhCNUiMesh from "./catalogues/zh-CN/ui.mesh.json";
+import zhCNUiMiniView from "./catalogues/zh-CN/ui.miniView.json";
+import zhCNUiNotices from "./catalogues/zh-CN/ui.notices.json";
+import zhCNUiNotifications from "./catalogues/zh-CN/ui.notifications.json";
+import zhCNUiNotificationsOperation from "./catalogues/zh-CN/ui.notifications.operation.json";
 import zhCNUiOnboarding from "./catalogues/zh-CN/ui.onboarding.json";
+import zhCNUiPresence from "./catalogues/zh-CN/ui.presence.json";
+import zhCNUiProjects from "./catalogues/zh-CN/ui.projects.json";
+import zhCNUiProviders from "./catalogues/zh-CN/ui.providers.json";
+import zhCNUiSchedulesErrors from "./catalogues/zh-CN/ui.schedules.errors.json";
+import zhCNUiSchedules from "./catalogues/zh-CN/ui.schedules.json";
+import zhCNUiSettingsAccount from "./catalogues/zh-CN/ui.settings.account.json";
+import zhCNUiSettingsAppearance from "./catalogues/zh-CN/ui.settings.appearance.json";
+import zhCNUiSettingsAppearanceWindowGlass from "./catalogues/zh-CN/ui.settings.appearance.window_glass.json";
+import zhCNUiSettingsConfiguration from "./catalogues/zh-CN/ui.settings.configuration.json";
+import zhCNUiSettingsImports from "./catalogues/zh-CN/ui.settings.imports.json";
+import zhCNUiSettingsIntegrations from "./catalogues/zh-CN/ui.settings.integrations.json";
 import zhCNUiSettings from "./catalogues/zh-CN/ui.settings.json";
+import zhCNUiSettingsModelDefaultEffort from "./catalogues/zh-CN/ui.settings.model.default_effort.json";
+import zhCNUiSettingsModel from "./catalogues/zh-CN/ui.settings.model.json";
+import zhCNUiSettingsModelProviderCallout from "./catalogues/zh-CN/ui.settings.model.provider_callout.json";
+import zhCNUiSettingsNavigation from "./catalogues/zh-CN/ui.settings.navigation.json";
+import zhCNUiSettingsShortcuts from "./catalogues/zh-CN/ui.settings.shortcuts.json";
+import zhCNUiSettingsSpeech from "./catalogues/zh-CN/ui.settings.speech.json";
+import zhCNUiSettingsUpdates from "./catalogues/zh-CN/ui.settings.updates.json";
+import zhCNUiShell from "./catalogues/zh-CN/ui.shell.json";
+import zhCNUiShellMenubar from "./catalogues/zh-CN/ui.shell.menubar.json";
+import zhCNUiShellRail from "./catalogues/zh-CN/ui.shell.rail.json";
+import zhCNUiTeamBridgeArchive from "./catalogues/zh-CN/ui.teamBridge.archive.json";
+import zhCNUiTeamBridge from "./catalogues/zh-CN/ui.teamBridge.json";
+import zhCNUiUpdatesPanel from "./catalogues/zh-CN/ui.updates.panel.json";
 
 /** The bundled en catalogue: every `src/i18n/catalogues/en` message, flat. */
 export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentMessages,
+	...enUiAgentMessagesSettings,
+	...enUiAgentsConfig,
+	...enUiAgentsDetail,
 	...enUiAgentsDialogs,
 	...enUiAgents,
 	...enUiAgentsModels,
 	...enUiAgentsNavigation,
+	...enUiAgentsPages,
+	...enUiAgentsPublication,
 	...enUiAgentsRefusals,
 	...enUiAgentsSettings,
+	...enUiAgentsSkills,
 	...enUiAgentsStarters,
+	...enUiAgentsTeams,
+	...enUiAgentsUpload,
 	...enUiBrowserChrome,
+	...enUiBrowserErrors,
 	...enUiBrowser,
 	...enUiCanvas,
+	...enUiChatAnalytics,
+	...enUiChatAsks,
+	...enUiChatAttachments,
+	...enUiChatCanonical,
+	...enUiChatCommentaryActions,
 	...enUiChatComposer,
 	...enUiChatComposerMedia,
+	...enUiChatDevice,
 	...enUiChatDialogs,
+	...enUiChatDirectory,
 	...enUiChatHeader,
 	...enUiChat,
+	...enUiChatLiveUpdates,
+	...enUiChatPickers,
+	...enUiChatRadientSession,
+	...enUiChatResponseActions,
+	...enUiChatRunDetails,
+	...enUiChatSidebar,
 	...enUiChatSidebarView,
+	...enUiChatStatus,
+	...enUiChatTagDialogs,
 	...enUiChatTags,
+	...enUiChatThreadSearch,
+	...enUiChatTranscriptCopy,
 	...enUiChatVoice,
 	...enUiCodeReview,
 	...enUiCommandPalette,
@@ -279,19 +926,40 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiCommonConnection,
 	...enUiCommonEditing,
 	...enUiCommonErrors,
+	...enUiCommonFileActions,
 	...enUiCommonForms,
+	...enUiCommonLayout,
 	...enUiCommonLoading,
 	...enUiCommonModels,
+	...enUiCommonSpeech,
+	...enUiCommonTime,
 	...enUiCommonUpdates,
+	...enUiCommonViewer,
+	...enUiConsoleErrors,
 	...enUiConsole,
+	...enUiHubCard,
 	...enUiHubComments,
+	...enUiHubDetail,
 	...enUiHub,
+	...enUiHubPages,
 	...enUiHubTaxonomy,
+	...enUiHubTeams,
+	...enUiHubUpdates,
+	...enUiHubViewer,
 	...enUiInstaller,
+	...enUiLibraryErrors,
+	...enUiLibrary,
+	...enUiMeshErrors,
 	...enUiMesh,
+	...enUiMiniView,
+	...enUiNotices,
+	...enUiNotifications,
+	...enUiNotificationsOperation,
 	...enUiOnboarding,
+	...enUiPresence,
 	...enUiProjects,
 	...enUiProviders,
+	...enUiSchedulesErrors,
 	...enUiSchedules,
 	...enUiSettingsAccount,
 	...enUiSettingsAppearance,
@@ -309,7 +977,11 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiSettingsUpdates,
 	...enUiSettingsVoice,
 	...enUiShell,
+	...enUiShellMenubar,
 	...enUiShellRail,
+	...enUiTeamBridgeArchive,
+	...enUiTeamBridge,
+	...enUiUpdatesPanel,
 };
 
 /** The client's own messages per locale; `en` is `bundledEnglish` itself. */
@@ -319,22 +991,49 @@ export const bundledCatalogues: Readonly<
 	en: bundledEnglish,
 	es: {
 		...esUiAgentMessages,
+		...esUiAgentMessagesSettings,
+		...esUiAgentsConfig,
+		...esUiAgentsDetail,
 		...esUiAgentsDialogs,
+		...esUiAgents,
 		...esUiAgentsModels,
 		...esUiAgentsNavigation,
+		...esUiAgentsPages,
+		...esUiAgentsPublication,
 		...esUiAgentsRefusals,
 		...esUiAgentsSettings,
+		...esUiAgentsSkills,
 		...esUiAgentsStarters,
+		...esUiAgentsTeams,
+		...esUiAgentsUpload,
 		...esUiBrowserChrome,
+		...esUiBrowserErrors,
 		...esUiBrowser,
 		...esUiCanvas,
+		...esUiChatAnalytics,
+		...esUiChatAsks,
+		...esUiChatAttachments,
+		...esUiChatCanonical,
+		...esUiChatCommentaryActions,
 		...esUiChatComposer,
 		...esUiChatComposerMedia,
+		...esUiChatDevice,
 		...esUiChatDialogs,
+		...esUiChatDirectory,
 		...esUiChatHeader,
 		...esUiChat,
+		...esUiChatLiveUpdates,
+		...esUiChatPickers,
+		...esUiChatRadientSession,
+		...esUiChatResponseActions,
+		...esUiChatRunDetails,
+		...esUiChatSidebar,
 		...esUiChatSidebarView,
+		...esUiChatStatus,
+		...esUiChatTagDialogs,
 		...esUiChatTags,
+		...esUiChatThreadSearch,
+		...esUiChatTranscriptCopy,
 		...esUiCodeReview,
 		...esUiCommandPalette,
 		...esUiCommonAccount,
@@ -342,19 +1041,40 @@ export const bundledCatalogues: Readonly<
 		...esUiCommonConnection,
 		...esUiCommonEditing,
 		...esUiCommonErrors,
+		...esUiCommonFileActions,
 		...esUiCommonForms,
+		...esUiCommonLayout,
 		...esUiCommonLoading,
 		...esUiCommonModels,
+		...esUiCommonSpeech,
+		...esUiCommonTime,
 		...esUiCommonUpdates,
+		...esUiCommonViewer,
+		...esUiConsoleErrors,
 		...esUiConsole,
+		...esUiHubCard,
 		...esUiHubComments,
+		...esUiHubDetail,
 		...esUiHub,
+		...esUiHubPages,
 		...esUiHubTaxonomy,
+		...esUiHubTeams,
+		...esUiHubUpdates,
+		...esUiHubViewer,
 		...esUiInstaller,
+		...esUiLibraryErrors,
+		...esUiLibrary,
+		...esUiMeshErrors,
 		...esUiMesh,
+		...esUiMiniView,
+		...esUiNotices,
+		...esUiNotifications,
+		...esUiNotificationsOperation,
 		...esUiOnboarding,
+		...esUiPresence,
 		...esUiProjects,
 		...esUiProviders,
+		...esUiSchedulesErrors,
 		...esUiSchedules,
 		...esUiSettingsAccount,
 		...esUiSettingsAppearance,
@@ -371,26 +1091,57 @@ export const bundledCatalogues: Readonly<
 		...esUiSettingsSpeech,
 		...esUiSettingsUpdates,
 		...esUiShell,
+		...esUiShellMenubar,
 		...esUiShellRail,
+		...esUiTeamBridgeArchive,
+		...esUiTeamBridge,
+		...esUiUpdatesPanel,
 	},
 	fr: {
 		...frUiAgentMessages,
+		...frUiAgentMessagesSettings,
+		...frUiAgentsConfig,
+		...frUiAgentsDetail,
 		...frUiAgentsDialogs,
+		...frUiAgents,
 		...frUiAgentsModels,
 		...frUiAgentsNavigation,
+		...frUiAgentsPages,
+		...frUiAgentsPublication,
 		...frUiAgentsRefusals,
 		...frUiAgentsSettings,
+		...frUiAgentsSkills,
 		...frUiAgentsStarters,
+		...frUiAgentsTeams,
+		...frUiAgentsUpload,
 		...frUiBrowserChrome,
+		...frUiBrowserErrors,
 		...frUiBrowser,
 		...frUiCanvas,
+		...frUiChatAnalytics,
+		...frUiChatAsks,
+		...frUiChatAttachments,
+		...frUiChatCanonical,
+		...frUiChatCommentaryActions,
 		...frUiChatComposer,
 		...frUiChatComposerMedia,
+		...frUiChatDevice,
 		...frUiChatDialogs,
+		...frUiChatDirectory,
 		...frUiChatHeader,
 		...frUiChat,
+		...frUiChatLiveUpdates,
+		...frUiChatPickers,
+		...frUiChatRadientSession,
+		...frUiChatResponseActions,
+		...frUiChatRunDetails,
+		...frUiChatSidebar,
 		...frUiChatSidebarView,
+		...frUiChatStatus,
+		...frUiChatTagDialogs,
 		...frUiChatTags,
+		...frUiChatThreadSearch,
+		...frUiChatTranscriptCopy,
 		...frUiCodeReview,
 		...frUiCommandPalette,
 		...frUiCommonAccount,
@@ -398,19 +1149,40 @@ export const bundledCatalogues: Readonly<
 		...frUiCommonConnection,
 		...frUiCommonEditing,
 		...frUiCommonErrors,
+		...frUiCommonFileActions,
 		...frUiCommonForms,
+		...frUiCommonLayout,
 		...frUiCommonLoading,
 		...frUiCommonModels,
+		...frUiCommonSpeech,
+		...frUiCommonTime,
 		...frUiCommonUpdates,
+		...frUiCommonViewer,
+		...frUiConsoleErrors,
 		...frUiConsole,
+		...frUiHubCard,
 		...frUiHubComments,
+		...frUiHubDetail,
 		...frUiHub,
+		...frUiHubPages,
 		...frUiHubTaxonomy,
+		...frUiHubTeams,
+		...frUiHubUpdates,
+		...frUiHubViewer,
 		...frUiInstaller,
+		...frUiLibraryErrors,
+		...frUiLibrary,
+		...frUiMeshErrors,
 		...frUiMesh,
+		...frUiMiniView,
+		...frUiNotices,
+		...frUiNotifications,
+		...frUiNotificationsOperation,
 		...frUiOnboarding,
+		...frUiPresence,
 		...frUiProjects,
 		...frUiProviders,
+		...frUiSchedulesErrors,
 		...frUiSchedules,
 		...frUiSettingsAccount,
 		...frUiSettingsAppearance,
@@ -427,32 +1199,165 @@ export const bundledCatalogues: Readonly<
 		...frUiSettingsSpeech,
 		...frUiSettingsUpdates,
 		...frUiShell,
+		...frUiShellMenubar,
 		...frUiShellRail,
+		...frUiTeamBridgeArchive,
+		...frUiTeamBridge,
+		...frUiUpdatesPanel,
 	},
 	hi: {
+		...hiUiAgentMessages,
+		...hiUiAgentMessagesSettings,
+		...hiUiAgentsConfig,
+		...hiUiAgentsDetail,
+		...hiUiAgentsDialogs,
+		...hiUiAgents,
+		...hiUiAgentsModels,
+		...hiUiAgentsNavigation,
+		...hiUiAgentsPages,
+		...hiUiAgentsPublication,
+		...hiUiAgentsRefusals,
+		...hiUiAgentsSettings,
+		...hiUiAgentsSkills,
+		...hiUiAgentsStarters,
+		...hiUiAgentsTeams,
+		...hiUiAgentsUpload,
+		...hiUiBrowserChrome,
+		...hiUiBrowserErrors,
+		...hiUiBrowser,
+		...hiUiCanvas,
+		...hiUiChatAnalytics,
+		...hiUiChatAsks,
+		...hiUiChatAttachments,
+		...hiUiChatCanonical,
+		...hiUiChatCommentaryActions,
+		...hiUiChatComposer,
+		...hiUiChatComposerMedia,
+		...hiUiChatDevice,
+		...hiUiChatDialogs,
+		...hiUiChatDirectory,
+		...hiUiChatHeader,
+		...hiUiChat,
+		...hiUiChatLiveUpdates,
+		...hiUiChatPickers,
+		...hiUiChatRadientSession,
+		...hiUiChatResponseActions,
+		...hiUiChatRunDetails,
+		...hiUiChatSidebar,
+		...hiUiChatSidebarView,
+		...hiUiChatStatus,
+		...hiUiChatTagDialogs,
+		...hiUiChatTags,
+		...hiUiChatThreadSearch,
+		...hiUiChatTranscriptCopy,
+		...hiUiCodeReview,
+		...hiUiCommandPalette,
+		...hiUiCommonAccount,
+		...hiUiCommonActions,
+		...hiUiCommonConnection,
+		...hiUiCommonEditing,
+		...hiUiCommonErrors,
+		...hiUiCommonFileActions,
+		...hiUiCommonForms,
+		...hiUiCommonLayout,
+		...hiUiCommonLoading,
+		...hiUiCommonModels,
+		...hiUiCommonSpeech,
+		...hiUiCommonTime,
+		...hiUiCommonUpdates,
+		...hiUiCommonViewer,
+		...hiUiConsoleErrors,
 		...hiUiConsole,
+		...hiUiHubCard,
+		...hiUiHubComments,
+		...hiUiHubDetail,
+		...hiUiHub,
+		...hiUiHubPages,
+		...hiUiHubTaxonomy,
+		...hiUiHubTeams,
+		...hiUiHubUpdates,
+		...hiUiHubViewer,
+		...hiUiInstaller,
+		...hiUiLibraryErrors,
+		...hiUiLibrary,
+		...hiUiMeshErrors,
+		...hiUiMesh,
+		...hiUiMiniView,
+		...hiUiNotices,
+		...hiUiNotifications,
+		...hiUiNotificationsOperation,
 		...hiUiOnboarding,
+		...hiUiPresence,
+		...hiUiProjects,
+		...hiUiProviders,
+		...hiUiSchedulesErrors,
+		...hiUiSchedules,
+		...hiUiSettingsAccount,
+		...hiUiSettingsAppearance,
+		...hiUiSettingsAppearanceWindowGlass,
+		...hiUiSettingsConfiguration,
+		...hiUiSettingsImports,
+		...hiUiSettingsIntegrations,
 		...hiUiSettings,
+		...hiUiSettingsModelDefaultEffort,
+		...hiUiSettingsModel,
+		...hiUiSettingsModelProviderCallout,
+		...hiUiSettingsNavigation,
+		...hiUiSettingsShortcuts,
+		...hiUiSettingsSpeech,
+		...hiUiSettingsUpdates,
+		...hiUiShell,
+		...hiUiShellMenubar,
+		...hiUiShellRail,
+		...hiUiTeamBridgeArchive,
+		...hiUiTeamBridge,
+		...hiUiUpdatesPanel,
 	},
 	ru: {
 		...ruUiAgentMessages,
+		...ruUiAgentMessagesSettings,
+		...ruUiAgentsConfig,
+		...ruUiAgentsDetail,
 		...ruUiAgentsDialogs,
 		...ruUiAgents,
 		...ruUiAgentsModels,
 		...ruUiAgentsNavigation,
+		...ruUiAgentsPages,
+		...ruUiAgentsPublication,
 		...ruUiAgentsRefusals,
 		...ruUiAgentsSettings,
+		...ruUiAgentsSkills,
 		...ruUiAgentsStarters,
+		...ruUiAgentsTeams,
+		...ruUiAgentsUpload,
 		...ruUiBrowserChrome,
+		...ruUiBrowserErrors,
 		...ruUiBrowser,
 		...ruUiCanvas,
+		...ruUiChatAnalytics,
+		...ruUiChatAsks,
+		...ruUiChatAttachments,
+		...ruUiChatCanonical,
+		...ruUiChatCommentaryActions,
 		...ruUiChatComposer,
 		...ruUiChatComposerMedia,
+		...ruUiChatDevice,
 		...ruUiChatDialogs,
+		...ruUiChatDirectory,
 		...ruUiChatHeader,
 		...ruUiChat,
+		...ruUiChatLiveUpdates,
+		...ruUiChatPickers,
+		...ruUiChatRadientSession,
+		...ruUiChatResponseActions,
+		...ruUiChatRunDetails,
+		...ruUiChatSidebar,
 		...ruUiChatSidebarView,
+		...ruUiChatStatus,
+		...ruUiChatTagDialogs,
 		...ruUiChatTags,
+		...ruUiChatThreadSearch,
+		...ruUiChatTranscriptCopy,
 		...ruUiCodeReview,
 		...ruUiCommandPalette,
 		...ruUiCommonAccount,
@@ -460,19 +1365,40 @@ export const bundledCatalogues: Readonly<
 		...ruUiCommonConnection,
 		...ruUiCommonEditing,
 		...ruUiCommonErrors,
+		...ruUiCommonFileActions,
 		...ruUiCommonForms,
+		...ruUiCommonLayout,
 		...ruUiCommonLoading,
 		...ruUiCommonModels,
+		...ruUiCommonSpeech,
+		...ruUiCommonTime,
 		...ruUiCommonUpdates,
+		...ruUiCommonViewer,
+		...ruUiConsoleErrors,
 		...ruUiConsole,
+		...ruUiHubCard,
 		...ruUiHubComments,
+		...ruUiHubDetail,
 		...ruUiHub,
+		...ruUiHubPages,
 		...ruUiHubTaxonomy,
+		...ruUiHubTeams,
+		...ruUiHubUpdates,
+		...ruUiHubViewer,
 		...ruUiInstaller,
+		...ruUiLibraryErrors,
+		...ruUiLibrary,
+		...ruUiMeshErrors,
 		...ruUiMesh,
+		...ruUiMiniView,
+		...ruUiNotices,
+		...ruUiNotifications,
+		...ruUiNotificationsOperation,
 		...ruUiOnboarding,
+		...ruUiPresence,
 		...ruUiProjects,
 		...ruUiProviders,
+		...ruUiSchedulesErrors,
 		...ruUiSchedules,
 		...ruUiSettingsAccount,
 		...ruUiSettingsAppearance,
@@ -489,22 +1415,351 @@ export const bundledCatalogues: Readonly<
 		...ruUiSettingsSpeech,
 		...ruUiSettingsUpdates,
 		...ruUiShell,
+		...ruUiShellMenubar,
 		...ruUiShellRail,
+		...ruUiTeamBridgeArchive,
+		...ruUiTeamBridge,
+		...ruUiUpdatesPanel,
+	},
+	ur: {
+		...urUiAgentMessages,
+		...urUiAgentMessagesSettings,
+		...urUiAgentsConfig,
+		...urUiAgentsDetail,
+		...urUiAgentsDialogs,
+		...urUiAgents,
+		...urUiAgentsModels,
+		...urUiAgentsNavigation,
+		...urUiAgentsPages,
+		...urUiAgentsPublication,
+		...urUiAgentsRefusals,
+		...urUiAgentsSettings,
+		...urUiAgentsSkills,
+		...urUiAgentsStarters,
+		...urUiAgentsTeams,
+		...urUiAgentsUpload,
+		...urUiBrowserChrome,
+		...urUiBrowserErrors,
+		...urUiBrowser,
+		...urUiCanvas,
+		...urUiChatAnalytics,
+		...urUiChatAsks,
+		...urUiChatAttachments,
+		...urUiChatCanonical,
+		...urUiChatCommentaryActions,
+		...urUiChatComposer,
+		...urUiChatComposerMedia,
+		...urUiChatDevice,
+		...urUiChatDialogs,
+		...urUiChatDirectory,
+		...urUiChatHeader,
+		...urUiChat,
+		...urUiChatLiveUpdates,
+		...urUiChatPickers,
+		...urUiChatRadientSession,
+		...urUiChatResponseActions,
+		...urUiChatRunDetails,
+		...urUiChatSidebar,
+		...urUiChatSidebarView,
+		...urUiChatStatus,
+		...urUiChatTagDialogs,
+		...urUiChatTags,
+		...urUiChatThreadSearch,
+		...urUiChatTranscriptCopy,
+		...urUiCodeReview,
+		...urUiCommandPalette,
+		...urUiCommonAccount,
+		...urUiCommonActions,
+		...urUiCommonConnection,
+		...urUiCommonEditing,
+		...urUiCommonErrors,
+		...urUiCommonFileActions,
+		...urUiCommonForms,
+		...urUiCommonLayout,
+		...urUiCommonLoading,
+		...urUiCommonModels,
+		...urUiCommonSpeech,
+		...urUiCommonTime,
+		...urUiCommonUpdates,
+		...urUiCommonViewer,
+		...urUiConsoleErrors,
+		...urUiConsole,
+		...urUiHubCard,
+		...urUiHubComments,
+		...urUiHubDetail,
+		...urUiHub,
+		...urUiHubPages,
+		...urUiHubTaxonomy,
+		...urUiHubTeams,
+		...urUiHubUpdates,
+		...urUiHubViewer,
+		...urUiInstaller,
+		...urUiLibraryErrors,
+		...urUiLibrary,
+		...urUiMeshErrors,
+		...urUiMesh,
+		...urUiMiniView,
+		...urUiNotices,
+		...urUiNotifications,
+		...urUiNotificationsOperation,
+		...urUiOnboarding,
+		...urUiPresence,
+		...urUiProjects,
+		...urUiProviders,
+		...urUiSchedulesErrors,
+		...urUiSchedules,
+		...urUiSettingsAccount,
+		...urUiSettingsAppearance,
+		...urUiSettingsAppearanceWindowGlass,
+		...urUiSettingsConfiguration,
+		...urUiSettingsImports,
+		...urUiSettingsIntegrations,
+		...urUiSettings,
+		...urUiSettingsModelDefaultEffort,
+		...urUiSettingsModel,
+		...urUiSettingsModelProviderCallout,
+		...urUiSettingsNavigation,
+		...urUiSettingsShortcuts,
+		...urUiSettingsSpeech,
+		...urUiSettingsUpdates,
+		...urUiShell,
+		...urUiShellMenubar,
+		...urUiShellRail,
+		...urUiTeamBridgeArchive,
+		...urUiTeamBridge,
+		...urUiUpdatesPanel,
 	},
 	vi: {
+		...viUiAgentMessages,
+		...viUiAgentMessagesSettings,
+		...viUiAgentsConfig,
+		...viUiAgentsDetail,
+		...viUiAgentsDialogs,
+		...viUiAgents,
+		...viUiAgentsModels,
+		...viUiAgentsNavigation,
+		...viUiAgentsPages,
+		...viUiAgentsPublication,
+		...viUiAgentsRefusals,
+		...viUiAgentsSettings,
+		...viUiAgentsSkills,
+		...viUiAgentsStarters,
+		...viUiAgentsTeams,
+		...viUiAgentsUpload,
+		...viUiBrowserChrome,
+		...viUiBrowserErrors,
+		...viUiBrowser,
+		...viUiCanvas,
+		...viUiChatAnalytics,
+		...viUiChatAsks,
+		...viUiChatAttachments,
+		...viUiChatCanonical,
+		...viUiChatCommentaryActions,
+		...viUiChatComposer,
+		...viUiChatComposerMedia,
+		...viUiChatDevice,
+		...viUiChatDialogs,
+		...viUiChatDirectory,
+		...viUiChatHeader,
+		...viUiChat,
+		...viUiChatLiveUpdates,
+		...viUiChatPickers,
+		...viUiChatRadientSession,
+		...viUiChatResponseActions,
+		...viUiChatRunDetails,
+		...viUiChatSidebar,
+		...viUiChatSidebarView,
+		...viUiChatStatus,
+		...viUiChatTagDialogs,
+		...viUiChatTags,
+		...viUiChatThreadSearch,
+		...viUiChatTranscriptCopy,
+		...viUiCodeReview,
+		...viUiCommandPalette,
+		...viUiCommonAccount,
+		...viUiCommonActions,
+		...viUiCommonConnection,
+		...viUiCommonEditing,
+		...viUiCommonErrors,
+		...viUiCommonFileActions,
+		...viUiCommonForms,
+		...viUiCommonLayout,
+		...viUiCommonLoading,
+		...viUiCommonModels,
+		...viUiCommonSpeech,
+		...viUiCommonTime,
+		...viUiCommonUpdates,
+		...viUiCommonViewer,
+		...viUiConsoleErrors,
 		...viUiConsole,
+		...viUiHubCard,
+		...viUiHubComments,
+		...viUiHubDetail,
+		...viUiHub,
+		...viUiHubPages,
+		...viUiHubTaxonomy,
+		...viUiHubTeams,
+		...viUiHubUpdates,
+		...viUiHubViewer,
+		...viUiInstaller,
+		...viUiLibraryErrors,
+		...viUiLibrary,
+		...viUiMeshErrors,
+		...viUiMesh,
+		...viUiMiniView,
+		...viUiNotices,
+		...viUiNotifications,
+		...viUiNotificationsOperation,
 		...viUiOnboarding,
+		...viUiPresence,
+		...viUiProjects,
+		...viUiProviders,
+		...viUiSchedulesErrors,
+		...viUiSchedules,
+		...viUiSettingsAccount,
+		...viUiSettingsAppearance,
+		...viUiSettingsAppearanceWindowGlass,
+		...viUiSettingsConfiguration,
+		...viUiSettingsImports,
+		...viUiSettingsIntegrations,
 		...viUiSettings,
+		...viUiSettingsModelDefaultEffort,
+		...viUiSettingsModel,
+		...viUiSettingsModelProviderCallout,
+		...viUiSettingsNavigation,
+		...viUiSettingsShortcuts,
+		...viUiSettingsSpeech,
+		...viUiSettingsUpdates,
+		...viUiShell,
+		...viUiShellMenubar,
+		...viUiShellRail,
+		...viUiTeamBridgeArchive,
+		...viUiTeamBridge,
+		...viUiUpdatesPanel,
 	},
 	"zh-CN": {
+		...zhCNUiAgentMessages,
+		...zhCNUiAgentMessagesSettings,
+		...zhCNUiAgentsConfig,
+		...zhCNUiAgentsDetail,
+		...zhCNUiAgentsDialogs,
+		...zhCNUiAgents,
+		...zhCNUiAgentsModels,
+		...zhCNUiAgentsNavigation,
+		...zhCNUiAgentsPages,
+		...zhCNUiAgentsPublication,
+		...zhCNUiAgentsRefusals,
+		...zhCNUiAgentsSettings,
+		...zhCNUiAgentsSkills,
+		...zhCNUiAgentsStarters,
+		...zhCNUiAgentsTeams,
+		...zhCNUiAgentsUpload,
+		...zhCNUiBrowserChrome,
+		...zhCNUiBrowserErrors,
+		...zhCNUiBrowser,
+		...zhCNUiCanvas,
+		...zhCNUiChatAnalytics,
+		...zhCNUiChatAsks,
+		...zhCNUiChatAttachments,
+		...zhCNUiChatCanonical,
+		...zhCNUiChatCommentaryActions,
+		...zhCNUiChatComposer,
+		...zhCNUiChatComposerMedia,
+		...zhCNUiChatDevice,
+		...zhCNUiChatDialogs,
+		...zhCNUiChatDirectory,
+		...zhCNUiChatHeader,
+		...zhCNUiChat,
+		...zhCNUiChatLiveUpdates,
+		...zhCNUiChatPickers,
+		...zhCNUiChatRadientSession,
+		...zhCNUiChatResponseActions,
+		...zhCNUiChatRunDetails,
+		...zhCNUiChatSidebar,
+		...zhCNUiChatSidebarView,
+		...zhCNUiChatStatus,
+		...zhCNUiChatTagDialogs,
+		...zhCNUiChatTags,
+		...zhCNUiChatThreadSearch,
+		...zhCNUiChatTranscriptCopy,
+		...zhCNUiCodeReview,
+		...zhCNUiCommandPalette,
+		...zhCNUiCommonAccount,
+		...zhCNUiCommonActions,
+		...zhCNUiCommonConnection,
+		...zhCNUiCommonEditing,
+		...zhCNUiCommonErrors,
+		...zhCNUiCommonFileActions,
+		...zhCNUiCommonForms,
+		...zhCNUiCommonLayout,
+		...zhCNUiCommonLoading,
+		...zhCNUiCommonModels,
+		...zhCNUiCommonSpeech,
+		...zhCNUiCommonTime,
+		...zhCNUiCommonUpdates,
+		...zhCNUiCommonViewer,
+		...zhCNUiConsoleErrors,
 		...zhCNUiConsole,
+		...zhCNUiHubCard,
+		...zhCNUiHubComments,
+		...zhCNUiHubDetail,
+		...zhCNUiHub,
+		...zhCNUiHubPages,
+		...zhCNUiHubTaxonomy,
+		...zhCNUiHubTeams,
+		...zhCNUiHubUpdates,
+		...zhCNUiHubViewer,
+		...zhCNUiInstaller,
+		...zhCNUiLibraryErrors,
+		...zhCNUiLibrary,
+		...zhCNUiMeshErrors,
+		...zhCNUiMesh,
+		...zhCNUiMiniView,
+		...zhCNUiNotices,
+		...zhCNUiNotifications,
+		...zhCNUiNotificationsOperation,
 		...zhCNUiOnboarding,
+		...zhCNUiPresence,
+		...zhCNUiProjects,
+		...zhCNUiProviders,
+		...zhCNUiSchedulesErrors,
+		...zhCNUiSchedules,
+		...zhCNUiSettingsAccount,
+		...zhCNUiSettingsAppearance,
+		...zhCNUiSettingsAppearanceWindowGlass,
+		...zhCNUiSettingsConfiguration,
+		...zhCNUiSettingsImports,
+		...zhCNUiSettingsIntegrations,
 		...zhCNUiSettings,
+		...zhCNUiSettingsModelDefaultEffort,
+		...zhCNUiSettingsModel,
+		...zhCNUiSettingsModelProviderCallout,
+		...zhCNUiSettingsNavigation,
+		...zhCNUiSettingsShortcuts,
+		...zhCNUiSettingsSpeech,
+		...zhCNUiSettingsUpdates,
+		...zhCNUiShell,
+		...zhCNUiShellMenubar,
+		...zhCNUiShellRail,
+		...zhCNUiTeamBridgeArchive,
+		...zhCNUiTeamBridge,
+		...zhCNUiUpdatesPanel,
 	},
 };
 
 /** One entry per bundled message id, shaped by the message's own arguments. */
 export type MessageParams = {
+	"ui.agentMessages.banner.body": undefined;
+	"ui.agentMessages.banner.consent_unavailable": undefined;
+	"ui.agentMessages.banner.dismiss": undefined;
+	"ui.agentMessages.banner.dismiss_failed": undefined;
+	"ui.agentMessages.banner.hide": undefined;
+	"ui.agentMessages.banner.read": undefined;
+	"ui.agentMessages.banner.title": undefined;
+	"ui.agentMessages.banner.turn_off": undefined;
+	"ui.agentMessages.banner.turn_off_failed": undefined;
+	"ui.agentMessages.banner.turn_off_hint": undefined;
+	"ui.agentMessages.banner.turning_off": undefined;
 	"ui.agentMessages.dialog.account_guard_unavailable": undefined;
 	"ui.agentMessages.dialog.activities": undefined;
 	"ui.agentMessages.dialog.close": undefined;
@@ -521,6 +1776,191 @@ export type MessageParams = {
 	"ui.agentMessages.dialog.title": undefined;
 	"ui.agentMessages.dialog.validation_detail": { field: string; rule: string };
 	"ui.agentMessages.dialog.validation_failure": undefined;
+	"ui.agentMessages.page_off.action": undefined;
+	"ui.agentMessages.page_off.body": undefined;
+	"ui.agentMessages.page_off.local_body": undefined;
+	"ui.agentMessages.page_off.local_title": undefined;
+	"ui.agentMessages.page_off.title": undefined;
+	"ui.agentMessages.settings.action.enable": undefined;
+	"ui.agentMessages.settings.action.enable_again": undefined;
+	"ui.agentMessages.settings.action.pause": undefined;
+	"ui.agentMessages.settings.action.resume": undefined;
+	"ui.agentMessages.settings.action.turn_off": undefined;
+	"ui.agentMessages.settings.action.turn_on_again": undefined;
+	"ui.agentMessages.settings.allowlist.add": undefined;
+	"ui.agentMessages.settings.allowlist.add_allowed": undefined;
+	"ui.agentMessages.settings.allowlist.add_blocked": undefined;
+	"ui.agentMessages.settings.allowlist.agent_id": undefined;
+	"ui.agentMessages.settings.allowlist.allowed_empty": undefined;
+	"ui.agentMessages.settings.allowlist.allowed_heading": undefined;
+	"ui.agentMessages.settings.allowlist.anyone": undefined;
+	"ui.agentMessages.settings.allowlist.blocked_empty": undefined;
+	"ui.agentMessages.settings.allowlist.blocked_heading": undefined;
+	"ui.agentMessages.settings.allowlist.cue_deny": undefined;
+	"ui.agentMessages.settings.allowlist.cue_listed_only": undefined;
+	"ui.agentMessages.settings.allowlist.cue_remove": undefined;
+	"ui.agentMessages.settings.allowlist.description": undefined;
+	"ui.agentMessages.settings.allowlist.identifier": undefined;
+	"ui.agentMessages.settings.allowlist.identifier_empty": undefined;
+	"ui.agentMessages.settings.allowlist.identifier_help_agent": undefined;
+	"ui.agentMessages.settings.allowlist.identifier_help_person": undefined;
+	"ui.agentMessages.settings.allowlist.identifier_invalid": undefined;
+	"ui.agentMessages.settings.allowlist.identifier_long": undefined;
+	"ui.agentMessages.settings.allowlist.kind": undefined;
+	"ui.agentMessages.settings.allowlist.kind_agent": undefined;
+	"ui.agentMessages.settings.allowlist.kind_person": undefined;
+	"ui.agentMessages.settings.allowlist.level": undefined;
+	"ui.agentMessages.settings.allowlist.listed_only": undefined;
+	"ui.agentMessages.settings.allowlist.needs_entry": undefined;
+	"ui.agentMessages.settings.allowlist.person_id": undefined;
+	"ui.agentMessages.settings.allowlist.read_only": undefined;
+	"ui.agentMessages.settings.allowlist.receive": undefined;
+	"ui.agentMessages.settings.allowlist.remove": undefined;
+	"ui.agentMessages.settings.allowlist.save": undefined;
+	"ui.agentMessages.settings.allowlist.send": undefined;
+	"ui.agentMessages.settings.allowlist.title": undefined;
+	"ui.agentMessages.settings.allowlist.unchanged": undefined;
+	"ui.agentMessages.settings.consent.at": undefined;
+	"ui.agentMessages.settings.consent.changed": undefined;
+	"ui.agentMessages.settings.consent.no_record": undefined;
+	"ui.agentMessages.settings.consent.renew": undefined;
+	"ui.agentMessages.settings.consent.show": undefined;
+	"ui.agentMessages.settings.consent.unavailable": undefined;
+	"ui.agentMessages.settings.consent.version": undefined;
+	"ui.agentMessages.settings.consent.via": undefined;
+	"ui.agentMessages.settings.consent.via_default_on": undefined;
+	"ui.agentMessages.settings.consent.via_dialog": undefined;
+	"ui.agentMessages.settings.consent.via_settings": undefined;
+	"ui.agentMessages.settings.dark.body": undefined;
+	"ui.agentMessages.settings.dark.nothing_enabled": undefined;
+	"ui.agentMessages.settings.dark.title": undefined;
+	"ui.agentMessages.settings.default_on.b_body": undefined;
+	"ui.agentMessages.settings.default_on.b_title": undefined;
+	"ui.agentMessages.settings.default_on.e_body": undefined;
+	"ui.agentMessages.settings.description": undefined;
+	"ui.agentMessages.settings.error.no_changes": undefined;
+	"ui.agentMessages.settings.error.retry": undefined;
+	"ui.agentMessages.settings.error.title": undefined;
+	"ui.agentMessages.settings.error.unreadable": undefined;
+	"ui.agentMessages.settings.hold.chief_of_staff": { count: number };
+	"ui.agentMessages.settings.hold.chief_of_staff_unlinked": { count: number };
+	"ui.agentMessages.settings.hold.open": undefined;
+	"ui.agentMessages.settings.local.label": undefined;
+	"ui.agentMessages.settings.local.stays_enrolled": undefined;
+	"ui.agentMessages.settings.off_by_default": undefined;
+	"ui.agentMessages.settings.refusal.disabled": undefined;
+	"ui.agentMessages.settings.refusal.generic": undefined;
+	"ui.agentMessages.settings.refusal.invalid_request": undefined;
+	"ui.agentMessages.settings.refusal.not_available": undefined;
+	"ui.agentMessages.settings.refusal.rate_limited": undefined;
+	"ui.agentMessages.settings.refusal.sign_in": undefined;
+	"ui.agentMessages.settings.saving": undefined;
+	"ui.agentMessages.settings.section": undefined;
+	"ui.agentMessages.settings.session.help": undefined;
+	"ui.agentMessages.settings.session.none": undefined;
+	"ui.agentMessages.settings.session.title": undefined;
+	"ui.agentMessages.settings.session.unavailable": undefined;
+	"ui.agentMessages.settings.state.b_body": undefined;
+	"ui.agentMessages.settings.state.b_title": undefined;
+	"ui.agentMessages.settings.state.c_body": undefined;
+	"ui.agentMessages.settings.state.c_title": undefined;
+	"ui.agentMessages.settings.state.d_body": undefined;
+	"ui.agentMessages.settings.state.d_title": undefined;
+	"ui.agentMessages.settings.state.e_body": undefined;
+	"ui.agentMessages.settings.state.e_title": undefined;
+	"ui.agentMessages.settings.state.f_body": undefined;
+	"ui.agentMessages.settings.state.f_title": undefined;
+	"ui.agentMessages.settings.state.read_only": undefined;
+	"ui.agentMessages.settings.state.turned_off_org": undefined;
+	"ui.agentMessages.settings.state.turned_off_title": undefined;
+	"ui.agents.config.about": { kind: string; name: string };
+	"ui.agents.config.action.clear": undefined;
+	"ui.agents.config.action.dismiss": undefined;
+	"ui.agents.config.action.retry": undefined;
+	"ui.agents.config.action.stop": undefined;
+	"ui.agents.config.action.watch": undefined;
+	"ui.agents.config.activity.empty": undefined;
+	"ui.agents.config.background_only": undefined;
+	"ui.agents.config.banner.unavailable": undefined;
+	"ui.agents.config.composer.label": undefined;
+	"ui.agents.config.definitions": { count: number };
+	"ui.agents.config.disabled_gate": undefined;
+	"ui.agents.config.error.stop_refused": undefined;
+	"ui.agents.config.error.turn_failed": undefined;
+	"ui.agents.config.examples.add_twice": undefined;
+	"ui.agents.config.examples.reads_code": undefined;
+	"ui.agents.config.examples.team_shipping": undefined;
+	"ui.agents.config.kind.agent": undefined;
+	"ui.agents.config.kind.team": undefined;
+	"ui.agents.config.placeholder.about": { name: string };
+	"ui.agents.config.placeholder.docked": undefined;
+	"ui.agents.config.placeholder.hero": undefined;
+	"ui.agents.config.result.changed": undefined;
+	"ui.agents.config.result.configured": undefined;
+	"ui.agents.config.result.created": undefined;
+	"ui.agents.config.run_details_region": undefined;
+	"ui.agents.config.state.did_not_finish": undefined;
+	"ui.agents.config.state.sending": undefined;
+	"ui.agents.config.state.stopping": undefined;
+	"ui.agents.config.status.attached": undefined;
+	"ui.agents.config.stopped.kept": undefined;
+	"ui.agents.config.stopped.nothing": undefined;
+	"ui.agents.config.summary.created": { name: string };
+	"ui.agents.config.summary.hidden_changes": undefined;
+	"ui.agents.config.summary.no_changes": undefined;
+	"ui.agents.config.summary.nothing_else": undefined;
+	"ui.agents.config.summary.updated": { name: string };
+	"ui.agents.config.summary.you_asked": { topic: string };
+	"ui.agents.detail.action.ask_change": undefined;
+	"ui.agents.detail.action.discard_changes": undefined;
+	"ui.agents.detail.action.discard_question": undefined;
+	"ui.agents.detail.action.duplicate": undefined;
+	"ui.agents.detail.action.edit": undefined;
+	"ui.agents.detail.action.keep_editing": undefined;
+	"ui.agents.detail.action.more_actions": undefined;
+	"ui.agents.detail.action.new_chat": undefined;
+	"ui.agents.detail.action.save_changes": undefined;
+	"ui.agents.detail.action.saving": undefined;
+	"ui.agents.detail.action.unsaved_changes": undefined;
+	"ui.agents.detail.alert.builtin_body": undefined;
+	"ui.agents.detail.alert.builtin_title": undefined;
+	"ui.agents.detail.alert.conflict_body": undefined;
+	"ui.agents.detail.alert.conflict_reload": undefined;
+	"ui.agents.detail.alert.conflict_title": undefined;
+	"ui.agents.detail.alert.save_failed_title": undefined;
+	"ui.agents.detail.alert.unconfirmed_body": undefined;
+	"ui.agents.detail.alert.unconfirmed_title": undefined;
+	"ui.agents.detail.badge.modified": undefined;
+	"ui.agents.detail.class.error_title": undefined;
+	"ui.agents.detail.class.label": undefined;
+	"ui.agents.detail.delegate.aria": undefined;
+	"ui.agents.detail.delegate.label": undefined;
+	"ui.agents.detail.empty.used_by": undefined;
+	"ui.agents.detail.field.effort_placeholder": undefined;
+	"ui.agents.detail.field.name": undefined;
+	"ui.agents.detail.kind.role": undefined;
+	"ui.agents.detail.kind.specialist": undefined;
+	"ui.agents.detail.meta.delegates": undefined;
+	"ui.agents.detail.no_description": undefined;
+	"ui.agents.detail.origin.changed": undefined;
+	"ui.agents.detail.origin.source": undefined;
+	"ui.agents.detail.read.effort_label": undefined;
+	"ui.agents.detail.read.show_all": undefined;
+	"ui.agents.detail.read.show_less": undefined;
+	"ui.agents.detail.section.delegation": undefined;
+	"ui.agents.detail.section.instructions": undefined;
+	"ui.agents.detail.section.messaging": undefined;
+	"ui.agents.detail.section.name_role": undefined;
+	"ui.agents.detail.section.origin": undefined;
+	"ui.agents.detail.section.tools": undefined;
+	"ui.agents.detail.section.used_by": undefined;
+	"ui.agents.detail.section.when_to_use": undefined;
+	"ui.agents.detail.tools.add": undefined;
+	"ui.agents.detail.tools.all_label": undefined;
+	"ui.agents.detail.tools.empty": undefined;
+	"ui.agents.detail.tools.every_tool_aria": undefined;
+	"ui.agents.detail.tools.may_use_any": undefined;
+	"ui.agents.detail.tools.placeholder": undefined;
 	"ui.agents.dialogs.clear.cancel": undefined;
 	"ui.agents.dialogs.clear.confirm": undefined;
 	"ui.agents.dialogs.clear.title": undefined;
@@ -633,6 +2073,143 @@ export type MessageParams = {
 	"ui.agents.navigation.updates.preview.local": undefined;
 	"ui.agents.navigation.updates.preview.nothing": undefined;
 	"ui.agents.navigation.updates.preview.remote": undefined;
+	"ui.agents.pages.add_manual.agent": undefined;
+	"ui.agents.pages.add_manual.team": undefined;
+	"ui.agents.pages.ask.body_agent": undefined;
+	"ui.agents.pages.ask.body_team": undefined;
+	"ui.agents.pages.ask.heading_agent": undefined;
+	"ui.agents.pages.ask.heading_team": undefined;
+	"ui.agents.pages.ask.manual_agent": undefined;
+	"ui.agents.pages.ask.manual_team": undefined;
+	"ui.agents.pages.back_to_list": undefined;
+	"ui.agents.pages.browse_aria": undefined;
+	"ui.agents.pages.discard_bar.agent": undefined;
+	"ui.agents.pages.discard_bar.team": undefined;
+	"ui.agents.pages.empty.agents": undefined;
+	"ui.agents.pages.empty.builtin": undefined;
+	"ui.agents.pages.empty.custom": undefined;
+	"ui.agents.pages.empty.installed": undefined;
+	"ui.agents.pages.empty.search": { query: string };
+	"ui.agents.pages.empty.teams": undefined;
+	"ui.agents.pages.heading": undefined;
+	"ui.agents.pages.loading_saved": undefined;
+	"ui.agents.pages.scope.all": undefined;
+	"ui.agents.pages.scope.builtin": undefined;
+	"ui.agents.pages.scope.custom": undefined;
+	"ui.agents.pages.scope.installed": undefined;
+	"ui.agents.pages.scope_legend": undefined;
+	"ui.agents.pages.search.agents": undefined;
+	"ui.agents.pages.search.teams": undefined;
+	"ui.agents.pages.search_aria": undefined;
+	"ui.agents.pages.tab.agents": undefined;
+	"ui.agents.pages.tab.teams": undefined;
+	"ui.agents.publication.action.edit_agent": undefined;
+	"ui.agents.publication.action.edit_instructions": undefined;
+	"ui.agents.publication.action.focus_name": undefined;
+	"ui.agents.publication.action.install_builtin": undefined;
+	"ui.agents.publication.action.publish_as_new": undefined;
+	"ui.agents.publication.action.refresh_hub": undefined;
+	"ui.agents.publication.action.retry": undefined;
+	"ui.agents.publication.action.sign_in": undefined;
+	"ui.agents.publication.action.update_listing": undefined;
+	"ui.agents.publication.agent_not_found.body": undefined;
+	"ui.agents.publication.agent_not_found.headline": undefined;
+	"ui.agents.publication.category.credential_theft": undefined;
+	"ui.agents.publication.category.drugs_or_controlled_substances": undefined;
+	"ui.agents.publication.category.evasion_or_abuse_tooling": undefined;
+	"ui.agents.publication.category.fraud_or_deception": undefined;
+	"ui.agents.publication.category.harassment_or_hate": undefined;
+	"ui.agents.publication.category.malware_or_exploitation": undefined;
+	"ui.agents.publication.category.mass_surveillance_or_privacy_abuse": undefined;
+	"ui.agents.publication.category.other_harmful": undefined;
+	"ui.agents.publication.category.prompt_injection": undefined;
+	"ui.agents.publication.category.self_harm": undefined;
+	"ui.agents.publication.category.sexual_content": undefined;
+	"ui.agents.publication.category.sexual_content_minors": undefined;
+	"ui.agents.publication.category.unclear_dual_use": undefined;
+	"ui.agents.publication.category.violence_or_weapons": undefined;
+	"ui.agents.publication.fallback.headline": undefined;
+	"ui.agents.publication.hub_unauthorized.body": undefined;
+	"ui.agents.publication.hub_unauthorized.body_pull": undefined;
+	"ui.agents.publication.hub_unauthorized.headline": undefined;
+	"ui.agents.publication.hub_unavailable.body": undefined;
+	"ui.agents.publication.hub_unavailable.body_pull": undefined;
+	"ui.agents.publication.hub_unavailable.headline": undefined;
+	"ui.agents.publication.hub_unavailable.headline_pull": undefined;
+	"ui.agents.publication.insufficient_role.body": undefined;
+	"ui.agents.publication.insufficient_role.body_pull": undefined;
+	"ui.agents.publication.insufficient_role.body_with_role": {
+		required: string;
+	};
+	"ui.agents.publication.insufficient_role.body_with_role_pull": {
+		required: string;
+	};
+	"ui.agents.publication.insufficient_role.headline": undefined;
+	"ui.agents.publication.invalid.field.categories": undefined;
+	"ui.agents.publication.invalid.field.categories_with_rule": { rule: string };
+	"ui.agents.publication.invalid.field.description": undefined;
+	"ui.agents.publication.invalid.field.description_with_rule": { rule: string };
+	"ui.agents.publication.invalid.field.instructions": { max: string };
+	"ui.agents.publication.invalid.field.instructions_with_rule": {
+		rule: string;
+	};
+	"ui.agents.publication.invalid.field.name": undefined;
+	"ui.agents.publication.invalid.field.name_with_rule": { rule: string };
+	"ui.agents.publication.invalid.field.tags": undefined;
+	"ui.agents.publication.invalid.field.tags_with_rule": { rule: string };
+	"ui.agents.publication.invalid.field.tools": undefined;
+	"ui.agents.publication.invalid.field.tools_with_rule": { rule: string };
+	"ui.agents.publication.invalid.field.when_to_use": undefined;
+	"ui.agents.publication.invalid.field.when_to_use_with_rule": { rule: string };
+	"ui.agents.publication.invalid.headline": undefined;
+	"ui.agents.publication.local_failure.headline": undefined;
+	"ui.agents.publication.local_failure.headline_pull": undefined;
+	"ui.agents.publication.moderation_rejected.headline": undefined;
+	"ui.agents.publication.moderation_unavailable.body": undefined;
+	"ui.agents.publication.moderation_unavailable.headline": undefined;
+	"ui.agents.publication.name_claim_in_flight.body": { name: string };
+	"ui.agents.publication.name_claim_in_flight.headline": undefined;
+	"ui.agents.publication.name_reserved_builtin.body": {
+		name: string;
+		builtin: string;
+	};
+	"ui.agents.publication.name_reserved_builtin.body_same_name": {
+		builtin: string;
+	};
+	"ui.agents.publication.name_reserved_builtin.headline": undefined;
+	"ui.agents.publication.name_taken.body": { name: string };
+	"ui.agents.publication.name_taken.headline": undefined;
+	"ui.agents.publication.name_taken.owned_body": { name: string };
+	"ui.agents.publication.name_taken.owned_headline": undefined;
+	"ui.agents.publication.not_a_member.body": undefined;
+	"ui.agents.publication.not_a_member.body_pull": undefined;
+	"ui.agents.publication.not_a_member.headline": undefined;
+	"ui.agents.publication.not_owner.body": undefined;
+	"ui.agents.publication.not_owner.headline": undefined;
+	"ui.agents.publication.other_action_lead": undefined;
+	"ui.agents.publication.payload_too_large.body": undefined;
+	"ui.agents.publication.payload_too_large.body_with_limit": { size: string };
+	"ui.agents.publication.payload_too_large.headline": undefined;
+	"ui.agents.publication.pull.busy": { subject: string };
+	"ui.agents.publication.pull.hub_unavailable": { subject: string };
+	"ui.agents.publication.pull.incomplete": { subject: string };
+	"ui.agents.publication.pull.no_reason": { subject: string };
+	"ui.agents.publication.pull.not_found": { subject: string };
+	"ui.agents.publication.pull.prose": { subject: string; reason: string };
+	"ui.agents.publication.pull.reach_failure": { subject: string };
+	"ui.agents.publication.pull.refused": { subject: string; reason: string };
+	"ui.agents.publication.pull.refused_download": { subject: string };
+	"ui.agents.publication.pull.sign_in_refused": { subject: string };
+	"ui.agents.publication.pull.unreachable": { subject: string };
+	"ui.agents.publication.subject.agent": undefined;
+	"ui.agents.publication.subject.name": { name: string };
+	"ui.agents.publication.subject.team": undefined;
+	"ui.agents.publication.subject.unknown": undefined;
+	"ui.agents.publication.team_not_found.body": undefined;
+	"ui.agents.publication.team_not_found.headline": undefined;
+	"ui.agents.publication.team_plan_required.body": undefined;
+	"ui.agents.publication.team_plan_required.body_pull": undefined;
+	"ui.agents.publication.team_plan_required.headline": undefined;
 	"ui.agents.refusals.class.effect.proactive": undefined;
 	"ui.agents.refusals.class.effect.reactive": undefined;
 	"ui.agents.refusals.class.error.install_landed": { reason: string };
@@ -660,11 +2237,15 @@ export type MessageParams = {
 	"ui.agents.settings.chat.enter_stop_sequences_one_per_line": undefined;
 	"ui.agents.settings.chat.error.invalid_seed": undefined;
 	"ui.agents.settings.chat.frequency_penalty": undefined;
+	"ui.agents.settings.chat.generation_settings": undefined;
+	"ui.agents.settings.chat.generation_tooltip": undefined;
 	"ui.agents.settings.chat.increases_diversity_by_lowering_likelihood_of_prompt": undefined;
 	"ui.agents.settings.chat.length_and_stopping": undefined;
 	"ui.agents.settings.chat.limits_tokens_to_sample_from_at_each": undefined;
 	"ui.agents.settings.chat.max_tokens": undefined;
 	"ui.agents.settings.chat.maximum_tokens_to_generate_in_response": undefined;
+	"ui.agents.settings.chat.model_hosting_heading": undefined;
+	"ui.agents.settings.chat.model_hosting_tooltip": undefined;
 	"ui.agents.settings.chat.not_set_yet": undefined;
 	"ui.agents.settings.chat.presence_penalty": undefined;
 	"ui.agents.settings.chat.random_number_seed_for_deterministic_generation": undefined;
@@ -675,6 +2256,7 @@ export type MessageParams = {
 	"ui.agents.settings.chat.seed": undefined;
 	"ui.agents.settings.chat.sequences_that_will_cause_the_model_to": undefined;
 	"ui.agents.settings.chat.set_custom_values_for_any_of_these": undefined;
+	"ui.agents.settings.chat.set_custom_values_note": undefined;
 	"ui.agents.settings.chat.set_to_default": { value: string };
 	"ui.agents.settings.chat.stop_sequences": undefined;
 	"ui.agents.settings.chat.temperature": undefined;
@@ -707,6 +2289,123 @@ export type MessageParams = {
 	"ui.agents.settings.system_prompt.enter_instructions_for_the_agent": undefined;
 	"ui.agents.settings.system_prompt.loading_system_prompt": undefined;
 	"ui.agents.settings.system_prompt.system_instructions_that_define_the_agent_s": undefined;
+	"ui.agents.skills.action.copy": undefined;
+	"ui.agents.skills.action.copying": undefined;
+	"ui.agents.skills.action.remove": undefined;
+	"ui.agents.skills.action.remove_confirm": undefined;
+	"ui.agents.skills.alert.builtin_body": undefined;
+	"ui.agents.skills.alert.builtin_body_no_copy": undefined;
+	"ui.agents.skills.alert.builtin_title": undefined;
+	"ui.agents.skills.alert.bundle_body": undefined;
+	"ui.agents.skills.alert.bundle_local_body": undefined;
+	"ui.agents.skills.alert.bundle_title": undefined;
+	"ui.agents.skills.alert.conflict_body": undefined;
+	"ui.agents.skills.alert.external_body": undefined;
+	"ui.agents.skills.alert.external_body_no_copy": undefined;
+	"ui.agents.skills.alert.external_title": undefined;
+	"ui.agents.skills.alert.project_body": undefined;
+	"ui.agents.skills.alert.project_body_no_copy": undefined;
+	"ui.agents.skills.alert.project_title": undefined;
+	"ui.agents.skills.alert.too_large_body": undefined;
+	"ui.agents.skills.alert.too_large_title": undefined;
+	"ui.agents.skills.badge.new": undefined;
+	"ui.agents.skills.badge.updated": undefined;
+	"ui.agents.skills.composer.about": { name: string };
+	"ui.agents.skills.composer.changed_below": undefined;
+	"ui.agents.skills.composer.gate_backend": undefined;
+	"ui.agents.skills.composer.gate_none": undefined;
+	"ui.agents.skills.composer.gate_not_installed": undefined;
+	"ui.agents.skills.composer.gate_read_only": undefined;
+	"ui.agents.skills.composer.kind": undefined;
+	"ui.agents.skills.composer.label": undefined;
+	"ui.agents.skills.composer.no_changes": undefined;
+	"ui.agents.skills.composer.placeholder": { name: string };
+	"ui.agents.skills.detail.body_not_installed": undefined;
+	"ui.agents.skills.detail.body_truncated": { size: string };
+	"ui.agents.skills.detail.body_unavailable": undefined;
+	"ui.agents.skills.detail.download_signed_out": undefined;
+	"ui.agents.skills.detail.edit_by_asking": undefined;
+	"ui.agents.skills.detail.edit_by_asking_truncated": undefined;
+	"ui.agents.skills.detail.edit_off_files": undefined;
+	"ui.agents.skills.detail.edit_off_truncated": undefined;
+	"ui.agents.skills.detail.file_bytes": { count: number };
+	"ui.agents.skills.detail.files_count": { count: number };
+	"ui.agents.skills.detail.files_none": undefined;
+	"ui.agents.skills.detail.files_truncated_of": {
+		shown: number;
+		total: number;
+	};
+	"ui.agents.skills.detail.fingerprint": undefined;
+	"ui.agents.skills.detail.fingerprint_none": undefined;
+	"ui.agents.skills.detail.form.bundle": undefined;
+	"ui.agents.skills.detail.form.document": undefined;
+	"ui.agents.skills.detail.form.unknown": undefined;
+	"ui.agents.skills.detail.form_label": undefined;
+	"ui.agents.skills.detail.front_matter_label": undefined;
+	"ui.agents.skills.detail.hub_local_note": undefined;
+	"ui.agents.skills.detail.location_label": undefined;
+	"ui.agents.skills.detail.preview_aria": { path: string };
+	"ui.agents.skills.detail.preview_none": undefined;
+	"ui.agents.skills.detail.preview_truncated": undefined;
+	"ui.agents.skills.detail.section.details": undefined;
+	"ui.agents.skills.detail.section.files": undefined;
+	"ui.agents.skills.detail.show_all": undefined;
+	"ui.agents.skills.detail.show_less": undefined;
+	"ui.agents.skills.edit.description_help": undefined;
+	"ui.agents.skills.edit.description_label": undefined;
+	"ui.agents.skills.edit.instructions_help": undefined;
+	"ui.agents.skills.empty.builtin": undefined;
+	"ui.agents.skills.empty.hub": undefined;
+	"ui.agents.skills.empty.local": undefined;
+	"ui.agents.skills.empty.none": undefined;
+	"ui.agents.skills.empty.search": { query: string };
+	"ui.agents.skills.error.detail_meaning": undefined;
+	"ui.agents.skills.error.detail_title": { name: string };
+	"ui.agents.skills.error.download_failed_body": undefined;
+	"ui.agents.skills.error.download_failed_title": undefined;
+	"ui.agents.skills.error.meaning": undefined;
+	"ui.agents.skills.error.title": undefined;
+	"ui.agents.skills.error.what_fallback": undefined;
+	"ui.agents.skills.error.write_fallback": undefined;
+	"ui.agents.skills.hub.needs_review": undefined;
+	"ui.agents.skills.hub.unlinked": undefined;
+	"ui.agents.skills.hub.unlinked_help": undefined;
+	"ui.agents.skills.hub.update_failed": undefined;
+	"ui.agents.skills.list_aria": undefined;
+	"ui.agents.skills.notice.copied": { name: string };
+	"ui.agents.skills.notice.saved": { name: string };
+	"ui.agents.skills.remove.body": undefined;
+	"ui.agents.skills.remove.discard_confirm": undefined;
+	"ui.agents.skills.remove.title": { name: string };
+	"ui.agents.skills.remove.unpublished_body": undefined;
+	"ui.agents.skills.remove.unpublished_title": undefined;
+	"ui.agents.skills.retrying": undefined;
+	"ui.agents.skills.scope.builtin": undefined;
+	"ui.agents.skills.scope.hub": undefined;
+	"ui.agents.skills.scope.local": undefined;
+	"ui.agents.skills.scope_legend": undefined;
+	"ui.agents.skills.search": undefined;
+	"ui.agents.skills.search_aria": undefined;
+	"ui.agents.skills.select_prompt": undefined;
+	"ui.agents.skills.select_prompt_editable": undefined;
+	"ui.agents.skills.source.builtin": undefined;
+	"ui.agents.skills.source.external": undefined;
+	"ui.agents.skills.source.hub": undefined;
+	"ui.agents.skills.source.local": undefined;
+	"ui.agents.skills.source.project": undefined;
+	"ui.agents.skills.source.unknown": undefined;
+	"ui.agents.skills.state.following": undefined;
+	"ui.agents.skills.state.hub_unknown": undefined;
+	"ui.agents.skills.state.not_installed": undefined;
+	"ui.agents.skills.state.read_only": undefined;
+	"ui.agents.skills.state.updates_off": undefined;
+	"ui.agents.skills.tab": undefined;
+	"ui.agents.skills.where.builtin": undefined;
+	"ui.agents.skills.where.external": undefined;
+	"ui.agents.skills.where.hub": undefined;
+	"ui.agents.skills.where.local": undefined;
+	"ui.agents.skills.where.project": undefined;
+	"ui.agents.skills.where.unknown": undefined;
 	"ui.agents.starters.action.all_builtins": undefined;
 	"ui.agents.starters.action.all_count": { count: number };
 	"ui.agents.starters.action.done": undefined;
@@ -727,6 +2426,58 @@ export type MessageParams = {
 	"ui.agents.starters.summary.sentence": { parts: string };
 	"ui.agents.starters.summary.separator": undefined;
 	"ui.agents.starters.summary.skipped": { count: number };
+	"ui.agents.teams.action.add_member": undefined;
+	"ui.agents.teams.action.collaboration_aria": undefined;
+	"ui.agents.teams.action.new_chat": undefined;
+	"ui.agents.teams.action.project_brief_aria": undefined;
+	"ui.agents.teams.action.remove": undefined;
+	"ui.agents.teams.col.count": undefined;
+	"ui.agents.teams.col.member": undefined;
+	"ui.agents.teams.col.type": undefined;
+	"ui.agents.teams.empty.not_found": undefined;
+	"ui.agents.teams.empty.not_found_name": { name: string };
+	"ui.agents.teams.field.manager_aria": undefined;
+	"ui.agents.teams.field.manager_placeholder": undefined;
+	"ui.agents.teams.field.member_placeholder": undefined;
+	"ui.agents.teams.kind.agent": undefined;
+	"ui.agents.teams.kind.team": undefined;
+	"ui.agents.teams.member_count": { count: number };
+	"ui.agents.teams.section.collaboration": undefined;
+	"ui.agents.teams.section.description": undefined;
+	"ui.agents.teams.section.manager": undefined;
+	"ui.agents.teams.section.members": undefined;
+	"ui.agents.teams.section.members_aria": undefined;
+	"ui.agents.teams.section.project_brief": undefined;
+	"ui.agents.teams.section.what_for": undefined;
+	"ui.agents.upload.action.edit_agent": undefined;
+	"ui.agents.upload.action.open_listing": undefined;
+	"ui.agents.upload.availability.agent_label": undefined;
+	"ui.agents.upload.availability.checking": undefined;
+	"ui.agents.upload.availability.free": undefined;
+	"ui.agents.upload.availability.taken": undefined;
+	"ui.agents.upload.error.cannot_publish": undefined;
+	"ui.agents.upload.field.name_hint": undefined;
+	"ui.agents.upload.field.name_label": undefined;
+	"ui.agents.upload.list.instructions": undefined;
+	"ui.agents.upload.list.name": undefined;
+	"ui.agents.upload.list.surface": undefined;
+	"ui.agents.upload.published.listed": { name: string };
+	"ui.agents.upload.published.republished": { name: string };
+	"ui.agents.upload.sign_in.needed": undefined;
+	"ui.agents.upload.sign_in.nothing_left": undefined;
+	"ui.agents.upload.sign_in.reauthenticate": undefined;
+	"ui.agents.upload.target.label": undefined;
+	"ui.agents.upload.target.orgs_unread": undefined;
+	"ui.agents.upload.target.upgrade": undefined;
+	"ui.agents.upload.terms.lead": undefined;
+	"ui.agents.upload.terms.link": undefined;
+	"ui.agents.upload.terms.tail": undefined;
+	"ui.agents.upload.title.publish_org": { name: string; destination: string };
+	"ui.agents.upload.title.publish_public": { name: string };
+	"ui.agents.upload.title.published_org": { name: string; destination: string };
+	"ui.agents.upload.title.published_public": { name: string };
+	"ui.agents.upload.title.republished": { name: string };
+	"ui.agents.upload.title.update_listing": { name: string };
 	"ui.browser.chrome.accessible_tab": {
 		title: string;
 		loading: string;
@@ -748,6 +2499,8 @@ export type MessageParams = {
 	"ui.browser.chrome.scroll_left": undefined;
 	"ui.browser.chrome.scroll_right": undefined;
 	"ui.browser.chrome.tab_gone": undefined;
+	"ui.browser.errors.address_history_unavailable": undefined;
+	"ui.browser.errors.browser_unavailable": undefined;
 	"ui.browser.approval_queue_model.denied": undefined;
 	"ui.browser.approval_queue_model.expires_in_under_a_minute": undefined;
 	"ui.browser.approval_queue_model.expires_minutes": { count: number };
@@ -935,6 +2688,20 @@ export type MessageParams = {
 	"ui.browser.browser_tab_strip.unmute_tab": undefined;
 	"ui.browser.browser_tab_strip.watch": { title: string };
 	"ui.browser.browser_url_bar.address": undefined;
+	"ui.browser.browser_url_bar.address_open_row": { address: string };
+	"ui.browser.browser_url_bar.address_search_row": { query: string };
+	"ui.browser.browser_url_bar.address_suggestion_open_tab": { title: string };
+	"ui.browser.browser_url_bar.address_suggestion_open_tab_untitled": undefined;
+	"ui.browser.browser_url_bar.address_suggestions_available": { count: number };
+	"ui.browser.browser_url_bar.address_suggestions_blocked": undefined;
+	"ui.browser.browser_url_bar.address_suggestions_empty": undefined;
+	"ui.browser.browser_url_bar.address_suggestions_label": undefined;
+	"ui.browser.browser_url_bar.address_suggestions_label_mixed": undefined;
+	"ui.browser.browser_url_bar.address_suggestions_no_match": undefined;
+	"ui.browser.browser_url_bar.address_suggestions_unavailable": undefined;
+	"ui.browser.browser_url_bar.address_suggestions_unavailable_narrow": undefined;
+	"ui.browser.browser_url_bar.address_suggestions_unavailable_platform": undefined;
+	"ui.browser.browser_url_bar.address_suggestions_unavailable_restart": undefined;
 	"ui.browser.browser_url_bar.approvals_waiting": { count: number };
 	"ui.browser.browser_url_bar.back": undefined;
 	"ui.browser.browser_url_bar.back_shortcut": { shortcut: string };
@@ -946,6 +2713,7 @@ export type MessageParams = {
 	"ui.browser.browser_url_bar.home_destination": undefined;
 	"ui.browser.browser_url_bar.latest_download": { name: string };
 	"ui.browser.browser_url_bar.newest_download": { name: string; count: number };
+	"ui.browser.browser_url_bar.page_menu": undefined;
 	"ui.browser.browser_url_bar.page_zoom_reset": { zoom: number };
 	"ui.browser.browser_url_bar.print_page": undefined;
 	"ui.browser.browser_url_bar.reload": undefined;
@@ -969,7 +2737,9 @@ export type MessageParams = {
 	"ui.browser.page_context_menu.cut": undefined;
 	"ui.browser.page_context_menu.open_link_in_new_tab": undefined;
 	"ui.browser.page_context_menu.paste": undefined;
+	"ui.browser.page_context_menu.redo": undefined;
 	"ui.browser.page_context_menu.select_all": undefined;
+	"ui.browser.page_context_menu.undo": undefined;
 	"ui.browser.use_browser_chrome.downloads_folder_failed": { message: string };
 	"ui.browser.use_consent_attention_lifetime.that_request_is_no_longer_waiting": undefined;
 	"ui.browser.webauthn_chooser.a_site": undefined;
@@ -989,8 +2759,104 @@ export type MessageParams = {
 	"ui.browser.webauthn_chooser.the_site_stored_no_name_for_this": undefined;
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": undefined;
 	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": undefined;
+	"ui.canvas.close_copy.closed_your_edits_could_not_be_saved_and_are_kept_until_the_app_quits_op": {
+		title: string;
+	};
+	"ui.canvas.code_editor_diff.add": undefined;
+	"ui.canvas.code_editor_diff.proposed_change": undefined;
+	"ui.canvas.code_editor_diff.remove": undefined;
+	"ui.canvas.create_file_dialog.a_file_named_already_exists_do_you_want_to_overwrite_it": {
+		filename: string;
+		filetype: string;
+	};
+	"ui.canvas.create_file_dialog.backend_and_scripting": undefined;
+	"ui.canvas.create_file_dialog.c_c": undefined;
+	"ui.canvas.create_file_dialog.c_cpp": undefined;
+	"ui.canvas.create_file_dialog.c_cs": undefined;
+	"ui.canvas.create_file_dialog.cancel": undefined;
+	"ui.canvas.create_file_dialog.change_the_working_directory_from_the_composer_to_create_the_file_elsewh": undefined;
+	"ui.canvas.create_file_dialog.configuration": undefined;
+	"ui.canvas.create_file_dialog.create_file": undefined;
+	"ui.canvas.create_file_dialog.create_new_file": undefined;
+	"ui.canvas.create_file_dialog.creating": undefined;
+	"ui.canvas.create_file_dialog.css_css": undefined;
+	"ui.canvas.create_file_dialog.dockerfile": undefined;
+	"ui.canvas.create_file_dialog.enter_file_name_e_g_my_new_script": undefined;
+	"ui.canvas.create_file_dialog.env": undefined;
+	"ui.canvas.create_file_dialog.file_already_exists": undefined;
+	"ui.canvas.create_file_dialog.file_name": undefined;
+	"ui.canvas.create_file_dialog.file_type": undefined;
+	"ui.canvas.create_file_dialog.general": undefined;
+	"ui.canvas.create_file_dialog.go_go": undefined;
+	"ui.canvas.create_file_dialog.html_html": undefined;
+	"ui.canvas.create_file_dialog.ini_ini": undefined;
+	"ui.canvas.create_file_dialog.java_java": undefined;
+	"ui.canvas.create_file_dialog.javascript_js": undefined;
+	"ui.canvas.create_file_dialog.json_json": undefined;
+	"ui.canvas.create_file_dialog.jsx_jsx": undefined;
+	"ui.canvas.create_file_dialog.kotlin_kt": undefined;
+	"ui.canvas.create_file_dialog.loading_file_types": undefined;
+	"ui.canvas.create_file_dialog.location": undefined;
+	"ui.canvas.create_file_dialog.markdown_md": undefined;
+	"ui.canvas.create_file_dialog.other_languages": undefined;
+	"ui.canvas.create_file_dialog.overwrite": undefined;
+	"ui.canvas.create_file_dialog.php_php": undefined;
+	"ui.canvas.create_file_dialog.pick_an_extension_or_type_one_that_is_not_listed": undefined;
+	"ui.canvas.create_file_dialog.plain_text_txt": undefined;
+	"ui.canvas.create_file_dialog.python_py": undefined;
+	"ui.canvas.create_file_dialog.ruby_rb": undefined;
+	"ui.canvas.create_file_dialog.rust_rs": undefined;
+	"ui.canvas.create_file_dialog.scala_scala": undefined;
+	"ui.canvas.create_file_dialog.select_or_type_an_extension": undefined;
+	"ui.canvas.create_file_dialog.shell_script_sh": undefined;
+	"ui.canvas.create_file_dialog.swift_swift": undefined;
+	"ui.canvas.create_file_dialog.the_file_will_be_created_in_this_working_directory": undefined;
+	"ui.canvas.create_file_dialog.toml_toml": undefined;
+	"ui.canvas.create_file_dialog.tsx_tsx": undefined;
+	"ui.canvas.create_file_dialog.typescript_ts": undefined;
+	"ui.canvas.create_file_dialog.web_development": undefined;
+	"ui.canvas.create_file_dialog.xml_xml": undefined;
+	"ui.canvas.create_file_dialog.yaml_yaml": undefined;
+	"ui.canvas.create_file_dialog.yaml_yml": undefined;
+	"ui.canvas.document_freshness_bar.check_the_file_your_edits_are_kept": undefined;
+	"ui.canvas.document_freshness_bar.load_the_file_s_version_your_unsaved_edits_are_discarded": undefined;
+	"ui.canvas.document_freshness_bar.modified": {
+		formatcalendardatetime: string;
+	};
+	"ui.canvas.document_freshness_bar.not_read_from_disk_yet": undefined;
+	"ui.canvas.document_freshness_bar.re_read_from_disk": undefined;
+	"ui.canvas.file_row.ui_canvas_files_fileactions": undefined;
+	"ui.canvas.file_rows.archives": undefined;
+	"ui.canvas.file_rows.code": undefined;
+	"ui.canvas.file_rows.count": { total: number };
+	"ui.canvas.file_rows.documents": undefined;
+	"ui.canvas.file_rows.images": undefined;
+	"ui.canvas.file_rows.narrow_count": { visible: number; total: number };
+	"ui.canvas.file_rows.other": undefined;
+	"ui.canvas.file_rows.presentations": undefined;
+	"ui.canvas.file_rows.sounds": undefined;
+	"ui.canvas.file_rows.spreadsheets": undefined;
+	"ui.canvas.file_rows.video": undefined;
+	"ui.canvas.file_viewer.copy_its_path_from_the_row_s_menu_to_look_for_it_or_check_whether_the_ag": undefined;
+	"ui.canvas.file_viewer.file_no_longer_exists_at": { value: string };
+	"ui.canvas.file_viewer.ui_canvas_files_saveerror": undefined;
+	"ui.canvas.file_viewer.unknown_error_reading_file": undefined;
+	"ui.canvas.file_viewer_state.open_in_default_app": undefined;
 	"ui.canvas.files.archives": undefined;
 	"ui.canvas.files.asc": undefined;
+	"ui.canvas.files.attachmentGone": undefined;
+	"ui.canvas.files.attachmentGoneRecovery": undefined;
+	"ui.canvas.files.attachmentImage": undefined;
+	"ui.canvas.files.attachmentMeta": { size: string; when: string };
+	"ui.canvas.files.attachmentReadOnly": undefined;
+	"ui.canvas.files.attachmentRefused": undefined;
+	"ui.canvas.files.attachmentRetained": undefined;
+	"ui.canvas.files.attachmentTooltip": { name: string; digest: string };
+	"ui.canvas.files.attachments": undefined;
+	"ui.canvas.files.attachmentsError": undefined;
+	"ui.canvas.files.attachmentsErrorReason": undefined;
+	"ui.canvas.files.attachmentsPartial": undefined;
+	"ui.canvas.files.attachmentsPartialReason": undefined;
 	"ui.canvas.files.audio": undefined;
 	"ui.canvas.files.building": undefined;
 	"ui.canvas.files.clear": undefined;
@@ -1046,6 +2912,371 @@ export type MessageParams = {
 	"ui.canvas.files.unreadable": undefined;
 	"ui.canvas.files.videos": undefined;
 	"ui.canvas.files.working": undefined;
+	"ui.canvas.finder_files_view.ui_canvas_files_fileactions": undefined;
+	"ui.canvas.finder_files_view.ui_canvas_files_imageactions": undefined;
+	"ui.canvas.finder_files_view.ui_canvas_files_searchplaceholder": undefined;
+	"ui.canvas.finder_layout.files": undefined;
+	"ui.canvas.finder_layout.highlights": undefined;
+	"ui.canvas.finder_layout.working_files": undefined;
+	"ui.canvas.finder_thumbnails.could_not_be_read": undefined;
+	"ui.canvas.goals_viewer.count": { count: number };
+	"ui.canvas.goals_viewer.count_shown": { count: number };
+	"ui.canvas.goals_viewer.goals": undefined;
+	"ui.canvas.goals_viewer.goals_appear_here_once_they_are_finished": undefined;
+	"ui.canvas.goals_viewer.no_goal_set_goal_text_to_set_one_finished_goals_are_kept_here": undefined;
+	"ui.canvas.goals_viewer.no_goals_completed_yet": undefined;
+	"ui.canvas.goals_viewer.older_settled_goals_are_not_carried_here_this_list_is_capped": undefined;
+	"ui.canvas.html_preview.edit": undefined;
+	"ui.canvas.html_preview.html_preview": { title: string };
+	"ui.canvas.html_preview.preview": undefined;
+	"ui.canvas.image_preview.file_no_longer_exists": undefined;
+	"ui.canvas.image_preview.this_image_could_not_be_opened": undefined;
+	"ui.canvas.image_preview.this_image_could_not_be_shown": undefined;
+	"ui.canvas.image_preview.this_image_is_no_longer_in_the_session": undefined;
+	"ui.canvas.image_preview.too_large_to_preview": undefined;
+	"ui.canvas.inline_edit.accept": undefined;
+	"ui.canvas.inline_edit.accept_all": undefined;
+	"ui.canvas.inline_edit.accepted": undefined;
+	"ui.canvas.inline_edit.add_attachments": undefined;
+	"ui.canvas.inline_edit.apply_all_ctrl_enter": undefined;
+	"ui.canvas.inline_edit.apply_all_enter": undefined;
+	"ui.canvas.inline_edit.ask_for_an_edit": undefined;
+	"ui.canvas.inline_edit.cancel_edit": undefined;
+	"ui.canvas.inline_edit.cancel_recording": undefined;
+	"ui.canvas.inline_edit.cancel_recording_esc": undefined;
+	"ui.canvas.inline_edit.change": undefined;
+	"ui.canvas.inline_edit.change_125665": { index: number; state: string };
+	"ui.canvas.inline_edit.close": undefined;
+	"ui.canvas.inline_edit.confirm_recording": undefined;
+	"ui.canvas.inline_edit.confirm_recording_enter": undefined;
+	"ui.canvas.inline_edit.dictation_is_not_available_on_this_device": undefined;
+	"ui.canvas.inline_edit.edit": undefined;
+	"ui.canvas.inline_edit.edit_instructions": undefined;
+	"ui.canvas.inline_edit.editing": undefined;
+	"ui.canvas.inline_edit.error_accessing_microphone_please_ensure_microphone_permissions_are_gran": undefined;
+	"ui.canvas.inline_edit.failed_to_edit_file": undefined;
+	"ui.canvas.inline_edit.next_change": undefined;
+	"ui.canvas.inline_edit.no_changes_were_needed": undefined;
+	"ui.canvas.inline_edit.not_reviewed_yet": undefined;
+	"ui.canvas.inline_edit.of": undefined;
+	"ui.canvas.inline_edit.please_select_an_agent_first": undefined;
+	"ui.canvas.inline_edit.previous_change": undefined;
+	"ui.canvas.inline_edit.processing_audio": undefined;
+	"ui.canvas.inline_edit.reject": undefined;
+	"ui.canvas.inline_edit.reject_all": undefined;
+	"ui.canvas.inline_edit.rejected": undefined;
+	"ui.canvas.inline_edit.review_progress": undefined;
+	"ui.canvas.inline_edit.reviewing_now": undefined;
+	"ui.canvas.inline_edit.start_recording": undefined;
+	"ui.canvas.inline_edit.start_recording_or_hold": {
+		shortcuttext: string;
+		label: string;
+	};
+	"ui.canvas.inline_edit.stop_reviewing": undefined;
+	"ui.canvas.insert_image_dialog.cancel": undefined;
+	"ui.canvas.insert_image_dialog.drag_and_drop_an_image_here_or_click_to_select_one": undefined;
+	"ui.canvas.insert_image_dialog.image_path_on_device": undefined;
+	"ui.canvas.insert_image_dialog.insert": undefined;
+	"ui.canvas.insert_image_dialog.insert_image": undefined;
+	"ui.canvas.insert_image_dialog.or": undefined;
+	"ui.canvas.insert_image_dialog.users_eren_documents_image_png": undefined;
+	"ui.canvas.insert_link_dialog.cancel": undefined;
+	"ui.canvas.insert_link_dialog.https_example_com": undefined;
+	"ui.canvas.insert_link_dialog.insert": undefined;
+	"ui.canvas.insert_link_dialog.insert_link": undefined;
+	"ui.canvas.insert_link_dialog.link_text_optional": undefined;
+	"ui.canvas.insert_link_dialog.text_to_display": undefined;
+	"ui.canvas.insert_link_dialog.url": undefined;
+	"ui.canvas.insert_table_popover.columns": undefined;
+	"ui.canvas.insert_table_popover.custom_size": undefined;
+	"ui.canvas.insert_table_popover.insert_table": undefined;
+	"ui.canvas.insert_table_popover.rows": undefined;
+	"ui.canvas.insert_table_popover.table": { rows: number; cols: number };
+	"ui.canvas.pdf_preview.file_no_longer_exists": undefined;
+	"ui.canvas.pdf_preview.opening": undefined;
+	"ui.canvas.pdf_preview.pdf": { title: string };
+	"ui.canvas.pdf_preview.this_pdf_could_not_be_opened": undefined;
+	"ui.canvas.pdf_preview.too_large_to_preview": undefined;
+	"ui.canvas.shell.browse_files": undefined;
+	"ui.canvas.shell.browse_filesc0c547": { filecountvalue: number };
+	"ui.canvas.shell.canvas": undefined;
+	"ui.canvas.shell.canvas_view": undefined;
+	"ui.canvas.shell.close_canvas": undefined;
+	"ui.canvas.shell.documents": undefined;
+	"ui.canvas.shell.file": undefined;
+	"ui.canvas.shell.files": undefined;
+	"ui.canvas.shell.goal": undefined;
+	"ui.canvas.shell.goals": undefined;
+	"ui.canvas.shell.new_file": undefined;
+	"ui.canvas.shell.new_file_n": { modifierkey: string };
+	"ui.canvas.shell.no_conversation_open": undefined;
+	"ui.canvas.shell.nothing_open_yet": undefined;
+	"ui.canvas.shell.open_a_file_to_read_or_edit_it_here_files_the_agent_mentions_in_the_conv": undefined;
+	"ui.canvas.shell.open_file_from_disk": undefined;
+	"ui.canvas.shell.open_file_from_disk_o": { modifierkey: string };
+	"ui.canvas.shell.start_a_conversation_with_an_agent_to_see_the_files_and_variables_it_is": undefined;
+	"ui.canvas.shell.variables": undefined;
+	"ui.canvas.spreadsheet_preview.failed_to_save_spreadsheet": { value: string };
+	"ui.canvas.spreadsheet_preview.spreadsheet_saved": undefined;
+	"ui.canvas.spreadsheet_preview.the_file_changed_on_disk_so_this_save_was_not_written_use_the_row_above": undefined;
+	"ui.canvas.spreadsheet_preview.unknown_error": undefined;
+	"ui.canvas.tabs.all_open_files": undefined;
+	"ui.canvas.tabs.close": { value: string };
+	"ui.canvas.tabs.open_documents": undefined;
+	"ui.canvas.text_style_dropdown.heading_1": undefined;
+	"ui.canvas.text_style_dropdown.heading_2": undefined;
+	"ui.canvas.text_style_dropdown.heading_3": undefined;
+	"ui.canvas.text_style_dropdown.heading_4": undefined;
+	"ui.canvas.text_style_dropdown.heading_5": undefined;
+	"ui.canvas.text_style_dropdown.heading_6": undefined;
+	"ui.canvas.text_style_dropdown.paragraph": undefined;
+	"ui.canvas.text_style_dropdown.text_style": undefined;
+	"ui.canvas.use_file_freshness.already_up_to_date_the_file_is_unchanged": undefined;
+	"ui.canvas.use_file_freshness.changed_on_disk_load_it_or_save_to_replace_it": undefined;
+	"ui.canvas.use_file_freshness.could_not_be_re_read_showing_the_version_we_last_read": undefined;
+	"ui.canvas.use_file_freshness.could_not_be_read_showing_the_version_we_last_read": undefined;
+	"ui.canvas.use_file_freshness.local_file_access_is_unavailable_outside_the_desktop_app": undefined;
+	"ui.canvas.use_file_freshness.local_file_access_is_unavailable_so_there_is_nothing_to_re_read_from": undefined;
+	"ui.canvas.use_file_freshness.no_local_file_access": undefined;
+	"ui.canvas.use_file_freshness.no_longer_on_disk_showing_the_version_we_last_read": undefined;
+	"ui.canvas.use_file_freshness.the_file_s_version_was_re_read_from_disk_and_is_now_on_screen": undefined;
+	"ui.canvas.use_file_freshness.this_file_could_not_be_re_read_so_the_version_we_last_read_is_still_show": undefined;
+	"ui.canvas.use_file_freshness.this_file_could_not_be_read_the_last_version_we_read_is_still_shown_and": undefined;
+	"ui.canvas.use_file_freshness.this_file_is_no_longer_on_disk_the_last_version_we_read_is_still_shown_a": undefined;
+	"ui.canvas.use_file_freshness.up_to_date": undefined;
+	"ui.canvas.use_file_freshness.your_save_replaced_the_change_on_disk": undefined;
+	"ui.canvas.use_file_freshness.your_save_replaced_the_version_that_had_changed_on_disk_re_read_the_file": undefined;
+	"ui.canvas.use_file_freshness.your_unsaved_edits_are_kept_until_the_app_quits_and_saving_is_paused_whi": undefined;
+	"ui.canvas.variable_form_dialog.about_the_variable_name": undefined;
+	"ui.canvas.variable_form_dialog.cancel": undefined;
+	"ui.canvas.variable_form_dialog.create": undefined;
+	"ui.canvas.variable_form_dialog.e_g_my_variable_name": undefined;
+	"ui.canvas.variable_form_dialog.edit_variable": undefined;
+	"ui.canvas.variable_form_dialog.enter_a_valid_json_structure": undefined;
+	"ui.canvas.variable_form_dialog.enter_variable_value": undefined;
+	"ui.canvas.variable_form_dialog.example_key_example_value": undefined;
+	"ui.canvas.variable_form_dialog.item1_item2": undefined;
+	"ui.canvas.variable_form_dialog.name_key": undefined;
+	"ui.canvas.variable_form_dialog.new_variable": undefined;
+	"ui.canvas.variable_form_dialog.save": undefined;
+	"ui.canvas.variable_form_dialog.saving": undefined;
+	"ui.canvas.variable_form_dialog.the_unique_identifier_for_the_variable_e_g_api_key_user_preference_canno": undefined;
+	"ui.canvas.variable_form_dialog.the_variable_could_not_be_saved_try_again": undefined;
+	"ui.canvas.variable_form_dialog.this_name_cannot_be_sent_use_up_to_128_characters_without_control_charac": undefined;
+	"ui.canvas.variable_form_dialog.true_or_false": undefined;
+	"ui.canvas.variable_form_dialog.type": undefined;
+	"ui.canvas.variable_form_dialog.value": undefined;
+	"ui.canvas.variable_form_dialog.value_json_array": undefined;
+	"ui.canvas.variable_form_dialog.value_json_object": undefined;
+	"ui.canvas.variable_form_dialog.value_true_false": undefined;
+	"ui.canvas.variables_viewer.are_you_sure_you_want_to_delete_the_variable": undefined;
+	"ui.canvas.variables_viewer.cancel": undefined;
+	"ui.canvas.variables_viewer.code_memory": undefined;
+	"ui.canvas.variables_viewer.code_memory_starts_when_you_send_your_first_message": undefined;
+	"ui.canvas.variables_viewer.copied": undefined;
+	"ui.canvas.variables_viewer.copy_value": undefined;
+	"ui.canvas.variables_viewer.could_not_load_variables": undefined;
+	"ui.canvas.variables_viewer.could_not_reach_the_backend": undefined;
+	"ui.canvas.variables_viewer.count": { count: number };
+	"ui.canvas.variables_viewer.delete": undefined;
+	"ui.canvas.variables_viewer.delete_variable": undefined;
+	"ui.canvas.variables_viewer.edit_variable": undefined;
+	"ui.canvas.variables_viewer.it_fills_in_when_code_runs_in_this_chat": undefined;
+	"ui.canvas.variables_viewer.loading_variables": undefined;
+	"ui.canvas.variables_viewer.new_variable": undefined;
+	"ui.canvas.variables_viewer.no_code_memory_yet": undefined;
+	"ui.canvas.variables_viewer.nothing_stored_yet": undefined;
+	"ui.canvas.variables_viewer.reading": undefined;
+	"ui.canvas.variables_viewer.settings_then_application_updates_and_info_installs_the_newer_backend": undefined;
+	"ui.canvas.variables_viewer.the_backend_did_not_answer_so_this_chat_s_code_memory_could_not_be_read": undefined;
+	"ui.canvas.variables_viewer.the_backend_does_not_have_a_chat_with_this_session_id": undefined;
+	"ui.canvas.variables_viewer.this_action_cannot_be_undone": undefined;
+	"ui.canvas.variables_viewer.this_app_can_read_code_memory_the_backend_it_is_running_against_is_older": undefined;
+	"ui.canvas.variables_viewer.this_chat_cannot_read_code_memory": undefined;
+	"ui.canvas.variables_viewer.this_chat_keeps_a_value_bigger_than_this_panel_can_list_so_nothing_is_sh": undefined;
+	"ui.canvas.variables_viewer.this_variable_can_t_be_edited_because_its_type_is_not_yet_supported_for": undefined;
+	"ui.canvas.variables_viewer.this_variable_s_name_can_t_be_edited_from_here_copy_it_to_the_session_un": undefined;
+	"ui.canvas.variables_viewer.too_large_to_show_here": undefined;
+	"ui.canvas.variables_viewer.update_the_backend_to_read_code_memory": undefined;
+	"ui.canvas.variables_viewer.when_the_agent_runs_code_for_you_the_values_it_keeps_around_between_step": undefined;
+	"ui.canvas.video_preview.file_no_longer_exists": undefined;
+	"ui.canvas.video_preview.this_video_could_not_be_played": undefined;
+	"ui.canvas.video_preview.this_video_is_no_longer_in_the_session": undefined;
+	"ui.canvas.video_preview.too_large_to_preview": undefined;
+	"ui.canvas.view_name.view_count": {
+		label: string;
+		counted: number;
+		noun: string;
+		pluralnoun: string;
+	};
+	"ui.canvas.view_name.view_empty": { label: string };
+	"ui.canvas.view_name.view_shown_this_list_is_capped": {
+		label: string;
+		counted: number;
+		noun: string;
+		pluralnoun: string;
+	};
+	"ui.canvas.wysiwyg_markdown_editor.add": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.bold_ctrl_b": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.bullet_list": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.cell": { i: number; j: number };
+	"ui.canvas.wysiwyg_markdown_editor.checklist": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.code_block": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.file_saved": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.file_saved_replacing_the_change": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.header": { j: number };
+	"ui.canvas.wysiwyg_markdown_editor.insert_image": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.insert_link": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.insert_table": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.italic_ctrl_i": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.more_formatting": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.numbered_list": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.proposed_change": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.quote": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.redo": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.redo_ctrl_shift_z": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.remove": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.strikethrough": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.undo": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.undo_ctrl_z": undefined;
+	"ui.chat.analytics.filters.top_level_only": undefined;
+	"ui.chat.analytics.search.clear": undefined;
+	"ui.chat.analytics.search.sessions": undefined;
+	"ui.chat.analytics.sections.by_channel": undefined;
+	"ui.chat.analytics.sections.by_model": undefined;
+	"ui.chat.analytics.sections.by_provider": undefined;
+	"ui.chat.analytics.sections.by_session": undefined;
+	"ui.chat.analytics.sections.totals": undefined;
+	"ui.chat.analytics.title": undefined;
+	"ui.chat.analytics.toolbar.refreshing": undefined;
+	"ui.chat.analytics.toolbar.this_session_only": undefined;
+	"ui.chat.asks.all_asks": undefined;
+	"ui.chat.asks.answer_options": undefined;
+	"ui.chat.asks.cancel": undefined;
+	"ui.chat.asks.change_answer": undefined;
+	"ui.chat.asks.changed_handoff": undefined;
+	"ui.chat.asks.close_asks": undefined;
+	"ui.chat.asks.context.messages_since": { count: number; time: string };
+	"ui.chat.asks.conversation_asks": undefined;
+	"ui.chat.asks.decline": undefined;
+	"ui.chat.asks.dismiss.answered_in_chat.note": undefined;
+	"ui.chat.asks.dismiss.answered_in_chat.title": undefined;
+	"ui.chat.asks.dismiss.cancel": undefined;
+	"ui.chat.asks.dismiss.heading": undefined;
+	"ui.chat.asks.dismiss.in_flight": undefined;
+	"ui.chat.asks.dismiss.moot.note": undefined;
+	"ui.chat.asks.dismiss.moot.title": undefined;
+	"ui.chat.asks.dismiss.receipt.answered_in_chat": undefined;
+	"ui.chat.asks.dismiss.receipt.moot": undefined;
+	"ui.chat.asks.dismiss.refused": undefined;
+	"ui.chat.asks.dismiss.trigger": undefined;
+	"ui.chat.asks.filter_label": undefined;
+	"ui.chat.asks.no_answer": undefined;
+	"ui.chat.asks.other_label": undefined;
+	"ui.chat.asks.recommended": undefined;
+	"ui.chat.asks.send_answer": undefined;
+	"ui.chat.asks.settled_heading": undefined;
+	"ui.chat.asks.update_answer": undefined;
+	"ui.chat.asks.urgent": undefined;
+	"ui.chat.attachments.copy_path": undefined;
+	"ui.chat.attachments.copy_saved_path": undefined;
+	"ui.chat.attachments.file_and_copy_missing": undefined;
+	"ui.chat.attachments.file_meta": { type: string; size: string };
+	"ui.chat.attachments.file_missing": undefined;
+	"ui.chat.attachments.file_missing_recovery": undefined;
+	"ui.chat.attachments.file_retained": { digest: string };
+	"ui.chat.attachments.file_type_unknown": undefined;
+	"ui.chat.attachments.file_unnamed": undefined;
+	"ui.chat.attachments.open": undefined;
+	"ui.chat.attachments.path_copied": undefined;
+	"ui.chat.attachments.pending_caption": undefined;
+	"ui.chat.attachments.playback_position": undefined;
+	"ui.chat.attachments.playback_rate": undefined;
+	"ui.chat.attachments.playback_rate_option": { rate: string };
+	"ui.chat.attachments.saved_copy_label": undefined;
+	"ui.chat.attachments.saved_path_copied": undefined;
+	"ui.chat.attachments.volume": undefined;
+	"ui.chat.canonical.image_gen.control.edit_and_restart": undefined;
+	"ui.chat.canonical.image_gen.control.restart": undefined;
+	"ui.chat.canonical.image_gen.control.stop": undefined;
+	"ui.chat.canonical.image_gen.progress": undefined;
+	"ui.chat.canonical.older_history.conversation_start": undefined;
+	"ui.chat.canonical.older_history.failed.long": undefined;
+	"ui.chat.canonical.older_history.failed.short": undefined;
+	"ui.chat.canonical.older_history.load": undefined;
+	"ui.chat.canonical.older_history.loading": undefined;
+	"ui.chat.canonical.older_history.transport.long": undefined;
+	"ui.chat.canonical.older_history.transport.short": undefined;
+	"ui.chat.canonical.older_history.try_again": undefined;
+	"ui.chat.canonical.older_history.unproven.long": undefined;
+	"ui.chat.canonical.older_history.unproven.short": undefined;
+	"ui.chat.canonical.older_history.windowed.short_gesture": undefined;
+	"ui.chat.canonical.older_history.windowed.title": undefined;
+	"ui.chat.canonical.older_history.windowed.title_gesture": undefined;
+	"ui.chat.canonical.placeholder.loading": undefined;
+	"ui.chat.canonical.placeholder.region_label": undefined;
+	"ui.chat.canonical.raw_information": undefined;
+	"ui.chat.canonical.security_notice.aria": undefined;
+	"ui.chat.canonical.security_notice.blocked": undefined;
+	"ui.chat.canonical.security_notice.show_code": undefined;
+	"ui.chat.canonical.send_failure.aside_not_answered": undefined;
+	"ui.chat.canonical.send_failure.aside_still_answering": undefined;
+	"ui.chat.canonical.send_failure.busy": undefined;
+	"ui.chat.canonical.send_failure.gate_lock": undefined;
+	"ui.chat.canonical.send_failure.generic": undefined;
+	"ui.chat.canonical.send_failure.gone": undefined;
+	"ui.chat.canonical.send_failure.late_delivery": undefined;
+	"ui.chat.canonical.send_failure.late_delivery_draft": undefined;
+	"ui.chat.canonical.send_failure.late_delivery_overlap": undefined;
+	"ui.chat.canonical.send_failure.not_ready": undefined;
+	"ui.chat.canonical.send_failure.queued_send": undefined;
+	"ui.chat.canonical.send_failure.retiring": undefined;
+	"ui.chat.canonical.send_failure.send_lock": undefined;
+	"ui.chat.canonical.send_failure.unconfirmed": undefined;
+	"ui.chat.canonical.send_failure.unreachable": undefined;
+	"ui.chat.canonical.sound.batch_attachment_unavailable": undefined;
+	"ui.chat.canonical.sound.player_failed": undefined;
+	"ui.chat.canonical.sound.stop.confirm_label": undefined;
+	"ui.chat.canonical.sound.stop.keep_waiting": undefined;
+	"ui.chat.canonical.sound.stop.question": undefined;
+	"ui.chat.canonical.sound.stop.request_stop": undefined;
+	"ui.chat.canonical.sound.stop.warning": undefined;
+	"ui.chat.canonical.supplement.adjust_placeholder": undefined;
+	"ui.chat.canonical.supplement.details.attempts": { count: number };
+	"ui.chat.canonical.supplement.details.model": { name: string };
+	"ui.chat.canonical.supplement.file_actions.open_in_canvas": undefined;
+	"ui.chat.canonical.supplement.file_actions.open_in_default_app": undefined;
+	"ui.chat.canonical.supplement.file_actions.reveal_in_finder": undefined;
+	"ui.chat.canonical.supplement.frame.failed": undefined;
+	"ui.chat.canonical.supplement.frame.loading": undefined;
+	"ui.chat.canonical.supplement.frame.source": { name: string };
+	"ui.chat.canonical.supplement.preview_unavailable": undefined;
+	"ui.chat.canonical.supplement.send": undefined;
+	"ui.chat.canonical.this_chat": undefined;
+	"ui.chat.canonical.tool_row.generic_verb.running": undefined;
+	"ui.chat.canonical.tool_row.generic_verb.settled": undefined;
+	"ui.chat.canonical.tool_row.outcome.failed": undefined;
+	"ui.chat.canonical.tool_row.outcome.interrupted": undefined;
+	"ui.chat.canonical.tool_row.outcome.never_ran": undefined;
+	"ui.chat.canonical.tool_row.outcome.succeeded": undefined;
+	"ui.chat.canonical.tool_row.pending": undefined;
+	"ui.chat.canonical.transcript.connect_provider": undefined;
+	"ui.chat.canonical.transcript.credential_lost": undefined;
+	"ui.chat.canonical.transcript.edit": undefined;
+	"ui.chat.canonical.transcript.load_failed": undefined;
+	"ui.chat.canonical.transcript.missing_session": undefined;
+	"ui.chat.canonical.transcript.missing_session_detail": undefined;
+	"ui.chat.canonical.transcript.reconnect": undefined;
+	"ui.chat.canonical.transcript.reconnecting": undefined;
+	"ui.chat.canonical.transcript.send_again": undefined;
+	"ui.chat.canonical.transcript.source_unavailable": undefined;
+	"ui.chat.canonical.transcript.stale_caption": undefined;
+	"ui.chat.canonical.transcript.start_new_chat": undefined;
+	"ui.chat.canonical.transcript.stopped_before_finishing": undefined;
+	"ui.chat.canonical.turn_summary.completed": undefined;
+	"ui.chat.canonical.turn_summary.took": { duration: string };
+	"ui.chat.canonical.untitled": undefined;
+	"ui.chat.commentary_actions.label": undefined;
 	"ui.chat.composer.ask_aside": undefined;
 	"ui.chat.composer.attach_file": undefined;
 	"ui.chat.composer.cancel_recording": undefined;
@@ -1054,7 +3285,20 @@ export type MessageParams = {
 	"ui.chat.composer.confirm_recording": undefined;
 	"ui.chat.composer.confirm_recording_hint": undefined;
 	"ui.chat.composer.delivery_remedies_hint": undefined;
+	"ui.chat.composer.dictation_failed_transient": undefined;
+	"ui.chat.composer.dictation_failed_transient_take_kept": undefined;
 	"ui.chat.composer.message": undefined;
+	"ui.chat.composer.placeholder.answer": undefined;
+	"ui.chat.composer.placeholder.aside": undefined;
+	"ui.chat.composer.placeholder.busy": undefined;
+	"ui.chat.composer.placeholder.idle": undefined;
+	"ui.chat.composer.placeholder.no_provider": undefined;
+	"ui.chat.composer.placeholder.recording": undefined;
+	"ui.chat.composer.placeholder.secret_answer": undefined;
+	"ui.chat.composer.placeholder.sending": undefined;
+	"ui.chat.composer.placeholder.stopping": undefined;
+	"ui.chat.composer.placeholder.unavailable": undefined;
+	"ui.chat.composer.placeholder.waiting": undefined;
 	"ui.chat.composer.processing_audio": undefined;
 	"ui.chat.composer.secret_ask_notice": undefined;
 	"ui.chat.composer.secret_ask_open": undefined;
@@ -1082,6 +3326,25 @@ export type MessageParams = {
 	"ui.chat.composer.stop": undefined;
 	"ui.chat.composer.stop_agent": undefined;
 	"ui.chat.composer.stop_work_hint": undefined;
+	"ui.chat.composer.suggestion.code_review_agent": undefined;
+	"ui.chat.composer.suggestion.create_team": undefined;
+	"ui.chat.composer.suggestion.last_turn": undefined;
+	"ui.chat.composer.suggestion.linear_mcp": undefined;
+	"ui.chat.composer.suggestion.phone_access": undefined;
+	"ui.chat.composer.suggestion.review_repo_pr": undefined;
+	"ui.chat.composer.suggestion.schedule_mornings": undefined;
+	"ui.chat.composer.suggestion.wake_with_summary": undefined;
+	"ui.chat.composer.tip.approvals": undefined;
+	"ui.chat.composer.tip.ask_for_a_team": undefined;
+	"ui.chat.composer.tip.attach_a_file": undefined;
+	"ui.chat.composer.tip.canvas": undefined;
+	"ui.chat.composer.tip.mcp_tools": undefined;
+	"ui.chat.composer.tip.mention_file": undefined;
+	"ui.chat.composer.tip.parallel_work": undefined;
+	"ui.chat.composer.tip.phone_access": undefined;
+	"ui.chat.composer.tip.run_panel": undefined;
+	"ui.chat.composer.tip.schedule": undefined;
+	"ui.chat.composer.tip.search_past_work": undefined;
 	"ui.chat.composer.welcome": undefined;
 	"ui.chat.composer_media.cancels": undefined;
 	"ui.chat.composer_media.confirms": undefined;
@@ -1090,28 +3353,1459 @@ export type MessageParams = {
 	"ui.chat.composer_media.preview_failed": undefined;
 	"ui.chat.composer_media.recording": undefined;
 	"ui.chat.composer_media.remove_attachment": undefined;
+	"ui.chat.device.check_again": undefined;
+	"ui.chat.device.fact.this_device": undefined;
+	"ui.chat.device.footer.move_deletes_copy": undefined;
+	"ui.chat.device.label.moving_to": { name: string };
+	"ui.chat.device.label.new_on": { name: string };
+	"ui.chat.device.label.new_on_this_device": undefined;
+	"ui.chat.device.label.on": { name: string };
+	"ui.chat.device.label.on_this_device": undefined;
+	"ui.chat.device.label.this_device": undefined;
+	"ui.chat.device.notice.move_hold_detail": undefined;
+	"ui.chat.device.picker.heading.move": undefined;
+	"ui.chat.device.picker.heading.start": undefined;
+	"ui.chat.device.row.conversations": { count: number };
+	"ui.chat.device.row.not_here_why": undefined;
+	"ui.chat.device.sentence.draft_elsewhere": { name: string };
+	"ui.chat.device.sentence.draft_here": undefined;
+	"ui.chat.device.sentence.gone": { name: string };
+	"ui.chat.device.sentence.gone_did_not_answer": { name: string };
+	"ui.chat.device.sentence.local": undefined;
+	"ui.chat.device.sentence.mesh_read_failure": undefined;
+	"ui.chat.device.sentence.move_in_flight": { name: string };
+	"ui.chat.device.sentence.moving": { name: string };
+	"ui.chat.device.sentence.pairing_guidance": undefined;
+	"ui.chat.device.sentence.remote": { name: string };
+	"ui.chat.device.sentence.remote_did_not_answer": { name: string };
+	"ui.chat.device.sentence.remote_did_not_answer_reason": {
+		name: string;
+		reason: string;
+	};
 	"ui.chat.dialogs.archive_action": undefined;
 	"ui.chat.dialogs.cancel": undefined;
 	"ui.chat.dialogs.delete_action": undefined;
 	"ui.chat.dialogs.delete_title": undefined;
+	"ui.chat.dialogs.options.clear_confirm": undefined;
+	"ui.chat.dialogs.options.clear_conversation": undefined;
+	"ui.chat.dialogs.options.clear_message": undefined;
+	"ui.chat.dialogs.options.clear_title": undefined;
+	"ui.chat.dialogs.options.description": undefined;
+	"ui.chat.dialogs.options.title": undefined;
+	"ui.chat.directory.announce.invalid": { path: string };
+	"ui.chat.directory.announce.set": { path: string };
+	"ui.chat.directory.enter_path_label": undefined;
+	"ui.chat.directory.enter_path_placeholder": undefined;
+	"ui.chat.directory.folder.applications": undefined;
+	"ui.chat.directory.folder.desktop": undefined;
+	"ui.chat.directory.folder.documents": undefined;
+	"ui.chat.directory.folder.downloads": undefined;
+	"ui.chat.directory.folder.etc": undefined;
+	"ui.chat.directory.folder.home": undefined;
+	"ui.chat.directory.folder.library": undefined;
+	"ui.chat.directory.folder.media": undefined;
+	"ui.chat.directory.folder.mnt": undefined;
+	"ui.chat.directory.folder.music": undefined;
+	"ui.chat.directory.folder.opt": undefined;
+	"ui.chat.directory.folder.pictures": undefined;
+	"ui.chat.directory.folder.program_data": undefined;
+	"ui.chat.directory.folder.program_files": undefined;
+	"ui.chat.directory.folder.program_files_x86": undefined;
+	"ui.chat.directory.folder.srv": undefined;
+	"ui.chat.directory.folder.users": undefined;
+	"ui.chat.directory.folder.usr": undefined;
+	"ui.chat.directory.folder.var": undefined;
+	"ui.chat.directory.folder.videos": undefined;
+	"ui.chat.directory.folder.volumes": undefined;
+	"ui.chat.directory.label.moving_session": undefined;
+	"ui.chat.directory.label.working_directory": undefined;
+	"ui.chat.directory.label.working_directory_value": { path: string };
+	"ui.chat.directory.menu.browse": undefined;
+	"ui.chat.directory.menu.custom": undefined;
+	"ui.chat.directory.menu.default": undefined;
+	"ui.chat.directory.menu.enter_custom": undefined;
+	"ui.chat.directory.menu.no_recent": undefined;
+	"ui.chat.directory.menu.recent": undefined;
+	"ui.chat.directory.not_set": undefined;
+	"ui.chat.directory.pending_restarting": undefined;
+	"ui.chat.directory.remove_recent": { path: string };
+	"ui.chat.directory.tooltip.change": undefined;
+	"ui.chat.directory.tooltip.invalid": { path: string };
+	"ui.chat.directory.tooltip.move_cost": undefined;
+	"ui.chat.directory.tooltip.pending_move": { path: string };
+	"ui.chat.directory.tooltip.set": undefined;
+	"ui.chat.directory.tooltip.truncated_move_cost": { path: string };
 	"ui.chat.header.actions": undefined;
+	"ui.chat.header.archive_conversation": undefined;
 	"ui.chat.header.archived": undefined;
 	"ui.chat.header.archived_hint": undefined;
+	"ui.chat.header.cancel_rename": undefined;
 	"ui.chat.header.close_run_details": undefined;
 	"ui.chat.header.conversation_name": undefined;
 	"ui.chat.header.copy_id": undefined;
 	"ui.chat.header.delete": undefined;
 	"ui.chat.header.move_device": undefined;
+	"ui.chat.header.new_chat": undefined;
+	"ui.chat.header.new_chat_with": { target: string };
 	"ui.chat.header.open_run_details": undefined;
+	"ui.chat.header.rename_conversation": undefined;
+	"ui.chat.header.restore_conversation": undefined;
+	"ui.chat.header.saving_conversation_name": undefined;
+	"ui.chat.header.session_model_connect": undefined;
+	"ui.chat.header.session_model_switch": undefined;
 	"ui.chat.header.transcript_display": undefined;
+	"ui.chat.action.stopped": undefined;
+	"ui.chat.approval.reply_required": undefined;
+	"ui.chat.aside.add_to_conversation": undefined;
+	"ui.chat.aside.close_label": undefined;
+	"ui.chat.aside.empty": undefined;
+	"ui.chat.aside.exchange_label": undefined;
+	"ui.chat.aside.off_record": undefined;
+	"ui.chat.aside.question_label": undefined;
+	"ui.chat.aside.thinking": undefined;
+	"ui.chat.aside.title": undefined;
+	"ui.chat.aside.you_label": undefined;
+	"ui.chat.checkpoint.generating_name": undefined;
+	"ui.chat.checkpoint.jump_agent": {
+		turn: number;
+		total: number;
+		name: string;
+	};
+	"ui.chat.checkpoint.jump_agent_unnamed": { turn: number; total: number };
+	"ui.chat.checkpoint.jump_user": {
+		turn: number;
+		total: number;
+		clock: string;
+	};
+	"ui.chat.checkpoint.jump_user_no_clock": { turn: number; total: number };
+	"ui.chat.checkpoint.turn": { turn: number; total: number };
+	"ui.chat.composer.status.goal_collapse": undefined;
+	"ui.chat.composer.status.goal_dismiss": undefined;
+	"ui.chat.composer.status.goal_dismiss_keep": undefined;
+	"ui.chat.composer.status.goal_dismiss_name": undefined;
+	"ui.chat.composer.status.goal_done": undefined;
+	"ui.chat.composer.status.goal_done_name": undefined;
+	"ui.chat.composer.status.goal_expand": undefined;
+	"ui.chat.composer.status.goal_label": undefined;
+	"ui.chat.composer.status.jobs_action": undefined;
+	"ui.chat.composer.status.loop_clear": undefined;
+	"ui.chat.composer.status.loop_label": undefined;
+	"ui.chat.composer.status.loop_progress_of_turns": {
+		completed: number;
+		total: number;
+	};
+	"ui.chat.composer.status.loop_progress_turns": { count: number };
+	"ui.chat.composer.status.loop_stop": undefined;
+	"ui.chat.composer.status.monitors_action": undefined;
+	"ui.chat.composer.status.plan_action": undefined;
+	"ui.chat.composer.status.session_goal": undefined;
+	"ui.chat.composer.status.subagents_action": undefined;
+	"ui.chat.composer.status.wakes_action": undefined;
+	"ui.chat.error_block.heading": undefined;
+	"ui.chat.error_block.invalid_key.after": undefined;
+	"ui.chat.error_block.invalid_key.before": undefined;
+	"ui.chat.error_block.link.providers": undefined;
+	"ui.chat.error_block.link.settings": undefined;
+	"ui.chat.error_block.model.after": undefined;
+	"ui.chat.error_block.model.before": undefined;
+	"ui.chat.error_block.provider.after": undefined;
+	"ui.chat.error_block.provider.before": undefined;
+	"ui.chat.error_block.rate_limit.after": undefined;
+	"ui.chat.error_block.rate_limit.all_after": undefined;
+	"ui.chat.error_block.rate_limit.before": undefined;
+	"ui.chat.error_block.schema.after": undefined;
+	"ui.chat.error_block.schema.after_before": undefined;
+	"ui.chat.error_block.schema.before": undefined;
+	"ui.chat.error_block.unavailable.after": undefined;
+	"ui.chat.error_block.unavailable.before": undefined;
+	"ui.chat.header_identity.aria_agent_assign": { label: string };
+	"ui.chat.header_identity.aria_agent_closed": {
+		label: string;
+		reason: string;
+	};
+	"ui.chat.header_identity.aria_agent_switch": { label: string };
+	"ui.chat.header_identity.aria_team_assign": { label: string };
+	"ui.chat.header_identity.aria_team_closed": { label: string; reason: string };
+	"ui.chat.header_identity.aria_team_switch": { label: string };
+	"ui.chat.header_identity.assign_agent": undefined;
+	"ui.chat.header_identity.assign_team": undefined;
+	"ui.chat.header_identity.loading": { kind: string };
+	"ui.chat.header_identity.no_agent": undefined;
+	"ui.chat.header_identity.no_matches": { query: string };
+	"ui.chat.header_identity.no_team": undefined;
+	"ui.chat.header_identity.search": { kind: string };
 	"ui.chat.highlights.file_resolution_failed": undefined;
+	"ui.chat.hub_update.check_now": undefined;
+	"ui.chat.hub_update.dismiss": undefined;
+	"ui.chat.hub_update.dismiss_summary": undefined;
+	"ui.chat.hub_update.update_all": { count: number };
+	"ui.chat.hub_update.update_all_label": { kind: string; count: number };
+	"ui.chat.hub_update.updating": undefined;
+	"ui.chat.mermaid.chart_label": undefined;
+	"ui.chat.mermaid.close_fullscreen": undefined;
+	"ui.chat.mermaid.copied": undefined;
+	"ui.chat.mermaid.copy_text": undefined;
+	"ui.chat.mermaid.diagram_title": undefined;
+	"ui.chat.mermaid.error_contained": undefined;
+	"ui.chat.mermaid.error_title": undefined;
+	"ui.chat.mermaid.fullscreen": undefined;
+	"ui.chat.mermaid.loading": undefined;
+	"ui.chat.mermaid.open_fullscreen": undefined;
+	"ui.chat.mermaid.pan": undefined;
+	"ui.chat.mermaid.pan_hint": undefined;
+	"ui.chat.mermaid.render_failed": undefined;
+	"ui.chat.mermaid.rendering_error": undefined;
+	"ui.chat.mermaid.reset_view": undefined;
+	"ui.chat.mermaid.save_svg": undefined;
+	"ui.chat.mermaid.unexpected_error": undefined;
+	"ui.chat.mermaid.zoom_in": undefined;
+	"ui.chat.mermaid.zoom_out": undefined;
+	"ui.chat.provider_error.action.open_provider_settings": undefined;
+	"ui.chat.provider_error.action.open_radient_account": undefined;
+	"ui.chat.provider_error.action.sign_in_radient": undefined;
+	"ui.chat.provider_error.headline.out_of_credits": {
+		status: string;
+		body: string;
+	};
+	"ui.chat.provider_error.headline.out_of_credits_refused": { status: string };
+	"ui.chat.question_dock.asking": undefined;
+	"ui.chat.question_dock.from_agent_label": undefined;
+	"ui.chat.question_dock.hint.approval": undefined;
+	"ui.chat.question_dock.hint.approval_held": undefined;
+	"ui.chat.question_dock.hint.options": { prefix: string; digits: string };
+	"ui.chat.question_dock.hint.prefix": { index: string; total: string };
+	"ui.chat.question_dock.hint.secret": { prefix: string };
+	"ui.chat.question_dock.hint.secret_held": { prefix: string };
+	"ui.chat.question_dock.hint.type": { prefix: string };
+	"ui.chat.question_dock.secret_answer_label": undefined;
+	"ui.chat.question_dock.secret_note": undefined;
+	"ui.chat.question_dock.secret_placeholder": undefined;
+	"ui.chat.question_dock.secret_value_label": undefined;
+	"ui.chat.question_dock.send": undefined;
+	"ui.chat.question_dock.show": undefined;
+	"ui.chat.question_dock.show_question_label": undefined;
+	"ui.chat.quota_notice.dismiss": undefined;
+	"ui.chat.region.composer": undefined;
+	"ui.chat.region.conversation": undefined;
+	"ui.chat.reply.remove": undefined;
+	"ui.chat.reply.replying_to": undefined;
+	"ui.chat.session_status.choose_model": undefined;
+	"ui.chat.session_status.choose_model_tooltip": undefined;
+	"ui.chat.session_status.context_heading": undefined;
+	"ui.chat.session_status.context_nothing_measured_tooltip": undefined;
+	"ui.chat.session_status.conversation_starting": undefined;
+	"ui.chat.session_status.estimate": undefined;
+	"ui.chat.session_status.last_reading": undefined;
+	"ui.chat.session_status.model_none_resolved_tooltip": undefined;
+	"ui.chat.session_status.no_model_resolved": undefined;
+	"ui.chat.session_status.not_signed_in": { label: string };
+	"ui.chat.session_status.not_signed_in_description": { label: string };
+	"ui.chat.session_status.nothing_measured_yet": undefined;
+	"ui.chat.session_status.temporarily_unavailable": { label: string };
+	"ui.chat.session_status.temporarily_unavailable_description": undefined;
 	"ui.chat.skill_invocation.instructions_label": undefined;
 	"ui.chat.skill_invocation.trigger_label": { token: string };
+	"ui.chat.status_strip.dismiss": undefined;
+	"ui.chat.tabs.chat": undefined;
+	"ui.chat.tabs.raw": undefined;
 	"ui.chat.usage.blocked": undefined;
 	"ui.chat.usage.continue": undefined;
 	"ui.chat.usage.eligibility_unknown": undefined;
 	"ui.chat.usage.family_caps": undefined;
 	"ui.chat.usage.unlimited": undefined;
+	"ui.chat.live_updates.paused": undefined;
+	"ui.chat.live_updates.reload": undefined;
+	"ui.chat.live_updates.reload_failed": undefined;
+	"ui.chat.live_updates.reloading": undefined;
+	"ui.chat.pickers.analytics_model.all_sessions": { base: string };
+	"ui.chat.pickers.analytics_model.as_of": {
+		base: string;
+		formatclock: string;
+	};
+	"ui.chat.pickers.analytics_model.cache_hit_rate": undefined;
+	"ui.chat.pickers.analytics_model.cache_reads_as_a_share_of_read_context_tokens_means_no_call_reported_a_c": undefined;
+	"ui.chat.pickers.analytics_model.coverage": undefined;
+	"ui.chat.pickers.analytics_model.daily_rollup": { spanlabel: string };
+	"ui.chat.pickers.analytics_model.daily_spend": undefined;
+	"ui.chat.pickers.analytics_model.daily_tokens": undefined;
+	"ui.chat.pickers.analytics_model.decode_rate_over_all_calls": {
+		formatcount: string;
+	};
+	"ui.chat.pickers.analytics_model.decode_rate_over_of_calls": {
+		formatcount: string;
+		formatcount2: string;
+	};
+	"ui.chat.pickers.analytics_model.from_with_usage": {
+		series: string;
+		span: string;
+		length: number;
+	};
+	"ui.chat.pickers.analytics_model.highest_at": {
+		formatdaybucket: string;
+		format: string;
+		unit: string;
+	};
+	"ui.chat.pickers.analytics_model.last_days": { days: number };
+	"ui.chat.pickers.analytics_model.no_call_in_this_window_has_a_measured_generation_time_yet_so_the_rate_re": {
+		unknown: string;
+	};
+	"ui.chat.pickers.analytics_model.spend": undefined;
+	"ui.chat.pickers.analytics_model.to": {
+		formatdaybucket: string;
+		formatdaybucket2: string;
+	};
+	"ui.chat.pickers.analytics_model.today": undefined;
+	"ui.chat.pickers.analytics_model.tok_s_decode": undefined;
+	"ui.chat.pickers.analytics_model.tok_s_wall": undefined;
+	"ui.chat.pickers.analytics_model.tokens": undefined;
+	"ui.chat.pickers.analytics_model.total": { format: string; unit: string };
+	"ui.chat.pickers.analytics_model.wall_rate_over_of_calls": {
+		formatcount: string;
+		formatcount2: string;
+	};
+	"ui.chat.pickers.analytics_panel.30_days": undefined;
+	"ui.chat.pickers.analytics_panel.7_days": undefined;
+	"ui.chat.pickers.analytics_panel.all_sessions": undefined;
+	"ui.chat.pickers.analytics_panel.analytics_accrue_as_sessions_make_provider_calls": undefined;
+	"ui.chat.pickers.analytics_panel.analytics_region": undefined;
+	"ui.chat.pickers.analytics_panel.basis": undefined;
+	"ui.chat.pickers.analytics_panel.calls": undefined;
+	"ui.chat.pickers.analytics_panel.channel": undefined;
+	"ui.chat.pickers.analytics_panel.channel_rows_in_this_conversation_could_not_be_read": undefined;
+	"ui.chat.pickers.analytics_panel.channel_spend_for_this_conversation_from_the_published_channel_ledger": undefined;
+	"ui.chat.pickers.analytics_panel.cost": undefined;
+	"ui.chat.pickers.analytics_panel.daily_spend": undefined;
+	"ui.chat.pickers.analytics_panel.daily_tokens": undefined;
+	"ui.chat.pickers.analytics_panel.failed": { formatcount: string };
+	"ui.chat.pickers.analytics_panel.from_the_ledger_ranked_by_output_tokens": {
+		windowtitle: string;
+	};
+	"ui.chat.pickers.analytics_panel.generation_rate_by_model_read_from_the_usage_ledger": {
+		value: string;
+	};
+	"ui.chat.pickers.analytics_panel.in_out": {
+		formattokens: string;
+		formattokens2: string;
+	};
+	"ui.chat.pickers.analytics_panel.metric": undefined;
+	"ui.chat.pickers.analytics_panel.model": undefined;
+	"ui.chat.pickers.analytics_panel.model_calls_tokens_and_known_cost_from_the_backend_analytics_ledger": undefined;
+	"ui.chat.pickers.analytics_panel.no_call_in_this_window_has_a_published_price": undefined;
+	"ui.chat.pickers.analytics_panel.no_calls_recorded_in_the_last_days": {
+		windowdays: number;
+	};
+	"ui.chat.pickers.analytics_panel.no_calls_recorded_today": undefined;
+	"ui.chat.pickers.analytics_panel.no_channel_rows_in_this_conversation": undefined;
+	"ui.chat.pickers.analytics_panel.no_daily_rows_for_this_window": undefined;
+	"ui.chat.pickers.analytics_panel.no_per_model_rows_in_this_window": undefined;
+	"ui.chat.pickers.analytics_panel.no_per_provider_rows_in_this_window": undefined;
+	"ui.chat.pickers.analytics_panel.no_per_session_rows_in_this_window": undefined;
+	"ui.chat.pickers.analytics_panel.no_priced_calls_in_this_window": undefined;
+	"ui.chat.pickers.analytics_panel.of_calls_priced": {
+		formatcount: string;
+		formatcount2: string;
+	};
+	"ui.chat.pickers.analytics_panel.of_context_written": {
+		formattokens: string;
+		formattokens2: string;
+		formattokens3: string;
+	};
+	"ui.chat.pickers.analytics_panel.of_in_this_window": {
+		key: string;
+		percentageof: string;
+		value: string;
+	};
+	"ui.chat.pickers.analytics_panel.of_in_this_windowf655cc": {
+		label: string;
+		percentageof: string;
+		value: string;
+	};
+	"ui.chat.pickers.analytics_panel.of_the_output_tokens_this_ledger_read_recorded_in_this_window": {
+		label: string;
+		percentageof: string;
+	};
+	"ui.chat.pickers.analytics_panel.own_figures_per_session_totals_include_subagents": undefined;
+	"ui.chat.pickers.analytics_panel.provider": undefined;
+	"ui.chat.pickers.analytics_panel.requests": undefined;
+	"ui.chat.pickers.analytics_panel.session": undefined;
+	"ui.chat.pickers.analytics_panel.sessionf7f199": undefined;
+	"ui.chat.pickers.analytics_panel.sessions": undefined;
+	"ui.chat.pickers.analytics_panel.spend": undefined;
+	"ui.chat.pickers.analytics_panel.the_backend_returned_no_analytics": undefined;
+	"ui.chat.pickers.analytics_panel.the_daily_rollup_only_covers_calls_recorded_since_it_began": undefined;
+	"ui.chat.pickers.analytics_panel.the_ledger_records_a_model_on_every_provider_call_so_this_window_has_non": undefined;
+	"ui.chat.pickers.analytics_panel.this_conversation_all_time_total": {
+		total: string;
+	};
+	"ui.chat.pickers.analytics_panel.this_session": undefined;
+	"ui.chat.pickers.analytics_panel.today": undefined;
+	"ui.chat.pickers.analytics_panel.tokens": undefined;
+	"ui.chat.pickers.analytics_panel.usage_by_provider_in_this_window": {
+		cache_hit_meaning: string;
+	};
+	"ui.chat.pickers.analytics_panel.usage_by_session_in_this_window": {
+		cache_hit_meaning: string;
+	};
+	"ui.chat.pickers.analytics_panel.window": undefined;
+	"ui.chat.pickers.analytics_session_state.a_to_z": undefined;
+	"ui.chat.pickers.analytics_session_state.all_sessions_in_this_window_have_a_parent": {
+		formatcount: string;
+	};
+	"ui.chat.pickers.analytics_session_state.calls": undefined;
+	"ui.chat.pickers.analytics_session_state.clear_the_search_to_see": {
+		filteredtext: string;
+		filtered: number;
+		scope: string;
+	};
+	"ui.chat.pickers.analytics_session_state.cost": undefined;
+	"ui.chat.pickers.analytics_session_state.filter_top": {
+		matchedtext: string;
+		matched: number;
+	};
+	"ui.chat.pickers.analytics_session_state.filter_top_zero": undefined;
+	"ui.chat.pickers.analytics_session_state.highest_first": undefined;
+	"ui.chat.pickers.analytics_session_state.lowest_first": undefined;
+	"ui.chat.pickers.analytics_session_state.match_count": {
+		matchedtext: string;
+		totaltext: string;
+		total: number;
+	};
+	"ui.chat.pickers.analytics_session_state.match_query": {
+		matchedtext: string;
+		totaltext: string;
+		total: number;
+		matched: number;
+		query: string;
+	};
+	"ui.chat.pickers.analytics_session_state.no_sessions_match": {
+		value: string;
+	};
+	"ui.chat.pickers.analytics_session_state.no_sessions_match890478": {
+		query: string;
+	};
+	"ui.chat.pickers.analytics_session_state.no_top_level_sessions_in_this_window": undefined;
+	"ui.chat.pickers.analytics_session_state.page_of": {
+		page: number;
+		pagecount: number;
+	};
+	"ui.chat.pickers.analytics_session_state.search_cleared": undefined;
+	"ui.chat.pickers.analytics_session_state.search_match": {
+		matchedtext: string;
+		matched: number;
+		query: string;
+	};
+	"ui.chat.pickers.analytics_session_state.session": undefined;
+	"ui.chat.pickers.analytics_session_state.sorted_by": {
+		value: string;
+		sortword: string;
+	};
+	"ui.chat.pickers.analytics_session_state.the_one_session_in_this_window_has_a_parent": undefined;
+	"ui.chat.pickers.analytics_session_state.tokens": undefined;
+	"ui.chat.pickers.analytics_session_state.top_level_only": {
+		searched: string;
+	};
+	"ui.chat.pickers.analytics_session_state.top_level_only_off": {
+		matchedtext: string;
+		matched: number;
+	};
+	"ui.chat.pickers.analytics_session_state.z_to_a": undefined;
+	"ui.chat.pickers.approvals.title": undefined;
+	"ui.chat.pickers.at_menu.heading.files": undefined;
+	"ui.chat.pickers.at_menu.heading.projects": undefined;
+	"ui.chat.pickers.at_menu.region_label": undefined;
+	"ui.chat.pickers.at_menu.tag.directory": undefined;
+	"ui.chat.pickers.at_menu.tag.file": undefined;
+	"ui.chat.pickers.at_menu.tag.project": undefined;
+	"ui.chat.pickers.commands.title": undefined;
+	"ui.chat.pickers.context_model.context_breakdown_unavailable": undefined;
+	"ui.chat.pickers.context_model.environment": undefined;
+	"ui.chat.pickers.context_model.instructions": undefined;
+	"ui.chat.pickers.context_model.messages": undefined;
+	"ui.chat.pickers.context_model.not_measured": undefined;
+	"ui.chat.pickers.context_model.skills_mcp_goal": undefined;
+	"ui.chat.pickers.context_model.tool_inventory": undefined;
+	"ui.chat.pickers.context_model.tool_schemas": undefined;
+	"ui.chat.pickers.context_panel.asking_the_owner": undefined;
+	"ui.chat.pickers.context_panel.block": undefined;
+	"ui.chat.pickers.context_panel.context": undefined;
+	"ui.chat.pickers.context_panel.context_estimate_region": undefined;
+	"ui.chat.pickers.context_panel.context_window": { value: string };
+	"ui.chat.pickers.context_panel.estimate": undefined;
+	"ui.chat.pickers.context_panel.estimated_tokenized_when_this_panel_opened": undefined;
+	"ui.chat.pickers.context_panel.exact_from_the_last_provider_reply": undefined;
+	"ui.chat.pickers.context_panel.last_cache_read": undefined;
+	"ui.chat.pickers.context_panel.live_measured_on_the_last_request": undefined;
+	"ui.chat.pickers.context_panel.live_not_measured_yet": undefined;
+	"ui.chat.pickers.context_panel.next_request": undefined;
+	"ui.chat.pickers.context_panel.next_request_estimate": undefined;
+	"ui.chat.pickers.context_panel.next_request_estimate_by_row": undefined;
+	"ui.chat.pickers.context_panel.of_this_estimate": {
+		label: string;
+		formatpercent: string;
+	};
+	"ui.chat.pickers.context_panel.the_breakdown_is_not_available_for_this_session_yet_send_a_turn_and_open": undefined;
+	"ui.chat.pickers.context_panel.the_owner_returned_no_breakdown": undefined;
+	"ui.chat.pickers.context_panel.this_conversation": undefined;
+	"ui.chat.pickers.context_panel.tokens": undefined;
+	"ui.chat.pickers.context_panel.tokens_read": undefined;
+	"ui.chat.pickers.context_panel.total": undefined;
+	"ui.chat.pickers.context_panel.total_of_the_context_window": {
+		formatpercent: string;
+	};
+	"ui.chat.pickers.context_panel.what_the_next_request_will_carry": undefined;
+	"ui.chat.pickers.copy.title": undefined;
+	"ui.chat.pickers.credential.forget": undefined;
+	"ui.chat.pickers.credential.forget_confirmation": { name: string };
+	"ui.chat.pickers.credential.title": undefined;
+	"ui.chat.pickers.destination_pickers.a_judge_decides_when_it_is_met": undefined;
+	"ui.chat.pickers.destination_pickers.a_standing_goal_the_agent_keeps_in_view_on_every_turn": undefined;
+	"ui.chat.pickers.destination_pickers.active": { activelabel: string };
+	"ui.chat.pickers.destination_pickers.agent_profile": undefined;
+	"ui.chat.pickers.destination_pickers.aggregated": undefined;
+	"ui.chat.pickers.destination_pickers.also_make_this_the_default_effort_for_new_sessions": undefined;
+	"ui.chat.pickers.destination_pickers.also_make_this_the_default_for_new_sessions": undefined;
+	"ui.chat.pickers.destination_pickers.an_explicit_name_takes_precedence_over_the_generated_title": undefined;
+	"ui.chat.pickers.destination_pickers.applies_to_this_session_only": undefined;
+	"ui.chat.pickers.destination_pickers.as_quote": undefined;
+	"ui.chat.pickers.destination_pickers.attach_team": undefined;
+	"ui.chat.pickers.destination_pickers.available": undefined;
+	"ui.chat.pickers.destination_pickers.chars": { length: number };
+	"ui.chat.pickers.destination_pickers.checking": undefined;
+	"ui.chat.pickers.destination_pickers.choose_the_model_for_this_session": undefined;
+	"ui.chat.pickers.destination_pickers.choose_the_model_this_conversation_starts_on_and_keeps_running_on_your_d": undefined;
+	"ui.chat.pickers.destination_pickers.clipboard_refused": {
+		errortext: string;
+	};
+	"ui.chat.pickers.destination_pickers.code": undefined;
+	"ui.chat.pickers.destination_pickers.code_blocks": undefined;
+	"ui.chat.pickers.destination_pickers.cold_no_owner_running": undefined;
+	"ui.chat.pickers.destination_pickers.cold_reopens_on_the_next_message": undefined;
+	"ui.chat.pickers.destination_pickers.commands_pick_one_to_run_it_commands_that_take_an_argument_open_their_pi": {
+		length: number;
+	};
+	"ui.chat.pickers.destination_pickers.completed": undefined;
+	"ui.chat.pickers.destination_pickers.completed_of": {
+		completed: number;
+		iterations: number;
+	};
+	"ui.chat.pickers.destination_pickers.completed_only": { completed: number };
+	"ui.chat.pickers.destination_pickers.context": undefined;
+	"ui.chat.pickers.destination_pickers.copied_characters": { length: number };
+	"ui.chat.pickers.destination_pickers.copies_the_complete_history_into_a_new_conversation_at_the_next_safe_bou": undefined;
+	"ui.chat.pickers.destination_pickers.copies_this_conversation_up_to_and_including_everything_after_it_is_left": {
+		value: string;
+	};
+	"ui.chat.pickers.destination_pickers.create": undefined;
+	"ui.chat.pickers.destination_pickers.default_approvals_for_all_sessions_that_follow_it_this_session_follows_i": {
+		string: string;
+	};
+	"ui.chat.pickers.destination_pickers.default_effort": undefined;
+	"ui.chat.pickers.destination_pickers.default_effort_for_new_sessions": {
+		effortdisplay: string;
+	};
+	"ui.chat.pickers.destination_pickers.default_effort_for_new_sessions_picks_here_update_it_too": {
+		effortdisplay: string;
+	};
+	"ui.chat.pickers.destination_pickers.default_for_all_sessions_that_follow_it": undefined;
+	"ui.chat.pickers.destination_pickers.default_for_new_sessions": {
+		modelname: string;
+	};
+	"ui.chat.pickers.destination_pickers.default_for_new_sessions_picks_here_update_it_too": {
+		modelname: string;
+	};
+	"ui.chat.pickers.destination_pickers.delivered_exactly_once_to_the_new_conversation": undefined;
+	"ui.chat.pickers.destination_pickers.desktop": undefined;
+	"ui.chat.pickers.destination_pickers.desktop_theme_the_terminal_keeps_its_own_tui_theme_setting": undefined;
+	"ui.chat.pickers.destination_pickers.discoverable": undefined;
+	"ui.chat.pickers.destination_pickers.effort_for_this_conversation": {
+		value: string;
+	};
+	"ui.chat.pickers.destination_pickers.effort_is_not_adjustable_on_this_model": undefined;
+	"ui.chat.pickers.destination_pickers.effort_levels_supports_applies_to_this_session_unless_you_also_make_it_t": {
+		label: string;
+	};
+	"ui.chat.pickers.destination_pickers.effort_levels_supports_this_sets_the_level_this_conversation_starts_on_a": {
+		label: string;
+	};
+	"ui.chat.pickers.destination_pickers.effort_not_changed_default_for_new_sessions_stays": {
+		effortdisplay: string;
+	};
+	"ui.chat.pickers.destination_pickers.ends_the_chosen_sessions_current_work_through_the_runtime_s_own_stop_pro": undefined;
+	"ui.chat.pickers.destination_pickers.every_canonical_session_live_or_cold_picking_one_attaches_this_window_to": undefined;
+	"ui.chat.pickers.destination_pickers.family": undefined;
+	"ui.chat.pickers.destination_pickers.first_message_in_the_fork_optional": undefined;
+	"ui.chat.pickers.destination_pickers.fixed_number_of_turns": undefined;
+	"ui.chat.pickers.destination_pickers.forgot": { value: string };
+	"ui.chat.pickers.destination_pickers.fork": undefined;
+	"ui.chat.pickers.destination_pickers.fork_from_this_message": undefined;
+	"ui.chat.pickers.destination_pickers.fork_this_conversation": undefined;
+	"ui.chat.pickers.destination_pickers.forked_at_the_next_safe_boundary_into_a_new_conversation_the_original_co": undefined;
+	"ui.chat.pickers.destination_pickers.forked_from_this_message_everything_after_it_stays_in_the_original_which": undefined;
+	"ui.chat.pickers.destination_pickers.goal": undefined;
+	"ui.chat.pickers.destination_pickers.has_no_adjustable_effort_pick_a_reasoning_model_with_model_first": {
+		label: string;
+	};
+	"ui.chat.pickers.destination_pickers.has_no_adjustable_effort_pick_another_model": {
+		label: string;
+	};
+	"ui.chat.pickers.destination_pickers.has_not_reported_its_effort_levels_yet_they_appear_after_the_first_turn": {
+		label: string;
+	};
+	"ui.chat.pickers.destination_pickers.has_not_reported_its_effort_levels_yet_they_appear_after_the_next_turn_o": {
+		label: string;
+	};
+	"ui.chat.pickers.destination_pickers.if_that_message_was_sent_just_now_it_may_not_be_in_the_conversation_s_hi": undefined;
+	"ui.chat.pickers.destination_pickers.judge": undefined;
+	"ui.chat.pickers.destination_pickers.k": { value: number };
+	"ui.chat.pickers.destination_pickers.lines": { length: number };
+	"ui.chat.pickers.destination_pickers.loop_mode": undefined;
+	"ui.chat.pickers.destination_pickers.masked_cleared_after_storing": undefined;
+	"ui.chat.pickers.destination_pickers.message": undefined;
+	"ui.chat.pickers.destination_pickers.messages": undefined;
+	"ui.chat.pickers.destination_pickers.model_not_changed_default_for_new_sessions_stays": {
+		modelname: string;
+	};
+	"ui.chat.pickers.destination_pickers.must_exist_on_this_machine": undefined;
+	"ui.chat.pickers.destination_pickers.my_api_key": undefined;
+	"ui.chat.pickers.destination_pickers.name": undefined;
+	"ui.chat.pickers.destination_pickers.native_inputs": undefined;
+	"ui.chat.pickers.destination_pickers.native_outputs": undefined;
+	"ui.chat.pickers.destination_pickers.needs_an_argument": undefined;
+	"ui.chat.pickers.destination_pickers.needs_sign_in": undefined;
+	"ui.chat.pickers.destination_pickers.needs_sign_in660cb8": undefined;
+	"ui.chat.pickers.destination_pickers.new_conversation_the_previous_one_keeps_running": {
+		id: string;
+	};
+	"ui.chat.pickers.destination_pickers.no_credentials_stored_yet": undefined;
+	"ui.chat.pickers.destination_pickers.no_desktop_theme_named": {
+		wanted: string;
+	};
+	"ui.chat.pickers.destination_pickers.no_detail_returned": undefined;
+	"ui.chat.pickers.destination_pickers.no_models_are_signed_in_yet": undefined;
+	"ui.chat.pickers.destination_pickers.no_profiles_found": undefined;
+	"ui.chat.pickers.destination_pickers.no_session_was_running_so_it_was_reopened_from_history": undefined;
+	"ui.chat.pickers.destination_pickers.no_skills_are_discoverable_from_this_session_s_directory": undefined;
+	"ui.chat.pickers.destination_pickers.no_stored_account_for": {
+		wanted: string;
+	};
+	"ui.chat.pickers.destination_pickers.no_stored_accounts": undefined;
+	"ui.chat.pickers.destination_pickers.no_teams_are_registered": undefined;
+	"ui.chat.pickers.destination_pickers.not_known_yet": undefined;
+	"ui.chat.pickers.destination_pickers.not_supported": undefined;
+	"ui.chat.pickers.destination_pickers.nothing_to_copy_yet": undefined;
+	"ui.chat.pickers.destination_pickers.nothing_was_running": undefined;
+	"ui.chat.pickers.destination_pickers.opens_the_provider_s_sign_in_methods_in_settings_browser_and_device_flow": undefined;
+	"ui.chat.pickers.destination_pickers.output": { toolname: string };
+	"ui.chat.pickers.destination_pickers.output_limit": undefined;
+	"ui.chat.pickers.destination_pickers.pick_a_message_a_code_block_or_a_quoted_excerpt_it_goes_to_the_clipboard": undefined;
+	"ui.chat.pickers.destination_pickers.pick_a_team_to_see_how_it_resolves": undefined;
+	"ui.chat.pickers.destination_pickers.picks_here_also_set_the_default_effort_for_new_sessions": undefined;
+	"ui.chat.pickers.destination_pickers.picks_here_also_set_the_default_for_new_sessions": undefined;
+	"ui.chat.pickers.destination_pickers.ports": undefined;
+	"ui.chat.pickers.destination_pickers.quote": undefined;
+	"ui.chat.pickers.destination_pickers.re_reads_the_canonical_session_from_the_backend_and_re_attaches_the_stre": undefined;
+	"ui.chat.pickers.destination_pickers.reason": undefined;
+	"ui.chat.pickers.destination_pickers.reasoning": undefined;
+	"ui.chat.pickers.destination_pickers.reattached_to_the_running_session": undefined;
+	"ui.chat.pickers.destination_pickers.refresh_from_providers": undefined;
+	"ui.chat.pickers.destination_pickers.refreshing": undefined;
+	"ui.chat.pickers.destination_pickers.released": undefined;
+	"ui.chat.pickers.destination_pickers.reload": undefined;
+	"ui.chat.pickers.destination_pickers.removes_one_stored_account_credentials_supplied_through_environment_vari": undefined;
+	"ui.chat.pickers.destination_pickers.rename": undefined;
+	"ui.chat.pickers.destination_pickers.reopened_recent": {
+		subject: string;
+		value: string;
+		recentrows: number;
+	};
+	"ui.chat.pickers.destination_pickers.repeats_turns_toward_a_goal_approval_and_question_gates_still_stop_and_w": undefined;
+	"ui.chat.pickers.destination_pickers.request_admitted_once": {
+		text: string;
+		duplicate: string;
+	};
+	"ui.chat.pickers.destination_pickers.request_optional": undefined;
+	"ui.chat.pickers.destination_pickers.resolving_the_effort": undefined;
+	"ui.chat.pickers.destination_pickers.resolving_the_effortd0fa08": undefined;
+	"ui.chat.pickers.destination_pickers.resolving_the_model": undefined;
+	"ui.chat.pickers.destination_pickers.resolving_the_model24577b": undefined;
+	"ui.chat.pickers.destination_pickers.resumed": { sessionlabel: string };
+	"ui.chat.pickers.destination_pickers.resumed_2d9cda": { label: string };
+	"ui.chat.pickers.destination_pickers.saving_the_default": undefined;
+	"ui.chat.pickers.destination_pickers.saving_the_default9573f2": undefined;
+	"ui.chat.pickers.destination_pickers.scope": undefined;
+	"ui.chat.pickers.destination_pickers.search_by_title_or_id": undefined;
+	"ui.chat.pickers.destination_pickers.search_commands": undefined;
+	"ui.chat.pickers.destination_pickers.search_models": undefined;
+	"ui.chat.pickers.destination_pickers.sent_once_with_the_attachment_it_becomes_the_first_turn": undefined;
+	"ui.chat.pickers.destination_pickers.session_runs_on_the_owner": undefined;
+	"ui.chat.pickers.destination_pickers.set_a_standing_goal_with_goal_first_or_switch_to_a_goal_loop": undefined;
+	"ui.chat.pickers.destination_pickers.set_goal": undefined;
+	"ui.chat.pickers.destination_pickers.show_all_supported_models": undefined;
+	"ui.chat.pickers.destination_pickers.show_all_supported_models_sign_in": {
+		scopecount: number;
+	};
+	"ui.chat.pickers.destination_pickers.sign_in_state_unknown": undefined;
+	"ui.chat.pickers.destination_pickers.sign_out": undefined;
+	"ui.chat.pickers.destination_pickers.sign_out_failed": undefined;
+	"ui.chat.pickers.destination_pickers.signed_in": undefined;
+	"ui.chat.pickers.destination_pickers.signed_out_environment_variables_and_other_accounts_are_untouched": undefined;
+	"ui.chat.pickers.destination_pickers.skill": undefined;
+	"ui.chat.pickers.destination_pickers.skills_discoverable_from_this_session_s_working_directory_scope_listed_i": {
+		value: string;
+	};
+	"ui.chat.pickers.destination_pickers.stalled_send_a_message_to_continue": undefined;
+	"ui.chat.pickers.destination_pickers.start_loop": undefined;
+	"ui.chat.pickers.destination_pickers.starts_a_fresh_canonical_session_work_in_the_current_one_continues": undefined;
+	"ui.chat.pickers.destination_pickers.status": undefined;
+	"ui.chat.pickers.destination_pickers.stop": undefined;
+	"ui.chat.pickers.destination_pickers.stop_requested_acknowledged_not_a_completed_exit": undefined;
+	"ui.chat.pickers.destination_pickers.stop_was_not_accepted": undefined;
+	"ui.chat.pickers.destination_pickers.store": undefined;
+	"ui.chat.pickers.destination_pickers.stored": undefined;
+	"ui.chat.pickers.destination_pickers.stored54112c": {
+		stored_credentials: number;
+	};
+	"ui.chat.pickers.destination_pickers.stored_the_value_was_not_echoed": {
+		value: string;
+	};
+	"ui.chat.pickers.destination_pickers.stores_a_secret_for_this_session_s_tools_by_name_the_value_never_appears": undefined;
+	"ui.chat.pickers.destination_pickers.supported": undefined;
+	"ui.chat.pickers.destination_pickers.switching_the_effort": undefined;
+	"ui.chat.pickers.destination_pickers.switching_the_effort87b64b": undefined;
+	"ui.chat.pickers.destination_pickers.switching_the_model": undefined;
+	"ui.chat.pickers.destination_pickers.switching_the_model8e7138": undefined;
+	"ui.chat.pickers.destination_pickers.takes_an_argument": undefined;
+	"ui.chat.pickers.destination_pickers.team": undefined;
+	"ui.chat.pickers.destination_pickers.team_chart": undefined;
+	"ui.chat.pickers.destination_pickers.the_conversation_could_not_be_reopened": undefined;
+	"ui.chat.pickers.destination_pickers.the_conversation_was_not_created": undefined;
+	"ui.chat.pickers.destination_pickers.the_credential_was_not_removed": undefined;
+	"ui.chat.pickers.destination_pickers.the_credential_was_not_stored": undefined;
+	"ui.chat.pickers.destination_pickers.the_current_model": undefined;
+	"ui.chat.pickers.destination_pickers.the_default_was_not_saved": undefined;
+	"ui.chat.pickers.destination_pickers.the_effort_default_was_not_saved": undefined;
+	"ui.chat.pickers.destination_pickers.the_effort_default_was_not_saved6143e6": undefined;
+	"ui.chat.pickers.destination_pickers.the_effort_was_not_changed": undefined;
+	"ui.chat.pickers.destination_pickers.the_fork_starts_before_the_message_you_chose_a_cut_cannot_separate_a_too": undefined;
+	"ui.chat.pickers.destination_pickers.the_fork_was_not_created": undefined;
+	"ui.chat.pickers.destination_pickers.the_message_you_chose": undefined;
+	"ui.chat.pickers.destination_pickers.the_model_was_not_changed": undefined;
+	"ui.chat.pickers.destination_pickers.the_model_was_not_changed6dd4bb": {
+		text: string;
+	};
+	"ui.chat.pickers.destination_pickers.the_standing_goal_is_prepended_to_every_turn_clear_it_to_remove_it": undefined;
+	"ui.chat.pickers.destination_pickers.theme": { name: string };
+	"ui.chat.pickers.destination_pickers.theme_058ec5": { label: string };
+	"ui.chat.pickers.destination_pickers.this_conversation_starts_on_and_keeps_running_on_it_choosing_another_cha": {
+		shownselector: string;
+	};
+	"ui.chat.pickers.destination_pickers.this_conversation_will_run": {
+		selectorofresolution: string;
+	};
+	"ui.chat.pickers.destination_pickers.this_goal_is_settled_it_stays_in_the_goal_history_dismiss_it_to_clear_th": undefined;
+	"ui.chat.pickers.destination_pickers.this_message": { cutexcerpt: string };
+	"ui.chat.pickers.destination_pickers.this_pane_has_not_resolved_a_model_to_change": {
+		refused: string;
+	};
+	"ui.chat.pickers.destination_pickers.this_session": undefined;
+	"ui.chat.pickers.destination_pickers.this_session_runs_choosing_another_applies_to_this_session_only_unless_y": {
+		shownselector: string;
+	};
+	"ui.chat.pickers.destination_pickers.tool_output": undefined;
+	"ui.chat.pickers.destination_pickers.tools": undefined;
+	"ui.chat.pickers.destination_pickers.tools_run_without_asking": undefined;
+	"ui.chat.pickers.destination_pickers.turns_1_to_25": undefined;
+	"ui.chat.pickers.destination_pickers.unknown": undefined;
+	"ui.chat.pickers.destination_pickers.until_a_goal_is_met": undefined;
+	"ui.chat.pickers.destination_pickers.untitled": { id: string };
+	"ui.chat.pickers.destination_pickers.use_profile": undefined;
+	"ui.chat.pickers.destination_pickers.use_team": undefined;
+	"ui.chat.pickers.destination_pickers.uses_the_standing_goal": {
+		standinggoal: string;
+	};
+	"ui.chat.pickers.destination_pickers.value": undefined;
+	"ui.chat.pickers.destination_pickers.what_should_do": {
+		readableprofilename: string;
+	};
+	"ui.chat.pickers.destination_pickers.whether_write_and_command_tools_ask_before_running": undefined;
+	"ui.chat.pickers.destination_pickers.working_directory": undefined;
+	"ui.chat.pickers.destination_pickers.write_and_command_tools_prompt_before_running": undefined;
+	"ui.chat.pickers.destination_pickers.your_first_message_starts_the_chat_with_this_profile": undefined;
+	"ui.chat.pickers.destination_pickers.your_first_message_starts_the_chat_with_this_team": undefined;
+	"ui.chat.pickers.destination_pickers.your_message_was_admitted_once": {
+		detail: string;
+	};
+	"ui.chat.pickers.effort.title": undefined;
+	"ui.chat.pickers.failovers_model.failover_is_in_force": undefined;
+	"ui.chat.pickers.failovers_model.no_model_recorded": undefined;
+	"ui.chat.pickers.failovers_model.same_as_selected": undefined;
+	"ui.chat.pickers.failovers_panel.a_failure_here_goes_straight_to_an_error": undefined;
+	"ui.chat.pickers.failovers_panel.chains_are_configuration_read_from_your_settings_file_what_is_actually_s": undefined;
+	"ui.chat.pickers.failovers_panel.configured_defaults": undefined;
+	"ui.chat.pickers.failovers_panel.failover_chains_region": undefined;
+	"ui.chat.pickers.failovers_panel.failovers": undefined;
+	"ui.chat.pickers.failovers_panel.fallback_chains": undefined;
+	"ui.chat.pickers.failovers_panel.live_from_the_session_s_owner": undefined;
+	"ui.chat.pickers.failovers_panel.no_fallback_chains_configured": undefined;
+	"ui.chat.pickers.failovers_panel.none": undefined;
+	"ui.chat.pickers.failovers_panel.not_live_routing_state": { value: string };
+	"ui.chat.pickers.failovers_panel.scope": undefined;
+	"ui.chat.pickers.failovers_panel.selected": undefined;
+	"ui.chat.pickers.failovers_panel.serving": undefined;
+	"ui.chat.pickers.failovers_panel.the_model_this_session_selected_the_one_actually_serving_it_and_the_conf": undefined;
+	"ui.chat.pickers.fast.premium_acknowledgement": undefined;
+	"ui.chat.pickers.fast.title": undefined;
+	"ui.chat.pickers.fast_picker_options.off": undefined;
+	"ui.chat.pickers.fast_picker_options.on": undefined;
+	"ui.chat.pickers.fast_picker_options.priority_processing_billed_at_premium_rates_where_the_provider_offers_it": undefined;
+	"ui.chat.pickers.fast_picker_options.standard_processing": undefined;
+	"ui.chat.pickers.fork.search_placeholder": undefined;
+	"ui.chat.pickers.formatters.unknown": undefined;
+	"ui.chat.pickers.goal.clear": undefined;
+	"ui.chat.pickers.goal.mark_done": undefined;
+	"ui.chat.pickers.goal.placeholder": undefined;
+	"ui.chat.pickers.goal.title": undefined;
+	"ui.chat.pickers.info_model.active": undefined;
+	"ui.chat.pickers.info_model.agent": { active_agent: string };
+	"ui.chat.pickers.info_model.agent_home": undefined;
+	"ui.chat.pickers.info_model.agent_profiles": undefined;
+	"ui.chat.pickers.info_model.ago": { formatduration: string };
+	"ui.chat.pickers.info_model.answering_model": undefined;
+	"ui.chat.pickers.info_model.approval_mode": undefined;
+	"ui.chat.pickers.info_model.browser": undefined;
+	"ui.chat.pickers.info_model.browser_status": {
+		backend: string;
+		hasname: string;
+		browsername: string;
+		paired: string;
+	};
+	"ui.chat.pickers.info_model.busy": undefined;
+	"ui.chat.pickers.info_model.cache_dir": undefined;
+	"ui.chat.pickers.info_model.checked_ago": { formatduration: string };
+	"ui.chat.pickers.info_model.colorterm": undefined;
+	"ui.chat.pickers.info_model.columns": undefined;
+	"ui.chat.pickers.info_model.config_dir": undefined;
+	"ui.chat.pickers.info_model.context": undefined;
+	"ui.chat.pickers.info_model.control_port": undefined;
+	"ui.chat.pickers.info_model.conversation": undefined;
+	"ui.chat.pickers.info_model.cost_knowledge": undefined;
+	"ui.chat.pickers.info_model.could_not_scan_the_session_registry_close_and_reopen_this_panel_to_try_a": undefined;
+	"ui.chat.pickers.info_model.count_noun": {
+		count: number;
+		noun: string;
+		pluralnoun: string;
+	};
+	"ui.chat.pickers.info_model.detached": undefined;
+	"ui.chat.pickers.info_model.estimate": undefined;
+	"ui.chat.pickers.info_model.goal": undefined;
+	"ui.chat.pickers.info_model.guides": {
+		guidetext: string;
+		guides: number;
+		hasskills: string;
+		skilltext: string;
+		skills: number;
+	};
+	"ui.chat.pickers.info_model.guides_and_skills": undefined;
+	"ui.chat.pickers.info_model.interactive_terminal": undefined;
+	"ui.chat.pickers.info_model.kind": undefined;
+	"ui.chat.pickers.info_model.last_active_ago": { lastactive: string };
+	"ui.chat.pickers.info_model.live_not_answering": {
+		formatcount: string;
+		separator: string;
+		formatcount2: string;
+	};
+	"ui.chat.pickers.info_model.log_dir": undefined;
+	"ui.chat.pickers.info_model.mcp_servers": undefined;
+	"ui.chat.pickers.info_model.measured": undefined;
+	"ui.chat.pickers.info_model.mobile_relay": undefined;
+	"ui.chat.pickers.info_model.mobile_status": {
+		healthy: string;
+		hasport: string;
+		port: string;
+	};
+	"ui.chat.pickers.info_model.model": undefined;
+	"ui.chat.pickers.info_model.multiplexer": undefined;
+	"ui.chat.pickers.info_model.names_only_values_are_never_read": undefined;
+	"ui.chat.pickers.info_model.needs": { pending: string };
+	"ui.chat.pickers.info_model.never_checked": undefined;
+	"ui.chat.pickers.info_model.no": undefined;
+	"ui.chat.pickers.info_model.none": undefined;
+	"ui.chat.pickers.info_model.none_configured": undefined;
+	"ui.chat.pickers.info_model.none_running": { plural: string };
+	"ui.chat.pickers.info_model.none_running_queued": {
+		plural: string;
+		formatcount: string;
+	};
+	"ui.chat.pickers.info_model.not_answering_caveat": { count: number };
+	"ui.chat.pickers.info_model.not_installed": undefined;
+	"ui.chat.pickers.info_model.not_listening": undefined;
+	"ui.chat.pickers.info_model.not_measured": undefined;
+	"ui.chat.pickers.info_model.not_read_in_this_view": undefined;
+	"ui.chat.pickers.info_model.of_connected": {
+		formatcount: string;
+		formatcount2: string;
+	};
+	"ui.chat.pickers.info_model.of_did_not_report": {
+		formatcount: string;
+		plural: string;
+	};
+	"ui.chat.pickers.info_model.older_build_caveat": { count: number };
+	"ui.chat.pickers.info_model.pid": { pid: number };
+	"ui.chat.pickers.info_model.pid_7837d5": { pid: number };
+	"ui.chat.pickers.info_model.process": undefined;
+	"ui.chat.pickers.info_model.protocol_v": { protocol: number };
+	"ui.chat.pickers.info_model.python": { python_version: string };
+	"ui.chat.pickers.info_model.queued": { formatcount: string };
+	"ui.chat.pickers.info_model.redirected_by_local_operator_config_dir": undefined;
+	"ui.chat.pickers.info_model.redirected_by_local_operator_home": undefined;
+	"ui.chat.pickers.info_model.rows": undefined;
+	"ui.chat.pickers.info_model.runtime": undefined;
+	"ui.chat.pickers.info_model.runtime_trajectories": {
+		runtimecount: string;
+		bound: string;
+		trajectorycount: string;
+	};
+	"ui.chat.pickers.info_model.runtimes": undefined;
+	"ui.chat.pickers.info_model.session": undefined;
+	"ui.chat.pickers.info_model.sessionfcbdc4": undefined;
+	"ui.chat.pickers.info_model.sessions": undefined;
+	"ui.chat.pickers.info_model.started": undefined;
+	"ui.chat.pickers.info_model.still_connecting_deferred_servers": undefined;
+	"ui.chat.pickers.info_model.stopped_ago": { stoppedage: string };
+	"ui.chat.pickers.info_model.stopped_ago_reason": {
+		stoppedage: string;
+		clause_separator: string;
+		stopreason: string;
+	};
+	"ui.chat.pickers.info_model.stored_credentials": undefined;
+	"ui.chat.pickers.info_model.subagent": undefined;
+	"ui.chat.pickers.info_model.subagents": undefined;
+	"ui.chat.pickers.info_model.team": { activeteam: string };
+	"ui.chat.pickers.info_model.teams": undefined;
+	"ui.chat.pickers.info_model.term": undefined;
+	"ui.chat.pickers.info_model.theme": undefined;
+	"ui.chat.pickers.info_model.this_session": undefined;
+	"ui.chat.pickers.info_model.title": undefined;
+	"ui.chat.pickers.info_model.total": { bound: string; formatcount: string };
+	"ui.chat.pickers.info_model.trajectories": undefined;
+	"ui.chat.pickers.info_model.trajectories4288bf": {
+		plural: string;
+		unknown: string;
+	};
+	"ui.chat.pickers.info_model.trajectory": undefined;
+	"ui.chat.pickers.info_model.unavailable": undefined;
+	"ui.chat.pickers.info_model.unknown_platform": undefined;
+	"ui.chat.pickers.info_model.untitled_session": undefined;
+	"ui.chat.pickers.info_model.up_to_date": undefined;
+	"ui.chat.pickers.info_model.update_available": undefined;
+	"ui.chat.pickers.info_model.v_available_update": { latest_known: string };
+	"ui.chat.pickers.info_model.working_dir": undefined;
+	"ui.chat.pickers.info_model.yes": undefined;
+	"ui.chat.pickers.info_panel.activity": undefined;
+	"ui.chat.pickers.info_panel.agents_and_subagents": undefined;
+	"ui.chat.pickers.info_panel.backend_runtime_and_this_app": undefined;
+	"ui.chat.pickers.info_panel.busy": undefined;
+	"ui.chat.pickers.info_panel.could_not_be_read": undefined;
+	"ui.chat.pickers.info_panel.environment": undefined;
+	"ui.chat.pickers.info_panel.field": undefined;
+	"ui.chat.pickers.info_panel.fields_that_could_not_be_read": undefined;
+	"ui.chat.pickers.info_panel.git_snapshot": { value: string };
+	"ui.chat.pickers.info_panel.host_info_region": undefined;
+	"ui.chat.pickers.info_panel.host_runtime": undefined;
+	"ui.chat.pickers.info_panel.info": undefined;
+	"ui.chat.pickers.info_panel.install": undefined;
+	"ui.chat.pickers.info_panel.install_and_running_code_paths": undefined;
+	"ui.chat.pickers.info_panel.install_kind": undefined;
+	"ui.chat.pickers.info_panel.install_path": undefined;
+	"ui.chat.pickers.info_panel.interpreter": undefined;
+	"ui.chat.pickers.info_panel.item": undefined;
+	"ui.chat.pickers.info_panel.live": undefined;
+	"ui.chat.pickers.info_panel.live65c821": undefined;
+	"ui.chat.pickers.info_panel.live_this_conversation": undefined;
+	"ui.chat.pickers.info_panel.live_total": {
+		formatcount: string;
+		formatcount2: string;
+	};
+	"ui.chat.pickers.info_panel.markers": undefined;
+	"ui.chat.pickers.info_panel.mcp_server_failures": undefined;
+	"ui.chat.pickers.info_panel.memory": undefined;
+	"ui.chat.pickers.info_panel.memory_could_not_be_measured_on_this_machine": undefined;
+	"ui.chat.pickers.info_panel.model": undefined;
+	"ui.chat.pickers.info_panel.more_than_one_build_is_running_a_change_may_look_absent_in_a_window_that": undefined;
+	"ui.chat.pickers.info_panel.needs_input": undefined;
+	"ui.chat.pickers.info_panel.no_other_lop_sessions_are_running_on_this_machine": undefined;
+	"ui.chat.pickers.info_panel.not_answering": undefined;
+	"ui.chat.pickers.info_panel.not_answering824ea0": undefined;
+	"ui.chat.pickers.info_panel.nothing_to_report_here": undefined;
+	"ui.chat.pickers.info_panel.path": undefined;
+	"ui.chat.pickers.info_panel.reason": undefined;
+	"ui.chat.pickers.info_panel.reported": undefined;
+	"ui.chat.pickers.info_panel.running_code": undefined;
+	"ui.chat.pickers.info_panel.runtime_terminal": undefined;
+	"ui.chat.pickers.info_panel.server": undefined;
+	"ui.chat.pickers.info_panel.session": undefined;
+	"ui.chat.pickers.info_panel.sessions_on_this_machine": undefined;
+	"ui.chat.pickers.info_panel.stale": undefined;
+	"ui.chat.pickers.info_panel.state": undefined;
+	"ui.chat.pickers.info_panel.stored": undefined;
+	"ui.chat.pickers.info_panel.the_install_the_host_this_app_is_connected_to_and_the_conversation_in_fr": undefined;
+	"ui.chat.pickers.info_panel.the_install_the_host_this_app_is_connected_to_and_the_sessions_on_this_m": undefined;
+	"ui.chat.pickers.info_panel.the_machine_this_app_is_connected_to": undefined;
+	"ui.chat.pickers.info_panel.this_backend_cannot_serve_this_panel_yet_update_the_backend_and_try_agai": undefined;
+	"ui.chat.pickers.info_panel.this_conversation": undefined;
+	"ui.chat.pickers.info_panel.unavailable": undefined;
+	"ui.chat.pickers.info_panel.value": undefined;
+	"ui.chat.pickers.info_panel.version": undefined;
+	"ui.chat.pickers.info_panel.why_a_field_above_shows_an_unknown": undefined;
+	"ui.chat.pickers.login.title": undefined;
+	"ui.chat.pickers.logout.confirm": undefined;
+	"ui.chat.pickers.logout.title": undefined;
+	"ui.chat.pickers.loop.cancel": undefined;
+	"ui.chat.pickers.loop.title": undefined;
+	"ui.chat.pickers.mcp_command.unknown_mcp_server_no_server_was_changed": {
+		name: string;
+		extra: string;
+	};
+	"ui.chat.pickers.mcp_command.unknown_mcp_server_or_command_use_mcp_login_name_or_mcp_reauth_name": {
+		text: string;
+	};
+	"ui.chat.pickers.mcp_picker.close": undefined;
+	"ui.chat.pickers.mcp_picker.could_not_load_mcp_servers": undefined;
+	"ui.chat.pickers.mcp_picker.loading_configured_mcp_servers": undefined;
+	"ui.chat.pickers.mcp_picker.mcp_servers": undefined;
+	"ui.chat.pickers.mcp_picker.no_mcp_servers_are_configured_for_this_conversation": undefined;
+	"ui.chat.pickers.mcp_picker.retry": undefined;
+	"ui.chat.pickers.model_catalogue_listing.some_providers_did_not_answer_the_rows_below_are_the_ones_that_did": {
+		length: number;
+	};
+	"ui.chat.pickers.model_catalogue_listing.the_last_listing_that_answered": undefined;
+	"ui.chat.pickers.model_catalogue_listing.the_provider_listing_failed_the_rows_below_are_refresh_from_providers_tr": {
+		value: string;
+	};
+	"ui.chat.pickers.model_catalogue_listing.the_shipped_models": undefined;
+	"ui.chat.pickers.models.connect_provider": undefined;
+	"ui.chat.pickers.models.native_details": { name: string };
+	"ui.chat.pickers.models.set_as_default": undefined;
+	"ui.chat.pickers.models.title": undefined;
+	"ui.chat.pickers.new_session.title": undefined;
+	"ui.chat.pickers.picker_host.apply": undefined;
+	"ui.chat.pickers.picker_host.applying_the_change": undefined;
+	"ui.chat.pickers.picker_host.applying_the_changea9b670": undefined;
+	"ui.chat.pickers.picker_host.arrows_move_enter_connects_esc_closes": {
+		activeconnectprovider: string;
+	};
+	"ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes": undefined;
+	"ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes5710e2": {
+		activelabel: string;
+	};
+	"ui.chat.pickers.picker_host.close": undefined;
+	"ui.chat.pickers.picker_host.current": undefined;
+	"ui.chat.pickers.picker_host.done": undefined;
+	"ui.chat.pickers.picker_host.esc_closes": undefined;
+	"ui.chat.pickers.picker_host.loading": undefined;
+	"ui.chat.pickers.picker_host.nothing_matches": undefined;
+	"ui.chat.pickers.picker_host.panel_content": undefined;
+	"ui.chat.pickers.picker_host.search": undefined;
+	"ui.chat.pickers.picker_host.the_row_you_were_on_is_gone_enter_picks": {
+		retargetedlabel: string;
+	};
+	"ui.chat.pickers.profile.loading_detail": undefined;
+	"ui.chat.pickers.reload.title": undefined;
+	"ui.chat.pickers.rename.title": undefined;
+	"ui.chat.pickers.resume.title": undefined;
+	"ui.chat.pickers.session_panel.basis": undefined;
+	"ui.chat.pickers.session_panel.by_model": undefined;
+	"ui.chat.pickers.session_panel.by_purpose": undefined;
+	"ui.chat.pickers.session_panel.cache_hit_rate": undefined;
+	"ui.chat.pickers.session_panel.calls": undefined;
+	"ui.chat.pickers.session_panel.component": undefined;
+	"ui.chat.pickers.session_panel.context": undefined;
+	"ui.chat.pickers.session_panel.context_window": undefined;
+	"ui.chat.pickers.session_panel.context_window_not_measured": undefined;
+	"ui.chat.pickers.session_panel.context_window_of": {
+		formatcontexttokens: string;
+		formatwindow: string;
+		formatpercent: string;
+	};
+	"ui.chat.pickers.session_panel.cost": undefined;
+	"ui.chat.pickers.session_panel.cost_and_tokens_above_cover_this_session": undefined;
+	"ui.chat.pickers.session_panel.could_not_read_local_usage_records_close_and_reopen_to_try_again": undefined;
+	"ui.chat.pickers.session_panel.dispatched": { formatcount: string };
+	"ui.chat.pickers.session_panel.duration": undefined;
+	"ui.chat.pickers.session_panel.emitted_excluded": {
+		formatcount: string;
+		formatcount2: string;
+	};
+	"ui.chat.pickers.session_panel.estimate": undefined;
+	"ui.chat.pickers.session_panel.estimated_context_split_by_component": undefined;
+	"ui.chat.pickers.session_panel.estimated_split_of_context_tokens": undefined;
+	"ui.chat.pickers.session_panel.execution_error_rate": undefined;
+	"ui.chat.pickers.session_panel.failed": undefined;
+	"ui.chat.pickers.session_panel.failed4d8830": { formatcount: string };
+	"ui.chat.pickers.session_panel.fault": undefined;
+	"ui.chat.pickers.session_panel.in_out": {
+		formattokens: string;
+		formattokens2: string;
+	};
+	"ui.chat.pickers.session_panel.ledger_coverage_for_this_session": undefined;
+	"ui.chat.pickers.session_panel.live_not_from_the_ledger": undefined;
+	"ui.chat.pickers.session_panel.mean": undefined;
+	"ui.chat.pickers.session_panel.metric": undefined;
+	"ui.chat.pickers.session_panel.model": undefined;
+	"ui.chat.pickers.session_panel.nested_calls": undefined;
+	"ui.chat.pickers.session_panel.newest_first_shown": { formatcount: string };
+	"ui.chat.pickers.session_panel.no_component_split_recorded_for_this_session": undefined;
+	"ui.chat.pickers.session_panel.no_model_rows_recorded_for_this_session": undefined;
+	"ui.chat.pickers.session_panel.no_purpose_rows_recorded_for_this_session": undefined;
+	"ui.chat.pickers.session_panel.no_recent_requests_recorded_for_this_session": undefined;
+	"ui.chat.pickers.session_panel.no_recorded_requests_for_this_session_yet": undefined;
+	"ui.chat.pickers.session_panel.no_tool_call_faults_recorded": undefined;
+	"ui.chat.pickers.session_panel.not_measured": undefined;
+	"ui.chat.pickers.session_panel.not_measured_for_this_session": undefined;
+	"ui.chat.pickers.session_panel.of_context_from_cache": undefined;
+	"ui.chat.pickers.session_panel.of_this_session_s": {
+		label: string;
+		formatpercent: string;
+		value: string;
+	};
+	"ui.chat.pickers.session_panel.ok": undefined;
+	"ui.chat.pickers.session_panel.ok_they_are_a_different_population_and_are_counted_in_neither_rate_above": undefined;
+	"ui.chat.pickers.session_panel.outcome": undefined;
+	"ui.chat.pickers.session_panel.output": undefined;
+	"ui.chat.pickers.session_panel.phase": undefined;
+	"ui.chat.pickers.session_panel.plus_its_subagents_where_the_ledger_could_be_walked": undefined;
+	"ui.chat.pickers.session_panel.purpose": undefined;
+	"ui.chat.pickers.session_panel.range": undefined;
+	"ui.chat.pickers.session_panel.recent_requests": undefined;
+	"ui.chat.pickers.session_panel.records_run_from": undefined;
+	"ui.chat.pickers.session_panel.request_timings": undefined;
+	"ui.chat.pickers.session_panel.requests": undefined;
+	"ui.chat.pickers.session_panel.samples": undefined;
+	"ui.chat.pickers.session_panel.scope": undefined;
+	"ui.chat.pickers.session_panel.session": undefined;
+	"ui.chat.pickers.session_panel.session_diagnostics_region": undefined;
+	"ui.chat.pickers.session_panel.the_backend_returned_no_report": undefined;
+	"ui.chat.pickers.session_panel.this_backend_cannot_serve_this_panel_yet_update_the_backend_and_try_agai": undefined;
+	"ui.chat.pickers.session_panel.timings": undefined;
+	"ui.chat.pickers.session_panel.to": undefined;
+	"ui.chat.pickers.session_panel.tokens": undefined;
+	"ui.chat.pickers.session_panel.tool_call_faults_by_name": undefined;
+	"ui.chat.pickers.session_panel.tool_call_validity": undefined;
+	"ui.chat.pickers.session_panel.tool_calls": undefined;
+	"ui.chat.pickers.session_panel.totals": undefined;
+	"ui.chat.pickers.session_panel.unknown": undefined;
+	"ui.chat.pickers.session_panel.unknown_value": undefined;
+	"ui.chat.pickers.session_panel.untitled_session": undefined;
+	"ui.chat.pickers.session_panel.usage_by_model_in_this_session": undefined;
+	"ui.chat.pickers.session_panel.usage_by_purpose_in_this_session": undefined;
+	"ui.chat.pickers.session_panel.what_this_session_has_used_from_one_read_of_the_local_ledger": undefined;
+	"ui.chat.pickers.session_panel.where_input_went": undefined;
+	"ui.chat.pickers.session_report_model.basis_spend": {
+		label: string;
+		amount: string;
+		equivalent: string;
+	};
+	"ui.chat.pickers.session_report_model.conversation": undefined;
+	"ui.chat.pickers.session_report_model.cost": undefined;
+	"ui.chat.pickers.session_report_model.custom_instructions_agents_teams": undefined;
+	"ui.chat.pickers.session_report_model.duration": undefined;
+	"ui.chat.pickers.session_report_model.environment": undefined;
+	"ui.chat.pickers.session_report_model.first_output": undefined;
+	"ui.chat.pickers.session_report_model.images_est": undefined;
+	"ui.chat.pickers.session_report_model.knowledge_skills": undefined;
+	"ui.chat.pickers.session_report_model.no_call_in_this_session_has_a_published_price": undefined;
+	"ui.chat.pickers.session_report_model.own_subagents": {
+		formatmicrousd: string;
+		formatmicrousd2: string;
+	};
+	"ui.chat.pickers.session_report_model.part_of_this_session_s_usage_could_not_be_read_update_the_backend_and_tr": undefined;
+	"ui.chat.pickers.session_report_model.preparation": undefined;
+	"ui.chat.pickers.session_report_model.spend_by_basis": undefined;
+	"ui.chat.pickers.session_report_model.spend_by_basis_own": undefined;
+	"ui.chat.pickers.session_report_model.subagent_spend_not_measured": undefined;
+	"ui.chat.pickers.session_report_model.system_prompt": undefined;
+	"ui.chat.pickers.session_report_model.tokens": undefined;
+	"ui.chat.pickers.session_report_model.tool_inventory": undefined;
+	"ui.chat.pickers.session_report_model.tool_results": undefined;
+	"ui.chat.pickers.session_report_model.tool_schemas": undefined;
+	"ui.chat.pickers.session_report_model.totals_meta": {
+		calls: number;
+		failed: number;
+		scope: string;
+	};
+	"ui.chat.pickers.session_report_model.unknown": undefined;
+	"ui.chat.pickers.session_report_model.unknown_0_samples": undefined;
+	"ui.chat.pickers.session_report_model.without_a_tracked_basis": undefined;
+	"ui.chat.pickers.skills.loading": undefined;
+	"ui.chat.pickers.skills.title": undefined;
+	"ui.chat.pickers.slash.action_kind": undefined;
+	"ui.chat.pickers.slash.arguments_region_label": undefined;
+	"ui.chat.pickers.slash.click.chooses_name": undefined;
+	"ui.chat.pickers.slash.click.completes_label": { label: string };
+	"ui.chat.pickers.slash.click.completes_value": undefined;
+	"ui.chat.pickers.slash.click.connects": { name: string };
+	"ui.chat.pickers.slash.click.runs": { label: string };
+	"ui.chat.pickers.slash.click.runs_command": undefined;
+	"ui.chat.pickers.slash.click.runs_with_value": {
+		command: string;
+		value: string;
+	};
+	"ui.chat.pickers.slash.click.stages": { label: string };
+	"ui.chat.pickers.slash.enter_needs_a_pick": undefined;
+	"ui.chat.pickers.slash.phase.arguments": undefined;
+	"ui.chat.pickers.slash.region_label": undefined;
+	"ui.chat.pickers.stop.all_sessions": { count: number };
+	"ui.chat.pickers.stop.confirm": { count: number };
+	"ui.chat.pickers.stop.title": undefined;
+	"ui.chat.pickers.table_pager.first": undefined;
+	"ui.chat.pickers.table_pager.last": undefined;
+	"ui.chat.pickers.table_pager.next": undefined;
+	"ui.chat.pickers.table_pager.prev": undefined;
+	"ui.chat.pickers.table_pager.range": {
+		from: string;
+		to: string;
+		totaltext: string;
+		total: number;
+		label: string;
+		plurallabel: string;
+	};
+	"ui.chat.pickers.theme.title": undefined;
+	"ui.chat.pickers.usage_view.ask_providers_again": undefined;
+	"ui.chat.pickers.usage_view.ask_providers_now": undefined;
+	"ui.chat.pickers.usage_view.asking_providers": undefined;
+	"ui.chat.pickers.usage_view.checking_for_an_updated_usage_report": undefined;
+	"ui.chat.pickers.usage_view.checking_provider_usage": undefined;
+	"ui.chat.pickers.usage_view.getting_fresh_usage_from_providers": undefined;
+	"ui.chat.pickers.usage_view.loading_provider_usage": undefined;
+	"ui.chat.pickers.usage_view.near_limit": undefined;
+	"ui.chat.pickers.usage_view.no_limit_reported": undefined;
+	"ui.chat.pickers.usage_view.no_usage_reports_sign_in_to_a_provider_that_publishes_quota_then_ask_pro": undefined;
+	"ui.chat.pickers.usage_view.not_reported": undefined;
+	"ui.chat.pickers.usage_view.provider_usage": undefined;
+	"ui.chat.pickers.usage_view.providers_answered": undefined;
+	"ui.chat.pickers.usage_view.quota_and_usage_as_the_providers_report_it": undefined;
+	"ui.chat.pickers.usage_view.report_list": undefined;
+	"ui.chat.pickers.usage_view.resets_in": undefined;
+	"ui.chat.pickers.usage_view.retrying": { errortext: string };
+	"ui.chat.pickers.usage_view.usage_unavailable": undefined;
+	"ui.chat.pickers.usage_view.within_limit": undefined;
+	"ui.chat.pickers.usage_view_model.cached": undefined;
+	"ui.chat.pickers.usage_view_model.credits": undefined;
+	"ui.chat.pickers.usage_view_model.d_ago": { trunc: number };
+	"ui.chat.pickers.usage_view_model.exhausted": undefined;
+	"ui.chat.pickers.usage_view_model.h_ago": { hours: number };
+	"ui.chat.pickers.usage_view_model.just_now": undefined;
+	"ui.chat.pickers.usage_view_model.last_known": undefined;
+	"ui.chat.pickers.usage_view_model.last_known1c1a43": {
+		note: string;
+		age: string;
+	};
+	"ui.chat.pickers.usage_view_model.last_known63737e": { age: string };
+	"ui.chat.pickers.usage_view_model.last_response_allowance_refresh_does_not_query_muse": undefined;
+	"ui.chat.pickers.usage_view_model.left": { withunit: string };
+	"ui.chat.pickers.usage_view_model.limit": { withunit: string };
+	"ui.chat.pickers.usage_view_model.live": undefined;
+	"ui.chat.pickers.usage_view_model.m_ago": { minutes: number };
+	"ui.chat.pickers.usage_view_model.model_cap_exhausted": { count: number };
+	"ui.chat.pickers.usage_view_model.near_limit": undefined;
+	"ui.chat.pickers.usage_view_model.no_allowance_observation_recorded_refresh_does_not_query_muse": undefined;
+	"ui.chat.pickers.usage_view_model.no_windows_reported": undefined;
+	"ui.chat.pickers.usage_view_model.not_reported": undefined;
+	"ui.chat.pickers.usage_view_model.note_with_period": { note: string };
+	"ui.chat.pickers.usage_view_model.observed_with_note": {
+		notes: string;
+		formatage: string;
+	};
+	"ui.chat.pickers.usage_view_model.report": {
+		value: string;
+		formatage: string;
+	};
+	"ui.chat.pickers.usage_view_model.reported_balance": { count: number };
+	"ui.chat.pickers.usage_view_model.requests": undefined;
+	"ui.chat.pickers.usage_view_model.sign_in_expired_run_login": {
+		provider: string;
+	};
+	"ui.chat.pickers.usage_view_model.stale_response_allowance_current_usage_unknown_refresh_does_not_query_mu": undefined;
+	"ui.chat.pickers.usage_view_model.stale_sign_in_allowance_current_usage_unknown_refresh_does_not_query_mus": undefined;
+	"ui.chat.pickers.usage_view_model.tokens": undefined;
+	"ui.chat.pickers.usage_view_model.usage_unavailable": undefined;
+	"ui.chat.pickers.usage_view_model.usage_unavailable_last_known": {
+		age: string;
+	};
+	"ui.chat.pickers.usage_view_model.used": { tofixedhalfeven: string };
+	"ui.chat.pickers.usage_view_model.window": { count: number };
+	"ui.chat.pickers.usage_view_model.without_a_limit": undefined;
+	"ui.chat.pickers.use_picker_backend.did_not_run": { command: string };
+	"ui.chat.pickers.use_picker_backend.loop_turns": {
+		status: string;
+		completed: number;
+		of: string;
+		iterations: number;
+	};
+	"ui.chat.pickers.use_picker_backend.the_backend_needs_more_input_for": {
+		destination: string;
+	};
+	"ui.chat.pickers.use_picker_backend.the_backend_refused_it": undefined;
+	"ui.chat.radient_session.action.sign_in": undefined;
+	"ui.chat.radient_session.pointer.sign_in_active": undefined;
+	"ui.chat.radient_session.prose.input_required": { message: string };
+	"ui.chat.radient_session.prose.needs_sign_in": undefined;
+	"ui.chat.radient_session.prose.signing_in": undefined;
+	"ui.chat.radient_session.title.input_required": undefined;
+	"ui.chat.radient_session.title.needs_sign_in": undefined;
+	"ui.chat.radient_session.title.signing_in": undefined;
+	"ui.chat.response_actions.answer_label": undefined;
+	"ui.chat.response_actions.copied": undefined;
+	"ui.chat.response_actions.copy": undefined;
+	"ui.chat.response_actions.label": undefined;
+	"ui.chat.response_actions.yours_label": undefined;
+	"ui.chat.run_details.children_unopenable": undefined;
+	"ui.chat.run_details.chip.attention": { count: number };
+	"ui.chat.run_details.chip.mcp_attention": { count: number };
+	"ui.chat.run_details.chip.subagents_failed": { count: number };
+	"ui.chat.run_details.chip.todos_closed": undefined;
+	"ui.chat.run_details.chip.todos_open": { count: number };
+	"ui.chat.run_details.chip.todos_resolved": undefined;
+	"ui.chat.run_details.close_label": undefined;
+	"ui.chat.run_details.jobs": undefined;
+	"ui.chat.run_details.keep": undefined;
+	"ui.chat.run_details.mcp.cancel": undefined;
+	"ui.chat.run_details.mcp.cold_label": undefined;
+	"ui.chat.run_details.mcp.credential_removed": undefined;
+	"ui.chat.run_details.mcp.credentials_in_settings": undefined;
+	"ui.chat.run_details.mcp.grant.cancelled": undefined;
+	"ui.chat.run_details.mcp.grant.failed": undefined;
+	"ui.chat.run_details.mcp.grant.running": undefined;
+	"ui.chat.run_details.mcp.refused": undefined;
+	"ui.chat.run_details.mcp.servers": undefined;
+	"ui.chat.run_details.mcp.try_again": undefined;
+	"ui.chat.run_details.mcp_auth.cancel_sign_in": undefined;
+	"ui.chat.run_details.mcp_auth.checking": undefined;
+	"ui.chat.run_details.mcp_auth.close": undefined;
+	"ui.chat.run_details.mcp_auth.continue_in_browser": undefined;
+	"ui.chat.run_details.mcp_auth.grant_body": undefined;
+	"ui.chat.run_details.mcp_auth.no_session": undefined;
+	"ui.chat.run_details.mcp_auth.replace_grant": undefined;
+	"ui.chat.run_details.mcp_auth.replaces_grant": undefined;
+	"ui.chat.run_details.mcp_auth.title": undefined;
+	"ui.chat.run_details.mcp_auth.title_for_server": { server: string };
+	"ui.chat.run_details.mcp_auth.try_again": undefined;
+	"ui.chat.run_details.mcp_key.cancel": undefined;
+	"ui.chat.run_details.mcp_key.replace": undefined;
+	"ui.chat.run_details.mcp_key.save": undefined;
+	"ui.chat.run_details.mcp_key.saved_note": undefined;
+	"ui.chat.run_details.mcp_key.saving": undefined;
+	"ui.chat.run_details.mcp_key.title_credentials": { server: string };
+	"ui.chat.run_details.mcp_key.title_key": { server: string };
+	"ui.chat.run_details.monitor_cancel.confirm": undefined;
+	"ui.chat.run_details.monitor_cancel.keep": undefined;
+	"ui.chat.run_details.monitor_cancel.message": { name: string };
+	"ui.chat.run_details.monitor_cancel.stopping": undefined;
+	"ui.chat.run_details.monitor_cancel.title": undefined;
+	"ui.chat.run_details.monitors.cancel": undefined;
+	"ui.chat.run_details.monitors.cancel_refused": undefined;
+	"ui.chat.run_details.monitors.cancelled": undefined;
+	"ui.chat.run_details.monitors.title": undefined;
+	"ui.chat.run_details.next_subagent": undefined;
+	"ui.chat.run_details.nothing_in_flight": undefined;
+	"ui.chat.run_details.nothing_to_show_yet": undefined;
+	"ui.chat.run_details.pane_label": undefined;
+	"ui.chat.run_details.previous_subagent": undefined;
+	"ui.chat.run_details.reader.delegated_with": undefined;
+	"ui.chat.run_details.reader.directory_gone": undefined;
+	"ui.chat.run_details.reader.error_shortened": undefined;
+	"ui.chat.run_details.reader.failed": undefined;
+	"ui.chat.run_details.reader.loading_conversation": undefined;
+	"ui.chat.run_details.reader.no_conversation": undefined;
+	"ui.chat.run_details.reader.no_session_id": undefined;
+	"ui.chat.run_details.reader.no_transcript": undefined;
+	"ui.chat.run_details.reader.read_only_footer": undefined;
+	"ui.chat.run_details.retry": undefined;
+	"ui.chat.run_details.subagent_path_label": undefined;
+	"ui.chat.run_details.subagents.title": undefined;
+	"ui.chat.run_details.subagents_of": undefined;
+	"ui.chat.run_details.title": undefined;
+	"ui.chat.run_details.todos.blocked": undefined;
+	"ui.chat.run_details.todos.blocked_reason": { reason: string };
+	"ui.chat.run_details.todos.dropped": undefined;
+	"ui.chat.run_details.todos.hidden": { count: string };
+	"ui.chat.run_details.todos.hidden_summary": { count: number };
+	"ui.chat.run_details.todos.title": undefined;
+	"ui.chat.run_details.unopenable": undefined;
+	"ui.chat.run_details.update_backend": undefined;
+	"ui.chat.run_details.updating_backend": undefined;
+	"ui.chat.run_details.wake.cancel": undefined;
+	"ui.chat.run_details.wake.cancel_wake": undefined;
+	"ui.chat.run_details.wake.cancel_wake_due": { due: string };
+	"ui.chat.run_details.wake.cancel_wake_named": { head: string };
+	"ui.chat.run_details.wake.cancelled": undefined;
+	"ui.chat.run_details.wake.cancelling": undefined;
+	"ui.chat.run_details.wake_cancel.cancelling": undefined;
+	"ui.chat.run_details.wake_cancel.keep": undefined;
+	"ui.chat.run_details.wakes.title": undefined;
+	"ui.chat.sidebar.agents.builtin_offer": { count: number; list: string };
+	"ui.chat.sidebar.agents.clear_filter": undefined;
+	"ui.chat.sidebar.agents.create": undefined;
+	"ui.chat.sidebar.agents.dismiss_offer": undefined;
+	"ui.chat.sidebar.agents.empty": undefined;
+	"ui.chat.sidebar.agents.filter": undefined;
+	"ui.chat.sidebar.agents.loading": undefined;
+	"ui.chat.sidebar.agents.no_match": undefined;
+	"ui.chat.sidebar.catalogue.total": { shown: number; total: number };
+	"ui.chat.sidebar.catalogue.total_search": { shown: number; total: number };
+	"ui.chat.sidebar.catalogue.total_search_clipped": {
+		shown: number;
+		total: number;
+	};
+	"ui.chat.sidebar.drafts.clear_all": undefined;
+	"ui.chat.sidebar.drafts.clear_all_label": undefined;
+	"ui.chat.sidebar.entity.collapse_chats": { name: string };
+	"ui.chat.sidebar.entity.expand_chats": { name: string };
+	"ui.chat.sidebar.entity.manage": { name: string };
+	"ui.chat.sidebar.entity.pin": { name: string };
+	"ui.chat.sidebar.entity.unpin": { name: string };
+	"ui.chat.sidebar.groups.badge": { badge: number };
+	"ui.chat.sidebar.header.create": undefined;
+	"ui.chat.sidebar.header.create_agent": undefined;
+	"ui.chat.sidebar.header.create_team": undefined;
+	"ui.chat.sidebar.header.open_agent": undefined;
+	"ui.chat.sidebar.header.search": undefined;
+	"ui.chat.sidebar.header.view_options": undefined;
+	"ui.chat.sidebar.list.connecting": undefined;
+	"ui.chat.sidebar.list.empty": undefined;
+	"ui.chat.sidebar.list.loading_more": undefined;
+	"ui.chat.sidebar.list.offline": undefined;
+	"ui.chat.sidebar.list.retry_refresh": undefined;
+	"ui.chat.sidebar.list.truncated_legacy": undefined;
+	"ui.chat.sidebar.nav.chats": undefined;
+	"ui.chat.sidebar.pins.drag_title": undefined;
+	"ui.chat.sidebar.pins.failure": { action: string; title: string };
+	"ui.chat.sidebar.pins.pin_label": { title: string };
+	"ui.chat.sidebar.pins.unpin_label": { title: string };
+	"ui.chat.sidebar.row.archived_suffix": undefined;
+	"ui.chat.sidebar.row.in_conversation": undefined;
+	"ui.chat.sidebar.row.matched_in_conversation": undefined;
+	"ui.chat.sidebar.row.not_sent": undefined;
+	"ui.chat.sidebar.row_menu.archive": undefined;
+	"ui.chat.sidebar.row_menu.copy_id": undefined;
+	"ui.chat.sidebar.row_menu.fork": undefined;
+	"ui.chat.sidebar.row_menu.move_down": undefined;
+	"ui.chat.sidebar.row_menu.move_up": undefined;
+	"ui.chat.sidebar.row_menu.pin": undefined;
+	"ui.chat.sidebar.row_menu.rename": undefined;
+	"ui.chat.sidebar.row_menu.unarchive": undefined;
+	"ui.chat.sidebar.row_menu.unpin": undefined;
+	"ui.chat.sidebar.search.clear": undefined;
+	"ui.chat.sidebar.search.include_archived": undefined;
+	"ui.chat.sidebar.search.names_only": undefined;
+	"ui.chat.sidebar.search.no_match": { query: string };
+	"ui.chat.sidebar.search.placeholder": undefined;
+	"ui.chat.sidebar.search.searching": undefined;
+	"ui.chat.sidebar.search.too_long": { max: number };
+	"ui.chat.sidebar.search.unavailable": undefined;
+	"ui.chat.sidebar.section.current_chat": undefined;
+	"ui.chat.sidebar.teams.create": undefined;
+	"ui.chat.sidebar.teams.loading": undefined;
 	"ui.chat.sidebar_view.active_first": undefined;
 	"ui.chat.sidebar_view.agent_team": undefined;
 	"ui.chat.sidebar_view.clock_hint": undefined;
@@ -1134,48 +4828,121 @@ export type MessageParams = {
 	"ui.chat.sidebar_view.sections": undefined;
 	"ui.chat.sidebar_view.time_basis": undefined;
 	"ui.chat.sidebar_view.time_section": undefined;
+	"ui.chat.status.credential_refused": undefined;
+	"ui.chat.status.degraded": undefined;
+	"ui.chat.status.internet_offline": undefined;
+	"ui.chat.status.unreachable": undefined;
+	"ui.chat.tag_dialogs.assign_created_failed": { name: string };
+	"ui.chat.tag_dialogs.changed_elsewhere": undefined;
+	"ui.chat.tag_dialogs.created_assigned": { name: string };
+	"ui.chat.tag_dialogs.deleted_name": { name: string };
 	"ui.chat.tags.add": undefined;
-	"ui.chat.tags.apply": undefined;
-	"ui.chat.tags.apply_deletion_first": { name: string };
 	"ui.chat.tags.applying": undefined;
+	"ui.chat.tags.auto_tag": undefined;
+	"ui.chat.tags.auto_tag_help": undefined;
 	"ui.chat.tags.cancel": undefined;
-	"ui.chat.tags.clear": undefined;
+	"ui.chat.tags.changed_elsewhere": undefined;
+	"ui.chat.tags.create_failed": undefined;
+	"ui.chat.tags.create_helper": undefined;
+	"ui.chat.tags.create_name": { name: string };
+	"ui.chat.tags.created_name": { name: string };
 	"ui.chat.tags.delete": undefined;
 	"ui.chat.tags.delete_description": { count: number };
 	"ui.chat.tags.delete_tag": undefined;
 	"ui.chat.tags.delete_title": { name: string };
 	"ui.chat.tags.discovery": undefined;
+	"ui.chat.tags.dropped_on": { name: string };
 	"ui.chat.tags.duplicate_name": { name: string };
 	"ui.chat.tags.empty": undefined;
+	"ui.chat.tags.empty_hint": { chord: string };
+	"ui.chat.tags.empty_title": undefined;
 	"ui.chat.tags.group": undefined;
-	"ui.chat.tags.group_under": undefined;
+	"ui.chat.tags.header_actions": { name: string };
+	"ui.chat.tags.header_first": { name: string };
+	"ui.chat.tags.header_last": { name: string };
+	"ui.chat.tags.hidden": undefined;
 	"ui.chat.tags.label": undefined;
 	"ui.chat.tags.load_failed": undefined;
 	"ui.chat.tags.loading": undefined;
-	"ui.chat.tags.manage": undefined;
-	"ui.chat.tags.manage_description": undefined;
-	"ui.chat.tags.manage_title": undefined;
 	"ui.chat.tags.menu": undefined;
 	"ui.chat.tags.mode_hint": undefined;
+	"ui.chat.tags.move_armed": { name: string };
+	"ui.chat.tags.move_cancelled": undefined;
 	"ui.chat.tags.move_down": { name: string };
+	"ui.chat.tags.move_failed": undefined;
+	"ui.chat.tags.move_undone": undefined;
 	"ui.chat.tags.move_up": { name: string };
-	"ui.chat.tags.new": undefined;
+	"ui.chat.tags.moved_tag": { name: string };
+	"ui.chat.tags.name_long": undefined;
+	"ui.chat.tags.name_placeholder": undefined;
+	"ui.chat.tags.name_reserved": undefined;
 	"ui.chat.tags.new_name": undefined;
+	"ui.chat.tags.new_tag": undefined;
 	"ui.chat.tags.no_matches": { query: string };
-	"ui.chat.tags.none_yet": undefined;
-	"ui.chat.tags.picker_description": undefined;
-	"ui.chat.tags.picker_title": { title: string };
 	"ui.chat.tags.primary": undefined;
+	"ui.chat.tags.registry_changed": undefined;
+	"ui.chat.tags.registry_limit": undefined;
+	"ui.chat.tags.remote": undefined;
+	"ui.chat.tags.remove_all": { count: number };
+	"ui.chat.tags.remove_named": { name: string };
+	"ui.chat.tags.removed_all": undefined;
 	"ui.chat.tags.rename": undefined;
 	"ui.chat.tags.rename_label": { name: string };
+	"ui.chat.tags.renamed_name": { name: string };
 	"ui.chat.tags.retry": undefined;
-	"ui.chat.tags.save": undefined;
 	"ui.chat.tags.save_failed": undefined;
 	"ui.chat.tags.search": undefined;
+	"ui.chat.tags.selection_count": { count: string };
+	"ui.chat.tags.selection_limit": undefined;
+	"ui.chat.tags.selection_status": { count: string; name: string };
+	"ui.chat.tags.show_groups": undefined;
+	"ui.chat.tags.show_under": undefined;
+	"ui.chat.tags.shown_under": { tag: string };
+	"ui.chat.tags.shown_untagged": undefined;
+	"ui.chat.tags.undo": undefined;
 	"ui.chat.tags.untagged": undefined;
-	"ui.chat.tags.updated_grouped": { tag: string };
-	"ui.chat.tags.updated_untagged": undefined;
+	"ui.chat.tags.unused": { count: string };
 	"ui.chat.tags.use_time": undefined;
+	"ui.chat.thread_search.building": undefined;
+	"ui.chat.thread_search.building_hint": undefined;
+	"ui.chat.thread_search.close_label": undefined;
+	"ui.chat.thread_search.count.match": { count: number; countText: string };
+	"ui.chat.thread_search.count.related": { count: number; countText: string };
+	"ui.chat.thread_search.count.split": {
+		exactText: string;
+		relatedText: string;
+	};
+	"ui.chat.thread_search.count.truncated": { count: number; countText: string };
+	"ui.chat.thread_search.empty": undefined;
+	"ui.chat.thread_search.error": undefined;
+	"ui.chat.thread_search.hint.browse": undefined;
+	"ui.chat.thread_search.hint.close": undefined;
+	"ui.chat.thread_search.hint.jump": undefined;
+	"ui.chat.thread_search.jumping": undefined;
+	"ui.chat.thread_search.list_label": undefined;
+	"ui.chat.thread_search.partial": undefined;
+	"ui.chat.thread_search.placeholder": undefined;
+	"ui.chat.thread_search.recheck": undefined;
+	"ui.chat.thread_search.role.agent": undefined;
+	"ui.chat.thread_search.role.user": undefined;
+	"ui.chat.thread_search.searching": undefined;
+	"ui.chat.thread_search.stale": undefined;
+	"ui.chat.thread_search.tier.related": undefined;
+	"ui.chat.thread_search.unsupported": undefined;
+	"ui.chat.transcript_copy.block.logs": undefined;
+	"ui.chat.transcript_copy.block.output": undefined;
+	"ui.chat.transcript_copy.menu.copy_markdown": undefined;
+	"ui.chat.transcript_copy.menu.copy_selection": undefined;
+	"ui.chat.transcript_copy.menu.copy_text": undefined;
+	"ui.chat.transcript_copy.role.assistant": undefined;
+	"ui.chat.transcript_copy.row.agent_message": undefined;
+	"ui.chat.transcript_copy.row.your_message": undefined;
+	"ui.chat.transcript_copy.selection.copy": undefined;
+	"ui.chat.transcript_copy.selection.quote": undefined;
+	"ui.chat.transcript_copy.selection.toolbar": undefined;
+	"ui.chat.transcript_copy.technical_details": undefined;
+	"ui.chat.transcript_copy.toast.copied_markdown": undefined;
+	"ui.chat.transcript_copy.toast.copied_selection": undefined;
 	"ui.chat.voice.another_conversation": undefined;
 	"ui.chat.voice.approval_waiting": undefined;
 	"ui.chat.voice.approve_on_screen": undefined;
@@ -1322,6 +5089,7 @@ export type MessageParams = {
 	"ui.code_review.lane.state.remediation_posted": undefined;
 	"ui.code_review.lane.state.terminal": undefined;
 	"ui.code_review.lane.state.unstated": undefined;
+	"ui.code_review.refresh.try_again": undefined;
 	"ui.code_review.relation.inherited": undefined;
 	"ui.code_review.relation.subagent": undefined;
 	"ui.code_review.relation.subagent_fallback": { name: string };
@@ -1415,6 +5183,9 @@ export type MessageParams = {
 	"ui.command_palette.use_palette_sources.start": undefined;
 	"ui.command_palette.use_palette_sources.team_chat": undefined;
 	"ui.command_palette.use_palette_sources.usage_over_time": undefined;
+	"ui.common.account.first_top_up_bonus": { bonus: string; minimum: string };
+	"ui.common.account.free_credits": { amount: string };
+	"ui.common.account.free_credits_unknown": undefined;
 	"ui.common.account.low_credits_dialog.could_not_load_bonus_credit_information": undefined;
 	"ui.common.account.low_credits_dialog.detail": { detail: string };
 	"ui.common.account.low_credits_dialog.get_more_credits": undefined;
@@ -1428,17 +5199,114 @@ export type MessageParams = {
 	"ui.common.account.low_credits_dialog.running_low_on_radient_credits": undefined;
 	"ui.common.account.low_credits_dialog.unlock_the_full_power_of_local_operator_with": undefined;
 	"ui.common.account.low_credits_dialog.you_can_also_reach_the_radient_console_from_settings_at_any_time": undefined;
+	"ui.common.account.open_verification": undefined;
+	"ui.common.account.out_unknown_top_up": undefined;
+	"ui.common.account.out_unknown_verify": undefined;
+	"ui.common.account.out_unverified_claim": { amount: string };
+	"ui.common.account.out_unverified_expired": undefined;
+	"ui.common.account.out_unverified_inbox": undefined;
+	"ui.common.account.out_unverified_none": undefined;
+	"ui.common.account.out_verified": undefined;
 	"ui.common.account.radient_auth_buttons.connect_your_radient_account_to_use_radient_services": undefined;
 	"ui.common.account.radient_auth_buttons.loading_sign_in_options": undefined;
 	"ui.common.account.radient_auth_buttons.radient_is_not_available_from_this_backend_s_provider_registry": undefined;
 	"ui.common.account.radient_auth_buttons.sign_in_to_radient": undefined;
 	"ui.common.account.radient_auth_buttons.signing_in_needs_a_newer_local_operator_backend_update_the_backen": undefined;
+	"ui.common.account.request_new_link": undefined;
+	"ui.common.account.sign_in_page_failed": undefined;
+	"ui.common.account.sign_in_start_failed": undefined;
+	"ui.common.account.sign_out_failed": { error: string };
+	"ui.common.account.signed_out": undefined;
+	"ui.common.account.top_up": undefined;
+	"ui.common.account.verify_expired": { amount: string };
+	"ui.common.account.verify_none": undefined;
+	"ui.common.account.verify_pending": { amount: string };
+	"ui.common.actions.agent_created": undefined;
+	"ui.common.actions.agent_deleted": undefined;
+	"ui.common.actions.agent_exported": undefined;
+	"ui.common.actions.agent_imported": undefined;
+	"ui.common.actions.agent_system_prompt_updated": undefined;
+	"ui.common.actions.agent_updated": undefined;
 	"ui.common.actions.cancel": undefined;
+	"ui.common.actions.clear": undefined;
 	"ui.common.actions.close": undefined;
+	"ui.common.actions.configuration_updated": undefined;
+	"ui.common.actions.confirmation_modal.cancel": undefined;
+	"ui.common.actions.confirmation_modal.confirm": undefined;
+	"ui.common.actions.conversation_cleared": undefined;
 	"ui.common.actions.copied": undefined;
 	"ui.common.actions.copy_failed": undefined;
+	"ui.common.actions.credential_updated": { key: string };
+	"ui.common.actions.date_time_picker.choose_date": { label: string };
+	"ui.common.actions.date_time_picker.choose_time": { label: string };
+	"ui.common.actions.date_time_picker.select_date": undefined;
+	"ui.common.actions.date_time_picker.select_time": undefined;
+	"ui.common.actions.date_time_picker.set_to_current_time": undefined;
+	"ui.common.actions.date_time_picker.set_to_current_time369877": {
+		label: string;
+	};
+	"ui.common.actions.dismiss": undefined;
+	"ui.common.actions.file_actions_menu.failed_to_copy_file_path": undefined;
+	"ui.common.actions.file_actions_menu.file_actions": undefined;
+	"ui.common.actions.file_actions_menu.file_path_copied_to_clipboard": undefined;
+	"ui.common.actions.find_replace_widget.all": undefined;
+	"ui.common.actions.find_replace_widget.close": undefined;
+	"ui.common.actions.find_replace_widget.find": undefined;
+	"ui.common.actions.find_replace_widget.next_match": undefined;
+	"ui.common.actions.find_replace_widget.no_results": undefined;
+	"ui.common.actions.find_replace_widget.of": {
+		currentmatch: number;
+		matchcount: number;
+	};
+	"ui.common.actions.find_replace_widget.previous_match": undefined;
+	"ui.common.actions.find_replace_widget.replace": undefined;
+	"ui.common.actions.find_replace_widget.replace_all": undefined;
+	"ui.common.actions.find_replace_widget.replace_all_cmd_ctrl_enter": undefined;
+	"ui.common.actions.find_replace_widget.replace_enter": undefined;
+	"ui.common.actions.find_replace_widget.switch_to_find": undefined;
+	"ui.common.actions.find_replace_widget.switch_to_replace": undefined;
+	"ui.common.actions.more_info": undefined;
 	"ui.common.actions.retry": undefined;
 	"ui.common.actions.retry_again": undefined;
+	"ui.common.actions.retrying": undefined;
+	"ui.common.actions.system_prompt_updated": undefined;
+	"ui.common.actions.text_selection_controls.ask_for_an_edit": undefined;
+	"ui.common.actions.text_selection_controls.copy": undefined;
+	"ui.common.actions.text_selection_controls.copy_without_formatting": undefined;
+	"ui.common.actions.text_selection_controls.open_in_browser": undefined;
+	"ui.common.actions.text_selection_controls.refer_to_this_from_file": undefined;
+	"ui.common.actions.text_selection_controls.reply": undefined;
+	"ui.common.actions.variable_created": undefined;
+	"ui.common.actions.variable_deleted": undefined;
+	"ui.common.actions.variable_updated": undefined;
+	"ui.common.connection.backend.card_credential_refused": undefined;
+	"ui.common.connection.backend.card_governed": undefined;
+	"ui.common.connection.backend.card_pre_handshake": undefined;
+	"ui.common.connection.backend.card_successor": undefined;
+	"ui.common.connection.backend.card_unpaired": undefined;
+	"ui.common.connection.backend.compatibility_deadline": { diagnosis: string };
+	"ui.common.connection.backend.compatibility_missing": { features: string };
+	"ui.common.connection.backend.compatibility_outdated": { remedy: string };
+	"ui.common.connection.backend.compatibility_unauthorized": undefined;
+	"ui.common.connection.backend.compatibility_unknown": undefined;
+	"ui.common.connection.backend.compatibility_unreachable": {
+		diagnosis: string;
+	};
+	"ui.common.connection.backend.diagnosis_deadline": undefined;
+	"ui.common.connection.backend.diagnosis_outdated": undefined;
+	"ui.common.connection.backend.diagnosis_unauthorized": undefined;
+	"ui.common.connection.backend.diagnosis_unreachable": undefined;
+	"ui.common.connection.backend.pairing_credential_refused": undefined;
+	"ui.common.connection.backend.pairing_governed": undefined;
+	"ui.common.connection.backend.pairing_pre_handshake": undefined;
+	"ui.common.connection.backend.pairing_successor": undefined;
+	"ui.common.connection.backend.pairing_unpaired": undefined;
+	"ui.common.connection.backend.pane_credential_refused": undefined;
+	"ui.common.connection.backend.pane_governed": undefined;
+	"ui.common.connection.backend.pane_pre_handshake": undefined;
+	"ui.common.connection.backend.pane_successor": undefined;
+	"ui.common.connection.backend.pane_unpaired": undefined;
+	"ui.common.connection.backend.remedy_outdated": undefined;
 	"ui.common.connection.backend_compatibility_banner.the_backend_update_could_not_start_retry_or_update_from_settings_": undefined;
 	"ui.common.connection.backend_compatibility_banner.update_backend": undefined;
 	"ui.common.connection.backend_compatibility_banner.updating": undefined;
@@ -1451,18 +5319,193 @@ export type MessageParams = {
 	};
 	"ui.common.connection.floating_alert.dismiss": undefined;
 	"ui.common.connection.provider.requires": { provider: string };
+	"ui.common.connection.session_loss.frame_too_large": undefined;
+	"ui.common.connection.session_loss.history_unreadable": undefined;
+	"ui.common.connection.session_loss.lost": undefined;
+	"ui.common.connection.session_loss.not_paired": undefined;
+	"ui.common.connection.session_loss.server_down": undefined;
+	"ui.common.connection.transport_failure": undefined;
 	"ui.common.editing.conflict": undefined;
 	"ui.common.editing.keep_mine": undefined;
 	"ui.common.editing.use_theirs": undefined;
+	"ui.common.errors.agent_clear": { status: number; statusText: string };
+	"ui.common.errors.agent_create": { status: number; statusText: string };
+	"ui.common.errors.agent_create_simple": undefined;
+	"ui.common.errors.agent_create_unknown": undefined;
+	"ui.common.errors.agent_delete": { agentId: string };
+	"ui.common.errors.agent_delete_request": {
+		status: number;
+		statusText: string;
+	};
+	"ui.common.errors.agent_delete_unknown": { agentId: string };
+	"ui.common.errors.agent_export_unknown": { agentId: string };
+	"ui.common.errors.agent_fetch": { agentId: string };
+	"ui.common.errors.agent_fetch_unknown": { agentId: string };
+	"ui.common.errors.agent_get": { status: number; statusText: string };
+	"ui.common.errors.agent_history": { status: number; statusText: string };
+	"ui.common.errors.agent_import": undefined;
+	"ui.common.errors.agent_import_unknown": undefined;
+	"ui.common.errors.agent_prompt_fetch": undefined;
+	"ui.common.errors.agent_prompt_fetch_unknown": undefined;
+	"ui.common.errors.agent_prompt_get": { status: number; statusText: string };
+	"ui.common.errors.agent_prompt_update": {
+		status: number;
+		statusText: string;
+	};
+	"ui.common.errors.agent_prompt_update_simple": undefined;
+	"ui.common.errors.agent_prompt_update_unknown": undefined;
+	"ui.common.errors.agent_publish": undefined;
+	"ui.common.errors.agent_update": { agentId: string };
+	"ui.common.errors.agent_update_request": {
+		status: number;
+		statusText: string;
+	};
+	"ui.common.errors.agent_update_unknown": { agentId: string };
+	"ui.common.errors.agent_upload": { prose: string };
+	"ui.common.errors.agent_upload_request": {
+		status: number;
+		statusText: string;
+	};
+	"ui.common.errors.agents_fetch": undefined;
+	"ui.common.errors.agents_fetch_unknown": undefined;
+	"ui.common.errors.agents_list": { status: number; statusText: string };
+	"ui.common.errors.audio_playback": undefined;
+	"ui.common.errors.chat_agent": { status: number; statusText: string };
+	"ui.common.errors.chat_agent_async": { status: number; statusText: string };
+	"ui.common.errors.chat_async": { status: number; statusText: string };
+	"ui.common.errors.chat_edit_file": { status: number; statusText: string };
+	"ui.common.errors.chat_request": { status: number; statusText: string };
+	"ui.common.errors.chat_start": undefined;
+	"ui.common.errors.chat_start_simple": undefined;
+	"ui.common.errors.chats_load_group": undefined;
+	"ui.common.errors.chats_load_more": undefined;
+	"ui.common.errors.chats_refresh": undefined;
+	"ui.common.errors.configuration_fetch": undefined;
+	"ui.common.errors.configuration_update": undefined;
+	"ui.common.errors.configuration_update_unknown": undefined;
+	"ui.common.errors.conversation_clear": { error: string };
+	"ui.common.errors.conversation_delete": undefined;
+	"ui.common.errors.conversation_messages_fetch": undefined;
+	"ui.common.errors.conversation_messages_fetch_unknown": undefined;
+	"ui.common.errors.credential_update": undefined;
+	"ui.common.errors.credential_update_request": {
+		status: number;
+		statusText: string;
+	};
+	"ui.common.errors.credential_update_unknown": undefined;
+	"ui.common.errors.credentials_fetch": undefined;
+	"ui.common.errors.credentials_list": { status: number; statusText: string };
+	"ui.common.errors.credit_balance_invalid": undefined;
+	"ui.common.errors.desktop_backend_compatibility": undefined;
+	"ui.common.errors.desktop_backend_offline": undefined;
+	"ui.common.errors.desktop_refusal.no_credential": undefined;
+	"ui.common.errors.desktop_refusal.plane_closed": undefined;
+	"ui.common.errors.desktop_refusal.refused": undefined;
+	"ui.common.errors.desktop_refusal.transport_failed": undefined;
+	"ui.common.errors.desktop_refusal_placeholder": undefined;
+	"ui.common.errors.dictation_account_credits": undefined;
+	"ui.common.errors.dictation_credits_destination": { destination: string };
+	"ui.common.errors.dictation_empty": undefined;
+	"ui.common.errors.dictation_no_reason": undefined;
+	"ui.common.errors.dictation_provider_credits_destination": {
+		provider: string;
+		destination: string;
+	};
+	"ui.common.errors.dictation_radient_credits": undefined;
+	"ui.common.errors.dictation_sign_in_refused": undefined;
+	"ui.common.errors.dictation_unknown": { reason: string };
+	"ui.common.errors.dictation_unknown_clipped": { reason: string };
 	"ui.common.errors.error_boundary.error_details": undefined;
 	"ui.common.errors.error_boundary.something_went_wrong": undefined;
 	"ui.common.errors.error_boundary.stack_trace": undefined;
 	"ui.common.errors.error_boundary.the_application_encountered_an_error_try_again_or_contact_support": undefined;
+	"ui.common.errors.event_stream_closed": undefined;
+	"ui.common.errors.event_stream_failed": undefined;
+	"ui.common.errors.execution_history_fetch": undefined;
+	"ui.common.errors.external_open": undefined;
+	"ui.common.errors.external_open_private": undefined;
+	"ui.common.errors.file_missing": undefined;
+	"ui.common.errors.file_not_file": undefined;
+	"ui.common.errors.file_preview_cap": {
+		filePath: string;
+		size: number;
+		cap: number;
+	};
+	"ui.common.errors.file_preview_no_bridge": undefined;
+	"ui.common.errors.file_too_large": undefined;
+	"ui.common.errors.file_unreadable": undefined;
+	"ui.common.errors.job_cancel": { status: number; statusText: string };
+	"ui.common.errors.job_processing": undefined;
+	"ui.common.errors.jobs_cleanup": { status: number; statusText: string };
+	"ui.common.errors.jobs_list": { status: number; statusText: string };
+	"ui.common.errors.leading_slash_message": undefined;
+	"ui.common.errors.media_request": undefined;
+	"ui.common.errors.media_unexpected_response": undefined;
+	"ui.common.errors.models_list": { statusText: string };
+	"ui.common.errors.no_details": undefined;
+	"ui.common.errors.providers_list": { statusText: string };
+	"ui.common.errors.public_hub_body": undefined;
+	"ui.common.errors.public_hub_json": undefined;
+	"ui.common.errors.public_hub_status": { status: number };
+	"ui.common.errors.public_hub_unreachable": undefined;
+	"ui.common.errors.publish_unsupported": undefined;
+	"ui.common.errors.request_http": { status: number };
+	"ui.common.errors.schedule_create": { status: number; statusText: string };
+	"ui.common.errors.schedule_edit": { status: number; statusText: string };
+	"ui.common.errors.schedule_get": { status: number; statusText: string };
+	"ui.common.errors.schedule_remove": { status: number; statusText: string };
+	"ui.common.errors.schedules_list_agent": {
+		status: number;
+		statusText: string;
+	};
+	"ui.common.errors.schedules_list_all": { status: number; statusText: string };
+	"ui.common.errors.server_offline": undefined;
+	"ui.common.errors.session_id_required": undefined;
+	"ui.common.errors.session_unvalidated": undefined;
+	"ui.common.errors.sign_in_invalid_address": undefined;
+	"ui.common.errors.sign_in_not_waiting": undefined;
+	"ui.common.errors.speech_elevenlabs_credits": undefined;
+	"ui.common.errors.speech_elevenlabs_key": undefined;
+	"ui.common.errors.speech_failure": undefined;
+	"ui.common.errors.speech_generation": undefined;
+	"ui.common.errors.speech_no_audio": undefined;
+	"ui.common.errors.speech_openai_credits": undefined;
+	"ui.common.errors.speech_openai_key": undefined;
+	"ui.common.errors.speech_radient_credits": undefined;
+	"ui.common.errors.speech_radient_sign_in": undefined;
+	"ui.common.errors.speech_radient_sign_in_legacy": undefined;
+	"ui.common.errors.speech_sign_in_enable": undefined;
+	"ui.common.errors.speech_sign_in_enable_legacy": undefined;
+	"ui.common.errors.speech_temporarily_unavailable": undefined;
+	"ui.common.errors.speech_unavailable": undefined;
+	"ui.common.errors.speech_unavailable_short": undefined;
+	"ui.common.errors.speech_unknown_agent": undefined;
+	"ui.common.errors.system_prompt_fetch": undefined;
+	"ui.common.errors.system_prompt_fetch_unknown": undefined;
+	"ui.common.errors.system_prompt_update": undefined;
+	"ui.common.errors.system_prompt_update_unknown": undefined;
+	"ui.common.errors.teams_unsupported": undefined;
+	"ui.common.errors.tenant_missing": undefined;
+	"ui.common.errors.unknown": undefined;
+	"ui.common.errors.usage_rollup_invalid": undefined;
+	"ui.common.errors.variable_create": undefined;
+	"ui.common.errors.variable_delete": undefined;
+	"ui.common.errors.variable_update": undefined;
+	"ui.common.errors.wake_needs_conversation": undefined;
+	"ui.common.file_actions.copy_file_path": undefined;
+	"ui.common.file_actions.open_file": undefined;
+	"ui.common.file_actions.open_folder": undefined;
+	"ui.common.file_actions.preview": undefined;
+	"ui.common.file_actions.show_in_canvas": undefined;
 	"ui.common.forms.autocomplete_field.cancel_editing": { label: string };
 	"ui.common.forms.autocomplete_field.enter_value": undefined;
 	"ui.common.forms.autocomplete_field.save": { label: string };
 	"ui.common.forms.autocomplete_field.save_changes": undefined;
 	"ui.common.forms.autocomplete_field.saving": { label: string };
+	"ui.common.forms.categories_input_chips.add_category": undefined;
+	"ui.common.forms.categories_input_chips.category": { category: string };
+	"ui.common.forms.categories_input_chips.no_categories_selected": undefined;
+	"ui.common.forms.categories_input_chips.remove_category": { value: string };
 	"ui.common.forms.compact_pagination.next_page": undefined;
 	"ui.common.forms.compact_pagination.previous_page": undefined;
 	"ui.common.forms.editable_field.cancel_escape": undefined;
@@ -1488,6 +5531,23 @@ export type MessageParams = {
 	"ui.common.forms.searchable_select.no_matches": undefined;
 	"ui.common.forms.searchable_select.use": { text: string };
 	"ui.common.forms.select.unlisted_value": undefined;
+	"ui.common.forms.slider_setting.saving": { label: string };
+	"ui.common.forms.tags_input_chips.add_tag": undefined;
+	"ui.common.forms.tags_input_chips.add_tage0db29": undefined;
+	"ui.common.forms.tags_input_chips.no_tags_added": undefined;
+	"ui.common.forms.tags_input_chips.remove_tag": { tag: string };
+	"ui.common.forms.toggle_setting.saving": { label: string };
+	"ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width": undefined;
+	"ui.common.layout.chat_layout.resize_the_sidebar": {
+		sidebartogglecap: string;
+	};
+	"ui.common.layout.sidebar_header.create_a_new_agent": undefined;
+	"ui.common.layout.sidebar_header.import_agent": undefined;
+	"ui.common.layout.sidebar_header.import_an_agent_from_a_zip_file": undefined;
+	"ui.common.layout.sidebar_header.new_agent": undefined;
+	"ui.common.layout.sidebar_header.search_agents": undefined;
+	"ui.common.layout.toasts.dismiss": undefined;
+	"ui.common.layout.toasts.notifications": undefined;
 	"ui.common.loading.page": undefined;
 	"ui.common.models.default": undefined;
 	"ui.common.models.hosting_select.clear_hosting_provider_selection": undefined;
@@ -1513,6 +5573,26 @@ export type MessageParams = {
 	"ui.common.models.model_select.select_a_hosting_provider_first": undefined;
 	"ui.common.models.model_select.select_a_model": undefined;
 	"ui.common.models.model_select.select_the_ai_model_that_you_want_to_use_each_model_has_different": undefined;
+	"ui.common.speech.control.checking": undefined;
+	"ui.common.speech.control.recording_offline": undefined;
+	"ui.common.speech.control.recording_sign_in": undefined;
+	"ui.common.speech.control.recording_unknown": undefined;
+	"ui.common.speech.control.speaking_offline": undefined;
+	"ui.common.speech.control.speaking_sign_in": undefined;
+	"ui.common.speech.control.speaking_unknown": undefined;
+	"ui.common.speech.settings.checking": undefined;
+	"ui.common.speech.settings.offline": undefined;
+	"ui.common.speech.settings.sign_in": undefined;
+	"ui.common.speech.settings.unknown": undefined;
+	"ui.common.speech.speak_control.loading_speech_press_again_to_cancel": undefined;
+	"ui.common.speech.speak_control.reading_the_first_characters_the_rest_is_not_read_aloud": {
+		tolocalestring: string;
+	};
+	"ui.common.speech.speak_control.replay_speech": undefined;
+	"ui.common.speech.speak_control.speak_aloud": undefined;
+	"ui.common.speech.speak_control.stop": undefined;
+	"ui.common.time.yesterday_at": { time: string };
+	"ui.common.updates.check_for_updates_button.at_an_unknown_time": undefined;
 	"ui.common.updates.check_for_updates_button.check_for_updates": undefined;
 	"ui.common.updates.check_for_updates_button.checking": undefined;
 	"ui.common.updates.check_for_updates_button.detail": {
@@ -1528,11 +5608,33 @@ export type MessageParams = {
 	"ui.common.updates.check_for_updates_button.updates_are_not_checked_in_development_mode_this_feature_is_only_": undefined;
 	"ui.common.updates.check_for_updates_button.version": { liveversion: string };
 	"ui.common.updates.completion.sessions": { count: number; countText: string };
+	"ui.common.updates.error.check_incomplete": undefined;
+	"ui.common.updates.error.download": undefined;
+	"ui.common.updates.error.install": undefined;
+	"ui.common.updates.error.quit": undefined;
+	"ui.common.updates.error.server_unreachable": undefined;
+	"ui.common.updates.error.version_unknown_required": undefined;
+	"ui.common.updates.install.preparing": undefined;
+	"ui.common.updates.install.staging": undefined;
+	"ui.common.updates.install.starting": undefined;
+	"ui.common.updates.install.succeeded": { version: string };
+	"ui.common.updates.install.verifying": undefined;
 	"ui.common.updates.restart.outage_bound": undefined;
 	"ui.common.updates.server.on_version": { version: string };
 	"ui.common.updates.update_error_alert.checking": undefined;
 	"ui.common.updates.update_foot_icon.available": undefined;
+	"ui.common.updates.update_foot_icon.available_show_the_update_notice": {
+		joined: string;
+	};
+	"ui.common.updates.update_foot_icon.in_progress": {
+		subject: string;
+		percent: string;
+	};
 	"ui.common.updates.update_foot_icon.show_the_update_notice": undefined;
+	"ui.common.updates.update_foot_icon.subject_join": {
+		left: string;
+		right: string;
+	};
 	"ui.common.updates.update_notification.a_newer_build": undefined;
 	"ui.common.updates.update_notification.a_newer_version": undefined;
 	"ui.common.updates.update_notification.an_older_build": undefined;
@@ -1564,6 +5666,42 @@ export type MessageParams = {
 	"ui.common.updates.update_notification.error_starting_the_update": {
 		detail: string;
 	};
+	"ui.common.updates.update_notification.failure_cause_disk": undefined;
+	"ui.common.updates.update_notification.failure_cause_lock": undefined;
+	"ui.common.updates.update_notification.failure_cause_network": undefined;
+	"ui.common.updates.update_notification.failure_cause_ownership": undefined;
+	"ui.common.updates.update_notification.failure_cause_publication": {
+		target: string;
+	};
+	"ui.common.updates.update_notification.failure_cause_publication_no_version": undefined;
+	"ui.common.updates.update_notification.failure_cause_refused": undefined;
+	"ui.common.updates.update_notification.failure_cause_serve": {
+		version: string;
+	};
+	"ui.common.updates.update_notification.failure_cause_serve_no_version": undefined;
+	"ui.common.updates.update_notification.failure_cause_unknown": undefined;
+	"ui.common.updates.update_notification.failure_consequence_group_survived": undefined;
+	"ui.common.updates.update_notification.failure_consequence_nothing_restarted": undefined;
+	"ui.common.updates.update_notification.failure_heading_serve": undefined;
+	"ui.common.updates.update_notification.failure_remedy_disk": undefined;
+	"ui.common.updates.update_notification.failure_remedy_lock": undefined;
+	"ui.common.updates.update_notification.failure_remedy_network": undefined;
+	"ui.common.updates.update_notification.failure_remedy_ownership": undefined;
+	"ui.common.updates.update_notification.failure_remedy_publication": undefined;
+	"ui.common.updates.update_notification.failure_remedy_refused": undefined;
+	"ui.common.updates.update_notification.failure_remedy_refused_checkout": undefined;
+	"ui.common.updates.update_notification.failure_remedy_serve_external": undefined;
+	"ui.common.updates.update_notification.failure_remedy_serve_restartable": undefined;
+	"ui.common.updates.update_notification.failure_remedy_unknown": undefined;
+	"ui.common.updates.update_notification.failure_step_check": undefined;
+	"ui.common.updates.update_notification.failure_step_download": undefined;
+	"ui.common.updates.update_notification.failure_step_environment": undefined;
+	"ui.common.updates.update_notification.failure_step_install": undefined;
+	"ui.common.updates.update_notification.failure_step_lock": undefined;
+	"ui.common.updates.update_notification.failure_step_promote": undefined;
+	"ui.common.updates.update_notification.failure_step_publish": undefined;
+	"ui.common.updates.update_notification.failure_step_report": undefined;
+	"ui.common.updates.update_notification.failure_step_services": undefined;
 	"ui.common.updates.update_notification.has_been_downloaded_you_are_currently_using_version": undefined;
 	"ui.common.updates.update_notification.has_failed_to_install": undefined;
 	"ui.common.updates.update_notification.install_now": undefined;
@@ -1579,6 +5717,7 @@ export type MessageParams = {
 	"ui.common.updates.update_notification.please_wait_while_the_server_is_being_updated_the_update_can_t_be": undefined;
 	"ui.common.updates.update_notification.please_wait_while_we_check_for_available_updates": undefined;
 	"ui.common.updates.update_notification.quit_and_let_the_update_finish": undefined;
+	"ui.common.updates.update_notification.rebuilding_the_server_from_this_machine_s_checkout_the_app_waited_for_th": undefined;
 	"ui.common.updates.update_notification.release_notes": undefined;
 	"ui.common.updates.update_notification.release_notes_caption": undefined;
 	"ui.common.updates.update_notification.restart_local_operator_and_the_server_comes_back_on_the_new_build": undefined;
@@ -1628,6 +5767,7 @@ export type MessageParams = {
 		detail2: string;
 	};
 	"ui.common.updates.update_notification.the_last_update_didn_t_finish": undefined;
+	"ui.common.updates.update_notification.the_new_build": undefined;
 	"ui.common.updates.update_notification.the_new_build_has_landed_nothing_in_flight_was_cut_off_the_turns_": undefined;
 	"ui.common.updates.update_notification.the_new_version": undefined;
 	"ui.common.updates.update_notification.the_server_did_not_come_back_after_the_restart": undefined;
@@ -1691,7 +5831,13 @@ export type MessageParams = {
 		runningversion: string;
 	};
 	"ui.common.updates.update_quiet_indicator.application_update": undefined;
+	"ui.common.updates.update_quiet_indicator.available": {
+		quietoffersubject: string;
+	};
 	"ui.common.updates.update_quiet_indicator.dismiss_update_notice": undefined;
+	"ui.common.updates.update_quiet_indicator.open_release_details": {
+		quietoffertext: string;
+	};
 	"ui.common.updates.update_quiet_indicator.server_update": undefined;
 	"ui.common.updates.wait.minutes": { minutes: number };
 	"ui.common.updates.wait.minutes_seconds": {
@@ -1699,6 +5845,20 @@ export type MessageParams = {
 		seconds: number;
 	};
 	"ui.common.updates.wait.seconds": { seconds: number };
+	"ui.common.viewer.close": { kind: string };
+	"ui.common.viewer.image_lightbox.asset_of": { index: number; count: number };
+	"ui.common.viewer.image_lightbox.close": { medialabel: string };
+	"ui.common.viewer.image_lightbox.next": { medialabel: string };
+	"ui.common.viewer.image_lightbox.previous": { medialabel: string };
+	"ui.common.viewer.image_progress": { index: number; count: number };
+	"ui.common.viewer.next": { kind: string };
+	"ui.common.viewer.opening": undefined;
+	"ui.common.viewer.position": { kind: string; index: number; count: number };
+	"ui.common.viewer.previous": { kind: string };
+	"ui.common.viewer.reset_view": undefined;
+	"ui.common.viewer.zoom_in": undefined;
+	"ui.common.viewer.zoom_out": undefined;
+	"ui.console.errors.console_unavailable": undefined;
 	"ui.console.capacity.archived": { archived: number };
 	"ui.console.capacity.full": undefined;
 	"ui.console.capacity.help": undefined;
@@ -1735,9 +5895,14 @@ export type MessageParams = {
 	"ui.console.dismiss_history": undefined;
 	"ui.console.empty.detail": undefined;
 	"ui.console.empty.title": undefined;
+	"ui.console.ended.app_quit": undefined;
 	"ui.console.ended.exit_code": { code: string };
+	"ui.console.ended.exit_signal": { signal: string };
 	"ui.console.ended.exit_unknown": undefined;
+	"ui.console.ended.input_blocked": undefined;
 	"ui.console.ended.live": undefined;
+	"ui.console.ended.marker": undefined;
+	"ui.console.ended.marker_detail": undefined;
 	"ui.console.ended.restored": undefined;
 	"ui.console.loading.create": undefined;
 	"ui.console.loading.read": undefined;
@@ -1763,6 +5928,7 @@ export type MessageParams = {
 	};
 	"ui.console.tab.close_label": { title: string; index: number; total: number };
 	"ui.console.tab.ended": undefined;
+	"ui.console.tab.exit_code": { code: string };
 	"ui.console.terminal.prompt_label": undefined;
 	"ui.console.terminal.too_much_output": undefined;
 	"ui.console.unavailable.disabled.detail": undefined;
@@ -1770,6 +5936,12 @@ export type MessageParams = {
 	"ui.console.unavailable.pty.detail": undefined;
 	"ui.console.unavailable.title": undefined;
 	"ui.console.unavailable.unknown.detail": undefined;
+	"ui.hub.card.download_named": { name: string };
+	"ui.hub.card.downloads_tooltip": undefined;
+	"ui.hub.card.get": undefined;
+	"ui.hub.card.unknown_author": undefined;
+	"ui.hub.card.updated": { ago: string };
+	"ui.hub.card.view_details": { name: string };
 	"ui.hub.comments.age.days": { count: number };
 	"ui.hub.comments.age.fallback": { duration: string };
 	"ui.hub.comments.age.hours": { count: number };
@@ -1799,6 +5971,32 @@ export type MessageParams = {
 	"ui.hub.comments.mutation.unauthorized": undefined;
 	"ui.hub.comments.mutation.update_failed": { reason: string };
 	"ui.hub.comments.mutation.updated": undefined;
+	"ui.hub.detail.back_aria": undefined;
+	"ui.hub.detail.created": { ago: string; date: string };
+	"ui.hub.detail.created_by": { author: string };
+	"ui.hub.detail.created_by_with_email": { author: string; email: string };
+	"ui.hub.detail.delist_aria": undefined;
+	"ui.hub.detail.delist_body": { name: string };
+	"ui.hub.detail.delist_confirm": undefined;
+	"ui.hub.detail.delist_title": undefined;
+	"ui.hub.detail.delist_tooltip": undefined;
+	"ui.hub.detail.delisting": undefined;
+	"ui.hub.detail.download_aria": undefined;
+	"ui.hub.detail.download_tooltip": undefined;
+	"ui.hub.detail.failure.delist": undefined;
+	"ui.hub.detail.failure.download": undefined;
+	"ui.hub.detail.failure.favourite": undefined;
+	"ui.hub.detail.failure.like": undefined;
+	"ui.hub.detail.last_modified": { ago: string; date: string };
+	"ui.hub.detail.load_failed_body": undefined;
+	"ui.hub.detail.load_failed_title": undefined;
+	"ui.hub.detail.loading": undefined;
+	"ui.hub.detail.no_description": undefined;
+	"ui.hub.detail.not_found": undefined;
+	"ui.hub.detail.sign_in_tooltip": undefined;
+	"ui.hub.detail.trying": undefined;
+	"ui.hub.detail.unknown_author": undefined;
+	"ui.hub.detail.viewer_unknown": undefined;
 	"ui.hub.conflict.body": undefined;
 	"ui.hub.conflict.reload": undefined;
 	"ui.hub.conflict.title": undefined;
@@ -1829,6 +6027,7 @@ export type MessageParams = {
 		subscribe: string;
 		autoPush: string;
 	};
+	"ui.hub.links.hub_id": { address: string };
 	"ui.hub.links.last_success": { time: string };
 	"ui.hub.links.links_count": { count: number };
 	"ui.hub.links.load_failed": undefined;
@@ -1874,21 +6073,36 @@ export type MessageParams = {
 	"ui.hub.links.title": undefined;
 	"ui.hub.links.unknown_baseline": undefined;
 	"ui.hub.links.unresolved_mark": { item: string };
+	"ui.hub.links.unresolved_next": undefined;
+	"ui.hub.links.unresolved_what": { item: string };
+	"ui.hub.links.unresolved_why": { item: string };
 	"ui.hub.links.updated": { item: string; source: string };
 	"ui.hub.skills.catalogue_failed": { source: string };
+	"ui.hub.skills.count": { count: number };
+	"ui.hub.skills.count_shared": { count: number; organization: string };
+	"ui.hub.skills.detached": undefined;
+	"ui.hub.skills.download": undefined;
+	"ui.hub.skills.download_help": undefined;
 	"ui.hub.skills.empty": undefined;
 	"ui.hub.skills.file_count": { count: number };
 	"ui.hub.skills.files": undefined;
 	"ui.hub.skills.initial_policy_description": undefined;
 	"ui.hub.skills.installed_alias": { item: string; source: string };
+	"ui.hub.skills.inventory_unknown": undefined;
 	"ui.hub.skills.loading": undefined;
 	"ui.hub.skills.local_exists": undefined;
+	"ui.hub.skills.local_path": { path: string };
+	"ui.hub.skills.manual": undefined;
+	"ui.hub.skills.not_downloaded": undefined;
 	"ui.hub.skills.open_detail": { item: string };
 	"ui.hub.skills.policy_pending": undefined;
+	"ui.hub.skills.public_hub": undefined;
 	"ui.hub.skills.publish_title": undefined;
+	"ui.hub.skills.published_by": { publisher: string };
 	"ui.hub.skills.pull_failed": undefined;
 	"ui.hub.skills.pull_help": undefined;
 	"ui.hub.skills.pull_title": { item: string; source: string };
+	"ui.hub.skills.pulled": undefined;
 	"ui.hub.skills.remote_empty": undefined;
 	"ui.hub.skills.revision": { revision: string };
 	"ui.hub.skills.scope": { source: string };
@@ -1897,9 +6111,22 @@ export type MessageParams = {
 	"ui.hub.skills.search_loaded": undefined;
 	"ui.hub.skills.select_authored": undefined;
 	"ui.hub.skills.session_selection": undefined;
+	"ui.hub.skills.subscribe_failed": undefined;
+	"ui.hub.skills.subscribe_help": undefined;
+	"ui.hub.skills.subscribed_absent": undefined;
 	"ui.hub.skills.text_limits": undefined;
 	"ui.hub.skills.title": undefined;
 	"ui.hub.skills.unavailable": undefined;
+	"ui.hub.skills.unpull": undefined;
+	"ui.hub.skills.unpull_body": undefined;
+	"ui.hub.skills.unpull_failed": undefined;
+	"ui.hub.skills.unpull_title": { item: string };
+	"ui.hub.skills.unsubscribe": undefined;
+	"ui.hub.skills.unsubscribe_help": undefined;
+	"ui.hub.skills.update_applied": undefined;
+	"ui.hub.skills.update_available": undefined;
+	"ui.hub.skills.update_failed": undefined;
+	"ui.hub.skills.update_now": undefined;
 	"ui.hub.status.access_lost": undefined;
 	"ui.hub.status.applying": undefined;
 	"ui.hub.status.attempts": { count: number };
@@ -1966,6 +6193,46 @@ export type MessageParams = {
 	"ui.hub.subscriptions.subscribe_description": { source: string };
 	"ui.hub.subscriptions.subscribe_description_blocked": { source: string };
 	"ui.hub.subscriptions.unsupported": undefined;
+	"ui.hub.pages.browse_aria": undefined;
+	"ui.hub.pages.card.get": undefined;
+	"ui.hub.pages.card.updated": { when: string };
+	"ui.hub.pages.header.subtitle": undefined;
+	"ui.hub.pages.header.title": undefined;
+	"ui.hub.pages.orgs_below_version": undefined;
+	"ui.hub.pages.orgs_unavailable": undefined;
+	"ui.hub.pages.pager.nav_aria": undefined;
+	"ui.hub.pages.pager.next": undefined;
+	"ui.hub.pages.pager.previous": undefined;
+	"ui.hub.pages.publish": undefined;
+	"ui.hub.pages.scope.org_label": undefined;
+	"ui.hub.pages.scope.org_unnamed": undefined;
+	"ui.hub.pages.scope.public": undefined;
+	"ui.hub.pages.scope_label": undefined;
+	"ui.hub.pages.scope_legend": undefined;
+	"ui.hub.pages.search.aria": undefined;
+	"ui.hub.pages.search.placeholder": undefined;
+	"ui.hub.pages.search.scope_aria": undefined;
+	"ui.hub.pages.search_field.description": undefined;
+	"ui.hub.pages.search_field.name": undefined;
+	"ui.hub.pages.sort.aria": undefined;
+	"ui.hub.pages.sort.most_downloaded": undefined;
+	"ui.hub.pages.sort.most_favourited": undefined;
+	"ui.hub.pages.sort.most_liked": undefined;
+	"ui.hub.pages.sort.name_asc": undefined;
+	"ui.hub.pages.sort.newest": undefined;
+	"ui.hub.pages.sort.recently_updated": undefined;
+	"ui.hub.pages.status.agents_scope": { scope: string };
+	"ui.hub.pages.status.count.agents": { count: number; scope: string };
+	"ui.hub.pages.status.count.teams": { count: number; scope: string };
+	"ui.hub.pages.status.loading_agents": undefined;
+	"ui.hub.pages.status.loading_teams": undefined;
+	"ui.hub.pages.status.scope.public": undefined;
+	"ui.hub.pages.status.scope.shared_with": { org: string };
+	"ui.hub.pages.status.teams_scope": { scope: string };
+	"ui.hub.pages.tab.agents": undefined;
+	"ui.hub.pages.tab.teams": undefined;
+	"ui.hub.pages.updating": undefined;
+	"ui.hub.pages.viewer_unknown": undefined;
 	"ui.hub.taxonomy.all": undefined;
 	"ui.hub.taxonomy.category.accounting": undefined;
 	"ui.hub.taxonomy.category.analysis": undefined;
@@ -1987,6 +6254,125 @@ export type MessageParams = {
 	"ui.hub.taxonomy.origin.named": { name: string };
 	"ui.hub.taxonomy.origin.organization": undefined;
 	"ui.hub.taxonomy.origin.unnamed": undefined;
+	"ui.hub.teams.brief.collaboration": undefined;
+	"ui.hub.teams.brief.collaboration_empty": undefined;
+	"ui.hub.teams.brief.project": undefined;
+	"ui.hub.teams.brief.project_empty": undefined;
+	"ui.hub.teams.brief.roster": undefined;
+	"ui.hub.teams.brief.trigger": undefined;
+	"ui.hub.teams.brief.trigger_aria": { name: string };
+	"ui.hub.teams.brief.unreadable": undefined;
+	"ui.hub.teams.detail.created": { date: string };
+	"ui.hub.teams.detail.updated": { date: string };
+	"ui.hub.teams.kind.role": undefined;
+	"ui.hub.teams.kind.specialist": undefined;
+	"ui.hub.teams.manager": undefined;
+	"ui.hub.teams.manager_label": undefined;
+	"ui.hub.teams.member_count": { count: number };
+	"ui.hub.teams.members": undefined;
+	"ui.hub.teams.no_description": undefined;
+	"ui.hub.teams.no_members": undefined;
+	"ui.hub.teams.org.aria": { org: string };
+	"ui.hub.teams.org.empty": { org: string };
+	"ui.hub.teams.org.load_headline": undefined;
+	"ui.hub.teams.org.no_access_body": { org: string };
+	"ui.hub.teams.org.no_access_headline": undefined;
+	"ui.hub.teams.org.plan_body": { org: string };
+	"ui.hub.teams.org.plan_headline": undefined;
+	"ui.hub.teams.org.that_organization": undefined;
+	"ui.hub.teams.org.unreadable": undefined;
+	"ui.hub.teams.public.aria": undefined;
+	"ui.hub.teams.public.catalogue_unreadable": undefined;
+	"ui.hub.teams.public.empty": undefined;
+	"ui.hub.teams.public.intro": undefined;
+	"ui.hub.teams.public.load_failed": undefined;
+	"ui.hub.teams.public.match_line": {
+		visible: string;
+		total: number;
+		query: string;
+	};
+	"ui.hub.teams.public.open_settings": undefined;
+	"ui.hub.teams.public.published_by": undefined;
+	"ui.hub.teams.public.pull_failed": undefined;
+	"ui.hub.teams.public.pull_no_signin": undefined;
+	"ui.hub.teams.public.search_aria": undefined;
+	"ui.hub.teams.public.search_miss": { query: string };
+	"ui.hub.teams.public.search_placeholder": undefined;
+	"ui.hub.teams.public.search_scope": undefined;
+	"ui.hub.teams.public.sign_in_hint": undefined;
+	"ui.hub.teams.public.trying": undefined;
+	"ui.hub.teams.pull": undefined;
+	"ui.hub.teams.pull_failed": { name: string };
+	"ui.hub.teams.pull_target": { name: string };
+	"ui.hub.teams.pulling": undefined;
+	"ui.hub.teams.recency.created": { when: string };
+	"ui.hub.teams.recency.updated": { when: string };
+	"ui.hub.updates.action.details": undefined;
+	"ui.hub.updates.action.retry": undefined;
+	"ui.hub.updates.action.review": undefined;
+	"ui.hub.updates.action.update": undefined;
+	"ui.hub.updates.ago.hours": { count: number };
+	"ui.hub.updates.ago.minutes": { count: number };
+	"ui.hub.updates.ago.now": undefined;
+	"ui.hub.updates.check.checked": undefined;
+	"ui.hub.updates.check.current": undefined;
+	"ui.hub.updates.check.sign_in": undefined;
+	"ui.hub.updates.check.waiting": { count: number };
+	"ui.hub.updates.detail.applied": undefined;
+	"ui.hub.updates.detail.applied_ago": { ago: string };
+	"ui.hub.updates.detail.available": undefined;
+	"ui.hub.updates.detail.available_auto": undefined;
+	"ui.hub.updates.detail.baseline_unknown": undefined;
+	"ui.hub.updates.detail.needs_decision": undefined;
+	"ui.hub.updates.detail.updating": undefined;
+	"ui.hub.updates.error.check": undefined;
+	"ui.hub.updates.error.concurrent_edit": undefined;
+	"ui.hub.updates.error.generic": undefined;
+	"ui.hub.updates.error.hub": undefined;
+	"ui.hub.updates.error.item_missing": undefined;
+	"ui.hub.updates.error.merge_refused": undefined;
+	"ui.hub.updates.error.model_unavailable": undefined;
+	"ui.hub.updates.error.no_credential": undefined;
+	"ui.hub.updates.error.prompt_too_long": undefined;
+	"ui.hub.updates.error.provider": undefined;
+	"ui.hub.updates.error.retry_named": { name: string };
+	"ui.hub.updates.error.update_all": undefined;
+	"ui.hub.updates.error.update_named": { name: string };
+	"ui.hub.updates.kind.agent": undefined;
+	"ui.hub.updates.kind.skill": undefined;
+	"ui.hub.updates.kind.team": undefined;
+	"ui.hub.updates.mark.applied": { name: string };
+	"ui.hub.updates.mark.failure_details": { name: string };
+	"ui.hub.updates.mark.retry": { name: string };
+	"ui.hub.updates.mark.review": { name: string };
+	"ui.hub.updates.mark.update": { name: string };
+	"ui.hub.updates.mark.updating": { name: string };
+	"ui.hub.updates.report.merged_edits": undefined;
+	"ui.hub.updates.report.merged_local": undefined;
+	"ui.hub.updates.report.merged_remote": undefined;
+	"ui.hub.updates.report.review_baseline": undefined;
+	"ui.hub.updates.report.skipped": { reason: string };
+	"ui.hub.updates.report.unchanged": undefined;
+	"ui.hub.updates.report.would_merge": undefined;
+	"ui.hub.updates.rollup.all_current": undefined;
+	"ui.hub.updates.rollup.failed": { count: number };
+	"ui.hub.updates.rollup.nothing": undefined;
+	"ui.hub.updates.rollup.ready": { count: number };
+	"ui.hub.updates.rollup.review": { count: number; who: string };
+	"ui.hub.updates.rollup.skipped": { count: number };
+	"ui.hub.updates.rollup.updated": { count: number };
+	"ui.hub.updates.sign_in": undefined;
+	"ui.hub.updates.slow_note": undefined;
+	"ui.hub.viewer.favourite": undefined;
+	"ui.hub.viewer.favourite_signed_out": undefined;
+	"ui.hub.viewer.favourite_unavailable": undefined;
+	"ui.hub.viewer.favourite_unknown": undefined;
+	"ui.hub.viewer.like": undefined;
+	"ui.hub.viewer.like_signed_out": undefined;
+	"ui.hub.viewer.like_unavailable": undefined;
+	"ui.hub.viewer.like_unknown": undefined;
+	"ui.hub.viewer.unfavourite": undefined;
+	"ui.hub.viewer.unlike": undefined;
 	"ui.installer.expectation": undefined;
 	"ui.installer.installer_panel.cancel_setup": undefined;
 	"ui.installer.installer_panel.getting_started": undefined;
@@ -2003,8 +6389,175 @@ export type MessageParams = {
 	"ui.installer.phase.label.environment": undefined;
 	"ui.installer.phase.label.python": undefined;
 	"ui.installer.phase.label.verify": undefined;
+	"ui.installer.phase.state.active": undefined;
+	"ui.installer.phase.state.failed": undefined;
+	"ui.installer.phase.state.finished": undefined;
+	"ui.installer.phase.state.waiting": undefined;
 	"ui.installer.status.elapsed": { step: string; elapsed: string; eta: string };
 	"ui.installer.status.step": { step: string; total: string };
+	"ui.library.errors.asset_read": undefined;
+	"ui.library.errors.empty_bytes": undefined;
+	"ui.library.errors.preview_load": undefined;
+	"ui.library.card.conversations": { count: number };
+	"ui.library.card.highlighted": undefined;
+	"ui.library.category.all": undefined;
+	"ui.library.category.code": undefined;
+	"ui.library.category.documents": undefined;
+	"ui.library.category.images": undefined;
+	"ui.library.category.other": undefined;
+	"ui.library.category.presentations": undefined;
+	"ui.library.category.sounds": undefined;
+	"ui.library.category.spreadsheets": undefined;
+	"ui.library.category.video": undefined;
+	"ui.library.composer.ask_placeholder": undefined;
+	"ui.library.composer.chat_about": { title: string };
+	"ui.library.composer.continue_placeholder": undefined;
+	"ui.library.composer.could_not_start": undefined;
+	"ui.library.composer.label": undefined;
+	"ui.library.composer.link_failed": { message: string };
+	"ui.library.composer.link_failed_short": undefined;
+	"ui.library.composer.message_sent_link_failed": undefined;
+	"ui.library.composer.not_sent": undefined;
+	"ui.library.composer.open_chat": undefined;
+	"ui.library.composer.retry_link": undefined;
+	"ui.library.composer.send": undefined;
+	"ui.library.composer.unlink": undefined;
+	"ui.library.filter.categories": undefined;
+	"ui.library.filter.clear_conversation": undefined;
+	"ui.library.filter.clear_filters": undefined;
+	"ui.library.filter.one_conversation": undefined;
+	"ui.library.filter.scope": undefined;
+	"ui.library.filter.scope_all": undefined;
+	"ui.library.filter.scope_final": undefined;
+	"ui.library.filter.source": undefined;
+	"ui.library.filter.status": undefined;
+	"ui.library.filter.tag_mode": { mode: string };
+	"ui.library.filter.tags": undefined;
+	"ui.library.grid.load_more": undefined;
+	"ui.library.grid.loading_more": undefined;
+	"ui.library.librarian.control_failed": undefined;
+	"ui.library.librarian.disabled": undefined;
+	"ui.library.librarian.enabled": undefined;
+	"ui.library.librarian.last_organized": { at: string };
+	"ui.library.librarian.never_run": undefined;
+	"ui.library.librarian.open": undefined;
+	"ui.library.librarian.organize_now": undefined;
+	"ui.library.librarian.paused": undefined;
+	"ui.library.librarian.title": undefined;
+	"ui.library.librarian.unorganized": { count: number };
+	"ui.library.menu.ask_about_asset": undefined;
+	"ui.library.menu.asset_actions": undefined;
+	"ui.library.menu.asset_actions_label": { name: string };
+	"ui.library.menu.asset_id_copied": undefined;
+	"ui.library.menu.copy_asset_id": undefined;
+	"ui.library.menu.copy_failed": undefined;
+	"ui.library.menu.copy_path": undefined;
+	"ui.library.menu.download": undefined;
+	"ui.library.menu.edit_metadata": undefined;
+	"ui.library.menu.edit_tags": undefined;
+	"ui.library.menu.favorite": undefined;
+	"ui.library.menu.open_source_conversation": undefined;
+	"ui.library.menu.path_copied": undefined;
+	"ui.library.menu.reveal_in_finder": undefined;
+	"ui.library.menu.save_a_copy": undefined;
+	"ui.library.menu.save_failed": undefined;
+	"ui.library.menu.saved_a_copy": undefined;
+	"ui.library.menu.show_from_conversation": undefined;
+	"ui.library.menu.unfavorite": undefined;
+	"ui.library.origin.created": undefined;
+	"ui.library.origin.generated": undefined;
+	"ui.library.origin.mentioned": undefined;
+	"ui.library.origin.other": undefined;
+	"ui.library.page.back": undefined;
+	"ui.library.page.building": { scanned: string; total: string };
+	"ui.library.page.checking": undefined;
+	"ui.library.page.clear_all": undefined;
+	"ui.library.page.close_filters": undefined;
+	"ui.library.page.empty_detail": undefined;
+	"ui.library.page.empty_title": undefined;
+	"ui.library.page.filters": undefined;
+	"ui.library.page.grid_view": undefined;
+	"ui.library.page.list_view": undefined;
+	"ui.library.page.load_failed": undefined;
+	"ui.library.page.load_more_failed": undefined;
+	"ui.library.page.loaded_count": { loaded: string; total: string };
+	"ui.library.page.more": undefined;
+	"ui.library.page.more_destinations": undefined;
+	"ui.library.page.no_matches": undefined;
+	"ui.library.page.no_matches_detail": undefined;
+	"ui.library.page.preview": undefined;
+	"ui.library.page.resize_preview": undefined;
+	"ui.library.page.results": undefined;
+	"ui.library.page.retry": undefined;
+	"ui.library.page.reverse_order": undefined;
+	"ui.library.page.search": undefined;
+	"ui.library.page.select_asset": undefined;
+	"ui.library.page.sort": undefined;
+	"ui.library.page.title": undefined;
+	"ui.library.page.unavailable": undefined;
+	"ui.library.preview.add_description": undefined;
+	"ui.library.preview.add_tag": undefined;
+	"ui.library.preview.breadcrumb": { name: string };
+	"ui.library.preview.checking_file": undefined;
+	"ui.library.preview.close": undefined;
+	"ui.library.preview.could_not_load": undefined;
+	"ui.library.preview.description": undefined;
+	"ui.library.preview.details": undefined;
+	"ui.library.preview.download": undefined;
+	"ui.library.preview.expand": undefined;
+	"ui.library.preview.fit": undefined;
+	"ui.library.preview.from_conversation": { title: string };
+	"ui.library.preview.go_to_slide": { index: string };
+	"ui.library.preview.loading": undefined;
+	"ui.library.preview.lock": undefined;
+	"ui.library.preview.missing_file": undefined;
+	"ui.library.preview.name": undefined;
+	"ui.library.preview.next_slide": undefined;
+	"ui.library.preview.not_saved": undefined;
+	"ui.library.preview.open": undefined;
+	"ui.library.preview.open_externally": undefined;
+	"ui.library.preview.organized_by": { by: string; at: string };
+	"ui.library.preview.pptx_failed": undefined;
+	"ui.library.preview.pptx_failed_detail": undefined;
+	"ui.library.preview.pptx_loading": { percent: string };
+	"ui.library.preview.pptx_no_text": undefined;
+	"ui.library.preview.pptx_opening": undefined;
+	"ui.library.preview.pptx_preparing": undefined;
+	"ui.library.preview.pptx_text": undefined;
+	"ui.library.preview.previous_slide": undefined;
+	"ui.library.preview.read_only_markdown": undefined;
+	"ui.library.preview.retry": undefined;
+	"ui.library.preview.reveal": undefined;
+	"ui.library.preview.sheet_name": { name: string };
+	"ui.library.preview.sheet_truncated": undefined;
+	"ui.library.preview.sheet_unreadable": undefined;
+	"ui.library.preview.slide_of": { index: string; count: string };
+	"ui.library.preview.tags": undefined;
+	"ui.library.preview.tags_not_saved": undefined;
+	"ui.library.preview.unavailable": undefined;
+	"ui.library.preview.unavailable_detail": undefined;
+	"ui.library.preview.unlock": undefined;
+	"ui.library.preview.unorganized": undefined;
+	"ui.library.preview.unsupported": { kind: string };
+	"ui.library.preview.zoom_in": undefined;
+	"ui.library.preview.zoom_out": undefined;
+	"ui.library.sort.created": undefined;
+	"ui.library.sort.kind": undefined;
+	"ui.library.sort.modified": undefined;
+	"ui.library.sort.name": undefined;
+	"ui.library.sort.organized": undefined;
+	"ui.library.sort.recent": undefined;
+	"ui.library.sort.size": undefined;
+	"ui.library.status.favorites": undefined;
+	"ui.library.status.highlighted": undefined;
+	"ui.library.status.unorganized": undefined;
+	"ui.library.time.days_d_ago": { days: number };
+	"ui.library.time.hours_h_ago": { hours: number };
+	"ui.library.time.just_now": undefined;
+	"ui.library.time.minutes_m_ago": { minutes: number };
+	"ui.library.time.months_mo_ago": { months: number };
+	"ui.library.time.years_y_ago": { years: number };
+	"ui.mesh.errors.move_refused": undefined;
 	"ui.mesh.approval.approved_apply_hint": undefined;
 	"ui.mesh.approval.approved_details_missing": undefined;
 	"ui.mesh.approval.approved_pending_apply": undefined;
@@ -2036,6 +6589,7 @@ export type MessageParams = {
 	"ui.mesh.mesh_actions.removed_the_membership_epoch_is_now": undefined;
 	"ui.mesh.mesh_actions.role_the_device_will_have": undefined;
 	"ui.mesh.mesh_actions.the_copy_here_is_deleted_once_it": undefined;
+	"ui.mesh.mesh_actions.the_copy_there_is_deleted_once_it": undefined;
 	"ui.mesh.mesh_actions.the_device": undefined;
 	"ui.mesh.mesh_actions.the_original_stays_where_it_is": undefined;
 	"ui.mesh.mesh_actions.the_other_device_keeps": undefined;
@@ -2142,8 +6696,6 @@ export type MessageParams = {
 	"ui.mesh.mesh_card.reach": undefined;
 	"ui.mesh.mesh_card.recall_to_this_device": undefined;
 	"ui.mesh.mesh_card.remove_from": undefined;
-	"ui.mesh.mesh_card.revoked": undefined;
-	"ui.mesh.mesh_card.revoked_membership": undefined;
 	"ui.mesh.mesh_card.show_in_list": undefined;
 	"ui.mesh.mesh_card.shown_of": { shown: number; total: number };
 	"ui.mesh.mesh_card.status": undefined;
@@ -2159,6 +6711,16 @@ export type MessageParams = {
 	"ui.mesh.mesh_drop.on_owner": { owner: string };
 	"ui.mesh.mesh_drop.on_this_device": undefined;
 	"ui.mesh.mesh_drop.owner_no_answer": { device: string; reason: string };
+	"ui.mesh.mesh_drop.owner_reach_refusal": {
+		device: string;
+		reach: string;
+		reason: string;
+	};
+	"ui.mesh.mesh_drop.reach_refusal": {
+		device: string;
+		reach: string;
+		reason: string;
+	};
 	"ui.mesh.mesh_drop.recall_first": { owner: string };
 	"ui.mesh.mesh_drop.recall_it": undefined;
 	"ui.mesh.mesh_drop.running_now": { conversation: string; where: string };
@@ -2167,17 +6729,22 @@ export type MessageParams = {
 	"ui.mesh.mesh_drop.this_conversation": undefined;
 	"ui.mesh.mesh_drop.this_device": undefined;
 	"ui.mesh.mesh_drop.turn_in_flight": { conversation: string };
+	"ui.mesh.mesh_graph.address_unreachable_count": { count: number };
 	"ui.mesh.mesh_graph.conversation_unit": { count: number };
 	"ui.mesh.mesh_graph.conversations_not_reported": undefined;
 	"ui.mesh.mesh_graph.device_count": { count: number };
+	"ui.mesh.mesh_graph.handshake_refused_count": { count: number };
 	"ui.mesh.mesh_graph.identity_suspect": undefined;
 	"ui.mesh.mesh_graph.just_now": undefined;
 	"ui.mesh.mesh_graph.last_status_frame": { age: string };
 	"ui.mesh.mesh_graph.network_count": { count: number };
 	"ui.mesh.mesh_graph.no_answer_count": { count: number };
+	"ui.mesh.mesh_graph.no_endpoint_count": { count: number };
 	"ui.mesh.mesh_graph.no_sessions_reported": undefined;
+	"ui.mesh.mesh_graph.not_a_member_count": { count: number };
 	"ui.mesh.mesh_graph.not_asked_count": { count: number };
 	"ui.mesh.mesh_graph.reached_count": { count: number };
+	"ui.mesh.mesh_graph.relay_down_count": { count: number };
 	"ui.mesh.mesh_graph.revoked_membership": undefined;
 	"ui.mesh.mesh_graph.self_conversations": { conversations: string };
 	"ui.mesh.mesh_graph.self_identity": { device: string };
@@ -2191,8 +6758,8 @@ export type MessageParams = {
 	"ui.mesh.mesh_list.name": undefined;
 	"ui.mesh.mesh_list.on_device_no_answer": { device: string };
 	"ui.mesh.mesh_list.on_device_state": { device: string; state: string };
-	"ui.mesh.mesh_list.revoked": undefined;
 	"ui.mesh.mesh_list.revoked_count": { count: number };
+	"ui.mesh.mesh_list.revoked_toggle_label": undefined;
 	"ui.mesh.mesh_list.show_all_panel": { count: number };
 	"ui.mesh.mesh_list.sort_conversations": undefined;
 	"ui.mesh.mesh_list.sort_devices_by": undefined;
@@ -2224,9 +6791,24 @@ export type MessageParams = {
 	"ui.mesh.mesh_page.the_copy_here_is_gone": undefined;
 	"ui.mesh.mesh_page.the_move_could_not_be_sent_nothing": undefined;
 	"ui.mesh.mesh_page.this_device_is_not_in_any_network": undefined;
+	"ui.mesh.mesh_reach.address_unreachable": undefined;
+	"ui.mesh.mesh_reach.addresses_tried": undefined;
+	"ui.mesh.mesh_reach.attempt_answered": undefined;
+	"ui.mesh.mesh_reach.attempt_bad_address": undefined;
+	"ui.mesh.mesh_reach.attempt_could_not_connect": undefined;
+	"ui.mesh.mesh_reach.attempt_no_answer": undefined;
+	"ui.mesh.mesh_reach.attempt_not_tried": undefined;
+	"ui.mesh.mesh_reach.attempt_nothing_listening": undefined;
+	"ui.mesh.mesh_reach.handshake_refused": undefined;
+	"ui.mesh.mesh_reach.handshake_refused_hint": undefined;
 	"ui.mesh.mesh_reach.no_answer": undefined;
+	"ui.mesh.mesh_reach.no_endpoint": undefined;
+	"ui.mesh.mesh_reach.not_a_member": undefined;
 	"ui.mesh.mesh_reach.not_asked": undefined;
+	"ui.mesh.mesh_reach.peer_closed_handshake": undefined;
+	"ui.mesh.mesh_reach.peer_relay_not_running": undefined;
 	"ui.mesh.mesh_reach.reached": undefined;
+	"ui.mesh.mesh_reach.relay_not_running": undefined;
 	"ui.mesh.mesh_reach.unknown": undefined;
 	"ui.mesh.mesh_scope.declared": undefined;
 	"ui.mesh.mesh_scope.same_prefix": undefined;
@@ -2235,6 +6817,292 @@ export type MessageParams = {
 	"ui.mesh.mesh_store.the_move_answered_and_this_app_could": undefined;
 	"ui.mesh.mesh_types.device_suffix": { suffix: string };
 	"ui.mesh.mesh_types.network_suffix": { suffix: string };
+	"ui.mesh.mesh_types.unnamed_device": undefined;
+	"ui.miniView.alternates": { first: string; second: string };
+	"ui.miniView.context": { used: string };
+	"ui.miniView.context_estimated": { used: string };
+	"ui.miniView.context_no_reading": undefined;
+	"ui.miniView.context_window": { used: string; window: string };
+	"ui.miniView.context_window_estimated": { used: string; window: string };
+	"ui.miniView.control_unavailable": undefined;
+	"ui.miniView.cwd_read_only": undefined;
+	"ui.miniView.hint": undefined;
+	"ui.miniView.hotkey_needs_modifier": undefined;
+	"ui.miniView.keep_text": undefined;
+	"ui.miniView.macos_detection_boundary": undefined;
+	"ui.miniView.placeholder": { name: string };
+	"ui.miniView.post_admission": { name: string };
+	"ui.miniView.prior_art_editors": { chord: string };
+	"ui.miniView.prior_art_launchers_mac": undefined;
+	"ui.miniView.prior_art_launchers_other": undefined;
+	"ui.miniView.quick_send_scope": undefined;
+	"ui.miniView.recording": undefined;
+	"ui.miniView.registration_invalid": undefined;
+	"ui.miniView.registration_registered": { display: string };
+	"ui.miniView.registration_taken": { display: string };
+	"ui.miniView.registration_unavailable": undefined;
+	"ui.miniView.seat_label": { name: string };
+	"ui.miniView.seat_missing": { name: string };
+	"ui.miniView.seat_open_failed": { name: string };
+	"ui.miniView.seat_unreachable": { name: string };
+	"ui.miniView.sent": undefined;
+	"ui.miniView.sheet_effort": undefined;
+	"ui.miniView.sheet_failed": undefined;
+	"ui.miniView.sheet_loading": undefined;
+	"ui.miniView.sheet_model": undefined;
+	"ui.miniView.sheet_unavailable": undefined;
+	"ui.miniView.switch_failed": undefined;
+	"ui.notices.agents.config_run_changed": { count: number };
+	"ui.notices.agents.config_run_updated": { count: number };
+	"ui.notices.agents.created": undefined;
+	"ui.notices.agents.created_named": { name: string };
+	"ui.notices.agents.deleted": undefined;
+	"ui.notices.agents.exported": undefined;
+	"ui.notices.agents.imported": undefined;
+	"ui.notices.agents.installed": { name: string };
+	"ui.notices.agents.proactive": { name: string };
+	"ui.notices.agents.reactive": { name: string };
+	"ui.notices.agents.save_unconfirmed": undefined;
+	"ui.notices.agents.saved": { name: string };
+	"ui.notices.agents.system_prompt_updated": undefined;
+	"ui.notices.agents.updated": undefined;
+	"ui.notices.aida.unreachable": undefined;
+	"ui.notices.chat.answer_changed": undefined;
+	"ui.notices.chat.archive_failed": { title: string };
+	"ui.notices.chat.archive_offered_no_name": undefined;
+	"ui.notices.chat.archive_offered_title": { title: string };
+	"ui.notices.chat.archive_offered_verb": undefined;
+	"ui.notices.chat.ask_answered": undefined;
+	"ui.notices.chat.ask_answered_named": { name: string };
+	"ui.notices.chat.ask_changed": undefined;
+	"ui.notices.chat.ask_changed_named": { name: string };
+	"ui.notices.chat.ask_declined": undefined;
+	"ui.notices.chat.ask_declined_named": { name: string };
+	"ui.notices.chat.ask_dismissed": undefined;
+	"ui.notices.chat.ask_dismissed_named": { name: string };
+	"ui.notices.chat.drafts_offered_name": { count: number };
+	"ui.notices.chat.drafts_offered_verb": { count: number };
+	"ui.notices.chat.goal_clear_failed": undefined;
+	"ui.notices.chat.goal_cleared": { goal: string };
+	"ui.notices.chat.goal_dismiss_failed": undefined;
+	"ui.notices.chat.goal_done": { goal: string };
+	"ui.notices.chat.goal_done_failed": undefined;
+	"ui.notices.chat.goal_restore_failed": undefined;
+	"ui.notices.chat.loop_clear_failed": undefined;
+	"ui.notices.chat.loop_stop_failed": undefined;
+	"ui.notices.chat.mark_all_read_cleared": { count: number };
+	"ui.notices.chat.mark_all_read_deferred": { count: number };
+	"ui.notices.chat.mark_all_read_none_cleared": undefined;
+	"ui.notices.chat.mark_all_read_nothing": undefined;
+	"ui.notices.chat.mark_all_read_superseded": { count: number };
+	"ui.notices.chat.mark_all_read_unknown": { count: number };
+	"ui.notices.chat.seed_invalid": undefined;
+	"ui.notices.chat.send_in_flight": undefined;
+	"ui.notices.chat.unarchive_failed": { title: string };
+	"ui.notices.chat.undo": undefined;
+	"ui.notices.chat.unread_backend_silent": undefined;
+	"ui.notices.chat.unread_not_cleared": { reason: string };
+	"ui.notices.credentials.removed": { index: number };
+	"ui.notices.credentials.stored": { keys: string };
+	"ui.notices.credentials.unconfirmed": { count: number; keys: string };
+	"ui.notices.credentials.unstored": { count: number; keys: string };
+	"ui.notices.credentials.updated": { key: string };
+	"ui.notices.files.already_exists": undefined;
+	"ui.notices.files.copy_failed": undefined;
+	"ui.notices.files.copy_path_failed": undefined;
+	"ui.notices.files.created": { name: string };
+	"ui.notices.files.highlights_update_failed": undefined;
+	"ui.notices.files.image_copied": undefined;
+	"ui.notices.files.image_copy_failed": undefined;
+	"ui.notices.files.image_copy_failed_gone": undefined;
+	"ui.notices.files.open_failed": { name: string };
+	"ui.notices.files.save_failed": undefined;
+	"ui.notices.files.save_failed_gone": undefined;
+	"ui.notices.hub.agent_delisted": undefined;
+	"ui.notices.hub.downloaded": { name: string };
+	"ui.notices.hub.downloaded_collision": { name: string; existing: string };
+	"ui.notices.hub.downloaded_renamed": { name: string; existing: string };
+	"ui.notices.hub.team_pulled": { name: string };
+	"ui.notices.hub.team_pulled_collision": { stored: string; published: string };
+	"ui.notices.hub.team_pulled_renamed": { stored: string; published: string };
+	"ui.notices.links.open_failed": undefined;
+	"ui.notices.links.open_local_blocked": undefined;
+	"ui.notices.main.consent_body_many": { count: number };
+	"ui.notices.main.consent_body_one": { origin: string };
+	"ui.notices.main.consent_title": undefined;
+	"ui.notices.main.update_hold_body": { version: string; relaunch: string };
+	"ui.notices.main.update_hold_no_relaunch": undefined;
+	"ui.notices.main.update_hold_relaunch": undefined;
+	"ui.notices.main.update_hold_title": undefined;
+	"ui.notices.main.watchdog_app_wait": { elapsed: string };
+	"ui.notices.main.watchdog_app_wait_fallback": { elapsed: string };
+	"ui.notices.main.watchdog_installing": undefined;
+	"ui.notices.main.watchdog_still_installing": undefined;
+	"ui.notices.main.watchdog_taking_longer": undefined;
+	"ui.notices.sessions.clear_failed": { detail: string };
+	"ui.notices.sessions.cleared": undefined;
+	"ui.notices.sessions.id_copied": undefined;
+	"ui.notices.sessions.id_copy_failed": undefined;
+	"ui.notices.sessions.sign_out_failed": { detail: string };
+	"ui.notices.sessions.signed_out": undefined;
+	"ui.notices.sessions.unknown_error": undefined;
+	"ui.notices.settings.configuration_updated": undefined;
+	"ui.notices.settings.system_prompt_updated": undefined;
+	"ui.notices.variables.create_failed": undefined;
+	"ui.notices.variables.created": undefined;
+	"ui.notices.variables.delete_failed": undefined;
+	"ui.notices.variables.deleted": undefined;
+	"ui.notices.variables.update_failed": undefined;
+	"ui.notices.variables.updated": undefined;
+	"ui.notifications.action.mark_all_read": undefined;
+	"ui.notifications.ask.stays": undefined;
+	"ui.notifications.confirm.cancel": undefined;
+	"ui.notifications.confirm.dismiss_session": { count: number; source: string };
+	"ui.notifications.confirm.dismiss_session_ok": undefined;
+	"ui.notifications.detail.back": undefined;
+	"ui.notifications.detail.close": undefined;
+	"ui.notifications.detail.dismiss": undefined;
+	"ui.notifications.detail.dismiss_repeat": { count: string };
+	"ui.notifications.detail.empty": undefined;
+	"ui.notifications.detail.error": undefined;
+	"ui.notifications.detail.from.dismiss_all": { count: string };
+	"ui.notifications.detail.gone.dismissed": undefined;
+	"ui.notifications.detail.history.show_all": { count: string };
+	"ui.notifications.detail.kind.ask": undefined;
+	"ui.notifications.detail.kind.update": undefined;
+	"ui.notifications.detail.label": undefined;
+	"ui.notifications.detail.loading": undefined;
+	"ui.notifications.detail.meta.updates_since": { count: number; time: string };
+	"ui.notifications.detail.more.copy_link": undefined;
+	"ui.notifications.detail.more.dismiss_session": { source: string };
+	"ui.notifications.detail.open_conversation": undefined;
+	"ui.notifications.detail.section.context": undefined;
+	"ui.notifications.detail.section.from": undefined;
+	"ui.notifications.detail.section.history": undefined;
+	"ui.notifications.detail.section.links": undefined;
+	"ui.notifications.detail.section.projects": undefined;
+	"ui.notifications.detail.section.waiting": undefined;
+	"ui.notifications.drawer.empty": undefined;
+	"ui.notifications.drawer.footer": undefined;
+	"ui.notifications.drawer.group.read": undefined;
+	"ui.notifications.drawer.group.unread": undefined;
+	"ui.notifications.drawer.mark_read": undefined;
+	"ui.notifications.drawer.open_notifications": undefined;
+	"ui.notifications.drawer.show_in_conversation": undefined;
+	"ui.notifications.drawer.tab.all": undefined;
+	"ui.notifications.drawer.tab.asks": undefined;
+	"ui.notifications.drawer.tab.updates": undefined;
+	"ui.notifications.drawer.tabs_label": undefined;
+	"ui.notifications.drawer.unread_count": { count: string };
+	"ui.notifications.empty.caught_up.body": undefined;
+	"ui.notifications.empty.caught_up.show_all": undefined;
+	"ui.notifications.empty.caught_up.title": undefined;
+	"ui.notifications.empty.filtered.title": undefined;
+	"ui.notifications.empty.none.body": undefined;
+	"ui.notifications.empty.none.title": undefined;
+	"ui.notifications.error.dismiss": undefined;
+	"ui.notifications.error.load.title": undefined;
+	"ui.notifications.error.mark": undefined;
+	"ui.notifications.error.refresh.body": { time: string };
+	"ui.notifications.error.refresh.title": undefined;
+	"ui.notifications.error.retry": undefined;
+	"ui.notifications.filter.all": undefined;
+	"ui.notifications.filter.chip": { label: string; value: string };
+	"ui.notifications.filter.clear": undefined;
+	"ui.notifications.filter.from": undefined;
+	"ui.notifications.filter.from_all": undefined;
+	"ui.notifications.filter.group": undefined;
+	"ui.notifications.filter.group_conversation": undefined;
+	"ui.notifications.filter.group_time": undefined;
+	"ui.notifications.filter.kind": undefined;
+	"ui.notifications.filter.kind_all": undefined;
+	"ui.notifications.filter.kind_asks": undefined;
+	"ui.notifications.filter.kind_updates": undefined;
+	"ui.notifications.filter.priority": undefined;
+	"ui.notifications.filter.priority_any": undefined;
+	"ui.notifications.filter.priority_high": undefined;
+	"ui.notifications.filter.priority_normal_up": undefined;
+	"ui.notifications.filter.read_state": undefined;
+	"ui.notifications.filter.unread": undefined;
+	"ui.notifications.flag.label": undefined;
+	"ui.notifications.flag.open": undefined;
+	"ui.notifications.flag.seen": undefined;
+	"ui.notifications.flag.seen_hint": undefined;
+	"ui.notifications.flag.unread": undefined;
+	"ui.notifications.group.dismiss_session": { count: string };
+	"ui.notifications.group.older": undefined;
+	"ui.notifications.group.today": undefined;
+	"ui.notifications.group.untitled": undefined;
+	"ui.notifications.group.waiting": undefined;
+	"ui.notifications.group.week": undefined;
+	"ui.notifications.group.yesterday": undefined;
+	"ui.notifications.nav.label": undefined;
+	"ui.notifications.nav.unread": { count: number; countText: string };
+	"ui.notifications.new_pill": { count: string };
+	"ui.notifications.page.checking": undefined;
+	"ui.notifications.page.list_label": undefined;
+	"ui.notifications.page.loading": undefined;
+	"ui.notifications.page.refresh": undefined;
+	"ui.notifications.page.subtitle": undefined;
+	"ui.notifications.page.title": undefined;
+	"ui.notifications.page.unavailable": undefined;
+	"ui.notifications.rail.aria_with_updates": {
+		chord: string;
+		subject: string;
+		count: number;
+		countText: string;
+		updates: number;
+		updatesText: string;
+	};
+	"ui.notifications.read_via.explicit": undefined;
+	"ui.notifications.row.a11y": {
+		read: string;
+		priority: string;
+		title: string;
+		source: string;
+		age: string;
+		repeat: number;
+	};
+	"ui.notifications.row.answer": undefined;
+	"ui.notifications.row.ask_expires": { time: string };
+	"ui.notifications.row.ask_options": { options: number };
+	"ui.notifications.row.chip.high": undefined;
+	"ui.notifications.row.chip.repeat": { count: string };
+	"ui.notifications.row.dismiss": undefined;
+	"ui.notifications.row.mark_read": undefined;
+	"ui.notifications.row.mark_unread": undefined;
+	"ui.notifications.row.more": undefined;
+	"ui.notifications.row.priority.high": undefined;
+	"ui.notifications.row.priority.low": undefined;
+	"ui.notifications.row.priority.normal": undefined;
+	"ui.notifications.row.select": { title: string };
+	"ui.notifications.row.updated_ago": { age: string };
+	"ui.notifications.seen.in_view": undefined;
+	"ui.notifications.seen.in_view_hint": undefined;
+	"ui.notifications.seen.live": undefined;
+	"ui.notifications.seen.live_hint": undefined;
+	"ui.notifications.select.all": undefined;
+	"ui.notifications.select.asks_stay": { count: number };
+	"ui.notifications.select.clear": undefined;
+	"ui.notifications.select.count": { count: string };
+	"ui.notifications.select.dismiss": { count: string };
+	"ui.notifications.select.mark_read": undefined;
+	"ui.notifications.select.mark_unread": undefined;
+	"ui.notifications.time.hours": { count: string };
+	"ui.notifications.time.minutes": { count: string };
+	"ui.notifications.time.now": undefined;
+	"ui.notifications.toast.copied": undefined;
+	"ui.notifications.toast.dismissed": { count: number };
+	"ui.notifications.toast.marked_read": { count: string };
+	"ui.notifications.toast.marked_unread": { count: string };
+	"ui.notifications.toast.undo": undefined;
+	"ui.notifications.toast.undone": undefined;
+	"ui.notifications.writes_paused_tip": undefined;
+	"ui.notifications.operation.progress": {
+		changed: number;
+		skipped: number;
+		pending: number;
+	};
 	"ui.onboarding.connect.intro": undefined;
 	"ui.onboarding.default_model.block.loading_models": undefined;
 	"ui.onboarding.default_model.block.pick_a_model": undefined;
@@ -2282,6 +7150,15 @@ export type MessageParams = {
 	"ui.onboarding.search.row.save_failed": undefined;
 	"ui.onboarding.search.row.saved": undefined;
 	"ui.onboarding.search.row.saving": { name: string };
+	"ui.presence.days_ago": { count: number };
+	"ui.presence.device_link_down": { reason: string; age: string };
+	"ui.presence.device_unreachable": undefined;
+	"ui.presence.hours_ago": { count: number };
+	"ui.presence.just_now": undefined;
+	"ui.presence.link_down_compact": { age: string };
+	"ui.presence.link_down_last_seen": { age: string };
+	"ui.presence.minutes_ago": { count: number };
+	"ui.presence.unknown": undefined;
 	"ui.projects.board_window_select.projects_updated_within": undefined;
 	"ui.projects.board_window_select.shows_projects_last_updated_within_this_window_older_ones_are_hid": undefined;
 	"ui.projects.count.milestones_are": { count: number };
@@ -2553,6 +7430,7 @@ export type MessageParams = {
 		clause________clause: string;
 	};
 	"ui.projects.project_model.done": undefined;
+	"ui.projects.project_model.done_gate_tail": undefined;
 	"ui.projects.project_model.due_day": { day: string };
 	"ui.projects.project_model.join_and_hidden_more": {
 		join: string;
@@ -2569,6 +7447,10 @@ export type MessageParams = {
 	"ui.projects.project_model.last_90_days": undefined;
 	"ui.projects.project_model.live": undefined;
 	"ui.projects.project_model.live_live": { live: number };
+	"ui.projects.project_model.milestone_summary": {
+		completed: number;
+		total: number;
+	};
 	"ui.projects.project_model.milestones_are_still_open_on_this_project_complete_or_remove_them": undefined;
 	"ui.projects.project_model.milestones_milestones": { milestones: string };
 	"ui.projects.project_model.missing": undefined;
@@ -2604,6 +7486,7 @@ export type MessageParams = {
 		clause: string;
 	};
 	"ui.projects.project_model.today": undefined;
+	"ui.projects.project_model.todos_summary": { open: number; total: number };
 	"ui.projects.project_model.unknown": undefined;
 	"ui.projects.project_model.upcoming": undefined;
 	"ui.projects.project_model.validation": undefined;
@@ -2704,10 +7587,22 @@ export type MessageParams = {
 	"ui.projects.project_todos.no_to_do_snapshots_from_the_linked_sessions_yet_a_session_publish": undefined;
 	"ui.projects.project_todos.to_dos": undefined;
 	"ui.projects.project_updates.attachment": undefined;
+	"ui.projects.project_updates.attachments": undefined;
 	"ui.projects.project_updates.file_actions_for_name": { name: string };
 	"ui.projects.project_updates.loading": undefined;
 	"ui.projects.project_updates.no_updates_yet_progress_reported_by_you_or_by_the_sessions_workin": undefined;
 	"ui.projects.project_updates.open_name": { name: string };
+	"ui.projects.project_updates.play_name": { name: string };
+	"ui.projects.project_updates.preview_failed": undefined;
+	"ui.projects.project_updates.preview_loading": undefined;
+	"ui.projects.project_updates.preview_moved": undefined;
+	"ui.projects.project_updates.preview_name": { name: string };
+	"ui.projects.project_updates.preview_unavailable": undefined;
+	"ui.projects.project_updates.show_asset_name": {
+		name: string;
+		index: string;
+		count: string;
+	};
 	"ui.projects.project_updates.updates": undefined;
 	"ui.projects.projects_page.checking_the_server_s_projects_support": undefined;
 	"ui.projects.projects_page.clear_all": undefined;
@@ -3035,6 +7930,9 @@ export type MessageParams = {
 	"ui.providers.provider_labels.this_app_could_not_confirm_the_sign": undefined;
 	"ui.providers.provider_labels.unavailable": undefined;
 	"ui.providers.sign_in_flow.sign_in_could_not_start": undefined;
+	"ui.schedules.errors.agent_id_missing": undefined;
+	"ui.schedules.errors.agent_id_required": undefined;
+	"ui.schedules.errors.base_url_missing": undefined;
 	"ui.schedules.count.hidden": { hidden: number };
 	"ui.schedules.count.keep_runs": { left: number };
 	"ui.schedules.count.list_truncated": { shown: number; total: number };
@@ -3275,6 +8173,65 @@ export type MessageParams = {
 	"ui.settings.appearance.settings_page.appearance": undefined;
 	"ui.settings.appearance.settings_page.customize_the_look_and_feel_of_local_operator": undefined;
 	"ui.settings.appearance.settings_page.show_agent_reasoning": undefined;
+	"ui.settings.appearance.theme.alucard": undefined;
+	"ui.settings.appearance.theme.arcade": undefined;
+	"ui.settings.appearance.theme.arctic": undefined;
+	"ui.settings.appearance.theme.autumn": undefined;
+	"ui.settings.appearance.theme.ayu_dark": undefined;
+	"ui.settings.appearance.theme.ayu_light": undefined;
+	"ui.settings.appearance.theme.ayu_mirage": undefined;
+	"ui.settings.appearance.theme.catppuccin_frappe": undefined;
+	"ui.settings.appearance.theme.catppuccin_latte": undefined;
+	"ui.settings.appearance.theme.catppuccin_macchiato": undefined;
+	"ui.settings.appearance.theme.catppuccin_mocha": undefined;
+	"ui.settings.appearance.theme.cyberpunk": undefined;
+	"ui.settings.appearance.theme.desert": undefined;
+	"ui.settings.appearance.theme.dracula": undefined;
+	"ui.settings.appearance.theme.dune": undefined;
+	"ui.settings.appearance.theme.duskfox": undefined;
+	"ui.settings.appearance.theme.everforest": undefined;
+	"ui.settings.appearance.theme.everforest_light": undefined;
+	"ui.settings.appearance.theme.forest": undefined;
+	"ui.settings.appearance.theme.github_light": undefined;
+	"ui.settings.appearance.theme.gruvbox": undefined;
+	"ui.settings.appearance.theme.gruvbox_light": undefined;
+	"ui.settings.appearance.theme.high_contrast_light": undefined;
+	"ui.settings.appearance.theme.iceberg": undefined;
+	"ui.settings.appearance.theme.kanagawa_lotus": undefined;
+	"ui.settings.appearance.theme.kanagawa_wave": undefined;
+	"ui.settings.appearance.theme.lavender": undefined;
+	"ui.settings.appearance.theme.linen": undefined;
+	"ui.settings.appearance.theme.local_operator_dark": undefined;
+	"ui.settings.appearance.theme.local_operator_light": undefined;
+	"ui.settings.appearance.theme.matrix": undefined;
+	"ui.settings.appearance.theme.mint_light": undefined;
+	"ui.settings.appearance.theme.monokai": undefined;
+	"ui.settings.appearance.theme.neon": undefined;
+	"ui.settings.appearance.theme.neon_noir": undefined;
+	"ui.settings.appearance.theme.nightfox": undefined;
+	"ui.settings.appearance.theme.nord": undefined;
+	"ui.settings.appearance.theme.obsidian": undefined;
+	"ui.settings.appearance.theme.ocean": undefined;
+	"ui.settings.appearance.theme.one_dark": undefined;
+	"ui.settings.appearance.theme.one_light": undefined;
+	"ui.settings.appearance.theme.outrun": undefined;
+	"ui.settings.appearance.theme.palenight": undefined;
+	"ui.settings.appearance.theme.paper": undefined;
+	"ui.settings.appearance.theme.radient": undefined;
+	"ui.settings.appearance.theme.rose_pine": undefined;
+	"ui.settings.appearance.theme.rose_pine_dawn": undefined;
+	"ui.settings.appearance.theme.rose_pine_moon": undefined;
+	"ui.settings.appearance.theme.rosewood": undefined;
+	"ui.settings.appearance.theme.sage": undefined;
+	"ui.settings.appearance.theme.solarized_dark": undefined;
+	"ui.settings.appearance.theme.solarized_light": undefined;
+	"ui.settings.appearance.theme.synth": undefined;
+	"ui.settings.appearance.theme.synthwave": undefined;
+	"ui.settings.appearance.theme.tokyo_night": undefined;
+	"ui.settings.appearance.theme.tokyo_night_day": undefined;
+	"ui.settings.appearance.theme.tokyo_night_storm": undefined;
+	"ui.settings.appearance.theme.tron": undefined;
+	"ui.settings.appearance.theme.vaporwave": undefined;
 	"ui.settings.appearance.theme_selector.dark": undefined;
 	"ui.settings.appearance.theme_selector.light": undefined;
 	"ui.settings.appearance.transcript_display_mode_setting.by_response": undefined;
@@ -3839,8 +8796,14 @@ export type MessageParams = {
 	"ui.settings.profile.retry": undefined;
 	"ui.settings.profile.retrying": undefined;
 	"ui.settings.profile.title": undefined;
+	"ui.settings.section.delegated_enabled.gate_label": undefined;
+	"ui.settings.section.delegated_enabled.help": undefined;
+	"ui.settings.section.delegated_enabled.label": undefined;
+	"ui.settings.section.delegated_max_age.help": undefined;
+	"ui.settings.section.delegated_max_age.label": undefined;
 	"ui.settings.section.interface_language.help": undefined;
 	"ui.settings.section.interface_language.label": undefined;
+	"ui.settings.section.session_delegated.title": undefined;
 	"ui.settings.tour.action": undefined;
 	"ui.settings.tour.description": undefined;
 	"ui.settings.tour.title": undefined;
@@ -3932,6 +8895,17 @@ export type MessageParams = {
 	"ui.settings.navigation.settings_sidebar.settings_sections": undefined;
 	"ui.settings.navigation.settings_sidebar.speech_voicing": undefined;
 	"ui.settings.navigation.settings_sidebar.system": undefined;
+	"ui.settings.shortcuts.action.open_asks": undefined;
+	"ui.settings.shortcuts.action.open_browser": undefined;
+	"ui.settings.shortcuts.action.open_canvas": undefined;
+	"ui.settings.shortcuts.action.open_code_review": undefined;
+	"ui.settings.shortcuts.action.open_console": undefined;
+	"ui.settings.shortcuts.action.open_run_details": undefined;
+	"ui.settings.shortcuts.capture.already_assigned": { label: string };
+	"ui.settings.shortcuts.capture.needs_modifier": undefined;
+	"ui.settings.shortcuts.capture.needs_modifier_mac": undefined;
+	"ui.settings.shortcuts.capture.unbindable": undefined;
+	"ui.settings.shortcuts.category.panels": undefined;
 	"ui.settings.shortcuts.keyboard_shortcuts_section.clear": undefined;
 	"ui.settings.shortcuts.keyboard_shortcuts_section.clear_label_s_shortcut": {
 		label: string;
@@ -3947,6 +8921,49 @@ export type MessageParams = {
 		label: string;
 	};
 	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcuts_for_the_panel_rail_focus_a_field_and_press_the_keys_you": undefined;
+	"ui.settings.shortcuts.reserved.archive_chat": undefined;
+	"ui.settings.shortcuts.reserved.browser_address": undefined;
+	"ui.settings.shortcuts.reserved.browser_back": undefined;
+	"ui.settings.shortcuts.reserved.browser_forward": undefined;
+	"ui.settings.shortcuts.reserved.browser_last_tab": undefined;
+	"ui.settings.shortcuts.reserved.browser_new_tab": undefined;
+	"ui.settings.shortcuts.reserved.browser_numbered_tab": { digit: number };
+	"ui.settings.shortcuts.reserved.browser_reload": undefined;
+	"ui.settings.shortcuts.reserved.browser_reload_cache": undefined;
+	"ui.settings.shortcuts.reserved.browser_reopen_tab": undefined;
+	"ui.settings.shortcuts.reserved.canvas_open": undefined;
+	"ui.settings.shortcuts.reserved.canvas_save": undefined;
+	"ui.settings.shortcuts.reserved.chat_move_down": undefined;
+	"ui.settings.shortcuts.reserved.chat_move_up": undefined;
+	"ui.settings.shortcuts.reserved.chat_region_down": undefined;
+	"ui.settings.shortcuts.reserved.chat_region_up": undefined;
+	"ui.settings.shortcuts.reserved.chat_tags": undefined;
+	"ui.settings.shortcuts.reserved.close": undefined;
+	"ui.settings.shortcuts.reserved.copy": undefined;
+	"ui.settings.shortcuts.reserved.cut": undefined;
+	"ui.settings.shortcuts.reserved.find": undefined;
+	"ui.settings.shortcuts.reserved.minimise": undefined;
+	"ui.settings.shortcuts.reserved.new_chat": undefined;
+	"ui.settings.shortcuts.reserved.palette_anywhere": undefined;
+	"ui.settings.shortcuts.reserved.palette_chats": undefined;
+	"ui.settings.shortcuts.reserved.palette_commands": undefined;
+	"ui.settings.shortcuts.reserved.paste": undefined;
+	"ui.settings.shortcuts.reserved.quit": undefined;
+	"ui.settings.shortcuts.reserved.redo": undefined;
+	"ui.settings.shortcuts.reserved.redo_windows_linux": undefined;
+	"ui.settings.shortcuts.reserved.select_all": undefined;
+	"ui.settings.shortcuts.reserved.speech_to_text": undefined;
+	"ui.settings.shortcuts.reserved.toggle_sidebar": undefined;
+	"ui.settings.shortcuts.reserved.undo": undefined;
+	"ui.settings.shortcuts.reserved.zoom_in": undefined;
+	"ui.settings.shortcuts.reserved.zoom_out": undefined;
+	"ui.settings.shortcuts.reserved.zoom_reset": undefined;
+	"ui.settings.shortcuts.row.asks": undefined;
+	"ui.settings.shortcuts.row.browser": undefined;
+	"ui.settings.shortcuts.row.canvas": undefined;
+	"ui.settings.shortcuts.row.code_review": undefined;
+	"ui.settings.shortcuts.row.console": undefined;
+	"ui.settings.shortcuts.row.execution": undefined;
 	"ui.settings.speech.speech_section.availability": undefined;
 	"ui.settings.speech.speech_section.available": undefined;
 	"ui.settings.speech.speech_section.copy_backend_older_sentence": undefined;
@@ -4017,15 +9034,34 @@ export type MessageParams = {
 	};
 	"ui.shell.sidebar_navigation.close_sidebar": undefined;
 	"ui.shell.sidebar_navigation.collapse_sidebar": undefined;
+	"ui.shell.sidebar_navigation.drag_armed": { name: string };
 	"ui.shell.sidebar_navigation.expand_sidebar": undefined;
 	"ui.shell.sidebar_navigation.mesh": undefined;
 	"ui.shell.sidebar_navigation.mesh_waiting": {
 		count: number;
 		countText: string;
 	};
+	"ui.shell.sidebar_navigation.more_waiting": {
+		count: number;
+		countText: string;
+	};
+	"ui.shell.sidebar_navigation.more_working": undefined;
+	"ui.shell.sidebar_navigation.move_down": undefined;
+	"ui.shell.sidebar_navigation.move_note": {
+		name: string;
+		position: string;
+		total: string;
+	};
+	"ui.shell.sidebar_navigation.move_to_more": undefined;
+	"ui.shell.sidebar_navigation.move_to_more_note": { name: string };
+	"ui.shell.sidebar_navigation.move_up": undefined;
 	"ui.shell.sidebar_navigation.new_chat": undefined;
 	"ui.shell.sidebar_navigation.new_chat_shortcut": { shortcut: string };
 	"ui.shell.sidebar_navigation.projects": undefined;
+	"ui.shell.sidebar_navigation.reset_layout": undefined;
+	"ui.shell.sidebar_navigation.reset_note": undefined;
+	"ui.shell.sidebar_navigation.row_actions": { name: string };
+	"ui.shell.sidebar_navigation.save_failed": undefined;
 	"ui.shell.sidebar_navigation.schedules": undefined;
 	"ui.shell.sidebar_navigation.search": undefined;
 	"ui.shell.sidebar_navigation.search_accessible": {
@@ -4037,6 +9073,8 @@ export type MessageParams = {
 		chats: string;
 	};
 	"ui.shell.sidebar_navigation.settings": undefined;
+	"ui.shell.sidebar_navigation.show_in_sidebar": undefined;
+	"ui.shell.sidebar_navigation.show_in_sidebar_note": { name: string };
 	"ui.shell.user_profile_sidebar.account_settings": undefined;
 	"ui.shell.user_profile_sidebar.account_unavailable": undefined;
 	"ui.shell.user_profile_sidebar.checking_account": undefined;
@@ -4045,6 +9083,19 @@ export type MessageParams = {
 	"ui.shell.user_profile_sidebar.settings": undefined;
 	"ui.shell.user_profile_sidebar.sign_out": undefined;
 	"ui.shell.user_profile_sidebar.user": undefined;
+	"ui.shell.menubar.about": { name: string };
+	"ui.shell.menubar.actual_size": undefined;
+	"ui.shell.menubar.close_tab_or_window": undefined;
+	"ui.shell.menubar.edit": undefined;
+	"ui.shell.menubar.file": undefined;
+	"ui.shell.menubar.force_reload": undefined;
+	"ui.shell.menubar.learn_more": undefined;
+	"ui.shell.menubar.new_browser_tab": undefined;
+	"ui.shell.menubar.reload": undefined;
+	"ui.shell.menubar.view": undefined;
+	"ui.shell.menubar.window": undefined;
+	"ui.shell.menubar.zoom_in": undefined;
+	"ui.shell.menubar.zoom_out": undefined;
 	"ui.shell.rail.ask.aria": { chord: string; subject: string };
 	"ui.shell.rail.ask.aria_count": {
 		chord: string;
@@ -4106,6 +9157,341 @@ export type MessageParams = {
 		count: number;
 		countText: string;
 	};
+	"ui.teamBridge.archive.banner.by_on": { name: string; date: string };
+	"ui.teamBridge.archive.banner.delete": undefined;
+	"ui.teamBridge.archive.banner.on": { date: string };
+	"ui.teamBridge.archive.banner.plain": undefined;
+	"ui.teamBridge.archive.banner.unarchive": undefined;
+	"ui.teamBridge.archive.banner.unarchive_error": undefined;
+	"ui.teamBridge.archive.composer.note": undefined;
+	"ui.teamBridge.archive.confirm.body": undefined;
+	"ui.teamBridge.archive.confirm.confirm": undefined;
+	"ui.teamBridge.archive.confirm.error": undefined;
+	"ui.teamBridge.archive.confirm.title": { name: string };
+	"ui.teamBridge.archive.delete.body": undefined;
+	"ui.teamBridge.archive.delete.confirm": undefined;
+	"ui.teamBridge.archive.delete.confirm_label": { name: string };
+	"ui.teamBridge.archive.delete.error": undefined;
+	"ui.teamBridge.archive.delete.not_found": undefined;
+	"ui.teamBridge.archive.delete.title": { name: string };
+	"ui.teamBridge.archive.list.empty": undefined;
+	"ui.teamBridge.archive.list.error": undefined;
+	"ui.teamBridge.archive.list.load_more": undefined;
+	"ui.teamBridge.archive.list.load_more_error": undefined;
+	"ui.teamBridge.archive.list.loading": undefined;
+	"ui.teamBridge.archive.list.meta_by_on": { name: string; date: string };
+	"ui.teamBridge.archive.list.meta_on": { date: string };
+	"ui.teamBridge.archive.menu.archive": undefined;
+	"ui.teamBridge.archive.section.archived": undefined;
+	"ui.teamBridge.archive.section.menu": undefined;
+	"ui.teamBridge.archive.thread.empty": undefined;
+	"ui.teamBridge.archive.thread.forbidden": undefined;
+	"ui.teamBridge.archive.toast.archive_failed": { name: string };
+	"ui.teamBridge.actions.label": undefined;
+	"ui.teamBridge.attachments.add": undefined;
+	"ui.teamBridge.attachments.error_account_changed": undefined;
+	"ui.teamBridge.attachments.error_invalid": undefined;
+	"ui.teamBridge.attachments.error_offline": undefined;
+	"ui.teamBridge.attachments.error_quota": undefined;
+	"ui.teamBridge.attachments.error_rate": undefined;
+	"ui.teamBridge.attachments.error_size": undefined;
+	"ui.teamBridge.attachments.error_type": undefined;
+	"ui.teamBridge.attachments.error_upload": undefined;
+	"ui.teamBridge.attachments.expired": undefined;
+	"ui.teamBridge.attachments.expired_staged": undefined;
+	"ui.teamBridge.attachments.expired_staged_retry": undefined;
+	"ui.teamBridge.attachments.failed_count": { count: number };
+	"ui.teamBridge.attachments.in_message": { count: number };
+	"ui.teamBridge.attachments.limit": { max: number };
+	"ui.teamBridge.attachments.open": { index: string; count: string };
+	"ui.teamBridge.attachments.position": { index: string; count: string };
+	"ui.teamBridge.attachments.preview_unavailable": undefined;
+	"ui.teamBridge.attachments.remove": { label: string };
+	"ui.teamBridge.attachments.remove_all": undefined;
+	"ui.teamBridge.attachments.retry": { label: string };
+	"ui.teamBridge.attachments.retry_load": undefined;
+	"ui.teamBridge.attachments.send_blocked": undefined;
+	"ui.teamBridge.attachments.strip": undefined;
+	"ui.teamBridge.attachments.unavailable": undefined;
+	"ui.teamBridge.attachments.unsupported": undefined;
+	"ui.teamBridge.attachments.uploading": undefined;
+	"ui.teamBridge.builtin.agents_topic": undefined;
+	"ui.teamBridge.builtin.humans_topic": undefined;
+	"ui.teamBridge.chief.fallback": undefined;
+	"ui.teamBridge.chief.label": { agent: string; person: string };
+	"ui.teamBridge.chief.unnamed": { person: string };
+	"ui.teamBridge.compose.empty": undefined;
+	"ui.teamBridge.compose.label": undefined;
+	"ui.teamBridge.compose.new": undefined;
+	"ui.teamBridge.compose.placeholder": undefined;
+	"ui.teamBridge.compose.remove": { name: string };
+	"ui.teamBridge.compose.to": undefined;
+	"ui.teamBridge.composer.error": undefined;
+	"ui.teamBridge.composer.hint": undefined;
+	"ui.teamBridge.composer.placeholder": undefined;
+	"ui.teamBridge.composer.placeholder_to": { name: string };
+	"ui.teamBridge.composer.send": undefined;
+	"ui.teamBridge.create.cancel": undefined;
+	"ui.teamBridge.create.channel_description": undefined;
+	"ui.teamBridge.create.confirm": undefined;
+	"ui.teamBridge.create.error": undefined;
+	"ui.teamBridge.create.members": undefined;
+	"ui.teamBridge.create.name": undefined;
+	"ui.teamBridge.create.name_placeholder": undefined;
+	"ui.teamBridge.create.title": undefined;
+	"ui.teamBridge.create.topic": undefined;
+	"ui.teamBridge.drafts.empty": undefined;
+	"ui.teamBridge.drafts.indicator": undefined;
+	"ui.teamBridge.drafts.navigation": undefined;
+	"ui.teamBridge.drafts.storage_failed": undefined;
+	"ui.teamBridge.drafts.title": undefined;
+	"ui.teamBridge.group.more": undefined;
+	"ui.teamBridge.invitations.accept": undefined;
+	"ui.teamBridge.invitations.accepted": { agent: string };
+	"ui.teamBridge.invitations.accepted_unnamed": undefined;
+	"ui.teamBridge.invitations.accepting": undefined;
+	"ui.teamBridge.invitations.added_by": { name: string };
+	"ui.teamBridge.invitations.added_by_you": undefined;
+	"ui.teamBridge.invitations.agent_fallback": undefined;
+	"ui.teamBridge.invitations.agent_line": { agent: string };
+	"ui.teamBridge.invitations.consent.bridge_agent_participation_v1": undefined;
+	"ui.teamBridge.invitations.count": { count: number };
+	"ui.teamBridge.invitations.created_by": { name: string };
+	"ui.teamBridge.invitations.created_by_you": undefined;
+	"ui.teamBridge.invitations.decline": undefined;
+	"ui.teamBridge.invitations.declined": { agent: string };
+	"ui.teamBridge.invitations.declined_unnamed": undefined;
+	"ui.teamBridge.invitations.declining": undefined;
+	"ui.teamBridge.invitations.empty": undefined;
+	"ui.teamBridge.invitations.failed.agent_unavailable": undefined;
+	"ui.teamBridge.invitations.failed.already_answered": undefined;
+	"ui.teamBridge.invitations.failed.gone": undefined;
+	"ui.teamBridge.invitations.failed.not_available": undefined;
+	"ui.teamBridge.invitations.failed.outdated": undefined;
+	"ui.teamBridge.invitations.failed.runtime_outdated": undefined;
+	"ui.teamBridge.invitations.failed.sign_in": undefined;
+	"ui.teamBridge.invitations.failed.unconfirmed": undefined;
+	"ui.teamBridge.invitations.failed.unreachable": undefined;
+	"ui.teamBridge.invitations.load_failed": undefined;
+	"ui.teamBridge.invitations.loading": undefined;
+	"ui.teamBridge.invitations.read_only": undefined;
+	"ui.teamBridge.invitations.title": undefined;
+	"ui.teamBridge.kind.channel": undefined;
+	"ui.teamBridge.kind.dm": undefined;
+	"ui.teamBridge.kind.group": undefined;
+	"ui.teamBridge.list.empty.body": undefined;
+	"ui.teamBridge.list.empty.title": undefined;
+	"ui.teamBridge.list.error": undefined;
+	"ui.teamBridge.list.error_pane": undefined;
+	"ui.teamBridge.list.loading": undefined;
+	"ui.teamBridge.list.retry": undefined;
+	"ui.teamBridge.list.untitled": undefined;
+	"ui.teamBridge.member.active_count": { count: number };
+	"ui.teamBridge.member.count": { count: number };
+	"ui.teamBridge.member.invited_count": { count: number };
+	"ui.teamBridge.menu.label": undefined;
+	"ui.teamBridge.menu.mute": undefined;
+	"ui.teamBridge.menu.unmute": undefined;
+	"ui.teamBridge.nav.label": undefined;
+	"ui.teamBridge.nav.unread": { count: number };
+	"ui.teamBridge.notify.all": undefined;
+	"ui.teamBridge.notify.body": { sender: string };
+	"ui.teamBridge.notify.body_fallback": undefined;
+	"ui.teamBridge.notify.channel": { channel: string };
+	"ui.teamBridge.notify.count": { count: number };
+	"ui.teamBridge.notify.count_preview": { count: number; preview: string };
+	"ui.teamBridge.notify.error": undefined;
+	"ui.teamBridge.notify.label": undefined;
+	"ui.teamBridge.notify.mention": undefined;
+	"ui.teamBridge.notify.mute": undefined;
+	"ui.teamBridge.notify.muted": undefined;
+	"ui.teamBridge.notify.subtitle": { place: string; organization: string };
+	"ui.teamBridge.notify.title": { conversation: string; organization: string };
+	"ui.teamBridge.notify.unavailable": undefined;
+	"ui.teamBridge.page.title": undefined;
+	"ui.teamBridge.people.all_scope": undefined;
+	"ui.teamBridge.people.bridge_off": undefined;
+	"ui.teamBridge.people.empty": undefined;
+	"ui.teamBridge.people.error": undefined;
+	"ui.teamBridge.people.identity_loading": undefined;
+	"ui.teamBridge.people.loading": undefined;
+	"ui.teamBridge.people.message": { name: string };
+	"ui.teamBridge.people.paused": undefined;
+	"ui.teamBridge.people.self_named": { name: string };
+	"ui.teamBridge.people.title": undefined;
+	"ui.teamBridge.plan.body": undefined;
+	"ui.teamBridge.plan.checking": undefined;
+	"ui.teamBridge.plan.reason": undefined;
+	"ui.teamBridge.plan.sign_in_reason": undefined;
+	"ui.teamBridge.plan.sign_in_title": undefined;
+	"ui.teamBridge.plan.title": undefined;
+	"ui.teamBridge.plan.unavailable_reason": undefined;
+	"ui.teamBridge.plan.unavailable_title": undefined;
+	"ui.teamBridge.plan.update_reason": undefined;
+	"ui.teamBridge.plan.update_title": undefined;
+	"ui.teamBridge.preview.banner": undefined;
+	"ui.teamBridge.preview.chip": undefined;
+	"ui.teamBridge.preview.join": undefined;
+	"ui.teamBridge.preview.join_error": undefined;
+	"ui.teamBridge.profile.agent_badge": undefined;
+	"ui.teamBridge.profile.close_profile": undefined;
+	"ui.teamBridge.profile.human_badge": undefined;
+	"ui.teamBridge.profile.local_time": { time: string };
+	"ui.teamBridge.profile.message": undefined;
+	"ui.teamBridge.profile.open_profile": { name: string };
+	"ui.teamBridge.profile.owned_by": { name: string };
+	"ui.teamBridge.reactions.add": undefined;
+	"ui.teamBridge.reactions.all": undefined;
+	"ui.teamBridge.reactions.categories": undefined;
+	"ui.teamBridge.reactions.category0": undefined;
+	"ui.teamBridge.reactions.category1": undefined;
+	"ui.teamBridge.reactions.category2": undefined;
+	"ui.teamBridge.reactions.category3": undefined;
+	"ui.teamBridge.reactions.category4": undefined;
+	"ui.teamBridge.reactions.category5": undefined;
+	"ui.teamBridge.reactions.category6": undefined;
+	"ui.teamBridge.reactions.category7": undefined;
+	"ui.teamBridge.reactions.category8": undefined;
+	"ui.teamBridge.reactions.choose": undefined;
+	"ui.teamBridge.reactions.empty": undefined;
+	"ui.teamBridge.reactions.failed": undefined;
+	"ui.teamBridge.reactions.frequent": undefined;
+	"ui.teamBridge.reactions.noResults": undefined;
+	"ui.teamBridge.reactions.search": undefined;
+	"ui.teamBridge.reactions.tone": undefined;
+	"ui.teamBridge.reactions.toneDefault": undefined;
+	"ui.teamBridge.read_only.composer": undefined;
+	"ui.teamBridge.read_only.note": undefined;
+	"ui.teamBridge.replies.action": undefined;
+	"ui.teamBridge.replies.close": undefined;
+	"ui.teamBridge.replies.count": { count: number };
+	"ui.teamBridge.replies.empty": undefined;
+	"ui.teamBridge.replies.last": { time: string };
+	"ui.teamBridge.replies.more": undefined;
+	"ui.teamBridge.replies.placeholder": undefined;
+	"ui.teamBridge.replies.title": undefined;
+	"ui.teamBridge.row.menu": { name: string };
+	"ui.teamBridge.row.start_group": undefined;
+	"ui.teamBridge.schedule.cancel": undefined;
+	"ui.teamBridge.schedule.cancel_failed": undefined;
+	"ui.teamBridge.schedule.confirm": { date: string };
+	"ui.teamBridge.schedule.confirm_action": undefined;
+	"ui.teamBridge.schedule.conflict_body_changed": undefined;
+	"ui.teamBridge.schedule.conflict_body_replaced": undefined;
+	"ui.teamBridge.schedule.conflict_images_added": { count: number };
+	"ui.teamBridge.schedule.conflict_images_removed": { count: number };
+	"ui.teamBridge.schedule.conflict_nothing_left": undefined;
+	"ui.teamBridge.schedule.conflict_restore_body": undefined;
+	"ui.teamBridge.schedule.conflict_review": undefined;
+	"ui.teamBridge.schedule.conflict_time_changed": undefined;
+	"ui.teamBridge.schedule.conflict_time_replaced": undefined;
+	"ui.teamBridge.schedule.create_retry": undefined;
+	"ui.teamBridge.schedule.create_uncertain": undefined;
+	"ui.teamBridge.schedule.discard_attempt": undefined;
+	"ui.teamBridge.schedule.edit_body": undefined;
+	"ui.teamBridge.schedule.edit_conflict": undefined;
+	"ui.teamBridge.schedule.edit_failed": undefined;
+	"ui.teamBridge.schedule.edit_gone": undefined;
+	"ui.teamBridge.schedule.edit_gone_title": undefined;
+	"ui.teamBridge.schedule.empty": undefined;
+	"ui.teamBridge.schedule.failed": undefined;
+	"ui.teamBridge.schedule.held": undefined;
+	"ui.teamBridge.schedule.invalid": undefined;
+	"ui.teamBridge.schedule.list": undefined;
+	"ui.teamBridge.schedule.load_failed": undefined;
+	"ui.teamBridge.schedule.loading": undefined;
+	"ui.teamBridge.schedule.reschedule": undefined;
+	"ui.teamBridge.schedule.retry": undefined;
+	"ui.teamBridge.schedule.review": undefined;
+	"ui.teamBridge.schedule.sending": undefined;
+	"ui.teamBridge.schedule.success": undefined;
+	"ui.teamBridge.schedule.timezone": { timezone: string };
+	"ui.teamBridge.schedule.title": undefined;
+	"ui.teamBridge.schedule.when": undefined;
+	"ui.teamBridge.schedule.window": undefined;
+	"ui.teamBridge.scope.all": undefined;
+	"ui.teamBridge.scope.create_needs_org": undefined;
+	"ui.teamBridge.scope.empty": undefined;
+	"ui.teamBridge.scope.error": undefined;
+	"ui.teamBridge.scope.label": undefined;
+	"ui.teamBridge.scope.loading": undefined;
+	"ui.teamBridge.scope.thread_unknown": undefined;
+	"ui.teamBridge.scope.trigger": { name: string };
+	"ui.teamBridge.scope.unknown": undefined;
+	"ui.teamBridge.section.channels": undefined;
+	"ui.teamBridge.section.channels_add": undefined;
+	"ui.teamBridge.section.channels_empty": undefined;
+	"ui.teamBridge.section.channels_none": undefined;
+	"ui.teamBridge.section.chiefs": undefined;
+	"ui.teamBridge.section.chiefs_empty": undefined;
+	"ui.teamBridge.section.directs": undefined;
+	"ui.teamBridge.section.groups": undefined;
+	"ui.teamBridge.section.groups_add": undefined;
+	"ui.teamBridge.section.groups_empty": undefined;
+	"ui.teamBridge.section.groups_none": undefined;
+	"ui.teamBridge.sender.unknown_agent": undefined;
+	"ui.teamBridge.sender.unknown_person": undefined;
+	"ui.teamBridge.thread.empty": undefined;
+	"ui.teamBridge.thread.error": undefined;
+	"ui.teamBridge.thread.intro_chief": { name: string };
+	"ui.teamBridge.thread.intro_group": { names: string };
+	"ui.teamBridge.thread.intro_person": { name: string };
+	"ui.teamBridge.thread.loading": undefined;
+	"ui.teamBridge.thread.today": undefined;
+	"ui.teamBridge.thread.withheld": undefined;
+	"ui.teamBridge.thread.yesterday": undefined;
+	"ui.teamBridge.unread.count": { count: number };
+	"ui.updates.panel.artifact.damaged.message": undefined;
+	"ui.updates.panel.artifact.damaged.message_version": { version: string };
+	"ui.updates.panel.artifact.metadata_missing.message": undefined;
+	"ui.updates.panel.artifact.metadata_missing.message_version": {
+		version: string;
+	};
+	"ui.updates.panel.artifact.mismatch.message": undefined;
+	"ui.updates.panel.artifact.mismatch.message_version": { version: string };
+	"ui.updates.panel.artifact.missing_on_disk.message": undefined;
+	"ui.updates.panel.artifact.missing_on_disk.message_version": {
+		version: string;
+	};
+	"ui.updates.panel.artifact.not_this_app.message": undefined;
+	"ui.updates.panel.artifact.not_this_app.message_version": { version: string };
+	"ui.updates.panel.artifact.remedy": undefined;
+	"ui.updates.panel.artifact.unreadable.message": undefined;
+	"ui.updates.panel.artifact.unreadable.message_version": { version: string };
+	"ui.updates.panel.disk.message": undefined;
+	"ui.updates.panel.disk.message_version": { version: string };
+	"ui.updates.panel.disk.remedy": { size: string };
+	"ui.updates.panel.dismiss.not_now": undefined;
+	"ui.updates.panel.failure.cancelled.message": {
+		target: string;
+		running: string;
+	};
+	"ui.updates.panel.failure.cancelled.remedy": undefined;
+	"ui.updates.panel.failure.unfinished.message": {
+		target: string;
+		running: string;
+	};
+	"ui.updates.panel.failure.unfinished.remedy": undefined;
+	"ui.updates.panel.launch.check.message": undefined;
+	"ui.updates.panel.launch.check.message_version": { version: string };
+	"ui.updates.panel.launch.heading": undefined;
+	"ui.updates.panel.launch.keep.message": undefined;
+	"ui.updates.panel.launch.keep.message_version": { version: string };
+	"ui.updates.panel.launch.open.message": undefined;
+	"ui.updates.panel.launch.open.message_version": { version: string };
+	"ui.updates.panel.seal.remedy": undefined;
+	"ui.updates.panel.seal.startup.heading": undefined;
+	"ui.updates.panel.seal.startup.message": undefined;
+	"ui.updates.panel.seal.update.message": undefined;
+	"ui.updates.panel.seal.update.message_version": { version: string };
+	"ui.updates.panel.server.behind.remedy": undefined;
+	"ui.updates.panel.server.norestart.remedy": undefined;
+	"ui.updates.panel.server.rebuild.remedy": undefined;
+	"ui.updates.panel.service.check_unavailable.message": undefined;
+	"ui.updates.panel.service.no_backend.message": undefined;
+	"ui.updates.panel.service.no_server.message": undefined;
+	"ui.updates.panel.service.restart.message": undefined;
+	"ui.updates.panel.service.restart.message_version": { version: string };
 };
 
 export type MessageKey = keyof MessageParams;

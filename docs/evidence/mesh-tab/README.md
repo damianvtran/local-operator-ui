@@ -46,6 +46,22 @@ brings the set to the **forty-six** below; the run is
 `node scripts/capture-evidence.mjs --only=mesh-tab--approval
 --themes=localOperatorLight,localOperatorDark --allow-backend`.
 
+**The link-resilience pass adds the four transport states the incident needed** - the
+shipped set could draw only one amber "unreachable", so a refused TCP connection, a
+black-holed address and a closed handshake all read `no answer`. `relay-down` is the
+measured 0.82.3 incident (the public address refused while the private one timed out),
+`relay-down-list` is the same device through the List presentation so the per-address
+rows are photographed where they are read, `address-unreachable` is two timeouts with
+no refusal, and `handshake-refused` is a connected attempt the peer then closed. Each
+frame shows the node word, the summary count and the panel/list's per-address evidence;
+the three are deliberately distinct, because the operator's next action differs. That
+brings the set to the **fifty** below; the run is one `--only=` per state (the flag
+is a substring match, so a pipe would be a shell pipe and a combined value fails):
+`node scripts/capture-evidence.mjs http://localhost:6006 --only=mesh-tab--relay-down
+--themes=localOperatorLight,localOperatorDark --allow-backend`, then the same line
+with `--only=mesh-tab--address-unreachable` and with
+`--only=mesh-tab--handshake-refused`.
+
 **The approvals pair is `approvals-before/` inside this set** (design round 1, D5). Its
 three states - `approvals-waiting`, `approvals-decision-writes` and `approval-refused` -
 are the same three this set carries as their after halves, rendered by `origin/main`'s
