@@ -1,19 +1,28 @@
 /**
  * A persisted `$skill` payload, read back as the row a reader should see.
  *
- * WHY THIS EXISTS. `$name` expansion is a CLIENT duty and the payload it sends
- * is what gets PERSISTED, so the user's own message on the wire is the header
- * sentence, the `<skill>` tag, the whole SKILL.md body and the request last
- * (`skill-invocation.ts`, porting `invoke.py:render_invocation`). The TUI and
- * the phone hide that: they paint the typed line recovered from the payload's
- * `invocation` attribute (`local_operator/harness/rows.py:typed_line_of`). The
- * desktop never ported the read half, so its bubble paints the entire payload —
- * a wall of skill body standing in for one typed line, and the defect the
- * harness repo's `docs/design/history-fold-convergence.md` row D8 records as
- * belonging to a user bubble ("also poisons any phone-side session titling").
+ * TWO SHAPES ON THE WIRE, and this file reads both:
  *
- * WHAT IT ANSWERS. `skillRowOf` is the ONE derivation every reader of such a
- * row goes through: the reducer stamps it on the record, so the row, the
+ *   - the LEGACY shape, where the sent message is the header sentence, the
+ *     `<skill>` tag, the whole SKILL.md body and the request last
+ *     (`skill-invocation.ts`'s `renderSkillInvocation`, porting the old
+ *     `invoke.py:render_invocation`). `skillRowOf` recovers the typed line from
+ *     the tag's `invocation` attribute and parses the rest;
+ *   - the TAIL-BLOCK shape, where the user's text sits VERBATIM in front of an
+ *     `<operator-skills>` block (2026-10-28's inline multi-skill grammar).
+ *     `displayTextOf` strips the block; there is no single `skill` to parse,
+ *     because one message may carry several bodies.
+ *
+ * WHY THIS EXISTS. `$name` expansion is a CLIENT duty and the payload it sends
+ * is what gets PERSISTED. The TUI and the phone hide it through
+ * `local_operator/harness/rows.py:user_row_text`. The desktop once painted the
+ * entire payload — a wall of skill body standing in for one typed line, and the
+ * defect the harness repo's `docs/design/history-fold-convergence.md` row D8
+ * records as belonging to a user bubble ("also poisons any phone-side session
+ * titling"). The mirror of `user_row_text` lives here now, for both shapes.
+ *
+ * WHAT IT ANSWERS. `skillRowOf` is the ONE derivation every reader of the LEGACY
+ * shape goes through: the reducer stamps it on the record, so the row, the
  * reducer's equality gate and the tests cannot disagree about what the payload
  * says. A record that carries `skill` is recognised here and nowhere else,
  * rather than by a wire field: the payload is self-describing and every host
@@ -31,9 +40,9 @@
  * the closing tag, the body is the block between them with its YAML front
  * matter stripped, and the purpose is that front matter's `description:`.
  *
- * THE FORMAT'S OWN LIMIT, stated rather than papered over: the `<skill>` block
- * is not escapable, so the body ends at the FIRST `</skill>` after the tag. A
- * skill body containing that literal closes early — the same limit
+ * THE LEGACY FORMAT'S OWN LIMIT, stated rather than papered over: the `<skill>`
+ * block is not escapable, so the body ends at the FIRST `</skill>` after the
+ * tag. A skill body containing that literal closes early — the same limit
  * `utils/reply-utils.ts` documents for a quoted body containing `</reply-to>`,
  * and the mitigation is the same one: the close is found by scanning, not by
  * matching a second, guessable tag.
@@ -42,6 +51,7 @@
 import type { Reply } from "@shared/store/conversation-input-store";
 import {
 	SKILL_TAG_RE,
+	stripSkillBlock,
 	unescapeSkillAttribute,
 } from "../components/skill-invocation";
 import { pyTrim, pyTrimStart } from "../components/slash-token";
@@ -310,6 +320,27 @@ export function skillRowOf(text: string): SkillInvocationRow | null {
 }
 
 /**
+ * What a user row PAINTS, from the payload the host stored
+ * (`harness.rows.user_row_text`, skill half).
+ *
+ * TWO SHAPES, ONE ANSWER. A LEGACY payload is read through `skillRowOf`, which
+ * recovers the typed line from the tag's `invocation` attribute. A NEW payload
+ * carries the typed text verbatim in front of an `<operator-skills>` block, so
+ * the block alone is removed — no recovery, which is what makes the live row
+ * and the replayed row agree by construction.
+ *
+ * Ordinary messages are returned untouched, not trimmed: only a text that
+ * actually carries a complete block is normalised, so a message with leading or
+ * trailing whitespace paints exactly as it always did.
+ */
+export function displayTextOf(text: string): string {
+	const row = skillRowOf(text);
+	if (row !== null) return row.text;
+	const stripped = stripSkillBlock(text);
+	return stripped === text ? text : pyTrim(stripped);
+}
+
+/**
  * What a `$skill` row hands back to the composer's Edit: the typed line for the
  * box, and the quoted run for the composer's own chip path.
  *
@@ -322,6 +353,11 @@ export function skillRowOf(text: string): SkillInvocationRow | null {
  * chips the box gets are the ones the reader saw on the row, and
  * `buildSendPayload` re-joins exactly what came back.
  *
+ * BOTH PAYLOAD SHAPES ARE HANDLED, for the same reason the row paints both: a
+ * new payload's Edit must not put the `<operator-skills>` block in the box —
+ * the block is transport, and re-sending it would carry the old bodies into the
+ * next message as prose.
+ *
  * `null` for anything that is not an invocation: an ordinary message is
  * untouched, and its own quoted run keeps the behaviour it had before this row
  * existed (the same raw markup, which is a pre-existing shape of that path).
@@ -330,7 +366,15 @@ export function editDraftOf(
 	text: string,
 ): { replies: Reply[]; text: string } | null {
 	const row = skillRowOf(text);
-	if (row === null) return null;
+	if (row === null) {
+		const stripped = stripSkillBlock(text);
+		if (stripped === text) return null;
+		const { prefix } = splitReplyPrefix(text);
+		return {
+			replies: parseReplies(text).replies,
+			text: stripped.slice(prefix.length).trimStart(),
+		};
+	}
 	/*
 	 * `row.text` is `prefix + gap + line`, so the box's half is the tail. Slicing
 	 * the ORIGINAL prefix rather than rebuilding the line from the parsed fields
