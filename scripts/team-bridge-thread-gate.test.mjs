@@ -41,10 +41,44 @@ const bundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
-	packages: "external",
+	/*
+	 * ONLY THE PACKAGES THE SUITE ITSELF IMPORTS STAY EXTERNAL. `packages:
+	 * "external"` left the whole bare-import graph to node's ESM resolver, and the
+	 * shared composer's chain reaches `@mui/material/styles` - a DIRECTORY import,
+	 * which Node refuses ("Cannot find module .../styles"). Bundling everything the
+	 * suite does not itself import keeps one React (the real identity check) while
+	 * letting the app's own dependency graph resolve the way the app's bundler does.
+	 */
+	external: ["react", "react-dom", "react-dom/server", "react/jsx-runtime"],
 	tsconfig: "tsconfig.web.json",
 	jsx: "automatic",
-	loader: { ".css": "empty" },
+	// Vite's `import.meta.env` is read at IMPORT time by the app's config loader,
+	// which the shared composer's chain pulls in (`load-config.ts`): bundling for
+	// node leaves it undefined and the module throws before a single assertion runs
+	// (`browser-chrome.test.mjs` records the same trap). The URL is dead on purpose.
+	define: { "import.meta.env": "__viteEnv" },
+	/*
+	 * BOTH SHIMS THE APP'S BUNDLER GIVES THE SAME MODULES. `__viteEnv` is Vite's
+	 * `import.meta.env`; `require` is what a CJS dependency inside an ESM bundle
+	 * needs (the composer's graph keeps one), resolved from THIS file the way the
+	 * app resolves it. `agents-composer-mount.test.mjs` states the same recipe.
+	 */
+	banner: {
+		js: 'const __viteEnv = {}; import { createRequire as __loCreateRequire } from "node:module"; const require = __loCreateRequire(import.meta.url);',
+	},
+	// The page mounts the SHARED composer now, which pulls the brand mark (.png).
+	// Bundling it keeps these DOM/state probes on the real component tree; a
+	// `dataurl` rather than a file keeps the harness asset-free.
+	loader: {
+		".css": "empty",
+		".svg": "text",
+		".png": "dataurl",
+		".webp": "dataurl",
+		".ttf": "empty",
+		".woff": "empty",
+		".woff2": "empty",
+		".eot": "empty",
+	},
 	write: false,
 });
 
@@ -113,13 +147,49 @@ const viewBundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
-	packages: "external",
+	/*
+	 * ONLY WHAT THIS BUNDLE'S OWN PROBE IMPORTS STAYS EXTERNAL: left as `packages:
+	 * "external"` the composer's chain (reached through the shared composer the page
+	 * now mounts) put `@mui/material/styles` - a DIRECTORY import - in front of
+	 * node's ESM resolver, which refuses it.
+	 */
+	external: ["react", "react-dom", "react-dom/server", "react/jsx-runtime"],
 	jsx: "automatic",
-	loader: { ".css": "empty" },
+	// Vite's `import.meta.env` is read at IMPORT time by the app's config loader,
+	// which the shared composer's chain pulls in (`load-config.ts`): bundling for
+	// node leaves it undefined and the module throws before a single assertion runs
+	// (`browser-chrome.test.mjs` records the same trap). The URL is dead on purpose.
+	define: { "import.meta.env": "__viteEnv" },
+	/*
+	 * BOTH SHIMS THE APP'S BUNDLER GIVES THE SAME MODULES. `__viteEnv` is Vite's
+	 * `import.meta.env`; `require` is what a CJS dependency inside an ESM bundle
+	 * needs (the composer's graph keeps one), resolved from THIS file the way the
+	 * app resolves it. `agents-composer-mount.test.mjs` states the same recipe.
+	 */
+	banner: {
+		js: 'const __viteEnv = {}; import { createRequire as __loCreateRequire } from "node:module"; const require = __loCreateRequire(import.meta.url);',
+	},
+	// The page mounts the SHARED composer now, which pulls the brand mark (.png).
+	// Bundling it keeps these DOM/state probes on the real component tree; a
+	// `dataurl` rather than a file keeps the harness asset-free.
+	loader: {
+		".css": "empty",
+		".svg": "text",
+		".png": "dataurl",
+		".webp": "dataurl",
+		".ttf": "empty",
+		".woff": "empty",
+		".woff2": "empty",
+		".eot": "empty",
+	},
 	plugins: [chatSidebarStub],
 	alias: {
 		"@shared": `${ROOT}/src/renderer/src/shared`,
 		"@features": `${ROOT}/src/renderer/src/features`,
+		// The shared composer imports the brand mark through this alias; it stayed
+		// external under `packages: "external"`, so the first suite to bundle the
+		// composer is the first to need it resolved.
+		"@assets": `${ROOT}/src/renderer/src/assets`,
 	},
 	write: false,
 });
