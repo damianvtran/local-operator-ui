@@ -1,0 +1,31 @@
+Executable=/Applications/Local Operator.app/Contents/MacOS/Local Operator
+Identifier=com.local-operator
+Format=app bundle with Mach-O thin (arm64)
+CodeDirectory v=20500 size=446 flags=0x10000(runtime) hashes=3+7 location=embedded
+VersionPlatform=1
+VersionMin=851968
+VersionSDK=1705216
+Hash type=sha256 size=32
+CandidateCDHash sha256=15ff9ce064e9fc4cb110ca09b797529796bf8d2d
+CandidateCDHashFull sha256=15ff9ce064e9fc4cb110ca09b797529796bf8d2df26b29a252544134db4eb2a8
+Hash choices=sha256
+CMSDigest=15ff9ce064e9fc4cb110ca09b797529796bf8d2df26b29a252544134db4eb2a8
+CMSDigestType=2
+Executable Segment base=0
+Executable Segment limit=16384
+Executable Segment flags=0x1
+Page size=16384
+CDHash=15ff9ce064e9fc4cb110ca09b797529796bf8d2d
+Signature size=8973
+Authority=Developer ID Application: Damian Tran (SHA2U6KT7V)
+Authority=Developer ID Certification Authority
+Authority=Apple Root CA
+Timestamp=Oct 28, 2026 at 10:23:02 AM
+Notarization Ticket=stapled
+Info.plist entries=32
+TeamIdentifier=SHA2U6KT7V
+Runtime Version=26.5.0
+Sealed Resources version=2 rules=13 files=1592
+Internal requirements count=1 size=180
+Total signatures=1
+Chosen signature=1

@@ -1,0 +1,265 @@
+{
+  "instance": "1cb068fe5f90-r6-vi",
+  "locale": "vi",
+  "round": "round 5 — remediation verification of the round-4 record (not a fresh audit)",
+  "scope": "DELTA ONLY, unchanged: the 89 English keys added by 930c8ec2d1, as corrected by 40afea32ff, 8f1c56a425, a10255813c and now 0a2cff71ec, across 15 namespaces. This round verifies (a) that ui.hub.detail.delist_body now names the hub like its siblings while keeping the English's three-clause assurance and its placeholder, and (b) that nothing else moved. The settled surface-name policy was applied as settled and is not re-litigated.",
+  "checkout_head": "0a2cff71ec8508db97a6acaa45e04de2024be2ad",
+  "previous_head": "a10255813c44112eb49bb5d5d6fe05173e2d21c1",
+  "branch": "i18n-final-literals",
+  "worktree": "/Users/damian/lo-literals",
+  "audit_date": "2026-10-29",
+  "reviewed_previous": "/Users/damian/qa/lit-audit4/vi/receipt.json",
+  "previous_instance": "1cb068fe5f90-r4-vi",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "1cb068fe5f90",
+    "model": "radient/auto",
+    "model_history": [
+      "anthropic/claude-sonnet-5-5 (round 3 start; provider quota failure)",
+      "openai/gpt-6-astra (harness fallback)",
+      "kimi/k3.1-pro (harness fallback)",
+      "radient/auto (model in the run that verified these bytes and wrote this record)"
+    ],
+    "actual_model_source": "harness [model switch] notices delivered in-session",
+    "independent_from_translator_session": true,
+    "declaration": "No translation or MT service was used to compare or back-translate any string."
+  },
+  "remediation_under_test": {
+    "commit": "0a2cff71ec",
+    "subject": "fix(i18n): name the hub consistently in the vi delist body",
+    "files_changed_since_previous_head": ["src/i18n/catalogues/vi/ui.hub.detail.json"],
+    "lines_changed": "1 insertion, 1 deletion (git diff --stat a10255813c 0a2cff71ec)",
+    "keys_changed": ["ui.hub.detail.delist_body"],
+    "nothing_else_moved": "git diff --name-only a10255813c 0a2cff71ec over src/i18n/catalogues/vi/ and src/i18n/catalogues/en/ returns that one file, so 88 of the 89 delta keys and all 15 English files are byte-identical to the bytes round 4 approved."
+  },
+  "resolved_this_round": [
+    {
+      "prior_finding": "vi-r3-01 (carried as vi-r4-01), MINOR, ui.hub.detail.delist_body",
+      "status": "RESOLVED at 0a2cff71ec",
+      "evidence": "vi now reads: 'Thao tác này sẽ gỡ “{name}” khỏi Trung tâm tác nhân ngay lập tức và không ai có thể tải xuống nữa. Bạn có thể tải lên lại sau.' The surface is named with the locale's shipped title, identical to ui.hub.pages.header.title, ui.hub.detail.back_aria and ui.hub.detail.delist_tooltip, so the three-way split recorded in round 4 is closed.",
+      "three_clause_assurance": "all three English clauses survive, checked clause by clause: (1) off the hub straight away = 'gỡ … khỏi Trung tâm tác nhân ngay lập tức'; (2) nobody will be able to download it = 'không ai có thể tải xuống nữa'; (3) you can upload it again later = 'Bạn có thể tải lên lại sau.'",
+      "placeholders": "{name} present and byte-identical to English, still inside the curly quotes the sidecar requires; NFC; no ASCII ellipsis; no straight quotes",
+      "meaning_risk": "none: the fix inserts the qualifier only; polarity, immediacy, reversibility and the download denial are unchanged from the round-4 bytes and from English"
+    }
+  ],
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 2
+  },
+  "verdict": "pass",
+  "verdict_note": "No BLOCKER, MAJOR or MINOR remains: the one MINOR of rounds 3-4 is resolved at this head, the two remaining findings are non-blocking NITs (optional wording calls the team has chosen to leave), and nothing else in the delta moved. This is a clean-with-findings pass under the ledger status rule.",
+  "findings": [
+    {
+      "id": "vi-r5-01",
+      "from_round_3": "vi-r3-02 (carried as vi-r4-02)",
+      "severity": "NIT",
+      "namespace": "ui.agents.settings",
+      "key": "ui.agents.settings.chat.model_hosting_heading",
+      "status": "open — value byte-identical at this head",
+      "current": "Mô hình và nhà cung cấp",
+      "english": "Model and hosting",
+      "problem": "The heading renders 'hosting' as 'nhà cung cấp' (provider), narrowing the section to a provider. The paired tooltip also says 'nhà cung cấp', so the pairing is coherent and the drift is small; it stays a NIT.",
+      "suggested": "Mô hình và hosting, or keep the current pairing deliberately and record the call in the vi style guide"
+    },
+    {
+      "id": "vi-r5-02",
+      "from_round_3": "vi-r3-03 (carried as vi-r4-03)",
+      "severity": "NIT",
+      "namespace": "ui.chat.canonical",
+      "key": "ui.chat.canonical.security_notice.show_code",
+      "status": "open — value byte-identical at this head",
+      "current": "Hiển thị mã đã xem xét",
+      "english": "Show the reviewed code",
+      "problem": "'mã' alone is the same word this locale uses for the pasted sign-in code in ui.chat.radient_session.prose.input_required, so a disclosure about reviewed source could momentarily read as a code rather than a code excerpt. Clarity polish, not a defect in meaning.",
+      "suggested": "Hiển thị mã nguồn đã xem xét"
+    }
+  ],
+  "namespaces": {
+    "ui.agents.settings": {
+      "status": "passed",
+      "keys_audited": 5,
+      "sha256": {
+        "en": "3ba270885be69d682183c849436c3e2146bf5c8875cf8a2be1f26528ed20fd4d",
+        "target": "c855bb4d934e038d1195bc81c9be653a0a409254476d5524f722f7abfd9c4c16"
+      },
+      "findings": [
+        {
+          "id": "vi-r5-01",
+          "severity": "nit",
+          "key": "ui.agents.settings.chat.model_hosting_heading"
+        }
+      ]
+    },
+    "ui.chat.asks": {
+      "status": "passed",
+      "keys_audited": 2,
+      "sha256": {
+        "en": "3399e4015ace811013fb16d9f021016eaecf8ed700e6d34ee2c0d0029068832a",
+        "target": "45d8cda3307a0604a4325001c25af210775f28a90198b19b489dba37ae0f764f"
+      },
+      "findings": []
+    },
+    "ui.chat.attachments": {
+      "status": "passed",
+      "keys_audited": 5,
+      "sha256": {
+        "en": "623a1363260ecbe40393b4424dde4d7b6cc084688ac354483052639a145ce892",
+        "target": "c7fb2470c439b0db16d73a835adf23ba21dc0bf7c0b879e826de772bae2252d3"
+      },
+      "findings": []
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "keys_audited": 9,
+      "sha256": {
+        "en": "e497effa4c5ba36da6fc3fb4598e5cd7cd2219cae675e94b51d00682e2f90935",
+        "target": "3013d9008dc2377516229515a511cada21263e0270fed55c07d19ccab807722e"
+      },
+      "findings": [
+        {
+          "id": "vi-r5-02",
+          "severity": "nit",
+          "key": "ui.chat.canonical.security_notice.show_code"
+        }
+      ]
+    },
+    "ui.chat.device": {
+      "status": "passed",
+      "keys_audited": 1,
+      "sha256": {
+        "en": "2be9eaf88f3f95eec4d28b4cc5b6397edbd3173eb2af3713ff2da4f6b0b5fcd6",
+        "target": "ab02732c30d435faeac3fceaa500de1eb7aec0cc0863c9e2533ffa5edce5cd16"
+      },
+      "findings": []
+    },
+    "ui.chat.header": {
+      "status": "passed",
+      "keys_audited": 2,
+      "sha256": {
+        "en": "a2584118fd1ae8da26a27f8e739bbde58c30ec5c7c8c9515d2ab876bc7a82dd8",
+        "target": "e0f35c22e1b64c764abf8b5d5630f13ae6eca7ed50c92423435976faffc82c53"
+      },
+      "findings": []
+    },
+    "ui.chat.pickers": {
+      "status": "passed",
+      "keys_audited": 1,
+      "sha256": {
+        "en": "e77e75172487fb154b12ce349fac574cc88516c811acaefd2018208baaf192c1",
+        "target": "da4c73d5a4912f55342de1a6b20c6378cd86310854fed8ebdce362795a27a3a5"
+      },
+      "findings": []
+    },
+    "ui.chat.radient_session": {
+      "status": "passed",
+      "keys_audited": 8,
+      "sha256": {
+        "en": "3ac15679b3551e879c2d88d11594946ea4307238330e88cee24ba80b07721118",
+        "target": "e8c6d6ea785abb22373e3f0722f04c4e1248309db6498d28d61053b225c2baf5"
+      },
+      "findings": []
+    },
+    "ui.chat.thread_search": {
+      "status": "passed",
+      "keys_audited": 3,
+      "sha256": {
+        "en": "aea9f467a5a57775ec7510e09b52800077f8ebd93bf430b7956dd381f1ed3d91",
+        "target": "07656638334f6c5f0ec8a694c1b936f4f349caa5a8a9eb5a4b75009bde41c377"
+      },
+      "findings": []
+    },
+    "ui.chat.transcript_copy": {
+      "status": "passed",
+      "keys_audited": 5,
+      "sha256": {
+        "en": "d6f5264ef4cd19ea1a66b10d7dadfd6478ec239973a7a8fca49903b8ae3818dc",
+        "target": "8f4dd6e2c13e3117e00ac036f93d523b44566e64aebf258cb6240f10b6dd66ea"
+      },
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "keys_audited": 3,
+      "sha256": {
+        "en": "0c279fc21d17c3f1937e4364fac698601ec4304ce7c7055df786bc037a8b12e3",
+        "target": "af632c1c29b935a6c8e0e6a8bf919d1e389e1406fe5f780a2b100c49a446e1cc"
+      },
+      "findings": []
+    },
+    "ui.hub.card": {
+      "status": "passed",
+      "keys_audited": 6,
+      "sha256": {
+        "en": "b9459d327a82d48b8607356f857e6a260cc0b46b78a12109d8b843c559abfcbc",
+        "target": "c8cfca4bf190d9e562b7bdfcacf87ccfe553d35ca15a022e1e917bcf27f4c00a"
+      },
+      "findings": []
+    },
+    "ui.hub.detail": {
+      "status": "passed",
+      "keys_audited": 26,
+      "sha256": {
+        "en": "d6a3fdb30fc5a4c1d8e0e5530f377dfac0e2b1238f2fd3dd32a12f0e082861d4",
+        "target": "f94935076db9bfc595fa8de58923036014537b6e843c761e4a984db361d7a28a"
+      },
+      "findings": []
+    },
+    "ui.hub.pages": {
+      "status": "passed",
+      "keys_audited": 3,
+      "sha256": {
+        "en": "9ae73c3aabece832df701ffe1b8c24b01d731a94adeb795103a0215b84fb57bd",
+        "target": "bbc635988fa06c886d6ce24e7dfc8f8ef17fb84947ec8d373ee3181945c10801"
+      },
+      "findings": []
+    },
+    "ui.hub.viewer": {
+      "status": "passed",
+      "keys_audited": 10,
+      "sha256": {
+        "en": "a6eed998576ef689a2fc011b2f9c64eaf53fe8b007b2efc21cf66118bc206375",
+        "target": "da591019b8789337cc414c5f2653e86b3deeebba3cff5d5a50f3962a225a56cd"
+      },
+      "findings": []
+    }
+  },
+  "checks": [
+    {
+      "name": "head and remediation surface",
+      "method": "git rev-parse HEAD; git diff --name-only and --stat between a10255813c and 0a2cff71ec over the en and vi catalogue directories",
+      "result": "head 0a2cff71ec8508db97a6acaa45e04de2024be2ad; exactly one file and one line changed (vi/ui.hub.detail.json); no English file changed"
+    },
+    {
+      "name": "consistency of the corrected key",
+      "method": "ui.hub.detail.delist_body re-read at this head and compared with ui.hub.pages.header.title, ui.hub.detail.back_aria and ui.hub.detail.delist_tooltip via read_public_copy",
+      "result": "pass — all four now carry 'Trung tâm tác nhân' in vi"
+    },
+    {
+      "name": "three-clause assurance",
+      "method": "clause-by-clause comparison against English: immediate removal, download denial, re-upload later",
+      "result": "pass — all three present, in the same order, with no added or dropped commitment"
+    },
+    {
+      "name": "placeholders and typography",
+      "method": "ICU brace set comparison with English on the corrected key; NFC; ASCII ellipsis; straight quotes; curly-pair presence",
+      "result": "pass — {name} identical on both sides inside “ ”, NFC, no ASCII ellipsis, no straight quotes"
+    },
+    {
+      "name": "no regression elsewhere in the delta",
+      "method": "file-level diff since the round-4 head plus the per-namespace sha256 table",
+      "result": "pass — 88 of 89 delta keys byte-identical to the bytes round 4 approved; only ui.hub.detail's sha256 moved, and only in the key under review"
+    }
+  ],
+  "notes": [
+    "Prior finding vi-r3-01 (MINOR, ui.hub.detail.delist_body), carried through round 4 as vi-r4-01 — RESOLVED at 0a2cff71ec. The body now says 'khỏi Trung tâm tác nhân', matching the shipped title and both siblings; the three-clause assurance and {name} are intact.",
+    "Prior finding vi-r3-02 (NIT, ui.agents.settings.chat.model_hosting_heading), carried as vi-r5-01 — STILL STANDS, value byte-identical ('Mô hình và nhà cung cấp'). Non-blocking.",
+    "Prior finding vi-r3-03 (NIT, ui.chat.canonical.security_notice.show_code), carried as vi-r5-02 — STILL STANDS, value byte-identical ('Hiển thị mã đã xem xét'). Non-blocking.",
+    "Findings array holds only what still stands: 2 of 3 prior findings; the MINOR is closed and does not appear.",
+    "No-regression evidence: git diff a10255813c 0a2cff71ec touches one vi file, one line. The English side of the delta is untouched by this commit.",
+    "Round-4 advisory still open, and outside the vi values: the note for ui.hub.detail.back_aria in src/i18n/catalogues/en/ui.hub.detail.context.json still says '\"Agent Hub\" stays Latin only in the locales whose own navigation ships it that way (es/fr/hi/ru/ur/vi)'. At this head only ur ships it Latin (ur 'Agent Hub'); es 'Hub de agentes', fr 'Hub des agents', hi 'एजेंट हब', ru 'Хаб агентов' and vi 'Trung tâm tác nhân' are localized, and a10255813c localized five of those. The vi values are correct; the note's parenthetical list names the locales that were just changed, so it will mislead the next translator. Advisory, not a finding.",
+    "Coverage statement: this round verified one corrected key, its three neighbours by way of reference, and the two carried NITs; it is not a re-audit of all 89 keys and claims no rendered-frame or runtime coverage.",
+    "Second independent pass: not performed; this round's manager asked for single-key remediation verification."
+  ]
+}

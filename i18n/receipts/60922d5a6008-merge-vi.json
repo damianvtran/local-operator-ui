@@ -1,0 +1,166 @@
+{
+  "locale": "vi",
+  "scope": "ui.hub.pages + ui.common.actions: verification of the #1439 merge resolution",
+  "checkout_head": "2ba58dd71d",
+  "audit_date": "2026-10-29",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "60922d5a6008",
+    "model": "kimi/k3.1-pro"
+  },
+  "instance": "60922d5a6008-merge-vi",
+  "input_sha256": {
+    "en/ui.hub.pages.json": "f1b0a81c417ad3037e96efb0a6c85ae4588f9d01e9c01a3dbbb357f90dd03d3e",
+    "en/ui.common.actions.json": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
+    "vi/ui.hub.pages.json": "e1fa917249af506fd1854a7bb14877d35c35da3bfbc1c0840515ef0ae4cab159",
+    "vi/ui.common.actions.json": "847c5e790344a8b69c6c611a5653b6834011e0a2fa0967b770cce8be3d232378"
+  },
+  "observed_diffs": {
+    "en/ui.hub.pages.json": {
+      "keys_main": 37,
+      "keys_pre_merge": 38,
+      "keys_merged": 40,
+      "added_vs_pre_merge": [
+        "ui.hub.pages.card.get",
+        "ui.hub.pages.card.updated"
+      ],
+      "removed_vs_pre_merge": [],
+      "changed_vs_pre_merge": [],
+      "added_vs_main": [
+        "ui.hub.pages.pager.nav_aria",
+        "ui.hub.pages.pager.next",
+        "ui.hub.pages.pager.previous"
+      ],
+      "removed_vs_main": [],
+      "changed_vs_main": [],
+      "branch_added_keys": [
+        "ui.hub.pages.pager.nav_aria",
+        "ui.hub.pages.pager.next",
+        "ui.hub.pages.pager.previous"
+      ],
+      "main_keys_missing_from_merged": [],
+      "main_keys_changed_in_merged": [],
+      "branch_added_missing": [],
+      "branch_added_changed": [],
+      "extra_keys": [],
+      "merged_equals_main_plus_branch_added": true
+    },
+    "vi/ui.hub.pages.json": {
+      "keys_main": 37,
+      "keys_pre_merge": 38,
+      "keys_merged": 40,
+      "added_vs_pre_merge": [
+        "ui.hub.pages.card.get",
+        "ui.hub.pages.card.updated"
+      ],
+      "removed_vs_pre_merge": [],
+      "changed_vs_pre_merge": [],
+      "added_vs_main": [
+        "ui.hub.pages.pager.nav_aria",
+        "ui.hub.pages.pager.next",
+        "ui.hub.pages.pager.previous"
+      ],
+      "removed_vs_main": [],
+      "changed_vs_main": [],
+      "branch_added_keys": [
+        "ui.hub.pages.pager.nav_aria",
+        "ui.hub.pages.pager.next",
+        "ui.hub.pages.pager.previous"
+      ],
+      "main_keys_missing_from_merged": [],
+      "main_keys_changed_in_merged": [],
+      "branch_added_missing": [],
+      "branch_added_changed": [],
+      "extra_keys": [],
+      "merged_equals_main_plus_branch_added": true
+    },
+    "en/ui.common.actions.json": {
+      "keys_main": 51,
+      "keys_pre_merge": 52,
+      "keys_merged": 53,
+      "added_vs_pre_merge": [
+        "ui.common.actions.retrying"
+      ],
+      "removed_vs_pre_merge": [],
+      "changed_vs_pre_merge": [],
+      "added_vs_main": [
+        "ui.common.actions.dismiss",
+        "ui.common.actions.more_info"
+      ],
+      "removed_vs_main": [],
+      "changed_vs_main": [],
+      "branch_added_keys": [
+        "ui.common.actions.dismiss",
+        "ui.common.actions.more_info"
+      ],
+      "main_keys_missing_from_merged": [],
+      "main_keys_changed_in_merged": [],
+      "branch_added_missing": [],
+      "branch_added_changed": [],
+      "extra_keys": [],
+      "merged_equals_main_plus_branch_added": true
+    },
+    "vi/ui.common.actions.json": {
+      "keys_main": 51,
+      "keys_pre_merge": 52,
+      "keys_merged": 53,
+      "added_vs_pre_merge": [
+        "ui.common.actions.retrying"
+      ],
+      "removed_vs_pre_merge": [],
+      "changed_vs_pre_merge": [],
+      "added_vs_main": [
+        "ui.common.actions.dismiss",
+        "ui.common.actions.more_info"
+      ],
+      "removed_vs_main": [],
+      "changed_vs_main": [],
+      "branch_added_keys": [
+        "ui.common.actions.dismiss",
+        "ui.common.actions.more_info"
+      ],
+      "main_keys_missing_from_merged": [],
+      "main_keys_changed_in_merged": [],
+      "branch_added_missing": [],
+      "branch_added_changed": [],
+      "extra_keys": [],
+      "merged_equals_main_plus_branch_added": true
+    }
+  },
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 0,
+    "NIT": 0
+  },
+  "verdict": "pass",
+  "namespaces": {
+    "ui.hub.pages": {
+      "status": "passed",
+      "keys_audited": 40,
+      "sha256": {
+        "en": "f1b0a81c417ad3037e96efb0a6c85ae4588f9d01e9c01a3dbbb357f90dd03d3e",
+        "target": "e1fa917249af506fd1854a7bb14877d35c35da3bfbc1c0840515ef0ae4cab159"
+      },
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "keys_audited": 53,
+      "sha256": {
+        "en": "3f9e9a4b02310980d5ba06a2d4b8f637a8c97a4eebd96a8100d4799f543429ba",
+        "target": "847c5e790344a8b69c6c611a5653b6834011e0a2fa0967b770cce8be3d232378"
+      },
+      "findings": []
+    }
+  },
+  "merge_head": "863fa15e07",
+  "pre_merge_tip": "2ba58dd71d",
+  "notes": [
+    "Live in-progress merge: MERGE_HEAD=863fa15e07 (=origin/main tip), pre-merge tip 2ba58dd71d; checkout_head reported as HEAD rev-parse = 2ba58dd71d.",
+    "vi/ui.common.actions.json is git-stage UU (unresolved conflict entry) but the working-tree file carries the resolved content and parses as valid JSON with no conflict markers; audited bytes are the working-tree files.",
+    "All four files: every origin/main key present and byte-identical; every branch-added key present with pre-merge value; no extra keys; merged == main ∪ branch_added exactly.",
+    "read_public_copy refused (working tree differs from HEAD; merge uncommitted and repo must not be edited). vi sample read from the same hashed working-tree bytes under audit instead.",
+    "en one/other plurals correctly collapse to vi 'other'-only; placeholder vars and # preserved; no ASCII '...', all NFC; no vi value byte-identical to en (no silent English inheritance); vi voice uniform across main-inherited and branch-added keys."
+  ]
+}

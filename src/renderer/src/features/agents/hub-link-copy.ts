@@ -1,3 +1,4 @@
+import type { HubLinkAction } from "@shared/api/local-operator/hub-link-actions";
 import type { HubDirectionStatus } from "@shared/api/local-operator/hub-links";
 import { t } from "@shared/i18n";
 
@@ -58,6 +59,43 @@ export function hubReasonText(reason: string | null | undefined): string {
 	}
 }
 
+/**
+ * The WORD for one of core's `ItemOutcome` values (`report.py`), where a sentence
+ * would otherwise interpolate the raw token.
+ *
+ * Design D1 (round 1): the incoming preview ran the machine token straight into
+ * a sentence - "Preview for Coder: would-merge" - and then into the report's own
+ * message with no separator, so a reader had to parse a hyphenated enum and then
+ * find where the English started. A class this app can name gets its own
+ * translated word; the sentence around it terminates (see the catalogue value)
+ * and core's message is a separate line.
+ *
+ * An UNKNOWN class degrades to the raw token rather than to invented copy: a
+ * class this build has never seen must stay visible and legible as data, and
+ * guessing a meaning for it would be a claim the app cannot support (the same
+ * rule `hubReasonText` applies by degrading to a cause-neutral sentence).
+ */
+export function hubOutcomeText(outcome: string): string {
+	switch (outcome) {
+		case "would-merge":
+			return t("ui.hub.links.outcome_would_merge");
+		case "needs-review":
+			return t("ui.hub.links.outcome_needs_review");
+		case "up-to-date":
+			return t("ui.hub.links.outcome_up_to_date");
+		case "unchanged":
+			return t("ui.hub.links.outcome_unchanged");
+		case "failed":
+			return t("ui.hub.links.outcome_failed");
+		case "skipped":
+			return t("ui.hub.links.outcome_skipped");
+		case "unavailable":
+			return t("ui.hub.links.outcome_unavailable");
+		default:
+			return outcome;
+	}
+}
+
 export function hubDirectionStateText(status: HubDirectionStatus): string {
 	switch (status.state) {
 		case "idle":
@@ -91,4 +129,30 @@ export function hubDirectionStateText(status: HubDirectionStatus): string {
 			// reason text (`hubReasonText`) where one exists.
 			return t("ui.hub.status.other_error");
 	}
+}
+
+/**
+ * The sentence for a failed link action, by the action that failed.
+ *
+ * Q13 (QA round 3 on local-operator-ui #1458): every surface funnelled a failed
+ * CHECK into `ui.hub.links.action_failed`, whose sentence names a PULL or a
+ * PUSH - so a refused check told the reader an incoming update "did not
+ * complete" when no update had been attempted. A check is neither direction:
+ * it asks the hub what changed and applies nothing, so it gets its own
+ * sentence rather than borrowing one that asserts work that never ran.
+ */
+export function hubActionFailureText(
+	action: HubLinkAction["action"] | undefined,
+	context: { item: string; source: string; direction: string },
+): string {
+	if (action === "check")
+		return t("ui.hub.links.check_failed", {
+			item: context.item,
+			source: context.source,
+		});
+	return t("ui.hub.links.action_failed", {
+		direction: context.direction,
+		item: context.item,
+		source: context.source,
+	});
 }

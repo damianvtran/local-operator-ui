@@ -27,6 +27,8 @@
  * inspection.
  */
 
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { MessageCircleQuestion } from "lucide-react";
 import { MarkdownRenderer } from "../markdown-renderer";
@@ -55,11 +57,12 @@ export const AgentQuestion = ({
 	busy = false,
 	className,
 }: AgentQuestionProps) => {
+	useI18nLocale();
 	if (!content) return null;
 
 	return (
 		<section
-			aria-label="Question from the agent"
+			aria-label={t("ui.chat.question_dock.from_agent_label")}
 			className={cn(
 				"flex gap-3 rounded-md border border-accent bg-accent-wash px-4 py-3",
 				className,

@@ -11,5 +11,10 @@
 	"ui.chat.attachments.copy_saved_path": "Sao chép đường dẫn bản sao đã lưu",
 	"ui.chat.attachments.saved_path_copied": "Đã sao chép đường dẫn bản sao đã lưu",
 	"ui.chat.attachments.saved_copy_label": "Bản sao đã lưu",
-	"ui.chat.attachments.file_and_copy_missing": "Bản sao đã lưu cũng không còn."
+	"ui.chat.attachments.file_and_copy_missing": "Bản sao đã lưu cũng không còn.",
+	"ui.chat.attachments.open": "Mở",
+	"ui.chat.attachments.playback_position": "Vị trí phát",
+	"ui.chat.attachments.playback_rate": "Tốc độ phát",
+	"ui.chat.attachments.playback_rate_option": "{rate}x",
+	"ui.chat.attachments.volume": "Âm lượng"
 }

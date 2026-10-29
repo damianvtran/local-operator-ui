@@ -29,6 +29,7 @@
 	"ui.chat.pickers.resume.title": "Resume a conversation",
 	"ui.chat.pickers.skills.loading": "Loading",
 	"ui.chat.pickers.skills.title": "Skills",
+	"ui.chat.pickers.slash.action_kind": "Action",
 	"ui.chat.pickers.stop.all_sessions": "All sessions ({count, number, ::group-off})",
 	"ui.chat.pickers.stop.confirm": "Stop {count, plural, one {this session} other {{count, number, ::group-off} sessions}} now",
 	"ui.chat.pickers.stop.title": "Stop",
