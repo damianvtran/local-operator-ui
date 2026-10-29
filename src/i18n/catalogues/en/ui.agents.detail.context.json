@@ -144,6 +144,12 @@
 		"role": "select option label",
 		"tone": "plain, explains the effect"
 	},
+	"ui.agents.detail.meta.delegates": {
+		"role": "Fact in the agent detail's dot-separated meta line",
+		"tone": "Plain single word or short phrase, no verb.",
+		"length_hint": "One word in English, about 9 characters. It sits between the source label and 'Specialist' on one wrapped line of body-small type; a phrase longer than one word may push the line to two rows.",
+		"note": "It states a capability as a fact ('this agent delegates'), not as an instruction; the editable switch elsewhere uses ui.agents.detail.delegate.label, which is a different sentence. Do not translate this as a verb."
+	},
 	"ui.agents.detail.no_description": {
 		"note": "Shared by the agents roster row, and any detail surface that has no description to show. Sits in the same line box as a real description so a row's height does not move; truncates in the roster, wraps in a detail pane.",
 		"role": "inline fallback where a description would be",
@@ -163,6 +169,18 @@
 		"note": "Introduces the effort tier in the read view. The colon and the space before the value are part of the message; the value itself is data.",
 		"role": "inline label before the value",
 		"tone": "plain, factual"
+	},
+	"ui.agents.detail.read.show_all": {
+		"role": "Link-style expander under prose that the line clamp is cutting",
+		"tone": "Plain, terse action; sentence case.",
+		"length_hint": "About 8 characters in English. The link renders at body-small size in a 48x17.4 px box measured at native; keep it to one short word or two, and keep it the exact antonym of show_less.",
+		"note": "Toggles the same block between clamped and fully expanded. It appears only when the text actually overflows, so the two labels are read as a pair."
+	},
+	"ui.agents.detail.read.show_less": {
+		"role": "The same expander once the prose is expanded",
+		"tone": "Plain, terse action; sentence case.",
+		"length_hint": "About 9 characters in English; same 48 px-tall link box as show_all.",
+		"note": "Antonym of show_all; a language whose shorter form reads better may reorder the pair only if both stay clearly opposed."
 	},
 	"ui.agents.detail.section.delegation": {
 		"note": "Covers delegation and effort tier together, because both answer 'how much work does it do'.",

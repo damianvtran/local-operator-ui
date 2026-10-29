@@ -5,6 +5,7 @@
 	"ui.common.actions.copy_failed": "Could not copy. Select and copy it manually.",
 	"ui.common.actions.retry": "Retry",
 	"ui.common.actions.retry_again": "Try again",
+	"ui.common.actions.retrying": "Trying…",
 	"ui.common.actions.date_time_picker.select_date": "Select date",
 	"ui.common.actions.date_time_picker.choose_date": "Choose {label} date",
 	"ui.common.actions.date_time_picker.select_time": "Select time",

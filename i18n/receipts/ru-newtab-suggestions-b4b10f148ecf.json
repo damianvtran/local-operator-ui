@@ -1,0 +1,98 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "audit_kind": "fresh-namespace-delta",
+ "locale": "ru",
+ "namespace": "ui.browser",
+ "pr": null,
+ "branch": "fix/newtab-address-suggestions",
+ "instance": "ru-newtab-suggestions-b4b10f148ecf",
+ "auditor": {
+  "agent": "translation-auditor",
+  "role": "independent translation auditor (team lopdev); authored no catalogue value for this branch and edited no repo file",
+  "instance": "ru-newtab-suggestions-b4b10f148ecf",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_note": "FALLBACK OBSERVED: the session started on deepseek/deepseek-flash and the harness switched to anthropic/claude-sonnet-5-5 mid-run (provider failure: quota HTTP 402). The diff derivation and catalogue reads were first issued on deepseek-flash; every judgement, the ICU parse, the bidi rendering and this receipt were produced on anthropic/claude-sonnet-5-5.",
+  "independence": "Read-only on the repo (worktree newtab-suggestions at 80a1c3224e). Wrote no catalogue value, edited no catalogue, English source, context sidecar, ledger or allowance, ran no ledger tool. Wrote only this receipt under the session scratchpad."
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "verdict": "Accurate, вы register consistent, glossary (подсказки, история просмотров, панель) matches. One minor: 'адрес' narrows 'what you typed'.",
+ "findings": [
+  {
+   "severity": "MINOR",
+   "key": "ui.browser.browser_url_bar.address_suggestions_unavailable_narrow",
+   "current": "Эта панель слишком узкая для подсказок. Нажмите Enter, чтобы открыть введённый адрес.",
+   "problem": "'Нажмите Enter, чтобы открыть введённый адрес' narrows the English 'open what you typed': the text may be a search query, not an address, and Enter then searches. Same wording in _platform and _restart (also_keys).",
+   "proposed": "Эта панель слишком узкая для подсказок. Нажмите Enter, чтобы открыть то, что вы ввели.",
+   "reason": "Keeps the open-ended 'what you typed' of the source (es 'lo que escribiste', fr 'ce que vous avez saisi', zh '你输入的内容' all keep it open). Apply the same tail to _platform and _restart.",
+   "also_keys": [
+    "ui.browser.browser_url_bar.address_suggestions_unavailable_platform",
+    "ui.browser.browser_url_bar.address_suggestions_unavailable_restart"
+   ]
+  }
+ ],
+ "finding_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 1,
+  "nit": 0
+ },
+ "checks": {
+  "keys_audited": 5,
+  "key_set_equals_english": true,
+  "namespace_keys": 241,
+  "placeholders": "@formatjs/icu-messageformat-parser parse of all 5 values: address_open_row carries exactly one argument {address}, byte-intact; the other four carry no argument and no ICU/markup construct, same as English.",
+  "first_sentence_chars_vs_en": {
+   "address_suggestions_unavailable": [
+    36,
+    40
+   ],
+   "address_suggestions_unavailable_narrow": [
+    40,
+    39
+   ],
+   "address_suggestions_unavailable_platform": [
+    40,
+    41
+   ],
+   "address_suggestions_unavailable_restart": [
+    37,
+    35
+   ]
+  },
+  "full_chars_vs_en": {
+   "address_open_row": [
+    16,
+    19
+   ],
+   "address_suggestions_unavailable": [
+    64,
+    82
+   ],
+   "address_suggestions_unavailable_platform": [
+    76,
+    87
+   ],
+   "address_suggestions_unavailable_restart": [
+    100,
+    115
+   ],
+   "address_suggestions_unavailable_narrow": [
+    76,
+    85
+   ]
+  }
+ },
+ "overflow_context": "Rendering context (renderer/src/features/browser/components/browser-url-bar.tsx ~1597-1612): the three standing sentences paint in a single-line `truncate` pill, max-w-[45%] of the address field, text-meta (12px), shown from a 342px field up. The full text is the aria-describedby description. Only the FIRST sentence can realistically be seen, so first-sentence length is the budget that matters.",
+ "sha256": {
+  "ru": "3545fdb1b0385132d06d37b93bb2447ad1e2917c5d88145d45179886f3416aed",
+  "en": "9c26625772886bffa1392176565485cad451be8f2644519b1a939d863667aa81"
+ },
+ "context_sha256": "aa83f0ec3e7d31793e54915a97955c49d2e788f7b926e26746ed46cc5f5a6e9b",
+ "scope": "ui.browser, the 5 keys this commit added or changed (address_open_row new; address_suggestions_unavailable changed; address_suggestions_unavailable_platform / _restart / _narrow new) read against src/i18n/catalogues/en/ui.browser.json and en/ui.browser.context.json, plus the surrounding browser_url_bar / browser_pane / browser_find_row / browser_tab_strip keys as register and glossary precedent. Diff derived from `git diff 2d4ba7c434..80a1c3224e -- src/i18n/catalogues`. 5 audited keys per locale; key set of the namespace equals English (241/241).",
+ "date": "2026-10-26",
+ "head": "80a1c3224e",
+ "head_full": "80a1c3224e2dbb2cafd154acda1ab3ef836c17b3",
+ "base": "2d4ba7c434"
+}

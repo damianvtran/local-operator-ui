@@ -1303,6 +1303,10 @@ const IDENTICAL_OK = new Map([
 		"Product name (Agent Hub), kept in Latin like ur:ui.hub.pages.header.title and ui.shell.sidebar_navigation.agent_hub (both exempted); the ur audit receipts (17d1ca9bf58a-ur, aa44e837c157-ur) pass it clean with no finding",
 	],
 	[
+		"fr:ui.agents.config.kind.agent",
+		"French noun « agent » has the same spelling and is the glossary term (agent -> agent); it is the bare kind word of the config composer's About line and summary suffix, and the seven-locale union audit read it in context",
+	],
+	[
 		"fr:ui.hub.pages.search_field.description",
 		"French noun « description » has the same spelling; search option paired with the translated « Nom »",
 	],

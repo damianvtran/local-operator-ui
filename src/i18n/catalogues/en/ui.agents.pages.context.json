@@ -1,4 +1,52 @@
 {
+	"ui.agents.pages.add_manual.agent": {
+		"role": "Ghost button at the foot of the roster: create an agent by hand",
+		"tone": "Plain action, sentence case.",
+		"length_hint": "Short: the roster column is 288 px and the button is full-width with a 16 px icon, so keep within about 20 characters in English; longer strings truncate or wrap.",
+		"note": "The manual counterpart of asking for an agent in words (ask.manual_agent is the invitation beside the composer; this is the roster's own last affordance). The Teams pane has a sibling."
+	},
+	"ui.agents.pages.add_manual.team": {
+		"role": "Ghost button at the foot of the roster on the Teams tab",
+		"tone": "Plain action, sentence case.",
+		"length_hint": "Same 288 px slot as add_manual.agent; keep it short.",
+		"note": "Team counterpart of add_manual.agent; keep the two parallel so only the object differs."
+	},
+	"ui.agents.pages.ask.body_agent": {
+		"role": "Explanatory paragraph under the ask heading, Agents tab",
+		"tone": "Plain, explanatory, second person ('you'); two short sentences.",
+		"length_hint": "Two sentences; about 160 characters in English. Wraps to three or four lines at the 810 px measure. Keep the causal shape: what an agent is, then what the box does.",
+		"note": "A 'configuration run' is the product's term for the background run that writes the agent registry: use the term the target language already uses for it (ui.agents.config.dismiss/copy), do not invent a second name. The teams sibling says the same thing about a team."
+	},
+	"ui.agents.pages.ask.body_team": {
+		"role": "Explanatory paragraph under the ask paragraph on the Teams tab",
+		"tone": "Plain, explanatory, two sentences.",
+		"length_hint": "Two sentences, wraps to about three lines at 810px; sibling of ask.body_agent.",
+		"note": "A team has one managing agent and members it can hand work to. Keep 'configuration run' identical to the agent sibling and to ui.agents.config.* copy."
+	},
+	"ui.agents.pages.ask.heading_agent": {
+		"role": "Heading above the ask box on the Agents tab",
+		"tone": "Plain, direct invitation; sentence case.",
+		"length_hint": "Two to four words in the English; a second-level heading in an 810 px column, so it may wrap but must not become a sentence.",
+		"note": "The Teams pane has its own sibling key, phrase-for-phrase identical but for its object. The heading names the object the ask box creates; the box itself names neither, because it serves both tabs."
+	},
+	"ui.agents.pages.ask.heading_team": {
+		"role": "Heading above the ask box on the Teams tab",
+		"tone": "Plain, direct invitation; sentence case.",
+		"length_hint": "Two to four words; same slot as heading_agent.",
+		"note": "Team counterpart of ask.heading_agent. Keep the two parallel so the sentence differs only in its object."
+	},
+	"ui.agents.pages.ask.manual_agent": {
+		"role": "Link-style button under the composer: the manual route to the same job",
+		"tone": "Quiet, lower priority than the composer; sentence case.",
+		"length_hint": "One short line, about 22 characters in English; it sits at the box's left edge, so a long string may wrap under the box.",
+		"note": "Starts with 'Or'. Do not translate this as a second 'Add agent' action: it is the alternative to asking, not a synonym for the roster's own Add agent manually (ui.agents.pages.add_manual.agent)."
+	},
+	"ui.agents.pages.ask.manual_team": {
+		"role": "Link-style button under the composer on the Teams tab",
+		"tone": "Quiet, sentence case.",
+		"length_hint": "One short line; sibling of ask.manual_agent.",
+		"note": "Team counterpart of ask.manual_agent; keep the two parallel."
+	},
 	"ui.agents.pages.back_to_list": {
 		"note": "Returns to the roster on widths where the list and the detail pane do not fit together. Sentence case, one short line beside a left arrow that mirrors in RTL.",
 		"role": "button label in the narrow-width back bar",
