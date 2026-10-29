@@ -4,7 +4,7 @@
 	"ui.chat.thread_search.close_label": "Đóng tìm kiếm",
 	"ui.chat.thread_search.count.match": "{count, plural, other {{countText} kết quả khớp}}",
 	"ui.chat.thread_search.count.related": "{count, plural, other {{countText} kết quả khớp liên quan}}",
-	"ui.chat.thread_search.count.split": "{exactText} khớp đúng · {relatedText} liên quan",
+	"ui.chat.thread_search.count.split": "Khớp đúng: {exactText} · Liên quan: {relatedText}",
 	"ui.chat.thread_search.count.truncated": "{count, plural, other {(hiển thị {countText} kết quả đầu)}}",
 	"ui.chat.thread_search.empty": "Không có tin nhắn nào khớp tìm kiếm này.",
 	"ui.chat.thread_search.error": "Không thể tìm kiếm cuộc trò chuyện này.",

@@ -4,7 +4,7 @@
 	"ui.chat.thread_search.close_label": "تلاش بند کریں",
 	"ui.chat.thread_search.count.match": "{count, plural, one {{countText} مطابقت} other {{countText} مطابقتیں}}",
 	"ui.chat.thread_search.count.related": "{count, plural, one {{countText} متعلقہ مطابقت} other {{countText} متعلقہ مطابقتیں}}",
-	"ui.chat.thread_search.count.split": "{exactText} درست · {relatedText} متعلقہ",
+	"ui.chat.thread_search.count.split": "مطابق: {exactText} · متعلقہ: {relatedText}",
 	"ui.chat.thread_search.count.truncated": "{count, plural, one {(پہلی مطابقت دکھائی گئی)} other {(پہلی {countText} مطابقتیں دکھائی گئیں)}}",
 	"ui.chat.thread_search.empty": "اس تلاش سے کوئی پیغام نہیں ملا۔",
 	"ui.chat.thread_search.error": "اس گفتگو میں تلاش نہیں ہو سکی۔",

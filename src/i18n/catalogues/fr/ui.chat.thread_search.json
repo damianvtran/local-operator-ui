@@ -4,7 +4,7 @@
 	"ui.chat.thread_search.close_label": "Fermer la recherche",
 	"ui.chat.thread_search.count.match": "{count, plural, one {{countText} correspondance} many {{countText} de correspondances} other {{countText} correspondances}}",
 	"ui.chat.thread_search.count.related": "{count, plural, one {{countText} correspondance connexe} many {{countText} de correspondances connexes} other {{countText} correspondances connexes}}",
-	"ui.chat.thread_search.count.split": "{exactText} exactes · {relatedText} connexes",
+	"ui.chat.thread_search.count.split": "Exactes : {exactText} · Connexes : {relatedText}",
 	"ui.chat.thread_search.count.truncated": "{count, plural, one {(la première affichée)} many {(les {countText} premières affichées)} other {(les {countText} premières affichées)}}",
 	"ui.chat.thread_search.empty": "Aucun message ne correspond à cette recherche.",
 	"ui.chat.thread_search.error": "La recherche dans cette conversation a échoué.",

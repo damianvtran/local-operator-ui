@@ -4,7 +4,7 @@
 	"ui.chat.thread_search.close_label": "关闭搜索",
 	"ui.chat.thread_search.count.match": "{count, plural, other {{countText}条匹配消息}}",
 	"ui.chat.thread_search.count.related": "{count, plural, other {{countText}条相关匹配消息}}",
-	"ui.chat.thread_search.count.split": "精确{exactText} · 相关{relatedText}",
+	"ui.chat.thread_search.count.split": "精确：{exactText} · 相关：{relatedText}",
 	"ui.chat.thread_search.count.truncated": "{count, plural, other {（仅显示前{countText}条）}}",
 	"ui.chat.thread_search.empty": "没有消息匹配这次搜索。",
 	"ui.chat.thread_search.error": "无法搜索此对话。",

@@ -40,9 +40,9 @@
 		"plural_guidance": "As the plain match count: follow the target locale's own plural categories."
 	},
 	"ui.chat.thread_search.count.split": {
-		"role": "result count line, mixed tiers",
+		"role": "result count line, mixed tiers (label-first)",
 		"tone": "Plain, terse.",
-		"note": "The only line that states the exact/related split: two counts separated by a middot. It exists because a bare total hid that most hits were only related. Keep the separator glyph and the two qualifiers.",
+		"note": "The only line that states the exact/related split. LABEL FIRST, on purpose: a bare number followed by a qualifying adjective forces number agreement, which inflecting locales (es, fr, ru, ur) cannot satisfy for both counts at once - the line renders whenever both are >= 1, so one may be 1 and the other not. Keep the '{label}: {number}' order, the middot and both placeholders; never reorder to '{number} {label}'.",
 		"length": "Two counts and two qualifiers.",
 		"placeholders": {
 			"exactText": "Already-formatted number of exact hits.",

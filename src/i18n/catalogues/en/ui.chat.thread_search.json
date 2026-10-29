@@ -4,7 +4,7 @@
 	"ui.chat.thread_search.close_label": "Close search",
 	"ui.chat.thread_search.count.match": "{count, plural, one {{countText} match} other {{countText} matches}}",
 	"ui.chat.thread_search.count.related": "{count, plural, one {{countText} related match} other {{countText} related matches}}",
-	"ui.chat.thread_search.count.split": "{exactText} exact · {relatedText} related",
+	"ui.chat.thread_search.count.split": "Exact: {exactText} · Related: {relatedText}",
 	"ui.chat.thread_search.count.truncated": "{count, plural, one {(the first match shown)} other {(first {countText} shown)}}",
 	"ui.chat.thread_search.empty": "No messages match this search.",
 	"ui.chat.thread_search.error": "This conversation could not be searched.",

@@ -4,7 +4,7 @@
 	"ui.chat.thread_search.close_label": "खोज बंद करें",
 	"ui.chat.thread_search.count.match": "{count, plural, one {{countText} संदेश मिला} other {{countText} संदेश मिले}}",
 	"ui.chat.thread_search.count.related": "{count, plural, one {{countText} संबंधित संदेश मिला} other {{countText} संबंधित संदेश मिले}}",
-	"ui.chat.thread_search.count.split": "{exactText} सटीक · {relatedText} संबंधित",
+	"ui.chat.thread_search.count.split": "सटीक मिलान: {exactText} · संबंधित मिलान: {relatedText}",
 	"ui.chat.thread_search.count.truncated": "{count, plural, one {(पहला संदेश दिखाया गया)} other {(पहले {countText} संदेश दिखाए गए)}}",
 	"ui.chat.thread_search.empty": "इस खोज से कोई संदेश नहीं मिला।",
 	"ui.chat.thread_search.error": "इस बातचीत को खोजा नहीं जा सका।",
