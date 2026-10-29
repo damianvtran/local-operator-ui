@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|mesh-tab|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|sidebar-docking|mini-view|drafts|stale-team-draft|team-newchat|scrollbar-fade|composer-drop|attach|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|mesh-tab|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|sidebar-docking|mini-view|drafts|stale-team-draft|team-newchat|scrollbar-fade|composer-drop|attach|output-artifact|image-copy|hub-links|hub-links-actions|hub-skills|hub-skills-egress|none|skill-seal>
  *                          which built-in scene to run (default: states)
  *   --attach <absolute-path> (with --scene attach, repeatable) one file the
  *                          paperclip press stages; ONLY the native picker is
@@ -48542,6 +48542,382 @@ async function sceneHubLinks(cdp, app) {
 }
 
 /**
+ * THE ROW STATES #1461's DESIGN ROUND 1 CHANGED, one boot per theme.
+ *
+ *     node docs/evidence/hub-links/harness/stub-daemon.mjs --port 8131 \
+ *       --records <rig>/serve-record --hub-outcome would-merge \
+ *       --hub-outcome-second needs-review --hub-latency-ms 2500 \
+ *       --hub-message "3 fields differ: instructions, description, model." \
+ *       --origin2-failed --origin2-unknown
+ *     node scripts/renderer-driver.mjs --scene hub-links-actions \
+ *       --backend http://127.0.0.1:8131 --backend-records <rig>/serve-record \
+ *       --seed-onboarding-complete --theme localOperatorLight --out <rig>/frames
+ *
+ * WHY IT EXISTS NEXT TO `hub-links`: that scene photographs the panel collapsed,
+ * the policy controls and the legacy unresolved row, and never presses a link's
+ * own controls. So none of the four states this round remediates - a running
+ * check, a failed direction with its Retry, the incoming preview's conclusion
+ * beside core's message, and the unknown-baseline instruction - had a frame. The
+ * SAME scene bytes run against the base tree and against the remediation, so a
+ * pair is one rendering replaced by another rather than two renderings of two
+ * different fixtures.
+ *
+ * WHAT A FRAME FROM HERE MAY NOT CLAIM. The dry-run sentence on the second line
+ * is the stub's (`--hub-message`), so the copy, the ranking and the layout are
+ * the app's while core's own words are a stand-in's; and the pending sentence is
+ * photographed while an answer is WITHHELD (`--hub-latency-ms`), which is what a
+ * slow core looks like rather than a slowed one.
+ */
+async function sceneHubLinksActions(cdp) {
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	const size = WINDOW_SIZE;
+	const theme = (THEME ?? "localOperatorDark")
+		.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
+		.replace(/^-/, "");
+
+	/*
+	 * A PRESS, NOT A `.click()`. CSS cannot select on a visible label, so the
+	 * scene NAMES the control and then presses it through the driver's own input
+	 * pipeline, which reports the hit test - the instrument every other scene
+	 * uses, and the reason a dispatchEvent would not be one.
+	 */
+	const pressLabel = async (scope, label) => {
+		const tagged = await cdp.evaluate(`(() => {
+			const found = document.querySelector(${JSON.stringify(scope)});
+			if (!found) return null;
+			const control = [...found.querySelectorAll("button")].find(
+				(node) => node.textContent.trim() === ${JSON.stringify(label)},
+			);
+			if (!control) return null;
+			for (const stale of document.querySelectorAll("[data-scene-press]")) {
+				stale.removeAttribute("data-scene-press");
+			}
+			control.setAttribute("data-scene-press", "target");
+			control.scrollIntoView({ block: "center" });
+			return control.textContent.trim();
+		})()`);
+		if (tagged === null) return { hitTest: false, missing: label };
+		return verb(cdp, "press", '[data-scene-press="target"]');
+	};
+
+	await verb(cdp, "navigate", "/agents?name=reviewer");
+	const mounted = await waitForCondition(
+		cdp,
+		`(() => {
+			const panel = document.querySelector("[data-hub-links-panel]");
+			const trigger = panel && panel.querySelector("button[aria-expanded]");
+			return trigger ? { expanded: trigger.getAttribute("aria-expanded") } : null;
+		})()`,
+		30_000,
+	);
+	check(
+		"the hub panel mounts on the linked agent row",
+		mounted.ok,
+		`after ${mounted.waitedMs ?? "?"}ms: ${JSON.stringify(mounted.last)}`,
+	);
+	if (mounted.last?.expanded !== "true") {
+		await verb(cdp, "press", "[data-hub-links-panel] button[aria-expanded]");
+	}
+	const rows = await waitForCondition(
+		cdp,
+		`(() => {
+			const sections = [...document.querySelectorAll("[data-hub-link]")];
+			return sections.length >= 2
+				? { ids: sections.map((node) => node.getAttribute("data-hub-link")) }
+				: null;
+		})()`,
+		20_000,
+	);
+	check(
+		"both origins of the multi-origin item are on screen",
+		rows.ok && rows.last.ids.includes("link-public-agent-2"),
+		`after ${rows.waitedMs ?? "?"}ms: ${JSON.stringify(rows.last)}`,
+	);
+
+	/* ------------------------------------------- the failed direction (D3/D4)
+	 * The failure is stated by the state line and its reason; the Retry control
+	 * belongs to that failure, so it sits ABOVE the row's own metadata and no
+	 * third sentence tells the reader to try again.
+	 */
+	const failedRow = await cdp.evaluate(`(() => {
+		const section = document.querySelector('[data-hub-link="link-public-agent-2"]');
+		const column = section && section.querySelector('[data-hub-direction="pull"]');
+		if (!column) return null;
+		const nodes = [...column.children];
+		const retry = nodes.findIndex(
+			(node) => node.tagName === "BUTTON" && node.textContent.trim() === "Retry",
+		);
+		const meta = nodes.findIndex((node) =>
+			/^(Next retry:|Last checked:|Last successful action:)/.test(
+				node.textContent.trim(),
+			),
+		);
+		return {
+			lines: nodes.map((node) => node.textContent.trim()),
+			retry,
+			meta,
+		};
+	})()`);
+	note("failed direction, in DOM order", JSON.stringify(failedRow));
+	check(
+		"the failed direction draws a Retry control",
+		failedRow !== null && failedRow.retry !== -1,
+		JSON.stringify(failedRow),
+	);
+	check(
+		"Retry sits directly under the failure it retries, above the row's metadata",
+		failedRow !== null &&
+			failedRow.retry > 0 &&
+			(failedRow.meta === -1 || failedRow.retry < failedRow.meta),
+		JSON.stringify(failedRow),
+	);
+	check(
+		"the failure is not told a third time as an instruction to try again",
+		failedRow !== null && !/try again/i.test(failedRow.lines.join(" ")),
+		JSON.stringify(failedRow?.lines),
+	);
+	/*
+	 * IN VIEW BEFORE THE SHUTTER. A frame that is captured with the state below
+	 * the fold carries the caption but not the pixels - the defect the design
+	 * round found in the previous set - so the column is scrolled to the middle of
+	 * the viewport first, and the scroll is asserted rather than hoped for.
+	 */
+	const inView = await cdp.evaluate(`(() => {
+		const column = document.querySelector(
+			'[data-hub-link="link-public-agent-2"] [data-hub-direction="pull"]',
+		);
+		if (!column) return null;
+		column.scrollIntoView({ block: "center" });
+		const box = column.getBoundingClientRect();
+		return {
+			top: Math.round(box.top),
+			bottom: Math.round(box.bottom),
+			height: window.innerHeight,
+		};
+	})()`);
+	await wait(300);
+	check(
+		"the failed direction is inside the viewport before it is photographed",
+		inView !== null && inView.top > 0 && inView.bottom <= inView.height,
+		JSON.stringify(inView),
+	);
+	await captureSettled(cdp, `hub-actions-${size}-${theme}-failed-row`);
+	/*
+	 * THE REFUSED RETRY (design D3). Pressing the row's own Retry is the one way
+	 * to have the failure's alert sentence on screen BESIDE the row's state and
+	 * its reason - which is the frame D3 is about: one failure stated three
+	 * times, one of them telling the reader to try again while a retry is
+	 * already scheduled and the Retry control sits right there. The stub answers
+	 * this route 503, so the refusal is real.
+	 */
+	const retryPress = await pressLabel(
+		'[data-hub-link="link-public-agent-2"]',
+		"Retry",
+	);
+	check(
+		"the row's own Retry is pressed",
+		retryPress.hitTest === true,
+		JSON.stringify(retryPress),
+	);
+	/*
+	 * EVERY alert in the row, not the first one: the section can carry more than
+	 * one announced line, and a check that read only the first passed on the base
+	 * tree while that tree's sentence sat in a later node - an instrument that
+	 * cannot fail is not evidence.
+	 */
+	const refused = await waitForCondition(
+		cdp,
+		`(() => {
+			const section = document.querySelector('[data-hub-link="link-public-agent-2"]');
+			if (!section) return null;
+			const alerts = [...section.querySelectorAll('[role="alert"]')].map((node) =>
+				node.textContent.trim(),
+			);
+			if (!alerts.length) return null;
+			return {
+				alerts,
+				tryAgain: alerts.some((text) => /try again/i.test(text)),
+				sentences: alerts.map((text) => text.split(".").length - 1),
+			};
+		})()`,
+		30_000,
+	);
+	check(
+		"the refusal is ONE clause, and never sends the reader to try again",
+		refused.ok &&
+			refused.last.tryAgain === false &&
+			refused.last.sentences.every((count) => count === 1),
+		`after ${refused.waitedMs ?? "?"}ms: ${JSON.stringify(refused.last)}`,
+	);
+	await cdp.evaluate(`(() => {
+		const column = document.querySelector(
+			'[data-hub-link="link-public-agent-2"] [data-hub-direction="pull"]',
+		);
+		if (column) column.scrollIntoView({ block: "center" });
+		return true;
+	})()`);
+	await wait(300);
+	await captureSettled(cdp, `hub-actions-${size}-${theme}-retry-refused`);
+
+	/* --------------------------------------------- a running check (D2/QA Q2)
+	 * Grey is this app's word for unavailable, so a pending press must say what
+	 * it is doing and mark the control it is doing it on.
+	 */
+	const checkPress = await pressLabel(
+		'[data-hub-link="link-public-agent"]',
+		"Check now",
+	);
+	check(
+		"the check press lands on the row's own control",
+		checkPress.hitTest === true,
+		JSON.stringify(checkPress),
+	);
+	const pending = await waitForCondition(
+		cdp,
+		`(() => {
+			const section = document.querySelector('[data-hub-link="link-public-agent"]');
+			if (!section) return null;
+			const control = [...section.querySelectorAll("button")].find(
+				(node) => node.textContent.trim() === "Check now",
+			);
+			const busy = control ? control.getAttribute("aria-busy") : null;
+			const sentence = section.textContent.includes("Checking for changes");
+			return busy === "true" || sentence ? { busy, sentence } : null;
+		})()`,
+		6_000,
+	);
+	check(
+		"a running check marks its own control busy and says what it is doing",
+		pending.ok &&
+			pending.last.busy === "true" &&
+			pending.last.sentence === true,
+		`after ${pending.waitedMs ?? "?"}ms: ${JSON.stringify(pending.last)}`,
+	);
+	await captureSettled(cdp, `hub-actions-${size}-${theme}-check-pending`);
+	const settled = await waitForCondition(
+		cdp,
+		`(() => {
+			const section = document.querySelector('[data-hub-link="link-public-agent"]');
+			const control = section && [...section.querySelectorAll("button")].find(
+				(node) => node.textContent.trim() === "Check now",
+			);
+			return control &&
+				control.getAttribute("aria-busy") !== "true" &&
+				control.disabled === false
+				? true
+				: null;
+		})()`,
+		30_000,
+	);
+	check(
+		"the row is usable again once the check answered",
+		settled.ok,
+		`after ${settled.waitedMs ?? "?"}ms`,
+	);
+
+	/* ----------------------------------------- the incoming preview (D1), roW 1
+	 * The conclusion and core's message must rank separately, and the conclusion
+	 * must be a state word in a finished sentence.
+	 */
+	const previewPress = await pressLabel(
+		'[data-hub-link="link-public-agent"]',
+		"Preview incoming changes",
+	);
+	check(
+		"the incoming preview opens from the row's own control",
+		previewPress.hitTest === true,
+		JSON.stringify(previewPress),
+	);
+	const preview = await waitForCondition(
+		cdp,
+		`(() => {
+			const list = document.querySelector("[data-incoming-reports]");
+			if (!list) return null;
+			const rows = [...list.querySelectorAll("li")].map((li) =>
+				[...li.querySelectorAll("p")].map((node) => node.textContent.trim()),
+			);
+			return rows.length ? { rows } : null;
+		})()`,
+		30_000,
+	);
+	check(
+		"the incoming row keeps its conclusion and core's message on separate lines",
+		preview.ok && preview.last.rows[0].length === 2,
+		`after ${preview.waitedMs ?? "?"}ms: ${JSON.stringify(preview.last)}`,
+	);
+	const conclusion = preview.ok ? (preview.last.rows[0][0] ?? "") : "";
+	check(
+		"the conclusion is a state word in a finished sentence, never core's enum",
+		/would merge\.$/.test(conclusion) && !/would-merge/.test(conclusion),
+		JSON.stringify({ conclusion }),
+	);
+	await captureSettled(
+		cdp,
+		`hub-actions-${size}-${theme}-incoming-would-merge`,
+	);
+
+	/* ------------------------------- the unknown baseline, row 2 (D1 and D5)
+	 * The heading and the row must not BOTH end in the same instruction, and the
+	 * row's own sentence names the tick and stops there.
+	 */
+	await pressLabel('[role="dialog"]', "Cancel");
+	const closed = await waitForCondition(
+		cdp,
+		`document.querySelector("[data-incoming-reports]") === null`,
+		15_000,
+	);
+	check(
+		"the dialogue closes from its own dismiss",
+		closed.ok,
+		`after ${closed.waitedMs ?? "?"}ms`,
+	);
+	const unknownPress = await pressLabel(
+		'[data-hub-link="link-public-agent-2"]',
+		"Preview incoming changes",
+	);
+	check(
+		"the second origin's preview opens",
+		unknownPress.hitTest === true,
+		JSON.stringify(unknownPress),
+	);
+	const unknown = await waitForCondition(
+		cdp,
+		`(() => {
+			const flag = document.querySelector("[data-needs-review]");
+			const list = document.querySelector("[data-incoming-reports]");
+			if (!flag || !list) return null;
+			const dialog = document.querySelector('[role="dialog"]');
+			const text = dialog ? dialog.textContent : "";
+			return {
+				rows: [...list.querySelectorAll("li")].map((li) => li.textContent.trim()),
+				pullAgain: (text.match(/then pull again/g) ?? []).length,
+			};
+		})()`,
+		30_000,
+	);
+	check(
+		"the sequence instruction appears ONCE across the heading and the row",
+		unknown.ok && unknown.last.pullAgain === 1,
+		`after ${unknown.waitedMs ?? "?"}ms: ${JSON.stringify(
+			unknown.ok ? { pullAgain: unknown.last.pullAgain } : unknown.last,
+		)}`,
+	);
+	check(
+		"the unknown-baseline row names the tick and stops there",
+		unknown.ok && !/then pull again/.test(unknown.last.rows.join(" ")),
+		JSON.stringify(unknown.ok ? { rows: unknown.last.rows } : unknown.last),
+	);
+	await captureSettled(cdp, `hub-actions-${size}-${theme}-unknown-baseline`);
+}
+/**
  * THE SKILLS LIBRARY (`HubSkillsLibrary`), on the merged tree, against the stub.
  *
  * WHY: the library shipped in the hub_links PR with no frame ever taken of it -
@@ -50021,6 +50397,14 @@ async function main() {
 			"--scene route-tops needs --backend: settings, agents, projects, hub and schedules are gated on the catalogue a live backend advertises, and the macOS lane assertion is read over every one of them",
 		);
 	}
+	if (
+		SCENE === "hub-links-actions" &&
+		(BACKEND === null || BACKEND_RECORDS === null)
+	) {
+		throw new Error(
+			"--scene hub-links-actions needs --backend and --backend-records: every state it photographs is core's ANSWER (a dry run, a check, a withheld reply) against the frozen hub_links:1 wire, and a backendless run draws the legacy pending panel instead",
+		);
+	}
 	if (SCENE === "hub-links" && BACKEND === null) {
 		throw new Error(
 			"--scene hub-links needs --backend: the inventory, the policy write and the source confirmation are all real requests against the frozen hub_links:1 wire, and a backendless run draws the legacy pending panel instead",
@@ -50470,6 +50854,7 @@ async function main() {
 			else if (SCENE === "sidebar-lazy-chats") await sceneSidebarLazyChats(cdp);
 			else if (SCENE === "mini-view") await sceneMiniView(app, cdp);
 			else if (SCENE === "hub-links") await sceneHubLinks(cdp, app);
+			else if (SCENE === "hub-links-actions") await sceneHubLinksActions(cdp);
 			else if (SCENE === "hub-core-guard") await sceneHubCoreGuard(cdp, app);
 			else if (SCENE === "hub-skills") {
 				await sceneHubSkills(cdp, app);
