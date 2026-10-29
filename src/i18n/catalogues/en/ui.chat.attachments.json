@@ -11,5 +11,10 @@
 	"ui.chat.attachments.copy_saved_path": "Copy saved copy path",
 	"ui.chat.attachments.saved_path_copied": "Saved copy path copied",
 	"ui.chat.attachments.saved_copy_label": "Saved copy",
-	"ui.chat.attachments.file_and_copy_missing": "The saved copy is gone too."
+	"ui.chat.attachments.file_and_copy_missing": "The saved copy is gone too.",
+	"ui.chat.attachments.open": "Open",
+	"ui.chat.attachments.playback_position": "Playback position",
+	"ui.chat.attachments.playback_rate": "Playback rate",
+	"ui.chat.attachments.playback_rate_option": "{rate}x",
+	"ui.chat.attachments.volume": "Volume"
 }

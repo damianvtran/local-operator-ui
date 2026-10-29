@@ -15,6 +15,8 @@
  * There is no user variant. See `message-container` for why.
  */
 
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Bot } from "lucide-react";
 import type { FC } from "react";
@@ -23,13 +25,16 @@ export type MessageAvatarProps = {
 	className?: string;
 };
 
-export const MessageAvatar: FC<MessageAvatarProps> = ({ className }) => (
-	<div
-		className={cn(
-			"flex size-7 shrink-0 items-center justify-center rounded-full bg-sunken text-ink-muted",
-			className,
-		)}
-	>
-		<Bot size={16} aria-label="Assistant" />
-	</div>
-);
+export const MessageAvatar: FC<MessageAvatarProps> = ({ className }) => {
+	useI18nLocale();
+	return (
+		<div
+			className={cn(
+				"flex size-7 shrink-0 items-center justify-center rounded-full bg-sunken text-ink-muted",
+				className,
+			)}
+		>
+			<Bot size={16} aria-label={t("ui.chat.transcript_copy.role.assistant")} />
+		</div>
+	);
+};

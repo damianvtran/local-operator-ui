@@ -4398,5 +4398,10 @@
 		"length": "Two words.",
 		"note": "Screen readers announce it as the listbox name; the argument phase uses its own name.",
 		"placeholders": {}
+	},
+	"ui.chat.pickers.slash.action_kind": {
+		"role": "row marker",
+		"tone": "plain",
+		"note": "Names what kind of completion row this is, at the end of the row, in a smaller weight."
 	}
 }

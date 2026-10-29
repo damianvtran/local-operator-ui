@@ -1,0 +1,166 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "namespace-delta",
+  "locale": "es",
+  "namespace": "ui.browser",
+  "pr": 1472,
+  "branch": "fix/webauthn-gate-and-unavailable-ux",
+  "head": "ec8c333cf2084c24d8bbd889c689854b7c996eac",
+  "base": "46702fae6efe54db83608088f02103ac2d51c865",
+  "date": "2026-10-29",
+  "instance": "d70b41c5a0c8-es",
+  "status": "passed",
+  "result": "clean",
+  "scope": "PR #1472 six-key passkey-notice delta at ec8c333cf208; 241 carried keys byte-identical to the previously audited file",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent translation auditor (team lopdev reviewer role), session d70b41c5a0c8; authored none of the audited strings",
+    "instance": "d70b41c5a0c8-es",
+    "model": "radient/auto",
+    "model_note": "Harness-declared serving identity at audit time (session spend record: provider radient, model auto). FALLBACK DISCLOSED: the session header declared deepseek/deepseek-flash; on quota HTTP 402 the harness switched through anthropic/claude-sonnet-5-5, openai/gpt-6-astra and kimi/k3.1-pro, settling on radient/auto before this audit's tool work. All checks and judgements in this receipt were produced under radient/auto.",
+    "independence": "Authored none of the six translated values (added in commit 90d49187148 by the implementing coder) and edited no catalogue byte. This run wrote only the receipts, the evidence records and the ledger rows via scripts/i18n/ledger-assemble.mjs."
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "deepseek/deepseek-flash",
+    "note": "The row's standing translator; the six new values on this branch were authored by the implementing coder in commit 90d49187148. All 241 carried keys are byte-identical to the previously audited translation."
+  },
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.browser.json",
+      "sha256": "8f37af681b57cc3f6beb521dd17367042e25522d9a47d9cf75b4a08f2ad5cb64"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/es/ui.browser.json",
+      "sha256": "bf3e82f15034e2447a3a81bb95ec16e31b5c7b94ba9be772f374db50cafb50b3"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.browser.context.json",
+      "sha256": "ed0ff97bf9cd31a35bbe1d6f9b373d3477d5ab7abe93ce90fb713e6f2584d511"
+    }
+  },
+  "sha256": {
+    "es": "bf3e82f15034e2447a3a81bb95ec16e31b5c7b94ba9be772f374db50cafb50b3",
+    "en": "8f37af681b57cc3f6beb521dd17367042e25522d9a47d9cf75b4a08f2ad5cb64"
+  },
+  "audited": {
+    "ui.browser.browser_passkey_notice.dismiss": {
+      "en": "Dismiss passkey notice",
+      "target": "Descartar aviso de clave de acceso"
+    },
+    "ui.browser.browser_passkey_notice.explanation": {
+      "en": "Passkeys are not available in this browser yet. Touch ID passkeys are planned. For now, use the system browser.",
+      "target": "Las claves de acceso aún no están disponibles en este navegador. Las claves de acceso con Touch ID están previstas. Por ahora, usa el navegador del sistema."
+    },
+    "ui.browser.browser_passkey_notice.message": {
+      "en": "{who, select, agent {{site}, in an agent-driven tab, asked for a passkey and may be waiting.} agentFrame {A frame from {site}, in an agent-driven tab, asked for a passkey and may be waiting.} userFrame {A frame from {site} on this page asked for a passkey and may be waiting.} other {{site} asked for a passkey and may be waiting.}}",
+      "target": "{who, select, agent {{site}, en una pestaña controlada por un agente, pidió una clave de acceso y puede que esté esperando.} agentFrame {Un marco de {site}, en una pestaña controlada por un agente, pidió una clave de acceso y puede que esté esperando.} userFrame {Un marco de {site} en esta página pidió una clave de acceso y puede que esté esperando.} other {{site} pidió una clave de acceso y puede que esté esperando.}}"
+    },
+    "ui.browser.browser_passkey_notice.open_in_system_browser": {
+      "en": "Open in system browser",
+      "target": "Abrir en el navegador del sistema"
+    },
+    "ui.browser.browser_passkey_notice.passkey_request": {
+      "en": "Passkey request",
+      "target": "Solicitud de clave de acceso"
+    },
+    "ui.browser.use_browser_chrome.passkey_open_failed": {
+      "en": "Could not open the page in the system browser. {reason}",
+      "target": "No se pudo abrir la página en el navegador del sistema. {reason}"
+    }
+  },
+  "checks": {
+    "key_set_equals_english": true,
+    "namespace_key_count": 247,
+    "changed_keys": [
+      "ui.browser.browser_passkey_notice.dismiss",
+      "ui.browser.browser_passkey_notice.explanation",
+      "ui.browser.browser_passkey_notice.message",
+      "ui.browser.browser_passkey_notice.open_in_system_browser",
+      "ui.browser.browser_passkey_notice.passkey_request",
+      "ui.browser.use_browser_chrome.passkey_open_failed"
+    ],
+    "carried_keys_byte_identical": {
+      "prior_audited_commit": "115b07fca95b9ca5b922325666d9417750461748",
+      "proof": "git diff 115b07fca95b..HEAD -- src/i18n/catalogues/es/ui.browser.json is +6/-0: the six added lines are exactly the six new keys and every carried key is byte-identical."
+    },
+    "placeholders": "message: {who} select with arms agent/agentFrame/userFrame/other, each carrying {site}; passkey_open_failed: {reason} kept last; the other four keys carry no placeholder",
+    "icu": "The four select arms and all placeholder names match English exactly; no extra or renamed argument, no plural arm added or removed.",
+    "explanation_clauses": 3,
+    "message_safety": "Says the site/frame/agent asked and may be waiting; no failure, refusal or answered wording.",
+    "register": "tú imperative (guide; matches catalogue)",
+    "review_limits": "non-native with strong reading: meaning, register, terminology and typography checked clause by clause; native stylistic polish not independently verified"
+  },
+  "findings": [],
+  "finding_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "notes": [
+    "Neutral Spanish in the guide's tú register ('usa'), matching the catalogue's existing 'cámbialo', 'puedes' and webauthn_chooser 'Vuelve a pedir'.",
+    "'clave de acceso' matches every passkey string in ui.browser.webauthn_chooser; 'Descartar aviso…' matches browser_file_transfer_row.dismiss_*; 'Solicitud de clave de acceso' matches webauthn_chooser.this_passkey_request_expired.",
+    "Safety claim intact: aún no disponibles (not available yet) / están previstas (planned) / usa el navegador del sistema. The message says 'pidió ... y puede que esté esperando' - requested and possibly waiting, never failed or answered."
+  ],
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide_es": {
+      "path": "~/local-operator/i18n/style-guides/es.md",
+      "revision": "088699bfea0fc33d6b2f0748037dd7e89d85627d",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    "style_guide_fr": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "revision": "27639c206431a13101749b82036874d47d72ff4d",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    },
+    "style_guide_zh-CN": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "revision": "ad1de332210d47cc01e62393c2d0cd4708e2312b",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    },
+    "style_guide_ru": {
+      "path": "~/local-operator/i18n/style-guides/ru.md",
+      "revision": "27639c206431a13101749b82036874d47d72ff4d",
+      "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+    },
+    "style_guide_vi": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "revision": "6c085b93b6ecc1a27a0daab552302687b059a911",
+      "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+    },
+    "style_guide_hi": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "revision": "14f73c4dcce62d858508fb6313b7f0416999a63b",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    "style_guide_ur": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "revision": "24d328a19a8b39ba4d6e824b8bf2ebf1bb629ffe",
+      "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+    },
+    "docs/I18N.md": {
+      "path": "docs/I18N.md",
+      "sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+    },
+    "AGENTS.md": {
+      "path": "AGENTS.md",
+      "sha256": "b58cc1aaf23d9ecce891587c42bdd4841cbf65f67e2868eb1f4dd54268263a8c"
+    },
+    "scripts/i18n/ledger-rules.mjs": {
+      "path": "scripts/i18n/ledger-rules.mjs",
+      "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+    },
+    "scripts/i18n/ledger-assemble.mjs": {
+      "path": "scripts/i18n/ledger-assemble.mjs",
+      "sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+    },
+    "core_ref": "e323de1d41a793c9ef6a62a07dfb0b569fa8930e"
+  }
+}

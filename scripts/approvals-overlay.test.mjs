@@ -68,6 +68,8 @@ export class WebContentsView {
     this.focusCalls = 0;
     this.destroyed = false;
     this.handlers = new Map();
+    /* Every URL this child was asked to load; the first-paint test reads it. */
+    this.loadedUrls = [];
     this.mainFrame = { url: "file:///tmp/browser-approvals-overlay.html" };
     this.webContents = {
       id: 70 + state.views.length,
@@ -82,10 +84,18 @@ export class WebContentsView {
         const list = (this.handlers.get(event) ?? []).filter((entry) => entry !== cb);
         this.handlers.set(event, list);
       },
-      loadURL: () => {
+      loadURL: (url) => {
+        this.loadedUrls.push(String(url));
         setTimeout(() => {
           for (const cb of this.handlers.get("did-finish-load") ?? []) cb();
         }, 0);
+        /* Tests may defer a load to exercise replacement before rejection. */
+        if (this.loadDeferred || state.deferNextLoad) {
+          state.deferNextLoad = false;
+          return new Promise((resolve, reject) => {
+            this.loadDeferred = { resolve, reject };
+          });
+        }
         return Promise.resolve();
       },
       executeJavaScript: (script) =>
@@ -272,6 +282,168 @@ test("document: the count is a first-paint fallback, and zero is omitted", () =>
 	);
 	assert.equal(light.searchParams.get("theme"), "light");
 	assert.equal(light.searchParams.get("opaque"), "1");
+});
+
+test("document: the exact palette rides the URL as a first-paint value", () => {
+	const at = (palette) =>
+		new URL(
+			mod.approvalsDocumentUrl(
+				"file:///app/out/renderer/browser-approvals-overlay.html",
+				2,
+				"dark",
+				false,
+				palette,
+			),
+		);
+	/*
+	 * THE URL IS THE FIRST PAINT. Without the palette the document painted its
+	 * own localOperatorDark default and corrected only when the model landed, so
+	 * a dropped parameter is the defect, not a nicety.
+	 */
+	assert.equal(at("obsidian").searchParams.get("palette"), "obsidian");
+	assert.equal(
+		at("kanagawaLotus").searchParams.get("palette"),
+		"kanagawaLotus",
+	);
+	// No palette known means the mode default is the honest answer, and a name
+	// that is not a CSS token never reaches the query string.
+	assert.equal(at(null).searchParams.get("palette"), null);
+	assert.equal(at(undefined).searchParams.get("palette"), null);
+	assert.equal(at("obsidian; color: red").searchParams.get("palette"), null);
+	// The mode fallback is unchanged whatever the exact palette does.
+	assert.equal(at("obsidian").searchParams.get("theme"), "dark");
+});
+
+test("controller: the child's URL carries the palette resolved before it existed", async () => {
+	const children = [];
+	const window = {
+		contentView: {
+			get children() {
+				return children;
+			},
+			addChildView(view) {
+				const index = children.indexOf(view);
+				if (index !== -1) children.splice(index, 1);
+				children.push(view);
+			},
+			removeChildView(view) {
+				const index = children.indexOf(view);
+				if (index !== -1) children.splice(index, 1);
+			},
+		},
+		isDestroyed: () => false,
+	};
+	// The product constructs the controller with no palette: the renderer pushes
+	// the resolved one on mount, long before any approval creates the child.
+	const controller = new mod.ApprovalsOverlayController({
+		window,
+		documentUrl: "https://example.test/browser-approvals-overlay.html",
+		palette: null,
+	});
+	controller.setContext({ theme: "dark", palette: "obsidian" });
+	controller.setModel({ entries: entries(1) });
+	controller.onLayout({
+		presented: true,
+		contentRect: rect(0, 0, 1000, 700),
+		revision: 1,
+	});
+	await waitFor(
+		() => children.length > 0 && children.at(-1).loadedUrls.length > 0,
+		"the card document load",
+	);
+	const loaded = new URL(children.at(-1).loadedUrls[0]);
+	assert.equal(
+		loaded.searchParams.get("palette"),
+		"obsidian",
+		"the first paint must carry the app's palette, not only its mode",
+	);
+	assert.equal(loaded.searchParams.get("theme"), "dark");
+	controller.dispose("test");
+});
+
+test("controller: successive hidden palette changes load the newest palette", async () => {
+	const children = [];
+	const contentView = {
+		get children() {
+			return children;
+		},
+		addChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+			children.push(view);
+		},
+		removeChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+		},
+	};
+	const controller = new mod.ApprovalsOverlayController({
+		window: { contentView, isDestroyed: () => false },
+		documentUrl: "https://example.test/browser-approvals-overlay.html",
+		palette: null,
+	});
+	const first = children.at(-1);
+	controller.setContext({ theme: "dark", palette: "obsidian" });
+	const second = children.at(-1);
+	controller.setContext({ theme: "light", palette: "kanagawaLotus" });
+	const third = children.at(-1);
+	assert.notEqual(second, first, "the first hidden palette change rebuilds");
+	assert.notEqual(third, second, "the second change must rebuild again");
+	assert.equal(third.loadedUrls.length, 1);
+	const loaded = new URL(third.loadedUrls[0]);
+	assert.equal(loaded.searchParams.get("palette"), "kanagawaLotus");
+	assert.equal(loaded.searchParams.get("theme"), "light");
+	assert.equal(children.length, 1, "only the newest child remains attached");
+	await waitFor(() => controller.facts().ready, "the newest document load");
+	controller.dispose("test");
+});
+
+test("controller: a superseded load rejection does not latch off the replacement", async () => {
+	const children = [];
+	const contentView = {
+		get children() {
+			return children;
+		},
+		addChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+			children.push(view);
+		},
+		removeChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+		},
+	};
+	mod.electron.focusState.deferNextLoad = true;
+	const controller = new mod.ApprovalsOverlayController({
+		window: { contentView, isDestroyed: () => false },
+		documentUrl: "https://example.test/browser-approvals-overlay.html",
+		palette: null,
+	});
+	const stale = children.at(-1);
+	controller.setContext({ theme: "dark", palette: "obsidian" });
+	const replacement = children.at(-1);
+	assert.notEqual(replacement, stale);
+	await waitFor(
+		() => controller.facts().ready,
+		"the replacement document load",
+	);
+	assert.equal(typeof stale.loadDeferred.reject, "function");
+	stale.loadDeferred.reject(new Error("ERR_ABORTED"));
+	await sleep(0);
+	assert.equal(
+		controller.facts().failedReason,
+		null,
+		"the stale rejection must not dispose the current child",
+	);
+	assert.equal(controller.state().available, true);
+	assert.equal(
+		controller.facts().childWebContentsId,
+		replacement.webContents.id,
+	);
+	assert.equal(replacement.destroyed, false);
+	assert.equal(controller.facts().ready, true);
+	controller.dispose("test");
 });
 
 test("geometry: resize rebuild keeps the card at the new width", async () => {

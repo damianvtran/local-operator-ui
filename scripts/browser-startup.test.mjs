@@ -26,6 +26,8 @@ export const shell = { openPath: async () => '' };
 export const Menu = { buildFromTemplate: () => ({ popup: () => {} }) };
 export const clipboard = { writeText: () => {} };
 export const webContents = { getAllWebContents: () => [] };
+// Startup has no page frames: passkey attribution must treat missing frames as gone.
+export const webFrameMain = { fromId: () => null };
 export class Notification { static isSupported() { return false; } }
 export const safeStorage = { isEncryptionAvailable: () => false };
 export const protocol = { registerSchemesAsPrivileged() {} };
@@ -90,7 +92,7 @@ const bundled = await build({
 				}));
 				b.onLoad({ filter: /main\/webauthn(?:\/index)?\.ts$/ }, () => ({
 					contents: `
-export async function installWebauthn() { globalThis.__browserStartupFixture.installs++; }
+export async function installWebauthn() { globalThis.__browserStartupFixture.installs++; return { configured: false }; }
 export class WebauthnChooser { dispose() {} state() { return null; } }
 export function attachWebauthnChooser() { return () => {}; }
 `,

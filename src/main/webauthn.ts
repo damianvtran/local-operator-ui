@@ -31,8 +31,11 @@ import { type Session, app } from "electron";
  * OFF, a page on a real RP origin calling `credentials.create()` with
  * `userVerification: "required"` is still pending after 20 s (measured twice),
  * so a never-shown window hangs that request whether or not this module
- * configures anything — Chromium is waiting on a native prompt no never-shown
- * window can present. The difference the gate actually buys is the one a site's
+ * configures anything. That observation alone did not identify the cause; the
+ * later virtual-authenticator control (design doc section 3.5) resolves requests
+ * in the SAME hidden window. That proves the page/Chromium stack, not native
+ * discovery or hardware, and does not rule out a native-UI visibility constraint. The
+ * difference the gate actually buys is the one a site's
  * own feature detection reads, and it is measurable: with the entitlement
  * missing, `PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()`
  * stays `false`, so a well-behaved site does not offer a passkey it cannot
@@ -43,12 +46,34 @@ import { type Session, app } from "electron";
  * passed, and otherwise the module logs one line naming why it is off and stays
  * inert.
  *
- * WHAT IT CANNOT DO, stated here rather than discovered later: Electron's
- * implementation is Touch ID / Secure Enclave only, through `LAContext`.
- * Credentials are device-bound (no iCloud Keychain sync, no Apple Passwords
- * sheet, no 1Password) — see the design doc for the entitlement and native
- * integration that a real browser's passkey picker needs and Electron does not
- * have.
+ * WHAT IS MEASURED TODAY (2026-10-28, Electron 44.3.0, the installed signed
+ * 0.45.1 and a dev build): there is NO authenticator. The shipped signature
+ * carries no `keychain-access-groups` entitlement and no provisioning profile
+ * exists, so `isUserVerifyingPlatformAuthenticatorAvailable()` is `false` and a
+ * page's `credentials.create()` / `.get()` remained pending at the 4–5 s
+ * fixture ceiling (15 s on webauthn.io). Until the fix
+ * recorded in the design doc (section 3.2), `readAppSignature` also parsed the
+ * wrong stream and logged `no bundle id` for a signature that has one, which hid
+ * that real blocker.
+ *
+ * WHAT IT CANNOT DO, and why (design doc section 3.5 has the table and the
+ * sources). Electron's implementation is Touch ID / Secure Enclave only, through
+ * `LAContext`; credentials are device-bound (no iCloud Keychain sync). It cannot
+ * reach Apple Passwords, iCloud Keychain or 1Password: that sheet needs Apple's
+ * web-browser passkey entitlement AND an `NSWindow` handoff that only //chrome
+ * performs (Electron 44 has none), plus http/https URL schemes the app does not
+ * declare, so the entitlement is not the only blocker. Hybrid (QR), BLE and NFC
+ * have no discovery in Electron, PIN-protected keys cannot be served
+ * (`SupportsPIN()` is false), and extension-based managers cannot do native
+ * messaging. A real USB key and the OS Touch ID sheet are UNMEASURED, not
+ * "unsupported". Enabling Touch ID needs a Developer ID provisioning profile that
+ * does not exist; that is an open account decision (section 3.7), and this module
+ * is written so it enables correctly the day the signature carries the group.
+ *
+ * WHAT THE USER SEES while it is off: `src/main/browser/passkey-notice.ts` (design
+ * doc section 3.6) raises a notice for a request that stays pending, instead of
+ * leaving the page hanging in silence. It is armed only when this module did NOT
+ * configure the authenticator.
  */
 
 /** The suffix Electron documents for the group: `<TEAM_ID>.<BUNDLE_ID>.webauthn`. */
@@ -340,8 +365,19 @@ export async function readAppSignature(
 			"--verbose=4",
 			bundlePath,
 		]);
-		base.bundleIdentifier = parseBundleIdentifier(verbose.stdout);
-		base.teamIdentifier = parseTeamIdentifier(verbose.stdout);
+		/*
+		 * `codesign -d` writes its report to STDERR and leaves stdout empty (measured
+		 * 2026-10-28 on the shipped 0.45.1: 1142 bytes on stderr, 0 on stdout).
+		 * Parsing stdout alone made every real signature read as `no bundle id`,
+		 * which short-circuited the gate before it could name the real blocker
+		 * (no keychain-access-groups entitlement). stderr is read first; stdout is
+		 * kept as a fallback so a codesign that reports there still parses. The
+		 * entitlement read below is the opposite case and stays on stdout: `-`
+		 * directs the plist there.
+		 */
+		const report = verbose.stderr.trim() ? verbose.stderr : verbose.stdout;
+		base.bundleIdentifier = parseBundleIdentifier(report);
+		base.teamIdentifier = parseTeamIdentifier(report);
 	} catch (error) {
 		return { ...base, unreadable: `codesign -dv failed: ${messageOf(error)}` };
 	}

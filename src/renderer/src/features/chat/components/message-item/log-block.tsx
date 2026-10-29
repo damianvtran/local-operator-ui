@@ -5,6 +5,8 @@
  * with zero information, so it renders nothing.
  */
 
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { FC } from "react";
 
 /**
@@ -16,11 +18,14 @@ export type LogBlockProps = {
 };
 
 export const LogBlock: FC<LogBlockProps> = ({ log }) => {
+	useI18nLocale();
 	if (!log || log === "[No logger output]") return null;
 
 	return (
 		<div className="mb-4 w-full">
-			<span className="mb-1 block text-ink-dim text-meta">Logs</span>
+			<span className="mb-1 block text-ink-dim text-meta">
+				{t("ui.chat.transcript_copy.block.logs")}
+			</span>
 			<pre className="flex max-h-[200px] w-full flex-col-reverse overflow-auto whitespace-pre-wrap rounded-sm border border-hairline bg-sunken p-3 font-mono text-ink-muted text-mono-sm">
 				{log}
 			</pre>

@@ -10,6 +10,8 @@ import type {
 } from "@shared/api/local-operator/types";
 import { HostingSelect, ModelSelect } from "@shared/components/hosting";
 import { Button, Tooltip } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { UseMutationResult } from "@tanstack/react-query";
 import { Info, Server } from "lucide-react";
 import type { FC } from "react";
@@ -65,20 +67,21 @@ export const ModelHostingSection: FC<ModelHostingSectionProps> = ({
 	refetchAgent,
 	updateAgentMutation,
 }) => {
+	useI18nLocale();
 	return (
 		<>
 			<h3 className="mt-6 mb-4 flex items-center font-semibold text-heading text-ink">
 				<span className="me-2 flex items-center rounded-sm bg-accent-wash p-1 text-accent">
 					<Server size={16} aria-hidden="true" />
 				</span>
-				Model and hosting
-				<Tooltip content="Configure which model and hosting provider to use">
+				{t("ui.agents.settings.chat.model_hosting_heading")}
+				<Tooltip content={t("ui.agents.settings.chat.model_hosting_tooltip")}>
 					<Button
 						variant="ghost"
 						size="icon-sm"
 						type="button"
 						className="ms-1 text-accent"
-						aria-label="More info"
+						aria-label={t("ui.common.actions.more_info")}
 					>
 						<Info aria-hidden="true" />
 					</Button>

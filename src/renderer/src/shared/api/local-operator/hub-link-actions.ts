@@ -55,9 +55,25 @@ export type HubDirectionalReport = Omit<HubMergeReport, "kind"> & {
 	model_used: string | null;
 };
 export type HubLinkActionResponse = {
-	reports: HubDirectionalReport[];
+	/**
+	 * Directional on `apply`/`push`/`retry`; a CHECK answers per-ITEM rows.
+	 *
+	 * Core's check route reports through `ItemMergeReport.to_json()`
+	 * (`local_operator/hub_sync/report.py`), which carries `kind`/`local_id`/
+	 * `name`/`hub_id` and no `link_id` or `direction` - only the directional
+	 * routes enrich a report from the link identity. Reads that need the link
+	 * address go through `isDirectionalReport`.
+	 */
+	reports: HubMergeReport[];
 	status: HubUpdates;
-	links: HubLinks;
+	/**
+	 * Absent from a check answer: core's `/updates/check` returns `reports` and
+	 * `status` alone (the directional routes read the inventory themselves and
+	 * echo it). Optional so the type states that absence instead of promising a
+	 * member a check never sends - a reader that needs the inventory must go
+	 * through `hubLinksKey`, not through this response.
+	 */
+	links?: HubLinks;
 	preview?: HubPullPreview | HubPushPreview | null;
 	/**
 	 * Present only on an explicit source confirmation (the `resolve` action): the
@@ -68,6 +84,45 @@ export type HubLinkActionResponse = {
 	link?: HubLink;
 	resolved?: HubSourceResolution;
 };
+/** A report from the directional routes, addressed by the link that produced it. */
+export const isDirectionalReport = (
+	report: HubMergeReport,
+): report is HubDirectionalReport => "link_id" in report;
+
+/**
+ * HOW ONE HUB ITEM IS ADDRESSED ON THE WIRE.
+ *
+ * `local_id` is the exact arm: core's routes narrow through
+ * `check_items(only_ids=...)`, so an id reaches exactly one row of one kind.
+ * It arrived with core's `hub_items_by_id` capability, and an OLDER core refuses
+ * the field outright (`Input` is `extra="forbid"`, so a body carrying it is a
+ * 422) - hence the capability gate at the call site and the name fallback here.
+ *
+ * `name` is the released arm and it is a DISPLAY name: for a skill that is the
+ * local alias (unique, it is a directory), but for an agent or a team a display
+ * name is NOT an identity - the registry refuses only an exact duplicate on
+ * create and checks nothing on rename, so two linked agents can share one and
+ * core would act on both. On an old core the name arm is therefore best-effort
+ * for agents and teams; it is the only address those cores have.
+ */
+export type HubItemAddress = {
+	kind: HubLinkKind;
+	name?: string;
+	localId?: string;
+};
+
+export function hubItemAddress(
+	link: Pick<HubLink, "kind" | "local_id" | "name">,
+	displayName: string | undefined,
+	itemsById: boolean,
+): HubItemAddress {
+	if (itemsById) return { kind: link.kind, localId: link.local_id };
+	return {
+		kind: link.kind,
+		name: displayName?.trim() ? displayName : link.name,
+	};
+}
+
 export type HubLinkAction =
 	| { action: "check"; linkId: string }
 	| {
@@ -76,8 +131,6 @@ export type HubLinkAction =
 			preview?: boolean;
 			prefer?: "local" | "remote";
 			acknowledgeUnknownBaseline?: boolean;
-			previewReceipt?: string;
-			confirmApply?: true;
 	  }
 	| { action: "retry"; linkId: string; direction: HubLinkDirection }
 	| { action: "preview"; linkId: string }
@@ -85,12 +138,23 @@ export type HubLinkAction =
 
 /**
  * Every intentional press gets a receipt ID; transport replay keeps that same
- * request. Confirmation cannot silently ask for a new proposal and publish it:
- * it sends ONLY the immutable receipt the user just viewed and acknowledged.
+ * request. Only the PUSH confirmation carries a receipt: it sends the immutable
+ * proposal receipt the user just viewed and acknowledged. Check, apply and retry
+ * are item-addressed writes (`kind` + `name`/`local_id`) and core recomputes
+ * their merge when the request lands - there is no pull receipt to send.
  */
-export function useHubLinkActions(linkId: string) {
+export function useHubLinkActions(
+	link: Pick<HubLink, "link_id" | "kind" | "local_id" | "name">,
+	options: { displayName?: string; itemsById?: boolean } = {},
+) {
 	const client = useQueryClient();
+	const address = hubItemAddress(
+		link,
+		options.displayName,
+		options.itemsById === true,
+	);
 	const safety = useHubMutationSafety();
+	const linkId = link.link_id;
 	const key = `link:${linkId}`;
 	const sharedPending = useHubActionStore((state) => state.pending.has(key));
 	const mutation = useMutation({
@@ -108,33 +172,33 @@ export function useHubLinkActions(linkId: string) {
 				const requestId = crypto.randomUUID();
 				switch (input.action) {
 					case "check":
+						/*
+						 * ONE item, addressed by `kind` + (`local_id` | display name).
+						 * The check route has no `link_id` member (core `HubCheck`,
+						 * extra="forbid"), and it checks both directions of the item, so
+						 * there is no direction to send either.
+						 */
 						return desktopResult<HubLinkActionResponse>({
 							op: "hub.check",
 							requestId,
-							linkId: input.linkId,
+							...address,
 						});
 					case "apply":
 						return desktopResult<HubLinkActionResponse>({
 							op: "hub.apply",
 							requestId,
-							linkId: input.linkId,
-							direction: "pull",
+							...address,
 							...(input.preview ? { dryRun: true } : {}),
 							...(input.prefer ? { prefer: input.prefer } : {}),
 							...(input.acknowledgeUnknownBaseline
 								? { acknowledgeUnknownBaseline: true }
 								: {}),
-							...(input.previewReceipt
-								? { previewReceipt: input.previewReceipt }
-								: {}),
-							...(input.confirmApply ? { confirmApply: true } : {}),
 						});
 					case "retry":
 						return desktopResult<HubLinkActionResponse>({
 							op: "hub.retry",
 							requestId,
-							linkId: input.linkId,
-							direction: input.direction,
+							...address,
 						});
 					case "preview":
 						return desktopResult<HubLinkActionResponse>({
@@ -157,7 +221,11 @@ export function useHubLinkActions(linkId: string) {
 				}
 			}, safety.snapshot),
 		onSuccess: (response) => {
-			client.setQueryData(hubLinksKey, response.links);
+			// Only a directional answer carries the inventory it just re-read. A
+			// check carries none, and `onSettled` refetches it, so there is nothing
+			// to write (and nothing written is the type's promise, not a blank-panel
+			// guard - TanStack treats `setQueryData(key, undefined)` as a no-op).
+			if (response.links) client.setQueryData(hubLinksKey, response.links);
 			client.setQueryData(["desktop", "hub-updates"], response.status);
 			if (response.reports.some((report) => report.applied)) {
 				for (const key of ["profiles", "teams", "skills"])
@@ -240,7 +308,10 @@ export function useHubSourceResolution(onResolved?: () => void) {
 			// unmounts the diagnostic. A child effect cannot announce its own removal.
 			showSuccessToast(t("ui.hub.links.resolve_action_done"));
 			onResolved?.();
-			client.setQueryData(hubLinksKey, response.links);
+			// The resolve arm answers `{link, resolved}` and no inventory; the same
+			// absent-member rule as the check arm above, so this cannot write a
+			// member the route never sends.
+			if (response.links) client.setQueryData(hubLinksKey, response.links);
 			client.setQueryData(["desktop", "hub-updates"], response.status);
 		},
 		onSettled: (_data, _error, _input, pendingKey) => {

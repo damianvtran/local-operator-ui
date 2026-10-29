@@ -1,0 +1,153 @@
+{
+ "locale": "ru",
+ "scope": {
+  "commit_range": "f6e5c3eb62..58de30166d",
+  "checkout_head": "58de30166d",
+  "branch": "i18n-literals",
+  "namespaces": {
+   "ui.chat.thread_search": 20,
+   "ui.chat.canonical": 3
+  },
+  "note": "re-verification of the 23 delta keys from fbf78b5f67 at the corrected head; only 2 ru values and 1 en value moved in scope"
+ },
+ "key_count": 23,
+ "audit_date": "2026-10-29",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "0f306516ae22",
+  "model": "radient/auto",
+  "actual_model_source": "session model as reported by the harness (radient/auto); independent of the translator session",
+  "independent_from_translator_session": true
+ },
+ "instance": "0f306516ae22-ov2-ru",
+ "reviewed_previous": {
+  "path": "/Users/damian/qa/ov-audit/ru/receipt.json",
+  "instance": "0f306516ae22-ov-ru",
+  "verdict": "CHANGES_REQUESTED",
+  "original_commit": "f6e5c3eb62"
+ },
+ "input_sha256": {
+  "src/i18n/catalogues/en/ui.chat.thread_search.json": "08bc59d1fe1058d3704800f92ee05afe5a7ffc1c7146683100a1afe5b2fa28e6",
+  "src/i18n/catalogues/ru/ui.chat.thread_search.json": "c0f4408a5b11efc6684defe2fb30dd3af5932c2d1503abc9d0346cc4f54d86e2",
+  "src/i18n/catalogues/en/ui.chat.canonical.json": "da2c87f6caf8f238997861d850f575a3b3d8328c5d46abfffae4728ed41fb892",
+  "src/i18n/catalogues/ru/ui.chat.canonical.json": "125f15f15b279ccfa0c28b204e42e6be7d420174ca13c50904a5a6daa9169b27"
+ },
+ "read_provenance": {
+  "values": "read via read_public_copy: the 5 affected keys re-read at 58de30166d (en+ru), the other 18 keys carried from the round-1 reads after `git diff f6e5c3eb62 58de30166d` showed their bytes unchanged",
+  "docs_from_filesystem": [
+   "src/i18n/catalogues/en/ui.chat.thread_search.context.json (diff only)",
+   "~/local-operator/i18n/glossary.md",
+   "~/local-operator/i18n/style-guides/ru.md"
+  ],
+  "source_read_for_reachability": [
+   "src/shared/desktop-contract.ts"
+  ],
+  "worktree": "clean at 58de30166d (git status --porcelain empty); hashes are both worktree and HEAD blobs"
+ },
+ "checks": {
+  "icu_parse": "23/23 ru messages parse (@formatjs/icu-messageformat-parser 3.5.21); 0 errors",
+  "arguments": "per message, argument name sets equal to English: split exactText+relatedText; match/related/truncated count+countText. No tags, no pound tokens, no styled arguments",
+  "plural_categories": "ru one/few/many/other on all 3 plural messages, none added or dropped since round 1",
+  "plural_bodies": "count.match and count.related still correct at 0/1/2/5/21 ('0 совпадений', '1 совпадение', '2 совпадения', '5 совпадений', '21 совпадение'); truncated unchanged (see TS-m1)",
+  "count_split": "new form rendered at 1/3, 2/4, 3/1, 21/2, 0/5 — grammatical everywhere; label-first removes the agreement dependency at the source",
+  "scope_integrity": "git diff f6e5c3eb62..58de30166d touches exactly 2 ru keys (count.split, role.user), 1 en key + its sidecar; canonical files byte-identical; the 6 other locales in the commit are outside this audit",
+  "terminology": "'по смыслу' still consistent between count.related and tier.related; 'разговор' still matches shipped ru",
+  "register_buttons_typography": "unchanged from round 1 apart from the count line's mid-line capital (TS2-M1)"
+ },
+ "findings": {
+  "ui.chat.thread_search": [
+   {
+    "id": "TS2-M1",
+    "severity": "MINOR",
+    "key": "ui.chat.thread_search.count.split",
+    "current": "Точных: {exactText} · По смыслу: {relatedText}",
+    "problem": "Mid-line capital on the second label. Russian does not capitalise after a middot, the ru guide says sentence case and never Title Case, and the same panel's row line renders the same concept lowercase ('Вы · по смыслу', tier.related = 'по смыслу'). Cosmetic: the line is grammatical and unambiguous at every count; it does not block.",
+    "suggested": "Точных: {exactText} · по смыслу: {relatedText}",
+    "verdict_effect": "none — MINOR"
+   }
+  ],
+  "ui.chat.canonical": []
+ },
+ "counts": {
+  "BLOCKER": 0,
+  "MAJOR": 0,
+  "MINOR": 1,
+  "NIT": 0
+ },
+ "verdict": "pass",
+ "verdict_reason": "Both MAJORs resolved at the new bytes; one cosmetic MINOR remains (mid-line capital), nothing blocking.",
+ "notes": [
+  {
+   "id": "TS-M1",
+   "severity": "MAJOR",
+   "status": "RESOLVED",
+   "evidence": "ui.chat.thread_search.role.user ru = 'Вы' (was 'вы'); matches shipped ui.chat.aside.you_label 'Вы:'; reads 'Вы · по смыслу'."
+  },
+  {
+   "id": "TS-M2",
+   "severity": "MAJOR",
+   "status": "RESOLVED",
+   "evidence": "label-first at the source: en 'Exact: {exactText} · Related: {relatedText}', ru 'Точных: {exactText} · По смыслу: {relatedText}'. Rendered at 1/3, 2/4, 3/1, 21/2 — 'Точных: 1 · …', 'Точных: 21 · …' — no numeral-adjective agreement is attempted, so the defect cannot recur at any count. Checked against my own reasoning, not against the shape I proposed: the label carries the qualifier and the numeral carries no agreeing word, which is exactly what made the old form unsatisfiable in ru. Sidecar now forbids the number-first order."
+  },
+  {
+   "id": "TS-m1",
+   "severity": "MINOR",
+   "status": "OPEN — unchanged, latent, non-blocking",
+   "evidence": "ru count.truncated identical at 58de30166d. one body still '(показано первое совпадение)', which also matches 21/31/101. Still unreachable: THREAD_FIND_DEFAULT_LIMIT=100 / MAX_LIMIT=200 (src/shared/desktop-contract.ts:298,305) and the suffix prints hits.length, so only `many` renders today. No in-repo rationale recorded; not re-filed as a blocker."
+  },
+  {
+   "id": "TS-n1",
+   "severity": "NIT",
+   "status": "NOT APPLIED — non-blocking",
+   "evidence": "building_hint 'когда индекс обновится' / partial 'пока обновляется индекс' unchanged."
+  },
+  {
+   "id": "TS-n2",
+   "severity": "NIT",
+   "status": "NOT APPLIED — non-blocking",
+   "evidence": "stale 'Обновление — список ниже от предыдущего поиска.' unchanged."
+  },
+  {
+   "id": "TS-n3",
+   "severity": "NIT",
+   "status": "NOT APPLIED — non-blocking",
+   "evidence": "placeholder 'Поиск в разговоре' unchanged."
+  },
+  {
+   "id": "TS2-M1",
+   "severity": "MINOR",
+   "status": "NEW (this round)",
+   "evidence": "see findings; cosmetic only."
+  }
+ ],
+ "namespaces": {
+  "ui.chat.thread_search": {
+   "status": "passed",
+   "keys_audited": 20,
+   "sha256": {
+    "en": "08bc59d1fe1058d3704800f92ee05afe5a7ffc1c7146683100a1afe5b2fa28e6",
+    "target": "c0f4408a5b11efc6684defe2fb30dd3af5932c2d1503abc9d0346cc4f54d86e2"
+   },
+   "findings": [
+    {
+     "id": "TS2-M1",
+     "severity": "MINOR",
+     "key": "ui.chat.thread_search.count.split",
+     "current": "Точных: {exactText} · По смыслу: {relatedText}",
+     "problem": "Mid-line capital on the second label. Russian does not capitalise after a middot, the ru guide says sentence case and never Title Case, and the same panel's row line renders the same concept lowercase ('Вы · по смыслу', tier.related = 'по смыслу'). Cosmetic: the line is grammatical and unambiguous at every count; it does not block.",
+     "suggested": "Точных: {exactText} · по смыслу: {relatedText}",
+     "verdict_effect": "none — MINOR"
+    }
+   ]
+  },
+  "ui.chat.canonical": {
+   "status": "passed",
+   "keys_audited": 3,
+   "sha256": {
+    "en": "da2c87f6caf8f238997861d850f575a3b3d8328c5d46abfffae4728ed41fb892",
+    "target": "125f15f15b279ccfa0c28b204e42e6be7d420174ca13c50904a5a6daa9169b27"
+   },
+   "findings": []
+  }
+ }
+}

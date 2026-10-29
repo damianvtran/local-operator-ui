@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor",
+  "model": "radient/auto",
+  "instance": "f12bd5c0b78b-hi",
+  "locale": "hi",
+  "namespace": "ui.settings.shortcuts",
+  "date": "2026-10-29",
+  "status": "passed",
+  "sha256": {
+    "hi": "60ed1f69edd9d8d6a55ef800db7972b2acee95e6ed8c1e29a8fb8903a9bcdb8c",
+    "en": "5967dfaf152c5ca139a5d33347d94597a1d25b3dd01bb6bd37cdb881858aa7d4"
+  },
+  "findings": [
+    {
+      "severity": "minor",
+      "key": "ui.settings.shortcuts.reserved.browser_reopen_tab",
+      "issue": "\"आख़िरी बंद किया ब्राउज़र टैब\" is missing the passive participle गया: the relative clause (\"the last tab that was closed\") is not grammatical without it. The defect predates this PR but is inside a row this audit certifies.",
+      "disposition": "fixed in this audit",
+      "remediation": "Changed to \"आख़िरी बंद किया गया ब्राउज़र टैब फिर खोलता है।\""
+    }
+  ],
+  "scope": "Changed rows only: 8 keys (1 new paragraph + 7 reserved-sentence tails). Key set == English (64/64), ICU placeholder parity, sentence-by-sentence meaning against the .context.json note, register and terminology against the same file and corpus.",
+  "notes": "No other wording changed. Native-reader naturalness was NOT verified by a native speaker of the target language; this audit is a semantic/structural read by an agent. Meaning, register, placeholder and terminology consistency were checked against the English source and the existing target-locale corpus."
+}

@@ -1,7 +1,12 @@
 {
+	"ui.chat.transcript_copy.block.logs": "Logs",
+	"ui.chat.transcript_copy.block.output": "Output",
 	"ui.chat.transcript_copy.menu.copy_text": "Copy text",
 	"ui.chat.transcript_copy.menu.copy_markdown": "Copy as Markdown",
 	"ui.chat.transcript_copy.menu.copy_selection": "Copy selection",
+	"ui.chat.transcript_copy.role.assistant": "Assistant",
+	"ui.chat.transcript_copy.selection.quote": "Quote",
+	"ui.chat.transcript_copy.technical_details": "Technical details",
 	"ui.chat.transcript_copy.toast.copied_markdown": "Copied as Markdown",
 	"ui.chat.transcript_copy.toast.copied_selection": "Copied selection",
 	"ui.chat.transcript_copy.row.your_message": "Your message",

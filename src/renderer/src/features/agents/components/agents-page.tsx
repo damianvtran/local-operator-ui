@@ -535,6 +535,7 @@ export function AgentsPage() {
 				name={itemName}
 				localId={localId}
 				enabled={desktopFeatureEnabled(capabilities.data, "hub_links")}
+				itemsById={desktopFeatureEnabled(capabilities.data, "hub_items_by_id")}
 			/>
 			{/*
 			 * NOT ON A SKILL THE LINKS PANEL ALREADY SERVES, AND NEVER WITHOUT A COPY
