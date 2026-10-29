@@ -255,7 +255,33 @@ function TeamBridgeReactionChipsBody({
 						type="button"
 						disabled={unavailable}
 						aria-label={t("ui.teamBridge.reactions.add")}
-						className="inline-flex min-h-7 items-center gap-1 rounded-full bg-sunken px-2 text-ink-muted hover:bg-row-hover"
+						/*
+						 * BORDERLESS, SEPARATED BY VALUE - the sibling chips carry a
+						 * `border-control` edge (3.93:1 dark / 3.51:1 light) and this
+						 * control has no edge at all, so `sunken` alone left it at
+						 * 1.06:1 against `canvas` and reading as absent rather than
+						 * quiet (design round 1, D5). `media-surface` is the app's
+						 * borderless-tile role: it deepens AWAY from the ground, so it
+						 * clears `canvas`, `surface` and `row-hover` on all 59 palettes
+						 * (ΔE00 >= 4.0 off canvas, its contract floor), which is the
+						 * extent a control with no line has to own. The edge is
+						 * deliberately NOT drawn: borderless chrome is a standing
+						 * operator requirement, and a line here would be the next
+						 * complaint.
+						 *
+						 * Hover matches the siblings in KIND - a colour step, never a
+						 * lift or a scale - and the fill step is deliberately small
+						 * (`sunken`, +1.96 L* dark / +1.85 light) so the fill never
+						 * travels to `row-hover`, where it would vanish into a hovered
+						 * row; the ink step to full `ink` carries the affordance.
+						 * Focus is the app's global `:where(:focus-visible)` outline,
+						 * the same one the sibling chips get, since both are plain
+						 * buttons.
+						 */
+						className={cn(
+							"inline-flex min-h-7 items-center gap-1 rounded-full bg-media-surface px-2 text-ink-muted",
+							"hover:bg-sunken hover:text-ink disabled:text-ink-dim",
+						)}
 					>
 						<Plus size={14} />
 					</button>

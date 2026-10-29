@@ -216,6 +216,14 @@ function TeamBridgeThreadPaneBody({
 		contentKey: `${replies.length}:${replies.at(-1)?.id ?? ""}`,
 	});
 	const hasContent = Boolean(draft.trim()) || images.count > 0;
+	/* CAN THIS PANE ACTUALLY SEND? The composer's own guards, stated once: a
+	 * read-only organization and a pane that is not `ready` both withhold the
+	 * composer, so an empty state must not INVITE a reply that has nowhere to go
+	 * (design round 1, D3). With no invitation to make, the empty state renders
+	 * nothing: the read-only note in the composer slot is the sentence that
+	 * explains the state, and minting a second "No replies yet." variant would
+	 * owe a translation round in seven locales to say what the pane already says. */
+	const canStartThread = !readOnly && state === "ready";
 	const submit = async () => {
 		const body = draft.trim();
 		if (images.blocked) {
@@ -306,14 +314,18 @@ function TeamBridgeThreadPaneBody({
 						forceToolbar={forceToolbar}
 					/>
 				)}
-				{/* Pending/error pages cannot assert an empty count from an empty array. */}
-				{(state === "ready" || root?.reply_count !== undefined) && (
-					<div className="px-5 py-3 text-[12px] text-ink-dim">
-						{t("ui.teamBridge.replies.count", {
-							count: root?.reply_count ?? replies.length,
-						})}
-					</div>
-				)}
+				{/* Pending/error pages cannot assert an empty count from an empty array.
+				    A ZERO IS NOT A COUNT: printing "0 replies" directly above "No
+				    replies yet" states one fact twice (design round 1, D2), so the
+				    line appears only when there is something to count. */}
+				{(state === "ready" || root?.reply_count !== undefined) &&
+					(root?.reply_count ?? replies.length) > 0 && (
+						<div className="px-5 py-3 text-[12px] text-ink-dim">
+							{t("ui.teamBridge.replies.count", {
+								count: root?.reply_count ?? replies.length,
+							})}
+						</div>
+					)}
 				{state === "loading" ? (
 					<div className="flex justify-center py-8">
 						<Spinner size="sm" label={t("ui.teamBridge.thread.loading")} />
@@ -326,9 +338,11 @@ function TeamBridgeThreadPaneBody({
 						</Button>
 					</div>
 				) : replies.length === 0 ? (
-					<p className="px-5 py-6 text-[13px] text-ink-muted">
-						{t("ui.teamBridge.replies.empty")}
-					</p>
+					canStartThread ? (
+						<p className="px-5 py-6 text-[13px] text-ink-muted">
+							{t("ui.teamBridge.replies.empty")}
+						</p>
+					) : null
 				) : (
 					<TeamBridgeMessageList
 						messages={replies}

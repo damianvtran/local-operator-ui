@@ -124,6 +124,57 @@ test("the shipped pane renders its ready, loading and error states", () => {
 	}
 });
 
+/*
+ * D2/D3, THE CAPABILITY OF THE EMPTY STATE. Two facts the pane used to print
+ * badly: a zero count directly above the empty sentence (one fact twice), and an
+ * invitation to start the thread in an organization that cannot take a reply.
+ * The count line is now absent at zero, and the invitation appears only where
+ * the composer can send.
+ */
+test("the empty thread states the reply count once and invites only when it can send", () => {
+	const writable = mod.renderToStaticMarkup(
+		mod.createElement(mod.TeamBridgeThreadPaneView, {
+			root,
+			replies: [],
+			state: "ready",
+			labelFor: (s) => s.display_label,
+			onClose() {},
+			onRetry() {},
+			onSend: async () => {},
+		}),
+	);
+	assert.match(writable, /No replies yet\. Start the thread\./);
+	assert.doesNotMatch(
+		writable,
+		/\b0 replies\b/,
+		"a zero is not a count: the empty sentence already says it",
+	);
+
+	const readOnly = mod.renderToStaticMarkup(
+		mod.createElement(mod.TeamBridgeThreadPaneView, {
+			root,
+			replies: [],
+			state: "ready",
+			readOnly: true,
+			labelFor: (s) => s.display_label,
+			onClose() {},
+			onRetry() {},
+			onSend: async () => {},
+		}),
+	);
+	assert.doesNotMatch(
+		readOnly,
+		/Start the thread/,
+		"a read-only pane must not invite a reply the composer refuses",
+	);
+	assert.doesNotMatch(readOnly, /\b0 replies\b/);
+	assert.match(
+		readOnly,
+		/read-only/,
+		"the read-only note is the sentence that explains the empty pane",
+	);
+});
+
 test("the shipped pane renders reply markdown without loading remote images", () => {
 	const html = mod.renderToStaticMarkup(
 		mod.createElement(mod.TeamBridgeThreadPaneView, {
