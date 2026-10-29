@@ -2640,6 +2640,11 @@ export type MessageParams = {
 	"ui.browser.browser_pane.close_browser": undefined;
 	"ui.browser.browser_pane.this_conversation": undefined;
 	"ui.browser.browser_pane.which_tabs_to_show": undefined;
+	"ui.browser.browser_passkey_notice.dismiss": undefined;
+	"ui.browser.browser_passkey_notice.explanation": undefined;
+	"ui.browser.browser_passkey_notice.message": { who: string; site: string };
+	"ui.browser.browser_passkey_notice.open_in_system_browser": undefined;
+	"ui.browser.browser_passkey_notice.passkey_request": undefined;
 	"ui.browser.browser_surface.browser_unavailable": undefined;
 	"ui.browser.browser_surface.dismiss": undefined;
 	"ui.browser.browser_surface.loading_browser": undefined;
@@ -2737,6 +2742,7 @@ export type MessageParams = {
 	"ui.browser.page_context_menu.select_all": undefined;
 	"ui.browser.page_context_menu.undo": undefined;
 	"ui.browser.use_browser_chrome.downloads_folder_failed": { message: string };
+	"ui.browser.use_browser_chrome.passkey_open_failed": { reason: string };
 	"ui.browser.use_consent_attention_lifetime.that_request_is_no_longer_waiting": undefined;
 	"ui.browser.webauthn_chooser.a_site": undefined;
 	"ui.browser.webauthn_chooser.nobody_chose_a_passkey_within_a_minute": undefined;
@@ -5931,10 +5937,10 @@ export type MessageParams = {
 	"ui.hub.links.aggregate_mark": { count: number; state: string };
 	"ui.hub.links.available": { item: string; source: string };
 	"ui.hub.links.busy": { direction: string; item: string; source: string };
+	"ui.hub.links.check_failed": { item: string; source: string };
 	"ui.hub.links.confirm_publish": undefined;
 	"ui.hub.links.direction_pull": undefined;
 	"ui.hub.links.direction_push": undefined;
-	"ui.hub.links.empty": undefined;
 	"ui.hub.links.failed": { direction: string; item: string; source: string };
 	"ui.hub.links.healthy": {
 		item: string;
@@ -5943,6 +5949,11 @@ export type MessageParams = {
 		autoPush: string;
 	};
 	"ui.hub.links.hub_id": { address: string };
+	"ui.hub.links.incoming_failed": { outcome: string };
+	"ui.hub.links.incoming_needs_review": undefined;
+	"ui.hub.links.incoming_nothing": { outcome: string };
+	"ui.hub.links.incoming_outcome": { item: string; outcome: string };
+	"ui.hub.links.incoming_unknown_baseline": undefined;
 	"ui.hub.links.last_success": { time: string };
 	"ui.hub.links.links_count": { count: number };
 	"ui.hub.links.load_failed": undefined;
@@ -5954,12 +5965,21 @@ export type MessageParams = {
 	"ui.hub.links.mark_healthy": undefined;
 	"ui.hub.links.mark_review": undefined;
 	"ui.hub.links.mixed": undefined;
+	"ui.hub.links.name_ambiguous": undefined;
+	"ui.hub.links.outcome_failed": undefined;
+	"ui.hub.links.outcome_needs_review": undefined;
+	"ui.hub.links.outcome_skipped": undefined;
+	"ui.hub.links.outcome_unavailable": undefined;
+	"ui.hub.links.outcome_unchanged": undefined;
+	"ui.hub.links.outcome_up_to_date": undefined;
+	"ui.hub.links.outcome_would_merge": undefined;
 	"ui.hub.links.prefer_local": undefined;
 	"ui.hub.links.prefer_remote": undefined;
 	"ui.hub.links.preview_changed": undefined;
 	"ui.hub.links.preview_expired": undefined;
 	"ui.hub.links.preview_payload": { source: string };
 	"ui.hub.links.preview_pull": undefined;
+	"ui.hub.links.preview_recomputed": undefined;
 	"ui.hub.links.preview_warnings": undefined;
 	"ui.hub.links.publication_pending": undefined;
 	"ui.hub.links.published": { item: string; source: string };

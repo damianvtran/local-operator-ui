@@ -421,7 +421,11 @@ test("mounted actual policy/link/source/legacy hooks fence every write arm and r
 	function Probe() {
 		exposed = {
 			policy: api.useHubLinkPolicy(),
-			link: api.useHubLinkActions("fixture-link"),
+			link: api.useHubLinkActions({
+				link_id: "fixture-link",
+				kind: "agent",
+				name: "fixture",
+			}),
 			resolve: api.useHubSourceResolution(),
 			legacy: api.useHubActions(),
 			safety: api.useHubMutationSafety(),
@@ -462,13 +466,17 @@ test("mounted actual policy/link/source/legacy hooks fence every write arm and r
 				}),
 		],
 		[
-			"pull-confirm",
+			/*
+			 * The incoming confirm is a plain item-addressed apply: core has no
+			 * pull receipt (its apply route recomputes the merge), so the only
+			 * choice a confirm can carry is `prefer`.
+			 */
+			"pull-apply",
 			() =>
 				x.link.mutateAsync({
 					action: "apply",
 					linkId: link.link_id,
-					confirmApply: true,
-					previewReceipt: "reviewed-receipt",
+					prefer: "local",
 				}),
 		],
 		...["pull", "push"].map((direction) => [
