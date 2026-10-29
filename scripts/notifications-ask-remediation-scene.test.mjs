@@ -394,18 +394,23 @@ test("a successful scene records the restored state and returns its own value", 
 
 /*
  * THE ACTIVATION PAYLOAD. A focused button is only pressed by a key event that
- * carries text; without it the keydown reaches listeners and Blink performs no
- * default action, which is how the 2026-10-28 hosted run reached `Send answer` by
- * keyboard and sent nothing. Tab must stay text-free, or it would insert a character
- * into the masked field while the traversal walks past it.
+ * BOTH carries text and is dispatched as `keyDown`: `rawKeyDown` suppresses the
+ * character/keypress generation, so keydown listeners fire and no default action
+ * follows. The 2026-10-29 hosted run 40801736545 recorded exactly that shape (Send
+ * answer focused, 0 requests, no Retry) with text already present, and the local
+ * instrumented pair that replaced it measured the difference as a CLICK - absent
+ * under rawKeyDown, present under keyDown. Tab must stay text-free AND raw, or it
+ * would insert a character into the masked field while the traversal walks past it.
  */
-test("Enter is dispatched as a text-bearing native press and Tab is not", () => {
+test("Enter is dispatched as a text-bearing keyDown press and Tab as a raw one", () => {
 	const enter = nativeKeyEvent("Enter", 13);
+	assert.equal(enter.type, "keyDown");
 	assert.equal(enter.text, "\r");
 	assert.equal(enter.unmodifiedText, "\r");
 	assert.equal(enter.nativeVirtualKeyCode, 13);
 	assert.equal(enter.windowsVirtualKeyCode, 13);
 	const tab = nativeKeyEvent("Tab", 9);
+	assert.equal(tab.type, "rawKeyDown");
 	assert.equal("text" in tab, false);
 	assert.equal(tab.nativeVirtualKeyCode, 9);
 });

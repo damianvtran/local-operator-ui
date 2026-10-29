@@ -271,17 +271,43 @@ async function reveal(cdp, expression) {
 	);
 }
 /*
- * A NATIVE PRESS, NOT A SCRIPTED ONE. `rawKeyDown` is the repository's gesture
- * convention, and Enter additionally carries `text: "\r"` because that is the field
- * Blink keys its default action off: a key event WITHOUT text reaches keydown
- * listeners but does not activate the focused button - the shape the 2026-10-28
- * hosted run recorded (Send focused, no request, no Retry). Both virtual key codes
- * travel so macOS and Chromium agree on the physical key.
+ * A NATIVE PRESS, NOT A SCRIPTED ONE — AND THE EVENT TYPE IS PART OF THE PRESS.
+ *
+ * Enter must be dispatched as `keyDown`, never `rawKeyDown`. `rawKeyDown` is this
+ * repository's convention for a key whose job is to REACH a keydown listener, and
+ * it is exactly wrong for a key whose job is a DEFAULT ACTION: Chromium's protocol
+ * documentation says rawKeyDown suppresses the generation of character and
+ * keypress events, and a focused button is activated by the keypress, not by the
+ * keydown. `text` alone does not rescue that — the previous revision here carried
+ * `text: "\r"` on a `rawKeyDown` and still failed `fixture failure did not expose
+ * Retry` on the 2026-10-29 hosted run 40801736545.
+ *
+ * MEASURED on the real built app (the same scene, one variable changed between
+ * runs, the DOM instrumented for trusted events):
+ *   rawKeyDown + text "\r" -> keydown reaches the button, NO click follows,
+ *                             0 answer requests, Retry never appears;
+ *   keyDown      + text "\r" -> keydown, then a click on that button, 1 answer
+ *                             request, the fixture's 503, Retry appears.
+ * A pointer press on the same button sent the request in both runs, so the
+ * product's send path is sound and the gesture was the defect.
+ *
+ * This is the spelling the repository already uses where a key has to RUN A DEFAULT
+ * ACTION: `capture-evidence.mjs`'s `sendKeys` dispatches `keyDown` and documents
+ * `spec.text` as "the optional half that makes a key's DEFAULT ACTION run". This
+ * scene was the one place that kept the raw type, and it is why this press differed
+ * from every keyboard press the evidence sweep makes successfully.
+ *
+ * Tab keeps `rawKeyDown`: its job is traversal, and it must not insert a character
+ * into the masked field it walks past. Both virtual key codes travel so macOS and
+ * Chromium agree on the physical key.
  *
  * Exported so the payload itself is testable without a browser.
  */
 export function nativeKeyEvent(name, code, modifiers = 0) {
 	return {
+		/* The dispatch type rides WITH the payload rather than at the call site, so a
+		 * test pins the activation mechanism instead of a comment asserting it. */
+		type: name === "Enter" ? "keyDown" : "rawKeyDown",
 		key: name,
 		code: name,
 		windowsVirtualKeyCode: code,
@@ -291,9 +317,17 @@ export function nativeKeyEvent(name, code, modifiers = 0) {
 	};
 }
 async function key(cdp, name, code, modifiers = 0) {
-	const event = nativeKeyEvent(name, code, modifiers);
-	for (const type of ["rawKeyDown", "keyUp"])
-		await cdp.send("Input.dispatchKeyEvent", { type, ...event });
+	/*
+	 * THE TYPE IS STRIPPED, NOT OVERLAID. Spreading the payload beside a `type` key
+	 * makes the payload's own `type` win wherever it is spread last, which silently
+	 * turned the keyUp into a second keydown: every Tab then moved focus twice and
+	 * the scene's traversal missed its target. Measured on the real app after this
+	 * file's first version of the fix. So the down and up dispatch their own type and
+	 * the payload carries none.
+	 */
+	const { type, ...payload } = nativeKeyEvent(name, code, modifiers);
+	for (const phase of [type, "keyUp"])
+		await cdp.send("Input.dispatchKeyEvent", { ...payload, type: phase });
 }
 async function typeSecret(cdp, value) {
 	await click(
@@ -321,7 +355,20 @@ async function tabTo(cdp, expression) {
 			return n;
 		await key(cdp, "Tab", 9);
 	}
-	throw new Error("Keyboard traversal did not reach the enabled action");
+	/*
+	 * SAY WHERE THE TRAVERSAL WENT. A bare "did not reach" cannot tell a traversal
+	 * that walked past the control from one that never started where it thought: the
+	 * 2026-10-29 local run failed here with the card mounted and the field filled, so
+	 * the fact that decides the diagnosis is the element the 24 Tabs actually moved
+	 * through. Same doctrine as the press probe below.
+	 */
+	const landed = await focus(cdp);
+	const reached = await cdp.evaluate(
+		`[Boolean(${expression}), ${expression}?.disabled ?? null]`,
+	);
+	throw new Error(
+		`Keyboard traversal did not reach the enabled action: landed on ${JSON.stringify(landed)}, target present/disabled ${JSON.stringify(reached)}`,
+	);
 }
 const focus = (cdp) =>
 	cdp.evaluate(
@@ -329,7 +376,14 @@ const focus = (cdp) =>
 	);
 const geometry = (cdp) =>
 	cdp.evaluate(
-		`(() => {const pane=document.querySelector('[data-notification-detail]');if(!pane)return null;const r=pane.parentElement.getBoundingClientRect();const bad=[pane.parentElement,pane,...pane.children].filter(el=>el.scrollWidth>el.clientWidth+1||el.getBoundingClientRect().right>innerWidth+1);return {width:innerWidth,left:r.left,right:r.right,overflow:bad.length,dir:document.documentElement.dir,lang:document.documentElement.lang,theme:document.documentElement.dataset.theme};})()`,
+		/* The card's own box, its COLUMN, and the viewport. The inset this scene asserts is
+		 * an inset INSIDE the pane's column: measured on the real app on 2026-10-29 at an
+		 * 820px window, the detail pane sits in a two-column route (reel 260px, column
+		 * 560px at x=260) and its card measures left 284 / right 796 — 24px inside its
+		 * column on both sides, with the column itself running to the window edge. A
+		 * viewport-relative `left` would therefore read 284 and call that a defect, which
+		 * is what the first version of this scene did. */
+		`(() => {const pane=document.querySelector('[data-notification-detail]');if(!pane)return null;const card=pane.parentElement;const r=card.getBoundingClientRect();const column=card.parentElement?.getBoundingClientRect()??null;const bad=[card,pane,...pane.children].filter(el=>el.scrollWidth>el.clientWidth+1||el.getBoundingClientRect().right>innerWidth+1);return {width:innerWidth,left:r.left,right:r.right,columnLeft:column?.left??null,columnRight:column?.right??null,overflow:bad.length,dir:document.documentElement.dir,lang:document.documentElement.lang,theme:document.documentElement.dataset.theme};})()`,
 	);
 
 /**
@@ -356,8 +410,22 @@ export async function restoreNotifications({ cdp, nodeCdp, saved }) {
 	await nodeCdp.evaluate(
 		`(() => {const e=process.mainModule?.require('electron')??globalThis.require('electron');e.BrowserWindow.getAllWindows()[0].setContentBounds(${JSON.stringify(saved)});})()`,
 	);
-	await cdp.evaluate(
-		"window.location.hash='#/notifications';window.location.reload()",
+	/*
+	 * NO RELOAD. Measured on the real app on 2026-10-29: `location.reload()` lands the
+	 * app on `#/chat` — the hash it was given does not survive it — so the reload that
+	 * used to be here could not restore the reel and this cleanup reported `original
+	 * Notifications reel did not return` against a screen that was merely the chat
+	 * route. The language write applies to the live document (measured: `lang` flips
+	 * without any navigation), so the route is set directly and the wait below is what
+	 * proves the screen is back. The English half is asserted separately, because a
+	 * restored route under the wrong language is not restored either.
+	 */
+	await cdp.evaluate("window.location.hash='#/notifications'");
+	await until(
+		() => cdp.evaluate("document.documentElement.lang==='en'"),
+		"English did not return while restoring the reel",
+		15000,
+		diagnostic,
 	);
 	await until(
 		() => cdp.evaluate("!!document.querySelector('[data-notification-row]')"),
@@ -571,11 +639,59 @@ export async function runAskRemediationScene({
 						200,
 						"actual backend locale setting must be accepted",
 					);
-					await cdp.evaluate("window.location.reload()");
+					/*
+					 * THE LANGUAGE APPLIES LIVE; THE RELOAD WAS THE THING THAT BROKE THE STAGE.
+					 *
+					 * Measured on the real app on 2026-10-29, sampling every 250 ms across a
+					 * `settings.edit` language write: the hash and the detail pane are UNCHANGED
+					 * and `documentElement.lang` flips en → fr on the second sample. The reload
+					 * that used to follow was therefore never what applied the locale — and it
+					 * is what lost the route: every locale assertion in the runs that reached
+					 * here timed out against `hash: "#/chat"`, `settled: ""`, `asks: []`.
+					 *
+					 * So the app-wide claim is made where it is actually observable, on the
+					 * fresh `lang` of the SAME screen, and the screen is re-established rather
+					 * than re-booted. Nothing is weakened: the localised label, the RTL
+					 * direction, the 24 px insets and the expanded sentence are all still
+					 * asserted below, against the locale the document now reports.
+					 */
 					const trigger = `Array.from(document.querySelectorAll('[data-lo-ask-settled] button')).find(el => el.textContent.trim().startsWith(${JSON.stringify(label)}))`;
+					/* What the screen and the settled region actually hold, so a failure names
+					 * the locale in force and the route instead of only the label that is missing. */
+					const localeDiagnostic = () =>
+						cdp.evaluate(`(() => ({
+							lang: document.documentElement.lang,
+							hash: location.hash,
+							onboarding: !!Array.from(document.querySelectorAll('button')).find((b) => b.textContent.trim() === 'Skip for now'),
+							localKeys: Object.keys(localStorage).filter((k) => /onboard|lang|notif|route/i.test(k)),
+							settled: (document.querySelector('[data-lo-ask-settled]')?.textContent ?? "").trim().slice(0, 200),
+							settledButtons: Array.from(document.querySelectorAll('[data-lo-ask-settled] button')).map((el) => el.textContent.trim().slice(0, 40)),
+							settledKeys: Array.from(document.querySelectorAll('[data-lo-ask-settled] [data-lo-ask-settled-answer]')).length,
+							asks: Array.from(document.querySelectorAll('[data-lo-ask-row]')).map((el) => [el.getAttribute('data-lo-ask-row'), el.getAttribute('data-lo-ask-status')]),
+						}))()`);
+					await until(
+						() =>
+							cdp.evaluate(
+								`document.documentElement.lang===${JSON.stringify(locale)}`,
+							),
+						`${locale} language write did not reach the document`,
+						15000,
+					);
+					await cdp.evaluate(`window.location.hash=${JSON.stringify(route)}`);
+					await until(
+						() =>
+							cdp.evaluate(
+								`!!document.querySelector('[data-notification-detail]')`,
+							),
+						`${locale} detail pane did not return`,
+						15000,
+						localeDiagnostic,
+					);
 					await until(
 						() => cdp.evaluate(`!!(${trigger})`),
 						`${locale} withdrawn compact label not rendered`,
+						15000,
+						localeDiagnostic,
 					);
 					await reveal(cdp, trigger);
 					const compact = await capturePair(
@@ -586,17 +702,43 @@ export async function runAskRemediationScene({
 						locale === "ur" ? "rtl" : "ltr",
 					);
 					assert.ok(
-						Math.abs(compact.first.left - 24) <= 1 &&
-							Math.abs(compact.first.width - compact.first.right - 24) <= 1,
-						"narrow pane must keep 24px edge insets",
+						Math.abs(compact.first.left - compact.first.columnLeft - 24) <= 1 &&
+							Math.abs(compact.first.columnRight - compact.first.right - 24) <=
+								1,
+						/* The MEASURED box rides in the message: an inset that is wrong by a
+						 * different amount is a different defect from one that is wrong because
+						 * the window never reached the narrow width. */
+						`narrow pane must keep 24px edge insets: ${JSON.stringify({ left: compact.first.left, right: compact.first.right, columnLeft: compact.first.columnLeft, columnRight: compact.first.columnRight, width: compact.first.width, overflow: compact.first.overflow })}`,
 					);
+					/* The column itself is not asserted to reach the window edge here: this route
+					 * is a REEL + PANE split, so the window-edge contract belongs to the route
+					 * root, and claiming it of the pane's inner column would be asserting a box
+					 * this scene does not own. What the scene owns is that the card sits 24px
+					 * inside its column on both sides and that nothing overflows. */
 					await click(cdp, trigger);
+					/* The settled region's own text and the trigger's own state, so an expanded
+					 * sentence that is missing can be told from one that never expanded and from
+					 * one whose invisible bidi marks broke an exact match. */
+					const expandDiagnostic = () =>
+						cdp.evaluate(`(() => {
+							const settled = document.querySelector('[data-lo-ask-settled]');
+							const text = settled?.textContent ?? '';
+							return {
+								settled: text.slice(0, 400),
+								invisibleMarks: Array.from(new Set(Array.from(text).filter((c) => /[\u200b-\u200f\u202a-\u202e]/.test(c)))).map((c) => c.codePointAt(0).toString(16)),
+								buttons: Array.from(document.querySelectorAll('[data-lo-ask-settled] button')).map((b) => [b.textContent.trim().slice(0, 40), b.getAttribute('aria-expanded')]),
+								rows: document.querySelectorAll('[data-lo-ask-row]').length,
+								hash: location.hash,
+							};
+						})()`);
 					await until(
 						() =>
 							cdp.evaluate(
 								`document.querySelector('[data-notification-detail]')?.textContent.includes(${JSON.stringify(sentence)})`,
 							),
 						`${locale} expanded withdrawn sentence missing`,
+						15000,
+						expandDiagnostic,
 					);
 					await reveal(
 						cdp,
@@ -606,6 +748,21 @@ export async function runAskRemediationScene({
 						`ask-remediation-withdrawn-${locale}-expanded`,
 					);
 					receipt.locales[locale] = { compact, expanded };
+					/*
+					 * LEAVE THE ROW AS THIS LOOP FOUND IT. The settled row is a Disclosure whose
+					 * open state SURVIVES the language change, so the second iteration inherited
+					 * the first one's expansion and this loop's own click CLOSED it — measured on
+					 * the real app on 2026-10-29: the ur pass read `aria-expanded: false` and
+					 * `expanded withdrawn sentence missing` while the sentence was one press away.
+					 * Collapsing it here makes every iteration start from the state the compact
+					 * assertion above depends on, rather than from whatever the last one left.
+					 */
+					if (
+						await cdp.evaluate(
+							`(${trigger})?.getAttribute('aria-expanded')==='true'`,
+						)
+					)
+						await click(cdp, trigger);
 				}
 				receipt.result =
 					"client-retry-and-localized-layout-confirmed-no-agent-delivery";
