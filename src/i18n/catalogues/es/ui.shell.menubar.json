@@ -1,14 +1,14 @@
 {
 	"ui.shell.menubar.file": "Archivo",
-	"ui.shell.menubar.edit": "Editar",
-	"ui.shell.menubar.view": "Ver",
+	"ui.shell.menubar.edit": "Edición",
+	"ui.shell.menubar.view": "Visualización",
 	"ui.shell.menubar.window": "Ventana",
 	"ui.shell.menubar.new_browser_tab": "Nueva pestaña del navegador",
 	"ui.shell.menubar.reload": "Recargar",
 	"ui.shell.menubar.force_reload": "Forzar recarga",
 	"ui.shell.menubar.actual_size": "Tamaño real",
-	"ui.shell.menubar.zoom_in": "Acercar",
-	"ui.shell.menubar.zoom_out": "Alejar",
+	"ui.shell.menubar.zoom_in": "Ampliar",
+	"ui.shell.menubar.zoom_out": "Reducir",
 	"ui.shell.menubar.close_tab_or_window": "Cerrar pestaña o ventana",
 	"ui.shell.menubar.learn_more": "Más información",
 	"ui.shell.menubar.about": "Acerca de {name}"
