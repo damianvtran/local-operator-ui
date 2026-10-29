@@ -83,7 +83,10 @@ for (const code of LOCALES) {
 				kind: word,
 				name: "release-crew",
 			});
-			assert.ok(about.includes(word), `${code}: About line drops the kind word`);
+			assert.ok(
+				about.includes(word),
+				`${code}: About line drops the kind word`,
+			);
 			assert.ok(
 				about.includes("release-crew"),
 				`${code}: About line drops the name`,
