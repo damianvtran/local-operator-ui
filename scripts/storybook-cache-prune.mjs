@@ -61,7 +61,7 @@ import {
 	utimesSync,
 } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { isEntryPoint } from "./entry-point.mjs";
 
 export const DEFAULT_MAX_AGE_MS = 48 * 60 * 60 * 1000;
 export const DEFAULT_MAX_ENTRIES = 40;
@@ -314,7 +314,7 @@ export function pruneStorybookCacheFromEnv({
 	});
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isEntryPoint(import.meta.url)) {
 	const args = process.argv.slice(2);
 	const dryRun = args.includes("--dry-run");
 	const root = args.find((arg) => !arg.startsWith("--"));

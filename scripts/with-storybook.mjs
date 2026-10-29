@@ -61,6 +61,7 @@ import {
 	reapOnExit,
 	stopAppTree,
 } from "./app-tree-teardown.mjs";
+import { isEntryPoint } from "./entry-point.mjs";
 
 export const EXIT_USAGE = 64;
 export const EXIT_NOT_READY = 69;
@@ -295,7 +296,7 @@ export async function runLane(options, env = process.env) {
 	return code;
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isEntryPoint(import.meta.url)) {
 	const parsed = parseArgs(process.argv.slice(2));
 	if (parsed.error) {
 		console.error(
