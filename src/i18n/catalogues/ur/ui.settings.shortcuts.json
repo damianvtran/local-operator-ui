@@ -63,7 +63,7 @@
 	"ui.settings.shortcuts.row.code_review": "کوڈ کا جائزہ",
 	"ui.settings.shortcuts.row.console": "کنسول",
 	"ui.settings.shortcuts.row.execution": "رن کی تفصیلات",
-	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcut_capture_description": "شارٹ کٹ فیلڈ پر فوکس کریں اور فوری محفوظ کرنے کے لیے کیز دبائیں۔ Esc کیپچر کا اشارہ صاف کرتا ہے؛ ”ری سیٹ کریں“ ڈیفالٹ بحال کرتا ہے۔",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcut_capture_description": "شارٹ کٹ فیلڈ پر فوکس کریں اور فوری محفوظ کرنے کے لیے کیز دبائیں۔ Esc کیپچر کا اشارہ صاف کرتا ہے؛ “ری سیٹ کریں” ڈیفالٹ بحال کرتا ہے۔",
 	"ui.settings.shortcuts.category.speech_to_text": "آواز سے متن",
 	"ui.settings.shortcuts.recording.invalid_stored_value": "محفوظ شدہ شارٹ کٹ درست نہیں ہے۔ آخری کام کرنے والا شارٹ کٹ دکھایا جا رہا ہے۔",
 	"ui.settings.shortcuts.recording.inactive_claimed": "ریکارڈنگ غیر فعال ہے: {label} یہ شارٹ کٹ استعمال کر رہا ہے۔"
