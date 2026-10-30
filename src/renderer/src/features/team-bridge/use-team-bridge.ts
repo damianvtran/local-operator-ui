@@ -93,6 +93,11 @@ import {
 	useBridgeOwner,
 	useTeamBridgeAccount,
 } from "./team-bridge-owner";
+import {
+	type TeamBridgeUnreadSnapshot,
+	applyTeamBridgeReadCursor,
+	restoreTeamBridgeUnreadSnapshot,
+} from "./team-bridge-unread-sync";
 export { teamBridgeKeys } from "./team-bridge-keys";
 import {
 	type CapturedBridgeMutation,
@@ -212,14 +217,25 @@ export function useLoadMoreArchivedTeamBridgeConversations(
 	});
 }
 
-export function useTeamBridgeMessages(
+/**
+ * The timeline read's key and reader, shared by the page's observer and the
+ * shell's notification watcher.
+ *
+ * WHY SHARED. A banner used to read the newest message straight through the
+ * API, so the page's cached page for that conversation stayed whatever it was
+ * when the reader last looked. Clicking the banner then painted that stale page
+ * and the message appeared seconds later, on the next poll (operator report,
+ * 2026-10-30). The watcher now reads through THIS key and reader, so the page
+ * it writes is exactly the page the timeline renders. Two literals for one key
+ * would drift the first time either side changed, silently reopening the gap.
+ */
+export function teamBridgeMessagesQueryOptions(
+	client: QueryClient,
 	conversationId: string | null,
 	tenantId?: string,
-	enabled = true,
 	accountId?: string,
-): UseQueryResult<TeamBridgeMessagePage> {
-	const client = useQueryClient();
-	return useQuery({
+) {
+	return {
 		queryKey: teamBridgeKeys.messages(
 			conversationId ?? "none",
 			tenantId,
@@ -237,6 +253,23 @@ export function useTeamBridgeMessages(
 					TeamBridgeApi.listMessages(conversationId as string, { tenantId }),
 				),
 			),
+	} as const;
+}
+
+export function useTeamBridgeMessages(
+	conversationId: string | null,
+	tenantId?: string,
+	enabled = true,
+	accountId?: string,
+): UseQueryResult<TeamBridgeMessagePage> {
+	const client = useQueryClient();
+	return useQuery({
+		...teamBridgeMessagesQueryOptions(
+			client,
+			conversationId,
+			tenantId,
+			accountId,
+		),
 		enabled: enabled && Boolean(accountId) && Boolean(conversationId),
 		staleTime: 5_000,
 		/* `not_a_member` is a definite answer (an administrator opening an archived
@@ -826,7 +859,8 @@ export function useMarkTeamBridgeRead(
 	const mutation = useMutation<
 		TeamBridgeReadState,
 		Error,
-		CapturedBridgeMutation<{ seq: number }, BridgeWriteTarget>
+		CapturedBridgeMutation<{ seq: number }, BridgeWriteTarget>,
+		TeamBridgeUnreadSnapshot
 	>({
 		mutationFn: ({ input, target }) => {
 			target.assertCurrent();
@@ -835,6 +869,27 @@ export function useMarkTeamBridgeRead(
 				tenantId: target.tenantId,
 				expectedAccountId: target.accountId,
 			});
+		},
+		/*
+		 * READ CLEARS THE ROW AND THE BADGE IN ONE UPDATE. The row's count and the
+		 * nav badge used to wait for two separate refetches with different
+		 * cadences, so one could still claim unread after the other cleared. The
+		 * optimistic patch writes every cache that renders this conversation's
+		 * unread in the same synchronous pass; the invalidations below still
+		 * reconcile with the server, and a refusal restores the exact snapshots.
+		 */
+		onMutate: ({ input, target }) => {
+			if (!target.isCurrent() || !target.accountId || !target.tenantId)
+				return undefined;
+			return applyTeamBridgeReadCursor(client, target.accountId, {
+				tenantId: target.tenantId,
+				conversationId: target.conversationId,
+				seq: input.seq,
+			});
+		},
+		onError: (_error, { target }, snapshot) => {
+			if (!target.isCurrent() || !snapshot) return;
+			restoreTeamBridgeUnreadSnapshot(client, snapshot);
 		},
 		onSuccess: async (_data, { target }) => {
 			if (!target.isCurrent()) return;

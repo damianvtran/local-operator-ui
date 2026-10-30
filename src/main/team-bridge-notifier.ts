@@ -596,6 +596,8 @@ export class TeamBridgeNotifier {
 			conversationId,
 			tenantId: request.tenantId,
 			...(request.threadId ? { threadId: request.threadId } : {}),
+			// An id, not text: the click's highlight target, safe to retain.
+			...(request.messageId ? { messageId: request.messageId } : {}),
 		};
 		this.retainTarget(notification, target);
 		notification.show();

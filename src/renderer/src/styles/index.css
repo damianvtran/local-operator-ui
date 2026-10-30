@@ -58,6 +58,31 @@
 	}
 }
 
+/* The message a Team Bridge notification click named: an accent wash on the row
+ * that fades back to the row's own ground over ~1.5 s, so the eye finds the
+ * message it was told about and is then left alone. `accent-wash` is the
+ * theme's selection tint (no new colour); the row keeps its box, so nothing
+ * moves. Reduced motion keeps the cue but drops the fade: the wash holds for
+ * the same span and the class is removed by the page, which is a state change,
+ * not motion. */
+@keyframes lo-team-bridge-target {
+	from {
+		background-color: var(--color-accent-wash);
+	}
+	to {
+		background-color: transparent;
+	}
+}
+.lo-team-bridge-target {
+	animation: lo-team-bridge-target 1500ms var(--ease-out-quart) both;
+}
+@media (prefers-reduced-motion: reduce) {
+	.lo-team-bridge-target {
+		animation: none;
+		background-color: var(--color-accent-wash);
+	}
+}
+
 /* An avatar photo arriving over its initials (sidebar account row, design
  * review round 1, D5): the same opacity-only keyframe as the transcript, at
  * `--duration-fast` because the plate is 28px and the swap should read as
