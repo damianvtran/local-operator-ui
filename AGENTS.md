@@ -622,13 +622,22 @@ the reasoning, probe costs and constants are in
   figure may undercount. Read the figure first: a test that legitimately needs
   more is a reason to raise the budget; one that holds gigabytes is a leak, and
   the budget did its job.
-- **The budget** is `max(8 GB, 25% of RAM)` capped at 50% of RAM. The floor is
-  2.7x the real suite's measured peak: one full `pnpm test:desktop` (330 files,
-  concurrency 7) peaked at **3,041 MB** of `max(footprint, RSS)` across the tree.
-  It stays ACTIVE on CI (unlike the concurrency governor): a runaway there is
-  otherwise a 35-minute timeout and a nameless OOM kill. Override with
-  `LOCAL_OPERATOR_UI_TEST_MEMORY_BUDGET_MB=<MB>` (honoured unclamped) or `=off`
-  (announced on stdout).
+- **The budget** is `max(9.5 GB, 25% of RAM)` capped at 62.5% of RAM. The floor
+  is 2.7x the development host's measured peak: one full `pnpm test:desktop` (330
+  files, concurrency 7) peaked at **3,041 MB** of `max(footprint, RSS)` across the
+  tree. It is sized for the HOSTED runner too, and there the ceiling is what used
+  to decide: at the old 50% a 16 GB runner (15,983 MB) computed
+  `min(max(8,192, 3,995), 7,991)` = **7.8 GB**, below the sharded suite's real
+  peak, so it killed four healthy runs at 7.9 / 8.2 / 8.5 / 9.4 GB (runs
+  40992181176, 40996898976, 41030488151, 41040832734) with no failing test. The
+  floor now clears the highest of those and the 62.5% ceiling keeps the floor
+  reachable on any runner down to 15.2 GB (why 0.625 and not 0.65: a non-binary
+  fraction prints `65.00000000000001` in the evidence line). Small hosts stay
+  capped — an 8 GB box gets 5,120 MB. Green CI is not proof of capacity: a kill
+  names a budget, a failing test name does not. It stays ACTIVE on CI (unlike the
+  concurrency governor): a runaway there is otherwise a 35-minute timeout and a
+  nameless OOM kill. Override with `LOCAL_OPERATOR_UI_TEST_MEMORY_BUDGET_MB=<MB>`
+  (honoured unclamped) or `=off` (announced on stdout).
 - **When the watchdog cannot see the whole tree it says so, and the bound is
   narrower.** A probe that fails or times out skips that tick (unknown never
   kills, and a starved `ps` must not wedge the run). If the process-table read
@@ -2893,19 +2902,25 @@ write access is silently ignored by an approval rule. Tagging a person in a
 
 ### Desktop CI capacity partitions
 
-The `test` job uses three deterministic file-count partitions of the explicit
+The `test` job uses four deterministic file-count partitions of the explicit
 `package.json` `test:desktop` inventory. Local `pnpm test:desktop` still runs the
 whole inventory once through the existing guarded runner. CI delegates each
-partition to that same runner with the same concurrency, memory and lane guards;
-three workers are extra capacity, not measured runtime balancing, a hung-lane
-cure, or a memory-leak fix. The 50-minute cap and cancellation policy do not change.
-Tag-dialog tests and the existing native QA bundle are owned by shard 0 only.
+partition to that same runner with the same concurrency, memory and lane caps;
+four workers are extra capacity and per-shard memory headroom, not measured
+runtime balancing, a hung-lane cure, or a memory-leak fix. The fourth shard was
+added on 2026-10-30 because the 7.8 GB process-group budget sat inside the
+run-to-run distribution of a three-shard lane at concurrency 3 — 7.9 GB (run
+40992181176) and 8.2 GB (run 40996898976) on the same 205-file inventory, both dying
+at `ok 1060` with zero failures — so each partition now carries ~25% fewer files.
+The budget, the concurrency guard, the 50-minute cap and the cancellation policy
+do not change. Tag-dialog tests and the existing native QA bundle are owned by
+shard 0 only.
 
 The stable required result remains **Desktop Tests** (`desktop-tests-result`).
-It consumes all three same-head/checkout/inventory receipts, rejects missing,
+It consumes all four same-head/checkout/inventory receipts, rejects missing,
 failed or cancelled work, and reconstructs the disjoint complete file inventory.
 An explicit false unit scope skips the workers/result; unknown classification or
 failed workers cannot become a green aggregate. The result is a CI-only local
 exclusion because `check-changed` already runs the full desktop command once;
 adding a second local suite command would duplicate the most expensive gate.
-Queue demand rises by two runners and no completion-time guarantee is implied.
+Queue demand rises by three runners and no completion-time guarantee is implied.

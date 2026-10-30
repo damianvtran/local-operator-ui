@@ -10,6 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import {
+	SHARD_COUNT,
 	inventory,
 	loadReceipts,
 	main,
@@ -63,7 +64,7 @@ function expected() {
 		schema: 1,
 		head: HEAD,
 		checkout: CHECKOUT,
-		count: 3,
+		count: SHARD_COUNT,
 		digest: "fixture-digest",
 		total: files.length,
 		files,
@@ -71,7 +72,7 @@ function expected() {
 	};
 }
 function rows(p) {
-	return [0, 1, 2].map((index) =>
+	return Array.from({ length: SHARD_COUNT }, (_, index) =>
 		receipt(p, index, runnerLog(p.shards[index].length), 0, 1),
 	);
 }
@@ -80,7 +81,7 @@ test("literal inventory includes nested names; count-balanced partition is compl
 	const files = inventory(command(names));
 	assert.equal(files.length, 542);
 	assert.ok(files.includes("scripts/i18n/case-0000.test.mjs"));
-	for (const count of [2, 3]) {
+	for (const count of [2, 3, SHARD_COUNT]) {
 		const parts = partition(files, count);
 		assert.deepEqual(parts, partition([...files].reverse(), count));
 		assert.deepEqual(parts.flat().sort(), files);
@@ -93,7 +94,7 @@ test("literal inventory includes nested names; count-balanced partition is compl
 	}
 	assert.deepEqual(
 		partition(files).map((p) => p.length),
-		[181, 181, 180],
+		[136, 136, 135, 135],
 	);
 });
 
@@ -116,7 +117,7 @@ test("inventory rejects unsupported syntax instead of guessing shell semantics",
 			/Missing|Unsupported|Unsafe|Duplicate/,
 		);
 	}
-	assert.throws(() => partition(names, 4), /count/);
+	assert.throws(() => partition(names, 5), /count/);
 	assert.throws(() => partition([], 3), /Empty/);
 });
 
@@ -151,10 +152,10 @@ test("TAP and receipt cannot be emitted after an error, cancellation, empty or t
 		);
 	}
 	assert.throws(() => receipt(p, 0, log, 137, 1), /rc=0/);
-	assert.throws(() => receipt(p, 3, log, 0, 1), /index/);
+	assert.throws(() => receipt(p, 4, log, 0, 1), /index/);
 });
 
-test("exact three same-head success receipts prove disjoint complete inventory; every mutation fails for its own reason", () => {
+test("exact four same-head success receipts prove disjoint complete inventory; every mutation fails for its own reason", () => {
 	const p = expected();
 	assert.equal(verify(p, rows(p), "true", "success", "success"), "passed");
 	assert.equal(verify(p, [], "false", "success", "skipped"), "skipped");
@@ -169,8 +170,8 @@ test("exact three same-head success receipts prove disjoint complete inventory; 
 			/matrix/i,
 		);
 	for (const [mutate, message] of [
-		[(r) => r.pop(), /exactly 3/],
-		[(r) => r.push(r[0]), /exactly 3/],
+		[(r) => r.pop(), /exactly 4/],
+		[(r) => r.push(r[0]), /exactly 4/],
 		[
 			(r) => {
 				r[1].index = 0;
@@ -252,22 +253,40 @@ test("artifact directory identity rejects missing, extra, wrong-attempt and extr
 		mkdirSync(proofs);
 		const p = expected();
 		const r = rows(p);
-		for (let i = 0; i < 3; i++) {
+		for (let i = 0; i < SHARD_COUNT; i++) {
 			const d = join(proofs, `desktop-shard-proof-42-1-${i}`);
 			mkdirSync(d);
 			writeFileSync(join(d, `shard-${i}.json`), JSON.stringify(r[i]));
 		}
-		assert.equal(loadReceipts(proofs, "42", "1").length, 3);
-		assert.throws(() => loadReceipts(proofs, "42", "2"), /three named/);
-		rmSync(join(proofs, "desktop-shard-proof-42-1-2"), { recursive: true });
-		assert.throws(() => loadReceipts(proofs, "42", "1"), /three named/);
-		mkdirSync(join(proofs, "desktop-shard-proof-42-1-2"));
+		assert.equal(loadReceipts(proofs, "42", "1").length, SHARD_COUNT);
+		assert.throws(
+			() => loadReceipts(proofs, "42", "2"),
+			/named receipt artifacts/,
+		);
+		// Removing any single proof must be rejected - the last index here, so the
+		// check is not accidentally satisfied by prefix matching alone.
+		const missing = SHARD_COUNT - 1;
+		rmSync(join(proofs, `desktop-shard-proof-42-1-${missing}`), {
+			recursive: true,
+		});
+		assert.throws(
+			() => loadReceipts(proofs, "42", "1"),
+			/named receipt artifacts/,
+		);
+		mkdirSync(join(proofs, `desktop-shard-proof-42-1-${missing}`));
 		writeFileSync(
-			join(proofs, "desktop-shard-proof-42-1-2", "shard-2.json"),
-			JSON.stringify(r[2]),
+			join(
+				proofs,
+				`desktop-shard-proof-42-1-${missing}`,
+				`shard-${missing}.json`,
+			),
+			JSON.stringify(r[missing]),
 		);
 		mkdirSync(join(proofs, "desktop-shard-proof-42-1-extra"));
-		assert.throws(() => loadReceipts(proofs, "42", "1"), /three named/);
+		assert.throws(
+			() => loadReceipts(proofs, "42", "1"),
+			/named receipt artifacts/,
+		);
 		rmSync(join(proofs, "desktop-shard-proof-42-1-extra"), { recursive: true });
 		writeFileSync(
 			join(proofs, "desktop-shard-proof-42-1-0", "extra.json"),
@@ -418,13 +437,17 @@ test("R3/QP2: classifier-result by unit truth table cannot hide stale false outp
 });
 
 // Verbatim runner stdout (Actions timestamps stripped only), existing job
-// 120100649015 lines544–546. These are startup-format data, not a suite run.
+// 120100649015 lines544–546. These are startup-format data, not a suite run. The
+// memory line's values are re-derived from this repo's own guard at the hosted
+// runner's measured 15,983 MB (the four kill lines behind the floor are on
+// `_BUDGET_FLOOR_MB` in desktop-test-memory-guard.mjs); re-derive it there when a
+// guard constant moves rather than editing a number by hand.
 const actualProductionPreamble =
-	"desktop tests: 541 files, concurrency 3 (CI runner: governor stands down, node default for 4 cores)\ndesktop tests: memory bound 7.8 GB for the test process group (max(8192 MB floor, 25% of 15983 MB RAM), capped at 50%); sampled every 2s on max(footprint, rss)\ndesktop tests: per-lane bound 25 min (default, above the 18.7-minute healthy CI suite that bounds every lane it runs — a stall in a lane first seen late can still outrun the job cap); sampled every 5s over the suite's process group";
+	"desktop tests: 541 files, concurrency 3 (CI runner: governor stands down, node default for 4 cores)\ndesktop tests: memory bound 9.5 GB for the test process group (max(9728 MB floor, 25% of 15983 MB RAM), capped at 62.5%); sampled every 2s on max(footprint, rss)\ndesktop tests: per-lane bound 25 min (default, above the 18.7-minute healthy CI suite that bounds every lane it runs — a stall in a lane first seen late can still outrun the job cap); sampled every 5s over the suite's process group";
 
 test("R4: actual three-line production preamble accepts healthy TAP and preserves bad-count rejection", () => {
 	const files = Array.from(
-		{ length: 1623 },
+		{ length: 541 * SHARD_COUNT },
 		(_, i) => `scripts/data-${i}.test.mjs`,
 	);
 	const p = {

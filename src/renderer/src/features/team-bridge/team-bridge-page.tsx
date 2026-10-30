@@ -5,12 +5,11 @@ import {
 	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
-import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
-import { Spinner } from "@shared/components/common/spinner";
 import {
-	MessageInput,
-	type MessageInputProps,
-} from "@shared/components/composer";
+	TeamBridgeApi,
+	requireBridgeWriteAccount,
+} from "@shared/api/local-operator/team-bridge-api";
+import { Spinner } from "@shared/components/common/spinner";
 import { AttentionBadge } from "@shared/components/ui/attention-badge";
 import { Button } from "@shared/components/ui/button";
 import { ScrollArea } from "@shared/components/ui/scroll-area";
@@ -24,6 +23,7 @@ import {
 	teamBridgeComposerKey,
 } from "@shared/store/team-bridge-composer-rows";
 import { showErrorToast } from "@shared/utils/toast-manager";
+import { useQueryClient } from "@tanstack/react-query";
 import {
 	Archive,
 	Bot,
@@ -32,6 +32,7 @@ import {
 	MailPlus,
 	Pencil,
 	Plus,
+	UserPlus,
 	Users,
 } from "lucide-react";
 import type { FC, ReactNode } from "react";
@@ -47,11 +48,14 @@ import { Link, useSearchParams } from "react-router-dom";
 import type {
 	TeamBridgeAttachmentCapability,
 	TeamBridgeConversation,
+	TeamBridgeConversationList,
 	TeamBridgeDirectoryMember,
+	TeamBridgeMemberInput,
 	TeamBridgeMessage,
 	TeamBridgeNotify,
 } from "../../../../shared/team-bridge-contract";
 import { rowCurrent } from "../chat/components/chat-sidebar";
+import { TeamBridgeAddMembersView } from "./team-bridge-add-members";
 import {
 	TeamBridgeArchiveDialog,
 	TeamBridgeArchivedBanner,
@@ -70,6 +74,7 @@ import {
 	sendAttachmentIds,
 } from "./team-bridge-attachments-model";
 import { TeamBridgeComposeBar } from "./team-bridge-compose-bar";
+import { TeamBridgeComposer } from "./team-bridge-composer";
 import { TeamBridgeConversationMenu } from "./team-bridge-conversation-menu";
 import { TeamBridgeCreateDialog } from "./team-bridge-create-dialog";
 import { TeamBridgeDefaultOnBanner } from "./team-bridge-default-on-banner";
@@ -81,6 +86,10 @@ import {
 	pendingAgentInvitations,
 	railInvitationsEntryShown,
 } from "./team-bridge-invitations-model";
+import {
+	canInviteMembers,
+	canRemoveMembers,
+} from "./team-bridge-members-model";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
 import {
 	type ChiefLabels,
@@ -127,6 +136,10 @@ import {
 import { TeamBridgeOrgSwitcher } from "./team-bridge-org-switcher";
 import { useBridgeOwner, useTeamBridgeAccount } from "./team-bridge-owner";
 import {
+	type OwnerAuditSlot,
+	useOwnerAuditSurface,
+} from "./team-bridge-owner-audit";
+import {
 	TeamBridgeAvatar,
 	TeamBridgeProfileCard,
 } from "./team-bridge-profile-card";
@@ -162,6 +175,8 @@ import {
 import { useReportTeamBridgeViewing } from "./team-bridge-viewing";
 import { useStickToBottom } from "./use-stick-to-bottom";
 import {
+	teamBridgeKeys,
+	useAddTeamBridgeMembers,
 	useArchiveTeamBridgeConversation,
 	useArchivedTeamBridgeConversations,
 	useCreateTeamBridgeConversation,
@@ -169,6 +184,7 @@ import {
 	useJoinTeamBridgeConversation,
 	useLoadMoreArchivedTeamBridgeConversations,
 	useMarkTeamBridgeRead,
+	useRemoveTeamBridgeMember,
 	useSendTeamBridgeMessage,
 	useSetTeamBridgeNotify,
 	useTeamBridgeConversations,
@@ -180,13 +196,6 @@ import {
 	useUnarchiveTeamBridgeConversation,
 } from "./use-team-bridge";
 import { useTeamBridgeDrafts } from "./use-team-bridge-drafts";
-
-/**
- * The shared composer draws its empty-chat splash from `messages`; a host with no
- * transcript says so with `transcriptless`, and passes the same empty list the
- * mini view does rather than a second shape of "nothing".
- */
-const EMPTY_BRIDGE_MESSAGES: MessageInputProps["messages"] = [];
 
 /**
  * Why a send was refused, in the terms the person can act on (UX round 1, U2).
@@ -472,6 +481,8 @@ type OwnedDraft = {
 };
 
 export type TeamBridgePageViewProps = {
+	/** Human-only audit never enters member targets, drafts or the agent lane. */
+	ownerAudit?: OwnerAuditSlot;
 	/** Page-lifetime data journal; no live mutation closure survives an auth epoch. */
 	draftJournal?: OwnedDraft;
 	isDraftCurrent?: () => boolean;
@@ -500,6 +511,20 @@ export type TeamBridgePageViewProps = {
 	scope: TeamBridgeScope;
 	/** The account aggregate's total; the "All organizations" row shows it. */
 	totalUnread: number;
+	/**
+	 * Rows already on screen are being re-read (`stale-while-revalidate`,
+	 * tb-instant-open). The view keeps them painted and marks the rail as
+	 * refreshing, so a stale list is never presented as a current one. Absent for
+	 * a first load, which has its own loading state, and for the stories that do
+	 * not model a refresh.
+	 */
+	refreshingRows?: boolean;
+	/**
+	 * The unread read is in flight behind painted rows. The count is the one number
+	 * a reader acts on, so it is reported separately from `refreshingRows` rather
+	 * than folded into it.
+	 */
+	refreshingUnread?: boolean;
 	membershipsLoading?: boolean;
 	organizationsFailed?: boolean;
 	selfAccountId?: string;
@@ -511,6 +536,18 @@ export type TeamBridgePageViewProps = {
 	notifyFailed?: boolean;
 	onJoin?: () => void;
 	onNotifyChange?: (notify: TeamBridgeNotify) => void;
+	/** Membership writes, passed the selected conversation at the point of use. */
+	onAddMembers?: (
+		conversation: TeamBridgeConversation,
+		members: TeamBridgeMemberInput[],
+	) => Promise<unknown>;
+	onRemoveMember?: (
+		conversation: TeamBridgeConversation,
+		accountId: string,
+	) => Promise<unknown>;
+	memberMutationKey?: string | null;
+	/** Story/test seed only: opens membership administration on mount. */
+	initialMembersOpen?: boolean;
 	/**
 	 * ARCHIVE / PERMANENT DELETE. Each is optional so a mount that does not wire
 	 * them (a story, an older container) simply draws none of the controls.
@@ -559,6 +596,10 @@ export type TeamBridgePageViewProps = {
 	 * list). A tenant whose read has not answered is absent.
 	 */
 	directories?: Readonly<Record<string, readonly TeamBridgeDirectoryMember[]>>;
+	/** Each organization's directory read state, for the merged view's picker. */
+	directoryStates?: Readonly<Record<string, "loading" | "error" | "ready">>;
+	/** Re-run one organization's directory read (the merged view's retry). */
+	onRetryMembers?: (tenantId: string) => void;
 	/**
 	 * The signed-in reader's account name, so their own messages are named even
 	 * when no directory lists them (merged view, directory loading or failed).
@@ -623,6 +664,7 @@ export type TeamBridgePageViewProps = {
 };
 
 export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
+	ownerAudit,
 	renderThreadPane,
 	threadLink,
 	onCloseThread,
@@ -644,6 +686,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	notifyFailed = false,
 	onJoin,
 	onNotifyChange,
+	onAddMembers,
+	onRemoveMember,
+	memberMutationKey = null,
+	initialMembersOpen = false,
 	onArchive,
 	onUnarchive,
 	onDelete,
@@ -666,11 +712,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	isDraftCurrent = () => true,
 	people = [],
 	directories,
+	directoryStates,
 	selfName,
 	peopleState = "ready",
 	peopleError,
 	peopleIncomplete = false,
+	refreshingRows = false,
+	refreshingUnread = false,
 	onRetryPeople,
+	onRetryMembers,
 	eligibility = null,
 	gatePending = false,
 	readOnly = false,
@@ -694,6 +744,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		kind: "archive" | "delete";
 		conversationId: string;
 	} | null>(initialDialog ?? null);
+	const [membersOpen, setMembersOpen] = useState(initialMembersOpen);
+	const [memberActionFailed, setMemberActionFailed] = useState(false);
 	const [deleting, setDeleting] = useState(false);
 	const [deleteFailed, setDeleteFailed] = useState<"error" | "gone" | null>(
 		null,
@@ -879,17 +931,20 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		);
 	};
 	const selectTarget = (next: TeamBridgeTarget | null) => {
+		ownerAudit?.clear();
 		setQuickView(null);
 		onTarget(next);
 	};
-	/* THE HOLD. Both halves must agree before any thread state exists, so a deep
-	   link or a reply handler cannot leave a selection behind that a later
-	   render would mount. See `team-bridge-thread-gate.ts`. */
-	const threadsAvailable = teamBridgeThreadsAvailable(threadsCapabilityState);
-	/* THE REACTIONS HOLD. The build constant dominates the capability: the
-	   context is withheld in this build whatever the runtime advertises, so the
-	   message list mounts no reaction state and neither chips nor the toolbar's
-	   react button exist. See `team-bridge-reaction-gate.ts`. */
+	/* Both the build/capability gate and a resolved account are required before
+	   any thread state exists. Reads and replies need that captured owner, so a
+	   deep link or reply handler cannot mount an unidentified thread surface. */
+	const threadsAvailable =
+		teamBridgeThreadsAvailable(threadsCapabilityState) &&
+		selfAccountId !== undefined;
+	/* The reactions lane is gated by the build and the capability here; the
+	 * captured account is required one step later, where `reactionContext` is
+	 * built (`reactionsAvailable && selfAccountId`). Both terms have to hold: a
+	 * capability-only gate would mount chips under an unresolved account. */
 	const reactionsAvailable = teamBridgeReactionsAvailable(
 		reactionsCapabilityState,
 	);
@@ -1084,6 +1139,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			setThreadSelection(null);
 			onCloseThread?.();
 		}
+		ownerAudit?.clear();
 		setQuickView(next);
 	};
 	const threadIsOpen = Boolean(
@@ -1225,14 +1281,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		draftJournal?.pending ?? null,
 	);
 	/*
-	 * THE SHARED COMPOSER'S SEND BINDING.
+	 * THE COMPOSER'S SEND, BOUND HERE.
 	 *
-	 * The box, the chips and the clearing belong to `MessageInput` now; what stays
-	 * here is what a composer cannot know - the target, the create-or-post
-	 * resolution, the idempotency key and the hub's attachment binding. `false` is a
-	 * REFUSAL and it is returned before anything is retired, so a refused send
-	 * leaves the text and chips where the reader can retry them (R6b); `true` lets
-	 * the box clear itself, which is the only clear a transcriptless host gets.
+	 * The bar, the field, the chips and the typing are `TeamBridgeComposer`'s; what
+	 * stays in this page is what a composer cannot know - the destination, the
+	 * create-or-reuse decision for a person or a group, the idempotency key and the
+	 * hub's attachment binding. `false` is a REFUSAL and it is returned before
+	 * anything is retired, so a refused send leaves the text and chips where the
+	 * reader can retry them (R6b); `true` lets the box clear itself, which is the
+	 * only clear a transcriptless host gets.
 	 */
 	const submit = async (content: string, attachments: string[]) => {
 		/*
@@ -1539,6 +1596,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				   on the canvas ground the selected row measured 1.06:1 on `paper`
 				   (design round 1, D2). */
 				className="panel-top-pad flex w-72 shrink-0 flex-col bg-surface"
+				aria-busy={refreshingRows || refreshingUnread || undefined}
 				onPointerEnter={() => setPointerInRail(true)}
 				onPointerLeave={() => setPointerInRail(false)}
 			>
@@ -1551,6 +1609,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						totalUnread={totalUnread}
 						membershipsLoading={membershipsLoading}
 						organizationsFailed={organizationsFailed}
+						unreadRefreshing={refreshingUnread}
 						onRetry={onRetryMemberships}
 					/>
 					{/* "New message" opens an empty To: draft: a DM or a group is
@@ -1578,6 +1637,38 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					>
 						<Plus size={16} />
 					</Button>
+					{/*
+					 * STALE-WHILE-REVALIDATE, VISIBLY (tb-instant-open). Cached rows stay
+					 * on screen while the reads behind them settle, so the rail says they
+					 * are being re-read rather than presenting a stale list as a current
+					 * one. The slot is always in the flow and only its colour role changes,
+					 * so a poll cannot reflow the rail under the reader. `data-rail-refreshing`
+					 * names which read is behind it. No new copy: this is a state of the
+					 * rail, and what a screen reader needs to hear is the affected regions'
+					 * own `aria-busy`.
+					 *
+					 * AND NEITHER READ WEARS THE ATTENTION HUE (design round 1, D2). Green in
+					 * this rail is the mark of a count the reader owes attention to: every
+					 * row's `AttentionBadge` sits beside this dot, and so does the collapsed
+					 * sidebar's More badge. A green dot four rows above those badges reads as
+					 * a count of unread, and makes the one mark readers trust mean the
+					 * opposite kind of thing. Attention is a count; liveness is plumbing. So
+					 * both refresh states are `ink-dim`, and which read is behind the dot
+					 * stays in `data-rail-refreshing` - for instruments and tests rather than
+					 * for eyes, because a difference no reader can act on does not earn a hue.
+					 */}
+					<span
+						data-rail-refreshing={
+							refreshingUnread ? "unread" : refreshingRows ? "rows" : undefined
+						}
+						aria-hidden="true"
+						className={cn(
+							"size-1.5 shrink-0 rounded-full",
+							refreshingUnread || refreshingRows
+								? "bg-ink-dim"
+								: "bg-transparent",
+						)}
+					/>
 				</header>
 				<nav
 					aria-label={t("ui.teamBridge.drafts.navigation")}
@@ -1661,18 +1752,41 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						)}
 				</nav>
 				<ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block!">
-					{listState === "error" && (
-						<div className="flex flex-col items-start gap-2 px-3 py-3">
-							<p className="text-[12px] text-ink-muted">
-								{t("ui.teamBridge.list.error")}
-							</p>
-							{onRetry && (
-								<Button size="sm" variant="ghost" onClick={onRetry}>
-									{t("ui.teamBridge.list.retry")}
-								</Button>
-							)}
-						</div>
-					)}
+					{/*
+					 * THE SENTENCE MUST MATCH WHAT IS UNDER IT (design round 1, D1).
+					 * `listState` is "error" whenever `list.isError`, and `conversations`
+					 * falls back to the watcher's cached rows, so this branch now renders
+					 * above rows that are painted and usable - one failed read (an offline
+					 * blip, a 5xx) after a good one. "Conversations could not be loaded."
+					 * is then false about the pixels: the reader can see the conversations.
+					 * What actually failed is the refresh, so with rows on screen the note
+					 * says that, and takes the quiet underlined retry the chat sidebar
+					 * already uses for its own stale list rather than an error panel's
+					 * button. With nothing painted the old sentence is still exactly true
+					 * and keeps its panel and button.
+					 */}
+					{listState === "error" &&
+						(sidebarRows.length > 0 ? (
+							<div className="space-y-1 px-3 py-3 text-[12px] text-ink-muted">
+								<p>{t("ui.teamBridge.list.error_stale")}</p>
+								{onRetry && (
+									<button type="button" className="underline" onClick={onRetry}>
+										{t("ui.teamBridge.list.retry")}
+									</button>
+								)}
+							</div>
+						) : (
+							<div className="flex flex-col items-start gap-2 px-3 py-3">
+								<p className="text-[12px] text-ink-muted">
+									{t("ui.teamBridge.list.error")}
+								</p>
+								{onRetry && (
+									<Button size="sm" variant="ghost" onClick={onRetry}>
+										{t("ui.teamBridge.list.retry")}
+									</Button>
+								)}
+							</div>
+						))}
 					<RailSection
 						id="team-bridge-channels-heading"
 						title={t("ui.teamBridge.section.channels")}
@@ -1884,6 +1998,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							</RailSection>
 						</>
 					)}
+					{ownerAudit?.rail(() => {
+						setQuickView(null);
+						setThreadSelection(null);
+						onCloseThread?.();
+					})}
 				</ScrollArea>
 			</aside>
 
@@ -1896,7 +2015,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				)}
 			>
 				{notice}
-				{quickView === "invitations" ? (
+				{ownerAudit?.active ? (
+					ownerAudit.panel
+				) : quickView === "invitations" ? (
 					<TeamBridgeInvitations
 						invitations={invitations}
 						listState={listState}
@@ -2097,11 +2218,47 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										{relative(shown.last_message_at, locale)}
 									</span>
 								)}
+								{/*
+								 * THE INVITE ACTION WEARS ITS NAME, NEXT TO THE COUNT IT ACTS ON
+								 * (design review round 1, D2). It shipped as a 28px unlabelled
+								 * ghost glyph in the far cluster, while the membership summary -
+								 * the very number the action changes - sat inert beside the title,
+								 * so the affordance was the quietest mark on a header whose job
+								 * here is invitation. It is a labelled ghost button now (no
+								 * border, no fill: nothing lifts), placed where the count is.
+								 */}
+								{shown &&
+									!previewSelected &&
+									!readOnly &&
+									onAddMembers &&
+									canInviteMembers(shown, selfAccountId) && (
+										<Button
+											type="button"
+											size="sm"
+											variant="ghost"
+											className="shrink-0"
+											onClick={() => {
+												setMemberActionFailed(false);
+												setMembersOpen(true);
+											}}
+										>
+											<UserPlus size={14} aria-hidden="true" />
+											{t("ui.teamBridge.members.menu")}
+										</Button>
+									)}
 								<div className="ms-auto flex items-center gap-1">
 									{shown && !previewSelected && !readOnly && onNotifyChange && (
 										<TeamBridgeConversationMenu
 											conversation={shown}
 											onNotifyChange={onNotifyChange}
+											onAddMembers={
+												onAddMembers && canInviteMembers(shown, selfAccountId)
+													? () => {
+															setMemberActionFailed(false);
+															setMembersOpen(true);
+														}
+													: undefined
+											}
 											onArchive={
 												onArchive && canArchiveConversation(shown)
 													? () =>
@@ -2162,6 +2319,21 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								) : selectedOrganizationUnknown ? (
 									<p className="px-5 py-8 text-[13px] text-ink-muted">
 										{t("ui.teamBridge.scope.thread_unknown")}
+									</p>
+								) : target?.type === "conversation" &&
+									shown === null &&
+									listState === "ready" ? (
+									/*
+									 * An addressed conversation id that is NOT in the caller's own list.
+									 * This is not an empty thread. The list only carries conversations the
+									 * CALLER participates in, so the honest answers are "not a member" and
+									 * "archived" — and rendering the draft intro here told a reader "this is
+									 * the beginning of your direct message history" about a DM of six
+									 * messages (team-bridge report, 2026-10-28). Say the plain fact and leave
+									 * the composer closed: `canCompose` is already false for this target.
+									 */
+									<p className="px-5 py-8 text-[13px] text-ink-muted">
+										{t("ui.teamBridge.thread.not_available")}
 									</p>
 								) : shown === null ? (
 									/*
@@ -2322,18 +2494,20 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							</div>
 						</ScrollArea>
 
-						{/* THE SHARED COMPOSER, NOT A SECOND ONE. The box, its field, its
-						    chips and its Send are `MessageInput`'s - the same assembly the
-						    chat pane and the mini view mount - so this page stops owning a
-						    composer of its own that drifts from the app's. What a composer
-						    cannot know (the target, the hub's attachment binding, a
-						    schedule) travels in as props or sits BESIDE it as host chrome.
-						    THE BAND CLIPS NOTHING: the composer draws its focus ring OUTSIDE
-						    the box, and an ancestor that clips at its padding box eats that
-						    edge (R3). The recovery alerts that used to live in that scroller
-						    now sit above the box, which is also where a reader looks for
-						    them; the schedule control, which has no composer slot, sits
-						    below it. */}
+						{/* TEAM BRIDGE'S OWN COMPOSER, AND THE PANE'S OWN PADDING IS THE
+						    ONLY SPACE UNDER IT. This is a messaging pane: one bar at the
+						    foot, the attach and send controls inside it. It is NOT the shared
+						    chat composer - that assembly carries the chat pane's measures, a
+						    status row and an action row, and in a conversation pane it renders
+						    a 110px card where a 46px bar belongs (operator report,
+						    2026-10-30). What that adoption fixed, the field's growth, is kept
+						    in `team-bridge-composer.tsx`, where it belongs.
+						    NOTHING SITS BETWEEN THE BAR AND THE PANE'S EDGE: a row below the
+						    box is the dead strip this layout is judged on, so the schedule
+						    control rides the bar's own trailing cluster and the chord rides the
+						    line it is about. The band clips nothing, because the bar draws its
+						    focus ring OUTSIDE itself and a clipping ancestor eats that edge
+						    (R3, pinned by scripts/team-bridge-composer-ring.test.mjs). */}
 						{!previewSelected &&
 							(shown?.status === "archived" ? (
 								/* Nobody can post: the server refuses it too (`conversation_archived`). */
@@ -2345,7 +2519,17 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									{t("ui.teamBridge.read_only.composer")}
 								</p>
 							) : (
-								<div className="flex min-w-0 shrink-0 flex-col gap-2 px-4 pt-1">
+								<div
+									className="flex min-w-0 shrink-0 flex-col gap-2 px-4 pt-1 pb-4"
+									/* THE BAND'S STABLE HANDLE, on the `data-lo-composer-band`
+									   convention the composer rigs read (see the shared composer's
+									   own attribute): this element IS the composer's band here -
+									   the alerts and the restored attempt above the bar, the bar
+									   itself, and the pane's own inset below it - so a control that
+									   refuses the field can be asserted to render in the same band
+									   the field is in, without either of them naming a class. */
+									data-lo-composer-band={true}
+								>
 									{scheduleFailed && (
 										<p role="alert" className="text-sm text-danger">
 											{t("ui.teamBridge.schedule.failed")}
@@ -2396,162 +2580,139 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											{t("ui.teamBridge.drafts.storage_failed")}
 										</p>
 									)}
-									<MessageInput
-										conversationId={composerKey}
-										messages={EMPTY_BRIDGE_MESSAGES}
-										isLoading={false}
-										/* No transcript, no job and no Stop: the empty-chat splash
-										   and the turn machinery are the chat pane's, and this host
-										   clears its own accepted send (U1). */
-										transcriptless
-										ownGutter
-										/* A SECOND LIVE COMPOSER NEEDS ITS OWN REGISTRATION, or this
-										   box and the chat pane's overwrite each other's
-										   push-to-talk handler in the manager's id-keyed map (R5). */
-										speechRegistrationId="team-bridge-composer"
-										placeholderOverride={composerPlaceholder}
-										onSendMessage={submit}
-										hostNotice={
-											heldAttempt ||
-											(draftState.current?.createUncertain && !scheduling)
-												? {
-														id: heldReasonId,
-														node: heldAttempt ? (
-															<TeamBridgeHeldAttempt
-																reasonId={heldReasonId}
-																busy={sending || scheduling}
-																onRetry={
-																	onSchedule
-																		? () => {
-																				const at = draftState.current?.sendAt;
-																				if (at)
-																					void schedule(at).catch(() =>
-																						setScheduleFailed(true),
-																					);
-																			}
-																		: undefined
-																}
-																onDiscard={() => {
-																	if (writing.current || scheduling || sending)
-																		return;
-																	// This releases only the local attempt; the explicit
-																	// acknowledgement asks the reader to check/cancel any
-																	// server schedule before minting a fresh key.
-																	if (
-																		draftState.update({
-																			sendAt: undefined,
-																			clientRef: crypto.randomUUID(),
-																		})
-																	)
-																		setScheduleFailed(false);
-																}}
-															/>
-														) : (
-															<div role="alert" className="text-sm text-danger">
-																<p id={heldReasonId}>
-																	{t("ui.teamBridge.schedule.create_uncertain")}
-																</p>
-																<Button
-																	variant="ghost"
-																	onClick={() =>
-																		draftState.update({
-																			createUncertain: false,
-																		})
-																	}
-																>
-																	{t("ui.teamBridge.schedule.create_retry")}
-																</Button>
-															</div>
-														),
-														/* A held or uncertain attempt refuses the box: the
-														   attempt already owns this draft's idempotency key, and
-														   a second send would race it. */
-														blocksInput: true,
-														statedByNode: true,
-														placeholder: composerPlaceholder,
-													}
-												: !canCompose
-													? {
-															/* No destination yet. The box still renders - it is the
-															   composer this host has - and states why it refuses
-															   instead of inviting text it cannot send. */
-															id: composeGateId,
-															node: (
-																<p
-																	id={composeGateId}
-																	className="text-sm text-ink-muted"
-																>
-																	{t("ui.teamBridge.compose.empty")}
-																</p>
-															),
-															blocksInput: true,
-															statedByNode: true,
-															placeholder: composerPlaceholder,
+									{/* A HELD OR UNCERTAIN ATTEMPT REFUSES THE BOX: the attempt already owns
+									   this draft's idempotency key, and a second send would race it.
+									   It sits ABOVE the bar - a reason a control will not take
+									   belongs where the reader looks for it, and nothing belongs
+									   between the bar and the pane's own padding. */}
+									{heldAttempt ? (
+										<TeamBridgeHeldAttempt
+											reasonId={heldReasonId}
+											busy={sending || scheduling}
+											onRetry={
+												onSchedule
+													? () => {
+															const at = draftState.current?.sendAt;
+															if (at)
+																void schedule(at).catch(() =>
+																	setScheduleFailed(true),
+																);
 														}
 													: undefined
+											}
+											onDiscard={() => {
+												if (writing.current || scheduling || sending) return;
+												// This releases only the local attempt; the explicit
+												// acknowledgement asks the reader to check/cancel any
+												// server schedule before minting a fresh key.
+												if (
+													draftState.update({
+														sendAt: undefined,
+														clientRef: crypto.randomUUID(),
+													})
+												)
+													setScheduleFailed(false);
+											}}
+										/>
+									) : draftState.current?.createUncertain && !scheduling ? (
+										<div role="alert" className="text-sm text-danger">
+											<p id={heldReasonId}>
+												{t("ui.teamBridge.schedule.create_uncertain")}
+											</p>
+											<Button
+												variant="ghost"
+												onClick={() =>
+													draftState.update({
+														createUncertain: false,
+													})
+												}
+											>
+												{t("ui.teamBridge.schedule.create_retry")}
+											</Button>
+										</div>
+									) : null}
+									{/* No destination yet. The box still renders - it is the composer
+									   this host has - and states why it refuses instead of inviting
+									   text it cannot send. */}
+									{!canCompose && (
+										<p id={composeGateId} className="text-sm text-ink-muted">
+											{t("ui.teamBridge.compose.empty")}
+										</p>
+									)}
+									<TeamBridgeComposer
+										conversationId={composerKey}
+										placeholder={composerPlaceholder}
+										/* The hub's image capability is what offers the attach control
+										   at all: an affordance that cannot work is the dead end the
+										   fail-closed rule forbids, and a refused send names the
+										   capability instead (see `submit`). */
+										canAttach={Boolean(imageCapability)}
+										disabled={
+											!canCompose ||
+											Boolean(heldAttempt) ||
+											Boolean(draftState.current?.createUncertain)
+										}
+										disabledReasonId={
+											heldAttempt || draftState.current?.createUncertain
+												? heldReasonId
+												: !canCompose
+													? composeGateId
+													: undefined
+										}
+										sendDisabled={
+											Boolean(draftState.current?.sendAt) || scheduling
+										}
+										sending={sending}
+										/* The line at the point of typing says the chord, and says why
+										   the schedule control is refusing while a send is out (UX
+										   round 1, U3 + U4). It rides the bar, so it costs no row. */
+										hint={
+											sending
+												? t("ui.chat.canonical.send_failure.send_lock")
+												: undefined
+										}
+										onSendMessage={submit}
+										/* HOST CHROME WITH NO BAR SLOT. Scheduling needs the target
+										   and a time, neither of which is typing. */
+										trailing={
+											onSchedule ? (
+												<Button
+													ref={clockRef}
+													variant="ghost"
+													size="icon-sm"
+													aria-label={t("ui.teamBridge.schedule.title")}
+													/* The line in the bar already says this while a send is in
+													   flight; the control says it too, so the refusal is
+													   reachable from the control itself (UX round 1, U3). */
+													title={
+														sending
+															? t("ui.chat.canonical.send_failure.send_lock")
+															: undefined
+													}
+													aria-describedby={
+														draftState.current?.createUncertain && !scheduling
+															? heldReasonId
+															: heldAttempt
+																? heldReasonId
+																: !canCompose
+																	? composeGateId
+																	: undefined
+													}
+													disabled={
+														Boolean(draftState.current?.sendAt) ||
+														Boolean(draftState.current?.createUncertain) ||
+														!hasContent ||
+														sending ||
+														scheduling ||
+														!canCompose
+													}
+													onClick={() => setScheduleOpen(true)}
+												>
+													<Clock size={16} aria-hidden="true" />
+												</Button>
+											) : undefined
 										}
 									/>
-									{/* HOST CHROME THE COMPOSER HAS NO SLOT FOR. Scheduling needs the
-									   target and a time, neither of which is typing, and the
-									   restored attempt above names the clock by id. */}
-									{/*
-									 * THE LINE UNDER THE BOX HEARS BOTH FACTS (UX round 1, U3 + U4).
-									 * The shared composer shows its keyboard hints on ITS controls (the
-									 * mic), not at the point of typing, so the principal chord had become
-									 * undiscoverable when the bridge stopped drawing its own box. While a
-									 * send is in flight the same slot says why the schedule control is
-									 * refusing - the app's own sentence for that state, borrowed rather than
-									 * written a second time.
-									 */}
-									<div className="flex items-center gap-2 px-1 pb-4">
-										<span
-											className={cn(
-												"min-w-0 flex-1 truncate ps-1.5 text-meta-sm text-ink-dim transition-opacity duration-fast",
-												sending || hasContent ? "opacity-100" : "opacity-0",
-											)}
-											aria-hidden={!(sending || hasContent)}
-										>
-											{sending
-												? t("ui.chat.canonical.send_failure.send_lock")
-												: t("ui.teamBridge.composer.hint")}
-										</span>
-										{onSchedule && (
-											<Button
-												ref={clockRef}
-												variant="ghost"
-												size="icon"
-												aria-label={t("ui.teamBridge.schedule.title")}
-												/* The line above already says this while a send is in
-												   flight; the control says it too, so the refusal is
-												   reachable from the control itself (UX round 1, U3). */
-												title={
-													sending
-														? t("ui.chat.canonical.send_failure.send_lock")
-														: undefined
-												}
-												aria-describedby={
-													draftState.current?.createUncertain && !scheduling
-														? heldReasonId
-														: heldAttempt
-															? heldReasonId
-															: !canCompose
-																? composeGateId
-																: undefined
-												}
-												disabled={
-													Boolean(draftState.current?.sendAt) ||
-													Boolean(draftState.current?.createUncertain) ||
-													!hasContent ||
-													sending ||
-													scheduling ||
-													!canCompose
-												}
-												onClick={() => setScheduleOpen(true)}
-											>
-												<Clock size={16} aria-hidden="true" />
-											</Button>
-										)}
-									</div>
 									<TeamBridgeScheduleDialog
 										open={scheduleOpen}
 										returnFocus={clockRef}
@@ -2564,10 +2725,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					</>
 				)}
 			</section>
-			{/* Threads: a ground-separated sibling; no rail or compose routing changes.
-			    THE HOLD IS THE FIRST TERM: `threadsAvailable` is false in this
-			    build whatever the runtime advertises, so no selection - deep link,
-			    reply click, story fixture - can mount the pane. */}
+			{/* Threads: a ground-separated sibling. The capability and captured
+			    account gate every selection source, including deep links. */}
 			{threadsAvailable &&
 				threadSelection &&
 				shown &&
@@ -2687,6 +2846,53 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					/>
 				);
 			})()}
+			{shown && (
+				<TeamBridgeAddMembersView
+					open={membersOpen}
+					conversation={shown}
+					people={shown ? rosterFor(shown.tenant_id) : []}
+					selfAccountId={selfAccountId}
+					peopleState={
+						mergedView
+							? (directoryStates?.[shown.tenant_id] ?? "loading")
+							: peopleState
+					}
+					canInvite={!readOnly && canInviteMembers(shown, selfAccountId)}
+					canRemove={!readOnly && canRemoveMembers(shown, selfAccountId)}
+					mutationError={memberActionFailed}
+					pendingKey={memberMutationKey}
+					onClose={() => {
+						if (memberMutationKey) return;
+						setMembersOpen(false);
+						setMemberActionFailed(false);
+					}}
+					onRetryMembers={onRetryMembers}
+					onAdd={(members) => {
+						if (
+							!onAddMembers ||
+							readOnly ||
+							!canInviteMembers(shown, selfAccountId)
+						)
+							return;
+						setMemberActionFailed(false);
+						void onAddMembers(shown, members).catch(() => {
+							setMemberActionFailed(true);
+						});
+					}}
+					onRemove={(accountId) => {
+						if (
+							!onRemoveMember ||
+							readOnly ||
+							!canRemoveMembers(shown, selfAccountId)
+						)
+							return;
+						setMemberActionFailed(false);
+						void onRemoveMember(shown, accountId).catch(() => {
+							setMemberActionFailed(true);
+						});
+					}}
+				/>
+			)}
 		</div>
 	);
 };
@@ -2780,6 +2986,9 @@ const TeamBridgeOwnedPage: FC<{
 		Map<string, { id: string; tenantId: string | undefined }>
 	>;
 }> = ({ accountId, drafts, receipts }) => {
+	/* The feature's one cache reader: the opening snapshot below is read from it, and
+	   the writes that patch cached pages run through it. */
+	const client = useQueryClient();
 	/*
 	 * A banner click lands here with `?tenant=…&conversation=…`. The parameters
 	 * seed the FIRST render so the clicked conversation wins over the landing
@@ -2804,6 +3013,27 @@ const TeamBridgeOwnedPage: FC<{
 			: TEAM_BRIDGE_ALL_SCOPE,
 	);
 	const scopeChosen = useRef(Boolean(requestedTenant));
+	/*
+	 * THE OPENING SNAPSHOT (tb-instant-open, mechanism 1 as far as it honestly
+	 * reaches). The shell's notification watcher has been polling this account's
+	 * conversation list while this page was closed, under this account's own cache
+	 * key - so on a warm open the rows the rail needs are already here, read under
+	 * the same ownership this page would request them with, and no new request is
+	 * added to feed this page.
+	 *
+	 * It is used ONLY while the scope this page reads has no data of its own: an
+	 * answer that has landed always wins, so a snapshot can never shadow a current
+	 * read. Every row still passes through `visibleConversationRows`, so a snapshot
+	 * taken at account scope cannot show one organization's rows under another's
+	 * title. The watcher carries no message bodies, so the selected thread's history
+	 * is still its own read and its own loading state - nothing here implies it was
+	 * already fetched.
+	 */
+	const openingRows = accountId
+		? client.getQueryData<TeamBridgeConversationList>(
+				teamBridgeKeys.conversations(TEAM_BRIDGE_ALL_SCOPE, accountId),
+			)?.conversations
+		: undefined;
 	// THE GATE IS THE FIRST READ (round-1 U-6): until it answers, every other
 	// read is disabled, so an ineligible account issues no refused requests.
 	const status = useTeamBridgeStatus();
@@ -2864,7 +3094,33 @@ const TeamBridgeOwnedPage: FC<{
 	);
 	const { pending: organizationsPending, failed: organizationsFailed } =
 		organizationsReadState(hubTenants, memberships);
-	const list = useTeamBridgeConversations(scope, readsEnabled, accountId);
+	/*
+	 * THE SCOPE IS DECIDED BEFORE THE LIST IS READ (tb-instant-open).
+	 *
+	 * The organization set comes from the status payload this container already
+	 * holds, so for a single-organization account the scope is knowable in the same
+	 * commit the gate opens. Reading the merged list first and replacing it once the
+	 * adoption effect ran spent a round trip on every cold open: the request the
+	 * reader waited behind was one this page then threw away. The list is therefore
+	 * HELD until the scope state agrees with what the organizations imply; the
+	 * adoption effect below then sets it, and the one list read is the one kept.
+	 *
+	 * A hold, not a spinner over a slow call: it adds no round trip to the path (the
+	 * rows cannot be known before the organizations are) and it removes the request
+	 * that would have been discarded.
+	 */
+	const scopeSettled =
+		preferredScope(organizations, scope, scopeChosen.current, openingRows) ===
+		scope;
+	// `organizationsPending` is the same rule one step earlier: the answer that
+	// decides the scope is still in flight, so a read now would be a read this
+	// page is about to replace.
+	const scopeDecided = scopeSettled && !organizationsPending;
+	const list = useTeamBridgeConversations(
+		scope,
+		readsEnabled && scopeDecided,
+		accountId,
+	);
 	const directory = useTeamBridgeDirectory(
 		scope === TEAM_BRIDGE_ALL_SCOPE ? null : scope,
 		readsEnabled,
@@ -2872,8 +3128,10 @@ const TeamBridgeOwnedPage: FC<{
 	);
 	const mergedView = scope === TEAM_BRIDGE_ALL_SCOPE;
 	// Names only (see `useTeamBridgeDirectories`): the merged view lists no
-	// roster, but its threads and DM rows still need their senders named.
-	const directories = useTeamBridgeDirectories(
+	// roster, but its threads and DM rows still need their senders named - and
+	// the member picker needs each read's own state and a retry that addresses
+	// it, which is why the hook answers with more than the rosters.
+	const directoriesRead = useTeamBridgeDirectories(
 		mergedView
 			? organizations.map((organization) => organization.tenantId)
 			: [],
@@ -2883,7 +3141,38 @@ const TeamBridgeOwnedPage: FC<{
 	// The reader's own name for their own messages; `user` is null until the
 	// account read answers, never the user store's placeholder name.
 	const selfName = auth.user?.name ?? undefined;
-	const conversations = list.data?.conversations ?? [];
+	const conversations = list.data?.conversations ?? openingRows ?? [];
+	/*
+	 * PAINT BEFORE THE VERDICT (tb-instant-open, mechanism 2). The status answer
+	 * decides whether this surface exists for the account at all, so the gate used
+	 * to hold a full-screen spinner until it landed - and only then did the reads
+	 * the rail needs even start, which is the serial waterfall the reader sat
+	 * behind. Rows this account already read under its own cache key are not a
+	 * verdict: they are this account's own history, fetched by the shell's watcher.
+	 *
+	 * The line is drawn here and nowhere else: an ELIGIBILITY answer still wins
+	 * outright (it is returned above this), and every WRITE stays shut because the
+	 * owner guard has not answered yet, so `isCurrentOwner()` refuses and `readOnly`
+	 * keeps the controls out of action. What a verdict adds is the surface itself,
+	 * not permission to show rows the account already held.
+	 */
+	const paintedRows = conversations.length > 0;
+	const cachedPaint = gatePending && paintedRows;
+	/*
+	 * WHAT THE RAIL OWES THE READER (tb-instant-open, mechanism 4). `paintedRows` is
+	 * the only condition: an affordance for a read that is not on screen yet would
+	 * describe a list nobody is looking at. One affordance carries one meaning - the
+	 * rows on screen are NOT CONFIRMED CURRENT - which covers both halves of this
+	 * change: rows still being re-read, and rows painted from the watcher's snapshot
+	 * before the verdict answered. It stays up from the first painted row until the
+	 * scope's own read lands. The unread read is reported separately because that
+	 * count is the one number a reader acts on, and it must never go stale in
+	 * silence.
+	 */
+	const refreshingRows =
+		paintedRows &&
+		(cachedPaint || list.isFetching || (mergedView && organizationsPending));
+	const refreshingUnread = paintedRows && unread.isFetching;
 	const people = directory.data?.members ?? [];
 	// The channel form offers the same people and chiefs of staff as the To: bar.
 	const channelCandidates = recipientCandidates(
@@ -2898,11 +3187,40 @@ const TeamBridgeOwnedPage: FC<{
 			: null,
 	);
 	const [channelFormOpen, setChannelFormOpen] = useState(false);
+	/*
+	 * The slot's callbacks are recreated every render, so the deep-link effect
+	 * below reaches the LATEST `clear` through a ref rather than listing an
+	 * unstable function as a dependency (which would either loop or go stale).
+	 */
+	const clearOwnerAudit = useRef<() => void>(() => {});
+	const ownerAudit = useOwnerAuditSurface({
+		accountId,
+		enabled:
+			readsEnabled &&
+			(capabilities.data?.features?.team_bridge_owner_audit ?? 0) >= 1,
+		scopeKey: scope,
+		organizations: mergedView
+			? organizations
+			: organizations.filter((row) => row.tenantId === scope),
+		onSelect: () => {
+			setTarget(null);
+			setThreadLink(null);
+		},
+	});
+
+	clearOwnerAudit.current = () => ownerAudit?.clear();
 
 	useEffect(() => {
 		if (!requestedConversation || !requestedTenant) return;
 		scopeChosen.current = true;
 		setScope(asTeamBridgeTenantId(requestedTenant));
+		/*
+		 * A deep link or notification click is a HUMAN target: it must take the
+		 * reader out of the audit panel the same way a rail row or a quick view
+		 * does, or the audit pane keeps the window while the target changes
+		 * underneath it (agent review round 1, m2).
+		 */
+		clearOwnerAudit.current();
 		setTarget({ type: "conversation", id: requestedConversation });
 		setThreadLink(
 			TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD
@@ -2933,11 +3251,13 @@ const TeamBridgeOwnedPage: FC<{
 	// after the first paint; adopt the only one unless
 	// the reader has already picked a scope. A later unread poll re-renders the
 	// options array, so the equality check keeps this to the one transition.
+	// Before that list exists, the watcher's snapshot stands in - and the list
+	// supersedes it the moment it answers (tb-instant-open).
 	useEffect(() => {
 		setScope((current) =>
-			preferredScope(organizations, current, scopeChosen.current),
+			preferredScope(organizations, current, scopeChosen.current, openingRows),
 		);
-	}, [organizations]);
+	}, [organizations, openingRows]);
 
 	const visibleConversations = useMemo(
 		() => visibleConversationRows(conversations, scope, organizations),
@@ -2947,13 +3267,17 @@ const TeamBridgeOwnedPage: FC<{
 	// Land on the first rail row once (built-ins lead), not on every refetch:
 	// a poll must not move the reader out of the thread they are reading.
 	useEffect(() => {
-		if (target === null && visibleConversations.length > 0) {
+		if (
+			!ownerAudit?.active &&
+			target === null &&
+			visibleConversations.length > 0
+		) {
 			const first =
 				visibleConversations.find((row) => row.builtin === "humans") ??
 				visibleConversations[0];
 			setTarget({ type: "conversation", id: first.id });
 		}
-	}, [visibleConversations, target]);
+	}, [visibleConversations, target, ownerAudit?.active]);
 
 	/*
 	 * ARCHIVE / UNARCHIVE / DELETE. The archived read stays OFF until the
@@ -3000,6 +3324,8 @@ const TeamBridgeOwnedPage: FC<{
 		selected?.id ?? "",
 		selected?.tenant_id,
 	);
+	const addMembers = useAddTeamBridgeMembers();
+	const removeMember = useRemoveTeamBridgeMember();
 	const create = useCreateTeamBridgeConversation(
 		mergedView ? undefined : scope,
 		isCurrentOwner,
@@ -3160,7 +3486,7 @@ const TeamBridgeOwnedPage: FC<{
 						throw new Error("Team Bridge write authority changed");
 					return TeamBridgeApi.send(id, {
 						...message,
-						expectedAccountId: accountId,
+						expectedAccountId: requireBridgeWriteAccount(accountId),
 						attachmentIds: await sendAttachmentIds(
 							attachments,
 							id,
@@ -3268,6 +3594,7 @@ const TeamBridgeOwnedPage: FC<{
 	return (
 		<>
 			<TeamBridgePageView
+				ownerAudit={ownerAudit}
 				key={draftKey}
 				draftJournal={draftJournal}
 				isDraftCurrent={isCurrentOwner}
@@ -3283,7 +3610,9 @@ const TeamBridgeOwnedPage: FC<{
 				onCloseThread={() => setThreadLink(null)}
 				listState={
 					list.isPending || (mergedView && organizationsPending)
-						? "loading"
+						? paintedRows
+							? "ready"
+							: "loading"
 						: list.isError || (mergedView && organizationsFailed)
 							? "error"
 							: "ready"
@@ -3305,6 +3634,8 @@ const TeamBridgeOwnedPage: FC<{
 				organizations={organizations}
 				scope={scope}
 				totalUnread={unread.data?.total ?? 0}
+				refreshingRows={refreshingRows}
+				refreshingUnread={refreshingUnread}
 				membershipsLoading={organizationsPending}
 				organizationsFailed={organizationsFailed}
 				selfAccountId={selfAccountId}
@@ -3385,6 +3716,37 @@ const TeamBridgeOwnedPage: FC<{
 						notify: next,
 					});
 				}}
+				onAddMembers={(conversation, members) => {
+					if (!isCurrentOwner() || !canInviteMembers(conversation, accountId))
+						return Promise.reject(
+							new Error("Team Bridge write authority changed"),
+						);
+					return addMembers.mutateAsync({
+						conversationId: conversation.id,
+						tenantId: conversation.tenant_id,
+						members,
+						key: "add",
+					});
+				}}
+				onRemoveMember={(conversation, memberAccountId) => {
+					if (!isCurrentOwner() || !canRemoveMembers(conversation, accountId))
+						return Promise.reject(
+							new Error("Team Bridge write authority changed"),
+						);
+					return removeMember.mutateAsync({
+						conversationId: conversation.id,
+						tenantId: conversation.tenant_id,
+						accountId: memberAccountId,
+						key: `remove:${memberAccountId}`,
+					});
+				}}
+				memberMutationKey={
+					addMembers.isPending
+						? "add"
+						: removeMember.isPending
+							? (removeMember.variables?.key ?? "remove")
+							: null
+				}
 				onTarget={(next) => {
 					setThreadLink(null);
 					setChannelFormOpen(false);
@@ -3404,7 +3766,14 @@ const TeamBridgeOwnedPage: FC<{
 					setChannelFormOpen(true);
 				}}
 				people={people}
-				directories={directories}
+				directories={directoriesRead.members}
+				directoryStates={directoriesRead.state}
+				onRetryMembers={(tenantId) => {
+					// The merged view mounts one read per organization; the single-scope
+					// read is the one the rest of the page already shows and retries.
+					if (mergedView) directoriesRead.retry(tenantId);
+					else void directory.refetch();
+				}}
 				selfName={selfName}
 				peopleState={
 					directory.isPending
@@ -3419,7 +3788,7 @@ const TeamBridgeOwnedPage: FC<{
 					void directory.refetch();
 				}}
 				eligibility={eligibility}
-				gatePending={gatePending}
+				gatePending={gatePending && !cachedPaint}
 				readOnly={readOnly}
 				notice={<TeamBridgeDefaultOnBanner status={status.data} />}
 				onRetry={() => {

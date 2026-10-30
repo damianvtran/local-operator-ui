@@ -1,0 +1,269 @@
+{
+	"audit_id": "tb1482-merge-delta-audit-2026-10-29-es",
+	"date": "2026-10-29",
+	"locale": "es",
+	"namespace": "ui.ownerAudit",
+	"source_commit": "deec129a81282dbdacf5f14490cc94029fb1165d",
+	"tree_state": "the audited bytes are the uncommitted merge working tree (origin/main 2d13419f2257 merged into the branch at deec129a8128); conflicts were already resolved before this run and this run changed no catalogue byte",
+	"worktree": "~/local-operator-ui/.worktrees/tb-1482-merge",
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "radient/auto",
+		"date": "2026-10-29",
+		"method": "LLM translator subagent per locale, reading the English catalogue, its context sidecar and the locale's own namespace for terminology; no MT service referenced"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "kimi/k3.1-pro",
+			"model_provenance": "Harness preamble for this session read 'Model: anthropic/claude-opus-5-5'. Three sequential provider-quota fallbacks were then announced in-session (anthropic/claude-sonnet-5-5, openai/gpt-6-astra, kimi/k3.1-pro; reason each time 'provider failure: quota'), and kimi/k3.1-pro is the last model the harness announced, so that is the name recorded here rather than a guess. `lop config list` on this host still shows hosting=anthropic, model_name=claude-sonnet-5-5 as the configured default: the fallback chain, not the config, decided what executed these turns. No further switch notice was seen before these receipts were written, and the judgement here spans the whole chain.",
+			"date": "2026-10-29",
+			"result": "clean-with-findings",
+			"instance": "tb1482mg-es-6eeefd82",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 3
+			},
+			"receipt": "i18n/receipts/tb1482mg-es-6eeefd82.json",
+			"receipt_sha256": "8a176668e64835de7df2e71cec851473585fba062ddcfb075888f529ce4d202b",
+			"scope": "Whole namespace: all 30 keys of ui.ownerAudit, read against the English source and its context sidecar in this merge's bytes."
+		}
+	],
+	"independence": "Independent auditor: agent role i18n-auditor, a different agent from the translator (i18n-translator, per the translation records read here). None of the 31 audited strings was authored by this run. Five of them were FIXED by this run after the audit recorded them, at the operator's direction: es ui.ownerAudit.read_only (plural agreement), hi ui.ownerAudit.viewers_label and ui.ownerAudit.disclosure (label form and legal register), vi and zh-CN ui.teamBridge.thread.not_available (open vs access). Each fix is recorded in resolved_findings with before and after text, and every sha256 in this receipt names the POST-fix bytes now in the tree, so the receipt audits what ships rather than what preceded the fix. The ledger rows were written by scripts/i18n/ledger-assemble.mjs, never by hand. Every sha256 was recomputed from the files in this worktree.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.json",
+			"sha256": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/es/ui.ownerAudit.json",
+			"sha256": "3c8e6c0a1e6ed998bc1ba79fa4db6ace1c32b2ec8aa01b1dd9648e21e8a57002"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.context.json",
+			"sha256": "508f8a06ff1a6101fe8b25f658eda4c905bd583df35ac509883aa42b065ea10e"
+		}
+	},
+	"register": "tú register throughout (title 'tu jefe de gabinete', page_cutoff 'Carga los mensajes anteriores'), matching the es guide and the neighbouring es ui.teamBridge strings ('Di hola'). 'Auditoría' is used consistently for the audit; 'ventana de auditoría' renders the audit window.",
+	"audited": {
+		"ui.ownerAudit.title": {
+			"en": "Your chief of staff’s messages",
+			"target": "Mensajes de tu jefe de gabinete",
+			"verdict": "PASS. 'Mensajes de tu jefe de gabinete' names the section; 'jefe de gabinete' is the locale's product term for the chief of staff and is identical to ui.ownerAudit.agent (capitalisation aside). No name, no added words."
+		},
+		"ui.ownerAudit.read_only": {
+			"en": "Read-only history. Sending, reactions and editing are unavailable.",
+			"target": "Historial de solo lectura. Enviar, reaccionar y editar no están disponibles.",
+			"verdict": "PASS after this round's fix: 'Historial de solo lectura. Enviar, reaccionar y editar no están disponibles.' states read-only and names all three affordances with the plural copula the rest of the catalogue uses for list subjects."
+		},
+		"ui.ownerAudit.loading": {
+			"en": "Loading audited messages",
+			"target": "Cargando mensajes auditados",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.error": {
+			"en": "Audited messages could not be loaded.",
+			"target": "No se pudieron cargar los mensajes auditados.",
+			"verdict": "PASS. 'No se pudieron cargar los mensajes auditados.' is about the READ, not the agent's history: it does not say the conversation does not exist and does not imply the agent has no conversations. No error code, no blame."
+		},
+		"ui.ownerAudit.retry": {
+			"en": "Try again",
+			"target": "Reintentar",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.refresh": {
+			"en": "Refresh",
+			"target": "Actualizar",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.empty_list": {
+			"en": "No audited conversations in this organization.",
+			"target": "No hay conversaciones auditadas en esta organización.",
+			"verdict": "PASS. 'No hay conversaciones auditadas en esta organización.' keeps 'in this organization' (per-tenant), and makes no claim that the agent is new or idle."
+		},
+		"ui.ownerAudit.empty_history": {
+			"en": "No messages in the audit window for this conversation.",
+			"target": "No hay mensajes en la ventana de auditoría de esta conversación.",
+			"verdict": "PASS. 'No hay mensajes en la ventana de auditoría de esta conversación.' names the audit window rather than calling the conversation empty, as the sidecar requires."
+		},
+		"ui.ownerAudit.unnamed": {
+			"en": "Unnamed conversation",
+			"target": "Conversación sin nombre",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.agent": {
+			"en": "Chief of staff",
+			"target": "Jefe de gabinete",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.more": {
+			"en": "Load more",
+			"target": "Cargar más",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.older": {
+			"en": "Load older messages",
+			"target": "Cargar mensajes anteriores",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.page_cutoff": {
+			"en": "Older messages are not shown yet. Load older messages to read what came before.",
+			"target": "Los mensajes anteriores aún no se muestran. Carga los mensajes anteriores para leer lo que vino antes.",
+			"verdict": "PASS. States a bounded page ('aún no se muestran') without reading as an error, and the second sentence's verb 'Carga' matches ui.ownerAudit.older ('Cargar mensajes anteriores')."
+		},
+		"ui.ownerAudit.admitted": {
+			"en": "Admitted to your chief of staff",
+			"target": "Admitido por tu jefe de gabinete",
+			"verdict": "PASS. 'Admitido por tu jefe de gabinete' is the passive verdict the sidecar prefers; 'admitido' carries no security-vetting sense."
+		},
+		"ui.ownerAudit.rejected": {
+			"en": "Rejected by your chief of staff’s screening",
+			"target": "Rechazado por el filtrado de tu jefe de gabinete",
+			"verdict": "PASS. 'Rechazado por el filtrado de tu jefe de gabinete' names screening as the actor and implies no deletion, no server block, no malice."
+		},
+		"ui.ownerAudit.not_screened": {
+			"en": "Not screened by your chief of staff",
+			"target": "No filtrado por tu jefe de gabinete",
+			"verdict": "PASS. 'No filtrado por tu jefe de gabinete' states that no verdict exists; it does not say pending, in progress or awaiting review."
+		},
+		"ui.ownerAudit.unknown_status": {
+			"en": "Status unknown",
+			"target": "Estado desconocido",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.own": {
+			"en": "Sent by your chief of staff",
+			"target": "Enviado por tu jefe de gabinete",
+			"verdict": "PASS. 'Enviado por tu jefe de gabinete' names the author, not the reader; matches ui.ownerAudit.agent."
+		},
+		"ui.ownerAudit.body_unavailable": {
+			"en": "Message text unavailable.",
+			"target": "Texto del mensaje no disponible.",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.attachment_expired": {
+			"en": "Attachment expired; bytes are unavailable.",
+			"target": "Archivo adjunto caducado; su contenido no está disponible.",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.attachment_unavailable": {
+			"en": "Attachment present; downloading is unavailable in this view.",
+			"target": "Hay un archivo adjunto; la descarga no está disponible en esta vista.",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.unknown_sender": {
+			"en": "Unknown sender",
+			"target": "Remitente desconocido",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.reveal": {
+			"en": "Show message text",
+			"target": "Mostrar el texto del mensaje",
+			"verdict": "PASS. 'Mostrar el texto del mensaje' is a reading affordance with no warning vocabulary."
+		},
+		"ui.ownerAudit.active": {
+			"en": "Your chief of staff is still a member.",
+			"target": "Tu jefe de gabinete sigue siendo miembro.",
+			"verdict": "PASS. 'Tu jefe de gabinete sigue siendo miembro.' is a present fact, not a promise about future delivery, and adds no word like 'complete'."
+		},
+		"ui.ownerAudit.left": {
+			"en": "The audit ends here. Your chief of staff left this conversation, so later messages are not in it.",
+			"target": "La auditoría termina aquí. Tu jefe de gabinete abandonó esta conversación, así que no incluye los mensajes posteriores.",
+			"verdict": "PASS after the round-2 fix. 'La auditoría termina aquí. Tu jefe de gabinete abandonó esta conversación, así que no incluye los mensajes posteriores.' - 'no incluye' can only take 'la auditoría' as subject, so the truncation is attributed to the audit and not to the conversation."
+		},
+		"ui.ownerAudit.removed": {
+			"en": "The audit ends here. Your chief of staff was removed from this conversation, so later messages are not in it.",
+			"target": "La auditoría termina aquí. Tu jefe de gabinete fue eliminado de esta conversación, así que no incluye los mensajes posteriores.",
+			"verdict": "PASS after the round-2 fix. Same construction as ui.ownerAudit.left; 'fue eliminado' is passive with no blame and no hint of who removed the agent."
+		},
+		"ui.ownerAudit.window_unconfirmed": {
+			"en": "The end of this audit is unknown. Your chief of staff’s membership in this conversation could not be confirmed.",
+			"target": "Se desconoce el final de esta auditoría. No se pudo confirmar que tu jefe de gabinete sea miembro de esta conversación.",
+			"verdict": "PASS. 'Se desconoce el final de esta auditoría. No se pudo confirmar que tu jefe de gabinete sea miembro de esta conversación.' is the conservative fallback: the end is unknown and membership unconfirmed, with no guess at a state."
+		},
+		"ui.ownerAudit.disclosure": {
+			"en": "You can read this audit because you own the chief of staff it covers. The other members are told that agent owners can audit the conversation.",
+			"target": "Puedes leer esta auditoría porque eres propietario del jefe de gabinete al que cubre. A los demás miembros se les indica que los propietarios de agentes pueden auditar la conversación.",
+			"verdict": "PASS on both required facts (the reader's own basis; that other members are told agent owners can audit the conversation), no exclusivity claim, no covert vocabulary. Two NITs recorded on register and gender - see findings."
+		},
+		"ui.ownerAudit.viewers_label": {
+			"en": "Also readable by",
+			"target": "También visible para",
+			"verdict": "PASS. 'También visible para' is a label with 'también', no colon, no placeholder, no sentence, and names no person. NIT recorded on 'visible' vs 'legible'."
+		},
+		"ui.ownerAudit.replies": {
+			"en": "Read thread replies",
+			"target": "Leer las respuestas del hilo",
+			"verdict": "PASS. 'Leer las respuestas del hilo' stays an action phrase; no count."
+		}
+	},
+	"checks": {
+		"placeholders": "every ui.ownerAudit sidecar entry declares placeholders {}; the teamBridge key declares {}; no target string in this delta contains { } or < >",
+		"plurals": "no ICU plural in this delta (all 31 keys are plain strings), so no locale plural category is exercised here",
+		"mechanical": "key sets equal to English in both namespaces; NFC; no bidi controls; no NBSP, double space or leading/trailing space; no Latin run in hi/ru/ur/zh-CN; no Devanagari in ur and no Arabic script in hi",
+		"terms": "product term for the chief of staff identical in title, agent and own, and consistent with the locale's ui.teamBridge ('chief.fallback', 'section.chiefs', 'thread.intro_chief'); member and archive terms in the teamBridge key match that locale's ui.teamBridge.member.count and ui.teamBridge.archive.list",
+		"sidecar": "the en context sidecar for thread.not_available was read in full: role, tone ('never accusatory'), length (two short sentences), placeholders {} and the note requiring both reasons without revealing which and forbidding any implication that the conversation does not exist - each target was checked against those four requirements individually, not against the English wording"
+	},
+	"findings": [
+		{
+			"severity": "NIT",
+			"key": "ui.ownerAudit.disclosure",
+			"current": "A los demás miembros se les indica que los propietarios de agentes pueden auditar la conversación.",
+			"proposed": "A los demás miembros se les dice que …",
+			"reason": "'Indicar' leans administrative where the sidecar asks for plain, no legal register; 'decir' is plainer. Both required facts are stated correctly and nothing is weakened, so this is a register preference recorded rather than churned."
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.ownerAudit.disclosure",
+			"current": "… porque eres propietario del jefe de gabinete al que cubre.",
+			"proposed": "… porque tienes la propiedad del jefe de gabinete al que cubre.",
+			"reason": "'Eres propietario' addresses the reader with a masculine-gendered noun. It matches this locale's established convention (ui.agents.publication.insufficient_role.body, ui.hub.teams.org.no_access_body), so it is a convention and not a defect; a neutral possessive would remove the gender if the locale ever moves."
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.ownerAudit.viewers_label",
+			"current": "También visible para",
+			"proposed": "También legible para",
+			"reason": "Renders 'readable' with 'visible'. Acceptable for a label over a list of names (carries 'también', no colon, no placeholder, three words) and it reuses the wording of the round-1 sentence this key replaces; 'legible' would track the English noun more closely at a small cost in naturalness."
+		}
+	],
+	"resolved_findings": [
+		{
+			"severity": "NIT",
+			"key": "ui.ownerAudit.read_only",
+			"fixed": true,
+			"fixed_from": "Historial de solo lectura. Enviar, reaccionar y editar no está disponible.",
+			"current": "Historial de solo lectura. Enviar, reaccionar y editar no están disponibles.",
+			"proposed": "Historial de solo lectura. Enviar, reaccionar y editar no están disponibles.",
+			"fix": "Applied in this round: singular 'no está disponible' -> plural 'no están disponibles'. Only that value changed; the es context sidecar and every other es key were untouched.",
+			"reason": "Number agreement: a coordinated subject of three infinitives takes the plural copula. The rest of this catalogue does exactly that with list subjects (ui.chat.status.credential_refused 'el inicio de sesión, los ajustes y los comandos slash no están disponibles'; ui.common.connection.backend.pairing_unpaired, same pattern), so the singular was the odd one out and a native reader would notice it first."
+		}
+	],
+	"inherited_resolved": {
+		"note": "the round-2 receipts for this locale fixed strings in this namespace before this run; those fixes are part of the bytes audited here and were re-read, not taken on trust",
+		"source": "i18n/audits/evidence/es/ui.ownerAudit/teambridge-owner-audit-r2-*"
+	},
+	"notes": "ui.ownerAudit.viewer is retired in every catalogue; its absence was checked, not assumed. Round-2 fixes to ui.ownerAudit.left and ui.ownerAudit.removed were re-read here and are correct.",
+	"limitations": [
+		"No rendered frame: this role has no browser tool and the host is source-only, so fit is judged from character counts and the sidecars' length fields (no maxCells is declared for these keys).",
+		"No second independent audit of this delta at whole-namespace scope.",
+		"Neither the translator nor this auditor is a native speaker of these locales; the judgement is documented key by key so a native reviewer can check the reasoning rather than trust a verdict."
+	],
+	"references": {
+		"previous_receipts_this_workspace": {
+			"ui.ownerAudit": "i18n/audits/evidence/es/ui.ownerAudit/teambridge-owner-audit-r2-*",
+			"ui.teamBridge": "i18n/audits/evidence/es/ui.teamBridge/tbm-notavail-merge-20261029-es",
+			"note": "their target and English hashes were re-derived here and match these bytes; this receipt supersedes neither, it re-audits the same bytes at whole-namespace scope"
+		},
+		"style_guide": "~/local-operator/i18n/style-guides/es.md",
+		"glossary": "~/local-operator/i18n/glossary.md"
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/tb1482mg-es-6eeefd82.json",
+			"sha256": "8a176668e64835de7df2e71cec851473585fba062ddcfb075888f529ce4d202b"
+		}
+	}
+}

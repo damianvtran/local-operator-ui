@@ -1,0 +1,136 @@
+{
+  "audit_id": "teambridge-pr1489-error-stale-audit-5378ea6efd4b-fr",
+  "date": "2026-10-30",
+  "locale": "fr",
+  "namespace": "ui.teamBridge",
+  "pr": 1489,
+  "branch": "fix/tb-instant-open",
+  "source_commit": "548b9b1010d7a9cf034f1187e5dec75e5ab0922c",
+  "translator": {
+    "agent": "translator",
+    "session": "not recorded by the commit",
+    "model": "not supplied by the commit",
+    "commit": "548b9b1010d7a9cf034f1187e5dec75e5ab0922c",
+    "method": "LLM reasoning in the PR authoring session; no MT service or translation API (no such dependency in the tree)"
+  },
+  "auditors": [
+    {
+      "agent": "i18n-auditor",
+      "model": "radient/auto",
+      "model_fallback": {
+        "announced": true,
+        "observed": true,
+        "chain": [
+          "anthropic/claude-opus-5-5",
+          "anthropic/claude-sonnet-5-5",
+          "openai/gpt-6-astra",
+          "kimi/k3.1-pro",
+          "radient/auto"
+        ],
+        "reason": "provider failure: quota"
+      },
+      "date": "2026-10-30",
+      "result": "clean-with-findings",
+      "instance": "5378ea6efd4b-fr",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      },
+      "receipt": "i18n/receipts/5378ea6efd4b-fr.json",
+      "receipt_sha256": "dbde265469d43594802653ca399253ecf3248a4d4b565548aaeb3b07f3d586f4",
+      "scope": "PR #1489 one-key delta: ui.teamBridge.list.error_stale added in 548b9b1010d; this audit covers the fr translation of that key only, against English 5e61b0225985. Other 254 values unchanged since the row's previous audit.",
+      "note": "1-key delta audit. FR-N1 (minor-level observation, nit): 'lecture' also renders audio playback in this corpus; house phrase 'la dernière version lue' noted, not churned. Auditor model served via fallback chain - see receipt."
+    }
+  ],
+  "independence": "Independent auditor: a separate Local Operator session (5378ea6efd4b) that authored none of the audited strings. The English sentence and all seven translations were added by commit 548b9b1010d (PR authoring session, agent `translator` lineage per the existing rows); this session read them and wrote only this receipt, its evidence record and the ledger row via ledger-assemble.mjs. The corpus comparisons below were read from the shipped catalogues, not from a translation memory or an MT service.",
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "5e61b022598522252e7917780fb4490e9595161d2f1599f1c991d0a921a807ea"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "b623a3c1a05c22485fc1bd8d8b2aa3f8f71cdc067ec0a7f1204f12155ab7558a"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+      "sha256": "d2a52e076bf4b5d2d25f07ce04b672a539def6727fc7ba2c2bbc0ee630e67312"
+    }
+  },
+  "scope": {
+    "delta_kind": "One-key delta. Against origin/main's recorded ledger bytes (en 1570269761, per row) the English catalogue gained exactly one key, ui.teamBridge.list.error_stale, in 548b9b1010d; every other English value is byte-identical. Verified with `git diff d5d68e8049f0:...en/ui.teamBridge.json HEAD:...` (one added line, no removals).",
+    "keys_audited_linguistically": [
+      "ui.teamBridge.list.error_stale"
+    ],
+    "keys_read_for_consistency": [
+      "ui.teamBridge.list.error",
+      "ui.teamBridge.list.loading",
+      "ui.teamBridge.list.retry",
+      "ui.teamBridge.list.empty.title",
+      "ui.teamBridge.list.empty.body",
+      "ui.teamBridge.list.error_pane",
+      "ui.notifications.error.refresh.title",
+      "ui.canvas.use_file_freshness.could_not_be_re_read_showing_the_version_we_last_read",
+      "ui.chat.thread_search.stale",
+      "ui.chat.pickers.context_panel.last_cache_read",
+      "ui.chat.session_status.last_reading",
+      "ui.chat.device.sentence.remote_did_not_answer",
+      "ui.schedules.fallback.list_below_is_the_last_one_that_loaded"
+    ],
+    "not_audited": "The other 254 English keys and their translations: unchanged by this delta and covered by the row's earlier audits (kept under `superseded`). This receipt is not a re-audit of them."
+  },
+  "english": {
+    "ui.teamBridge.list.error_stale": {
+      "value": "Couldn't refresh. Showing your last read.",
+      "clause_1": "Couldn't refresh - the read failed. Names no cause, because the client cannot prove one.",
+      "clause_2": "Showing your last read - the rows painted below are the reader's own last read, so the notice never contradicts what is visible.",
+      "context_role": "stale-list notice",
+      "context_tone": "factual, reassuring, no blame",
+      "context_length": "Two short clauses.",
+      "placeholders": []
+    }
+  },
+  "audited": {
+    "ui.teamBridge.list.error_stale": {
+      "en": "Couldn't refresh. Showing your last read.",
+      "translation": "Actualisation impossible. Voici votre dernière lecture."
+    }
+  },
+  "findings": [
+    {
+      "severity": "nit",
+      "id": "FR-N1",
+      "key": "ui.teamBridge.list.error_stale",
+      "detail": "'lecture' is the corpus's word for audio playback far more often than for a read of data: 53 fr values contain it and most are 'lecture à voix haute' / 'lecture audio'. The shipped phrase for 'the last read' of a file or list is 'la dernière version lue' (6 values, ui.canvas). 'Voici votre dernière lecture' is understandable in context and shorter than the canvas phrasing, so it is accepted unchanged; a native pass may prefer 'Voici la dernière version que vous avez lue'.",
+      "disposition": "accepted - no change; recorded so a later wave need not re-litigate it"
+    }
+  ],
+  "status": "passed",
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "revision": "2008053b5d6af37fa449fc303d9e344c262f82c8",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "revision": "2008053b5d6af37fa449fc303d9e344c262f82c8",
+      "sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+    },
+    "docs_I18N": {
+      "path": "docs/I18N.md",
+      "sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+    }
+  },
+  "artifacts": {
+    "receipt": {
+      "path": "i18n/receipts/5378ea6efd4b-fr.json",
+      "sha256": "dbde265469d43594802653ca399253ecf3248a4d4b565548aaeb3b07f3d586f4"
+    },
+    "ledger_row": "i18n/ledger.json#entries[locale=fr,namespace=ui.teamBridge]"
+  },
+  "limitations": "Auditor competence: strong (can read and judge fr product copy directly). Verdict confidence: high. Not claimed: rendered fit in the rail (no frame captured for this key) and a native-speaker register sign-off.",
+  "audit_notes_not_execution_log": "The findings and notes are this auditor's linguistic judgement, not command output. The commands actually run, and their results, are in the PR #1489 comment for this round, not in this record."
+}

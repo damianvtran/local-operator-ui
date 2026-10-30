@@ -397,7 +397,11 @@ type UiPreferencesState = {
 	 * action's default); a chord capture refuses, or one the canonical grammar
 	 * cannot spell, is not written at all.
 	 */
-	setShortcutBinding: (actionId: ActionId, chord: string | null) => void;
+	setShortcutBinding: (
+		actionId: ActionId,
+		chord: string | null,
+		externalClaims?: ReadonlyMap<string, string>,
+	) => void;
 
 	/**
 	 * Store the explicit no-chord state for one action (UX round 1's U4): the
@@ -2479,7 +2483,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				set({ rightSlotRoute: { ...route } });
 			},
 
-			setShortcutBinding: (actionId, chord) => {
+			setShortcutBinding: (actionId, chord, externalClaims) => {
 				/*
 				 * NO-OP WRITES ARE REAL ANSWERS: a chord capture refuses, or one the
 				 * canonical grammar cannot spell, is not stored. The refusal is the
@@ -2499,7 +2503,13 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				const normalized = normalizeChord(chord);
 				if (normalized === null) return;
 				if (
-					captureRefusal(normalized, actionId, get().shortcutBindings) !== null
+					captureRefusal(
+						normalized,
+						actionId,
+						get().shortcutBindings,
+						"linux",
+						externalClaims,
+					) !== null
 				) {
 					return;
 				}

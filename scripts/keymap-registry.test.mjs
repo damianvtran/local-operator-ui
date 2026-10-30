@@ -201,7 +201,6 @@ test("the reserved inventory is exactly the decoded list", () => {
 		// The focused conversation's Tags popover (sidebar tags v3, D8).
 		"primary+shift+l",
 		"primary+shift+p",
-		"primary+shift+s",
 		"primary+shift+up",
 		"primary+shift+z",
 		"primary+v",
@@ -215,4 +214,9 @@ test("the reserved inventory is exactly the decoded list", () => {
 	];
 	assert.deepEqual([...RESERVED_CHORDS.keys()].sort(), expected.sort());
 	assert.equal(RESERVED_CHORDS.size, expected.length);
+	assert.equal(
+		RESERVED_CHORDS.has("primary+shift+s"),
+		false,
+		"the backend-owned recording action must be able to claim its default",
+	);
 });

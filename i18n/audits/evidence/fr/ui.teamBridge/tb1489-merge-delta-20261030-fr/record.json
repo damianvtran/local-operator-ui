@@ -1,0 +1,166 @@
+{
+	"audit_id": "teambridge-pr1489-merge-delta-20261030-fr",
+	"date": "2026-10-30",
+	"locale": "fr",
+	"namespace": "ui.teamBridge",
+	"pr": 1489,
+	"branch": "fix/tb-instant-open",
+	"merge": {
+		"pr": 1489,
+		"branch": "fix/tb-instant-open",
+		"worktree": "~/local-operator-ui/.worktrees/1489-fold",
+		"branch_head_at_fold": "d85fef05f3caa5902138b72ae46b0595fde82086",
+		"origin_main_at_fold": "85971d8b44b57aabfee209a45e6646eb6b62a150",
+		"merge_base": "a36e9e165c22376d297368fdd2ebd378206de6c8",
+		"merge_state": "merge of origin/main into the branch, uncommitted at audit time. Conflicts resolved before this audit: src/renderer/src/features/team-bridge/team-bridge-page.tsx (import union - the branch's teamBridgeKeys and main's useAddTeamBridgeMembers are both used by the merged body), package.json (per-key three-way, scripts.test:desktop as the token union) and i18n/ledger.json (per-row three-way, both-moved rows left at the branch for re-derivation). This run wrote only receipts, their evidence records and the ledger rows, and those rows only through scripts/i18n/ledger-assemble.mjs."
+	},
+	"translator": {
+		"agent": "translator",
+		"model": "not supplied by the commit",
+		"date": "2026-10-30",
+		"source": "commit 548b9b1010d7a9cf034f1187e5dec75e5ab0922c",
+		"method": "LLM reasoning in the PR authoring session; no MT service or translation API"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "radient/auto",
+			"date": "2026-10-30",
+			"result": "clean",
+			"instance": "tb1489m2-fr-2d47856c6ee9",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/tb1489m2-fr-2d47856c6ee9.json",
+			"receipt_sha256": "7c5c9c8c007f377631cb724512430def7bc056db1698fe01c764f3dd6069b180",
+			"scope": "Merged copy delta at the fold of origin/main 85971d8b44b5: the one key this branch adds to ui.teamBridge (list.error_stale); the rest of the namespace is inherited byte-identically from origin/main."
+		}
+	],
+	"prior_audit_of_the_same_values": {
+		"instance": "5378ea6efd4b-fr",
+		"note": "the branch's one-key audit, run before the fold moved the English bytes; it stays under `superseded` on the row and was re-checked, not copied"
+	},
+	"auditor_independence": "See the receipt: this auditing run authored none of the audited strings.",
+	"files": {
+		"english": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "420386d89620097c7e8c5298046f412a3a93b154bbd8a0f11f60c37a98838099"
+		},
+		"context_sidecar": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "09a37a538733b3fa5a6303c4631c45e722091cae6acef4437e36d5a09e0fc126"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+			"sha256": "09cf9672211c53aba95dd682a79c3ee3a4c608c15cc4d4d602f3437badd552b1"
+		}
+	},
+	"scope": {
+		"delta_kind": "Merge delta: what this branch adds to origin/main, in one namespace.",
+		"added_relative_to_origin_main": [
+			"ui.teamBridge.list.error_stale"
+		],
+		"inherited_from_origin_main": "origin/main contributes 27 keys of its own to this namespace in the same fold (ui.teamBridge.members.*). They are inherited byte-identically: every key present on both sides was compared and no value changed (282 merged keys = 255 branch keys + 281 main keys, a pure union at 282 in all eight catalogues). They stay covered by their own receipts; this is not a re-audit of them.",
+		"key_sets": "282 English keys; this locale is key-complete at 282 and ledger-assemble.mjs re-checks that before writing the row.",
+		"keys_audited_linguistically": [
+			"ui.teamBridge.list.error_stale"
+		],
+		"keys_read_for_consistency": [
+			"ui.teamBridge.list.error",
+			"ui.teamBridge.list.loading",
+			"ui.teamBridge.list.retry",
+			"ui.canvas.use_file_freshness.no_longer_on_disk_showing_the_version_we_last_read",
+			"ui.common.errors.audio_playback",
+			"ui.settings.imports.loading_sessions"
+		],
+		"not_audited": "The 281 other English keys and their translations: unchanged by this fold and covered by their own receipts."
+	},
+	"english": {
+		"ui.teamBridge.list.error_stale": {
+			"value": "Couldn't refresh. Showing your last read.",
+			"clause_1": "Couldn't refresh - the read failed. Names no cause, because the client cannot prove one.",
+			"clause_2": "Showing your last read - the rows painted below are the reader's own last read, so the sentence never contradicts what is visible.",
+			"context_role": "stale-list notice",
+			"context_tone": "factual, reassuring, no blame",
+			"context_length": "Two short clauses.",
+			"context_note": "Shown INSTEAD of list.error when the list read failed but rows from the cached snapshot are still painted below it. The first clause states the failed refresh; the second says the rows on screen are the reader's last read, so the sentence never contradicts what is visible. Do not name a cause the client cannot prove.",
+			"placeholders": []
+		}
+	},
+	"audited": {
+		"key": "ui.teamBridge.list.error_stale",
+		"translation": {
+			"value": "Actualisation impossible. Voici votre dernière lecture.",
+			"clause_map": "Clause 1 = nominal failure ('Actualisation impossible'). Clause 2 = 'here is your last read', with 'voici' presenting what is on screen."
+		},
+		"checks": {
+			"placeholders": "The English source takes no interpolation arguments; this locale declares none either, so placeholder parity is 0 = 0.",
+			"unicode": "NFC verified; no bidi control characters; no NBSP; no double or edge spaces.",
+			"structure": "Two clauses for the sidecar's 'Two short clauses'.",
+			"meaning": "Faithful. The nominal first clause states the failed refresh without naming a cause; 'voici' points at the rows already painted, which is exactly the sidecar's requirement that the sentence not contradict what is visible.",
+			"register": "Vouvoiement (votre), matching 'votre conversation' and 'Vous ne pouvez pas inviter'.",
+			"terminology": "'Actualisation' is this namespace's refresh noun. 'Lecture' for a read of data is established in fr, not dominated by audio: 70 values use it, 16 of them explicitly audio ('lecture à voix haute', 'lecture audio'), and the data sense is carried by shipped strings such as 'Requête de lecture', 'Lecture impossible', 'Lecture des sessions' and 'lecture de la mémoire'. The canvas siblings prefer 'la dernière version lue', but they are talking about a file version and these rows are not a version, so the noun is right here.",
+			"punctuation": "Two ASCII full stops; typographic apostrophes; no ICU quoting hazard (no ASCII apostrophe in the value).",
+			"length": "49 characters against 42 English; two short clauses.",
+			"consistent_with": "ui.teamBridge.list.error, ui.teamBridge.list.loading, ui.teamBridge.list.retry, ui.canvas.use_file_freshness.no_longer_on_disk_showing_the_version_we_last_read, ui.common.errors.audio_playback, ui.settings.imports.loading_sessions",
+			"method": "Read against the English value, the full English sidecar entry, the locale style guide and the glossary, then against the shipped siblings named in consistent_with, including the corpus counts quoted in terminology (counted from this tree's catalogues, not recalled).",
+			"corpus_counts": "Every count quoted in this receipt was measured on the merged catalogues in this worktree - e.g. 'lecture' 70 / 16 audio (fr), 'последнее прочитанное' 1 occurrence (ru), 'تازہ کاری' 2 and 'ریفریش' 2 with both in OAuth token strings (ur), 'रीफ़्रेश' 26 (hi) - so a later reader can re-run the same grep."
+		}
+	},
+	"findings": [
+		{
+			"severity": "info",
+			"id": "FR-I1",
+			"detail": "The earlier audit of these bytes (5378ea6efd4b-fr) recorded a NIT claiming 'lecture' is mostly the audio sense in this corpus (it cited 53 values, 'most' audio). Re-checked here rather than inherited: 70 fr values contain 'lecture', 16 of them explicitly audio, and the data-read sense is established by shipped strings ('Requête de lecture', 'Lecture impossible', 'Lecture des sessions'). The premise does not hold on the corpus, so the NIT is not carried forward. Nothing is deleted - the earlier audit stands under `superseded` on the row."
+		}
+	],
+	"status": "audited",
+	"ledger_row": {
+		"locale": "fr",
+		"namespace": "ui.teamBridge",
+		"source_sha256": "420386d89620097c7e8c5298046f412a3a93b154bbd8a0f11f60c37a98838099",
+		"target_sha256": "09cf9672211c53aba95dd682a79c3ee3a4c608c15cc4d4d602f3437badd552b1",
+		"status": "audited",
+		"auditor_instances_current": [
+			"tb1489m2-fr-2d47856c6ee9"
+		],
+		"superseded_entries": 40,
+		"written_by": "scripts/i18n/ledger-assemble.mjs, never by hand"
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/tb1489m2-fr-2d47856c6ee9.json",
+			"sha256": "7c5c9c8c007f377631cb724512430def7bc056db1698fe01c764f3dd6069b180"
+		},
+		"evidence_record": {
+			"path": "i18n/audits/evidence/fr/ui.teamBridge/tb1489-merge-delta-20261030-fr/record.json"
+		}
+	},
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"docs_I18N": {
+			"path": "docs/I18N.md",
+			"sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+		},
+		"ledger_rules": {
+			"path": "scripts/i18n/ledger-rules.mjs",
+			"sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+		},
+		"ledger_assemble": {
+			"path": "scripts/i18n/ledger-assemble.mjs",
+			"sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/fr.md",
+			"sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+		}
+	},
+	"limitations": "Auditor competence: strong (can read and judge fr product copy directly). Verdict confidence: high on meaning, register and terminology, and high on the corpus measurement above. Not claimed: rendered fit and a native fr register sign-off.",
+	"audit_notes_not_execution_log": "The notes and findings are this auditor's reading of the bytes, not a script's output. The mechanical properties (encoding, placeholders, script, punctuation, length) and every sha256 were computed from the catalogue files on disk; the linguistic judgement is written per key so a native reviewer can check the reasoning instead of trusting a verdict."
+}

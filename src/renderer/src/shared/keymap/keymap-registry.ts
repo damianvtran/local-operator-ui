@@ -11,7 +11,10 @@ import { t } from "../../../../i18n/messages";
  * stored under, the sentence a reader sees, whether it ships bound, and the scope
  * it acts in. The six rail actions are its first consumers; the fixed gestures
  * the tree already answers are deliberately NOT folded in (that is the recorded
- * follow-up) and are protected instead by `RESERVED_CHORDS` below.
+ * follow-up) and are protected instead by `RESERVED_CHORDS` below. The
+ * backend-owned `keymap.start_recording` action is the exception: its default
+ * is deliberately absent from the reserved set now that its main-process door
+ * follows that saved binding.
  *
  * IDS ARE PERSISTED DATA. An id is the key of the renderer's stored
  * `shortcutBindings` override, so renaming one without a migration silently
@@ -269,10 +272,6 @@ export const RESERVED_CHORDS: ReadonlyMap<string, string> =
 		[
 			"primary+shift+p",
 			() => t("ui.settings.shortcuts.reserved.palette_commands"),
-		],
-		[
-			"primary+shift+s",
-			() => t("ui.settings.shortcuts.reserved.speech_to_text"),
 		],
 		// Renderer chords that fire app-wide and would double-fire beside a rail
 		// action.

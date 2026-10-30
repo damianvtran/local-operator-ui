@@ -1,0 +1,24 @@
+{
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "radient/auto",
+	"model_comment": "The launch model was anthropic/claude-opus-5-5; the session reported a chain of temporary provider-failure fallbacks (anthropic/claude-sonnet-5-5, openai/gpt-6-astra, kimi/k3.1-pro) and is currently running radient/auto, which is what this receipt records.",
+	"instance": "tb-invite-r2-20261029-ur",
+	"date": "2026-10-29",
+	"status": "passed",
+	"locale": "ur",
+	"namespace": "ui.teamBridge",
+	"sha256": {
+		"en": "1516974c44681940753862f9735f0b3c19c7815ca4e68eab7fd343f1f1ed53f3",
+		"ur": "bde2757af39de2ab1483739fc11ff466d2ea4f7b6ca68ef5e911362ae82120ad"
+	},
+	"findings": [],
+	"checks": {
+		"key_parity": "Ran the prescribed Python set comparison: 281 281 set() set(). Confirmed ui.teamBridge.members.agent_invitation and ui.teamBridge.members.human_invitation are absent from both the Urdu and English catalogues.",
+		"bidi": "Scanned the complete Urdu file with a codepoint scan for U+200E, U+200F, U+202A-U+202E and zero-width characters (U+200B-U+200D, U+2060, U+FEFF); none found, and a unicodedata category-Cf sweep of the whole file returned an empty set. Both delta strings contain only characters in the Arabic block (U+0600-U+06FF) plus spaces, so no manual bidi or zero-width control was introduced by the correction; direction is left to the RTL layout.",
+		"apostrophes": "Scanned all 281 Urdu values for ASCII U+0027; none found, so no ICU quoted literal can be opened by an ASCII apostrophe. The delta strings likewise carry no ASCII apostrophe.",
+		"diff": "Ran git diff for the Urdu catalogue: exactly the two intended value changes (ui.teamBridge.members.empty, ui.teamBridge.members.read_only) and the two intended key deletions (agent_invitation, human_invitation); no other key touched or reordered, and git diff --check reported no whitespace errors. The unchanged plural key was not re-audited; no ICU issue was observed in the diff."
+	},
+	"scope": "Re-audit of the Urdu locale delta only. Reviewed the current Urdu text of ui.teamBridge.members.read_only ('آپ اس گفتگو میں لوگوں کو مدعو نہیں کر سکتے۔') and ui.teamBridge.members.empty ('اس تنظیم میں کسی کو بھی مدعو نہیں کیا جا سکتا۔') against their English source and their context notes: read_only now states the reader's own inability to invite, with no claim about administrator authority (the old 'صرف گفتگو کا منتظم ...' false claim is gone) and no blame, correct for a DM, an archived or built-in channel, or a reader who is not an active member; empty is a passive statement that nobody can be invited and does not claim the organization has no people, keeping it compatible with a populated Current-members pane beside it. Both read naturally in idiomatic Urdu, use 'مدعو' consistently with the file's existing invitation vocabulary, and end with the file's dominant ARABIC FULL STOP '۔' (98 of 281 values), so the corrected sentences carry the file's own punctuation. Confirmed both removed invitation keys are absent. Mechanically checked the complete Urdu file for key parity, bidi/zero-width characters and ASCII apostrophes, and inspected its git diff. Checked for the Vietnamese-typo class of slip (stray Latin letters or malformed words) across the delta: none. Deliberately did not re-litigate the other 279 translations or the ICU safety of unchanged keys already passed by the earlier audit in this PR. This is the Urdu locale, so the Vietnamese 'mời người' correction was only spot-checked in vi/ui.teamBridge.json ('Bạn không thể mời người vào cuộc trò chuyện này.') and is the vi auditor's call, not this receipt's.",
+	"independence": "Auditor wrote none of the audited strings; the translator was a separate subagent. No catalogue or ledger edit by the auditor."
+}
