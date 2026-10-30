@@ -73,5 +73,7 @@
 	"ui.settings.shortcuts.speech.push_to_talk_hold": "Push to talk (hold)",
 	"ui.settings.shortcuts.speech.push_to_talk_hint": "Press the modifier key you want to hold; Esc cancels.",
 	"ui.settings.shortcuts.speech.push_to_talk_refused": "{platform, select, darwin {Only a left or right Control, Option or Command key can be held.} win32 {Only a left or right Control or Windows key can be held.} other {Only a left or right Control or Super key can be held.}}",
-	"ui.settings.shortcuts.speech.push_to_talk_overlap": "Shortcuts that begin with this key can briefly start a recording before the next key cancels it."
+	"ui.settings.shortcuts.speech.push_to_talk_overlap": "Every shortcut that uses {modifier}, such as {example}, will start recording for a moment.{alternative, select, none {} other { Choose {alternative} to avoid this.}}",
+	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": "For a shortcut with a letter, use Start recording above.",
+	"ui.settings.shortcuts.speech.start_recording_needs_key": "A shortcut needs a letter or number as well as a modifier key."
 }

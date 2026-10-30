@@ -1808,7 +1808,10 @@ export const SettingsPage: FC = () => {
 						 * why it carries no credential field.
 						 */}
 						<SpeechSection sectionRef={sectionRefs.speech} />
-						<KeyboardShortcutsSection sectionRef={sectionRefs.keyboard} />
+						<KeyboardShortcutsSection
+							sectionRef={sectionRefs.keyboard}
+							focusKey={settingFocusKey}
+						/>
 
 						{/*
 						 * The provider grid is the same component onboarding uses: one

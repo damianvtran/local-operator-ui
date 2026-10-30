@@ -22,7 +22,12 @@ import { StartRecordingShortcutRow } from "./start-recording-shortcut-row";
  * absent. Both keys are promoted out of Backend settings
  * (`promoted-setting-sections.ts`), so this is the one editor for each.
  */
-export function SpeechShortcutsGroup() {
+export function SpeechShortcutsGroup({
+	focusKey,
+}: {
+	/** The `?setting=` deep link's key, so a promoted row can take the focus. */
+	focusKey?: string | null;
+}) {
 	const { client, provided } = useOptionalQueryClient();
 	const settings = useQuery(
 		{
@@ -54,10 +59,18 @@ export function SpeechShortcutsGroup() {
 		<div className="space-y-3" data-shortcut-recording>
 			{heading}
 			{start && (
-				<StartRecordingShortcutRow setting={start} refetch={settings.refetch} />
+				<StartRecordingShortcutRow
+					setting={start}
+					refetch={settings.refetch}
+					focusKey={focusKey}
+				/>
 			)}
 			{hold && (
-				<PushToTalkShortcutRow setting={hold} refetch={settings.refetch} />
+				<PushToTalkShortcutRow
+					setting={hold}
+					refetch={settings.refetch}
+					focusKey={focusKey}
+				/>
 			)}
 		</div>
 	);

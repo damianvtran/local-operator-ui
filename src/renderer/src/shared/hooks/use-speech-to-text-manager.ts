@@ -44,6 +44,15 @@ export enum SpeechToTextPriority {
  * `before-input-event` chord cannot be driven headlessly - which is why the
  * binding lives here, in the renderer's own keydown/keyup pair.
  */
+/**
+ * The channels main sends on INSTEAD of delivering a palette chord's key
+ * (`PALETTE_DOOR_CHANNELS` in `src/main/palette-door.ts`; the renderer cannot
+ * import main, and `palette-main-door` pins the spelling on both sides).
+ */
+const PALETTE_DOOR_CHANNELS = [
+	"toggle-command-palette",
+	"toggle-command-palette-commands",
+] as const;
 const MAC_PLATFORM = /Mac|iPhone|iPad/;
 export type PlatformFamily = "darwin" | "win32" | "other";
 export type PushToTalkBinding = { code: string; label: string };
@@ -172,6 +181,8 @@ export const setPushToTalkBinding = (raw: unknown): void => {
 };
 
 let pushToTalkRefresh: Promise<void> | null = null;
+/** A refresh asked for while one was in flight: it must run AFTER that one. */
+let pushToTalkRefreshAgain = false;
 
 /**
  * Read the persisted `keymap.push_to_talk` row and re-resolve.
@@ -185,23 +196,36 @@ let pushToTalkRefresh: Promise<void> | null = null;
  * settings channel); a caller that changes the row calls `setPushToTalkBinding`
  * with what it saved, and a document that did not make the change (the Quick
  * send window) calls this when it is shown.
+ *
+ * AN ASK THAT ARRIVES MID-FLIGHT IS NOT SATISFIED BY THAT FLIGHT: its read may
+ * have left before the change this ask was made to pick up (a summon right
+ * after a save in the other window), so the ask is answered by one more read
+ * once the current one settles. Any number of mid-flight asks share that one.
  */
 export const refreshPushToTalkBinding = async (): Promise<void> => {
-	if (pushToTalkRefresh) return pushToTalkRefresh;
+	if (pushToTalkRefresh) {
+		pushToTalkRefreshAgain = true;
+		return pushToTalkRefresh;
+	}
 	pushToTalkRefresh = (async () => {
-		const generation = bindingGeneration;
 		try {
-			const settings = await desktopResult<BackendSettings>({
-				op: "settings.list",
-			});
-			const row = settings.settings.find(
-				(setting) => setting.key === "keymap.push_to_talk",
-			);
-			if (generation === bindingGeneration) {
-				resolvedPushToTalkBinding = pushToTalkBindingForToken(row?.value);
-			}
-		} catch {
-			/* Keep the last resolution (see the doc above). */
+			do {
+				pushToTalkRefreshAgain = false;
+				const generation = bindingGeneration;
+				try {
+					const settings = await desktopResult<BackendSettings>({
+						op: "settings.list",
+					});
+					const row = settings.settings.find(
+						(setting) => setting.key === "keymap.push_to_talk",
+					);
+					if (generation === bindingGeneration) {
+						resolvedPushToTalkBinding = pushToTalkBindingForToken(row?.value);
+					}
+				} catch {
+					/* Keep the last resolution (see the doc above). */
+				}
+			} while (pushToTalkRefreshAgain);
 		} finally {
 			pushToTalkRefresh = null;
 		}
@@ -334,8 +358,26 @@ export class SpeechToTextManager {
 	 * Handle the speech-to-text event by dispatching to the highest priority active handler
 	 */
 	private handleSpeechToText = (): void => {
+		/*
+		 * MAIN TOOK A CHORD THE HOLD KEY BEGINS. Start recording is claimed in the
+		 * main process (`before-input-event`), so its second key never reaches the
+		 * keydown listener below - but the modifier's own keydown did, and engaged
+		 * a hold. Without this the composer's one-recorder rule refused the chord's
+		 * start and the shortcut did nothing. The chord is the user's real intent,
+		 * so it replaces the hold: the press that was never a hold is discarded.
+		 */
+		this.releaseHold("abort");
 		const active = this.highestActive();
 		if (active) active.handler.start();
+	};
+
+	/**
+	 * The palette doors are claimed in main for the same reason: Cmd/Ctrl+P is a
+	 * chord on the hold's own modifier, and the key that makes it a chord never
+	 * arrives here to abort the hold.
+	 */
+	private handlePaletteDoor = (): void => {
+		this.releaseHold("abort");
 	};
 
 	/**
@@ -485,6 +527,9 @@ export class SpeechToTextManager {
 				"start-speech-to-text",
 				this.handleSpeechToText,
 			);
+			for (const channel of PALETTE_DOOR_CHANNELS) {
+				window.electron.ipcRenderer.on(channel, this.handlePaletteDoor);
+			}
 			/*
 			 * CAPTURE for keydown: the hold must start on the press itself
 			 * (there is no timer to wait for a release anymore), and a focused
@@ -507,6 +552,12 @@ export class SpeechToTextManager {
 				"start-speech-to-text",
 				this.handleSpeechToText,
 			);
+			for (const channel of PALETTE_DOOR_CHANNELS) {
+				window.electron.ipcRenderer.removeListener(
+					channel,
+					this.handlePaletteDoor,
+				);
+			}
 			window.removeEventListener("keydown", this.handleKeyDown, true);
 			window.removeEventListener("keyup", this.handleKeyUp);
 			window.removeEventListener("blur", this.handleWindowBlur);

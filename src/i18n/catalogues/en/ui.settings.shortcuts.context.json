@@ -468,6 +468,23 @@
 		"role": "Warning note under the Push to talk field",
 		"tone": "Factual, calm; a cost to weigh, not an error.",
 		"length": "One or two short lines.",
-		"note": "The held key is also the first key of ordinary shortcuts, so pressing such a shortcut makes the microphone start for an instant until the next key cancels it. 'Begin with this key' means the shortcut is typed with this modifier held first."
+		"note": "The held key is also the first key of ordinary shortcuts. {modifier} is the key's name without its side (Command, Control, Option); {example} is one affected shortcut written as keys (for example Command+C). {alternative} is the name of a key that avoids the problem, or the word none when no other key is free; keep 'none' as the select branch name, never show it. The microphone starts for an instant until the next key cancels it.",
+		"placeholders": {
+			"modifier": "The held key's name without its side: Command, Control or Option. Keep as given.",
+			"example": "One affected shortcut written as key names joined by plus signs, for example Command+J. Keep as given.",
+			"alternative": "The name of a key that avoids the problem (Option, Control, Command), or the word none; never displayed when none."
+		}
+	},
+	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": {
+		"role": "Second sentence of the hint and of the refusal under the Push to talk field",
+		"tone": "Plain, helpful.",
+		"length": "One short sentence.",
+		"note": "Shown after another sentence; 'Start recording' is the name of the row directly above (the Primary box) and must match its translated action name."
+	},
+	"ui.settings.shortcuts.speech.start_recording_needs_key": {
+		"role": "Refusal under the Start recording field",
+		"tone": "Plain, short.",
+		"length": "One short sentence.",
+		"note": "Shown when the user pressed only a modifier key (Command, Control, Option, Shift) in the field that records a shortcut."
 	}
 }

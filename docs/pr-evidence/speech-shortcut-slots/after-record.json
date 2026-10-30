@@ -1,0 +1,91 @@
+{
+  "label": "after",
+  "platform": "MacIntel",
+  "bridge": {
+    "api": "object",
+    "electron": "undefined"
+  },
+  "hasHoldBox": true,
+  "defaultRows": {
+    "primary": {
+      "value": "⌘⇧S",
+      "invalid": null,
+      "text": "Primary\nStart recording (press)\n\nStarts speech-to-text recording in the desktop window."
+    },
+    "secondary": {
+      "value": "Right-Option",
+      "invalid": null,
+      "text": "Secondary\nPush to talk (hold)\n\nHold to dictate (desktop); release to stop."
+    }
+  },
+  "listening": {
+    "value": "Right-Option",
+    "invalid": null,
+    "text": "Secondary\nPush to talk (hold)\n\nHold to dictate (desktop); release to stop.\n\nPress the modifier key you want to hold; Esc cancels. For a shortcut with a letter, use Start recording above."
+  },
+  "afterTapSaved": {
+    "value": "Left-Control",
+    "invalid": null,
+    "text": "Secondary\nPush to talk (hold)\nReset\n\nHold to dictate (desktop); release to stop.\n\nPress the modifier key you want to hold; Esc cancels. For a shortcut with a letter, use Start recording above.\n\nEvery shortcut that uses Control, such as Control+S, will start recording for a moment. Choose Option to avoid this."
+  },
+  "settingAfterTap": "ctrl-left-hold",
+  "rebound": {
+    "value": "Left-Control",
+    "invalid": null,
+    "text": "Secondary\nPush to talk (hold)\nReset\n\nHold to dictate (desktop); release to stop.\n\nPress the modifier key you want to hold; Esc cancels. For a shortcut with a letter, use Start recording above.\n\nEvery shortcut that uses Control, such as Control+S, will start recording for a moment. Choose Option to avoid this."
+  },
+  "afterChord": {
+    "value": "Left-Control",
+    "invalid": "true",
+    "text": "Secondary\nPush to talk (hold)\nReset\n\nHold to dictate (desktop); release to stop.\n\nPress the modifier key you want to hold; Esc cancels. For a shortcut with a letter, use Start recording above.\n\nEvery shortcut that uses Control, such as Control+S, will start recording for a moment. Choose Option to avoid this.\n\nOnly a left or right Control, Option or Command key can be held. For a shortcut with a letter, use Start recording above."
+  },
+  "refused": {
+    "value": "Left-Control",
+    "invalid": "true",
+    "text": "Secondary\nPush to talk (hold)\nReset\n\nHold to dictate (desktop); release to stop.\n\nPress the modifier key you want to hold; Esc cancels. For a shortcut with a letter, use Start recording above.\n\nEvery shortcut that uses Control, such as Control+S, will start recording for a moment. Choose Option to avoid this.\n\nOnly a left or right Control, Option or Command key can be held. For a shortcut with a letter, use Start recording above."
+  },
+  "holdBackToOption": {
+    "value": "Right-Option",
+    "invalid": null,
+    "text": "Secondary\nPush to talk (hold)\n\nHold to dictate (desktop); release to stop.\n\nPress the modifier key you want to hold; Esc cancels. For a shortcut with a letter, use Start recording above."
+  },
+  "primaryRebind": {
+    "before": {
+      "value": "primary+shift+s",
+      "canonical": "primary+shift+s"
+    },
+    "after": {
+      "value": "primary+alt+r",
+      "canonical": "primary+alt+r"
+    },
+    "primaryRow": {
+      "value": "⌘⌥R",
+      "invalid": null,
+      "text": "Primary\nStart recording (press)\nReset\n\nStarts speech-to-text recording in the desktop window.\n\nPress the keys you want; Esc cancels."
+    },
+    "holdRow": {
+      "value": "Right-Option",
+      "invalid": null,
+      "text": "Secondary\nPush to talk (hold)\n\nHold to dictate (desktop); release to stop.\n\nEvery shortcut that uses Option, such as Option+R, will start recording for a moment."
+    }
+  },
+  "mainSwallow": {
+    "cmdP": {
+      "keys": [
+        "AltRight",
+        "MetaLeft",
+        "KeyP"
+      ],
+      "ipc": []
+    },
+    "cmdOptR": {
+      "keys": [
+        "MetaLeft",
+        "AltLeft",
+        "KeyR"
+      ],
+      "ipc": []
+    }
+  },
+  "deepLinkActive": "keymap.push_to_talk"
+}

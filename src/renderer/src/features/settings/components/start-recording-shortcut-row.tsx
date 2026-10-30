@@ -30,10 +30,14 @@ import { useKeymapSettingWrite } from "./use-keymap-setting-write";
 export function StartRecordingShortcutRow({
 	setting,
 	refetch,
+	focusKey,
 }: {
 	setting: BackendSetting;
 	refetch: () => Promise<unknown>;
+	focusKey?: string | null;
 }) {
+	/** A modifier is down and nothing else has joined it (a lone modifier tap). */
+	const lone = useRef(false);
 	const recording = useRecordingShortcutState();
 	const fieldRef = useRef<HTMLInputElement>(null);
 	const id = useId();
@@ -44,8 +48,7 @@ export function StartRecordingShortcutRow({
 		fieldRef,
 		// Main learns the chord before the backend does, so the claim table
 		// refuses a panel assignment made while the save is still in flight.
-		onPending: (value) =>
-			window.electron?.recordingShortcut?.markPending(value),
+		onPending: (value) => window.api?.recordingShortcut?.markPending(value),
 	});
 	const action = t("ui.settings.shortcuts.speech.start_recording_press");
 	const stored =
@@ -74,6 +77,7 @@ export function StartRecordingShortcutRow({
 			rank="primary"
 			action={action}
 			settingKey={setting.key}
+			focusKey={focusKey}
 			help={setting.help}
 			hint={hint}
 			ariaLabel={t(
@@ -85,8 +89,19 @@ export function StartRecordingShortcutRow({
 			saving={saving}
 			showReset={!isDefault}
 			onReset={() => void write("settings.reset")}
+			onKeyUp={(event) => {
+				// A modifier tapped on its own is not a chord. Say so on its release,
+				// not its press: the press is also the first half of a real chord.
+				if (!MODIFIER_ONLY_KEYS.has(event.key) || !lone.current) return;
+				lone.current = false;
+				setError(t("ui.settings.shortcuts.speech.start_recording_needs_key"));
+			}}
+			onBlur={() => {
+				lone.current = false;
+			}}
 			onKeyDown={(event) => {
 				if (saving) return;
+				lone.current = MODIFIER_ONLY_KEYS.has(event.key) && !event.repeat;
 				if (END_EDIT_KEYS.has(event.key) || MODIFIER_ONLY_KEYS.has(event.key)) {
 					if (END_EDIT_KEYS.has(event.key)) setError(null);
 					event.preventDefault();

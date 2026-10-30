@@ -130,15 +130,13 @@ async function mount(
 	const pending = [];
 	dom.window.requestAnimationFrame = (callback) =>
 		dom.window.setTimeout(() => callback(dom.window.performance.now()), 0);
-	dom.window.electron = {
+	dom.window.api = {
 		recordingShortcut: {
 			get: async () => recordingState,
 			onChange: () => () => {},
 			markPending: (value) => pending.push(value),
 			syncClaims: () => {},
 		},
-	};
-	dom.window.api = {
 		windowChrome: { facts: () => ({ platform: "linux" }) },
 		desktop: {
 			request: async (request) => {
@@ -285,9 +283,13 @@ test("capture saves immediately and explicit reset restores the default and focu
 		);
 		assert.ok(reset);
 		await act(async () => reset.click());
-		// The field follows the re-read that closes the write, which lands a few
-		// ticks after the click resolves.
-		for (let attempt = 0; attempt < 10; attempt += 1) {
+		// The field follows the re-read that closes the write: poll for the value
+		// instead of sleeping a fixed number of ticks (a slow host failed the sleep).
+		for (
+			let attempt = 0;
+			attempt < 200 && input.value !== "Ctrl+Shift+S";
+			attempt += 1
+		) {
 			await act(async () => {
 				await new Promise((resolve) => setTimeout(resolve, 5));
 			});

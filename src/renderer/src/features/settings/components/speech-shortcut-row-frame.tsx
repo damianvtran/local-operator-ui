@@ -1,6 +1,12 @@
 import { Button, Input, Label } from "@shared/components/ui";
 import { t } from "@shared/i18n";
-import type { KeyboardEvent, ReactNode, RefObject } from "react";
+import {
+	type KeyboardEvent,
+	type ReactNode,
+	type RefObject,
+	useEffect,
+	useRef,
+} from "react";
 
 /**
  * The layout both Speech to text rows share: the rank ("Primary" /
@@ -26,6 +32,7 @@ export function SpeechShortcutRowFrame({
 	onBlur,
 	notes,
 	error,
+	focusKey,
 }: {
 	id: string;
 	rank: "primary" | "secondary";
@@ -46,7 +53,23 @@ export function SpeechShortcutRowFrame({
 	notes?: ReactNode;
 	/** The last refusal or failure; shown after the saving cue, as it always was. */
 	error?: string | null;
+	/** The registry key a `?setting=` deep link names; matching it focuses the field. */
+	focusKey?: string | null;
 }) {
+	/*
+	 * A PROMOTED ROW OWNS ITS OWN DEEP-LINK REVEAL (QA Q-1): the Backend section's
+	 * `focusKey` is suppressed for promoted keys, so landing on this section alone
+	 * left the focus on <body>. Once per link, as the sibling promoted rows do.
+	 */
+	const focused = useRef(false);
+	useEffect(() => {
+		if (focusKey !== settingKey || focused.current) return;
+		const field = fieldRef.current;
+		if (!field) return;
+		focused.current = true;
+		field.scrollIntoView?.({ block: "center" });
+		field.focus();
+	}, [focusKey, settingKey, fieldRef]);
 	return (
 		/*
 		 * The settings search indexes a promoted registry key through THIS page row
@@ -76,7 +99,8 @@ export function SpeechShortcutRowFrame({
 					ref={fieldRef}
 					id={id}
 					aria-label={ariaLabel}
-					aria-describedby={`${id}-hint`}
+					aria-describedby={`${id}-hint ${id}-notes ${id}-status`}
+					aria-invalid={error ? true : undefined}
 					aria-busy={saving}
 					data-shortcut-action={settingKey}
 					className="w-52 text-left font-mono text-body-sm"
@@ -106,13 +130,21 @@ export function SpeechShortcutRowFrame({
 				<p id={`${id}-hint`} className="hidden group-focus-within:block">
 					{hint}
 				</p>
-				{notes}
-				{saving && (
-					<output className="block">
-						{t("ui.settings.configuration.backend_setting_row.saving")}
-					</output>
-				)}
-				{error && <output className="block text-danger">{error}</output>}
+				<div id={`${id}-notes`}>{notes}</div>
+				{/*
+				 * ONE PERSISTENT LIVE REGION for the saving cue and the refusal. A
+				 * region that is created together with its text is not reliably
+				 * announced; this one exists empty and is filled, and the field names
+				 * it in `aria-describedby`, so a refusal is spoken and also read on
+				 * return to the field.
+				 */}
+				<output id={`${id}-status`} className="block" aria-live="polite">
+					{saving ? (
+						t("ui.settings.configuration.backend_setting_row.saving")
+					) : error ? (
+						<span className="text-danger">{error}</span>
+					) : null}
+				</output>
 			</div>
 		</div>
 	);

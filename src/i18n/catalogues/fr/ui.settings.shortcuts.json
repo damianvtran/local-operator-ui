@@ -73,5 +73,7 @@
 	"ui.settings.shortcuts.speech.push_to_talk_hold": "Appuyer pour parler (maintenir)",
 	"ui.settings.shortcuts.speech.push_to_talk_hint": "Appuyez sur la touche de modification à maintenir ; Esc annule.",
 	"ui.settings.shortcuts.speech.push_to_talk_refused": "{platform, select, darwin {Seule une touche Control, Option ou Command, gauche ou droite, peut être maintenue.} win32 {Seule une touche Control ou Windows, gauche ou droite, peut être maintenue.} other {Seule une touche Control ou Super, gauche ou droite, peut être maintenue.}}",
-	"ui.settings.shortcuts.speech.push_to_talk_overlap": "Les raccourcis qui commencent par cette touche peuvent brièvement démarrer un enregistrement avant que la touche suivante ne l’annule."
+	"ui.settings.shortcuts.speech.push_to_talk_overlap": "Tous les raccourcis qui utilisent {modifier}, comme {example}, démarreront brièvement un enregistrement.{alternative, select, none {} other { Choisissez {alternative} pour l’éviter.}}",
+	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": "Pour un raccourci avec une lettre, utilisez « Démarrer l’enregistrement » ci-dessus.",
+	"ui.settings.shortcuts.speech.start_recording_needs_key": "Un raccourci nécessite une lettre ou un chiffre en plus d’une touche de modification."
 }

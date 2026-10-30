@@ -9017,9 +9017,15 @@ export type MessageParams = {
 	"ui.settings.shortcuts.speech.primary": undefined;
 	"ui.settings.shortcuts.speech.push_to_talk_hint": undefined;
 	"ui.settings.shortcuts.speech.push_to_talk_hold": undefined;
-	"ui.settings.shortcuts.speech.push_to_talk_overlap": undefined;
+	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": undefined;
+	"ui.settings.shortcuts.speech.push_to_talk_overlap": {
+		modifier: string;
+		example: string;
+		alternative: string;
+	};
 	"ui.settings.shortcuts.speech.push_to_talk_refused": { platform: string };
 	"ui.settings.shortcuts.speech.secondary": undefined;
+	"ui.settings.shortcuts.speech.start_recording_needs_key": undefined;
 	"ui.settings.shortcuts.speech.start_recording_press": undefined;
 	"ui.settings.speech.speech_section.availability": undefined;
 	"ui.settings.speech.speech_section.available": undefined;

@@ -28,19 +28,32 @@ import { useKeymapSettingWrite } from "./use-keymap-setting-write";
  * refusing, because the cost is the user's to weigh and the backend accepts the
  * pairing.
  *
- * `primary` is Ctrl everywhere and also Command on macOS; off macOS the Meta
- * key (Win/Super) is not part of `primary`, so only a literal `meta` chord uses
- * it. `AltLeft`/`AltRight` bind on macOS only (see `pushToTalkTokenForCode`).
+ * WHICH KEY `primary` IS DEPENDS ON WHO MATCHES THE CHORD. A panel chord is
+ * matched by the renderer, where `primary` is Command on macOS and Ctrl
+ * elsewhere. The Start recording chord is matched in main, where `primary`
+ * accepts Ctrl on every platform and Command too on macOS (`recordingChords`).
+ * Off macOS the Meta key (Win/Super) is not `primary`, so only a literal `meta`
+ * chord uses it. `AltLeft`/`AltRight` bind on macOS only (see
+ * `pushToTalkTokenForCode`).
  */
-export function holdModifierOverlapsChords(
+export function overlappingChord(
 	code: string,
 	family: PlatformFamily,
 	chords: readonly string[],
-): boolean {
+	/**
+	 * Chords main matches itself (the Start recording chord). Its `primary`
+	 * accepts Ctrl on every platform and Command too on macOS, whereas a panel
+	 * chord's `primary` is only the app modifier (Command on macOS).
+	 */
+	recordingChords: readonly string[] = [],
+): string | null {
 	const modifier = /^(Alt|Meta|Control)/.exec(code)?.[1];
-	const uses = (tokens: readonly string[]): boolean => {
+	const uses = (tokens: readonly string[], recording: boolean): boolean => {
 		if (modifier === "Control") {
-			return tokens.includes("primary") || tokens.includes("ctrl");
+			return (
+				tokens.includes("ctrl") ||
+				(tokens.includes("primary") && (recording || family !== "darwin"))
+			);
 		}
 		if (modifier === "Meta") {
 			return (
@@ -50,8 +63,26 @@ export function holdModifierOverlapsChords(
 		}
 		return modifier === "Alt" && tokens.includes("alt");
 	};
-	return chords.some((chord) => uses(chord.split("+").slice(0, -1)));
+	const modifiers = (chord: string) => chord.split("+").slice(0, -1);
+	return (
+		chords.find((chord) => uses(modifiers(chord), false)) ??
+		recordingChords.find((chord) => uses(modifiers(chord), true)) ??
+		null
+	);
 }
+
+/** Whether any of these chords is typed with the modifier `code` names. */
+export const holdModifierOverlapsChords = (
+	code: string,
+	family: PlatformFamily,
+	chords: readonly string[],
+	recordingChords: readonly string[] = [],
+): boolean => overlappingChord(code, family, chords, recordingChords) !== null;
+
+const MODIFIER_CODE = /^(Alt|Meta|Control|Shift)(Left|Right)$/;
+
+/** The key name without its side: "Right-Command" -> "Command". */
+const keyName = (label: string): string => label.split("-").slice(1).join("-");
 
 /**
  * The SECONDARY speech-to-text shortcut: the bare modifier held to dictate.
@@ -61,19 +92,31 @@ export function holdModifierOverlapsChords(
  * press, identified by `event.code` (the six tokens are side-specific and
  * `event.key` cannot tell Left from Right), and refuses everything else by
  * naming the keys that work on this platform.
+ *
+ * A MODIFIER IS COMMITTED ON ITS RELEASE, and only if nothing else went down
+ * while it was held (UX round 1, U1). Saving on the keydown rewrote the stored
+ * hold key on the first half of Cmd+Shift+S, Ctrl+Tab or Cmd+Tab, and then
+ * showed a refusal beside the value it had just saved. A press that grows into
+ * a chord was never a hold, so it saves nothing and says why. Leaving the field
+ * (window blur included) or Esc drops the press, which is what makes "Esc
+ * cancels" true.
  */
 export function PushToTalkShortcutRow({
 	setting,
 	refetch,
+	focusKey,
 }: {
 	setting: BackendSetting;
 	refetch: () => Promise<unknown>;
+	focusKey?: string | null;
 }) {
 	const recording = useRecordingShortcutState();
 	const bindings = useUiPreferencesStore((state) => state.shortcutBindings);
 	const fieldRef = useRef<HTMLInputElement>(null);
 	const id = useId();
 	const family = useMemo(() => platformFamily(), []);
+	/** The modifier now held in the field, and whether anything joined it. */
+	const press = useRef<{ code: string; tainted: boolean } | null>(null);
 	const defaultToken =
 		typeof setting.default === "string"
 			? setting.default
@@ -101,15 +144,41 @@ export function PushToTalkShortcutRow({
 	const isDefault =
 		pushToTalkBindingForToken(stored)?.code ===
 		pushToTalkBindingForToken(defaultToken)?.code;
-	const overlaps =
-		live !== null &&
-		holdModifierOverlapsChords(live.code, family, [
-			...KEYMAP_ACTIONS.flatMap((panel) => {
-				const chord = effectiveChord(panel.id, bindings);
-				return chord ? [chord] : [];
-			}),
-			...(recording.canonical ? [recording.canonical] : []),
-		]);
+	const claimed = KEYMAP_ACTIONS.flatMap((panel) => {
+		const chord = effectiveChord(panel.id, bindings);
+		return chord ? [chord] : [];
+	});
+	const recordingChords = recording.canonical ? [recording.canonical] : [];
+	const overlap =
+		live === null
+			? null
+			: overlappingChord(live.code, family, claimed, recordingChords);
+	/*
+	 * The key to suggest instead: the first one this platform can hold that no
+	 * claimed chord begins with. Off macOS there is no Option to offer (see
+	 * `pushToTalkTokenForCode`).
+	 */
+	const alternative =
+		overlap === null
+			? null
+			: (["AltRight", "ControlRight", "MetaRight"]
+					.filter((code) => pushToTalkTokenForCode(code, family) !== null)
+					.filter(
+						(code) => !overlappingChord(code, family, claimed, recordingChords),
+					)
+					.map((code) =>
+						pushToTalkBindingForToken(pushToTalkTokenForCode(code, family)),
+					)
+					.find((binding) => binding && binding.code !== live?.code)?.label ??
+				null);
+	// A letter belongs to the primary box: say so where the user is stuck.
+	const pointer = t("ui.settings.shortcuts.speech.push_to_talk_letter_pointer");
+	const refuse = () =>
+		setError(
+			`${t("ui.settings.shortcuts.speech.push_to_talk_refused", {
+				platform: family,
+			})} ${pointer}`,
+		);
 
 	return (
 		<SpeechShortcutRowFrame
@@ -117,8 +186,9 @@ export function PushToTalkShortcutRow({
 			rank="secondary"
 			action={action}
 			settingKey={setting.key}
+			focusKey={focusKey}
 			help={setting.help}
-			hint={t("ui.settings.shortcuts.speech.push_to_talk_hint")}
+			hint={`${t("ui.settings.shortcuts.speech.push_to_talk_hint")} ${pointer}`}
 			ariaLabel={t(
 				"ui.settings.configuration.setting_control.label_press_the_key_you_want",
 				{ label: action },
@@ -128,12 +198,24 @@ export function PushToTalkShortcutRow({
 			saving={saving}
 			showReset={!isDefault}
 			onReset={() => void write("settings.reset")}
-			onBlur={() => setError(null)}
+			onBlur={() => {
+				// Focus (or the window) left mid-press: the release will arrive
+				// somewhere else, so nothing is committed.
+				press.current = null;
+				setError(null);
+			}}
 			onKeyDown={(event) => {
 				if (saving) return;
+				// Whatever goes down while a modifier is held makes that press a chord.
+				const tainting = press.current !== null;
+				if (press.current) press.current.tainted = true;
 				// Tab is how a keyboard user leaves the field; it is never a candidate.
-				if (NAVIGATION_KEYS.has(event.key)) return;
+				if (NAVIGATION_KEYS.has(event.key)) {
+					if (tainting) refuse();
+					return;
+				}
 				if (END_EDIT_KEYS.has(event.key)) {
+					press.current = null;
 					setError(null);
 					event.preventDefault();
 					return;
@@ -143,24 +225,39 @@ export function PushToTalkShortcutRow({
 				// letter must not type, whether or not it is a valid binding.
 				event.preventDefault();
 				if (event.repeat) return;
-				const token = pushToTalkTokenForCode(event.code, family);
-				if (token === null) {
-					setError(
-						t("ui.settings.shortcuts.speech.push_to_talk_refused", {
-							platform: family,
-						}),
-					);
+				if (tainting || !MODIFIER_CODE.test(event.code)) {
+					if (!tainting) press.current = null;
+					refuse();
 					return;
 				}
 				setError(null);
+				press.current = { code: event.code, tainted: false };
+			}}
+			onKeyUp={(event) => {
+				const held = press.current;
+				if (!held || event.code !== held.code) return;
+				press.current = null;
+				if (held.tainted || saving) return;
+				const token = pushToTalkTokenForCode(held.code, family);
+				if (token === null) {
+					refuse();
+					return;
+				}
 				// Off macOS `alt-*` and `meta-*` name one physical key, so a press of
 				// the key already bound is a no-op however the stored token spells it.
 				if (pushToTalkBindingForToken(token)?.code === live?.code) return;
 				void write("settings.edit", token);
 			}}
 			notes={
-				overlaps && (
-					<p>{t("ui.settings.shortcuts.speech.push_to_talk_overlap")}</p>
+				overlap !== null &&
+				live !== null && (
+					<p>
+						{t("ui.settings.shortcuts.speech.push_to_talk_overlap", {
+							modifier: keyName(live.label),
+							example: `${keyName(live.label)}+${(overlap.split("+").at(-1) ?? "").toUpperCase()}`,
+							alternative: alternative ? keyName(alternative) : "none",
+						})}
+					</p>
 				)
 			}
 			error={error}

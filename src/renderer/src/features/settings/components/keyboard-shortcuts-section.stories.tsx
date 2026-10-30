@@ -167,7 +167,6 @@ const RecordingBackendStory: FC<{
 	);
 	useLayoutEffect(() => {
 		const previous = window.api;
-		const previousElectron = window.electron;
 		/*
 		 * The hold row's names and refusals follow `navigator.platform`, while the
 		 * capture glyphs follow the window-chrome facts, which resolve `linux` in
@@ -253,19 +252,16 @@ const RecordingBackendStory: FC<{
 		window.api = {
 			...previous,
 			desktop: { ...previous?.desktop, request },
-		} as typeof window.api;
-		window.electron = {
-			...previousElectron,
 			recordingShortcut: {
 				get: async () => ({ value, canonical: value }),
 				onChange: () => () => {},
 				markPending: () => {},
 				syncClaims: () => {},
 			},
-		} as typeof window.electron;
+		} as typeof window.api;
+
 		return () => {
 			window.api = previous;
-			window.electron = previousElectron;
 			// Own property shadows the prototype's: dropping it restores the real one.
 			Reflect.deleteProperty(window.navigator, "platform");
 			client.clear();

@@ -73,5 +73,7 @@
 	"ui.settings.shortcuts.speech.push_to_talk_hold": "Nhấn để nói (giữ)",
 	"ui.settings.shortcuts.speech.push_to_talk_hint": "Nhấn phím bổ trợ bạn muốn giữ; Esc để hủy.",
 	"ui.settings.shortcuts.speech.push_to_talk_refused": "{platform, select, darwin {Chỉ có thể giữ phím Control, Option hoặc Command bên trái hoặc bên phải.} win32 {Chỉ có thể giữ phím Control hoặc Windows bên trái hoặc bên phải.} other {Chỉ có thể giữ phím Control hoặc Super bên trái hoặc bên phải.}}",
-	"ui.settings.shortcuts.speech.push_to_talk_overlap": "Các phím tắt bắt đầu bằng phím này có thể khiến bản ghi âm bắt đầu trong chốc lát, cho đến khi phím tiếp theo hủy nó."
+	"ui.settings.shortcuts.speech.push_to_talk_overlap": "Mọi phím tắt dùng {modifier}, chẳng hạn {example}, sẽ bắt đầu ghi âm trong chốc lát.{alternative, select, none {} other { Hãy chọn {alternative} để tránh điều này.}}",
+	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": "Với phím tắt có chữ cái, hãy dùng “Bắt đầu ghi âm” ở trên.",
+	"ui.settings.shortcuts.speech.start_recording_needs_key": "Phím tắt cần có một chữ cái hoặc chữ số cùng với phím bổ trợ."
 }

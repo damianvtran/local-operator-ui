@@ -73,5 +73,7 @@
 	"ui.settings.shortcuts.speech.push_to_talk_hold": "Нажать и говорить (удерживать)",
 	"ui.settings.shortcuts.speech.push_to_talk_hint": "Нажмите клавишу-модификатор, которую хотите удерживать; Esc отменяет.",
 	"ui.settings.shortcuts.speech.push_to_talk_refused": "{platform, select, darwin {Удерживать можно только левую или правую клавишу Control, Option или Command.} win32 {Удерживать можно только левую или правую клавишу Control или Windows.} other {Удерживать можно только левую или правую клавишу Control или Super.}}",
-	"ui.settings.shortcuts.speech.push_to_talk_overlap": "Сочетания, которые начинаются с этой клавиши, могут ненадолго запустить запись, пока следующая клавиша её не отменит."
+	"ui.settings.shortcuts.speech.push_to_talk_overlap": "Каждое сочетание с {modifier}, например {example}, ненадолго запустит запись.{alternative, select, none {} other { Чтобы этого избежать, выберите {alternative}.}}",
+	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": "Для сочетания с буквой используйте «Начать запись» выше.",
+	"ui.settings.shortcuts.speech.start_recording_needs_key": "Для сочетания нужна буква или цифра в дополнение к клавише-модификатору."
 }

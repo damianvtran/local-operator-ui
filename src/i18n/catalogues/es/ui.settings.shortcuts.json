@@ -73,5 +73,7 @@
 	"ui.settings.shortcuts.speech.push_to_talk_hold": "Pulsar para hablar (mantener)",
 	"ui.settings.shortcuts.speech.push_to_talk_hint": "Pulsa la tecla modificadora que quieras mantener; Esc cancela.",
 	"ui.settings.shortcuts.speech.push_to_talk_refused": "{platform, select, darwin {Solo se puede mantener pulsada una tecla Control, Option o Command, izquierda o derecha.} win32 {Solo se puede mantener pulsada una tecla Control o Windows, izquierda o derecha.} other {Solo se puede mantener pulsada una tecla Control o Super, izquierda o derecha.}}",
-	"ui.settings.shortcuts.speech.push_to_talk_overlap": "Los atajos que empiezan con esta tecla pueden iniciar una grabación un instante, hasta que la siguiente tecla la cancela."
+	"ui.settings.shortcuts.speech.push_to_talk_overlap": "Todos los atajos que usan {modifier}, como {example}, iniciarán la grabación un instante.{alternative, select, none {} other { Elige {alternative} para evitarlo.}}",
+	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": "Para un atajo con una letra, usa «Iniciar grabación» arriba.",
+	"ui.settings.shortcuts.speech.start_recording_needs_key": "Un atajo necesita una letra o un número además de una tecla modificadora."
 }

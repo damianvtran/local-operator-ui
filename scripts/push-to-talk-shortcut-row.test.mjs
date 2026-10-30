@@ -131,6 +131,7 @@ async function mount(
 		saveStatus = 200,
 		holdValue = "alt-right-hold",
 		hold = true,
+		focusKey = null,
 	},
 	run,
 ) {
@@ -176,7 +177,7 @@ async function mount(
 	});
 	dom.window.requestAnimationFrame = (callback) =>
 		dom.window.setTimeout(() => callback(dom.window.performance.now()), 0);
-	dom.window.electron = {
+	dom.window.api = {
 		recordingShortcut: {
 			get: async () => ({
 				value: "primary+shift+s",
@@ -186,8 +187,6 @@ async function mount(
 			markPending: () => {},
 			syncClaims: () => {},
 		},
-	};
-	dom.window.api = {
 		windowChrome: { facts: () => ({ platform: PLATFORMS[platform].chrome }) },
 		desktop: {
 			request: async (request) => {
@@ -230,7 +229,7 @@ async function mount(
 				React.createElement(
 					QueryClientProvider,
 					{ client },
-					React.createElement(SpeechShortcutsGroup),
+					React.createElement(SpeechShortcutsGroup, { focusKey }),
 				),
 			),
 		);
@@ -251,6 +250,40 @@ async function mount(
 			$: (selector) => dom.window.document.querySelector(selector),
 			text: () => dom.window.document.body.textContent,
 			settle,
+			up: async (input, init) => {
+				await act(async () => {
+					input.dispatchEvent(
+						new dom.window.KeyboardEvent("keyup", {
+							bubbles: true,
+							cancelable: true,
+							...init,
+						}),
+					);
+				});
+				await settle();
+			},
+			/** A key pressed and released alone: the only way a hold is chosen. */
+			tap: async (input, init) => {
+				await act(async () => {
+					input.dispatchEvent(
+						new dom.window.KeyboardEvent("keydown", {
+							bubbles: true,
+							cancelable: true,
+							...init,
+						}),
+					);
+				});
+				await act(async () => {
+					input.dispatchEvent(
+						new dom.window.KeyboardEvent("keyup", {
+							bubbles: true,
+							cancelable: true,
+							...init,
+						}),
+					);
+				});
+				await settle();
+			},
 			key: async (input, init) => {
 				await act(async () => {
 					input.dispatchEvent(
@@ -332,7 +365,7 @@ test("pressing Left Control saves ctrl-left-hold, applies it live, and reset res
 	await mount({ platform: "darwin" }, async (api) => {
 		const field = api.$(HOLD);
 		field.focus();
-		await api.key(field, modifier("ControlLeft", { ctrlKey: true }));
+		await api.tap(field, modifier("ControlLeft", { ctrlKey: true }));
 		assert.deepEqual(edits(api), [
 			{
 				op: "settings.edit",
@@ -426,7 +459,7 @@ test("saved tokens round-trip to the pressed key on each platform", async () => 
 		await mount({ platform }, async (api) => {
 			const field = api.$(HOLD);
 			const code = platform === "darwin" ? "MetaLeft" : "MetaLeft";
-			await api.key(field, modifier(code, { metaKey: true }));
+			await api.tap(field, modifier(code, { metaKey: true }));
 			const saved = edits(api).at(-1).value;
 			assert.equal(
 				saved,
@@ -440,7 +473,7 @@ test("saved tokens round-trip to the pressed key on each platform", async () => 
 test("Option is refused off macOS with the keys that do work", async () => {
 	await mount({ platform: "win32" }, async (api) => {
 		const field = api.$(HOLD);
-		await api.key(field, modifier("AltRight", { altKey: true }));
+		await api.tap(field, modifier("AltRight", { altKey: true }));
 		assert.equal(edits(api).length, 0);
 		assert.ok(
 			api
@@ -449,7 +482,7 @@ test("Option is refused off macOS with the keys that do work", async () => {
 		);
 	});
 	await mount({ platform: "linux" }, async (api) => {
-		await api.key(api.$(HOLD), modifier("AltLeft", { altKey: true }));
+		await api.tap(api.$(HOLD), modifier("AltLeft", { altKey: true }));
 		assert.ok(
 			api
 				.text()
@@ -482,7 +515,7 @@ test("a letter, a chord and Tab-free noise are refused or left alone, and Esc ca
 		assert.equal(api.text().includes("can be held"), false);
 		assert.equal(edits(api).length, 0);
 		// Shift has no token and is refused like any other non-hold key.
-		await api.key(
+		await api.tap(
 			field,
 			modifier("ShiftLeft", { key: "Shift", shiftKey: true }),
 		);
@@ -495,7 +528,7 @@ test("a letter, a chord and Tab-free noise are refused or left alone, and Esc ca
 test("pressing the key already bound saves nothing, however the token is spelled", async () => {
 	await mount({ platform: "linux" }, async (api) => {
 		// Off macOS the default `alt-right-hold` IS MetaRight.
-		await api.key(api.$(HOLD), modifier("MetaRight", { metaKey: true }));
+		await api.tap(api.$(HOLD), modifier("MetaRight", { metaKey: true }));
 		assert.equal(edits(api).length, 0);
 	});
 	await mount(
@@ -506,7 +539,7 @@ test("pressing the key already bound saves nothing, however the token is spelled
 				api.$('button[aria-label="Reset Push to talk (hold) to its default"]'),
 				null,
 			);
-			await api.key(api.$(HOLD), modifier("MetaRight", { metaKey: true }));
+			await api.tap(api.$(HOLD), modifier("MetaRight", { metaKey: true }));
 			assert.equal(edits(api).length, 0);
 		},
 	);
@@ -518,7 +551,7 @@ test("a backend refusal keeps the saved key and shows the backend sentence", asy
 		// The manager's binding is module state shared by every case: what a refused
 		// save must not do is move it, whatever an earlier case left there.
 		const before = resolvePushToTalkBinding();
-		await api.key(field, modifier("ControlRight", { ctrlKey: true }));
+		await api.tap(field, modifier("ControlRight", { ctrlKey: true }));
 		assert.ok(api.text().includes("Not a hold key."));
 		assert.equal(field.value, "Right-Option");
 		assert.deepEqual(resolvePushToTalkBinding(), before);
@@ -528,7 +561,7 @@ test("a backend refusal keeps the saved key and shows the backend sentence", asy
 test("the primary row still ignores a bare modifier and saves a chord", async () => {
 	await mount({}, async (api) => {
 		const field = api.$(START);
-		await api.key(field, modifier("ControlLeft", { ctrlKey: true }));
+		await api.tap(field, modifier("ControlLeft", { ctrlKey: true }));
 		assert.equal(edits(api).length, 0);
 		assert.equal(api.text().includes("can be held"), false);
 	});
@@ -540,8 +573,19 @@ test("the overlap note names a hold whose modifier begins an existing chord, and
 		holdModifierOverlapsChords("MetaRight", "darwin", ["primary+shift+s"]),
 		true,
 	);
+	// A panel chord's `primary` is Command on macOS, so a Control hold is clear
+	// of it - but main also matches the Start recording chord on Ctrl.
 	assert.equal(
 		holdModifierOverlapsChords("ControlLeft", "darwin", ["primary+j"]),
+		false,
+	);
+	assert.equal(
+		holdModifierOverlapsChords(
+			"ControlLeft",
+			"darwin",
+			[],
+			["primary+shift+s"],
+		),
 		true,
 	);
 	// A bare Option hold against Option chords is the case the note exists for.
@@ -577,7 +621,7 @@ test("the overlap note renders under the field when the hold shares a modifier w
 				api
 					.text()
 					.includes(
-						"Shortcuts that begin with this key can briefly start a recording",
+						"Every shortcut that uses Command, such as Command+J, will start recording for a moment. Choose Option to avoid this.",
 					),
 			);
 		},
@@ -585,7 +629,7 @@ test("the overlap note renders under the field when the hold shares a modifier w
 	await mount({ platform: "darwin" }, async (api) => {
 		// Right Option vs the shipped chords (all Cmd/Ctrl based): no overlap.
 		assert.equal(
-			api.text().includes("Shortcuts that begin with this key"),
+			api.text().includes("will start recording for a moment"),
 			false,
 		);
 	});
@@ -625,5 +669,139 @@ test("both rows are annotated for the settings search, labelled by their action"
 			],
 			["keyboard.keymap.push_to_talk", "Push to talk (hold)", true, true],
 		]);
+	});
+});
+
+const pointer = "For a shortcut with a letter, use Start recording above.";
+
+test("a modifier that grows into a chord saves nothing and says why (Cmd+Shift+S, Ctrl+Tab, Cmd+Tab)", async () => {
+	await mount({ platform: "darwin" }, async (api) => {
+		const field = api.$(HOLD);
+		field.focus();
+		const chords = [
+			[
+				modifier("MetaLeft", { metaKey: true }),
+				{ key: "Shift", code: "ShiftLeft", metaKey: true, shiftKey: true },
+				{ key: "s", code: "KeyS", metaKey: true, shiftKey: true },
+			],
+			[
+				modifier("ControlLeft", { ctrlKey: true }),
+				{ key: "Tab", code: "Tab", ctrlKey: true },
+			],
+			[
+				modifier("MetaLeft", { metaKey: true }),
+				{ key: "Tab", code: "Tab", metaKey: true },
+			],
+		];
+		for (const [first, ...rest] of chords) {
+			await api.key(field, first);
+			// Nothing is committed while the modifier is still down.
+			assert.equal(edits(api).length, 0, "no save on the keydown");
+			for (const next of rest) await api.key(field, next);
+			await api.up(field, first);
+			assert.equal(edits(api).length, 0, "no save once it was a chord");
+			assert.equal(field.value, "Right-Option", "the saved key is untouched");
+			assert.ok(api.text().includes("can be held"), "the refusal is shown");
+			assert.ok(api.text().includes(pointer));
+			await api.up(field, rest.at(-1));
+			// Esc then clears the refusal: nothing was ever saved to "cancel".
+			await api.key(field, { key: "Escape", code: "Escape" });
+			assert.equal(api.text().includes("can be held"), false);
+		}
+	});
+});
+
+test("a plain tap saves on release, never on press, and Esc between drops it", async () => {
+	await mount({ platform: "darwin" }, async (api) => {
+		const field = api.$(HOLD);
+		const control = modifier("ControlRight", { ctrlKey: true });
+		await api.key(field, control);
+		assert.equal(edits(api).length, 0);
+		await api.up(field, control);
+		assert.deepEqual(
+			edits(api).map((edit) => edit.value),
+			["ctrl-right-hold"],
+		);
+		// Esc while the modifier is down: the later release saves nothing.
+		const left = modifier("MetaLeft", { metaKey: true });
+		await api.key(field, left);
+		await api.key(field, { key: "Escape", code: "Escape" });
+		await api.up(field, left);
+		assert.equal(edits(api).length, 1);
+	});
+});
+
+test("leaving the field mid-press saves nothing on the release that lands elsewhere", async () => {
+	await mount({ platform: "darwin" }, async (api) => {
+		const field = api.$(HOLD);
+		const control = modifier("ControlRight", { ctrlKey: true });
+		field.focus();
+		await api.key(field, control);
+		// Window blur / focus loss: React's onBlur on the field.
+		await act(async () => {
+			field.blur();
+		});
+		field.focus();
+		await api.up(field, control);
+		assert.equal(edits(api).length, 0);
+	});
+});
+
+test("the refusal and the overlap note are wired to the field for assistive tech", async () => {
+	await mount(
+		{ platform: "darwin", holdValue: "meta-right-hold" },
+		async (api) => {
+			const field = api.$(HOLD);
+			const described = field
+				.getAttribute("aria-describedby")
+				.split(" ")
+				.map((id) => api.window.document.getElementById(id));
+			assert.ok(described.every(Boolean), "every described id exists");
+			assert.ok(
+				described.some((node) =>
+					node.textContent.includes("will start recording for a moment"),
+				),
+				"the overlap note is part of the description",
+			);
+			assert.equal(field.getAttribute("aria-invalid"), null);
+			await api.tap(field, { key: "a", code: "KeyA" });
+			assert.equal(field.getAttribute("aria-invalid"), "true");
+			const status = described.at(-1);
+			assert.equal(status.getAttribute("aria-live"), "polite");
+			assert.ok(status.textContent.includes(pointer));
+		},
+	);
+});
+
+test("the primary row says a lone modifier is not a shortcut, on release", async () => {
+	await mount({}, async (api) => {
+		const field = api.$(START);
+		const control = modifier("ControlLeft", { ctrlKey: true });
+		await api.key(field, control);
+		assert.equal(api.text().includes("needs a letter or number"), false);
+		await api.up(field, control);
+		assert.ok(
+			api
+				.text()
+				.includes(
+					"A shortcut needs a letter or number as well as a modifier key.",
+				),
+		);
+		assert.equal(edits(api).length, 0);
+	});
+});
+
+test("a ?setting= deep link to a promoted speech key focuses that row's field (QA Q-1)", async () => {
+	for (const [key, selector] of [
+		["keymap.push_to_talk", HOLD],
+		["keymap.start_recording", START],
+	]) {
+		await mount({ focusKey: key }, async (api) => {
+			assert.equal(api.window.document.activeElement, api.$(selector), key);
+		});
+	}
+	await mount({ focusKey: "keymap.something_else" }, async (api) => {
+		assert.notEqual(api.window.document.activeElement, api.$(HOLD));
+		assert.notEqual(api.window.document.activeElement, api.$(START));
 	});
 });
