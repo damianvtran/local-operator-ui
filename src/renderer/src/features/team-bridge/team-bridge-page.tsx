@@ -1484,17 +1484,26 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	);
 	/* The author, as a message row names a sender: the roster resolves the label,
 	   so the optimistic row and its server replacement read identically. */
-	const selfSender = useMemo<TeamBridgeMessage["sender"] | null>(
-		() =>
-			selfAccountId
-				? {
-						account_id: selfAccountId,
-						kind: "human",
-						display_label: selfName?.trim() ?? "",
-					}
-				: null,
-		[selfAccountId, selfName],
-	);
+	/*
+	 * THE AUTHOR'S OWN NAME, TAKEN FROM THE BEST SOURCE THAT HAS ONE.
+	 *
+	 * A server row names its sender in `display_label`: the hub stamps it when the
+	 * message is stored. An optimistic row has no hub to ask, so it carries what this
+	 * client knows - the organization's roster for the signed-in account first (the
+	 * same row `labelFor` resolves a peer through, so the author reads the same in
+	 * their own message as in the rail), then the name the shell holds. The account id
+	 * is the last resort, because a row tagged with somebody's id still reads as a
+	 * person; "" would read as "Unknown person" (operator report, 2026-10-30, caught
+	 * on the first frame of a first message).
+	 */
+	const selfSender = useMemo<TeamBridgeMessage["sender"] | null>(() => {
+		if (!selfAccountId) return null;
+		const mine = people.find((row) => row.account_id === selfAccountId);
+		const label = mine
+			? personDisplayLabel(mine)
+			: (selfName?.trim() ?? "") || selfAccountId;
+		return { account_id: selfAccountId, kind: "human", display_label: label };
+	}, [selfAccountId, selfName, people]);
 	const merged = useMemo(
 		() => mergeOptimisticMessages(messages, viewSends, selfSender, shown?.id),
 		[messages, viewSends, selfSender, shown?.id],
