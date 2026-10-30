@@ -31681,7 +31681,7 @@
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
 			"source_sha256": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f",
-			"target_sha256": "425881bf26885bbfde26462e002e78c276d353911049bb56f82c745120c21f02",
+			"target_sha256": "d7c706a137f2f6d7734372442f8ee305c61373542a7bb7167329e2fb446270b8",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -31700,35 +31700,35 @@
 					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "c16fabd13d68-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/c16fabd13d68-ru.json",
+					"receipt_sha256": "8494b39a173e4447448e61d342b5b41321a33a9e8ac0b44ca41fa6ab85055ea9",
+					"scope": "Re-audit A (PR #1523 head d71058ce222): invitation_note_v2 A2-RU-M1 remediation + full-string fidelity; only ru delta since 90bb4c7d4e2",
+					"note": "Re-audit A of A2-RU-M1 fix (mute clause → «Без звука», = notify.mute). Full note fidelity OK. 0 blocker, 0 major, 0 minor, 1 nit; ids RA-RU-N1. Record: i18n/audits/evidence/ru/ui.teamBridge/teambridge-members-polish-reaudit-a-c16fabd13d68-ru/record.json"
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "b5610aecd5f2-ru",
+					"instance": "d5ed40af1448-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/b5610aecd5f2-ru.json",
-					"receipt_sha256": "6053a36936037da94f23b1478be9d7dccac23e86298c39294ce3095e0e16637b",
-					"scope": "fix/team-bridge-members-dialog-polish delta (catalogue commit c7aefd761ed): 14 added ui.teamBridge.members.* keys audited linguistically, 11 removed keys confirmed removed with English; other values byte-identical to the base row (9d7c5fd911e).",
-					"note": "Members-dialog polish delta: 14 keys added, 11 retired. 0 nit(s), 0 blocker/major. invitation_note_v2 fidelity checked clause by clause. Record: i18n/audits/evidence/ru/ui.teamBridge/teambridge-members-polish-audit-b5610aecd5f2-ru/record.json"
-				},
-				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-30",
-					"result": "clean-with-findings",
-					"instance": "e49c0ab64b49-ru",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 1,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/e49c0ab64b49-ru.json",
-					"receipt_sha256": "edc7191fe97ac1b6b1ec1d5e1c20eeb975cb2d96c93dd00f1c577bd2a73431fc",
-					"scope": "Second audit: invitation_note_v2 (clause-by-clause) + quick pass invite_count, remove_label; head f1fd25bf339",
-					"note": "Second independent audit (consent copy). 0 blocker, 0 major, 1 minor, 0 nit; ids A2-RU-M1. Record: i18n/audits/evidence/ru/ui.teamBridge/teambridge-members-polish-audit2-e49c0ab64b49-ru/record.json"
+					"receipt": "i18n/receipts/d5ed40af1448-ru.json",
+					"receipt_sha256": "ad59a42d77642ec81408aa72ca26e3e9c3201d6538f98b622302fb38f9e8a135",
+					"scope": "Re-audit of A2-RU-M1 remediation at d71058ce222: invitation_note_v2 mute clause, nested-quote rule and whole-string fidelity; ru diff vs 90bb4c7d4e2 is that one line.",
+					"note": "Auditor B re-audit, A2-RU-M1 remediation: 0 blocker/major/minor/nit. Record: i18n/audits/evidence/ru/ui.teamBridge/teambridge-members-polish-reaudit-d5ed40af1448-ru/record.json"
 				}
 			],
 			"status": "audited",
@@ -32633,6 +32633,47 @@
 							"receipt": "i18n/receipts/tb1489m3-ru-2d47856c6ee9.json",
 							"receipt_sha256": "5bcbb35cd541df576107294c72da4a1429440dc8d172acbd44fd57122c0ac9f6",
 							"scope": "Merge-delta RE-BIND after PR #1482 landed on origin/main: the same audited one-key delta (list.error_stale), re-bound to the merged catalogue that now carries both audited deltas; 283 keys = 282 branch U 282 main, zero values changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f",
+					"target_sha256": "425881bf26885bbfde26462e002e78c276d353911049bb56f82c745120c21f02",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "b5610aecd5f2-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b5610aecd5f2-ru.json",
+							"receipt_sha256": "6053a36936037da94f23b1478be9d7dccac23e86298c39294ce3095e0e16637b",
+							"scope": "fix/team-bridge-members-dialog-polish delta (catalogue commit c7aefd761ed): 14 added ui.teamBridge.members.* keys audited linguistically, 11 removed keys confirmed removed with English; other values byte-identical to the base row (9d7c5fd911e).",
+							"note": "Members-dialog polish delta: 14 keys added, 11 retired. 0 nit(s), 0 blocker/major. invitation_note_v2 fidelity checked clause by clause. Record: i18n/audits/evidence/ru/ui.teamBridge/teambridge-members-polish-audit-b5610aecd5f2-ru/record.json"
+						},
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-30",
+							"result": "clean-with-findings",
+							"instance": "e49c0ab64b49-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/e49c0ab64b49-ru.json",
+							"receipt_sha256": "edc7191fe97ac1b6b1ec1d5e1c20eeb975cb2d96c93dd00f1c577bd2a73431fc",
+							"scope": "Second audit: invitation_note_v2 (clause-by-clause) + quick pass invite_count, remove_label; head f1fd25bf339",
+							"note": "Second independent audit (consent copy). 0 blocker, 0 major, 1 minor, 0 nit; ids A2-RU-M1. Record: i18n/audits/evidence/ru/ui.teamBridge/teambridge-members-polish-audit2-e49c0ab64b49-ru/record.json"
 						}
 					],
 					"status": "audited"
