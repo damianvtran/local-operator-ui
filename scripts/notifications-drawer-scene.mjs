@@ -454,6 +454,47 @@ export async function runDrawerRemediationScene({
 			await click(cdp, '[data-tour-tag="ask-pane-trigger"]');
 		await click(cdp, '[data-drawer-tab="updates"]');
 	};
+	/*
+	 * HAND THE REEL BACK DRAWN, NOT MERELY REQUESTED (review round 6, R6-1).
+	 *
+	 * This lane ends by putting the app on the notifications route for the next
+	 * negative control, which measures `[data-notification-row]` as its first act.
+	 * A hash assignment resolves when the string is assigned - not when the router
+	 * has rendered the page, its two list queries have answered or React has
+	 * committed rows - so returning on the assignment alone handed that control a
+	 * document with no reel in it, and a settle race was reported as a row that had
+	 * left the list. The route restore is therefore not complete until a row is in
+	 * the document.
+	 *
+	 * A budget, never a retry: nothing here can hide a reel that stays empty - the
+	 * wait fails by name, with the page state that it failed on, and the row's own
+	 * presence is the condition rather than a sleep long enough to usually work.
+	 */
+	const settleBackToReel = async () => {
+		await cdp.evaluate(`(location.hash='#/notifications')`);
+		try {
+			return await until(
+				() =>
+					cdp.evaluate(
+						`(() => { const rows = document.querySelectorAll('[data-notification-row]').length; return location.hash === '#/notifications' && rows > 0 ? { hash: location.hash, rows } : null; })()`,
+					),
+				"the notifications reel drawn after the route restore",
+			);
+		} catch (error) {
+			/* Name what was on screen, so the artifact answers this without a rerun. */
+			const seen = await cdp
+				.evaluate(
+					`(() => ({ hash: location.hash, rows: document.querySelectorAll('[data-notification-row]').length, alert: Boolean(document.querySelector('[role="alert"]')) }))()`,
+				)
+				.catch(() => null);
+			throw new Error(
+				`${error.message} - the page held ${JSON.stringify(seen)}`,
+			);
+		}
+	};
+	/* Declared out here because the lane fails on it AFTER the `finally` has run: see
+	 * the tail of this function. */
+	let handoverError = null;
 	try {
 		fixture.state.enabled = true;
 		await open();
@@ -818,6 +859,23 @@ export async function runDrawerRemediationScene({
 				`(()=>{const e=process.mainModule.require('electron');const w=e.BrowserWindow.getAllWindows()[0];w.webContents.setZoomFactor(1);w.setContentSize(1380,900);return true})()`,
 			)
 			.catch(() => {});
-		await cdp.evaluate(`(location.hash='#/notifications')`).catch(() => {});
+		try {
+			receipt.handover = await settleBackToReel();
+		} catch (error) {
+			handoverError = error;
+			receipt.handover = { error: String(error?.message ?? error) };
+			receipt.result = "FAIL";
+		}
+		/* The write above is the crash-safe early copy; this one carries the handover
+		 * it could not know about yet, so the artifact matches the outcome the run had. */
+		writeFileSync(
+			join(out, "drawer-remediation.json"),
+			JSON.stringify(receipt, null, 2),
+		);
 	}
+	/* Reached only when the scene itself did not throw, so a handover that never
+	 * landed fails the lane without cancelling the error that explains a red one:
+	 * a `throw` inside the `finally` would overwrite it, and the linter refuses that
+	 * form for exactly this reason. */
+	if (handoverError) throw handoverError;
 }
