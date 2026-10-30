@@ -58106,6 +58106,130 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.agents.descriptions",
+			"source_sha256": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511",
+			"target_sha256": "c97aa95926e4a6ddd1e07b9cedb0178b18fddcd940db3c06d5bd3f7cf1418f02",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "39da55ffd852-agents2-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/39da55ffd852-agents2-fr.json",
+					"receipt_sha256": "ed4b77816d4052f1cbe8b5f5ff56f109c55f76f9cc727c03faacdca2ab9a0e25",
+					"scope": "Agents page copy for fr: 12 shipped agent-card descriptions, audited as the exact bytes shipped to src/i18n/catalogues/fr/ui.agents.descriptions.json",
+					"note": "0 minor / 2 nit recorded, 0 blocker/major; re-issued by the same auditor in the canonical per-namespace sha256{en,fr} shape, because a receipt that records its hashes at the root cannot bind a row. Evidence: i18n/audits/evidence/fr/ui.agents.descriptions/39da55ffd852-agents2-fr/receipt.json + verdict.txt (the run log stays out of git: *.log is ignored)"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.agents.detail.install",
+			"source_sha256": "964c83098370d82d74df8c21d6f1f69e74a76f4ea73b3af7bc16ac06981fbcf0",
+			"target_sha256": "a80c0c6880cd9417dd3eff3c0ad60115367219e58249998296efa3cf3eb63b59",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-30",
+					"result": "clean",
+					"instance": "39da55ffd852-agents2-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/39da55ffd852-agents2-fr.json",
+					"receipt_sha256": "ed4b77816d4052f1cbe8b5f5ff56f109c55f76f9cc727c03faacdca2ab9a0e25",
+					"scope": "Agents page copy for fr: 2 install-button labels, audited as the exact bytes shipped to src/i18n/catalogues/fr/ui.agents.detail.install.json",
+					"note": "0 minor / 0 nit recorded, 0 blocker/major; re-issued by the same auditor in the canonical per-namespace sha256{en,fr} shape, because a receipt that records its hashes at the root cannot bind a row. Evidence: i18n/audits/evidence/fr/ui.agents.detail.install/39da55ffd852-agents2-fr/receipt.json + verdict.txt (the run log stays out of git: *.log is ignored)"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.agents.descriptions",
+			"source_sha256": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511",
+			"target_sha256": "f5c8dae6b17e71be0e018dc47244135903cbeb7a5b802ba569d6ce98594822a4",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openrouter/deepseek/deepseek-v4.1-flash-1017",
+					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "ff9516b18408-agents2-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 3
+					},
+					"receipt": "i18n/receipts/ff9516b18408-agents2-ru.json",
+					"receipt_sha256": "2ebd9f2b8a9155dd29f021a4353ded75c16d8bdb88ee2da686d0c9ee81e007b6",
+					"scope": "Agents page copy for ru: 12 shipped agent-card descriptions, audited as the exact bytes shipped to src/i18n/catalogues/ru/ui.agents.descriptions.json",
+					"note": "2 minor / 3 nit recorded, 0 blocker/major; re-issued by the same auditor in the canonical per-namespace sha256{en,ru} shape, because a receipt that records its hashes at the root cannot bind a row. Evidence: i18n/audits/evidence/ru/ui.agents.descriptions/ff9516b18408-agents2-ru/receipt.json + verdict.txt (the run log stays out of git: *.log is ignored)"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.agents.detail.install",
+			"source_sha256": "964c83098370d82d74df8c21d6f1f69e74a76f4ea73b3af7bc16ac06981fbcf0",
+			"target_sha256": "363c43e7d845ca59ee3b1161763322066704ec2d0a41a8a583dcd4b2f35a93e0",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "openrouter/deepseek/deepseek-v4.1-flash-1017",
+					"date": "2026-10-30",
+					"result": "clean",
+					"instance": "ff9516b18408-agents2-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/ff9516b18408-agents2-ru.json",
+					"receipt_sha256": "2ebd9f2b8a9155dd29f021a4353ded75c16d8bdb88ee2da686d0c9ee81e007b6",
+					"scope": "Agents page copy for ru: 2 install-button labels, audited as the exact bytes shipped to src/i18n/catalogues/ru/ui.agents.detail.install.json",
+					"note": "0 minor / 0 nit recorded, 0 blocker/major; re-issued by the same auditor in the canonical per-namespace sha256{en,ru} shape, because a receipt that records its hashes at the root cannot bind a row. Evidence: i18n/audits/evidence/ru/ui.agents.detail.install/ff9516b18408-agents2-ru/receipt.json + verdict.txt (the run log stays out of git: *.log is ignored)"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
