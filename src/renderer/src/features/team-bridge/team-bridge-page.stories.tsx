@@ -1665,6 +1665,15 @@ export const BuiltinHumansChannel: Story = {
 	},
 };
 
+/** Built-in #agents, with its topic in the header (agents see every message). */
+export const BuiltinAgentsChannel: Story = {
+	args: {
+		...slackRail,
+		target: { type: "conversation", id: agentsChannel.id },
+		messages: [],
+	},
+};
+
 /** A person with no DM: an addressed draft; nothing has been created. */
 export const PersonDraft: Story = {
 	args: {
