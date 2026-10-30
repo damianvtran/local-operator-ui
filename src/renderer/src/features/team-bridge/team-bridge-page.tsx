@@ -1605,10 +1605,19 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					 * are being re-read rather than presenting a stale list as a current
 					 * one. The slot is always in the flow and only its colour role changes,
 					 * so a poll cannot reflow the rail under the reader. `data-rail-refreshing`
-					 * names which read is behind it, and the unread case is kept separate
-					 * because that count is the number a reader acts on. No new copy: this is
-					 * a state of the rail, and what a screen reader needs to hear is the
-					 * affected regions' own `aria-busy`.
+					 * names which read is behind it. No new copy: this is a state of the
+					 * rail, and what a screen reader needs to hear is the affected regions'
+					 * own `aria-busy`.
+					 *
+					 * AND NEITHER READ WEARS THE ATTENTION HUE (design round 1, D2). Green in
+					 * this rail is the mark of a count the reader owes attention to: every
+					 * row's `AttentionBadge` sits beside this dot, and so does the collapsed
+					 * sidebar's More badge. A green dot four rows above those badges reads as
+					 * a count of unread, and makes the one mark readers trust mean the
+					 * opposite kind of thing. Attention is a count; liveness is plumbing. So
+					 * both refresh states are `ink-dim`, and which read is behind the dot
+					 * stays in `data-rail-refreshing` - for instruments and tests rather than
+					 * for eyes, because a difference no reader can act on does not earn a hue.
 					 */}
 					<span
 						data-rail-refreshing={
@@ -1617,11 +1626,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						aria-hidden="true"
 						className={cn(
 							"size-1.5 shrink-0 rounded-full",
-							refreshingUnread
-								? "bg-accent"
-								: refreshingRows
-									? "bg-ink-dim"
-									: "bg-transparent",
+							refreshingUnread || refreshingRows
+								? "bg-ink-dim"
+								: "bg-transparent",
 						)}
 					/>
 				</header>
@@ -1707,18 +1714,41 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						)}
 				</nav>
 				<ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block!">
-					{listState === "error" && (
-						<div className="flex flex-col items-start gap-2 px-3 py-3">
-							<p className="text-[12px] text-ink-muted">
-								{t("ui.teamBridge.list.error")}
-							</p>
-							{onRetry && (
-								<Button size="sm" variant="ghost" onClick={onRetry}>
-									{t("ui.teamBridge.list.retry")}
-								</Button>
-							)}
-						</div>
-					)}
+					{/*
+					 * THE SENTENCE MUST MATCH WHAT IS UNDER IT (design round 1, D1).
+					 * `listState` is "error" whenever `list.isError`, and `conversations`
+					 * falls back to the watcher's cached rows, so this branch now renders
+					 * above rows that are painted and usable - one failed read (an offline
+					 * blip, a 5xx) after a good one. "Conversations could not be loaded."
+					 * is then false about the pixels: the reader can see the conversations.
+					 * What actually failed is the refresh, so with rows on screen the note
+					 * says that, and takes the quiet underlined retry the chat sidebar
+					 * already uses for its own stale list rather than an error panel's
+					 * button. With nothing painted the old sentence is still exactly true
+					 * and keeps its panel and button.
+					 */}
+					{listState === "error" &&
+						(sidebarRows.length > 0 ? (
+							<div className="space-y-1 px-3 py-3 text-[12px] text-ink-muted">
+								<p>{t("ui.teamBridge.list.error_stale")}</p>
+								{onRetry && (
+									<button type="button" className="underline" onClick={onRetry}>
+										{t("ui.teamBridge.list.retry")}
+									</button>
+								)}
+							</div>
+						) : (
+							<div className="flex flex-col items-start gap-2 px-3 py-3">
+								<p className="text-[12px] text-ink-muted">
+									{t("ui.teamBridge.list.error")}
+								</p>
+								{onRetry && (
+									<Button size="sm" variant="ghost" onClick={onRetry}>
+										{t("ui.teamBridge.list.retry")}
+									</Button>
+								)}
+							</div>
+						))}
 					<RailSection
 						id="team-bridge-channels-heading"
 						title={t("ui.teamBridge.section.channels")}

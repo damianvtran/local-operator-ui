@@ -6,6 +6,7 @@
 	"ui.teamBridge.list.empty.body": "Inicia un mensaje directo, un grupo o un canal.",
 	"ui.teamBridge.list.loading": "Cargando conversaciones",
 	"ui.teamBridge.list.error": "No se pudieron cargar las conversaciones.",
+	"ui.teamBridge.list.error_stale": "No se pudo actualizar. Se muestra tu última lectura.",
 	"ui.teamBridge.list.retry": "Reintentar",
 	"ui.teamBridge.list.untitled": "Conversación sin título",
 	"ui.teamBridge.kind.dm": "Mensaje directo",

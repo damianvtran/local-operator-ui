@@ -6,6 +6,7 @@
 	"ui.teamBridge.list.empty.body": "Bắt đầu một tin nhắn trực tiếp, một nhóm hoặc một kênh.",
 	"ui.teamBridge.list.loading": "Đang tải cuộc trò chuyện",
 	"ui.teamBridge.list.error": "Không tải được danh sách cuộc trò chuyện.",
+	"ui.teamBridge.list.error_stale": "Không làm mới được. Đang hiển thị lần đọc gần nhất của bạn.",
 	"ui.teamBridge.list.retry": "Thử lại",
 	"ui.teamBridge.list.untitled": "Cuộc trò chuyện không tên",
 	"ui.teamBridge.kind.dm": "Tin nhắn trực tiếp",

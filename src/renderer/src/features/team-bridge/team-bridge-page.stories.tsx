@@ -667,6 +667,31 @@ export const ErrorState: Story = {
 	},
 };
 
+/**
+ * THE D1 PAIR (design round 1). A failed list read over rows the watcher's cache
+ * already painted: the rail keeps the rows and says the refresh is what failed.
+ * This is reachable in production - `list.isError` after any good read lands
+ * here - and the sentence used to claim the conversations could not be loaded
+ * while they sat visible underneath it.
+ */
+export const ErrorWithCachedRows: Story = {
+	args: { listState: "error" },
+};
+
+/**
+ * The list behind painted rows is being re-read. The dot names the read in
+ * `data-rail-refreshing`; it wears `ink-dim`, never the attention hue green
+ * (D2) - that hue is the unread count on the rows below it.
+ */
+export const RefreshingRows: Story = {
+	args: { refreshingRows: true },
+};
+
+/** The unread read is in flight behind painted rows - same ink, different read. */
+export const RefreshingUnread: Story = {
+	args: { refreshingUnread: true },
+};
+
 export const ThreadError: Story = {
 	args: { messageState: "error" },
 };
