@@ -216,14 +216,30 @@ test("a pending roster is a loading group with nothing to draw yet", () => {
 	assert.deepEqual(result[0].members, []);
 });
 
-test("an organization with no known state or roster reads as ready and empty", () => {
+test("an unstated tenant with no roster is LOADING, not an empty organization", () => {
+	/*
+	 * DESIGN ROUND 1, D4. An absent state with no members is a read that never
+	 * answered; calling it "ready" told the reader "No one else has joined this
+	 * organization yet." about a roster nobody had fetched.
+	 */
 	const result = rosters.orgRosters({
 		organizations: [org("tnt_1")],
 		directs: [],
 		selfAccountId: SELF,
 	});
-	assert.equal(result[0].state, "ready");
+	assert.equal(result[0].state, "loading");
 	assert.deepEqual(result[0].members, []);
+});
+
+test("an unstated tenant that HAS a roster stays ready", () => {
+	// The other half of D4: a painted roster must never turn into a spinner.
+	const result = rosters.orgRosters({
+		organizations: [org("tnt_1")],
+		directories: { tnt_1: [person("Ada", "acct_ada")] },
+		directs: [],
+		selfAccountId: SELF,
+	});
+	assert.equal(result[0].state, "ready");
 });
 
 test("direct messages are split by organization, never mixed", () => {

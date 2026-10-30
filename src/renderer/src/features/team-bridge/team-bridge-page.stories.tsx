@@ -414,6 +414,41 @@ const northwindPeople = [
 	},
 ];
 
+/**
+ * A SECOND organization whose name is long enough to truncate in the 288px rail
+ * (design round 1, D3): "Northwind Collective" fits, so no earlier frame could
+ * show what a truncated header looks like, and a truncated name is not
+ * recoverable by sight without the header's `title`.
+ */
+const longNameOrganization: TeamBridgeOrganization = {
+	tenantId: asTeamBridgeTenantId("tnt_2"),
+	name: "Northwind Collective - Field Operations, Europe & Middle East",
+	role: "member",
+	unread: 4,
+};
+
+/**
+ * THE EVIDENCE STORIES HOLD ONE CONVERSATION, so the sections under test - the
+ * organization groups, and the audit rail after them - are ON SCREEN at the
+ * 1280x720 the frames are taken at. Nothing is hidden by a scroll: the harness
+ * browser's scroll action moves the window, and this page is `overflow: hidden`
+ * with the rail as its own scroll container, so a below-the-fold group could not
+ * be captured at all. The row set is the only thing these stories narrow; the
+ * organization fixtures, rosters and read states are the general ones.
+ */
+const compactConversations: TeamBridgeConversation[] = [];
+
+/** The roster minus the two bridge-off rows, so three organization groups fit. */
+const compactRoster = directoryPeople.slice(0, 3);
+
+/*
+ * THE AUDIT FRAMES PUT THE ROSTERS AWAY. The audit section is the last one on the
+ * rail, so at 720px every row above it is space it does not have; the audit
+ * stories therefore answer both rosters empty (never unread - that would be
+ * D4's spinner) and spend the height on the section under review. The roster
+ * states have their own frames.
+ */
+
 /** ONE row in a third organization, so the grouped rail's height is exercised. */
 const acmePeople = [
 	{
@@ -895,9 +930,9 @@ export const AllOrganizations: Story = {
 export const AllOrganizationsEmptyRoster: Story = {
 	args: {
 		scope: TEAM_BRIDGE_ALL_SCOPE,
-		conversations: [dm, beaDm, channel, group, northwindChannel],
-		target: { type: "conversation", id: dm.id },
-		directories: { tnt_1: directoryPeople, tnt_2: [] },
+		conversations: compactConversations,
+		target: null,
+		directories: { tnt_1: compactRoster, tnt_2: [] },
 		directoryStates: { tnt_1: "ready", tnt_2: "ready" },
 	},
 };
@@ -910,9 +945,9 @@ export const AllOrganizationsEmptyRoster: Story = {
 export const AllOrganizationsRosterFailed: Story = {
 	args: {
 		scope: TEAM_BRIDGE_ALL_SCOPE,
-		conversations: [dm, beaDm, channel, group, northwindChannel],
-		target: { type: "conversation", id: dm.id },
-		directories: { tnt_1: directoryPeople },
+		conversations: compactConversations,
+		target: null,
+		directories: { tnt_1: compactRoster },
 		directoryStates: { tnt_1: "ready", tnt_2: "error" },
 		directoryErrors: {
 			tnt_2: { status: 503, message: "The directory is unavailable." },
@@ -928,6 +963,24 @@ export const AllOrganizationsRostersLoading: Story = {
 		target: { type: "conversation", id: dm.id },
 		directories: {},
 		directoryStates: { tnt_1: "loading", tnt_2: "loading" },
+	},
+};
+
+/**
+ * A LONG ORGANIZATION NAME (design round 1, D3): the subheader truncates in the
+ * 288px rail instead of wrapping, and `title` recovers the full name on hover.
+ * Flat rows keep their 11px caption, so both name treatments are in one frame.
+ */
+export const AllOrganizationsLongOrgName: Story = {
+	args: {
+		organizations: [minervaOrganization, longNameOrganization],
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		// ONE flat row and ONE roster row per organization: the long header and a
+		// flat row's 11px caption have to be in the same frame (design D3).
+		conversations: [northwindChannel],
+		target: null,
+		directories: { tnt_1: compactRoster, tnt_2: northwindPeople },
+		directoryStates: { tnt_1: "ready", tnt_2: "ready" },
 	},
 };
 
@@ -1019,6 +1072,14 @@ export const LoadingAllOrganizations: Story = {
 		target: null,
 		messages: [],
 		messageState: "idle",
+		/*
+		 * THE ROSTERS ARE PENDING TOO (design round 1, D4). Without these the
+		 * groups fell back to "ready" with zero members and claimed "No one else
+		 * has joined this organization yet." for a read that had never answered;
+		 * the code now reports `loading` for that case as well, so this story
+		 * states what production states.
+		 */
+		directoryStates: { tnt_1: "loading", tnt_2: "loading" },
 	},
 };
 
@@ -1030,6 +1091,10 @@ export const EmptyAllOrganizations: Story = {
 		target: null,
 		messages: [],
 		messageState: "idle",
+		// AN ANSWERED EMPTY, not an unread roster: the two now render differently
+		// (design D4), and this story is about the create hint.
+		directories: { tnt_1: [], tnt_2: [] },
+		directoryStates: { tnt_1: "ready", tnt_2: "ready" },
 	},
 };
 
@@ -1222,13 +1287,17 @@ function staticOwnerAudit(
 		rail: () => (
 			<section className="mt-4" aria-label={t("ui.ownerAudit.title")}>
 				<OwnerAuditSectionHeader />
-				{organizations.map((organization) => (
+				{organizations.map((organization, index) => (
 					<div key={organization.tenantId}>
+						{/* Mirrors `useOwnerAuditSurface` exactly, D2's first-group rule
+						    included - a story that drifts from production cannot evidence
+						    production's pixels. */}
 						{organizations.length > 1 && (
 							<RailGroupHeader
 								id={`owner-audit-${organization.tenantId}`}
 								name={organization.name}
 								inset="bare"
+								first={index === 0}
 							/>
 						)}
 						<OwnerAuditRailView
@@ -1248,6 +1317,13 @@ function staticOwnerAudit(
 export const AllOrganizationsAuditLoading: Story = {
 	args: {
 		...AllOrganizations.args,
+		// The audit rail must be on screen with its headers (see above).
+		conversations: compactConversations,
+		// Inherited from AllOrganizations.args; that conversation is not in this
+		// story's list, and a pane saying "not open to you" is not what is under
+		// review here.
+		target: null,
+		directories: { tnt_1: [], tnt_2: [] },
 		ownerAudit: staticOwnerAudit(
 			[minervaOrganization, northwindOrganization],
 			"loading",
@@ -1259,6 +1335,13 @@ export const AllOrganizationsAuditLoading: Story = {
 export const AllOrganizationsAuditPopulated: Story = {
 	args: {
 		...AllOrganizations.args,
+		// The audit rail must be on screen with its headers (see above).
+		conversations: compactConversations,
+		// Inherited from AllOrganizations.args; that conversation is not in this
+		// story's list, and a pane saying "not open to you" is not what is under
+		// review here.
+		target: null,
+		directories: { tnt_1: [], tnt_2: [] },
 		ownerAudit: staticOwnerAudit(
 			[minervaOrganization, northwindOrganization],
 			"ready",

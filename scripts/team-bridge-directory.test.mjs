@@ -1384,6 +1384,9 @@ test("the merged view names senders from the conversation's own organization dir
 	 */
 	assert.doesNotMatch(html, /data-conversation-id="bcv_dm_bea"/);
 	assert.match(html, /data-team-bridge-person="acct_bea"/);
+	// AND IT IS NAMED FROM THAT ORGANIZATION'S DIRECTORY (review round 1, m2):
+	// the row's own accessible name carries the directory label, not "Member".
+	assert.match(html, /aria-label="Message Bea"/);
 	assert.doesNotMatch(visible(html), /\bMember\b/);
 });
 

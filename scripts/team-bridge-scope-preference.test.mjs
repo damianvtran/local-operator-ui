@@ -233,3 +233,69 @@ test("the snapshot never outranks the organization list", () => {
 		"tnt_1",
 	);
 });
+
+const snapshotRow = (id, tenantId, patch = {}) => ({
+	id,
+	tenant_id: tenantId,
+	kind: "channel",
+	name: id,
+	visibility: "private",
+	agent_capable: false,
+	status: "open",
+	created_by: "acct_self",
+	last_message_at: "2026-10-19T10:00:00Z",
+	latest_seq: 1,
+	members: [],
+	last_read_seq: 1,
+	unread_count: 0,
+	muted: false,
+	...patch,
+});
+
+test("a stored organization paints only its own organization's snapshot", () => {
+	/*
+	 * REVIEW ROUND 1, M1, reproduced: the shell watcher's snapshot is
+	 * ACCOUNT-scoped, so it holds every organization's rows. Opening in a stored
+	 * organization used to paint B's rows under A's title.
+	 */
+	const rows = [snapshotRow("c1", "tnt_1"), snapshotRow("c2", "tnt_2")];
+	assert.deepEqual(
+		scope.snapshotForScope(rows, "tnt_1").map((row) => row.id),
+		["c1"],
+	);
+	assert.deepEqual(
+		scope.snapshotForScope(rows, "tnt_2").map((row) => row.id),
+		["c2"],
+	);
+});
+
+test("the union keeps the whole snapshot, and a scope with no rows paints none", () => {
+	const rows = [snapshotRow("c1", "tnt_1"), snapshotRow("c2", "tnt_2")];
+	// Every row belongs to an organization the reader is in; the merged filter is
+	// `visibleConversationRows`' job, not this one's.
+	assert.deepEqual(
+		scope.snapshotForScope(rows, ALL).map((row) => row.id),
+		["c1", "c2"],
+	);
+	// No fallback to "the first organization": an empty snapshot paints nothing.
+	assert.deepEqual(scope.snapshotForScope(rows, "tnt_3"), []);
+	assert.deepEqual(scope.snapshotForScope([], "tnt_1"), []);
+});
+
+test("the landing row can only come from the scope's own snapshot", () => {
+	/*
+	 * The landing effect picks `#humans`, else the first row, once. With the
+	 * unnarrowed snapshot B's newer row could be selected under A's scope, and
+	 * because the live list then cannot resolve it the page spent an archived
+	 * read on open (`selectionOutsideLive`).
+	 */
+	const rows = [
+		snapshotRow("c2", "tnt_2"),
+		snapshotRow("c1", "tnt_1", { builtin: "humans" }),
+	];
+	const visible = scope.snapshotForScope(rows, "tnt_1");
+	const landing = visible.find((row) => row.builtin === "humans") ?? visible[0];
+	assert.equal(landing.id, "c1");
+	assert.equal(landing.tenant_id, "tnt_1");
+	assert.ok(visible.every((row) => row.tenant_id === "tnt_1"));
+});

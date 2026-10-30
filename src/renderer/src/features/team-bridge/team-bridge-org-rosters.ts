@@ -103,9 +103,16 @@ export function orgRosters({
 		return {
 			tenantId,
 			name: organization.name,
-			// A directory the container has no state for is treated as ready: an
-			// absent state must not turn a painted roster into a spinner.
-			state: directoryStates?.[tenantId] ?? "ready",
+			/*
+			 * A MISSING STATE IS NOT EVIDENCE OF AN EMPTY ROSTER (design round 1,
+			 * D4). An absent state with rows stays `ready`, because a painted roster
+			 * must never turn into a spinner; an absent state with NO members is a
+			 * read that has not answered, so it is `loading` rather than a false
+			 * claim that nobody has joined.
+			 */
+			state:
+				directoryStates?.[tenantId] ??
+				(members.length > 0 ? "ready" : "loading"),
 			members,
 			chiefs,
 			directs: orgDirects,

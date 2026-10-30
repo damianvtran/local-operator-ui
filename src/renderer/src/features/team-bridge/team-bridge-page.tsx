@@ -158,6 +158,7 @@ import {
 	PersonRailRow,
 	RailGroupHeader,
 	RailLoading,
+	RailQuietLine,
 	RailSection,
 	isTargetRow,
 } from "./team-bridge-rail";
@@ -174,6 +175,7 @@ import {
 import {
 	readScopePreference,
 	resolveOpeningScope,
+	snapshotForScope,
 	writeScopePreference,
 } from "./team-bridge-scope-preference";
 import { uploadStagedImages } from "./team-bridge-staged-upload";
@@ -1648,6 +1650,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	 * Chiefs sections, and drawn BEFORE any organization header: until the list
 	 * answers there is nothing to name, so a header would be an invention. One
 	 * line each, and a failing list never replaces a roster that did answer.
+	 *
+	 * CHIEFS GETS THE QUIET COPY (design round 1, D1). Both sections read the same
+	 * organization list, so two "Organizations could not be loaded." blocks with
+	 * two Try again buttons would retry one read and read as two different
+	 * failures. People owns the statement and the button; Chiefs states the same
+	 * fact in the section's quiet line and offers no action of its own.
 	 */
 	const unionSectionNotice = membershipsLoading ? (
 		<RailLoading label={t("ui.teamBridge.scope.loading")} />
@@ -1670,6 +1678,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	) : null;
 	// An account with no organizations at all: the section's own quiet line, in
 	// the shipped `RailSection.empty` style, rather than N empty headers.
+	const unionSectionNoticeQuiet = membershipsLoading ? (
+		<RailLoading label={t("ui.teamBridge.scope.loading")} />
+	) : organizationsFailed ? (
+		<RailQuietLine>{t("ui.teamBridge.scope.error")}</RailQuietLine>
+	) : null;
 	const unionSectionEmpty =
 		unionSectionNotice || organizations.length > 0
 			? undefined
@@ -2081,7 +2094,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								empty={unionSectionEmpty}
 							>
 								{unionSectionNotice ??
-									orgGroups.map((group) => {
+									orgGroups.map((group, index) => {
 										const headingId = orgGroupHeadingId(
 											"people",
 											group.tenantId,
@@ -2089,7 +2102,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										return (
 											<Fragment key={group.tenantId}>
 												{groupedUnion && (
-													<RailGroupHeader id={headingId} name={group.name} />
+													<RailGroupHeader
+														id={headingId}
+														name={group.name}
+														first={index === 0}
+													/>
 												)}
 												{group.state === "loading" ? (
 													<RailLoading
@@ -2101,11 +2118,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 														onRetry={() => onRetryMembers?.(group.tenantId)}
 													/>
 												) : group.members.length === 0 ? (
-													/* The section's quiet line style: an organization that draws an
-													   empty line is an organization that was checked. */
-													<p className="px-2 py-1 text-[12px] text-ink-dim leading-snug">
+													/* An organization that draws an empty line is an
+													   organization that was CHECKED. */
+													<RailQuietLine>
 														{t("ui.teamBridge.people.empty")}
-													</p>
+													</RailQuietLine>
 												) : (
 													<ul
 														className="flex flex-col"
@@ -2173,8 +2190,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								title={t("ui.teamBridge.section.chiefs")}
 								empty={unionSectionEmpty}
 							>
-								{unionSectionNotice ??
-									orgGroups.map((group) => {
+								{unionSectionNoticeQuiet ??
+									orgGroups.map((group, index) => {
 										const headingId = orgGroupHeadingId(
 											"chiefs",
 											group.tenantId,
@@ -2182,21 +2199,27 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										return (
 											<Fragment key={group.tenantId}>
 												{groupedUnion && (
-													<RailGroupHeader id={headingId} name={group.name} />
+													<RailGroupHeader
+														id={headingId}
+														name={group.name}
+														first={index === 0}
+													/>
 												)}
 												{group.state === "loading" ? (
 													<RailLoading
 														label={t("ui.teamBridge.people.loading")}
 													/>
 												) : group.state === "error" ? (
-													<PeopleFailure
-														error={directoryErrors?.[group.tenantId]}
-														onRetry={() => onRetryMembers?.(group.tenantId)}
-													/>
+													/* CHIEFS DERIVES FROM PEOPLE'S READ, so it states the
+													   failure once, without a reason or a second retry
+													   (design D1): People's Try again repaints both. */
+													<RailQuietLine>
+														{t("ui.teamBridge.people.error")}
+													</RailQuietLine>
 												) : group.chiefs.length === 0 ? (
-													<p className="px-2 py-1 text-[12px] text-ink-dim leading-snug">
+													<RailQuietLine>
 														{t("ui.teamBridge.section.chiefs_empty")}
-													</p>
+													</RailQuietLine>
 												) : (
 													<ul
 														className="flex flex-col"
@@ -3400,9 +3423,10 @@ const TeamBridgeOwnedPage: FC<{
 	 *
 	 * It is used ONLY while the scope this page reads has no data of its own: an
 	 * answer that has landed always wins, so a snapshot can never shadow a current
-	 * read. Every row still passes through `visibleConversationRows`, so a snapshot
-	 * taken at account scope cannot show one organization's rows under another's
-	 * title. The watcher carries no message bodies, so the selected thread's history
+	 * read. `snapshotForScope` then narrows it to the scope being painted, because
+	 * the watcher's entry is ACCOUNT-scoped: it carries every organization's rows
+	 * (review round 1, M1). The watcher carries no message bodies, so the selected
+	 * thread's history
 	 * is still its own read and its own loading state - nothing here implies it was
 	 * already fetched.
 	 */
@@ -3524,7 +3548,21 @@ const TeamBridgeOwnedPage: FC<{
 	// The reader's own name for their own messages; `user` is null until the
 	// account read answers, never the user store's placeholder name.
 	const selfName = auth.user?.name ?? undefined;
-	const conversations = list.data?.conversations ?? openingRows ?? [];
+	/*
+	 * A SCOPE MAY ONLY PAINT ITS OWN ORGANIZATION'S SNAPSHOT (review M1).
+	 * `openingRows` is the shell watcher's account-scoped cache entry, and
+	 * `visibleConversationRows` hands a single-organization list back unchanged -
+	 * so before this, a stored single-org scope painted the OTHER organizations'
+	 * channels and DMs under its own switcher title, and the one-shot landing
+	 * effect below could select a conversation this page never reads (which in
+	 * turn made `selectionOutsideLive` spend an archived read on open). Filtering
+	 * at the source keeps the rule one place: a scope stands in only its own rows.
+	 */
+	const openingSnapshot = useMemo(
+		() => snapshotForScope(openingRows ?? [], scope),
+		[openingRows, scope],
+	);
+	const conversations = list.data?.conversations ?? openingSnapshot;
 	/*
 	 * PAINT BEFORE THE VERDICT (tb-instant-open, mechanism 2). The status answer
 	 * decides whether this surface exists for the account at all, so the gate used

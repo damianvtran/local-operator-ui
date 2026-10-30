@@ -102,6 +102,33 @@ export function writeScopePreference(
 }
 
 /**
+ * The opening snapshot, narrowed to the scope that will paint it.
+ *
+ * WHY THIS EXISTS (review round 1, M1). `openingRows` is the shell notification
+ * watcher's cache entry, and that entry is ACCOUNT-scoped
+ * (`teamBridgeKeys.conversations(TEAM_BRIDGE_ALL_SCOPE, accountId)`), so it holds
+ * every organization's rows. `visibleConversationRows` returns a single-org list
+ * unchanged, so once the first paint could start in a stored organization, an
+ * unnarrowed snapshot painted other organizations' channels and DMs under that
+ * organization's switcher title — and the one-shot landing effect, which picks
+ * `#humans` or else the first row, could select a conversation this page never
+ * reads (spending an archived read on open for a selection outside the live
+ * list). The narrow belongs here rather than in `visibleConversationRows`,
+ * because a snapshot is not the scope's own read: it is a stand-in, and a
+ * stand-in may only answer for one scope.
+ *
+ * The union keeps the whole snapshot: every row in it belongs to an organization
+ * the reader is in, and the merged filter is `visibleConversationRows`' job.
+ */
+export function snapshotForScope(
+	rows: readonly TeamBridgeConversation[],
+	scope: TeamBridgeScope,
+): TeamBridgeConversation[] {
+	if (scope === TEAM_BRIDGE_ALL_SCOPE) return [...rows];
+	return rows.filter((row) => row.tenant_id === scope);
+}
+
+/**
  * The scope a page should open in, given everything known at that moment.
  * First match wins; the order is the contract:
  *
