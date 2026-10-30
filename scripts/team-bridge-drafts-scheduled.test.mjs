@@ -1099,7 +1099,16 @@ test("a held schedule can be explicitly discarded before a fresh send or schedul
 				await act(async () => send.click());
 				assert.equal(sends.length, 1);
 				assert.equal(sends[0][0], body);
-				assert.equal(sends[0][1], entry.clientRef);
+				/*
+				 * WHAT THIS USED TO PIN: the send reused the key the discard wrote into the
+				 * draft. That pinned the defect behind production's swallowed sends - a
+				 * persisted draft key may already be spent, and the hub REPLAYS a spent key
+				 * with matching text (200, no new row). A fresh send now always mints its own
+				 * key; the property the discard owes is only that the HELD attempt's key never
+				 * goes out again, since that schedule may still fire.
+				 */
+				assert.notEqual(sends[0][1], "held-reference");
+				assert.ok(sends[0][1]);
 			} else {
 				await act(async () =>
 					element

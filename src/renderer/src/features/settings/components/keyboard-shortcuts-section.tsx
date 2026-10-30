@@ -162,7 +162,11 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 	const effective = effectiveChord(action.id, bindings);
 	const label = rowLabel(action);
 	return (
-		<div className="flex flex-col gap-1">
+		<div
+			data-search-row={`keyboard.${action.id}`}
+			data-search-control
+			className="flex flex-col gap-1"
+		>
 			<div className="flex flex-wrap items-center gap-2">
 				<Label htmlFor={fieldId} className="w-32 text-body-sm text-ink">
 					{label}
@@ -349,6 +353,10 @@ export const KeyboardShortcutsSection: FC<{
 				"ui.settings.shortcuts.keyboard_shortcuts_section.shortcut_capture_description",
 			)}
 			sectionRef={sectionRef}
+			searchSection="keyboard"
+			searchSectionLabel={t(
+				"ui.settings.navigation.settings_sidebar.keyboard_shortcuts",
+			)}
 		>
 			<div className="flex flex-col gap-4">
 				{/*

@@ -1,9 +1,9 @@
 import { formatDate, formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { Bot, UserRound } from "lucide-react";
+import { Bot, ChevronDown, ChevronRight, UserRound } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
-import type { FC } from "react";
+import type { FC, ReactNode } from "react";
 import type {
 	TeamBridgeDirectoryMember,
 	TeamBridgeMessage,
@@ -139,6 +139,58 @@ function useArrivingRows(
 
 const EMPTY_IDS: ReadonlySet<string> = new Set();
 
+/**
+ * What a READ-ONLY caller adds to a row, and nothing else.
+ *
+ * WHY THIS EXISTS (owner audit, 2026-10-30). The owner-audit transcript used to
+ * draw its own rows (wip slice c766a8c2daa): a raw pre-wrap paragraph, no
+ * avatar, a medium date on every row, no runs, the stored label as the name. The
+ * same chief-of-staff message therefore looked like two products depending on
+ * which door the owner came in by. It now renders through this list, and the
+ * few things only an audit has travel in through this ONE optional, per-message
+ * hook rather than a second renderer.
+ *
+ * THE CONTRACT: every field is optional and its absence is the channel
+ * behaviour, byte for byte (`scripts/team-bridge-owner-audit-render.test.mjs`
+ * pins a channel's markup against a golden captured before this existed). None
+ * of the fields can add a write: the toolbar, reactions, thread button and
+ * "Message" action stay governed by `reactionContext` / `onReply` /
+ * `onMessagePerson`, which a read-only caller simply does not pass.
+ */
+export type TeamBridgeRowDecoration = {
+	/*
+	 * A status mark beside the clock (on a run's continuation rows, which have
+	 * no header, it opens the body column instead, so EVERY message carries its
+	 * own mark: the audit's verdict is per message, not per run).
+	 */
+	badge?: ReactNode;
+	/*
+	 * Copy for a null body. The default ("Waiting for the agent to admit this
+	 * message") is the MEMBER view's truth; an audit has no admission to wait
+	 * for, only text the hub did not send, so it says that instead.
+	 */
+	withheldCopy?: string;
+	/*
+	 * When set, a body WITH text renders collapsed behind a disclosure whose
+	 * summary is this copy. The audit collapses unadmitted text by contract
+	 * (plaintext-equivalent, closed by default). A null or empty body is never
+	 * collapsed: a disclosure must not promise text it does not have (design
+	 * review round 1, D5).
+	 */
+	collapsedSummary?: string;
+	/*
+	 * Replaces the attachment component for this row. The shared component
+	 * FETCHES BYTES; a caller that must never load a private attachment (the
+	 * audit) drops `attachments` from the message and states what was there
+	 * through this slot. It also counts as "has attachments" for the
+	 * image-only-message rule, so an empty body beside it is not drawn as an
+	 * empty prose block.
+	 */
+	attachments?: ReactNode;
+	/* Rendered last in the content column (the audit's thread-reply disclosure). */
+	after?: ReactNode;
+};
+
 export const TeamBridgeMessageList: FC<{
 	messages: readonly TeamBridgeMessage[];
 	labelFor: (sender: TeamBridgeMessage["sender"]) => string | null;
@@ -171,6 +223,10 @@ export const TeamBridgeMessageList: FC<{
 	arrivalKey?: string;
 	/** A paged read restores history; it never introduces a live arrival. */
 	arrivalsEnabled?: boolean;
+	/** Read-only per-row additions; see `TeamBridgeRowDecoration`. */
+	decorate?: (
+		message: TeamBridgeMessage,
+	) => TeamBridgeRowDecoration | undefined;
 }> = ({
 	messages,
 	labelFor,
@@ -188,6 +244,7 @@ export const TeamBridgeMessageList: FC<{
 		messages[0]?.conversation_id,
 	),
 	arrivalsEnabled = true,
+	decorate,
 }) => {
 	const locale = useI18nLocale();
 	const arriving = useArrivingRows(arrivalKey, messages, arrivalsEnabled);
@@ -238,6 +295,7 @@ export const TeamBridgeMessageList: FC<{
 						density={density}
 						arriving={arriving.has(item.message)}
 						onArrivalEnd={arriving.end}
+						decoration={decorate?.(item.message)}
 					/>
 				),
 			)}
@@ -302,6 +360,7 @@ const MessageRow: FC<{
 	density?: "regular" | "compact";
 	arriving?: boolean;
 	onArrivalEnd?: () => void;
+	decoration?: TeamBridgeRowDecoration;
 }> = ({ reactionContext, ...props }) =>
 	reactionContext && props.message.body !== null ? (
 		<ReactableMessageRow
@@ -341,6 +400,7 @@ type MessageRowProps = {
 	density?: "regular" | "compact";
 	arriving?: boolean;
 	onArrivalEnd?: () => void;
+	decoration?: TeamBridgeRowDecoration;
 };
 
 const MessageRowView: FC<MessageRowProps> = ({
@@ -359,6 +419,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 	density,
 	arriving = false,
 	onArrivalEnd,
+	decoration,
 }) => {
 	const summary = threadSummary(message);
 	/* One-level threads: only a timeline root can open a thread - and none can
@@ -536,16 +597,68 @@ const MessageRowView: FC<MessageRowProps> = ({
 								{clock}
 							</time>
 						)}
+						{decoration?.badge}
 					</div>
 				)}
+				{continuation && decoration?.badge && (
+					<div className="flex pb-0.5">{decoration.badge}</div>
+				)}
 				{/* A null body is an agent member's unadmitted message: say so
-				    rather than rendering an empty row. */}
-				{message.body === null ? (
+				    rather than rendering an empty row. A caller that collapses this
+				    row (the audit's unadmitted verdicts) gets the same placeholder for
+				    a BLANK body with nothing attached: the wire allows "", and an
+				    empty prose block there reads as a rendering fault, not as "no
+				    text was sent" (agent review round 1, R1-2). */}
+				{message.body === null ||
+				(decoration?.collapsedSummary !== undefined &&
+					message.body.trim() === "" &&
+					(message.attachments?.length ?? 0) === 0 &&
+					decoration.attachments === undefined) ? (
 					<p className="text-[14px] text-ink-dim italic">
-						{t("ui.teamBridge.thread.withheld")}
+						{decoration?.withheldCopy ?? t("ui.teamBridge.thread.withheld")}
 					</p>
 				) : message.body.trim() === "" &&
-					(message.attachments?.length ?? 0) > 0 ? null : (
+					((message.attachments?.length ?? 0) > 0 ||
+						decoration?.attachments !==
+							undefined) ? null : decoration?.collapsedSummary &&
+					message.body.trim() !== "" ? (
+					<details className="group/reveal">
+						{/* The target is the LABEL and its own box, not the full row
+						    width: a click far to the right of the words used to open a
+						    message (design review round 1, D9). 24px of vertical room
+						    clears the WCAG 2.5.8 floor the browser's 20px marker missed.
+						    `inline-flex` suppresses the native marker, so the chevron IS
+						    the disclosure cue (design review round 1, D3). It swaps glyph
+						    instantly on open, as the shared `Disclosure` does (no
+						    rotate-on-toggle motion; a rotated mirrored glyph would also
+						    point up in RTL). `<details>` is uncontrolled, so the open state
+						    drives the swap through CSS; the group is named so a nested or
+						    ancestor `<details>` (whose own `open` state would match a bare
+						    `group-open:`) cannot drive this chevron. */}
+						<summary className="inline-flex min-h-[24px] w-fit cursor-pointer items-center gap-1 text-[14px] text-ink-muted">
+							<ChevronRight
+								aria-hidden="true"
+								className="size-3.5 shrink-0 group-open/reveal:hidden rtl:-scale-x-100"
+							/>
+							<ChevronDown
+								aria-hidden="true"
+								className="hidden size-3.5 shrink-0 group-open/reveal:block"
+							/>
+							{decoration.collapsedSummary}
+						</summary>
+						{/* Opened unadmitted text sits in a quoted inset, a start rule
+						    rather than a box (panels stay borderless), so it cannot be
+						    mistaken for text the screening let through once the verdict
+						    chip has scrolled away (design review round 1, D4). The rule is
+						    the only cue that marks the text as quoted, so it is a
+						    meaningful graphic under WCAG 1.4.11 and needs 3:1: `hairline`
+						    measured 1.33-1.34:1 against the surface, `control` 3.65:1
+						    light / 3.58:1 dark (design review round 2, D10). */}
+						<TeamBridgeMarkdown className="team-bridge-message-body mt-1 border-control border-s-2 ps-3 text-[14px] text-ink">
+							{message.body}
+						</TeamBridgeMarkdown>
+					</details>
+				) : (
 					/* An image-only message has an empty body: no empty prose block. */
 					<TeamBridgeMarkdown className="team-bridge-message-body text-[14px] text-ink">
 						{message.body}
@@ -560,6 +673,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 						accountId={accountId}
 					/>
 				)}
+				{decoration?.attachments}
 				{reactions && <TeamBridgeReactionChips state={reactions} />}
 				{canReply && summary.count > 0 && (
 					<button
@@ -594,6 +708,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 						)}
 					</button>
 				)}
+				{decoration?.after}
 			</div>
 		</li>
 	);
