@@ -4900,51 +4900,33 @@ export function ChatSidebar({
 				<ChatRowTitle text={conversationTitleForDisplay(row.title)} />
 				{/*
 				 * NOTHING IS DRAWN BETWEEN THE TITLE AND THE TRAILING STATEMENT ANY MORE,
-				 * and `sidebar-row-space.md` §2's placement rule is why that is now the
-				 * only shape available: every element in this line is `shrink-0` and the
-				 * title's clip is the one thing that pays for one of them.
+				 * and `sidebar-row-space.md` §2's placement rule is why that is now the only
+				 * shape available: every element in this line is `shrink-0` and the title's
+				 * clip is the one thing that pays for one of them.
 				 *
 				 * THE SUBAGENT INDICATOR USED TO SIT HERE, as two independently drawn
-				 * `shrink-0` glyphs (the three-bead `SubagentRunningMark` for a child at
-				 * work, a muted `Hourglass` for a child waiting for capacity). Both counts
-				 * are optional on the wire and absent means UNKNOWN rather than zero, so a
-				 * row could be painted without them and gain them on the next read - and
-				 * the glyph then took its width out of the title and re-cut the ellipsis
-				 * under the reader. Measured on this fixture at a 264px panel: the clip went
-				 * 152 -> 130px and the cut column 24 -> 21 characters 1.6 s after the first
+				 * `shrink-0` glyphs (the three-bead `SubagentRunningMark` for a child at work,
+				 * a muted `Hourglass` for a child waiting for capacity). Both counts are
+				 * optional on the wire and absent means UNKNOWN rather than zero, so a row
+				 * could be painted without them and gain them on the next read - and the glyph
+				 * then took its width out of the title and re-cut the ellipsis under the
+				 * reader. Measured on this fixture at a 264px panel: the clip went 152 ->
+				 * 130px and the cut column 24 -> 21 characters 1.6 s after the first
 				 * contentful frame.
 				 *
-				 * THE MARK NOW LIVES IN THE LEADING STATUS CELL (`ChatSessionStatus`), a
-				 * fixed `size-4` box that is drawn on every row whether or not it holds a
-				 * glyph. That is the fusion the `delegating` rung already performed,
-				 * generalised to every code, and it is the only shape that is invariant AND
-				 * costs no width - a reserved trailing lane was measured here too and took
-				 * 36px off every title. `SubagentRunningMark` still carries the geometry of
-				 * the trio and the reasoning for its shape (issue #840); the words were
-				 * never drawn in either place - they ride the row's `sr-only` sentence and
-				 * its tooltip through `subagentClause`, which is the repo's "one predicate,
-				 * several channels" rule.
+				 * IT LIVES IN THE LEADING STATUS CELL NOW (`ChatSessionStatus`, and the
+				 * precedence rule is argued at length there): a fixed `size-4` box drawn on
+				 * every row whether or not it holds a glyph, so a count that arrives after the
+				 * row has painted changes what is IN the row and never how much of the title
+				 * is cut. That is the only shape that is invariant AND costs no width - a
+				 * trailing lane reserved on every row was measured here too and took 36px off
+				 * every title, pushing two titles that had rendered whole into ellipsis at a
+				 * 264px panel.
 				 *
-				 * `data-subagent-mark` therefore moved with the glyph and is still inside
-				 * the row's button, so this row's tests and the evidence rigs address the
-				 * same node.
-				 */}
-				{/*
-				 * THE SUBAGENT MARKS ARE NO LONGER DRAWN HERE. They live in the row's
-				 * LEADING STATUS CELL, which is a fixed `size-4` box that is drawn on every
-				 * row whether or not it holds a glyph - so a count that arrives after the
-				 * row has painted changes what is IN the row and never how much of the
-				 * title is cut. That is the same fusion the `delegating` rung already
-				 * performs (`ChatSessionStatus`), generalised to every code, and it costs no
-				 * width: the alternative measured here was a trailing lane that had to be
-				 * reserved on every row, which took 36px off every title and pushed two
-				 * titles that had rendered whole into ellipsis at a 264px panel.
-				 *
-				 * WHAT MOVED AND WHAT DID NOT: the glyph (`SubagentRunningMark`, and the
-				 * queued `Hourglass`) and the `data-subagent-mark` hooks are the same, and
-				 * the words were never here - they ride the row's name and tooltip through
-				 * `subagentClause` (below), which is why the numbers are still announced
-				 * when only one glyph can be drawn.
+				 * THE WORDS WERE NEVER HERE: they ride the row's `sr-only` sentence and its
+				 * tooltip through `subagentClause` (below), which is the repo's "one
+				 * predicate, several channels" rule. `SubagentRunningMark` still carries the
+				 * geometry of the trio and the reasoning for its shape (issue #840).
 				 */}
 				{/* In a flat list nothing else names the profile answering, so two
 			    untitled chats on different agents were indistinguishable. Nested

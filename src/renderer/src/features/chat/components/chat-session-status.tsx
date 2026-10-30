@@ -23,7 +23,7 @@ import {
 	peerUncertainLabel,
 } from "../../mesh/peer-presence";
 import { asksOutstandingLabel } from "../ask-queue";
-import { subagentMarks } from "../chat-session-subagents";
+import { hasWork, subagentMarks } from "../chat-session-subagents";
 
 /** Resting codes that legitimately render as a plain ring. */
 const KNOWN_RESTING = new Set(["idle", "recent"]);
@@ -268,7 +268,7 @@ export function SubagentRunningMark({
 	 * type says so rather than leaving the next call site to discover an invisible mark at runtime.
 	 */
 	className: string;
-	/** The rig/test hook (`data-subagent-mark`). Passed only where the mark stands for the ROW's own running subagents - the `delegating` rung shares the component but not the hook. */
+	/** The rig/test hook (`data-subagent-mark`): "this mark stands for the ROW's own running children". The one call site that draws the mark - the row's status cell - passes it, which is what its readers (`scripts/session-switch.tsx`, the sidebar rigs) count. */
 	mark?: string;
 }) {
 	return (
@@ -358,15 +358,13 @@ export function ChatSessionStatus({
 	 */
 	const subagents = subagentMarks(row);
 	/*
-	 * THE RAW COUNTS, not the predicate's suppression. `subagentMarks` blanks the
-	 * running half on `delegating` (this cell IS that fact there), so asking it which
-	 * half is live would read "nothing running" on exactly the row whose children are
-	 * running - and a queue that arrives alongside running children would draw the
-	 * queue's glyph instead of the trio.
+	 * THE RAW FACT, through the same `hasWork` the marks themselves use: `subagents_running`
+	 * is read directly rather than through `subagentMarks`, because that predicate blanks
+	 * the running half on `delegating` (this cell IS that fact there) and would report
+	 * "nothing is running" for the one row whose children are.
 	 */
-	const childrenRunning =
-		typeof row.subagents_running === "number" && row.subagents_running > 0;
-	const queuedOnly = subagents.queued && !childrenRunning; /*
+	const queuedOnly = subagents.queued && !hasWork(row.subagents_running);
+	/*
 	 * WHAT THIS ROW IS DRAWING, asked of the ONE predicate (`unreadMarkKind`) the
 	 * accessible name below, the sidebar row's tooltip and the bulk control's
 	 * count all ask. It reads `status.code`, which is the runtime's own
@@ -514,7 +512,19 @@ export function ChatSessionStatus({
 						className="size-4 text-ink-muted"
 					/>
 				) : (
-					<SubagentRunningMark className={cn("size-4", ink)} />
+					<SubagentRunningMark
+						className={cn("size-4", ink)}
+						/*
+						 * THE HOOK IS PASSED HERE (agent review round 1, R1-1). Its own rule used to
+						 * withhold it on this rung, because the rung shared the component with the
+						 * row's trailing indicator and the hook had to mean "the ROW's own running
+						 * children" rather than "this row's status rung". The fusion leaves ONE place
+						 * the mark can be drawn, and there it always means exactly that, so the
+						 * attribute belongs on it - `scripts/session-switch.tsx` counts the cue by
+						 * it, and a hook the product never renders is a reader that reports zero.
+						 */
+						mark="running"
+					/>
 				)
 			) : (
 				/*
