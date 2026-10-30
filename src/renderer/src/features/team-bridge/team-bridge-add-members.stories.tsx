@@ -139,7 +139,7 @@ const longConversation: TeamBridgeConversation = {
 			account_id: `acct_long_${index}`,
 			kind: "human" as const,
 			display_label: name,
-			role: "member",
+			role: "member" as const,
 			state: "active" as const,
 		})),
 	],
