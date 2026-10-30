@@ -117,6 +117,12 @@ function inFlightSteps(): TranscriptStep[] {
 }
 
 const SESSION_COUNT = param("sessions", 24);
+/**
+ * Paragraphs per user turn (`?userLines=N`); 0 keeps the one-line turn. A turn
+ * past eight lines is what D2's user-message clamp exists for, so this is the
+ * knob that puts the clamp on the open path being measured.
+ */
+const USER_LINES = param("userLines", 0);
 /** Steps in the INCOMING session's transcript: the one whose paint we time. */
 const INCOMING_STEPS = param("steps", 200);
 /** Steps in the outgoing session, so the view being replaced is real work too. */
@@ -157,7 +163,14 @@ function steps(count: number): TranscriptStep[] {
 		if (i % 3 === 0) {
 			out.push({
 				kind: "user",
-				text: `Turn ${turn}: check the workspace and report what changed since yesterday, briefly.`,
+				text:
+					USER_LINES > 0
+						? Array.from(
+								{ length: USER_LINES },
+								(_, line) =>
+									`Turn ${turn}, line ${line + 1}: a pasted line of the brief that makes this turn taller than the clamp.`,
+							).join("\n\n")
+						: `Turn ${turn}: check the workspace and report what changed since yesterday, briefly.`,
 			});
 		} else if (i % 3 === 1) {
 			out.push({
