@@ -318,5 +318,18 @@
 	"ui.teamBridge.mentions.notice.invite": "邀请",
 	"ui.teamBridge.mentions.notice.silent": "提及但不通知",
 	"ui.teamBridge.mentions.notice.pending": "{name}已受邀但尚未加入，因此不会收到通知。",
-	"ui.teamBridge.mentions.notice.invited": "已邀请{name}。对方加入之前不会收到通知。"
+	"ui.teamBridge.mentions.notice.invited": "已邀请{name}。对方加入之前不会收到通知。",
+	"ui.teamBridge.delivery.refused": "未送达 {agent}（{owner}）：已被其审核拒绝",
+	"ui.teamBridge.delivery.refused_manipulation": "未送达 {agent}（{owner}）：已被其审核拒绝（看起来像是试图操控该智能体）",
+	"ui.teamBridge.delivery.refused_personal_info": "未送达 {agent}（{owner}）：已被其审核拒绝（看起来像是索取个人信息）",
+	"ui.teamBridge.delivery.refused_abusive": "未送达 {agent}（{owner}）：已被其审核拒绝（看起来像是辱骂性内容）",
+	"ui.teamBridge.delivery.refused_unsafe_content": "未送达 {agent}（{owner}）：已被其审核拒绝（看起来像是不安全的内容或链接）",
+	"ui.teamBridge.delivery.refused_out_of_scope": "未送达 {agent}（{owner}）：已被其审核拒绝（看起来像是超出该智能体处理范围的请求）",
+	"ui.teamBridge.delivery.held": "正在等待 {agent}（{owner}）检查……",
+	"ui.teamBridge.delivery.held_screening_unavailable": "正在等待 {agent}（{owner}）检查——检查暂时不可用",
+	"ui.teamBridge.delivery.held_awaiting_review": "正在等待 {agent}（{owner}）检查——等待审核",
+	"ui.teamBridge.delivery.pending": "已检查；正在等待送达 {agent}",
+	"ui.teamBridge.delivery.info_refused": "每个智能体都会使用其所有者的审核设置检查收到的消息。被拒绝的消息未传递给智能体。重新表述请求通常会有帮助。",
+	"ui.teamBridge.delivery.info_held": "每个智能体都会先使用其所有者的审核设置检查收到的消息，然后再传递。此消息尚未检查完成，之后会自动送达或被拒绝。",
+	"ui.teamBridge.delivery.info_label": "关于消息检查"
 }

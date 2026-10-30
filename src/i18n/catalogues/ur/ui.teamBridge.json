@@ -318,5 +318,18 @@
 	"ui.teamBridge.mentions.notice.invite": "مدعو کریں",
 	"ui.teamBridge.mentions.notice.silent": "اطلاع دیے بغیر ذکر کریں",
 	"ui.teamBridge.mentions.notice.pending": "{name} کو مدعو کیا گیا ہے لیکن وہ ابھی شامل نہیں ہوئے، اس لیے انہیں اطلاع نہیں ملے گی۔",
-	"ui.teamBridge.mentions.notice.invited": "{name} کو مدعو کر دیا گیا۔ شامل ہونے تک انہیں اطلاع نہیں ملے گی۔"
+	"ui.teamBridge.mentions.notice.invited": "{name} کو مدعو کر دیا گیا۔ شامل ہونے تک انہیں اطلاع نہیں ملے گی۔",
+	"ui.teamBridge.delivery.refused": "{agent} ({owner}) تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا",
+	"ui.teamBridge.delivery.refused_manipulation": "{agent} ({owner}) تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا (ایجنٹ کو ورغلانے کی کوشش جیسا لگا)",
+	"ui.teamBridge.delivery.refused_personal_info": "{agent} ({owner}) تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا (ذاتی معلومات کی درخواست جیسا لگا)",
+	"ui.teamBridge.delivery.refused_abusive": "{agent} ({owner}) تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا (توہین آمیز مواد جیسا لگا)",
+	"ui.teamBridge.delivery.refused_unsafe_content": "{agent} ({owner}) تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا (غیر محفوظ مواد یا لنکس جیسا لگا)",
+	"ui.teamBridge.delivery.refused_out_of_scope": "{agent} ({owner}) تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا (اس ایجنٹ کے دائرۂ کار سے باہر کی درخواست جیسا لگا)",
+	"ui.teamBridge.delivery.held": "{agent} ({owner}) کی جانب سے جانچ کا انتظار ہے…",
+	"ui.teamBridge.delivery.held_screening_unavailable": "{agent} ({owner}) کی جانب سے جانچ کا انتظار ہے — جانچ عارضی طور پر دستیاب نہیں",
+	"ui.teamBridge.delivery.held_awaiting_review": "{agent} ({owner}) کی جانب سے جانچ کا انتظار ہے — جائزے کا انتظار ہے",
+	"ui.teamBridge.delivery.pending": "جانچ ہو گئی؛ {agent} تک ترسیل باقی ہے",
+	"ui.teamBridge.delivery.info_refused": "ہر ایجنٹ آنے والے پیغامات کو اپنے مالک کی ماڈریشن سے جانچتا ہے۔ مسترد کیا گیا پیغام ایجنٹ تک نہیں پہنچایا گیا۔ درخواست کو دوبارہ لکھنا عموماً مددگار ہوتا ہے۔",
+	"ui.teamBridge.delivery.info_held": "ہر ایجنٹ آنے والے پیغامات کو آگے پہنچانے سے پہلے اپنے مالک کی ماڈریشن سے جانچتا ہے۔ اس پیغام کی جانچ ابھی نہیں ہوئی؛ یہ خود بخود پہنچا دیا جائے گا یا مسترد کر دیا جائے گا۔",
+	"ui.teamBridge.delivery.info_label": "پیغام کی جانچ کے بارے میں"
 }

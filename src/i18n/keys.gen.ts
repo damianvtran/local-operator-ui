@@ -9674,6 +9674,30 @@ export type MessageParams = {
 	"ui.teamBridge.create.name_placeholder": undefined;
 	"ui.teamBridge.create.title": undefined;
 	"ui.teamBridge.create.topic": undefined;
+	"ui.teamBridge.delivery.held": undefined;
+	"ui.teamBridge.delivery.hold_awaiting_review": undefined;
+	"ui.teamBridge.delivery.hold_delivery_pending": undefined;
+	"ui.teamBridge.delivery.hold_screening_unavailable": undefined;
+	"ui.teamBridge.delivery.info": undefined;
+	"ui.teamBridge.delivery.info_label": undefined;
+	"ui.teamBridge.delivery.refused": { agent: string; owner: string };
+	"ui.teamBridge.delivery.refused_abusive": { agent: string; owner: string };
+	"ui.teamBridge.delivery.refused_manipulation": {
+		agent: string;
+		owner: string;
+	};
+	"ui.teamBridge.delivery.refused_out_of_scope": {
+		agent: string;
+		owner: string;
+	};
+	"ui.teamBridge.delivery.refused_personal_info": {
+		agent: string;
+		owner: string;
+	};
+	"ui.teamBridge.delivery.refused_unsafe_content": {
+		agent: string;
+		owner: string;
+	};
 	"ui.teamBridge.drafts.empty": undefined;
 	"ui.teamBridge.drafts.indicator": undefined;
 	"ui.teamBridge.drafts.navigation": undefined;

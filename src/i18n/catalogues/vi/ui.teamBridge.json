@@ -318,5 +318,18 @@
 	"ui.teamBridge.mentions.notice.invite": "Mời",
 	"ui.teamBridge.mentions.notice.silent": "Nhắc đến mà không thông báo",
 	"ui.teamBridge.mentions.notice.pending": "{name} đã được mời nhưng chưa tham gia nên sẽ không nhận được thông báo.",
-	"ui.teamBridge.mentions.notice.invited": "Đã mời {name}. Họ sẽ không nhận được thông báo cho đến khi tham gia."
+	"ui.teamBridge.mentions.notice.invited": "Đã mời {name}. Họ sẽ không nhận được thông báo cho đến khi tham gia.",
+	"ui.teamBridge.delivery.refused": "Không được chuyển tới {agent} ({owner}): bị bộ kiểm duyệt của họ từ chối",
+	"ui.teamBridge.delivery.refused_manipulation": "Không được chuyển tới {agent} ({owner}): bị bộ kiểm duyệt của họ từ chối (có vẻ là một nỗ lực thao túng tác nhân)",
+	"ui.teamBridge.delivery.refused_personal_info": "Không được chuyển tới {agent} ({owner}): bị bộ kiểm duyệt của họ từ chối (có vẻ là một yêu cầu thông tin cá nhân)",
+	"ui.teamBridge.delivery.refused_abusive": "Không được chuyển tới {agent} ({owner}): bị bộ kiểm duyệt của họ từ chối (có vẻ là nội dung lăng mạ)",
+	"ui.teamBridge.delivery.refused_unsafe_content": "Không được chuyển tới {agent} ({owner}): bị bộ kiểm duyệt của họ từ chối (có vẻ là nội dung hoặc liên kết không an toàn)",
+	"ui.teamBridge.delivery.refused_out_of_scope": "Không được chuyển tới {agent} ({owner}): bị bộ kiểm duyệt của họ từ chối (có vẻ là một yêu cầu nằm ngoài phạm vi của tác nhân này)",
+	"ui.teamBridge.delivery.held": "Đang chờ {agent} ({owner}) sàng lọc…",
+	"ui.teamBridge.delivery.held_screening_unavailable": "Đang chờ {agent} ({owner}) sàng lọc — tính năng sàng lọc tạm thời không khả dụng",
+	"ui.teamBridge.delivery.held_awaiting_review": "Đang chờ {agent} ({owner}) sàng lọc — đang chờ xem xét",
+	"ui.teamBridge.delivery.pending": "Đã sàng lọc; đang chờ chuyển tới {agent}",
+	"ui.teamBridge.delivery.info_refused": "Mỗi tác nhân sàng lọc tin nhắn đến bằng bộ kiểm duyệt của chủ sở hữu. Tin nhắn bị từ chối không được chuyển tới tác nhân. Diễn đạt lại yêu cầu thường sẽ giúp ích.",
+	"ui.teamBridge.delivery.info_held": "Mỗi tác nhân sàng lọc tin nhắn đến bằng bộ kiểm duyệt của chủ sở hữu trước khi chuyển tiếp. Tin nhắn này chưa được sàng lọc; tin nhắn sẽ tự động được chuyển tới tác nhân hoặc bị từ chối.",
+	"ui.teamBridge.delivery.info_label": "Giới thiệu về sàng lọc tin nhắn"
 }
