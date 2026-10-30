@@ -61,5 +61,12 @@
 	"ui.agents.settings.security.security_instructions_that_guide_the_agent_s": "एजेंट के व्यवहार और सीमाओं को दिशा देने वाले सुरक्षा निर्देश। यह सुरक्षा एजेंट का \"सिस्टम प्रॉम्प्ट\" है।",
 	"ui.agents.settings.system_prompt.system_instructions_that_define_the_agent_s": "एजेंट का व्यवहार और क्षमताएँ तय करने वाले सिस्टम निर्देश। यह एजेंट का \"सिस्टम प्रॉम्प्ट\" है।",
 	"ui.agents.settings.chat.error.invalid_seed": "सीड एक मान्य संख्या होनी चाहिए",
-	"ui.agents.settings.general.error.empty_name": "एजेंट का नाम खाली नहीं हो सकता"
+	"ui.agents.settings.general.error.empty_name": "एजेंट का नाम खाली नहीं हो सकता",
+	"ui.agents.settings.general.profile_picture": "Profile picture",
+	"ui.agents.settings.general.profile_picture_hint": "Shown on this computer only. Other devices keep the default agent mark.",
+	"ui.agents.settings.general.profile_picture_upload": "Upload image",
+	"ui.agents.settings.general.profile_picture_remove": "Remove image",
+	"ui.agents.settings.general.profile_picture_error_type": "That file is not an image this app can read. Choose a JPEG, PNG, WebP, GIF or AVIF file.",
+	"ui.agents.settings.general.profile_picture_error_size": "That image is larger than {size} MB.",
+	"ui.agents.settings.general.profile_picture_error_decode": "That image could not be read. Try a different file."
 }

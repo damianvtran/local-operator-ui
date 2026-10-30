@@ -61,5 +61,12 @@
 	"ui.agents.settings.security.security_instructions_that_guide_the_agent_s": "ایجنٹ کے رویے اور حدود کی رہنمائی کرنے والی سیکیورٹی ہدایات۔ یہ سیکیورٹی ایجنٹ کا “سسٹم پرامپٹ” ہے۔",
 	"ui.agents.settings.system_prompt.system_instructions_that_define_the_agent_s": "ایجنٹ کے رویے اور صلاحیتوں کو متعین کرنے والی سسٹم ہدایات۔ یہ ایجنٹ کا “سسٹم پرامپٹ” ہے۔",
 	"ui.agents.settings.chat.error.invalid_seed": "سیڈ درست عدد ہونا چاہیے",
-	"ui.agents.settings.general.error.empty_name": "ایجنٹ کا نام خالی نہیں ہو سکتا"
+	"ui.agents.settings.general.error.empty_name": "ایجنٹ کا نام خالی نہیں ہو سکتا",
+	"ui.agents.settings.general.profile_picture": "Profile picture",
+	"ui.agents.settings.general.profile_picture_hint": "Shown on this computer only. Other devices keep the default agent mark.",
+	"ui.agents.settings.general.profile_picture_upload": "Upload image",
+	"ui.agents.settings.general.profile_picture_remove": "Remove image",
+	"ui.agents.settings.general.profile_picture_error_type": "That file is not an image this app can read. Choose a JPEG, PNG, WebP, GIF or AVIF file.",
+	"ui.agents.settings.general.profile_picture_error_size": "That image is larger than {size} MB.",
+	"ui.agents.settings.general.profile_picture_error_decode": "That image could not be read. Try a different file."
 }

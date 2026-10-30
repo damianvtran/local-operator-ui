@@ -27,6 +27,7 @@ import { Calendar, Cpu, GitBranch, IdCard, Info } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 import { t } from "../../../../../i18n/messages";
+import { AgentAvatarField } from "./agent-avatar-field";
 
 type GeneralSettingsProps = {
 	/**
@@ -106,6 +107,9 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 		 * components no longer carry a bottom margin of their own.
 		 */
 		<div className="flex flex-col gap-4">
+			{/* The mark first: it is the one field here that is not the agent's
+			    definition, and it is what the sidebar shows beside this agent's name. */}
+			<AgentAvatarField agentId={selectedAgent.id} />
 			{/*
 			 * No glyph. A glyph on this surface names a kind of thing, and no two
 			 * labels may name the same kind — `Bot` means "an agent" everywhere

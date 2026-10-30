@@ -61,5 +61,12 @@
 	"ui.agents.settings.security.security_instructions_that_guide_the_agent_s": "Instructions de sécurité qui orientent le comportement et les limites de l’agent. C’est le « prompt système » de l’agent de sécurité.",
 	"ui.agents.settings.system_prompt.system_instructions_that_define_the_agent_s": "Instructions système qui définissent le comportement et les capacités de l’agent. C’est le « prompt système » de l’agent.",
 	"ui.agents.settings.chat.error.invalid_seed": "La graine doit être un nombre valide",
-	"ui.agents.settings.general.error.empty_name": "Le nom de l’agent ne peut pas être vide"
+	"ui.agents.settings.general.error.empty_name": "Le nom de l’agent ne peut pas être vide",
+	"ui.agents.settings.general.profile_picture": "Profile picture",
+	"ui.agents.settings.general.profile_picture_hint": "Shown on this computer only. Other devices keep the default agent mark.",
+	"ui.agents.settings.general.profile_picture_upload": "Upload image",
+	"ui.agents.settings.general.profile_picture_remove": "Remove image",
+	"ui.agents.settings.general.profile_picture_error_type": "That file is not an image this app can read. Choose a JPEG, PNG, WebP, GIF or AVIF file.",
+	"ui.agents.settings.general.profile_picture_error_size": "That image is larger than {size} MB.",
+	"ui.agents.settings.general.profile_picture_error_decode": "That image could not be read. Try a different file."
 }

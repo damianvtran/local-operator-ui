@@ -61,5 +61,12 @@
 	"ui.agents.settings.security.security_instructions_that_guide_the_agent_s": "Chỉ dẫn bảo mật định hướng hành vi và giới hạn của tác nhân. Đây là \"prompt hệ thống\" của tác nhân bảo mật.",
 	"ui.agents.settings.system_prompt.system_instructions_that_define_the_agent_s": "Chỉ dẫn hệ thống xác định hành vi và khả năng của tác nhân. Đây là \"prompt hệ thống\" của tác nhân.",
 	"ui.agents.settings.chat.error.invalid_seed": "Seed phải là số hợp lệ",
-	"ui.agents.settings.general.error.empty_name": "Tên tác nhân không được để trống"
+	"ui.agents.settings.general.error.empty_name": "Tên tác nhân không được để trống",
+	"ui.agents.settings.general.profile_picture": "Profile picture",
+	"ui.agents.settings.general.profile_picture_hint": "Shown on this computer only. Other devices keep the default agent mark.",
+	"ui.agents.settings.general.profile_picture_upload": "Upload image",
+	"ui.agents.settings.general.profile_picture_remove": "Remove image",
+	"ui.agents.settings.general.profile_picture_error_type": "That file is not an image this app can read. Choose a JPEG, PNG, WebP, GIF or AVIF file.",
+	"ui.agents.settings.general.profile_picture_error_size": "That image is larger than {size} MB.",
+	"ui.agents.settings.general.profile_picture_error_decode": "That image could not be read. Try a different file."
 }
