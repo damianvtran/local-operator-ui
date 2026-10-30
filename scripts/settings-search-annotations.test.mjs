@@ -128,6 +128,7 @@ const IGNORE_REASONS = [
 	"account, billing and usage are read-only or remote",
 	"speech rows are registry keys read from the daemon's own selection",
 	"agent messages is a consent state machine; its registry rows are searchable",
+	"the theme picker is a grid of fifty-nine choices; the Appearance section result is its destination",
 ];
 
 /** The control selector the issue names, as one list. */
@@ -212,23 +213,23 @@ test("the keyboard shortcuts section annotates one row per action", async (t) =>
 	);
 });
 
-test("the theme selector is ONE row, not fifty-nine (source contract)", () => {
+test("the theme grid is out of scope, and says why", () => {
 	/*
-	 * Not mounted here: `ThemeSelector` reaches MUI through the theme previews,
-	 * and MUI's `styles` directory cannot be resolved as ESM by this harness
-	 * (measured). The annotation is a static attribute on the grid's own root,
-	 * so the contract is read rather than rendered — stated plainly rather than
-	 * dressed up as a DOM pass.
+	 * Round 1 shipped it as ONE row; its label was then the whole subtree's
+	 * text ("DarkLocal Operator DarkCatppuccin Macchiato…"), because JSX emits
+	 * no separator between sibling names (review round 1, M3). There is no
+	 * honest label for it without a new localized title, so it is marked out of
+	 * scope with its reason and the Appearance section result is its
+	 * destination. Not mounted here — `ThemeSelector` reaches MUI through the
+	 * theme previews, which this harness cannot resolve as ESM (measured) — so
+	 * the contract is read from the source rather than dressed up as a DOM pass.
 	 */
 	const source = readFileSync(
 		"src/renderer/src/features/settings/components/theme-selector.tsx",
 		"utf8",
 	);
-	assert.ok(source.includes('data-search-row="appearance.theme"'));
-	assert.ok(
-		source.includes("data-search-control"),
-		"and marks where a jump lands",
-	);
+	assert.ok(source.includes("data-search-ignore="));
+	assert.equal(source.includes('data-search-row="appearance.theme"'), false);
 });
 
 test("a shared row component's searchRow prop is what paints the markers", async (t) => {
@@ -284,6 +285,7 @@ test("every ignore reason in the settings surface is in the ratchet table", () =
 		"src/renderer/src/features/settings/components/settings-page.tsx",
 		"src/renderer/src/features/settings/components/speech-section.tsx",
 		"src/renderer/src/features/settings/components/keyboard-shortcuts-section.tsx",
+		"src/renderer/src/features/settings/components/theme-selector.tsx",
 	];
 	const reasons = new Set();
 	for (const file of files) {
@@ -320,4 +322,49 @@ test("the search row contract is the one the index reads", () => {
 		"utf8",
 	);
 	assert.ok(jump.includes("data-search-control"));
+});
+
+test("every sidebar section the index offers has a resolvable root", () => {
+	/*
+	 * B1 (review round 1): the index offers one result per sidebar section, but
+	 * five of the eleven had no `data-search-section` root, so pressing Enter on
+	 * them moved nothing and said nothing. This is the ratchet for that class:
+	 * the sidebar's ids and the roots the page renders must be the same set.
+	 *
+	 * Read from source rather than the DOM for the reason this file's header
+	 * states — the page mounts MUI and the whole query graph — and the
+	 * attributes are static in every one of these files.
+	 */
+	const SIDEBAR_IDS = [
+		"general",
+		"appearance",
+		"speech",
+		"keyboard",
+		"providers",
+		"integrations",
+		"radient",
+		"agent-messages",
+		"backend",
+		"imports",
+		"updates",
+	];
+	const sources = [
+		"src/renderer/src/features/settings/components/settings-page.tsx",
+		"src/renderer/src/features/settings/components/speech-section.tsx",
+		"src/renderer/src/features/settings/components/keyboard-shortcuts-section.tsx",
+		"src/renderer/src/features/settings/components/mcp-management-section.tsx",
+	].map((file) => readFileSync(file, "utf8"));
+	const declared = new Set();
+	for (const source of sources) {
+		for (const match of source.matchAll(
+			/(?:data-search-section|searchSection)="([^"${}]+)"/g,
+		)) {
+			declared.add(match[1]);
+		}
+	}
+	assert.deepEqual(
+		[...declared].sort(),
+		[...SIDEBAR_IDS].sort(),
+		"the sidebar's ids and the rendered section roots agree",
+	);
 });

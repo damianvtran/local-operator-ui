@@ -56,6 +56,10 @@ import type {
 	BackendSettings,
 } from "../../../../../shared/desktop-contract";
 import { normalizeText } from "../../command-palette/palette-search";
+import {
+	PROMOTED_SETTING_SECTIONS,
+	sectionForSettingKey,
+} from "../promoted-setting-sections";
 
 /**
  * Where an entry came from, which decides how a jump resolves it.
@@ -97,9 +101,21 @@ export type SettingSearchEntry = {
 	label: string;
 	/** The registry's help / the row's own description, when there is one. */
 	description?: string;
-	/** The sidebar section the thing lives in. */
+	/**
+	 * The SIDEBAR destination the thing lives in — the place a jump lands, named
+	 * as the rail names it. A registry row's own sub-section ("Tools",
+	 * "Failover and retry") is NOT this: it is `detail` below, because a
+	 * heading that names a sub-section while the jump lands in Backend settings
+	 * is a caption the action does not carry (review round 1, M2/D2).
+	 */
 	sectionId: string;
 	sectionLabel: string;
+	/**
+	 * A secondary line, when the destination is not the whole story: the
+	 * registry's own sub-section title for a registry row. Never used as a group
+	 * heading — that is `sectionLabel`'s job.
+	 */
+	detail?: string;
 	/** Document order, and the tie-break when two entries score the same. */
 	order: number;
 	/** The registry key, for a `registry` entry. */
@@ -174,26 +190,55 @@ export function registrySectionTitles(
  */
 export function buildRegistryEntries(
 	payload: Pick<BackendSettings, "sections" | "settings"> | undefined,
-	startOrder = 0,
+	options: {
+		startOrder?: number;
+		/** The sidebar's own sections, for destination ids and labels. */
+		sections?: readonly { id: string; label: string }[];
+	} = {},
 ): SettingSearchEntry[] {
 	if (!payload) return [];
-	const sections = registrySectionTitles(payload.sections);
+	const { startOrder = 0, sections: destinations = [] } = options;
+	const registrySections = registrySectionTitles(payload.sections);
+	const destinationLabels = new Map(
+		destinations.map((section) => [section.id, section.label]),
+	);
 	return payload.settings.map((setting: BackendSetting, index: number) => {
-		const section = sections.get(setting.section);
+		const section = registrySections.get(setting.section);
+		/*
+		 * WHERE THE JUMP LANDS, not where the row is filed. A promoted key's
+		 * control lives outside Backend settings (`PROMOTED_SETTING_SECTIONS` is
+		 * the one map that says so), so its destination — and therefore the
+		 * group heading and the row's "In …" line — is the sidebar section the
+		 * reader actually arrives at.
+		 */
+		const destinationId = sectionForSettingKey(setting.key, "backend");
 		return {
 			id: `setting:${setting.key}`,
 			source: "registry" as const,
 			label: setting.label || setting.key,
 			description: setting.help ?? "",
-			sectionId: "backend",
-			sectionLabel: section?.label ?? setting.section,
+			sectionId: destinationId,
+			sectionLabel: destinationLabels.get(destinationId) ?? "",
+			detail: section?.label ?? setting.section,
 			order: startOrder + index,
 			settingKey: setting.key,
 			fields: foldFields({
 				label: setting.label,
 				synonym: setting.synonyms ?? [],
 				key: setting.key,
-				choice: (setting.choices ?? []).map((choice) => choice.label),
+				/*
+				 * CHOICE COPY, LABELS AND DESCRIPTIONS. The registry's synonym
+				 * hygiene rule forbids a synonym that repeats any text the row's
+				 * choices already carry, on the stated ground that the row "is
+				 * searchable by its choice copy" — so a synonym list alone cannot
+				 * reach a word that lives only in an option's description. Folding
+				 * both halves is what makes the UI's promise match the backend's
+				 * rule (reviewer note, round 1).
+				 */
+				choice: (setting.choices ?? []).flatMap((choice) => [
+					choice.label,
+					choice.description ?? "",
+				]),
 				// `folded` already carries BOTH the section's title and its name, so a
 				// known section is not joined with its name a second time; an unknown
 				// one falls back to the raw name rather than to nothing.
@@ -223,6 +268,40 @@ export function buildSectionEntries(
 		order: startOrder + index,
 		fields: foldFields({ label: section.label }),
 	}));
+}
+
+/**
+ * The row's own title, never its whole subtree.
+ *
+ * `textContent` concatenates SIBLING names without a separator, because JSX
+ * emits no whitespace text node between them: the theme grid's row read
+ * "DarkLocal Operator DarkCatppuccin Macchiato…" and a provider card read
+ * "AnthropicConnected" (review round 1, M3). So the label is resolved in this
+ * order, and every step is a thing the author marked or a heading the row
+ * already has:
+ *
+ * 1. `data-search-label` on the row itself — the explicit answer.
+ * 2. A `[data-search-label]` descendant — a title element further in.
+ * 3. The row's own heading (`h2`/`h3`/`h4`/`legend`), which is a title by
+ *    construction.
+ * 4. The row's `aria-label`, for a row that is a single control.
+ * 5. The FIRST element child's text — the title-plus-detail shape's title,
+ *    never its siblings.
+ *
+ * `data-search-terms` remains where a row genuinely needs words it does not
+ * print; the reader's vocabulary and the label's are separate fields.
+ */
+export function rowLabel(row: Element): string {
+	const explicit = row.getAttribute("data-search-label");
+	if (explicit?.trim()) return explicit.trim();
+	const marked = row.querySelector("[data-search-label]");
+	if (marked?.textContent?.trim()) return marked.textContent.trim();
+	const heading = row.querySelector("h2, h3, h4, legend");
+	if (heading?.textContent?.trim()) return heading.textContent.trim();
+	const aria = row.getAttribute("aria-label");
+	if (aria?.trim()) return aria.trim();
+	const first = row.firstElementChild ?? row;
+	return (first.textContent ?? "").trim();
 }
 
 /** Collapse a row's rendered text into a title-shaped label. */
@@ -269,7 +348,7 @@ export function buildRenderedEntries(
 			root_
 				?.querySelector<HTMLElement>("[data-search-section-label], h2")
 				?.textContent?.trim() ?? "";
-		const rendered = row.textContent ?? "";
+		const rendered = rowLabel(row);
 		// A control's own value is not its text (`<input value>` has no text
 		// node), so `data-search-terms` is where a value-shaped row says what it
 		// holds — and where a row spells an older name it no longer prints.
@@ -303,7 +382,20 @@ export function buildSettingsIndex(parts: {
 	sections?: readonly { id: string; label: string }[];
 	rendered?: readonly SettingSearchEntry[];
 }): SettingSearchEntry[] {
-	const registry = buildRegistryEntries(parts.registry, 0);
+	/*
+	 * A PROMOTED ROW IS THIS PAGE'S ROW, not a second registry result for the
+	 * same control. `PROMOTED_SETTING_SECTIONS` is the one list that says a key
+	 * already has a first-class row elsewhere on this page, so indexing it twice
+	 * offers the reader two rows for one setting under two different names
+	 * (review round 1, m1).
+	 */
+	const registry = buildRegistryEntries(parts.registry, {
+		startOrder: 0,
+		sections: parts.sections,
+	}).filter(
+		(entry) =>
+			!(entry.settingKey && entry.settingKey in PROMOTED_SETTING_SECTIONS),
+	);
 	const rendered = [...(parts.rendered ?? [])].map((entry, index) => ({
 		...entry,
 		order: registry.length + index,

@@ -30,6 +30,11 @@ const bundle = await build({
 	format: "esm",
 	platform: "node",
 	write: false,
+	// The renderer's aliases are tsconfig paths, not node resolutions.
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@features": "./src/renderer/src/features",
+	},
 });
 const module = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`

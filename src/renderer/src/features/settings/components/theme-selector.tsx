@@ -738,14 +738,15 @@ export const ThemeSelector: FC = () => {
 			<div
 				onKeyDown={moveFocus}
 				/*
-				 * ONE search row for the grid, not one per tile: the fifty-nine
-				 * tiles are one choice ("the theme"), a reader searching "theme"
-				 * wants the picker rather than 59 rows named after palettes, and
-				 * the landing control is the first tile (the `<div>` is not
-				 * focusable, so the jump takes the first focusable inside it).
+				 * NOT a search row. Read as one row, its label was the whole
+				 * subtree's text — "DarkLocal Operator DarkCatppuccin Macchiato…" —
+				 * because JSX emits no separator between sibling names, and no
+				 * honest label exists for it without a new localized title (the
+				 * picker's own headings are "Dark"/"Light"). The Appearance
+				 * section result is this grid's destination, and the registry's
+				 * `tui.theme` row covers the word itself (review round 1, M3).
 				 */
-				data-search-row="appearance.theme"
-				data-search-control
+				data-search-ignore="the theme picker is a grid of fifty-nine choices; the Appearance section result is its destination"
 				className="flex flex-col gap-6"
 			>
 				{groups.map((group) => (

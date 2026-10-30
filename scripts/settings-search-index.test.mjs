@@ -36,6 +36,11 @@ const bundle = await build({
 	format: "esm",
 	platform: "node",
 	write: false,
+	// The renderer's aliases are tsconfig paths, not node resolutions.
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@features": "./src/renderer/src/features",
+	},
 });
 const module = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
@@ -199,23 +204,35 @@ test("the issue's five examples answer from the page's own index", () => {
 	);
 });
 
-test("a rendered row's label is its rendered text, not a key or an attribute", () => {
+test("a rendered row's label is its own title, never the whole subtree", () => {
 	const dom = new JSDOM(`<!doctype html><html><body>
 		<div data-search-section="appearance"><h2>Appearance</h2>
 			<div data-search-row="appearance.reasoning">
-				Show agent reasoning
+				<span>Show agent reasoning</span>
 				<p>Adds the agent's reasoning rows to conversations</p>
+			</div>
+			<div data-search-row="appearance.theme" data-search-label="Theme">
+				<h3>Dark</h3><button>Catppuccin Macchiato</button>
+			</div>
+			<div data-search-row="providers.anthropic">
+				<h3>Anthropic</h3><span>Connected</span>
 			</div>
 		</div>
 	</body></html>`);
-	const [entry] = buildRenderedEntries(dom.window.document.body);
-	assert.equal(
-		entry.label,
-		"Show agent reasoning Adds the agent's reasoning rows to conversations",
+	const [reasoning, theme, provider] = buildRenderedEntries(
+		dom.window.document.body,
 	);
-	assert.equal(entry.sectionLabel, "Appearance");
-	assert.equal(entry.sectionId, "appearance");
-	assert.equal(entry.source, "page");
+	/*
+	 * The concatenation this pins against: JSX emits no whitespace text node
+	 * between siblings, so reading `textContent` produced
+	 * "DarkLocal Operator DarkCatppuccin Macchiato…" (review round 1, M3).
+	 */
+	assert.equal(reasoning.label, "Show agent reasoning");
+	assert.equal(theme.label, "Theme", "data-search-label is the explicit answer");
+	assert.equal(provider.label, "Anthropic", "else the row's own heading");
+	assert.equal(reasoning.sectionLabel, "Appearance");
+	assert.equal(reasoning.sectionId, "appearance");
+	assert.equal(reasoning.source, "page");
 });
 
 test("data-search-terms adds words the row does not print", () => {
@@ -279,5 +296,132 @@ test("labelFromRenderedText collapses whitespace and cuts long rows at a space",
 		/…\w/.test(long),
 		false,
 		"the cut lands on a space, never mid-word",
+	);
+});
+
+test("a registry row's destination is the sidebar section its jump lands in", () => {
+	/*
+	 * The defect this pins (review round 1, M2 / design D2): every registry row
+	 * used to carry `sectionId: "backend"` while its LABEL came from the
+	 * registry's own sub-section, so the panel could head a group "Model" over
+	 * network and memory rows — and a promoted key advertised a destination it
+	 * never reached.
+	 */
+	const sidebar = [
+		{ id: "general", label: "General settings" },
+		{ id: "appearance", label: "Appearance" },
+		{ id: "backend", label: "Backend settings" },
+	];
+	const entries = buildRegistryEntries(payload, { sections: sidebar });
+	const byKey = (key) => entries.find((entry) => entry.settingKey === key);
+
+	// An unpromoted key: Backend settings, with its registry sub-section as a
+	// SECONDARY detail line that is not the heading.
+	const theme = byKey("tui.theme");
+	assert.equal(theme.sectionId, "backend");
+	assert.equal(theme.sectionLabel, "Backend settings");
+	assert.equal(theme.detail, "Appearance");
+
+	// A promoted key: the section whose control actually takes the reader.
+	const effort = byKey("model_effort");
+	assert.equal(effort.sectionId, "general");
+	assert.equal(effort.sectionLabel, "General settings");
+	assert.equal(
+		effort.fields.section.includes("model"),
+		true,
+		"the registry's own filing is still searchable",
+	);
+});
+
+test("every entry in one group carries the same destination", () => {
+	const sidebar = [
+		{ id: "general", label: "General settings" },
+		{ id: "backend", label: "Backend settings" },
+	];
+	const index = buildSettingsIndex({ registry: payload, sections: sidebar });
+	const groups = new Map();
+	for (const entry of index) {
+		const group = groups.get(entry.sectionId) ?? new Set();
+		group.add(entry.sectionLabel);
+		groups.set(entry.sectionId, group);
+	}
+	for (const [sectionId, labels] of groups) {
+		assert.equal(
+			labels.size,
+			1,
+			`${sectionId} has one label, so a heading cannot disagree with its rows`,
+		);
+	}
+});
+
+test("choice DESCRIPTIONS are indexed, not only choice labels", () => {
+	/*
+	 * The backend's synonym hygiene rule forbids a synonym that repeats choice
+	 * text because "the row is searchable by its choice copy" — so a word that
+	 * lives only in an option's description must reach the row, or the two
+	 * halves disagree (reviewer note, round 1).
+	 */
+	const themed = payload.settings.find((setting) => setting.key === "tui.theme");
+	const described = {
+		...payload,
+		settings: [
+			{
+				...themed,
+				choices: [
+					...(themed.choices ?? []),
+					{
+						value: "brand",
+						label: "Brand",
+						description: "A warm colour ramp with the brand green",
+					},
+				],
+			},
+		],
+	};
+	const entries = buildRegistryEntries(described);
+	const hit = searchSettings(entries, "colour").results[0];
+	assert.ok(hit, '"colour" reaches the row through its option copy');
+	assert.equal(hit.entry.settingKey, "tui.theme");
+	assert.equal(hit.reason, "choice");
+});
+
+test("a promoted registry row is indexed once, as the page's own row", () => {
+	/*
+	 * m1: `setting:language` and `page:general.language` were two results for
+	 * one control, under two different names. The promoted map is the dedupe
+	 * key — a key that has a first-class control elsewhere is not also a
+	 * registry result.
+	 */
+	const sidebar = [{ id: "general", label: "General settings" }];
+	const index = buildSettingsIndex({
+		registry: payload,
+		sections: sidebar,
+		rendered: [
+			{
+				id: "page:general.language",
+				source: "page",
+				label: "Interface language",
+				sectionId: "general",
+				sectionLabel: "General settings",
+				order: 0,
+				fields: {
+					label: "interface language",
+					synonym: "",
+					key: "",
+					choice: "",
+					section: "general settings",
+					description: "",
+				},
+			},
+		],
+	});
+	assert.equal(
+		index.some((entry) => entry.settingKey === "language"),
+		false,
+		"the registry row for a promoted key is not offered twice",
+	);
+	assert.equal(
+		index.find((entry) => entry.id === "page:general.language")?.label,
+		"Interface language",
 	);
 });
