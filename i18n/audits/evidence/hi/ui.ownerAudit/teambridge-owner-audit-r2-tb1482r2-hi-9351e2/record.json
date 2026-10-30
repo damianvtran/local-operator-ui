@@ -1,0 +1,109 @@
+{
+	"audit_id": "teambridge-owner-audit-r2-tb1482r2-hi-9351e2",
+	"date": "2026-10-29",
+	"locale": "hi",
+	"namespace": "ui.ownerAudit",
+	"source_commit": "475476c2104a400fa6f4bc39bee98e4e82541d40",
+	"tree_state": "the audited bytes are this commit's; the auditor ran on the working tree that became 475476c2104a plus the auditor's own target-catalogue fixes",
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "radient/auto",
+		"date": "2026-10-29",
+		"method": "LLM translator subagent per locale, reading the English catalogue and its context sidecar and the locale's own existing namespace for terminology; no MT service referenced. Session began on anthropic/claude-opus-5-5 and was moved to radient/auto by provider-quota fallbacks before the translation was written."
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "radient/auto",
+			"date": "2026-10-29",
+			"result": "clean-with-findings",
+			"instance": "tb1482r2-hi-9351e2",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 2,
+				"nit": 1
+			},
+			"receipt": "i18n/receipts/tb1482r2-hi-9351e2.json",
+			"receipt_sha256": "38168ff99882097f182864d4c56965e9ea8522eaf85fadc525055a4846852f14",
+			"scope": "Round 2: six changed keys (copy gate for design D2/D3); earlier round out of scope."
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor: a separate subagent run from the translator's, which authored none of the strings as delivered and wrote its receipts before the ledger row was assembled. The findings/resolved_findings split in this receipt is the auditor's own. Neither translator nor auditor was a native speaker of the locale; that limitation is recorded below.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.json",
+			"sha256": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/hi/ui.ownerAudit.json",
+			"sha256": "a31b024cca8c2e293940a98ba48cb3d33ede831ef2136d8767e658de89fcc987"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.context.json",
+			"sha256": "508f8a06ff1a6101fe8b25f658eda4c905bd583df35ac509883aa42b065ea10e"
+		}
+	},
+	"audited": {
+		"ui.ownerAudit.disclosure": {
+			"en": "You can read this audit because you own the chief of staff it covers. The other members are told that agent owners can audit the conversation.",
+			"target": "आप यह ऑडिट देख सकते हैं क्योंकि जिस चीफ़ ऑफ़ स्टाफ़ पर यह लागू होता है, उसके मालिक आप हैं। बाकी सदस्यों को बताया जाता है कि एजेंट के मालिक बातचीत का ऑडिट कर सकते हैं।"
+		},
+		"ui.ownerAudit.viewers_label": {
+			"en": "Also readable by",
+			"target": "ये भी देख सकते हैं"
+		},
+		"ui.ownerAudit.left": {
+			"en": "The audit ends here. Your chief of staff left this conversation, so later messages are not in it.",
+			"target": "ऑडिट यहाँ समाप्त होता है। आपके चीफ़ ऑफ़ स्टाफ़ इस बातचीत से निकल गए, इसलिए बाद के संदेश इस ऑडिट में शामिल नहीं हैं।"
+		},
+		"ui.ownerAudit.removed": {
+			"en": "The audit ends here. Your chief of staff was removed from this conversation, so later messages are not in it.",
+			"target": "ऑडिट यहाँ समाप्त होता है। आपके चीफ़ ऑफ़ स्टाफ़ को इस बातचीत से हटा दिया गया, इसलिए बाद के संदेश इस ऑडिट में शामिल नहीं हैं।"
+		},
+		"ui.ownerAudit.window_unconfirmed": {
+			"en": "The end of this audit is unknown. Your chief of staff’s membership in this conversation could not be confirmed.",
+			"target": "इस ऑडिट का अंत ज्ञात नहीं है। इस बातचीत में आपके चीफ़ ऑफ़ स्टाफ़ की सदस्यता की पुष्टि नहीं हो सकी।"
+		},
+		"ui.ownerAudit.page_cutoff": {
+			"en": "Older messages are not shown yet. Load older messages to read what came before.",
+			"target": "पुराने संदेश अभी नहीं दिखाए गए हैं। इससे पहले के संदेश पढ़ने के लिए पुराने संदेश लोड करें।"
+		}
+	},
+	"scope": "Round 2: the six keys changed by the D2/D3 copy round. The rest of the namespace was audited in an earlier round and is out of scope here.",
+	"notes": "ui.ownerAudit.viewer is retired in every catalogue; the removal is part of this round and was checked by the auditor.",
+	"findings": [
+		{
+			"severity": "MINOR",
+			"key": "ui.ownerAudit.viewers_label",
+			"detail": "'ये भी देख सकते हैं' is correct and carries 'also' (भी), but it ends in a finite verb (हैं) so it closes as a sentence instead of opening as a label, and its demonstrative ये points forward to names that render in a separate <ul> block below it (team-bridge-owner-audit.tsx:380-386). The English sidecar also asks for a label of 'three words at most; not a sentence' — this is five words. Suggested replacement: 'अन्य पाठक' (nominal label, reads as other people, no colon, no punctuation), or keep the clause and drop the forward demonstrative. Left open, not fixed."
+		},
+		{
+			"severity": "MINOR",
+			"key": "ui.ownerAudit.disclosure",
+			"detail": "Register drift, meaning correct. 'जिस चीफ़ ऑफ़ स्टाफ़ पर यह लागू होता है' renders 'covers' with लागू होना ('is applicable / comes into force'), which is administrative-legal register; the sidecar's tone field for this key says 'plain, unapologetic, no legal register'. The क्योंकि + जिस…उसके nesting also buries the reader's own basis one clause deep. Suggested replacement for sentence 1: 'आप यह ऑडिट देख सकते हैं क्योंकि जिस चीफ़ ऑफ़ स्टाफ़ का यह ऑडिट है, उसके मालिक आप हैं।' Sentence 2 is correct as written and needs no change. Left open, not fixed."
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.ownerAudit.page_cutoff",
+			"detail": "'इससे पहले के संदेश' anchors इससे on the nearest antecedent, the preceding 'पुराने संदेश', giving a circular 'messages earlier than the older messages'. The discourse-deictic reading ('before what is shown') is available, so this is not a defect, but 'पहले के संदेश पढ़ने के लिए' would be cleaner and would also drop the repeat. The second sentence's verb already matches ui.ownerAudit.older ('पुराने संदेश लोड करें') exactly, as the sidecar requires. Left open, not fixed."
+		}
+	],
+	"resolved_findings": [],
+	"references": {
+		"ledger_entry": "i18n/ledger.json -> hi/ui.ownerAudit",
+		"receipt": "i18n/receipts/tb1482r2-hi-9351e2.json",
+		"context_sidecar": "src/i18n/catalogues/en/ui.ownerAudit.context.json"
+	},
+	"artifacts": {
+		"receipt": "i18n/receipts/tb1482r2-hi-9351e2.json",
+		"receipt_sha256": "38168ff99882097f182864d4c56965e9ea8522eaf85fadc525055a4846852f14",
+		"ledger_entry": "i18n/ledger.json -> hi/ui.ownerAudit"
+	},
+	"limitations": [
+		"No native-speaker review: translation and audit were both LLM agents.",
+		"The audit ran on radient/auto after provider-quota fallbacks from anthropic/claude-opus-5-5.",
+		"No rendered frame in any of the seven locales was reviewed; only the English surface was captured."
+	]
+}

@@ -380,8 +380,16 @@ const TEAM_BRIDGE_PAGE =
 	"src/renderer/src/features/team-bridge/team-bridge-page.tsx";
 const TEAM_BRIDGE_RAIL =
 	"src/renderer/src/features/team-bridge/team-bridge-rail.tsx";
-/** The rail's own row base, as the module spells it (stubbed into its `cn`). */
-const ROW = literalOf(TEAM_BRIDGE_RAIL, "ROW");
+/**
+ * The rail's own row base, as the module spells it (stubbed into its `cn`).
+ *
+ * The module spells it `RAIL_ROW`. The owner-audit round (b2e790dac63) renamed it
+ * from `ROW` and exported it, because the audit section reuses the base rather
+ * than copying the class; the string and the role are the same one. So do NOT
+ * "restore" a local `ROW` here: `merged()` builds the call out of the rail's own
+ * argument text, and the stub key has to be the identifier that text reads.
+ */
+const RAIL_ROW = literalOf(TEAM_BRIDGE_RAIL, "RAIL_ROW");
 
 const rowDragging = literalOf(SIDEBAR, "rowDragging");
 const rowDraggingMark = literalOf(SIDEBAR, "rowDraggingMark");
@@ -1544,7 +1552,13 @@ const ROW_STATE_GROUNDS = [
 				TEAM_BRIDGE_RAIL,
 				"data-conversation-id={conversation.id}",
 			),
-		stubs: { ROW, selected: true, unread: 0, organizationName: "", rowCurrent },
+		stubs: {
+			RAIL_ROW,
+			selected: true,
+			unread: 0,
+			organizationName: "",
+			rowCurrent,
+		},
 		ground: () =>
 			literalClassAt(
 				TEAM_BRIDGE_PAGE,

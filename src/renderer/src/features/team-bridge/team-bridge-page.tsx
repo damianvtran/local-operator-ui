@@ -27,6 +27,7 @@ import {
 	teamBridgeComposerKey,
 } from "@shared/store/team-bridge-composer-rows";
 import { showErrorToast } from "@shared/utils/toast-manager";
+import { useQueryClient } from "@tanstack/react-query";
 import {
 	Archive,
 	Bot,
@@ -51,6 +52,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import type {
 	TeamBridgeAttachmentCapability,
 	TeamBridgeConversation,
+	TeamBridgeConversationList,
 	TeamBridgeDirectoryMember,
 	TeamBridgeMemberInput,
 	TeamBridgeMessage,
@@ -137,6 +139,10 @@ import {
 import { TeamBridgeOrgSwitcher } from "./team-bridge-org-switcher";
 import { useBridgeOwner, useTeamBridgeAccount } from "./team-bridge-owner";
 import {
+	type OwnerAuditSlot,
+	useOwnerAuditSurface,
+} from "./team-bridge-owner-audit";
+import {
 	TeamBridgeAvatar,
 	TeamBridgeProfileCard,
 } from "./team-bridge-profile-card";
@@ -172,6 +178,7 @@ import {
 import { useReportTeamBridgeViewing } from "./team-bridge-viewing";
 import { useStickToBottom } from "./use-stick-to-bottom";
 import {
+	teamBridgeKeys,
 	useAddTeamBridgeMembers,
 	useArchiveTeamBridgeConversation,
 	useArchivedTeamBridgeConversations,
@@ -484,6 +491,8 @@ type OwnedDraft = {
 };
 
 export type TeamBridgePageViewProps = {
+	/** Human-only audit never enters member targets, drafts or the agent lane. */
+	ownerAudit?: OwnerAuditSlot;
 	/** Page-lifetime data journal; no live mutation closure survives an auth epoch. */
 	draftJournal?: OwnedDraft;
 	isDraftCurrent?: () => boolean;
@@ -512,6 +521,20 @@ export type TeamBridgePageViewProps = {
 	scope: TeamBridgeScope;
 	/** The account aggregate's total; the "All organizations" row shows it. */
 	totalUnread: number;
+	/**
+	 * Rows already on screen are being re-read (`stale-while-revalidate`,
+	 * tb-instant-open). The view keeps them painted and marks the rail as
+	 * refreshing, so a stale list is never presented as a current one. Absent for
+	 * a first load, which has its own loading state, and for the stories that do
+	 * not model a refresh.
+	 */
+	refreshingRows?: boolean;
+	/**
+	 * The unread read is in flight behind painted rows. The count is the one number
+	 * a reader acts on, so it is reported separately from `refreshingRows` rather
+	 * than folded into it.
+	 */
+	refreshingUnread?: boolean;
 	membershipsLoading?: boolean;
 	organizationsFailed?: boolean;
 	selfAccountId?: string;
@@ -651,6 +674,7 @@ export type TeamBridgePageViewProps = {
 };
 
 export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
+	ownerAudit,
 	renderThreadPane,
 	threadLink,
 	onCloseThread,
@@ -703,6 +727,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	peopleState = "ready",
 	peopleError,
 	peopleIncomplete = false,
+	refreshingRows = false,
+	refreshingUnread = false,
 	onRetryPeople,
 	onRetryMembers,
 	eligibility = null,
@@ -915,6 +941,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		);
 	};
 	const selectTarget = (next: TeamBridgeTarget | null) => {
+		ownerAudit?.clear();
 		setQuickView(null);
 		onTarget(next);
 	};
@@ -1122,6 +1149,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			setThreadSelection(null);
 			onCloseThread?.();
 		}
+		ownerAudit?.clear();
 		setQuickView(next);
 	};
 	const threadIsOpen = Boolean(
@@ -1577,6 +1605,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				   on the canvas ground the selected row measured 1.06:1 on `paper`
 				   (design round 1, D2). */
 				className="panel-top-pad flex w-72 shrink-0 flex-col bg-surface"
+				aria-busy={refreshingRows || refreshingUnread || undefined}
 				onPointerEnter={() => setPointerInRail(true)}
 				onPointerLeave={() => setPointerInRail(false)}
 			>
@@ -1589,6 +1618,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						totalUnread={totalUnread}
 						membershipsLoading={membershipsLoading}
 						organizationsFailed={organizationsFailed}
+						unreadRefreshing={refreshingUnread}
 						onRetry={onRetryMemberships}
 					/>
 					{/* "New message" opens an empty To: draft: a DM or a group is
@@ -1616,6 +1646,38 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					>
 						<Plus size={16} />
 					</Button>
+					{/*
+					 * STALE-WHILE-REVALIDATE, VISIBLY (tb-instant-open). Cached rows stay
+					 * on screen while the reads behind them settle, so the rail says they
+					 * are being re-read rather than presenting a stale list as a current
+					 * one. The slot is always in the flow and only its colour role changes,
+					 * so a poll cannot reflow the rail under the reader. `data-rail-refreshing`
+					 * names which read is behind it. No new copy: this is a state of the
+					 * rail, and what a screen reader needs to hear is the affected regions'
+					 * own `aria-busy`.
+					 *
+					 * AND NEITHER READ WEARS THE ATTENTION HUE (design round 1, D2). Green in
+					 * this rail is the mark of a count the reader owes attention to: every
+					 * row's `AttentionBadge` sits beside this dot, and so does the collapsed
+					 * sidebar's More badge. A green dot four rows above those badges reads as
+					 * a count of unread, and makes the one mark readers trust mean the
+					 * opposite kind of thing. Attention is a count; liveness is plumbing. So
+					 * both refresh states are `ink-dim`, and which read is behind the dot
+					 * stays in `data-rail-refreshing` - for instruments and tests rather than
+					 * for eyes, because a difference no reader can act on does not earn a hue.
+					 */}
+					<span
+						data-rail-refreshing={
+							refreshingUnread ? "unread" : refreshingRows ? "rows" : undefined
+						}
+						aria-hidden="true"
+						className={cn(
+							"size-1.5 shrink-0 rounded-full",
+							refreshingUnread || refreshingRows
+								? "bg-ink-dim"
+								: "bg-transparent",
+						)}
+					/>
 				</header>
 				<nav
 					aria-label={t("ui.teamBridge.drafts.navigation")}
@@ -1699,18 +1761,41 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						)}
 				</nav>
 				<ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block!">
-					{listState === "error" && (
-						<div className="flex flex-col items-start gap-2 px-3 py-3">
-							<p className="text-[12px] text-ink-muted">
-								{t("ui.teamBridge.list.error")}
-							</p>
-							{onRetry && (
-								<Button size="sm" variant="ghost" onClick={onRetry}>
-									{t("ui.teamBridge.list.retry")}
-								</Button>
-							)}
-						</div>
-					)}
+					{/*
+					 * THE SENTENCE MUST MATCH WHAT IS UNDER IT (design round 1, D1).
+					 * `listState` is "error" whenever `list.isError`, and `conversations`
+					 * falls back to the watcher's cached rows, so this branch now renders
+					 * above rows that are painted and usable - one failed read (an offline
+					 * blip, a 5xx) after a good one. "Conversations could not be loaded."
+					 * is then false about the pixels: the reader can see the conversations.
+					 * What actually failed is the refresh, so with rows on screen the note
+					 * says that, and takes the quiet underlined retry the chat sidebar
+					 * already uses for its own stale list rather than an error panel's
+					 * button. With nothing painted the old sentence is still exactly true
+					 * and keeps its panel and button.
+					 */}
+					{listState === "error" &&
+						(sidebarRows.length > 0 ? (
+							<div className="space-y-1 px-3 py-3 text-[12px] text-ink-muted">
+								<p>{t("ui.teamBridge.list.error_stale")}</p>
+								{onRetry && (
+									<button type="button" className="underline" onClick={onRetry}>
+										{t("ui.teamBridge.list.retry")}
+									</button>
+								)}
+							</div>
+						) : (
+							<div className="flex flex-col items-start gap-2 px-3 py-3">
+								<p className="text-[12px] text-ink-muted">
+									{t("ui.teamBridge.list.error")}
+								</p>
+								{onRetry && (
+									<Button size="sm" variant="ghost" onClick={onRetry}>
+										{t("ui.teamBridge.list.retry")}
+									</Button>
+								)}
+							</div>
+						))}
 					<RailSection
 						id="team-bridge-channels-heading"
 						title={t("ui.teamBridge.section.channels")}
@@ -1922,6 +2007,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							</RailSection>
 						</>
 					)}
+					{ownerAudit?.rail(() => {
+						setQuickView(null);
+						setThreadSelection(null);
+						onCloseThread?.();
+					})}
 				</ScrollArea>
 			</aside>
 
@@ -1934,7 +2024,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				)}
 			>
 				{notice}
-				{quickView === "invitations" ? (
+				{ownerAudit?.active ? (
+					ownerAudit.panel
+				) : quickView === "invitations" ? (
 					<TeamBridgeInvitations
 						invitations={invitations}
 						listState={listState}
@@ -2236,6 +2328,21 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								) : selectedOrganizationUnknown ? (
 									<p className="px-5 py-8 text-[13px] text-ink-muted">
 										{t("ui.teamBridge.scope.thread_unknown")}
+									</p>
+								) : target?.type === "conversation" &&
+									shown === null &&
+									listState === "ready" ? (
+									/*
+									 * An addressed conversation id that is NOT in the caller's own list.
+									 * This is not an empty thread. The list only carries conversations the
+									 * CALLER participates in, so the honest answers are "not a member" and
+									 * "archived" — and rendering the draft intro here told a reader "this is
+									 * the beginning of your direct message history" about a DM of six
+									 * messages (team-bridge report, 2026-10-28). Say the plain fact and leave
+									 * the composer closed: `canCompose` is already false for this target.
+									 */
+									<p className="px-5 py-8 text-[13px] text-ink-muted">
+										{t("ui.teamBridge.thread.not_available")}
 									</p>
 								) : shown === null ? (
 									/*
@@ -2899,6 +3006,9 @@ const TeamBridgeOwnedPage: FC<{
 		Map<string, { id: string; tenantId: string | undefined }>
 	>;
 }> = ({ accountId, drafts, receipts }) => {
+	/* The feature's one cache reader: the opening snapshot below is read from it, and
+	   the writes that patch cached pages run through it. */
+	const client = useQueryClient();
 	/*
 	 * A banner click lands here with `?tenant=…&conversation=…`. The parameters
 	 * seed the FIRST render so the clicked conversation wins over the landing
@@ -2923,6 +3033,27 @@ const TeamBridgeOwnedPage: FC<{
 			: TEAM_BRIDGE_ALL_SCOPE,
 	);
 	const scopeChosen = useRef(Boolean(requestedTenant));
+	/*
+	 * THE OPENING SNAPSHOT (tb-instant-open, mechanism 1 as far as it honestly
+	 * reaches). The shell's notification watcher has been polling this account's
+	 * conversation list while this page was closed, under this account's own cache
+	 * key - so on a warm open the rows the rail needs are already here, read under
+	 * the same ownership this page would request them with, and no new request is
+	 * added to feed this page.
+	 *
+	 * It is used ONLY while the scope this page reads has no data of its own: an
+	 * answer that has landed always wins, so a snapshot can never shadow a current
+	 * read. Every row still passes through `visibleConversationRows`, so a snapshot
+	 * taken at account scope cannot show one organization's rows under another's
+	 * title. The watcher carries no message bodies, so the selected thread's history
+	 * is still its own read and its own loading state - nothing here implies it was
+	 * already fetched.
+	 */
+	const openingRows = accountId
+		? client.getQueryData<TeamBridgeConversationList>(
+				teamBridgeKeys.conversations(TEAM_BRIDGE_ALL_SCOPE, accountId),
+			)?.conversations
+		: undefined;
 	// THE GATE IS THE FIRST READ (round-1 U-6): until it answers, every other
 	// read is disabled, so an ineligible account issues no refused requests.
 	const status = useTeamBridgeStatus();
@@ -2983,7 +3114,33 @@ const TeamBridgeOwnedPage: FC<{
 	);
 	const { pending: organizationsPending, failed: organizationsFailed } =
 		organizationsReadState(hubTenants, memberships);
-	const list = useTeamBridgeConversations(scope, readsEnabled, accountId);
+	/*
+	 * THE SCOPE IS DECIDED BEFORE THE LIST IS READ (tb-instant-open).
+	 *
+	 * The organization set comes from the status payload this container already
+	 * holds, so for a single-organization account the scope is knowable in the same
+	 * commit the gate opens. Reading the merged list first and replacing it once the
+	 * adoption effect ran spent a round trip on every cold open: the request the
+	 * reader waited behind was one this page then threw away. The list is therefore
+	 * HELD until the scope state agrees with what the organizations imply; the
+	 * adoption effect below then sets it, and the one list read is the one kept.
+	 *
+	 * A hold, not a spinner over a slow call: it adds no round trip to the path (the
+	 * rows cannot be known before the organizations are) and it removes the request
+	 * that would have been discarded.
+	 */
+	const scopeSettled =
+		preferredScope(organizations, scope, scopeChosen.current, openingRows) ===
+		scope;
+	// `organizationsPending` is the same rule one step earlier: the answer that
+	// decides the scope is still in flight, so a read now would be a read this
+	// page is about to replace.
+	const scopeDecided = scopeSettled && !organizationsPending;
+	const list = useTeamBridgeConversations(
+		scope,
+		readsEnabled && scopeDecided,
+		accountId,
+	);
 	const directory = useTeamBridgeDirectory(
 		scope === TEAM_BRIDGE_ALL_SCOPE ? null : scope,
 		readsEnabled,
@@ -3004,7 +3161,38 @@ const TeamBridgeOwnedPage: FC<{
 	// The reader's own name for their own messages; `user` is null until the
 	// account read answers, never the user store's placeholder name.
 	const selfName = auth.user?.name ?? undefined;
-	const conversations = list.data?.conversations ?? [];
+	const conversations = list.data?.conversations ?? openingRows ?? [];
+	/*
+	 * PAINT BEFORE THE VERDICT (tb-instant-open, mechanism 2). The status answer
+	 * decides whether this surface exists for the account at all, so the gate used
+	 * to hold a full-screen spinner until it landed - and only then did the reads
+	 * the rail needs even start, which is the serial waterfall the reader sat
+	 * behind. Rows this account already read under its own cache key are not a
+	 * verdict: they are this account's own history, fetched by the shell's watcher.
+	 *
+	 * The line is drawn here and nowhere else: an ELIGIBILITY answer still wins
+	 * outright (it is returned above this), and every WRITE stays shut because the
+	 * owner guard has not answered yet, so `isCurrentOwner()` refuses and `readOnly`
+	 * keeps the controls out of action. What a verdict adds is the surface itself,
+	 * not permission to show rows the account already held.
+	 */
+	const paintedRows = conversations.length > 0;
+	const cachedPaint = gatePending && paintedRows;
+	/*
+	 * WHAT THE RAIL OWES THE READER (tb-instant-open, mechanism 4). `paintedRows` is
+	 * the only condition: an affordance for a read that is not on screen yet would
+	 * describe a list nobody is looking at. One affordance carries one meaning - the
+	 * rows on screen are NOT CONFIRMED CURRENT - which covers both halves of this
+	 * change: rows still being re-read, and rows painted from the watcher's snapshot
+	 * before the verdict answered. It stays up from the first painted row until the
+	 * scope's own read lands. The unread read is reported separately because that
+	 * count is the one number a reader acts on, and it must never go stale in
+	 * silence.
+	 */
+	const refreshingRows =
+		paintedRows &&
+		(cachedPaint || list.isFetching || (mergedView && organizationsPending));
+	const refreshingUnread = paintedRows && unread.isFetching;
 	const people = directory.data?.members ?? [];
 	// The channel form offers the same people and chiefs of staff as the To: bar.
 	const channelCandidates = recipientCandidates(
@@ -3019,11 +3207,40 @@ const TeamBridgeOwnedPage: FC<{
 			: null,
 	);
 	const [channelFormOpen, setChannelFormOpen] = useState(false);
+	/*
+	 * The slot's callbacks are recreated every render, so the deep-link effect
+	 * below reaches the LATEST `clear` through a ref rather than listing an
+	 * unstable function as a dependency (which would either loop or go stale).
+	 */
+	const clearOwnerAudit = useRef<() => void>(() => {});
+	const ownerAudit = useOwnerAuditSurface({
+		accountId,
+		enabled:
+			readsEnabled &&
+			(capabilities.data?.features?.team_bridge_owner_audit ?? 0) >= 1,
+		scopeKey: scope,
+		organizations: mergedView
+			? organizations
+			: organizations.filter((row) => row.tenantId === scope),
+		onSelect: () => {
+			setTarget(null);
+			setThreadLink(null);
+		},
+	});
+
+	clearOwnerAudit.current = () => ownerAudit?.clear();
 
 	useEffect(() => {
 		if (!requestedConversation || !requestedTenant) return;
 		scopeChosen.current = true;
 		setScope(asTeamBridgeTenantId(requestedTenant));
+		/*
+		 * A deep link or notification click is a HUMAN target: it must take the
+		 * reader out of the audit panel the same way a rail row or a quick view
+		 * does, or the audit pane keeps the window while the target changes
+		 * underneath it (agent review round 1, m2).
+		 */
+		clearOwnerAudit.current();
 		setTarget({ type: "conversation", id: requestedConversation });
 		setThreadLink(
 			TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD
@@ -3054,11 +3271,13 @@ const TeamBridgeOwnedPage: FC<{
 	// after the first paint; adopt the only one unless
 	// the reader has already picked a scope. A later unread poll re-renders the
 	// options array, so the equality check keeps this to the one transition.
+	// Before that list exists, the watcher's snapshot stands in - and the list
+	// supersedes it the moment it answers (tb-instant-open).
 	useEffect(() => {
 		setScope((current) =>
-			preferredScope(organizations, current, scopeChosen.current),
+			preferredScope(organizations, current, scopeChosen.current, openingRows),
 		);
-	}, [organizations]);
+	}, [organizations, openingRows]);
 
 	const visibleConversations = useMemo(
 		() => visibleConversationRows(conversations, scope, organizations),
@@ -3068,13 +3287,17 @@ const TeamBridgeOwnedPage: FC<{
 	// Land on the first rail row once (built-ins lead), not on every refetch:
 	// a poll must not move the reader out of the thread they are reading.
 	useEffect(() => {
-		if (target === null && visibleConversations.length > 0) {
+		if (
+			!ownerAudit?.active &&
+			target === null &&
+			visibleConversations.length > 0
+		) {
 			const first =
 				visibleConversations.find((row) => row.builtin === "humans") ??
 				visibleConversations[0];
 			setTarget({ type: "conversation", id: first.id });
 		}
-	}, [visibleConversations, target]);
+	}, [visibleConversations, target, ownerAudit?.active]);
 
 	/*
 	 * ARCHIVE / UNARCHIVE / DELETE. The archived read stays OFF until the
@@ -3391,6 +3614,7 @@ const TeamBridgeOwnedPage: FC<{
 	return (
 		<>
 			<TeamBridgePageView
+				ownerAudit={ownerAudit}
 				key={draftKey}
 				draftJournal={draftJournal}
 				isDraftCurrent={isCurrentOwner}
@@ -3406,7 +3630,9 @@ const TeamBridgeOwnedPage: FC<{
 				onCloseThread={() => setThreadLink(null)}
 				listState={
 					list.isPending || (mergedView && organizationsPending)
-						? "loading"
+						? paintedRows
+							? "ready"
+							: "loading"
 						: list.isError || (mergedView && organizationsFailed)
 							? "error"
 							: "ready"
@@ -3428,6 +3654,8 @@ const TeamBridgeOwnedPage: FC<{
 				organizations={organizations}
 				scope={scope}
 				totalUnread={unread.data?.total ?? 0}
+				refreshingRows={refreshingRows}
+				refreshingUnread={refreshingUnread}
 				membershipsLoading={organizationsPending}
 				organizationsFailed={organizationsFailed}
 				selfAccountId={selfAccountId}
@@ -3580,7 +3808,7 @@ const TeamBridgeOwnedPage: FC<{
 					void directory.refetch();
 				}}
 				eligibility={eligibility}
-				gatePending={gatePending}
+				gatePending={gatePending && !cachedPaint}
 				readOnly={readOnly}
 				notice={<TeamBridgeDefaultOnBanner status={status.data} />}
 				onRetry={() => {
