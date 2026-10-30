@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, within } from "@storybook/test";
+import { expect, userEvent, waitFor, within } from "@storybook/test";
 import type {
 	TeamBridgeConversation,
 	TeamBridgeDirectoryMember,
@@ -96,11 +96,57 @@ const people: TeamBridgeDirectoryMember[] = [
 ];
 
 /**
- * The member row prints role and state in ONE sentence ("Member · Invited; not
- * active yet"), so the matcher has to look INSIDE that text rather than equal
- * it. Top-level so the regex is not rebuilt on every call.
+ * A roster long enough to scroll both columns at the dialog's 780px cap: the
+ * evidence for "the last row ends fully visible above the footer" needs a list
+ * that actually overflows. Names are synthetic.
  */
-const INVITED_NOT_ACTIVE = /Invited; not active yet/;
+/** The invite column's members-only empty state. Top-level, built once. */
+const NO_INVITABLE_MATCH = /No one to invite matches/;
+
+const LONG_NAMES = [
+	"Ana Lima",
+	"Bao Nguyen",
+	"Carla Diaz",
+	"Dev Patel",
+	"Elif Kaya",
+	"Femi Ade",
+	"Greta Holm",
+	"Hiro Sato",
+	"Ines Costa",
+	"Jon Berg",
+	"Kira Wolf",
+	"Lea Novak",
+	"Milo Hart",
+	"Nia Brooks",
+];
+const longPeople: TeamBridgeDirectoryMember[] = [
+	...people,
+	...LONG_NAMES.map((name, index) => ({
+		account_id: `acct_long_${index}`,
+		display_label: name,
+		role: "member",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+		agent: {
+			endpoint_id: `bep_long_${index}`,
+			name: "Aida",
+			state: "active" as const,
+		},
+	})),
+];
+const longConversation: TeamBridgeConversation = {
+	...conversation,
+	members: [
+		...conversation.members,
+		...LONG_NAMES.slice(0, 10).map((name, index) => ({
+			account_id: `acct_long_${index}`,
+			kind: "human" as const,
+			display_label: name,
+			role: "member" as const,
+			state: "active" as const,
+		})),
+	],
+};
 
 const meta = {
 	title: "Team Bridge/Add members",
@@ -135,9 +181,10 @@ export const Populated: Story = {
 	play: async ({ canvasElement }) => {
 		const dialog = within(canvasElement.ownerDocument.body);
 		await expect(dialog.getByText("Aida (Damian Tran)")).toBeInTheDocument();
-		await expect(dialog.getByText(INVITED_NOT_ACTIVE)).toBeInTheDocument();
+		// An invited agent is never painted as active: it wears the Invited pill.
+		await expect(dialog.getByText("Invited")).toBeInTheDocument();
 		await expect(
-			dialog.getByRole("button", { name: "Remove Ben Tran" }),
+			dialog.getByRole("button", { name: "Remove Ben Tran from conversation" }),
 		).toBeInTheDocument();
 	},
 };
@@ -168,10 +215,121 @@ export const BridgeNotEnabled: Story = {
 	play: async ({ canvasElement }) => {
 		const dialog = within(canvasElement.ownerDocument.body);
 		await expect(dialog.getByText("Cy Smith")).toBeInTheDocument();
+		await expect(dialog.getByText("Not on Team Bridge")).toBeInTheDocument();
+	},
+};
+
+/** Enough rows to scroll both columns; the capture scrolls them to the end. */
+export const LongList: Story = {
+	args: { conversation: longConversation, people: longPeople },
+	/*
+	 * Scrolled to the END of both columns, because the defect being guarded is
+	 * the LAST row: it must sit fully above the footer, not under its edge.
+	 */
+	play: async ({ canvasElement }) => {
+		const body = canvasElement.ownerDocument.body;
+		await waitFor(() =>
+			expect(
+				body.querySelectorAll('[role="dialog"] [class*="overflow-y-auto"]'),
+			).toHaveLength(2),
+		);
+		for (const column of body.querySelectorAll<HTMLElement>(
+			'[role="dialog"] [class*="overflow-y-auto"]',
+		)) {
+			column.scrollTop = column.scrollHeight;
+			await expect(column.scrollHeight).toBeGreaterThan(column.clientHeight);
+		}
+	},
+};
+
+/** A query nothing matches: BOTH columns state their own empty result. */
+export const SearchNoResults: Story = {
+	play: async ({ canvasElement }) => {
+		const dialog = within(canvasElement.ownerDocument.body);
+		await userEvent.type(
+			dialog.getByRole("textbox", { name: "Search people and agents" }),
+			"zzz",
+		);
 		await expect(
-			dialog.getByText("Team Bridge is not enabled for this person"),
+			dialog.getByText("No current members match your search."),
+		).toBeInTheDocument();
+		await expect(
+			dialog.getByText("No people or agents match your search."),
 		).toBeInTheDocument();
 	},
+};
+
+/*
+ * A query that matches ONLY a current member, so the invite list explains why
+ * nobody is offered. "juno" is the invited agent and nothing invitable: "ben"
+ * (the first version of this story) also matched "Aida (Ben Tran)", so the
+ * invite list was not empty and the play failed (QA round 1, Q1).
+ */
+export const SearchMatchesOnlyMembers: Story = {
+	play: async ({ canvasElement }) => {
+		const dialog = within(canvasElement.ownerDocument.body);
+		await userEvent.type(
+			dialog.getByRole("textbox", { name: "Search people and agents" }),
+			"juno",
+		);
+		await expect(dialog.getByText(NO_INVITABLE_MATCH)).toBeInTheDocument();
+		await expect(dialog.getByText("Juno (Sherman Tsui)")).toBeInTheDocument();
+	},
+};
+
+/** Two rows ticked: the primary action counts them ("Invite 2"). */
+export const SelectionInviteTwo: Story = {
+	play: async ({ canvasElement }) => {
+		const dialog = within(canvasElement.ownerDocument.body);
+		for (const name of ["Ada Lovelace", "Sherman Tsui"])
+			await userEvent.click(dialog.getByRole("checkbox", { name }));
+		await expect(
+			dialog.getByRole("button", { name: "Invite 2" }),
+		).toBeEnabled();
+	},
+};
+
+/**
+ * The remove action revealed with its tooltip. Synthetic events cannot set CSS
+ * `:hover`, so the reveal shown is the keyboard one (`:focus-within`, the same
+ * class list); the tooltip opens from the hover the play dispatches.
+ */
+export const RemoveTooltip: Story = {
+	play: async ({ canvasElement }) => {
+		const dialog = within(canvasElement.ownerDocument.body);
+		const button = dialog.getByRole("button", {
+			name: "Remove Ben Tran from conversation",
+		});
+		button.focus();
+		await userEvent.hover(button);
+		await waitFor(() =>
+			expect(dialog.getAllByText("Remove from conversation")[0]).toBeVisible(),
+		);
+	},
+};
+
+/** The first press arms the row; the confirmation names the member. */
+export const RemoveConfirm: Story = {
+	play: async ({ canvasElement }) => {
+		const dialog = within(canvasElement.ownerDocument.body);
+		const button = dialog.getByRole("button", {
+			name: "Remove Ben Tran from conversation",
+		});
+		// Focus first: the action is `pointer-events-none` until its row is
+		// hovered or focused (the shared reveal), and userEvent honours that.
+		button.focus();
+		await userEvent.click(button);
+		await waitFor(() =>
+			expect(
+				dialog.getByRole("button", { name: "Remove Ben Tran" }),
+			).toBeInTheDocument(),
+		);
+	},
+};
+
+/** The remove write in flight: the row says "Removing…" in place. */
+export const Removing: Story = {
+	args: { pendingKey: "remove:acct_ben" },
 };
 
 export const MutationError: Story = {

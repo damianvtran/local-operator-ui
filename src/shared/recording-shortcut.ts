@@ -6,6 +6,9 @@ import { type MiniViewPlatform, formatQuickSendDisplay } from "./mini-view";
 
 export const START_RECORDING_SETTING_KEY = "keymap.start_recording";
 export const DEFAULT_START_RECORDING_VALUE = "primary+shift+s";
+/** The bare-modifier hold beside it; the renderer's own keydown/keyup pair matches it. */
+export const PUSH_TO_TALK_SETTING_KEY = "keymap.push_to_talk";
+export const DEFAULT_PUSH_TO_TALK_VALUE = "alt-right-hold";
 
 export type RecordingShortcutInput = {
 	key: string;

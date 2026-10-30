@@ -1,0 +1,91 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit, RE-AUDIT (auditor A of two) of the A2-RU-M1 remediation in high-visibility consent copy",
+	"date": "2026-10-30",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Session c16fabd13d68 ran as anthropic/claude-opus-5-5 (the model named in this session's system prompt); no fallback announced or observed.",
+	"session": "c16fabd13d68",
+	"instance": "c16fabd13d68-ru",
+	"audit_id": "teambridge-members-polish-reaudit-a-c16fabd13d68-ru",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"locale": "ru",
+	"namespace": "ui.teamBridge",
+	"independence": "Re-audit auditor A of two, running independently: session c16fabd13d68 (team lopdev, role translation-auditor, task ru-reaudit-a). Distinct from the translator/remediating coder and from prior auditor sessions b5610aecd5f2 and e49c0ab64b49 (the latter raised A2-RU-M1, whose remediation is audited here). No catalogue edited.",
+	"integration": {
+		"pr": "damianvtran/local-operator-ui#1523",
+		"branch": "fix/team-bridge-members-dialog-polish",
+		"head_at_audit": "d71058ce222f96b09168fb267af7e05ef5cf5a6b",
+		"worktree": "~/local-operator-ui/.worktrees/members-dialog-polish"
+	},
+	"scope": {
+		"primary": [
+			"ui.teamBridge.members.invitation_note_v2"
+		],
+		"delta_verified": "git diff 90bb4c7d4e2..d71058ce222 -- src/i18n/catalogues/ru/ui.teamBridge.json changes exactly one line (this key); clause «или выключить для него звук» -> «или перевести его в режим «Без звука»». No other ru key changed, so every other value stays byte-identical to the bytes the earlier audits read.",
+		"keys_read_for_consistency": [
+			"ui.teamBridge.notify.all",
+			"ui.teamBridge.notify.mention",
+			"ui.teamBridge.notify.mute",
+			"ui.teamBridge.notify.muted",
+			"ui.teamBridge.menu.mute",
+			"ui.teamBridge.menu.unmute",
+			"ui.teamBridge.notify.label"
+		],
+		"call_site": "src/renderer/src/features/team-bridge/team-bridge-add-members.tsx:814 (members dialog footer note)",
+		"control_named": "src/renderer/src/features/team-bridge/team-bridge-model.ts:157-167 TEAM_BRIDGE_NOTIFY_OPTIONS: all / mention / mute radio, labels notify.all / notify.mention / notify.mute",
+		"references": [
+			{
+				"path": "~/local-operator/i18n/style-guides/ru.md",
+				"sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+			},
+			{
+				"path": "~/local-operator/i18n/glossary.md",
+				"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+			}
+		]
+	},
+	"sha256": {
+		"ru": "d7c706a137f2f6d7734372442f8ee305c61373542a7bb7167329e2fb446270b8",
+		"en": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f"
+	},
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ru/ui.teamBridge.json",
+			"sha256": "d7c706a137f2f6d7734372442f8ee305c61373542a7bb7167329e2fb446270b8"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "abbf67496bc6fecdd4d5795e2fb6b15d4d6a1cefad59ba69b303656b88c8b4cd"
+		}
+	},
+	"audited_value": "Приглашения не дают доступа, пока их не примут. Приглашённый агент присоединяется после согласия владельца; затем он читает все сообщения здесь и сам решает, отвечать ли, а при упоминании через @ отвечает всегда. Владелец может ограничить его упоминаниями через @ или перевести его в режим «Без звука».",
+	"a2_ru_m1_resolution": "Resolved. The clause now names the mute level by the locale's own label: «Без звука» is byte-identical to ui.teamBridge.notify.mute, the third option of the same notify radio whose middle option «Упоминания» the preceding clause («ограничить его упоминаниями через @») describes. «перевести в режим «…»» is the standard ru UI idiom for selecting a named mode, and it removes the calque that read as muting audio for the agent.",
+	"quotes": "The quoted label is set in «ёлочки» U+00AB/U+00BB. Per ru.md («ёлочки» in prose, „лапки“ nested inside them) this is correct: the label is a first-level quotation inside unquoted prose, not a quote nested inside another «…», so „лапки“ would be wrong here. No ASCII \" or other quote marks in the value.",
+	"invitation_note_v2_fidelity": "Six English propositions checked against the full ru value: (1) no access until accepted — «Приглашения не дают доступа, пока их не примут» ✓; (2) joins once its owner consents — «присоединяется после согласия владельца» ✓ (consent precedes joining; nothing implies the invitation activates the agent); (3) then reads every message here — «затем он читает все сообщения здесь» ✓; (4) decides whether to reply — «сам решает, отвечать ли» ✓; (5) always replies when @-mentioned — «а при упоминании через @ отвечает всегда» ✓; (6) owner can limit it to @-mentions or mute it — «Владелец может ограничить его упоминаниями через @ или перевести его в режим «Без звука»» ✓. Nothing added, nothing weakened; '@' kept recognizable as the context note requires; вы-register not engaged (impersonal/third person throughout); ё used (Приглашённый); sentence case; no '!'.",
+	"mechanical_checks": {
+		"placeholders": "none in en or ru (no '{' or '}' in either value)",
+		"nfc": "ru value is NFC-normalized",
+		"bidi_or_invisible_controls": "none (scan for U+00A0, U+200B-U+200F, U+202A-U+202E found none)",
+		"length": "302 code points vs en 243 (ratio 1.24, inside the ru.md 20-30% expectation); +10 vs the previous clause. Wrapping footer paragraph (max-w-sm), so no truncation risk; width measured in characters, not as a rendered frame."
+	},
+	"findings": [
+		{
+			"severity": "nit",
+			"id": "RA-RU-N1",
+			"key": "ui.teamBridge.members.invitation_note_v2",
+			"current": "Владелец может ограничить его упоминаниями через @ или перевести его в режим «Без звука».",
+			"proposed": "Владелец может ограничить его упоминаниями через @ или перевести в режим «Без звука».",
+			"reason": "Both infinitives share the object «его»; repeating it in the second clause is grammatical but heavier than a native editor would write, and dropping it shortens the line. Non-gating."
+		}
+	],
+	"verdict": "clean-with-findings: 0 blocker, 0 major, 0 minor, 1 nit",
+	"evidence_record": "i18n/audits/evidence/ru/ui.teamBridge/teambridge-members-polish-reaudit-a-c16fabd13d68-ru/record.json",
+	"audit_notes_not_execution_log": true
+}

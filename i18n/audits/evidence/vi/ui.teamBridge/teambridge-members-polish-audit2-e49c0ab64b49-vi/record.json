@@ -1,0 +1,46 @@
+{
+	"record_kind": "translation audit record (second independent auditor)",
+	"locale": "vi",
+	"namespace": "ui.teamBridge",
+	"date": "2026-10-30",
+	"auditor": {
+		"agent": "translation-auditor",
+		"session": "e49c0ab64b49",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Second independent auditor: session e49c0ab64b49 (team lopdev, role translation-auditor), distinct from translator (translator / anthropic/claude-opus-5-5) and from first auditor session b5610aecd5f2. Verdicts were formed from the catalogues, context sidecar, glossary and style guides BEFORE reading the first auditor's receipts; comparison recorded below. No catalogue edited."
+	},
+	"paths": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/vi/ui.teamBridge.json",
+			"sha256": "d381190e0b5f86f7c1cc496376fb0885431c7c2c318360b4ca071ee8337b4f83"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "abbf67496bc6fecdd4d5795e2fb6b15d4d6a1cefad59ba69b303656b88c8b4cd"
+		}
+	},
+	"receipt": {
+		"path": "i18n/receipts/e49c0ab64b49-vi.json",
+		"sha256": "048baf371e7bd71aacbd129291f0939c2ae06ee9e5a565f03aebcb58911738cd"
+	},
+	"findings": [
+		{
+			"severity": "nit",
+			"id": "A2-VI-N1",
+			"key": "ui.teamBridge.members.invitation_note_v2",
+			"current": "sau đó tác nhân đọc mọi tin nhắn … giới hạn tác nhân chỉ trả lời … hoặc tắt tiếng tác nhân.",
+			"proposed": "sau đó nó đọc mọi tin nhắn … giới hạn để nó chỉ trả lời … hoặc tắt tiếng nó.",
+			"reason": "\"tác nhân\" appears four times in three sentences; the vi guide asks to drop recoverable nouns, and the shipped consent copy already uses \"nó\" for the agent."
+		}
+	],
+	"status": "clean-with-findings: 0 blocker, 0 major, 0 minor, 1 nit",
+	"first_auditor": {
+		"session": "b5610aecd5f2",
+		"receipt": "i18n/receipts/b5610aecd5f2-vi.json"
+	},
+	"notes_not_execution_log": "Linguistic judgements; no command output is reproduced here."
+}

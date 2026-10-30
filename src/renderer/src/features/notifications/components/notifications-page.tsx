@@ -23,7 +23,10 @@ import { retryDesktopQuery } from "@shared/api/local-operator/backend-error";
  * yet: high-volume DOM performance remains a measured limitation, not a claim
  * that an arbitrary truncation is the whole inbox.
  */
-import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import {
+	desktopResult,
+	userFacingMessage,
+} from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureState,
 	useDesktopCapabilities,
@@ -85,22 +88,29 @@ import type {
 	DesktopNotificationsWriteResult,
 } from "../../../../../shared/desktop-control-contract";
 import {
+	type FrozenNotificationSelection,
 	type NotificationSnapshot,
 	type OperationProgress,
 	applyNotificationOperation,
+	frozenReadsAsks,
+	frozenSelectionCounts,
 	inverseNotificationVerb,
 	isCompleteInverse,
 	observeNotificationScope,
 	receiptProgress,
+	selectedBySnapshot,
 } from "../notification-operations";
 import {
 	type NotificationsTarget,
 	type NotificationsVerb,
 	applyConfirmedWrite,
 	notificationKeys,
+	previewNotificationSelection,
 	readSessionDismissCounts,
 	tokensOf,
+	useNotificationBulkState,
 	useNotificationDetail,
+	useNotificationReadState,
 	useNotificationsList,
 	useNotificationsWrite,
 	useSessionNotificationsFacts,
@@ -136,9 +146,9 @@ import { OperationProgressLine } from "./operation-progress-line";
  * tab share one window (design audit OD3); re-exported for the suites that read
  * it from this module.
  */
-import { UNDO_WINDOW_MS } from "../notifications-model";
+import { UNDO_WINDOW_MS, receiptDuration } from "../notifications-model";
 
-export { UNDO_WINDOW_MS };
+export { receiptDuration, UNDO_WINDOW_MS };
 /*
  * THE INLINE STATUS LINE IS NOT A PERMANENT RECORD (code round 2, minor 1).
  * It reports work in flight and rows still without a conclusive answer; once
@@ -263,6 +273,12 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	const capabilities = useDesktopCapabilities();
 	const gate = desktopFeatureState(capabilities.data, "notifications", 1);
 	const enabled = gate === "enabled";
+	const bulkEnabled =
+		desktopFeatureState(capabilities.data, "notification_bulk_selection", 1) ===
+		"enabled";
+	const bulkAskReadEnabled =
+		desktopFeatureState(capabilities.data, "notification_bulk_ask_read", 1) ===
+		"enabled";
 	const nowMs = pinnedNow ?? Date.now();
 	const narrow = !useMediaQuery("(min-width: 1100px)");
 	const { client } = useOptionalQueryClient();
@@ -283,6 +299,15 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 		from: searchParams.get("from") || null,
 	}));
 	const [selected, setSelected] = useState<Set<string>>(() => new Set());
+	const [frozenSelection, setFrozenSelection] =
+		useState<FrozenNotificationSelection | null>(null);
+	const [confirmView, setConfirmView] = useState<
+		| { snapshot: FrozenNotificationSelection }
+		| { items: DesktopNotificationItem[]; throughSeq: number }
+		| null
+	>(null);
+	const previewGeneration = useRef(0);
+	const lastBulkUndo = useRef<{ tokens: string[]; at: number } | null>(null);
 	const [anchorId, setAnchorId] = useState<string | null>(null);
 	const [focusId, setFocusId] = useState<string | null>(null);
 	const [confirmSession, setConfirmSession] = useState<{
@@ -315,9 +340,69 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	/** True while the list is scrolled to its top: fresh rows merge in, the pill hides. */
 	const [isAtTop, setIsAtTop] = useState(true);
 	const listRef = useRef<HTMLDivElement>(null);
+	const visibleReconciliationIds = useCallback(() => {
+		const port = listRef.current;
+		if (!port) return [];
+		const viewport = port.getBoundingClientRect();
+		return [...port.querySelectorAll<HTMLElement>("[data-notification-row]")]
+			.filter((node) => {
+				const rect = node.getBoundingClientRect();
+				return (
+					viewport.height === 0 ||
+					(rect.bottom >= viewport.top && rect.top <= viewport.bottom)
+				);
+			})
+			.map((node) => node.dataset.notificationRow as string)
+			.slice(0, 500);
+	}, []);
+	const restoreBulkFocus = useRef(false);
+	useEffect(() => {
+		if (!operationBusy && restoreBulkFocus.current) {
+			restoreBulkFocus.current = false;
+			// The bulk bar disappears after success; keep keyboard users in the
+			// list's controls instead of leaving focus on BODY when it unmounts.
+			document
+				.querySelector<HTMLElement>("[data-notifications-select-all]")
+				?.focus();
+		}
+	}, [operationBusy]);
 
 	const list = useNotificationsList(readState, enabled, { atTop: isAtTop });
+	/*
+	 * BELOW `list`, BECAUSE ITS RESET CALLBACK CALLS INTO IT (agent review round 2,
+	 * R2-2). This hook used to sit ~60 lines above `list` and close over it: correct
+	 * only because a bulk v1 receipt always settles after mount, so the callback
+	 * cannot run during the render that captured the binding - a property nothing
+	 * enforced and every reader had to re-prove. Declaring it after the thing it
+	 * closes over is the fix that does not rely on that ordering at all.
+	 *
+	 * A v1 receipt has no row payload, so the callback reuses the list's one reset
+	 * path and both its cursor pages and the operator's viewport return to page one.
+	 */
+	const bulkActions = useNotificationBulkState(() => {
+		void list.resetToTop();
+	});
 	const write = useNotificationsWrite();
+	const readActions = useNotificationReadState();
+	/* Keep the receipt/Undo planner, but send every explicit-id batch through the
+	 * shared optimistic API. A raw write here used to leave the drawer and badge
+	 * stale while the page waited for the response. Scoped legacy sweeps keep
+	 * their server fences; the filter snapshot path below shares this adapter. */
+	const sendWrite = useCallback(
+		(verb: NotificationsVerb, target: NotificationsTarget) => {
+			if (!("items" in target)) return writeNotifications(verb, target);
+			const action =
+				verb === "read"
+					? readActions.markRead
+					: verb === "unread"
+						? readActions.markUnread
+						: verb === "dismiss"
+							? readActions.dismiss
+							: readActions.restore;
+			return action(target.items);
+		},
+		[readActions],
+	);
 	const detail = useNotificationDetail(notificationId ?? null, enabled);
 	/* The open conversation's own facts feed the printed count's key (R7-2). */
 	const sessionFacts = useSessionNotificationsFacts(
@@ -328,6 +413,23 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	useEffect(() => {
 		if (list.isSuccess && !list.isFetching) setLastGoodAt(list.dataUpdatedAt);
 	}, [list.isSuccess, list.isFetching, list.dataUpdatedAt]);
+
+	const previousWindowReset = useRef(0);
+	useEffect(() => {
+		if (
+			!list.windowResetAt ||
+			list.windowResetAt === previousWindowReset.current
+		)
+			return;
+		previousWindowReset.current = list.windowResetAt;
+		/*
+		 * resetQueries drops the deep cursor pages, but the browser retains the
+		 * scroll port's numeric offset. Move it with the new page-one window;
+		 * facts-only refreshes deliberately do not change this timestamp.
+		 */
+		if (listRef.current) listRef.current.scrollTop = 0;
+		setIsAtTop(true);
+	}, [list.windowResetAt]);
 
 	const loaded = list.data;
 	// biome-ignore lint/correctness/useExhaustiveDependencies: confirmedReadVersion is the invalidation signal for the ref-held token map; its identity never changes
@@ -371,6 +473,35 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 		[filtered, filteredWaiting, grouping, nowMs],
 	);
 	const order = useMemo(() => rowOrder(groups), [groups]);
+	// Filters are applied to the retained scroll window. A sparse first page is
+	// not proof of an empty result: advance until a matching row exists, and fill
+	// a short viewport so scrolling can actually reach the remaining pages.
+	const fillingFilteredView =
+		filtersActive(filters) && order.length === 0 && Boolean(list.hasNextPage);
+	useEffect(() => {
+		if (
+			!filtersActive(filters) ||
+			!list.hasNextPage ||
+			list.isFetchingNextPage ||
+			list.isError
+		)
+			return;
+		const port = listRef.current;
+		if (
+			order.length === 0 ||
+			(port &&
+				port.clientHeight > 0 &&
+				port.scrollHeight <= port.clientHeight + 160)
+		)
+			void list.fetchNextPage();
+	}, [
+		filters,
+		order.length,
+		list.hasNextPage,
+		list.isFetchingNextPage,
+		list.isError,
+		list.fetchNextPage,
+	]);
 	const byId = useMemo(() => {
 		const map = new Map<string, DesktopNotificationItem>();
 		for (const item of [...waiting, ...items]) map.set(item.id, item);
@@ -488,9 +619,18 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	}, [notificationId, detail.data, write, writesPaused]);
 
 	const clearSelection = useCallback(() => {
+		previewGeneration.current += 1;
+		setFrozenSelection(null);
 		setSelected(new Set());
 		setAnchorId(null);
 	}, []);
+
+	// A different view must never retain a token naming the previous filters.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: these values are the selection boundary, not closure inputs
+	useEffect(() => {
+		clearSelection();
+		setConfirmView(null);
+	}, [filters.kind, filters.priority, filters.from, readState, clearSelection]);
 
 	/*
 	 * ONE WRITE PATH with its receipt and Undo (design § 0.8, 6 s). The Undo is
@@ -517,7 +657,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 			let settled: { pending: unknown[]; error?: unknown } | null = null;
 			try {
 				const receipt = await applyNotificationOperation(
-					writeNotifications,
+					sendWrite,
 					verb,
 					undoItems,
 					undefined,
@@ -548,7 +688,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 				settleOperationProgress(settled, setOperationProgress);
 			}
 		},
-		[client],
+		[client, sendWrite],
 	);
 
 	const runWrite = useCallback(
@@ -581,7 +721,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 								tokens: sent,
 							};
 				const receipt = await applyNotificationOperation(
-					writeNotifications,
+					sendWrite,
 					verb,
 					sent,
 					snapshot,
@@ -644,19 +784,25 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 				 * `OperationProgressLine` stories photograph.
 				 */
 				const partial = progress.pending > 0 || progress.skipped > 0;
+				/*
+				 * A partial receipt is HELD (design round 1, D2): see `receiptDuration`.
+				 * The Undo window and the toast's lifetime are read from the same value so
+				 * a held receipt's Undo cannot expire underneath it.
+				 */
+				const receiptWindow = receiptDuration(partial);
 				showInfoToast(
 					[summary, partial ? operationText(progress) : null]
 						.filter(Boolean)
 						.join(". "),
 					{
-						duration: UNDO_WINDOW_MS,
+						duration: receiptWindow,
 						action: undo
 							? {
 									label: t("ui.notifications.toast.undo"),
 									onClick: () => {
 										if (
 											lastUndo.current === undo &&
-											Date.now() - undo.at <= UNDO_WINDOW_MS
+											Date.now() - undo.at <= receiptWindow
 										)
 											void writeUndo(undo.verb, undo.items);
 									},
@@ -683,7 +829,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 				settleOperationProgress(settled, setOperationProgress);
 			}
 		},
-		[client, byId, clearExit, writeUndo],
+		[client, byId, clearExit, writeUndo, sendWrite],
 	);
 
 	const toggleRead = useCallback(
@@ -930,17 +1076,342 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	);
 	const toggleSelect = useCallback(
 		(item: DesktopNotificationItem, shift: boolean) => {
-			setSelected((current) => {
-				if (shift) return rangeSelect(order, anchorId, item.id, current);
-				const next = new Set(current);
-				if (next.has(item.id)) next.delete(item.id);
-				else next.add(item.id);
-				return next;
-			});
+			if (frozenSelection) {
+				const excluded = new Map(frozenSelection.excluded);
+				if (shift) {
+					// Shift selects the range, so restore any exclusions inside it.
+					for (const id of rangeSelect(order, anchorId, item.id, new Set()))
+						excluded.delete(id);
+				} else if (excluded.has(item.id)) excluded.delete(item.id);
+				else if (selectedBySnapshot(item, frozenSelection)) {
+					if (excluded.size >= 500) {
+						showInfoToast(t("ui.notifications.bulk.exclusion_limit"));
+						return;
+					}
+					excluded.set(item.id, item);
+				} else {
+					showInfoToast(t("ui.notifications.bulk.frozen_hint"));
+					return;
+				}
+				setFrozenSelection({ ...frozenSelection, excluded });
+			} else
+				setSelected((current) => {
+					if (shift) return rangeSelect(order, anchorId, item.id, current);
+					const next = new Set(current);
+					if (next.has(item.id)) next.delete(item.id);
+					else next.add(item.id);
+					return next;
+				});
 			setAnchorId(item.id);
 		},
-		[anchorId, order],
+		[anchorId, order, frozenSelection],
 	);
+
+	const writeBulkUndo = useCallback(
+		async (tokens: string[]) => {
+			if (operationLock.current) return;
+			operationLock.current = true;
+			setOperationBusy(true);
+			lastBulkUndo.current = null;
+			try {
+				const receipts = [];
+				for (const token of tokens)
+					receipts.push(await bulkActions.undo(token));
+				const receipt = {
+					changed_count: receipts.reduce(
+						(sum, item) => sum + item.changed_count,
+						0,
+					),
+					skipped_count: receipts.reduce(
+						(sum, item) => sum + item.skipped_count,
+						0,
+					),
+				};
+				if (receipt.skipped_count === 0)
+					showSuccessToast(t("ui.notifications.toast.undone"));
+				else
+					showInfoToast(
+						t("ui.notifications.bulk.partial", {
+							changed: formatNumber(receipt.changed_count),
+							skipped: formatNumber(receipt.skipped_count),
+						}),
+					);
+			} catch (error) {
+				showErrorToast(
+					userFacingMessage(error, t("ui.notifications.error.load.title")),
+				);
+			} finally {
+				operationLock.current = false;
+				setOperationBusy(false);
+			}
+		},
+		[bulkActions],
+	);
+
+	const runFrozen = useCallback(
+		async (
+			verb: "read" | "unread" | "dismiss",
+			snapshot:
+				| FrozenNotificationSelection
+				| { items: DesktopNotificationItem[]; throughSeq: number },
+		) => {
+			if (operationLock.current || refreshFailed) return;
+			if (!("items" in snapshot)) {
+				const counts = frozenSelectionCounts(snapshot);
+				if ((verb === "dismiss" ? counts.eligible : counts.readable) === 0)
+					return;
+			}
+			operationLock.current = true;
+			setOperationBusy(true);
+			lastUndo.current = null;
+			lastBulkUndo.current = null;
+			restoreBulkFocus.current = Boolean(
+				document.activeElement?.closest("[data-notifications-page]"),
+			);
+			const matches = (item: DesktopNotificationItem) =>
+				"items" in snapshot
+					? snapshot.items.some((selected) => selected.id === item.id)
+					: selectedBySnapshot(item, snapshot);
+			try {
+				const outcome =
+					"items" in snapshot
+						? await bulkActions.applyItems(
+								verb,
+								snapshot.items,
+								snapshot.throughSeq,
+								bulkAskReadEnabled,
+								visibleReconciliationIds(),
+							)
+						: {
+								receipts: [
+									await bulkActions.apply(
+										verb,
+										snapshot,
+										visibleReconciliationIds(),
+									),
+								],
+								pending: 0,
+								skippedAsks: 0,
+							};
+				const receipt = {
+					changed_count: outcome.receipts.reduce(
+						(sum, result) => sum + result.changed_count,
+						0,
+					),
+					skipped_count: outcome.receipts.reduce(
+						(sum, result) => sum + result.skipped_count,
+						0,
+					),
+				};
+				if (verb === "dismiss") {
+					setStickyRead(
+						(current) =>
+							new Map([...current].filter(([, item]) => !matches(item))),
+					);
+					if (openItem && matches(openItem)) navigate("/notifications");
+				}
+				clearSelection();
+				const undo =
+					receipt.changed_count > 0
+						? {
+								tokens: outcome.receipts
+									.filter((result) => result.changed_count > 0)
+									.map((result) => result.operation_token),
+								at: Date.now(),
+							}
+						: null;
+				lastBulkUndo.current = undo;
+				/*
+				 * BOTH DIMENSIONS SURVIVE A COMPOUND PARTIAL (agent review round 2, R2-1).
+				 * This composer used to RETURN from the unresolved and the refused branch,
+				 * so a press that was BOTH partly refused AND filtered an ask out of the
+				 * batch reported one of the two skips and silently dropped the other. The
+				 * single-press receipt above already does it the other way: pick the
+				 * summary, then add the second fact to whichever summary won.
+				 */
+				const completed =
+					verb === "dismiss"
+						? t("ui.notifications.toast.dismissed", {
+								count: receipt.changed_count,
+							})
+						: verb === "read"
+							? t("ui.notifications.toast.marked_read", {
+									count: formatNumber(receipt.changed_count),
+								})
+							: t("ui.notifications.toast.marked_unread", {
+									count: formatNumber(receipt.changed_count),
+								});
+				const summary =
+					outcome.pending > 0
+						? operationText({
+								changed: receipt.changed_count,
+								skipped: receipt.skipped_count,
+								pending: outcome.pending,
+							})
+						: receipt.skipped_count > 0
+							? t("ui.notifications.bulk.partial", {
+									changed: formatNumber(receipt.changed_count),
+									skipped: formatNumber(receipt.skipped_count),
+								})
+							: completed;
+				// Client-filtered asks have no server receipt, so retain that skip in the
+				// same wording as the pre-existing non-bulk dismiss path.
+				const message = [
+					summary,
+					outcome.skippedAsks > 0
+						? t("ui.notifications.select.asks_stay", {
+								count: outcome.skippedAsks,
+							})
+						: null,
+				]
+					.filter(Boolean)
+					.join(". ");
+				/*
+				 * A receipt reporting a refusal, a skip or a count that never resolved is
+				 * HELD (design round 1, D2): see `receiptDuration`. Held on every dimension
+				 * the message above can carry, because what earns the hold is the receipt
+				 * having something to explain - not which branch happened to explain it.
+				 */
+				const receiptWindow = receiptDuration(
+					outcome.pending > 0 ||
+						receipt.skipped_count > 0 ||
+						outcome.skippedAsks > 0,
+				);
+				showInfoToast(message, {
+					duration: receiptWindow,
+					action: undo
+						? {
+								label: t("ui.notifications.toast.undo"),
+								onClick: () => {
+									if (
+										lastBulkUndo.current === undo &&
+										Date.now() - undo.at <= receiptWindow
+									)
+										void writeBulkUndo(undo.tokens);
+								},
+							}
+						: undefined,
+				});
+			} catch (error) {
+				showErrorToast(
+					userFacingMessage(error, t("ui.notifications.error.load.title")),
+				);
+			} finally {
+				operationLock.current = false;
+				setOperationBusy(false);
+			}
+		},
+		[
+			bulkActions,
+			bulkAskReadEnabled,
+			visibleReconciliationIds,
+			clearSelection,
+			refreshFailed,
+			openItem,
+			navigate,
+			writeBulkUndo,
+		],
+	);
+
+	const requestFrozenDismiss = useCallback(
+		(snapshot: FrozenNotificationSelection) => {
+			const counts = frozenSelectionCounts(snapshot);
+			const loadedEligible = order.filter(
+				(item) => !isLiveAsk(item) && selectedBySnapshot(item, snapshot),
+			).length;
+			if (counts.eligible > loadedEligible || counts.asks > 0)
+				setConfirmView({ snapshot });
+			else void runFrozen("dismiss", snapshot);
+		},
+		[order, runFrozen],
+	);
+
+	const selectView = useCallback(
+		async (dismissAll = false) => {
+			if (!bulkEnabled) {
+				showInfoToast(t("ui.notifications.bulk.update_required"));
+				return;
+			}
+			if (operationLock.current || refreshFailed || !loaded) return;
+			operationLock.current = true;
+			setOperationBusy(true);
+			const generation = ++previewGeneration.current;
+			let captured: FrozenNotificationSelection | null = null;
+			try {
+				const preview = await previewNotificationSelection(
+					filters,
+					readState,
+					[
+						...new Set([
+							...bulkActions.activeSessionIds(),
+							...order.map((item) => item.session.id),
+							...sources.map(([id]) => id),
+						]),
+					].slice(0, 50),
+					bulkAskReadEnabled,
+				);
+				if (generation !== previewGeneration.current) return;
+				const candidate: FrozenNotificationSelection = {
+					preview,
+					includeAskReads: bulkAskReadEnabled,
+					filters: { ...filters },
+					state: readState,
+					excluded: new Map(),
+					asks: [...filteredWaiting],
+				};
+				/*
+				 * AN EMPTY CAPTURE IS NOT A SELECTION (design round 1, D3). The preview
+				 * answers zero on a view with nothing on it, and the page used to freeze
+				 * that answer and paint it: `allChecked` reads `excluded.size === 0` as a
+				 * filled checkbox, so the select-all went green over an empty page while
+				 * the bar stayed in filters mode - a selection of nothing, dismissable only
+				 * by pressing the checkbox again. Refusing the capture is what keeps the
+				 * checkbox describing a real selection; the button's own disabled state
+				 * (below) is what stops the press being offered in the first place.
+				 */
+				if (frozenSelectionCounts(candidate).count === 0) return;
+				captured = candidate;
+				setSelected(new Set());
+				setFrozenSelection(candidate);
+			} catch (error) {
+				showErrorToast(
+					userFacingMessage(error, t("ui.notifications.bulk.select_error")),
+				);
+			} finally {
+				operationLock.current = false;
+				setOperationBusy(false);
+			}
+			// The preview relinquishes its lock BEFORE an immediate write acquires it.
+			// No preview finally block may subsequently unlock that in-flight write.
+			if (dismissAll && captured) requestFrozenDismiss(captured);
+		},
+		[
+			bulkEnabled,
+			bulkAskReadEnabled,
+			bulkActions.activeSessionIds,
+			filters,
+			readState,
+			filteredWaiting,
+			loaded,
+			refreshFailed,
+			requestFrozenDismiss,
+			order,
+			sources,
+		],
+	);
+
+	const effectiveSelected = useMemo(
+		() =>
+			frozenSelection
+				? new Set(
+						order
+							.filter((item) => selectedBySnapshot(item, frozenSelection))
+							.map((item) => item.id),
+					)
+				: selected,
+		[frozenSelection, order, selected],
+	);
+
 	const answer = useCallback(
 		(item: DesktopNotificationItem) => {
 			openDetail(item);
@@ -972,14 +1443,14 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 			const clamped = Math.max(0, Math.min(order.length - 1, to));
 			const next = order[clamped];
 			if (!next) return;
-			if (event.shiftKey && current)
+			if (event.shiftKey && current && !frozenSelection)
 				setSelected((selection) =>
 					rangeSelect(order, current.id, next.id, selection),
 				);
 			setFocusId(next.id);
 		};
 		const primary = event.metaKey || event.ctrlKey;
-		const selection = order.filter((item) => selected.has(item.id));
+		const selection = order.filter((item) => effectiveSelected.has(item.id));
 		const subject = selection.length > 0 ? selection : current ? [current] : [];
 		switch (event.key) {
 			case "ArrowDown":
@@ -1028,7 +1499,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 			case "A":
 				if (primary) {
 					event.preventDefault();
-					setSelected(new Set(order.map((item) => item.id)));
+					void selectView();
 					return;
 				}
 				if (current) {
@@ -1054,16 +1525,43 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 					answer(current);
 					return;
 				}
-				dismiss(subject);
+				if (frozenSelection) requestFrozenDismiss(frozenSelection);
+				else if (dismissPlan(subject).asksStaying > 0)
+					setConfirmView({
+						items: subject,
+						throughSeq: loaded?.high_water ?? 0,
+					});
+				else if (bulkEnabled && selection.length > 0)
+					void runFrozen("dismiss", {
+						items: subject,
+						throughSeq: loaded?.high_water ?? 0,
+					});
+				else dismiss(subject);
 				return;
 			case "u":
 			case "U":
 				if (primary) return;
 				event.preventDefault();
-				toggleRead(subject);
+				if (frozenSelection)
+					void runFrozen(
+						frozenSelectionCounts(frozenSelection).unread > 0
+							? "read"
+							: "unread",
+						frozenSelection,
+					);
+				else toggleRead(subject);
 				return;
 			case "z":
 			case "Z":
+				if (
+					primary &&
+					lastBulkUndo.current &&
+					Date.now() - lastBulkUndo.current.at <= UNDO_WINDOW_MS
+				) {
+					event.preventDefault();
+					void writeBulkUndo(lastBulkUndo.current.tokens);
+					return;
+				}
 				if (primary && lastUndo.current) {
 					event.preventDefault();
 					const undo = lastUndo.current;
@@ -1073,7 +1571,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 				}
 				return;
 			case "Escape":
-				if (selected.size > 0) {
+				if (effectiveSelected.size > 0 || frozenSelection) {
 					event.preventDefault();
 					clearSelection();
 					return;
@@ -1103,7 +1601,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 		);
 	}
 
-	const selection = order.filter((item) => selected.has(item.id));
+	const selection = order.filter((item) => effectiveSelected.has(item.id));
 	const showDetail = Boolean(notificationId && openItem);
 	const listHidden = narrow && showDetail;
 	const emptyKind: "caught_up" | "none" | "filtered" | null =
@@ -1180,6 +1678,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 				</PageHeader>
 				<Toolbar
 					loaded={loaded}
+					bulkEnabled={bulkEnabled}
 					readState={readState}
 					onReadState={(next) => {
 						setReadState(next);
@@ -1193,25 +1692,73 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 					sources={sources}
 					writesPaused={writesPaused}
 					markAllRead={markAllRead}
-					selection={selection}
-					visibleCount={order.length}
+					selectionCount={
+						frozenSelection
+							? frozenSelectionCounts(frozenSelection).count
+							: selection.length
+					}
+					asksCount={
+						frozenSelection
+							? frozenSelectionCounts(frozenSelection).asks
+							: dismissPlan(selection).asksStaying
+					}
+					allChecked={
+						frozenSelection
+							? frozenSelection.excluded.size === 0
+								? true
+								: "indeterminate"
+							: selection.length > 0
+								? "indeterminate"
+								: false
+					}
+					frozen={Boolean(frozenSelection)}
+					newItemsOutsideSelection={Boolean(
+						frozenSelection &&
+							order.some((item) =>
+								isLiveAsk(item)
+									? !frozenSelection.asks.some((ask) => ask.id === item.id)
+									: item.seq > frozenSelection.preview.through_seq,
+							),
+					)}
+					readIncludesAsks={Boolean(
+						frozenSelection && frozenReadsAsks(frozenSelection),
+					)}
+					onDismissAll={() => void selectView(true)}
+					nothingToDismiss={emptyKind !== null}
 					visibleUnread={visibleUnread}
 					onSelectAll={() =>
-						setSelected(
-							selection.length === order.length
-								? new Set()
-								: new Set(order.map((item) => item.id)),
-						)
+						frozenSelection && frozenSelection.excluded.size === 0
+							? clearSelection()
+							: void selectView()
 					}
+					onReviewAsks={() => {
+						clearSelection();
+						setFilters((current) => ({ ...current, kind: "asks" }));
+					}}
 					onClearSelection={clearSelection}
 					onBulkRead={(verb) =>
-						toggleRead(
-							verb === "read"
-								? selection.filter((item) => !item.read)
-								: selection.filter((item) => item.read),
-						)
+						frozenSelection
+							? void runFrozen(verb, frozenSelection)
+							: toggleRead(
+									verb === "read"
+										? selection.filter((item) => !item.read)
+										: selection.filter((item) => item.read),
+								)
 					}
-					onBulkDismiss={() => dismiss(selection)}
+					onBulkDismiss={() => {
+						if (frozenSelection) requestFrozenDismiss(frozenSelection);
+						else if (dismissPlan(selection).asksStaying > 0)
+							setConfirmView({
+								items: selection,
+								throughSeq: loaded?.high_water ?? 0,
+							});
+						else if (bulkEnabled && selection.length > 0)
+							void runFrozen("dismiss", {
+								items: selection,
+								throughSeq: loaded?.high_water ?? 0,
+							});
+						else dismiss(selection);
+					}}
 				/>
 			</div>
 
@@ -1255,7 +1802,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 									{t("ui.notifications.error.retry")}
 								</Button>
 							</div>
-						) : !loaded ? (
+						) : !loaded || fillingFilteredView ? (
 							<SkeletonRows />
 						) : emptyKind ? (
 							<EmptyState
@@ -1293,7 +1840,12 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 										group={group}
 										nowMs={nowMs}
 										openId={notificationId ?? null}
-										selected={selected}
+										selected={effectiveSelected}
+										selecting={
+											frozenSelection
+												? frozenSelectionCounts(frozenSelection).count > 0
+												: selected.size > 0
+										}
 										focusedId={focusedId}
 										writesPaused={writesPaused}
 										exitingIds={exitingIds}
@@ -1413,6 +1965,43 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 			{operationProgress && (
 				<OperationProgressLine progress={operationProgress} />
 			)}
+			{confirmView && (
+				<ConfirmDismissView
+					count={
+						"snapshot" in confirmView
+							? frozenSelectionCounts(confirmView.snapshot).eligible
+							: dismissPlan(confirmView.items).dismissable.length
+					}
+					asks={
+						"snapshot" in confirmView
+							? frozenSelectionCounts(confirmView.snapshot).asks
+							: dismissPlan(confirmView.items).asksStaying
+					}
+					beyondPage={
+						"snapshot" in confirmView &&
+						frozenSelectionCounts(confirmView.snapshot).eligible >
+							order.filter(
+								(item) =>
+									!isLiveAsk(item) &&
+									selectedBySnapshot(item, confirmView.snapshot),
+							).length
+					}
+					onCancel={() => setConfirmView(null)}
+					onConfirm={() => {
+						const confirmation = confirmView;
+						setConfirmView(null);
+						if ("snapshot" in confirmation)
+							void runFrozen("dismiss", confirmation.snapshot);
+						else if (bulkEnabled) void runFrozen("dismiss", confirmation);
+						else dismiss(confirmation.items);
+					}}
+					onReviewAsks={() => {
+						setConfirmView(null);
+						clearSelection();
+						setFilters((current) => ({ ...current, kind: "asks" }));
+					}}
+				/>
+			)}
 			{confirmSession && (
 				<ConfirmDismissSession
 					title={confirmSession.title}
@@ -1449,6 +2038,7 @@ const GroupBlock: FC<{
 	nowMs: number;
 	openId: string | null;
 	selected: ReadonlySet<string>;
+	selecting: boolean;
 	focusedId: string | null;
 	writesPaused: boolean;
 	exitingIds: ReadonlySet<string>;
@@ -1548,7 +2138,7 @@ const GroupBlock: FC<{
 							nowMs={row.nowMs}
 							open={row.openId === item.id}
 							picked={row.selected.has(item.id)}
-							selecting={row.selected.size > 0}
+							selecting={row.selecting}
 							focused={row.focusedId === item.id}
 							writesPaused={row.writesPaused}
 							onOpen={row.onOpen}
@@ -1628,7 +2218,7 @@ const ConfirmDismissSession: FC<{
 					{t("ui.notifications.confirm.cancel")}
 				</Button>
 				<Button
-					variant="primary"
+					variant="danger"
 					autoFocus
 					onClick={onConfirm}
 					data-notifications-confirm=""
@@ -1643,6 +2233,7 @@ const ConfirmDismissSession: FC<{
 /* ----------------------------------------------------------------- toolbar */
 
 type ToolbarProps = {
+	bulkEnabled: boolean;
 	loaded: DesktopNotificationsList | undefined;
 	readState: "unread" | "all";
 	onReadState: (next: "unread" | "all") => void;
@@ -1655,12 +2246,30 @@ type ToolbarProps = {
 	sources: [string, string, number][];
 	writesPaused: boolean;
 	markAllRead: () => void;
-	selection: DesktopNotificationItem[];
-	visibleCount: number;
+	selectionCount: number;
+	asksCount: number;
+	allChecked: boolean | "indeterminate";
+	frozen: boolean;
+	readIncludesAsks: boolean;
+	newItemsOutsideSelection: boolean;
+	onDismissAll: () => void;
+	/**
+	 * The view has nothing on it at all, so `Dismiss all` has nothing to act on.
+	 *
+	 * A server preview answers zero here and the press is a no-op, but the control
+	 * still PAINTED as live: it carried the same ground, border and ink as the
+	 * enabled filter triggers beside it, while its own neighbour in the same band,
+	 * `Mark all read`, sat correctly greyed. Two inert controls disagreeing about
+	 * it is the defect (design review round 1, D3, "All caught up"); this fact is
+	 * derived from the page's own empty-state predicate so the paint cannot drift
+	 * from what is actually rendered.
+	 */
+	nothingToDismiss: boolean;
 	/** Rows the Unread filter draws, so its chip cannot disagree with the rail. */
 	visibleUnread: number;
 	onSelectAll: () => void;
 	onClearSelection: () => void;
+	onReviewAsks: () => void;
 	onBulkRead: (verb: "read" | "unread") => void;
 	onBulkDismiss: () => void;
 };
@@ -1671,6 +2280,7 @@ type ToolbarProps = {
  */
 const Toolbar: FC<ToolbarProps> = ({
 	loaded,
+	bulkEnabled,
 	readState,
 	onReadState,
 	filters,
@@ -1680,71 +2290,103 @@ const Toolbar: FC<ToolbarProps> = ({
 	sources,
 	writesPaused,
 	markAllRead,
-	selection,
-	visibleCount,
+	selectionCount,
+	asksCount,
+	allChecked,
+	frozen,
+	readIncludesAsks,
+	newItemsOutsideSelection,
+	onDismissAll,
+	nothingToDismiss,
 	visibleUnread,
 	onSelectAll,
 	onClearSelection,
+	onReviewAsks,
 	onBulkRead,
 	onBulkDismiss,
 }) => {
-	const { dismissable, asksStaying } = dismissPlan(selection);
-	const selecting = selection.length > 0;
-	const allChecked: boolean | "indeterminate" =
-		selection.length === 0
-			? false
-			: selection.length === visibleCount
-				? true
-				: "indeterminate";
+	const asksStaying = asksCount;
+	const dismissableCount = selectionCount - asksCount;
+	const selecting = selectionCount > 0;
+
 	return (
 		<div
 			className="flex min-h-11 shrink-0 flex-wrap items-center gap-2 border-hairline border-b py-2"
 			data-notifications-toolbar={selecting ? "selection" : "filters"}
 		>
+			{/* Always present: selection must be discoverable without hovering a row.
+			 * The indeterminate state describes a partial filtered selection. */}
+			<Checkbox
+				className="size-6"
+				checked={allChecked}
+				aria-label={t("ui.notifications.select.all")}
+				disabled={!bulkEnabled || !loaded || writesPaused}
+				title={
+					!bulkEnabled ? t("ui.notifications.bulk.update_required") : undefined
+				}
+				onCheckedChange={onSelectAll}
+				data-notifications-select-all=""
+			/>
 			{selecting ? (
 				<>
-					<Checkbox
-						checked={allChecked}
-						aria-label={t("ui.notifications.select.all")}
-						onCheckedChange={onSelectAll}
-					/>
-					<span className="font-medium text-body-sm text-ink">
+					<span
+						className="font-medium text-body-sm text-ink"
+						title={frozen ? t("ui.notifications.bulk.frozen_hint") : undefined}
+					>
 						{t("ui.notifications.select.count", {
-							count: formatNumber(selection.length),
+							count: formatNumber(selectionCount),
 						})}
 					</span>
 					<Button
 						variant="secondary"
 						size="sm"
+						disabled={
+							frozen &&
+							(readIncludesAsks ? selectionCount : dismissableCount) === 0
+						}
 						aria-disabled={writesPaused || undefined}
+						title={t("ui.notifications.bulk.read_hint")}
+						data-notifications-bulk-read="read"
 						onClick={() => !writesPaused && onBulkRead("read")}
 					>
 						<Check />
-						{t("ui.notifications.select.mark_read")}
+						{frozen && !readIncludesAsks
+							? t("ui.notifications.bulk_updates.read", {
+									count: dismissableCount,
+								})
+							: t("ui.notifications.select.mark_read")}
 					</Button>
 					<Button
 						variant="secondary"
 						size="sm"
+						disabled={
+							frozen &&
+							(readIncludesAsks ? selectionCount : dismissableCount) === 0
+						}
 						aria-disabled={writesPaused || undefined}
+						data-notifications-bulk-read="unread"
 						onClick={() => !writesPaused && onBulkRead("unread")}
 					>
 						<Circle />
-						{t("ui.notifications.select.mark_unread")}
+						{frozen && !readIncludesAsks
+							? t("ui.notifications.bulk_updates.unread", {
+									count: dismissableCount,
+								})
+							: t("ui.notifications.select.mark_unread")}
 					</Button>
 					<Button
 						variant="secondary"
 						size="sm"
-						aria-disabled={
-							writesPaused || dismissable.length === 0 || undefined
-						}
+						aria-disabled={writesPaused || dismissableCount === 0 || undefined}
 						onClick={() =>
-							!writesPaused && dismissable.length > 0 && onBulkDismiss()
+							!writesPaused && dismissableCount > 0 && onBulkDismiss()
 						}
-						data-notifications-bulk-dismiss={dismissable.length}
+						title={t("ui.notifications.bulk.dismiss_hint")}
+						data-notifications-bulk-dismiss={dismissableCount}
 					>
 						<X />
 						{t("ui.notifications.select.dismiss", {
-							count: formatNumber(dismissable.length),
+							count: formatNumber(dismissableCount),
 						})}
 					</Button>
 					{asksStaying > 0 && (
@@ -1757,6 +2399,11 @@ const Toolbar: FC<ToolbarProps> = ({
 							{t("ui.notifications.select.asks_stay", { count: asksStaying })}
 						</span>
 					)}
+					{asksStaying > 0 && (
+						<Button variant="ghost" size="sm" onClick={onReviewAsks}>
+							{t("ui.notifications.bulk.review_asks")}
+						</Button>
+					)}
 					<span className="flex-1" />
 					<Button variant="ghost" size="sm" onClick={onClearSelection}>
 						{t("ui.notifications.select.clear")}
@@ -1765,6 +2412,20 @@ const Toolbar: FC<ToolbarProps> = ({
 							Esc
 						</kbd>
 					</Button>
+					{newItemsOutsideSelection && (
+						<p
+							className="basis-full text-meta text-ink-muted"
+							data-notifications-new-outside-selection=""
+						>
+							{/*
+							 * The count is the frozen server snapshot, while an ask that arrived
+							 * afterward remains visibly unchecked. Reuse the shipped notices to
+							 * explain both facts without adding catalogue copy during the audit.
+							 */}
+							{t("ui.notifications.bulk_updates.new_items")}{" "}
+							{t("ui.notifications.ask.stays")}
+						</p>
+					)}
 				</>
 			) : (
 				<>
@@ -1910,6 +2571,23 @@ const Toolbar: FC<ToolbarProps> = ({
 							{t("ui.notifications.filter.clear")}
 						</Button>
 					)}
+					<Button
+						variant="secondary"
+						size="sm"
+						disabled={
+							!bulkEnabled || !loaded || writesPaused || nothingToDismiss
+						}
+						onClick={onDismissAll}
+						title={t(
+							bulkEnabled
+								? "ui.notifications.bulk.dismiss_hint"
+								: "ui.notifications.bulk.update_required",
+						)}
+						data-notifications-dismiss-all=""
+					>
+						<X />
+						{t("ui.notifications.bulk.dismiss_all")}
+					</Button>
 					<span className="flex-1" />
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
@@ -2040,4 +2718,50 @@ const SkeletonRows: FC = () => (
 			</div>
 		))}
 	</div>
+);
+
+/** Only hidden results or mixed asks interrupt the ordinary dismiss gesture. */
+const ConfirmDismissView: FC<{
+	count: number;
+	asks: number;
+	beyondPage: boolean;
+	onConfirm: () => void;
+	onCancel: () => void;
+	onReviewAsks: () => void;
+}> = ({ count, asks, beyondPage, onConfirm, onCancel, onReviewAsks }) => (
+	<Dialog open onOpenChange={(open) => !open && onCancel()}>
+		<DialogContent className="max-w-md">
+			<DialogTitle>
+				{t("ui.notifications.bulk.confirm_title", { count })}
+			</DialogTitle>
+			{beyondPage && (
+				<p className="text-body-sm text-ink-muted">
+					{t("ui.notifications.bulk.beyond_page")}
+				</p>
+			)}
+			{asks > 0 && (
+				<p className="text-body-sm text-ink-muted">
+					{t("ui.notifications.bulk.asks_hint")}
+				</p>
+			)}
+			<div className="mt-4 flex flex-wrap justify-end gap-2">
+				{asks > 0 && (
+					<Button variant="ghost" onClick={onReviewAsks}>
+						{t("ui.notifications.bulk.review_asks")}
+					</Button>
+				)}
+				<Button variant="secondary" onClick={onCancel}>
+					{t("ui.notifications.confirm.cancel")}
+				</Button>
+				<Button
+					variant="danger"
+					disabled={count === 0}
+					onClick={onConfirm}
+					data-notifications-confirm-view=""
+				>
+					{t("ui.notifications.confirm.dismiss_session_ok")}
+				</Button>
+			</div>
+		</DialogContent>
+	</Dialog>
 );

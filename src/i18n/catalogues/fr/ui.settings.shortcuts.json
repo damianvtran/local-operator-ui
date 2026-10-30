@@ -66,5 +66,14 @@
 	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcut_capture_description": "Activez un champ de raccourci et appuyez sur les touches pour enregistrer immédiatement. Esc efface l’indication de saisie ; Réinitialiser restaure la valeur par défaut.",
 	"ui.settings.shortcuts.category.speech_to_text": "Reconnaissance vocale",
 	"ui.settings.shortcuts.recording.invalid_stored_value": "Le raccourci enregistré n’est pas valide. Le dernier raccourci fonctionnel est affiché.",
-	"ui.settings.shortcuts.recording.inactive_claimed": "L’enregistrement est inactif : {label} utilise ce raccourci."
+	"ui.settings.shortcuts.recording.inactive_claimed": "L’enregistrement est inactif : {label} utilise ce raccourci.",
+	"ui.settings.shortcuts.speech.primary": "Principal",
+	"ui.settings.shortcuts.speech.secondary": "Secondaire",
+	"ui.settings.shortcuts.speech.start_recording_press": "Démarrer l’enregistrement (appuyer)",
+	"ui.settings.shortcuts.speech.push_to_talk_hold": "Appuyer pour parler (maintenir)",
+	"ui.settings.shortcuts.speech.push_to_talk_hint": "Appuyez sur la touche de modification à maintenir ; Esc annule.",
+	"ui.settings.shortcuts.speech.push_to_talk_refused": "{platform, select, darwin {Seule une touche Control, Option ou Command, gauche ou droite, peut être maintenue.} win32 {Seule une touche Control ou Windows, gauche ou droite, peut être maintenue.} other {Seule une touche Control ou Super, gauche ou droite, peut être maintenue.}}",
+	"ui.settings.shortcuts.speech.push_to_talk_overlap": "Tous les raccourcis qui utilisent {modifier}, comme {example}, démarreront brièvement un enregistrement.{alternative, select, none {} other { Choisissez {alternative} pour l’éviter.}}",
+	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": "Pour un raccourci avec une lettre, utilisez « Démarrer l’enregistrement » ci-dessus.",
+	"ui.settings.shortcuts.speech.start_recording_needs_key": "Un raccourci nécessite une lettre ou un chiffre en plus d’une touche de modification."
 }

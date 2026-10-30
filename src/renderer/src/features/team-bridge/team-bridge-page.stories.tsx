@@ -393,11 +393,11 @@ const beaDm: TeamBridgeConversation = {
 };
 
 /**
- * The member row prints role and state in ONE sentence ("Member · Invited; not
- * active yet"), so the matcher has to look INSIDE that text rather than equal
- * it. Top-level so the regex is not rebuilt on every call.
+ * An invited member wears the quiet "Invited" pill (members dialog polish,
+ * 2026-10-30); the old "Member · Invited; not active yet" line is gone.
+ * Top-level so the regex is not rebuilt on every call.
  */
-const INVITED_NOT_ACTIVE = /Invited; not active yet/;
+const INVITED_NOT_ACTIVE = /^Invited$/;
 
 const meta = {
 	title: "Team Bridge/Page",
@@ -1220,7 +1220,7 @@ export const AddMembersDialog: Story = {
 		// An invited agent is never painted as active.
 		await expect(body.getByText(INVITED_NOT_ACTIVE)).toBeInTheDocument();
 		await expect(
-			body.getByRole("button", { name: "Remove Ben Tran" }),
+			body.getByRole("button", { name: "Remove Ben Tran from conversation" }),
 		).toBeInTheDocument();
 	},
 };
@@ -1245,7 +1245,7 @@ export const AddMembersPlainMember: Story = {
 	play: async ({ canvasElement }) => {
 		const body = within(canvasElement.ownerDocument.body);
 		await expect(
-			body.queryByRole("button", { name: "Remove Ben Tran" }),
+			body.queryByRole("button", { name: "Remove Ben Tran from conversation" }),
 		).not.toBeInTheDocument();
 	},
 };
