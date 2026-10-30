@@ -501,7 +501,9 @@ export function OwnerAuditPanelView({
 						<span className="ms-1">{t("ui.ownerAudit.disclosure")}</span>
 					</p>
 					{otherViewers.length > 0 && (
-						<p className="text-body-sm text-ink-muted">
+						/* A div, not a p: the names are a real list, and a list may
+						   not sit inside a paragraph. */
+						<div className="text-body-sm text-ink-muted">
 							<span className="me-1">{t("ui.ownerAudit.viewers_label")}</span>
 							<OwnerAuditViewers
 								locale={locale}
@@ -511,7 +513,7 @@ export function OwnerAuditPanelView({
 										viewer.display_label || t("ui.ownerAudit.unknown_sender"),
 								}))}
 							/>
-						</p>
+						</div>
 					)}
 				</Alert>
 			</header>
