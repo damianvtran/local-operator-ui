@@ -660,6 +660,10 @@ test("an unambiguous name still writes directly (the guard is narrow)", async ()
 	globalThis.__hubPreviewTest.answer = () => answerOf([report({})]);
 	await mountPanel(app.HubLinkSidebarMark, {
 		link,
+		/* `itemName` is the wire address on a core without `hub_items_by_id`, so an
+		 * "unambiguous name" case must supply one - without it the guard fails
+		 * closed by design (the mark would otherwise address by link id). */
+		itemName: "coder",
 		displayName: "Coder",
 		itemsById: false,
 		nameAmbiguous: false,

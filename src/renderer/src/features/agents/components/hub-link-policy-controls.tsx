@@ -17,8 +17,10 @@ import {
 import { Switch } from "@shared/components/ui/switch";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { cn } from "@shared/lib/utils";
 import { useEffect, useId, useRef, useState } from "react";
 import { hubReasonText } from "../hub-link-copy";
+import { useHubLinkSource } from "../hub-link-source";
 import { hubAutoPushGate, hubAutoPushLine } from "../hub-link-view";
 
 /** Resolve at invocation so a locale refresh does not freeze imported copy. */
@@ -30,6 +32,22 @@ export function hubLinkSourceName(link: HubLink): string {
 }
 
 /**
+ * The auto-push refusal as one sentence that says what it means and what to do.
+ *
+ * `unsupported-precondition` is core's answer both when the server never
+ * attested revision-safe writes and when the link has no recorded remote
+ * revision to compare against (`_eligibility` in core's hub_sync service). The
+ * shared reason text ("This destination has not verified revision-safe
+ * publication.") names an internal guarantee and offers no next step, so in the
+ * auto-push context it is replaced; every other reason keeps its shared text.
+ */
+export function hubAutoPushUnavailableText(reason: string | null): string {
+	if (!reason || reason.split("/")[0] === "unsupported-precondition")
+		return t("ui.hub.subscriptions.auto_push_unverified");
+	return hubReasonText(reason);
+}
+
+/**
  * Policy is a confirmed service fact, independent in each direction. These rows
  * never optimistically flip an ON state, infer a source from the active hub view,
  * or turn a public future-write acknowledgement into declassification consent.
@@ -38,12 +56,34 @@ export function hubLinkSourceName(link: HubLink): string {
 export function HubLinkPolicyControls({
 	link,
 	onConsentChange,
-}: { link: HubLink; onConsentChange?: (open: boolean) => void }) {
+	item,
+	source: resolvedSource,
+}: {
+	link: HubLink;
+	onConsentChange?: (open: boolean) => void;
+	/**
+	 * The item's DISPLAY name. An agent/team link row's `name` is its local id
+	 * (core falls back to it when no alias is recorded), so a caller that knows
+	 * the label passes it; otherwise the row's name is all there is.
+	 */
+	item?: string;
+	/**
+	 * The caller's resolved destination phrase (`hubLinkSourceLabel`), `null`
+	 * when it could not be named. Omitted, it is resolved from the row alone.
+	 */
+	source?: string | null;
+}) {
 	useI18nLocale();
 	const write = useHubLinkPolicy();
 	const id = useId();
 	const cancelRef = useRef<HTMLButtonElement>(null);
-	const source = hubLinkSourceName(link);
+	const ownSource = useHubLinkSource(link, resolvedSource === undefined);
+	const source =
+		resolvedSource !== undefined ? resolvedSource : ownSource.source;
+	// Shared controls also appear outside the sidebar. Resolve their source via
+	// the same account boundary rather than leaving a live but inert switch.
+	const organization = ownSource.organization;
+	const itemName = item?.trim() ? item : link.name;
 	const [changedSetting, setChangedSetting] = useState<
 		"subscribe" | "auto_push"
 	>("subscribe");
@@ -80,13 +120,15 @@ export function HubLinkPolicyControls({
 	};
 	// Core's own rule, shared with the guard test: a public no-grant link is
 	// "requires consent", not "unavailable" (see hubAutoPushGate).
-	const { unavailable } = hubAutoPushGate(link);
+	const { unavailable: coreUnavailable } = hubAutoPushGate(link);
+	const unavailable = coreUnavailable || source === null;
 	// The line follows EFFECTIVE state, not the carve-out: a configured-ON link the
 	// service cannot run stays "paused" even though its OFF->ON path is reachable.
-	const line = hubAutoPushLine(link);
-	const unavailableReason = link.eligibility.reason
-		? hubReasonText(link.eligibility.reason)
-		: t("ui.hub.subscriptions.unsupported");
+	const line = source === null ? "unavailable" : hubAutoPushLine(link);
+	const unavailableReason =
+		source === null
+			? t("ui.hub.subscriptions.auto_push_source_unknown")
+			: hubAutoPushUnavailableText(link.eligibility.reason);
 	const label = t(
 		changedSetting === "subscribe"
 			? "ui.hub.subscriptions.subscribe"
@@ -108,19 +150,29 @@ export function HubLinkPolicyControls({
 						{t("ui.hub.subscriptions.subscribe")}
 					</label>
 					<p className="text-meta text-ink-muted">
-						{t(
-							write.canWrite
-								? "ui.hub.subscriptions.subscribe_description"
-								: "ui.hub.subscriptions.subscribe_description_blocked",
-							{ source },
-						)}
+						{source
+							? t(
+									write.canWrite
+										? "ui.hub.subscriptions.subscribe_description"
+										: "ui.hub.subscriptions.subscribe_description_blocked",
+									{ source },
+								)
+							: t(
+									write.canWrite
+										? "ui.hub.subscriptions.subscribe_description_unsourced"
+										: "ui.hub.subscriptions.subscribe_description_blocked_unsourced",
+								)}
 					</p>
 				</div>
 				<Switch
 					id={`${id}-subscribe`}
 					checked={link.policy.subscribe}
 					disabled={write.isPending || !write.canWrite}
-					aria-label={`${t("ui.hub.subscriptions.subscribe")}: ${source}`}
+					aria-label={
+						source
+							? `${t("ui.hub.subscriptions.subscribe")}: ${source}`
+							: t("ui.hub.subscriptions.subscribe")
+					}
 					onCheckedChange={(value) => save({ subscribe: value }, "subscribe")}
 				/>
 			</div>
@@ -134,52 +186,93 @@ export function HubLinkPolicyControls({
 					{t("ui.hub.subscriptions.manual_available")}
 				</p>
 			)}
-			<div className="flex items-start justify-between gap-4">
-				<div className="min-w-0">
-					<label htmlFor={`${id}-push`} className="text-body-sm text-ink">
-						{t("ui.hub.subscriptions.auto_push")}
-					</label>
-					<p className="text-meta text-ink-muted">
-						{t("ui.hub.subscriptions.auto_push_description", { source })}
-					</p>
+			{/*
+			 * The reason belongs to the switch row it explains, not to the panel's section
+			 * rhythm: at the container's `gap-3` it read as a peer section. `gap-1` keeps
+			 * it attached while the block still steps away from its neighbours by 12px.
+			 */}
+			<div className="flex flex-col gap-1">
+				<div className="flex items-start justify-between gap-4">
+					<div className="min-w-0">
+						<label htmlFor={`${id}-push`} className="text-body-sm text-ink">
+							{t("ui.hub.subscriptions.auto_push")}
+						</label>
+						<p className="text-meta text-ink-muted">
+							{source
+								? t("ui.hub.subscriptions.auto_push_description", { source })
+								: t("ui.hub.subscriptions.auto_push_description_unsourced")}
+						</p>
+					</div>
+					{/*
+					 * A disabled switch takes no pointer events, so the reason rides a
+					 * wrapper's native tooltip as well as the visible line below it
+					 * (`aria-describedby`): the person who hovers the dead control learns
+					 * why without having to find the sentence underneath.
+					 */}
+					<span
+						className="inline-flex shrink-0"
+						data-hub-auto-push-reason={line !== "none" ? "" : undefined}
+						title={line === "unavailable" ? unavailableReason : undefined}
+					>
+						<Switch
+							id={`${id}-push`}
+							// Point at the line only while it renders; a dangling idref is worse
+							// than none. The aria-label stays the name; this adds the reason.
+							aria-describedby={line !== "none" ? `${id}-push-line` : undefined}
+							checked={link.policy.auto_push}
+							disabled={
+								write.isPending ||
+								!write.canWrite ||
+								(!link.policy.auto_push && unavailable)
+							}
+							aria-label={
+								source
+									? `${t("ui.hub.subscriptions.auto_push")}: ${source}`
+									: t("ui.hub.subscriptions.auto_push")
+							}
+							onCheckedChange={(value) => {
+								if (!value) save({ auto_push: false }, "auto_push");
+								// No named destination, no consent: the dialog states WHERE
+								// future changes go, so it cannot open on an unnamed source.
+								else if (!unavailable && source) {
+									onConsentChange?.(true);
+									setConsent({
+										linkId: link.link_id,
+										revision: link.policy.revision,
+										source,
+									});
+								}
+							}}
+						/>
+					</span>
 				</div>
-				<Switch
-					id={`${id}-push`}
-					// Point at the line only while it renders; a dangling idref is worse
-					// than none. The aria-label stays the name; this adds the reason.
-					aria-describedby={line !== "none" ? `${id}-push-line` : undefined}
-					checked={link.policy.auto_push}
-					disabled={
-						write.isPending ||
-						!write.canWrite ||
-						(!link.policy.auto_push && unavailable)
-					}
-					aria-label={`${t("ui.hub.subscriptions.auto_push")}: ${source}`}
-					onCheckedChange={(value) => {
-						if (!value) save({ auto_push: false }, "auto_push");
-						else if (!unavailable) {
-							onConsentChange?.(true);
-							setConsent({
-								linkId: link.link_id,
-								revision: link.policy.revision,
-								source,
-							});
-						}
-					}}
-				/>
+				{line !== "none" && (
+					<p
+						id={`${id}-push-line`}
+						className={cn(
+							"text-meta",
+							/*
+							 * The standing capability note ("Auto-push is unavailable…") is true on a
+							 * healthy link, so in warning ink it was the panel's permanent alarm while
+							 * a failed update beside it read neutral. The transient pause keeps the
+							 * attention ink: it reports a state that should not persist.
+							 */
+							line === "paused" ? "text-warning" : "text-ink-muted",
+						)}
+					>
+						{line === "paused"
+							? t("ui.hub.subscriptions.effective_paused", {
+									reason: unavailableReason,
+								})
+							: unavailableReason}
+					</p>
+				)}
 			</div>
-			{line !== "none" && (
-				<p id={`${id}-push-line`} className="text-meta text-warning">
-					{line === "paused"
-						? t("ui.hub.subscriptions.effective_paused", {
-								reason: unavailableReason,
-							})
-						: unavailableReason}
-				</p>
-			)}
 			{write.isPending && (
 				<output className="text-meta text-ink-muted">
-					{t("ui.hub.subscriptions.saving", { setting: label, source })}
+					{source
+						? t("ui.hub.subscriptions.saving", { setting: label, source })
+						: t("ui.hub.subscriptions.saving_unsourced", { setting: label })}
 				</output>
 			)}
 			{write.error && (
@@ -189,14 +282,18 @@ export function HubLinkPolicyControls({
 						: write.error instanceof DesktopControlError &&
 								write.error.code === "policy-revision-changed"
 							? t("ui.hub.subscriptions.policy_changed")
-							: t("ui.hub.subscriptions.save_failed", {
-									setting: label,
-									source,
-								})}
+							: source
+								? t("ui.hub.subscriptions.save_failed", {
+										setting: label,
+										source,
+									})
+								: t("ui.hub.subscriptions.save_failed_unsourced", {
+										setting: label,
+									})}
 				</p>
 			)}
 			<Dialog
-				open={consent !== null}
+				open={consent !== null && source !== null}
 				onOpenChange={(open) => {
 					if (!open && !write.isPending) closeConsent();
 				}}
@@ -213,14 +310,14 @@ export function HubLinkPolicyControls({
 				>
 					<DialogHeader>
 						<DialogTitle>
-							{t("ui.hub.subscriptions.enable_title", { source })}
+							{t("ui.hub.subscriptions.enable_title", { source: source ?? "" })}
 						</DialogTitle>
 						<DialogDescription>
 							{link.visibility === "public"
-								? t("ui.hub.subscriptions.enable_public", { item: link.name })
+								? t("ui.hub.subscriptions.enable_public", { item: itemName })
 								: t("ui.hub.subscriptions.enable_private", {
-										item: link.name,
-										organization: link.tenant_name ?? source,
+										item: itemName,
+										organization: organization ?? source ?? "",
 									})}
 						</DialogDescription>
 					</DialogHeader>
@@ -242,7 +339,7 @@ export function HubLinkPolicyControls({
 						<p role="alert" className="text-body-sm text-danger">
 							{t("ui.hub.subscriptions.save_failed", {
 								setting: label,
-								source,
+								source: source ?? "",
 							})}
 						</p>
 					)}

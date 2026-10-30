@@ -77,6 +77,17 @@ const bundle = await build({
 		{
 			name: "explicit-main-status-and-wire",
 			setup(b) {
+				// This suite isolates backend-version/write safety. Current-account
+				// membership is exercised with the real hook in the popover suite.
+				b.onResolve({ filter: /hub-link-source$/ }, () => ({
+					path: "source",
+					namespace: "guard-source",
+				}));
+				b.onLoad({ filter: /.*/, namespace: "guard-source" }, () => ({
+					contents: `import {t} from "@shared/i18n"; export const useHubLinkSource=(link)=>({source:link.visibility==="public"?t("ui.hub.links.source_label_public"):null,organization:null});`,
+					resolveDir: process.cwd(),
+					loader: "ts",
+				}));
 				// Inert primitive boundaries make the real component's dialog subtree
 				// inspectable by SSR. This is copy/placement proof, not portal/focus QA.
 				b.onResolve({ filter: UI_PRIMITIVES }, () => ({

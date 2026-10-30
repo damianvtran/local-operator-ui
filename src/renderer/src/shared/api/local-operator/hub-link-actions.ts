@@ -123,6 +123,22 @@ export function hubItemAddress(
 	};
 }
 
+/**
+ * Legacy core matches every registry name after strip/lower, not the display
+ * label. Count the full loaded registry once; callers must also prove that read
+ * is complete/current before treating a count of one as permission to mutate.
+ */
+export function hubRegistryNameCounts(
+	rows: readonly { name: string }[] | undefined,
+) {
+	const counts = new Map<string, number>();
+	for (const row of rows ?? []) {
+		const key = row.name.trim().toLowerCase();
+		counts.set(key, (counts.get(key) ?? 0) + 1);
+	}
+	return counts;
+}
+
 export type HubLinkAction =
 	| { action: "check"; linkId: string }
 	| {
