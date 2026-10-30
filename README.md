@@ -1,10 +1,12 @@
-# Evidence: damianvtran/local-operator-ui#1524 (Team Bridge reaction pills)
+tree 61c8e618c6bae4fd8aae0373bb85fbb1e93cfd56
+author Damian Tran <damian@gominerva.com> 1793396303 -0400
+committer Damian Tran <damian@gominerva.com> 1793396303 -0400
 
-- `r0/`: round-0 frames (before = main, after = the first cut): 1100x360 crops of a
-  2560x1440 Storybook capture (`Team Bridge/Reactions`, harness browser).
-- `r1/`: design review round 1 remediation frames, at 2.5x device pixels (a 2560x1440
-  capture of a 1024x576 viewport, cropped to the pills). Themes: localOperatorLight,
-  localOperatorDark, tokyoNight (the operator's theme). `after-row-*` are the shipped
-  `TeamBridgeMessageList` row (`RealRowReactions` / `RealRowRevealed` stories): `rest`
-  has the `+` at opacity 0; `focus-reveal` has it revealed by the row's
-  `group-focus-within/message` arm (a real focus; measured opacity 1).
+docs(evidence): reaction pill frames for #1524
+
+## r2/ (design review round 2, D6/D7)
+
+Same stories and zoom as `r1/`, recaptured for the own-pill fill change only
+(accent 26% over `surface` at rest, 20% on hover). Frames: own, others, mixed,
+many-wrapping and tooltip in `localOperatorLight`, `localOperatorDark` and
+`tokyoNight`.
