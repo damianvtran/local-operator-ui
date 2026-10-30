@@ -23,7 +23,11 @@ import { createNotificationFixture } from "../notifications-fixture";
  * The clock is pinned (`NOW`) so the time column and the time groups do not
  * churn between captures.
  */
-import { DrawerTabs, DrawerUpdates } from "./drawer-updates";
+import {
+	DrawerTabs,
+	DrawerUpdates,
+	useSessionUnreadUpdates,
+} from "./drawer-updates";
 import { FlagLine, FlagLinesProvider } from "./flag-line";
 import { OperationProgressLine } from "./operation-progress-line";
 import "../../../styles/index.css";
@@ -1111,7 +1115,13 @@ const DRAWER_ITEMS: DesktopNotificationItem[] = [
  * scope selector is its own full-width row, so a long translation cannot squeeze
  * three unrelated labels into one 360px line.
  */
-const Drawer = ({ tab }: { tab: "updates" | "asks" }) => {
+const Drawer = ({
+	tab,
+	view = "unread",
+}: {
+	tab: "updates" | "asks";
+	view?: "unread" | "read";
+}) => {
 	/*
 	 * THE REAL DIRECTION SEAM, ON THIS STORY TOO (design round 2, D2).
 	 *
@@ -1125,7 +1135,12 @@ const Drawer = ({ tab }: { tab: "updates" | "asks" }) => {
 	useDocumentDirection();
 	const [current, setCurrent] = useState<"asks" | "updates" | "all">(tab);
 	const [rows, setRows] = useState<PendingAsk[]>([ASK]);
-	const updates = fixture.counts().unread_count;
+	/*
+	 * The product's own count (chat-content reads this hook), not a snapshot of the
+	 * fixture at render: a snapshot stayed put while a mark-read moved everything
+	 * else, which is the drift the drawer's evidence has to show is gone.
+	 */
+	const updates = useSessionUnreadUpdates("aaaaaaaaaaa1", true);
 	return (
 		<LocaleDirectionProvider>
 			<div className="flex h-[560px] w-[404px] shrink-0 bg-canvas">
@@ -1156,7 +1171,11 @@ const Drawer = ({ tab }: { tab: "updates" | "asks" }) => {
 							),
 							body:
 								current === "updates" ? (
-									<DrawerUpdates sessionId="aaaaaaaaaaa1" nowMs={NOW} />
+									<DrawerUpdates
+										sessionId="aaaaaaaaaaa1"
+										nowMs={NOW}
+										initialView={view}
+									/>
 								) : null,
 						}}
 					/>
@@ -1182,6 +1201,18 @@ export const DrawerUpdatesTab: Story = {
 		return (
 			<FreshCache>
 				<Drawer tab="updates" />
+			</FreshCache>
+		);
+	},
+};
+
+/** The Read view: the history a mark-read moves a row into. */
+export const DrawerUpdatesRead: Story = {
+	render: () => {
+		install({ items: DRAWER_ITEMS, waiting: [] });
+		return (
+			<FreshCache>
+				<Drawer tab="updates" view="read" />
 			</FreshCache>
 		);
 	},

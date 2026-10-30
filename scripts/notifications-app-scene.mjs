@@ -49,6 +49,10 @@ import {
 	prepareAskRemediation,
 	runAskRemediationScene,
 } from "./notifications-ask-remediation-scene.mjs";
+import {
+	prepareDrawerRemediation,
+	runDrawerRemediationScene,
+} from "./notifications-drawer-scene.mjs";
 import { pythonChildEnv } from "./python-child-env.mjs";
 
 const OUT = resolve("artifacts/notifications-native");
@@ -387,11 +391,12 @@ async function hoverReadControl(cdp, id) {
  * (`elementFromPoint`), so the negative cannot pass by aiming at empty space or
  * at the row itself.
  */
-async function aimOffScreen(cdp, id) {
+async function aimOffScreen(cdp, id, receipt) {
 	const scroll = await cdp.evaluate(
 		`(() => {
+			const rows = [...document.querySelectorAll('[data-notification-row]')].map((element) => element.dataset.notificationRow);
 			const row = document.querySelector('[data-notification-row="${id}"]');
-			if (!row) return { scrolled: false, port: false };
+			if (!row) return { mounted: false, rows };
 			/* The nearest ancestor that actually scrolls: the reel is an inner
 			   scroller, so setting the document's scrollTop moves nothing. */
 			let port = row.parentElement;
@@ -403,7 +408,7 @@ async function aimOffScreen(cdp, id) {
 			const scrollable = Boolean(port && port !== document.body);
 			if (!scrollable) {
 				document.scrollingElement.scrollTop = document.scrollingElement.scrollHeight;
-				return { scrolled: document.scrollingElement.scrollTop > 0, port: false };
+				return { mounted: true, rows, scrolled: document.scrollingElement.scrollTop > 0, port: false };
 			}
 			const rect = () => row.getBoundingClientRect();
 			const portRect = () => port.getBoundingClientRect();
@@ -421,8 +426,25 @@ async function aimOffScreen(cdp, id) {
 				port.scrollTop = 0;
 				at = "top";
 			}
-			return { scrolled: true, port: true, at, stillInside: inside() };
+			return { mounted: true, rows, scrolled: true, port: true, at, stillInside: inside() };
 		})()`,
+	);
+	/*
+	 * PRESENCE IS A PRECONDITION OF THE NEGATIVE, NOT AN AFTERTHOUGHT OF IT (review
+	 * round 6, R6-1/R6-2). The document this measures is the notifications reel, and
+	 * the route back to it is restored by the lane immediately above this call. A
+	 * selector that misses HERE means the reel is not in the document - a page that
+	 * has not drawn, or a renderer that died - which is not the claim the negative
+	 * makes. The distinction is free: the same walk already knows whether the row was
+	 * there before any scrolling, so it is named now rather than surfacing three
+	 * steps later as a row that "left" a list it was never in.
+	 *
+	 * Nothing is retried and nothing is skipped: an absence still fails the leg, it
+	 * just fails saying what actually happened.
+	 */
+	assert.ok(
+		scroll.mounted,
+		`the notifications reel never mounted: no [data-notification-row="${id}"] when the off-screen control began, and the page held ${scroll.rows.length} row(s)`,
 	);
 	await pause(400);
 	const aim = await cdp.evaluate(
@@ -455,9 +477,16 @@ async function aimOffScreen(cdp, id) {
 			const top = document.elementFromPoint(x, y);
 			return {
 				found: true,
+				rows: [...document.querySelectorAll('[data-notification-row]')].map((element) => element.dataset.notificationRow),
 				scrolled: ${scroll.scrolled},
 				inPort,
 				aimsAtRow: Boolean(top && (top === row || row.contains(top))),
+				/* WHAT THE AIM ACTUALLY HIT (R6-4): aimsAtRow:false alone is also
+				   satisfied by an overlay above the reel, so the hit is recorded rather
+				   than reduced to the boolean the assert reads. */
+				hit: top
+					? { tag: top.tagName, row: top.closest('[data-notification-row]')?.dataset.notificationRow ?? null, action: top.dataset?.rowAction ?? null }
+					: null,
 				x,
 				y,
 				row: { top: Math.round(rowRect.top), bottom: Math.round(rowRect.bottom) },
@@ -465,7 +494,15 @@ async function aimOffScreen(cdp, id) {
 			};
 		})()`,
 	);
-	assert.ok(aim?.found, "the off-screen row left the document");
+	/* The probe lands on the receipt BEFORE the asserts: a failing leg's numbers are
+	 * the whole reason it is diagnosable (R6-3), and a thrown assert would otherwise
+	 * drop them from the artifact exactly when they are needed. */
+	const record = { before: scroll, at: aim };
+	receipt.offScreenAim = record;
+	assert.ok(
+		aim?.found,
+		`the off-screen row left the document once the reel had mounted: ${JSON.stringify(aim)}`,
+	);
 	assert.ok(
 		aim.scrolled,
 		`the reel never scrolled, so no row can be off screen: ${JSON.stringify({ aim, scroll })}`,
@@ -493,7 +530,7 @@ async function aimOffScreen(cdp, id) {
 			y: aim.y,
 		});
 	}
-	return aim;
+	return record;
 }
 
 /** The control the onboarding door offers, already on the page. */
@@ -682,6 +719,8 @@ async function main() {
 	backend.stdout.on("data", (chunk) => backendLog.push(chunk.toString()));
 	backend.stderr.on("data", (chunk) => backendLog.push(chunk.toString()));
 
+	// Assigned once the core is healthy; `finally` closes it whether or not it was.
+	let drawerFixture = null;
 	let cdp = null;
 	let nodeCdp = null;
 	let askFixture = null;
@@ -720,11 +759,35 @@ async function main() {
 			"the seeded backend must demand its bearer",
 		);
 
-		process.env.LOCAL_OPERATOR_DESKTOP_TOKEN = token;
-		/* The ask delta uses the same isolated backend and app. Its loopback adapter
-		 * controls only synthetic answer faults; all ordinary routes stay real. */
-		askFixture = await prepareAskRemediation({
+		/*
+		 * The drawer remediation lane needs its own session and a transport proxy
+		 * in front of THIS core, so the app is launched against the proxy. Faults are
+		 * off until that lane enables them, so every assertion above and below still
+		 * runs against forwarded, unmodified core answers.
+		 */
+		drawerFixture = await prepareDrawerRemediation({
 			base,
+			config,
+			token,
+			coreStore,
+		});
+
+		process.env.LOCAL_OPERATOR_DESKTOP_TOKEN = token;
+		/*
+		 * The ask delta uses the same isolated backend and app. Its loopback adapter
+		 * controls only synthetic answer faults; all ordinary routes stay real.
+		 *
+		 * ITS `base` IS THE DRAWER PROXY, NOT CORE. Both lanes need their own adapter
+		 * in front of the ONE backend, and `launchApp` carries ONE apiUrl, so the two
+		 * proxies are chained rather than chosen between: app -> ask proxy -> drawer
+		 * proxy -> core. Each adapter intercepts only what it owns (the ask proxy, a
+		 * POST answer for its own synthetic ask; the drawer proxy, the read-list and
+		 * PATCH traffic for its own session and ids) and forwards every other request
+		 * unchanged, so neither lane sees the other's faults and both receipts stay
+		 * measured on the real core.
+		 */
+		askFixture = await prepareAskRemediation({
+			base: drawerFixture.apiUrl,
 			config,
 			token,
 			coreStore,
@@ -739,13 +802,15 @@ async function main() {
 		 * verb, no bridge, no capture helper.
 		 */
 		/*
-		 * THE APP MUST BE LAUNCHED AT THE ASK PROXY, NOT AT `base`. launchApp's
+		 * THE APP MUST BE LAUNCHED AT THE OUTERMOST PROXY, NOT AT `base`. launchApp's
 		 * per-call apiUrl overrides prepareDriverContext's binding and rewrites the
 		 * scratch .env (renderer-driver.mjs launchApp), so `apiUrl: base` here would
-		 * send every answer straight to core: the proxy would intercept nothing and
-		 * core would receive the synthetic secret markers. The proxy is transparent
-		 * for every other route (SSE included), so the foreground proofs below still
-		 * run against the real core through it.
+		 * send every answer straight to core: the ask proxy would intercept nothing
+		 * and core would receive the synthetic secret markers. The ask proxy is
+		 * outermost because it sits in front of the drawer proxy (see its prepare
+		 * above), and both are transparent for every route they do not own (SSE
+		 * included), so the foreground proofs below still run against the real core
+		 * through them - including the drawer lane's own read-state faults.
 		 */
 		const handle = await api.launchApp({
 			armed: false,
@@ -885,15 +950,28 @@ async function main() {
 		);
 		assert.ok(!isRead(raced), "the raced revision was read");
 		await screenshot(cdp, "notifications-native-after");
-
-		// #1466 disjoint ask helper: keep adjacent to #1471's drawer helper, before
-		// the unchanged off-screen/blur negatives. It restores locale/size/route.
+		/*
+		 * BOTH REMEDIATION LANES RUN HERE, ASK FIRST. Each was authored against this
+		 * exact spot on its own lane and they are disjoint; the ask helper restores
+		 * locale, size and route before it returns, so the drawer lane below starts
+		 * from a clean view rather than from the ask scene's leftover one. #1471's
+		 * own note places the ask invocation immediately above its drawer helper.
+		 */
 		receipt.askRemediation = askFixture.receipt;
 		await runAskRemediationScene({
 			cdp,
 			nodeCdp,
 			fixture: askFixture,
 			screenshot,
+		});
+
+		// #1466's disjoint ask-remediation invocation belongs immediately above this.
+		await runDrawerRemediationScene({
+			cdp,
+			nodeCdp,
+			fixture: drawerFixture,
+			screenshot,
+			out: OUT,
 		});
 
 		/*
@@ -906,7 +984,7 @@ async function main() {
 		 * receipt may appear. A harness that could mark a row read without it being
 		 * visible would prove nothing about what the operator saw.
 		 */
-		const offScreen = await aimOffScreen(cdp, UNRELATED);
+		const offScreen = await aimOffScreen(cdp, UNRELATED, receipt);
 		receipt.offScreenAim = offScreen;
 		await pause(5_000);
 		const unrelatedAfter = readRow(config, UNRELATED);
@@ -1005,6 +1083,7 @@ async function main() {
 		writeFileSync(outfile, JSON.stringify(receipt, null, 2));
 		throw error;
 	} finally {
+		drawerFixture?.close();
 		cdp?.close();
 		nodeCdp?.close();
 		/*
