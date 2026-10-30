@@ -1,0 +1,46 @@
+{
+ "schema": 1,
+ "audit_kind": "delta re-audit of the two round-1 remediation values (UR-1, RU-1); unchanged keys proved byte-identical, not re-litigated",
+ "auditor": "reviewer",
+ "role": "independent translation auditor (team lopdev reviewer); did not translate these files and edited no translated string",
+ "model": "radient/auto",
+ "model_provenance": "session banner: four consecutive provider fallbacks under a quota failure — anthropic/claude-opus-5-5 -> anthropic/claude-sonnet-5-5 -> openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto. Fallback used, disclosed rather than implied.",
+ "fallback": true,
+ "instance": "c985c3419660-ur-r2",
+ "locale": "ur",
+ "namespace": "ui.settings.search",
+ "date": "2026-10-29",
+ "head": "6a15d62252c1edf1ee5fb34b09a79cd98b7478c1",
+ "status": "passed",
+ "result": "clean",
+ "supersedes": {
+  "receipt": "i18n/receipts/c985c3419660-ur.json",
+  "result": "clean-with-findings",
+  "finding": "UR-1"
+ },
+ "independence": "The translator was a separate LLM translator subagent (i18n-translator); the remediation landed in 4ebe62ae85b. This auditor authored no catalogue, keys.gen.ts, ledger row or receipt for this namespace other than its own round-1 and round-2 audit artifacts, and edited no translated string. It verified the translator's claim rather than accepting it: the fix was checked against the English source, the context sidecar, the core glossary, the locale's style guide and that locale's own settings corpus.",
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "radient/auto",
+  "note": "session model as reported, with provider fallbacks; recorded from the task brief and the remediation commit, not observed serving by this auditor"
+ },
+ "revision": {
+  "remediation_commit": "4ebe62ae85b",
+  "re_audited_head": "6a15d62252c1edf1ee5fb34b09a79cd98b7478c1"
+ },
+ "changed": [
+  {
+   "key": "ui.settings.search.reason.description",
+   "before": "تفصیل سے مطابقت",
+   "after": "وضاحت سے مطابقت"
+  }
+ ],
+ "sha256": {
+  "ur": "944042335c723b67e02e4d48288b0e5d1c7749a8e7653eb5c4fe2a739e013f44",
+  "en": "b7d1a506f2224ac92a275ab062b4b4a77485831abb2bfca00d1494dc12316282"
+ },
+ "context_sha256": "01e4d8a04ee3081a64da2c8b018bb349930e60dc1360bad1e40ce4ca1d63fc02",
+ "findings": [],
+ "scope": "ui.settings.search for ur: delta re-audit of the single value this remediation round changed (ui.settings.search.reason.description) at head 6a15d62252c1edf1ee5fb34b09a79cd98b7478c1, against src/i18n/catalogues/en/ui.settings.search.json, its context sidecar, i18n/glossary.md, i18n/style-guides/ur.md and ur/ui.settings.configuration.json as the established-voice corpus. The other 17 values are byte-identical to the round-1 audit commit de5196be486 and were not re-litigated. No other namespace is in scope.",
+ "notes": "UR-1 (minor) from i18n/receipts/c985c3419660-ur.json is fixed as raised. The target is now byte-for-byte the text that finding accepted: وضاحت is the word this settings surface already uses for a setting's description (ui.settings.configuration.json:59 \"نام، وضاحت یا کلید سے ترتیبات تلاش کریں\", :80, :81), so the results panel and the filter bar one pane away now name the same field with the same word. The construction stays parallel to its five sibling reason labels (نام/کلید/اختیار/حصے/تفصیل سے مطابقت) and remains a lowercase fragment with no trailing ۔. No new finding. Re-derived by this auditor at the new head: key set == English (18/18, same order); @formatjs/icu-messageformat-parser accepts all 18 messages in the file with no stray braces; the changed key's argument names and types still equal English; intl-messageformat renders it through the runtime path; no manual bidi control characters; the changed value carries no trailing full stop, so it still reads as the fragment/context label the sidecar asks for. Round-2 addendum, not a fresh sweep: the other 17 values in each file were proved unchanged by a one-line git diff against the round-1 audit commit de5196be486, so their round-1 verdict stands and was not re-litigated. NOT verified: native-speaker naturalness (agent semantic read only), rendered fit in the panel, RTL layout proof, screenshots. Auditor identity: team lopdev reviewer acting as an independent translation auditor; did not translate these files and edited no translated string. Auditor model: radient/auto, served after four consecutive provider fallbacks under a quota failure (anthropic/claude-opus-5-5 -> anthropic/claude-sonnet-5-5 -> openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto), disclosed rather than implied. The translator's served model was not observed by this auditor."
+}

@@ -58286,7 +58286,7 @@
 			"locale": "ru",
 			"namespace": "ui.settings.search",
 			"source_sha256": "b7d1a506f2224ac92a275ab062b4b4a77485831abb2bfca00d1494dc12316282",
-			"target_sha256": "7437ad51dbe5700f253b746e50064bceacb064ba08530e60d57e453ca98ba183",
+			"target_sha256": "82304eadadf13712e37a7edda66c75d544a2ae9b64ee64c2cd62770bb309154d",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -58297,21 +58297,47 @@
 					"agent": "reviewer",
 					"model": "radient/auto",
 					"date": "2026-10-29",
-					"result": "clean-with-findings",
-					"instance": "c985c3419660-ru",
+					"result": "clean",
+					"instance": "c985c3419660-ru-r2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/c985c3419660-ru.json",
-					"receipt_sha256": "c6b329d26de2538cbac715565a4bbab93c48d9009648b04b22fcd5c6d92b6706",
-					"scope": "All 18 ui.settings.search keys. ICU argument parity, CLDR plural-category set and placeholder bytes re-derived mechanically from an independent read of the English source and its context sidecar; meaning and register checked against the locale style guide and the core glossary; terminology checked against the locale's own settings filter bar, settings navigation and command palette.",
-					"note": "Full 18-key independent read; 1 nit: row.section_hint omits the «ёлочки» the ru catalogue uses for a named section. No blocker/major."
+					"receipt": "i18n/receipts/c985c3419660-ru-r2.json",
+					"receipt_sha256": "b8679c8b2c3a281d8a016db82f3fac996af9da691f9d77af1d45d2fec5d363f2",
+					"scope": "Round-2 delta re-audit of ui.settings.search for ru: the one value this remediation round changed (row.section_hint) at head 6a15d62252c, against the English source, its context sidecar, the core glossary, the ru style guide and ru/ui.settings.configuration.json. The other 17 values are byte-identical to the round-1 audit commit de5196be486 and were not re-litigated. No other namespace in scope.",
+					"note": "RU-1 fixed as raised: «{section}» now quoted, matching the ru catalogue's 15+ named-section instances. 18/18 keys, ICU parity and render re-checked. 0 findings."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "b7d1a506f2224ac92a275ab062b4b4a77485831abb2bfca00d1494dc12316282",
+					"target_sha256": "7437ad51dbe5700f253b746e50064bceacb064ba08530e60d57e453ca98ba183",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "radient/auto",
+							"date": "2026-10-29",
+							"result": "clean-with-findings",
+							"instance": "c985c3419660-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/c985c3419660-ru.json",
+							"receipt_sha256": "c6b329d26de2538cbac715565a4bbab93c48d9009648b04b22fcd5c6d92b6706",
+							"scope": "All 18 ui.settings.search keys. ICU argument parity, CLDR plural-category set and placeholder bytes re-derived mechanically from an independent read of the English source and its context sidecar; meaning and register checked against the locale style guide and the core glossary; terminology checked against the locale's own settings filter bar, settings navigation and command palette.",
+							"note": "Full 18-key independent read; 1 nit: row.section_hint omits the «ёлочки» the ru catalogue uses for a named section. No blocker/major."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
@@ -58348,7 +58374,7 @@
 			"locale": "ur",
 			"namespace": "ui.settings.search",
 			"source_sha256": "b7d1a506f2224ac92a275ab062b4b4a77485831abb2bfca00d1494dc12316282",
-			"target_sha256": "16a4ad69fd3865dddce1486bea04b6d011506fef826481c5cab9dd46110dbc52",
+			"target_sha256": "944042335c723b67e02e4d48288b0e5d1c7749a8e7653eb5c4fe2a739e013f44",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -58359,21 +58385,47 @@
 					"agent": "reviewer",
 					"model": "radient/auto",
 					"date": "2026-10-29",
-					"result": "clean-with-findings",
-					"instance": "c985c3419660-ur",
+					"result": "clean",
+					"instance": "c985c3419660-ur-r2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c985c3419660-ur.json",
-					"receipt_sha256": "de94555c81f42affa49f133175493d941223834fef58fcf053be7114f6100dc6",
-					"scope": "All 18 ui.settings.search keys. ICU argument parity, CLDR plural-category set and placeholder bytes re-derived mechanically from an independent read of the English source and its context sidecar; meaning and register checked against the locale style guide and the core glossary; terminology checked against the locale's own settings filter bar, settings navigation and command palette.",
-					"note": "Full 18-key independent read; 1 minor: reason.description uses تفصیل where the settings surface uses وضاحت. No blocker/major."
+					"receipt": "i18n/receipts/c985c3419660-ur-r2.json",
+					"receipt_sha256": "66e67bc7e8ed79367510c9bf7ee3ceb7c57433180b541f37bbac4a3b7450aebc",
+					"scope": "Round-2 delta re-audit of ui.settings.search for ur: the one value this remediation round changed (reason.description) at head 6a15d62252c, against the English source, its context sidecar, the core glossary, the ur style guide and ur/ui.settings.configuration.json. The other 17 values are byte-identical to the round-1 audit commit de5196be486 and were not re-litigated. No other namespace in scope.",
+					"note": "UR-1 fixed as raised: reason.description now uses وضاحت, the settings surface's own word for a description. 18/18 keys, ICU parity, fragment form and bidi sweep re-checked. 0 findings."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "b7d1a506f2224ac92a275ab062b4b4a77485831abb2bfca00d1494dc12316282",
+					"target_sha256": "16a4ad69fd3865dddce1486bea04b6d011506fef826481c5cab9dd46110dbc52",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "radient/auto",
+							"date": "2026-10-29",
+							"result": "clean-with-findings",
+							"instance": "c985c3419660-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c985c3419660-ur.json",
+							"receipt_sha256": "de94555c81f42affa49f133175493d941223834fef58fcf053be7114f6100dc6",
+							"scope": "All 18 ui.settings.search keys. ICU argument parity, CLDR plural-category set and placeholder bytes re-derived mechanically from an independent read of the English source and its context sidecar; meaning and register checked against the locale style guide and the core glossary; terminology checked against the locale's own settings filter bar, settings navigation and command palette.",
+							"note": "Full 18-key independent read; 1 minor: reason.description uses تفصیل where the settings surface uses وضاحت. No blocker/major."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
