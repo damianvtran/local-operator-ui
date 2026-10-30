@@ -179,9 +179,11 @@ export function toggledMuteNotify(notify: TeamBridgeNotify): TeamBridgeNotify {
  *
  * The hub now wakes an active agent member on every message by default
  * (`notify: all`) and lets the agent judge relevance; an @-mention still means
- * a reply is expected. `mention` narrows it to @-mentions and `mute` stops all
- * wakes. That is the AGENT member's row, not the reader's own banner register,
- * so it has its own helpers: the two must never be read through each other.
+ * a reply is expected. `mention` narrows it to @-mentions of the agent plus
+ * replies in threads it follows, and `mute` stops every wake, @-mentions
+ * included (agent-server wake contract, decided in review round 1). That is
+ * the AGENT member's row, not the reader's own banner register, so it has its
+ * own helpers: the two must never be read through each other.
  */
 
 /** The three agent wake levels, in the menu's order (loudest first). */
@@ -224,8 +226,11 @@ export function ownActiveAgent(
  *
  * Null, not a guessed `all`: a hub from before this change STORED `mute` for
  * agents and may not serialize the field, so guessing would check a row that
- * is false. The menu then checks nothing and the "(default)" label still says
- * what a new member gets.
+ * is false. The menu then checks nothing.
+ *
+ * Where the value comes from: the hub projects the effective level onto the
+ * caller's OWN agent rows in every conversation view (list and get), and the
+ * agent-notify write's answer carries it too (`withServedOwnAgentNotify`).
  */
 export function agentNotifyLevel(
 	agent: TeamBridgeConversation["members"][number],
@@ -237,7 +242,7 @@ export function agentNotifyLevel(
 }
 
 /**
- * What the conversation menu needs to draw the "Your agent" group: present
+ * What the conversation menu needs to draw the "Wake your agent for" group: present
  * only for an active own agent, carrying its served level (or null).
  */
 export function ownAgentMenuState(
@@ -246,6 +251,40 @@ export function ownAgentMenuState(
 ): { notify: TeamBridgeNotify | null } | undefined {
 	const agent = ownActiveAgent(conversation, selfAccountId);
 	return agent ? { notify: agentNotifyLevel(agent) } : undefined;
+}
+
+/**
+ * Fold the agent-notify route's answer into a cached page.
+ *
+ * WHY: the hub's answer to the endpoint-addressed notify write is the
+ * conversation as seen by the AGENT's member key, which is the one view sure
+ * to carry the level just stored. A list refetch alone is only as good as the
+ * hub's list projection: if it ever omits the field again (an older hub, a
+ * rollback), the checked row would vanish the moment the write settles
+ * (review round 1, R1-1). So the served level from the answer is written into
+ * the cache, and the later refetch can only replace it with another served
+ * value, never with the optimistic guess.
+ *
+ * Only the agent's `notify` is taken from the answer. The rest of that view is
+ * rendered from the agent's perspective (its own `notify`/`muted`/unread are
+ * not the reader's), so replacing the whole row would overwrite the reader's
+ * banner register with the agent's. An answer without a recognised level
+ * changes nothing.
+ */
+export function withServedOwnAgentNotify(
+	page: TeamBridgeConversationList,
+	answer: Pick<TeamBridgeConversation, "id" | "tenant_id" | "members">,
+	selfAccountId: string,
+): TeamBridgeConversationList {
+	const agent = ownActiveAgent(answer, selfAccountId);
+	const served = agent ? agentNotifyLevel(agent) : null;
+	if (served === null) return page;
+	return withOwnAgentNotify(
+		page,
+		{ conversationId: answer.id, tenantId: answer.tenant_id },
+		selfAccountId,
+		served,
+	);
 }
 
 /**

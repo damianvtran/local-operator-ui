@@ -653,6 +653,13 @@ export type TeamBridgePageViewProps = {
 	 * and sends no field an older backend would refuse.
 	 */
 	sendMentionsCapabilityState?: DesktopFeatureState;
+	/**
+	 * The `team_bridge_agent_notify` capability answer, computed by the
+	 * container. Anything but `enabled` hides the "Wake your agent for" group:
+	 * a runtime without the route would refuse every pick, and an error that
+	 * invites a retry nothing can satisfy is worse than no control (R1-3).
+	 */
+	agentNotifyCapabilityState?: DesktopFeatureState;
 	/** Story/test seed only: opens the header menu so its rows are visible. */
 	defaultMenuOpen?: boolean;
 	/** Story/test seed only: the page's real draft is user-owned state. */
@@ -794,6 +801,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	threadsCapabilityState = "unknown",
 	reactionsCapabilityState = "unknown",
 	sendMentionsCapabilityState = "unknown",
+	agentNotifyCapabilityState = "unknown",
 	defaultMenuOpen = false,
 	initialDraft = "",
 	draftJournal,
@@ -2726,7 +2734,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										<TeamBridgeConversationMenu
 											conversation={shown}
 											onNotifyChange={onNotifyChange}
-											ownAgent={ownAgentMenuState(shown, selfAccountId)}
+											ownAgent={
+												agentNotifyCapabilityState === "enabled"
+													? ownAgentMenuState(shown, selfAccountId)
+													: undefined
+											}
 											onAgentNotifyChange={onAgentNotifyChange}
 											onAddMembers={
 												onAddMembers && canInviteMembers(shown, selfAccountId)
@@ -4021,7 +4033,10 @@ const TeamBridgeOwnedPage: FC<{
 		selected?.tenant_id,
 	);
 	const notify = useSetTeamBridgeNotify();
-	const agentNotify = useSetTeamBridgeAgentNotify();
+	const agentNotify = useSetTeamBridgeAgentNotify(
+		selected?.id,
+		selected?.tenant_id,
+	);
 	const loadMoreArchived = useLoadMoreArchivedTeamBridgeConversations(
 		scope,
 		accountId,
@@ -4378,6 +4393,10 @@ const TeamBridgeOwnedPage: FC<{
 				sendMentionsCapabilityState={desktopFeatureState(
 					capabilities.data,
 					"team_bridge_send_mentions",
+				)}
+				agentNotifyCapabilityState={desktopFeatureState(
+					capabilities.data,
+					"team_bridge_agent_notify",
 				)}
 				onCloseThread={() => setThreadLink(null)}
 				listState={

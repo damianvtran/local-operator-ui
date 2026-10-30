@@ -46,8 +46,11 @@ import {
  *
  * YOUR AGENT. When the reader's own agent is an active member, a second radio
  * group sets how often THAT AGENT is woken here: every message (the hub's
- * default; the agent decides whether a reply is needed), only @-mentions, or
- * never. It is a separate group with its own label because it writes a
+ * default; the agent decides whether a reply is needed), @-mentions plus
+ * replies in threads it follows, or never - not even for an @-mention. The
+ * label is a sentence the rows complete ("Wake your agent for") so the group
+ * cannot be scanned as a second copy of the reader's own preferences above it
+ * (design round 1, D3). It is a separate group with its own label because it writes a
  * different member row: muting your own banners must never silence your agent,
  * and vice versa. Absent `ownAgent`, nothing is drawn: an invited agent is
  * answered on the Invitations screen and a stranger's agent is not yours to set.

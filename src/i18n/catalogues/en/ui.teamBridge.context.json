@@ -488,37 +488,37 @@
 	"ui.teamBridge.agentNotify.label": {
 		"role": "menu section heading / radio group label",
 		"tone": "neutral",
-		"length": "2 words.",
+		"length": "3-4 words; the radio rows complete it as a sentence.",
 		"placeholders": {},
-		"note": "Conversation menu. Heads the three-level choice of how often the READER'S OWN AI agent (chief of staff) is woken in this conversation. Distinct from the reader's own notification preferences above it: this setting is about the agent, not about the reader's banners."
+		"note": "Conversation menu. Heads the three-level choice of how often the READER'S OWN AI agent (chief of staff) is woken in this conversation; the rows below it complete the phrase (\"Wake your agent for: every message\"). Distinct from the reader's own notification preferences above it, which are about the reader's banners, not the agent. WAKE CONTRACT: 'all' = the agent is woken for every message; 'mention' = woken for @-mentions of it and for replies in threads it follows; 'mute' = never woken here, not even by an @-mention."
 	},
 	"ui.teamBridge.agentNotify.all": {
 		"role": "agent wake level (radio row)",
 		"tone": "neutral",
-		"length": "2-3 words plus the parenthetical; one line in a ~240px menu.",
+		"length": "1-3 words; one line in a ~190px label.",
 		"placeholders": {},
-		"note": "The agent is woken for every message here and decides for itself whether to reply. '(default)' marks this as the level a new member gets; keep it parenthetical."
+		"note": "Completes 'Wake your agent for'. The agent is woken for every message here and decides for itself whether to reply. Do not add '(default)'. WAKE CONTRACT: 'all' = the agent is woken for every message; 'mention' = woken for @-mentions of it and for replies in threads it follows; 'mute' = never woken here, not even by an @-mention."
 	},
 	"ui.teamBridge.agentNotify.mention": {
 		"role": "agent wake level (radio row)",
 		"tone": "neutral",
-		"length": "2-3 words; one line in a ~240px menu.",
+		"length": "Up to 5 words; one line in a ~190px label.",
 		"placeholders": {},
-		"note": "The agent is woken only when someone @-mentions it. Keep '@-mentions' as the product's mention term."
+		"note": "Completes 'Wake your agent for'. The agent is woken when someone @-mentions it AND for replies in threads it follows ('its threads' = threads the agent follows). Keep '@-mentions' as the product's mention term. WAKE CONTRACT: 'all' = the agent is woken for every message; 'mention' = woken for @-mentions of it and for replies in threads it follows; 'mute' = never woken here, not even by an @-mention."
 	},
 	"ui.teamBridge.agentNotify.mute": {
 		"role": "agent wake level (radio row)",
 		"tone": "neutral",
-		"length": "1-2 words; one line in a ~240px menu.",
+		"length": "1-3 words; one line in a ~190px label.",
 		"placeholders": {},
-		"note": "The agent is never woken in this conversation, not even by an @-mention. Describes the agent's state (it never wakes), not an action on the reader."
+		"note": "The agent is never woken in this conversation, not even by an @-mention. 'Never' answers 'Wake your agent for'; the parenthetical names the state with the app's Mute term. WAKE CONTRACT: 'all' = the agent is woken for every message; 'mention' = woken for @-mentions of it and for replies in threads it follows; 'mute' = never woken here, not even by an @-mention."
 	},
 	"ui.teamBridge.agentNotify.error": {
 		"role": "inline error under the thread header",
 		"tone": "factual, no blame",
 		"length": "One short sentence.",
 		"placeholders": {},
-		"note": "A refused write of the reader's own agent's wake level. The menu has closed and the previous level is restored; this line explains why. Mirrors ui.teamBridge.notify.error."
+		"note": "A refused write of the reader's own agent's wake level. The menu has closed and the previous level is restored; this line explains why and names WHICH setting (how often the agent wakes). Mirrors ui.teamBridge.notify.error."
 	},
 	"ui.teamBridge.notify.title": {
 		"role": "OS notification title",
@@ -1815,7 +1815,7 @@
 		"tone": "Clear, calm, sentence case; factual about what changes",
 		"length": "Two or three sentences; permit wrapping.",
 		"placeholders": {},
-		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. The consent statement the owner agrees to by pressing Accept; the key names the participation version it is consent to (bridge_agent_participation_v2), so ANY change to this English text needs a new version and a new key. Keep every fact: from now on the agent can read the conversation's messages AND post there; it is woken for EVERY message and judges for itself whether to reply; an @-mention means a reply is expected; the owner can narrow it to @-mentions only or mute it (the 'Your agent' menu). 'Mute it' here means the agent is never woken."
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. The consent statement the owner agrees to by pressing Accept; the key names the participation version it is consent to (bridge_agent_participation_v2), so ANY change to this English text before it ships needs review, and after it ships needs a new version and a new key. Keep every fact: from now on the agent can read the conversation's messages AND post there; it is woken for EVERY message and judges for itself whether to reply; an @-mention means a reply is expected; the owner can change how often it is woken or mute it, and the place to do that is the conversation's ⋯ (more options) menu — keep the ⋯ glyph as is. 'Mute it' here means the agent is never woken, not even by an @-mention."
 	},
 	"ui.teamBridge.invitations.loading": {
 		"role": "invitations loading",
@@ -1921,14 +1921,14 @@
 		"placeholders": {
 			"agent": "the reader's own agent's display name, always a display name; the no-name wording is accepted_unnamed"
 		},
-		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply. Outcome after Accept; same wake rule as the consent statement: the agent now receives every message and replies when relevant or when @-mentioned."
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply. Outcome after Accept; same wake rule as the consent statement: the agent now receives every message and replies when relevant or when @-mentioned. The last sentence points to where the owner changes this: the conversation's ⋯ (more options) menu; keep the ⋯ glyph as is."
 	},
 	"ui.teamBridge.invitations.accepted_unnamed": {
 		"role": "invitations accepted unnamed",
 		"tone": "Clear, calm, sentence case; factual about what changes",
 		"length": "One or two sentences; permit wrapping.",
 		"placeholders": {},
-		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply. Outcome after Accept; same wake rule as the consent statement: the agent now receives every message and replies when relevant or when @-mentioned. Used when the agent has no name: lowercase sentence-internal wording avoids a capitalized fallback mid-sentence."
+		"note": "Desktop Team Bridge Invitations view. A teammate added the reader's own AI agent (chief of staff) to a channel or group; the agent cannot join until its owner accepts. Once accepted, the agent sees every message and decides whether a reply is needed; an @-mention means it should reply. Outcome after Accept; same wake rule as the consent statement: the agent now receives every message and replies when relevant or when @-mentioned. Used when the agent has no name: lowercase sentence-internal wording avoids a capitalized fallback mid-sentence. The last sentence points to where the owner changes this: the conversation's ⋯ (more options) menu; keep the ⋯ glyph as is."
 	},
 	"ui.teamBridge.invitations.declined": {
 		"role": "invitations declined",

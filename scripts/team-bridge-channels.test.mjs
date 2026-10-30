@@ -335,7 +335,7 @@ test("the menu renders the model's levels and toggle, inside Radix's radio group
  * the reader's OWN ACTIVE agent; the checked row is the served level and never
  * a guess; the optimistic patch moves only that agent row.
  */
-test("the 'Your agent' group is offered only for the reader's own active agent", () => {
+test("the 'Wake your agent for' group is offered only for the reader's own active agent", () => {
 	const self = "acct_self";
 	const agentRow = (account, state, notify) => ({
 		account_id: account,

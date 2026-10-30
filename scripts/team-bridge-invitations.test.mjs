@@ -61,6 +61,7 @@ const bundle = await build({
 			export * from "./src/renderer/src/features/team-bridge/team-bridge-invitations-model";
 			export { agentNotifyMutationOptions, invitationAnswerMutationOptions, teamBridgeKeys } from "./src/renderer/src/features/team-bridge/use-team-bridge";
 			export { TeamBridgeApi } from "./src/renderer/src/shared/api/local-operator/team-bridge-api";
+			export { ownAgentMenuState } from "./src/renderer/src/features/team-bridge/team-bridge-model";
 		`,
 		resolveDir: ROOT,
 		sourcefile: "team-bridge-invitations.mjs",
@@ -146,7 +147,7 @@ const CONSENT_V1 =
 	"Accepting lets your agent read and post in this conversation from now on. It is woken only when someone @-mentions it.";
 /* The v2 statement (wake-on-every-message), verbatim. Changing it needs a new version. */
 const CONSENT_V2 =
-	"Accepting lets your agent read and post in this conversation from now on. It sees every message and decides whether to reply; an @-mention means it should reply. You can limit it to @-mentions or mute it.";
+	"Accepting lets your agent read and post in this conversation from now on. It sees every message and decides whether to reply; an @-mention means it should reply. You can change how often it wakes, or mute it, from the conversation’s ⋯ menu.";
 const human = (accountId, label, patch = {}) => ({
 	account_id: accountId,
 	kind: "human",
@@ -337,7 +338,7 @@ test("the view states the consent, the row, and each outcome honestly", () => {
 		true,
 	);
 	// The v2 consent statement renders (v1 no longer does), and points only at
-	// controls the app has: the conversation menu's "Your agent" levels.
+	// controls the app has: the conversation ⋯ menu's "Wake your agent for" levels.
 	assert.equal(empty.includes(CONSENT_V2), true);
 	assert.equal(empty.includes(CONSENT_V1), false);
 	assert.equal(CONSENT_V2.includes("All"), false);
@@ -380,7 +381,7 @@ test("the view states the consent, the row, and each outcome honestly", () => {
 	});
 	assert.equal(
 		done.includes(
-			"Accepted. Robo Damian now sees every message here and replies when it’s relevant or @-mentioned.",
+			"Accepted. Robo Damian now sees every message here and replies when it’s relevant or @-mentioned. Change this from the conversation’s ⋯ menu.",
 		),
 		true,
 	);
@@ -407,7 +408,7 @@ test("the view states the consent, the row, and each outcome honestly", () => {
 	});
 	assert.equal(
 		unnamedAccepted.includes(
-			"Accepted. Your agent now sees every message here and replies when it’s relevant or @-mentioned.",
+			"Accepted. Your agent now sees every message here and replies when it’s relevant or @-mentioned. Change this from the conversation’s ⋯ menu.",
 		),
 		true,
 	);
@@ -855,7 +856,10 @@ test("the agent's wake level is sent as the owner to agent-notify, patched optim
 			},
 		},
 	};
-	const options = ui.agentNotifyMutationOptions(client);
+	const options = ui.agentNotifyMutationOptions(client, {
+		conversationId: "bcv_1",
+		tenantId: "tnt_1",
+	});
 	const variables = {
 		conversationId: "bcv_1",
 		tenantId: "tnt_1",
@@ -888,4 +892,137 @@ test("the agent's wake level is sent as the owner to agent-notify, patched optim
 	assert.deepEqual(client.getQueryData(orgKey), page);
 	client.clear();
 	globalThis.window = undefined;
+});
+
+/*
+ * R1-1: THE CHECKED ROW MUST SURVIVE A SETTLED WRITE ON HUB-SHAPED DATA.
+ *
+ * The hub projects `notify` onto the caller's own agent row; the write's answer
+ * carries it as well. Seeds below are what the hub serves: the list row and the
+ * answer differ only in whether that field is present, so the test proves the
+ * cache takes the SERVED value from the answer (not the optimistic guess), keeps
+ * the reader's own banner register, and checks nothing when the server names no
+ * level.
+ */
+test("the agent-notify answer's served level is folded into the cache; no served level checks nothing", async () => {
+	const listRow = (agentPatch) =>
+		conversation({
+			notify: "all",
+			muted: false,
+			members: [
+				human(SELF, "Damian"),
+				agent(SELF, "Robo Damian", "active", agentPatch),
+			],
+		});
+	const run = async ({ listed, answered, chosen }) => {
+		const client = new QueryClient({
+			defaultOptions: {
+				queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
+			},
+		});
+		const orgKey = ui.teamBridgeKeys.conversations("tnt_1", SELF);
+		client.setQueryData(["radient-user", "user"], { account: { id: SELF } });
+		client.setQueryData(ui.teamBridgeKeys.statusFor(SELF), {
+			account_id: SELF,
+			state: "ready",
+			local: { enabled: true },
+			read_only: false,
+		});
+		client.setQueryData(orgKey, {
+			conversations: [listRow(listed)],
+			has_more: false,
+		});
+		// The settle-time list re-read is a separate claim; the fold is under test.
+		client.invalidateQueries = async () => {};
+		const options = ui.agentNotifyMutationOptions(client, {
+			conversationId: "bcv_1",
+			tenantId: "tnt_1",
+		});
+		const variables = {
+			conversationId: "bcv_1",
+			tenantId: "tnt_1",
+			notify: chosen,
+		};
+		const context = await options.onMutate(variables);
+		// The answer is the AGENT's view: its own `notify`/`muted` are not the reader's.
+		const answer = {
+			...listRow(answered),
+			notify: "mute",
+			muted: true,
+		};
+		options.onSuccess(answer, variables, context);
+		await options.onSettled(answer, null, variables, context);
+		const cached = client.getQueryData(orgKey).conversations[0];
+		client.clear();
+		return cached;
+	};
+	// Served level in the answer: it lands, whatever the optimistic guess was.
+	const served = await run({
+		listed: { notify: "all" },
+		answered: { notify: "mention" },
+		chosen: "mute",
+	});
+	assert.deepEqual(ui.ownAgentMenuState(served, SELF), { notify: "mention" });
+	assert.equal(served.notify, "all");
+	assert.equal(served.muted, false);
+	// A hub row with no level on the agent: menu checks nothing before the write...
+	assert.deepEqual(ui.ownAgentMenuState(listRow({}), SELF), { notify: null });
+	// ...and an answer with no level leaves the optimistic pick, never invents one.
+	const unserved = await run({ listed: {}, answered: {}, chosen: "mention" });
+	assert.deepEqual(ui.ownAgentMenuState(unserved, SELF), { notify: "mention" });
+});
+
+/*
+ * R1-4: writes to ONE conversation are serialised by a scope keyed on owner,
+ * tenant and conversation; another conversation gets another queue, and a
+ * write naming a conversation other than the one the queue serves is refused
+ * before any cache patch.
+ */
+test("agent-notify writes are serialised per conversation", async () => {
+	const client = new QueryClient();
+	client.setQueryData(["radient-user", "user"], { account: { id: SELF } });
+	const a = ui.agentNotifyMutationOptions(client, {
+		conversationId: "bcv_1",
+		tenantId: "tnt_1",
+	});
+	const again = ui.agentNotifyMutationOptions(client, {
+		conversationId: "bcv_1",
+		tenantId: "tnt_1",
+	});
+	const b = ui.agentNotifyMutationOptions(client, {
+		conversationId: "bcv_2",
+		tenantId: "tnt_1",
+	});
+	assert.equal(typeof a.scope?.id, "string");
+	assert.equal(a.scope.id, again.scope.id);
+	assert.notEqual(a.scope.id, b.scope.id);
+	assert.equal(a.scope.id.includes(SELF), true);
+	await assert.rejects(
+		a.onMutate({ conversationId: "bcv_2", tenantId: "tnt_1", notify: "mute" }),
+		/target changed/,
+	);
+	/* The query client really queues them: the second does not start until the
+	   first settles. */
+	let release;
+	const order = [];
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const fake = (name, wait) => ({
+		scope: a.scope,
+		mutationFn: async () => {
+			order.push(`${name}:start`);
+			await wait;
+			order.push(`${name}:end`);
+		},
+	});
+	const cache = client.getMutationCache();
+	const first = cache.build(client, fake("A", gate)).execute();
+	const second = cache.build(client, fake("B", Promise.resolve())).execute();
+	await new Promise((resolve) => setTimeout(resolve, 10));
+	assert.deepEqual(order, ["A:start"]);
+	release();
+	await Promise.all([first, second]);
+	assert.deepEqual(order, ["A:start", "A:end", "B:start", "B:end"]);
+	client.clear();
 });

@@ -11,8 +11,10 @@
  * participation text yet (`TEAM_BRIDGE_AGENT_PARTICIPATION_VERSION`). It states
  * what the owner is agreeing to: the agent can read and post in the
  * conversation from now on, it is woken for every message and decides itself
- * whether to reply (an @-mention means it should), and the owner can narrow it
- * to @-mentions or mute it from the conversation menu ("Your agent"). The hub
+ * whether to reply (an @-mention means it should), and the owner can change how
+ * often it wakes, or mute it, from the conversation's ⋯ menu ("Wake your agent
+ * for"). The accepted line repeats where, because that is where it is
+ * actionable (design round 1, D4). The hub
  * sets the accepted agent's level to `all`; this view never writes it.
  *
  * Split container/view like Scheduled, so stories render every state without a

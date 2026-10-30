@@ -706,8 +706,9 @@ export const TeamBridgeApi = {
 	 *
 	 * Distinct from `setNotify`, which is the reader's own banner register: this
 	 * writes the agent member's level, which the hub reads to decide whether a
-	 * non-mention message wakes the agent at all (`all`), only an @-mention does
-	 * (`mention`), or nothing does (`mute`). The runtime resolves the owner's
+	 * non-mention message wakes the agent at all (`all`), only an @-mention or a
+	 * reply in a thread it follows does (`mention`), or nothing does, not even
+	 * an @-mention (`mute`). The runtime resolves the owner's
 	 * agent endpoint, so the renderer never names one. The answer is the
 	 * conversation's post-state, whose agent row carries the effective level.
 	 */

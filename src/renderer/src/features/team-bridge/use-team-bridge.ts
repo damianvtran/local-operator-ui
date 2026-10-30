@@ -68,6 +68,7 @@ import {
 	withConversationStatus,
 	withNotificationPreference,
 	withOwnAgentNotify,
+	withServedOwnAgentNotify,
 	withoutConversation,
 } from "./team-bridge-model";
 
@@ -774,11 +775,32 @@ export type TeamBridgeAgentNotifyVariables = {
  * Same owner discipline as the reader's own notify write: the account is
  * captured once and re-checked in every phase, so a sign-out mid-flight can
  * neither land the level under the next account nor roll back into their
- * cache. The snapshots restore exactly the pages this write patched; the
- * refetch in `onSettled` is what brings in the server's canonical level.
+ * cache. The snapshots restore exactly the pages this write patched.
+ *
+ * On success the route's answer is folded into the cache before the refetch
+ * (`withServedOwnAgentNotify`, review round 1 R1-1): the answer is the one view
+ * sure to carry the stored level, so the checked row survives even if a list
+ * refetch came back without it.
+ *
+ * SERIALISED PER CONVERSATION (R1-4). Two quick picks A then B both snapshot
+ * in `onMutate`; unscoped, B's snapshot holds A's optimistic value, and A
+ * failing after B started rolls back over B. A mutation scope keyed by the
+ * conversation makes the query client run B (including its `onMutate`) only
+ * after A has settled, so every snapshot is a settled state and the wire order
+ * is the order of the gestures. Different conversations still run in parallel.
+ * Owner and tenant are in the id too, so a sign-out never chains one account's
+ * write behind another's.
+ *
+ * The scope is fixed when the options are built, not per call (TanStack reads
+ * `options.scope` from the mutation), hence the `target` parameter. The same
+ * target is in `mutationKey`: when the selection moves, the observer's key
+ * changes and TanStack RESETS the observer instead of re-pointing a pending
+ * mutation's options, whose scope would then no longer match the queue it
+ * was filed under.
  */
 export function agentNotifyMutationOptions(
 	client: QueryClient,
+	target: { conversationId: string; tenantId: string } | null,
 	isCurrent?: () => boolean,
 ): UseMutationOptions<
 	TeamBridgeConversation,
@@ -800,15 +822,38 @@ export function agentNotifyMutationOptions(
 			query.queryKey.at(-1) === accountId &&
 			query.queryKey.at(-2) === "account",
 	};
+	// A write for a conversation other than the one this queue serialises would
+	// escape the per-conversation ordering; refuse it before any cache patch.
+	const onTarget = (variables: {
+		conversationId: string;
+		tenantId: string;
+	}) => {
+		if (
+			target?.conversationId !== variables.conversationId ||
+			target.tenantId !== variables.tenantId
+		)
+			throw new Error("Team Bridge agent-notify target changed");
+	};
+	const serial = [
+		"agent-notify",
+		accountId ?? "unresolved-owner",
+		target?.tenantId ?? "unknown-tenant",
+		target?.conversationId ?? "no-conversation",
+	] as const;
 	return {
-		mutationFn: ({ conversationId, tenantId, notify }) =>
-			TeamBridgeApi.setAgentNotify({
+		mutationKey: [...teamBridgeKeys.all, ...serial],
+		scope: { id: serial.join(":") },
+		mutationFn: ({ conversationId, tenantId, notify }) => {
+			onTarget({ conversationId, tenantId });
+			return TeamBridgeApi.setAgentNotify({
 				conversationId,
 				tenantId,
 				notify,
 				accountId: check(),
-			}),
+			});
+		},
 		onMutate: async (variables) => {
+			onTarget(variables);
 			const self = check();
 			await client.cancelQueries(owned);
 			check();
@@ -820,6 +865,14 @@ export function agentNotifyMutationOptions(
 					: withOwnAgentNotify(page, variables, self, variables.notify),
 			);
 			return { snapshots };
+		},
+		onSuccess: (answer) => {
+			if (!current() || !accountId) return;
+			client.setQueriesData<TeamBridgeConversationList>(owned, (page) =>
+				page === undefined
+					? page
+					: withServedOwnAgentNotify(page, answer, accountId),
+			);
 		},
 		onError: (_error, _variables, context) => {
 			if (!current()) return;
@@ -834,15 +887,27 @@ export function agentNotifyMutationOptions(
 	};
 }
 
-/** Set the reader's own agent's wake level in one conversation. */
-export function useSetTeamBridgeAgentNotify(): UseMutationResult<
+/**
+ * Set the reader's own agent's wake level in the SELECTED conversation; writes
+ * to that conversation are serialised (see `agentNotifyMutationOptions`).
+ */
+export function useSetTeamBridgeAgentNotify(
+	conversationId: string | undefined,
+	tenantId: string | undefined,
+): UseMutationResult<
 	TeamBridgeConversation,
 	Error,
 	TeamBridgeAgentNotifyVariables
 > {
 	const client = useQueryClient();
 	const owner = useBridgeOwner();
-	return useMutation(agentNotifyMutationOptions(client, owner.isCurrent));
+	return useMutation(
+		agentNotifyMutationOptions(
+			client,
+			conversationId && tenantId ? { conversationId, tenantId } : null,
+			owner.isCurrent,
+		),
+	);
 }
 
 /** One invitation answer: which conversation, in which org, and the choice. */

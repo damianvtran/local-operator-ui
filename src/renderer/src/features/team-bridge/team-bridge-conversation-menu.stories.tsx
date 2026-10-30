@@ -2,11 +2,13 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { TeamBridgeConversationMenu } from "./team-bridge-conversation-menu";
 
 /*
- * The conversation header menu, open, in each "Your agent" state a reviewer
- * must see (wake-on-every-message): the reader's own agent woken by every
- * message (the default), only by @-mentions, never, a hub that reports no
- * level (nothing checked), and a conversation without the reader's own active
- * agent (no group at all). Presentational: the callbacks are no-ops and
+ * The conversation header menu, open, in each "Wake your agent for" state a
+ * reviewer must see (wake-on-every-message): the reader's own agent woken by
+ * every message (the default), by @-mentions and the threads it follows, never
+ * (muted, @-mentions included), a hub that reports no level (nothing checked),
+ * and a conversation without the reader's own active agent (no group at all).
+ * The refused-write state is drawn by the page, which owns the error line:
+ * `Team Bridge/Page` › `AgentWakeSettingError`. Presentational: the callbacks are no-ops and
  * `defaultOpen` replaces a click.
  */
 const meta = {
@@ -35,10 +37,10 @@ type Story = StoryObj<typeof meta>;
 export const AgentEveryMessage: Story = {
 	args: { ownAgent: { notify: "all" } },
 };
-export const AgentOnlyMentions: Story = {
+export const AgentMentionsAndThreads: Story = {
 	args: { ownAgent: { notify: "mention" } },
 };
-export const AgentNeverWakes: Story = {
+export const AgentMuted: Story = {
 	args: { ownAgent: { notify: "mute" } },
 };
 /* An older hub serves no level for the agent row: no row is checked. */
