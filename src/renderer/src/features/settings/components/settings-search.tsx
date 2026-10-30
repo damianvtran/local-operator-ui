@@ -1,8 +1,8 @@
 /**
  * @file settings-search.tsx
  * @description
- * The Settings page's own search: a field in the page header, and a panel under
- * it listing the settings that match — each saying WHY it matched and which
+ * The Settings page's own search: a field on the page's own left axis, under the
+ * title, and a panel under it listing the settings that match — each saying WHY it matched and which
  * section it lands in.
  *
  * ## Two questions, one box
@@ -369,7 +369,7 @@ export const SettingsSearch = forwardRef<
 	return (
 		<div
 			ref={rootRef}
-			className={cn("relative w-full @2xl:w-80", className)}
+			className={cn("relative w-full", className)}
 			onBlur={(event) => {
 				const next = event.relatedTarget as Node | null;
 				// Focus that stayed inside the widget — the Clear button, most of

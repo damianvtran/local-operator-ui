@@ -1282,26 +1282,32 @@ export const SettingsPage: FC = () => {
 				 * Settings all cap the detail pane and none of them column it.
 				 */}
 				<div className="mx-auto flex w-full max-w-4xl flex-col gap-8 pb-8">
-					<PageHeader title={t("ui.settings.page.title")} icon={Settings}>
-						{/*
-						 * The page's search lives in the header's action slot: it is a
-						 * page-level tool, and a second box beside the Backend section's own
-						 * filter would have been two searches in one screen with two
-						 * different meanings (this one JUMPS, that one FILTERS IN PLACE).
-						 */}
-						<SettingsSearch
-							onDismiss={() => {
-								const saved = savedSearchScrollRef.current;
-								savedSearchScrollRef.current = null;
-								if (saved === null) return;
-								contentContainerRef.current?.scrollTo({ top: saved });
-							}}
-							ref={searchRef}
-							index={searchIndex}
-							readRendered={readRenderedSearchRows}
-							onJump={jumpToSearchEntry}
-						/>
-					</PageHeader>
+					<PageHeader title={t("ui.settings.page.title")} icon={Settings} />
+					{/*
+					 * THE SEARCH ROW, NOT A HEADER WIDGET. It sits under the title and
+					 * spans the content column, so it shares BOTH edges with every
+					 * control beneath it. In the header's action slot it floated at an
+					 * arbitrary x - the column is centred in the window, so at a wide
+					 * size the field landed right of the middle with nothing to align
+					 * to, which is the "centred everything" tell rather than a grid
+					 * decision. Column-wide is also what makes it read as the page's
+					 * first control rather than a badge beside the title.
+					 *
+					 * It is still the page's search and not a section filter: this one
+					 * JUMPS, the Backend section's own box filters its list in place.
+					 */}
+					<SettingsSearch
+						onDismiss={() => {
+							const saved = savedSearchScrollRef.current;
+							savedSearchScrollRef.current = null;
+							if (saved === null) return;
+							contentContainerRef.current?.scrollTo({ top: saved });
+						}}
+						ref={searchRef}
+						index={searchIndex}
+						readRendered={readRenderedSearchRows}
+						onJump={jumpToSearchEntry}
+					/>
 					<div className="flex flex-col gap-8">
 						<div
 							ref={sectionRefs.general}

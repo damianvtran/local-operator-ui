@@ -114,18 +114,17 @@ const Frame: FC<{
 }> = ({ children, className }) => (
 	<div className="min-h-screen bg-canvas">
 		<div className="mx-auto flex w-full flex-col gap-8">
-			<div className={cn("p-8", className)}>
+			<div className={cn("flex flex-col gap-8 p-8", className)}>
 				{/*
-				 * The PAGE's own header component, not a stand-in: the hand-written
-				 * title row wrapped differently from `PageHeader` at a narrow width,
-				 * which made the narrow frame a photograph of a composition the
-				 * product may not reach (design D6). `PageHeader` is the same
-				 * `flex-wrap items-start justify-between` row the settings page
-				 * mounts, and the field is its action slot exactly as it ships.
+				 * The PAGE's own header component, not a stand-in (design D6), and
+				 * the search row UNDER it rather than in its action slot: the page
+				 * mounts the field on the column's own left axis, so its edge is the
+				 * axis every section heading shares. A story that put the field back
+				 * in the header would photograph a composition the product no longer
+				 * ships.
 				 */}
-				<PageHeader title={t("ui.settings.page.title")} icon={Settings}>
-					{children}
-				</PageHeader>
+				<PageHeader title={t("ui.settings.page.title")} icon={Settings} />
+				{children}
 			</div>
 			<div className="flex flex-col gap-3 px-8">
 				<div className="h-5 w-40 rounded-sm bg-sunken" />
@@ -139,8 +138,8 @@ const Frame: FC<{
 /**
  * One scenario: the index the page builds, a query, and a shutter hold.
  *
- * `focus` opens the panel the way a reader does — the component opens it on
- * focus — which is the only way the EMPTY state ("what this box searches" plus
+ * `focus` opens the panel the way a reader does - the component opens it on
+ * focus - which is the only way the EMPTY state ("what this box searches" plus
  * the chord) is ever on screen. Without it the idle frame photographed a field
  * at rest and the docstring's claim was a caption the pixels did not carry
  * (design D5).
