@@ -42,6 +42,7 @@
 	"ui.teamBridge.thread.loading": "Đang tải tin nhắn",
 	"ui.teamBridge.thread.error": "Không tải được tin nhắn.",
 	"ui.teamBridge.thread.empty": "Chưa có tin nhắn nào. Hãy gửi lời chào.",
+	"ui.teamBridge.thread.not_available": "Bạn không thể truy cập cuộc trò chuyện này. Có thể bạn không phải là thành viên, hoặc cuộc trò chuyện đã được lưu trữ.",
 	"ui.teamBridge.composer.placeholder": "Nhắn tin trong cuộc trò chuyện này",
 	"ui.teamBridge.composer.send": "Gửi",
 	"ui.teamBridge.composer.hint": "Enter để gửi, Shift+Enter để xuống dòng.",

@@ -3795,6 +3795,38 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			tenant_id: id.optional(),
 		})
 		.strict(),
+	// Owner audit is a separate human-only read plane. No endpoint selector or
+	// write op is admitted here; the runtime derives the caller's own agent.
+	z
+		.object({
+			op: z.literal("team_bridge.owner_audit.conversations"),
+			expected_account_id: id,
+			tenant_id: id,
+			limit: z.number().int().min(1).max(100).optional(),
+			cursor: z.string().min(1).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.owner_audit.messages"),
+			expected_account_id: id,
+			tenant_id: id,
+			conversation_id: id,
+			limit: z.number().int().min(1).max(100).optional(),
+			before_seq: z.number().int().nonnegative().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.owner_audit.replies"),
+			expected_account_id: id,
+			tenant_id: id,
+			conversation_id: id,
+			message_id: id,
+			limit: z.number().int().min(1).max(100).optional(),
+			after_seq: z.number().int().nonnegative().optional(),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("team_bridge.messages.list"),
@@ -6582,6 +6614,9 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"team_bridge.conversations.get",
 	"team_bridge.messages.list",
 	"team_bridge.messages.replies",
+	"team_bridge.owner_audit.conversations",
+	"team_bridge.owner_audit.messages",
+	"team_bridge.owner_audit.replies",
 	"team_bridge.unread",
 	"team_bridge.directory",
 	"team_bridge.status",
@@ -9494,6 +9529,31 @@ export function desktopEndpoint(request: DesktopRequest): {
 					consent_version: request.consent_version,
 				},
 			};
+		case "team_bridge.owner_audit.conversations":
+		case "team_bridge.owner_audit.messages":
+		case "team_bridge.owner_audit.replies": {
+			const query = new URLSearchParams({
+				expected_account_id: request.expected_account_id,
+				tenant_id: request.tenant_id,
+			});
+			if (request.limit !== undefined)
+				query.set("limit", String(request.limit));
+			let path = "/v1/desktop/team-bridge/owner-audit/conversations";
+			if (request.op === "team_bridge.owner_audit.conversations") {
+				if (request.cursor !== undefined) query.set("cursor", request.cursor);
+			} else {
+				path += `/${encodeURIComponent(request.conversation_id)}/messages`;
+				if (request.op === "team_bridge.owner_audit.messages") {
+					if (request.before_seq !== undefined)
+						query.set("before_seq", String(request.before_seq));
+				} else {
+					path += `/${encodeURIComponent(request.message_id)}/replies`;
+					if (request.after_seq !== undefined)
+						query.set("after_seq", String(request.after_seq));
+				}
+			}
+			return { path: `${path}?${query}`, method: "GET" };
+		}
 		case "team_bridge.messages.list": {
 			const query = new URLSearchParams();
 			if (request.tenant_id) query.set("tenant_id", request.tenant_id);

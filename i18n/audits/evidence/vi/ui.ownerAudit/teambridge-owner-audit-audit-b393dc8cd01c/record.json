@@ -1,0 +1,358 @@
+{
+	"audit_id": "teambridge-owner-audit-audit-b393dc8cd01c",
+	"date": "2026-10-28",
+	"locale": "vi",
+	"namespace": "ui.ownerAudit",
+	"source_commit": "a975a0b4ec82c0cd6b6541d68b1d3501f683328d",
+	"translator": {
+		"agent": "i18n-translator",
+		"job": "64be94d56ced",
+		"model": "not supplied",
+		"date": "2026-10-28",
+		"method": "LLM translator subagent; no MT service referenced"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"date": "2026-10-28",
+			"result": "clean",
+			"instance": "b393dc8cd01c-owneraudit-vi",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/b393dc8cd01c-owneraudit-vi.json",
+			"receipt_sha256": "9f5c57892ac8fd9a5356cfbeecf3e5c814d92f9b194fccb66a57f48b79354893"
+		}
+	],
+	"ledger_status": "audited",
+	"independence": "Independent auditor (reviewer role, session b393dc8cd01c). It authored none of the translated strings as delivered by i18n-translator job 64be94d56ced. Per the audit brief it then FIXED blocker/major strings itself; those replaced values (listed in resolved_findings with before/after) are auditor-authored and were not re-audited by a second agent. This run wrote only catalogue fixes, receipts, evidence records and ledger rows; it did not commit.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.json",
+			"sha256": "a83890d7dafe0a81c4bbc4862da0f77eaf4b7573b1654fbff6d8e37c19eaf4fb"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/vi/ui.ownerAudit.json",
+			"sha256": "05d794b62073872aee2614d54b3a58f49319c33da164f188801b30f7600c27ce"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.context.json",
+			"sha256": "ad77dcc43ee06d1f43ef6c2a6422c33ee458534b805d888cb413a4f9ebf8226c"
+		}
+	},
+	"audited": {
+		"ui.ownerAudit.title": {
+			"en": "Your chief of staff’s messages",
+			"target": "Tin nhắn của chánh văn phòng của bạn"
+		},
+		"ui.ownerAudit.read_only": {
+			"en": "Read-only history. Sending, reactions and editing are unavailable.",
+			"target": "Lịch sử chỉ đọc. Không thể gửi, bày tỏ cảm xúc hoặc chỉnh sửa."
+		},
+		"ui.ownerAudit.loading": {
+			"en": "Loading audited messages",
+			"target": "Đang tải tin nhắn được kiểm tra"
+		},
+		"ui.ownerAudit.error": {
+			"en": "Audited messages could not be loaded.",
+			"target": "Không thể tải tin nhắn được kiểm tra."
+		},
+		"ui.ownerAudit.retry": {
+			"en": "Try again",
+			"target": "Thử lại"
+		},
+		"ui.ownerAudit.refresh": {
+			"en": "Refresh",
+			"target": "Làm mới"
+		},
+		"ui.ownerAudit.empty_list": {
+			"en": "No audited conversations in this organization.",
+			"target": "Không có cuộc trò chuyện được kiểm tra trong tổ chức này."
+		},
+		"ui.ownerAudit.empty_history": {
+			"en": "No messages in the audit window for this conversation.",
+			"target": "Không có tin nhắn nào trong khoảng thời gian kiểm tra của cuộc trò chuyện này."
+		},
+		"ui.ownerAudit.unnamed": {
+			"en": "Unnamed conversation",
+			"target": "Cuộc trò chuyện chưa đặt tên"
+		},
+		"ui.ownerAudit.agent": {
+			"en": "Chief of staff",
+			"target": "Chánh văn phòng"
+		},
+		"ui.ownerAudit.more": {
+			"en": "Load more",
+			"target": "Tải thêm"
+		},
+		"ui.ownerAudit.older": {
+			"en": "Load older messages",
+			"target": "Tải tin nhắn cũ hơn"
+		},
+		"ui.ownerAudit.admitted": {
+			"en": "Admitted to your chief of staff",
+			"target": "Được chánh văn phòng của bạn tiếp nhận"
+		},
+		"ui.ownerAudit.rejected": {
+			"en": "Rejected by your chief of staff’s screening",
+			"target": "Bị bộ lọc của chánh văn phòng của bạn từ chối"
+		},
+		"ui.ownerAudit.not_screened": {
+			"en": "Not screened by your chief of staff",
+			"target": "Chưa được chánh văn phòng của bạn lọc"
+		},
+		"ui.ownerAudit.unknown_status": {
+			"en": "Status unknown",
+			"target": "Không rõ trạng thái"
+		},
+		"ui.ownerAudit.own": {
+			"en": "Sent by your chief of staff",
+			"target": "Do chánh văn phòng của bạn gửi"
+		},
+		"ui.ownerAudit.body_unavailable": {
+			"en": "Message text unavailable.",
+			"target": "Không có nội dung tin nhắn."
+		},
+		"ui.ownerAudit.attachment_expired": {
+			"en": "Attachment expired; bytes are unavailable.",
+			"target": "Tệp đính kèm đã hết hạn; nội dung không khả dụng."
+		},
+		"ui.ownerAudit.attachment_unavailable": {
+			"en": "Attachment present; downloading is unavailable in this view.",
+			"target": "Có tệp đính kèm; không thể tải xuống trong chế độ xem này."
+		},
+		"ui.ownerAudit.unknown_sender": {
+			"en": "Unknown sender",
+			"target": "Người gửi không xác định"
+		},
+		"ui.ownerAudit.reveal": {
+			"en": "Show message text",
+			"target": "Hiển thị nội dung tin nhắn"
+		},
+		"ui.ownerAudit.active": {
+			"en": "Your chief of staff is still a member.",
+			"target": "Chánh văn phòng của bạn vẫn là thành viên."
+		},
+		"ui.ownerAudit.left": {
+			"en": "Your chief of staff left this conversation; later messages are outside the audit window.",
+			"target": "Chánh văn phòng của bạn đã rời cuộc trò chuyện này; các tin nhắn sau đó nằm ngoài khoảng thời gian kiểm tra."
+		},
+		"ui.ownerAudit.removed": {
+			"en": "Your chief of staff was removed; later messages are outside the audit window.",
+			"target": "Chánh văn phòng của bạn đã bị xóa; các tin nhắn sau đó nằm ngoài khoảng thời gian kiểm tra."
+		},
+		"ui.ownerAudit.disclosure": {
+			"en": "Visible only to you as this agent’s owner; other members see that owner auditing is enabled.",
+			"target": "Chỉ bạn với tư cách chủ sở hữu tác nhân này mới thấy; các thành viên khác thấy rằng chế độ kiểm tra của chủ sở hữu đã bật."
+		},
+		"ui.ownerAudit.viewer": {
+			"en": "Also visible to {name}, an agent owner.",
+			"target": "{name}, chủ sở hữu tác nhân, cũng có thể thấy."
+		},
+		"ui.ownerAudit.replies": {
+			"en": "Read thread replies",
+			"target": "Đọc các câu trả lời trong luồng"
+		}
+	},
+	"scope": {
+		"keys_audited_linguistically": [
+			"ui.ownerAudit.title",
+			"ui.ownerAudit.read_only",
+			"ui.ownerAudit.loading",
+			"ui.ownerAudit.error",
+			"ui.ownerAudit.retry",
+			"ui.ownerAudit.refresh",
+			"ui.ownerAudit.empty_list",
+			"ui.ownerAudit.empty_history",
+			"ui.ownerAudit.unnamed",
+			"ui.ownerAudit.agent",
+			"ui.ownerAudit.more",
+			"ui.ownerAudit.older",
+			"ui.ownerAudit.admitted",
+			"ui.ownerAudit.rejected",
+			"ui.ownerAudit.not_screened",
+			"ui.ownerAudit.unknown_status",
+			"ui.ownerAudit.own",
+			"ui.ownerAudit.body_unavailable",
+			"ui.ownerAudit.attachment_expired",
+			"ui.ownerAudit.attachment_unavailable",
+			"ui.ownerAudit.unknown_sender",
+			"ui.ownerAudit.reveal",
+			"ui.ownerAudit.active",
+			"ui.ownerAudit.left",
+			"ui.ownerAudit.removed",
+			"ui.ownerAudit.disclosure",
+			"ui.ownerAudit.viewer",
+			"ui.ownerAudit.replies"
+		],
+		"new_namespace": true,
+		"note": "first audit of this namespace; all 28 keys"
+	},
+	"notes": "Namespace-wide audit against en + context (owner vs agent, screening vs authorship, audit window). Open findings: 0; resolved by this run: 5.",
+	"findings": [],
+	"resolved_findings": [
+		{
+			"id": "I18N-vi-1",
+			"severity": "blocker",
+			"status": "resolved",
+			"resolved_by": "auditor b393dc8cd01c (this run)",
+			"keys": [
+				"ui.ownerAudit.empty_history",
+				"ui.ownerAudit.unknown_sender",
+				"ui.ownerAudit.left",
+				"ui.ownerAudit.removed"
+			],
+			"reason": "Corrupted text: 'thởi' (U+1EDF instead of U+1EDD), and doubled diacritic plus a stray space in 'Ngườờ i', 'rờờ i', 'thờờ i' — misspelled words on screen.",
+			"change": {
+				"ui.ownerAudit.empty_history": {
+					"before": "Không có tin nhắn nào trong khoảng thởi gian kiểm tra của cuộc trò chuyện này.",
+					"after": "Không có tin nhắn nào trong khoảng thời gian kiểm tra của cuộc trò chuyện này."
+				},
+				"ui.ownerAudit.unknown_sender": {
+					"before": "Ngườờ i gửi không xác định",
+					"after": "Người gửi không xác định"
+				},
+				"ui.ownerAudit.left": {
+					"before": "Trợ lý trưởng của bạn đã rờờ i cuộc trò chuyện này; các tin nhắn sau đó nằm ngoài khoảng thờờ i gian kiểm tra.",
+					"after": "Chánh văn phòng của bạn đã rời cuộc trò chuyện này; các tin nhắn sau đó nằm ngoài khoảng thời gian kiểm tra."
+				},
+				"ui.ownerAudit.removed": {
+					"before": "Trợ lý trưởng của bạn đã bị xóa; các tin nhắn sau đó nằm ngoài khoảng thờờ i gian kiểm tra.",
+					"after": "Chánh văn phòng của bạn đã bị xóa; các tin nhắn sau đó nằm ngoài khoảng thời gian kiểm tra."
+				}
+			}
+		},
+		{
+			"id": "I18N-vi-2",
+			"severity": "major",
+			"status": "resolved",
+			"resolved_by": "auditor b393dc8cd01c (this run)",
+			"keys": [
+				"ui.ownerAudit.title",
+				"ui.ownerAudit.agent",
+				"ui.ownerAudit.admitted",
+				"ui.ownerAudit.rejected",
+				"ui.ownerAudit.not_screened",
+				"ui.ownerAudit.own",
+				"ui.ownerAudit.active",
+				"ui.ownerAudit.left",
+				"ui.ownerAudit.removed"
+			],
+			"reason": "Terminology: vi style guide records chief of staff -> «chánh văn phòng» (shipped in ui.teamBridge.chief.*, agentMessages, onboarding); 'trợ lý trưởng' broke it.",
+			"change": {
+				"ui.ownerAudit.title": {
+					"before": "Tin nhắn của trợ lý trưởng của bạn",
+					"after": "Tin nhắn của chánh văn phòng của bạn"
+				},
+				"ui.ownerAudit.agent": {
+					"before": "Trợ lý trưởng",
+					"after": "Chánh văn phòng"
+				},
+				"ui.ownerAudit.admitted": {
+					"before": "Được trợ lý trưởng của bạn tiếp nhận",
+					"after": "Được chánh văn phòng của bạn tiếp nhận"
+				},
+				"ui.ownerAudit.rejected": {
+					"before": "Bị bộ lọc của trợ lý trưởng của bạn từ chối",
+					"after": "Bị bộ lọc của chánh văn phòng của bạn từ chối"
+				},
+				"ui.ownerAudit.not_screened": {
+					"before": "Chưa được trợ lý trưởng của bạn lọc",
+					"after": "Chưa được chánh văn phòng của bạn lọc"
+				},
+				"ui.ownerAudit.own": {
+					"before": "Do trợ lý trưởng của bạn gửi",
+					"after": "Do chánh văn phòng của bạn gửi"
+				},
+				"ui.ownerAudit.active": {
+					"before": "Trợ lý trưởng của bạn vẫn là thành viên.",
+					"after": "Chánh văn phòng của bạn vẫn là thành viên."
+				},
+				"ui.ownerAudit.left": {
+					"before": "Trợ lý trưởng của bạn đã rờờ i cuộc trò chuyện này; các tin nhắn sau đó nằm ngoài khoảng thờờ i gian kiểm tra.",
+					"after": "Chánh văn phòng của bạn đã rời cuộc trò chuyện này; các tin nhắn sau đó nằm ngoài khoảng thời gian kiểm tra."
+				},
+				"ui.ownerAudit.removed": {
+					"before": "Trợ lý trưởng của bạn đã bị xóa; các tin nhắn sau đó nằm ngoài khoảng thờờ i gian kiểm tra.",
+					"after": "Chánh văn phòng của bạn đã bị xóa; các tin nhắn sau đó nằm ngoài khoảng thời gian kiểm tra."
+				}
+			}
+		},
+		{
+			"id": "I18N-vi-3",
+			"severity": "major",
+			"status": "resolved",
+			"resolved_by": "auditor b393dc8cd01c (this run)",
+			"keys": [
+				"ui.ownerAudit.disclosure",
+				"ui.ownerAudit.viewer"
+			],
+			"reason": "Glossary: agent -> 'tác nhân'; 'tác tử' appears nowhere else in vi.",
+			"change": {
+				"ui.ownerAudit.disclosure": {
+					"before": "Chỉ bạn với tư cách chủ sở hữu tác tử này mới thấy; các thành viên khác thấy rằng chế độ kiểm tra của chủ sở hữu đã bật.",
+					"after": "Chỉ bạn với tư cách chủ sở hữu tác nhân này mới thấy; các thành viên khác thấy rằng chế độ kiểm tra của chủ sở hữu đã bật."
+				},
+				"ui.ownerAudit.viewer": {
+					"before": "{name}, chủ sở hữu tác tử, cũng có thể thấy.",
+					"after": "{name}, chủ sở hữu tác nhân, cũng có thể thấy."
+				}
+			}
+		},
+		{
+			"id": "I18N-vi-4",
+			"severity": "major",
+			"status": "resolved",
+			"resolved_by": "auditor b393dc8cd01c (this run)",
+			"keys": [
+				"ui.ownerAudit.replies"
+			],
+			"reason": "Terminology consistency: thread 'chuỗi' broke shipped 'luồng' (ui.teamBridge.replies.*).",
+			"change": {
+				"ui.ownerAudit.replies": {
+					"before": "Đọc các phản hồi trong chuỗi",
+					"after": "Đọc các câu trả lời trong luồng"
+				}
+			}
+		},
+		{
+			"id": "I18N-vi-5",
+			"severity": "minor",
+			"status": "resolved",
+			"resolved_by": "auditor b393dc8cd01c (this run)",
+			"keys": [
+				"ui.ownerAudit.read_only"
+			],
+			"reason": "Reactions 'biểu cảm' vs shipped 'cảm xúc' (ui.teamBridge.reactions.add 'Thêm cảm xúc'); fixed in the same pass.",
+			"change": {
+				"ui.ownerAudit.read_only": {
+					"before": "Lịch sử chỉ đọc. Không thể gửi, thêm biểu cảm hoặc chỉnh sửa.",
+					"after": "Lịch sử chỉ đọc. Không thể gửi, bày tỏ cảm xúc hoặc chỉnh sửa."
+				}
+			}
+		}
+	],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide_vi": {
+			"path": "~/local-operator/i18n/style-guides/vi.md",
+			"revision": "6c085b93b6ecc1a27a0daab552302687b059a911",
+			"sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+		}
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/b393dc8cd01c-owneraudit-vi.json",
+			"sha256": "9f5c57892ac8fd9a5356cfbeecf3e5c814d92f9b194fccb66a57f48b79354893"
+		}
+	},
+	"limitations": "No rendered-fit, screenshot, pseudo-localization or FriBidi evidence: this role has no browser tool and the host is source-only (builds/tests paused). Fit for not_available judged by character count only (en 104; longest fr 117)."
+}

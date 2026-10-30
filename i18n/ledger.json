@@ -5968,6 +5968,36 @@
 		},
 		{
 			"locale": "es",
+			"namespace": "ui.ownerAudit",
+			"source_sha256": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1",
+			"target_sha256": "3c8e6c0a1e6ed998bc1ba79fa4db6ace1c32b2ec8aa01b1dd9648e21e8a57002",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-29"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "tb1482mg-es-6eeefd82",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 3
+					},
+					"receipt": "i18n/receipts/tb1482mg-es-6eeefd82.json",
+					"receipt_sha256": "8a176668e64835de7df2e71cec851473585fba062ddcfb075888f529ce4d202b",
+					"scope": "Merged copy delta: whole ui.ownerAudit namespace (30 keys), audited against en + context sidecar at whole-namespace scope, with this round's five copy fixes applied and re-audited."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
 			"namespace": "ui.presence",
 			"source_sha256": "7dc0d4c3bb4c18fb15501b630c7f1b2bc1f2f1ec8dabe131d3a3498b50a142a8",
 			"target_sha256": "8111a12c0d662e7020dcacdfcedd9d6c047a8f6821145901be88e7eb61e70c39",
@@ -6903,8 +6933,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "420386d89620097c7e8c5298046f412a3a93b154bbd8a0f11f60c37a98838099",
-			"target_sha256": "a7b8f084e45a13149ff50d07082c84b97724f67ed34c6ef3c17ddd38351f5725",
+			"source_sha256": "095e2c75afdab6c73f78840c5c9624c01639a43c2e713cef5bfdabcd1972c1ea",
+			"target_sha256": "88af32e9102f86d832fd1ce0431dfe312c975da0a6fc6b8138cbfc69e0ab2fe6",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -6923,16 +6953,16 @@
 					"model": "radient/auto",
 					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "tb1489m2-es-2d47856c6ee9",
+					"instance": "tb1489m3-es-2d47856c6ee9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tb1489m2-es-2d47856c6ee9.json",
-					"receipt_sha256": "addeab6d3956a441a3d1bb48ad4f84231721d0162a1d300e225de829774af3e9",
-					"scope": "Merged copy delta at the fold of origin/main 85971d8b44b5: the one key this branch adds to ui.teamBridge (list.error_stale); the rest of the namespace is inherited byte-identically from origin/main."
+					"receipt": "i18n/receipts/tb1489m3-es-2d47856c6ee9.json",
+					"receipt_sha256": "049171a9be8b36687b5a22fae6146af1d8f8c727645cebe6c47832c96ed7c9f2",
+					"scope": "Merge-delta RE-BIND after PR #1482 landed on origin/main: the same audited one-key delta (list.error_stale), re-bound to the merged catalogue that now carries both audited deltas; 283 keys = 282 branch U 282 main, zero values changed."
 				}
 			],
 			"status": "audited",
@@ -7813,6 +7843,29 @@
 							"receipt_sha256": "584c6d2f910455cc8830a85bf528c37b152e0af4e65ca5ce8c37ee20c8af10aa",
 							"scope": "PR #1489 one-key delta: ui.teamBridge.list.error_stale added in 548b9b1010d; this audit covers the es translation of that key only, against English 5e61b0225985. Other 254 values unchanged since the row's previous audit.",
 							"note": "1-key delta audit. ES: preterite 'No se pudo actualizar' matches the shipped notifications error; 'se muestra' matches canvas. 0 open findings. Auditor model served via fallback chain - see receipt."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "420386d89620097c7e8c5298046f412a3a93b154bbd8a0f11f60c37a98838099",
+					"target_sha256": "a7b8f084e45a13149ff50d07082c84b97724f67ed34c6ef3c17ddd38351f5725",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "tb1489m2-es-2d47856c6ee9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1489m2-es-2d47856c6ee9.json",
+							"receipt_sha256": "addeab6d3956a441a3d1bb48ad4f84231721d0162a1d300e225de829774af3e9",
+							"scope": "Merged copy delta at the fold of origin/main 85971d8b44b5: the one key this branch adds to ui.teamBridge (list.error_stale); the rest of the namespace is inherited byte-identically from origin/main."
 						}
 					],
 					"status": "audited"
@@ -14058,6 +14111,36 @@
 		},
 		{
 			"locale": "fr",
+			"namespace": "ui.ownerAudit",
+			"source_sha256": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1",
+			"target_sha256": "ff52aea829176e4d8c38b10d92dbcce0199d72eda3b26434a890aae94ae6aed2",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-29"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "tb1482mg-fr-6eeefd82",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/tb1482mg-fr-6eeefd82.json",
+					"receipt_sha256": "23c39df62052433892e533b476128972913b3351c9eb35d5be6dcf9928bd9248",
+					"scope": "Merged copy delta: whole ui.ownerAudit namespace (30 keys), audited against en + context sidecar at whole-namespace scope, with this round's five copy fixes applied and re-audited."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
 			"namespace": "ui.presence",
 			"source_sha256": "7dc0d4c3bb4c18fb15501b630c7f1b2bc1f2f1ec8dabe131d3a3498b50a142a8",
 			"target_sha256": "dacbfe606f26a97122f51c76f295e9b7e210635f17ac7c83df36a0f3c0b1fd8a",
@@ -15231,8 +15314,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "420386d89620097c7e8c5298046f412a3a93b154bbd8a0f11f60c37a98838099",
-			"target_sha256": "09cf9672211c53aba95dd682a79c3ee3a4c608c15cc4d4d602f3437badd552b1",
+			"source_sha256": "095e2c75afdab6c73f78840c5c9624c01639a43c2e713cef5bfdabcd1972c1ea",
+			"target_sha256": "b592d272f401622c727a3062e3c069ee9b9357dcfd7eb5b122ffe6c467b8cd7b",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -15252,16 +15335,16 @@
 					"model": "radient/auto",
 					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "tb1489m2-fr-2d47856c6ee9",
+					"instance": "tb1489m3-fr-2d47856c6ee9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tb1489m2-fr-2d47856c6ee9.json",
-					"receipt_sha256": "7c5c9c8c007f377631cb724512430def7bc056db1698fe01c764f3dd6069b180",
-					"scope": "Merged copy delta at the fold of origin/main 85971d8b44b5: the one key this branch adds to ui.teamBridge (list.error_stale); the rest of the namespace is inherited byte-identically from origin/main."
+					"receipt": "i18n/receipts/tb1489m3-fr-2d47856c6ee9.json",
+					"receipt_sha256": "275a96cf61b3bd695f1ba7c3ea1a1c141e592cdc5cef4200b015e0fe129b22a3",
+					"scope": "Merge-delta RE-BIND after PR #1482 landed on origin/main: the same audited one-key delta (list.error_stale), re-bound to the merged catalogue that now carries both audited deltas; 283 keys = 282 branch U 282 main, zero values changed."
 				}
 			],
 			"status": "audited",
@@ -16166,6 +16249,29 @@
 							"receipt_sha256": "dbde265469d43594802653ca399253ecf3248a4d4b565548aaeb3b07f3d586f4",
 							"scope": "PR #1489 one-key delta: ui.teamBridge.list.error_stale added in 548b9b1010d; this audit covers the fr translation of that key only, against English 5e61b0225985. Other 254 values unchanged since the row's previous audit.",
 							"note": "1-key delta audit. FR-N1 (minor-level observation, nit): 'lecture' also renders audio playback in this corpus; house phrase 'la dernière version lue' noted, not churned. Auditor model served via fallback chain - see receipt."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "420386d89620097c7e8c5298046f412a3a93b154bbd8a0f11f60c37a98838099",
+					"target_sha256": "09cf9672211c53aba95dd682a79c3ee3a4c608c15cc4d4d602f3437badd552b1",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "tb1489m2-fr-2d47856c6ee9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1489m2-fr-2d47856c6ee9.json",
+							"receipt_sha256": "7c5c9c8c007f377631cb724512430def7bc056db1698fe01c764f3dd6069b180",
+							"scope": "Merged copy delta at the fold of origin/main 85971d8b44b5: the one key this branch adds to ui.teamBridge (list.error_stale); the rest of the namespace is inherited byte-identically from origin/main."
 						}
 					],
 					"status": "audited"
@@ -22398,6 +22504,36 @@
 		},
 		{
 			"locale": "hi",
+			"namespace": "ui.ownerAudit",
+			"source_sha256": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1",
+			"target_sha256": "1eb24afb1ab8631a9e5266e99ed7ba6443f2a92354fa198cac2a4d299df34d53",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-29"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "tb1482mg-hi-6eeefd82",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/tb1482mg-hi-6eeefd82.json",
+					"receipt_sha256": "ad9babbc42e991418727b27029c56eb89a1cf221083676ca7923af7d4c61856f",
+					"scope": "Merged copy delta: whole ui.ownerAudit namespace (30 keys), audited against en + context sidecar at whole-namespace scope, with this round's five copy fixes applied and re-audited."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
 			"namespace": "ui.presence",
 			"source_sha256": "7dc0d4c3bb4c18fb15501b630c7f1b2bc1f2f1ec8dabe131d3a3498b50a142a8",
 			"target_sha256": "4e8151ad012ae84995ddeeb019d8205aea681e924808cb0c4618750edd8fa666",
@@ -23439,8 +23575,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "420386d89620097c7e8c5298046f412a3a93b154bbd8a0f11f60c37a98838099",
-			"target_sha256": "afb53a8e8a4033533079a1921f143336e8f05eeb7cdb3575b63692df9a4cf9c0",
+			"source_sha256": "095e2c75afdab6c73f78840c5c9624c01639a43c2e713cef5bfdabcd1972c1ea",
+			"target_sha256": "732a776adb6cfa15cd495a7b8a0aeedd241d4c6a593a4f031d8b2bba5976b49b",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -23459,16 +23595,16 @@
 					"model": "radient/auto",
 					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "tb1489m2-hi-2d47856c6ee9",
+					"instance": "tb1489m3-hi-2d47856c6ee9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tb1489m2-hi-2d47856c6ee9.json",
-					"receipt_sha256": "a21b89df093b3848e45edeb792f75c7d1bb009b3e69cbbc4fe22899137d57ce2",
-					"scope": "Merged copy delta at the fold of origin/main 85971d8b44b5: the one key this branch adds to ui.teamBridge (list.error_stale); the rest of the namespace is inherited byte-identically from origin/main."
+					"receipt": "i18n/receipts/tb1489m3-hi-2d47856c6ee9.json",
+					"receipt_sha256": "c2f6741f829053eb558bf60e1c3d41d249dce9915b262b68f9cb48441354000e",
+					"scope": "Merge-delta RE-BIND after PR #1482 landed on origin/main: the same audited one-key delta (list.error_stale), re-bound to the merged catalogue that now carries both audited deltas; 283 keys = 282 branch U 282 main, zero values changed."
 				}
 			],
 			"status": "audited",
@@ -24296,6 +24432,29 @@
 							"receipt_sha256": "91632dc46d940876eb21c9af0ebc22bc2e2e5e3c2fe7e4f6dfe9ccdad6f1530a",
 							"scope": "PR #1489 one-key delta: ui.teamBridge.list.error_stale added in 548b9b1010d; this audit covers the hi translation of that key only, against English 5e61b0225985. Other 254 values unchanged since the row's previous audit.",
 							"note": "1-key delta audit. HI: loan 'रीड' is house (ui.chat.pickers). Auditor competence limited (B1): verdict covers meaning/agreement/danda, not native idiom. Native hi pass required before release claims."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "420386d89620097c7e8c5298046f412a3a93b154bbd8a0f11f60c37a98838099",
+					"target_sha256": "afb53a8e8a4033533079a1921f143336e8f05eeb7cdb3575b63692df9a4cf9c0",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "tb1489m2-hi-2d47856c6ee9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1489m2-hi-2d47856c6ee9.json",
+							"receipt_sha256": "a21b89df093b3848e45edeb792f75c7d1bb009b3e69cbbc4fe22899137d57ce2",
+							"scope": "Merged copy delta at the fold of origin/main 85971d8b44b5: the one key this branch adds to ui.teamBridge (list.error_stale); the rest of the namespace is inherited byte-identically from origin/main."
 						}
 					],
 					"status": "audited"
@@ -30406,6 +30565,36 @@
 		},
 		{
 			"locale": "ru",
+			"namespace": "ui.ownerAudit",
+			"source_sha256": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1",
+			"target_sha256": "e1363d77ba02c6247534a85de9fa1c18b97b6728948587a4ae1a31e2ecaeb1aa",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-29"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "tb1482mg-ru-6eeefd82",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/tb1482mg-ru-6eeefd82.json",
+					"receipt_sha256": "4053f1e8ca582bdcced56858fcb0a0fa33bb78e3ddf5827f496d6a3be6e6ed6b",
+					"scope": "Merged copy delta: whole ui.ownerAudit namespace (30 keys), audited against en + context sidecar at whole-namespace scope, with this round's five copy fixes applied and re-audited."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
 			"namespace": "ui.presence",
 			"source_sha256": "7dc0d4c3bb4c18fb15501b630c7f1b2bc1f2f1ec8dabe131d3a3498b50a142a8",
 			"target_sha256": "2457b85ac674a43abfb6d8578fe54eff76e3e5a8d1fd7388d24cac0ab163c1d3",
@@ -31368,8 +31557,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "420386d89620097c7e8c5298046f412a3a93b154bbd8a0f11f60c37a98838099",
-			"target_sha256": "65fd7a389ecf108d58bf3f6c9274e9af6ee4ff39187cb7b528a4e7ec7df0dd3b",
+			"source_sha256": "095e2c75afdab6c73f78840c5c9624c01639a43c2e713cef5bfdabcd1972c1ea",
+			"target_sha256": "f4f43699a7dc78bc38fe69979a41861e27450c468b3d749dfe95243414458d05",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -31389,16 +31578,16 @@
 					"model": "radient/auto",
 					"date": "2026-10-30",
 					"result": "clean-with-findings",
-					"instance": "tb1489m2-ru-2d47856c6ee9",
+					"instance": "tb1489m3-ru-2d47856c6ee9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/tb1489m2-ru-2d47856c6ee9.json",
-					"receipt_sha256": "6daf14a82da6ead6570e33421c6d08e87b739149467169a9cbbdaadf33ae85be",
-					"scope": "Merged copy delta at the fold of origin/main 85971d8b44b5: the one key this branch adds to ui.teamBridge (list.error_stale); the rest of the namespace is inherited byte-identically from origin/main."
+					"receipt": "i18n/receipts/tb1489m3-ru-2d47856c6ee9.json",
+					"receipt_sha256": "5bcbb35cd541df576107294c72da4a1429440dc8d172acbd44fd57122c0ac9f6",
+					"scope": "Merge-delta RE-BIND after PR #1482 landed on origin/main: the same audited one-key delta (list.error_stale), re-bound to the merged catalogue that now carries both audited deltas; 283 keys = 282 branch U 282 main, zero values changed."
 				}
 			],
 			"status": "audited",
@@ -32257,6 +32446,29 @@
 							"receipt_sha256": "3a4af3fa9eabc4201fb4d99cb2b0781571ff93342e1a630087bb5e68e961c3b9",
 							"scope": "PR #1489 one-key delta: ui.teamBridge.list.error_stale added in 548b9b1010d; this audit covers the ru translation of that key only, against English 5e61b0225985. Other 254 values unchanged since the row's previous audit.",
 							"note": "1-key delta audit. RU-N1 (nit, accepted): bare substantivised participle vs house explicit noun in canvas; grammatical, no change without a native check. Auditor model served via fallback chain."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "420386d89620097c7e8c5298046f412a3a93b154bbd8a0f11f60c37a98838099",
+					"target_sha256": "65fd7a389ecf108d58bf3f6c9274e9af6ee4ff39187cb7b528a4e7ec7df0dd3b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-30",
+							"result": "clean-with-findings",
+							"instance": "tb1489m2-ru-2d47856c6ee9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/tb1489m2-ru-2d47856c6ee9.json",
+							"receipt_sha256": "6daf14a82da6ead6570e33421c6d08e87b739149467169a9cbbdaadf33ae85be",
+							"scope": "Merged copy delta at the fold of origin/main 85971d8b44b5: the one key this branch adds to ui.teamBridge (list.error_stale); the rest of the namespace is inherited byte-identically from origin/main."
 						}
 					],
 					"status": "audited"
@@ -38433,6 +38645,36 @@
 		},
 		{
 			"locale": "ur",
+			"namespace": "ui.ownerAudit",
+			"source_sha256": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1",
+			"target_sha256": "b9e13f6260f8063fed840d1adb0ea7ce00aa74b32b70b0965f4e83a7eae04a17",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-29"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "tb1482mg-ur-6eeefd82",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/tb1482mg-ur-6eeefd82.json",
+					"receipt_sha256": "b1eb51a730f37af8af097c9d170c48dd2f1c22dbb6926c9dd7a116391058527a",
+					"scope": "Merged copy delta: whole ui.ownerAudit namespace (30 keys), audited against en + context sidecar at whole-namespace scope, with this round's five copy fixes applied and re-audited."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
 			"namespace": "ui.presence",
 			"source_sha256": "7dc0d4c3bb4c18fb15501b630c7f1b2bc1f2f1ec8dabe131d3a3498b50a142a8",
 			"target_sha256": "d9a74ddecafc812311a97695780ce283f81c959f7119041522c80e7eaf32b395",
@@ -39389,8 +39631,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "420386d89620097c7e8c5298046f412a3a93b154bbd8a0f11f60c37a98838099",
-			"target_sha256": "df0a381186b3f249d36eceed9d4245b60042ea808b12b64df14ff550c05293fc",
+			"source_sha256": "095e2c75afdab6c73f78840c5c9624c01639a43c2e713cef5bfdabcd1972c1ea",
+			"target_sha256": "4a1c43f94ea9a18d0b0df0ff899fe369b53b7d15ccfa5e909876c7b12a4e7ab9",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -39409,16 +39651,16 @@
 					"model": "radient/auto",
 					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "tb1489m2-ur-2d47856c6ee9",
+					"instance": "tb1489m3-ur-2d47856c6ee9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tb1489m2-ur-2d47856c6ee9.json",
-					"receipt_sha256": "f21af5ef36e9e17117a3dd89cdaa1b784bba61ee3d4d242a020d5a8169054ed0",
-					"scope": "Merged copy delta at the fold of origin/main 85971d8b44b5: the one key this branch adds to ui.teamBridge (list.error_stale); the rest of the namespace is inherited byte-identically from origin/main."
+					"receipt": "i18n/receipts/tb1489m3-ur-2d47856c6ee9.json",
+					"receipt_sha256": "e99c41ac158569a44044ba654b0e69836274ba68016d7917504876decb27a808",
+					"scope": "Merge-delta RE-BIND after PR #1482 landed on origin/main: the same audited one-key delta (list.error_stale), re-bound to the merged catalogue that now carries both audited deltas; 283 keys = 282 branch U 282 main, zero values changed."
 				}
 			],
 			"status": "audited",
@@ -40246,6 +40488,29 @@
 							"receipt_sha256": "80f05ed1aa787fb7ae07305734a49a980d4ff1fbce9e62cb1adb14f6a8494f7b",
 							"scope": "PR #1489 one-key delta: ui.teamBridge.list.error_stale added in 548b9b1010d; this audit covers the ur translation of that key only, against English 5e61b0225985. Other 254 values unchanged since the row's previous audit.",
 							"note": "1-key delta audit. UR-REF-R1 FIXED before verdict: refresh term ریفریش -> تازہ کاری (corpus settles on تازہ/تازہ کاری, 48 values). Target hash names the fixed bytes. Native ur pass still required."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "420386d89620097c7e8c5298046f412a3a93b154bbd8a0f11f60c37a98838099",
+					"target_sha256": "df0a381186b3f249d36eceed9d4245b60042ea808b12b64df14ff550c05293fc",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "tb1489m2-ur-2d47856c6ee9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1489m2-ur-2d47856c6ee9.json",
+							"receipt_sha256": "f21af5ef36e9e17117a3dd89cdaa1b784bba61ee3d4d242a020d5a8169054ed0",
+							"scope": "Merged copy delta at the fold of origin/main 85971d8b44b5: the one key this branch adds to ui.teamBridge (list.error_stale); the rest of the namespace is inherited byte-identically from origin/main."
 						}
 					],
 					"status": "audited"
@@ -46668,6 +46933,36 @@
 		},
 		{
 			"locale": "vi",
+			"namespace": "ui.ownerAudit",
+			"source_sha256": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1",
+			"target_sha256": "2c1973082305830137de0577d4704c6549ee6943a6b5d3f204a3d52042e686b4",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-29"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "tb1482mg-vi-6eeefd82",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/tb1482mg-vi-6eeefd82.json",
+					"receipt_sha256": "c3c4e0920b7a756c6acd871f14505b2a39db8c81a6ac69e2066cdbd93cf31c35",
+					"scope": "Merged copy delta: whole ui.ownerAudit namespace (30 keys), audited against en + context sidecar at whole-namespace scope, with this round's five copy fixes applied and re-audited."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
 			"namespace": "ui.presence",
 			"source_sha256": "7dc0d4c3bb4c18fb15501b630c7f1b2bc1f2f1ec8dabe131d3a3498b50a142a8",
 			"target_sha256": "8eb97a5353d73b8940863570879f82cc605295bf73c66cef912aa6d18561703a",
@@ -47800,8 +48095,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "420386d89620097c7e8c5298046f412a3a93b154bbd8a0f11f60c37a98838099",
-			"target_sha256": "b08fc85c63c8dbdb1fc81d88d275eeabc284fa8023259824657126589eec0afa",
+			"source_sha256": "095e2c75afdab6c73f78840c5c9624c01639a43c2e713cef5bfdabcd1972c1ea",
+			"target_sha256": "387caea7c405c7d613ebabc137f8509f075b1f238c5fae243e25053609fd1a1e",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -47820,16 +48115,16 @@
 					"model": "radient/auto",
 					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "tb1489m2-vi-2d47856c6ee9",
+					"instance": "tb1489m3-vi-2d47856c6ee9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tb1489m2-vi-2d47856c6ee9.json",
-					"receipt_sha256": "d8423d0d0054b4dca8c47bb3f6719322028ca1d66b421de4762d873aa8be5eb2",
-					"scope": "Merged copy delta at the fold of origin/main 85971d8b44b5: the one key this branch adds to ui.teamBridge (list.error_stale); the rest of the namespace is inherited byte-identically from origin/main."
+					"receipt": "i18n/receipts/tb1489m3-vi-2d47856c6ee9.json",
+					"receipt_sha256": "11a84558f4c363203167ac372917fdd28016a481437d0356d7e9e672f85dff5b",
+					"scope": "Merge-delta RE-BIND after PR #1482 landed on origin/main: the same audited one-key delta (list.error_stale), re-bound to the merged catalogue that now carries both audited deltas; 283 keys = 282 branch U 282 main, zero values changed."
 				}
 			],
 			"status": "audited",
@@ -48688,6 +48983,29 @@
 							"receipt_sha256": "927a7754d04d3895d9d9cadb4e9198c5fee6d6c92f9c6f7ab74c4e5f167d061f",
 							"scope": "PR #1489 one-key delta: ui.teamBridge.list.error_stale added in 548b9b1010d; this audit covers the vi translation of that key only, against English 5e61b0225985. Other 254 values unchanged since the row's previous audit.",
 							"note": "1-key delta audit. VI: 'lần đọc gần nhất' is the shipped phrase. Auditor competence limited (A2-B1): verdict covers meaning/terms/structure, not native idiom. Native vi pass required before release claims."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "420386d89620097c7e8c5298046f412a3a93b154bbd8a0f11f60c37a98838099",
+					"target_sha256": "b08fc85c63c8dbdb1fc81d88d275eeabc284fa8023259824657126589eec0afa",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "tb1489m2-vi-2d47856c6ee9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1489m2-vi-2d47856c6ee9.json",
+							"receipt_sha256": "d8423d0d0054b4dca8c47bb3f6719322028ca1d66b421de4762d873aa8be5eb2",
+							"scope": "Merged copy delta at the fold of origin/main 85971d8b44b5: the one key this branch adds to ui.teamBridge (list.error_stale); the rest of the namespace is inherited byte-identically from origin/main."
 						}
 					],
 					"status": "audited"
@@ -55513,6 +55831,36 @@
 		},
 		{
 			"locale": "zh-CN",
+			"namespace": "ui.ownerAudit",
+			"source_sha256": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1",
+			"target_sha256": "31b220b56fb05d78dd2edd399fee6ca8c2c7806c2c83cc24ceebbe7bddee7c19",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-29"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "tb1482mg-zh-cn-6eeefd82",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 3
+					},
+					"receipt": "i18n/receipts/tb1482mg-zh-cn-6eeefd82.json",
+					"receipt_sha256": "822159532f47d31e55a3cc3fd666eb9a2ccd3eeb19690f23c8b2c7078c4bb3b8",
+					"scope": "Merged copy delta: whole ui.ownerAudit namespace (30 keys), audited against en + context sidecar at whole-namespace scope, with this round's five copy fixes applied and re-audited."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
 			"namespace": "ui.presence",
 			"source_sha256": "7dc0d4c3bb4c18fb15501b630c7f1b2bc1f2f1ec8dabe131d3a3498b50a142a8",
 			"target_sha256": "e4b33ec477bfaffafb80c2c6caba05c30d33749f83dadef7826672bab73e3423",
@@ -56813,8 +57161,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "420386d89620097c7e8c5298046f412a3a93b154bbd8a0f11f60c37a98838099",
-			"target_sha256": "965210ac3404a72fb8ec658506f5adf7b5a074a1316ef614f1fce83267bc59a7",
+			"source_sha256": "095e2c75afdab6c73f78840c5c9624c01639a43c2e713cef5bfdabcd1972c1ea",
+			"target_sha256": "79e9c92e96baa369b026ea7eb5b7e069be985c4795c738118ba604403a23d71a",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -56833,16 +57181,16 @@
 					"model": "radient/auto",
 					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "tb1489m2-zh-cn-2d47856c6ee9",
+					"instance": "tb1489m3-zh-cn-2d47856c6ee9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tb1489m2-zh-cn-2d47856c6ee9.json",
-					"receipt_sha256": "6425d6be1bf95dce1996a4c091c8400e459c01845841bff7b8451e581a759908",
-					"scope": "Merged copy delta at the fold of origin/main 85971d8b44b5: the one key this branch adds to ui.teamBridge (list.error_stale); the rest of the namespace is inherited byte-identically from origin/main."
+					"receipt": "i18n/receipts/tb1489m3-zh-cn-2d47856c6ee9.json",
+					"receipt_sha256": "3768588d8c0e6d83edcde0d040d823c705b0af010cae8365a4343ba9ebc95681",
+					"scope": "Merge-delta RE-BIND after PR #1482 landed on origin/main: the same audited one-key delta (list.error_stale), re-bound to the merged catalogue that now carries both audited deltas; 283 keys = 282 branch U 282 main, zero values changed."
 				}
 			],
 			"status": "audited",
@@ -57723,6 +58071,29 @@
 							"receipt_sha256": "2bd35faf64b057b0f43e6d164c48a60b50628a4f3c3281da51b6429fdab02a05",
 							"scope": "PR #1489 one-key delta: ui.teamBridge.list.error_stale added in 548b9b1010d; this audit covers the zh-CN translation of that key only, against English 5e61b0225985. Other 254 values unchanged since the row's previous audit.",
 							"note": "1-key delta audit. ZH-CN: '无法刷新' and '上次读取的' both match shipped values. 0 open findings. Auditor model served via fallback chain - see receipt."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "420386d89620097c7e8c5298046f412a3a93b154bbd8a0f11f60c37a98838099",
+					"target_sha256": "965210ac3404a72fb8ec658506f5adf7b5a074a1316ef614f1fce83267bc59a7",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "tb1489m2-zh-cn-2d47856c6ee9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1489m2-zh-cn-2d47856c6ee9.json",
+							"receipt_sha256": "6425d6be1bf95dce1996a4c091c8400e459c01845841bff7b8451e581a759908",
+							"scope": "Merged copy delta at the fold of origin/main 85971d8b44b5: the one key this branch adds to ui.teamBridge (list.error_stale); the rest of the namespace is inherited byte-identically from origin/main."
 						}
 					],
 					"status": "audited"

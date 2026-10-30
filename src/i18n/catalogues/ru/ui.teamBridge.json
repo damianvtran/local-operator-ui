@@ -42,6 +42,7 @@
 	"ui.teamBridge.thread.loading": "Загрузка сообщений",
 	"ui.teamBridge.thread.error": "Не удалось загрузить сообщения.",
 	"ui.teamBridge.thread.empty": "Сообщений пока нет. Поздоровайтесь.",
+	"ui.teamBridge.thread.not_available": "Этот разговор вам недоступен. Возможно, вы не являетесь его участником или он был архивирован.",
 	"ui.teamBridge.composer.placeholder": "Написать в этот разговор",
 	"ui.teamBridge.composer.send": "Отправить",
 	"ui.teamBridge.composer.hint": "Enter — отправить, Shift+Enter — новая строка.",
