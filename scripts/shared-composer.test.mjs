@@ -222,10 +222,17 @@ window.matchMedia = (query) => {
 	return mediaQueries.get(key);
 };
 
+const ipcListeners = new Map();
 window.electron = {
 	ipcRenderer: {
-		on: () => () => {},
-		removeListener: () => {},
+		// Kept so a case can send the channel main sends (`start-speech-to-text`).
+		on: (channel, listener) => {
+			ipcListeners.set(channel, listener);
+			return () => {};
+		},
+		removeListener: (channel) => {
+			ipcListeners.delete(channel);
+		},
 		send: () => {},
 		invoke: async (channel) =>
 			channel === "get-platform-info"
@@ -2185,4 +2192,75 @@ test("the chat keeps its behaviour: the page's probe and callback reach the comp
 		/onCredentialsStored=/,
 		"the credential-store invalidation is wired at the host",
 	);
+});
+
+/*
+ * THE START RECORDING CHORD TAKES OVER A HOLD THAT IS ALREADY RECORDING (QA
+ * round 2, Q1). Main claims the chord, so the renderer hears the
+ * `start-speech-to-text` channel instead of a key. With a hold on a modifier
+ * the chord also begins with (Command or Control), the hold has engaged first;
+ * the chord must then end that take and start its own. The manager asked the
+ * registry for an ACTIVE handler after the abort, but the composer's `isActive`
+ * reads render state (`isRecording`), which the abort cannot have updated yet,
+ * so a take that had already started left the chord with no recording at all.
+ * The stub handler in `hold-main-claimed-chord.test.mjs` has no such state,
+ * which is why it could not see this.
+ */
+test("the Start recording chord replaces a hold that is already recording", async () => {
+	mic.calls = 0;
+	mic.recorders.length = 0;
+	mic.next = async () => fakeStream();
+	const frame = await mount({
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	const confirm = () =>
+		frame.container.querySelector('[aria-label="Confirm recording"]');
+	const { code } = resolvePushToTalkBinding();
+	await act(async () => {
+		window.dispatchEvent(
+			new window.KeyboardEvent("keydown", {
+				code,
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+	await settle();
+	assert.ok(confirm(), "the hold is recording");
+	assert.equal(mic.calls, 1);
+
+	const chord = ipcListeners.get("start-speech-to-text");
+	assert.ok(chord, "the manager listens for the channel main sends");
+	await act(async () => {
+		chord();
+	});
+	await settle();
+	assert.equal(mic.calls, 2, "the chord asked for its own take");
+	assert.ok(confirm(), "a recording is up after the chord");
+	assert.equal(
+		mic.recorders.filter((recorder) => recorder.state === "recording").length,
+		1,
+		"exactly one live recorder: the hold's was ended",
+	);
+
+	// The modifier's release no longer owns the take: the chord's take stays.
+	await act(async () => {
+		window.dispatchEvent(
+			new window.KeyboardEvent("keyup", {
+				code,
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+	await settle();
+	assert.ok(confirm(), "releasing the old hold does not end the chord's take");
+
+	await act(async () => {
+		root.unmount();
+	});
+	mic.next = null;
 });

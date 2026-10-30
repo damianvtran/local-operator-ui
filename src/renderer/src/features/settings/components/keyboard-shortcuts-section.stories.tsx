@@ -140,17 +140,24 @@ export const Cleared: Story = {
 };
 
 /*
- * The recording row is backend-owned, unlike the renderer-local panel rows.
- * These stories provide the same desktop envelope and query client as the app,
- * so the populated states exercise the production row rather than a mock of it.
+ * The Speech to text rows are backend-owned, unlike the renderer-local panel
+ * rows. These stories provide the same desktop envelope and query client as the
+ * app, so the populated states exercise the production rows rather than a mock
+ * of them.
  */
 const RecordingBackendStory: FC<{
 	value?: string;
+	/** The stored `keymap.push_to_talk` token. */
+	holdValue?: string;
+	/** Serve only the primary row, as a backend that predates the hold row does. */
+	withoutHold?: boolean;
 	refuseSave?: boolean;
 	loadDelayMs?: number;
 	focusWhenReady?: boolean;
 }> = ({
 	value = "primary+shift+s",
+	holdValue = "alt-right-hold",
+	withoutHold = false,
 	refuseSave = false,
 	loadDelayMs = 0,
 	focusWhenReady = false,
@@ -160,7 +167,16 @@ const RecordingBackendStory: FC<{
 	);
 	useLayoutEffect(() => {
 		const previous = window.api;
-		const previousElectron = window.electron;
+		/*
+		 * The hold row's names and refusals follow `navigator.platform`, while the
+		 * capture glyphs follow the window-chrome facts, which resolve `linux` in
+		 * this harness. A Mac running Storybook would otherwise read "Right-Option"
+		 * beside "Ctrl+Shift+S": pin the one the facts already say.
+		 */
+		Object.defineProperty(window.navigator, "platform", {
+			value: "Linux x86_64",
+			configurable: true,
+		});
 		const setting: BackendSettings["settings"][number] = {
 			key: "keymap.start_recording",
 			section: "keymap",
@@ -179,15 +195,28 @@ const RecordingBackendStory: FC<{
 			tier: "core",
 			hotkey_scope: "desktop",
 		};
+		const hold: BackendSettings["settings"][number] = {
+			...setting,
+			key: "keymap.push_to_talk",
+			label: "Push to talk",
+			help: "Hold to dictate (desktop); release to stop.",
+			value: holdValue,
+			default: "alt-right-hold",
+			is_default: holdValue === "alt-right-hold",
+		};
 		const ok = (result: unknown): DesktopResponse => ({
 			status: 200,
 			body: { status: 200, message: "ok", result },
 		});
+		const rowFor = (key: unknown) => (key === hold.key ? hold : setting);
 		const request = async (input: DesktopRequest): Promise<DesktopResponse> => {
 			if (input.op === "settings.list") {
 				if (loadDelayMs > 0)
 					await new Promise((resolve) => setTimeout(resolve, loadDelayMs));
-				return ok({ sections: [], settings: [setting] });
+				return ok({
+					sections: [],
+					settings: withoutHold ? [setting] : [setting, hold],
+				});
 			}
 			if (input.op === "settings.edit") {
 				if (refuseSave)
@@ -196,43 +225,48 @@ const RecordingBackendStory: FC<{
 						body: {
 							status: 422,
 							detail:
-								"Start recording cannot use this shortcut: reserved chord.",
+								input.key === hold.key
+									? "Push to talk cannot use this key: not a hold key."
+									: "Start recording cannot use this shortcut: reserved chord.",
 						},
 					};
-				setting.value = input.value;
-				setting.is_default = input.value === setting.default;
-				useRecordingShortcutStore.getState().setState({
-					value: String(input.value),
-					canonical: String(input.value),
-				});
-				return ok(setting);
+				const row = rowFor(input.key);
+				row.value = input.value as string;
+				row.is_default = input.value === row.default;
+				if (row === setting) {
+					useRecordingShortcutStore.getState().setState({
+						value: String(input.value),
+						canonical: String(input.value),
+					});
+				}
+				return ok(row);
 			}
 			if (input.op === "settings.reset") {
-				setting.value = setting.default;
-				setting.is_default = true;
-				return ok(setting);
+				const row = rowFor(input.key);
+				row.value = row.default;
+				row.is_default = true;
+				return ok(row);
 			}
 			throw new Error(`Unsupported story request: ${input.op}`);
 		};
 		window.api = {
 			...previous,
 			desktop: { ...previous?.desktop, request },
-		} as typeof window.api;
-		window.electron = {
-			...previousElectron,
 			recordingShortcut: {
 				get: async () => ({ value, canonical: value }),
 				onChange: () => () => {},
 				markPending: () => {},
 				syncClaims: () => {},
 			},
-		} as typeof window.electron;
+		} as typeof window.api;
+
 		return () => {
 			window.api = previous;
-			window.electron = previousElectron;
+			// Own property shadows the prototype's: dropping it restores the real one.
+			Reflect.deleteProperty(window.navigator, "platform");
 			client.clear();
 		};
-	}, [client, loadDelayMs, refuseSave, value]);
+	}, [client, holdValue, loadDelayMs, refuseSave, value, withoutHold]);
 	useEffect(() => {
 		if (!focusWhenReady || loadDelayMs <= 0) return;
 		const timer = window.setTimeout(() => {
@@ -251,11 +285,12 @@ const RecordingBackendStory: FC<{
 	);
 };
 
-/** The backend row beside the six panel rows, with the preserved default. */
+/** The two Speech to text rows beside the six panel rows, on their defaults. */
 export const RecordingDefault: Story = {
 	render: () => <RecordingBackendStory />,
 	play: async () => {
-		await screen.findByText("Start recording");
+		await screen.findByText("Start recording (press)");
+		await screen.findByText("Push to talk (hold)");
 	},
 };
 
@@ -263,7 +298,7 @@ export const RecordingDefault: Story = {
 export const RecordingOverride: Story = {
 	render: () => <RecordingBackendStory value="primary+alt+r" />,
 	play: async () => {
-		await screen.findByText("Start recording");
+		await screen.findByText("Start recording (press)");
 	},
 };
 
@@ -272,7 +307,7 @@ export const RecordingSaveRefused: Story = {
 	render: () => <RecordingBackendStory refuseSave />,
 	play: async () => {
 		const field = await screen.findByLabelText(
-			"Start recording: press the keys you want",
+			"Start recording (press): press the keys you want",
 		);
 		fireEvent.keyDown(field, { key: "r", metaKey: true, altKey: true });
 		await screen.findByText(
@@ -290,4 +325,60 @@ export const RecordingLoading: Story = {
 /** The same delayed request after it settles, with the recording field focused. */
 export const RecordingFocused: Story = {
 	render: () => <RecordingBackendStory loadDelayMs={1_500} focusWhenReady />,
+};
+
+/**
+ * The hold row after a REAL capture: Left Control is pressed at the field, the
+ * story's transport accepts the save, and the frame is taken once the field
+ * shows it and Reset has appeared.
+ */
+export const PushToTalkRebound: Story = {
+	render: () => <RecordingBackendStory />,
+	play: async () => {
+		const field = (await screen.findByLabelText(
+			"Push to talk (hold): press the key you want",
+		)) as HTMLInputElement;
+		await waitFor(() => expect(field).toHaveValue("Right-Command"));
+		fireEvent.keyDown(field, { key: "Control", code: "ControlLeft" });
+		await waitFor(() => expect(field).toHaveValue("Left-Control"));
+		await screen.findByRole("button", {
+			name: "Reset Push to talk (hold) to its default",
+		});
+	},
+};
+
+/** A saved non-default hold key shows its name and an explicit Reset. */
+export const PushToTalkOverride: Story = {
+	render: () => <RecordingBackendStory holdValue="ctrl-left-hold" />,
+	play: async () => {
+		await screen.findByText("Left-Control");
+	},
+};
+
+/**
+ * Refused: a letter is not a holdable key. The field keeps the saved key and
+ * the sentence names the keys that work (this harness resolves `linux`).
+ */
+export const PushToTalkRefused: Story = {
+	render: () => <RecordingBackendStory />,
+	play: async () => {
+		const field = (await screen.findByLabelText(
+			"Push to talk (hold): press the key you want",
+		)) as HTMLInputElement;
+		await waitFor(() => expect(field).toHaveValue("Right-Command"));
+		fireEvent.keyDown(field, { key: "j", code: "KeyJ" });
+		await screen.findByText(
+			"Only a left or right Control or Super key can be held.",
+		);
+		expect(field).toHaveValue("Right-Command");
+	},
+};
+
+/** A backend that serves only Start recording keeps the primary row alone. */
+export const PrimaryOnlyOlderBackend: Story = {
+	render: () => <RecordingBackendStory withoutHold />,
+	play: async () => {
+		await screen.findByText("Start recording (press)");
+		expect(screen.queryByText("Push to talk (hold)")).toBeNull();
+	},
 };

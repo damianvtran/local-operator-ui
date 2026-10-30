@@ -66,7 +66,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { recordingConflictVariants } from "../../../../../shared/recording-shortcut";
 import { rendererPlatform } from "../../../mini-view/renderer-platform";
 import { SettingsSection } from "./settings-section";
-import { StartRecordingShortcutRow } from "./start-recording-shortcut-row";
+import { SpeechShortcutsGroup } from "./speech-shortcuts-group";
 
 /*
  * Tooltips use an imperative ("Open console") while these rows name the
@@ -111,7 +111,7 @@ export function useSyncRecordingClaims(): void {
 					claims.set(variant, label);
 				}
 			}
-			window.electron?.recordingShortcut?.syncClaims(
+			window.api?.recordingShortcut?.syncClaims(
 				++rev,
 				[...claims].map(([chord, label]) => ({ chord, label })),
 			);
@@ -341,7 +341,9 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 export const KeyboardShortcutsSection: FC<{
 	/** Scroll target for the settings sidebar. */
 	sectionRef?: RefObject<HTMLDivElement>;
-}> = ({ sectionRef }) => {
+	/** The `?setting=` deep link's key: a promoted speech row focuses itself. */
+	focusKey?: string | null;
+}> = ({ sectionRef, focusKey }) => {
 	useI18nLocale();
 	return (
 		<SettingsSection
@@ -376,7 +378,7 @@ export const KeyboardShortcutsSection: FC<{
 						"ui.settings.shortcuts.keyboard_shortcuts_section.browser_shortcuts_answer_only_while_the_browser_has_focus",
 					)}
 				</p>
-				<StartRecordingShortcutRow />
+				<SpeechShortcutsGroup focusKey={focusKey} />
 				<h3 className="pt-1 text-body-sm font-medium text-ink">
 					{t("ui.settings.shortcuts.category.panels")}
 				</h3>

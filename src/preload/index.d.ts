@@ -58,9 +58,7 @@ type ReadFileResponse =
 
 declare global {
 	interface Window {
-		electron: ElectronAPI & {
-			recordingShortcut: Window["api"]["recordingShortcut"];
-		};
+		electron: ElectronAPI;
 		/**
 		 * The renderer dev driver, present ONLY in an armed launch.
 		 *
