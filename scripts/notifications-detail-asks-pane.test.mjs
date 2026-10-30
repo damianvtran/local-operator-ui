@@ -4,32 +4,31 @@ import { after, test } from "node:test";
 import { build, stop } from "esbuild";
 
 /*
- * THE NOTIFICATIONS DETAIL PANE'S ASK CARD, MOUNTED (the stale-card bug).
+ * THE NOTIFICATIONS DETAIL PANE, MOUNTED - its READ state, layout and secret field.
  *
- * WHY THIS FILE EXISTS. After Send answer / Decline / Dismiss in the detail pane the
- * card kept saying `Queued — the agent is continuing; expires in …` with live options
- * and `Send answer`: the pane recorded only `{sending, refused}`, and its rows are a
- * READ that core stops answering once the ask is settled (`notifications/items.py::
- * detail` keeps only OUTSTANDING ask rows, so the refetch is a 404 and the query keeps
- * the stale `open` rows). Only a mount of the shipped `NotificationsPage` over a bridge
- * that behaves like core can see that, so this renders the page in jsdom at
- * `/notifications/<ask item id>` with a real `QueryClient`.
+ * WHY THIS FILE EXISTS. The pane's rows are a READ that core stops answering once an
+ * ask is settled (`notifications/items.py::detail` keeps only OUTSTANDING ask rows, so
+ * the refetch is a 404 and the query keeps the stale `open` rows), and the card's
+ * answer path has to reconcile against that. Only a mount of the shipped
+ * `NotificationsPage` over a bridge that behaves like core can see it, so this renders
+ * the page in jsdom at `/notifications/<ask item id>` with a real `QueryClient`.
  *
- * WHAT IS STUBBED: the transport (`window.api.desktop.request`). The detail route 404s
- * a settled ask exactly as core does; `asks.list` (the fleet aggregate, the same
- * durable index) returns settled rows with `delivered`, as core's `index_asks` does.
- * jsdom has no layout, so the overflow case asserts STRUCTURE (`min-w-0` on the pane
- * column and its scroller, no `overflow-x-hidden` mask), not pixels - the pixel
- * measurement is the rendered-frame evidence on the PR.
+ * WHAT IS HERE: what the pane READS and how it is bounded - jsdom has no layout, so the
+ * overflow case asserts STRUCTURE (`min-w-0` on the pane column and its scroller, no
+ * `overflow-x-hidden` mask) rather than pixels; the overlay over a timed_out ask; the
+ * settled word in all seven translated locales; and the secret field's state
+ * discipline (R1-1: no typed secret in DOM, React state or record; R2-1: a Retry
+ * repeats the original request while an edit sends the new one, and closing the surface
+ * clears the form). The card's WRITE path is `notifications-detail-asks-card.test.mjs`.
+ *
+ * WHAT IS STUBBED: the transport (`window.api.desktop.request`), which 404s a settled
+ * ask exactly as core does.
  */
 
 const pageBundle = await build({
 	stdin: {
 		contents: [
 			'export { NotificationsPage } from "./src/renderer/src/features/notifications/components/notifications-page";',
-			'export { createNotificationFixture } from "./src/renderer/src/features/notifications/notifications-fixture";',
-			'export { notificationKeys } from "./src/renderer/src/features/notifications/notifications-api";',
-			'export { NotificationDetail } from "./src/renderer/src/features/notifications/components/notification-detail";',
 			'export { FleetAskDrawer } from "./src/renderer/src/features/chat/components/asks/fleet-ask-drawer";',
 			'export { askQueueView, ASK_STATUS_COPY, askStatusWord } from "./src/renderer/src/features/chat/ask-queue";',
 			'export { setLocale } from "./src/i18n";',
@@ -70,50 +69,26 @@ const pageBundle = await build({
 		"@tanstack/react-query",
 	],
 	/*
-	 * Minified, and written as UTF-8, for the SHARD's memory rather than this
-	 * file's convenience. `Desktop Tests shard (2/3)` killed this suite's process
-	 * group at 9.9 GB against a 7.8 GB budget (run 40890898929, job
-	 * 123595100451) with no assertion failing, and this file is the one member of
-	 * this pull request that lands in shard 2, where three files build their own
-	 * esbuild bundle at once.
+	 * Minified and written as UTF-8 for the SHARD's memory, not this file's
+	 * convenience, and split from the card's answer path so one process no longer
+	 * carries both halves of the graph: measured 2026-10-30 on head a4922b13, the
+	 * single file reached 5.9 GB before the guard killed it while fifteen of its cases
+	 * had shared ~620 MB of process tree. The full measured table, the reason
+	 * `charset: "utf8"` earns its place across eight locales, and the rejected
+	 * `packages: "external"` build are in the sibling's build comment.
 	 *
-	 * Measured over these seven entries, one process per configuration, process
-	 * tree peak of the build:
-	 *
-	 *   as it was                      bundle 10.8 MB   build peak 587 MB  9.7 s
-	 *   charset: "utf8"                bundle  7.6 MB   build peak 526 MB  9.4 s
-	 *   minify: true                   bundle  8.7 MB   build peak 555 MB 13.0 s
-	 *   both (this config)             bundle  5.5 MB   build peak 496 MB 13.0 s
-	 *
-	 * The catalogue is why `charset` earns its place: the bundle carries all eight
-	 * locales, 625,671 of the non-minified bundle's characters are `\uXXXX`
-	 * escapes of CJK, Devanagari, Arabic and Cyrillic copy, and `charset: "utf8"`
-	 * leaves 59. Node reads the file back as UTF-8 either way.
-	 *
-	 * End to end, the same single case run alone (`Q-2 a withdrawn ask reads
-	 * Withdrawn`, which renders the Settled row in all seven translated locales):
-	 * 657 MB process tree before, 554 MB after.
-	 *
-	 * What was tried and is NOT here, with the measurement that rejected it:
-	 * `packages: "external"` would drop the 454 node_modules inputs and take this
-	 * build to 269 MB - but the graph reaches packages node cannot resolve from
-	 * the repo at all (measured: `prop-types` -> ERR_MODULE_NOT_FOUND; MUI 6 has
-	 * no `exports` map and imports its own files BY DIRECTORY, which node's ESM
-	 * resolver refuses), so the bundle stops importing. Dropping the three entries
-	 * the assertions never read (`createNotificationFixture`, `notificationKeys`,
-	 * `NotificationDetail`) moves the bundle 2.7 KB: all three are reachable from
-	 * `NotificationsPage` anyway, so naming them as entries costs nothing.
-	 *
-	 * This is 91 MB of a 9.9 GB overshoot and is not offered as the cure; the
-	 * capacity arithmetic is on the pull request.
+	 * This half names the page, the fleet drawer, the ask-queue copy and `setLocale`,
+	 * because it is the half that renders the overlay and the settled word in every
+	 * locale. Nothing here is named that only the sibling reads.
 	 */
+
 	minify: true,
 	charset: "utf8",
 	tsconfig: "tsconfig.web.json",
 });
 /* On disk for the length of the import only: a data: URL cannot resolve bare specifiers. */
 const pageBundlePath = new URL(
-	`./_notifications-detail-asks-${process.pid}.mjs`,
+	`./_notifications-detail-asks-pane-${process.pid}.mjs`,
 	import.meta.url,
 );
 await writeFile(pageBundlePath, pageBundle.outputFiles[0].text);
@@ -127,7 +102,6 @@ await writeFile(pageBundlePath, pageBundle.outputFiles[0].text);
  * complete once `build()` resolves, and this file never builds again.
  */
 await stop();
-
 /*
  * React Query is loaded BEFORE the DOM globals, as it was when the bundle was: it
  * decides `isServer` from `window` at module load, and loaded after it would arm
@@ -283,7 +257,6 @@ const NOTE = {
 	repeat_count: 1,
 	session: { id: SESSION, title: "POC Radient proxy" },
 };
-
 /**
  * Mount the page on one item, over a bridge that answers like core does.
  *
@@ -534,18 +507,10 @@ async function mount({
 		unmount,
 	};
 }
-
-const RX_1 = /Answered/;
-const RX_2 = /expires in/;
-const RX_3 = /Rotate after the leaks close/;
-const RX_4 = /Answered — delivering/;
-const RX_5 = /no longer needed|moot/i;
-const RX_6 = /Dismissed — (no longer needed|settled in chat)/;
 const RX_7 = /\s+/;
 const RX_NO_ANSWER = /No answer given/;
 const BOUNDED = { timeout: 30_000 };
 const ITEM_A = `ask:${SESSION}:a-1111`;
-
 /** Open the pane on ask A and wait for both cards. */
 async function openOnA(options) {
 	const page = await mount({ openId: ITEM_A, ...options });
@@ -555,336 +520,11 @@ async function openOnA(options) {
 	);
 	return page;
 }
-
 /** Choose the first option on ask A's card. */
 async function chooseFirstOption(page) {
 	const option = page.card("a-1111").querySelector("[data-ask-option]");
 	await page.press(option);
 }
-
-test(
-	"Send answer settles the card in place and moves it Pending → Settled",
-	BOUNDED,
-	async () => {
-		const page = await openOnA();
-		try {
-			assert.deepEqual(page.filterText(), [
-				"All · 2",
-				"Pending · 2",
-				"Settled · 0",
-			]);
-			await chooseFirstOption(page);
-			await page.press(page.buttonIn(page.card("a-1111"), "Send answer"));
-			assert.ok(
-				await page.settle(
-					() =>
-						page.card("a-1111")?.getAttribute("data-lo-ask-status") ===
-						"answered",
-				),
-				`card A reads answered (status=${page.card("a-1111")?.getAttribute("data-lo-ask-status")}, text=${page.card("a-1111")?.textContent})`,
-			);
-			assert.equal(page.posts.length, 1);
-			assert.deepEqual(page.posts[0].answers, {
-				q1: ["Rotate after the leaks close"],
-			});
-			const a = page.card("a-1111").textContent;
-			assert.match(a, RX_1);
-			assert.doesNotMatch(a, RX_2, "no countdown on an answered card");
-			assert.equal(
-				page.buttonIn(page.card("a-1111"), "Send answer"),
-				null,
-				"no Send answer on an answered card",
-			);
-			assert.match(a, RX_3, "the card shows the chosen option");
-			/* Two near-identical asks: B stays pending and answerable. */
-			assert.equal(
-				page.card("a-2222").getAttribute("data-lo-ask-status"),
-				"open",
-			);
-			assert.ok(page.buttonIn(page.card("a-2222"), "Send answer"));
-			/*
-			 * AN UNDELIVERED ANSWER IS STILL PENDING (design §10, `askPanelHalves`): the
-			 * drawer files it there too, and it moves to Settled once delivered - pinned by
-			 * the delivered test below.
-			 */
-			assert.match(a, RX_4);
-			/* The item stays selected: the pane is still on ask A after the refetch 404s. */
-			await page.settle(() => false, 400);
-			assert.ok(page.pane(), "the detail pane stays open on the answered item");
-			assert.equal(
-				page.card("a-1111")?.getAttribute("data-lo-ask-status"),
-				"answered",
-			);
-		} finally {
-			await page.unmount();
-		}
-	},
-);
-
-test("Decline settles the card as Declined", BOUNDED, async () => {
-	const page = await openOnA();
-	try {
-		await page.press(page.buttonIn(page.card("a-1111"), "Decline"));
-		assert.ok(
-			await page.settle(() =>
-				page.settledRows().some((row) => row.startsWith("Declined")),
-			),
-			`ask A is filed as Declined (${JSON.stringify(page.settledRows())})`,
-		);
-		assert.equal(page.posts[0].decline, true);
-		assert.ok(
-			page.settledRows()[0].includes(QUESTION_A),
-			"the settled row names ask A's question",
-		);
-		assert.equal(
-			page.card("a-2222").getAttribute("data-lo-ask-status"),
-			"open",
-			"ask B stays pending",
-		);
-		assert.deepEqual(page.filterText(), [
-			"All · 2",
-			"Pending · 1",
-			"Settled · 1",
-		]);
-	} finally {
-		await page.unmount();
-	}
-});
-
-test(
-	"Dismiss settles the card as Dismissed with its reason",
-	BOUNDED,
-	async () => {
-		const page = await openOnA();
-		try {
-			await page.press(page.buttonIn(page.card("a-1111"), "Dismiss…"));
-			const reason =
-				page
-					.card("a-1111")
-					.querySelector(
-						"[data-lo-ask-dismiss-reason], [data-dismiss-reason]",
-					) ??
-				[...page.card("a-1111").querySelectorAll("button")].find((node) =>
-					RX_5.test(node.textContent),
-				);
-			assert.ok(
-				reason,
-				`a dismissal reason is offered (${page.card("a-1111").textContent})`,
-			);
-			await page.press(reason);
-			assert.ok(
-				await page.settle(() =>
-					page.settledRows().some((row) => row.startsWith("Dismissed")),
-				),
-				`ask A is filed as Dismissed (${JSON.stringify(page.settledRows())})`,
-			);
-			assert.ok(page.posts[0].dismiss, "the POST carried the dismissal");
-			assert.ok(
-				page.settledRows()[0].includes(QUESTION_A),
-				"the settled row names ask A's question",
-			);
-			assert.equal(
-				page.card("a-2222").getAttribute("data-lo-ask-status"),
-				"open",
-				"ask B stays pending",
-			);
-			/* The reason is the expanded card's status line, as on the drawer's PR-4c wire. */
-			await page.press(
-				page.pane().querySelector("[data-lo-ask-settled] button"),
-			);
-			assert.match(page.card("a-1111")?.textContent ?? "", RX_6);
-			assert.deepEqual(page.filterText(), [
-				"All · 2",
-				"Pending · 1",
-				"Settled · 1",
-			]);
-		} finally {
-			await page.unmount();
-		}
-	},
-);
-
-test(
-	"U2 a classified pairing refusal shows no Retry; a transport failure does",
-	BOUNDED,
-	async () => {
-		const page = await openOnA({
-			answer: () => ({
-				status: 503,
-				detail: {
-					code: "pairing.plane-closed",
-					message: "The server does not accept this app's desktop controls.",
-				},
-			}),
-		});
-		try {
-			await chooseFirstOption(page);
-			const send = page.buttonIn(page.card("a-1111"), "Send answer");
-			await act(async () => send.focus());
-			await page.press(send);
-			assert.ok(
-				await page.settle(() =>
-					page.card("a-1111")?.querySelector("[data-lo-ask-refused]"),
-				),
-			);
-			assert.equal(page.buttonIn(page.card("a-1111"), "Retry"), null);
-			assert.notEqual(document.activeElement, document.body);
-			assert.equal(
-				document.activeElement?.getAttribute("data-ask-option"),
-				"Rotate after the leaks close",
-				"a refusal without Retry returns focus to the answer field",
-			);
-		} finally {
-			await page.unmount();
-		}
-	},
-);
-
-test("U2 a genuine transport failure retains Retry", BOUNDED, async () => {
-	const page = await openOnA({
-		answer: () => ({
-			status: 503,
-			detail: {
-				code: "transport.failed",
-				message:
-					"The backend could not complete this request. Check its connection and try again.",
-			},
-		}),
-	});
-	try {
-		await chooseFirstOption(page);
-		await page.press(page.buttonIn(page.card("a-1111"), "Send answer"));
-		assert.ok(
-			await page.settle(() => page.buttonIn(page.card("a-1111"), "Retry")),
-			"a declared transport failure keeps its retry action",
-		);
-	} finally {
-		await page.unmount();
-	}
-});
-
-test(
-	"a transport failure shows the error with Retry, keeps the choice, and Retry lands",
-	BOUNDED,
-	async () => {
-		const page = await openOnA({
-			answer: (call) =>
-				call === 1
-					? {
-							status: 503,
-							detail: {
-								code: "transport.failed",
-								message:
-									"The backend could not complete this request. Check its connection and try again.",
-							},
-						}
-					: { status: 200 },
-		});
-		try {
-			await chooseFirstOption(page);
-			await page.press(page.buttonIn(page.card("a-1111"), "Send answer"));
-			assert.ok(
-				await page.settle(() =>
-					page.card("a-1111")?.querySelector("[data-lo-ask-refused]"),
-				),
-				"the failure is drawn in the card",
-			);
-			const card = page.card("a-1111");
-			assert.equal(
-				card.getAttribute("data-lo-ask-status"),
-				"open",
-				"never a silent settle",
-			);
-			const retry = page.buttonIn(
-				card.querySelector("[data-lo-ask-refused]"),
-				"Retry",
-			);
-			assert.ok(retry, "Retry is offered for a transport failure");
-			assert.equal(document.activeElement, retry, "failure focuses recovery");
-			assert.equal(
-				card
-					.querySelector('[data-ask-option="Rotate after the leaks close"]')
-					?.getAttribute("aria-checked"),
-				"true",
-				"the chosen option is preserved across the failure",
-			);
-			await page.press(retry);
-			assert.ok(
-				await page.settle(
-					() =>
-						page.card("a-1111")?.getAttribute("data-lo-ask-status") ===
-						"answered",
-				),
-				"Retry sends the same answer and the card settles",
-			);
-			assert.equal(page.posts.length, 2);
-			assert.deepEqual(
-				page.posts[1].answers,
-				page.posts[0].answers,
-				"Retry re-sent the same map",
-			);
-			assert.equal(
-				page.card("a-1111").querySelector("[data-lo-ask-refused]"),
-				null,
-			);
-		} finally {
-			await page.unmount();
-		}
-	},
-);
-
-test(
-	"the aggregate's delivered row moves the card from delivering to Answered",
-	BOUNDED,
-	async () => {
-		const page = await openOnA();
-		try {
-			await chooseFirstOption(page);
-			await page.press(page.buttonIn(page.card("a-1111"), "Send answer"));
-			assert.ok(
-				await page.settle(() =>
-					RX_4.test(page.card("a-1111")?.textContent ?? ""),
-				),
-				"first the accepted-but-undelivered state",
-			);
-			/* Core marks it delivered; the aggregate (which the pane now reads) carries it. */
-			page.asks[0].delivered = true;
-			await act(async () => {
-				await page.client.invalidateQueries({ queryKey: ["desktop", "asks"] });
-			});
-			assert.ok(
-				await page.settle(() =>
-					page.settledRows().some((row) => row.startsWith("Answered")),
-				),
-				`delivered, ask A moves to Settled (${JSON.stringify(page.settledRows())})`,
-			);
-			assert.deepEqual(page.filterText(), [
-				"All · 2",
-				"Pending · 1",
-				"Settled · 1",
-			]);
-			/* Two near-identical asks: the settled row names its question AND its answer. */
-			const settled = page.pane().querySelector("[data-lo-ask-settled]");
-			assert.ok(settled.textContent.includes(QUESTION_A));
-			assert.ok(
-				!settled.textContent.includes(QUESTION_B),
-				"ask B is not the settled one",
-			);
-			assert.match(
-				settled.querySelector("[data-lo-ask-settled-answer]")?.textContent ??
-					"",
-				RX_3,
-			);
-			assert.equal(
-				page.card("a-2222").getAttribute("data-lo-ask-status"),
-				"open",
-			);
-		} finally {
-			await page.unmount();
-		}
-	},
-);
-
 test(
 	"the detail column is width-bounded: min-w-0 and no overflow-x mask",
 	BOUNDED,
@@ -929,7 +569,6 @@ test(
 		}
 	},
 );
-
 /*
  * ROUND 1 REMEDIATION. R1-1: a typed SECRET answer must never be painted, held in
  * state or recorded - in the pane OR the fleet drawer - between accept and the next
@@ -1271,78 +910,6 @@ test(
 			}
 		} finally {
 			await act(async () => PAGE.setLocale("en"));
-			await page.unmount();
-		}
-	},
-);
-
-test(
-	"D2 after a transport failure Retry is the one next action",
-	BOUNDED,
-	async () => {
-		const page = await openOnA({
-			answer: (call) =>
-				call === 1
-					? {
-							status: 503,
-							detail: {
-								code: "transport.failed",
-								message:
-									"The backend could not complete this request. Check its connection and try again.",
-							},
-						}
-					: { status: 200 },
-		});
-		try {
-			await chooseFirstOption(page);
-			await page.press(page.buttonIn(page.card("a-1111"), "Send answer"));
-			assert.ok(
-				await page.settle(() =>
-					page.card("a-1111")?.querySelector("[data-lo-ask-refused] button"),
-				),
-			);
-			const send = page.buttonIn(page.card("a-1111"), "Send answer");
-			assert.ok(
-				send.disabled,
-				"Send answer is disabled while Retry would send the same answer",
-			);
-			/* An edit is a different answer: Send answer re-arms for it. */
-			const other = page
-				.card("a-1111")
-				.querySelectorAll("[data-ask-option]")[1];
-			await page.press(other);
-			assert.ok(
-				await page.settle(
-					() => !page.buttonIn(page.card("a-1111"), "Send answer").disabled,
-				),
-				"Send answer re-arms after the answer is edited",
-			);
-		} finally {
-			await page.unmount();
-		}
-	},
-);
-
-test(
-	"R1-3 an accepted answer nudges the asks.list read once",
-	BOUNDED,
-	async () => {
-		const page = await openOnA();
-		try {
-			await page.settle(() => page.reads.aggregate > 0);
-			const before = page.reads.aggregate;
-			await chooseFirstOption(page);
-			await page.press(page.buttonIn(page.card("a-1111"), "Send answer"));
-			assert.ok(
-				await page.settle(() => page.reads.aggregate > before, 2_000),
-				`asks.list was read again after accept (${before} -> ${page.reads.aggregate})`,
-			);
-			await page.settle(() => false, 600);
-			assert.ok(
-				page.reads.aggregate - before <= 2,
-				`no loop (${page.reads.aggregate - before} extra reads)`,
-			);
-		} finally {
 			await page.unmount();
 		}
 	},
