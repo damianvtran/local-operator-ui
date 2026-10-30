@@ -24,16 +24,6 @@
 		"role": "button label",
 		"tone": "plain"
 	},
-	"ui.agents.detail.action.install_to_edit": {
-		"note": "The read-only (built-in) agent's one action: installs a copy you can edit. It is the point of the button, so do not shorten it to a bare 'Install'. The alert above says the same thing in a sentence.",
-		"role": "secondary button label",
-		"tone": "plain"
-	},
-	"ui.agents.detail.action.installing": {
-		"note": "Replaces install_to_edit while the install runs; kept to one word plus the ellipsis so the row does not jump. U+2026, not three dots (the same rule as saving).",
-		"role": "button label while the install is in flight",
-		"tone": "plain, progress"
-	},
 	"ui.agents.detail.action.keep_editing": {
 		"note": "Dismisses the discard question and returns focus to the field being edited. Mirrors discard_changes in length so the pair does not jump.",
 		"role": "button label",

@@ -917,8 +917,8 @@ export function AgentDetail({
 								>
 									<LogIn className="size-4" />
 									{pending
-										? t("ui.agents.detail.action.installing")
-										: t("ui.agents.detail.action.install_to_edit")}
+										? t("ui.agents.detail.install.action.installing")
+										: t("ui.agents.detail.install.action.install_to_edit")}
 								</Button>
 							) : (
 								<Button

@@ -25,6 +25,7 @@ import enUiAgentMessages from "./catalogues/en/ui.agentMessages.json";
 import enUiAgentMessagesSettings from "./catalogues/en/ui.agentMessages.settings.json";
 import enUiAgentsConfig from "./catalogues/en/ui.agents.config.json";
 import enUiAgentsDescriptions from "./catalogues/en/ui.agents.descriptions.json";
+import enUiAgentsDetailInstall from "./catalogues/en/ui.agents.detail.install.json";
 import enUiAgentsDetail from "./catalogues/en/ui.agents.detail.json";
 import enUiAgentsDialogs from "./catalogues/en/ui.agents.dialogs.json";
 import enUiAgents from "./catalogues/en/ui.agents.json";
@@ -877,6 +878,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentMessagesSettings,
 	...enUiAgentsConfig,
 	...enUiAgentsDescriptions,
+	...enUiAgentsDetailInstall,
 	...enUiAgentsDetail,
 	...enUiAgentsDialogs,
 	...enUiAgents,
@@ -1921,13 +1923,13 @@ export type MessageParams = {
 	"ui.agents.descriptions.scout": undefined;
 	"ui.agents.descriptions.tui_designer": undefined;
 	"ui.agents.descriptions.ux_reviewer": undefined;
+	"ui.agents.detail.install.action.install_to_edit": undefined;
+	"ui.agents.detail.install.action.installing": undefined;
 	"ui.agents.detail.action.ask_change": undefined;
 	"ui.agents.detail.action.discard_changes": undefined;
 	"ui.agents.detail.action.discard_question": undefined;
 	"ui.agents.detail.action.duplicate": undefined;
 	"ui.agents.detail.action.edit": undefined;
-	"ui.agents.detail.action.install_to_edit": undefined;
-	"ui.agents.detail.action.installing": undefined;
 	"ui.agents.detail.action.keep_editing": undefined;
 	"ui.agents.detail.action.more_actions": undefined;
 	"ui.agents.detail.action.new_chat": undefined;

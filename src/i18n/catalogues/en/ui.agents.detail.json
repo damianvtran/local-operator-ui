@@ -4,8 +4,6 @@
 	"ui.agents.detail.action.discard_question": "Discard your unsaved changes?",
 	"ui.agents.detail.action.duplicate": "Duplicate as new agent",
 	"ui.agents.detail.action.edit": "Edit",
-	"ui.agents.detail.action.install_to_edit": "Install to edit",
-	"ui.agents.detail.action.installing": "Installing…",
 	"ui.agents.detail.action.keep_editing": "Keep editing",
 	"ui.agents.detail.action.more_actions": "More actions",
 	"ui.agents.detail.action.new_chat": "New chat",
