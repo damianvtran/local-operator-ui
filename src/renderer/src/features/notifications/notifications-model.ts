@@ -315,6 +315,14 @@ export const coveredByWrite = (
  * the pill offers them. It counts only ids the window does not hold, so it cannot grow
  * with rows that were already there.
  */
+/** Read/dismiss mutations advance seq without advancing the content revision. */
+export const isNewerNotification = (
+	candidate: DesktopNotificationItem,
+	previous: DesktopNotificationItem,
+): boolean =>
+	candidate.revision > previous.revision ||
+	(candidate.revision === previous.revision && candidate.seq >= previous.seq);
+
 export function mergeWindowForReel(
 	facts: DesktopNotificationsList | undefined,
 	windowAnswer: DesktopNotificationsList | undefined,
@@ -341,7 +349,7 @@ export function mergeWindowForReel(
 	for (const item of windowAnswer.items) items.set(item.id, item);
 	for (const item of facts.items) {
 		const previous = items.get(item.id);
-		if (!previous || item.revision >= previous.revision)
+		if (!previous || isNewerNotification(item, previous))
 			items.set(item.id, item);
 	}
 	return {
@@ -415,6 +423,25 @@ export function applyConfirmedToWindow<
 		return { ...item, dismissed: false };
 	};
 	return pages.map((page) => ({ ...page, items: page.items.map(flipped) }));
+}
+
+/**
+ * Apply a write to a page-one FACTS answer: the rows, and the unread figure by
+ * the flips' delta. Facts are a plain list answer, not an infinite query, so
+ * they need their own edit (`applyConfirmedToWindow` takes pages).
+ */
+export function editFactsForWrite(
+	data: DesktopNotificationsList | undefined,
+	ids: readonly string[],
+	verb: NotificationVerb,
+	unreadDelta = 0,
+): DesktopNotificationsList | undefined {
+	if (!data || !Array.isArray(data.items)) return data;
+	const [page] = applyConfirmedToWindow([data], ids, verb);
+	return {
+		...page,
+		unread_count: Math.max(0, data.unread_count + unreadDelta),
+	};
 }
 
 export const scopeCountBoundary = (
