@@ -63,6 +63,12 @@ const SCROLLBARS =
 
 const read = (file) => readFileSync(file, "utf8");
 
+/*
+ * A pane clamping the shared width ITSELF, outside `rightSlotPaneWidth` (review
+ * round 1, MINOR-2). Top-level so the pattern is compiled once for the file.
+ */
+const HAND_ROLLED_CLAMP = /Math\.max\([^)]*rightSlotWidth/;
+
 const bundle = await build({
 	stdin: {
 		contents:
@@ -364,6 +370,45 @@ test("the browser and console separators read the contract, and a write the row 
 	assert.ok(
 		content.includes("Math.max(0, paneRowWidth - CHAT_PANE_MIN_PX)"),
 		"the browser/console capacity no longer derives from the measured row",
+	);
+});
+
+test("every effective*PanelWidth in the slot is the shared width held by rightSlotPaneWidth", () => {
+	const content = read(CONTENT);
+	/*
+	 * THE WIRING HALF OF THE ONE-BAND RULE (review round 1, MINOR-2). The resolver
+	 * tests drive `resolveRightSlotWidth`, and this file greps `chat-content.tsx`
+	 * elsewhere, but nothing pinned that the four panes this component DRAWS take
+	 * their width from `rightSlotPaneWidth`. Reverting one of them to a hand-rolled
+	 * clamp (`Math.max(floor, rightSlotWidth || DEFAULT)`) leaves the slot's
+	 * separator announcing one width and that pane drawing another - the exact drift
+	 * the one band removes - and every other assertion here still passes.
+	 */
+	for (const [name, floor] of [
+		["effectiveRunPanelWidth", "RUN_PANEL_MIN_PX"],
+		["effectiveBrowserPanelWidth", "BROWSER_PANEL_MIN_PX"],
+		["effectiveConsolePanelWidth", "CONSOLE_PANEL_MIN_PX"],
+		["effectiveCodePanelWidth", "RUN_PANEL_MIN_PX"],
+	])
+		assert.match(
+			content,
+			new RegExp(
+				`const ${name} = rightSlotPaneWidth\\(\\s*${floor},\\s*rightSlotWidth,?\\s*\\);`,
+			),
+			`\`${name}\` no longer comes from \`rightSlotPaneWidth(${floor}, rightSlotWidth)\`: the pane would draw a width the slot's separator does not announce`,
+		);
+	/*
+	 * Exactly four, and no pane clamped beside them: a fifth call or a bare
+	 * `Math.max(...rightSlotWidth...)` is the second way this file exists to stop.
+	 */
+	assert.equal(
+		content.split("rightSlotPaneWidth(").length - 1,
+		4,
+		"the slot draws from exactly the four `rightSlotPaneWidth` calls above",
+	);
+	assert.ok(
+		!HAND_ROLLED_CLAMP.test(content),
+		"a pane clamps `rightSlotWidth` itself again; the slot's floor and ceiling belong to `rightSlotPaneWidth`",
 	);
 });
 

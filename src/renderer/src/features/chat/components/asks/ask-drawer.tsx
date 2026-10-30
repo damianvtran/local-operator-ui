@@ -1091,55 +1091,79 @@ export const AskDrawer = ({
 				)}
 			>
 				{/*
-				 * THE BODY, AND WHY THERE ARE THREE READINGS RATHER THAN TWO (remediation round
-				 * 1, D1). `AskPanel` draws the queue, its designed empty sentence and - R1 - the
-				 * clipped-list statement for a PUBLISHED frame (`asks` OR `asks_open` present),
-				 * including the live-but-empty one the drawer used to render as nothing. The
-				 * two unpublishable frames are NOT one state: an UNREAD frame is a progress
-				 * state that will resolve, and a RESOLVED frame that publishes no engine is a
-				 * terminal answer about the runtime - the same words over both parked a
-				 * permanent `Reading the asks…` on a runtime that will never read anything.
-				 * So each gets its own honest line, and the second is not a claim that can
-				 * never complete.
+				 * THE CONTENT MEASURE (design review round 1, D1). The slot's one ceiling
+				 * reached 1200 with #1525, and this drawer had no measure of its own: at a
+				 * 1200 pane the card was 1176 wide around a 277px question run and 165px of
+				 * actions - the decision affordance, by design the first thing in the
+				 * hierarchy (§ 7), reduced to the smallest object in the largest box. The
+				 * card is a decision to read, not a surface to scan, so the column stops
+				 * growing at 720: wide enough for the card's option rows at the 640 opening
+				 * width plus a description column, and past that the pane's ground carries
+				 * the air instead of empty rows inside a heavy border.
+				 *
+				 * THE WRAPPER AND NOT THE SCROLLER, because the scroller has to keep the
+				 * pane's width: a scrollbar inside the constrained column would narrow the
+				 * measure every time the queue grows past the window, which reads as a jump
+				 * (AGENTS.md, "Scrollbars sit outside the content constraint"). It stays
+				 * start-aligned, so the cards hold the same left edge as the chrome bar's
+				 * scope line above them, and `max-w` in logical space flips with the
+				 * document under RTL. The chrome bar and the tab strip are chrome and keep
+				 * the pane's full width, as the bar does on every pane in this family.
 				 */}
-				{view.published ? (
-					<AskPanel
-						view={view}
-						nowMs={now}
-						answering={answering}
-						outcomes={outcomes}
-						drafts={drafts ?? EMPTY_DRAFTS}
-						onDraftChange={onDraftChange ?? noopDraftChange}
-						onAnswer={(task, answers) => onAnswer?.(task.ask_id, answers)}
-						onDecline={(task) => onDecline?.(task.ask_id)}
-						onRevise={
-							onRevise === undefined
-								? undefined
-								: (task, answers) => onRevise(task.ask_id, answers)
-						}
-						onDismiss={
-							onDismiss === undefined
-								? undefined
-								: (task, reason) => onDismiss(task.ask_id, reason)
-						}
+				<div className={cn("w-full max-w-[720px]")}>
+					{/*
+					 * THE BODY, AND WHY THERE ARE THREE READINGS RATHER THAN TWO (remediation round
+					 * 1, D1). `AskPanel` draws the queue, its designed empty sentence and - R1 - the
+					 * clipped-list statement for a PUBLISHED frame (`asks` OR `asks_open` present),
+					 * including the live-but-empty one the drawer used to render as nothing. The
+					 * two unpublishable frames are NOT one state: an UNREAD frame is a progress
+					 * state that will resolve, and a RESOLVED frame that publishes no engine is a
+					 * terminal answer about the runtime - the same words over both parked a
+					 * permanent `Reading the asks…` on a runtime that will never read anything.
+					 * So each gets its own honest line, and the second is not a claim that can
+					 * never complete.
+					 */}
+					{view.published ? (
+						<AskPanel
+							view={view}
+							nowMs={now}
+							answering={answering}
+							outcomes={outcomes}
+							drafts={drafts ?? EMPTY_DRAFTS}
+							onDraftChange={onDraftChange ?? noopDraftChange}
+							onAnswer={(task, answers) => onAnswer?.(task.ask_id, answers)}
+							onDecline={(task) => onDecline?.(task.ask_id)}
+							onRevise={
+								onRevise === undefined
+									? undefined
+									: (task, answers) => onRevise(task.ask_id, answers)
+							}
+							onDismiss={
+								onDismiss === undefined
+									? undefined
+									: (task, reason) => onDismiss(task.ask_id, reason)
+							}
+							/*
+							 * THE CONVERSATION LINE IS THE FLEET'S OWN, and the CALLER supplies it (see
+							 * `AskDrawerProps.conversationOf`): a session drawer's rows are all about the
+							 * conversation the user is in, so naming it on every card would be the same word
+							 * N times. The panel stays scope-agnostic, which is what lets one list serve
+							 * both contexts.
+							 */
+							conversationOf={conversationOf}
+						/>
+					) : (
 						/*
-						 * THE CONVERSATION LINE IS THE FLEET'S OWN, and the CALLER supplies it (see
-						 * `AskDrawerProps.conversationOf`): a session drawer's rows are all about the
-						 * conversation the user is in, so naming it on every card would be the same word
-						 * N times. The panel stays scope-agnostic, which is what lets one list serve
-						 * both contexts.
+						 * `frameUnread` is `view.unread`, so this is the unresolved frame; the other
+						 * falsy-`published` case is the resolved-but-unsupported one below it.
 						 */
-						conversationOf={conversationOf}
-					/>
-				) : (
-					/*
-					 * `frameUnread` is `view.unread`, so this is the unresolved frame; the other
-					 * falsy-`published` case is the resolved-but-unsupported one below it.
-					 */
-					<p className="text-ink-muted text-body">
-						{frameUnread ? ASK_DRAWER_UNREAD_LINE : ASK_DRAWER_UNAVAILABLE_LINE}
-					</p>
-				)}
+						<p className="text-ink-muted text-body">
+							{frameUnread
+								? ASK_DRAWER_UNREAD_LINE
+								: ASK_DRAWER_UNAVAILABLE_LINE}
+						</p>
+					)}
+				</div>
 			</div>
 		</section>
 	);
