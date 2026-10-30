@@ -115,7 +115,9 @@ const bundle = await build({
 		contents: `export {registerCatalogue, setLocale} from "./src/i18n";
  export {TeamBridgePageView} from "./src/renderer/src/features/team-bridge/team-bridge-page";
  export {QueryClient, QueryClientProvider} from "@tanstack/react-query";
- export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store";`,
+ export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store";
+ export {draftStorageKey, eraseAccountDrafts} from "./src/renderer/src/shared/store/team-bridge-draft-account";
+ export {draftTargetKey} from "./src/renderer/src/features/team-bridge/team-bridge-drafts";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -165,6 +167,13 @@ after(() => dom.window.close());
  */
 beforeEach(() => {
 	m.useConversationInputStore.setState({ inputByConversation: {} });
+	/*
+	 * The failed-send record is module-scoped on purpose (it must outlive a route
+	 * change), so a case that ends on a failure would hand its attempt to the next
+	 * case's identical composer key. Erasing through the account fence - the same path
+	 * sign-out takes - starts every case with no attempt in flight.
+	 */
+	m.eraseAccountDrafts(null, "acct_a");
 });
 
 const human = (account_id, display_label) => ({
@@ -446,4 +455,123 @@ test("a conversation-level 409 is not retried as a client_ref conflict", async (
 		"one attempt only: a key cannot fix a conversation-level conflict",
 	);
 	await app.close();
+});
+
+/*
+ * P1 - A SPENT KEY ON DISK IS NEVER SENT (round 4 retrospective, R4-01).
+ *
+ * The production failure behind the "swallowed" sends: a build before the fix
+ * persisted each send's key in the draft and never rotated it, so after an update the
+ * draft on disk holds a key the hub has ALREADY stored a message under. The hub
+ * answers a spent key with matching text by REPLAYING that message - 200, the box
+ * clears, no new row - so reading the persisted key turns a real send into a silent
+ * no-op. Nothing else in these suites seeds a persisted key, which is why restoring
+ * the pre-fix `submit` left every other case green.
+ */
+test("a draft persisted with a spent client_ref sends under a fresh key", async () => {
+	localStorage.clear();
+	localStorage.setItem(
+		m.draftStorageKey("acct_a", "org_page"),
+		JSON.stringify({
+			[m.draftTargetKey(conversation)]: {
+				target: conversation,
+				body: "",
+				clientRef: "spent-key",
+			},
+		}),
+	);
+	const refs = [];
+	const app = await mountPage(
+		pageProps({
+			target: conversation,
+			onSend: async (_body, clientRef) => {
+				refs.push(clientRef);
+			},
+		}),
+	);
+	await typeBody(app.element, "hello again");
+	await act(async () => sendButton(app.element).click());
+	await settle();
+	assert.deepEqual(refs.length, 1, "the send reached the container");
+	assert.notEqual(
+		refs[0],
+		"spent-key",
+		"a persisted draft key may be spent; the hub would replay it and post nothing",
+	);
+	await app.close();
+});
+
+/*
+ * R4-02 - LEAVING TEAM BRIDGE IS NOT A NEW MESSAGE. A route change unmounts the
+ * whole page, so an attempt record held in component state died with it and the
+ * reader's retry after coming back minted a new key: if the first request had landed
+ * with its answer lost, the hub posted the message twice. A fresh mount with no
+ * shared journal is exactly what `/team-bridge` gets after navigating away.
+ */
+test("a failed attempt keeps its client_ref across leaving and returning", async () => {
+	localStorage.clear();
+	const refs = [];
+	const failFirst = async (_body, clientRef) => {
+		refs.push(clientRef);
+		if (refs.length === 1) throw new Error("response lost");
+	};
+	const first = await mountPage(
+		pageProps({ target: conversation, onSend: failFirst }),
+	);
+	await typeBody(first.element, "did this land?");
+	await act(async () => sendButton(first.element).click());
+	await settle();
+	await first.close();
+	const back = await mountPage(
+		pageProps({ target: conversation, onSend: failFirst }),
+	);
+	assert.equal(
+		composerText(back.element),
+		"did this land?",
+		"the text survives the route change",
+	);
+	await act(async () => sendButton(back.element).click());
+	await settle();
+	assert.deepEqual(refs.length, 2);
+	assert.equal(
+		refs[1],
+		refs[0],
+		"the retry after returning is the same attempt and must keep its key",
+	);
+	await back.close();
+});
+
+/*
+ * THE RECORD IS ACCOUNT-OWNED. It outlives the page on purpose, so it has to die with
+ * the drafts: a sign-out or account switch erases them through the revocation fence,
+ * and an attempt key left behind would be read by whoever signs in next.
+ */
+test("signing out forgets a failed attempt's client_ref", async () => {
+	localStorage.clear();
+	const refs = [];
+	const failFirst = async (_body, clientRef) => {
+		refs.push(clientRef);
+		if (refs.length === 1) throw new Error("response lost");
+	};
+	const first = await mountPage(
+		pageProps({ target: conversation, onSend: failFirst }),
+	);
+	await typeBody(first.element, "before sign-out");
+	await act(async () => sendButton(first.element).click());
+	await settle();
+	await first.close();
+	m.eraseAccountDrafts(localStorage, "acct_a");
+	const back = await mountPage(
+		pageProps({ target: conversation, onSend: failFirst }),
+	);
+	await typeBody(back.element, "before sign-out");
+	await act(async () => sendButton(back.element).click());
+	await settle();
+	assert.deepEqual(refs.length, 2);
+	assert.notEqual(
+		refs[1],
+		refs[0],
+		"the erased account's attempt record must not survive the fence",
+	);
+	await back.close();
 });
