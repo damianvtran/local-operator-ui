@@ -146,12 +146,53 @@ function readScannedFile(file) {
  * `electron-vite`, `electron-builder` and the other tooling are commands, not
  * the app, so they are not.
  */
+/**
+ * Is this entry a BUILD OUTPUT rather than a source file?
+ *
+ * `node --test` runs test files in parallel inside one checkout, and some of
+ * them transpile the app to a throwaway file so that one test file can import
+ * it: `scripts/_<name>-<pid>.mjs` and `scripts/<name>-runtime.cjs` are the two
+ * spellings in use. While such a file exists it is a faithful copy of every
+ * module the painted page pulls in - including, since the Team Bridge composer
+ * adoption, the chat composer's chain - so scanning it reports spawn sites no
+ * source file contains and `Desktop Tests` goes red on timing alone (measured:
+ * shards 0 and 2 on 2026-10-29, both at this assertion, with shard 1 green).
+ *
+ * The rule is measured rather than assumed: `git ls-files` holds NO tracked file
+ * under `scripts/` or `bin/` matching any of these patterns, and `.gitignore`
+ * already carries `scripts/_*.bundle.*` because the repository treats them as
+ * disposable. Skipping them keeps this scan a statement about SOURCE. A real
+ * spawn site that is genuinely gone is still caught by the reach assertions.
+ */
+function isGeneratedArtifact(name) {
+	return (
+		name.startsWith("_") ||
+		name.endsWith("-runtime.cjs") ||
+		name.endsWith(".bundle.mjs") ||
+		name.endsWith(".bundle.cjs")
+	);
+}
+
 function findSpawnSites() {
 	const sites = [];
 	for (const dir of ["scripts", "bin"]) {
 		if (!existsSync(dir)) continue;
 		for (const entry of readdirSync(dir, { withFileTypes: true })) {
 			if (!entry.isFile()) continue;
+			/*
+			 * A GENERATED BUNDLE IS NOT A CALL SITE. `node --test` runs test files in
+			 * PARALLEL inside one checkout, and the suites that paint a page transpile
+			 * it to a throwaway `scripts/_<name>-<pid>.mjs` for that one file to import.
+			 * While it exists it is a faithful copy of every module that page pulls in
+			 * - including, since the Team Bridge composer adoption, the chat composer's
+			 * chain - so scanning it reports spawn sites no source file contains and
+			 * `Desktop Tests` goes red on timing alone. `scripts/_*` is this
+			 * repository's disposable prefix (`.gitignore` carries `_*.bundle.*` and
+			 * no tracked file in `scripts/` or `bin/` starts with it), so skipping the
+			 * prefix is what keeps the scan a statement about SOURCE. A real spawn site
+			 * that is genuinely gone is still caught by the reach assertions below.
+			 */
+			if (isGeneratedArtifact(entry.name)) continue;
 			if (!/\.(mjs|js|cjs)$/.test(entry.name)) continue;
 			const file = join(dir, entry.name);
 			const raw = readScannedFile(file);
@@ -232,6 +273,14 @@ function exempt(file, name, index, why, site, noEnv) {
 }
 
 const APP_SPAWN_SITES = [
+	guarded(
+		"scripts/browser-approvals-first-paint-probe.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless to capture the approvals card's first paint in an isolated profile; it passes the notification kill switch like every other app rig, and it strips CMUX_*/LOP_* from the inherited environment so a developer's own session cannot leak in",
+		/const env = withNotificationsOff\(\{/,
+	),
 	guarded(
 		"scripts/browser-tab-menu-native-proof.mjs",
 		"spawn",

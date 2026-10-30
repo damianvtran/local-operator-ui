@@ -23,6 +23,19 @@ import type {
 	TeamBridgeConversation,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
+/*
+ * WHY THIS SIDE-EFFECT IMPORT IS HERE, ABOVE THE COMPONENTS. Since the page
+ * mounts the shared `MessageInput`, the composer reaches
+ * `window.electron.ipcRenderer` from a passive effect on mount (the platform it
+ * renders the send chord for, and the native dialog behind attach). Storybook's
+ * preview mocks `window.api` and not `window.electron`, so without this stand-in
+ * every story in this file dies in `commitHookEffectListMount` with "Cannot read
+ * properties of undefined (reading 'ipcRenderer')" - measured here after the
+ * composer adoption, and the same failure `story-electron-shim.ts` already
+ * documents for the chat composer's stories. It is imported for its side effect,
+ * so the install has to happen before anything in this module renders.
+ */
+import "../chat/components/story-electron-shim";
 import profileImage from "../../assets/radient-icon-1024x1024.png";
 import { ChatLayout } from "../../shared/components/common/chat-layout";
 import { draftStorageKey } from "./team-bridge-drafts";
@@ -376,6 +389,13 @@ const beaDm: TeamBridgeConversation = {
 		},
 	],
 };
+
+/**
+ * The member row prints role and state in ONE sentence ("Member · Invited; not
+ * active yet"), so the matcher has to look INSIDE that text rather than equal
+ * it. Top-level so the regex is not rebuilt on every call.
+ */
+const INVITED_NOT_ACTIVE = /Invited; not active yet/;
 
 const meta = {
 	title: "Team Bridge/Page",
@@ -1041,6 +1061,102 @@ const slackRail = {
 	people: rosterWithChiefs,
 	organizations: [minervaOrganization],
 	scope: minervaOrganization.tenantId,
+};
+
+/**
+ * The operator's report, reproduced: a group they OWN, where the header shows
+ * no way to bring their own chief of staff in. Membership is explicit here so
+ * the frame is the reported case rather than a lucky fixture.
+ */
+const ownedGroup: TeamBridgeConversation = {
+	...group,
+	kind: "group",
+	agent_capable: true,
+	can_administer: true,
+	members: [
+		{
+			account_id: self,
+			kind: "human",
+			display_label: "Damian Tran",
+			role: "owner",
+			state: "active",
+		},
+		{
+			account_id: "acct_ben",
+			kind: "human",
+			display_label: "Ben Tran",
+			role: "member",
+			state: "active",
+		},
+		{
+			account_id: "acct_sherman",
+			kind: "agent",
+			display_label: "Juno",
+			role: "member",
+			state: "invited",
+			joined_seq: 0,
+		},
+	],
+};
+
+const ownedGroupArgs = {
+	...slackRail,
+	conversations: [ownedGroup, ...slackRail.conversations],
+	// `as const` keeps the target's discriminant a literal: an args bundle built
+	// outside `args` widens `type` to `string` and stops matching TeamBridgeTarget.
+	target: { type: "conversation" as const, id: ownedGroup.id },
+	onAddMembers: () => Promise.resolve(),
+	onRemoveMember: () => Promise.resolve(),
+};
+
+/** The header's person-plus control, beside the ellipsis menu. */
+export const AddMembersHeaderControl: Story = {
+	args: ownedGroupArgs,
+};
+
+/** The same action in the ellipsis menu, where the operator looked for it. */
+export const AddMembersMenuEntry: Story = {
+	args: { ...ownedGroupArgs, defaultMenuOpen: true },
+};
+
+/** The picker: current members with roles, plus the org roster and its agents. */
+export const AddMembersDialog: Story = {
+	args: { ...ownedGroupArgs, initialMembersOpen: true },
+	play: async ({ canvasElement }) => {
+		const body = within(canvasElement.ownerDocument.body);
+		// The reader's OWN chief of staff is offered, under its current name.
+		await expect(body.getByText("Aida (Damian Tran)")).toBeInTheDocument();
+		// An invited agent is never painted as active.
+		await expect(body.getByText(INVITED_NOT_ACTIVE)).toBeInTheDocument();
+		await expect(
+			body.getByRole("button", { name: "Remove Ben Tran" }),
+		).toBeInTheDocument();
+	},
+};
+
+/** A plain member may still invite (the hub permits it), but never remove. */
+export const AddMembersPlainMember: Story = {
+	args: {
+		...ownedGroupArgs,
+		conversations: [
+			{
+				...ownedGroup,
+				members: ownedGroup.members.map((member) =>
+					member.account_id === self && member.kind === "human"
+						? { ...member, role: "member" as const }
+						: member,
+				),
+			},
+			...slackRail.conversations,
+		],
+		initialMembersOpen: true,
+	},
+	play: async ({ canvasElement }) => {
+		const body = within(canvasElement.ownerDocument.body);
+		await expect(
+			body.queryByRole("button", { name: "Remove Ben Tran" }),
+		).not.toBeInTheDocument();
+	},
 };
 
 /** Ben's row is selected and IS the DM: no "@ Ben" row exists above People. */

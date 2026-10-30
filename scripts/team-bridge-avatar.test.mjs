@@ -374,3 +374,76 @@ test("bounds idle retained avatars and rejects non-image or oversized bytes", as
 		}
 	}
 });
+
+test("composite relay carries only the coded renderer_busy refusal, never the bare status", async () => {
+	// Core #3101 answers transient overload as 503 {detail:{code:"renderer_busy"}}
+	// and a bad image as 502 malformed_page. The desktop must branch on the
+	// DECLARED code (core review M1): a bare 503 also describes this machine's
+	// own transport failure, so treating it as overload would be a guess.
+	let status = 503;
+	let mime = "application/json";
+	let body = JSON.stringify({ detail: { code: "renderer_busy" } });
+	const server = createServer((_req, res) => {
+		res.writeHead(status, { "Content-Type": mime });
+		res.end(body);
+	});
+	await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+	const origin = `http://127.0.0.1:${server.address().port}`;
+	try {
+		const request = {
+			op: "team_bridge.notification_avatar",
+			expectedAccountId: "A",
+			tenantId: "tnt_1",
+			accountId: "target",
+			kind: "person",
+			theme: "light",
+			size: 64,
+			initials: "BT",
+			avatar: { account_id: "target", hash: "0123456789abcdef" },
+		};
+		const send = () =>
+			m.requestDesktopMediaOutcome(request, null, origin, "local-secret");
+
+		// Positive harness control: the live listener really answers.
+		await fetch(origin);
+		let out = await send();
+		assert.equal(out.response.kind, "error");
+		assert.equal(out.response.status, 503);
+		assert.equal(out.response.code, "renderer_busy");
+		assert.equal(out.answered, true);
+
+		// A different code at the same status is NOT busy.
+		body = JSON.stringify({ detail: { code: "malformed_page" } });
+		out = await send();
+		assert.equal(out.response.code, undefined, "only renderer_busy is carried");
+
+		// The same JSON at a non-503 status is not busy either.
+		status = 502;
+		body = JSON.stringify({ detail: { code: "renderer_busy" } });
+		out = await send();
+		assert.equal(out.response.code, undefined, "the code alone is not enough");
+
+		// Non-JSON refusals stay generic and cheap.
+		status = 503;
+		mime = "text/html";
+		body = "<html>busy</html>";
+		out = await send();
+		assert.equal(out.response.code, undefined);
+
+		// An unbounded error body is not buffered into memory.
+		mime = "application/json";
+		status = 503;
+		body = JSON.stringify({
+			detail: { code: "renderer_busy" },
+			pad: "x".repeat(64 * 1024),
+		});
+		out = await send();
+		assert.equal(
+			out.response.code,
+			undefined,
+			"oversized refusal stays generic",
+		);
+	} finally {
+		await new Promise((resolve) => server.close(resolve));
+	}
+});

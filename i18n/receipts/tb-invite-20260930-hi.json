@@ -1,0 +1,27 @@
+{
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_comment": "The session launch and initial system context identified anthropic/claude-opus-5-5. Later host notices reported temporary provider-fallback model switches, so this records the launch-named model rather than claiming which fallback generated each token.",
+	"instance": "tb-invite-20260930-hi",
+	"date": "2026-09-30",
+	"status": "passed",
+	"locale": "hi",
+	"namespace": "ui.teamBridge",
+	"sha256": {
+		"en": "c7b1dc752c9f773df7e116be1d121bec0009c33da52bcd5931cc88c41ce9cbe3",
+		"hi": "aa7e4a63403846eeaeff62066907d97669dc450a281eeac32b45d6e0d33dd3a0"
+	},
+	"findings": [],
+	"checks": {
+		"key_parity": "283 English keys, 283 Hindi keys, en-hi=set(), hi-en=set(); ui.teamBridge.members.state.left is absent.",
+		"icu_render": "Imported IntlMessageFormat from the repo's node_modules and rendered the on-disk Hindi add string under locale hi. 0: आमंत्रण भेजें; 1: 1 आमंत्रण भेजें; 2: 2 आमंत्रण भेजें; 5: 5 आमंत्रण भेजें; 21: 21 आमंत्रण भेजें.",
+		"cldr_arms": "Required Hindi categories one and other are present, plus exact =0. Intl.PluralRules('hi') reports pluralCategories [one, other]. =0 has no {count}; one and other each contain {count} exactly once. Identical invitation noun forms in one/other are idiomatic Hindi (आमंत्रण has the same direct singular/plural form here), and भेजें matches the file's imperative button register.",
+		"bidi": "No U+200E/U+200F/U+202A-U+202E manual bidi controls and no checked zero-width characters (U+200B-U+200D, U+2060, U+FEFF) anywhere in the Hindi catalogue strings.",
+		"apostrophes": "No ASCII apostrophe U+0027 in any Hindi catalogue value; no ICU quoted-literal hazard.",
+		"diff": "git diff -- src/i18n/catalogues/hi/ui.teamBridge.json shows only the two group-heading insertions after members.invite, replacement of members.add with the counted ICU message, the bridge_unavailable wording change, and deletion of members.state.left; no unrelated keys touched or reordered."
+	},
+	"scope": "Reviewed the four changed keys in depth against final English, the context catalogue, and established Hindi terminology and imperative register. Ran key parity, ICU parse/render, CLDR arm and placeholder checks, bidi/zero-width/apostrophe scans, and the full locale-file diff. Deliberately did not re-audit the other 279 unchanged keys already passed by a previous audit.",
+	"independence": "Auditor wrote none of the audited strings; the translator was a separate subagent. No catalogue or ledger edit by the auditor.",
+	"status_vocabulary_note": "Auditor wrote status 'pass' with an empty findings list; the coordinator normalised the vocabulary to the ledger tool's passed | changes_requested. The verdict is the auditor's."
+}

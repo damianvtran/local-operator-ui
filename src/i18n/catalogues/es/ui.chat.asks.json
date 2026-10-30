@@ -1,4 +1,5 @@
 {
+	"ui.chat.asks.answer_options": "Opciones de respuesta",
 	"ui.chat.asks.context.messages_since": "{count, plural, one {# mensaje tuyo desde que se hizo esta consulta (último mensaje: {time})} many {# de mensajes tuyos desde que se hizo esta consulta (último mensaje: {time})} other {# mensajes tuyos desde que se hizo esta consulta (último mensaje: {time})}}",
 	"ui.chat.asks.dismiss.answered_in_chat.note": "ya respondiste en la conversación",
 	"ui.chat.asks.dismiss.answered_in_chat.title": "Respondida en la conversación",
@@ -12,6 +13,7 @@
 	"ui.chat.asks.dismiss.refused": "No se pudo descartar esta consulta: no se envió nada.",
 	"ui.chat.asks.dismiss.trigger": "Descartar…",
 	"ui.chat.asks.other_label": "Otro",
+	"ui.chat.asks.recommended": "Recomendada",
 	"ui.chat.asks.urgent": "Urgente.",
 	"ui.chat.asks.no_answer": "Sin respuesta",
 	"ui.chat.asks.changed_handoff": "Modificada — aún no se ha entregado al agente.",

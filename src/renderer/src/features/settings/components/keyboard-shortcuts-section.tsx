@@ -297,9 +297,28 @@ export const KeyboardShortcutsSection: FC<{
 			sectionRef={sectionRef}
 		>
 			<div className="flex flex-col gap-4">
-				{KEYMAP_ACTIONS.map((action) => (
-					<ShortcutRow key={action.id} action={action} />
-				))}
+				{/*
+				 * THE BROWSER'S SCOPE, STATED BEFORE THE ROWS (LOH-13). The browser's own
+				 * chords are refused here, and a refused capture is the only moment this
+				 * section would otherwise mention them — a refusal names the job but not
+				 * the reason the chord was dead from the composer, which reads as broken.
+				 * The paragraph names the browser-owning group rather than listing the
+				 * chords again: the keymap registry stays the one place a chord is spelled,
+				 * and each browser-only refused row repeats the instruction it needs.
+				 */}
+				<p
+					data-shortcut-note="browser-scope"
+					className="max-w-2xl text-body-sm text-ink-muted"
+				>
+					{t(
+						"ui.settings.shortcuts.keyboard_shortcuts_section.browser_shortcuts_answer_only_while_the_browser_has_focus",
+					)}
+				</p>
+				<div className="flex flex-col gap-4">
+					{KEYMAP_ACTIONS.map((action) => (
+						<ShortcutRow key={action.id} action={action} />
+					))}
+				</div>
 			</div>
 		</SettingsSection>
 	);

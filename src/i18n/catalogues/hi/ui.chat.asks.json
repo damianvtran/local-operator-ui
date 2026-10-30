@@ -1,4 +1,5 @@
 {
+	"ui.chat.asks.answer_options": "जवाब के विकल्प",
 	"ui.chat.asks.context.messages_since": "{count, plural, one {इस सवाल के बाद से आपका # संदेश} other {इस सवाल के बाद से आपके # संदेश}} (अंतिम संदेश {time})",
 	"ui.chat.asks.dismiss.answered_in_chat.note": "आप बातचीत में पहले ही जवाब दे चुके हैं",
 	"ui.chat.asks.dismiss.answered_in_chat.title": "चैट में जवाब दिया गया",
@@ -12,6 +13,7 @@
 	"ui.chat.asks.dismiss.refused": "यह सवाल हटाया नहीं जा सका — कुछ भी नहीं भेजा गया।",
 	"ui.chat.asks.dismiss.trigger": "हटाएँ…",
 	"ui.chat.asks.other_label": "अन्य",
+	"ui.chat.asks.recommended": "सुझाया गया",
 	"ui.chat.asks.urgent": "ज़रूरी।",
 	"ui.chat.asks.no_answer": "कोई जवाब नहीं दिया गया",
 	"ui.chat.asks.changed_handoff": "बदला गया — एजेंट को अभी यह नहीं सौंपा गया।",

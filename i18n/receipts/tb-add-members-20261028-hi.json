@@ -1,0 +1,53 @@
+{
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "kimi/k3.1-pro",
+	"model_note": "Session header states kimi/k3.1-pro. During this run the primary provider returned quota HTTP 429 and the harness fell back through anthropic/claude-sonnet-5-5 and openai/gpt-6-astra to radient/auto; the audit work was performed under that fallback chain. The header string is recorded per the coordinator's instruction, with the fallback disclosed here.",
+	"instance": "tb-add-members-20261028-hi",
+	"date": "2026-10-28",
+	"status": "passed",
+	"namespace": "ui.teamBridge",
+	"locale": "hi",
+	"sha256": {
+		"en": "4337253270df03ec0ad4bf00bd27db4f4e8d279376f0dfe5be230fb1d897d01a",
+		"locale": "55f3cf950b5e57bf216f58fabdff0ee73e12e356b346137fcd2882b884ed4ebf",
+		"hi": "55f3cf950b5e57bf216f58fabdff0ee73e12e356b346137fcd2882b884ed4ebf"
+	},
+	"findings": [
+		{
+			"severity": "MINOR",
+			"key": "ui.teamBridge.members.role.owner",
+			"note": "Owner is «स्वामी» here and in members.agent_invitation and members.invitation_note, while this same file renders the same owner concept as «मालिक» (ui.teamBridge.thread.intro_chief: «…यह इसका मालिक तय करता है») and five other hi catalogues use «मालिक» for organization and installation owners. «स्वामी» also carries the husband/lord sense in Hindi product register. Meaning survives, so MINOR not MAJOR — it is the one term I would change. Proposed in all three sites: role.owner «मालिक»; agent_invitation «एजेंट; मालिक की स्वीकृति के बाद म्यूट होकर जुड़ता है»; invitation_note «आमंत्रण सक्रिय पहुँच नहीं देते। एजेंट केवल अपने मालिक की सहमति के बाद म्यूट होकर जुड़ता है।»"
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.teamBridge.members.human_invitation",
+			"note": "«आमंत्रण स्वीकारने के बाद» splits the verb differently from this file's established «स्वीकार करने पर» (ui.teamBridge.invitations.consent.*). Both are grammatical; matching the file reads better. Proposed: «व्यक्ति; आमंत्रण स्वीकार करने के बाद जुड़ता है»."
+		}
+	],
+	"scope": "PR add-members: 28 new ui.teamBridge.members.* keys; existing keys unchanged. Read against the English source and its context sidecar, i18n/glossary.md and the hi style guide; checked key parity (28/28 members keys, file 269/269 vs English), the one placeholder ({name} in members.remove, exactly once, unchanged), ICU safety (no plural/select and no ASCII apostrophe in these keys), absence of manual bidi control and zero-width characters (0 in the whole file), NFC and no NBSP/double space, sentence case, and terminology against the rest of the locale's ui.teamBridge.json. Semantics verified key by key: invitation is not membership; an invited agent stays invited and joins muted only on its OWNER's consent; roles are conversation owner/member; state invited is not active; remove is for members of the conversation only; Team Bridge stays the untranslated product name. Source-only: no tests, build, Storybook or browser run; no rendered-fit, width or activation claim. No catalogue, ledger or code edit by the auditor.",
+	"source_gate": {
+		"tool": "scripts/i18n/context-parity.mjs",
+		"exit": 1,
+		"blocking": true,
+		"finding": "MAJOR, English side (not a finding against these translations): 15 of the 28 new ui.teamBridge.members.* keys have no entry in en/ui.teamBridge.context.json and no i18n/context-allowance.json entry, so context-parity exits 1 and the copy for those keys was translated blind. Author the 15 sidecar entries before merge; re-audit not required because the translated bytes do not change.",
+		"uncovered_keys": [
+			"ui.teamBridge.members.menu",
+			"ui.teamBridge.members.current",
+			"ui.teamBridge.members.current_empty",
+			"ui.teamBridge.members.invite",
+			"ui.teamBridge.members.search",
+			"ui.teamBridge.members.empty",
+			"ui.teamBridge.members.no_matches",
+			"ui.teamBridge.members.load_error",
+			"ui.teamBridge.members.removing",
+			"ui.teamBridge.members.read_only",
+			"ui.teamBridge.members.role.owner",
+			"ui.teamBridge.members.role.member",
+			"ui.teamBridge.members.state.active",
+			"ui.teamBridge.members.state.left",
+			"ui.teamBridge.members.mutation_error"
+		]
+	},
+	"independence": "Auditor wrote none of the audited strings; translator was a separate coder subagent."
+}

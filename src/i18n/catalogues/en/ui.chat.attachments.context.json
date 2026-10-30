@@ -63,5 +63,32 @@
 		"role": "status",
 		"tone": "Plain, concise product language; preserve placeholders exactly.",
 		"note": "Under 'Moved or deleted' on a sent file card: neither the original file nor the app's retained copy exists any more."
+	},
+	"ui.chat.attachments.open": {
+		"role": "link label",
+		"tone": "plain",
+		"note": "Opens an attachment this app cannot preview."
+	},
+	"ui.chat.attachments.playback_position": {
+		"role": "slider name",
+		"tone": "plain",
+		"note": "The audio attachment's seek bar."
+	},
+	"ui.chat.attachments.playback_rate": {
+		"role": "select name",
+		"tone": "plain"
+	},
+	"ui.chat.attachments.playback_rate_option": {
+		"role": "select option",
+		"tone": "plain",
+		"note": "The multiplier sign stays beside the number in every language; do not spell the word 'times'.",
+		"placeholders": {
+			"rate": "A multiplier such as 0.5, 1, 1.5 or 2."
+		}
+	},
+	"ui.chat.attachments.volume": {
+		"role": "slider name",
+		"tone": "plain",
+		"note": "The audio attachment's volume slider."
 	}
 }

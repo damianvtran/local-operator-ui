@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
+import { IntlMessageFormat } from "intl-messageformat";
 
 /*
  * THE SEARCH MODEL'S PURE HALF — the chord, the state ladder, the cursor
@@ -183,11 +185,12 @@ test("counts pluralise and split by tier, the cut rides the same line, and only 
 	assert.equal(model.threadSearchCountLabel(soft(2)), "2 related matches");
 	/*
 	 * The split case is UX U3's: a bare total hid that one row was exact and
-	 * ninety-nine were the soft tier's.
+	 * ninety-nine were the soft tier's. LABEL-FIRST, because that is the order
+	 * the catalogue ships and the order a locale can inflect per count.
 	 */
 	assert.equal(
 		model.threadSearchCountLabel([...exact(1), ...soft(99)]),
-		"1 exact · 99 related",
+		"Exact: 1 · Related: 99",
 	);
 	/*
 	 * And the truncation is a SUFFIX on that line, not a second sentence: the
@@ -198,6 +201,57 @@ test("counts pluralise and split by tier, the cut rides the same line, and only 
 	assert.equal(model.threadSearchWantsFollowUp({ state: "building" }), true);
 	for (const state of ["ready", "unsupported", "error"]) {
 		assert.equal(model.threadSearchWantsFollowUp({ state }), false);
+	}
+});
+
+test("the count line's English is the catalogue's own sentence, so the panel and the model cannot spell it two ways", () => {
+	/*
+	 * THE DRIFT GUARD. The literals above are what the model promises; this test
+	 * is what stops that promise and the shipped English becoming two different
+	 * sentences. The panel renders `ui.chat.thread_search.count.*`, so the model
+	 * must produce exactly what those templates produce for the same counts —
+	 * that is the whole of R2-1, where the remediation moved the panel to the
+	 * label-first split while the model kept the suffix order and the overlay's
+	 * rendered-spelling assertion went red in a file the change never touched.
+	 *
+	 * Formatting through `IntlMessageFormat` rather than matching the raw
+	 * template is deliberate: it is the same library the renderer's `translate()`
+	 * uses, so a plural arm changing under us is caught too, and a catalogue
+	 * edit (or a model edit) fails here instead of in the Desktop Tests shard.
+	 */
+	const catalogue = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.thread_search.json", "utf8"),
+	);
+	const shipped = (key, params) =>
+		new IntlMessageFormat(catalogue[key], "en").format(params);
+	const exact = (n) => Array.from({ length: n }, () => ({ tier: "exact" }));
+	const soft = (n) => Array.from({ length: n }, () => ({ tier: "soft" }));
+	for (const [hits, key, params] of [
+		[exact(1), "count.match", { count: 1, countText: "1" }],
+		[exact(7), "count.match", { count: 7, countText: "7" }],
+		[soft(1), "count.related", { count: 1, countText: "1" }],
+		[soft(2), "count.related", { count: 2, countText: "2" }],
+		[
+			[...exact(3), ...soft(2)],
+			"count.split",
+			{ exactText: "3", relatedText: "2" },
+		],
+	]) {
+		assert.equal(
+			model.threadSearchCountLabel(hits),
+			shipped(`ui.chat.thread_search.${key}`, params),
+			`${key}: the model's spelling must be the sentence the catalogue ships`,
+		);
+	}
+	for (const count of [1, 100]) {
+		assert.equal(
+			model.threadSearchTruncatedLabel(count),
+			shipped("ui.chat.thread_search.count.truncated", {
+				count,
+				countText: String(count),
+			}),
+			"count.truncated: the suffix the model pins must be the one a locale renders",
+		);
 	}
 });
 

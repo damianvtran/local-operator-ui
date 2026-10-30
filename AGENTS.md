@@ -235,6 +235,15 @@ The mechanics:
 - Regenerate theme CSS: `pnpm gen-themes`
 - Bundle size: `pnpm bundle-size`, `pnpm startup-closure`
 - Component gallery: `pnpm storybook`
+- Storybook cache: Storybook 8.6 never evicts `node_modules/.cache/storybook` (one
+  hash-named dir per config dir, i.e. per worktree; 85 / 6 GiB by `du` in six days), so
+  `.storybook/main.ts` runs `scripts/storybook-cache-prune.mjs` at every start: entries
+  older than 48 h go, then oldest-first down to 40, never one touched in the last 6 h or
+  the current run's. It is all regenerable and fails open. Off: `STORYBOOK_CACHE_PRUNE=off`;
+  tune: `STORYBOOK_CACHE_MAX_AGE_HOURS` / `_MAX_ENTRIES` / `_MIN_KEEP_HOURS`.
+- Storybook for a rig or a QA lane: `node scripts/with-storybook.mjs -- <command>`
+  (see the rig rules below) boots one, exports `STORYBOOK_ORIGIN`, and stops its whole
+  process group on every exit path - do not leave a bare `storybook dev` running.
 - Fold an evidence stamp after a merge: `pnpm evidence:fold` (resolves
   `docs/evidence/manifest.json` per field, re-derives the counts from the merged
   tree, runs the guards and stages the result - one commit per fold).
@@ -1646,6 +1655,10 @@ pairing rather than to explain it.
 
 What follows for a run:
 
+- **Boot the Storybook through `scripts/with-storybook.mjs`**
+  (`node scripts/with-storybook.mjs -- <command>`): it owns the server's process
+  group and tears it down on exit, failure and SIGINT/SIGTERM/SIGHUP, so no dev
+  server outlives its run.
 - **Open a story through the manager URL that carries the token**, never a bare
   `iframe.html?id=…` as the page's top-level URL: the bare form is the one the server
   channel refuses, and that refusal is what each reload was paired with.
@@ -2879,19 +2892,25 @@ write access is silently ignored by an approval rule. Tagging a person in a
 
 ### Desktop CI capacity partitions
 
-The `test` job uses three deterministic file-count partitions of the explicit
+The `test` job uses four deterministic file-count partitions of the explicit
 `package.json` `test:desktop` inventory. Local `pnpm test:desktop` still runs the
 whole inventory once through the existing guarded runner. CI delegates each
-partition to that same runner with the same concurrency, memory and lane guards;
-three workers are extra capacity, not measured runtime balancing, a hung-lane
-cure, or a memory-leak fix. The 50-minute cap and cancellation policy do not change.
-Tag-dialog tests and the existing native QA bundle are owned by shard 0 only.
+partition to that same runner with the same concurrency, memory and lane caps;
+four workers are extra capacity and per-shard memory headroom, not measured
+runtime balancing, a hung-lane cure, or a memory-leak fix. The fourth shard was
+added on 2026-10-30 because the 7.8 GB process-group budget sat inside the
+run-to-run distribution of a three-shard lane at concurrency 3 — 7.9 GB (run
+40992181176) and 8.2 GB (run 40996898976) on the same 205-file inventory, both dying
+at `ok 1060` with zero failures — so each partition now carries ~25% fewer files.
+The budget, the concurrency guard, the 50-minute cap and the cancellation policy
+do not change. Tag-dialog tests and the existing native QA bundle are owned by
+shard 0 only.
 
 The stable required result remains **Desktop Tests** (`desktop-tests-result`).
-It consumes all three same-head/checkout/inventory receipts, rejects missing,
+It consumes all four same-head/checkout/inventory receipts, rejects missing,
 failed or cancelled work, and reconstructs the disjoint complete file inventory.
 An explicit false unit scope skips the workers/result; unknown classification or
 failed workers cannot become a green aggregate. The result is a CI-only local
 exclusion because `check-changed` already runs the full desktop command once;
 adding a second local suite command would duplicate the most expensive gate.
-Queue demand rises by two runners and no completion-time guarantee is implied.
+Queue demand rises by three runners and no completion-time guarantee is implied.

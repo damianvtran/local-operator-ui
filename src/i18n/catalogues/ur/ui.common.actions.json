@@ -3,6 +3,8 @@
 	"ui.common.actions.close": "بند کریں",
 	"ui.common.actions.copied": "نقل ہو گیا",
 	"ui.common.actions.copy_failed": "نقل نہیں ہو سکا۔ اسے منتخب کر کے خود نقل کریں۔",
+	"ui.common.actions.dismiss": "ہٹا دیں",
+	"ui.common.actions.more_info": "مزید معلومات",
 	"ui.common.actions.retry": "دوبارہ کوشش کریں",
 	"ui.common.actions.retry_again": "دوبارہ کوشش کریں",
 	"ui.common.actions.retrying": "کوشش جاری ہے…",

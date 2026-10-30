@@ -9,11 +9,6 @@
 		"tone": "plain, precise; safety statements must not weaken or promise success",
 		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
 	},
-	"ui.hub.links.empty": {
-		"role": "status",
-		"tone": "plain, precise; safety statements must not weaken or promise success",
-		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
-	},
 	"ui.hub.links.load_failed": {
 		"role": "status",
 		"tone": "plain, precise; safety statements must not weaken or promise success",
@@ -289,10 +284,15 @@
 		"tone": "plain, precise; safety statements must not weaken or promise success",
 		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
 	},
+	"ui.hub.links.check_failed": {
+		"role": "status",
+		"tone": "plain, precise; a check changes nothing, so this sentence must not imply an incoming update was attempted",
+		"note": "The sentence for a CHECK that did not finish (QA round 3 on #1458, Q13). A check asks the hub what changed and applies nothing, so it is neither the incoming nor the outgoing direction: it must not borrow action_failed's {direction}. Placeholders {item} and {source} are the escaped display label and the verified hub source address; there is deliberately no {direction}. ONE CLAUSE ONLY (design D3): the row's own status, its reason line and the Retry control already say the rest, and a second sentence telling the reader to try again contradicted a scheduled retry standing next to it. Do not add a next-step instruction back."
+	},
 	"ui.hub.links.action_failed": {
 		"role": "status",
 		"tone": "plain, precise; safety statements must not weaken or promise success",
-		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
+		"note": "The sentence for a pull or push that did not finish, by the direction that failed. Placeholders: {direction} is the translated direction label, {item} and {source} are the escaped display label and the verified hub source address. ONE CLAUSE ONLY (design D3), for the same reason as check_failed: the row's status, its reason and the Retry control carry the next step, so this value must not repeat an instruction that can contradict a scheduled retry."
 	},
 	"ui.hub.links.preview_warnings": {
 		"role": "heading",
@@ -893,5 +893,205 @@
 		"role": "status",
 		"tone": "plain, precise; safety statements must not weaken or promise success",
 		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. Shown when the local links inventory (not the catalogue) could not be read. It must not read as 'not installed'; that is a fact only a successful read can establish."
+	},
+	"ui.hub.links.preview_recomputed": {
+		"role": "status",
+		"tone": "plain, precise; advisory only - it must not promise the merge it shows",
+		"note": "The incoming preview's honesty line. Core recomputes the merge at apply time (the apply route re-checks the item), so the dialog shows an advisory preview, not a receipt. Do not weaken this into a promise of the previewed result."
+	},
+	"ui.hub.links.outcome_would_merge": {
+		"role": "state word",
+		"tone": "plain, lowercase state word; no sentence punctuation",
+		"note": "The state WORD for a dry run that WOULD write on Pull, interpolated into incoming_outcome/incoming_nothing (design D1: the raw enum token was unreadable and ran into the next sentence). No placeholders. Keep it short enough to sit after a colon, and keep the wording consistent with the mark_* state word for the same state."
+	},
+	"ui.hub.links.outcome_needs_review": {
+		"role": "state word",
+		"tone": "plain, lowercase state word; no sentence punctuation",
+		"note": "The state WORD for a dry run that needs a decision before anything is written (a field conflict, or an unacknowledged unknown baseline), interpolated into incoming_outcome/incoming_nothing (design D1: the raw enum token was unreadable and ran into the next sentence). No placeholders. Keep it short enough to sit after a colon, and keep the wording consistent with the mark_* state word for the same state."
+	},
+	"ui.hub.links.outcome_up_to_date": {
+		"role": "state word",
+		"tone": "plain, lowercase state word; no sentence punctuation",
+		"note": "The state WORD for a dry run with nothing to merge, interpolated into incoming_outcome/incoming_nothing (design D1: the raw enum token was unreadable and ran into the next sentence). No placeholders. Keep it short enough to sit after a colon, and keep the wording consistent with the mark_* state word for the same state."
+	},
+	"ui.hub.links.outcome_unchanged": {
+		"role": "state word",
+		"tone": "plain, lowercase state word; no sentence punctuation",
+		"note": "The state WORD for a dry run with nothing to merge (core's alternate no-op class), interpolated into incoming_outcome/incoming_nothing (design D1: the raw enum token was unreadable and ran into the next sentence). No placeholders. Keep it short enough to sit after a colon, and keep the wording consistent with the mark_* state word for the same state."
+	},
+	"ui.hub.links.outcome_failed": {
+		"role": "state word",
+		"tone": "plain, lowercase state word; no sentence punctuation",
+		"note": "The state WORD for a report row that did not settle, interpolated into incoming_outcome/incoming_nothing (design D1: the raw enum token was unreadable and ran into the next sentence). No placeholders. Keep it short enough to sit after a colon, and keep the wording consistent with the mark_* state word for the same state."
+	},
+	"ui.hub.links.outcome_skipped": {
+		"role": "state word",
+		"tone": "plain, lowercase state word; no sentence punctuation",
+		"note": "The state WORD for a report row core chose not to attempt, interpolated into incoming_outcome/incoming_nothing (design D1: the raw enum token was unreadable and ran into the next sentence). No placeholders. Keep it short enough to sit after a colon, and keep the wording consistent with the mark_* state word for the same state."
+	},
+	"ui.hub.links.outcome_unavailable": {
+		"role": "state word",
+		"tone": "plain, lowercase state word; no sentence punctuation",
+		"note": "The state WORD for a report row whose item could not be reached, interpolated into incoming_outcome/incoming_nothing (design D1: the raw enum token was unreadable and ran into the next sentence). No placeholders. Keep it short enough to sit after a colon, and keep the wording consistent with the mark_* state word for the same state."
+	},
+	"ui.hub.links.incoming_outcome": {
+		"role": "status",
+		"tone": "plain; {outcome} is a state word, not core's enum",
+		"note": "One dry-run report row in the incoming preview (one item): {item} is the escaped display label and {outcome} is the TRANSLATED state word for core's ItemOutcome (would merge / needs review / up to date / unchanged / failed / skipped / unavailable - see the outcome_* keys). The value ends with a full stop because the row is a sentence, and core's own message is rendered as a separate muted line beneath it (design D1); do not fold the message back into this value."
+	},
+	"ui.hub.links.incoming_nothing": {
+		"role": "status",
+		"tone": "plain; states a no-op, never an error",
+		"note": "Shown inline instead of opening the preview dialog when the dry run says nothing would change. {outcome} is the TRANSLATED state word (see the outcome_* keys), not core's enum; in practice only the no-op classes reach this sentence, so it must read as a state (\"this item is up to date\")."
+	},
+	"ui.hub.links.name_ambiguous": {
+		"role": "status",
+		"tone": "plain; explains a refusal without blaming the reader",
+		"note": "Older-core name addressing only: two loaded rows share a display name case-insensitively, and core's name arm matches every one of them, so a direct apply/retry would write both. No placeholders; the item's detail view is where the fix is."
+	},
+	"ui.hub.links.incoming_needs_review": {
+		"role": "status",
+		"tone": "plain, precise; a conflict is a decision, not an error",
+		"note": "Shown in the incoming preview dialog for a needs-review dry run: a field conflict or an unacknowledged unknown baseline. No placeholders; core's own message follows per report, and the prefer choices and the acknowledgement sit below this line."
+	},
+	"ui.hub.links.incoming_unknown_baseline": {
+		"role": "status",
+		"tone": "plain; explains an unknown baseline without naming a CLI flag",
+		"note": "Replaces core's unknown-baseline message, which names the CLI option --accept-unknown-baseline (merge.py) and means nothing in the desktop window. The control it describes is the dialogue's acknowledgement checkbox. It names the tick ONLY: the sequence (choose a side, then pull) is stated once, in incoming_needs_review (design D5)."
+	},
+	"ui.hub.links.incoming_failed": {
+		"role": "status",
+		"tone": "plain; states a failure without promising a next step",
+		"note": "Inline sentence for a dry run that could not finish (unavailable/failed/skipped). {outcome} is core's stable vocabulary and is not translated; core's own message is shown beneath it verbatim."
+	},
+	"ui.hub.links.retry_update": {
+		"role": "button",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. This button re-issues the FAILED INCOMING UPDATE and names that target in its label, so it never reads as the source Retry shown above it when both are on screen; keep the target word in the translation."
+	},
+	"ui.hub.links.source_label_public": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
+	},
+	"ui.hub.links.source_label_org": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
+	},
+	"ui.hub.links.source_unresolved": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
+	},
+	"ui.hub.links.policy_title": {
+		"role": "heading",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
+	},
+	"ui.hub.links.healthy_unsourced": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
+	},
+	"ui.hub.links.available_unsourced": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
+	},
+	"ui.hub.links.failed_unsourced": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
+	},
+	"ui.hub.links.busy_unsourced": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
+	},
+	"ui.hub.links.updated_unsourced": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
+	},
+	"ui.hub.links.published_unsourced": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
+	},
+	"ui.hub.links.action_failed_unsourced": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
+	},
+	"ui.hub.links.incoming_update_failed": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
+	},
+	"ui.hub.links.incoming_failed_no_reason": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
+	},
+	"ui.hub.links.retrying": {
+		"role": "button",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
+	},
+	"ui.hub.links.retry_failed": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
+	},
+	"ui.hub.subscriptions.subscribe_description_unsourced": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
+	},
+	"ui.hub.subscriptions.subscribe_description_blocked_unsourced": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
+	},
+	"ui.hub.subscriptions.auto_push_description_unsourced": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
+	},
+	"ui.hub.subscriptions.auto_push_unverified": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
+	},
+	"ui.hub.subscriptions.saving_unsourced": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
+	},
+	"ui.hub.subscriptions.save_failed_unsourced": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
+	},
+	"ui.hub.links.incoming_failed_reason": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. {reason} is the server’s own English sentence, inserted verbatim; translate only the frame."
+	},
+	"ui.hub.links.sign_in_required": {
+		"role": "status",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Feature-local hub source/policy controls, not settings navigation. Incoming preview preserves local text and baseline acknowledgements; outgoing preview confirms exact scoped server projection and expires on identity/policy/local/remote change. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap."
+	},
+	"ui.hub.links.legacy_retry_unverified": {
+		"role": "status",
+		"tone": "plain and actionable",
+		"note": "Shown instead of an unsafe legacy name-addressed update when the complete registry cannot prove the name is unique. Updating core provides exact local-id addressing; opening the same item does not fix duplicate names."
+	},
+	"ui.hub.subscriptions.auto_push_source_unknown": {
+		"role": "status",
+		"tone": "plain and actionable",
+		"note": "Description/tooltip of a disabled Auto-push control while current-account membership cannot authorize a destination label. Source Retry refetches memberships. Never treat persisted organization names as membership."
 	}
 }

@@ -1,4 +1,5 @@
 {
+	"ui.chat.asks.answer_options": "Варианты ответа",
 	"ui.chat.asks.context.messages_since": "{count, plural, one {# сообщение от вас с момента этого запроса} few {# сообщения от вас с момента этого запроса} many {# сообщений от вас с момента этого запроса} other {# сообщения от вас с момента этого запроса}} (последнее сообщение: {time})",
 	"ui.chat.asks.dismiss.answered_in_chat.note": "вы уже ответили в чате",
 	"ui.chat.asks.dismiss.answered_in_chat.title": "Ответ дан в чате",
@@ -12,6 +13,7 @@
 	"ui.chat.asks.dismiss.refused": "Не удалось убрать этот запрос — ничего не отправлено.",
 	"ui.chat.asks.dismiss.trigger": "Убрать…",
 	"ui.chat.asks.other_label": "Другое",
+	"ui.chat.asks.recommended": "Рекомендуется",
 	"ui.chat.asks.urgent": "Срочно.",
 	"ui.chat.asks.no_answer": "Ответ не дан",
 	"ui.chat.asks.changed_handoff": "Изменено — агенту ещё не передано.",

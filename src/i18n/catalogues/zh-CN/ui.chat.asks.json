@@ -1,4 +1,5 @@
 {
+	"ui.chat.asks.answer_options": "回答选项",
 	"ui.chat.asks.context.messages_since": "{count, plural, other {自提出这个请求以来你发来了#条消息}}（最后一条消息于{time}）",
 	"ui.chat.asks.dismiss.answered_in_chat.note": "你已在对话中回复过",
 	"ui.chat.asks.dismiss.answered_in_chat.title": "已在对话中回答",
@@ -12,6 +13,7 @@
 	"ui.chat.asks.dismiss.refused": "无法关闭此请求——未发送任何内容。",
 	"ui.chat.asks.dismiss.trigger": "关闭……",
 	"ui.chat.asks.other_label": "其他",
+	"ui.chat.asks.recommended": "推荐",
 	"ui.chat.asks.urgent": "紧急。",
 	"ui.chat.asks.no_answer": "未作答",
 	"ui.chat.asks.changed_handoff": "已更改——尚未交给智能体。",

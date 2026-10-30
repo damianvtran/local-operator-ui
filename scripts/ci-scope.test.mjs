@@ -2314,12 +2314,12 @@ function runClassifier(args, cwd, module = join(repoRoot, MODULE)) {
 
 // A17e owns the one exception to A2/A4's dependency-success admission rule:
 // this job CONSUMES failures, rather than starting work that needs their artifacts.
-test("A17e: three protected workers feed one exact fail-closed Desktop Tests result", () => {
+test("A17e: four protected workers feed one exact fail-closed Desktop Tests result", () => {
 	const worker = jobs.test;
 	const result = jobs["desktop-tests-result"];
 	assert.deepEqual(worker.strategy, {
 		"fail-fast": false,
-		matrix: { shard: [0, 1, 2] },
+		matrix: { shard: [0, 1, 2, 3] },
 	});
 	assert.equal(worker["timeout-minutes"], 50);
 	assert.equal(result.name, "Desktop Tests");

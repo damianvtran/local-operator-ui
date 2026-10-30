@@ -37,19 +37,27 @@
  */
 
 import { type BrowserWindow, type NativeImage, Notification } from "electron";
+import { t } from "../i18n/index";
 import {
+	TEAM_BRIDGE_NOTIFY_MAX_TITLE,
 	type TeamBridgeNotifyAuthority,
 	type TeamBridgeNotifyRequest,
 	type TeamBridgeOpenResult,
 	type TeamBridgeOpenTarget,
+	isTeamBridgeNotifyId,
 	parseTeamBridgeNotifyAuthority,
 	parseTeamBridgeNotifyRequest,
+	safeTeamBridgeBannerText,
 	teamBridgeNotifyOwnerMatches,
 } from "../shared/team-bridge-notify";
 import {
 	type LifetimeNotification,
 	NotificationLifetime,
 } from "./notification-lifetime";
+import type {
+	TeamBridgeNotificationDirectory,
+	TeamBridgeNotificationImageSource,
+} from "./team-bridge-notification-images";
 import type { TeamBridgeNotifyStore } from "./team-bridge-notify-store";
 
 /**
@@ -73,7 +81,9 @@ export type TeamBridgeBannerOptions = {
 	subtitle?: string;
 	body: string;
 	silent: boolean;
-	/** The app icon. macOS uses the bundle's own and ignores this field. */
+	/** Sender composite or app fallback. Electron 44.3.0 maps macOS icon to
+	 * UNNotificationAttachment (thumbnail); the bundle icon remains attribution.
+	 * Windows uses appLogoOverride/crop=none; Linux passes libnotify image-data. */
 	icon?: NativeImage | string;
 };
 
@@ -105,6 +115,9 @@ export type TeamBridgeNotifierOptions = {
 	store: TeamBridgeNotifyStore;
 	host: TeamBridgeNotifierHost;
 	icon?: NativeImage | string;
+	/** Memory-only enrichment, bounded by TEAM_BRIDGE_IMAGE_WAIT_MS. A late
+	 * result is for the next banner; it never mutates or re-posts this one. */
+	images?: TeamBridgeNotificationImageSource;
 	/** Test seam; production constructs Electron's `Notification`. */
 	createBanner?: (options: TeamBridgeBannerOptions) => TeamBridgeBanner;
 	/** Test seam; production asks `Notification.isSupported()`. */
@@ -119,6 +132,11 @@ export type TeamBridgeNotifierOptions = {
 	 * platform timer; a test clock keeps that window deterministic. */
 	setSettleTimer?: (callback: () => void, delay: number) => unknown;
 	clearSettleTimer?: (timer: unknown) => void;
+	/** Test seams for the bounded composite wait. Same reason as the settle
+	 * seams: the deadline is a promise race, so a real 250 ms sleep per case
+	 * would only slow the suite without proving anything more. */
+	setWaitTimer?: (callback: () => void, delay: number) => unknown;
+	clearWaitTimer?: (timer: unknown) => void;
 };
 
 export type TeamBridgeNotifyResult = { shown: boolean };
@@ -132,6 +150,9 @@ export type TeamBridgeNotifyResult = { shown: boolean };
  * for a slow history read, and short enough that a reply minutes later sounds.
  */
 export const TEAM_BRIDGE_COALESCE_MS = 10_000;
+/** Operator-approved ceiling for a cache-miss composite (decision a-a06c).
+ * The fallback is unconditional at this deadline; no post-path retry exists. */
+export const TEAM_BRIDGE_IMAGE_WAIT_MS = 250;
 
 /**
  * How long a credential refresh may stay unresolved before its banners are
@@ -240,6 +261,12 @@ export class TeamBridgeNotifier {
 	private epochOwner: string | undefined;
 	/** Armed only while a credential refresh is unresolved; see the timeout doc. */
 	private settleTimer: unknown;
+	/** Bumped by every withdrawal. A notify that waited across one must not post. */
+	private revision = 0;
+	/** The last accepted roster per tenant, not raw hub data or a persisted copy.
+	 * Replayed once when core's capability returns after a backend restart; kept
+	 * across a renderer document reset, whose directoryVersion is not re-sent. */
+	private directories = new Map<string, TeamBridgeNotificationDirectory>();
 	/** Banners withdrawn on purpose: their clicks answer as stale, not as a route. */
 	private readonly revokedBanners = new WeakSet<TeamBridgeBanner>();
 	private readonly createBanner: (
@@ -265,6 +292,14 @@ export class TeamBridgeNotifier {
 		if (!next) throw new Error("Invalid Team Bridge notification authority.");
 		const current = this.authority;
 		if (current && next.epoch < current.epoch) return;
+		if (
+			current?.epoch !== next.epoch ||
+			current.accountId !== next.accountId ||
+			current.settling !== next.settling
+		) {
+			this.directories.clear();
+			this.options.images?.clear();
+		}
 		/*
 		 * A SETTLED OWNER THAT CHANGED WITHOUT AN EPOCH BUMP IS A SWITCH THAT
 		 * BYPASSED THIS JOURNAL - a credential replaced outside the app (a CLI
@@ -286,6 +321,7 @@ export class TeamBridgeNotifier {
 			next.accountId !== this.epochOwner
 		) {
 			if (!next.settling) {
+				this.directories.clear();
 				this.clearSettleDeadline();
 				this.settledOwner = next.accountId;
 				this.authority = { epoch: next.epoch, settling: false };
@@ -317,9 +353,65 @@ export class TeamBridgeNotifier {
 		if (!next.settling && this.pendingOpen) this.options.host.signalOpen();
 	}
 
-	/** Document epochs restart on reload. Only main's document lifecycle can
-	 * reset that counter; an IPC payload cannot lower it. */
+	/** Rebuild initials after core's avatar capability becomes available. The
+	 * renderer sends a roster only on content changes, so a backend restart must
+	 * replay the accepted snapshot here rather than wait for a name/photo edit.
+	 * A capability callback is one finite reconciliation, not a recurring retry.
+	 * syncDirectory de-duplicates live, queued and in-flight work.
+	 *
+	 * FENCED ON THE CURRENT OWNER, as well as on the map clears that revocation
+	 * and every auth transition perform. This path reaches the cache through the
+	 * images layer's `syncDirectory`, which has no authority check of its own, so
+	 * the clears were the entire fence: a replay over a map that outlived a
+	 * withdrawal re-warmed the previous account's tenants into a cache that had
+	 * just been emptied. Replaying only rosters whose owner and epoch are the
+	 * live authority keeps a stale map harmless rather than merely unlikely. */
+	replayDirectories(): void {
+		const authority = this.authority;
+		if (this.awaitingDocument || authority?.settling || !authority?.accountId)
+			return;
+		this.options.images?.replayDirectory(
+			[...this.directories.values()].filter(
+				(directory) =>
+					directory.owner.accountId === authority.accountId &&
+					directory.owner.epoch === authority.epoch,
+			),
+		);
+	}
+
+	/** The renderer already fetched this roster; main revalidates its narrow
+	 * envelope and drops entries whose member/hash disappeared, then warms the
+	 * rest. Tenant scoping prevents one roster refreshing another tenant. */
+	syncDirectory(input: unknown): void {
+		if (
+			this.awaitingDocument ||
+			this.authority?.settling ||
+			!this.authority?.accountId
+		)
+			return;
+		const authority = this.authority;
+		if (!authority?.accountId) return;
+		const directory = input as Partial<TeamBridgeNotificationDirectory> | null;
+		if (
+			!directory ||
+			// Narrow at the boundary (review n1): core would refuse a bad tenant,
+			// but an id this module cannot key on should never reach the cache.
+			!isTeamBridgeNotifyId(directory.tenantId) ||
+			!Array.isArray(directory.members)
+		)
+			return;
+		const accepted = {
+			owner: { accountId: authority.accountId, epoch: authority.epoch },
+			tenantId: directory.tenantId,
+			members: directory.members as TeamBridgeNotificationDirectory["members"],
+		};
+		this.directories.set(directory.tenantId, accepted);
+		this.options.images?.syncDirectory(accepted);
+	}
+
 	resetAuthority(): void {
+		this.directories.clear();
+		this.options.images?.clear();
 		this.clearSettleDeadline();
 		// A new document has a new epoch journal, not a new signed-in person.
 		// Keep the last settled owner and banners; suspend admission until its
@@ -383,6 +475,10 @@ export class TeamBridgeNotifier {
 	}
 
 	private revoke(): void {
+		// Fences every banner still inside its image wait: see `notify`.
+		this.revision += 1;
+		this.directories.clear();
+		this.options.images?.clear();
 		// Preserve only neutral stale feedback after a settled account change.
 		if (this.pendingOpen) this.pendingUnavailable = true;
 		for (const notification of this.banners.values()) {
@@ -407,29 +503,43 @@ export class TeamBridgeNotifier {
 	 * believe it raised something. A well-formed payload that is suppressed
 	 * (quiet, muted by focus, duplicate, unsupported) answers `shown: false`.
 	 */
-	notify(input: unknown): TeamBridgeNotifyResult {
+	async notify(input: unknown): Promise<TeamBridgeNotifyResult> {
 		const request = parseTeamBridgeNotifyRequest(input);
 		if (request === null) {
 			throw new Error("Invalid Team Bridge notification payload.");
 		}
-		if (
-			this.awaitingDocument ||
-			this.authority?.settling ||
-			!teamBridgeNotifyOwnerMatches(request.owner, this.authority)
-		)
+		// Cheap refusals first, so a suppressed banner never spends a photo
+		// request. The SAME predicate runs again after the wait (below).
+		if (!this.admits(request)) return { shown: false };
+		/*
+		 * THE WAIT IS THE ONLY AWAIT IN THIS METHOD, AND EVERYTHING THAT READS OR
+		 * MUTATES DELIVERY STATE COMES AFTER IT (review M1). While a banner waits
+		 * up to 250 ms the account can sign out or switch, the window can gain
+		 * focus, and a second notify for the same conversation can arrive. So:
+		 *
+		 * - `revision` is captured before and compared after. `revoke()` bumps
+		 *   it; a banner that waited across a withdrawal belongs to the withdrawn
+		 *   set, and posting it would put a private preview on screen AFTER the
+		 *   sign-out closed everything else.
+		 * - admission (owner/epoch/settling/quiet/seq) is re-run on the live state.
+		 * - replace, the burst decision, show and seq recording all happen in one
+		 *   synchronous block after the wait, so two notifies racing in one
+		 *   conversation serialise there: the later seq replaces the earlier, an
+		 *   equal or older seq is refused, and exactly one banner stays tracked
+		 *   in `this.banners`, where `revoke()` can close it.
+		 *
+		 * Each notification owns its own deadline; no shared queue/lock means an
+		 * in-flight first banner cannot delay a second one. A late photo is only
+		 * cached: it never replaces or re-posts a delivered banner.
+		 *
+		 * THE RACE LIVES HERE, NOT IN THE CACHE. The cache is enrichment; this is
+		 * the post path, and it is the layer that must never wait on one. A slow,
+		 * broken or foreign image source therefore cannot delay a banner either.
+		 */
+		const revision = this.revision;
+		const icon = (await this.withImageDeadline(request)) ?? this.options.icon;
+		if (revision !== this.revision || !this.admits(request))
 			return { shown: false };
-		if (this.options.show === "never") return { shown: false };
-		if (!this.canNotify()) return { shown: false };
-		if (teamBridgeWindowIsQuiet(this.options.window(), request.viewing)) {
-			return { shown: false };
-		}
-		const previous = this.options.store.notifiedSeq(
-			request.owner.accountId,
-			request.conversationId,
-		);
-		if (previous !== undefined && request.seq <= previous) {
-			return { shown: false };
-		}
 		const now = (this.options.now ?? Date.now)();
 		const lastRaised = this.raisedAt.get(request.conversationId);
 		const burst =
@@ -446,6 +556,18 @@ export class TeamBridgeNotifier {
 		 * and the name now says so. This is the same rule the allow-list states:
 		 * the exemption is one line, and it is spelled.
 		 */
+		const sender = request.sender;
+		const title = sender
+			? safeTeamBridgeBannerText(
+					sender.kind === "person_agent"
+						? t("ui.teamBridge.chief.label", {
+								person: sender.display_name,
+								agent: sender.agent_name ?? "",
+							})
+						: sender.display_name,
+					TEAM_BRIDGE_NOTIFY_MAX_TITLE,
+				)
+			: request.title;
 		const notification = this.createBanner({
 			id: teamBridgeBannerId(request.owner.accountId, request.conversationId),
 			groupId: teamBridgeBannerId(
@@ -453,11 +575,11 @@ export class TeamBridgeNotifier {
 				request.conversationId,
 			),
 			...teamBridgeBannerLines(
-				request,
+				{ ...request, title },
 				this.options.platform ?? process.platform,
 			),
 			silent: burst,
-			...(this.options.icon ? { icon: this.options.icon } : {}),
+			...(icon ? { icon } : {}),
 		});
 		/*
 		 * RETAINED AND WIRED BY THE SAME CALL, for the reason
@@ -487,7 +609,89 @@ export class TeamBridgeNotifier {
 			request.conversationId,
 			request.seq,
 		);
+		// Only AFTER show/seq recording. Same-tag replacement can re-alert on
+		// macOS/Windows and Linux has no public stable-id replacement guarantee.
+		// Until each platform proves otherwise, completion warms future fallback
+		// only: never close/re-show or mutate this event's routing/lifetime.
 		return { shown: true };
+	}
+
+	/**
+	 * Whether this request may raise a banner against the LIVE state.
+	 *
+	 * One predicate, called before and after the bounded image wait, so the two
+	 * checks cannot drift apart. Every clause reads state the wait can change.
+	 */
+	private admits(request: TeamBridgeNotifyRequest): boolean {
+		if (
+			this.awaitingDocument ||
+			this.authority?.settling ||
+			!teamBridgeNotifyOwnerMatches(request.owner, this.authority)
+		)
+			return false;
+		if (this.options.show === "never") return false;
+		if (!this.canNotify()) return false;
+		if (teamBridgeWindowIsQuiet(this.options.window(), request.viewing))
+			return false;
+		const previous = this.options.store.notifiedSeq(
+			request.owner.accountId,
+			request.conversationId,
+		);
+		return previous === undefined || request.seq > previous;
+	}
+
+	/**
+	 * Await one sender composite for AT MOST `TEAM_BRIDGE_IMAGE_WAIT_MS`.
+	 *
+	 * Resolves early on a hit. On a miss it starts (or joins) the cache's
+	 * single flight and resolves at the deadline even if that flight never
+	 * settles, so a hub that hangs costs the banner 250 ms and no more. A
+	 * composite that lands later stays in the cache for the next banner; this
+	 * promise has already resolved and nothing here re-posts or replaces a
+	 * delivered banner.
+	 *
+	 * No retry exists on this path, by construction: the wait is tried once per
+	 * notification, and a refusal is remembered by the cache, not by this call.
+	 */
+	private async withImageDeadline(
+		request: TeamBridgeNotifyRequest,
+	): Promise<NativeImage | string | undefined> {
+		const images = this.options.images;
+		if (!images) return undefined;
+		const reading = images.read(request, TEAM_BRIDGE_IMAGE_WAIT_MS);
+		const setTimer =
+			this.options.setWaitTimer ??
+			((callback: () => void, delay: number) => {
+				const timer = setTimeout(callback, delay);
+				timer.unref?.();
+				return timer;
+			});
+		const clearTimer =
+			this.options.clearWaitTimer ??
+			((timer: unknown) =>
+				clearTimeout(timer as ReturnType<typeof setTimeout>));
+		let timer: unknown;
+		try {
+			// When the deadline wins, post what is ALREADY in memory: the initials
+			// warmed at directory load (QA Q-1, plan a-a06c "else initials"). A
+			// synchronous lookup, never a second request in the post path.
+			return (
+				(await Promise.race([
+					reading,
+					new Promise<undefined>((resolve) => {
+						timer = setTimer(
+							() => resolve(undefined),
+							TEAM_BRIDGE_IMAGE_WAIT_MS,
+						);
+					}),
+				])) ?? images.peek(request)
+			);
+		} finally {
+			// Reading rejects? `read` never does; this guard keeps a future one from
+			// becoming an unhandled rejection that would silence the banner.
+			reading.catch(() => undefined);
+			if (timer !== undefined) clearTimer(timer);
+		}
 	}
 
 	/**

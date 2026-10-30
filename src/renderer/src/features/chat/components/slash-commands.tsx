@@ -53,6 +53,7 @@ import type {
 } from "@shared/api/local-operator/profile-hooks";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -1788,6 +1789,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	onPick,
 	onActionPick,
 }) => {
+	useI18nLocale();
 	const listId = state.listId;
 	const activeRef = useRef<HTMLLIElement | null>(null);
 	/*
@@ -2331,7 +2333,9 @@ function actionRowContent(row: ArgumentActionRow) {
 			<span className="min-w-0 flex-1 truncate text-ink-muted">
 				{row.description}
 			</span>
-			<span className="shrink-0 text-meta text-ink-dim">Action</span>
+			<span className="shrink-0 text-meta text-ink-dim">
+				{t("ui.chat.pickers.slash.action_kind")}
+			</span>
 		</>
 	);
 }

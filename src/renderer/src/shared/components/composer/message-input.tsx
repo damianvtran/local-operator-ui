@@ -1022,6 +1022,21 @@ export type MessageInputProps = {
 	 */
 	transcriptless?: boolean;
 	/**
+	 * Which speech-to-text registration this composer owns, defaulted to the
+	 * chat's own id so every existing host keeps registering where it does today.
+	 *
+	 * WHY IT IS A PROP AT ALL. The push-to-talk binding is dispatched through a
+	 * module-level `Map` of handlers keyed by this string
+	 * (`use-speech-to-text-manager.ts`), and `Map.set` keeps ONE handler per key.
+	 * Two composers live at once - the chat pane and a host that mounts its own
+	 * box beside it - would therefore have the second mount silently REPLACE the
+	 * first, so the chord dispatched to the wrong box (or to an unmounted one)
+	 * and the displaced composer's hold stopped answering. A host that mounts a
+	 * second live composer supplies its own id; the default keeps the single-host
+	 * case byte-identical.
+	 */
+	speechRegistrationId?: string;
+	/**
 	 * Whether this box may take the caret ON ITS OWN INITIATIVE - the mount, and
 	 * the moments a refused box becomes writable again (a session is picked in the
 	 * strip's "Send to", a busy turn ends, a secret answer is posted). Left unset
@@ -1855,6 +1870,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			ownGutter = false,
 			isHydrating = false,
 			transcriptless = false,
+			speechRegistrationId = "message-input",
 			autoFocus = true,
 			unavailable = false,
 			mentionsEnabled = false,
@@ -7184,7 +7200,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		// Register with speech-to-text manager
 		useSpeechToTextManager(
-			"message-input",
+			speechRegistrationId,
 			SpeechToTextPriority.MESSAGE_INPUT,
 			{ start: handleStartRecording, stop: handleStopRecording },
 			/*

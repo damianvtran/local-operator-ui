@@ -34,6 +34,7 @@ import {
 	useHubActions,
 	useHubUpdates,
 } from "@shared/api/local-operator/hub-hooks";
+import { hubRegistryNameCounts } from "@shared/api/local-operator/hub-link-actions";
 import { useHubLinks } from "@shared/api/local-operator/hub-link-hooks";
 import {
 	linksForLocalItem,
@@ -109,7 +110,6 @@ import {
 	FolderPlus,
 	GitFork,
 	GripVertical,
-	Hourglass,
 	LoaderCircle,
 	type LucideIcon,
 	MessageSquarePlus,
@@ -229,7 +229,7 @@ import {
 	searchChats,
 } from "../chat-search";
 import { pinnedRows, unpinnedRows } from "../chat-sections";
-import { subagentClause, subagentMarks } from "../chat-session-subagents";
+import { subagentClause } from "../chat-session-subagents";
 import {
 	agentRecencyMs,
 	filterAgentRows,
@@ -743,11 +743,7 @@ import {
 	refreshFocusedInside,
 } from "../sidebar-focus-hold";
 
-import {
-	ChatAsksOutstanding,
-	ChatSessionStatus,
-	SubagentRunningMark,
-} from "./chat-session-status";
+import { ChatAsksOutstanding, ChatSessionStatus } from "./chat-session-status";
 
 /**
  * How often the catalogue polls when the machine-wide feed is NOT available.
@@ -1448,6 +1444,20 @@ export function ChatSidebar({
 		[teamLabels],
 	);
 	/*
+	 * How many loaded rows answer to each display name, per kind. Only read by
+	 * the mark on a core WITHOUT the id capability (`hub_items_by_id`): there the
+	 * address is the name, and core's name arm refuses nothing - it checks every
+	 * row whose name casefolds to it (`check.py`). Two rows means one press
+	 * writes two items, so the mark asks instead.
+	 */
+	const displayNameCounts = useMemo(
+		() => ({
+			agent: hubRegistryNameCounts(profiles.data),
+			team: hubRegistryNameCounts(teams.data),
+		}),
+		[profiles.data, teams.data],
+	);
+	/*
 	 * THE HUB'S UPDATE MARKS (design B6). One store read, polled at 60 s, gated on
 	 * its own capability so a backend that predates it is never asked. The marks
 	 * are drawn by `entity` below and the per-section strip by `hubStrip`; both
@@ -1458,6 +1468,16 @@ export function ChatSidebar({
 	);
 	const hubItems = hubItemIndex(hubUpdates.data);
 	const fullHubLinks = desktopFeatureEnabled(capabilities.data, "hub_links");
+	/*
+	 * WHICH ADDRESS the hub mutations send. `hub_items_by_id` is core's exact arm
+	 * (`local_id` reaches one row of one kind); without it the released `name`
+	 * arm is the only one an older core accepts, so the mark passes the row's
+	 * display name instead of its link id.
+	 */
+	const hubItemsById = desktopFeatureEnabled(
+		capabilities.data,
+		"hub_items_by_id",
+	);
 	const hubLinks = useHubLinks(ready && fullHubLinks);
 	const hub = useHubActions();
 	// Whether the backend tracks any hub-linked item at all: the check control is
@@ -4362,7 +4382,6 @@ export function ChatSidebar({
 		 * ride the row's own accessible name and tooltip (below), which is what
 		 * keeps the pointer and screen-reader channels no narrower than the pixels.
 		 */
-		const marks = subagentMarks(row);
 		/**
 		 * THE ROW'S OWN PRESS, shared by the row's button and by the team mark inside it.
 		 *
@@ -4880,56 +4899,35 @@ export function ChatSidebar({
 				 */}
 				<ChatRowTitle text={conversationTitleForDisplay(row.title)} />
 				{/*
-				 * THE SUBAGENT INDICATOR, immediately after the title and before the
-				 * trailing statement - the placement `sidebar-row-space.md` §2 forces:
-				 * every element here is `shrink-0`, so none of them can be truncated
-				 * away, and the title's clip is the only thing that pays.
+				 * NOTHING IS DRAWN BETWEEN THE TITLE AND THE TRAILING STATEMENT ANY MORE,
+				 * and `sidebar-row-space.md` §2's placement rule is why that is now the only
+				 * shape available: every element in this line is `shrink-0` and the title's
+				 * clip is the one thing that pays for one of them.
 				 *
-				 * TWO MARKS, INDEPENDENTLY DRAWN, because they are two facts: a child at
-				 * work (the shared `SubagentRunningMark` - three equal beads in the accent, the
-				 * app's own "a thing is at work" shape, and the same mark the `delegating`
-				 * rung's primary slot wears) and a child waiting for capacity (`Hourglass`,
-				 * muted). The delegating row is the one place they interact: its primary
-				 * mark already IS the running mark, so `subagentMarks` suppresses the
-				 * running half there and the queued glyph still draws - the trio carries
-				 * "subagents are at work", not "none of them has started".
+				 * THE SUBAGENT INDICATOR USED TO SIT HERE, as two independently drawn
+				 * `shrink-0` glyphs (the three-bead `SubagentRunningMark` for a child at work,
+				 * a muted `Hourglass` for a child waiting for capacity). Both counts are
+				 * optional on the wire and absent means UNKNOWN rather than zero, so a row
+				 * could be painted without them and gain them on the next read - and the glyph
+				 * then took its width out of the title and re-cut the ellipsis under the
+				 * reader. Measured on this fixture at a 264px panel: the clip went 152 ->
+				 * 130px and the cut column 24 -> 21 characters 1.6 s after the first
+				 * contentful frame.
 				 *
-				 * THE SHAPE REPLACED `Share2` (issue #840), AND THE DISC IN TURN REPLACED
-				 * ITSELF (2026-10-06): a share glyph beside the row's own act buttons read as
-				 * an action, so the running mark moved out of the icon vocabulary into the
-				 * app's round-mark one; the disc that landed then read as a generic "record"
-				 * dot rather than as CHILDREN, so it is the operator-ACKed trio now.
-				 * `SubagentRunningMark` carries the geometry, the fusion check and the sizing.
+				 * IT LIVES IN THE LEADING STATUS CELL NOW (`ChatSessionStatus`, and the
+				 * precedence rule is argued at length there): a fixed `size-4` box drawn on
+				 * every row whether or not it holds a glyph, so a count that arrives after the
+				 * row has painted changes what is IN the row and never how much of the title
+				 * is cut. That is the only shape that is invariant AND costs no width - a
+				 * trailing lane reserved on every row was measured here too and took 36px off
+				 * every title, pushing two titles that had rendered whole into ellipsis at a
+				 * 264px panel.
 				 *
-				 * 14px (`size-3.5`, the icon ramp's `sm` step beside `body-sm` text),
-				 * STATIC, and `aria-hidden`: they are ink. The words arrive through the
-				 * row's own `sr-only` sentence and its tooltip, both from
-				 * `subagentClause`, which is the repo's "one predicate, several channels"
-				 * rule.
-				 *
-				 * `data-subagent-mark` is the hook this change's own tests and the
-				 * evidence rigs address the mark by, following the row's existing
-				 * convention (`data-session-time`, `data-session-archived`).
-				 *
-				 * NOTE FOR THE REVIEWER: the row is `gap-1` (4px), so `ms-1` on top of
-				 * it makes the gap before each glyph 8px and one mark cost 22px rather
-				 * than the spec's 18px. `ms-1` is the spec's explicit class list and is
-				 * kept; if the 240px frames show the title starved, dropping `ml-1` is
-				 * the one-word fix that restores the spec's own arithmetic.
+				 * THE WORDS WERE NEVER HERE: they ride the row's `sr-only` sentence and its
+				 * tooltip through `subagentClause` (below), which is the repo's "one
+				 * predicate, several channels" rule. `SubagentRunningMark` still carries the
+				 * geometry of the trio and the reasoning for its shape (issue #840).
 				 */}
-				{marks.running && (
-					<SubagentRunningMark
-						mark="running"
-						className="ms-1 size-3.5 text-accent"
-					/>
-				)}
-				{marks.queued && (
-					<Hourglass
-						aria-hidden="true"
-						data-subagent-mark="queued"
-						className="ms-1 size-3.5 shrink-0 text-ink-muted"
-					/>
-				)}
 				{/* In a flat list nothing else names the profile answering, so two
 			    untitled chats on different agents were indistinguishable. Nested
 			    rows already inherit the identity from their parent, and a row that
@@ -7177,6 +7175,17 @@ export function ChatSidebar({
 							link={linkedOrigin}
 							staged={staged}
 							onDetail={() => openHubDetail(kind, name)}
+							itemName={name}
+							displayName={displayName}
+							itemsById={hubItemsById}
+							nameAmbiguous={
+								!(kind === "team"
+									? teams.isSuccess && !teams.isFetching
+									: profiles.isSuccess && !profiles.isFetching) ||
+								(displayNameCounts[kind === "team" ? "team" : "agent"].get(
+									name.trim().toLowerCase(),
+								) ?? 0) !== 1
+							}
 						/>
 					)}
 					{aggregateOrigins && (

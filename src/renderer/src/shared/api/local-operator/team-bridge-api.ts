@@ -237,6 +237,45 @@ export const TeamBridgeApi = {
 		return teamBridgeConversationSchema.parse(answer);
 	},
 
+	/**
+	 * Invite people and agents into an existing group or channel.
+	 *
+	 * This route creates INVITATIONS, not active access. Humans join themselves;
+	 * an agent stays `invited` and muted until its owner accepts through the
+	 * separate consent route. The returned conversation is therefore authoritative
+	 * about who is active, and this action never follows with a consent write.
+	 */
+	async addMembers(input: {
+		conversationId: string;
+		tenantId: string;
+		expectedAccountId?: string;
+		members: TeamBridgeMemberInput[];
+	}): Promise<TeamBridgeConversation> {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.conversations.members.add",
+			...(await teamBridgeWriteOwner(input.expectedAccountId, input.tenantId)),
+			conversation_id: input.conversationId,
+			members: input.members,
+		});
+		return teamBridgeConversationSchema.parse(answer);
+	},
+
+	/** Remove one member; the hub owns administrator and owner-succession rules. */
+	async removeMember(input: {
+		conversationId: string;
+		tenantId: string;
+		expectedAccountId?: string;
+		accountId: string;
+	}): Promise<TeamBridgeConversation> {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.conversations.members.remove",
+			...(await teamBridgeWriteOwner(input.expectedAccountId, input.tenantId)),
+			conversation_id: input.conversationId,
+			account_id: input.accountId,
+		});
+		return teamBridgeConversationSchema.parse(answer);
+	},
+
 	async listMessages(
 		conversationId: string,
 		options: { tenantId?: string; limit?: number; beforeSeq?: number } = {},
