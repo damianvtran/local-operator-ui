@@ -144,6 +144,7 @@ import esUiAgentsNavigation from "./catalogues/es/ui.agents.navigation.json";
 import esUiAgentsPages from "./catalogues/es/ui.agents.pages.json";
 import esUiAgentsPublication from "./catalogues/es/ui.agents.publication.json";
 import esUiAgentsRefusals from "./catalogues/es/ui.agents.refusals.json";
+import esUiAgentsRouting from "./catalogues/es/ui.agents.routing.json";
 import esUiAgentsSettings from "./catalogues/es/ui.agents.settings.json";
 import esUiAgentsSkills from "./catalogues/es/ui.agents.skills.json";
 import esUiAgentsStarters from "./catalogues/es/ui.agents.starters.json";
@@ -253,6 +254,7 @@ import frUiAgentsNavigation from "./catalogues/fr/ui.agents.navigation.json";
 import frUiAgentsPages from "./catalogues/fr/ui.agents.pages.json";
 import frUiAgentsPublication from "./catalogues/fr/ui.agents.publication.json";
 import frUiAgentsRefusals from "./catalogues/fr/ui.agents.refusals.json";
+import frUiAgentsRouting from "./catalogues/fr/ui.agents.routing.json";
 import frUiAgentsSettings from "./catalogues/fr/ui.agents.settings.json";
 import frUiAgentsSkills from "./catalogues/fr/ui.agents.skills.json";
 import frUiAgentsStarters from "./catalogues/fr/ui.agents.starters.json";
@@ -362,6 +364,7 @@ import hiUiAgentsNavigation from "./catalogues/hi/ui.agents.navigation.json";
 import hiUiAgentsPages from "./catalogues/hi/ui.agents.pages.json";
 import hiUiAgentsPublication from "./catalogues/hi/ui.agents.publication.json";
 import hiUiAgentsRefusals from "./catalogues/hi/ui.agents.refusals.json";
+import hiUiAgentsRouting from "./catalogues/hi/ui.agents.routing.json";
 import hiUiAgentsSettings from "./catalogues/hi/ui.agents.settings.json";
 import hiUiAgentsSkills from "./catalogues/hi/ui.agents.skills.json";
 import hiUiAgentsStarters from "./catalogues/hi/ui.agents.starters.json";
@@ -471,6 +474,7 @@ import ruUiAgentsNavigation from "./catalogues/ru/ui.agents.navigation.json";
 import ruUiAgentsPages from "./catalogues/ru/ui.agents.pages.json";
 import ruUiAgentsPublication from "./catalogues/ru/ui.agents.publication.json";
 import ruUiAgentsRefusals from "./catalogues/ru/ui.agents.refusals.json";
+import ruUiAgentsRouting from "./catalogues/ru/ui.agents.routing.json";
 import ruUiAgentsSettings from "./catalogues/ru/ui.agents.settings.json";
 import ruUiAgentsSkills from "./catalogues/ru/ui.agents.skills.json";
 import ruUiAgentsStarters from "./catalogues/ru/ui.agents.starters.json";
@@ -580,6 +584,7 @@ import urUiAgentsNavigation from "./catalogues/ur/ui.agents.navigation.json";
 import urUiAgentsPages from "./catalogues/ur/ui.agents.pages.json";
 import urUiAgentsPublication from "./catalogues/ur/ui.agents.publication.json";
 import urUiAgentsRefusals from "./catalogues/ur/ui.agents.refusals.json";
+import urUiAgentsRouting from "./catalogues/ur/ui.agents.routing.json";
 import urUiAgentsSettings from "./catalogues/ur/ui.agents.settings.json";
 import urUiAgentsSkills from "./catalogues/ur/ui.agents.skills.json";
 import urUiAgentsStarters from "./catalogues/ur/ui.agents.starters.json";
@@ -689,6 +694,7 @@ import viUiAgentsNavigation from "./catalogues/vi/ui.agents.navigation.json";
 import viUiAgentsPages from "./catalogues/vi/ui.agents.pages.json";
 import viUiAgentsPublication from "./catalogues/vi/ui.agents.publication.json";
 import viUiAgentsRefusals from "./catalogues/vi/ui.agents.refusals.json";
+import viUiAgentsRouting from "./catalogues/vi/ui.agents.routing.json";
 import viUiAgentsSettings from "./catalogues/vi/ui.agents.settings.json";
 import viUiAgentsSkills from "./catalogues/vi/ui.agents.skills.json";
 import viUiAgentsStarters from "./catalogues/vi/ui.agents.starters.json";
@@ -798,6 +804,7 @@ import zhCNUiAgentsNavigation from "./catalogues/zh-CN/ui.agents.navigation.json
 import zhCNUiAgentsPages from "./catalogues/zh-CN/ui.agents.pages.json";
 import zhCNUiAgentsPublication from "./catalogues/zh-CN/ui.agents.publication.json";
 import zhCNUiAgentsRefusals from "./catalogues/zh-CN/ui.agents.refusals.json";
+import zhCNUiAgentsRouting from "./catalogues/zh-CN/ui.agents.routing.json";
 import zhCNUiAgentsSettings from "./catalogues/zh-CN/ui.agents.settings.json";
 import zhCNUiAgentsSkills from "./catalogues/zh-CN/ui.agents.skills.json";
 import zhCNUiAgentsStarters from "./catalogues/zh-CN/ui.agents.starters.json";
@@ -1028,6 +1035,7 @@ export const bundledCatalogues: Readonly<
 		...esUiAgentsPages,
 		...esUiAgentsPublication,
 		...esUiAgentsRefusals,
+		...esUiAgentsRouting,
 		...esUiAgentsSettings,
 		...esUiAgentsSkills,
 		...esUiAgentsStarters,
@@ -1139,6 +1147,7 @@ export const bundledCatalogues: Readonly<
 		...frUiAgentsPages,
 		...frUiAgentsPublication,
 		...frUiAgentsRefusals,
+		...frUiAgentsRouting,
 		...frUiAgentsSettings,
 		...frUiAgentsSkills,
 		...frUiAgentsStarters,
@@ -1250,6 +1259,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiAgentsPages,
 		...hiUiAgentsPublication,
 		...hiUiAgentsRefusals,
+		...hiUiAgentsRouting,
 		...hiUiAgentsSettings,
 		...hiUiAgentsSkills,
 		...hiUiAgentsStarters,
@@ -1361,6 +1371,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiAgentsPages,
 		...ruUiAgentsPublication,
 		...ruUiAgentsRefusals,
+		...ruUiAgentsRouting,
 		...ruUiAgentsSettings,
 		...ruUiAgentsSkills,
 		...ruUiAgentsStarters,
@@ -1472,6 +1483,7 @@ export const bundledCatalogues: Readonly<
 		...urUiAgentsPages,
 		...urUiAgentsPublication,
 		...urUiAgentsRefusals,
+		...urUiAgentsRouting,
 		...urUiAgentsSettings,
 		...urUiAgentsSkills,
 		...urUiAgentsStarters,
@@ -1583,6 +1595,7 @@ export const bundledCatalogues: Readonly<
 		...viUiAgentsPages,
 		...viUiAgentsPublication,
 		...viUiAgentsRefusals,
+		...viUiAgentsRouting,
 		...viUiAgentsSettings,
 		...viUiAgentsSkills,
 		...viUiAgentsStarters,
@@ -1694,6 +1707,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiAgentsPages,
 		...zhCNUiAgentsPublication,
 		...zhCNUiAgentsRefusals,
+		...zhCNUiAgentsRouting,
 		...zhCNUiAgentsSettings,
 		...zhCNUiAgentsSkills,
 		...zhCNUiAgentsStarters,

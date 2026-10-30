@@ -58622,6 +58622,223 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.agents.routing",
+			"source_sha256": "d7903758d28335a344ae7a67172859e2ed14103931d64fb0988802ebd1771c11",
+			"target_sha256": "3bc39227dbca14ac4d7b93b72295fb70534a06bc6328f8b10ee61ec6f1a0ab1e",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "96084d0b566f-agents3-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 5
+					},
+					"receipt": "i18n/receipts/96084d0b566f-agents3-es.json",
+					"receipt_sha256": "58c801bd14f727d5f5ffa4ab4c6b49ffc3df072141b7d6221b78a704c21c03b9",
+					"scope": "Agents routing copy for es: 12 seed when_to_use sentences an installed agent shows, audited as the exact bytes shipped to src/i18n/catalogues/es/ui.agents.routing.json",
+					"note": "Receipt shape verified by the writer. Evidence: i18n/audits/evidence/es/ui.agents.routing/96084d0b566f-agents3-es/ (receipt.json verdict.txt )"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.agents.routing",
+			"source_sha256": "d7903758d28335a344ae7a67172859e2ed14103931d64fb0988802ebd1771c11",
+			"target_sha256": "e11467ee78b4b0179c38288dc8be8980fa5a6ee352c4711c82d467c0f5832afb",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "00cfed525b6e-agents3-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 5,
+						"nit": 4
+					},
+					"receipt": "i18n/receipts/00cfed525b6e-agents3-fr.json",
+					"receipt_sha256": "d92ec4d80421b0d4046a24fb720fd2b12facc7cd87cd4e36e263e9ddd395739b",
+					"scope": "Agents routing copy for fr: 12 seed when_to_use sentences an installed agent shows, audited as the exact bytes shipped to src/i18n/catalogues/fr/ui.agents.routing.json",
+					"note": "Receipt shape verified by the writer. Evidence: i18n/audits/evidence/fr/ui.agents.routing/00cfed525b6e-agents3-fr/ (findings.md receipt.json verdict.txt )"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.agents.routing",
+			"source_sha256": "d7903758d28335a344ae7a67172859e2ed14103931d64fb0988802ebd1771c11",
+			"target_sha256": "28637db8ff58f46f78d2d50ece9c9cdfcc948829af594a4ecdb86ab717a44dbd",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "7d5dd4bded37-agents3-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 4,
+						"nit": 4
+					},
+					"receipt": "i18n/receipts/7d5dd4bded37-agents3-hi.json",
+					"receipt_sha256": "29f3c5f4a8646b73e728bd880ee89d86aacc56027362cdd0910962da8c3d9f8e",
+					"scope": "Agents routing copy for hi: 12 seed when_to_use sentences an installed agent shows, audited as the exact bytes shipped to src/i18n/catalogues/hi/ui.agents.routing.json",
+					"note": "Receipt shape verified by the writer. Evidence: i18n/audits/evidence/hi/ui.agents.routing/7d5dd4bded37-agents3-hi/ (findings.md receipt.json verdict.txt )"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.agents.routing",
+			"source_sha256": "d7903758d28335a344ae7a67172859e2ed14103931d64fb0988802ebd1771c11",
+			"target_sha256": "134a3957fec19233626db50fe574571c0e950452319e3524f38fa39d1717d4ca",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "d9e91e52ae99-agents3-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 6,
+						"nit": 5
+					},
+					"receipt": "i18n/receipts/d9e91e52ae99-agents3-ur.json",
+					"receipt_sha256": "b5d048ce049c7ee48645ae9479b86c5816208696f6c9355bec8d9466930d6c17",
+					"scope": "Agents routing copy for ur: 12 seed when_to_use sentences an installed agent shows, audited as the exact bytes shipped to src/i18n/catalogues/ur/ui.agents.routing.json",
+					"note": "Receipt shape verified by the writer. Evidence: i18n/audits/evidence/ur/ui.agents.routing/d9e91e52ae99-agents3-ur/ (receipt.json verdict.txt )"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.agents.routing",
+			"source_sha256": "d7903758d28335a344ae7a67172859e2ed14103931d64fb0988802ebd1771c11",
+			"target_sha256": "ee3d78fd74d8ad2bf7b90e4a75782c7487e5da1746a5bc1900ade2f0c3f39615",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "8f862c957252-agents3-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 3
+					},
+					"receipt": "i18n/receipts/8f862c957252-agents3-vi.json",
+					"receipt_sha256": "ec5c75d7d144fc4ea78c2a9a519e990ac7bf23d5ed863f7c1960c7c4bb0b3b7f",
+					"scope": "Agents routing copy for vi: 12 seed when_to_use sentences an installed agent shows, audited as the exact bytes shipped to src/i18n/catalogues/vi/ui.agents.routing.json",
+					"note": "Receipt shape verified by the writer. Evidence: i18n/audits/evidence/vi/ui.agents.routing/8f862c957252-agents3-vi/ (receipt.json verdict.txt )"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.agents.routing",
+			"source_sha256": "d7903758d28335a344ae7a67172859e2ed14103931d64fb0988802ebd1771c11",
+			"target_sha256": "ee5dbd097a94cc76b8b9c475f35a5a3c405debe394c86242d419872f126caaac",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "ba8c310f66fc-agents3-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 5,
+						"nit": 4
+					},
+					"receipt": "i18n/receipts/ba8c310f66fc-agents3-zh-cn.json",
+					"receipt_sha256": "b400e1f24d4761d1ac31cded75a57e3d0b535e3985b358d02b43ad73ddee2772",
+					"scope": "Agents routing copy for zh-CN: 12 seed when_to_use sentences an installed agent shows, audited as the exact bytes shipped to src/i18n/catalogues/zh-CN/ui.agents.routing.json",
+					"note": "Receipt shape verified by the writer. Evidence: i18n/audits/evidence/zh-CN/ui.agents.routing/ba8c310f66fc-agents3-zh-cn/ (receipt.json verdict.txt )"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.agents.routing",
+			"source_sha256": "d7903758d28335a344ae7a67172859e2ed14103931d64fb0988802ebd1771c11",
+			"target_sha256": "5d127ad1fa2a29a3e3f449243cc567f6b74b1d6d539bda71ed522806c3c0a707",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "f3dbcf309e0f-agents4-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 7,
+						"nit": 5
+					},
+					"receipt": "i18n/receipts/f3dbcf309e0f-agents4-ru.json",
+					"receipt_sha256": "dea43a65b9d1d788e044d24155e540a8034f4ae50d5494aaf53858d791473be4",
+					"scope": "Agents routing copy for ru: 12 seed when_to_use sentences an installed agent shows, audited as the exact bytes shipped to src/i18n/catalogues/ru/ui.agents.routing.json",
+					"note": "Receipt shape verified by the writer. Re-issued by its auditor after the first ru receipt was refused for finding shape. Evidence: i18n/audits/evidence/ru/ui.agents.routing/f3dbcf309e0f-agents4-ru/ (findings.md receipt.json verdict.txt )"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
