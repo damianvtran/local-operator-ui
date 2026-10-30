@@ -640,6 +640,11 @@ test("the call sites pass the capability and the display name (round-1's UUID bu
 		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
 		"utf8",
 	);
-	assert.match(sidebar, /displayName=\{name\}/);
+	/*
+	 * The mark's address prop is `itemName` (the row's REGISTRY name); the branch
+	 * under review split main's single `displayName` into the wire address and the
+	 * readable label, so this pin follows the prop that now carries the address.
+	 */
+	assert.match(sidebar, /itemName=\{name\}/);
 	assert.match(sidebar, /itemsById=\{hubItemsById\}/);
 });
