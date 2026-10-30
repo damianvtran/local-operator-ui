@@ -14,6 +14,7 @@
  * first when there is no room, are decisions this file keeps identical.
  */
 import { t } from "@shared/i18n";
+import { bridgeRow, bridgeSummary, bridgeVerb } from "./bridge-row-model";
 
 /**
  * Arguments that identify WHAT a call acted on, as opposed to its payload.
@@ -233,7 +234,20 @@ export type SendDeliveryState =
 	| "delivered"
 	| "mailbox"
 	| "unconfirmed"
-	| "failed";
+	| "failed"
+	/*
+	 * The two Team Bridge (`bridge`) states that are neither success nor
+	 * failure, read from the result's own fields rather than `delivery.state`
+	 * (`bridgeDeliveryState` below). `inbox_only`: a pair-lane `send`/`reply`
+	 * the peer accepted into its INBOX - it is not in any conversation and no
+	 * person sees it in Team Bridge, so the plain success the row used to draw
+	 * claimed a visibility the message does not have. `awaiting_acceptance`: a
+	 * DM to an agent whose owner has not accepted it yet, so it will not be
+	 * woken. Both settle with `ok: true`, so they stay out of every failed count
+	 * through `isPartialDelivery`, exactly like `mailbox`.
+	 */
+	| "inbox_only"
+	| "awaiting_acceptance";
 
 const SEND_DELIVERY_STATES: ReadonlySet<string> = new Set([
 	"delivered",
@@ -242,11 +256,46 @@ const SEND_DELIVERY_STATES: ReadonlySet<string> = new Set([
 	"failed",
 ]);
 
-/** The delivery state a result's `details` states, or `null` when it states none. */
+/**
+ * The delivery state a `bridge` result states in its own fields, via the
+ * shared tokens (`bridgeRow`, the port of the core's `bridge_row`), or `null`.
+ *
+ * `unconfirmed` reuses `send`'s state on purpose: `send_unconfirmed` and
+ * `post_failed` both mean the write may have LANDED with its confirmation
+ * lost, which is exactly the hedge `send`'s `unconfirmed` exists to say -
+ * "failed" would invite the duplicate post the hedge prevents.
+ */
+function bridgeDeliveryState(details: unknown): SendDeliveryState | null {
+	if (!details || typeof details !== "object" || Array.isArray(details))
+		return null;
+	const facts = details as Record<string, unknown>;
+	/*
+	 * The op is not on `details`, and only `dm` can carry `recipient_state`, so
+	 * passing `dm` when that field exists is the op-free reading of the same
+	 * rule; every other outcome the tokens decide ignores the op.
+	 */
+	const op = "recipient_state" in facts ? "dm" : "send";
+	const { outcome } = bridgeRow({ op }, facts);
+	if (outcome === "inbox_only") return "inbox_only";
+	if (outcome === "awaiting_acceptance") return "awaiting_acceptance";
+	if (outcome === "unconfirmed") return "unconfirmed";
+	return null;
+}
+
+/**
+ * The delivery state a result's `details` states, or `null` when it states none.
+ *
+ * `toolName` gates the Team Bridge reading: only a `bridge` result's
+ * `destination_type`/`code` fields are read, so no other tool can grow a state
+ * from a field that happens to share a name.
+ */
 export function deliveryStateFromDetails(
 	details: unknown,
+	toolName = "",
 ): SendDeliveryState | null {
 	if (!details || typeof details !== "object") return null;
+	if (toolName.trim().toLowerCase() === "bridge")
+		return bridgeDeliveryState(details);
 	const delivery = (details as Record<string, unknown>).delivery;
 	if (!delivery || typeof delivery !== "object") return null;
 	const state = (delivery as Record<string, unknown>).state;
@@ -265,9 +314,10 @@ export function deliveryStateFromDetails(
 export function preferDeliveryState(
 	details: unknown,
 	previous: SendDeliveryState | null | undefined,
+	toolName = "",
 ): SendDeliveryState | null {
 	if (!details || typeof details !== "object") return previous ?? null;
-	return deliveryStateFromDetails(details);
+	return deliveryStateFromDetails(details, toolName);
 }
 
 /**
@@ -553,8 +603,98 @@ export const SEND_DELIVERY_LABEL: Readonly<
  */
 export function isPartialDelivery(
 	state: SendDeliveryState | null | undefined,
-): state is "mailbox" | "unconfirmed" {
-	return state === "mailbox" || state === "unconfirmed";
+): state is "mailbox" | "unconfirmed" | "inbox_only" | "awaiting_acceptance" {
+	return (
+		state === "mailbox" ||
+		state === "unconfirmed" ||
+		state === "inbox_only" ||
+		state === "awaiting_acceptance"
+	);
+}
+
+/*
+ * THE KEYED DELIVERY COPY, per surface (word / hover / spoken / expansion note).
+ *
+ * The four `SEND_DELIVERY_*` maps above are `send`'s frozen copy and stay as
+ * they are (their suites pin them). Team Bridge's states are new copy, so they
+ * go through `t()` - and through a FUNCTION, resolved at render, because a
+ * module-load constant would freeze the language the module first loaded in.
+ * `bridge` also rewords `unconfirmed`: its hedge is about a conversation post
+ * whose confirmation was lost, not about a peer's wake or transcript, so
+ * `send`'s sentences would tell the reader to check the wrong thing.
+ *
+ * Each function falls back to the `send` map for every other state, so the
+ * render sites read ONE accessor per surface.
+ */
+const isBridge = (toolName: string) =>
+	toolName.trim().toLowerCase() === "bridge";
+
+/** The trailing word a delivery state draws. */
+export function deliveryWord(
+	state: SendDeliveryState | null | undefined,
+	toolName = "",
+): string | null {
+	if (!state) return null;
+	if (state === "inbox_only")
+		return t("ui.chat.canonical.tool_row.bridge.delivery.inbox_only.word");
+	if (state === "awaiting_acceptance")
+		return t(
+			"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.word",
+		);
+	if (state === "unconfirmed" && isBridge(toolName))
+		return t("ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.word");
+	return SEND_DELIVERY_WORD[state] ?? null;
+}
+
+/** The hover on that word, for the states whose word under-tells them. */
+export function deliveryTitle(
+	state: SendDeliveryState | null | undefined,
+	toolName = "",
+): string | undefined {
+	if (!state) return undefined;
+	if (state === "inbox_only")
+		return t("ui.chat.canonical.tool_row.bridge.delivery.inbox_only.title");
+	if (state === "awaiting_acceptance")
+		return t(
+			"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.title",
+		);
+	if (state === "unconfirmed" && isBridge(toolName))
+		return t("ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.title");
+	return SEND_DELIVERY_TITLE[state];
+}
+
+/** What assistive tech hears in place of the (then `aria-hidden`) word. */
+export function deliveryLabel(
+	state: SendDeliveryState | null | undefined,
+	toolName = "",
+): string | null {
+	if (!state) return null;
+	if (state === "inbox_only")
+		return t("ui.chat.canonical.tool_row.bridge.delivery.inbox_only.label");
+	if (state === "awaiting_acceptance")
+		return t(
+			"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.label",
+		);
+	if (state === "unconfirmed" && isBridge(toolName))
+		return t("ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.label");
+	return SEND_DELIVERY_LABEL[state] ?? null;
+}
+
+/** The wrapping sentence the expansion prints for a state. */
+export function deliveryNote(
+	state: SendDeliveryState | null | undefined,
+	toolName = "",
+): string | null {
+	if (!state) return null;
+	if (state === "inbox_only")
+		return t("ui.chat.canonical.tool_row.bridge.delivery.inbox_only.note");
+	if (state === "awaiting_acceptance")
+		return t(
+			"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.note",
+		);
+	if (state === "unconfirmed" && isBridge(toolName))
+		return t("ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.note");
+	return SEND_DELIVERY_NOTE[state] ?? null;
 }
 
 /**
@@ -743,8 +883,29 @@ function sessionsSummary(args: Record<string, unknown>): string | null {
 export function summaryFromArgs(
 	toolName: string,
 	args: Record<string, unknown> | null,
+	/**
+	 * The result's `details`, for the one tool whose object comes partly from
+	 * its RESULT (`bridge`: a DM's label, a count of messages read). Ignored by
+	 * every other tool.
+	 */
+	details?: Record<string, unknown> | null,
+	/** Names a `bcv_` id from the Team Bridge cache; see `BridgeLabelResolver`. */
+	resolveConversation?: ((id: string) => string | null) | null,
 ): string {
 	const name = toolName.trim();
+	if (name.toLowerCase() === "bridge") {
+		/*
+		 * Never the generic scan: its first two scalars are a `bcv_` id and a
+		 * `limit`, the operator's `Called bridge bcv_b0044d… 3`. An empty object is
+		 * honest (`Listed conversations`); an id is not.
+		 */
+		return bridgeSummary(
+			bridgeRow(args, details),
+			args,
+			resolveConversation,
+			details,
+		);
+	}
 	if (!args) return name;
 	if (name === "send") return sendSummary(args) || name;
 	// Case-folded like every other lookup in this module: the name is
@@ -1090,6 +1251,11 @@ const CATEGORIES: Record<string, ToolCategory> = {
 	team_delete: "meta",
 	project_delete: "meta",
 	sessions: "meta",
+	/*
+	 * Team Bridge is the agent talking to its team: the same coordination axis
+	 * as `send` and `sessions`, and the same category the TUI files it under.
+	 */
+	bridge: "meta",
 };
 
 /**
@@ -1194,6 +1360,15 @@ export function toolOp(
 					TRUTHY_FLAG_SPELLINGS.has(remove.toLowerCase()));
 			if (token === "milestone" && removes) {
 				return "milestone-remove";
+			}
+			/*
+			 * Team Bridge's composites (`react-remove`, `ack-working`, `ack-done`),
+			 * read through the shared tokens rather than re-derived here, so the
+			 * verb and the fold say exactly what the core's `bridge_row` decided -
+			 * including its stricter `remove === true` reading.
+			 */
+			if (key === "op" && (token === "react" || token === "ack")) {
+				return bridgeRow(args).action;
 			}
 			return token;
 		}
@@ -1445,6 +1620,16 @@ const TOOL_OP_VERBS: Record<string, Record<string, Omit<ToolVerb, "named">>> = {
 export function toolVerb(toolName: string, op?: string | null): ToolVerb {
 	const name = toolName.trim().toLowerCase();
 	const token = (op ?? "").trim().toLowerCase();
+	/*
+	 * Team Bridge's verbs are keyed copy with a failure form of their own
+	 * (`bridge-row-model.ts`), and an unknown or absent op still names the
+	 * feature (`Used Team Bridge`) rather than `Called bridge`: the wire name is
+	 * the opaque thing this row exists to replace.
+	 */
+	if (name === "bridge") {
+		const { settled, running } = bridgeVerb(token);
+		return { settled, running, named: true };
+	}
 	const byOp = token ? TOOL_OP_VERBS[name]?.[token] : undefined;
 	if (byOp) return { ...byOp, named: true };
 	const known = TOOL_VERBS[name];
