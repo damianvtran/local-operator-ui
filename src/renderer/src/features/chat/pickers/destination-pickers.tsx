@@ -13,7 +13,10 @@
  * duplicating an editor here. Everything else renders in the host.
  */
 
-import { agentDescriptionText } from "@features/agents/utils/agent-description";
+import {
+	agentDescriptionText,
+	withAgentDescriptionText,
+} from "@features/agents/utils/agent-description";
 import { autoTagSupported, forkAutoTag } from "@features/chat/chat-auto-tag";
 import { parseSidebarView } from "@features/chat/chat-sidebar-view";
 import { useConnectProviderStore } from "@features/providers/connect-provider-store";
@@ -2653,6 +2656,14 @@ type ProfileRow = {
 	name?: string;
 	kind?: string;
 	description?: string;
+	/**
+	 * Registry provenance (`builtin` | `installed` | `custom`). Present on the
+	 * agent arm of the session's `commands.entities` route, whose rows are the
+	 * registry's `profile_detail` projection (core `desktop_catalogues.py`); a
+	 * team row has none. Read only to decide whether `description` is shipped
+	 * copy (`agentDescriptionText`), never to address anything.
+	 */
+	source?: string;
 	/** A team's free-text display name, when the row carries one. */
 	label?: string;
 	/** Extra TUI-safe keys a team resolves under. Typed for the wire shape;
@@ -2671,6 +2682,15 @@ type ProfileRow = {
  * placeholder all read. `value` - what `onPick` selects, what `submit` sends
  * and what the detail query asks for - never routes through this.
  */
+/**
+ * Agent rows resolve their description through the shared resolver
+ * (`withAgentDescriptionText`); a team's description is always the operator's.
+ */
+const withLocalizedAgentDescription = (
+	row: ProfileRow,
+	which: "team" | "agent",
+): ProfileRow => (which === "agent" ? withAgentDescriptionText(row) : row);
+
 const readableProfileName = (row: ProfileRow | undefined, fallback: string) =>
 	teamDisplayName({ name: row?.name ?? fallback, label: row?.label });
 
@@ -2721,7 +2741,11 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 
 	const listRows = useMemo<ProfileRow[]>(() => {
 		void locale;
-		if (!draftMode) return list.data?.entities ?? [];
+		if (!draftMode) {
+			return (list.data?.entities ?? []).map((row) =>
+				withLocalizedAgentDescription(row, which),
+			);
+		}
 		return which === "team"
 			? (draftTeams.data ?? []).map((team) => ({
 					value: team.name,
@@ -2737,8 +2761,9 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 					 * These rows ARE the profiles registry's, so they carry the provenance
 					 * the resolution needs - and an installed seed serves its routing text
 					 * in this field, which stays English unless it resolves to a key. The
-					 * non-draft arm above comes from the session's entity route and carries
-					 * no `source`, so it cannot take this path and stays raw.
+					 * non-draft arm above takes the same resolver: the session's entity
+					 * route returns the registry's `profile_detail` rows, which carry
+					 * `source` too (agent review round 2, R2-1).
 					 */
 					description: agentDescriptionText(profile),
 					kind: profile.kind,
@@ -2790,7 +2815,11 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 	 * `instructions`.
 	 */
 	const selectedRow = (
-		draftMode ? listRows : (detail.data?.entities ?? [])
+		draftMode
+			? listRows
+			: (detail.data?.entities ?? []).map((row) =>
+					withLocalizedAgentDescription(row, which),
+				)
 	).find((row) => row.value === selected);
 	const chart = detail.data?.current as
 		| Record<string, unknown>

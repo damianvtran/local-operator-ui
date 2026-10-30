@@ -58631,7 +58631,8 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
-				"date": "2026-10-30"
+				"date": "2026-10-30",
+				"note": "radient/auto alias; provider fallbacks occurred; concrete served model not recorded in translator.logs"
 			},
 			"auditors": [
 				{
@@ -58662,7 +58663,8 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
-				"date": "2026-10-30"
+				"date": "2026-10-30",
+				"note": "radient/auto alias; provider fallbacks occurred; concrete served model not recorded in translator.logs"
 			},
 			"auditors": [
 				{
@@ -58693,7 +58695,8 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
-				"date": "2026-10-30"
+				"date": "2026-10-30",
+				"note": "radient/auto alias; provider fallbacks occurred; concrete served model not recorded in translator.logs"
 			},
 			"auditors": [
 				{
@@ -58724,7 +58727,8 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
-				"date": "2026-10-30"
+				"date": "2026-10-30",
+				"note": "radient/auto alias; provider fallbacks occurred; concrete served model not recorded in translator.logs"
 			},
 			"auditors": [
 				{
@@ -58755,7 +58759,8 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
-				"date": "2026-10-30"
+				"date": "2026-10-30",
+				"note": "radient/auto alias; provider fallbacks occurred; concrete served model not recorded in translator.logs"
 			},
 			"auditors": [
 				{
@@ -58786,7 +58791,8 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
-				"date": "2026-10-30"
+				"date": "2026-10-30",
+				"note": "radient/auto alias; provider fallbacks occurred; concrete served model not recorded in translator.logs"
 			},
 			"auditors": [
 				{
@@ -58817,7 +58823,8 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
-				"date": "2026-10-30"
+				"date": "2026-10-30",
+				"note": "radient/auto alias; provider fallbacks occurred; concrete served model not recorded in translator.logs"
 			},
 			"auditors": [
 				{

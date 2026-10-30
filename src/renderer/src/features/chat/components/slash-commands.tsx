@@ -656,7 +656,12 @@ function useArgumentRows(
 					? themeName
 					: entities.data?.current;
 
+	/* The `/agent` rows print a shipped seed's description in the active language
+	 * (`argumentRows`), so a language switch must rebuild them. The rest of this
+	 * popup's rows are literal English and ignore the locale. */
+	const locale = useI18nLocale();
 	return useMemo(() => {
+		void locale;
 		if (!source) {
 			return { rows: [], loading: false, error: null, needsSession: false };
 		}
@@ -894,6 +899,7 @@ function useArgumentRows(
 		draftRosterSource,
 		draftTeams,
 		draftProfiles,
+		locale,
 	]);
 }
 
@@ -952,7 +958,9 @@ export function useSlashCompletion({
 	 * The tag surface's own capability. The command description reuses the
 	 * audited `ui.chat.tags.label` key; the slash popup itself is an English
 	 * surface today (its rows and footers are literal), so this memo needs no
-	 * locale subscription of its own.
+	 * locale subscription of its own. The one exception is the `/agent` argument
+	 * list, whose shipped-seed descriptions are catalogue copy: the
+	 * argument-source hook subscribes for that.
 	 */
 	const tagsEnabled = desktopFeatureEnabled(capabilities.data, "session_tags");
 	/*

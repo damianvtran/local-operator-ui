@@ -52,6 +52,7 @@ const bundle = await build({
 		contents: [
 			'export * as copy from "./src/renderer/src/features/agents/utils/agent-description";',
 			'export * as locale from "./src/i18n/locale";',
+			'export { argumentRows } from "./src/renderer/src/features/chat/components/slash-argument-rows";',
 			'export { registerCatalogue, clearRegisteredCatalogues, t } from "./src/i18n/messages";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -342,6 +343,142 @@ test("an uploaded agent that repeats a seed sentence is still user data", () => 
 			"no key either way for a custom row",
 		);
 	}
+	lib.clearRegisteredCatalogues();
+	lib.locale.setLocale("en");
+});
+
+test("a row whose source is missing or unknown never resolves a key (fails closed)", () => {
+	/* R2-2. The resolver used to refuse only `custom`, so a row with no `source`
+	 * (an untyped wire row) or a value this client has never heard of keyed 84/84
+	 * when its text was a shipped sentence. Provenance that cannot be established
+	 * must read as the operator's text, so only `builtin` and `installed` resolve. */
+	lib.locale.setLocale("fr");
+	lib.registerCatalogue("fr", {
+		"ui.agents.descriptions.reviewer": MARKER,
+		"ui.agents.routing.reviewer": ROUTING_MARKER,
+	});
+	for (const sentence of [SHIPPED.reviewer, SHIPPED_ROUTING.reviewer]) {
+		for (const source of [undefined, null, "", "hub", "Builtin", "unknown"]) {
+			const profile = { name: "reviewer", source, description: sentence };
+			assert.equal(
+				lib.copy.seedTextKey(profile),
+				null,
+				`source ${JSON.stringify(source)}: no key`,
+			);
+			assert.equal(
+				text(profile),
+				sentence,
+				`source ${JSON.stringify(source)}: the raw sentence, never a marker`,
+			);
+		}
+		const noSourceKey = { name: "reviewer", description: sentence };
+		assert.equal(lib.copy.seedTextKey(noSourceKey), null, "source absent");
+	}
+	/* Control: the two recognised sources still resolve, so the test would fail if
+	 * the allow-list refused everything. */
+	assert.equal(text(row("reviewer", "builtin", SHIPPED.reviewer)), MARKER);
+	assert.equal(
+		text(row("reviewer", "installed", SHIPPED_ROUTING.reviewer)),
+		ROUTING_MARKER,
+	);
+	lib.clearRegisteredCatalogues();
+	lib.locale.setLocale("en");
+});
+
+test("a picker row from the entity route resolves like the roster's (R2-1)", () => {
+	/* The in-session `/agent` picker reads core's `commands.entities` rows, which
+	 * are `profile_detail` projections and DO carry `source` and `name`. Before the
+	 * fix its description was printed raw, so an installed seed showed English in a
+	 * French session. */
+	lib.locale.setLocale("fr");
+	lib.registerCatalogue("fr", {
+		"ui.agents.descriptions.reviewer": MARKER,
+		"ui.agents.routing.reviewer": ROUTING_MARKER,
+	});
+	const installed = lib.copy.withAgentDescriptionText({
+		value: "reviewer",
+		name: "reviewer",
+		source: "installed",
+		kind: "role",
+		description: SHIPPED_ROUTING.reviewer,
+	});
+	assert.equal(installed.description, ROUTING_MARKER);
+	assert.equal(installed.kind, "role", "other fields pass through");
+	assert.equal(installed.value, "reviewer");
+	const builtin = lib.copy.withAgentDescriptionText({
+		value: "reviewer",
+		source: "builtin",
+		description: SHIPPED.reviewer,
+	});
+	assert.equal(builtin.description, MARKER, "name falls back to value");
+	const edited = `${SHIPPED_ROUTING.reviewer} Ours too.`;
+	assert.equal(
+		lib.copy.withAgentDescriptionText({
+			value: "reviewer",
+			source: "installed",
+			description: edited,
+		}).description,
+		edited,
+		"an edited install stays verbatim",
+	);
+	assert.equal(
+		lib.copy.withAgentDescriptionText({
+			value: "reviewer",
+			description: SHIPPED_ROUTING.reviewer,
+		}).description,
+		SHIPPED_ROUTING.reviewer,
+		"a row with no source stays verbatim",
+	);
+	lib.clearRegisteredCatalogues();
+	lib.locale.setLocale("en");
+});
+
+test("the composer's inline /agent list prints a seed's description in the active language (O-1)", () => {
+	/* QA round 2, O-1: `/agent ` in a French composer still listed the English
+	 * routing sentence for installed seeds, because the argument rows printed the
+	 * field raw. The rows now go through the same resolver; a team row's
+	 * description stays the operator's, and a row without `source` stays raw. */
+	lib.locale.setLocale("fr");
+	lib.registerCatalogue("fr", {
+		"ui.agents.descriptions.reviewer": MARKER,
+		"ui.agents.routing.reviewer": ROUTING_MARKER,
+	});
+	const [installed, uninstalled, unknown] = lib.argumentRows(
+		"agent",
+		[
+			{
+				value: "reviewer",
+				name: "reviewer",
+				source: "installed",
+				description: SHIPPED_ROUTING.reviewer,
+			},
+			{
+				value: "reviewer",
+				name: "reviewer",
+				source: "builtin",
+				description: SHIPPED.reviewer,
+			},
+			{
+				value: "reviewer",
+				name: "reviewer",
+				description: SHIPPED_ROUTING.reviewer,
+			},
+		],
+		null,
+	);
+	assert.equal(installed.description, ROUTING_MARKER);
+	assert.equal(uninstalled.description, MARKER);
+	assert.equal(unknown.description, SHIPPED_ROUTING.reviewer);
+	const [team] = lib.argumentRows(
+		"team",
+		[{ value: "reviewers", name: "reviewers", description: SHIPPED.reviewer }],
+		null,
+	);
+	assert.equal(
+		team.description,
+		SHIPPED.reviewer,
+		"teams are never translated",
+	);
 	lib.clearRegisteredCatalogues();
 	lib.locale.setLocale("en");
 });

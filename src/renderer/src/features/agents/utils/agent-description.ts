@@ -34,13 +34,17 @@
  *     name), and `source` alone cannot tell an installed-then-edited row from a
  *     pristine one - `installed` covers both.
  *  2. its description is the shipped English sentence of one of its two
- *     families, compared under the same whitespace normalisation. This is the
+ *     families, IDENTICAL UP TO WHITESPACE RUNS (both sides are folded by
+ *     `comparable()`; nothing else is forgiven). This is the
  *     load-bearing check: the description is editable after install, so a
  *     touched sentence stops matching and falls back to raw, which is the safe
  *     direction for anything an operator may have typed.
- *  3. `source === "custom"` is refused outright: an uploaded agent is the
- *     operator's own text even in the corner case where it repeats a seed's
- *     sentence word for word.
+ *  3. only `source` "builtin" and "installed" may resolve a key. "custom" is
+ *     refused outright - an uploaded agent is the operator's own text even in
+ *     the corner case where it repeats a seed's sentence word for word - and so
+ *     is a row whose `source` is missing or is a value this module has never
+ *     heard of: the rule fails CLOSED, so a row of unknown provenance cannot
+ *     borrow the shipped-copy path by omission (agent review round 2, R2-2).
  *
  * THE ENGLISH CATALOGUE IS THE ORACLE, never a second copy of the strings. The
  * comparison reads `bundledEnglish`, which the generator builds from the same
@@ -125,15 +129,20 @@ export const SEED_ROUTING_KEYS = {
 /**
  * The fields the decision reads.
  *
- * `source` is REQUIRED, and deliberately not optional-with-a-default: a caller
- * that cannot say whether a row is user text (`AgentDetails` rows carry no
- * provenance) must not borrow the shipped-copy path by omission.
+ * `source` is typed `string | null | undefined` because two call sites read
+ * untyped wire rows (the session's `commands.entities` agent arm, the composer's
+ * `/agent` list) where the field is present at runtime but not in the type. That
+ * is safe ONLY because the resolver fails closed: a missing or unrecognised
+ * `source` resolves to no key and the raw text renders, so a caller that cannot
+ * say whether a row is user text (`AgentDetails` rows carry no provenance) still
+ * never borrows the shipped-copy path by omission.
  *
  * `description` tolerates a null/absent value because the wire does: the roster
  * and the detail pane used to spell `|| ""` at their call sites, and the one
  * place that owns the rule is now the return below rather than three callers.
  */
-export type DescribedAgent = Pick<ReusableProfile, "name" | "source"> & {
+export type DescribedAgent = Pick<ReusableProfile, "name"> & {
+	source?: string | null;
 	description?: string | null;
 };
 
@@ -171,7 +180,7 @@ function comparable(text: string | null | undefined): string | null {
  * namespace the row is attributed to.
  *
  * WHAT THIS DELIBERATELY DOES NOT DO: it does not decide from the name alone.
- * Byte identity is the whole safeguard for a row the operator may have rewritten,
+ * Identity up to whitespace runs is the whole safeguard for a row the operator may have rewritten,
  * so an installed seed with an edited description - including one edited to
  * exactly the routing text another reader would call "shipped" - renders as
  * written unless the edit reproduces the shipped sentence character for
@@ -179,7 +188,11 @@ function comparable(text: string | null | undefined): string | null {
  * per family.
  */
 export function seedTextKey(profile: DescribedAgent): WithoutParams | null {
-	if (profile.source === "custom") return null;
+	/* Allow-list, not a deny-list: only the two sources that can hold a pristine
+	 * seed resolve. `custom` (an upload) and anything absent or unknown stay raw. */
+	if (profile.source !== "builtin" && profile.source !== "installed") {
+		return null;
+	}
 	const served = comparable(profile.description);
 	if (served === null) return null;
 	const name = profile.name as SeedAgentName;
@@ -210,4 +223,28 @@ export function seedTextKey(profile: DescribedAgent): WithoutParams | null {
 export function agentDescriptionText(profile: DescribedAgent): string {
 	const key = seedTextKey(profile);
 	return key === null ? (profile.description ?? "") : t(key);
+}
+
+/**
+ * `row` with its `description` replaced by what `agentDescriptionText` prints,
+ * for a picker whose rows are registry projections (`value` is the slug, `name`
+ * may be absent on a thin row), such as the in-session `/agent` picker fed by
+ * `commands.entities`. Everything else on the row passes through.
+ */
+export function withAgentDescriptionText<
+	T extends {
+		value: string;
+		name?: string;
+		source?: string | null;
+		description?: string | null;
+	},
+>(row: T): T {
+	return {
+		...row,
+		description: agentDescriptionText({
+			name: row.name ?? row.value,
+			source: row.source,
+			description: row.description,
+		}),
+	};
 }
