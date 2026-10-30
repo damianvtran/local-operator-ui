@@ -104,6 +104,9 @@ const SHIPPED = {
 /** The other locales fall back to English until the translator pass lands. */
 const MARKER = "MARQUEUR-DE-CATALOGUE";
 
+/** A raw key on screen is the failure mode every assertion here excludes. */
+const RAW_KEY = /ui\.agents\.descriptions/;
+
 /** A row as the roster builds it: the wire's three fields, nothing derived. */
 const row = (name, source, description) => ({ name, source, description });
 
@@ -232,6 +235,6 @@ test("a locale without the translation falls back to English, never to the key",
 	lib.locale.setLocale("ur");
 	const rendered = text(row("manager", "builtin", SHIPPED.manager));
 	assert.equal(rendered, SHIPPED.manager, "English fallback, per-key");
-	assert.doesNotMatch(rendered, /ui\.agents\.descriptions/, "never a raw key");
+	assert.doesNotMatch(rendered, RAW_KEY, "never a raw key");
 	lib.locale.setLocale("en");
 });
