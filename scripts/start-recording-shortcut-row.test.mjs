@@ -285,6 +285,13 @@ test("capture saves immediately and explicit reset restores the default and focu
 		);
 		assert.ok(reset);
 		await act(async () => reset.click());
+		// The field follows the re-read that closes the write, which lands a few
+		// ticks after the click resolves.
+		for (let attempt = 0; attempt < 10; attempt += 1) {
+			await act(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 5));
+			});
+		}
 		assert.deepEqual(
 			api.requests.filter((request) => request.op === "settings.reset"),
 			[{ op: "settings.reset", key: setting.key }],

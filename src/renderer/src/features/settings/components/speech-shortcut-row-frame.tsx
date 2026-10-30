@@ -48,7 +48,21 @@ export function SpeechShortcutRowFrame({
 	error?: string | null;
 }) {
 	return (
-		<div className="group flex min-w-0 flex-col gap-1" data-speech-rank={rank}>
+		/*
+		 * The settings search indexes a promoted registry key through THIS page row
+		 * (`PROMOTED_SETTING_SECTIONS` drops it from the registry half), so the row
+		 * carries the markers or the key would be findable nowhere. The label is
+		 * the action's name, which the rendered "Primary"/"Secondary" rank is not;
+		 * the key is a term so a reader typing it still lands here.
+		 */
+		<div
+			className="group flex min-w-0 flex-col gap-1"
+			data-speech-rank={rank}
+			data-search-row={`keyboard.${settingKey}`}
+			data-search-label={action}
+			data-search-terms={settingKey}
+			data-search-control
+		>
 			<div className="flex flex-wrap items-center gap-2">
 				<div className="flex w-32 flex-col">
 					<Label htmlFor={id} className="text-body-sm text-ink">

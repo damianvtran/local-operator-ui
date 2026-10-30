@@ -131,7 +131,6 @@ async function mount(
 		saveStatus = 200,
 		holdValue = "alt-right-hold",
 		hold = true,
-		panelChord,
 	},
 	run,
 ) {
@@ -605,4 +604,26 @@ test("the promoted hold row stays findable: its deep link and palette hint name 
 	);
 	assert.equal(presentSetting(holdSetting).section, "keyboard");
 	assert.equal(presentSetting(holdSetting).key, "keymap.push_to_talk");
+});
+
+test("both rows are annotated for the settings search, labelled by their action", async () => {
+	await mount({}, async (api) => {
+		const rows = [
+			...api.window.document.querySelectorAll("[data-search-row]"),
+		].map((node) => [
+			node.getAttribute("data-search-row"),
+			node.getAttribute("data-search-label"),
+			node.hasAttribute("data-search-control"),
+			node.querySelector("input") !== null,
+		]);
+		assert.deepEqual(rows, [
+			[
+				"keyboard.keymap.start_recording",
+				"Start recording (press)",
+				true,
+				true,
+			],
+			["keyboard.keymap.push_to_talk", "Push to talk (hold)", true, true],
+		]);
+	});
 });
