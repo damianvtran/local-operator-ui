@@ -359,10 +359,26 @@ export function buildRenderedEntries(
 	return rows.map((row, index) => {
 		const root_ = sectionRootOf(row);
 		const sectionId = root_?.getAttribute("data-search-section") ?? "";
+		/*
+		 * THE SECTION ROOT'S OWN LABEL FIRST.
+		 *
+		 * `querySelector` searches DESCENDANTS, so it cannot see an attribute on
+		 * the root itself — and every section root in the page carries exactly
+		 * that attribute (`data-search-section-label="General settings"`). The
+		 * query therefore fell through to the first `h2` inside the section, and a
+		 * row in General was announced as "In Interface language" while Enter
+		 * landed in the Model settings block (QA round 2c, Q-R2b-1). The
+		 * descendant query stays as the fallback for a root that names itself only
+		 * by its heading (the legacy `speech`/`keyboard` roots do).
+		 */
+		const ownLabel =
+			root_?.getAttribute("data-search-section-label")?.trim() ?? "";
 		const sectionLabel =
+			ownLabel ||
 			root_
 				?.querySelector<HTMLElement>("[data-search-section-label], h2")
-				?.textContent?.trim() ?? "";
+				?.textContent?.trim() ||
+			"";
 		const rendered = rowLabel(row);
 		// A control's own value is not its text (`<input value>` has no text
 		// node), so `data-search-terms` is where a value-shaped row says what it

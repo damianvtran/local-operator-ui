@@ -692,3 +692,43 @@ test("the page's Model row answers `model`, and its own controls still answer th
 		"and the words its controls print still find it",
 	);
 });
+
+test("a page row is announced by its SECTION ROOT's own label, not the first heading inside it (QA round 2c, Q-R2b-1)", () => {
+	/*
+	 * `querySelector` cannot see an attribute on the element it starts from, so
+	 * a section root that names itself (`data-search-section-label="General
+	 * settings"`) was skipped and the first `h2` inside it — a sub-heading that
+	 * names one block of the section — became the row's context. A reader saw
+	 * "In Interface language" on the Model row while Enter landed in Model
+	 * settings (QA round 2c, Q-R2b-1).
+	 */
+	const dom = new JSDOM(
+		`<!doctype html><html><body><div data-settings-content>
+			<section data-search-section="general" data-search-section-label="General settings">
+				<h2>Interface language</h2>
+				<div data-search-row="general.model" data-search-control data-search-label="Model settings">
+					<div><span>Hosting provider</span></div>
+				</div>
+			</section>
+			<section data-search-section="legacy">
+				<h2>Legacy heading</h2>
+				<div data-search-row="legacy.row"><span>Some row</span></div>
+			</section>
+		</div></body></html>`,
+	);
+	const entries = buildRenderedEntries(
+		dom.window.document.querySelector("[data-settings-content]"),
+	);
+	const hosted = entries.find((e) => e.id === "page:general.model");
+	assert.equal(
+		hosted.sectionLabel,
+		"General settings",
+		"the row reports the section it lands in, not an inner heading",
+	);
+	const fallback = entries.find((e) => e.sectionId === "legacy");
+	assert.equal(
+		fallback.sectionLabel,
+		"Legacy heading",
+		"a root that names itself only by its heading still resolves",
+	);
+});
