@@ -632,8 +632,9 @@ const MessageRowView: FC<MessageRowProps> = ({
 						    instantly on open, as the shared `Disclosure` does (no
 						    rotate-on-toggle motion; a rotated mirrored glyph would also
 						    point up in RTL). `<details>` is uncontrolled, so the open state
-						    drives the swap through CSS; the group is named so an outer
-						    `group` on the row cannot drive it. */}
+						    drives the swap through CSS; the group is named so a nested or
+						    ancestor `<details>` (whose own `open` state would match a bare
+						    `group-open:`) cannot drive this chevron. */}
 						<summary className="inline-flex min-h-[24px] w-fit cursor-pointer items-center gap-1 text-[14px] text-ink-muted">
 							<ChevronRight
 								aria-hidden="true"
@@ -645,11 +646,15 @@ const MessageRowView: FC<MessageRowProps> = ({
 							/>
 							{decoration.collapsedSummary}
 						</summary>
-						{/* Opened unadmitted text sits in a quoted inset, a hairline
-						    start rule rather than a box (panels stay borderless), so it
-						    cannot be mistaken for text the screening let through once the
-						    verdict chip has scrolled away (design review round 1, D4). */}
-						<TeamBridgeMarkdown className="team-bridge-message-body mt-1 border-hairline border-s-2 ps-3 text-[14px] text-ink">
+						{/* Opened unadmitted text sits in a quoted inset, a start rule
+						    rather than a box (panels stay borderless), so it cannot be
+						    mistaken for text the screening let through once the verdict
+						    chip has scrolled away (design review round 1, D4). The rule is
+						    the only cue that marks the text as quoted, so it is a
+						    meaningful graphic under WCAG 1.4.11 and needs 3:1: `hairline`
+						    measured 1.33-1.34:1 against the surface, `control` 3.65:1
+						    light / 3.58:1 dark (design review round 2, D10). */}
+						<TeamBridgeMarkdown className="team-bridge-message-body mt-1 border-control border-s-2 ps-3 text-[14px] text-ink">
 							{message.body}
 						</TeamBridgeMarkdown>
 					</details>

@@ -1758,7 +1758,8 @@ test("a rejected body is collapsed, and markdown once opened", async () => {
  * for an open one. jsdom applies no stylesheet, so this asserts the wiring (the
  * named group on `<details>` and the open-state variants) rather than pixels;
  * the frames are the visual proof. Opened, refused text sits in a quoted inset
- * (hairline start rule), unlike the admitted body beside it.
+ * (a `control` start rule, which carries the 3:1 non-text contrast the quote
+ * cue needs: design review round 2, D10), unlike the admitted body beside it.
  */
 test("the reveal has a disclosure marker and opens into a quoted inset", async () => {
 	const view = await renderView(
@@ -1797,8 +1798,13 @@ test("the reveal has a disclosure marker and opens into a quoted inset", async (
 		"the marker adds no text to the summary's name",
 	);
 	const inset = details.querySelector(".team-bridge-message-body");
-	for (const token of ["border-s-2", "border-hairline", "ps-3"])
+	for (const token of ["border-s-2", "border-control", "ps-3"])
 		assert.ok(inset.className.split(" ").includes(token), `inset has ${token}`);
+	assert.equal(
+		inset.className.split(" ").includes("border-hairline"),
+		false,
+		"the quote rule is not the sub-3:1 hairline (D10)",
+	);
 	const admitted = rowOf(view.host, "msg_ok").querySelector(
 		".team-bridge-message-body",
 	);
