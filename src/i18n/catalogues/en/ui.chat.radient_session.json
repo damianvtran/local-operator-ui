@@ -1,0 +1,10 @@
+{
+	"ui.chat.radient_session.action.sign_in": "Sign in to Radient",
+	"ui.chat.radient_session.pointer.sign_in_active": "Settings, under Providers, is where it can be cleared.",
+	"ui.chat.radient_session.prose.input_required": "{message} This surface cannot take the pasted code, so finish the sign-in from Settings, under Providers.",
+	"ui.chat.radient_session.prose.needs_sign_in": "Radient no longer accepts the sign-in stored on this machine. Signing in again restores Radient models and opens your browser for consent.",
+	"ui.chat.radient_session.prose.signing_in": "Complete the sign-in in your browser. The connector restarts on its own once the sign-in completes; an attempt left unfinished ends after a few minutes.",
+	"ui.chat.radient_session.title.input_required": "Radient sign-in needs a pasted code",
+	"ui.chat.radient_session.title.needs_sign_in": "Radient needs re-authentication",
+	"ui.chat.radient_session.title.signing_in": "Signing in to Radient"
+}

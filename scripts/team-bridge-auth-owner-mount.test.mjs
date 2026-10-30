@@ -186,19 +186,40 @@ test("late A history cannot repopulate B after actual auth completion", async ()
 	}
 });
 
-test("actual auth A-B-A preserves only A's typed text without optimistic send return", async () => {
+/*
+ * WHAT THIS CASE PINNED BEFORE THE SHARED COMPOSER, AND WHY IT NOW ASSERT THE
+ * OPPOSITE. The bridge used to own a per-account draft journal, so A's typed text
+ * survived an A-B-A round trip and came back with A. The shared composer's rows are
+ * `conversation-input-store` rows addressed by `teamBridgeComposerKey`, and the page
+ * DROPS the previous account's rows on a real account change
+ * (`forgetBridgeComposerRows` -> `clearComposer`, team-bridge-page.tsx: "R1'S OTHER
+ * HALF: the drafts are DROPPED, not just unreachable"). That is a deliberate
+ * privacy rule - another person's unsent words must not stay readable in this
+ * renderer - so the retention half of the old assertion no longer describes the
+ * shipped behaviour and cannot be expressed here. What remains is the part that is
+ * still a contract, and it is the part with teeth: B's words never appear under A,
+ * and no return path posts an optimistic send.
+ */
+test("actual auth A-B-A drops the previous account's typed text and never restores an optimistic send", async () => {
 	const app = await mount();
 	const body = "A typed private text retained for A only";
+	const bBody = "B owns different text";
 	try {
 		await type(app.host, body);
 		await app.changeAuth("acct_b");
 		await selectConversation(app);
 		assert.equal(app.host.querySelector("textarea").value, "");
 		assertNoForeignFrame(app, body);
-		await type(app.host, "B owns different text");
+		await type(app.host, bBody);
 		await app.changeAuth("acct_a");
 		await selectConversation(app);
-		assert.equal(app.host.querySelector("textarea").value, body);
+		// The account-change drop, not a lost re-seed: A's row survives and is empty,
+		// which is what `clearComposer` does (it keeps the key, clears the text).
+		assert.equal(app.host.querySelector("textarea").value, "");
+		// The marker stays A's private text: the helper's claim is that no B-auth
+		// frame ever carried it, and the frames committed after B's text existed are
+		// the ones that could have carried it forward.
+		assertNoForeignFrame(app, body);
 		assert.equal(
 			app.fixture.calls.filter(
 				(call) => call.op === "team_bridge.messages.send",

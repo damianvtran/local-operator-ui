@@ -586,9 +586,36 @@ function captureSummary(previous, counts) {
 	return lines;
 }
 
+/**
+ * The counted set a writing mode acts on.
+ *
+ * `counts` is the fixture seam. `--update` and `--init` rewrite a baseline from
+ * whatever the tree counts, and this tree's own counted set is now EMPTY: the
+ * migration finished, so no product file sits below a ceiling any more. A
+ * live-corpus input therefore leaves the lowering, raising and pruning branches
+ * with nothing to act on — which is exactly how `check-strings.test.mjs` went red
+ * at the first head where the ratchet reached zero. The suite passes a scanned
+ * fixture corpus instead, so those branches stay exercised regardless of what
+ * the product tree happens to contain, while the CLI's own runs (no `counts`)
+ * keep scanning the real tree through the same code path.
+ */
+function countedFiles(counts, entries) {
+	if (counts !== undefined) return counts;
+	const { api, snapshot } = openSnapshot(REPO);
+	try {
+		return countsOf(scanSnapshot(snapshot, REPO), entries);
+	} finally {
+		api.close();
+	}
+}
+
 export function main(
 	argv,
-	{ baselinePath = BASELINE, allowlistPath = ALLOWLIST } = {},
+	{
+		baselinePath = BASELINE,
+		allowlistPath = ALLOWLIST,
+		counts: fixtureCounts,
+	} = {},
 ) {
 	let mode = "check";
 	let force = false;
@@ -633,23 +660,18 @@ export function main(
 			return 2;
 		}
 		const entries = loadAllowlist(allowlistPath);
-		const { api, snapshot } = openSnapshot(REPO);
-		try {
-			const counts = countsOf(scanSnapshot(snapshot, REPO), entries);
-			const preserved = loadBaseline(baselinePath);
-			saveBaseline(baselinePath, counts, BASELINE_NOTE);
-			const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
-			process.stdout.write(
-				`check-strings.mjs --init: baseline written: ${Object.keys(counts).length} ` +
-					`file(s), ${total} literal(s)\n`,
-			);
-			for (const line of captureSummary(preserved.files, counts)) {
-				process.stdout.write(`${line}\n`);
-			}
-			return 0;
-		} finally {
-			api.close();
+		const counts = countedFiles(fixtureCounts, entries);
+		const preserved = loadBaseline(baselinePath);
+		saveBaseline(baselinePath, counts, BASELINE_NOTE);
+		const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
+		process.stdout.write(
+			`check-strings.mjs --init: baseline written: ${Object.keys(counts).length} ` +
+				`file(s), ${total} literal(s)\n`,
+		);
+		for (const line of captureSummary(preserved.files, counts)) {
+			process.stdout.write(`${line}\n`);
 		}
+		return 0;
 	}
 
 	if (mode === "update") {
@@ -660,50 +682,44 @@ export function main(
 			return 2;
 		}
 		const entries = loadAllowlist(allowlistPath);
-		const { api, snapshot } = openSnapshot(REPO);
-		try {
-			const scanned = scanSnapshot(snapshot, REPO);
-			const counts = countsOf(scanned, entries);
-			const loaded = loadBaseline(baselinePath);
-			const files = loaded.files;
-			for (const raw of updatePaths) {
-				const rel = toPosix(raw);
-				if (allowlistReason(rel, entries) !== undefined) {
+		const counts = countedFiles(fixtureCounts, entries);
+		const loaded = loadBaseline(baselinePath);
+		const files = loaded.files;
+		for (const raw of updatePaths) {
+			const rel = toPosix(raw);
+			if (allowlistReason(rel, entries) !== undefined) {
+				process.stdout.write(
+					`check-strings.mjs --update: ${rel} is allowlisted; nothing to lower\n`,
+				);
+				continue;
+			}
+			const next = counts[rel] ?? 0;
+			const previous = Object.prototype.hasOwnProperty.call(files, rel)
+				? files[rel]
+				: undefined;
+			if (previous === undefined) {
+				if (next > 0) {
 					process.stdout.write(
-						`check-strings.mjs --update: ${rel} is allowlisted; nothing to lower\n`,
-					);
-					continue;
-				}
-				const next = counts[rel] ?? 0;
-				const previous = Object.prototype.hasOwnProperty.call(files, rel)
-					? files[rel]
-					: undefined;
-				if (previous === undefined) {
-					if (next > 0) {
-						process.stdout.write(
-							`check-strings.mjs --update: ${rel} has ${next} literal(s) with no recorded ceiling — a file with no recorded ceiling fails: extract, pragma, or allowlist instead of recording one.\n`,
-						);
-						return 1;
-					}
-					continue;
-				}
-				if (next > previous) {
-					process.stdout.write(
-						`check-strings.mjs --update: ${rel} went ${previous} -> ${next}; the baseline may only stay equal or go down.\n`,
+						`check-strings.mjs --update: ${rel} has ${next} literal(s) with no recorded ceiling — a file with no recorded ceiling fails: extract, pragma, or allowlist instead of recording one.\n`,
 					);
 					return 1;
 				}
-				if (next > 0) files[rel] = next;
-				else delete files[rel];
+				continue;
 			}
-			saveBaseline(baselinePath, files, loaded.note);
-			process.stdout.write(
-				`check-strings.mjs --update: baseline now ${Object.keys(files).length} file(s)\n`,
-			);
-			return 0;
-		} finally {
-			api.close();
+			if (next > previous) {
+				process.stdout.write(
+					`check-strings.mjs --update: ${rel} went ${previous} -> ${next}; the baseline may only stay equal or go down.\n`,
+				);
+				return 1;
+			}
+			if (next > 0) files[rel] = next;
+			else delete files[rel];
 		}
+		saveBaseline(baselinePath, files, loaded.note);
+		process.stdout.write(
+			`check-strings.mjs --update: baseline now ${Object.keys(files).length} file(s)\n`,
+		);
+		return 0;
 	}
 
 	const { scanned, counts, failures } = runCheck();

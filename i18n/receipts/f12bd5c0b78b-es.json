@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor",
+  "model": "radient/auto",
+  "instance": "f12bd5c0b78b-es",
+  "locale": "es",
+  "namespace": "ui.settings.shortcuts",
+  "date": "2026-10-29",
+  "status": "passed",
+  "sha256": {
+    "es": "601e5d6bd4249a5051ee02580f94fa98f3b767f79bbad2f4c479f862d9d21bb2",
+    "en": "5967dfaf152c5ca139a5d33347d94597a1d25b3dd01bb6bd37cdb881858aa7d4"
+  },
+  "findings": [],
+  "scope": "Changed rows only: 8 keys (1 new paragraph + 7 reserved-sentence tails). Key set == English (64/64), ICU placeholder parity, sentence-by-sentence meaning against the .context.json note, register and terminology against the same file and corpus.",
+  "notes": "No finding. Register (tú imperative) and terms (panel, barra de paneles, cache unaccented per corpus majority 21:1) match the file and corpus. Native-reader naturalness was NOT verified by a native speaker of the target language; this audit is a semantic/structural read by an agent. Meaning, register, placeholder and terminology consistency were checked against the English source and the existing target-locale corpus."
+}

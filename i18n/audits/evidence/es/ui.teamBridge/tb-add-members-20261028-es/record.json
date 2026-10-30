@@ -1,0 +1,90 @@
+{
+	"audit_id": "tb-add-members-20261028-es",
+	"date": "2026-10-28",
+	"locale": "es",
+	"namespace": "ui.teamBridge",
+	"source_commit": "b3a67e9bb78248070f1e243a04e0c6d9910b4d72",
+	"keys_audited": [
+		"ui.teamBridge.members.title",
+		"ui.teamBridge.members.menu",
+		"ui.teamBridge.members.description",
+		"ui.teamBridge.members.current",
+		"ui.teamBridge.members.current_empty",
+		"ui.teamBridge.members.invite",
+		"ui.teamBridge.members.search",
+		"ui.teamBridge.members.empty",
+		"ui.teamBridge.members.no_matches",
+		"ui.teamBridge.members.load_error",
+		"ui.teamBridge.members.loading",
+		"ui.teamBridge.members.add",
+		"ui.teamBridge.members.remove",
+		"ui.teamBridge.members.removing",
+		"ui.teamBridge.members.read_only",
+		"ui.teamBridge.members.role.owner",
+		"ui.teamBridge.members.role.member",
+		"ui.teamBridge.members.state.active",
+		"ui.teamBridge.members.state.invited",
+		"ui.teamBridge.members.state.left",
+		"ui.teamBridge.members.agent_invitation",
+		"ui.teamBridge.members.human_invitation",
+		"ui.teamBridge.members.invitation_note",
+		"ui.teamBridge.members.mutation_error",
+		"ui.teamBridge.members.reason.already_member",
+		"ui.teamBridge.members.reason.bridge_unavailable",
+		"ui.teamBridge.members.reason.agent_unavailable",
+		"ui.teamBridge.members.reason.agent_not_permitted"
+	],
+	"translator": {
+		"agent": "translator",
+		"model": "not-reported-by-parent",
+		"date": "2026-10-28"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "kimi/k3.1-pro",
+			"model_note": "Session header states kimi/k3.1-pro. During this run the primary provider returned quota HTTP 429 and the harness fell back through anthropic/claude-sonnet-5-5 and openai/gpt-6-astra to radient/auto; the audit work was performed under that fallback chain. The header string is recorded per the coordinator's instruction, with the fallback disclosed here.",
+			"date": "2026-10-28",
+			"result": "clean-with-findings",
+			"instance": "tb-add-members-20261028-es",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 1,
+				"nit": 0
+			},
+			"receipt": "i18n/receipts/tb-add-members-20261028-es.json",
+			"receipt_sha256": "546ef733470f8425d6fb92329434bc6597191aefa062ada6d93ee0942e23394f",
+			"scope": "PR add-members: 28 new ui.teamBridge.members.* keys; existing keys unchanged. Read against the English source and its context sidecar, i18n/glossary.md and the locale style guide; checked key parity (28/28, file 269/269 vs English), the one placeholder ({name} in members.remove, exactly once), ICU safety (no ASCII apostrophe that would open an ICU quoted literal), absence of bidi controls/zero-width characters, sentence case, and terminology against the rest of the locale's ui.teamBridge.json. Source-only: no tests, build, Storybook or browser run; no rendered-fit or width claim. No catalogue, ledger or code edit by the auditor."
+		}
+	],
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "4337253270df03ec0ad4bf00bd27db4f4e8d279376f0dfe5be230fb1d897d01a"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/es/ui.teamBridge.json",
+			"sha256": "add688ef49a4550290f8db1943dcab59fb6fae01d0eedc54df0df1c428a81e03"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "3c204399befa0116d1b72c6e2cc0905fab61389d18fedfca72a7fddb4b813c8f"
+		}
+	},
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/es.md",
+			"sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+		}
+	},
+	"independence": "Translation auditor is a separate subagent from the translator; the auditor fetched English, target, context, glossary and style guide, ran read-only checks, and edited no catalogue, ledger, key file or code.",
+	"limitations": [
+		"Source-only audit as instructed: no tests, build, Storybook, browser or rendered-fit evidence; no width/maxCells claim.",
+		"Rendered concatenation of members.removing was read from the call site, not from a running app."
+	]
+}

@@ -15,5 +15,7 @@
 	"ui.chat.header.rename_conversation": "Rename conversation",
 	"ui.chat.header.restore_conversation": "Restore conversation",
 	"ui.chat.header.saving_conversation_name": "Saving the conversation name",
+	"ui.chat.header.session_model_connect": "Connect",
+	"ui.chat.header.session_model_switch": "Switch model",
 	"ui.chat.header.transcript_display": "Transcript display"
 }

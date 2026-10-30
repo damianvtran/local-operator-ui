@@ -1,0 +1,39 @@
+{
+	"ui.hub.card.download_named": {
+		"role": "button name",
+		"tone": "plain",
+		"placeholders": {
+			"name": "The agent's display name."
+		}
+	},
+	"ui.hub.card.downloads_tooltip": {
+		"role": "tooltip",
+		"tone": "plain",
+		"note": "Names the download counter beside it, not the button."
+	},
+	"ui.hub.card.get": {
+		"role": "button label",
+		"tone": "plain",
+		"note": "Downloads the agent. Deliberately short: the card's footer is a four-column grid and the bordered pill clipped a longer word."
+	},
+	"ui.hub.card.unknown_author": {
+		"role": "metadata fallback",
+		"tone": "plain"
+	},
+	"ui.hub.card.updated": {
+		"role": "metadata line",
+		"tone": "plain",
+		"note": "One line of provenance under the author's name.",
+		"placeholders": {
+			"ago": "Relative distance from now, already formatted."
+		}
+	},
+	"ui.hub.card.view_details": {
+		"role": "button name",
+		"tone": "plain",
+		"note": "The whole card opens the detail page; this is the accessible name of that press.",
+		"placeholders": {
+			"name": "The agent's display name."
+		}
+	}
+}

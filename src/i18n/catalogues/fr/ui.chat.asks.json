@@ -1,4 +1,5 @@
 {
+	"ui.chat.asks.answer_options": "Options de réponse",
 	"ui.chat.asks.context.messages_since": "{count, plural, one {# message de votre part depuis cette demande (dernier message à {time})} many {# de messages de votre part depuis cette demande (dernier message à {time})} other {# messages de votre part depuis cette demande (dernier message à {time})}}",
 	"ui.chat.asks.dismiss.answered_in_chat.note": "vous avez déjà répondu dans la conversation",
 	"ui.chat.asks.dismiss.answered_in_chat.title": "Répondu dans la conversation",
@@ -12,6 +13,7 @@
 	"ui.chat.asks.dismiss.refused": "Impossible d’ignorer cette demande : rien n’a été envoyé.",
 	"ui.chat.asks.dismiss.trigger": "Ignorer…",
 	"ui.chat.asks.other_label": "Autre",
+	"ui.chat.asks.recommended": "Recommandée",
 	"ui.chat.asks.urgent": "Prioritaire.",
 	"ui.chat.asks.no_answer": "Aucune réponse",
 	"ui.chat.asks.changed_handoff": "Modifiée — l’agent ne l’a pas encore reçue.",

@@ -1695,8 +1695,25 @@ test("the status sentence names the scope, and the pager keeps its labels", () =
 	const pager = read(
 		"src/renderer/src/features/agent-hub/components/hub-pager.tsx",
 	);
-	assert.match(pager, /aria-label="Previous page"/);
-	assert.match(pager, /aria-label="Next page"/);
+	assert.match(
+		pager,
+		/aria-label=\{t\("ui\.common\.forms\.compact_pagination\.previous_page"\)\}/,
+	);
+	assert.match(
+		pager,
+		/aria-label=\{t\("ui\.common\.forms\.compact_pagination\.next_page"\)\}/,
+	);
+	const formsCopy = JSON.parse(
+		read("src/i18n/catalogues/en/ui.common.forms.json"),
+	);
+	assert.equal(
+		formsCopy["ui.common.forms.compact_pagination.previous_page"],
+		"Previous page",
+	);
+	assert.equal(
+		formsCopy["ui.common.forms.compact_pagination.next_page"],
+		"Next page",
+	);
 	assert.match(pager, /min-h-13/);
 	// The sidebar's stepper is not the hub's footer any more, and is untouched.
 	assert.doesNotMatch(page, /import \{ CompactPagination \}/);

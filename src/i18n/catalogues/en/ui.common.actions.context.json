@@ -292,5 +292,14 @@
 		"tone": "Concise, factual and actionable where the state has a next step.",
 		"length": "One compact status line, placeholder, button, or spoken suffix.",
 		"note": "English source: Clear"
+	},
+	"ui.common.actions.dismiss": {
+		"role": "action",
+		"tone": "plain"
+	},
+	"ui.common.actions.more_info": {
+		"role": "icon-button name",
+		"tone": "plain",
+		"note": "Opens a tooltip explaining the section beside it."
 	}
 }

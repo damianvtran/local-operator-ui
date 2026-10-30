@@ -1,0 +1,226 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "audit_kind": "convergence-rebind",
+ "instance": "b10118212af1-union-vi",
+ "locale": "vi",
+ "namespace": "ui.chat.attachments",
+ "scope": "ui.chat.attachments: verification of the hand-union of 5 branch keys and 1 main key onto the 12-key base",
+ "audit_date": "2026-10-29",
+ "worktree": "/Users/damian/lo-literals",
+ "branch": "i18n-final-literals",
+ "checkout_head": "36b88a45fe",
+ "checkout_head_full": "36b88a45fed4f6baea989a4cc113cfd6b0672429",
+ "merge_state": {
+  "uncommitted_merge": true,
+  "pre_merge_head": "36b88a45fed4f6baea989a4cc113cfd6b0672429",
+  "main_at_merge": "9a767426fe31c62a7ce91d72299f4e685a3989f1",
+  "merge_base": "aafa890e3c9825fa1e19c423c022f5a651116c20",
+  "note": "The union is in the working tree with unmerged index stages (1=base, 2=HEAD, 3=MERGE_HEAD); no merge commit exists yet, so no merge SHA is claimed. Stage 2 was confirmed to equal HEAD's blob and stage 3 to equal MERGE_HEAD's blob for both files, so the parents used below are the real parent revisions and not a guess."
+ },
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "b10118212af1",
+  "model": "radient/auto",
+  "model_history": [
+   "anthropic/claude-sonnet-5-5 (session start; provider quota failure)",
+   "openai/gpt-6-astra (harness fallback)",
+   "kimi/k3.1-pro (harness fallback)",
+   "radient/auto (model in the run that verified these bytes and wrote this record)"
+  ],
+  "actual_model_source": "harness [model switch] notices delivered in-session",
+  "independent_from_translator_session": true,
+  "declaration": "I did not translate, edit or re-translate any value in either file; no translation or MT service was used to compare or back-translate any string. Every merged value is required to be byte-identical to one of the two parents, and this record says which parent each came from."
+ },
+ "input_sha256": {
+  "en": "5e99fd052e7a24dc2715d7de1332b378c1c964f801cdc1c241c7068569de41a0",
+  "target": "35a0343a5f0155e5b9e54828a34aa181a88ebe1d373200c4f7397e31393b6fa7",
+  "context": "fb4658c36a67e0a4f5be52a7ca7cfe4b3d6479e3eced9b2e94b85279e89d740c"
+ },
+ "parent_sha256": {
+  "en": {
+   "base": "845e53ef71cbd579f34ca7589d91fc180b98ca08cebf3b2da33a13fbba507f78",
+   "branch": "623a1363260ecbe40393b4424dde4d7b6cc084688ac354483052639a145ce892",
+   "main": "1f476ef54a5fb470d00da5e66e7f2ccd2665d4d22f07ff11f20a3e00acfeadc5"
+  },
+  "target": {
+   "base": "eb13e90d9d17bcac34d1a317c60474aaba254cf315d1b2a9b47d024e417a66c4",
+   "branch": "c7fb2470c439b0db16d73a835adf23ba21dc0bf7c0b879e826de772bae2252d3",
+   "main": "01b9fa44056546c35e1cd60494cf4e56d7da0e8b1fd41705309fb6b63526d4df"
+  }
+ },
+ "union_arithmetic": {
+  "claim_under_test": "base 12 + branch 5 + main 1 = union 18, no key added by both sides, no conflicting value on any shared key, every pre-existing value byte-identical to base",
+  "proven": true,
+  "method": "Key sets and values parsed from the three index stages and the working tree for BOTH locales, then compared as sets and as exact strings. Set algebra: (union - (base | branch | main)) = {} and ((base | branch | main) - union) = {} in both files, so every union key is attributable to exactly one source and nothing was dropped. Value algebra: 0 pre-existing keys differ from base in either locale, and 0 of the 12 shared keys carry different values between branch and main.",
+  "en": {
+   "base": [
+    "copy_path",
+    "copy_saved_path",
+    "file_meta",
+    "file_missing",
+    "file_missing_recovery",
+    "file_retained",
+    "file_type_unknown",
+    "file_unnamed",
+    "path_copied",
+    "pending_caption",
+    "saved_copy_label",
+    "saved_path_copied"
+   ],
+   "branch_added": [
+    "open",
+    "playback_position",
+    "playback_rate",
+    "playback_rate_option",
+    "volume"
+   ],
+   "main_added": [
+    "file_and_copy_missing"
+   ],
+   "both_sides_added": [],
+   "union_extra_keys": [],
+   "union_missing_keys": [],
+   "pre_existing_value_changes": 0,
+   "common_key_conflicts": 0,
+   "counts": {
+    "base": 12,
+    "branch": 17,
+    "main": 13,
+    "union": 18
+   }
+  },
+  "vi": {
+   "base": [
+    "copy_path",
+    "copy_saved_path",
+    "file_meta",
+    "file_missing",
+    "file_missing_recovery",
+    "file_retained",
+    "file_type_unknown",
+    "file_unnamed",
+    "path_copied",
+    "pending_caption",
+    "saved_copy_label",
+    "saved_path_copied"
+   ],
+   "branch_added": [
+    "open",
+    "playback_position",
+    "playback_rate",
+    "playback_rate_option",
+    "volume"
+   ],
+   "main_added": [
+    "file_and_copy_missing"
+   ],
+   "both_sides_added": [],
+   "union_extra_keys": [],
+   "union_missing_keys": [],
+   "pre_existing_value_changes": 0,
+   "common_key_conflicts": 0,
+   "counts": {
+    "base": 12,
+    "branch": 17,
+    "main": 13,
+    "union": 18
+   }
+  },
+  "key_attribution_identical_in_both_locales": true
+ },
+ "diffs_observed": {
+  "en": {
+   "base_to_union": "--- merge-base src/i18n/catalogues/en/ui.chat.attachments.json\n+++ working-tree src/i18n/catalogues/en/ui.chat.attachments.json\n@@ -10,5 +10,11 @@\n \t\"ui.chat.attachments.file_type_unknown\": \"File\",\n \t\"ui.chat.attachments.copy_saved_path\": \"Copy saved copy path\",\n \t\"ui.chat.attachments.saved_path_copied\": \"Saved copy path copied\",\n-\t\"ui.chat.attachments.saved_copy_label\": \"Saved copy\"\n+\t\"ui.chat.attachments.saved_copy_label\": \"Saved copy\",\n+\t\"ui.chat.attachments.file_and_copy_missing\": \"The saved copy is gone too.\",\n+\t\"ui.chat.attachments.open\": \"Open\",\n+\t\"ui.chat.attachments.playback_position\": \"Playback position\",\n+\t\"ui.chat.attachments.playback_rate\": \"Playback rate\",\n+\t\"ui.chat.attachments.playback_rate_option\": \"{rate}x\",\n+\t\"ui.chat.attachments.volume\": \"Volume\"\n }\n",
+   "branch_to_union": "--- branch(HEAD) src/i18n/catalogues/en/ui.chat.attachments.json\n+++ working-tree src/i18n/catalogues/en/ui.chat.attachments.json\n@@ -1,5 +1,4 @@\n {\n-\t\"ui.chat.attachments.open\": \"Open\",\n \t\"ui.chat.attachments.pending_caption\": \"Not sent yet\",\n \t\"ui.chat.attachments.file_meta\": \"{type} · {size}\",\n \t\"ui.chat.attachments.file_missing\": \"Moved or deleted\",\n@@ -10,10 +9,12 @@\n \t\"ui.chat.attachments.file_missing_recovery\": \"The file is no longer at this path.\",\n \t\"ui.chat.attachments.file_type_unknown\": \"File\",\n \t\"ui.chat.attachments.copy_saved_path\": \"Copy saved copy path\",\n+\t\"ui.chat.attachments.saved_path_copied\": \"Saved copy path copied\",\n+\t\"ui.chat.attachments.saved_copy_label\": \"Saved copy\",\n+\t\"ui.chat.attachments.file_and_copy_missing\": \"The saved copy is gone too.\",\n+\t\"ui.chat.attachments.open\": \"Open\",\n \t\"ui.chat.attachments.playback_position\": \"Playback position\",\n \t\"ui.chat.attachments.playback_rate\": \"Playback rate\",\n \t\"ui.chat.attachments.playback_rate_option\": \"{rate}x\",\n-\t\"ui.chat.attachments.saved_path_copied\": \"Saved copy path copied\",\n-\t\"ui.chat.attachments.saved_copy_label\": \"Saved copy\",\n \t\"ui.chat.attachments.volume\": \"Volume\"\n }\n",
+   "main_to_union": "--- origin/main(MERGE_HEAD) src/i18n/catalogues/en/ui.chat.attachments.json\n+++ working-tree src/i18n/catalogues/en/ui.chat.attachments.json\n@@ -11,5 +11,10 @@\n \t\"ui.chat.attachments.copy_saved_path\": \"Copy saved copy path\",\n \t\"ui.chat.attachments.saved_path_copied\": \"Saved copy path copied\",\n \t\"ui.chat.attachments.saved_copy_label\": \"Saved copy\",\n-\t\"ui.chat.attachments.file_and_copy_missing\": \"The saved copy is gone too.\"\n+\t\"ui.chat.attachments.file_and_copy_missing\": \"The saved copy is gone too.\",\n+\t\"ui.chat.attachments.open\": \"Open\",\n+\t\"ui.chat.attachments.playback_position\": \"Playback position\",\n+\t\"ui.chat.attachments.playback_rate\": \"Playback rate\",\n+\t\"ui.chat.attachments.playback_rate_option\": \"{rate}x\",\n+\t\"ui.chat.attachments.volume\": \"Volume\"\n }\n"
+  },
+  "vi": {
+   "base_to_union": "--- merge-base src/i18n/catalogues/vi/ui.chat.attachments.json\n+++ working-tree src/i18n/catalogues/vi/ui.chat.attachments.json\n@@ -10,5 +10,11 @@\n \t\"ui.chat.attachments.file_type_unknown\": \"Tệp\",\n \t\"ui.chat.attachments.copy_saved_path\": \"Sao chép đường dẫn bản sao đã lưu\",\n \t\"ui.chat.attachments.saved_path_copied\": \"Đã sao chép đường dẫn bản sao đã lưu\",\n-\t\"ui.chat.attachments.saved_copy_label\": \"Bản sao đã lưu\"\n+\t\"ui.chat.attachments.saved_copy_label\": \"Bản sao đã lưu\",\n+\t\"ui.chat.attachments.file_and_copy_missing\": \"Bản sao đã lưu cũng không còn.\",\n+\t\"ui.chat.attachments.open\": \"Mở\",\n+\t\"ui.chat.attachments.playback_position\": \"Vị trí phát\",\n+\t\"ui.chat.attachments.playback_rate\": \"Tốc độ phát\",\n+\t\"ui.chat.attachments.playback_rate_option\": \"{rate}x\",\n+\t\"ui.chat.attachments.volume\": \"Âm lượng\"\n }\n",
+   "branch_to_union": "--- branch(HEAD) src/i18n/catalogues/vi/ui.chat.attachments.json\n+++ working-tree src/i18n/catalogues/vi/ui.chat.attachments.json\n@@ -1,5 +1,4 @@\n {\n-\t\"ui.chat.attachments.open\": \"Mở\",\n \t\"ui.chat.attachments.pending_caption\": \"Chưa được gửi\",\n \t\"ui.chat.attachments.file_meta\": \"{type} · {size}\",\n \t\"ui.chat.attachments.file_missing\": \"Đã di chuyển hoặc bị xóa\",\n@@ -10,10 +9,12 @@\n \t\"ui.chat.attachments.file_missing_recovery\": \"Tệp không còn ở đường dẫn này.\",\n \t\"ui.chat.attachments.file_type_unknown\": \"Tệp\",\n \t\"ui.chat.attachments.copy_saved_path\": \"Sao chép đường dẫn bản sao đã lưu\",\n+\t\"ui.chat.attachments.saved_path_copied\": \"Đã sao chép đường dẫn bản sao đã lưu\",\n+\t\"ui.chat.attachments.saved_copy_label\": \"Bản sao đã lưu\",\n+\t\"ui.chat.attachments.file_and_copy_missing\": \"Bản sao đã lưu cũng không còn.\",\n+\t\"ui.chat.attachments.open\": \"Mở\",\n \t\"ui.chat.attachments.playback_position\": \"Vị trí phát\",\n \t\"ui.chat.attachments.playback_rate\": \"Tốc độ phát\",\n \t\"ui.chat.attachments.playback_rate_option\": \"{rate}x\",\n-\t\"ui.chat.attachments.saved_path_copied\": \"Đã sao chép đường dẫn bản sao đã lưu\",\n-\t\"ui.chat.attachments.saved_copy_label\": \"Bản sao đã lưu\",\n \t\"ui.chat.attachments.volume\": \"Âm lượng\"\n }\n",
+   "main_to_union": "--- origin/main(MERGE_HEAD) src/i18n/catalogues/vi/ui.chat.attachments.json\n+++ working-tree src/i18n/catalogues/vi/ui.chat.attachments.json\n@@ -11,5 +11,10 @@\n \t\"ui.chat.attachments.copy_saved_path\": \"Sao chép đường dẫn bản sao đã lưu\",\n \t\"ui.chat.attachments.saved_path_copied\": \"Đã sao chép đường dẫn bản sao đã lưu\",\n \t\"ui.chat.attachments.saved_copy_label\": \"Bản sao đã lưu\",\n-\t\"ui.chat.attachments.file_and_copy_missing\": \"Bản sao đã lưu cũng không còn.\"\n+\t\"ui.chat.attachments.file_and_copy_missing\": \"Bản sao đã lưu cũng không còn.\",\n+\t\"ui.chat.attachments.open\": \"Mở\",\n+\t\"ui.chat.attachments.playback_position\": \"Vị trí phát\",\n+\t\"ui.chat.attachments.playback_rate\": \"Tốc độ phát\",\n+\t\"ui.chat.attachments.playback_rate_option\": \"{rate}x\",\n+\t\"ui.chat.attachments.volume\": \"Âm lượng\"\n }\n"
+  }
+ },
+ "diffs_summary": {
+  "base_to_union": "6 added lines and one comma added to ui.chat.attachments.saved_copy_label, which base ended without because it was the final key; the union places it before main's new key, so JSON requires the comma. No other byte of a pre-existing line moved in either locale.",
+  "branch_to_union": "1 added key (main's file_and_copy_missing) plus a key REORDER: the union keeps base order and appends, while the branch had inserted its five keys mid-file (open first). Value bytes unchanged; JSON object order carries no semantics, and en and vi now share one identical order, which is what locale files are expected to do.",
+  "main_to_union": "5 added lines (the branch's keys) and the same single trailing-comma change on main's now-final line. No value text changed.",
+  "context_sidecar": "The English context sidecar is conflicted in the same way (12 base + 5 branch + 1 main = 18) and was verified with the same arithmetic: 0 extra, 0 missing, 0 changed base values. context-parity passes."
+ },
+ "verification": [
+  {
+   "target": "(1) diff both files against the merge base and against each side",
+   "result": "PASS",
+   "evidence": "counts base/branch/main/union = 12/17/13/18 in en and vi; branch_added = {open, playback_position, playback_rate, playback_rate_option, volume}; main_added = {file_and_copy_missing}; both_sides_added = {}; union_extra_keys = {}; union_missing_keys = {}; pre_existing_value_changes = 0; common_key_conflicts = 0. The only raw-text delta on a pre-existing line is the comma base's last key needed to stay before main's new key."
+  },
+  {
+   "target": "(2) the five branch keys' vi values are the ones this PR audited",
+   "result": "PASS",
+   "evidence": "Working tree equals index stage 2 (HEAD) for all five, and sha256 of the pre-merge vi file (c7fb2470c439…) and en file (623a1363260e…) are exactly the hashes recorded by receipt 1cb068fe5f90-r6-vi.json for ui.chat.attachments (status passed, keys_audited 5, findings []). Spot-checked in the working tree: playback_rate_option = '{rate}x', volume = 'Âm lượng', playback_position = 'Vị trí phát'. ui.chat.attachments is untouched between the r6-audited head 0a2cff71ec and HEAD 36b88a45fe (empty git diff --stat over both files)."
+  },
+  {
+   "target": "(3) main's new key has a sensible vi value in the same voice",
+   "result": "PASS",
+   "evidence": "en 'The saved copy is gone too.' / vi 'Bản sao đã lưu cũng không còn.' The vi value is main's own bytes (working tree == index stage 3), unchanged by the union; see main_key_review.",
+   "finding": null
+  },
+  {
+   "target": "(4) no placeholder, plural or typography regression anywhere in the file",
+   "result": "PASS",
+   "evidence": "18/18 keys compared against English: identical placeholder names and counts ({type}, {size}, {digest}, {rate}), 4 braces per file, no ICU plural/select anywhere (so the vi 'other only' rule is trivially satisfied), no ASCII '...', no double space, no padding, no '!', every vi value NFC with zero combining marks, middle-dot separator preserved in file_meta. check-duplicates: 0 duplicate keys across 934 files. context-parity: ok. generate --check: src/i18n/keys.gen.ts byte-identical to a fresh generation."
+  }
+ ],
+ "main_key_review": {
+  "key": "ui.chat.attachments.file_and_copy_missing",
+  "en": "The saved copy is gone too.",
+  "vi": "Bản sao đã lưu cũng không còn.",
+  "reading": "Read as the second half of the card's status: 'Đã di chuyển hoặc bị xóa' then 'Bản sao đã lưu cũng không còn.' - the original is gone and the retained copy is gone as well.",
+  "assessment": "Sensible and in voice. 'cũng' carries English 'too' with the same anaphora, and 'không còn' is the verb the neighbouring line already uses ('Tệp không còn ở đường dẫn này.'), so the two lines read as one verdict family. 'Bản sao đã lưu' is the exact term the file already uses for the retained copy (saved_copy_label, copy_saved_path, saved_path_copied), so terminology is consistent. Sentence case, one short sentence, full stop, no '!', NFC - all per the vi style guide. The sibling locales render the same shape (fr 'La copie conservée a aussi disparu.', zh-CN '保存的副本也已不存在。', ru 'Сохранённой копии тоже нет.'), so the voice agrees across the wave it came from.",
+  "finding": null
+ },
+ "mechanical": {
+  "placeholders_identical_to_en": true,
+  "icu_plural_or_select_present": false,
+  "vi_plural_rule": "not applicable - no plural messages in this namespace",
+  "nfc_all_values": true,
+  "combining_marks": 0,
+  "ascii_ellipsis": 0,
+  "exclamation_marks": 0,
+  "duplicate_keys": 0,
+  "json_valid_both_files": true,
+  "real_path_render": "All 18 keys rendered through the shipped runtime (src/i18n/messages.ts via an esbuild bundle of src/i18n, locale set to 'vi'): 18/18 returned their own message, none degraded to the key. file_meta rendered 'PDF · 12 KB', playback_rate_option rendered '1.5x', file_retained rendered with its digest. Evidence: audit.log '## real-path render' and render-check.mjs beside this record."
+ },
+ "counts": {
+  "BLOCKER": 0,
+  "MAJOR": 0,
+  "MINOR": 0,
+  "NIT": 0
+ },
+ "findings": [],
+ "verdict": "pass",
+ "namespaces": {
+  "ui.chat.attachments": {
+   "status": "passed",
+   "keys_audited": 18,
+   "sha256": {
+    "en": "5e99fd052e7a24dc2715d7de1332b378c1c964f801cdc1c241c7068569de41a0",
+    "target": "35a0343a5f0155e5b9e54828a34aa181a88ebe1d373200c4f7397e31393b6fa7",
+    "context": "fb4658c36a67e0a4f5be52a7ca7cfe4b3d6479e3eced9b2e94b85279e89d740c"
+   },
+   "findings": []
+  }
+ },
+ "commit_gate_note": {
+  "gate": "pnpm check-i18n:catalogues (ledger-check)",
+  "state": "FAILED at this working tree, 23 findings, and all 23 are ui.chat.attachments",
+  "why": "The union changed the English file (623a1363… -> 5e99fd05…) and every locale's file, so every ledger row for this namespace now names stale bytes; the r5/r6 receipts named the pre-union English bytes, so they cannot bind the union. This is the expected consequence of any merge that adds keys, not a defect in the union, and it is NOT a translation finding - the copy itself is clean.",
+  "what_clears_it": "Re-bind the 7 shipped rows (es, fr, hi, ru, ur, vi, zh-CN) for ui.chat.attachments to the union hashes with a convergence-rebind receipt per locale naming the new English bytes, in the shape i18n/receipts/*-unionbind-*.json already uses. This record is the vi one: promote it to i18n/receipts/ and point the vi row at it. The other six locales still need their own.",
+  "scope": "Recorded for the commit owner. It is outside the four verification targets I was given and outside the namespace verdict above."
+ },
+ "limits": {
+  "other_locales": "Only en and vi were in scope. The same union exists for the other six locales and was not audited here.",
+  "ledger_json": "Not edited or verified beyond reading the vi row: i18n/ledger.json is itself unmerged in this tree and its resolution belongs to the commit owner.",
+  "read_public_copy": "The sanctioned reader refused the working-tree file ('differs from HEAD; commit the public copy before auditing it'), which is correct while the union is uncommitted. Values were read from the working tree and the index stages directly, and every hash in this record was computed from those bytes.",
+  "no_repo_edit": "Nothing in /Users/damian/lo-literals was modified; this record, its log and the render script live in /Users/damian/qa/union-audit/vi/ for promotion into the tracked evidence root."
+ }
+}

@@ -3,6 +3,7 @@ import type {
 	AddressHistoryRequest,
 	AddressHistoryResponse,
 } from "../../shared/browser-address-history";
+import type { PasskeyNoticeView } from "../../shared/browser-passkey-notice";
 import type {
 	HumanTabAction,
 	HumanTabActionOutcome,
@@ -382,6 +383,9 @@ export interface BrowserHostOptions {
 	 * Injected from the wiring that owns the session, so this module does not
 	 * depend on the session object. */
 	forgetSiteData: (origin: string) => Promise<void>;
+	/** The active tab's passkey notice, from the wiring that owns the shim's state
+	 * (`passkey-notice.ts`). Absent means none: the projection then carries null. */
+	passkeyNotice?: (tabId: number) => PasskeyNoticeView | null;
 	/** S4b: the popout's health, supplied by the wiring that owns the overlay
 	 * controller. Absent means no controller was built, which is `suspend`. */
 	addressOverlayMode?: () => {
@@ -450,6 +454,8 @@ export class BrowserHost implements BrowserActionContext {
 	private readonly forgetSiteData: (origin: string) => Promise<void>;
 	/** S6b's native card, when the launch built one (see `BrowserHostOptions`). */
 	private readonly approvalsCard: BrowserHostOptions["approvalsCard"];
+	/** Constructor-assigned, not a field initialiser: see `tabAudio` above. */
+	private readonly passkeyNotice: BrowserHostOptions["passkeyNotice"];
 	/** S4b's popout health, read from the controller (or the launch's platform
 	 * answer when no controller exists). The strip reads this from the same
 	 * projection as the tabs, so the renderer has one source for "child or
@@ -496,6 +502,7 @@ export class BrowserHost implements BrowserActionContext {
 		this.facts = options.facts;
 		this.forgetSiteData = options.forgetSiteData;
 		this.approvalsCard = options.approvalsCard;
+		this.passkeyNotice = options.passkeyNotice;
 		this.addressOverlayMode =
 			options.addressOverlayMode ??
 			(() => ({ mode: "suspend", reason: "unavailable" }));
@@ -974,6 +981,13 @@ export class BrowserHost implements BrowserActionContext {
 			// which is the round-1 D2 fix: a host-wide projection rendered a decision taken
 			// in another tab into this one's chrome.
 			transfers: this.downloads.activityFor(active?.tabId ?? null),
+			// The ACTIVE tab's passkey notice only, for the reason `transfers` is scoped
+			// the same way: a background (often agent-driven) tab's request must not
+			// narrate itself into the page the user is looking at. It is shown when the
+			// user activates that tab, if it has not aged out.
+			passkeyNotice: active
+				? (this.passkeyNotice?.(active.tabId) ?? null)
+				: null,
 			url: active ? active.view.webContents.getURL() : "",
 			title: active
 				? this.titleForChrome(active.view.webContents.getTitle())

@@ -11,7 +11,7 @@ import {
 } from "@shared/components/ui/dropdown-menu";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import { Archive, Bell, BellOff, MoreHorizontal } from "lucide-react";
+import { Archive, Bell, BellOff, MoreHorizontal, UserPlus } from "lucide-react";
 import type { FC } from "react";
 import type { TeamBridgeNotify } from "../../../../shared/team-bridge-contract";
 import {
@@ -52,9 +52,17 @@ export const TeamBridgeConversationMenu: FC<{
 	 * where the consequence is stated; the menu item itself changes nothing.
 	 */
 	onArchive?: () => void;
+	/** Present only when the server says this caller may administer membership. */
+	onAddMembers?: () => void;
 	/** Story/capture seed only: opens the menu so its rows are visible. */
 	defaultOpen?: boolean;
-}> = ({ conversation, onNotifyChange, onArchive, defaultOpen = false }) => {
+}> = ({
+	conversation,
+	onNotifyChange,
+	onArchive,
+	onAddMembers,
+	defaultOpen = false,
+}) => {
 	useI18nLocale();
 	const notify = notificationPreference(conversation);
 	const muted = notify === "mute";
@@ -73,6 +81,15 @@ export const TeamBridgeConversationMenu: FC<{
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="w-60">
+				{onAddMembers && (
+					<>
+						<DropdownMenuItem onSelect={onAddMembers}>
+							<UserPlus size={16} aria-hidden="true" />
+							<span>{t("ui.teamBridge.members.menu")}</span>
+						</DropdownMenuItem>
+						<DropdownMenuSeparator />
+					</>
+				)}
 				<DropdownMenuItem
 					onSelect={() => onNotifyChange(toggledMuteNotify(notify))}
 				>

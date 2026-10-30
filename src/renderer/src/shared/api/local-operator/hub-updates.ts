@@ -140,6 +140,11 @@ export type HubMergeReport = {
 	backup?: string | null;
 	/** B4.3 class when the item did not settle. */
 	error_class?: string | null;
+	/**
+	 * Core's own sentence for this row (`report.py` `ItemMergeReport.message`,
+	 * emitted by `to_json`); shown verbatim under the outcome, never reworded.
+	 */
+	message?: string | null;
 	classification?: string | null;
 	/** `skipped: <class>` after a systemic stop during update-all. */
 	skipped_reason?: string | null;
