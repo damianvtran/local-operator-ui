@@ -515,6 +515,16 @@ const PRIVATE_BYTES = /blob:|https?:\/\/\S+attachment/;
 const CAPABILITY_GATE = /team_bridge_owner_audit\s*\?\?\s*0\)\s*>=\s*1/;
 const RAIL_SITE = /\{ownerAudit\?\.rail\(/;
 const PANEL_SITE = /\{ownerAudit\?\.active\s*\?/;
+/*
+ * The `Badge` primitive's own base classes (`badgeVariants` in
+ * `shared/components/ui/badge.tsx`). The primitive carries no data attribute, so
+ * its class signature is the structural handle: the own row's "no verdict chip"
+ * claim has to be pinned to MARKUP, because the deleted `ui.ownerAudit.own` key
+ * makes `t()` echo the key and a copy-absence check on it can never fail.
+ */
+const BADGE_SELECTOR = "span.w-fit.whitespace-nowrap.font-medium.text-meta";
+/* The retired own-row chip's English copy, pinned literally for the same reason. */
+const OWN_CHIP_COPY = "Sent by your chief of staff";
 /* A verdict mark's edge, hoisted for `useTopLevelRegex`. */
 const BORDER_CLASS = /border-/;
 /* The exclusivity claim D2 removed: the disclosure must not re-introduce it. */
@@ -930,7 +940,17 @@ test("unadmitted bodies read inline like every other message", async () => {
 	/* The agent's OWN rows carry no chip: in a chief of staff's own DM that chip
 	 * sat on most rows and drowned the verdicts that matter, while the name and
 	 * Bot avatar already say who sent it. */
-	assert.equal(ownRow.textContent.includes(m.t("ui.ownerAudit.own")), false);
+	/* Positive control first: a verdict row renders exactly one Badge, so a zero
+	 * on the own row is the badge's absence, not a selector that matches nothing. */
+	for (const row of [admittedRow, rejectedRow, emptyRow]) {
+		assert.equal(row.querySelectorAll(BADGE_SELECTOR).length, 1);
+	}
+	assert.equal(
+		ownRow.querySelectorAll(BADGE_SELECTOR).length,
+		0,
+		"the agent's own row renders no verdict badge",
+	);
+	assert.equal(ownRow.textContent.includes(OWN_CHIP_COPY), false);
 	assert.equal(
 		view.text().includes(m.t("ui.ownerAudit.unknown_status")),
 		false,
@@ -1490,11 +1510,14 @@ test("each verdict carries its own treatment, not shared grey text", async () =>
 	 * no mark at all (the quiet state; see VERDICT in the view), which is
 	 * asserted here so a chip cannot creep back onto every own row. */
 	const neutral = new Set([unknownMark.className]);
+	const ownRow = view.host.querySelector(`li[data-message-id="${own.id}"]`);
+	assert.ok(ownRow, "the agent's own message is rendered");
 	assert.equal(
-		view.text().includes(m.t("ui.ownerAudit.own")),
-		false,
+		ownRow.querySelectorAll(BADGE_SELECTOR).length,
+		0,
 		"the agent's own rows carry no verdict chip",
 	);
+	assert.equal(view.text().includes(OWN_CHIP_COPY), false);
 	assert.equal(neutral.has(admittedMark.className), false);
 	assert.equal(neutral.has(rejectedMark.className), false);
 	assert.equal(neutral.has(notScreenedMark.className), false);
