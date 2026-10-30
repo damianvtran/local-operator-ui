@@ -37,6 +37,8 @@ const bundle = await build({
 			export { teamBridgeDeliveryLines } from "./src/renderer/src/features/team-bridge/team-bridge-delivery-annotation-model";
 			export { TeamBridgeDeliveryAnnotation } from "./src/renderer/src/features/team-bridge/team-bridge-delivery-annotation";
 			export { teamBridgeMessageSchema } from "./src/shared/team-bridge-contract";
+			export { ownerAuditToBridgeMessage } from "./src/renderer/src/features/team-bridge/team-bridge-owner-audit-model";
+			export { ownerAuditMessageSchema } from "./src/shared/team-bridge-owner-audit-contract";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -57,6 +59,8 @@ const {
 	teamBridgeDeliveryLines,
 	TeamBridgeDeliveryAnnotation,
 	teamBridgeMessageSchema,
+	ownerAuditToBridgeMessage,
+	ownerAuditMessageSchema,
 } = compiled.exports;
 const createElement = React.createElement;
 const INFO_LABEL = /aria-label="About message screening"/;
@@ -226,4 +230,35 @@ test("a malformed annotation costs the annotation, never the message", () => {
 	});
 	assert.equal(good.delivery_states.length, 1);
 	assert.equal(teamBridgeMessageSchema.parse(base).delivery_states, undefined);
+});
+
+test("the owner-audit view carries the audited agent's delivery state to the row", () => {
+	const wire = {
+		id: "bcmsg_2",
+		conversation_id: "bconv_1",
+		seq: 2,
+		sender: { account_id: "acct_2", kind: "human", display_label: "Ben" },
+		body: "hi",
+		origin: "human",
+		created_at: "2026-10-30T00:00:00Z",
+	};
+	const held = entry({ state: "held", hold_class: "awaiting_review" });
+	const row = ownerAuditToBridgeMessage(
+		ownerAuditMessageSchema.parse({ ...wire, delivery_states: [held] }),
+	);
+	assert.deepEqual(row.delivery_states, [held]);
+	assert.deepEqual(lineTexts(render(row.delivery_states)), [
+		"Waiting to be screened… · awaiting review",
+	]);
+	assert.equal(
+		ownerAuditToBridgeMessage(ownerAuditMessageSchema.parse(wire))
+			.delivery_states,
+		undefined,
+	);
+	assert.equal(
+		ownerAuditMessageSchema.parse({ ...wire, delivery_states: "bad" })
+			.delivery_states,
+		undefined,
+		"a malformed annotation costs the annotation, never the audit row",
+	);
 });
