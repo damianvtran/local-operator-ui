@@ -1409,8 +1409,17 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			 * render was the tautology of round 12's B1; all this side retires is its own
 			 * attempt record, which names a request that is over.
 			 */
-			if (isDraftCurrent() && sendAttempts.get(composerKey) === entry) {
-				sendAttempts.delete(composerKey);
+			/*
+			 * RETIRED BY IDENTITY, NOT BY CURRENCY (PR #1528 review round 1, R1-01). The
+			 * record is module-scoped and outlives this page, while `isDraftCurrent()` is
+			 * false once the reader has left: fencing the delete on it left a LANDED key
+			 * behind, and the next identical message reused it and was replayed into
+			 * nothing. Only the draft write below needs the page; the identity check alone
+			 * keeps a newer attempt on the same draft from being retired by this one.
+			 */
+			const ownRecord = sendAttempts.get(composerKey) === entry;
+			if (ownRecord) sendAttempts.delete(composerKey);
+			if (ownRecord && isDraftCurrent()) {
 				// THE SPENT KEY IS RETIRED WITH THE ATTEMPT. This is the actual fix: the
 				// draft outlives a successful send, so without this the next message reads
 				// the key this one just used and the hub refuses it with 409.
@@ -1442,13 +1451,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				if (draftState.update({ clientRef: freshRef })) {
 					try {
 						await onSend(body, freshRef, stagedForSend(attachments));
-						if (
-							isDraftCurrent() &&
-							sendAttempts.get(composerKey) === retryEntry
-						) {
-							sendAttempts.delete(composerKey);
+						// Same rule as the first arm: retire by identity, rotate only if current.
+						const ownRetry = sendAttempts.get(composerKey) === retryEntry;
+						if (ownRetry) sendAttempts.delete(composerKey);
+						if (ownRetry && isDraftCurrent())
 							draftState.update({ clientRef: crypto.randomUUID() });
-						}
 						return true;
 					} catch (retryError) {
 						if (isAttachmentNotFound(retryError))

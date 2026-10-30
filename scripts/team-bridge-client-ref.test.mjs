@@ -575,3 +575,57 @@ test("signing out forgets a failed attempt's client_ref", async () => {
 	);
 	await back.close();
 });
+
+/*
+ * R1-01 (PR #1528 review round 1) - A SEND THAT LANDS AFTER LEAVING IS RETIRED.
+ *
+ * The attempt record is module-scoped so it outlives the page, which means its
+ * success arm cannot be fenced on the page still being mounted: in production
+ * `isDraftCurrent` is the owner's `mounted` flag, false once the reader navigates
+ * away. A send that landed after that left its now-spent key behind, and the next
+ * identical message ("ok", "thanks") reused it - the hub replays a spent key with
+ * matching text, so the message was swallowed. The default `() => true` in
+ * `pageProps` hides this, so this case passes a real unmounting fence.
+ */
+test("a send that lands after leaving Team Bridge does not leave its key behind", async () => {
+	localStorage.clear();
+	const refs = [];
+	let mounted = true;
+	let release;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const onSend = async (_body, clientRef) => {
+		refs.push(clientRef);
+		if (refs.length === 1) await gate;
+	};
+	const first = await mountPage(
+		pageProps({ target: conversation, onSend, isDraftCurrent: () => mounted }),
+	);
+	await typeBody(first.element, "ok");
+	await act(async () => {
+		sendButton(first.element).click();
+	});
+	assert.deepEqual(refs.length, 1, "the first send is in flight");
+	mounted = false;
+	await first.close();
+	await act(async () => {
+		release();
+		await gate;
+	});
+	await settle();
+	mounted = true;
+	const back = await mountPage(
+		pageProps({ target: conversation, onSend, isDraftCurrent: () => mounted }),
+	);
+	await typeBody(back.element, "ok");
+	await act(async () => sendButton(back.element).click());
+	await settle();
+	assert.deepEqual(refs.length, 2);
+	assert.notEqual(
+		refs[1],
+		refs[0],
+		"the first 'ok' landed; reusing its key would make the hub replay it and post nothing",
+	);
+	await back.close();
+});
