@@ -1525,6 +1525,34 @@ export const SettingsPage: FC = () => {
 									   results. */
 									data-search-row="general.model"
 									data-search-control
+									/*
+									 * This row is THREE controls and no title of its own: the
+									 * section's h2 is the only name it prints, so a reader
+									 * typing "model" was competing against twelve registry rows
+									 * whose labels are exactly that word while this row's label
+									 * was the concatenated text of its three selects (QA round
+									 * 2b, Q6b). The label is the heading's own string, so the
+									 * word on screen is the word that finds it; the row's text
+									 * (hosting provider, the model's name) stays searchable as
+									 * its description.
+									 */
+									data-search-label={t(
+										"ui.settings.model.settings_page.model_settings",
+									)}
+									/*
+									 * The words the three controls PRINT, as terms: making the
+									 * label the heading's string moved the trio's own captions
+									 * out of the label tier, so "hosting provider" — which a
+									 * reader reads off the `Hosting provider` caption and used to
+									 * find this row first — would fall to the description tier and
+									 * be outranked by registry names. Terms keep the reader's
+									 * vocabulary at the tier the captions had.
+									 */
+									data-search-terms={[
+										t("ui.common.models.hosting_select.hosting_provider"),
+										t("ui.common.models.model_select.model"),
+										t("ui.settings.model.default_effort.label"),
+									].join(" ")}
 									className="flex flex-col gap-4"
 								>
 									<HostingSelect

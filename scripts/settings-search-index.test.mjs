@@ -640,3 +640,55 @@ test("word matches outrank letter-scatter, and the tighter name wins a tie (QA r
 		"and only rows that NAME the word precede it — never prose that buries it",
 	);
 });
+
+test("the page's Model row answers `model`, and its own controls still answer their words (QA round 2b, Q6b)", () => {
+	/*
+	 * The row is the page's own (hosting + model + effort), and it now carries
+	 * the section heading as its label. Markup below is that row's shape: the
+	 * trio of selects inside a row that marks itself as the control (see QA
+	 * round 1, Q4), with the label the page passes.
+	 */
+	const dom = new JSDOM(
+		`<!doctype html><html><body><div data-settings-content>
+			<section data-search-section="general" data-search-section-label="General settings">
+				<div data-search-row="general.model" data-search-control data-search-label="Model settings" data-search-terms="Hosting provider Model Default effort">
+					<div>
+						<span>Hosting provider</span>
+						<button type="button" role="combobox">Radient</button>
+						<span>Model</span>
+						<button type="button" role="combobox">Claude Sonnet</button>
+						<span>Effort</span>
+						<button type="button" role="combobox">Default</button>
+					</div>
+				</div>
+			</section>
+		</div></body></html>`,
+	);
+	const entries = buildRenderedEntries(
+		dom.window.document.querySelector("[data-settings-content]"),
+	);
+	const pageRow = entries.find((entry) => entry.id === "page:general.model");
+	assert.equal(
+		pageRow.label,
+		"Model settings",
+		"the row's label is the heading it sits under",
+	);
+	const index = buildSettingsIndex({
+		registry: payload,
+		sections: [],
+		rendered: entries,
+	});
+	const model = searchSettings(index, "model", 12);
+	const at = model.results.findIndex(
+		(result) => result.entry.id === "page:general.model",
+	);
+	assert.ok(
+		at >= 0 && at < 12,
+		"`model` answers with the page's own row inside the cap",
+	);
+	const hosting = searchSettings(index, "hosting provider", 12);
+	assert.ok(
+		hosting.results.some((result) => result.entry.id === "page:general.model"),
+		"and the words its controls print still find it",
+	);
+});

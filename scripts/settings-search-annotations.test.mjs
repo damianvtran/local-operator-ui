@@ -368,3 +368,38 @@ test("every sidebar section the index offers has a resolvable root", () => {
 		"the sidebar's ids and the rendered section roots agree",
 	);
 });
+
+test("the Model settings row names itself with the heading's own string (QA round 2b, Q6b)", () => {
+	/*
+	 * The hosting/model/effort trio is one row with no title of its own: before
+	 * this, its index label was the concatenated text of three selects, so a
+	 * reader typing "model" — the word the section heading prints — competed
+	 * against twelve registry rows literally labelled that word and never saw the
+	 * page's own row inside the cap (QA round 2b, Q6b).
+	 *
+	 * Asserted from source for the reason this file's header gives (the page
+	 * mounts MUI and its query graph, which jsdom cannot resolve), and asserted
+	 * as the SAME catalogue key the section heading reads — so the label cannot
+	 * drift into a second spelling of the section's name.
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/settings/components/settings-page.tsx",
+		"utf8",
+	);
+	const at = source.indexOf('data-search-row="general.model"');
+	assert.ok(at > 0, "the model row is still one indexed row");
+	const opening = source.slice(at, at + 900);
+	assert.ok(
+		at + 900 < source.length && source.indexOf(">", at) > 0,
+		"the row's opening tag is inside the window this test reads",
+	);
+	assert.ok(
+		at < source.indexOf("data-search-label", at) &&
+			source.indexOf("data-search-label", at) < source.indexOf(">", at),
+		"the row's opening tag carries its own search label",
+	);
+	assert.ok(
+		opening.includes("ui.settings.model.settings_page.model_settings"),
+		"and that label is the string the section heading prints",
+	);
+});
