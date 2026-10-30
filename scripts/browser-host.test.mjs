@@ -185,6 +185,7 @@ const {
 	// test that hard-codes the cap stops testing it the day the cap moves.
 	decidePopup,
 	routePopup,
+	linkLoadLeftNoPage,
 	effectivePresentation,
 	sessionMayAdopt,
 	MAX_POPUP_CHILDREN_PER_VIEW,
@@ -8631,6 +8632,63 @@ test("owner_finish closes the unadopted link tabs its allocated openers spawned 
 		"closed",
 	);
 	assert.deepEqual(closedSpawned, [token]);
+});
+
+test("a link tab closes only when its failed load left no page AND nothing is loading (M-1)", () => {
+	const view = (extra) => ({
+		destroyed: false,
+		url: "",
+		loading: false,
+		...extra,
+	});
+	// The download case (ERR_FAILED -2): blank, idle => close.
+	assert.equal(linkLoadLeftNoPage(view({})), true);
+	assert.equal(linkLoadLeftNoPage(view({ url: "about:blank" })), true);
+	assert.equal(linkLoadLeftNoPage(view({ destroyed: true })), true);
+	// A superseded or stopped-then-replaced load (ERR_ABORTED -3): blank but the
+	// replacement is loading => the tab is in use and stays.
+	assert.equal(linkLoadLeftNoPage(view({ loading: true })), false);
+	assert.equal(
+		linkLoadLeftNoPage(view({ url: "about:blank", loading: true })),
+		false,
+	);
+	// An error page or any committed document stays, loading or not.
+	assert.equal(
+		linkLoadLeftNoPage(view({ url: "http://127.0.0.1:1/never" })),
+		false,
+	);
+});
+
+test("a user link tab handed to a session is not reclaimed with its opener (M-3)", () => {
+	const { registry } = makeRegistry();
+	const opener = registry.create({ owner: "agent", sessionId: "a" });
+	const unhanded = registry.create({
+		owner: "agent",
+		sessionId: "a",
+		openedBy: "a",
+		openedByTab: opener.tabId,
+		activate: false,
+	});
+	// A user's link tab from the same opener, then shared with a session through the
+	// real `handOver`: agent-owned, empty allocationId, but not the opener's to close.
+	const shared = registry.create({
+		owner: "user",
+		openedByTab: opener.tabId,
+		activate: false,
+	});
+	registry.handOver(shared.tabId, "session:b");
+	assert.equal(shared.owner, "agent");
+	assert.equal(shared.allocationId, "");
+	assert.deepEqual(
+		registry.unadoptedLinkTabs(opener.tabId).map((r) => r.tabId),
+		[unhanded.tabId],
+	);
+	// Revoking the hand-over returns it to the user, who still keeps it.
+	registry.revokeHandOver(shared.tabId);
+	assert.deepEqual(
+		registry.unadoptedLinkTabs(opener.tabId).map((r) => r.tabId),
+		[unhanded.tabId],
+	);
 });
 
 test("popup refusals and bounds are unchanged by the tab route", () => {

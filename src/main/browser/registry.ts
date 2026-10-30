@@ -431,7 +431,11 @@ export class TabRegistry {
 			(record) =>
 				record.openedByTab === openerTabId &&
 				record.owner === "agent" &&
-				!record.allocationId,
+				!record.allocationId &&
+				// A user's link tab that was handed to a session is that session's now
+				// (`handOver` makes it agent-owned with an empty allocationId): closing
+				// the opener must not close a tab the user chose to share.
+				record.handedTo === null,
 		);
 	}
 

@@ -267,3 +267,25 @@ function isAllowedTarget(rawUrl: string): boolean {
 		return false;
 	}
 }
+
+/**
+ * Whether a failed link-tab load left NOTHING to show, so the tab should close
+ * (R1-5): a download (ERR_FAILED -2, measured) or a cancelled navigation commits no
+ * page and the view stays blank.
+ *
+ * `loading` is part of the test because a blank URL alone is not "nothing will
+ * come": a second navigation during a slow first load (an agent's `open tab=` with
+ * a URL, a redirect the page started) rejects the FIRST load with ERR_ABORTED -3
+ * while the view is blank and still loading the replacement, and the user pressing
+ * Stop takes the same path. That tab is in use. Only a blank view that is NOT
+ * loading anything has no page and none coming.
+ */
+export function linkLoadLeftNoPage(view: {
+	destroyed: boolean;
+	url: string;
+	loading: boolean;
+}): boolean {
+	if (view.destroyed) return true;
+	if (view.loading) return false;
+	return view.url === "" || view.url === "about:blank";
+}

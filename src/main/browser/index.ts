@@ -89,7 +89,12 @@ import {
 	openPasskeyNoticeInSystemBrowser,
 	passkeyShimSource,
 } from "./passkey-notice";
-import { type PopupOpenerOwner, decidePopup, routePopup } from "./popups";
+import {
+	type PopupOpenerOwner,
+	decidePopup,
+	linkLoadLeftNoPage,
+	routePopup,
+} from "./popups";
 import {
 	BROWSER_PARTITION,
 	type ClearWhat,
@@ -2417,8 +2422,16 @@ async function initializeBrowserHost(
 						// tab would stay attached and counted against the cap (R1-5). A real
 						// failure (DNS, refused, TLS) commits its error page and keeps the tab,
 						// because that page is the answer a user or an agent should read.
-						const committed = contents.isDestroyed() ? "" : contents.getURL();
-						if (committed === "" || committed === "about:blank") {
+						// Not while something else is loading: a superseded load also rejects
+						// with a blank URL (M-1), and that tab is in use.
+						const destroyed = contents.isDestroyed();
+						if (
+							linkLoadLeftNoPage({
+								destroyed,
+								url: destroyed ? "" : contents.getURL(),
+								loading: destroyed ? false : contents.isLoading(),
+							})
+						) {
 							log(
 								`[browser] popup tab ${created.tabId} closed: ${details.url} produced no page (${message})`,
 							);

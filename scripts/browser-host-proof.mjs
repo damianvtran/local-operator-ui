@@ -376,6 +376,7 @@ const MOD_PAGE = `<!doctype html><html><head><meta charset="utf-8"><title>Link s
 <a id="m-middle" href="/link-target?which=mod-middle" target="_blank" style="position:absolute;left:10px;top:110px;width:150px;height:30px;display:block">middle link</a>
 <a id="m-ref" href="/link-target?which=referer" target="_blank" style="position:absolute;left:10px;top:160px;width:150px;height:30px;display:block">Referer link</a>
 <a id="m-dead" href="http://127.0.0.1:1/never" target="_blank" style="position:absolute;left:10px;top:260px;width:150px;height:30px;display:block">Dead link</a>
+<a id="m-slow" href="/slow?link=1" target="_blank" style="position:absolute;left:10px;top:310px;width:150px;height:30px;display:block">Slow link</a>
 <a id="m-dl" href="/download-target" target="_blank" style="position:absolute;left:10px;top:210px;width:150px;height:30px;display:block">Download link</a>
 <form method="post" action="/post-target" target="_blank"><input type="hidden" name="a" value="1"><button id="m-post" type="submit" style="position:absolute;left:200px;top:10px;width:120px;height:30px">Post form</button></form>
 </body></html>`;
@@ -2321,6 +2322,36 @@ async function main() {
 		deadTabs.length === tabsBeforeDead + 1 &&
 			deadTabs.some((t) => t.url.includes("127.0.0.1:1")),
 		`tabs ${tabsBeforeDead} -> ${deadTabs.length}; ${JSON.stringify(deadTabs.map((t) => t.url))}`,
+	);
+
+	// M-1: a link tab whose first load is SUPERSEDED (here: the agent navigates it
+	// while /slow still holds the response) rejects the first load with ERR_ABORTED
+	// and a blank URL while the replacement is loading. That tab is in use and stays.
+	const tabsBeforeSlow = new Set((await listedTabs()).tabs.map((t) => t.tab));
+	await clickControl(state, modTab.tab, "Slow link", "link");
+	let slowTab = null;
+	for (let i = 0; i < 40 && !slowTab; i += 1) {
+		slowTab =
+			(await listedTabs()).tabs.find((t) => !tabsBeforeSlow.has(t.tab)) ?? null;
+		if (!slowTab) await sleep(250);
+	}
+	let supersededOk = false;
+	let supersededDetail = "no slow link tab appeared";
+	if (slowTab) {
+		await rpcOk(state, "goto", {
+			tab: slowTab.tab,
+			url: `${siteOrigin}/link-target?which=superseded`,
+			requester: "session:proof",
+		});
+		await sleep(2000);
+		const after = (await listedTabs()).tabs;
+		supersededOk = after.some((t) => t.url.includes("which=superseded"));
+		supersededDetail = `tabs ${JSON.stringify(after.map((t) => t.url))}`;
+	}
+	check(
+		"a link tab whose slow first load is superseded keeps its tab (ERR_ABORTED with a blank URL while loading is not 'no page')",
+		supersededOk,
+		supersededDetail,
 	);
 
 	// R1-1: closing the opener closes the link tabs nothing adopted (and its windows).
