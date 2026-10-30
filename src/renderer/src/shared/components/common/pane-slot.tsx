@@ -72,13 +72,23 @@ type PaneSlotProps = HTMLAttributes<HTMLDivElement> & {
  *     reads it from this file.
  */
 export const PaneSlot = forwardRef<HTMLDivElement, PaneSlotProps>(
-	({ width, minWidth = 0, tourTag, children, ...rest }, ref) => (
+	({ width, minWidth = 0, tourTag, className, children, ...rest }, ref) => (
 		<div
 			ref={ref}
 			style={{ minWidth, width }}
 			data-tour-tag={tourTag}
 			className={cn(
 				"relative h-full overflow-hidden transition-[width] duration-base ease-out-quart",
+				/*
+				 * THE CALLER'S OWN CLASSES ARE MERGED HERE, NOT SPREAD PAST. `className`
+				 * used to travel in `...rest` and land on the element AFTER this `cn(...)`,
+				 * so a caller that named one class replaced the WHOLE family list —
+				 * `relative h-full overflow-hidden` included, and with it the clip and the
+				 * floor this file's header argues for. Merging through `cn` keeps the family
+				 * list and lets `twMerge` resolve a genuine collision (`absolute` over
+				 * `relative`), which is what the ask drawer's narrow-width overlay needs.
+				 */
+				className,
 			)}
 			{...rest}
 		>

@@ -3363,9 +3363,39 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * open - and the canvas and this drawer are exclusive, so one call serves
 						 * both. A second derivation would be the two-answers-to-one-number defect
 						 * the store's resolver exists to prevent.
+						 *
+						 * AND IT IS 0 AT THE ROWS THE PANE CANNOT DOCK IN, which is a width no drawer
+						 * can be read in (agent review round 4). MEASURED at a 500x338 CSS-px RTL
+						 * viewport (200 % zoom). The rail takes 44 (`PANEL_RAIL_WIDTH_PX`), so the
+						 * content column is 456 and its chat row is 456 or 400 - the docked sidebar's
+						 * capacity at that window is `sidebarDockCapacity(500, 44)`, i.e.
+						 * `max(0, min(320, 500 - 480 - 44))` = 0, and the strip is 56. Both are below
+						 * the conversation's own floor, so `canvasDockWidth(row)` is
+						 * `max(0, min(560, row - 480))` = 0 and this slot laid out at NO width at all:
+						 * the drawer's section measured clientWidth 0 with scrollWidth 144, and its
+						 * controls spilled past the pane's inline end. The Read segment's rect was
+						 * x -1.23..43.97 - inside the rail's 0..44 strip and under it, so
+						 * `elementFromPoint` answered the rail and the switch could not be pressed.
+						 * The squeezed tab strip had also wrapped to ~19 lines, which is how the
+						 * Updates tab came to be 8px wide and 372px down in a 338px-tall viewport.
+						 *
+						 * SO THE `overlay` LITERAL IS DRAWN AS ONE. Its name has promised this since
+						 * `1e88f7fc167` took the pane's `absolute` positioning away: "the mode
+						 * withholds the divider", the note in `canvasPaneMode` says, while the pane
+						 * still took flow space it could not have. Pinned to the row (`inset-0`) at
+						 * the row's own measured width, the pane covers the conversation - which is
+						 * what an overlay is for, and what a reader at this width needs, since a
+						 * 0-wide pane is not a narrow one. Its box then cannot leave the row, and the
+						 * row is inside the content column the rail is a sibling AFTER, so nothing the
+						 * drawer draws can reach the rail. In a row running 44..500 the Unread | Read
+						 * group (144px: 84.5 + 45.2 plus the group's own p-0.5) sits against the inline
+						 * start, putting the Read segment's rect near 348..393 - some 304px clear of the
+						 * rail's inner edge at 44, where before it landed at -1.23..43.97. In the
+						 * docked mode nothing changes: same width, no extra class.
 						 */}
 						<PaneSlot
-							width={canvasWidth}
+							width={canvasDocked ? canvasWidth : paneRowWidth}
+							className={canvasDocked ? undefined : "absolute inset-0"}
 							tourTag="ask-drawer-slot"
 							/*
 							 * THE MODE THE SLOT RESOLVED FOR THIS DRAWER - `docked` beside the
