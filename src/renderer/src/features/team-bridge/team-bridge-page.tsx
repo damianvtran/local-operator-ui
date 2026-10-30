@@ -71,6 +71,7 @@ import {
 import {
 	attachmentCapability,
 	isAttachmentNotFound,
+	isClientRefConflict,
 	sendAttachmentIds,
 } from "./team-bridge-attachments-model";
 import { TeamBridgeComposeBar } from "./team-bridge-compose-bar";
@@ -1281,6 +1282,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		draftJournal?.pending ?? null,
 	);
 	/*
+	 * ONE AUTO-RETRY PER ATTEMPT, never one per reader gesture. A manual retry of an
+	 * attempt that already spent its automatic retry keeps the key that retry minted (so
+	 * the pair stays idempotent end to end) and surfaces the failure, instead of minting a
+	 * third key behind the reader's back - otherwise every press silently burns two keys.
+	 * Reset when the message changes, because that is a different message.
+	 */
+	const autoRetried = useRef(false);
+	/*
 	 * THE COMPOSER'S SEND, BOUND HERE.
 	 *
 	 * The bar, the field, the chips and the typing are `TeamBridgeComposer`'s; what
@@ -1321,7 +1330,29 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			return false;
 		}
 		setSendRefusal(null);
-		const clientRef = draftState.current?.clientRef ?? crypto.randomUUID();
+		/*
+		 * THE IDEMPOTENCY KEY BELONGS TO A MESSAGE, NOT TO A DRAFT.
+		 *
+		 * It used to be read straight off `draftState.current.clientRef`, and the draft is
+		 * persisted per account and per target and is NOT discarded by a successful send
+		 * (the text lives in `conversation-input-store`, so the draft's own body stays empty
+		 * and nothing rotates the key). The result was that the SECOND message into a
+		 * conversation carried the first message's key, and the hub - correctly - refused it
+		 * with 409 `client_ref` conflict: "already used for a different conversation message".
+		 * Every retry of that second message reused the same burnt key, so it could never land.
+		 *
+		 * The rule now: a RETRY of the attempt that just failed reuses that attempt's key (the
+		 * ambiguous-failure protection this ref exists for - request landed, answer lost - must
+		 * never post twice), and ANY other send mints a fresh one. `pendingSend` is the attempt
+		 * record, and the body comparison is what keeps a retry a retry: edit the text and it is
+		 * a different message, so it gets a different key.
+		 */
+		const attempt = pendingSend.current;
+		const clientRef =
+			attempt?.body === body ? attempt.clientRef : crypto.randomUUID();
+		// A new message starts with a clean slate; a retry of the same attempt keeps
+		// whatever the auto-retry below already spent on it.
+		if (attempt?.body !== body) autoRetried.current = false;
 		if (!draftState.update({ clientRef })) return false;
 		// ONE attempt, named in both stores: main's optimistic-row journal and
 		// this branch's durable row must carry the same `client_ref`, or a retry
@@ -1356,6 +1387,36 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			 * outcome does NOT come through here - that is the schedule's arm, and its
 			 * recovery is the held-attempt chrome beside the box.
 			 */
+			/*
+			 * A BURNT KEY IS RETRIED ONCE WITH A FRESH ONE (hotfix). A `client_ref` conflict
+			 * means a DIFFERENT message already used this key - behind a proxy that retried,
+			 * a second window, or a stale persisted draft - so the payload on screen is new and
+			 * must be sent under a key nobody has used. Asking the reader to press Send again
+			 * cannot work: the retry reuses the same key and earns the same 409. Exactly ONE
+			 * retry, never a loop: if the fresh key also conflicts, that is a real defect and the
+			 * error stands (the text and chips are kept either way).
+			 */
+			if (isClientRefConflict(error) && !autoRetried.current) {
+				autoRetried.current = true;
+				const freshRef = crypto.randomUUID();
+				const retryEntry = { body, clientRef: freshRef };
+				pendingSend.current = retryEntry;
+				if (draftJournal) draftJournal.pending = retryEntry;
+				if (draftState.update({ clientRef: freshRef })) {
+					try {
+						await onSend(body, freshRef, stagedForSend(attachments));
+						if (isDraftCurrent() && pendingSend.current === retryEntry) {
+							pendingSend.current = null;
+							if (draftJournal) draftJournal.pending = null;
+						}
+						return true;
+					} catch (retryError) {
+						if (isAttachmentNotFound(retryError))
+							setSendRefusal({ kind: "expired" });
+						return false;
+					}
+				}
+			}
 			if (isAttachmentNotFound(error)) setSendRefusal({ kind: "expired" });
 			return false;
 		} finally {
