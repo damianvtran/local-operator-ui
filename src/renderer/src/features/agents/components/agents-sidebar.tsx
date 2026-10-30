@@ -23,6 +23,7 @@ import {
 	AlertDescription,
 	Avatar,
 	AvatarFallback,
+	AvatarImage,
 	Button,
 	Tooltip,
 	TooltipProvider,
@@ -38,6 +39,7 @@ import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
+import { useAgentAvatar } from "@shared/store/agent-avatar-store";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { Bot } from "lucide-react";
@@ -117,7 +119,12 @@ type AgentsSidebarItemProps = {
  * something inside it takes focus, so keyboard users can reach it by tabbing
  * (`pointer-events` gates the mouse, never the tab order).
  */
-const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
+/**
+ * One row, exported for the avatar story: `./agent-avatar.stories.tsx` renders
+ * the real row rather than a copy of its markup, which is the only way the
+ * frame it captures is evidence about this file.
+ */
+export const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 	agent,
 	isSelected,
 	onSelectAgent,
@@ -128,6 +135,13 @@ const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 }) => {
 	// Refresh translated copy without resetting the current selection or action.
 	useI18nLocale();
+	/*
+	 * Read inside the row rather than passed down: the store is keyed by agent id,
+	 * so this subscription repaints one row when its picture changes, and the
+	 * `memo` comparison above stays about the agent's identity instead of growing
+	 * a byte-comparing field.
+	 */
+	const avatar = useAgentAvatar(agent.id);
 	const description =
 		agent.description || t("ui.agents.navigation.sidebar.no_description");
 
@@ -149,6 +163,22 @@ const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 				)}
 			>
 				<Avatar className="size-8 shrink-0">
+					{/*
+					 * THE PICTURE KEEPS THE FALLBACK'S EDGE AND TAKES NO OTHER GEOMETRY.
+					 * The row's height is the two-line block beside this disc, and the
+					 * `size-8` root is what reserves it in both states, so a picture, a
+					 * missing picture and an undecodable one are the same 32px box. The edge
+					 * is on the image arm for the reason the fallback's note below gives: on
+					 * the palettes where the plate's fill merges with the row state, the
+					 * boundary is the thing that tells the disc from the row.
+					 */}
+					{avatar ? (
+						<AvatarImage
+							src={avatar}
+							alt=""
+							className="lo-avatar-arrival border border-control"
+						/>
+					) : null}
 					{/*
 					 * THE AVATAR IS AN OBJECT INSIDE A ROW STATE, SO IT KEEPS ITS OWN EDGE.
 					 * The row above paints `rowCurrent` when this agent is the open one and
