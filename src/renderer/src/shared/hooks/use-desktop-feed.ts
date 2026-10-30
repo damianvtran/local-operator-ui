@@ -210,7 +210,17 @@ export const notificationsFrameRecord = {
 
 export function useDesktopFeed(): DesktopFeedConnection {
 	const capabilities = useDesktopCapabilities();
-	const native = window.api?.desktop?.feed;
+	/*
+	 * `globalThis.window` rather than `window`: this hook is rendered by suites
+	 * that paint the page with `react-dom/server`, where no `window` exists and a
+	 * bare reference throws `ReferenceError: window is not defined` before the
+	 * markup is produced. The file's own note above already states the contract
+	 * (the transcript is server-rendered by its paint tests), so this is the
+	 * guard that contract implies rather than a new exception: `globalThis.window`
+	 * is `undefined` on the server, the optional chain short-circuits, and in the
+	 * renderer it is the same object the bare reference resolved to.
+	 */
+	const native = globalThis.window?.api?.desktop?.feed;
 	const available =
 		desktopFeatureEnabled(capabilities.data, "desktop_feed") && Boolean(native);
 	const [connected, setConnected] = useState(false);

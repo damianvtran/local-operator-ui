@@ -235,9 +235,14 @@ test("the auto-push switch is described by its pause line only while that line r
 		src,
 		/aria-describedby=\{line !== "none" \? `\$\{id\}-push-line` : undefined\}/,
 	);
-	assert.match(src, /<p id=\{`\$\{id\}-push-line`\}/);
+	// `\s+`: the id is a separate attribute line now that the reason lives in the
+	// switch row's own stack. The pin is about the idref resolving to this element.
+	assert.match(src, /<p\s+id=\{`\$\{id\}-push-line`\}/);
 	// The paused/reason line renders under exactly the condition describedby uses.
 	assert.match(src, /\{line !== "none" && \(/);
+	// Severity lives in the INK ROLE: the standing capability note is neutral (it is
+	// true on a healthy link), the transient pause keeps the attention ink.
+	assert.match(src, /line === "paused" \? "text-warning" : "text-ink-muted"/);
 });
 
 // Pair the measured colours with the actual call site: a contrast row alone

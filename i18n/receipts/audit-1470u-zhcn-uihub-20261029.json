@@ -1,0 +1,19 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "radient/auto",
+ "instance": "audit-1470u-zhcn-uihub-20261029",
+ "status": "passed",
+ "namespace": "ui.hub",
+ "sha256": {
+  "zh-CN": "bf1dbfbfab43ce96ea53b6663f621de608ba07d3c3f40b72aa18528445c54e40",
+  "en": "0d77070295627e861882e8f952888c59e1d013dd754e1a7da79c85d1a31a9753"
+ },
+ "findings": [
+  {
+   "key": "ui.hub.status.failed",
+   "severity": "NIT",
+   "problem": "Trailing full stops are inconsistent across one-sentence status strings of the same shape: not_checked, idle, available, retry_wait, failed, unknown and other_error carry no 。, while needs_review, missing, conflict, transport_error and the longer status strings end with it. English terminates all of them with a full stop.",
+   "fix": "Pick one convention for full status sentences (normally 。) and apply it to the seven short strings, or drop it from all of them."
+  }
+ ]
+}
