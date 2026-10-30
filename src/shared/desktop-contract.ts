@@ -3814,6 +3814,38 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			tenant_id: id.optional(),
 		})
 		.strict(),
+	// Owner audit is a separate human-only read plane. No endpoint selector or
+	// write op is admitted here; the runtime derives the caller's own agent.
+	z
+		.object({
+			op: z.literal("team_bridge.owner_audit.conversations"),
+			expected_account_id: id,
+			tenant_id: id,
+			limit: z.number().int().min(1).max(100).optional(),
+			cursor: z.string().min(1).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.owner_audit.messages"),
+			expected_account_id: id,
+			tenant_id: id,
+			conversation_id: id,
+			limit: z.number().int().min(1).max(100).optional(),
+			before_seq: z.number().int().nonnegative().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.owner_audit.replies"),
+			expected_account_id: id,
+			tenant_id: id,
+			conversation_id: id,
+			message_id: id,
+			limit: z.number().int().min(1).max(100).optional(),
+			after_seq: z.number().int().nonnegative().optional(),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("team_bridge.messages.list"),
@@ -3824,12 +3856,15 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			endpoint_id: id.optional(),
 		})
 		.strict(),
+	/* Reactions have no receipt-less legacy caller: the captured account and
+	 * target tenant are required before main may dispatch either verb. */
 	z
 		.object({
 			op: z.literal("team_bridge.reactions.toggle"),
 			conversation_id: id,
 			message_id: id,
-			tenant_id: id.optional(),
+			expected_account_id: id,
+			tenant_id: id,
 			emoji: z.string().min(1),
 			active: z.boolean(),
 		})
@@ -3852,13 +3887,15 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	/*
 	 * One thread (root + replies, oldest-first) under the history gate. Paging
 	 * runs FORWARD with an inclusive `after_seq`, because a thread reads top-down.
+	 * The captured account binds this read to the bearer main dispatches with.
 	 */
 	z
 		.object({
 			op: z.literal("team_bridge.messages.replies"),
 			conversation_id: id,
 			message_id: id,
-			tenant_id: id.optional(),
+			expected_account_id: id,
+			tenant_id: id,
 			limit: z.number().int().min(1).max(100).optional(),
 			after_seq: z.number().int().nonnegative().optional(),
 		})
@@ -4719,6 +4756,22 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 				code: z.ZodIssueCode.custom,
 				path: ["tenant_id"],
 				message: "Guarded conversation writes require an explicit tenant",
+			});
+			return;
+		}
+		/* A threaded send has no receipt-less compatibility path. Keep this on
+		 * the union: a member-level refine would make the discriminated union
+		 * invalid, while an optional field alone would let a caller forget the
+		 * account receipt and dispatch a reply as whoever signs in next. */
+		if (
+			request.op === "team_bridge.messages.send" &&
+			request.thread_root_id !== undefined &&
+			!request.expected_account_id
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ["expected_account_id"],
+				message: "Thread replies require the captured account", // i18n: ignore request-schema diagnostic
 			});
 			return;
 		}
@@ -6637,6 +6690,9 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"team_bridge.conversations.get",
 	"team_bridge.messages.list",
 	"team_bridge.messages.replies",
+	"team_bridge.owner_audit.conversations",
+	"team_bridge.owner_audit.messages",
+	"team_bridge.owner_audit.replies",
 	"team_bridge.unread",
 	"team_bridge.directory",
 	"team_bridge.status",
@@ -7574,6 +7630,18 @@ export type BackendSetting = {
 	 * `retention-duration.ts`).
 	 */
 	unit?: string | null;
+	/**
+	 * A SEVENTH additive field: the other words a reader might type for this row
+	 * (`"dark mode"` for the theme row, `"retries"` for a failover key). It is
+	 * the registry's vocabulary, not the renderer's — the settings search folds
+	 * these into its index so a synonym the backend owns is found without this
+	 * app inventing a second, drifting list of its own (issue #1492).
+	 *
+	 * OPTIONAL and read with `?? []`, exactly like the six above: an older server
+	 * sends nothing, and the search then matches on label, help, key, section and
+	 * choice labels — the behaviour it had before the field existed.
+	 */
+	synonyms?: string[];
 };
 /**
  * The one-time "delegated sessions were cleaned up" notice, as
@@ -9549,6 +9617,31 @@ export function desktopEndpoint(request: DesktopRequest): {
 					consent_version: request.consent_version,
 				},
 			};
+		case "team_bridge.owner_audit.conversations":
+		case "team_bridge.owner_audit.messages":
+		case "team_bridge.owner_audit.replies": {
+			const query = new URLSearchParams({
+				expected_account_id: request.expected_account_id,
+				tenant_id: request.tenant_id,
+			});
+			if (request.limit !== undefined)
+				query.set("limit", String(request.limit));
+			let path = "/v1/desktop/team-bridge/owner-audit/conversations";
+			if (request.op === "team_bridge.owner_audit.conversations") {
+				if (request.cursor !== undefined) query.set("cursor", request.cursor);
+			} else {
+				path += `/${encodeURIComponent(request.conversation_id)}/messages`;
+				if (request.op === "team_bridge.owner_audit.messages") {
+					if (request.before_seq !== undefined)
+						query.set("before_seq", String(request.before_seq));
+				} else {
+					path += `/${encodeURIComponent(request.message_id)}/replies`;
+					if (request.after_seq !== undefined)
+						query.set("after_seq", String(request.after_seq));
+				}
+			}
+			return { path: `${path}?${query}`, method: "GET" };
+		}
 		case "team_bridge.messages.list": {
 			const query = new URLSearchParams();
 			if (request.tenant_id) query.set("tenant_id", request.tenant_id);
@@ -9569,10 +9662,13 @@ export function desktopEndpoint(request: DesktopRequest): {
 				? {
 						path,
 						method: "PUT",
-						body: request.tenant_id ? { tenant_id: request.tenant_id } : {},
+						body: {
+							expected_account_id: request.expected_account_id,
+							tenant_id: request.tenant_id,
+						},
 					}
 				: {
-						path: `${path}${tenantQuery(request.tenant_id)}`,
+						path: `${path}${conversationOwnerQuery(request)}`,
 						method: "DELETE",
 					};
 		}
@@ -9648,8 +9744,10 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "DELETE",
 			};
 		case "team_bridge.messages.replies": {
-			const query = new URLSearchParams();
-			if (request.tenant_id) query.set("tenant_id", request.tenant_id);
+			const query = new URLSearchParams({
+				expected_account_id: request.expected_account_id,
+				tenant_id: request.tenant_id,
+			});
 			if (request.limit !== undefined)
 				query.set("limit", String(request.limit));
 			if (request.after_seq !== undefined)

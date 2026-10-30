@@ -735,7 +735,20 @@ export const ThemeSelector: FC = () => {
 		 * that renders the list owns the provider, with this surface's own delays.
 		 */
 		<TooltipProvider>
-			<div onKeyDown={moveFocus} className="flex flex-col gap-6">
+			<div
+				onKeyDown={moveFocus}
+				/*
+				 * NOT a search row. Read as one row, its label was the whole
+				 * subtree's text — "DarkLocal Operator DarkCatppuccin Macchiato…" —
+				 * because JSX emits no separator between sibling names, and no
+				 * honest label exists for it without a new localized title (the
+				 * picker's own headings are "Dark"/"Light"). The Appearance
+				 * section result is this grid's destination, and the registry's
+				 * `tui.theme` row covers the word itself (review round 1, M3).
+				 */
+				data-search-ignore="the theme picker is a grid of fifty-nine choices; the Appearance section result is its destination"
+				className="flex flex-col gap-6"
+			>
 				{groups.map((group) => (
 					<div key={group.label}>
 						<h3 className="px-1 pb-2 text-meta text-ink-dim">{group.label}</h3>

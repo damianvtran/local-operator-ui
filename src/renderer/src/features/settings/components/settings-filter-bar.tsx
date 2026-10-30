@@ -112,8 +112,16 @@ export const SettingsFilterBar: FC<SettingsFilterBarProps> = ({
 						placeholder={t(
 							"ui.settings.configuration.settings_filter_bar.search_settings_by_name_description_or_key",
 						)}
+						/*
+						 * This field and the page header's search are two different
+						 * things, and they shared one accessible name: a screen-reader
+						 * user could not tell which "Search settings" they had landed
+						 * on (UX round 1, U3). The placeholder already describes THIS
+						 * field — it filters the list in place — so its catalogue
+						 * string is the name.
+						 */
 						aria-label={t(
-							"ui.settings.configuration.settings_filter_bar.search_settings",
+							"ui.settings.configuration.settings_filter_bar.search_settings_by_name_description_or_key",
 						)}
 						className="ps-9"
 					/>

@@ -1,0 +1,136 @@
+{
+  "audit_id": "teambridge-pr1489-error-stale-audit-5378ea6efd4b-ur",
+  "date": "2026-10-30",
+  "locale": "ur",
+  "namespace": "ui.teamBridge",
+  "pr": 1489,
+  "branch": "fix/tb-instant-open",
+  "source_commit": "548b9b1010d7a9cf034f1187e5dec75e5ab0922c",
+  "translator": {
+    "agent": "translator",
+    "session": "not recorded by the commit",
+    "model": "not supplied by the commit",
+    "commit": "548b9b1010d7a9cf034f1187e5dec75e5ab0922c",
+    "method": "LLM reasoning in the PR authoring session; no MT service or translation API (no such dependency in the tree)"
+  },
+  "auditors": [
+    {
+      "agent": "i18n-auditor",
+      "model": "radient/auto",
+      "model_fallback": {
+        "announced": true,
+        "observed": true,
+        "chain": [
+          "anthropic/claude-opus-5-5",
+          "anthropic/claude-sonnet-5-5",
+          "openai/gpt-6-astra",
+          "kimi/k3.1-pro",
+          "radient/auto"
+        ],
+        "reason": "provider failure: quota"
+      },
+      "date": "2026-10-30",
+      "result": "clean",
+      "instance": "5378ea6efd4b-ur",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "receipt": "i18n/receipts/5378ea6efd4b-ur.json",
+      "receipt_sha256": "80f05ed1aa787fb7ae07305734a49a980d4ff1fbce9e62cb1adb14f6a8494f7b",
+      "scope": "PR #1489 one-key delta: ui.teamBridge.list.error_stale added in 548b9b1010d; this audit covers the ur translation of that key only, against English 5e61b0225985. Other 254 values unchanged since the row's previous audit.",
+      "note": "1-key delta audit. UR-REF-R1 FIXED before verdict: refresh term ریفریش -> تازہ کاری (corpus settles on تازہ/تازہ کاری, 48 values). Target hash names the fixed bytes. Native ur pass still required."
+    }
+  ],
+  "independence": "Independent auditor: a separate Local Operator session (5378ea6efd4b) that authored none of the audited strings. The English sentence and all seven translations were added by commit 548b9b1010d (PR authoring session, agent `translator` lineage per the existing rows); this session read them and wrote only this receipt, its evidence record and the ledger row via ledger-assemble.mjs. The corpus comparisons below were read from the shipped catalogues, not from a translation memory or an MT service.",
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "5e61b022598522252e7917780fb4490e9595161d2f1599f1c991d0a921a807ea"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "b623a3c1a05c22485fc1bd8d8b2aa3f8f71cdc067ec0a7f1204f12155ab7558a"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/ur/ui.teamBridge.json",
+      "sha256": "680268fc9dbd2423f54f3b59e52ef4a057e8af4fab05e28671360042e5ec27f3"
+    }
+  },
+  "scope": {
+    "delta_kind": "One-key delta. Against origin/main's recorded ledger bytes (en 1570269761, per row) the English catalogue gained exactly one key, ui.teamBridge.list.error_stale, in 548b9b1010d; every other English value is byte-identical. Verified with `git diff d5d68e8049f0:...en/ui.teamBridge.json HEAD:...` (one added line, no removals).",
+    "keys_audited_linguistically": [
+      "ui.teamBridge.list.error_stale"
+    ],
+    "keys_read_for_consistency": [
+      "ui.teamBridge.list.error",
+      "ui.teamBridge.list.loading",
+      "ui.teamBridge.list.retry",
+      "ui.teamBridge.list.empty.title",
+      "ui.teamBridge.list.empty.body",
+      "ui.teamBridge.list.error_pane",
+      "ui.notifications.error.refresh.title",
+      "ui.canvas.use_file_freshness.could_not_be_re_read_showing_the_version_we_last_read",
+      "ui.chat.thread_search.stale",
+      "ui.chat.pickers.context_panel.last_cache_read",
+      "ui.chat.session_status.last_reading",
+      "ui.chat.device.sentence.remote_did_not_answer",
+      "ui.schedules.fallback.list_below_is_the_last_one_that_loaded"
+    ],
+    "not_audited": "The other 254 English keys and their translations: unchanged by this delta and covered by the row's earlier audits (kept under `superseded`). This receipt is not a re-audit of them."
+  },
+  "english": {
+    "ui.teamBridge.list.error_stale": {
+      "value": "Couldn't refresh. Showing your last read.",
+      "clause_1": "Couldn't refresh - the read failed. Names no cause, because the client cannot prove one.",
+      "clause_2": "Showing your last read - the rows painted below are the reader's own last read, so the notice never contradicts what is visible.",
+      "context_role": "stale-list notice",
+      "context_tone": "factual, reassuring, no blame",
+      "context_length": "Two short clauses.",
+      "placeholders": []
+    }
+  },
+  "audited": {
+    "ui.teamBridge.list.error_stale": {
+      "en": "Couldn't refresh. Showing your last read.",
+      "translation": "تازہ کاری نہیں ہو سکی۔ آپ کی آخری پڑھی گئی فہرست دکھائی جا رہی ہے۔"
+    }
+  },
+  "findings": [
+    {
+      "severity": "info",
+      "id": "UR-I1",
+      "key": "ui.teamBridge.list.error_stale",
+      "detail": "Resolved inside this audit, before the verdict on these bytes. The PR shipped 'ریفریش نہیں ہو سکا۔'. That introduced a second rendering of the refresh action against 48 shipped values that use تازہ / تازہ کاری. This audit replaced the clause with 'تازہ کاری نہیں ہو سکی۔', which mirrors the shipped status 'تازہ کاری جاری ہے' (refresh in progress) and keeps feminine agreement. It is a one-term substitution drawn from shipped strings, not a new translation; the ledger binds the corrected bytes and the ur evidence record keeps the pre-correction finding and the commit that fixed it.",
+      "disposition": "fixed in this audit"
+    }
+  ],
+  "status": "passed",
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "revision": "2008053b5d6af37fa449fc303d9e344c262f82c8",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "revision": "2008053b5d6af37fa449fc303d9e344c262f82c8",
+      "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+    },
+    "docs_I18N": {
+      "path": "docs/I18N.md",
+      "sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+    }
+  },
+  "artifacts": {
+    "receipt": {
+      "path": "i18n/receipts/5378ea6efd4b-ur.json",
+      "sha256": "80f05ed1aa787fb7ae07305734a49a980d4ff1fbce9e62cb1adb14f6a8494f7b"
+    },
+    "ledger_row": "i18n/ledger.json#entries[locale=ur,namespace=ui.teamBridge]"
+  },
+  "limitations": "Auditor competence: limited (basic reading, RTL locale). Verdict confidence: medium on the term-split fix, which rests on corpus counts (48 vs 2 token names) rather than on native feel; medium on the second clause; LOW on naturalness overall. A native ur pass is required before release claims.",
+  "audit_notes_not_execution_log": "The findings and notes are this auditor's linguistic judgement, not command output. The commands actually run, and their results, are in the PR #1489 comment for this round, not in this record."
+}

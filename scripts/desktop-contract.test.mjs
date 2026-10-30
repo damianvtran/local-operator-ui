@@ -10,7 +10,40 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, test } from "node:test";
+import { inspect } from "node:util";
 import { build } from "esbuild";
+
+/*
+ * Import an in-memory esbuild bundle WITHOUT letting its `data:` URL reach a
+ * diagnostic.
+ *
+ * Node names a `data:` module by its whole URL, so every stack frame inside the
+ * bundle used to print the entire base64 module: one failing assertion here
+ * emitted a single 11,920,277-byte line (88% of a 25.8 MiB CI shard log), which
+ * is 11x the 1 MiB per-line ceiling `scripts/ci-log-guard.mjs` enforces and the
+ * same class of line that stalled this shard at its job cap before. A constant
+ * `//# sourceURL=` label changes frame DISPLAY only - executed code, error
+ * types, function names and line:column positions are untouched - which is the
+ * pattern onboarding-i18n-contract and console-host already use. Errors thrown
+ * while the module initialises can still carry the native URL before the
+ * directive applies, so those are rewritten to the label and rethrown as the
+ * real error, never swallowed. The label must stay a short constant: anything
+ * derived from the bundle text would reintroduce the payload.
+ */
+async function importBundle(result, label) {
+	const source = `${result.outputFiles[0].text}\n//# sourceURL=${label}\n`;
+	const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`;
+	try {
+		return await import(moduleUrl);
+	} catch (error) {
+		if (error instanceof Error) {
+			error.message = error.message.replaceAll(moduleUrl, label);
+			if (typeof error.stack === "string")
+				error.stack = error.stack.replaceAll(moduleUrl, label);
+		}
+		throw error;
+	}
+}
 
 // Bundle in memory so this regression guard uses the shipped TS paths without
 // adding a second app build, dependency tree, or permanent generated fixture.
@@ -79,9 +112,7 @@ const {
 	// namespaces from colliding rather than dodging a TDZ window.
 	desktopEndpoint: jobsCancelEndpoint,
 	desktopRequestSchema: jobsCancelSchema,
-} = await import(
-	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-);
+} = await importBundle(bundle, "desktop-contract.test.bundle.mjs");
 
 /*
  * Built and imported HERE, above the first `test(` registration, rather than
@@ -129,8 +160,9 @@ const {
 	// The capability gate the pins tests read: the SAME export the renderer bundle carries, so
 	// the test asks the shipped predicate rather than a restatement of it.
 	desktopFeatureEnabled,
-} = await import(
-	`data:text/javascript;base64,${Buffer.from(rendererBundle.outputFiles[0].text).toString("base64")}`
+} = await importBundle(
+	rendererBundle,
+	"desktop-contract.test.renderer-bundle.mjs",
 );
 
 let server;
@@ -1959,8 +1991,9 @@ test("receipt revisions converge monotonically across reconnects and reordering"
 		platform: "node",
 		write: false,
 	});
-	const { mergeCompletionAttention } = await import(
-		`data:text/javascript;base64,${Buffer.from(contract.outputFiles[0].text).toString("base64")}`
+	const { mergeCompletionAttention } = await importBundle(
+		contract,
+		"desktop-contract.test.session-contract-bundle.mjs",
 	);
 	const sessionId = "123456abcdef";
 	const at = (published, acknowledged, extra = {}) => ({
@@ -3704,6 +3737,7 @@ test("team_bridge threads: replies maps to the replies route and send carries th
 			op: "team_bridge.messages.replies",
 			conversation_id: "bcv_abc12345",
 			message_id: "bcmsg_root0001",
+			expected_account_id: "acct_1",
 			tenant_id: "tnt_2",
 			limit: 50,
 			after_seq: 7,
@@ -3712,41 +3746,63 @@ test("team_bridge threads: replies maps to the replies route and send carries th
 	assert.equal(replies.method, "GET");
 	assert.equal(
 		replies.path,
-		"/v1/desktop/team-bridge/conversations/bcv_abc12345/messages/bcmsg_root0001/replies?tenant_id=tnt_2&limit=50&after_seq=7",
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/messages/bcmsg_root0001/replies?expected_account_id=acct_1&tenant_id=tnt_2&limit=50&after_seq=7",
 	);
-	const bare = jobsCancelEndpoint({
+	/*
+	 * Since 29c1bf919ee a thread read binds to the captured account and its
+	 * tenant (local-operator #3149's required receipts), so there is no longer a
+	 * bare, query-less replies read: each receipt missing on its own is refused
+	 * before any HTTP, rather than reaching the hub as whoever signs in next.
+	 */
+	const thread = {
 		op: "team_bridge.messages.replies",
 		conversation_id: "bcv_abc12345",
 		message_id: "bcmsg_root0001",
-	});
-	assert.equal(
-		bare.path,
-		"/v1/desktop/team-bridge/conversations/bcv_abc12345/messages/bcmsg_root0001/replies",
-	);
+		expected_account_id: "acct_1",
+		tenant_id: "tnt_2",
+	};
+	for (const receipt of ["expected_account_id", "tenant_id"]) {
+		const { [receipt]: _dropped, ...withoutReceipt } = thread;
+		assert.throws(
+			() => jobsCancelSchema.parse(withoutReceipt),
+			new RegExp(`"${receipt}"`),
+		);
+	}
 	// The union is strict: a timeline cursor is not a thread cursor.
-	assert.throws(() =>
-		jobsCancelSchema.parse({
-			op: "team_bridge.messages.replies",
-			conversation_id: "bcv_abc12345",
-			message_id: "bcmsg_root0001",
-			before_seq: 3,
-		}),
-	);
+	assert.throws(() => jobsCancelSchema.parse({ ...thread, before_seq: 3 }));
 
 	const reply = jobsCancelEndpoint(
 		jobsCancelSchema.parse({
 			op: "team_bridge.messages.send",
 			conversation_id: "bcv_abc12345",
+			expected_account_id: "acct_1",
+			tenant_id: "tnt_2",
 			client_ref: "ref-1",
 			body: "on it",
 			thread_root_id: "bcmsg_root0001",
 		}),
 	);
 	assert.deepEqual(reply.body, {
+		expected_account_id: "acct_1",
+		tenant_id: "tnt_2",
 		client_ref: "ref-1",
 		body: "on it",
 		thread_root_id: "bcmsg_root0001",
 	});
+	// A threaded send without the captured account is refused by the union, so
+	// a caller cannot forget the receipt and post the reply as someone else.
+	assert.throws(
+		() =>
+			jobsCancelSchema.parse({
+				op: "team_bridge.messages.send",
+				conversation_id: "bcv_abc12345",
+				tenant_id: "tnt_2",
+				client_ref: "ref-1",
+				body: "on it",
+				thread_root_id: "bcmsg_root0001",
+			}),
+		/Thread replies require the captured account/,
+	);
 	const plain = jobsCancelEndpoint({
 		op: "team_bridge.messages.send",
 		conversation_id: "bcv_abc12345",
@@ -3853,4 +3909,65 @@ test("a bulk Undo is admitted from a background window while real receipts stay 
 		op: "undo",
 		operation_token: "fixture-journal",
 	});
+});
+
+test("a failing contract assertion renders a bounded diagnostic, never the data: bundle", async () => {
+	/*
+	 * Regression guard for the 11,920,277-byte line: a failure inside a bundled
+	 * module must stay readable in a CI shard log whose per-line ceiling is
+	 * 1 MiB (`ci-log-guard.mjs --max-line-bytes 1048576`). The broken case is
+	 * the one that produced that line - a thread read missing its captured
+	 * account, rejected by the shipped schema from inside the bundle - rendered
+	 * the way the test runner renders it (`inspect`, which carries the stack).
+	 *
+	 * The raw import is the negative control: without it, a bound that held
+	 * because the stack happened to omit bundle frames would pass vacuously. It
+	 * must show the payload; the labelled import must not.
+	 */
+	const contractOnly = await build({
+		stdin: {
+			contents:
+				'export { desktopRequestSchema } from "./src/shared/desktop-contract";',
+			resolveDir: process.cwd(),
+		},
+		bundle: true,
+		format: "esm",
+		platform: "node",
+		write: false,
+	});
+	const broken = {
+		op: "team_bridge.messages.replies",
+		conversation_id: "bcv_abc12345",
+		message_id: "bcmsg_root0001",
+		tenant_id: "tnt_2",
+	};
+	const rendered = (schema) => {
+		try {
+			schema.parse(broken);
+		} catch (error) {
+			return inspect(error);
+		}
+		assert.fail("the receipt-less thread read must be refused");
+	};
+	const raw = await import(
+		`data:text/javascript;base64,${Buffer.from(contractOnly.outputFiles[0].text).toString("base64")}`
+	);
+	const rawOutput = rendered(raw.desktopRequestSchema);
+	assert.ok(
+		rawOutput.includes("data:text/javascript;base64,"),
+		"control: an unlabelled bundle's frames carry the data: URL",
+	);
+	const labelled = await importBundle(
+		contractOnly,
+		"desktop-contract.test.guard-bundle.mjs",
+	);
+	const output = rendered(labelled.desktopRequestSchema);
+	assert.match(output, /expected_account_id/);
+	assert.match(output, /desktop-contract\.test\.guard-bundle\.mjs:\d+:\d+/);
+	assert.equal(output.includes("data:"), false);
+	const bytes = Buffer.byteLength(output);
+	assert.ok(
+		bytes < 64 * 1024,
+		`failure rendering is ${bytes} bytes; the raw control was ${Buffer.byteLength(rawOutput)}`,
+	);
 });

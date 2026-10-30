@@ -437,9 +437,13 @@ test("R3/QP2: classifier-result by unit truth table cannot hide stale false outp
 });
 
 // Verbatim runner stdout (Actions timestamps stripped only), existing job
-// 120100649015 lines544–546. These are startup-format data, not a suite run.
+// 120100649015 lines544–546. These are startup-format data, not a suite run. The
+// memory line's values are re-derived from this repo's own guard at the hosted
+// runner's measured 15,983 MB (the four kill lines behind the floor are on
+// `_BUDGET_FLOOR_MB` in desktop-test-memory-guard.mjs); re-derive it there when a
+// guard constant moves rather than editing a number by hand.
 const actualProductionPreamble =
-	"desktop tests: 541 files, concurrency 3 (CI runner: governor stands down, node default for 4 cores)\ndesktop tests: memory bound 7.8 GB for the test process group (max(8192 MB floor, 25% of 15983 MB RAM), capped at 50%); sampled every 2s on max(footprint, rss)\ndesktop tests: per-lane bound 25 min (default, above the 18.7-minute healthy CI suite that bounds every lane it runs — a stall in a lane first seen late can still outrun the job cap); sampled every 5s over the suite's process group";
+	"desktop tests: 541 files, concurrency 3 (CI runner: governor stands down, node default for 4 cores)\ndesktop tests: memory bound 9.5 GB for the test process group (max(9728 MB floor, 25% of 15983 MB RAM), capped at 62.5%); sampled every 2s on max(footprint, rss)\ndesktop tests: per-lane bound 25 min (default, above the 18.7-minute healthy CI suite that bounds every lane it runs — a stall in a lane first seen late can still outrun the job cap); sampled every 5s over the suite's process group";
 
 test("R4: actual three-line production preamble accepts healthy TAP and preserves bad-count rejection", () => {
 	const files = Array.from(

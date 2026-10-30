@@ -29,7 +29,7 @@ type Props = {
 	conversationId: string;
 	messageId: string;
 	accountId: string;
-	tenantId?: string;
+	tenantId: string;
 	reactions?: TeamBridgeReaction[];
 	disabled?: boolean;
 	defaultOpen?: boolean;
@@ -58,11 +58,10 @@ export function useTeamBridgeReactionState({
 	toggle = TeamBridgeApi.react,
 }: Omit<Props, "defaultOpen">) {
 	/*
-	 * THE HOLD, INSIDE THE HOOK. Hooks run unconditionally (a conditional hook
-	 * would break every caller), but while the constant is false this returns an
-	 * INERT state and `choose` is a no-op: no reaction state is projected from
-	 * the message and no toggle can be issued. The shipped runtime serves no
-	 * reaction route, and the old path is not reviewed for account/retry safety.
+	 * THE BUILD GUARD, INSIDE THE HOOK. Hooks run unconditionally (a conditional
+	 * hook would break every caller), but a build with the surface withheld
+	 * returns an INERT state and `choose` is a no-op. In this shipped build the
+	 * toggle carries the captured account and target tenant required by #3149.
 	 */
 	const held = !TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD;
 	const [rows, setRows] = useState(held ? EMPTY_REACTIONS : reactions);
@@ -88,6 +87,7 @@ export function useTeamBridgeReactionState({
 				emoji,
 				active,
 				tenantId,
+				accountId,
 			);
 			setRows(answer.reactions);
 			if (active) record(accountId, emoji);
@@ -255,7 +255,33 @@ function TeamBridgeReactionChipsBody({
 						type="button"
 						disabled={unavailable}
 						aria-label={t("ui.teamBridge.reactions.add")}
-						className="inline-flex min-h-7 items-center gap-1 rounded-full bg-sunken px-2 text-ink-muted hover:bg-row-hover"
+						/*
+						 * BORDERLESS, SEPARATED BY VALUE - the sibling chips carry a
+						 * `border-control` edge (3.93:1 dark / 3.51:1 light) and this
+						 * control has no edge at all, so `sunken` alone left it at
+						 * 1.06:1 against `canvas` and reading as absent rather than
+						 * quiet (design round 1, D5). `media-surface` is the app's
+						 * borderless-tile role: it deepens AWAY from the ground, so it
+						 * clears `canvas`, `surface` and `row-hover` on all 59 palettes
+						 * (ΔE00 >= 4.0 off canvas, its contract floor), which is the
+						 * extent a control with no line has to own. The edge is
+						 * deliberately NOT drawn: borderless chrome is a standing
+						 * operator requirement, and a line here would be the next
+						 * complaint.
+						 *
+						 * Hover matches the siblings in KIND - a colour step, never a
+						 * lift or a scale - and the fill step is deliberately small
+						 * (`sunken`, +1.96 L* dark / +1.85 light) so the fill never
+						 * travels to `row-hover`, where it would vanish into a hovered
+						 * row; the ink step to full `ink` carries the affordance.
+						 * Focus is the app's global `:where(:focus-visible)` outline,
+						 * the same one the sibling chips get, since both are plain
+						 * buttons.
+						 */
+						className={cn(
+							"inline-flex min-h-7 items-center gap-1 rounded-full bg-media-surface px-2 text-ink-muted",
+							"hover:bg-sunken hover:text-ink disabled:text-ink-dim",
+						)}
 					>
 						<Plus size={14} />
 					</button>

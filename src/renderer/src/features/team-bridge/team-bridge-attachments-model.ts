@@ -178,6 +178,31 @@ export function isAttachmentNotFound(error: unknown): boolean {
 }
 
 /**
+ * A send refused because its `client_ref` was already used by a DIFFERENT message.
+ *
+ * The hub answers 409 here and it is right to: the key is an idempotency key, so
+ * seeing it twice with different content means two distinct messages are claiming
+ * one identity. The defect this detects is on our side - a key reused across
+ * messages instead of across retries of one message - and it is recoverable: the
+ * payload is new, so it needs a NEW key rather than another press of Send.
+ *
+ * Matched on the DECLARED code when the proxy forwards it, and otherwise on the
+ * hub's own sentence, because the refusal arrives through the runtime proxy and
+ * older builds of it do not forward the code. The sentence fallback is deliberately
+ * narrow (`client_ref`), so it cannot swallow an unrelated 409 such as a
+ * conversation-level conflict, which must keep its own error.
+ */
+const CLIENT_REF_MENTION = /client_ref/i;
+
+export function isClientRefConflict(error: unknown): boolean {
+	const coded = (error as { code?: unknown })?.code;
+	if (coded === "client_ref_conflict" || coded === "conflict_client_ref")
+		return true;
+	const message = (error as { message?: unknown })?.message;
+	return typeof message === "string" && CLIENT_REF_MENTION.test(message);
+}
+
+/**
  * The ids a send or schedule carries into `conversationId`: held images are
  * staged there FIRST (a failure throws, so the request never goes out
  * text-only), otherwise the already-staged ids. One helper for every send

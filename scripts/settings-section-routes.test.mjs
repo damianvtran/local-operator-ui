@@ -262,10 +262,34 @@ test("the promoted model_effort row is revealed and focused by its deep link", (
 	);
 	const row = page.match(/<DefaultEffortSelect[\s\S]*?\/>/);
 	assert.notEqual(row, null, "the page no longer renders DefaultEffortSelect");
+	/*
+	 * Two independent hand-offs, and both are part of the contract this test
+	 * protects:
+	 *
+	 *  - `focus` is the DEEP LINK's target. It is a disjunction now because the
+	 *    promoted row is also a settings-search destination, and a search jump
+	 *    arrives through the page's own jump state rather than through
+	 *    `?setting=`; the deep link's own arm must still be there, or the
+	 *    promoted key lands at General's top with nothing focused.
+	 *  - `focusNonce` is the REPEAT: a second Enter on the same search result is
+	 *    the same key, and the row's reveal is idempotent per key, so without a
+	 *    nonce threaded from the jump the second press is a silent no-op (QA
+	 *    round 1, Q1).
+	 */
 	assert.match(
 		row[0],
-		/focus=\{settingFocusKey === MODEL_EFFORT_SETTING_KEY\}/,
-		"the Default effort row must receive the deep link's focus target, or the promoted key lands General's top with nothing focused",
+		/focus=\{[\s\S]*?settingFocusKey === MODEL_EFFORT_SETTING_KEY[\s\S]*?\}/,
+		"the Default effort row must receive the deep link's own focus target, or the promoted key lands General's top with nothing focused",
+	);
+	assert.match(
+		row[0],
+		/focusNonce=\{/,
+		"and it must receive a nonce, or a second Enter on the same search result cannot re-run the reveal",
+	);
+	assert.match(
+		row[0],
+		/searchJump\?\.key === MODEL_EFFORT_SETTING_KEY/,
+		"the search jump's arm is the one that carries that nonce, so it must name this key",
 	);
 	const component = readFileSync(
 		"src/renderer/src/features/settings/components/default-effort-select.tsx",

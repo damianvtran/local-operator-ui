@@ -622,13 +622,22 @@ the reasoning, probe costs and constants are in
   figure may undercount. Read the figure first: a test that legitimately needs
   more is a reason to raise the budget; one that holds gigabytes is a leak, and
   the budget did its job.
-- **The budget** is `max(8 GB, 25% of RAM)` capped at 50% of RAM. The floor is
-  2.7x the real suite's measured peak: one full `pnpm test:desktop` (330 files,
-  concurrency 7) peaked at **3,041 MB** of `max(footprint, RSS)` across the tree.
-  It stays ACTIVE on CI (unlike the concurrency governor): a runaway there is
-  otherwise a 35-minute timeout and a nameless OOM kill. Override with
-  `LOCAL_OPERATOR_UI_TEST_MEMORY_BUDGET_MB=<MB>` (honoured unclamped) or `=off`
-  (announced on stdout).
+- **The budget** is `max(9.5 GB, 25% of RAM)` capped at 62.5% of RAM. The floor
+  is 2.7x the development host's measured peak: one full `pnpm test:desktop` (330
+  files, concurrency 7) peaked at **3,041 MB** of `max(footprint, RSS)` across the
+  tree. It is sized for the HOSTED runner too, and there the ceiling is what used
+  to decide: at the old 50% a 16 GB runner (15,983 MB) computed
+  `min(max(8,192, 3,995), 7,991)` = **7.8 GB**, below the sharded suite's real
+  peak, so it killed four healthy runs at 7.9 / 8.2 / 8.5 / 9.4 GB (runs
+  40992181176, 40996898976, 41030488151, 41040832734) with no failing test. The
+  floor now clears the highest of those and the 62.5% ceiling keeps the floor
+  reachable on any runner down to 15.2 GB (why 0.625 and not 0.65: a non-binary
+  fraction prints `65.00000000000001` in the evidence line). Small hosts stay
+  capped — an 8 GB box gets 5,120 MB. Green CI is not proof of capacity: a kill
+  names a budget, a failing test name does not. It stays ACTIVE on CI (unlike the
+  concurrency governor): a runaway there is otherwise a 35-minute timeout and a
+  nameless OOM kill. Override with `LOCAL_OPERATOR_UI_TEST_MEMORY_BUDGET_MB=<MB>`
+  (honoured unclamped) or `=off` (announced on stdout).
 - **When the watchdog cannot see the whole tree it says so, and the bound is
   narrower.** A probe that fails or times out skips that tick (unknown never
   kills, and a starved `ps` must not wedge the run). If the process-table read
