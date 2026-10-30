@@ -108,16 +108,19 @@ test("the reason names the field that actually scored", () => {
 		 * that field holds — which is also what proves the reason is not a
 		 * default.
 		 */
-		const word =
-			{
-				synonym: "colour",
-				key: "tui",
-				choice: "always",
-				section: "appearance",
-				description: "ramp",
-			}[reason];
+		const word = {
+			synonym: "colour",
+			key: "tui",
+			choice: "always",
+			section: "appearance",
+			description: "ramp",
+		}[reason];
 		const isolated = scoreEntry(entry("x", fields), [word]);
-		assert.equal(isolated?.reason, reason, `${reason}: ${JSON.stringify(fields)}`);
+		assert.equal(
+			isolated?.reason,
+			reason,
+			`${reason}: ${JSON.stringify(fields)}`,
+		);
 	}
 });
 
@@ -170,27 +173,39 @@ test("an empty or whitespace query admits nothing and has no cap", () => {
 
 test("grouping heads each section and keeps the best row first", () => {
 	const rows = [
-		entry("theme", { label: "Theme" }, 0, { sectionId: "appearance", sectionLabel: "Appearance" }),
-		entry("glass", { label: "Window glass", description: "Theme-tinted backdrop" }, 1, {
+		entry("theme", { label: "Theme" }, 0, {
 			sectionId: "appearance",
 			sectionLabel: "Appearance",
 		}),
+		entry(
+			"glass",
+			{ label: "Window glass", description: "Theme-tinted backdrop" },
+			1,
+			{
+				sectionId: "appearance",
+				sectionLabel: "Appearance",
+			},
+		),
 		entry("name", { label: "Name" }, 2),
 	];
 	const { results } = searchSettings(rows, "theme");
 	const groups = groupSettingResults(results);
 	assert.deepEqual(
 		groups.map((g) => [g.sectionLabel, g.results.map((r) => r.entry.id)]),
-		[
-			["Appearance", ["theme", "glass"]],
-		],
+		[["Appearance", ["theme", "glass"]]],
 	);
 });
 
 test("groups with no section context are shown last", () => {
 	const rows = [
-		entry("stray", { label: "Stray theme" }, 0, { sectionId: "", sectionLabel: "" }),
-		entry("theme", { label: "Theme" }, 1, { sectionId: "appearance", sectionLabel: "Appearance" }),
+		entry("stray", { label: "Stray theme" }, 0, {
+			sectionId: "",
+			sectionLabel: "",
+		}),
+		entry("theme", { label: "Theme" }, 1, {
+			sectionId: "appearance",
+			sectionLabel: "Appearance",
+		}),
 	];
 	const { results } = searchSettings(rows, "theme");
 	assert.deepEqual(
@@ -201,7 +216,14 @@ test("groups with no section context are shown last", () => {
 
 test("the registry index the page builds is searchable end-to-end", () => {
 	const payload = {
-		sections: [{ name: "appearance", title: "Appearance", scope: "live", description: "" }],
+		sections: [
+			{
+				name: "appearance",
+				title: "Appearance",
+				scope: "live",
+				description: "",
+			},
+		],
 		settings: [
 			{
 				key: "tui.theme",
@@ -215,7 +237,9 @@ test("the registry index the page builds is searchable end-to-end", () => {
 				minimum: null,
 				maximum: null,
 				members: [],
-				choices: [{ value: "x", label: "Local Operator Dark", description: "" }],
+				choices: [
+					{ value: "x", label: "Local Operator Dark", description: "" },
+				],
 				empty_unsets: false,
 				redacted: false,
 			},

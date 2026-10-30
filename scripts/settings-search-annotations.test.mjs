@@ -97,7 +97,12 @@ const bundle = await build({
 	 * Bundling it keeps one React (still external above), which is what `act`
 	 * needs.
 	 */
-	loader: { ".css": "empty", ".png": "empty", ".svg": "empty", ".webp": "empty" },
+	loader: {
+		".css": "empty",
+		".png": "empty",
+		".svg": "empty",
+		".webp": "empty",
+	},
 	jsx: "automatic",
 	write: false,
 });
@@ -175,7 +180,9 @@ function coverage(container) {
 }
 
 function assertEveryControlCovered(container) {
-	const uncovered = coverage(container).filter((entry) => entry.marker === null);
+	const uncovered = coverage(container).filter(
+		(entry) => entry.marker === null,
+	);
 	assert.deepEqual(
 		uncovered.map((entry) => entry.description),
 		[],

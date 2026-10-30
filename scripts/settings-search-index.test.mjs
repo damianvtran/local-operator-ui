@@ -58,9 +58,7 @@ const payload = JSON.parse(
 /** The index's own search, so "findable" means findable by the shipped ranker. */
 const found = (entries, query) => searchSettings(entries, query, 500).results;
 const hasKey = (entries, query, key) =>
-	found(entries, query).some(
-		({ entry }) => entry.settingKey === key,
-	);
+	found(entries, query).some(({ entry }) => entry.settingKey === key);
 
 const registry = buildRegistryEntries(payload);
 
@@ -211,7 +209,10 @@ test("a rendered row's label is its rendered text, not a key or an attribute", (
 		</div>
 	</body></html>`);
 	const [entry] = buildRenderedEntries(dom.window.document.body);
-	assert.equal(entry.label, "Show agent reasoning Adds the agent's reasoning rows to conversations");
+	assert.equal(
+		entry.label,
+		"Show agent reasoning Adds the agent's reasoning rows to conversations",
+	);
 	assert.equal(entry.sectionLabel, "Appearance");
 	assert.equal(entry.sectionId, "appearance");
 	assert.equal(entry.source, "page");
@@ -224,12 +225,8 @@ test("data-search-terms adds words the row does not print", () => {
 		</div>
 	</body></html>`);
 	const [entry] = buildRenderedEntries(dom.window.document.body);
-	assert.deepEqual(found([entry], "claude"), [
-		{ entry, reason: "synonym" },
-	]);
-	assert.deepEqual(found([entry], "anthropic"), [
-		{ entry, reason: "label" },
-	]);
+	assert.deepEqual(found([entry], "claude"), [{ entry, reason: "synonym" }]);
+	assert.deepEqual(found([entry], "anthropic"), [{ entry, reason: "label" }]);
 });
 
 test("a row outside any section root is still indexed, without context", () => {
@@ -278,5 +275,9 @@ test("labelFromRenderedText collapses whitespace and cuts long rows at a space",
 	);
 	assert.equal(long.endsWith("…"), true);
 	assert.equal(long.length <= 81, true);
-	assert.equal(/…\w/.test(long), false, "the cut lands on a space, never mid-word");
+	assert.equal(
+		/…\w/.test(long),
+		false,
+		"the cut lands on a space, never mid-word",
+	);
 });

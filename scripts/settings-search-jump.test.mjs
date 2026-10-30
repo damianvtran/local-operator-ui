@@ -119,8 +119,9 @@ test("a jump scrolls the control to the centre, focuses it, and washes the ROW",
 		paint: (element) => painted.push(element),
 	});
 	assert.equal(outcome, "landed");
-	const button =
-		findSearchRow(root, "appearance.theme").querySelector("button");
+	const button = findSearchRow(root, "appearance.theme").querySelector(
+		"button",
+	);
 	// Identity compared as a boolean for the reason the component test states:
 	// an element diff on failure is a memory event, not a message.
 	assert.ok(

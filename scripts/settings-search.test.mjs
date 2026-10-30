@@ -87,10 +87,7 @@ const bundle = await build({
 	jsx: "automatic",
 	write: false,
 });
-const bundlePath = new URL(
-	"./_settings-search.bundle.mjs",
-	import.meta.url,
-);
+const bundlePath = new URL("./_settings-search.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 after(() => unlink(bundlePath).catch(() => {}));
 
@@ -163,7 +160,9 @@ const type = async (container, value) => {
 	).set;
 	await act(async () => {
 		setter.call(input, value);
-		input.dispatchEvent(new bootstrapDOM.window.Event("input", { bubbles: true }));
+		input.dispatchEvent(
+			new bootstrapDOM.window.Event("input", { bubbles: true }),
+		);
 	});
 };
 
@@ -181,7 +180,18 @@ const press = async (container, key) => {
 
 test("ten keystrokes build the index once", async (t) => {
 	const { container, builds } = await mount(t);
-	for (const query of ["s", "se", "set", "sett", "setti", "settin", "setting", "settings", "settings", "settings\n"]) {
+	for (const query of [
+		"s",
+		"se",
+		"set",
+		"sett",
+		"setti",
+		"settin",
+		"setting",
+		"settings",
+		"settings",
+		"settings\n",
+	]) {
 		await type(container, query);
 	}
 	assert.equal(builds.count, 1, "the page's memo holds across a typed query");
@@ -191,7 +201,9 @@ test("the panel caps at twelve rows and says how many more there are", async (t)
 	const { container } = await mount(t);
 	await type(container, "s");
 	assert.equal(options(container).length, 12);
-	const more = container.querySelector('[data-search-more], [role="listbox"] p');
+	const more = container.querySelector(
+		'[data-search-more], [role="listbox"] p',
+	);
 	assert.ok(panel(container).textContent.includes("more"), "a +N more line");
 	assert.ok(more);
 });
@@ -263,7 +275,11 @@ test("the empty state says what the box searches and names the shortcut", async 
 	const text = panel(container).textContent;
 	assert.ok(text.includes("registry"), "says it searches the registry");
 	assert.ok(/⌘F|Ctrl\+F/.test(text), "names the shortcut");
-	assert.equal(options(container).length, 0, "no option ids in the empty state");
+	assert.equal(
+		options(container).length,
+		0,
+		"no option ids in the empty state",
+	);
 });
 
 test("no results quotes the query and offers exactly one way out", async (t) => {
@@ -271,7 +287,11 @@ test("no results quotes the query and offers exactly one way out", async (t) => 
 	await type(container, "zzzqqq");
 	const text = panel(container).textContent;
 	assert.ok(text.includes("zzzqqq"), "the query is quoted back");
-	assert.equal(container.querySelectorAll("button").length, 1, "one action, not two");
+	assert.equal(
+		container.querySelectorAll("button").length,
+		1,
+		"one action, not two",
+	);
 	const clear = container.querySelector("button");
 	await act(async () => {
 		clear.dispatchEvent(
