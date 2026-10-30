@@ -543,7 +543,12 @@ function SlotHost({ props, onSlot }) {
 	);
 }
 
-async function mountSlot(props, onSlot, { readOnly = false } = {}) {
+/* `onClient` hands the real query client to a test that must act on the cache
+ * WHILE a read is in flight — the status refetch the fence has to tolerate
+ * (fix/owner-audit-fence). Nothing else may use it: the seeded rows below are
+ * the app's own pre-resolved authority.
+ */
+async function mountSlot(props, onSlot, { readOnly = false, onClient } = {}) {
 	const host = document.createElement("div");
 	document.body.append(host);
 	const root = createRoot(host);
@@ -559,6 +564,7 @@ async function mountSlot(props, onSlot, { readOnly = false } = {}) {
 			queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
 		},
 	});
+	onClient?.(client);
 	/* What the real app has already resolved before this pane mounts. */
 	client.setQueryData(m.radientUserKeys.user(), {
 		account: { id: OWNER, email: "damian@gominerva.com" },
@@ -1320,6 +1326,122 @@ test("a refused read is an error state, never an empty list", async () => {
 		"a refusal must never be rendered as an empty audit",
 	);
 	assert.equal(requests.length, 1);
+	await app.close();
+});
+
+/*
+ * THE FENCE COMPARES AUTHORITY, NOT THE IDENTITY OF THE STATUS OBJECT.
+ *
+ * The status query refetches on window focus. When that refetch lands while an
+ * audit read is in flight it replaces the cached status object with a fresh one
+ * carrying the same authority. `readForBridgeOwner` used to compare the OBJECT
+ * it captured against whatever the cache held afterwards, so that harmless
+ * refetch tripped "Team Bridge read authority changed". The audit queries run
+ * `retry: false` with `gcTime: 0` by design, so the trip became the rail's
+ * permanent "Audited messages could not be loaded." — this section's worst
+ * failure, since a false refusal reads as "not your agent".
+ *
+ * Both directions are asserted against the SHIPPED rail and its real query
+ * client, with the swap landing inside the transport call — precisely the
+ * window between the snapshot and the post-read comparison. A content-only
+ * refetch must render rows; a genuine authority change must still render the
+ * error, or the fix would have removed the fence instead of correcting it.
+ */
+test("rail: a content-only status refetch mid-read renders rows", async () => {
+	requests = [];
+	let client;
+	let swapped = false;
+	answer = (request) => {
+		if (request.op === "team_bridge.owner_audit.conversations" && !swapped) {
+			swapped = true;
+			/* Same account, state, read-only posture and local availability — a
+			 * focus refetch that carries new server detail and nothing more. */
+			const before = client.getQueryData(m.teamBridgeKeys.statusFor(OWNER));
+			client.setQueryData(m.teamBridgeKeys.statusFor(OWNER), {
+				...before,
+				local: { ...before.local, session: "sess_2" },
+				state_note: "runtime restarted",
+			});
+		}
+		return json(conversationPage);
+	};
+	const app = await mountSlot(
+		{
+			accountId: OWNER,
+			enabled: true,
+			scopeKey: "scope_a",
+			organizations: [{ tenantId: TENANT, name: "Minerva" }],
+			onSelect: () => {},
+		},
+		undefined,
+		{
+			onClient: (created) => {
+				client = created;
+			},
+		},
+	);
+
+	assert.equal(
+		swapped,
+		true,
+		"the refetch must land while the read is in flight",
+	);
+	assert.equal(
+		client.getQueryData(m.teamBridgeKeys.statusFor(OWNER)).state,
+		"ready",
+	);
+	assert.equal(
+		app.host.textContent.includes(m.t("ui.ownerAudit.error")),
+		false,
+		"a read that crossed no authority change must not render the refusal",
+	);
+	assert.equal(app.host.querySelector('[role="alert"]'), null);
+	/* Two conversations in the page: the rows the reader came for. */
+	assert.equal(app.host.querySelectorAll("li > button").length, 2);
+	await app.close();
+});
+
+test("rail: a genuine authority change mid-read still renders the error", async () => {
+	requests = [];
+	let client;
+	let swapped = false;
+	answer = (request) => {
+		if (request.op === "team_bridge.owner_audit.conversations" && !swapped) {
+			swapped = true;
+			/* The surface went from ready to unavailable while the read was out.
+			 * That is exactly what the fence exists to refuse. */
+			const before = client.getQueryData(m.teamBridgeKeys.statusFor(OWNER));
+			client.setQueryData(m.teamBridgeKeys.statusFor(OWNER), {
+				...before,
+				state: "unavailable",
+			});
+		}
+		return json(conversationPage);
+	};
+	const app = await mountSlot(
+		{
+			accountId: OWNER,
+			enabled: true,
+			scopeKey: "scope_a",
+			organizations: [{ tenantId: TENANT, name: "Minerva" }],
+			onSelect: () => {},
+		},
+		undefined,
+		{
+			onClient: (created) => {
+				client = created;
+			},
+		},
+	);
+
+	assert.equal(swapped, true, "the authority change must land mid-read");
+	assert.equal(app.host.querySelector('[role="alert"]') !== null, true);
+	assert.ok(app.host.textContent.includes(m.t("ui.ownerAudit.error")));
+	assert.equal(
+		app.host.querySelectorAll("li > button").length,
+		0,
+		"a fenced read must not render the rows it would have shown",
+	);
 	await app.close();
 });
 

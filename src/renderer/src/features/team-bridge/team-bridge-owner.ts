@@ -17,21 +17,80 @@ export function useTeamBridgeAccount() {
 	return useObservedRadientAuthority();
 }
 
+/**
+ * THE AUTHORITY-BEARING FIELDS OF A STATUS SNAPSHOT, and nothing else.
+ *
+ * Two callers ask the same question — "does this status still stand for the
+ * authority the read was admitted under?": the predicate `bridgeOwnerCurrent`
+ * (evaluated on its own) and the post-read fence in `readForBridgeOwner`
+ * (compared against the snapshot taken before the read). They share this
+ * projection so the two can never drift into different notions of "same
+ * authority": a field added here changes both, and a field left out is one
+ * neither may act on.
+ *
+ * WHY NOT THE CACHED OBJECT'S IDENTITY — the defect this replaced. The status
+ * query refetches on window focus, and every refetch installs a FRESH object
+ * even when the authority is unchanged (a session id rotates, the server adds a
+ * note). Comparing object identity therefore refused reads that crossed no
+ * authority change, and the owner-audit queries (`retry: false`, `gcTime: 0` by
+ * design — a private read is not retried over a changed authority) kept one
+ * such trip forever as "Audited messages could not be loaded."
+ *
+ * `read_only` is optional in the contract: absent and false both mean writable,
+ * so it is normalized here — a runtime that starts spelling out `false` must
+ * not read as an authority change.
+ */
+type BridgeStatusAuthority = {
+	accountId: string | null;
+	state: AgentMessagesStatus["state"];
+	readOnly: boolean;
+	localEnabled: boolean;
+};
+
+function bridgeStatusAuthority(
+	status: AgentMessagesStatus | undefined,
+): BridgeStatusAuthority | null {
+	if (!status) return null;
+	return {
+		accountId: status.account_id,
+		state: status.state,
+		readOnly: Boolean(status.read_only),
+		localEnabled: status.local.enabled,
+	};
+}
+
+/** A missing snapshot on either side counts as a change: the authority that
+ * admitted the read is no longer on record to vouch for it. */
+function bridgeStatusAuthorityChanged(
+	before: BridgeStatusAuthority | null,
+	after: BridgeStatusAuthority | null,
+): boolean {
+	if (!before || !after) return true;
+	return (
+		before.accountId !== after.accountId ||
+		before.state !== after.state ||
+		before.readOnly !== after.readOnly ||
+		before.localEnabled !== after.localEnabled
+	);
+}
+
 export function bridgeOwnerCurrent(
 	client: QueryClient,
 	accountId: string | undefined,
 ) {
 	const live = observedRadientAuthority(client);
-	const status = client.getQueryData<AgentMessagesStatus>(
-		teamBridgeKeys.statusFor(accountId),
+	const status = bridgeStatusAuthority(
+		client.getQueryData<AgentMessagesStatus>(
+			teamBridgeKeys.statusFor(accountId),
+		),
 	);
 	return Boolean(
 		accountId &&
 			live.accountId === accountId &&
-			status?.account_id === accountId &&
+			status?.accountId === accountId &&
 			status.state === "ready" &&
-			status.local.enabled &&
-			!status.read_only,
+			status.localEnabled &&
+			!status.readOnly,
 	);
 }
 export function assertBridgeReadOwner(
@@ -61,10 +120,25 @@ export async function readForBridgeOwner<T>(
 	read: () => Promise<T>,
 ): Promise<T> {
 	assertBridgeReadOwner(client, accountId);
-	const status = client.getQueryData(teamBridgeKeys.statusFor(accountId));
+	const status = bridgeStatusAuthority(
+		client.getQueryData<AgentMessagesStatus>(
+			teamBridgeKeys.statusFor(accountId),
+		),
+	);
 	const result = await readForBridgeAccount(client, accountId, read);
 	assertBridgeReadOwner(client, accountId);
-	if (client.getQueryData(teamBridgeKeys.statusFor(accountId)) !== status)
+	/* Compare what the snapshot MEANS, not which object it is: a focus refetch
+	 * hands over a new object for the same authority (see `bridgeStatusAuthority`). */
+	if (
+		bridgeStatusAuthorityChanged(
+			status,
+			bridgeStatusAuthority(
+				client.getQueryData<AgentMessagesStatus>(
+					teamBridgeKeys.statusFor(accountId),
+				),
+			),
+		)
+	)
 		throw new Error("Team Bridge read authority changed");
 	return result;
 }
