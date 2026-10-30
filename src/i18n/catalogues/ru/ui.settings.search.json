@@ -16,5 +16,5 @@
 	"ui.settings.search.reason.section": "совпадение по разделу",
 	"ui.settings.search.reason.description": "совпадение по описанию",
 	"ui.settings.search.jump.missing": "Этой настройки сейчас нет на экране.",
-	"ui.settings.search.row.section_hint": "В разделе {section}"
+	"ui.settings.search.row.section_hint": "В разделе «{section}»"
 }

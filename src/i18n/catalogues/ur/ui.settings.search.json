@@ -14,7 +14,7 @@
 	"ui.settings.search.reason.key": "ترتیب کی کلید سے مطابقت",
 	"ui.settings.search.reason.choice": "اختیار سے مطابقت",
 	"ui.settings.search.reason.section": "حصے سے مطابقت",
-	"ui.settings.search.reason.description": "تفصیل سے مطابقت",
+	"ui.settings.search.reason.description": "وضاحت سے مطابقت",
 	"ui.settings.search.jump.missing": "وہ ترتیب ابھی اسکرین پر موجود نہیں ہے۔",
 	"ui.settings.search.row.section_hint": "{section} میں"
 }
