@@ -62,11 +62,11 @@
 	"ui.agents.settings.system_prompt.system_instructions_that_define_the_agent_s": "एजेंट का व्यवहार और क्षमताएँ तय करने वाले सिस्टम निर्देश। यह एजेंट का \"सिस्टम प्रॉम्प्ट\" है।",
 	"ui.agents.settings.chat.error.invalid_seed": "सीड एक मान्य संख्या होनी चाहिए",
 	"ui.agents.settings.general.error.empty_name": "एजेंट का नाम खाली नहीं हो सकता",
-	"ui.agents.settings.general.profile_picture": "Profile picture",
-	"ui.agents.settings.general.profile_picture_hint": "Shown on this computer only. Other devices keep the default agent mark.",
-	"ui.agents.settings.general.profile_picture_upload": "Upload image",
-	"ui.agents.settings.general.profile_picture_remove": "Remove image",
-	"ui.agents.settings.general.profile_picture_error_type": "That file is not an image this app can read. Choose a JPEG, PNG, WebP, GIF or AVIF file.",
-	"ui.agents.settings.general.profile_picture_error_size": "That image is larger than {size} MB.",
-	"ui.agents.settings.general.profile_picture_error_decode": "That image could not be read. Try a different file."
+	"ui.agents.settings.general.profile_picture": "प्रोफ़ाइल तस्वीर",
+	"ui.agents.settings.general.profile_picture_hint": "केवल इस कंप्यूटर पर दिखती है। अन्य डिवाइस पर एजेंट का डिफ़ॉल्ट आइकॉन बना रहता है।",
+	"ui.agents.settings.general.profile_picture_upload": "तस्वीर अपलोड करें",
+	"ui.agents.settings.general.profile_picture_remove": "तस्वीर हटाएँ",
+	"ui.agents.settings.general.profile_picture_error_type": "यह फ़ाइल ऐसी तस्वीर नहीं है जिसे यह ऐप पढ़ सके। JPEG, PNG, WebP, GIF या AVIF फ़ाइल चुनें।",
+	"ui.agents.settings.general.profile_picture_error_size": "यह तस्वीर {size} MB से बड़ी है।",
+	"ui.agents.settings.general.profile_picture_error_decode": "यह तस्वीर पढ़ी नहीं जा सकी। कोई दूसरी फ़ाइल आज़माएँ।"
 }

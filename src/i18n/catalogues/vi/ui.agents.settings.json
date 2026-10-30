@@ -62,11 +62,11 @@
 	"ui.agents.settings.system_prompt.system_instructions_that_define_the_agent_s": "Chỉ dẫn hệ thống xác định hành vi và khả năng của tác nhân. Đây là \"prompt hệ thống\" của tác nhân.",
 	"ui.agents.settings.chat.error.invalid_seed": "Seed phải là số hợp lệ",
 	"ui.agents.settings.general.error.empty_name": "Tên tác nhân không được để trống",
-	"ui.agents.settings.general.profile_picture": "Profile picture",
-	"ui.agents.settings.general.profile_picture_hint": "Shown on this computer only. Other devices keep the default agent mark.",
-	"ui.agents.settings.general.profile_picture_upload": "Upload image",
-	"ui.agents.settings.general.profile_picture_remove": "Remove image",
-	"ui.agents.settings.general.profile_picture_error_type": "That file is not an image this app can read. Choose a JPEG, PNG, WebP, GIF or AVIF file.",
-	"ui.agents.settings.general.profile_picture_error_size": "That image is larger than {size} MB.",
-	"ui.agents.settings.general.profile_picture_error_decode": "That image could not be read. Try a different file."
+	"ui.agents.settings.general.profile_picture": "Ảnh đại diện",
+	"ui.agents.settings.general.profile_picture_hint": "Chỉ hiển thị trên máy tính này. Các thiết bị khác vẫn giữ biểu tượng mặc định của tác nhân.",
+	"ui.agents.settings.general.profile_picture_upload": "Tải ảnh lên",
+	"ui.agents.settings.general.profile_picture_remove": "Gỡ ảnh",
+	"ui.agents.settings.general.profile_picture_error_type": "Tệp này không phải là hình ảnh mà ứng dụng này có thể đọc. Hãy chọn tệp JPEG, PNG, WebP, GIF hoặc AVIF.",
+	"ui.agents.settings.general.profile_picture_error_size": "Hình ảnh này lớn hơn {size} MB.",
+	"ui.agents.settings.general.profile_picture_error_decode": "Không đọc được hình ảnh này. Hãy thử tệp khác."
 }

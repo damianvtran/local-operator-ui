@@ -62,11 +62,11 @@
 	"ui.agents.settings.system_prompt.system_instructions_that_define_the_agent_s": "这些系统指令定义了智能体的行为和能力，是智能体的“系统提示词”。",
 	"ui.agents.settings.chat.error.invalid_seed": "随机种子必须是有效数字",
 	"ui.agents.settings.general.error.empty_name": "智能体名称不能为空",
-	"ui.agents.settings.general.profile_picture": "Profile picture",
-	"ui.agents.settings.general.profile_picture_hint": "Shown on this computer only. Other devices keep the default agent mark.",
-	"ui.agents.settings.general.profile_picture_upload": "Upload image",
-	"ui.agents.settings.general.profile_picture_remove": "Remove image",
-	"ui.agents.settings.general.profile_picture_error_type": "That file is not an image this app can read. Choose a JPEG, PNG, WebP, GIF or AVIF file.",
-	"ui.agents.settings.general.profile_picture_error_size": "That image is larger than {size} MB.",
-	"ui.agents.settings.general.profile_picture_error_decode": "That image could not be read. Try a different file."
+	"ui.agents.settings.general.profile_picture": "头像",
+	"ui.agents.settings.general.profile_picture_hint": "仅在此电脑上显示。其他设备仍显示智能体的默认图标。",
+	"ui.agents.settings.general.profile_picture_upload": "上传图片",
+	"ui.agents.settings.general.profile_picture_remove": "移除图片",
+	"ui.agents.settings.general.profile_picture_error_type": "此文件不是此应用可读取的图片。请选择JPEG、PNG、WebP、GIF或AVIF文件。",
+	"ui.agents.settings.general.profile_picture_error_size": "此图片超过{size} MB。",
+	"ui.agents.settings.general.profile_picture_error_decode": "无法读取此图片。请尝试其他文件。"
 }

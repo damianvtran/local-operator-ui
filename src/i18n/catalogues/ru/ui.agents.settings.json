@@ -62,11 +62,11 @@
 	"ui.agents.settings.system_prompt.system_instructions_that_define_the_agent_s": "Системные инструкции, определяющие поведение и возможности агента. Это «системный промпт» агента.",
 	"ui.agents.settings.chat.error.invalid_seed": "Зерно должно быть числом",
 	"ui.agents.settings.general.error.empty_name": "Имя агента не может быть пустым",
-	"ui.agents.settings.general.profile_picture": "Profile picture",
-	"ui.agents.settings.general.profile_picture_hint": "Shown on this computer only. Other devices keep the default agent mark.",
-	"ui.agents.settings.general.profile_picture_upload": "Upload image",
-	"ui.agents.settings.general.profile_picture_remove": "Remove image",
-	"ui.agents.settings.general.profile_picture_error_type": "That file is not an image this app can read. Choose a JPEG, PNG, WebP, GIF or AVIF file.",
-	"ui.agents.settings.general.profile_picture_error_size": "That image is larger than {size} MB.",
-	"ui.agents.settings.general.profile_picture_error_decode": "That image could not be read. Try a different file."
+	"ui.agents.settings.general.profile_picture": "Фото профиля",
+	"ui.agents.settings.general.profile_picture_hint": "Показывается только на этом компьютере. На других устройствах остаётся значок агента по умолчанию.",
+	"ui.agents.settings.general.profile_picture_upload": "Загрузить изображение",
+	"ui.agents.settings.general.profile_picture_remove": "Удалить изображение",
+	"ui.agents.settings.general.profile_picture_error_type": "Этот файл не является изображением, которое может прочитать это приложение. Выберите файл JPEG, PNG, WebP, GIF или AVIF.",
+	"ui.agents.settings.general.profile_picture_error_size": "Это изображение больше {size} MB.",
+	"ui.agents.settings.general.profile_picture_error_decode": "Не удалось прочитать изображение. Попробуйте другой файл."
 }
