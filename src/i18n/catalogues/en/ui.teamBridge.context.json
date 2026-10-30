@@ -2077,5 +2077,104 @@
 		"length": "3-5 words",
 		"placeholders": {},
 		"note": "Names the group of colleagues' agents (chiefs of staff) offered for invitation. It must read as a group of AGENTS belonging to people, not as a second list of people. Sentence case, no colon, no count."
+	},
+	"ui.teamBridge.mentions.listbox_label": {
+		"role": "accessible name of the @-mention suggestion list",
+		"tone": "neutral",
+		"length": "3-5 words",
+		"placeholders": {},
+		"note": "Read by screen readers when the list of people and agents to @-mention opens under the message box."
+	},
+	"ui.teamBridge.mentions.empty": {
+		"role": "empty-state line in the @-mention suggestion list",
+		"tone": "neutral",
+		"length": "one short line",
+		"placeholders": {
+			"query": "the text typed after @, shown verbatim"
+		},
+		"note": "Shown when nobody's name matches what was typed after @. Keep the quotes around the placeholder in the locale's own quotation style."
+	},
+	"ui.teamBridge.mentions.section.member_human": {
+		"role": "section header in the @-mention list",
+		"tone": "neutral",
+		"length": "2-4 words, small caps header",
+		"placeholders": {},
+		"note": "Group of human members of the current conversation."
+	},
+	"ui.teamBridge.mentions.section.member_agent": {
+		"role": "section header in the @-mention list",
+		"tone": "neutral",
+		"length": "2-4 words, small caps header",
+		"placeholders": {},
+		"note": "Group of AI agents (each a teammate's chief of staff) already in the current conversation."
+	},
+	"ui.teamBridge.mentions.section.org_human": {
+		"role": "section header in the @-mention list",
+		"tone": "neutral",
+		"length": "1-3 words, small caps header",
+		"placeholders": {},
+		"note": "Group of people in the organization who are NOT in this conversation."
+	},
+	"ui.teamBridge.mentions.section.org_agent": {
+		"role": "section header in the @-mention list",
+		"tone": "neutral",
+		"length": "1-3 words, small caps header",
+		"placeholders": {},
+		"note": "Group of agents in the organization who are NOT in this conversation."
+	},
+	"ui.teamBridge.mentions.agent_secondary": {
+		"role": "secondary line under an agent's name in the @-mention list",
+		"tone": "neutral, lowercase start",
+		"length": "short, one line",
+		"placeholders": {
+			"person": "the agent owner's display name"
+		},
+		"note": "Explains whose agent this is. Lowercase start because it is a quiet subtitle, not a sentence; follow the locale's casing norm for subtitles. Use the glossary term for 'chief of staff'."
+	},
+	"ui.teamBridge.mentions.tag.not_member": {
+		"role": "quiet trailing tag on an @-mention row",
+		"tone": "neutral, lowercase",
+		"length": "2-4 words",
+		"placeholders": {},
+		"note": "Marks a person or agent who is not a member of the current conversation (channel, group or direct message). Short and lowercase like a tag."
+	},
+	"ui.teamBridge.mentions.tag.bridge_off": {
+		"role": "quiet trailing tag on an @-mention row",
+		"tone": "neutral",
+		"length": "2-3 words",
+		"placeholders": {},
+		"note": "Marks a person whose Team Bridge is switched off, so they cannot receive messages. 'Team Bridge' is the product name; keep it in English."
+	},
+	"ui.teamBridge.mentions.notice.not_member": {
+		"role": "inline notice above the message box after @-mentioning a non-member",
+		"tone": "neutral, informative",
+		"length": "one sentence",
+		"placeholders": {
+			"name": "display name of the person or agent just mentioned"
+		},
+		"note": "Shown after the reader @-mentions someone who is not a member, followed by actions to invite them or mention without notifying."
+	},
+	"ui.teamBridge.mentions.notice.invite_failed": {
+		"role": "inline notice text after an invite from the mention notice failed",
+		"tone": "neutral, calm",
+		"length": "one or two short sentences",
+		"placeholders": {
+			"name": "display name of the person or agent"
+		},
+		"note": "Replaces the notice text when the invite request is refused (for example, the reader lacks permission)."
+	},
+	"ui.teamBridge.mentions.notice.invite": {
+		"role": "button in the @-mention notice",
+		"tone": "imperative",
+		"length": "2 words",
+		"placeholders": {},
+		"note": "Adds the mentioned person or agent to this conversation."
+	},
+	"ui.teamBridge.mentions.notice.silent": {
+		"role": "button in the @-mention notice",
+		"tone": "imperative",
+		"length": "2-4 words",
+		"placeholders": {},
+		"note": "Keeps the name in the message as plain text but does not notify or wake that person or agent."
 	}
 }

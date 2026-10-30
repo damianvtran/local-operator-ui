@@ -37,8 +37,6 @@ export type MentionCandidate = {
 	member: boolean;
 	/** The person's (or the agent owner's) bridge is off: they cannot be reached. */
 	bridgeOff: boolean;
-	/** The owner muted this agent here: an @-mention will not wake it. */
-	muted?: boolean;
 };
 
 /**

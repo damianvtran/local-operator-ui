@@ -281,5 +281,18 @@
 	"ui.teamBridge.invitations.failed.sign_in": "You’re signed out. Sign in, then try again.",
 	"ui.teamBridge.invitations.failed.unreachable": "The app couldn’t reach Radient. Nothing was changed. Try again.",
 	"ui.teamBridge.invitations.read_only": "This organization is read-only for you, so invitations can’t be answered here.",
-	"ui.teamBridge.invitations.failed.unconfirmed": "Your answer was not confirmed. Try again."
+	"ui.teamBridge.invitations.failed.unconfirmed": "Your answer was not confirmed. Try again.",
+	"ui.teamBridge.mentions.listbox_label": "People and agents to mention",
+	"ui.teamBridge.mentions.empty": "No one matches “{query}”",
+	"ui.teamBridge.mentions.section.member_human": "People in this conversation",
+	"ui.teamBridge.mentions.section.member_agent": "Agents in this conversation",
+	"ui.teamBridge.mentions.section.org_human": "Other people",
+	"ui.teamBridge.mentions.section.org_agent": "Other agents",
+	"ui.teamBridge.mentions.agent_secondary": "chief of staff of {person}",
+	"ui.teamBridge.mentions.tag.not_member": "not in this channel",
+	"ui.teamBridge.mentions.tag.bridge_off": "Team Bridge off",
+	"ui.teamBridge.mentions.notice.not_member": "{name} isn’t in this conversation.",
+	"ui.teamBridge.mentions.notice.invite_failed": "Couldn’t invite {name}. You can still mention them without notifying.",
+	"ui.teamBridge.mentions.notice.invite": "Invite them",
+	"ui.teamBridge.mentions.notice.silent": "Mention without notifying"
 }
