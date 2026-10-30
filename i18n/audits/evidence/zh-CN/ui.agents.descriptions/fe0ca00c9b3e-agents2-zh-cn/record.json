@@ -1,0 +1,87 @@
+{
+  "audit_id": "fe0ca00c9b3e-agents2-zh-cn",
+  "audit_date": "2026-10-30",
+  "round": 2,
+  "locale": "zh-CN",
+  "namespace": "ui.agents.descriptions",
+  "source_commit": "604ffbce4625a2c0e4d737ab1e219f00fb3fb4d2",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "fe0ca00c9b3e",
+    "model": "radient/auto",
+    "actual_model_source": "fallback in-session: primary anthropic/claude-sonnet-5-5 hit provider quota; the run was switched to openai/gpt-6-astra, then kimi/k3.1-pro, then radient/auto, which carried the remainder of the run and the final judgement",
+    "independent_from_translator_session": true,
+    "translator_session": "3ef6295a5545 (values read only; this auditor did not write them and did not produce round 1)",
+    "previous_audit_instance": "b138babe8ba8-agents-zh-cn",
+    "result": "clean-with-findings",
+    "findings": {
+      "BLOCKER": 0,
+      "MAJOR": 0,
+      "MINOR": 1,
+      "NIT": 2
+    },
+    "receipt": "i18n/receipts/fe0ca00c9b3e-agents2-zh-cn.json",
+    "receipt_sha256": "4fd1d56a479babef4c42eb223200767532c62f94bdbcfa092e881a6392ebdaa5",
+    "scope": "Agents page, zh-CN: the 12 shipped agent card blurbs (ui.agents.descriptions) and the 2 install button labels (ui.agents.detail.install), audited as the bytes that go into src/i18n/catalogues/zh-CN/. Round 1 (instance b138babe8ba8-agents-zh-cn) returned changes_requested; this run verifies the correction on the bytes and audits the group afresh.",
+    "note": "round 2 of the Agents-page audit; round 1 = b138babe8ba8-agents-zh-cn"
+  },
+  "translator": {
+    "agent": "i18n-translator (invoked by the delegating session)",
+    "session": "3ef6295a5545",
+    "model": "not stated in translator.log; requests routed to api.radienthq.com",
+    "method": "LLM reasoning, no machine-translation service"
+  },
+  "key_count": 12,
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.agents.descriptions.json",
+      "sha256": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.agents.descriptions.context.json",
+      "sha256": "6311128dc89d50d886f3066f9cea2c802482a7db9979d9c5cc4bd93cdd8a7398"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/zh-CN/ui.agents.descriptions.json (not on disk yet; audited bytes at /Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/agents-i18n/zh-CN/ui.agents.descriptions.json)",
+      "sha256": "22de799fc8c1a1b5cfac9c2cbaf9c96dc19f59294aa2b2f79a1d8f2bff93b747"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "i18n/receipts/fe0ca00c9b3e-agents2-zh-cn.json",
+      "sha256": "4fd1d56a479babef4c42eb223200767532c62f94bdbcfa092e881a6392ebdaa5"
+    },
+    {
+      "path": "i18n/audits/evidence/zh-CN/ui.agents.descriptions/fe0ca00c9b3e-agents2-zh-cn/record.json",
+      "sha256": "self (this file)"
+    },
+    {
+      "path": "i18n/audits/evidence/zh-CN/ui.agents.descriptions/fe0ca00c9b3e-agents2-zh-cn/receipt.json",
+      "sha256": "4fd1d56a479babef4c42eb223200767532c62f94bdbcfa092e881a6392ebdaa5"
+    },
+    {
+      "path": "i18n/audits/evidence/zh-CN/ui.agents.descriptions/fe0ca00c9b3e-agents2-zh-cn/verdict.txt",
+      "sha256": "46b4676d9e64f3464ae9ff10cecefab9ed1fa624b3571b0c4daf85b7f7bd095a"
+    },
+    {
+      "path": "i18n/audits/evidence/zh-CN/ui.agents.descriptions/fe0ca00c9b3e-agents2-zh-cn/audit.log",
+      "sha256": "c46a5a2d4e6ae81955e4e6435a24a920a02bb39ed18ce41828cece4c563b8ee8"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "ZH-MINOR-6",
+      "ZH-NIT-2",
+      "ZH-NIT-5"
+    ]
+  },
+  "round1_disposition": {
+    "open_ids": [
+      "ZH-NIT-2"
+    ],
+    "closed": 9
+  },
+  "audit_notes_not_execution_log": "round1-disposition.md is analysis, not a command log; the execution log is audit.log (harness snapshot)."
+}

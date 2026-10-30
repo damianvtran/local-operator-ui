@@ -57796,6 +57796,316 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.agents.descriptions",
+			"source_sha256": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511",
+			"target_sha256": "872645d79abd36365bcbac77910f6f328e4e06622412d6e62f2c3cd1b6e36576",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "831557fc5ffe-agents-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 4
+					},
+					"receipt": "i18n/receipts/831557fc5ffe-agents-es.json",
+					"receipt_sha256": "86b11d9b01db33bac61e8ea8b03483ddc7a8714f23a21af7dafb2621157c41d5",
+					"scope": "Agents page copy for es: 12 shipped agent-card descriptions, audited as the exact bytes shipped to src/i18n/catalogues/es/ui.agents.descriptions.json",
+					"note": "3 minor / 4 nit recorded, 0 blocker/major. Evidence: i18n/audits/evidence/es/ui.agents.descriptions/831557fc5ffe-es/record.json"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.agents.detail.install",
+			"source_sha256": "964c83098370d82d74df8c21d6f1f69e74a76f4ea73b3af7bc16ac06981fbcf0",
+			"target_sha256": "bac5d4b4b168c52f3764d44ce83c56817f4d82233ff64785db8a9ff07c5156f2",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-30",
+					"result": "clean",
+					"instance": "831557fc5ffe-agents-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/831557fc5ffe-agents-es.json",
+					"receipt_sha256": "86b11d9b01db33bac61e8ea8b03483ddc7a8714f23a21af7dafb2621157c41d5",
+					"scope": "Agents page copy for es: 2 install-button labels, audited as the exact bytes shipped to src/i18n/catalogues/es/ui.agents.detail.install.json",
+					"note": "0 minor / 0 nit recorded, 0 blocker/major. Evidence: i18n/audits/evidence/es/ui.agents.detail.install/831557fc5ffe-es/record.json"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.agents.descriptions",
+			"source_sha256": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511",
+			"target_sha256": "16aaf542b53ebe7c1b9941c287cccaa3b692f4880b928044413acb84b3c53eb4",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "5f1c69790d92-agents-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 4
+					},
+					"receipt": "i18n/receipts/5f1c69790d92-agents-hi.json",
+					"receipt_sha256": "a7d5e5fe6ac07dc0c6b933aba7fbc6587d19d4859ccab65c752fdcaf2ee8d488",
+					"scope": "Agents page copy for hi: 12 shipped agent-card descriptions, audited as the exact bytes shipped to src/i18n/catalogues/hi/ui.agents.descriptions.json",
+					"note": "3 minor / 4 nit recorded, 0 blocker/major. Evidence: i18n/audits/evidence/hi/ui.agents.descriptions/5f1c69790d92-agents-hi/record.json"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.agents.detail.install",
+			"source_sha256": "964c83098370d82d74df8c21d6f1f69e74a76f4ea73b3af7bc16ac06981fbcf0",
+			"target_sha256": "6720bcf334c63b5e7444d01c28963fd70775893da987d959880018a89a0a64c7",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "5f1c69790d92-agents-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/5f1c69790d92-agents-hi.json",
+					"receipt_sha256": "a7d5e5fe6ac07dc0c6b933aba7fbc6587d19d4859ccab65c752fdcaf2ee8d488",
+					"scope": "Agents page copy for hi: 2 install-button labels, audited as the exact bytes shipped to src/i18n/catalogues/hi/ui.agents.detail.install.json",
+					"note": "1 minor / 0 nit recorded, 0 blocker/major. Evidence: i18n/audits/evidence/hi/ui.agents.detail.install/5f1c69790d92-agents-hi/record.json"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.agents.descriptions",
+			"source_sha256": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511",
+			"target_sha256": "dfa4ae25ba6396f90ef5c9780b55d86ecb51aedebd984f8ce6bb6674db6d1284",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "54f8dec9b13b-agents-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 5
+					},
+					"receipt": "i18n/receipts/54f8dec9b13b-agents-vi.json",
+					"receipt_sha256": "22d1f8404b358605c87a52887a268229984a0afaf15cfb07fe53c1faddc27a62",
+					"scope": "Agents page copy for vi: 12 shipped agent-card descriptions, audited as the exact bytes shipped to src/i18n/catalogues/vi/ui.agents.descriptions.json",
+					"note": "3 minor / 5 nit recorded, 0 blocker/major. Evidence: i18n/audits/evidence/vi/ui.agents.descriptions/54f8dec9b13b-agents-vi/record.json"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.agents.detail.install",
+			"source_sha256": "964c83098370d82d74df8c21d6f1f69e74a76f4ea73b3af7bc16ac06981fbcf0",
+			"target_sha256": "4dc3819e133363b0a8e8e16bc43996e3a402db62eef697db2f01299de159d6f9",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-30",
+					"result": "clean",
+					"instance": "54f8dec9b13b-agents-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/54f8dec9b13b-agents-vi.json",
+					"receipt_sha256": "22d1f8404b358605c87a52887a268229984a0afaf15cfb07fe53c1faddc27a62",
+					"scope": "Agents page copy for vi: 2 install-button labels, audited as the exact bytes shipped to src/i18n/catalogues/vi/ui.agents.detail.install.json",
+					"note": "0 minor / 0 nit recorded, 0 blocker/major. Evidence: i18n/audits/evidence/vi/ui.agents.detail.install/54f8dec9b13b-agents-vi/record.json"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.agents.descriptions",
+			"source_sha256": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511",
+			"target_sha256": "ff3f4b16e22122c507cb65c87183b415779622f393129fae3c4670b8a995dae0",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "7964ce9a3364-agents2-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/7964ce9a3364-agents2-ur.json",
+					"receipt_sha256": "fa839ddfc28038fe0568912b012d69ed57de861a6326ba27c1da2765601332b3",
+					"scope": "Agents page copy for ur: 12 shipped agent-card descriptions, audited as the exact bytes shipped to src/i18n/catalogues/ur/ui.agents.descriptions.json",
+					"note": "3 minor / 1 nit recorded, 0 blocker/major. Evidence: i18n/audits/evidence/ur/ui.agents.descriptions/7964ce9a3364-agents2-ur/record.json"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.agents.detail.install",
+			"source_sha256": "964c83098370d82d74df8c21d6f1f69e74a76f4ea73b3af7bc16ac06981fbcf0",
+			"target_sha256": "560c216f7f70f94ab3c4ee186523105f79b0904b57cedafe64d5bd7faae4ca05",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-30",
+					"result": "clean",
+					"instance": "7964ce9a3364-agents2-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/7964ce9a3364-agents2-ur.json",
+					"receipt_sha256": "fa839ddfc28038fe0568912b012d69ed57de861a6326ba27c1da2765601332b3",
+					"scope": "Agents page copy for ur: 2 install-button labels, audited as the exact bytes shipped to src/i18n/catalogues/ur/ui.agents.detail.install.json",
+					"note": "0 minor / 0 nit recorded, 0 blocker/major. Evidence: i18n/audits/evidence/ur/ui.agents.detail.install/7964ce9a3364-agents2-ur/record.json"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.agents.descriptions",
+			"source_sha256": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511",
+			"target_sha256": "22de799fc8c1a1b5cfac9c2cbaf9c96dc19f59294aa2b2f79a1d8f2bff93b747",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "fe0ca00c9b3e-agents2-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/fe0ca00c9b3e-agents2-zh-cn.json",
+					"receipt_sha256": "4fd1d56a479babef4c42eb223200767532c62f94bdbcfa092e881a6392ebdaa5",
+					"scope": "Agents page copy for zh-CN: 12 shipped agent-card descriptions, audited as the exact bytes shipped to src/i18n/catalogues/zh-CN/ui.agents.descriptions.json",
+					"note": "1 minor / 2 nit recorded, 0 blocker/major. Evidence: i18n/audits/evidence/zh-CN/ui.agents.descriptions/fe0ca00c9b3e-agents2-zh-cn/record.json"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.agents.detail.install",
+			"source_sha256": "964c83098370d82d74df8c21d6f1f69e74a76f4ea73b3af7bc16ac06981fbcf0",
+			"target_sha256": "82853faa89e460d3520051ac97be4c22a8f18907fdff82971d9cd60949b69568",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-30",
+					"result": "clean",
+					"instance": "fe0ca00c9b3e-agents2-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/fe0ca00c9b3e-agents2-zh-cn.json",
+					"receipt_sha256": "4fd1d56a479babef4c42eb223200767532c62f94bdbcfa092e881a6392ebdaa5",
+					"scope": "Agents page copy for zh-CN: 2 install-button labels, audited as the exact bytes shipped to src/i18n/catalogues/zh-CN/ui.agents.detail.install.json",
+					"note": "0 minor / 0 nit recorded, 0 blocker/major. Evidence: i18n/audits/evidence/zh-CN/ui.agents.detail.install/fe0ca00c9b3e-agents2-zh-cn/record.json"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

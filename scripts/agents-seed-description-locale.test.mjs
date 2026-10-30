@@ -18,12 +18,14 @@
  * refusal case below is asserted in a non-English locale: the raw sentence is the
  * expected output there too.
  *
- * HOW "LOCALIZED" IS PROVED WITHOUT SHIPPING A TRANSLATION. These keys have no
- * French values yet (this is the keying half; the translator pass follows), so the
- * test registers a MARKER through the served-catalogue seam
- * (`registerCatalogue`) and asserts the row prints the marker. That proves the
- * call site reads the catalogue rather than the field, which is the property under
- * test - it deliberately does NOT assert French copy nobody wrote.
+ * HOW LOOKUP IS PROVED WITHOUT DEPENDING ON A MISSING LOCALE. The English
+ * sentences are keyed; the translated values now ship in
+ * `catalogues/<locale>/` for all seven locales, so no shipped locale can stand
+ * in for "not translated yet". The test therefore registers a MARKER through
+ * the served-catalogue seam (`registerCatalogue`) and asserts the row prints the
+ * marker: that proves the call site reads the catalogue rather than the field,
+ * which is the property under test. The per-key fallback case constructs its
+ * missing entry the same way, on a tag this client ships no catalogue for.
  *
  * WHAT IT DOES NOT PROVE: pixels. The frames are on the PR; the repaint on a live
  * language switch is `useI18nLocale()` in `agents-page.tsx` and
@@ -101,7 +103,7 @@ const SHIPPED = {
 		"Walks a change's real flow end to end: discoverability, feedback, error recovery, keyboard paths and copy; reports U-prefixed findings.",
 };
 
-/** The other locales fall back to English until the translator pass lands. */
+/** A sentinel value the tests register themselves; it is never shipped copy. */
 const MARKER = "MARQUEUR-DE-CATALOGUE";
 
 /** A raw key on screen is the failure mode every assertion here excludes. */
@@ -231,10 +233,24 @@ test("a renamed seed copy falls back to raw text", () => {
 	);
 });
 
-test("a locale without the translation falls back to English, never to the key", () => {
-	lib.locale.setLocale("ur");
+test("a key the active locale does not carry falls back to English, never to the key", () => {
+	/* The translator pass landed for every shipped locale, so the "missing entry"
+	 * state cannot be observed through a shipped locale any more: it is built here
+	 * through the served-catalogue seam instead. `de` names no catalogue of its
+	 * own, so the one sentence registered for it answers while every other key
+	 * still has to come from the English source - per key, never as a raw key. */
+	lib.registerCatalogue("de", {
+		"ui.agents.descriptions.reviewer": MARKER,
+	});
+	lib.locale.setLocale("de");
+	assert.equal(
+		text(row("reviewer", "builtin", SHIPPED.reviewer)),
+		MARKER,
+		"a key the served catalogue carries answers from it",
+	);
 	const rendered = text(row("manager", "builtin", SHIPPED.manager));
 	assert.equal(rendered, SHIPPED.manager, "English fallback, per-key");
 	assert.doesNotMatch(rendered, RAW_KEY, "never a raw key");
+	lib.clearRegisteredCatalogues();
 	lib.locale.setLocale("en");
 });
