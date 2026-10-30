@@ -150,6 +150,14 @@ export const IntegrationRow: FC<IntegrationRowProps> = ({
 		<li
 			ref={rowRef}
 			data-integration={row.name}
+			/*
+			 * Settings search's row: the rendered text is the label (the tool's
+			 * name and its one-line description), and the control is the row's
+			 * primary button, found by `settings-search-jump`'s fallback because
+			 * the `<li>` itself is not focusable.
+			 */
+			data-search-row={`integration.${row.id}`}
+			data-search-control
 			data-status={row.status}
 			className={cn(
 				"flex min-h-14 flex-col justify-center gap-1 px-4 py-2.5",

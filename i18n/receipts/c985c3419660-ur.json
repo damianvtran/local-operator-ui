@@ -1,0 +1,39 @@
+{
+ "schema": 1,
+ "auditor": "reviewer",
+ "role": "independent translation auditor (team lopdev reviewer); did not translate these files and edited no translated string",
+ "model": "radient/auto",
+ "model_provenance": "session banner: four consecutive provider fallbacks under a quota failure — anthropic/claude-opus-5-5 -> anthropic/claude-sonnet-5-5 -> openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto. Fallback used, disclosed rather than implied.",
+ "fallback": true,
+ "instance": "c985c3419660-ur",
+ "locale": "ur",
+ "namespace": "ui.settings.search",
+ "date": "2026-10-29",
+ "head": "574a23d5678e4dd0de75ca63b1e93a1a90b6af5a",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "independence": "The translator was a separate LLM translator subagent (i18n-translator) whose work landed in 574a23d5678e. This auditor authored no catalogue, keys.gen.ts, ledger or receipt for this namespace before this run and edited no translated string; it writes only these seven receipts and the seven ledger rows derived from them.",
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "radient/auto",
+  "note": "session model as reported, with provider fallbacks; recorded from the task brief and the translation commit, not observed serving by this auditor"
+ },
+ "sha256": {
+  "ur": "16a4ad69fd3865dddce1486bea04b6d011506fef826481c5cab9dd46110dbc52",
+  "en": "b7d1a506f2224ac92a275ab062b4b4a77485831abb2bfca00d1494dc12316282"
+ },
+ "context_sha256": "01e4d8a04ee3081a64da2c8b018bb349930e60dc1360bad1e40ce4ca1d63fc02",
+ "findings": [
+  {
+   "id": "UR-1",
+   "severity": "minor",
+   "key": "ui.settings.search.reason.description",
+   "english": "matched the description",
+   "target": "تفصیل سے مطابقت",
+   "issue": "The settings surface calls a setting's description وضاحت, not تفصیل: ui.settings.configuration.json:59 'نام، وضاحت یا کلید سے ترتیبات تلاش کریں' (the same search-by-description affordance on the same page), :80 settings_page.description 'وضاحت', :81 'کوئی وضاحت دستیاب نہیں'. تفصیل is this catalogue's word for details / an agent's own description (88 uses, agents and publication surfaces). As written, the results panel and the filter bar one pane away name the same field with two different words.",
+   "corrected": "وضاحت سے مطابقت"
+  }
+ ],
+ "scope": "ui.settings.search for ur: all 18 keys at head 574a23d5678e4dd0de75ca63b1e93a1a90b6af5a (the translation commit), read against src/i18n/catalogues/en/ui.settings.search.json, its context sidecar, i18n/glossary.md and i18n/style-guides/ur.md, with ur/ui.settings.json, ui.settings.configuration.json (the settings filter bar), ui.settings.navigation.json and ui.command_palette.json as the established-voice corpus for the same surface. No other namespace is in scope.",
+ "notes": "Candidate the translator flagged: reason.* fragment form — no finding. 'X سے مطابقت' is the catalogue's established Urdu match idiom (ui.chat.thread_search.count.match 'مطابقت', tier.related 'متعلقہ مطابقت', ui.hub.teams.public.search_miss '… سے مطابقت نہیں رکھتی'), so the six labels read as noun-phrase fragments after the ' · ' separator rather than broken sentences; each is lowercase with no full stop, as the sidecar requires. No manual bidi control characters anywhere; the chord is never spelled in the catalogue (it arrives through {shortcut}) and stays Latin. row.section_hint's postpositional '{section} میں' is correct Urdu and follows the sidecar's allowance that the preposition may move. field.label/placeholder and no_results.clear are byte-identical to the settings filter bar's 'ترتیبات تلاش کریں' and 'تلاش صاف کریں'. Mechanical, re-derived from the files by this auditor: key set == English (18/18, same order, no added/dropped/renamed key); every file parses as JSON; @formatjs/icu-messageformat-parser accepts all 18 messages with no stray braces; argument names and types match English; plural arms equal exactly the locale's Intl.PluralRules category set plus `other`; intl-messageformat renders every argument-bearing message at 0, 1, 2, 5 and 1 000 000 without error; no hand-written digit grouping; no manual bidi control characters (ur); NFC-clean (vi). NOT verified by this audit: native-speaker naturalness (this is an agent semantic read, no native reader), rendered fit inside the panel, RTL layout proof, screenshots. Auditor identity: team lopdev reviewer running as an independent translation auditor for this namespace; the auditor did not translate these files and edited no translated string. Auditor model: radient/auto — the session banner recorded four consecutive provider fallbacks under a quota failure (anthropic/claude-opus-5-5 -> anthropic/claude-sonnet-5-5 -> openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto), recorded here rather than implied. The translator's served model was not observed by this auditor; the translator is recorded from the task brief and the translation commit."
+}

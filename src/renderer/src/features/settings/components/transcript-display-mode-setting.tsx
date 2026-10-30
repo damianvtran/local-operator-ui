@@ -45,15 +45,22 @@ type TranscriptDisplayModeSettingProps = {
 
 	/** Called with the mode the reader chose. */
 	onChange: (mode: TranscriptDisplayMode) => void;
+
+	/** Settings search's stable row id, when this control is a searchable row. */
+	searchRow?: string;
 };
 
 export const TranscriptDisplayModeSetting: FC<
 	TranscriptDisplayModeSettingProps
-> = ({ value, onChange }) => {
+> = ({ value, onChange, searchRow }) => {
 	useI18nLocale();
 	const labelId = useId();
 	return (
-		<div className="flex items-start justify-between gap-4">
+		<div
+			data-search-row={searchRow}
+			data-search-control={searchRow ? "" : undefined}
+			className="flex items-start justify-between gap-4"
+		>
 			<div className="min-w-0 flex-1">
 				<span
 					id={labelId}

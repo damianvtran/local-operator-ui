@@ -568,7 +568,17 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 		const suggestion = provider.suggested_model?.name;
 		const open = selectedId === provider.id;
 		return (
-			<li key={provider.id} data-provider-id={provider.id}>
+			<li
+				key={provider.id}
+				data-provider-id={provider.id}
+				/*
+				 * One settings-search row per provider card: the card's rendered
+				 * text is the provider's name and state, and the landing control is
+				 * the card's first focusable (its primary action).
+				 */
+				data-search-row={`providers.${provider.id}`}
+				data-search-control
+			>
 				<div className="flex min-h-14 items-center gap-3 px-4 py-2">
 					<Monogram provider={provider} />
 					<div className="flex min-w-0 flex-1 flex-col">
@@ -696,7 +706,17 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 			readiness?.label ?? null,
 		);
 		return (
-			<li key={provider.id} data-provider-id={provider.id}>
+			<li
+				key={provider.id}
+				data-provider-id={provider.id}
+				/*
+				 * One settings-search row per provider card: the card's rendered
+				 * text is the provider's name and state, and the landing control is
+				 * the card's first focusable (its primary action).
+				 */
+				data-search-row={`providers.${provider.id}`}
+				data-search-control
+			>
 				<div className="flex min-h-14 items-center gap-3 px-4 py-2">
 					<Monogram provider={provider} />
 					<div className="flex min-w-0 flex-1 flex-col">

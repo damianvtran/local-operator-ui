@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
 import type {
 	OwnerAuditConversation,
 	OwnerAuditMessage,
@@ -204,6 +205,103 @@ const messages: OwnerAuditMessage[] = [
 	},
 ];
 
+/*
+ * TWO CHIEFS OF STAFF NAMED AIDA, the case the shared "Aida (Person)" label
+ * exists for. An agent sender carries its OWNER's account id, which is how the
+ * directory row (and so the composed label and avatar) is found, exactly as
+ * in a channel. Ben's Aida is a separate agent in the same DM.
+ */
+const people: TeamBridgeDirectoryMember[] = [
+	{
+		account_id: AGENT,
+		display_label: "Damian Tran",
+		role: "owner",
+		bridge_enabled: true,
+		bridge_state: "active",
+		agent: { endpoint_id: "bep_damian", name: AGENT_LABEL, state: "active" },
+	},
+	{
+		account_id: "acct_ben",
+		display_label: "Ben Okafor",
+		role: "member",
+		bridge_enabled: true,
+		bridge_state: "active",
+		agent: { endpoint_id: "bep_ben", name: AGENT_LABEL, state: "active" },
+	},
+	{
+		account_id: "acct_bea",
+		display_label: "Bea Okafor",
+		role: "member",
+		bridge_enabled: true,
+		bridge_state: "active",
+	},
+];
+
+/* A long agent write-up: the shape QA-coordination traffic actually takes, and
+ * the one the bespoke renderer drew as raw asterisks and pipes. */
+const LONG_MARKDOWN = [
+	"**Release check for prod-2** — everything below is from the last hour.",
+	"",
+	"1. Canary at 5% for 20 minutes, no new errors",
+	"2. Error budget unchanged (`99.94%`)",
+	"3. Rollback runbook linked in #deployments",
+	"",
+	"| service | version | status |",
+	"| --- | --- | --- |",
+	"| core | 0.46.6 | green |",
+	"| admin-api | 0.31.2 | green |",
+	"",
+	"```sh",
+	"kubectl -n prod-2 rollout status deploy/core",
+	"kubectl -n prod-2 get pods -l app=core",
+	"```",
+].join("\n");
+
+/*
+ * Seq order must agree with the clock (QA round 1, Q1): the shared list orders
+ * by seq, as the hub does, so a write-up stamped 10:40 but sequenced after the
+ * 11:02 rows rendered as a headerless continuation of the 11:02 message. Real
+ * hub seqs are monotonic in time; the fixture is too, sitting before seq 41.
+ */
+const markdownMessages: OwnerAuditMessage[] = [
+	{
+		...base,
+		id: "bmsg_39",
+		seq: 39,
+		sender: { account_id: AGENT, kind: "agent", display_label: AGENT_LABEL },
+		body: LONG_MARKDOWN,
+		origin: "agent",
+		agent_label: AGENT_LABEL,
+		agent_delivery_status: null,
+		agent_verdict_at: null,
+		created_at: "2026-10-23T10:40:00Z",
+	},
+	{
+		...base,
+		id: "bmsg_40",
+		seq: 40,
+		sender: {
+			account_id: "acct_ben",
+			kind: "agent",
+			display_label: AGENT_LABEL,
+		},
+		body: "Ben asked me to confirm: **no** schema migrations in this release.",
+		origin: "agent",
+		agent_label: AGENT_LABEL,
+		agent_delivery_status: "admitted",
+		created_at: "2026-10-23T10:44:00Z",
+	},
+	...messages,
+];
+
+/* Every body the hub could not send, in one transcript: the honest absence. */
+const unavailableMessages: OwnerAuditMessage[] = messages.map((message) => ({
+	...message,
+	body: null,
+	attachments: [],
+	attachment_count: 0,
+}));
+
 type State = "loading" | "error" | "ready";
 
 /**
@@ -218,6 +316,8 @@ function Section({
 	selected,
 	readerAccountId,
 	hasMore,
+	people: directory,
+	panelState,
 }: {
 	state: State;
 	conversations: OwnerAuditConversation[];
@@ -227,6 +327,10 @@ function Section({
 	 * never lists the reader as a second reader of their own audit (D2). */
 	readerAccountId: string;
 	hasMore?: boolean;
+	/** The tenant directory; empty = still loading or failed (stored labels). */
+	people?: TeamBridgeDirectoryMember[];
+	/** The panel's own read, separate from the rail's. */
+	panelState?: State;
 }) {
 	const noop = () => {};
 	return (
@@ -252,15 +356,19 @@ function Section({
 			 * unreadable has no panel at all, rather than a conversation header sitting
 			 * over nothing.
 			 */}
+			{/* The thread section's ground, as `team-bridge-page.tsx` paints it: the
+			    rail sits on canvas, the panel on surface, so frames show the tone
+			    step that ships (design review round 1, D5). */}
 			{selected && (
-				<main className="flex min-h-0 flex-1 flex-col overflow-hidden">
+				<main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface">
 					<OwnerAuditPanelView
 						conversation={selected}
 						messages={rows}
-						state={state}
+						state={panelState ?? state}
 						retry={noop}
 						hasMore={hasMore}
 						readerAccountId={readerAccountId}
+						people={directory}
 					/>
 				</main>
 			)}
@@ -278,6 +386,7 @@ const meta = {
 		messages,
 		selected: dm,
 		readerAccountId: OWNER,
+		people,
 	},
 } satisfies Meta<typeof Section>;
 
@@ -317,4 +426,40 @@ export const ClosedWindow: Story = {
  * page for the whole conversation (design review round 1, D3). */
 export const OlderPageAvailable: Story = {
 	args: { hasMore: true },
+};
+
+/** The before/after frame for the shared renderer: a long agent write-up with
+ * a list, a table and a code block, then two chiefs of staff named Aida told
+ * apart by their people, then the ordinary verdicts — a rejection collapsed,
+ * a body the hub never sent. */
+export const MarkdownAndTwoAidas: Story = {
+	args: { messages: markdownMessages },
+};
+
+/** Every body unavailable: the audit's own sentence on each row, never an
+ * empty prose block and never a disclosure that promises text. */
+export const BodiesUnavailable: Story = {
+	args: { messages: unavailableMessages },
+};
+
+/** The directory read has not answered (or failed): the transcript still
+ * names every sender from the stored labels, with no blank names. */
+export const DirectoryUnavailable: Story = {
+	args: { people: [] },
+};
+
+/** The conversation is selected and its messages are still being read. */
+export const PanelLoading: Story = {
+	args: { panelState: "loading", messages: [] },
+};
+
+/** The conversation's messages could not be read: one retry, in the body,
+ * and the banner's Refresh steps aside (D7). */
+export const PanelReadFailed: Story = {
+	args: { panelState: "error", messages: [] },
+};
+
+/** A selected conversation with nothing in its audit window. */
+export const PanelEmpty: Story = {
+	args: { messages: [] },
 };

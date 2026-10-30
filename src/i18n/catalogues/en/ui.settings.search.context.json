@@ -1,0 +1,138 @@
+{
+	"ui.settings.search.field.label": {
+		"role": "accessible name of the settings search field",
+		"tone": "sentence case, plain, second person implied",
+		"length": "Two words.",
+		"placeholders": {},
+		"note": "The field is the page's own search. Do not name a database or a feature; it searches this page and the backend's setting registry."
+	},
+	"ui.settings.search.field.placeholder": {
+		"role": "placeholder inside the empty settings search field",
+		"tone": "sentence case, plain",
+		"length": "Two or three words.",
+		"placeholders": {},
+		"note": "Repeats the field's name; a placeholder is not a sentence, so no full stop and no ellipsis."
+	},
+	"ui.settings.search.empty.summary": {
+		"role": "first line of the panel's empty state (no query typed)",
+		"tone": "sentence case, plain, third person",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "States what the box searches: this page's rows plus the connected service's registry. Never promise sources it does not read."
+	},
+	"ui.settings.search.empty.shortcut": {
+		"role": "second line of the empty state, naming the keyboard shortcut",
+		"tone": "sentence case, plain, second person",
+		"length": "One short sentence.",
+		"placeholders": {
+			"shortcut": "a literal keyboard chord such as ⌘F or Ctrl+F; do not translate or reorder its characters"
+		},
+		"note": "The chord opens this field from anywhere on the settings page. Keep {shortcut} verbatim."
+	},
+	"ui.settings.search.no_results.title": {
+		"role": "no-results heading, quoting the reader's query",
+		"tone": "sentence case, plain, apologetic-free",
+		"length": "One line.",
+		"placeholders": {
+			"query": "the reader's own text, quoted verbatim; it may be long, so allow wrapping"
+		},
+		"note": "Use the locale's own quotation marks around {query}. Never reword or trim the query."
+	},
+	"ui.settings.search.no_results.hint": {
+		"role": "one line under the no-results heading, naming the way out",
+		"tone": "sentence case, plain, second person",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "The button beside it clears the field; the sentence must not describe a second action that does not exist."
+	},
+	"ui.settings.search.no_results.clear": {
+		"role": "the no-results button's label",
+		"tone": "imperative, sentence case",
+		"length": "Two words.",
+		"placeholders": {},
+		"note": "Clears the query and returns the panel to its empty state. The only action offered in this state."
+	},
+	"ui.settings.search.results.count": {
+		"role": "polite live region announcing how many results the current query has",
+		"tone": "neutral, no punctuation",
+		"length": "Two or three words plus the number.",
+		"placeholders": {
+			"count": "integer greater than zero; keep the plural arms"
+		},
+		"note": "Screen-reader announcement only. Use the locale's plural rules for the arms."
+	},
+	"ui.settings.search.results.more": {
+		"role": "the line under the capped result list",
+		"tone": "neutral, sentence case",
+		"length": "One short line.",
+		"placeholders": {
+			"count": "integer greater than zero, the number of results not shown; keep the plural arms"
+		},
+		"note": "Says the list is capped rather than incomplete. It is a statement, not a button."
+	},
+	"ui.settings.search.panel.label": {
+		"role": "accessible name of the results listbox",
+		"tone": "sentence case, plain",
+		"length": "Two words.",
+		"placeholders": {},
+		"note": "Names the popup list attached to the field."
+	},
+	"ui.settings.search.reason.label": {
+		"role": "why a result is shown, when the setting's own name matched",
+		"tone": "lowercase fragment, no capital, no full stop",
+		"length": "Three words.",
+		"placeholders": {},
+		"note": "Appended after the section context on a result row. Only use the arm whose field actually matched; the UI chooses."
+	},
+	"ui.settings.search.reason.synonym": {
+		"role": "why a result is shown, when a related term (a synonym) matched",
+		"tone": "lowercase fragment, no capital, no full stop",
+		"length": "Four words.",
+		"placeholders": {},
+		"note": "A synonym is another word for the same setting, supplied by the setting's own registry entry."
+	},
+	"ui.settings.search.reason.key": {
+		"role": "why a result is shown, when the setting's machine key matched",
+		"tone": "lowercase fragment, no capital, no full stop",
+		"length": "Four words.",
+		"placeholders": {},
+		"note": "'Setting key' means the registry identifier such as web_search.enabled, not a keyboard key."
+	},
+	"ui.settings.search.reason.choice": {
+		"role": "why a result is shown, when one of the setting's option labels matched",
+		"tone": "lowercase fragment, no capital, no full stop",
+		"length": "Three words.",
+		"placeholders": {},
+		"note": "An option is one of the values the setting can take, e.g. a theme name."
+	},
+	"ui.settings.search.reason.section": {
+		"role": "why a result is shown, when the section it belongs to matched",
+		"tone": "lowercase fragment, no capital, no full stop",
+		"length": "Three words.",
+		"placeholders": {},
+		"note": "Used when the query matched a group's title, so every row in that group is offered."
+	},
+	"ui.settings.search.reason.description": {
+		"role": "why a result is shown, when the setting's help or description matched",
+		"tone": "lowercase fragment, no capital, no full stop",
+		"length": "Three words.",
+		"placeholders": {},
+		"note": "Used when the query matched the explanatory sentence under the setting's name, not its name."
+	},
+	"ui.settings.search.jump.missing": {
+		"role": "polite announcement when Enter could not land on the row",
+		"tone": "sentence case, plain, no blame",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "The row exists in the index but is not currently rendered (its section is closed, or the surface is still loading)."
+	},
+	"ui.settings.search.row.section_hint": {
+		"role": "section context printed on a result row",
+		"tone": "sentence case fragment",
+		"length": "One short line.",
+		"placeholders": {
+			"section": "the section's own translated name, e.g. Appearance"
+		},
+		"note": "Says where the row lives. Keep {section} verbatim; the preposition may move in other languages."
+	}
+}
