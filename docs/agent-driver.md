@@ -306,8 +306,9 @@ It prints `[refusing] this tree is not on the pinned runtime …` and exits 1 wi
 nothing booted and no frame written, so a worktree inheriting a stale shared
 `node_modules` cannot populate a frames directory at all — which is what makes
 the pin worth stating: a committed frame is only reproducible on the runtime that
-produced it (a 35.x build renders this window as a 1380x872 viewport against
-44.3.0's 1380x868, and every pixel hash differs). With `--keep` the scratch tree
+produced it (a 35.x build renders this window as a 1380x872 viewport, Electron
+44.3.0 as 1380x868 and 45.1.0 as 1380x900, and every pixel hash differs). With
+`--keep` the scratch tree
 is named rather than removed; otherwise the refusal removes the tree it had just
 created, since nothing has run in it.
 
