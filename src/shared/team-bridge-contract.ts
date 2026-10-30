@@ -243,7 +243,11 @@ export const teamBridgeDeliveryStateSchema = z
 		hold_class: z.string().max(32).optional(),
 		refusal_class: z.string().max(32).optional(),
 	})
-	.passthrough();
+	/* Deliberately NOT `.passthrough()`, unlike the rest of this file: an
+	 * extra field on a delivery entry (a score, a reason, a raw category) is
+	 * exactly what must never sit in the query cache or reach a spread, so
+	 * zod's default strip drops it at the boundary (review round 1, R1). */
+	.strip();
 export type TeamBridgeDeliveryState = z.infer<
 	typeof teamBridgeDeliveryStateSchema
 >;
