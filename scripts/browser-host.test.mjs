@@ -7783,6 +7783,47 @@ test("/health carries the capabilities this build serves", async () => {
 	]);
 });
 
+test("a record_start whose answer is refused aborts the capture it began", async () => {
+	// The result-side document assertion runs AFTER `record_start` has already
+	// registered a capture (review N5). If it refuses the answer, the footage the
+	// refusal is about must not keep recording into an approved path.
+	const { host, registry, cdp } = makeHost();
+	const dir = mkdtempSync(join(root, "record-refused-"));
+	const params = {
+		url: "https://approved.example/",
+		requester: "session:alice",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const opened = await host.dispatch("open", params, "open");
+	const record = registry.requireSurface(opened.tab);
+	const originalSend = cdp.send;
+	cdp.send = async (contents, method, sendParams, options) => {
+		if (method === "Page.startScreenRecording") {
+			// The page leaves for an unapproved origin while the start is in flight,
+			// which is exactly what the result-side check discards the answer for.
+			record.view.webContents.url = "https://forbidden.example/";
+			registry.bumpEpoch(record.tabId);
+		}
+		return originalSend(contents, method, sendParams, options);
+	};
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"record_start",
+				{ ...params, tab: opened.tab, path: join(dir, "clip.mp4") },
+				"rec",
+			),
+		(error) => error.code === "origin_not_allowed",
+	);
+	cdp.send = originalSend;
+	await assert.rejects(
+		() => host.dispatch("record_stop", { ...params, tab: opened.tab }, "stop"),
+		(error) => error.data?.reason === "record_not_active",
+	);
+	assert.equal(existsSync(join(dir, "clip.mp4")), false);
+});
+
 test("the state file carries the same list, from the same constant", () => {
 	const path = stateFilePath(join(root, `state-caps-${Math.random()}`));
 	const writer = new BrowserStateWriter(

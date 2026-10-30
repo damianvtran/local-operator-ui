@@ -352,10 +352,99 @@ test("a second start by the same owner is busy with zero CDP calls", async () =>
 		// The refusal has to name what is running: which file, and for how long.
 		assert.match(error.message, /clip\.mp4/);
 		assert.match(error.message, /\d/);
+		// N3: `age_ms` is the frozen field a harness reads to age a refusal, and
+		// it is integer milliseconds — a seconds field would be a second contract.
+		assert.equal(typeof error.data?.age_ms, "number");
+		assert.ok(Number.isInteger(error.data.age_ms), "age_ms is whole ms");
+		assert.ok(error.data.age_ms >= 0);
+		assert.equal("age_s" in error.data, false, "age_s is not the contract");
 		return true;
 	});
 	assert.equal(commands.length, before, "no CDP call on a busy refusal");
 	await stop();
+});
+
+// ---- M1: the cap is reserved before the first await ------------------------
+
+test("four simultaneous starts fill the cap and refuse the rest", async () => {
+	// The cap check and the registration are separated by awaits, so without a
+	// reservation every one of these reads a size of zero and all four start
+	// (review M1). FOUR tabs, two slots: exactly two may win.
+	const dir = scratchDir();
+	const { start, stop, addTab } = fixture();
+	addTab("tab-2");
+	addTab("tab-3");
+	addTab("tab-4");
+	const tokens = ["tab", "tab-2", "tab-3", "tab-4"];
+	const outcomes = await Promise.allSettled(
+		tokens.map((token, index) =>
+			start({ path: join(dir, `c${index}.mp4`) }, "session:a", token),
+		),
+	);
+	// Free whatever won BEFORE asserting, so a red run cannot leave the cap full
+	// for every later case in this file.
+	try {
+		const fulfilled = outcomes.filter((entry) => entry.status === "fulfilled");
+		const rejected = outcomes.filter((entry) => entry.status === "rejected");
+		assert.equal(
+			fulfilled.length,
+			2,
+			JSON.stringify(outcomes.map((o) => o.status)),
+		);
+		assert.equal(rejected.length, 2);
+		for (const entry of rejected) {
+			assert.equal(entry.reason.code, "busy");
+			assert.equal(entry.reason.data?.reason, "record_limit");
+		}
+	} finally {
+		for (const token of tokens) {
+			await stop("session:a", token).catch(() => undefined);
+		}
+	}
+});
+
+test("a start naming an active recording's path is refused", async () => {
+	// Two recordings on ONE path would interleave writes into one .part (review
+	// N1). The refusal is a path refusal and costs no CDP call.
+	const dir = scratchDir();
+	const path = join(dir, "shared.mp4");
+	const { start, stop, addTab, commands } = fixture({ path });
+	addTab("tab-2");
+	await start({ path }, "session:a", "tab");
+	try {
+		const before = commands.length;
+		await assert.rejects(start({ path }, "session:a", "tab-2"), (error) => {
+			assert.equal(error.data?.reason, "record_path");
+			assert.match(error.message, /already being recorded/);
+			return true;
+		});
+		assert.equal(commands.length, before, "no CDP call for a taken path");
+	} finally {
+		// Both tabs: in the un-fixed state the second start SUCCEEDS on the taken
+		// path, and a red run must not leave it holding a cap slot.
+		await stop("session:a", "tab").catch(() => undefined);
+		await stop("session:a", "tab-2").catch(() => undefined);
+	}
+});
+
+test("a stale .part is not deleted by a recording that did not create it", async () => {
+	// The finally-block unlink is for the part THIS recording opened. A stale one
+	// from an earlier crash is somebody else's file: the open fails `EEXIST`, the
+	// stop refuses, and the bytes stay where they were (review N1).
+	const dir = scratchDir();
+	const path = join(dir, "stale.mp4");
+	const part = join(dir, ".stale.mp4.part");
+	writeFileSync(part, "stale bytes");
+	const { start, stop } = fixture({ path, chunks: [Buffer.from("bytes")] });
+	await start({ path });
+	await rejectsReason(stop(), "internal", "record_failed");
+	assert.equal(
+		existsSync(part),
+		true,
+		"the stale part survives this recording",
+	);
+	assert.equal(readFileSync(part, "utf8"), "stale bytes");
+	assert.equal(existsSync(path), false, "and nothing was published over it");
 });
 
 test("a second start by another owner replaces the recording", async () => {
@@ -614,9 +703,18 @@ class FakeDebugger extends EventEmitter {
 	}
 }
 
-function poolFixture() {
+/** A real `CdpPool` over a fake debugger. `answer` lets a test decide what the
+ * driver sees for a method (`Page.stopScreenRecording`, `IO.read`) while every
+ * other CDP call still answers `{}` — the fake the boundary tests need. */
+function poolFixture(answer) {
 	const cdp = new mod.CdpPool();
-	const debuggerLike = new FakeDebugger();
+	const fakeDebugger = new FakeDebugger();
+	if (answer) {
+		const original = FakeDebugger.prototype.sendCommand;
+		fakeDebugger.sendCommand = async (method) =>
+			answer({ method }) ?? original.call(fakeDebugger, method);
+	}
+	const debuggerLike = fakeDebugger;
 	const contents = contentsFor(9001 + nextViewId++, { debugger: debuggerLike });
 	const ctx = {
 		cdp,
@@ -651,6 +749,62 @@ test("every debugger boundary aborts a recording and clears its timer", async (t
 		);
 		assert.equal(existsSync(path), false, `${boundary}: nothing written`);
 	}
+});
+
+test("a detach event leaves an uncollected auto-stop result alone", async (t) => {
+	// The event with NO live recording is a DevTools hand-over of a tab whose clip
+	// already finished. Dropping `settled` there would answer the owner's stop with
+	// "nothing is running" and lose the path it earned (review N2).
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const dir = scratchDir();
+	const { cdp, contents, debuggerLike, ctx } = poolFixture(({ method }) => {
+		if (method === "Page.stopScreenRecording") return { stream: "s-auto" };
+		if (method === "IO.read")
+			return { data: Buffer.from("auto-bytes").toString("base64"), eof: true };
+		return {};
+	});
+	const path = join(dir, "auto-kept.mp4");
+	await cdp.attach(contents);
+	await mod.recordStart(
+		ctx,
+		{ tab: "tab", requester: "session:a", path, max_duration_s: 1 },
+		"r",
+	);
+	t.mock.timers.tick(1000);
+	for (let index = 0; index < 10; index += 1) {
+		await new Promise((resolve) => setImmediate(resolve));
+	}
+	debuggerLike.emit("detach", {}, "canceled_by_user");
+	const result = await mod.recordStop(
+		ctx,
+		{ tab: "tab", requester: "session:a" },
+		"r",
+	);
+	assert.equal(result.auto_stopped, true);
+	assert.equal(result.path, path);
+	// forget/detach DO clear it: the handle is gone there.
+	const second = poolFixture(() => ({}));
+	await second.cdp.attach(second.contents);
+	await mod.recordStart(
+		second.ctx,
+		{
+			tab: "tab",
+			requester: "session:a",
+			path: join(dir, "two.mp4"),
+			max_duration_s: 1,
+		},
+		"r",
+	);
+	t.mock.timers.tick(1000);
+	for (let index = 0; index < 10; index += 1) {
+		await new Promise((resolve) => setImmediate(resolve));
+	}
+	second.cdp.forget(second.contents.id);
+	await rejectsReason(
+		mod.recordStop(second.ctx, { tab: "tab", requester: "session:a" }, "r"),
+		"internal",
+		"record_not_active",
+	);
 });
 
 test("a devtools detach answers a later stop with record_aborted, and says why", async () => {
@@ -770,6 +924,13 @@ test("bad duration and byte limits are refused before any CDP call", async () =>
 	}
 	assert.deepEqual(commands, []);
 	assert.deepEqual(readdirSync(dir), []);
+	// N4: `max_duration_s` stays integer-only, and the refusal has to say which
+	// field and that seconds are whole — a caller cannot guess either.
+	const refusal = await start({ path, max_duration_s: 1.5 }).catch(
+		(error) => error,
+	);
+	assert.match(refusal.message, /max_duration_s/);
+	assert.match(refusal.message, /whole seconds/i);
 });
 
 test("the protocol mirror carries both methods with D8's budgets", () => {

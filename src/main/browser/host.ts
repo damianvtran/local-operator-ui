@@ -652,7 +652,23 @@ export class BrowserHost implements BrowserActionContext {
 		const operation = async (): Promise<Record<string, unknown>> => {
 			assertDocument();
 			const result = await this.perform(method, params, requestId);
-			assertDocument();
+			try {
+				assertDocument();
+			} catch (error) {
+				// A `record_start` that this result-side check refuses has ALREADY
+				// registered a capture. Recording into the approved path while the
+				// answer is discarded is footage the host may not hold, so the capture
+				// ends with the refusal (review N5). The abort is a nested call and is
+				// deliberately not awaited into the error path: the refusal is the
+				// answer, and a stop that cannot complete must not mask it.
+				if (method === "record_start") {
+					recordingActions.abortRecording(
+						record.view.webContents.id,
+						"document_refused_after_start",
+					);
+				}
+				throw error;
+			}
 			return result;
 		};
 		if (!NAVIGATION_ACTIONS.has(method)) return operation();

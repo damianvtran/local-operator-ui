@@ -25,9 +25,8 @@ the real-path driver recorded in the PR's evidence matrix.
   A reported path always names a COMPLETE file: bytes go to a `.<name>.part`
   inode, are fsync'd, and are published with `linkSync`, which cannot overwrite.
   Every failure path unlinks the part, so no error leaves a partial or empty file.
-- Audio is never captured, request bodies are irrelevant here, and no bytes cross
-  the RPC wire (D3): the harness learns a path and a size, and verifies both from
-  disk itself.
+- Audio is never captured, and no bytes cross the RPC wire (D3): the harness
+  learns a path and a size, and verifies both from disk itself.
 - Two recordings may run at once, app-wide (D6). A third is refused with `busy`.
 
 ## What the host cannot promise
@@ -38,6 +37,11 @@ the real-path driver recorded in the PR's evidence matrix.
 - A hard kill (SIGKILL) leaves no file, because nothing touches disk until stop.
 - DevTools taking the tab discards the clip and leaves a `record_aborted`
   tombstone for the next `record_stop`; the bytes are not salvaged (D7).
+- The origin is checked ONCE, at start. A page that navigates itself to an
+  unapproved origin while the clip is running is captured until the stop. The
+  result-side check aborts a capture when the document changed during the START
+  itself (review N5); it does not re-check per frame, and it cannot: the capture
+  is one continuous stream, not a series of reads.
 
 ## Frozen contract (D8)
 
@@ -67,7 +71,7 @@ start or stop failure; Chromium's text verbatim), `record_path`, `record_active`
 | **D4** | Path is chosen and approved at `record_start`. `record_start` is tier `write`; `record_stop` is tier `read`. A denied start writes and starts nothing. |
 | **D5** | Default `<config>/browser/recordings/<session8>/rec-<stamp>-<4hex>.mp4` (0700/0600), explicit path allowed, `.mp4` only, **never overwrite**, `.part` + `linkSync` publish, Python verifies size + `ftyp` from disk. |
 | **D6** | Caps: 120 s default / 600 s max duration (auto-stop finalizes); 64 MiB (32 MiB under a scratchpad), `record_too_large` deletes and saves nothing; max 2 concurrent recordings (unmeasured). |
-| **D7** | State/teardown: per-webContents map keyed by owner; abort-and-discard on every debugger boundary via one `dropCaptures` in `cdp.ts`; tombstone only for DevTools detach; same-owner second start `busy`, other-owner replaces; owned-tab session end reaches teardown, retained tabs rely on the timer. |
+| **D7** | State/teardown: per-webContents map keyed by owner; abort-and-discard on every debugger boundary via one `dropCaptures` in `cdp.ts`; tombstone only for DevTools detach; same-owner second start `busy`; an other-owner replace STOPS the old recorder before starting (measured on Electron 45.1.0: Chromium refuses a second start while it is live with "Screencast is already active", so discarding the bookkeeping alone cannot hand the tab over); owned-tab session end reaches teardown, retained tabs rely on the timer. |
 | **D8** | Wire contract and protocol: `record_start`/`record_stop`, timeouts 20/60, `CAPABILITY_GATED` + `DESKTOP_ONLY`, static `HOST_CAPABILITIES`, `record_start` `DOCUMENT_SCOPED`, no `PROTO_VERSION` bump. |
 | **D9** | Error taxonomy by `data.reason`; classify a missing command by Chromium major < 153 first, text second; AV1 text taken from `media_recorder.cc:231-234`; Python renders the copy. |
 | **D10** | Extension host: conditional on the pending probe and on Ben approving a default-OFF operator switch. Bytes cross the wire in <= 4 MiB pages; Python writes the file; `record_stop` is stateless; `chrome.alarms` for the cap. |

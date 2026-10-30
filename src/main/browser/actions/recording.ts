@@ -150,6 +150,17 @@ type Settled = { owner: string } & (
 
 const recordings = new Map<number, Recording>();
 const settled = new Map<number, Settled>();
+/**
+ * Slots taken by starts that have passed the cap check but not yet registered.
+ *
+ * The check and the registration are separated by `await`s (attach, then the CDP
+ * start), so four starts that arrive together all read `recordings.size === 0`
+ * and all proceed — the cap held only for calls that happened to serialise
+ * (review M1). A reservation is taken SYNCHRONOUSLY with the path it will write,
+ * which also makes a duplicate path impossible before either start registers.
+ * Key is a token; value is the absolute path.
+ */
+const reservations = new Map<string, string>();
 
 function notActive(): BrowserHostError {
 	return new BrowserHostError(
@@ -263,7 +274,7 @@ function durationOf(params: Record<string, unknown>): number {
 	) {
 		throw new BrowserHostError(
 			"internal",
-			`record_start max_duration_s must be a whole number of seconds from 1 to ${RECORD_MAX_DURATION_S}; nothing was started`,
+			`record_start max_duration_s takes WHOLE SECONDS only: give an integer from 1 to ${RECORD_MAX_DURATION_S}. Nothing was started.`,
 			{ reason: "record_failed", param: "max_duration_s" },
 		);
 	}
@@ -411,6 +422,7 @@ async function runFinalize(
 	const budgetAt = Date.now() + RECORD_STOP_BUDGET_MS;
 	let handle = "";
 	let fd: number | null = null;
+	let createdPart = false;
 	let endedAt = recording.startedAt;
 	try {
 		const stopped = await cdp.send<{ stream?: string }>(
@@ -432,6 +444,10 @@ async function runFinalize(
 		// the same class of data as a screenshot, and the process umask would
 		// otherwise leave it readable by every account on the machine.
 		fd = openSync(partPath, "wx", 0o600);
+		// From here the part is OURS to delete. A stale `.part` from an earlier
+		// crash makes this open throw `EEXIST`, and the failure path must not
+		// delete a file this recording never created (review N1).
+		createdPart = true;
 		const bytes = await readStream(recording, handle, budgetAt, fd);
 		if (bytes === 0) {
 			throw new BrowserHostError(
@@ -480,10 +496,13 @@ async function runFinalize(
 				// Already closed, or the descriptor went with the failure.
 			}
 		}
-		try {
-			unlinkSync(partPath);
-		} catch {
-			// Nothing was created, or the publish already consumed it.
+		if (createdPart) {
+			try {
+				unlinkSync(partPath);
+			} catch {
+				// The publish already consumed it, or the unlink is not permitted to
+				// undo a completed publish — either way the clip is the answer.
+			}
 		}
 		if (handle) {
 			try {
@@ -594,55 +613,74 @@ export async function recordStart(
 	const active = recordings.get(id);
 	if (active) {
 		if (active.owner === owner) {
-			const ageS = Math.max(
-				0,
-				Math.round((Date.now() - active.startedAt) / 1000),
-			);
+			// `age_ms` is integer milliseconds and is part of the frozen contract: a
+			// harness reads it to age the refusal, so a seconds field would be a
+			// second contract (review N3).
+			const ageMs = Math.max(0, Math.round(Date.now() - active.startedAt));
 			throw new BrowserHostError(
 				"busy",
-				`a recording is already running on this tab for this session: ${active.path} (${ageS}s into its ${active.maxDurationS}s cap). Stop it with record_stop before starting another.`,
-				{
-					reason: "record_active",
-					path: active.path,
-					age_ms: Date.now() - active.startedAt,
-				},
+				`a recording is already running on this tab for this session: ${active.path} (${Math.round(ageMs / 1000)}s into its ${active.maxDurationS}s cap). Stop it with record_stop before starting another.`,
+				{ reason: "record_active", path: active.path, age_ms: ageMs },
 			);
 		}
 	}
 	const path = preflightPath(params);
 	const maxDurationS = durationOf(params);
 	const maxBytes = maxBytesOf(params);
-	if (active) {
-		// The other owner's session is gone (the wedge `owner_recover` exists to
-		// avoid), so its recording is discarded rather than allowed to block this
-		// tab forever. Discarding keeps the headline number honest: one encoder
-		// per recording, and the count below is what bounds the machine.
-		abortRecording(id, "replaced_by_another_owner");
-		// The abort above drops our state; this ends the recorder itself, which is
-		// what lets the next start succeed on the same target.
-		await endReplaced(active);
-	} else if (recordings.size >= MAX_CONCURRENT_RECORDINGS) {
+	// ONE PATH, ONE RECORDING. Two recordings writing one destination would open
+	// the same `.<name>.part` and interleave their bytes; a RESERVED start counts
+	// too, because it is about to write that path (review N1).
+	const pathTaken =
+		[...recordings.values()].some((other) => other.path === path) ||
+		[...reservations.values()].includes(path);
+	if (pathTaken) {
+		throw pathRefusal(
+			path,
+			`this path is already being recorded: ${path}. Choose another name; a recording is never overwritten or shared.`,
+		);
+	}
+	// THE SLOT IS COUNTED BEFORE THE FIRST `await`, and the reservation carries
+	// this start's path. Four calls that arrive together all see the same size
+	// otherwise, and the cap holds only by luck (review M1).
+	const effective = recordings.size - (active ? 1 : 0) + reservations.size;
+	if (effective >= MAX_CONCURRENT_RECORDINGS) {
 		throw new BrowserHostError(
 			"busy",
 			`${MAX_CONCURRENT_RECORDINGS} recordings are already running, which is this host's cap; stop one with record_stop and retry. Nothing was started.`,
 			{ reason: "record_limit", limit: MAX_CONCURRENT_RECORDINGS },
 		);
 	}
-	await ctx.cdp.attach(contents);
+	if (active) {
+		// The other owner's session is gone (the wedge `owner_recover` exists to
+		// avoid), so its recording is discarded rather than allowed to block this
+		// tab forever. The abort is synchronous, so the slot above is already free.
+		abortRecording(id, "replaced_by_another_owner");
+	}
+	const reservation = `${Date.now()}-${Math.random()}`;
+	reservations.set(reservation, path);
 	try {
-		await ctx.cdp.send(
-			contents,
-			"Page.startScreenRecording",
-			{
-				audio: false,
-				maxWidth: RECORD_WIDTH,
-				maxHeight: RECORD_HEIGHT,
-				frameRate: RECORD_FPS,
-			},
-			{ deadlineMs: RECORD_START_DEADLINE_MS },
-		);
+		// The abort above drops our state; this ends the recorder itself, which is
+		// what lets the next start succeed on the same target.
+		if (active) await endReplaced(active);
+		await ctx.cdp.attach(contents);
+		try {
+			await ctx.cdp.send(
+				contents,
+				"Page.startScreenRecording",
+				{
+					audio: false,
+					maxWidth: RECORD_WIDTH,
+					maxHeight: RECORD_HEIGHT,
+					frameRate: RECORD_FPS,
+				},
+				{ deadlineMs: RECORD_START_DEADLINE_MS },
+			);
+		} catch (error) {
+			throw classifyStartFailure(error);
+		}
 	} catch (error) {
-		throw classifyStartFailure(error);
+		reservations.delete(reservation);
+		throw error;
 	}
 	const recording: Recording = {
 		owner,
@@ -658,6 +696,8 @@ export async function recordStart(
 		aborted: false,
 	};
 	recordings.set(id, recording);
+	// The entry now carries the slot; the reservation has done its job.
+	reservations.delete(reservation);
 	recording.timer = setTimeout(() => {
 		// The timer is not a command, so it cannot hold the tab lane; it finalizes
 		// through the same `finish` a stop uses, which is what makes the stream
@@ -729,7 +769,7 @@ export async function recordStop(
 export function abortRecording(
 	webContentsId: number,
 	reason: string,
-	options: { tombstone?: boolean } = {},
+	options: { tombstone?: boolean; clearSettled?: boolean } = {},
 ): void {
 	const recording = recordings.get(webContentsId);
 	if (recording) {
@@ -751,5 +791,10 @@ export function abortRecording(
 		});
 		return;
 	}
-	settled.delete(webContentsId);
+	// A detach EVENT with no recording running is a hand-over of a tab whose clip
+	// already finished and that its owner has not collected yet. Deleting that
+	// result would answer the next `record_stop` with "nothing is running" and
+	// lose the path it earned (review N2). `forget`/`detach` end the handle and
+	// pass `clearSettled`, which is where an uncollected result really is dead.
+	if (recording || options.clearSettled) settled.delete(webContentsId);
 }

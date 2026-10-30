@@ -587,6 +587,9 @@ export class CdpPool {
 		stopNetworkCapture(webContentsId);
 		abortRecording(webContentsId, detachedReason ?? "detached", {
 			tombstone: detachedReason !== undefined,
+			// `forget`/`detach` end the handle, so an uncollected result dies with it;
+			// the detach EVENT hands a live tab over and must leave it alone.
+			clearSettled: detachedReason === undefined,
 		});
 	}
 
