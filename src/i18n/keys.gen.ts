@@ -5927,6 +5927,7 @@ export type MessageParams = {
 		item: string;
 		source: string;
 	};
+	"ui.hub.links.action_failed_unsourced": { direction: string; item: string };
 	"ui.hub.links.action_result": {
 		direction: string;
 		item: string;
@@ -5936,25 +5937,37 @@ export type MessageParams = {
 	"ui.hub.links.actual_model": { model: string };
 	"ui.hub.links.aggregate_mark": { count: number; state: string };
 	"ui.hub.links.available": { item: string; source: string };
+	"ui.hub.links.available_unsourced": { item: string };
 	"ui.hub.links.busy": { direction: string; item: string; source: string };
+	"ui.hub.links.busy_unsourced": { direction: string; item: string };
 	"ui.hub.links.check_failed": { item: string; source: string };
 	"ui.hub.links.confirm_publish": undefined;
 	"ui.hub.links.direction_pull": undefined;
 	"ui.hub.links.direction_push": undefined;
 	"ui.hub.links.failed": { direction: string; item: string; source: string };
+	"ui.hub.links.failed_unsourced": { direction: string; item: string };
 	"ui.hub.links.healthy": {
 		item: string;
 		source: string;
 		subscribe: string;
 		autoPush: string;
 	};
+	"ui.hub.links.healthy_unsourced": {
+		item: string;
+		subscribe: string;
+		autoPush: string;
+	};
 	"ui.hub.links.hub_id": { address: string };
 	"ui.hub.links.incoming_failed": { outcome: string };
+	"ui.hub.links.incoming_failed_no_reason": undefined;
+	"ui.hub.links.incoming_failed_reason": { reason: string };
 	"ui.hub.links.incoming_needs_review": undefined;
 	"ui.hub.links.incoming_nothing": { outcome: string };
 	"ui.hub.links.incoming_outcome": { item: string; outcome: string };
 	"ui.hub.links.incoming_unknown_baseline": undefined;
+	"ui.hub.links.incoming_update_failed": undefined;
 	"ui.hub.links.last_success": { time: string };
+	"ui.hub.links.legacy_retry_unverified": undefined;
 	"ui.hub.links.links_count": { count: number };
 	"ui.hub.links.load_failed": undefined;
 	"ui.hub.links.loading": undefined;
@@ -5973,6 +5986,7 @@ export type MessageParams = {
 	"ui.hub.links.outcome_unchanged": undefined;
 	"ui.hub.links.outcome_up_to_date": undefined;
 	"ui.hub.links.outcome_would_merge": undefined;
+	"ui.hub.links.policy_title": { item: string };
 	"ui.hub.links.prefer_local": undefined;
 	"ui.hub.links.prefer_remote": undefined;
 	"ui.hub.links.preview_changed": undefined;
@@ -5983,6 +5997,7 @@ export type MessageParams = {
 	"ui.hub.links.preview_warnings": undefined;
 	"ui.hub.links.publication_pending": undefined;
 	"ui.hub.links.published": { item: string; source: string };
+	"ui.hub.links.published_unsourced": { item: string };
 	"ui.hub.links.resolve_action": undefined;
 	"ui.hub.links.resolve_action_confirm": undefined;
 	"ui.hub.links.resolve_action_confirming": undefined;
@@ -5993,17 +6008,24 @@ export type MessageParams = {
 	"ui.hub.links.resolve_irreversible": undefined;
 	"ui.hub.links.resolve_title": undefined;
 	"ui.hub.links.retry": undefined;
+	"ui.hub.links.retry_failed": undefined;
+	"ui.hub.links.retry_update": undefined;
+	"ui.hub.links.retrying": undefined;
 	"ui.hub.links.scope_label": undefined;
 	"ui.hub.links.scope_placeholder": undefined;
 	"ui.hub.links.scope_private": { organization: string };
 	"ui.hub.links.scope_public": undefined;
 	"ui.hub.links.scope_required": undefined;
+	"ui.hub.links.sign_in_required": undefined;
 	"ui.hub.links.sign_in_to_publish": undefined;
 	"ui.hub.links.source_address": { address: string };
+	"ui.hub.links.source_label_org": { organization: string };
+	"ui.hub.links.source_label_public": undefined;
 	"ui.hub.links.source_not_confirmed": undefined;
 	"ui.hub.links.source_private": { organization: string };
 	"ui.hub.links.source_public": undefined;
 	"ui.hub.links.source_unavailable": undefined;
+	"ui.hub.links.source_unresolved": undefined;
 	"ui.hub.links.sources_count": { count: number };
 	"ui.hub.links.title": undefined;
 	"ui.hub.links.unknown_baseline": undefined;
@@ -6012,6 +6034,7 @@ export type MessageParams = {
 	"ui.hub.links.unresolved_what": { item: string };
 	"ui.hub.links.unresolved_why": { item: string };
 	"ui.hub.links.updated": { item: string; source: string };
+	"ui.hub.links.updated_unsourced": { item: string };
 	"ui.hub.skills.catalogue_failed": { source: string };
 	"ui.hub.skills.count": { count: number };
 	"ui.hub.skills.count_shared": { count: number; organization: string };
@@ -6097,6 +6120,9 @@ export type MessageParams = {
 	"ui.hub.subscriptions.alias": undefined;
 	"ui.hub.subscriptions.auto_push": undefined;
 	"ui.hub.subscriptions.auto_push_description": { source: string };
+	"ui.hub.subscriptions.auto_push_description_unsourced": undefined;
+	"ui.hub.subscriptions.auto_push_source_unknown": undefined;
+	"ui.hub.subscriptions.auto_push_unverified": undefined;
 	"ui.hub.subscriptions.cancel": undefined;
 	"ui.hub.subscriptions.check": undefined;
 	"ui.hub.subscriptions.configured_off": undefined;
@@ -6119,7 +6145,9 @@ export type MessageParams = {
 	"ui.hub.subscriptions.preview_publish": undefined;
 	"ui.hub.subscriptions.pull": undefined;
 	"ui.hub.subscriptions.save_failed": { setting: string; source: string };
+	"ui.hub.subscriptions.save_failed_unsourced": { setting: string };
 	"ui.hub.subscriptions.saving": { setting: string; source: string };
+	"ui.hub.subscriptions.saving_unsourced": { setting: string };
 	"ui.hub.subscriptions.source_separation": {
 		currentSource: string;
 		newSource: string;
@@ -6127,6 +6155,8 @@ export type MessageParams = {
 	"ui.hub.subscriptions.subscribe": undefined;
 	"ui.hub.subscriptions.subscribe_description": { source: string };
 	"ui.hub.subscriptions.subscribe_description_blocked": { source: string };
+	"ui.hub.subscriptions.subscribe_description_blocked_unsourced": undefined;
+	"ui.hub.subscriptions.subscribe_description_unsourced": undefined;
 	"ui.hub.subscriptions.unsupported": undefined;
 	"ui.hub.pages.browse_aria": undefined;
 	"ui.hub.pages.card.get": undefined;
