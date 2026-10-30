@@ -69,5 +69,5 @@
 	"ui.agents.settings.general.profile_picture_error_type": "Tệp này không phải là hình ảnh mà ứng dụng này có thể đọc. Hãy chọn tệp JPEG, PNG, WebP, GIF hoặc AVIF.",
 	"ui.agents.settings.general.profile_picture_error_size": "Hình ảnh này lớn hơn {size} MB.",
 	"ui.agents.settings.general.profile_picture_error_decode": "Không đọc được hình ảnh này. Hãy thử tệp khác.",
-	"ui.agents.settings.general.profile_picture_error_save": "Could not save this picture on this computer. Free some space and try again."
+	"ui.agents.settings.general.profile_picture_error_save": "Không lưu được hình ảnh này trên máy tính này. Hãy giải phóng dung lượng rồi thử lại."
 }

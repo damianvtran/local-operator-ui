@@ -69,5 +69,5 @@
 	"ui.agents.settings.general.profile_picture_error_type": "Ese archivo no es una imagen que esta app pueda leer. Elige un archivo JPEG, PNG, WebP, GIF o AVIF.",
 	"ui.agents.settings.general.profile_picture_error_size": "Esa imagen supera los {size} MB.",
 	"ui.agents.settings.general.profile_picture_error_decode": "No se pudo leer esa imagen. Prueba con otro archivo.",
-	"ui.agents.settings.general.profile_picture_error_save": "Could not save this picture on this computer. Free some space and try again."
+	"ui.agents.settings.general.profile_picture_error_save": "No se pudo guardar esta imagen en este equipo. Libera espacio y vuelve a intentarlo."
 }

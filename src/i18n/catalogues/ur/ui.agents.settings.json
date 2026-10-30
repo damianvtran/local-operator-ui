@@ -69,5 +69,5 @@
 	"ui.agents.settings.general.profile_picture_error_type": "یہ فائل ایسی تصویر نہیں ہے جسے یہ ایپ پڑھ سکے۔ JPEG، PNG، WebP، GIF یا AVIF فائل منتخب کریں۔",
 	"ui.agents.settings.general.profile_picture_error_size": "یہ تصویر {size} MB سے بڑی ہے۔",
 	"ui.agents.settings.general.profile_picture_error_decode": "یہ تصویر پڑھی نہیں جا سکی۔ کوئی دوسری فائل آزمائیں۔",
-	"ui.agents.settings.general.profile_picture_error_save": "Could not save this picture on this computer. Free some space and try again."
+	"ui.agents.settings.general.profile_picture_error_save": "یہ تصویر اس کمپیوٹر پر محفوظ نہیں ہو سکی۔ کچھ جگہ خالی کریں، پھر دوبارہ کوشش کریں۔"
 }

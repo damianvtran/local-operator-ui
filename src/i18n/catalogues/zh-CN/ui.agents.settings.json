@@ -69,5 +69,5 @@
 	"ui.agents.settings.general.profile_picture_error_type": "此文件不是此应用可读取的图片。请选择JPEG、PNG、WebP、GIF或AVIF文件。",
 	"ui.agents.settings.general.profile_picture_error_size": "此图片超过{size} MB。",
 	"ui.agents.settings.general.profile_picture_error_decode": "无法读取此图片。请尝试其他文件。",
-	"ui.agents.settings.general.profile_picture_error_save": "Could not save this picture on this computer. Free some space and try again."
+	"ui.agents.settings.general.profile_picture_error_save": "无法在此电脑上保存此图片。释放一些空间，然后重试。"
 }
