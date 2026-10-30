@@ -346,10 +346,7 @@ test("a non-member pick raises the notice; invite, or mention without notifying"
 		await ui.type("@sher");
 		await ui.key("Enter");
 		const notice = () => ui.host.querySelector("[data-mention-notice]");
-		assert.match(
-			notice()?.textContent ?? "",
-			NOT_MEMBER_NOTICE,
-		);
+		assert.match(notice()?.textContent ?? "", NOT_MEMBER_NOTICE);
 		const button = (label) =>
 			[...notice().querySelectorAll("button")].find(
 				(b) => b.textContent === label,
