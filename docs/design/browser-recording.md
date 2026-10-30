@@ -81,8 +81,8 @@ start or stop failure; Chromium's text verbatim), `record_path`, `record_active`
 Electron 45.1.0 (Chromium 156.0.8078.49), built from the PR-B worktree, headless,
 isolated `HOME`/config/profile, driven over the host's own loopback RPC:
 
-- A 6 s recording of a local animating page landed as a 180-197 KB mp4
-  (`ftyp` at offset 4, no `.part` left). AVFoundation decoded both ends: `av01`,
+- A 6 s recording of a local animating page landed as a 174-197 KB mp4
+  (`ftyp` at offset 4, mode 0600, no `.part` left). AVFoundation decoded both ends: `av01`,
   1280x720, ~9 fps nominal, first frame luma ~111 and last ~160, mean per-channel
   difference ~48/255 — moving pictures, not one repeated frame.
 - The encoder utility process (`DevTools Media Encoding Service`) appears during a
