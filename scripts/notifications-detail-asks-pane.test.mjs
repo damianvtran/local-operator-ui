@@ -993,11 +993,39 @@ for (const surface of ["pane", "fleet"]) {
 					const fieldIndex = liveControls.indexOf(
 						page.card("a-1111").querySelector("input[data-ask-secret]"),
 					);
+					/*
+					 * U3: after the field, the first stop that is not one of the card's
+					 * own ANSWER controls is the corrected Send answer, never a stale
+					 * Retry. In the mixed card the ordinary question's option rows sit
+					 * between the field and the actions, so the very next stop is an
+					 * option there. Only the secret-only card has Send immediately after.
+					 *
+					 * Compare a string, never the elements themselves. If `assert.equal`
+					 * gets two React-owned jsdom nodes that differ, it builds the failure
+					 * by inspecting and diffing their whole object graph (fiber expandos,
+					 * the owning document), which runs synchronously. That grew this
+					 * process past 3 GB in under a second and was what killed Desktop
+					 * Tests shard 2. A string keeps the failure readable at no cost.
+					 */
+					const ANSWER_CONTROL =
+						"[data-ask-option], [data-ask-option-other], [data-ask-secret], [data-ask-other]";
+					const nextAction = liveControls
+						.slice(fieldIndex + 1)
+						.find((node) => !node.matches(ANSWER_CONTROL));
 					assert.equal(
-						liveControls[fieldIndex + 1],
-						page.buttonIn(page.card("a-1111"), "Send answer"),
-						"the corrected action is the next keyboard stop after the field",
+						nextAction?.textContent.trim() ?? null,
+						"Send answer",
+						"the corrected action is the next keyboard stop after the answer fields",
 					);
+					assert.ok(
+						nextAction === page.buttonIn(page.card("a-1111"), "Send answer"),
+						"that stop is the card's own Send answer control",
+					);
+					if (!mixed)
+						assert.ok(
+							liveControls[fieldIndex + 1] === nextAction,
+							"with no other question, Send answer directly follows the field",
+						);
 					await page.press(page.buttonIn(page.card("a-1111"), "Send answer"));
 					assert.ok(
 						await page.settle(
