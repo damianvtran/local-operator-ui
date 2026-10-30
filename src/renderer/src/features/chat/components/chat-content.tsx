@@ -228,6 +228,12 @@ type ChatContentProps = {
 	isOptionsSidebarOpen: boolean;
 	onCloseOptions: () => void;
 	agentId: string;
+	/**
+	 * The conversation agent's picture, or null when it has none; see
+	 * `CanonicalTranscriptProps.agentAvatar` for why the page resolves it and this
+	 * pane only forwards it.
+	 */
+	agentAvatar?: string | null;
 	messages: Message[];
 	isLoading: boolean;
 	isLoadingMessages: boolean;
@@ -883,6 +889,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		isOptionsSidebarOpen,
 		onCloseOptions,
 		agentId,
+		agentAvatar = null,
 		messages,
 		isLoading,
 		isLoadingMessages,
@@ -2627,6 +2634,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										frontend={canonical.view.frontend}
 										transcript={canonical.view.transcript}
 										openFrame={openFrameForPane}
+										agentAvatar={agentAvatar}
 										undelivered={undeliveredOnScreen}
 										/*
 										 * THE ONE DERIVATION, here too (agent review

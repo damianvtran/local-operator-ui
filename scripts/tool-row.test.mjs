@@ -1117,7 +1117,7 @@ test("the app window's CSP admits the blob images the attachment path produces",
 const rowsBundle = await build({
 	stdin: {
 		contents:
-			'export { buildRows, GAP, isTraceLike, ledgerName, paintsSomething, splitFirstLine } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
+			'export { agentTurnHeads, buildRows, GAP, isTraceLike, ledgerName, paintsSomething, splitFirstLine } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -1151,6 +1151,7 @@ await writeFile(rowsBundlePath, rowsBundle.outputFiles[0].text);
 const rowsLib = await import(pathToFileURL(rowsBundlePath).href);
 await unlink(rowsBundlePath).catch(() => undefined);
 const {
+	agentTurnHeads,
 	buildRows,
 	GAP,
 	isTraceLike,
@@ -1413,23 +1414,36 @@ test("an invisible record does not consume the avatar or a turn boundary", () =>
 		["u1", "t1"],
 	);
 	/*
-	 * D11 DELETES THE AVATAR AND ITS GUTTER, so there is no longer a flag to consume:
-	 * the assertion is that the row model carries none at all (a re-added flag would
-	 * be the avatar coming back through the model rather than through the markup) and
-	 * that the container which used to draw it renders neither a glyph nor the 40px
-	 * indent that justified it.
+	 * THE D11 PIN, REWRITTEN FOR THE OPERATOR'S AVATAR REQUEST (2026-10-30).
+	 *
+	 * D11 removed the avatar and the 40px gutter that existed to hold it; D11's
+	 * reasons are still the contract, and this test is where they stay pinned
+	 * now that the picture is back. The invariants, in D11's own terms:
+	 *
+	 *   1. NO GUTTER. The mark is a line of its own ABOVE the turn's first line,
+	 *      so no row's text measure changes. The container still imports no
+	 *      avatar and still carries no indent token, and the canvas is the only
+	 *      place the mark's box could ever narrow text.
+	 *   2. ONCE PER TURN, decided by the TURN PARTITION and not by a flag on the
+	 *      record: `showAvatar` stays deleted (a flag would be the per-message
+	 *      avatar coming back through the model), and the head set is
+	 *      `agentTurnHeads`'s answer.
+	 *   3. NO GLYPH WITHOUT A PICTURE: `MessageAvatar` requires `src`, so the
+	 *      Bot placeholder D11 deleted cannot return through it.
+	 *
+	 * Asked of the CODE, not the words: the container's own comment explains
+	 * what the `pl-10` indent used to cost, and a token check that read comments
+	 * would fail on the explanation of the deletion rather than on a
+	 * re-introduction.
 	 */
 	assert.ok(
 		!("showAvatar" in rows[1]),
-		"the row model carries no avatar flag (D11)",
+		"the row model carries no avatar flag (D11; the head is a turn fact)",
 	);
 	const container = readFileSync(
 		"src/renderer/src/features/chat/components/message-item/message-container.tsx",
 		"utf8",
 	);
-	// Asked of the CODE, not the words: this file's own comment explains what the
-	// `pl-10` indent used to cost, and a token check that read comments would fail
-	// on the explanation of the deletion rather than on a re-introduction.
 	assert.ok(
 		!/from "\.\/message-avatar"/.test(container),
 		"message-container.tsx imports no avatar (D11)",
@@ -1438,10 +1452,132 @@ test("an invisible record does not consume the avatar or a turn boundary", () =>
 		!/"pl-10"|AGENT_GUTTER/.test(container),
 		"message-container.tsx carries no 40px gutter (D11)",
 	);
+	const transcript = readFileSync(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"utf8",
+	);
+	// The mark sits INSIDE the row's gapped wrapper, above `{body}`: a sibling of
+	// the content, not a prefix in its flow - the one placement that cannot
+	// narrow the measure of any line.
+	assert.ok(
+		/\{opensTurn && agentAvatar \? \(?\s*<MessageAvatar src=\{agentAvatar\} \/>/.test(
+			transcript,
+		),
+		"the mark is drawn above the row's body, never beside it",
+	);
+	// And nowhere does a padding class make room for it.
+	assert.ok(
+		!/\b(?:pl|ps|ms|ml)-(?:5|6|8|10)\b[^\n]*message-avatar/.test(transcript),
+		"no indent is spent on the mark",
+	);
 	assert.equal(rows[1].gap, "turn", "a turn boundary still gets its air");
 	// The hierarchy the tightening must preserve: a turn boundary is strictly
 	// airier than an adjacent pair inside a run.
 	assert.notDeepEqual(GAP.turn, GAP.trace);
+});
+
+/* ------------------------------------------------- the agent's turn head */
+
+/*
+ * The operator asked for the agent's profile picture in the transcript
+ * (2026-10-30), and `agentTurnHeads` is where "once per turn, at its head"
+ * lives. The rule has three edges the frames cannot judge - a steer, an
+ * invisible row, and the top of the loaded history - so they are asserted here.
+ */
+const answer = (id, text = `answer ${id}`) => ({
+	kind: "assistant",
+	id,
+	ts: 1,
+	text,
+	streaming: false,
+	complete: true,
+	stopReason: "stop",
+	error: false,
+});
+
+const userTurn = (id, text = "go") => ({
+	kind: "user",
+	id,
+	ts: 1,
+	text,
+	images: [],
+});
+
+test("the agent's picture is drawn once per turn, at the turn's head", () => {
+	const rows = buildRows(
+		[
+			userTurn("u1"),
+			answer("a1"),
+			toolRecord("t1"),
+			answer("a2"),
+			userTurn("u2"),
+			answer("a3"),
+		],
+		[],
+	);
+	/*
+	 * One head per turn, and the head is the turn's FIRST agent row - not the
+	 * answer, and not every record. The second turn's head is its assistant row
+	 * even though the first turn also ended on one.
+	 */
+	assert.deepEqual([...agentTurnHeads(rows)], ["a1", "a3"]);
+});
+
+test("a steer does not open a second turn, so it earns no second mark", () => {
+	// A user message inside an OPEN turn is a steer (see `walkTurns`): the agent
+	// is still the same speaker, and the 32px `turn` gap already states the
+	// boundary. The mark is identity, so it stays on the turn's one head. The
+	// first answer is still STREAMING here on purpose - a settled answer closes
+	// the run, which would make the second message the next turn's opener.
+	const rows = buildRows(
+		[
+			userTurn("u1"),
+			{ ...answer("a1"), streaming: true },
+			userTurn("u2"),
+			answer("a2"),
+		],
+		[],
+	);
+	assert.deepEqual([...agentTurnHeads(rows)], ["a1"]);
+});
+
+test("an invisible row is never the head the picture lands on", () => {
+	// A quiet `no_reply` call is in the row list and is DROPPED at paint, so a
+	// mark on it would float over nothing. The head is the first row the reader
+	// actually sees.
+	const quiet = { ...toolRecord("q1"), toolName: "no_reply" };
+	const rows = buildRows([userTurn("u1"), quiet, answer("a1")], []);
+	assert.deepEqual([...agentTurnHeads(rows)], ["a1"]);
+});
+
+test("a turn whose opening user row is off the page does not get a mark", () => {
+	/*
+	 * The loaded history starts mid-turn. Anchoring the mark there would tie it
+	 * to the render window's leading edge - a mark that walks upward as pages
+	 * load - rather than to a turn boundary the reader can see, so a head-cut
+	 * run earns one only at the transcript's own first row (which is the case
+	 * below, and the reason the welcome turn is marked).
+	 */
+	const rows = buildRows([toolRecord("t1"), answer("a1")], []);
+	assert.deepEqual([...agentTurnHeads(rows)], ["t1"]);
+});
+
+test("a picture-less agent's transcript renders exactly what D11 left", () => {
+	// The mark is the ONLY new node, and it is gated on a picture: with none,
+	// `MessageAvatar` is never mounted (its `src` is required), so the no-picture
+	// case cannot drift into a placeholder by accident.
+	const mark = readFileSync(
+		"src/renderer/src/features/chat/components/message-item/message-avatar.tsx",
+		"utf8",
+	);
+	assert.ok(
+		/\tsrc: string;/.test(mark),
+		"the mark requires a picture; there is no glyph fallback (D11)",
+	);
+	assert.ok(
+		!/<Bot\b/.test(mark),
+		"the Bot placeholder D11 deleted has not come back",
+	);
 });
 
 test("a streaming record with no text yet paints nothing", () => {

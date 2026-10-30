@@ -119,6 +119,7 @@ import {
 	StreamingMarkdown,
 } from "../components/markdown-renderer";
 import type { ImagePathActions } from "../components/message-item/image-attachment";
+import { MessageAvatar } from "../components/message-item/message-avatar";
 import { MessageContainer } from "../components/message-item/message-container";
 import { TurnTimestamp } from "../components/message-item/turn-timestamp";
 import { ReplyPreview } from "../components/reply-preview";
@@ -262,6 +263,7 @@ import {
 import {
 	GAP,
 	type Row,
+	agentTurnHeads,
 	buildRows,
 	ledgerName,
 	paintsSomething,
@@ -659,6 +661,21 @@ export type CanonicalTranscriptProps = {
 	openFrame?: OpenFrameFacts | null;
 	containerRef: RefObject<HTMLDivElement>;
 	isSmallView: boolean;
+
+	/**
+	 * The agent's picture for THIS conversation, or null when it has none.
+	 *
+	 * WHY IT IS A PROP AND NOT A STORE READ. The picture is keyed by an agent id,
+	 * and a conversation carries its agent's NAME and nothing else
+	 * (`SessionBinding`); the page is the one place that can join the two, holds
+	 * the `useAgentAvatar` subscription, and hands the transcript the URL. The
+	 * pane's rows stay a pure function of their props, so their memo still
+	 * compares a string.
+	 *
+	 * Omitted/nulled is every existing caller and every story: nothing new
+	 * renders, and the transcript is byte-for-byte the one D11 left.
+	 */
+	agentAvatar?: string | null;
 
 	status: CanonicalTranscriptStatus;
 	/** The published failure state: one product sentence and its action. */
@@ -3356,6 +3373,8 @@ const TranscriptRow = memo(function TranscriptRow({
 	stopping = false,
 	settledSound = false,
 	supplementCondensed = false,
+	opensTurn = false,
+	agentAvatar = null,
 	onInterruptTurn,
 }: {
 	row: Row;
@@ -3415,6 +3434,16 @@ const TranscriptRow = memo(function TranscriptRow({
 	 * for the one-line form (memo §2.8/§2.11, design D1).
 	 */
 	supplementCondensed?: boolean;
+	/**
+	 * This row is the one that opens an agent turn (`agentTurnHeads`), so the
+	 * agent's picture is drawn above it - once per turn, above the first line,
+	 * never beside it. Deliberately not a property of the row type: the head is
+	 * a fact of the turn the row sits in, and `agentTurnHeads` is its one
+	 * spelling (see `message-avatar.tsx` for why the mark is back at all).
+	 */
+	opensTurn?: boolean;
+	/** The picture to draw when `opensTurn`; null draws nothing (D11). */
+	agentAvatar?: string | null;
 	/**
 	 * The pane's interrupt press (`CanonicalTranscriptProps.onInterruptTurn`),
 	 * for the card's Cancel. Undefined means no control, by rule.
@@ -3662,6 +3691,15 @@ const TranscriptRow = memo(function TranscriptRow({
 					entered.current && "lo-transcript-arrival",
 				)}
 			>
+				{/*
+				 * THE AGENT'S PICTURE, ONCE PER TURN AND ABOVE THE FIRST LINE (see
+				 * `message-avatar.tsx` for the operator request and the D11 constraints
+				 * it keeps). It is a SIBLING of `body` inside this gapped wrapper, not a
+				 * prefix inside it: a mark in the line's flow would narrow the measure of
+				 * every line in the row, which is the gutter D11 measured and deleted.
+				 * Same wrapper, so the 32px turn gap still sits above the mark.
+				 */}
+				{opensTurn && agentAvatar ? <MessageAvatar src={agentAvatar} /> : null}
 				{body}
 			</div>
 		</TranscriptCopyMenu>
@@ -3761,6 +3799,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	openFrame,
 	containerRef,
 	isSmallView,
+	agentAvatar = null,
 	status,
 	failure,
 	awaitingHydration,
@@ -3936,6 +3975,14 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		previousRows.current = next;
 		return next;
 	}, [shownRecords]);
+	/*
+	 * WHICH ROWS OPEN AN AGENT TURN, derived from the same list the render walk
+	 * consumes (`agentTurnHeads`, whose header carries the operator request and
+	 * the D11 constraints the mark keeps). Its own memo because it is a fact
+	 * about the LIST: `buildRows`' contract is one record's own frames, and a
+	 * per-record flag would be a second spelling of the partition `runsOf` owns.
+	 */
+	const turnHeads = useMemo(() => agentTurnHeads(rows), [rows]);
 	/*
 	 * WHICH STOPPED SOUND CALLS HAVE ALREADY SETTLED (design D7, UX U9).
 	 *
@@ -6413,6 +6460,14 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		 * opens restores the block in the same commit. False for every other row.
 		 */
 		supplementCondensed = false,
+		/**
+		 * Whether this group's SLOT is the first line of an agent turn, and so
+		 * carries the agent's picture. The caller decides it from `turnHeads`, the
+		 * turn partition's own answer; a group nested under a bar or a fold passes
+		 * false, because those already draw the mark at the turn's head and a
+		 * second copy inside them would be the per-message repetition D11 deleted.
+		 */
+		opensTurn = false,
 	) => {
 		if (group.kind === "run" && deferredFolds.has(group.id))
 			return group.rows.map((row, index) => (
@@ -6441,6 +6496,8 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					answerRail={answerRail}
 					stopping={stopping === true}
 					settledSound={settledSoundRowIds.has(row.record.id)}
+					opensTurn={opensTurn && index === 0}
+					agentAvatar={agentAvatar}
 					onInterruptTurn={onInterruptTurn}
 				/>
 			));
@@ -6463,6 +6520,17 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				markdown={copyMarkdownForGroup(group.summary)}
 			>
 				<div className={GAP[group.gap][isSmallView ? 1 : 0]}>
+					{/*
+					 * THE TURN'S HEAD, WHEN THE HEAD IS INSIDE THIS RUN. A folded run
+					 * unmounts the rows it holds, so the head row cannot draw the
+					 * agent's picture itself while the fold is closed - and this bar
+					 * is then the turn's first line. The rows inside never draw it
+					 * (`opensTurn` is not passed to them), so opening the fold does
+					 * not produce a second copy.
+					 */}
+					{opensTurn && agentAvatar ? (
+						<MessageAvatar src={agentAvatar} />
+					) : null}
 					<TraceFold
 						/*
 						 * The fold carries its first row's gap (a turn's 32px when
@@ -6604,6 +6672,8 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				stopping={stopping === true}
 				settledSound={settledSoundRowIds.has(group.row.record.id)}
 				supplementCondensed={supplementCondensed}
+				opensTurn={opensTurn}
+				agentAvatar={agentAvatar}
 				onInterruptTurn={onInterruptTurn}
 			/>
 		);
@@ -6629,6 +6699,16 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				markdown={condenseSentence(entry.segment)}
 			>
 				<div className={GAP[entry.segment.gap][isSmallView ? 1 : 0]}>
+					{/*
+					 * THE TURN'S HEAD, WHEN THE TURN IS COLLAPSED TO THIS BAR. The bar
+					 * stands in the slot of the first row it hides (`anchorRecordId`), so
+					 * when that row is the turn's head the picture belongs here - and the
+					 * groups rendered inside the bar never draw it, so opening the bar
+					 * does not add a second copy.
+					 */}
+					{turnHeads.has(entry.segment.firstId) && agentAvatar ? (
+						<MessageAvatar src={agentAvatar} />
+					) : null}
 					<TurnSummary
 						/*
 						 * Prefixed: the segment's key is a ROW ID (`runsOf`: the closing
@@ -6762,6 +6842,16 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					runIsCondensed(entry.supplementRun, openRuns, {
 						artifactOwner: entry.group.row.record.anchor,
 					}),
+				/*
+				 * The group's SLOT is the turn's head when the record its slot
+				 * stands at is a head; a row group's content is that row, and a
+				 * run's is its first row (the one the fold unmounts).
+				 */
+				turnHeads.has(
+					entry.group.kind === "row"
+						? entry.group.row.record.id
+						: (entry.group.rows[0]?.record.id ?? ""),
+				),
 			)
 		);
 

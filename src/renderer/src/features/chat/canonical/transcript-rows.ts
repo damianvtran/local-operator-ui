@@ -436,6 +436,63 @@ export function runsOf(rows: Row[]): TurnRun[] {
 }
 
 /**
+ * The rows that OPEN an agent turn, by record id: where the agent's picture is
+ * drawn.
+ *
+ * WHY THIS EXISTS AT ALL, given D11 deleted the avatar. D11's cost was a 40px
+ * gutter under EVERY agent row so that one absolutely positioned 28px glyph
+ * could sit in it, repeated once per record, and the fact it marked - "the agent
+ * is speaking" - was already said by the register (a user turn is a filled
+ * block, an agent turn is prose on no ground). The operator has since asked for
+ * the agent's own PICTURE in the transcript, and that fact is NOT in the
+ * register: which agent a turn belongs to is new information, so the mark comes
+ * back under D11's constraints rather than against them -
+ *
+ *   - drawn ONCE per turn, at its head, never once per record;
+ *   - a row of its own ABOVE the turn's first line, so no row's text measure
+ *     changes (a mark that sits beside the first line would narrow every line
+ *     of that row, which is the gutter D11 measured and removed);
+ *   - no glyph when there is no picture: the register still carries "speaking",
+ *     and a placeholder per turn is the repetition D11 deleted.
+ *
+ * WHAT A HEAD IS, stated from the same partition `runsOf` uses. A turn opens at
+ * a user row, and the agent's first row after it is the head. Two consequences
+ * are deliberate:
+ *
+ *   - a STEER inside an open turn is not a new turn, so the agent's answer to
+ *     it carries no second mark (the 32px `turn` gap still marks the boundary;
+ *     the mark is identity, not rhythm);
+ *   - a run whose opening user row is above the loaded page is marked only when
+ *     it is the transcript's own FIRST row. Anywhere else the "head" would be
+ *     the render window's leading edge - a mark that walks up as history pages
+ *     in - rather than a turn boundary the reader can see.
+ *
+ * Rows that PAINT NOTHING are skipped (a quiet `no_reply` call is in the row
+ * list and is dropped at paint), so the picture never lands on an invisible row
+ * and leaves a gap under itself.
+ */
+export function agentTurnHeads(rows: Row[]): Set<string> {
+	const heads = new Set<string>();
+	const renders = (row: Row | undefined) =>
+		row !== undefined &&
+		row.record.kind !== "user" &&
+		!isQuietTurnCall(row.record);
+
+	for (const span of runsOf(rows)) {
+		const anchored =
+			rows[span.openingIndex]?.record.kind === "user" ||
+			span.openingIndex === 0;
+		if (!anchored) continue;
+		let index = span.openingIndex;
+		while (index <= span.endIndex && !renders(rows[index])) index += 1;
+		const head = rows[index];
+		if (head === undefined) continue;
+		heads.add(head.record.id);
+	}
+	return heads;
+}
+
+/**
  * Is this row a STATEMENT rather than a row of the turn's own work?
  *
  * These are the rows that report something ABOUT the conversation — a session

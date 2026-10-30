@@ -18,6 +18,7 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import {
 	type ChatTarget,
+	useProfiles,
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
 import { teamDisplayName } from "@shared/api/local-operator/team-display";
@@ -45,6 +46,7 @@ import {
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
+import { useAgentAvatar } from "@shared/store/agent-avatar-store";
 import { useAsideStore } from "@shared/store/aside-store";
 import {
 	ANSWER_NOT_SENT_CODE,
@@ -3666,6 +3668,47 @@ function SessionPanel({
 		[boundRow?.binding?.agent, boundRow?.binding?.team]
 			.filter(Boolean)
 			.join(" · ");
+	/*
+	 * THE AGENT'S PICTURE FOR THIS PANE (operator request, 2026-10-30).
+	 *
+	 * WHY THE JOIN IS HERE. `useAgentAvatar` is keyed by the AGENT's id, and a
+	 * conversation carries its agent's NAME and nothing else (`SessionBinding` is
+	 * `{agent, team}`, two strings). The profile catalogue is the one thing that
+	 * holds both (`agent_id` beside `name`), so the pane that already reads the
+	 * conversation's binding is where the two meet - once per pane, rather than a
+	 * query per row. The same chain the header uses to say who is speaking, in the
+	 * same precedence (`||`, so the wire's empty-string "unset" falls through),
+	 * with the draft's own target last: a pane with no session yet still knows
+	 * which agent was picked.
+	 *
+	 * A TEAM IS NOT AN AGENT: the draft arm reads `kind === "agent"` alone, and a
+	 * live `active_team` contributes nothing - a team has no picture, and a name
+	 * that happened to match a profile would be a wrong mark rather than none.
+	 *
+	 * `agent_id` is null for the packaged profiles (they have no registry row to
+	 * key a picture by), which is why the chain ends at null and the transcript
+	 * draws nothing: no picture is a state, not a failure.
+	 *
+	 * WHAT IT CANNOT SAY, and why it is the pane's answer rather than each row's:
+	 * the wire carries no per-record agent, so a conversation's mark names the
+	 * agent in force NOW. Switching agent mid-conversation repaints the earlier
+	 * turns' marks with the new picture - a claim those turns would not make if
+	 * the journal recorded who answered them. Stated here because a reader of the
+	 * frames is entitled to know which fact the mark is.
+	 */
+	const speakerAgent =
+		canonical.frontend?.active_agent ||
+		boundRow?.binding?.agent ||
+		(draft?.target?.kind === "agent" ? draft.target.name : "") ||
+		null;
+	const agentProfiles = useProfiles(
+		Boolean(speakerAgent) &&
+			desktopFeatureEnabled(panelCapabilities.data, "profile_catalogue"),
+	);
+	const speakerAgentId =
+		agentProfiles.data?.find((row) => row.name === speakerAgent)?.agent_id ??
+		null;
+	const agentAvatar = useAgentAvatar(speakerAgentId);
 	// The header names the conversation the user clicked, so it falls back to the
 	// catalogue row's name for the same reason `loaded` falls back to its binding:
 	// `conversation_title` is the journalled title only, and the row's name is
@@ -4700,6 +4743,7 @@ function SessionPanel({
 					isOptionsSidebarOpen={false}
 					onCloseOptions={() => setOptions(false)}
 					agentId={identity}
+					agentAvatar={agentAvatar}
 					turnTerminal={canonical.turnsCompleted}
 					/*
 					 * Draft: the store's staged cwd, which `admitChatDraft` passes to
