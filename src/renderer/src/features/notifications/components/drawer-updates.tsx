@@ -20,7 +20,7 @@ import { Tooltip } from "@shared/components/ui/tooltip";
 import { formatNumber, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { showErrorToast, showInfoToast } from "@shared/utils/toast-manager";
+import { replaceErrorToast, showInfoToast } from "@shared/utils/toast-manager";
 import { useQuery } from "@tanstack/react-query";
 import {
 	Check,
@@ -35,6 +35,7 @@ import {
 	type KeyboardEvent,
 	useCallback,
 	useEffect,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -43,6 +44,7 @@ import { useNavigate } from "react-router-dom";
 import type { DesktopNotificationItem } from "../../../../../shared/desktop-control-contract";
 import { useDrawerBackToTop } from "../drawer-tab-store";
 import {
+	notificationKeys,
 	readSessionUnreadCount,
 	tokensOf,
 	useNotificationsWrite,
@@ -221,28 +223,72 @@ export function useSessionUnreadUpdates(
 	const list = useSessionNotifications(sessionId, enabled);
 	const boundary = list.data?.high_water;
 	const count = useQuery({
-		queryKey: [
-			"desktop",
-			"notifications",
-			"session-unread",
-			sessionId,
-			boundary,
-		],
+		/* Under the shared key, so an optimistic write moves this with the rows. */
+		queryKey: [...notificationKeys.sessionUnread(sessionId), boundary],
 		enabled: enabled && Boolean(sessionId) && boundary !== undefined,
 		queryFn: () => readSessionUnreadCount(sessionId as string),
 		retry: retryDesktopQuery,
 		staleTime: 5_000,
+		/*
+		 * KEEP THE LAST COUNT ACROSS A BOUNDARY MOVE. Every write moves the boundary,
+		 * so the key changes and the walk restarts; without the previous answer the
+		 * tab's count blinked to nothing between the click and the walk's answer.
+		 */
+		placeholderData: (previous, previousQuery) =>
+			enabled && sessionId && previousQuery?.queryKey[3] === sessionId
+				? previous
+				: undefined,
 	});
 	/* Unknown while the walk settles: the page's own rows would under-count. */
-	return count.data ?? 0;
+	return enabled && sessionId ? (count.data ?? 0) : 0;
 }
+
+/**
+ * Unread is the inbox, Read the history (operator report: "it was never clear
+ * what was read and what was unread"). One list holding both, split by two
+ * headings, made a mark-read look like nothing happened - the row only changed
+ * groups a few rows away. With the split as a view, marking read takes the row
+ * out of the Unread view, which is the visible receipt of the click.
+ */
+export type DrawerReadView = "unread" | "read";
+
+/**
+ * ONE REFUSAL CARD PER PRESS, SUPERSEDED IN PLACE (design round 1, D1; UX round 2,
+ * U1). `showErrorToast` dedupes one sentence per five seconds - right for a refusal
+ * nobody asked for, wrong for the answer to a press, since a press refused inside
+ * that window said nothing at all. `replaceErrorToast` skips the dedupe, but its
+ * replacement IS the `id` it is handed: called without one it publishes a fresh
+ * card beside the refusal already on screen, so a refused Undo printed the same
+ * sentence twice and only the lower card carried "Try again". One id for the whole
+ * surface, not one per verb: the person is looking at one list, and two refused
+ * presses are one sentence at a time rather than two identical ones.
+ */
+const REFUSAL_TOAST_ID = "drawer-refusal";
+
+/**
+ * The sentence a refused write answers with, chosen by the verb that was refused
+ * (design round 1, D2; UX round 2, U3). Every refusal used to speak the mark-read
+ * sentence, so a refused dismiss said "Couldn't mark read" - while
+ * `ui.notifications.error.dismiss` sat in all eight catalogues referenced nowhere.
+ * `undismiss` keeps the mark sentence: the catalogue has two refusal forms and no
+ * restore form, and a third form is a translation round, not a one-line fix.
+ */
+const refusalCopy = (verb: "read" | "unread" | "dismiss" | "undismiss") =>
+	verb === "dismiss"
+		? t("ui.notifications.error.dismiss")
+		: t("ui.notifications.error.mark");
 
 export const DrawerUpdates: FC<{
 	sessionId: string;
 	nowMs?: number;
-}> = ({ sessionId, nowMs: pinnedNow }) => {
+	/** Stories and evidence pin the opening view; the operator always starts on Unread. */
+	initialView?: DrawerReadView;
+}> = ({ sessionId, nowMs: pinnedNow, initialView = "unread" }) => {
 	useI18nLocale();
 	const navigate = useNavigate();
+	const [view, setView] = useState<DrawerReadView>(initialView);
+	/* The server's count, the same figure the Updates tab prints (R4-6). */
+	const unreadCount = useSessionUnreadUpdates(sessionId, true);
 	const [isAtTop, setIsAtTop] = useState(true);
 	const list = useSessionNotifications(sessionId, true, { atTop: isAtTop });
 	const write = useNotificationsWrite();
@@ -278,6 +324,78 @@ export const DrawerUpdates: FC<{
 	);
 	const unread = rows.filter((item) => !item.read);
 	const read = rows.filter((item) => item.read);
+	const shown = view === "unread" ? unread : read;
+	const listElement = useRef<HTMLDivElement>(null);
+	const focusedRow = useRef<{ id: string; index: number } | null>(null);
+	const focusedElement = useRef<HTMLElement | null>(null);
+	/*
+	 * THE CONTROL THE PRESS CAME FROM, so the handoff lands on that same control in
+	 * the next row (UX round 2, U5): a dismiss handed focus to the remaining row's
+	 * READ control, so a second Enter marked read where the first dismissed - the
+	 * meaning of Enter changed between presses in a triage run. `read` is the
+	 * default because the removal is made by the read control in every other lane
+	 * (the `R`/`E` keys and the row's own mark-read).
+	 */
+	const handoffAction = useRef<"read" | "dismiss">("read");
+	/* A row a refusal put BACK, under a focus position the removal took away (U2). */
+	const restoreRow = useRef<{
+		id: string;
+		action: "read" | "dismiss";
+	} | null>(null);
+	useLayoutEffect(() => {
+		const active = document.activeElement;
+		const hit = (selector: string) =>
+			listElement.current?.querySelector<HTMLElement>(selector) ?? null;
+		const restore = restoreRow.current;
+		if (restore) {
+			/*
+			 * ROLLBACK, NOT A REFUSAL TO MOVE (UX round 2, U2). A refused write puts the
+			 * row back where the optimistic removal took it from - and the empty heading
+			 * that inherited the keyboard position unmounts with it, leaving focus on
+			 * `document.body` and the next Tab at the top of the document. Only a focus
+			 * position this list still owns is restored: if the person moved on, nothing
+			 * is taken back from them.
+			 *
+			 * While the row is still gone the position is HELD, not cleared: `shown`
+			 * changes on every render of the list, and clearing it here would drop the
+			 * position on the first of them, before the refusal lands.
+			 */
+			const restored = hit(
+				`[data-drawer-update="${CSS.escape(restore.id)}"] [data-row-action="${restore.action}"]`,
+			);
+			if (restored) {
+				restoreRow.current = null;
+				const holdsListFocus =
+					active === null ||
+					active === window.document.body ||
+					active.hasAttribute("data-drawer-empty");
+				if (holdsListFocus) {
+					restored.focus();
+					return;
+				}
+			}
+		}
+		const focused = focusedRow.current;
+		if (!focused || shown.some((item) => item.id === focused.id)) return;
+		focusedRow.current = null;
+		/* Chromium can keep the removed action as activeElement through the
+		 * commit's focus notification. Re-focus now, synchronously, or a later
+		 * focus event on that detached action clears the row position we saved. */
+		const removedOwnedFocus =
+			focusedElement.current !== null &&
+			!focusedElement.current.isConnected &&
+			focusedElement.current === active;
+		if (active !== document.body && !removedOwnedFocus) return;
+		const next = shown[Math.min(focused.index, shown.length - 1)];
+		const selector = next
+			? `[data-drawer-update="${CSS.escape(next.id)}"] [data-row-action="${handoffAction.current}"]`
+			: "[data-drawer-empty], [data-drawer-load-more]";
+		/* No row left to hand off to: remember what the empty heading took over, so a
+		 * refusal that restores this row can hand the position back. */
+		if (!next)
+			restoreRow.current = { id: focused.id, action: handoffAction.current };
+		listElement.current?.querySelector<HTMLElement>(selector)?.focus();
+	}, [shown]);
 	const showInConversation = (item: DesktopNotificationItem) => {
 		const line = document.querySelector<HTMLElement>(
 			`[data-notification-flag="${CSS.escape(item.id)}"]`,
@@ -293,13 +411,16 @@ export const DrawerUpdates: FC<{
 	};
 	if (list.isLoading)
 		return (
-			<p className="p-3 text-body-sm text-ink-muted">
+			<p data-drawer-loading="" className="p-3 text-body-sm text-ink-muted">
 				{t("ui.notifications.page.loading")}
 			</p>
 		);
 	if (list.isError && !list.data)
 		return (
-			<div className="p-3 text-body-sm text-ink-muted">
+			<div
+				data-drawer-load-error=""
+				className="p-3 text-body-sm text-ink-muted"
+			>
 				<p>{t("ui.notifications.error.load.title")}</p>
 				<Button
 					size="sm"
@@ -321,16 +442,67 @@ export const DrawerUpdates: FC<{
 	 * lost a row without a word. The inverse is the same operation in the other
 	 * direction, so Undo is one more write rather than a special case.
 	 */
+	const undoWrite = (
+		verb: "read" | "unread" | "undismiss",
+		items: ReturnType<typeof tokensOf>,
+	) => {
+		const retry = () =>
+			write.mutate(
+				{ verb, target: { items } },
+				{
+					onSuccess: (result) => {
+						/*
+						 * CONFIRM THE UNDO (UX round 2, U4). Undone from the Read view, the
+						 * restored rows appear in a list the person is not looking at, so a
+						 * successful Undo said nothing at all where it did the most. The same
+						 * key the Notifications page confirms its own undo with: no new copy.
+						 * Only when rows really came back: a receipt that changed nothing is
+						 * not a restore, and "Restored" would be a claim the server refused.
+						 */
+						if (!result.changed?.length) return;
+						showInfoToast(t("ui.notifications.toast.undone"));
+					},
+					onError: () =>
+						/*
+						 * THE ANSWER TO THE PRESS, NOT AN UNSOLICITED REFUSAL. `showErrorToast`
+						 * dedupes one sentence per five seconds, which is right for a failure a
+						 * person did not ask for - and wrong here: a refused Undo landing inside
+						 * that window after ANY earlier notification failure published nothing,
+						 * so the person saw no answer and lost the retry. That is the case
+						 * `replaceErrorToast` exists for (its own doc names "the answer to a
+						 * press"); the hosted native scene found it when a refused dismiss, then
+						 * a refused Undo, collapsed into one card with no action.
+						 *
+						 * `REFUSAL_TOAST_ID` is the other half of that fix: `replaceErrorToast`
+						 * replaces the card NAMED BY ITS ID, so a call without one published a
+						 * second identical sentence beside the refusal already on screen
+						 * (design round 1, D1). The sentence is the refused verb's, not always
+						 * mark's.
+						 */
+						replaceErrorToast(refusalCopy(verb), {
+							id: REFUSAL_TOAST_ID,
+							action: {
+								label: t("ui.notifications.error.retry"),
+								onClick: retry,
+							},
+						}),
+				},
+			);
+		retry();
+	};
 	const applyWrite = (
 		item: DesktopNotificationItem,
 		verb: "read" | "unread" | "dismiss",
 	) => {
+		/* The handoff control in the next row is the one this press used (U5). */
+		handoffAction.current = verb === "dismiss" ? "dismiss" : "read";
 		const inverse =
 			verb === "dismiss" ? "undismiss" : verb === "read" ? "unread" : "read";
 		write.mutate(
 			{ verb, target: { items: tokensOf([item]) } },
 			{
-				onSuccess: () => {
+				onSuccess: (result) => {
+					if (!result.changed.includes(item.id)) return;
 					showInfoToast(
 						verb === "dismiss"
 							? t("ui.notifications.toast.dismissed", { count: 1 })
@@ -345,24 +517,104 @@ export const DrawerUpdates: FC<{
 							duration: UNDO_WINDOW_MS,
 							action: {
 								label: t("ui.notifications.toast.undo"),
-								onClick: () =>
-									write.mutate({
-										verb: inverse as "read" | "unread" | "undismiss",
-										target: { items: tokensOf([item]) },
-									}),
+								onClick: () => undoWrite(inverse, tokensOf([item])),
 							},
 						},
 					);
 				},
-				onError: () => showErrorToast(t("ui.notifications.error.mark")),
+				onError: () =>
+					/*
+					 * A PRESS IS ANSWERED EVERY TIME, IN THE REFUSED VERB'S OWN WORDS
+					 * (R1-3, D2/U3). The deduping path swallowed a second refused
+					 * dismiss inside the five-second window - the row visibly stays put
+					 * and nothing says why - and it always spoke the mark-read
+					 * sentence, so a refused dismiss named the wrong action while
+					 * `ui.notifications.error.dismiss` sat unused in all eight
+					 * catalogues.
+					 */
+					replaceErrorToast(refusalCopy(verb), { id: REFUSAL_TOAST_ID }),
 			},
 		);
 	};
-	const ordered = [...unread, ...read];
+	/*
+	 * MARK ALL READ GETS THE SAME RECEIPT AND UNDO AS ONE ROW (design § 0.8). It
+	 * names the rendered rows by revision, so the inverse is exactly the ids the
+	 * server confirmed at the revisions the click saw - a row revised since stays
+	 * out of the Undo, as the reel's ledger does.
+	 */
+	const markAllRead = () => {
+		if (document.activeElement?.hasAttribute("data-drawer-mark-all-read"))
+			focusedRow.current = { id: "bulk-action", index: 0 };
+		const tokens = tokensOf(unread);
+		write.mutate(
+			{ verb: "read", target: { items: tokens } },
+			{
+				onSuccess: (result) => {
+					const changed = new Set(result.changed);
+					const undo = tokens.filter((token) => changed.has(token.id));
+					if (undo.length === 0) return;
+					showInfoToast(
+						t("ui.notifications.toast.marked_read", {
+							count: formatNumber(undo.length),
+						}),
+						{
+							duration: UNDO_WINDOW_MS,
+							action: {
+								label: t("ui.notifications.toast.undo"),
+								onClick: () => undoWrite("unread", undo),
+							},
+						},
+					);
+				},
+				onError: () =>
+					/* The same answer-to-a-press rule as one row's refusal above. */
+					replaceErrorToast(t("ui.notifications.error.mark"), {
+						id: REFUSAL_TOAST_ID,
+					}),
+			},
+		);
+	};
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">
+			<DrawerReadViews
+				view={view}
+				onView={setView}
+				unreadCount={unreadCount}
+				action={
+					view === "unread" && unread.length > 0 ? (
+						<Button
+							variant="ghost"
+							size="sm"
+							className="shrink-0"
+							data-drawer-mark-all-read=""
+							disabled={list.isError}
+							onClick={markAllRead}
+						>
+							{t("ui.notifications.drawer.mark_read")}
+						</Button>
+					) : null
+				}
+			/>
 			<div
 				data-drawer-updates=""
+				ref={listElement}
+				onFocusCapture={(event) => {
+					const row = (event.target as HTMLElement).closest<HTMLElement>(
+						"[data-drawer-update]",
+					);
+					/* Do not let a focus notification from a detached action erase the
+					 * position saved while that action was connected. */
+					if (row && !row.isConnected) return;
+					focusedElement.current = row ? (event.target as HTMLElement) : null;
+					focusedRow.current = row?.dataset.drawerUpdate
+						? {
+								id: row.dataset.drawerUpdate,
+								index: shown.findIndex(
+									(item) => item.id === row.dataset.drawerUpdate,
+								),
+							}
+						: null;
+				}}
 				className="flex min-h-0 flex-1 flex-col overflow-y-auto px-1 py-2"
 				onScroll={(event) => {
 					/*
@@ -384,19 +636,19 @@ export const DrawerUpdates: FC<{
 					const target = event.target as HTMLElement;
 					const row = target.closest<HTMLElement>("[data-drawer-update]");
 					if (!row) return;
-					const index = ordered.findIndex(
+					const index = shown.findIndex(
 						(item) => item.id === row.dataset.drawerUpdate,
 					);
-					const item = ordered[index];
+					const item = shown[index];
 					if (!item) return;
 					if (event.key === "ArrowDown" || event.key === "ArrowUp") {
 						event.preventDefault();
 						const next =
-							ordered[
+							shown[
 								Math.max(
 									0,
 									Math.min(
-										ordered.length - 1,
+										shown.length - 1,
 										index + (event.key === "ArrowDown" ? 1 : -1),
 									),
 								)
@@ -422,64 +674,53 @@ export const DrawerUpdates: FC<{
 					}
 				}}
 			>
-				{rows.length === 0 ? (
-					<p className="px-3 py-8 text-center text-body-sm text-ink-muted">
-						{t("ui.notifications.drawer.empty")}
-					</p>
+				{shown.length === 0 && !list.hasNextPage ? (
+					<h3
+						tabIndex={-1}
+						className="px-3 py-8 text-center text-body-sm text-ink-muted"
+						data-drawer-empty={view}
+					>
+						{/* Nothing at all is one sentence; an empty inbox is "caught up". */}
+						{rows.length === 0
+							? t("ui.notifications.drawer.empty")
+							: view === "unread"
+								? t("ui.notifications.empty.caught_up.title")
+								: /* NOT "Nothing flagged in this conversation" (design round 1,
+									 * D6): the Read view can be empty while the Unread badge shows
+									 * rows, and that sentence then denies what the badge says. This
+									 * view IS a filter, and this is the catalogue sentence for one
+									 * with no matches. */
+									t("ui.notifications.empty.filtered.title")}
+					</h3>
 				) : (
-					<>
-						{unread.length > 0 && (
-							<DrawerGroup
-								title={t("ui.notifications.drawer.group.unread")}
-								action={
-									<Button
-										variant="ghost"
-										size="sm"
-										disabled={list.isError}
-										onClick={() =>
-											write.mutate({
-												verb: "read",
-												target: { items: tokensOf(unread) },
-											})
-										}
-									>
-										{t("ui.notifications.drawer.mark_read")}
-									</Button>
+					<ul className="flex flex-col" data-drawer-view-list={view}>
+						{shown.map((item) => (
+							<DrawerRow
+								key={item.id}
+								item={item}
+								nowMs={nowMs}
+								onShow={showInConversation}
+								onToggleRead={() =>
+									applyWrite(item, item.read ? "unread" : "read")
 								}
-							>
-								{unread.map((item) => (
-									<DrawerRow
-										key={item.id}
-										item={item}
-										nowMs={nowMs}
-										onShow={showInConversation}
-										onToggleRead={() =>
-											applyWrite(item, item.read ? "unread" : "read")
-										}
-										onDismiss={() => applyWrite(item, "dismiss")}
-										paused={list.isError}
-									/>
-								))}
-							</DrawerGroup>
-						)}
-						{read.length > 0 && (
-							<DrawerGroup title={t("ui.notifications.drawer.group.read")}>
-								{read.map((item) => (
-									<DrawerRow
-										key={item.id}
-										item={item}
-										nowMs={nowMs}
-										onShow={showInConversation}
-										onToggleRead={() =>
-											applyWrite(item, item.read ? "unread" : "read")
-										}
-										onDismiss={() => applyWrite(item, "dismiss")}
-										paused={list.isError}
-									/>
-								))}
-							</DrawerGroup>
-						)}
-					</>
+								onDismiss={() => applyWrite(item, "dismiss")}
+								paused={list.isError}
+							/>
+						))}
+					</ul>
+				)}
+				{list.hasNextPage && (
+					<Button
+						variant="ghost"
+						size="sm"
+						data-drawer-load-more=""
+						disabled={list.isFetchingNextPage}
+						onClick={() => void list.fetchNextPage()}
+					>
+						{list.isFetchingNextPage
+							? t("ui.notifications.page.loading")
+							: t("ui.common.forms.compact_pagination.next_page")}
+					</Button>
 				)}
 			</div>
 			<div className="flex shrink-0 items-center justify-between gap-2 border-hairline border-t px-3 py-2 text-meta">
@@ -504,18 +745,97 @@ export const DrawerUpdates: FC<{
 	);
 };
 
-const DrawerGroup: FC<{
-	title: string;
-	action?: React.ReactNode;
-	children: React.ReactNode;
-}> = ({ title, action, children }) => (
-	<section className="flex flex-col">
-		<div className="flex h-8 items-center justify-between px-2 text-ink-muted text-meta">
-			<h3>{title}</h3>
-			{action}
+/**
+ * The Unread | Read switch, under the Asks | Updates strip. A segmented control
+ * like the reel's Unread | All (one visual language for read state), with the
+ * Unread count beside its label so the inbox's size is visible from either view.
+ */
+const DrawerReadViews: FC<{
+	view: DrawerReadView;
+	onView: (view: DrawerReadView) => void;
+	unreadCount: number;
+	action: React.ReactNode;
+}> = ({ view, onView, unreadCount, action }) => (
+	<div className="flex shrink-0 flex-wrap items-center justify-between gap-1 px-2 pt-2">
+		<div
+			role="radiogroup"
+			aria-label={t("ui.notifications.filter.read_state")}
+			className="flex items-center gap-0.5 rounded-sm bg-sunken p-0.5"
+		>
+			{(["unread", "read"] as const).map((value) => (
+				<button
+					key={value}
+					type="button"
+					// biome-ignore lint/a11y/useSemanticElements: the reel's segmented control; native radios cannot carry the count badge inside the segment
+					role="radio"
+					aria-checked={view === value}
+					tabIndex={view === value ? 0 : -1}
+					onKeyDown={(event) => {
+						if (
+							![
+								"ArrowRight",
+								"ArrowLeft",
+								"ArrowDown",
+								"ArrowUp",
+								"Home",
+								"End",
+							].includes(event.key)
+						)
+							return;
+						event.preventDefault();
+						const next =
+							event.key === "Home"
+								? "unread"
+								: event.key === "End"
+									? "read"
+									: value === "read"
+										? "unread"
+										: "read";
+						onView(next);
+						event.currentTarget.parentElement
+							?.querySelector<HTMLButtonElement>(
+								`[data-drawer-read-view="${next}"]`,
+							)
+							?.focus();
+					}}
+					data-drawer-read-view={value}
+					onClick={() => onView(value)}
+					className={cn(
+						"flex h-7 items-center gap-1.5 rounded-xs px-2.5 text-body-sm",
+						view === value
+							? "bg-elevated text-ink"
+							: "text-ink-muted hover:text-ink",
+					)}
+				>
+					{value === "unread"
+						? t("ui.notifications.drawer.group.unread")
+						: t("ui.notifications.drawer.group.read")}
+					{value === "unread" && unreadCount > 0 && (
+						<Badge
+							variant="neutral"
+							size="count"
+							/*
+							 * RESERVE TWO DIGITS, PLUS THE COUNT BADGE'S CHROME (design round 1,
+							 * D4). `ch` measures the numeral's content box, not the `px-1` padding
+							 * and one-pixel borders around it. Reserving only `2ch` therefore never
+							 * bound: even a one-digit count badge was wider than the reservation,
+							 * and Read moved by one digit when Unread went from 10 to 9.
+							 * From three digits the badge grows by the digit it gained: reserving
+							 * that on every load costs this control 8 px at the drawer's narrowest
+							 * width for a usually single-digit count.
+							 */
+							style={{
+								minWidth: `calc(${Math.max(2, formatNumber(unreadCount).length)}ch + 10px)`,
+							}}
+						>
+							{formatNumber(unreadCount)}
+						</Badge>
+					)}
+				</button>
+			))}
 		</div>
-		<ul className="flex flex-col">{children}</ul>
-	</section>
+		{action}
+	</div>
 );
 
 const DrawerRow: FC<{
@@ -531,11 +851,12 @@ const DrawerRow: FC<{
 		<li
 			className="group/drawer-row flex h-12 items-center gap-2 rounded-sm px-2 hover:bg-row-hover"
 			data-drawer-update={item.id}
+			data-unread={item.read ? undefined : ""}
 		>
 			<span
 				aria-hidden="true"
 				className={cn(
-					"size-1.5 shrink-0 rounded-full bg-accent",
+					"size-1.5 shrink-0 rounded-full bg-accent forced-colors:bg-[CanvasText]",
 					item.read && "invisible",
 				)}
 			/>
