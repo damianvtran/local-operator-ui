@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { unlink, writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
-import { build } from "esbuild";
+import { build, stop } from "esbuild";
 
 /*
  * THE NOTIFICATIONS DETAIL PANE'S ASK CARD, MOUNTED (the stale-card bug).
@@ -117,6 +117,16 @@ const pageBundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(pageBundlePath, pageBundle.outputFiles[0].text);
+/*
+ * Release the esbuild service BEFORE the module graph is imported, which is the
+ * same reason the bundle is minified above: the child esbuild spawns stays
+ * resident until `stop()`, so its footprint overlaps the import of a 5.5 MB
+ * graph plus jsdom instead of following it. Measured three rounds on this
+ * exact sequence (build -> write -> stop -> import React Query, jsdom, bundle),
+ * process-group peak: 589 -> 476, 635 -> 510, 636 -> 322 MB. The output is
+ * complete once `build()` resolves, and this file never builds again.
+ */
+await stop();
 
 /*
  * React Query is loaded BEFORE the DOM globals, as it was when the bundle was: it
