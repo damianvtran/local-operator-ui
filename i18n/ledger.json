@@ -58778,6 +58778,440 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.notifications.bulk",
+			"source_sha256": "d13b1f95be0829e6cff643cbc86be13872bea0ddc8751d442227e011689a1c2c",
+			"target_sha256": "30534f2a99dd1d115ee8888824ab0d08b7f62a484735a522360bdcb1d0dfc22e",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-28"
+			},
+			"auditors": [
+				{
+					"agent": "independent-translation-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-28",
+					"result": "clean-with-findings",
+					"instance": "bulk1475-es-bulk-20d3c244992f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/bulk1475-es-bulk-20d3c244992f.json",
+					"receipt_sha256": "c81df4f7dca9b922cca8264a146380fb746af2186c453476431fabd4b718ec16",
+					"scope": "Independent native/ICU/CLDR/RTL audit of es/ui.notifications.bulk on PR #1475 at 2876a8d98e; findings recorded in receipt",
+					"note": "Translator agent/model supplied by delegation brief; no scoped pre-existing receipt or ledger row independently establishes model. Auditor actual serving model: kimi/k3.1-pro after provider fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.notifications.bulk_updates",
+			"source_sha256": "05512726d0cbadc8fb6f7500a70e7a97de35ba0d06b797dda50528515f90edb1",
+			"target_sha256": "071cc28677650ac26e94300757884ec2b04bfcefef1ee81f2a14b4295ca48dcd",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-28"
+			},
+			"auditors": [
+				{
+					"agent": "independent-translation-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-28",
+					"result": "clean",
+					"instance": "bulk1475-es-updates-20d3c244992f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/bulk1475-es-updates-20d3c244992f.json",
+					"receipt_sha256": "735db13ef0221ab1f6bbbe6cff58dbddd3cdddf919115a9330050693365ce6ac",
+					"scope": "Independent native/ICU/CLDR/RTL audit of es/ui.notifications.bulk_updates on PR #1475 at 2876a8d98e; findings recorded in receipt",
+					"note": "Translator agent/model supplied by delegation brief; no scoped pre-existing receipt or ledger row independently establishes model. Auditor actual serving model: kimi/k3.1-pro after provider fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.notifications.bulk",
+			"source_sha256": "d13b1f95be0829e6cff643cbc86be13872bea0ddc8751d442227e011689a1c2c",
+			"target_sha256": "6563969128cb6629fc1acb95f39c0e111eb29d441cc73148051ecb477228edd4",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-28"
+			},
+			"auditors": [
+				{
+					"agent": "independent-translation-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-28",
+					"result": "clean-with-findings",
+					"instance": "bulk1475-fr-bulk-20d3c244992f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/bulk1475-fr-bulk-20d3c244992f.json",
+					"receipt_sha256": "4bdc30f58eb6a78682b17282d8320bdc522c01c237def0902a4b4b635209de70",
+					"scope": "Independent native/ICU/CLDR/RTL audit of fr/ui.notifications.bulk on PR #1475 at 2876a8d98e; findings recorded in receipt",
+					"note": "Translator agent/model supplied by delegation brief; no scoped pre-existing receipt or ledger row independently establishes model. Auditor actual serving model: kimi/k3.1-pro after provider fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.notifications.bulk_updates",
+			"source_sha256": "05512726d0cbadc8fb6f7500a70e7a97de35ba0d06b797dda50528515f90edb1",
+			"target_sha256": "e00b809659b1099e3094185315b067ce4cee7fa0f54a8fda64b5aa07f7d7aec6",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-28"
+			},
+			"auditors": [
+				{
+					"agent": "independent-translation-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-28",
+					"result": "clean",
+					"instance": "bulk1475-fr-updates-20d3c244992f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/bulk1475-fr-updates-20d3c244992f.json",
+					"receipt_sha256": "df64ec237c95c6dec9a586ad0129ff341992f02878df7b19f6fd3c2fad2ebd15",
+					"scope": "Independent native/ICU/CLDR/RTL audit of fr/ui.notifications.bulk_updates on PR #1475 at 2876a8d98e; findings recorded in receipt",
+					"note": "Translator agent/model supplied by delegation brief; no scoped pre-existing receipt or ledger row independently establishes model. Auditor actual serving model: kimi/k3.1-pro after provider fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.notifications.bulk",
+			"source_sha256": "d13b1f95be0829e6cff643cbc86be13872bea0ddc8751d442227e011689a1c2c",
+			"target_sha256": "62a98ae0d154b3f445e688a15f5b3596996ea0cd99509a31ee12d881445f0f6f",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-28"
+			},
+			"auditors": [
+				{
+					"agent": "independent-translation-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-28",
+					"result": "clean-with-findings",
+					"instance": "bulk1475-hi-bulk-20d3c244992f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/bulk1475-hi-bulk-20d3c244992f.json",
+					"receipt_sha256": "e263c106430f37c5ce1070efcc1a3522ba883d1d927f55b8f9ae250832b6d54b",
+					"scope": "Independent native/ICU/CLDR/RTL audit of hi/ui.notifications.bulk on PR #1475 at 2876a8d98e; findings recorded in receipt",
+					"note": "Translator agent/model supplied by delegation brief; no scoped pre-existing receipt or ledger row independently establishes model. Auditor actual serving model: kimi/k3.1-pro after provider fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.notifications.bulk_updates",
+			"source_sha256": "05512726d0cbadc8fb6f7500a70e7a97de35ba0d06b797dda50528515f90edb1",
+			"target_sha256": "a0b8e9a997b12cbc559f6c64752b18b76a267686153133f5ab3a85cc53386e83",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-28"
+			},
+			"auditors": [
+				{
+					"agent": "independent-translation-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-28",
+					"result": "clean",
+					"instance": "bulk1475-hi-updates-20d3c244992f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/bulk1475-hi-updates-20d3c244992f.json",
+					"receipt_sha256": "5ad50aa2a36f742c6805ae280bc123fd64ac9f1d5d90fd1c7c83fbccd0398543",
+					"scope": "Independent native/ICU/CLDR/RTL audit of hi/ui.notifications.bulk_updates on PR #1475 at 2876a8d98e; findings recorded in receipt",
+					"note": "Translator agent/model supplied by delegation brief; no scoped pre-existing receipt or ledger row independently establishes model. Auditor actual serving model: kimi/k3.1-pro after provider fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.notifications.bulk",
+			"source_sha256": "d13b1f95be0829e6cff643cbc86be13872bea0ddc8751d442227e011689a1c2c",
+			"target_sha256": "6ed3f1f098a47846b3fb2b96715b9428ef8565f97b2f3772cf835dbfdf55804d",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-28"
+			},
+			"auditors": [
+				{
+					"agent": "independent-translation-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-28",
+					"result": "clean",
+					"instance": "bulk1475-ru-bulk-20d3c244992f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/bulk1475-ru-bulk-20d3c244992f.json",
+					"receipt_sha256": "fd3ec301b48b126ece7654cba9ac908eb8f69c544a4eb9394a299a092301e253",
+					"scope": "Independent native/ICU/CLDR/RTL audit of ru/ui.notifications.bulk on PR #1475 at 2876a8d98e; findings recorded in receipt",
+					"note": "Translator agent/model supplied by delegation brief; no scoped pre-existing receipt or ledger row independently establishes model. Auditor actual serving model: kimi/k3.1-pro after provider fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.notifications.bulk_updates",
+			"source_sha256": "05512726d0cbadc8fb6f7500a70e7a97de35ba0d06b797dda50528515f90edb1",
+			"target_sha256": "52433e72bda7391e77249494f3625e922f83e53f340b1db70acd5b6f78ba9b09",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-28"
+			},
+			"auditors": [
+				{
+					"agent": "independent-translation-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-28",
+					"result": "clean",
+					"instance": "bulk1475-ru-updates-20d3c244992f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/bulk1475-ru-updates-20d3c244992f.json",
+					"receipt_sha256": "83b538708f482ebf5680c208de4744241a070f50973f57664e397587fef3e0e6",
+					"scope": "Independent native/ICU/CLDR/RTL audit of ru/ui.notifications.bulk_updates on PR #1475 at 2876a8d98e; findings recorded in receipt",
+					"note": "Translator agent/model supplied by delegation brief; no scoped pre-existing receipt or ledger row independently establishes model. Auditor actual serving model: kimi/k3.1-pro after provider fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.notifications.bulk",
+			"source_sha256": "d13b1f95be0829e6cff643cbc86be13872bea0ddc8751d442227e011689a1c2c",
+			"target_sha256": "30e5ebefbd2ab3d73dcb37cb0d577c07e7b7b9e46ccf154fa6c01c5eb9a8d53f",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-28"
+			},
+			"auditors": [
+				{
+					"agent": "independent-translation-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-28",
+					"result": "clean",
+					"instance": "bulk1475-ur-bulk-20d3c244992f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/bulk1475-ur-bulk-20d3c244992f.json",
+					"receipt_sha256": "439396f8c8a460f8d9abdbbf13682a4c1a21f2fb77db37f7eaff8faa415bc0fe",
+					"scope": "Independent native/ICU/CLDR/RTL audit of ur/ui.notifications.bulk on PR #1475 at 2876a8d98e; findings recorded in receipt",
+					"note": "Translator agent/model supplied by delegation brief; no scoped pre-existing receipt or ledger row independently establishes model. Auditor actual serving model: kimi/k3.1-pro after provider fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.notifications.bulk_updates",
+			"source_sha256": "05512726d0cbadc8fb6f7500a70e7a97de35ba0d06b797dda50528515f90edb1",
+			"target_sha256": "53c6ae90e9bf483af71cd57d6d0e05b52a04c5ea86c497ee9c2dd5fb102595ef",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-28"
+			},
+			"auditors": [
+				{
+					"agent": "independent-translation-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-28",
+					"result": "clean",
+					"instance": "bulk1475-ur-updates-20d3c244992f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/bulk1475-ur-updates-20d3c244992f.json",
+					"receipt_sha256": "a1e7f6d2c487225e6f2a1175280a0880b89fd7cffa3e6c04aec9d3d125fe2335",
+					"scope": "Independent native/ICU/CLDR/RTL audit of ur/ui.notifications.bulk_updates on PR #1475 at 2876a8d98e; findings recorded in receipt",
+					"note": "Translator agent/model supplied by delegation brief; no scoped pre-existing receipt or ledger row independently establishes model. Auditor actual serving model: kimi/k3.1-pro after provider fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.notifications.bulk",
+			"source_sha256": "d13b1f95be0829e6cff643cbc86be13872bea0ddc8751d442227e011689a1c2c",
+			"target_sha256": "97fa1ec15f2c075906b7de4d2f53f1404b2c909011d86ec0fe59b833c29e00de",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-28"
+			},
+			"auditors": [
+				{
+					"agent": "independent-translation-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-28",
+					"result": "clean-with-findings",
+					"instance": "bulk1475-vi-bulk-20d3c244992f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/bulk1475-vi-bulk-20d3c244992f.json",
+					"receipt_sha256": "82ad34b139f12cdb8e58d5bebd9058d1873b016660fb31f51fc3dcd8430877e2",
+					"scope": "Independent native/ICU/CLDR/RTL audit of vi/ui.notifications.bulk on PR #1475 at 2876a8d98e; findings recorded in receipt",
+					"note": "Translator agent/model supplied by delegation brief; no scoped pre-existing receipt or ledger row independently establishes model. Auditor actual serving model: kimi/k3.1-pro after provider fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.notifications.bulk_updates",
+			"source_sha256": "05512726d0cbadc8fb6f7500a70e7a97de35ba0d06b797dda50528515f90edb1",
+			"target_sha256": "55daa3b8d7d5167d5f68f17704142a5ee589639312b0ccf2c00b80f9bb514270",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-28"
+			},
+			"auditors": [
+				{
+					"agent": "independent-translation-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-28",
+					"result": "clean-with-findings",
+					"instance": "bulk1475-vi-updates-20d3c244992f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/bulk1475-vi-updates-20d3c244992f.json",
+					"receipt_sha256": "5ab312805b0bec89417cd89716c40de378540bd417b003f097d6a2f2b1c579bd",
+					"scope": "Independent native/ICU/CLDR/RTL audit of vi/ui.notifications.bulk_updates on PR #1475 at 2876a8d98e; findings recorded in receipt",
+					"note": "Translator agent/model supplied by delegation brief; no scoped pre-existing receipt or ledger row independently establishes model. Auditor actual serving model: kimi/k3.1-pro after provider fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.notifications.bulk",
+			"source_sha256": "d13b1f95be0829e6cff643cbc86be13872bea0ddc8751d442227e011689a1c2c",
+			"target_sha256": "a2ef78f5b8b4b2d0aee2d09e0fbe70e0d644b433491ed039d6f5a503ccb56675",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-28"
+			},
+			"auditors": [
+				{
+					"agent": "independent-translation-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-28",
+					"result": "clean-with-findings",
+					"instance": "bulk1475-zhcn-bulk-20d3c244992f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/bulk1475-zhcn-bulk-20d3c244992f.json",
+					"receipt_sha256": "d9a6f75cca0e2eebba248fe5d3f0c84bf8082db553399495b02618fa223515d6",
+					"scope": "Independent native/ICU/CLDR/RTL audit of zh-CN/ui.notifications.bulk on PR #1475 at 2876a8d98e; findings recorded in receipt",
+					"note": "Translator agent/model supplied by delegation brief; no scoped pre-existing receipt or ledger row independently establishes model. Auditor actual serving model: kimi/k3.1-pro after provider fallback."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.notifications.bulk_updates",
+			"source_sha256": "05512726d0cbadc8fb6f7500a70e7a97de35ba0d06b797dda50528515f90edb1",
+			"target_sha256": "9b8115d4865088a1f33ac99a6fe828c73ab790c8cfe556974836d1af9568af67",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-10-28"
+			},
+			"auditors": [
+				{
+					"agent": "independent-translation-auditor",
+					"model": "kimi/k3.1-pro",
+					"date": "2026-10-28",
+					"result": "clean-with-findings",
+					"instance": "bulk1475-zhcn-updates-20d3c244992f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/bulk1475-zhcn-updates-20d3c244992f.json",
+					"receipt_sha256": "f0d1d44137dd02873df58f4348c583bf444410a9da67fe49423967ddeac4c30e",
+					"scope": "Independent native/ICU/CLDR/RTL audit of zh-CN/ui.notifications.bulk_updates on PR #1475 at 2876a8d98e; findings recorded in receipt",
+					"note": "Translator agent/model supplied by delegation brief; no scoped pre-existing receipt or ledger row independently establishes model. Auditor actual serving model: kimi/k3.1-pro after provider fallback."
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

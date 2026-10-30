@@ -1,0 +1,5 @@
+{
+	"ui.notifications.bulk_updates.read": "{count, plural, other {Đánh dấu # cập nhật đã đọc}}",
+	"ui.notifications.bulk_updates.unread": "{count, plural, other {Đánh dấu # cập nhật chưa đọc}}",
+	"ui.notifications.bulk_updates.new_items": "Các mục mới đến sau khi bạn chọn không được bao gồm."
+}

@@ -86,6 +86,35 @@ const FOREGROUND_RECEIPT_OPS: ReadonlySet<string> = new Set([
 	"notifications.seen",
 ]);
 
+/*
+ * AN UNDO IS THE INVERSE OF A RECEIPT, NOT A RECEIPT (QA round 1, Q-1).
+ *
+ * The bulk undo is sent as `{op: "notifications.read", verb: "undo"}`, so the
+ * name-based gate above caught it: a window that is not in the foreground could
+ * perform a dismiss (which is deliberately NOT gated, below) but could not take
+ * it back. The inverse was stricter than the action it inverts, which cannot be
+ * right — QA measured exactly that: a real press on the receipt's own Undo left
+ * every row dismissed and logged no PATCH at all, because this guard rejected it
+ * first.
+ *
+ * WHY THE EXEMPTION IS SAFE. The guard exists so a claim that a HUMAN SAW a
+ * result cannot be sent from a window nobody is looking at. `verb: "undo"` makes
+ * no such claim: it carries no content, names no row as seen, and can only revert
+ * an operation the SAME caller performed moments earlier from a token this window
+ * already holds. It cannot widen a scope, resurrect anything the caller did not
+ * just change, or touch a row outside that operation's own journal — the core
+ * validates the token and replays its own recorded inverse. Reading is still
+ * gated when it LANDS (which is when the seen-claim is made), so exempting the
+ * reversal of that read narrows nothing either.
+ *
+ * Matched on the verb rather than by dropping `notifications.read` from the set,
+ * because the op name is shared by the gated write and its unguarded inverse:
+ * the set must keep naming the op. `notifications.seen` / `sessions.seen` /
+ * `attention.seen` are untouched and take no verb at all.
+ */
+const isOperationUndo = (input: object): boolean =>
+	"verb" in input && (input as { verb?: unknown }).verb === "undo";
+
 /**
  * Wrap a desktop request sender so a read receipt requires native foreground.
  *
@@ -126,7 +155,8 @@ export function guardForegroundReceipts(
 			typeof input === "object" &&
 			"op" in input &&
 			typeof input.op === "string" &&
-			FOREGROUND_RECEIPT_OPS.has(input.op)
+			FOREGROUND_RECEIPT_OPS.has(input.op) &&
+			!isOperationUndo(input)
 		) {
 			const owner = window();
 			if (
