@@ -44,6 +44,7 @@ import {
 } from "react";
 import { PanelRailHostContext } from "../navigation/panel-rail-host";
 import { PaneSlot } from "./pane-slot";
+import { PanelEdge } from "./panel-edge";
 import { ResizableDivider } from "./resizable-divider";
 
 /**
@@ -440,7 +441,10 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 				className="absolute inset-x-0 top-0 z-30 h-[var(--chrome-strip-h)]"
 			/>
 			<div className="flex min-h-0 flex-1 overflow-hidden">
-				<div className={cn("h-full shrink-0")} style={{ width: columnWidth }}>
+				<div
+					className={cn("relative h-full shrink-0")}
+					style={{ width: columnWidth }}
+				>
 					<SidebarFrameContext.Provider
 						value={{
 							expanded: layout.mode === "docked",
@@ -449,6 +453,16 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 					>
 						{sidebar}
 					</SidebarFrameContext.Provider>
+					{/*
+					 * THE SIDEBAR'S SEAM, drawn by the shell's column rather than by either
+					 * sidebar root. The column is the same box as the panel in both modes
+					 * (docked and the 56px strip), so one mount covers the two, and neither
+					 * root has to become a positioning context for it. `relative` here is a
+					 * no-op for every descendant: the column already has the panel's exact
+					 * box, so an absolute child resolves to the same pixels it did against the
+					 * shell.
+					 */}
+					<PanelEdge side="end" />
 				</div>
 				{layout.resizable && (
 					<ResizableDivider
@@ -577,8 +591,10 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 				 * The CONTENT is the chat surface's (`InPanelRailHost`), portaled in: the
 				 * rail's inputs live below the shell. The host's own ground is `surface`
 				 * (chrome, the sidebar's rung) so the strip is never a hole while the
-				 * portal is empty; the rail draws no rule of its own - its leading edge is
-				 * the tone step, pinned by `scripts/pane-slot-ground.test.mjs`.
+				 * portal is empty. The seam on the rail's leading edge is the rail's own
+				 * (`<PanelEdge side="start" />` in `panel-rail.tsx`), not this host's: the
+				 * host stays a box, and `scripts/pane-slot-ground.test.mjs` pins both the
+				 * ground here and the seam there.
 				 */}
 				<div
 					ref={setRailHost}

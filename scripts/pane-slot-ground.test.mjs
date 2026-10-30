@@ -24,11 +24,13 @@
  *      rooted anywhere else - the conversation's `canvas` included - shows the
  *      wrong ground in the strip, and one without the pad puts its toolbar under
  *      the traffic lights. This file reads each pane's own class string.
- *   2. **No seam rule on the slot's wrappers.** The boundary is the tone step
- *      the ladder already draws — the sidebar's `surface`, the conversation's
- *      `canvas` and the slot's `elevated` — and a `border-l border-hairline`
- *      beside the step is the second way of saying one thing, and the operator's
- *      ask was borderless.
+ *   2. **The seam is ONE `PanelEdge`, never a border.** The boundary is the tone
+ *      step the ladder already draws — the sidebar's `surface`, the
+ *      conversation's `canvas` and the slot's `elevated` — plus one 1px
+ *      `hairline` child on the leading edge (`panel-edge.tsx`, 2026-10-30: the
+ *      operator's report that the panels have no readable edge in light themes).
+ *      A `border-l border-hairline` beside the step is the second way of saying
+ *      one thing, and it was also a rule that began at y=32.
  *   3. **No ground of its own on the slot's chrome bars.** A bar that paints a
  *      ground is the band the operator reported. The bar's height (40px) is the
  *      slot's, and this file checks the panes agree on it, because a bar that moved
@@ -123,6 +125,10 @@ const RAIL_RULE_UTILITY =
 	/(?:^|[\s"'`:!])(?:border|divide|shadow|ring|outline)(?![a-zA-Z])/;
 /* The rail root's ground, the one class the negative pin must still find. */
 const RAIL_GROUND = /\bbg-surface\b/;
+/* The one seam element each plane mounts (2026-10-30). `start` faces the content
+ * on a pane's leading edge and the rail's; `end` is the sidebar column's. */
+const PANEL_EDGE_START = /<PanelEdge side="start" \/>/;
+const PANEL_EDGE_END = /<PanelEdge side="end" \/>/;
 /* The panel rail host's own ground (#872), in the shell. */
 const RAIL_HOST_GROUND =
 	/data-panel-rail-host=""[\s\S]{0,500}?className="[^"]*\b(bg-[\w-]+)\b[^"]*"/;
@@ -281,19 +287,23 @@ test("every pane in the slot paints its own ground and pads its first row", () =
 	);
 });
 
-test("the panel rail paints the lane's final stop with no rule on its leading edge, on both ground branches (#872)", () => {
+test("the panel rail paints the lane's final stop and carries its seam as ONE element (#872, 2026-10-30)", () => {
 	/*
 	 * The lane is a mirror of the columns' grounds, and the rail is a column: the
 	 * host's own class and the lane's last stop are ONE decision stated twice, so
 	 * they are compared here rather than either being restated as a literal. The
 	 * rail is chrome (`surface`, the sidebar's rung), NOT a slot wrapper - its file
-	 * is not in PANE_HOSTS - and it draws NO rule of its own: the boundary to the
-	 * slot's `elevated` (or the conversation's `canvas` with no pane) is the tone
-	 * step, the same way the sidebar's edge is carried, and the `border-l
-	 * border-hairline` that used to sit here was the same second-way-of-saying-one-
-	 * thing the no-seam test below refuses for the slot's wrappers. This is a
-	 * NEGATIVE pin - the rail root's class list carries its ground and nothing that
-	 * draws a line - so a rule cannot quietly return to the window's edge.
+	 * is not in PANE_HOSTS.
+	 *
+	 * THE SEAM IS `PanelEdge`, AND THAT IS WHY THIS PIN SURVIVES ITS REVERSAL. This
+	 * test used to be a NEGATIVE pin on "no rule of its own": the operator had asked
+	 * for the borders to go, and the `border-l border-hairline` that sat here drew
+	 * from y=32 down. On 2026-10-30 the operator reported the other half - the panels
+	 * have no readable edge in light themes - so the seam came back as one child
+	 * element, full height, from the theme's `hairline` (see `panel-edge.tsx`). The
+	 * root's class list still carries its ground and NOTHING that draws a line; the
+	 * seam is the child, and the child is asserted here, so a border cannot return
+	 * to this root as a second way of drawing it.
 	 */
 	const layoutSource = read(CHAT_LAYOUT);
 	const host = layoutSource.match(RAIL_HOST_GROUND);
@@ -387,14 +397,36 @@ test("the asks drawer's content stops at one measure, inside a full-width scroll
 	);
 });
 
-test("no seam rule on the slot's wrappers, in the app or in the harness", () => {
+test("the seam is one `PanelEdge`, never a border, in the app or in the harness", () => {
 	for (const host of PANE_HOSTS) {
 		const source = withoutComments(read(host));
 		assert.ok(
 			!source.includes("border-l border-hairline"),
-			`${host} draws \`border-l border-hairline\` beside the pane slot. The slot's seam is the tone step the ladder already draws (\`surface\` / \`canvas\` / \`elevated\`), and the operator's ask was borderless; a rule beside the step is a second way of saying one thing — and a harness copy of it photographs a boundary the product does not draw (design review round 1, D1).`,
+			`${host} draws \`border-l border-hairline\` beside the pane slot. The slot's seam is the tone step plus ONE \`PanelEdge\` (\`panel-edge.tsx\`), and a border beside that is a second way of saying one thing - and a harness copy of it photographs a boundary the product does not draw (design review round 1, D1).`,
 		);
 	}
+	/*
+	 * The seam's one spelling, and the three planes that mount it. A panel whose
+	 * seam moves into a border, or a fourth plane that grows its own copy, fails
+	 * here rather than in a frame nobody re-shot.
+	 */
+	assert.match(
+		withoutComments(read(SLOT_COMPONENT)),
+		PANEL_EDGE_START,
+		`${SLOT_COMPONENT} no longer mounts \`<PanelEdge side="start" />\`: every right-slot pane lost its seam`,
+	);
+	assert.match(
+		withoutComments(read(CHAT_LAYOUT)),
+		PANEL_EDGE_END,
+		`${CHAT_LAYOUT} no longer mounts \`<PanelEdge side="end" />\`: the shell's sidebar column lost its seam`,
+	);
+	assert.match(
+		withoutComments(
+			read("src/renderer/src/shared/components/navigation/panel-rail.tsx"),
+		),
+		PANEL_EDGE_START,
+		'panel-rail.tsx no longer mounts `<PanelEdge side="start" />`: the rail lost its seam',
+	);
 });
 
 test("the slot's box is spelled once, and every mount site uses that one", () => {
