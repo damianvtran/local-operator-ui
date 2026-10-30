@@ -306,7 +306,9 @@ const button = (name) =>
 	);
 
 const search = () =>
-	document.querySelector('input[aria-label="Search settings"]');
+	document.querySelector(
+		'input[aria-label="Search settings by name, description or key"]',
+	);
 
 const openSections = () =>
 	[...document.querySelectorAll("[data-settings-section]")].filter(
