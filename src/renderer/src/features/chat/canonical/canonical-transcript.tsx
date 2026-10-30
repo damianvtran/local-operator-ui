@@ -386,6 +386,22 @@ export const dbgChatEntriesRebuilds = { count: 0 };
  */
 const WINDOW_ALIGN_MAX_EXTRA = 300;
 
+/**
+ * The height the agent's turn-head picture adds to the entry it opens, in px.
+ *
+ * `message-avatar.tsx` draws `size-5` (20) plus `mb-1` (4). The DOM window's
+ * estimate needs it because an entry the window has not mounted has no measured
+ * box, and the mark is only there when the turn has a head and the pane has a
+ * picture (review round 1, R-5).
+ */
+const TURN_MARK_HEIGHT = 24;
+
+/**
+ * The head set for a pane with no picture: no mark is drawn, so there is nothing
+ * to elect, and the empty set is what keeps the D11 render byte-identical.
+ */
+const NO_TURN_HEADS: ReadonlySet<string> = new Set();
+
 /* (`ALIGN_WALK_MAX_PAGES`, the walk's bound, lives in `turn-collapse-model.ts`
  * beside the decision that spends it.) */
 
@@ -676,6 +692,15 @@ export type CanonicalTranscriptProps = {
 	 * renders, and the transcript is byte-for-byte the one D11 left.
 	 */
 	agentAvatar?: string | null;
+	/**
+	 * The speaking agent's NAME, beside the picture it belongs to.
+	 *
+	 * The image's accessible name is the agent's name, not the role word (review
+	 * round 1, R-3): the row already announces "Agent message", so a mark labelled
+	 * "Assistant" repeated the register and named nobody. Null means the page
+	 * could not resolve a name, and the mark is then decorative.
+	 */
+	agentName?: string | null;
 
 	status: CanonicalTranscriptStatus;
 	/** The published failure state: one product sentence and its action. */
@@ -3375,6 +3400,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	supplementCondensed = false,
 	opensTurn = false,
 	agentAvatar = null,
+	agentName = null,
 	onInterruptTurn,
 }: {
 	row: Row;
@@ -3444,6 +3470,8 @@ const TranscriptRow = memo(function TranscriptRow({
 	opensTurn?: boolean;
 	/** The picture to draw when `opensTurn`; null draws nothing (D11). */
 	agentAvatar?: string | null;
+	/** The speaker's name, for the picture's accessible name (R-3). */
+	agentName?: string | null;
 	/**
 	 * The pane's interrupt press (`CanonicalTranscriptProps.onInterruptTurn`),
 	 * for the card's Cancel. Undefined means no control, by rule.
@@ -3699,7 +3727,9 @@ const TranscriptRow = memo(function TranscriptRow({
 				 * every line in the row, which is the gutter D11 measured and deleted.
 				 * Same wrapper, so the 32px turn gap still sits above the mark.
 				 */}
-				{opensTurn && agentAvatar ? <MessageAvatar src={agentAvatar} /> : null}
+				{opensTurn && agentAvatar ? (
+					<MessageAvatar src={agentAvatar} name={agentName} />
+				) : null}
 				{body}
 			</div>
 		</TranscriptCopyMenu>
@@ -3800,6 +3830,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	containerRef,
 	isSmallView,
 	agentAvatar = null,
+	agentName = null,
 	status,
 	failure,
 	awaitingHydration,
@@ -3981,8 +4012,17 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 * the D11 constraints the mark keeps). Its own memo because it is a fact
 	 * about the LIST: `buildRows`' contract is one record's own frames, and a
 	 * per-record flag would be a second spelling of the partition `runsOf` owns.
+	 *
+	 * GATED ON THE PICTURE (review round 1, R-5). With no picture to draw, the set
+	 * is only ever asked `has` and always answers false - but computing it is a
+	 * full `walkTurns` pass over every row, and `rows` changes on every streamed
+	 * token. A picture-less agent is the common case and the one D11 left
+	 * untouched, so it pays nothing: the empty set is the same render.
 	 */
-	const turnHeads = useMemo(() => agentTurnHeads(rows), [rows]);
+	const turnHeads = useMemo(
+		() => (agentAvatar ? agentTurnHeads(rows) : NO_TURN_HEADS),
+		[rows, agentAvatar],
+	);
 	/*
 	 * WHICH STOPPED SOUND CALLS HAVE ALREADY SETTLED (design D7, UX U9).
 	 *
@@ -6311,11 +6351,32 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 							)
 							.join("\n");
 		const bucket = domWindowRequested ? estimateBucket(first.record, text) : 0;
+		/*
+		 * WHETHER THIS ENTRY DRAWS THE MARK (review round 1, R-5). The DOM window's
+		 * estimate has no measured box for an entry it has not mounted, and the mark
+		 * is 24px the estimate did not know about: without this bit, setting or
+		 * removing a picture (or the profiles query resolving after first paint)
+		 * changed the height under an unchanged signature, and the cached estimate
+		 * kept the old number. Read from the same `turnHeads` the render consumes,
+		 * so the signature cannot claim a mark the row does not draw.
+		 */
+		const marksHead =
+			Boolean(agentAvatar) &&
+			(entry.kind === "bar"
+				? turnHeads.has(entry.segment.firstId)
+				: group
+					? turnHeads.has(
+							group.kind === "row"
+								? group.row.record.id
+								: (group.rows[0]?.record.id ?? ""),
+						)
+					: false);
 		const userExpanded =
 			first.record.kind === "user" &&
 			viewState.current.store.read(first.record.id);
 		return {
 			key,
+			marksHead,
 			renderSignature: entryRows
 				.map((row) => entryRecordRevision(row.record))
 				.join(","),
@@ -6356,7 +6417,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		return {
 			key: slot.key,
 			recordIds: facts.flatMap((fact) => fact.ids),
-			signature: `${facts.map((fact) => `${fact.key}:${fact.ids.join(",")}:${fact.representation}:${fact.gap}:${fact.userExpanded}:${fact.media}:${fact.unsafe}:${fact.renderSignature}`).join("|")}:${isSmallView}`,
+			signature: `${facts.map((fact) => `${fact.key}:${fact.ids.join(",")}:${fact.representation}:${fact.gap}:${fact.userExpanded}:${fact.media}:${fact.unsafe}:${fact.marksHead ? 1 : 0}:${fact.renderSignature}`).join("|")}:${isSmallView}`,
 			// Estimates are fixed for each entry regime; actual mounted boxes replace
 			// them before paint. They are not an asserted native measurement.
 			estimate: facts.reduce(
@@ -6369,7 +6430,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 								fact.text,
 								{ first: 0, trace: 2, item: 12, turn: 32 }[fact.gap],
 								containerRef.current?.clientWidth || 810,
-							)),
+							) + (fact.marksHead ? TURN_MARK_HEIGHT : 0)),
 				0,
 			),
 			estimateKind: `${facts[0].type}:${facts[0].bucket}:${facts[0].open}:${facts[0].userExpanded}`,
@@ -6498,6 +6559,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					settledSound={settledSoundRowIds.has(row.record.id)}
 					opensTurn={opensTurn && index === 0}
 					agentAvatar={agentAvatar}
+					agentName={agentName}
 					onInterruptTurn={onInterruptTurn}
 				/>
 			));
@@ -6529,7 +6591,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					 * not produce a second copy.
 					 */}
 					{opensTurn && agentAvatar ? (
-						<MessageAvatar src={agentAvatar} />
+						<MessageAvatar src={agentAvatar} name={agentName} />
 					) : null}
 					<TraceFold
 						/*
@@ -6674,6 +6736,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				supplementCondensed={supplementCondensed}
 				opensTurn={opensTurn}
 				agentAvatar={agentAvatar}
+				agentName={agentName}
 				onInterruptTurn={onInterruptTurn}
 			/>
 		);
@@ -6707,7 +6770,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					 * does not add a second copy.
 					 */}
 					{turnHeads.has(entry.segment.firstId) && agentAvatar ? (
-						<MessageAvatar src={agentAvatar} />
+						<MessageAvatar src={agentAvatar} name={agentName} />
 					) : null}
 					<TurnSummary
 						/*

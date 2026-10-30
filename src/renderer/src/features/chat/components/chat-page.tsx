@@ -3681,9 +3681,17 @@ function SessionPanel({
 	 * with the draft's own target last: a pane with no session yet still knows
 	 * which agent was picked.
 	 *
-	 * A TEAM IS NOT AN AGENT: the draft arm reads `kind === "agent"` alone, and a
-	 * live `active_team` contributes nothing - a team has no picture, and a name
-	 * that happened to match a profile would be a wrong mark rather than none.
+	 * A TEAM CHAT WEARS ITS MANAGER'S PICTURE, and that is core's answer rather
+	 * than this join's (review round 1, R-4). Attaching a team CLAIMS the agent
+	 * slot for that team's manager (`_claim_agent_slot_for_team` in
+	 * `local_operator/session/session.py`, issue #2014: one session, one persona),
+	 * so the wire's `active_agent` already names the manager and the join below
+	 * finds the manager's profile. The manager is the slot that speaks for the
+	 * team, so the picture names the speaker - nothing here invents a team picture,
+	 * and no team has a picture of its own. The DRAFT arm is the narrower one: it
+	 * reads `kind === "agent"` alone, because a team that is only PICKED has no
+	 * manager speaking yet, and a name that happened to match a profile would be a
+	 * wrong mark rather than none.
 	 *
 	 * `agent_id` is null for the packaged profiles (they have no registry row to
 	 * key a picture by), which is why the chain ends at null and the transcript
@@ -4744,6 +4752,7 @@ function SessionPanel({
 					onCloseOptions={() => setOptions(false)}
 					agentId={identity}
 					agentAvatar={agentAvatar}
+					agentSpeakerName={speakerAgent}
 					turnTerminal={canonical.turnsCompleted}
 					/*
 					 * Draft: the store's staged cwd, which `admitChatDraft` passes to

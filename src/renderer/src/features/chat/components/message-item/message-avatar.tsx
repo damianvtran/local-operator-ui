@@ -25,19 +25,28 @@
  */
 
 import { Avatar, AvatarImage } from "@shared/components/ui";
-import { t } from "@shared/i18n";
-import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
 
 export type MessageAvatarProps = {
 	/** The agent's stored picture. Always present; see the note above. */
 	src: string;
+	/**
+	 * The speaking agent's name, for the image's accessible name.
+	 *
+	 * Empty or absent means the caller could not resolve one, and the mark is then
+	 * DECORATIVE (`alt=""`): naming the role again would say nothing the row has
+	 * not already said, and a made-up name would be worse than silence.
+	 */
+	name?: string | null;
 	className?: string;
 };
 
-export const MessageAvatar: FC<MessageAvatarProps> = ({ src, className }) => {
-	useI18nLocale();
+export const MessageAvatar: FC<MessageAvatarProps> = ({
+	src,
+	name,
+	className,
+}) => {
 	return (
 		/*
 		 * `mb-1` is the same 4px the row's own meta caption takes from its chunk:
@@ -47,16 +56,17 @@ export const MessageAvatar: FC<MessageAvatarProps> = ({ src, className }) => {
 		 */
 		<Avatar className={cn("mb-1 size-5", className)}>
 			{/*
-			 * `alt` names the SPEAKER, not the picture: the transcript shows no
-			 * agent name anywhere, so this label is the only place a screen reader
-			 * learns whose turn it is. It reuses the transcript's existing role
-			 * copy rather than adding a second string for the same fact.
+			 * `alt` NAMES THE SPEAKER, AND ONLY WHEN THERE IS A NAME (review round 1,
+			 * R-3). The old label was the fixed role word ("Assistant") and the comment
+			 * claimed it was the only place a screen reader learned whose turn it was;
+			 * both were wrong. The row this mark sits in is already a `role="group"`
+			 * labelled "Agent message", so the register had already spoken, and every
+			 * agent's picture then announced the same word - coder and reviewer were
+			 * indistinguishable. The name is the one fact the register cannot state,
+			 * so it is what the image says; with no name the mark is decoration
+			 * (`alt=""`), which is the same answer the sidebar and roster give.
 			 */}
-			<AvatarImage
-				src={src}
-				alt={t("ui.chat.transcript_copy.role.assistant")}
-				loading="eager"
-			/>
+			<AvatarImage src={src} alt={name ?? ""} loading="eager" />
 		</Avatar>
 	);
 };

@@ -463,20 +463,37 @@ export function runsOf(rows: Row[]): TurnRun[] {
  *     it carries no second mark (the 32px `turn` gap still marks the boundary;
  *     the mark is identity, not rhythm);
  *   - a run whose opening user row is above the loaded page is marked only when
- *     it is the transcript's own FIRST row. Anywhere else the "head" would be
- *     the render window's leading edge - a mark that walks up as history pages
- *     in - rather than a turn boundary the reader can see.
+ *     it starts at row index 0 of the list it was given - which, on a paged
+ *     history, is the first LOADED row and not necessarily the transcript's
+ *     first (review round 1, R-6: the old wording claimed the latter). The
+ *     consequence is stated rather than fixed: when an older page prepends, the
+ *     mark moves from one leading run to the newer one. That is the cheaper of
+ *     the two wrong answers - the alternative, anchoring on the window's own
+ *     edge, is a mark that walks up with every page - and the strict rule
+ *     (`opensWithUserRow` only) would drop the mark from the welcome turn, the
+ *     one case where index 0 really is the conversation's start.
  *
  * Rows that PAINT NOTHING are skipped (a quiet `no_reply` call is in the row
  * list and is dropped at paint), so the picture never lands on an invisible row
  * and leaves a gap under itself.
+ *
+ * AND THE ROW MUST BE THE AGENT'S OWN VOICE (review round 1, R-1). `assistant`
+ * rows are what the agent said, and a `tool` row is what it did; everything else
+ * in the row list is a STATEMENT about the conversation — a notice, a custom
+ * row, a peer delivery, a wake, a compaction — which can sit inside a turn while
+ * the agent is not the one speaking. Electing one of those put the picture over
+ * a harness statement or, in the first repro, over the reader's own message: the
+ * skip loop could walk past `span.endIndex` and land on the NEXT span's opening
+ * row. Both halves of that are the one rule — the head is the first row of THIS
+ * turn that is the agent itself — so both are fixed here: the loop stops at the
+ * span's end, and only an assistant row or a non-quiet tool row may be elected.
  */
 export function agentTurnHeads(rows: Row[]): Set<string> {
 	const heads = new Set<string>();
 	const renders = (row: Row | undefined) =>
 		row !== undefined &&
-		row.record.kind !== "user" &&
-		!isQuietTurnCall(row.record);
+		(row.record.kind === "assistant" ||
+			(row.record.kind === "tool" && !isQuietTurnCall(row.record)));
 
 	for (const span of runsOf(rows)) {
 		const anchored =
@@ -485,6 +502,10 @@ export function agentTurnHeads(rows: Row[]): Set<string> {
 		if (!anchored) continue;
 		let index = span.openingIndex;
 		while (index <= span.endIndex && !renders(rows[index])) index += 1;
+		// Nothing in this span is the agent speaking (a turn that is only a quiet
+		// close, or a run of statements): there is no head, and the row at `index`
+		// belongs to the next span.
+		if (index > span.endIndex) continue;
 		const head = rows[index];
 		if (head === undefined) continue;
 		heads.add(head.record.id);

@@ -1456,19 +1456,41 @@ test("an invisible record does not consume the avatar or a turn boundary", () =>
 		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
 		"utf8",
 	);
-	// The mark sits INSIDE the row's gapped wrapper, above `{body}`: a sibling of
-	// the content, not a prefix in its flow - the one placement that cannot
-	// narrow the measure of any line.
+	/*
+	 * THE PLACEMENT PIN, READ AS CODE (review round 1, R-2). The previous version
+	 * looked for a padding class and `message-avatar` on ONE line, which can never
+	 * happen (that string only appears in the import), so wrapping `{body}` in
+	 * `pl-10` or the pair in `flex gap-2` stayed green at 91/91.
+	 *
+	 * What is asserted instead: the mark and `{body}` are siblings with nothing
+	 * but whitespace between them, and the element that directly holds them is
+	 * the row's own `GAP` wrapper carrying no flex/grid and no spacing token. A
+	 * gutter on the body fails the first assertion; a side-by-side pair fails the
+	 * second, because the container it introduces has to be one or the other.
+	 */
+	const code = transcript
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/\/\/[^\n]*/g, "");
 	assert.ok(
-		/\{opensTurn && agentAvatar \? \(?\s*<MessageAvatar src=\{agentAvatar\} \/>/.test(
-			transcript,
+		/\{opensTurn && agentAvatar \? \(?\s*<MessageAvatar src=\{agentAvatar\}(?: name=\{agentName\})? \/>\s*\)? : null\}\s*\{body\}/.test(
+			code,
 		),
-		"the mark is drawn above the row's body, never beside it",
+		"the mark is drawn above the row's body with nothing between them",
 	);
-	// And nowhere does a padding class make room for it.
+	const markAt = code.indexOf("{opensTurn && agentAvatar ?");
+	assert.ok(markAt > 0, "the mark site is in the transcript");
+	const wrapper = code.slice(code.lastIndexOf("<div", markAt), markAt);
 	assert.ok(
-		!/\b(?:pl|ps|ms|ml)-(?:5|6|8|10)\b[^\n]*message-avatar/.test(transcript),
-		"no indent is spent on the mark",
+		/className=\{cn\(\s*GAP\[/.test(wrapper),
+		"the mark's parent is the row's gapped wrapper",
+	);
+	assert.ok(
+		!/\b(?:flex|grid|inline-flex)\b/.test(wrapper),
+		"the mark is not laid out beside the body (that is the gutter D11 deleted)",
+	);
+	assert.ok(
+		!/\b(?:p[lrsexy]?|m[lrsexy]?)-/.test(wrapper),
+		"no padding or margin token insets the row's text",
 	);
 	assert.equal(rows[1].gap, "turn", "a turn boundary still gets its air");
 	// The hierarchy the tightening must preserve: a turn boundary is strictly
@@ -1560,6 +1582,118 @@ test("a turn whose opening user row is off the page does not get a mark", () => 
 	 */
 	const rows = buildRows([toolRecord("t1"), answer("a1")], []);
 	assert.deepEqual([...agentTurnHeads(rows)], ["t1"]);
+});
+
+/*
+ * THE REVIEWER'S REPROS (round 1, R-1), pinned. Before the fix the skip loop
+ * could walk past a turn's own end into the next turn's opening row, and any
+ * non-user row counted as the agent speaking, so the picture landed on the
+ * reader's message, on a harness statement, or on a receipt.
+ */
+const quietCall = (id) => ({ ...toolRecord(id), toolName: "no_reply" });
+const customRow = (id) => ({
+	kind: "custom",
+	id,
+	ts: 1,
+	customType: "mcp_unavailable",
+	text: "statement",
+	provider: null,
+	attribution: "system",
+});
+const peerRow = (id) => ({ kind: "peer", id, ts: 1, body: "hi", sender: {} });
+const noticeRecord = (id) => ({
+	kind: "notice",
+	id,
+	ts: 1,
+	text: "Cleared the conversation",
+	level: "info",
+});
+
+test("a quiet-close turn never hands its mark to the next turn's user row", () => {
+	// [user u1, quiet q1, user u2, assistant a2]: the first turn is only a quiet
+	// close, so it has no head at all - and u2 is the READER's message, which
+	// D11's text excludes ("User rows never had an avatar").
+	const rows = buildRows(
+		[userTurn("u1"), quietCall("q1"), userTurn("u2"), answer("a2")],
+		[],
+	);
+	assert.deepEqual([...agentTurnHeads(rows)], ["a2"]);
+});
+
+test("a quiet close inside a turn is skipped, and the next turn keeps its own head", () => {
+	const rows = buildRows(
+		[
+			answer("a1"),
+			userTurn("u2"),
+			quietCall("q2"),
+			userTurn("u3"),
+			answer("a3"),
+		],
+		[],
+	);
+	assert.deepEqual([...agentTurnHeads(rows)], ["a1", "a3"]);
+});
+
+test("a statement row is never the head the picture lands on", () => {
+	// A fresh conversation whose first row is a harness statement (the
+	// MCP-unavailable row is the live case) earned two marks: one on the
+	// statement and one on the answer.
+	const rows = buildRows([customRow("c1"), userTurn("u1"), answer("a1")], []);
+	assert.deepEqual([...agentTurnHeads(rows)], ["a1"]);
+});
+
+test("a notice inside a turn is not the agent's head", () => {
+	const rows = buildRows(
+		[userTurn("u1"), noticeRecord("n1"), answer("a1")],
+		[],
+	);
+	assert.deepEqual([...agentTurnHeads(rows)], ["a1"]);
+});
+
+test("a receipt or a quiet call before the answer is not the head", () => {
+	const rows = buildRows(
+		[userTurn("u1"), quietCall("q1"), peerRow("p1"), answer("a1")],
+		[],
+	);
+	assert.deepEqual([...agentTurnHeads(rows)], ["a1"]);
+});
+
+test("the head set is skipped without a picture, and the estimate knows its 24px", () => {
+	/*
+	 * Review round 1, R-5. Two halves, both wiring rather than geometry, so both
+	 * are read off the source the way the D11 pin above reads the container:
+	 *
+	 *   - `agentTurnHeads` is a full `walkTurns` pass and `rows` changes on every
+	 *     streamed token, so a pane with no picture must not run it at all;
+	 *   - the DOM window's per-entry `signature` is the invalidation key for a
+	 *     cached height (`use-transcript-dom-window.ts`), and the mark adds
+	 *     `mb-1 size-5` = 24px to the entry it opens, so an entry that draws one
+	 *     must say so in the signature AND in the estimate.
+	 */
+	const transcript = readFileSync(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"utf8",
+	);
+	assert.match(
+		transcript,
+		/agentAvatar \? agentTurnHeads\(rows\) : NO_TURN_HEADS/,
+		"a picture-less pane never walks the turn partition",
+	);
+	assert.match(
+		transcript,
+		/const TURN_MARK_HEIGHT = 24;/,
+		"the mark's height is one number (size-5 20 + mb-1 4)",
+	);
+	assert.match(
+		transcript,
+		/fact\.marksHead \? 1 : 0/,
+		"the entry signature carries the head bit",
+	);
+	assert.match(
+		transcript,
+		/fact\.marksHead \? TURN_MARK_HEIGHT : 0/,
+		"the estimate adds the mark's own height for an entry that draws it",
+	);
 });
 
 test("a picture-less agent's transcript renders exactly what D11 left", () => {
@@ -3164,7 +3298,7 @@ test("a painted answer after the echo ends the wait, wherever it sits", () => {
 	});
 	// A notice is not the agent answering either — it is the app's own receipt
 	// sitting at the foot of the column.
-	assert.deepEqual(admitted([noticeRow("n1")]), {
+	assert.deepEqual(admitted([noticeRecord("n1")]), {
 		activity: ADMITTED_SEND_ACTIVITY,
 		phase: "thinking",
 	});
