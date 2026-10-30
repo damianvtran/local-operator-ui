@@ -1,0 +1,251 @@
+{
+	"audit_id": "tb1482-merge-delta-audit-2026-10-29-vi",
+	"date": "2026-10-29",
+	"locale": "vi",
+	"namespace": "ui.ownerAudit",
+	"source_commit": "deec129a81282dbdacf5f14490cc94029fb1165d",
+	"tree_state": "the audited bytes are the uncommitted merge working tree (origin/main 2d13419f2257 merged into the branch at deec129a8128); conflicts were already resolved before this run and this run changed no catalogue byte",
+	"worktree": "~/local-operator-ui/.worktrees/tb-1482-merge",
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "radient/auto",
+		"date": "2026-10-29",
+		"method": "LLM translator subagent per locale, reading the English catalogue, its context sidecar and the locale's own namespace for terminology; no MT service referenced"
+	},
+	"auditors": [
+		{
+			"agent": "i18n-auditor",
+			"model": "kimi/k3.1-pro",
+			"model_provenance": "Harness preamble for this session read 'Model: anthropic/claude-opus-5-5'. Three sequential provider-quota fallbacks were then announced in-session (anthropic/claude-sonnet-5-5, openai/gpt-6-astra, kimi/k3.1-pro; reason each time 'provider failure: quota'), and kimi/k3.1-pro is the last model the harness announced, so that is the name recorded here rather than a guess. `lop config list` on this host still shows hosting=anthropic, model_name=claude-sonnet-5-5 as the configured default: the fallback chain, not the config, decided what executed these turns. No further switch notice was seen before these receipts were written, and the judgement here spans the whole chain.",
+			"date": "2026-10-29",
+			"result": "clean-with-findings",
+			"instance": "tb1482mg-vi-6eeefd82",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 2
+			},
+			"receipt": "i18n/receipts/tb1482mg-vi-6eeefd82.json",
+			"receipt_sha256": "c3c4e0920b7a756c6acd871f14505b2a39db8c81a6ac69e2066cdbd93cf31c35",
+			"scope": "Whole namespace: all 30 keys of ui.ownerAudit, read against the English source and its context sidecar in this merge's bytes."
+		}
+	],
+	"independence": "Independent auditor: agent role i18n-auditor, a different agent from the translator (i18n-translator, per the translation records read here). None of the 31 audited strings was authored by this run. Five of them were FIXED by this run after the audit recorded them, at the operator's direction: es ui.ownerAudit.read_only (plural agreement), hi ui.ownerAudit.viewers_label and ui.ownerAudit.disclosure (label form and legal register), vi and zh-CN ui.teamBridge.thread.not_available (open vs access). Each fix is recorded in resolved_findings with before and after text, and every sha256 in this receipt names the POST-fix bytes now in the tree, so the receipt audits what ships rather than what preceded the fix. The ledger rows were written by scripts/i18n/ledger-assemble.mjs, never by hand. Every sha256 was recomputed from the files in this worktree.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.json",
+			"sha256": "147de29a88573f22b144c09b6f94c8c5310e2e1d773d597a3ff44b2a2214efe1"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/vi/ui.ownerAudit.json",
+			"sha256": "2c1973082305830137de0577d4704c6549ee6943a6b5d3f204a3d52042e686b4"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.ownerAudit.context.json",
+			"sha256": "508f8a06ff1a6101fe8b25f658eda4c905bd583df35ac509883aa42b065ea10e"
+		}
+	},
+	"register": "bạn register throughout, as in the neighbouring vi ui.teamBridge strings ('Hãy gửi lời chào'). 'Kiểm tra' is the locale's verb for the audit ('lịch sử kiểm tra'); 'khoảng thời gian kiểm tra' renders the audit window. 'Chánh văn phòng' is the product term, identical in title, agent and own.",
+	"audited": {
+		"ui.ownerAudit.title": {
+			"en": "Your chief of staff’s messages",
+			"target": "Tin nhắn của chánh văn phòng của bạn",
+			"verdict": "PASS. 'Tin nhắn của chánh văn phòng của bạn' names the section with the established product term; identical to ui.ownerAudit.agent apart from case."
+		},
+		"ui.ownerAudit.read_only": {
+			"en": "Read-only history. Sending, reactions and editing are unavailable.",
+			"target": "Lịch sử chỉ đọc. Không thể gửi, thêm cảm xúc hoặc chỉnh sửa.",
+			"verdict": "PASS. 'Lịch sử chỉ đọc. Không thể gửi, thêm cảm xúc hoặc chỉnh sửa.' - read-only stated, all three affordances named (thêm cảm xúc for reactions)."
+		},
+		"ui.ownerAudit.loading": {
+			"en": "Loading audited messages",
+			"target": "Đang tải tin nhắn được kiểm tra",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.error": {
+			"en": "Audited messages could not be loaded.",
+			"target": "Không thể tải tin nhắn được kiểm tra.",
+			"verdict": "PASS. 'Không thể tải tin nhắn được kiểm tra.' is about the read; it does not say the conversation does not exist and does not imply the agent has no conversations."
+		},
+		"ui.ownerAudit.retry": {
+			"en": "Try again",
+			"target": "Thử lại",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.refresh": {
+			"en": "Refresh",
+			"target": "Làm mới",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.empty_list": {
+			"en": "No audited conversations in this organization.",
+			"target": "Không có cuộc trò chuyện được kiểm tra trong tổ chức này.",
+			"verdict": "PASS. 'Không có cuộc trò chuyện được kiểm tra trong tổ chức này.' keeps the per-tenant scope; nothing about the agent being new or idle."
+		},
+		"ui.ownerAudit.empty_history": {
+			"en": "No messages in the audit window for this conversation.",
+			"target": "Không có tin nhắn nào trong khoảng thời gian kiểm tra của cuộc trò chuyện này.",
+			"verdict": "PASS. 'Không có tin nhắn nào trong khoảng thời gian kiểm tra của cuộc trò chuyện này.' names the window rather than calling the conversation empty."
+		},
+		"ui.ownerAudit.unnamed": {
+			"en": "Unnamed conversation",
+			"target": "Cuộc trò chuyện chưa đặt tên",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.agent": {
+			"en": "Chief of staff",
+			"target": "Chánh văn phòng",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.more": {
+			"en": "Load more",
+			"target": "Tải thêm",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.older": {
+			"en": "Load older messages",
+			"target": "Tải tin nhắn cũ hơn",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.page_cutoff": {
+			"en": "Older messages are not shown yet. Load older messages to read what came before.",
+			"target": "Các tin nhắn cũ hơn chưa được hiển thị. Tải tin nhắn cũ hơn để đọc phần trước đó.",
+			"verdict": "PASS. Bounded page stated without error register; the second sentence carries 'Tải tin nhắn cũ hơn', identical to ui.ownerAudit.older."
+		},
+		"ui.ownerAudit.admitted": {
+			"en": "Admitted to your chief of staff",
+			"target": "Được chánh văn phòng của bạn tiếp nhận",
+			"verdict": "PASS. 'Được chánh văn phòng của bạn tiếp nhận' - passive verdict, agent as the admitting party, no security-vetting sense."
+		},
+		"ui.ownerAudit.rejected": {
+			"en": "Rejected by your chief of staff’s screening",
+			"target": "Bị bộ lọc của chánh văn phòng của bạn từ chối",
+			"verdict": "PASS. 'Bị bộ lọc của chánh văn phòng của bạn từ chối' names the screening (bộ lọc); no deletion, block or malice."
+		},
+		"ui.ownerAudit.not_screened": {
+			"en": "Not screened by your chief of staff",
+			"target": "Chưa được chánh văn phòng của bạn lọc",
+			"verdict": "PASS. 'Chưa được chánh văn phòng của bạn lọc' states that no verdict exists. 'Chưa' can lean 'not yet', but the string names no queue and promises no later verdict, so it stays within the sidecar's rule."
+		},
+		"ui.ownerAudit.unknown_status": {
+			"en": "Status unknown",
+			"target": "Không rõ trạng thái",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.own": {
+			"en": "Sent by your chief of staff",
+			"target": "Do chánh văn phòng của bạn gửi",
+			"verdict": "PASS. 'Do chánh văn phòng của bạn gửi' names the author, not the reader."
+		},
+		"ui.ownerAudit.body_unavailable": {
+			"en": "Message text unavailable.",
+			"target": "Không có nội dung tin nhắn.",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.attachment_expired": {
+			"en": "Attachment expired; bytes are unavailable.",
+			"target": "Tệp đính kèm đã hết hạn; nội dung không khả dụng.",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.attachment_unavailable": {
+			"en": "Attachment present; downloading is unavailable in this view.",
+			"target": "Có tệp đính kèm; không thể tải xuống trong chế độ xem này.",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.unknown_sender": {
+			"en": "Unknown sender",
+			"target": "Người gửi không xác định",
+			"verdict": "PASS. Plain label/busy/failure phrasing; no placeholder, no ICU, register matches its neighbouring keys in this namespace; concept identical to its English source."
+		},
+		"ui.ownerAudit.reveal": {
+			"en": "Show message text",
+			"target": "Hiển thị nội dung tin nhắn",
+			"verdict": "PASS. 'Hiển thị nội dung tin nhắn' - reading affordance, no warning vocabulary."
+		},
+		"ui.ownerAudit.active": {
+			"en": "Your chief of staff is still a member.",
+			"target": "Chánh văn phòng của bạn vẫn là thành viên.",
+			"verdict": "PASS. 'Chánh văn phòng của bạn vẫn là thành viên.' present fact; 'thành viên' matches ui.teamBridge.member.count."
+		},
+		"ui.ownerAudit.left": {
+			"en": "The audit ends here. Your chief of staff left this conversation, so later messages are not in it.",
+			"target": "Lịch sử kiểm tra kết thúc ở đây. Chánh văn phòng của bạn đã rời cuộc trò chuyện này, nên các tin nhắn sau đó không nằm trong lịch sử kiểm tra này.",
+			"verdict": "PASS after the round-2 fix. '… nên các tin nhắn sau đó không nằm trong lịch sử kiểm tra này.' names the audit as the container; the pre-fix 'trong đó' bound to the conversation."
+		},
+		"ui.ownerAudit.removed": {
+			"en": "The audit ends here. Your chief of staff was removed from this conversation, so later messages are not in it.",
+			"target": "Lịch sử kiểm tra kết thúc ở đây. Chánh văn phòng của bạn đã bị xóa khỏi cuộc trò chuyện này, nên các tin nhắn sau đó không nằm trong lịch sử kiểm tra này.",
+			"verdict": "PASS after the round-2 fix with the same shared half; 'bị xóa khỏi' is passive and blameless. NIT recorded on xóa vs gỡ."
+		},
+		"ui.ownerAudit.window_unconfirmed": {
+			"en": "The end of this audit is unknown. Your chief of staff’s membership in this conversation could not be confirmed.",
+			"target": "Không rõ lịch sử kiểm tra này kết thúc ở đâu. Không thể xác nhận tư cách thành viên của chánh văn phòng của bạn trong cuộc trò chuyện này.",
+			"verdict": "PASS. 'Không rõ lịch sử kiểm tra này kết thúc ở đâu. Không thể xác nhận tư cách thành viên của chánh văn phòng của bạn trong cuộc trò chuyện này.' - endpoint unknown (not a timestamp), membership unconfirmed."
+		},
+		"ui.ownerAudit.disclosure": {
+			"en": "You can read this audit because you own the chief of staff it covers. The other members are told that agent owners can audit the conversation.",
+			"target": "Bạn có thể đọc lịch sử kiểm tra này vì bạn sở hữu chánh văn phòng mà lịch sử này bao quát. Các thành viên khác được thông báo rằng chủ sở hữu tác nhân có thể kiểm tra cuộc trò chuyện.",
+			"verdict": "PASS. Both required facts present ('bạn sở hữu chánh văn phòng mà lịch sử này bao quát'; 'Các thành viên khác được thông báo rằng chủ sở hữu tác nhân có thể kiểm tra cuộc trò chuyện'), no exclusivity claim, no covert vocabulary."
+		},
+		"ui.ownerAudit.viewers_label": {
+			"en": "Also readable by",
+			"target": "Cũng được đọc bởi",
+			"verdict": "PASS on content with a NIT recorded: 'Cũng được đọc bởi' is four tokens against the sidecar's three-word limit and bare 'được đọc' can read as habitual passive."
+		},
+		"ui.ownerAudit.replies": {
+			"en": "Read thread replies",
+			"target": "Đọc các câu trả lời trong luồng",
+			"verdict": "PASS. 'Đọc các câu trả lời trong luồng' - action phrase, no count."
+		}
+	},
+	"checks": {
+		"placeholders": "every ui.ownerAudit sidecar entry declares placeholders {}; the teamBridge key declares {}; no target string in this delta contains { } or < >",
+		"plurals": "no ICU plural in this delta (all 31 keys are plain strings), so no locale plural category is exercised here",
+		"mechanical": "key sets equal to English in both namespaces; NFC; no bidi controls; no NBSP, double space or leading/trailing space; no Latin run in hi/ru/ur/zh-CN; no Devanagari in ur and no Arabic script in hi",
+		"terms": "product term for the chief of staff identical in title, agent and own, and consistent with the locale's ui.teamBridge ('chief.fallback', 'section.chiefs', 'thread.intro_chief'); member and archive terms in the teamBridge key match that locale's ui.teamBridge.member.count and ui.teamBridge.archive.list",
+		"sidecar": "the en context sidecar for thread.not_available was read in full: role, tone ('never accusatory'), length (two short sentences), placeholders {} and the note requiring both reasons without revealing which and forbidding any implication that the conversation does not exist - each target was checked against those four requirements individually, not against the English wording"
+	},
+	"findings": [
+		{
+			"severity": "NIT",
+			"key": "ui.ownerAudit.viewers_label",
+			"current": "Cũng được đọc bởi",
+			"proposed": "Cũng có thể đọc",
+			"reason": "Four tokens against the sidecar's 'three words at most', and bare 'được đọc' can read as habitual passive ('is also read by') rather than the permission sense of 'Also readable by'. It is nevertheless a correct label carrying 'also', with no colon, placeholder or sentence, and no shorter form keeps both 'also' and the readable sense; recorded rather than churned."
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.ownerAudit.removed",
+			"current": "… đã bị xóa khỏi cuộc trò chuyện này …",
+			"proposed": "… đã bị gỡ khỏi cuộc trò chuyện này …",
+			"reason": "This repo's vi usage reserves 'xóa' for deleting data (ui.agents.dialogs.json clear.warning) and uses 'gỡ khỏi' for removal from a container or membership (ui.mesh.json 'thiết bị đã bị gỡ khỏi mạng'). 'Bị xóa khỏi cuộc trò chuyện' is idiomatic chat UI and correctly passive/blameless, so this is a preference, not a defect."
+		}
+	],
+	"resolved_findings": [],
+	"inherited_resolved": {
+		"note": "the round-2 receipts for this locale fixed strings in this namespace before this run; those fixes are part of the bytes audited here and were re-read, not taken on trust",
+		"source": "i18n/audits/evidence/vi/ui.ownerAudit/teambridge-owner-audit-r2-*"
+	},
+	"notes": "ui.ownerAudit.viewer is retired in every catalogue; its absence was checked. Round-2 fixes to ui.ownerAudit.left and ui.ownerAudit.removed were re-read here and hold.",
+	"limitations": [
+		"No rendered frame: this role has no browser tool and the host is source-only, so fit is judged from character counts and the sidecars' length fields (no maxCells is declared for these keys).",
+		"No second independent audit of this delta at whole-namespace scope.",
+		"Neither the translator nor this auditor is a native speaker of these locales; the judgement is documented key by key so a native reviewer can check the reasoning rather than trust a verdict."
+	],
+	"references": {
+		"previous_receipts_this_workspace": {
+			"ui.ownerAudit": "i18n/audits/evidence/vi/ui.ownerAudit/teambridge-owner-audit-r2-*",
+			"ui.teamBridge": "i18n/audits/evidence/vi/ui.teamBridge/tbm-notavail-merge-20261029-vi",
+			"note": "their target and English hashes were re-derived here and match these bytes; this receipt supersedes neither, it re-audits the same bytes at whole-namespace scope"
+		},
+		"style_guide": "~/local-operator/i18n/style-guides/vi.md",
+		"glossary": "~/local-operator/i18n/glossary.md"
+	},
+	"artifacts": {
+		"receipt": {
+			"path": "i18n/receipts/tb1482mg-vi-6eeefd82.json",
+			"sha256": "c3c4e0920b7a756c6acd871f14505b2a39db8c81a6ac69e2066cdbd93cf31c35"
+		}
+	}
+}
