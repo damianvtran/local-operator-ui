@@ -29,7 +29,7 @@ import { JSDOM } from "jsdom";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/features/settings/search/settings-search-index";\nexport { searchSettings } from "./src/renderer/src/features/settings/search/settings-search-match";',
+			'export * from "./src/renderer/src/features/settings/search/settings-search-index";\nexport { searchSettings } from "./src/renderer/src/features/settings/search/settings-search-match";\nexport { NO_MATCH_QUERY, LONG_NO_MATCH_QUERY } from "./src/renderer/src/features/settings/search/settings-search.fixtures";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -53,6 +53,8 @@ const {
 	labelFromRenderedText,
 	registrySectionTitles,
 	searchSettings,
+	NO_MATCH_QUERY,
+	LONG_NO_MATCH_QUERY,
 } = module;
 
 /** The configured fixture: the wire the surface was built against. */
@@ -430,4 +432,50 @@ test("a promoted registry row is indexed once, as the page's own row", () => {
 		index.find((entry) => entry.id === "page:general.language")?.label,
 		"Interface language",
 	);
+});
+
+test("the stories' no-match queries match nothing in the real registry", () => {
+	/*
+	 * The frame's claim, checked where CI can see it. Round 1 shipped a
+	 * no-results story whose sentence matched one row after choice descriptions
+	 * were folded, so the caption contradicted the pixels (design round 2, D11).
+	 *
+	 * Two layers, stated precisely: THIS arm asserts zero against the registry
+	 * half — the corpus that changes when a label, help sentence or choice grows
+	 * — and the story asserts the same constants against the full index it
+	 * renders (registry + the page's own sidebar sections) before it opens the
+	 * shutter. Neither alone is the whole claim; together they are.
+	 */
+	for (const query of [NO_MATCH_QUERY, LONG_NO_MATCH_QUERY]) {
+		assert.equal(
+			searchSettings(registry, query, 500).total,
+			0,
+			`"${query}" matches no registry row`,
+		);
+	}
+	// And the same for the sidebar's own section entries, whose labels are the
+	// only other haystacks the story's index adds.
+	const withSections = buildSettingsIndex({
+		registry: payload,
+		sections: [
+			{ id: "general", label: "General settings" },
+			{ id: "appearance", label: "Appearance" },
+			{ id: "speech", label: "Speech & voicing" },
+			{ id: "keyboard", label: "Keyboard shortcuts" },
+			{ id: "providers", label: "Model providers" },
+			{ id: "integrations", label: "Integrations" },
+			{ id: "radient", label: "Radient account" },
+			{ id: "agent-messages", label: "Agent messages" },
+			{ id: "backend", label: "Backend settings" },
+			{ id: "imports", label: "Imports" },
+			{ id: "updates", label: "Application updates" },
+		],
+	});
+	for (const query of [NO_MATCH_QUERY, LONG_NO_MATCH_QUERY]) {
+		assert.equal(
+			searchSettings(withSections, query, 500).total,
+			0,
+			`"${query}" matches nothing once the sidebar's sections are indexed too`,
+		);
+	}
 });

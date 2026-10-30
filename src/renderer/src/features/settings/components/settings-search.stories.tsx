@@ -35,7 +35,13 @@ import { Settings } from "lucide-react";
 import { type FC, useLayoutEffect, useMemo } from "react";
 import fixtureJson from "../../../../../../scripts/fixtures/backend-settings-registry.json";
 import type { BackendSettings } from "../../../../../shared/desktop-contract";
+import { searchSettings } from "../search/settings-search-match";
+import {
+	LONG_NO_MATCH_QUERY,
+	NO_MATCH_QUERY,
+} from "../search/settings-search.fixtures";
 import { SettingsSearch, useSettingsSearchIndex } from "./settings-search";
+import { DEFAULT_SETTINGS_SECTIONS } from "./settings-sidebar";
 
 const payload = fixtureJson as unknown as Pick<
 	BackendSettings,
@@ -78,24 +84,18 @@ if (typeof window !== "undefined") {
 	} as never;
 }
 
-const SECTIONS = [
-	{
-		id: "general",
-		label: t("ui.settings.navigation.settings_sidebar.general_settings"),
-	},
-	{
-		id: "appearance",
-		label: t("ui.settings.navigation.settings_sidebar.appearance"),
-	},
-	{
-		id: "keyboard",
-		label: t("ui.settings.navigation.settings_sidebar.keyboard_shortcuts"),
-	},
-	{
-		id: "providers",
-		label: t("ui.settings.navigation.settings_sidebar.model_providers"),
-	},
-];
+/*
+ * THE PAGE'S OWN SIDEBAR LIST, not a hand-written four-entry stub.
+ *
+ * A stub of four sections meant the frame could not render the thing this round
+ * fixed: every registry row's destination is `backend`, which the stub omitted,
+ * so no `[role="group"]` heading and no "In Backend settings" line ever appeared
+ * in a frame (design round 2, D10). `DEFAULT_SETTINGS_SECTIONS` is the exact
+ * array the page filters and hands to the index — eleven entries, in the rail's
+ * documented order, with `t()`-backed labels — so the story and the page cannot
+ * disagree about what a section is called.
+ */
+const SECTIONS = DEFAULT_SETTINGS_SECTIONS;
 
 /**
  * The page's own content column, at the width the settings page uses.
@@ -151,7 +151,21 @@ const Scenario: FC<{
 	focus?: boolean;
 	/** A 420px column: below the app's 800px window floor, a wrapping probe. */
 	narrow?: boolean;
-}> = ({ query, expect, focus = false, narrow = false }) => {
+	/**
+	 * This story CLAIMS its query matches nothing. The claim is checked against
+	 * the exact index the frame renders — with the page's real sidebar sections
+	 * — before the shutter opens, so a corpus change that turns the query into a
+	 * hit refuses the frame instead of committing a caption the pixels
+	 * contradict (design round 2, D11).
+	 */
+	expectNoResults?: boolean;
+}> = ({
+	query,
+	expect,
+	focus = false,
+	narrow = false,
+	expectNoResults = false,
+}) => {
 	const index = useSettingsSearchIndex({
 		registry: payload,
 		sections: SECTIONS,
@@ -190,6 +204,14 @@ const Scenario: FC<{
 			};
 		}
 		if (!query) return undefined;
+		if (expectNoResults) {
+			const total = searchSettings(index, query, 500).total;
+			if (total !== 0) {
+				throw new Error(
+					`[settings-search story] "${query}" matches ${total} row(s); this story claims none. Pick a query from settings-search.fixtures.ts.`,
+				);
+			}
+		}
 		document.documentElement.dataset.capturePending = "1";
 		let cancelled = false;
 		const settle = async () => {
@@ -272,10 +294,14 @@ export const Results: Story = {
 
 /** A query that finds nothing: the quote, one way out, no dead end. */
 export const NoResults: Story = {
-	args: { query: "thermal", expect: t("ui.settings.search.no_results.clear") },
+	args: {
+		query: NO_MATCH_QUERY,
+		expect: t("ui.settings.search.no_results.clear"),
+	},
 	render: () => (
 		<Scenario
-			query="zzz nothing here"
+			expectNoResults
+			query={NO_MATCH_QUERY}
 			expect={t("ui.settings.search.no_results.clear")}
 		/>
 	),
@@ -284,17 +310,23 @@ export const NoResults: Story = {
 /**
  * A long query in a narrow column: the no-results heading must wrap rather than
  * push the panel wider than the column it hangs under.
+ *
+ * The query is a fixture constant, not a sentence: round 1's sentence matched
+ * nothing until choice descriptions were folded, and then it matched the theme
+ * row — a caption the pixels no longer carried (design round 2, D11). It is
+ * asserted zero on this very index before the shutter opens.
  */
 export const LongQuery: Story = {
 	args: {
-		query: "retention days",
+		query: LONG_NO_MATCH_QUERY,
 		expect: t("ui.settings.search.no_results.clear"),
 	},
 	parameters: { viewport: { defaultViewport: "narrow" } },
 	render: () => (
 		<Scenario
 			narrow
-			query="a very long query that is not going to match anything at all in this registry"
+			expectNoResults
+			query={LONG_NO_MATCH_QUERY}
 			expect={t("ui.settings.search.no_results.clear")}
 		/>
 	),
