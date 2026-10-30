@@ -85,6 +85,88 @@ const QUALITY_FACTOR = {
 	subsequence: 0.45,
 } as const;
 
+/**
+ * Singular/plural folding, English only.
+ *
+ * A settings surface is full of both numbers: the query a reader types follows
+ * the word in their head ("imports", "providers", "keys"), and the row they are
+ * looking for may say either — "Import conversations" one place, "Keyboard
+ * shortcuts" another. Strict matching made those two spellings strangers, so a
+ * plural query could answer nothing at all while its singular found the row
+ * (QA round 3, Q-R3-1).
+ *
+ * The fold is deliberately small and symmetric: at least four letters and a
+ * trailing `s`, with the `es` taken for the sibilant endings English actually
+ * spells that way. It is a SPELLING rule, not a stemmer — the word still has to
+ * appear, so a folded hit is still a hit in the field that literally contains
+ * it (singular or plural), never a letter-scatter dressed as one.
+ */
+function singularWord(word: string): string {
+	if (word.length < 4 || !word.endsWith("s")) return word;
+	if (/(?:ch|sh|ss|x|z)es$/.test(word)) return word.slice(0, -2);
+	return word.slice(0, -1);
+}
+
+/** The same fold, applied word by word to a folded haystack. */
+function singularHaystack(haystack: string): string {
+	let changed = false;
+	const folded = haystack
+		.split(" ")
+		.map((word) => {
+			const next = singularWord(word);
+			if (next !== word) changed = true;
+			return next;
+		})
+		.join(" ");
+	return changed ? folded : haystack;
+}
+
+/** Folded haystacks per entry, built once: a query is not the time to re-split. */
+const SINGULAR_HAYSTACKS = new WeakMap<
+	object,
+	Partial<Record<SettingSearchField, string>>
+>();
+
+/** The palette's quality type, named here because it is not exported there. */
+type WordQuality = NonNullable<ReturnType<typeof matchQuality>>;
+
+/** The quality ladder, best first, for comparing two candidate spellings. */
+const QUALITY_RANK: Readonly<Record<string, number>> = {
+	exact: 3,
+	prefix: 2,
+	substring: 1,
+};
+
+/**
+ * The best WORD-level quality for a token in a haystack, trying both numbers.
+ *
+ * `matchQuality` is the palette's and stays untouched; this is the settings
+ * surface's spelling rule on top of it. A subsequence is never returned, for
+ * the reason `scoreEntry` refuses it: the reason line names a field, so the word
+ * has to be there.
+ */
+function bestWordQuality(
+	haystack: string,
+	folded: string,
+	token: string,
+): WordQuality | null {
+	const foldedToken = singularWord(token);
+	const candidates: (WordQuality | null)[] = [matchQuality(haystack, token)];
+	if (foldedToken !== token)
+		candidates.push(matchQuality(haystack, foldedToken));
+	if (folded !== haystack) {
+		candidates.push(matchQuality(folded, token));
+		if (foldedToken !== token)
+			candidates.push(matchQuality(folded, foldedToken));
+	}
+	let best: WordQuality | null = null;
+	for (const quality of candidates) {
+		if (!quality || quality === "subsequence") continue;
+		if (!best || QUALITY_RANK[quality] > QUALITY_RANK[best]) best = quality;
+	}
+	return best;
+}
+
 /** One result: the entry, its score, and the field that won it. */
 export type SettingSearchMatch = {
 	entry: SettingSearchEntry;
@@ -131,27 +213,32 @@ export function scoreEntry(
 	let total = 0;
 	let best = -1;
 	let reason: SettingSearchField | null = null;
+	/*
+	 * One folded copy of each field per entry, built the first time a query
+	 * needs it and reused for every later one: the fold is a spelling rule, and
+	 * the page's rows and the registry's do not change under a keystroke.
+	 */
+	let foldedHaystacks = SINGULAR_HAYSTACKS.get(entry.fields);
+	if (!foldedHaystacks) {
+		foldedHaystacks = {};
+		for (const field of Object.keys(FIELD_WEIGHT) as SettingSearchField[]) {
+			const haystack = entry.fields[field];
+			if (haystack) foldedHaystacks[field] = singularHaystack(haystack);
+		}
+		SINGULAR_HAYSTACKS.set(entry.fields, foldedHaystacks);
+	}
 	for (const token of tokens) {
 		let tokenBest = -1;
 		let tokenField: SettingSearchField | null = null;
 		for (const field of Object.keys(FIELD_WEIGHT) as SettingSearchField[]) {
 			const haystack = entry.fields[field];
 			if (!haystack) continue;
-			const quality = matchQuality(haystack, token);
+			const quality = bestWordQuality(
+				haystack,
+				foldedHaystacks[field] ?? singularHaystack(haystack),
+				token,
+			);
 			if (!quality) continue;
-			/*
-			 * A LETTER-SCATTER IS NOT A MATCH A ROW MAY CLAIM.
-			 *
-			 * `matchQuality`'s softest tier answers "these letters appear in this
-			 * order somewhere", which is how `theme` put `Agent shell
-			 * environment` second under "matched the name" — a field whose text
-			 * does not contain the word at all (UX round 1, U1). The panel's
-			 * reason line names a field, so a result must BE in that field; the
-			 * tier is therefore refused here rather than reported as something it
-			 * is not, and the panel says "nothing matches" instead of listing
-			 * rows that merely share letters.
-			 */
-			if (quality === "subsequence") continue;
 			const value = FIELD_WEIGHT[field] * QUALITY_FACTOR[quality];
 			if (value > tokenBest) {
 				tokenBest = value;

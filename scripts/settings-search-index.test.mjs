@@ -830,3 +830,80 @@ test("`team bridge` reaches the two promoted handles, by the words the reader kn
 		"the feature's own name finds the two rows that configure it, first",
 	);
 });
+
+test("plural queries reach the singular rows, and singulars reach plural labels (QA round 3, Q-R3-1)", () => {
+	/*
+	 * Strict matching made the two numbers strangers: the row says "Import
+	 * conversations" and the reader types "imports", so the answer was nothing at
+	 * all while the singular found it (QA round 3, Q-R3-1). The fold is a
+	 * SPELLING rule — the word still has to be in the field, in either number —
+	 * so a folded hit is never a letter-scatter wearing a reason it did not earn.
+	 */
+	const dom = new JSDOM(
+		`<!doctype html><html><body><div data-settings-content>
+			<section data-search-section="appearance" data-search-section-label="Appearance">
+				<div data-search-row="appearance.theme" data-search-control data-search-label="Theme">
+					<div><span>Theme</span></div>
+				</div>
+			</section>
+			<section data-search-section="imports" data-search-section-label="Imports">
+				<div data-search-row="imports.export" data-search-control data-search-label="Import conversations">
+					<div><span>Import conversations</span></div>
+				</div>
+			</section>
+			<section data-search-section="keyboard" data-search-section-label="Keyboard shortcuts">
+				<div data-search-row="keyboard.console" data-search-control data-search-label="Keyboard shortcut for the console">
+					<div><span>Keyboard shortcut for the console</span></div>
+				</div>
+			</section>
+			<section data-search-section="providers" data-search-section-label="Model providers">
+				<div data-search-row="providers.anthropic" data-search-control data-search-label="Provider: Anthropic">
+					<div><span>Provider: Anthropic</span></div>
+				</div>
+			</section>
+			<section data-search-section="general" data-search-section-label="General settings">
+				<div data-search-row="general.keys" data-search-control data-search-label="Key map">
+					<div><span>Key map</span></div>
+				</div>
+			</section>
+		</div></body></html>`,
+	);
+	const rendered = buildRenderedEntries(
+		dom.window.document.querySelector("[data-settings-content]"),
+	);
+	const index = buildSettingsIndex({
+		registry: payload,
+		sections: [],
+		rendered,
+	});
+	const cases = [
+		["imports", "page:imports.export", "import"],
+		["shortcuts", "page:keyboard.console", "shortcut"],
+		["providers", "page:providers.anthropic", "provider"],
+		["keys", "page:general.keys", "key"],
+	];
+	for (const [query, id, stem] of cases) {
+		const results = searchSettings(index, query, 12);
+		const hit = results.results.find((result) => result.entry.id === id);
+		assert.ok(hit, `"${query}" reaches ${id}`);
+		assert.ok(
+			(hit.entry.fields[hit.reason] ?? "").includes(stem),
+			`and names a field whose word contains "${stem}"`,
+		);
+	}
+	// The singular still finds the plural spelling.
+	const pluralLabel = searchSettings(index, "conversation", 12);
+	assert.ok(
+		pluralLabel.results.some(
+			(result) => result.entry.id === "page:imports.export",
+		),
+		"a singular query finds a plural-y label",
+	);
+	// And the fold did not loosen the word it was never about.
+	const theme = searchSettings(index, "theme", 12);
+	assert.deepEqual(
+		theme.results.map((result) => result.entry.id).sort(),
+		["page:appearance.theme", "setting:tui.theme"],
+		"`theme` still answers exactly the two rows it did before the fold",
+	);
+});
