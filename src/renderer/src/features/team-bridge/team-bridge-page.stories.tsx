@@ -370,6 +370,62 @@ const directoryPeople = [
 	},
 ];
 
+/**
+ * The SECOND organization's roster, for the union view's frames.
+ *
+ * Different names on purpose: the union's whole claim is that two organizations
+ * read apart under their own headers, and the reader's real switcher lists
+ * sibling organizations whose members share first names. This roster therefore
+ * carries its own chief (Juno's owner, Ben) rather than reusing the first
+ * organization's, and the reader is a member here too - so "you" appears under
+ * both headers, which is correct and must not read as a duplicated row.
+ */
+const northwindPeople = [
+	{
+		account_id: self,
+		display_label: "Damian",
+		role: "member",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+	},
+	{
+		account_id: "acct_ines",
+		display_label: "Ines Rocha",
+		role: "member",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+	},
+	{
+		account_id: "acct_tomas",
+		display_label: "Tomas Vidal",
+		role: "admin",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+		/* A chief of staff in THIS organization: the union's Chiefs section has
+		   one row per organization, not one for the account. */
+		agent: { endpoint_id: "bep_otto", name: "Otto", state: "active" },
+	},
+];
+
+/** ONE row in a third organization, so the grouped rail's height is exercised. */
+const acmePeople = [
+	{
+		account_id: "acct_wren",
+		display_label: "Wren Achebe",
+		role: "member",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+	},
+];
+
+/** A third organization, named and sized like a real customer's sibling tenant. */
+const acmeOrganization: TeamBridgeOrganization = {
+	tenantId: asTeamBridgeTenantId("tnt_3"),
+	name: "Field Operations (EMEA)",
+	role: "admin",
+	unread: 0,
+};
+
 /** A DM with one of the roster's people, so that row's DM already exists. */
 const beaDm: TeamBridgeConversation = {
 	...dm,
@@ -785,16 +841,109 @@ export const SingleOrganization: Story = {
 	},
 };
 
+/**
+ * ONE organization with a full roster: the shipped single-organization rail, with
+ * no subheaders and no captions. The union predicate in `team-bridge-org-rosters`
+ * is `mergedView && organizations.length > 1`, so this frame must look exactly
+ * like `People` above.
+ */
+export const SingleOrganizationRoster: Story = {
+	args: {
+		organizations: [minervaOrganization],
+		conversations: [dm, beaDm, channel, group],
+		target: { type: "conversation", id: dm.id },
+		people: directoryPeople,
+	},
+};
+
 /** Several organizations, one selected: the menu holds the others. */
 export const MultipleOrganizations: Story = {};
 
-/** The account-wide view: merged, newest first, every row labelled with its org. */
+/**
+ * THE UNION VIEW WITH ROSTERS - the operator's own shape, and the frame the
+ * design review renders.
+ *
+ * Channels, Groups and Direct messages stay flat and carry the organization on
+ * each row; People and Chiefs of staff group under one organization subheader
+ * each, because a person's row has nowhere else to say which organization it
+ * would act in. `dm` belongs to Minerva, so Minerva's own People row paints it
+ * and it must not appear again under Direct messages.
+ */
 export const AllOrganizations: Story = {
 	args: {
 		scope: TEAM_BRIDGE_ALL_SCOPE,
-		conversations: [dm, channel, group, northwindChannel],
+		conversations: [dm, beaDm, channel, group, northwindChannel],
 		target: { type: "conversation", id: dm.id },
 		messageState: "ready",
+		directories: { tnt_1: directoryPeople, tnt_2: northwindPeople },
+		directoryStates: { tnt_1: "ready", tnt_2: "ready" },
+	},
+};
+
+/**
+ * ONE organization's roster answered empty: its own header and an honest empty
+ * line, while the other organization's rows are untouched. An organization that
+ * draws an empty line is an organization that was CHECKED.
+ */
+export const AllOrganizationsEmptyRoster: Story = {
+	args: {
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		conversations: [dm, beaDm, channel, group, northwindChannel],
+		target: { type: "conversation", id: dm.id },
+		directories: { tnt_1: directoryPeople, tnt_2: [] },
+		directoryStates: { tnt_1: "ready", tnt_2: "ready" },
+	},
+};
+
+/**
+ * ONE organization's roster read failed: an inline failure and its retry under
+ * that organization's header, and the failing organization never blanks the
+ * other's rows.
+ */
+export const AllOrganizationsRosterFailed: Story = {
+	args: {
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		conversations: [dm, beaDm, channel, group, northwindChannel],
+		target: { type: "conversation", id: dm.id },
+		directories: { tnt_1: directoryPeople },
+		directoryStates: { tnt_1: "ready", tnt_2: "error" },
+		directoryErrors: {
+			tnt_2: { status: 503, message: "The directory is unavailable." },
+		},
+	},
+};
+
+/** Both rosters still in flight: each header carries its own read's spinner. */
+export const AllOrganizationsRostersLoading: Story = {
+	args: {
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		conversations: [dm, beaDm, channel, group, northwindChannel],
+		target: { type: "conversation", id: dm.id },
+		directories: {},
+		directoryStates: { tnt_1: "loading", tnt_2: "loading" },
+	},
+};
+
+/**
+ * Three organizations, one of them holding a single row: the rail scrolls and
+ * the subheaders stay reachable rather than the groups running out of height.
+ */
+export const ThreeOrganizations: Story = {
+	args: {
+		organizations: [
+			minervaOrganization,
+			northwindOrganization,
+			acmeOrganization,
+		],
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		conversations: [dm, beaDm, channel, group, northwindChannel],
+		target: { type: "conversation", id: dm.id },
+		directories: {
+			tnt_1: directoryPeople,
+			tnt_2: northwindPeople,
+			tnt_3: acmePeople,
+		},
+		directoryStates: { tnt_1: "ready", tnt_2: "ready", tnt_3: "ready" },
 	},
 };
 
@@ -959,12 +1108,17 @@ export const PeopleDisabled: Story = {
 	},
 };
 
-/** The merged scope has no single roster, and says so instead of guessing. */
+/**
+ * The union view's People section with every roster answered: one organization
+ * subheader per group, the reader's own row under each - correct, they are a
+ * member of both - and no organization caption inside a group.
+ */
 export const PeopleAllOrganizations: Story = {
 	args: {
 		scope: TEAM_BRIDGE_ALL_SCOPE,
 		conversations: [dm, beaDm, channel, group, northwindChannel],
-		people: directoryPeople,
+		directories: { tnt_1: directoryPeople, tnt_2: northwindPeople },
+		directoryStates: { tnt_1: "ready", tnt_2: "ready" },
 	},
 };
 

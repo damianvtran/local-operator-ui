@@ -73,6 +73,47 @@ export const RAIL_ROW =
 	"group/row relative flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-start text-[13px] transition-colors duration-fast ease-out-quart";
 
 /**
+ * THE ORGANIZATION SUBHEADER OF THE UNION RAIL.
+ *
+ * When one account spans several organizations, People, Chiefs of staff and the
+ * chief-of-staff audit group their rows under the organization each row would
+ * act in. The rows themselves carry NO organization caption in that case: the
+ * organization is stated ONCE, at the nearest enclosing level, and a caption
+ * under a header would repeat it and cost 8px of row height. The one invariant
+ * is therefore "caption iff no enclosing group header".
+ *
+ * TWO VOICES, ONE SIZE. The section header is chrome - `text-meta`, medium,
+ * `ink-dim`, tracked. This is a proper noun - `text-xs` (the same 12px),
+ * normal weight, `ink-muted`, untracked - so the eye reads a name inside a
+ * section rather than a second section. It is the treatment the auth/archive
+ * panels already ship for their grouped rows, which is why it is reused rather
+ * than retuned here.
+ *
+ * `inset` is the parent's horizontal inset, and it is the reason this is not a
+ * copied `px-3`: a `RailSection` already pads its children by `px-1` and its
+ * header by `ps-2`, so a group header inside it must use `ps-2` (12px from the
+ * rail edge, on the section header's axis) rather than `px-3` (16px, visibly
+ * indented). A section that carries no inset of its own passes `bare`.
+ */
+export const RailGroupHeader: FC<{
+	id: string;
+	name: string;
+	/** "rail" = inside a RailSection (which carries px-1); "bare" = no inset. */
+	inset?: "rail" | "bare";
+}> = ({ id, name, inset = "rail" }) => (
+	<h3
+		id={id}
+		className={cn(
+			// Truncation, never wrapping: a wrapped name breaks the 4px rhythm.
+			"truncate py-1 text-xs font-normal text-ink-muted",
+			inset === "bare" ? "px-3" : "ps-2 pe-1",
+		)}
+	>
+		{name}
+	</h3>
+);
+
+/**
  * How a rail row hosts its profile card (operator report 2026-10-26: clicking a
  * person showed the card instead of opening the conversation). A row's click is
  * its conversation, so the card never opens on click or focus. A pointer resting
