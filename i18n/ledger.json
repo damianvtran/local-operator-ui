@@ -58188,6 +58188,223 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.search",
+			"source_sha256": "b7d1a506f2224ac92a275ab062b4b4a77485831abb2bfca00d1494dc12316282",
+			"target_sha256": "fee575ab2dc62a418f620a93ac48f52faebc68f0ed9dd757f1b1c3ea8ae0e058",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "radient/auto",
+					"date": "2026-10-29",
+					"result": "clean",
+					"instance": "c985c3419660-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/c985c3419660-fr.json",
+					"receipt_sha256": "0590caaa896fd442033deb19901a3eebf4c72f5dd055884fbf3796cb8a01aee7",
+					"scope": "All 18 ui.settings.search keys. ICU argument parity, CLDR plural-category set and placeholder bytes re-derived mechanically from an independent read of the English source and its context sidecar; meaning and register checked against the locale style guide and the core glossary; terminology checked against the locale's own settings filter bar, settings navigation and command palette.",
+					"note": "Full 18-key independent read; ICU/CLDR/placeholder parity re-derived; terminology matches the fr settings filter bar, navigation and palette. No findings."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.settings.search",
+			"source_sha256": "b7d1a506f2224ac92a275ab062b4b4a77485831abb2bfca00d1494dc12316282",
+			"target_sha256": "e0113c7c6e32f2dc7657cb1c95465826caad4b952140f0c8217658ec9b572fd0",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "radient/auto",
+					"date": "2026-10-29",
+					"result": "clean",
+					"instance": "c985c3419660-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/c985c3419660-es.json",
+					"receipt_sha256": "34177e24732c4b032a4d95a3d94b26f0434719db319ebdd6e31cc5629fd1c2b7",
+					"scope": "All 18 ui.settings.search keys. ICU argument parity, CLDR plural-category set and placeholder bytes re-derived mechanically from an independent read of the English source and its context sidecar; meaning and register checked against the locale style guide and the core glossary; terminology checked against the locale's own settings filter bar, settings navigation and command palette.",
+					"note": "Full 18-key independent read; ICU/CLDR/placeholder parity re-derived; terminology matches the es settings filter bar, navigation and palette. No findings."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.settings.search",
+			"source_sha256": "b7d1a506f2224ac92a275ab062b4b4a77485831abb2bfca00d1494dc12316282",
+			"target_sha256": "2fd4ae0d169af2d458949af47f5e4303be12649bffdf63cd183fa1c489f92684",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "radient/auto",
+					"date": "2026-10-29",
+					"result": "clean",
+					"instance": "c985c3419660-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/c985c3419660-zh-cn.json",
+					"receipt_sha256": "eafc1b7ead4d392c7d569e263e6289ae0a3ba5e5e2a80d9478eed946a9d173b1",
+					"scope": "All 18 ui.settings.search keys. ICU argument parity, CLDR plural-category set and placeholder bytes re-derived mechanically from an independent read of the English source and its context sidecar; meaning and register checked against the locale style guide and the core glossary; terminology checked against the locale's own settings filter bar, settings navigation and command palette.",
+					"note": "Full 18-key independent read; ICU/CLDR parity re-derived; 设置/分区/配置键/说明 verified against the zh-CN settings surface. No findings."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.settings.search",
+			"source_sha256": "b7d1a506f2224ac92a275ab062b4b4a77485831abb2bfca00d1494dc12316282",
+			"target_sha256": "7437ad51dbe5700f253b746e50064bceacb064ba08530e60d57e453ca98ba183",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "radient/auto",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "c985c3419660-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/c985c3419660-ru.json",
+					"receipt_sha256": "c6b329d26de2538cbac715565a4bbab93c48d9009648b04b22fcd5c6d92b6706",
+					"scope": "All 18 ui.settings.search keys. ICU argument parity, CLDR plural-category set and placeholder bytes re-derived mechanically from an independent read of the English source and its context sidecar; meaning and register checked against the locale style guide and the core glossary; terminology checked against the locale's own settings filter bar, settings navigation and command palette.",
+					"note": "Full 18-key independent read; 1 nit: row.section_hint omits the «ёлочки» the ru catalogue uses for a named section. No blocker/major."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.settings.search",
+			"source_sha256": "b7d1a506f2224ac92a275ab062b4b4a77485831abb2bfca00d1494dc12316282",
+			"target_sha256": "803aa976583ca083f0ccefb7b7ebbeb5a918f412c3434226046fa3e7c29bcd36",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "radient/auto",
+					"date": "2026-10-29",
+					"result": "clean",
+					"instance": "c985c3419660-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/c985c3419660-vi.json",
+					"receipt_sha256": "85278c8ddc33545e06608f296456b5102045df7a6821c3c8b61391c6fe8c3ab2",
+					"scope": "All 18 ui.settings.search keys. ICU argument parity, CLDR plural-category set and placeholder bytes re-derived mechanically from an independent read of the English source and its context sidecar; meaning and register checked against the locale style guide and the core glossary; terminology checked against the locale's own settings filter bar, settings navigation and command palette.",
+					"note": "Full 18-key independent read; ICU/CLDR parity re-derived; 'khớp mục' accepted because the vi settings sidebar names its sections Các mục cài đặt. No findings."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.settings.search",
+			"source_sha256": "b7d1a506f2224ac92a275ab062b4b4a77485831abb2bfca00d1494dc12316282",
+			"target_sha256": "16a4ad69fd3865dddce1486bea04b6d011506fef826481c5cab9dd46110dbc52",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "radient/auto",
+					"date": "2026-10-29",
+					"result": "clean-with-findings",
+					"instance": "c985c3419660-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/c985c3419660-ur.json",
+					"receipt_sha256": "de94555c81f42affa49f133175493d941223834fef58fcf053be7114f6100dc6",
+					"scope": "All 18 ui.settings.search keys. ICU argument parity, CLDR plural-category set and placeholder bytes re-derived mechanically from an independent read of the English source and its context sidecar; meaning and register checked against the locale style guide and the core glossary; terminology checked against the locale's own settings filter bar, settings navigation and command palette.",
+					"note": "Full 18-key independent read; 1 minor: reason.description uses تفصیل where the settings surface uses وضاحت. No blocker/major."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.settings.search",
+			"source_sha256": "b7d1a506f2224ac92a275ab062b4b4a77485831abb2bfca00d1494dc12316282",
+			"target_sha256": "c42866c7b51cad6fc1f8b22e772cd1296652e2a0e0cefd97b845247c63d5e03d",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-30"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "radient/auto",
+					"date": "2026-10-29",
+					"result": "clean",
+					"instance": "c985c3419660-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/c985c3419660-hi.json",
+					"receipt_sha256": "b26639f7576692154ba520393f49752d7b72013a832ae94deb892e5db0f6803e",
+					"scope": "All 18 ui.settings.search keys. ICU argument parity, CLDR plural-category set and placeholder bytes re-derived mechanically from an independent read of the English source and its context sidecar; meaning and register checked against the locale style guide and the core glossary; terminology checked against the locale's own settings filter bar, settings navigation and command palette.",
+					"note": "Full 18-key independent read; ICU/CLDR parity re-derived; कुंजी/विवरण/नाम verified against the hi settings filter bar and palette. No findings."
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
