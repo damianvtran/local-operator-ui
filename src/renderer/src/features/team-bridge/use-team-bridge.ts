@@ -25,7 +25,10 @@
  * mounted page, which is the renderer's own view state; nothing is written to
  * disk and no message body is included in the unread read at all.
  */
-import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
+import {
+	TeamBridgeApi,
+	requireBridgeWriteAccount,
+} from "@shared/api/local-operator/team-bridge-api";
 import { observedRadientAuthority } from "@shared/hooks/radient-account-authority";
 import {
 	type QueryClient,
@@ -38,13 +41,14 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import type { AgentMessagesStatus } from "../../../../shared/agent-messages-contract";
 import type {
 	TeamBridgeConversation,
 	TeamBridgeConversationList,
 	TeamBridgeDirectory,
 	TeamBridgeDirectoryMember,
+	TeamBridgeMemberInput,
 	TeamBridgeMessagePage,
 	TeamBridgeNotify,
 	TeamBridgeReadState,
@@ -310,16 +314,34 @@ export function useTeamBridgeDirectory(
  * under the SAME per-tenant key as the People read, so switching into an
  * organization afterwards is a cache hit rather than a second fetch.
  *
- * Returns the loaded rosters by tenant; a pending or failed read is simply
- * absent, and its senders fall back to the unknown placeholder.
+ * Returns the loaded rosters by tenant, plus each read's OWN state.
+ *
+ * WHY THE STATE IS PART OF THE ANSWER (review round 1, F1). Naming a sender can
+ * afford to treat "pending" and "failed" identically - both fall back to the
+ * unknown placeholder - but the member picker cannot: it renders a roster and a
+ * retry, and a roster that never arrives looks like a spinner that never ends.
+ * Collapsing the two here meant a failed directory read in the merged view (the
+ * default for anyone in more than one organization) presented as "loading
+ * forever", and the retry it offered was wired to a DISABLED query, so the
+ * button could not do anything either. `retry` therefore addresses ONE tenant's
+ * read, which is the one the open conversation belongs to.
  */
+export type TeamBridgeDirectoryReads = {
+	/** Loaded rosters by tenant; a pending or failed read is absent. */
+	members: Readonly<Record<string, readonly TeamBridgeDirectoryMember[]>>;
+	/** Per-tenant read state, so a failed read is never drawn as a pending one. */
+	state: Readonly<Record<string, "loading" | "error" | "ready">>;
+	/** Re-run one organization's read; a tenant with no mounted read is a no-op. */
+	retry: (tenantId: string) => void;
+};
+
 export function useTeamBridgeDirectories(
 	tenantIds: readonly string[],
 	enabled = true,
 	accountId?: string,
-): Readonly<Record<string, readonly TeamBridgeDirectoryMember[]>> {
+): TeamBridgeDirectoryReads {
 	const client = useQueryClient();
-	return useQueries({
+	const results = useQueries({
 		queries: tenantIds.map((tenantId) => ({
 			queryKey: teamBridgeKeys.directory(
 				tenantId,
@@ -334,14 +356,34 @@ export function useTeamBridgeDirectories(
 			refetchOnWindowFocus: true,
 			retry: 1,
 		})),
-		combine: (results) => {
-			const byTenant: Record<string, readonly TeamBridgeDirectoryMember[]> = {};
-			results.forEach((result, index) => {
-				if (result.data) byTenant[tenantIds[index]] = result.data.members;
-			});
-			return byTenant;
-		},
 	});
+	return useMemo(() => {
+		const members: Record<string, readonly TeamBridgeDirectoryMember[]> = {};
+		const state: Record<string, "loading" | "error" | "ready"> = {};
+		const byTenant = new Map<string, () => void>();
+		results.forEach((result, index) => {
+			const tenantId = tenantIds[index];
+			if (result.data) members[tenantId] = result.data.members;
+			state[tenantId] = result.isPending
+				? "loading"
+				: result.isError
+					? "error"
+					: "ready";
+			byTenant.set(tenantId, () => {
+				void result.refetch();
+			});
+		});
+		return {
+			members,
+			state,
+			retry: (tenantId: string) => {
+				byTenant.get(tenantId)?.();
+			},
+		};
+		// `results` is a fresh array per render; the derivations above are keyed
+		// on the tenants and are cheap, so the memo exists to keep ONE object
+		// shape for its consumers rather than to memoize the work.
+	}, [results, tenantIds]);
 }
 
 /**
@@ -479,7 +521,7 @@ export function useSendTeamBridgeMessage(
 			return TeamBridgeApi.send(target.conversationId, {
 				...input,
 				tenantId: target.tenantId,
-				expectedAccountId: target.accountId,
+				expectedAccountId: requireBridgeWriteAccount(target.accountId),
 			});
 		},
 		onSuccess: (_data, { target }) =>
@@ -791,6 +833,124 @@ export function useMarkTeamBridgeRead(
 		tenantId,
 	}));
 }
+/** The member routes need the captured owner and nothing else: the
+ * conversation and tenant travel in the variables, so one hook can serve any
+ * conversation the dialog is opened on. */
+type MemberWriteTarget = ReturnType<typeof useBridgeOwner>;
+
+export type TeamBridgeMemberMutationVariables = {
+	conversationId: string;
+	tenantId: string;
+	key: string;
+};
+
+export type TeamBridgeAddMembersVariables =
+	TeamBridgeMemberMutationVariables & {
+		members: TeamBridgeMemberInput[];
+	};
+
+export type TeamBridgeRemoveMemberVariables =
+	TeamBridgeMemberMutationVariables & {
+		accountId: string;
+	};
+
+/**
+ * Invite without optimistic activation. The response's member states replace
+ * every cached copy of the conversation; a later refetch reconciles any other
+ * members' changes. An invited agent never becomes active in this write path.
+ */
+export function useAddTeamBridgeMembers(): UseMutationResult<
+	TeamBridgeConversation,
+	Error,
+	TeamBridgeAddMembersVariables
+> {
+	const client = useQueryClient();
+	const owner = useBridgeOwner();
+	const mutation = useMutation<
+		TeamBridgeConversation,
+		Error,
+		CapturedBridgeMutation<TeamBridgeAddMembersVariables, MemberWriteTarget>
+	>({
+		mutationFn: ({ input, target }) => {
+			target.assertCurrent();
+			return TeamBridgeApi.addMembers({
+				conversationId: input.conversationId,
+				tenantId: input.tenantId,
+				expectedAccountId: target.accountId,
+				members: input.members,
+			});
+		},
+		onSuccess: async (updated, { target }) => {
+			if (!target.isCurrent()) return;
+			replaceCachedConversation(client, target.accountId, updated);
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.conversationsPrefix,
+			});
+		},
+	});
+	return bindBridgeMutation(mutation, () => owner);
+}
+
+/** Remove only the named member; no optimistic departure is fabricated. */
+export function useRemoveTeamBridgeMember(): UseMutationResult<
+	TeamBridgeConversation,
+	Error,
+	TeamBridgeRemoveMemberVariables
+> {
+	const client = useQueryClient();
+	const owner = useBridgeOwner();
+	const mutation = useMutation<
+		TeamBridgeConversation,
+		Error,
+		CapturedBridgeMutation<TeamBridgeRemoveMemberVariables, MemberWriteTarget>
+	>({
+		mutationFn: ({ input, target }) => {
+			target.assertCurrent();
+			return TeamBridgeApi.removeMember({
+				conversationId: input.conversationId,
+				tenantId: input.tenantId,
+				expectedAccountId: target.accountId,
+				accountId: input.accountId,
+			});
+		},
+		onSuccess: async (updated, { target }) => {
+			if (!target.isCurrent()) return;
+			replaceCachedConversation(client, target.accountId, updated);
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.conversationsPrefix,
+			});
+		},
+	});
+	return bindBridgeMutation(mutation, () => owner);
+}
+
+/** Keep live and merged lists in the same membership state after a write. */
+function replaceCachedConversation(
+	client: QueryClient,
+	accountId: string | undefined,
+	updated: TeamBridgeConversation,
+): void {
+	const owned = {
+		queryKey: teamBridgeKeys.conversationsPrefix,
+		predicate: (query: { queryKey: QueryKey }) =>
+			query.queryKey.at(-1) === accountId &&
+			query.queryKey.at(-2) === "account",
+	};
+	client.setQueriesData<TeamBridgeConversationList>(owned, (page) =>
+		page === undefined
+			? page
+			: {
+					...page,
+					conversations: page.conversations.map((conversation) =>
+						conversation.id === updated.id &&
+						conversation.tenant_id === updated.tenant_id
+							? updated
+							: conversation,
+					),
+				},
+	);
+}
+
 export function useCreateTeamBridgeConversation(
 	tenantId?: string,
 	isCurrent: () => boolean = () => true,

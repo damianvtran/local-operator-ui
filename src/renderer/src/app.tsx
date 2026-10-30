@@ -11,6 +11,7 @@ import {
 
 import { AgentMessagesOnboarding } from "@features/agent-messages/agent-messages-onboarding";
 import { useAgentMessagesBusy } from "@features/agent-messages/use-agent-messages-busy";
+import { useAidaTarget } from "@features/aida/use-aida-target";
 import { useConsentAttentionLifetime } from "@features/browser/hooks/use-consent-attention-lifetime";
 // ChatPage is the boot route (/ redirects to /chat), so it stays statically
 // imported: lazy-loading it would put a Suspense fallback on first paint.
@@ -36,6 +37,7 @@ import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
 import { ConnectProviderDialog } from "@features/providers/connect-provider-dialog";
 import { SessionSwitcher } from "@features/session-switcher/components/session-switcher";
+import { useSyncRecordingClaims } from "@features/settings/components/keyboard-shortcuts-section";
 import { LanguageDialog } from "@features/settings/components/language-dialog";
 import { useTeamBridgeNotificationOpen } from "@features/team-bridge/use-team-bridge-notification-open";
 import { useTeamBridgeNotifications } from "@features/team-bridge/use-team-bridge-notifications";
@@ -166,6 +168,7 @@ const BrowserWebauthnPrompt = lazy(() =>
  */
 const App: FC = () => {
 	useI18nLocale();
+	useSyncRecordingClaims();
 	/*
 	 * The window chrome's live half: which sides the OS put its controls on, and the
 	 * full-screen fact. Mounted once, here, because it writes attributes on the
@@ -412,6 +415,10 @@ const App: FC = () => {
 	 * here rather than re-derived (design §10.4's "the pane opens only if the app
 	 * is displaying that session").
 	 */
+	const aidaCapabilities = useDesktopCapabilities();
+	const durableAida = useAidaTarget(
+		desktopFeatureEnabled(aidaCapabilities.data, "aida", 1),
+	);
 	const displayedSessionId = useCanonicalSessionsStore((state) => {
 		const draft = state.activeDraftKey
 			? state.drafts[state.activeDraftKey]
@@ -882,9 +889,7 @@ const App: FC = () => {
 							isCreateAgentDialogOpen ||
 							agentMessagesBusy
 						}
-						sessionId={
-							pathname.startsWith("/chat") ? (displayedSessionId ?? null) : null
-						}
+						sessionId={durableAida.data?.session_id ?? null}
 					/>
 
 					<LowCreditsDialog

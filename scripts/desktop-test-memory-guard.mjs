@@ -108,23 +108,60 @@ export const MEMORY_BUDGET_OVERRIDE_ENV =
  */
 export const _TOTAL_SHARE = 0.25;
 
-/** Floor, MB. MEASURED, 2026-09-30, one real `pnpm test:desktop` over the 330-file
- * list at the governor's concurrency of 7, sampled every 2 s with this file's own
- * `sampleGroup`: peak `max(footprint, rss)` tree total **3,041 MB** (footprint
- * 2,850 MB, RSS 2,077 MB at that sample, 19 processes there; summed-RSS peak 2,077
- * MB across up to 32). The first revision argued 6 GB from the older ~1.2 GB
- * summed-RSS figure, which is a different quantity from what the trip compares,
- * and 6 GB is only 2x the real one. 8 GB is 2.7x it: a legitimately heavy new
- * file has room, a false kill (which teaches people to switch the bound off)
- * stays implausible, and the incident's 198 GB trips with orders of magnitude to
- * spare. (That run had 28 failures coinciding with ENOSPC on this host's disk, so
- * its peak is a floor on a healthy run's, not a ceiling; the margin is why.) */
-export const _BUDGET_FLOOR_MB = 8192;
+/** Floor, MB. 9,728 MB = 9.5 GB.
+ *
+ * THE DEVELOPMENT HOST'S FIGURE, still the lower bound: MEASURED 2026-09-30, one
+ * real `pnpm test:desktop` over the 330-file list at the governor's concurrency
+ * of 7, sampled every 2 s with this file's own `sampleGroup`: peak
+ * `max(footprint, rss)` tree total **3,041 MB** (footprint 2,850 MB, RSS 2,077 MB
+ * at that sample, 19 processes there; summed-RSS peak 2,077 MB across up to 32).
+ * The first revision argued 6 GB from the older ~1.2 GB summed-RSS figure, which
+ * is a different quantity from what the trip compares, and 6 GB is only 2x the
+ * real one. The 198 GB incident still trips with orders of magnitude to spare.
+ * (That run had 28 failures coinciding with ENOSPC on this host's disk, so its
+ * peak is a floor on a healthy run's, not a ceiling; the margin is why.)
+ *
+ * WHAT MOVED IT TO 9.5 GB: THE HOSTED RUNNER'S OWN PEAKS. On the 16 GB CI runner
+ * (`totalmem()` reports 15,983 MB) the sharded suite peaks far above 8 GB on an
+ * INVENTORY THAT IS IDENTICAL RUN TO RUN, and the guard killed four such runs
+ * with no failing test — every one `rc=137 pass= fail=`:
+ *
+ *   7.9 GB  run 40992181176 (shard 2/3)     8.2 GB  run 40996898976 (shard 2/3)
+ *   8.5 GB  run 41030488151 (shard 0/4)     9.4 GB  run 41040832734 (shard 1/4)
+ *
+ * Four shards did not move that peak, and neither did splitting the heaviest file
+ * into two self-contained halves: those halves measure 374 MB and 388 MB alone,
+ * so the peak is a property of the AGGREGATED corpus at concurrency 3 and not of
+ * any one file. That is why this is a capacity constant and not a hunt for a
+ * heavy file — the bound sat below the healthy peak, so it killed healthy runs.
+ *
+ * 9.5 GB clears the highest measured kill (9.4 GB) while still leaving the 16 GB
+ * runner ~6 GB for the OS, pnpm and esbuild. The margin over 9.4 GB is 100 MB and
+ * deliberately thin: this is a bound set from measurements, not open headroom. A
+ * future kill AT OR ABOVE 9.5 GB is a new measurement and a reason to raise this
+ * again with its own run id — never a reason to switch the bound off. */
+export const _BUDGET_FLOOR_MB = 9728;
 
 /** Ceiling as a fraction of physical RAM, so a small host's floor cannot exceed
- * what the machine can actually give (the floor alone would be 75% of an 8 GB
- * box). */
-export const _BUDGET_CEILING_SHARE = 0.5;
+ * what the machine can actually give (the 9.5 GB floor alone would be 116% of an
+ * 8 GB box: a bound that could never fire, i.e. no bound at all).
+ *
+ * WHY 0.625 AND NOT 0.5. At 0.5 this ceiling — not the floor — was the number the
+ * 16 GB hosted runner actually ran under: `min(max(8,192, 0.25 x 15,983),
+ * 0.5 x 15,983)` = `min(8,192, 7,991)` = **7,991 MB = 7.8 GB**, which is below
+ * every peak in the kills listed on the floor above. So a floor raise on its own
+ * would have changed nothing on the only host that was dying (a 9,728 MB floor
+ * still meets a 7,991 MB cap), and any floor above 50% of a host's RAM needs a
+ * ceiling above 50% before it can be reached.
+ *
+ * 0.625 = 5/8 is the smallest exact binary fraction that clears it: the floor
+ * needs 9,728 / 15,983 = 60.87%, so with 0.625 the floor is the operative bound
+ * on any hosted runner down to 15.2 GB (15,565 MB) and the printed line stays a
+ * clean `capped at 62.5%` (a non-binary fraction such as 0.65 prints
+ * 65.00000000000001). The ceiling keeps its original job: an 8 GB box is capped
+ * at 5,120 MB and a 16 GiB box at 10,240 MB, so no small host is handed a bound
+ * larger than the memory it has. */
+export const _BUDGET_CEILING_SHARE = 0.625;
 
 /** Milliseconds between the end of one tick and the start of the next. See the
  * THE PROBE section for the cost this was chosen against. */
@@ -190,9 +227,12 @@ function human(bytes) {
  * on CI at the same budget. A hosted runner is dedicated, so a runaway there
  * costs the job's 35-minute timeout plus an OOM-killer death with no message;
  * the watchdog turns it into a named failure in seconds. The false-positive
- * cost is what the governor stood down for, and it is nil here — 8 GB is 2.7x the
- * suite's measured peak and the floor is the budget on a 16 GB runner
- * (max(8,192, 4,096), capped at 8,192).
+ * cost is what the governor stood down for, and it is nil here — the floor is
+ * 2.7x the development host's measured peak, and on the 16 GB hosted runner
+ * (15,983 MB as it reports itself) the floor is the budget: max(9,728, 3,995) =
+ * 9,728, which the 62.5% ceiling (9,989) does not undercut. Both numbers are
+ * pinned against that 15,983 MB host in the tests, because a 16,384 MB fixture
+ * cannot tell a floor from a ceiling (there both were 8,192).
  */
 export function computeMemoryBudget({ totalMb = null, override = null }) {
 	const text =

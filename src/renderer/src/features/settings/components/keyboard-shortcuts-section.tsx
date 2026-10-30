@@ -38,6 +38,11 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 
 import { Button, Input, Label } from "@shared/components/ui";
 import {
+	recordingExternalClaims,
+	useRecordingShortcutState,
+} from "@shared/hooks/use-recording-shortcut";
+import { subscribeLocale } from "@shared/i18n";
+import {
 	END_EDIT_KEYS,
 	MODIFIER_ONLY_KEYS,
 	NAVIGATION_KEYS,
@@ -51,14 +56,17 @@ import {
 import {
 	KEYMAP_ACTIONS,
 	type KeymapAction,
+	RESERVED_CHORDS,
 } from "@shared/keymap/keymap-registry";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { Keyboard } from "lucide-react";
 import type { FC, RefObject } from "react";
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { recordingConflictVariants } from "../../../../../shared/recording-shortcut";
 import { rendererPlatform } from "../../../mini-view/renderer-platform";
 import { SettingsSection } from "./settings-section";
+import { StartRecordingShortcutRow } from "./start-recording-shortcut-row";
 
 /*
  * Tooltips use an imperative ("Open console") while these rows name the
@@ -83,7 +91,51 @@ const rowLabel = (action: KeymapAction): string => {
 	}
 };
 
+const recordingClaimLabel = () => t("ui.chat.composer.start_recording");
+
+/** Main owns the effective claims snapshot; revision ordering drops stale sends. */
+export function useSyncRecordingClaims(): void {
+	useEffect(() => {
+		let rev = 0;
+		const publish = () => {
+			const bindings = useUiPreferencesStore.getState().shortcutBindings;
+			const claims = new Map<string, string>(RESERVED_CHORDS);
+			for (const action of KEYMAP_ACTIONS) {
+				const chord = effectiveChord(action.id, bindings);
+				if (!chord) continue;
+				const label = rowLabel(action);
+				for (const variant of recordingConflictVariants(
+					chord,
+					rendererPlatform(),
+				)) {
+					claims.set(variant, label);
+				}
+			}
+			window.electron?.recordingShortcut?.syncClaims(
+				++rev,
+				[...claims].map(([chord, label]) => ({ chord, label })),
+			);
+		};
+		publish();
+		const unsubscribeBindings = useUiPreferencesStore.subscribe(
+			(state, previous) => {
+				if (state.shortcutBindings !== previous.shortcutBindings) publish();
+			},
+		);
+		const unsubscribeLocale = subscribeLocale(publish);
+		return () => {
+			unsubscribeBindings();
+			unsubscribeLocale();
+		};
+	}, []);
+}
+
 const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
+	const recordingState = useRecordingShortcutState();
+	const externalClaims = recordingExternalClaims(
+		recordingState,
+		recordingClaimLabel(),
+	);
 	useI18nLocale();
 	const fieldId = useId();
 	const fieldRef = useRef<HTMLInputElement | null>(null);
@@ -179,6 +231,7 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 						}
 						const candidate = chordFromEvent({
 							key: event.key,
+							code: event.code,
 							metaKey: event.metaKey,
 							ctrlKey: event.ctrlKey,
 							altKey: event.altKey,
@@ -189,6 +242,7 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 							action.id,
 							bindings,
 							platform,
+							externalClaims,
 						);
 						if (sentence !== null) {
 							event.preventDefault();
@@ -217,12 +271,12 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 						 * value identical to the default (U3's second half).
 						 */
 						if (candidate === action.defaultChord) {
-							setShortcutBinding(action.id, null);
+							setShortcutBinding(action.id, null, externalClaims);
 						} else if (candidate !== null) {
 							// A null candidate never reaches here (captureRefusal refuses it
 							// by name), so the chord is a real one the store will
 							// canonicalise again at its own boundary.
-							setShortcutBinding(action.id, candidate);
+							setShortcutBinding(action.id, candidate, externalClaims);
 						}
 					}}
 				/>
@@ -258,7 +312,7 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 							{ label: String(label) },
 						)}
 						onClick={() => {
-							setShortcutBinding(action.id, null);
+							setShortcutBinding(action.id, null, externalClaims);
 							fieldRef.current?.focus();
 						}}
 					>
@@ -292,7 +346,7 @@ export const KeyboardShortcutsSection: FC<{
 			)}
 			icon={Keyboard}
 			description={t(
-				"ui.settings.shortcuts.keyboard_shortcuts_section.shortcuts_for_the_panel_rail_focus_a_field_and_press_the_keys_you",
+				"ui.settings.shortcuts.keyboard_shortcuts_section.shortcut_capture_description",
 			)}
 			sectionRef={sectionRef}
 		>
@@ -314,6 +368,10 @@ export const KeyboardShortcutsSection: FC<{
 						"ui.settings.shortcuts.keyboard_shortcuts_section.browser_shortcuts_answer_only_while_the_browser_has_focus",
 					)}
 				</p>
+				<StartRecordingShortcutRow />
+				<h3 className="pt-1 text-body-sm font-medium text-ink">
+					{t("ui.settings.shortcuts.category.panels")}
+				</h3>
 				<div className="flex flex-col gap-4">
 					{KEYMAP_ACTIONS.map((action) => (
 						<ShortcutRow key={action.id} action={action} />

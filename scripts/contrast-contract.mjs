@@ -2906,6 +2906,26 @@ const PERCEPTIBLE = [
 const STRUCTURAL_CALL_SITES = [
 	{
 		/*
+		 * THE BORDERLESS ADD-REACTION CONTROL'S ONLY EXTENT IS ITS FILL.
+		 *
+		 * Design round 1 (D5) measured it at 30x28 with `border-width: 0px` and a
+		 * 1.06:1 fill against `canvas` - a control that reads as absent, not as
+		 * quiet - while its sibling chips stayed visible through their
+		 * `border-control` edge. The fix is a fill step, not a line: borderless
+		 * chrome is a standing operator requirement. The `mediaSurface` palette row
+		 * ("team bridge borderless person and agent plates") proves the VALUE clears
+		 * `canvas`, `surface`, `elevated` and `rowHover` on every palette; only this
+		 * pin can see the edit that returns the button to `sunken` or to a ground
+		 * role, which leaves every ratio above green while the control loses the
+		 * only boundary a borderless control has.
+		 */
+		what: "team bridge add-reaction control extent is its fill",
+		file: "src/renderer/src/features/team-bridge/team-bridge-reactions.tsx",
+		must: '"inline-flex min-h-7 items-center gap-1 rounded-full bg-media-surface px-2 text-ink-muted",\n\t\t\t\t\t\t\t"hover:bg-sunken hover:text-ink disabled:text-ink-dim",',
+		why: "a borderless control's only resting boundary is its fill; `sunken` sits ΔL* 2.4 off `canvas` (1.06:1) and reads as no control at all, and no palette assertion can see which class the button wears, so a green matrix would outlive the regression",
+	},
+	{
+		/*
 		 * WHY THIS PIN EXISTS ALONGSIDE THE PALETTE ROW. The row
 		 * "primary button on the danger wash" proves a filled control is legal on the
 		 * wash the failure alert is painted on; only this pin can see the edit that

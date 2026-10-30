@@ -11,13 +11,21 @@ import { test } from "node:test";
  * scroller (`min-h-0 max-h-[60%] overflow-y-auto`) that clipped the ring's top
  * edge - the operator's report. `pt-1` (4px) was the room.
  *
- * WHAT CHANGED, AND WHY THIS FILE CHANGED WITH IT. The page no longer draws a
- * composer: it mounts the shared `MessageInput`, which draws its own box and ring
- * and BOUNDS ITS OWN growable parts, which is why hosting it inside a scroller is
- * wrong rather than merely tight - a bounded ancestor re-introduces the clipped
- * ring and nests a second scroller. So the assertion is about ANCESTORS: no
- * element that encloses the composer mount may be a bounded scroller
- * (`max-h-*` together with an `overflow-*` that actually clips y).
+ * WHAT CHANGED, AND WHY THIS FILE CHANGED WITH IT AGAIN (operator report,
+ * 2026-10-30). The page mounts the shared `MessageInput` for a while; it does not
+ * now. Team Bridge owns its composer again (`team-bridge-composer.tsx`), because
+ * the chat pane's card is the wrong shell for a messaging pane, and THE RING MOVED
+ * BACK WITH IT: the bar promotes `textarea:focus-visible` to itself and lives in
+ * that file, so the page no longer carries the ring at all.
+ *
+ * The assertions therefore keep their subject and change their direction:
+ *   - the ring must exist ONCE, in the composer file, and the page must not draw
+ *     a second one;
+ *   - no bounded scroller may enclose the mount - a bounded ancestor clips the
+ *     ring and nests a second scroller;
+ *   - the host band keeps the ring's 4px of top room and now OWNS the single
+ *     bottom inset, because nothing may sit between the bar and the pane's own
+ *     padding (a row below the box is the dead strip the layout is judged on).
  *
  * FAIL-CLOSED, WHICH THE FIRST VERSION WAS NOT (review round 1, R1-5): it read
  * only the nearest literal div before the mount, so re-wrapping the band in a NEW
@@ -105,48 +113,49 @@ const page = readFileSync(
 	"utf8",
 );
 
-const IMPORT_MESSAGE_INPUT =
-	/import\s*\{[^}]*\bMessageInput\b[^}]*\}\s*from\s*"@shared\/components\/composer"/;
-const RENDER_MESSAGE_INPUT = /<MessageInput\b/;
 const PX_4 = /\bpx-4\b/;
 
-test("the page mounts the shared composer instead of drawing one", () => {
+const IMPORT_TEAM_BRIDGE_COMPOSER =
+	/import\s*\{[^}]*\bTeamBridgeComposer\b[^}]*\}\s*from\s*"\.\/team-bridge-composer"/;
+const RENDER_TEAM_BRIDGE_COMPOSER = /<TeamBridgeComposer\b/;
+const MOUNT = "<TeamBridgeComposer";
+const composer = readFileSync(
+	"src/renderer/src/features/team-bridge/team-bridge-composer.tsx",
+	"utf8",
+);
+
+test("the page mounts Team Bridge's own composer, and only that one", () => {
 	assert.match(
 		page,
-		IMPORT_MESSAGE_INPUT,
-		"the page imports MessageInput from the shared composer",
+		IMPORT_TEAM_BRIDGE_COMPOSER,
+		"the page imports its own composer",
 	);
-	assert.match(
-		page,
-		RENDER_MESSAGE_INPUT,
-		"the page renders its own <MessageInput />",
+	assert.match(page, RENDER_TEAM_BRIDGE_COMPOSER, "the page renders it");
+	// The shared chat composer is the shell this arrangement exists to keep out: it
+	// carries the chat pane's measures, a status row and an action row, which is a
+	// 110px card where a messaging pane wants a 46px bar.
+	assert.equal(
+		page.match(/MessageInput/g)?.length ?? 0,
+		0,
+		"the page neither imports nor renders the shared chat composer",
 	);
-	// A second composer beside the shared one is the defect this change exists to
-	// remove: the bespoke textarea, its strip and its attach button are all gone.
 	assert.equal(
 		page.match(/<textarea/g)?.length ?? 0,
 		0,
-		"the page draws no textarea of its own",
+		"the page draws no textarea of its own - the composer does",
 	);
+	// ONE RING, IN THE FILE THAT DRAWS THE BOX. Asserted as an equality rather than
+	// a presence check: a second promotion in the page is a second ring on screen.
 	assert.equal(
-		page.match(/TeamBridgeAttachButton/g)?.length ?? 0,
-		0,
-		"the page renders no bridge attach button",
+		composer.split(RING).length - 1,
+		1,
+		"the composer promotes the ring exactly once",
 	);
-	assert.equal(
-		page.match(/TeamBridgeAttachmentStrip/g)?.length ?? 0,
-		0,
-		"the page renders no bridge attachment strip",
-	);
-	assert.equal(
-		page.indexOf(RING),
-		-1,
-		"the page no longer promotes the ring itself - the shared composer owns it",
-	);
+	assert.equal(page.indexOf(RING), -1, "the page does not promote the ring");
 });
 
 test("no bounded scroller encloses the composer (R3)", () => {
-	const mount = page.indexOf("<MessageInput");
+	const mount = page.indexOf(MOUNT);
 	assert.notEqual(mount, -1);
 	const bounded = boundedScrollersAround(page, mount);
 	assert.deepEqual(
@@ -162,27 +171,31 @@ test("no bounded scroller encloses the composer (R3)", () => {
 	);
 });
 
-test("the composer's band carries the ring room and adds no second bottom inset", () => {
-	const mount = page.indexOf("<MessageInput");
+test("the host band carries the ring room and the pane's one bottom inset", () => {
+	const mount = page.indexOf(MOUNT);
 	// The band is the literal div that opens the block the composer sits in; the
 	// alerts between the two are paragraphs, so this is that element.
 	const band = [...page.slice(0, mount).matchAll(LITERAL_DIV_OPEN)].at(-1)?.[1];
 	assert.ok(band, "the composer has a band");
 	assert.doesNotMatch(band, BOUNDED, `band pins a height (${band})`);
 	assert.doesNotMatch(band, CLIPS_Y, `band clips (${band})`);
-	// Room is still owed: the ring paints 4px outside the box, into the band's own
+	// Room is owed: the ring paints 4px outside the box, into the band's own
 	// padding box.
 	assert.ok(
 		topPaddingPx(band) >= 4,
 		`the band pads its top ${topPaddingPx(band)}px but the ring paints 4px outside the box (${band})`,
 	);
 	assert.match(band, PX_4);
-	// ONE bottom inset (review round 1, R1-8): the composer's own band supplies it,
-	// so the host band must not add a second.
+	/*
+	 * ONE BOTTOM INSET, AND IT IS THE PANE'S OWN (operator's criterion 1). The bar
+	 * supplies no bottom padding of its own and nothing may be rendered between it
+	 * and the pane's edge, so this padding is the whole distance from the bar's
+	 * bottom edge to the pane's.
+	 */
 	assert.equal(
 		bottomPaddingPx(band),
-		0,
-		`the host band adds its own bottom padding on top of the composer's (${band})`,
+		16,
+		`the host band must hold the pane's own 16px under the bar (${band})`,
 	);
 	assert.equal(page.indexOf("max-h-[60%]"), -1, "the old scroller is gone");
 });
@@ -214,11 +227,8 @@ test("a re-wrapped band fails the ancestor rule (negative control)", () => {
 		"min-h-0 max-h-[60%] shrink-0 overflow-y-auto px-4 pt-1 pb-4",
 		"min-h-0 max-h-[70%] shrink-0 overflow-y-auto",
 	]) {
-		const rewrapped = `<section>\n<div className="${wrapper}">\n<div className="flex min-w-0 shrink-0 flex-col gap-2 px-4 pt-1">\n<MessageInput />`;
-		const found = boundedScrollersAround(
-			rewrapped,
-			rewrapped.indexOf("<MessageInput"),
-		);
+		const rewrapped = `<section>\n<div className="${wrapper}">\n<div className="flex min-w-0 shrink-0 flex-col gap-2 px-4 pt-1">\n<TeamBridgeComposer />`;
+		const found = boundedScrollersAround(rewrapped, rewrapped.indexOf(MOUNT));
 		assert.deepEqual(
 			found,
 			[wrapper],
@@ -227,11 +237,8 @@ test("a re-wrapped band fails the ancestor rule (negative control)", () => {
 	}
 	// And it must not fire on a plain column, or every future cleanup would chase a
 	// false positive.
-	const plain = `<section>\n<div className="flex min-h-0 min-w-0 flex-1 flex-col">\n<div className="flex min-w-0 shrink-0 flex-col gap-2 px-4 pt-1">\n<MessageInput />`;
-	assert.deepEqual(
-		boundedScrollersAround(plain, plain.indexOf("<MessageInput")),
-		[],
-	);
+	const plain = `<section>\n<div className="flex min-h-0 min-w-0 flex-1 flex-col">\n<div className="flex min-w-0 shrink-0 flex-col gap-2 px-4 pt-1">\n<TeamBridgeComposer />`;
+	assert.deepEqual(boundedScrollersAround(plain, plain.indexOf(MOUNT)), []);
 });
 
 test("the thread pane composer keeps its own ring room if it clips", () => {

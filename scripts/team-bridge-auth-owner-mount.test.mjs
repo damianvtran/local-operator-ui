@@ -307,17 +307,22 @@ test("auth completion revokes private rendering before the new account read answ
 	}
 });
 
-test("old runtime refuses covered private writes before dispatch and holds stay closed", async () => {
+test("old runtime refuses covered private writes before dispatch, with the shipped surfaces mounted", async () => {
 	const app = await mount();
 	try {
 		await readyA(app);
-		assert.equal(
+		/* The fixture advertises `team_bridge_threads` and `team_bridge_reactions`,
+		 * so the shipped build retains both affordances. What this case is about is
+		 * the WRITE guard underneath them: an old runtime that answers no
+		 * `team_bridge_conversation_owner_guard` must refuse the covered write
+		 * before dispatch, whatever the surfaces look like. */
+		assert.ok(
 			app.host.querySelector('button[aria-label="Reply in thread"]'),
-			null,
+			"the advertised thread capability mounts its reply control",
 		);
-		assert.equal(
+		assert.ok(
 			app.host.querySelector('button[aria-label="Add reaction"]'),
-			null,
+			"the advertised reaction capability mounts its react control",
 		);
 		app.fixture.ownerGuard = 0;
 		app.fixture.refuse = false;
