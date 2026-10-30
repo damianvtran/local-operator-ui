@@ -3928,7 +3928,7 @@ const bridgeRows = (): TranscriptRecord[] => [
 
 /** Every Team Bridge state, collapsed. */
 export const BridgeRows: Story = {
-	render: () => <Frame height={560} records={bridgeRows()} />,
+	render: () => <Frame height={680} records={bridgeRows()} />,
 };
 
 /** The post expanded: headline, markdown body, `Posted at seq 42`, and the
