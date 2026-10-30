@@ -722,12 +722,52 @@ const served = CATALOGUE > 0 ? pagedCatalogue() : conversations;
  * evidence sets byte-identical: nothing is mutated and the feed handler is never
  * entered.
  */
+/*
+ * THE TARGET ROW'S STATUS CODE (`--row-code`), so the row a late child count lands
+ * on can carry each of the runtime's LOUDER codes. Design round 1's D1 is about
+ * exactly that coexistence: a row can be parked on an approval, failed, unread or
+ * busy AND have children running, and the runtime ranks the child count below all
+ * of them. A fixture whose only counted row is a completion cannot photograph that.
+ *
+ * Applied at STARTUP rather than with the late fact: the louder code is what the
+ * row shows at its first contentful frame, and the late fact is the children
+ * arriving underneath it.
+ */
+const ROW_CODE = arg("row-code", null);
+/** The label each code wears. Core spells these; only the row's own sentence reads them here. */
+const ROW_CODE_LABELS = {
+	delegating: "Subagents working",
+	busy: "Working",
+	waiting: "Waiting for capacity",
+	approval: "Approval needed",
+	answer: "Answer needed",
+	error: "Error",
+	wedged: "Not responding",
+	attached: "Attached",
+};
 const LATE = arg("late", "none");
 const LATE_MS = Number(arg("late-ms", "1200"));
 const LATE_ROW = arg("late-row", "b3f1a09c7d52");
 /** When the first catalogue answer went out; the late fact is timed against it. */
 let firstListAnswerAt = null;
 const FEED_EPOCH = `stub-${randomUUID()}`;
+
+/** Put the chosen code on the target row, as the runtime's own precedence would. */
+const applyRowCode = () => {
+	if (ROW_CODE === null) return false;
+	const row = served.find((entry) => entry.id === LATE_ROW);
+	if (!row) return false;
+	row.status = {
+		code: ROW_CODE,
+		label: ROW_CODE_LABELS[ROW_CODE] ?? ROW_CODE,
+	};
+	/* A parked gate is a `pending` fact on the row as well as a code: the sidebar
+	   reads both, and an approval code with no pending gate draws the gate's glyph
+	   without the row behaving like a parked one. */
+	if (ROW_CODE === "approval" || ROW_CODE === "answer") row.pending = ROW_CODE;
+	return true;
+};
+applyRowCode();
 
 /** Put the chosen fact on the target row, as a backend would after its own event. */
 const applyLateFact = () => {

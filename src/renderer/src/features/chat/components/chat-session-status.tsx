@@ -15,6 +15,7 @@ import {
 	MessageCircleQuestion,
 	MessageSquare,
 	Pause,
+	Timer,
 	WifiOff,
 } from "lucide-react";
 import {
@@ -318,34 +319,54 @@ export function ChatSessionStatus({
 	 * THE ROW'S OWN CHILDREN, DRAWN IN THIS CELL RATHER THAN BESIDE THE TITLE
 	 * (first-paint completeness, 2026-10-30).
 	 *
-	 * Both counts are optional on the wire and absent means UNKNOWN, not zero, so a
-	 * row can paint without them and gain them on the next read. A trailing glyph
-	 * is `shrink-0` and the title is the row's only `flex-1`, so a mark arriving
-	 * late took its width out of the title and re-cut the ellipsis under the
-	 * reader: measured at a 264px panel, the title's clip went 152 -> 130px and its
-	 * cut column 24 -> 21 characters 1.6 s after the first contentful frame.
+	 * WHY THEY MOVED HERE AT ALL. Both counts are optional on the wire and absent
+	 * means UNKNOWN, not zero, so a row can paint without them and gain them on the
+	 * next read. The trailing glyphs were `shrink-0` and the title is the row's only
+	 * `flex-1`, so a mark arriving late took its width out of the title and re-cut
+	 * the ellipsis under the reader: measured at a 264px panel, the title's clip went
+	 * 152 -> 130px and its cut column 24 -> 21 characters 1.6 s after the first
+	 * contentful frame. This box is `size-4` and drawn on every row whether or not it
+	 * holds a glyph, so a fact that arrives later changes what is IN the row and
+	 * never how much of the title is cut. Two alternatives were measured and refused:
+	 * a trailing lane reserved on every row cost 36px of every title (two titles that
+	 * had rendered whole went into ellipsis at 264), and a lane reserved only while
+	 * the counts were unknown merely turned the shrink into a regrow.
 	 *
-	 * THIS BOX IS THE FIX, and it needs no new reservation because it already
-	 * exists: `size-4`, drawn on every row whether or not it holds a glyph. A count
-	 * that arrives later therefore changes what is IN the row and never how much of
-	 * the title is cut - the fusion the `delegating` rung below has always
-	 * performed, generalised to every code. Two alternatives were measured and
-	 * refused: a trailing lane reserved on every row cost 36px of every title (two
-	 * titles that had rendered whole went into ellipsis at a 264px panel), and a
-	 * lane reserved only while the counts were unknown merely turned the shrink
-	 * into a regrow when they arrived.
+	 * WHICH GLYPH, AND WHY ONLY ONE CODE QUALIFIES (design round 1, D1 - BLOCKER).
+	 * The runtime already orders the facts a row can carry, and it puts child
+	 * activity near the BOTTOM: `catalog.py` ranks wedged, a parked gate, a busy or
+	 * silent runtime and an unread outcome all above `delegating`, in its own words
+	 * "the rungs above it are all LOUDER facts about the row rather than about its
+	 * children". `resume.SessionRow.delegating` is non-None whenever any child runs or
+	 * queues, so a live count only ever coexists with a LOUDER code - and a first cut
+	 * of this change asked the counts first, which meant it never ADDED a mark, it
+	 * only HID the louder one: an approval row lost its parked-gate bubble, an error
+	 * row lost its alert, an unread completion lost its check (while the bulk control
+	 * still counted it as unread), and the one animated busy row stopped animating.
 	 *
-	 * WHAT IS DISPLACED, stated rather than hidden: a row with children at work
-	 * shows the trio instead of its status glyph, and a row with running AND queued
-	 * children shows the trio (running wins the one cell). No fact is lost from the
-	 * NAME channel - the row's own sentence carries both counts through
-	 * `subagentClause`, and its tooltip repeats them - which is the "never announce
-	 * less than the pixels" rule this row already holds itself to.
+	 * So the cell asks the CODE, not the counts: `delegating` is the one rung where
+	 * child activity IS the row's top fact, and it is the rung that already drew this
+	 * mark before the change. Every louder code keeps its own glyph, and the counts it
+	 * carries stay in the name channel (below). Under that rule the trio also stops
+	 * being ambiguous between `delegating` and "children running under another code"
+	 * (D3): only `delegating` can draw it.
+	 *
+	 * THE QUEUED STATE HAS ITS OWN SILHOUETTE (D2). It used to be an `Hourglass`,
+	 * which is the glyph of `waiting` in this same cell and was told apart by ink
+	 * alone - two states, one picture. It is a `Timer` now: still "not started yet",
+	 * and a silhouette nothing else in this cell wears.
 	 */
 	const subagents = subagentMarks(row);
-	const runningChildren = subagents.running;
-	const queuedChildren = subagents.queued && !runningChildren;
 	/*
+	 * THE RAW COUNTS, not the predicate's suppression. `subagentMarks` blanks the
+	 * running half on `delegating` (this cell IS that fact there), so asking it which
+	 * half is live would read "nothing running" on exactly the row whose children are
+	 * running - and a queue that arrives alongside running children would draw the
+	 * queue's glyph instead of the trio.
+	 */
+	const childrenRunning =
+		typeof row.subagents_running === "number" && row.subagents_running > 0;
+	const queuedOnly = subagents.queued && !childrenRunning; /*
 	 * WHAT THIS ROW IS DRAWING, asked of the ONE predicate (`unreadMarkKind`) the
 	 * accessible name below, the sidebar row's tooltip and the bulk control's
 	 * count all ask. It reads `status.code`, which is the runtime's own
@@ -480,28 +501,30 @@ export function ChatSessionStatus({
 		 * same words to the accessibility tree.
 		 */
 		<span className="flex size-4 shrink-0">
-			{delegating || runningChildren ? (
-				/*
-				 * `mark` ONLY WHERE THE MARK STANDS FOR THE ROW'S OWN RUNNING SUBAGENTS. The
-				 * `delegating` rung shares the component but keeps the hook off (its status
-				 * glyph IS that fact); a row whose children run under any other code gets the
-				 * hook, which is the node this row's tests and the evidence rigs address.
-				 *
-				 * THE INK IS THE LIVENESS ROLE rather than `ink`, which is the STATUS's
-				 * colour: this mark is about the children, not the session's state, so it keeps
-				 * the `text-accent` the trailing glyph wore before it moved here.
-				 */
-				<SubagentRunningMark
-					className="size-4 text-accent"
-					mark={delegating ? undefined : "running"}
-				/>
-			) : queuedChildren ? (
-				<Hourglass
-					aria-hidden="true"
-					data-subagent-mark="queued"
-					className="size-4 text-ink-muted"
-				/>
+			{delegating ? (
+				queuedOnly ? (
+					/*
+					 * A QUEUE WITH NOTHING RUNNING is the one child fact the trio cannot
+					 * carry, so it takes the cell - and it takes it by the same rule as the
+					 * trio: only on the rung whose top fact is what its children are doing.
+					 */
+					<Timer
+						aria-hidden="true"
+						data-subagent-mark="queued"
+						className="size-4 text-ink-muted"
+					/>
+				) : (
+					<SubagentRunningMark className={cn("size-4", ink)} />
+				)
 			) : (
+				/*
+				 * EVERY OTHER CODE KEEPS ITS OWN GLYPH (D1). A row can carry a live child
+				 * count under an approval, an error, an unread completion or a spinner, and
+				 * in every one of those the child count is the quieter fact: the runtime
+				 * ranks it below them, the row's own sentence still carries it, and hiding
+				 * the louder glyph to show it turns "waiting for you" into "work in
+				 * progress".
+				 */
 				<Icon className={cn("size-4", ink)} aria-hidden="true" />
 			)}
 			<span className="sr-only">
