@@ -1348,15 +1348,28 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		 * a different message, so it gets a different key.
 		 */
 		const attempt = pendingSend.current;
-		// Three cases. A retry of the failed attempt keeps its key. A DIFFERENT message
-		// after a failed attempt gets a fresh one (the failed key may have landed). With no
-		// attempt in flight the draft's key is unspent - a success rotates it below, and a
-		// discarded schedule already re-minted it - so it is the one to use.
-		const clientRef = attempt
-			? attempt.body === body
+		/*
+		 * ONLY A LIVE FAILED ATTEMPT IS A RETRY. Its key is reused so an ambiguous failure
+		 * (request landed, answer lost) cannot post twice; every other send is a new
+		 * message and mints a new key.
+		 *
+		 * The persisted draft key is deliberately NOT trusted. A draft written by a build
+		 * before this fix holds a key that was already spent, and the hub answers a spent
+		 * key carrying the same text by REPLAYING the stored message: 200, the composer
+		 * clears, and no new row exists - the "swallowed" sends seen in production
+		 * (three 200s, no rows, no wake for the recipient). Nothing on the client can tell
+		 * a spent key from an in-flight one after a restart, so the only safe reading of
+		 * a bare draft key is "maybe spent".
+		 *
+		 * The cost, accepted on purpose: if the app restarts between a send landing and
+		 * its answer arriving, and the reader then presses Send on the same text, the hub
+		 * sees a new key and posts a visible duplicate. A visible, deletable duplicate in
+		 * that rare case beats an invisible swallow in the common one.
+		 */
+		const clientRef =
+			attempt && attempt.body === body
 				? attempt.clientRef
-				: crypto.randomUUID()
-			: (draftState.current?.clientRef ?? crypto.randomUUID());
+				: crypto.randomUUID();
 		// A new message starts with a clean slate; a retry of the same attempt keeps
 		// whatever the auto-retry below already spent on it.
 		if (attempt?.body !== body) autoRetried.current = false;
