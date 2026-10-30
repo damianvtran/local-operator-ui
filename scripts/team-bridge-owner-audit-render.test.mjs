@@ -37,9 +37,14 @@
  * 3. THE HONEST BODY. A `null` body renders `body_unavailable`, never an empty
  *    string in an empty paragraph: the reader must be able to tell "the hub had
  *    no text for this row" from "this message was empty". Unadmitted bodies
- *    (`rejected`, `not_screened`) render collapsed behind a `<details>` — the
- *    contract's "plaintext, collapsed by default, no previews" — and the
- *    disclosure line plus one viewer line per agent owner is present in the
+ *    (`rejected`, `not_screened`, an unknown verdict) render INLINE, exactly as
+ *    every other message does, with their verdict chip as the only difference:
+ *    the owner asked to read them without an expand step. The hub contract's
+ *    "collapsed by default" (v2 m4) was a presentation choice, never the
+ *    isolation guard — that boundary is the runtime's (it scopes and refuses
+ *    unscoped audit reads, and the agent tool offers no audit op), and in this
+ *    repo the audit reads live under their own query keys and write nothing.
+ *    The disclosure line plus one viewer line per agent owner is present in the
  *    header. No composer exists anywhere in this surface.
  *
  * 4. THE GATE. The section is ABSENT — no markup and no request — when the
@@ -325,7 +330,7 @@ const admitted = {
 	agent_verdict_at: "2026-10-23T10:58:01Z",
 };
 
-/* REJECTED: full text is served (it is the owner's audit), collapsed by default. */
+/* REJECTED: full text is served (it is the owner's audit) and read inline. */
 const rejected = {
 	id: "msg_42",
 	conversation_id: direct.id,
@@ -856,8 +861,8 @@ test("panel: loading, error, empty history, populated", async () => {
 		}),
 	);
 	/* Rows are the shared list's (`li[data-message-id]`), not the bespoke
-	 * `<article>` the audit used to draw. Rejected text is collapsed but still in
-	 * the document, which is what the body loop below reads. */
+	 * `<article>` the audit used to draw. Rejected text reads inline, which is
+	 * what the body loop below reads. */
 	assert.equal(
 		populated.host.querySelectorAll("li[data-message-id]").length,
 		4,
@@ -891,7 +896,7 @@ test("a null body renders the unavailable text, never an empty string", async ()
 	await view.close();
 });
 
-test("unadmitted bodies stay collapsed, admitted and own bodies do not", async () => {
+test("unadmitted bodies read inline like every other message", async () => {
 	const view = await renderView(
 		panel({ messages: [admitted, rejected, unscreenedEmpty, own] }),
 	);
@@ -904,31 +909,18 @@ test("unadmitted bodies stay collapsed, admitted and own bodies do not", async (
 	const emptyRow = byText(m.t("ui.ownerAudit.body_unavailable"));
 	const ownRow = byText(own.body);
 
-	/* Collapsed by default, and the reveal summary is the only way in — but ONLY
-	 * when there is text behind it. A disclosure on a row whose body the hub never
-	 * sent lured a press that returned "Message text unavailable.", so that row
-	 * states the absence instead of offering a door (design review round 1, D5). */
-	const details = rejectedRow.querySelector("details");
-	assert.ok(details, "an unadmitted body is behind a disclosure");
-	assert.equal(details.hasAttribute("open"), false);
-	assert.ok(
-		(details.querySelector("summary")?.textContent ?? "").includes(
-			m.t("ui.ownerAudit.reveal"),
-		),
-	);
-	assert.equal(
-		emptyRow.querySelector("details"),
-		null,
-		"a row with no body must not offer a disclosure it cannot honour",
-	);
+	/* No expand step on any row: the owner asked to read refused and unscreened
+	 * text without opening it. The verdict chip, not a disclosure, is what tells
+	 * them the agent refused or never saw it. */
+	assert.ok(rejectedRow, "the refused text is on screen without a press");
+	for (const row of [admittedRow, rejectedRow, emptyRow, ownRow]) {
+		assert.ok(row.querySelector("details") === null, "no disclosure");
+		assert.ok(row.querySelector("summary") === null, "no reveal summary");
+	}
 	assert.ok(
 		emptyRow.textContent.includes(m.t("ui.ownerAudit.body_unavailable")),
-		"and it must say so in the open",
+		"a row with no body says so in the open",
 	);
-	/* Admitted text and the agent's own text are shown directly. */
-	for (const row of [admittedRow, ownRow]) {
-		assert.equal(row.querySelector("details"), null);
-	}
 
 	/* The chips are the audit's whole point: the owner can see what the agent's
 	 * screening did, per message. */
@@ -1142,7 +1134,7 @@ test("the surface offers no way to write: no composer, no reaction, no admit", a
 		view.host.querySelectorAll('[contenteditable="true"]').length,
 		0,
 	);
-	/* The only buttons are reads: refresh, older, the per-message reveal. */
+	/* The only buttons are reads: refresh, older, more, retry. */
 	const labels = [...view.host.querySelectorAll("button")].map((button) =>
 		(button.textContent ?? "").trim(),
 	);
@@ -1726,42 +1718,54 @@ test("a null body is the audit's placeholder, not the member view's", async () =
 	await view.close();
 });
 
-test("a rejected body is collapsed, and markdown once opened", async () => {
+test("unadmitted bodies are markdown inline, each under its verdict", async () => {
+	const rows = [
+		["msg_rej_md", "rejected", "ui.ownerAudit.rejected"],
+		["msg_ns_md", "not_screened", "ui.ownerAudit.not_screened"],
+		["msg_unknown_md", "some_future_status", "ui.ownerAudit.unknown_status"],
+	];
 	const view = await renderView(
 		panel({
 			messages: [
-				auditRow({
-					id: "msg_rej_md",
-					body: MARKDOWN_BODY,
-					agent_delivery_status: "rejected",
-				}),
+				...rows.map(([id, agent_delivery_status], index) =>
+					auditRow({
+						id,
+						seq: 70 + index,
+						body: MARKDOWN_BODY,
+						agent_delivery_status,
+					}),
+				),
+				/* The agent's own message: inline too, and carrying no chip. */
+				{ ...own, id: "msg_own_md", seq: 73, body: MARKDOWN_BODY },
 			],
 		}),
 	);
-	const row = rowOf(view.host, "msg_rej_md");
-	const details = row.querySelector("details");
-	assert.ok(details, "collapsed behind a disclosure");
-	assert.equal(details.hasAttribute("open"), false);
-	assert.equal(
-		details.querySelector("summary").textContent,
-		m.t("ui.ownerAudit.reveal"),
-	);
-	details.setAttribute("open", "");
-	assert.ok(details.querySelector("strong"), "opened, the body is markdown");
-	assert.ok(details.querySelector("table"));
+	for (const [id, , copy] of rows) {
+		const row = rowOf(view.host, id);
+		assert.ok(row, id);
+		assert.ok(row.querySelector("details") === null, `${id}: no disclosure`);
+		assert.ok(row.querySelector("summary") === null, `${id}: no summary`);
+		const body = row.querySelector(".team-bridge-message-body");
+		assert.ok(body, `${id}: the body renders without a press`);
+		assert.ok(body.querySelector("strong"), `${id}: markdown inline`);
+		assert.ok(body.querySelector("table"), `${id}: tables inline`);
+		assert.ok(row.textContent.includes(m.t(copy)), `${id}: keeps its verdict`);
+	}
+	const ownRow = rowOf(view.host, "msg_own_md");
+	assert.ok(ownRow.querySelector(".team-bridge-message-body strong"));
+	for (const [, , copy] of rows)
+		assert.equal(ownRow.textContent.includes(m.t(copy)), false, "own: no chip");
 	await view.close();
 });
 
 /*
- * Design review round 1, D3 + D4. The summary is `inline-flex`, which paints no
- * native marker, so the disclosure needs its own: a closed chevron that swaps
- * for an open one. jsdom applies no stylesheet, so this asserts the wiring (the
- * named group on `<details>` and the open-state variants) rather than pixels;
- * the frames are the visual proof. Opened, refused text sits in a quoted inset
- * (a `control` start rule, which carries the 3:1 non-text contrast the quote
- * cue needs: design review round 2, D10), unlike the admitted body beside it.
+ * The owner reads refused and unscreened text as plainly as admitted text: the
+ * collapse, its chevron (design review round 1, D3) and the quoted inset that
+ * marked opened text (D4/D10) are gone with it. The verdict chip is the one
+ * difference, so an unadmitted body wears the SAME body treatment as an
+ * admitted one — a lingering start rule would be a half-removed quote.
  */
-test("the reveal has a disclosure marker and opens into a quoted inset", async () => {
+test("an unadmitted body wears the same body treatment as an admitted one", async () => {
 	const view = await renderView(
 		panel({
 			messages: [
@@ -1775,61 +1779,36 @@ test("the reveal has a disclosure marker and opens into a quoted inset", async (
 			],
 		}),
 	);
-	const details = rowOf(view.host, "msg_rej").querySelector("details");
-	assert.ok(details.className.split(" ").includes("group/reveal"));
-	const marks = [...details.querySelectorAll("summary > svg")];
-	assert.equal(marks.length, 2, "a closed and an open chevron");
-	for (const mark of marks)
-		assert.equal(mark.getAttribute("aria-hidden"), "true", "decorative");
-	const [closed, open] = marks.map((mark) =>
-		mark.getAttribute("class").split(" "),
-	);
-	for (const token of ["lucide-chevron-right", "group-open/reveal:hidden"])
-		assert.ok(closed.includes(token), `closed chevron has ${token}`);
-	for (const token of [
-		"lucide-chevron-down",
-		"hidden",
-		"group-open/reveal:block",
-	])
-		assert.ok(open.includes(token), `open chevron has ${token}`);
+	const bodyOf = (id) =>
+		rowOf(view.host, id).querySelector(".team-bridge-message-body");
+	const refused = bodyOf("msg_rej");
+	assert.ok(refused, "the refused body is on screen");
+	assert.ok(refused.closest("details") === null, "not inside a disclosure");
 	assert.equal(
-		details.querySelector("summary").textContent,
-		m.t("ui.ownerAudit.reveal"),
-		"the marker adds no text to the summary's name",
-	);
-	const inset = details.querySelector(".team-bridge-message-body");
-	for (const token of ["border-s-2", "border-control", "ps-3"])
-		assert.ok(inset.className.split(" ").includes(token), `inset has ${token}`);
-	assert.equal(
-		inset.className.split(" ").includes("border-hairline"),
-		false,
-		"the quote rule is not the sub-3:1 hairline (D10)",
-	);
-	const admitted = rowOf(view.host, "msg_ok").querySelector(
-		".team-bridge-message-body",
-	);
-	assert.equal(
-		admitted.className.includes("border-s-2"),
-		false,
-		"admitted text is not quoted",
+		refused.getAttribute("class"),
+		bodyOf("msg_ok").getAttribute("class"),
+		"no quoted inset: the chip, not the body, carries the verdict",
 	);
 	await view.close();
 });
 
 /*
- * Agent review round 1, R1-2. The wire allows `""` (`z.string().nullish()`); a
- * collapsed verdict with a blank body and nothing attached must say the text is
- * unavailable, as a null body does, never draw an empty prose block or a
- * disclosure promising text it does not have.
+ * Agent review round 1, R1-2. The wire allows `""` (`z.string().nullish()`); an
+ * audit row with a blank body and nothing attached must say the text is
+ * unavailable, as a null body does, never draw an empty prose block. It held
+ * for the collapsed verdicts first; with the collapse gone it holds for every
+ * audit row, the agent's own included.
  */
-test("a blank unadmitted body is the unavailable placeholder, not an empty block", async () => {
+test("a blank audit body is the unavailable placeholder, not an empty block", async () => {
 	const rows = [
 		["msg_blank_rej", "", "rejected"],
 		["msg_blank_ns", "   \n\t", "not_screened"],
 		["msg_blank_unknown", "", "some_future_status"],
+		["msg_blank_ok", " ", "admitted"],
 	].map(([id, body, agent_delivery_status], index) =>
 		auditRow({ id, seq: 60 + index, body, agent_delivery_status }),
 	);
+	rows.push({ ...own, id: "msg_blank_own", seq: 64, body: "" });
 	const view = await renderView(panel({ messages: rows }));
 	for (const { id } of rows) {
 		const row = rowOf(view.host, id);
@@ -1840,7 +1819,7 @@ test("a blank unadmitted body is the unavailable placeholder, not an empty block
 			),
 			`${id}: says the text is unavailable`,
 		);
-		assert.equal(row.querySelector("details"), null, `${id}: no disclosure`);
+		assert.ok(row.querySelector("details") === null, `${id}: no disclosure`);
 		assert.equal(
 			row.querySelector(".team-bridge-message-body"),
 			null,
