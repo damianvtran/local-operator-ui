@@ -641,6 +641,9 @@ that is its own small design (see §1.2).
   reads "(no navigation)" because it compares the opener's URL, so nothing tells the agent a
   tab opened — add `opened_tab: <handle>` to the UI click result and a matching line in the
   harness (`builtin.py`), and widen the `tab` parameter text that says "a tab the USER handed".
+  The windows that cmd/shift/middle clicks and form POSTs open are unlisted (no registry
+  record, so `tabs` and the agent never see them), the same as any opener-bearing popup;
+  a later step could register them.
   Form-POST `target=_blank` could adopt the guest through `createWindow` instead of staying a
   window. Neither is needed to stop a link from opening an unlisted OS window.
 - **Follow-up, cross-repo:** amend §11.6 of `docs/design/ui-browser-tab.md` (lives in
