@@ -207,17 +207,64 @@ export async function prepareDrawerRemediation({
 		 * Written through the pinned core's own store - a real row in the same table a
 		 * forwarding write would reach, never a manufactured receipt - so the badge is
 		 * counting rows that exist.
+		 *
+		 * WHY ONE CONVERSATION AND NOT SEVERAL. This count is the DRAWER's own tab
+		 * label, and that label is one conversation's unread walk
+		 * (`useSessionUnreadUpdates` -> `readSessionUnreadCount(sessionId)` in
+		 * notifications-api.ts): rows raised on other conversations move the fleet
+		 * reel and the page pill, never this number. Measured against the pinned
+		 * store: 42 rows on three other conversations left this conversation's walk
+		 * at 122. So a fleet-wide seed cannot satisfy this assertion, and the three
+		 * digits have to form in the conversation under test.
+		 *
+		 * WHY HOURLY BATCHES. The store refuses a 31st NEW item from one conversation
+		 * in a rolling hour (`NEW_ITEMS_PER_HOUR`, store.py:101) - a product guard
+		 * that is honoured here, never raised or bypassed. A real conversation does
+		 * not reach 100 + unread in one hour: it reaches them over hours. So the
+		 * backlog is stamped in hourly batches (`now` is the store's own public
+		 * argument for the row's time), oldest first, each batch under what the guard
+		 * still allows: a burst of 31 at one stamp is still refused, and so is a
+		 * batch that would overfill an hour on top of the rows this conversation
+		 * already raised.
+		 *
+		 * Oldest first because the guard's window is `created_at > stamp - 1h` with
+		 * no upper edge: a backdated batch also counts rows raised LATER, so writing
+		 * the newer batches first would leave the older ones no allowance at all.
+		 * Batches are more than an hour apart so a batch's own rows fall outside the
+		 * next batch's window, and keys stay distinct within the conversation so no
+		 * row collapses into an earlier one.
 		 */
 		seedUnread(count) {
-			return coreStore(
-				config,
-				[
-					"from local_operator.notifications.store import NotificationStore",
-					`store = NotificationStore(${JSON.stringify(config)})`,
-					`for i in range(${count}):`,
-					`    store.notify(${JSON.stringify(session)}, key=f'narrow-{i}', title=f'Narrow width update {i}', body_md='Synthetic CI notification; no model turn.', priority='normal')`,
-					"print('seeded')",
-				].join("\n"),
+			/* Under the 30/hour cap with room for the twelve rows this conversation
+			 * already raised inside the hour. */
+			const batchSize = 16;
+			const spacing = 60 * 60 * 1000 + 120 * 1000;
+			const batches = Math.ceil(count / batchSize);
+			return JSON.parse(
+				coreStore(
+					config,
+					[
+						"import json, time",
+						"from local_operator.notifications.store import NotificationStore",
+						`store = NotificationStore(${JSON.stringify(config)})`,
+						`batch_size = ${batchSize}`,
+						`batches = ${batches}`,
+						`spacing = ${spacing}`,
+						"start = int(time.time() * 1000)",
+						"seeded = 0",
+						"for batch in range(batches, 0, -1):",
+						"    stamp = start - batch * spacing",
+						"    for index in range(batch_size):",
+						`        store.notify(${JSON.stringify(session)}, key=f"backlog-{batch}-{index}", title=f"Narrow width update {batch}.{index}", body_md="Synthetic CI notification; no model turn.", priority="normal", now=stamp)`,
+						"        seeded += 1",
+						"print(json.dumps({",
+						'    "seeded": seeded,',
+						'    "batches": batches,',
+						'    "batchSize": batch_size,',
+						'    "spacingMs": spacing,',
+						"}))",
+					].join("\n"),
+				),
 			);
 		},
 		revise(row) {
@@ -608,8 +655,15 @@ export async function runDrawerRemediationScene({
 		 * A THREE-DIGIT COUNT AT THIS WIDTH (design round 1, D7). Seeded through the
 		 * fixture's own window - its proxy is still attached and the app just answered
 		 * a read - so the badge the frame shows is the server's count of real rows.
+		 * The backlog is dated across hours (see `seedUnread`): the store's hourly
+		 * new-item cap is the product's own, and a conversation that carries three
+		 * digits of unread reached them over hours, not in one burst.
 		 */
-		fixture.seedUnread(100);
+		const backlog = fixture.seedUnread(100);
+		assert.ok(
+			backlog.seeded >= 100,
+			`the drawer's conversation must carry at least 100 backlog rows: ${JSON.stringify(backlog)}`,
+		);
 		/*
 		 * OPEN AT 1x, THEN ZOOM THE OPEN PANE.
 		 *
@@ -680,6 +734,8 @@ export async function runDrawerRemediationScene({
 			result: "PASS",
 			geometry: narrow.bounds,
 			count: narrow.unread,
+			/* How the count reached three digits, so the artifact answers it. */
+			backlog,
 		});
 		/* Back to 1x for the reload that repaints through the app's own theme
 		 * persistence, then the same zoom-the-open-pane order as above. */
