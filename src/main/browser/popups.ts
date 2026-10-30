@@ -118,7 +118,8 @@ export const MAX_POPUP_CHILDREN_PER_VIEW = 4;
  * depth-exponentiated one.
  *
  * THE NUMBER: 12 is the design's own stated scale for a person's own tabs —
- * `ui-browser-tab.md` 6.5, "a user opening a dozen tabs is their business" — used
+ * `docs/design/ui-browser-tab.md` 6.5 in `damianvtran/local-operator` — "a user
+ * opening a dozen tabs is their business" — used
  * here as a CEILING on a page rather than copied from that sentence: a page gets
  * no more than a person gets for themselves, and leaves seven slots over the
  * ordinary case it must never meet (a person opening the few links they want from

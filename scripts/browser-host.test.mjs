@@ -8743,7 +8743,7 @@ test("popup refusals and bounds are unchanged by the tab route", () => {
 	);
 });
 
-test("a page in the operator's own tab cannot spawn link tabs without bound (M1 of #1497)", () => {
+test("one operator tab holds at most MAX_USER_LINK_TABS_PER_VIEW link tabs open (M1 of #1497)", () => {
 	const cap = MAX_USER_LINK_TABS_PER_VIEW;
 	// Ordinary use: the design's own example is a person opening five links from
 	// one page. Every one of those is allowed, activated as a browser would.

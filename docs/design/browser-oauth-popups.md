@@ -133,7 +133,7 @@ lists. The test is therefore the opener.
 
 An ordinary link becomes a **tab owned like its opener**: an agent's tab yields an agent tab
 in the same session (never activated, so the tab the operator is looking at does not move —
-`ui-browser-tab.md` 11.4), a user's tab yields a user tab that comes to the front only when
+`ui-browser-tab.md` 11.4, in `damianvtran/local-operator`), a user's tab yields a user tab that comes to the front only when
 the opener was the active tab and the request was not `background-tab`. It is never presented
 as a window. The opening session may adopt it with `open tab=<handle>` (`TabRecord.openedBy`,
 read by `sessionMayAdopt`); another session may not. Bounds: an agent's tab may spawn
@@ -155,7 +155,8 @@ do not. An agent's link tab is not covered by that rule because `MAX_AGENT_TABS`
 agent tabs in aggregate (8), so its nesting cannot grow the strip past a number nothing
 checks.
 
-The user bound corrects an earlier claim: `ui-browser-tab.md` §6.5 leaves user tabs uncapped
+The user bound corrects an earlier claim: `damianvtran/local-operator`'s `docs/design/ui-browser-tab.md`
+§6.5 leaves user tabs uncapped
 because "a user opening a dozen tabs is their business", and that reasoning held only while
 every user tab was an act the user took. A page looping `window.open(u, "_blank",
 "noopener")` is not an act the user took: before this section's routing those children were
@@ -167,7 +168,13 @@ person gets for themselves, and seven slots over the ordinary case (a person ope
 links they want from one page) so ordinary use never meets the wall. It is a judgement about
 bounding abuse, like the window cap, not a measurement — §6.5 deliberately holds no measured
 human fan-out — and it sits below `MAX_RESTORED_TABS` (20), so one looping page cannot by
-itself fill what a restore reads back. It is a separate constant from the window cap because
+itself fill what a restore reads back. Two things it is NOT, so a later reader does not
+mistake it for one: it is not §6.5's tab ceiling (no such cap exists for the operator's own
+tabs, and this bound does not become one), and memory is not the bound here as it is there —
+6.5 can lean on the operator owning what they open, while every view this bounds was opened
+by a page with nobody reading a count. A number was therefore required, and it is a number of
+judgement: 6.5 carries no measured fan-out and this text claims none, so the bound is picked
+to fail safe — wrong by being generous, still bounding the loop. It is a separate constant from the window cap because
 the two bound different resources and one number for both would silently tighten whichever
 side moved. Scheme and window-cap refusals are unchanged; the per-opener tab bounds log
 `(opener_cap)` for an agent and `(user_opener_cap)` for a user, distinct so a log says which
@@ -687,6 +694,15 @@ that is its own small design (see §1.2).
   `~/local-operator`, `:2056-2066`) — it currently mandates deny-all for driven views and
   cites exactly the reasoning this brief supersedes. The PR body should name it so the
   next reader is not left with two contradicting designs.
+- **Follow-up, cross-repo (§6.5):** `docs/design/ui-browser-tab.md` §6.5
+  (`damianvtran/local-operator`, `:1046-1060`, and risk item 10 at `:2484`) still says
+  user tabs have "no agent-facing cap" with memory as "the honest bound". That sentence is
+  about tabs the OPERATOR opens and stays true; what it cannot be read as — now that a page
+  can allocate tabs from one of them — is a statement that nothing bounds a page. The core
+  doc needs the matching change: name `MAX_USER_LINK_TABS_PER_VIEW` and the depth rule as
+  the bound on page-spawned tabs, so the two design documents do not disagree. Not edited
+  here: this brief owns the UI host, and a cross-repo edit from this branch would land
+  unreviewed in the other repository.
 
 ## 8. Implementation checklist (files and shapes)
 
