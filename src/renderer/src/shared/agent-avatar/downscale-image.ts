@@ -3,6 +3,7 @@ import {
 	AGENT_AVATAR_MAX_DATA_URL_CHARS,
 	type AgentAvatarRefusal,
 	avatarFileRejection,
+	avatarPixelRefusal,
 	coverSourceRect,
 } from "./avatar-image";
 
@@ -31,14 +32,76 @@ export class AgentAvatarError extends Error {
 }
 
 /**
+ * The dimensions a container header states, read without decoding pixels.
+ *
+ * `ImageDecoder` is WebCodecs' image arm: constructing it parses the container,
+ * and `tracks.ready` resolves with the coded size before any frame is decoded.
+ * That makes the pixel bound above cost a header read rather than a bitmap.
+ *
+ * IT IS OPTIONAL BY DESIGN. The constructor is read off `globalThis` behind a
+ * local type because the DOM lib does not promise it on every target, and a
+ * container the decoder will not parse (an older build's AVIF, say) answers
+ * `null` rather than a refusal: `createImageBitmap` below is the decoder that
+ * decides what this app can read, and the decoded-bitmap check is the guard
+ * that always runs. A metadata reader that failed must never look like a
+ * verdict on the file.
+ */
+type ImageDecoderLike = {
+	tracks: {
+		ready: Promise<void>;
+		selectedTrack: { codedWidth: number; codedHeight: number } | null;
+	};
+	close: () => void;
+};
+
+type ImageDecoderConstructor = new (init: {
+	data: BufferSource;
+	type: string;
+}) => ImageDecoderLike;
+
+async function readSourceDimensions(
+	file: File,
+): Promise<{ width: number; height: number } | null> {
+	const Decoder = (globalThis as { ImageDecoder?: ImageDecoderConstructor })
+		.ImageDecoder;
+	if (!Decoder) return null;
+	let decoder: ImageDecoderLike | null = null;
+	try {
+		decoder = new Decoder({ data: await file.arrayBuffer(), type: file.type });
+		await decoder.tracks.ready;
+		const track = decoder.tracks.selectedTrack;
+		if (!track) return null;
+		return { width: track.codedWidth, height: track.codedHeight };
+	} catch {
+		return null;
+	} finally {
+		decoder?.close();
+	}
+}
+
+/**
  * Reads `file`, crops it to a centred square and returns a data URL.
  *
  * Throws `AgentAvatarError` with the refusal that owns the failure, so the
  * settings row can say which one happened instead of "that did not work".
+ *
+ * THE PIXEL BOUND IS CHECKED TWICE, and the order is the point. The metadata
+ * read below answers the source's dimensions from the container header, so a
+ * 40,000 x 40,000 flat PNG is refused before a bitmap exists; the decoded
+ * bitmap is then measured again, which is the authoritative check for every
+ * browser whose metadata reader is missing or refuses the container. The second
+ * one closes the bitmap in the `finally`, so even the arm that had to allocate
+ * does not keep it.
  */
 export async function downscaleAgentAvatar(file: File): Promise<string> {
 	const rejection = avatarFileRejection(file);
 	if (rejection !== null) throw new AgentAvatarError(rejection);
+
+	const source = await readSourceDimensions(file);
+	if (source !== null) {
+		const pixelRefusal = avatarPixelRefusal(source.width, source.height);
+		if (pixelRefusal !== null) throw new AgentAvatarError(pixelRefusal);
+	}
 
 	let bitmap: ImageBitmap;
 	try {
@@ -51,6 +114,8 @@ export async function downscaleAgentAvatar(file: File): Promise<string> {
 	}
 
 	try {
+		const decodedRefusal = avatarPixelRefusal(bitmap.width, bitmap.height);
+		if (decodedRefusal !== null) throw new AgentAvatarError(decodedRefusal);
 		const { sx, sy, side } = coverSourceRect(bitmap.width, bitmap.height);
 		const canvas = document.createElement("canvas");
 		canvas.width = AGENT_AVATAR_EDGE;

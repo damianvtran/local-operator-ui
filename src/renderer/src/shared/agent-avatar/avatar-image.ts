@@ -38,13 +38,19 @@ export const AGENT_AVATAR_MAX_BYTES = 8 * 1024 * 1024;
  * What the file picker offers, and the list the type gate enforces. One value,
  * so the dialog and the refusal cannot disagree.
  *
+ * THE ORDER IS THE SENTENCE'S ORDER. The refusal copy spells these out in every
+ * locale ("Choose a JPEG, PNG, WebP, GIF or AVIF file"), and the picker's own
+ * `accept` is built from this list, so the order a user reads and the order the
+ * dialog offers are the same one. `scripts/agent-avatar.test.mjs` fails if the
+ * two drift apart.
+ *
  * SVG IS DELIBERATELY ABSENT. Chromium refuses SVG in `createImageBitmap`, and
  * an SVG avatar would be a document (with its own external references) where
  * the surfaces expect a picture.
  */
 export const AGENT_AVATAR_MIME_TYPES = [
-	"image/png",
 	"image/jpeg",
+	"image/png",
 	"image/webp",
 	"image/gif",
 	"image/avif",
@@ -64,12 +70,41 @@ export const AGENT_AVATAR_ACCEPT = AGENT_AVATAR_MIME_TYPES.join(",");
 export const AGENT_AVATAR_LIMIT = 64;
 
 /**
+ * The largest number of pixels a picked file may decode to.
+ *
+ * The 8 MB ceiling above bounds BYTES, and a flat-colour PNG of 40,000 px per
+ * edge compresses into a few hundred kilobytes while decoding to 1.6 gigapixels
+ * in the renderer process. This bound is the decode's own ceiling: 64 MP is
+ * above any camera frame a user would pick as a profile picture (a 35 MP frame
+ * decoded in 162 ms in the round-1 QA run) and far below the sizes where a
+ * renderer allocation is the difference between a slow pick and a dead tab.
+ *
+ * It has no copy of its own: a file this large is refused with the same
+ * "could not be read" sentence as an undecodable one, because to every surface
+ * that is what it is.
+ */
+export const AGENT_AVATAR_MAX_PIXELS = 64_000_000;
+
+/**
  * The longest data URL an avatar may store, in characters. The base64 body is
  * ~4/3 of the bytes, so this is a ceiling of about 300 KB per picture — an
  * order of magnitude over what a 256px WebP costs, and small enough that a
  * hand-edited blob cannot wedge the profile's storage.
  */
 export const AGENT_AVATAR_MAX_DATA_URL_CHARS = 400_000;
+
+/**
+ * The most characters every stored avatar may add up to, across all agents.
+ *
+ * `AGENT_AVATAR_LIMIT` x the per-entry ceiling would accept 25.5 MB in a store
+ * whose own comment says it shares a few megabytes of `localStorage` with every
+ * other UI preference — enough that a hand-edited or imported blob could fill
+ * the quota and make every later write fail (see the save-failure arm in
+ * `shared/store/agent-avatar-store.ts`). Four million characters is roughly ten
+ * times what 64 real 256px WebP pictures cost, so it never bites a user who
+ * picks pictures, and it caps the damage a tampered blob can do.
+ */
+export const AGENT_AVATAR_MAX_TOTAL_CHARS = 4_000_000;
 
 /** Why a picked file cannot become an avatar. */
 export type AgentAvatarRefusal = "type" | "size" | "decode" | "encode";
@@ -82,16 +117,38 @@ const AVATAR_DATA_URL =
  *
  * Takes the two fields it reads rather than a `File`, so the rule is callable
  * from a test: `avatarFileRejection({ type: "image/svg+xml", size: 10 })`.
+ *
+ * AN EMPTY FILE IS A DECODE REFUSAL, not a size one (QA round 1, Q-1): zero
+ * bytes is not "larger than 8 MB", and saying so named the wrong limit. There
+ * is nothing to decode, which is what the existing "could not be read"
+ * sentence already means.
  */
 export function avatarFileRejection(file: {
 	type: string;
 	size: number;
-}): "type" | "size" | null {
+}): AgentAvatarRefusal | null {
 	if (!(AGENT_AVATAR_MIME_TYPES as readonly string[]).includes(file.type)) {
 		return "type";
 	}
-	if (file.size <= 0 || file.size > AGENT_AVATAR_MAX_BYTES) return "size";
+	if (file.size <= 0) return "decode";
+	if (file.size > AGENT_AVATAR_MAX_BYTES) return "size";
 	return null;
+}
+
+/**
+ * The pixel gate, applied to a source's dimensions before it is cropped.
+ *
+ * Pure for the same reason as the byte gate: the bound is the rule a reader
+ * checks, and Node can assert it without a canvas. `null` means the image may
+ * be drawn.
+ */
+export function avatarPixelRefusal(
+	width: number,
+	height: number,
+): AgentAvatarRefusal | null {
+	if (!Number.isFinite(width) || !Number.isFinite(height)) return "decode";
+	if (width <= 0 || height <= 0) return "decode";
+	return width * height > AGENT_AVATAR_MAX_PIXELS ? "decode" : null;
 }
 
 /** The square of the source image that a cover-crop keeps, centred. */
@@ -131,8 +188,8 @@ export function coverSourceRect(
  * `localStorage` can be hand-edited, left half-written by a dying process, or
  * written by a build that stored something else, and the result is read
  * straight into `<img src>`. Anything that is not a `webp`/`png`/`jpeg` data
- * URL of the right shape is dropped, and entries beyond `AGENT_AVATAR_LIMIT`
- * go oldest-first.
+ * URL of the right shape is dropped, and entries beyond `AGENT_AVATAR_LIMIT` or
+ * the `AGENT_AVATAR_MAX_TOTAL_CHARS` budget go oldest-first.
  */
 export function sanitizeAvatarImages(value: unknown): Record<string, string> {
 	if (value === null || typeof value !== "object" || Array.isArray(value)) {
@@ -148,9 +205,24 @@ export function sanitizeAvatarImages(value: unknown): Record<string, string> {
 		if (!AVATAR_DATA_URL.test(entry)) continue;
 		kept[key] = entry;
 	}
+	/*
+	 * THE BUDGET IS PER PROFILE, so it is applied newest-first and stops at the
+	 * first entry that does not fit: a store over either bound keeps the pictures
+	 * most recently written and drops the oldest, which are the ones the user has
+	 * to scroll furthest to notice missing.
+	 */
 	const keys = Object.keys(kept);
-	if (keys.length <= AGENT_AVATAR_LIMIT) return kept;
 	const trimmed: Record<string, string> = {};
-	for (const key of keys.slice(-AGENT_AVATAR_LIMIT)) trimmed[key] = kept[key];
+	let totalChars = 0;
+	let keptCount = 0;
+	for (let index = keys.length - 1; index >= 0; index--) {
+		const key = keys[index];
+		const entry = kept[key];
+		if (keptCount >= AGENT_AVATAR_LIMIT) break;
+		if (totalChars + entry.length > AGENT_AVATAR_MAX_TOTAL_CHARS) break;
+		trimmed[key] = entry;
+		totalChars += entry.length;
+		keptCount += 1;
+	}
 	return trimmed;
 }

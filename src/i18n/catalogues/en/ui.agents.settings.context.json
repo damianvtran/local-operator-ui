@@ -415,5 +415,11 @@
 		"tone": "Neutral, offers the next step.",
 		"length_hint": "One short sentence.",
 		"note": "A corrupt, truncated or mislabelled image file."
+	},
+	"ui.agents.settings.general.profile_picture_error_save": {
+		"role": "Error shown when the picture was read but this computer refused to store it",
+		"tone": "Plain statement of a local limit with the next step.",
+		"length_hint": "Two short sentences beside the controls; wrapping is allowed.",
+		"note": "Not a decode failure: the file was an image this app could read, and the browser refused the local write (a full or blocked store). The picture is visible until the app reloads, then it is gone."
 	}
 }

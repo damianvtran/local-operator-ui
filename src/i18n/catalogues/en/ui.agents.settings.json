@@ -68,5 +68,6 @@
 	"ui.agents.settings.general.profile_picture_remove": "Remove image",
 	"ui.agents.settings.general.profile_picture_error_type": "That file is not an image this app can read. Choose a JPEG, PNG, WebP, GIF or AVIF file.",
 	"ui.agents.settings.general.profile_picture_error_size": "That image is larger than {size} MB.",
-	"ui.agents.settings.general.profile_picture_error_decode": "That image could not be read. Try a different file."
+	"ui.agents.settings.general.profile_picture_error_decode": "That image could not be read. Try a different file.",
+	"ui.agents.settings.general.profile_picture_error_save": "Could not save this picture on this computer. Free some space and try again."
 }

@@ -2336,6 +2336,7 @@ export type MessageParams = {
 	"ui.agents.settings.general.model": undefined;
 	"ui.agents.settings.general.profile_picture": undefined;
 	"ui.agents.settings.general.profile_picture_error_decode": undefined;
+	"ui.agents.settings.general.profile_picture_error_save": undefined;
 	"ui.agents.settings.general.profile_picture_error_size": { size: string };
 	"ui.agents.settings.general.profile_picture_error_type": undefined;
 	"ui.agents.settings.general.profile_picture_hint": undefined;

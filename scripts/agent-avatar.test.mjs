@@ -17,7 +17,7 @@
  */
 
 import assert from "node:assert/strict";
-import { mkdir, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { after, test } from "node:test";
 import { build } from "esbuild";
@@ -77,8 +77,12 @@ const {
 	AGENT_AVATAR_ACCEPT,
 	AGENT_AVATAR_EDGE,
 	AGENT_AVATAR_LIMIT,
+	AGENT_AVATAR_MAX_DATA_URL_CHARS,
+	AGENT_AVATAR_MAX_PIXELS,
+	AGENT_AVATAR_MAX_TOTAL_CHARS,
 	AGENT_AVATAR_MIME_TYPES,
 	avatarFileRejection,
+	avatarPixelRefusal,
 	coverSourceRect,
 	sanitizeAvatarImages,
 } = await import(pureUrl);
@@ -133,13 +137,67 @@ test("a file is refused before it is decoded", () => {
 	}
 	assert.equal(
 		avatarFileRejection({ type: "image/png", size: 0 }),
-		"size",
-		"an empty file is refused rather than decoded",
+		"decode",
+		"an empty file is unreadable, not oversized (QA round 1, Q-1)",
 	);
 	assert.equal(
 		avatarFileRejection({ type: "image/png", size: 9 * 1024 * 1024 }),
 		"size",
 	);
+});
+
+/*
+ * THE COPY AND THE GATE ARE ONE FACT (review round 1, R1-7). The type refusal
+ * spells out the formats in eight catalogues while `AGENT_AVATAR_MIME_TYPES` is
+ * what actually accepts a file, so the two could drift silently. This reads the
+ * shipped English sentence and asserts it names the gate's formats, in the
+ * gate's own order; changing either alone fails here. The table below is the
+ * only place a MIME type is given a display name.
+ */
+test("the type refusal names exactly the formats the gate accepts", async () => {
+	const catalogue = JSON.parse(
+		await readFile("src/i18n/catalogues/en/ui.agents.settings.json", "utf8"),
+	);
+	const copy =
+		catalogue["ui.agents.settings.general.profile_picture_error_type"];
+	assert.equal(typeof copy, "string");
+	const displayName = {
+		"image/png": "PNG",
+		"image/jpeg": "JPEG",
+		"image/webp": "WebP",
+		"image/gif": "GIF",
+		"image/avif": "AVIF",
+	};
+	const positions = AGENT_AVATAR_MIME_TYPES.map((mime) => {
+		const name = displayName[mime];
+		assert.ok(name, `${mime} has no display name in this table`);
+		return copy.indexOf(name);
+	});
+	assert.ok(
+		positions.every((at) => at >= 0),
+		`every accepted format must be named: ${copy}`,
+	);
+	assert.deepEqual(
+		[...positions].sort((a, b) => a - b),
+		positions,
+		"the sentence must name the formats in the gate's order",
+	);
+});
+
+/*
+ * THE PIXEL CEILING (review round 1, R1-5). The byte gate above cannot see it:
+ * a flat-colour PNG of 8,000 x 8,000 is a few hundred kilobytes and decodes to
+ * 64 megapixels. Both dimensions are checked, including the degenerate ones, so
+ * a metadata reader cannot hand this rule a value it turns into a false pass.
+ */
+test("the pixel gate refuses a source past the megapixel bound", () => {
+	assert.equal(AGENT_AVATAR_MAX_PIXELS, 64_000_000);
+	assert.equal(avatarPixelRefusal(800, 600), null);
+	assert.equal(avatarPixelRefusal(8000, 8000), null);
+	assert.equal(avatarPixelRefusal(8001, 8000), "decode");
+	assert.equal(avatarPixelRefusal(40_000, 40_000), "decode");
+	assert.equal(avatarPixelRefusal(0, 100), "decode");
+	assert.equal(avatarPixelRefusal(Number.NaN, 100), "decode");
 });
 
 test("the greedy crop keeps the centre square of either orientation", () => {
@@ -197,6 +255,10 @@ test("the type and size refusals fire before any canvas work", async () => {
 		() => downscaleAgentAvatar({ type: "image/png", size: 9 * 1024 * 1024 }),
 		(error) => error instanceof AgentAvatarError && error.code === "size",
 	);
+	await assert.rejects(
+		() => downscaleAgentAvatar({ type: "image/png", size: 0 }),
+		(error) => error instanceof AgentAvatarError && error.code === "decode",
+	);
 });
 
 test("the hook repaints a row when its agent's picture is stored", async () => {
@@ -249,4 +311,122 @@ test("a picture survives persistence and a tampered blob is dropped on hydrate",
 	assert.deepEqual(Object.keys(fresh.useAgentAvatarStore.getState().images), [
 		"kept",
 	]);
+});
+
+/*
+ * THE THREE PROPERTIES THAT NO TEST PINNED (review round 1, R1-2). Each of these
+ * fails under the mutation the reviewer named, and each is written so the
+ * mutation is the only way it can fail: the write-path filter, the per-entry
+ * ceiling, and a selector that subscribes to one agent rather than the map.
+ */
+test("the write path refuses a value the hydrate would drop", async () => {
+	const { setAgentAvatar, useAgentAvatarStore } = await import(
+		`${storeUrl}?write-guard=1`
+	);
+	await act(() => {
+		setAgentAvatar("bad-scheme", "javascript:alert(1)");
+	});
+	assert.equal(
+		useAgentAvatarStore.getState().images["bad-scheme"],
+		undefined,
+		"a script URL must not reach the store from the write either",
+	);
+	/* And a real picture still lands, so the assertion above is not passing by
+	 * refusing everything. */
+	await act(() => {
+		setAgentAvatar("good-scheme", WEBP);
+	});
+	assert.equal(useAgentAvatarStore.getState().images["good-scheme"], WEBP);
+});
+
+test("an entry over the per-picture ceiling is dropped", () => {
+	const oversize = `data:image/webp;base64,${"A".repeat(
+		AGENT_AVATAR_MAX_DATA_URL_CHARS,
+	)}`;
+	assert.ok(oversize.length > AGENT_AVATAR_MAX_DATA_URL_CHARS);
+	assert.deepEqual(
+		sanitizeAvatarImages({ a1: oversize }),
+		{},
+		"one entry may not cost more than the per-picture ceiling",
+	);
+});
+
+test("the profile budget keeps the newest pictures and drops the oldest", () => {
+	const entry = `data:image/webp;base64,${"A".repeat(390_000)}`;
+	const many = {};
+	for (let index = 0; index < 12; index++) many[`big-${index}`] = entry;
+	const capped = sanitizeAvatarImages(many);
+	const fits = Math.floor(AGENT_AVATAR_MAX_TOTAL_CHARS / entry.length);
+	assert.equal(Object.keys(capped).length, fits);
+	assert.equal(capped["big-0"], undefined, "the oldest entry goes first");
+	assert.equal(capped["big-11"], entry, "the newest entry stays");
+	let total = 0;
+	for (const value of Object.values(capped)) total += value.length;
+	assert.ok(total <= AGENT_AVATAR_MAX_TOTAL_CHARS);
+});
+
+test("a row subscribes to its own agent, not the whole map", async () => {
+	const { useAgentAvatar, setAgentAvatar } = await import(
+		`${storeUrl}?render-count=1`
+	);
+	let renders = 0;
+	const Probe = ({ agentId }) => {
+		useAgentAvatar(agentId);
+		renders += 1;
+		return React.createElement("div");
+	};
+	const host = document.createElement("div");
+	document.getElementById("root").appendChild(host);
+	const root = createRoot(host);
+	await act(() =>
+		root.render(React.createElement(Probe, { agentId: "count-a1" })),
+	);
+	await act(() => {
+		setAgentAvatar("count-a1", WEBP);
+	});
+	const settled = renders;
+	await act(() => {
+		setAgentAvatar("count-a2", WEBP);
+	});
+	assert.equal(
+		renders,
+		settled,
+		"another agent's picture must not repaint this row",
+	);
+	await act(() => root.unmount());
+	host.remove();
+});
+
+test("a full store keeps the picture in memory and reports the write", async () => {
+	const { setAgentAvatar, clearAgentAvatar, useAgentAvatarStore } =
+		await import(`${storeUrl}?quota=1`);
+	const storage = dom.window.Storage.prototype;
+	const original = storage.setItem;
+	storage.setItem = () => {
+		throw new dom.window.DOMException("quota", "QuotaExceededError");
+	};
+	try {
+		let saved;
+		await act(() => {
+			saved = setAgentAvatar("quota-agent", WEBP);
+		});
+		assert.equal(saved, false, "the field must hear that the write failed");
+		assert.equal(
+			useAgentAvatarStore.getState().images["quota-agent"],
+			WEBP,
+			"the picture is visible until a reload, so it stays in memory",
+		);
+		let cleared;
+		await act(() => {
+			cleared = clearAgentAvatar("quota-agent");
+		});
+		assert.equal(cleared, false);
+		assert.equal(
+			useAgentAvatarStore.getState().images["quota-agent"],
+			undefined,
+			"Remove must still work with a full store",
+		);
+	} finally {
+		storage.setItem = original;
+	}
 });

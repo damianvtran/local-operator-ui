@@ -68,5 +68,6 @@
 	"ui.agents.settings.general.profile_picture_remove": "Удалить изображение",
 	"ui.agents.settings.general.profile_picture_error_type": "Этот файл не является изображением, которое может прочитать это приложение. Выберите файл JPEG, PNG, WebP, GIF или AVIF.",
 	"ui.agents.settings.general.profile_picture_error_size": "Это изображение больше {size} MB.",
-	"ui.agents.settings.general.profile_picture_error_decode": "Не удалось прочитать изображение. Попробуйте другой файл."
+	"ui.agents.settings.general.profile_picture_error_decode": "Не удалось прочитать изображение. Попробуйте другой файл.",
+	"ui.agents.settings.general.profile_picture_error_save": "Could not save this picture on this computer. Free some space and try again."
 }

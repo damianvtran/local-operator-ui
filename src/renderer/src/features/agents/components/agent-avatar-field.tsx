@@ -15,6 +15,12 @@
  * file that is the wrong type, too large, or undecodable leaves the row exactly
  * where it was and states what happened beside the buttons. A toast for a file
  * the user just chose would also disappear before they re-pick.
+ *
+ * AND A THIRD ANSWER FOR A WRITE THE BROWSER REFUSED (review round 1, R1-1).
+ * A full or blocked `localStorage` accepts nothing, while the picture itself is
+ * already in memory: the file was read, so the read sentences are all false.
+ * The store reports that separately and this row has its own sentence for it,
+ * so what the user is told matches what happened and what to do next.
  */
 
 import {
@@ -73,9 +79,13 @@ export const AgentAvatarField: FC<AgentAvatarFieldProps> = ({
 	useI18nLocale();
 	const avatar = useAgentAvatar(agentId);
 	const inputRef = useRef<HTMLInputElement>(null);
+	const uploadRef = useRef<HTMLButtonElement>(null);
 	const inputId = useId();
+	const labelId = useId();
+	const hintId = useId();
 	const [busy, setBusy] = useState(false);
 	const [refusal, setRefusal] = useState<AgentAvatarRefusal | null>(null);
+	const [saveFailed, setSaveFailed] = useState(false);
 
 	const onPick = async (event: ChangeEvent<HTMLInputElement>) => {
 		const file = event.target.files?.[0];
@@ -85,9 +95,16 @@ export const AgentAvatarField: FC<AgentAvatarFieldProps> = ({
 		if (!file) return;
 		setBusy(true);
 		setRefusal(null);
+		setSaveFailed(false);
 		try {
 			const dataUrl = await downscaleAgentAvatar(file);
-			setAgentAvatar(agentId, dataUrl);
+			/*
+			 * THE READ AND THE WRITE ARE DIFFERENT ANSWERS. The picture is already in
+			 * memory when a browser refuses the write, so calling that "could not be
+			 * read" would describe a file that decoded fine; `setAgentAvatar` answers
+			 * whether the bytes reached this machine's storage (review round 1, R1-1).
+			 */
+			setSaveFailed(!setAgentAvatar(agentId, dataUrl));
 		} catch (error) {
 			setRefusal(error instanceof AgentAvatarError ? error.code : "decode");
 		} finally {
@@ -97,10 +114,26 @@ export const AgentAvatarField: FC<AgentAvatarFieldProps> = ({
 
 	return (
 		<div className={cn("flex flex-col gap-2", className)}>
-			<Label htmlFor={inputId}>
+			<Label id={labelId} htmlFor={inputId}>
 				{t("ui.agents.settings.general.profile_picture")}
 			</Label>
-			<div className="flex flex-wrap items-center gap-3">
+			{/*
+			 * A GROUP NAMED BY THE LABEL (UX round 1, U5). The label points at the file
+			 * input, which is `display: none` and absent from the accessibility tree, so
+			 * on its own it named nothing reachable and a forms-mode reader heard bare
+			 * "Upload image". The group says which field these two buttons belong to,
+			 * and the hint is attached to the same group so the storage limit is read
+			 * once with it.
+			 *
+			 * A `<fieldset>` rather than a `role="group"` div: it is the element the role
+			 * stands for (the a11y lint says so), and the reset classes take away the
+			 * browser's border and padding so it paints as the flex row it replaces.
+			 */}
+			<fieldset
+				aria-labelledby={labelId}
+				aria-describedby={hintId}
+				className="m-0 flex min-w-0 flex-wrap items-center gap-3 border-0 p-0"
+			>
 				{/*
 				 * The preview wears the same pair the sidebar row does - the `sunken`
 				 * plate and a `border-control` edge - because it is showing that row's
@@ -120,11 +153,21 @@ export const AgentAvatarField: FC<AgentAvatarFieldProps> = ({
 					</AvatarFallback>
 				</Avatar>
 				<Button
+					ref={uploadRef}
 					type="button"
 					variant="secondary"
 					size="sm"
-					disabled={busy}
-					onClick={() => inputRef.current?.click()}
+					/*
+					 * `aria-disabled`, NOT `disabled` (review round 1, R1-3). The picker's
+					 * return starts a decode on the button the user pressed, and the disabled
+					 * attribute drops that focus to `<body>` mid-flow; the click guard below
+					 * is what makes the state real, so the affordance and the behaviour agree.
+					 */
+					aria-disabled={busy}
+					onClick={() => {
+						if (busy) return;
+						inputRef.current?.click();
+					}}
 				>
 					<Upload aria-hidden="true" />
 					{t("ui.agents.settings.general.profile_picture_upload")}
@@ -134,22 +177,35 @@ export const AgentAvatarField: FC<AgentAvatarFieldProps> = ({
 						type="button"
 						variant="ghost"
 						size="sm"
-						disabled={busy}
+						aria-disabled={busy}
 						onClick={() => {
-							clearAgentAvatar(agentId);
+							if (busy) return;
+							setSaveFailed(!clearAgentAvatar(agentId));
 							setRefusal(null);
+							/*
+							 * REMOVE TAKES ITSELF AWAY: the button renders only while a picture
+							 * exists, so pressing it unmounts the focused control. Focus moves to
+							 * the Upload button, which is the same field's surviving door, rather
+							 * than falling back to `<body>` (review round 1, R1-3).
+							 */
+							uploadRef.current?.focus();
 						}}
 					>
 						{t("ui.agents.settings.general.profile_picture_remove")}
 					</Button>
 				) : null}
-			</div>
-			<p className="text-ink-dim text-meta">
+			</fieldset>
+			<p id={hintId} className="text-ink-dim text-meta">
 				{t("ui.agents.settings.general.profile_picture_hint")}
 			</p>
 			{refusal ? (
 				<p className="text-danger text-meta" role="alert">
 					{refusalCopy(refusal)}
+				</p>
+			) : null}
+			{saveFailed ? (
+				<p className="text-danger text-meta" role="alert">
+					{t("ui.agents.settings.general.profile_picture_error_save")}
 				</p>
 			) : null}
 			{/*
