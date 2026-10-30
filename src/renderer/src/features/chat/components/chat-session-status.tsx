@@ -22,6 +22,7 @@ import {
 	peerUncertainLabel,
 } from "../../mesh/peer-presence";
 import { asksOutstandingLabel } from "../ask-queue";
+import { subagentMarks } from "../chat-session-subagents";
 
 /** Resting codes that legitimately render as a plain ring. */
 const KNOWN_RESTING = new Set(["idle", "recent"]);
@@ -314,6 +315,37 @@ export function ChatSessionStatus({
 	const uncertainLabel = peerUncertainLabel(row);
 	const delegating = !uncertainLabel && !linkDown && code === "delegating";
 	/*
+	 * THE ROW'S OWN CHILDREN, DRAWN IN THIS CELL RATHER THAN BESIDE THE TITLE
+	 * (first-paint completeness, 2026-10-30).
+	 *
+	 * Both counts are optional on the wire and absent means UNKNOWN, not zero, so a
+	 * row can paint without them and gain them on the next read. A trailing glyph
+	 * is `shrink-0` and the title is the row's only `flex-1`, so a mark arriving
+	 * late took its width out of the title and re-cut the ellipsis under the
+	 * reader: measured at a 264px panel, the title's clip went 152 -> 130px and its
+	 * cut column 24 -> 21 characters 1.6 s after the first contentful frame.
+	 *
+	 * THIS BOX IS THE FIX, and it needs no new reservation because it already
+	 * exists: `size-4`, drawn on every row whether or not it holds a glyph. A count
+	 * that arrives later therefore changes what is IN the row and never how much of
+	 * the title is cut - the fusion the `delegating` rung below has always
+	 * performed, generalised to every code. Two alternatives were measured and
+	 * refused: a trailing lane reserved on every row cost 36px of every title (two
+	 * titles that had rendered whole went into ellipsis at a 264px panel), and a
+	 * lane reserved only while the counts were unknown merely turned the shrink
+	 * into a regrow when they arrived.
+	 *
+	 * WHAT IS DISPLACED, stated rather than hidden: a row with children at work
+	 * shows the trio instead of its status glyph, and a row with running AND queued
+	 * children shows the trio (running wins the one cell). No fact is lost from the
+	 * NAME channel - the row's own sentence carries both counts through
+	 * `subagentClause`, and its tooltip repeats them - which is the "never announce
+	 * less than the pixels" rule this row already holds itself to.
+	 */
+	const subagents = subagentMarks(row);
+	const runningChildren = subagents.running;
+	const queuedChildren = subagents.queued && !runningChildren;
+	/*
 	 * WHAT THIS ROW IS DRAWING, asked of the ONE predicate (`unreadMarkKind`) the
 	 * accessible name below, the sidebar row's tooltip and the bulk control's
 	 * count all ask. It reads `status.code`, which is the runtime's own
@@ -448,8 +480,27 @@ export function ChatSessionStatus({
 		 * same words to the accessibility tree.
 		 */
 		<span className="flex size-4 shrink-0">
-			{delegating ? (
-				<SubagentRunningMark className={cn("size-4", ink)} />
+			{delegating || runningChildren ? (
+				/*
+				 * `mark` ONLY WHERE THE MARK STANDS FOR THE ROW'S OWN RUNNING SUBAGENTS. The
+				 * `delegating` rung shares the component but keeps the hook off (its status
+				 * glyph IS that fact); a row whose children run under any other code gets the
+				 * hook, which is the node this row's tests and the evidence rigs address.
+				 *
+				 * THE INK IS THE LIVENESS ROLE rather than `ink`, which is the STATUS's
+				 * colour: this mark is about the children, not the session's state, so it keeps
+				 * the `text-accent` the trailing glyph wore before it moved here.
+				 */
+				<SubagentRunningMark
+					className="size-4 text-accent"
+					mark={delegating ? undefined : "running"}
+				/>
+			) : queuedChildren ? (
+				<Hourglass
+					aria-hidden="true"
+					data-subagent-mark="queued"
+					className="size-4 text-ink-muted"
+				/>
 			) : (
 				<Icon className={cn("size-4", ink)} aria-hidden="true" />
 			)}
