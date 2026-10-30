@@ -28,7 +28,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { SpeechShortcutsGroup } from "./src/renderer/src/features/settings/components/speech-shortcuts-group";',
-			'export { holdModifierOverlapsChords } from "./src/renderer/src/features/settings/components/push-to-talk-shortcut-row";',
+			'export { holdModifierOverlapsChords, overlappingChord, chordExample, alternativeHoldKey } from "./src/renderer/src/features/settings/components/push-to-talk-shortcut-row";',
 			'export { pushToTalkTokenForCode, resolvePushToTalkBinding } from "./src/renderer/src/shared/hooks/use-speech-to-text-manager";',
 			'export { presentSetting } from "./src/renderer/src/features/settings/backend-setting-copy";',
 			'export { sectionForSettingKey } from "./src/renderer/src/features/settings/promoted-setting-sections";',
@@ -73,6 +73,9 @@ writeFileSync(bundlePath, bundle.outputFiles[0].text);
 const {
 	SpeechShortcutsGroup,
 	holdModifierOverlapsChords,
+	overlappingChord,
+	chordExample,
+	alternativeHoldKey,
 	presentSetting,
 	pushToTalkTokenForCode,
 	resolvePushToTalkBinding,
@@ -573,11 +576,12 @@ test("the overlap note names a hold whose modifier begins an existing chord, and
 		holdModifierOverlapsChords("MetaRight", "darwin", ["primary+shift+s"]),
 		true,
 	);
-	// A panel chord's `primary` is Command on macOS, so a Control hold is clear
-	// of it - but main also matches the Start recording chord on Ctrl.
+	// `primary` is Control OR Command on macOS for panel chords too: the panel
+	// router accepts Ctrl+J as `primary+j` (keymap-dispatch.test.mjs), so a
+	// Control hold overlaps it (review MAJOR1).
 	assert.equal(
 		holdModifierOverlapsChords("ControlLeft", "darwin", ["primary+j"]),
-		false,
+		true,
 	);
 	assert.equal(
 		holdModifierOverlapsChords(
@@ -621,7 +625,7 @@ test("the overlap note renders under the field when the hold shares a modifier w
 				api
 					.text()
 					.includes(
-						"Every shortcut that uses Command, such as Command+J, will start recording for a moment. Choose Option to avoid this.",
+						"Every shortcut that uses Command, such as Command+Shift+S, will start recording for a moment. Choose Option to avoid this.",
 					),
 			);
 		},
@@ -702,7 +706,6 @@ test("a modifier that grows into a chord saves nothing and says why (Cmd+Shift+S
 			assert.equal(edits(api).length, 0, "no save once it was a chord");
 			assert.equal(field.value, "Right-Option", "the saved key is untouched");
 			assert.ok(api.text().includes("can be held"), "the refusal is shown");
-			assert.ok(api.text().includes(pointer));
 			await api.up(field, rest.at(-1));
 			// Esc then clears the refusal: nothing was ever saved to "cancel".
 			await api.key(field, { key: "Escape", code: "Escape" });
@@ -768,7 +771,7 @@ test("the refusal and the overlap note are wired to the field for assistive tech
 			assert.equal(field.getAttribute("aria-invalid"), "true");
 			const status = described.at(-1);
 			assert.equal(status.getAttribute("aria-live"), "polite");
-			assert.ok(status.textContent.includes(pointer));
+			assert.ok(status.textContent.includes("can be held"));
 		},
 	);
 });
@@ -803,5 +806,160 @@ test("a ?setting= deep link to a promoted speech key focuses that row's field (Q
 	await mount({ focusKey: "keymap.something_else" }, async (api) => {
 		assert.notEqual(api.window.document.activeElement, api.$(HOLD));
 		assert.notEqual(api.window.document.activeElement, api.$(START));
+	});
+});
+
+test("the overlap example is the whole chord, and named keys keep their words", () => {
+	assert.equal(
+		chordExample("primary+shift+s", "Control", "other"),
+		"Control+Shift+S",
+	);
+	assert.equal(
+		chordExample("primary+alt+r", "Command", "darwin"),
+		"Command+Option+R",
+	);
+	assert.equal(
+		chordExample("primary+space", "Control", "win32"),
+		"Control+Space",
+	);
+	assert.equal(chordExample("meta+x", "Left-Win", "win32"), "Windows+X");
+	// An Option hold overlaps through `alt`: `primary` is then the app modifier.
+	assert.equal(
+		chordExample("primary+alt+r", "Option", "darwin"),
+		"Command+Option+R",
+	);
+});
+
+test("the suggested alternative never overlaps a claimed chord itself", () => {
+	setPlatform("darwin");
+	// Shipped chords are Command/Control based: Option is free.
+	assert.equal(
+		alternativeHoldKey(
+			"ControlRight",
+			"darwin",
+			["primary+j"],
+			["primary+shift+s"],
+		),
+		"Right-Option",
+	);
+	// An Option chord takes Option away; Control and Command overlap `primary`
+	// on macOS, so there is nothing left to offer.
+	assert.equal(
+		alternativeHoldKey(
+			"ControlRight",
+			"darwin",
+			["primary+j"],
+			["primary+alt+r"],
+		),
+		null,
+	);
+	// Off macOS Option is not a holdable key: Control (own chords) is excluded
+	// when `primary` is bound, and Win/Super is free of `primary`. The labels
+	// follow `navigator.platform`, so it is set to match the family.
+	setPlatform("win32");
+	// The label's wording off macOS is the deferred D4 wart, so only the fact
+	// that a key is offered is asserted here.
+	assert.notEqual(
+		alternativeHoldKey("ControlRight", "win32", ["primary+j"], []),
+		null,
+	);
+	for (const [family, platform] of [
+		["darwin", "darwin"],
+		["win32", "win32"],
+		["other", "linux"],
+	]) {
+		setPlatform(platform);
+		for (const chords of [
+			[],
+			["primary+j"],
+			["alt+x"],
+			["meta+x"],
+			["ctrl+x"],
+		]) {
+			const label = alternativeHoldKey("ControlLeft", family, chords, []);
+			if (label === null) continue;
+			const code = ["Option", "Control", "Command", "Win", "Super"].find((n) =>
+				label.includes(n),
+			);
+			const asCode = {
+				Option: "AltRight",
+				Control: "ControlRight",
+				Command: "MetaRight",
+				Win: "MetaRight",
+				Super: "MetaRight",
+			}[code];
+			assert.equal(
+				overlappingChord(asCode, family, chords),
+				null,
+				`${family} ${chords}: ${label}`,
+			);
+		}
+	}
+});
+
+test("an auto-repeat of the held modifier is the same press: Control held past the repeat delay still saves", async () => {
+	for (const [platform, code, token] of [
+		["darwin", "ControlLeft", "ctrl-left-hold"],
+		["darwin", "AltLeft", "alt-left-hold"],
+		["win32", "ControlRight", "ctrl-right-hold"],
+		["win32", "MetaLeft", "alt-left-hold"],
+	]) {
+		await mount({ platform }, async (api) => {
+			const field = api.$(HOLD);
+			field.focus();
+			const first = modifier(code);
+			await api.key(field, first);
+			// The OS repeats the keydown while the key is held.
+			await api.key(field, { ...first, repeat: true });
+			await api.key(field, { ...first, repeat: true });
+			assert.equal(edits(api).length, 0, "nothing saved while still down");
+			assert.equal(api.text().includes("can be held"), false);
+			await api.up(field, first);
+			assert.deepEqual(
+				edits(api).map((edit) => edit.value),
+				[token],
+				`${platform} ${code}`,
+			);
+		});
+	}
+});
+
+test("an IME composition keydown is ignored, like a repeat: it neither taints nor refuses", async () => {
+	await mount({ platform: "darwin" }, async (api) => {
+		const field = api.$(HOLD);
+		field.focus();
+		const first = modifier("ControlRight", { ctrlKey: true });
+		await api.key(field, first);
+		await api.key(field, { key: "Process", code: "KeyA", isComposing: true });
+		await api.up(field, first);
+		assert.deepEqual(
+			edits(api).map((edit) => edit.value),
+			["ctrl-right-hold"],
+		);
+		assert.equal(api.text().includes("can be held"), false);
+	});
+});
+
+test("an auto-repeat of a lone modifier does not disarm the Primary row's message", async () => {
+	await mount({}, async (api) => {
+		const field = api.$(START);
+		const control = modifier("ControlLeft", { ctrlKey: true });
+		await api.key(field, control);
+		await api.key(field, { ...control, repeat: true });
+		await api.up(field, control);
+		assert.ok(api.text().includes("needs a letter or number"));
+	});
+});
+
+test("a refusal does not repeat the hint's pointer to Start recording", async () => {
+	await mount({ platform: "darwin" }, async (api) => {
+		const field = api.$(HOLD);
+		field.focus();
+		await api.tap(field, { key: "a", code: "KeyA" });
+		const status = api.window.document.getElementById(`${field.id}-status`);
+		assert.ok(status.textContent.includes("can be held"));
+		assert.equal(status.textContent.includes(pointer), false);
+		// Shown once: in the hint, which the field's description carries.
+		assert.equal(api.text().split(pointer).length - 1, 1);
 	});
 });

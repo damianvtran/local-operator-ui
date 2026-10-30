@@ -366,9 +366,19 @@ export class SpeechToTextManager {
 		 * start and the shortcut did nothing. The chord is the user's real intent,
 		 * so it replaces the hold: the press that was never a hold is discarded.
 		 */
+		const held = this.engaged;
 		this.releaseHold("abort");
-		const active = this.highestActive();
-		if (active) active.handler.start();
+		/*
+		 * THE HANDLER THE HOLD WAS ON TAKES THE CHORD, not whoever `isActive` says.
+		 * The abort above has settled the composer's refs, but its `isActive` reads
+		 * state that only updates on the next render: a take that had already
+		 * started still reads "recording", so `highestActive()` returned nothing
+		 * and the chord ended in no recording at all (QA round 2, Q1: any chord
+		 * after the take started; only the first ~100 ms worked). The handler's own
+		 * `start` is guarded by its attempt ref, which the abort has cleared.
+		 */
+		const target = held?.handler ?? this.highestActive()?.handler;
+		target?.start();
 	};
 
 	/**

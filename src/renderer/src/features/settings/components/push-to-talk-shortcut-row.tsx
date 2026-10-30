@@ -28,13 +28,10 @@ import { useKeymapSettingWrite } from "./use-keymap-setting-write";
  * refusing, because the cost is the user's to weigh and the backend accepts the
  * pairing.
  *
- * WHICH KEY `primary` IS DEPENDS ON WHO MATCHES THE CHORD. A panel chord is
- * matched by the renderer, where `primary` is Command on macOS and Ctrl
- * elsewhere. The Start recording chord is matched in main, where `primary`
- * accepts Ctrl on every platform and Command too on macOS (`recordingChords`).
- * Off macOS the Meta key (Win/Super) is not `primary`, so only a literal `meta`
- * chord uses it. `AltLeft`/`AltRight` bind on macOS only (see
- * `pushToTalkTokenForCode`).
+ * `primary` counts as Control on every platform and as Command on macOS, for
+ * panel chords and for the Start recording chord alike. Off macOS the Meta key
+ * (Win/Super) is not `primary`, so only a literal `meta` chord uses it.
+ * `AltLeft`/`AltRight` bind on macOS only (see `pushToTalkTokenForCode`).
  */
 export function overlappingChord(
 	code: string,
@@ -42,18 +39,23 @@ export function overlappingChord(
 	chords: readonly string[],
 	/**
 	 * Chords main matches itself (the Start recording chord). Its `primary`
-	 * accepts Ctrl on every platform and Command too on macOS, whereas a panel
-	 * chord's `primary` is only the app modifier (Command on macOS).
+	 * accepts Ctrl on every platform and Command too on macOS.
 	 */
 	recordingChords: readonly string[] = [],
 ): string | null {
 	const modifier = /^(Alt|Meta|Control)/.exec(code)?.[1];
-	const uses = (tokens: readonly string[], recording: boolean): boolean => {
+	/*
+	 * `primary` is Control or (macOS) Command for EVERY chord: the panel router
+	 * accepts either (`use-keymap-shortcuts.ts`, `chordFromEvent` turns Ctrl+J
+	 * into `primary+j`, and `keymap-dispatch.test.mjs` asserts Ctrl+J opens the
+	 * console), and main's matcher for Start recording accepts the same pair. So
+	 * `chords` and `recordingChords` differ only in who matches them, not in
+	 * which key counts; the split is kept so a caller can say where the chord
+	 * came from.
+	 */
+	const uses = (tokens: string[]): boolean => {
 		if (modifier === "Control") {
-			return (
-				tokens.includes("ctrl") ||
-				(tokens.includes("primary") && (recording || family !== "darwin"))
-			);
+			return tokens.includes("ctrl") || tokens.includes("primary");
 		}
 		if (modifier === "Meta") {
 			return (
@@ -65,8 +67,10 @@ export function overlappingChord(
 	};
 	const modifiers = (chord: string) => chord.split("+").slice(0, -1);
 	return (
-		chords.find((chord) => uses(modifiers(chord), false)) ??
-		recordingChords.find((chord) => uses(modifiers(chord), true)) ??
+		// The Start recording chord first: it is the one in this same group, and
+		// the one a person most expects the note to name.
+		recordingChords.find((chord) => uses(modifiers(chord))) ??
+		chords.find((chord) => uses(modifiers(chord))) ??
 		null
 	);
 }
@@ -78,6 +82,69 @@ export const holdModifierOverlapsChords = (
 	chords: readonly string[],
 	recordingChords: readonly string[] = [],
 ): boolean => overlappingChord(code, family, chords, recordingChords) !== null;
+
+/**
+ * An overlapping chord as the words a person types, whole: "Control+Shift+S",
+ * "Command+Option+R". `primary` is spelled as the held key when the hold IS
+ * Control or Command (that is the key it overlaps through), and as the
+ * platform's app modifier otherwise: an Option hold overlaps a chord through its
+ * `alt`, so naming the held key for `primary` printed "Option+Option+R".
+ * Single-letter keys are upper-cased; named keys ("space", "arrowup") keep their
+ * words, capitalised.
+ */
+export function chordExample(
+	chord: string,
+	heldName: string,
+	family: PlatformFamily,
+): string {
+	const tokens = chord.split("+");
+	const key = tokens.at(-1) ?? "";
+	const named = (token: string): string => {
+		if (token === "primary") {
+			if (heldName === "Control" || heldName === "Command") return heldName;
+			return family === "darwin" ? "Command" : "Control";
+		}
+		if (token === "ctrl") return "Control";
+		if (token === "shift") return "Shift";
+		if (token === "alt") return family === "darwin" ? "Option" : "Alt";
+		if (token === "meta") {
+			return family === "darwin"
+				? "Command"
+				: family === "win32"
+					? "Windows"
+					: "Super";
+		}
+		return token;
+	};
+	const keyWord =
+		key.length === 1
+			? key.toUpperCase()
+			: key.charAt(0).toUpperCase() + key.slice(1);
+	return [...tokens.slice(0, -1).map(named), keyWord].join("+");
+}
+
+/**
+ * The key to suggest instead: the first one this platform can hold that no
+ * claimed chord begins with, other than the one already bound. Off macOS there
+ * is no Option to offer (see `pushToTalkTokenForCode`). Null when every
+ * holdable key overlaps something, which the note then says by offering none.
+ */
+export function alternativeHoldKey(
+	current: string,
+	family: PlatformFamily,
+	chords: readonly string[],
+	recordingChords: readonly string[],
+): string | null {
+	for (const code of ["AltRight", "ControlRight", "MetaRight"]) {
+		const token = pushToTalkTokenForCode(code, family);
+		if (token === null) continue;
+		const binding = pushToTalkBindingForToken(token);
+		if (!binding || binding.code === current) continue;
+		if (overlappingChord(code, family, chords, recordingChords)) continue;
+		return binding.label;
+	}
+	return null;
+}
 
 const MODIFIER_CODE = /^(Alt|Meta|Control|Shift)(Left|Right)$/;
 
@@ -153,31 +220,22 @@ export function PushToTalkShortcutRow({
 		live === null
 			? null
 			: overlappingChord(live.code, family, claimed, recordingChords);
-	/*
-	 * The key to suggest instead: the first one this platform can hold that no
-	 * claimed chord begins with. Off macOS there is no Option to offer (see
-	 * `pushToTalkTokenForCode`).
-	 */
 	const alternative =
-		overlap === null
+		overlap === null || live === null
 			? null
-			: (["AltRight", "ControlRight", "MetaRight"]
-					.filter((code) => pushToTalkTokenForCode(code, family) !== null)
-					.filter(
-						(code) => !overlappingChord(code, family, claimed, recordingChords),
-					)
-					.map((code) =>
-						pushToTalkBindingForToken(pushToTalkTokenForCode(code, family)),
-					)
-					.find((binding) => binding && binding.code !== live?.code)?.label ??
-				null);
-	// A letter belongs to the primary box: say so where the user is stuck.
+			: alternativeHoldKey(live.code, family, claimed, recordingChords);
+	/*
+	 * The pointer to Start recording lives in the hint, which the field's
+	 * description carries and which shows while it is focused. It is NOT
+	 * repeated in the refusal: the two sat on screen together as the same
+	 * sentence twice (UX U-5, design D9).
+	 */
 	const pointer = t("ui.settings.shortcuts.speech.push_to_talk_letter_pointer");
 	const refuse = () =>
 		setError(
-			`${t("ui.settings.shortcuts.speech.push_to_talk_refused", {
+			t("ui.settings.shortcuts.speech.push_to_talk_refused", {
 				platform: family,
-			})} ${pointer}`,
+			}),
 		);
 
 	return (
@@ -206,6 +264,19 @@ export function PushToTalkShortcutRow({
 			}}
 			onKeyDown={(event) => {
 				if (saving) return;
+				/*
+				 * AN AUTO-REPEAT IS THE SAME PRESS, NOT ANOTHER KEY, and an IME
+				 * composition keydown is not a key the user chose: both are decided
+				 * BEFORE anything can taint the press. Holding Control past the OS
+				 * repeat delay used to taint its own press and then save nothing and
+				 * say nothing (review MAJOR2, UX U-1, QA Q2). IME input is ignored the
+				 * same way rather than refused: the refusal would name keys the user
+				 * never pressed. Tab still passes through so the field can be left.
+				 */
+				if (event.repeat || event.nativeEvent.isComposing) {
+					if (!NAVIGATION_KEYS.has(event.key)) event.preventDefault();
+					return;
+				}
 				// Whatever goes down while a modifier is held makes that press a chord.
 				const tainting = press.current !== null;
 				if (press.current) press.current.tainted = true;
@@ -220,11 +291,9 @@ export function PushToTalkShortcutRow({
 					event.preventDefault();
 					return;
 				}
-				if (event.nativeEvent.isComposing) return;
 				// Every press is the field's: a held Alt must not open a menu bar and a
 				// letter must not type, whether or not it is a valid binding.
 				event.preventDefault();
-				if (event.repeat) return;
 				if (tainting || !MODIFIER_CODE.test(event.code)) {
 					if (!tainting) press.current = null;
 					refuse();
@@ -254,7 +323,7 @@ export function PushToTalkShortcutRow({
 					<p>
 						{t("ui.settings.shortcuts.speech.push_to_talk_overlap", {
 							modifier: keyName(live.label),
-							example: `${keyName(live.label)}+${(overlap.split("+").at(-1) ?? "").toUpperCase()}`,
+							example: chordExample(overlap, keyName(live.label), family),
 							alternative: alternative ? keyName(alternative) : "none",
 						})}
 					</p>

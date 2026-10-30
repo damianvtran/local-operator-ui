@@ -26,23 +26,23 @@
   "afterTapSaved": {
     "value": "Left-Control",
     "invalid": null,
-    "text": "Secondary\nPush to talk (hold)\nReset\n\nHold to dictate (desktop); release to stop.\n\nPress the modifier key you want to hold; Esc cancels. For a shortcut with a letter, use Start recording above.\n\nEvery shortcut that uses Control, such as Control+S, will start recording for a moment. Choose Option to avoid this."
+    "text": "Secondary\nPush to talk (hold)\nReset\n\nHold to dictate (desktop); release to stop.\n\nPress the modifier key you want to hold; Esc cancels. For a shortcut with a letter, use Start recording above.\n\nEvery shortcut that uses Control, such as Control+Shift+S, will start recording for a moment. Choose Option to avoid this."
   },
   "settingAfterTap": "ctrl-left-hold",
   "rebound": {
     "value": "Left-Control",
     "invalid": null,
-    "text": "Secondary\nPush to talk (hold)\nReset\n\nHold to dictate (desktop); release to stop.\n\nPress the modifier key you want to hold; Esc cancels. For a shortcut with a letter, use Start recording above.\n\nEvery shortcut that uses Control, such as Control+S, will start recording for a moment. Choose Option to avoid this."
+    "text": "Secondary\nPush to talk (hold)\nReset\n\nHold to dictate (desktop); release to stop.\n\nPress the modifier key you want to hold; Esc cancels. For a shortcut with a letter, use Start recording above.\n\nEvery shortcut that uses Control, such as Control+Shift+S, will start recording for a moment. Choose Option to avoid this."
   },
   "afterChord": {
     "value": "Left-Control",
     "invalid": "true",
-    "text": "Secondary\nPush to talk (hold)\nReset\n\nHold to dictate (desktop); release to stop.\n\nPress the modifier key you want to hold; Esc cancels. For a shortcut with a letter, use Start recording above.\n\nEvery shortcut that uses Control, such as Control+S, will start recording for a moment. Choose Option to avoid this.\n\nOnly a left or right Control, Option or Command key can be held. For a shortcut with a letter, use Start recording above."
+    "text": "Secondary\nPush to talk (hold)\nReset\n\nHold to dictate (desktop); release to stop.\n\nPress the modifier key you want to hold; Esc cancels. For a shortcut with a letter, use Start recording above.\n\nEvery shortcut that uses Control, such as Control+Shift+S, will start recording for a moment. Choose Option to avoid this.\n\nOnly a left or right Control, Option or Command key can be held."
   },
   "refused": {
     "value": "Left-Control",
     "invalid": "true",
-    "text": "Secondary\nPush to talk (hold)\nReset\n\nHold to dictate (desktop); release to stop.\n\nPress the modifier key you want to hold; Esc cancels. For a shortcut with a letter, use Start recording above.\n\nEvery shortcut that uses Control, such as Control+S, will start recording for a moment. Choose Option to avoid this.\n\nOnly a left or right Control, Option or Command key can be held. For a shortcut with a letter, use Start recording above."
+    "text": "Secondary\nPush to talk (hold)\nReset\n\nHold to dictate (desktop); release to stop.\n\nPress the modifier key you want to hold; Esc cancels. For a shortcut with a letter, use Start recording above.\n\nEvery shortcut that uses Control, such as Control+Shift+S, will start recording for a moment. Choose Option to avoid this.\n\nOnly a left or right Control, Option or Command key can be held."
   },
   "holdBackToOption": {
     "value": "Right-Option",
@@ -66,7 +66,7 @@
     "holdRow": {
       "value": "Right-Option",
       "invalid": null,
-      "text": "Secondary\nPush to talk (hold)\n\nHold to dictate (desktop); release to stop.\n\nEvery shortcut that uses Option, such as Option+R, will start recording for a moment."
+      "text": "Secondary\nPush to talk (hold)\n\nHold to dictate (desktop); release to stop.\n\nEvery shortcut that uses Option, such as Command+Option+R, will start recording for a moment."
     }
   },
   "mainSwallow": {

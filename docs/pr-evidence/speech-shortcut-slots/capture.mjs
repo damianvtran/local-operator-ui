@@ -9,9 +9,15 @@
  *
  * What is real: the Electron main + renderer, the preload bridge, a real
  * `lop serve` holding the settings registry, and key events injected with
- * `Input.dispatchKeyEvent` (they pass through Chromium's input pipeline and
- * the main process' `before-input-event` hook). What is not: a microphone (no
- * recording is started), and any platform but this Mac.
+ * `Input.dispatchKeyEvent` (real keydown/keyup with real `code` values). What is
+ * not: a microphone (no recording is started), any platform but this Mac, and
+ * the main process' `before-input-event` hook - CDP key events do NOT pass
+ * through it (the record shows `ipc: []` for Cmd+P; `src/main/address-overlay.ts`
+ * says the same), so what main swallows is covered by `chord-takeover.mjs`,
+ * which sends main's own IPC channel instead.
+ *
+ * The narrow frames are a CDP-emulated 800 px viewport, the window's minimum
+ * width, so they depict a size a user can actually reach.
  *
  * Never calls Page.bringToFront / Target.activateTarget / window.focus(): focus
  * emulation keeps a never-shown page reading as focused.
@@ -244,6 +250,28 @@ record.defaultRows = {
 	secondary: record.hasHoldBox ? await read(HOLD) : null,
 };
 
+const narrow = async (name) => {
+	await cdp("Emulation.setDeviceMetricsOverride", {
+		width: 800,
+		height: 868,
+		deviceScaleFactor: 1,
+		mobile: false,
+	});
+	await wait(800);
+	await scrollToGroup();
+	await shot(name);
+	await cdp("Emulation.clearDeviceMetricsOverride");
+	await wait(500);
+};
+
+// --- defaults in light and at the minimum width, before any key press ------
+await go("#/settings", "githubLight");
+await scrollToGroup();
+await shot("default-light");
+await narrow("narrow-light");
+await go("#/settings", "localOperatorDark");
+await scrollToGroup();
+
 if (LABEL === "after") {
 	// --- listening: focused, hint visible, modifier held ----------------------
 	await focusField(HOLD);
@@ -342,38 +370,17 @@ if (LABEL === "after") {
 	);
 	record.mainSwallow = f2;
 
-	// --- light and narrow ----------------------------------------------------
-	await go("#/settings", "githubLight");
-	await scrollToGroup();
-	await shot("default-light");
+	// --- deep link, from defaults again (both rows reset first) --------------
+	for (const key of ["keymap.start_recording", "keymap.push_to_talk"])
+		await evaluate(
+			`window.api.desktop.request({ op: "settings.reset", key: ${JSON.stringify(key)} })`,
+		);
 	await go("#/settings?setting=keymap.push_to_talk", "githubLight");
 	await scrollToGroup();
 	record.deepLinkActive = await evaluate(
 		`document.activeElement?.getAttribute('data-shortcut-action') ?? document.activeElement?.tagName`,
 	);
 	await shot("deeplink-focused-light");
-	await cdp("Emulation.setDeviceMetricsOverride", {
-		width: 760,
-		height: 868,
-		deviceScaleFactor: 1,
-		mobile: false,
-	});
-	await wait(800);
-	await scrollToGroup();
-	await shot("narrow-light");
-} else {
-	await go("#/settings", "githubLight");
-	await scrollToGroup();
-	await shot("default-light");
-	await cdp("Emulation.setDeviceMetricsOverride", {
-		width: 760,
-		height: 868,
-		deviceScaleFactor: 1,
-		mobile: false,
-	});
-	await wait(800);
-	await scrollToGroup();
-	await shot("narrow-light");
 }
 
 writeFileSync(

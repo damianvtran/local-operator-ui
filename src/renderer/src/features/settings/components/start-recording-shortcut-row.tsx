@@ -101,7 +101,13 @@ export function StartRecordingShortcutRow({
 			}}
 			onKeyDown={(event) => {
 				if (saving) return;
-				lone.current = MODIFIER_ONLY_KEYS.has(event.key) && !event.repeat;
+				// An auto-repeat of a held modifier is the same press: it must not
+				// disarm the "a modifier alone is not a shortcut" message.
+				if (event.repeat && MODIFIER_ONLY_KEYS.has(event.key)) {
+					event.preventDefault();
+					return;
+				}
+				lone.current = MODIFIER_ONLY_KEYS.has(event.key);
 				if (END_EDIT_KEYS.has(event.key) || MODIFIER_ONLY_KEYS.has(event.key)) {
 					if (END_EDIT_KEYS.has(event.key)) setError(null);
 					event.preventDefault();
