@@ -6,7 +6,11 @@ import type {
 	TeamBridgeDirectoryMember,
 	TeamBridgeMemberInput,
 } from "../../../../../shared/team-bridge-contract";
-import { type ChiefLabels, recipientMemberInput } from "../team-bridge-model";
+import {
+	type ChiefLabels,
+	personDisplayLabel,
+	recipientMemberInput,
+} from "../team-bridge-model";
 import { type MentionCandidateRow, buildMentionCandidates } from "./candidates";
 import { type MentionSource, MentionSourceContext } from "./mention-context";
 
@@ -72,8 +76,15 @@ export function TeamBridgeMentionProvider({
 							),
 						])
 				: undefined;
+		const selfRow = selfAccountId
+			? people.find((row) => row.account_id === selfAccountId)
+			: undefined;
 		return {
 			conversationId: conversation.id,
+			self:
+				selfAccountId && selfRow
+					? { accountId: selfAccountId, label: personDisplayLabel(selfRow) }
+					: null,
 			candidates,
 			conversationKind: conversation.kind,
 			sendMentions,

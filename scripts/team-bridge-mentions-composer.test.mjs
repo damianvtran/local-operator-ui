@@ -19,6 +19,8 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export {TeamBridgeThreadPaneView} from './src/renderer/src/features/team-bridge/team-bridge-thread-pane';
+			export {TeamBridgeMessageList} from './src/renderer/src/features/team-bridge/team-bridge-message-list';
+			export {renderToStaticMarkup} from 'react-dom/server';
 			export {MentionSourceContext} from './src/renderer/src/features/team-bridge/mentions/mention-context';
 			export {stagedMentions} from './src/renderer/src/features/team-bridge/mentions/mention-outbox';
 			export {createRoot} from 'react-dom/client';
@@ -31,7 +33,13 @@ const bundle = await build({
 	format: "esm",
 	write: false,
 	alias: { "@shared": `${process.cwd()}/src/renderer/src/shared` },
-	external: ["react", "react-dom", "react-dom/client", "react/jsx-runtime"],
+	external: [
+		"react",
+		"react-dom",
+		"react-dom/client",
+		"react-dom/server",
+		"react/jsx-runtime",
+	],
 	packages: "external",
 	jsx: "automatic",
 	loader: { ".css": "empty" },
@@ -80,6 +88,9 @@ try {
 }
 
 const CONVERSATION = "bcv_mentions01";
+const MENTION_OTHER = /data-mention="other"[^>]*>@Ben Tran</;
+const MENTION_VIEWER = /data-mention="viewer"[^>]*>@Damian Tran</;
+const MENTION_ANY = /data-mention="/g;
 const NOT_MEMBER_NOTICE = /Sherman Tsui isn’t in this conversation\./;
 const rootMessage = {
 	id: "bcmsg_root0001",
@@ -400,4 +411,49 @@ test("@ inside an email never opens", async () => {
 	} finally {
 		await ui.unmount();
 	}
+});
+
+test("message bodies highlight mentions; the reader's own is the stronger token", () => {
+	const html = mod.renderToStaticMarkup(
+		mod.createElement(
+			mod.MentionSourceContext.Provider,
+			{
+				value: {
+					conversationId: CONVERSATION,
+					candidates,
+					conversationKind: "group",
+					sendMentions: true,
+					self: { accountId: "acct_self", label: "Damian Tran" },
+				},
+			},
+			mod.createElement(mod.TeamBridgeMessageList, {
+				messages: [
+					{
+						...rootMessage,
+						id: "bcmsg_m1",
+						body: "@Ben Tran and @Damian Tran: `@Ben Tran` in code",
+					},
+				],
+				labelFor: (s) => s.display_label,
+			}),
+		),
+	);
+	assert.match(html, MENTION_OTHER);
+	assert.match(html, MENTION_VIEWER);
+	assert.equal(
+		(html.match(MENTION_ANY) ?? []).length,
+		2,
+		"inline code is not highlighted",
+	);
+	const bare = mod.renderToStaticMarkup(
+		mod.createElement(mod.TeamBridgeMessageList, {
+			messages: [{ ...rootMessage, id: "bcmsg_m2", body: "@Ben Tran" }],
+			labelFor: (s) => s.display_label,
+		}),
+	);
+	assert.equal(
+		MENTION_ANY.test(bare),
+		false,
+		"no mention source, no highlight",
+	);
 });

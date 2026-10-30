@@ -16,6 +16,7 @@ const bundle = await build({
 		contents: `
 			export * from "./src/renderer/src/features/team-bridge/mentions/matcher";
 			export * from "./src/renderer/src/features/team-bridge/mentions/tokens";
+			export * from "./src/renderer/src/features/team-bridge/mentions/message-mentions";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -326,4 +327,80 @@ test("segments: overlay runs reproduce the text exactly", () => {
 		segs.map((x) => x.kind),
 		["text", "token", "text"],
 	);
+});
+
+const roster = [
+	{ kind: "human", accountId: "a_ben", label: "Ben Tran" },
+	{ kind: "human", accountId: "a_bent", label: "Ben" },
+	{ kind: "agent", accountId: "a_ben", label: "Aida (Ben Tran)" },
+];
+const self = { accountId: "a_me", label: "Damian Tran" };
+
+test("message mentions: the hub's mentions[] is authoritative when present", () => {
+	const spec = m.messageMentionSpec({
+		body: "@Ben Tran and @Damian Tran, see @Ben",
+		mentions: [
+			{ kind: "human", account_id: "a_ben" },
+			{ kind: "human", account_id: "a_me" },
+		],
+		candidates: roster,
+		self,
+	});
+	assert.equal(spec.source, "message");
+	assert.deepEqual(spec.runs, [
+		{ label: "Ben Tran", viewer: false },
+		{ label: "Damian Tran", viewer: true },
+	]);
+	const channel = m.messageMentionSpec({
+		body: "@here hi",
+		mentions: [{ kind: "channel" }],
+		candidates: roster,
+		self,
+	});
+	assert.ok(channel.runs.some((r) => r.label === "here" && r.viewer));
+});
+
+test("message mentions: without mentions[] fall back to @Name over members and directory", () => {
+	const spec = m.messageMentionSpec({
+		body: "ping @Damian Tran and @Ben Tran",
+		mentions: undefined,
+		candidates: roster,
+		self,
+	});
+	assert.equal(spec.source, "fallback");
+	assert.deepEqual(
+		spec.runs.map((r) => [r.label, r.viewer]),
+		[
+			["Ben Tran", false],
+			["Ben", false],
+			["Damian Tran", true],
+		],
+	);
+	assert.equal(
+		m.messageMentionSpec({
+			body: "no names",
+			mentions: undefined,
+			candidates: roster,
+			self,
+		}),
+		null,
+	);
+});
+
+test("split: longest label wins, word ends respected, emails untouched", () => {
+	const runs = [
+		{ label: "Ben", viewer: false },
+		{ label: "Ben Tran", viewer: true },
+	];
+	assert.deepEqual(m.splitMentions("hi @Ben Tran!", runs), [
+		{ kind: "text", text: "hi " },
+		{ kind: "mention", text: "@Ben Tran", viewer: true },
+		{ kind: "text", text: "!" },
+	]);
+	assert.deepEqual(m.splitMentions("@Benjamin", runs), [
+		{ kind: "text", text: "@Benjamin" },
+	]);
+	assert.deepEqual(m.splitMentions("x@Ben", runs), [
+		{ kind: "text", text: "x@Ben" },
+	]);
 });

@@ -24,6 +24,8 @@ export type MentionSource = {
 	 * `mentions[]`, because an older backend refuses an unknown field.
 	 */
 	sendMentions: boolean;
+	/** The reader, for the stronger "mentions you" highlight in message bodies. */
+	self: { accountId: string; label: string } | null;
 	/** Invite a non-member; absent where the reader cannot invite (or in a DM). */
 	onInvite?: (candidate: MentionCandidateRow) => Promise<unknown>;
 };
