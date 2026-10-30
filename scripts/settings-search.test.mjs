@@ -64,10 +64,10 @@ const bundle = await build({
 			import { SettingsSearch, useSettingsSearchIndex } from "./src/renderer/src/features/settings/components/settings-search";
 			export { createElement };
 			export { SettingsSearch };
-			export { buildSettingsIndex } from "./src/renderer/src/features/settings/search/settings-search-index";
-			export function Harness({ buildIndex, registry, sections, onJump }) {
+			export { buildSettingsIndex, buildRenderedEntries } from "./src/renderer/src/features/settings/search/settings-search-index";
+			export function Harness({ buildIndex, registry, sections, onJump, readRendered }) {
 				const index = useSettingsSearchIndex({ registry, sections, build: buildIndex });
-				return createElement(SettingsSearch, { index, onJump });
+				return createElement(SettingsSearch, { index, onJump, readRendered });
 			}
 		`,
 		resolveDir: process.cwd(),
@@ -105,7 +105,7 @@ const sections = [
 /** Mount the harness and return the container plus the spies. */
 const mount = async (
 	t,
-	{ registry = payload, buildIndex, outcome = "landed" } = {},
+	{ registry = payload, buildIndex, outcome = "landed", readRendered } = {},
 ) => {
 	const container = document.createElement("div");
 	document.body.append(container);
@@ -131,6 +131,7 @@ const mount = async (
 				buildIndex: builder,
 				registry,
 				sections,
+				readRendered,
 				onJump: (entry) => {
 					jumps.push(entry);
 					return outcome;
@@ -358,6 +359,54 @@ test("the Clear button is reachable by keyboard, and the panel survives the Tab 
 	});
 	assert.equal(panel(container), null, "focus leaving the widget closes it");
 	outside.remove();
+});
+
+test("a row that mounts after the first focus is still found (QA round 1, Q5)", async (t) => {
+	/*
+	 * The page's rendered half was read ONCE per mount, so a row that mounts
+	 * after the field's first focus — window glass and the effort select both
+	 * wait for a bridge/store answer — was invisible to every later query, which
+	 * is how a row whose every single word finds it can be absent from the panel
+	 * (QA round 1, Q5). Opening the panel re-reads the page's own rows.
+	 */
+	// A tiny registry: this case is about the PAGE half arriving late, and the
+	// 230-row fixture costs a full index build for nothing.
+	const { buildRenderedEntries } = await import(bundlePath.href);
+	const { container } = await mount(t, {
+		registry: { sections: [], settings: [] },
+		readRendered: () =>
+			buildRenderedEntries(document.querySelector("[data-settings-content]")),
+	});
+	const rows = document.createElement("div");
+	rows.setAttribute("data-settings-content", "");
+	document.body.append(rows);
+	await type(container, "translucent");
+	assert.equal(
+		container.querySelector('[role="option"]'),
+		null,
+		"nothing matches before the row exists",
+	);
+	rows.innerHTML = `
+		<div data-search-section="appearance" data-search-section-label="Appearance">
+			<div data-search-row="appearance.glass" data-search-control>
+				<div>
+					<span data-search-label="">Translucent window</span>
+					<p>Lets your desktop show through the app window, blurred by the system.</p>
+				</div>
+			</div>
+		</div>`;
+	await act(async () => {
+		field(container).blur();
+		field(container).focus();
+	});
+	assert.equal(
+		container
+			.querySelector('[role="option"]')
+			?.textContent?.includes("Translucent window"),
+		true,
+		"reopening the panel sees the row that arrived",
+	);
+	rows.remove();
 });
 
 test("the live region announces the result count", async (t) => {

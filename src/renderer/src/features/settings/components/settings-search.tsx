@@ -154,7 +154,17 @@ export const SettingsSearch = forwardRef<
 	 * widget?", and that is a question about this element, not about the input.
 	 */
 	const rootRef = useRef<HTMLDivElement | null>(null);
-	const renderedRef = useRef<SettingSearchEntry[] | null>(null);
+	/*
+	 * The PAGE half of the entries, as state rather than a ref.
+	 *
+	 * A ref would keep the read out of React's bookkeeping — and the result list
+	 * would then keep the version it computed before the late rows existed
+	 * (`results` is a memo). State is what makes a re-read rebuild the list and
+	 * nothing else: the page's sections do not consume it.
+	 */
+	const [renderedRows, setRenderedRows] = useState<SettingSearchEntry[] | null>(
+		null,
+	);
 	const [query, setQuery] = useState("");
 	const [open, setOpen] = useState(false);
 	const [activeIndex, setActiveIndex] = useState(0);
@@ -173,28 +183,37 @@ export const SettingsSearch = forwardRef<
 	}));
 
 	/*
-	 * The rendered half is read in the EVENT that first needs it (focus or the
-	 * first keystroke), never during render: a render-phase ref write runs twice
-	 * under StrictMode and is the kind of "it works" that stops working when
-	 * React changes. The read is cached for the mount because the page's rows
-	 * cannot change while the reader is typing a query at them.
+	 * The rendered half is read in the EVENT that needs it — focus, or a
+	 * re-open — never during render. The registry half stays memoised per
+	 * payload identity, which is where the cost lives; the page's own ~15 rows
+	 * are re-read once per OPEN, because a page row can arrive AFTER the field's
+	 * first focus (window glass and the effort select mount when their
+	 * bridge/store answer resolves). A read cached for the mount then misses
+	 * them forever, and the panel searches a page that no longer exists — which
+	 * is how a row whose every single word finds it could be absent from the
+	 * results (QA round 1, Q5).
 	 */
+	const readRows = useCallback(() => readRendered?.() ?? [], [readRendered]);
+
+	const refreshRendered = useCallback(() => {
+		setRenderedRows(readRows());
+	}, [readRows]);
+
 	const primeRendered = useCallback(() => {
-		if (renderedRef.current === null) {
-			renderedRef.current = readRendered?.() ?? [];
-		}
-	}, [readRendered]);
+		setRenderedRows((current) => current ?? readRows());
+	}, [readRows]);
 
 	const entries = useCallback((): readonly SettingSearchEntry[] => {
-		const rendered = renderedRef.current;
+		const rendered = renderedRows;
 		return rendered && rendered.length > 0 ? [...index, ...rendered] : index;
-	}, [index]);
+	}, [index, renderedRows]);
 
 	const blank = isBlankQuery(query);
 	const { results, total } = useMemo(
 		() => searchSettings(entries(), query),
-		// `entries` is memoised on the index's identity, which is the page's
-		// memo: this recomputes for a query, never for a section's render.
+		// `entries` is memoised on the index's identity and the page half's own
+		// revision: this recomputes for a query or a re-read, never for a
+		// section's render.
 		[entries, query],
 	);
 	const groups = useMemo(() => groupSettingResults(results), [results]);
@@ -332,7 +351,7 @@ export const SettingsSearch = forwardRef<
 					type="text"
 					className="pl-8"
 					onFocus={() => {
-						primeRendered();
+						refreshRendered();
 						setOpen(true);
 					}}
 					/*
