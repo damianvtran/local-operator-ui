@@ -69,6 +69,46 @@ const pageBundle = await build({
 		"react-router-dom",
 		"@tanstack/react-query",
 	],
+	/*
+	 * Minified, and written as UTF-8, for the SHARD's memory rather than this
+	 * file's convenience. `Desktop Tests shard (2/3)` killed this suite's process
+	 * group at 9.9 GB against a 7.8 GB budget (run 40890898929, job
+	 * 123595100451) with no assertion failing, and this file is the one member of
+	 * this pull request that lands in shard 2, where three files build their own
+	 * esbuild bundle at once.
+	 *
+	 * Measured over these seven entries, one process per configuration, process
+	 * tree peak of the build:
+	 *
+	 *   as it was                      bundle 10.8 MB   build peak 587 MB  9.7 s
+	 *   charset: "utf8"                bundle  7.6 MB   build peak 526 MB  9.4 s
+	 *   minify: true                   bundle  8.7 MB   build peak 555 MB 13.0 s
+	 *   both (this config)             bundle  5.5 MB   build peak 496 MB 13.0 s
+	 *
+	 * The catalogue is why `charset` earns its place: the bundle carries all eight
+	 * locales, 625,671 of the non-minified bundle's characters are `\uXXXX`
+	 * escapes of CJK, Devanagari, Arabic and Cyrillic copy, and `charset: "utf8"`
+	 * leaves 59. Node reads the file back as UTF-8 either way.
+	 *
+	 * End to end, the same single case run alone (`Q-2 a withdrawn ask reads
+	 * Withdrawn`, which renders the Settled row in all seven translated locales):
+	 * 657 MB process tree before, 554 MB after.
+	 *
+	 * What was tried and is NOT here, with the measurement that rejected it:
+	 * `packages: "external"` would drop the 454 node_modules inputs and take this
+	 * build to 269 MB - but the graph reaches packages node cannot resolve from
+	 * the repo at all (measured: `prop-types` -> ERR_MODULE_NOT_FOUND; MUI 6 has
+	 * no `exports` map and imports its own files BY DIRECTORY, which node's ESM
+	 * resolver refuses), so the bundle stops importing. Dropping the three entries
+	 * the assertions never read (`createNotificationFixture`, `notificationKeys`,
+	 * `NotificationDetail`) moves the bundle 2.7 KB: all three are reachable from
+	 * `NotificationsPage` anyway, so naming them as entries costs nothing.
+	 *
+	 * This is 91 MB of a 9.9 GB overshoot and is not offered as the cure; the
+	 * capacity arithmetic is on the pull request.
+	 */
+	minify: true,
+	charset: "utf8",
 	tsconfig: "tsconfig.web.json",
 });
 /* On disk for the length of the import only: a data: URL cannot resolve bare specifiers. */
