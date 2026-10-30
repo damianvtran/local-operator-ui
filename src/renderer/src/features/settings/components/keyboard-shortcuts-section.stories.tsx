@@ -168,6 +168,16 @@ const RecordingBackendStory: FC<{
 	useLayoutEffect(() => {
 		const previous = window.api;
 		const previousElectron = window.electron;
+		/*
+		 * The hold row's names and refusals follow `navigator.platform`, while the
+		 * capture glyphs follow the window-chrome facts, which resolve `linux` in
+		 * this harness. A Mac running Storybook would otherwise read "Right-Option"
+		 * beside "Ctrl+Shift+S": pin the one the facts already say.
+		 */
+		Object.defineProperty(window.navigator, "platform", {
+			value: "Linux x86_64",
+			configurable: true,
+		});
 		const setting: BackendSettings["settings"][number] = {
 			key: "keymap.start_recording",
 			section: "keymap",
@@ -256,6 +266,8 @@ const RecordingBackendStory: FC<{
 		return () => {
 			window.api = previous;
 			window.electron = previousElectron;
+			// Own property shadows the prototype's: dropping it restores the real one.
+			Reflect.deleteProperty(window.navigator, "platform");
 			client.clear();
 		};
 	}, [client, holdValue, loadDelayMs, refuseSave, value, withoutHold]);
