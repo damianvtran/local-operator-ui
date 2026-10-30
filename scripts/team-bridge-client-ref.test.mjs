@@ -379,3 +379,71 @@ test("a second 409 does not loop: it surfaces and keeps the text", async () => {
 	assert.equal(refs[2], refs[1]);
 	await app.close();
 });
+
+/*
+ * F2 - THE SAME TEXT TWICE IS TWO MESSAGES. "ok", "yes" and "thanks" are typed
+ * into one conversation in normal use, so the body comparison that makes a retry
+ * a retry must not be the only thing standing between the reader and a burnt key:
+ * a deliberate second "ok" has to mint a new key, because it is a new message.
+ * Deleting the attempt-record reset on success keeps the other four cases green
+ * and only this one red - which is why it is here.
+ */
+test("identical text sent twice deliberately wears two different keys", async () => {
+	localStorage.clear();
+	const refs = [];
+	const app = await mountPage(
+		pageProps({
+			target: conversation,
+			onSend: async (_body, clientRef) => {
+				refs.push(clientRef);
+			},
+		}),
+	);
+	await typeBody(app.element, "ok");
+	await act(async () => sendButton(app.element).click());
+	await settle();
+	await typeBody(app.element, "ok");
+	await act(async () => sendButton(app.element).click());
+	await settle();
+	assert.deepEqual(refs.length, 2, "both presses reach the wire");
+	assert.notEqual(
+		refs[0],
+		refs[1],
+		"the second 'ok' is a new message and must not reuse the first key",
+	);
+	await app.close();
+});
+
+/*
+ * F3 - THE MATCHER STAYS NARROW. `isClientRefConflict` accepts the hub's declared
+ * code and, as a fallback for runtime proxies that do not forward it, the
+ * `client_ref` sentence. The fallback must not become "any 409": a
+ * conversation-level conflict (the author was removed, a create raced) is not
+ * recoverable by minting a key, and retrying it would double a request that can
+ * only fail - and would hide the real error behind a generic one.
+ */
+test("a conversation-level 409 is not retried as a client_ref conflict", async () => {
+	localStorage.clear();
+	const refs = [];
+	const app = await mountPage(
+		pageProps({
+			target: conversation,
+			onSend: async (_body, clientRef) => {
+				refs.push(clientRef);
+				throw Object.assign(
+					new Error("[conflict] the conversation was removed"),
+					{ status: 409, code: "conversation_conflict" },
+				);
+			},
+		}),
+	);
+	await typeBody(app.element, "hello");
+	await act(async () => sendButton(app.element).click());
+	await settle();
+	assert.deepEqual(
+		refs.length,
+		1,
+		"one attempt only: a key cannot fix a conversation-level conflict",
+	);
+	await app.close();
+});
