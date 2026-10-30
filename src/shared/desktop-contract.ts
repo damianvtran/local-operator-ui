@@ -3837,12 +3837,15 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			endpoint_id: id.optional(),
 		})
 		.strict(),
+	/* Reactions have no receipt-less legacy caller: the captured account and
+	 * target tenant are required before main may dispatch either verb. */
 	z
 		.object({
 			op: z.literal("team_bridge.reactions.toggle"),
 			conversation_id: id,
 			message_id: id,
-			tenant_id: id.optional(),
+			expected_account_id: id,
+			tenant_id: id,
 			emoji: z.string().min(1),
 			active: z.boolean(),
 		})
@@ -3865,13 +3868,15 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	/*
 	 * One thread (root + replies, oldest-first) under the history gate. Paging
 	 * runs FORWARD with an inclusive `after_seq`, because a thread reads top-down.
+	 * The captured account binds this read to the bearer main dispatches with.
 	 */
 	z
 		.object({
 			op: z.literal("team_bridge.messages.replies"),
 			conversation_id: id,
 			message_id: id,
-			tenant_id: id.optional(),
+			expected_account_id: id,
+			tenant_id: id,
 			limit: z.number().int().min(1).max(100).optional(),
 			after_seq: z.number().int().nonnegative().optional(),
 		})
@@ -4696,6 +4701,22 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 				code: z.ZodIssueCode.custom,
 				path: ["tenant_id"],
 				message: "Guarded conversation writes require an explicit tenant",
+			});
+			return;
+		}
+		/* A threaded send has no receipt-less compatibility path. Keep this on
+		 * the union: a member-level refine would make the discriminated union
+		 * invalid, while an optional field alone would let a caller forget the
+		 * account receipt and dispatch a reply as whoever signs in next. */
+		if (
+			request.op === "team_bridge.messages.send" &&
+			request.thread_root_id !== undefined &&
+			!request.expected_account_id
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ["expected_account_id"],
+				message: "Thread replies require the captured account", // i18n: ignore request-schema diagnostic
 			});
 			return;
 		}
@@ -9574,10 +9595,13 @@ export function desktopEndpoint(request: DesktopRequest): {
 				? {
 						path,
 						method: "PUT",
-						body: request.tenant_id ? { tenant_id: request.tenant_id } : {},
+						body: {
+							expected_account_id: request.expected_account_id,
+							tenant_id: request.tenant_id,
+						},
 					}
 				: {
-						path: `${path}${tenantQuery(request.tenant_id)}`,
+						path: `${path}${conversationOwnerQuery(request)}`,
 						method: "DELETE",
 					};
 		}
@@ -9653,8 +9677,10 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "DELETE",
 			};
 		case "team_bridge.messages.replies": {
-			const query = new URLSearchParams();
-			if (request.tenant_id) query.set("tenant_id", request.tenant_id);
+			const query = new URLSearchParams({
+				expected_account_id: request.expected_account_id,
+				tenant_id: request.tenant_id,
+			});
 			if (request.limit !== undefined)
 				query.set("limit", String(request.limit));
 			if (request.after_seq !== undefined)

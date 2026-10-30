@@ -90,6 +90,24 @@ export async function teamBridgeWriteOwner(
 	return { expected_account_id: accountId, tenant_id: tenantId };
 }
 
+/**
+ * The captured account a send must carry, or a loud refusal.
+ *
+ * `send` requires `expectedAccountId` because every send is owner-guarded: a
+ * top-level one is checked by `teamBridgeWriteOwner` and a threaded reply is
+ * refused by `desktopRequestSchema` without it. A caller holding a possibly
+ * unresolved account therefore fails here, before any request exists, instead
+ * of posting as whoever signs in next. Renderer call sites reach this through
+ * `useBridgeOwner`/`accountId`, both of which are optional until the account
+ * read answers.
+ */
+export function requireBridgeWriteAccount(
+	accountId: string | undefined,
+): string {
+	if (!accountId) throw new Error("Team Bridge write account required");
+	return accountId;
+}
+
 export const TeamBridgeApi = {
 	async scheduledList(tenantId: string) {
 		return teamBridgeScheduledListSchema.parse(
@@ -147,7 +165,8 @@ export const TeamBridgeApi = {
 		messageId: string,
 		emoji: string,
 		active: boolean,
-		tenantId?: string,
+		tenantId: string,
+		accountId: string,
 	) {
 		const answer = await desktopResult<unknown>({
 			op: "team_bridge.reactions.toggle",
@@ -155,7 +174,8 @@ export const TeamBridgeApi = {
 			message_id: messageId,
 			emoji,
 			active,
-			...(tenantId ? { tenant_id: tenantId } : {}),
+			tenant_id: tenantId,
+			expected_account_id: accountId,
 		});
 		return teamBridgeReactionsSchema.parse(answer);
 	},
@@ -296,13 +316,19 @@ export const TeamBridgeApi = {
 	async listReplies(
 		conversationId: string,
 		rootId: string,
-		options: { tenantId?: string; limit?: number; afterSeq?: number } = {},
+		options: {
+			tenantId: string;
+			accountId: string;
+			limit?: number;
+			afterSeq?: number;
+		},
 	): Promise<TeamBridgeThreadPage> {
 		const answer = await desktopResult<unknown>({
 			op: "team_bridge.messages.replies",
 			conversation_id: conversationId,
 			message_id: rootId,
-			...(options.tenantId ? { tenant_id: options.tenantId } : {}),
+			tenant_id: options.tenantId,
+			expected_account_id: options.accountId,
 			...(options.limit === undefined ? {} : { limit: options.limit }),
 			...(options.afterSeq === undefined
 				? {}
@@ -316,7 +342,12 @@ export const TeamBridgeApi = {
 		input: {
 			clientRef: string;
 			body: string;
-			expectedAccountId?: string;
+			/* REQUIRED, not optional. Every send is owner-guarded now, and a
+			 * threaded reply is refused by the request schema without it, so a
+			 * caller that dropped the receipt would ship a path that 422s. Making
+			 * it required at this boundary means deleting it fails `check-types`
+			 * instead of failing at runtime on the reply the user just typed. */
+			expectedAccountId: string;
 			tenantId?: string;
 			/* Set to reply in that root's thread; omitted for a channel-level post. */
 			threadRootId?: string;
@@ -335,6 +366,14 @@ export const TeamBridgeApi = {
 			conversation_id: conversationId,
 			client_ref: input.clientRef,
 			body: input.body,
+			/* A threaded reply REQUIRES the captured owner: `desktopRequestSchema`
+			 * refuses `thread_root_id` without `expected_account_id`, so a caller
+			 * that forgets it fails before main opens a socket rather than posting
+			 * the reply as whoever signs in next. A top-level send reaches the same
+			 * field through `teamBridgeWriteOwner` above. */
+			...(input.expectedAccountId
+				? { expected_account_id: input.expectedAccountId }
+				: {}),
 			...(input.tenantId ? { tenant_id: input.tenantId } : {}),
 			...(input.threadRootId ? { thread_root_id: input.threadRootId } : {}),
 			...(input.attachmentIds?.length
