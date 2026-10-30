@@ -107,6 +107,48 @@ test("only active memberships become switcher rows", () => {
 	);
 });
 
+/*
+ * tb-instant-open: the scope the page opens in, BEFORE the organization list
+ * exists. The shell watcher's cached rows name their own organization, which is
+ * what lets a single-organization account paint its rail before the eligibility
+ * gate answers instead of waiting behind a full-screen spinner.
+ */
+test("the watcher's own rows decide the scope before the organization list", () => {
+	const rows = [
+		conversation("bcv_1", "tnt_1", "2026-10-18T10:00:00Z"),
+		conversation("bcv_2", "tnt_1", "2026-10-18T11:00:00Z"),
+	];
+	assert.equal(
+		model.preferredScope([], model.TEAM_BRIDGE_ALL_SCOPE, false, rows),
+		"tnt_1",
+	);
+	// Rows naming more than one organization say nothing about a single scope, so
+	// the merged view holds until the organization list answers.
+	assert.equal(
+		model.preferredScope([], model.TEAM_BRIDGE_ALL_SCOPE, false, [
+			...rows,
+			conversation("bcv_3", "tnt_2", "2026-10-18T12:00:00Z"),
+		]),
+		model.TEAM_BRIDGE_ALL_SCOPE,
+	);
+	// The organization list is the stronger statement and supersedes the snapshot:
+	// several organizations put the page back on the merged view, one adopts its own.
+	assert.equal(
+		model.preferredScope(organizations, "tnt_1", false, rows),
+		model.TEAM_BRIDGE_ALL_SCOPE,
+	);
+	assert.equal(
+		model.preferredScope([organizations[1]], "tnt_1", false, rows),
+		"tnt_2",
+	);
+	// And a scope the reader chose outranks both.
+	assert.equal(model.preferredScope([], "tnt_2", true, rows), "tnt_2");
+	assert.equal(
+		model.preferredScope([], model.TEAM_BRIDGE_ALL_SCOPE, false),
+		model.TEAM_BRIDGE_ALL_SCOPE,
+	);
+});
+
 test("per-org counts come from the account aggregate, zero when absent", () => {
 	assert.deepEqual(
 		organizations.map((row) => row.unread),

@@ -104,6 +104,7 @@ import enUiNotices from "./catalogues/en/ui.notices.json";
 import enUiNotifications from "./catalogues/en/ui.notifications.json";
 import enUiNotificationsOperation from "./catalogues/en/ui.notifications.operation.json";
 import enUiOnboarding from "./catalogues/en/ui.onboarding.json";
+import enUiOwnerAudit from "./catalogues/en/ui.ownerAudit.json";
 import enUiPresence from "./catalogues/en/ui.presence.json";
 import enUiProjects from "./catalogues/en/ui.projects.json";
 import enUiProviders from "./catalogues/en/ui.providers.json";
@@ -212,6 +213,7 @@ import esUiNotices from "./catalogues/es/ui.notices.json";
 import esUiNotifications from "./catalogues/es/ui.notifications.json";
 import esUiNotificationsOperation from "./catalogues/es/ui.notifications.operation.json";
 import esUiOnboarding from "./catalogues/es/ui.onboarding.json";
+import esUiOwnerAudit from "./catalogues/es/ui.ownerAudit.json";
 import esUiPresence from "./catalogues/es/ui.presence.json";
 import esUiProjects from "./catalogues/es/ui.projects.json";
 import esUiProviders from "./catalogues/es/ui.providers.json";
@@ -320,6 +322,7 @@ import frUiNotices from "./catalogues/fr/ui.notices.json";
 import frUiNotifications from "./catalogues/fr/ui.notifications.json";
 import frUiNotificationsOperation from "./catalogues/fr/ui.notifications.operation.json";
 import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
+import frUiOwnerAudit from "./catalogues/fr/ui.ownerAudit.json";
 import frUiPresence from "./catalogues/fr/ui.presence.json";
 import frUiProjects from "./catalogues/fr/ui.projects.json";
 import frUiProviders from "./catalogues/fr/ui.providers.json";
@@ -428,6 +431,7 @@ import hiUiNotices from "./catalogues/hi/ui.notices.json";
 import hiUiNotifications from "./catalogues/hi/ui.notifications.json";
 import hiUiNotificationsOperation from "./catalogues/hi/ui.notifications.operation.json";
 import hiUiOnboarding from "./catalogues/hi/ui.onboarding.json";
+import hiUiOwnerAudit from "./catalogues/hi/ui.ownerAudit.json";
 import hiUiPresence from "./catalogues/hi/ui.presence.json";
 import hiUiProjects from "./catalogues/hi/ui.projects.json";
 import hiUiProviders from "./catalogues/hi/ui.providers.json";
@@ -536,6 +540,7 @@ import ruUiNotices from "./catalogues/ru/ui.notices.json";
 import ruUiNotifications from "./catalogues/ru/ui.notifications.json";
 import ruUiNotificationsOperation from "./catalogues/ru/ui.notifications.operation.json";
 import ruUiOnboarding from "./catalogues/ru/ui.onboarding.json";
+import ruUiOwnerAudit from "./catalogues/ru/ui.ownerAudit.json";
 import ruUiPresence from "./catalogues/ru/ui.presence.json";
 import ruUiProjects from "./catalogues/ru/ui.projects.json";
 import ruUiProviders from "./catalogues/ru/ui.providers.json";
@@ -644,6 +649,7 @@ import urUiNotices from "./catalogues/ur/ui.notices.json";
 import urUiNotifications from "./catalogues/ur/ui.notifications.json";
 import urUiNotificationsOperation from "./catalogues/ur/ui.notifications.operation.json";
 import urUiOnboarding from "./catalogues/ur/ui.onboarding.json";
+import urUiOwnerAudit from "./catalogues/ur/ui.ownerAudit.json";
 import urUiPresence from "./catalogues/ur/ui.presence.json";
 import urUiProjects from "./catalogues/ur/ui.projects.json";
 import urUiProviders from "./catalogues/ur/ui.providers.json";
@@ -752,6 +758,7 @@ import viUiNotices from "./catalogues/vi/ui.notices.json";
 import viUiNotifications from "./catalogues/vi/ui.notifications.json";
 import viUiNotificationsOperation from "./catalogues/vi/ui.notifications.operation.json";
 import viUiOnboarding from "./catalogues/vi/ui.onboarding.json";
+import viUiOwnerAudit from "./catalogues/vi/ui.ownerAudit.json";
 import viUiPresence from "./catalogues/vi/ui.presence.json";
 import viUiProjects from "./catalogues/vi/ui.projects.json";
 import viUiProviders from "./catalogues/vi/ui.providers.json";
@@ -860,6 +867,7 @@ import zhCNUiNotices from "./catalogues/zh-CN/ui.notices.json";
 import zhCNUiNotifications from "./catalogues/zh-CN/ui.notifications.json";
 import zhCNUiNotificationsOperation from "./catalogues/zh-CN/ui.notifications.operation.json";
 import zhCNUiOnboarding from "./catalogues/zh-CN/ui.onboarding.json";
+import zhCNUiOwnerAudit from "./catalogues/zh-CN/ui.ownerAudit.json";
 import zhCNUiPresence from "./catalogues/zh-CN/ui.presence.json";
 import zhCNUiProjects from "./catalogues/zh-CN/ui.projects.json";
 import zhCNUiProviders from "./catalogues/zh-CN/ui.providers.json";
@@ -971,6 +979,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiNotifications,
 	...enUiNotificationsOperation,
 	...enUiOnboarding,
+	...enUiOwnerAudit,
 	...enUiPresence,
 	...enUiProjects,
 	...enUiProviders,
@@ -1087,6 +1096,7 @@ export const bundledCatalogues: Readonly<
 		...esUiNotifications,
 		...esUiNotificationsOperation,
 		...esUiOnboarding,
+		...esUiOwnerAudit,
 		...esUiPresence,
 		...esUiProjects,
 		...esUiProviders,
@@ -1197,6 +1207,7 @@ export const bundledCatalogues: Readonly<
 		...frUiNotifications,
 		...frUiNotificationsOperation,
 		...frUiOnboarding,
+		...frUiOwnerAudit,
 		...frUiPresence,
 		...frUiProjects,
 		...frUiProviders,
@@ -1307,6 +1318,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiNotifications,
 		...hiUiNotificationsOperation,
 		...hiUiOnboarding,
+		...hiUiOwnerAudit,
 		...hiUiPresence,
 		...hiUiProjects,
 		...hiUiProviders,
@@ -1417,6 +1429,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiNotifications,
 		...ruUiNotificationsOperation,
 		...ruUiOnboarding,
+		...ruUiOwnerAudit,
 		...ruUiPresence,
 		...ruUiProjects,
 		...ruUiProviders,
@@ -1527,6 +1540,7 @@ export const bundledCatalogues: Readonly<
 		...urUiNotifications,
 		...urUiNotificationsOperation,
 		...urUiOnboarding,
+		...urUiOwnerAudit,
 		...urUiPresence,
 		...urUiProjects,
 		...urUiProviders,
@@ -1637,6 +1651,7 @@ export const bundledCatalogues: Readonly<
 		...viUiNotifications,
 		...viUiNotificationsOperation,
 		...viUiOnboarding,
+		...viUiOwnerAudit,
 		...viUiPresence,
 		...viUiProjects,
 		...viUiProviders,
@@ -1747,6 +1762,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiNotifications,
 		...zhCNUiNotificationsOperation,
 		...zhCNUiOnboarding,
+		...zhCNUiOwnerAudit,
 		...zhCNUiPresence,
 		...zhCNUiProjects,
 		...zhCNUiProviders,
@@ -7161,6 +7177,36 @@ export type MessageParams = {
 	"ui.onboarding.search.row.save_failed": undefined;
 	"ui.onboarding.search.row.saved": undefined;
 	"ui.onboarding.search.row.saving": { name: string };
+	"ui.ownerAudit.active": undefined;
+	"ui.ownerAudit.admitted": undefined;
+	"ui.ownerAudit.agent": undefined;
+	"ui.ownerAudit.attachment_expired": undefined;
+	"ui.ownerAudit.attachment_unavailable": undefined;
+	"ui.ownerAudit.body_unavailable": undefined;
+	"ui.ownerAudit.disclosure": undefined;
+	"ui.ownerAudit.empty_history": undefined;
+	"ui.ownerAudit.empty_list": undefined;
+	"ui.ownerAudit.error": undefined;
+	"ui.ownerAudit.left": undefined;
+	"ui.ownerAudit.loading": undefined;
+	"ui.ownerAudit.more": undefined;
+	"ui.ownerAudit.not_screened": undefined;
+	"ui.ownerAudit.older": undefined;
+	"ui.ownerAudit.own": undefined;
+	"ui.ownerAudit.page_cutoff": undefined;
+	"ui.ownerAudit.read_only": undefined;
+	"ui.ownerAudit.refresh": undefined;
+	"ui.ownerAudit.rejected": undefined;
+	"ui.ownerAudit.removed": undefined;
+	"ui.ownerAudit.replies": undefined;
+	"ui.ownerAudit.retry": undefined;
+	"ui.ownerAudit.reveal": undefined;
+	"ui.ownerAudit.title": undefined;
+	"ui.ownerAudit.unknown_sender": undefined;
+	"ui.ownerAudit.unknown_status": undefined;
+	"ui.ownerAudit.unnamed": undefined;
+	"ui.ownerAudit.viewers_label": undefined;
+	"ui.ownerAudit.window_unconfirmed": undefined;
 	"ui.presence.days_ago": { count: number };
 	"ui.presence.device_link_down": { reason: string; age: string };
 	"ui.presence.device_unreachable": undefined;
@@ -9296,6 +9342,7 @@ export type MessageParams = {
 	"ui.teamBridge.list.empty.title": undefined;
 	"ui.teamBridge.list.error": undefined;
 	"ui.teamBridge.list.error_pane": undefined;
+	"ui.teamBridge.list.error_stale": undefined;
 	"ui.teamBridge.list.loading": undefined;
 	"ui.teamBridge.list.retry": undefined;
 	"ui.teamBridge.list.untitled": undefined;
@@ -9477,6 +9524,7 @@ export type MessageParams = {
 	"ui.teamBridge.thread.intro_group": { names: string };
 	"ui.teamBridge.thread.intro_person": { name: string };
 	"ui.teamBridge.thread.loading": undefined;
+	"ui.teamBridge.thread.not_available": undefined;
 	"ui.teamBridge.thread.today": undefined;
 	"ui.teamBridge.thread.withheld": undefined;
 	"ui.teamBridge.thread.yesterday": undefined;

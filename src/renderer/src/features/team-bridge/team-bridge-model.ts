@@ -601,14 +601,30 @@ export function organizationOptions(
  * create until the reader picked the one org they belong to. `chosen` is true
  * once the reader has used the switcher, so their explicit All is never
  * overridden by a later refresh.
+ *
+ * `snapshotRows` is the one statement available BEFORE the organization list: the
+ * rows the shell's notification watcher already holds for this account
+ * (tb-instant-open). When they name exactly one organization, that is the
+ * organization this page opens in, which is what lets the rail paint before the
+ * eligibility gate answers instead of holding a full-screen spinner. It is a
+ * weaker statement than the list and never outranks it: as soon as the list
+ * answers - one organization, or several - it decides, and a multi-organization
+ * account goes to the merged view the snapshot could not have known about. A
+ * scope the reader chose still wins over everything.
  */
 export function preferredScope(
 	organizations: readonly TeamBridgeOrganization[],
 	current: TeamBridgeScope,
 	chosen: boolean,
+	snapshotRows?: readonly TeamBridgeConversation[],
 ): TeamBridgeScope {
-	if (chosen || organizations.length !== 1) return current;
-	return organizations[0].tenantId;
+	if (chosen) return current;
+	if (organizations.length === 1) return organizations[0].tenantId;
+	if (organizations.length > 1) return TEAM_BRIDGE_ALL_SCOPE;
+	const tenants = new Set((snapshotRows ?? []).map((row) => row.tenant_id));
+	return current === TEAM_BRIDGE_ALL_SCOPE && tenants.size === 1
+		? asTeamBridgeTenantId([...tenants][0])
+		: current;
 }
 
 /** The organization a scope names, or null for the account-wide scope. */

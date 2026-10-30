@@ -216,6 +216,16 @@ function TeamBridgeThreadPaneBody({
 		contentKey: `${replies.length}:${replies.at(-1)?.id ?? ""}`,
 	});
 	const hasContent = Boolean(draft.trim()) || images.count > 0;
+	/* CAN THIS PANE ACTUALLY SEND? An empty state must not INVITE a reply that has
+	 * nowhere to go (design round 1, D3). Only `readOnly` can answer no here: the
+	 * render below dispatches `loading` and `error` before it ever reaches the
+	 * empty branch, so `state` is already `ready` at this use site, and carrying
+	 * it as a term would advertise a case the branch order owns (code round 2,
+	 * F2). With no invitation to make, the empty state renders nothing: the
+	 * read-only note in the composer slot is the sentence that explains the pane,
+	 * and minting a second "No replies yet." variant would owe a translation
+	 * round in seven locales to say what that note already says. */
+	const canStartThread = !readOnly;
 	const submit = async () => {
 		const body = draft.trim();
 		if (images.blocked) {
@@ -306,14 +316,18 @@ function TeamBridgeThreadPaneBody({
 						forceToolbar={forceToolbar}
 					/>
 				)}
-				{/* Pending/error pages cannot assert an empty count from an empty array. */}
-				{(state === "ready" || root?.reply_count !== undefined) && (
-					<div className="px-5 py-3 text-[12px] text-ink-dim">
-						{t("ui.teamBridge.replies.count", {
-							count: root?.reply_count ?? replies.length,
-						})}
-					</div>
-				)}
+				{/* Pending/error pages cannot assert an empty count from an empty array.
+				    A ZERO IS NOT A COUNT: printing "0 replies" directly above "No
+				    replies yet" states one fact twice (design round 1, D2), so the
+				    line appears only when there is something to count. */}
+				{(state === "ready" || root?.reply_count !== undefined) &&
+					(root?.reply_count ?? replies.length) > 0 && (
+						<div className="px-5 py-3 text-[12px] text-ink-dim">
+							{t("ui.teamBridge.replies.count", {
+								count: root?.reply_count ?? replies.length,
+							})}
+						</div>
+					)}
 				{state === "loading" ? (
 					<div className="flex justify-center py-8">
 						<Spinner size="sm" label={t("ui.teamBridge.thread.loading")} />
@@ -326,9 +340,11 @@ function TeamBridgeThreadPaneBody({
 						</Button>
 					</div>
 				) : replies.length === 0 ? (
-					<p className="px-5 py-6 text-[13px] text-ink-muted">
-						{t("ui.teamBridge.replies.empty")}
-					</p>
+					canStartThread ? (
+						<p className="px-5 py-6 text-[13px] text-ink-muted">
+							{t("ui.teamBridge.replies.empty")}
+						</p>
+					) : null
 				) : (
 					<TeamBridgeMessageList
 						messages={replies}
@@ -457,9 +473,9 @@ export type ThreadPaneMountProps = {
 	onMessagePerson?: ThreadPaneProps["onMessagePerson"];
 	onClose: () => void;
 	reactionContext?: ThreadPaneProps["reactionContext"];
-	/* The attachment lane's two additions ride the mount props, so the shipped-
-	   build gate wrapper passes them through untouched. */
-	accountId?: string;
+	/* The account captured with this pane binds both its reads and its replies
+	   to the same signed-in owner. A missing owner cannot dispatch either. */
+	accountId: string;
 	attachmentCapability?: TeamBridgeAttachmentCapability | null;
 };
 
@@ -510,7 +526,7 @@ function TeamBridgeThreadPaneMount({
 	const query = useInfiniteQuery({
 		queryKey: key,
 		initialPageParam: undefined as number | undefined,
-		queryFn: ({ pageParam }) => loadThreadPage(target, pageParam),
+		queryFn: ({ pageParam }) => loadThreadPage(target, accountId, pageParam),
 		getNextPageParam: (page) =>
 			page.has_more ? page.next_after_seq : undefined,
 		refetchInterval: 8_000,
@@ -533,6 +549,7 @@ function TeamBridgeThreadPaneMount({
 				body,
 				clientRef,
 				tenantId,
+				expectedAccountId: accountId,
 				threadRootId: rootId,
 				attachmentIds,
 			}),
