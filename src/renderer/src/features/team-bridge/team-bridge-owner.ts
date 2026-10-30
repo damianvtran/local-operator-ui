@@ -46,21 +46,42 @@ export function useTeamBridgeAccount() {
  * not read as an authority change.
  *
  * WHAT IS DELIBERATELY NOT HERE, so a later reader can tell a decision from an
- * oversight. The same status payload carries four fields that look
+ * oversight. The status route's answer carries four fields that look
  * authority-bearing at a glance, and none of them authorizes a private read:
  *
- * - `tenant_id` is the *selected* organization, i.e. the answer's default view.
- *   Every audit read names its own organization in its own request, so this
- *   field moving re-targets a default, not the read already in flight.
+ * - `tenant_id` is the *selected* organization, i.e. the answer's default view
+ *   (`selected_tenant_id` on the server). Every audit read names its own
+ *   organization in its own request, so this field moving re-targets a default,
+ *   not the read already in flight.
  * - `local.enrolled` is this DEVICE's own claim (the account, tenant and
  *   endpoint it has already accepted), so it says whether this machine may act
- *   rather than whose data a read may address; `local.enabled` is the read gate
+ *   rather than whose data a read may address — and it cannot be read here even
+ *   if wanted: the contract's `local` object is a strict `z.object({enabled,
+ *   onboarding, session})` with no `.passthrough()`, so zod strips `enrolled`
+ *   before the answer reaches the query cache. `local.enabled` is the read gate
  *   the projection keeps.
- * - `boundary` is the request's view selector (which read family the caller
- *   asked for), not an endpoint or an account switch.
- * - `surface_state` is a projection of `state` + `localEnabled` + `readOnly`; a
- *   read that gated on it too would fire twice on one change and learn no
- *   authority the three fields do not already carry.
+ * - `boundary` echoes which NATURAL BOUNDARY triggered this status check —
+ *   `app_start` / `sign_in` / `window_focus` / `surface_open` (§5.1) — and the
+ *   server's own contract says it "only selects caching context". It records
+ *   why the check happened; it neither names a read family nor moves authority.
+ * - `surface_state` is the SERVER's per-tenant posture letter (A–G), and the
+ *   derivation runs one way: it is computed from `state` plus the selected
+ *   tenant row (no row → A, row ineligible → F, eligible without endpoint → B,
+ *   else the endpoint's own `active` / `paused` / other → C / D / E), and
+ *   `read_only` is then derived FROM it (`state == "F"`). It is therefore not a
+ *   redundancy: a C→D pause or a C→E opt-out can land while `state` stays
+ *   `ready`, `readOnly` stays false and `localEnabled` is unchanged, and this
+ *   fence does not see it.
+ *
+ * That is a KNOWN, ACCEPTED GAP, not an oversight. A pause or opt-out stops the
+ * agent's FLOW, not this human's view (the server keeps D readable by design),
+ * so a read that crosses one has already been authorized by the server per
+ * tenant and returns only the caller's OWN audit data — the rows the caller was
+ * entitled to when it started. Nothing is cached past the panel (`gcTime: 0`),
+ * the next read re-runs this fence against the then-current posture, and every
+ * WRITE is refused separately (`bridgeOwnerCurrent` keeps `!readOnly` for
+ * writes), so the gap cannot leak data across an authority boundary; it can
+ * only fail to cut a read short mid-flight.
  *
  * WHAT THIS FENCE IS, AND WHAT SITS BESIDE IT. The comparison looks narrower
  * than the object identity it replaced, so its scope is stated rather than
