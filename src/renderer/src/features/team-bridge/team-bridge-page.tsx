@@ -1348,8 +1348,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		 * a different message, so it gets a different key.
 		 */
 		const attempt = pendingSend.current;
-		const clientRef =
-			attempt?.body === body ? attempt.clientRef : crypto.randomUUID();
+		// Three cases. A retry of the failed attempt keeps its key. A DIFFERENT message
+		// after a failed attempt gets a fresh one (the failed key may have landed). With no
+		// attempt in flight the draft's key is unspent - a success rotates it below, and a
+		// discarded schedule already re-minted it - so it is the one to use.
+		const clientRef = attempt
+			? attempt.body === body
+				? attempt.clientRef
+				: crypto.randomUUID()
+			: (draftState.current?.clientRef ?? crypto.randomUUID());
 		// A new message starts with a clean slate; a retry of the same attempt keeps
 		// whatever the auto-retry below already spent on it.
 		if (attempt?.body !== body) autoRetried.current = false;
@@ -1377,6 +1384,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			if (isDraftCurrent() && pendingSend.current === entry) {
 				pendingSend.current = null;
 				if (draftJournal) draftJournal.pending = null;
+				// THE SPENT KEY IS RETIRED WITH THE ATTEMPT. This is the actual fix: the
+				// draft outlives a successful send, so without this the next message reads
+				// the key this one just used and the hub refuses it with 409.
+				draftState.update({ clientRef: crypto.randomUUID() });
 			}
 			return true;
 		} catch (error) {
@@ -1408,6 +1419,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						if (isDraftCurrent() && pendingSend.current === retryEntry) {
 							pendingSend.current = null;
 							if (draftJournal) draftJournal.pending = null;
+							draftState.update({ clientRef: crypto.randomUUID() });
 						}
 						return true;
 					} catch (retryError) {
