@@ -9,8 +9,10 @@
  * used to compare the OBJECT it captured against whatever the status query held
  * afterwards. A status refetch (the query refetches on window focus) installs a
  * fresh object from the same authority — same account, same readiness, same
- * read-only posture — and any field outside the authority set differing (a
- * session id, a server note) makes that new object a different reference. The
+ * read-only posture. Structural sharing keeps the reference only for a
+ * deep-equal answer, and the status payload's `checked_at` / `fetched_at` move
+ * on every check, so every refetch is a different reference (the control test
+ * below proves both halves). The
  * fence then threw "Team Bridge read authority changed" on a read that crossed
  * no authority change at all.
  *
@@ -29,7 +31,12 @@
  * 3. Every field in the authority set — account, state, read_only, local
  *    enabled — still rejects when it changes mid-read. The fence's purpose is
  *    unchanged: a read may not cross a genuine authority change.
- * 4. `bridgeOwnerCurrent` (the same field set, evaluated as a predicate) agrees
+ * 4. ALL ORGANIZATIONS: two per-organization reads in flight at once, one
+ *    status refetch between them — both resolve on a content-only refetch,
+ *    both refuse a genuine change. That is the shape the operator hit.
+ * 5. A vanished status snapshot still refuses (via the read fence and via
+ *    `captureBridgeStatusAuthority`, which the banner predicate calls bare).
+ * 6. `bridgeOwnerCurrent` (the same field set, evaluated as a predicate) agrees
  *    with the fence: a content-only change stays "current", an authority change
  *    does not. Both call sites read the same projection, which is the point of
  *    extracting it — a second notion of "same authority" would drift here.
@@ -54,7 +61,12 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { bridgeOwnerCurrent, readForBridgeOwner } from "./src/renderer/src/features/team-bridge/team-bridge-owner";
+			import * as owner from "./src/renderer/src/features/team-bridge/team-bridge-owner";
+			export const { bridgeOwnerCurrent, readForBridgeOwner } = owner;
+			/* Read off the namespace, not named: the pre-fix module has no such
+			 * export, and a named re-export would fail the bundle instead of letting
+			 * this file run its cases against that module as the RED reproduction. */
+			export const captureBridgeStatusAuthority = owner["captureBridgeStatusAuthority"];
 			export { teamBridgeKeys } from "./src/renderer/src/features/team-bridge/team-bridge-keys";
 			export { radientUserKeys } from "./src/renderer/src/shared/hooks/radient-account-authority";
 			export { QueryClient } from "@tanstack/react-query";
@@ -87,13 +99,22 @@ const AUTHORITY_CHANGED = /Team Bridge read authority changed/;
 const ACCOUNT = "acct_9f4c1e2d3a4b";
 const OTHER_ACCOUNT = "acct_5b8e0c7a1d23";
 
-/* The runtime's status payload, reduced to the fields this fence reads plus one
- * outside the authority set: `state_note` is server prose that changes between
- * refetches of an unchanged authority, which is the realistic content-only delta
- * (a session id rotates the same way). */
+/* The runtime's status payload as `GET /v1/desktop/team-bridge/status` serves
+ * it (local-operator `server/routes/desktop_team_bridge.py`), reduced to the
+ * fields this fence reads plus the ones that move on EVERY check of an
+ * unchanged authority: `checked_at` / `fetched_at` (the check's own clock),
+ * `from_cache`, and the `delivery_hold` count. Those are why a refetch is never
+ * deep-equal to its predecessor, so React Query's structural sharing cannot keep
+ * the old reference and an identity fence trips on every refetch. */
+const CHECKED_AT = "2026-10-30T09:00:00.000Z";
+const REFETCHED_AT = "2026-10-30T09:01:07.412Z";
 const status = (overrides = {}) => ({
 	capability: 3,
 	state: "ready",
+	boundary: null,
+	from_cache: false,
+	checked_at: CHECKED_AT,
+	fetched_at: CHECKED_AT,
 	account_id: ACCOUNT,
 	tenant_id: "org_a1b2c3",
 	surface_state: "C",
@@ -110,7 +131,17 @@ const status = (overrides = {}) => ({
 	error: null,
 	read_only: false,
 	state_note: null,
+	delivery_hold: null,
 	...overrides,
+});
+
+/* What a focus refetch of an unchanged authority actually changes: the check
+ * clock, and here the cache flag. Nothing in the authority set moves. */
+const contentOnlyRefetch = (before) => ({
+	...before,
+	checked_at: REFETCHED_AT,
+	fetched_at: REFETCHED_AT,
+	from_cache: true,
 });
 
 const mount = () => {
@@ -128,11 +159,22 @@ const mount = () => {
 const statusFor = (client) =>
 	client.getQueryData(m.teamBridgeKeys.statusFor(ACCOUNT));
 
-/** One read, with the status query's cache replaced while it is in flight. */
+/* A status refetch the way the app's `useTeamBridgeStatus` performs one: the
+ * query's own fetch path, so the answer goes through React Query's structural
+ * sharing exactly as a focus refetch does. `setQueryData` would bypass nothing
+ * here, but `fetchQuery` is the path that runs in the app. */
+const refetchStatus = (client, payload) =>
+	client.fetchQuery({
+		queryKey: m.teamBridgeKeys.statusFor(ACCOUNT),
+		queryFn: async () => payload,
+		staleTime: 0,
+	});
+
+/** One read, with a status refetch landing while it is in flight. */
 const readWithSwap = async (client, next) => {
 	const before = statusFor(client);
 	const result = await m.readForBridgeOwner(client, ACCOUNT, async () => {
-		client.setQueryData(m.teamBridgeKeys.statusFor(ACCOUNT), next(before));
+		await refetchStatus(client, next(before));
 		/* The scenario is only exercised if the cache really holds a new object:
 		 * react-query's structural sharing returns the previous reference for a
 		 * deeply equal payload, and that case was never broken. */
@@ -146,14 +188,25 @@ const readWithSwap = async (client, next) => {
 	return result;
 };
 
+test("control: a deep-equal status refetch keeps the cached reference", async () => {
+	/* Why the content-only case below needs `checked_at` to move: React Query's
+	 * structural sharing hands back the SAME object for a deep-equal answer, so
+	 * an identity fence only ever tripped on a refetch whose content changed —
+	 * which, for this payload, is every refetch. */
+	const client = mount();
+	const before = statusFor(client);
+	await refetchStatus(client, structuredClone(before));
+	assert.equal(statusFor(client), before);
+	await refetchStatus(client, contentOnlyRefetch(before));
+	assert.notEqual(statusFor(client), before);
+	client.clear();
+});
+
 test("a content-only status refetch mid-read resolves", async () => {
 	const client = mount();
-	const result = await readWithSwap(client, (before) => ({
-		...before,
-		/* Same account, state, read-only posture and local availability. */
-		local: { ...before.local, session: "sess_2" },
-		state_note: "runtime restarted",
-	}));
+	/* Same account, state, read-only posture and local availability; only the
+	 * check clock and cache flag move, exactly as a real refetch. */
+	const result = await readWithSwap(client, contentOnlyRefetch);
 	assert.equal(result, "audit-rows");
 	/* The predicate the app uses to decide "is this read still mine" must agree
 	 * with the fence it shares its field set with. */
@@ -199,3 +252,91 @@ for (const [field, next] of [
 		client.clear();
 	});
 }
+
+test("the status snapshot vanishing mid-read still rejects", async () => {
+	/* A removed row is "no authority on record", never "unchanged". The owner
+	 * assertion (account) runs first and is the one that names it. */
+	const client = mount();
+	await assert.rejects(
+		m.readForBridgeOwner(client, ACCOUNT, async () => {
+			client.removeQueries({ queryKey: m.teamBridgeKeys.statusFor(ACCOUNT) });
+			return "audit-rows";
+		}),
+		OWNER_CHANGED,
+	);
+	client.clear();
+});
+
+test("captureBridgeStatusAuthority: a vanished snapshot counts as changed", () => {
+	/* The banner delivery predicate calls the capture directly, without the
+	 * owner assertion in front of it, so its own vanish answer must be false. */
+	const client = mount();
+	const holds = m.captureBridgeStatusAuthority(client, ACCOUNT);
+	assert.equal(holds(), true);
+	client.removeQueries({ queryKey: m.teamBridgeKeys.statusFor(ACCOUNT) });
+	assert.equal(holds(), false);
+	client.clear();
+});
+
+/*
+ * ALL ORGANIZATIONS: the rail mounts one audit read PER ORGANIZATION, all keyed
+ * on the same account's status row, all in flight at once. One status refetch
+ * landing while they are out is every read's problem at the same time — on the
+ * identity fence it refused all of them, so the operator saw the error under
+ * every organization heading. Both reads must resolve on a content-only
+ * refetch, and both must still refuse a genuine change.
+ */
+const concurrentOrgReads = async (client, next) => {
+	let releaseA;
+	let releaseB;
+	const gateA = new Promise((resolve) => {
+		releaseA = resolve;
+	});
+	const gateB = new Promise((resolve) => {
+		releaseB = resolve;
+	});
+	const reads = [
+		m.readForBridgeOwner(client, ACCOUNT, async () => {
+			await gateA;
+			return "org_a-rows";
+		}),
+		m.readForBridgeOwner(client, ACCOUNT, async () => {
+			await gateB;
+			return "org_b-rows";
+		}),
+	];
+	/* Both reads have captured their snapshot; the refetch lands between. */
+	const before = statusFor(client);
+	await refetchStatus(client, next(before));
+	assert.notEqual(statusFor(client), before);
+	releaseA();
+	releaseB();
+	return Promise.allSettled(reads);
+};
+
+test("all organizations: two concurrent org reads survive a content-only refetch", async () => {
+	const client = mount();
+	const settled = await concurrentOrgReads(client, contentOnlyRefetch);
+	assert.deepEqual(
+		settled.map((entry) =>
+			entry.status === "fulfilled" ? entry.value : String(entry.reason),
+		),
+		["org_a-rows", "org_b-rows"],
+	);
+	client.clear();
+});
+
+test("all organizations: two concurrent org reads both refuse a genuine change", async () => {
+	const client = mount();
+	const settled = await concurrentOrgReads(client, (before) => ({
+		...contentOnlyRefetch(before),
+		state: "unavailable",
+	}));
+	assert.deepEqual(
+		settled.map((entry) => entry.status),
+		["rejected", "rejected"],
+	);
+	for (const entry of settled)
+		assert.match(entry.reason.message, AUTHORITY_CHANGED);
+	client.clear();
+});

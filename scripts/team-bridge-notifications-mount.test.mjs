@@ -763,6 +763,109 @@ for (const pending of ["history"]) {
 }
 
 /*
+ * THE BANNER'S STATUS FENCE COMPARES AUTHORITY, NOT IDENTITY (fix/owner-audit-fence).
+ *
+ * The delivery predicate used to compare the cached status OBJECT captured at
+ * planning time against the one in cache after the preview read. The status
+ * query refetches on window focus, and the runtime's answer moves `checked_at` /
+ * `fetched_at` on every check, so structural sharing never keeps the reference:
+ * a refetch landing while a preview read was out dropped that banner silently.
+ * It now shares `captureBridgeStatusAuthority` with the owner-read fence. Both
+ * directions: a content-only refetch still banners; a genuine change does not.
+ */
+for (const [change, expectation] of [
+	["a content-only", "still banners"],
+	["a genuine authority", "drops the banner"],
+]) {
+	test(`${change} status refetch while the preview read is pending ${expectation}`, async () => {
+		resetFixture();
+		const org = {
+			tenant_id: "tnt_race",
+			tenant_name: "Race Org",
+			unread: 0,
+			eligible: true,
+		};
+		fixture.account = { total: 0, organizations: [org] };
+		fixture.conversations = {
+			conversations: [conversation("bcv_race", "tnt_race")],
+		};
+		fixture.messages = {
+			messages: [
+				{
+					id: "bcmsg_root",
+					seq: 1,
+					sender: {
+						account_id: "acct_bob",
+						kind: "human",
+						display_label: "Bob",
+					},
+					body: "message",
+					conversation_id: "bcv_race",
+				},
+			],
+		};
+		let release;
+		fixture.historyGate = new Promise((resolve) => {
+			release = resolve;
+		});
+		const mounted = await mount();
+		try {
+			await until(
+				() =>
+					fixture.calls.conversations > 0 &&
+					fixture.calls.unread.includes("account") &&
+					mounted.client.getQueryData(
+						api.teamBridgeKeys.statusFor(fixture.identity),
+					) !== undefined,
+				"seed",
+			);
+			await settle();
+			fixture.account = { total: 1, organizations: [{ ...org, unread: 1 }] };
+			fixture.tenants.tnt_race = {
+				total: 1,
+				conversations: [notifyRow("bcv_race", 1)],
+			};
+			await act(async () =>
+				mounted.client.invalidateQueries({
+					queryKey: api.teamBridgeKeys.unreadPrefix,
+				}),
+			);
+			await until(() => fixture.calls.history.length === 1, "history pending");
+			const key = api.teamBridgeKeys.statusFor(fixture.identity);
+			const before = mounted.client.getQueryData(key);
+			await act(async () => {
+				await mounted.client.fetchQuery({
+					queryKey: key,
+					queryFn: async () => ({
+						...before,
+						checked_at: "2026-10-30T09:01:07.412Z",
+						fetched_at: "2026-10-30T09:01:07.412Z",
+						...(change === "a genuine authority"
+							? { local: { enabled: false } }
+							: {}),
+					}),
+					staleTime: 0,
+				});
+			});
+			assert.notEqual(
+				mounted.client.getQueryData(key),
+				before,
+				"the refetch must install a new status object, or nothing was exercised",
+			);
+			await act(async () => release());
+			await settle();
+			assert.equal(
+				mounted.notifications.length,
+				change === "a content-only" ? 1 : 0,
+			);
+		} finally {
+			release();
+			await mounted.teardown();
+		}
+	});
+}
+
+/*
  * A reply preview is a real thread read in the shipped build. Its query must
  * carry the observed account and candidate tenant, and the click retains the
  * same thread target rather than degrading to the conversation timeline.

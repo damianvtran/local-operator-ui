@@ -576,6 +576,12 @@ async function mountSlot(props, onSlot, { readOnly = false, onClient } = {}) {
 		 * used to make every audit read throw. */
 		read_only: readOnly,
 		local: { enabled: true, session_id: "sess_1" },
+		/* The check clock the runtime stamps on every status answer. It moves on
+		 * each refetch of an unchanged authority, which is why a refetch is never
+		 * deep-equal and never keeps the cached reference. */
+		checked_at: "2026-10-30T09:00:00.000Z",
+		fetched_at: "2026-10-30T09:00:00.000Z",
+		from_cache: false,
 	});
 	await act(async () =>
 		root.render(
@@ -1359,8 +1365,9 @@ test("rail: a content-only status refetch mid-read renders rows", async () => {
 			const before = client.getQueryData(m.teamBridgeKeys.statusFor(OWNER));
 			client.setQueryData(m.teamBridgeKeys.statusFor(OWNER), {
 				...before,
-				local: { ...before.local, session: "sess_2" },
-				state_note: "runtime restarted",
+				checked_at: "2026-10-30T09:01:07.412Z",
+				fetched_at: "2026-10-30T09:01:07.412Z",
+				from_cache: true,
 			});
 		}
 		return json(conversationPage);
@@ -1398,6 +1405,100 @@ test("rail: a content-only status refetch mid-read renders rows", async () => {
 	assert.equal(app.host.querySelector('[role="alert"]'), null);
 	/* Two conversations in the page: the rows the reader came for. */
 	assert.equal(app.host.querySelectorAll("li > button").length, 2);
+	await app.close();
+});
+
+/*
+ * ALL ORGANIZATIONS, the shape the operator saw. The surface mounts one
+ * `OwnerAuditRail` per organization, so `useOwnerAuditConversations` runs one
+ * read per tenant against the same account's status row, all in flight at once.
+ * Here both reads are held open at the transport until both have been sent;
+ * then the status query refetches through its own fetch path (structural
+ * sharing included) with a new `checked_at`, and only then do the reads answer.
+ * On the identity fence every organization rendered "Audited messages could not
+ * be loaded."; on the authority fence both render their rows.
+ */
+test("rail: all organizations — a status refetch during both org reads renders both", async () => {
+	requests = [];
+	let client;
+	const held = [];
+	answer = (request) => {
+		if (request.op !== "team_bridge.owner_audit.conversations")
+			return refusal(404, { code: "conversation_not_found" });
+		return new Promise((resolve) => {
+			held.push(() =>
+				resolve(
+					json({
+						...conversationPage,
+						conversations: conversationPage.conversations.map((row) => ({
+							...row,
+							tenant_id: request.tenant_id,
+						})),
+					}),
+				),
+			);
+		});
+	};
+	const SECOND_TENANT = "org_d4e5f6";
+	const mounting = mountSlot(
+		{
+			accountId: OWNER,
+			enabled: true,
+			scopeKey: "scope_all",
+			organizations: [
+				{ tenantId: TENANT, name: "Minerva" },
+				{ tenantId: SECOND_TENANT, name: "Pergamon" },
+			],
+			onSelect: () => {},
+		},
+		undefined,
+		{
+			onClient: (created) => {
+				client = created;
+			},
+		},
+	);
+	const app = await mounting;
+	assert.deepEqual(
+		requests.map((request) => request.tenant_id).sort(),
+		[TENANT, SECOND_TENANT].sort(),
+		"both organizations' reads must be in flight before the refetch lands",
+	);
+	const before = client.getQueryData(m.teamBridgeKeys.statusFor(OWNER));
+	await act(async () => {
+		await client.fetchQuery({
+			queryKey: m.teamBridgeKeys.statusFor(OWNER),
+			queryFn: async () => ({
+				...before,
+				checked_at: "2026-10-30T09:01:07.412Z",
+				fetched_at: "2026-10-30T09:01:07.412Z",
+			}),
+			staleTime: 0,
+		});
+	});
+	assert.notEqual(
+		client.getQueryData(m.teamBridgeKeys.statusFor(OWNER)),
+		before,
+		"the refetch must install a new status object, or nothing was exercised",
+	);
+	await act(async () => {
+		for (const release of held) release();
+	});
+	await settleTimes();
+
+	/* Counted, not just detected: the RED run on the identity fence shows the
+	 * refusal under EVERY organization, which is the All-organizations shape. */
+	assert.equal(
+		app.host.querySelectorAll('[role="alert"]').length,
+		0,
+		"no organization may render the refusal after a content-only refetch",
+	);
+	assert.equal(
+		app.host.textContent.includes(m.t("ui.ownerAudit.error")),
+		false,
+	);
+	/* Two conversations per organization page, two organizations. */
+	assert.equal(app.host.querySelectorAll("li > button").length, 4);
 	await app.close();
 });
 
