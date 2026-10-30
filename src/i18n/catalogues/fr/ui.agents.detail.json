@@ -4,6 +4,8 @@
 	"ui.agents.detail.action.discard_question": "Abandonner vos modifications non enregistrées ?",
 	"ui.agents.detail.action.duplicate": "Dupliquer en nouvel agent",
 	"ui.agents.detail.action.edit": "Modifier",
+	"ui.agents.detail.action.install_to_edit": "Installer pour modifier",
+	"ui.agents.detail.action.installing": "Installation…",
 	"ui.agents.detail.action.keep_editing": "Continuer la modification",
 	"ui.agents.detail.action.more_actions": "Plus d’actions",
 	"ui.agents.detail.action.new_chat": "Nouvelle conversation",

@@ -24,6 +24,7 @@
 import enUiAgentMessages from "./catalogues/en/ui.agentMessages.json";
 import enUiAgentMessagesSettings from "./catalogues/en/ui.agentMessages.settings.json";
 import enUiAgentsConfig from "./catalogues/en/ui.agents.config.json";
+import enUiAgentsDescriptions from "./catalogues/en/ui.agents.descriptions.json";
 import enUiAgentsDetail from "./catalogues/en/ui.agents.detail.json";
 import enUiAgentsDialogs from "./catalogues/en/ui.agents.dialogs.json";
 import enUiAgents from "./catalogues/en/ui.agents.json";
@@ -875,6 +876,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentMessages,
 	...enUiAgentMessagesSettings,
 	...enUiAgentsConfig,
+	...enUiAgentsDescriptions,
 	...enUiAgentsDetail,
 	...enUiAgentsDialogs,
 	...enUiAgents,
@@ -1907,11 +1909,25 @@ export type MessageParams = {
 	"ui.agents.config.summary.nothing_else": undefined;
 	"ui.agents.config.summary.updated": { name: string };
 	"ui.agents.config.summary.you_asked": { topic: string };
+	"ui.agents.descriptions.aida": undefined;
+	"ui.agents.descriptions.architect": undefined;
+	"ui.agents.descriptions.coder": undefined;
+	"ui.agents.descriptions.copy_reviewer": undefined;
+	"ui.agents.descriptions.designer": undefined;
+	"ui.agents.descriptions.librarian": undefined;
+	"ui.agents.descriptions.manager": undefined;
+	"ui.agents.descriptions.qa_tester": undefined;
+	"ui.agents.descriptions.reviewer": undefined;
+	"ui.agents.descriptions.scout": undefined;
+	"ui.agents.descriptions.tui_designer": undefined;
+	"ui.agents.descriptions.ux_reviewer": undefined;
 	"ui.agents.detail.action.ask_change": undefined;
 	"ui.agents.detail.action.discard_changes": undefined;
 	"ui.agents.detail.action.discard_question": undefined;
 	"ui.agents.detail.action.duplicate": undefined;
 	"ui.agents.detail.action.edit": undefined;
+	"ui.agents.detail.action.install_to_edit": undefined;
+	"ui.agents.detail.action.installing": undefined;
 	"ui.agents.detail.action.keep_editing": undefined;
 	"ui.agents.detail.action.more_actions": undefined;
 	"ui.agents.detail.action.new_chat": undefined;
