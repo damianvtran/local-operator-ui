@@ -62,5 +62,9 @@
 	"ui.settings.shortcuts.row.canvas": "Bảng Canvas",
 	"ui.settings.shortcuts.row.code_review": "Rà soát mã",
 	"ui.settings.shortcuts.row.console": "Bảng Console",
-	"ui.settings.shortcuts.row.execution": "Chi tiết lượt chạy"
+	"ui.settings.shortcuts.row.execution": "Chi tiết lượt chạy",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcut_capture_description": "Đặt tiêu điểm vào trường phím tắt rồi nhấn các phím để lưu ngay. Esc xóa gợi ý ghi phím; Đặt lại khôi phục mặc định.",
+	"ui.settings.shortcuts.category.speech_to_text": "Chuyển giọng nói thành văn bản",
+	"ui.settings.shortcuts.recording.invalid_stored_value": "Phím tắt đã lưu không hợp lệ. Đang hiển thị phím tắt hoạt động gần nhất.",
+	"ui.settings.shortcuts.recording.inactive_claimed": "Tính năng ghi đang tắt: {label} đang dùng phím tắt này."
 }

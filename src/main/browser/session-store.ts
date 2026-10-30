@@ -59,14 +59,21 @@ export const MAX_SESSION_FILE_BYTES = 4 * 1024 * 1024;
 /**
  * How many tabs one restore pass may allocate.
  *
- * A CAP EXISTS HERE AND NOWHERE ELSE ON PURPOSE. Design 6.5 leaves user tabs
- * uncapped - "a user opening a dozen tabs is their business", and the honest bound
- * there is memory the user chose to spend. A restore is the opposite case: the app
+ * A CAP EXISTS HERE AND NOWHERE ELSE ON THIS PATH, and design 6.5's "a user
+ * opening a dozen tabs is their business" is why: a tab the operator opened is
+ * their own resource to spend, while a restore is the opposite case — the app
  * spends that memory *at startup*, once per entry in a file anything on the machine
  * can write, before the host has served a single request. So this bounds the one
  * path where the app, not the user, decides how many real `WebContents` and
- * offscreen raster surfaces to create. Twenty is comfortably above a real session
- * and small enough that the worst case is a bounded startup, not a slow one.
+ * offscreen raster surfaces to create.
+ *
+ * It is NOT a claim that the operator's tabs are unbounded, which is how the
+ * earlier wording here ("6.5 leaves user tabs uncapped") read: a page in one of
+ * those tabs may not spawn tabs without limit (`MAX_USER_LINK_TABS_PER_VIEW`,
+ * `popups.ts`), nor spawn them from a link tab at all. 6.5's sentence is about
+ * tabs the OPERATOR opens, and a page's loop is not one of those. Twenty is
+ * comfortably above a real session and small enough that the worst case is a
+ * bounded startup, not a slow one.
  */
 export const MAX_RESTORED_TABS = 20;
 

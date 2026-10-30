@@ -397,5 +397,32 @@
 		"tone": "Concise destination noun.",
 		"length": "One shortcut row or refusal sentence; keep compact.",
 		"note": "Names the destination without the imperative verb used by the corresponding action tooltip."
+	},
+	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcut_capture_description": {
+		"role": "Description under the Keyboard shortcuts heading",
+		"tone": "Concise factual instructions for immediate shortcut capture.",
+		"length": "One short wrapping paragraph; keep all three actions and their effects.",
+		"note": "Applies to panel and speech-to-text shortcuts. Esc clears only the current cue; it does not undo a saved shortcut. Keep Reset and Esc consistent with their controls."
+	},
+	"ui.settings.shortcuts.category.speech_to_text": {
+		"role": "Settings subgroup heading",
+		"tone": "Neutral feature name in sentence case.",
+		"length": "One short heading line.",
+		"note": "Speech input converted to text, not spoken assistant output."
+	},
+	"ui.settings.shortcuts.recording.invalid_stored_value": {
+		"role": "Validation warning under the Start recording shortcut field",
+		"tone": "Factual and reassuring; identifies both the invalid stored value and visible fallback.",
+		"length": "One or two short lines.",
+		"note": "The field deliberately shows the last working binding instead of the malformed hand-edited token."
+	},
+	"ui.settings.shortcuts.recording.inactive_claimed": {
+		"role": "Conflict warning under the Start recording shortcut field",
+		"tone": "Factual and actionable; recording is off because another named row owns the chord.",
+		"length": "One or two short lines.",
+		"note": "Explain both that recording is inactive and which action owns the chord. {label} is an already-localized action name; do not add another sentence inside it.",
+		"placeholders": {
+			"label": "Localized action name such as Console; insert verbatim."
+		}
 	}
 }

@@ -120,6 +120,7 @@ import { TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-thread-
 import { assertThreadPage } from "./team-bridge-thread-read";
 import { teamBridgeViewingConversation } from "./team-bridge-viewing";
 import {
+	type TeamBridgeDirectoryReads,
 	teamBridgeKeys,
 	useTeamBridgeDirectories,
 	useTeamBridgeStatus,
@@ -542,9 +543,32 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 	 * pure. A member's agent posts under the member's account but core draws a
 	 * different composite for it (the agent marker, review M2), so a member with
 	 * a named agent is described in both variants.
+	 *
+	 * WHY THE ROSTERS ARE SELECTED THROUGH `TeamBridgeDirectoryReads` AND NOT
+	 * ITERATED OFF THE HOOK'S ANSWER. The annotation below is a guard against a
+	 * defect class that type-checked and then crashed, so it is not noise to be
+	 * deleted in a tidy-up.
+	 *
+	 * `useTeamBridgeDirectories` answers `{ members, state, retry }`, because a
+	 * caller has to draw a failed read as failed and a pending read as pending
+	 * (review round 1, F1), which a bare `Record<tenantId, member[]>` cannot say.
+	 * This fan-out wants only the loaded rosters, so it takes `members`.
+	 *
+	 * This loop used to run `Object.entries(directories)` over the WHOLE answer,
+	 * and that was silently wrong in a way no type gate caught: `Object.entries`
+	 * resolves to its `[string, any][]` overload when an object's value types
+	 * disagree - arrays beside a state record beside a function - so `any`
+	 * absorbed the `.filter` below, `check-types` stayed green, and every render
+	 * threw "members.filter is not a function". Naming the contract type here
+	 * makes the hook's shape a compile-time requirement of this call site: a hook
+	 * that stops carrying `members` as a roster map - including a return to the
+	 * old bare map, where `directories.members` would be one roster rather than a
+	 * map of them - fails THIS assignment instead of failing in a render.
 	 */
+	const directoryMembers: TeamBridgeDirectoryReads["members"] =
+		directories.members;
 	const directorySenders: Record<string, TeamBridgeNotificationSender[]> = {};
-	for (const [tenantId, members] of Object.entries(directories))
+	for (const [tenantId, members] of Object.entries(directoryMembers))
 		directorySenders[tenantId] = members
 			.filter((member) => member.account_id !== selfAccountId)
 			.flatMap((member) => [

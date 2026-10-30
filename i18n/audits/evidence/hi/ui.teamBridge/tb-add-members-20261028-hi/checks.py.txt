@@ -1,0 +1,230 @@
+import json, hashlib, os, re, unicodedata, subprocess, sys
+
+REPO = "/Users/damian/local-operator-ui/.worktrees/tb-add-members-ui"
+EN = "src/i18n/catalogues/en/ui.teamBridge.json"
+CTX = "src/i18n/catalogues/en/ui.teamBridge.context.json"
+INST = "tb-add-members-20261028"
+LOCALES = ["vi", "ur", "hi"]
+MODEL = "kimi/k3.1-pro"
+MODEL_NOTE = ("Session header states kimi/k3.1-pro. During this run the primary provider returned quota HTTP 429 "
+              "and the harness fell back through anthropic/claude-sonnet-5-5 and openai/gpt-6-astra to radient/auto; "
+              "the audit work was performed under that fallback chain. The header string is recorded per the "
+              "coordinator's instruction, with the fallback disclosed here.")
+PIN = {
+ "en": "4337253270df03ec0ad4bf00bd27db4f4e8d279376f0dfe5be230fb1d897d01a",
+ "context": "3c204399befa0116d1b72c6e2cc0905fab61389d18fedfca72a7fddb4b813c8f",
+ "vi": "67ee41034f2d9cd7eb87520d51120eac99ea14375dafc03bbccc3daf0031136a",
+ "ur": "68a59befed767fbe4576f50cfac4cb8575673c77d3c1358b00460f5fbe672ca6",
+ "hi": "55f3cf950b5e57bf216f58fabdff0ee73e12e356b346137fcd2882b884ed4ebf",
+}
+BIDI = {0x200E:'LRM',0x200F:'RLM',0x202A:'LRE',0x202B:'RLE',0x202C:'PDF',0x202D:'LRO',0x202E:'RLO',
+        0x2066:'LRI',0x2067:'RLI',0x2068:'FSI',0x2069:'PDI',0x061C:'ALM',0xFEFF:'BOM'}
+PLACE = lambda s: re.findall(r"\{[^}]*\}", s)
+
+def rel(p): return os.path.join(REPO, p)
+def sha(p): return hashlib.sha256(open(rel(p), "rb").read()).hexdigest()
+
+head = subprocess.run(["git","-C",REPO,"rev-parse","HEAD"],capture_output=True,text=True).stdout.strip()
+wt = subprocess.run(["git","-C",REPO,"status","--porcelain","--","src/i18n/catalogues"],capture_output=True,text=True).stdout.strip()
+en = json.load(open(rel(EN))); ctx = json.load(open(rel(CTX)))
+keys = [k for k in en if k.startswith("ui.teamBridge.members.")]
+assert len(keys) == 28
+hashes = {"en": sha(EN), "context": sha(CTX)}
+for loc in LOCALES: hashes[loc] = sha(f"src/i18n/catalogues/{loc}/ui.teamBridge.json")
+for k, v in PIN.items():
+    assert hashes[k] == v, f"HASH DRIFT {k}: {hashes[k]} != {v}"
+
+UNCOVERED = [k for k in keys if k not in ctx]
+SOURCE_GATE = {
+ "tool": "scripts/i18n/context-parity.mjs",
+ "exit": 1,
+ "blocking": True,
+ "finding": ("MAJOR, English side (not a finding against these translations): 15 of the 28 new "
+             "ui.teamBridge.members.* keys have no entry in en/ui.teamBridge.context.json and no "
+             "i18n/context-allowance.json entry, so context-parity exits 1 and the copy for those keys "
+             "was translated blind. Author the 15 sidecar entries before merge; re-audit not required "
+             "because the translated bytes do not change."),
+ "uncovered_keys": UNCOVERED,
+}
+
+FINDINGS = {
+ "vi": [
+  {"severity": "NIT", "key": "ui.teamBridge.members.loading",
+   "note": ("«Đang tải mọi người và tác nhân» names people as «mọi người» while the other seven "
+            "people-and-agents keys in this group use «người» («Mời người và tác nhân», «Tìm người và tác nhân», "
+            "«Không có người hoặc tác nhân nào…»), so it reads 'Loading everyone and agents'. NIT rather than MINOR "
+            "because «Mọi người» is also this file's People surface title (ui.teamBridge.people.title). "
+            "Proposed: «Đang tải người và tác nhân».")},
+ ],
+ "ur": [],
+ "hi": [
+  {"severity": "MINOR", "key": "ui.teamBridge.members.role.owner",
+   "note": ("Owner is «स्वामी» here and in members.agent_invitation and members.invitation_note, while this same "
+            "file renders the same owner concept as «मालिक» (ui.teamBridge.thread.intro_chief: «…यह इसका मालिक तय करता है») "
+            "and five other hi catalogues use «मालिक» for organization and installation owners. «स्वामी» also carries "
+            "the husband/lord sense in Hindi product register. Meaning survives, so MINOR not MAJOR — it is the one term "
+            "I would change. Proposed in all three sites: role.owner «मालिक»; agent_invitation «एजेंट; मालिक की स्वीकृति "
+            "के बाद म्यूट होकर जुड़ता है»; invitation_note «आमंत्रण सक्रिय पहुँच नहीं देते। एजेंट केवल अपने मालिक की सहमति के "
+            "बाद म्यूट होकर जुड़ता है।»")},
+  {"severity": "NIT", "key": "ui.teamBridge.members.human_invitation",
+   "note": ("«आमंत्रण स्वीकारने के बाद» splits the verb differently from this file's established «स्वीकार करने पर» "
+            "(ui.teamBridge.invitations.consent.*). Both are grammatical; matching the file reads better. "
+            "Proposed: «व्यक्ति; आमंत्रण स्वीकार करने के बाद जुड़ता है».")},
+ ],
+}
+
+def dump(obj, path):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(obj, f, ensure_ascii=False, indent="\t"); f.write("\n")
+
+receipts = {}
+for loc in LOCALES:
+    d = json.load(open(rel(f"src/i18n/catalogues/{loc}/ui.teamBridge.json")))
+    enk, tk = sorted(en), sorted(d)
+    missing, extra = sorted(set(enk)-set(tk)), sorted(set(tk)-set(enk))
+    ph_bad = [k for k in keys if PLACE(en[k]) != PLACE(d[k])]
+    imbal = [k for k in keys if d[k].count("{") != d[k].count("}")]
+    bidi_keys = [(k, BIDI[ord(c)]) for k in keys for c in d[k] if ord(c) in BIDI]
+    whole = open(rel(f"src/i18n/catalogues/{loc}/ui.teamBridge.json"), encoding="utf-8").read()
+    bidi_whole = [BIDI[ord(c)] for c in whole if ord(c) in BIDI]
+    non_nfc = [k for k in keys if unicodedata.normalize("NFC", d[k]) != d[k]]
+    zwnj = [k for k in keys if "\u200c" in d[k] or "\u200d" in d[k]]
+    ws = [k for k in keys if any(c in d[k] for c in ["\u00a0", "\u202f"]) or "  " in d[k]]
+    findings = FINDINGS[loc]
+    counts = {s: sum(1 for f in findings if f["severity"] == s) for s in ["BLOCKER", "MAJOR", "MINOR", "NIT"]}
+    assert counts["BLOCKER"] == 0 and counts["MAJOR"] == 0
+    result = "clean-with-findings" if counts["MINOR"] + counts["NIT"] else "clean"
+
+    log = [f"# mechanical audit log — locale {loc} — namespace ui.teamBridge — 2026-10-28",
+           f"# auditor: i18n-auditor (independent; wrote none of these strings)   model: {MODEL} (fallback chain disclosed in the receipt)",
+           f"# worktree: {REPO}", f"# HEAD: {head}",
+           f"# git status --porcelain over src/i18n/catalogues: {wt!r}", "",
+           "## hashes (sha256)",
+           f"  en       {hashes['en']}  {EN}",
+           f"  context  {hashes['context']}  {CTX}",
+           f"  target   {hashes[loc]}  src/i18n/catalogues/{loc}/ui.teamBridge.json", "",
+           "## key parity",
+           f"  en keys {len(enk)} / target keys {len(tk)} / missing {missing} / extra {extra}",
+           f"  ui.teamBridge.members.* audited: {len(keys)} of which present in target: {sum(1 for k in keys if k in d)}",
+           f"  of the 28, with an English context-sidecar entry: {len(keys)-len(UNCOVERED)}; without: {len(UNCOVERED)}", "",
+           "## placeholders / ICU",
+           f"  placeholder sets differing from English: {ph_bad}",
+           f"  brace-imbalanced values: {imbal}",
+           f"  ICU plural/select in these keys: {[k for k in keys if 'plural' in en[k] or 'select' in en[k]]}",
+           f"  ASCII apostrophes that would open an ICU quoted literal: {[k for k in keys if chr(39) in d[k]]}", "",
+           "## bidi / zero-width (the render layer adds FSI/PDI isolation; storage stays logical)",
+           f"  manual bidi controls in the 28 audited values: {bidi_keys}",
+           f"  manual bidi controls in the whole file: {len(bidi_whole)}",
+           f"  ZWNJ/ZWJ in the 28 audited values: {zwnj}", "",
+           "## orthography",
+           f"  non-NFC values: {non_nfc}",
+           f"  NBSP/NNBSP/double-space: {ws}",
+           f"  menu uses U+2026 ellipsis: {'\u2026' in d['ui.teamBridge.members.menu']}", "",
+           "## English source-side gate (not a translation finding)",
+           f"  scripts/i18n/context-parity.mjs exits 1: 15 of the 28 members.* keys have no sidecar entry;",
+           "  no i18n/context-allowance.json entry names ui.teamBridge. Uncovered:",
+           *[f"    {k}" for k in UNCOVERED], "",
+           "## values under audit — English | " + loc]
+    for k in keys:
+        log.append(f"  {k}")
+        log.append(f"    en: {en[k]}")
+        log.append(f"    {loc}: {d[k]}")
+    log_text = "\n".join(log) + "\n"
+
+    receipt = {
+        "auditor": "i18n-auditor", "agent": "i18n-auditor",
+        "model": MODEL, "model_note": MODEL_NOTE,
+        "instance": f"{INST}-{loc}", "date": "2026-10-28",
+        "status": "passed", "namespace": "ui.teamBridge", "locale": loc,
+        "sha256": {"en": hashes["en"], "locale": hashes[loc], loc: hashes[loc]},
+        "findings": findings,
+        "scope": (f"PR add-members: 28 new ui.teamBridge.members.* keys; existing keys unchanged. Read against the English "
+                  f"source and its context sidecar, i18n/glossary.md and the {loc} style guide; checked key parity "
+                  f"(28/28 members keys, file {len(tk)}/{len(enk)} vs English), the one placeholder ({{name}} in "
+                  f"members.remove, exactly once, unchanged), ICU safety (no plural/select and no ASCII apostrophe in "
+                  f"these keys), absence of manual bidi control and zero-width characters ({len(bidi_whole)} in the whole "
+                  f"file), NFC and no NBSP/double space, sentence case, and terminology against the rest of the locale's "
+                  f"ui.teamBridge.json. Semantics verified key by key: invitation is not membership; an invited agent "
+                  f"stays invited and joins muted only on its OWNER's consent; roles are conversation owner/member; "
+                  f"state invited is not active; remove is for members of the conversation only; Team Bridge stays the "
+                  f"untranslated product name. Source-only: no tests, build, Storybook or browser run; no rendered-fit, "
+                  f"width or activation claim. No catalogue, ledger or code edit by the auditor."),
+        "source_gate": SOURCE_GATE,
+        "independence": "Auditor wrote none of the audited strings; translator was a separate coder subagent.",
+    }
+    rpath = f"i18n/receipts/{INST}-{loc}.json"
+    dump(receipt, rel(rpath))
+    receipts[loc] = (rpath, sha(rpath), counts, result)
+
+    bundle = rel(f"i18n/audits/evidence/{loc}/ui.teamBridge/{INST}-{loc}")
+    dump({
+        "audit_id": f"{INST}-{loc}", "date": "2026-10-28", "locale": loc, "namespace": "ui.teamBridge",
+        "source_commit": head, "pr_head": head, "source_base": "500454e919",
+        "integration_state": (f"src/i18n/catalogues byte-identical to {head[:10]} when audited "
+                              f"(git status --porcelain over that path: {wt!r}); only an unrelated .tsx edit was dirty"),
+        "scope": ("PR add-members: 28 new ui.teamBridge.members.* keys (git diff 500454e919..HEAD filtered to members.); "
+                  "existing keys unchanged and out of scope"),
+        "status": "passed", "result": result,
+        "keys_audited": keys,
+        "translator": {"agent": "translator", "model": "not-reported-by-parent", "date": "2026-10-28"},
+        "auditors": [{
+            "agent": "i18n-auditor", "model": MODEL, "model_note": MODEL_NOTE, "date": "2026-10-28",
+            "result": result, "instance": f"{INST}-{loc}",
+            "findings": {k.lower(): v for k, v in counts.items()},
+            "receipt": receipts[loc][0], "receipt_sha256": receipts[loc][1],
+            "scope": ("Independent source-only audit of the 28-key members.* delta: meaning (inviting is not active "
+                      "membership; an invited agent stays invited and joins muted only on its owner's consent; roles are "
+                      "conversation owner/member; remove only for human members; Team Bridge a product name), key parity, "
+                      "placeholders, ICU, manual bidi controls, NFC, sentence case, native register and terminology "
+                      "against the rest of this locale's ui.teamBridge.json. No rendered-frame claim."),
+            "note": "; ".join(f"{f['severity']}: {f['key'].split('.members.')[-1]}" for f in findings) or "no findings",
+        }],
+        "files": {
+            "en": {"path": EN, "sha256": hashes["en"]},
+            "target": {"path": f"src/i18n/catalogues/{loc}/ui.teamBridge.json", "sha256": hashes[loc]},
+            "context": {"path": CTX, "sha256": hashes["context"]},
+        },
+        "checks": {"key_parity": {"en": len(enk), "target": len(tk), "missing": missing, "extra": extra},
+                   "members_keys_audited": len(keys), "context_entries_present": len(keys) - len(UNCOVERED),
+                   "placeholder_mismatches": ph_bad, "bidi_controls_in_28": bidi_keys,
+                   "bidi_controls_whole_file": len(bidi_whole), "non_nfc": non_nfc, "zwnj_zwj": zwnj},
+        "source_gate": SOURCE_GATE,
+    }, os.path.join(bundle, "record.json"))
+
+    open(os.path.join(bundle, "audit.log"), "w", encoding="utf-8").write(log_text)
+    open(os.path.join(bundle, "checks.py.txt"), "w", encoding="utf-8").write(
+        open("/Users/damian/.local-operator/sessions/83525d2566f9/scratchpad/audit_b_write.py", encoding="utf-8").read())
+
+    verdict = "CLEAN (terminal)" if counts["BLOCKER"] == 0 and counts["MAJOR"] == 0 else "NOT CLEAN"
+    md = [f"# Independent audit — {loc} — ui.teamBridge.members.* (PR add-members)",
+          "", f"- audit id: `{INST}-{loc}`", "- date: 2026-10-28",
+          "- auditor: i18n-auditor (independent of the translator; wrote none of the audited strings)",
+          f"- model: {MODEL} — session header string; the run executed under the harness's 429 fallback chain (see the receipt's `model_note`)",
+          f"- HEAD: `{head}`", "", "## Verdict", "",
+          f"**{verdict}** — 0 BLOCKER, 0 MAJOR, {counts['MINOR']} MINOR, {counts['NIT']} NIT.", "",
+          "The 28-key delta preserves every semantic the brief names: inviting is not membership (`add` = send invitations),",
+          "an invited agent stays invited and joins muted only on its OWNER's consent (`state.invited`, `agent_invitation`,",
+          "`invitation_note`), roles are conversation owner/member, `state.invited` never reads as active, `remove` is a",
+          "conversation-member action, and `Team Bridge` stays untranslated Latin.", "", "## Hashes", "",
+          f"- en: `{hashes['en']}`", f"- {loc}: `{hashes[loc]}`", f"- context sidecar: `{hashes['context']}`", "",
+          "## Findings", ""]
+    if findings:
+        for f in findings:
+            md.append(f"- **{f['severity']}** `{f['key']}` — {f['note']}")
+    else:
+        md.append("- none.")
+    md += ["", "## Source-side gate (blocks merge, not this locale's copy)", "",
+           f"`scripts/i18n/context-parity.mjs` exits 1: {len(UNCOVERED)} of the 28 English keys have no",
+           "`.context.json` entry and no `i18n/context-allowance.json` entry, so those strings were translated",
+           "blind. Authoring the sidecar entries fixes the gate; the translated bytes do not change, so no re-audit", "of the copy is implied.", "",
+           "Uncovered: " + ", ".join(f"`{k.split('.members.')[-1]}`" for k in UNCOVERED), "",
+           "## Not claimed", "",
+           "Source-only audit: no test, build, Storybook, browser or rendered-frame run. No width, activation or", "release approval."]
+    open(os.path.join(bundle, "report.md"), "w", encoding="utf-8").write("\n".join(md) + "\n")
+
+    print(f"{loc}: {counts} -> result={result}; receipt {receipts[loc][0]} sha={receipts[loc][1][:12]}")
+
+print("\nHEAD", head)
+print("en", hashes["en"], "\ncontext", hashes["context"])
+for loc in LOCALES: print(loc, hashes[loc])

@@ -62,5 +62,9 @@
 	"ui.settings.shortcuts.row.canvas": "画布",
 	"ui.settings.shortcuts.row.code_review": "代码审查",
 	"ui.settings.shortcuts.row.console": "控制台",
-	"ui.settings.shortcuts.row.execution": "运行详情"
+	"ui.settings.shortcuts.row.execution": "运行详情",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcut_capture_description": "聚焦快捷键输入框并按下按键即可立即保存。Esc清除捕获提示；“重置”恢复默认值。",
+	"ui.settings.shortcuts.category.speech_to_text": "语音转文字",
+	"ui.settings.shortcuts.recording.invalid_stored_value": "存储的快捷键无效，当前显示最近可用的快捷键。",
+	"ui.settings.shortcuts.recording.inactive_claimed": "开始录制已停用：{label}正在使用此快捷键。"
 }

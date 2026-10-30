@@ -8871,6 +8871,7 @@ export type MessageParams = {
 	"ui.settings.shortcuts.capture.needs_modifier_mac": undefined;
 	"ui.settings.shortcuts.capture.unbindable": undefined;
 	"ui.settings.shortcuts.category.panels": undefined;
+	"ui.settings.shortcuts.category.speech_to_text": undefined;
 	"ui.settings.shortcuts.keyboard_shortcuts_section.browser_shortcuts_answer_only_while_the_browser_has_focus": undefined;
 	"ui.settings.shortcuts.keyboard_shortcuts_section.clear": undefined;
 	"ui.settings.shortcuts.keyboard_shortcuts_section.clear_label_s_shortcut": {
@@ -8886,7 +8887,10 @@ export type MessageParams = {
 	"ui.settings.shortcuts.keyboard_shortcuts_section.reset_label_to_its_default": {
 		label: string;
 	};
+	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcut_capture_description": undefined;
 	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcuts_for_the_panel_rail_focus_a_field_and_press_the_keys_you": undefined;
+	"ui.settings.shortcuts.recording.inactive_claimed": { label: string };
+	"ui.settings.shortcuts.recording.invalid_stored_value": undefined;
 	"ui.settings.shortcuts.reserved.archive_chat": undefined;
 	"ui.settings.shortcuts.reserved.browser_address": undefined;
 	"ui.settings.shortcuts.reserved.browser_back": undefined;
@@ -9252,6 +9256,33 @@ export type MessageParams = {
 	"ui.teamBridge.member.active_count": { count: number };
 	"ui.teamBridge.member.count": { count: number };
 	"ui.teamBridge.member.invited_count": { count: number };
+	"ui.teamBridge.members.add": { count: number };
+	"ui.teamBridge.members.current": undefined;
+	"ui.teamBridge.members.current_empty": undefined;
+	"ui.teamBridge.members.description": undefined;
+	"ui.teamBridge.members.empty": undefined;
+	"ui.teamBridge.members.group.agents": undefined;
+	"ui.teamBridge.members.group.people": undefined;
+	"ui.teamBridge.members.invitation_note": undefined;
+	"ui.teamBridge.members.invite": undefined;
+	"ui.teamBridge.members.load_error": undefined;
+	"ui.teamBridge.members.loading": undefined;
+	"ui.teamBridge.members.menu": undefined;
+	"ui.teamBridge.members.mutation_error": undefined;
+	"ui.teamBridge.members.no_matches": undefined;
+	"ui.teamBridge.members.read_only": undefined;
+	"ui.teamBridge.members.reason.agent_not_permitted": undefined;
+	"ui.teamBridge.members.reason.agent_unavailable": undefined;
+	"ui.teamBridge.members.reason.already_member": undefined;
+	"ui.teamBridge.members.reason.bridge_unavailable": undefined;
+	"ui.teamBridge.members.remove": { name: string };
+	"ui.teamBridge.members.removing": undefined;
+	"ui.teamBridge.members.role.member": undefined;
+	"ui.teamBridge.members.role.owner": undefined;
+	"ui.teamBridge.members.search": undefined;
+	"ui.teamBridge.members.state.active": undefined;
+	"ui.teamBridge.members.state.invited": undefined;
+	"ui.teamBridge.members.title": undefined;
 	"ui.teamBridge.menu.label": undefined;
 	"ui.teamBridge.menu.mute": undefined;
 	"ui.teamBridge.menu.unmute": undefined;

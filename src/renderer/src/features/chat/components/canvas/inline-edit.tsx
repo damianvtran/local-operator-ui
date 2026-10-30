@@ -17,6 +17,7 @@ import { apiConfig } from "@shared/config";
 import { useConfig } from "@shared/hooks/use-config";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import { joinTranscript } from "@shared/hooks/use-message-input";
+import { useRecordingShortcutLabel } from "@shared/hooks/use-recording-shortcut";
 import {
 	SpeechToTextPriority,
 	resolvePushToTalkBinding,
@@ -296,12 +297,9 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	const { canUseRadientSpeech, speechBlock } = useRadientCredentialProbe();
 	const canEnableRecordingFeature = canUseRadientSpeech;
 
-	const shortcutText = useMemo(() => {
-		if (platform === "darwin") {
-			return "⌘+Shift+S";
-		}
-		return "Ctrl+Shift+S";
-	}, [platform]);
+	const shortcutText = useRecordingShortcutLabel(
+		platform === "darwin" ? "mac" : platform === "win32" ? "win" : "linux",
+	);
 
 	const acceptAllTooltipText =
 		platform === "darwin"
@@ -1083,10 +1081,12 @@ export const InlineEdit: FC<InlineEditProps> = ({
 									content={
 										!canEnableRecordingFeature
 											? speechUnavailableReason("recording", speechBlock)
-											: t("ui.canvas.inline_edit.start_recording_or_hold", {
-													shortcuttext: shortcutText,
-													label: resolvePushToTalkBinding().label,
-												})
+											: shortcutText === null
+												? t("ui.canvas.inline_edit.start_recording")
+												: t("ui.canvas.inline_edit.start_recording_or_hold", {
+														shortcuttext: shortcutText,
+														label: resolvePushToTalkBinding().label,
+													})
 									}
 								>
 									<span>
