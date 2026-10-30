@@ -265,6 +265,31 @@ test("reaction pills: one hover label, full reactor list, optimistic toggle with
 		description(pills[1]),
 		"Ada, Bea, Cleo, and ui.teamBridge.reactions.others",
 	);
+	// The VISIBLE tooltip carries the same list (agent review round 1, R1):
+	// focus opens the Radix tooltip, and its content is what the operator reads.
+	await act(async () => {
+		pills[1].focus();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
+	const tip = document.querySelector("[role=tooltip]");
+	assert.ok(tip, "the pill's tooltip opens on focus");
+	assert.equal(
+		tip.textContent,
+		"Ada, Bea, Cleo, and ui.teamBridge.reactions.others",
+	);
+	// The `+` is hidden and pointer-inert at rest and revealed by its message
+	// row's hover/focus (agent review round 1, R2): jsdom has no `:hover`, so
+	// the reveal is pinned by its classes; the Storybook `AddRevealedWithRow`
+	// play measures the computed opacity in a real browser.
+	const add = m.host.querySelector("[data-reaction-add]");
+	for (const cls of [
+		"opacity-0",
+		"pointer-events-none",
+		"group-hover/message:opacity-100",
+		"group-focus-within/message:opacity-100",
+		"[@media(hover:none)]:opacity-100",
+	])
+		assert.ok(add.classList.contains(cls), `the + rests with ${cls}`);
 	await click(pills[0]);
 	assert.equal(pills[0].getAttribute("aria-pressed"), "true", "optimistic");
 	assert.equal(m.host.querySelectorAll(".animate-spin").length, 1);

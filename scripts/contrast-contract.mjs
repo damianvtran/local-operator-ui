@@ -148,6 +148,25 @@ const over = (fg, bg, alpha) => {
 		.join("")}`;
 };
 
+/*
+ * `color-mix(in srgb, a share%, b)` as the browser computes it: a straight
+ * interpolation of the sRGB-ENCODED channels (CSS Color 5 "in srgb"), rounded
+ * to the 8-bit value the compositor paints. Used for fills a component derives
+ * from two roles rather than naming one, so the contract measures the colour
+ * on screen instead of a role it does not wear.
+ */
+const srgbMix = (a, b, share) => {
+	if (!isHex(a) || !isHex(b) || a.length !== 7 || b.length !== 7) return null;
+	const ch = (h, i) => Number.parseInt(h.slice(i, i + 2), 16);
+	return `#${[1, 3, 5]
+		.map((i) =>
+			Math.round(ch(a, i) * share + ch(b, i) * (1 - share))
+				.toString(16)
+				.padStart(2, "0"),
+		)
+		.join("")}`;
+};
+
 /* ---- 3. loading the palettes ------------------------------------------- */
 
 /* Palette loading lives in palette-source.mjs so this gate and the CSS
@@ -598,12 +617,11 @@ const CONTROLS = [
 	 * (`team-bridge-thread-pane.tsx`) and `rowHover`, which the row takes under
 	 * the pointer - exactly when a reader is about to press a pill.
 	 *
-	 * WHY `edge: false` ON ALL FOUR. The pill is a COUNT MARK in the sidebar's
+	 * WHY `edge: false` ON THE ROLE ROWS. The pill is a COUNT MARK in the sidebar's
 	 * quiet-count family (`attentionQuiet`: `elevated`, no ring), and that family
 	 * already declares that its fill is a grouping whisper, not a boundary: the
-	 * `elevated` fill is ΔE00 0.00 off `rowHover` in arcade, and the own pill's
-	 * `accentWash` 1.38 off it in obsidian, so no fill-only design can promise
-	 * 3:1 there, and a border is what the operator asked to remove. What keeps a
+	 * `elevated` fill is ΔE00 0.00 off `rowHover` in arcade, so no quiet
+	 * fill-only design can promise 3:1 there, and a border is what the operator asked to remove. What keeps a
 	 * pill legible and operable is the INK on its own fill - the emoji and the
 	 * count are the content and the target - which these rows assert at 4.5:1 on
 	 * every palette, at rest and in the hover step.
@@ -624,22 +642,9 @@ const CONTROLS = [
 		ink: "ink",
 		edge: false,
 	},
-	{
-		name: "team bridge reaction pill (mine)",
-		on: ["surface", "canvas", "rowHover"],
-		fill: "accentWash",
-		border: null,
-		ink: "accent",
-		edge: false,
-	},
-	{
-		name: "team bridge reaction pill (mine, hover)",
-		on: ["surface", "canvas", "rowHover"],
-		fill: "accentWash",
-		border: null,
-		ink: "accentHover",
-		edge: false,
-	},
+	/* The reader's OWN pill is not a role but a derived fill (accent mixed over
+	   surface), so it cannot be a CONTROLS row: it is asserted by
+	   `REACTION_OWN_PILL` below, which mixes the fill per palette. */
 	{
 		/*
 		 * The pills' `+`: a transparent `inkDim` glyph at rest (asserted on the
@@ -3014,16 +3019,44 @@ const PERCEPTIBLE = [
  *     let a merged slab through - which is why it is acceptable rather than
  *     worth a parser.
  */
+/*
+ * The own reaction pill's derived fills (`team-bridge-reactions.tsx`), asserted
+ * in the palette loop. The shares are the call site's `color-mix` percentages;
+ * the pin "team bridge own reaction pill fill" below holds the call site to
+ * them. Floors: 5.0 ΔE00 off the others' resting pill is "clearly" apart (the
+ * file's perceptual floor is 3.0; 20% is the smallest share that clears 5 on
+ * all 59, worst tokyoNight 5.83); 3.0 off every other host. The hover step is
+ * its own row so a pressed-looking hover cannot quietly fail its ink.
+ */
+const REACTION_OWN_PILL = [
+	{
+		name: "team bridge own reaction pill",
+		accentShare: 0.2,
+		apartFrom: {
+			elevated: 5.0,
+			sunken: 3.0,
+			surface: 3.0,
+			canvas: 3.0,
+			rowHover: 3.0,
+		},
+	},
+	{
+		name: "team bridge own reaction pill (hover)",
+		accentShare: 0.27,
+		apartFrom: { elevated: 5.0, surface: 3.0, rowHover: 3.0 },
+	},
+];
+
 const STRUCTURAL_CALL_SITES = [
 	{
 		/*
 		 * THE REACTION PILLS WEAR THE FILLS THEIR CONTRACT ROWS MEASURE.
 		 *
-		 * The CONTROLS rows "team bridge reaction pill" (+ hover, mine, mine hover)
-		 * prove the VALUES on every palette; only this pin can see the edit that
-		 * moves a pill to another role, or puts the `border-control` ring back that
-		 * the operator asked to remove (polish round, 2026-10-30), while every ratio
-		 * above stays green.
+		 * The CONTROLS rows "team bridge reaction pill" (+ hover) and
+		 * `REACTION_OWN_PILL` prove the VALUES on every palette; only this pin can
+		 * see the edit that moves a pill to another role or another mix share,
+		 * which would leave every ratio above green. (The ring the operator asked
+		 * to remove is held by the base-class pin below.)
 		 *
 		 * This REPLACES design round 1's D5 pin ("add-reaction control extent is
 		 * its fill", `bg-media-surface` at rest). The operator reversed that design
@@ -3033,8 +3066,14 @@ const STRUCTURAL_CALL_SITES = [
 		 */
 		what: "team bridge reaction pills wear their measured fills",
 		file: "src/renderer/src/features/team-bridge/team-bridge-reactions.tsx",
-		must: '? "bg-accent-wash font-medium text-accent hover:text-accent-hover"\n\t\t\t\t\t\t\t\t: "bg-elevated text-ink-muted hover:bg-sunken hover:text-ink",',
-		why: "the pill rows assert `elevated`/`sunken`/`accentWash` with their inks; a pill moved to another role (or given back a ring) would leave those rows green about a component that no longer wears them",
+		must: '? "bg-[color-mix(in_srgb,var(--color-accent)_20%,var(--color-surface))] font-medium text-ink hover:bg-[color-mix(in_srgb,var(--color-accent)_27%,var(--color-surface))]"\n\t\t\t\t\t\t\t\t: "bg-elevated text-ink-muted hover:bg-sunken hover:text-ink",',
+		why: "the pill rows assert `elevated`/`sunken` and the own pill's 20%/27% accent-over-surface mixes with their inks; a pill moved to another role or share would leave those rows green about a component that no longer wears them",
+	},
+	{
+		what: "team bridge reaction pills stay borderless",
+		file: "src/renderer/src/features/team-bridge/team-bridge-reactions.tsx",
+		must: '"inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2 text-[12px] leading-none transition-colors duration-fast ease-out-quart disabled:text-ink-dim",',
+		why: "the operator asked for the `border-control` ring to go (polish round, 2026-10-30); the pill rows declare `edge: false` on that basis, so a ring added back would be a boundary no row measures (agent review round 1, R3)",
 	},
 	{
 		what: "team bridge reaction add takes the pill fill on hover",
@@ -6063,6 +6102,41 @@ for (const { id, palette: p } of palettes) {
 					}
 				}
 			}
+		}
+	}
+
+	/*
+	 * TEAM BRIDGE OWN REACTION PILL (design review round 1, D1 on #1524). The
+	 * fill is `color-mix(in srgb, accent N%, surface)`, mixed here per palette
+	 * exactly as the browser mixes it (sRGB-encoded channels), and asserted three
+	 * ways on every palette:
+	 *   1. SEPARATION from the others' pill (`elevated`) and from their hover
+	 *      (`sunken`): the operator asked for "clearly brighter", and the first
+	 *      cut (`accentWash`) measured ΔE00 2.04 / 1.01:1 off `elevated` in
+	 *      tokyoNight, the operator's own theme, and was DARKER in 54 of 59.
+	 *   2. A visible step off the grounds the row is painted on, including the
+	 *      hovered row (`rowHover`), where `accentWash` hit 1.00:1 on dracula.
+	 *   3. `ink` on the fill at 4.5:1, at rest and on the hover step.
+	 * Separation is ΔE00, the file's perceptual instrument; a luminance ratio
+	 * cannot see a hue step, and hue IS the accent tint's job.
+	 */
+	for (const row of REACTION_OWN_PILL) {
+		const fill = srgbMix(p.accent, p.surface, row.accentShare);
+		if (!fill) continue;
+		assertions++;
+		const inkOn = ratio(p.ink, fill);
+		if (inkOn < FLOOR.text)
+			fail(
+				`${id}: ${row.name} — ink ${p.ink} on fill ${fill} = ${r2(inkOn)}:1, need ${FLOOR.text}:1`,
+			);
+		for (const [other, min] of Object.entries(row.apartFrom)) {
+			if (!isHex(p[other])) continue;
+			assertions++;
+			const got = deltaE(fill, p[other]);
+			if (got < min)
+				fail(
+					`${id}: ${row.name} — fill ${fill} is ΔE00 ${r2(got)} from \`${other}\` ${p[other]}, need ${min}`,
+				);
 		}
 	}
 

@@ -1,4 +1,5 @@
 import { t } from "@shared/i18n";
+import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, waitFor, within } from "@storybook/test";
 import { useState } from "react";
@@ -17,8 +18,18 @@ const meta = {
 		/* `bg-surface` is the thread column's real ground (`team-bridge-page.tsx`,
 		 * the message section): the pills' fill step is measured against it, so a
 		 * board on `canvas` would review a contrast the reader never sees. */
-		(Story) => (
-			<div className="group/message relative w-[480px] max-w-full bg-surface p-6 text-ink">
+		/* The board doubles as the chips' message row (`group/message`), so the
+		 * `+` reveal is the real row rule. A story that renders REAL rows
+		 * (`TeamBridgeMessageList`) sets `parameters.realRows`: a second
+		 * `group/message` around them made every `+` show the moment focus was
+		 * anywhere on the board (design review round 1, D2). */
+		(Story, { parameters }) => (
+			<div
+				className={cn(
+					"relative w-[480px] max-w-full bg-surface p-6 text-ink",
+					!parameters.realRows && "group/message",
+				)}
+			>
 				<Story />
 			</div>
 		),
@@ -240,6 +251,7 @@ export const ShortWindowPicker: Story = {
 	),
 };
 export const EmptyTimeline: Story = {
+	parameters: { realRows: true },
 	render: () => (
 		<TeamBridgeMessageList
 			labelFor={() => "Ada"}
@@ -438,7 +450,7 @@ const assertToolbarClear = async (canvasElement: HTMLElement) => {
 };
 
 export const MessageToolbar: Story = {
-	parameters: { layout: "fullscreen" },
+	parameters: { layout: "fullscreen", realRows: true },
 	decorators: [
 		(Story) => (
 			<div className="flex h-[640px] bg-surface text-ink">
@@ -485,6 +497,64 @@ export const MessageToolbar: Story = {
 
 /** The keyboard path, unforced: Tab from the row reaches the toolbar, which the
  * row's `:focus-within` reveals; ArrowRight walks to reply. */
+/*
+ * THE PILLS IN A REAL MESSAGE ROW (design review round 1, D2): the shipped
+ * `TeamBridgeMessageList` row, no forced toolbar, on the thread's `surface`.
+ * At rest the `+` is hidden; hovering the row (a real pointer, captured for the
+ * PR) paints `row-hover` under the pills and reveals it. The play pins the
+ * rest half, which needs no pointer.
+ */
+export const RealRowReactions: Story = {
+	parameters: { layout: "fullscreen", realRows: true },
+	decorators: [
+		(Story) => (
+			<div className="w-[560px] bg-surface py-4 text-ink">
+				<Story />
+			</div>
+		),
+	],
+	render: () => (
+		<TeamBridgeMessageList
+			labelFor={(sender) => sender.display_label}
+			reactionContext={storyReactionContext}
+			onReply={() => {}}
+			messages={[
+				{
+					...toolbarRoot,
+					body: "Shipping the conversation flow today.",
+					attachments: undefined,
+					reply_count: undefined,
+					reply_participants: undefined,
+					last_reply_at: undefined,
+					reactions: MIXED_REACTIONS,
+				},
+			]}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		const add = canvasElement.querySelector<HTMLButtonElement>(
+			"[data-reaction-add]",
+		) as HTMLButtonElement;
+		await expect(getComputedStyle(add).opacity).toBe("0");
+	},
+};
+/** The same real row with focus inside it (a real Tab from the play): the
+ * row's `group-focus-within/message` arm - the same rule as its hover arm -
+ * reveals the `+`. */
+export const RealRowRevealed: Story = {
+	...RealRowReactions,
+	play: async ({ canvasElement }) => {
+		const add = canvasElement.querySelector<HTMLButtonElement>(
+			"[data-reaction-add]",
+		) as HTMLButtonElement;
+		await expect(getComputedStyle(add).opacity).toBe("0");
+		const pill = canvasElement.querySelector<HTMLButtonElement>(
+			"[data-reaction-pill]",
+		) as HTMLButtonElement;
+		pill.focus();
+		await waitFor(() => expect(getComputedStyle(add).opacity).toBe("1"));
+	},
+};
 export const MessageToolbarKeyboard: Story = {
 	...MessageToolbar,
 	render: () => (

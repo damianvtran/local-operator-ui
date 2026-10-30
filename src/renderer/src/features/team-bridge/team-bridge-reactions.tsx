@@ -216,7 +216,15 @@ function TeamBridgeReactionChipsBody({
 				/* The Tooltip is the ONE hover label: the native `title` this button
 				 * used to carry drew a second, OS-styled tooltip over it after the
 				 * native delay (operator polish round, 2026-10-30). */
-				<Tooltip key={reaction.emoji} content={whoReacted(reaction)}>
+				/* `text-balance` (design round 1, D4): a three-name list plus "and
+				 * 9 others" wrapped at the tooltip's `max-w-64` with "9 others"
+				 * orphaned on its own line. Balancing in CSS keeps the label string
+				 * itself free of a no-break space a screen reader would also read. */
+				<Tooltip
+					key={reaction.emoji}
+					content={whoReacted(reaction)}
+					className="text-balance"
+				>
 					<button
 						key={reaction.emoji}
 						type="button"
@@ -248,10 +256,21 @@ function TeamBridgeReactionChipsBody({
 						 * `elevated` on every palette) with the ink stepping to `ink`; it
 						 * never lifts or scales.
 						 *
-						 * THE READER'S OWN REACTION is the brighter state: `accent-wash` fill
-						 * with an `accent` count, 4.51:1 worst (everforest) and 7.18:1 on the
-						 * dark brand; hover steps the ink to `accent-hover` (5.15:1 worst).
-						 * Both triples are asserted in `scripts/contrast-contract.mjs`.
+						 * THE READER'S OWN REACTION is the brighter state: 20% `accent`
+						 * mixed over `surface`, with an `ink` count at medium weight. NOT
+						 * `accent-wash` (design review round 1, D1): that role sits at the
+						 * ground's depth, so it measured ΔE00 2.04 / 1.01:1 against the
+						 * others' `elevated` pill in tokyoNight - the operator's theme - and
+						 * was darker than it in 54 of 59 palettes. The mix is accent-tinted
+						 * AND apart from every neighbour: ΔE00 >= 5.83 off `elevated` (worst
+						 * tokyoNight), >= 5.30 off a hovered row, `ink` >= 5.44:1 on it.
+						 * The count is `ink` rather than `accent` because `accent` on a fill
+						 * this tinted drops to 3.52:1. Hover steps the fill to 27% (D5:
+						 * the same kind of fill step the others' pills take), `ink` >= 4.64:1.
+						 * `surface` is the thread's ground; on the thread pane's `canvas`
+						 * the same fill is asserted apart too. All of it lives in
+						 * `REACTION_OWN_PILL` in `scripts/contrast-contract.mjs`, which
+						 * mixes the fill per palette as the browser does.
 						 *
 						 * FIXED HEIGHT, NOT `min-h`: `h-6` (24px, the WCAG 2.5.8 target
 						 * floor) on every pill and on the `+`, so a pill with a taller emoji
@@ -261,9 +280,9 @@ function TeamBridgeReactionChipsBody({
 						 * line-height box whose half-leading sat the emoji low.
 						 */
 						className={cn(
-							"inline-flex h-6 items-center gap-1 rounded-full px-2 text-[12px] leading-none transition-colors duration-fast ease-out-quart disabled:text-ink-dim",
+							"inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2 text-[12px] leading-none transition-colors duration-fast ease-out-quart disabled:text-ink-dim",
 							reaction.reacted_by_me
-								? "bg-accent-wash font-medium text-accent hover:text-accent-hover"
+								? "bg-[color-mix(in_srgb,var(--color-accent)_20%,var(--color-surface))] font-medium text-ink hover:bg-[color-mix(in_srgb,var(--color-accent)_27%,var(--color-surface))]"
 								: "bg-elevated text-ink-muted hover:bg-sunken hover:text-ink",
 						)}
 					>
@@ -341,7 +360,9 @@ function TeamBridgeReactionChipsBody({
 						 * Focus is the app's global `:where(:focus-visible)` outline.
 						 */
 						className={cn(
-							"inline-flex size-6 items-center justify-center rounded-full bg-transparent text-ink-dim",
+							/* `shrink-0` (design round 1, D3): a narrow column squeezed the
+							   `+` to 14x24, under the 24px target floor. */
+							"inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-transparent text-ink-dim",
 							"transition-[opacity,color,background-color] duration-fast ease-out-quart",
 							"hover:bg-elevated hover:text-ink disabled:text-ink-dim",
 							open
@@ -394,7 +415,11 @@ const ListFormat = (Intl as unknown as { ListFormat: ListFormatCtor })
 function reactorsLabel(reaction: TeamBridgeReaction, locale: string): string {
 	const names = reaction.sample_labels;
 	const others = reaction.count - names.length;
-	if (others <= 0 || !names.length)
+	/* No sampled name but a count (agent review round 1, R4): the tooltip
+	 * still says how many, rather than going silent. */
+	if (!names.length)
+		return others > 0 ? t("ui.teamBridge.reactions.others", { others }) : "";
+	if (others <= 0)
 		return new ListFormat(locale, {
 			style: "narrow",
 			type: "conjunction",
