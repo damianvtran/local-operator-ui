@@ -7805,6 +7805,10 @@ test("a record_start whose answer is refused aborts the capture it began", async
 			record.view.webContents.url = "https://forbidden.example/";
 			registry.bumpEpoch(record.tabId);
 		}
+		if (method === "Page.stopScreenRecording") {
+			cdp.calls.push({ method, params: sendParams });
+			return { stream: "s-refused" };
+		}
 		return originalSend(contents, method, sendParams, options);
 	};
 	await assert.rejects(
@@ -7817,6 +7821,20 @@ test("a record_start whose answer is refused aborts the capture it began", async
 		(error) => error.code === "origin_not_allowed",
 	);
 	cdp.send = originalSend;
+	// F1: dropping the bookkeeping is not enough — Chromium's recorder has to be
+	// stopped, or the next start on this tab is refused with "Screencast is
+	// already active". The stop and the stream close must both have been sent.
+	assert.ok(
+		cdp.calls.some((call) => call.method === "Page.stopScreenRecording"),
+		"the refused start's recorder was stopped",
+	);
+	assert.ok(
+		cdp.calls.some(
+			(call) =>
+				call.method === "IO.close" && call.params?.handle === "s-refused",
+		),
+		"and its stream was closed",
+	);
 	await assert.rejects(
 		() => host.dispatch("record_stop", { ...params, tab: opened.tab }, "stop"),
 		(error) => error.data?.reason === "record_not_active",

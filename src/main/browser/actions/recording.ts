@@ -10,7 +10,7 @@ import {
 	unlinkSync,
 	writeSync,
 } from "node:fs";
-import { basename, dirname, isAbsolute } from "node:path";
+import { basename, dirname, isAbsolute, resolve } from "node:path";
 import type { CdpContents } from "../cdp";
 import { BrowserHostError } from "../errors";
 import { CDP_DEADLINE_MS } from "../vendor/driver/deadline";
@@ -160,7 +160,10 @@ const settled = new Map<number, Settled>();
  * which also makes a duplicate path impossible before either start registers.
  * Key is a token; value is the absolute path.
  */
-const reservations = new Map<string, string>();
+const reservations = new Map<
+	string,
+	{ webContentsId: number; path: string; cancelled: boolean }
+>();
 
 function notActive(): BrowserHostError {
 	return new BrowserHostError(
@@ -550,8 +553,16 @@ function settle(
  * a stop: bounded at 2 s, best effort, and the stream is closed unread — the
  * bytes are thrown away, which is what discard means.
  */
-async function endReplaced(recording: Recording): Promise<void> {
+/** What ending a stream needs: the attachment and the target, nothing else. */
+type Stoppable = Pick<Recording, "cdp" | "contents">;
+
+export async function endReplaced(recording: Stoppable): Promise<void> {
 	try {
+		// The stop has to reach a target the pool still has a session for; on the
+		// replace path it does, and on the cancellation path the handle was just
+		// forgotten, so the attachment is re-opened best-effort (a closed tab throws
+		// and is caught below).
+		await recording.cdp.attach(recording.contents).catch(() => undefined);
 		const stopped = await recording.cdp.send<{ stream?: string }>(
 			recording.contents,
 			"Page.stopScreenRecording",
@@ -573,6 +584,29 @@ async function endReplaced(recording: Recording): Promise<void> {
 		// A session that is already gone cannot be stopped; the start below is where
 		// that becomes visible, with Chromium's own words.
 	}
+}
+
+/**
+ * Discard a recording and END Chromium's recorder for it.
+ *
+ * The bookkeeping-only abort is right where the handle is already going away
+ * (`forget`, `detach`, a closing tab): the session dies with it. It is WRONG where
+ * the tab stays alive and attached, because Chromium keeps the media recorder
+ * running and the next `Page.startScreenRecording` on that target is refused with
+ * "Screencast is already active" (measured; review F1). `endReplaced` is the stop,
+ * bounded at `RECORD_ABORT_DEADLINE_MS` per call.
+ */
+export async function abortAndEnd(
+	webContentsId: number,
+	reason: string,
+): Promise<void> {
+	const recording = recordings.get(webContentsId);
+	if (!recording) {
+		abortRecording(webContentsId, reason);
+		return;
+	}
+	abortRecording(webContentsId, reason);
+	await endReplaced(recording);
 }
 
 /** Finalize at most once per recording, and share the result. */
@@ -627,12 +661,31 @@ export async function recordStart(
 	const path = preflightPath(params);
 	const maxDurationS = durationOf(params);
 	const maxBytes = maxBytesOf(params);
+	// A START ALREADY IN FLIGHT ON THIS TAB. The entry above is only visible once
+	// Chromium accepted, so without this a second start on the same tab passes the
+	// same check and both proceed (review F3).
+	const inFlight = [...reservations.values()].some(
+		(entry) => entry.webContentsId === id,
+	);
+	if (inFlight) {
+		throw new BrowserHostError(
+			"busy",
+			"a recording is already starting on this tab; wait for that start to finish, then use record_stop before starting another. Nothing was started twice.",
+			{ reason: "record_active", path },
+		);
+	}
 	// ONE PATH, ONE RECORDING. Two recordings writing one destination would open
 	// the same `.<name>.part` and interleave their bytes; a RESERVED start counts
-	// too, because it is about to write that path (review N1).
+	// too, because it is about to write that path (review N1). The comparison is
+	// on resolved paths, or `/d/../d/x.mp4` slips past `x.mp4` (review F2).
+	const canonicalPath = resolve(path);
 	const pathTaken =
-		[...recordings.values()].some((other) => other.path === path) ||
-		[...reservations.values()].includes(path);
+		[...recordings.values()].some(
+			(other) => resolve(other.path) === canonicalPath,
+		) ||
+		[...reservations.values()].some(
+			(entry) => resolve(entry.path) === canonicalPath,
+		);
 	if (pathTaken) {
 		throw pathRefusal(
 			path,
@@ -657,7 +710,9 @@ export async function recordStart(
 		abortRecording(id, "replaced_by_another_owner");
 	}
 	const reservation = `${Date.now()}-${Math.random()}`;
-	reservations.set(reservation, path);
+	const entry = { webContentsId: id, path, cancelled: false };
+	reservations.set(reservation, entry);
+	let started = false;
 	try {
 		// The abort above drops our state; this ends the recorder itself, which is
 		// what lets the next start succeed on the same target.
@@ -675,12 +730,26 @@ export async function recordStart(
 				},
 				{ deadlineMs: RECORD_START_DEADLINE_MS },
 			);
+			started = true;
 		} catch (error) {
 			throw classifyStartFailure(error);
 		}
 	} catch (error) {
 		reservations.delete(reservation);
 		throw error;
+	}
+	// The tab was released while this start was in flight (`forget`/`detach`, or a
+	// DevTools detach): registering now would leave a recording on a handle nobody
+	// can stop. Chromium may have started the capture anyway, so it is ended before
+	// the refusal returns (review F4).
+	if (entry.cancelled) {
+		reservations.delete(reservation);
+		if (started) await endReplaced({ cdp: ctx.cdp, contents });
+		throw new BrowserHostError(
+			"internal",
+			"that browser tab was released while the recording was starting; nothing was saved. Use 'open' with a URL to get a new tab.",
+			{ reason: "record_failed" },
+		);
 	}
 	const recording: Recording = {
 		owner,
@@ -771,6 +840,14 @@ export function abortRecording(
 	reason: string,
 	options: { tombstone?: boolean; clearSettled?: boolean } = {},
 ): void {
+	// A start in flight for this tab is cancelled with the handle: if its CDP call
+	// still lands, it must not register a recording nobody can stop (review F4).
+	for (const [token, entry] of reservations) {
+		if (entry.webContentsId === webContentsId) {
+			entry.cancelled = true;
+			reservations.delete(token);
+		}
+	}
 	const recording = recordings.get(webContentsId);
 	if (recording) {
 		recording.aborted = true;

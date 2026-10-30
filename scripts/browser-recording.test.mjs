@@ -427,6 +427,54 @@ test("a start naming an active recording's path is refused", async () => {
 	}
 });
 
+test("a path that resolves to an active one is refused too", async () => {
+	// `/d/../d/x.mp4` is `x.mp4` once resolved; comparing the strings would let it
+	// through and two recordings would share one part file (review F2).
+	const dir = scratchDir();
+	const path = join(dir, "x.mp4");
+	const { start, stop, addTab } = fixture({ path });
+	addTab("tab-2");
+	await start({ path }, "session:a", "tab");
+	try {
+		await assert.rejects(
+			start({ path: `${dir}/./x.mp4` }, "session:a", "tab-2"),
+			(error) => {
+				assert.equal(error.data?.reason, "record_path");
+				return true;
+			},
+		);
+	} finally {
+		await stop("session:a", "tab").catch(() => undefined);
+		await stop("session:a", "tab-2").catch(() => undefined);
+	}
+});
+
+test("two simultaneous starts on ONE tab cannot both pass", async () => {
+	// The registered entry only exists after Chromium accepted, so the second
+	// start of a pair sees no recording at all; the reservation has to answer for
+	// the tab it belongs to (review F3).
+	const dir = scratchDir();
+	const { start, stop } = fixture();
+	const outcomes = await Promise.allSettled([
+		start({ path: join(dir, "one.mp4") }, "session:a", "tab"),
+		start({ path: join(dir, "two.mp4") }, "session:a", "tab"),
+	]);
+	try {
+		const won = outcomes.filter((entry) => entry.status === "fulfilled");
+		const lost = outcomes.filter((entry) => entry.status === "rejected");
+		assert.equal(won.length, 1, JSON.stringify(outcomes.map((o) => o.status)));
+		assert.equal(lost.length, 1);
+		assert.equal(lost[0].reason.code, "busy");
+		assert.equal(lost[0].reason.data?.reason, "record_active");
+	} finally {
+		// Twice: without the fix BOTH starts register on the one tab, and a
+		// red run must not leave the loser holding a cap slot for every later
+		// case.
+		await stop("session:a", "tab").catch(() => undefined);
+		await stop("session:a", "tab").catch(() => undefined);
+	}
+});
+
 test("a stale .part is not deleted by a recording that did not create it", async () => {
 	// The finally-block unlink is for the part THIS recording opened. A stale one
 	// from an earlier crash is somebody else's file: the open fails `EEXIST`, the
@@ -805,6 +853,56 @@ test("a detach event leaves an uncollected auto-stop result alone", async (t) =>
 		"internal",
 		"record_not_active",
 	);
+});
+
+test("a start in flight when the handle is dropped never registers", async () => {
+	// `forget` lands between the attach and the start's answer; registering after
+	// that would leave a recording on a tab nobody can stop (review F4). Chromium
+	// accepted the start, so the recorder is ended before the refusal.
+	const dir = scratchDir();
+	let releaseStart;
+	const gate = new Promise((resolveGate) => {
+		releaseStart = resolveGate;
+	});
+	const seen = [];
+	const { cdp, contents, ctx } = poolFixture(({ method }) => {
+		seen.push(method);
+		if (method === "Page.startScreenRecording") return gate.then(() => ({}));
+		if (method === "Page.stopScreenRecording") return { stream: "s-orphan" };
+		return {};
+	});
+	await cdp.attach(contents);
+	const inFlight = mod.recordStart(
+		ctx,
+		{
+			tab: "tab",
+			requester: "session:a",
+			path: join(dir, "orphan.mp4"),
+			max_duration_s: 5,
+		},
+		"r",
+	);
+	await new Promise((resolveTick) => setImmediate(resolveTick));
+	cdp.forget(contents.id);
+	releaseStart();
+	try {
+		await rejectsReason(inFlight, "internal", "record_failed");
+		assert.ok(
+			seen.includes("Page.stopScreenRecording"),
+			"the accepted start was stopped, not abandoned",
+		);
+		await rejectsReason(
+			mod.recordStop(ctx, { tab: "tab", requester: "session:a" }, "r"),
+			"internal",
+			"record_not_active",
+		);
+	} finally {
+		// In the un-fixed state the start REGISTERS, so the first assertion throws
+		// with a live recording behind it; free it or every later case sees a full cap.
+		await mod
+			.recordStop(ctx, { tab: "tab", requester: "session:a" }, "r")
+			.catch(() => undefined);
+	}
 });
 
 test("a devtools detach answers a later stop with record_aborted, and says why", async () => {

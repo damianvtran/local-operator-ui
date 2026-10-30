@@ -658,11 +658,13 @@ export class BrowserHost implements BrowserActionContext {
 				// A `record_start` that this result-side check refuses has ALREADY
 				// registered a capture. Recording into the approved path while the
 				// answer is discarded is footage the host may not hold, so the capture
-				// ends with the refusal (review N5). The abort is a nested call and is
-				// deliberately not awaited into the error path: the refusal is the
-				// answer, and a stop that cannot complete must not mask it.
+				// is discarded AND Chromium's recorder is stopped before the refusal
+				// returns (review N5, F1: dropping the bookkeeping alone left the
+				// screencast alive, and the next start on this tab was refused with
+				// "Screencast is already active"). `abortAndEnd` bounds the stop at the
+				// abort deadline, so a wedged session cannot hold the answer.
 				if (method === "record_start") {
-					recordingActions.abortRecording(
+					await recordingActions.abortAndEnd(
 						record.view.webContents.id,
 						"document_refused_after_start",
 					);

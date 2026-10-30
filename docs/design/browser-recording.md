@@ -39,9 +39,10 @@ the real-path driver recorded in the PR's evidence matrix.
   tombstone for the next `record_stop`; the bytes are not salvaged (D7).
 - The origin is checked ONCE, at start. A page that navigates itself to an
   unapproved origin while the clip is running is captured until the stop. The
-  result-side check aborts a capture when the document changed during the START
-  itself (review N5); it does not re-check per frame, and it cannot: the capture
-  is one continuous stream, not a series of reads.
+  result-side check discards a capture whose document changed during the START
+  itself, and stops the engine's recorder before the refusal returns (review
+  N5/F1); it does not re-check per frame, and it cannot: the capture is one
+  continuous stream, not a series of reads.
 
 ## Frozen contract (D8)
 
