@@ -121,6 +121,7 @@ import type { LauncherWatch } from "./launcher-watch";
 import {
 	type QuickSendWatcher,
 	readQuickSendValue,
+	watchLocalConfig,
 	watchQuickSend,
 } from "./local-config";
 import { createMainLocale } from "./main-locale";
@@ -135,6 +136,7 @@ import {
 	quitExitDeadlineMs,
 } from "./quit-exit-deadline";
 import { createQuitState } from "./quit-state";
+import { RecordingShortcutCoordinator } from "./recording-shortcut";
 import { createRelaunchPending } from "./relaunch-pending";
 import { createUserShellPath } from "./shell-path";
 import { SupplementFrameMounts } from "./supplement-mounts";
@@ -1620,6 +1622,14 @@ const telemetryWebPreferences = {
 // Define mainWindow at a higher scope to be accessible in event handlers
 let mainWindow: BrowserWindow | null = null;
 
+// Kept outside the quick-send availability gate: recording has its own window door.
+const recordingShortcut = new RecordingShortcutCoordinator(
+	process.env,
+	process.platform,
+	(message) =>
+		logger.warn(`recording-shortcut: ${message}`, LogFileType.BACKEND),
+);
+
 /**
  * The one-shot mount permits for supplement frames (turn-supplements memo §4.1,
  * lane U-b). Module scope because its two halves live in two places that must
@@ -1653,6 +1663,7 @@ registerSupplementScheme();
 let miniView: MiniView | null = null;
 let miniViewRegistrar: MiniViewRegistrar | null = null;
 let quickSendWatcher: QuickSendWatcher | null = null;
+let localConfigWatcher: QuickSendWatcher | null = null;
 
 /*
  * The update service of the most recent window, kept here rather than in the
@@ -3043,7 +3054,14 @@ app
 					logger.warn(`mini-view: ${message}`, LogFileType.BACKEND),
 				baseline: initial.present ? initial.value : undefined,
 			});
-		} else {
+		}
+		// Recording remains live in window modes where global hotkeys are off.
+		localConfigWatcher = watchLocalConfig({
+			onConfigChange: () => recordingShortcut.refresh(),
+			onProblem: (message) =>
+				logger.warn(`recording-shortcut: ${message}`, LogFileType.BACKEND),
+		});
+		if (!hotkeysAllowed(windowLaunch.mode)) {
 			if (miniViewExerciser) {
 				const line =
 					"mini-view: exerciser window created (dev driver armed; no registration in this mode)";
@@ -3127,6 +3145,7 @@ app
 			 * and the poll share one source of truth.
 			 */
 			() => {
+				recordingShortcut.refresh();
 				const reading = readQuickSendValue();
 				if (reading.problem !== undefined) {
 					logger.warn(
@@ -3167,7 +3186,56 @@ app
 			() => {
 				void mainLocale.refresh();
 			},
+			(input) => recordingShortcut.admit(input),
 		);
+
+		// Both app documents may read recording state; only the main window's
+		// main frame may publish panel/fixed claims.
+		const recordingSenders = () => [
+			...(mainWindow === null
+				? []
+				: [{ window: mainWindow, url: rendererUrl }]),
+			...(miniView === null
+				? []
+				: [{ window: miniView.window, url: miniViewUrlFor(rendererUrl) }]),
+		];
+		ipcMain.removeHandler("recording-shortcut:get");
+		ipcMain.handle("recording-shortcut:get", (event) => {
+			if (!isAdmittedSender(event, recordingSenders()))
+				throw new Error("This window cannot read the recording shortcut.");
+			return recordingShortcut.getState();
+		});
+		ipcMain.removeAllListeners("recording-shortcut:claims");
+		ipcMain.on("recording-shortcut:claims", (event, rev, claims) => {
+			const owner = mainWindow;
+			if (
+				!owner ||
+				owner.isDestroyed() ||
+				!isAdmittedSender(event, [{ window: owner, url: rendererUrl }])
+			) {
+				return;
+			}
+			recordingShortcut.setClaims(rev, claims);
+		});
+		ipcMain.removeAllListeners("recording-shortcut:pending");
+		ipcMain.on("recording-shortcut:pending", (event, value) => {
+			const owner = mainWindow;
+			if (
+				!owner ||
+				owner.isDestroyed() ||
+				!isAdmittedSender(event, [{ window: owner, url: rendererUrl }]) ||
+				(value !== undefined && typeof value !== "string")
+			) {
+				return;
+			}
+			recordingShortcut.markPending(value);
+		});
+		recordingShortcut.onChange((state) => {
+			for (const window of [mainWindow, miniView?.window]) {
+				if (window && !window.isDestroyed())
+					window.webContents.send("recording-shortcut:change", state);
+			}
+		});
 
 		/*
 		 * The renderer dev driver's channels, present ONLY in an armed launch.
@@ -4199,6 +4267,7 @@ app
 					if (held) clearTimeout(held.timer);
 					heldForConversation.delete(windowId);
 				}
+				recordingShortcut.clearClaims();
 				mainWindow = null;
 			});
 
@@ -4217,9 +4286,10 @@ app
 				updateService?.checkForAllUpdates(true);
 			}, 3000);
 
+			// A recreated window gets the latest file value without a per-keypress read.
+			recordingShortcut.refresh();
 			// Register local shortcuts for focused window
 			mainWindow.webContents.on("before-input-event", (event, input) => {
-				const isCmdOrCtrl = input.control || input.meta;
 				/*
 				 * THE PALETTE'S DOOR (issues #659, #850): Cmd/Ctrl+P opens the palette on
 				 * EVERYTHING, Cmd/Ctrl+Shift+P opens it on COMMANDS. WHICH press means which
@@ -4243,15 +4313,11 @@ app
 				) {
 					event.preventDefault();
 					mainWindow.webContents.send(paletteChannel);
+					return;
 				}
 
-				// Start speech to text: Cmd/Ctrl + Shift + S
-				if (
-					isCmdOrCtrl &&
-					input.shift &&
-					input.key.toLowerCase() === "s" &&
-					input.type === "keyDown"
-				) {
+				// Main owns this door because the renderer may never receive the key.
+				if (recordingShortcut.matches(input)) {
 					if (mainWindow?.isFocused() && mainWindow?.isVisible()) {
 						event.preventDefault();
 						mainWindow.webContents.send("start-speech-to-text");
@@ -5094,6 +5160,7 @@ app.on("before-quit", async (event) => {
 	globalShortcut.unregisterAll();
 	miniViewRegistrar?.dispose();
 	quickSendWatcher?.stop();
+	localConfigWatcher?.stop();
 	miniView?.dispose();
 	if (windowLaunch.mode === "headless") {
 		launcherWatch?.stop();
