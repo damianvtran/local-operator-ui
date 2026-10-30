@@ -1,7 +1,7 @@
 import { formatDate, formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { Bot, UserRound } from "lucide-react";
+import { Bot, ChevronDown, ChevronRight, UserRound } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import type { FC, ReactNode } from "react";
 import type {
@@ -604,8 +604,16 @@ const MessageRowView: FC<MessageRowProps> = ({
 					<div className="flex pb-0.5">{decoration.badge}</div>
 				)}
 				{/* A null body is an agent member's unadmitted message: say so
-				    rather than rendering an empty row. */}
-				{message.body === null ? (
+				    rather than rendering an empty row. A caller that collapses this
+				    row (the audit's unadmitted verdicts) gets the same placeholder for
+				    a BLANK body with nothing attached: the wire allows "", and an
+				    empty prose block there reads as a rendering fault, not as "no
+				    text was sent" (agent review round 1, R1-2). */}
+				{message.body === null ||
+				(decoration?.collapsedSummary !== undefined &&
+					message.body.trim() === "" &&
+					(message.attachments?.length ?? 0) === 0 &&
+					decoration.attachments === undefined) ? (
 					<p className="text-[14px] text-ink-dim italic">
 						{decoration?.withheldCopy ?? t("ui.teamBridge.thread.withheld")}
 					</p>
@@ -614,15 +622,34 @@ const MessageRowView: FC<MessageRowProps> = ({
 						decoration?.attachments !==
 							undefined) ? null : decoration?.collapsedSummary &&
 					message.body.trim() !== "" ? (
-					<details>
+					<details className="group/reveal">
 						{/* The target is the LABEL and its own box, not the full row
 						    width: a click far to the right of the words used to open a
 						    message (design review round 1, D9). 24px of vertical room
-						    clears the WCAG 2.5.8 floor the browser's 20px marker missed. */}
-						<summary className="inline-flex min-h-[24px] w-fit cursor-pointer items-center text-[14px] text-ink-muted">
+						    clears the WCAG 2.5.8 floor the browser's 20px marker missed.
+						    `inline-flex` suppresses the native marker, so the chevron IS
+						    the disclosure cue (design review round 1, D3). It swaps glyph
+						    instantly on open, as the shared `Disclosure` does (no
+						    rotate-on-toggle motion; a rotated mirrored glyph would also
+						    point up in RTL). `<details>` is uncontrolled, so the open state
+						    drives the swap through CSS; the group is named so an outer
+						    `group` on the row cannot drive it. */}
+						<summary className="inline-flex min-h-[24px] w-fit cursor-pointer items-center gap-1 text-[14px] text-ink-muted">
+							<ChevronRight
+								aria-hidden="true"
+								className="size-3.5 shrink-0 group-open/reveal:hidden rtl:-scale-x-100"
+							/>
+							<ChevronDown
+								aria-hidden="true"
+								className="hidden size-3.5 shrink-0 group-open/reveal:block"
+							/>
 							{decoration.collapsedSummary}
 						</summary>
-						<TeamBridgeMarkdown className="team-bridge-message-body text-[14px] text-ink">
+						{/* Opened unadmitted text sits in a quoted inset, a hairline
+						    start rule rather than a box (panels stay borderless), so it
+						    cannot be mistaken for text the screening let through once the
+						    verdict chip has scrolled away (design review round 1, D4). */}
+						<TeamBridgeMarkdown className="team-bridge-message-body mt-1 border-hairline border-s-2 ps-3 text-[14px] text-ink">
 							{message.body}
 						</TeamBridgeMarkdown>
 					</details>

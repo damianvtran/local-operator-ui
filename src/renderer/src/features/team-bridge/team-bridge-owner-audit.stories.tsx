@@ -257,11 +257,17 @@ const LONG_MARKDOWN = [
 	"```",
 ].join("\n");
 
+/*
+ * Seq order must agree with the clock (QA round 1, Q1): the shared list orders
+ * by seq, as the hub does, so a write-up stamped 10:40 but sequenced after the
+ * 11:02 rows rendered as a headerless continuation of the 11:02 message. Real
+ * hub seqs are monotonic in time; the fixture is too, sitting before seq 41.
+ */
 const markdownMessages: OwnerAuditMessage[] = [
 	{
 		...base,
-		id: "bmsg_50",
-		seq: 50,
+		id: "bmsg_39",
+		seq: 39,
 		sender: { account_id: AGENT, kind: "agent", display_label: AGENT_LABEL },
 		body: LONG_MARKDOWN,
 		origin: "agent",
@@ -272,8 +278,8 @@ const markdownMessages: OwnerAuditMessage[] = [
 	},
 	{
 		...base,
-		id: "bmsg_51",
-		seq: 51,
+		id: "bmsg_40",
+		seq: 40,
 		sender: {
 			account_id: "acct_ben",
 			kind: "agent",
@@ -350,8 +356,11 @@ function Section({
 			 * unreadable has no panel at all, rather than a conversation header sitting
 			 * over nothing.
 			 */}
+			{/* The thread section's ground, as `team-bridge-page.tsx` paints it: the
+			    rail sits on canvas, the panel on surface, so frames show the tone
+			    step that ships (design review round 1, D5). */}
 			{selected && (
-				<main className="flex min-h-0 flex-1 flex-col overflow-hidden">
+				<main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface">
 					<OwnerAuditPanelView
 						conversation={selected}
 						messages={rows}

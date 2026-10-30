@@ -67,6 +67,19 @@ import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
 
+/*
+ * ONE ZONE FOR THE WHOLE FILE, set before anything formats a date. The day
+ * dividers ("Tuesday, March 4", in text and `aria-label`) are LOCAL dates, so
+ * the channel parity golden below moved with the machine: east of UTC+12 its
+ * noon-UTC fixtures fall on the next day and the byte comparison went red
+ * (agent review round 1, R1-1). Node re-reads `process.env.TZ` on assignment,
+ * and the golden was captured in a zone that agrees with UTC on those dates, so
+ * pinning here keeps it byte-identical with no regeneration. It sits after the
+ * (hoisted) static imports, none of which formats a date, and before the
+ * bundle below is built and evaluated.
+ */
+process.env.TZ = "UTC";
+
 /* ------------------------------------------------------------------ *\
    DOM + React, the way the sibling team-bridge suites stand them up
 \* ------------------------------------------------------------------ */
@@ -745,6 +758,13 @@ test("rail: loading, error with a working retry, empty, populated", async () => 
 		}),
 	);
 	assert.equal(error.host.querySelector('[role="alert"]') !== null, true);
+	assert.ok(
+		error.host
+			.querySelector('[role="alert"]')
+			.className.split(" ")
+			.includes("px-3"),
+		"the rail's failure keeps the rail rows' inset",
+	);
 	assert.ok(error.text().includes(m.t("ui.ownerAudit.error")));
 	await click(BUTTON_TEXT(error.host, m.t("ui.ownerAudit.retry")));
 	assert.equal(retried, 1, "the retry affordance must call the retry");
@@ -810,7 +830,13 @@ test("panel: loading, error, empty history, populated", async () => {
 			},
 		}),
 	);
-	assert.equal(error.host.querySelector('[role="alert"]') !== null, true);
+	const panelAlert = error.host.querySelector('[role="alert"]');
+	assert.equal(panelAlert !== null, true);
+	/* The panel's scroll container has no inline padding (rows carry the 20px
+	 * gutter), so its failure takes `px-5` to line up with the column, never
+	 * the rail's `px-3` (design review round 1, D2). */
+	assert.ok(panelAlert.className.split(" ").includes("px-5"));
+	assert.equal(panelAlert.className.split(" ").includes("px-3"), false);
 	await click(BUTTON_TEXT(error.host, m.t("ui.ownerAudit.retry")));
 	assert.equal(retried, 1);
 	await error.close();
@@ -1723,6 +1749,98 @@ test("a rejected body is collapsed, and markdown once opened", async () => {
 	details.setAttribute("open", "");
 	assert.ok(details.querySelector("strong"), "opened, the body is markdown");
 	assert.ok(details.querySelector("table"));
+	await view.close();
+});
+
+/*
+ * Design review round 1, D3 + D4. The summary is `inline-flex`, which paints no
+ * native marker, so the disclosure needs its own: a closed chevron that swaps
+ * for an open one. jsdom applies no stylesheet, so this asserts the wiring (the
+ * named group on `<details>` and the open-state variants) rather than pixels;
+ * the frames are the visual proof. Opened, refused text sits in a quoted inset
+ * (hairline start rule), unlike the admitted body beside it.
+ */
+test("the reveal has a disclosure marker and opens into a quoted inset", async () => {
+	const view = await renderView(
+		panel({
+			messages: [
+				auditRow({ id: "msg_ok", body: "Fine." }),
+				auditRow({
+					id: "msg_rej",
+					seq: 46,
+					body: "Refused text.",
+					agent_delivery_status: "rejected",
+				}),
+			],
+		}),
+	);
+	const details = rowOf(view.host, "msg_rej").querySelector("details");
+	assert.ok(details.className.split(" ").includes("group/reveal"));
+	const marks = [...details.querySelectorAll("summary > svg")];
+	assert.equal(marks.length, 2, "a closed and an open chevron");
+	for (const mark of marks)
+		assert.equal(mark.getAttribute("aria-hidden"), "true", "decorative");
+	const [closed, open] = marks.map((mark) =>
+		mark.getAttribute("class").split(" "),
+	);
+	for (const token of ["lucide-chevron-right", "group-open/reveal:hidden"])
+		assert.ok(closed.includes(token), `closed chevron has ${token}`);
+	for (const token of [
+		"lucide-chevron-down",
+		"hidden",
+		"group-open/reveal:block",
+	])
+		assert.ok(open.includes(token), `open chevron has ${token}`);
+	assert.equal(
+		details.querySelector("summary").textContent,
+		m.t("ui.ownerAudit.reveal"),
+		"the marker adds no text to the summary's name",
+	);
+	const inset = details.querySelector(".team-bridge-message-body");
+	for (const token of ["border-s-2", "border-hairline", "ps-3"])
+		assert.ok(inset.className.split(" ").includes(token), `inset has ${token}`);
+	const admitted = rowOf(view.host, "msg_ok").querySelector(
+		".team-bridge-message-body",
+	);
+	assert.equal(
+		admitted.className.includes("border-s-2"),
+		false,
+		"admitted text is not quoted",
+	);
+	await view.close();
+});
+
+/*
+ * Agent review round 1, R1-2. The wire allows `""` (`z.string().nullish()`); a
+ * collapsed verdict with a blank body and nothing attached must say the text is
+ * unavailable, as a null body does, never draw an empty prose block or a
+ * disclosure promising text it does not have.
+ */
+test("a blank unadmitted body is the unavailable placeholder, not an empty block", async () => {
+	const rows = [
+		["msg_blank_rej", "", "rejected"],
+		["msg_blank_ns", "   \n\t", "not_screened"],
+		["msg_blank_unknown", "", "some_future_status"],
+	].map(([id, body, agent_delivery_status], index) =>
+		auditRow({ id, seq: 60 + index, body, agent_delivery_status }),
+	);
+	const view = await renderView(panel({ messages: rows }));
+	for (const { id } of rows) {
+		const row = rowOf(view.host, id);
+		assert.ok(row, id);
+		assert.ok(
+			[...row.querySelectorAll("p")].some(
+				(node) => node.textContent === m.t("ui.ownerAudit.body_unavailable"),
+			),
+			`${id}: says the text is unavailable`,
+		);
+		assert.equal(row.querySelector("details"), null, `${id}: no disclosure`);
+		assert.equal(
+			row.querySelector(".team-bridge-message-body"),
+			null,
+			`${id}: no empty prose block`,
+		);
+	}
 	await view.close();
 });
 

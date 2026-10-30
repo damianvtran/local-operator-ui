@@ -67,9 +67,21 @@ const title = (conversation: OwnerAuditConversation) =>
  * in its scope — the panel header drops its Refresh while this is what the
  * reader is looking at, so one refetch does not appear twice (D7).
  */
-function AuditFailure({ retry }: { retry: () => void }) {
+function AuditFailure({
+	retry,
+	inset = "px-3",
+}: {
+	retry: () => void;
+	/*
+	 * The section's own inline inset. The rail's rows sit at `px-3`; the panel's
+	 * transcript rows carry a 20px gutter (`px-5`) now that the scroll container
+	 * has none, so the panel passes that and its failure lines up with the
+	 * column instead of hanging 8px left of it (design review round 1, D2).
+	 */
+	inset?: "px-3" | "px-5";
+}) {
 	return (
-		<div role="alert" className="space-y-2 px-3 text-sm text-danger">
+		<div role="alert" className={cn("space-y-2 text-sm text-danger", inset)}>
 			<p>{t("ui.ownerAudit.error")}</p>
 			<Button variant="ghost" onClick={retry}>
 				{t("ui.ownerAudit.retry")}
@@ -527,7 +539,7 @@ export function OwnerAuditPanelView({
 					</output>
 				) : state === "error" ? (
 					<div className="py-4">
-						<AuditFailure retry={retry} />
+						<AuditFailure retry={retry} inset="px-5" />
 					</div>
 				) : (
 					<>
