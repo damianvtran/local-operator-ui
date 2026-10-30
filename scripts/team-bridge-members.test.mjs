@@ -23,7 +23,8 @@ import React, { act } from "react";
  *    Pure functions, asserted by name.
  *  - VIEW (`team-bridge-add-members.tsx`): the picker's own markup — People and
  *    Agents as separate groups, a non-enabled peer shown disabled with its
- *    reason, an existing member non-addable, the empty directory.
+ *    reason, current members filtered out of the invite list, the empty
+ *    directory.
  *  - INTERACTION: the same shipped component mounted in jsdom, driven the way a
  *    person drives it — tick several rows, press confirm, read what the caller
  *    was handed. This is the only layer that can prove "invite several in one
@@ -223,6 +224,37 @@ after(() => {
 });
 
 /** The English copy these assertions read; the catalogue owns the strings. */
+/** The armed row's confirm button, exactly (not the icon's longer name). */
+const CONFIRM_REMOVE_BEN = /^Remove Ben Tran$/;
+const REMOVE_BEN_ICON =
+	'button[aria-label="Remove Ben Tran from conversation"]';
+
+/** Type into the picker's search the way React sees a person type. */
+async function typeQuery(body, value) {
+	const search = body.querySelector('input[type="text"]');
+	await act(async () => {
+		Object.getOwnPropertyDescriptor(
+			dom.window.HTMLInputElement.prototype,
+			"value",
+		).set.call(search, value);
+		search.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+	});
+}
+
+/** Escape as Radix hears it: a keydown that reaches the document. */
+async function pressEscape(body) {
+	await act(async () => {
+		(body.activeElement ?? body.body).dispatchEvent(
+			new dom.window.KeyboardEvent("keydown", {
+				key: "Escape",
+				code: "Escape",
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+}
+
 const COPY = {
 	people: "People",
 	agents: "Agents",
@@ -874,7 +906,7 @@ test("removing a member asks first, names them, and Cancel returns focus", async
 		"Cancel returns focus to the icon that armed it",
 	);
 	await act(async () => removeButton().click());
-	await act(async () => buttonNamed(body, /^Remove Ben Tran$/).click());
+	await act(async () => buttonNamed(body, CONFIRM_REMOVE_BEN).click());
 	assert.deepEqual(removed, ["acct_ben"], "the confirm removes that member");
 });
 
@@ -1135,6 +1167,71 @@ test("a write in flight closes no door and takes no second press", async (t) => 
 	);
 });
 
+test("Escape on an armed row disarms it and keeps the dialog open", async (t) => {
+	const removed = [];
+	const closed = [];
+	const { document: body } = await mount(t, {
+		onRemove: (id) => removed.push(id),
+		onClose: () => closed.push(true),
+	});
+	await act(async () => body.querySelector(REMOVE_BEN_ICON).click());
+	assert.ok(buttonNamed(body, CONFIRM_REMOVE_BEN), "the row is armed");
+	await pressEscape(body);
+	assert.equal(
+		buttonNamed(body, CONFIRM_REMOVE_BEN),
+		undefined,
+		"Esc answers the row's question",
+	);
+	assert.deepEqual(closed, [], "and does not close the dialog");
+	assert.deepEqual(removed, [], "and removes nobody");
+	assert.equal(
+		body.activeElement,
+		body.querySelector(REMOVE_BEN_ICON),
+		"focus is back on the icon that armed the row",
+	);
+	/*
+	 * Focus on the icon opens its Tooltip, a Radix layer above the dialog, so
+	 * the next Esc dismisses the tooltip (Radix gives Esc to the topmost layer)
+	 * and the one after closes the dialog - the same order a browser shows.
+	 * The point here is that nothing stays armed to swallow an Esc.
+	 */
+	await pressEscape(body);
+	await pressEscape(body);
+	assert.deepEqual(closed, [true], "once unarmed, Esc reaches the dialog");
+});
+
+test("an armed row hidden by the search is disarmed, so one Esc closes", async (t) => {
+	const closed = [];
+	const { document: body } = await mount(t, {
+		onClose: () => closed.push(true),
+	});
+	await act(async () => body.querySelector(REMOVE_BEN_ICON).click());
+	await typeQuery(body, "damian");
+	await typeQuery(body, "");
+	assert.equal(
+		buttonNamed(body, CONFIRM_REMOVE_BEN),
+		undefined,
+		"Ben's row came back unarmed: hiding it cleared the question",
+	);
+	await typeQuery(body, "damian");
+	await act(async () => body.querySelector(REMOVE_BEN_ICON)?.click());
+	await pressEscape(body);
+	assert.deepEqual(closed, [true], "the first Esc closes the dialog");
+});
+
+test("a refused removal returns focus to that row's remove action", async (t) => {
+	const { document: body, render } = await mount(t);
+	await act(async () => body.querySelector(REMOVE_BEN_ICON).click());
+	await act(async () => buttonNamed(body, CONFIRM_REMOVE_BEN).click());
+	await render({ pendingKey: "remove:acct_ben" });
+	await render({ pendingKey: null, mutationError: true });
+	assert.equal(
+		body.activeElement,
+		body.querySelector(REMOVE_BEN_ICON),
+		"the reader can retry from where they were",
+	);
+});
+
 test("a read-only caller sees the roster but no way to add", async (t) => {
 	const { document: body } = await mount(t, {
 		canInvite: false,
@@ -1149,5 +1246,10 @@ test("a read-only caller sees the roster but no way to add", async (t) => {
 		buttonNamed(body, COPY.confirmInvitations).disabled,
 		true,
 		"and the confirm is not a live action",
+	);
+	assert.equal(
+		body.querySelector('input[type="text"]').disabled,
+		false,
+		"the search stays usable: it also filters the current members",
 	);
 });

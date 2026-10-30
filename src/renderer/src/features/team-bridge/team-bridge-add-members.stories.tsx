@@ -100,6 +100,9 @@ const people: TeamBridgeDirectoryMember[] = [
  * evidence for "the last row ends fully visible above the footer" needs a list
  * that actually overflows. Names are synthetic.
  */
+/** The invite column's members-only empty state. Top-level, built once. */
+const NO_INVITABLE_MATCH = /No one to invite matches/;
+
 const LONG_NAMES = [
 	"Ana Lima",
 	"Bao Nguyen",
@@ -239,22 +242,8 @@ export const LongList: Story = {
 	},
 };
 
-/** A query that matches only a current member: the invite list says why. */
+/** A query nothing matches: BOTH columns state their own empty result. */
 export const SearchNoResults: Story = {
-	play: async ({ canvasElement }) => {
-		const dialog = within(canvasElement.ownerDocument.body);
-		await userEvent.type(
-			dialog.getByRole("textbox", { name: "Search people and agents" }),
-			"ben",
-		);
-		await expect(
-			dialog.getByText(/No one to invite matches/),
-		).toBeInTheDocument();
-	},
-};
-
-/** A query nothing matches: both columns state their own empty result. */
-export const SearchNothing: Story = {
 	play: async ({ canvasElement }) => {
 		const dialog = within(canvasElement.ownerDocument.body);
 		await userEvent.type(
@@ -264,6 +253,39 @@ export const SearchNothing: Story = {
 		await expect(
 			dialog.getByText("No current members match your search."),
 		).toBeInTheDocument();
+		await expect(
+			dialog.getByText("No people or agents match your search."),
+		).toBeInTheDocument();
+	},
+};
+
+/*
+ * A query that matches ONLY a current member, so the invite list explains why
+ * nobody is offered. "juno" is the invited agent and nothing invitable: "ben"
+ * (the first version of this story) also matched "Aida (Ben Tran)", so the
+ * invite list was not empty and the play failed (QA round 1, Q1).
+ */
+export const SearchMatchesOnlyMembers: Story = {
+	play: async ({ canvasElement }) => {
+		const dialog = within(canvasElement.ownerDocument.body);
+		await userEvent.type(
+			dialog.getByRole("textbox", { name: "Search people and agents" }),
+			"juno",
+		);
+		await expect(dialog.getByText(NO_INVITABLE_MATCH)).toBeInTheDocument();
+		await expect(dialog.getByText("Juno (Sherman Tsui)")).toBeInTheDocument();
+	},
+};
+
+/** Two rows ticked: the primary action counts them ("Invite 2"). */
+export const SelectionInviteTwo: Story = {
+	play: async ({ canvasElement }) => {
+		const dialog = within(canvasElement.ownerDocument.body);
+		for (const name of ["Ada Lovelace", "Sherman Tsui"])
+			await userEvent.click(dialog.getByRole("checkbox", { name }));
+		await expect(
+			dialog.getByRole("button", { name: "Invite 2" }),
+		).toBeEnabled();
 	},
 };
 

@@ -235,13 +235,19 @@ export function TeamBridgeAddMembersView({
 		// `recipient.label` carries no id, so the list itself is the dependency.
 		[candidates, query],
 	);
-	const members = currentMembers(
-		conversation,
-		people,
-		selfAccountId,
-		chiefLabel,
-		canRemove,
-		locale,
+	// Memoized for the reason `candidates` is: the inputs change on refresh,
+	// not on the keystroke-driven renders the search causes.
+	const members = useMemo(
+		() =>
+			currentMembers(
+				conversation,
+				people,
+				selfAccountId,
+				chiefLabel,
+				canRemove,
+				locale,
+			),
+		[conversation, people, selfAccountId, chiefLabel, canRemove, locale],
 	);
 	const shownMembers = members.filter(({ label }) =>
 		matchesMemberQuery(label, query),
@@ -302,6 +308,34 @@ export function TeamBridgeAddMembersView({
 		setArmed(null);
 		if (id) removeButtons.current.get(id)?.focus();
 	};
+	/*
+	 * AN ARMED ROW THAT IS NO LONGER ON SCREEN IS DISARMED. A search that hides
+	 * it, or a refresh that drops the member, would otherwise leave `armed` set
+	 * with no row to show it - and the next Esc would be spent disarming an
+	 * invisible question instead of closing the dialog (review M1).
+	 */
+	const armedVisible =
+		armed !== null &&
+		shownMembers.some(
+			({ member, removable }) => removable && member.account_id === armed,
+		);
+	useEffect(() => {
+		if (armed !== null && !armedVisible) setArmed(null);
+	}, [armed, armedVisible]);
+	/*
+	 * FOCUS SURVIVES A FAILED REMOVAL. Confirming unmounts the focused button
+	 * and the row's icon gives way to "Removing…", so focus falls out of the
+	 * list. If the write is refused the icon comes back - return the keyboard
+	 * to it then, so the reader can retry from where they were (review M2).
+	 * A removal that succeeds drops the row; focus then rests on the dialog.
+	 */
+	const lastRemoval = useRef<string | null>(null);
+	useEffect(() => {
+		if (pendingKey !== null || !mutationError) return;
+		const id = lastRemoval.current;
+		lastRemoval.current = null;
+		if (id) removeButtons.current.get(id)?.focus();
+	}, [pendingKey, mutationError]);
 
 	const toggle = (candidate: TeamBridgeMemberCandidate) => {
 		if (!canInvite || candidate.disabledReason !== null || pending) return;
@@ -328,13 +362,17 @@ export function TeamBridgeAddMembersView({
 			<div
 				key={`${memberRowKey(member)}:${state}`}
 				/*
-				 * `group` scopes the remove action's reveal to THIS row; the armed
-				 * row takes the selected ground so the question visibly belongs to
-				 * the person it names.
+				 * `group` scopes the remove action's reveal to THIS row. The armed
+				 * row keeps the dialog's own ground on purpose: the outline danger
+				 * button has no fill, and on `row-selected` its label and edge fell
+				 * below the contrast floors in 6 and 12 themes (design review D2).
+				 * The open confirmation line and the pinned icon already tie the
+				 * question to the row. `scripts/contrast-contract.mjs` pins this
+				 * button on `elevated`.
 				 */
 				className={cn(
 					"group rounded-md",
-					isArmed ? "bg-row-selected" : removable && "hover:bg-row-hover",
+					!isArmed && removable && "hover:bg-row-hover",
 				)}
 				/* Esc on an armed row answers the row's question, not the dialog's:
 				   it is handled in `onEscapeKeyDown` below, because Radix reads
@@ -437,6 +475,7 @@ export function TeamBridgeAddMembersView({
 							disabled={pending}
 							onClick={() => {
 								setArmed(null);
+								lastRemoval.current = id;
 								onRemove(id);
 							}}
 						>
@@ -572,7 +611,14 @@ export function TeamBridgeAddMembersView({
 			<DialogContent
 				ref={contentRef}
 				tabIndex={-1}
-				className="max-h-[min(780px,90dvh)] max-w-2xl gap-0 overflow-hidden p-0"
+				/*
+				 * A FIXED HEIGHT WHILE OPEN, not a max: with `max-h` the dialog
+				 * shrank to its content as the search narrowed the lists, and being
+				 * centred it moved the search field the user was typing in (design
+				 * review D1: input y 187 -> 311 -> 321). The body below is
+				 * `flex-1 min-h-0`, so each column scrolls inside this box.
+				 */
+				className="h-[min(780px,90dvh)] max-w-2xl gap-0 overflow-hidden p-0"
 				closeDisabled={pending}
 				/*
 				 * THE SEARCH FIELD TAKES THE FIRST FOCUS, NEVER A ROW'S CONTROLS.
@@ -617,6 +663,9 @@ export function TeamBridgeAddMembersView({
 						>
 							{t("ui.teamBridge.members.current")}
 							<span className="font-normal text-ink-dim tabular-nums">
+								{/* The room's size, deliberately NOT the search's match count:
+								    the title names the room, and a number that shrank while
+								    typing would read as members leaving. */}
 								{formatNumber(members.length, undefined, locale)}
 							</span>
 						</h3>
@@ -695,7 +744,13 @@ export function TeamBridgeAddMembersView({
 										placeholder={t("ui.teamBridge.members.search")}
 										aria-label={t("ui.teamBridge.members.search")}
 										className="ps-9"
-										disabled={!canInvite || pending}
+										/*
+										 * Enabled for a read-only caller too: the query also
+										 * filters the current-members column, which every member
+										 * may read (review M3). Invite rows and the Invite button
+										 * carry their own `canInvite` guard.
+										 */
+										disabled={pending}
 									/>
 								</div>
 								<div className={scrollColumn}>
@@ -755,7 +810,7 @@ export function TeamBridgeAddMembersView({
 					</p>
 				)}
 				<div className="mt-2 flex items-center justify-between gap-3 rounded-b-lg border-hairline border-t bg-surface px-6 py-4">
-					<p className="max-w-sm text-meta-sm text-ink-muted">
+					<p className="max-w-sm text-meta text-ink-muted">
 						{t("ui.teamBridge.members.invitation_note_v2")}
 					</p>
 					<div className="flex shrink-0 gap-2">
