@@ -23,3 +23,22 @@ What these frames do not cover: the Team Bridge cache resolver (no conversation
 list is seeded in these stories, so un-named channels show `a conversation`); it is
 covered by `scripts/tool-row.test.mjs` with a real `QueryClient`. No live-app frame
 was taken.
+
+## Round 2 — `r2/` (remediation of review/design/QA round 1)
+
+Taken 2026-10-30 from this branch's Storybook (`node scripts/with-storybook.mjs`, one
+instance, torn down: "pid gone, port 6131 closed"), harness browser at 1280×720
+(2× device pixels), `?args=theme:localOperatorDark|localOperatorLight`. Every frame
+was read back after capture. `{t}` is `dark` and `light`.
+
+| file | what it shows |
+| --- | --- |
+| `r2/bridge-rows-{t}.png` | Every state collapsed. The preview drops inline markdown: `Posted in #release · Tagged v0.46.7 — …` (D2). `delivery unconfirmed` is amber, not danger. |
+| `r2/bridge-rows-post-open-{t}.png` | The expansion's first line is labelled: `Posted in #release` (D4). The body still renders as markdown (bold). |
+| `r2/bridge-rows-post-details-open-{t}.png` | `Details` open. Its chevron is now `ink-dim`, measured 5.02:1 light / 6.59:1 dark against `sunken` (was 2.43 / 2.49; D3). |
+| `r2/bridge-rows-inbox-only-open-{t}.png` | `Sent to a teammate` headline, with the inbox-only sentence. |
+| `r2/bridge-rows-refused-open-{t}.png` | `Refused (not_member): this agent is not a member of a conversation`. No `bcv_` id in the sentence (D5). |
+| `r2/bridge-rows-refused-details-open-{t}.png` | The raw error, with the id, under `Details` (D5). |
+| `r2/bridge-rows-condensed-{t}.png`, `r2/bridge-rows-condensed-open-{t}.png` | The fold is unchanged: `10 team actions · 5 team messages · 1 message`. `Read thread in #release (3 messages)` has no `thread` suffix. |
+| `r2/bridge-rows-narrow-414-{t}.png` | A 414px pane (334px row, measured). The SHORT words are `not posted` / `awaiting` / `unconfirmed` (48–62px, measured), and the summary keeps its room (D1). |
+| `r2/bridge-rows-narrow-320-{t}.png` | A 320px pane (240px row). The mark plus the sr-only label carry the state, and the summary is untouched (D1). |

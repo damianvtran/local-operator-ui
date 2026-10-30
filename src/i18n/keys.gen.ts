@@ -3293,18 +3293,25 @@ export type MessageParams = {
 	"ui.chat.canonical.this_chat": undefined;
 	"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.label": undefined;
 	"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.note": undefined;
+	"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.short": undefined;
 	"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.title": undefined;
 	"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.word": undefined;
 	"ui.chat.canonical.tool_row.bridge.delivery.inbox_only.label": undefined;
 	"ui.chat.canonical.tool_row.bridge.delivery.inbox_only.note": undefined;
+	"ui.chat.canonical.tool_row.bridge.delivery.inbox_only.short": undefined;
 	"ui.chat.canonical.tool_row.bridge.delivery.inbox_only.title": undefined;
 	"ui.chat.canonical.tool_row.bridge.delivery.inbox_only.word": undefined;
 	"ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.label": undefined;
 	"ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.note": undefined;
+	"ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.short": undefined;
 	"ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.title": undefined;
 	"ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.word": undefined;
 	"ui.chat.canonical.tool_row.bridge.detail.details": undefined;
 	"ui.chat.canonical.tool_row.bridge.detail.headline.dm": { target: string };
+	"ui.chat.canonical.tool_row.bridge.detail.headline.target": {
+		verb: string;
+		target: string;
+	};
 	"ui.chat.canonical.tool_row.bridge.detail.outcome.failed": {
 		code: string;
 		error: string;

@@ -288,10 +288,17 @@ function bridgeDeliveryState(details: unknown): SendDeliveryState | null {
  * `toolName` gates the Team Bridge reading: only a `bridge` result's
  * `destination_type`/`code` fields are read, so no other tool can grow a state
  * from a field that happens to share a name.
+ *
+ * REQUIRED, with no default (agent review round 1, R4): a defaulted `""` is how
+ * a future `bridge` call site that forgot the name would read `details.delivery`
+ * (absent on a bridge receipt), get `null`, and paint a plain success on a
+ * pair-lane send that was never posted - with nothing failing. A caller with no
+ * tool to name passes `""` explicitly; `scripts/tool-row.test.mjs` pins every
+ * production call site.
  */
 export function deliveryStateFromDetails(
 	details: unknown,
-	toolName = "",
+	toolName: string,
 ): SendDeliveryState | null {
 	if (!details || typeof details !== "object") return null;
 	if (toolName.trim().toLowerCase() === "bridge")
@@ -314,7 +321,8 @@ export function deliveryStateFromDetails(
 export function preferDeliveryState(
 	details: unknown,
 	previous: SendDeliveryState | null | undefined,
-	toolName = "",
+	/** Required for the reason `deliveryStateFromDetails` gives. */
+	toolName: string,
 ): SendDeliveryState | null {
 	if (!details || typeof details !== "object") return previous ?? null;
 	return deliveryStateFromDetails(details, toolName);
@@ -644,6 +652,33 @@ export function deliveryWord(
 	if (state === "unconfirmed" && isBridge(toolName))
 		return t("ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.word");
 	return SEND_DELIVERY_WORD[state] ?? null;
+}
+
+/**
+ * The SHORT trailing word a Team Bridge state draws on a mid-width row, or
+ * `null` for every state that has none (all of `send`'s).
+ *
+ * Design round 1, D1: at 414px the full `not posted to a conversation` took
+ * 54% of the row and cut the summary to `Sent to ` - the row stopped saying
+ * where the message went while spelling the caveat out in full. The caution
+ * degrades BEFORE the summary does: full word on a wide row, this short word
+ * on a mid-width one, the mark alone (with the spoken label) on the narrowest.
+ * The expanded panel keeps the full sentence either way. Only the three bridge
+ * words are long enough to need it; `send`'s words keep their one gate.
+ */
+export function deliveryShortWord(
+	state: SendDeliveryState | null | undefined,
+	toolName: string,
+): string | null {
+	if (state === "inbox_only")
+		return t("ui.chat.canonical.tool_row.bridge.delivery.inbox_only.short");
+	if (state === "awaiting_acceptance")
+		return t(
+			"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.short",
+		);
+	if (state === "unconfirmed" && isBridge(toolName))
+		return t("ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.short");
+	return null;
 }
 
 /** The hover on that word, for the states whose word under-tells them. */

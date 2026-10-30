@@ -3931,6 +3931,42 @@ export const BridgeRows: Story = {
 	render: () => <Frame height={680} records={bridgeRows()} />,
 };
 
+/*
+ * The three amber states (awaiting, inbox-only, unconfirmed) plus the post at
+ * the two narrow widths design round 1 measured (D1): 414px, where the full
+ * caution used to cut the summary to `Sent to `, and 320px, the row's floor.
+ * The row box is the frame minus its inset, so 414 lands in the SHORT-word
+ * band and 320 in the mark-only band (`tool-row.tsx`, the three-step shed).
+ */
+const bridgeNarrowRows = () =>
+	bridgeRows().filter((record) =>
+		// The prose between them keeps the four rows from folding into one
+		// `4 team messages` group, which would hide the very words under test.
+		[
+			"bridge:prose:0",
+			"bridge:post",
+			"bridge:dm",
+			"bridge:prose:1",
+			"bridge:send",
+			"bridge:prose:4",
+			"bridge:unconfirmed",
+		].includes(record.id),
+	);
+
+/** The amber states at 414px: the short word, the summary keeps its room. */
+export const BridgeRowsNarrow414: Story = {
+	render: () => (
+		<Frame width="414px" height={520} records={bridgeNarrowRows()} />
+	),
+};
+
+/** The amber states at 320px: the mark and its spoken label carry the state. */
+export const BridgeRowsNarrow320: Story = {
+	render: () => (
+		<Frame width="320px" height={520} records={bridgeNarrowRows()} />
+	),
+};
+
 /** The post expanded: headline, markdown body, `Posted at seq 42`, and the
  * closed `Details` disclosure holding the ids. */
 export const BridgeRowsPostOpen: Story = {

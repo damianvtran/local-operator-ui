@@ -68,6 +68,7 @@ import {
 	type ToolCategory,
 	deliveryLabel,
 	deliverySettledVerb,
+	deliveryShortWord,
 	deliveryTitle,
 	deliveryWord,
 	displayName,
@@ -701,10 +702,36 @@ const StatusCluster = ({
 	 * 38px the story's 48px inset would suggest (design round 3, D6: the frame's
 	 * row inset is 80px) - so they are unchanged.
 	 */
+	/*
+	 * THE THREE-STEP SHED for a state that has a SHORT word (Team Bridge's
+	 * `not posted` / `awaiting` / `unconfirmed`; design round 1, D1). The full
+	 * words are up to ~164px, so the one 19rem gate above let the caution take
+	 * 54% of a 414px pane (a ~334px row: the transcript insets it ~80px) and cut
+	 * the summary to `Sent to `. The caution now degrades BEFORE the summary,
+	 * from the same cluster sum the 19rem gate derives:
+	 * - full word (~164px) + mark + gaps + duration slot = ~238px; with ~90px of
+	 *   icon and verb the summary keeps 40% of the row from ~560px, so the full
+	 *   word starts at `40rem` (640px), margin for the longer locales;
+	 * - short word (~62px) -> cluster ~136px, so from `20rem` (320px) the
+	 *   summary keeps ~90px+ - the 414px pane's row (334px) lands here and reads
+	 *   `Sent to a teammate · Rel… not posted`;
+	 * - below 20rem only the MARK draws, with the spoken label beside it, which
+	 *   is the half that must never be colour-only (the gate's own fallback).
+	 * `send`'s states have no short word and keep the 19rem gate unchanged.
+	 */
+	const shortWord = partial ? deliveryShortWord(deliveryState, toolName) : null;
 	const wordClass = cn(
 		"font-medium text-meta",
 		wordInk,
-		partial && "hidden @[19rem]/toolrow:inline",
+		partial &&
+			(shortWord
+				? "hidden @[40rem]/toolrow:inline"
+				: "hidden @[19rem]/toolrow:inline"),
+	);
+	const shortWordClass = cn(
+		"font-medium text-meta",
+		wordInk,
+		"hidden @[20rem]/toolrow:inline @[40rem]/toolrow:hidden",
 	);
 	/*
 	 * The word the row STATES and the words it SPEAKS are not the same sentence for
@@ -786,6 +813,16 @@ const StatusCluster = ({
 					aria-hidden={spoken ? true : undefined}
 				>
 					{word}
+				</span>
+			) : null}
+			{word && shortWord ? (
+				<span
+					className={shortWordClass}
+					title={title}
+					aria-hidden={spoken ? true : undefined}
+					data-status-word="short"
+				>
+					{shortWord}
 				</span>
 			) : null}
 			{/*

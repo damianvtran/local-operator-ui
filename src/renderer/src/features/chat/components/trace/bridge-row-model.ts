@@ -122,6 +122,22 @@ const ESCAPE_SEQUENCE =
 // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping control bytes is the point
 const CONTROL = /[\x00-\x08\x0e-\x1f\x7f-\x9f]/g;
 
+/**
+ * Every Unicode `Cf` (format) character EXCEPT ZWNJ (U+200C) and ZWJ (U+200D),
+ * byte-for-byte the core `_bridge_clean`'s rule (agent review round 1, R2).
+ *
+ * A label here is another organization's member text, and a format character
+ * survives the control strip above: `U+202E` (RTL override) turns `gnp.exe`
+ * into `exe.png` and, unterminated, reorders the rest of the row; isolates and
+ * zero-width characters hide seams without a single control byte. The
+ * category, not a codepoint list, is the class (`receipt-row-model.ts`'s
+ * `FORMAT_CHARACTERS` precedent) so the next bidi control is covered too. The
+ * two joiners are kept on purpose: ZWJ builds emoji sequences (`👨‍👩‍👧`) and
+ * both shape Devanagari/Urdu text, so stripping them would corrupt the hi/ur
+ * names this row exists to show.
+ */
+const FORMAT_CHARACTERS = /(?![\u200c\u200d])\p{Cf}/gu;
+
 /** Python's `str.split()` whitespace set, which the core flattens on. */
 const WHITESPACE_RUN = /[\t\n\r\v\f ]+/;
 /** `str.splitlines()`'s common breaks. */
@@ -142,6 +158,7 @@ export function bridgeText(value: unknown): string | null {
 	const flat = value
 		.replace(ESCAPE_SEQUENCE, "")
 		.replace(CONTROL, "")
+		.replace(FORMAT_CHARACTERS, "")
 		.split(WHITESPACE_RUN)
 		.filter(Boolean)
 		.join(" ")
@@ -155,12 +172,44 @@ function labelText(value: unknown): string | null {
 	return text && !HUB_ID.test(text) ? text : null;
 }
 
-/** The first non-empty line of a body, flattened. */
+/*
+ * INLINE MARKDOWN OUT OF THE ONE-LINE PREVIEW (design round 1, D1/D2). A post
+ * body is markdown and the expansion renders it as such, but the collapsed
+ * summary is plain text: `Tagged **v0.46.7**` put literal asterisks on the
+ * most-scanned line in the transcript. Only the PREVIEW token is stripped; the
+ * expanded body keeps the author's markdown.
+ *
+ * A port of the core's `_bridge_plain` regexes, clause for clause, so the TUI,
+ * the phone and this app print one preview: leading block markers (heading,
+ * quote, list) go; `[text](url)` keeps its text; `**`/`__`/`~~`/backticks are
+ * always markers in a one-line preview; a single `*`/`_` goes only at a word
+ * EDGE, so `snake_case` and `2 * 3` survive. Python's `\w` is Unicode letters,
+ * numbers and `_` - spelled out here because JavaScript's `\w` is ASCII-only.
+ */
+const MD_BLOCK = /^\s{0,3}(?:#{1,6}\s+|>\s?|[-*+]\s+|\d{1,9}[.)]\s+)+/u;
+const MD_LINK = /!?\[([^\]]*)\]\([^)]*\)/gu;
+const MD_PAIRED = /\*\*|__|~~|`+/gu;
+const MD_EDGE =
+	/(?<![\p{L}\p{N}_*])[*_](?=[^\s*_])|(?<=[^\s*_])[*_](?![\p{L}\p{N}_*])/gu;
+/** What the core's `str.strip("-=*_~`#> ")` leaves: a markup-only line is skipped. */
+const MARKUP_ONLY = /^[-=*_~`#> ]*$/;
+
+/** One markdown line as the plain words a collapsed preview shows. */
+export function bridgePlain(line: string): string {
+	return line
+		.replace(MD_BLOCK, "")
+		.replace(MD_LINK, "$1")
+		.replace(MD_PAIRED, "")
+		.replace(MD_EDGE, "");
+}
+
+/** The first non-empty line of a body, flattened, inline markdown removed. */
 function firstLine(value: unknown): string | null {
 	if (typeof value !== "string") return null;
 	for (const line of value.split(LINE_BREAK)) {
-		const text = bridgeText(line);
-		if (text) return text;
+		const text = bridgeText(bridgePlain(line));
+		// A rule (`---`) or a fence is all markup: try the next line (core rule).
+		if (text && !MARKUP_ONLY.test(text)) return text;
 	}
 	return null;
 }
@@ -256,6 +305,15 @@ function targetLabel(
 	}
 	const named = labelText(args.name);
 	if (named) return named;
+	/*
+	 * `to` is the RECIPIENT only for the person-shaped ops. On `channel_post`
+	 * it is a MENTION (core `tool.py`: `validate_recipient_shape(params.to)`,
+	 * which demands a display name): reading it there painted `Posted in
+	 * #Alice` for a post in #release that mentioned Alice - a wrong claim about
+	 * where the message went (agent review round 1, R1).
+	 */
+	const kind = targetKind(op);
+	if (kind !== "person" && kind !== "dm") return null;
 	const to = record(args.to);
 	return labelText(to?.name);
 }
@@ -434,6 +492,14 @@ const KNOWN_ACTIONS: ReadonlySet<string> = new Set([
 
 /** `react-remove` → `react_remove`: catalogue key segments use underscores. */
 const actionSegment = (action: string): string => {
+	/*
+	 * `ack` with no `working`/`done` state is reachable - the executor REFUSES
+	 * it (`ack needs message_id and state`) - and is still a documented op, so
+	 * it must not read as an unknown one (`Used Team Bridge ack`; agent review
+	 * round 1, R3). There is no neutral ack verb, so it takes the claim words:
+	 * an ack without a state is an attempt to take the message up.
+	 */
+	if (action === "ack") return "ack_working";
 	const segment = action.replace(/-/g, "_");
 	return KNOWN_ACTIONS.has(segment) ? segment : "unknown";
 };
@@ -773,7 +839,7 @@ export type BridgeRowView = {
 	failedVerb: string | null;
 	/** `refused · not_member` / `failed · post_failed`, or `null`. */
 	failureWord: string | null;
-	/** The expansion's first line: `Direct message to Ada`, `#release`. */
+	/** The expansion's first line: `Direct message to Ada`, `Posted in #release`. */
 	headline: string | null;
 	/** What was said, verbatim (markdown), or `null` for a read. */
 	body: string | null;
@@ -839,17 +905,50 @@ export function bridgeRowView(
 		tokens.outcome === "refused" || tokens.outcome === "failed";
 	const failedVerb =
 		input.failed || refusedOrFailed ? bridgeVerb(tokens.action).failed : null;
-	const headline = !target
-		? null
-		: tokens.op === "dm"
+	/*
+	 * The expansion's first line is a LABELLED sentence, the TUI's
+	 * (`bridge_copy.bridge_expanded`): `Posted in #release`, `Sent to a
+	 * teammate`, `Direct message to Ada` - never a bare `#release` the reader
+	 * has to guess the role of (design round 1, D4). The object is the summary
+	 * without its preview (the body is printed right below it), so a read keeps
+	 * its count (`Read #general (7 messages)`) and a thread post its suffix.
+	 */
+	const verb = failedVerb ?? bridgeVerb(tokens.action).settled;
+	const head = bridgeSummary(
+		{ ...tokens, preview: null },
+		args,
+		resolver,
+		details,
+	);
+	const headline =
+		tokens.op === "dm" && target
 			? t("ui.chat.canonical.tool_row.bridge.detail.headline.dm", { target })
-			: target;
+			: head
+				? t("ui.chat.canonical.tool_row.bridge.detail.headline.target", {
+						verb,
+						target: head,
+					})
+				: verb;
 	const bodyText = [args.body, args.text, details?.text].find(
 		(value): value is string =>
 			typeof value === "string" && value.trim() !== "",
 	);
 	const seq = typeof details?.seq === "number" ? details.seq : null;
-	const error = scalar(details?.error);
+	const rawError = scalar(details?.error);
+	/*
+	 * The refusal sentence names the conversation the way the lines above it
+	 * do (design round 1, D5): `not a member of bcv_2210` under a headline
+	 * that says `a conversation` gave one object two names, one of them an
+	 * internal id. Any whole `bcv_` token becomes the row's own target words;
+	 * the raw text stays one click away, under `Details` (`error` below).
+	 */
+	const conversationWords =
+		tokens.target.kind === "channel" || tokens.target.kind === "dm"
+			? target
+			: t("ui.chat.canonical.tool_row.bridge.fallback.conversation");
+	const error = rawError
+		? rawError.replace(/\bbcv_[A-Za-z0-9_-]+/g, conversationWords)
+		: null;
 	const outcome =
 		tokens.outcome === "refused" || tokens.outcome === "failed"
 			? t(
@@ -877,6 +976,8 @@ export function bridgeRowView(
 		internals.push({ key, value: text });
 	};
 	for (const key of BRIDGE_INTERNAL_KEYS) push(key, details?.[key]);
+	// The unedited error, only when the sentence above had to rewrite it.
+	if (rawError && rawError !== error) push("error", rawError);
 	for (const [arg, key] of Object.entries(ARG_INTERNALS)) push(key, args[arg]);
 	const raw =
 		(typeof details?.content === "string" && details.content) ||

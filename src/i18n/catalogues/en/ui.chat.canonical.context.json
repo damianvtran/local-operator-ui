@@ -490,6 +490,13 @@
 		"note": "",
 		"placeholders": {}
 	},
+	"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.short": {
+		"role": "SHORT trailing status word, amber, on a mid-width Team Bridge row whose DM waits for the recipient owner's acceptance; replaces 'awaiting acceptance' when the row is too narrow for it",
+		"tone": "lowercase, no punctuation",
+		"length": "Very short: one or two words (aim for under ~12 characters). It exists only so the row's summary keeps its room.",
+		"note": "Same meaning as the full word; the expanded row keeps the full sentence. A warning, not an error.",
+		"placeholders": {}
+	},
 	"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.title": {
 		"role": "hover tooltip on 'awaiting acceptance'",
 		"tone": "plain explanation",
@@ -516,6 +523,13 @@
 		"tone": "plain statement plus one instruction",
 		"length": "Two short sentences; it wraps.",
 		"note": "'DM' is the direct-message feature; keep it short. The instruction tells the reader how to make a message visible.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.bridge.delivery.inbox_only.short": {
+		"role": "SHORT trailing status word, amber, on a mid-width Team Bridge row whose send/reply only reached a teammate's inbox; replaces 'not posted to a conversation' when the row is too narrow for it",
+		"tone": "lowercase, no punctuation",
+		"length": "Very short: one or two words (aim for under ~12 characters). It exists only so the row's summary keeps its room.",
+		"note": "Same meaning as the full word; the expanded row keeps the full sentence. A warning, not an error.",
 		"placeholders": {}
 	},
 	"ui.chat.canonical.tool_row.bridge.delivery.inbox_only.title": {
@@ -546,6 +560,13 @@
 		"note": "",
 		"placeholders": {}
 	},
+	"ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.short": {
+		"role": "SHORT trailing status word, amber, on a mid-width Team Bridge row whose post may have landed but was not confirmed; replaces 'delivery unconfirmed' when the row is too narrow for it",
+		"tone": "lowercase, no punctuation",
+		"length": "Very short: one or two words (aim for under ~12 characters). It exists only so the row's summary keeps its room.",
+		"note": "Same meaning as the full word; the expanded row keeps the full sentence. A warning, not an error.",
+		"placeholders": {}
+	},
 	"ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.title": {
 		"role": "hover tooltip on 'delivery unconfirmed' for Team Bridge",
 		"tone": "plain explanation plus one instruction",
@@ -574,6 +595,16 @@
 		"note": "{target} is a person's or agent's name, or 'a DM'.",
 		"placeholders": {
 			"target": "recipient's name, or 'a DM'"
+		}
+	},
+	"ui.chat.canonical.tool_row.bridge.detail.headline.target": {
+		"role": "first line of an expanded Team Bridge row: the settled verb then what it acted on, e.g. 'Posted in #release', 'Sent to a teammate', 'Read #general (7 messages)'",
+		"tone": "sentence case, no punctuation",
+		"length": "Short; one line.",
+		"note": "{verb} is the row's own verb phrase (its translation from the verb.* keys), {target} the object it acted on. Reorder freely if your language puts the object first.",
+		"placeholders": {
+			"verb": "the settled verb phrase, e.g. 'Posted in'",
+			"target": "#conversation, a name, or a kind word, possibly with a count"
 		}
 	},
 	"ui.chat.canonical.tool_row.bridge.detail.outcome.failed": {
@@ -1000,21 +1031,21 @@
 		"role": "verb column of a Team Bridge tool row whose call was refused or failed: reading a conversation the owner shared; the object is #name with a message count",
 		"tone": "negated past ability ('Couldn't …'), sentence case, no punctuation",
 		"length": "A short verb phrase.",
-		"note": "Replaces the settled verb so the row does not say 'Posted in … refused'. The same object follows, then a short 'refused · <code>' word in error colour at the row's edge.",
+		"note": "Grammar is verb + object: the conversation's name (#name, or 'a conversation') follows, e.g. 'Read shared conversation #launch (7 messages)'. The phrase must read as the start of that sentence. Must not claim more than the call did.",
 		"placeholders": {}
 	},
 	"ui.chat.canonical.tool_row.bridge.verb.shared_history.running": {
 		"role": "verb column of a Team Bridge tool row still running: reading a conversation the owner shared; the object is #name with a message count",
 		"tone": "present participle, sentence case, no punctuation",
 		"length": "A short verb phrase.",
-		"note": "The live sibling of the settled form; same object follows.",
+		"note": "Grammar is verb + object: the conversation's name (#name, or 'a conversation') follows, e.g. 'Read shared conversation #launch (7 messages)'. The phrase must read as the start of that sentence. Must not claim more than the call did.",
 		"placeholders": {}
 	},
 	"ui.chat.canonical.tool_row.bridge.verb.shared_history.settled": {
 		"role": "verb column of a finished Team Bridge tool row: reading a conversation the owner shared; the object is #name with a message count",
 		"tone": "past tense, sentence case, no punctuation",
 		"length": "A short verb phrase; the object follows on the same line in monospace.",
-		"note": "Grammar is verb + object: the object (a #conversation, a name, or a kind word like 'a conversation') is appended after it, so the phrase must read as the start of that sentence. Must not claim more than the call did.",
+		"note": "Grammar is verb + object: the conversation's name (#name, or 'a conversation') follows, e.g. 'Read shared conversation #launch (7 messages)'. The phrase must read as the start of that sentence. Must not claim more than the call did.",
 		"placeholders": {}
 	},
 	"ui.chat.canonical.tool_row.bridge.verb.take_up.failed": {

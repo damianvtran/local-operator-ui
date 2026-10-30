@@ -53,6 +53,10 @@ const {
 	preferBridgeLabel,
 	deliveryLabel,
 	deliveryNote,
+	deliveryShortWord,
+	bridgeText,
+	bridgePlain,
+	bridgeVerb,
 	deliveryTitle,
 	deliveryWord,
 	compactPath,
@@ -175,24 +179,27 @@ test("a send row's delivery state is read from details, and absent or unknown is
 	 * and a tool that never had a delivery.
 	 */
 	for (const state of ["delivered", "mailbox", "unconfirmed", "failed"]) {
-		assert.equal(deliveryStateFromDetails({ delivery: { state } }), state);
+		assert.equal(deliveryStateFromDetails({ delivery: { state } }, ""), state);
 	}
 	// A state this build does not know is treated as absent, never guessed at.
 	assert.equal(
-		deliveryStateFromDetails({ delivery: { state: "queued" } }),
+		deliveryStateFromDetails({ delivery: { state: "queued" } }, ""),
 		null,
 	);
-	assert.equal(deliveryStateFromDetails({ delivery: { state: "" } }), null);
-	assert.equal(deliveryStateFromDetails({ delivery: { state: 7 } }), null);
+	assert.equal(deliveryStateFromDetails({ delivery: { state: "" } }, ""), null);
+	assert.equal(deliveryStateFromDetails({ delivery: { state: 7 } }, ""), null);
 	// Absent, in every shape a result can be absent in - and ANOTHER tool's
 	// `details` object, which must not be read as a delivery that says nothing
 	// new but as no delivery at all.
-	assert.equal(deliveryStateFromDetails({}), null);
-	assert.equal(deliveryStateFromDetails({ delivery: {} }), null);
-	assert.equal(deliveryStateFromDetails({ delivery: "mailbox" }), null);
-	assert.equal(deliveryStateFromDetails({ diff: ["+ one"], pid: 42 }), null);
-	assert.equal(deliveryStateFromDetails(null), null);
-	assert.equal(deliveryStateFromDetails(undefined), null);
+	assert.equal(deliveryStateFromDetails({}, ""), null);
+	assert.equal(deliveryStateFromDetails({ delivery: {} }, ""), null);
+	assert.equal(deliveryStateFromDetails({ delivery: "mailbox" }, ""), null);
+	assert.equal(
+		deliveryStateFromDetails({ diff: ["+ one"], pid: 42 }, ""),
+		null,
+	);
+	assert.equal(deliveryStateFromDetails(null, ""), null);
+	assert.equal(deliveryStateFromDetails(undefined, ""), null);
 
 	/*
 	 * And the reducer's rule, which is `preferDiffCounts`' rule because it is the
@@ -200,14 +207,14 @@ test("a send row's delivery state is read from details, and absent or unknown is
 	 * what the row held, where a frame that carried an object states the delivery
 	 * (`{}` included, which is the producer saying "no delivery here").
 	 */
-	assert.equal(preferDeliveryState(undefined, "mailbox"), "mailbox");
-	assert.equal(preferDeliveryState(null, "unconfirmed"), "unconfirmed");
-	assert.equal(preferDeliveryState(undefined, null), null);
+	assert.equal(preferDeliveryState(undefined, "mailbox", ""), "mailbox");
+	assert.equal(preferDeliveryState(null, "unconfirmed", ""), "unconfirmed");
+	assert.equal(preferDeliveryState(undefined, null, ""), null);
 	assert.equal(
-		preferDeliveryState({ delivery: { state: "failed" } }, "mailbox"),
+		preferDeliveryState({ delivery: { state: "failed" } }, "mailbox", ""),
 		"failed",
 	);
-	assert.equal(preferDeliveryState({}, "mailbox"), null);
+	assert.equal(preferDeliveryState({}, "mailbox", ""), null);
 
 	/*
 	 * THE WORDS, THE SPOKEN SENTENCES, THE HOVERS AND THE EXPANSION NOTES,
@@ -4987,8 +4994,8 @@ test("bridge: every op's settled and running sentence", () => {
 		[
 			{ op: "shared_history", channel_id: "bcv_1" },
 			{ ok: true, content: wrapped({ messages: [{}, {}] }) },
-			"Read shared a conversation (2 messages)",
-			"Reading shared a conversation",
+			"Read shared conversation a conversation (2 messages)",
+			"Reading shared conversation a conversation",
 		],
 		[
 			{ op: "take_up", message_id: "m1" },
@@ -5263,7 +5270,8 @@ test("bridge: refusals read Couldn't …, with the code in the trailing word", (
 	);
 	assert.equal(ok.failedVerb, null);
 	assert.equal(ok.failureWord, null);
-	assert.equal(ok.headline, "#r");
+	// Labelled, the TUI's phrasing (design round 1, D4), never a bare token.
+	assert.equal(ok.headline, "Posted in #r");
 	assert.equal(ok.body, "Hi **there**");
 	assert.equal(ok.outcome, "Posted at seq 7");
 	assert.deepEqual(
@@ -5294,7 +5302,7 @@ test("bridge: peer_inbox, unconfirmed and awaiting acceptance are partial, never
 	);
 	assert.equal(inbox, "inbox_only");
 	assert.equal(
-		deliveryStateFromDetails({ ok: true, destination_type: "peer_inbox" }),
+		deliveryStateFromDetails({ ok: true, destination_type: "peer_inbox" }, ""),
 		null,
 		"never for another tool",
 	);
@@ -5356,6 +5364,330 @@ test("bridge: peer_inbox, unconfirmed and awaiting acceptance are partial, never
 		"inbox_only",
 	);
 	assert.equal(preferDeliveryState({ ok: true }, "inbox_only", "bridge"), null);
+});
+
+test("bridge round 1: a channel_post's `to` is a mention, never the target (R1)", () => {
+	const post = bridgeRow(
+		{
+			op: "channel_post",
+			channel_id: "bcv_b0044d9e1a2f",
+			body: "Ship it",
+			to: { name: "Alice" },
+		},
+		{ ok: true, state: "sent", seq: 3 },
+	);
+	assert.deepEqual(post.target, { kind: "channel", label: null });
+	const view = bridgeRowView(
+		{
+			args: {
+				op: "channel_post",
+				channel_id: "bcv_b0044d9e1a2f",
+				name: "release",
+				body: "Ship it",
+				to: { name: "Alice" },
+			},
+			details: { ok: true, state: "sent", seq: 3 },
+			failed: false,
+		},
+		null,
+	);
+	assert.equal(view.summary, "#release · Ship it");
+	// `send`/`reply`/`dm` still read the recipient from `to`.
+	for (const op of ["send", "reply", "dm"])
+		assert.equal(
+			bridgeRow({ op, to: { name: "Ada" } }).target.label,
+			"Ada",
+			op,
+		);
+});
+
+test("bridge round 1: format (Cf) characters are stripped, joiners kept (R2)", () => {
+	// The QA reproduction: an RLO/PDF pair spliced into a label.
+	assert.equal(bridgeText("#eng\u202eDROW\u202c#ops"), "#engDROW#ops");
+	assert.equal(bridgeText("\u202egnp.exe"), "gnp.exe");
+	for (const ch of [
+		"\u202a",
+		"\u202b",
+		"\u202c",
+		"\u202d",
+		"\u202e",
+		"\u2066",
+		"\u2067",
+		"\u2068",
+		"\u2069",
+		"\u200e",
+		"\u200f",
+		"\u061c",
+		"\u200b",
+		"\u2060",
+		"\ufeff",
+	])
+		assert.equal(bridgeText(`a${ch}b`), "ab", ch.codePointAt(0).toString(16));
+	// ZWJ builds emoji sequences and ZWNJ/ZWJ shape Indic/Urdu text: kept.
+	assert.equal(
+		bridgeText("\u{1f468}\u200d\u{1f469}\u200d\u{1f467}"),
+		"\u{1f468}\u200d\u{1f469}\u200d\u{1f467}",
+	);
+	assert.equal(
+		bridgeText("\u0915\u094d\u200c\u0937"),
+		"\u0915\u094d\u200c\u0937",
+	);
+	// And through the row: a label and a reaction emoji.
+	assert.equal(
+		bridgeRow({ op: "channel_post", name: "eng\u202eDROW\u202c" }).target.label,
+		"engDROW",
+	);
+	assert.equal(
+		bridgeRow({ op: "react", emoji: "\u{1f468}\u200d\u{1f469}\u200d\u{1f467}" })
+			.emoji,
+		"\u{1f468}\u200d\u{1f469}\u200d\u{1f467}",
+	);
+});
+
+test("bridge round 1: the collapsed preview drops inline markdown, the body keeps it (D1/D2)", () => {
+	const cases = [
+		["Tagged **v0.46.7** — notes", "Tagged v0.46.7 — notes"],
+		["__bold__ and *em* and _em_", "bold and em and em"],
+		["run `make check` now", "run make check now"],
+		["~~old~~ new", "old new"],
+		["# Heading", "Heading"],
+		["> quoted", "quoted"],
+		["- item", "item"],
+		["> - nested", "nested"],
+		["1. first", "first"],
+		["see [the notes](https://x.test/r)", "see the notes"],
+		// Survivors: identifiers and arithmetic are not markup.
+		["snake_case stays", "snake_case stays"],
+		["2 * 3 = 6", "2 * 3 = 6"],
+	];
+	for (const [input, expected] of cases)
+		assert.equal(bridgePlain(input), expected, input);
+	// A markup-only first line (a rule) is skipped, as the core skips it.
+	assert.equal(
+		bridgeRow({ op: "channel_post", body: "---\n**Ship** it" }).preview,
+		"Ship it",
+	);
+	const view = bridgeRowView(
+		{
+			args: { op: "channel_post", name: "release", body: "Tagged **v0.46.7**" },
+			details: { ok: true, state: "sent", seq: 42 },
+			failed: false,
+		},
+		null,
+	);
+	assert.equal(view.summary, "#release · Tagged v0.46.7");
+	assert.equal(view.body, "Tagged **v0.46.7**", "the expansion keeps markdown");
+});
+
+test("bridge round 1: ack with no state takes the claim verb, never the unknown op (R3)", () => {
+	const view = bridgeRowView(
+		{
+			args: { op: "ack", message_id: "bcmsg_1" },
+			details: {
+				ok: false,
+				code: "invalid_args",
+				error: "ack needs message_id and state (working|done)",
+			},
+			failed: true,
+		},
+		null,
+	);
+	assert.equal(view.failedVerb, "Couldn't claim");
+	assert.equal(view.summary, "a message");
+	assert.equal(bridgeVerb("ack").settled, "Claimed");
+});
+
+test("bridge round 1: the thread suffix is a channel_post's, never channel_thread's", () => {
+	const thread = bridgeRowView(
+		{
+			args: {
+				op: "channel_thread",
+				channel_id: "bcv_1",
+				name: "general",
+				thread_root_id: "bcmsg_1",
+			},
+			details: {
+				ok: true,
+				content: JSON.stringify({ root: {}, replies: [{}, {}] }),
+			},
+			failed: false,
+		},
+		null,
+	);
+	assert.equal(thread.summary, "#general (3 messages)");
+	assert.equal(thread.headline, "Read thread in #general (3 messages)");
+});
+
+test("bridge round 1: the expansion's target line is labelled (D4)", () => {
+	const inbox = bridgeRowView(
+		{
+			args: { op: "send", to: { session: "x" }, body: "Release is out." },
+			details: { ok: true, destination_type: "peer_inbox" },
+			failed: false,
+		},
+		null,
+	);
+	assert.equal(inbox.headline, "Sent to a teammate");
+	const dm = bridgeRowView(
+		{
+			args: { op: "dm", account_id: "acc_1", body: "hi" },
+			details: null,
+			label: "Ada",
+			failed: false,
+		},
+		null,
+	);
+	assert.equal(dm.headline, "Direct message to Ada");
+});
+
+test("bridge round 1: a refusal names the conversation, the raw error is behind Details (D5)", () => {
+	const view = bridgeRowView(
+		{
+			args: { op: "channel_post", channel_id: "bcv_2210", body: "x" },
+			details: {
+				ok: false,
+				code: "not_member",
+				error: "this agent is not a member of bcv_2210",
+			},
+			failed: true,
+		},
+		null,
+	);
+	assert.equal(
+		view.outcome,
+		"Refused (not_member): this agent is not a member of a conversation",
+	);
+	assert.ok(!view.outcome.includes("bcv_"));
+	assert.deepEqual(
+		view.internals.find((l) => l.key === "error"),
+		{ key: "error", value: "this agent is not a member of bcv_2210" },
+	);
+	const named = bridgeRowView(
+		{
+			args: {
+				op: "channel_post",
+				channel_id: "bcv_2210",
+				name: "ops",
+				body: "x",
+			},
+			details: {
+				ok: false,
+				code: "not_member",
+				error: "not a member of bcv_2210",
+			},
+			failed: true,
+		},
+		null,
+	);
+	assert.equal(named.outcome, "Refused (not_member): not a member of #ops");
+	// An error with no id is printed as it came, and not repeated under Details.
+	const plain = bridgeRowView(
+		{
+			args: { op: "channel_post", name: "ops", body: "x" },
+			details: { ok: false, code: "not_member", error: "you are not a member" },
+			failed: true,
+		},
+		null,
+	);
+	assert.equal(
+		plain.internals.find((l) => l.key === "error"),
+		undefined,
+	);
+});
+
+test("bridge round 1: the three states have a short word; send's do not", () => {
+	assert.equal(deliveryShortWord("inbox_only", "bridge"), "not posted");
+	assert.equal(deliveryShortWord("awaiting_acceptance", "bridge"), "awaiting");
+	assert.equal(deliveryShortWord("unconfirmed", "bridge"), "unconfirmed");
+	assert.equal(deliveryShortWord("unconfirmed", "send"), null);
+	assert.equal(deliveryShortWord("mailbox", "send"), null);
+	assert.equal(deliveryShortWord(null, "bridge"), null);
+});
+
+test("bridge round 1: every delivery-state call site names its tool (R4 census)", () => {
+	/*
+	 * `toolName` is required on `deliveryStateFromDetails`/`preferDeliveryState`
+	 * so the type checker catches a forgotten one; this pins the PRODUCTION
+	 * call sites too, so a new site has to be added here on purpose and say
+	 * which tool's name it passes. A `bridge` site without the name would read
+	 * `details.delivery` (absent on a bridge receipt) and paint a plain success.
+	 */
+	const sources = {
+		"src/renderer/src/features/chat/canonical/transcript-reducer.ts": [
+			'String(payload.tool_name ?? "")',
+			"base.toolName",
+		],
+		"src/renderer/src/features/chat/components/trace/tool-row-model.ts": [
+			"toolName",
+		],
+	};
+	const call = /\b(?:preferDeliveryState|deliveryStateFromDetails)\(/g;
+	// The call's LAST top-level argument, by bracket depth (an argument may
+	// itself be a call, `String(payload.tool_name ?? "")`).
+	const lastArgument = (text, open) => {
+		const args = [];
+		let depth = 0;
+		let start = open;
+		for (let i = open; i < text.length; i++) {
+			const ch = text[i];
+			if ("([{".includes(ch)) depth++;
+			else if (")]}".includes(ch)) {
+				if (depth === 0) {
+					args.push(text.slice(start, i));
+					break;
+				}
+				depth--;
+			} else if (ch === "," && depth === 0) {
+				args.push(text.slice(start, i));
+				start = i + 1;
+			}
+		}
+		return args
+			.map((a) => a.trim())
+			.filter(Boolean)
+			.at(-1);
+	};
+	for (const [file, expected] of Object.entries(sources)) {
+		const text = readFileSync(file, "utf8");
+		const found = [];
+		for (const match of text.matchAll(call)) {
+			// The declarations, not calls.
+			if (/function\s*$/.test(text.slice(0, match.index))) continue;
+			found.push(lastArgument(text, match.index + match[0].length));
+		}
+		assert.deepEqual(found, expected, file);
+	}
+});
+
+test("bridge round 1: unconfirmed is amber (warning), never danger, with its short word", () => {
+	const markup = renderRow("bridge", "partial", {
+		deliveryState: "unconfirmed",
+		summary: "#ops · Deploy done.",
+	});
+	const words = [
+		...markup.matchAll(
+			/<span[^>]*>(delivery unconfirmed|unconfirmed)<\/span>/g,
+		),
+	];
+	assert.equal(
+		words.length,
+		2,
+		"full and short word both rendered, gated by width",
+	);
+	for (const [tag] of words)
+		assert.deepEqual(inkOf(tag), ["text-warning"], tag);
+	assert.ok(!/text-danger/.test(markup), "no danger ink anywhere on the row");
+	const [full, short] = words.map(([tag]) => tag);
+	assert.match(full, /hidden @\[40rem\]\/toolrow:inline/);
+	assert.match(
+		short,
+		/hidden @\[20rem\]\/toolrow:inline @\[40rem\]\/toolrow:hidden/,
+	);
+	// The narrowest width keeps the mark and the spoken label.
+	assert.match(
+		markup,
+		/sr-only[^>]*>delivery unconfirmed — check the conversation/,
+	);
 });
 
 test("bridge: the record's facts and label keep identity and stay off other tools", () => {

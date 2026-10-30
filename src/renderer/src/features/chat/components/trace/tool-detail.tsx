@@ -522,6 +522,15 @@ export const BridgeDetail: FC<{
 			{hasInternals ? (
 				<Disclosure
 					chevron="trailing"
+					/*
+					 * `Details` is the ONLY route to the ids, so its chevron is a
+					 * control's indicator, not trace chrome: the default `ink-disabled`
+					 * measured 2.43:1 light / 2.49:1 dark on `sunken`, under the 3:1
+					 * non-text floor (design round 1, D3). `ink-dim` is the label's own
+					 * ink (5.03:1 / 6.58:1) - the `chevronClassName` precedent the
+					 * settings and mesh disclosures already use.
+					 */
+					chevronClassName="text-ink-dim"
 					summary={
 						<span className={cn("text-ink-dim text-meta")}>
 							{t("ui.chat.canonical.tool_row.bridge.detail.details")}

@@ -1342,6 +1342,13 @@ const IDENTICAL_OK = new Map([
 		"language-neutral format: only a {rate} placeholder and 'x', no words",
 	],
 	[
+		"ui.chat.canonical.tool_row.bridge.summary.count",
+		// `({count})`: a number in parentheses, after `Listed conversations`. No
+		// words to translate - the noun lives in the verb phrase - so identical in
+		// every locale is correct, the `playback_rate_option` rule.
+		"language-neutral format: only a {count} placeholder and parentheses, no words",
+	],
+	[
 		"fr:ui.chat.attachments.volume",
 		"French cognate: the French noun for this control is « Volume », same spelling; scoped to fr so other locales still translate it",
 	],
