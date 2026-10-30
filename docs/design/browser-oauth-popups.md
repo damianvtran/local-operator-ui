@@ -109,6 +109,11 @@ the open handler: **does the new page have an opener (`child.webContents.opener`
 | `<form method=post target=_blank>` | `foreground-tab` + `postBody` (open handler only) | none | window (replaying the body into a new view was measured flaky: POST 1/1/0 over three runs) |
 | cmd / shift / middle click on `<a target=_blank>` | `background-tab` / `new-window` | none, **already loading** | window, `inactive` at most (a tab would fetch the URL a second time) |
 
+One refinement crosses that table, and only the TAB rows: a popup from a USER link tab is
+refused the tab route (`link_depth`), because a tab child carries the same handler and would
+start its own empty count — while every window row above still applies, since a window child
+carries `wirePopup`'s deny-all and adds no depth.
+
 Two facts the router needs are **not** where one would look (measured, Electron 44.3.0):
 `postBody` is present in the `setWindowOpenHandler` details and absent from the
 `did-create-window` details, so the handler records it and `did-create-window` reads that
@@ -133,15 +138,60 @@ lists. The test is therefore the opener.
 
 An ordinary link becomes a **tab owned like its opener**: an agent's tab yields an agent tab
 in the same session (never activated, so the tab the operator is looking at does not move —
-`ui-browser-tab.md` 11.4), a user's tab yields a user tab that comes to the front only when
+`ui-browser-tab.md` 11.4, in `damianvtran/local-operator`), a user's tab yields a user tab that comes to the front only when
 the opener was the active tab and the request was not `background-tab`. It is never presented
 as a window. The opening session may adopt it with `open tab=<handle>` (`TabRecord.openedBy`,
 read by `sessionMayAdopt`); another session may not. Bounds: an agent's tab may spawn
 `MAX_POPUP_CHILDREN_PER_VIEW` link tabs and the agent-tab cap (`MAX_AGENT_TABS`) still
-applies; user tabs are uncapped as everywhere else. Scheme and window-cap refusals are
-unchanged; the per-opener tab bound logs `(opener_cap)` and a popup whose opener tab has no
-registry record logs `(opener_gone)` and is refused on every route. The log line names the
-route: `opener=yes|no route=tab|window`.
+applies; a user's tab may hold `MAX_USER_LINK_TABS_PER_VIEW` (12) link tabs open at once,
+and **a user's link tab may spawn no TAB of its own** (`link_depth`), its window shapes
+unchanged — the depth rule is route-scoped, as the routing section below says.
+
+The guarantee is therefore depth-1 fan-out, and it is worth stating exactly, because the
+first form of this bound did not hold: the count is `openedTabCount(openerTabId)`, the
+children whose `openedByTab` is that tab and that are still open, so it bounds CONCURRENT
+tabs rather than lifetime allocation — closing one frees its slot. Without the depth rule
+the fan-out would be 12^depth instead of 12, since every tab is wired with the same
+window-open handler and each child would have been measured against its own fresh, empty
+count: a page reproducing itself in its children (`window.open(location.href, "_blank",
+"noopener")` inside the child too) would have reached 12, 144, 1,728, 20,736 live views,
+because the window cap sees no tab and the agent-tab cap is agent-only. The rule that closes
+it is ROUTE-scoped: a user link tab is refused its TAB route (`link_depth`), so a tab it
+spawned spawns no tab, while its window shapes (an opener-bearing sign-in, `about:blank`, a
+form POST) still open — a window child carries `wirePopup`'s deny-all and adds no depth, and
+refusing it returned null from the page's `window.open`, which silently broke a sign-in
+opened in a `target=_blank` tab (§1.1's routing note; round 2's B2). The reason is nesting,
+not attention: the tab route ACTIVATES a user's link tab, so the operator is usually looking
+at it, and an earlier draft's "a link tab has no operator behind it" was false for the user
+case. An agent's link tab is not covered by the rule because `MAX_AGENT_TABS` bounds agent
+tabs in aggregate (8), so its nesting cannot grow the strip past a number nothing checks.
+
+The user bound corrects an earlier claim: `damianvtran/local-operator`'s `docs/design/ui-browser-tab.md`
+§6.5 leaves user tabs uncapped
+because "a user opening a dozen tabs is their business", and that reasoning held only while
+every user tab was an act the user took. A page looping `window.open(u, "_blank",
+"noopener")` is not an act the user took: before this section's routing those children were
+windows, so the live cap refused the fifth, and as tabs they never enter the window cap's
+count — the old reasoning would have let one page in the operator's own tab allocate views,
+`session.json` rows and activations without bound. Twelve is a ceiling taken from that same
+sentence's human scale rather than a copy of its conclusion: a page gets no more than a
+person gets for themselves, and seven slots over the ordinary case (a person opening the few
+links they want from one page) so ordinary use never meets the wall. It is a judgement about
+bounding abuse, like the window cap, not a measurement — §6.5 deliberately holds no measured
+human fan-out — and it sits below `MAX_RESTORED_TABS` (20), so one looping page cannot by
+itself fill what a restore reads back. Two things it is NOT, so a later reader does not
+mistake it for one: it is not §6.5's tab ceiling (no such cap exists for the operator's own
+tabs, and this bound does not become one), and memory is not the bound here as it is there —
+6.5 can lean on the operator owning what they open, while every view this bounds was opened
+by a page with nobody reading a count. A number was therefore required, and it is a number of
+judgement: 6.5 carries no measured fan-out and this text claims none, so the bound is picked
+to fail safe — wrong by being generous, still bounding the loop. It is a separate constant from the window cap because
+the two bound different resources and one number for both would silently tighten whichever
+side moved. Scheme and window-cap refusals are unchanged; the per-opener tab bounds log
+`(opener_cap)` for an agent and `(user_opener_cap)` for a user, distinct so a log says which
+bound was hit, and a popup whose opener tab has no registry record logs `(opener_gone)` and is
+refused on every route, before either count is consulted. The log line names the route:
+`opener=yes|no route=tab|window`; an opener that is a link tab logs `(link_depth)`.
 
 An agent's link tab lives and dies with the tab that opened it unless a session adopts it:
 closing the opener (or ending the scope that allocated it) closes the link tabs nothing
@@ -153,7 +203,14 @@ opener's `Referer`.
 
 **Behaviour change to know about:** a named target (`target="mail"`) used to reuse one
 window on every click; each click now opens a new tab, and the fifth click from one agent
-tab is refused with `opener_cap` until one of them is closed.
+tab is refused with `opener_cap` until one of them is closed. From a user's tab the same
+clicks are refused from the thirteenth with `user_opener_cap` while twelve are open, and a
+link clicked ON one of those new tabs opens no tab: it logs `link_depth` and no tab appears
+(its sign-in, `about:blank` and form-POST shapes still open a window). That refusal is
+deliberate rather than a gap: a tab child is wired with the same open handler, so a page
+that reproduces itself in its children would be bounded only per opener, at 12 to the power
+of the nesting rather than 12. It is not because nobody is watching — the tab route
+activates the operator's link tab, so they usually are.
 
 Not verified: that Gmail's links are opener-less (inferred from its `google.com/url?q=`
 redirect anchors), real MSAL/Google sign-in through the new routing, modifier-click in the
@@ -650,6 +707,15 @@ that is its own small design (see §1.2).
   `~/local-operator`, `:2056-2066`) — it currently mandates deny-all for driven views and
   cites exactly the reasoning this brief supersedes. The PR body should name it so the
   next reader is not left with two contradicting designs.
+- **Follow-up, cross-repo (§6.5):** `docs/design/ui-browser-tab.md` §6.5
+  (`damianvtran/local-operator`, `:1046-1060`, and risk item 10 at `:2484`) still says
+  user tabs have "no agent-facing cap" with memory as "the honest bound". That sentence is
+  about tabs the OPERATOR opens and stays true; what it cannot be read as — now that a page
+  can allocate tabs from one of them — is a statement that nothing bounds a page. The core
+  doc needs the matching change: name `MAX_USER_LINK_TABS_PER_VIEW` and the depth rule as
+  the bound on page-spawned tabs, so the two design documents do not disagree. Not edited
+  here: this brief owns the UI host, and a cross-repo edit from this branch would land
+  unreviewed in the other repository.
 
 ## 8. Implementation checklist (files and shapes)
 

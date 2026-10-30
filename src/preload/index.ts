@@ -1513,6 +1513,23 @@ const api = {
 			ipcRenderer.invoke(MINI_VIEW_REGISTRATION_GET),
 	},
 
+	recordingShortcut: {
+		get: () => ipcRenderer.invoke("recording-shortcut:get"),
+		markPending: (value?: string): void => {
+			ipcRenderer.send("recording-shortcut:pending", value);
+		},
+		onChange: (callback: (state: unknown) => void): (() => void) => {
+			const handler = (_event: IpcRendererEvent, state: unknown) =>
+				callback(state);
+			ipcRenderer.on("recording-shortcut:change", handler);
+			return () =>
+				ipcRenderer.removeListener("recording-shortcut:change", handler);
+		},
+		syncClaims: (rev: number, claims: unknown): void => {
+			ipcRenderer.send("recording-shortcut:claims", rev, claims);
+		},
+	},
+
 	/** Opens a native dialog to select a directory */
 	selectDirectory: (): Promise<string | undefined> =>
 		ipcRenderer.invoke("select-directory"),

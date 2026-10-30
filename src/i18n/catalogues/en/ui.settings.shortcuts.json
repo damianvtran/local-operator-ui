@@ -62,5 +62,9 @@
 	"ui.settings.shortcuts.row.canvas": "Canvas",
 	"ui.settings.shortcuts.row.code_review": "Code review",
 	"ui.settings.shortcuts.row.console": "Console",
-	"ui.settings.shortcuts.row.execution": "Run details"
+	"ui.settings.shortcuts.row.execution": "Run details",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcut_capture_description": "Focus a shortcut field and press keys to save immediately. Esc clears the capture cue; Reset restores the default.",
+	"ui.settings.shortcuts.category.speech_to_text": "Speech to text",
+	"ui.settings.shortcuts.recording.invalid_stored_value": "The stored shortcut is invalid. Showing the last working shortcut.",
+	"ui.settings.shortcuts.recording.inactive_claimed": "Start recording is inactive: {label} uses this shortcut."
 }

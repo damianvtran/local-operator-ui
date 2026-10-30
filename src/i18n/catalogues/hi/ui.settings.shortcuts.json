@@ -62,5 +62,9 @@
 	"ui.settings.shortcuts.row.canvas": "कैनवस",
 	"ui.settings.shortcuts.row.code_review": "कोड समीक्षा",
 	"ui.settings.shortcuts.row.console": "कंसोल",
-	"ui.settings.shortcuts.row.execution": "रन विवरण"
+	"ui.settings.shortcuts.row.execution": "रन विवरण",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcut_capture_description": "शॉर्टकट फ़ील्ड पर फ़ोकस करें और तुरंत सहेजने के लिए कुंजियाँ दबाएँ। Esc कैप्चर संकेत हटाता है; “रीसेट करें” डिफ़ॉल्ट बहाल करता है।",
+	"ui.settings.shortcuts.category.speech_to_text": "बोलकर लिखना",
+	"ui.settings.shortcuts.recording.invalid_stored_value": "सहेजा गया शॉर्टकट अमान्य है। अंतिम कार्यशील शॉर्टकट दिखाया जा रहा है।",
+	"ui.settings.shortcuts.recording.inactive_claimed": "रिकॉर्डिंग निष्क्रिय है: {label} इस शॉर्टकट का उपयोग कर रहा है।"
 }

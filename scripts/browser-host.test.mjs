@@ -185,10 +185,12 @@ const {
 	// test that hard-codes the cap stops testing it the day the cap moves.
 	decidePopup,
 	routePopup,
+	isLinkTabRecord,
 	linkLoadLeftNoPage,
 	effectivePresentation,
 	sessionMayAdopt,
 	MAX_POPUP_CHILDREN_PER_VIEW,
+	MAX_USER_LINK_TABS_PER_VIEW,
 	// The file-transfer surface (design §8, §10.4): the capture, the policy port the
 	// app host runs, and the shared generated tables it reads.
 	DownloadArmer,
@@ -8201,13 +8203,19 @@ test("the download reveal opens the host's own directory and takes no path from 
  * cases pin the DECISION; the run that proves a real child window opens with a
  * live `window.opener`, carries the session's cookies and closes on cue is
  * `scripts/browser-host-proof.mjs` — the same division every other browser
- * surface uses here. The grandchild rule ("a popup from a popup is refused") is
- * NOT in this bundle by construction: a child gets its own deny-all handler in
- * `wirePopup`, which is Electron-side code only the running app can exercise, and
- * the proof asserts it end to end.
+ * surface uses here. TWO grandchild rules exist and only one of them is pinned
+ * here: a popup WINDOW's children are refused by its own deny-all handler in
+ * `wirePopup`, which is Electron-side code only the running app can exercise (the
+ * proof asserts it end to end), while a user's LINK TAB is refused its TAB route
+ * in `routePopup` (`link_depth`) and is asserted below.
  */
 test("the popup policy allows about:blank and http(s), and refuses every other scheme", () => {
-	const policy = { mode: "focus", live: 0, openerOwner: "user" };
+	const policy = {
+		mode: "focus",
+		live: 0,
+		openerOwner: "user",
+		openerIsLinkTab: false,
+	};
 	const ask = (url, disposition = "default") =>
 		decidePopup({ url, disposition }, policy);
 
@@ -8273,7 +8281,7 @@ test("the popup cap bounds the view's LIVE children, driven from the constant", 
 		assert.equal(
 			decidePopup(
 				{ url: "https://example.com/", disposition: "default" },
-				{ mode: "focus", live, openerOwner: "user" },
+				{ mode: "focus", live, openerOwner: "user", openerIsLinkTab: false },
 			).allow,
 			true,
 			`live=${live} is under the cap`,
@@ -8282,7 +8290,7 @@ test("the popup cap bounds the view's LIVE children, driven from the constant", 
 	assert.deepEqual(
 		decidePopup(
 			{ url: "https://example.com/", disposition: "default" },
-			{ mode: "focus", live: cap, openerOwner: "user" },
+			{ mode: "focus", live: cap, openerOwner: "user", openerIsLinkTab: false },
 		),
 		{ allow: false, reason: "cap" },
 	);
@@ -8293,7 +8301,12 @@ test("the popup cap bounds the view's LIVE children, driven from the constant", 
 	assert.equal(
 		decidePopup(
 			{ url: "https://example.com/", disposition: "default" },
-			{ mode: "focus", live: cap - 1, openerOwner: "user" },
+			{
+				mode: "focus",
+				live: cap - 1,
+				openerOwner: "user",
+				openerIsLinkTab: false,
+			},
 		).allow,
 		true,
 	);
@@ -8302,7 +8315,7 @@ test("the popup cap bounds the view's LIVE children, driven from the constant", 
 	assert.deepEqual(
 		decidePopup(
 			{ url: "https://example.com/", disposition: "background-tab" },
-			{ mode: "focus", live: cap, openerOwner: "user" },
+			{ mode: "focus", live: cap, openerOwner: "user", openerIsLinkTab: false },
 		),
 		{ allow: false, reason: "cap" },
 	);
@@ -8317,7 +8330,7 @@ test("the §2.4 effective-show table: disposition picks presentation only under 
 		assert.equal(
 			decidePopup(
 				{ url: "https://example.com/", disposition },
-				{ mode: "focus", live: 0, openerOwner: "user" },
+				{ mode: "focus", live: 0, openerOwner: "user", openerIsLinkTab: false },
 			).presentation,
 			"focus",
 		);
@@ -8329,7 +8342,7 @@ test("the §2.4 effective-show table: disposition picks presentation only under 
 	assert.equal(
 		decidePopup(
 			{ url: "https://example.com/", disposition: "background-tab" },
-			{ mode: "focus", live: 0, openerOwner: "user" },
+			{ mode: "focus", live: 0, openerOwner: "user", openerIsLinkTab: false },
 		).presentation,
 		"inactive",
 	);
@@ -8348,7 +8361,7 @@ test("the §2.4 effective-show table: disposition picks presentation only under 
 		assert.deepEqual(
 			decidePopup(
 				{ url: "about:blank", disposition },
-				{ mode: "never", live: 0, openerOwner: "user" },
+				{ mode: "never", live: 0, openerOwner: "user", openerIsLinkTab: false },
 			),
 			{ allow: true, presentation: "never" },
 		);
@@ -8376,7 +8389,13 @@ const ROUTE_BASE = {
 const route = (request, policy = {}) =>
 	routePopup(
 		{ ...ROUTE_BASE, ...request },
-		{ mode: "focus", live: 0, openerOwner: "user", ...policy },
+		{
+			mode: "focus",
+			live: 0,
+			openerOwner: "user",
+			openerIsLinkTab: false,
+			...policy,
+		},
 	);
 
 test("an opener-less link becomes a tab, owned like its opener, never a window", () => {
@@ -8544,7 +8563,7 @@ test("an opener with no registry record is refused on every route, never default
 	assert.deepEqual(
 		decidePopup(
 			{ url: "https://example.com/", disposition: "default" },
-			{ mode: "focus", live: 0, openerOwner: null },
+			{ mode: "focus", live: 0, openerOwner: null, openerIsLinkTab: false },
 		),
 		{ allow: false, reason: "opener_gone" },
 	);
@@ -8712,12 +8731,200 @@ test("popup refusals and bounds are unchanged by the tab route", () => {
 		route: "deny",
 		reason: "opener_cap",
 	});
-	// User tabs are uncapped by design (6.5); the bound is for an agent's slots.
-	assert.equal(route({ openedTabs: cap + 10 }).route, "tab");
+	// A user's tab has its own, larger bound (M1, below); the agent's wall is not
+	// theirs, so the same count that refuses an agent is ordinary here.
+	assert.equal(
+		route({ openedTabs: cap }, { openerOwner: "user" }).route,
+		"tab",
+	);
 	// The tab bound does not touch a window route (that has its own live cap).
 	assert.equal(
 		route({ hasOpener: true, openedTabs: cap }, { openerOwner: "agent" }).route,
 		"window",
+	);
+});
+
+test("one operator tab holds at most MAX_USER_LINK_TABS_PER_VIEW link tabs open (M1 of #1497)", () => {
+	const cap = MAX_USER_LINK_TABS_PER_VIEW;
+	// Ordinary use: the design's own example is a person opening five links from
+	// one page. Every one of those is allowed, activated as a browser would.
+	for (let openedTabs = 0; openedTabs < 5; openedTabs += 1) {
+		assert.deepEqual(
+			route({ openedTabs }),
+			{ route: "tab", owner: "user", activate: true },
+			`link ${openedTabs + 1} of five is ordinary use`,
+		);
+	}
+	// The last slot under the bound is still a tab, and the next one is refused.
+	assert.equal(route({ openedTabs: cap - 1 }).route, "tab");
+	assert.deepEqual(route({ openedTabs: cap }), {
+		route: "deny",
+		reason: "user_opener_cap",
+	});
+	// Its own token: a log reader tells a user cap from the agent's `opener_cap`,
+	// and the agent's bound is untouched at its own, lower number.
+	assert.deepEqual(route({ openedTabs: cap }, { openerOwner: "agent" }), {
+		route: "deny",
+		reason: "opener_cap",
+	});
+	assert.equal(
+		route(
+			{
+				openedTabs: MAX_POPUP_CHILDREN_PER_VIEW - 1,
+			},
+			{ openerOwner: "agent" },
+		).route,
+		"tab",
+	);
+	// A hostile page's loop stops at the bound however far past it it asks.
+	assert.deepEqual(route({ openedTabs: cap + 100 }), {
+		route: "deny",
+		reason: "user_opener_cap",
+	});
+	// The bound selects the tab route only: an opener-bearing popup (a sign-in
+	// window) and a background-tab link route exactly as they did before.
+	assert.equal(route({ hasOpener: true, openedTabs: cap }).route, "window");
+	assert.deepEqual(
+		route({ openedTabs: cap - 1, disposition: "background-tab" }),
+		{ route: "tab", owner: "user", activate: false },
+	);
+});
+
+test("a user link tab cannot spawn a grandchild, so the fan-out stays one level deep (B1)", () => {
+	// THE HOLE THIS CLOSES: a link tab is a registered tab carrying the same open
+	// handler as the tab that spawned it, and `openedTabCount` counts a tab's own
+	// children — so a child's count starts at zero and a self-replicating page
+	// (`window.open(location.href, "_blank", "noopener")` inside the child too)
+	// would fan out at every level: 12, 144, 1728, 20736 live views. The registry's
+	// own numbers, which is what a cap alone cannot see:
+	const { registry } = makeRegistry();
+	const first = registry.create({ owner: "user" });
+	const child = registry.create({ owner: "user", openedByTab: first.tabId });
+	assert.equal(registry.openedTabCount(first.tabId), 1);
+	assert.equal(child.openedByTab, first.tabId);
+	// A child is a FRESH budget to the count the cap reads: the cap is per opener,
+	// so it cannot bound depth, and this is the assertion that says so.
+	assert.equal(registry.openedTabCount(child.tabId), 0);
+
+	// The rule: a user-owned LINK tab's TAB route is refused, whatever its own count
+	// says. `route({})` is the plain-link shape — no opener, no post body, not
+	// `about:blank`, not already loading — and it is the ONE route that nests,
+	// because the tab child carries this same handler.
+	for (const openedTabs of [
+		0,
+		1,
+		MAX_USER_LINK_TABS_PER_VIEW - 1,
+		MAX_USER_LINK_TABS_PER_VIEW,
+	]) {
+		assert.deepEqual(route({ openedTabs }, { openerIsLinkTab: true }), {
+			route: "deny",
+			reason: "link_depth",
+		});
+	}
+	// THE OTHER THREE SHAPES ARE WINDOWS (B2 of round 2). A link tab is a tab like any
+	// other to its page: MSAL opens `about:blank` first, "Sign in with Google/Microsoft"
+	// from a `target=_blank` tab needs a real child with `window.opener`, and a form
+	// POST needs the window route for its body. Each of those children carries
+	// `wirePopup`'s deny-all, so the window route is depth 2 by construction — refusing
+	// it bought no safety and only made the page's `window.open` return null, the
+	// silent sign-in failure §0 exists to remove.
+	assert.deepEqual(route({ hasOpener: true }, { openerIsLinkTab: true }), {
+		route: "window",
+		presentation: "focus",
+	});
+	assert.deepEqual(
+		route({ url: "about:blank", hasOpener: true }, { openerIsLinkTab: true }),
+		{ route: "window", presentation: "focus" },
+	);
+	assert.deepEqual(route({ hasPostBody: true }, { openerIsLinkTab: true }), {
+		route: "window",
+		presentation: "focus",
+	});
+	// A modifier click (`alreadyLoading`) is a window too, and `inactive` at most: a
+	// background open never takes focus.
+	for (const disposition of ["background-tab", "new-window"]) {
+		assert.deepEqual(
+			route({ alreadyLoading: true, disposition }, { openerIsLinkTab: true }),
+			{ route: "window", presentation: "inactive" },
+		);
+	}
+	// The CONTROL for that sign-in: from the operator's own tab it already was a
+	// window, so the rows above pin the shape and not an accident of the flag.
+	assert.deepEqual(route({ hasOpener: true }), {
+		route: "window",
+		presentation: "focus",
+	});
+	// A non-focus launch still presents by its mode: the route is a window in every
+	// mode, only the presentation changes.
+	assert.deepEqual(
+		route({ hasOpener: true }, { openerIsLinkTab: true, mode: "never" }),
+		{ route: "window", presentation: "never" },
+	);
+	// It is its own token, not `user_opener_cap`: the wall is depth, and a log that
+	// called it a count would send a reader looking for twelve tabs.
+	assert.notEqual(
+		route(
+			{ openedTabs: MAX_USER_LINK_TABS_PER_VIEW + 100 },
+			{ openerIsLinkTab: true },
+		).reason,
+		"user_opener_cap",
+	);
+
+	// ORDINARY depth-1 use is untouched: the operator's own tab still opens tabs
+	// under the bound — the rule is about the OPENER being a link tab, never about
+	// the popup being a link.
+	for (let openedTabs = 0; openedTabs < 5; openedTabs += 1) {
+		assert.deepEqual(route({ openedTabs }, { openerIsLinkTab: false }), {
+			route: "tab",
+			owner: "user",
+			activate: true,
+		});
+	}
+	// An AGENT's link tab keeps the route it had: agent tabs are bounded in
+	// aggregate by `MAX_AGENT_TABS`, so its nesting cannot grow the strip past a
+	// number nothing checks (and this fix deliberately does not change that route).
+	assert.deepEqual(route({}, { openerOwner: "agent", openerIsLinkTab: true }), {
+		route: "tab",
+		owner: "agent",
+		activate: false,
+	});
+});
+
+test("the link-tab flag is derived from a real registry record at every call site (M1)", () => {
+	// The router rows above pass `openerIsLinkTab` by hand, so a call site that
+	// derived it wrongly — or omitted it — stayed invisible. Drive real records
+	// through the derivation the two call sites use.
+	const { registry } = makeRegistry();
+	const root = registry.create({ owner: "user" });
+	const link = registry.create({ owner: "user", openedByTab: root.tabId });
+	assert.equal(isLinkTabRecord(registry.get(root.tabId)), false);
+	assert.equal(isLinkTabRecord(registry.get(link.tabId)), true);
+	// The absences read as NOT a link tab, and both matter: a closed tab has no
+	// record, and the registry clears `openedByTab` on restore, so a restored tab
+	// opens exactly as it did before the depth rule.
+	assert.equal(isLinkTabRecord(registry.get(-1)), false);
+	assert.equal(isLinkTabRecord(undefined), false);
+	assert.equal(isLinkTabRecord({ openedByTab: null }), false);
+
+	// The wiring: no call site may pass a literal, and none may spell the derivation
+	// itself — either one would reintroduce the hole on that path alone.
+	const wiring = readFileSync("src/main/browser/index.ts", "utf8");
+	const values = [...wiring.matchAll(/openerIsLinkTab:\s*([^,\n]+)/g)].map(
+		(m) => m[1].trim(),
+	);
+	assert.deepEqual(
+		values.sort(),
+		["isLinkTabRecord(record)", "openerIsLinkTab()"],
+		"both call sites pass a value derived from the tab record",
+	);
+	assert.match(
+		wiring,
+		/const openerIsLinkTab = \(\): boolean =>\s*isLinkTabRecord\(registry\.get\(tabId\)\);/,
+		"and the handler derives it through the same function",
+	);
+	assert.ok(
+		!/openedByTab\s*[!=]==?\s*null/.test(wiring),
+		"no hand-rolled `openedByTab` comparison is left in the wiring",
 	);
 });
 
