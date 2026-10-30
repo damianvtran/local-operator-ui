@@ -91,6 +91,8 @@ export type SettingSearchMatch = {
 	score: number;
 	/** The field that produced the winning score — the reason the row is shown. */
 	reason: SettingSearchField;
+	/** Whether any token matched as a word rather than as a letter-scatter. */
+	wordHit: boolean;
 };
 
 export type SettingSearchResults = {
@@ -110,6 +112,15 @@ export type SettingSearchResult = {
 export const SETTINGS_SEARCH_CAP = 12;
 
 /**
+ * What a query that equals a row's printed label is worth on top of its words.
+ *
+ * Large enough that no ordinary multi-token score can outbid it (the label tier
+ * tops out at 1.0 per token, so +2 clears any query of two tokens or fewer) and
+ * small enough that two equally-named rows still order by the rest of the rule.
+ */
+const NAMED_LABEL_BONUS = 2;
+
+/**
  * Score one entry against the query's tokens, or null when it is not admitted.
  *
  * Exported for its own test: the panel only needs `searchSettings`, but the
@@ -118,10 +129,12 @@ export const SETTINGS_SEARCH_CAP = 12;
 export function scoreEntry(
 	entry: SettingSearchEntry,
 	tokens: readonly string[],
-): { score: number; reason: SettingSearchField } | null {
+): { score: number; reason: SettingSearchField; wordHit: boolean } | null {
 	let total = 0;
 	let best = -1;
 	let reason: SettingSearchField | null = null;
+	// A letter-scatter is not a hit in the sense a word is; see `searchSettings`.
+	let wordHit = false;
 	for (const token of tokens) {
 		let tokenBest = -1;
 		let tokenField: SettingSearchField | null = null;
@@ -130,6 +143,7 @@ export function scoreEntry(
 			if (!haystack) continue;
 			const quality = matchQuality(haystack, token);
 			if (!quality) continue;
+			if (quality !== "subsequence") wordHit = true;
 			const value = FIELD_WEIGHT[field] * QUALITY_FACTOR[quality];
 			if (value > tokenBest) {
 				tokenBest = value;
@@ -145,7 +159,7 @@ export function scoreEntry(
 			reason = tokenField;
 		}
 	}
-	return reason ? { score: total, reason } : null;
+	return reason ? { score: total, reason, wordHit } : null;
 }
 
 /**
@@ -163,17 +177,49 @@ export function searchSettings(
 ): SettingSearchResults {
 	const tokens = tokenize(query);
 	if (tokens.length === 0) return { results: [], total: 0 };
+	/*
+	 * A QUERY THAT *IS* A ROW'S NAME ANSWERS WITH THAT ROW, FIRST.
+	 *
+	 * "Translucent window" is not a bag of two words that happen to occur in a
+	 * row — it is a row's printed name, and a reader typing a name is naming a
+	 * destination rather than searching prose for those words (QA round 1, Q5).
+	 * Equality is tested against the entry's LABEL, which the index keeps as the
+	 * title the row prints and separate from its help text, so a row whose help
+	 * spells the same words cannot take the place of the row CALLED that.
+	 */
+	const named = normalizeText(query);
 	const scored: SettingSearchMatch[] = [];
 	for (const entry of entries) {
 		const hit = scoreEntry(entry, tokens);
-		if (hit) scored.push({ entry, ...hit });
+		if (!hit) continue;
+		const isNamed = entry.fields.label !== "" && entry.fields.label === named;
+		scored.push({
+			entry,
+			reason: hit.reason,
+			wordHit: hit.wordHit,
+			score: isNamed ? hit.score + NAMED_LABEL_BONUS : hit.score,
+		});
 	}
 	scored.sort(
 		(a, b) =>
+			/*
+			 * Word-level hits before letter-scatter, and only then score. A
+			 * subsequence is the palette's soft recall ("rtn" → "Retention
+			 * analysis") and worth keeping — but underneath everything that
+			 * matched as a WORD: `effort` ranks the effort row above one that
+			 * merely contains e-f-f-o-r-t in order across a paragraph (QA round 1,
+			 * Q6). Within a class the score still decides.
+			 */
+			Number(b.wordHit) - Number(a.wordHit) ||
 			b.score - a.score ||
-			// Document order is the tie-break, never the label's alphabet: two rows
-			// with the same score should read in the order the page renders them,
-			// which is the order the reader will jump through with the arrows.
+			/*
+			 * Then the TIGHTER name: among rows whose names all contain the word,
+			 * `Model` and `Default model` answer "model" better than a name that
+			 * buries it in a clause (QA round 1, Q6's missing model row).
+			 */
+			a.entry.fields.label.length - b.entry.fields.label.length ||
+			// Document order last, never the label's alphabet: equal answers read in
+			// the order the page renders them, which is the order the arrows walk.
 			a.entry.order - b.entry.order,
 	);
 	return {

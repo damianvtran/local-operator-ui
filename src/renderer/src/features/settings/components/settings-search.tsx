@@ -143,6 +143,17 @@ export const SettingsSearch = forwardRef<
 >(function SettingsSearch({ index, readRendered, onJump, className }, ref) {
 	useI18nLocale();
 	const inputRef = useRef<HTMLInputElement | null>(null);
+	/**
+	 * The widget's own boundary for focus.
+	 *
+	 * The panel open/closed state used to follow the FIELD's blur, which made
+	 * every control inside the panel unreachable: Tab from the field unmounted
+	 * the panel it was tabbing into and focused `<body>`, so the Clear button
+	 * could never show its ring or be pressed from the keyboard (QA round 1,
+	 * Q3). The question the widget actually asks is "did focus leave the
+	 * widget?", and that is a question about this element, not about the input.
+	 */
+	const rootRef = useRef<HTMLDivElement | null>(null);
 	const renderedRef = useRef<SettingSearchEntry[] | null>(null);
 	const [query, setQuery] = useState("");
 	const [open, setOpen] = useState(false);
@@ -289,7 +300,17 @@ export const SettingsSearch = forwardRef<
 		: t("ui.settings.search.results.count", { count: total });
 
 	return (
-		<div className={cn("relative w-full @2xl:w-80", className)}>
+		<div
+			ref={rootRef}
+			className={cn("relative w-full @2xl:w-80", className)}
+			onBlur={(event) => {
+				const next = event.relatedTarget as Node | null;
+				// Focus that stayed inside the widget — the Clear button, most of
+				// all — is not a reason to close what the reader is tabbing through.
+				if (next && rootRef.current?.contains(next)) return;
+				setOpen(false);
+			}}
+		>
 			<div className="relative">
 				<Search
 					size={14}
@@ -315,12 +336,11 @@ export const SettingsSearch = forwardRef<
 						setOpen(true);
 					}}
 					/*
-					 * BLUR CLOSES, and only blur. A pointerdown on an option runs before
-					 * the blur, so the click path is preserved by the option's own
-					 * `onMouseDown` prevention below rather than by keeping the panel open
-					 * through a focus change.
+					 * Blur is handled on the widget root, which knows whether focus
+					 * stayed inside it; a pointerdown on an option runs before that
+					 * blur, so the click path is preserved by the option's own
+					 * `onMouseDown` prevention rather than by keeping the panel open.
 					 */
-					onBlur={() => setOpen(false)}
 					onChange={(event) => {
 						primeRendered();
 						setQuery(event.currentTarget.value);

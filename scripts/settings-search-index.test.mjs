@@ -479,3 +479,164 @@ test("the stories' no-match queries match nothing in the real registry", () => {
 		);
 	}
 });
+
+test("a row's printed title is its LABEL, and its help is the description (QA round 1, Q5/Q6)", () => {
+	/*
+	 * The shipped row components mark their title element with
+	 * `data-search-label` (`ToggleSetting` and friends). The index keeps that as
+	 * the row's NAME and the rest of the row's text — the help sentence — as its
+	 * DESCRIPTION, so a query that IS a row's printed title outranks a row whose
+	 * help happens to spell the same words, and a letter-scatter across a
+	 * paragraph is no longer a name match.
+	 *
+	 * Markup below is `ToggleSetting`'s, verbatim in shape: the row root carries
+	 * both `data-search-row` and `data-search-control` (see QA round 1, Q4).
+	 */
+	const dom = new JSDOM(
+		`<!doctype html><html><body><div data-settings-content>
+			<div data-search-section="appearance" data-search-section-label="Appearance">
+				<div data-search-row="appearance.glass" data-search-control>
+					<div>
+						<span data-search-label="">Translucent window</span>
+						<p>Lets your desktop show through the app window, blurred by the system. Text stays readable on every theme.</p>
+					</div>
+				</div>
+				<div data-search-row="appearance.reasoning" data-search-control>
+					<div>
+						<span data-search-label="">Show agent reasoning</span>
+						<p>Adds the agent's Reasoning and Thinking rows to conversations — narration the agent writes as prose mid-turn is transcript content.</p>
+					</div>
+				</div>
+			</div>
+		</div></body></html>`,
+	);
+	const entries = buildRenderedEntries(
+		dom.window.document.querySelector("[data-settings-content]"),
+	);
+	const glass = entries.find((entry) => entry.id === "page:appearance.glass");
+	assert.equal(
+		glass.label,
+		"Translucent window",
+		"the row's label is the title it prints, not the title-and-help blob",
+	);
+	assert.ok(
+		glass.fields.description.includes("blurred"),
+		"and the help sentence is still searchable, as a description",
+	);
+	const phrase = searchSettings(entries, "Translucent window", 12);
+	assert.equal(
+		phrase.results[0]?.entry.id,
+		"page:appearance.glass",
+		"a query equal to a row's printed label answers with that row first",
+	);
+	assert.equal(
+		phrase.results[0]?.reason,
+		"label",
+		"and says it matched the name",
+	);
+	const blurred = searchSettings(entries, "blurred", 12);
+	assert.equal(blurred.results[0]?.entry.id, "page:appearance.glass");
+	assert.equal(
+		blurred.results[0]?.reason,
+		"description",
+		"a word only the help carries is reported as a description match",
+	);
+});
+
+test("word matches outrank letter-scatter, and the tighter name wins a tie (QA round 1, Q6)", () => {
+	/*
+	 * `effort` used to return the long window-glass row first: e-f-f-o-r-t occurs
+	 * in order across a paragraph, and the old ranking scored that label-tier
+	 * subsequence above the row actually named "Default reasoning effort". A
+	 * subsequence is soft recall and must sit UNDER every word-level hit.
+	 *
+	 * `model` is the same rule's other half: the page's own model row used to be
+	 * pushed out of the twelve by long registry names that merely CONTAIN the
+	 * word. Among word-level hits, the tighter name wins.
+	 *
+	 * The promoted rows are page rows by design (`PROMOTED_SETTING_SECTIONS`
+	 * drops their registry twins), so the page rows are supplied here the way the
+	 * page's own DOM supplies them.
+	 */
+	const glass = {
+		id: "page:appearance.glass",
+		source: "page",
+		label: "Translucent window",
+		sectionId: "appearance",
+		sectionLabel: "Appearance",
+		order: 0,
+		fields: {
+			label:
+				"translucent window lets your desktop show through the app window blurred by the system on by default on macos where the system supports it and off elsewhere text stays readable on every theme",
+			synonym: "",
+			key: "",
+			choice: "",
+			section: "appearance",
+			description: "",
+		},
+	};
+	const effort = {
+		id: "page:general.effort",
+		source: "page",
+		label: "Default reasoning effort",
+		sectionId: "general",
+		sectionLabel: "General settings",
+		order: 1,
+		fields: {
+			label: "default reasoning effort",
+			synonym: "",
+			key: "",
+			choice: "",
+			section: "general settings",
+			description: "",
+		},
+	};
+	const pageModel = {
+		id: "page:general.model",
+		source: "page",
+		label: "Default model",
+		sectionId: "general",
+		sectionLabel: "General settings",
+		order: 2,
+		fields: {
+			label: "default model",
+			synonym: "",
+			key: "",
+			choice: "",
+			section: "general settings",
+			description: "",
+		},
+	};
+	const index = buildSettingsIndex({
+		registry: payload,
+		sections: [],
+		rendered: [glass, effort, pageModel],
+	});
+	const effortResults = searchSettings(index, "effort", 12);
+	assert.equal(
+		effortResults.results[0]?.entry.id,
+		"page:general.effort",
+		"the row NAMED effort answers effort, ahead of any letter-scatter",
+	);
+	const glassAt = effortResults.results.findIndex(
+		(result) => result.entry.id === glass.id,
+	);
+	assert.ok(
+		glassAt === -1 || glassAt > 0,
+		"the letter-scatter row never precedes the row named effort",
+	);
+	const modelResults = searchSettings(index, "model", 12);
+	const modelAt = modelResults.results.findIndex(
+		(result) => result.entry.id === pageModel.id,
+	);
+	assert.ok(
+		modelAt >= 0 && modelAt < 12,
+		"the page's model row is inside the twelve, not pushed out by long names",
+	);
+	assert.ok(
+		modelResults.results
+			.slice(0, modelAt)
+			.every((result) => result.entry.fields.label.includes("model")),
+		"and only rows that NAME the word precede it — never prose that buries it",
+	);
+});

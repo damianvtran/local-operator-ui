@@ -322,6 +322,21 @@ function sectionRootOf(row: Element): Element | null {
 }
 
 /**
+ * The row's text with its own title removed: the help sentence, the option
+ * labels, the reason line — everything that row PRINTS beyond its name.
+ *
+ * A row may print its title more than once (a heading plus an `aria-label`
+ * copy); only the first occurrence is the title, and the rest is context.
+ */
+function rowTextWithoutLabel(row: Element, label: string): string {
+	const whole = (row.textContent ?? "").trim();
+	if (!label) return whole;
+	const at = whole.indexOf(label);
+	if (at < 0) return whole;
+	return `${whole.slice(0, at)} ${whole.slice(at + label.length)}`.trim();
+}
+
+/**
  * The rendered half: every `[data-search-row]` under `root`, in document order.
  *
  * This is the ONLY function in the feature that reads text out of the DOM, and
@@ -353,6 +368,21 @@ export function buildRenderedEntries(
 		// node), so `data-search-terms` is where a value-shaped row says what it
 		// holds — and where a row spells an older name it no longer prints.
 		const terms = row.getAttribute("data-search-terms") ?? "";
+		/*
+		 * THE REST OF THE ROW IS DESCRIPTION, NOT MORE NAME.
+		 *
+		 * `rowLabel` resolves the row's TITLE (`data-search-label` where a shared
+		 * row component marks one, a heading, the first child as the last resort).
+		 * Everything else the row prints — the help sentence under the title — is
+		 * still searchable, but as a DESCRIPTION: it answers "the row that talks
+		 * about blurred glass", and it must not answer "the row called Translucent
+		 * window" more weakly than the name does. Folding the two into one haystack
+		 * made a row's own title compete with long prose: a subsequence of `effort`
+		 * matched a 249-character title+help blob and outranked the effort row
+		 * itself (QA round 1, Q6), and a query equal to a row's printed title was
+		 * weaker than the row's slab of help text (QA round 1, Q5).
+		 */
+		const rest = rowTextWithoutLabel(row, rendered);
 		return {
 			id: `page:${row.getAttribute("data-search-row") ?? index}`,
 			source: "page" as const,
@@ -364,6 +394,7 @@ export function buildRenderedEntries(
 				label: rendered,
 				synonym: terms,
 				section: [sectionLabel, sectionId],
+				description: rest,
 			}),
 		};
 	});

@@ -65,7 +65,18 @@ export function findSearchRow(
  * never joins the tab order.
  */
 export function searchControlOf(row: HTMLElement): HTMLElement {
-	const marked = row.querySelector<HTMLElement>("[data-search-control]");
+	/*
+	 * THE ROW MAY CARRY THE MARK ITSELF. `toggle-setting.tsx`, `editable-field`,
+	 * the transcript-mode row and window glass all put `data-search-control` on
+	 * the same element as `data-search-row` — the row root IS the control slot —
+	 * and a descendant-only query never saw it, so the jump focused the wrapper
+	 * div (`tabIndex = -1`, no caret) instead of the switch inside it (QA round
+	 * 1, Q4). Checked before the descendant query because the row's own mark is
+	 * the more specific statement.
+	 */
+	const self = row.matches("[data-search-control]") ? row : null;
+	const marked =
+		self ?? row.querySelector<HTMLElement>("[data-search-control]");
 	if (!marked) return row;
 	/*
 	 * The contract says the attribute sits on the element that should TAKE

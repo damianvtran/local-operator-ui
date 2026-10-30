@@ -46,6 +46,7 @@ import { Alert, Button } from "@shared/components/ui";
 import { usePairingCause } from "@shared/hooks/use-pairing-cause";
 import { LANGUAGE_SETTING_KEY } from "@shared/i18n";
 import { renegotiateLanguage } from "@shared/i18n/language-writes";
+import { paintJumpHighlight } from "@shared/lib/jump-highlight";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -117,9 +118,10 @@ type BackendSettingsSectionProps = {
 	 *
 	 * The reveal is deliberately idempotent per key (`revealedFocusKey`), which
 	 * is what stops a re-render from re-scrolling a reader who has moved on —
-	 * and it is also what made "jump to this setting again" a silent no-op. A
-	 * new nonce clears both guards, so Enter pressed twice on the same settings
-	 * search result lands and flashes twice.
+	 * and it is also what made "jump to this setting again" a silent no-op. The
+	 * guards are therefore keyed on `(key, nonce)` (`focusToken`), so a new
+	 * nonce re-arms both by construction and Enter pressed twice on the same
+	 * settings search result lands and flashes twice.
 	 */
 	focusNonce?: number;
 	/** General owns this one row; standalone registry hosts retain it. */
@@ -239,17 +241,21 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	const revealedFocusKey = useRef<string | null>(null);
 
 	/*
-	 * A new nonce (a second Enter on the same search result) re-arms both
-	 * guards. Declared BEFORE the navigation effect so it runs first in the
-	 * same commit: an effect declared after would read the stale guard.
+	 * THE GUARDS ARE KEYED ON (key, nonce), not on the key alone.
+	 *
+	 * A second Enter on the same search result is the SAME key, so a guard that
+	 * remembers only keys is still armed and the reveal never re-runs — the
+	 * nonce was cleared into refs by an effect whose own dependencies did not
+	 * include it in the readers' path, so the press was a silent no-op while the
+	 * panel said it had landed the reader again (QA round 1, Q1). Folding the
+	 * nonce into the token makes the nonce a real dependency: a new press is a
+	 * new token, both guards re-arm by construction, and the reveal effect
+	 * re-runs and re-flashes.
 	 */
-	const focusNonceRef = useRef<number | undefined>(focusNonce);
-	useEffect(() => {
-		if (focusNonce === focusNonceRef.current) return;
-		focusNonceRef.current = focusNonce;
-		handledFocusKey.current = null;
-		revealedFocusKey.current = null;
-	}, [focusNonce]);
+	const focusToken =
+		focusKey === null || focusKey === undefined
+			? null
+			: `${focusKey}\u0000${focusNonce ?? ""}`;
 
 	const settingsQuery = useQuery({
 		queryKey: backendSettingsKeys.all,
@@ -704,11 +710,11 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	 * stayed in the search box (UX round 1, U2).
 	 */
 	useEffect(() => {
-		if (!focusKey || !settings) return;
-		if (handledFocusKey.current === focusKey) return;
+		if (!focusKey || !settings || !focusToken) return;
+		if (handledFocusKey.current === focusToken) return;
 		const target = settings.settings.find((s) => s.key === focusKey);
 		if (!target) return;
-		handledFocusKey.current = focusKey;
+		handledFocusKey.current = focusToken;
 
 		if (tierFor(target) === "advanced") setShowAdvanced(true);
 		// A filter that the destination does not match would leave the row
@@ -744,7 +750,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 			next.delete(target.section);
 			return next;
 		});
-	}, [focusKey, settings, filter]);
+	}, [focusKey, focusToken, settings, filter]);
 
 	/**
 	 * Whether the deep link's destination is actually on screen yet.
@@ -796,8 +802,8 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	 * on it are silent no-ops (see the visibility gate below).
 	 */
 	useEffect(() => {
-		if (!destinationReady || !focusKey) return;
-		if (revealedFocusKey.current === focusKey) return;
+		if (!destinationReady || !focusKey || !focusToken) return;
+		if (revealedFocusKey.current === focusToken) return;
 		let frame = 0;
 		let attempts = 0;
 		const step = () => {
@@ -842,7 +848,19 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 				if (el === row) el.tabIndex = -1;
 				el.focus();
 				el.scrollIntoView({ block: "center" });
-				revealedFocusKey.current = focusKey;
+				/*
+				 * THE LANDING IS PAINTED HERE, at the one place that knows the
+				 * reader arrived — a registry jump scrolls thousands of pixels and
+				 * focuses a field inside a dense list, and without the wash the row
+				 * it focused looks like every other row (QA round 1, Q2). The page
+				 * and section paths paint by calling `jumpToSearchRow`; this path
+				 * runs through the section's own reveal loop, so the SAME shared
+				 * helper is called here rather than a second implementation.
+				 */
+				// On the ROW, not the control: the row is what the reader arrived at,
+				// and a wash painted inside a dense control slot is a tint on a field.
+				paintJumpHighlight(row ?? el);
+				revealedFocusKey.current = focusToken;
 				return;
 			}
 			attempts += 1;
@@ -850,7 +868,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 		};
 		frame = requestAnimationFrame(step);
 		return () => cancelAnimationFrame(frame);
-	}, [destinationReady, focusKey]);
+	}, [destinationReady, focusKey, focusToken]);
 
 	if (capabilities.data && !enabled) {
 		return (

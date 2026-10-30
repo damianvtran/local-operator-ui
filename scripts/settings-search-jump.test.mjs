@@ -113,6 +113,29 @@ test("the focus target is the row's control, and the row when there is none", ()
 	assert.equal(searchControlOf(bare), bare);
 });
 
+test("a row that carries the control mark ITSELF focuses the control inside it (QA round 1, Q4)", () => {
+	/*
+	 * The shared row components (`ToggleSetting`, `EditableField`, transcript
+	 * mode, window glass) put `data-search-control` on the ROW ROOT, where the
+	 * element is a wrapper and the thing that takes the caret is the switch or
+	 * the field inside it. `row.querySelector` searches only DESCENDANTS, so that
+	 * mark was invisible and the jump focused the wrapper div — measured in the
+	 * app as `activeElement` = the row with `tabindex="-1"`, the switch one Tab
+	 * away (QA round 1, Q4).
+	 */
+	const row = dom.window.document.createElement("div");
+	row.setAttribute("data-search-row", "appearance.glass");
+	row.setAttribute("data-search-control", "");
+	row.innerHTML =
+		'<div><span>Translucent window</span><button type="button" role="switch">On</button></div>';
+	const resolved = searchControlOf(row);
+	assert.equal(
+		resolved.getAttribute("role"),
+		"switch",
+		"a self-marked row hands focus to the switch inside it",
+	);
+});
+
 test("a jump scrolls the control to the centre, focuses it, and washes the ROW", async () => {
 	const painted = [];
 	const outcome = await jumpToSearchRow(root, "appearance.theme", {

@@ -315,6 +315,51 @@ test("no results quotes the query and offers exactly one way out", async (t) => 
 	assert.equal(field(container).value, "");
 });
 
+test("the Clear button is reachable by keyboard, and the panel survives the Tab into it (QA round 1, Q3)", async (t) => {
+	/*
+	 * The panel followed the FIELD's blur, so tabbing from the field toward the
+	 * Clear button unmounted the panel the reader was tabbing into and left
+	 * focus on `<body>`: the button could never take a caret or show its ring
+	 * (QA round 1, Q3). The widget asks the question that matters — did focus
+	 * leave the WIDGET? — which is a question about the container, not the
+	 * input.
+	 */
+	const { container } = await mount(t);
+	await type(container, "zzzqqq");
+	const clear = container.querySelector("button");
+	assert.ok(clear, "the no-result state offers its one action");
+	await act(async () => {
+		clear.focus();
+	});
+	assert.equal(
+		panel(container) !== null,
+		true,
+		"focus moving to the panel's own control does not close the panel",
+	);
+	assert.equal(
+		document.activeElement,
+		clear,
+		"the Clear button can hold focus, so it can show and use its ring",
+	);
+	// Leaving the whole surface still closes it: the panel is not sticky.
+	const outside = document.createElement("button");
+	document.body.append(outside);
+	await act(async () => {
+		clear.dispatchEvent(
+			new bootstrapDOM.window.FocusEvent("blur", { bubbles: true }),
+		);
+		await new Promise((r) => setTimeout(r, 0));
+	});
+	await act(async () => {
+		outside.focus();
+	});
+	await act(async () => {
+		await new Promise((r) => setTimeout(r, 0));
+	});
+	assert.equal(panel(container), null, "focus leaving the widget closes it");
+	outside.remove();
+});
+
 test("the live region announces the result count", async (t) => {
 	const { container } = await mount(t);
 	await type(container, "theme");
