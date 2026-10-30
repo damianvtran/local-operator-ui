@@ -137,7 +137,8 @@ const bundle = await build({
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 			export { radientUserKeys } from "./src/renderer/src/shared/hooks/radient-account-authority";
 			export { teamBridgeKeys } from "./src/renderer/src/features/team-bridge/team-bridge-keys";
-			export { t } from "./src/renderer/src/shared/i18n";
+			export { t, formatDate, formatDateTime } from "./src/renderer/src/shared/i18n";
+			export { TeamBridgeMessageList } from "./src/renderer/src/features/team-bridge/team-bridge-message-list";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -453,18 +454,31 @@ const settleTimes = async (count = 4) => {
 	for (let index = 0; index < count; index += 1) await settle();
 };
 
-/** Props-driven views: no transport, no provider — render, read, unmount. */
+/** Props-driven views: no transport — render, read, unmount.
+ *
+ * WRAPPED IN A QUERY CLIENT since the transcript renders through the shared
+ * `TeamBridgeMessageList`: a sender the directory resolves is drawn with the
+ * shared `TeamBridgeAvatar`, whose (photo) hook reads the client exactly as it
+ * does in a channel. A bare render would throw on the first resolved sender, so
+ * the provider is the app's shape, not a test convenience. No fetch is made
+ * through it: the fixtures carry no `avatar_url`. */
 async function renderView(element) {
 	const host = document.createElement("div");
 	document.body.append(host);
 	const root = createRoot(host);
-	await act(async () => root.render(element));
+	const client = new m.QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	await act(async () =>
+		root.render(h(m.QueryClientProvider, { client }, element)),
+	);
 	return {
 		host,
 		html: () => host.innerHTML,
 		text: () => host.textContent ?? "",
 		close: async () => {
 			await act(async () => root.unmount());
+			client.clear();
 			host.remove();
 		},
 	};
@@ -519,7 +533,16 @@ async function mountSlot(props, onSlot, { readOnly = false } = {}) {
 	document.body.append(host);
 	const root = createRoot(host);
 	const client = new m.QueryClient({
-		defaultOptions: { queries: { retry: false } },
+		/* `gcTime: Infinity` because the panel now also reads the tenant
+		 * directory (to name senders as a channel does), and that hook sets its
+		 * own `retry: 1`. When a test closes while that retry is pending,
+		 * `client.clear()` cancels it and react-query's error path schedules a
+		 * 5-minute GC timer on the already-removed query, which kept this file
+		 * from ever exiting. With no GC timeout no timer is scheduled; `close()`
+		 * still clears every query. */
+		defaultOptions: {
+			queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
+		},
 	});
 	/* What the real app has already resolved before this pane mounts. */
 	client.setQueryData(m.radientUserKeys.user(), {
@@ -795,7 +818,7 @@ test("panel: loading, error, empty history, populated", async () => {
 		empty.text().includes(m.t("ui.ownerAudit.empty_history")),
 		"an empty window is stated, not implied by a blank pane",
 	);
-	assert.equal(empty.host.querySelectorAll("article").length, 0);
+	assert.equal(empty.host.querySelectorAll("li[data-message-id]").length, 0);
 	await empty.close();
 
 	const populated = await renderView(
@@ -804,7 +827,13 @@ test("panel: loading, error, empty history, populated", async () => {
 			hasMore: true,
 		}),
 	);
-	assert.equal(populated.host.querySelectorAll("article").length, 4);
+	/* Rows are the shared list's (`li[data-message-id]`), not the bespoke
+	 * `<article>` the audit used to draw. Rejected text is collapsed but still in
+	 * the document, which is what the body loop below reads. */
+	assert.equal(
+		populated.host.querySelectorAll("li[data-message-id]").length,
+		4,
+	);
 	/* Newest-first from the server, oldest-first on screen: the caller's
 	 * chronology helper owns that, so this asserts the rows it is given. */
 	for (const body of [admitted.body, rejected.body, own.body]) {
@@ -820,7 +849,9 @@ test("panel: loading, error, empty history, populated", async () => {
 
 test("a null body renders the unavailable text, never an empty string", async () => {
 	const view = await renderView(panel({ messages: [unscreenedEmpty] }));
-	const paragraphs = [...view.host.querySelectorAll("article p")];
+	const paragraphs = [
+		...view.host.querySelectorAll("li[data-message-id] p"),
+	];
 	assert.equal(paragraphs.length >= 1, true);
 	const body = paragraphs.find(
 		(node) => node.textContent === m.t("ui.ownerAudit.body_unavailable"),
@@ -838,7 +869,7 @@ test("unadmitted bodies stay collapsed, admitted and own bodies do not", async (
 	const view = await renderView(
 		panel({ messages: [admitted, rejected, unscreenedEmpty, own] }),
 	);
-	const articles = [...view.host.querySelectorAll("article")];
+	const articles = [...view.host.querySelectorAll("li[data-message-id]")];
 	const byText = (needle) =>
 		articles.find((article) => (article.textContent ?? "").includes(needle));
 
@@ -878,7 +909,10 @@ test("unadmitted bodies stay collapsed, admitted and own bodies do not", async (
 	assert.ok(admittedRow.textContent.includes(m.t("ui.ownerAudit.admitted")));
 	assert.ok(rejectedRow.textContent.includes(m.t("ui.ownerAudit.rejected")));
 	assert.ok(emptyRow.textContent.includes(m.t("ui.ownerAudit.not_screened")));
-	assert.ok(ownRow.textContent.includes(m.t("ui.ownerAudit.own")));
+	/* The agent's OWN rows carry no chip: in a chief of staff's own DM that chip
+	 * sat on most rows and drowned the verdicts that matter, while the name and
+	 * Bot avatar already say who sent it. */
+	assert.equal(ownRow.textContent.includes(m.t("ui.ownerAudit.own")), false);
 	assert.equal(
 		view.text().includes(m.t("ui.ownerAudit.unknown_status")),
 		false,
@@ -927,7 +961,10 @@ test("an unknown verdict and an unknown sender fall back conservatively", async 
 		}),
 	);
 	assert.ok(view.text().includes(m.t("ui.ownerAudit.unknown_status")));
-	assert.ok(view.text().includes(m.t("ui.ownerAudit.unknown_sender")));
+	/* A blank sender takes the SHARED placeholder a channel uses for the same
+	 * absence, so one person is not "Unknown sender" in one view and "Unknown
+	 * person" in another. */
+	assert.ok(view.text().includes(m.t("ui.teamBridge.sender.unknown_person")));
 	await view.close();
 });
 
@@ -1335,7 +1372,9 @@ test("a failed later page keeps what already loaded", async () => {
 	});
 	await click([...second.host.querySelectorAll("li > button")][0]);
 	await settleTimes();
-	const shownBefore = second.host.querySelectorAll("article").length;
+	const shownBefore = second.host.querySelectorAll(
+		"li[data-message-id]",
+	).length;
 	assert.ok(shownBefore > 0, "the first page of messages is loaded");
 	const older = BUTTON_TEXT(second.host, m.t("ui.ownerAudit.older"));
 	assert.ok(older, "a message page with has_more offers Load older messages");
@@ -1343,7 +1382,7 @@ test("a failed later page keeps what already loaded", async () => {
 	await click(older);
 	await settleTimes();
 	assert.equal(
-		second.host.querySelectorAll("article").length,
+		second.host.querySelectorAll("li[data-message-id]").length,
 		shownBefore,
 		"a failed older page must not erase the messages already shown",
 	);
@@ -1396,7 +1435,9 @@ test("each verdict carries its own treatment, not shared grey text", async () =>
 		}),
 	);
 	const markOf = (copy) => {
-		const host = [...view.host.querySelectorAll("header *")].find(
+		const host = [
+			...view.host.querySelectorAll("li[data-message-id] *"),
+		].find(
 			(node) =>
 				(node.textContent ?? "").trim() === copy && node.children.length === 0,
 		);
@@ -1407,7 +1448,6 @@ test("each verdict carries its own treatment, not shared grey text", async () =>
 		markOf(m.t("ui.ownerAudit.admitted")),
 		markOf(m.t("ui.ownerAudit.rejected")),
 		markOf(m.t("ui.ownerAudit.unknown_status")),
-		markOf(m.t("ui.ownerAudit.own")),
 	];
 	const notScreenedMark = markOf(m.t("ui.ownerAudit.not_screened"));
 	for (const mark of marks) {
@@ -1417,7 +1457,7 @@ test("each verdict carries its own treatment, not shared grey text", async () =>
 			"a verdict mark must carry an edge, not sit as plain text",
 		);
 	}
-	const [admittedMark, rejectedMark, unknownMark, ownMark] = marks;
+	const [admittedMark, rejectedMark, unknownMark] = marks;
 	/* The three screening outcomes are the judgements, and no two may look alike:
 	 * "what did my chief of staff let through" has to be answerable by scanning. */
 	assert.equal(
@@ -1429,16 +1469,396 @@ test("each verdict carries its own treatment, not shared grey text", async () =>
 		3,
 		"admitted, rejected and not-screened must not share a rendering",
 	);
-	/* The agent's own message and an unknown verdict are NOT judgements, so they
-	 * are deliberately neutral — and must never borrow a judgement's treatment. */
-	const neutral = new Set([unknownMark.className, ownMark.className]);
+	/* An unknown verdict is NOT a judgement, so it is deliberately neutral and
+	 * must never borrow a judgement's treatment. The agent's own message carries
+	 * no mark at all (the quiet state; see VERDICT in the view), which is
+	 * asserted here so a chip cannot creep back onto every own row. */
+	const neutral = new Set([unknownMark.className]);
 	assert.equal(
-		neutral.size,
-		1,
-		"an unknown verdict and an own message are both neutral",
+		view.text().includes(m.t("ui.ownerAudit.own")),
+		false,
+		"the agent's own rows carry no verdict chip",
 	);
 	assert.equal(neutral.has(admittedMark.className), false);
 	assert.equal(neutral.has(rejectedMark.className), false);
 	assert.equal(neutral.has(notScreenedMark.className), false);
 	await view.close();
+});
+
+/* ------------------------------------------------------------------ *\
+   5. ONE renderer: the audit transcript is the shared message list
+\* ------------------------------------------------------------------ */
+
+/*
+ * WHY THIS SECTION. The audit view was written bespoke (wip slice c766a8c2daa):
+ * a raw `<p whitespace-pre-wrap>` body, no avatar, a medium date on every row,
+ * no runs, the stored label as the name. Channels and DMs render through
+ * `TeamBridgeMessageList`, so the same chief-of-staff message looked like two
+ * different products depending on which door the owner came in by. Each test
+ * here asserts a property the shared list has and the bespoke row did not, so
+ * every one of them is red on the bespoke renderer.
+ */
+
+/* Two people, each with a chief of staff named Aida: the case the composed
+ * "Aida (Person)" label exists for. An agent sender carries its OWNER's
+ * account id (that is how `participantLabel` and `profileFor` find the person
+ * behind it in a channel), so the directory resolves it the same way here. */
+const BEN_TRAN = "acct_ben_tran";
+const directoryMember = (overrides) => ({
+	account_id: OWNER,
+	display_label: "Damian Tran",
+	role: "owner",
+	bridge_enabled: true,
+	bridge_state: "active",
+	...overrides,
+});
+const people = [
+	directoryMember({
+		agent: { endpoint_id: "bep_damian", name: "Aida", state: "active" },
+	}),
+	directoryMember({
+		account_id: BEN_TRAN,
+		display_label: "Ben Tran",
+		role: "member",
+		agent: { endpoint_id: "bep_ben", name: "Aida", state: "active" },
+	}),
+];
+
+const MARKDOWN_BODY = [
+	"**Deploy summary** for `prod-2`:",
+	"",
+	"1. Rolled the canary",
+	"2. Watched the error budget",
+	"",
+	"| service | status |",
+	"| --- | --- |",
+	"| core | green |",
+	"",
+	"```sh",
+	"kubectl rollout status deploy/core",
+	"```",
+].join("\n");
+
+const auditRow = (overrides) => ({
+	...admitted,
+	attachments: [],
+	attachment_count: 0,
+	reply_count: null,
+	reply_participants: null,
+	last_reply_at: null,
+	...overrides,
+});
+
+const rowsOf = (host) => [...host.querySelectorAll("li[data-message-id]")];
+const rowOf = (host, id) => host.querySelector(`li[data-message-id="${id}"]`);
+
+test("bodies are markdown through the shared renderer, not a raw paragraph", async () => {
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "msg_md", body: MARKDOWN_BODY })] }),
+	);
+	const row = rowOf(view.host, "msg_md");
+	assert.ok(row, "the audit row is a shared list row (li[data-message-id])");
+	for (const tag of ["strong", "code", "ol", "li", "table", "pre"])
+		assert.ok(row.querySelector(tag), `markdown renders <${tag}>`);
+	assert.equal(
+		row.textContent.includes("**Deploy summary**"),
+		false,
+		"the markdown source is never shown raw",
+	);
+	assert.equal(
+		row.querySelector(".whitespace-pre-wrap"),
+		null,
+		"no bespoke pre-wrap paragraph remains",
+	);
+	await view.close();
+});
+
+test("each run starts with an avatar: the agent's glyph, a person's initial", async () => {
+	const view = await renderView(panel({ messages: [admitted, rejected, own] }));
+	const benRow = rowOf(view.host, admitted.id);
+	const benAvatar = benRow.querySelector(
+		"[data-sender-avatar], [data-team-bridge-avatar]",
+	);
+	assert.ok(benAvatar, "a person's first row carries an avatar");
+	assert.equal(
+		benAvatar.textContent.trim(),
+		"B",
+		"a person reads as an initial",
+	);
+	const agentAvatar = rowOf(view.host, own.id).querySelector(
+		"[data-sender-avatar], [data-team-bridge-avatar]",
+	);
+	assert.ok(agentAvatar, "the agent's first row carries an avatar");
+	assert.ok(
+		agentAvatar.querySelector("svg, img"),
+		"an agent reads as the Bot glyph (or its photo), never an initial",
+	);
+	await view.close();
+});
+
+test("days get a divider and rows get a clock, never a per-row medium date", async () => {
+	const view = await renderView(
+		panel({ messages: [admitted, rejected, unscreenedEmpty, own] }),
+	);
+	const day = new Date(admitted.created_at);
+	const divider = m.formatDate(day, {
+		weekday: "long",
+		month: "long",
+		day: "numeric",
+	});
+	assert.ok(
+		view.host.querySelector(`li[aria-label="${divider}"]`),
+		"the day is a divider row",
+	);
+	for (const message of [admitted, rejected, unscreenedEmpty, own])
+		assert.equal(
+			view.text().includes(
+				m.formatDateTime(new Date(message.created_at), {
+					dateStyle: "medium",
+					timeStyle: "short",
+				}),
+			),
+			false,
+			"no row repeats the date the divider already states",
+		);
+	await view.close();
+
+	/* An unparseable date costs that row its clock, never the panel. */
+	const broken = await renderView(
+		panel({
+			messages: [auditRow({ id: "msg_bad", created_at: "not a date" })],
+		}),
+	);
+	assert.ok(rowOf(broken.host, "msg_bad"));
+	await broken.close();
+});
+
+test("one sender inside five minutes is one header, as in a channel", async () => {
+	/* Ben at 10:58, 11:00, 11:01, then the agent at 11:02: two runs. */
+	const view = await renderView(
+		panel({ messages: [admitted, rejected, unscreenedEmpty, own] }),
+	);
+	assert.equal(rowsOf(view.host).length, 4);
+	assert.equal(
+		view.host.querySelectorAll("[data-sender]").length,
+		2,
+		"a run draws its name once",
+	);
+	await view.close();
+});
+
+test("two chiefs of staff named Aida are told apart by their people", async () => {
+	const fromDamian = auditRow({
+		id: "msg_aida_d",
+		sender: sender(OWNER, "agent", "Aida"),
+		created_at: "2026-10-23T10:00:00Z",
+		agent_delivery_status: null,
+	});
+	const fromBen = auditRow({
+		id: "msg_aida_b",
+		sender: sender(BEN_TRAN, "agent", "Aida"),
+		created_at: "2026-10-23T10:01:00Z",
+	});
+	const view = await renderView(
+		panel({ messages: [fromDamian, fromBen], people }),
+	);
+	const label = (id) =>
+		rowOf(view.host, id).querySelector("[data-sender]")?.textContent.trim();
+	assert.equal(
+		label("msg_aida_d"),
+		m.t("ui.teamBridge.chief.label", { agent: "Aida", person: "Damian Tran" }),
+	);
+	assert.equal(
+		label("msg_aida_b"),
+		m.t("ui.teamBridge.chief.label", { agent: "Aida", person: "Ben Tran" }),
+	);
+	await view.close();
+
+	/* No directory (loading, or the read failed): the stored label still names
+	 * the sender rather than leaving a blank. */
+	const cold = await renderView(panel({ messages: [fromBen] }));
+	assert.equal(
+		rowOf(cold.host, "msg_aida_b").querySelector("[data-sender]").textContent,
+		"Aida",
+	);
+	await cold.close();
+});
+
+test("a null body is the audit's placeholder, not the member view's", async () => {
+	const view = await renderView(panel({ messages: [unscreenedEmpty] }));
+	const row = rowOf(view.host, unscreenedEmpty.id);
+	assert.ok(row);
+	const placeholder = [...row.querySelectorAll("p")].find(
+		(node) => node.textContent === m.t("ui.ownerAudit.body_unavailable"),
+	);
+	assert.ok(placeholder, "the audit says the text is unavailable");
+	assert.ok(placeholder.className.includes("italic"), "and looks like a note");
+	assert.equal(
+		row.textContent.includes(m.t("ui.teamBridge.thread.withheld")),
+		false,
+		"the member view's 'waiting to admit' copy is wrong for an audit",
+	);
+	assert.equal(row.querySelector("details"), null);
+	await view.close();
+});
+
+test("a rejected body is collapsed, and markdown once opened", async () => {
+	const view = await renderView(
+		panel({
+			messages: [
+				auditRow({
+					id: "msg_rej_md",
+					body: MARKDOWN_BODY,
+					agent_delivery_status: "rejected",
+				}),
+			],
+		}),
+	);
+	const row = rowOf(view.host, "msg_rej_md");
+	const details = row.querySelector("details");
+	assert.ok(details, "collapsed behind a disclosure");
+	assert.equal(details.hasAttribute("open"), false);
+	assert.equal(
+		details.querySelector("summary").textContent,
+		m.t("ui.ownerAudit.reveal"),
+	);
+	details.setAttribute("open", "");
+	assert.ok(details.querySelector("strong"), "opened, the body is markdown");
+	assert.ok(details.querySelector("table"));
+	await view.close();
+});
+
+test("an audit row has no toolbar, reaction, thread or message action", async () => {
+	const view = await renderView(
+		panel({
+			messages: [
+				auditRow({ reply_count: 2 }),
+				rejected,
+				own,
+				auditRow({
+					id: "msg_aida_b",
+					sender: sender(BEN_TRAN, "agent", "Aida"),
+				}),
+			],
+			people,
+		}),
+	);
+	assert.equal(view.host.querySelector('[role="toolbar"]'), null);
+	assert.equal(view.host.querySelector("[data-message-toolbar]"), null);
+	assert.equal(
+		view.host.querySelector('button[aria-label="Reply in thread"]'),
+		null,
+	);
+	/* Every button is a read: the banner's refresh, paging, retry, or the
+	 * shared identity anchor ("Open profile for …") a channel row also has. */
+	const openProfile = (name) =>
+		m.t("ui.teamBridge.profile.open_profile", { name });
+	for (const button of view.host.querySelectorAll("button")) {
+		const label = (button.textContent ?? "").trim();
+		const aria = button.getAttribute("aria-label") ?? "";
+		assert.ok(
+			[
+				m.t("ui.ownerAudit.refresh"),
+				m.t("ui.ownerAudit.older"),
+				m.t("ui.ownerAudit.more"),
+				m.t("ui.ownerAudit.retry"),
+			].includes(label) || aria.startsWith(openProfile("").trim()),
+			`unexpected control: ${label || aria}`,
+		);
+	}
+	await view.close();
+});
+
+test("attachments are named, never fetched, through the shared list", async () => {
+	requests = [];
+	answer = () => refusal(500, "no request expected");
+	const view = await renderView(panel({ messages: [admitted], people }));
+	await settleTimes();
+	const row = rowOf(view.host, admitted.id);
+	assert.ok(row, "rendered by the shared list");
+	assert.ok(row.textContent.includes(m.t("ui.ownerAudit.attachment_expired")));
+	assert.equal(row.querySelectorAll("img").length, 0);
+	assert.equal(
+		requests.filter((request) => String(request.op).includes("attachment"))
+			.length,
+		0,
+		"no attachment byte read leaves the audit",
+	);
+	await view.close();
+});
+
+/*
+ * CHANNEL PARITY. The audit's additions are optional props that default to the
+ * channel behaviour, so a channel's markup must not move by a byte. The golden
+ * was captured from the shared list on the base commit (eecfb71a3bb), BEFORE any
+ * prop existed; regenerate only with a reviewed reason:
+ *     UPDATE_PARITY_GOLDEN=1 node --test scripts/team-bridge-owner-audit-render.test.mjs
+ * Clock text and the `title` date depend on the machine's time zone, so both are
+ * normalised; the structure, classes, names and bodies are compared verbatim.
+ */
+const PARITY_GOLDEN = `${process.cwd()}/scripts/fixtures/team-bridge-message-list-parity.golden.html`;
+const TIME_TEXT = /(<time[^>]*>)[^<]*(<\/time>)/g;
+const TIME_TITLE = /(<time[^>]*title=")[^"]*(")/g;
+test("a channel renders byte-identically with the audit props omitted", async () => {
+	const { renderToStaticMarkup } = await import("react-dom/server");
+	const channelMessage = (id, seq, account_id, kind, body, created_at) => ({
+		id,
+		conversation_id: "conv_channel",
+		seq,
+		sender: {
+			account_id,
+			kind,
+			display_label: kind === "agent" ? "Aida" : "Ben Tran",
+		},
+		body,
+		origin: kind,
+		created_at,
+	});
+	const markup = renderToStaticMarkup(
+		h(
+			m.QueryClientProvider,
+			{ client: new m.QueryClient() },
+			h(m.TeamBridgeMessageList, {
+				messages: [
+					channelMessage(
+						"c1",
+						1,
+						BEN_TRAN,
+						"human",
+						MARKDOWN_BODY,
+						"2025-03-04T12:00:00Z",
+					),
+					channelMessage(
+						"c2",
+						2,
+						BEN_TRAN,
+						"human",
+						"Same run",
+						"2025-03-04T12:02:00Z",
+					),
+					channelMessage("c3", 3, OWNER, "agent", null, "2025-03-04T12:03:00Z"),
+					channelMessage(
+						"c4",
+						4,
+						"acct_gone",
+						"human",
+						"Who?",
+						"2025-03-05T12:00:00Z",
+					),
+				],
+				labelFor: (who) =>
+					who.account_id === "acct_gone" ? null : who.display_label,
+				profileFor: (who) =>
+					people.find((row) => row.account_id === who.account_id),
+				arrivalsEnabled: false,
+			}),
+		),
+	)
+		.replace(TIME_TEXT, "$1$2")
+		.replace(TIME_TITLE, "$1$2");
+	if (process.env.UPDATE_PARITY_GOLDEN === "1") {
+		const { writeFileSync } = await import("node:fs");
+		writeFileSync(PARITY_GOLDEN, `${markup}\n`);
+	}
+	assert.equal(`${markup}\n`, readFileSync(PARITY_GOLDEN, "utf8"));
 });
