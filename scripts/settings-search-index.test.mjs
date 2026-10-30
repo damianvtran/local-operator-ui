@@ -228,7 +228,11 @@ test("a rendered row's label is its own title, never the whole subtree", () => {
 	 * "DarkLocal Operator DarkCatppuccin Macchiato…" (review round 1, M3).
 	 */
 	assert.equal(reasoning.label, "Show agent reasoning");
-	assert.equal(theme.label, "Theme", "data-search-label is the explicit answer");
+	assert.equal(
+		theme.label,
+		"Theme",
+		"data-search-label is the explicit answer",
+	);
 	assert.equal(provider.label, "Anthropic", "else the row's own heading");
 	assert.equal(reasoning.sectionLabel, "Appearance");
 	assert.equal(reasoning.sectionId, "appearance");
@@ -361,7 +365,9 @@ test("choice DESCRIPTIONS are indexed, not only choice labels", () => {
 	 * lives only in an option's description must reach the row, or the two
 	 * halves disagree (reviewer note, round 1).
 	 */
-	const themed = payload.settings.find((setting) => setting.key === "tui.theme");
+	const themed = payload.settings.find(
+		(setting) => setting.key === "tui.theme",
+	);
 	const described = {
 		...payload,
 		settings: [

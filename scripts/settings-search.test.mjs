@@ -216,10 +216,7 @@ test("the panel caps at twelve rows and says how many more there are", async (t)
 	assert.ok(more, "a +N more line exists");
 	assert.match(more.textContent ?? "", /more/i);
 	assert.equal(
-		Number.parseInt(
-			(more.textContent ?? "").match(/\d+/)?.[0] ?? "0",
-			10,
-		) > 0,
+		Number.parseInt((more.textContent ?? "").match(/\d+/)?.[0] ?? "0", 10) > 0,
 		true,
 		"and it counts what is not shown",
 	);
