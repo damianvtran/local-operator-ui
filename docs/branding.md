@@ -488,22 +488,39 @@ popover.
   the panel's ground against its neighbour's; the seam is one 1px `hairline` at
   75% along the edge the two share, painted by `panel-edge.tsx`. The tone step
   alone is not enough between two full-height planes: `canvas` to `surface`
-  measures ΔE00 2.4 in `localOperatorLight` and 2.9 in `localOperatorDark`, a
+  measures ΔE00 2.32 in `localOperatorLight` and 2.77 in `localOperatorDark`, a
   ladder step sized for a small field. The seam is the app's decorative line at
   three quarters strength — quieter than a section rule, and a real edge where
   there was none. It is a positioned 1px element, not a `border`, because a
   border takes a pixel from the panel and a panel is a scroll container; it is
-  full height and paints above sticky rows, so it cannot repeat the mid-height
-  seam that made the old border look broken. `border-control` is still the edge
-  of a control, never of a panel. The seam is asserted in § 3 and measured at
-  ΔE00 2.9 or better from its own ground and 2.3 or better from the plane it
-  faces, across all fifty-nine palettes.
+  full height (mounted on the full-height box that paints the ground, never on a
+  `panel-top-pad` content box, whose child would start at the pad) and paints
+  above sticky rows, so it cannot repeat the mid-height seam that made the old
+  border look broken. `border-control` is still the edge of a control, never of
+  a panel. Two marks are allowed to paint over it, because they are state rather
+  than decoration: the resize handle's 2px hover/drag line and the lit rail
+  item's 2px `accent` bar. The seam is asserted in § 3 and measured at ΔE00 2.92
+  or better from its own ground (`elevated`) and 2.29 or better from the plane it
+  faces (`gruvbox`'s rail against an open pane), across all fifty-nine palettes.
+  That assertion is an opaque-theme guarantee: under window glass the ground is
+  a translucent `surface` composited over the desktop, which the opaque-hex
+  contract does not measure.
   - **Where it is drawn:** the shell's sidebar column along its inner edge, the
-    right rail along its inner edge, and each right-slot pane along the edge it
-    shares with the conversation. A panel that sits inside a route rather than
-    against the window edge (a card, an inspector inside a page) has no seam:
-    the tone step is the whole boundary there, because it is one object on a
-    page, not a column of the window.
+    shell's rail host along the rail's inner edge, and each right-slot pane
+    along the edge it shares with the conversation. A panel that sits inside a
+    route rather than against the window edge (a card, an inspector inside a
+    page) has no seam: the tone step is the whole boundary there, because it is
+    one object on a page, not a column of the window.
+  - **The sidebar's seam is the shell column's edge, on every route.** It marks
+    where the app sidebar ends, so on a route whose own leading column is also
+    `surface` — the Settings nav, the Agents roster — it is the only boundary
+    between the two chrome planes, and those two keep the flat join *under* the
+    seam. The route column's own edge to its content keeps the tone step alone;
+    a seam inside a route's own layout is out of this change's scope.
+  - **The seam is placed logically.** `start-0`/`end-0` keep it on the side
+    facing the content in RTL; the class is pinned in
+    `scripts/pane-slot-ground.test.mjs`, but no rendered RTL frame was taken in
+    this change.
 - **Full-height panels extend through the titlebar strip; no top inset on the
   panel; the scroll region clips and fades under it.** A panel that owns its
   ground (the app sidebar, a route's leading rail, the Library filter rail, the

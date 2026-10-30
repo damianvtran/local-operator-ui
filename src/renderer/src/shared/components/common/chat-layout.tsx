@@ -591,10 +591,18 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 				 * The CONTENT is the chat surface's (`InPanelRailHost`), portaled in: the
 				 * rail's inputs live below the shell. The host's own ground is `surface`
 				 * (chrome, the sidebar's rung) so the strip is never a hole while the
-				 * portal is empty. The seam on the rail's leading edge is the rail's own
-				 * (`<PanelEdge side="start" />` in `panel-rail.tsx`), not this host's: the
-				 * host stays a box, and `scripts/pane-slot-ground.test.mjs` pins both the
-				 * ground here and the seam there.
+				 * portal is empty.
+				 *
+				 * THE SEAM IS MOUNTED HERE, ON THE HOST, NOT ON THE RAIL'S ROOT (agent
+				 * review round 1, B1). `panel-top-pad` moves only the CONTENT inside the
+				 * box: the host still starts at y0 while the portal's root starts at the
+				 * pad (32px on macOS), so an `inset-y-0` child of the rail root began the
+				 * seam at y=32 - the mid-air line this change exists to remove. An
+				 * absolutely positioned child resolves against the PADDING box, so
+				 * `relative` here plus `<PanelEdge side="start" />` spans y0 to the floor
+				 * like the sidebar's and every pane's. `scripts/pane-slot-ground.test.mjs`
+				 * pins the ground, the `relative` and the mount; `panel-rail-frame.tsx`
+				 * mirrors the same two classes for the story harnesses.
 				 */}
 				<div
 					ref={setRailHost}
@@ -606,9 +614,11 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 					 * clear the OS controls. The host's ground is the panel; the pad
 					 * moves only what the portal puts inside it.
 					 */
-					className="panel-top-pad h-full shrink-0 bg-surface"
+					className="panel-top-pad relative h-full shrink-0 bg-surface"
 					style={{ width: railWidth }}
-				/>
+				>
+					<PanelEdge side="start" />
+				</div>
 			</div>
 			{/*
 			 * THE UNSOLICITED UPDATE NOTICE LIVES HERE (issue #672), at the bottom edge of

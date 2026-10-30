@@ -5,7 +5,6 @@ import type {
 	RunDetails,
 } from "@features/chat/components/run-details/run-detail-model";
 import { RunDetailsTrigger } from "@features/chat/components/run-details/run-details-trigger";
-import { PanelEdge } from "@shared/components/common/panel-edge";
 import { Badge, countLabel } from "@shared/components/ui";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { displayChord } from "@shared/keymap/keymap-chord";
@@ -365,14 +364,23 @@ export const PanelRail: FC<PanelRailProps> = ({
 				className={cn(
 					"relative flex h-full w-full flex-col items-center gap-1 bg-surface",
 					/*
-					 * ONE SEAM ON THE LEADING EDGE, AND IT IS `PanelEdge` (2026-10-30). The
+					 * ONE SEAM ON THE RAIL'S EDGE, AND IT IS NOT ON THIS ELEMENT (B1). The
 					 * boundary is the TONE STEP - `surface` against the slot's `elevated` (a
 					 * pane open) or the conversation's `canvas` (no pane) - plus one 1px
-					 * `hairline` child at 75%, mounted below this root (`<PanelEdge
-					 * side="start" />`). The step alone is a field-floor separation (min 2.05
-					 * `sage` with the pane closed, 2.02 `arcade` with it open; 2.77/3.29 and
-					 * 2.32/2.50 for `localOperatorDark`/`Light`), and the operator's
-					 * 2026-10-30 report is that it does not read in light themes.
+					 * `hairline` at 75% (`panel-edge.tsx`, 2026-10-30). The step alone is a
+					 * field-floor separation (min 2.05 `sage` with the pane closed, 2.02
+					 * `arcade` with it open; 2.77/3.29 and 2.32/2.50 for
+					 * `localOperatorDark`/`Light`), and the operator's 2026-10-30 report is
+					 * that it does not read in light themes.
+					 *
+					 * THE SEAM IS MOUNTED BY THE SHELL ON THIS RAIL'S HOST, NOT HERE. This
+					 * root is the host's `panel-top-pad` CONTENT box, so it starts at the pad:
+					 * an `inset-y-0` child of it began the seam at y=32 on macOS - the exact
+					 * mid-air line this change exists to remove (agent review round 1, B1).
+					 * `chat-layout.tsx`'s `data-panel-rail-host` is the full-height box that
+					 * paints the rail's ground, and it carries the `relative` and the
+					 * `<PanelEdge side="start" />`; `panel-rail-frame.tsx` mirrors that for
+					 * the story harnesses.
 					 *
 					 * IT IS NOT A BORDER ON THIS ROOT, WHICH IS WHY THIS ROOT'S CLASS LIST
 					 * STILL CARRIES NO RULE. The `border-l border-hairline` that used to sit
@@ -382,7 +390,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 					 * the rail's earlier "borderless" round was the right call for the border
 					 * and the wrong one as a permanent rule. `scripts/pane-slot-ground.test.mjs`
 					 * pins both halves: no rule utility on this root, and the seam element
-					 * mounted as its child.
+					 * mounted on the host.
 					 */
 					/*
 					 * THE FIRST ITEM'S TOP IS THE CAPTION INSET PLUS 4px, set as PADDING (design
@@ -590,11 +598,6 @@ export const PanelRail: FC<PanelRailProps> = ({
 						/>
 					)}
 				</PanelRailItem>
-				{/* The rail's seam, on the edge that faces the pane slot or the
-				 * conversation. `PanelEdge` states the rule and its measurements; the
-				 * rail's own root is the positioning context, so the seam spans y0 to the
-				 * window's floor in every mode (the y=32 line this replaced did not). */}
-				<PanelEdge side="start" />
 			</div>
 		</PanelRailRovingContext.Provider>
 	);

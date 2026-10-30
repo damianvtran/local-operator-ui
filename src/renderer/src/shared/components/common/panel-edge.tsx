@@ -34,6 +34,14 @@ import { cn } from "@shared/lib/utils";
  *   - `start-0`/`end-0` are logical, so the seam stays on the side facing the
  *     content in RTL instead of moving to the window's outer edge.
  *
+ * WHAT IS ALLOWED TO PAINT ABOVE IT. The seam is decoration, so anything at its
+ * column that is an affordance or a state must win: the resizable divider's 2px
+ * state line (`resizable-divider.tsx`, `z-25`) and the lit rail item's 2px
+ * `accent` bar (`panel-rail-item.tsx`, `before:z-25`) both sit above `z-20`.
+ * Without that the seam halves a 2px line the pointer is meant to grab, or
+ * covers the one non-colour mark that says a rail item is lit (design review
+ * round 1, D2; agent review round 1, M2/M3).
+ *
  * WHY `hairline` AT 75%, AND NOT A NEW ROLE. `hairline` is this system's
  * decorative line - section rules, table separators, list dividers - and a seam
  * is exactly that: it carries no information, it says two planes meet. Its
@@ -41,12 +49,15 @@ import { cn } from "@shared/lib/utils";
  * direction the mode runs (darker in light themes, lighter in dark), so this
  * adapts across all 59 palettes with no new palette value and no hardcoded
  * colour. Full strength is a section rule, and a seam is quieter than one: at
- * 75% the line measures ΔE00 at least 4.6 against the ground it is drawn on, and
- * at least 2.29 against the plane it faces in EVERY palette (the floors are
- * `gruvbox`'s rail against an open pane, and `rosePineDawn`'s pane edge against
- * the conversation). Both are above the ΔE00 2 perceptual threshold
- * `docs/branding.md` § 3 states for adjacent steps; `scripts/contrast-contract.mjs`
- * asserts the pair per palette, so the value cannot drift below it in silence.
+ * 75% the tightest own-ground pairs measure ΔE00 3.94 (`surface`) and 2.92
+ * (`elevated`), and the tightest against the plane it faces is 2.29 (`gruvbox`'s
+ * rail against an open pane; `rosePineDawn`'s pane edge against the conversation
+ * is 2.41). Those are above the ΔE00 2 perceptual threshold `docs/branding.md`
+ * § 3 states for adjacent steps, and `scripts/contrast-contract.mjs` asserts
+ * each pair per palette. The class's `/75` is not a second copy of the alpha:
+ * that gate reads `bg-hairline/(\d+)` out of this file and fails unless it
+ * equals `PANEL_SEAM_ALPHA`, so the shipped class and the measured number
+ * cannot drift apart (QA round 1, Q-3).
  *
  * `side` names the edge the seam SITS ON, the way `ResizableDivider`'s `side`
  * does: `start` is a panel whose content is to its right in LTR (the rail, every

@@ -129,6 +129,13 @@ const RAIL_GROUND = /\bbg-surface\b/;
  * on a pane's leading edge and the rail's; `end` is the sidebar column's. */
 const PANEL_EDGE_START = /<PanelEdge side="start" \/>/;
 const PANEL_EDGE_END = /<PanelEdge side="end" \/>/;
+/* The component itself, and the harness that draws the rail's own column. */
+const PANEL_EDGE_FILE =
+	"src/renderer/src/shared/components/common/panel-edge.tsx";
+const PANEL_RAIL_FRAME =
+	"src/renderer/src/shared/components/navigation/panel-rail-frame.tsx";
+const RESIZABLE_DIVIDER =
+	"src/renderer/src/shared/components/common/resizable-divider.tsx";
 /* The panel rail host's own ground (#872), in the shell. */
 const RAIL_HOST_GROUND =
 	/data-panel-rail-host=""[\s\S]{0,500}?className="[^"]*\b(bg-[\w-]+)\b[^"]*"/;
@@ -287,7 +294,7 @@ test("every pane in the slot paints its own ground and pads its first row", () =
 	);
 });
 
-test("the panel rail paints the lane's final stop and carries its seam as ONE element (#872, 2026-10-30)", () => {
+test("the panel rail paints the lane's final stop and its HOST carries the seam (#872; B1)", () => {
 	/*
 	 * The lane is a mirror of the columns' grounds, and the rail is a column: the
 	 * host's own class and the lane's last stop are ONE decision stated twice, so
@@ -295,15 +302,15 @@ test("the panel rail paints the lane's final stop and carries its seam as ONE el
 	 * rail is chrome (`surface`, the sidebar's rung), NOT a slot wrapper - its file
 	 * is not in PANE_HOSTS.
 	 *
-	 * THE SEAM IS `PanelEdge`, AND THAT IS WHY THIS PIN SURVIVES ITS REVERSAL. This
-	 * test used to be a NEGATIVE pin on "no rule of its own": the operator had asked
-	 * for the borders to go, and the `border-l border-hairline` that sat here drew
-	 * from y=32 down. On 2026-10-30 the operator reported the other half - the panels
-	 * have no readable edge in light themes - so the seam came back as one child
-	 * element, full height, from the theme's `hairline` (see `panel-edge.tsx`). The
-	 * root's class list still carries its ground and NOTHING that draws a line; the
-	 * seam is the child, and the child is asserted here, so a border cannot return
-	 * to this root as a second way of drawing it.
+	 * THE SEAM IS `PanelEdge`, AND IT IS MOUNTED ON THE HOST, NOT ON THE RAIL ROOT
+	 * (agent review round 1, B1; QA round 1, Q-1). The root is the host's
+	 * `panel-top-pad` CONTENT box, so a seam inside it began at y=32 on macOS - the
+	 * mid-air line this change exists to remove. The host is the full-height box
+	 * that paints the ground, so `relative` there plus `<PanelEdge side="start" />`
+	 * resolves `inset-y-0` to y0. Both are asserted below: the mount can no longer
+	 * drift back into the padded root without failing here, and the root still
+	 * carries its ground and NOTHING that draws a line - a border cannot return to
+	 * it as a second way of drawing the edge.
 	 */
 	const layoutSource = read(CHAT_LAYOUT);
 	const host = layoutSource.match(RAIL_HOST_GROUND);
@@ -315,6 +322,21 @@ test("the panel rail paints the lane's final stop and carries its seam as ONE el
 		host[1],
 		"bg-surface",
 		"the rail host must paint the rail's own `surface` from y0: it is the panel in that column now, and the lane cannot paint it",
+	);
+	/*
+	 * The host's two load-bearing classes: `panel-top-pad` keeps the rail's first
+	 * item below the OS controls while the box keeps y0, and `relative` is what makes
+	 * the seam's `inset-y-0` resolve against THIS box rather than the page.
+	 */
+	assert.match(
+		layoutSource,
+		/className="panel-top-pad relative h-full shrink-0 bg-surface"/,
+		`${CHAT_LAYOUT}: the rail host must be \`panel-top-pad relative h-full shrink-0 bg-surface\`. Without \`relative\` the seam resolves against the page and the host is no longer the box that anchors it (agent review round 1, B1).`,
+	);
+	assert.match(
+		withoutComments(layoutSource),
+		/data-panel-rail-host=""[\s\S]*?className="panel-top-pad relative h-full shrink-0 bg-surface"[\s\S]{0,120}?<PanelEdge side="start" \/>/,
+		`${CHAT_LAYOUT}: the rail's seam must be mounted on \`data-panel-rail-host\`. The rail's own root is a \`panel-top-pad\` content box and a seam inside it starts at the pad (y=32 on macOS), which is the defect this change removes (agent review round 1, B1; QA round 1, Q-1).`,
 	);
 	const rail = read(
 		"src/renderer/src/shared/components/navigation/panel-rail.tsx",
@@ -421,11 +443,95 @@ test("the seam is one `PanelEdge`, never a border, in the app or in the harness"
 		`${CHAT_LAYOUT} no longer mounts \`<PanelEdge side="end" />\`: the shell's sidebar column lost its seam`,
 	);
 	assert.match(
+		withoutComments(read(CHAT_LAYOUT)),
+		PANEL_EDGE_START,
+		`${CHAT_LAYOUT} no longer mounts \`<PanelEdge side="start" />\` on the rail host: the rail lost its seam (agent review round 1, B1)`,
+	);
+	/*
+	 * THE RAIL ROOT MUST NOT MOUNT IT. That is the B1 shape: the root is inside the
+	 * host's `panel-top-pad` content box, so a seam there starts at the pad. The
+	 * frame harness mirrors the host mount, because the arms that compose a row by
+	 * hand photograph the same edge.
+	 */
+	assert.doesNotMatch(
 		withoutComments(
 			read("src/renderer/src/shared/components/navigation/panel-rail.tsx"),
 		),
-		PANEL_EDGE_START,
-		'panel-rail.tsx no longer mounts `<PanelEdge side="start" />`: the rail lost its seam',
+		/<PanelEdge\b/,
+		"panel-rail.tsx mounts a `PanelEdge` again. The seam belongs on the rail's full-height HOST (`chat-layout.tsx`, and `panel-rail-frame.tsx` for the stories): inside this root it starts at the `panel-top-pad` pad, y=32 on macOS (agent review round 1, B1).",
+	);
+	assert.match(
+		withoutComments(read(PANEL_RAIL_FRAME)),
+		/<PanelEdge side="start" \/>/,
+		`${PANEL_RAIL_FRAME} lost the rail's seam: the story arms that draw their own row photograph an edge the app would draw (B1)`,
+	);
+});
+
+/*
+ * THE SEAM'S OWN GEOMETRY, WHICH NO FRAME CAN HOLD ACROSS THEMES.
+ *
+ * Agent review round 1 (m4): the old pin only matched `<PanelEdge side="start" />`
+ * anywhere in a host file, so a switch from `start-0`/`end-0` to `left-0`/`right-0`
+ * would have broken RTL silently, and nothing asserted the element was passive or
+ * above the panel's own rows. Those three properties are statements about the
+ * class string, so they are pinned here rather than described in a comment.
+ */
+test("the seam is passive, full height, logically placed and above the panel's rows", () => {
+	const source = withoutComments(read(PANEL_EDGE_FILE));
+	const required = {
+		"pointer-events-none":
+			"the seam is decoration: a pixel of it must never take a click from the panel beside it",
+		absolute:
+			"the seam must cost no layout (a border would take a pixel from the panel)",
+		"inset-y-0": "the seam must span the whole box it is mounted on",
+		"w-px": "the seam must be one pixel, never a rule",
+		"z-20":
+			"the seam must paint above sticky rows and inset shadows inside the panel",
+		"bg-hairline/75":
+			"the seam is `hairline` at the alpha `scripts/contrast-contract.mjs` measures; that gate also reads this class and fails if the two disagree (QA round 1, Q-3)",
+	};
+	for (const [utility, why] of Object.entries(required)) {
+		assert.ok(
+			source.includes(utility),
+			`${PANEL_EDGE_FILE}: the seam's class list lost \`${utility}\` - ${why}.`,
+		);
+	}
+	assert.match(
+		source,
+		/side === "start" \? "start-0" : "end-0"/,
+		`${PANEL_EDGE_FILE}: the seam is no longer placed with the logical \`start-0\`/\`end-0\`. A physical \`left-0\`/\`right-0\` puts it on the window's outer edge in RTL - the side with no neighbour (agent review round 1, m4). RTL has no rendered frame in this change; this class is the whole guarantee.`,
+	);
+	/*
+	 * `data-panel-edge` had no reader beyond the evidence rigs (agent review round
+	 * 1, nit 2). It is this pin's handle now: the seam is read by its attribute, so
+	 * the component cannot drop it without failing here.
+	 */
+	assert.match(
+		source,
+		/data-panel-edge=\{side\}/,
+		`${PANEL_EDGE_FILE}: the seam lost \`data-panel-edge={side}\`, the handle the evidence rigs find it by.`,
+	);
+});
+
+/*
+ * THE ONE MARK THAT MUST SURVIVE THE SEAM AT ITS COLUMN (agent review round 1,
+ * M2; QA round 1, Q-2). `ResizableDivider`'s wrapper is a stacking context, so
+ * its 2px state line only paints above the seam when the wrapper's own z-index
+ * does: `z-25` over the seam's `z-20`, and below the chrome lane's `z-30` so the
+ * window's drag strip still wins. A frame catches this only while hovered; this
+ * pin holds when nobody is looking.
+ */
+test("the divider's state line paints above the seam", () => {
+	const source = withoutComments(read(RESIZABLE_DIVIDER));
+	assert.match(
+		source,
+		/"relative z-25 shrink-0"/,
+		`${RESIZABLE_DIVIDER}: the divider's wrapper must carry \`relative z-25 shrink-0\`. At \`z-10\` its stacking context sat below the panel seam's \`z-20\`, so the seam covered one of the state line's two columns on hover and drag (agent review round 1, M2; QA round 1, Q-2).`,
+	);
+	assert.match(
+		source,
+		/"pointer-events-none absolute z-12"/,
+		`${RESIZABLE_DIVIDER}: the state line's own class changed; re-read the stacking argument above before updating this pin.`,
 	);
 });
 

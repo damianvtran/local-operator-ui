@@ -2266,10 +2266,11 @@ const GRAPHICS = [
 		 * ring, which puts its outer edge against the PANE's ground: `elevated`
 		 * (the browser, console, run and asks slots) or `canvas` (when no pane is
 		 * open, the conversation column). Those two are listed so a palette whose
-		 * `accent` sits close to either fails here and not on screen. There is no
-		 * hairline left between the rail and the pane - the edge is the tone
-		 * step, and `scripts/pane-slot-ground.test.mjs` pins the rail root's
-		 * no-rule - so the bar's own 2px column is the whole mark at that edge.
+		 * `accent` sits close to either fails here and not on screen. A `PanelEdge`
+		 * seam sits between the rail and the pane again (2026-10-30), and the bar
+		 * paints above it (`before:z-25` over the seam's `z-20`), so the bar's outer
+		 * pixel is `accent` against the pane's ground - the pair listed here - and
+		 * not the seam's 75% blend (design review round 1, D2).
 		 */
 		name: "panel rail lit glyph and bar",
 		on: ["rowSelected", "rowHover", "surface", "elevated", "canvas"],
@@ -4826,9 +4827,10 @@ const LINE_SEPARATION_FLOOR = 4.0;
  * MEASURED over the 59 palettes at 75%: the tightest own-ground pair is 2.92
  * (`ocean`, seam over `elevated`) and the tightest facing pair 2.29 (`gruvbox`'s
  * rail against an open pane). 70% failed the facing floor (`gruvbox`, 1.96), and
- * 75% is the lowest tenth that clears both. The alpha is pinned here rather than
- * left to a class string: `panel-edge.tsx` is not the authority for these numbers,
- * this file is.
+ * 75% is the lowest tenth that clears both. The alpha is pinned here, and the
+ * shipped class is read back from `panel-edge.tsx` after the palette loop: this
+ * file is the authority for the number, and the class must carry it (QA round 1,
+ * Q-3).
  */
 const PANEL_SEAM_ALPHA = 0.75;
 
@@ -6874,6 +6876,37 @@ for (const { id, palette: p } of palettes) {
 				`${id}: the panel seam over \`${ground}\` is ΔE00 ${r2(fromFacing)} from \`${facing}\` (need ${FIELD_SEPARATION_FLOOR}) — the seam has to read from the plane it faces as well as the one it sits on`,
 			);
 		}
+	}
+}
+
+/*
+ * THE ALPHA THE GATE MEASURES MUST BE THE ALPHA THE PRODUCT PAINTS (QA round 1,
+ * Q-3). `PANEL_SEAM_ALPHA` above is what every assertion in the palette loop used,
+ * but the shipped colour is the class string in `panel-edge.tsx`. While the two
+ * were separate literals, a class edit to `bg-hairline/40` left all of these
+ * assertions green (measured by QA: the full 187,924, no failure). Reading the
+ * class back here makes the gate measure the pixel that ships; exactly one
+ * `bg-hairline/<number>` in that file, carrying this percentage, or the gate
+ * fails.
+ */
+{
+	const source = readFileSync(
+		join(ROOT, "src/renderer/src/shared/components/common/panel-edge.tsx"),
+		"utf8",
+	);
+	const alphas = [...source.matchAll(/\bbg-hairline\/(\d+)\b/g)].map((m) =>
+		Number(m[1]),
+	);
+	assertions++;
+	const shipped = alphas.length === 1 ? alphas[0] : null;
+	if (shipped !== Math.round(PANEL_SEAM_ALPHA * 100)) {
+		fail(
+			`panel-edge.tsx paints ${
+				alphas.length === 0
+					? "no `bg-hairline/<alpha>` class"
+					: `\`bg-hairline/${alphas.join(", ")}\``
+			} but this gate measures \`PANEL_SEAM_ALPHA ${PANEL_SEAM_ALPHA}\` - the class that ships and the number every seam assertion used must be one value`,
+		);
 	}
 }
 
