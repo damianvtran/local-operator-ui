@@ -286,7 +286,7 @@
 	"ui.teamBridge.invitations.read_only": "Esta organización es de solo lectura para ti, así que aquí no se pueden responder invitaciones.",
 	"ui.teamBridge.invitations.failed.unconfirmed": "No se confirmó tu respuesta. Inténtalo de nuevo.",
 	"ui.teamBridge.mentions.listbox_label": "Personas y agentes para mencionar",
-	"ui.teamBridge.mentions.empty": "Nadie coincide con «{query}»",
+	"ui.teamBridge.mentions.empty": "Nadie coincide con “{query}”",
 	"ui.teamBridge.mentions.section.member_human": "Personas en esta conversación",
 	"ui.teamBridge.mentions.section.member_agent": "Agentes en esta conversación",
 	"ui.teamBridge.mentions.section.org_human": "Otras personas",
@@ -295,7 +295,7 @@
 	"ui.teamBridge.mentions.tag.not_member": "no está en este canal",
 	"ui.teamBridge.mentions.tag.bridge_off": "Team Bridge desactivado",
 	"ui.teamBridge.mentions.notice.not_member": "{name} no está en esta conversación.",
-	"ui.teamBridge.mentions.notice.invite_failed": "No se pudo invitar a {name}. Aún puedes mencionarlo sin notificarle.",
+	"ui.teamBridge.mentions.notice.invite_failed": "No se pudo invitar a {name}. Aún puedes mencionar a {name} sin notificar.",
 	"ui.teamBridge.mentions.notice.invite": "Invitar",
 	"ui.teamBridge.mentions.notice.silent": "Mencionar sin notificar"
 }
