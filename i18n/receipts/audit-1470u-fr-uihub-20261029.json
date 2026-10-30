@@ -1,0 +1,19 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "radient/auto",
+ "instance": "audit-1470u-fr-uihub-20261029",
+ "status": "passed",
+ "namespace": "ui.hub",
+ "sha256": {
+  "fr": "67553cb8c00857eeff9c2ec7d4a6f88cf5115871533ce8a47a4f7a7344653c3d",
+  "en": "0d77070295627e861882e8f952888c59e1d013dd754e1a7da79c85d1a31a9753"
+ },
+ "findings": [
+  {
+   "key": "ui.hub.links.healthy",
+   "severity": "NIT",
+   "problem": "The subscribe/auto-push state word is concatenated straight onto the verb with no separator (« S’abonner {subscribe} ») and the clause is capitalised mid-sentence, so the accessible name reads « S’abonner Activé ; Push automatique Désactivé ». es, ru and zh label the two states with a separator here.",
+   "fix": "Label each state as the sibling locales do: « Abonnement : {subscribe} ; Push automatique : {autoPush}. » Apply the same to ui.hub.links.healthy_unsourced."
+  }
+ ]
+}

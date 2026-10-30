@@ -23,6 +23,19 @@ import type {
 	TeamBridgeConversation,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
+/*
+ * WHY THIS SIDE-EFFECT IMPORT IS HERE, ABOVE THE COMPONENTS. Since the page
+ * mounts the shared `MessageInput`, the composer reaches
+ * `window.electron.ipcRenderer` from a passive effect on mount (the platform it
+ * renders the send chord for, and the native dialog behind attach). Storybook's
+ * preview mocks `window.api` and not `window.electron`, so without this stand-in
+ * every story in this file dies in `commitHookEffectListMount` with "Cannot read
+ * properties of undefined (reading 'ipcRenderer')" - measured here after the
+ * composer adoption, and the same failure `story-electron-shim.ts` already
+ * documents for the chat composer's stories. It is imported for its side effect,
+ * so the install has to happen before anything in this module renders.
+ */
+import "../chat/components/story-electron-shim";
 import profileImage from "../../assets/radient-icon-1024x1024.png";
 import { ChatLayout } from "../../shared/components/common/chat-layout";
 import { draftStorageKey } from "./team-bridge-drafts";
