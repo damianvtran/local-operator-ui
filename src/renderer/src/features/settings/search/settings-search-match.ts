@@ -42,10 +42,6 @@
  * consulted.
  */
 
-import type {
-	SettingSearchEntry,
-	SettingSearchField,
-} from "./settings-search-index";
 /*
  * The folding, tokenising and lobe-scoring primitives are the COMMAND PALETTE's,
  * imported rather than copied: one spelling of "what a token matches" across the
@@ -58,6 +54,10 @@ import {
 	normalizeText,
 	tokenize,
 } from "../../command-palette/palette-search";
+import type {
+	SettingSearchEntry,
+	SettingSearchField,
+} from "./settings-search-index";
 
 /** One field's contribution to an entry's score. */
 const FIELD_WEIGHT: Readonly<Record<SettingSearchField, number>> = {
@@ -235,8 +235,5 @@ export function groupSettingResults(
 	}
 	const ordered = [...groups.values()];
 	const headless = ordered.filter((group) => group.sectionId === "");
-	return [
-		...ordered.filter((group) => group.sectionId !== ""),
-		...headless,
-	];
+	return [...ordered.filter((group) => group.sectionId !== ""), ...headless];
 }

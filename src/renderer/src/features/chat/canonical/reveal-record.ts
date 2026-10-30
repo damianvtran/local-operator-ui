@@ -35,11 +35,11 @@
  * one that speaks to the reader.
  */
 
-import { scrollRegionToTop } from "@shared/lib/scroll";
 import {
 	JUMP_HIGHLIGHT_ATTR,
 	paintJumpHighlight,
 } from "@shared/lib/jump-highlight";
+import { scrollRegionToTop } from "@shared/lib/scroll";
 import { TRANSCRIPT_TOP_FADE_PX } from "@shared/lib/transcript-fade";
 import { revealRecord } from "./failed-row-jump";
 import {
@@ -468,4 +468,3 @@ export function jumpToEntry(
 		});
 	});
 }
-

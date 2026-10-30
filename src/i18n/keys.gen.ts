@@ -119,6 +119,7 @@ import enUiSettingsModelDefaultEffort from "./catalogues/en/ui.settings.model.de
 import enUiSettingsModel from "./catalogues/en/ui.settings.model.json";
 import enUiSettingsModelProviderCallout from "./catalogues/en/ui.settings.model.provider_callout.json";
 import enUiSettingsNavigation from "./catalogues/en/ui.settings.navigation.json";
+import enUiSettingsSearch from "./catalogues/en/ui.settings.search.json";
 import enUiSettingsShortcuts from "./catalogues/en/ui.settings.shortcuts.json";
 import enUiSettingsSpeech from "./catalogues/en/ui.settings.speech.json";
 import enUiSettingsUpdates from "./catalogues/en/ui.settings.updates.json";
@@ -978,6 +979,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiSettingsModel,
 	...enUiSettingsModelProviderCallout,
 	...enUiSettingsNavigation,
+	...enUiSettingsSearch,
 	...enUiSettingsShortcuts,
 	...enUiSettingsSpeech,
 	...enUiSettingsUpdates,
@@ -8906,6 +8908,24 @@ export type MessageParams = {
 	"ui.settings.navigation.settings_sidebar.settings_sections": undefined;
 	"ui.settings.navigation.settings_sidebar.speech_voicing": undefined;
 	"ui.settings.navigation.settings_sidebar.system": undefined;
+	"ui.settings.search.empty.shortcut": { shortcut: string };
+	"ui.settings.search.empty.summary": undefined;
+	"ui.settings.search.field.label": undefined;
+	"ui.settings.search.field.placeholder": undefined;
+	"ui.settings.search.jump.missing": undefined;
+	"ui.settings.search.no_results.clear": undefined;
+	"ui.settings.search.no_results.hint": undefined;
+	"ui.settings.search.no_results.title": { query: string };
+	"ui.settings.search.panel.label": undefined;
+	"ui.settings.search.reason.choice": undefined;
+	"ui.settings.search.reason.description": undefined;
+	"ui.settings.search.reason.key": undefined;
+	"ui.settings.search.reason.label": undefined;
+	"ui.settings.search.reason.section": undefined;
+	"ui.settings.search.reason.synonym": undefined;
+	"ui.settings.search.results.count": { count: number };
+	"ui.settings.search.results.more": { count: number };
+	"ui.settings.search.row.section_hint": { section: string };
 	"ui.settings.shortcuts.action.open_asks": undefined;
 	"ui.settings.shortcuts.action.open_browser": undefined;
 	"ui.settings.shortcuts.action.open_canvas": undefined;

@@ -54,7 +54,7 @@
 import type {
 	BackendSetting,
 	BackendSettings,
-} from "../../../../shared/desktop-contract";
+} from "../../../../../shared/desktop-contract";
 import { normalizeText } from "../../command-palette/palette-search";
 
 /**
@@ -126,8 +126,10 @@ const EMPTY_FIELDS: FoldedFields = {
 function foldFields(
 	parts: Partial<Record<SettingSearchField, string | readonly string[]>>,
 ): FoldedFields {
-	const fold = (value: string | string[] | undefined): string =>
-		Array.isArray(value) ? normalizeText(value.join(" ")) : normalizeText(value ?? "");
+	const fold = (value: string | ReadonlyArray<string> | undefined): string =>
+		typeof value === "string"
+			? normalizeText(value)
+			: normalizeText((value ?? []).join(" "));
 	return {
 		label: fold(parts.label),
 		synonym: fold(parts.synonym),
@@ -180,8 +182,7 @@ export function buildRegistryEntries(
 		const section = sections.get(setting.section);
 		return {
 			id: `setting:${setting.key}`,
-			kind: "registry",
-			kindOfJump: "registry",
+			source: "registry" as const,
 			label: setting.label || setting.key,
 			description: setting.help ?? "",
 			sectionId: "backend",

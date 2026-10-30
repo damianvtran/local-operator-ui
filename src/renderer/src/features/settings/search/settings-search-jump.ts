@@ -74,7 +74,9 @@ export function searchControlOf(row: HTMLElement): HTMLElement {
 	 * therefore hands focus to the first focusable thing inside it rather than
 	 * receiving a no-op `focus()`.
 	 */
-	return marked.matches(FOCUSABLE) ? marked : (marked.querySelector(FOCUSABLE) ?? marked);
+	return marked.matches(FOCUSABLE)
+		? marked
+		: (marked.querySelector(FOCUSABLE) ?? marked);
 }
 
 /** Whether `element` is laid out — no ancestor carries `hidden`. */

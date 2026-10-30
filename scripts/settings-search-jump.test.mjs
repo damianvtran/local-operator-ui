@@ -121,11 +121,14 @@ test("a jump scrolls the control to the centre, focuses it, and washes the ROW",
 	assert.equal(outcome, "landed");
 	const button =
 		findSearchRow(root, "appearance.theme").querySelector("button");
-	assert.equal(dom.window.document.activeElement, button, "focus is on the control");
-	assert.deepEqual(scrolled.at(-1), {
-		element: button,
-		options: { block: "center" },
-	});
+	// Identity compared as a boolean for the reason the component test states:
+	// an element diff on failure is a memory event, not a message.
+	assert.ok(
+		dom.window.document.activeElement === button,
+		"focus is on the control",
+	);
+	assert.ok(scrolled.at(-1).element === button, "the control was scrolled");
+	assert.deepEqual(scrolled.at(-1).options, { block: "center" });
 	assert.deepEqual(
 		painted.map((element) => element.getAttribute("data-search-row")),
 		["appearance.theme"],
@@ -170,10 +173,8 @@ test("a section jump scrolls to the root and focuses it", () => {
 	});
 	assert.equal(outcome, "landed");
 	const section = root.querySelector('[data-search-section="appearance"]');
-	assert.equal(dom.window.document.activeElement, section);
-	assert.deepEqual(scrolled.at(-1), {
-		element: section,
-		options: { block: "start" },
-	});
+	assert.ok(dom.window.document.activeElement === section);
+	assert.ok(scrolled.at(-1).element === section, "the section was scrolled");
+	assert.deepEqual(scrolled.at(-1).options, { block: "start" });
 	assert.equal(painted[0], section);
 });
