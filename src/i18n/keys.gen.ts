@@ -9296,6 +9296,7 @@ export type MessageParams = {
 	"ui.teamBridge.list.empty.title": undefined;
 	"ui.teamBridge.list.error": undefined;
 	"ui.teamBridge.list.error_pane": undefined;
+	"ui.teamBridge.list.error_stale": undefined;
 	"ui.teamBridge.list.loading": undefined;
 	"ui.teamBridge.list.retry": undefined;
 	"ui.teamBridge.list.untitled": undefined;

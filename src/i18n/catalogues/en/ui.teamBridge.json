@@ -33,6 +33,7 @@
 	"ui.teamBridge.list.empty.body": "Start a direct message, a group or a channel.",
 	"ui.teamBridge.list.loading": "Loading conversations",
 	"ui.teamBridge.list.error": "Conversations could not be loaded.",
+	"ui.teamBridge.list.error_stale": "Couldn't refresh. Showing your last read.",
 	"ui.teamBridge.list.retry": "Try again",
 	"ui.teamBridge.list.untitled": "Untitled conversation",
 	"ui.teamBridge.kind.dm": "Direct message",

@@ -220,6 +220,13 @@
 		"placeholders": {},
 		"note": "Shown when the list read fails (backend down, signed out or an upstream refusal). Do not name a cause the client cannot prove."
 	},
+	"ui.teamBridge.list.error_stale": {
+		"role": "stale-list notice",
+		"tone": "factual, reassuring, no blame",
+		"length": "Two short clauses.",
+		"placeholders": {},
+		"note": "Shown INSTEAD of list.error when the list read failed but rows from the cached snapshot are still painted below it. The first clause states the failed refresh; the second says the rows on screen are the reader's last read, so the sentence never contradicts what is visible. Do not name a cause the client cannot prove."
+	},
 	"ui.teamBridge.list.retry": {
 		"role": "error-state action",
 		"tone": "imperative",

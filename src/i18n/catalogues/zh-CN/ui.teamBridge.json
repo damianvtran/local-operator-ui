@@ -33,6 +33,7 @@
 	"ui.teamBridge.list.empty.body": "发起私信、群组或频道。",
 	"ui.teamBridge.list.loading": "正在加载对话",
 	"ui.teamBridge.list.error": "无法加载对话。",
+	"ui.teamBridge.list.error_stale": "无法刷新，显示的是你上次读取的内容。",
 	"ui.teamBridge.list.retry": "重试",
 	"ui.teamBridge.list.untitled": "未命名对话",
 	"ui.teamBridge.kind.dm": "私信",

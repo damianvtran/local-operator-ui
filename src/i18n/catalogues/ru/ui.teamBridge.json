@@ -33,6 +33,7 @@
 	"ui.teamBridge.list.empty.body": "Напишите личное сообщение, создайте группу или канал.",
 	"ui.teamBridge.list.loading": "Загрузка разговоров",
 	"ui.teamBridge.list.error": "Не удалось загрузить разговоры.",
+	"ui.teamBridge.list.error_stale": "Не удалось обновить. Показано последнее прочитанное.",
 	"ui.teamBridge.list.retry": "Повторить",
 	"ui.teamBridge.list.untitled": "Разговор без названия",
 	"ui.teamBridge.kind.dm": "Личное сообщение",

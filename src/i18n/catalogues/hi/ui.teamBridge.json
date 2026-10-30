@@ -33,6 +33,7 @@
 	"ui.teamBridge.list.empty.body": "सीधा संदेश, समूह या चैनल शुरू करें।",
 	"ui.teamBridge.list.loading": "बातचीतें लोड हो रही हैं",
 	"ui.teamBridge.list.error": "बातचीतें लोड नहीं हो सकीं।",
+	"ui.teamBridge.list.error_stale": "रीफ़्रेश नहीं हो सका। आपकी पिछली रीड दिखाई जा रही है।",
 	"ui.teamBridge.list.retry": "फिर कोशिश करें",
 	"ui.teamBridge.list.untitled": "बिना नाम की बातचीत",
 	"ui.teamBridge.kind.dm": "सीधा संदेश",

@@ -52,6 +52,12 @@ export const TeamBridgeOrgSwitcher: FC<{
 	totalUnread: number;
 	membershipsLoading?: boolean;
 	organizationsFailed?: boolean;
+	/**
+	 * The unread aggregate is being re-read behind an already-painted count
+	 * (tb-instant-open). The trigger states that the badge below it is being
+	 * refreshed instead of leaving a stale number looking current.
+	 */
+	unreadRefreshing?: boolean;
 	/** Story/capture seed only: opens the menu so its rows are visible. */
 	defaultOpen?: boolean;
 	/** Refetch the memberships after a failed read; shown as a menu action. */
@@ -63,6 +69,7 @@ export const TeamBridgeOrgSwitcher: FC<{
 	totalUnread,
 	membershipsLoading = false,
 	organizationsFailed = false,
+	unreadRefreshing = false,
 	defaultOpen = false,
 	onRetry,
 }) => {
@@ -80,6 +87,7 @@ export const TeamBridgeOrgSwitcher: FC<{
 					type="button"
 					aria-label={t("ui.teamBridge.scope.trigger", { name: title })}
 					title={title}
+					aria-busy={unreadRefreshing || undefined}
 					className={cn(
 						"group flex h-[30px] min-w-0 flex-1 items-center gap-2 rounded-md px-2",
 						"text-start text-[13px] text-ink transition-colors duration-fast",
