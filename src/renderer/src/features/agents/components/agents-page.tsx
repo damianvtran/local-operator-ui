@@ -62,7 +62,11 @@ import {
 	AlertDescription,
 	AlertTitle,
 } from "@shared/components/ui/alert";
-import { Avatar, AvatarImage } from "@shared/components/ui/avatar";
+import {
+	AgentAvatar,
+	AvatarFallback,
+	AvatarImage,
+} from "@shared/components/ui/avatar";
 import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
@@ -1825,9 +1829,19 @@ const RosterMark = ({ agentId }: { agentId: string | null }) => {
 		return <Bot aria-hidden="true" className="size-4 shrink-0 text-ink-dim" />;
 	}
 	return (
-		<Avatar className="size-4 shrink-0">
-			<AvatarImage src={avatar} alt="" className="border border-control" />
-		</Avatar>
+		/*
+		 * THE FALLBACK IS NOT DECORATION HERE (review round 2, R2-4). A stored
+		 * value can pass the data-URL gate and still fail to decode, and Radix
+		 * renders the image arm only after a load: without a fallback that agent's
+		 * 16px slot is simply blank. The same Bot the sidebar's rows draw keeps the
+		 * mark legible, inside the same shared plate every agent surface wears.
+		 */
+		<AgentAvatar className="size-4 shrink-0">
+			<AvatarImage src={avatar} alt="" />
+			<AvatarFallback>
+				<Bot className="size-3" aria-hidden="true" />
+			</AvatarFallback>
+		</AgentAvatar>
 	);
 };
 

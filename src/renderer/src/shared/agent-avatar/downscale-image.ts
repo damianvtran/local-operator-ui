@@ -32,24 +32,31 @@ export class AgentAvatarError extends Error {
 }
 
 /**
- * The dimensions a container header states, read without decoding pixels.
+ * The dimensions a container header states, when the runtime offers them.
  *
- * `ImageDecoder` is WebCodecs' image arm: constructing it parses the container,
- * and `tracks.ready` resolves with the coded size before any frame is decoded.
- * That makes the pixel bound above cost a header read rather than a bitmap.
+ * `ImageDecoder` is WebCodecs' image arm, and this leg exists to make the pixel
+ * bound above cost a header parse rather than a bitmap where that is possible.
  *
- * IT IS OPTIONAL BY DESIGN. The constructor is read off `globalThis` behind a
- * local type because the DOM lib does not promise it on every target, and a
+ * IT IS NOT POSSIBLE ON THE RUNTIME THIS SHIPS ON (review round 2, R2-1, and QA
+ * round 2's Q2-1). WebCodecs' `ImageTrack` has only `frameCount`, `animated`,
+ * `repetitionCount` and `selected` (spec section 10.7); `codedWidth` belongs to
+ * `VideoFrame`. Measured in Electron 44.3.0: the decoded frame reports
+ * `codedWidth`/`codedHeight`, the track reports neither, so the fields below are
+ * optional and the read answers `null` there. The decoded-bitmap check below is
+ * therefore the guard that always runs, and this one is a best-effort early
+ * exit for a runtime that does expose a track size.
+ *
+ * AND IT IS OPTIONAL BY DESIGN. The constructor is read off `globalThis` behind
+ * a local type because the DOM lib does not promise it on every target, and a
  * container the decoder will not parse (an older build's AVIF, say) answers
  * `null` rather than a refusal: `createImageBitmap` below is the decoder that
- * decides what this app can read, and the decoded-bitmap check is the guard
- * that always runs. A metadata reader that failed must never look like a
- * verdict on the file.
+ * decides what this app can read. A metadata reader that failed, or that has no
+ * size to report, must never look like a verdict on the file.
  */
 type ImageDecoderLike = {
 	tracks: {
 		ready: Promise<void>;
-		selectedTrack: { codedWidth: number; codedHeight: number } | null;
+		selectedTrack: { codedWidth?: number; codedHeight?: number } | null;
 	};
 	close: () => void;
 };
@@ -71,7 +78,21 @@ async function readSourceDimensions(
 		await decoder.tracks.ready;
 		const track = decoder.tracks.selectedTrack;
 		if (!track) return null;
-		return { width: track.codedWidth, height: track.codedHeight };
+		/*
+		 * A MISSING SIZE IS NO ANSWER, NOT A REFUSAL. `undefined` is what every
+		 * Chromium build measured here returns, and handing it to
+		 * `avatarPixelRefusal` made that rule call a good image undecodable.
+		 */
+		const { codedWidth: width, codedHeight: height } = track;
+		if (
+			typeof width !== "number" ||
+			!Number.isFinite(width) ||
+			typeof height !== "number" ||
+			!Number.isFinite(height)
+		) {
+			return null;
+		}
+		return { width, height };
 	} catch {
 		return null;
 	} finally {
@@ -85,13 +106,14 @@ async function readSourceDimensions(
  * Throws `AgentAvatarError` with the refusal that owns the failure, so the
  * settings row can say which one happened instead of "that did not work".
  *
- * THE PIXEL BOUND IS CHECKED TWICE, and the order is the point. The metadata
- * read below answers the source's dimensions from the container header, so a
- * 40,000 x 40,000 flat PNG is refused before a bitmap exists; the decoded
- * bitmap is then measured again, which is the authoritative check for every
- * browser whose metadata reader is missing or refuses the container. The second
- * one closes the bitmap in the `finally`, so even the arm that had to allocate
- * does not keep it.
+ * THE PIXEL BOUND MAY BE CHECKED TWICE, and the order is the point. Where the
+ * runtime states a track size, the metadata read below answers the source's
+ * dimensions from the container header, so a 40,000 x 40,000 flat PNG is
+ * refused before a bitmap exists; the decoded bitmap is then measured again,
+ * which is the check that always runs - for every browser whose metadata reader
+ * is missing, refuses the container, or reports no size at all (which is what
+ * Electron 44 does). The second one closes the bitmap in the `finally`, so even
+ * the arm that had to allocate does not keep it.
  */
 export async function downscaleAgentAvatar(file: File): Promise<string> {
 	const rejection = avatarFileRejection(file);

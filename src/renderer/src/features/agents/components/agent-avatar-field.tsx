@@ -33,7 +33,7 @@ import {
 	downscaleAgentAvatar,
 } from "@shared/agent-avatar/downscale-image";
 import {
-	Avatar,
+	AgentAvatar,
 	AvatarFallback,
 	AvatarImage,
 	Button,
@@ -135,23 +135,23 @@ export const AgentAvatarField: FC<AgentAvatarFieldProps> = ({
 				className="m-0 flex min-w-0 flex-wrap items-center gap-3 border-0 p-0"
 			>
 				{/*
-				 * The preview wears the same pair the sidebar row does - the `sunken`
-				 * plate and a `border-control` edge - because it is showing that row's
+				 * The preview wears the same plate the sidebar row does - the `sunken`
+				 * fill and a `border-control` edge - because it is showing that row's
 				 * mark, and an edge that appears in one place and not the other reads as
-				 * two different objects.
+				 * two different objects. The pair lives on the ROOT (`AgentAvatar`), not
+				 * on the image or the fallback: a border on the square image is clipped
+				 * by the circle, and a plate on the fallback unmounts as soon as a
+				 * picture loads, which left a transparent PNG on the pane's own ground
+				 * (design review round 1, D1 + D2).
 				 */}
-				<Avatar className="size-10 shrink-0">
+				<AgentAvatar className="size-10 shrink-0">
 					{avatar ? (
-						<AvatarImage
-							src={avatar}
-							alt=""
-							className="lo-avatar-arrival border border-control"
-						/>
+						<AvatarImage src={avatar} alt="" className="lo-avatar-arrival" />
 					) : null}
-					<AvatarFallback className="border border-control bg-sunken">
+					<AvatarFallback>
 						<Bot size={18} aria-hidden="true" />
 					</AvatarFallback>
-				</Avatar>
+				</AgentAvatar>
 				<Button
 					ref={uploadRef}
 					type="button"
@@ -164,6 +164,15 @@ export const AgentAvatarField: FC<AgentAvatarFieldProps> = ({
 					 * is what makes the state real, so the affordance and the behaviour agree.
 					 */
 					aria-disabled={busy}
+					/*
+					 * THE DISABLED STATE HAS A FACE (review round 2, R2-5). The base
+					 * `:where(:disabled, [aria-disabled="true"])` rule changes only the
+					 * cursor, so a decode looked like any other moment; `ink-disabled` is
+					 * the role this app already uses for the same non-interactive label.
+					 * The `!` is the repo's existing spelling where a variant owns the
+					 * ink (see `chat-sidebar.tsx`'s menu items).
+					 */
+					className="aria-disabled:text-ink-disabled!"
 					onClick={() => {
 						if (busy) return;
 						inputRef.current?.click();
@@ -178,6 +187,7 @@ export const AgentAvatarField: FC<AgentAvatarFieldProps> = ({
 						variant="ghost"
 						size="sm"
 						aria-disabled={busy}
+						className="aria-disabled:text-ink-disabled!"
 						onClick={() => {
 							if (busy) return;
 							setSaveFailed(!clearAgentAvatar(agentId));

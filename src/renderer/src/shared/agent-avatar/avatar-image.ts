@@ -189,7 +189,9 @@ export function coverSourceRect(
  * written by a build that stored something else, and the result is read
  * straight into `<img src>`. Anything that is not a `webp`/`png`/`jpeg` data
  * URL of the right shape is dropped, and entries beyond `AGENT_AVATAR_LIMIT` or
- * the `AGENT_AVATAR_MAX_TOTAL_CHARS` budget go oldest-first.
+ * the `AGENT_AVATAR_MAX_TOTAL_CHARS` budget go oldest-first - where "oldest" is
+ * the key's position in the stored object, which is why the trim preserves that
+ * order instead of rebuilding it.
  */
 export function sanitizeAvatarImages(value: unknown): Record<string, string> {
 	if (value === null || typeof value !== "object" || Array.isArray(value)) {
@@ -210,19 +212,28 @@ export function sanitizeAvatarImages(value: unknown): Record<string, string> {
 	 * first entry that does not fit: a store over either bound keeps the pictures
 	 * most recently written and drops the oldest, which are the ones the user has
 	 * to scroll furthest to notice missing.
+	 *
+	 * THE RETURNED ORDER IS THE INPUT'S, OLDEST FIRST (review round 2, R2-2). The
+	 * kept keys are collected newest-first and then inserted back in reverse, so
+	 * the object this returns is ordered the way the next call (every write, every
+	 * hydrate) reads it as oldest-first. Building `trimmed` directly in the walk
+	 * reversed the order on every pass, and the pass after a full store then read
+	 * the newest picture as the oldest and dropped it.
 	 */
-	const keys = Object.keys(kept);
-	const trimmed: Record<string, string> = {};
+	const entries = Object.entries(kept);
+	const keptKeys: string[] = [];
 	let totalChars = 0;
-	let keptCount = 0;
-	for (let index = keys.length - 1; index >= 0; index--) {
-		const key = keys[index];
-		const entry = kept[key];
-		if (keptCount >= AGENT_AVATAR_LIMIT) break;
+	for (let index = entries.length - 1; index >= 0; index--) {
+		const [key, entry] = entries[index];
+		if (keptKeys.length >= AGENT_AVATAR_LIMIT) break;
 		if (totalChars + entry.length > AGENT_AVATAR_MAX_TOTAL_CHARS) break;
-		trimmed[key] = entry;
+		keptKeys.push(key);
 		totalChars += entry.length;
-		keptCount += 1;
+	}
+	const trimmed: Record<string, string> = {};
+	for (let index = keptKeys.length - 1; index >= 0; index--) {
+		const key = keptKeys[index];
+		trimmed[key] = kept[key];
 	}
 	return trimmed;
 }

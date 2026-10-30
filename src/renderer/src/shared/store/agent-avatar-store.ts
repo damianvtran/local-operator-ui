@@ -105,9 +105,17 @@ export const useAgentAvatarStore = create<AgentAvatarState>()(
 				 * that hands this a URL the reader would refuse would otherwise store a
 				 * picture that never appears, which is the failure that looks like the
 				 * upload silently not working.
+				 *
+				 * THE KEY IS REMOVED AND RE-APPENDED (review round 2, R2-2), so a
+				 * re-upload is the newest entry. A spread keeps the key's old position,
+				 * and the trim reads position as age: replacing an agent's picture would
+				 * otherwise leave it queued for eviction as if it were the first ever
+				 * written.
 				 */
+				const previous = { ...get().images };
+				delete previous[agentId];
 				const images = sanitizeAvatarImages({
-					...get().images,
+					...previous,
 					[agentId]: dataUrl,
 				});
 				// Refused by the sanitiser rather than by the storage: nothing to save.

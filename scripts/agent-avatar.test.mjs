@@ -430,3 +430,194 @@ test("a full store keeps the picture in memory and reports the write", async () 
 		storage.setItem = original;
 	}
 });
+
+/* ------------------------------------------------------------------ *
+ * THE DECODED PATH (review round 2, R2-1; QA round 2, Q2-1)
+ *
+ * The reason this section exists: round 1 shipped a pre-decode guard that
+ * asked `ImageDecoder`'s `ImageTrack` for `codedWidth`/`codedHeight`, which
+ * that interface does not have. Every real image was refused as undecodable,
+ * and no test noticed because Node has no `ImageDecoder` and the suite only
+ * pinned the pure rules. The stubs below are the runtime the browser actually
+ * offers - a track with no size fields - and the canvas is the smallest fake
+ * that lets the real `downscaleAgentAvatar` run end to end.
+ * ------------------------------------------------------------------ */
+
+/**
+ * A canvas stand-in: the pipeline only reads a 2d context and the data URL it
+ * exports, so the drawing itself need not be real here. The real Electron
+ * renderer is where the pixels are proven (`rig/downscale-proof.mjs`).
+ */
+const stubCanvas = () => ({
+	width: 0,
+	height: 0,
+	getContext: () => ({
+		imageSmoothingEnabled: false,
+		imageSmoothingQuality: "low",
+		drawImage: () => undefined,
+	}),
+	toDataURL: () => "data:image/webp;base64,AAAA",
+});
+
+const withBrowserStubs = async (track, bitmap, run) => {
+	const originalCreate = document.createElement;
+	const calls = { decoded: 0, decoderClosed: 0, bitmapClosed: 0 };
+	class StubImageDecoder {
+		constructor() {
+			this.tracks = {
+				ready: Promise.resolve(),
+				selectedTrack: track,
+			};
+		}
+
+		close() {
+			calls.decoderClosed += 1;
+		}
+	}
+	globalThis.ImageDecoder = StubImageDecoder;
+	globalThis.createImageBitmap = async () => {
+		calls.decoded += 1;
+		return {
+			width: bitmap.width,
+			height: bitmap.height,
+			close: () => {
+				calls.bitmapClosed += 1;
+			},
+		};
+	};
+	document.createElement = (tag) =>
+		tag === "canvas" ? stubCanvas() : originalCreate.call(document, tag);
+	try {
+		return await run(calls);
+	} finally {
+		document.createElement = originalCreate;
+		Reflect.deleteProperty(globalThis, "ImageDecoder");
+		Reflect.deleteProperty(globalThis, "createImageBitmap");
+	}
+};
+
+const pngFile = (bytes = 1) => ({
+	type: "image/png",
+	size: bytes,
+	arrayBuffer: async () => new ArrayBuffer(bytes),
+});
+
+test("a track with no coded size is no answer, not a refusal (R2-1)", async () => {
+	await withBrowserStubs({}, { width: 800, height: 600 }, async (calls) => {
+		const dataUrl = await downscaleAgentAvatar({
+			type: "image/png",
+			size: 8611,
+			arrayBuffer: async () => new ArrayBuffer(8611),
+		});
+		assert.equal(dataUrl, "data:image/webp;base64,AAAA");
+		assert.equal(calls.decoded, 1, "the bitmap is the decoder that decides");
+		assert.equal(calls.bitmapClosed, 1, "the decoded bitmap is closed");
+	});
+});
+
+test("a track whose coded size is not finite is no answer either", async () => {
+	for (const track of [
+		{ codedWidth: undefined, codedHeight: undefined },
+		{ codedWidth: Number.NaN, codedHeight: 600 },
+		{ codedWidth: 800 },
+	]) {
+		await withBrowserStubs(track, { width: 800, height: 600 }, async () => {
+			const dataUrl = await downscaleAgentAvatar(pngFile());
+			assert.equal(dataUrl, "data:image/webp;base64,AAAA");
+		});
+	}
+});
+
+test("a decoded bitmap past the megapixel bound is refused and closed", async () => {
+	await withBrowserStubs({}, { width: 9000, height: 8000 }, async (calls) => {
+		await assert.rejects(
+			() => downscaleAgentAvatar(pngFile()),
+			(error) => error instanceof AgentAvatarError && error.code === "decode",
+		);
+		assert.equal(calls.decoded, 1);
+		assert.equal(
+			calls.bitmapClosed,
+			1,
+			"the refused bitmap does not stay allocated",
+		);
+	});
+});
+
+test("a track that states an over-cap size refuses before the bitmap exists", async () => {
+	await withBrowserStubs(
+		{ codedWidth: 9000, codedHeight: 8000 },
+		{ width: 800, height: 600 },
+		async (calls) => {
+			await assert.rejects(
+				() => downscaleAgentAvatar(pngFile()),
+				(error) => error instanceof AgentAvatarError && error.code === "decode",
+			);
+			assert.equal(
+				calls.decoded,
+				0,
+				"the early exit is taken when a size exists",
+			);
+			assert.equal(calls.decoderClosed, 1, "the decoder itself is closed");
+		},
+	);
+});
+
+/* ------------------------------------------------------------------ *
+ * THE TRIM PRESERVES ORDER (review round 2, R2-2)
+ * ------------------------------------------------------------------ */
+
+test("the trim keeps the input's oldest-first order", () => {
+	const many = {};
+	for (let index = 0; index < AGENT_AVATAR_LIMIT + 3; index++) {
+		many[`agent-${index}`] = WEBP;
+	}
+	const once = sanitizeAvatarImages(many);
+	const twice = sanitizeAvatarImages(once);
+	assert.deepEqual(Object.keys(once), Object.keys(twice));
+	assert.equal(
+		Object.keys(once)[0],
+		"agent-3",
+		"the oldest surviving key stays first",
+	);
+	assert.equal(
+		Object.keys(once).at(-1),
+		`agent-${AGENT_AVATAR_LIMIT + 2}`,
+		"the newest key stays last",
+	);
+});
+
+test("seventy writes keep the newest sixty-four pictures", async () => {
+	const { setAgentAvatar, useAgentAvatarStore } = await import(
+		`${storeUrl}?sequence=1`
+	);
+	const ids = [];
+	for (let index = 0; index < 70; index++) {
+		const id = `seq-${index}`;
+		ids.push(id);
+		await act(() => {
+			setAgentAvatar(id, WEBP);
+		});
+	}
+	const images = useAgentAvatarStore.getState().images;
+	assert.deepEqual(
+		Object.keys(images),
+		ids.slice(-AGENT_AVATAR_LIMIT),
+		"the survivors are the newest 64, in write order - the 65th write may not drop the 64th",
+	);
+	/* A re-upload is the newest, not its first-written position. */
+	await act(() => {
+		setAgentAvatar("seq-10", WEBP);
+	});
+	const after = useAgentAvatarStore.getState().images;
+	assert.equal(
+		Object.keys(after).at(-1),
+		"seq-10",
+		"replacing a picture moves its key to the newest slot",
+	);
+	assert.equal(Object.keys(after).length, AGENT_AVATAR_LIMIT);
+	assert.equal(
+		after["seq-6"],
+		WEBP,
+		"a re-upload of an existing key adds no entry, so nothing is evicted",
+	);
+});
