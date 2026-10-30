@@ -23,6 +23,7 @@ import type {
 	TeamBridgeConversation,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
+import type { OwnerAuditConversation } from "../../../../shared/team-bridge-owner-audit-contract";
 /*
  * WHY THIS SIDE-EFFECT IMPORT IS HERE, ABOVE THE COMPONENTS. Since the page
  * mounts the shared `MessageInput`, the composer reaches
@@ -49,7 +50,13 @@ import {
 	draftCreateInput,
 	organizationOptions,
 } from "./team-bridge-model";
+import {
+	OwnerAuditRailView,
+	OwnerAuditSectionHeader,
+	type OwnerAuditSlot,
+} from "./team-bridge-owner-audit";
 import { TeamBridgePageView } from "./team-bridge-page";
+import { RailGroupHeader } from "./team-bridge-rail";
 import { scheduledLocalInput } from "./team-bridge-scheduling";
 import { TeamBridgeThreadPaneView } from "./team-bridge-thread-pane";
 import { threadTargetFromSearch } from "./team-bridge-thread-read";
@@ -1119,6 +1126,159 @@ export const PeopleAllOrganizations: Story = {
 		conversations: [dm, beaDm, channel, group, northwindChannel],
 		directories: { tnt_1: directoryPeople, tnt_2: northwindPeople },
 		directoryStates: { tnt_1: "ready", tnt_2: "ready" },
+	},
+};
+
+/*
+ * THE CHIEF-OF-STAFF AUDIT IN BOTH VIEWS.
+ *
+ * WHY A STATIC SLOT. The page takes the audit as an `OwnerAuditSlot`, which the
+ * container builds with `useOwnerAuditSurface` - a hook that reads the audit
+ * routes through the query cache and the desktop transport. Neither exists
+ * here, so these stories hand the page a slot built from the SAME exported
+ * pieces the hook composes (`OwnerAuditSectionHeader` + one `OwnerAuditRailView`
+ * per organization) with each organization's read state fixed. What that buys:
+ * the frames show where the audit sits in the union rail - after Chiefs of
+ * staff, grouped per organization - and how its loading line reads beside the
+ * rosters. What it does NOT buy: any claim that the routes answer, or that the
+ * selection moves (the panel is never opened here); the hook's behaviour is
+ * pinned by `scripts/team-bridge-owner-audit-render.test.mjs`.
+ *
+ * The organization subheader is the shared `RailGroupHeader` with the `bare`
+ * inset, because the audit section carries no `RailSection` padding of its own;
+ * with several organizations that is the union rail's one subheader treatment,
+ * and with ONE organization there is no subheader at all, exactly as the hook
+ * omits it when `organizations.length === 1`. The hook file belongs to the audit
+ * lane (#1513), so this mirrors its structure rather than changing it.
+ */
+const auditConversation = (
+	organization: TeamBridgeOrganization,
+	overrides: Pick<OwnerAuditConversation, "id" | "kind" | "name"> &
+		Partial<OwnerAuditConversation>,
+): OwnerAuditConversation => ({
+	tenant_id: organization.tenantId,
+	visibility: "private",
+	status: "active",
+	last_message_at: "2026-10-29T15:20:00Z",
+	latest_seq: 12,
+	members: [],
+	member_count: 2,
+	viewers: [],
+	agent: {
+		account_id: "acct_aida",
+		display_label: "Aida",
+		state: "active",
+		joined_seq: 1,
+	},
+	...overrides,
+});
+
+const auditRows: Record<string, OwnerAuditConversation[]> = {
+	[minervaOrganization.tenantId]: [
+		auditConversation(minervaOrganization, {
+			id: "bconv_audit_ben",
+			kind: "dm",
+			name: null,
+			members: [
+				{
+					account_id: "acct_ben",
+					kind: "human",
+					display_label: "Ben Okafor",
+					role: "member",
+					state: "active",
+				},
+				{
+					account_id: "acct_aida",
+					kind: "agent",
+					display_label: "Aida",
+					role: "member",
+					state: "active",
+				},
+			],
+		}),
+		auditConversation(minervaOrganization, {
+			id: "bconv_audit_deploys",
+			kind: "channel",
+			name: "deployments",
+		}),
+	],
+	[northwindOrganization.tenantId]: [
+		auditConversation(northwindOrganization, {
+			id: "bconv_audit_launch",
+			kind: "channel",
+			name: "launch-room",
+		}),
+	],
+};
+
+function staticOwnerAudit(
+	organizations: TeamBridgeOrganization[],
+	state: "loading" | "ready",
+): OwnerAuditSlot {
+	return {
+		active: false,
+		clear: () => {},
+		panel: null,
+		rail: () => (
+			<section className="mt-4" aria-label={t("ui.ownerAudit.title")}>
+				<OwnerAuditSectionHeader />
+				{organizations.map((organization) => (
+					<div key={organization.tenantId}>
+						{organizations.length > 1 && (
+							<RailGroupHeader
+								id={`owner-audit-${organization.tenantId}`}
+								name={organization.name}
+								inset="bare"
+							/>
+						)}
+						<OwnerAuditRailView
+							conversations={auditRows[organization.tenantId] ?? []}
+							state={state}
+							onSelect={() => {}}
+							retry={() => {}}
+						/>
+					</div>
+				))}
+			</section>
+		),
+	};
+}
+
+/** The union rail while every organization's audit list is still being read. */
+export const AllOrganizationsAuditLoading: Story = {
+	args: {
+		...AllOrganizations.args,
+		ownerAudit: staticOwnerAudit(
+			[minervaOrganization, northwindOrganization],
+			"loading",
+		),
+	},
+};
+
+/** The union rail with each organization's audited conversations listed. */
+export const AllOrganizationsAuditPopulated: Story = {
+	args: {
+		...AllOrganizations.args,
+		ownerAudit: staticOwnerAudit(
+			[minervaOrganization, northwindOrganization],
+			"ready",
+		),
+	},
+};
+
+/** One organization, audit still loading: no organization subheader anywhere. */
+export const SingleOrganizationAuditLoading: Story = {
+	args: {
+		...SingleOrganizationRoster.args,
+		ownerAudit: staticOwnerAudit([minervaOrganization], "loading"),
+	},
+};
+
+/** One organization, audit listed: the shipped single-organization rail. */
+export const SingleOrganizationAuditPopulated: Story = {
+	args: {
+		...SingleOrganizationRoster.args,
+		ownerAudit: staticOwnerAudit([minervaOrganization], "ready"),
 	},
 };
 
