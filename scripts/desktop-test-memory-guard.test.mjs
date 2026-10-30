@@ -21,6 +21,7 @@ import {
 	computeMemoryBudget,
 	createMemoryWatchdog,
 	formatBreachLine,
+	formatMemoryBudgetLine,
 	killTree,
 	parseFootprintBytes,
 	parseProcStat,
@@ -58,16 +59,32 @@ const WATCHDOG_OFF = /memory watchdog OFF/;
 const BUDGET_LINE = /desktop tests: memory bound \d/;
 
 test("the derived budget has a floor, scales with RAM, and is capped for small hosts", () => {
-	// 36 GB host: 25% (9,216 MB) beats the floor.
-	assert.equal(computeMemoryBudget({ totalMb: 36864 }).budgetMb, 9216);
-	// 16 GB hosted runner: the 8,192 MB floor beats 25% (4,096 MB) and is exactly
-	// the 50% ceiling.
+	// 36 GB development host: the floor now beats 25% (9,216 MB).
+	assert.equal(
+		computeMemoryBudget({ totalMb: 36864 }).budgetMb,
+		_BUDGET_FLOOR_MB,
+	);
+	// THE REAL 16 GB HOSTED RUNNER, which reports 15,983 MB — and the case this
+	// suite did not have. A 16,384 MB fixture cannot tell the floor from the
+	// ceiling (both were 8,192 MB there), so it read green while the runner's
+	// 15,983 MB capped the suite at 7,991 MB (7.8 GB) and killed four healthy runs
+	// between 7.9 and 9.4 GB. Pin the measured host, not the round number.
+	const runner = computeMemoryBudget({ totalMb: 15983 });
+	assert.equal(runner.budgetMb, _BUDGET_FLOOR_MB);
+	// 9.4 GB = 9,626 MB is the highest measured kill (run 41040832734): the bound
+	// must clear it, or the same false kill comes back.
+	assert.ok(runner.budgetMb > 9626, "clears the highest measured kill");
+	assert.equal(
+		formatMemoryBudgetLine(runner),
+		"desktop tests: memory bound 9.5 GB for the test process group (max(9728 MB floor, 25% of 15983 MB RAM), capped at 62.5%); sampled every 2s on max(footprint, rss)",
+	);
+	// A nominal 16 GiB box lands on the floor too, not on the ceiling.
 	assert.equal(
 		computeMemoryBudget({ totalMb: 16384 }).budgetMb,
 		_BUDGET_FLOOR_MB,
 	);
-	// 8 GB box: the floor would be 100% of RAM, so the 50% ceiling binds.
-	assert.equal(computeMemoryBudget({ totalMb: 8192 }).budgetMb, 4096);
+	// 8 GB box: the 9.5 GB floor would be 116% of RAM, so the 62.5% ceiling binds.
+	assert.equal(computeMemoryBudget({ totalMb: 8192 }).budgetMb, 5120);
 	// Unmeasurable RAM still bounds the run.
 	const unknown = computeMemoryBudget({ totalMb: null });
 	assert.equal(unknown.budgetMb, _BUDGET_FLOOR_MB);
