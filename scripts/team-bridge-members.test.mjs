@@ -60,6 +60,24 @@ globalThis.Event = dom.window.Event;
 globalThis.CustomEvent = dom.window.CustomEvent;
 globalThis.localStorage = dom.window.localStorage;
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+/*
+ * THE DESKTOP BRIDGE, INERT. The page mounts the shared composer, whose own
+ * effects reach the bridge on mount — the transcription manager subscribes to
+ * `start-speech-to-text` and the composer asks `get-platform-info` — so an
+ * absent `window.electron` throws inside the effect and fails the mount before
+ * the assertion. This file is about the invite picker, so a bridge that answers
+ * "nothing" is the honest stand-in; `agents-composer-mount.test.mjs` states the
+ * same recipe for the same reason.
+ */
+globalThis.window.electron = {
+	ipcRenderer: {
+		on: () => () => {},
+		removeListener: () => {},
+		send: () => {},
+		invoke: async (channel) =>
+			channel === "get-platform-info" ? { platform: "darwin" } : {},
+	},
+};
 // Radix's dialog asks for these on mount; jsdom ships neither.
 globalThis.ResizeObserver ??= class {
 	observe() {}
@@ -123,17 +141,63 @@ const bundled = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
-	// Every dependency stays external so Node loads ONE copy of React for this
-	// test and the components alike: a bundled second React would make Radix's
-	// hooks and the test's `act` disagree about the same component.
-	packages: "external",
+	/*
+	 * ONLY THE PACKAGES THE SUITE ITSELF IMPORTS STAY EXTERNAL, so Node still
+	 * holds ONE React and the component's hooks and the test's `act` agree about
+	 * the same component.
+	 *
+	 * WHY NOT `packages: "external"` (what this file used until the fold). That
+	 * handed the whole bare-import graph to Node's ESM resolver. Once the page's
+	 * rewrite reached `shared/themes/base-theme.ts`, which imports
+	 * `@mui/material/styles`, the bundle carried that bare DIRECTORY import
+	 * straight through and Node refused it — `ERR_UNSUPPORTED_DIR_IMPORT`,
+	 * "Cannot find module .../node_modules/@mui/material/styles" — before a
+	 * single assertion ran. Bundling everything the suite does not itself import
+	 * keeps the identity guarantee while letting the app's own dependency graph
+	 * resolve the way the app's bundler does. `team-bridge-directory.test.mjs`
+	 * hit the same import first and states the same recipe.
+	 */
+	external: [
+		"@tanstack/react-query",
+		"react",
+		"react-dom",
+		"react-dom/client",
+		"react-router-dom",
+		"react/jsx-runtime",
+	],
+	// Vite's `import.meta.env` is read at IMPORT time by the app's config loader,
+	// which the page's chain pulls in (`load-config.ts`): bundling for node leaves
+	// it undefined and the module throws before any assertion
+	// (`browser-chrome.test.mjs` records the same trap). The URL is dead on purpose.
+	define: { "import.meta.env": "__viteEnv" },
+	/*
+	 * BOTH SHIMS THE APP'S BUNDLER GIVES THE SAME MODULES. `__viteEnv` is Vite's
+	 * `import.meta.env`; `require` is what a CJS dependency inside an ESM bundle
+	 * needs, resolved from THIS file the way the app resolves it.
+	 */
+	banner: {
+		js: 'const __viteEnv = {}; import { createRequire as __loCreateRequire } from "node:module"; const require = __loCreateRequire(import.meta.url);',
+	},
 	jsx: "automatic",
 	write: false,
-	loader: { ".css": "empty" },
+	// The page now mounts the shared composer, which pulls the brand mark (.png)
+	// and the fonts; a `dataurl` rather than a file keeps the harness asset-free.
+	loader: {
+		".css": "empty",
+		".svg": "text",
+		".png": "dataurl",
+		".webp": "dataurl",
+		".ttf": "empty",
+		".woff": "empty",
+		".woff2": "empty",
+		".eot": "empty",
+	},
 	plugins: [chatSidebarStub],
 	alias: {
 		"@shared": `${ROOT}/src/renderer/src/shared`,
 		"@features": `${ROOT}/src/renderer/src/features`,
+		// The shared composer imports the brand mark through this alias.
+		"@assets": `${ROOT}/src/renderer/src/assets`,
 	},
 });
 // Node resolves bare imports relative to the module's own URL, and a data: URL
