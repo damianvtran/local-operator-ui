@@ -256,17 +256,20 @@ function TeamBridgeReactionChipsBody({
 						 * `elevated` on every palette) with the ink stepping to `ink`; it
 						 * never lifts or scales.
 						 *
-						 * THE READER'S OWN REACTION is the brighter state: 20% `accent`
+						 * THE READER'S OWN REACTION is the brighter state: 26% `accent`
 						 * mixed over `surface`, with an `ink` count at medium weight. NOT
 						 * `accent-wash` (design review round 1, D1): that role sits at the
 						 * ground's depth, so it measured ΔE00 2.04 / 1.01:1 against the
 						 * others' `elevated` pill in tokyoNight - the operator's theme - and
 						 * was darker than it in 54 of 59 palettes. The mix is accent-tinted
-						 * AND apart from every neighbour: ΔE00 >= 5.83 off `elevated` (worst
-						 * tokyoNight), >= 5.30 off a hovered row, `ink` >= 5.44:1 on it.
-						 * The count is `ink` rather than `accent` because `accent` on a fill
-						 * this tinted drops to 3.52:1. Hover steps the fill to 27% (D5:
-						 * the same kind of fill step the others' pills take), `ink` >= 4.64:1.
+						 * AND clearly apart from every neighbour: ΔE00 >= 8.50 off
+						 * `elevated` (worst tokyoNight; 20% measured only 5.83, which is why
+						 * round 2 raised the share - D6), >= 7.73 off a hovered row,
+						 * `ink` >= 4.72:1 on it (ayuMirage). The count is `ink` rather than
+						 * `accent` because `accent` on a fill this tinted is 3.16:1. Hover
+						 * steps the fill DOWN to 20% - darker, the direction the others'
+						 * pills take to `sunken` (D5/D6), not brighter -- with `ink`
+						 * >= 5.44:1 on it, and it darkens in 41 of 59 palettes.
 						 * `surface` is the thread's ground; on the thread pane's `canvas`
 						 * the same fill is asserted apart too. All of it lives in
 						 * `REACTION_OWN_PILL` in `scripts/contrast-contract.mjs`, which
@@ -282,7 +285,7 @@ function TeamBridgeReactionChipsBody({
 						className={cn(
 							"inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2 text-[12px] leading-none transition-colors duration-fast ease-out-quart disabled:text-ink-dim",
 							reaction.reacted_by_me
-								? "bg-[color-mix(in_srgb,var(--color-accent)_20%,var(--color-surface))] font-medium text-ink hover:bg-[color-mix(in_srgb,var(--color-accent)_27%,var(--color-surface))]"
+								? "bg-[color-mix(in_srgb,var(--color-accent)_26%,var(--color-surface))] font-medium text-ink hover:bg-[color-mix(in_srgb,var(--color-accent)_20%,var(--color-surface))]"
 								: "bg-elevated text-ink-muted hover:bg-sunken hover:text-ink",
 						)}
 					>

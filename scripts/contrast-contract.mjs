@@ -3023,17 +3023,31 @@ const PERCEPTIBLE = [
  * The own reaction pill's derived fills (`team-bridge-reactions.tsx`), asserted
  * in the palette loop. The shares are the call site's `color-mix` percentages;
  * the pin "team bridge own reaction pill fill" below holds the call site to
- * them. Floors: 5.0 ΔE00 off the others' resting pill is "clearly" apart (the
- * file's perceptual floor is 3.0; 20% is the smallest share that clears 5 on
- * all 59, worst tokyoNight 5.83); 3.0 off every other host. The hover step is
- * its own row so a pressed-looking hover cannot quietly fail its ink.
+ * them.
+ *
+ * THE REST FLOOR IS 8.0 ΔE00 OFF THE OTHERS' PILL (design review round 2, D6).
+ * "Clearly brighter" is the operator's headline ask, and the round-1 mix (20%,
+ * floor 5.0) measured 5.83 in tokyoNight - the operator's own theme - which is
+ * the thinnest margin in the fleet, not a clear one. 26% measures >= 8.50
+ * (tokyoNight again) with `ink` >= 4.72:1 (ayuMirage); 22% and 24% still sit
+ * under 8 (6.90 / 7.68), so 26% is the smallest share that clears it on all 59.
+ *
+ * WHY THE HOVER ROW KEEPS 5.0 AND DOES NOT TAKE 8.0. The hover fill goes DOWN to
+ * 20% - darker, the direction the others' pills take to `sunken` (D5, restated
+ * by D6) - so it necessarily steps TOWARD the others' resting `elevated` pill:
+ * at 20% it is 5.83 from it, and NO share clears 8.0 while still being a step
+ * down from the 26% rest (clearing 8.0 needs the same 26%). The two states are
+ * never compared side by side anyway; what the hover must keep is its own
+ * legibility (`ink` >= 5.44:1) and its separation from the grounds it is
+ * painted on, and those are asserted here. The step itself measures ΔE00 2.44
+ * worst (sage).
  */
 const REACTION_OWN_PILL = [
 	{
 		name: "team bridge own reaction pill",
-		accentShare: 0.2,
+		accentShare: 0.26,
 		apartFrom: {
-			elevated: 5.0,
+			elevated: 8.0,
 			sunken: 3.0,
 			surface: 3.0,
 			canvas: 3.0,
@@ -3042,7 +3056,7 @@ const REACTION_OWN_PILL = [
 	},
 	{
 		name: "team bridge own reaction pill (hover)",
-		accentShare: 0.27,
+		accentShare: 0.2,
 		apartFrom: { elevated: 5.0, surface: 3.0, rowHover: 3.0 },
 	},
 ];
@@ -3066,8 +3080,8 @@ const STRUCTURAL_CALL_SITES = [
 		 */
 		what: "team bridge reaction pills wear their measured fills",
 		file: "src/renderer/src/features/team-bridge/team-bridge-reactions.tsx",
-		must: '? "bg-[color-mix(in_srgb,var(--color-accent)_20%,var(--color-surface))] font-medium text-ink hover:bg-[color-mix(in_srgb,var(--color-accent)_27%,var(--color-surface))]"\n\t\t\t\t\t\t\t\t: "bg-elevated text-ink-muted hover:bg-sunken hover:text-ink",',
-		why: "the pill rows assert `elevated`/`sunken` and the own pill's 20%/27% accent-over-surface mixes with their inks; a pill moved to another role or share would leave those rows green about a component that no longer wears them",
+		must: '? "bg-[color-mix(in_srgb,var(--color-accent)_26%,var(--color-surface))] font-medium text-ink hover:bg-[color-mix(in_srgb,var(--color-accent)_20%,var(--color-surface))]"\n\t\t\t\t\t\t\t\t: "bg-elevated text-ink-muted hover:bg-sunken hover:text-ink",',
+		why: "the pill rows assert `elevated`/`sunken` and the own pill's 26% rest / 20% hover accent-over-surface mixes with their inks; a pill moved to another role or share would leave those rows green about a component that no longer wears them",
 	},
 	{
 		what: "team bridge reaction pills stay borderless",
