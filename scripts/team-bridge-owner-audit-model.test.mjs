@@ -54,6 +54,9 @@ const bundle = await build({
 				ownerAuditDelivery,
 				ownerAuditTitle,
 				ownerAuditChronology,
+				ownerAuditToBridgeMessage,
+				ownerAuditSenderLabel,
+				ownerAuditSenderProfile,
 			} from "./src/renderer/src/features/team-bridge/team-bridge-owner-audit-model";
 		`,
 		resolveDir: process.cwd(),
@@ -289,4 +292,94 @@ test("onboarding designates the durable chief of staff, never the open chat", ()
 	// An unresolved target falls back to the EMPTY string -- the backend defaults
 	// an unset designation to its durable session -- never to the displayed task.
 	assert.match(model, EMPTY_FALLBACK);
+});
+
+/*
+ * THE ADAPTER onto the shared list's input. The audit renders through
+ * `TeamBridgeMessageList`, so these pin what crosses that seam and, as much,
+ * what must NOT: attachment rows (the shared component fetches bytes),
+ * reactions, and the reply rollup (whose button would open a pane the audit
+ * does not have).
+ */
+const auditWire = {
+	id: "msg_1",
+	conversation_id: "conv_1",
+	seq: 7,
+	sender: { account_id: "acct_ben", kind: "human", display_label: "Ben" },
+	body: null,
+	body_hash: null,
+	origin: "",
+	agent_label: null,
+	created_at: "2026-10-23T10:58:00Z",
+	thread_root_id: null,
+	reply_count: 3,
+	last_reply_at: "2026-10-23T11:00:00Z",
+	reply_participants: ["Ben"],
+	attachments: [{ id: "bcat_1", state: "available" }],
+	attachment_count: 1,
+	reactions: [{ emoji: "👍", count: 1 }],
+	agent_delivery_status: "rejected",
+};
+const chief = {
+	named: (agent, person) => `${agent} (${person})`,
+	unnamed: (person) => `${person}'s chief of staff`,
+};
+
+test("the adapter keeps a null body null and carries no bytes or actions", () => {
+	const row = model.ownerAuditToBridgeMessage(auditWire);
+	assert.equal(row.body, null, "null means the hub sent no text: never ''");
+	assert.equal(row.attachments, undefined);
+	assert.equal(row.reactions, undefined);
+	assert.equal(row.reply_count, undefined);
+	assert.equal(row.reply_participants, undefined);
+	assert.equal(row.thread_root_id, undefined);
+	assert.equal(row.origin, "human", "an unknown origin falls back to the kind");
+	assert.deepEqual(row.sender, {
+		account_id: "acct_ben",
+		kind: "human",
+		display_label: "Ben",
+	});
+});
+
+test("an unknown sender kind is never resolved against the directory", () => {
+	const people = [
+		{ account_id: "acct_ben", display_label: "Ben Tran", agent: undefined },
+	];
+	const row = model.ownerAuditToBridgeMessage({
+		...auditWire,
+		sender: { account_id: "acct_ben", kind: "service", display_label: "" },
+	});
+	assert.equal(row.sender.kind, "human");
+	assert.equal(row.sender.audit_unknown_kind, true);
+	assert.equal(model.ownerAuditSenderProfile(row.sender, people), undefined);
+	assert.equal(
+		model.ownerAuditSenderLabel(row.sender, people, [], chief),
+		null,
+		"a blank stored label on an unknown kind is the caller's placeholder",
+	);
+});
+
+test("sender labels: directory first, then stored, then the member label", () => {
+	const people = [
+		{
+			account_id: "acct_ben",
+			display_label: "Ben Tran",
+			agent: { endpoint_id: "bep_b", name: "Aida", state: "active" },
+		},
+	];
+	const agent = { account_id: "acct_ben", kind: "agent", display_label: "" };
+	assert.equal(
+		model.ownerAuditSenderLabel(agent, people, [], chief),
+		"Aida (Ben Tran)",
+	);
+	/* Directory not loaded: the conversation's own member label still names. */
+	assert.equal(
+		model.ownerAuditSenderLabel(
+			{ account_id: "acct_x", kind: "human", display_label: "" },
+			[],
+			[{ account_id: "acct_x", kind: "human", display_label: "Xu Li" }],
+			chief,
+		),
+		"Xu Li",
+	);
 });

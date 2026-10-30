@@ -497,6 +497,8 @@ const PRIVATE_BYTES = /blob:|https?:\/\/\S+attachment/;
 const CAPABILITY_GATE = /team_bridge_owner_audit\s*\?\?\s*0\)\s*>=\s*1/;
 const RAIL_SITE = /\{ownerAudit\?\.rail\(/;
 const PANEL_SITE = /\{ownerAudit\?\.active\s*\?/;
+/* A verdict mark's edge, hoisted for `useTopLevelRegex`. */
+const BORDER_CLASS = /border-/;
 /* The exclusivity claim D2 removed: the disclosure must not re-introduce it. */
 const EXCLUSIVITY_CLAIM = /only you/i;
 
@@ -849,9 +851,7 @@ test("panel: loading, error, empty history, populated", async () => {
 
 test("a null body renders the unavailable text, never an empty string", async () => {
 	const view = await renderView(panel({ messages: [unscreenedEmpty] }));
-	const paragraphs = [
-		...view.host.querySelectorAll("li[data-message-id] p"),
-	];
+	const paragraphs = [...view.host.querySelectorAll("li[data-message-id] p")];
 	assert.equal(paragraphs.length >= 1, true);
 	const body = paragraphs.find(
 		(node) => node.textContent === m.t("ui.ownerAudit.body_unavailable"),
@@ -1435,9 +1435,7 @@ test("each verdict carries its own treatment, not shared grey text", async () =>
 		}),
 	);
 	const markOf = (copy) => {
-		const host = [
-			...view.host.querySelectorAll("li[data-message-id] *"),
-		].find(
+		const host = [...view.host.querySelectorAll("li[data-message-id] *")].find(
 			(node) =>
 				(node.textContent ?? "").trim() === copy && node.children.length === 0,
 		);
@@ -1453,7 +1451,7 @@ test("each verdict carries its own treatment, not shared grey text", async () =>
 	for (const mark of marks) {
 		assert.match(
 			mark.className,
-			/border-/,
+			BORDER_CLASS,
 			"a verdict mark must carry an edge, not sit as plain text",
 		);
 	}

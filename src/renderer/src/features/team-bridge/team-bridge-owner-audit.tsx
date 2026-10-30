@@ -1,20 +1,30 @@
 import type { OwnerAuditScope } from "@shared/api/local-operator/team-bridge-owner-audit-api";
+import { NOTICE_BAND } from "@shared/components/common/notice-band";
+import { Alert } from "@shared/components/ui/alert";
 import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
-import { formatDateTime, t } from "@shared/i18n";
+import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
+import { Eye, RefreshCw } from "lucide-react";
 import { type ReactNode, useState } from "react";
+import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
 import type {
 	OwnerAuditConversation,
 	OwnerAuditMessage,
 } from "../../../../shared/team-bridge-owner-audit-contract";
+import { TeamBridgeMessageList } from "./team-bridge-message-list";
+import type { ChiefLabels } from "./team-bridge-model";
 import {
 	ownerAuditChronology,
 	ownerAuditDelivery,
+	ownerAuditSenderLabel,
+	ownerAuditSenderProfile,
 	ownerAuditTitle,
+	ownerAuditToBridgeMessage,
 } from "./team-bridge-owner-audit-model";
 import { ConversationKindIcon, RAIL_ROW } from "./team-bridge-rail";
+import { useTeamBridgeDirectory } from "./use-team-bridge";
 import {
 	useOwnerAuditConversations,
 	useOwnerAuditMessages,
@@ -166,120 +176,137 @@ function OwnerAuditRail({
 	);
 }
 
-function AuditMessage({
-	message,
-	agentAccountId,
+/**
+ * The chief-of-staff label composition, from the same two catalogue strings
+ * every Team Bridge surface uses ("Aida (Ben Tran)" / "Ben Tran's chief of
+ * staff"). Defined here (and only here for the audit), not imported from the page,
+ * because the page module is the composition root (importing it would pull the whole page into this view's
+ * bundle and couple two lanes that ship separately).
+ */
+function ownerAuditChiefLabels(): ChiefLabels {
+	return {
+		named: (agent, person) => t("ui.teamBridge.chief.label", { agent, person }),
+		unnamed: (person) => t("ui.teamBridge.chief.unnamed", { person }),
+	};
+}
+
+/*
+ * THE VERDICT NEEDS ITS OWN CHANNEL. It used to be a third grey field beside the
+ * sender and the timestamp — same size, same ink, no mark — so the one question
+ * this surface exists to answer ("what did my chief of staff let through?")
+ * could not be answered by scanning (design review round 1, D1). These are the
+ * shipped `Badge` variants and their contrast-audited wash/ink pairs, so the
+ * mark carries meaning in every palette without a new token: admitted is
+ * quiet-positive, rejected is the refusal, not screened is informational, and
+ * an unknown verdict stays neutral rather than borrowing a judgement it does
+ * not have.
+ *
+ * "OWN" CARRIES NO CHIP. In a chief of staff's own DM most rows are her own
+ * messages, and a "Sent by your chief of staff" chip on every one of them was
+ * noise that drowned the verdicts that matter. The row's name and Bot avatar
+ * already say who sent it, so the absence of a chip is the quiet state.
+ */
+const VERDICT = {
+	admitted: { variant: "success", copy: "ui.ownerAudit.admitted" },
+	rejected: { variant: "danger", copy: "ui.ownerAudit.rejected" },
+	not_screened: { variant: "info", copy: "ui.ownerAudit.not_screened" },
+	unknown: { variant: "neutral", copy: "ui.ownerAudit.unknown_status" },
+} as const;
+
+/**
+ * The audit transcript: the SHARED message list, plus what only an audit adds.
+ *
+ * ONE RENDERER. Channels and DMs render through `TeamBridgeMessageList`; the
+ * audit used to hand-roll its rows (wip slice c766a8c2daa), so markdown, the
+ * avatar, day dividers, clock times, runs and the "Aida (Person)" names all
+ * differed between the two doors to the same conversation. The rows now come
+ * from the list, and the audit's additions travel through its read-only
+ * `decorate` hook: the verdict chip, the collapse of unadmitted text, the
+ * audit's own null-body sentence, the attachment notes and thread replies.
+ *
+ * THE OLD "NEVER INVOKE MARKDOWN" RULE is still met in substance: the list's
+ * body renderer (`TeamBridgeMarkdown`) emits no raw HTML, draws images as text
+ * and links only http(s)/mailto, which is the same guarantee a member's channel
+ * relies on for the same bodies. What this surface must never do — load an
+ * attachment's bytes, offer a reaction, a reply or a "Message" action — is
+ * withheld by omission: the adapter drops `attachments`, and none of
+ * `reactionContext` / `onReply` / `onMessagePerson` is passed, so the toolbar
+ * (which renders nothing without one of the first two) and the profile card's
+ * Message button do not exist here.
+ */
+function AuditTranscript({
+	conversation,
+	messages,
+	people,
 	renderReplies,
+	density,
 }: {
-	message: OwnerAuditMessage;
-	agentAccountId: string;
+	conversation: OwnerAuditConversation;
+	messages: OwnerAuditMessage[];
+	people: readonly TeamBridgeDirectoryMember[];
 	renderReplies?: (message: OwnerAuditMessage) => ReactNode;
+	density?: "regular" | "compact";
 }) {
-	const locale = useI18nLocale();
-	const delivery = ownerAuditDelivery(message, agentAccountId);
-	const collapsed = delivery !== "admitted" && delivery !== "own";
-	const copy = {
-		admitted: "ui.ownerAudit.admitted",
-		rejected: "ui.ownerAudit.rejected",
-		not_screened: "ui.ownerAudit.not_screened",
-		unknown: "ui.ownerAudit.unknown_status",
-		own: "ui.ownerAudit.own",
-	} as const;
-	/*
-	 * THE VERDICT NEEDS ITS OWN CHANNEL. It used to be a third grey field beside
-	 * the sender and the timestamp — same size, same ink, no mark — so the one
-	 * question this surface exists to answer ("what did my chief of staff let
-	 * through?") could not be answered by scanning, and the two outcomes that
-	 * matter most looked identical at rest (design review round 1, D1: measured
-	 * 12px/400 with no fill, no edge, no icon).
-	 *
-	 * These are the shipped `Badge` variants and their contrast-audited
-	 * wash/ink pairs, so the mark carries meaning in every palette without a
-	 * new token: admitted is quiet-positive, rejected is the refusal, not
-	 * screened is informational, and the agent's own message and an unknown
-	 * verdict stay neutral rather than borrowing a judgement they do not have.
-	 */
-	const badge = {
-		admitted: "success",
-		rejected: "danger",
-		not_screened: "info",
-		unknown: "neutral",
-		own: "neutral",
-	} as const;
-	const created = new Date(message.created_at);
-	// Never invoke markdown, previews, remote images, attachment loaders or any
-	// agent action. Even admitted audit text stays on this human-only surface.
-	const body = (
-		<div className="space-y-2 pt-2">
-			<p
-				dir="auto"
-				className="whitespace-pre-wrap break-words text-sm text-ink"
-			>
-				{message.body ?? t("ui.ownerAudit.body_unavailable")}
-			</p>
-			{(message.attachments?.length ?? message.attachment_count ?? 0) > 0 && (
-				<ul className="text-xs text-ink-muted">
-					{message.attachments?.length ? (
-						message.attachments.map((attachment) => (
-							<li key={attachment.id}>
-								{attachment.state === "expired"
-									? t("ui.ownerAudit.attachment_expired")
-									: t("ui.ownerAudit.attachment_unavailable")}
-							</li>
-						))
-					) : (
-						<li>{t("ui.ownerAudit.attachment_unavailable")}</li>
-					)}
-				</ul>
-			)}
-		</div>
-	);
+	const wire = new Map(messages.map((message) => [message.id, message]));
+	const chiefLabels = ownerAuditChiefLabels();
 	return (
-		<article className="py-3">
-			<header className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs text-ink-muted">
-				<span className="font-medium text-ink">
-					{message.sender.display_label || t("ui.ownerAudit.unknown_sender")}
-				</span>
-				{Number.isFinite(created.getTime()) && (
-					<time dateTime={message.created_at}>
-						{formatDateTime(
-							created,
-							{ dateStyle: "medium", timeStyle: "short" },
-							locale,
-						)}
-					</time>
-				)}
-				<Badge variant={badge[delivery]}>{t(copy[delivery])}</Badge>
-			</header>
-			{collapsed && !message.body ? (
-				/*
-				 * A DISCLOSURE MUST NOT PROMISE TEXT IT DOES NOT HAVE. Offering "Show
-				 * message text" on a row whose body the hub never sent lured a click and
-				 * returned "Message text unavailable.", so the two cases were
-				 * indistinguishable before the press (design review round 1, D5). With no
-				 * body there is nothing to collapse: say the absence.
-				 */
-				<p className="mt-2 text-sm text-ink-muted">
-					{t("ui.ownerAudit.body_unavailable")}
-				</p>
-			) : collapsed ? (
-				<details className="mt-2">
-					{/* The target is the LABEL and its own box, not the full row width: a
-					 * click far to the right of the words used to open a message (design
-					 * review round 1, D9). 24px of vertical room clears the WCAG 2.5.8
-					 * floor that the browser's 20px marker missed. */}
-					<summary className="inline-flex min-h-[24px] w-fit cursor-pointer items-center text-sm text-ink-muted">
-						{t("ui.ownerAudit.reveal")}
-					</summary>
-					{body}
-				</details>
-			) : (
-				body
-			)}
-			{renderReplies &&
-				(message.reply_count ?? 0) > 0 &&
-				renderReplies(message)}
-		</article>
+		<TeamBridgeMessageList
+			messages={messages.map(ownerAuditToBridgeMessage)}
+			labelFor={(sender) =>
+				ownerAuditSenderLabel(sender, people, conversation.members, chiefLabels)
+			}
+			profileFor={(sender) => ownerAuditSenderProfile(sender, people)}
+			tenantId={conversation.tenant_id}
+			density={density}
+			/* A distinct stream, and no arrival motion: an audit is a paged read of
+			   history, and sharing the member stream's key would let this read write
+			   that conversation's arrival journal. */
+			arrivalKey={`owner-audit:${conversation.tenant_id}:${conversation.id}`}
+			arrivalsEnabled={false}
+			decorate={(row) => {
+				const message = wire.get(row.id);
+				if (!message) return undefined;
+				const delivery = ownerAuditDelivery(
+					message,
+					conversation.agent.account_id,
+				);
+				const verdict = delivery === "own" ? null : VERDICT[delivery];
+				const attachmentCount =
+					message.attachments?.length ?? message.attachment_count ?? 0;
+				return {
+					badge: verdict && (
+						<Badge variant={verdict.variant}>{t(verdict.copy)}</Badge>
+					),
+					withheldCopy: t("ui.ownerAudit.body_unavailable"),
+					/* Unadmitted text is plaintext-equivalent and closed by default: the
+					   owner opens it deliberately. Admitted and own text read open. */
+					collapsedSummary:
+						delivery === "admitted" || delivery === "own"
+							? undefined
+							: t("ui.ownerAudit.reveal"),
+					attachments:
+						attachmentCount > 0 ? (
+							<ul className="mt-1 space-y-0.5 text-[12px] text-ink-muted">
+								{message.attachments?.length ? (
+									message.attachments.map((attachment) => (
+										<li key={attachment.id}>
+											{attachment.state === "expired"
+												? t("ui.ownerAudit.attachment_expired")
+												: t("ui.ownerAudit.attachment_unavailable")}
+										</li>
+									))
+								) : (
+									<li>{t("ui.ownerAudit.attachment_unavailable")}</li>
+								)}
+							</ul>
+						) : undefined,
+					after:
+						renderReplies && (message.reply_count ?? 0) > 0
+							? renderReplies(message)
+							: undefined,
+				};
+			}}
+		/>
 	);
 }
 
@@ -309,17 +336,73 @@ function OwnerAuditWindowEnd({
 	const membership = conversation.agent.state;
 	if (membership === "active") {
 		return (
-			<p className="mt-4 text-meta text-ink-dim">{t("ui.ownerAudit.active")}</p>
+			<p className="mx-5 mt-4 text-meta text-ink-dim">
+				{t("ui.ownerAudit.active")}
+			</p>
 		);
 	}
 	return (
-		<p className="mt-4 border-hairline border-t pt-3 text-ink text-sm">
+		<p className="mx-5 mt-4 border-hairline border-t pt-3 text-ink text-sm">
 			{membership === "left"
 				? t("ui.ownerAudit.left")
 				: membership === "removed"
 					? t("ui.ownerAudit.removed")
 					: t("ui.ownerAudit.window_unconfirmed")}
 		</p>
+	);
+}
+
+/**
+ * The other agent owners, as the reader's language joins a list.
+ *
+ * `Intl.ListFormat` rather than a hand-written ", ": list punctuation is a
+ * property of the locale (Chinese joins with "、", Urdu with "،"), and the
+ * platform already knows it, so no locale needs a new string. Each name stays
+ * its own list item (data straight from the server, never inflected); only the
+ * locale's literals sit between them, hidden from assistive tech because the
+ * list semantics already separate the items. The `unit` type joins without an
+ * "and", which is right for a set of names rather than a sentence. The cast is
+ * the ES2021 type this project's ES2020 `lib` does not declare; Chromium has
+ * shipped the API since 72.
+ */
+type ListPart = { type: "element" | "literal"; value: string };
+const listFormat = (
+	Intl as unknown as {
+		ListFormat?: new (
+			locale: string,
+			options: { style: "short"; type: "unit" },
+		) => { formatToParts: (items: string[]) => ListPart[] };
+	}
+).ListFormat;
+function OwnerAuditViewers({
+	names,
+	locale,
+}: { names: { key: string; name: string }[]; locale: string }) {
+	const parts: ListPart[] = listFormat
+		? new listFormat(locale, { style: "short", type: "unit" }).formatToParts(
+				names.map((entry) => entry.name),
+			)
+		: names.map((entry) => ({ type: "element", value: entry.name }));
+	/* The literal text that precedes each name, keyed by the name's own entry so
+	   no React key depends on a position. */
+	const before: string[] = [];
+	let pending = "";
+	for (const part of parts) {
+		if (part.type === "literal") pending += part.value;
+		else {
+			before.push(pending);
+			pending = "";
+		}
+	}
+	return (
+		<ul className="inline">
+			{names.map((entry, index) => (
+				<li key={entry.key} className="inline">
+					{index > 0 && <span aria-hidden="true">{before[index]}</span>}
+					<span className="text-ink">{entry.name}</span>
+				</li>
+			))}
+		</ul>
 	);
 }
 
@@ -333,6 +416,7 @@ export function OwnerAuditPanelView({
 	loadMore,
 	renderReplies,
 	readerAccountId,
+	people = EMPTY_PEOPLE,
 }: {
 	conversation: OwnerAuditConversation;
 	messages: OwnerAuditMessage[];
@@ -350,8 +434,16 @@ export function OwnerAuditPanelView({
 	 * contradiction back in silently at the next call site.
 	 */
 	readerAccountId: string;
+	/**
+	 * The tenant directory, so senders are named and pictured by the same rule a
+	 * channel uses ("Aida (Ben Tran)", a photo or initial, the Bot glyph).
+	 * Optional because the directory is a SEPARATE read that may still be
+	 * loading or may have failed: the transcript must render either way, and
+	 * then falls back to the stored labels rather than leaving names blank.
+	 */
+	people?: readonly TeamBridgeDirectoryMember[];
 }) {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	/*
 	 * WHO ELSE CAN READ THIS. `viewers` is the server's own answer, one entry per
 	 * agent owner whose agent is (or was) in the conversation. It includes the
@@ -368,52 +460,83 @@ export function OwnerAuditPanelView({
 			className="flex min-h-0 flex-1 flex-col"
 			aria-label={t("ui.ownerAudit.title")}
 		>
-			<header className="shrink-0 space-y-2 px-5 py-4">
-				<h2 className="text-base font-medium text-ink">
-					{title(conversation)}
-				</h2>
-				<p className="text-sm text-ink-muted">{t("ui.ownerAudit.read_only")}</p>
-				<p className="text-xs text-ink-muted">
-					{t("ui.ownerAudit.disclosure")}
-				</p>
-				{otherViewers.length > 0 && (
-					<div className="text-xs text-ink-muted">
-						<p>{t("ui.ownerAudit.viewers_label")}</p>
-						<ul>
-							{otherViewers.map((viewer, index) => (
-								<li
-									key={`${viewer.account_id}:${viewer.agent_member_key}:${index}`}
-								>
-									{viewer.display_label || t("ui.ownerAudit.unknown_sender")}
-								</li>
-							))}
-						</ul>
-					</div>
-				)}
-				{/* One retry per scope: while the body shows AuditFailure, the header's
-				 * Refresh would be a second control for the same refetch. */}
-				{state !== "error" && (
-					<Button variant="ghost" onClick={retry}>
-						{t("ui.ownerAudit.refresh")}
-					</Button>
-				)}
+			{/*
+			 * THE HEADER IS THE THREAD HEADER, then one quiet band. The title row
+			 * is the member view's own anatomy (h-11, 15px semibold, the kind
+			 * glyph), so opening a conversation through the audit does not change
+			 * what a conversation looks like. Everything the audit must disclose
+			 * sits in ONE band below it: the shipped `Alert` in the notice-band
+			 * grammar with its border made transparent (the default-on banner's
+			 * treatment), so the panel gains a tone step, never a rule. It used to
+			 * be four stacked grey paragraphs and a full-size button, which read as
+			 * page content rather than as the frame around it.
+			 */}
+			<header className="shrink-0 px-5 pb-2">
+				<div className="flex h-11 items-center gap-2">
+					<span className="text-ink-dim">
+						<ConversationKindIcon kind={conversation.kind} />
+					</span>
+					<h2 className="min-w-0 flex-1 truncate font-semibold text-[15px] text-ink">
+						{title(conversation)}
+					</h2>
+					{/* One retry per scope: while the body shows AuditFailure, the
+					 * header's Refresh would be a second control for the same refetch. */}
+					{state !== "error" && (
+						<Button variant="ghost" size="sm" onClick={retry}>
+							<RefreshCw aria-hidden="true" />
+							{t("ui.ownerAudit.refresh")}
+						</Button>
+					)}
+				</div>
+				<Alert
+					variant="neutral"
+					icon={<Eye aria-hidden="true" />}
+					className={cn(NOTICE_BAND, "items-start border-transparent")}
+				>
+					{/* Two sentences, one paragraph. The gap is a margin, not a typed
+					 * space, so scripts that set sentences without one keep their own
+					 * rhythm. */}
+					<p className="text-body-sm text-ink-muted">
+						<span>{t("ui.ownerAudit.read_only")}</span>
+						<span className="ms-1">{t("ui.ownerAudit.disclosure")}</span>
+					</p>
+					{otherViewers.length > 0 && (
+						<p className="text-body-sm text-ink-muted">
+							<span className="me-1">{t("ui.ownerAudit.viewers_label")}</span>
+							<OwnerAuditViewers
+								locale={locale}
+								names={otherViewers.map((viewer, index) => ({
+									key: `${viewer.account_id}:${viewer.agent_member_key}:${index}`,
+									name:
+										viewer.display_label || t("ui.ownerAudit.unknown_sender"),
+								}))}
+							/>
+						</p>
+					)}
+				</Alert>
 			</header>
-			<div className="min-h-0 flex-1 overflow-auto px-5 pb-5">
+			{/* No horizontal padding here: the shared list's rows carry the column's
+			 * own 20px gutter (and their hover band runs edge to edge), so every
+			 * other child takes the same `px-5` itself. */}
+			<div className="min-h-0 flex-1 overflow-auto pb-5">
 				{state === "loading" ? (
-					<output className="text-sm text-ink-muted">
+					<output className="block px-5 py-8 text-[13px] text-ink-muted">
 						{t("ui.ownerAudit.loading")}
 					</output>
 				) : state === "error" ? (
-					<AuditFailure retry={retry} />
+					<div className="py-4">
+						<AuditFailure retry={retry} />
+					</div>
 				) : (
 					<>
 						{hasMore && (
-							<div className="pb-2">
+							<div className="flex flex-wrap items-center gap-x-2 px-5 pt-3">
 								<p className="text-meta text-ink-dim">
 									{t("ui.ownerAudit.page_cutoff")}
 								</p>
 								<Button
 									variant="ghost"
+									size="sm"
 									onClick={loadMore}
 									disabled={loadingMore}
 								>
@@ -421,19 +544,18 @@ export function OwnerAuditPanelView({
 								</Button>
 							</div>
 						)}
-						{messages.length === 0 && (
-							<p className="text-sm text-ink-muted">
+						{messages.length === 0 ? (
+							<p className="px-5 py-8 text-[13px] text-ink-muted">
 								{t("ui.ownerAudit.empty_history")}
 							</p>
-						)}
-						{messages.map((message) => (
-							<AuditMessage
-								key={message.id}
-								message={message}
-								agentAccountId={conversation.agent.account_id}
+						) : (
+							<AuditTranscript
+								conversation={conversation}
+								messages={messages}
+								people={people}
 								renderReplies={renderReplies}
 							/>
-						))}
+						)}
 						<OwnerAuditWindowEnd conversation={conversation} />
 					</>
 				)}
@@ -442,33 +564,43 @@ export function OwnerAuditPanelView({
 	);
 }
 
+const EMPTY_PEOPLE: readonly TeamBridgeDirectoryMember[] = [];
+
 function AuditReplies({
 	scope,
 	conversation,
 	root,
+	people,
 }: {
 	scope: OwnerAuditScope;
 	conversation: OwnerAuditConversation;
 	root: OwnerAuditMessage;
+	people: readonly TeamBridgeDirectoryMember[];
 }) {
 	const query = useOwnerAuditReplies(scope, conversation.id, root.id);
-	if (query.isPending) return <output>{t("ui.ownerAudit.loading")}</output>;
+	if (query.isPending)
+		return (
+			<output className="block py-1 text-[12px] text-ink-muted">
+				{t("ui.ownerAudit.loading")}
+			</output>
+		);
 	if (readState(query) === "error")
 		return <AuditFailure retry={() => void query.refetch()} />;
 	return (
-		<div className="ps-5">
-			{ownerAuditChronology(
-				query.data?.pages.map((page) => page.replies) ?? [],
-			).map((message) => (
-				<AuditMessage
-					key={message.id}
-					message={message}
-					agentAccountId={conversation.agent.account_id}
-				/>
-			))}
+		<div>
+			{/* The thread pane's own density: replies are the same rows, narrower. */}
+			<AuditTranscript
+				conversation={conversation}
+				messages={ownerAuditChronology(
+					query.data?.pages.map((page) => page.replies) ?? [],
+				)}
+				people={people}
+				density="compact"
+			/>
 			{query.hasNextPage && (
 				<Button
 					variant="ghost"
+					size="sm"
 					disabled={query.isFetchingNextPage}
 					onClick={() => void query.fetchNextPage()}
 				>
@@ -483,19 +615,31 @@ function ReplyDisclosure({
 	scope,
 	conversation,
 	root,
+	people,
 }: {
 	scope: OwnerAuditScope;
 	conversation: OwnerAuditConversation;
 	root: OwnerAuditMessage;
+	people: readonly TeamBridgeDirectoryMember[];
 }) {
 	const [open, setOpen] = useState(false);
 	return (
-		<details onToggle={(event) => setOpen(event.currentTarget.open)}>
-			<summary className="cursor-pointer text-sm text-ink-muted">
+		<details
+			className="mt-1"
+			onToggle={(event) => setOpen(event.currentTarget.open)}
+		>
+			{/* The shared row's "N replies" summary wears the accent; this is the
+			 * same door, read-only, so it wears the same ink at the same size. */}
+			<summary className="inline-flex min-h-[24px] w-fit cursor-pointer items-center text-[12px] text-accent">
 				{t("ui.ownerAudit.replies")}
 			</summary>
 			{open && (
-				<AuditReplies scope={scope} conversation={conversation} root={root} />
+				<AuditReplies
+					scope={scope}
+					conversation={conversation}
+					root={root}
+					people={people}
+				/>
 			)}
 		</details>
 	);
@@ -506,6 +650,15 @@ function OwnerAuditPanel({
 	conversation,
 }: { scope: OwnerAuditScope; conversation: OwnerAuditConversation }) {
 	const query = useOwnerAuditMessages(scope, conversation.id);
+	/* The same directory read (and cache entry) the member view uses for this
+	   organization, so names usually arrive with no extra request. Its failure
+	   is not this panel's failure: the transcript falls back to stored labels. */
+	const directory = useTeamBridgeDirectory(
+		conversation.tenant_id,
+		true,
+		scope.accountId,
+	);
+	const people = directory.data?.members ?? EMPTY_PEOPLE;
 	return (
 		<OwnerAuditPanelView
 			conversation={conversation}
@@ -522,9 +675,11 @@ function OwnerAuditPanel({
 					scope={scope}
 					conversation={conversation}
 					root={message}
+					people={people}
 				/>
 			)}
 			readerAccountId={scope.accountId}
+			people={people}
 		/>
 	);
 }
