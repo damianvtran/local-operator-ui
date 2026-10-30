@@ -6,7 +6,7 @@
 	"ui.teamBridge.list.empty.body": "براہ راست پیغام، گروپ یا چینل شروع کریں۔",
 	"ui.teamBridge.list.loading": "گفتگوئیں لوڈ ہو رہی ہیں",
 	"ui.teamBridge.list.error": "گفتگوئیں لوڈ نہیں ہو سکیں۔",
-	"ui.teamBridge.list.error_stale": "ریفریش نہیں ہو سکا۔ آپ کی آخری پڑھی گئی فہرست دکھائی جا رہی ہے۔",
+	"ui.teamBridge.list.error_stale": "تازہ کاری نہیں ہو سکی۔ آپ کی آخری پڑھی گئی فہرست دکھائی جا رہی ہے۔",
 	"ui.teamBridge.list.retry": "دوبارہ کوشش کریں",
 	"ui.teamBridge.list.untitled": "بلا عنوان گفتگو",
 	"ui.teamBridge.kind.dm": "براہ راست پیغام",
