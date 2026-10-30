@@ -27,6 +27,8 @@ the real-path driver recorded in the PR's evidence matrix.
   A reported path always names a COMPLETE file: bytes go to a `.<name>.part`
   inode, are fsync'd, and are published with `linkSync`, which cannot overwrite.
   Every failure path unlinks the part, so no error leaves a partial or empty file.
+  `duration_ms` is wall-clock time from start to stop; the container's own duration
+  measured about 0.3-0.8 s longer (QA Q2).
 - Audio is never captured, and no bytes cross the RPC wire (D3): the harness
   learns a path and a size, and verifies both from disk itself.
 - Two recordings may run at once, app-wide (D6). A third is refused with `busy`.
@@ -39,11 +41,13 @@ the real-path driver recorded in the PR's evidence matrix.
 - A hard kill (SIGKILL) leaves no file, because nothing touches disk until stop.
 - A debugger detach EVENT (DevTools taking the tab, or the page going away) discards
   the clip and leaves a `record_aborted` tombstone for the next `record_stop`; the
-  bytes are not salvaged (D7). The tombstone names the cause from Electron's detach
-  reason. A forced renderer crash on 45.1.0 detaches with `"target closed"`, so a
-  crash is a discarded clip, not a salvaged one, unless a `record_stop` is already
-  draining the stream when it happens. An abort that lands while a stop is saving
-  now stops the save: nothing is published after the tombstone says nothing was
+  bytes are not salvaged (D7). The tombstone does not name a cause: Electron 45.1.0
+  emits the constant reason `"target closed"` for every detach, DevTools included,
+  so the wording is neutral and quotes the raw reason. A forced renderer crash
+  (`Page.crash`) with no stop in flight does NOT detach the debugger (QA case A8):
+  a later `record_stop` answered normally and published a playable 8.1 s clip, so a
+  crashed page is not a discarded clip. An abort that lands while a stop is saving
+  stops the save: nothing is published after the tombstone says nothing was
   written.
 - The origin is checked ONCE, at start. A page that navigates itself to an
   unapproved origin while the clip is running is captured until the stop. The
@@ -60,7 +64,7 @@ No `PROTO_VERSION` bump: the methods are additive and capability-gated.
 record_start  {tab, requester, label.., path (abs, *.mp4), max_duration_s 1..600, max_bytes <= 64 MiB}
               -> {recording:true, path, max_duration_s, max_bytes, fps:10, container:"mp4", codec:"av1"}
 record_stop   {tab, requester}
-              -> {path, bytes, duration_ms, auto_stopped:bool, width, height, fps, container, codec}
+              -> {path, bytes, duration_ms, auto_stopped:bool, fps, container, codec}
 errors        code + data.reason (reasons below); Python renders copy by reason, host `message` is the fallback.
 ```
 

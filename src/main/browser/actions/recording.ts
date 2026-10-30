@@ -860,20 +860,17 @@ export async function recordStop(
 }
 
 /**
- * Who ended the debugger connection, from Electron's detach reason.
+ * What the tombstone says about why the debugger connection ended.
  *
- * Electron reports `"target closed"` when the page went away (measured by the
- * round-1 reviewer: a forced renderer crash on 45.1.0 detaches with that reason),
- * and Chromium's `replaced_with_devtools` / `canceled_by_user` when DevTools took
- * the tab over (names from the CDP detach reasons; not re-measured here). Naming
- * DevTools for the first would send the agent looking for a window nobody opened.
+ * It deliberately does NOT name a cause. Electron 45.1.0 emits the `detach` event
+ * with the constant reason `"target closed"` whatever happened, a DevTools
+ * takeover included (`electron_api_debugger.cc`, per the round-2 review), so the
+ * reason cannot tell a closed page from a DevTools window and a sentence that
+ * claimed to would sometimes be wrong. The raw reason stays in the message so a
+ * reader can see exactly what Electron said.
  */
-function detachExplanation(reason: string): string {
-	if (/devtools|canceled/i.test(reason)) return "DevTools took the tab";
-	if (/target closed|closed|crash/i.test(reason)) {
-		return "The tab closed or its page crashed";
-	}
-	return "The tab's debugging connection ended";
+function detachExplanation(): string {
+	return "The debugger connection to the tab ended (the page went away, or DevTools took it)";
 }
 
 /**
@@ -915,7 +912,7 @@ export function abortRecording(
 			owner: recording.owner,
 			error: new BrowserHostError(
 				"internal",
-				`${detachExplanation(reason)}; the recording was discarded (${reason}). Nothing was written.`,
+				`${detachExplanation()}; the recording was discarded (${reason}). Nothing was written.`,
 				{ reason: "record_aborted", detail: reason },
 			),
 		});

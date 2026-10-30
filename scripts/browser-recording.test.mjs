@@ -952,7 +952,7 @@ test("a devtools detach answers a later stop with record_aborted, and says why",
 	);
 });
 
-test("a detach whose page went away is not blamed on DevTools", async () => {
+test("a detach does not claim a cause Electron never reported", async () => {
 	const { cdp, contents, debuggerLike, ctx } = poolFixture();
 	await cdp.attach(contents);
 	await mod.recordStart(
@@ -960,14 +960,15 @@ test("a detach whose page went away is not blamed on DevTools", async () => {
 		{ tab: "tab", requester: "session:a", path: join(scratchDir(), "y.mp4") },
 		"r",
 	);
-	// What Electron 45.1.0 reported after a forced renderer crash (round-1 probe).
+	// Electron 45.1.0 reports this constant reason for every cause, DevTools
+	// takeover included (round-2 review), so the wording must stay neutral.
 	debuggerLike.emit("detach", {}, "target closed");
 	await assert.rejects(
 		mod.recordStop(ctx, { tab: "tab", requester: "session:a" }, "r"),
 		(error) => {
 			assert.equal(error.data?.reason, "record_aborted");
-			assert.doesNotMatch(error.message, /DevTools/);
-			assert.match(error.message, /crashed|closed/);
+			assert.match(error.message, /debugger connection to the tab ended/);
+			assert.match(error.message, /\(target closed\)/);
 			assert.match(error.message, /Nothing was written/);
 			return true;
 		},

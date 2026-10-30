@@ -305,7 +305,10 @@ export interface UploadResult {
  * typed, actionable refusal instead.
  *
  * ONE constant, three writers: a second list beside this one is how a host starts
- * advertising something it does not serve.
+ * advertising something it does not serve. The list is a constant of THIS build, so
+ * it is not a runtime probe: a build that lists `record_*` can still be running an
+ * engine without `Page.startScreenRecording` (Chromium below 153), and that case is
+ * refused at `record_start` with `record_unsupported`, not by the capability list.
  */
 export const HOST_CAPABILITIES: readonly Method[] = [
 	"console_resources",
