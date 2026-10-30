@@ -330,8 +330,22 @@ test("a retry of a failed attempt reuses that attempt's client_ref", async () =>
 	await typeBody(app.element, "retry me");
 	await act(async () => sendButton(app.element).click());
 	await settle();
-	assert.equal(composerText(app.element), "retry me", "the text is restored");
-	await act(async () => sendButton(app.element).click());
+	/*
+	 * THE RETRY LIVES ON THE ROW (optimistic send, 2026-10-30). A send that leaves
+	 * the press is drawn at once and, when it fails, stays where it was typed marked
+	 * failed with Retry; the text is no longer dumped back into the box (which would
+	 * put it in two places and merge it into whatever the reader types next). Edit on
+	 * the row is the way back to the box. What this case still owns is unchanged: a
+	 * retry of the same attempt reuses its key.
+	 */
+	assert.equal(composerText(app.element), "", "the box stays clear");
+	const failed = app.element.querySelector('[data-delivery="failed"]');
+	assert.ok(failed, "the failed send is a row, not a lost message");
+	const retry = [...failed.querySelectorAll("button")].find(
+		(button) => button.textContent === "Retry",
+	);
+	assert.ok(retry, "the row offers Retry");
+	await act(async () => retry.click());
 	await settle();
 	assert.deepEqual(refs.length, 2);
 	assert.equal(
@@ -387,14 +401,23 @@ test("a second 409 does not loop: it surfaces and keeps the text", async () => {
 		2,
 		"one original attempt and ONE retry - never a third",
 	);
-	assert.equal(
-		composerText(app.element),
-		"stuck",
-		"the text stays recoverable",
+	/*
+	 * THE TEXT IS STILL THERE, ON THE ROW. The failed row keeps the words it could
+	 * not send and offers the two moves a reader has: Retry, and Edit (which puts
+	 * them back in the box). The box itself stays clear - see the case above.
+	 */
+	const failed = app.element.querySelector('[data-delivery="failed"]');
+	assert.ok(failed, "the failure is visible where the message was typed");
+	assert.ok(
+		failed.textContent.includes("stuck"),
+		"the row still carries the words that were not sent",
 	);
-	// The NEXT press is a manual retry of the same failed attempt, so it wears the
-	// key the auto-retry minted rather than inventing a third one.
-	await act(async () => sendButton(app.element).click());
+	// Retry is a manual retry of the same failed attempt: it wears the key the
+	// auto-retry minted rather than inventing a third one.
+	const retry = [...failed.querySelectorAll("button")].find(
+		(button) => button.textContent === "Retry",
+	);
+	await act(async () => retry.click());
 	await settle();
 	assert.deepEqual(refs.length, 3);
 	assert.equal(refs[2], refs[1]);
@@ -537,12 +560,25 @@ test("a failed attempt keeps its client_ref across leaving and returning", async
 	const back = await mountPage(
 		pageProps({ target: conversation, onSend: failFirst }),
 	);
+	/*
+	 * THE ATTEMPT SURVIVES THE ROUTE CHANGE AS A ROW, NOT AS BOX TEXT. A text send
+	 * is optimistic now: the press puts the message on screen and clears the box, and
+	 * a failure leaves it marked failed where it was typed, with Retry. The row lives
+	 * outside the page, so leaving and returning still finds it - and the guarantee
+	 * this case owns is unchanged: the retry is the SAME attempt and keeps its key.
+	 */
+	const failed = back.element.querySelector('[data-delivery="failed"]');
+	assert.ok(failed, "the failed attempt is still there after the route change");
 	assert.equal(
 		composerText(back.element),
-		"did this land?",
-		"the text survives the route change",
+		"",
+		"and the box is not holding a copy",
 	);
-	await act(async () => sendButton(back.element).click());
+	await act(async () =>
+		[...failed.querySelectorAll("button")]
+			.find((button) => button.textContent === "Retry")
+			.click(),
+	);
 	await settle();
 	assert.deepEqual(refs.length, 2);
 	assert.equal(
