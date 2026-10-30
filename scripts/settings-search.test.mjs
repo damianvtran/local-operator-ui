@@ -103,7 +103,10 @@ const sections = [
 ];
 
 /** Mount the harness and return the container plus the spies. */
-const mount = async (t, { registry = payload, buildIndex } = {}) => {
+const mount = async (
+	t,
+	{ registry = payload, buildIndex, outcome = "landed" } = {},
+) => {
 	const container = document.createElement("div");
 	document.body.append(container);
 	const root = createRoot(container);
@@ -128,7 +131,10 @@ const mount = async (t, { registry = payload, buildIndex } = {}) => {
 				buildIndex: builder,
 				registry,
 				sections,
-				onJump: (entry) => jumps.push(entry),
+				onJump: (entry) => {
+					jumps.push(entry);
+					return outcome;
+				},
 			}),
 		);
 	});
@@ -201,11 +207,22 @@ test("the panel caps at twelve rows and says how many more there are", async (t)
 	const { container } = await mount(t);
 	await type(container, "s");
 	assert.equal(options(container).length, 12);
-	const more = container.querySelector(
-		'[data-search-more], [role="listbox"] p',
+	/*
+	 * The line itself, not "any `<p>` in the panel": the old selector matched a
+	 * group heading too, so the assertion passed for the wrong reason (review
+	 * round 1, n3).
+	 */
+	const more = container.querySelector("[data-search-more]");
+	assert.ok(more, "a +N more line exists");
+	assert.match(more.textContent ?? "", /more/i);
+	assert.equal(
+		Number.parseInt(
+			(more.textContent ?? "").match(/\d+/)?.[0] ?? "0",
+			10,
+		) > 0,
+		true,
+		"and it counts what is not shown",
 	);
-	assert.ok(panel(container).textContent.includes("more"), "a +N more line");
-	assert.ok(more);
 });
 
 test("the combobox points its active option at a real option id", async (t) => {
@@ -312,4 +329,23 @@ test("the live region announces the result count", async (t) => {
 	const status = container.querySelector('output[aria-live="polite"]');
 	assert.ok(status, "a polite live region exists");
 	assert.ok(/\d+ results?/.test(status.textContent), status.textContent);
+});
+
+test("a jump that cannot land is a sentence, not a silent close", async (t) => {
+	/*
+	 * B1/m5: a registry key or a section with no rendered root used to close the
+	 * panel and move nothing, with `jump.missing` in all eight catalogues and
+	 * never spoken. The page answers `"missing"`; the panel must say so and stay
+	 * open with the reader still in the field.
+	 */
+	const { container } = await mount(t, { outcome: "missing" });
+	await type(container, "theme");
+	await press(container, "Enter");
+	const status = container.querySelector('output[aria-live="polite"]');
+	assert.match(status?.textContent ?? "", /not on screen/i);
+	assert.ok(panel(container), "the panel stays open for the next choice");
+	assert.ok(
+		document.activeElement === field(container),
+		"and the reader stays in the field",
+	);
 });

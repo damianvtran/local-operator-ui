@@ -56,6 +56,7 @@ import type {
 	SettingSearchField,
 } from "../search/settings-search-index";
 import { buildSettingsIndex } from "../search/settings-search-index";
+import type { SearchJumpOutcome } from "../search/settings-search-jump";
 import {
 	SETTINGS_SEARCH_CAP,
 	groupSettingResults,
@@ -116,8 +117,18 @@ type SettingsSearchProps = {
 	 * the registry serves.
 	 */
 	readRendered?: () => SettingSearchEntry[];
-	/** Take the reader to an entry. Owned by the page, which knows each path. */
-	onJump: (entry: SettingSearchEntry) => void;
+	/**
+	 * Take the reader to an entry. Owned by the page, which knows each path.
+	 *
+	 * It may answer `"missing"` — the panel's own row exists but the page could
+	 * not put the reader on it (a section with no rendered root, a registry key
+	 * the payload no longer serves). The panel then SPEAKS it rather than
+	 * closing as if something happened; a jump that lands on nothing is a
+	 * sentence, not a silent no-op (review round 1, B1/m5).
+	 */
+	onJump: (
+		entry: SettingSearchEntry,
+	) => SearchJumpOutcome | undefined | Promise<SearchJumpOutcome | undefined>;
 	className?: string;
 };
 
@@ -136,6 +147,11 @@ export const SettingsSearch = forwardRef<
 	const [query, setQuery] = useState("");
 	const [open, setOpen] = useState(false);
 	const [activeIndex, setActiveIndex] = useState(0);
+	/*
+	 * A jump that could not land leaves a sentence behind. Held here rather than
+	 * in the page because this component owns the live region that speaks it.
+	 */
+	const [notice, setNotice] = useState("");
 	const listId = useId();
 
 	useImperativeHandle(ref, () => ({
@@ -171,7 +187,20 @@ export const SettingsSearch = forwardRef<
 		[entries, query],
 	);
 	const groups = useMemo(() => groupSettingResults(results), [results]);
-	const active = results[Math.min(activeIndex, results.length - 1)];
+	/*
+	 * The position every read uses — ARIA, the visual mark and Enter. The list
+	 * can shrink under a live query (a locale switch or a `settings.list`
+	 * refetch rebuilds the index), and the mark compared the RAW index while
+	 * `aria-activedescendant` compared a clamped one, so the two could name
+	 * different rows (review round 1, m3).
+	 */
+	const activePosition =
+		results.length === 0 ? 0 : Math.min(activeIndex, results.length - 1);
+	const active = results[activePosition];
+	const positions = useMemo(
+		() => new Map(results.map((result, index) => [result.entry.id, index])),
+		[results],
+	);
 
 	const close = useCallback((nextQuery?: string) => {
 		if (nextQuery !== undefined) setQuery(nextQuery);
@@ -180,8 +209,15 @@ export const SettingsSearch = forwardRef<
 	}, []);
 
 	const jump = useCallback(
-		(entry: SettingSearchEntry) => {
-			onJump(entry);
+		async (entry: SettingSearchEntry) => {
+			const outcome = await onJump(entry);
+			if (outcome === "missing") {
+				setNotice(t("ui.settings.search.jump.missing"));
+				// The panel stays open: the reader is still choosing, and the field
+				// still holds focus, so the next arrow or Escape works as before.
+				return;
+			}
+			setNotice("");
 			setOpen(false);
 			setActiveIndex(0);
 		},
@@ -266,9 +302,7 @@ export const SettingsSearch = forwardRef<
 					aria-expanded={open}
 					aria-controls={open ? listId : undefined}
 					aria-activedescendant={
-						open && active
-							? optionId(Math.min(activeIndex, results.length - 1))
-							: undefined
+						open && active ? optionId(activePosition) : undefined
 					}
 					aria-autocomplete="list"
 					aria-label={t("ui.settings.search.field.label")}
@@ -291,6 +325,7 @@ export const SettingsSearch = forwardRef<
 						primeRendered();
 						setQuery(event.currentTarget.value);
 						setActiveIndex(0);
+						setNotice("");
 						setOpen(true);
 					}}
 					onKeyDown={onKeyDown}
@@ -327,7 +362,7 @@ export const SettingsSearch = forwardRef<
 							</p>
 							<button
 								type="button"
-								className="w-fit rounded-sm px-1.5 py-0.5 text-body-sm text-accent underline-offset-2 hover:underline focus-visible:outline-2"
+								className="min-h-6 w-fit rounded-sm px-1.5 py-1 text-body-sm text-accent underline-offset-2 hover:underline focus-visible:outline-2"
 								onMouseDown={(event) => event.preventDefault()}
 								onClick={() => {
 									close("");
@@ -340,15 +375,26 @@ export const SettingsSearch = forwardRef<
 					) : (
 						<>
 							{groups.map((group) => (
-								<div key={group.sectionId || "no-section"} role="presentation">
+								<div
+									key={group.sectionId || "no-section"}
+									/*
+									 * `role="group"` rather than `presentation`: a listbox may
+									 * contain groups, and a group is the standard way to hang a
+									 * heading on a run of options (`aria-label` names it). A
+									 * `presentation` wrapper stripped the heading out and left
+									 * bare text nodes as listbox children (review round 1, m2).
+									 */
+									role={group.sectionLabel ? "group" : undefined}
+									aria-label={group.sectionLabel || undefined}
+								>
 									{group.sectionLabel && (
-										<p className="px-2 pt-2 pb-1 text-meta text-ink-dim">
+										<p className="px-2 pt-2 pb-1 font-medium text-ink-muted text-meta">
 											{group.sectionLabel}
 										</p>
 									)}
 									{group.results.map((result) => {
-										const position = results.indexOf(result);
-										const isActive = position === activeIndex;
+										const position = positions.get(result.entry.id) ?? 0;
+										const isActive = position === activePosition;
 										return (
 											/* biome-ignore lint/a11y/useFocusableInteractive lint/a11y/useKeyWithClickEvents: options are never DOM-focused (the field keeps focus and names this id), and every key path is the FIELD's handler — so an option's `onClick` is pointer-only and has no keyboard twin to add. */
 											<div
@@ -358,13 +404,20 @@ export const SettingsSearch = forwardRef<
 												role="option"
 												aria-selected={isActive}
 												data-search-result-id={result.entry.id}
+												/*
+												 * The active row wears the mark this app already ships
+												 * for a list's cursor (`searchable-select.tsx`): an
+												 * accent wash plus an INSET control ring. Inset because
+												 * the panel scrolls — an outset ring would be clipped on
+												 * the first and last row. `bg-action-hover` was a token
+												 * that does not exist in any palette, so the row Enter
+												 * would take was invisible in both themes (design D1).
+												 */
 												className={cn(
 													"flex cursor-pointer flex-col gap-0.5 rounded-sm px-2 py-1.5",
-													// Hover and the keyboard cursor are the same mark, so the
-													// panel never shows two "current" rows.
 													isActive
-														? "bg-action-hover"
-														: "hover:bg-action-hover",
+														? "bg-accent-wash outline-solid outline-1 -outline-offset-1 outline-control"
+														: "hover:bg-row-hover",
 												)}
 												onMouseDown={(event) => event.preventDefault()}
 												onMouseEnter={() => setActiveIndex(position)}
@@ -380,6 +433,18 @@ export const SettingsSearch = forwardRef<
 														})}
 													{result.entry.sectionLabel && " · "}
 													{t(REASON_KEY[result.reason])}
+													{/*
+													 * The registry's own sub-section, SECONDARY to the
+													 * destination above: it is where the row is filed
+													 * inside Backend settings, not where the jump lands
+													 * (review round 1, M2). Omitted when it would repeat
+													 * the destination.
+													 */}
+													{result.entry.detail &&
+														result.entry.detail !==
+															result.entry.sectionLabel && (
+															<> · {result.entry.detail}</>
+														)}
 												</span>
 											</div>
 										);
@@ -387,7 +452,10 @@ export const SettingsSearch = forwardRef<
 								</div>
 							))}
 							{total > results.length && (
-								<p className="px-2 pt-1 pb-2 text-meta text-ink-dim">
+								<p
+									data-search-more=""
+									className="px-2 pt-1 pb-2 text-meta text-ink-dim"
+								>
 									{t("ui.settings.search.results.more", {
 										count: total - results.length,
 									})}
@@ -403,7 +471,7 @@ export const SettingsSearch = forwardRef<
 			 * announcement even in browsers that treat `<output>` as a plain inline.
 			 */}
 			<output aria-live="polite" className="sr-only">
-				{announcement}
+				{notice || announcement}
 			</output>
 		</div>
 	);

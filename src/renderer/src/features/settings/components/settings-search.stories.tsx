@@ -27,8 +27,11 @@
  * committing a picture of an untouched field.
  */
 
+import { PageHeader } from "@shared/components/common/page-header";
 import { t } from "@shared/i18n";
+import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
+import { Settings } from "lucide-react";
 import { type FC, useLayoutEffect, useMemo } from "react";
 import fixtureJson from "../../../../../../scripts/fixtures/backend-settings-registry.json";
 import type { BackendSettings } from "../../../../../shared/desktop-contract";
@@ -101,14 +104,30 @@ const SECTIONS = [
  * compared against the live surface, and a different gutter would make every
  * alignment judgement a judgement about this file.
  */
-const Frame: FC<{ children: React.ReactNode }> = ({ children }) => (
+const Frame: FC<{
+	children: React.ReactNode;
+	/**
+	 * The content column's own width, so the narrow story can name its measure.
+	 * (`className`, not `column`: it is a width override on the column div.)
+	 */
+	className?: string;
+}> = ({ children, className }) => (
 	<div className="min-h-screen bg-canvas">
-		<div className="mx-auto flex w-full max-w-4xl flex-col gap-8 p-8">
-			<div className="flex items-center justify-between gap-4">
-				<h1 className="text-display text-ink">{t("ui.settings.page.title")}</h1>
-				{children}
+		<div className="mx-auto flex w-full flex-col gap-8">
+			<div className={cn("p-8", className)}>
+				{/*
+				 * The PAGE's own header component, not a stand-in: the hand-written
+				 * title row wrapped differently from `PageHeader` at a narrow width,
+				 * which made the narrow frame a photograph of a composition the
+				 * product may not reach (design D6). `PageHeader` is the same
+				 * `flex-wrap items-start justify-between` row the settings page
+				 * mounts, and the field is its action slot exactly as it ships.
+				 */}
+				<PageHeader title={t("ui.settings.page.title")} icon={Settings}>
+					{children}
+				</PageHeader>
 			</div>
-			<div className="flex flex-col gap-3">
+			<div className="flex flex-col gap-3 px-8">
 				<div className="h-5 w-40 rounded-sm bg-sunken" />
 				<div className="h-4 w-full max-w-xl rounded-sm bg-sunken" />
 				<div className="mt-4 h-32 w-full rounded-md bg-surface" />
@@ -117,15 +136,59 @@ const Frame: FC<{ children: React.ReactNode }> = ({ children }) => (
 	</div>
 );
 
-/** One scenario: the index the page builds, a query, and a shutter hold. */
-const Scenario: FC<{ query: string; expect: string }> = ({ query, expect }) => {
+/**
+ * One scenario: the index the page builds, a query, and a shutter hold.
+ *
+ * `focus` opens the panel the way a reader does — the component opens it on
+ * focus — which is the only way the EMPTY state ("what this box searches" plus
+ * the chord) is ever on screen. Without it the idle frame photographed a field
+ * at rest and the docstring's claim was a caption the pixels did not carry
+ * (design D5).
+ */
+const Scenario: FC<{
+	query: string;
+	expect: string;
+	focus?: boolean;
+	/** A 420px column: below the app's 800px window floor, a wrapping probe. */
+	narrow?: boolean;
+}> = ({ query, expect, focus = false, narrow = false }) => {
 	const index = useSettingsSearchIndex({
 		registry: payload,
 		sections: SECTIONS,
 	});
-	const onJump = useMemo(() => () => {}, []);
+	// The frames never press Enter, so every jump is a landing.
+	const onJump = useMemo(() => () => "landed" as const, []);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: a story drives its state ONCE on mount; re-running on `focus`/`expect` would re-type a query the harness already settled.
 	useLayoutEffect(() => {
+		if (focus) {
+			document.documentElement.dataset.capturePending = "1";
+			let focused = false;
+			const focusField = async () => {
+				for (let i = 0; i < 60 && !focused; i++) {
+					const field =
+						document.querySelector<HTMLInputElement>('[role="combobox"]');
+					if (field) {
+						field.focus();
+						focused = document.body.textContent?.includes(
+							t("ui.settings.search.empty.summary"),
+						);
+						if (focused) break;
+					}
+					await new Promise((resolve) =>
+						requestAnimationFrame(() => resolve(null)),
+					);
+				}
+				await new Promise((resolve) =>
+					requestAnimationFrame(() => resolve(null)),
+				);
+				delete document.documentElement.dataset.capturePending;
+			};
+			void focusField();
+			return () => {
+				delete document.documentElement.dataset.capturePending;
+			};
+		}
 		if (!query) return undefined;
 		document.documentElement.dataset.capturePending = "1";
 		let cancelled = false;
@@ -159,10 +222,8 @@ const Scenario: FC<{ query: string; expect: string }> = ({ query, expect }) => {
 	}, [query, expect]);
 
 	return (
-		<Frame>
-			<div className="@container w-full max-w-4xl">
-				<SettingsSearch index={index} onJump={onJump} className="ms-auto" />
-			</div>
+		<Frame className={narrow ? "w-full max-w-[420px] p-4" : "w-full max-w-4xl"}>
+			<SettingsSearch index={index} onJump={onJump} className="ms-auto" />
 		</Frame>
 	);
 };
@@ -182,10 +243,16 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** No query: what the box searches, and the chord that opens it. */
+/**
+ * No query, panel open: what the box searches, and the chord that opens it.
+ *
+ * The field is FOCUSED so the panel is on screen — that is the state a reader
+ * meets on the first keystroke, and the only way these two lines are ever
+ * photographed (design D5).
+ */
 export const Idle: Story = {
-	args: { query: "", expect: "" },
-	render: () => <Scenario query="" expect="" />,
+	args: { query: "", expect: "", focus: true },
+	render: () => <Scenario query="" expect="" focus />,
 };
 
 /** Results, with each row's section and the field that actually matched. */
@@ -196,17 +263,12 @@ export const Results: Story = {
 	),
 };
 
-/**
- * The same state in the app's dark face. The theme is the preview's arg
- * (`?args=theme:local-operator-dark`), never a class on this story.
+/*
+ * There is no `ResultsDark`. The preview reads the theme from the ARG
+ * (`?args=theme:<id>`), never from `parameters.theme`, so that story was
+ * byte-identical to `Results` in both themes — the sweep photographs every
+ * story in every theme already (design D4).
  */
-export const ResultsDark: Story = {
-	args: { query: "theme", expect: t("ui.settings.search.reason.label") },
-	render: () => (
-		<Scenario query="theme" expect={t("ui.settings.search.reason.label")} />
-	),
-	parameters: { theme: "local-operator-dark" },
-};
 
 /** A query that finds nothing: the quote, one way out, no dead end. */
 export const NoResults: Story = {
@@ -230,14 +292,10 @@ export const LongQuery: Story = {
 	},
 	parameters: { viewport: { defaultViewport: "narrow" } },
 	render: () => (
-		<div className="min-h-screen bg-canvas">
-			<div className="mx-auto flex w-full max-w-[420px] flex-col gap-8 p-4">
-				<h1 className="text-title text-ink">{t("ui.settings.page.title")}</h1>
-				<Scenario
-					query="a very long query that is not going to match anything at all in this registry"
-					expect={t("ui.settings.search.no_results.clear")}
-				/>
-			</div>
-		</div>
+		<Scenario
+			narrow
+			query="a very long query that is not going to match anything at all in this registry"
+			expect={t("ui.settings.search.no_results.clear")}
+		/>
 	),
 };
