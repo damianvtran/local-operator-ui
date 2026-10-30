@@ -1,0 +1,196 @@
+{
+  "audit_id": "teambridge-members-polish-audit-b5610aecd5f2-fr",
+  "date": "2026-10-30",
+  "locale": "fr",
+  "namespace": "ui.teamBridge",
+  "branch": "fix/team-bridge-members-dialog-polish",
+  "source_commit": "c7aefd761ed7c80d30d8302fa72f3aaecd83cd4a",
+  "translator": {
+    "agent": "translator",
+    "model": "anthropic/claude-opus-5-5 (as stated in the audit brief; not independently verifiable from the commit)",
+    "commit": "c7aefd761ed7c80d30d8302fa72f3aaecd83cd4a",
+    "method": "LLM translator agent; no MT service or translation API"
+  },
+  "auditors": [
+    {
+      "agent": "translation-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "model_fallback": {
+        "announced": false,
+        "observed": false,
+        "chain": [
+          "anthropic/claude-opus-5-5"
+        ]
+      },
+      "date": "2026-10-30",
+      "result": "clean-with-findings",
+      "instance": "b5610aecd5f2-fr",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      },
+      "receipt": "i18n/receipts/b5610aecd5f2-fr.json",
+      "receipt_sha256": "d1ba0d8d743f9a18f4dc6e3e10fa4dee9a431ea0462e6d6c230820e9559680e5",
+      "scope": "fix/team-bridge-members-dialog-polish delta (catalogue commit c7aefd761ed): 14 added ui.teamBridge.members.* keys audited linguistically, 11 removed keys confirmed removed with English; other values byte-identical to the base row (9d7c5fd911e).",
+      "note": "Members-dialog polish delta: 14 keys added, 11 retired. 1 nit(s), 0 blocker/major. invitation_note_v2 fidelity checked clause by clause. Record: i18n/audits/evidence/fr/ui.teamBridge/teambridge-members-polish-audit-b5610aecd5f2-fr/record.json"
+    }
+  ],
+  "independence": "Independent auditor: Local Operator session b5610aecd5f2, team lopdev role translation-auditor. It authored none of the audited strings: the translations came from a separate `translator` agent. This session read the catalogues and wrote only this receipt, its evidence record and the ledger row through ledger-assemble.mjs. It edited no catalogue.",
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "abbf67496bc6fecdd4d5795e2fb6b15d4d6a1cefad59ba69b303656b88c8b4cd"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+      "sha256": "b455c94115fd1cd10490a94d2537a41dad3889e65154e0b4f4397b3dde6f5626"
+    }
+  },
+  "scope": {
+    "delta_kind": "Delta against the base 9d7c5fd911e, whose catalogue bytes are exactly the bytes the previous ledger row binds (en 095e2c75afda; target hash equals the row's target_sha256). English gained 14 keys and lost 11 keys; no shared value changed in any of the eight catalogues (verified by a key-by-key comparison of HEAD against the base).",
+    "keys_audited_linguistically": [
+      "ui.teamBridge.members.group.agents_v2",
+      "ui.teamBridge.members.you",
+      "ui.teamBridge.members.state.invited_short",
+      "ui.teamBridge.members.removing_v2",
+      "ui.teamBridge.members.remove_label",
+      "ui.teamBridge.members.remove_tooltip",
+      "ui.teamBridge.members.current_no_matches",
+      "ui.teamBridge.members.no_invitable_matches",
+      "ui.teamBridge.members.reason_short.bridge_unavailable",
+      "ui.teamBridge.members.reason_short.agent_unavailable",
+      "ui.teamBridge.members.reason_short.agent_not_permitted",
+      "ui.teamBridge.members.ineligible_label",
+      "ui.teamBridge.members.invite_count",
+      "ui.teamBridge.members.invitation_note_v2"
+    ],
+    "keys_removed_with_english": [
+      "ui.teamBridge.members.add",
+      "ui.teamBridge.members.group.agents",
+      "ui.teamBridge.members.invitation_note",
+      "ui.teamBridge.members.reason.agent_not_permitted",
+      "ui.teamBridge.members.reason.agent_unavailable",
+      "ui.teamBridge.members.reason.already_member",
+      "ui.teamBridge.members.reason.bridge_unavailable",
+      "ui.teamBridge.members.removing",
+      "ui.teamBridge.members.role.member",
+      "ui.teamBridge.members.state.active",
+      "ui.teamBridge.members.state.invited"
+    ],
+    "keys_read_for_consistency": [
+      "ui.teamBridge.members.remove",
+      "ui.teamBridge.members.role.owner",
+      "ui.teamBridge.members.current_empty",
+      "ui.teamBridge.members.no_matches",
+      "ui.teamBridge.members.search",
+      "ui.teamBridge.members.invite",
+      "ui.teamBridge.people.self_named",
+      "ui.teamBridge.notify.mute",
+      "ui.teamBridge.notify.muted",
+      "ui.teamBridge.notify.mention",
+      "ui.teamBridge.menu.mute",
+      "ui.teamBridge.invitations.consent.bridge_agent_participation_v1",
+      "ui.teamBridge.invitations.accepted",
+      "ui.teamBridge.builtin.agents_topic",
+      "ui.settings.updates.app_updates_section.state_unavailable",
+      "ui.providers.provider_labels.unavailable"
+    ],
+    "call_sites_read": "src/renderer/src/features/team-bridge/team-bridge-add-members.tsx (row badge, removing status, remove tooltip/aria-label, ineligible fieldset aria-label, no-results branch, footer note, invite button)"
+  },
+  "mechanical_checks": {
+    "placeholders": "AST comparison (@formatjs/icu-messageformat-parser) of every audited value against English: 0 mismatches; every non-=0 arm of invite_count carries {count}, the =0 arm carries none.",
+    "plural_arms": {
+      "arms": [
+        "=0",
+        "one",
+        "many",
+        "other"
+      ],
+      "cldr_categories": [
+        "one",
+        "many",
+        "other"
+      ],
+      "exact_zero_kept": true
+    },
+    "renders_invite_count": {
+      "0": "Inviter",
+      "1": "Inviter 1",
+      "2": "Inviter 2",
+      "5": "Inviter 5",
+      "21": "Inviter 21",
+      "1000000": "Inviter 1000000"
+    },
+    "renders_other": {
+      "group.agents_v2": "Agents",
+      "you": "(vous)",
+      "state.invited_short": "Invité",
+      "removing_v2": "Retrait…",
+      "remove_label": "Retirer Ada Lovelace de la conversation",
+      "remove_tooltip": "Retirer de la conversation",
+      "current_no_matches": "Aucun membre actuel ne correspond à votre recherche.",
+      "no_invitable_matches": "Personne à inviter ne correspond à « zz ». Les membres actuels n’apparaissent pas ici.",
+      "reason_short.bridge_unavailable": "Hors Team Bridge",
+      "reason_short.agent_unavailable": "Indisponible",
+      "reason_short.agent_not_permitted": "Non autorisé",
+      "ineligible_label": "Ada Lovelace, ‹R›",
+      "invitation_note_v2": "Les invitations ne donnent accès qu’une fois acceptées. Un agent invité rejoint la conversation dès que son propriétaire y consent ; il lit alors chaque message ici, décide s’il répond, et répond toujours quand on le mentionne avec @. Son propriétaire peut le limiter aux mentions avec @ ou le mettre en sourdine."
+    },
+    "render_args": {
+      "name": "Ada Lovelace",
+      "query": "zz",
+      "reason": "‹R›"
+    },
+    "nfc": "all values NFC",
+    "bidi_controls": "none (U+200E/200F/202A-202E/2066-2069/061C absent)",
+    "renderer": "intl-messageformat 12.1.3 from the repo's node_modules"
+  },
+  "findings": [
+    {
+      "severity": "nit",
+      "id": "FR-N1",
+      "key": "ui.teamBridge.members.invitation_note_v2",
+      "current": "il lit alors chaque message ici, décide s’il répond",
+      "proposed": "il lit alors tous les messages ici, décide s’il répond",
+      "reason": "\"chaque message ici\" reads as a calque of \"every message here\"; \"tous les messages\" is the natural French collective. Meaning is unaffected.",
+      "disposition": "recorded, not churned"
+    }
+  ],
+  "invitation_note_v2_fidelity": "Checked clause by clause against all six English propositions: (1) no access until accepted; (2) an invited agent joins only after its owner consents; (3) it then reads every message here; (4) it decides whether to reply; (5) it always replies when @-mentioned; (6) its owner can limit it to @-mentions or mute it. All six are present, none is added, and none is weakened (for example, nothing implies the invitation activates the agent). The owner, mute and @-mention terms match role.owner, notify.mute and the shipped consent copy.",
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "docs_I18N": {
+      "path": "docs/I18N.md",
+      "sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+    },
+    "ledger_rules": {
+      "path": "scripts/i18n/ledger-rules.mjs",
+      "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+    },
+    "ledger_assemble": {
+      "path": "scripts/i18n/ledger-assemble.mjs",
+      "sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+    },
+    "intl_messageformat": "12.1.3 (repo node_modules)",
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+    }
+  },
+  "limitations": "Auditor competence for fr: high. invitation_note_v2 is high-visibility consent copy: docs/I18N.md requires a second independent audit for such groups; this is the first. Width was measured in cells, not as rendered frames.",
+  "ledger_row": {
+    "status": "audited",
+    "source_sha256": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f",
+    "target_sha256": "b455c94115fd1cd10490a94d2537a41dad3889e65154e0b4f4397b3dde6f5626",
+    "superseded_entries": 42
+  }
+}
