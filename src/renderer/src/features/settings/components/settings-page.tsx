@@ -1282,32 +1282,41 @@ export const SettingsPage: FC = () => {
 				 * Settings all cap the detail pane and none of them column it.
 				 */}
 				<div className="mx-auto flex w-full max-w-4xl flex-col gap-8 pb-8">
-					<PageHeader title={t("ui.settings.page.title")} icon={Settings} />
 					{/*
-					 * THE SEARCH ROW, NOT A HEADER WIDGET. It sits under the title and
-					 * spans the content column, so it shares BOTH edges with every
-					 * control beneath it. In the header's action slot it floated at an
-					 * arbitrary x - the column is centred in the window, so at a wide
-					 * size the field landed right of the middle with nothing to align
-					 * to, which is the "centred everything" tell rather than a grid
-					 * decision. Column-wide is also what makes it read as the page's
-					 * first control rather than a badge beside the title.
-					 *
-					 * It is still the page's search and not a section filter: this one
-					 * JUMPS, the Backend section's own box filters its list in place.
+					 * TITLE AND SEARCH ARE ONE BLOCK, gap-4 inside and the column's
+					 * gap-8 outside (design round 3, D22). At gap-8 either side the
+					 * field sat exactly as far from the title as from the first section
+					 * below it, so nothing said whether it belonged to the header or was
+					 * the first control of "Interface language".
 					 */}
-					<SettingsSearch
-						onDismiss={() => {
-							const saved = savedSearchScrollRef.current;
-							savedSearchScrollRef.current = null;
-							if (saved === null) return;
-							contentContainerRef.current?.scrollTo({ top: saved });
-						}}
-						ref={searchRef}
-						index={searchIndex}
-						readRendered={readRenderedSearchRows}
-						onJump={jumpToSearchEntry}
-					/>
+					<div className="flex flex-col gap-4">
+						<PageHeader title={t("ui.settings.page.title")} icon={Settings} />
+						{/*
+						 * THE SEARCH ROW, NOT A HEADER WIDGET. It sits under the title and
+						 * spans the content column, so it shares BOTH edges with every
+						 * control beneath it. In the header's action slot it floated at an
+						 * arbitrary x - the column is centred in the window, so at a wide
+						 * size the field landed right of the middle with nothing to align
+						 * to, which is the "centred everything" tell rather than a grid
+						 * decision. Column-wide is also what makes it read as the page's
+						 * first control rather than a badge beside the title.
+						 *
+						 * It is still the page's search and not a section filter: this one
+						 * JUMPS, the Backend section's own box filters its list in place.
+						 */}
+						<SettingsSearch
+							onDismiss={() => {
+								const saved = savedSearchScrollRef.current;
+								savedSearchScrollRef.current = null;
+								if (saved === null) return;
+								contentContainerRef.current?.scrollTo({ top: saved });
+							}}
+							ref={searchRef}
+							index={searchIndex}
+							readRendered={readRenderedSearchRows}
+							onJump={jumpToSearchEntry}
+						/>
+					</div>
 					<div className="flex flex-col gap-8">
 						<div
 							ref={sectionRefs.general}

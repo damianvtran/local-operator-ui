@@ -369,7 +369,7 @@ export const SettingsSearch = forwardRef<
 	return (
 		<div
 			ref={rootRef}
-			className={cn("relative w-full", className)}
+			className={cn("relative @container w-full", className)}
 			onBlur={(event) => {
 				const next = event.relatedTarget as Node | null;
 				// Focus that stayed inside the widget — the Clear button, most of
@@ -530,7 +530,15 @@ export const SettingsSearch = forwardRef<
 												 * would take was invisible in both themes (design D1).
 												 */
 												className={cn(
-													"flex cursor-pointer flex-col gap-0.5 rounded-sm px-2 py-1.5",
+													/*
+													 * WIDE PANEL, ONE LINE (design round 3, D21). The row was
+													 * built for a 320px box; the panel now matches the column,
+													 * so a stacked row left two thirds of it empty. Above 40rem
+													 * of FIELD width the label and its reason share a line,
+													 * reason right-aligned - the reason stays adjacent rather
+													 * than becoming a second column to scan.
+													 */
+													"flex cursor-pointer flex-col gap-0.5 rounded-sm px-2 py-1.5 @[40rem]:flex-row @[40rem]:items-baseline @[40rem]:justify-between @[40rem]:gap-4",
 													isActive
 														? "bg-accent-wash outline-solid outline-1 -outline-offset-1 outline-control"
 														: "hover:bg-row-hover",
@@ -539,10 +547,10 @@ export const SettingsSearch = forwardRef<
 												onMouseEnter={() => setActiveIndex(position)}
 												onClick={() => jump(result.entry)}
 											>
-												<span className="text-body-sm text-ink">
+												<span className="min-w-0 text-body-sm text-ink">
 													{result.entry.label}
 												</span>
-												<span className="text-meta text-ink-dim">
+												<span className="@[40rem]:shrink-0 @[40rem]:text-right text-meta text-ink-dim">
 													{result.entry.sectionLabel &&
 														t("ui.settings.search.row.section_hint", {
 															section: result.entry.sectionLabel,
