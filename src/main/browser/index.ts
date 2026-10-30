@@ -92,6 +92,7 @@ import {
 import {
 	type PopupOpenerOwner,
 	decidePopup,
+	isLinkTabRecord,
 	linkLoadLeftNoPage,
 	routePopup,
 } from "./popups";
@@ -1920,10 +1921,10 @@ async function initializeBrowserHost(
 			/** Whether the opening tab is ITSELF a link tab (a page-spawned tab). Read
 			 * fresh beside `openerOwner` for the same hand-over reason: a link tab handed
 			 * to a session is agent-owned, and the agent cap bounds it instead of the
-			 * depth rule. `openedByTab` is the marker, and a restored tab has none
-			 * (`registry.ts` clears it on restore), so a restored tab opens as before. */
+			 * depth rule. `isLinkTabRecord` owns the derivation, and a restored tab has no
+			 * `openedByTab` (`registry.ts` clears it on restore), so it opens as before. */
 			const openerIsLinkTab = (): boolean =>
-				registry.get(tabId)?.openedByTab != null;
+				isLinkTabRecord(registry.get(tabId));
 			/**
 			 * What only the open handler can see, carried to `did-create-window` for
 			 * the same child. `postBody` is NOT in the latter's details on Electron
@@ -1944,9 +1945,11 @@ async function initializeBrowserHost(
 						mode: options.windowShow,
 						live: popupChildren.size,
 						openerOwner: openerOwner(),
-						// The early form of the depth rule: a user's link tab opens nothing, so
-						// no child window is created at all (`decidePopup` runs again in
-						// `did-create-window`, which is what the pure tests drive).
+						// Not consulted by `decidePopup` (the depth rule is route-scoped and runs
+						// in `routePopup`), but supplied truthfully anyway: the policy is one
+						// object, and a call site that passed `false` here would be the silent
+						// re-opening of the hole. The child a link tab spawns is created and then
+						// destroyed in the route's deny path, as `user_opener_cap` already is.
 						openerIsLinkTab: openerIsLinkTab(),
 					},
 				);
@@ -2043,7 +2046,7 @@ async function initializeBrowserHost(
 						mode: options.windowShow,
 						live: popupChildren.size,
 						openerOwner: record ? record.owner : null,
-						openerIsLinkTab: record?.openedByTab != null,
+						openerIsLinkTab: isLinkTabRecord(record),
 					},
 				);
 				const seen = `${details.url} (disposition=${details.disposition}, opener=${hasOpener ? "yes" : "no"}`;

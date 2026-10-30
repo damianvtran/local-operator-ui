@@ -185,6 +185,7 @@ const {
 	// test that hard-codes the cap stops testing it the day the cap moves.
 	decidePopup,
 	routePopup,
+	isLinkTabRecord,
 	linkLoadLeftNoPage,
 	effectivePresentation,
 	sessionMayAdopt,
@@ -8205,8 +8206,8 @@ test("the download reveal opens the host's own directory and takes no path from 
  * surface uses here. TWO grandchild rules exist and only one of them is pinned
  * here: a popup WINDOW's children are refused by its own deny-all handler in
  * `wirePopup`, which is Electron-side code only the running app can exercise (the
- * proof asserts it end to end), while a user's LINK TAB's children are refused in
- * `decidePopup` as `link_depth` and are asserted below.
+ * proof asserts it end to end), while a user's LINK TAB is refused its TAB route
+ * in `routePopup` (`link_depth`) and is asserted below.
  */
 test("the popup policy allows about:blank and http(s), and refuses every other scheme", () => {
 	const policy = {
@@ -8805,7 +8806,10 @@ test("a user link tab cannot spawn a grandchild, so the fan-out stays one level 
 	// so it cannot bound depth, and this is the assertion that says so.
 	assert.equal(registry.openedTabCount(child.tabId), 0);
 
-	// The rule: a user-owned LINK tab opens nothing, whatever its own count says.
+	// The rule: a user-owned LINK tab's TAB route is refused, whatever its own count
+	// says. `route({})` is the plain-link shape — no opener, no post body, not
+	// `about:blank`, not already loading — and it is the ONE route that nests,
+	// because the tab child carries this same handler.
 	for (const openedTabs of [
 		0,
 		1,
@@ -8817,16 +8821,44 @@ test("a user link tab cannot spawn a grandchild, so the fan-out stays one level 
 			reason: "link_depth",
 		});
 	}
-	// Every shape, not just the tab route: an opener-bearing popup and `about:blank`
-	// from a link tab are refused too. A link tab has no operator behind it, so it
-	// is a child that opens nothing at all.
+	// THE OTHER THREE SHAPES ARE WINDOWS (B2 of round 2). A link tab is a tab like any
+	// other to its page: MSAL opens `about:blank` first, "Sign in with Google/Microsoft"
+	// from a `target=_blank` tab needs a real child with `window.opener`, and a form
+	// POST needs the window route for its body. Each of those children carries
+	// `wirePopup`'s deny-all, so the window route is depth 2 by construction — refusing
+	// it bought no safety and only made the page's `window.open` return null, the
+	// silent sign-in failure §0 exists to remove.
 	assert.deepEqual(route({ hasOpener: true }, { openerIsLinkTab: true }), {
-		route: "deny",
-		reason: "link_depth",
+		route: "window",
+		presentation: "focus",
 	});
 	assert.deepEqual(
 		route({ url: "about:blank", hasOpener: true }, { openerIsLinkTab: true }),
-		{ route: "deny", reason: "link_depth" },
+		{ route: "window", presentation: "focus" },
+	);
+	assert.deepEqual(route({ hasPostBody: true }, { openerIsLinkTab: true }), {
+		route: "window",
+		presentation: "focus",
+	});
+	// A modifier click (`alreadyLoading`) is a window too, and `inactive` at most: a
+	// background open never takes focus.
+	for (const disposition of ["background-tab", "new-window"]) {
+		assert.deepEqual(
+			route({ alreadyLoading: true, disposition }, { openerIsLinkTab: true }),
+			{ route: "window", presentation: "inactive" },
+		);
+	}
+	// The CONTROL for that sign-in: from the operator's own tab it already was a
+	// window, so the rows above pin the shape and not an accident of the flag.
+	assert.deepEqual(route({ hasOpener: true }), {
+		route: "window",
+		presentation: "focus",
+	});
+	// A non-focus launch still presents by its mode: the route is a window in every
+	// mode, only the presentation changes.
+	assert.deepEqual(
+		route({ hasOpener: true }, { openerIsLinkTab: true, mode: "never" }),
+		{ route: "window", presentation: "never" },
 	);
 	// It is its own token, not `user_opener_cap`: the wall is depth, and a log that
 	// called it a count would send a reader looking for twelve tabs.
@@ -8856,6 +8888,44 @@ test("a user link tab cannot spawn a grandchild, so the fan-out stays one level 
 		owner: "agent",
 		activate: false,
 	});
+});
+
+test("the link-tab flag is derived from a real registry record at every call site (M1)", () => {
+	// The router rows above pass `openerIsLinkTab` by hand, so a call site that
+	// derived it wrongly — or omitted it — stayed invisible. Drive real records
+	// through the derivation the two call sites use.
+	const { registry } = makeRegistry();
+	const root = registry.create({ owner: "user" });
+	const link = registry.create({ owner: "user", openedByTab: root.tabId });
+	assert.equal(isLinkTabRecord(registry.get(root.tabId)), false);
+	assert.equal(isLinkTabRecord(registry.get(link.tabId)), true);
+	// The absences read as NOT a link tab, and both matter: a closed tab has no
+	// record, and the registry clears `openedByTab` on restore, so a restored tab
+	// opens exactly as it did before the depth rule.
+	assert.equal(isLinkTabRecord(registry.get(-1)), false);
+	assert.equal(isLinkTabRecord(undefined), false);
+	assert.equal(isLinkTabRecord({ openedByTab: null }), false);
+
+	// The wiring: no call site may pass a literal, and none may spell the derivation
+	// itself — either one would reintroduce the hole on that path alone.
+	const wiring = readFileSync("src/main/browser/index.ts", "utf8");
+	const values = [...wiring.matchAll(/openerIsLinkTab:\s*([^,\n]+)/g)].map(
+		(m) => m[1].trim(),
+	);
+	assert.deepEqual(
+		values.sort(),
+		["isLinkTabRecord(record)", "openerIsLinkTab()"],
+		"both call sites pass a value derived from the tab record",
+	);
+	assert.match(
+		wiring,
+		/const openerIsLinkTab = \(\): boolean =>\s*isLinkTabRecord\(registry\.get\(tabId\)\);/,
+		"and the handler derives it through the same function",
+	);
+	assert.ok(
+		!/openedByTab\s*[!=]==?\s*null/.test(wiring),
+		"no hand-rolled `openedByTab` comparison is left in the wiring",
+	);
 });
 
 test("a link tab inherits its opener's session and activates only when told to", () => {

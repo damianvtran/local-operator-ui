@@ -109,6 +109,11 @@ the open handler: **does the new page have an opener (`child.webContents.opener`
 | `<form method=post target=_blank>` | `foreground-tab` + `postBody` (open handler only) | none | window (replaying the body into a new view was measured flaky: POST 1/1/0 over three runs) |
 | cmd / shift / middle click on `<a target=_blank>` | `background-tab` / `new-window` | none, **already loading** | window, `inactive` at most (a tab would fetch the URL a second time) |
 
+One refinement crosses that table, and only the TAB rows: a popup from a USER link tab is
+refused the tab route (`link_depth`), because a tab child carries the same handler and would
+start its own empty count — while every window row above still applies, since a window child
+carries `wirePopup`'s deny-all and adds no depth.
+
 Two facts the router needs are **not** where one would look (measured, Electron 44.3.0):
 `postBody` is present in the `setWindowOpenHandler` details and absent from the
 `did-create-window` details, so the handler records it and `did-create-window` reads that
@@ -139,7 +144,8 @@ as a window. The opening session may adopt it with `open tab=<handle>` (`TabReco
 read by `sessionMayAdopt`); another session may not. Bounds: an agent's tab may spawn
 `MAX_POPUP_CHILDREN_PER_VIEW` link tabs and the agent-tab cap (`MAX_AGENT_TABS`) still
 applies; a user's tab may hold `MAX_USER_LINK_TABS_PER_VIEW` (12) link tabs open at once,
-and **a user's link tab may not spawn a popup of its own at all** (`link_depth`).
+and **a user's link tab may spawn no TAB of its own** (`link_depth`), its window shapes
+unchanged — the depth rule is route-scoped, as the routing section below says.
 
 The guarantee is therefore depth-1 fan-out, and it is worth stating exactly, because the
 first form of this bound did not hold: the count is `openedTabCount(openerTabId)`, the
@@ -149,11 +155,16 @@ the fan-out would be 12^depth instead of 12, since every tab is wired with the s
 window-open handler and each child would have been measured against its own fresh, empty
 count: a page reproducing itself in its children (`window.open(location.href, "_blank",
 "noopener")` inside the child too) would have reached 12, 144, 1,728, 20,736 live views,
-because the window cap sees no tab and the agent-tab cap is agent-only. A link tab is a tab
-with no operator behind it, so it opens nothing; the operator's tab fans out, its children
-do not. An agent's link tab is not covered by that rule because `MAX_AGENT_TABS` bounds
-agent tabs in aggregate (8), so its nesting cannot grow the strip past a number nothing
-checks.
+because the window cap sees no tab and the agent-tab cap is agent-only. The rule that closes
+it is ROUTE-scoped: a user link tab is refused its TAB route (`link_depth`), so a tab it
+spawned spawns no tab, while its window shapes (an opener-bearing sign-in, `about:blank`, a
+form POST) still open — a window child carries `wirePopup`'s deny-all and adds no depth, and
+refusing it returned null from the page's `window.open`, which silently broke a sign-in
+opened in a `target=_blank` tab (§1.1's routing note; round 2's B2). The reason is nesting,
+not attention: the tab route ACTIVATES a user's link tab, so the operator is usually looking
+at it, and an earlier draft's "a link tab has no operator behind it" was false for the user
+case. An agent's link tab is not covered by the rule because `MAX_AGENT_TABS` bounds agent
+tabs in aggregate (8), so its nesting cannot grow the strip past a number nothing checks.
 
 The user bound corrects an earlier claim: `damianvtran/local-operator`'s `docs/design/ui-browser-tab.md`
 §6.5 leaves user tabs uncapped
@@ -194,10 +205,12 @@ opener's `Referer`.
 window on every click; each click now opens a new tab, and the fifth click from one agent
 tab is refused with `opener_cap` until one of them is closed. From a user's tab the same
 clicks are refused from the thirteenth with `user_opener_cap` while twelve are open, and a
-link clicked ON one of those new tabs opens nothing: it logs `link_depth` and no tab
-appears. That last refusal is deliberate rather than a gap: a link tab has no operator
-behind it, so there is no one to stop a page that reproduces itself, and a bound that only
-counted per opener would be 12 to the power of the nesting rather than 12.
+link clicked ON one of those new tabs opens no tab: it logs `link_depth` and no tab appears
+(its sign-in, `about:blank` and form-POST shapes still open a window). That refusal is
+deliberate rather than a gap: a tab child is wired with the same open handler, so a page
+that reproduces itself in its children would be bounded only per opener, at 12 to the power
+of the nesting rather than 12. It is not because nobody is watching — the tab route
+activates the operator's link tab, so they usually are.
 
 Not verified: that Gmail's links are opener-less (inferred from its `google.com/url?q=`
 redirect anchors), real MSAL/Google sign-in through the new routing, modifier-click in the
