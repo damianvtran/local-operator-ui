@@ -7575,6 +7575,18 @@ export type BackendSetting = {
 	 * `retention-duration.ts`).
 	 */
 	unit?: string | null;
+	/**
+	 * A SEVENTH additive field: the other words a reader might type for this row
+	 * (`"dark mode"` for the theme row, `"retries"` for a failover key). It is
+	 * the registry's vocabulary, not the renderer's — the settings search folds
+	 * these into its index so a synonym the backend owns is found without this
+	 * app inventing a second, drifting list of its own (issue #1492).
+	 *
+	 * OPTIONAL and read with `?? []`, exactly like the six above: an older server
+	 * sends nothing, and the search then matches on label, help, key, section and
+	 * choice labels — the behaviour it had before the field existed.
+	 */
+	synonyms?: string[];
 };
 /**
  * The one-time "delegated sessions were cleaned up" notice, as
