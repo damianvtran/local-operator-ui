@@ -2287,7 +2287,20 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				 * cannot silently invalidate.
 				 */
 				data-tour-tag="pane-row"
-				className="relative flex h-full w-full flex-row overflow-hidden"
+				/*
+				 * `overflow-clip`, NOT `overflow-hidden` (design review round 2, D8). Both
+				 * paint the same, but `hidden` is still a SCROLL CONTAINER: it takes
+				 * `scrollLeft` and `scrollIntoView` will move it, while `clip` is not one at
+				 * all. This row always has horizontal overflow to clip - the conversation
+				 * column keeps its 480 px floor inside a 456 px row at 200 % zoom, which is
+				 * 24 px - and the overlay pane is a descendant, so a scroll of this row
+				 * translates the pane toward the inline start and out of the window (measured
+				 * in RTL: pane `x 68 w 456` in a 500-wide viewport, 107 device rows with ink
+				 * in the last four columns). A box whose whole job is to bound an overlay
+				 * must not be able to move its contents; nothing here ever needed to scroll
+				 * this row, and the scene now asserts `scrollLeft === 0` on it in every frame.
+				 */
+				className="relative flex h-full w-full flex-row overflow-clip"
 			>
 				{/*
 				 * THE OPEN POLICY'S LIVE REGION (design review round 1, D1), and it is
@@ -3394,7 +3407,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * docked mode nothing changes: same width, no extra class.
 						 */}
 						<PaneSlot
-							width={canvasDocked ? canvasWidth : paneRowWidth}
+							/*
+							 * NO WIDTH IN THE OVERLAY MODE (design review round 2, D8): a pinned pane's
+							 * inline size is the box it is pinned to, and only the browser knows that
+							 * box after the row has been laid out. Handing it a measured number made the
+							 * box over-constrained against `inset-0`, and a number one reflow old (the
+							 * 956 px of row state a 200 % zoom leaves behind for one width transition)
+							 * then measured 24 px outside the window in RTL. `pane-slot.tsx` states the
+							 * whole argument; the docked mode still passes the resolver's width, because
+							 * there it IS the width and a person chose it.
+							 */
+							width={canvasDocked ? canvasWidth : undefined}
 							className={canvasDocked ? undefined : "absolute inset-0"}
 							tourTag="ask-drawer-slot"
 							/*

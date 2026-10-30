@@ -403,7 +403,7 @@ const stateOf = (cdp) =>
  theme:document.documentElement.dataset.theme,dir:document.documentElement.dir,
  viewport:{width:window.innerWidth,height:window.innerHeight},
  glass:document.documentElement.dataset.glass,
- bounds:[...document.querySelectorAll('[data-drawer-read-view], [data-drawer-updates], [data-ask-drawer]')].map(e=>{const r=e.getBoundingClientRect();return {selector:e.dataset.drawerReadView??e.dataset.askDrawer??'updates',x:r.x,y:r.y,width:r.width,height:r.height,scrollWidth:e.scrollWidth,clientWidth:e.clientWidth}})
+ bounds:[...document.querySelectorAll('[data-drawer-read-view], [data-drawer-updates], [data-ask-drawer], [data-tour-tag="ask-drawer-slot"], [data-tour-tag="pane-row"], [data-panel-rail-host]')].map(e=>{const r=e.getBoundingClientRect();const name=e.dataset.drawerReadView??e.dataset.askDrawer??(e.hasAttribute('data-drawer-updates')?'updates':e.dataset.tourTag??(e.hasAttribute('data-panel-rail-host')?'rail':'unknown'));return {selector:name,x:r.x,y:r.y,width:r.width,height:r.height,scrollWidth:e.scrollWidth,clientWidth:e.clientWidth,scrollLeft:e.scrollLeft,mode:e.dataset.askMode}})
 }))()`);
 
 /** Uses actual UI actions, real foreground guard, real HTTP receipts and store readback. */
@@ -421,8 +421,65 @@ export async function runDrawerRemediationScene({
 		nodeCdp.evaluate(
 			`(()=>{const e=process.mainModule.require('electron');const w=e.BrowserWindow.getAllWindows()[0];w.setContentSize(1000,900);w.webContents.setZoomFactor(${factor});return {zoom:w.webContents.getZoomFactor(),size:w.getContentSize()}})()`,
 		);
+	/*
+	 * THE PANE'S OWN BOX, IN EVERY FRAME THE MATRIX CAPTURES (design review round 2,
+	 * D8). The narrow axis asserted its segments and its viewport and never the pane,
+	 * so a frame whose drawer hung 24 CSS px outside a 500 px window passed the narrow
+	 * step - and because the pane was never measured, the two captures of that one
+	 * state could disagree with nothing in the scene to say which was right. A pane is
+	 * inside the window or it is a defect, at every width and in both directions, so
+	 * this is asserted on the way into the receipt rather than in one leg.
+	 *
+	 * FOUR CLAIMS, each with its own message because each fails for its own reason:
+	 *   1. the drawer's border box lies fully inside the viewport horizontally;
+	 *   2. nothing inside it spills sideways (scrollWidth == clientWidth);
+	 *   3. an OVERLAY pane is flush with the rail's inner edge - it covers the row it
+	 *      is pinned to, and that row's inline end IS the rail's inner edge, so a gap
+	 *      or an overhang means the pane was placed by something other than the row;
+	 *   4. the row it is pinned to is not scrolled - the mechanism that moved it, since
+	 *      an `overflow-hidden` row keeps a horizontal range from the conversation's
+	 *      480 px floor inside a 456 px row and a `scrollIntoView` inside it spends it.
+	 *      The row now clips rather than scrolls (`chat-content.tsx`), so this is the
+	 *      assertion that would fail if that clip were ever reverted to `hidden`.
+	 */
+	const assertPaneBox = (state, label) => {
+		const viewport = state.viewport;
+		const pane = state.bounds.find((box) => box.selector === "ask-drawer-slot");
+		const drawer = state.bounds.find((box) => box.selector === "session");
+		assert.ok(
+			pane && drawer,
+			`${label}: the drawer slot and the drawer's own box must both be in the receipt`,
+		);
+		for (const box of [pane, drawer])
+			assert.ok(
+				box.x >= -0.5 && box.x + box.width <= viewport.width + 0.5,
+				`${label}: the ${box.selector} box must lie fully within the viewport horizontally - x ${box.x} w ${box.width} ends at ${box.x + box.width} in a ${viewport.width}px viewport`,
+			);
+		for (const box of [pane, drawer])
+			assert.ok(
+				box.scrollWidth <= box.clientWidth + 1,
+				`${label}: the ${box.selector} box must not spill its own content - scrollWidth ${box.scrollWidth} > clientWidth ${box.clientWidth}`,
+			);
+		const row = state.bounds.find((box) => box.selector === "pane-row");
+		assert.ok(row, `${label}: the pane row must be in the receipt`);
+		assert.equal(
+			row.scrollLeft,
+			0,
+			`${label}: the row the pane is pinned to must not be scrolled - scrollLeft ${row.scrollLeft} translates the pinned overlay out of the window`,
+		);
+		if (pane.mode !== "overlay") return;
+		const rail = state.bounds.find((box) => box.selector === "rail");
+		if (!rail || rail.width === 0) return;
+		const paneEdge = state.dir === "rtl" ? pane.x : pane.x + pane.width;
+		const railEdge = state.dir === "rtl" ? rail.x + rail.width : rail.x;
+		assert.ok(
+			Math.abs(paneEdge - railEdge) <= 0.5,
+			`${label}: an overlay pane must sit flush with the rail's inner edge - pane inline end ${paneEdge}, rail inner edge ${railEdge} (dir ${state.dir})`,
+		);
+	};
 	const capture = async (label) => {
 		const state = await stateOf(cdp);
+		assertPaneBox(state, `drawer-${label}`);
 		const frame = await screenshot(cdp, `drawer-${label}`);
 		receipt.frames.push({ label, state, ...frame });
 		return state;
@@ -641,9 +698,14 @@ export async function runDrawerRemediationScene({
 			async () => (await stateOf(cdp)).rows.some((row) => row.id === stale.id),
 			"skipped row restored",
 		);
-		await capture("partial-receipt-first");
-		await pause(350);
-		await capture("partial-receipt-settled");
+		/* ONE frame here, not a pair (design review round 2, D10). The two used to be
+		 * `partial-receipt-first` and `partial-receipt-settled`; they were the same
+		 * BYTES (sha256 98f8430f1980d5f6e5064441d755dd337c19d008f4e4eaf4e6643322dcb45a53)
+		 * and their receipt states were equal too, so the second one could not support
+		 * the settled claim it was named for. What it was there to show - the skipped row
+		 * coming back - is asserted by the `until` above and carried in the matrix's own
+		 * `http` entry, which is a stronger statement than a duplicate frame. */
+		await capture("partial-receipt");
 		fixture.release();
 		receipt.matrix.push({
 			surface: "partial receipt",
@@ -818,17 +880,41 @@ export async function runDrawerRemediationScene({
 			backlog,
 		});
 		/* Back to 1x for the reload that repaints through the app's own theme
-		 * persistence, then the same zoom-the-open-pane order as above. */
+		 * persistence, then the same zoom-the-open-pane order as above - in the DARK
+		 * theme, because the pair was two captures of ONE theme (design review round 2,
+		 * D9): this leg asked for the light theme again, so the second capture could not
+		 * show anything the first did not, and "both themes are still rendered" had no
+		 * capture behind half of it. The theme each capture lands on is asserted below,
+		 * so a frame cannot be named for a theme it does not show. */
 		await zoomTo(1);
 		await cdp.evaluate(
-			`(()=>{const key='ui-preferences-storage';const prefs=JSON.parse(localStorage.getItem(key));prefs.state.themeName='localOperatorLight';localStorage.setItem(key,JSON.stringify(prefs));location.reload();return true})()`,
+			`(()=>{const key='ui-preferences-storage';const prefs=JSON.parse(localStorage.getItem(key));prefs.state.themeName='localOperatorDark';localStorage.setItem(key,JSON.stringify(prefs));location.reload();return true})()`,
 		);
 		await pause(1500);
 		await open();
 		await ready();
 		await zoomTo(2);
 		await click(cdp, '[data-drawer-read-view="read"]');
-		await capture("light-narrow-200-rtl-history");
+		const darkNarrow = await capture("dark-narrow-200-rtl-history");
+		assert.equal(
+			narrow.theme,
+			"localOperatorLight",
+			`the first narrow frame is the light one: ${narrow.theme}`,
+		);
+		assert.equal(
+			darkNarrow.theme,
+			"localOperatorDark",
+			`the second narrow frame must be the dark half of the pair, got ${darkNarrow.theme}`,
+		);
+		assert.equal(darkNarrow.dir, "rtl", "the dark narrow frame must stay RTL");
+		for (const [half, frame] of [
+			["light", narrow],
+			["dark", darkNarrow],
+		])
+			assert.ok(
+				frame.viewport.width <= 520 && frame.viewport.height <= 520,
+				`the ${half} capture of the theme pair must be at the zoomed viewport, got ${JSON.stringify(frame.viewport)}`,
+			);
 		receipt.result = "PASS";
 	} catch (error) {
 		receipt.result = "FAIL";

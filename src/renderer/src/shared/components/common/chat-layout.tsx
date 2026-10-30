@@ -536,7 +536,13 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 									 * the rail unless the pane escapes the row.
 									 */}
 									<PaneSlot
-										width={fleetDocked ? slotWidth : contentBox.width}
+										/*
+										 * Overlay: no width. The pane overlays the row it is pinned to, and that
+										 * row's width is the browser's to resolve at paint time - see the mount in
+										 * `chat-content.tsx` and `pane-slot.tsx`'s `width` note (design review
+										 * round 2, D8).
+										 */
+										width={fleetDocked ? slotWidth : undefined}
 										className={fleetDocked ? undefined : "absolute inset-0"}
 										tourTag="ask-fleet-slot"
 										data-ask-mode={fleetDocked ? "docked" : "overlay"}

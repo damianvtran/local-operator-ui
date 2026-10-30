@@ -4,8 +4,28 @@ import { type HTMLAttributes, type ReactNode, forwardRef } from "react";
 type PaneSlotProps = HTMLAttributes<HTMLDivElement> & {
 	/**
 	 * The pane's width in pixels, from the store that owns the drag.
+	 *
+	 * OMITTED MEANS "THE BOX THIS PANE IS PINNED TO", and that is a different claim
+	 * from a measured number rather than a default for one. A DOCKED pane has a
+	 * width a person chose, so only the store knows it. An OVERLAY pane has no
+	 * width of its own: it covers the row it is pinned to (`absolute inset-0`), and
+	 * that row's width is a fact only the browser has after the row has been laid
+	 * out - after a zoom, a sidebar drag or a rail mount settles.
+	 *
+	 * MEASURED, and it cost a design round (D8). Passing the measured row width
+	 * into an `inset-0` box is over-constrained - the direction decides which inset
+	 * is ignored, so in RTL the box keeps its trailing inset and a WIDER number
+	 * pushes its leading edge past the containing block. The number is one reflow
+	 * old for a frame or two after 200 % zoom (measured: 956 px of row state in a
+	 * 456 px row while the width transition ran), and in those frames the pane is
+	 * wider than the row it is clipped by: it gives the `overflow-hidden` row a
+	 * horizontal scroll range it does not have once settled, and any programmatic
+	 * scroll of a control inside that row (a `scrollIntoView`, a focus scroll) then
+	 * consumes it and drags the pinned pane with it - 24 px in RTL, off the window.
+	 * Left unstated, the box resolves to its own insets at paint time, which is the
+	 * only width an overlay can be correct at.
 	 */
-	width: number;
+	width?: number;
 	/**
 	 * A floor for the box, in pixels. Omitted, the floor is ZERO — see the class
 	 * note below, where the measurement behind that default is written down. A
