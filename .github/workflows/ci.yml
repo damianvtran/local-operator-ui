@@ -573,9 +573,18 @@ jobs:
     # UNMEASURED and out of scope here. Nothing else changes: the job still runs
     # the suite once, fails on any red, and the whole-tree count assertions
     # stand.
-    # Three file-count partitions add capacity, not a guaranteed runtime balance.
+    # Four file-count partitions add capacity, not a guaranteed runtime balance.
     # Every VM retains the existing concurrency/memory/lane protections.
-    name: Desktop Tests shard (${{ matrix.shard }}/3)
+    #
+    # FOUR RATHER THAN THREE (2026-10-30), on measured memory, not on runtime:
+    # at concurrency 3 the guarded runner's process group peaked at 9.9 GB (run
+    # 40992181176) and 7.9 GB (run 40990818668) on the SAME 205-file shard
+    # inventory, and both runs were killed by the 7.8 GB budget at the same
+    # point - `ok 1060`, zero failures. The bound sits inside the run-to-run
+    # distribution, so a quarter fewer files per process group is what buys
+    # headroom. Raising the budget or lowering concurrency was rejected: the
+    # first hides a narrowing margin, the second lengthens every lane.
+    name: Desktop Tests shard (${{ matrix.shard }}/4)
     needs: [changes]
     if: >-
       !cancelled() &&
@@ -609,7 +618,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2]
+        shard: [0, 1, 2, 3]
     env:
       DESKTOP_SHARD_INDEX: ${{ matrix.shard }}
       DESKTOP_REQUESTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}

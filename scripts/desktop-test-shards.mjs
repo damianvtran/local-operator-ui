@@ -22,7 +22,14 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isEntryPoint } from "./entry-point.mjs";
 
-export const SHARD_COUNT = 3;
+// FOUR, NOT THREE, on measured memory headroom rather than balance: at
+// concurrency 3 the guarded runner's process group peaked at 9.9 GB (run
+// 40992181176) and 7.9 GB (run 40990818668) on the SAME 205-file shard
+// inventory, against the 7.8 GB budget both runs died on - after `ok 1060` with
+// zero failures. The ceiling therefore sits inside the run-to-run distribution,
+// so fewer files per process group is what buys headroom; the budget and the
+// concurrency guard are deliberately untouched.
+export const SHARD_COUNT = 4;
 const RUNNER = "scripts/run-desktop-tests.mjs";
 const SHA = /^[a-f0-9]{40}$/;
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -52,8 +59,11 @@ export function inventory(command) {
 }
 
 export function partition(files, count = SHARD_COUNT) {
-	if (![2, 3].includes(count))
-		throw new Error("Partition count must be 2 or 3");
+	// The floor of 2 keeps a single-shard "partition" from masquerading as
+	// capacity work; the ceiling is whatever the CI matrix advertises, so a count
+	// nobody runs cannot silently pass here.
+	if (![2, 3, 4].includes(count))
+		throw new Error("Partition count must be 2, 3 or 4");
 	if (!files.length || new Set(files).size !== files.length)
 		throw new Error("Empty or duplicate inventory");
 	const groups = Array.from({ length: count }, () => []);
@@ -190,7 +200,7 @@ export function receipt(expected, index, text, rc, elapsed) {
 	if (expected.metadataOnly || expected.mode === "metadata-only")
 		throw new Error("Metadata-only plan cannot produce execution success");
 	if (!Number.isInteger(index) || index < 0 || index >= SHARD_COUNT)
-		throw new Error("Invalid shard index (expected 0, 1, 2)");
+		throw new Error(`Invalid shard index (expected 0..${SHARD_COUNT - 1})`);
 	if (rc !== 0 || !Number.isFinite(elapsed) || elapsed < 0)
 		throw new Error("Only a completed rc=0 suite may write a success receipt");
 	const runnerFileCount = observedRunnerFileCount(text);
@@ -302,12 +312,13 @@ export function loadReceipts(directoryRoot, runId, attempt) {
 	if (!/^[0-9]+$/.test(runId ?? "") || !/^[0-9]+$/.test(attempt ?? ""))
 		throw new Error("Missing run/attempt identity");
 	const names = readdirSync(directoryRoot).sort();
-	const expectedNames = [0, 1, 2].map(
-		(i) => `desktop-shard-proof-${runId}-${attempt}-${i}`,
+	const expectedNames = Array.from(
+		{ length: SHARD_COUNT },
+		(_, i) => `desktop-shard-proof-${runId}-${attempt}-${i}`,
 	);
 	if (JSON.stringify(names) !== JSON.stringify(expectedNames))
 		throw new Error(
-			"Expected exactly this run attempt's three named receipt artifacts",
+			`Expected exactly this run attempt's ${SHARD_COUNT} named receipt artifacts`,
 		);
 	return names.map((name, index) => {
 		const directory = join(directoryRoot, name);
@@ -405,13 +416,17 @@ export async function main(args) {
 	if (mode === "verify") {
 		const rows = loadReceipts(o.receipts, o["run-id"], o.attempt);
 		console.log(
-			`Desktop Tests: ${verify(expected, rows, o.unit, o.classifier, o.workers)} (${expected.total} files, 3 disjoint shards)`,
+			`Desktop Tests: ${verify(expected, rows, o.unit, o.classifier, o.workers)} (${expected.total} files, ${expected.count} disjoint shards)`,
 		);
 		return 0;
 	}
 	const index = Number(o.index);
-	if (!/^[012]$/.test(o.index ?? ""))
-		throw new Error("Expected --index 0, 1 or 2");
+	if (
+		!/^[0-9]+$/.test(o.index ?? "") ||
+		!Number.isInteger(index) ||
+		index >= SHARD_COUNT
+	)
+		throw new Error(`Expected --index 0..${SHARD_COUNT - 1}`);
 	if (mode === "receipt") {
 		if (!o.output || !o.log || o.rc === undefined || o.elapsed === undefined)
 			throw new Error("Receipt requires --output, --log, --rc and --elapsed");
