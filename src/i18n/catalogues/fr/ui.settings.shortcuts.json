@@ -62,5 +62,9 @@
 	"ui.settings.shortcuts.row.canvas": "canvas",
 	"ui.settings.shortcuts.row.code_review": "Revue de code",
 	"ui.settings.shortcuts.row.console": "console",
-	"ui.settings.shortcuts.row.execution": "Détails d’exécution"
+	"ui.settings.shortcuts.row.execution": "Détails d’exécution",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcut_capture_description": "Activez un champ de raccourci et appuyez sur les touches pour enregistrer immédiatement. Esc efface l’indication de saisie ; Réinitialiser restaure la valeur par défaut.",
+	"ui.settings.shortcuts.category.speech_to_text": "Reconnaissance vocale",
+	"ui.settings.shortcuts.recording.invalid_stored_value": "Le raccourci enregistré n’est pas valide. Le dernier raccourci fonctionnel est affiché.",
+	"ui.settings.shortcuts.recording.inactive_claimed": "L’enregistrement est inactif : {label} utilise ce raccourci."
 }

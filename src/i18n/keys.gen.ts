@@ -8873,6 +8873,7 @@ export type MessageParams = {
 	"ui.settings.shortcuts.capture.needs_modifier_mac": undefined;
 	"ui.settings.shortcuts.capture.unbindable": undefined;
 	"ui.settings.shortcuts.category.panels": undefined;
+	"ui.settings.shortcuts.category.speech_to_text": undefined;
 	"ui.settings.shortcuts.keyboard_shortcuts_section.browser_shortcuts_answer_only_while_the_browser_has_focus": undefined;
 	"ui.settings.shortcuts.keyboard_shortcuts_section.clear": undefined;
 	"ui.settings.shortcuts.keyboard_shortcuts_section.clear_label_s_shortcut": {
@@ -8888,7 +8889,10 @@ export type MessageParams = {
 	"ui.settings.shortcuts.keyboard_shortcuts_section.reset_label_to_its_default": {
 		label: string;
 	};
+	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcut_capture_description": undefined;
 	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcuts_for_the_panel_rail_focus_a_field_and_press_the_keys_you": undefined;
+	"ui.settings.shortcuts.recording.inactive_claimed": { label: string };
+	"ui.settings.shortcuts.recording.invalid_stored_value": undefined;
 	"ui.settings.shortcuts.reserved.archive_chat": undefined;
 	"ui.settings.shortcuts.reserved.browser_address": undefined;
 	"ui.settings.shortcuts.reserved.browser_back": undefined;
