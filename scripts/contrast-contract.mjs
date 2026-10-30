@@ -3301,6 +3301,20 @@ const STRUCTURAL_CALL_SITES = [
 	},
 	{
 		/*
+		 * The SETTINGS SEARCH panel's active row, the same role and the same
+		 * ground. Round 1 shipped `bg-action-hover` — a token no palette defines
+		 * — so the row Enter would take was invisible in every theme, and a
+		 * palette assertion could not see it because the class resolved to
+		 * nothing (design round 1, D1). This pin is what makes a dropped class
+		 * fail the gate instead of the frame.
+		 */
+		what: "settings search option active mark",
+		file: "src/renderer/src/features/settings/components/settings-search.tsx",
+		must: '"bg-accent-wash outline-solid outline-1 -outline-offset-1 outline-control"',
+		why: "the active row must be perceivable in every theme; the role is `combobox option active mark`, and this pin proves the panel paints it",
+	},
+	{
+		/*
 		 * The chat sidebar's CURRENT-ROW ground, and the operator's own report:
 		 * "the sidebar doesn't visibly highlight the selected conversation".
 		 *

@@ -1,0 +1,20 @@
+{
+	"ui.settings.search.field.label": "搜索设置",
+	"ui.settings.search.field.placeholder": "搜索设置",
+	"ui.settings.search.empty.summary": "搜索本页和所连接服务注册表中的所有设置。",
+	"ui.settings.search.empty.shortcut": "按{shortcut}可从本页任意位置搜索。",
+	"ui.settings.search.no_results.title": "没有与“{query}”匹配的结果。",
+	"ui.settings.search.no_results.hint": "换个词试试，或清空搜索框继续浏览本页。",
+	"ui.settings.search.no_results.clear": "清除搜索",
+	"ui.settings.search.results.count": "{count, plural, other {#项结果}}",
+	"ui.settings.search.results.more": "{count, plural, other {另有#项结果未显示}}",
+	"ui.settings.search.panel.label": "设置搜索结果",
+	"ui.settings.search.reason.label": "匹配名称",
+	"ui.settings.search.reason.synonym": "匹配相关词",
+	"ui.settings.search.reason.key": "匹配配置键",
+	"ui.settings.search.reason.choice": "匹配选项",
+	"ui.settings.search.reason.section": "匹配分区",
+	"ui.settings.search.reason.description": "匹配说明",
+	"ui.settings.search.jump.missing": "该设置当前不在屏幕上。",
+	"ui.settings.search.row.section_hint": "{section}分区"
+}
