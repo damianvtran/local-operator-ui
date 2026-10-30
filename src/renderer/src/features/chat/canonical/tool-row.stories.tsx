@@ -3797,7 +3797,6 @@ const bridgeRows = (): TranscriptRecord[] => [
 		args: {
 			op: "channel_post",
 			channel_id: "bcv_b0044d5e",
-			name: "release",
 			body: "Tagged **v0.46.7** — notes are on the Release page.\nPyPI is green.",
 		},
 		output: "posted to bcv_b0044d5e: message bcmsg_7f2a at seq 42",
@@ -3805,6 +3804,9 @@ const bridgeRows = (): TranscriptRecord[] => [
 			ok: true,
 			state: "sent",
 			conversation_id: "bcv_b0044d5e",
+			// `name` on a post is ignored by the executor and no longer labels
+			// the row (review round 2, R2-1); the label is the result's.
+			conversation_label: "release",
 			message_id: "bcmsg_7f2a",
 			seq: 42,
 			destination_type: "conversation",
@@ -3911,11 +3913,11 @@ const bridgeRows = (): TranscriptRecord[] => [
 		args: {
 			op: "channel_post",
 			channel_id: "bcv_2211",
-			name: "ops",
 			body: "Deploy done.",
 		},
 		output: "the post did not confirm: timed out",
 		bridge: {
+			conversation_label: "ops",
 			ok: false,
 			code: "post_failed",
 			error: "the post did not confirm: timed out",
@@ -4050,10 +4052,10 @@ const bridgeCondensedRows = (): TranscriptRecord[] => [
 				{
 					op: "channel_thread",
 					channel_id: "bcv_b0044d5e",
-					name: "release",
 					thread_root_id: "bcmsg_7f2a",
 				},
 				{
+					conversation_label: "release",
 					ok: true,
 					state: "ok",
 					content: wrappedPage({ root: {}, replies: [{}, {}] }),

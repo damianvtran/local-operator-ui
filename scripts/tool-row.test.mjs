@@ -4880,24 +4880,22 @@ test("bridge: every op's settled and running sentence", () => {
 			{
 				op: "channel_post",
 				channel_id: "bcv_1",
-				name: "release",
 				body: "Ship it\nsecond line",
 			},
-			{ ok: true, seq: 4 },
+			{ ok: true, seq: 4, conversation_label: "release" },
 			"Posted in #release · Ship it",
-			"Posting in #release · Ship it",
+			"Posting in a conversation · Ship it",
 		],
 		[
 			{
 				op: "channel_post",
 				channel_id: "bcv_1",
-				name: "#release",
 				thread_root_id: "bcmsg_1",
 				body: "reply",
 			},
-			{ ok: true },
+			{ ok: true, conversation_label: "#release" },
 			"Posted in #release thread · reply",
-			"Posting in #release thread · reply",
+			"Posting in a conversation thread · reply",
 		],
 		[
 			{ op: "dm", account_id: "acc_1", body: "hi" },
@@ -4994,8 +4992,8 @@ test("bridge: every op's settled and running sentence", () => {
 		[
 			{ op: "shared_history", channel_id: "bcv_1" },
 			{ ok: true, content: wrapped({ messages: [{}, {}] }) },
-			"Read shared conversation a conversation (2 messages)",
-			"Reading shared conversation a conversation",
+			"Read shared conversation (2 messages)",
+			"Reading shared conversation",
 		],
 		[
 			{ op: "take_up", message_id: "m1" },
@@ -5120,7 +5118,7 @@ test("bridge: labels are cleaned, never ids, in the contract's source order", ()
 		).target.label,
 		"made",
 	);
-	// 4. args name, then to.name.
+	// 4. to.name (the call's `name` labels only channel_create, R2-1).
 	assert.equal(
 		bridgeRow({ op: "send", to: { name: "Ada" } }).target.label,
 		"Ada",
@@ -5128,20 +5126,23 @@ test("bridge: labels are cleaned, never ids, in the contract's source order", ()
 	// Never an id.
 	for (const id of ["bcv_1", "bcmsg_1", "acc_1", "ep_1", "BCV_1"])
 		assert.equal(
-			bridgeRow({ op: "channel_post", name: id }).target.label,
+			bridgeRow({ op: "channel_create", name: id }).target.label,
 			null,
 			id,
 		);
 	// Escapes and control bytes out, whitespace flattened, capped at 200.
-	const tokens = bridgeRow({
-		op: "channel_post",
-		name: "\u001b[31mre\u0007lease\n  x",
-		body: "\n\n  first\u0000 line \nsecond",
-	});
-	assert.equal(tokens.target.label, "release x");
-	assert.equal(tokens.preview, "first line");
 	assert.equal(
-		bridgeRow({ op: "channel_post", name: "n".repeat(500) }).target.label
+		bridgeRow({ op: "channel_create", name: "\u001b[31mre\u0007lease\n  x" })
+			.target.label,
+		"release x",
+	);
+	assert.equal(
+		bridgeRow({ op: "channel_post", body: "\n\n  first\u0000 line \nsecond" })
+			.preview,
+		"first line",
+	);
+	assert.equal(
+		bridgeRow({ op: "channel_create", name: "n".repeat(500) }).target.label
 			.length,
 		200,
 	);
@@ -5204,8 +5205,8 @@ test("bridge: a conversation id resolves through the Team Bridge cache, else the
 	// A label the call or result already carries wins over the cache.
 	assert.equal(
 		bridgeSentence(
-			{ op: "channel_post", channel_id: "bcv_rel", name: "named", body: "x" },
-			{ ok: true },
+			{ op: "channel_post", channel_id: "bcv_rel", body: "x" },
+			{ ok: true, conversation_label: "named" },
 			resolver,
 		),
 		"Posted in #named · x",
@@ -5223,10 +5224,14 @@ test("bridge: refusals read Couldn't …, with the code in the trailing word", (
 			args: {
 				op: "channel_post",
 				channel_id: "bcv_1",
-				name: "release",
 				body: "x",
 			},
-			details: { ok: false, code: "not_member", error: "you are not a member" },
+			details: {
+				ok: false,
+				code: "not_member",
+				error: "you are not a member",
+				conversation_label: "release",
+			},
 			failed: true,
 		},
 		null,
@@ -5256,9 +5261,10 @@ test("bridge: refusals read Couldn't …, with the code in the trailing word", (
 	assert.equal(unknown.failedVerb, "Couldn't use Team Bridge");
 	const ok = bridgeRowView(
 		{
-			args: { op: "channel_post", name: "r", body: "Hi **there**" },
+			args: { op: "channel_post", body: "Hi **there**" },
 			details: {
 				ok: true,
+				conversation_label: "r",
 				seq: 7,
 				conversation_id: "bcv_1",
 				message_id: "bcmsg_1",
@@ -5391,7 +5397,8 @@ test("bridge round 1: a channel_post's `to` is a mention, never the target (R1)"
 		},
 		null,
 	);
-	assert.equal(view.summary, "#release · Ship it");
+	// Neither the mention nor the stray `name` labels the post (R1, R2-1).
+	assert.equal(view.summary, "a conversation · Ship it");
 	// `send`/`reply`/`dm` still read the recipient from `to`.
 	for (const op of ["send", "reply", "dm"])
 		assert.equal(
@@ -5434,7 +5441,8 @@ test("bridge round 1: format (Cf) characters are stripped, joiners kept (R2)", (
 	);
 	// And through the row: a label and a reaction emoji.
 	assert.equal(
-		bridgeRow({ op: "channel_post", name: "eng\u202eDROW\u202c" }).target.label,
+		bridgeRow({ op: "channel_create", name: "eng\u202eDROW\u202c" }).target
+			.label,
 		"engDROW",
 	);
 	assert.equal(
@@ -5469,8 +5477,13 @@ test("bridge round 1: the collapsed preview drops inline markdown, the body keep
 	);
 	const view = bridgeRowView(
 		{
-			args: { op: "channel_post", name: "release", body: "Tagged **v0.46.7**" },
-			details: { ok: true, state: "sent", seq: 42 },
+			args: { op: "channel_post", body: "Tagged **v0.46.7**" },
+			details: {
+				ok: true,
+				state: "sent",
+				seq: 42,
+				conversation_label: "release",
+			},
 			failed: false,
 		},
 		null,
@@ -5503,11 +5516,11 @@ test("bridge round 1: the thread suffix is a channel_post's, never channel_threa
 			args: {
 				op: "channel_thread",
 				channel_id: "bcv_1",
-				name: "general",
 				thread_root_id: "bcmsg_1",
 			},
 			details: {
 				ok: true,
+				conversation_label: "general",
 				content: JSON.stringify({ root: {}, replies: [{}, {}] }),
 			},
 			failed: false,
@@ -5564,16 +5577,12 @@ test("bridge round 1: a refusal names the conversation, the raw error is behind 
 	);
 	const named = bridgeRowView(
 		{
-			args: {
-				op: "channel_post",
-				channel_id: "bcv_2210",
-				name: "ops",
-				body: "x",
-			},
+			args: { op: "channel_post", channel_id: "bcv_2210", body: "x" },
 			details: {
 				ok: false,
 				code: "not_member",
 				error: "not a member of bcv_2210",
+				conversation_label: "ops",
 			},
 			failed: true,
 		},
@@ -5583,8 +5592,13 @@ test("bridge round 1: a refusal names the conversation, the raw error is behind 
 	// An error with no id is printed as it came, and not repeated under Details.
 	const plain = bridgeRowView(
 		{
-			args: { op: "channel_post", name: "ops", body: "x" },
-			details: { ok: false, code: "not_member", error: "you are not a member" },
+			args: { op: "channel_post", body: "x" },
+			details: {
+				ok: false,
+				code: "not_member",
+				error: "you are not a member",
+				conversation_label: "ops",
+			},
 			failed: true,
 		},
 		null,
@@ -5810,4 +5824,165 @@ test("bridge: the conversation-name resolver reads only the signed-in account's 
 	} finally {
 		await unlink(path);
 	}
+});
+
+test("bridge round 2: `name` labels only channel_create, as the core gates it (R2-1)", () => {
+	// The reviewer's repro: the executor ignores `name` on a post, so the row
+	// must not claim the post went to #general.
+	const post = {
+		op: "channel_post",
+		channel_id: "bcv_random1",
+		name: "general",
+		body: "Ship it",
+	};
+	assert.deepEqual(bridgeRow(post, { ok: true, seq: 1 }).target, {
+		kind: "channel",
+		label: null,
+	});
+	const view = bridgeRowView(
+		{ args: post, details: { ok: true, seq: 1 }, failed: false },
+		(id) => (id === "bcv_random1" ? "random" : null),
+	);
+	assert.equal(
+		view.summary,
+		"#random · Ship it",
+		"the resolver's true name wins",
+	);
+	assert.equal(view.headline, "Posted in #random");
+	for (const op of [
+		"channel_history",
+		"channel_thread",
+		"react",
+		"shared_history",
+	])
+		assert.equal(
+			bridgeRow({ op, channel_id: "bcv_1", name: "general" }).target.label,
+			null,
+			op,
+		);
+	assert.equal(
+		bridgeRow({ op: "channel_create", kind: "channel", name: "ops-room" })
+			.target.label,
+		"ops-room",
+	);
+});
+
+test("bridge round 2: the refusal scrub matches the core's id set (R2-2 / Q2-3)", () => {
+	const view = bridgeRowView(
+		{
+			args: { op: "channel_post", channel_id: "bcv_2210", body: "x" },
+			details: {
+				ok: false,
+				code: "not_member",
+				error:
+					"this agent is not a member of bcv_2210 (msg bcmsg_7, acct acc_x1, ep ep_9; BCV_2210)",
+			},
+			failed: true,
+		},
+		null,
+	);
+	assert.equal(
+		view.outcome,
+		"Refused (not_member): this agent is not a member of a conversation (msg …, acct …, ep …; a conversation)",
+	);
+	assert.doesNotMatch(view.outcome, /(bcv|bcmsg|acc|ep)_/i);
+});
+
+test("bridge round 2: a refusal never prints an empty slot (R2-3 / Q2-2)", () => {
+	const refusal = (details) =>
+		bridgeRowView(
+			{
+				args: { op: "channel_post", channel_id: "bcv_1", body: "x" },
+				details: { ok: false, ...details },
+				failed: true,
+			},
+			null,
+		);
+	assert.equal(
+		refusal({ code: "not_member", error: "nope" }).outcome,
+		"Refused (not_member): nope",
+	);
+	assert.equal(refusal({ error: "nope" }).outcome, "nope");
+	const codeOnly = refusal({ code: "not_member" });
+	assert.equal(codeOnly.outcome, null);
+	assert.equal(codeOnly.failureWord, "refused · not_member");
+	const bare = refusal({});
+	assert.equal(bare.outcome, null);
+	const failed = refusal({ code: "create_failed" });
+	assert.equal(failed.outcome, null);
+	assert.equal(failed.failureWord, "failed · create_failed");
+	for (const view of [codeOnly, bare, refusal({ error: "nope" })])
+		assert.doesNotMatch(String(view.outcome), /\(-\)|: $|\(\)/);
+});
+
+test("bridge round 2: an unlabelled DM headline names a teammate (Q2-4)", () => {
+	const dm = bridgeRowView(
+		{
+			args: { op: "dm", account_id: "acc_1", body: "hi" },
+			details: { ok: true },
+			failed: false,
+		},
+		null,
+	);
+	assert.equal(dm.headline, "Direct message to a teammate");
+});
+
+test("bridge round 2: an unlabelled shared read has no kind word (Q2-5)", () => {
+	const view = bridgeRowView(
+		{
+			args: { op: "shared_history", channel_id: "bcv_1" },
+			details: {
+				ok: true,
+				content: wrapped({ messages: [{}, {}, {}, {}, {}] }),
+			},
+			failed: false,
+		},
+		null,
+	);
+	assert.equal(view.summary, "(5 messages)");
+	assert.equal(view.headline, "Read shared conversation (5 messages)");
+	assert.equal(
+		bridgeRowView(
+			{
+				args: { op: "shared_history", channel_id: "bcv_1" },
+				details: { ok: true, conversation_label: "eng" },
+				failed: false,
+			},
+			null,
+		).headline,
+		"Read shared conversation #eng",
+	);
+});
+
+test("bridge round 2: the reaction headline drops the emoji; the refusal is not stated thrice (nit, D9)", () => {
+	const react = bridgeRowView(
+		{
+			args: {
+				op: "react",
+				channel_id: "bcv_1",
+				message_id: "bcmsg_1",
+				emoji: "🚀",
+			},
+			details: { ok: true, state: "reacted" },
+			failed: false,
+		},
+		null,
+	);
+	assert.equal(react.headline, "Reacted in a conversation");
+	assert.equal(react.summary, "a conversation · 🚀", "the row keeps it");
+	const refused = bridgeRowView(
+		{
+			args: { op: "channel_post", channel_id: "bcv_2210", body: "x" },
+			details: {
+				ok: false,
+				code: "not_member",
+				error: "this agent is not a member of bcv_2210",
+			},
+			output: "this agent is not a member of bcv_2210",
+			failed: true,
+		},
+		null,
+	);
+	assert.equal(refused.raw, null);
+	assert.ok(refused.internals.some((l) => l.key === "error"));
 });

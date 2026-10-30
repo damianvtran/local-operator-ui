@@ -278,8 +278,8 @@ function targetKind(op: string): BridgeTargetKind {
  * 1. `details.conversation_label` (forward-compatible: the core tool does not
  *    emit it yet);
  * 2. the DM receipt's own words, `direct message to <label> in bcv_…`;
- * 3. `channel_create`'s content JSON `name`;
- * 4. the call's `name`, or `to.name` when `to` names one.
+ * 3. `channel_create`'s content JSON `name`, then its call's `name`;
+ * 4. `to.name`, for the person-shaped ops only.
  */
 function targetLabel(
 	op: string,
@@ -303,8 +303,19 @@ function targetLabel(
 		const name = labelText(created?.name);
 		if (name) return name;
 	}
-	const named = labelText(args.name);
-	if (named) return named;
+	/*
+	 * `name` is a schema field on every op, but the executor reads it ONLY in
+	 * `channel_create`. A model can still send `{op:"channel_post",
+	 * channel_id:"bcv_X", name:"general"}`: the post lands in bcv_X, and
+	 * reading `name` here painted `Posted in #general` - the wrong room, over
+	 * the resolver's true name. Core `rows.py::_bridge_target` gates it the
+	 * same way, so the TUI, the phone and this app name one call alike
+	 * (agent review round 2, R2-1).
+	 */
+	if (op === "channel_create") {
+		const named = labelText(args.name);
+		if (named) return named;
+	}
 	/*
 	 * `to` is the RECIPIENT only for the person-shaped ops. On `channel_post`
 	 * it is a MENTION (core `tool.py`: `validate_recipient_shape(params.to)`,
@@ -633,6 +644,13 @@ export function bridgeTargetText(
 	if (label) {
 		return kind === "channel" && !label.startsWith("#") ? `#${label}` : label;
 	}
+	/*
+	 * The verb already names the thing (`Read shared conversation`): a kind
+	 * word after it read `Read shared conversation a conversation`, on every
+	 * real call, since a shared read's result carries no label. Same rule in
+	 * the core port (QA round 2, Q2-5 / review R2-5).
+	 */
+	if (tokens.op === "shared_history") return "";
 	if (kind === "channel")
 		return t("ui.chat.canonical.tool_row.bridge.fallback.conversation");
 	if (kind === "dm") return t("ui.chat.canonical.tool_row.bridge.fallback.dm");
@@ -662,13 +680,15 @@ export function bridgeSummary(
 	const target = bridgeTargetText(tokens, resolved);
 	const join = (...parts: (string | null)[]) =>
 		parts.filter(Boolean).join(" · ");
+	// `trim()`: an unlabelled shared read has an empty `{target}` (see
+	// `bridgeTargetText`), and every locale leads the message with it.
 	const withMessages = () =>
 		tokens.count === null
 			? target
 			: t("ui.chat.canonical.tool_row.bridge.summary.messages", {
 					target,
 					count: tokens.count,
-				});
+				}).trim();
 	switch (actionSegment(tokens.action)) {
 		case "channel_post": {
 			const thread =
@@ -865,6 +885,9 @@ const ARG_INTERNALS: Readonly<Record<string, string>> = {
 	endpoint_id: "endpoint_id",
 };
 
+/** An opaque Team Bridge id inside free text; see `bridgeRowView`'s scrub. */
+const BRIDGE_ID_TOKEN = /\b(bcv|bcmsg|acc|ep)_[A-Za-z0-9_-]+/gi;
+
 function scalar(value: unknown): string | null {
 	if (typeof value === "string") return value.trim() || null;
 	if (typeof value === "number" && Number.isFinite(value)) return String(value);
@@ -914,15 +937,28 @@ export function bridgeRowView(
 	 * its count (`Read #general (7 messages)`) and a thread post its suffix.
 	 */
 	const verb = failedVerb ?? bridgeVerb(tokens.action).settled;
+	// No preview and no emoji: the body is printed below, and the TUI headline
+	// is `Reacted in a conversation`, not `… · 🚀` (QA round 2 nit).
 	const head = bridgeSummary(
-		{ ...tokens, preview: null },
+		{ ...tokens, preview: null, emoji: null },
 		args,
 		resolver,
 		details,
 	);
+	/*
+	 * A DM's headline names the PERSON. The kind word made an unlabelled one
+	 * read `Direct message to a DM`; the core falls back to `a teammate`
+	 * (QA round 2, Q2-4).
+	 */
+	const dmTarget =
+		tokens.target.label ??
+		labelText(resolved) ??
+		t("ui.chat.canonical.tool_row.bridge.fallback.teammate");
 	const headline =
-		tokens.op === "dm" && target
-			? t("ui.chat.canonical.tool_row.bridge.detail.headline.dm", { target })
+		tokens.op === "dm"
+			? t("ui.chat.canonical.tool_row.bridge.detail.headline.dm", {
+					target: dmTarget,
+				})
 			: head
 				? t("ui.chat.canonical.tool_row.bridge.detail.headline.target", {
 						verb,
@@ -939,24 +975,39 @@ export function bridgeRowView(
 	 * The refusal sentence names the conversation the way the lines above it
 	 * do (design round 1, D5): `not a member of bcv_2210` under a headline
 	 * that says `a conversation` gave one object two names, one of them an
-	 * internal id. Any whole `bcv_` token becomes the row's own target words;
-	 * the raw text stays one click away, under `Details` (`error` below).
+	 * internal id. A `bcv_` token becomes the row's own target words; a
+	 * message, account or endpoint id becomes `…`. Prefixes and case rule are
+	 * core `bridge_copy._ID_TOKEN_RE` (review R2-2 / QA Q2-3); the raw text
+	 * stays one click away, under `Details` (`error` below).
 	 */
 	const conversationWords =
-		tokens.target.kind === "channel" || tokens.target.kind === "dm"
+		(tokens.target.kind === "channel" || tokens.target.kind === "dm") && target
 			? target
 			: t("ui.chat.canonical.tool_row.bridge.fallback.conversation");
 	const error = rawError
-		? rawError.replace(/\bbcv_[A-Za-z0-9_-]+/g, conversationWords)
+		? rawError.replace(BRIDGE_ID_TOKEN, (_id, prefix: string) =>
+				prefix.toLowerCase() === "bcv" ? conversationWords : "…",
+			)
 		: null;
+	/*
+	 * No empty slots (review R2-3 / QA Q2-2): a refusal can arrive without a
+	 * message, a code, or either. Only the full pair takes the keyed sentence;
+	 * an error alone is printed as it came (the `unconfirmed` precedent); with
+	 * no error the row's own trailing word (`refused · not_member`, kept in the
+	 * header above this panel) already says everything, so no line repeats it.
+	 * This keeps the catalogue unchanged rather than add four arms per outcome
+	 * that seven locales would have to re-translate.
+	 */
 	const outcome =
 		tokens.outcome === "refused" || tokens.outcome === "failed"
-			? t(
-					tokens.outcome === "refused"
-						? "ui.chat.canonical.tool_row.bridge.detail.outcome.refused"
-						: "ui.chat.canonical.tool_row.bridge.detail.outcome.failed",
-					{ code: tokens.code ?? "-", error: error ?? "" },
-				)
+			? error && tokens.code
+				? t(
+						tokens.outcome === "refused"
+							? "ui.chat.canonical.tool_row.bridge.detail.outcome.refused"
+							: "ui.chat.canonical.tool_row.bridge.detail.outcome.failed",
+						{ code: tokens.code, error },
+					)
+				: error
 			: tokens.outcome === "unconfirmed"
 				? error
 				: details?.ok === true && seq !== null
@@ -979,10 +1030,14 @@ export function bridgeRowView(
 	// The unedited error, only when the sentence above had to rewrite it.
 	if (rawError && rawError !== error) push("error", rawError);
 	for (const [arg, key] of Object.entries(ARG_INTERNALS)) push(key, args[arg]);
-	const raw =
+	const rawText =
 		(typeof details?.content === "string" && details.content) ||
 		input.output ||
 		null;
+	// The output of a refusal is usually the error itself, already in the
+	// sentence or the `error` row: printing it again stated it thrice (design
+	// round 2, D9).
+	const raw = rawText && rawText.trim() === rawError ? null : rawText;
 	return {
 		tokens,
 		summary: bridgeSummary(tokens, args, resolver, details),
