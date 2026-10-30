@@ -3,7 +3,14 @@ import type {
 	RefObject,
 	SyntheticEvent,
 } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import type { MentionCandidateRow } from "./candidates";
 import {
 	type MentionSection,
@@ -175,6 +182,22 @@ export function useMentionAutocomplete(input: {
 		},
 		[fieldRef, tokens],
 	);
+
+	/*
+	 * THE CARET FOLLOWS EVERY TEXT CHANGE, not only `onSelect`. React derives
+	 * `onSelect` from `selectionchange`, which not every host fires on typing
+	 * (jsdom never does; a programmatic `setInputValue` from dictation fires
+	 * none). Re-reading the field after each committed value keeps the query
+	 * in step with what was actually typed.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `text` is the trigger; the caret is read from the field.
+	useLayoutEffect(() => {
+		if (
+			enabled &&
+			fieldRef.current === fieldRef.current?.ownerDocument.activeElement
+		)
+			syncCaret();
+	}, [text, enabled]);
 
 	const applyEdit = useCallback(
 		(next: { text: string; caret: number; tokens: MentionToken[] }) => {

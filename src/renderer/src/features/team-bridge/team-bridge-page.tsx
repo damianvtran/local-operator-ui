@@ -55,6 +55,7 @@ import type {
 	TeamBridgeNotify,
 } from "../../../../shared/team-bridge-contract";
 import { rowCurrent } from "../chat/components/chat-sidebar";
+import { TeamBridgeMentionProvider } from "./mentions";
 import { TeamBridgeAddMembersView } from "./team-bridge-add-members";
 import {
 	TeamBridgeArchiveDialog,
@@ -585,6 +586,12 @@ export type TeamBridgePageViewProps = {
 	 * controls rather than an assumed one.
 	 */
 	reactionsCapabilityState?: DesktopFeatureState;
+	/**
+	 * The `team_bridge_send_mentions` capability answer. Only `enabled` puts
+	 * `mentions[]` on a send; any other answer keeps the readable `@Name` text
+	 * and sends no field an older backend would refuse.
+	 */
+	sendMentionsCapabilityState?: DesktopFeatureState;
 	/** Story/test seed only: opens the header menu so its rows are visible. */
 	defaultMenuOpen?: boolean;
 	/** Story/test seed only: the page's real draft is user-owned state. */
@@ -707,6 +714,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	initialDialog,
 	threadsCapabilityState = "unknown",
 	reactionsCapabilityState = "unknown",
+	sendMentionsCapabilityState = "unknown",
 	defaultMenuOpen = false,
 	initialDraft = "",
 	draftJournal,
@@ -1668,7 +1676,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		</ul>
 	);
 
-	return (
+	const pageBody = (
 		<div
 			data-glass-region="canvas"
 			className="panel-flush @container/bridge relative flex min-h-0 flex-1 w-full overflow-hidden bg-canvas"
@@ -2981,6 +2989,20 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			)}
 		</div>
 	);
+	/* @-MENTIONS for both composers in this pane (channel and thread), from the
+	   cached directory and the open conversation (mentions/). Bound as a const
+	   above so mounting the provider does not re-indent the page. */
+	return (
+		<TeamBridgeMentionProvider
+			conversation={shown}
+			people={shown ? rosterFor(shown.tenant_id) : []}
+			selfAccountId={selfAccountId}
+			sendMentions={sendMentionsCapabilityState === "enabled"}
+			onAddMembers={onAddMembers}
+		>
+			{pageBody}
+		</TeamBridgeMentionProvider>
+	);
 };
 
 /**
@@ -3692,6 +3714,10 @@ const TeamBridgeOwnedPage: FC<{
 				reactionsCapabilityState={desktopFeatureState(
 					capabilities.data,
 					"team_bridge_reactions",
+				)}
+				sendMentionsCapabilityState={desktopFeatureState(
+					capabilities.data,
+					"team_bridge_send_mentions",
 				)}
 				onCloseThread={() => setThreadLink(null)}
 				listState={

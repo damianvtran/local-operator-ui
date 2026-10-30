@@ -73,6 +73,7 @@ export function TeamBridgeMentionProvider({
 						])
 				: undefined;
 		return {
+			conversationId: conversation.id,
 			candidates,
 			conversationKind: conversation.kind,
 			sendMentions,

@@ -13,6 +13,8 @@ import type { MentionCandidateRow } from "./candidates";
  * inert hook: no popover, no tokens, `payload()` returns undefined.
  */
 export type MentionSource = {
+	/** The hub conversation a send from here lands in (the outbox key). */
+	conversationId: string;
 	candidates: readonly MentionCandidateRow[];
 	/** The open conversation's kind; null while composing a new message. */
 	conversationKind: "dm" | "group" | "channel" | null;

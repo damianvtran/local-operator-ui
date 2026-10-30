@@ -96,6 +96,7 @@ export function fold(value: string): string {
 const WORD_SPLIT = /[\s()[\],.'’"-]+/u;
 const COMBINING_MARKS = /\p{M}/gu;
 const WHITESPACE = /\s+/g;
+const FUZZY_MIN = 3;
 
 function words(value: string): string[] {
 	return fold(value)
@@ -138,7 +139,13 @@ export function matchTier(
 	)
 		return 1;
 	if (folded.some((name) => name.includes(q))) return 2;
+	/*
+	 * FUZZY ONLY FROM THREE CHARACTERS. Two letters are a subsequence of most
+	 * names in an organization, so "@ai" would list nearly everyone below the
+	 * one real match; from three letters a subsequence is a useful typo net.
+	 */
 	const compact = q.replace(WHITESPACE, "");
+	if (compact.length < FUZZY_MIN) return null;
 	if (
 		folded.some((name) => isSubsequence(compact, name.replace(WHITESPACE, "")))
 	)

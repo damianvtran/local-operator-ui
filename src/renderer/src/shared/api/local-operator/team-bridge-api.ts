@@ -108,6 +108,13 @@ export function requireBridgeWriteAccount(
 	return accountId;
 }
 
+/** One wire mention row: `{kind, account_id, endpoint_id?}` (local-operator #3204). */
+export type TeamBridgeMentionRow = {
+	kind: "human" | "agent";
+	account_id: string;
+	endpoint_id?: string;
+};
+
 export const TeamBridgeApi = {
 	async scheduledList(tenantId: string) {
 		return teamBridgeScheduledListSchema.parse(
@@ -354,6 +361,9 @@ export const TeamBridgeApi = {
 			/* Staged uploads this message binds. Omitted (never `[]`) when text-only,
 			   so a text-only send stays byte-identical for an older hub. */
 			attachmentIds?: readonly string[];
+			/* Structured @-mentions (`team_bridge_send_mentions`). The caller
+			   gates on the capability; omitted when empty, like the images. */
+			mentions?: readonly TeamBridgeMentionRow[];
 		},
 	): Promise<unknown> {
 		return desktopResult<unknown>({
@@ -379,6 +389,7 @@ export const TeamBridgeApi = {
 			...(input.attachmentIds?.length
 				? { attachment_ids: [...input.attachmentIds] }
 				: {}),
+			...(input.mentions?.length ? { mentions: [...input.mentions] } : {}),
 		});
 	},
 

@@ -84,6 +84,7 @@ import {
  * scope that could have shown the row (the merged list and the org list), and
  * the badge aggregate is one cache shared by the sidebar and the page.
  */
+import { clearStagedMentions, stagedMentions } from "./mentions/mention-outbox";
 import { teamBridgeKeys } from "./team-bridge-keys";
 import {
 	bridgeOwnerCurrent,
@@ -522,15 +523,19 @@ export function useSendTeamBridgeMessage(
 				...input,
 				tenantId: target.tenantId,
 				expectedAccountId: requireBridgeWriteAccount(target.accountId),
+				// The composer's @-mentions for exactly this text (`mention-outbox`).
+				mentions: stagedMentions(target.conversationId, input.body),
 			});
 		},
-		onSuccess: (_data, { target }) =>
-			refreshAfterSend(
+		onSuccess: (_data, { input, target }) => {
+			clearStagedMentions(target.conversationId, input.body);
+			return refreshAfterSend(
 				client,
 				target.conversationId,
 				target.tenantId,
 				target.isCurrent,
-			),
+			);
+		},
 	});
 	return bindBridgeMutation(mutation, () => ({
 		...owner,

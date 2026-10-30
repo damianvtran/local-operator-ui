@@ -7,6 +7,7 @@ import { useId, useLayoutEffect, useState } from "react";
 import { caretRect } from "./caret-coordinates";
 import { MentionHighlightOverlay } from "./mention-highlight-overlay";
 import { MentionNotice } from "./mention-notice";
+import { stageMentions } from "./mention-outbox";
 import { MentionPopover, mentionOptionId } from "./mention-popover";
 import {
 	type MentionAutocomplete,
@@ -29,6 +30,12 @@ export function useComposerMentions(input: {
 	setText: (next: string) => void;
 	fieldRef: RefObject<HTMLTextAreaElement | null>;
 }): MentionAutocomplete & {
+	/**
+	 * Call with the body just before submitting: stages this draft's
+	 * `mentions[]` for the send of exactly that text (`mention-outbox`).
+	 * A no-op without a source or without the backend capability.
+	 */
+	stage: (body: string) => void;
 	bindField: (own: {
 		onKeyDown?: (event: ReactKeyboardEvent<HTMLTextAreaElement>) => void;
 	}) => {
@@ -45,6 +52,10 @@ export function useComposerMentions(input: {
 	const mentions = useMentionAutocomplete({ ...input, listboxId });
 	return {
 		...mentions,
+		stage: (body) => {
+			if (mentions.source)
+				stageMentions(mentions.source.conversationId, body, mentions.payload());
+		},
 		bindField: (own) => ({
 			onKeyDown: (event) => {
 				if (mentions.onKeyDown(event)) return;

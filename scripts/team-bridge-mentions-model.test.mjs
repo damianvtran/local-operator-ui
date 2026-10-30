@@ -123,6 +123,11 @@ test("tiers: full-name prefix, then word prefix, then substring, then fuzzy", ()
 	assert.equal(m.matchTier("btn", { label: "Ben Tran" }), 3);
 	assert.equal(m.matchTier("zzz", { label: "Ben Tran" }), null);
 	assert.equal(
+		m.matchTier("bt", { label: "Ben Tran" }),
+		null,
+		"no fuzzy below three letters",
+	);
+	assert.equal(
 		m.matchTier("ben", { label: "Aida (Ben Tran)" }),
 		1,
 		"agent label words are searchable",
