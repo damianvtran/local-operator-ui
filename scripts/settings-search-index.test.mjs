@@ -173,6 +173,14 @@ test("the issue's five examples answer from the page's own index", () => {
 					<input data-search-control readonly />
 				</label>
 			</section>
+			<section data-search-section="general" data-search-section-label="General settings">
+				<div data-search-row="general.model" data-search-control data-search-label="Model settings">
+					<div><span>Hosting provider</span></div>
+				</div>
+				<div data-search-row="general.effort" data-search-control data-search-label="Default reasoning effort" data-search-terms="effort">
+					<div><span>Default effort</span></div>
+				</div>
+			</section>
 		</div>
 	</body></html>`);
 	const rendered = buildRenderedEntries(
@@ -730,5 +738,95 @@ test("a page row is announced by its SECTION ROOT's own label, not the first hea
 		fallback.sectionLabel,
 		"Legacy heading",
 		"a root that names itself only by its heading still resolves",
+	);
+});
+
+test("a result's reason names a field its words actually appear in (UX round 1, U1)", () => {
+	/*
+	 * The property, over the real registry and a spread of queries: whatever a
+	 * row's reason line claims, THAT field must contain at least one token the
+	 * reader typed. A letter-scatter match (letters in order, gaps between) was
+	 * reported as "matched the name" on rows whose name did not contain the word
+	 * — `theme` put `Agent shell environment` second that way (UX round 1, U1).
+	 */
+	const index = buildSettingsIndex({ registry: payload, sections: [] });
+	const queries = [
+		"theme",
+		"model",
+		"effort",
+		"retention",
+		"imports",
+		"team",
+		"bridge",
+		"keyboard",
+		"language",
+		"workspace",
+		"token",
+		"stream",
+		"memory",
+	];
+	const violations = [];
+	for (const query of queries) {
+		const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
+		for (const result of searchSettings(index, query, 12).results) {
+			const haystack = result.entry.fields[result.reason] ?? "";
+			if (!tokens.some((token) => haystack.includes(token))) {
+				violations.push(`${query} -> ${result.entry.id} (${result.reason})`);
+			}
+		}
+	}
+	assert.deepEqual(
+		violations,
+		[],
+		"no result claims a field its word is not in",
+	);
+});
+
+test("`theme` does not list a row that merely contains the letters (UX round 1, U1)", () => {
+	const index = buildSettingsIndex({ registry: payload, sections: [] });
+	const results = searchSettings(index, "theme", 12);
+	assert.ok(
+		!results.results.some(
+			(result) => result.entry.settingKey === "shell_environment.mode",
+		),
+		"Agent shell environment is not an answer to 'theme'",
+	);
+});
+
+test("`team bridge` reaches the two promoted handles, by the words the reader knows (UX round 1, U1)", () => {
+	/*
+	 * Both rows are the PAGE's (the registry's `team_bridge.*` entries are
+	 * promoted to them and filtered out of the registry half), and their printed
+	 * copy is about "this machine" and "session". The words a reader types are
+	 * the feature's name, which is what `data-search-terms` carries — so this
+	 * test builds the two rows from the markup the page now renders and asks the
+	 * real matcher.
+	 */
+	const dom = new JSDOM(
+		`<!doctype html><html><body><div data-settings-content>
+			<section data-search-section="agent-messages" data-search-section-label="Agent messages">
+				<div data-search-row="agent-messages.enabled" data-search-control data-search-terms="team bridge team_bridge enabled devices">
+					<div><p>Local machine</p><p>Stays enrolled while this machine is online.</p></div>
+				</div>
+				<div data-search-row="agent-messages.session" data-search-control data-search-terms="team bridge team_bridge session">
+					<div><h3>Session</h3><p>Which conversation other devices reach this one through.</p></div>
+				</div>
+			</section>
+		</div></body></html>`,
+	);
+	const rendered = buildRenderedEntries(
+		dom.window.document.querySelector("[data-settings-content]"),
+	);
+	const index = buildSettingsIndex({
+		registry: payload,
+		sections: [],
+		rendered,
+	});
+	const results = searchSettings(index, "team bridge", 12);
+	const ids = results.results.map((result) => result.entry.id);
+	assert.deepEqual(
+		ids.slice(0, 2).sort(),
+		["page:agent-messages.enabled", "page:agent-messages.session"],
+		"the feature's own name finds the two rows that configure it, first",
 	);
 });

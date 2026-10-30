@@ -692,6 +692,16 @@ export const SettingsPage: FC = () => {
 	 * a query from re-rendering the eleven sections below.
 	 */
 	const searchRef = useRef<SettingsSearchHandle>(null);
+	/*
+	 * WHAT THE READER WAS LOOKING AT, before ⌘F moved them.
+	 *
+	 * Focusing the header's field scrolls the content container to bring it into
+	 * view, so a press from 2000px down threw the page to the top and nothing put
+	 * it back (UX round 1, U5). The position is remembered when the shortcut
+	 * fires and restored when the panel closes WITHOUT a jump; a jump clears it,
+	 * because a landing is the scroll the reader asked for.
+	 */
+	const savedSearchScrollRef = useRef<number | null>(null);
 	const capabilities = useDesktopCapabilities();
 	const settingsFeatureEnabled = desktopFeatureEnabled(
 		capabilities.data,
@@ -733,6 +743,8 @@ export const SettingsPage: FC = () => {
 	 */
 	const jumpToSearchEntry = useCallback(
 		async (entry: SettingSearchEntry): Promise<SearchJumpOutcome> => {
+			// A jump moves the reader on purpose; nothing is restored afterwards.
+			savedSearchScrollRef.current = null;
 			const root = contentContainerRef.current ?? document;
 			if (entry.source === "page") {
 				// `page:<row id>` -> the DOM contract's own id.
@@ -783,6 +795,8 @@ export const SettingsPage: FC = () => {
 			if (event.key.toLowerCase() !== "f") return;
 			if (pressLandsOnOverlay(event.target)) return;
 			event.preventDefault();
+			savedSearchScrollRef.current =
+				contentContainerRef.current?.scrollTop ?? null;
 			searchRef.current?.focus();
 		};
 		document.addEventListener("keydown", onKeyDown);
@@ -1276,6 +1290,12 @@ export const SettingsPage: FC = () => {
 						 * different meanings (this one JUMPS, that one FILTERS IN PLACE).
 						 */}
 						<SettingsSearch
+							onDismiss={() => {
+								const saved = savedSearchScrollRef.current;
+								savedSearchScrollRef.current = null;
+								if (saved === null) return;
+								contentContainerRef.current?.scrollTo({ top: saved });
+							}}
 							ref={searchRef}
 							index={searchIndex}
 							readRendered={readRenderedSearchRows}

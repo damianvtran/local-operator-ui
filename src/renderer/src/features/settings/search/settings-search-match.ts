@@ -91,8 +91,6 @@ export type SettingSearchMatch = {
 	score: number;
 	/** The field that produced the winning score — the reason the row is shown. */
 	reason: SettingSearchField;
-	/** Whether any token matched as a word rather than as a letter-scatter. */
-	wordHit: boolean;
 };
 
 export type SettingSearchResults = {
@@ -129,12 +127,10 @@ const NAMED_LABEL_BONUS = 2;
 export function scoreEntry(
 	entry: SettingSearchEntry,
 	tokens: readonly string[],
-): { score: number; reason: SettingSearchField; wordHit: boolean } | null {
+): { score: number; reason: SettingSearchField } | null {
 	let total = 0;
 	let best = -1;
 	let reason: SettingSearchField | null = null;
-	// A letter-scatter is not a hit in the sense a word is; see `searchSettings`.
-	let wordHit = false;
 	for (const token of tokens) {
 		let tokenBest = -1;
 		let tokenField: SettingSearchField | null = null;
@@ -143,7 +139,19 @@ export function scoreEntry(
 			if (!haystack) continue;
 			const quality = matchQuality(haystack, token);
 			if (!quality) continue;
-			if (quality !== "subsequence") wordHit = true;
+			/*
+			 * A LETTER-SCATTER IS NOT A MATCH A ROW MAY CLAIM.
+			 *
+			 * `matchQuality`'s softest tier answers "these letters appear in this
+			 * order somewhere", which is how `theme` put `Agent shell
+			 * environment` second under "matched the name" — a field whose text
+			 * does not contain the word at all (UX round 1, U1). The panel's
+			 * reason line names a field, so a result must BE in that field; the
+			 * tier is therefore refused here rather than reported as something it
+			 * is not, and the panel says "nothing matches" instead of listing
+			 * rows that merely share letters.
+			 */
+			if (quality === "subsequence") continue;
 			const value = FIELD_WEIGHT[field] * QUALITY_FACTOR[quality];
 			if (value > tokenBest) {
 				tokenBest = value;
@@ -159,7 +167,7 @@ export function scoreEntry(
 			reason = tokenField;
 		}
 	}
-	return reason ? { score: total, reason, wordHit } : null;
+	return reason ? { score: total, reason } : null;
 }
 
 /**
@@ -196,21 +204,11 @@ export function searchSettings(
 		scored.push({
 			entry,
 			reason: hit.reason,
-			wordHit: hit.wordHit,
 			score: isNamed ? hit.score + NAMED_LABEL_BONUS : hit.score,
 		});
 	}
 	scored.sort(
 		(a, b) =>
-			/*
-			 * Word-level hits before letter-scatter, and only then score. A
-			 * subsequence is the palette's soft recall ("rtn" → "Retention
-			 * analysis") and worth keeping — but underneath everything that
-			 * matched as a WORD: `effort` ranks the effort row above one that
-			 * merely contains e-f-f-o-r-t in order across a paragraph (QA round 1,
-			 * Q6). Within a class the score still decides.
-			 */
-			Number(b.wordHit) - Number(a.wordHit) ||
 			b.score - a.score ||
 			/*
 			 * Then the TIGHTER name: among rows whose names all contain the word,

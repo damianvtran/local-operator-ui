@@ -65,9 +65,9 @@ const bundle = await build({
 			export { createElement };
 			export { SettingsSearch };
 			export { buildSettingsIndex, buildRenderedEntries } from "./src/renderer/src/features/settings/search/settings-search-index";
-			export function Harness({ buildIndex, registry, sections, onJump, readRendered }) {
+			export function Harness({ buildIndex, registry, sections, onJump, readRendered, onDismiss }) {
 				const index = useSettingsSearchIndex({ registry, sections, build: buildIndex });
-				return createElement(SettingsSearch, { index, onJump, readRendered });
+				return createElement(SettingsSearch, { index, onJump, readRendered, onDismiss });
 			}
 		`,
 		resolveDir: process.cwd(),
@@ -105,7 +105,13 @@ const sections = [
 /** Mount the harness and return the container plus the spies. */
 const mount = async (
 	t,
-	{ registry = payload, buildIndex, outcome = "landed", readRendered } = {},
+	{
+		registry = payload,
+		buildIndex,
+		outcome = "landed",
+		readRendered,
+		onDismiss,
+	} = {},
 ) => {
 	const container = document.createElement("div");
 	document.body.append(container);
@@ -132,6 +138,7 @@ const mount = async (
 				registry,
 				sections,
 				readRendered,
+				onDismiss,
 				onJump: (entry) => {
 					jumps.push(entry);
 					return outcome;
@@ -230,18 +237,37 @@ test("the combobox points its active option at a real option id", async (t) => {
 	assert.equal(input.getAttribute("aria-expanded"), "true");
 	const listId = input.getAttribute("aria-controls");
 	assert.equal(panel(container).id, listId);
+	/*
+	 * NOTHING IS MARKED UNTIL THE READER MOVES. A pre-marked first row made the
+	 * first ArrowDown land on the second row (UX round 1, U9), so the combobox
+	 * starts with no `aria-activedescendant`; the arrow is what names one.
+	 */
+	assert.equal(
+		input.getAttribute("aria-activedescendant"),
+		null,
+		"no option is marked before the reader moves",
+	);
+	await press(container, "ArrowDown");
 	const active = input.getAttribute("aria-activedescendant");
-	assert.ok(active, "an active descendant while results are open");
+	assert.ok(active, "an active descendant once the arrow has chosen");
 	assert.ok(container.querySelector(`[id="${active}"]`), "and it exists");
 });
 
 test("arrows move the active option and Enter jumps to it, focus staying in the field", async (t) => {
 	const { container, jumps } = await mount(t);
-	await type(container, "theme");
-	const first = field(container).getAttribute("aria-activedescendant");
+	await type(container, "model");
 	await press(container, "ArrowDown");
-	const second = field(container).getAttribute("aria-activedescendant");
-	assert.notEqual(first, second, "ArrowDown moved the active option");
+	assert.equal(
+		field(container).getAttribute("aria-activedescendant"),
+		options(container)[0].id,
+		"the first press selects the first row (not the second)",
+	);
+	await press(container, "ArrowDown");
+	assert.equal(
+		field(container).getAttribute("aria-activedescendant"),
+		options(container)[1].id,
+		"the second press moves to the second row",
+	);
 	// IDENTITY, compared as a boolean: `assert.equal` on two jsdom elements
 	// builds an inspect diff over the whole node when they differ, which on a
 	// failure is an out-of-memory rather than a report.
@@ -256,7 +282,7 @@ test("arrows move the active option and Enter jumps to it, focus staying in the 
 
 test("Home and End land on the first and last option", async (t) => {
 	const { container } = await mount(t);
-	await type(container, "theme");
+	await type(container, "model");
 	const total = options(container).length;
 	await press(container, "End");
 	assert.equal(
@@ -277,8 +303,18 @@ test("Escape clears a query rather than dismissing the reader's work", async (t)
 	await press(container, "Escape");
 	assert.equal(field(container).value, "");
 	assert.ok(
+		panel(container),
+		"one press clears and leaves the panel open: clear first, close second (UX round 1, U4)",
+	);
+	assert.ok(
 		document.activeElement === field(container),
 		"the reader stays in the field to type the next query",
+	);
+	await press(container, "Escape");
+	assert.equal(
+		panel(container),
+		null,
+		"the second press, on an empty field, closes",
 	);
 });
 
@@ -407,6 +443,55 @@ test("a row that mounts after the first focus is still found (QA round 1, Q5)", 
 		"reopening the panel sees the row that arrived",
 	);
 	rows.remove();
+});
+
+test("a jump that cannot land is said on screen, not only to a screen reader (UX round 1, U2)", async (t) => {
+	const { container } = await mount(t, { outcome: "missing" });
+	await type(container, "model");
+	await press(container, "ArrowDown");
+	await press(container, "Enter");
+	const notice = container.querySelector("[data-search-notice]");
+	assert.ok(notice, "the sentence is rendered in the panel");
+	assert.match(
+		notice.textContent ?? "",
+		/not on screen/i,
+		"and it is the message the panel already had",
+	);
+	assert.equal(
+		notice.getAttribute("aria-hidden"),
+		"true",
+		"the visible copy is not a second announcement",
+	);
+	const live = container.querySelector('output[aria-live="polite"]');
+	assert.match(
+		live?.textContent ?? "",
+		/not on screen/i,
+		"the polite region still speaks it",
+	);
+});
+
+test("the listbox is not a tab stop (UX round 1, U6)", async (t) => {
+	const { container } = await mount(t);
+	await type(container, "model");
+	assert.equal(
+		panel(container).getAttribute("tabindex"),
+		"-1",
+		"Tab does not land on the scroll region; options are reached by aria-activedescendant",
+	);
+});
+
+test("a dismissal tells the page to restore what the reader was looking at (UX round 1, U5)", async (t) => {
+	const dismissals = [];
+	const { container } = await mount(t, { onDismiss: () => dismissals.push(1) });
+	await type(container, "model");
+	await press(container, "Escape");
+	assert.deepEqual(
+		dismissals,
+		[],
+		"clearing a query is not a dismissal — nothing is restored yet",
+	);
+	await press(container, "Escape");
+	assert.equal(dismissals.length, 1, "closing the panel tells the page");
 });
 
 test("the live region announces the result count", async (t) => {

@@ -130,6 +130,16 @@ type SettingsSearchProps = {
 		entry: SettingSearchEntry,
 	) => SearchJumpOutcome | undefined | Promise<SearchJumpOutcome | undefined>;
 	className?: string;
+	/**
+	 * The panel closed WITHOUT a jump.
+	 *
+	 * The page restores what the reader was looking at: ⌘F focuses this field
+	 * from wherever they had scrolled to, and the field's own focus pulls the
+	 * page back to the header. A dismissal that leaves them at the top of a long
+	 * page is a scroll they did not ask for (UX round 1, U5). A jump never calls
+	 * this — a landing is the scroll they did ask for.
+	 */
+	onDismiss?: () => void;
 };
 
 /** The modifier glyph the shortcut line names, per platform. */
@@ -140,7 +150,10 @@ function shortcutLabel(): string {
 export const SettingsSearch = forwardRef<
 	SettingsSearchHandle,
 	SettingsSearchProps
->(function SettingsSearch({ index, readRendered, onJump, className }, ref) {
+>(function SettingsSearch(
+	{ index, readRendered, onJump, onDismiss, className },
+	ref,
+) {
 	useI18nLocale();
 	const inputRef = useRef<HTMLInputElement | null>(null);
 	/**
@@ -167,7 +180,15 @@ export const SettingsSearch = forwardRef<
 	);
 	const [query, setQuery] = useState("");
 	const [open, setOpen] = useState(false);
-	const [activeIndex, setActiveIndex] = useState(0);
+	/*
+	 * NO OPTION IS MARKED BEFORE THE READER MOVES.
+	 *
+	 * Starting at 0 pre-selected the first row, so the first ArrowDown went to
+	 * the second — the arrow appeared to skip the answer that was already
+	 * marked (UX round 1, U9). -1 means "nothing chosen yet": the first arrow
+	 * selects the first result, and Enter with nothing chosen acts on it too.
+	 */
+	const [activeIndex, setActiveIndex] = useState(-1);
 	/*
 	 * A jump that could not land leaves a sentence behind. Held here rather than
 	 * in the page because this component owns the live region that speaks it.
@@ -225,18 +246,24 @@ export const SettingsSearch = forwardRef<
 	 * different rows (review round 1, m3).
 	 */
 	const activePosition =
-		results.length === 0 ? 0 : Math.min(activeIndex, results.length - 1);
-	const active = results[activePosition];
+		activeIndex < 0 || results.length === 0
+			? -1
+			: Math.min(activeIndex, results.length - 1);
+	const active = activePosition >= 0 ? results[activePosition] : undefined;
 	const positions = useMemo(
 		() => new Map(results.map((result, index) => [result.entry.id, index])),
 		[results],
 	);
 
-	const close = useCallback((nextQuery?: string) => {
-		if (nextQuery !== undefined) setQuery(nextQuery);
-		setOpen(false);
-		setActiveIndex(0);
-	}, []);
+	const close = useCallback(
+		(nextQuery?: string) => {
+			if (nextQuery !== undefined) setQuery(nextQuery);
+			setOpen(false);
+			setActiveIndex(-1);
+			onDismiss?.();
+		},
+		[onDismiss],
+	);
 
 	const jump = useCallback(
 		async (entry: SettingSearchEntry) => {
@@ -249,7 +276,7 @@ export const SettingsSearch = forwardRef<
 			}
 			setNotice("");
 			setOpen(false);
-			setActiveIndex(0);
+			setActiveIndex(-1);
 		},
 		[onJump],
 	);
@@ -262,7 +289,11 @@ export const SettingsSearch = forwardRef<
 				event.preventDefault();
 				setOpen(true);
 				setActiveIndex((current) =>
-					results.length === 0 ? 0 : (current + 1) % results.length,
+					results.length === 0
+						? -1
+						: current < 0
+							? 0
+							: (current + 1) % results.length,
 				);
 				return;
 			case "ArrowUp":
@@ -270,8 +301,10 @@ export const SettingsSearch = forwardRef<
 				setOpen(true);
 				setActiveIndex((current) =>
 					results.length === 0
-						? 0
-						: (current - 1 + results.length) % results.length,
+						? -1
+						: current < 0
+							? results.length - 1
+							: (current - 1 + results.length) % results.length,
 				);
 				return;
 			case "Home":
@@ -290,14 +323,29 @@ export const SettingsSearch = forwardRef<
 					setOpen(true);
 					return;
 				}
-				if (active) jump(active.entry);
+				// Enter with nothing marked acts on the first result: the reader
+				// typed a query and pressed Enter, and the answer they meant is the
+				// best one (UX round 1, U9).
+				{
+					const target = active ?? results[0];
+					if (target) jump(target.entry);
+				}
 				return;
 			case "Escape":
 				event.preventDefault();
+				/*
+				 * CLEAR FIRST, CLOSE SECOND — one press does one thing.
+				 *
+				 * Escape used to clear and close together, which is neither of the
+				 * two things it says it does and defeats the reader who wants their
+				 * query back to keep browsing: they lose the panel and the field
+				 * at once (UX round 1, U4). A query is undone by the first press;
+				 * an empty field is what the second press dismisses.
+				 */
 				if (query !== "") {
-					// Clear first, close second: Escape on a query is "undo that",
-					// and the reader stays in the field to type the next one.
-					close("");
+					setQuery("");
+					setNotice("");
+					setActiveIndex(-1);
 					return;
 				}
 				close();
@@ -328,6 +376,8 @@ export const SettingsSearch = forwardRef<
 				// all — is not a reason to close what the reader is tabbing through.
 				if (next && rootRef.current?.contains(next)) return;
 				setOpen(false);
+				setActiveIndex(-1);
+				onDismiss?.();
 			}}
 		>
 			<div className="relative">
@@ -363,7 +413,9 @@ export const SettingsSearch = forwardRef<
 					onChange={(event) => {
 						primeRendered();
 						setQuery(event.currentTarget.value);
-						setActiveIndex(0);
+						// A new query marks nothing until the arrow chooses: the answer
+						// moved, and a leftover mark would name a different row.
+						setActiveIndex(-1);
 						setNotice("");
 						setOpen(true);
 					}}
@@ -371,15 +423,40 @@ export const SettingsSearch = forwardRef<
 				/>
 			</div>
 			{open && (
-				/* biome-ignore lint/a11y/useFocusableInteractive: the list is never DOM-focused — the field keeps focus and points at the active option through `aria-activedescendant`, which is the ARIA combobox contract. */
 				<div
 					id={listId}
 					/* biome-ignore lint/a11y/useSemanticElements: this is the combobox's own popup; a native `<select>` cannot express `aria-activedescendant`, and the list holds headed groups plus a capped "+N more" line. */
 					role="listbox"
+					/*
+					 * NOT A TAB STOP. The list was focusable because a scroll region
+					 * is, so Tab landed on a box where no key acts and the reader had
+					 * to press Tab again to leave it; options are reached through
+					 * `aria-activedescendant`, which is the combobox contract (UX
+					 * round 1, U6). `-1` keeps the scroll region keyboard-scrollable
+					 * by assistive tech without putting it in the tab order.
+					 */
+					tabIndex={-1}
 					aria-label={t("ui.settings.search.panel.label")}
 					/* Leaves the flow, so it is the one thing allowed a shadow. */
 					className="absolute top-full right-0 z-40 mt-2 flex max-h-[min(24rem,60vh)] w-full min-w-80 flex-col overflow-y-auto rounded-md border border-hairline bg-elevated p-1 shadow-overlay"
 				>
+					{notice && (
+						/*
+						 * The same sentence the live region speaks, on screen. A sighted
+						 * reader who pressed Enter on a result the page could not reach
+						 * used to see the panel unchanged and nothing else — the message
+						 * lived only in an `sr-only` region (UX round 1, U2).
+						 * `aria-hidden` because the polite region beside the field is
+						 * what announces it; two copies would speak twice.
+						 */
+						<p
+							data-search-notice=""
+							aria-hidden="true"
+							className="px-2 pt-2 pb-1 text-body-sm text-ink"
+						>
+							{notice}
+						</p>
+					)}
 					{blank ? (
 						<div className="flex flex-col gap-1 px-2 py-2">
 							<p className="text-body-sm text-ink">

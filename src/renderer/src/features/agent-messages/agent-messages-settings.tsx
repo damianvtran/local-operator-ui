@@ -740,6 +740,7 @@ const SettingsState: FC<SettingsStateProps> = ({
 				<EndpointConsent settings={settings} status={status} readOnly />
 				<LocalSwitch
 					searchRow="agent-messages.enabled"
+					searchTerms="team bridge team_bridge enabled devices"
 					value={localEnabled}
 					disabled={disabled}
 					description={t("ui.agentMessages.settings.local.stays_enrolled")}
@@ -871,6 +872,7 @@ const SettingsState: FC<SettingsStateProps> = ({
 					)}
 					<LocalSwitch
 						searchRow="agent-messages.enabled"
+						searchTerms="team bridge team_bridge enabled devices"
 						value={localEnabled}
 						disabled={disabled}
 						description={t("ui.agentMessages.settings.local.stays_enrolled")}
@@ -943,6 +945,7 @@ const SettingsState: FC<SettingsStateProps> = ({
 					    the machine off. Same control and write as C. */}
 					<LocalSwitch
 						searchRow="agent-messages.enabled"
+						searchTerms="team bridge team_bridge enabled devices"
 						value={localEnabled}
 						disabled={disabled}
 						description={t("ui.agentMessages.settings.local.stays_enrolled")}
@@ -1066,12 +1069,23 @@ const LocalSwitch: FC<{
 	 * here for a search result to land on it (review round 1, backend note).
 	 */
 	searchRow?: string;
-}> = ({ value, disabled, description, onChange, searchRow }) => {
+	/**
+	 * Extra words this row is searchable by, beyond the copy it prints.
+	 *
+	 * The switch's visible name is "this machine"'s own wording; the SETTING it
+	 * edits is `team_bridge.enabled`, and a reader who knows the feature by its
+	 * name types "team bridge". The registry's own row for that key is not
+	 * indexed (it is promoted to this control), so without terms the feature's
+	 * name finds nothing at all (UX round 1, U1).
+	 */
+	searchTerms?: string;
+}> = ({ value, disabled, description, onChange, searchRow, searchTerms }) => {
 	const id = useId();
 	return (
 		<div
 			data-search-row={searchRow}
 			data-search-control={searchRow ? "" : undefined}
+			data-search-terms={searchTerms}
 			className="flex items-start justify-between gap-4"
 		>
 			<div className="min-w-0">
@@ -1102,6 +1116,13 @@ const SessionDesignation: FC<{
 		<div
 			data-search-row="agent-messages.session"
 			data-search-control
+			/*
+			 * The heading prints this row's own wording; the SETTING behind it is
+			 * `team_bridge.session`, and the reader looking for it types the
+			 * feature's name. Same reason as the machine switch's terms (UX round
+			 * 1, U1).
+			 */
+			data-search-terms="team bridge team_bridge session"
 			className="flex flex-col gap-2"
 		>
 			<h3 className="text-heading text-ink">
