@@ -786,6 +786,10 @@ export const McpManagementSection: FC<{
 				title={t(SECTION_TITLE)}
 				titleComponent={header}
 				sectionRef={sectionRef}
+				searchSection="integrations"
+				searchSectionLabel={t(
+					"ui.settings.navigation.settings_sidebar.integrations",
+				)}
 			>
 				<Alert variant="warning">
 					{t(
@@ -1156,6 +1160,10 @@ export const McpManagementSection: FC<{
 			title={t(SECTION_TITLE)}
 			titleComponent={header}
 			sectionRef={sectionRef}
+			searchSection="integrations"
+			searchSectionLabel={t(
+				"ui.settings.navigation.settings_sidebar.integrations",
+			)}
 		>
 			<div className="flex flex-col gap-4">
 				{integrations.route === "session" && integrations.borrowed ? (

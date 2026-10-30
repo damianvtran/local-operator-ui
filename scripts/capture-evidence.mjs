@@ -4472,6 +4472,20 @@ export const STORIES = [
 	["settings-backend--save-failed", 1380, 900],
 	["settings-backend--narrow", 620, 900],
 	/*
+	 * The settings page's own search (issue #1492): the field's resting state
+	 * with its panel open, results, the no-result answer, and the narrow-width
+	 * pressure case. No dark twin is listed — these stories take no theme of
+	 * their own, so the sweep photographs each row once per theme (design D4).
+	 *
+	 * Added on the reviewer's finding (design round 1, D3): without these rows
+	 * this round's frames could only be produced from a patched copy of this
+	 * file, which is not evidence a later round can regenerate.
+	 */
+	["settings-search--idle", 1380, 900],
+	["settings-search--results", 1380, 900],
+	["settings-search--no-results", 1380, 900],
+	["settings-search--long-query", 420, 900],
+	/*
 	 * And the control those rows are built on, which had never been photographed
 	 * in ANY theme or state before this change — its own story was in no row of
 	 * this table since it was written. It arrives in `ui/` with the frames it

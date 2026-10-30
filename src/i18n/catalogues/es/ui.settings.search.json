@@ -1,0 +1,20 @@
+{
+	"ui.settings.search.field.label": "Buscar ajustes",
+	"ui.settings.search.field.placeholder": "Buscar ajustes",
+	"ui.settings.search.empty.summary": "Busca en todos los ajustes de esta página y en el registro del servicio conectado.",
+	"ui.settings.search.empty.shortcut": "Pulsa {shortcut} para buscar desde cualquier punto de esta página.",
+	"ui.settings.search.no_results.title": "Nada coincide con “{query}”.",
+	"ui.settings.search.no_results.hint": "Prueba otra palabra o vacía el campo para seguir explorando la página.",
+	"ui.settings.search.no_results.clear": "Borrar búsqueda",
+	"ui.settings.search.results.count": "{count, plural, one {# resultado} many {# de resultados} other {# resultados}}",
+	"ui.settings.search.results.more": "{count, plural, one {# resultado más sin mostrar} many {# de resultados más sin mostrar} other {# resultados más sin mostrar}}",
+	"ui.settings.search.panel.label": "Resultados de ajustes",
+	"ui.settings.search.reason.label": "coincide con el nombre",
+	"ui.settings.search.reason.synonym": "coincide con un término relacionado",
+	"ui.settings.search.reason.key": "coincide con la clave del ajuste",
+	"ui.settings.search.reason.choice": "coincide con una opción",
+	"ui.settings.search.reason.section": "coincide con la sección",
+	"ui.settings.search.reason.description": "coincide con la descripción",
+	"ui.settings.search.jump.missing": "Ese ajuste no está en pantalla ahora mismo.",
+	"ui.settings.search.row.section_hint": "En {section}"
+}
