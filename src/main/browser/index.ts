@@ -1917,6 +1917,13 @@ async function initializeBrowserHost(
 			 * record), and a window dies with its destroyed opener. */
 			const openerOwner = (): PopupOpenerOwner | null =>
 				registry.get(tabId)?.owner ?? null;
+			/** Whether the opening tab is ITSELF a link tab (a page-spawned tab). Read
+			 * fresh beside `openerOwner` for the same hand-over reason: a link tab handed
+			 * to a session is agent-owned, and the agent cap bounds it instead of the
+			 * depth rule. `openedByTab` is the marker, and a restored tab has none
+			 * (`registry.ts` clears it on restore), so a restored tab opens as before. */
+			const openerIsLinkTab = (): boolean =>
+				registry.get(tabId)?.openedByTab != null;
 			/**
 			 * What only the open handler can see, carried to `did-create-window` for
 			 * the same child. `postBody` is NOT in the latter's details on Electron
@@ -1937,6 +1944,10 @@ async function initializeBrowserHost(
 						mode: options.windowShow,
 						live: popupChildren.size,
 						openerOwner: openerOwner(),
+						// The early form of the depth rule: a user's link tab opens nothing, so
+						// no child window is created at all (`decidePopup` runs again in
+						// `did-create-window`, which is what the pure tests drive).
+						openerIsLinkTab: openerIsLinkTab(),
 					},
 				);
 				if (!decision.allow) {
@@ -2032,6 +2043,7 @@ async function initializeBrowserHost(
 						mode: options.windowShow,
 						live: popupChildren.size,
 						openerOwner: record ? record.owner : null,
+						openerIsLinkTab: record?.openedByTab != null,
 					},
 				);
 				const seen = `${details.url} (disposition=${details.disposition}, opener=${hasOpener ? "yes" : "no"}`;

@@ -63,6 +63,15 @@ export interface PopupPolicy {
 	 * rather than defaulted to `user`, whose `focus` would raise the app for a tab
 	 * that no longer exists. */
 	openerOwner: PopupOpenerOwner | null;
+	/** Whether the opening tab is ITSELF a link tab — a page-spawned tab, so
+	 * `TabRecord.openedByTab !== null` (`link_depth`).
+	 *
+	 * REQUIRED, not optional: every tab carries the same window-open handler, so a
+	 * call site that left this out would silently re-open the depth hole — a link
+	 * tab's children would be measured against the link tab's own empty count.
+	 * A caller that has no tab record at all (`openerOwner` null) passes `false`;
+	 * the `opener_gone` branch answers first either way. */
+	openerIsLinkTab: boolean;
 }
 
 /**
@@ -70,10 +79,11 @@ export interface PopupPolicy {
  * is greppable and a test can assert the refusal class rather than the wording:
  * `scheme` — not `about:blank` and not http(s); `cap` — the view already holds
  * `MAX_POPUP_CHILDREN_PER_VIEW` live children; `opener_gone` — the opening tab
- * no longer has a registry record.
+ * no longer has a registry record; `link_depth` — the opening tab is a user-owned
+ * LINK tab, and a link tab opens nothing (the fan-out is one level deep).
  */
 export type PopupDecision =
-	| { allow: false; reason: "scheme" | "cap" | "opener_gone" }
+	| { allow: false; reason: "scheme" | "cap" | "opener_gone" | "link_depth" }
 	| { allow: true; presentation: WindowShow };
 
 /**
@@ -87,20 +97,38 @@ export type PopupDecision =
 export const MAX_POPUP_CHILDREN_PER_VIEW = 4;
 
 /**
- * How many link tabs one USER-owned tab may spawn (`routePopup`'s tab route).
+ * How many link tabs ONE user tab may hold OPEN at a time (`routePopup`'s tab
+ * route).
  *
- * A SECOND CONSTANT, not a reuse of `MAX_POPUP_CHILDREN_PER_VIEW`: the two bound
- * different resources for different reasons, and one number for both would
- * silently tighten whichever side moved. That constant bounds a view's live
- * popup WINDOWS and is as low as 4 because no known flow needs more; this one
- * bounds tabs a PAGE opens from the operator's own tab, where the ordinary case
- * is "a person opening five links". 12 keeps that case comfortable — seven more
- * than it needs — while a page looping `window.open(u, "_blank", "noopener")`,
- * which gets no gesture from the operator and so is stopped by nothing upstream,
- * ends at a dozen views, a dozen `session.json` rows and a dozen activations
- * instead of churning the tab being looked at indefinitely. Raise it only against
- * a real page that needs more, naming the page in the commit, as with the window
- * cap.
+ * WHAT IT BOUNDS, exactly: the input is `registry.openedTabCount(openerTabId)`,
+ * the children whose `openedByTab` is THIS tab and that are still open — a bound
+ * on CONCURRENT tabs, not on lifetime allocation. Closing one frees its slot, so
+ * a page that opens and closes links in a loop allocates without limit while
+ * never holding more than this many at once. What it cannot do is grow the strip
+ * without bound, which is the resource at stake: a real `WebContents`, its raster
+ * surface, a `session.json` row and (for an active opener) an activation.
+ *
+ * DEPTH 1, NOT A TREE: every tab is wired with the same window-open handler, and
+ * a link tab is a registered tab like any other — so counting per opener would
+ * give a link tab its own fresh, empty budget and a self-replicating page
+ * (`window.open(location.href, "_blank", "noopener")` inside the child too)
+ * would fan out at every level. `decidePopup` therefore refuses any popup whose
+ * opener is a user-owned LINK tab (`link_depth`): the operator's tab fans out, its
+ * children open nothing. That is what makes this a cap of this size rather than a
+ * depth-exponentiated one.
+ *
+ * THE NUMBER: 12 is the design's own stated scale for a person's own tabs —
+ * `ui-browser-tab.md` 6.5, "a user opening a dozen tabs is their business" — used
+ * here as a CEILING on a page rather than copied from that sentence: a page gets
+ * no more than a person gets for themselves, and leaves seven slots over the
+ * ordinary case it must never meet (a person opening the few links they want from
+ * one page — five is the count the tests drive). It is a judgement about bounding
+ * abuse, like `MAX_POPUP_CHILDREN_PER_VIEW` above, not a measurement: 6.5 has no
+ * measured human fan-out to derive one from, so it rests on two stated facts
+ * instead — it grants a page a person's allowance and no more, and it is below
+ * `MAX_RESTORED_TABS` (20), so one looping page cannot by itself fill what a
+ * restore will read back. Raise it only against a real page that needs more,
+ * naming the page in the commit, as with the window cap.
  */
 export const MAX_USER_LINK_TABS_PER_VIEW = 12;
 
@@ -151,11 +179,13 @@ export function effectivePresentation(
  *   nothing here re-opens it.
  * - beyond the cap — deny, log only.
  *
- * NOT here by construction: a popup from a popup. A child gets its own
- * deny-all handler (`wirePopup` in `index.ts`) because no known auth flow
- * nests popups, and chasing unbounded nesting is what a cap would otherwise
- * have to do; and the child's own initial URL was already vetted by THIS
- * decision one event earlier.
+ * TWO RULES THAT BOUND DEPTH, both because a child can open children of its own:
+ * a popup WINDOW gets its own deny-all handler (`wirePopup` in `index.ts`) since
+ * no known auth flow nests popups, and a user's LINK TAB opens nothing at all
+ * (`link_depth` below) since its children are tabs carrying the same handler as
+ * the tab that spawned them. Without the second, a page that reproduces itself in
+ * its children would be bounded only per opener, and every generation starts
+ * that count afresh (`MAX_USER_LINK_TABS_PER_VIEW` says why).
  */
 export function decidePopup(
 	request: PopupRequest,
@@ -163,6 +193,13 @@ export function decidePopup(
 ): PopupDecision {
 	if (policy.openerOwner === null)
 		return { allow: false, reason: "opener_gone" };
+	// DEPTH 1 for a user's page-spawned tabs. An AGENT's link tab keeps the route it
+	// had: agent tabs are bounded in AGGREGATE by `MAX_AGENT_TABS`, so its nesting
+	// cannot grow the strip past a number nothing checks — not true of the
+	// operator's tabs, the one thing design 6.5 deliberately leaves uncapped.
+	if (policy.openerOwner === "user" && policy.openerIsLinkTab) {
+		return { allow: false, reason: "link_depth" };
+	}
 	if (!isAllowedTarget(request.url)) return { allow: false, reason: "scheme" };
 	if (policy.live >= MAX_POPUP_CHILDREN_PER_VIEW) {
 		return { allow: false, reason: "cap" };
@@ -205,9 +242,10 @@ export interface PopupRouteRequest extends PopupRequest {
 /**
  * Where an allowed popup goes (docs/design/browser-oauth-popups.md 1.1).
  *
- * - `deny` — `decidePopup` refused it (scheme, cap), an agent's tab already
- *   holds `MAX_POPUP_CHILDREN_PER_VIEW` tabs it spawned, or a user's tab already
- *   holds `MAX_USER_LINK_TABS_PER_VIEW`. The two tab bounds carry distinct tokens
+ * - `deny` — `decidePopup` refused it (scheme, cap, or `link_depth`: the opening
+ *   tab is itself a user-owned link tab), an agent's tab already holds
+ *   `MAX_POPUP_CHILDREN_PER_VIEW` tabs it spawned, or a user's tab already holds
+ *   `MAX_USER_LINK_TABS_PER_VIEW`. The tab bounds carry distinct tokens
  *   (`opener_cap`, `user_opener_cap`) so a log names which wall was hit.
  * - `tab` — an ordinary link: it has no opener, so nothing can depend on one
  *   (a flow that needs `window.opener` or `postMessage` has an opener or cannot
@@ -235,7 +273,8 @@ export type PopupRoute =
 				| "cap"
 				| "opener_gone"
 				| "opener_cap"
-				| "user_opener_cap";
+				| "user_opener_cap"
+				| "link_depth";
 	  }
 	| { route: "tab"; owner: PopupOpenerOwner; activate: boolean }
 	| { route: "window"; presentation: WindowShow };

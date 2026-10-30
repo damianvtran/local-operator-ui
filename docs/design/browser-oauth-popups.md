@@ -138,20 +138,42 @@ the opener was the active tab and the request was not `background-tab`. It is ne
 as a window. The opening session may adopt it with `open tab=<handle>` (`TabRecord.openedBy`,
 read by `sessionMayAdopt`); another session may not. Bounds: an agent's tab may spawn
 `MAX_POPUP_CHILDREN_PER_VIEW` link tabs and the agent-tab cap (`MAX_AGENT_TABS`) still
-applies; **a user's tab may spawn `MAX_USER_LINK_TABS_PER_VIEW` (12)**. That user bound
-corrects an earlier claim: `ui-browser-tab.md` §6.5 leaves user tabs uncapped because "a user
-opening a dozen tabs is their business", and that reasoning held only while every user tab was
-an act the user took. A page looping `window.open(u, "_blank", "noopener")` is not an act the
-user took: before this section's routing those children were windows, so the live cap refused
-the fifth, and as tabs they never enter the window cap's count — the old reasoning would have
-let one page in the operator's own tab allocate views, `session.json` rows and activations
-without bound. Twelve leaves the ordinary case (a person opening five links from one page)
-comfortable and refuses the loop; it is a separate constant from the window cap because the
-two bound different resources and one number for both would silently tighten whichever side
-moved. Scheme and window-cap refusals are unchanged; the per-opener tab bounds log
+applies; a user's tab may hold `MAX_USER_LINK_TABS_PER_VIEW` (12) link tabs open at once,
+and **a user's link tab may not spawn a popup of its own at all** (`link_depth`).
+
+The guarantee is therefore depth-1 fan-out, and it is worth stating exactly, because the
+first form of this bound did not hold: the count is `openedTabCount(openerTabId)`, the
+children whose `openedByTab` is that tab and that are still open, so it bounds CONCURRENT
+tabs rather than lifetime allocation — closing one frees its slot. Without the depth rule
+the fan-out would be 12^depth instead of 12, since every tab is wired with the same
+window-open handler and each child would have been measured against its own fresh, empty
+count: a page reproducing itself in its children (`window.open(location.href, "_blank",
+"noopener")` inside the child too) would have reached 12, 144, 1,728, 20,736 live views,
+because the window cap sees no tab and the agent-tab cap is agent-only. A link tab is a tab
+with no operator behind it, so it opens nothing; the operator's tab fans out, its children
+do not. An agent's link tab is not covered by that rule because `MAX_AGENT_TABS` bounds
+agent tabs in aggregate (8), so its nesting cannot grow the strip past a number nothing
+checks.
+
+The user bound corrects an earlier claim: `ui-browser-tab.md` §6.5 leaves user tabs uncapped
+because "a user opening a dozen tabs is their business", and that reasoning held only while
+every user tab was an act the user took. A page looping `window.open(u, "_blank",
+"noopener")` is not an act the user took: before this section's routing those children were
+windows, so the live cap refused the fifth, and as tabs they never enter the window cap's
+count — the old reasoning would have let one page in the operator's own tab allocate views,
+`session.json` rows and activations without bound. Twelve is a ceiling taken from that same
+sentence's human scale rather than a copy of its conclusion: a page gets no more than a
+person gets for themselves, and seven slots over the ordinary case (a person opening the few
+links they want from one page) so ordinary use never meets the wall. It is a judgement about
+bounding abuse, like the window cap, not a measurement — §6.5 deliberately holds no measured
+human fan-out — and it sits below `MAX_RESTORED_TABS` (20), so one looping page cannot by
+itself fill what a restore reads back. It is a separate constant from the window cap because
+the two bound different resources and one number for both would silently tighten whichever
+side moved. Scheme and window-cap refusals are unchanged; the per-opener tab bounds log
 `(opener_cap)` for an agent and `(user_opener_cap)` for a user, distinct so a log says which
 bound was hit, and a popup whose opener tab has no registry record logs `(opener_gone)` and is
-refused on every route. The log line names the route: `opener=yes|no route=tab|window`.
+refused on every route, before either count is consulted. The log line names the route:
+`opener=yes|no route=tab|window`; an opener that is a link tab logs `(link_depth)`.
 
 An agent's link tab lives and dies with the tab that opened it unless a session adopts it:
 closing the opener (or ending the scope that allocated it) closes the link tabs nothing
@@ -164,7 +186,11 @@ opener's `Referer`.
 **Behaviour change to know about:** a named target (`target="mail"`) used to reuse one
 window on every click; each click now opens a new tab, and the fifth click from one agent
 tab is refused with `opener_cap` until one of them is closed. From a user's tab the same
-clicks are refused from the thirteenth with `user_opener_cap`.
+clicks are refused from the thirteenth with `user_opener_cap` while twelve are open, and a
+link clicked ON one of those new tabs opens nothing: it logs `link_depth` and no tab
+appears. That last refusal is deliberate rather than a gap: a link tab has no operator
+behind it, so there is no one to stop a page that reproduces itself, and a bound that only
+counted per opener would be 12 to the power of the nesting rather than 12.
 
 Not verified: that Gmail's links are opener-less (inferred from its `google.com/url?q=`
 redirect anchors), real MSAL/Google sign-in through the new routing, modifier-click in the

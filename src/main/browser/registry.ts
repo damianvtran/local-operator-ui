@@ -167,10 +167,15 @@ export interface TabRef extends SnapshotRef {
  * `MAX_SURFACES = 8` (`extension/src/state.ts:12`).
  *
  * The reasoning transfers unchanged: parallel sessions each open their own tab,
- * and nothing else bounds how many an agent fleet can open. User tabs are NOT
- * capped (design 6.5) — a user opening a dozen tabs is their business, and the
- * honest bound on those is memory, which `status` reports rather than a second
- * invented number. */
+ * and nothing else bounds how many an agent fleet can open.
+ *
+ * User tabs have no cap of THIS kind — no number bounds how many the operator may
+ * hold — but they are not "uncapped" either, which is what this comment used to
+ * say while the popup route relied on it. The bound that exists is on the one path
+ * where the operator is not the one asking: a page in their own tab may not spawn
+ * link tabs without bound (`MAX_USER_LINK_TABS_PER_VIEW`, `popups.ts`) and may not
+ * spawn them from a link tab at all. Design 6.5's "a user opening a dozen tabs is
+ * their business" is about acts the USER takes; a page's loop is not one. */
 export const MAX_AGENT_TABS = 8;
 
 /** Background rendering must not depend on a foreground route's measurement.
