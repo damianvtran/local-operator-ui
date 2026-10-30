@@ -32,6 +32,7 @@ import {
 	MailPlus,
 	Pencil,
 	Plus,
+	UserPlus,
 	Users,
 } from "lucide-react";
 import type { FC, ReactNode } from "react";
@@ -48,10 +49,12 @@ import type {
 	TeamBridgeAttachmentCapability,
 	TeamBridgeConversation,
 	TeamBridgeDirectoryMember,
+	TeamBridgeMemberInput,
 	TeamBridgeMessage,
 	TeamBridgeNotify,
 } from "../../../../shared/team-bridge-contract";
 import { rowCurrent } from "../chat/components/chat-sidebar";
+import { TeamBridgeAddMembersView } from "./team-bridge-add-members";
 import {
 	TeamBridgeArchiveDialog,
 	TeamBridgeArchivedBanner,
@@ -81,6 +84,10 @@ import {
 	pendingAgentInvitations,
 	railInvitationsEntryShown,
 } from "./team-bridge-invitations-model";
+import {
+	canInviteMembers,
+	canRemoveMembers,
+} from "./team-bridge-members-model";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
 import {
 	type ChiefLabels,
@@ -162,6 +169,7 @@ import {
 import { useReportTeamBridgeViewing } from "./team-bridge-viewing";
 import { useStickToBottom } from "./use-stick-to-bottom";
 import {
+	useAddTeamBridgeMembers,
 	useArchiveTeamBridgeConversation,
 	useArchivedTeamBridgeConversations,
 	useCreateTeamBridgeConversation,
@@ -169,6 +177,7 @@ import {
 	useJoinTeamBridgeConversation,
 	useLoadMoreArchivedTeamBridgeConversations,
 	useMarkTeamBridgeRead,
+	useRemoveTeamBridgeMember,
 	useSendTeamBridgeMessage,
 	useSetTeamBridgeNotify,
 	useTeamBridgeConversations,
@@ -511,6 +520,18 @@ export type TeamBridgePageViewProps = {
 	notifyFailed?: boolean;
 	onJoin?: () => void;
 	onNotifyChange?: (notify: TeamBridgeNotify) => void;
+	/** Membership writes, passed the selected conversation at the point of use. */
+	onAddMembers?: (
+		conversation: TeamBridgeConversation,
+		members: TeamBridgeMemberInput[],
+	) => Promise<unknown>;
+	onRemoveMember?: (
+		conversation: TeamBridgeConversation,
+		accountId: string,
+	) => Promise<unknown>;
+	memberMutationKey?: string | null;
+	/** Story/test seed only: opens membership administration on mount. */
+	initialMembersOpen?: boolean;
 	/**
 	 * ARCHIVE / PERMANENT DELETE. Each is optional so a mount that does not wire
 	 * them (a story, an older container) simply draws none of the controls.
@@ -559,6 +580,10 @@ export type TeamBridgePageViewProps = {
 	 * list). A tenant whose read has not answered is absent.
 	 */
 	directories?: Readonly<Record<string, readonly TeamBridgeDirectoryMember[]>>;
+	/** Each organization's directory read state, for the merged view's picker. */
+	directoryStates?: Readonly<Record<string, "loading" | "error" | "ready">>;
+	/** Re-run one organization's directory read (the merged view's retry). */
+	onRetryMembers?: (tenantId: string) => void;
 	/**
 	 * The signed-in reader's account name, so their own messages are named even
 	 * when no directory lists them (merged view, directory loading or failed).
@@ -644,6 +669,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	notifyFailed = false,
 	onJoin,
 	onNotifyChange,
+	onAddMembers,
+	onRemoveMember,
+	memberMutationKey = null,
+	initialMembersOpen = false,
 	onArchive,
 	onUnarchive,
 	onDelete,
@@ -666,11 +695,13 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	isDraftCurrent = () => true,
 	people = [],
 	directories,
+	directoryStates,
 	selfName,
 	peopleState = "ready",
 	peopleError,
 	peopleIncomplete = false,
 	onRetryPeople,
+	onRetryMembers,
 	eligibility = null,
 	gatePending = false,
 	readOnly = false,
@@ -694,6 +725,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		kind: "archive" | "delete";
 		conversationId: string;
 	} | null>(initialDialog ?? null);
+	const [membersOpen, setMembersOpen] = useState(initialMembersOpen);
+	const [memberActionFailed, setMemberActionFailed] = useState(false);
 	const [deleting, setDeleting] = useState(false);
 	const [deleteFailed, setDeleteFailed] = useState<"error" | "gone" | null>(
 		null,
@@ -2097,11 +2130,47 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										{relative(shown.last_message_at, locale)}
 									</span>
 								)}
+								{/*
+								 * THE INVITE ACTION WEARS ITS NAME, NEXT TO THE COUNT IT ACTS ON
+								 * (design review round 1, D2). It shipped as a 28px unlabelled
+								 * ghost glyph in the far cluster, while the membership summary -
+								 * the very number the action changes - sat inert beside the title,
+								 * so the affordance was the quietest mark on a header whose job
+								 * here is invitation. It is a labelled ghost button now (no
+								 * border, no fill: nothing lifts), placed where the count is.
+								 */}
+								{shown &&
+									!previewSelected &&
+									!readOnly &&
+									onAddMembers &&
+									canInviteMembers(shown, selfAccountId) && (
+										<Button
+											type="button"
+											size="sm"
+											variant="ghost"
+											className="shrink-0"
+											onClick={() => {
+												setMemberActionFailed(false);
+												setMembersOpen(true);
+											}}
+										>
+											<UserPlus size={14} aria-hidden="true" />
+											{t("ui.teamBridge.members.menu")}
+										</Button>
+									)}
 								<div className="ms-auto flex items-center gap-1">
 									{shown && !previewSelected && !readOnly && onNotifyChange && (
 										<TeamBridgeConversationMenu
 											conversation={shown}
 											onNotifyChange={onNotifyChange}
+											onAddMembers={
+												onAddMembers && canInviteMembers(shown, selfAccountId)
+													? () => {
+															setMemberActionFailed(false);
+															setMembersOpen(true);
+														}
+													: undefined
+											}
 											onArchive={
 												onArchive && canArchiveConversation(shown)
 													? () =>
@@ -2687,6 +2756,53 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					/>
 				);
 			})()}
+			{shown && (
+				<TeamBridgeAddMembersView
+					open={membersOpen}
+					conversation={shown}
+					people={shown ? rosterFor(shown.tenant_id) : []}
+					selfAccountId={selfAccountId}
+					peopleState={
+						mergedView
+							? (directoryStates?.[shown.tenant_id] ?? "loading")
+							: peopleState
+					}
+					canInvite={!readOnly && canInviteMembers(shown, selfAccountId)}
+					canRemove={!readOnly && canRemoveMembers(shown, selfAccountId)}
+					mutationError={memberActionFailed}
+					pendingKey={memberMutationKey}
+					onClose={() => {
+						if (memberMutationKey) return;
+						setMembersOpen(false);
+						setMemberActionFailed(false);
+					}}
+					onRetryMembers={onRetryMembers}
+					onAdd={(members) => {
+						if (
+							!onAddMembers ||
+							readOnly ||
+							!canInviteMembers(shown, selfAccountId)
+						)
+							return;
+						setMemberActionFailed(false);
+						void onAddMembers(shown, members).catch(() => {
+							setMemberActionFailed(true);
+						});
+					}}
+					onRemove={(accountId) => {
+						if (
+							!onRemoveMember ||
+							readOnly ||
+							!canRemoveMembers(shown, selfAccountId)
+						)
+							return;
+						setMemberActionFailed(false);
+						void onRemoveMember(shown, accountId).catch(() => {
+							setMemberActionFailed(true);
+						});
+					}}
+				/>
+			)}
 		</div>
 	);
 };
@@ -2872,8 +2988,10 @@ const TeamBridgeOwnedPage: FC<{
 	);
 	const mergedView = scope === TEAM_BRIDGE_ALL_SCOPE;
 	// Names only (see `useTeamBridgeDirectories`): the merged view lists no
-	// roster, but its threads and DM rows still need their senders named.
-	const directories = useTeamBridgeDirectories(
+	// roster, but its threads and DM rows still need their senders named - and
+	// the member picker needs each read's own state and a retry that addresses
+	// it, which is why the hook answers with more than the rosters.
+	const directoriesRead = useTeamBridgeDirectories(
 		mergedView
 			? organizations.map((organization) => organization.tenantId)
 			: [],
@@ -3000,6 +3118,8 @@ const TeamBridgeOwnedPage: FC<{
 		selected?.id ?? "",
 		selected?.tenant_id,
 	);
+	const addMembers = useAddTeamBridgeMembers();
+	const removeMember = useRemoveTeamBridgeMember();
 	const create = useCreateTeamBridgeConversation(
 		mergedView ? undefined : scope,
 		isCurrentOwner,
@@ -3385,6 +3505,37 @@ const TeamBridgeOwnedPage: FC<{
 						notify: next,
 					});
 				}}
+				onAddMembers={(conversation, members) => {
+					if (!isCurrentOwner() || !canInviteMembers(conversation, accountId))
+						return Promise.reject(
+							new Error("Team Bridge write authority changed"),
+						);
+					return addMembers.mutateAsync({
+						conversationId: conversation.id,
+						tenantId: conversation.tenant_id,
+						members,
+						key: "add",
+					});
+				}}
+				onRemoveMember={(conversation, memberAccountId) => {
+					if (!isCurrentOwner() || !canRemoveMembers(conversation, accountId))
+						return Promise.reject(
+							new Error("Team Bridge write authority changed"),
+						);
+					return removeMember.mutateAsync({
+						conversationId: conversation.id,
+						tenantId: conversation.tenant_id,
+						accountId: memberAccountId,
+						key: `remove:${memberAccountId}`,
+					});
+				}}
+				memberMutationKey={
+					addMembers.isPending
+						? "add"
+						: removeMember.isPending
+							? (removeMember.variables?.key ?? "remove")
+							: null
+				}
 				onTarget={(next) => {
 					setThreadLink(null);
 					setChannelFormOpen(false);
@@ -3404,7 +3555,14 @@ const TeamBridgeOwnedPage: FC<{
 					setChannelFormOpen(true);
 				}}
 				people={people}
-				directories={directories}
+				directories={directoriesRead.members}
+				directoryStates={directoriesRead.state}
+				onRetryMembers={(tenantId) => {
+					// The merged view mounts one read per organization; the single-scope
+					// read is the one the rest of the page already shows and retries.
+					if (mergedView) directoriesRead.retry(tenantId);
+					else void directory.refetch();
+				}}
 				selfName={selfName}
 				peopleState={
 					directory.isPending
