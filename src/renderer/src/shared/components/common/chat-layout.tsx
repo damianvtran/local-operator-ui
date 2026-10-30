@@ -500,7 +500,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 						 * with it closed, which is exactly what keeps the lane's stop and the
 						 * pane's leading edge one number.
 						 */}
-						<div className="flex h-full min-h-0 w-full overflow-hidden">
+						<div className="relative flex h-full min-h-0 w-full overflow-hidden">
 							{content}
 							{/*
 							 * THE FLEET ASKS PANE: the same three pieces the route's occupants
@@ -527,8 +527,23 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 											)}
 										/>
 									)}
+									{/*
+									 * THE SAME NARROW-ROW RULE AS THE CONVERSATION'S MOUNT (agent review round 4):
+									 * in the `overlay` mode the pane covers the row it cannot sit beside instead of
+									 * taking a 0-wide box in it - `chat-content.tsx` carries the measured numbers and
+									 * the whole argument. It mattered here too: this row is the content column's,
+									 * and the rail is a sibling AFTER that column, so nothing a pane draws can reach
+									 * the rail unless the pane escapes the row.
+									 */}
 									<PaneSlot
-										width={slotWidth}
+										/*
+										 * Overlay: no width. The pane overlays the row it is pinned to, and that
+										 * row's width is the browser's to resolve at paint time - see the mount in
+										 * `chat-content.tsx` and `pane-slot.tsx`'s `width` note (design review
+										 * round 2, D8).
+										 */
+										width={fleetDocked ? slotWidth : undefined}
+										className={fleetDocked ? undefined : "absolute inset-0"}
 										tourTag="ask-fleet-slot"
 										data-ask-mode={fleetDocked ? "docked" : "overlay"}
 									>
