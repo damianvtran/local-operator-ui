@@ -293,11 +293,16 @@ export async function prepareDrawerRemediation({
  * points inside the viewport - and answers the first point the element really
  * owns. When it owns none, the answer carries the MEASUREMENT instead: the rect,
  * the CSS viewport, and the element that is actually on top.
+ *
+ * The scroll is INSTANT and the rect is read in the same evaluate as the scroll, so
+ * the box answered here is the box at rest. `scrollIntoView` with the default
+ * behaviour inherits `scroll-behavior` and can still be travelling when the rect is
+ * read, which answers a point the control is about to leave.
  */
 const hittablePoint = (selector) => `(()=>{
 	const e=document.querySelector(${JSON.stringify(selector)});
 	if(!e) return {present:false};
-	e.scrollIntoView({block:'nearest',inline:'nearest'});
+	e.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});
 	const r=e.getBoundingClientRect();
 	const vw=window.innerWidth,vh=window.innerHeight;
 	const round=(n)=>Math.round(n*10)/10;
@@ -318,6 +323,25 @@ const hittablePoint = (selector) => `(()=>{
 	return {present:true,rect,viewport,reason:'another element is on top',onTop:describe(document.elementFromPoint((left+right)/2,(top+bottom)/2))};
 })()`;
 
+/*
+ * INVARIANT: the point pressed is the point measured, and both belong to the control.
+ *
+ * The hover pause is not optional - the row action is `opacity-0` until its row is
+ * really hovered - but 250 ms is long enough for the layout under a STALE point to
+ * change on its own. The drawer's tab strip is `flex-wrap`, so when an asynchronous
+ * three-digit badge lands the labels wrap, the strip grows and every tab below or
+ * beside it moves. The old code measured before that pause and pressed after it,
+ * pressing whatever had drifted under the stale point: on the macOS native leg the
+ * Updates tab became the Asks tab, the drawer stayed on Asks, and the next wait died
+ * as `drawer controls: timed out` with focus still on Asks (round 5, both attempts,
+ * one of them on a docked LTR path this branch does not touch).
+ *
+ * So: wait for a point, hover it, pause for the reveal, then RE-LOCATE and RE-MEASURE
+ * with nothing between the measurement and the press but the move itself, and press
+ * the FRESH coordinates. A fresh probe that owns no point FAILS with that answer - it
+ * is not retried and not softened, because a control that genuinely cannot be hit at
+ * this viewport must never be clicked into a pass.
+ */
 async function click(cdp, selector) {
 	let box;
 	try {
@@ -343,12 +367,27 @@ async function click(cdp, selector) {
 		y: box.y,
 	});
 	await pause(250); // The row action is revealed by this real hover, not activated while opacity=0.
+	/* Fresh geometry, taken now and pressed now. Anything measured before the pause is
+	 * a claim about a layout that may no longer exist. The move to the fresh point is
+	 * safe in between because hover changes these controls' opacity, never their box. */
+	const fresh = await cdp.evaluate(hittablePoint(selector));
+	if (!fresh || typeof fresh.x !== "number") {
+		throw new Error(
+			`click ${selector}: no point of the control is hittable immediately before the press - ${JSON.stringify(fresh)}`,
+		);
+	}
+	const press = { x: fresh.x, y: fresh.y };
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		button: "none",
+		...press,
+	});
 	for (const type of ["mousePressed", "mouseReleased"])
 		await cdp.send("Input.dispatchMouseEvent", {
 			type,
 			button: type === "mouseMoved" ? "none" : "left",
 			clickCount: 1,
-			...box,
+			...press,
 		});
 }
 const stateOf = (cdp) =>
