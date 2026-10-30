@@ -1,0 +1,19 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "radient/auto",
+ "instance": "audit-1470u-vi-uihub-20261029",
+ "status": "passed",
+ "namespace": "ui.hub",
+ "sha256": {
+  "vi": "fc06d103735b66b7da027549f0843f63e5b83b3688a348d953d57eab6dec7f6a",
+  "en": "0d77070295627e861882e8f952888c59e1d013dd754e1a7da79c85d1a31a9753"
+ },
+ "findings": [
+  {
+   "key": "ui.hub.links.healthy",
+   "severity": "NIT",
+   "problem": "‘Theo dõi {subscribe}’ concatenates the state word with no separator, so the accessible name reads ‘Theo dõi Bật; Tự động đẩy Tắt’; es, ru and zh label the two states with a separator instead.",
+   "fix": "‘…; Theo dõi: {subscribe}; Tự động đẩy: {autoPush}. Mở chính sách liên kết.’ Apply the same to ui.hub.links.healthy_unsourced."
+  }
+ ]
+}

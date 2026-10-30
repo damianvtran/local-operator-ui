@@ -1,7 +1,12 @@
 {
+	"ui.chat.transcript_copy.block.logs": "لاگز",
+	"ui.chat.transcript_copy.block.output": "آؤٹ پٹ",
 	"ui.chat.transcript_copy.menu.copy_text": "متن نقل کریں",
 	"ui.chat.transcript_copy.menu.copy_markdown": "Markdown کے طور پر نقل کریں",
 	"ui.chat.transcript_copy.menu.copy_selection": "منتخب متن نقل کریں",
+	"ui.chat.transcript_copy.role.assistant": "اسسٹنٹ",
+	"ui.chat.transcript_copy.selection.quote": "اقتباس کریں",
+	"ui.chat.transcript_copy.technical_details": "تکنیکی تفصیلات",
 	"ui.chat.transcript_copy.toast.copied_markdown": "Markdown کے طور پر نقل ہو گیا",
 	"ui.chat.transcript_copy.toast.copied_selection": "منتخب متن نقل ہو گیا",
 	"ui.chat.transcript_copy.row.your_message": "آپ کا پیغام",

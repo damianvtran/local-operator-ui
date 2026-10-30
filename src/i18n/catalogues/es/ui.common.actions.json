@@ -3,6 +3,8 @@
 	"ui.common.actions.close": "Cerrar",
 	"ui.common.actions.copied": "Copiado",
 	"ui.common.actions.copy_failed": "No se pudo copiar. Selecciónalo y cópialo manualmente.",
+	"ui.common.actions.dismiss": "Descartar",
+	"ui.common.actions.more_info": "Más información",
 	"ui.common.actions.retry": "Reintentar",
 	"ui.common.actions.retry_again": "Volver a intentar",
 	"ui.common.actions.retrying": "Reintentando…",

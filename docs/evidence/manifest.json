@@ -7960,6 +7960,15 @@
       "capturedAtHead": "a9df19e05"
     },
     {
+      "path": "browser-passkey-notice",
+      "frames": 6,
+      "surfaces": 6,
+      "themes": 2,
+      "source": "`scripts/browser-challenge-proof.mjs --arm passkey` (committed) against this branch's built tree in `--window-mode=headless` (scratch HOME and user-data-dir, mock keychain, opener stubbed); each frame is the app's OWN renderer over CDP (`Page.captureScreenshot`), converted to lossless WebP and named `<set>/<theme>` so the evidence gate reads the palette from the name.",
+      "why": "The passkey notice (design doc section 3.6) in the shipped state where no platform authenticator exists: a user tab, the same state in the light ramp, narrow (800 px) in each ramp, an agent-driven tab shown on activation, and a request from a cross-origin iframe attributed to the frame. The frames are rig output in the ignored docs/evidence-frames/ and are not committed.",
+      "capturedAt": "2026-10-28T17:20:00.000Z"
+    },
+    {
       "path": "canvas-file-freshness",
       "frames": 15,
       "surfaces": 15,

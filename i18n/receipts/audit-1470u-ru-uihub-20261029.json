@@ -1,0 +1,19 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "radient/auto",
+ "instance": "audit-1470u-ru-uihub-20261029",
+ "status": "passed",
+ "namespace": "ui.hub",
+ "sha256": {
+  "ru": "db2e510d6cbf71d820f951970fbdf9f5f6b73b6c9d4a8b7290ba52455c826e86",
+  "en": "0d77070295627e861882e8f952888c59e1d013dd754e1a7da79c85d1a31a9753"
+ },
+ "findings": [
+  {
+   "key": "ui.hub.subscriptions.subscribe_description",
+   "severity": "MINOR",
+   "problem": "ui.hub.links.source_label_org is a NOMINATIVE noun phrase («Приватный хаб {organization}»), and that label is interpolated into sentences whose preposition governs the genitive. Rendered copy is ungrammatical: subscribe_description/subscribe_description_blocked give «Получать обновления из Приватный хаб Acme.» (needs «из Приватного хаба Acme»), and saving/save_failed give «Сохранение настройки {setting} для Приватный хаб Acme…» (needs «для Приватного хаба Acme»). The «в {source}» strings (auto_push_description, enable_title) happen to be correct: в takes the accusative, whose form equals the nominative for this masculine inanimate noun.",
+   "fix": "Put the label in a case-neutral slot instead of a bare genitive position, e.g. «Получать обновления из источника «{source}».» and «Сохранение настройки {setting} для источника «{source}»…», so a quoted nominative label is legal in every slot; apply to subscribe_description, subscribe_description_blocked, saving and save_failed."
+  }
+ ]
+}

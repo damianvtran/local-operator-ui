@@ -1,0 +1,10 @@
+{
+	"ui.chat.radient_session.action.sign_in": "Se connecter à Radient",
+	"ui.chat.radient_session.pointer.sign_in_active": "L’effacement se fait dans Paramètres, section Fournisseurs de modèles.",
+	"ui.chat.radient_session.prose.input_required": "{message} Cette surface ne permet pas de coller le code : terminez la connexion dans Paramètres, section Fournisseurs de modèles.",
+	"ui.chat.radient_session.prose.needs_sign_in": "Radient n’accepte plus la connexion enregistrée sur cet appareil. Une nouvelle connexion rétablit les modèles Radient et ouvre votre navigateur pour recueillir votre consentement.",
+	"ui.chat.radient_session.prose.signing_in": "Terminez la connexion dans votre navigateur. Le connecteur redémarre automatiquement une fois la connexion terminée ; une tentative inachevée prend fin au bout de quelques minutes.",
+	"ui.chat.radient_session.title.input_required": "La connexion à Radient nécessite un code collé",
+	"ui.chat.radient_session.title.needs_sign_in": "Radient nécessite une nouvelle authentification",
+	"ui.chat.radient_session.title.signing_in": "Connexion à Radient"
+}

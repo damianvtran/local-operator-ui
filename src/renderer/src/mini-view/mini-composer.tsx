@@ -1092,6 +1092,13 @@ export function MiniComposer() {
 					 */
 					ownGutter
 					transcriptless
+					/*
+					 * THE MINI VIEW IS A SECOND LIVE COMPOSER, so it registers its speech
+					 * handler under its own id: the push-to-talk registry keys handlers by this
+					 * string and keeps one per key, so sharing the chat's would make the two
+					 * silently replace each other depending on mount order.
+					 */
+					speechRegistrationId="mini-composer"
 					placeholderOverride={MINI_COPY.placeholder(seatName)}
 					cwd={frontend?.cwd}
 					cwdReadOnlyReason={MINI_COPY.cwdReadOnly}

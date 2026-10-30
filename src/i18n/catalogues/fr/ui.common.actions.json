@@ -3,6 +3,8 @@
 	"ui.common.actions.close": "Fermer",
 	"ui.common.actions.copied": "Copié",
 	"ui.common.actions.copy_failed": "Copie impossible. Sélectionnez le texte et copiez-le manuellement.",
+	"ui.common.actions.dismiss": "Ignorer",
+	"ui.common.actions.more_info": "Plus d’infos",
 	"ui.common.actions.retry": "Réessayer",
 	"ui.common.actions.retry_again": "Réessayer",
 	"ui.common.actions.retrying": "Nouvelle tentative…",

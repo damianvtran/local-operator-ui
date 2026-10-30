@@ -34,6 +34,7 @@ import {
 	useHubActions,
 	useHubUpdates,
 } from "@shared/api/local-operator/hub-hooks";
+import { hubRegistryNameCounts } from "@shared/api/local-operator/hub-link-actions";
 import { useHubLinks } from "@shared/api/local-operator/hub-link-hooks";
 import {
 	linksForLocalItem,
@@ -1448,6 +1449,20 @@ export function ChatSidebar({
 		[teamLabels],
 	);
 	/*
+	 * How many loaded rows answer to each display name, per kind. Only read by
+	 * the mark on a core WITHOUT the id capability (`hub_items_by_id`): there the
+	 * address is the name, and core's name arm refuses nothing - it checks every
+	 * row whose name casefolds to it (`check.py`). Two rows means one press
+	 * writes two items, so the mark asks instead.
+	 */
+	const displayNameCounts = useMemo(
+		() => ({
+			agent: hubRegistryNameCounts(profiles.data),
+			team: hubRegistryNameCounts(teams.data),
+		}),
+		[profiles.data, teams.data],
+	);
+	/*
 	 * THE HUB'S UPDATE MARKS (design B6). One store read, polled at 60 s, gated on
 	 * its own capability so a backend that predates it is never asked. The marks
 	 * are drawn by `entity` below and the per-section strip by `hubStrip`; both
@@ -1458,6 +1473,16 @@ export function ChatSidebar({
 	);
 	const hubItems = hubItemIndex(hubUpdates.data);
 	const fullHubLinks = desktopFeatureEnabled(capabilities.data, "hub_links");
+	/*
+	 * WHICH ADDRESS the hub mutations send. `hub_items_by_id` is core's exact arm
+	 * (`local_id` reaches one row of one kind); without it the released `name`
+	 * arm is the only one an older core accepts, so the mark passes the row's
+	 * display name instead of its link id.
+	 */
+	const hubItemsById = desktopFeatureEnabled(
+		capabilities.data,
+		"hub_items_by_id",
+	);
 	const hubLinks = useHubLinks(ready && fullHubLinks);
 	const hub = useHubActions();
 	// Whether the backend tracks any hub-linked item at all: the check control is
@@ -7177,6 +7202,17 @@ export function ChatSidebar({
 							link={linkedOrigin}
 							staged={staged}
 							onDetail={() => openHubDetail(kind, name)}
+							itemName={name}
+							displayName={displayName}
+							itemsById={hubItemsById}
+							nameAmbiguous={
+								!(kind === "team"
+									? teams.isSuccess && !teams.isFetching
+									: profiles.isSuccess && !profiles.isFetching) ||
+								(displayNameCounts[kind === "team" ? "team" : "agent"].get(
+									name.trim().toLowerCase(),
+								) ?? 0) !== 1
+							}
 						/>
 					)}
 					{aggregateOrigins && (

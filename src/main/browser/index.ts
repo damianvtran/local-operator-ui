@@ -11,6 +11,7 @@ import {
 	clipboard,
 	shell,
 	webContents,
+	webFrameMain,
 } from "electron";
 import {
 	type BrowserChord,
@@ -80,6 +81,12 @@ import { startLogCapture, stopLogCapture } from "./log-capture";
 import { paneNavigationDirection } from "./navigation-chord";
 import { OwnershipLedger } from "./ownership";
 import { buildPageContextMenuItems } from "./page-context-menu";
+import {
+	PasskeyNotices,
+	type PasskeyOpenOutcome,
+	openPasskeyNoticeInSystemBrowser,
+	passkeyShimSource,
+} from "./passkey-notice";
 import { decidePopup, effectivePresentation } from "./popups";
 import {
 	BROWSER_PARTITION,
@@ -179,6 +186,13 @@ export interface StartBrowserHostOptions {
 	 * consent banner when nobody is at the screen (design 11.4).
 	 */
 	windowShow: "focus" | "inactive" | "never";
+	/**
+	 * The app's vetted door to the OS URL handlers (`openVettedExternal` bound to
+	 * `shell.openExternal`, in `src/main/index.ts`). Injected rather than imported
+	 * so this module never holds a second opinion about what may leave the app, and
+	 * so a rig can stub the opener instead of launching a real browser.
+	 */
+	openExternal: (url: string) => Promise<PasskeyOpenOutcome>;
 	/**
 	 * The launch plan's `backgroundThrottling`, forwarded for the same reason
 	 * `windowShow` is: a hidden popup must render like a shown one (a capture of it
@@ -315,6 +329,9 @@ app.on("before-quit", () => {
 
 /** Explicit menu clicks use the same owner decision as keys. Outside the browser
  * the caller retains its original app-window action, never a global tab binding. */
+/** A frame URL the passkey shim may be injected into. */
+const HTTP_URL = /^https?:/i;
+
 /** The pre-existing app zoom listener is registered before the browser hook.
  * Route its browser-owned zoom keys here FIRST, including rejected repeats/IME,
  * so they cannot change the app before our hook sees the same input. */
@@ -462,6 +479,17 @@ export function startBrowserHost(
 		expectedUrl: options.expectedUrl,
 		host: () => bindings.host?.() ?? null,
 		webauthn: () => bindings.webauthn?.() ?? null,
+		// Read through `bindings` per call like every other slot: a retried start
+		// replaces the slot, and a handler must never hold a stale attempt's notices.
+		passkeyNotice: {
+			dismiss: (tabId, at) =>
+				bindings.passkeyNotice?.dismiss(tabId, at) ?? false,
+			openInSystemBrowser: async (tabId, at) =>
+				bindings.passkeyNotice?.openInSystemBrowser(tabId, at) ?? {
+					ok: false,
+					reason: "the passkey notice is not available",
+				},
+		},
 		focusPage: () => {
 			const record = bindings.host?.()?.registry.activeTab;
 			const target = record?.presented
@@ -683,7 +711,7 @@ async function initializeBrowserHost(
 		 * at all the request is cancelled with `NotAllowedError` — so the listener is
 		 * the difference between "the user chose" and a failure nobody can explain.
 		 */
-		await installWebauthn({ log });
+		const webauthnInstall = await installWebauthn({ log });
 		checkpoint();
 		/*
 		 * WHICH TAB ASKED, resolved from the event's own frame (UX round 1, U3).
@@ -814,6 +842,42 @@ async function initializeBrowserHost(
 			log(`[browser] session cookies: the restore failed (${String(error)})`);
 		}
 		checkpoint();
+		/*
+		 * THE PASSKEY NOTICE (docs/design/browser-challenges-and-passkeys.md 3.6).
+		 *
+		 * INJECTED WITH `frame.executeJavaScript`, NOT THROUGH CDP. The CDP route
+		 * (`Page.addScriptToEvaluateOnNewDocument`) was built first and measured: it
+		 * needs the `Page` domain enabled, which `actions/gate.ts` disables again after
+		 * every agent navigation (taking the script with it), and a permanently enabled
+		 * `Page` domain is one of the untested Cloudflare-stall discriminators that file
+		 * documents. Running the idempotent shim from the frame's own commit and
+		 * finish-load events touches neither the debugger nor that domain, and works
+		 * for a tab nobody has attached to. The cost is a window between commit and the
+		 * first inline script in which a call is not observed.
+		 *
+		 * ARMED ONLY WHEN THE PLATFORM AUTHENTICATOR IS OFF. With it on (a signed build
+		 * whose entitlement the gate accepted) the OS sheet is the UX and a "may be
+		 * stuck" notice would contradict it, so no shim is registered at all. The
+		 * decision is per host start because the gate is per process.
+		 *
+		 * `registry` is declared further down; `ownerOf` runs only after it is built (a
+		 * tab cannot exist before that), so the forward reference is safe and avoids
+		 * moving the registry's construction.
+		 */
+		const passkeyNoticesArmed = !webauthnInstall.configured;
+		const passkeyNotices = new PasskeyNotices({
+			now: () => Date.now(),
+			log,
+			ownerOf: (tabId) => registry.get(tabId)?.owner ?? null,
+			// A frame key is `<processId>:<routingId>`, which is how main addressed the
+			// frame when it injected the shim; the facts are read from the live frame.
+			frameFacts: (frameKey) => {
+				const [processId, routingId] = frameKey.split(":").map(Number);
+				const frame = webFrameMain.fromId(processId, routingId);
+				if (!frame || frame.isDestroyed()) return null;
+				return { origin: frame.origin, embedded: frame.parent !== null };
+			},
+		});
 		const cdp = new CdpPool({ log });
 		rollback.add(() => cdp.close());
 		/** Child views by tab id, so close and quit can release each one, and a
@@ -1186,6 +1250,7 @@ async function initializeBrowserHost(
 									? "unavailable"
 									: "platform",
 						},
+			passkeyNotice: (tabId) => passkeyNotices.viewFor(tabId),
 			approvalsCard: approvalsOverlay
 				? {
 						open: (input) => approvalsOverlay.open({ focus: true, ...input }),
@@ -1515,6 +1580,27 @@ async function initializeBrowserHost(
 			expectedUrl: options.expectedUrl,
 			host: () => host,
 			webauthn: () => webauthn,
+			passkeyNotice: {
+				dismiss: (tabId, at) => {
+					const dismissed = passkeyNotices.dismiss(tabId, at);
+					if (dismissed) notifyChanged();
+					return dismissed;
+				},
+				openInSystemBrowser: (tabId, at) =>
+					openPasskeyNoticeInSystemBrowser({
+						notices: passkeyNotices,
+						tabId,
+						at,
+						currentUrl: (id) => {
+							const record = registry.get(id);
+							return record && !record.view.webContents.isDestroyed()
+								? record.view.webContents.getURL() || null
+								: null;
+						},
+						openExternal: (url) => options.openExternal(url),
+						log,
+					}),
+			},
 			clearData: (what: ClearWhat) => sessionCookies.clearBrowsingData(what),
 			// THE REVEAL TAKES NO PATH FROM THE RENDERER (§16.4): it opens the directory the
 			// host is actually writing into, so the one place a page-derived string could
@@ -1692,6 +1778,60 @@ async function initializeBrowserHost(
 				addressOverlay?.dismissForTab(tabId, "page_focus");
 			});
 			contents.on("blur", () => host.setPageFocused(tabId, false));
+			/*
+			 * THE PASSKEY SHIM'S ONE-WAY SIGNAL (see `passkey-notice.ts`). The frame comes
+			 * from Electron's event, not from the message, so the origin the user is shown
+			 * is the requesting frame's real one. `frame.parent !== null` marks an embedded
+			 * frame. Main only READS the line; nothing is sent back into the page.
+			 */
+			const injectPasskeyShim = (frame: WebFrameMain | undefined | null) => {
+				if (!passkeyNoticesArmed || !frame || frame.isDestroyed()) return;
+				// http(s) documents only: `about:blank`, `file:` and extension pages have
+				// no origin the notice could name, and nothing there needs a notice.
+				if (!HTTP_URL.test(frame.url)) return;
+				frame
+					.executeJavaScript(
+						passkeyShimSource(
+							passkeyNotices.nonceFor(
+								tabId,
+								`${frame.processId}:${frame.routingId}`,
+							),
+						),
+					)
+					.catch(() => {
+						// A frame that navigated or died mid-injection: the next commit or
+						// finish-load injects again, and the shim is only a courtesy.
+					});
+			};
+			contents.on(
+				"did-frame-navigate",
+				(
+					_event,
+					_url,
+					_code,
+					_text,
+					_isMainFrame,
+					frameProcessId,
+					frameRoutingId,
+				) =>
+					injectPasskeyShim(
+						webFrameMain.fromId(frameProcessId, frameRoutingId),
+					),
+			);
+			contents.on(
+				"did-frame-finish-load",
+				(_event, _isMainFrame, frameProcessId, frameRoutingId) =>
+					injectPasskeyShim(
+						webFrameMain.fromId(frameProcessId, frameRoutingId),
+					),
+			);
+			contents.on("console-message", (event) => {
+				if (!passkeyNoticesArmed) return;
+				// ONLY the message is used: the event's `frame` is the top frame even for a
+				// child's line (measured), so the frame is resolved from the nonce instead.
+				const { message } = event as unknown as { message: string };
+				if (passkeyNotices.observe(tabId, message)) notifyChanged();
+			});
 			/*
 			 * A PAGE PRESS IS A DISMISSAL EVEN WHEN THE PAGE ALREADY HAS FOCUS
 			 * (operator report, 2026-10-24). The focus handler above fires once,
@@ -1960,6 +2100,8 @@ async function initializeBrowserHost(
 			// page-initiated ones are all covered.
 			contents.on("did-navigate", (_event, url) => {
 				registry.bumpEpoch(tabId);
+				// A notice describes the document that asked; a new document is not it.
+				passkeyNotices.clearNotice(tabId);
 				// The tab is on a document now, so whatever the last navigation was refused
 				// for no longer describes what is on screen.
 				host.clearLoadFailure(tabId);
@@ -2001,6 +2143,7 @@ async function initializeBrowserHost(
 					if (token) approvals.forgetDocument(token);
 					registry.forget(tabId);
 				}
+				passkeyNotices.forget(tabId);
 				// A focus fact must not outlive the view whose focus it recorded.
 				host.setPageFocused(tabId, false);
 				// A failure recorded against a tab whose view died describes nothing.

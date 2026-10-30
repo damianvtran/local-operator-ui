@@ -3,6 +3,8 @@
 	"ui.common.actions.close": "关闭",
 	"ui.common.actions.copied": "已复制",
 	"ui.common.actions.copy_failed": "无法复制。请选中内容后手动复制。",
+	"ui.common.actions.dismiss": "忽略",
+	"ui.common.actions.more_info": "更多信息",
 	"ui.common.actions.retry": "重试",
 	"ui.common.actions.retry_again": "再试一次",
 	"ui.common.actions.retrying": "正在重试……",
