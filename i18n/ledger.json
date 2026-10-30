@@ -39415,8 +39415,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.settings.shortcuts",
-			"source_sha256": "2fcf17dc6b7bbddb910416e3ba82abad9ecd1f661b61abe444b0e8c2ed42dc75",
-			"target_sha256": "35ab6278fbe06d6f26b95826dc16f935544b834f0cc465265aa11d73dab71743",
+			"source_sha256": "d77d1f6f8d3e1f6ef3f80af207f37f560dd234f9b985deac85507d0ec5c95b36",
+			"target_sha256": "dedc55e412c689c4c94a238872fd5b7e293377ec1830dafbcab84335a2814ccc",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -39424,20 +39424,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
+					"agent": "reviewer",
+					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-10-30",
-					"result": "clean-with-findings",
-					"instance": "042e182302d6-ur-r4",
+					"result": "clean",
+					"instance": "1e5f275f4910-speech-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/042e182302d6-ur-r4.json",
-					"receipt_sha256": "60d9a0b15e344723a0e4724cc7312e38febcd82e886ab727e04b4cbe08a5d77a",
-					"scope": "Round 4: English source moved by the rebase; all 68 keys re-audited against the current bytes"
+					"receipt": "i18n/receipts/1e5f275f4910-speech-ur.json",
+					"receipt_sha256": "9e8cc9ed9549459a3567af090e50cf875bf2b0207469034e0603e4d112c408b3"
 				}
 			],
 			"status": "audited",
@@ -39531,6 +39530,29 @@
 							"receipt": "i18n/receipts/ff24e557ff85-ur-r3.json",
 							"receipt_sha256": "d7efa80230f34d600460be725c04f2d5d539b1ff2500efd8de9e5e566d45e935",
 							"scope": "Round 3: inactive recording claim warning; sole-key delta independently audited"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "2fcf17dc6b7bbddb910416e3ba82abad9ecd1f661b61abe444b0e8c2ed42dc75",
+					"target_sha256": "35ab6278fbe06d6f26b95826dc16f935544b834f0cc465265aa11d73dab71743",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-30",
+							"result": "clean-with-findings",
+							"instance": "042e182302d6-ur-r4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/042e182302d6-ur-r4.json",
+							"receipt_sha256": "60d9a0b15e344723a0e4724cc7312e38febcd82e886ab727e04b4cbe08a5d77a",
+							"scope": "Round 4: English source moved by the rebase; all 68 keys re-audited against the current bytes"
 						}
 					],
 					"status": "audited"
