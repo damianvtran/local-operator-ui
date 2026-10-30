@@ -44,6 +44,34 @@ export function useTeamBridgeAccount() {
  * `read_only` is optional in the contract: absent and false both mean writable,
  * so it is normalized here — a runtime that starts spelling out `false` must
  * not read as an authority change.
+ *
+ * WHAT IS DELIBERATELY NOT HERE, so a later reader can tell a decision from an
+ * oversight. The same status payload carries four fields that look
+ * authority-bearing at a glance, and none of them authorizes a private read:
+ *
+ * - `tenant_id` is the *selected* organization, i.e. the answer's default view.
+ *   Every audit read names its own organization in its own request, so this
+ *   field moving re-targets a default, not the read already in flight.
+ * - `local.enrolled` is this DEVICE's own claim (the account, tenant and
+ *   endpoint it has already accepted), so it says whether this machine may act
+ *   rather than whose data a read may address; `local.enabled` is the read gate
+ *   the projection keeps.
+ * - `boundary` is the request's view selector (which read family the caller
+ *   asked for), not an endpoint or an account switch.
+ * - `surface_state` is a projection of `state` + `localEnabled` + `readOnly`; a
+ *   read that gated on it too would fire twice on one change and learn no
+ *   authority the three fields do not already carry.
+ *
+ * WHAT THIS FENCE IS, AND WHAT SITS BESIDE IT. The comparison looks narrower
+ * than the object identity it replaced, so its scope is stated rather than
+ * implied: it compares two OBSERVATIONS of ONE dimension — the authority in the
+ * status row before the await against the authority in that row after it. The
+ * CREDENTIAL dimension is fenced separately, by `readForRadientAccount`, whose
+ * snapshot is `[epoch, accountId]`: a same-account re-auth that mints a new
+ * token mid-read throws "Account authority changed" there. That split is
+ * deliberate, and this is NOT a fence by timestamp — reading `checked_at` /
+ * `fetched_at` to infer a credential move would let a server- or client-set
+ * clock stand in for an authorization decision, and a timestamp is not authority.
  */
 type BridgeStatusAuthority = {
 	accountId: string | null;
