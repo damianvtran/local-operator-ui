@@ -70,6 +70,11 @@ export interface OwnershipHooks {
 	isLive: (token: string) => boolean;
 	/** Only native human handover may grant a previously unallocated capability. */
 	mayAdopt?: (token: string, requester: string) => boolean;
+	/** Close the unadopted link tabs that pages in these tabs opened, when the
+	 * scope that owned the openers ends. Closing a live opener already does this;
+	 * the hook is for an opener that is NOT closed here (a handed-over tab whose
+	 * hand-over was revoked) or already gone (its token is stale). */
+	closeSpawnedBy?: (openerTokens: string[]) => void;
 }
 
 export class OwnershipLedger {
@@ -362,6 +367,9 @@ export class OwnershipLedger {
 				});
 				if (retained) return { state: "retained" };
 				let pending = false;
+				const openerTokens = Object.values(scope.allocations)
+					.map((allocation) => allocation.tab)
+					.filter((tab): tab is string => !!tab);
 				for (const allocation of Object.values(scope.allocations)) {
 					if (!allocation.tab || !this.hooks.isLive(allocation.tab)) {
 						if (allocation.tab) allocation.state = "closed";
@@ -378,6 +386,7 @@ export class OwnershipLedger {
 					allocation.state = closed ? "closed" : "cleanup_pending";
 					if (!closed) pending = true;
 				}
+				this.hooks.closeSpawnedBy?.(openerTokens);
 				return { state: pending ? "pending" : "closed" };
 			}
 

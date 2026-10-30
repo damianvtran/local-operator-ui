@@ -1,0 +1,25 @@
+{
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "kimi/k3.1-pro",
+	"model_note": "Session header states kimi/k3.1-pro. During this run the primary provider returned quota HTTP 429 and the harness fell back through anthropic/claude-sonnet-5-5 and openai/gpt-6-astra to radient/auto; the audit work was performed under that fallback chain. The header string is recorded per the coordinator's instruction, with the fallback disclosed here.",
+	"instance": "tb-add-members-20261028-ru",
+	"date": "2026-10-28",
+	"status": "passed",
+	"namespace": "ui.teamBridge",
+	"locale": "ru",
+	"sha256": {
+		"en": "4337253270df03ec0ad4bf00bd27db4f4e8d279376f0dfe5be230fb1d897d01a",
+		"locale": "520de8f1b45314ed3e3d4acd3c1faac28521163149b5314c0da29f85ef893cb7",
+		"ru": "520de8f1b45314ed3e3d4acd3c1faac28521163149b5314c0da29f85ef893cb7"
+	},
+	"findings": [
+		{
+			"severity": "NIT",
+			"key": "ui.teamBridge.members.agent_invitation",
+			"note": "«присоединяется с выключенным звуком» (то же в ui.teamBridge.members.invitation_note) — творительный оборот читается как калька; в файле уже закреплены «Без звука» (ui.teamBridge.notify.mute) и «Звук выключен» (notify.muted). Естественнее: «присоединяется без звука». Предложено: «Агент; присоединяется без звука после согласия владельца» и «…Агент присоединяется без звука только после согласия владельца.»"
+		}
+	],
+	"scope": "PR add-members: 28 new ui.teamBridge.members.* keys; existing keys unchanged. Read against the English source and its context sidecar, i18n/glossary.md and the locale style guide; checked key parity (28/28, file 269/269 vs English), the one placeholder ({name} in members.remove, exactly once), ICU safety (no ASCII apostrophe that would open an ICU quoted literal), absence of bidi controls/zero-width characters, sentence case, and terminology against the rest of the locale's ui.teamBridge.json. Source-only: no tests, build, Storybook or browser run; no rendered-fit or width claim. No catalogue, ledger or code edit by the auditor.",
+	"independence": "Auditor wrote none of the audited strings; translator was a separate coder subagent."
+}

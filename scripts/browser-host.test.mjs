@@ -184,7 +184,10 @@ const {
 	// below drives this directly, and reads the cap rather than hard-coding 4 — a
 	// test that hard-codes the cap stops testing it the day the cap moves.
 	decidePopup,
+	routePopup,
+	linkLoadLeftNoPage,
 	effectivePresentation,
+	sessionMayAdopt,
 	MAX_POPUP_CHILDREN_PER_VIEW,
 	// The file-transfer surface (design §8, §10.4): the capture, the policy port the
 	// app host runs, and the shared generated tables it reads.
@@ -2985,13 +2988,8 @@ function makeHost(overrides = {}) {
 				return false;
 			}
 		},
-		mayAdopt: (token, requester) => {
-			const record = registry.requireSurface(token);
-			return (
-				record.handedTo === requester.slice("session:".length) &&
-				!record.allocationId
-			);
-		},
+		mayAdopt: (token, requester) =>
+			sessionMayAdopt(registry.requireSurface(token), requester),
 	});
 	const downloads = new DownloadArmer({
 		tabForWebContents: (webContentsId) =>
@@ -8209,7 +8207,7 @@ test("the download reveal opens the host's own directory and takes no path from 
  * the proof asserts it end to end.
  */
 test("the popup policy allows about:blank and http(s), and refuses every other scheme", () => {
-	const policy = { mode: "focus", live: 0 };
+	const policy = { mode: "focus", live: 0, openerOwner: "user" };
 	const ask = (url, disposition = "default") =>
 		decidePopup({ url, disposition }, policy);
 
@@ -8275,7 +8273,7 @@ test("the popup cap bounds the view's LIVE children, driven from the constant", 
 		assert.equal(
 			decidePopup(
 				{ url: "https://example.com/", disposition: "default" },
-				{ mode: "focus", live },
+				{ mode: "focus", live, openerOwner: "user" },
 			).allow,
 			true,
 			`live=${live} is under the cap`,
@@ -8284,7 +8282,7 @@ test("the popup cap bounds the view's LIVE children, driven from the constant", 
 	assert.deepEqual(
 		decidePopup(
 			{ url: "https://example.com/", disposition: "default" },
-			{ mode: "focus", live: cap },
+			{ mode: "focus", live: cap, openerOwner: "user" },
 		),
 		{ allow: false, reason: "cap" },
 	);
@@ -8295,7 +8293,7 @@ test("the popup cap bounds the view's LIVE children, driven from the constant", 
 	assert.equal(
 		decidePopup(
 			{ url: "https://example.com/", disposition: "default" },
-			{ mode: "focus", live: cap - 1 },
+			{ mode: "focus", live: cap - 1, openerOwner: "user" },
 		).allow,
 		true,
 	);
@@ -8304,7 +8302,7 @@ test("the popup cap bounds the view's LIVE children, driven from the constant", 
 	assert.deepEqual(
 		decidePopup(
 			{ url: "https://example.com/", disposition: "background-tab" },
-			{ mode: "focus", live: cap },
+			{ mode: "focus", live: cap, openerOwner: "user" },
 		),
 		{ allow: false, reason: "cap" },
 	);
@@ -8315,40 +8313,489 @@ test("the §2.4 effective-show table: disposition picks presentation only under 
 	// `background-tab` presents without foregrounding, everything else focuses.
 	const foregrounding = ["default", "foreground-tab", "new-window", "other"];
 	for (const disposition of foregrounding) {
-		assert.equal(effectivePresentation("focus", disposition), "focus");
+		assert.equal(effectivePresentation("focus", disposition, "user"), "focus");
 		assert.equal(
 			decidePopup(
 				{ url: "https://example.com/", disposition },
-				{ mode: "focus", live: 0 },
+				{ mode: "focus", live: 0, openerOwner: "user" },
 			).presentation,
 			"focus",
 		);
 	}
-	assert.equal(effectivePresentation("focus", "background-tab"), "inactive");
+	assert.equal(
+		effectivePresentation("focus", "background-tab", "user"),
+		"inactive",
+	);
 	assert.equal(
 		decidePopup(
 			{ url: "https://example.com/", disposition: "background-tab" },
-			{ mode: "focus", live: 0 },
+			{ mode: "focus", live: 0, openerOwner: "user" },
 		).presentation,
 		"inactive",
 	);
 	// `inactive`: every disposition presents the same way — visible, never
 	// foregrounded.
 	for (const disposition of [...foregrounding, "background-tab"]) {
-		assert.equal(effectivePresentation("inactive", disposition), "inactive");
+		assert.equal(
+			effectivePresentation("inactive", disposition, "user"),
+			"inactive",
+		);
 	}
 	// `headless`: the popup still EXISTS — the page's flow needs it and CDP can
 	// drive it — so the effective show is `never`, not a refusal.
 	for (const disposition of [...foregrounding, "background-tab"]) {
-		assert.equal(effectivePresentation("never", disposition), "never");
+		assert.equal(effectivePresentation("never", disposition, "user"), "never");
 		assert.deepEqual(
 			decidePopup(
 				{ url: "about:blank", disposition },
-				{ mode: "never", live: 0 },
+				{ mode: "never", live: 0, openerOwner: "user" },
 			),
 			{ allow: true, presentation: "never" },
 		);
 	}
+});
+
+/*
+ * ---- where a popup goes: tab or window (docs/design/browser-oauth-popups.md 1.1)
+ *
+ * `routePopup` is the one decision `did-create-window` runs once the child exists
+ * and its opener can be read. The rows below are the measured Electron 44.3.0
+ * table (a plain link, `rel=noopener`, an iframe link and `window.open(...,
+ * "noopener")` arrive with no opener; a bare/sized `window.open` and `rel=opener`
+ * arrive with one) turned into rules, crossed with owner, mode and the bounds.
+ */
+const ROUTE_BASE = {
+	url: "https://example.com/next",
+	disposition: "foreground-tab",
+	hasOpener: false,
+	hasPostBody: false,
+	alreadyLoading: false,
+	openerActive: true,
+	openedTabs: 0,
+};
+const route = (request, policy = {}) =>
+	routePopup(
+		{ ...ROUTE_BASE, ...request },
+		{ mode: "focus", live: 0, openerOwner: "user", ...policy },
+	);
+
+test("an opener-less link becomes a tab, owned like its opener, never a window", () => {
+	// The user's link from the tab being looked at: the new tab comes to the front,
+	// as a browser's does.
+	assert.deepEqual(route({}), { route: "tab", owner: "user", activate: true });
+	// An agent's link: an AGENT tab. It never activates (design 11.4), and an
+	// agent-owned opener ignores `openerActive` entirely.
+	for (const openerActive of [true, false]) {
+		assert.deepEqual(route({ openerActive }, { openerOwner: "agent" }), {
+			route: "tab",
+			owner: "agent",
+			activate: false,
+		});
+	}
+	// A user's link from a tab nobody is looking at, or a background-tab request,
+	// opens without switching the tab the user is on.
+	assert.equal(route({ openerActive: false }).activate, false);
+	assert.equal(route({ disposition: "background-tab" }).activate, false);
+	// The same result in every launch mode: the tab route has no window, so the
+	// mode (which only selects how a window is presented) cannot change it.
+	for (const mode of ["focus", "inactive", "never"]) {
+		for (const openerOwner of ["user", "agent"]) {
+			assert.equal(route({}, { mode, openerOwner }).route, "tab", mode);
+		}
+	}
+});
+
+test("an opener-bearing popup, a form POST and about:blank stay windows", () => {
+	// MSAL `loginPopup` and Google `storagerelay` shapes: `window.opener` is the
+	// contract, so the child must stay a real window. An opener-bearing popup is
+	// NEVER a tab, whoever owns the opener.
+	for (const openerOwner of ["user", "agent"]) {
+		assert.equal(
+			route({ hasOpener: true }, { openerOwner }).route,
+			"window",
+			openerOwner,
+		);
+	}
+	// Form POST `target=_blank` has no opener but replaying its body into a fresh
+	// view was measured flaky (3 runs: 1/1/0), so it stays on the window path.
+	assert.equal(route({ hasPostBody: true }).route, "window");
+	// MSAL opens `about:blank` from script and navigates it: it has an opener by
+	// construction, and must never be mistaken for a link even if a read said null.
+	assert.equal(route({ url: "about:blank" }).route, "window");
+});
+
+test("a window's presentation: an agent-owned opener never raises the app", () => {
+	const present = (mode, openerOwner, disposition = "foreground-tab") =>
+		route({ hasOpener: true, disposition }, { mode, openerOwner });
+	// `normal` + user opener: today's behaviour, the person who clicked is there.
+	assert.deepEqual(present("focus", "user"), {
+		route: "window",
+		presentation: "focus",
+	});
+	assert.equal(
+		present("focus", "user", "background-tab").presentation,
+		"inactive",
+	);
+	// `normal` + agent opener: shown, but never activating (the 12 logged raises).
+	for (const disposition of [
+		"default",
+		"foreground-tab",
+		"new-window",
+		"background-tab",
+		"other",
+	]) {
+		assert.equal(
+			present("focus", "agent", disposition).presentation,
+			"inactive",
+			disposition,
+		);
+		assert.equal(
+			effectivePresentation("focus", disposition, "agent"),
+			"inactive",
+		);
+	}
+	// The other launch modes do not read the owner.
+	for (const openerOwner of ["user", "agent"]) {
+		assert.equal(present("inactive", openerOwner).presentation, "inactive");
+		assert.equal(present("never", openerOwner).presentation, "never");
+	}
+	// No path through `routePopup` yields `focus` for an agent opener.
+	for (const mode of ["focus", "inactive", "never"]) {
+		for (const hasPostBody of [false, true]) {
+			for (const hasOpener of [false, true]) {
+				const routed = route(
+					{ hasOpener, hasPostBody },
+					{ mode, openerOwner: "agent" },
+				);
+				assert.notEqual(routed.presentation, "focus");
+			}
+		}
+	}
+});
+
+test("a form POST is a window only because the open handler's postBody is carried (Q1)", () => {
+	// `routePopup` cannot see the difference between "no body" and "body that
+	// Electron did not report in did-create-window" — which is the bug: the router
+	// must be fed the open handler's fact. Pin both halves of the contract.
+	assert.equal(route({ hasPostBody: true }).route, "window");
+	assert.equal(route({ hasPostBody: false }).route, "tab");
+	// The wiring reads the fact from setWindowOpenHandler and not from the
+	// did-create-window details, where it is absent on Electron 44.3.0.
+	const wiring = readFileSync("src/main/browser/index.ts", "utf8");
+	assert.equal(
+		wiring.split("details.postBody").length - 1,
+		1,
+		"exactly one read of postBody, in the open handler",
+	);
+	assert.ok(
+		wiring.indexOf("details.postBody") <
+			wiring.indexOf('contents.on("did-create-window"'),
+		"and that read comes before the did-create-window listener",
+	);
+});
+
+test("a child that already began loading (cmd/shift/middle click) is a window, never a second fetch (Q2)", () => {
+	for (const disposition of ["background-tab", "new-window"]) {
+		for (const openerOwner of ["user", "agent"]) {
+			const routed = route(
+				{ alreadyLoading: true, disposition },
+				{ openerOwner },
+			);
+			assert.equal(routed.route, "window", `${disposition}/${openerOwner}`);
+			// A background open never takes focus, whatever the launch mode.
+			assert.notEqual(
+				routed.presentation,
+				"focus",
+				`${disposition}/${openerOwner}`,
+			);
+		}
+	}
+	// `never` stays hidden, `inactive` stays inactive.
+	assert.equal(
+		route({ alreadyLoading: true }, { mode: "never" }).presentation,
+		"never",
+	);
+	// Not loading => the ordinary tab route is unchanged.
+	assert.equal(route({ alreadyLoading: false }).route, "tab");
+	// The scheme refusal still comes first.
+	assert.deepEqual(route({ alreadyLoading: true, url: "mailto:a@b.test" }), {
+		route: "deny",
+		reason: "scheme",
+	});
+});
+
+test("an opener with no registry record is refused on every route, never defaulted to focus (R1-2)", () => {
+	const gone = { openerOwner: null };
+	for (const mode of ["focus", "inactive", "never"]) {
+		for (const request of [
+			{},
+			{ hasOpener: true },
+			{ hasPostBody: true },
+			{ url: "about:blank" },
+			{ alreadyLoading: true },
+		]) {
+			assert.deepEqual(
+				route(request, { ...gone, mode }),
+				{ route: "deny", reason: "opener_gone" },
+				`${mode} ${JSON.stringify(request)}`,
+			);
+		}
+	}
+	assert.deepEqual(
+		decidePopup(
+			{ url: "https://example.com/", disposition: "default" },
+			{ mode: "focus", live: 0, openerOwner: null },
+		),
+		{ allow: false, reason: "opener_gone" },
+	);
+});
+
+test("closing an opener closes its unadopted agent link tabs, and only those (R1-1)", () => {
+	const { registry, removed } = makeRegistry();
+	const opener = registry.create({ owner: "agent", sessionId: "a" });
+	const other = registry.create({ owner: "agent", sessionId: "a" });
+	const link = (from, extra = {}) =>
+		registry.create({
+			owner: "agent",
+			sessionId: "a",
+			openedBy: "a",
+			openedByTab: from.tabId,
+			activate: false,
+			...extra,
+		});
+	const unadopted = [link(opener), link(opener)];
+	const adopted = link(opener, { allocationId: "alloc-1" });
+	const foreign = link(other);
+	const userLink = registry.create({
+		owner: "user",
+		openedByTab: opener.tabId,
+		activate: false,
+	});
+	assert.deepEqual(
+		registry.unadoptedLinkTabs(opener.tabId).map((r) => r.tabId),
+		unadopted.map((r) => r.tabId),
+		"adopted, foreign-opener and user link tabs are not reclaimable",
+	);
+	// What index.ts's release path does for each tab it closes.
+	for (const spawned of registry.unadoptedLinkTabs(opener.tabId))
+		registry.destroy(spawned.tabId);
+	registry.destroy(opener.tabId);
+	assert.equal(registry.get(unadopted[0].tabId), undefined);
+	assert.equal(registry.get(unadopted[1].tabId), undefined);
+	assert.ok(
+		registry.get(adopted.tabId),
+		"an adopted tab is its scope's to close",
+	);
+	assert.ok(registry.get(foreign.tabId));
+	assert.ok(
+		registry.get(userLink.tabId),
+		"a user's link tab stays, as in a browser",
+	);
+	assert.equal(removed.length, 3);
+	// The slots are free again: the leak R1-1 describes cannot fill the cap.
+	assert.equal(registry.agentTabCount(), 3);
+});
+
+test("owner_finish closes the unadopted link tabs its allocated openers spawned (R1-1)", async () => {
+	const { registry } = makeRegistry();
+	const closedSpawned = [];
+	const ledger = new OwnershipLedger({
+		closeTab: async (token) => {
+			registry.destroy(registry.requireSurface(token).tabId);
+			return true;
+		},
+		isLive: (token) => {
+			try {
+				registry.requireSurface(token);
+				return true;
+			} catch {
+				return false;
+			}
+		},
+		closeSpawnedBy: (tokens) => closedSpawned.push(...tokens),
+	});
+	const opener = registry.create({ owner: "agent", sessionId: "a" });
+	const token = surfaceToken(opener);
+	const owner = {
+		requester: "session:a",
+		owner_proof: "a".repeat(40),
+		owner_generation: "g1",
+		allocation_id: "open-a",
+	};
+	// Create the scope the way a real `open` does, then record the opener's tab.
+	await ledger.withOwnership("open", owner, async () => {
+		ledger.recordAllocation(owner, token, "allocated");
+		return { tab: token };
+	});
+	assert.equal(
+		(await ledger.withOwnership("owner_finish", owner, async () => ({}))).state,
+		"closed",
+	);
+	assert.deepEqual(closedSpawned, [token]);
+});
+
+test("a link tab closes only when its failed load left no page AND nothing is loading (M-1)", () => {
+	const view = (extra) => ({
+		destroyed: false,
+		url: "",
+		loading: false,
+		...extra,
+	});
+	// The download case (ERR_FAILED -2): blank, idle => close.
+	assert.equal(linkLoadLeftNoPage(view({})), true);
+	assert.equal(linkLoadLeftNoPage(view({ url: "about:blank" })), true);
+	assert.equal(linkLoadLeftNoPage(view({ destroyed: true })), true);
+	// A superseded or stopped-then-replaced load (ERR_ABORTED -3): blank but the
+	// replacement is loading => the tab is in use and stays.
+	assert.equal(linkLoadLeftNoPage(view({ loading: true })), false);
+	assert.equal(
+		linkLoadLeftNoPage(view({ url: "about:blank", loading: true })),
+		false,
+	);
+	// An error page or any committed document stays, loading or not.
+	assert.equal(
+		linkLoadLeftNoPage(view({ url: "http://127.0.0.1:1/never" })),
+		false,
+	);
+});
+
+test("a user link tab handed to a session is not reclaimed with its opener (M-3)", () => {
+	const { registry } = makeRegistry();
+	const opener = registry.create({ owner: "agent", sessionId: "a" });
+	const unhanded = registry.create({
+		owner: "agent",
+		sessionId: "a",
+		openedBy: "a",
+		openedByTab: opener.tabId,
+		activate: false,
+	});
+	// A user's link tab from the same opener, then shared with a session through the
+	// real `handOver`: agent-owned, empty allocationId, but not the opener's to close.
+	const shared = registry.create({
+		owner: "user",
+		openedByTab: opener.tabId,
+		activate: false,
+	});
+	registry.handOver(shared.tabId, "session:b");
+	assert.equal(shared.owner, "agent");
+	assert.equal(shared.allocationId, "");
+	assert.deepEqual(
+		registry.unadoptedLinkTabs(opener.tabId).map((r) => r.tabId),
+		[unhanded.tabId],
+	);
+	// Revoking the hand-over returns it to the user, who still keeps it.
+	registry.revokeHandOver(shared.tabId);
+	assert.deepEqual(
+		registry.unadoptedLinkTabs(opener.tabId).map((r) => r.tabId),
+		[unhanded.tabId],
+	);
+});
+
+test("popup refusals and bounds are unchanged by the tab route", () => {
+	// Scheme and live-window cap still deny, for an opener-less link too.
+	for (const url of ["mailto:a@b.test", "javascript:alert(1)", "file:///x"]) {
+		assert.deepEqual(route({ url }), { route: "deny", reason: "scheme" });
+	}
+	assert.deepEqual(route({}, { live: MAX_POPUP_CHILDREN_PER_VIEW }), {
+		route: "deny",
+		reason: "cap",
+	});
+	// An agent's tab may spawn MAX_POPUP_CHILDREN_PER_VIEW link tabs, no more.
+	const cap = MAX_POPUP_CHILDREN_PER_VIEW;
+	assert.equal(
+		route({ openedTabs: cap - 1 }, { openerOwner: "agent" }).route,
+		"tab",
+	);
+	// Its own token (R1-4): the window cap frees a slot when a window closes, this
+	// one when a link tab does, and a log reader should see which wall was hit.
+	assert.deepEqual(route({ openedTabs: cap }, { openerOwner: "agent" }), {
+		route: "deny",
+		reason: "opener_cap",
+	});
+	// User tabs are uncapped by design (6.5); the bound is for an agent's slots.
+	assert.equal(route({ openedTabs: cap + 10 }).route, "tab");
+	// The tab bound does not touch a window route (that has its own live cap).
+	assert.equal(
+		route({ hasOpener: true, openedTabs: cap }, { openerOwner: "agent" }).route,
+		"window",
+	);
+});
+
+test("a link tab inherits its opener's session and activates only when told to", () => {
+	const { registry } = makeRegistry();
+	const userBase = registry.create({ owner: "user" });
+	const agentOpener = registry.create({ owner: "agent", sessionId: "a" });
+	assert.equal(registry.activeTab.tabId, userBase.tabId);
+
+	// An agent's link tab: same session, not active, the user's tab stays put.
+	const agentChild = registry.create({
+		owner: "agent",
+		sessionId: agentOpener.sessionId,
+		openedBy: agentOpener.sessionId,
+		openedByTab: agentOpener.tabId,
+		activate: false,
+	});
+	assert.equal(agentChild.sessionId, "a");
+	assert.equal(agentChild.openedBy, "a");
+	assert.equal(registry.activeTab.tabId, userBase.tabId);
+	assert.equal(registry.openedTabCount(agentOpener.tabId), 1);
+
+	// A user's link tab: active only when the route said so.
+	const background = registry.create({
+		owner: "user",
+		openedByTab: userBase.tabId,
+		activate: false,
+	});
+	assert.equal(registry.activeTab.tabId, userBase.tabId);
+	assert.equal(background.openedBy, null);
+	const foreground = registry.create({
+		owner: "user",
+		openedByTab: userBase.tabId,
+		activate: true,
+	});
+	assert.equal(registry.activeTab.tabId, foreground.tabId);
+	assert.equal(registry.openedTabCount(userBase.tabId), 2);
+
+	// The bound counts OPEN link tabs: closing one frees its slot.
+	registry.destroy(agentChild.tabId);
+	assert.equal(registry.openedTabCount(agentOpener.tabId), 0);
+
+	// A restored tab is never anyone's link child, whatever the options said.
+	const restored = registry.create({
+		owner: "user",
+		restored: true,
+		openedBy: "a",
+		openedByTab: userBase.tabId,
+	});
+	assert.equal(restored.openedBy, null);
+	assert.equal(restored.openedByTab, null);
+});
+
+test("a link tab is adoptable by the opening session only", () => {
+	const { registry } = makeRegistry();
+	const opener = registry.create({ owner: "agent", sessionId: "a" });
+	const child = registry.create({
+		owner: "agent",
+		sessionId: "a",
+		openedBy: "a",
+		openedByTab: opener.tabId,
+		activate: false,
+	});
+	assert.equal(sessionMayAdopt(child, "session:a"), true);
+	assert.equal(sessionMayAdopt(child, "session:b"), false);
+	assert.equal(sessionMayAdopt(child, "session:"), false);
+	// A tab with an allocation already belongs to it: no second claim.
+	assert.equal(
+		sessionMayAdopt({ ...child, allocationId: "alloc-1" }, "session:a"),
+		false,
+	);
+	// A tab nobody's link opened and nobody handed over stays unadoptable.
+	assert.equal(sessionMayAdopt(opener, "session:a"), false);
+	// The hand-over rule it extends is unchanged.
+	const user = registry.create({ owner: "user" });
+	registry.handOver(user.tabId, "session:c");
+	assert.equal(sessionMayAdopt(user, "session:c"), true);
+	assert.equal(sessionMayAdopt(user, "session:a"), false);
 });
 
 // ---- type: a non-editable target must fail, never echo its own write --------
