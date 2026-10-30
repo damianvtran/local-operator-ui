@@ -66,5 +66,12 @@
 	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcut_capture_description": "聚焦快捷键输入框并按下按键即可立即保存。Esc清除捕获提示；“重置”恢复默认值。",
 	"ui.settings.shortcuts.category.speech_to_text": "语音转文字",
 	"ui.settings.shortcuts.recording.invalid_stored_value": "存储的快捷键无效，当前显示最近可用的快捷键。",
-	"ui.settings.shortcuts.recording.inactive_claimed": "开始录制已停用：{label}正在使用此快捷键。"
+	"ui.settings.shortcuts.recording.inactive_claimed": "开始录制已停用：{label}正在使用此快捷键。",
+	"ui.settings.shortcuts.speech.primary": "主要",
+	"ui.settings.shortcuts.speech.secondary": "次要",
+	"ui.settings.shortcuts.speech.start_recording_press": "开始录音（按下）",
+	"ui.settings.shortcuts.speech.push_to_talk_hold": "按住说话（按住）",
+	"ui.settings.shortcuts.speech.push_to_talk_hint": "按下要按住的修饰键；按Esc取消。",
+	"ui.settings.shortcuts.speech.push_to_talk_refused": "{platform, select, darwin {只能按住左侧或右侧的Control、Option或Command键。} win32 {只能按住左侧或右侧的Control或Windows键。} other {只能按住左侧或右侧的Control或Super键。}}",
+	"ui.settings.shortcuts.speech.push_to_talk_overlap": "以此键开头的快捷键可能会短暂开始录音，直到下一个按键将其取消。"
 }

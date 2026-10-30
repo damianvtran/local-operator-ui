@@ -66,5 +66,12 @@
 	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcut_capture_description": "शॉर्टकट फ़ील्ड पर फ़ोकस करें और तुरंत सहेजने के लिए कुंजियाँ दबाएँ। Esc कैप्चर संकेत हटाता है; “रीसेट करें” डिफ़ॉल्ट बहाल करता है।",
 	"ui.settings.shortcuts.category.speech_to_text": "बोलकर लिखना",
 	"ui.settings.shortcuts.recording.invalid_stored_value": "सहेजा गया शॉर्टकट अमान्य है। अंतिम कार्यशील शॉर्टकट दिखाया जा रहा है।",
-	"ui.settings.shortcuts.recording.inactive_claimed": "रिकॉर्डिंग निष्क्रिय है: {label} इस शॉर्टकट का उपयोग कर रहा है।"
+	"ui.settings.shortcuts.recording.inactive_claimed": "रिकॉर्डिंग निष्क्रिय है: {label} इस शॉर्टकट का उपयोग कर रहा है।",
+	"ui.settings.shortcuts.speech.primary": "मुख्य",
+	"ui.settings.shortcuts.speech.secondary": "वैकल्पिक",
+	"ui.settings.shortcuts.speech.start_recording_press": "रिकॉर्डिंग शुरू करें (दबाएँ)",
+	"ui.settings.shortcuts.speech.push_to_talk_hold": "पुश-टू-टॉक (दबाए रखें)",
+	"ui.settings.shortcuts.speech.push_to_talk_hint": "जिस मॉडिफ़ायर कुंजी को दबाए रखना है, उसे दबाएँ; Esc रद्द करता है।",
+	"ui.settings.shortcuts.speech.push_to_talk_refused": "{platform, select, darwin {केवल बाईं या दाईं Control, Option या Command कुंजी को दबाए रखा जा सकता है।} win32 {केवल बाईं या दाईं Control या Windows कुंजी को दबाए रखा जा सकता है।} other {केवल बाईं या दाईं Control या Super कुंजी को दबाए रखा जा सकता है।}}",
+	"ui.settings.shortcuts.speech.push_to_talk_overlap": "इस कुंजी से शुरू होने वाले शॉर्टकट कुछ क्षण के लिए रिकॉर्डिंग शुरू कर सकते हैं, जब तक अगली कुंजी उसे रद्द न कर दे।"
 }

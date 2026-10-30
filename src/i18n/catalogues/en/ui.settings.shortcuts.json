@@ -66,5 +66,12 @@
 	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcut_capture_description": "Focus a shortcut field and press keys to save immediately. Esc clears the capture cue; Reset restores the default.",
 	"ui.settings.shortcuts.category.speech_to_text": "Speech to text",
 	"ui.settings.shortcuts.recording.invalid_stored_value": "The stored shortcut is invalid. Showing the last working shortcut.",
-	"ui.settings.shortcuts.recording.inactive_claimed": "Start recording is inactive: {label} uses this shortcut."
+	"ui.settings.shortcuts.recording.inactive_claimed": "Start recording is inactive: {label} uses this shortcut.",
+	"ui.settings.shortcuts.speech.primary": "Primary",
+	"ui.settings.shortcuts.speech.secondary": "Secondary",
+	"ui.settings.shortcuts.speech.start_recording_press": "Start recording (press)",
+	"ui.settings.shortcuts.speech.push_to_talk_hold": "Push to talk (hold)",
+	"ui.settings.shortcuts.speech.push_to_talk_hint": "Press the modifier key you want to hold; Esc cancels.",
+	"ui.settings.shortcuts.speech.push_to_talk_refused": "{platform, select, darwin {Only a left or right Control, Option or Command key can be held.} win32 {Only a left or right Control or Windows key can be held.} other {Only a left or right Control or Super key can be held.}}",
+	"ui.settings.shortcuts.speech.push_to_talk_overlap": "Shortcuts that begin with this key can briefly start a recording before the next key cancels it."
 }
