@@ -19,8 +19,10 @@ the real-path driver recorded in the PR's evidence matrix.
 - A call to `record_start` names an absolute `.mp4` path the harness has already
   approved. The host refuses a relative path, a non-`.mp4`, a missing or
   unreadable parent, an existing file and a symlink — before it touches the tab.
-- The tab records at 1280x720, 10 fps, no audio (D14). Nothing about the capture
-  shape is agent-tunable in v1.
+- The tab records at up to 1280x720 (a ceiling, not a promise: the clip is scaled to
+  fit inside it), 10 fps, no audio (D14). A hidden agent tab recorded at exactly
+  1280x720; a presented 1380x868 view recorded at 1144x720. The host therefore does
+  not report width or height. Nothing about the capture shape is agent-tunable in v1.
 - `record_stop` writes the clip to the approved path and reports its byte count.
   A reported path always names a COMPLETE file: bytes go to a `.<name>.part`
   inode, are fsync'd, and are published with `linkSync`, which cannot overwrite.
@@ -35,8 +37,14 @@ the real-path driver recorded in the PR's evidence matrix.
   even there it ends at the duration cap. `owner_finish` closes owned tabs, and a
   closed tab's clip is gone (proven by PID: the encoder exits).
 - A hard kill (SIGKILL) leaves no file, because nothing touches disk until stop.
-- DevTools taking the tab discards the clip and leaves a `record_aborted`
-  tombstone for the next `record_stop`; the bytes are not salvaged (D7).
+- A debugger detach EVENT (DevTools taking the tab, or the page going away) discards
+  the clip and leaves a `record_aborted` tombstone for the next `record_stop`; the
+  bytes are not salvaged (D7). The tombstone names the cause from Electron's detach
+  reason. A forced renderer crash on 45.1.0 detaches with `"target closed"`, so a
+  crash is a discarded clip, not a salvaged one, unless a `record_stop` is already
+  draining the stream when it happens. An abort that lands while a stop is saving
+  now stops the save: nothing is published after the tombstone says nothing was
+  written.
 - The origin is checked ONCE, at start. A page that navigates itself to an
   unapproved origin while the clip is running is captured until the stop. The
   result-side check discards a capture whose document changed during the START
@@ -50,7 +58,7 @@ No `PROTO_VERSION` bump: the methods are additive and capability-gated.
 
 ```
 record_start  {tab, requester, label.., path (abs, *.mp4), max_duration_s 1..600, max_bytes <= 64 MiB}
-              -> {recording:true, path, max_duration_s, max_bytes, width:1280, height:720, fps:10, container:"mp4", codec:"av1"}
+              -> {recording:true, path, max_duration_s, max_bytes, fps:10, container:"mp4", codec:"av1"}
 record_stop   {tab, requester}
               -> {path, bytes, duration_ms, auto_stopped:bool, width, height, fps, container, codec}
 errors        code + data.reason (reasons below); Python renders copy by reason, host `message` is the fallback.
@@ -60,7 +68,7 @@ Reason values carried in `data.reason`: `record_unsupported` (Chromium < 153 or
 "not found" from start), `record_av1_unavailable`, `record_failed` (any other
 start or stop failure; Chromium's text verbatim), `record_path`, `record_active`
 (`busy`), `record_not_active`, `record_limit` (`busy`), `record_too_large`,
-`record_aborted` (the DevTools-detach tombstone).
+`record_aborted` (the debugger-detach tombstone).
 
 ## Decisions
 
@@ -79,7 +87,7 @@ start or stop failure; Chromium's text verbatim), `record_path`, `record_active`
 | **D11** | Test seams as listed (ui `browser-recording.test.mjs` on the network-capture fake-CDP rig; lo `test_browser_recording.py` beside `test_browser_network.py`), red first, plus the real-path matrix. |
 | **D12** | PR-C fixes `_capability_message` so a desktop-only method on the extension host says "desktop app only", not "toggle the extension". |
 | **D13** | No new `BrowserParams` fields: reuse `path` and `timeout_s`. |
-| **D14** | Capture params fixed: 1280x720, 10 fps, audio off. |
+| **D14** | Capture params fixed: at most 1280x720 (ceiling; the reported size is not asserted), 10 fps, audio off. |
 
 ## What the real-path run measured
 

@@ -7842,6 +7842,78 @@ test("a record_start whose answer is refused aborts the capture it began", async
 	assert.equal(existsSync(join(dir, "clip.mp4")), false);
 });
 
+test("record_start and record_stop share the tab's command lane", async () => {
+	// Review round 1, MINOR 2: dropping both verbs from TAB_SCOPED left every test
+	// green, so "the two verbs serialise on one tab" was a comment, not a pin. The
+	// lane does not queue; it refuses the second command with `busy`. So while a
+	// start is in flight, an overlapping stop AND an overlapping second start on the
+	// same tab must both read `busy` (and send no CDP call), and the tab is usable
+	// again once the start lands.
+	const { host, cdp } = makeHost();
+	const dir = mkdtempSync(join(root, "record-lane-"));
+	const params = {
+		url: "https://approved.example/",
+		requester: "session:alice",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const opened = await host.dispatch("open", params, "open");
+	const originalSend = cdp.send;
+	let releaseStart = () => {};
+	const startHeld = new Promise((resolve) => {
+		releaseStart = resolve;
+	});
+	let startEntered = () => {};
+	const startIsInFlight = new Promise((resolve) => {
+		startEntered = resolve;
+	});
+	cdp.send = async (contents, method, sendParams, options) => {
+		if (method === "Page.startScreenRecording") {
+			startEntered();
+			await startHeld;
+			return {};
+		}
+		if (method === "Page.stopScreenRecording") return { stream: "s-lane" };
+		return originalSend(contents, method, sendParams, options);
+	};
+	const start = host.dispatch(
+		"record_start",
+		{ ...params, tab: opened.tab, path: join(dir, "lane.mp4") },
+		"lane-start",
+	);
+	await startIsInFlight;
+	// If the lane were missing the overlapping calls could wait on the held start
+	// forever; releasing it on a timer makes that a failed assertion, not a hang.
+	const safety = setTimeout(releaseStart, 1500);
+	const before = cdp.calls.length;
+	await assert.rejects(
+		() => host.dispatch("record_stop", { ...params, tab: opened.tab }, "stop"),
+		(error) => error.code === "busy",
+		"a stop overlapping a start is refused by the tab lane",
+	);
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"record_start",
+				{ ...params, tab: opened.tab, path: join(dir, "second.mp4") },
+				"lane-second",
+			),
+		(error) => error.code === "busy",
+		"a second start overlapping the first is refused by the tab lane",
+	);
+	assert.equal(cdp.calls.length, before, "the refused calls reached no CDP");
+	clearTimeout(safety);
+	releaseStart();
+	await start;
+	// The lane is free again: the stop now finds the recording the start made.
+	await assert.rejects(
+		() => host.dispatch("record_stop", { ...params, tab: opened.tab }, "stop2"),
+		(error) => error.code !== "busy",
+	);
+	cdp.send = originalSend;
+	assert.equal(existsSync(join(dir, "second.mp4")), false);
+});
+
 test("the state file carries the same list, from the same constant", () => {
 	const path = stateFilePath(join(root, `state-caps-${Math.random()}`));
 	const writer = new BrowserStateWriter(

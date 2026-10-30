@@ -70,6 +70,9 @@ export const RECORD_WIDTH = 1280;
 export const RECORD_HEIGHT = 720;
 export const RECORD_FPS = 10;
 
+/** The longest single path component, in bytes, the filesystems we run on allow. */
+const MAX_NAME_BYTES = 255;
+
 /** How long a recording runs before the host stops it (D6). `max_duration_s`
  * must be inside `1..RECORD_MAX_DURATION_S`; the default is the product's
  * answer for "long enough for a demo, short enough to stay a few MB". */
@@ -173,6 +176,16 @@ function notActive(): BrowserHostError {
 	);
 }
 
+/** The refusal a finalize raises when an abort (DevTools detach, replace) lands
+ * while it is reading or publishing. */
+function abortedWhileSaving(): BrowserHostError {
+	return new BrowserHostError(
+		"internal",
+		"the recording was discarded while it was being saved; nothing was written",
+		{ reason: "record_aborted" },
+	);
+}
+
 function typedFailure(error: unknown): BrowserHostError {
 	if (error instanceof BrowserHostError) return error;
 	return new BrowserHostError(
@@ -228,6 +241,17 @@ function preflightPath(params: Record<string, unknown>): string {
 	const name = basename(path);
 	if (!name.toLowerCase().endsWith(".mp4") || name.length === ".mp4".length) {
 		throw pathRefusal(path, `the recording path must end in .mp4: ${path}`);
+	}
+	// The part file is `.<name>.part`, which is 6 bytes longer than the name the
+	// approval carries. A name that fits as the final path but not as the part
+	// would be accepted here and lose the whole clip at stop (ENAMETOOLONG), so
+	// the longer of the two is what is checked. 255 bytes is the per-component
+	// limit on APFS, ext4 and NTFS alike.
+	if (Buffer.byteLength(`.${name}.part`, "utf8") > MAX_NAME_BYTES) {
+		throw pathRefusal(
+			path,
+			`the recording file name is too long: it must be at most ${MAX_NAME_BYTES - 6} bytes, so that its temporary ".part" file also fits`,
+		);
 	}
 	const dir = dirname(path);
 	let parentIsDirectory = false;
@@ -342,11 +366,18 @@ function classifyStartFailure(error: unknown): BrowserHostError {
 	});
 }
 
-/** The result shape of both methods, from one place so the two cannot drift. */
+/**
+ * The result shape of both methods, from one place so the two cannot drift.
+ *
+ * Width and height are deliberately NOT reported. `RECORD_WIDTH`/`RECORD_HEIGHT`
+ * are only the CEILING handed to Chromium (`maxWidth`/`maxHeight`); the clip is
+ * scaled to fit inside it. Measured on Electron 45.1.0: a hidden agent tab
+ * (1280x720) records at 1280x720, but a presented 1380x868 view recorded at
+ * 1144x720. Reporting the ceiling as the size would be a claim nobody measured
+ * for the visible tab, so the host reports only what is fixed by construction.
+ */
 function captureShape(): Record<string, unknown> {
 	return {
-		width: RECORD_WIDTH,
-		height: RECORD_HEIGHT,
 		fps: RECORD_FPS,
 		container: "mp4",
 		codec: "av1",
@@ -371,6 +402,7 @@ async function readStream(
 ): Promise<number> {
 	let bytes = 0;
 	for (;;) {
+		if (recording.aborted) throw abortedWhileSaving();
 		if (Date.now() > budgetAt) {
 			throw new BrowserHostError(
 				"internal",
@@ -436,6 +468,7 @@ async function runFinalize(
 		);
 		endedAt = Date.now();
 		handle = typeof stopped?.stream === "string" ? stopped.stream : "";
+		if (recording.aborted) throw abortedWhileSaving();
 		if (!handle) {
 			throw new BrowserHostError(
 				"internal",
@@ -459,6 +492,9 @@ async function runFinalize(
 				{ reason: "record_failed" },
 			);
 		}
+		// An abort that landed during the last page must not publish: it already
+		// wrote a tombstone saying nothing was written.
+		if (recording.aborted) throw abortedWhileSaving();
 		fsyncSync(fd);
 		closeSync(fd);
 		fd = null;
@@ -543,6 +579,9 @@ function settle(
 	settled.set(webContentsId, { owner: recording.owner, ...outcome });
 }
 
+/** What ending a stream needs: the attachment and the target, nothing else. */
+type Stoppable = Pick<Recording, "cdp" | "contents">;
+
 /**
  * End a recording that another owner is taking over, without salvaging its bytes.
  *
@@ -553,9 +592,6 @@ function settle(
  * a stop: bounded at 2 s, best effort, and the stream is closed unread — the
  * bytes are thrown away, which is what discard means.
  */
-/** What ending a stream needs: the attachment and the target, nothing else. */
-type Stoppable = Pick<Recording, "cdp" | "contents">;
-
 export async function endReplaced(recording: Stoppable): Promise<void> {
 	try {
 		// The stop has to reach a target the pool still has a session for; on the
@@ -824,6 +860,23 @@ export async function recordStop(
 }
 
 /**
+ * Who ended the debugger connection, from Electron's detach reason.
+ *
+ * Electron reports `"target closed"` when the page went away (measured by the
+ * round-1 reviewer: a forced renderer crash on 45.1.0 detaches with that reason),
+ * and Chromium's `replaced_with_devtools` / `canceled_by_user` when DevTools took
+ * the tab over (names from the CDP detach reasons; not re-measured here). Naming
+ * DevTools for the first would send the agent looking for a window nobody opened.
+ */
+function detachExplanation(reason: string): string {
+	if (/devtools|canceled/i.test(reason)) return "DevTools took the tab";
+	if (/target closed|closed|crash/i.test(reason)) {
+		return "The tab closed or its page crashed";
+	}
+	return "The tab's debugging connection ended";
+}
+
+/**
  * Discard a recording because the debugger lifecycle ended under it (D7).
  *
  * Called from `CdpPool.dropCaptures`, so every boundary that ends the
@@ -862,7 +915,7 @@ export function abortRecording(
 			owner: recording.owner,
 			error: new BrowserHostError(
 				"internal",
-				`DevTools took the tab; the recording was discarded (${reason}). Nothing was written.`,
+				`${detachExplanation(reason)}; the recording was discarded (${reason}). Nothing was written.`,
 				{ reason: "record_aborted", detail: reason },
 			),
 		});

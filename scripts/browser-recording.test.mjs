@@ -212,8 +212,6 @@ test("record_start sends exactly the fixed capture params and writes nothing", a
 		path,
 		max_duration_s: 30,
 		max_bytes: 64 * 1024 * 1024,
-		width: 1280,
-		height: 720,
 		fps: 10,
 		container: "mp4",
 		codec: "av1",
@@ -247,8 +245,11 @@ test("record_stop pages IO.read to eof and publishes a complete file", async () 
 	assert.equal(result.bytes, head.length + tail.length);
 	assert.equal(result.auto_stopped, false);
 	assert.equal(typeof result.duration_ms, "number");
-	assert.equal(result.width, 1280);
-	assert.equal(result.height, 720);
+	// Review round 1, MINOR 1: 1280x720 is the CEILING handed to Chromium, not a
+	// measured size (a presented 1380x868 view recorded at 1144x720), so neither
+	// method reports a width or height.
+	assert.equal("width" in result, false);
+	assert.equal("height" in result, false);
 	assert.equal(result.fps, 10);
 	assert.equal(result.container, "mp4");
 	assert.equal(result.codec, "av1");
@@ -673,6 +674,27 @@ test("path refusals happen before any CDP call", async () => {
 	assert.deepEqual(commands, [], "no CDP call for a refused path");
 });
 
+test("a name whose .part sibling would not fit is refused at start, not at stop", async () => {
+	const dir = scratchDir();
+	const { start, commands } = fixture();
+	// 251 bytes + ".mp4" = 255: the final name fits a 255-byte component, but
+	// `.<name>.part` is 6 bytes longer and would fail ENAMETOOLONG at stop.
+	const tooLong = join(dir, `${"a".repeat(251)}.mp4`);
+	assert.equal(Buffer.byteLength(tooLong.split("/").pop()), 255);
+	await assert.rejects(start({ path: tooLong }), (error) => {
+		assert.equal(error.data?.reason, "record_path");
+		assert.match(error.message, /too long/);
+		return true;
+	});
+	assert.deepEqual(commands, [], "no CDP call for a refused name");
+	// The longest name whose part file still fits is accepted.
+	const longest = join(dir, `${"b".repeat(245)}.mp4`);
+	assert.equal(Buffer.byteLength(`.${longest.split("/").pop()}.part`), 255);
+	const { start: ok, stop } = fixture();
+	await ok({ path: longest });
+	await stop();
+});
+
 test("an existing file that appears while recording is never overwritten", async () => {
 	const dir = scratchDir();
 	const path = join(dir, "clip.mp4");
@@ -928,6 +950,57 @@ test("a devtools detach answers a later stop with record_aborted, and says why",
 		cdp.send(contents, "Runtime.evaluate", { expression: "1" }),
 		(error) => error.code === "debugger_conflict",
 	);
+});
+
+test("a detach whose page went away is not blamed on DevTools", async () => {
+	const { cdp, contents, debuggerLike, ctx } = poolFixture();
+	await cdp.attach(contents);
+	await mod.recordStart(
+		ctx,
+		{ tab: "tab", requester: "session:a", path: join(scratchDir(), "y.mp4") },
+		"r",
+	);
+	// What Electron 45.1.0 reported after a forced renderer crash (round-1 probe).
+	debuggerLike.emit("detach", {}, "target closed");
+	await assert.rejects(
+		mod.recordStop(ctx, { tab: "tab", requester: "session:a" }, "r"),
+		(error) => {
+			assert.equal(error.data?.reason, "record_aborted");
+			assert.doesNotMatch(error.message, /DevTools/);
+			assert.match(error.message, /crashed|closed/);
+			assert.match(error.message, /Nothing was written/);
+			return true;
+		},
+	);
+});
+
+test("an abort that lands while a stop is saving publishes nothing", async () => {
+	// Review round 1, MINOR 5: `runFinalize` never read `recording.aborted`, so a
+	// DevTools detach during the drain left the save running and a file published
+	// beside a tombstone that said nothing was written.
+	const dir = scratchDir();
+	const path = join(dir, "raced.mp4");
+	let abortOnRead = () => {};
+	const { start, stop, tabs, abort } = fixture({
+		handler: stream([Buffer.alloc(1024, 1), Buffer.from("tail")], {
+			onCommand: (method) => {
+				if (method === "IO.read") abortOnRead();
+			},
+		}),
+	});
+	await start({ path });
+	const id = tabs.get("tab").id;
+	abortOnRead = () => {
+		abortOnRead = () => {};
+		abort(id, "target closed", { tombstone: true });
+	};
+	await assert.rejects(stop(), (error) => {
+		assert.equal(error.data?.reason, "record_aborted");
+		assert.match(error.message, /nothing was written/);
+		return true;
+	});
+	assert.equal(existsSync(path), false, "no clip is published after an abort");
+	assert.deepEqual(partFiles(dir), [], "and no .part is left behind");
 });
 
 test("a non-owner stop cannot see or end another owner's recording", async () => {
