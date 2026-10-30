@@ -745,6 +745,15 @@ export const SettingsPage: FC = () => {
 		[handleSelectSection],
 	);
 	/*
+	 * A URL deep link outranks a search jump that is still on the books: the
+	 * reader navigated somewhere with a keyed link, and the section must follow
+	 * THAT key rather than the last result they pressed Enter on.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `location.search` is the trigger; the setter is stable.
+	useEffect(() => {
+		setSearchJump(null);
+	}, [location.search]);
+	/*
 	 * Cmd/Ctrl+F is this page's, not the command palette's (that chord is
 	 * Cmd/Ctrl+K and is owned globally). A press that landed on an overlay —
 	 * a dialog, a menu — belongs to it, which is the rule the canvas binder
@@ -1270,7 +1279,10 @@ export const SettingsPage: FC = () => {
 							className="flex flex-col gap-8"
 						>
 							<GeneralLanguageSetting
-								focus={settingFocusKey === LANGUAGE_SETTING_KEY}
+								focus={
+									settingFocusKey === LANGUAGE_SETTING_KEY ||
+									searchJump?.key === LANGUAGE_SETTING_KEY
+								}
 							/>
 							<SettingsSection
 								title={t("ui.settings.profile.title")}
@@ -1528,7 +1540,10 @@ export const SettingsPage: FC = () => {
 										 * out of the backend registry, so the section's `focusKey` is
 										 * suppressed for it and the row has to focus itself.
 										 */
-										focus={settingFocusKey === MODEL_EFFORT_SETTING_KEY}
+										focus={
+											settingFocusKey === MODEL_EFFORT_SETTING_KEY ||
+											searchJump?.key === MODEL_EFFORT_SETTING_KEY
+										}
 									/>
 									{/*
 									 * ONLY WHEN NO PROVIDER IS CONNECTED. Leading with "sign in"
@@ -1821,7 +1836,10 @@ export const SettingsPage: FC = () => {
 										refusal={agentMessagesSnapshot.refusal}
 										onRefreshStatus={refreshAgentMessages}
 										sessions={canonicalSessions}
-										focus={settingFocusKey === TEAM_BRIDGE_ENABLED_SETTING_KEY}
+										focus={
+											settingFocusKey === TEAM_BRIDGE_ENABLED_SETTING_KEY ||
+											searchJump?.key === TEAM_BRIDGE_ENABLED_SETTING_KEY
+										}
 										/* The chief-of-staff hold's button goes through the
 										   one shared switch rule, so the URL moves with the
 										   store commit like every other entrance; the chat
