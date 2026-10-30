@@ -23314,8 +23314,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.settings.shortcuts",
-			"source_sha256": "d77d1f6f8d3e1f6ef3f80af207f37f560dd234f9b985deac85507d0ec5c95b36",
-			"target_sha256": "8836a04ce3e3274a48ceb9c35bd6a13e8e99c032284a80b9130ed8d3c3caae53",
+			"source_sha256": "4f378e78f842f053f680f113e0279bafe0e4ac1e3e2cac479ae51fa912c6834b",
+			"target_sha256": "d4b622d323e64d6f0f52e896931d0d83095358a5c2510fe45256cd4700c12d6a",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -23326,17 +23326,17 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-10-30",
-					"result": "clean-with-findings",
-					"instance": "1e5f275f4910-speech-hi",
+					"result": "clean",
+					"instance": "1e5f275f4910-speech-r2-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/1e5f275f4910-speech-hi.json",
-					"receipt_sha256": "03dd6f524155ce71cac4dbcb2aa24b8a9a9afdf5e697e39c7f5a86725e7b9983",
-					"scope": "Delta audit of 7 new ui.settings.shortcuts.speech.* keys (locale commit b880085fb6); other 68 keys byte-identical to the previously audited base"
+					"receipt": "i18n/receipts/1e5f275f4910-speech-r2-hi.json",
+					"receipt_sha256": "493bed3481794392ce7669c8bcbc6d6ded51c4fd5aa9e158ddea21605bfa3956",
+					"scope": "Round 2 delta audit: push_to_talk_overlap changed, push_to_talk_letter_pointer and start_recording_needs_key added (head 3c4f49349e)"
 				}
 			],
 			"status": "audited",
@@ -23452,6 +23452,29 @@
 							"receipt": "i18n/receipts/042e182302d6-hi-r4.json",
 							"receipt_sha256": "61c5d72bc0d914bcb6484c46d2a0bf1d216fec23e55e08ee5047358182c56575",
 							"scope": "Round 4: English source moved by the rebase; all 68 keys re-audited against the current bytes"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d77d1f6f8d3e1f6ef3f80af207f37f560dd234f9b985deac85507d0ec5c95b36",
+					"target_sha256": "8836a04ce3e3274a48ceb9c35bd6a13e8e99c032284a80b9130ed8d3c3caae53",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-30",
+							"result": "clean-with-findings",
+							"instance": "1e5f275f4910-speech-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/1e5f275f4910-speech-hi.json",
+							"receipt_sha256": "03dd6f524155ce71cac4dbcb2aa24b8a9a9afdf5e697e39c7f5a86725e7b9983",
+							"scope": "Delta audit of 7 new ui.settings.shortcuts.speech.* keys (locale commit b880085fb6); other 68 keys byte-identical to the previously audited base"
 						}
 					],
 					"status": "audited"
@@ -31313,8 +31336,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.settings.shortcuts",
-			"source_sha256": "d77d1f6f8d3e1f6ef3f80af207f37f560dd234f9b985deac85507d0ec5c95b36",
-			"target_sha256": "430b75cb3c16ff2ccc9b7be80ad7cadb26dcd60067ea43511af9864dc7567750",
+			"source_sha256": "4f378e78f842f053f680f113e0279bafe0e4ac1e3e2cac479ae51fa912c6834b",
+			"target_sha256": "aea65fa870dea3ed5dc54010444be4ce7e71b9813a7d0bce4bcfc8de9d97c809",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -31327,16 +31350,16 @@
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "1e5f275f4910-speech-ru",
+					"instance": "1e5f275f4910-speech-r2-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/1e5f275f4910-speech-ru.json",
-					"receipt_sha256": "fd40d386e5f75b5c0220300d1d40e063cee3d3f2c383a37beecfa40ac7804418",
-					"scope": "Delta audit of 7 new ui.settings.shortcuts.speech.* keys (locale commit b880085fb6); other 68 keys byte-identical to the previously audited base"
+					"receipt": "i18n/receipts/1e5f275f4910-speech-r2-ru.json",
+					"receipt_sha256": "7a3804a4ab15ad098394bf2157125976ad24e3646e9742e83335ffe52e714c6a",
+					"scope": "Round 2 delta audit: push_to_talk_overlap changed, push_to_talk_letter_pointer and start_recording_needs_key added (head 3c4f49349e)"
 				}
 			],
 			"status": "audited",
@@ -31453,6 +31476,29 @@
 							"receipt": "i18n/receipts/042e182302d6-ru-r4.json",
 							"receipt_sha256": "5dae38c9fd398da9e6435b82a746fe04a58515329058d8ca804ce3ddf84ebab7",
 							"scope": "Round 4: English source moved by the rebase; all 68 keys re-audited against the current bytes"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d77d1f6f8d3e1f6ef3f80af207f37f560dd234f9b985deac85507d0ec5c95b36",
+					"target_sha256": "430b75cb3c16ff2ccc9b7be80ad7cadb26dcd60067ea43511af9864dc7567750",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "1e5f275f4910-speech-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1e5f275f4910-speech-ru.json",
+							"receipt_sha256": "fd40d386e5f75b5c0220300d1d40e063cee3d3f2c383a37beecfa40ac7804418",
+							"scope": "Delta audit of 7 new ui.settings.shortcuts.speech.* keys (locale commit b880085fb6); other 68 keys byte-identical to the previously audited base"
 						}
 					],
 					"status": "audited"
@@ -39415,8 +39461,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.settings.shortcuts",
-			"source_sha256": "d77d1f6f8d3e1f6ef3f80af207f37f560dd234f9b985deac85507d0ec5c95b36",
-			"target_sha256": "dedc55e412c689c4c94a238872fd5b7e293377ec1830dafbcab84335a2814ccc",
+			"source_sha256": "4f378e78f842f053f680f113e0279bafe0e4ac1e3e2cac479ae51fa912c6834b",
+			"target_sha256": "242a7a6dd323425428bdc462c3a3ec408e37371aceb538cf0c00da07ab059ca9",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -39428,15 +39474,16 @@
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "1e5f275f4910-speech-ur",
+					"instance": "1e5f275f4910-speech-r2-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/1e5f275f4910-speech-ur.json",
-					"receipt_sha256": "9e8cc9ed9549459a3567af090e50cf875bf2b0207469034e0603e4d112c408b3"
+					"receipt": "i18n/receipts/1e5f275f4910-speech-r2-ur.json",
+					"receipt_sha256": "97fd87c536786fae8381a8a0b61afc8992f8835093c5d321a283002ac1e5a3d0",
+					"scope": "Round 2 delta audit: push_to_talk_overlap changed, push_to_talk_letter_pointer and start_recording_needs_key added (head 3c4f49349e)"
 				}
 			],
 			"status": "audited",
@@ -39553,6 +39600,28 @@
 							"receipt": "i18n/receipts/042e182302d6-ur-r4.json",
 							"receipt_sha256": "60d9a0b15e344723a0e4724cc7312e38febcd82e886ab727e04b4cbe08a5d77a",
 							"scope": "Round 4: English source moved by the rebase; all 68 keys re-audited against the current bytes"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d77d1f6f8d3e1f6ef3f80af207f37f560dd234f9b985deac85507d0ec5c95b36",
+					"target_sha256": "dedc55e412c689c4c94a238872fd5b7e293377ec1830dafbcab84335a2814ccc",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "1e5f275f4910-speech-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1e5f275f4910-speech-ur.json",
+							"receipt_sha256": "9e8cc9ed9549459a3567af090e50cf875bf2b0207469034e0603e4d112c408b3"
 						}
 					],
 					"status": "audited"
@@ -47877,8 +47946,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.settings.shortcuts",
-			"source_sha256": "d77d1f6f8d3e1f6ef3f80af207f37f560dd234f9b985deac85507d0ec5c95b36",
-			"target_sha256": "ec114095c4c13d97592f7a5e89fe8ace0c0b64a64e59d59deaeb0f891004217c",
+			"source_sha256": "4f378e78f842f053f680f113e0279bafe0e4ac1e3e2cac479ae51fa912c6834b",
+			"target_sha256": "81220dd0d0d0269876dcd8699c9443b2da3facab34d0f25d3ba654a6fc8cfa05",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -47889,17 +47958,17 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-10-30",
-					"result": "clean-with-findings",
-					"instance": "1e5f275f4910-speech-vi",
+					"result": "clean",
+					"instance": "1e5f275f4910-speech-r2-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/1e5f275f4910-speech-vi.json",
-					"receipt_sha256": "b9a601984669e12a024a2a131329514e368cef496d4ab6be05197f54b3613d84",
-					"scope": "Delta audit of 7 new ui.settings.shortcuts.speech.* keys (locale commit b880085fb6); other 68 keys byte-identical to the previously audited base"
+					"receipt": "i18n/receipts/1e5f275f4910-speech-r2-vi.json",
+					"receipt_sha256": "a69f7502ec37990e882e54ab0fdee5f9c1e75db81d4ed4e95826eeb1a7e4d783",
+					"scope": "Round 2 delta audit: push_to_talk_overlap changed, push_to_talk_letter_pointer and start_recording_needs_key added (head 3c4f49349e)"
 				}
 			],
 			"status": "audited",
@@ -48015,6 +48084,29 @@
 							"receipt": "i18n/receipts/042e182302d6-vi-r4.json",
 							"receipt_sha256": "ba9be0e08a958709620ffdcda1a1432a8110c2fdc9ee32094ff1d0812c9e3f80",
 							"scope": "Round 4: English source moved by the rebase; all 68 keys re-audited against the current bytes"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d77d1f6f8d3e1f6ef3f80af207f37f560dd234f9b985deac85507d0ec5c95b36",
+					"target_sha256": "ec114095c4c13d97592f7a5e89fe8ace0c0b64a64e59d59deaeb0f891004217c",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-30",
+							"result": "clean-with-findings",
+							"instance": "1e5f275f4910-speech-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/1e5f275f4910-speech-vi.json",
+							"receipt_sha256": "b9a601984669e12a024a2a131329514e368cef496d4ab6be05197f54b3613d84",
+							"scope": "Delta audit of 7 new ui.settings.shortcuts.speech.* keys (locale commit b880085fb6); other 68 keys byte-identical to the previously audited base"
 						}
 					],
 					"status": "audited"
@@ -56965,8 +57057,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.settings.shortcuts",
-			"source_sha256": "d77d1f6f8d3e1f6ef3f80af207f37f560dd234f9b985deac85507d0ec5c95b36",
-			"target_sha256": "b6cb12fbc9a36550e6e88ba97b7c099cf3b6aa471a310973d4db68f8a3182755",
+			"source_sha256": "4f378e78f842f053f680f113e0279bafe0e4ac1e3e2cac479ae51fa912c6834b",
+			"target_sha256": "ba0eb62a770b1f4aae18e1d074084e577694b5282f35870b98c432bf5546ca21",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -56977,17 +57069,17 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-10-30",
-					"result": "clean-with-findings",
-					"instance": "1e5f275f4910-speech-zh-cn",
+					"result": "clean",
+					"instance": "1e5f275f4910-speech-r2-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/1e5f275f4910-speech-zh-cn.json",
-					"receipt_sha256": "aa59b9dcbdda3d58f4bae21c1d41c2f96df65c071c5e8fd4770f84e3885e5a99",
-					"scope": "Delta audit of 7 new ui.settings.shortcuts.speech.* keys (locale commit b880085fb6); other 68 keys byte-identical to the previously audited base"
+					"receipt": "i18n/receipts/1e5f275f4910-speech-r2-zh-cn.json",
+					"receipt_sha256": "77aec547dc6c8ad5dc8045c54fb3c0685ae6d0a685fb875980be8d21ae1eb1b6",
+					"scope": "Round 2 delta audit: push_to_talk_overlap changed, push_to_talk_letter_pointer and start_recording_needs_key added (head 3c4f49349e)"
 				}
 			],
 			"status": "audited",
@@ -57103,6 +57195,29 @@
 							"receipt": "i18n/receipts/042e182302d6-zh-cn-r4.json",
 							"receipt_sha256": "7628bda3d2572ebfab531ec8465c05eafbb7b4ebebf35b23c5bce6b48f5fa1d7",
 							"scope": "Round 4: English source moved by the rebase; all 68 keys re-audited against the current bytes"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d77d1f6f8d3e1f6ef3f80af207f37f560dd234f9b985deac85507d0ec5c95b36",
+					"target_sha256": "b6cb12fbc9a36550e6e88ba97b7c099cf3b6aa471a310973d4db68f8a3182755",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-30",
+							"result": "clean-with-findings",
+							"instance": "1e5f275f4910-speech-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/1e5f275f4910-speech-zh-cn.json",
+							"receipt_sha256": "aa59b9dcbdda3d58f4bae21c1d41c2f96df65c071c5e8fd4770f84e3885e5a99",
+							"scope": "Delta audit of 7 new ui.settings.shortcuts.speech.* keys (locale commit b880085fb6); other 68 keys byte-identical to the previously audited base"
 						}
 					],
 					"status": "audited"
