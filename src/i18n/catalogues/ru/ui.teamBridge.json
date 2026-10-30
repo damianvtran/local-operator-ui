@@ -281,5 +281,18 @@
 	"ui.teamBridge.invitations.failed.sign_in": "Вы не вошли в учётную запись. Войдите и повторите попытку.",
 	"ui.teamBridge.invitations.failed.unreachable": "Приложению не удалось связаться с Radient. Ничего не изменено. Повторите попытку.",
 	"ui.teamBridge.invitations.read_only": "Эта организация доступна вам только для чтения, поэтому отвечать на приглашения здесь нельзя.",
-	"ui.teamBridge.invitations.failed.unconfirmed": "Ваш ответ не подтверждён. Повторите попытку."
+	"ui.teamBridge.invitations.failed.unconfirmed": "Ваш ответ не подтверждён. Повторите попытку.",
+	"ui.teamBridge.mentions.listbox_label": "Люди и агенты для упоминания",
+	"ui.teamBridge.mentions.empty": "Нет совпадений для «{query}»",
+	"ui.teamBridge.mentions.section.member_human": "Люди в этом разговоре",
+	"ui.teamBridge.mentions.section.member_agent": "Агенты в этом разговоре",
+	"ui.teamBridge.mentions.section.org_human": "Другие люди",
+	"ui.teamBridge.mentions.section.org_agent": "Другие агенты",
+	"ui.teamBridge.mentions.agent_secondary": "координатор: {person}",
+	"ui.teamBridge.mentions.tag.not_member": "не в этом канале",
+	"ui.teamBridge.mentions.tag.bridge_off": "Team Bridge выключен",
+	"ui.teamBridge.mentions.notice.not_member": "{name} не участвует в этом разговоре.",
+	"ui.teamBridge.mentions.notice.invite_failed": "Не удалось пригласить: {name}. Можно упомянуть без уведомления.",
+	"ui.teamBridge.mentions.notice.invite": "Пригласить",
+	"ui.teamBridge.mentions.notice.silent": "Упомянуть без уведомления"
 }

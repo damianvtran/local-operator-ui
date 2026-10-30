@@ -281,5 +281,18 @@
 	"ui.teamBridge.invitations.failed.sign_in": "Vous êtes déconnecté. Connectez-vous, puis réessayez.",
 	"ui.teamBridge.invitations.failed.unreachable": "L’application n’a pas pu joindre Radient. Aucune modification n’a été effectuée. Réessayez.",
 	"ui.teamBridge.invitations.read_only": "Cette organisation est en lecture seule pour vous ; les invitations ne peuvent donc pas recevoir de réponse ici.",
-	"ui.teamBridge.invitations.failed.unconfirmed": "Votre réponse n’a pas été confirmée. Réessayez."
+	"ui.teamBridge.invitations.failed.unconfirmed": "Votre réponse n’a pas été confirmée. Réessayez.",
+	"ui.teamBridge.mentions.listbox_label": "Personnes et agents à mentionner",
+	"ui.teamBridge.mentions.empty": "Personne ne correspond à « {query} »",
+	"ui.teamBridge.mentions.section.member_human": "Personnes dans cette conversation",
+	"ui.teamBridge.mentions.section.member_agent": "Agents dans cette conversation",
+	"ui.teamBridge.mentions.section.org_human": "Autres personnes",
+	"ui.teamBridge.mentions.section.org_agent": "Autres agents",
+	"ui.teamBridge.mentions.agent_secondary": "chef de cabinet de {person}",
+	"ui.teamBridge.mentions.tag.not_member": "pas dans ce canal",
+	"ui.teamBridge.mentions.tag.bridge_off": "Team Bridge désactivé",
+	"ui.teamBridge.mentions.notice.not_member": "{name} ne fait pas partie de cette conversation.",
+	"ui.teamBridge.mentions.notice.invite_failed": "Impossible d’inviter {name}. Vous pouvez quand même le mentionner sans le notifier.",
+	"ui.teamBridge.mentions.notice.invite": "L’inviter",
+	"ui.teamBridge.mentions.notice.silent": "Mentionner sans notifier"
 }

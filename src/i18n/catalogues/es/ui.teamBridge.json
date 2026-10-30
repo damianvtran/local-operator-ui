@@ -281,5 +281,18 @@
 	"ui.teamBridge.invitations.failed.sign_in": "No has iniciado sesión. Inicia sesión e inténtalo de nuevo.",
 	"ui.teamBridge.invitations.failed.unreachable": "La app no pudo conectar con Radient. No se cambió nada. Inténtalo de nuevo.",
 	"ui.teamBridge.invitations.read_only": "Esta organización es de solo lectura para ti, así que aquí no se pueden responder invitaciones.",
-	"ui.teamBridge.invitations.failed.unconfirmed": "No se confirmó tu respuesta. Inténtalo de nuevo."
+	"ui.teamBridge.invitations.failed.unconfirmed": "No se confirmó tu respuesta. Inténtalo de nuevo.",
+	"ui.teamBridge.mentions.listbox_label": "Personas y agentes para mencionar",
+	"ui.teamBridge.mentions.empty": "Nadie coincide con «{query}»",
+	"ui.teamBridge.mentions.section.member_human": "Personas en esta conversación",
+	"ui.teamBridge.mentions.section.member_agent": "Agentes en esta conversación",
+	"ui.teamBridge.mentions.section.org_human": "Otras personas",
+	"ui.teamBridge.mentions.section.org_agent": "Otros agentes",
+	"ui.teamBridge.mentions.agent_secondary": "jefe de gabinete de {person}",
+	"ui.teamBridge.mentions.tag.not_member": "no está en este canal",
+	"ui.teamBridge.mentions.tag.bridge_off": "Team Bridge desactivado",
+	"ui.teamBridge.mentions.notice.not_member": "{name} no está en esta conversación.",
+	"ui.teamBridge.mentions.notice.invite_failed": "No se pudo invitar a {name}. Aún puedes mencionarlo sin notificarle.",
+	"ui.teamBridge.mentions.notice.invite": "Invitar",
+	"ui.teamBridge.mentions.notice.silent": "Mencionar sin notificar"
 }

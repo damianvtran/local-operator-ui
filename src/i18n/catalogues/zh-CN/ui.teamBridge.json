@@ -281,5 +281,18 @@
 	"ui.teamBridge.invitations.failed.sign_in": "你已退出登录。请登录后重试。",
 	"ui.teamBridge.invitations.failed.unreachable": "应用无法连接到Radient。未做任何更改。请重试。",
 	"ui.teamBridge.invitations.read_only": "此组织对你为只读，因此无法在此答复邀请。",
-	"ui.teamBridge.invitations.failed.unconfirmed": "你的答复未得到确认。请重试。"
+	"ui.teamBridge.invitations.failed.unconfirmed": "你的答复未得到确认。请重试。",
+	"ui.teamBridge.mentions.listbox_label": "可提及的人员和智能体",
+	"ui.teamBridge.mentions.empty": "没有与“{query}”匹配的结果",
+	"ui.teamBridge.mentions.section.member_human": "此对话中的人员",
+	"ui.teamBridge.mentions.section.member_agent": "此对话中的智能体",
+	"ui.teamBridge.mentions.section.org_human": "其他人员",
+	"ui.teamBridge.mentions.section.org_agent": "其他智能体",
+	"ui.teamBridge.mentions.agent_secondary": "{person}的首席助理",
+	"ui.teamBridge.mentions.tag.not_member": "不在此频道",
+	"ui.teamBridge.mentions.tag.bridge_off": "Team Bridge已关闭",
+	"ui.teamBridge.mentions.notice.not_member": "{name}不在此对话中。",
+	"ui.teamBridge.mentions.notice.invite_failed": "无法邀请{name}。你仍可以提及对方但不通知。",
+	"ui.teamBridge.mentions.notice.invite": "邀请",
+	"ui.teamBridge.mentions.notice.silent": "提及但不通知"
 }

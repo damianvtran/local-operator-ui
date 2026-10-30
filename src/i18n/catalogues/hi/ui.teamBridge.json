@@ -281,5 +281,18 @@
 	"ui.teamBridge.invitations.failed.sign_in": "आप साइन आउट हैं। साइन इन करें, फिर कोशिश करें।",
 	"ui.teamBridge.invitations.failed.unreachable": "ऐप Radient तक नहीं पहुँच सका। कुछ नहीं बदला गया। फिर कोशिश करें।",
 	"ui.teamBridge.invitations.read_only": "यह संगठन आपके लिए सिर्फ़ पढ़ने के लिए है, इसलिए यहाँ आमंत्रणों का जवाब नहीं दिया जा सकता।",
-	"ui.teamBridge.invitations.failed.unconfirmed": "आपके जवाब की पुष्टि नहीं हुई। फिर कोशिश करें।"
+	"ui.teamBridge.invitations.failed.unconfirmed": "आपके जवाब की पुष्टि नहीं हुई। फिर कोशिश करें।",
+	"ui.teamBridge.mentions.listbox_label": "उल्लेख करने के लिए लोग और एजेंट",
+	"ui.teamBridge.mentions.empty": "“{query}” से कोई मेल नहीं खाता",
+	"ui.teamBridge.mentions.section.member_human": "इस बातचीत में लोग",
+	"ui.teamBridge.mentions.section.member_agent": "इस बातचीत में एजेंट",
+	"ui.teamBridge.mentions.section.org_human": "दूसरे लोग",
+	"ui.teamBridge.mentions.section.org_agent": "दूसरे एजेंट",
+	"ui.teamBridge.mentions.agent_secondary": "{person} का चीफ़ ऑफ़ स्टाफ़",
+	"ui.teamBridge.mentions.tag.not_member": "इस चैनल में नहीं",
+	"ui.teamBridge.mentions.tag.bridge_off": "Team Bridge बंद है",
+	"ui.teamBridge.mentions.notice.not_member": "{name} इस बातचीत में शामिल नहीं है।",
+	"ui.teamBridge.mentions.notice.invite_failed": "{name} को आमंत्रित नहीं किया जा सका। आप फिर भी सूचना दिए बिना उल्लेख कर सकते हैं।",
+	"ui.teamBridge.mentions.notice.invite": "आमंत्रित करें",
+	"ui.teamBridge.mentions.notice.silent": "सूचना दिए बिना उल्लेख करें"
 }

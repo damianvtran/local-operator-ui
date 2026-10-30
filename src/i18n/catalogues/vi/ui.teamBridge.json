@@ -281,5 +281,18 @@
 	"ui.teamBridge.invitations.failed.sign_in": "Bạn đã đăng xuất. Hãy đăng nhập rồi thử lại.",
 	"ui.teamBridge.invitations.failed.unreachable": "Ứng dụng không kết nối được với Radient. Không có gì thay đổi. Hãy thử lại.",
 	"ui.teamBridge.invitations.read_only": "Tổ chức này ở chế độ chỉ đọc với bạn nên không thể trả lời lời mời tại đây.",
-	"ui.teamBridge.invitations.failed.unconfirmed": "Câu trả lời của bạn chưa được xác nhận. Hãy thử lại."
+	"ui.teamBridge.invitations.failed.unconfirmed": "Câu trả lời của bạn chưa được xác nhận. Hãy thử lại.",
+	"ui.teamBridge.mentions.listbox_label": "Người và tác nhân để nhắc đến",
+	"ui.teamBridge.mentions.empty": "Không có ai khớp với “{query}”",
+	"ui.teamBridge.mentions.section.member_human": "Người trong cuộc trò chuyện này",
+	"ui.teamBridge.mentions.section.member_agent": "Tác nhân trong cuộc trò chuyện này",
+	"ui.teamBridge.mentions.section.org_human": "Người khác",
+	"ui.teamBridge.mentions.section.org_agent": "Tác nhân khác",
+	"ui.teamBridge.mentions.agent_secondary": "chánh văn phòng của {person}",
+	"ui.teamBridge.mentions.tag.not_member": "không có trong kênh này",
+	"ui.teamBridge.mentions.tag.bridge_off": "Team Bridge đang tắt",
+	"ui.teamBridge.mentions.notice.not_member": "{name} không có trong cuộc trò chuyện này.",
+	"ui.teamBridge.mentions.notice.invite_failed": "Không mời được {name}. Bạn vẫn có thể nhắc đến mà không thông báo.",
+	"ui.teamBridge.mentions.notice.invite": "Mời",
+	"ui.teamBridge.mentions.notice.silent": "Nhắc đến mà không thông báo"
 }
