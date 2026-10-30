@@ -735,7 +735,19 @@ export const ThemeSelector: FC = () => {
 		 * that renders the list owns the provider, with this surface's own delays.
 		 */
 		<TooltipProvider>
-			<div onKeyDown={moveFocus} className="flex flex-col gap-6">
+			<div
+				onKeyDown={moveFocus}
+				/*
+				 * ONE search row for the grid, not one per tile: the fifty-nine
+				 * tiles are one choice ("the theme"), a reader searching "theme"
+				 * wants the picker rather than 59 rows named after palettes, and
+				 * the landing control is the first tile (the `<div>` is not
+				 * focusable, so the jump takes the first focusable inside it).
+				 */
+				data-search-row="appearance.theme"
+				data-search-control
+				className="flex flex-col gap-6"
+			>
 				{groups.map((group) => (
 					<div key={group.label}>
 						<h3 className="px-1 pb-2 text-meta text-ink-dim">{group.label}</h3>

@@ -72,15 +72,34 @@ import {
 	settingsRefusalSentence,
 } from "@features/agent-messages/agent-messages-settings-model";
 import { useAgentMessages } from "@features/agent-messages/use-agent-messages";
+import { pressLandsOnOverlay } from "@features/chat/keyboard-scopes";
+import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { LANGUAGE_SETTING_KEY } from "@shared/i18n";
+import { useQuery } from "@tanstack/react-query";
 import type { AgentMessagesStatus } from "../../../../../shared/agent-messages-contract";
+import type { BackendSettings } from "../../../../../shared/desktop-contract";
 import {
 	MODEL_EFFORT_SETTING_KEY,
 	TEAM_BRIDGE_ENABLED_SETTING_KEY,
 	sectionForSettingKey,
 } from "../promoted-setting-sections";
+import {
+	type SettingSearchEntry,
+	buildRenderedEntries,
+} from "../search/settings-search-index";
+import {
+	jumpToSearchRow,
+	jumpToSearchSection,
+} from "../search/settings-search-jump";
 import { AppUpdatesSection } from "./app-updates-section";
-import { BackendSettingsSection } from "./backend-settings-section";
+import {
+	BackendSettingsSection,
+	backendSettingsKeys,
+} from "./backend-settings-section";
 import { DefaultEffortSelect } from "./default-effort-select";
 import { ImportSettingsSection } from "./import-settings-section";
 import { GeneralLanguageSetting } from "./language-dialog";
@@ -88,6 +107,11 @@ import { GeneralLanguageSetting } from "./language-dialog";
 import { KeyboardShortcutsSection } from "./keyboard-shortcuts-section";
 import { McpManagementSection } from "./mcp-management-section";
 import { RadientAccountSection } from "./radient-account-section";
+import {
+	SettingsSearch,
+	type SettingsSearchHandle,
+	useSettingsSearchIndex,
+} from "./settings-search";
 import { InfoGrid, InfoItem, SettingsSection } from "./settings-section";
 import { DEFAULT_SETTINGS_SECTIONS, SettingsSidebar } from "./settings-sidebar";
 import { SettingsUsageChart } from "./settings-usage-chart";
@@ -490,6 +514,7 @@ export const SettingsPage: FC = () => {
 	const [isScrolling, setIsScrolling] = useState(false);
 	const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 	const contentContainerRef = useRef<HTMLDivElement>(null);
+
 	const { startTour: startOnboardingTour } = useOnboardingTour();
 	const location = useLocation();
 	const navigate = useNavigate();
@@ -655,6 +680,87 @@ export const SettingsPage: FC = () => {
 		[sectionRefs],
 	);
 
+	/*
+	 * SETTINGS SEARCH (issue #1492): the page's OWN field, in the header's
+	 * action slot.
+	 *
+	 * It shares the Backend section's `settings.list` cache entry — same query
+	 * key, same op — so the registry half of the index costs no request. The
+	 * index itself is memoised on that payload's identity and the locale; a
+	 * keystroke changes state inside `SettingsSearch` only, which is what keeps
+	 * a query from re-rendering the eleven sections below.
+	 */
+	const searchRef = useRef<SettingsSearchHandle>(null);
+	const capabilities = useDesktopCapabilities();
+	const settingsFeatureEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"settings",
+	);
+	const settingsRegistryQuery = useQuery({
+		queryKey: backendSettingsKeys.all,
+		queryFn: () => desktopResult<BackendSettings>({ op: "settings.list" }),
+		enabled: settingsFeatureEnabled,
+		staleTime: 10_000,
+	});
+	const searchIndex = useSettingsSearchIndex({
+		registry: settingsRegistryQuery.data,
+		sections: settingsSections,
+	});
+	const readRenderedSearchRows = useCallback(
+		() =>
+			contentContainerRef.current
+				? buildRenderedEntries(contentContainerRef.current)
+				: [],
+		[],
+	);
+	/*
+	 * A search jump names a key the URL does not: the panel jumps at runtime,
+	 * and the deep-link path above owns the URL. `seq` is a MONOTONIC NONCE —
+	 * the Backend section's reveal is idempotent per key (`revealedFocusKey`),
+	 * so a second Enter on the same result would otherwise be a silent no-op
+	 * rather than a second landing and a second flash.
+	 */
+	const [searchJump, setSearchJump] = useState<{
+		key: string;
+		nonce: number;
+	} | null>(null);
+	const jumpToSearchEntry = useCallback(
+		(entry: SettingSearchEntry) => {
+			const root = contentContainerRef.current;
+			if (entry.source === "page") {
+				// `page:<row id>` -> the DOM contract's own id.
+				void jumpToSearchRow(root ?? document, entry.id.slice(5));
+				return;
+			}
+			if (entry.source === "section") {
+				jumpToSearchSection(root ?? document, entry.sectionId);
+				return;
+			}
+			const key = entry.settingKey;
+			if (!key) return;
+			const section = sectionForSettingKey(key, "backend");
+			handleSelectSection(section);
+			setSearchJump({ key, nonce: Date.now() });
+		},
+		[handleSelectSection],
+	);
+	/*
+	 * Cmd/Ctrl+F is this page's, not the command palette's (that chord is
+	 * Cmd/Ctrl+K and is owned globally). A press that landed on an overlay —
+	 * a dialog, a menu — belongs to it, which is the rule the canvas binder
+	 * documents in `keyboard-scopes.ts`.
+	 */
+	useEffect(() => {
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
+			if (event.key.toLowerCase() !== "f") return;
+			if (pressLandsOnOverlay(event.target)) return;
+			event.preventDefault();
+			searchRef.current?.focus();
+		};
+		document.addEventListener("keydown", onKeyDown);
+		return () => document.removeEventListener("keydown", onKeyDown);
+	}, []);
 	// Update active section based on scroll position
 	useEffect(() => {
 		// Use a small delay to ensure DOM is ready
@@ -1135,9 +1241,34 @@ export const SettingsPage: FC = () => {
 				 * Settings all cap the detail pane and none of them column it.
 				 */}
 				<div className="mx-auto flex w-full max-w-4xl flex-col gap-8 pb-8">
-					<PageHeader title={t("ui.settings.page.title")} icon={Settings} />
+					<PageHeader title={t("ui.settings.page.title")} icon={Settings}>
+						{/*
+						 * The page's search lives in the header's action slot: it is a
+						 * page-level tool, and a second box beside the Backend section's own
+						 * filter would have been two searches in one screen with two
+						 * different meanings (this one JUMPS, that one FILTERS IN PLACE).
+						 */}
+						<SettingsSearch
+							ref={searchRef}
+							index={searchIndex}
+							readRendered={readRenderedSearchRows}
+							onJump={jumpToSearchEntry}
+						/>
+					</PageHeader>
 					<div className="flex flex-col gap-8">
-						<div ref={sectionRefs.general} className="flex flex-col gap-8">
+						<div
+							ref={sectionRefs.general}
+							/*
+							 * The sidebar destination this group belongs to, with its
+							 * rail label: the `h2`s inside name sub-groups ("User
+							 * profile"), while a jump lands in General settings.
+							 */
+							data-search-section="general"
+							data-search-section-label={t(
+								"ui.settings.navigation.settings_sidebar.general_settings",
+							)}
+							className="flex flex-col gap-8"
+						>
 							<GeneralLanguageSetting
 								focus={settingFocusKey === LANGUAGE_SETTING_KEY}
 							/>
@@ -1287,6 +1418,7 @@ export const SettingsPage: FC = () => {
 								 */}
 								<div className="flex flex-col gap-4">
 									<EditableField
+										searchRow="general.profile.name"
 										value={userStore.profile.name}
 										label={t("ui.settings.profile.display_name.label")}
 										placeholder={t(
@@ -1304,6 +1436,7 @@ export const SettingsPage: FC = () => {
 										readOnly={profileFieldsAreReadOnly}
 									/>
 									<EditableField
+										searchRow="general.profile.email"
 										value={userStore.profile.email}
 										label={t("ui.settings.profile.email.label")}
 										placeholder={t("ui.settings.profile.email.placeholder")}
@@ -1327,6 +1460,8 @@ export const SettingsPage: FC = () => {
 							>
 								<Button
 									variant="secondary"
+									data-search-row="general.tour"
+									data-search-control
 									onClick={() => {
 										startOnboardingTour({ forceModalCompleted: true });
 									}}
@@ -1347,7 +1482,16 @@ export const SettingsPage: FC = () => {
 									"ui.settings.model.settings_page.configure_the_default_ai_model_and_hosting_providers_used_for_gen",
 								)}
 							>
-								<div className="flex flex-col gap-4">
+								<div
+									/* The hosting/model/effort trio is ONE row: they are
+									   three controls choosing one thing (which model runs
+									   new conversations), and a reader searching "model"
+									   should land on the group, not on three near-identical
+									   results. */
+									data-search-row="general.model"
+									data-search-control
+									className="flex flex-col gap-4"
+								>
 									<HostingSelect
 										value={config.values.hosting}
 										isSaving={savingField === "hosting"}
@@ -1482,6 +1626,10 @@ export const SettingsPage: FC = () => {
 							)}
 							sectionRef={sectionRefs.appearance}
 							dataTourTag="settings-appearance-section"
+							searchSection="appearance"
+							searchSectionLabel={t(
+								"ui.settings.navigation.settings_sidebar.appearance",
+							)}
 						>
 							<div className="flex flex-col gap-4">
 								<ThemeSelector />
@@ -1505,6 +1653,7 @@ export const SettingsPage: FC = () => {
 								 * the row got written twice.
 								 */}
 								<ToggleSetting
+									searchRow="appearance.reasoning"
 									value={showAgentReasoning}
 									label={t(
 										"ui.settings.appearance.settings_page.show_agent_reasoning",
@@ -1524,6 +1673,7 @@ export const SettingsPage: FC = () => {
 								 * it is looking at the transcript rather than at this page.
 								 */}
 								<TranscriptDisplayModeSetting
+									searchRow="appearance.transcript"
 									value={parseTranscriptDisplayMode(transcriptDisplayMode)}
 									onChange={(next) => setTranscriptDisplayMode(next)}
 								/>
@@ -1534,7 +1684,11 @@ export const SettingsPage: FC = () => {
 								 * Absent outside the desktop app; replaced by its reason where the
 								 * platform cannot do it. See `window-glass-setting.tsx`.
 								 */}
-								<WindowGlassSetting state={glass.state} onChange={glass.set} />
+								<WindowGlassSetting
+									searchRow="appearance.glass"
+									state={glass.state}
+									onChange={glass.set}
+								/>
 							</div>
 						</SettingsSection>
 
@@ -1562,6 +1716,10 @@ export const SettingsPage: FC = () => {
 								"ui.settings.navigation.settings_page.sign_in_to_the_services_your_agents_think_with_new_chats_use_your",
 							)}
 							sectionRef={sectionRefs.providers}
+							searchSection="providers"
+							searchSectionLabel={t(
+								"ui.settings.navigation.settings_sidebar.model_providers",
+							)}
 							/*
 							 * An anchor for the callout's jump: `id` makes the container a
 							 * `tabIndex={-1}` focus target, so activation can move focus INTO
@@ -1611,6 +1769,7 @@ export const SettingsPage: FC = () => {
 							)}
 							sectionRef={sectionRefs.radient}
 							dataTourTag="settings-radient-account-section"
+							searchIgnore="account, billing and usage are read-only or remote"
 						>
 							{/*
 							 * Account, billing and usage were separated by `Divider`s. They are
@@ -1642,6 +1801,13 @@ export const SettingsPage: FC = () => {
 								description={t("ui.agentMessages.settings.description")}
 								sectionRef={sectionRefs["agent-messages"]}
 								id="agent-messages"
+								searchSection="agent-messages"
+								searchSectionLabel={t("ui.agentMessages.settings.section")}
+								/* The controls inside are a consent state machine's, not
+								   a list of rows; the two registry-backed preferences it
+								   owns are searchable through the registry index and land
+								   here through `sectionForSettingKey`. */
+								searchIgnore="agent messages is a consent state machine; its registry rows are searchable"
 								/* A peer section, not a subsection of Backend settings
 								   (design round 1, D1): one decorative rule plus the
 								   page's section gap, no card. */
@@ -1716,6 +1882,11 @@ export const SettingsPage: FC = () => {
 								"ui.settings.navigation.settings_page.every_setting_the_backend_registry_owns_searchable_with_typed_edi",
 							)}
 							sectionRef={sectionRefs.backend}
+							/* Registry rows are the Backend section's own surface: its
+							   filter searches them in place, and this page's search reads
+							   the same payload directly (`settings.list`), so its rendered
+							   rows are not rows of THIS mechanism. */
+							searchIgnore="registry rows are searched by the Backend section's own filter"
 						>
 							<BackendSettingsSection
 								hideInterfaceLanguage
@@ -1723,20 +1894,35 @@ export const SettingsPage: FC = () => {
 								hideAgentMessages
 								hideStartRecording
 								focusKey={
-									settingFocusKey &&
-									sectionForSettingKey(settingFocusKey, "backend") === "backend"
-										? settingFocusKey
-										: null
+									/*
+									 * A search jump outranks a URL deep link: it is the most recent
+									 * intent, and both resolve to the same keyed row. The nonce is
+									 * what makes a SECOND Enter on the same result land again.
+									 */
+									searchJump
+										? searchJump.key
+										: settingFocusKey &&
+												sectionForSettingKey(settingFocusKey, "backend") ===
+													"backend"
+											? settingFocusKey
+											: null
 								}
+								focusNonce={searchJump?.nonce}
 								initialFilter={settingsSearchFilter}
 							/>
 						</SettingsSection>
 
-						<div ref={sectionRefs.imports}>
+						<div
+							ref={sectionRefs.imports}
+							data-search-ignore="imports are a one-off task list, not a setting"
+						>
 							<ImportSettingsSection />
 						</div>
 
-						<div ref={sectionRefs.updates}>
+						<div
+							ref={sectionRefs.updates}
+							data-search-ignore="application updates are an action surface, not a setting"
+						>
 							<AppUpdatesSection />
 						</div>
 					</div>

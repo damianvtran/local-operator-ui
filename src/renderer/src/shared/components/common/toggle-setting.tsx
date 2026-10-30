@@ -23,6 +23,8 @@ import { useId, useState } from "react";
 import type { FC } from "react";
 
 type ToggleSettingProps = {
+	/** Settings search's stable row id, when this control is a searchable row. */
+	searchRow?: string;
 	/**
 	 * Current value of the setting
 	 */
@@ -69,6 +71,7 @@ type ToggleSettingProps = {
  * @param props - ToggleSettingProps
  */
 export const ToggleSetting: FC<ToggleSettingProps> = ({
+	searchRow,
 	value,
 	label,
 	description,
@@ -101,7 +104,11 @@ export const ToggleSetting: FC<ToggleSettingProps> = ({
 	};
 
 	return (
-		<div className="flex items-start justify-between gap-4">
+		<div
+			data-search-row={searchRow}
+			data-search-control={searchRow ? "" : undefined}
+			className="flex items-start justify-between gap-4"
+		>
 			<div className="min-w-0 flex-1">
 				<span
 					id={labelId}

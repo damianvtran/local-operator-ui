@@ -469,6 +469,7 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 			icon={AudioLines}
 			description={description}
 			sectionRef={sectionRef}
+			searchIgnore="speech rows are registry keys read from the daemon's own selection"
 		>
 			<div className="flex flex-col gap-6">
 				<section className="flex flex-col gap-3">

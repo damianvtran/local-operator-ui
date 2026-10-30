@@ -244,6 +244,10 @@ export const GeneralLanguageSetting: FC<{ focus?: boolean }> = ({
 			<div
 				ref={container}
 				data-setting-key={LANGUAGE_SETTING_KEY}
+				/* One settings-search row: its rendered text is the row's title and
+				   its summary, and the landing control is the picker inside it. */
+				data-search-row="general.language"
+				data-search-control
 				className="flex flex-col gap-3"
 				aria-busy={pending}
 			>

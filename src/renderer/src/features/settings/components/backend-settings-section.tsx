@@ -112,6 +112,16 @@ const SCOPE_LABELS: Record<string, string> = {
 type BackendSettingsSectionProps = {
 	/** Key to reveal and focus, from a /settings navigation target. */
 	focusKey?: string | null;
+	/**
+	 * A monotonic nonce for a focus request that repeats the same key.
+	 *
+	 * The reveal is deliberately idempotent per key (`revealedFocusKey`), which
+	 * is what stops a re-render from re-scrolling a reader who has moved on —
+	 * and it is also what made "jump to this setting again" a silent no-op. A
+	 * new nonce clears both guards, so Enter pressed twice on the same settings
+	 * search result lands and flashes twice.
+	 */
+	focusNonce?: number;
 	/** General owns this one row; standalone registry hosts retain it. */
 	hideInterfaceLanguage?: boolean;
 	/**
@@ -159,6 +169,7 @@ const fold = (value: string) => value.toLowerCase().replace(/[-_.]/g, " ");
 
 export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	focusKey,
+	focusNonce,
 	hideInterfaceLanguage = false,
 	hideModelEffort = false,
 	hideAgentMessages = false,
@@ -226,6 +237,19 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	 * Collapsing them is what broke the filtered deep link (UX round 1, U2).
 	 */
 	const revealedFocusKey = useRef<string | null>(null);
+
+	/*
+	 * A new nonce (a second Enter on the same search result) re-arms both
+	 * guards. Declared BEFORE the navigation effect so it runs first in the
+	 * same commit: an effect declared after would read the stale guard.
+	 */
+	const focusNonceRef = useRef<number | undefined>(focusNonce);
+	useEffect(() => {
+		if (focusNonce === focusNonceRef.current) return;
+		focusNonceRef.current = focusNonce;
+		handledFocusKey.current = null;
+		revealedFocusKey.current = null;
+	}, [focusNonce]);
 
 	const settingsQuery = useQuery({
 		queryKey: backendSettingsKeys.all,
