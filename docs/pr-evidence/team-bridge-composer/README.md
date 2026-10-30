@@ -14,7 +14,7 @@ what is photographed is the same profile and engine a reviewer would use.
 | `light-empty.png`, `dark-empty.png` | `team-bridge-page--populated-direct-message` | nothing staged: one line, placeholder at the left |
 | `light-two-lines.png`, `dark-two-lines.png` | same | a draft that wraps to two lines (box grew upward) |
 | `light-at-cap.png`, `dark-at-cap.png` | same | a draft past six lines: the field holds at its cap and scrolls |
-| `light-attachment.png`, `dark-attachment.png` | `team-bridge-page--composer-with-attachment` | one staged image chip above an otherwise empty bar |
+| `light-attachment.png`, `dark-attachment.png` | `team-bridge-page--composer-with-attachment` | one staged image chip above an otherwise empty bar — the media tile, no filename printed (see below) |
 
 ## The numbers behind them
 
@@ -43,18 +43,36 @@ frame itself, where the first line has scrolled out and the caret sits on the
 last visible one. A reviewer who wants the raw pair can read them from any
 devtools session; this directory does not claim them.
 
-## `board-before-dark.png` — the instrument, not the product
+## `board-defect-dark.png` — the instrument's defect, and NOT a "before"
 
-This one is deliberately not a "before" of the product. It is the **story board's**
-defect with the NEW composer mounted: the decorator rendered the page in a bare
-`h-dvh` block, where the page's `flex-1` is inert, so the pane collapsed to its
-content height — measured 459.7px of pane (and 565px on an earlier capture of a
-longer transcript) inside a 720px frame, leaving a band of empty canvas under
-everything. The app's shell is a flex column and does not do this.
+This frame is deliberately not a before/after of the product, and it must not be
+read as one. It is the **story board's** defect with the NEW composer already
+mounted: the decorator rendered the page in a bare `h-dvh` block, where the
+page's `flex-1` is inert, so the pane collapsed to its content height — measured
+459.7px of pane inside a 720px frame, leaving ~261px of empty canvas under
+everything, rail included. The bar inside it is the new 46px one (measured
+397.7..443.7), which is exactly what disqualifies the frame as evidence about
+the old composer.
 
-Which means the frames committed for the previous composer change were measuring
-the fixture rather than the product: their band under the composer was partly the
-board, not the composer. The branch fixes the decorator (`flex h-dvh flex-col`)
-and this frame is kept beside the corrected ones so the two causes stay
-distinguishable — the 46px-tall bar is the composer's fix, and the filled window
-is the board's.
+The consequence, stated rather than glossed: **no true before can be
+reconstructed from this repository state.** The frames that showed the
+operator's actual regression — a 110px card with a 56px strip under it — are not
+in this PR, and `origin/main`'s decorator is still the collapsing `h-dvh`, so a
+fresh capture of the old arrangement from main would carry the board's 261px
+band on top of the composer's own. That is why this directory holds no
+before/after pair: the instrument was measuring wrong, and an old "before" taken
+through it cannot be trusted.
+
+What this directory does show is the two causes kept apart: the eight after-frames
+are the 46px bar in a window the page actually fills, and this frame is the same
+new composer as it looked in the old board.
+
+## The chip in the attachment frames
+
+The chip is `AttachmentsPreview`'s MEDIA branch — the image tile with its remove
+control, plus the strip's own status line. It prints **no filename**: that
+caption strip only renders when the card can derive a name for the attachment,
+and this fixture stages a `data:` URL rather than a file path. Earlier drafts of
+this README called it "the real card — thumbnail, name, remove control"; the
+name never appears in the rendered frame, and the sentence was corrected rather
+than the frame retaken (design round 1, D3).

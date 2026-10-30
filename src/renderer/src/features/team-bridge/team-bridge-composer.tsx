@@ -269,6 +269,20 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 
 	return (
 		<div className={cn(CHAT_COLUMN_CONTAINER, "flex w-full flex-col")}>
+			{/*
+			 * THE BAR KEEPS THE APP'S ONE CONTENT MEASURE, not the transcript's box,
+			 * and the difference is inherited rather than chosen here.
+			 *
+			 * `CHAT_MEASURE` is the shared composer's 810px centred column, which is
+			 * what `MessageInput` mounted on main; this pane's message column is wider
+			 * (measured 904px at 1280x720, 356..1260 against the bar's 379..1189), so
+			 * the bar's text starts ~40px right of the message text above it. Unifying
+			 * those two edges means changing the measure every chat surface shares, or
+			 * giving this one surface a second measure - both are decisions for
+			 * `chat-measure.ts` and its transcript/composer edge contract, not for a
+			 * composer restoration. Stated here so the offset reads as a known
+			 * inheritance rather than as this pane's oversight (design round 1, D1).
+			 */}
 			<div className={cn(CHAT_MEASURE, "flex w-full flex-col gap-1.5")}>
 				{chips.length > 0 && (
 					// Chips are not part of the bar's one line (operator: an attachment
