@@ -1,0 +1,14 @@
+{
+	"ui.notifications.bulk.dismiss_all": "Bỏ qua tất cả",
+	"ui.notifications.bulk.read_hint": "Đánh dấu đã đọc vẫn giữ cập nhật trong Tất cả.",
+	"ui.notifications.bulk.dismiss_hint": "Bỏ qua sẽ ẩn các cập nhật. Hoàn tác sẽ khôi phục chúng.",
+	"ui.notifications.bulk.frozen_hint": "Lựa chọn này đã được chốt. Các mục mới đến không được bao gồm.",
+	"ui.notifications.bulk.confirm_title": "{count, plural, other {Bỏ qua # cập nhật?}}",
+	"ui.notifications.bulk.beyond_page": "Thao tác này cũng ảnh hưởng đến các cập nhật ngoài trang đã tải.",
+	"ui.notifications.bulk.asks_hint": "Các câu hỏi chưa trả lời vẫn được giữ lại. Hãy xem riêng: không thể hoàn tác việc bỏ qua câu hỏi.",
+	"ui.notifications.bulk.review_asks": "Xem các câu hỏi chưa trả lời",
+	"ui.notifications.bulk.select_error": "Không thể chọn các mục trong chế độ xem này. Hãy thử lại.",
+	"ui.notifications.bulk.update_required": "Cập nhật Local Operator để chọn tất cả kết quả phù hợp.",
+	"ui.notifications.bulk.partial": "Đã thay đổi {changed} · Đã bỏ qua {skipped}",
+	"ui.notifications.bulk.exclusion_limit": "Bạn có thể loại trừ tối đa 500 mục. Xóa lựa chọn để chọn từng mục."
+}

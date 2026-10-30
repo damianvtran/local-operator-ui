@@ -1,0 +1,5 @@
+{
+	"ui.notifications.bulk_updates.read": "{count, plural, one {Mark # update read} other {Mark # updates read}}",
+	"ui.notifications.bulk_updates.unread": "{count, plural, one {Mark # update unread} other {Mark # updates unread}}",
+	"ui.notifications.bulk_updates.new_items": "New items since you selected aren’t included."
+}

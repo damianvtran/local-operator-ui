@@ -66,5 +66,14 @@
 	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcut_capture_description": "Установите фокус на поле сочетания и нажмите клавиши, чтобы сохранить его сразу. Esc убирает индикатор ввода; «Сбросить» возвращает значение по умолчанию.",
 	"ui.settings.shortcuts.category.speech_to_text": "Преобразование речи в текст",
 	"ui.settings.shortcuts.recording.invalid_stored_value": "Сохранённое сочетание недействительно. Показано последнее рабочее сочетание.",
-	"ui.settings.shortcuts.recording.inactive_claimed": "Запись неактивна: {label} использует это сочетание."
+	"ui.settings.shortcuts.recording.inactive_claimed": "Запись неактивна: {label} использует это сочетание.",
+	"ui.settings.shortcuts.speech.primary": "Основное",
+	"ui.settings.shortcuts.speech.secondary": "Дополнительное",
+	"ui.settings.shortcuts.speech.start_recording_press": "Начать запись (нажать)",
+	"ui.settings.shortcuts.speech.push_to_talk_hold": "Нажать и говорить (удерживать)",
+	"ui.settings.shortcuts.speech.push_to_talk_hint": "Нажмите клавишу-модификатор, которую хотите удерживать; Esc отменяет.",
+	"ui.settings.shortcuts.speech.push_to_talk_refused": "{platform, select, darwin {Удерживать можно только левую или правую клавишу Control, Option или Command.} win32 {Удерживать можно только левую или правую клавишу Control или Windows.} other {Удерживать можно только левую или правую клавишу Control или Super.}}",
+	"ui.settings.shortcuts.speech.push_to_talk_overlap": "Каждое сочетание с {modifier}, например {example}, ненадолго запустит запись.{alternative, select, none {} other { Чтобы этого избежать, выберите {alternative}.}}",
+	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": "Для сочетания с буквой используйте «Начать запись» выше.",
+	"ui.settings.shortcuts.speech.start_recording_needs_key": "Для сочетания нужна буква или цифра в дополнение к клавише-модификатору."
 }

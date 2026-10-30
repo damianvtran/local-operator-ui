@@ -1,0 +1,14 @@
+{
+	"ui.notifications.bulk.dismiss_all": "Descartar todo",
+	"ui.notifications.bulk.read_hint": "Las actualizaciones marcadas como leídas permanecen en Todo.",
+	"ui.notifications.bulk.dismiss_hint": "Descartar elimina las actualizaciones de la vista. Deshacer las restaura.",
+	"ui.notifications.bulk.frozen_hint": "Esta selección está fijada. No incluye los elementos nuevos.",
+	"ui.notifications.bulk.confirm_title": "{count, plural, one {¿Descartar # actualización?} other {¿Descartar # actualizaciones?}}",
+	"ui.notifications.bulk.beyond_page": "Esto también afecta a las actualizaciones que no están en la página cargada.",
+	"ui.notifications.bulk.asks_hint": "Las preguntas sin respuesta permanecen. Revísalas por separado: descartar una pregunta no se puede deshacer.",
+	"ui.notifications.bulk.review_asks": "Revisar preguntas sin respuesta",
+	"ui.notifications.bulk.select_error": "No se pudo seleccionar esta vista. Inténtalo de nuevo.",
+	"ui.notifications.bulk.update_required": "Actualiza Local Operator para seleccionar todos los resultados coincidentes.",
+	"ui.notifications.bulk.partial": "{changed} modificados · {skipped} omitidos",
+	"ui.notifications.bulk.exclusion_limit": "Puedes excluir hasta 500 elementos. Borra la selección para elegir elementos individuales."
+}

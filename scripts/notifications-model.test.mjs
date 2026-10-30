@@ -1287,3 +1287,31 @@ test("R8-4: a dismissed row leaves the reel, and R8-3 keeps the facts' waiting w
 	);
 	assert.equal(deep.high_water, 12, "and the boundary is the fresh one");
 });
+
+/*
+ * THE RECEIPT'S LIFETIME FOLLOWS WHAT IT SAYS (design round 1, D2).
+ *
+ * The bug this pins was invisible to the model tests and to every story: both
+ * receipt call sites passed the Undo window to `showInfoToast`, so a receipt
+ * reporting a refusal expired on the timer of an offer it was not making. Held
+ * to the two branches here because the page can only be driven to ONE of them
+ * in a capture - the partial one, which the design round photographed - and the
+ * clean case has to be provable without racing a six-second window by hand.
+ */
+test("a receipt is held when it reports an exception, and keeps the Undo window otherwise", () => {
+	assert.equal(
+		model.receiptDuration(false),
+		model.UNDO_WINDOW_MS,
+		"an all-succeeded receipt is still an Undo offer and keeps its window",
+	);
+	assert.equal(
+		model.receiptDuration(false),
+		6_000,
+		"and that window is the six seconds the Undo itself is valid for",
+	);
+	assert.equal(
+		model.receiptDuration(true),
+		Number.POSITIVE_INFINITY,
+		"a receipt reporting a skip, a refusal or an unresolved count is held",
+	);
+});

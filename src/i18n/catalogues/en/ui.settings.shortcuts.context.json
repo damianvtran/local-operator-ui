@@ -424,5 +424,67 @@
 		"placeholders": {
 			"label": "Localized action name such as Console; insert verbatim."
 		}
+	},
+	"ui.settings.shortcuts.speech.primary": {
+		"role": "Rank label of the first speech-to-text shortcut row",
+		"tone": "Neutral one-word label in sentence case.",
+		"length": "One word; sits in a 128px column above the action name.",
+		"note": "Pairs with 'Secondary': the first and the second way to do the same thing, not a priority or a permission level. The action it ranks is named on the line beneath."
+	},
+	"ui.settings.shortcuts.speech.secondary": {
+		"role": "Rank label of the second speech-to-text shortcut row",
+		"tone": "Neutral one-word label in sentence case.",
+		"length": "One word; sits in a 128px column above the action name.",
+		"note": "Pairs with 'Primary'. Names the alternative way to start the same recording, not a lower-quality or backup feature."
+	},
+	"ui.settings.shortcuts.speech.start_recording_press": {
+		"role": "Action name under the Primary label in Speech to text",
+		"tone": "Imperative action phrase, then the gesture in parentheses.",
+		"length": "Short; sits in a 128px column and may wrap.",
+		"note": "'Start recording' is the same action as the composer's mic button label. '(press)' means a key combination pressed once, as opposed to '(hold)' on the other row. Keep the two parenthetical words contrasting."
+	},
+	"ui.settings.shortcuts.speech.push_to_talk_hold": {
+		"role": "Action name under the Secondary label in Speech to text",
+		"tone": "Imperative action phrase, then the gesture in parentheses.",
+		"length": "Short; sits in a 128px column and may wrap.",
+		"note": "Push to talk is the walkie-talkie idiom: record only while a key is held down. '(hold)' means the key is held and released, as opposed to '(press)' on the other row. Keep the two parenthetical words contrasting."
+	},
+	"ui.settings.shortcuts.speech.push_to_talk_hint": {
+		"role": "Hint under the Push to talk field while it has focus",
+		"tone": "Concise instruction in the register of the sibling capture hint.",
+		"length": "One short line.",
+		"note": "The user presses a single modifier key (Control, Option, Command, Windows or Super) to choose which key is held. Esc cancels the capture. Keep consistent with 'Press the keys you want; Esc cancels.' used for the other row."
+	},
+	"ui.settings.shortcuts.speech.push_to_talk_refused": {
+		"role": "Refusal under the Push to talk field when the key pressed cannot be held",
+		"tone": "Factual and actionable; names the keys that do work.",
+		"length": "One short sentence per platform.",
+		"note": "The three arms name the modifier keys on that platform's keyboard: macOS has Control, Option and Command; Windows has Control and the Windows key; other systems have Control and the Super key. Use each platform's usual key names. Each arm is a complete sentence. Keep the select keywords darwin, win32 and other verbatim.",
+		"placeholders": {
+			"platform": "Platform keyword: darwin, win32 or other; never displayed."
+		}
+	},
+	"ui.settings.shortcuts.speech.push_to_talk_overlap": {
+		"role": "Warning note under the Push to talk field",
+		"tone": "Factual, calm; a cost to weigh, not an error.",
+		"length": "One or two short lines.",
+		"note": "The held key is also the first key of ordinary shortcuts. {modifier} is the key's name without its side (Command, Control, Option); {example} is one affected shortcut written as keys (for example Command+C). {alternative} is the name of a key that avoids the problem, or the word none when no other key is free; keep 'none' as the select branch name, never show it. The microphone starts for an instant until the next key cancels it.",
+		"placeholders": {
+			"modifier": "The held key's name without its side: Command, Control or Option. Keep as given.",
+			"example": "One affected shortcut written as key names joined by plus signs, for example Command+J. Keep as given.",
+			"alternative": "The name of a key that avoids the problem (Option, Control, Command), or the word none; never displayed when none."
+		}
+	},
+	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": {
+		"role": "Second sentence of the hint and of the refusal under the Push to talk field",
+		"tone": "Plain, helpful.",
+		"length": "One short sentence.",
+		"note": "Shown after another sentence; 'Start recording' is the name of the row directly above (the Primary box) and must match its translated action name."
+	},
+	"ui.settings.shortcuts.speech.start_recording_needs_key": {
+		"role": "Refusal under the Start recording field",
+		"tone": "Plain, short.",
+		"length": "One short sentence.",
+		"note": "Shown when the user pressed only a modifier key (Command, Control, Option, Shift) in the field that records a shortcut."
 	}
 }

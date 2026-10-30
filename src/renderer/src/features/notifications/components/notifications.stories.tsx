@@ -38,6 +38,7 @@ import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigat
 import { Badge } from "@shared/components/ui";
 import { LocaleDirectionProvider } from "@shared/i18n/locale-direction";
 import { useDocumentDirection } from "@shared/i18n/use-document-direction";
+import { NotificationRow } from "./notification-row";
 import { NotificationsPage } from "./notifications-page";
 
 const NOW = new Date(2026, 9, 25, 15, 4, 0).getTime();
@@ -241,6 +242,17 @@ type Stub = {
 	failAfterFirst?: boolean;
 	detail?: DesktopNotificationDetail | null;
 	capability?: boolean;
+	bulkCapability?: boolean;
+	/**
+	 * One row the store revises AFTER the frozen preview and BEFORE the bulk write,
+	 * so the write really refuses it (`stale_revision`) while the rest land.
+	 *
+	 * This is the only honest way to reach a partial receipt: the counts come out
+	 * of the shipped fixture's own revision check, not out of a caption somebody
+	 * typed next to a hand-built progress line (design round 1, D2).
+	 */
+	refuseOnBulkDismiss?: string;
+	askReadCapability?: boolean;
 };
 
 let stub: Stub = { items: [], waiting: [] };
@@ -274,7 +286,17 @@ const answer = (request: { op: string; [key: string]: unknown }) => {
 						projects: 1,
 						desktop_feed: 1,
 						library: 1,
-						...(stub.capability === false ? {} : { notifications: 1 }),
+						...(stub.askReadCapability
+							? { notification_bulk_ask_read: 1 }
+							: {}),
+						...(stub.capability === false
+							? {}
+							: {
+									notifications: 1,
+									...(stub.bulkCapability === false
+										? {}
+										: { notification_bulk_selection: 1 }),
+								}),
 					},
 				},
 			},
@@ -326,8 +348,27 @@ const answer = (request: { op: string; [key: string]: unknown }) => {
 			return { status: 200, body: { result: detail } };
 		}
 		case "notifications.read":
-		case "notifications.dismiss":
+		case "notifications.dismiss": {
+			/*
+			 * THE RACE, REPRODUCED. A dismissal of a frozen snapshot compares each
+			 * row's revision and sequence against what the preview saw; a row that moved
+			 * in between is refused and counted in `skipped_count`. Moving it here -
+			 * after the snapshot was taken, before the store applies the write - is the
+			 * window a real user hits when a job updates a row they are dismissing.
+			 */
+			const refused = stub.refuseOnBulkDismiss;
+			const target = request.target as
+				| { selectionToken?: string; operationToken?: string }
+				| undefined;
+			if (
+				refused &&
+				request.verb === "dismiss" &&
+				target?.selectionToken &&
+				!target.operationToken
+			)
+				fixture.revise(refused);
 			return fixture.request(request);
+		}
 		/*
 		 * The detail pane's real answer component posts here. Removing the ask is
 		 * what makes an "answered ask leaves the reel" claim observable.
@@ -476,8 +517,13 @@ export const LoadError: Story = {
 
 /** The mock's populated state on the All filter: waiting group, ×6 repeat, provenance. */
 export const Populated: Story = {
-	/* The local-dismiss receipt must be capturable without racing its 6 s Undo
-	   window; this is the stateful fixture a reviewer drives, not a second toast. */
+	/*
+	 * This parameter holds a container-default toast, and NOTHING on this page takes
+	 * the container default: both receipt paths pass their own lifetime, because an
+	 * Undo offer has to outlive exactly its window (design round 1, D2). A receipt
+	 * that reports a refusal is held by `receiptDuration` itself, which is what
+	 * makes `BulkDismissPartial` below capturable without racing anything.
+	 */
 	parameters: { toastDuration: Number.POSITIVE_INFINITY },
 	render: () =>
 		page(
@@ -486,19 +532,47 @@ export const Populated: Story = {
 		),
 };
 
-/** Grouped by conversation instead of time. */
-export const ByConversation: Story = {
+/**
+ * A BULK DISMISS THE STORE PARTLY REFUSES - the partial receipt, in the page.
+ *
+ * WHY THIS STORY EXISTS (design round 1, D2). A partial result is only worth
+ * signing off when it is the page's OWN receipt: the shipped composer choosing
+ * the words from a real receipt, in the page's own toast lane, at the end of a
+ * real bulk dismiss. `OperationStatusPartial` photographs `OperationProgressLine`
+ * alone under a sentence the story invents, which proves the component renders
+ * and says nothing about what an operator actually gets.
+ *
+ * So nothing here invents a result. The fixture revises one selected row in the
+ * window between the frozen preview and the write - a race a real user hits when
+ * a job updates a row they are dismissing - and the store refuses THAT row with
+ * `stale_revision` while the rest land. Drive it: select all, press Dismiss, and
+ * read the held receipt.
+ */
+export const BulkDismissPartial: Story = {
 	render: () =>
 		page(
-			{ items: POPULATED, waiting: WAITING },
 			{
-				prefs: {
-					"notifications-read-state": "all",
-					"notifications-grouping": "conversation",
-				},
+				items: POPULATED,
+				waiting: WAITING,
+				refuseOnBulkDismiss: "n_prreviewcheckeo",
 			},
+			{ prefs: { "notifications-read-state": "all" } },
 		),
 };
+
+/** Grouped by conversation instead of time. */ export const ByConversation: Story =
+	{
+		render: () =>
+			page(
+				{ items: POPULATED, waiting: WAITING },
+				{
+					prefs: {
+						"notifications-read-state": "all",
+						"notifications-grouping": "conversation",
+					},
+				},
+			),
+	};
 
 /** The detail pane open on the ×6 high item: body table, history, project. */
 export const Detail: Story = {
@@ -981,4 +1055,240 @@ export const BadgeRegisters: Story = {
 			))}
 		</div>
 	),
+};
+
+/**
+ * Geometry stress, not a second row: render the shipped component, then allow
+ * the content to wrap in the last cases. The invariant must survive taller
+ * content rather than depending on today's ellipsis hiding the defect.
+ * The before run records its failed geometry without stopping the screenshot;
+ * the final story fails closed on any >1px first-line drift or <24px target.
+ */
+export const RowAlignment: Story = {
+	render: () => (
+		<div className="bg-canvas p-6" data-alignment-cases="">
+			<style>{`
+				[data-align-wrap] [data-notification-title] { white-space: normal; overflow: visible; }
+				[data-align-wrap] [role=gridcell]:nth-child(3) > div { align-items: flex-start; }
+				[data-align-wrap] [role=gridcell]:nth-child(3) > div:nth-child(2) { flex-wrap: wrap; }
+				[data-align-wrap] [role=gridcell]:nth-child(3) > div:nth-child(2) > span:last-child { white-space: normal; }
+			`}</style>
+			{[
+				{
+					name: "one-line",
+					width: 600,
+					title: "Build finished",
+					excerpt: "",
+					compact: true,
+				},
+				{
+					name: "two-line",
+					width: 600,
+					title: "Build finished",
+					excerpt: "All checks passed",
+					compact: false,
+				},
+				{
+					name: "wrapped-title",
+					width: 420,
+					title:
+						"A longer update title that wraps across three lines in a narrow list",
+					excerpt: "All checks passed",
+					compact: false,
+					wrap: true,
+				},
+				{
+					name: "wrapped-subtitle",
+					width: 420,
+					title: "Build finished",
+					excerpt:
+						"The checks completed successfully and the deployment is ready for the next scheduled release window",
+					compact: false,
+					wrap: true,
+				},
+				{
+					name: "high-badge",
+					width: 600,
+					title: "Review needed",
+					excerpt: "A decision is waiting",
+					compact: false,
+					high: true,
+				},
+				{
+					name: "compact",
+					width: 420,
+					title: "Review needed",
+					excerpt: "An update in this conversation",
+					compact: true,
+					high: true,
+				},
+			].map((example, index) => (
+				<div
+					key={example.name}
+					data-align-case={example.name}
+					data-align-wrap={example.wrap ? "" : undefined}
+					style={{ width: example.width }}
+					className="mb-4 border-b border-hairline"
+				>
+					<NotificationRow
+						item={item({
+							id: `align-${index}`,
+							title: example.title,
+							excerpt: example.excerpt,
+							priority: example.high ? "high" : "normal",
+						})}
+						nowMs={NOW}
+						open={false}
+						picked={false}
+						selecting
+						focused={false}
+						writesPaused={false}
+						hideSource={example.compact}
+						onOpen={() => {}}
+						onToggleSelect={() => {}}
+						onToggleRead={() => {}}
+						onDismiss={() => {}}
+						onAnswer={() => {}}
+						onFocusRow={() => {}}
+					/>
+				</div>
+			))}
+		</div>
+	),
+	play: async ({ canvasElement }) => {
+		await document.fonts.ready;
+		await new Promise<void>((resolve) =>
+			requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+		);
+		const measurements = [
+			...canvasElement.querySelectorAll<HTMLElement>("[data-align-case]"),
+		].map((row) => {
+			const title = row.querySelector<HTMLElement>("[data-notification-title]");
+			const checkbox = row.querySelector<HTMLElement>('[role="checkbox"]');
+			if (!title || !checkbox)
+				throw new Error("Alignment fixture missing real row controls");
+			const box = checkbox.getBoundingClientRect();
+			const text = title.getBoundingClientRect();
+			const firstLine =
+				text.top + Number.parseFloat(getComputedStyle(title).lineHeight) / 2;
+			return {
+				name: row.dataset.alignCase,
+				checkboxCenter: box.top + box.height / 2,
+				firstLineCenter: firstLine,
+				delta: Math.abs(box.top + box.height / 2 - firstLine),
+				width: box.width,
+				height: box.height,
+			};
+		});
+		canvasElement.dataset.alignmentMeasurements = JSON.stringify(measurements);
+		if (
+			measurements.some(
+				(row) => row.delta > 1 || row.width < 24 || row.height < 24,
+			)
+		)
+			throw new Error(
+				`First-line alignment/target failed: ${JSON.stringify(measurements)}`,
+			);
+	},
+};
+
+/** A bounded shutter latch: async selection must settle before a frame is valid. */
+const bulkStory = async (run: () => Promise<void>) => {
+	document.documentElement.dataset.capturePending = "notifications-bulk";
+	delete document.documentElement.dataset.captureFailed;
+	try {
+		await run();
+		await document.fonts.ready;
+		await new Promise<void>((resolve) =>
+			requestAnimationFrame(() => resolve()),
+		);
+	} catch (error) {
+		document.documentElement.dataset.captureFailed = String(error);
+		throw error;
+	} finally {
+		delete document.documentElement.dataset.capturePending;
+	}
+};
+const waitBulkElement = async (selector: string): Promise<HTMLElement> => {
+	const until = Date.now() + 5_000;
+	while (Date.now() < until) {
+		const node = document.querySelector<HTMLElement>(selector);
+		if (node) return node;
+		await new Promise((resolve) => setTimeout(resolve, 20));
+	}
+	throw new Error(`Bulk story did not reach ${selector}`);
+};
+
+export const BulkAllSelected: Story = {
+	render: () =>
+		page(
+			{ items: POPULATED, waiting: [] },
+			{ prefs: { "notifications-read-state": "all" } },
+		),
+	play: async () =>
+		bulkStory(async () => {
+			await waitBulkElement("[data-notification-row]");
+			(await waitBulkElement("[data-notifications-select-all]")).click();
+			await waitBulkElement(
+				'[data-notifications-select-all][data-state="checked"]',
+			);
+		}),
+};
+
+export const BulkMixedAsks: Story = {
+	render: () =>
+		page(
+			{ items: POPULATED, waiting: WAITING, askReadCapability: true },
+			{ prefs: { "notifications-read-state": "all" } },
+		),
+	play: async () =>
+		bulkStory(async () => {
+			await waitBulkElement("[data-notification-row]");
+			(await waitBulkElement("[data-notifications-select-all]")).click();
+			await waitBulkElement("[data-notifications-asks-stay]");
+		}),
+};
+
+export const BulkBeyondLoaded: Story = {
+	render: () =>
+		page(
+			{ items: HIGH_VOLUME, waiting: [] },
+			{ prefs: { "notifications-read-state": "all" } },
+		),
+	play: async () =>
+		bulkStory(async () => {
+			await waitBulkElement("[data-notification-row]");
+			(await waitBulkElement("[data-notifications-dismiss-all]")).click();
+			await waitBulkElement("[data-notifications-confirm-view]");
+		}),
+};
+
+export const BulkUndoToast: Story = {
+	render: () =>
+		page(
+			{ items: POPULATED, waiting: [] },
+			{ prefs: { "notifications-read-state": "all" } },
+		),
+	play: async () =>
+		bulkStory(async () => {
+			await waitBulkElement("[data-notification-row]");
+			(await waitBulkElement("[data-notifications-dismiss-all]")).click();
+			await waitBulkElement(".Toastify__toast");
+			const until = Date.now() + 5_000;
+			while (
+				document.querySelector("[data-notification-row]") &&
+				Date.now() < until
+			)
+				await new Promise((resolve) => setTimeout(resolve, 20));
+			if (document.querySelector("[data-notification-row]"))
+				throw new Error("Dismiss did not remove the rows");
+		}),
+};
+
+export const BulkOlderCore: Story = {
+	render: () =>
+		page(
+			{ items: POPULATED, waiting: WAITING, bulkCapability: false },
+			{ prefs: { "notifications-read-state": "all" } },
+		),
 };

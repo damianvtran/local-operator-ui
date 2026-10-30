@@ -91,6 +91,7 @@ const {
 	SupplementFrameMounts,
 	supplementMountUrl,
 	guardForegroundReceipts,
+	desktopEndpoint,
 	rememberPickedDirectory,
 	withRememberedDirectory,
 	requestDesktopMediaOutcome,
@@ -3874,6 +3875,105 @@ test("team_bridge threads: replies maps to the replies route and send carries th
 			mentions: [{ kind: "channel", account_id: "acct_ben" }],
 		}),
 	);
+});
+
+test("a bulk Undo is admitted from a background window while real receipts stay gated", async () => {
+	// THE INVERSE MUST NOT BE STRICTER THAN THE ACTION (QA round 1, Q-1). This
+	// test asserted the opposite until the round that found the defect, and that
+	// assertion is part of why it survived review: the Undo on a bulk dismissal
+	// rides `notifications.read` (a gated op) while the dismissal it inverts rides
+	// `notifications.dismiss` (deliberately ungated). So the gesture could be
+	// performed from a background window and then not taken back - measured as a
+	// real press on the receipt's own Undo leaving every row dismissed and
+	// sending no request at all.
+	//
+	// The undo carries no seen-claim: it names no row as seen, carries no content,
+	// and can only revert the journal its own token identifies. That claim is made
+	// by the read WHICH SET the state, still asserted gated below on this same
+	// sender and these same background states.
+	const request = desktopRequestSchema.parse({
+		op: "notifications.read",
+		verb: "undo",
+		target: { operationToken: "fixture-journal" },
+	});
+	const calls = [];
+	const state = { visible: false, minimized: false, focused: false };
+	const guarded = guardForegroundReceipts(
+		() => ({
+			isDestroyed: () => false,
+			isVisible: () => state.visible,
+			isMinimized: () => state.minimized,
+			isFocused: () => state.focused,
+		}),
+		async (input) => {
+			calls.push(input);
+			return { status: 200, body: { result: {} } };
+		},
+	);
+	for (const background of [
+		{ visible: false, minimized: false, focused: true },
+		{ visible: true, minimized: true, focused: true },
+		{ visible: true, minimized: false, focused: false },
+	]) {
+		Object.assign(state, background);
+		await guarded(request);
+	}
+	assert.equal(
+		calls.length,
+		3,
+		"the Undo must reach transport from every background window state",
+	);
+	/*
+	 * The gate itself is intact, on this same augmented sender and these same
+	 * background states: the read that SETS read state is the seen-claim.
+	 */
+	const read = desktopRequestSchema.parse({
+		op: "notifications.read",
+		verb: "read",
+		target: { items: [{ id: "n_aaaaaaaaaaaaaaaa", revision: 1 }] },
+	});
+	for (const background of [
+		{ visible: false, minimized: false, focused: true },
+		{ visible: true, minimized: true, focused: true },
+		{ visible: true, minimized: false, focused: false },
+	]) {
+		Object.assign(state, background);
+		await assert.rejects(
+			() => guarded(read),
+			(error) => error.message.includes("foreground"),
+		);
+	}
+	await assert.rejects(
+		() =>
+			guarded({
+				op: "sessions.seen",
+				sessionId: "123456abcdef",
+				completionToken: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+			}),
+		/foreground/,
+	);
+	assert.equal(
+		calls.length,
+		3,
+		"nothing but the Undo reached transport from a background window",
+	);
+	assert.equal(
+		desktopRequestSchema.safeParse({ ...request, op: "notifications.dismiss" })
+			.success,
+		false,
+		"the unguarded IPC operation cannot carry a journal Undo",
+	);
+	Object.assign(state, { visible: true, minimized: false, focused: true });
+	await guarded(read);
+	assert.equal(
+		calls.length,
+		4,
+		"mock native state positive; NOT real native foreground evidence",
+	);
+	assert.deepEqual(desktopEndpoint(request).body, {
+		op: "undo",
+		operation_token: "fixture-journal",
+	});
 });
 
 test("a failing contract assertion renders a bounded diagnostic, never the data: bundle", async () => {

@@ -235,7 +235,7 @@ test("a transport blip keeps the binding that was already resolved", async () =>
 	);
 });
 
-test("concurrent refreshes share one transport call", async () => {
+test("concurrent refreshes share one flight and one follow-up read", async () => {
 	setPlatform(WIN32);
 	nextSettings = rowFor("meta-left-hold");
 	const before = transportCalls;
@@ -244,9 +244,36 @@ test("concurrent refreshes share one transport call", async () => {
 		refreshPushToTalkBinding(),
 		refreshPushToTalkBinding(),
 	]);
-	assert.equal(transportCalls - before, 1);
+	// Not three reads: the two later asks share ONE more read, because the
+	// flight they joined may have left before the change they were made for.
+	assert.equal(transportCalls - before, 2);
 	assert.deepEqual(resolvePushToTalkBinding(), {
 		code: "MetaLeft",
 		label: "Left-Win",
+	});
+});
+
+test("an ask made mid-flight picks up a change the flight missed (Quick send summon)", async () => {
+	setPlatform(DARWIN);
+	// The first read leaves with the OLD value and the row changes while it is out.
+	nextSettings = rowFor("alt-right-hold");
+	const stale = globalThis.__transport;
+	let release;
+	globalThis.__transport = async () => {
+		const answer = nextSettings;
+		await new Promise((resolve) => {
+			release = resolve;
+		});
+		globalThis.__transport = stale;
+		return answer;
+	};
+	const first = refreshPushToTalkBinding();
+	nextSettings = rowFor("ctrl-right-hold");
+	const second = refreshPushToTalkBinding();
+	release();
+	await Promise.all([first, second]);
+	assert.deepEqual(resolvePushToTalkBinding(), {
+		code: "ControlRight",
+		label: "Right-Control",
 	});
 });

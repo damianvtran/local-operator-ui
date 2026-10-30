@@ -1,8 +1,14 @@
 import type {
+	DesktopNotificationItem,
 	DesktopNotificationToken,
 	DesktopNotificationsList,
 	DesktopNotificationsWriteResult,
 } from "../../../../shared/desktop-control-contract";
+import {
+	type NotificationFilters,
+	filterItems,
+	isLiveAsk,
+} from "./notifications-model";
 
 export type NotificationVerb = "read" | "unread" | "dismiss" | "undismiss";
 export type NotificationScope = { all: true } | { sessionId: string };
@@ -183,4 +189,127 @@ export async function applyNotificationOperation(
 		if (receipt.error) break;
 	}
 	return receipt;
+}
+
+/** Server-owned frozen result; its size is independent of the loaded page. */
+
+export type NotificationSelectionSubtotals = {
+	eligible_count: number;
+	eligible_unread_count: number;
+	eligible_update_count?: number;
+	eligible_unread_update_count?: number;
+	eligible_ask_count?: number;
+	eligible_unread_ask_count?: number;
+};
+export type NotificationSelectionPreview = NotificationSelectionSubtotals & {
+	token: string;
+	through_seq: number;
+	expires_at: number;
+	selection_version?: 1 | 2;
+	session_counts: Record<string, NotificationSelectionSubtotals>;
+	skipped_ask_count: number;
+	operation_counts?: Record<
+		NotificationVerb,
+		{ eligible_count: number; skipped_ask_count: number }
+	>;
+};
+export type FrozenNotificationSelection = {
+	preview: NotificationSelectionPreview;
+	/** Both the advertised capability and v2 receipt are needed for ask reads. */
+	includeAskReads?: boolean;
+	filters: NotificationFilters;
+	state: "unread" | "all";
+	/** Keep observed row facts so count subtraction does not change on refresh. */
+	excluded: ReadonlyMap<string, DesktopNotificationItem>;
+	asks: readonly DesktopNotificationItem[];
+};
+
+/** A new arrival or revised row never silently joins an earlier gesture. */
+export function selectedBySnapshot(
+	item: DesktopNotificationItem,
+	selection: FrozenNotificationSelection,
+): boolean {
+	if (selection.excluded.has(item.id)) return false;
+	if (isLiveAsk(item)) return selection.asks.some((ask) => ask.id === item.id);
+	return (
+		item.seq <= selection.preview.through_seq &&
+		(selection.state === "all" || !item.read) &&
+		filterItems([item], selection.filters).length === 1
+	);
+}
+
+export const frozenReadsAsks = (
+	selection: FrozenNotificationSelection,
+): boolean =>
+	selection.includeAskReads === true &&
+	selection.preview.selection_version === 2;
+
+export function frozenSelectionCounts(selection: FrozenNotificationSelection) {
+	const excluded = [...selection.excluded.values()];
+	const excludedAsks = excluded.filter(isLiveAsk);
+	const updates = excluded.filter((item) => !isLiveAsk(item));
+	const preview = selection.preview;
+	const asks = Math.max(
+		0,
+		(preview.eligible_ask_count ?? preview.skipped_ask_count) -
+			excludedAsks.length,
+	);
+	const eligible = Math.max(
+		0,
+		(preview.eligible_update_count ?? preview.eligible_count) - updates.length,
+	);
+	const updateUnread = Math.max(
+		0,
+		(preview.eligible_unread_update_count ?? preview.eligible_unread_count) -
+			updates.filter((item) => !item.read).length,
+	);
+	const askUnread = Math.max(
+		0,
+		(preview.eligible_unread_ask_count ?? 0) -
+			excludedAsks.filter((item) => !item.read).length,
+	);
+	return {
+		count: eligible + asks,
+		asks,
+		eligible,
+		updateUnread,
+		askUnread,
+		readable: eligible + (frozenReadsAsks(selection) ? asks : 0),
+		unread: updateUnread + (frozenReadsAsks(selection) ? askUnread : 0),
+	};
+}
+
+/** TOTAL projected deltas: the shared ledger subtracts its known-row contribution. */
+export function notificationSelectionScope(
+	selection: FrozenNotificationSelection,
+	verb: "read" | "unread" | "dismiss",
+) {
+	const counts = frozenSelectionCounts(selection);
+	const delta = (total: number, unread: number) =>
+		verb === "unread" ? total - unread : -unread;
+	const sessionUnreadDeltas: Record<string, number> = {};
+	for (const [id, totals] of Object.entries(selection.preview.session_counts)) {
+		const excluded = [...selection.excluded.values()].filter(
+			(item) => item.source === "notify" && item.session.id === id,
+		);
+		const total = Math.max(
+			0,
+			(totals.eligible_update_count ?? totals.eligible_count) - excluded.length,
+		);
+		const unread = Math.max(
+			0,
+			(totals.eligible_unread_update_count ?? totals.eligible_unread_count) -
+				excluded.filter((item) => !item.read).length,
+		);
+		sessionUnreadDeltas[id] = delta(total, unread);
+	}
+	return {
+		throughSeq: selection.preview.through_seq,
+		unreadDelta: delta(counts.eligible, counts.updateUnread),
+		waitingUnreadDelta:
+			frozenReadsAsks(selection) && verb !== "dismiss"
+				? delta(counts.asks, counts.askUnread)
+				: 0,
+		sessionUnreadDeltas,
+	};
 }
