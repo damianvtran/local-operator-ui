@@ -13,6 +13,7 @@
  * duplicating an editor here. Everything else renders in the host.
  */
 
+import { agentDescriptionText } from "@features/agents/utils/agent-description";
 import { autoTagSupported, forkAutoTag } from "@features/chat/chat-auto-tag";
 import { parseSidebarView } from "@features/chat/chat-sidebar-view";
 import { useConnectProviderStore } from "@features/providers/connect-provider-store";
@@ -2681,7 +2682,13 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 	canonical,
 	action,
 }) => {
-	useI18nLocale();
+	/*
+	 * Bound to the frame rather than called for its effect: the roster below keys
+	 * shipped seed copy at memo time, so the locale belongs in that memo's deps -
+	 * `void locale` inside is the dependency the earlier arms of this file already
+	 * take for the same reason.
+	 */
+	const locale = useI18nLocale();
 	const [selected, setSelected] = useState<string | null>(null);
 	/*
 	 * THE DRAFT BRANCH (issue #780): mounted with no session — the dispatcher's
@@ -2713,6 +2720,7 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 	const chartMode = (action.data as { mode?: string }).mode === "chart";
 
 	const listRows = useMemo<ProfileRow[]>(() => {
+		void locale;
 		if (!draftMode) return list.data?.entities ?? [];
 		return which === "team"
 			? (draftTeams.data ?? []).map((team) => ({
@@ -2724,10 +2732,25 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 			: (draftProfiles.data ?? []).map((profile) => ({
 					value: profile.name,
 					name: profile.name,
-					description: profile.description,
+					/*
+					 * THE SHIPPED SENTENCE, NOT THE FIELD (agent review round 1, R1-2).
+					 * These rows ARE the profiles registry's, so they carry the provenance
+					 * the resolution needs - and an installed seed serves its routing text
+					 * in this field, which stays English unless it resolves to a key. The
+					 * non-draft arm above comes from the session's entity route and carries
+					 * no `source`, so it cannot take this path and stays raw.
+					 */
+					description: agentDescriptionText(profile),
 					kind: profile.kind,
 				}));
-	}, [draftMode, which, list.data, draftTeams.data, draftProfiles.data]);
+	}, [
+		draftMode,
+		which,
+		list.data,
+		draftTeams.data,
+		draftProfiles.data,
+		locale,
+	]);
 	const listLoading = draftMode
 		? which === "team"
 			? draftTeams.isLoading

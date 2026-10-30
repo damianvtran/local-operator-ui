@@ -34,6 +34,7 @@ import enUiAgentsNavigation from "./catalogues/en/ui.agents.navigation.json";
 import enUiAgentsPages from "./catalogues/en/ui.agents.pages.json";
 import enUiAgentsPublication from "./catalogues/en/ui.agents.publication.json";
 import enUiAgentsRefusals from "./catalogues/en/ui.agents.refusals.json";
+import enUiAgentsRouting from "./catalogues/en/ui.agents.routing.json";
 import enUiAgentsSettings from "./catalogues/en/ui.agents.settings.json";
 import enUiAgentsSkills from "./catalogues/en/ui.agents.skills.json";
 import enUiAgentsStarters from "./catalogues/en/ui.agents.starters.json";
@@ -909,6 +910,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentsPages,
 	...enUiAgentsPublication,
 	...enUiAgentsRefusals,
+	...enUiAgentsRouting,
 	...enUiAgentsSettings,
 	...enUiAgentsSkills,
 	...enUiAgentsStarters,
@@ -2284,6 +2286,18 @@ export type MessageParams = {
 	"ui.agents.refusals.name_taken": { name: string };
 	"ui.agents.refusals.team_name_bound": undefined;
 	"ui.agents.refusals.team_nesting": undefined;
+	"ui.agents.routing.aida": undefined;
+	"ui.agents.routing.architect": undefined;
+	"ui.agents.routing.coder": undefined;
+	"ui.agents.routing.copy_reviewer": undefined;
+	"ui.agents.routing.designer": undefined;
+	"ui.agents.routing.librarian": undefined;
+	"ui.agents.routing.manager": undefined;
+	"ui.agents.routing.qa_tester": undefined;
+	"ui.agents.routing.reviewer": undefined;
+	"ui.agents.routing.scout": undefined;
+	"ui.agents.routing.tui_designer": undefined;
+	"ui.agents.routing.ux_reviewer": undefined;
 	"ui.agents.settings.agent.no_agent_selected": undefined;
 	"ui.agents.settings.agent.select_an_agent_from_the_list_on": undefined;
 	"ui.agents.settings.chat.about_advanced_chat_settings": undefined;
