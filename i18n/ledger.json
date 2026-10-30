@@ -9941,8 +9941,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "da2c87f6caf8f238997861d850f575a3b3d8328c5d46abfffae4728ed41fb892",
-			"target_sha256": "9b94970728f60305cd96e2c75f8f8af7726e02cb560629411de4fdb101845bc7",
+			"source_sha256": "67ea94ac8ebbfb34b5ea71fc1c9c6f633994f2e2e0bf06da66137f85a596646a",
+			"target_sha256": "1ad7bc7cd9919d3d3dd43798e780dbb0a5d2e39b00b07f57243f492a0047bba8",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -9950,21 +9950,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-29",
-					"result": "clean",
-					"instance": "38297592f595-ov2-fr",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "7dd2de132a18-fr-bridge",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 2,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/38297592f595-ov2-fr.json",
-					"receipt_sha256": "80f230ef0d64a8580dc07b2c0c9fd6123758c6efa81a4ebdebf38e8a193640b0",
-					"scope": "ui.chat.canonical: the 23 keys added in fbf78b5f67, delta audit at 58de30166d",
-					"note": "PR #1481 remediation: find overlay + image-gen control copy."
+					"receipt": "i18n/receipts/7dd2de132a18-fr-bridge.json",
+					"receipt_sha256": "94c413ebde505608d090c480e8b530e4a8ed07af4fb6096742c6a471df8731b1",
+					"scope": "ui.chat.canonical fr re-audit at new source: 88 Team Bridge keys read in full, 80 unchanged keys proved byte-identical and spot-checked",
+					"note": "PR #1529 Team Bridge row: FR-U1/U2 minor, FR-U3 nit fixed by the auditor; cross-checked with core fr wire.tool_rows.bridge."
 				}
 			],
 			"status": "audited",
@@ -10098,6 +10098,30 @@
 							"receipt_sha256": "6649136f08be868848f662a94ab8607c3756dbcac7239ac9e6bf8df7cbcd5e16",
 							"scope": "ui.chat.canonical: the 89 keys added in 930c8ec2d1, delta audit at the final head",
 							"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "da2c87f6caf8f238997861d850f575a3b3d8328c5d46abfffae4728ed41fb892",
+					"target_sha256": "9b94970728f60305cd96e2c75f8f8af7726e02cb560629411de4fdb101845bc7",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "38297592f595-ov2-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/38297592f595-ov2-fr.json",
+							"receipt_sha256": "80f230ef0d64a8580dc07b2c0c9fd6123758c6efa81a4ebdebf38e8a193640b0",
+							"scope": "ui.chat.canonical: the 23 keys added in fbf78b5f67, delta audit at 58de30166d",
+							"note": "PR #1481 remediation: find overlay + image-gen control copy."
 						}
 					],
 					"status": "audited"
