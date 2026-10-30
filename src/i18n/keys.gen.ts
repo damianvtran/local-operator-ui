@@ -9323,6 +9323,7 @@ export type MessageParams = {
 	"ui.teamBridge.attachments.unsupported": undefined;
 	"ui.teamBridge.attachments.uploading": undefined;
 	"ui.teamBridge.builtin.agents_topic": undefined;
+	"ui.teamBridge.builtin.general_topic": undefined;
 	"ui.teamBridge.builtin.humans_topic": undefined;
 	"ui.teamBridge.chief.fallback": undefined;
 	"ui.teamBridge.chief.label": { agent: string; person: string };

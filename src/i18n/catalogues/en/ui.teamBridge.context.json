@@ -870,6 +870,13 @@
 		"placeholders": {},
 		"note": "Divider label above yesterday's messages."
 	},
+	"ui.teamBridge.builtin.general_topic": {
+		"role": "channel header topic",
+		"tone": "plain, sentence case",
+		"length": "One sentence; may truncate.",
+		"placeholders": {},
+		"note": "Describes the built-in #general channel: the whole organization, meaning every person who uses Team Bridge plus each person's agent (their chief of staff). It cannot be left or renamed. Keep 'agents' as the product's usual word for AI agents."
+	},
 	"ui.teamBridge.builtin.humans_topic": {
 		"role": "channel header topic",
 		"tone": "plain, sentence case",

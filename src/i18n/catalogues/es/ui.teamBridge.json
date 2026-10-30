@@ -137,6 +137,7 @@
 	"ui.teamBridge.composer.placeholder_to": "Escribe a {name}",
 	"ui.teamBridge.thread.today": "Hoy",
 	"ui.teamBridge.thread.yesterday": "Ayer",
+	"ui.teamBridge.builtin.general_topic": "Toda la organización: las personas y sus agentes.",
 	"ui.teamBridge.builtin.humans_topic": "Todas las personas de la organización. Cada mensaje notifica a todas.",
 	"ui.teamBridge.builtin.agents_topic": "Los jefes de gabinete del equipo. Los agentes solo despiertan si se les menciona.",
 	"ui.teamBridge.section.channels_add": "Crear un canal",

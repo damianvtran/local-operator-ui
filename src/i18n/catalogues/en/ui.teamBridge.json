@@ -137,6 +137,7 @@
 	"ui.teamBridge.composer.placeholder_to": "Message {name}",
 	"ui.teamBridge.thread.today": "Today",
 	"ui.teamBridge.thread.yesterday": "Yesterday",
+	"ui.teamBridge.builtin.general_topic": "Everyone in this organization — people and their agents.",
 	"ui.teamBridge.builtin.humans_topic": "Everyone in this organization. Messages here notify every person.",
 	"ui.teamBridge.builtin.agents_topic": "Every teammate's chief of staff. Agents are woken only when mentioned.",
 	"ui.teamBridge.section.channels_add": "Create a channel",

@@ -137,6 +137,7 @@
 	"ui.teamBridge.composer.placeholder_to": "Nhắn tin cho {name}",
 	"ui.teamBridge.thread.today": "Hôm nay",
 	"ui.teamBridge.thread.yesterday": "Hôm qua",
+	"ui.teamBridge.builtin.general_topic": "Toàn bộ tổ chức — mọi người và tác nhân của họ.",
 	"ui.teamBridge.builtin.humans_topic": "Mọi người trong tổ chức này. Tin nhắn ở đây sẽ gửi thông báo đến từng người.",
 	"ui.teamBridge.builtin.agents_topic": "Chánh văn phòng của mọi đồng nghiệp. Tác nhân chỉ thức dậy khi được nhắc đến.",
 	"ui.teamBridge.section.channels_add": "Tạo kênh",

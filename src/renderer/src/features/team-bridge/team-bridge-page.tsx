@@ -102,6 +102,7 @@ import {
 	type TeamBridgeTarget,
 	archivedChannelRows,
 	asTeamBridgeTenantId,
+	builtinTopicKey,
 	canArchiveConversation,
 	canManageArchivedConversation,
 	chiefsOfStaff,
@@ -110,6 +111,7 @@ import {
 	conversationMembershipCounts,
 	conversationOrganizationName,
 	conversationTitle,
+	defaultLandingConversation,
 	directoryFailureKind,
 	dmWithAgent,
 	dmWithPerson,
@@ -231,7 +233,7 @@ const STAGED_FAILURE_COPY = {
  * the work and close on the first outside click.
  *
  * THE RAIL IS SLACK'S (operator review, 2026-10-21): Channels (the built-in
- * #humans and #agents first), Groups, People and Chiefs of staff, each with a
+ * #general, #humans and #agents first), Groups, People and Chiefs of staff, each with a
  * header that stays when the section is empty. A person's row IS their DM, so
  * there is never a second "@ Ben" row; see `team-bridge-rail.tsx`.
  *
@@ -1122,6 +1124,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	// `selected` already resolves a one-recipient draft to its existing DM
 	// (`targetConversation`), so the view and the container agree on it.
 	const shown = selected;
+	const shownTopicKey = builtinTopicKey(shown?.builtin);
 	const membershipCounts = shown
 		? conversationMembershipCounts(shown)
 		: { active: 0, invited: 0 };
@@ -2381,11 +2384,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								}}
 							/>
 						)}
-						{shown?.builtin && (
+						{shownTopicKey && (
 							<p className="px-5 pb-1 text-[12px] text-ink-dim">
-								{shown.builtin === "agents"
-									? t("ui.teamBridge.builtin.agents_topic")
-									: t("ui.teamBridge.builtin.humans_topic")}
+								{t(shownTopicKey)}
 							</p>
 						)}
 
@@ -3358,10 +3359,8 @@ const TeamBridgeOwnedPage: FC<{
 			target === null &&
 			visibleConversations.length > 0
 		) {
-			const first =
-				visibleConversations.find((row) => row.builtin === "humans") ??
-				visibleConversations[0];
-			setTarget({ type: "conversation", id: first.id });
+			const first = defaultLandingConversation(visibleConversations);
+			if (first) setTarget({ type: "conversation", id: first.id });
 		}
 	}, [visibleConversations, target, ownerAudit?.active]);
 
@@ -3837,7 +3836,8 @@ const TeamBridgeOwnedPage: FC<{
 					setThreadLink(null);
 					setChannelFormOpen(false);
 					/* `null` is a landing with nothing left to land on: the default-landing
-					   effect above then picks #humans (or the first row) once, as at load. */
+					   effect above then picks #general (or #humans, or the first row) once,
+					   as at load. */
 					setTarget(next);
 				}}
 				onSend={sendBody}

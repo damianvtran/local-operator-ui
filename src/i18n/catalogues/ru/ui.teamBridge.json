@@ -137,6 +137,7 @@
 	"ui.teamBridge.composer.placeholder_to": "Написать: {name}",
 	"ui.teamBridge.thread.today": "Сегодня",
 	"ui.teamBridge.thread.yesterday": "Вчера",
+	"ui.teamBridge.builtin.general_topic": "Вся организация — люди и их агенты.",
 	"ui.teamBridge.builtin.humans_topic": "Все люди этой организации. Уведомления о сообщениях здесь получает каждый.",
 	"ui.teamBridge.builtin.agents_topic": "Координаторы всех участников команды. Агенты просыпаются, только когда их упоминают.",
 	"ui.teamBridge.section.channels_add": "Создать канал",

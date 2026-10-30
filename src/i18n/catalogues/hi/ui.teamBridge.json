@@ -137,6 +137,7 @@
 	"ui.teamBridge.composer.placeholder_to": "{name} को संदेश लिखें",
 	"ui.teamBridge.thread.today": "आज",
 	"ui.teamBridge.thread.yesterday": "कल",
+	"ui.teamBridge.builtin.general_topic": "पूरा संगठन — सभी लोग और उनके एजेंट।",
 	"ui.teamBridge.builtin.humans_topic": "इस संगठन के सभी लोग। यहाँ के संदेशों की सूचना हर व्यक्ति को जाती है।",
 	"ui.teamBridge.builtin.agents_topic": "हर टीम सदस्य का चीफ़ ऑफ़ स्टाफ़। एजेंट सिर्फ़ उल्लेख होने पर जगाए जाते हैं।",
 	"ui.teamBridge.section.channels_add": "चैनल बनाएँ",
