@@ -1,0 +1,81 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "locale": "vi",
+  "namespace": "ui.notifications.bulk_updates",
+  "pr": 1475,
+  "date": "2026-10-28",
+  "head": "2876a8d98e8d52e55d163e6c94651f598f021a1e",
+  "instance": "bulk1475-vi-updates-20d3c244992f",
+  "auditor": {
+    "agent": "independent-translation-auditor",
+    "role": "coder on team lopdev; independent of translator",
+    "model": "kimi/k3.1-pro",
+    "model_note": "Session began on anthropic/claude-opus-5-5; provider quota fallback served anthropic/claude-sonnet-5-5, openai/gpt-6-astra, then kimi/k3.1-pro. Final semantic audit and receipts use kimi/k3.1-pro.",
+    "instance": "bulk1475-vi-updates-20d3c244992f"
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "id": "VI-U1",
+      "severity": "MINOR",
+      "key": "ui.notifications.bulk_updates.new_items",
+      "issue": "«Các mục mới đến sau khi bạn chọn» is a literal calque; «Các mục mới xuất hiện sau khi bạn chọn» is idiomatic and retains the frozen scope.",
+      "disposition": "batch native phrasing remediation"
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "translator_provenance": {
+    "agent": "prior coder on team lopdev",
+    "model": "anthropic/claude-opus-5-5",
+    "source": "Delegation brief only; no pre-existing scoped receipt or ledger row independently establishes the model.",
+    "commits": [
+      "16d48a25c608aa22a1b965c879c067df7bb1b206",
+      "b565c9c93a (short SHA observed in git log)",
+      "35edec5d428ef1c4a5055534e782d6492db65bcd"
+    ]
+  },
+  "scope": "All 3 vi/ui.notifications.bulk_updates messages read against English, context, core glossary, vi style guide and established notification action labels. No catalogue bytes edited.",
+  "sha256": {
+    "en": "05512726d0cbadc8fb6f7500a70e7a97de35ba0d06b797dda50528515f90edb1",
+    "vi": "55daa3b8d7d5167d5f68f17704142a5ee589639312b0ccf2c00b80f9bb514270",
+    "en_context": "517c39a3392f8ad6b716c6373e9d540d3333828f9498e7a94dbfd1a26d8335dd"
+  },
+  "paths": {
+    "en": "src/i18n/catalogues/en/ui.notifications.bulk_updates.json",
+    "target": "src/i18n/catalogues/vi/ui.notifications.bulk_updates.json",
+    "context": "src/i18n/catalogues/en/ui.notifications.bulk_updates.context.json"
+  },
+  "guidance": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "revision": "e433b2c54afb412de69eaeae10e1be9f2b21cba5",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "revision": "6c085b93b6ecc1a27a0daab552302687b059a911",
+      "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+    }
+  },
+  "evidence": {
+    "semantic_review": "native terminology, tone, technical terms, All/Undo/dismiss consistency and frozen-selection context reviewed per key",
+    "mechanical": {
+      "messages": 105,
+      "namespaces": 12,
+      "result": "PASS: exact key sets, ICU argument parity, valid target CLDR categories including other, IntlMessageFormat renders for 0/1/2/4/5/21/1000000/1500000, NFC, no manual bidi controls; ICU-only pseudo expansion preserved syntax/placeholders",
+      "artifact": "scratchpad bulk-i18n-mechanical.json (execution evidence, not a portable receipt dependency)"
+    },
+    "repository_tests": {
+      "command": "node --test scripts/i18n/locale-parity.test.mjs scripts/i18n/format.test.mjs scripts/i18n/catalogue-locale.test.mjs scripts/i18n/ur-activation.test.mjs",
+      "result": "62 passed, 0 failed"
+    },
+    "limitations": "Catalogue audit only; no rendered-fit or visual RTL frame claimed. Pseudo localization was an ICU-preserving expansion analysis, not a browser layout test."
+  }
+}

@@ -44,9 +44,18 @@ export enum SpeechToTextPriority {
  * `before-input-event` chord cannot be driven headlessly - which is why the
  * binding lives here, in the renderer's own keydown/keyup pair.
  */
+/**
+ * The channels main sends on INSTEAD of delivering a palette chord's key
+ * (`PALETTE_DOOR_CHANNELS` in `src/main/palette-door.ts`; the renderer cannot
+ * import main, and `palette-main-door` pins the spelling on both sides).
+ */
+const PALETTE_DOOR_CHANNELS = [
+	"toggle-command-palette",
+	"toggle-command-palette-commands",
+] as const;
 const MAC_PLATFORM = /Mac|iPhone|iPad/;
-type PlatformFamily = "darwin" | "win32" | "other";
-type PushToTalkBinding = { code: string; label: string };
+export type PlatformFamily = "darwin" | "win32" | "other";
+export type PushToTalkBinding = { code: string; label: string };
 
 /**
  * The registry's modifier names, per platform - the same table its own
@@ -59,7 +68,7 @@ const MODIFIER_LABELS: Record<PlatformFamily, Record<string, string>> = {
 };
 
 /** Read per call, never cached: the tests drive every family from one process. */
-const platformFamily = (): PlatformFamily => {
+export const platformFamily = (): PlatformFamily => {
 	const platform =
 		typeof navigator === "undefined" ? "" : (navigator.platform ?? "");
 	if (MAC_PLATFORM.test(platform)) return "darwin";
@@ -108,16 +117,72 @@ export const pushToTalkBindingForToken = (
 	};
 };
 
+/**
+ * The stored token a bare-modifier press names, or `null` when no token can
+ * name that key on this platform. The inverse of `codeForToken`, kept beside it
+ * so the Settings capture box and the hold matcher cannot learn the aliasing
+ * separately.
+ *
+ * `Control*` is `ctrl` everywhere. `Alt*` is `alt` on macOS only: off macOS no
+ * token resolves to an Alt code, because `alt` there IS the Meta key. `Meta*`
+ * is `meta` on macOS (Command) and `alt` elsewhere. Off macOS `alt-*` and
+ * `meta-*` name one physical key, and the registry's own labels call the
+ * `alt-*` spelling "Command" (the default `alt-right-hold` reads
+ * "Right-Command" there), so saving the same spelling keeps the Left key
+ * reading "Left-Command" beside it rather than "Left-Super" beside "Right-Command".
+ * A token another writer stored as `meta-*` still resolves to the same key, so
+ * callers comparing a press with a stored value compare `.code`, not tokens.
+ *
+ * Takes `event.code`, never `event.key`: the six tokens are side-specific and
+ * `key` cannot tell Left from Right.
+ */
+export const pushToTalkTokenForCode = (
+	code: string,
+	family: PlatformFamily = platformFamily(),
+): string | null => {
+	const parts = /^(Alt|Meta|Control)(Left|Right)$/.exec(code);
+	if (!parts) return null;
+	const side = parts[2].toLowerCase();
+	if (parts[1] === "Control") return `ctrl-${side}-hold`;
+	if (parts[1] === "Alt") {
+		return family === "darwin" ? `alt-${side}-hold` : null;
+	}
+	return `${family === "darwin" ? "meta" : "alt"}-${side}-hold`;
+};
+
 const platformDefaultBinding = (): PushToTalkBinding =>
 	pushToTalkBindingForToken("alt-right-hold") as PushToTalkBinding;
 
 let resolvedPushToTalkBinding: PushToTalkBinding | null = null;
 
+/**
+ * Bumped by every direct write of the binding (`setPushToTalkBinding`). A read
+ * that started before the bump carries the value from BEFORE the write, so its
+ * answer is dropped rather than allowed to undo the save that followed it.
+ */
+let bindingGeneration = 0;
+
 /** The live binding: the last resolved row, or the platform default. */
 export const resolvePushToTalkBinding = (): PushToTalkBinding =>
 	resolvedPushToTalkBinding ?? platformDefaultBinding();
 
+/**
+ * Apply a value the caller just PERSISTED, so the very next keydown matches it.
+ *
+ * The Settings capture box calls this after its save lands: without it a changed
+ * binding would only take effect at the next `register()` (a composer remount),
+ * because the module reads the row once per registration and has no settings
+ * listener. An unknown or invalid value falls back to the platform default, as
+ * a read does.
+ */
+export const setPushToTalkBinding = (raw: unknown): void => {
+	bindingGeneration += 1;
+	resolvedPushToTalkBinding = pushToTalkBindingForToken(raw);
+};
+
 let pushToTalkRefresh: Promise<void> | null = null;
+/** A refresh asked for while one was in flight: it must run AFTER that one. */
+let pushToTalkRefreshAgain = false;
 
 /**
  * Read the persisted `keymap.push_to_talk` row and re-resolve.
@@ -128,21 +193,39 @@ let pushToTalkRefresh: Promise<void> | null = null;
  * settings plane tells us nothing new, and silently reverting a user's custom
  * binding because one read missed is worse than serving the last known value.
  * There is deliberately no settings listener here (no new listener on any
- * settings channel); a caller that changes the row can call this directly.
+ * settings channel); a caller that changes the row calls `setPushToTalkBinding`
+ * with what it saved, and a document that did not make the change (the Quick
+ * send window) calls this when it is shown.
+ *
+ * AN ASK THAT ARRIVES MID-FLIGHT IS NOT SATISFIED BY THAT FLIGHT: its read may
+ * have left before the change this ask was made to pick up (a summon right
+ * after a save in the other window), so the ask is answered by one more read
+ * once the current one settles. Any number of mid-flight asks share that one.
  */
 export const refreshPushToTalkBinding = async (): Promise<void> => {
-	if (pushToTalkRefresh) return pushToTalkRefresh;
+	if (pushToTalkRefresh) {
+		pushToTalkRefreshAgain = true;
+		return pushToTalkRefresh;
+	}
 	pushToTalkRefresh = (async () => {
 		try {
-			const settings = await desktopResult<BackendSettings>({
-				op: "settings.list",
-			});
-			const row = settings.settings.find(
-				(setting) => setting.key === "keymap.push_to_talk",
-			);
-			resolvedPushToTalkBinding = pushToTalkBindingForToken(row?.value);
-		} catch {
-			/* Keep the last resolution (see the doc above). */
+			do {
+				pushToTalkRefreshAgain = false;
+				const generation = bindingGeneration;
+				try {
+					const settings = await desktopResult<BackendSettings>({
+						op: "settings.list",
+					});
+					const row = settings.settings.find(
+						(setting) => setting.key === "keymap.push_to_talk",
+					);
+					if (generation === bindingGeneration) {
+						resolvedPushToTalkBinding = pushToTalkBindingForToken(row?.value);
+					}
+				} catch {
+					/* Keep the last resolution (see the doc above). */
+				}
+			} while (pushToTalkRefreshAgain);
 		} finally {
 			pushToTalkRefresh = null;
 		}
@@ -275,8 +358,36 @@ export class SpeechToTextManager {
 	 * Handle the speech-to-text event by dispatching to the highest priority active handler
 	 */
 	private handleSpeechToText = (): void => {
-		const active = this.highestActive();
-		if (active) active.handler.start();
+		/*
+		 * MAIN TOOK A CHORD THE HOLD KEY BEGINS. Start recording is claimed in the
+		 * main process (`before-input-event`), so its second key never reaches the
+		 * keydown listener below - but the modifier's own keydown did, and engaged
+		 * a hold. Without this the composer's one-recorder rule refused the chord's
+		 * start and the shortcut did nothing. The chord is the user's real intent,
+		 * so it replaces the hold: the press that was never a hold is discarded.
+		 */
+		const held = this.engaged;
+		this.releaseHold("abort");
+		/*
+		 * THE HANDLER THE HOLD WAS ON TAKES THE CHORD, not whoever `isActive` says.
+		 * The abort above has settled the composer's refs, but its `isActive` reads
+		 * state that only updates on the next render: a take that had already
+		 * started still reads "recording", so `highestActive()` returned nothing
+		 * and the chord ended in no recording at all (QA round 2, Q1: any chord
+		 * after the take started; only the first ~100 ms worked). The handler's own
+		 * `start` is guarded by its attempt ref, which the abort has cleared.
+		 */
+		const target = held?.handler ?? this.highestActive()?.handler;
+		target?.start();
+	};
+
+	/**
+	 * The palette doors are claimed in main for the same reason: Cmd/Ctrl+P is a
+	 * chord on the hold's own modifier, and the key that makes it a chord never
+	 * arrives here to abort the hold.
+	 */
+	private handlePaletteDoor = (): void => {
+		this.releaseHold("abort");
 	};
 
 	/**
@@ -426,6 +537,9 @@ export class SpeechToTextManager {
 				"start-speech-to-text",
 				this.handleSpeechToText,
 			);
+			for (const channel of PALETTE_DOOR_CHANNELS) {
+				window.electron.ipcRenderer.on(channel, this.handlePaletteDoor);
+			}
 			/*
 			 * CAPTURE for keydown: the hold must start on the press itself
 			 * (there is no timer to wait for a release anymore), and a focused
@@ -448,6 +562,12 @@ export class SpeechToTextManager {
 				"start-speech-to-text",
 				this.handleSpeechToText,
 			);
+			for (const channel of PALETTE_DOOR_CHANNELS) {
+				window.electron.ipcRenderer.removeListener(
+					channel,
+					this.handlePaletteDoor,
+				);
+			}
 			window.removeEventListener("keydown", this.handleKeyDown, true);
 			window.removeEventListener("keyup", this.handleKeyUp);
 			window.removeEventListener("blur", this.handleWindowBlur);

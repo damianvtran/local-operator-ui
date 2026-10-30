@@ -37,7 +37,14 @@ import {
 	useMutation,
 	useQuery,
 } from "@tanstack/react-query";
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from "react";
 import type {
 	DesktopNotificationDetail,
 	DesktopNotificationItem,
@@ -46,7 +53,15 @@ import type {
 	DesktopNotificationsWriteResult,
 } from "../../../../shared/desktop-control-contract";
 import {
+	type FrozenNotificationSelection,
+	type NotificationSelectionPreview,
+	inverseNotificationVerb,
+	notificationSelectionScope,
+	selectedBySnapshot,
+} from "./notification-operations";
+import {
 	applyConfirmedToWindow,
+	dismissPlan,
 	editFactsForWrite,
 	isNewerNotification,
 	mergeWindowForReel,
@@ -213,6 +228,7 @@ export function useNotificationsList(
 	useNotificationsFeedInvalidation();
 	const { client } = useOptionalQueryClient();
 	const facts = useNotificationsFacts(state, enabled);
+	const [windowResetAt, setWindowResetAt] = useState(0);
 	const answer = useInfiniteQuery({
 		queryKey: notificationKeys.list(state),
 		enabled,
@@ -272,6 +288,9 @@ export function useNotificationsList(
 			facts.dataUpdatedAt as number,
 		),
 		newerCount: merged?.newerCount ?? 0,
+		// Only an explicit page-one reset moves the viewport; pagination and facts
+		// updates keep the operator's deep scroll position.
+		windowResetAt,
 		/** Back to top: page one again, with fresh facts, so the pill clears. */
 		/*
 		 * BACK TO TOP RESETS PAGE ONE (code round 8, Q13). Invalidating the window key
@@ -279,6 +298,7 @@ export function useNotificationsList(
 		 * one with fresh facts - and the pill's count is cleared with them.
 		 */
 		resetToTop: () => {
+			setWindowResetAt((at) => at + 1);
 			void client?.resetQueries({ queryKey: notificationKeys.list(state) });
 			return facts.refetch();
 		},
@@ -1441,4 +1461,285 @@ export async function readSessionDismissCounts(
 		seen.add(next);
 		cursor = next;
 	}
+}
+
+/** Compact receipts keep a select-all over a large result one HTTP write. */
+export type NotificationBulkReceipt = {
+	changed_count: number;
+	skipped_count: number;
+	skipped_ask_count: number;
+	operation_token: string;
+	through_seq: number;
+	high_water: number;
+	counts_high_water?: number;
+	// V1 servers omit the field; the shared facade only recognizes version 2.
+	selection_version?: 2;
+	changed_update_count?: number;
+	changed_ask_count?: number;
+	waiting_unread_delta?: number;
+	reconciliation?: {
+		items: DesktopNotificationItem[];
+		absent_ids: string[];
+		high_water: number;
+	};
+	unread_delta: number;
+	// `unread_count` is the v2 per-session total, fenced by `counts_high_water`;
+	// v1 omits it, and the facade then keeps the session overlay until a walk lands.
+	session_counts: Record<
+		string,
+		{ changed_count: number; unread_delta: number; unread_count?: number }
+	>;
+	unread_count: number;
+	waiting_count: number;
+	waiting_unread_count: number;
+};
+
+export async function previewNotificationSelection(
+	filters: FrozenNotificationSelection["filters"],
+	state: "unread" | "all",
+	countSessionIds: string[] = [],
+	includeAskReads = false,
+): Promise<NotificationSelectionPreview> {
+	const result = await desktopResult<{
+		selection: NotificationSelectionPreview;
+	}>({
+		op: "notifications.list",
+		preview: true,
+		state,
+		kind: filters.kind,
+		bulkPriority: filters.priority,
+		countSessionIds,
+		...(includeAskReads ? { includeAskReads: true } : {}),
+		...(filters.from ? { sessionId: filters.from } : {}),
+	});
+	return result.selection;
+}
+
+/**
+ * The same optimistic cache edit as individual writes. A frozen scope is a
+ * server token rather than a client-side page walk; the adapter only projects
+ * the rows already cached, never manufactures off-page notification bodies.
+ * On a partial receipt the projection is withdrawn and authoritative facts are
+ * fetched: compact counts cannot identify which individual revisions skipped.
+ */
+
+export function useNotificationBulkState(onResetWindows?: () => void) {
+	const { client } = useOptionalQueryClient();
+	const operations = useRef(
+		new Map<
+			string,
+			{
+				verb: "read" | "unread" | "dismiss";
+				receipt: NotificationBulkReceipt;
+				reconcileIds: string[];
+				canReconcile: boolean;
+			}
+		>(),
+	);
+	const activeSessionIds = useCallback(
+		() =>
+			client
+				? client
+						.getQueryCache()
+						.findAll({
+							queryKey: notificationKeys.sessionUnread(null).slice(0, -1),
+						})
+						.filter((query) => query.isActive())
+						.map((query) => String(query.queryKey[3]))
+						.slice(0, 50)
+				: [],
+		[client],
+	);
+	const reconcileIds = useCallback(
+		(visible: string[]) => {
+			const cached = client ? [...cachedRows(client).keys()] : [];
+			// The explicit viewport IDs come first: a deep-scroll row must not be
+			// crowded out by hundreds of cached rows above it. Never send all IDs in
+			// the server result; these are bounded READ metadata, not selection.
+			return [...new Set([...visible, ...cached])].slice(0, 500);
+		},
+		[client],
+	);
+	/*
+	 * V1 RECEIPTS CARRY NO ROWS. Without `reconciliation`, the shared facade can only
+	 * refetch page-one facts, and `mergeWindowForReel` keeps every row the loaded
+	 * infinite window already holds, so a select-all dismiss left up to a page of
+	 * dismissed rows drawn (and an Undo left them missing). Compact receipts never say
+	 * WHICH rows changed, so guessing per-row flips is ruled out. Resetting drops the
+	 * loaded pages and refetches page one, the same move as "back to top"
+	 * (`resetToTop`). Only v1 settles this way; v2 rows come back in the response.
+	 */
+	const resetWindows = useCallback(() => {
+		if (!client) return;
+		if (onResetWindows) onResetWindows();
+		else void client.resetQueries({ queryKey: notificationKeys.listRoot });
+		void client.resetQueries({ queryKey: notificationKeys.sessionsRoot });
+	}, [client, onResetWindows]);
+	const apply = useCallback(
+		async (
+			verb: "read" | "unread" | "dismiss",
+			selection: FrozenNotificationSelection,
+			visibleIds: string[] = [],
+		): Promise<NotificationBulkReceipt> => {
+			operations.current.clear();
+			const rows = client
+				? [...cachedRows(client).values()].filter((item) =>
+						selectedBySnapshot(item, selection),
+					)
+				: [];
+			const intent = await beginOptimisticWrite(
+				client,
+				verb,
+				tokensOf(rows),
+				notificationSelectionScope(selection, verb),
+			);
+			const reconciliation = reconcileIds(visibleIds);
+			try {
+				const target = {
+					selectionToken: selection.preview.token,
+					excludedIds: [...selection.excluded.keys()],
+					...(selection.preview.selection_version === 2
+						? { reconcileIds: reconciliation }
+						: {}),
+				};
+				const receipt = await desktopResult<NotificationBulkReceipt>(
+					verb === "dismiss"
+						? { op: "notifications.dismiss", verb, target }
+						: { op: "notifications.read", verb, target },
+				);
+				intent?.settleCompact(receipt);
+				if (selection.preview.selection_version !== 2) resetWindows();
+				operations.current.set(receipt.operation_token, {
+					verb,
+					receipt,
+					reconcileIds: reconciliation,
+					canReconcile: selection.preview.selection_version === 2,
+				});
+				return receipt;
+			} catch (error) {
+				intent?.();
+				throw error;
+			}
+		},
+		[client, reconcileIds, resetWindows],
+	);
+	const applyItems = useCallback(
+		async (
+			verb: "read" | "unread" | "dismiss",
+			items: DesktopNotificationItem[],
+			throughSeq: number,
+			v2 = false,
+			visibleIds: string[] = [],
+		): Promise<{
+			receipts: NotificationBulkReceipt[];
+			pending: number;
+			skippedAsks: number;
+			error?: unknown;
+		}> => {
+			operations.current.clear();
+			/*
+			 * The caller's button check belongs to an earlier render. Filter the actual
+			 * frozen array at this last client boundary too, so an ask that arrived after
+			 * that check can never be sent to notifications.dismiss. Keep the caller's
+			 * requested 500-item batch boundaries; removing asks only shrinks a batch.
+			 */
+			const plan = verb === "dismiss" ? dismissPlan(items) : null;
+			const targets = plan?.dismissable ?? items;
+			const skippedAsks = plan?.asksStaying ?? 0;
+			const receipts: NotificationBulkReceipt[] = [];
+			const reconciliation = reconcileIds(visibleIds);
+			for (let offset = 0; offset < targets.length; offset += 500) {
+				const batch = targets.slice(offset, offset + 500);
+				const intent = await beginOptimisticWrite(
+					client,
+					verb,
+					tokensOf(batch),
+				);
+				try {
+					const target = {
+						items: tokensOf(batch),
+						throughSeq,
+						receipt: true as const,
+						...(v2 ? { reconcileIds: reconciliation } : {}),
+					};
+					const receipt = await desktopResult<NotificationBulkReceipt>(
+						verb === "dismiss"
+							? { op: "notifications.dismiss", verb, target }
+							: { op: "notifications.read", verb, target },
+					);
+					intent?.settleCompact(receipt);
+					if (!v2) resetWindows();
+					operations.current.set(receipt.operation_token, {
+						verb,
+						receipt,
+						reconcileIds: reconciliation,
+						canReconcile: v2,
+					});
+					receipts.push(receipt);
+				} catch (error) {
+					intent?.();
+					return {
+						receipts,
+						pending: targets.length - offset,
+						skippedAsks,
+						error,
+					};
+				}
+			}
+			return { receipts, pending: 0, skippedAsks };
+		},
+		[client, reconcileIds, resetWindows],
+	);
+	const undo = useCallback(
+		async (operationToken: string) => {
+			const original = operations.current.get(operationToken);
+			if (!original) throw new Error("No retained notification operation");
+			const { receipt: before } = original;
+			const sessionUnreadDeltas = Object.fromEntries(
+				Object.entries(before.session_counts).map(([id, counts]) => [
+					id,
+					-counts.unread_delta,
+				]),
+			);
+			// Compact counts do not prove which individual rows the journal changed.
+			// A NEW aggregate intent is safe; guessed per-row inverses are not. Rows
+			// return from authoritative reconciliation in the same Undo response.
+			const intent = await beginOptimisticWrite(
+				client,
+				inverseNotificationVerb(original.verb),
+				[],
+				{
+					throughSeq: before.counts_high_water ?? before.high_water,
+					unreadDelta:
+						before.counts_high_water === undefined ? 0 : -before.unread_delta,
+					waitingUnreadDelta:
+						before.counts_high_water === undefined
+							? 0
+							: -(before.waiting_unread_delta ?? 0),
+					sessionUnreadDeltas:
+						before.counts_high_water === undefined ? {} : sessionUnreadDeltas,
+				},
+			);
+			try {
+				const receipt = await desktopResult<NotificationBulkReceipt>({
+					op: "notifications.read",
+					verb: "undo",
+					target: {
+						operationToken,
+						...(original.canReconcile
+							? { reconcileIds: original.reconcileIds }
+							: {}),
+					},
+				});
+				intent?.settleCompact(receipt);
+				if (!original.canReconcile) resetWindows();
+				return receipt;
+			} catch (error) {
+				intent?.();
+				throw error;
+			}
+		},
+		[client, resetWindows],
+	);
+	return { apply, applyItems, undo, activeSessionIds };
 }

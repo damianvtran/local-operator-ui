@@ -246,6 +246,9 @@ export type DesktopFeature =
 	 * asks drawer exactly as it was - never an empty inbox.
 	 */
 	| "notifications"
+	/** Frozen, filter-wide notification selection and guarded Undo. */
+	| "notification_bulk_selection"
+	| "notification_bulk_ask_read"
 	/**
 	 * The sidebar customisation resource (`GET`/`PUT /v1/desktop/sidebar-layout`,
 	 * design contract § 4). Its own key because the column must render TODAY'S

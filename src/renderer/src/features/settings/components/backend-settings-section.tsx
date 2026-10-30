@@ -50,7 +50,10 @@ import { paintJumpHighlight } from "@shared/lib/jump-highlight";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { START_RECORDING_SETTING_KEY } from "../../../../../shared/recording-shortcut";
+import {
+	PUSH_TO_TALK_SETTING_KEY,
+	START_RECORDING_SETTING_KEY,
+} from "../../../../../shared/recording-shortcut";
 import {
 	gateLabelFor,
 	presentSetting,
@@ -137,8 +140,12 @@ type BackendSettingsSectionProps = {
 	 * second control writing the same key.
 	 */
 	hideAgentMessages?: boolean;
-	/** True when the promoted recording row is mounted in Keyboard shortcuts. */
-	hideStartRecording?: boolean;
+	/**
+	 * True when Keyboard shortcuts mounts the Speech to text group, which owns
+	 * BOTH recording rows (Start recording and Push to talk): two editors for
+	 * one key is the defect every promotion here exists to prevent.
+	 */
+	hideSpeechShortcuts?: boolean;
 	/** Initial search filter, e.g. "web-search" from /search. */
 	initialFilter?: string;
 };
@@ -175,7 +182,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	hideInterfaceLanguage = false,
 	hideModelEffort = false,
 	hideAgentMessages = false,
-	hideStartRecording = false,
+	hideSpeechShortcuts = false,
 	initialFilter = "",
 }) => {
 	useI18nLocale();
@@ -345,12 +352,14 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 			(hideAgentMessages &&
 				(setting.key === TEAM_BRIDGE_ENABLED_SETTING_KEY ||
 					setting.key === TEAM_BRIDGE_SESSION_SETTING_KEY)) ||
-			(hideStartRecording && setting.key === START_RECORDING_SETTING_KEY),
+			(hideSpeechShortcuts &&
+				(setting.key === START_RECORDING_SETTING_KEY ||
+					setting.key === PUSH_TO_TALK_SETTING_KEY)),
 		[
 			hideInterfaceLanguage,
 			hideModelEffort,
 			hideAgentMessages,
-			hideStartRecording,
+			hideSpeechShortcuts,
 		],
 	);
 

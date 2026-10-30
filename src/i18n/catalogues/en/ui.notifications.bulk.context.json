@@ -1,0 +1,79 @@
+{
+	"ui.notifications.bulk.dismiss_all": {
+		"role": "button",
+		"tone": "concise, calm, explicit about scope and reversibility",
+		"context": "Button in the notification-list toolbar. Dismiss all matching update notifications, including beyond the loaded page. Does not settle pending asks; confirmation covers hidden results.",
+		"placeholders": {}
+	},
+	"ui.notifications.bulk.read_hint": {
+		"role": "body",
+		"tone": "concise, calm, explicit about scope and reversibility",
+		"context": "Tooltip on Mark read. All is the existing All tab name: read updates remain available there. Keep its translation consistent with ui.notifications.filter.all.",
+		"placeholders": {}
+	},
+	"ui.notifications.bulk.dismiss_hint": {
+		"role": "body",
+		"tone": "concise, calm, explicit about scope and reversibility",
+		"context": "Tooltip on dismiss controls. Removes update notifications from the inbox, not source conversation content. Undo is the existing toast action (ui.notifications.toast.undo).",
+		"placeholders": {}
+	},
+	"ui.notifications.bulk.frozen_hint": {
+		"role": "body",
+		"tone": "concise, calm, explicit about scope and reversibility",
+		"context": "Tooltip beside selected count. A server snapshot freezes the result at selection time; later arrivals do not join the operation. Not a frozen/unresponsive application.",
+		"placeholders": {}
+	},
+	"ui.notifications.bulk.confirm_title": {
+		"role": "body",
+		"tone": "concise, calm, explicit about scope and reversibility",
+		"context": "Confirmation heading. count is the number of eligible update notifications, excluding unanswered asks. ICU numeric plural; fit a medium dialog with wrapping.",
+		"placeholders": {
+			"count": "integer count of eligible updates; pluralize"
+		}
+	},
+	"ui.notifications.bulk.beyond_page": {
+		"role": "body",
+		"tone": "concise, calm, explicit about scope and reversibility",
+		"context": "Confirmation paragraph shown only when the snapshot covers more matching updates than the loaded rows. Does not mean just the visible scroll viewport.",
+		"placeholders": {}
+	},
+	"ui.notifications.bulk.asks_hint": {
+		"role": "body",
+		"tone": "concise, calm, explicit about scope and reversibility",
+		"context": "Safety warning. Ask is a question an agent is waiting for the user to answer. Bulk dismiss leaves it alone; settling it separately wakes the agent and cannot be undone. Never describe ask settlement as reversible.",
+		"placeholders": {}
+	},
+	"ui.notifications.bulk.review_asks": {
+		"role": "button",
+		"tone": "concise, calm, explicit about scope and reversibility",
+		"context": "Secondary button opens the existing ask details, without dismissing anything. User must separately choose the ask-specific irreversible action.",
+		"placeholders": {}
+	},
+	"ui.notifications.bulk.select_error": {
+		"role": "body",
+		"tone": "concise, calm, explicit about scope and reversibility",
+		"context": "Failure toast for frozen-result preview; no selection or write was confirmed. Short, retryable, no claim that anything changed.",
+		"placeholders": {}
+	},
+	"ui.notifications.bulk.update_required": {
+		"role": "body",
+		"tone": "concise, calm, explicit about scope and reversibility",
+		"context": "Disabled control tooltip on an older backend missing notification_bulk_selection. Local Operator is a product name and remains unchanged.",
+		"placeholders": {}
+	},
+	"ui.notifications.bulk.partial": {
+		"role": "body",
+		"tone": "concise, calm, explicit about scope and reversibility",
+		"context": "Receipt for a partial write/Undo. changed and skipped are locale-formatted numeric strings. Do not imply skipped items changed or were restored.",
+		"placeholders": {
+			"changed": "locale-formatted count",
+			"skipped": "locale-formatted count"
+		}
+	},
+	"ui.notifications.bulk.exclusion_limit": {
+		"role": "body",
+		"tone": "concise, calm, explicit about scope and reversibility",
+		"context": "Toast when trying to uncheck more than the server limit of 500 exceptions to a frozen all-results selection. Existing selection is preserved; clear then select individual rows instead.",
+		"placeholders": {}
+	}
+}

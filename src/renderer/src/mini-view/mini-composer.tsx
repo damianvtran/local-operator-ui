@@ -68,6 +68,7 @@ import {
 	classifyRadientAccountFailure,
 } from "@shared/hooks/use-radient-user-query";
 import { useSessionSnapshot } from "@shared/hooks/use-session-snapshot";
+import { refreshPushToTalkBinding } from "@shared/hooks/use-speech-to-text-manager";
 import {
 	type RadientSpeechBlock,
 	radientSpeechBlock,
@@ -695,6 +696,12 @@ export function MiniComposer() {
 			applyThemeToDocument(useUiPreferencesStore.getState().themeName);
 			update((current) => miniFrameTransitions.summoned(current));
 			closeSheet();
+			/*
+			 * The hold key is read once per registration, and this document stays
+			 * mounted between summons: a change saved in the main window's Settings
+			 * reaches here only if the summon asks again.
+			 */
+			void refreshPushToTalkBinding();
 			/*
 			 * THE HEIGHT RETURNS TO REST WITH THE SUMMON (reviewer M1): a sheet or a
 			 * long draft grown on the last summon is closed here, and the observer

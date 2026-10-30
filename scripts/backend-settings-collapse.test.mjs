@@ -451,6 +451,32 @@ test(
 	},
 );
 
+test(
+	"the Speech to text group owns both recording rows: Backend settings drops them only when told to",
+	{ timeout: TEST_TIMEOUT_MS },
+	async (t) => {
+		/*
+		 * `keymap.push_to_talk` is an advanced registry row, so it is found by
+		 * searching its key (the same route the policy-enum case above uses).
+		 * Without the promotion flag the generic editor shows it; with it, the
+		 * Keyboard shortcuts group is the one editor and the list does not repeat it.
+		 */
+		const mounted = await mount(t);
+		await type(search(), "keymap.push_to_talk");
+		assert.equal(
+			rowShown("keymap.push_to_talk"),
+			true,
+			"unpromoted, the registry row is the editor and search finds it",
+		);
+		await rerender(mounted, { hideSpeechShortcuts: true });
+		assert.equal(
+			rowShown("keymap.push_to_talk"),
+			false,
+			"promoted, the registry list does not repeat the row",
+		);
+	},
+);
+
 /*
  * ------------------------------------------------------------------ *
  * The deep link under a live filter (agent review round 1, F2)

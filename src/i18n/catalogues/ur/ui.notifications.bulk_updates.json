@@ -1,0 +1,5 @@
+{
+	"ui.notifications.bulk_updates.read": "{count, plural, one {# اپ ڈیٹ کو پڑھا ہوا نشان لگائیں} other {# اپ ڈیٹس کو پڑھا ہوا نشان لگائیں}}",
+	"ui.notifications.bulk_updates.unread": "{count, plural, one {# اپ ڈیٹ کو غیر مطالعہ شدہ نشان لگائیں} other {# اپ ڈیٹس کو غیر مطالعہ شدہ نشان لگائیں}}",
+	"ui.notifications.bulk_updates.new_items": "آپ کے انتخاب کے بعد آنے والے نئے آئٹمز شامل نہیں ہیں۔"
+}
