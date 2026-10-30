@@ -72,6 +72,6 @@
 	"ui.settings.shortcuts.speech.start_recording_press": "ریکارڈنگ شروع کریں (دبائیں)",
 	"ui.settings.shortcuts.speech.push_to_talk_hold": "بولنے کے لیے دبائیں (دبائے رکھیں)",
 	"ui.settings.shortcuts.speech.push_to_talk_hint": "جو ماڈیفائر کلید دبائے رکھنی ہو اسے دبائیں؛ Esc منسوخ کرتا ہے۔",
-	"ui.settings.shortcuts.speech.push_to_talk_refused": "{platform, select, darwin {صرف بایاں یا دایاں Control، Option یا Command کلید دبائے رکھی جا سکتی ہے۔} win32 {صرف بایاں یا دایاں Control یا Windows کلید دبائے رکھی جا سکتی ہے۔} other {صرف بایاں یا دایاں Control یا Super کلید دبائے رکھی جا سکتی ہے۔}}",
+	"ui.settings.shortcuts.speech.push_to_talk_refused": "{platform, select, darwin {صرف بائیں یا دائیں Control، Option یا Command کلید دبائے رکھی جا سکتی ہے۔} win32 {صرف بائیں یا دائیں Control یا Windows کلید دبائے رکھی جا سکتی ہے۔} other {صرف بائیں یا دائیں Control یا Super کلید دبائے رکھی جا سکتی ہے۔}}",
 	"ui.settings.shortcuts.speech.push_to_talk_overlap": "اس کلید سے شروع ہونے والے شارٹ کٹ لمحہ بھر کے لیے ریکارڈنگ شروع کر سکتے ہیں، جب تک اگلی کلید اسے منسوخ نہ کر دے۔"
 }
