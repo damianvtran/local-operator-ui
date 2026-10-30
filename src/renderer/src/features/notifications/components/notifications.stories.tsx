@@ -243,6 +243,15 @@ type Stub = {
 	detail?: DesktopNotificationDetail | null;
 	capability?: boolean;
 	bulkCapability?: boolean;
+	/**
+	 * One row the store revises AFTER the frozen preview and BEFORE the bulk write,
+	 * so the write really refuses it (`stale_revision`) while the rest land.
+	 *
+	 * This is the only honest way to reach a partial receipt: the counts come out
+	 * of the shipped fixture's own revision check, not out of a caption somebody
+	 * typed next to a hand-built progress line (design round 1, D2).
+	 */
+	refuseOnBulkDismiss?: string;
 	askReadCapability?: boolean;
 };
 
@@ -339,8 +348,27 @@ const answer = (request: { op: string; [key: string]: unknown }) => {
 			return { status: 200, body: { result: detail } };
 		}
 		case "notifications.read":
-		case "notifications.dismiss":
+		case "notifications.dismiss": {
+			/*
+			 * THE RACE, REPRODUCED. A dismissal of a frozen snapshot compares each
+			 * row's revision and sequence against what the preview saw; a row that moved
+			 * in between is refused and counted in `skipped_count`. Moving it here -
+			 * after the snapshot was taken, before the store applies the write - is the
+			 * window a real user hits when a job updates a row they are dismissing.
+			 */
+			const refused = stub.refuseOnBulkDismiss;
+			const target = request.target as
+				| { selectionToken?: string; operationToken?: string }
+				| undefined;
+			if (
+				refused &&
+				request.verb === "dismiss" &&
+				target?.selectionToken &&
+				!target.operationToken
+			)
+				fixture.revise(refused);
 			return fixture.request(request);
+		}
 		/*
 		 * The detail pane's real answer component posts here. Removing the ask is
 		 * what makes an "answered ask leaves the reel" claim observable.
@@ -489,8 +517,13 @@ export const LoadError: Story = {
 
 /** The mock's populated state on the All filter: waiting group, ×6 repeat, provenance. */
 export const Populated: Story = {
-	/* The local-dismiss receipt must be capturable without racing its 6 s Undo
-	   window; this is the stateful fixture a reviewer drives, not a second toast. */
+	/*
+	 * This parameter holds a container-default toast, and NOTHING on this page takes
+	 * the container default: both receipt paths pass their own lifetime, because an
+	 * Undo offer has to outlive exactly its window (design round 1, D2). A receipt
+	 * that reports a refusal is held by `receiptDuration` itself, which is what
+	 * makes `BulkDismissPartial` below capturable without racing anything.
+	 */
 	parameters: { toastDuration: Number.POSITIVE_INFINITY },
 	render: () =>
 		page(
@@ -499,19 +532,47 @@ export const Populated: Story = {
 		),
 };
 
-/** Grouped by conversation instead of time. */
-export const ByConversation: Story = {
+/**
+ * A BULK DISMISS THE STORE PARTLY REFUSES - the partial receipt, in the page.
+ *
+ * WHY THIS STORY EXISTS (design round 1, D2). A partial result is only worth
+ * signing off when it is the page's OWN receipt: the shipped composer choosing
+ * the words from a real receipt, in the page's own toast lane, at the end of a
+ * real bulk dismiss. `OperationStatusPartial` photographs `OperationProgressLine`
+ * alone under a sentence the story invents, which proves the component renders
+ * and says nothing about what an operator actually gets.
+ *
+ * So nothing here invents a result. The fixture revises one selected row in the
+ * window between the frozen preview and the write - a race a real user hits when
+ * a job updates a row they are dismissing - and the store refuses THAT row with
+ * `stale_revision` while the rest land. Drive it: select all, press Dismiss, and
+ * read the held receipt.
+ */
+export const BulkDismissPartial: Story = {
 	render: () =>
 		page(
-			{ items: POPULATED, waiting: WAITING },
 			{
-				prefs: {
-					"notifications-read-state": "all",
-					"notifications-grouping": "conversation",
-				},
+				items: POPULATED,
+				waiting: WAITING,
+				refuseOnBulkDismiss: "n_prreviewcheckeo",
 			},
+			{ prefs: { "notifications-read-state": "all" } },
 		),
 };
+
+/** Grouped by conversation instead of time. */ export const ByConversation: Story =
+	{
+		render: () =>
+			page(
+				{ items: POPULATED, waiting: WAITING },
+				{
+					prefs: {
+						"notifications-read-state": "all",
+						"notifications-grouping": "conversation",
+					},
+				},
+			),
+	};
 
 /** The detail pane open on the ×6 high item: body table, history, project. */
 export const Detail: Story = {

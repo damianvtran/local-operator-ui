@@ -1318,3 +1318,111 @@ test(
 		}
 	},
 );
+
+/*
+ * DESIGN ROUND 1, D3: ON A SURFACE WITH NOTHING ON IT, `Dismiss all` MUST BE
+ * GENUINELY INERT, NOT MERELY PAINTED GREY.
+ *
+ * Two defects met on the "All caught up" page: the control carried the enabled
+ * secondary ground beside a correctly-greyed `Mark all read`, and pressing it
+ * captured a frozen selection BEFORE noticing the preview answered zero - which
+ * `allChecked` then painted as a filled checkbox over an empty list, clearable
+ * only by pressing that checkbox again. So this asserts the press is refused at
+ * the control AND, by dispatching the event past the disabled semantics
+ * directly, that the capture path refuses it too. jsdom still delivers a
+ * dispatched event to a disabled button, which is what makes the second half
+ * measurable rather than assumed.
+ */
+test(
+	"D3: on an empty surface Dismiss all is disabled, and the press freezes nothing",
+	BOUNDED,
+	async () => {
+		const page = await mount({ bulk: true, items: [] });
+		try {
+			assert.ok(
+				await page.settle(
+					() =>
+						page.container
+							.querySelector("[data-notifications-empty]")
+							?.getAttribute("data-notifications-empty") === "caught_up",
+				),
+				"the empty surface is the caught-up page",
+			);
+			const dismissAll = page.container.querySelector(
+				"[data-notifications-dismiss-all]",
+			);
+			assert.equal(
+				dismissAll.disabled,
+				true,
+				"nothing to dismiss means the control is disabled, not just grey",
+			);
+			const selectAll = () =>
+				page.container.querySelector("[data-notifications-select-all]");
+			assert.equal(selectAll().getAttribute("data-state"), "unchecked");
+
+			/*
+			 * THE PHANTOM HALF IS REACHED THROUGH THE HEADER CHECKBOX, which is live on
+			 * this surface: `Dismiss all` is disabled, but select-all is not, and it runs
+			 * the same capture. The guard that refuses an empty preview is what keeps the
+			 * checkbox unchecked - the defect was the capture being frozen before anyone
+			 * asked whether it held anything. (A dispatched click on the DISABLED button
+			 * proves nothing here: the DOM suppresses it, which is the first half's own
+			 * win, so it is asserted as a no-op rather than relied on for the second.)
+			 */
+			await click(selectAll());
+			assert.ok(await page.settle(() => true, 400));
+			assert.equal(
+				selectAll().getAttribute("data-state"),
+				"unchecked",
+				"no phantom checked select-all over an empty list",
+			);
+
+			/* Past the DOM's own suppression: the handler must still refuse to freeze. */
+			await click(dismissAll);
+			assert.ok(await page.settle(() => true, 400));
+
+			assert.equal(
+				page.container.querySelector("[data-notifications-confirm-view]"),
+				null,
+				"an empty capture opens no confirmation",
+			);
+			assert.equal(
+				page.container
+					.querySelector("[data-notifications-toolbar]")
+					.getAttribute("data-notifications-toolbar"),
+				"filters",
+				"the bar stays in filters mode: no selection was taken",
+			);
+			assert.equal(
+				selectAll().getAttribute("data-state"),
+				"unchecked",
+				"the empty press leaves the checkbox unchecked",
+			);
+			assert.deepEqual(
+				page.fixture.requests.filter(
+					(request) =>
+						request.op === "notifications.dismiss" ||
+						(request.op === "notifications.read" && !request.preview),
+				),
+				[],
+				"an empty press sends no write",
+			);
+		} finally {
+			await page.unmount();
+		}
+
+		/* The other half: a surface with rows must still be pressable. */
+		const full = await mount({ bulk: true, items: [row(10), row(11)] });
+		try {
+			assert.ok(await full.settle(() => full.rows().length === 2));
+			assert.equal(
+				full.container.querySelector("[data-notifications-dismiss-all]")
+					.disabled,
+				false,
+				"the disabled condition does not spread to a surface with rows",
+			);
+		} finally {
+			await full.unmount();
+		}
+	},
+);

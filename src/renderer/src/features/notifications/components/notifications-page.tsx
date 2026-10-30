@@ -146,9 +146,9 @@ import { OperationProgressLine } from "./operation-progress-line";
  * tab share one window (design audit OD3); re-exported for the suites that read
  * it from this module.
  */
-import { UNDO_WINDOW_MS } from "../notifications-model";
+import { UNDO_WINDOW_MS, receiptDuration } from "../notifications-model";
 
-export { UNDO_WINDOW_MS };
+export { receiptDuration, UNDO_WINDOW_MS };
 /*
  * THE INLINE STATUS LINE IS NOT A PERMANENT RECORD (code round 2, minor 1).
  * It reports work in flight and rows still without a conclusive answer; once
@@ -307,11 +307,6 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 		| null
 	>(null);
 	const previewGeneration = useRef(0);
-	const bulkActions = useNotificationBulkState(() => {
-		// A v1 receipt has no row payload: reuse the list's one reset path so both
-		// its cursor pages and the operator's viewport return to page one.
-		void list.resetToTop();
-	});
 	const lastBulkUndo = useRef<{ tokens: string[]; at: number } | null>(null);
 	const [anchorId, setAnchorId] = useState<string | null>(null);
 	const [focusId, setFocusId] = useState<string | null>(null);
@@ -373,6 +368,20 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	}, [operationBusy]);
 
 	const list = useNotificationsList(readState, enabled, { atTop: isAtTop });
+	/*
+	 * BELOW `list`, BECAUSE ITS RESET CALLBACK CALLS INTO IT (agent review round 2,
+	 * R2-2). This hook used to sit ~60 lines above `list` and close over it: correct
+	 * only because a bulk v1 receipt always settles after mount, so the callback
+	 * cannot run during the render that captured the binding - a property nothing
+	 * enforced and every reader had to re-prove. Declaring it after the thing it
+	 * closes over is the fix that does not rely on that ordering at all.
+	 *
+	 * A v1 receipt has no row payload, so the callback reuses the list's one reset
+	 * path and both its cursor pages and the operator's viewport return to page one.
+	 */
+	const bulkActions = useNotificationBulkState(() => {
+		void list.resetToTop();
+	});
 	const write = useNotificationsWrite();
 	const readActions = useNotificationReadState();
 	/* Keep the receipt/Undo planner, but send every explicit-id batch through the
@@ -775,19 +784,25 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 				 * `OperationProgressLine` stories photograph.
 				 */
 				const partial = progress.pending > 0 || progress.skipped > 0;
+				/*
+				 * A partial receipt is HELD (design round 1, D2): see `receiptDuration`.
+				 * The Undo window and the toast's lifetime are read from the same value so
+				 * a held receipt's Undo cannot expire underneath it.
+				 */
+				const receiptWindow = receiptDuration(partial);
 				showInfoToast(
 					[summary, partial ? operationText(progress) : null]
 						.filter(Boolean)
 						.join(". "),
 					{
-						duration: UNDO_WINDOW_MS,
+						duration: receiptWindow,
 						action: undo
 							? {
 									label: t("ui.notifications.toast.undo"),
 									onClick: () => {
 										if (
 											lastUndo.current === undo &&
-											Date.now() - undo.at <= UNDO_WINDOW_MS
+											Date.now() - undo.at <= receiptWindow
 										)
 											void writeUndo(undo.verb, undo.items);
 									},
@@ -1206,47 +1221,71 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 							}
 						: null;
 				lastBulkUndo.current = undo;
-				const message = (() => {
-					if (outcome.pending > 0)
-						return operationText({
-							changed: receipt.changed_count,
-							skipped: receipt.skipped_count,
-							pending: outcome.pending,
-						});
-					if (receipt.skipped_count > 0)
-						return t("ui.notifications.bulk.partial", {
-							changed: formatNumber(receipt.changed_count),
-							skipped: formatNumber(receipt.skipped_count),
-						});
-					const completed =
-						verb === "dismiss"
-							? t("ui.notifications.toast.dismissed", {
-									count: receipt.changed_count,
+				/*
+				 * BOTH DIMENSIONS SURVIVE A COMPOUND PARTIAL (agent review round 2, R2-1).
+				 * This composer used to RETURN from the unresolved and the refused branch,
+				 * so a press that was BOTH partly refused AND filtered an ask out of the
+				 * batch reported one of the two skips and silently dropped the other. The
+				 * single-press receipt above already does it the other way: pick the
+				 * summary, then add the second fact to whichever summary won.
+				 */
+				const completed =
+					verb === "dismiss"
+						? t("ui.notifications.toast.dismissed", {
+								count: receipt.changed_count,
+							})
+						: verb === "read"
+							? t("ui.notifications.toast.marked_read", {
+									count: formatNumber(receipt.changed_count),
 								})
-							: verb === "read"
-								? t("ui.notifications.toast.marked_read", {
-										count: formatNumber(receipt.changed_count),
-									})
-								: t("ui.notifications.toast.marked_unread", {
-										count: formatNumber(receipt.changed_count),
-									});
-					// Client-filtered asks have no server receipt, so retain that skip in the
-					// same wording as the pre-existing non-bulk dismiss path.
-					return outcome.skippedAsks > 0
-						? `${completed}. ${t("ui.notifications.select.asks_stay", {
+							: t("ui.notifications.toast.marked_unread", {
+									count: formatNumber(receipt.changed_count),
+								});
+				const summary =
+					outcome.pending > 0
+						? operationText({
+								changed: receipt.changed_count,
+								skipped: receipt.skipped_count,
+								pending: outcome.pending,
+							})
+						: receipt.skipped_count > 0
+							? t("ui.notifications.bulk.partial", {
+									changed: formatNumber(receipt.changed_count),
+									skipped: formatNumber(receipt.skipped_count),
+								})
+							: completed;
+				// Client-filtered asks have no server receipt, so retain that skip in the
+				// same wording as the pre-existing non-bulk dismiss path.
+				const message = [
+					summary,
+					outcome.skippedAsks > 0
+						? t("ui.notifications.select.asks_stay", {
 								count: outcome.skippedAsks,
-							})}`
-						: completed;
-				})();
+							})
+						: null,
+				]
+					.filter(Boolean)
+					.join(". ");
+				/*
+				 * A receipt reporting a refusal, a skip or a count that never resolved is
+				 * HELD (design round 1, D2): see `receiptDuration`. Held on every dimension
+				 * the message above can carry, because what earns the hold is the receipt
+				 * having something to explain - not which branch happened to explain it.
+				 */
+				const receiptWindow = receiptDuration(
+					outcome.pending > 0 ||
+						receipt.skipped_count > 0 ||
+						outcome.skippedAsks > 0,
+				);
 				showInfoToast(message, {
-					duration: UNDO_WINDOW_MS,
+					duration: receiptWindow,
 					action: undo
 						? {
 								label: t("ui.notifications.toast.undo"),
 								onClick: () => {
 									if (
 										lastBulkUndo.current === undo &&
-										Date.now() - undo.at <= UNDO_WINDOW_MS
+										Date.now() - undo.at <= receiptWindow
 									)
 										void writeBulkUndo(undo.tokens);
 								},
@@ -1312,7 +1351,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 					bulkAskReadEnabled,
 				);
 				if (generation !== previewGeneration.current) return;
-				captured = {
+				const candidate: FrozenNotificationSelection = {
 					preview,
 					includeAskReads: bulkAskReadEnabled,
 					filters: { ...filters },
@@ -1320,8 +1359,20 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 					excluded: new Map(),
 					asks: [...filteredWaiting],
 				};
+				/*
+				 * AN EMPTY CAPTURE IS NOT A SELECTION (design round 1, D3). The preview
+				 * answers zero on a view with nothing on it, and the page used to freeze
+				 * that answer and paint it: `allChecked` reads `excluded.size === 0` as a
+				 * filled checkbox, so the select-all went green over an empty page while
+				 * the bar stayed in filters mode - a selection of nothing, dismissable only
+				 * by pressing the checkbox again. Refusing the capture is what keeps the
+				 * checkbox describing a real selection; the button's own disabled state
+				 * (below) is what stops the press being offered in the first place.
+				 */
+				if (frozenSelectionCounts(candidate).count === 0) return;
+				captured = candidate;
 				setSelected(new Set());
-				setFrozenSelection(captured);
+				setFrozenSelection(candidate);
 			} catch (error) {
 				showErrorToast(
 					userFacingMessage(error, t("ui.notifications.bulk.select_error")),
@@ -1673,6 +1724,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 						frozenSelection && frozenReadsAsks(frozenSelection),
 					)}
 					onDismissAll={() => void selectView(true)}
+					nothingToDismiss={emptyKind !== null}
 					visibleUnread={visibleUnread}
 					onSelectAll={() =>
 						frozenSelection && frozenSelection.excluded.size === 0
@@ -2145,7 +2197,7 @@ const ConfirmDismissSession: FC<{
 					{t("ui.notifications.confirm.cancel")}
 				</Button>
 				<Button
-					variant="primary"
+					variant="danger"
 					autoFocus
 					onClick={onConfirm}
 					data-notifications-confirm=""
@@ -2180,6 +2232,18 @@ type ToolbarProps = {
 	readIncludesAsks: boolean;
 	newItemsOutsideSelection: boolean;
 	onDismissAll: () => void;
+	/**
+	 * The view has nothing on it at all, so `Dismiss all` has nothing to act on.
+	 *
+	 * A server preview answers zero here and the press is a no-op, but the control
+	 * still PAINTED as live: it carried the same ground, border and ink as the
+	 * enabled filter triggers beside it, while its own neighbour in the same band,
+	 * `Mark all read`, sat correctly greyed. Two inert controls disagreeing about
+	 * it is the defect (design review round 1, D3, "All caught up"); this fact is
+	 * derived from the page's own empty-state predicate so the paint cannot drift
+	 * from what is actually rendered.
+	 */
+	nothingToDismiss: boolean;
 	/** Rows the Unread filter draws, so its chip cannot disagree with the rail. */
 	visibleUnread: number;
 	onSelectAll: () => void;
@@ -2212,6 +2276,7 @@ const Toolbar: FC<ToolbarProps> = ({
 	readIncludesAsks,
 	newItemsOutsideSelection,
 	onDismissAll,
+	nothingToDismiss,
 	visibleUnread,
 	onSelectAll,
 	onClearSelection,
@@ -2488,7 +2553,9 @@ const Toolbar: FC<ToolbarProps> = ({
 					<Button
 						variant="secondary"
 						size="sm"
-						disabled={!bulkEnabled || !loaded || writesPaused}
+						disabled={
+							!bulkEnabled || !loaded || writesPaused || nothingToDismiss
+						}
 						onClick={onDismissAll}
 						title={t(
 							bulkEnabled
@@ -2666,7 +2733,7 @@ const ConfirmDismissView: FC<{
 					{t("ui.notifications.confirm.cancel")}
 				</Button>
 				<Button
-					variant="primary"
+					variant="danger"
 					disabled={count === 0}
 					onClick={onConfirm}
 					data-notifications-confirm-view=""
