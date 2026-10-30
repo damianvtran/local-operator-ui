@@ -23,10 +23,9 @@ import { fileURLToPath } from "node:url";
 import { isEntryPoint } from "./entry-point.mjs";
 
 // FOUR, NOT THREE, on measured memory headroom rather than balance: at
-// concurrency 3 the guarded runner's process group peaked at 9.9 GB (run
-// 40992181176) and 7.9 GB (run 40990818668) on the SAME 205-file shard
-// inventory, against the 7.8 GB budget both runs died on - after `ok 1060` with
-// zero failures. The ceiling therefore sits inside the run-to-run distribution,
+// concurrency 3 the guarded runner's process group was killed by the 7.8 GB
+// budget at 7.9 GB (run 40992181176) and again at 8.2 GB (run 40996898976) on the
+// SAME 205-file shard inventory, both after `ok 1060` with zero failures. The ceiling therefore sits inside the run-to-run distribution,
 // so fewer files per process group is what buys headroom; the budget and the
 // concurrency guard are deliberately untouched.
 export const SHARD_COUNT = 4;
