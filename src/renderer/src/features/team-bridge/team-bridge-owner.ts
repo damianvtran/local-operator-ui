@@ -20,21 +20,26 @@ export function useTeamBridgeAccount() {
 /**
  * THE AUTHORITY-BEARING FIELDS OF A STATUS SNAPSHOT, and nothing else.
  *
- * Two callers ask the same question — "does this status still stand for the
- * authority the read was admitted under?": the predicate `bridgeOwnerCurrent`
- * (evaluated on its own) and the post-read fence in `readForBridgeOwner`
- * (compared against the snapshot taken before the read). They share this
- * projection so the two can never drift into different notions of "same
- * authority": a field added here changes both, and a field left out is one
- * neither may act on.
+ * Three callers ask the same question — "does this status still stand for the
+ * authority the work was started under?": the predicate `bridgeOwnerCurrent`
+ * (evaluated on its own), the post-read fence in `readForBridgeOwner`, and the
+ * banner delivery predicate in `use-team-bridge-notifications.ts` (both
+ * compared against a snapshot taken before their await, via
+ * `captureBridgeStatusAuthority`). They share this projection so they can never
+ * drift into different notions of "same authority": a field added here changes
+ * all of them, and a field left out is one none may act on.
  *
  * WHY NOT THE CACHED OBJECT'S IDENTITY — the defect this replaced. The status
- * query refetches on window focus, and every refetch installs a FRESH object
- * even when the authority is unchanged (a session id rotates, the server adds a
- * note). Comparing object identity therefore refused reads that crossed no
- * authority change, and the owner-audit queries (`retry: false`, `gcTime: 0` by
- * design — a private read is not retried over a changed authority) kept one
- * such trip forever as "Audited messages could not be loaded."
+ * query refetches on window focus (staleTime 60 s). React Query's structural
+ * sharing keeps the old reference only for a DEEP-EQUAL answer, and the
+ * runtime's status payload is never deep-equal twice: it carries `checked_at`,
+ * `fetched_at`, `from_cache` and the `delivery_hold` count, which move on every
+ * check of an unchanged authority. So every refetch that landed during a read
+ * broke identity and refused a read that crossed no authority change, and the
+ * owner-audit queries (`retry: false`, `gcTime: 0` by design — a private read is
+ * not retried over a changed authority) kept one such trip forever as "Audited
+ * messages could not be loaded." In All organizations the rail runs one read per
+ * organization concurrently, so the window was N times as wide.
  *
  * `read_only` is optional in the contract: absent and false both mean writable,
  * so it is normalized here — a runtime that starts spelling out `false` must
@@ -72,6 +77,27 @@ function bridgeStatusAuthorityChanged(
 		before.readOnly !== after.readOnly ||
 		before.localEnabled !== after.localEnabled
 	);
+}
+
+/**
+ * Snapshot the status authority NOW and return a check that it still holds.
+ *
+ * The one shape both pre/post fences use (`readForBridgeOwner` and the banner
+ * delivery predicate): capture before the await, ask after it. A status row
+ * that vanishes, or appears where none was, counts as changed.
+ */
+export function captureBridgeStatusAuthority(
+	client: QueryClient,
+	accountId: string | undefined,
+): () => boolean {
+	const read = () =>
+		bridgeStatusAuthority(
+			client.getQueryData<AgentMessagesStatus>(
+				teamBridgeKeys.statusFor(accountId),
+			),
+		);
+	const before = read();
+	return () => !bridgeStatusAuthorityChanged(before, read());
 }
 
 export function bridgeOwnerCurrent(
@@ -120,26 +146,12 @@ export async function readForBridgeOwner<T>(
 	read: () => Promise<T>,
 ): Promise<T> {
 	assertBridgeReadOwner(client, accountId);
-	const status = bridgeStatusAuthority(
-		client.getQueryData<AgentMessagesStatus>(
-			teamBridgeKeys.statusFor(accountId),
-		),
-	);
+	const authorityHolds = captureBridgeStatusAuthority(client, accountId);
 	const result = await readForBridgeAccount(client, accountId, read);
 	assertBridgeReadOwner(client, accountId);
 	/* Compare what the snapshot MEANS, not which object it is: a focus refetch
 	 * hands over a new object for the same authority (see `bridgeStatusAuthority`). */
-	if (
-		bridgeStatusAuthorityChanged(
-			status,
-			bridgeStatusAuthority(
-				client.getQueryData<AgentMessagesStatus>(
-					teamBridgeKeys.statusFor(accountId),
-				),
-			),
-		)
-	)
-		throw new Error("Team Bridge read authority changed");
+	if (!authorityHolds()) throw new Error("Team Bridge read authority changed");
 	return result;
 }
 
