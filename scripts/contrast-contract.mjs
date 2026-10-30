@@ -588,6 +588,72 @@ const CONTROLS = [
 		ink: "inkMuted",
 		edge: false,
 	},
+	/*
+	 * TEAM BRIDGE REACTION PILLS (operator polish round, 2026-10-30): borderless,
+	 * "subtly contrasted fill like the sidebar counts", the reader's own reaction
+	 * "clearly brighter" (`team-bridge-reactions.tsx`).
+	 *
+	 * THE THREE HOSTS are the grounds a message row is painted on: the thread
+	 * column's `surface` (`team-bridge-page.tsx`), the thread pane's `canvas`
+	 * (`team-bridge-thread-pane.tsx`) and `rowHover`, which the row takes under
+	 * the pointer - exactly when a reader is about to press a pill.
+	 *
+	 * WHY `edge: false` ON ALL FOUR. The pill is a COUNT MARK in the sidebar's
+	 * quiet-count family (`attentionQuiet`: `elevated`, no ring), and that family
+	 * already declares that its fill is a grouping whisper, not a boundary: the
+	 * `elevated` fill is ΔE00 0.00 off `rowHover` in arcade, and the own pill's
+	 * `accentWash` 1.38 off it in obsidian, so no fill-only design can promise
+	 * 3:1 there, and a border is what the operator asked to remove. What keeps a
+	 * pill legible and operable is the INK on its own fill - the emoji and the
+	 * count are the content and the target - which these rows assert at 4.5:1 on
+	 * every palette, at rest and in the hover step.
+	 */
+	{
+		name: "team bridge reaction pill",
+		on: ["surface", "canvas", "rowHover"],
+		fill: "elevated",
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	{
+		name: "team bridge reaction pill (hover)",
+		on: ["surface", "canvas", "rowHover"],
+		fill: "sunken",
+		border: null,
+		ink: "ink",
+		edge: false,
+	},
+	{
+		name: "team bridge reaction pill (mine)",
+		on: ["surface", "canvas", "rowHover"],
+		fill: "accentWash",
+		border: null,
+		ink: "accent",
+		edge: false,
+	},
+	{
+		name: "team bridge reaction pill (mine, hover)",
+		on: ["surface", "canvas", "rowHover"],
+		fill: "accentWash",
+		border: null,
+		ink: "accentHover",
+		edge: false,
+	},
+	{
+		/*
+		 * The pills' `+`: a transparent `inkDim` glyph at rest (asserted on the
+		 * three grounds by the ground ink loop) that takes the resting pill's
+		 * `elevated` fill and full `ink` under the pointer. Same `edge: false`
+		 * reasoning as the pills above.
+		 */
+		name: "team bridge reaction add (hover)",
+		on: ["surface", "canvas", "rowHover"],
+		fill: "elevated",
+		border: null,
+		ink: "ink",
+		edge: false,
+	},
 	{
 		/*
 		 * THE PLATE ON A SELECTED RAIL ROW (design round 1, D1). `mediaSurface` is
@@ -2951,23 +3017,30 @@ const PERCEPTIBLE = [
 const STRUCTURAL_CALL_SITES = [
 	{
 		/*
-		 * THE BORDERLESS ADD-REACTION CONTROL'S ONLY EXTENT IS ITS FILL.
+		 * THE REACTION PILLS WEAR THE FILLS THEIR CONTRACT ROWS MEASURE.
 		 *
-		 * Design round 1 (D5) measured it at 30x28 with `border-width: 0px` and a
-		 * 1.06:1 fill against `canvas` - a control that reads as absent, not as
-		 * quiet - while its sibling chips stayed visible through their
-		 * `border-control` edge. The fix is a fill step, not a line: borderless
-		 * chrome is a standing operator requirement. The `mediaSurface` palette row
-		 * ("team bridge borderless person and agent plates") proves the VALUE clears
-		 * `canvas`, `surface`, `elevated` and `rowHover` on every palette; only this
-		 * pin can see the edit that returns the button to `sunken` or to a ground
-		 * role, which leaves every ratio above green while the control loses the
-		 * only boundary a borderless control has.
+		 * The CONTROLS rows "team bridge reaction pill" (+ hover, mine, mine hover)
+		 * prove the VALUES on every palette; only this pin can see the edit that
+		 * moves a pill to another role, or puts the `border-control` ring back that
+		 * the operator asked to remove (polish round, 2026-10-30), while every ratio
+		 * above stays green.
+		 *
+		 * This REPLACES design round 1's D5 pin ("add-reaction control extent is
+		 * its fill", `bg-media-surface` at rest). The operator reversed that design
+		 * in the same round: the `+` is now a ghost revealed with its message row,
+		 * so its rest state has no fill by decision, and the pin below holds its
+		 * hover fill instead.
 		 */
-		what: "team bridge add-reaction control extent is its fill",
+		what: "team bridge reaction pills wear their measured fills",
 		file: "src/renderer/src/features/team-bridge/team-bridge-reactions.tsx",
-		must: '"inline-flex min-h-7 items-center gap-1 rounded-full bg-media-surface px-2 text-ink-muted",\n\t\t\t\t\t\t\t"hover:bg-sunken hover:text-ink disabled:text-ink-dim",',
-		why: "a borderless control's only resting boundary is its fill; `sunken` sits ΔL* 2.4 off `canvas` (1.06:1) and reads as no control at all, and no palette assertion can see which class the button wears, so a green matrix would outlive the regression",
+		must: '? "bg-accent-wash font-medium text-accent hover:text-accent-hover"\n\t\t\t\t\t\t\t\t: "bg-elevated text-ink-muted hover:bg-sunken hover:text-ink",',
+		why: "the pill rows assert `elevated`/`sunken`/`accentWash` with their inks; a pill moved to another role (or given back a ring) would leave those rows green about a component that no longer wears them",
+	},
+	{
+		what: "team bridge reaction add takes the pill fill on hover",
+		file: "src/renderer/src/features/team-bridge/team-bridge-reactions.tsx",
+		must: '"hover:bg-elevated hover:text-ink disabled:text-ink-dim",',
+		why: 'the ghost `+` has no fill at rest by design; its hover is the one state with an extent, and the row "team bridge reaction add (hover)" measures `ink` on `elevated` only while the button still names that fill',
 	},
 	{
 		/*

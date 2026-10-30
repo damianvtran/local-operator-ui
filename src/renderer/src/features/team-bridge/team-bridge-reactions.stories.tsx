@@ -14,8 +14,11 @@ const meta = {
 	component: TeamBridgeReactions,
 	parameters: { layout: "centered" },
 	decorators: [
+		/* `bg-surface` is the thread column's real ground (`team-bridge-page.tsx`,
+		 * the message section): the pills' fill step is measured against it, so a
+		 * board on `canvas` would review a contrast the reader never sees. */
 		(Story) => (
-			<div className="group/message relative w-[480px] max-w-full bg-canvas p-6 text-ink">
+			<div className="group/message relative w-[480px] max-w-full bg-surface p-6 text-ink">
 				<Story />
 			</div>
 		),
@@ -45,6 +48,97 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 export const Populated: Story = {};
 export const Empty: Story = { args: { reactions: [] } };
+
+/*
+ * THE PILL STATE BOARD (operator polish round, 2026-10-30). One story per state
+ * the operator named, each inside the meta decorator's `group/message` row so
+ * the `+` reveal is the real row-hover rule rather than a forced class. The
+ * labels are realistic names because the tooltip's job is to say who reacted.
+ */
+export const OwnReaction: Story = {
+	args: {
+		reactions: [
+			{
+				emoji: "🎉",
+				count: 1,
+				reacted_by_me: true,
+				sample_labels: ["Damian Tran"],
+			},
+		],
+	},
+};
+export const OthersOnly: Story = {
+	args: {
+		reactions: [
+			{
+				emoji: "🔥",
+				count: 2,
+				reacted_by_me: false,
+				sample_labels: ["Damian Tran", "Victor Tay"],
+			},
+			{
+				emoji: "🤑",
+				count: 2,
+				reacted_by_me: false,
+				sample_labels: ["Damian Tran", "Victor Tay"],
+			},
+		],
+	},
+};
+const MIXED_REACTIONS = [
+	{
+		emoji: "🎉",
+		count: 1,
+		reacted_by_me: true,
+		sample_labels: ["Damian Tran"],
+	},
+	{
+		emoji: "🤗",
+		count: 1,
+		reacted_by_me: false,
+		sample_labels: ["Victor Tay"],
+	},
+	/* More reactors than the contract's three samples: the tooltip owes the
+	 * reader the remainder as "and N others", not a silently short list. */
+	{
+		emoji: "👀",
+		count: 12,
+		reacted_by_me: false,
+		sample_labels: ["Ada Lovelace", "Bea Arthur", "Cleo Laine"],
+	},
+];
+export const Mixed: Story = { args: { reactions: MIXED_REACTIONS } };
+
+/** The pill tooltip, opened by a real pointer hover so its frame is the app's
+ * own tooltip rather than a forced `open`. */
+export const TooltipOnHover: Story = {
+	args: { reactions: MIXED_REACTIONS },
+	play: async ({ canvasElement }) => {
+		const pill = canvasElement.querySelectorAll<HTMLButtonElement>(
+			"[data-reaction-layout=chips] button[aria-pressed]",
+		)[2];
+		await userEvent.hover(pill);
+		await waitFor(() =>
+			expect(document.querySelector("[role=tooltip]")).not.toBeNull(),
+		);
+	},
+};
+/** The `+` revealed with its row: a real Tab lands focus in the row, so the
+ * row's `group-focus-within/message` arm - the same rule as its hover arm -
+ * shows the ghost `+`. The play asserts it is hidden and inert first. */
+export const AddRevealedWithRow: Story = {
+	args: { reactions: MIXED_REACTIONS },
+	play: async ({ canvasElement }) => {
+		const add = canvasElement.querySelector<HTMLButtonElement>(
+			"[data-reaction-add]",
+		) as HTMLButtonElement;
+		await expect(getComputedStyle(add).opacity).toBe("0");
+		await expect(getComputedStyle(add).pointerEvents).toBe("none");
+		await userEvent.tab();
+		await waitFor(() => expect(getComputedStyle(add).opacity).toBe("1"));
+		await expect(getComputedStyle(add).pointerEvents).toBe("auto");
+	},
+};
 export const ManyReactionsWrap: Story = {
 	args: {
 		reactions: [...QUICK_EMOJI, "🚀", "💯", "🤝", "🥳", "🧑🏻‍❤️‍💋‍🧑🏼"].map(
@@ -55,6 +149,18 @@ export const ManyReactionsWrap: Story = {
 				sample_labels: ["Ada", "Bea", "Cleo"],
 			}),
 		),
+	},
+	/* Every pill, wrapped or not and whatever its glyph (the last is a ZWJ
+	 * sequence), is ONE height: the operator's "consistent sizing" rule,
+	 * measured from the rendered boxes rather than inferred from `h-6`. */
+	play: async ({ canvasElement }) => {
+		const heights = [
+			...canvasElement.querySelectorAll(
+				"[data-reaction-pill], [data-reaction-add]",
+			),
+		].map((el) => el.getBoundingClientRect().height);
+		await expect(heights.length).toBeGreaterThan(10);
+		await expect(new Set(heights)).toEqual(new Set([24]));
 	},
 };
 export const RefusedRollback: Story = {
@@ -67,10 +173,32 @@ export const RefusedRollback: Story = {
 };
 export const Pending: Story = {
 	args: {
+		reactions: MIXED_REACTIONS,
 		toggle: async () => {
 			await new Promise((resolve) => setTimeout(resolve, 2500));
 			return { message_id: "bcmsg_example1", reactions: [] };
 		},
+	},
+	/*
+	 * The optimistic toggle and its busy mark: pressing a pill flips it at once
+	 * (before the 2.5s write answers), only THAT pill shows the spinner, and the
+	 * spinner changes neither its width nor its height (operator polish round,
+	 * 2026-10-30).
+	 */
+	play: async ({ canvasElement }) => {
+		const pill = canvasElement.querySelector<HTMLButtonElement>(
+			"[data-reaction-pill][aria-pressed=false]",
+		) as HTMLButtonElement;
+		const before = pill.getBoundingClientRect();
+		await userEvent.click(pill);
+		await waitFor(() => expect(pill).toHaveAttribute("aria-pressed", "true"));
+		const during = pill.getBoundingClientRect();
+		await expect(
+			canvasElement.querySelectorAll("[data-reaction-pill] .animate-spin"),
+		).toHaveLength(1);
+		await expect(pill.querySelector(".animate-spin")).not.toBeNull();
+		await expect(during.height).toBe(before.height);
+		await expect(during.width).toBeCloseTo(before.width, 0);
 	},
 };
 export const Picker: Story = {

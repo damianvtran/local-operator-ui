@@ -220,6 +220,68 @@ test("the shipped reaction views render and send the captured account on toggle"
 	await m.close();
 });
 
+/*
+ * The pill polish round (operator, 2026-10-30): one hover label (the Tooltip,
+ * no native `title`), a reactor list that states the remainder past the
+ * three-name sample, an optimistic flip, and a busy mark only on the pressed
+ * pill. Geometry (one 24px height, no width change while busy) is a layout
+ * fact jsdom cannot measure; the Storybook `Pending` and `ManyReactionsWrap`
+ * plays measure it in a real browser.
+ */
+test("reaction pills: one hover label, full reactor list, optimistic toggle with one busy mark", async () => {
+	let answer;
+	globalThis.__reactionApi = () =>
+		new Promise((resolve) => {
+			answer = resolve;
+		});
+	const m = mount();
+	await act(() =>
+		m.root.render(
+			h(TeamBridgeReactions, {
+				...props,
+				reactions: [
+					reaction,
+					{
+						emoji: "👀",
+						count: 12,
+						reacted_by_me: false,
+						sample_labels: ["Ada", "Bea", "Cleo"],
+					},
+				],
+			}),
+		),
+	);
+	const pills = [...m.host.querySelectorAll("[data-reaction-pill]")];
+	assert.equal(pills.length, 2);
+	for (const pill of pills) assert.equal(pill.getAttribute("title"), null);
+	const description = (pill) =>
+		m.host.querySelector(`[id="${pill.getAttribute("aria-describedby")}"]`)
+			.textContent;
+	// The i18n seam returns the key, so the remainder item is the key itself:
+	// what this pins is that the item is appended, not its English wording.
+	// `reaction` is count 2 with one sampled name: one reactor is unnamed.
+	assert.equal(description(pills[0]), "Bea and ui.teamBridge.reactions.others");
+	assert.equal(
+		description(pills[1]),
+		"Ada, Bea, Cleo, and ui.teamBridge.reactions.others",
+	);
+	await click(pills[0]);
+	assert.equal(pills[0].getAttribute("aria-pressed"), "true", "optimistic");
+	assert.equal(m.host.querySelectorAll(".animate-spin").length, 1);
+	assert.ok(
+		pills[0].querySelector(".animate-spin"),
+		"busy mark on the pressed pill",
+	);
+	await act(async () => {
+		answer({
+			message_id: props.messageId,
+			reactions: [{ ...reaction, count: 3, reacted_by_me: true }],
+		});
+	});
+	assert.equal(m.host.querySelectorAll(".animate-spin").length, 0);
+	await m.close();
+});
+
 test("a shipped message list mounts reaction controls for the captured account", async () => {
 	const m = mount();
 	for (const accountId of ["a", "b"]) {
