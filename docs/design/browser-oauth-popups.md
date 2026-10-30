@@ -138,10 +138,20 @@ the opener was the active tab and the request was not `background-tab`. It is ne
 as a window. The opening session may adopt it with `open tab=<handle>` (`TabRecord.openedBy`,
 read by `sessionMayAdopt`); another session may not. Bounds: an agent's tab may spawn
 `MAX_POPUP_CHILDREN_PER_VIEW` link tabs and the agent-tab cap (`MAX_AGENT_TABS`) still
-applies; user tabs are uncapped as everywhere else. Scheme and window-cap refusals are
-unchanged; the per-opener tab bound logs `(opener_cap)` and a popup whose opener tab has no
-registry record logs `(opener_gone)` and is refused on every route. The log line names the
-route: `opener=yes|no route=tab|window`.
+applies; **a user's tab may spawn `MAX_USER_LINK_TABS_PER_VIEW` (12)**. That user bound
+corrects an earlier claim: `ui-browser-tab.md` §6.5 leaves user tabs uncapped because "a user
+opening a dozen tabs is their business", and that reasoning held only while every user tab was
+an act the user took. A page looping `window.open(u, "_blank", "noopener")` is not an act the
+user took: before this section's routing those children were windows, so the live cap refused
+the fifth, and as tabs they never enter the window cap's count — the old reasoning would have
+let one page in the operator's own tab allocate views, `session.json` rows and activations
+without bound. Twelve leaves the ordinary case (a person opening five links from one page)
+comfortable and refuses the loop; it is a separate constant from the window cap because the
+two bound different resources and one number for both would silently tighten whichever side
+moved. Scheme and window-cap refusals are unchanged; the per-opener tab bounds log
+`(opener_cap)` for an agent and `(user_opener_cap)` for a user, distinct so a log says which
+bound was hit, and a popup whose opener tab has no registry record logs `(opener_gone)` and is
+refused on every route. The log line names the route: `opener=yes|no route=tab|window`.
 
 An agent's link tab lives and dies with the tab that opened it unless a session adopts it:
 closing the opener (or ending the scope that allocated it) closes the link tabs nothing
@@ -153,7 +163,8 @@ opener's `Referer`.
 
 **Behaviour change to know about:** a named target (`target="mail"`) used to reuse one
 window on every click; each click now opens a new tab, and the fifth click from one agent
-tab is refused with `opener_cap` until one of them is closed.
+tab is refused with `opener_cap` until one of them is closed. From a user's tab the same
+clicks are refused from the thirteenth with `user_opener_cap`.
 
 Not verified: that Gmail's links are opener-less (inferred from its `google.com/url?q=`
 redirect anchors), real MSAL/Google sign-in through the new routing, modifier-click in the

@@ -87,6 +87,24 @@ export type PopupDecision =
 export const MAX_POPUP_CHILDREN_PER_VIEW = 4;
 
 /**
+ * How many link tabs one USER-owned tab may spawn (`routePopup`'s tab route).
+ *
+ * A SECOND CONSTANT, not a reuse of `MAX_POPUP_CHILDREN_PER_VIEW`: the two bound
+ * different resources for different reasons, and one number for both would
+ * silently tighten whichever side moved. That constant bounds a view's live
+ * popup WINDOWS and is as low as 4 because no known flow needs more; this one
+ * bounds tabs a PAGE opens from the operator's own tab, where the ordinary case
+ * is "a person opening five links". 12 keeps that case comfortable — seven more
+ * than it needs — while a page looping `window.open(u, "_blank", "noopener")`,
+ * which gets no gesture from the operator and so is stopped by nothing upstream,
+ * ends at a dozen views, a dozen `session.json` rows and a dozen activations
+ * instead of churning the tab being looked at indefinitely. Raise it only against
+ * a real page that needs more, naming the page in the commit, as with the window
+ * cap.
+ */
+export const MAX_USER_LINK_TABS_PER_VIEW = 12;
+
+/**
  * The effective presentation for an allowed popup WINDOW — the §2.4 table, in
  * one place because two callers resolve it: the open handler (for the window
  * options and its log line) and `did-create-window` (which presents the child).
@@ -187,8 +205,10 @@ export interface PopupRouteRequest extends PopupRequest {
 /**
  * Where an allowed popup goes (docs/design/browser-oauth-popups.md 1.1).
  *
- * - `deny` — `decidePopup` refused it (scheme, cap), or an agent's tab already
- *   holds `MAX_POPUP_CHILDREN_PER_VIEW` tabs it spawned.
+ * - `deny` — `decidePopup` refused it (scheme, cap), an agent's tab already
+ *   holds `MAX_POPUP_CHILDREN_PER_VIEW` tabs it spawned, or a user's tab already
+ *   holds `MAX_USER_LINK_TABS_PER_VIEW`. The two tab bounds carry distinct tokens
+ *   (`opener_cap`, `user_opener_cap`) so a log names which wall was hit.
  * - `tab` — an ordinary link: it has no opener, so nothing can depend on one
  *   (a flow that needs `window.opener` or `postMessage` has an opener or cannot
  *   work; `noopener` makes `window.open` return null, so the page cannot poll
@@ -208,7 +228,15 @@ export interface PopupRouteRequest extends PopupRequest {
  * the exact-blank case can never be mistaken for a link.
  */
 export type PopupRoute =
-	| { route: "deny"; reason: "scheme" | "cap" | "opener_gone" | "opener_cap" }
+	| {
+			route: "deny";
+			reason:
+				| "scheme"
+				| "cap"
+				| "opener_gone"
+				| "opener_cap"
+				| "user_opener_cap";
+	  }
 	| { route: "tab"; owner: PopupOpenerOwner; activate: boolean }
 	| { route: "window"; presentation: WindowShow };
 
@@ -232,10 +260,11 @@ export function routePopup(
 				decision.presentation === "focus" ? "inactive" : decision.presentation,
 		};
 	}
-	// The per-opener bound for tabs, for the same reason the window cap exists
-	// (no gesture signal reaches the main process, so a script can spam links) —
-	// but only for an AGENT's tab: user tabs are uncapped by design (6.5) and a
-	// person opening five links from one page is ordinary use.
+	// The per-opener bound for tabs, for the same reason the window cap exists (no
+	// gesture signal reaches the main process, so a script can spam links). Both
+	// owners are bounded; the numbers differ because the reasons do — an agent's
+	// slots are a shared fleet resource, the operator's are their own attention,
+	// which a page can spend anyway.
 	if (
 		policy.openerOwner === "agent" &&
 		request.openedTabs >= MAX_POPUP_CHILDREN_PER_VIEW
@@ -245,6 +274,17 @@ export function routePopup(
 		// closed, and the operator reading a log should be able to tell which wall
 		// an agent hit.
 		return { route: "deny", reason: "opener_cap" };
+	}
+	// The same bound for a USER-owned tab (M1 of #1497). Before the tab route these
+	// children were WINDOWS, so the live cap above refused the fifth one; a tab
+	// never enters `popupChildren`, so that cap stopped seeing them, and an
+	// agent-only `opener_cap` left a page in the operator's own tab free to
+	// allocate views without bound. Its own token, for the same log-reading reason.
+	if (
+		policy.openerOwner === "user" &&
+		request.openedTabs >= MAX_USER_LINK_TABS_PER_VIEW
+	) {
+		return { route: "deny", reason: "user_opener_cap" };
 	}
 	return {
 		route: "tab",

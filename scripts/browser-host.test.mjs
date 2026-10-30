@@ -189,6 +189,7 @@ const {
 	effectivePresentation,
 	sessionMayAdopt,
 	MAX_POPUP_CHILDREN_PER_VIEW,
+	MAX_USER_LINK_TABS_PER_VIEW,
 	// The file-transfer surface (design §8, §10.4): the capture, the policy port the
 	// app host runs, and the shared generated tables it reads.
 	DownloadArmer,
@@ -8712,12 +8713,62 @@ test("popup refusals and bounds are unchanged by the tab route", () => {
 		route: "deny",
 		reason: "opener_cap",
 	});
-	// User tabs are uncapped by design (6.5); the bound is for an agent's slots.
-	assert.equal(route({ openedTabs: cap + 10 }).route, "tab");
+	// A user's tab has its own, larger bound (M1, below); the agent's wall is not
+	// theirs, so the same count that refuses an agent is ordinary here.
+	assert.equal(
+		route({ openedTabs: cap }, { openerOwner: "user" }).route,
+		"tab",
+	);
 	// The tab bound does not touch a window route (that has its own live cap).
 	assert.equal(
 		route({ hasOpener: true, openedTabs: cap }, { openerOwner: "agent" }).route,
 		"window",
+	);
+});
+
+test("a page in the operator's own tab cannot spawn link tabs without bound (M1 of #1497)", () => {
+	const cap = MAX_USER_LINK_TABS_PER_VIEW;
+	// Ordinary use: the design's own example is a person opening five links from
+	// one page. Every one of those is allowed, activated as a browser would.
+	for (let openedTabs = 0; openedTabs < 5; openedTabs += 1) {
+		assert.deepEqual(
+			route({ openedTabs }),
+			{ route: "tab", owner: "user", activate: true },
+			`link ${openedTabs + 1} of five is ordinary use`,
+		);
+	}
+	// The last slot under the bound is still a tab, and the next one is refused.
+	assert.equal(route({ openedTabs: cap - 1 }).route, "tab");
+	assert.deepEqual(route({ openedTabs: cap }), {
+		route: "deny",
+		reason: "user_opener_cap",
+	});
+	// Its own token: a log reader tells a user cap from the agent's `opener_cap`,
+	// and the agent's bound is untouched at its own, lower number.
+	assert.deepEqual(route({ openedTabs: cap }, { openerOwner: "agent" }), {
+		route: "deny",
+		reason: "opener_cap",
+	});
+	assert.equal(
+		route(
+			{
+				openedTabs: MAX_POPUP_CHILDREN_PER_VIEW - 1,
+			},
+			{ openerOwner: "agent" },
+		).route,
+		"tab",
+	);
+	// A hostile page's loop stops at the bound however far past it it asks.
+	assert.deepEqual(route({ openedTabs: cap + 100 }), {
+		route: "deny",
+		reason: "user_opener_cap",
+	});
+	// The bound selects the tab route only: an opener-bearing popup (a sign-in
+	// window) and a background-tab link route exactly as they did before.
+	assert.equal(route({ hasOpener: true, openedTabs: cap }).route, "window");
+	assert.deepEqual(
+		route({ openedTabs: cap - 1, disposition: "background-tab" }),
+		{ route: "tab", owner: "user", activate: false },
 	);
 });
 
