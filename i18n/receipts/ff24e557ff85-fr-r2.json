@@ -1,0 +1,26 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "kimi/k3.1-pro",
+  "instance": "ff24e557ff85-fr-r2",
+  "locale": "fr",
+  "namespace": "ui.settings.shortcuts",
+  "status": "passed",
+  "sha256": {
+    "fr": "d1e99a39652ede6f8399ec4d80ec6429e76eefb377d875be2e023a2f0f1cea18",
+    "en": "cdc8d66af4e558046072d06df97e638feab4b7579b6f3abba097c30949d7835c"
+  },
+  "context_sha256": "7873c3c486821688257a22f7b13d1c28f36017d7865fd3a6a72a7740861f64d9",
+  "scope": "Round 2: remediation of the sole French MAJOR and its direct control-consistency neighbor. Reverse-applying Échap for Esc in shortcut_capture_description reproduces the exact round-1 target hash, proving no other byte changed.",
+  "findings": [],
+  "checks": [
+    "Current French target SHA-256 is d1e99a39652ede6f8399ec4d80ec6429e76eefb377d875be2e023a2f0f1cea18; English and context remain at their round-1 hashes.",
+    "Reverse-applying the claimed Échap→Esc replacement reproduces round-1 target ef1b8f36505a6a340e4c29249dff4a6e8d0b9af3581f07d8b3bae2f752a4424e exactly.",
+    "The remediated description now uses Esc, matching the existing capture control and the context requirement; previous MAJOR resolved.",
+    "Full key parity, JSON validity and NFC normalization remain passing.",
+    "No new semantic, terminology or typography finding in the remediated line."
+  ],
+  "references": {
+    "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide_sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+  }
+}

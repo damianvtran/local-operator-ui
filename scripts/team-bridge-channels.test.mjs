@@ -329,6 +329,75 @@ test("the menu renders the model's levels and toggle, inside Radix's radio group
 	assert.match(source, /<DropdownMenu defaultOpen=\{defaultOpen\}>/);
 });
 
+/*
+ * ARCHIVE IS LAST, AND STAYS LAST (operator, 2026-10-29).
+ *
+ * The operator reported Archive sitting where a mis-click is easy. In this
+ * build it is already the final item — but "already true" is not a guarantee:
+ * the next action added to this menu is appended by whoever edits the
+ * component, and a destructive row that drifts above the fold is the bug the
+ * report describes. So the ORDER is pinned here rather than assumed, and the
+ * assertion is positional on purpose: a test that merely checked the label
+ * exists would pass again the moment someone moved it.
+ */
+test("archive is the last action in the conversation menu, after every other", () => {
+	const source = readFileSync(
+		`${ROOT}/src/renderer/src/features/team-bridge/team-bridge-conversation-menu.tsx`,
+		"utf8",
+	);
+	// The notify group's close is the last non-archive content in the menu.
+	const radioGroupEnd = source.indexOf("</DropdownMenuRadioGroup>");
+	assert.ok(radioGroupEnd > 0, "the notify radio group must still close");
+	// Conditional on the caller's authority, not always rendered.
+	const archiveGuard = source.indexOf("{onArchive && (");
+	assert.ok(
+		archiveGuard > radioGroupEnd,
+		"archive must come after the notify group, not before it",
+	);
+	// Positional: no DropdownMenuItem begins after the archive one.
+	const archiveItem = source.indexOf("<DropdownMenuItem", archiveGuard);
+	assert.ok(archiveItem > 0, "the archive item must still be a menu item");
+	const lastItem = source.lastIndexOf("<DropdownMenuItem");
+	assert.equal(
+		archiveItem,
+		lastItem,
+		"archive must be the last menu item; a later item was added after it",
+	);
+	// And it must be separated from the preferences above it, so the eye reads
+	// it as a different kind of act rather than the next option in a list.
+	// Matched on the tag, not the exact self-closing literal: an ordinary
+	// className on that separator is a legitimate edit, and pinning the literal
+	// would fail on it while blaming the order.
+	const separatorTag = source.indexOf("<DropdownMenuSeparator", radioGroupEnd);
+	assert.ok(
+		separatorTag > 0 && separatorTag < archiveItem,
+		"a separator must sit between the preferences and archive",
+	);
+
+	/*
+	 * NOTHING RENDERS BENEATH ARCHIVE (review round 1, MINOR 1).
+	 *
+	 * The positional check above only sees a literal `<DropdownMenuItem`. A
+	 * sibling COMPONENT added after the archive block - `<ExtraActions />` - can
+	 * render its own rows underneath Archive while the search finds no later
+	 * item, so the guard would pass on precisely the layout it exists to forbid.
+	 * The region that matters is between the end of the archive guard and the
+	 * end of the menu: whatever lives there would render below Archive.
+	 */
+	const afterGuard = source.slice(
+		source.indexOf(")}", archiveItem) + 2,
+		source.indexOf("</DropdownMenu>", archiveItem),
+	);
+	const strayElement = afterGuard
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.match(/<[A-Za-z]/);
+	assert.equal(
+		strayElement,
+		null,
+		`nothing may render after the archive item; found ${strayElement?.[0] ?? ""}`,
+	);
+});
+
 test("the notify options restore both cached pages when the write is refused", async () => {
 	const client = new QueryClient({
 		// The seeded pages have no observer: gc must not collect them before the

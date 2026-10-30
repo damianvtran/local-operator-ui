@@ -49,6 +49,7 @@ import { renegotiateLanguage } from "@shared/i18n/language-writes";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { START_RECORDING_SETTING_KEY } from "../../../../../shared/recording-shortcut";
 import {
 	gateLabelFor,
 	presentSetting,
@@ -124,6 +125,8 @@ type BackendSettingsSectionProps = {
 	 * second control writing the same key.
 	 */
 	hideAgentMessages?: boolean;
+	/** True when the promoted recording row is mounted in Keyboard shortcuts. */
+	hideStartRecording?: boolean;
 	/** Initial search filter, e.g. "web-search" from /search. */
 	initialFilter?: string;
 };
@@ -159,6 +162,7 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	hideInterfaceLanguage = false,
 	hideModelEffort = false,
 	hideAgentMessages = false,
+	hideStartRecording = false,
 	initialFilter = "",
 }) => {
 	useI18nLocale();
@@ -310,8 +314,14 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 			(hideModelEffort && setting.key === MODEL_EFFORT_SETTING_KEY) ||
 			(hideAgentMessages &&
 				(setting.key === TEAM_BRIDGE_ENABLED_SETTING_KEY ||
-					setting.key === TEAM_BRIDGE_SESSION_SETTING_KEY)),
-		[hideInterfaceLanguage, hideModelEffort, hideAgentMessages],
+					setting.key === TEAM_BRIDGE_SESSION_SETTING_KEY)) ||
+			(hideStartRecording && setting.key === START_RECORDING_SETTING_KEY),
+		[
+			hideInterfaceLanguage,
+			hideModelEffort,
+			hideAgentMessages,
+			hideStartRecording,
+		],
 	);
 
 	/** Every registry row this host renders, for the counters below. */

@@ -62,5 +62,9 @@
 	"ui.settings.shortcuts.row.canvas": "Холст",
 	"ui.settings.shortcuts.row.code_review": "Ревью кода",
 	"ui.settings.shortcuts.row.console": "Консоль",
-	"ui.settings.shortcuts.row.execution": "Сведения о запуске"
+	"ui.settings.shortcuts.row.execution": "Сведения о запуске",
+	"ui.settings.shortcuts.keyboard_shortcuts_section.shortcut_capture_description": "Установите фокус на поле сочетания и нажмите клавиши, чтобы сохранить его сразу. Esc убирает индикатор ввода; «Сбросить» возвращает значение по умолчанию.",
+	"ui.settings.shortcuts.category.speech_to_text": "Преобразование речи в текст",
+	"ui.settings.shortcuts.recording.invalid_stored_value": "Сохранённое сочетание недействительно. Показано последнее рабочее сочетание.",
+	"ui.settings.shortcuts.recording.inactive_claimed": "Запись неактивна: {label} использует это сочетание."
 }

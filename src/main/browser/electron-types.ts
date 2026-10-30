@@ -74,7 +74,10 @@ export interface DriveableWebContents {
 	isDestroyed(): boolean;
 	getURL(): string;
 	getTitle(): string;
-	loadURL(url: string): Promise<void>;
+	loadURL(
+		url: string,
+		options?: { httpReferrer?: { url: string; policy: string } },
+	): Promise<void>;
 	/** Destroy the webContents. Required on EVERY tab close: with
 	 * `WebContentsView` nothing destroys it for you (design 11.1). */
 	close(): void;

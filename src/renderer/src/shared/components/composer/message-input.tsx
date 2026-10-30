@@ -129,6 +129,7 @@ import {
 } from "@shared/hooks/use-message-input";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { useRadientSessionIssue } from "@shared/hooks/use-radient-session-issue";
+import { useRecordingShortcutLabel } from "@shared/hooks/use-recording-shortcut";
 import {
 	SpeechToTextPriority,
 	resolvePushToTalkBinding,
@@ -7717,12 +7718,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						undoCap: lockedRunUndoCap(platform === "darwin"),
 					});
 
-		const shortcutText = useMemo(() => {
-			if (platform === "darwin") {
-				return "Cmd+Shift+S";
-			}
-			return "Ctrl+Shift+S";
-		}, [platform]);
+		const shortcutText = useRecordingShortcutLabel(
+			platform === "darwin" ? "mac" : platform === "win32" ? "win" : "linux",
+			// Main dispatches start-speech only to the main window. The transcriptless
+			// mini composer still records through its button, but has no chord door.
+			!transcriptless,
+		);
 
 		/*
 		 * WHERE FOCUS GOES WHEN A STAGED QUOTE IS REMOVED (UX round 1, U2).
@@ -9892,10 +9893,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													? t("ui.chat.composer.starting_recording")
 													: !canEnableRecordingFeature
 														? recordingUnavailableReason
-														: t("ui.chat.composer.start_recording_hint", {
-																shortcut: shortcutText,
-																pushToTalk: resolvePushToTalkBinding().label,
-															})
+														: shortcutText === null
+															? t("ui.chat.composer.start_recording")
+															: t("ui.chat.composer.start_recording_hint", {
+																	shortcut: shortcutText,
+																	pushToTalk: resolvePushToTalkBinding().label,
+																})
 											}
 										>
 											<span>
