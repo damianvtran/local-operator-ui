@@ -59,7 +59,7 @@ const bundle = await build({
 			export { TeamBridgePageView } from "./src/renderer/src/features/team-bridge/team-bridge-page";
 			export * from "./src/renderer/src/features/team-bridge/team-bridge-invitations";
 			export * from "./src/renderer/src/features/team-bridge/team-bridge-invitations-model";
-			export { invitationAnswerMutationOptions, teamBridgeKeys } from "./src/renderer/src/features/team-bridge/use-team-bridge";
+			export { agentNotifyMutationOptions, invitationAnswerMutationOptions, teamBridgeKeys } from "./src/renderer/src/features/team-bridge/use-team-bridge";
 			export { TeamBridgeApi } from "./src/renderer/src/shared/api/local-operator/team-bridge-api";
 		`,
 		resolveDir: ROOT,
@@ -141,9 +141,12 @@ const { QueryClient } = await import("@tanstack/react-query");
 const ui = await import(modulePath.href);
 
 const SELF = "acct_self";
-/* The v1 participation statement, verbatim. Changing it needs a new version. */
+/* The v1 participation statement, verbatim: the record earlier consents agreed to. */
 const CONSENT_V1 =
 	"Accepting lets your agent read and post in this conversation from now on. It is woken only when someone @-mentions it.";
+/* The v2 statement (wake-on-every-message), verbatim. Changing it needs a new version. */
+const CONSENT_V2 =
+	"Accepting lets your agent read and post in this conversation from now on. It sees every message and decides whether to reply; an @-mention means it should reply. You can limit it to @-mentions or mute it.";
 const human = (accountId, label, patch = {}) => ({
 	account_id: accountId,
 	kind: "human",
@@ -333,11 +336,14 @@ test("the view states the consent, the row, and each outcome honestly", () => {
 		empty.includes("No invitations are waiting for your agent."),
 		true,
 	);
-	// The consent statement renders, and points at no control the app lacks.
-	assert.equal(empty.includes(CONSENT_V1), true);
-	assert.equal(CONSENT_V1.includes("All"), false);
-	assert.equal(CONSENT_V1.includes("muted"), false);
-	assert.equal(CONSENT_V1.includes("read and post"), true);
+	// The v2 consent statement renders (v1 no longer does), and points only at
+	// controls the app has: the conversation menu's "Your agent" levels.
+	assert.equal(empty.includes(CONSENT_V2), true);
+	assert.equal(empty.includes(CONSENT_V1), false);
+	assert.equal(CONSENT_V2.includes("All"), false);
+	assert.equal(CONSENT_V2.includes("muted"), false);
+	assert.equal(CONSENT_V2.includes("read and post"), true);
+	assert.equal(CONSENT_V2.includes("sees every message"), true);
 
 	const one = renderView({ invitations: [invitation()] });
 	assert.equal(one.includes("launch-room"), true);
@@ -374,7 +380,7 @@ test("the view states the consent, the row, and each outcome honestly", () => {
 	});
 	assert.equal(
 		done.includes(
-			"Accepted. Robo Damian is woken only when someone @-mentions it.",
+			"Accepted. Robo Damian now sees every message here and replies when it’s relevant or @-mentioned.",
 		),
 		true,
 	);
@@ -401,7 +407,7 @@ test("the view states the consent, the row, and each outcome honestly", () => {
 	});
 	assert.equal(
 		unnamedAccepted.includes(
-			"Accepted. Your agent is woken only when someone @-mentions it.",
+			"Accepted. Your agent now sees every message here and replies when it’s relevant or @-mentioned.",
 		),
 		true,
 	);
@@ -525,20 +531,27 @@ test("the consent text is pinned to the participation version it is consent to",
 	/*
 	 * R1. Editing this English text without minting a new participation
 	 * version (and key) is exactly what this test must catch: the hub records
-	 * an accept as consent to `bridge_agent_participation_v1`.
+	 * an accept as consent to the version it names, now
+	 * `bridge_agent_participation_v2` (wake-on-every-message). v1's text stays
+	 * in the catalogue, unchanged, as the record of what earlier accepts agreed
+	 * to: a later edit to it would rewrite history, so it is pinned too.
 	 */
 	assert.equal(
 		ui.TEAM_BRIDGE_AGENT_PARTICIPATION_VERSION,
-		"bridge_agent_participation_v1",
+		"bridge_agent_participation_v2",
 	);
 	assert.equal(
 		ui.TEAM_BRIDGE_AGENT_PARTICIPATION_CONSENT_KEY,
-		"ui.teamBridge.invitations.consent.bridge_agent_participation_v1",
+		"ui.teamBridge.invitations.consent.bridge_agent_participation_v2",
 	);
 	const en = JSON.parse(
 		readFileSync(`${ROOT}/src/i18n/catalogues/en/ui.teamBridge.json`, "utf8"),
 	);
-	assert.equal(en[ui.TEAM_BRIDGE_AGENT_PARTICIPATION_CONSENT_KEY], CONSENT_V1);
+	assert.equal(en[ui.TEAM_BRIDGE_AGENT_PARTICIPATION_CONSENT_KEY], CONSENT_V2);
+	assert.equal(
+		en["ui.teamBridge.invitations.consent.bridge_agent_participation_v1"],
+		CONSENT_V1,
+	);
 	assert.equal("ui.teamBridge.invitations.consent" in en, false);
 });
 
@@ -682,7 +695,7 @@ test("the answer is sent as the owner, patched optimistically, and rolled back e
 	assert.equal(consent.tenant_id, "tnt_1");
 	assert.equal(consent.conversation_id, "bcv_1");
 	assert.equal(consent.decision, "accept");
-	assert.equal(consent.consent_version, "bridge_agent_participation_v1");
+	assert.equal(consent.consent_version, "bridge_agent_participation_v2");
 	assert.equal("notify" in consent, false);
 
 	const declined = ui.withAgentInvitationAnswer(
@@ -724,7 +737,7 @@ test("a runtime without the owner guard answers outdated, through the real trans
 		accountId: SELF,
 		tenantId: "tnt_1",
 		decision: "accept",
-		consentVersion: "bridge_agent_participation_v1",
+		consentVersion: "bridge_agent_participation_v2",
 	}).catch((caught) => caught);
 	assert.equal(error instanceof Error, true);
 	assert.equal(ui.invitationFailureKind(error), "runtime_outdated");
@@ -793,4 +806,86 @@ test("two interleaved refusals both roll back to invited (R3)", async () => {
 	assert.equal(stateOf("bcv_a"), "active");
 	assert.equal(stateOf("bcv_b"), "invited");
 	client.clear();
+});
+
+test("the agent's wake level is sent as the owner to agent-notify, patched optimistically, and rolled back", async () => {
+	/*
+	 * Wake-on-every-message: the owner narrows their OWN agent's level from the
+	 * conversation menu. The op names the conversation and level, never an
+	 * endpoint (the runtime resolves it), and carries the owner receipt.
+	 */
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	const row = conversation({
+		members: [
+			human("acct_ada", "Ada", { role: "owner" }),
+			human(SELF, "Damian"),
+			agent(SELF, "Robo Damian", "active", { notify: "all" }),
+		],
+	});
+	const page = { conversations: [row], has_more: false };
+	const orgKey = ui.teamBridgeKeys.conversations("tnt_1", SELF);
+	client.setQueryData(["radient-user", "user"], { account: { id: SELF } });
+	client.setQueryData(ui.teamBridgeKeys.statusFor(SELF), {
+		account_id: SELF,
+		state: "ready",
+		local: { enabled: true },
+		read_only: false,
+	});
+	client.setQueryData(orgKey, structuredClone(page));
+	const requests = [];
+	globalThis.window = {
+		api: {
+			desktop: {
+				request: async (request) => {
+					requests.push(request);
+					if (request.op === "capabilities")
+						return {
+							ok: true,
+							status: 200,
+							body: {
+								result: {
+									features: { team_bridge_conversation_owner_guard: 1 },
+								},
+							},
+						};
+					return { ok: true, status: 200, body: { result: row } };
+				},
+			},
+		},
+	};
+	const options = ui.agentNotifyMutationOptions(client);
+	const variables = {
+		conversationId: "bcv_1",
+		tenantId: "tnt_1",
+		notify: "mention",
+	};
+	const context = await options.onMutate(variables);
+	const selfAgent = () =>
+		client
+			.getQueryData(orgKey)
+			.conversations[0].members.find(
+				(member) => member.kind === "agent" && member.account_id === SELF,
+			);
+	assert.equal(selfAgent().notify, "mention");
+	// The reader's own banner level is a different row and does not move.
+	assert.equal(client.getQueryData(orgKey).conversations[0].muted, false);
+
+	await options.mutationFn(variables);
+	const write = requests.find(
+		(request) => request.op === "team_bridge.conversations.agent_notify",
+	);
+	assert.deepEqual(write, {
+		op: "team_bridge.conversations.agent_notify",
+		expected_account_id: SELF,
+		tenant_id: "tnt_1",
+		conversation_id: "bcv_1",
+		notify: "mention",
+	});
+
+	options.onError(new Error("refused"), variables, context);
+	assert.deepEqual(client.getQueryData(orgKey), page);
+	client.clear();
+	globalThis.window = undefined;
 });

@@ -75,6 +75,7 @@ const bundle = await build({
 			export { TeamBridgePageView, TeamBridgePreviewBanner } from "./src/renderer/src/features/team-bridge/team-bridge-page";
 			export { TeamBridgeConversationMenu } from "./src/renderer/src/features/team-bridge/team-bridge-conversation-menu";
 			export { notifyMutationOptions, teamBridgeKeys } from "./src/renderer/src/features/team-bridge/use-team-bridge";
+			export { TEAM_BRIDGE_AGENT_NOTIFY_OPTIONS, ownActiveAgent, agentNotifyLevel, ownAgentMenuState, withOwnAgentNotify } from "./src/renderer/src/features/team-bridge/team-bridge-model";
 		`,
 		resolveDir: ROOT,
 		sourcefile: "team-bridge-channels.mjs",
@@ -327,6 +328,148 @@ test("the menu renders the model's levels and toggle, inside Radix's radio group
 	assert.match(source, /notificationPreference\(conversation\)/);
 	// Story/capture seed: the open state is a prop, never a click from the test.
 	assert.match(source, /<DropdownMenu defaultOpen=\{defaultOpen\}>/);
+});
+
+/*
+ * YOUR AGENT'S WAKE LEVEL (wake-on-every-message). The menu offers it only for
+ * the reader's OWN ACTIVE agent; the checked row is the served level and never
+ * a guess; the optimistic patch moves only that agent row.
+ */
+test("the 'Your agent' group is offered only for the reader's own active agent", () => {
+	const self = "acct_self";
+	const agentRow = (account, state, notify) => ({
+		account_id: account,
+		kind: "agent",
+		display_label: "Robo",
+		role: "member",
+		state,
+		...(notify ? { notify } : {}),
+	});
+	const humanRow = {
+		account_id: self,
+		kind: "human",
+		display_label: "Me",
+		role: "member",
+		state: "active",
+	};
+	const of = (members) => ({ members });
+	// Active own agent with a served level.
+	assert.deepEqual(
+		ui.ownAgentMenuState(
+			of([humanRow, agentRow(self, "active", "mention")]),
+			self,
+		),
+		{ notify: "mention" },
+	);
+	// Active own agent, older hub serving no level: nothing is checked, not a guessed "all".
+	assert.deepEqual(ui.ownAgentMenuState(of([agentRow(self, "active")]), self), {
+		notify: null,
+	});
+	// An unknown served value is not trusted either.
+	assert.deepEqual(
+		ui.ownAgentMenuState(of([agentRow(self, "active", "loud")]), self),
+		{ notify: null },
+	);
+	// Invited (answered on the Invitations screen), left, or someone else's agent: no control.
+	for (const members of [
+		[agentRow(self, "invited")],
+		[agentRow(self, "left")],
+		[agentRow(self, "removed")],
+		[agentRow("acct_other", "active", "all")],
+		[humanRow],
+	])
+		assert.equal(ui.ownAgentMenuState(of(members), self), undefined);
+	// No resolved account: no control.
+	assert.equal(
+		ui.ownAgentMenuState(of([agentRow(self, "active")]), undefined),
+		undefined,
+	);
+	// Menu order is loudest first, and every label is an agentNotify key.
+	assert.deepEqual(
+		ui.TEAM_BRIDGE_AGENT_NOTIFY_OPTIONS.map((option) => option.value),
+		["all", "mention", "mute"],
+	);
+	assert.deepEqual(
+		ui.TEAM_BRIDGE_AGENT_NOTIFY_OPTIONS.map((option) => option.labelKey),
+		[
+			"ui.teamBridge.agentNotify.all",
+			"ui.teamBridge.agentNotify.mention",
+			"ui.teamBridge.agentNotify.mute",
+		],
+	);
+});
+
+test("the agent-level patch moves only the reader's own active agent, in that org's row", () => {
+	const self = "acct_self";
+	const row = (id, tenant) => ({
+		id,
+		tenant_id: tenant,
+		notify: "all",
+		muted: false,
+		members: [
+			{
+				account_id: self,
+				kind: "human",
+				display_label: "Me",
+				role: "member",
+				state: "active",
+			},
+			{
+				account_id: self,
+				kind: "agent",
+				display_label: "Robo",
+				role: "member",
+				state: "active",
+				notify: "all",
+			},
+			{
+				account_id: "acct_other",
+				kind: "agent",
+				display_label: "Theirs",
+				role: "member",
+				state: "active",
+				notify: "all",
+			},
+		],
+	});
+	const page = {
+		conversations: [row("bcv_1", "tnt_1"), row("bcv_1", "tnt_2")],
+		has_more: true,
+	};
+	const next = ui.withOwnAgentNotify(
+		page,
+		{ conversationId: "bcv_1", tenantId: "tnt_1" },
+		self,
+		"mute",
+	);
+	const [hit, otherOrg] = next.conversations;
+	assert.equal(hit.members[1].notify, "mute");
+	// The reader's own banner register is a different field and does not move.
+	assert.equal(hit.notify, "all");
+	assert.equal(hit.muted, false);
+	assert.equal(hit.members[2].notify, "all");
+	assert.equal(hit.members[0].notify, undefined);
+	// Same id in another org is a different conversation.
+	assert.deepEqual(otherOrg, page.conversations[1]);
+	assert.equal(next.has_more, true);
+});
+
+test("the menu draws the agent group from the model, separately labelled, before Archive", () => {
+	const source = readFileSync(
+		`${ROOT}/src/renderer/src/features/team-bridge/team-bridge-conversation-menu.tsx`,
+		"utf8",
+	);
+	assert.match(source, /TEAM_BRIDGE_AGENT_NOTIFY_OPTIONS\.map/);
+	assert.match(source, /\{ownAgent && onAgentNotifyChange && \(/);
+	assert.match(
+		source,
+		/aria-label=\{t\("ui\.teamBridge\.agentNotify\.label"\)\}/,
+	);
+	// The agent group writes through its own callback, never the reader's notify.
+	assert.match(source, /onAgentNotifyChange\(asTeamBridgeNotify\(next\)\)/);
+	const agentGroup = source.indexOf("{ownAgent && onAgentNotifyChange && (");
+	const archiveGuard = source.indexOf("{onArchive && (");
+	assert.ok(agentGroup > 0 && archiveGuard > agentGroup);
 });
 
 /*

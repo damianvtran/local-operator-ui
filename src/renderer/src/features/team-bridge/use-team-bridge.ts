@@ -67,6 +67,7 @@ import {
 	withAppendedPage,
 	withConversationStatus,
 	withNotificationPreference,
+	withOwnAgentNotify,
 	withoutConversation,
 } from "./team-bridge-model";
 
@@ -756,6 +757,92 @@ export function useSetTeamBridgeNotify(): UseMutationResult<
 	const client = useQueryClient();
 	const owner = useBridgeOwner();
 	return useMutation(notifyMutationOptions(client, owner.isCurrent));
+}
+
+/** One agent wake-level write: which conversation, in which org, and the level. */
+export type TeamBridgeAgentNotifyVariables = {
+	conversationId: string;
+	tenantId: string;
+	notify: TeamBridgeNotify;
+};
+
+/**
+ * The reader's own agent's wake level, optimistically, separated from the
+ * hook for the same reason as `notifyMutationOptions` (a DOM-free test drives
+ * the phases against a real cache).
+ *
+ * Same owner discipline as the reader's own notify write: the account is
+ * captured once and re-checked in every phase, so a sign-out mid-flight can
+ * neither land the level under the next account nor roll back into their
+ * cache. The snapshots restore exactly the pages this write patched; the
+ * refetch in `onSettled` is what brings in the server's canonical level.
+ */
+export function agentNotifyMutationOptions(
+	client: QueryClient,
+	isCurrent?: () => boolean,
+): UseMutationOptions<
+	TeamBridgeConversation,
+	Error,
+	TeamBridgeAgentNotifyVariables,
+	TeamBridgeNotifyMutationContext
+> {
+	const { accountId } = observedRadientAuthority(client);
+	const current = () =>
+		bridgeOwnerCurrent(client, accountId) && (isCurrent?.() ?? true);
+	const check = () => {
+		if (!current() || !accountId)
+			throw new Error("Team Bridge write authority changed");
+		return accountId;
+	};
+	const owned = {
+		queryKey: teamBridgeKeys.conversationsPrefix,
+		predicate: (query: { queryKey: QueryKey }) =>
+			query.queryKey.at(-1) === accountId &&
+			query.queryKey.at(-2) === "account",
+	};
+	return {
+		mutationFn: ({ conversationId, tenantId, notify }) =>
+			TeamBridgeApi.setAgentNotify({
+				conversationId,
+				tenantId,
+				notify,
+				accountId: check(),
+			}),
+		onMutate: async (variables) => {
+			const self = check();
+			await client.cancelQueries(owned);
+			check();
+			const snapshots =
+				client.getQueriesData<TeamBridgeConversationList>(owned);
+			client.setQueriesData<TeamBridgeConversationList>(owned, (page) =>
+				page === undefined
+					? page
+					: withOwnAgentNotify(page, variables, self, variables.notify),
+			);
+			return { snapshots };
+		},
+		onError: (_error, _variables, context) => {
+			if (!current()) return;
+			for (const [key, data] of context?.snapshots ?? []) {
+				client.setQueryData(key, data);
+			}
+		},
+		onSettled: async () => {
+			if (!current()) return;
+			await client.invalidateQueries(owned);
+		},
+	};
+}
+
+/** Set the reader's own agent's wake level in one conversation. */
+export function useSetTeamBridgeAgentNotify(): UseMutationResult<
+	TeamBridgeConversation,
+	Error,
+	TeamBridgeAgentNotifyVariables
+> {
+	const client = useQueryClient();
+	const owner = useBridgeOwner();
+	return useMutation(agentNotifyMutationOptions(client, owner.isCurrent));
 }
 
 /** One invitation answer: which conversation, in which org, and the choice. */

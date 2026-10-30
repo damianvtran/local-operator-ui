@@ -15,6 +15,7 @@ import { Archive, Bell, BellOff, MoreHorizontal, UserPlus } from "lucide-react";
 import type { FC } from "react";
 import type { TeamBridgeNotify } from "../../../../shared/team-bridge-contract";
 import {
+	TEAM_BRIDGE_AGENT_NOTIFY_OPTIONS,
 	TEAM_BRIDGE_NOTIFY_OPTIONS,
 	asTeamBridgeNotify,
 	notificationPreference,
@@ -42,6 +43,14 @@ import {
  * next value and the menu closes as soon as it returns. If the server refuses,
  * the hook rolls its cache back and the checked row reappears at the old
  * value on the next paint.
+ *
+ * YOUR AGENT. When the reader's own agent is an active member, a second radio
+ * group sets how often THAT AGENT is woken here: every message (the hub's
+ * default; the agent decides whether a reply is needed), only @-mentions, or
+ * never. It is a separate group with its own label because it writes a
+ * different member row: muting your own banners must never silence your agent,
+ * and vice versa. Absent `ownAgent`, nothing is drawn: an invited agent is
+ * answered on the Invitations screen and a stranger's agent is not yours to set.
  */
 export const TeamBridgeConversationMenu: FC<{
 	conversation: { notify?: TeamBridgeNotify; muted: boolean };
@@ -54,6 +63,13 @@ export const TeamBridgeConversationMenu: FC<{
 	onArchive?: () => void;
 	/** Present only when the server says this caller may administer membership. */
 	onAddMembers?: () => void;
+	/**
+	 * Present only when the reader's own agent is an ACTIVE member here.
+	 * `notify` is the level the server reports for that agent row, or null when
+	 * it reports none (then no row is checked rather than a guessed one).
+	 */
+	ownAgent?: { notify: TeamBridgeNotify | null };
+	onAgentNotifyChange?: (notify: TeamBridgeNotify) => void;
 	/** Story/capture seed only: opens the menu so its rows are visible. */
 	defaultOpen?: boolean;
 }> = ({
@@ -61,6 +77,8 @@ export const TeamBridgeConversationMenu: FC<{
 	onNotifyChange,
 	onArchive,
 	onAddMembers,
+	ownAgent,
+	onAgentNotifyChange,
 	defaultOpen = false,
 }) => {
 	useI18nLocale();
@@ -124,6 +142,30 @@ export const TeamBridgeConversationMenu: FC<{
 						</DropdownMenuRadioItem>
 					))}
 				</DropdownMenuRadioGroup>
+				{ownAgent && onAgentNotifyChange && (
+					<>
+						<DropdownMenuSeparator />
+						<DropdownMenuLabel>
+							{t("ui.teamBridge.agentNotify.label")}
+						</DropdownMenuLabel>
+						{/* Radix's value "" checks no row: the server reported no level. */}
+						<DropdownMenuRadioGroup
+							value={ownAgent.notify ?? ""}
+							aria-label={t("ui.teamBridge.agentNotify.label")}
+							onValueChange={(next) =>
+								onAgentNotifyChange(asTeamBridgeNotify(next))
+							}
+						>
+							{TEAM_BRIDGE_AGENT_NOTIFY_OPTIONS.map((option) => (
+								<DropdownMenuRadioItem key={option.value} value={option.value}>
+									<span className="min-w-0 flex-1 truncate">
+										{t(option.labelKey)}
+									</span>
+								</DropdownMenuRadioItem>
+							))}
+						</DropdownMenuRadioGroup>
+					</>
+				)}
 				{onArchive && (
 					<>
 						<DropdownMenuSeparator />
