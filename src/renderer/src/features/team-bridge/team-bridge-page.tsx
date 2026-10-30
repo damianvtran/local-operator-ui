@@ -7,10 +7,6 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
 import { Spinner } from "@shared/components/common/spinner";
-import {
-	MessageInput,
-	type MessageInputProps,
-} from "@shared/components/composer";
 import { AttentionBadge } from "@shared/components/ui/attention-badge";
 import { Button } from "@shared/components/ui/button";
 import { ScrollArea } from "@shared/components/ui/scroll-area";
@@ -73,6 +69,7 @@ import {
 	sendAttachmentIds,
 } from "./team-bridge-attachments-model";
 import { TeamBridgeComposeBar } from "./team-bridge-compose-bar";
+import { TeamBridgeComposer } from "./team-bridge-composer";
 import { TeamBridgeConversationMenu } from "./team-bridge-conversation-menu";
 import { TeamBridgeCreateDialog } from "./team-bridge-create-dialog";
 import { TeamBridgeDefaultOnBanner } from "./team-bridge-default-on-banner";
@@ -189,13 +186,6 @@ import {
 	useUnarchiveTeamBridgeConversation,
 } from "./use-team-bridge";
 import { useTeamBridgeDrafts } from "./use-team-bridge-drafts";
-
-/**
- * The shared composer draws its empty-chat splash from `messages`; a host with no
- * transcript says so with `transcriptless`, and passes the same empty list the
- * mini view does rather than a second shape of "nothing".
- */
-const EMPTY_BRIDGE_MESSAGES: MessageInputProps["messages"] = [];
 
 /**
  * Why a send was refused, in the terms the person can act on (UX round 1, U2).
@@ -1258,14 +1248,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		draftJournal?.pending ?? null,
 	);
 	/*
-	 * THE SHARED COMPOSER'S SEND BINDING.
+	 * THE COMPOSER'S SEND, BOUND HERE.
 	 *
-	 * The box, the chips and the clearing belong to `MessageInput` now; what stays
-	 * here is what a composer cannot know - the target, the create-or-post
-	 * resolution, the idempotency key and the hub's attachment binding. `false` is a
-	 * REFUSAL and it is returned before anything is retired, so a refused send
-	 * leaves the text and chips where the reader can retry them (R6b); `true` lets
-	 * the box clear itself, which is the only clear a transcriptless host gets.
+	 * The bar, the field, the chips and the typing are `TeamBridgeComposer`'s; what
+	 * stays in this page is what a composer cannot know - the destination, the
+	 * create-or-reuse decision for a person or a group, the idempotency key and the
+	 * hub's attachment binding. `false` is a REFUSAL and it is returned before
+	 * anything is retired, so a refused send leaves the text and chips where the
+	 * reader can retry them (R6b); `true` lets the box clear itself, which is the
+	 * only clear a transcriptless host gets.
 	 */
 	const submit = async (content: string, attachments: string[]) => {
 		/*
@@ -2391,18 +2382,20 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							</div>
 						</ScrollArea>
 
-						{/* THE SHARED COMPOSER, NOT A SECOND ONE. The box, its field, its
-						    chips and its Send are `MessageInput`'s - the same assembly the
-						    chat pane and the mini view mount - so this page stops owning a
-						    composer of its own that drifts from the app's. What a composer
-						    cannot know (the target, the hub's attachment binding, a
-						    schedule) travels in as props or sits BESIDE it as host chrome.
-						    THE BAND CLIPS NOTHING: the composer draws its focus ring OUTSIDE
-						    the box, and an ancestor that clips at its padding box eats that
-						    edge (R3). The recovery alerts that used to live in that scroller
-						    now sit above the box, which is also where a reader looks for
-						    them; the schedule control, which has no composer slot, sits
-						    below it. */}
+						{/* TEAM BRIDGE'S OWN COMPOSER, AND THE PANE'S OWN PADDING IS THE
+						    ONLY SPACE UNDER IT. This is a messaging pane: one bar at the
+						    foot, the attach and send controls inside it. It is NOT the shared
+						    chat composer - that assembly carries the chat pane's measures, a
+						    status row and an action row, and in a conversation pane it renders
+						    a 110px card where a 46px bar belongs (operator report,
+						    2026-10-30). What that adoption fixed, the field's growth, is kept
+						    in `team-bridge-composer.tsx`, where it belongs.
+						    NOTHING SITS BETWEEN THE BAR AND THE PANE'S EDGE: a row below the
+						    box is the dead strip this layout is judged on, so the schedule
+						    control rides the bar's own trailing cluster and the chord rides the
+						    line it is about. The band clips nothing, because the bar draws its
+						    focus ring OUTSIDE itself and a clipping ancestor eats that edge
+						    (R3, pinned by scripts/team-bridge-composer-ring.test.mjs). */}
 						{!previewSelected &&
 							(shown?.status === "archived" ? (
 								/* Nobody can post: the server refuses it too (`conversation_archived`). */
@@ -2414,7 +2407,17 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									{t("ui.teamBridge.read_only.composer")}
 								</p>
 							) : (
-								<div className="flex min-w-0 shrink-0 flex-col gap-2 px-4 pt-1">
+								<div
+									className="flex min-w-0 shrink-0 flex-col gap-2 px-4 pt-1 pb-4"
+									/* THE BAND'S STABLE HANDLE, on the `data-lo-composer-band`
+									   convention the composer rigs read (see the shared composer's
+									   own attribute): this element IS the composer's band here -
+									   the alerts and the restored attempt above the bar, the bar
+									   itself, and the pane's own inset below it - so a control that
+									   refuses the field can be asserted to render in the same band
+									   the field is in, without either of them naming a class. */
+									data-lo-composer-band={true}
+								>
 									{scheduleFailed && (
 										<p role="alert" className="text-sm text-danger">
 											{t("ui.teamBridge.schedule.failed")}
@@ -2465,162 +2468,139 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											{t("ui.teamBridge.drafts.storage_failed")}
 										</p>
 									)}
-									<MessageInput
-										conversationId={composerKey}
-										messages={EMPTY_BRIDGE_MESSAGES}
-										isLoading={false}
-										/* No transcript, no job and no Stop: the empty-chat splash
-										   and the turn machinery are the chat pane's, and this host
-										   clears its own accepted send (U1). */
-										transcriptless
-										ownGutter
-										/* A SECOND LIVE COMPOSER NEEDS ITS OWN REGISTRATION, or this
-										   box and the chat pane's overwrite each other's
-										   push-to-talk handler in the manager's id-keyed map (R5). */
-										speechRegistrationId="team-bridge-composer"
-										placeholderOverride={composerPlaceholder}
-										onSendMessage={submit}
-										hostNotice={
-											heldAttempt ||
-											(draftState.current?.createUncertain && !scheduling)
-												? {
-														id: heldReasonId,
-														node: heldAttempt ? (
-															<TeamBridgeHeldAttempt
-																reasonId={heldReasonId}
-																busy={sending || scheduling}
-																onRetry={
-																	onSchedule
-																		? () => {
-																				const at = draftState.current?.sendAt;
-																				if (at)
-																					void schedule(at).catch(() =>
-																						setScheduleFailed(true),
-																					);
-																			}
-																		: undefined
-																}
-																onDiscard={() => {
-																	if (writing.current || scheduling || sending)
-																		return;
-																	// This releases only the local attempt; the explicit
-																	// acknowledgement asks the reader to check/cancel any
-																	// server schedule before minting a fresh key.
-																	if (
-																		draftState.update({
-																			sendAt: undefined,
-																			clientRef: crypto.randomUUID(),
-																		})
-																	)
-																		setScheduleFailed(false);
-																}}
-															/>
-														) : (
-															<div role="alert" className="text-sm text-danger">
-																<p id={heldReasonId}>
-																	{t("ui.teamBridge.schedule.create_uncertain")}
-																</p>
-																<Button
-																	variant="ghost"
-																	onClick={() =>
-																		draftState.update({
-																			createUncertain: false,
-																		})
-																	}
-																>
-																	{t("ui.teamBridge.schedule.create_retry")}
-																</Button>
-															</div>
-														),
-														/* A held or uncertain attempt refuses the box: the
-														   attempt already owns this draft's idempotency key, and
-														   a second send would race it. */
-														blocksInput: true,
-														statedByNode: true,
-														placeholder: composerPlaceholder,
-													}
-												: !canCompose
-													? {
-															/* No destination yet. The box still renders - it is the
-															   composer this host has - and states why it refuses
-															   instead of inviting text it cannot send. */
-															id: composeGateId,
-															node: (
-																<p
-																	id={composeGateId}
-																	className="text-sm text-ink-muted"
-																>
-																	{t("ui.teamBridge.compose.empty")}
-																</p>
-															),
-															blocksInput: true,
-															statedByNode: true,
-															placeholder: composerPlaceholder,
+									{/* A HELD OR UNCERTAIN ATTEMPT REFUSES THE BOX: the attempt already owns
+									   this draft's idempotency key, and a second send would race it.
+									   It sits ABOVE the bar - a reason a control will not take
+									   belongs where the reader looks for it, and nothing belongs
+									   between the bar and the pane's own padding. */}
+									{heldAttempt ? (
+										<TeamBridgeHeldAttempt
+											reasonId={heldReasonId}
+											busy={sending || scheduling}
+											onRetry={
+												onSchedule
+													? () => {
+															const at = draftState.current?.sendAt;
+															if (at)
+																void schedule(at).catch(() =>
+																	setScheduleFailed(true),
+																);
 														}
 													: undefined
+											}
+											onDiscard={() => {
+												if (writing.current || scheduling || sending) return;
+												// This releases only the local attempt; the explicit
+												// acknowledgement asks the reader to check/cancel any
+												// server schedule before minting a fresh key.
+												if (
+													draftState.update({
+														sendAt: undefined,
+														clientRef: crypto.randomUUID(),
+													})
+												)
+													setScheduleFailed(false);
+											}}
+										/>
+									) : draftState.current?.createUncertain && !scheduling ? (
+										<div role="alert" className="text-sm text-danger">
+											<p id={heldReasonId}>
+												{t("ui.teamBridge.schedule.create_uncertain")}
+											</p>
+											<Button
+												variant="ghost"
+												onClick={() =>
+													draftState.update({
+														createUncertain: false,
+													})
+												}
+											>
+												{t("ui.teamBridge.schedule.create_retry")}
+											</Button>
+										</div>
+									) : null}
+									{/* No destination yet. The box still renders - it is the composer
+									   this host has - and states why it refuses instead of inviting
+									   text it cannot send. */}
+									{!canCompose && (
+										<p id={composeGateId} className="text-sm text-ink-muted">
+											{t("ui.teamBridge.compose.empty")}
+										</p>
+									)}
+									<TeamBridgeComposer
+										conversationId={composerKey}
+										placeholder={composerPlaceholder}
+										/* The hub's image capability is what offers the attach control
+										   at all: an affordance that cannot work is the dead end the
+										   fail-closed rule forbids, and a refused send names the
+										   capability instead (see `submit`). */
+										canAttach={Boolean(imageCapability)}
+										disabled={
+											!canCompose ||
+											Boolean(heldAttempt) ||
+											Boolean(draftState.current?.createUncertain)
+										}
+										disabledReasonId={
+											heldAttempt || draftState.current?.createUncertain
+												? heldReasonId
+												: !canCompose
+													? composeGateId
+													: undefined
+										}
+										sendDisabled={
+											Boolean(draftState.current?.sendAt) || scheduling
+										}
+										sending={sending}
+										/* The line at the point of typing says the chord, and says why
+										   the schedule control is refusing while a send is out (UX
+										   round 1, U3 + U4). It rides the bar, so it costs no row. */
+										hint={
+											sending
+												? t("ui.chat.canonical.send_failure.send_lock")
+												: undefined
+										}
+										onSendMessage={submit}
+										/* HOST CHROME WITH NO BAR SLOT. Scheduling needs the target
+										   and a time, neither of which is typing. */
+										trailing={
+											onSchedule ? (
+												<Button
+													ref={clockRef}
+													variant="ghost"
+													size="icon-sm"
+													aria-label={t("ui.teamBridge.schedule.title")}
+													/* The line in the bar already says this while a send is in
+													   flight; the control says it too, so the refusal is
+													   reachable from the control itself (UX round 1, U3). */
+													title={
+														sending
+															? t("ui.chat.canonical.send_failure.send_lock")
+															: undefined
+													}
+													aria-describedby={
+														draftState.current?.createUncertain && !scheduling
+															? heldReasonId
+															: heldAttempt
+																? heldReasonId
+																: !canCompose
+																	? composeGateId
+																	: undefined
+													}
+													disabled={
+														Boolean(draftState.current?.sendAt) ||
+														Boolean(draftState.current?.createUncertain) ||
+														!hasContent ||
+														sending ||
+														scheduling ||
+														!canCompose
+													}
+													onClick={() => setScheduleOpen(true)}
+												>
+													<Clock size={16} aria-hidden="true" />
+												</Button>
+											) : undefined
 										}
 									/>
-									{/* HOST CHROME THE COMPOSER HAS NO SLOT FOR. Scheduling needs the
-									   target and a time, neither of which is typing, and the
-									   restored attempt above names the clock by id. */}
-									{/*
-									 * THE LINE UNDER THE BOX HEARS BOTH FACTS (UX round 1, U3 + U4).
-									 * The shared composer shows its keyboard hints on ITS controls (the
-									 * mic), not at the point of typing, so the principal chord had become
-									 * undiscoverable when the bridge stopped drawing its own box. While a
-									 * send is in flight the same slot says why the schedule control is
-									 * refusing - the app's own sentence for that state, borrowed rather than
-									 * written a second time.
-									 */}
-									<div className="flex items-center gap-2 px-1 pb-4">
-										<span
-											className={cn(
-												"min-w-0 flex-1 truncate ps-1.5 text-meta-sm text-ink-dim transition-opacity duration-fast",
-												sending || hasContent ? "opacity-100" : "opacity-0",
-											)}
-											aria-hidden={!(sending || hasContent)}
-										>
-											{sending
-												? t("ui.chat.canonical.send_failure.send_lock")
-												: t("ui.teamBridge.composer.hint")}
-										</span>
-										{onSchedule && (
-											<Button
-												ref={clockRef}
-												variant="ghost"
-												size="icon"
-												aria-label={t("ui.teamBridge.schedule.title")}
-												/* The line above already says this while a send is in
-												   flight; the control says it too, so the refusal is
-												   reachable from the control itself (UX round 1, U3). */
-												title={
-													sending
-														? t("ui.chat.canonical.send_failure.send_lock")
-														: undefined
-												}
-												aria-describedby={
-													draftState.current?.createUncertain && !scheduling
-														? heldReasonId
-														: heldAttempt
-															? heldReasonId
-															: !canCompose
-																? composeGateId
-																: undefined
-												}
-												disabled={
-													Boolean(draftState.current?.sendAt) ||
-													Boolean(draftState.current?.createUncertain) ||
-													!hasContent ||
-													sending ||
-													scheduling ||
-													!canCompose
-												}
-												onClick={() => setScheduleOpen(true)}
-											>
-												<Clock size={16} aria-hidden="true" />
-											</Button>
-										)}
-									</div>
 									<TeamBridgeScheduleDialog
 										open={scheduleOpen}
 										returnFocus={clockRef}

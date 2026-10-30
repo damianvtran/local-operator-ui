@@ -36,9 +36,11 @@ import type {
  * so the install has to happen before anything in this module renders.
  */
 import "../chat/components/story-electron-shim";
+import { useConversationInputStore } from "@shared/store/conversation-input-store";
+import { teamBridgeComposerKey } from "@shared/store/team-bridge-composer-rows";
 import profileImage from "../../assets/radient-icon-1024x1024.png";
 import { ChatLayout } from "../../shared/components/common/chat-layout";
-import { draftStorageKey } from "./team-bridge-drafts";
+import { draftStorageKey, draftTargetKey } from "./team-bridge-drafts";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeOrganization,
@@ -403,10 +405,15 @@ const meta = {
 	parameters: { layout: "fullscreen" },
 	// Storybook's root has no height of its own; the app's shell gives the page
 	// `flex-1 min-h-0`. The board supplies the same constraint so the capture
-	// shows the real composition rather than a page collapsed to its content.
+	// shows the real composition rather than a page collapsed to its content -
+	// WHICH IS WHY THIS IS A FLEX COLUMN AND NOT A BARE `h-dvh`. `flex-1` on the
+	// page is inert in a block parent, so every frame taken from here showed the
+	// page at its content height (measured 2026-10-30: 565px in a 720px frame,
+	// a 155px band of empty canvas under the composer): the board claimed the
+	// shell's constraint in the comment above and did not deliver it.
 	decorators: [
 		(Story) => (
-			<div className="h-dvh">
+			<div className="flex h-dvh flex-col">
 				<Story />
 			</div>
 		),
@@ -414,6 +421,18 @@ const meta = {
 	args: {
 		selfAccountId: self,
 		conversations: [dm, channel, group],
+		/*
+		 * THE HUB TAKES IMAGES, which is what offers the bar's attach control at
+		 * all (`canAttach`): without it the composer draws a field and a send arrow
+		 * and every frame here would photograph a control set the shipping app does
+		 * not have.
+		 */
+		attachmentCapability: {
+			enabled: true,
+			max_count: 10,
+			max_bytes: 10 * 1024 * 1024,
+			mime_types: ["image/png", "image/jpeg", "image/webp"],
+		},
 		target: { type: "conversation", id: dm.id },
 		messages,
 		organizations: [minervaOrganization, northwindOrganization],
@@ -436,6 +455,53 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const PopulatedDirectMessage: Story = {};
+
+/*
+ * A STAGED CHIP, WHICH IS A HEIGHT THE BAR CANNOT REFUSE.
+ *
+ * The chip row sits ABOVE the bar and is content, so a composer holding one is
+ * taller than an empty one and that is correct (the operator's criterion 7,
+ * 2026-10-30). The frame exists because the attach control opens an OS file
+ * dialog that no capture can drive, and a review should not have to take the
+ * chip's geometry on trust: the row is seeded into the very store row the box
+ * reads its draft from, so what renders is the shipping attachment card, not a
+ * mock of it.
+ */
+export const ComposerWithAttachment: Story = {
+	decorators: [
+		(Story) => {
+			useEffect(() => {
+				/*
+				 * THE CHIP IS SET, NOT ADDED. The input store outlives a reload, so a
+				 * fixture that only appends grows a chip on every mount - measured,
+				 * six of them in one frame. Removing what the row already holds and
+				 * adding one is the whole public API this needs.
+				 */
+				const store = useConversationInputStore.getState();
+				const key = teamBridgeComposerKey(
+					self,
+					minervaOrganization.tenantId,
+					draftTargetKey({ type: "conversation", id: dm.id }),
+				);
+				for (const chip of store.inputByConversation[key]?.attachments ?? [])
+					store.removeAttachment(key, chip.id);
+				store.addAttachment(key, {
+					/*
+					 * A DATA URL, WITH THE NAME THE CARD PRINTS. A filesystem path is what
+					 * a real chip holds, but a frame cannot read one: the renderer has no
+					 * bytes behind a path it was only told about, so the card would paint
+					 * a broken thumbnail. `;name=` is where `AttachmentsPreview` reads a
+					 * chip's label from, so the frame shows the real card - thumbnail,
+					 * name, remove control - and the geometry it exists to show.
+					 */
+					id: "frame-staged-chip",
+					path: "data:image/png;name=launch-checklist.png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAIAAADYYG7QAAAAQklEQVR4nO3OQQ0AIAwAsclBBP6DLFxwPJpUQOfs9ZXJB0JCQkL1QEhISKgeCAkJCdUDISEhoXogJCQkVA+EhIQeu0KTjJdXODqoAAAAAElFTkSuQmCC",
+				});
+			}, []);
+			return <Story />;
+		},
+	],
+};
 
 /*
  * The rail's Invitations entry (D5) beside the unread counts: the reader's own
