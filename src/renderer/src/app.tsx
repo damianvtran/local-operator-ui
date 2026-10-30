@@ -37,6 +37,7 @@ import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
 import { ConnectProviderDialog } from "@features/providers/connect-provider-dialog";
 import { SessionSwitcher } from "@features/session-switcher/components/session-switcher";
+import { useSyncRecordingClaims } from "@features/settings/components/keyboard-shortcuts-section";
 import { LanguageDialog } from "@features/settings/components/language-dialog";
 import { useTeamBridgeNotificationOpen } from "@features/team-bridge/use-team-bridge-notification-open";
 import { useTeamBridgeNotifications } from "@features/team-bridge/use-team-bridge-notifications";
@@ -167,6 +168,7 @@ const BrowserWebauthnPrompt = lazy(() =>
  */
 const App: FC = () => {
 	useI18nLocale();
+	useSyncRecordingClaims();
 	/*
 	 * The window chrome's live half: which sides the OS put its controls on, and the
 	 * full-screen fact. Mounted once, here, because it writes attributes on the

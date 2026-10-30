@@ -286,6 +286,8 @@ export function registerDesktopIPC(
 	 * answers.
 	 */
 	onLanguageSettingEdited?: () => void,
+	/** Refuse selected writes synchronously, before they reach the daemon. */
+	admitDesktopRequest?: (input: unknown) => DesktopResponse | null,
 ): void {
 	const opened = new Map<string, string>();
 	function authorize(event: IpcMainInvokeEvent): void {
@@ -304,6 +306,8 @@ export function registerDesktopIPC(
 	const guarded = guardForegroundReceipts(window, request);
 	ipcMain.handle("desktop-request", (event, input: unknown) => {
 		authorize(event);
+		const refusal = admitDesktopRequest?.(input);
+		if (refusal !== null && refusal !== undefined) return refusal;
 		const outcome = guarded(input);
 		/*
 		 * The hotkey's fast path, and the ONE if §J.6 asks for: a keymap write

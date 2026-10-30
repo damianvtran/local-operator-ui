@@ -1,0 +1,24 @@
+{
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "radient/auto",
+	"model_comment": "The session began as anthropic/claude-opus-5-5 and the host switched it through anthropic/claude-sonnet-5-5, openai/gpt-6-astra and kimi/k3.1-pro on provider quota failures; the session header named radient/auto at the time of writing. All tool runs and findings above were executed in this same session.",
+	"instance": "tb-invite-r2b-20261029-vi",
+	"date": "2026-10-29",
+	"status": "passed",
+	"locale": "vi",
+	"namespace": "ui.teamBridge",
+	"sha256": {
+		"en": "1516974c44681940753862f9735f0b3c19c7815ca4e68eab7fd343f1f1ed53f3",
+		"vi": "751626ae311998814c7f058c1678ec775c39564ac5cb71661a5ab421392c55ce"
+	},
+	"findings": [],
+	"checks": {
+		"key_parity": "PASS — the requested python3 key-set comparison returned exactly `281 281 set() set()`.",
+		"bidi": "PASS — scanned the whole vi file for U+200E, U+200F, U+202A-U+202E, plus zero-width U+200B-U+200D, U+FEFF and U+2060; none present.",
+		"apostrophes": "PASS — no ASCII apostrophe (U+0027) appears in any vi value, so none can open an ICU quoted literal. Values also contain no typographic apostrophes.",
+		"diff": "PASS — `git diff` on the vi catalogue shows only the `members.empty` and `members.read_only` line replacements and the deletion of `members.agent_invitation` and `members.human_invitation`. No unrelated key changed, added or reordered."
+	},
+	"scope": "Audited the review-round delta in vi only: the corrected `ui.teamBridge.members.read_only` (`Bạn không thể mời người vào cuộc trò chuyện này.`) and the new `ui.teamBridge.members.empty` (`Không có ai trong tổ chức này có thể được mời.`). Both were checked codepoint by codepoint for Vietnamese diacritics and read naturally. `read_only` states a reader-scoped inability with no claim about administrator authority and no blame, matching the hub's actual rule that any active human member may invite and only the owner removes; it stays truthful for a DM, an archived or built-in channel, and a non-member reader. `empty` scopes the absence to who can be invited rather than claiming the organization has no people, so it does not contradict a populated Current-members pane next to it. The previous `mởi ngưới` slip is gone: a case-folded scan for `mởi`, `ngưới` and `mởi ngưới` across every vi value returned no matches, all values are already NFC, and `mời người` is spelled correctly in both delta strings. Removed keys `agent_invitation` and `human_invitation` confirmed absent from vi and en. Ran the whole-file mechanical checks: key parity, removal, bidi/zero-width, ASCII apostrophe, NFC normalisation, typo-similarity scan, and the scoped diff. I did not re-audit the other keys a previous audit already passed, and I did not re-audit ICU semantics of the unchanged plural key beyond a structural spot check (`{count, plural, =0 {...} other {...}}`, well formed, valid for vi which uses `other` only). No pixels, tests or build were inspected or claimed.",
+	"independence": "Auditor wrote none of the audited strings; the translator was a separate subagent. No catalogue or ledger edit by the auditor."
+}

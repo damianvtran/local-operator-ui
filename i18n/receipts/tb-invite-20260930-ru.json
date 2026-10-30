@@ -1,0 +1,26 @@
+{
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "kimi/k3.1-pro",
+	"instance": "tb-invite-20260930-ru",
+	"date": "2026-09-30",
+	"status": "passed",
+	"locale": "ru",
+	"namespace": "ui.teamBridge",
+	"sha256": {
+		"en": "c7b1dc752c9f773df7e116be1d121bec0009c33da52bcd5931cc88c41ce9cbe3",
+		"ru": "a198c7f0ccdf19eb6fb7ad3b3c2707421f6ad7462600316c0deef2ca59173ce7"
+	},
+	"findings": [],
+	"checks": {
+		"key_parity": "283 283 set() set()",
+		"icu_render": "Parsed and rendered with IntlMessageFormat from the repo node_modules under locale ru: 0=Отправить приглашения; 1=Отправить 1 приглашение; 2=Отправить 2 приглашения; 5=Отправить 5 приглашений; 21=Отправить 21 приглашение.",
+		"cldr_arms": "Present exactly =0, one, few, many, other; required =0 plus one/few/many/other. {count} occurs zero times in =0 and exactly once in every other arm. Case forms agree with ui.teamBridge.invitations.count: приглашение at 1/21, приглашения at 2, приглашений at 5.",
+		"bidi": "No U+200E/U+200F/U+202A–U+202E bidi controls and no zero-width characters found in any catalogue string.",
+		"apostrophes": "No ASCII apostrophe U+0027 found in any ICU message.",
+		"diff": "git diff and an old/new ordered-key comparison confirmed only two group-heading insertions after members.invite, the add and bridge_unavailable modifications, deletion of members.state.left, and no reordering or unrelated changes."
+	},
+	"scope": "Reviewed in depth the four changed Russian keys against the final English, the English context entries, and established catalogue terminology, including координаторы for chiefs of staff and приглашение case forms. Ran key-parity, ICU parse/render, CLDR-arm and placeholder, bidi/zero-width, apostrophe, and scoped-diff/order checks. Deliberately did not re-audit the other 279 unchanged keys already passed by a previous audit; no full-catalogue linguistic re-read is claimed.",
+	"independence": "Auditor wrote none of the audited strings; the translator was a separate subagent. No catalogue or ledger edit by the auditor.",
+	"status_vocabulary_note": "Auditor wrote status 'pass' with an empty findings list; the coordinator normalised the vocabulary to the ledger tool's passed | changes_requested. The verdict is the auditor's."
+}

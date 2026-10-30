@@ -1,0 +1,23 @@
+{
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "kimi/k3.1-pro",
+	"instance": "tb-invite-r2-20261029-es",
+	"date": "2026-10-29",
+	"status": "passed",
+	"locale": "es",
+	"namespace": "ui.teamBridge",
+	"sha256": {
+		"en": "1516974c44681940753862f9735f0b3c19c7815ca4e68eab7fd343f1f1ed53f3",
+		"es": "16b95cc6b01914a5fb960615b29b5c833a2c44448bd95eda450a4e898649aed2"
+	},
+	"findings": [],
+	"checks": {
+		"key_parity": "281 281 set() set(); both removed keys absent from en and es",
+		"bidi": "No bidi controls (U+200E/200F/202A-202E) or zero-width characters (U+200B/200C/200D/FEFF/2060)",
+		"apostrophes": "No ASCII apostrophes (U+0027) in the locale file",
+		"diff": "Only the two changed lines (empty, read_only) and the two deletions (agent_invitation, human_invitation); no unrelated key touched or reordered"
+	},
+	"scope": "Re-audited only the delta of the four review-round changes: the rewritten members.read_only and members.empty strings, the two removed keys, and the Vietnamese typo check (not applicable to es, no similar slip found). Deliberately did not re-audit the other keys already passed by a previous audit in this PR.",
+	"independence": "Auditor wrote none of the audited strings; the translator was a separate subagent. No catalogue or ledger edit by the auditor."
+}
