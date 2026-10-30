@@ -41,6 +41,7 @@
 	"ui.teamBridge.thread.loading": "پیغامات لوڈ ہو رہے ہیں",
 	"ui.teamBridge.thread.error": "پیغامات لوڈ نہیں ہو سکے۔",
 	"ui.teamBridge.thread.empty": "ابھی کوئی پیغام نہیں۔ سلام کہیں۔",
+	"ui.teamBridge.thread.not_available": "یہ گفتگو آپ کے لیے دستیاب نہیں ہے۔ ہو سکتا ہے آپ اس کے رکن نہ ہوں، یا اسے آرکائیو کر دیا گیا ہو۔",
 	"ui.teamBridge.composer.placeholder": "اس گفتگو میں پیغام لکھیں",
 	"ui.teamBridge.composer.send": "بھیجیں",
 	"ui.teamBridge.composer.hint": "بھیجنے کے لیے Enter، نئی لائن کے لیے Shift+Enter۔",

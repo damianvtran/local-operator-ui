@@ -2050,6 +2050,13 @@
 		},
 		"note": "Shown beneath ui.teamBridge.member.active_count, e.g. '1 active member' over '3 invited'. Invited members (people or agents) have been added but have not joined, so they are not counted as active. Use idiomatic agreement and every required plural category."
 	},
+	"ui.teamBridge.thread.not_available": {
+		"role": "thread placeholder when the addressed conversation is not in the reader's list",
+		"tone": "plain, factual, never accusatory",
+		"length": "Two short sentences.",
+		"placeholders": {},
+		"note": "Shown for an addressed conversation id the caller cannot open: the list only carries conversations the caller participates in, so this covers both \"not a member\" and \"archived\" without revealing which. It replaces the draft intro, which wrongly told a reader their history was empty when the conversation actually held messages (2026-10-28). Do not imply the conversation does not exist."
+	},
 	"ui.teamBridge.members.group.people": {
 		"role": "group heading inside the invite picker",
 		"tone": "neutral",

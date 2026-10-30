@@ -41,6 +41,7 @@
 	"ui.teamBridge.thread.loading": "संदेश लोड हो रहे हैं",
 	"ui.teamBridge.thread.error": "संदेश लोड नहीं हो सके।",
 	"ui.teamBridge.thread.empty": "अभी कोई संदेश नहीं। नमस्ते कहें।",
+	"ui.teamBridge.thread.not_available": "यह बातचीत आपके लिए उपलब्ध नहीं है। हो सकता है आप इसके सदस्य न हों, या इसे आर्काइव कर दिया गया हो।",
 	"ui.teamBridge.composer.placeholder": "इस बातचीत में संदेश लिखें",
 	"ui.teamBridge.composer.send": "भेजें",
 	"ui.teamBridge.composer.hint": "भेजने के लिए Enter, नई पंक्ति के लिए Shift+Enter।",

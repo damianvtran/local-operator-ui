@@ -1,0 +1,212 @@
+{
+	"ui.ownerAudit.title": {
+		"role": "sidebar section heading and audit panel landmark label",
+		"tone": "sentence case, plain, possessive",
+		"length": "Sidebar headings are tight: one line at the 264 px rail width, and it must still read as a heading when truncated. Avoid adding words.",
+		"placeholders": {},
+		"note": "Names the section an owner opens to read their own chief of staff's conversations: \"<chief of staff>'s messages\". \"Chief of staff\" is the product term for the user's designated personal agent — use each locale's established chief-of-staff translation, never a literal job title, and keep it identical to ui.ownerAudit.agent and to the rest of the app. The English deliberately says \"Your chief of staff's\" rather than naming a person: this heading is the same for every user. Do not add the agent's name here (the rail rows carry it)."
+	},
+	"ui.ownerAudit.read_only": {
+		"role": "promise shown under the section heading and in the audit panel header",
+		"tone": "calm and factual; a statement of what this surface is, not an apology",
+		"length": "Two short sentences. The sidebar instance wraps to two or three lines; the panel instance sits under the conversation title.",
+		"placeholders": {},
+		"note": "The central promise of the whole surface: this history is READ ONLY. \"Sending, reactions and editing are unavailable\" lists the three affordances a messaging reader would otherwise look for, so keep all three nouns if the locale has them as distinct actions. Do not soften this into \"you may not be able to …\" — nothing here is restricted by policy; the surface simply has no composer by design."
+	},
+	"ui.ownerAudit.loading": {
+		"role": "busy line while the audit list or a conversation's messages load",
+		"tone": "neutral progress, present tense",
+		"length": "A few words; rendered inline in the rail and in the panel body.",
+		"placeholders": {},
+		"note": "Written as a progress phrase rather than a sentence so it suits both placements. \"Audited messages\" is the object being loaded: messages served through the owner-audit read, not a separate archive. Avoid a noun phrase that suggests the reader's own inbox."
+	},
+	"ui.ownerAudit.error": {
+		"role": "failure sentence for the audit list or a conversation's messages",
+		"tone": "factual, non-technical, non-blaming; no error code, no HTTP status",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Covers every refusal the audit routes give this surface, including the ones that mean \"this is not your agent's conversation\" and \"that conversation is outside the audit window\". It must NOT say the conversation does not exist and must NOT imply the agent has no conversations — the surface cannot tell those apart, which is why the sentence is about the READ rather than about the agent's history. The refusal wording for a missing conversation is a separate, more specific string (ui.tb resources); this one is the generic audit read failure."
+	},
+	"ui.ownerAudit.retry": {
+		"role": "button in the failure state",
+		"tone": "plain imperative, low emphasis",
+		"length": "Two words at most.",
+		"placeholders": {},
+		"note": "Repeats the failed read. Keep it distinct from ui.ownerAudit.refresh (which re-reads a conversation that is already on screen): this one follows a failure, so it is the reader's recovery action."
+	},
+	"ui.ownerAudit.refresh": {
+		"role": "button in the audit panel header",
+		"tone": "plain imperative, low emphasis",
+		"length": "One short word.",
+		"placeholders": {},
+		"note": "Re-reads the currently open conversation's audited window. Available even on success, because this surface never polls and never marks anything read — a reader who comes back wants a fresh read on demand."
+	},
+	"ui.ownerAudit.empty_list": {
+		"role": "empty state for the audit list",
+		"tone": "neutral, factual",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "The honest empty: this organization has no conversations the owner can audit, which normally means the chief of staff has not been added to any. \"In this organization\" is load-bearing — the audit is per tenant and the rail groups by organization, so the same reader may see rows under another one. Do not say the agent is new, idle, unused or that messages will appear here later."
+	},
+	"ui.ownerAudit.empty_history": {
+		"role": "empty state inside an opened audit conversation",
+		"tone": "neutral, factual",
+		"length": "One sentence; may wrap.",
+		"placeholders": {},
+		"note": "\"The audit window\" is a defined term in this surface: the period in which the agent was a member of the conversation (plus the deployment's floor). A conversation can be listed and still have nothing to show — the agent joined and left without any in-window message. That is what this state means, and why the copy names the window instead of saying the conversation is empty, which would be false."
+	},
+	"ui.ownerAudit.unnamed": {
+		"role": "fallback title for a conversation with no name and no labelled members",
+		"tone": "neutral",
+		"length": "Two words.",
+		"placeholders": {},
+		"note": "A last resort: a DM row is normally titled by its members' display names, a channel or group by its name. This is only reached when the hub sent neither. Keep it a neutral label; do not call it a draft."
+	},
+	"ui.ownerAudit.agent": {
+		"role": "generic label for the audited agent, under a rail row when it has no display name",
+		"tone": "neutral product term",
+		"length": "Two words.",
+		"placeholders": {},
+		"note": "The same product term as in ui.ownerAudit.title — keep the two identical in the locale so a reader sees one concept, not two. Used only as a fallback when the hub did not send the agent's display name."
+	},
+	"ui.ownerAudit.more": {
+		"role": "pagination button for the audit list and for thread replies",
+		"tone": "plain, quiet",
+		"length": "Two words.",
+		"placeholders": {},
+		"note": "Loads the next page. Deliberately direction-free because both the conversation list and a thread's replies use it, and their page directions differ. Keep it short: it is a low-emphasis button at the bottom of a column."
+	},
+	"ui.ownerAudit.older": {
+		"role": "pagination button above the message list",
+		"tone": "plain, quiet",
+		"length": "Three words at most.",
+		"placeholders": {},
+		"note": "Audited messages page backwards (newest first), so this button sits ABOVE the list and loads OLDER messages. Use the locale's word for older/earlier rather than \"previous page\": the reader is moving in time, not through numbered pages."
+	},
+	"ui.ownerAudit.page_cutoff": {
+		"role": "standing line above the message list, shown only while older pages are still unread",
+		"tone": "factual, quiet, no alarm; this is a boundary, not a failure",
+		"length": "Two short sentences. Sits directly above the ui.ownerAudit.older button in the panel body, never in the header.",
+		"placeholders": {},
+		"note": "This sentence states that the history on screen is a bounded page rather than the whole conversation, and names the control that continues it. It must not read as an error, a refusal or a warning, and must not promise messages that do not exist: the reader really can load more, with the button immediately beside this line. The button repeats the second sentence's action on purpose (design review round 1, D3): a cut-off the reader cannot see is how a partial history gets read as a complete one. Keep the second sentence's verb matching the ui.ownerAudit.older button in the same locale so the pair reads as one instruction."
+	},
+	"ui.ownerAudit.admitted": {
+		"role": "per-message screening verdict chip",
+		"tone": "neutral metadata; not a compliment, not a permission granted to the reader",
+		"length": "Very short — a chip in a metadata row beside the sender and the timestamp.",
+		"placeholders": {},
+		"note": "\"Admitted to your chief of staff\" means the agent's own screening let this message into the agent's context. \"Screening\" is the agent's admission decision (see ui.ownerAudit.rejected) and must NOT be rendered with a word that suggests security vetting, confidentiality classification or malware scanning. The preposition matters: admitted TO the agent, not BY it. Passive voice is fine and preferred here — the reader is reading a verdict, not an actor."
+	},
+	"ui.ownerAudit.rejected": {
+		"role": "per-message screening verdict chip",
+		"tone": "neutral metadata, factual; never alarmist",
+		"length": "Very short chip; may wrap to two lines at the panel width.",
+		"placeholders": {},
+		"note": "\"Rejected by your chief of staff's screening\": the agent's screening refused this text, so the AGENT never read it. It is still shown here, in full, to the owner — that is the point of the audit. Do not imply the message was deleted, blocked by the server, malicious, or reported to anyone. The same term for screening as in ui.ownerAudit.admitted, so the two verdicts read as one vocabulary."
+	},
+	"ui.ownerAudit.not_screened": {
+		"role": "per-message screening verdict chip",
+		"tone": "neutral metadata, factual",
+		"length": "Very short chip.",
+		"placeholders": {},
+		"note": "\"Not screened by your chief of staff\": no verdict exists for this message — it was never put to the agent's screening. Do not write \"pending\", \"in progress\", \"awaiting review\" or \"unchecked\": nothing is in flight, and there is no queue that will later produce a verdict. Also avoid a word that reads as \"unscanned\" in a security sense (see ui.ownerAudit.admitted)."
+	},
+	"ui.ownerAudit.unknown_status": {
+		"role": "fallback chip for an unrecognised verdict or membership state",
+		"tone": "neutral, unresolved",
+		"length": "Two words.",
+		"placeholders": {},
+		"note": "Shown when the server reports a verdict (or an agent membership state) this build does not know. It is a deliberate conservative fallback — the vocabularies are documented rather than enforced so a newer server degrades instead of breaking the page. Keep it non-committal: it must not guess admitted, rejected or pending."
+	},
+	"ui.ownerAudit.own": {
+		"role": "per-message chip for a message the audited agent itself sent",
+		"tone": "neutral metadata naming authorship",
+		"length": "Very short chip.",
+		"placeholders": {},
+		"note": "The audited agent authored this message, so there is no meaningful delivery verdict for it — the chip names the author instead. Keep \"your chief of staff\" identical to ui.ownerAudit.agent and ui.ownerAudit.title. Do not phrase it as \"sent by you\" — the whole distinction of this surface is owner versus agent."
+	},
+	"ui.ownerAudit.body_unavailable": {
+		"role": "placeholder for a message whose text the server did not send",
+		"tone": "plain, factual, brief",
+		"length": "Three or four words.",
+		"placeholders": {},
+		"note": "Must read as a fact about the DATA, not about the reader's access: the hub sent no body for this row. Never \"you do not have permission\", \"deleted\", \"hidden\" or \"unavailable in this view\" — this surface is the owner's fullest view, and a message CAN legitimately have no text (an attachment-only message). The paragraph must never be rendered empty, which is why the string exists."
+	},
+	"ui.ownerAudit.attachment_expired": {
+		"role": "one attachment line inside a message",
+		"tone": "neutral, factual",
+		"length": "One short clause.",
+		"placeholders": {},
+		"note": "The attachment's bytes were purged before the audit read, so nothing can be downloaded. Say that plainly; it is not an error and not the reader's fault. The comma keeps it scannable as one line among several attachments."
+	},
+	"ui.ownerAudit.attachment_unavailable": {
+		"role": "one attachment line inside a message, or the stand-in when only a count arrived",
+		"tone": "neutral, factual",
+		"length": "One sentence; may wrap.",
+		"placeholders": {},
+		"note": "Two facts: the attachment EXISTS and it cannot be downloaded from this surface. The audit is a text-only view by design — its contract hands out no private byte URL, no markdown image and no preview fetch, so bytes are never shown here even when they are intact. Do not promise a later download or point at another screen."
+	},
+	"ui.ownerAudit.unknown_sender": {
+		"role": "fallback for a message or viewer with no display name",
+		"tone": "neutral",
+		"length": "Two words.",
+		"placeholders": {},
+		"note": "Used where a person's display name would go. It is also the fallback inside ui.ownerAudit.viewer's {name} slot, so it must read sensibly inside that sentence (e.g. \"Also visible to <an unknown sender>, an agent owner\"). Neutral and short beats grammatical gymnastics."
+	},
+	"ui.ownerAudit.reveal": {
+		"role": "summary of the collapsed disclosure around an unadmitted message body",
+		"tone": "quiet invitation, not a warning",
+		"length": "Three to five words.",
+		"placeholders": {},
+		"note": "The summary of a <details> element that hides a rejected or unscreened body until the reader asks for it — collapsed by default so a reader is never surprised by text the agent's screening refused, and because such text must never render as rich content (no previews, no remote images). This is a reading affordance, so no warning vocabulary: no \"reveal unsafe content\", no \"view anyway\", no warning symbol."
+	},
+	"ui.ownerAudit.active": {
+		"role": "closing line at the end of the message list when the audit window is still open",
+		"tone": "plain status, factual",
+		"length": "Short sentence.",
+		"placeholders": {},
+		"note": "The last line of the message list, where a reader checks whether there is more. The agent is still a member, so the window is open and nothing has been cut off at the far end; this line is the quiet counterpart of ui.ownerAudit.left and ui.ownerAudit.removed, which carry the cut-off notice. Present tense and present fact — do not phrase it as a promise about future delivery, and do not add a word like \"complete\": older pages may still be unloaded (ui.ownerAudit.page_cutoff)."
+	},
+	"ui.ownerAudit.left": {
+		"role": "cut-off notice closing the message list for a conversation the agent left",
+		"tone": "neutral, factual; a boundary the reader must not miss, not an error",
+		"length": "Two short sentences.",
+		"placeholders": {},
+		"note": "This is the ONLY thing on screen telling the reader the history is truncated, and it is rendered as a distinct notice at the end of the messages rather than as a line of header boilerplate (design review round 1, D3). The first sentence states the boundary; the second says what was cut and why. The agent left, so the audit window closed where it left and later messages are not auditable — the owner's agent never had access to them either, so neither does the owner. Do NOT promise the reader a way to load the later messages, and do NOT use a word that implies the conversation was archived, ended, or that messages were deleted: the conversation continues without the agent. Keep \"audit\" as the same term used elsewhere in this namespace."
+	},
+	"ui.ownerAudit.removed": {
+		"role": "cut-off notice closing the message list for a conversation the chief of staff was removed from",
+		"tone": "neutral, factual, no blame; a boundary the reader must not miss, not an error",
+		"length": "Two short sentences.",
+		"placeholders": {},
+		"note": "Same placement and job as ui.ownerAudit.left: the distinct notice at the END of the messages, and the only statement that this history is truncated. \"Removed\" is passive on purpose: the app cannot say who removed the agent or why, and must not imply the owner did it or that anyone was at fault. The second sentence carries the same consequence as ui.ownerAudit.left — later messages are not in the audit — so use the same wording for that half in each locale."
+	},
+	"ui.ownerAudit.window_unconfirmed": {
+		"role": "cut-off notice closing the message list when the agent's membership state is unknown",
+		"tone": "neutral, factual; states an uncertainty without alarm",
+		"length": "Two short sentences.",
+		"placeholders": {},
+		"note": "The conservative fallback for a membership state this client does not recognise (the hub's vocabulary is additive). It wears the same distinct notice as ui.ownerAudit.left and ui.ownerAudit.removed, because the one thing the reader must not do is read a possibly truncated history as a complete one. Say plainly that the end of the list cannot be confirmed; do not guess a cause, do not blame the server, and do not use \"error\" or \"failed\"."
+	},
+	"ui.ownerAudit.disclosure": {
+		"role": "disclosure line in the audit panel header, above the viewer list",
+		"tone": "plain, unapologetic, no legal register",
+		"length": "Two sentences; may wrap to three lines.",
+		"placeholders": {},
+		"note": "The disclosure the contract requires for every participant, shown here to the owner so they know the rule they are reading under. Two facts, both needed: (1) the reader's own basis — they own the chief of staff this audit covers; (2) what everyone else is told — that agent owners can audit the conversation. It must NOT claim the reader is the only one who can read this: other agent owners can, and the ui.ownerAudit.viewers_label list directly below names them (design review round 1, D2). \"The chief of staff it covers\" is deliberate: the agent may have left or been removed, and the audit still covers the window it was in. Avoid \"monitoring\", \"surveillance\", \"compliance\", \"retention\" and any word that reads as legal or covert: this is disclosed, disclosed to be read, and it changes no consent."
+	},
+	"ui.ownerAudit.viewers_label": {
+		"role": "label introducing the list of other agent owners who can audit this conversation",
+		"tone": "neutral, quiet metadata",
+		"length": "Three words at most; it is a label over a list of names, not a sentence.",
+		"placeholders": {},
+		"note": "A LABEL, with the names rendered below it as data straight from the server: there is no placeholder here, so no translator has to inflect or gender a person's name, which is exactly what the previous one-line-per-viewer form could not survive in seven locales (design review round 1, D2). It carries \"also\", because the reader's own access is stated by ui.ownerAudit.disclosure directly above; the current reader is excluded from this list, so the names are always other people. No colon and no trailing punctuation: the list is a separate element. \"Readable\" here means able to read this audit, not able to read the conversation in the messaging client."
+	},
+	"ui.ownerAudit.replies": {
+		"role": "summary that opens a message's thread replies inside the audit",
+		"tone": "quiet, plain",
+		"length": "Three words at most.",
+		"placeholders": {},
+		"note": "The <details> summary that fetches and shows the replies under a thread root. Reads are audited like any other message, and replies carry the same verdict chips. Keep it an action phrase (\"read …\") rather than a count: the count is already visible in the message row."
+	}
+}
