@@ -148,7 +148,17 @@ export function jumpToSearchSection(
 	);
 	if (!element || !isReachable(element)) return "missing";
 	element.scrollIntoView({ block: "start" });
-	if (element.tabIndex < 0) element.focus();
+	/*
+	 * SET, not compared. `HTMLElement.tabIndex` reads `-1` for a `div` that has
+	 * no `tabindex` attribute — which is every section root whose `id` is unset
+	 * — so the old `if (element.tabIndex < 0) element.focus()` ran its branch
+	 * and called `focus()` on an element the browser refuses to focus: a scroll
+	 * and a wash, with the reader's cursor still in the search field (review
+	 * round 1, M1). Assigning `-1` makes the root a programmatic focus target
+	 * without adding a tab stop, exactly as `jumpToSearchRow` does for a row.
+	 */
+	if (element.tabIndex < 0) element.tabIndex = -1;
+	element.focus();
 	(options.paint ?? paintJumpHighlight)(element);
 	return "landed";
 }

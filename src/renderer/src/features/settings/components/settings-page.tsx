@@ -92,6 +92,7 @@ import {
 	buildRenderedEntries,
 } from "../search/settings-search-index";
 import {
+	type SearchJumpOutcome,
 	jumpToSearchRow,
 	jumpToSearchSection,
 } from "../search/settings-search-jump";
@@ -724,25 +725,42 @@ export const SettingsPage: FC = () => {
 		key: string;
 		nonce: number;
 	} | null>(null);
+	/*
+	 * Every path ANSWERS. `"missing"` is a sentence the panel speaks
+	 * (`ui.settings.search.jump.missing`) rather than an outcome this function
+	 * drops on the floor — a result the reader pressed Enter on that moves
+	 * nothing and says nothing is the dead end review round 1 named (B1/m5).
+	 */
 	const jumpToSearchEntry = useCallback(
-		(entry: SettingSearchEntry) => {
-			const root = contentContainerRef.current;
+		async (entry: SettingSearchEntry): Promise<SearchJumpOutcome> => {
+			const root = contentContainerRef.current ?? document;
 			if (entry.source === "page") {
 				// `page:<row id>` -> the DOM contract's own id.
-				void jumpToSearchRow(root ?? document, entry.id.slice(5));
-				return;
+				return jumpToSearchRow(root, entry.id.slice(5));
 			}
 			if (entry.source === "section") {
-				jumpToSearchSection(root ?? document, entry.sectionId);
-				return;
+				return jumpToSearchSection(root, entry.sectionId);
 			}
 			const key = entry.settingKey;
-			if (!key) return;
+			if (!key) return "missing";
 			const section = sectionForSettingKey(key, "backend");
+			/*
+			 * A registry key the payload no longer serves has no row to land on;
+			 * say so instead of scrolling the Backend section and stopping.
+			 */
+			if (
+				settingsRegistryQuery.data &&
+				!settingsRegistryQuery.data.settings.some((row) => row.key === key)
+			) {
+				return "missing";
+			}
 			handleSelectSection(section);
 			setSearchJump({ key, nonce: Date.now() });
+			return root.querySelector(`[data-search-section="${section}"]`)
+				? "landed"
+				: "missing";
 		},
-		[handleSelectSection],
+		[handleSelectSection, settingsRegistryQuery.data],
 	);
 	/*
 	 * A URL deep link outranks a search jump that is still on the books: the
@@ -1283,6 +1301,11 @@ export const SettingsPage: FC = () => {
 									settingFocusKey === LANGUAGE_SETTING_KEY ||
 									searchJump?.key === LANGUAGE_SETTING_KEY
 								}
+								focusNonce={
+									searchJump?.key === LANGUAGE_SETTING_KEY
+										? searchJump.nonce
+										: undefined
+								}
 							/>
 							<SettingsSection
 								title={t("ui.settings.profile.title")}
@@ -1544,6 +1567,11 @@ export const SettingsPage: FC = () => {
 											settingFocusKey === MODEL_EFFORT_SETTING_KEY ||
 											searchJump?.key === MODEL_EFFORT_SETTING_KEY
 										}
+										focusNonce={
+											searchJump?.key === MODEL_EFFORT_SETTING_KEY
+												? searchJump.nonce
+												: undefined
+										}
 									/>
 									{/*
 									 * ONLY WHEN NO PROVIDER IS CONNECTED. Leading with "sign in"
@@ -1784,6 +1812,10 @@ export const SettingsPage: FC = () => {
 							)}
 							sectionRef={sectionRefs.radient}
 							dataTourTag="settings-radient-account-section"
+							searchSection="radient"
+							searchSectionLabel={t(
+								"ui.settings.navigation.settings_sidebar.radient_account",
+							)}
 							searchIgnore="account, billing and usage are read-only or remote"
 						>
 							{/*
@@ -1839,6 +1871,11 @@ export const SettingsPage: FC = () => {
 										focus={
 											settingFocusKey === TEAM_BRIDGE_ENABLED_SETTING_KEY ||
 											searchJump?.key === TEAM_BRIDGE_ENABLED_SETTING_KEY
+										}
+										focusNonce={
+											searchJump?.key === TEAM_BRIDGE_ENABLED_SETTING_KEY
+												? searchJump.nonce
+												: undefined
 										}
 										/* The chief-of-staff hold's button goes through the
 										   one shared switch rule, so the URL moves with the
@@ -1900,6 +1937,10 @@ export const SettingsPage: FC = () => {
 								"ui.settings.navigation.settings_page.every_setting_the_backend_registry_owns_searchable_with_typed_edi",
 							)}
 							sectionRef={sectionRefs.backend}
+							searchSection="backend"
+							searchSectionLabel={t(
+								"ui.settings.navigation.settings_sidebar.backend_settings",
+							)}
 							/* Registry rows are the Backend section's own surface: its
 							   filter searches them in place, and this page's search reads
 							   the same payload directly (`settings.list`), so its rendered
@@ -1932,6 +1973,11 @@ export const SettingsPage: FC = () => {
 
 						<div
 							ref={sectionRefs.imports}
+							/* A DESTINATION, even though its controls are ignored: the
+							   sidebar indexes this section, and a section result that
+							   cannot land is a dead result (review round 1, B1). */
+							data-search-section="imports"
+							data-search-section-label={t("ui.settings.imports.title")}
 							data-search-ignore="imports are a one-off task list, not a setting"
 						>
 							<ImportSettingsSection />
@@ -1939,6 +1985,10 @@ export const SettingsPage: FC = () => {
 
 						<div
 							ref={sectionRefs.updates}
+							data-search-section="updates"
+							data-search-section-label={t(
+								"ui.settings.navigation.settings_sidebar.application_updates",
+							)}
 							data-search-ignore="application updates are an action surface, not a setting"
 						>
 							<AppUpdatesSection />

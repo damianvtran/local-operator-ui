@@ -21,7 +21,7 @@ import { JSDOM } from "jsdom";
 const dom = new JSDOM(
 	`<!doctype html><html><body>
 		<div data-settings-content>
-			<div data-search-section="appearance" data-search-section-label="Appearance" tabindex="-1">
+			<div data-search-section="appearance" data-search-section-label="Appearance">
 				<div data-search-row="appearance.theme">
 					<span>Theme</span>
 					<div data-search-control><button type="button">Local Operator Dark</button></div>
@@ -31,7 +31,7 @@ const dom = new JSDOM(
 					<button type="button" data-search-control>Toggle</button>
 				</div>
 			</div>
-			<div data-search-section="hidden-section" tabindex="-1" hidden>
+			<div data-search-section="hidden-section" hidden>
 				<div data-search-row="hidden.row"><span>Hidden</span></div>
 			</div>
 		</div>
@@ -167,13 +167,25 @@ test("the settle is bounded: a row mounted during the wait is landed on", async 
 	assert.equal(await pending, "landed");
 });
 
-test("a section jump scrolls to the root and focuses it", () => {
+test("a section jump makes the root focusable, then focuses it", () => {
+	/*
+	 * The app's section roots are plain `<div>`s without a `tabindex`
+	 * attribute, so `HTMLElement.tabIndex` READS -1 and the old
+	 * `if (element.tabIndex < 0) element.focus()` focused nothing. The fixture
+	 * deliberately has no `tabindex` for the same reason (review round 1, M1).
+	 */
 	const painted = [];
+	const section = root.querySelector('[data-search-section="appearance"]');
+	assert.equal(
+		section.hasAttribute("tabindex"),
+		false,
+		"the fixture starts as the app renders it",
+	);
 	const outcome = jumpToSearchSection(root, "appearance", {
 		paint: (element) => painted.push(element),
 	});
 	assert.equal(outcome, "landed");
-	const section = root.querySelector('[data-search-section="appearance"]');
+	assert.equal(section.getAttribute("tabindex"), "-1", "and becomes focusable");
 	assert.ok(dom.window.document.activeElement === section);
 	assert.ok(scrolled.at(-1).element === section, "the section was scrolled");
 	assert.deepEqual(scrolled.at(-1).options, { block: "start" });
