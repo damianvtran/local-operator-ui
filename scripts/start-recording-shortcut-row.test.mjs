@@ -27,7 +27,7 @@ after(() => {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { StartRecordingShortcutRow } from "./src/renderer/src/features/settings/components/start-recording-shortcut-row";',
+			'export { SpeechShortcutsGroup as StartRecordingShortcutRow } from "./src/renderer/src/features/settings/components/speech-shortcuts-group";',
 		resolveDir: ROOT,
 	},
 	bundle: true,
@@ -281,7 +281,7 @@ test("capture saves immediately and explicit reset restores the default and focu
 		);
 		assert.deepEqual(api.pending, ["primary+alt+r", undefined]);
 		const reset = api.$(
-			'button[aria-label="Reset Start recording to its default"]',
+			'button[aria-label="Reset Start recording (press) to its default"]',
 		);
 		assert.ok(reset);
 		await act(async () => reset.click());

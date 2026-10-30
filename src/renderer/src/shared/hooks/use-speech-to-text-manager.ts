@@ -45,8 +45,8 @@ export enum SpeechToTextPriority {
  * binding lives here, in the renderer's own keydown/keyup pair.
  */
 const MAC_PLATFORM = /Mac|iPhone|iPad/;
-type PlatformFamily = "darwin" | "win32" | "other";
-type PushToTalkBinding = { code: string; label: string };
+export type PlatformFamily = "darwin" | "win32" | "other";
+export type PushToTalkBinding = { code: string; label: string };
 
 /**
  * The registry's modifier names, per platform - the same table its own
@@ -59,7 +59,7 @@ const MODIFIER_LABELS: Record<PlatformFamily, Record<string, string>> = {
 };
 
 /** Read per call, never cached: the tests drive every family from one process. */
-const platformFamily = (): PlatformFamily => {
+export const platformFamily = (): PlatformFamily => {
 	const platform =
 		typeof navigator === "undefined" ? "" : (navigator.platform ?? "");
 	if (MAC_PLATFORM.test(platform)) return "darwin";
@@ -108,14 +108,68 @@ export const pushToTalkBindingForToken = (
 	};
 };
 
+/**
+ * The stored token a bare-modifier press names, or `null` when no token can
+ * name that key on this platform. The inverse of `codeForToken`, kept beside it
+ * so the Settings capture box and the hold matcher cannot learn the aliasing
+ * separately.
+ *
+ * `Control*` is `ctrl` everywhere. `Alt*` is `alt` on macOS only: off macOS no
+ * token resolves to an Alt code, because `alt` there IS the Meta key. `Meta*`
+ * is `meta` on macOS (Command) and `alt` elsewhere. Off macOS `alt-*` and
+ * `meta-*` name one physical key, and the registry's own labels call the
+ * `alt-*` spelling "Command" (the default `alt-right-hold` reads
+ * "Right-Command" there), so saving the same spelling keeps the Left key
+ * reading "Left-Command" beside it rather than "Left-Super" beside "Right-Command".
+ * A token another writer stored as `meta-*` still resolves to the same key, so
+ * callers comparing a press with a stored value compare `.code`, not tokens.
+ *
+ * Takes `event.code`, never `event.key`: the six tokens are side-specific and
+ * `key` cannot tell Left from Right.
+ */
+export const pushToTalkTokenForCode = (
+	code: string,
+	family: PlatformFamily = platformFamily(),
+): string | null => {
+	const parts = /^(Alt|Meta|Control)(Left|Right)$/.exec(code);
+	if (!parts) return null;
+	const side = parts[2].toLowerCase();
+	if (parts[1] === "Control") return `ctrl-${side}-hold`;
+	if (parts[1] === "Alt") {
+		return family === "darwin" ? `alt-${side}-hold` : null;
+	}
+	return `${family === "darwin" ? "meta" : "alt"}-${side}-hold`;
+};
+
 const platformDefaultBinding = (): PushToTalkBinding =>
 	pushToTalkBindingForToken("alt-right-hold") as PushToTalkBinding;
 
 let resolvedPushToTalkBinding: PushToTalkBinding | null = null;
 
+/**
+ * Bumped by every direct write of the binding (`setPushToTalkBinding`). A read
+ * that started before the bump carries the value from BEFORE the write, so its
+ * answer is dropped rather than allowed to undo the save that followed it.
+ */
+let bindingGeneration = 0;
+
 /** The live binding: the last resolved row, or the platform default. */
 export const resolvePushToTalkBinding = (): PushToTalkBinding =>
 	resolvedPushToTalkBinding ?? platformDefaultBinding();
+
+/**
+ * Apply a value the caller just PERSISTED, so the very next keydown matches it.
+ *
+ * The Settings capture box calls this after its save lands: without it a changed
+ * binding would only take effect at the next `register()` (a composer remount),
+ * because the module reads the row once per registration and has no settings
+ * listener. An unknown or invalid value falls back to the platform default, as
+ * a read does.
+ */
+export const setPushToTalkBinding = (raw: unknown): void => {
+	bindingGeneration += 1;
+	resolvedPushToTalkBinding = pushToTalkBindingForToken(raw);
+};
 
 let pushToTalkRefresh: Promise<void> | null = null;
 
@@ -128,11 +182,14 @@ let pushToTalkRefresh: Promise<void> | null = null;
  * settings plane tells us nothing new, and silently reverting a user's custom
  * binding because one read missed is worse than serving the last known value.
  * There is deliberately no settings listener here (no new listener on any
- * settings channel); a caller that changes the row can call this directly.
+ * settings channel); a caller that changes the row calls `setPushToTalkBinding`
+ * with what it saved, and a document that did not make the change (the Quick
+ * send window) calls this when it is shown.
  */
 export const refreshPushToTalkBinding = async (): Promise<void> => {
 	if (pushToTalkRefresh) return pushToTalkRefresh;
 	pushToTalkRefresh = (async () => {
+		const generation = bindingGeneration;
 		try {
 			const settings = await desktopResult<BackendSettings>({
 				op: "settings.list",
@@ -140,7 +197,9 @@ export const refreshPushToTalkBinding = async (): Promise<void> => {
 			const row = settings.settings.find(
 				(setting) => setting.key === "keymap.push_to_talk",
 			);
-			resolvedPushToTalkBinding = pushToTalkBindingForToken(row?.value);
+			if (generation === bindingGeneration) {
+				resolvedPushToTalkBinding = pushToTalkBindingForToken(row?.value);
+			}
 		} catch {
 			/* Keep the last resolution (see the doc above). */
 		} finally {

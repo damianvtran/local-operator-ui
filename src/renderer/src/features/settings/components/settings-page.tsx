@@ -1721,7 +1721,7 @@ export const SettingsPage: FC = () => {
 								hideInterfaceLanguage
 								hideModelEffort
 								hideAgentMessages
-								hideStartRecording
+								hideSpeechShortcuts
 								focusKey={
 									settingFocusKey &&
 									sectionForSettingKey(settingFocusKey, "backend") === "backend"

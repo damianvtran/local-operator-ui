@@ -42,7 +42,10 @@
  */
 
 import { LANGUAGE_SETTING_KEY } from "@shared/i18n";
-import { START_RECORDING_SETTING_KEY } from "../../../../shared/recording-shortcut";
+import {
+	PUSH_TO_TALK_SETTING_KEY,
+	START_RECORDING_SETTING_KEY,
+} from "../../../../shared/recording-shortcut";
 
 /** The sidebar section the interface-language control now lives in. */
 export const GENERAL_SECTION = "general";
@@ -90,6 +93,7 @@ export const PROMOTED_SETTING_SECTIONS: Readonly<Record<string, string>> = {
 	[TEAM_BRIDGE_ENABLED_SETTING_KEY]: AGENT_MESSAGES_SECTION,
 	[TEAM_BRIDGE_SESSION_SETTING_KEY]: AGENT_MESSAGES_SECTION,
 	[START_RECORDING_SETTING_KEY]: KEYBOARD_SHORTCUTS_SECTION,
+	[PUSH_TO_TALK_SETTING_KEY]: KEYBOARD_SHORTCUTS_SECTION,
 };
 
 /**

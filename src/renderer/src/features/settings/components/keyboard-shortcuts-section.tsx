@@ -66,7 +66,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { recordingConflictVariants } from "../../../../../shared/recording-shortcut";
 import { rendererPlatform } from "../../../mini-view/renderer-platform";
 import { SettingsSection } from "./settings-section";
-import { StartRecordingShortcutRow } from "./start-recording-shortcut-row";
+import { SpeechShortcutsGroup } from "./speech-shortcuts-group";
 
 /*
  * Tooltips use an imperative ("Open console") while these rows name the
@@ -368,7 +368,7 @@ export const KeyboardShortcutsSection: FC<{
 						"ui.settings.shortcuts.keyboard_shortcuts_section.browser_shortcuts_answer_only_while_the_browser_has_focus",
 					)}
 				</p>
-				<StartRecordingShortcutRow />
+				<SpeechShortcutsGroup />
 				<h3 className="pt-1 text-body-sm font-medium text-ink">
 					{t("ui.settings.shortcuts.category.panels")}
 				</h3>
