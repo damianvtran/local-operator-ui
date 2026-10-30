@@ -1,0 +1,72 @@
+{
+  "audit_id": "profile-picture-save-error-20261030",
+  "date": "2026-10-30",
+  "locale": "ur",
+  "namespace": "ui.agents.settings",
+  "source_commit": "4fdb14a610ad19818d4924ee9d86b31710c84397",
+  "translator": {
+    "agent": "coder",
+    "model": "radient/auto",
+    "date": "2026-10-30",
+    "note": "per translator-handoff-2.json (round 2); the ledger row keeps its earlier translator entry (assembler keeps a row's translator on re-bind)"
+  },
+  "auditors": [
+    {
+      "agent": "reviewer",
+      "model": "anthropic/claude-sonnet-5-5",
+      "date": "2026-10-30",
+      "session": "a6863c51919d",
+      "result": "clean",
+      "instance": "a6863c51919d-ur",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "receipt": "i18n/receipts/a6863c51919d-ur.json",
+      "receipt_sha256": "d75e167d68488a0090d24274b014033686c78ce3588354d71977c66b6b04e486",
+      "scope": "ui.agents.settings: new key profile_picture_error_save (4fdb14a610); 7 earlier profile_picture keys re-confirmed byte-identical to dcf4dd5c5a. Whole-file hashes bound.",
+      "note": "Independent audit of the profile picture save-error string; see retention record profile-picture-save-error-20261030. No rendered-fit or native-reader claim."
+    }
+  ],
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.agents.settings.json",
+      "sha256": "f4986042519a58d3e8574412360c58e16c3503878f90a1c4ef5907346f424c35"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/ur/ui.agents.settings.json",
+      "sha256": "de1bdecaa4f0730ed9c624e9a0bc6ab6c32300c64a5176ecdf38ea65c2d82192"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.agents.settings.context.json",
+      "sha256": "e2a0c59d7a33178cae8865d07f0f8ef9a66b6e8d1b74a2986ffe3a0d5c434ca2"
+    }
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+    }
+  },
+  "independence": "Auditor did not translate or edit any catalogue, context or key file; formed its own read before opening the translator handoff. Supersedes the profile-picture-20261030 binding for this namespace (file bytes changed); that record and its receipt are retained unchanged.",
+  "limitations": [
+    "Browser unavailable to this auditor; no rendered-fit, screenshots, pseudo-localization or activation evidence claimed.",
+    "Agent semantic read; no native-speaker review."
+  ],
+  "retained_rounds": [
+    {
+      "path": "i18n/receipts/a6863c51919d-ur.json",
+      "sha256": "d75e167d68488a0090d24274b014033686c78ce3588354d71977c66b6b04e486"
+    },
+    {
+      "path": "i18n/receipts/1f5234f0f81c-ur.json",
+      "sha256": "dccda5ca2328d08f7fb3adbb3ebd57a95e90cf1ce5517fab38c432d03f22fc0a"
+    }
+  ]
+}
