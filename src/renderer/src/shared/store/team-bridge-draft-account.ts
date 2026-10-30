@@ -75,6 +75,9 @@ export function browserDraftStorage(): Storage | null {
  * including across app restarts. Pending/offline reads never mean sign-out.
  * If browser storage is unavailable the account-scoped reader still fails
  * closed; a storage refusal must not turn the status API into a failed read. */
+/* The account the last authoritative status read named (`null` = signed out);
+ * `undefined` until the first one in this process. */
+let lastReconciled: string | null | undefined;
 export function reconcileDraftAccount(
 	storage: Storage | null,
 	status: { account_id?: string | null; state?: unknown },
@@ -101,7 +104,19 @@ export function reconcileDraftAccount(
 			epochs.set(account, epoch + 1);
 			revoked = true;
 		}
-	if (revoked || next === null) notifyRevocation();
+	/*
+	 * LISTENERS FIRE ON A TRANSITION, NOT ON EVERY READ (PR #1528 QA round 1, Q1).
+	 * `epochs` never forgets an account, so after one in-place sign-out/sign-in every
+	 * later status read found a "foreign" account and re-ran the wipe: the composer
+	 * rows and the failed-send record went on each poll, and a retry after a lost
+	 * answer went out under a new key as a duplicate. The epoch bump above stays
+	 * unconditional (it only fences callbacks already stale); the listeners run once,
+	 * when the observed account differs from the one this reconciler last acted on.
+	 * A fresh process starts at `undefined`, so its first sign-out read still fires,
+	 * and the persisted-account prune above and below never depended on this.
+	 */
+	if ((revoked || next === null) && next !== lastReconciled) notifyRevocation();
+	lastReconciled = next;
 	// No storage means nothing on disk to clean; the revocation above (epochs
 	// and the in-memory preview listeners) has already happened regardless.
 	if (!storage) return;

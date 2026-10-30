@@ -116,7 +116,7 @@ const bundle = await build({
  export {TeamBridgePageView} from "./src/renderer/src/features/team-bridge/team-bridge-page";
  export {QueryClient, QueryClientProvider} from "@tanstack/react-query";
  export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store";
- export {draftStorageKey, eraseAccountDrafts} from "./src/renderer/src/shared/store/team-bridge-draft-account";
+ export {draftAccountEpoch, draftStorageKey, eraseAccountDrafts, onDraftRevocation, reconcileDraftAccount} from "./src/renderer/src/shared/store/team-bridge-draft-account";
  export {draftTargetKey} from "./src/renderer/src/features/team-bridge/team-bridge-drafts";`,
 		resolveDir: process.cwd(),
 	},
@@ -154,6 +154,18 @@ compiled.filename = compiledPath;
 compiled.paths = Module._nodeModulePaths(process.cwd());
 compiled._compile(bundle.outputFiles[0].text, compiled.filename);
 const m = compiled.exports;
+/*
+ * A SECOND COPY OF THE SAME BUNDLE is a fresh renderer process as far as module
+ * state goes: an empty epochs map and no reconciled account. Only the persisted
+ * path can be exercised through it - which is the point of the fresh-process case.
+ */
+const freshProcess = () => {
+	const fresh = new Module(compiledPath);
+	fresh.filename = compiledPath;
+	fresh.paths = Module._nodeModulePaths(process.cwd());
+	fresh._compile(bundle.outputFiles[0].text, fresh.filename);
+	return fresh.exports;
+};
 // The catalogue is process-global. Other Team Bridge suites pin English too, so a
 // developer's locale cannot change the control names these probes click.
 m.setLocale("en");
@@ -628,4 +640,98 @@ test("a send that lands after leaving Team Bridge does not leave its key behind"
 		"the first 'ok' landed; reusing its key would make the hub replay it and post nothing",
 	);
 	await back.close();
+});
+
+/*
+ * Q1 (PR #1528 QA round 1) - A STATUS READ IS NOT A SIGN-OUT.
+ *
+ * `reconcileDraftAccount` runs on every status read. Its epochs map never forgets an
+ * account, so after one in-place switch every later read for the SAME account found
+ * the old one "foreign" and fired the revocation again - erasing the composer rows
+ * and the failed-send record on each poll. A reader who lost a send's answer, left
+ * for long enough to trigger a read, and came back found an empty box and retyped:
+ * a new key, a duplicate row. Revocation must fire on a TRANSITION only.
+ */
+const ready = (account_id) => ({ state: "ready", account_id });
+test("repeated status reads for the same account after a switch erase nothing", async () => {
+	localStorage.clear();
+	// The switch: another account was signed in on this renderer first.
+	m.draftAccountEpoch("acct_z");
+	m.reconcileDraftAccount(localStorage, ready("acct_z"));
+	m.reconcileDraftAccount(localStorage, ready("acct_a"));
+	const refs = [];
+	const failFirst = async (_body, clientRef) => {
+		refs.push(clientRef);
+		if (refs.length === 1) throw new Error("response lost");
+	};
+	const first = await mountPage(
+		pageProps({ target: conversation, onSend: failFirst }),
+	);
+	await typeBody(first.element, "after the switch");
+	await act(async () => sendButton(first.element).click());
+	await settle();
+	await first.close();
+	let fired = 0;
+	const stop = m.onDraftRevocation(() => {
+		fired += 1;
+	});
+	for (let read = 0; read < 3; read += 1)
+		m.reconcileDraftAccount(localStorage, ready("acct_a"));
+	stop();
+	assert.equal(fired, 0, "a read naming the same account is not a revocation");
+	const back = await mountPage(
+		pageProps({ target: conversation, onSend: failFirst }),
+	);
+	assert.equal(
+		composerText(back.element),
+		"after the switch",
+		"the unsent text survives the status reads",
+	);
+	await act(async () => sendButton(back.element).click());
+	await settle();
+	assert.deepEqual(refs.length, 2);
+	assert.equal(
+		refs[1],
+		refs[0],
+		"the failed attempt's key survives too, so the retry cannot duplicate",
+	);
+	await back.close();
+});
+
+test("every real account transition still revokes, A to B and back", () => {
+	m.reconcileDraftAccount(localStorage, ready("acct_a"));
+	let fired = 0;
+	const stop = m.onDraftRevocation(() => {
+		fired += 1;
+	});
+	m.reconcileDraftAccount(localStorage, ready("acct_z"));
+	assert.equal(fired, 1, "A -> B revokes");
+	m.reconcileDraftAccount(localStorage, ready("acct_a"));
+	assert.equal(fired, 2, "B -> A revokes");
+	m.reconcileDraftAccount(localStorage, ready("acct_a"));
+	assert.equal(fired, 2, "A -> A is a read, not a transition");
+	m.reconcileDraftAccount(localStorage, { state: "signed_out" });
+	assert.equal(fired, 3, "a sign-out revokes");
+	m.reconcileDraftAccount(localStorage, { state: "signed_out" });
+	assert.equal(fired, 3, "a second signed-out read is not another sign-out");
+	stop();
+});
+
+test("a fresh process still erases a persisted foreign account's drafts", () => {
+	localStorage.clear();
+	const fresh = freshProcess();
+	const foreign = fresh.draftStorageKey("acct_z", "org_page");
+	localStorage.setItem(foreign, "{}");
+	let fired = 0;
+	fresh.onDraftRevocation(() => {
+		fired += 1;
+	});
+	fresh.reconcileDraftAccount(localStorage, ready("acct_a"));
+	assert.equal(
+		localStorage.getItem(foreign),
+		null,
+		"the persisted fence holds with an empty epochs map",
+	);
+	fresh.reconcileDraftAccount(localStorage, { state: "signed_out" });
+	assert.equal(fired, 1, "the first sign-out read of a fresh process revokes");
 });
