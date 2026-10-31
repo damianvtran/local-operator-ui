@@ -361,18 +361,19 @@ export function isNotAMemberRefusal(error: unknown): boolean {
 export function landingAfterRemoval(
 	rows: readonly TeamBridgeConversation[],
 	removedId: string,
+	organizationOrder: readonly string[] = [],
 ): TeamBridgeTarget | null {
-	const channels = railSections(rows).channels;
+	const channels = railSections(rows, organizationOrder).channels;
 	const at = channels.findIndex((row) => row.id === removedId);
 	const neighbour =
 		at >= 0
 			? (channels[at + 1] ?? channels[at - 1])
-			: defaultLandingConversation(channels);
+			: defaultLandingConversation(channels, organizationOrder);
 	const remaining = rows.filter((row) => row.id !== removedId);
 	const next =
 		neighbour && neighbour.id !== removedId
 			? neighbour
-			: defaultLandingConversation(remaining);
+			: defaultLandingConversation(remaining, organizationOrder);
 	return next ? { type: "conversation", id: next.id } : null;
 }
 
@@ -1054,20 +1055,58 @@ export function dmWithAgent(
 const BUILTIN_ORDER: readonly string[] = ["general", "humans", "agents"];
 
 /**
+ * Orders two built-in rows: by built-in name, then by organization.
+ *
+ * WHY AN ORGANIZATION KEY (design review round 1, D1). In All organizations each
+ * org has its own #general, #humans and #agents. Sorting by name alone left the
+ * org order inside each group to the incoming activity order, so "general ·
+ * Minerva" and "general · Northwind" swapped places whenever the other org got
+ * newer traffic, and the rail's top row moved under the reader. The org key is
+ * its position in the switcher (`organizationOrder`, the same list the scope
+ * menu draws), so the rail reads in the order the reader already sees there. An
+ * org the switcher does not list yet (its memberships still loading) falls back
+ * to tenant id, so the order is still total and never depends on activity.
+ */
+function compareBuiltins(
+	a: Pick<TeamBridgeConversation, "builtin" | "tenant_id">,
+	b: Pick<TeamBridgeConversation, "builtin" | "tenant_id">,
+	organizationOrder: readonly string[],
+): number {
+	const byName =
+		BUILTIN_ORDER.indexOf(a.builtin as string) -
+		BUILTIN_ORDER.indexOf(b.builtin as string);
+	if (byName !== 0) return byName;
+	const rank = (tenant: string) => {
+		const at = organizationOrder.indexOf(tenant);
+		return at < 0 ? Number.POSITIVE_INFINITY : at;
+	};
+	const byOrg = rank(a.tenant_id) - rank(b.tenant_id);
+	// Infinity - Infinity is NaN: two unlisted orgs fall through to tenant id.
+	if (byOrg !== 0 && !Number.isNaN(byOrg)) return byOrg;
+	return a.tenant_id.localeCompare(b.tenant_id);
+}
+
+/**
  * The conversation the page lands on when nothing is selected: #general, else
  * #humans (a server that predates #general), else the first row, else nothing.
  *
  * One function for the first load and for the landing after a channel leaves the
- * rail, so the two can never disagree about what "the default" is.
+ * rail, so the two can never disagree about what "the default" is. In All
+ * organizations there is one #general per org; the landing takes the one the
+ * rail draws on top (`compareBuiltins`, the switcher order), so the selected row
+ * is the first row rather than whichever org happened to be busiest.
  */
 export function defaultLandingConversation<
-	Row extends Pick<TeamBridgeConversation, "builtin">,
->(rows: readonly Row[]): Row | undefined {
-	return (
-		rows.find((row) => row.builtin === "general") ??
-		rows.find((row) => row.builtin === "humans") ??
-		rows[0]
-	);
+	Row extends Pick<TeamBridgeConversation, "builtin" | "tenant_id">,
+>(
+	rows: readonly Row[],
+	organizationOrder: readonly string[] = [],
+): Row | undefined {
+	const first = (builtin: string) =>
+		rows
+			.filter((row) => row.builtin === builtin)
+			.sort((a, b) => compareBuiltins(a, b, organizationOrder))[0];
+	return first("general") ?? first("humans") ?? rows[0];
 }
 
 /**
@@ -1103,16 +1142,21 @@ export function builtinTopicKey(
  * keeps the order the caller passed in (the server's / merged activity order).
  *
  * IN THE MERGED (all organizations) VIEW each organization has its own three
- * built-ins, and the sort is by built-in name only. `Array.prototype.sort` is
- * stable, so the result is every org's #general (in the caller's order), then
- * every #humans, then every #agents; each row keeps its own `tenant_id`, which
- * is what the rail's per-row organization caption is drawn from.
+ * built-ins. They sort by built-in name, then by the org's position in
+ * `organizationOrder` (the switcher's order), then by tenant id: every org's
+ * #general, then every #humans, then every #agents, each group in the same org
+ * order whatever the activity (`compareBuiltins`). Each row keeps its own
+ * `tenant_id`, which is what the rail's per-row organization caption is drawn
+ * from. A single-org rail has one row per built-in, so the org key never acts.
  *
  * DMs are returned separately: a single-org rail folds them into the People
  * and Chiefs of staff rows (the person IS the DM), while the merged view, which
  * has no directory, lists them under their own header.
  */
-export function railSections(rows: readonly TeamBridgeConversation[]): {
+export function railSections(
+	rows: readonly TeamBridgeConversation[],
+	organizationOrder: readonly string[] = [],
+): {
 	channels: TeamBridgeConversation[];
 	groups: TeamBridgeConversation[];
 	directs: TeamBridgeConversation[];
@@ -1129,11 +1173,7 @@ export function railSections(rows: readonly TeamBridgeConversation[]): {
 		} else if (row.kind === "group") groups.push(row);
 		else directs.push(row);
 	}
-	builtins.sort(
-		(a, b) =>
-			BUILTIN_ORDER.indexOf(a.builtin as string) -
-			BUILTIN_ORDER.indexOf(b.builtin as string),
-	);
+	builtins.sort((a, b) => compareBuiltins(a, b, organizationOrder));
 	return { channels: [...builtins, ...channels], groups, directs };
 }
 

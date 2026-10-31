@@ -976,7 +976,16 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		() => listRows.filter((row) => row.status !== "archived"),
 		[listRows],
 	);
-	const sections = useMemo(() => railSections(sidebarRows), [sidebarRows]);
+	/* The switcher's org order: the built-ins' secondary sort key in the merged
+	   view (design round 1, D1), shared by the rail and the after-removal landing. */
+	const organizationOrder = useMemo(
+		() => organizations.map((row) => row.tenantId as string),
+		[organizations],
+	);
+	const sections = useMemo(
+		() => railSections(sidebarRows, organizationOrder),
+		[sidebarRows, organizationOrder],
+	);
 	/* Everything a selection may resolve against: the live list plus the archived view's rows. */
 	const selectable = useMemo(
 		() => selectableConversations(listRows, archivedConversations),
@@ -2889,7 +2898,13 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							   (else the previous one, else the default). Leaving the target on
 							   the archived id painted "Untitled conversation" over a dead composer. */
 							if (wasShown)
-								selectTarget(landingAfterRemoval(sidebarRows, subject.id));
+								selectTarget(
+									landingAfterRemoval(
+										sidebarRows,
+										subject.id,
+										organizationOrder,
+									),
+								);
 						}}
 					/>
 				) : (
@@ -2912,7 +2927,13 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									   return to the Archived channels view, where the reader came from and
 									   where the rest of the clean-up is. */
 									if (wasShown) {
-										onTarget(landingAfterRemoval(sidebarRows, subject.id));
+										onTarget(
+											landingAfterRemoval(
+												sidebarRows,
+												subject.id,
+												organizationOrder,
+											),
+										);
 										onOpenArchived?.();
 										openQuickView("archived");
 									}
@@ -3359,10 +3380,13 @@ const TeamBridgeOwnedPage: FC<{
 			target === null &&
 			visibleConversations.length > 0
 		) {
-			const first = defaultLandingConversation(visibleConversations);
+			const first = defaultLandingConversation(
+				visibleConversations,
+				organizations.map((row) => row.tenantId),
+			);
 			if (first) setTarget({ type: "conversation", id: first.id });
 		}
-	}, [visibleConversations, target, ownerAudit?.active]);
+	}, [visibleConversations, organizations, target, ownerAudit?.active]);
 
 	/*
 	 * ARCHIVE / UNARCHIVE / DELETE. The archived read stays OFF until the

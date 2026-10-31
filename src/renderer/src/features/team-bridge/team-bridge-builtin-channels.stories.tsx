@@ -32,8 +32,17 @@ import { TeamBridgePageView } from "./team-bridge-page";
  */
 
 const self = "acct_self";
+/*
+ * ONE CLOCK FOR EVERY ROW (design review round 1, D3). Reading `Date.now()` per
+ * row let two rows with the same `minutesAgo` differ by a millisecond or two,
+ * and the merged order broke that tie differently from one render to the next,
+ * so two captures of the same story could disagree. Every timestamp derives
+ * from this one instant; it stays relative to load time so the header reads
+ * "1 hour ago" rather than a fixed date that ages.
+ */
+const NOW = Date.now();
 const at = (minutesAgo: number) =>
-	new Date(Date.now() - minutesAgo * 60_000).toISOString();
+	new Date(NOW - minutesAgo * 60_000).toISOString();
 
 const minerva: TeamBridgeOrganization = {
 	tenantId: asTeamBridgeTenantId("tnt_1"),
@@ -210,12 +219,45 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/*
+ * Every row administrable, with archive and add-members wired (QA round 1, Q3):
+ * the props that make the ⋯ menu offer "Add members…" and "Archive channel" on
+ * an ordinary channel. With these on, the absence of both on #general is the
+ * built-in gate at work, not a story that simply never passed the handlers.
+ */
+const adminCapable = (rows: TeamBridgeConversation[]) =>
+	rows.map((row) => ({ ...row, can_administer: true }));
+const adminArgs = {
+	conversations: adminCapable(minervaRows),
+	onArchive: () => {},
+	onAddMembers: () => Promise.resolve(),
+	onRemoveMember: () => Promise.resolve(),
+	defaultMenuOpen: true,
+};
+
 /** One organization: #general leads, open, with its header line and no Preview chip. */
 export const SingleOrganization: Story = {};
 
 /** The conversation menu on #general: notification levels only, no archive. */
 export const SingleOrganizationMenu: Story = {
 	args: { defaultMenuOpen: true },
+};
+
+/**
+ * #general's menu for an ADMIN, with archive and add-members wired: still only
+ * the notification levels, because a built-in cannot be archived or invited to.
+ */
+export const SingleOrganizationMenuAdmin: Story = {
+	args: adminArgs,
+};
+
+/** The control for the story above: the same admin args on #launch offer both. */
+export const OrdinaryChannelMenuAdmin: Story = {
+	args: {
+		...adminArgs,
+		target: { type: "conversation", id: minervaRows[0].id },
+		messages: [],
+	},
 };
 
 /** All organizations: each org's #general first, each captioned with its org. */
