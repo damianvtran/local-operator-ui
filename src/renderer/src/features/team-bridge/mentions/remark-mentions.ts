@@ -10,8 +10,13 @@ import { type MessageMentionRun, splitMentions } from "./message-mentions";
 type TextNode = { type: "text"; value: string };
 type Parent = { children: unknown[] };
 
+/*
+ * Others' mentions are ACCENT TEXT (design D3): the wash measures 1.01-1.05:1
+ * against the canvas and weight alone did not separate a name from prose;
+ * accent text is 4.81:1 light / 7.54:1 dark there (4.85 / 7.18 on the wash).
+ */
 export const MENTION_CLASS =
-	"team-bridge-mention rounded-sm px-0.5 font-medium bg-accent-wash text-ink";
+	"team-bridge-mention rounded-sm px-0.5 font-medium bg-accent-wash text-accent";
 /*
  * THE READER'S OWN MENTION is louder (Slack's yellow-ish token). `warning-wash`
  * is the theme's warm wash in both light and dark; the warning ink on it keeps

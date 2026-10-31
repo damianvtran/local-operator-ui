@@ -29,6 +29,8 @@ export type MessageMentionRun = {
 export type MessageMentionSpec = {
 	source: "message" | "fallback";
 	runs: MessageMentionRun[];
+	/** Both sources match the exact spelling; kept explicit for the renderer. */
+	caseSensitive: boolean;
 };
 
 type WireMention = { kind?: unknown; account_id?: unknown };
@@ -59,9 +61,19 @@ export function messageMentionSpec(input: {
 		const runs: MessageMentionRun[] = [];
 		for (const row of input.mentions as WireMention[]) {
 			if (!row || typeof row !== "object") continue;
+			/*
+			 * A `channel` row names no word, and the hub has ONE channel kind, so
+			 * guessing which of @channel/@here/@everyone it recorded would
+			 * highlight words the hub never treated as mentions (review R1-06).
+			 * Highlight only the one word actually present, first in this order.
+			 */
 			if (row.kind === "channel") {
-				for (const word of CHANNEL_WORDS)
-					runs.push({ label: word, viewer: self !== null });
+				const word = CHANNEL_WORDS.find((w) =>
+					splitMentions(body, [{ label: w, viewer: false }], true).some(
+						(seg) => seg.kind === "mention",
+					),
+				);
+				if (word) runs.push({ label: word, viewer: self !== null });
 				continue;
 			}
 			const match = people.find(
@@ -73,12 +85,23 @@ export function messageMentionSpec(input: {
 					viewer: isViewer(row.kind, row.account_id),
 				});
 		}
-		return runs.length > 0 ? { source: "message", runs } : null;
+		return runs.length > 0
+			? { source: "message", runs, caseSensitive: true }
+			: null;
 	}
 	const runs = people
 		.filter((p) => p.label !== "" && body.includes(`@${p.label}`))
 		.map((p) => ({ label: p.label, viewer: isViewer(p.kind, p.accountId) }));
-	return runs.length > 0 ? { source: "fallback", runs } : null;
+	/*
+	 * The fallback is a HEURISTIC and says so: it matches `@<display name>`
+	 * EXACTLY as the name is spelled (case-sensitive, review R1-06), which is
+	 * what the composer inserts. Prose like "@ben tran" is not highlighted, and
+	 * an `@Name` typed by hand without the popover is, because a reader would
+	 * read it as a mention too. It cannot see a mention spelled differently.
+	 */
+	return runs.length > 0
+		? { source: "fallback", runs, caseSensitive: true }
+		: null;
 }
 
 export type BodySegment =
@@ -96,7 +119,11 @@ const NAME_CONTINUES = /[\p{L}\p{N}_]/u;
 export function splitMentions(
 	text: string,
 	runs: readonly MessageMentionRun[],
+	/** Exact spelling; the default because labels are what was inserted. */
+	caseSensitive = true,
 ): BodySegment[] {
+	const same = (a: string, b: string) =>
+		caseSensitive ? a === b : a.toLocaleLowerCase() === b.toLocaleLowerCase();
 	const ordered = [...runs].sort((a, b) => b.label.length - a.label.length);
 	const segments: BodySegment[] = [];
 	let plain = "";
@@ -108,8 +135,7 @@ export function splitMentions(
 				? ordered.find((run) => {
 						const end = at + 1 + run.label.length;
 						return (
-							text.slice(at + 1, end).toLocaleLowerCase() ===
-								run.label.toLocaleLowerCase() &&
+							same(text.slice(at + 1, end), run.label) &&
 							!NAME_CONTINUES.test(text.charAt(end))
 						);
 					})

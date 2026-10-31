@@ -291,11 +291,12 @@
 	"ui.teamBridge.mentions.section.member_agent": "इस बातचीत में एजेंट",
 	"ui.teamBridge.mentions.section.org_human": "दूसरे लोग",
 	"ui.teamBridge.mentions.section.org_agent": "दूसरे एजेंट",
-	"ui.teamBridge.mentions.agent_secondary": "{person} का चीफ़ ऑफ़ स्टाफ़",
-	"ui.teamBridge.mentions.tag.not_member": "इस चैनल में नहीं",
+	"ui.teamBridge.mentions.tag.not_member": "इस बातचीत में नहीं",
 	"ui.teamBridge.mentions.tag.bridge_off": "Team Bridge बंद है",
-	"ui.teamBridge.mentions.notice.not_member": "{name} इस बातचीत में शामिल नहीं है।",
+	"ui.teamBridge.mentions.notice.not_member": "{name} इस बातचीत में शामिल नहीं है, इसलिए उन्हें सूचना नहीं मिलेगी।",
 	"ui.teamBridge.mentions.notice.invite_failed": "{name} को आमंत्रित नहीं किया जा सका। आप फिर भी सूचना दिए बिना उल्लेख कर सकते हैं।",
 	"ui.teamBridge.mentions.notice.invite": "आमंत्रित करें",
-	"ui.teamBridge.mentions.notice.silent": "सूचना दिए बिना उल्लेख करें"
+	"ui.teamBridge.mentions.notice.silent": "सूचना दिए बिना उल्लेख करें",
+	"ui.teamBridge.mentions.notice.pending": "{name} को आमंत्रित किया गया है, लेकिन वे अभी शामिल नहीं हुए हैं, इसलिए उन्हें सूचना नहीं मिलेगी।",
+	"ui.teamBridge.mentions.notice.invited": "{name} को आमंत्रित कर दिया गया है। शामिल होने तक उन्हें सूचना नहीं मिलेगी।"
 }

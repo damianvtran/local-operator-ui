@@ -84,6 +84,10 @@ export function useComposerMentions(input: {
  * the field itself must be `relative` too (positioned elements paint above
  * static ones, and the field's glyphs must be above the wash).
  */
+/** `w-[min(22rem,…)]` on the popover, in px, and the viewport margin. */
+const POPOVER_WIDTH_PX = 352;
+const EDGE_PX = 8;
+
 export function MentionField({
 	mentions,
 	fieldRef,
@@ -100,17 +104,53 @@ export function MentionField({
 		bottom: number;
 	} | null>(null);
 	const { open, anchorIndex } = mentions;
+	/*
+	 * ANCHORED AT THE `@`, CLAMPED TO BOTH EDGES, MIRRORED IN RTL (design D5).
+	 * In LTR the popover's left edge meets the `@`; in RTL its RIGHT edge does,
+	 * because the name grows leftward from there. Either way it is clamped
+	 * into the viewport on both sides, so an `@` near the far edge of a wide
+	 * line or a narrow thread pane does not push the list off-screen.
+	 *
+	 * RE-MEASURED WHILE OPEN (review R1-03): the field scrolling (a tall
+	 * draft), the window resizing and the field itself resizing (the thread
+	 * pane, autogrow) all move the `@`, and a `position: fixed` list would
+	 * otherwise stay where it was first drawn.
+	 */
 	useLayoutEffect(() => {
 		const field = fieldRef.current;
 		if (!open || anchorIndex === null || !field) {
 			setPosition(null);
 			return;
 		}
-		// Above the `@`: the composer sits at the foot of the pane, so the list
-		// opens upward, Slack's direction, and never covers what is being typed.
-		const rect = caretRect(field, anchorIndex);
-		const viewport = field.ownerDocument.defaultView?.innerHeight ?? 0;
-		setPosition({ left: rect.left - 8, bottom: viewport - rect.top + 6 });
+		const view = field.ownerDocument.defaultView;
+		const measure = () => {
+			const rect = caretRect(field, anchorIndex);
+			const viewportW = view?.innerWidth ?? 0;
+			const viewportH = view?.innerHeight ?? 0;
+			const width = Math.min(POPOVER_WIDTH_PX, viewportW - 2 * EDGE_PX);
+			const rtl = view?.getComputedStyle(field).direction === "rtl";
+			const preferred = rtl ? rect.right + 8 - width : rect.left - 8;
+			const left = Math.min(
+				Math.max(EDGE_PX, preferred),
+				Math.max(EDGE_PX, viewportW - EDGE_PX - width),
+			);
+			// Above the `@`: the composer sits at the foot of the pane, so the
+			// list opens upward and never covers what is being typed.
+			setPosition({ left, bottom: viewportH - rect.top + 6 });
+		};
+		measure();
+		field.addEventListener("scroll", measure);
+		view?.addEventListener("resize", measure);
+		const observer =
+			typeof ResizeObserver === "undefined"
+				? null
+				: new ResizeObserver(measure);
+		observer?.observe(field);
+		return () => {
+			field.removeEventListener("scroll", measure);
+			view?.removeEventListener("resize", measure);
+			observer?.disconnect();
+		};
 	}, [open, anchorIndex, fieldRef]);
 	if (!mentions.enabled) return <>{children}</>;
 	return (

@@ -291,11 +291,12 @@
 	"ui.teamBridge.mentions.section.member_agent": "Агенты в этом разговоре",
 	"ui.teamBridge.mentions.section.org_human": "Другие люди",
 	"ui.teamBridge.mentions.section.org_agent": "Другие агенты",
-	"ui.teamBridge.mentions.agent_secondary": "координатор ({person})",
-	"ui.teamBridge.mentions.tag.not_member": "не в этом канале",
+	"ui.teamBridge.mentions.tag.not_member": "не в этом разговоре",
 	"ui.teamBridge.mentions.tag.bridge_off": "Team Bridge отключён",
-	"ui.teamBridge.mentions.notice.not_member": "{name} не участвует в этом разговоре.",
+	"ui.teamBridge.mentions.notice.not_member": "{name} не участвует в этом разговоре, поэтому уведомление не придёт.",
 	"ui.teamBridge.mentions.notice.invite_failed": "Не удалось пригласить: {name}. Можно упомянуть без уведомления.",
 	"ui.teamBridge.mentions.notice.invite": "Пригласить",
-	"ui.teamBridge.mentions.notice.silent": "Упомянуть без уведомления"
+	"ui.teamBridge.mentions.notice.silent": "Упомянуть без уведомления",
+	"ui.teamBridge.mentions.notice.pending": "{name} приглашён(а), но ещё не присоединился(ась), поэтому уведомление не придёт.",
+	"ui.teamBridge.mentions.notice.invited": "Приглашение для {name} отправлено. Уведомления начнут приходить после присоединения."
 }

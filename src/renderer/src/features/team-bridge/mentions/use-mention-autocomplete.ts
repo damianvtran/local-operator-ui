@@ -51,6 +51,8 @@ import {
 export type MentionNotice = {
 	candidate: MentionCandidateRow;
 	token: MentionToken;
+	/** The invite went through: they are invited, not yet able to be notified. */
+	invited?: boolean;
 };
 
 export type MentionAutocomplete = {
@@ -154,6 +156,16 @@ export function useMentionAutocomplete(input: {
 	 */
 	const zeroAfterSpace =
 		query !== null && flat.length === 0 && query.query.endsWith(" ");
+	/*
+	 * A SPACE WITH ZERO MATCHES IS A DISMISSAL, REMEMBERED (review R1-02). It
+	 * used to be a property of the current query only, so the next letter
+	 * ("@ops t") reopened an empty popover over the thread until a newline.
+	 * Recording the `@` like Esc does keeps prose prose.
+	 */
+	const zeroStart = zeroAfterSpace ? query.start : null;
+	useEffect(() => {
+		if (zeroStart !== null) setDismissedAt(zeroStart);
+	}, [zeroStart]);
 	const open =
 		query !== null &&
 		dismissedAt !== query.start &&
@@ -199,39 +211,96 @@ export function useMentionAutocomplete(input: {
 			syncCaret();
 	}, [text, enabled]);
 
+	/*
+	 * EDITS GO THROUGH THE FIELD'S OWN EDITING PATH WHEN IT CAN (review R1-04).
+	 * Setting `value` programmatically wipes Chromium's undo stack for the
+	 * field, so Cmd+Z could not bring back a deleted pill or the typed `@que`.
+	 * `execCommand("insertText")` over the replaced range is a real user edit:
+	 * it lands on the undo stack and fires `input`, so the composer's own
+	 * `onChange` writes the text and `rebaseTokens` runs as for typing; the
+	 * token map is then replaced with the edit's own (which knows the new
+	 * token). It is deprecated but still the only API that edits a textarea
+	 * with undo in Chromium. Where it is unavailable or refuses (jsdom, a
+	 * disabled field), the value is written directly and undo is lost for
+	 * that one edit - the text and tokens are correct either way.
+	 */
 	const applyEdit = useCallback(
-		(next: { text: string; caret: number; tokens: MentionToken[] }) => {
+		(
+			next: { text: string; caret: number; tokens: MentionToken[] },
+			range?: { start: number; end: number; insert: string },
+		) => {
+			const field = fieldRef.current;
+			let native = false;
+			if (field && range) {
+				field.focus();
+				field.setSelectionRange(range.start, range.end);
+				try {
+					native =
+						field.ownerDocument.execCommand?.(
+							range.insert === "" ? "delete" : "insertText",
+							false,
+							range.insert,
+						) === true && field.value === next.text;
+				} catch {
+					native = false;
+				}
+			}
 			lastText.current = next.text;
 			setTokens(next.tokens);
-			setText(next.text);
+			if (!native) setText(next.text);
 			setCaret(next.caret);
 			// The caret is placed after React writes the value.
 			requestAnimationFrame(() => {
-				const field = fieldRef.current;
-				if (!field) return;
-				field.setSelectionRange(next.caret, next.caret);
+				const current = fieldRef.current;
+				if (!current) return;
+				current.setSelectionRange(next.caret, next.caret);
 			});
 		},
 		[fieldRef, setText],
 	);
 
+	/** Back to the field with the caret where it was (design D4). */
+	const refocus = useCallback(
+		(at?: number) => {
+			requestAnimationFrame(() => {
+				const field = fieldRef.current;
+				if (!field) return;
+				field.focus();
+				if (at !== undefined) field.setSelectionRange(at, at);
+			});
+		},
+		[fieldRef],
+	);
+
 	const pick = useCallback(
 		(candidate: MentionCandidateRow) => {
 			if (!query) return;
-			const edit = insertMention(text, tokens, query, candidate);
-			applyEdit(edit);
+			/*
+			 * ONLY AN ACTIVE MEMBER GETS A NOTIFYING TOKEN (review R1-01). The hub
+			 * refuses the whole send for a row naming anyone else, so a
+			 * non-member or invited pick starts as non-notifying text, and the
+			 * notice says so and offers the invite. It is never dropped silently:
+			 * the pill stays, visibly quiet.
+			 */
+			const edit = insertMention(
+				text,
+				tokens,
+				query,
+				candidate,
+				candidate.member,
+			);
+			const insertedText = edit.text.slice(query.start, edit.caret);
+			applyEdit(edit, {
+				start: query.start,
+				end: query.end,
+				insert: insertedText,
+			});
 			setDismissedAt(null);
 			const token = edit.tokens.find((t) => t.start === query.start);
-			/*
-			 * A NON-MEMBER IS NEVER DROPPED SILENTLY. The hub only wakes members,
-			 * so a mention of someone outside the room would look sent and reach
-			 * nobody; the notice makes the reader choose (invite, or keep it as
-			 * plain text). Members clear any earlier notice.
-			 */
 			if (token && !candidate.member) setNotice({ candidate, token });
-			fieldRef.current?.focus();
+			refocus(edit.caret);
 		},
-		[query, text, tokens, applyEdit, fieldRef],
+		[query, text, tokens, applyEdit, refocus],
 	);
 
 	const close = useCallback(() => {
@@ -276,7 +345,11 @@ export function useMentionAutocomplete(input: {
 				);
 				if (edit) {
 					event.preventDefault();
-					applyEdit(edit);
+					applyEdit(edit, {
+						start: edit.caret,
+						end: edit.caret + (text.length - edit.text.length),
+						insert: "",
+					});
 					return true;
 				}
 			}
@@ -337,16 +410,46 @@ export function useMentionAutocomplete(input: {
 		};
 	}, [fieldRef, enabled, syncCaret]);
 
+	const activeKeys = useMemo(
+		() =>
+			new Set(
+				(source?.candidates ?? [])
+					.filter((c) => c.member)
+					.map((c) => mentionKey(c)),
+			),
+		[source?.candidates],
+	);
+	/*
+	 * A token waiting on an invite becomes notifying once a refetch shows the
+	 * person ACTIVE - accepting is theirs, so the pill upgrades itself rather
+	 * than asking the author to pick again.
+	 */
+	const awaitingKeys = useRef(new Set<string>());
+	useEffect(() => {
+		if (awaitingKeys.current.size === 0) return;
+		const ready = [...awaitingKeys.current].filter((key) =>
+			activeKeys.has(key),
+		);
+		if (ready.length === 0) return;
+		for (const key of ready) awaitingKeys.current.delete(key);
+		setTokens((current) =>
+			current.map((t) =>
+				ready.includes(mentionKey(t)) ? { ...t, notify: true } : t,
+			),
+		);
+	}, [activeKeys]);
+
 	const payload = useCallback((): MentionWireRow[] | undefined => {
 		if (!source?.sendMentions) return undefined;
 		const rows = serializeMentions(
 			rebaseTokens(lastText.current, text, tokens),
+			activeKeys,
 		);
 		return rows.length > 0 ? rows : undefined;
-	}, [source?.sendMentions, text, tokens]);
+	}, [source?.sendMentions, text, tokens, activeKeys]);
 
 	const updateNoticeToken = useCallback(
-		(patch: Partial<MentionToken> | null) => {
+		(patch: Partial<MentionToken> | null, close = true) => {
 			if (!notice) return;
 			if (patch)
 				setTokens((current) =>
@@ -357,9 +460,11 @@ export function useMentionAutocomplete(input: {
 							: t,
 					),
 				);
-			setNotice(null);
+			if (close) setNotice(null);
+			// Focus back in the field, caret after the pill (design D4).
+			refocus(notice.token.end + 1);
 		},
-		[notice],
+		[notice, refocus],
 	);
 
 	// The notice goes with its pill: delete the mention and the question is moot.
@@ -391,14 +496,20 @@ export function useMentionAutocomplete(input: {
 		payload,
 		notice,
 		/*
-		 * Dismiss is "decide later", which must not mean "silently notify
-		 * nobody": the token keeps `notify: true` and is sent; the hub then
-		 * decides what a non-member mention does. The explicit choice to drop it
-		 * is "Mention without notifying".
+		 * Every choice keeps the pill and NONE notifies a non-member, because
+		 * the hub would refuse the whole message (review R1-01): Dismiss and
+		 * "Mention without notifying" both leave readable, non-notifying text;
+		 * Invite leaves it non-notifying until the person is active, when it
+		 * upgrades itself (`awaitingKeys`).
 		 */
-		dismissNotice: () => updateNoticeToken(null),
+		dismissNotice: () => updateNoticeToken({ notify: false }),
 		silenceNotice: () => updateNoticeToken({ notify: false }),
-		resolveNotice: () => updateNoticeToken(null),
+		resolveNotice: () => {
+			if (!notice) return;
+			awaitingKeys.current.add(mentionKey(notice.candidate));
+			setNotice({ ...notice, invited: true });
+			refocus(notice.token.end + 1);
+		},
 		source,
 		listboxId,
 	};

@@ -208,11 +208,22 @@ export function clampCaret(
  */
 export function serializeMentions(
 	tokens: readonly MentionToken[],
+	/**
+	 * `kind:account_id` of the conversation's ACTIVE members at send time. A
+	 * row naming anyone else makes the hub refuse the WHOLE message, so the
+	 * filter is applied here, at the last moment, whatever the token says: a
+	 * member who left after the pick, or a token restored from an old draft,
+	 * cannot turn a send into a 400 (review R1-01). Omitted only by tests of
+	 * the shape itself.
+	 */
+	activeMembers?: ReadonlySet<string>,
 ): MentionWireRow[] {
 	const seen = new Set<string>();
 	const rows: MentionWireRow[] = [];
 	for (const token of tokens) {
 		if (!token.notify) continue;
+		if (activeMembers && !activeMembers.has(`${token.kind}:${token.accountId}`))
+			continue;
 		if (token.kind === "agent" && !token.endpointId) continue;
 		const key = `${token.kind}:${token.accountId}:${token.endpointId ?? ""}`;
 		if (seen.has(key)) continue;

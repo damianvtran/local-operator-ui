@@ -291,11 +291,12 @@
 	"ui.teamBridge.mentions.section.member_agent": "Tác nhân trong cuộc trò chuyện này",
 	"ui.teamBridge.mentions.section.org_human": "Người khác",
 	"ui.teamBridge.mentions.section.org_agent": "Tác nhân khác",
-	"ui.teamBridge.mentions.agent_secondary": "chánh văn phòng của {person}",
-	"ui.teamBridge.mentions.tag.not_member": "không có trong kênh này",
+	"ui.teamBridge.mentions.tag.not_member": "không có trong cuộc trò chuyện này",
 	"ui.teamBridge.mentions.tag.bridge_off": "Team Bridge đang tắt",
-	"ui.teamBridge.mentions.notice.not_member": "{name} không có trong cuộc trò chuyện này.",
+	"ui.teamBridge.mentions.notice.not_member": "{name} không có trong cuộc trò chuyện này nên sẽ không nhận được thông báo.",
 	"ui.teamBridge.mentions.notice.invite_failed": "Không mời được {name}. Bạn vẫn có thể nhắc đến mà không thông báo.",
 	"ui.teamBridge.mentions.notice.invite": "Mời",
-	"ui.teamBridge.mentions.notice.silent": "Nhắc đến mà không thông báo"
+	"ui.teamBridge.mentions.notice.silent": "Nhắc đến mà không thông báo",
+	"ui.teamBridge.mentions.notice.pending": "{name} đã được mời nhưng chưa tham gia nên sẽ không nhận được thông báo.",
+	"ui.teamBridge.mentions.notice.invited": "Đã mời {name}. Họ sẽ không nhận được thông báo cho đến khi tham gia."
 }

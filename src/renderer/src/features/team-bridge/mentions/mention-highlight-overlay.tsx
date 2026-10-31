@@ -58,7 +58,13 @@ export const MentionHighlightOverlay: FC<{
 						className={cn(
 							"rounded-sm",
 							segment.token.notify
-								? "bg-accent-wash shadow-[0_0_0_1px_var(--color-accent-wash)]"
+								? /*
+									 * The wash alone is 1.13-1.14:1 against the bar (design D2),
+									 * and the overlay can only paint BEHIND the field's glyphs, so
+									 * the notifying pill is carried by a 1px accent ring (5.51:1
+									 * light / 6.34:1 dark against the bar).
+									 */
+									"bg-accent-wash shadow-[0_0_0_1px_var(--color-accent)]"
 								: "underline decoration-dashed decoration-ink-dim",
 						)}
 					>

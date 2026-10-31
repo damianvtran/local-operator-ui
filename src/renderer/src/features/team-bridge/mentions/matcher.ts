@@ -33,8 +33,14 @@ export type MentionCandidate = {
 	aliases?: readonly string[];
 	/** Secondary line: a person's title, or "chief of staff of X" for an agent. */
 	secondary?: string;
-	/** An active or invited member of THIS conversation. */
+	/**
+	 * An ACTIVE member of THIS conversation. Only these can be notified: the
+	 * hub refuses the whole send (400 `mentions`) when a row names anyone else,
+	 * including an invited member who has not accepted yet (review R1-01).
+	 */
 	member: boolean;
+	/** Invited but not yet active: offered as a non-member, with its own notice. */
+	invited?: boolean;
 	/** The person's (or the agent owner's) bridge is off: they cannot be reached. */
 	bridgeOff: boolean;
 };

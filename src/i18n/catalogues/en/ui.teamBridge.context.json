@@ -2150,21 +2150,12 @@
 		"placeholders": {},
 		"note": "Group of agents in the organization who are NOT in this conversation."
 	},
-	"ui.teamBridge.mentions.agent_secondary": {
-		"role": "secondary line under an agent's name in the @-mention list",
-		"tone": "neutral, lowercase start",
-		"length": "short, one line",
-		"placeholders": {
-			"person": "the agent owner's display name"
-		},
-		"note": "Explains whose agent this is. Lowercase start because it is a quiet subtitle, not a sentence; follow the locale's casing norm for subtitles. Use the glossary term for 'chief of staff'."
-	},
 	"ui.teamBridge.mentions.tag.not_member": {
 		"role": "quiet trailing tag on an @-mention row",
 		"tone": "neutral, lowercase",
 		"length": "2-4 words",
 		"placeholders": {},
-		"note": "Marks a person or agent who is not a member of the current conversation (channel, group or direct message). Short and lowercase like a tag."
+		"note": "Marks a person or agent who is not an active member of the current conversation (channel, group or direct message). Short and lowercase like a tag."
 	},
 	"ui.teamBridge.mentions.tag.bridge_off": {
 		"role": "quiet trailing tag on an @-mention row",
@@ -2180,7 +2171,7 @@
 		"placeholders": {
 			"name": "display name of the person or agent just mentioned"
 		},
-		"note": "Shown after the reader @-mentions someone who is not a member, followed by actions to invite them or mention without notifying."
+		"note": "Shown after the reader @-mentions someone who is not a member. States the consequence: the mention stays in the text but does not notify them. Followed by actions to invite them or keep it as text."
 	},
 	"ui.teamBridge.mentions.notice.invite_failed": {
 		"role": "inline notice text after an invite from the mention notice failed",
@@ -2204,5 +2195,23 @@
 		"length": "2-4 words",
 		"placeholders": {},
 		"note": "Keeps the name in the message as plain text but does not notify or wake that person or agent."
+	},
+	"ui.teamBridge.mentions.notice.pending": {
+		"role": "inline notice above the message box after @-mentioning an invited member",
+		"tone": "neutral, informative",
+		"length": "one sentence",
+		"placeholders": {
+			"name": "display name of the person or agent just mentioned"
+		},
+		"note": "The person or agent was invited to this conversation but has not accepted yet, so the @-mention will not notify them."
+	},
+	"ui.teamBridge.mentions.notice.invited": {
+		"role": "inline notice text after the reader invited the mentioned person from the notice",
+		"tone": "neutral, informative",
+		"length": "one or two short sentences",
+		"placeholders": {
+			"name": "display name of the invited person or agent"
+		},
+		"note": "Confirms the invitation was sent and explains the mention will not notify them until they accept and join the conversation."
 	}
 }

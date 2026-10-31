@@ -1,3 +1,4 @@
+import { useDocumentDirection } from "@shared/i18n/use-document-direction";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, within } from "@storybook/test";
 import { useMemo, useState } from "react";
@@ -38,7 +39,7 @@ const rows: MentionCandidateRow[] = [
 		endpointId: "bep_aida",
 		label: "Aida (Ben Tran)",
 		aliases: ["Aida", "Ben Tran"],
-		secondary: "chief of staff of Ben Tran",
+		secondary: "Chief of staff",
 		member: true,
 		bridgeOff: false,
 	},
@@ -63,17 +64,55 @@ const rows: MentionCandidateRow[] = [
 		endpointId: "bep_cos",
 		label: "Sherman Tsui’s chief of staff",
 		aliases: ["Sherman Tsui"],
-		secondary: "chief of staff of Sherman Tsui",
 		member: false,
 		bridgeOff: false,
 	},
 ];
 
+/* D8: a roster past the 8-row cap, so the scroll and the kept-in-view active
+   row are visible: 24 more people in the org beside the seed above. */
+const FIRST = [
+	"Alex",
+	"Bea",
+	"Cam",
+	"Dee",
+	"Eli",
+	"Fay",
+	"Gus",
+	"Hana",
+	"Ivo",
+	"Jun",
+	"Kai",
+	"Lou",
+];
+const LAST = ["Nguyen", "Okafor"];
+const crowd: MentionCandidateRow[] = FIRST.flatMap((first, i) =>
+	LAST.map((last, j) => ({
+		kind: "human" as const,
+		accountId: `acct_crowd_${i}_${j}`,
+		label: `${first} ${last}`,
+		secondary: j === 0 ? "Engineer" : undefined,
+		member: false,
+		bridgeOff: false,
+	})),
+);
+
 function Harness({
 	query,
 	active: initial,
-}: { query: string; active: number }) {
-	const ranked = useMemo(() => rankMentionCandidates(query, rows), [query]);
+	overflow = false,
+}: {
+	query: string;
+	active: number;
+	overflow?: boolean;
+}) {
+	// Sets `<html dir lang>` from the story's locale, so `locale: ur` renders
+	// real RTL (design D5), as `notifications.stories.tsx` does.
+	useDocumentDirection();
+	const ranked = useMemo(
+		() => rankMentionCandidates(query, overflow ? [...rows, ...crowd] : rows),
+		[query, overflow],
+	);
 	const [active, setActive] = useState(initial);
 	return (
 		<div className="flex min-h-[520px] items-end bg-canvas p-6">
@@ -160,4 +199,23 @@ export const NonMemberLight: Story = {
 };
 export const NonMemberDark: Story = {
 	args: { query: "sherman", theme: DARK } as Story["args"],
+};
+
+/* D8: past the measured 8-row cap; the active row near the bottom stays in view. */
+export const OverflowLight: Story = {
+	args: { overflow: true, active: 22, theme: LIGHT } as Story["args"],
+	play: async ({ canvasElement }) => {
+		const list = within(canvasElement).getByRole("listbox");
+		await expect(list.scrollHeight).toBeGreaterThan(list.clientHeight);
+	},
+};
+export const OverflowDark: Story = {
+	args: { overflow: true, active: 22, theme: DARK } as Story["args"],
+};
+/* D5: real right-to-left (Urdu), the selected row's bar on the leading (right) edge. */
+export const RtlUrduLight: Story = {
+	args: { active: 1, locale: "ur", theme: LIGHT } as Story["args"],
+};
+export const RtlUrduDark: Story = {
+	args: { active: 1, locale: "ur", theme: DARK } as Story["args"],
 };

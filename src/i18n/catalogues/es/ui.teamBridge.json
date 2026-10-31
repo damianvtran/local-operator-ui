@@ -291,11 +291,12 @@
 	"ui.teamBridge.mentions.section.member_agent": "Agentes en esta conversación",
 	"ui.teamBridge.mentions.section.org_human": "Otras personas",
 	"ui.teamBridge.mentions.section.org_agent": "Otros agentes",
-	"ui.teamBridge.mentions.agent_secondary": "jefe de gabinete de {person}",
-	"ui.teamBridge.mentions.tag.not_member": "no está en este canal",
+	"ui.teamBridge.mentions.tag.not_member": "no está en esta conversación",
 	"ui.teamBridge.mentions.tag.bridge_off": "Team Bridge desactivado",
-	"ui.teamBridge.mentions.notice.not_member": "{name} no está en esta conversación.",
+	"ui.teamBridge.mentions.notice.not_member": "{name} no está en esta conversación, así que no recibirá ninguna notificación.",
 	"ui.teamBridge.mentions.notice.invite_failed": "No se pudo invitar a {name}. Aún puedes mencionar a {name} sin notificar.",
 	"ui.teamBridge.mentions.notice.invite": "Invitar",
-	"ui.teamBridge.mentions.notice.silent": "Mencionar sin notificar"
+	"ui.teamBridge.mentions.notice.silent": "Mencionar sin notificar",
+	"ui.teamBridge.mentions.notice.pending": "{name} está invitado pero aún no se ha unido, así que no recibirá ninguna notificación.",
+	"ui.teamBridge.mentions.notice.invited": "Se invitó a {name}. No recibirá notificaciones hasta que se una."
 }

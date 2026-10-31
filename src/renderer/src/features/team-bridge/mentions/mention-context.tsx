@@ -28,6 +28,8 @@ export type MentionSource = {
 	self: { accountId: string; label: string } | null;
 	/** Invite a non-member; absent where the reader cannot invite (or in a DM). */
 	onInvite?: (candidate: MentionCandidateRow) => Promise<unknown>;
+	/** Whether Invite is offered for this row (see `mention-source.tsx`). */
+	canInvite?: (candidate: MentionCandidateRow) => boolean;
 };
 
 export const MentionSourceContext = createContext<MentionSource | null>(null);

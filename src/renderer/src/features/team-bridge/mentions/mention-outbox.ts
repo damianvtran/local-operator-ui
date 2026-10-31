@@ -16,6 +16,13 @@ import type { TeamBridgeMentionRow } from "@shared/api/local-operator/team-bridg
  * text produced it. It is PEEKED, not taken, so the page's retry paths (the
  * 409 auto-retry, a manual retry of the same text) send the same mentions; an
  * accepted send clears it. A later different message never matches.
+ *
+ * SCHEDULED SENDS ARE DEFERRED (review R1-07). `team_bridge.scheduled.create`
+ * already has a `mentions` field on the backend (`ScheduledMentionIn`), but
+ * the schedule path does not read this outbox yet, so a scheduled message
+ * with pills goes out as its readable `@Name` text with no `mentions[]`.
+ * Wiring it means the hub validating membership at FIRE time, not at
+ * scheduling time, which is a separate decision from this composer change.
  */
 const staged = new Map<string, readonly TeamBridgeMentionRow[]>();
 const MAX_STAGED = 32;

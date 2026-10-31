@@ -291,11 +291,12 @@
 	"ui.teamBridge.mentions.section.member_agent": "此对话中的智能体",
 	"ui.teamBridge.mentions.section.org_human": "其他人员",
 	"ui.teamBridge.mentions.section.org_agent": "其他智能体",
-	"ui.teamBridge.mentions.agent_secondary": "{person}的首席助理",
-	"ui.teamBridge.mentions.tag.not_member": "不在此频道",
+	"ui.teamBridge.mentions.tag.not_member": "不在此对话中",
 	"ui.teamBridge.mentions.tag.bridge_off": "Team Bridge已关闭",
-	"ui.teamBridge.mentions.notice.not_member": "{name}不在此对话中。",
+	"ui.teamBridge.mentions.notice.not_member": "{name}不在此对话中，因此不会收到通知。",
 	"ui.teamBridge.mentions.notice.invite_failed": "无法邀请{name}。你仍可以提及对方但不通知。",
 	"ui.teamBridge.mentions.notice.invite": "邀请",
-	"ui.teamBridge.mentions.notice.silent": "提及但不通知"
+	"ui.teamBridge.mentions.notice.silent": "提及但不通知",
+	"ui.teamBridge.mentions.notice.pending": "{name}已受邀但尚未加入，因此不会收到通知。",
+	"ui.teamBridge.mentions.notice.invited": "已邀请{name}。对方加入之前不会收到通知。"
 }

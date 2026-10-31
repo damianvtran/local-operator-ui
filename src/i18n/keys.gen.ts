@@ -9427,12 +9427,13 @@ export type MessageParams = {
 	"ui.teamBridge.members.state.invited_short": undefined;
 	"ui.teamBridge.members.title": undefined;
 	"ui.teamBridge.members.you": undefined;
-	"ui.teamBridge.mentions.agent_secondary": { person: string };
 	"ui.teamBridge.mentions.empty": { query: string };
 	"ui.teamBridge.mentions.listbox_label": undefined;
 	"ui.teamBridge.mentions.notice.invite": undefined;
 	"ui.teamBridge.mentions.notice.invite_failed": { name: string };
+	"ui.teamBridge.mentions.notice.invited": { name: string };
 	"ui.teamBridge.mentions.notice.not_member": { name: string };
+	"ui.teamBridge.mentions.notice.pending": { name: string };
 	"ui.teamBridge.mentions.notice.silent": undefined;
 	"ui.teamBridge.mentions.section.member_agent": undefined;
 	"ui.teamBridge.mentions.section.member_human": undefined;

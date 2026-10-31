@@ -1,3 +1,4 @@
+import { useDocumentDirection } from "@shared/i18n/use-document-direction";
 import type { Meta, StoryObj } from "@storybook/react";
 import { TeamBridgeMessageList } from "../team-bridge-message-list";
 import { MentionSourceContext } from "./mention-context";
@@ -46,6 +47,7 @@ const message = (id: string, seq: number, body: string, name: string) => ({
 });
 
 function Harness() {
+	useDocumentDirection();
 	return (
 		<MentionSourceContext.Provider value={source}>
 			<div className="w-[720px] bg-canvas p-4">
@@ -89,4 +91,7 @@ export const Light: Story = {
 };
 export const Dark: Story = {
 	args: { theme: "localOperatorDark" } as Story["args"],
+};
+export const UrduDark: Story = {
+	args: { locale: "ur", theme: "localOperatorDark" } as Story["args"],
 };

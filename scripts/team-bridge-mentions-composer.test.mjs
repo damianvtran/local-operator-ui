@@ -91,7 +91,11 @@ const CONVERSATION = "bcv_mentions01";
 const MENTION_OTHER = /data-mention="other"[^>]*>@Ben Tran</;
 const MENTION_VIEWER = /data-mention="viewer"[^>]*>@Damian Tran</;
 const MENTION_ANY = /data-mention="/g;
-const NOT_MEMBER_NOTICE = /Sherman Tsui isn’t in this conversation\./;
+const NOT_MEMBER_NOTICE =
+	/Sherman Tsui isn’t in this conversation, so they won’t be notified\./;
+const INVITED_NOTICE =
+	/Sherman Tsui has been invited\. They won’t be notified until they join\./;
+const PENDING_NOTICE = /Ivy Chen is invited but hasn’t joined yet/;
 const rootMessage = {
 	id: "bcmsg_root0001",
 	conversation_id: CONVERSATION,
@@ -125,6 +129,22 @@ const candidates = [
 		member: false,
 		bridgeOff: false,
 	},
+	{
+		kind: "human",
+		accountId: "acct_ivy",
+		label: "Ivy Chen",
+		member: false,
+		invited: true,
+		bridgeOff: false,
+	},
+	{
+		// A participant-only agent row: no endpoint, so it cannot be invited.
+		kind: "agent",
+		accountId: "acct_sher",
+		label: "Sherman Tsui’s chief of staff",
+		member: false,
+		bridgeOff: false,
+	},
 ];
 
 const setValue = Object.getOwnPropertyDescriptor(
@@ -132,28 +152,38 @@ const setValue = Object.getOwnPropertyDescriptor(
 	"value",
 ).set;
 
-async function mount({ sendMentions = true, kind = "group", onInvite } = {}) {
+async function mount({
+	sendMentions = true,
+	kind = "group",
+	onInvite,
+	list = candidates,
+} = {}) {
 	const host = document.createElement("div");
 	document.body.append(host);
 	const root = mod.createRoot(host);
 	const sent = [];
 	const invited = [];
-	const source = {
+	const invite =
+		onInvite ??
+		(async (row) => {
+			invited.push(row.accountId);
+		});
+	const sourceFor = (rows) => ({
 		conversationId: CONVERSATION,
-		candidates,
+		candidates: rows,
 		conversationKind: kind,
 		sendMentions,
-		onInvite:
-			onInvite ??
-			(async (row) => {
-				invited.push(row.accountId);
-			}),
-	};
-	await mod.act(async () => {
+		onInvite: invite,
+		canInvite: (row) =>
+			kind !== "dm" &&
+			!row.invited &&
+			(row.kind === "human" || Boolean(row.endpointId)),
+	});
+	const render = (rows) =>
 		root.render(
 			mod.createElement(
 				mod.MentionSourceContext.Provider,
-				{ value: source },
+				{ value: sourceFor(rows) },
 				mod.createElement(mod.TeamBridgeThreadPaneView, {
 					root: rootMessage,
 					replies: [],
@@ -173,7 +203,7 @@ async function mount({ sendMentions = true, kind = "group", onInvite } = {}) {
 				}),
 			),
 		);
-	});
+	await mod.act(async () => render(list));
 	const field = host.querySelector("textarea");
 	const type = async (value, caret = value.length) => {
 		await mod.act(async () => {
@@ -206,7 +236,18 @@ async function mount({ sendMentions = true, kind = "group", onInvite } = {}) {
 		await mod.act(async () => root.unmount());
 		host.remove();
 	};
-	return { host, field, type, key, options, sent, invited, unmount };
+	const rerender = (rows) => mod.act(async () => render(rows));
+	return {
+		host,
+		field,
+		type,
+		key,
+		options,
+		sent,
+		invited,
+		unmount,
+		rerender,
+	};
 }
 
 /*
@@ -233,12 +274,19 @@ test("@ opens from cached candidates; members first; arrows wrap; Enter inserts 
 		);
 		assert.deepEqual(
 			ui.options().map((o) => o.key),
-			["human:acct_ben", "agent:acct_ben", "human:acct_sher"],
+			[
+				"human:acct_ben",
+				"agent:acct_ben",
+				"human:acct_sher",
+				"human:acct_ivy",
+				"agent:acct_sher",
+			],
+			"active members first; invited and non-members are the org sections",
 		);
 		assert.equal(ui.options()[0].selected, true);
 		await ui.key("ArrowUp");
 		assert.equal(
-			ui.options()[2].selected,
+			ui.options()[4].selected,
 			true,
 			"↑ from the top wraps to the bottom",
 		);
@@ -288,6 +336,13 @@ test("Esc closes and keeps the text; a space with zero matches closes; IME never
 			ui.field.getAttribute("aria-expanded"),
 			"false",
 			"space + zero matches closes",
+		);
+		// R1-02: and stays closed for that @ - the next letter is prose.
+		await ui.type("x @zzz t");
+		assert.equal(
+			ui.field.getAttribute("aria-expanded"),
+			"false",
+			"the zero-match space dismissed this @, like Esc",
 		);
 		await mod.act(async () => {
 			ui.field.dispatchEvent(
@@ -351,23 +406,31 @@ test("without team_bridge_send_mentions the text is sent and no mentions[] is st
 	}
 });
 
-test("a non-member pick raises the notice; invite, or mention without notifying", async () => {
+test("a non-member pick is quiet text with a notice; every choice keeps it out of mentions[] (R1-01)", async () => {
 	const ui = await mount();
+	const notice = () => ui.host.querySelector("[data-mention-notice]");
+	const button = (label) =>
+		[...(notice()?.querySelectorAll("button") ?? [])].find(
+			(b) => (b.textContent || b.getAttribute("aria-label")) === label,
+		);
 	try {
+		// Mention without notifying.
 		await ui.type("@sher");
 		await ui.key("Enter");
-		const notice = () => ui.host.querySelector("[data-mention-notice]");
 		assert.match(notice()?.textContent ?? "", NOT_MEMBER_NOTICE);
-		const button = (label) =>
-			[...notice().querySelectorAll("button")].find(
-				(b) => b.textContent === label,
-			);
-		assert.ok(button("Invite them"));
-		await mod.act(async () => button("Mention without notifying").click());
-		assert.equal(notice(), null);
 		assert.ok(
 			ui.host.querySelector('[data-mention-pill="silent"]'),
-			"the pill stays, quiet",
+			"a non-member pick starts as quiet text, before any choice",
+		);
+		await mod.act(async () => {
+			button("Mention without notifying").click();
+			await new Promise((r) => setTimeout(r, 5));
+		});
+		assert.equal(notice(), null);
+		assert.equal(
+			document.activeElement,
+			ui.field,
+			"focus is back in the field (D4)",
 		);
 		await ui.key("Enter");
 		assert.equal(
@@ -376,6 +439,27 @@ test("a non-member pick raises the notice; invite, or mention without notifying"
 			"a silenced mention is not sent",
 		);
 
+		// Dismiss is the same: the hub would refuse a non-member row.
+		await ui.type("@Ben Tran @sher");
+		await ui.key("Enter");
+		await mod.act(async () => {
+			button("Dismiss").click();
+			await new Promise((r) => setTimeout(r, 5));
+		});
+		assert.equal(notice(), null);
+		assert.equal(
+			document.activeElement,
+			ui.field,
+			"focus is back after Dismiss (D4)",
+		);
+		await ui.key("Enter");
+		assert.deepEqual(
+			ui.sent[1].mentions,
+			undefined,
+			"@Ben Tran was typed, not picked, and the dismissed non-member is not sent",
+		);
+
+		// Invite: still non-notifying until the person is ACTIVE.
 		await ui.type("@sher");
 		await ui.key("Enter");
 		await mod.act(async () => {
@@ -383,7 +467,99 @@ test("a non-member pick raises the notice; invite, or mention without notifying"
 			await new Promise((r) => setTimeout(r, 5));
 		});
 		assert.deepEqual(ui.invited, ["acct_sher"]);
-		assert.equal(notice(), null, "a successful invite settles the notice");
+		assert.match(notice()?.textContent ?? "", INVITED_NOTICE);
+		assert.equal(button("Invite them"), undefined, "no second invite");
+		assert.equal(
+			document.activeElement,
+			ui.field,
+			"focus is back after Invite (D4)",
+		);
+		assert.equal(
+			ui.host.querySelector('[data-mention-pill="notify"]'),
+			null,
+			"an invited person is not notifying yet",
+		);
+		// The refetch shows them active: the pill upgrades itself.
+		await ui.rerender(
+			candidates.map((c) =>
+				c.kind === "human" && c.accountId === "acct_sher"
+					? { ...c, member: true }
+					: c,
+			),
+		);
+		assert.ok(
+			ui.host.querySelector('[data-mention-pill="notify"]'),
+			"active now, so the mention notifies",
+		);
+		await ui.key("Enter");
+		assert.deepEqual(ui.sent[2].mentions, [
+			{ kind: "human", account_id: "acct_sher" },
+		]);
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("an invited member is offered as a non-member and never serialized (R1-01)", async () => {
+	const ui = await mount();
+	try {
+		await ui.type("@ivy");
+		assert.deepEqual(
+			[...document.querySelectorAll('[role="option"]')].map((o) =>
+				o.textContent.includes("Invited"),
+			),
+			[true],
+			"the row carries the Invited tag",
+		);
+		await ui.key("Enter");
+		const notice = ui.host.querySelector("[data-mention-notice]");
+		assert.match(notice?.textContent ?? "", PENDING_NOTICE);
+		assert.equal(
+			[...notice.querySelectorAll("button")].some(
+				(b) => b.textContent === "Invite them",
+			),
+			false,
+			"already invited: no Invite",
+		);
+		await ui.key("Enter");
+		assert.equal(ui.sent[0].mentions, undefined);
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("an agent with no endpoint is never offered Invite (R1-05)", async () => {
+	const ui = await mount();
+	try {
+		await ui.type("@sherman tsui’s");
+		const option = [...document.querySelectorAll('[role="option"]')].find((o) =>
+			o.getAttribute("data-mention-option")?.startsWith("agent:"),
+		);
+		assert.ok(option);
+		await mod.act(async () => option.click());
+		const labels = [
+			...ui.host.querySelectorAll("[data-mention-notice] button"),
+		].map((b) => b.textContent || b.getAttribute("aria-label"));
+		assert.deepEqual(labels, ["Mention without notifying", "Dismiss"]);
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("a member who is no longer active at send time is filtered out (R1-01)", async () => {
+	const ui = await mount();
+	try {
+		await ui.type("@ben");
+		await ui.key("Enter");
+		await ui.rerender(
+			candidates.map((c) =>
+				c.kind === "human" && c.accountId === "acct_ben"
+					? { ...c, member: false }
+					: c,
+			),
+		);
+		await ui.key("Enter");
+		assert.equal(ui.sent[0].mentions, undefined);
 	} finally {
 		await ui.unmount();
 	}

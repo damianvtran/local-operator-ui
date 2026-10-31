@@ -30,12 +30,20 @@ export type MentionCandidateRow = MentionCandidate & {
 	profile?: TeamBridgeDirectoryMember;
 };
 
-function liveMemberKeys(
+/*
+ * ACTIVE AND INVITED ARE DIFFERENT FACTS HERE. The hub resolves `mentions[]`
+ * against ACTIVE members only and refuses the whole message for any other
+ * row (`not_a_member`, or `inactive` for an invited or departed member). So
+ * an invited member is offered like a non-member (tag + notice) and is never
+ * serialized until a refetch shows them active.
+ */
+function memberKeys(
 	conversation: TeamBridgeConversation | null,
+	state: "active" | "invited",
 ): ReadonlySet<string> {
 	return new Set(
 		(conversation?.members ?? [])
-			.filter((m) => m.state === "active" || m.state === "invited")
+			.filter((m) => m.state === state)
 			.map((m) => `${m.kind}:${m.account_id}`),
 	);
 }
@@ -45,11 +53,12 @@ export function buildMentionCandidates(input: {
 	people: readonly TeamBridgeDirectoryMember[];
 	selfAccountId: string | undefined;
 	chiefLabels: ChiefLabels;
-	/** "chief of staff of {person}", localized by the caller. */
-	agentSecondary: (person: string) => string;
+	/** The agent role line ("Chief of staff"), localized by the caller. */
+	agentRole: string;
 }): MentionCandidateRow[] {
 	const { conversation, people, selfAccountId, chiefLabels } = input;
-	const members = liveMemberKeys(conversation);
+	const members = memberKeys(conversation, "active");
+	const invited = memberKeys(conversation, "invited");
 	const rows: MentionCandidateRow[] = [];
 	const seen = new Set<string>();
 	for (const person of people) {
@@ -70,6 +79,7 @@ export function buildMentionCandidates(input: {
 				label: personLabel,
 				secondary: person.profile?.title || undefined,
 				member: members.has(key),
+				invited: invited.has(key),
 				bridgeOff: personOff,
 				profile: person,
 			});
@@ -86,8 +96,17 @@ export function buildMentionCandidates(input: {
 			label: composeChiefLabel(agentName, personLabel, chiefLabels),
 			// "@ben" finds Ben's agent too; "@aida" finds it by its own name.
 			aliases: [agentName, personLabel].filter((name) => name !== ""),
-			secondary: input.agentSecondary(personLabel),
+			/*
+			 * The label already names the owner ("Aida (Ben Tran)" / "Ben Tran's
+			 * chief of staff"), so the second line states the ROLE, and only
+			 * when the label does not already say it (design N3).
+			 */
+			secondary:
+				agentName !== "" && agentName !== personLabel
+					? input.agentRole
+					: undefined,
 			member: members.has(key),
+			invited: invited.has(key),
 			bridgeOff:
 				personOff || !(agent.state === "active" || agent.state === "paused"),
 			profile: person,
@@ -104,7 +123,7 @@ export function buildMentionCandidates(input: {
 	 */
 	for (const member of conversation?.members ?? []) {
 		const key = `${member.kind}:${member.account_id}`;
-		if (seen.has(key) || !members.has(key)) continue;
+		if (seen.has(key) || !(members.has(key) || invited.has(key))) continue;
 		if (member.kind === "human" && member.account_id === selfAccountId)
 			continue;
 		seen.add(key);
@@ -116,7 +135,8 @@ export function buildMentionCandidates(input: {
 				? { endpointId: endpoint }
 				: {}),
 			label: member.display_label,
-			member: true,
+			member: members.has(key),
+			invited: invited.has(key),
 			bridgeOff: false,
 		});
 	}

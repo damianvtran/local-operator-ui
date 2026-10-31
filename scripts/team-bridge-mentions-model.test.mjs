@@ -278,6 +278,30 @@ test("caret never rests inside a token", () => {
 	assert.equal(m.clampCaret(tokens, 12, "backward"), 12);
 });
 
+test("serializer: only ACTIVE members are sent, whatever the token says (R1-01)", () => {
+	const tokens = [
+		{
+			start: 0,
+			end: 9,
+			kind: "human",
+			accountId: "a_ben",
+			label: "Ben Tran",
+			notify: true,
+		},
+		{
+			start: 10,
+			end: 23,
+			kind: "human",
+			accountId: "a_sherman",
+			label: "Sherman Tsui",
+			notify: true,
+		},
+	];
+	assert.deepEqual(m.serializeMentions(tokens, new Set(["human:a_ben"])), [
+		{ kind: "human", account_id: "a_ben" },
+	]);
+});
+
 test("serializer: contract shape, dedupe, silent tokens and unaddressable agents left out", () => {
 	let s = m.insertMention("@b", [], { start: 0, end: 2 }, ben);
 	s = m.insertMention(
@@ -357,7 +381,22 @@ test("message mentions: the hub's mentions[] is authoritative when present", () 
 		candidates: roster,
 		self,
 	});
-	assert.ok(channel.runs.some((r) => r.label === "here" && r.viewer));
+	assert.deepEqual(
+		channel.runs,
+		[{ label: "here", viewer: true }],
+		"only the word present (R1-06)",
+	);
+	const prose = m.messageMentionSpec({
+		body: "@ben tran said hi",
+		mentions: undefined,
+		candidates: roster,
+		self,
+	});
+	assert.equal(
+		prose,
+		null,
+		"the fallback is case-sensitive on the display name (R1-06)",
+	);
 });
 
 test("message mentions: without mentions[] fall back to @Name over members and directory", () => {

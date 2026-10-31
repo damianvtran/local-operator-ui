@@ -53,9 +53,14 @@ export function TeamBridgeMentionProvider({
 			people,
 			selfAccountId,
 			chiefLabels: chiefLabels(),
-			agentSecondary: (person) =>
-				t("ui.teamBridge.mentions.agent_secondary", { person }),
+			agentRole: t("ui.teamBridge.chief.fallback"),
 		});
+		/*
+		 * Invite is offered only where it can work: not in a DM (fixed
+		 * membership), not for someone already invited, and never for an agent
+		 * without an endpoint - add-members would receive an empty
+		 * `endpoint_id` (review R1-05). `canInvite` gates the button.
+		 */
 		const invite =
 			onAddMembers && conversation.kind !== "dm"
 				? (row: MentionCandidateRow) =>
@@ -65,7 +70,7 @@ export function TeamBridgeMentionProvider({
 									? {
 											kind: "agent",
 											accountId: row.accountId,
-											endpointId: row.endpointId ?? "",
+											endpointId: row.endpointId as string,
 											label: row.label,
 										}
 									: {
@@ -89,6 +94,10 @@ export function TeamBridgeMentionProvider({
 			conversationKind: conversation.kind,
 			sendMentions,
 			onInvite: invite,
+			canInvite: (row: MentionCandidateRow) =>
+				invite !== undefined &&
+				!row.invited &&
+				(row.kind === "human" || Boolean(row.endpointId)),
 		};
 	}, [conversation, people, selfAccountId, sendMentions, onAddMembers]);
 	if (!value) return <>{children}</>;

@@ -53,11 +53,14 @@ export function copyTextMetrics(
 	to.style.overflowWrap = "break-word";
 }
 
-/** Viewport coordinates of the top-left of character `index`, plus its line height. */
+/**
+ * Viewport coordinates of character `index`: its left edge, its right edge
+ * (where it STARTS in right-to-left text) and its top, plus the line height.
+ */
 export function caretRect(
 	field: HTMLTextAreaElement,
 	index: number,
-): { left: number; top: number; height: number } {
+): { left: number; right: number; top: number; height: number } {
 	const doc = field.ownerDocument;
 	const mirror = doc.createElement("div");
 	copyTextMetrics(field, mirror);
@@ -67,7 +70,8 @@ export function caretRect(
 	mirror.style.left = "-9999px";
 	mirror.textContent = field.value.slice(0, index);
 	const marker = doc.createElement("span");
-	marker.textContent = field.value.slice(index) || ".";
+	// Only the `@` itself: its box is what the popover anchors to.
+	marker.textContent = field.value.charAt(index) || ".";
 	mirror.appendChild(marker);
 	doc.body.appendChild(mirror);
 	const box = field.getBoundingClientRect();
@@ -77,6 +81,7 @@ export function caretRect(
 		) || 20;
 	const result = {
 		left: box.left + marker.offsetLeft - field.scrollLeft,
+		right: box.left + marker.offsetLeft + marker.offsetWidth - field.scrollLeft,
 		top: box.top + marker.offsetTop - field.scrollTop,
 		height: lineHeight,
 	};
