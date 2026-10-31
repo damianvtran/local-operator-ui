@@ -107,6 +107,7 @@ import {
 	type TeamBridgeTarget,
 	archivedChannelRows,
 	asTeamBridgeTenantId,
+	builtinTopicKey,
 	canArchiveConversation,
 	canManageArchivedConversation,
 	chiefsOfStaff,
@@ -115,6 +116,7 @@ import {
 	conversationMembershipCounts,
 	conversationOrganizationName,
 	conversationTitle,
+	defaultLandingConversation,
 	directoryFailureKind,
 	dmWithAgent,
 	dmWithPerson,
@@ -272,7 +274,7 @@ const STAGED_FAILURE_COPY = {
  * the work and close on the first outside click.
  *
  * THE RAIL IS SLACK'S (operator review, 2026-10-21): Channels (the built-in
- * #humans and #agents first), Groups, People and Chiefs of staff, each with a
+ * #general, #humans and #agents first), Groups, People and Chiefs of staff, each with a
  * header that stays when the section is empty. A person's row IS their DM, so
  * there is never a second "@ Ben" row; see `team-bridge-rail.tsx`.
  *
@@ -1040,7 +1042,16 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		() => listRows.filter((row) => row.status !== "archived"),
 		[listRows],
 	);
-	const sections = useMemo(() => railSections(sidebarRows), [sidebarRows]);
+	/* The switcher's org order: the built-ins' secondary sort key in the merged
+	   view (design round 1, D1), shared by the rail and the after-removal landing. */
+	const organizationOrder = useMemo(
+		() => organizations.map((row) => row.tenantId as string),
+		[organizations],
+	);
+	const sections = useMemo(
+		() => railSections(sidebarRows, organizationOrder),
+		[sidebarRows, organizationOrder],
+	);
 	/* Everything a selection may resolve against: the live list plus the archived view's rows. */
 	const selectable = useMemo(
 		() => selectableConversations(listRows, archivedConversations),
@@ -1222,6 +1233,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	// `selected` already resolves a one-recipient draft to its existing DM
 	// (`targetConversation`), so the view and the container agree on it.
 	const shown = selected;
+	const shownTopicKey = builtinTopicKey(shown?.builtin);
 	const membershipCounts = shown
 		? conversationMembershipCounts(shown)
 		: { active: 0, invited: 0 };
@@ -2716,11 +2728,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								}}
 							/>
 						)}
-						{shown?.builtin && (
+						{shownTopicKey && (
 							<p className="px-5 pb-1 text-[12px] text-ink-dim">
-								{shown.builtin === "agents"
-									? t("ui.teamBridge.builtin.agents_topic")
-									: t("ui.teamBridge.builtin.humans_topic")}
+								{t(shownTopicKey)}
 							</p>
 						)}
 
@@ -3224,7 +3234,13 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							   (else the previous one, else the default). Leaving the target on
 							   the archived id painted "Untitled conversation" over a dead composer. */
 							if (wasShown)
-								selectTarget(landingAfterRemoval(sidebarRows, subject.id));
+								selectTarget(
+									landingAfterRemoval(
+										sidebarRows,
+										subject.id,
+										organizationOrder,
+									),
+								);
 						}}
 					/>
 				) : (
@@ -3247,7 +3263,13 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									   return to the Archived channels view, where the reader came from and
 									   where the rest of the clean-up is. */
 									if (wasShown) {
-										onTarget(landingAfterRemoval(sidebarRows, subject.id));
+										onTarget(
+											landingAfterRemoval(
+												sidebarRows,
+												subject.id,
+												organizationOrder,
+											),
+										);
 										onOpenArchived?.();
 										openQuickView("archived");
 									}
@@ -3762,12 +3784,13 @@ const TeamBridgeOwnedPage: FC<{
 			target === null &&
 			visibleConversations.length > 0
 		) {
-			const first =
-				visibleConversations.find((row) => row.builtin === "humans") ??
-				visibleConversations[0];
-			setTarget({ type: "conversation", id: first.id });
+			const first = defaultLandingConversation(
+				visibleConversations,
+				organizations.map((row) => row.tenantId),
+			);
+			if (first) setTarget({ type: "conversation", id: first.id });
 		}
-	}, [visibleConversations, target, ownerAudit?.active]);
+	}, [visibleConversations, organizations, target, ownerAudit?.active]);
 
 	/*
 	 * ARCHIVE / UNARCHIVE / DELETE. The archived read stays OFF until the
@@ -4246,7 +4269,8 @@ const TeamBridgeOwnedPage: FC<{
 					setThreadLink(null);
 					setChannelFormOpen(false);
 					/* `null` is a landing with nothing left to land on: the default-landing
-					   effect above then picks #humans (or the first row) once, as at load. */
+					   effect above then picks #general (or #humans, or the first row) once,
+					   as at load. */
 					setTarget(next);
 				}}
 				onSend={sendBody}
