@@ -222,7 +222,7 @@ test("the chord is ⌘B / Ctrl+B, and no near miss answers it", () => {
 test("a docked sidebar yields to the canvas where the yield is what lets it dock", () => {
 	/*
 	 * The frame's own numbers: at 1024 with the user's 260px, the docked row is
-	 * 764 and `canvasDockWidth(764)` is `min(560, 284)` = 284, below the pane's
+	 * 764 and `canvasDockWidth(764)` is `min(1200, 284)` = 284, below the pane's
 	 * 400px floor - so the canvas would stop docking. With the strip (56) the row is
 	 * 968 and the dock is 488, so the chat keeps its 480 floor beside it.
 	 */
