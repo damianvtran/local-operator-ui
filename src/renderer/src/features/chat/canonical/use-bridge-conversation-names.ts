@@ -24,8 +24,8 @@
  * - Re-renders when the cache's conversation lists change, so a row painted
  *   before the page loaded picks the name up once it lands.
  * - SSR-SAFE: `useSyncExternalStore` is given a server snapshot, because
- *   `ToolRow` calls this hook for every tool row and a static render without
- *   one throws for the whole transcript (`scripts/canonical-notice.test.mjs`).
+ *   `ToolRow`'s host calls this hook for the whole transcript and a static
+ *   render without one throws for every row (`scripts/canonical-notice.test.mjs`).
  */
 import { observedRadientAuthority } from "@shared/hooks/radient-account-authority";
 import { type QueryClient, QueryClientContext } from "@tanstack/react-query";
@@ -107,9 +107,15 @@ export function useBridgeConversationNames(): BridgeLabelResolver | null {
 		 * (the node suites, and any server-rendered host) throws `Missing
 		 * getServerSnapshot` without it — a hook that is fine in the app but takes
 		 * the transcript's whole render down under SSR, for EVERY tool row, not
-		 * just a `bridge` one. `0` is the honest server snapshot: there is no
-		 * client cache on the server, so no name is resolved there and the row
-		 * paints its kind word, which is the same answer an empty cache gives.
+		 * just a `bridge` one.
+		 *
+		 * WHAT IT IS NOT: a claim that a server render has no cache. It may well
+		 * have one (the node suites wrap this in a `QueryClientProvider`, and a
+		 * seeded cache still NAMES the row: the resolver reads the client
+		 * directly). This snapshot is only the CHANGE SIGNAL — when a row's name is
+		 * due a repaint. `0` is the same answer `getSnapshot` gives with no client,
+		 * and a one-shot static render has no later change to signal, so nothing it
+		 * could lose. The browser never calls it at all.
 		 */
 		serverSnapshot,
 	);
