@@ -53,7 +53,7 @@ framebuffer values directly made the dark arrival band look 1.5 % stronger than 
 | 16 | `quiet-numeral-lost-org-aggregate-zero-dark` | **D5**: general (muted, 1 unread) and Pat (muted, 2 unread) draw no numeral at all — the row above each shows the same model values as frame 09, where they do |
 | 17 | `band-click-through-avatar-card-dark` | a click on the washed row's avatar opens the person card: the band eats nothing |
 | 18 | `band-over-first-in-run-row-dark` | the same band on a first-in-run row (12 px `ink-dim` timestamp visible on the wash) |
-| 19 | `reduced-motion-static-band-dark` | the shipped reduced-motion branch (`animation: none`): pixel-identical to frame 01, 232/409 920 sampled pixels differ |
+| 19 | `reduced-motion-static-band-dark` | the shipped reduced-motion branch (`animation: none`): the band's ground is byte-identical to frame 01; the 232/409 920 sampled pixels that differ anywhere in the frame differ by exactly 1/255, on glyph edges (compositing rasterisation) |
 | 20/21 | `hover-under-band-strip-*` | top: band alone. bottom: band over the hover tint — the A/B in one image |
 | 22/23 | `org-switcher-per-org-numbers-{dark,light}` | the gap round 1 left open: the switcher menu's per-org numbers in the nav-2 / rail-1 state — All organizations **2**, Acme **1**, Beta **1**, while the rail scoped to Acme can only draw 1 plus the muted row's quiet 2 |
 | 24 | `quiet-numeral-present-org-aggregate-one-dark` | the **D5 control**: same seed, same two mutes, only the opened conversation differs from frame 16 — Acme's un-muted aggregate is 1 here, so `Pat` keeps its quiet **2** |
