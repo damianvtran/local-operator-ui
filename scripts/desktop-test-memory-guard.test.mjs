@@ -19,6 +19,7 @@ import {
 	_BLIND_TICKS_WARN,
 	_BUDGET_FLOOR_MB,
 	computeMemoryBudget,
+	createMemoryTelemetry,
 	createMemoryWatchdog,
 	formatBreachLine,
 	formatMemoryBudgetLine,
@@ -1223,4 +1224,130 @@ test("a normal run prints the budget line and is unaffected", () => {
 test.after(() => {
 	for (const root of unlistableRoots) chmodSync(root, 0o755);
 	rmSync(scratch, { recursive: true, force: true });
+});
+
+const telemetryData = (telemetry) =>
+	JSON.parse(telemetry.line().split("memory telemetry ")[1]);
+
+test("memory telemetry attributes coordinator, lane and nested descendant separately", () => {
+	const telemetry = createMemoryTelemetry({
+		leaderPid: 100,
+		lanes: ["scripts/a.test.mjs"],
+	});
+	const reading = {
+		totalBytes: 90,
+		coverage: "table",
+		blind: false,
+		members: [
+			{
+				pid: 100,
+				ppid: 1,
+				pgid: 100,
+				command: "node --test scripts/a.test.mjs",
+			},
+			{ pid: 101, ppid: 100, pgid: 100, command: "node scripts/a.test.mjs" },
+			{ pid: 102, ppid: 101, pgid: 102, command: "helper" },
+			{ pid: 103, ppid: 999, pgid: 100 },
+		],
+		charges: [
+			{ pid: 100, bytes: 50 },
+			{ pid: 101, bytes: 20 },
+			{ pid: 102, bytes: 15 },
+			{ pid: 103, bytes: 5 },
+		],
+	};
+	telemetry.record(reading);
+	const result = telemetryData(telemetry);
+	assert.deepEqual(result.peak, {
+		totalBytes: 90,
+		coordinatorBytes: 50,
+		descendantBytes: 40,
+		unattributedBytes: 5,
+		coverage: "table",
+		blind: false,
+	});
+	assert.deepEqual(result.lanePeaks, [
+		{ lane: "scripts/a.test.mjs", bytes: 35 },
+	]);
+	assert.equal(result.pidPeaks[0].role, "coordinator");
+	assert.equal(
+		result.pidPeaks.find((row) => row.pid === 102).lane,
+		"scripts/a.test.mjs",
+	);
+	telemetry.record({
+		...reading,
+		totalBytes: 20,
+		charges: [{ pid: 100, bytes: 20 }],
+	});
+	assert.deepEqual(telemetryData(telemetry).peak, result.peak);
+	telemetry.record({
+		...reading,
+		totalBytes: 70,
+		charges: [{ pid: 100, bytes: 70 }],
+	});
+	const later = telemetryData(telemetry);
+	assert.equal(later.leaderPid, 100);
+	assert.equal(later.coordinatorPeakBytes, 70);
+	assert.equal(later.descendantPeakBytes, 40);
+	assert.equal(later.peak.coordinatorBytes, 50);
+});
+
+test("memory telemetry retains only eight PID/lane peaks and handles missing samples", () => {
+	const lanes = Array.from({ length: 40 }, (_, i) => `scripts/${i}.test.mjs`);
+	const telemetry = createMemoryTelemetry({ leaderPid: 100, lanes });
+	assert.equal(telemetryData(telemetry).peak, null);
+	for (const [i, lane] of lanes.entries()) {
+		telemetry.record({
+			totalBytes: i + 1,
+			coverage: "walk",
+			blind: true,
+			members: [
+				{ pid: 200 + i, ppid: 100, pgid: 100, command: `node ${lane}` },
+			],
+			charges: [{ pid: 200 + i, bytes: i + 1 }],
+		});
+	}
+	const result = telemetryData(telemetry);
+	assert.equal(result.samples, 40);
+	assert.equal(result.pidPeaks.length, 8);
+	assert.equal(result.lanePeaks.length, 8);
+	assert.deepEqual(
+		result.pidPeaks.map((row) => row.bytes),
+		[40, 39, 38, 37, 36, 35, 34, 33],
+	);
+	assert.equal(result.peak.blind, true);
+});
+
+test("memory telemetry command parsing preserves identity and max footprint charge", async () => {
+	const text =
+		"100 1 100 20 Sat Oct 31 10:00:00 2026 node --test scripts/a.test.mjs\n101 100 100 10 Sat Oct 31 10:00:01 2026 node scripts/a.test.mjs";
+	const reading = await sampleGroup(100, {
+		platform: "darwin",
+		run: async (command) =>
+			command === "ps" ? text : "[101]: 64-bit Footprint: 30 KB",
+	});
+	assert.equal(reading.members[1].lstart, "Sat Oct 31 10:00:01 2026");
+	assert.equal(reading.members[1].command, "node scripts/a.test.mjs");
+	assert.deepEqual(reading.charges, [
+		{ pid: 100, bytes: 20 * 1024 },
+		{ pid: 101, bytes: 30 * 1024 },
+	]);
+});
+
+test("memory telemetry callback observes enforcement only after kill", async () => {
+	const order = [];
+	const watchdog = createMemoryWatchdog({
+		leaderPid: 100,
+		budgetBytes: 10,
+		sample: async () => ({ totalBytes: 11, members: [] }),
+		onTrip: () => order.push("trip"),
+		kill: async () => {
+			order.push("kill");
+		},
+		onSample: () => order.push("sample"),
+		onBreach: () => order.push("breach"),
+	});
+	assert.equal(await watchdog.tick(), "breach");
+	assert.deepEqual(order, ["trip", "kill", "sample", "breach"]);
+	assert.equal(await watchdog.tick(), "stopped");
 });

@@ -74,6 +74,7 @@ import {
 } from "./desktop-test-lane-bound.mjs";
 import {
 	BREACH_EXIT_CODE,
+	createMemoryTelemetry,
 	createMemoryWatchdog,
 	formatBreachLine,
 	formatMemoryBudgetLine,
@@ -334,12 +335,17 @@ console.log(formatMemoryBudgetLine(memoryBudget));
 const laneBound = resolveLaneBound();
 console.log(formatLaneBoundLine(laneBound));
 let breached = false;
+const memoryTelemetry = createMemoryTelemetry({
+	leaderPid: child.pid,
+	lanes: laneArgs,
+});
 const watchdog =
 	memoryBudget.budgetMb === null || child.pid === undefined
 		? null
 		: createMemoryWatchdog({
 				leaderPid: child.pid,
 				budgetBytes: memoryBudget.budgetMb * 1024 * 1024,
+				onSample: (reading) => memoryTelemetry.record(reading),
 				onTrip: () => {
 					// Set BEFORE the kill: the child's exit can be observed while the
 					// pre-kill re-read is still in flight, and must already read as a
@@ -355,6 +361,7 @@ const watchdog =
 							outcome,
 						}),
 					);
+					console.error(memoryTelemetry.line());
 				},
 				onBlind: (ticks) =>
 					console.error(
@@ -416,6 +423,7 @@ for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
 
 child.on("exit", (code, signal) => {
 	watchdog?.stop();
+	if (watchdog !== null && !breached) console.error(memoryTelemetry.line());
 	laneWatchdog?.stop();
 	releaseKeeper();
 	if (breached) {

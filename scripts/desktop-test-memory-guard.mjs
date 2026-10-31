@@ -88,6 +88,7 @@
 import { execFile } from "node:child_process";
 import { readFile, readdir } from "node:fs/promises";
 import { totalmem } from "node:os";
+import { laneProcesses } from "./desktop-test-lane-bound.mjs";
 
 /** `off` disables the watchdog (announced loudly); a positive whole number of MB
  * replaces the derived budget. Mirrors `LOCAL_OPERATOR_UI_TEST_CONCURRENCY`:
@@ -203,14 +204,14 @@ const MB = 1024 * 1024;
 // identity a pid is re-checked against before it is signalled by pid; it is
 // optional so a row without it parses and is simply never signalled by pid.
 const TABLE_LINE =
-	/^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)(?:\s+(\S+\s+\S+\s+\d+\s+[\d:]+\s+\d{4}))?\s*$/;
+	/^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)(?:\s+(\S+\s+\S+\s+\d+\s+[\d:]+\s+\d{4})(?:\s+(.*))?)?\s*$/;
 const FOOTPRINT_LINE =
 	/\[(\d+)\]:\s+\d+-bit\s+Footprint:\s+([\d.]+)\s*(B|KB|MB|GB|bytes)?\b/;
 const UNIT_BYTES = { B: 1, bytes: 1, KB: 1024, MB: MB, GB: 1024 * MB };
 const WHITESPACE = /\s+/;
 const VM_RSS_LINE = /^VmRSS:\s+(\d+)\s*kB/m;
 const PID_NAME = /^\d+$/;
-const PS_TABLE_ARGS = ["-axo", "pid=,ppid=,pgid=,rss=,lstart="];
+const PS_TABLE_ARGS = ["-axo", "pid=,ppid=,pgid=,rss=,lstart=,command="];
 
 /** `NNN MB` / `N.N GB`, for the one line a human reads. */
 function human(bytes) {
@@ -291,7 +292,7 @@ export function formatMemoryBudgetLine(decision) {
 	return `desktop tests: memory bound ${human(decision.budgetMb * MB)} for the test process group (${why}); sampled every ${_TICK_INTERVAL_MS / 1000}s on max(footprint, rss)`;
 }
 
-/** PURE. `ps -axo pid=,ppid=,pgid=,rss=,lstart=` text -> rows (rss in BYTES). Lines that
+/** PURE. `ps -axo pid=,ppid=,pgid=,rss=,lstart=,command=` text -> rows (rss in BYTES). Lines that
  * do not parse are dropped: a half-read table must not invent a member. */
 export function parseProcessTable(text) {
 	const rows = [];
@@ -304,6 +305,7 @@ export function parseProcessTable(text) {
 			pgid: Number(match[3]),
 			rssBytes: Number(match[4]) * 1024,
 			lstart: match[5] ?? null,
+			...(match[6] ? { command: match[6].trim() } : {}),
 		});
 	}
 	return rows;
@@ -750,7 +752,16 @@ export async function sampleGroup(
 	}
 	const blind =
 		coverage === "leader" || (platform === "darwin" && footprints.size === 0);
-	return { members, coverage, blind, ...totalMemory(members, footprints) };
+	return {
+		members,
+		coverage,
+		blind,
+		charges: members.map((member) => ({
+			pid: member.pid,
+			bytes: Math.max(member.rssBytes, footprints.get(member.pid) ?? 0),
+		})),
+		...totalMemory(members, footprints),
+	};
 }
 
 /**
@@ -976,7 +987,8 @@ export async function killTree(
  * coming child exit as a verdict); `kill(members)` may be async and its result
  * `{ signalled, skipped, errors }` is passed on; `onBreach(reading, outcome)`
  * fires once, AFTER the kill, and the loop stops. `onBlind(ticks)` fires once
- * after `_BLIND_TICKS_WARN` consecutive blind ticks.
+ * after `_BLIND_TICKS_WARN` consecutive blind ticks. `onSample(reading)` observes
+ * readable ticks; on a breach it runs AFTER the kill, never delaying enforcement.
  */
 export function createMemoryWatchdog({
 	leaderPid,
@@ -986,6 +998,7 @@ export function createMemoryWatchdog({
 	onBreach,
 	onTrip = () => {},
 	onBlind = () => {},
+	onSample = () => {},
 	intervalMs = _TICK_INTERVAL_MS,
 	setTimer = setTimeout,
 	clearTimer = clearTimeout,
@@ -1016,9 +1029,11 @@ export function createMemoryWatchdog({
 			} catch (error) {
 				outcome.errors.push(error);
 			}
+			onSample(reading);
 			onBreach(reading, outcome);
 			return "breach";
 		}
+		if (reading !== null) onSample(reading);
 		if (reading === null || reading.blind === true) {
 			blind += 1;
 			if (blind >= _BLIND_TICKS_WARN && !warned) {
@@ -1046,6 +1061,91 @@ export function createMemoryWatchdog({
 		stop() {
 			stopped = true;
 			if (timer !== null) clearTimer(timer);
+		},
+	};
+}
+
+/** Sampled high-water marks, not allocation attribution or lifetime maxima. Keep
+ * only the largest eight PID and lane peaks: output and retained state stay bounded
+ * even when the coordinator cycles through hundreds of files. No argv is printed.
+ * Independent role/PID/lane maxima need not coincide with the group-peak sample.
+ * Lane names use the bound watchdog's exact-token matcher; descendants follow the
+ * sampled parent chain, and unassignable members remain explicitly unattributed.
+ */
+export function createMemoryTelemetry({ leaderPid, lanes = [] }) {
+	const pids = new Map();
+	const lanePeaks = new Map();
+	let samples = 0;
+	let coordinatorPeakBytes = 0;
+	let descendantPeakBytes = 0;
+	let peak = null;
+	function retain(map, key, value) {
+		if ((map.get(key)?.bytes ?? -1) >= value.bytes) return;
+		map.set(key, value);
+		if (map.size > 8) {
+			const smallest = [...map].sort((a, b) => a[1].bytes - b[1].bytes)[0][0];
+			map.delete(smallest);
+		}
+	}
+	return {
+		record(reading) {
+			samples += 1;
+			const members = new Map(reading.members.map((row) => [row.pid, row]));
+			const matched = laneProcesses(
+				reading.members.filter((row) => typeof row.command === "string"),
+				{ leaderPid, lanes },
+			);
+			const names = new Map([...matched].map(([lane, row]) => [row.pid, lane]));
+			const totals = new Map();
+			let coordinatorBytes = 0;
+			let descendantBytes = 0;
+			let unattributedBytes = 0;
+			for (const { pid, bytes } of reading.charges ?? []) {
+				if (pid === leaderPid) coordinatorBytes += bytes;
+				else descendantBytes += bytes;
+				let cursor = pid;
+				const seen = new Set();
+				while (!names.has(cursor) && members.has(cursor) && !seen.has(cursor)) {
+					seen.add(cursor);
+					cursor = members.get(cursor).ppid;
+				}
+				const lane = names.get(cursor) ?? null;
+				if (lane !== null) totals.set(lane, (totals.get(lane) ?? 0) + bytes);
+				else if (pid !== leaderPid) unattributedBytes += bytes;
+				retain(pids, pid, {
+					pid,
+					lane,
+					bytes,
+					role: pid === leaderPid ? "coordinator" : "descendant",
+				});
+			}
+			coordinatorPeakBytes = Math.max(coordinatorPeakBytes, coordinatorBytes);
+			descendantPeakBytes = Math.max(descendantPeakBytes, descendantBytes);
+			for (const [lane, bytes] of totals)
+				retain(lanePeaks, lane, { lane, bytes });
+			if (peak === null || reading.totalBytes > peak.totalBytes) {
+				peak = {
+					totalBytes: reading.totalBytes,
+					coordinatorBytes,
+					descendantBytes,
+					unattributedBytes,
+					coverage: reading.coverage,
+					blind: reading.blind,
+				};
+			}
+		},
+		line() {
+			const descending = (map) =>
+				[...map.values()].sort((a, b) => b.bytes - a.bytes);
+			return `desktop tests: memory telemetry ${JSON.stringify({
+				leaderPid,
+				samples,
+				coordinatorPeakBytes,
+				descendantPeakBytes,
+				peak,
+				pidPeaks: descending(pids),
+				lanePeaks: descending(lanePeaks),
+			})}`;
 		},
 	};
 }
