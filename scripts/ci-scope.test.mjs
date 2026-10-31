@@ -1531,6 +1531,23 @@ test("A17b: the desktop step is red, and names the red test, on every red shape"
  * A failing suite therefore needs its COMPLETE tee file as a separate artifact,
  * not a tail that can drop the assertion or a second execution for diagnostics.
  */
+const DESKTOP_LIFECYCLE_PATH =
+	"${{ runner.temp }}/desktop-lifecycle-${{ matrix.shard }}.jsonl";
+function assertDesktopDiagnosticArtifactPaths(path) {
+	assert.equal(typeof path, "string");
+	// upload-artifact consumes newline-delimited paths, not substrings or a
+	// shell expression. Exact list equality retains both required files and
+	// rejects duplicates, wrong directories, globs, and same-line concatenation.
+	const paths = path
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.filter(Boolean);
+	assert.deepEqual(
+		paths.sort(),
+		["/tmp/desktop-tests.log", DESKTOP_LIFECYCLE_PATH].sort(),
+	);
+}
+
 test("A17d: a failed desktop run retains its full log as a failure artifact", () => {
 	const suite = jobs.test.steps.find((step) => step.id === "desktop_suite");
 	assert.ok(
@@ -1546,7 +1563,22 @@ test("A17d: a failed desktop run retains its full log as a failure artifact", ()
 		"${{ always() && (steps.desktop_suite.outcome == 'failure' || steps.desktop_suite.outcome == 'cancelled') }}",
 	);
 	assert.equal(artifact.uses, "actions/upload-artifact@v4");
-	assert.equal(artifact.with.path, "/tmp/desktop-tests.log");
+	assertDesktopDiagnosticArtifactPaths(artifact.with.path);
+	assert.equal(
+		suite.env.LOCAL_OPERATOR_UI_LANE_DIAGNOSTICS,
+		DESKTOP_LIFECYCLE_PATH,
+	);
+	// Mutants prove this is a two-file structural contract, not a substring
+	// check that accidentally accepts omission or a path in the wrong location.
+	for (const bad of [
+		"/tmp/desktop-tests.log",
+		DESKTOP_LIFECYCLE_PATH,
+		`/tmp/wrong-desktop-tests.log\n${DESKTOP_LIFECYCLE_PATH}`,
+		"/tmp/desktop-tests.log\n/tmp/desktop-lifecycle-${{ matrix.shard }}.jsonl",
+		`/tmp/desktop-tests.log ${DESKTOP_LIFECYCLE_PATH}`,
+		`/tmp/desktop-tests.log\n${DESKTOP_LIFECYCLE_PATH}\n/tmp/desktop-tests.log`,
+	])
+		assert.throws(() => assertDesktopDiagnosticArtifactPaths(bad));
 	assert.equal(artifact.with["retention-days"], 7);
 	assert.equal(artifact.with["if-no-files-found"], "error");
 	assert.ok(jobs.test.steps.indexOf(artifact) > jobs.test.steps.indexOf(suite));
