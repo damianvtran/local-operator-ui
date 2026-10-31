@@ -331,6 +331,12 @@ export type TeamBridgeDirectoryReads = {
 	members: Readonly<Record<string, readonly TeamBridgeDirectoryMember[]>>;
 	/** Per-tenant read state, so a failed read is never drawn as a pending one. */
 	state: Readonly<Record<string, "loading" | "error" | "ready">>;
+	/**
+	 * Per-tenant failure, for the one surface that draws one roster per
+	 * organization: a failed organization's group names its own cause (signed out,
+	 * plan, transport) instead of borrowing a sibling's or a generic line.
+	 */
+	errors: Readonly<Record<string, unknown>>;
 	/** Re-run one organization's read; a tenant with no mounted read is a no-op. */
 	retry: (tenantId: string) => void;
 };
@@ -360,10 +366,12 @@ export function useTeamBridgeDirectories(
 	return useMemo(() => {
 		const members: Record<string, readonly TeamBridgeDirectoryMember[]> = {};
 		const state: Record<string, "loading" | "error" | "ready"> = {};
+		const errors: Record<string, unknown> = {};
 		const byTenant = new Map<string, () => void>();
 		results.forEach((result, index) => {
 			const tenantId = tenantIds[index];
 			if (result.data) members[tenantId] = result.data.members;
+			if (result.isError) errors[tenantId] = result.error;
 			state[tenantId] = result.isPending
 				? "loading"
 				: result.isError
@@ -376,6 +384,7 @@ export function useTeamBridgeDirectories(
 		return {
 			members,
 			state,
+			errors,
 			retry: (tenantId: string) => {
 				byTenant.get(tenantId)?.();
 			},
