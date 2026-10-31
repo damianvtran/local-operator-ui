@@ -430,6 +430,18 @@ export const UnsafeUnscreenedAndLargeData: Story = {
 	},
 };
 
+/** Wrapped synthetic data and adjacent Markdown exercise the ambiguous boundary. */
+export const WrappedDataAndAdjacentProse: Story = {
+	args: {
+		messages: [
+			{
+				...messages[0],
+				body: `Before\ndata:image/png;base64,${"A".repeat(100)}\n${"B".repeat(10000)})**important**\nordinary next line`,
+			},
+		],
+	},
+};
+
 /** Locale alone does not change Storybook's document direction; exercise the
  * same fixture under an explicit RTL ancestor to see bidirectional controls. */
 export const LegacyInlineImageRtl: Story = {

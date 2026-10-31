@@ -2016,6 +2016,74 @@ test("parameterized and percent-encoded image URIs are bounded without swallowin
 	}
 });
 
+test("wrapped base64 is bounded while adjacent Markdown and prose survive", async () => {
+	const data = `data:image/png;base64,${"A".repeat(100)}\r\n${"B".repeat(10000)}`;
+	const body = `Before ${data})**important**\nordinary next line`;
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "wrapped_data", body })] }),
+	);
+	const row = rowOf(view.host, "wrapped_data");
+	assert.ok(row.textContent.includes("Before"));
+	assert.ok(row.textContent.includes("important"));
+	assert.ok(row.textContent.includes("ordinary next line"));
+	assert.ok(row.textContent.length < 1000);
+	assert.equal(row.textContent.includes("B".repeat(100)), false);
+	assert.equal(row.querySelector("strong")?.textContent, "important");
+	assert.equal(row.querySelectorAll("details").length, 1);
+	await view.close();
+});
+
+test("a long wrapped token remains bounded before same-line prose", async () => {
+	const body = `data:image/png;base64,${"A".repeat(100)}\n${"B".repeat(10000)} ordinary prose`;
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "wrapped_prose", body })] }),
+	);
+	const row = rowOf(view.host, "wrapped_prose");
+	assert.ok(row.textContent.includes("ordinary prose"));
+	assert.ok(row.textContent.length < 1000);
+	await view.close();
+});
+
+test("many short encoded continuation lines are bounded", async () => {
+	const data = `data:image/png;base64,${"A".repeat(100)}\n${Array(400).fill("B".repeat(32)).join("\n")}`;
+	const view = await renderView(
+		panel({
+			messages: [
+				auditRow({
+					id: "short_wrap",
+					body: `${data}\nordinary prose survives`,
+				}),
+			],
+		}),
+	);
+	const row = rowOf(view.host, "short_wrap");
+	assert.ok(row.textContent.includes("ordinary prose survives"));
+	assert.ok(row.textContent.length < 1000);
+	assert.equal(row.textContent.includes("B".repeat(32)), false);
+	await view.close();
+});
+
+test("plain prose adjacent to a closing delimiter remains visible", async () => {
+	const body = `data:image/png;base64,${"A".repeat(10000)})plain prose`;
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "adjacent_plain", body })] }),
+	);
+	const row = rowOf(view.host, "adjacent_plain");
+	assert.ok(row.textContent.includes(")plain prose"));
+	assert.equal(row.textContent.includes("A".repeat(100)), false);
+	await view.close();
+});
+
+test("short encoded-looking next line remains ordinary prose", async () => {
+	const body = `data:image/png;base64,${"A".repeat(100)}\nordinary`;
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "short_line", body })] }),
+	);
+	const row = rowOf(view.host, "short_line");
+	assert.ok(row.textContent.includes("ordinary"));
+	await view.close();
+});
+
 test("unadmitted bodies disclose inert plaintext, never Markdown", async () => {
 	const unsafeBody = `${MARKDOWN_BODY}\n![tracker](https://example.invalid/tracker.png)\n<script>unsafe()</script>`;
 	const rows = [

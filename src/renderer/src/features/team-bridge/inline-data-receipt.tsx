@@ -5,11 +5,17 @@ import { type ReactNode, useState } from "react";
 /** A legacy image URI is untrusted text, not an attachment or permission to load it.
  * Keep offsets into the original body: neither the DOM nor a second store needs a
  * copy of the payload, and inspection remains possible one bounded page at a time. */
-// A URI's content may include punctuation, parameters, percent escapes and
-// non-base64 bytes. Stop only at hard text delimiters: treating a parenthesis
-// or bracket as an end would expose the rest of a large payload. Never decode
-// it or let an attacker-controlled subtype become an unbounded label.
-const IMAGE_DATA = /data:image\/[^\s"'<>`]+/gi;
+// Data URI boundaries in prose are ambiguous. Base64 uses its own alphabet;
+// a run of wrapped continuation lines needs at least 64 encoded characters in
+// aggregate, so a short ordinary next line is not silently hidden. A long run
+// of alphabet-only prose is inherently indistinguishable from encoded data.
+// Non-base64 bodies retain balanced
+// parentheses, but stop at Markdown closers/formatting. Neither path decodes or
+// fetches content; unencoded whitespace/quotes are hard boundaries.
+const IMAGE_START = /data:image\//gi;
+const BASE64_CHAR = /[a-z0-9+/%=]/i;
+const BASE64_HEADER = /;base64$/i;
+const HARD_END = /[\s"'<>`]/;
 const MIME_END = /[;,]/;
 const TRAILING_PROSE = /[)\]}.!?]{1,4}$/;
 const MAX_MIME_LENGTH = 80;
@@ -17,22 +23,87 @@ const PAGE_SIZE = 2048;
 
 type Span = { start: number; end: number; mime: string };
 export function inlineImageSpans(body: string): Span[] {
-	return Array.from(body.matchAll(IMAGE_DATA))
-		.filter((match) => match[0].includes(",") || match[0].length > 64)
-		.map((match) => {
-			// Trailing closing punctuation often belongs to surrounding prose or
-			// Markdown, not the URI; leaving it in place preserves that context.
-			const token = match[0].replace(TRAILING_PROSE, "");
-			const end = token.search(MIME_END);
-			return {
-				start: match.index,
-				end: match.index + token.length,
-				mime: token.slice(
-					5,
-					Math.min(end < 0 ? token.length : end, 5 + MAX_MIME_LENGTH),
-				),
-			};
+	const spans: Span[] = [];
+	for (const match of body.matchAll(IMAGE_START)) {
+		const start = match.index;
+		if (spans.length && start < spans[spans.length - 1].end) continue;
+		let cursor = start + match[0].length;
+		while (
+			cursor < body.length &&
+			body[cursor] !== "," &&
+			!HARD_END.test(body[cursor])
+		)
+			cursor++;
+		const comma = cursor < body.length && body[cursor] === ",";
+		if (!comma && cursor - start <= 64) continue;
+		const header = body.slice(start, cursor);
+		const mimeEnd = header.search(MIME_END);
+		if (comma) {
+			cursor++;
+			if (BASE64_HEADER.test(header)) {
+				while (cursor < body.length) {
+					if (BASE64_CHAR.test(body[cursor])) {
+						cursor++;
+						continue;
+					}
+					if (body[cursor] === "\r" || body[cursor] === "\n") {
+						let next = cursor;
+						let encoded = 0;
+						while (body[next] === "\r" || body[next] === "\n") {
+							const lineBreak = next;
+							if (body[next] === "\r" && body[next + 1] === "\n") next += 2;
+							else next++;
+							const lineStart = next;
+							while (next < body.length && BASE64_CHAR.test(body[next])) next++;
+							// A space or other prose punctuation in this line means its first
+							// word is not a continuation just because it uses base64 letters.
+							if (
+								next === lineStart ||
+								(next - lineStart < 64 &&
+									next < body.length &&
+									!"\r\n)]}*.!?,;:".includes(body[next]))
+							) {
+								next = lineBreak;
+								break;
+							}
+							encoded += next - lineStart;
+						}
+						if (encoded >= 64) {
+							cursor = next;
+							continue;
+						}
+					}
+					break;
+				}
+			} else {
+				let depth = 0;
+				while (cursor < body.length && !HARD_END.test(body[cursor])) {
+					const char = body[cursor];
+					if (body.startsWith("**", cursor) || char === "]" || char === "}")
+						break;
+					if (char === "(") depth++;
+					if (char === ")") {
+						if (!depth) break;
+						depth--;
+					}
+					cursor++;
+				}
+				cursor -=
+					body
+						.slice(Math.max(start, cursor - 4), cursor)
+						.match(TRAILING_PROSE)?.[0].length ?? 0;
+			}
+		}
+		spans.push({
+			start,
+			end: cursor,
+			mime: header.slice(
+				5,
+				Math.min(mimeEnd < 0 ? header.length : mimeEnd, 5 + MAX_MIME_LENGTH),
+			),
 		});
+	}
+	return spans;
 }
 
 function Receipt({ body, span }: { body: string; span: Span }) {
