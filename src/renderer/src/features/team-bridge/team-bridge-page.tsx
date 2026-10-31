@@ -130,6 +130,7 @@ import {
 	notifyFailureIsVisible,
 	organizationOptions,
 	organizationsReadState,
+	ownAgentMenuState,
 	participantLabel,
 	personDisplayLabel,
 	railSections,
@@ -227,6 +228,7 @@ import {
 	useMarkTeamBridgeRead,
 	useRemoveTeamBridgeMember,
 	useSendTeamBridgeMessage,
+	useSetTeamBridgeAgentNotify,
 	useSetTeamBridgeNotify,
 	useTeamBridgeConversations,
 	useTeamBridgeDirectories,
@@ -623,8 +625,12 @@ export type TeamBridgePageViewProps = {
 	joining?: boolean;
 	joinFailed?: boolean;
 	notifyFailed?: boolean;
+	/** The reader's own agent's wake-level write was refused (this conversation). */
+	agentNotifyFailed?: boolean;
 	onJoin?: () => void;
 	onNotifyChange?: (notify: TeamBridgeNotify) => void;
+	/** Sets the reader's own agent's wake level; absent, the control is not drawn. */
+	onAgentNotifyChange?: (notify: TeamBridgeNotify) => void;
 	/** Membership writes, passed the selected conversation at the point of use. */
 	onAddMembers?: (
 		conversation: TeamBridgeConversation,
@@ -679,6 +685,13 @@ export type TeamBridgePageViewProps = {
 	 * and sends no field an older backend would refuse.
 	 */
 	sendMentionsCapabilityState?: DesktopFeatureState;
+	/**
+	 * The `team_bridge_agent_notify` capability answer, computed by the
+	 * container. Anything but `enabled` hides the "Wake your agent for" group:
+	 * a runtime without the route would refuse every pick, and an error that
+	 * invites a retry nothing can satisfy is worse than no control (R1-3).
+	 */
+	agentNotifyCapabilityState?: DesktopFeatureState;
 	/** Story/test seed only: opens the header menu so its rows are visible. */
 	defaultMenuOpen?: boolean;
 	/** Story/test seed only: the page's real draft is user-owned state. */
@@ -796,8 +809,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	joining = false,
 	joinFailed = false,
 	notifyFailed = false,
+	agentNotifyFailed = false,
 	onJoin,
 	onNotifyChange,
+	onAgentNotifyChange,
 	onAddMembers,
 	onRemoveMember,
 	memberMutationKey = null,
@@ -819,6 +834,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	threadsCapabilityState = "unknown",
 	reactionsCapabilityState = "unknown",
 	sendMentionsCapabilityState = "unknown",
+	agentNotifyCapabilityState = "unknown",
 	defaultMenuOpen = false,
 	initialDraft = "",
 	draftJournal,
@@ -3082,6 +3098,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										<TeamBridgeConversationMenu
 											conversation={shown}
 											onNotifyChange={onNotifyChange}
+											ownAgent={
+												agentNotifyCapabilityState === "enabled"
+													? ownAgentMenuState(shown, selfAccountId)
+													: undefined
+											}
+											onAgentNotifyChange={onAgentNotifyChange}
 											onAddMembers={
 												onAddMembers && canInviteMembers(shown, selfAccountId)
 													? () => {
@@ -3108,6 +3130,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						{notifyFailed && (
 							<p role="alert" className="px-5 pb-1 text-[12px] text-danger">
 								{t("ui.teamBridge.notify.error")}
+							</p>
+						)}
+						{agentNotifyFailed && (
+							<p role="alert" className="px-5 pb-1 text-[12px] text-danger">
+								{t("ui.teamBridge.agentNotify.error")}
 							</p>
 						)}
 						{shown?.status === "archived" && (
@@ -4430,6 +4457,10 @@ const TeamBridgeOwnedPage: FC<{
 		selected?.tenant_id,
 	);
 	const notify = useSetTeamBridgeNotify();
+	const agentNotify = useSetTeamBridgeAgentNotify(
+		selected?.id,
+		selected?.tenant_id,
+	);
 	const loadMoreArchived = useLoadMoreArchivedTeamBridgeConversations(
 		scope,
 		accountId,
@@ -4874,6 +4905,10 @@ const TeamBridgeOwnedPage: FC<{
 					capabilities.data,
 					"team_bridge_send_mentions",
 				)}
+				agentNotifyCapabilityState={desktopFeatureState(
+					capabilities.data,
+					"team_bridge_agent_notify",
+				)}
 				onCloseThread={() => setThreadLink(null)}
 				listState={
 					list.isPending || (mergedView && organizationsPending)
@@ -4913,6 +4948,10 @@ const TeamBridgeOwnedPage: FC<{
 				joining={join.isPending}
 				joinFailed={join.isError}
 				notifyFailed={notifyFailureIsVisible(notify, selected?.id ?? null)}
+				agentNotifyFailed={notifyFailureIsVisible(
+					agentNotify,
+					selected?.id ?? null,
+				)}
 				onJoin={() => {
 					if (isCurrentOwner()) join.mutate();
 				}}
@@ -4980,6 +5019,14 @@ const TeamBridgeOwnedPage: FC<{
 				onNotifyChange={(next) => {
 					if (!isCurrentOwner() || selected === null) return;
 					notify.mutate({
+						conversationId: selected.id,
+						tenantId: selected.tenant_id,
+						notify: next,
+					});
+				}}
+				onAgentNotifyChange={(next) => {
+					if (!isCurrentOwner() || selected === null) return;
+					agentNotify.mutate({
 						conversationId: selected.id,
 						tenantId: selected.tenant_id,
 						notify: next,

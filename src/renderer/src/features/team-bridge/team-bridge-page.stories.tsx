@@ -1665,6 +1665,67 @@ export const BuiltinHumansChannel: Story = {
 	},
 };
 
+/** Built-in #agents, with its topic in the header (agents see every message). */
+export const BuiltinAgentsChannel: Story = {
+	args: {
+		...slackRail,
+		target: { type: "conversation", id: agentsChannel.id },
+		messages: [],
+	},
+};
+
+/*
+ * THE READER'S OWN AGENT IN A GROUP, with the runtime advertising
+ * `team_bridge_agent_notify`: the header menu carries "Wake your agent for".
+ */
+const groupWithOwnAgent: TeamBridgeConversation = {
+	...ownedGroup,
+	members: [
+		...ownedGroup.members,
+		{
+			account_id: self,
+			kind: "agent",
+			display_label: "Aida",
+			role: "member",
+			state: "active",
+			notify: "mention",
+		} as TeamBridgeConversation["members"][number],
+	],
+};
+const ownAgentArgs = {
+	...ownedGroupArgs,
+	conversations: [groupWithOwnAgent, ...slackRail.conversations],
+	target: { type: "conversation" as const, id: groupWithOwnAgent.id },
+	agentNotifyCapabilityState: "enabled" as const,
+	onAgentNotifyChange: () => {},
+};
+
+/** The header menu with the reader's own agent's wake level. */
+export const AgentWakeMenu: Story = {
+	args: { ...ownAgentArgs, defaultMenuOpen: true },
+};
+
+/*
+ * A REFUSED agent wake-level write (design round 1, D5): the menu has closed,
+ * the previous level is back, and the line under the header names which
+ * setting was not saved.
+ */
+export const AgentWakeSettingError: Story = {
+	args: { ...ownAgentArgs, agentNotifyFailed: true },
+};
+
+/*
+ * A runtime that does not advertise `team_bridge_agent_notify` (R1-3): the same
+ * menu with no agent group, rather than a control every pick of which fails.
+ */
+export const AgentWakeMenuOlderRuntime: Story = {
+	args: {
+		...ownAgentArgs,
+		agentNotifyCapabilityState: "below-version",
+		defaultMenuOpen: true,
+	},
+};
+
 /** A person with no DM: an addressed draft; nothing has been created. */
 export const PersonDraft: Story = {
 	args: {

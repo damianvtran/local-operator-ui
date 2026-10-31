@@ -1,0 +1,14 @@
+{
+	"ui.agents.descriptions.aida": "Chánh văn phòng của bạn: điều phối tác nhân và nhóm thay bạn, theo dõi mọi việc đang thực hiện và báo lại tình hình.",
+	"ui.agents.descriptions.architect": "Khảo sát mã nguồn dự án và đưa ra đề xuất thiết kế hoặc kỹ thuật kèm đánh đổi; có thể soạn tài liệu nhưng không bao giờ sửa mã nguồn hiện có.",
+	"ui.agents.descriptions.coder": "Thực hiện một phần việc có phạm vi rõ ràng từ đầu đến cuối với toàn bộ công cụ, rồi báo lại đã thay đổi gì và kiểm chứng ra sao.",
+	"ui.agents.descriptions.copy_reviewer": "Rà soát câu chữ trước khi phát hành: chữ sản phẩm người dùng thấy và văn bản cho độc giả phổ thông — độ dễ hiểu, giọng điệu, cơ sở cho khẳng định, lối viết đặc trưng của AI; báo cáo phát hiện mang tiền tố C.",
+	"ui.agents.descriptions.designer": "Rà soát thiết kế và UX cho thay đổi người dùng thấy, dựa trên khung hình đã kết xuất chứ không phải mã nguồn; báo cáo phát hiện mang tiền tố D.",
+	"ui.agents.descriptions.librarian": "Tác nhân sắp xếp của Thư viện: đặt tên, mô tả và gắn thẻ cho các tệp người vận hành lưu giữ, học từ vựng của chúng và giữ chỉ mục toàn cục luôn dùng được.",
+	"ui.agents.descriptions.manager": "Điều phối công việc được giao và báo cáo trung thực tình trạng: việc nào đã xong, việc nào đang thực hiện, việc nào bị chặn và chờ ai.",
+	"ui.agents.descriptions.qa_tester": "Bằng chứng thực thi độc lập cho một thay đổi: kiểm tra sơ bộ dàn thử, chạy các luồng thật và trường hợp lỗi, rồi báo cáo ma trận QA trong phạm vi mà không sửa kho mã.",
+	"ui.agents.descriptions.reviewer": "Rà soát mã độc lập cho diff, MR hoặc PR: tìm lỗi, phân loại theo mức độ nghiêm trọng và không bao giờ sửa mã mà mình rà soát.",
+	"ui.agents.descriptions.scout": "Nghiên cứu chỉ đọc: tìm hiểu một câu hỏi trong không gian làm việc và trên web, báo cáo phát hiện kèm bằng chứng. Không thay đổi gì.",
+	"ui.agents.descriptions.tui_designer": "Thiết kế và rà soát giao diện terminal: luồng ưu tiên bàn phím, mật độ trong khung nhìn nhỏ cố định, phương án dự phòng cho màu và unicode, hình học đo được; báo cáo phát hiện mang tiền tố T.",
+	"ui.agents.descriptions.ux_reviewer": "Đi trọn luồng thật của thay đổi từ đầu đến cuối: khả năng tìm thấy, phản hồi, khôi phục sau lỗi, luồng bàn phím và câu chữ; báo cáo phát hiện mang tiền tố U."
+}

@@ -1,0 +1,89 @@
+{
+  "audit_id": "831557fc5ffe-es",
+  "audit_date": "2026-10-30",
+  "date": "2026-10-30",
+  "locale": "es",
+  "namespace": "ui.agents.descriptions",
+  "source_commit": "604ffbce4625a2c0e4d737ab1e219f00fb3fb4d2",
+  "translator": {
+    "agent": "i18n-translator (invoked by the delegating session)",
+    "session": "6113f5880f54",
+    "model": "not stated in translator.log; requests routed to api.radienthq.com",
+    "method": "LLM reasoning, no machine-translation service"
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "831557fc5ffe",
+    "model": "radient/auto",
+    "actual_model_source": "fallback this run after provider-quota failures: anthropic/claude-sonnet-5-5 -> openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto",
+    "independent_from_translator_session": true,
+    "result": "clean-with-findings",
+    "findings": {
+      "BLOCKER": 0,
+      "MAJOR": 0,
+      "MINOR": 3,
+      "NIT": 4
+    },
+    "receipt": "i18n/receipts/831557fc5ffe-agents-es.json",
+    "receipt_sha256": "86b11d9b01db33bac61e8ea8b03483ddc7a8714f23a21af7dafb2621157c41d5",
+    "scope": "Agents page: the 12 shipped agent card blurbs (ui.agents.descriptions) and the 2 install button labels (ui.agents.detail.install), audited as the bytes that go into src/i18n/catalogues/es/",
+    "note": "12 keys; 0 blocker / 0 major / 3 minor / 4 nit; repo locale-parity validator 44/44 with these bytes"
+  },
+  "key_count": 12,
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.agents.descriptions.json",
+      "sha256": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.agents.descriptions.context.json",
+      "sha256": "6311128dc89d50d886f3066f9cea2c802482a7db9979d9c5cc4bd93cdd8a7398"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/es/ui.agents.descriptions.json",
+      "sha256": "872645d79abd36365bcbac77910f6f328e4e06622412d6e62f2c3cd1b6e36576"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "i18n/receipts/831557fc5ffe-agents-es.json",
+      "sha256": "86b11d9b01db33bac61e8ea8b03483ddc7a8714f23a21af7dafb2621157c41d5"
+    },
+    {
+      "path": "i18n/audits/evidence/es/ui.agents.descriptions/831557fc5ffe-es/record.json",
+      "sha256": "self (this file)"
+    },
+    {
+      "path": "i18n/audits/evidence/es/ui.agents.descriptions/831557fc5ffe-es/audit.log",
+      "sha256": "493fa3a7b230251893241e71cacc78b3da2138f99ec76107b8273152e58ffd5c"
+    },
+    {
+      "path": "i18n/audits/evidence/es/ui.agents.descriptions/831557fc5ffe-es/verdict.txt",
+      "sha256": "d6fa6f9c9ea79b98fed2f2d2683ad13026d6cd68008b7a50d6dc390ef7886fa3"
+    },
+    {
+      "path": "i18n/audits/evidence/es/ui.agents.descriptions/831557fc5ffe-es/receipt.json",
+      "sha256": "86b11d9b01db33bac61e8ea8b03483ddc7a8714f23a21af7dafb2621157c41d5"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "M1",
+      "M2",
+      "M3",
+      "N1",
+      "N2",
+      "N3",
+      "N4"
+    ]
+  },
+  "independence": "Independent auditor, session 831557fc5ffe (this run), agent i18n-auditor. It authored none of the audited strings and wrote no catalogue byte; the translator ran in session 6113f5880f54. The model served for this audit is radient/auto, a fallback from anthropic/claude-sonnet-5-5 after provider quota failures (openai/gpt-6-astra and kimi/k3.1-pro also failed); recorded as served, not as intended.",
+  "audit_notes_not_execution_log": "Findings and judgements here are audit notes. Command execution is evidenced in audit.log, which holds the actual sha256 readings and the locale-parity test output.",
+  "glossary": "No es glossary or locale style sheet exists in this checkout; terminology was audited against the shipped es catalogues (106 namespaces, 6755 values) and the en context sidecars' role/tone/note/width hints.",
+  "original_lost_evidence": {
+    "status": "none - no original was lost; this is an original record, not a recreation",
+    "backdated": false
+  }
+}

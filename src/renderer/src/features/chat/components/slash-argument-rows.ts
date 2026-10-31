@@ -30,6 +30,12 @@ import type { DesktopFeature } from "../../../shared/api/local-operator/desktop-
  * the same leaf.
  */
 import { teamDisplayName } from "../../../shared/api/local-operator/team-display";
+/*
+ * Relative for the same reason as the import above (the slash test bundles run
+ * without path aliases). The resolver itself reaches `@shared/i18n`, which the
+ * bundling tests already alias.
+ */
+import { agentDescriptionText } from "../../agents/utils/agent-description";
 import { brandOf } from "../../providers/provider-catalog";
 /*
  * The picker's own validation, limits and duplicate rule. Imported rather than
@@ -700,6 +706,13 @@ type ProfileEntity = {
 	value?: unknown;
 	name?: unknown;
 	description?: unknown;
+	/**
+	 * Registry provenance of an `agent` row (`builtin` | `installed` | `custom`),
+	 * present on both the draft roster (`profiles.list`) and the session's
+	 * `commands.entities` agent arm. Only read to decide whether `description`
+	 * is a shipped sentence that has a catalogue translation.
+	 */
+	source?: unknown;
 	kind?: unknown;
 	members?: unknown;
 	/**
@@ -1094,7 +1107,19 @@ export function argumentRows(
 					name,
 					slug: name !== value ? value : undefined,
 					aliases: label?.trim() && name !== value ? [value] : undefined,
-					description: asText(row.description),
+					/* An `/agent` row is a registry profile whose description may be a
+					 * shipped seed sentence (installed seeds serve their ROUTING text),
+					 * so it renders through the same resolver as the roster and the
+					 * pickers; a team's description is always the operator's. Unknown
+					 * or missing `source` resolves to nothing and stays raw. */
+					description:
+						command === "agent"
+							? agentDescriptionText({
+									name: base,
+									source: asText(row.source) || undefined,
+									description: asText(row.description),
+								})
+							: asText(row.description),
 					// The TUI's own row detail for these lists is the profile
 					// KIND (role/specialist) — the fact a user picks a hat by. A
 					// team row carries none, so its detail column is empty rather
