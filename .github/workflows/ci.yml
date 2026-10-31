@@ -641,6 +641,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Lock intent alone cannot identify the modules used on a dead runner.
+      - name: Record installed desktop selector engine identity
+        run: node scripts/desktop-test-lane-bound.mjs --identity scripts/onboarding-tour-i18n.test.mjs
+
       # ITS OWN PROCESS, BEFORE THE BIG SUITE, and both halves are the fix.
       # This suite bundles the shipped renderer with esbuild and drives it in
       # jsdom; inside `pnpm test:desktop` its peak landed on the files already
@@ -722,6 +726,10 @@ jobs:
 
       - name: Run the desktop suite and assert it actually ran
         id: desktop_suite
+        env:
+          # Side ledger bypasses Node's ordered per-file TAP buffering. The
+          # existing sampler adds 30s heartbeats; no cap/verdict/retry changes.
+          LOCAL_OPERATOR_UI_LANE_DIAGNOSTICS: ${{ runner.temp }}/desktop-lifecycle-${{ matrix.shard }}.jsonl
         # A STEP ceiling below the job's, because a job cancelled at its own
         # `timeout-minutes` runs no further steps: without this, the payload
         # scan below is skipped in exactly the case it exists for. A step
@@ -889,7 +897,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: desktop-suite-log-${{ github.run_id }}-${{ github.run_attempt }}-shard-${{ matrix.shard }}
-          path: /tmp/desktop-tests.log
+          path: |
+            /tmp/desktop-tests.log
+            ${{ runner.temp }}/desktop-lifecycle-${{ matrix.shard }}.jsonl
           if-no-files-found: error
           retention-days: 7
 
