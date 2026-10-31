@@ -1,0 +1,2116 @@
+{
+ "head": "3eb9791f863",
+ "scope": "8b5499f5e90..3eb9791f863",
+ "d9": {
+  "localOperatorDark": {
+   "reducedMotion": false,
+   "animations": [
+    [
+     "lo-team-bridge-target",
+     1400
+    ],
+    [
+     "lo-team-bridge-target-ink",
+     1400
+    ]
+   ],
+   "filmstrip": [
+    {
+     "at": 0,
+     "bandOpacity": "1",
+     "computedTime": "rgb(194, 188, 175)",
+     "computedContrast": 6.322,
+     "pixelInk": [
+      193,
+      188,
+      177
+     ],
+     "pixelGround": [
+      49,
+      58,
+      44
+     ],
+     "pixelContrast": 6.261
+    },
+    {
+     "at": 200,
+     "bandOpacity": "0.534888",
+     "computedTime": "rgb(181, 175, 161)",
+     "computedContrast": 6.083,
+     "pixelInk": [
+      180,
+      175,
+      163
+     ],
+     "pixelGround": [
+      46,
+      49,
+      39
+     ],
+     "pixelContrast": 6.059
+    },
+    {
+     "at": 800,
+     "bandOpacity": "0.0378579",
+     "computedTime": "rgb(167, 161, 146)",
+     "computedContrast": 5.722,
+     "pixelInk": [
+      166,
+      161,
+      148
+     ],
+     "pixelGround": [
+      42,
+      40,
+      34
+     ],
+     "pixelContrast": 5.717
+    },
+    {
+     "at": 1400,
+     "bandOpacity": "0",
+     "computedTime": "rgb(166, 160, 145)",
+     "computedContrast": 5.696,
+     "pixelInk": [
+      165,
+      160,
+      147
+     ],
+     "pixelGround": [
+      42,
+      39,
+      34
+     ],
+     "pixelContrast": 5.702
+    },
+    {
+     "at": null,
+     "bandOpacity": "n/a",
+     "computedTime": "rgb(166, 160, 145)",
+     "computedContrast": 5.696,
+     "pixelInk": [
+      165,
+      160,
+      147
+     ],
+     "pixelGround": [
+      42,
+      39,
+      34
+     ],
+     "pixelContrast": 5.702
+    }
+   ],
+   "curve50ms": [
+    {
+     "t": 0,
+     "bandOpacity": "1",
+     "timeColor": "rgb(194, 188, 175)",
+     "contrast": 6.322
+    },
+    {
+     "t": 50,
+     "bandOpacity": "0.863935",
+     "timeColor": "rgb(190, 184, 171)",
+     "contrast": 6.249
+    },
+    {
+     "t": 100,
+     "bandOpacity": "0.741334",
+     "timeColor": "rgb(187, 181, 167)",
+     "contrast": 6.214
+    },
+    {
+     "t": 150,
+     "bandOpacity": "0.631839",
+     "timeColor": "rgb(184, 178, 164)",
+     "contrast": 6.159
+    },
+    {
+     "t": 200,
+     "bandOpacity": "0.534888",
+     "timeColor": "rgb(181, 175, 161)",
+     "contrast": 6.083
+    },
+    {
+     "t": 250,
+     "bandOpacity": "0.449748",
+     "timeColor": "rgb(179, 173, 158)",
+     "contrast": 6.053
+    },
+    {
+     "t": 300,
+     "bandOpacity": "0.375565",
+     "timeColor": "rgb(177, 171, 156)",
+     "contrast": 6.01
+    },
+    {
+     "t": 350,
+     "bandOpacity": "0.31141",
+     "timeColor": "rgb(175, 169, 154)",
+     "contrast": 5.952
+    },
+    {
+     "t": 400,
+     "bandOpacity": "0.256322",
+     "timeColor": "rgb(173, 167, 153)",
+     "contrast": 5.886
+    },
+    {
+     "t": 450,
+     "bandOpacity": "0.209345",
+     "timeColor": "rgb(172, 166, 151)",
+     "contrast": 5.869
+    },
+    {
+     "t": 500,
+     "bandOpacity": "0.169557",
+     "timeColor": "rgb(171, 165, 150)",
+     "contrast": 5.847
+    },
+    {
+     "t": 550,
+     "bandOpacity": "0.136088",
+     "timeColor": "rgb(170, 164, 149)",
+     "contrast": 5.817
+    },
+    {
+     "t": 600,
+     "bandOpacity": "0.108133",
+     "timeColor": "rgb(169, 163, 148)",
+     "contrast": 5.781
+    },
+    {
+     "t": 650,
+     "bandOpacity": "0.0849592",
+     "timeColor": "rgb(168, 162, 148)",
+     "contrast": 5.743
+    },
+    {
+     "t": 700,
+     "bandOpacity": "0.0659042",
+     "timeColor": "rgb(168, 162, 147)",
+     "contrast": 5.76
+    },
+    {
+     "t": 750,
+     "bandOpacity": "0.0503782",
+     "timeColor": "rgb(167, 161, 147)",
+     "contrast": 5.713
+    },
+    {
+     "t": 800,
+     "bandOpacity": "0.0378579",
+     "timeColor": "rgb(167, 161, 146)",
+     "contrast": 5.722
+    },
+    {
+     "t": 850,
+     "bandOpacity": "0.0278823",
+     "timeColor": "rgb(167, 161, 146)",
+     "contrast": 5.734
+    },
+    {
+     "t": 900,
+     "bandOpacity": "0.0200464",
+     "timeColor": "rgb(167, 161, 146)",
+     "contrast": 5.742
+    },
+    {
+     "t": 950,
+     "bandOpacity": "0.013996",
+     "timeColor": "rgb(166, 160, 145)",
+     "contrast": 5.68
+    },
+    {
+     "t": 1000,
+     "bandOpacity": "0.00942212",
+     "timeColor": "rgb(166, 160, 145)",
+     "contrast": 5.685
+    },
+    {
+     "t": 1050,
+     "bandOpacity": "0.00605527",
+     "timeColor": "rgb(166, 160, 145)",
+     "contrast": 5.689
+    },
+    {
+     "t": 1100,
+     "bandOpacity": "0.0036611",
+     "timeColor": "rgb(166, 160, 145)",
+     "contrast": 5.692
+    },
+    {
+     "t": 1150,
+     "bandOpacity": "0.00203582",
+     "timeColor": "rgb(166, 160, 145)",
+     "contrast": 5.693
+    },
+    {
+     "t": 1200,
+     "bandOpacity": "0.00100237",
+     "timeColor": "rgb(166, 160, 145)",
+     "contrast": 5.694
+    },
+    {
+     "t": 1250,
+     "bandOpacity": "0.000406978",
+     "timeColor": "rgb(166, 160, 145)",
+     "contrast": 5.695
+    },
+    {
+     "t": 1300,
+     "bandOpacity": "0.000116142",
+     "timeColor": "rgb(166, 160, 145)",
+     "contrast": 5.695
+    },
+    {
+     "t": 1350,
+     "bandOpacity": "1.39932e-05",
+     "timeColor": "rgb(166, 160, 145)",
+     "contrast": 5.696
+    },
+    {
+     "t": 1400,
+     "bandOpacity": "0",
+     "timeColor": "rgb(166, 160, 145)",
+     "contrast": 5.696
+    }
+   ],
+   "curveMin": 5.68,
+   "atClassRemoval": {
+    "animEnd": 5.696,
+    "afterRemoval": 5.696,
+    "step": 0.0
+   },
+   "firstMsAtRestInk": 950
+  },
+  "localOperatorLight": {
+   "reducedMotion": false,
+   "animations": [
+    [
+     "lo-team-bridge-target",
+     1400
+    ],
+    [
+     "lo-team-bridge-target-ink",
+     1400
+    ]
+   ],
+   "filmstrip": [
+    {
+     "at": 0,
+     "bandOpacity": "1",
+     "computedTime": "rgb(78, 73, 64)",
+     "computedContrast": 6.952,
+     "pixelInk": [
+      77,
+      73,
+      65
+     ],
+     "pixelGround": [
+      224,
+      229,
+      219
+     ],
+     "pixelContrast": 6.994
+    },
+    {
+     "at": 200,
+     "bandOpacity": "0.534888",
+     "computedTime": "rgb(89, 84, 74)",
+     "computedContrast": 6.324,
+     "pixelInk": [
+      88,
+      84,
+      75
+     ],
+     "pixelGround": [
+      235,
+      237,
+      228
+     ],
+     "pixelContrast": 6.38
+    },
+    {
+     "at": 800,
+     "bandOpacity": "0.0378579",
+     "computedTime": "rgb(100, 95, 85)",
+     "computedContrast": 5.781,
+     "pixelInk": [
+      99,
+      96,
+      86
+     ],
+     "pixelGround": [
+      246,
+      244,
+      238
+     ],
+     "pixelContrast": 5.72
+    },
+    {
+     "at": 1400,
+     "bandOpacity": "0",
+     "computedTime": "rgb(101, 96, 86)",
+     "computedContrast": 5.728,
+     "pixelInk": [
+      100,
+      96,
+      87
+     ],
+     "pixelGround": [
+      247,
+      245,
+      239
+     ],
+     "pixelContrast": 5.745
+    },
+    {
+     "at": null,
+     "bandOpacity": "n/a",
+     "computedTime": "rgb(101, 96, 86)",
+     "computedContrast": 5.728,
+     "pixelInk": [
+      100,
+      96,
+      87
+     ],
+     "pixelGround": [
+      247,
+      245,
+      239
+     ],
+     "pixelContrast": 5.745
+    }
+   ],
+   "curve50ms": [
+    {
+     "t": 0,
+     "bandOpacity": "1",
+     "timeColor": "rgb(78, 73, 64)",
+     "contrast": 6.952
+    },
+    {
+     "t": 50,
+     "bandOpacity": "0.863935",
+     "timeColor": "rgb(81, 76, 67)",
+     "contrast": 6.784
+    },
+    {
+     "t": 100,
+     "bandOpacity": "0.741334",
+     "timeColor": "rgb(84, 79, 70)",
+     "contrast": 6.604
+    },
+    {
+     "t": 150,
+     "bandOpacity": "0.631839",
+     "timeColor": "rgb(86, 81, 72)",
+     "contrast": 6.517
+    },
+    {
+     "t": 200,
+     "bandOpacity": "0.534888",
+     "timeColor": "rgb(89, 84, 74)",
+     "contrast": 6.324
+    },
+    {
+     "t": 250,
+     "bandOpacity": "0.449748",
+     "timeColor": "rgb(91, 86, 76)",
+     "contrast": 6.216
+    },
+    {
+     "t": 300,
+     "bandOpacity": "0.375565",
+     "timeColor": "rgb(92, 87, 78)",
+     "contrast": 6.188
+    },
+    {
+     "t": 350,
+     "bandOpacity": "0.31141",
+     "timeColor": "rgb(94, 89, 79)",
+     "contrast": 6.068
+    },
+    {
+     "t": 400,
+     "bandOpacity": "0.256322",
+     "timeColor": "rgb(95, 90, 80)",
+     "contrast": 6.028
+    },
+    {
+     "t": 450,
+     "bandOpacity": "0.209345",
+     "timeColor": "rgb(96, 91, 81)",
+     "contrast": 5.981
+    },
+    {
+     "t": 500,
+     "bandOpacity": "0.169557",
+     "timeColor": "rgb(97, 92, 82)",
+     "contrast": 5.927
+    },
+    {
+     "t": 550,
+     "bandOpacity": "0.136088",
+     "timeColor": "rgb(98, 93, 83)",
+     "contrast": 5.868
+    },
+    {
+     "t": 600,
+     "bandOpacity": "0.108133",
+     "timeColor": "rgb(99, 94, 84)",
+     "contrast": 5.805
+    },
+    {
+     "t": 650,
+     "bandOpacity": "0.0849592",
+     "timeColor": "rgb(99, 94, 84)",
+     "contrast": 5.826
+    },
+    {
+     "t": 700,
+     "bandOpacity": "0.0659042",
+     "timeColor": "rgb(99, 94, 85)",
+     "contrast": 5.838
+    },
+    {
+     "t": 750,
+     "bandOpacity": "0.0503782",
+     "timeColor": "rgb(100, 95, 85)",
+     "contrast": 5.769
+    },
+    {
+     "t": 800,
+     "bandOpacity": "0.0378579",
+     "timeColor": "rgb(100, 95, 85)",
+     "contrast": 5.781
+    },
+    {
+     "t": 850,
+     "bandOpacity": "0.0278823",
+     "timeColor": "rgb(100, 95, 85)",
+     "contrast": 5.79
+    },
+    {
+     "t": 900,
+     "bandOpacity": "0.0200464",
+     "timeColor": "rgb(101, 96, 86)",
+     "contrast": 5.71
+    },
+    {
+     "t": 950,
+     "bandOpacity": "0.013996",
+     "timeColor": "rgb(101, 96, 86)",
+     "contrast": 5.715
+    },
+    {
+     "t": 1000,
+     "bandOpacity": "0.00942212",
+     "timeColor": "rgb(101, 96, 86)",
+     "contrast": 5.719
+    },
+    {
+     "t": 1050,
+     "bandOpacity": "0.00605527",
+     "timeColor": "rgb(101, 96, 86)",
+     "contrast": 5.722
+    },
+    {
+     "t": 1100,
+     "bandOpacity": "0.0036611",
+     "timeColor": "rgb(101, 96, 86)",
+     "contrast": 5.724
+    },
+    {
+     "t": 1150,
+     "bandOpacity": "0.00203582",
+     "timeColor": "rgb(101, 96, 86)",
+     "contrast": 5.726
+    },
+    {
+     "t": 1200,
+     "bandOpacity": "0.00100237",
+     "timeColor": "rgb(101, 96, 86)",
+     "contrast": 5.727
+    },
+    {
+     "t": 1250,
+     "bandOpacity": "0.000406978",
+     "timeColor": "rgb(101, 96, 86)",
+     "contrast": 5.727
+    },
+    {
+     "t": 1300,
+     "bandOpacity": "0.000116142",
+     "timeColor": "rgb(101, 96, 86)",
+     "contrast": 5.728
+    },
+    {
+     "t": 1350,
+     "bandOpacity": "1.39932e-05",
+     "timeColor": "rgb(101, 96, 86)",
+     "contrast": 5.728
+    },
+    {
+     "t": 1400,
+     "bandOpacity": "0",
+     "timeColor": "rgb(101, 96, 86)",
+     "contrast": 5.728
+    }
+   ],
+   "curveMin": 5.71,
+   "atClassRemoval": {
+    "animEnd": 5.728,
+    "afterRemoval": 5.728,
+    "step": 0.0
+   },
+   "firstMsAtRestInk": 900
+  },
+  "cyberpunk": {
+   "reducedMotion": false,
+   "animations": [
+    [
+     "lo-team-bridge-target",
+     1400
+    ],
+    [
+     "lo-team-bridge-target-ink",
+     1400
+    ]
+   ],
+   "filmstrip": [
+    {
+     "at": 0,
+     "bandOpacity": "1",
+     "computedTime": "rgb(188, 177, 207)",
+     "computedContrast": 5.439,
+     "pixelInk": [
+      186,
+      178,
+      205
+     ],
+     "pixelGround": [
+      64,
+      60,
+      53
+     ],
+     "pixelContrast": 5.396
+    },
+    {
+     "at": 200,
+     "bandOpacity": "0.534888",
+     "computedTime": "rgb(177, 164, 200)",
+     "computedContrast": 5.565,
+     "pixelInk": [
+      175,
+      165,
+      197
+     ],
+     "pixelGround": [
+      53,
+      48,
+      51
+     ],
+     "pixelContrast": 5.556
+    },
+    {
+     "at": 800,
+     "bandOpacity": "0.0378579",
+     "computedTime": "rgb(165, 151, 192)",
+     "computedContrast": 5.597,
+     "pixelInk": [
+      163,
+      152,
+      189
+     ],
+     "pixelGround": [
+      40,
+      36,
+      49
+     ],
+     "pixelContrast": 5.612
+    },
+    {
+     "at": 1400,
+     "bandOpacity": "0",
+     "computedTime": "rgb(164, 150, 191)",
+     "computedContrast": 5.588,
+     "pixelInk": [
+      162,
+      151,
+      188
+     ],
+     "pixelGround": [
+      39,
+      35,
+      49
+     ],
+     "pixelContrast": 5.608
+    },
+    {
+     "at": null,
+     "bandOpacity": "n/a",
+     "computedTime": "rgb(164, 150, 191)",
+     "computedContrast": 5.588,
+     "pixelInk": [
+      162,
+      151,
+      188
+     ],
+     "pixelGround": [
+      39,
+      35,
+      49
+     ],
+     "pixelContrast": 5.608
+    }
+   ],
+   "curve50ms": [
+    {
+     "t": 0,
+     "bandOpacity": "1",
+     "timeColor": "rgb(188, 177, 207)",
+     "contrast": 5.439
+    },
+    {
+     "t": 50,
+     "bandOpacity": "0.863935",
+     "timeColor": "rgb(185, 173, 205)",
+     "contrast": 5.48
+    },
+    {
+     "t": 100,
+     "bandOpacity": "0.741334",
+     "timeColor": "rgb(182, 170, 203)",
+     "contrast": 5.532
+    },
+    {
+     "t": 150,
+     "bandOpacity": "0.631839",
+     "timeColor": "rgb(179, 167, 201)",
+     "contrast": 5.553
+    },
+    {
+     "t": 200,
+     "bandOpacity": "0.534888",
+     "timeColor": "rgb(177, 164, 200)",
+     "contrast": 5.565
+    },
+    {
+     "t": 250,
+     "bandOpacity": "0.449748",
+     "timeColor": "rgb(175, 162, 198)",
+     "contrast": 5.589
+    },
+    {
+     "t": 300,
+     "bandOpacity": "0.375565",
+     "timeColor": "rgb(173, 160, 197)",
+     "contrast": 5.596
+    },
+    {
+     "t": 350,
+     "bandOpacity": "0.31141",
+     "timeColor": "rgb(171, 158, 196)",
+     "contrast": 5.582
+    },
+    {
+     "t": 400,
+     "bandOpacity": "0.256322",
+     "timeColor": "rgb(170, 157, 195)",
+     "contrast": 5.61
+    },
+    {
+     "t": 450,
+     "bandOpacity": "0.209345",
+     "timeColor": "rgb(169, 156, 194)",
+     "contrast": 5.622
+    },
+    {
+     "t": 500,
+     "bandOpacity": "0.169557",
+     "timeColor": "rgb(168, 155, 194)",
+     "contrast": 5.628
+    },
+    {
+     "t": 550,
+     "bandOpacity": "0.136088",
+     "timeColor": "rgb(167, 154, 193)",
+     "contrast": 5.615
+    },
+    {
+     "t": 600,
+     "bandOpacity": "0.108133",
+     "timeColor": "rgb(167, 153, 193)",
+     "contrast": 5.615
+    },
+    {
+     "t": 650,
+     "bandOpacity": "0.0849592",
+     "timeColor": "rgb(166, 152, 192)",
+     "contrast": 5.584
+    },
+    {
+     "t": 700,
+     "bandOpacity": "0.0659042",
+     "timeColor": "rgb(166, 152, 192)",
+     "contrast": 5.615
+    },
+    {
+     "t": 750,
+     "bandOpacity": "0.0503782",
+     "timeColor": "rgb(165, 151, 192)",
+     "contrast": 5.578
+    },
+    {
+     "t": 800,
+     "bandOpacity": "0.0378579",
+     "timeColor": "rgb(165, 151, 192)",
+     "contrast": 5.597
+    },
+    {
+     "t": 850,
+     "bandOpacity": "0.0278823",
+     "timeColor": "rgb(165, 151, 191)",
+     "contrast": 5.607
+    },
+    {
+     "t": 900,
+     "bandOpacity": "0.0200464",
+     "timeColor": "rgb(164, 151, 191)",
+     "contrast": 5.604
+    },
+    {
+     "t": 950,
+     "bandOpacity": "0.013996",
+     "timeColor": "rgb(164, 150, 191)",
+     "contrast": 5.567
+    },
+    {
+     "t": 1000,
+     "bandOpacity": "0.00942212",
+     "timeColor": "rgb(164, 150, 191)",
+     "contrast": 5.574
+    },
+    {
+     "t": 1050,
+     "bandOpacity": "0.00605527",
+     "timeColor": "rgb(164, 150, 191)",
+     "contrast": 5.579
+    },
+    {
+     "t": 1100,
+     "bandOpacity": "0.0036611",
+     "timeColor": "rgb(164, 150, 191)",
+     "contrast": 5.583
+    },
+    {
+     "t": 1150,
+     "bandOpacity": "0.00203582",
+     "timeColor": "rgb(164, 150, 191)",
+     "contrast": 5.585
+    },
+    {
+     "t": 1200,
+     "bandOpacity": "0.00100237",
+     "timeColor": "rgb(164, 150, 191)",
+     "contrast": 5.587
+    },
+    {
+     "t": 1250,
+     "bandOpacity": "0.000406978",
+     "timeColor": "rgb(164, 150, 191)",
+     "contrast": 5.588
+    },
+    {
+     "t": 1300,
+     "bandOpacity": "0.000116142",
+     "timeColor": "rgb(164, 150, 191)",
+     "contrast": 5.588
+    },
+    {
+     "t": 1350,
+     "bandOpacity": "1.39932e-05",
+     "timeColor": "rgb(164, 150, 191)",
+     "contrast": 5.588
+    },
+    {
+     "t": 1400,
+     "bandOpacity": "0",
+     "timeColor": "rgb(164, 150, 191)",
+     "contrast": 5.588
+    }
+   ],
+   "curveMin": 5.439,
+   "atClassRemoval": {
+    "animEnd": 5.588,
+    "afterRemoval": 5.588,
+    "step": 0.0
+   },
+   "firstMsAtRestInk": 950
+  },
+  "nightfox": {
+   "reducedMotion": false,
+   "animations": [
+    [
+     "lo-team-bridge-target",
+     1400
+    ],
+    [
+     "lo-team-bridge-target-ink",
+     1400
+    ]
+   ],
+   "filmstrip": [
+    {
+     "at": 0,
+     "bandOpacity": "1",
+     "computedTime": "rgb(177, 178, 179)",
+     "computedContrast": 5.213,
+     "pixelInk": [
+      177,
+      178,
+      179
+     ],
+     "pixelGround": [
+      49,
+      61,
+      80
+     ],
+     "pixelContrast": 5.167
+    },
+    {
+     "at": 200,
+     "bandOpacity": "0.534888",
+     "computedTime": "rgb(167, 175, 184)",
+     "computedContrast": 5.572,
+     "pixelInk": [
+      168,
+      175,
+      183
+     ],
+     "pixelGround": [
+      42,
+      53,
+      71
+     ],
+     "pixelContrast": 5.581
+    },
+    {
+     "at": 800,
+     "bandOpacity": "0.0378579",
+     "computedTime": "rgb(156, 171, 190)",
+     "computedContrast": 5.914,
+     "pixelInk": [
+      159,
+      171,
+      188
+     ],
+     "pixelGround": [
+      36,
+      46,
+      62
+     ],
+     "pixelContrast": 5.878
+    },
+    {
+     "at": 1400,
+     "bandOpacity": "0",
+     "computedTime": "rgb(155, 171, 190)",
+     "computedContrast": 5.95,
+     "pixelInk": [
+      158,
+      171,
+      188
+     ],
+     "pixelGround": [
+      35,
+      45,
+      61
+     ],
+     "pixelContrast": 5.947
+    },
+    {
+     "at": null,
+     "bandOpacity": "n/a",
+     "computedTime": "rgb(155, 171, 190)",
+     "computedContrast": 5.95,
+     "pixelInk": [
+      158,
+      171,
+      188
+     ],
+     "pixelGround": [
+      35,
+      45,
+      61
+     ],
+     "pixelContrast": 5.947
+    }
+   ],
+   "curve50ms": [
+    {
+     "t": 0,
+     "bandOpacity": "1",
+     "timeColor": "rgb(177, 178, 179)",
+     "contrast": 5.213
+    },
+    {
+     "t": 50,
+     "bandOpacity": "0.863935",
+     "timeColor": "rgb(174, 177, 180)",
+     "contrast": 5.309
+    },
+    {
+     "t": 100,
+     "bandOpacity": "0.741334",
+     "timeColor": "rgb(171, 176, 182)",
+     "contrast": 5.393
+    },
+    {
+     "t": 150,
+     "bandOpacity": "0.631839",
+     "timeColor": "rgb(169, 175, 183)",
+     "contrast": 5.468
+    },
+    {
+     "t": 200,
+     "bandOpacity": "0.534888",
+     "timeColor": "rgb(167, 175, 184)",
+     "contrast": 5.572
+    },
+    {
+     "t": 250,
+     "bandOpacity": "0.449748",
+     "timeColor": "rgb(165, 174, 185)",
+     "contrast": 5.615
+    },
+    {
+     "t": 300,
+     "bandOpacity": "0.375565",
+     "timeColor": "rgb(163, 174, 186)",
+     "contrast": 5.691
+    },
+    {
+     "t": 350,
+     "bandOpacity": "0.31141",
+     "timeColor": "rgb(162, 173, 187)",
+     "contrast": 5.719
+    },
+    {
+     "t": 400,
+     "bandOpacity": "0.256322",
+     "timeColor": "rgb(161, 173, 187)",
+     "contrast": 5.778
+    },
+    {
+     "t": 450,
+     "bandOpacity": "0.209345",
+     "timeColor": "rgb(160, 172, 188)",
+     "contrast": 5.783
+    },
+    {
+     "t": 500,
+     "bandOpacity": "0.169557",
+     "timeColor": "rgb(159, 172, 188)",
+     "contrast": 5.821
+    },
+    {
+     "t": 550,
+     "bandOpacity": "0.136088",
+     "timeColor": "rgb(158, 172, 189)",
+     "contrast": 5.857
+    },
+    {
+     "t": 600,
+     "bandOpacity": "0.108133",
+     "timeColor": "rgb(157, 172, 189)",
+     "contrast": 5.88
+    },
+    {
+     "t": 650,
+     "bandOpacity": "0.0849592",
+     "timeColor": "rgb(157, 172, 189)",
+     "contrast": 5.91
+    },
+    {
+     "t": 700,
+     "bandOpacity": "0.0659042",
+     "timeColor": "rgb(156, 171, 189)",
+     "contrast": 5.872
+    },
+    {
+     "t": 750,
+     "bandOpacity": "0.0503782",
+     "timeColor": "rgb(156, 171, 189)",
+     "contrast": 5.892
+    },
+    {
+     "t": 800,
+     "bandOpacity": "0.0378579",
+     "timeColor": "rgb(156, 171, 190)",
+     "contrast": 5.914
+    },
+    {
+     "t": 850,
+     "bandOpacity": "0.0278823",
+     "timeColor": "rgb(156, 171, 190)",
+     "contrast": 5.927
+    },
+    {
+     "t": 900,
+     "bandOpacity": "0.0200464",
+     "timeColor": "rgb(155, 171, 190)",
+     "contrast": 5.924
+    },
+    {
+     "t": 950,
+     "bandOpacity": "0.013996",
+     "timeColor": "rgb(155, 171, 190)",
+     "contrast": 5.932
+    },
+    {
+     "t": 1000,
+     "bandOpacity": "0.00942212",
+     "timeColor": "rgb(155, 171, 190)",
+     "contrast": 5.938
+    },
+    {
+     "t": 1050,
+     "bandOpacity": "0.00605527",
+     "timeColor": "rgb(155, 171, 190)",
+     "contrast": 5.942
+    },
+    {
+     "t": 1100,
+     "bandOpacity": "0.0036611",
+     "timeColor": "rgb(155, 171, 190)",
+     "contrast": 5.945
+    },
+    {
+     "t": 1150,
+     "bandOpacity": "0.00203582",
+     "timeColor": "rgb(155, 171, 190)",
+     "contrast": 5.947
+    },
+    {
+     "t": 1200,
+     "bandOpacity": "0.00100237",
+     "timeColor": "rgb(155, 171, 190)",
+     "contrast": 5.949
+    },
+    {
+     "t": 1250,
+     "bandOpacity": "0.000406978",
+     "timeColor": "rgb(155, 171, 190)",
+     "contrast": 5.949
+    },
+    {
+     "t": 1300,
+     "bandOpacity": "0.000116142",
+     "timeColor": "rgb(155, 171, 190)",
+     "contrast": 5.95
+    },
+    {
+     "t": 1350,
+     "bandOpacity": "1.39932e-05",
+     "timeColor": "rgb(155, 171, 190)",
+     "contrast": 5.95
+    },
+    {
+     "t": 1400,
+     "bandOpacity": "0",
+     "timeColor": "rgb(155, 171, 190)",
+     "contrast": 5.95
+    }
+   ],
+   "curveMin": 5.213,
+   "atClassRemoval": {
+    "animEnd": 5.95,
+    "afterRemoval": 5.95,
+    "step": 0.0
+   },
+   "firstMsAtRestInk": 900
+  }
+ },
+ "q3": {
+  "localOperatorDark-1280-announce": {
+   "pat": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 444.4,
+     "b": 456.4
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 438.4,
+     "b": 462.4
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": "Message Pat Muted"
+   },
+   "cos": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 541.8,
+     "b": 553.8
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 535.8,
+     "b": 559.8
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": "Message Pat's agent (Pat) Muted"
+   },
+   "announce": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 247,
+     "b": 259
+    },
+    "glyphVisibility": "hidden",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 241,
+     "b": 265
+    },
+    "menuOpacity": "1",
+    "focusWithin": true,
+    "ariaLabel": null
+   }
+  },
+  "localOperatorDark-1280-cos": {
+   "pat": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 444.4,
+     "b": 456.4
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 438.4,
+     "b": 462.4
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": "Message Pat Muted"
+   },
+   "cos": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 541.8,
+     "b": 553.8
+    },
+    "glyphVisibility": "hidden",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 535.8,
+     "b": 559.8
+    },
+    "menuOpacity": "1",
+    "focusWithin": true,
+    "ariaLabel": "Message Pat's agent (Pat) Muted"
+   },
+   "announce": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 247,
+     "b": 259
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 241,
+     "b": 265
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": null
+   }
+  },
+  "localOperatorDark-1280-none": {
+   "pat": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 444.4,
+     "b": 456.4
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 438.4,
+     "b": 462.4
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": "Message Pat Muted"
+   },
+   "cos": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 541.8,
+     "b": 553.8
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 535.8,
+     "b": 559.8
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": "Message Pat's agent (Pat) Muted"
+   },
+   "announce": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 247,
+     "b": 259
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 241,
+     "b": 265
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": null
+   }
+  },
+  "localOperatorDark-1280-pat": {
+   "pat": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 444.4,
+     "b": 456.4
+    },
+    "glyphVisibility": "hidden",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 438.4,
+     "b": 462.4
+    },
+    "menuOpacity": "1",
+    "focusWithin": true,
+    "ariaLabel": "Message Pat Muted"
+   },
+   "cos": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 541.8,
+     "b": 553.8
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 535.8,
+     "b": 559.8
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": "Message Pat's agent (Pat) Muted"
+   },
+   "announce": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 247,
+     "b": 259
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 241,
+     "b": 265
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": null
+   }
+  },
+  "localOperatorDark-900-announce": {
+   "pat": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 444.4,
+     "b": 456.4
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 438.4,
+     "b": 462.4
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": "Message Pat Muted"
+   },
+   "cos": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 541.8,
+     "b": 553.8
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 535.8,
+     "b": 559.8
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": "Message Pat's agent (Pat) Muted"
+   },
+   "announce": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 247,
+     "b": 259
+    },
+    "glyphVisibility": "hidden",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 241,
+     "b": 265
+    },
+    "menuOpacity": "1",
+    "focusWithin": true,
+    "ariaLabel": null
+   }
+  },
+  "localOperatorDark-900-cos": {
+   "pat": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 444.4,
+     "b": 456.4
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 438.4,
+     "b": 462.4
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": "Message Pat Muted"
+   },
+   "cos": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 541.8,
+     "b": 553.8
+    },
+    "glyphVisibility": "hidden",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 535.8,
+     "b": 559.8
+    },
+    "menuOpacity": "1",
+    "focusWithin": true,
+    "ariaLabel": "Message Pat's agent (Pat) Muted"
+   },
+   "announce": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 247,
+     "b": 259
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 241,
+     "b": 265
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": null
+   }
+  },
+  "localOperatorDark-900-none": {
+   "pat": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 444.4,
+     "b": 456.4
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 438.4,
+     "b": 462.4
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": "Message Pat Muted"
+   },
+   "cos": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 541.8,
+     "b": 553.8
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 535.8,
+     "b": 559.8
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": "Message Pat's agent (Pat) Muted"
+   },
+   "announce": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 247,
+     "b": 259
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 241,
+     "b": 265
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": null
+   }
+  },
+  "localOperatorDark-900-pat": {
+   "pat": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 444.4,
+     "b": 456.4
+    },
+    "glyphVisibility": "hidden",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 438.4,
+     "b": 462.4
+    },
+    "menuOpacity": "1",
+    "focusWithin": true,
+    "ariaLabel": "Message Pat Muted"
+   },
+   "cos": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 541.8,
+     "b": 553.8
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 535.8,
+     "b": 559.8
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": "Message Pat's agent (Pat) Muted"
+   },
+   "announce": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 247,
+     "b": 259
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 241,
+     "b": 265
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": null
+   }
+  },
+  "localOperatorLight-1280-announce": {
+   "pat": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 444.4,
+     "b": 456.4
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 438.4,
+     "b": 462.4
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": "Message Pat Muted"
+   },
+   "cos": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 541.8,
+     "b": 553.8
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 535.8,
+     "b": 559.8
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": "Message Pat's agent (Pat) Muted"
+   },
+   "announce": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 247,
+     "b": 259
+    },
+    "glyphVisibility": "hidden",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 241,
+     "b": 265
+    },
+    "menuOpacity": "1",
+    "focusWithin": true,
+    "ariaLabel": null
+   }
+  },
+  "localOperatorLight-1280-cos": {
+   "pat": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 444.4,
+     "b": 456.4
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 438.4,
+     "b": 462.4
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": "Message Pat Muted"
+   },
+   "cos": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 541.8,
+     "b": 553.8
+    },
+    "glyphVisibility": "hidden",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 535.8,
+     "b": 559.8
+    },
+    "menuOpacity": "1",
+    "focusWithin": true,
+    "ariaLabel": "Message Pat's agent (Pat) Muted"
+   },
+   "announce": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 247,
+     "b": 259
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 241,
+     "b": 265
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": null
+   }
+  },
+  "localOperatorLight-1280-none": {
+   "pat": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 444.4,
+     "b": 456.4
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 438.4,
+     "b": 462.4
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": "Message Pat Muted"
+   },
+   "cos": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 541.8,
+     "b": 553.8
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 535.8,
+     "b": 559.8
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": "Message Pat's agent (Pat) Muted"
+   },
+   "announce": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 247,
+     "b": 259
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 241,
+     "b": 265
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": null
+   }
+  },
+  "localOperatorLight-1280-pat": {
+   "pat": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 444.4,
+     "b": 456.4
+    },
+    "glyphVisibility": "hidden",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 438.4,
+     "b": 462.4
+    },
+    "menuOpacity": "1",
+    "focusWithin": true,
+    "ariaLabel": "Message Pat Muted"
+   },
+   "cos": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 541.8,
+     "b": 553.8
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 535.8,
+     "b": 559.8
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": "Message Pat's agent (Pat) Muted"
+   },
+   "announce": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 247,
+     "b": 259
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 241,
+     "b": 265
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": null
+   }
+  },
+  "localOperatorLight-900-announce": {
+   "pat": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 444.4,
+     "b": 456.4
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 438.4,
+     "b": 462.4
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": "Message Pat Muted"
+   },
+   "cos": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 541.8,
+     "b": 553.8
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 535.8,
+     "b": 559.8
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": "Message Pat's agent (Pat) Muted"
+   },
+   "announce": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 247,
+     "b": 259
+    },
+    "glyphVisibility": "hidden",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 241,
+     "b": 265
+    },
+    "menuOpacity": "1",
+    "focusWithin": true,
+    "ariaLabel": null
+   }
+  },
+  "localOperatorLight-900-cos": {
+   "pat": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 444.4,
+     "b": 456.4
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 438.4,
+     "b": 462.4
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": "Message Pat Muted"
+   },
+   "cos": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 541.8,
+     "b": 553.8
+    },
+    "glyphVisibility": "hidden",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 535.8,
+     "b": 559.8
+    },
+    "menuOpacity": "1",
+    "focusWithin": true,
+    "ariaLabel": "Message Pat's agent (Pat) Muted"
+   },
+   "announce": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 247,
+     "b": 259
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 241,
+     "b": 265
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": null
+   }
+  },
+  "localOperatorLight-900-none": {
+   "pat": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 444.4,
+     "b": 456.4
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 438.4,
+     "b": 462.4
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": "Message Pat Muted"
+   },
+   "cos": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 541.8,
+     "b": 553.8
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 535.8,
+     "b": 559.8
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": "Message Pat's agent (Pat) Muted"
+   },
+   "announce": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 247,
+     "b": 259
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 241,
+     "b": 265
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": null
+   }
+  },
+  "localOperatorLight-900-pat": {
+   "pat": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 444.4,
+     "b": 456.4
+    },
+    "glyphVisibility": "hidden",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 438.4,
+     "b": 462.4
+    },
+    "menuOpacity": "1",
+    "focusWithin": true,
+    "ariaLabel": "Message Pat Muted"
+   },
+   "cos": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 541.8,
+     "b": 553.8
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 535.8,
+     "b": 559.8
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": "Message Pat's agent (Pat) Muted"
+   },
+   "announce": {
+    "glyph": {
+     "l": 424,
+     "r": 436,
+     "t": 247,
+     "b": 259
+    },
+    "glyphVisibility": "visible",
+    "menu": {
+     "l": 414,
+     "r": 438,
+     "t": 241,
+     "b": 265
+    },
+    "menuOpacity": "0",
+    "focusWithin": false,
+    "ariaLabel": null
+   }
+  }
+ },
+ "d10": {
+  "localOperatorDark-cos": {
+   "pat": {
+    "ariaLabel": "Message Pat Muted 2 unread",
+    "badge": "2",
+    "glyphVisibility": "visible",
+    "menuOpacity": "0"
+   },
+   "cos": {
+    "ariaLabel": "Message Pat's agent (Pat) 1 unread",
+    "badge": "1",
+    "glyphVisibility": null,
+    "menuOpacity": "1"
+   },
+   "announce": {
+    "ariaLabel": null,
+    "badge": null,
+    "glyphVisibility": null,
+    "menuOpacity": null
+   },
+   "general": {
+    "ariaLabel": null,
+    "badge": "1",
+    "glyphVisibility": "visible",
+    "menuOpacity": null
+   }
+  },
+  "localOperatorDark-none": {
+   "pat": {
+    "ariaLabel": "Message Pat Muted 2 unread",
+    "badge": "2",
+    "glyphVisibility": "visible",
+    "menuOpacity": "0"
+   },
+   "cos": {
+    "ariaLabel": "Message Pat's agent (Pat) 1 unread",
+    "badge": "1",
+    "glyphVisibility": null,
+    "menuOpacity": "0"
+   },
+   "announce": {
+    "ariaLabel": null,
+    "badge": null,
+    "glyphVisibility": null,
+    "menuOpacity": null
+   },
+   "general": {
+    "ariaLabel": null,
+    "badge": "1",
+    "glyphVisibility": "visible",
+    "menuOpacity": null
+   }
+  },
+  "localOperatorDark-pat": {
+   "pat": {
+    "ariaLabel": "Message Pat Muted 2 unread",
+    "badge": "2",
+    "glyphVisibility": "hidden",
+    "menuOpacity": "1"
+   },
+   "cos": {
+    "ariaLabel": "Message Pat's agent (Pat) 1 unread",
+    "badge": "1",
+    "glyphVisibility": null,
+    "menuOpacity": "0"
+   },
+   "announce": {
+    "ariaLabel": null,
+    "badge": null,
+    "glyphVisibility": null,
+    "menuOpacity": null
+   },
+   "general": {
+    "ariaLabel": null,
+    "badge": "1",
+    "glyphVisibility": "visible",
+    "menuOpacity": null
+   }
+  }
+ }
+}
