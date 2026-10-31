@@ -622,6 +622,28 @@ export function AgentDetail({
 	);
 	const navigate = useNavigate();
 
+	/*
+	 * AN ALREADY-OPEN PANE REACTS TOO (agent review round 2, m-A). The seed above
+	 * only decides the first render, and the pane is keyed by agent, so the pencil
+	 * for the agent whose pane is on screen (the nav's chat list draws it on every
+	 * route) changed the URL and nothing else - then the next press of Edit
+	 * mounted the field, which consumed the stale `?edit=picture` and took focus.
+	 * Following the prop's rising edge opens the editor for that case as well; it
+	 * never closes it, so Cancel stays the pane's own.
+	 *
+	 * `baseRevisionRef` is captured exactly as the Edit button does, because this
+	 * is the same transition and a save must be based on the revision the editor
+	 * opened on.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: a rising edge of the prop, not a reaction to the profile or `editing`.
+	useEffect(() => {
+		if (!openPictureEditor || !profile.agent_id) return;
+		// Already editing: keep the open edit's base - re-basing a dirty edit would
+		// defeat the compare-and-swap guard (see `baseRevisionRef`).
+		if (!editing) baseRevisionRef.current = profile.definition_revision;
+		setEditing(true);
+	}, [openPictureEditor]);
+
 	const dirty = JSON.stringify(draft) !== JSON.stringify(base);
 
 	/*

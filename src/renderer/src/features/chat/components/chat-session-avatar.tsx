@@ -26,6 +26,7 @@
 import { AgentAvatarEditLink } from "@shared/agent-avatar/agent-avatar-edit-link";
 import { sessionPictureEditable } from "@shared/agent-avatar/agent-avatar-meta";
 import { AgentMark } from "@shared/agent-avatar/agent-mark";
+import { AgentAvatar, AvatarFallback } from "@shared/components/ui/avatar";
 import { cn } from "@shared/lib/utils";
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import { Bot } from "lucide-react";
@@ -80,14 +81,28 @@ export function ChatSessionAvatar({
 		<span
 			data-session-mark="avatar"
 			data-avatar-variant={AVATAR_STATUS_VARIANT}
-			className={cn("relative flex shrink-0 items-center gap-1")}
+			/*
+			 * `gap-1.5`, not `gap-1`: the pencil's focus ring (a 24px target around the
+			 * 16px picture) ended 1px short of the status glyph's ink and read as
+			 * touching it (design review round 2, N5).
+			 */
+			className={cn("relative flex shrink-0 items-center gap-1.5")}
 		>
 			<span className={cn("relative flex shrink-0", SESSION_MARK_BOX)}>
 				<AgentMark
 					agentId={agentId}
 					sha256={sha256}
 					className={cn(SESSION_MARK_BOX, "rounded-full")}
-					fallback={<ChatSessionStatus row={row} nowSeconds={nowSeconds} />}
+					/*
+					 * A PLATE, NEVER A SECOND STATUS (agent review round 2, MAJOR-1). While the
+					 * bytes are cold - every pictured row until its fetch lands, and for good
+					 * when a digest 404s - `AgentMark` draws this instead of the picture. It
+					 * used to be a `ChatSessionStatus`, which in the `beside` arm sat next to
+					 * the real one: two check glyphs side by side, and the sentence spoken
+					 * three times. The status is drawn exactly once per row, by the cell
+					 * below (or by the badge), so this is the picture's own shape only.
+					 */
+					fallback={<AgentMarkPlate />}
 					glyph={<Bot className="size-2.5" aria-hidden="true" />}
 				/>
 				{AVATAR_STATUS_VARIANT === "badge" ? (
@@ -95,17 +110,38 @@ export function ChatSessionAvatar({
 				) : null}
 			</span>
 			{AVATAR_STATUS_VARIANT === "beside" ? (
+				/* `ChatSessionStatus` carries its own `sr-only` sentence - the row's one. */
 				<ChatSessionStatus row={row} nowSeconds={nowSeconds} />
-			) : null}
-			{/* The sentence the glyph cell contributes to the row's name. */}
-			<span className="sr-only">
-				{statusSpokenText(
-					row,
-					nowSeconds ?? Date.now() / 1000,
-					sessionStatusMark(row),
-				)}
-			</span>
+			) : (
+				/* The badge is `aria-hidden`, so the sentence has to come from here. */
+				<span className="sr-only">
+					{statusSpokenText(
+						row,
+						nowSeconds ?? Date.now() / 1000,
+						sessionStatusMark(row),
+					)}
+				</span>
+			)}
 		</span>
+	);
+}
+
+/**
+ * The picture's plate for the moment it cannot paint: the same plate and glyph
+ * `AgentMark` shows inside a picture whose image has not decoded, drawn without
+ * the image. `aria-hidden` because it names nothing - the row's status does.
+ */
+function AgentMarkPlate() {
+	return (
+		<AgentAvatar
+			aria-hidden="true"
+			className={cn(SESSION_MARK_BOX, "rounded-full")}
+			data-agent-mark=""
+		>
+			<AvatarFallback>
+				<Bot className="size-2.5" aria-hidden="true" />
+			</AvatarFallback>
+		</AgentAvatar>
 	);
 }
 
@@ -137,11 +173,19 @@ export function ChatSessionAvatarEdit({
 	const agentId = row.agent_id ?? null;
 	const agentName = row.binding?.agent ?? null;
 	if (!agentId || !row.avatar_sha256 || !agentName) return null;
+	/*
+	 * A REMOTE ROW MOUNTS NOTHING (agent review round 2, m-B). The link's unowned
+	 * arm draws a positioned 16px span over the mark; on top of the row's
+	 * non-positioned button that span would take the press on the mark, a dead
+	 * zone where the row button used to receive it. No door means no element.
+	 */
+	const owned = sessionPictureEditable(row);
+	if (!owned) return null;
 	return (
 		<AgentAvatarEditLink
 			agentName={agentName}
 			agentId={agentId}
-			owned={sessionPictureEditable(row)}
+			owned={owned}
 			overlay={true}
 			/*
 			 * THE TARGET IS BIGGER THAN THE PICTURE (design review round 1, D4). The

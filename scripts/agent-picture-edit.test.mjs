@@ -37,7 +37,9 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { AgentDetail } from "./src/renderer/src/features/agents/components/agent-detail";',
-			'export { ChatSessionAvatarEdit } from "./src/renderer/src/features/chat/components/chat-session-avatar";',
+			'export { ChatSessionAvatar, ChatSessionAvatarEdit } from "./src/renderer/src/features/chat/components/chat-session-avatar";',
+			'export { agentAvatarPath } from "./src/renderer/src/shared/agent-avatar/agent-avatar-meta";',
+			'export { publish, release } from "./src/renderer/src/shared/lib/blob-url-cache";',
 			'export { sessionPictureEditable } from "./src/renderer/src/shared/agent-avatar/agent-avatar-meta";',
 			'export { renderToStaticMarkup } from "react-dom/server";',
 			'export { createElement } from "react";',
@@ -108,7 +110,11 @@ const bundlePath = new URL(
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
 	AgentDetail,
+	ChatSessionAvatar,
 	ChatSessionAvatarEdit,
+	agentAvatarPath,
+	publish,
+	release,
 	sessionPictureEditable,
 	renderToStaticMarkup,
 	createElement,
@@ -203,6 +209,96 @@ test("a remote conversation's row draws no door at all", () => {
 	assert.doesNotMatch(markup, /data-agent-avatar-edit/);
 	assert.doesNotMatch(markup, /edit=picture/);
 	assert.doesNotMatch(markup, /<a /);
+	/*
+	 * NOT EVEN AN INERT OVERLAY (agent review round 2, m-B). The link's unowned
+	 * arm draws a positioned 16px span; over the row's non-positioned button it
+	 * would take the press on the mark. A remote row mounts nothing at all, so the
+	 * row button keeps the click.
+	 */
+	assert.equal(markup, "");
+});
+
+/* ------------------------------------------- one status sentence per row --- */
+
+/*
+ * THE STATUS IS SPOKEN EXACTLY ONCE PER PICTURED ROW (agent review round 2,
+ * MAJOR-1). With the `beside` variant the avatar mounts `ChatSessionStatus`,
+ * which carries its own `sr-only` sentence; the avatar used to add a second
+ * sentence of its own and to use ANOTHER `ChatSessionStatus` as the cold-bytes
+ * fallback, so a pictured row was read two times (warm) or three (cold, with
+ * two check glyphs side by side). Counted on the rendered markup of the shipped
+ * component, in the four states a row can be in.
+ *
+ * The bytes states are real: "resolved" publishes a URL under the key the hook
+ * peeks in its first render; "cold" and "failed" both leave nothing under it,
+ * which is exactly what the hook answers (`null`) before a fetch lands and
+ * after a 404 or a rejected relay - the failed path of the live hook is
+ * mounted in `agent-avatar-dom.test.mjs`.
+ */
+const STATUS_SENTENCE = "Complete, unread";
+const statusRow = (over) => ({
+	session_id: "fixture",
+	status: { code: "complete", label: "Complete" },
+	attention: { unseen: true },
+	...row({}),
+	...over,
+});
+const rowMarkup = (r) =>
+	render(
+		createElement(
+			MemoryRouter,
+			{ initialEntries: ["/"] },
+			createElement(ChatSessionAvatar, { row: r, nowSeconds: 0 }),
+		),
+	);
+const sentences = (markup) =>
+	[...markup.matchAll(/<span class="sr-only">([^<]*)<\/span>/g)].map(
+		(m) => m[1],
+	);
+const statusGlyphs = (markup) => markup.match(/lucide-check/g)?.length ?? 0;
+
+test("a pictured row names its status once when the picture resolved", () => {
+	const r = statusRow({ agent_id: "agent-warm" });
+	const key = agentAvatarPath("agent-warm", r.avatar_sha256);
+	publish(key, "blob:fixture-warm");
+	try {
+		const markup = rowMarkup(r);
+		assert.match(markup, /data-agent-mark/);
+		assert.deepEqual(sentences(markup), [STATUS_SENTENCE]);
+		assert.equal(statusGlyphs(markup), 1);
+	} finally {
+		// `publish` files at zero references; one release drops the entry.
+		release(key);
+	}
+});
+
+test("a pictured row names its status once while the bytes are cold", () => {
+	const markup = rowMarkup(statusRow({ agent_id: "agent-cold" }));
+	assert.deepEqual(sentences(markup), [STATUS_SENTENCE]);
+	// One status glyph, not the fallback's and the cell's side by side.
+	assert.equal(statusGlyphs(markup), 1);
+	// The plate that holds the picture's place is silent.
+	assert.match(
+		markup,
+		/data-agent-mark="" aria-hidden="true"|aria-hidden="true"[^>]*data-agent-mark/,
+	);
+});
+
+test("a pictured row names its status once when the bytes failed", () => {
+	// A digest the hook cannot use is the same `null` a 404 or a rejected relay
+	// ends in; the live failure is mounted in `agent-avatar-dom.test.mjs`.
+	const markup = rowMarkup(
+		statusRow({ agent_id: "agent-failed", avatar_sha256: "not-a-digest" }),
+	);
+	assert.deepEqual(sentences(markup), [STATUS_SENTENCE]);
+	assert.equal(statusGlyphs(markup), 1);
+});
+
+test("a row with no picture names its status once, as main did", () => {
+	const markup = rowMarkup(statusRow({ avatar_sha256: undefined }));
+	assert.deepEqual(sentences(markup), [STATUS_SENTENCE]);
+	assert.equal(statusGlyphs(markup), 1);
+	assert.doesNotMatch(markup, /data-session-mark="avatar"/);
 });
 
 /* ----------------------------------------------------- the pane's edit mode --- */
@@ -311,6 +407,10 @@ test("neither placement decides ownership for itself", async () => {
 		"src/renderer/src/features/chat/components/chat-session-avatar.tsx",
 		"utf8",
 	);
-	assert.match(sidebar, /owned=\{sessionPictureEditable\(row\)\}/);
+	// The one answer is bound once, and both the early return (a remote row mounts
+	// nothing) and the link's `owned` read that binding.
+	assert.match(sidebar, /const owned = sessionPictureEditable\(row\);/);
+	assert.match(sidebar, /if \(!owned\) return null;/);
+	assert.match(sidebar, /owned=\{owned\}/);
 	assert.doesNotMatch(sidebar, /^\s*owned=\{true\}/m);
 });

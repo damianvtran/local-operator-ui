@@ -566,56 +566,6 @@ const railNoticeExpect = (lit, kind, title) => ({
 
 export const STORIES = [
 	/*
-	 * THE AGENT PICTURE'S OWN SURFACES (design review round 1, D1/D2/D3). Four
-	 * stories, because each of this round's majors is a frame and nothing else
-	 * can show it: `chat-row-statuses` is the D1 discriminator (the picture beside
-	 * the status cell, the ink the review measured 2.24:1 in the badge arm), and
-	 * `editor-with-picture` is D2 (a state that used to render identical to
-	 * `editor-empty` because the story never seeded the agents map). The two
-	 * `chat-row-pencil` states are the door the feature adds - it is
-	 * `pointer-events-none opacity-0` at rest and reveals on `group-hover/row`, so
-	 * only a real pointer move or a real Tab shows it, which is what `hover` and
-	 * `tabTo` do here.
-	 *
-	 * The viewports are the surfaces' own: the sidebar column is 288px
-	 * (`w-72`), the editor is 384 (`w-96`) inside a 46rem story box.
-	 */
-	["features-agents-agent-avatar--chat-row-statuses", 320, 300],
-	["features-agents-agent-avatar--chat-row-pencil", 320, 120],
-	[
-		"features-agents-agent-avatar--chat-row-pencil",
-		320,
-		120,
-		{
-			/*
-			 * TWO MOVES, NOT ONE. The door is `pointer-events-none` at rest and becomes
-			 * interactive only once the ROW is hovered (`group-hover/row`), and its scrim
-			 * reveals on the ANCHOR's own hover (`group-hover/avatar-edit`). A single move
-			 * onto the row therefore photographs a hovered row with the door still shut -
-			 * which is what the first attempt's frame showed - and a single move onto the
-			 * anchor is refused by the rig because a resting control cannot match
-			 * `:hover`. The chain is the real gesture: onto the row, then onto the disc.
-			 */
-			hoverChain: [
-				"[data-avatar-row-pencil]",
-				"[data-avatar-row-pencil] [data-agent-avatar-edit]",
-			],
-			hoverChainSettleMs: 500,
-			dir: "chat-row-pencil-hover",
-		},
-	],
-	[
-		"features-agents-agent-avatar--chat-row-pencil",
-		320,
-		120,
-		{
-			tabTo: "[data-avatar-row-pencil] [data-agent-avatar-edit]",
-			dir: "chat-row-pencil-focus",
-		},
-	],
-	["features-agents-agent-avatar--editor-with-picture", 460, 420],
-	["features-agents-agent-avatar--editor-empty", 460, 420],
-	/*
 	 * These three DECLARE their content height rather than the 900 the harness
 	 * defaults to, and the reason is a trap that cost real pixels: since the
 	 * transcript became its own `overflow-auto` container, the document reports

@@ -40,6 +40,7 @@ import {
 import { AgentAvatar, Button } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { cn } from "@shared/lib/utils";
 import { Minus, Plus, RotateCcw } from "lucide-react";
 import {
 	type CSSProperties,
@@ -206,8 +207,9 @@ export function AgentAvatarCropper({
 	 * reads the latest zoom/offset through refs rather than closing over a
 	 * render's values.
 	 */
-	const live = useRef({ zoom, offset });
-	live.current = { zoom, offset };
+	const busy = saving || encoding;
+	const live = useRef({ zoom, offset, busy });
+	live.current = { zoom, offset, busy };
 
 	const setViewport = useCallback(
 		(node: HTMLCanvasElement | null) => {
@@ -260,7 +262,9 @@ export function AgentAvatarCropper({
 		const canvas = ownViewport.current;
 		if (!canvas) return;
 		const onWheel = (event: WheelEvent) => {
+			// The page still must not scroll under the square, but the frame is locked.
 			event.preventDefault();
+			if (live.current.busy) return;
 			applyZoom(live.current.zoom - event.deltaY * 0.002);
 		};
 		canvas.addEventListener("wheel", onWheel, { passive: false });
@@ -275,7 +279,16 @@ export function AgentAvatarCropper({
 		}
 	}, [source, zoom, offset]);
 
+	/*
+	 * THE FRAME IS LOCKED WHILE THE UPLOAD IS IN FLIGHT, on the canvas as well as
+	 * the buttons (design review round 1 D7, agent review round 2 m-D). The bytes
+	 * being sent are the ones the frame produced when Save was pressed, so a drag,
+	 * an arrow, `0` or the wheel mid-upload would leave the person looking at a
+	 * crop that is not the one saved. A drag already begun when Save is pressed is
+	 * dropped rather than finished.
+	 */
 	const onPointerDown = (event: PointerEvent<HTMLCanvasElement>) => {
+		if (busy) return;
 		event.currentTarget.setPointerCapture(event.pointerId);
 		drag.current = {
 			pointerId: event.pointerId,
@@ -289,6 +302,10 @@ export function AgentAvatarCropper({
 	const onPointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
 		const active = drag.current;
 		if (!active || active.pointerId !== event.pointerId) return;
+		if (busy) {
+			drag.current = null;
+			return;
+		}
 		active.latest = { x: event.clientX, y: event.clientY };
 		// One redraw per frame: pointermove outpaces the screen, and each redraw
 		// draws the full source four times (the square and three previews).
@@ -297,7 +314,7 @@ export function AgentAvatarCropper({
 		requestAnimationFrame(() => {
 			framePending.current = false;
 			const current = drag.current;
-			if (!current) return;
+			if (!current || live.current.busy) return;
 			setOffset(
 				clampOffset(source, VIEWPORT, live.current.zoom, {
 					x: current.origin.x + (current.latest.x - current.startX),
@@ -320,6 +337,8 @@ export function AgentAvatarCropper({
 		);
 
 	const onKeyDown = (event: KeyboardEvent<HTMLCanvasElement>) => {
+		// Tab and the rest still move focus; only the framing keys are locked.
+		if (busy) return;
 		const actions: Record<string, () => void> = {
 			// The console's direction: an arrow moves the PICTURE that way, the
 			// same thing a drag in that direction does.
@@ -356,7 +375,6 @@ export function AgentAvatarCropper({
 		}
 	};
 
-	const busy = saving || encoding;
 	const fill = `${((zoom - CROP_MIN_ZOOM) / (CROP_MAX_ZOOM - CROP_MIN_ZOOM)) * 100}%`;
 	const shownError = encodeFailed
 		? t("ui.agents.avatar.editor.error_encode")
@@ -396,7 +414,12 @@ export function AgentAvatarCropper({
 						onPointerCancel={onPointerUp}
 						onKeyDown={onKeyDown}
 						style={{ width: VIEWPORT, height: VIEWPORT }}
-						className="cursor-grab touch-none rounded-sm border border-control bg-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 active:cursor-grabbing"
+						className={cn(
+							"touch-none rounded-sm border border-control bg-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
+							busy
+								? "cursor-not-allowed"
+								: "cursor-grab active:cursor-grabbing",
+						)}
 					/>
 					<p id={instructionsId} className="max-w-72 text-ink-dim text-meta">
 						{t("ui.agents.avatar.editor.instructions", {
@@ -446,11 +469,17 @@ export function AgentAvatarCropper({
 								className={
 									/* The app's one slider look (`window-glass-setting.tsx`):
 									   accent to the fill, sunken past it, a round accent thumb. */
-									"h-4 w-full cursor-pointer appearance-none bg-transparent bg-center bg-no-repeat " +
+									"h-4 w-full cursor-pointer appearance-none bg-transparent bg-center bg-no-repeat disabled:cursor-not-allowed " +
 									"bg-[length:100%_6px] " +
 									"bg-[linear-gradient(to_right,var(--color-accent)_0_var(--fill),var(--color-sunken)_var(--fill)_100%)] " +
 									"[&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent " +
-									"[&::-webkit-slider-thumb]:hover:bg-accent-hover"
+									"[&::-webkit-slider-thumb]:hover:bg-accent-hover " +
+									/* DISABLED CHANGES COLOUR, NEVER OPACITY (`docs/branding.md`; design
+									   review round 2, D8): while saving the thumb and the filled run
+									   take the disabled ink, so the one control that stayed accent
+									   no longer looks live. */
+									"disabled:[&::-webkit-slider-thumb]:bg-ink-disabled disabled:[&::-webkit-slider-thumb]:hover:bg-ink-disabled " +
+									"disabled:bg-[linear-gradient(to_right,var(--color-ink-disabled)_0_var(--fill),var(--color-sunken)_var(--fill)_100%)]"
 								}
 							/>
 							<Button
@@ -532,17 +561,33 @@ export function AgentAvatarCropper({
 					aria-disabled={busy}
 					aria-busy={busy || undefined}
 					/*
-					 * ONE WIDTH ACROSS THE SAVE (design review round 1, D6). "Save picture"
-					 * and "Saving..." measure 86 and 62px, so the primary action contracted
-					 * 24px at the exact moment the person was watching it for a result, and
-					 * Cancel slid left with it. The pill holds its own width instead.
+					 * ONE WIDTH ACROSS THE SAVE (design review round 1, D6; round 2, D6 for
+					 * other locales). "Save picture" and "Saving..." measure 86 and 62px in
+					 * English, so the primary action contracted 24px at the exact moment the
+					 * person was watching it for a result, and Cancel slid left with it. A
+					 * fixed `min-w` only fits the language it was measured in (fr/ru/es are
+					 * wider in both states, hi/ur grow), so both labels are stacked in one
+					 * grid cell: the pill is always as wide as the LONGER of the two in the
+					 * active locale, and the inactive one is `invisible` (and `aria-hidden`,
+					 * so it is not part of the name).
 					 */
-					className="min-w-[5.5rem] aria-disabled:text-ink-disabled!"
+					className="aria-disabled:text-ink-disabled!"
 					data-agent-avatar-save=""
 				>
-					{busy
-						? t("ui.agents.avatar.editor.saving")
-						: t("ui.agents.avatar.editor.save")}
+					<span className="inline-grid">
+						<span
+							aria-hidden={busy || undefined}
+							className={cn("col-start-1 row-start-1", busy && "invisible")}
+						>
+							{t("ui.agents.avatar.editor.save")}
+						</span>
+						<span
+							aria-hidden={!busy || undefined}
+							className={cn("col-start-1 row-start-1", !busy && "invisible")}
+						>
+							{t("ui.agents.avatar.editor.saving")}
+						</span>
+					</span>
 				</Button>
 				<Button
 					type="button"
