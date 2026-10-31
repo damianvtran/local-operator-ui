@@ -90,7 +90,15 @@ export const useAskOutcomes = ({
 			setAnswering(true);
 			setOutcomes((current) => ({
 				...current,
-				[act.askId]: { sending: true, refused: null },
+				[act.askId]: {
+					sending: true,
+					refused: null,
+					/* Revising an accepted decision is not reopening it. Keep only the
+					 * already-masked receipt, never the typed request or retry closure. */
+					...(act.kind === "changed" && current[act.askId]?.settled
+						? { settled: current[act.askId]?.settled }
+						: {}),
+				},
 			}));
 			void (async () => {
 				let outcome: AnswerOutcome;
@@ -117,6 +125,9 @@ export const useAskOutcomes = ({
 						[act.askId]: {
 							sending: false,
 							refused: askRefusalSentence(outcome.error),
+							...(act.kind === "changed" && current[act.askId]?.settled
+								? { settled: current[act.askId]?.settled }
+								: {}),
 							/*
 							 * ONLY THE OWNER'S OWN REFUSAL CLOSES §10's CHANGE DOOR, and only a
 							 * transport failure earns a Retry: an owner's verdict (`already
@@ -136,7 +147,13 @@ export const useAskOutcomes = ({
 					 */
 					setOutcomes((current) => ({
 						...current,
-						[act.askId]: { sending: false, refused: null },
+						[act.askId]: {
+							sending: false,
+							refused: null,
+							...(act.kind === "changed" && current[act.askId]?.settled
+								? { settled: current[act.askId]?.settled }
+								: {}),
+						},
 					}));
 					return;
 				}
@@ -144,7 +161,23 @@ export const useAskOutcomes = ({
 					...current,
 					[act.askId]:
 						act.kind === "changed"
-							? { sending: false, refused: null, changed: true }
+							? {
+									sending: false,
+									refused: null,
+									changed: true,
+									/* A revision has its own receipt even when the aggregate
+									 * still says open. Successful sends update only public/masked
+									 * answer cells; refusal and Retry retain the prior decision. */
+									settled: {
+										...current[act.askId]?.settled,
+										status: current[act.askId]?.settled?.status ?? "answered",
+										at: now(),
+										answers: askPaintableAnswers(
+											act.questions ?? [],
+											act.answers ?? {},
+										),
+									},
+								}
 							: {
 									sending: false,
 									refused: null,

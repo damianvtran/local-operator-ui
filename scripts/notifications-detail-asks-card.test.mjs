@@ -853,6 +853,22 @@ test(
 			await act(async () => {
 				await page.client.invalidateQueries({ queryKey: ["desktop", "asks"] });
 			});
+			/* Delivery closes the legal edit door but does not replace the just-used
+			 * slot. Explicit filtering releases local action continuity into history. */
+			assert.ok(
+				await page.settle(
+					() =>
+						!RX_4.test(page.card("a-1111")?.textContent ?? "") &&
+						!page.buttonIn(page.card("a-1111"), "Change answer"),
+				),
+				`delivered card=${page.card("a-1111")?.textContent}; aggregate=${JSON.stringify((page.client.getQueryData(["desktop", "asks"]) ?? []).map((row) => ({ ask_id: row.ask_id, status: row.status, delivered: row.delivered })))}`,
+			);
+			assert.equal(
+				page.pane().querySelector("[data-lo-ask-row]")?.dataset.loAskRow,
+				"a-1111",
+			);
+			assert.equal(page.card("a-2222").dataset.loAskStatus, "open");
+			await page.press(page.buttonIn(page.pane(), "Settled · 1"));
 			assert.ok(
 				await page.settle(() =>
 					page.settledRows().some((row) => row.startsWith("Answered")),
@@ -876,10 +892,7 @@ test(
 					"",
 				RX_3,
 			);
-			assert.equal(
-				page.card("a-2222").getAttribute("data-lo-ask-status"),
-				"open",
-			);
+			assert.equal(page.asks[1].status, "open");
 		} finally {
 			await page.unmount();
 		}

@@ -1742,6 +1742,11 @@ export const askStatusText = (ask: PendingAsk, nowMs: number): string => {
 	const presentation = presentAsk(ask);
 	if (presentation.status === "late" && presentation.delivering)
 		return ASK_LATE_UNDELIVERED_TEXT;
+	/* A local acknowledgement can stay expanded in its action slot after the
+	 * wire confirms delivery. The generic answered copy names the queue, so only
+	 * use it while delivery is actually pending; no new copy/second status owner. */
+	if (presentation.status === "answered" && !presentation.delivering)
+		return askStatusWord("answered");
 	const base = ASK_STATUS_COPY[presentation.status];
 	if (presentation.status !== "open") return base;
 	const expiry = askExpiryText(ask, nowMs);

@@ -1034,8 +1034,20 @@ const AskRow = ({
 	 * which is the door's own promise — a revision is free while the answer is undelivered.
 	 */
 	useEffect(() => {
-		if (outcome?.changed === true) setChanging(false);
-	}, [outcome?.changed]);
+		if (
+			outcome?.changed === true ||
+			(accepted && outcome?.refusedByOwner === true)
+		) {
+			setChanging(false);
+			/* `accepted` was already true when revision began, so its first-answer
+			 * cleanup does not fire again. A successful revision must also retire
+			 * the retyped secret. A transport failure keeps it for Retry/edit;
+			 * an owner's closed-window refusal must retire it with the form. */
+			setSecrets((current) =>
+				Object.keys(current).length === 0 ? current : {},
+			);
+		}
+	}, [outcome?.changed, outcome?.refusedByOwner, accepted]);
 	/*
 	 * The FORM'S OWN completeness, read through the SAME `askAnswerMap` the first-answer
 	 * door uses — no revision-specific rule exists, because the wire's body is the same
@@ -1228,6 +1240,7 @@ const AskRow = ({
 			ref={rowRef}
 			data-lo-ask-row={ask.ask_id}
 			data-lo-ask-status={status}
+			tabIndex={-1}
 			/*
 			 * ESCAPE IS CLAIMED AT THE CARD, NOT AT THE CHOOSER'S WRAPPER (agent review
 			 * round 2, M-B). The chooser's state is card-local, so the card is the scope
@@ -1928,6 +1941,27 @@ export const AskPanel = ({
 	 * forgets every ask that is not answerable now; the counter re-renders even when the
 	 * pressed chip was already selected, which `setFilter` alone would skip.
 	 */
+	/* An answer changes the decision counts, not the user's action context.
+	 * Remember only slots this mount actually showed as answerable. A local
+	 * accepted receipt stays in that slot in All, including during revision;
+	 * explicit filtering/navigation releases it. No server order is rolled back,
+	 * no unrelated question is pinned, and neither scroll port is moved. */
+	const actionSlots = useRef<Map<string, number>>(new Map());
+	for (const row of view.rows) {
+		if (row.canAnswer && !actionSlots.current.has(row.ask.ask_id))
+			actionSlots.current.set(row.ask.ask_id, actionSlots.current.size);
+	}
+	const localReceiptIds = new Set(
+		view.rows
+			.filter(
+				(row) =>
+					actionSlots.current.has(row.ask.ask_id) &&
+					outcomes?.[row.ask.ask_id]?.settled?.status === "answered" &&
+					(row.status === "answered" || row.status === "late"),
+			)
+			.map((row) => row.ask.ask_id),
+	);
+	const prevReceiptIds = useRef<ReadonlySet<string>>(new Set());
 	const answerableSeen = useRef<Set<string>>(new Set());
 	for (const row of view.rows) {
 		if (row.canAnswer) answerableSeen.current.add(row.ask.ask_id);
@@ -1935,6 +1969,11 @@ export const AskPanel = ({
 	const cardHeights = useRef<Map<string, number>>(new Map());
 	const [, setReleases] = useState(0);
 	const releaseHolds = () => {
+		actionSlots.current = new Map(
+			view.rows
+				.filter((row) => row.canAnswer)
+				.map((row, index) => [row.ask.ask_id, index]),
+		);
 		answerableSeen.current = new Set(
 			view.rows.filter((row) => row.canAnswer).map((row) => row.ask.ask_id),
 		);
@@ -1942,6 +1981,20 @@ export const AskPanel = ({
 		setReleases((count) => count + 1);
 	};
 	const shown = askPanelHalves(view.rows, answerableSeen.current);
+	const actionRows =
+		filter === "all"
+			? [
+					...shown.pending,
+					...shown.settled.filter((row) => localReceiptIds.has(row.ask.ask_id)),
+				].sort(
+					(a, b) =>
+						(actionSlots.current.get(a.ask.ask_id) ?? Number.MAX_SAFE_INTEGER) -
+						(actionSlots.current.get(b.ask.ask_id) ?? Number.MAX_SAFE_INTEGER),
+				)
+			: shown.pending;
+	const historyRows = (showPending ? shown.settled : settled).filter(
+		(row) => filter !== "all" || !localReceiptIds.has(row.ask.ask_id),
+	);
 	const heldIds = new Set(
 		shown.pending.filter((row) => row.lapsed).map((row) => row.ask.ask_id),
 	);
@@ -2151,6 +2204,19 @@ export const AskPanel = ({
 				) ?? []),
 			].map((el) => [el.getAttribute("data-lo-ask-row"), el]),
 		);
+		/* If accepting removed the just-used control, focus its OWN surviving
+		 * acknowledgement without scrolling. A keyboard already moved elsewhere
+		 * wins; never land it on the unrelated next ask's irreversible controls. */
+		const justAccepted =
+			focusedAsk !== null &&
+			localReceiptIds.has(focusedAsk) &&
+			!prevReceiptIds.current.has(focusedAsk);
+		prevReceiptIds.current = localReceiptIds;
+		if (justAccepted) {
+			const current = document.activeElement;
+			if (!current || current === document.body || !current.isConnected)
+				cards.get(focusedAsk)?.focus({ preventScroll: true });
+		}
 		for (const row of view.rows) {
 			if (!row.canAnswer) continue;
 			const height =
@@ -2534,7 +2600,7 @@ export const AskPanel = ({
 				</div>
 			) : null}
 			{showPending
-				? shown.pending.map((presentation) => {
+				? actionRows.map((presentation) => {
 						const id = presentation.ask.ask_id;
 						if (!heldIds.has(id)) return askRow(presentation);
 						const height = cardHeights.current.get(id);
@@ -2560,7 +2626,7 @@ export const AskPanel = ({
 						);
 					})
 				: null}
-			{showSettledRows && (showPending ? shown.settled : settled).length > 0 ? (
+			{showSettledRows && historyRows.length > 0 ? (
 				/*
 				 * THE SETTLED GROUP: a plain list in the same column, with a quiet boundary
 				 * label drawn only while there IS a pending half above it to be separated
@@ -2585,7 +2651,7 @@ export const AskPanel = ({
 							{t("ui.chat.asks.settled_heading")}
 						</p>
 					) : null}
-					{(showPending ? shown.settled : settled).map((presentation) =>
+					{historyRows.map((presentation) =>
 						/* Settled is the decision, not a claim of delivery. Keep the
 						 * delivery-aware card and legal revision door visible until
 						 * the authoritative delivered row makes it read-only history. */

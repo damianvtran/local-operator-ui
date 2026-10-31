@@ -390,7 +390,7 @@ async function mount({
 						};
 					case "sessions.answer": {
 						posts.push(request);
-						const reply = answer(posts.length);
+						const reply = await answer(posts.length);
 						if (reply.status !== 200)
 							return {
 								status: reply.status,
@@ -590,6 +590,206 @@ test("reel preserves visible row offset across refresh, then follows the next us
 		await page.unmount();
 	}
 });
+
+for (const surface of ["pane", "fleet"]) {
+	for (const holdAggregate of [true, false]) {
+		test(
+			`R11 ${surface}: revision keeps accepted receipt through sending failure retry (${holdAggregate ? "lagged" : "fresh"} read)`,
+			{ timeout: 30_000 },
+			async () => {
+				let finishRevision;
+				const page = await openOnA({
+					surface,
+					wide: true,
+					holdAggregate,
+					seed: (asks) =>
+						asks[0].questions.push({
+							id: "SECRET",
+							question: "Synthetic mixed marker",
+							secret: true,
+							persist: false,
+							options: [],
+						}),
+					answer: (call) =>
+						call === 2
+							? new Promise((resolve) => {
+									finishRevision = resolve;
+								})
+							: { status: 200 },
+				});
+				try {
+					await chooseFirstOption(page);
+					await typeSecret(page.card("a-1111"));
+					await page.press(page.buttonIn(page.card("a-1111"), "Send answer"));
+					assert.ok(
+						await page.settle(() =>
+							Boolean(page.buttonIn(page.card("a-1111"), "Change answer")),
+						),
+					);
+					const assertAccepted = (revisionFormLive = false) => {
+						assert.deepEqual(page.filterText(), [
+							"All · 2",
+							"Pending · 1",
+							"Settled · 1",
+						]);
+						assert.equal(page.card("a-1111").dataset.loAskStatus, "answered");
+						assert.equal(
+							Boolean(page.buttonIn(page.card("a-1111"), "Send answer")),
+							false,
+						);
+						assert.equal(
+							page.card("a-1111").textContent.includes(SECRET_VALUE),
+							false,
+						);
+						/* A live failed form keeps its retyped value for Retry/edit;
+						 * neither successful acceptance may retain it in state. */
+						if (!revisionFormLive)
+							assert.equal(
+								stateBlob(page.container).includes(SECRET_VALUE),
+								false,
+								"successful acceptance/revision retires the typed secret",
+							);
+					};
+					assertAccepted();
+					await page.press(page.buttonIn(page.card("a-1111"), "Change answer"));
+					await page.press(
+						page.card("a-1111").querySelectorAll("[data-ask-option]")[1],
+					);
+					await typeSecret(page.card("a-1111"));
+					await page.press(page.buttonIn(page.card("a-1111"), "Update answer"));
+					assert.ok(await page.settle(() => page.posts.length === 2));
+					assertAccepted(true);
+					await act(async () =>
+						finishRevision({
+							status: 503,
+							detail: {
+								code: "transport.failed",
+								message: "Synthetic interrupted transport",
+							},
+						}),
+					);
+					assert.ok(
+						await page.settle(() =>
+							Boolean(page.buttonIn(page.card("a-1111"), "Retry")),
+						),
+					);
+					assertAccepted(true);
+					await page.press(page.buttonIn(page.card("a-1111"), "Retry"));
+					assert.ok(
+						await page.settle(
+							() =>
+								page.posts.length === 3 &&
+								Boolean(page.buttonIn(page.card("a-1111"), "Change answer")),
+						),
+					);
+					assertAccepted();
+					assert.equal(
+						page.card("a-1111").textContent.includes("No rotation"),
+						true,
+					);
+					assert.equal(page.posts[2].revise, true);
+					assert.equal(page.card("a-2222").dataset.loAskStatus, "open");
+				} finally {
+					finishRevision?.({ status: 200 });
+					await page.unmount();
+				}
+			},
+		);
+	}
+}
+
+test(
+	"R11: owner-closed revision keeps masked receipt and retires the secret form",
+	{ timeout: 30_000 },
+	async () => {
+		const page = await openOnA({
+			holdAggregate: true,
+			wide: true,
+			seed: (asks) =>
+				asks[0].questions.push({
+					id: "SECRET",
+					question: "Synthetic mixed marker",
+					secret: true,
+					persist: false,
+					options: [],
+				}),
+			answer: (call) =>
+				call === 2
+					? { status: 409, detail: "already answered by desktop." }
+					: { status: 200 },
+		});
+		try {
+			await chooseFirstOption(page);
+			await typeSecret(page.card("a-1111"));
+			await page.press(page.buttonIn(page.card("a-1111"), "Send answer"));
+			assert.ok(
+				await page.settle(() =>
+					Boolean(page.buttonIn(page.card("a-1111"), "Change answer")),
+				),
+			);
+			await page.press(page.buttonIn(page.card("a-1111"), "Change answer"));
+			await typeSecret(page.card("a-1111"));
+			await page.press(page.buttonIn(page.card("a-1111"), "Update answer"));
+			assert.ok(
+				await page.settle(
+					() =>
+						page.posts.length === 2 &&
+						!page.buttonIn(page.card("a-1111"), "Change answer"),
+				),
+			);
+			assert.deepEqual(page.filterText(), [
+				"All · 2",
+				"Pending · 1",
+				"Settled · 1",
+			]);
+			assert.equal(page.card("a-1111").dataset.loAskStatus, "answered");
+			assert.equal(Boolean(page.buttonIn(page.card("a-1111"), "Retry")), false);
+			assert.equal(stateBlob(page.container).includes(SECRET_VALUE), false);
+		} finally {
+			await page.unmount();
+		}
+	},
+);
+
+test(
+	"D9 U5: accepted ask keeps its action slot in All without changing truthful counts",
+	{ timeout: 30_000 },
+	async () => {
+		const page = await openOnA({ wide: true, holdAggregate: true });
+		try {
+			const firstId = () =>
+				page.pane().querySelector("[data-lo-ask-row]")?.dataset.loAskRow;
+			assert.equal(firstId(), "a-1111");
+			await chooseFirstOption(page);
+			const send = page.buttonIn(page.card("a-1111"), "Send answer");
+			send.focus();
+			await page.press(send);
+			assert.ok(
+				await page.settle(() =>
+					Boolean(page.buttonIn(page.card("a-1111"), "Change answer")),
+				),
+			);
+			assert.equal(
+				document.activeElement?.closest("[data-lo-ask-row]")?.dataset.loAskRow,
+				"a-1111",
+				"lost submit focus stays on its own acknowledgement",
+			);
+			assert.equal(
+				firstId(),
+				"a-1111",
+				"the action slot acknowledges this ask instead of substituting the unrelated pending ask",
+			);
+			assert.deepEqual(page.filterText(), [
+				"All · 2",
+				"Pending · 1",
+				"Settled · 1",
+			]);
+			assert.equal(page.card("a-2222").dataset.loAskStatus, "open");
+		} finally {
+			await page.unmount();
+		}
+	},
+);
 
 const RX_7 = /\s+/;
 const RX_NO_ANSWER = /No answer given/;
