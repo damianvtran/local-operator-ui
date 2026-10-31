@@ -123,6 +123,34 @@ const SESSION_COUNT = param("sessions", 24);
  * knob that puts the clamp on the open path being measured.
  */
 const USER_LINES = param("userLines", 0);
+const LEADING_NON_WORD_RE = /^[^\p{L}\p{N}]+/u;
+/** A fixed-size pasted brief for the extreme-length clamp regression arm. */
+const USER_CHARS = Math.max(0, Math.floor(param("userChars", 0)));
+/** Explicit-break lines exercise the cap boundary without paragraph margins. */
+const USER_EXAMPLE = new URLSearchParams(window.location.search).get(
+	"userExample",
+);
+if (USER_EXAMPLE === "threshold") {
+	/*
+	 * A controlled boundary, not a claim about the current prose typography:
+	 * eight normal 22.4px lines are 179.2px, so cannot land exactly on 174px.
+	 * This arm's eight hard-break lines use 21.75px to exercise equality in the
+	 * real component, while the other arms keep the shipped stylesheet intact.
+	 */
+	const boundaryStyle = document.createElement("style");
+	boundaryStyle.textContent =
+		'[data-record-kind="user"] p { line-height:21.75px }';
+	document.head.append(boundaryStyle);
+}
+/* Theme is fixture-owned: the before/after capture must use the same palette. */
+const fixtureTheme = new URLSearchParams(window.location.search).get("theme");
+if (fixtureTheme === "light" || fixtureTheme === "dark") {
+	const themeName =
+		fixtureTheme === "light" ? "localOperatorLight" : "localOperatorDark";
+	useUiPreferencesStore.getState().setTheme(themeName);
+	// This fixture mounts ChatPage, not the outer app's theme-provider effect.
+	document.documentElement.dataset.theme = themeName;
+}
 /** Steps in the INCOMING session's transcript: the one whose paint we time. */
 const INCOMING_STEPS = param("steps", 200);
 /** Steps in the outgoing session, so the view being replaced is real work too. */
@@ -164,13 +192,24 @@ function steps(count: number): TranscriptStep[] {
 			out.push({
 				kind: "user",
 				text:
-					USER_LINES > 0
+					USER_EXAMPLE === "threshold"
 						? Array.from(
-								{ length: USER_LINES },
-								(_, line) =>
-									`Turn ${turn}, line ${line + 1}: a pasted line of the brief that makes this turn taller than the clamp.`,
-							).join("\n\n")
-						: `Turn ${turn}: check the workspace and report what changed since yesterday, briefly.`,
+								{ length: 8 },
+								(_, line) => `Boundary line ${line + 1}`,
+							).join("  \n")
+						: USER_EXAMPLE === "code"
+							? `A pasted stack trace:\n\n\`\`\`text\n${Array.from({ length: 40 }, (_, line) => `trace line ${line + 1}: inspect workspace`).join("\n")}\n\`\`\``
+							: USER_CHARS > 0
+								? `Turn ${turn}: ${"a pasted brief with selectable hidden text. ".repeat(
+										Math.ceil(USER_CHARS / 43),
+									)}`.slice(0, USER_CHARS)
+								: USER_LINES > 0
+									? Array.from(
+											{ length: USER_LINES },
+											(_, line) =>
+												`Turn ${turn}, line ${line + 1}: a pasted line of the brief that makes this turn taller than the clamp.`,
+										).join("\n\n")
+									: `Turn ${turn}: check the workspace and report what changed since yesterday, briefly.`,
 			});
 		} else if (i % 3 === 1) {
 			out.push({
@@ -1382,7 +1421,7 @@ const api: Probe = {
 			 * `⣾` -> `⣽`. A change in what the line SAYS still gets a sample.
 			 */
 			const spinnerless = (text: string | null) =>
-				text === null ? null : text.replace(/^[^\p{L}\p{N}]+/u, "");
+				text === null ? null : text.replace(LEADING_NON_WORD_RE, "");
 			const cueSignature = (cues: PaneCues) =>
 				JSON.stringify([
 					cues.rows,

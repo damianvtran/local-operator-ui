@@ -320,6 +320,10 @@ import {
 	refusalVerdict,
 } from "./user-attachments";
 import {
+	observeUserTurnClamp,
+	overflowsUserTurnClamp,
+} from "./user-turn-clamp";
+import {
 	type WorkingLineState,
 	deriveWorkingLine,
 	workingLineInputFor,
@@ -1143,16 +1147,28 @@ const UserRow = memo(function UserRow({
 		);
 	});
 	/*
-	 * Whether this turn is long enough to need D2's eight-line clamp, MEASURED
-	 * rather than guessed from a character count: the box is clamped first and
-	 * then asked whether it is hiding anything, so a `Show more` can never appear
-	 * on a turn that is already fully visible. Skipped while expanded, where the
-	 * clamp is off and the box would always report itself as fitting.
+	 * D2's eight-line clamp. The CAP is a class applied whenever the turn is
+	 * collapsed, from the first paint, so a long turn's first painted height IS
+	 * its settled height; `user-turn-clamp.ts` records why the first build, which
+	 * capped only after measuring an uncapped box, never clamped anything.
+	 *
+	 * What is measured is only whether the `Show more` control EXISTS: a turn that
+	 * fits under the cap must not grow a control that reveals nothing. The answer
+	 * compares the content's height to the cap's constant, so it is the same
+	 * collapsed or expanded (a turn remounted expanded keeps its `Show less`).
 	 */
 	const [expanded, setExpanded] = useTranscriptViewBoolean(record.id);
-	const [clamped, setClamped] = useState(false);
+	const [overflows, setOverflows] = useState(false);
 	const bodyRef = useRef<HTMLDivElement>(null);
 	/*
+	 * The open-path decision, in the LAYOUT effect so the control is in the first
+	 * painted frame (a later answer lands the 34px control one frame late, the
+	 * height change the cap exists to avoid). The read falls after the commit's
+	 * DOM is complete, so it is answered by the layout the transcript's open pays
+	 * anyway; every row's read is in the same commit, and their setStates batch
+	 * into one synchronous re-render. `user-turn-clamp.ts` records the observer-only
+	 * alternative that was measured and rejected.
+	 *
 	 * The suppression below is one line rather than a block because biome attaches
 	 * an ignore to the NEXT line: a multi-line one leaves the rule unreported and
 	 * active, which is how this arrived as a red lint run with the reason already
@@ -1166,10 +1182,14 @@ const UserRow = memo(function UserRow({
 	 */
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `remainingContent` re-measures the clamp; see above
 	useLayoutEffect(() => {
-		if (expanded) return;
 		const el = bodyRef.current;
-		if (el) setClamped(el.scrollHeight > el.clientHeight + 1);
-	}, [expanded, remainingContent]);
+		if (el) setOverflows(overflowsUserTurnClamp(el.scrollHeight));
+	}, [remainingContent]);
+	/* Changes after mount: the one shared observer (`user-turn-clamp.ts`). */
+	useEffect(() => {
+		const el = bodyRef.current;
+		return el ? observeUserTurnClamp(el, setOverflows) : undefined;
+	}, []);
 	return (
 		<MessageContainer isUser isSmallView={isSmallView}>
 			{/*
@@ -1272,15 +1292,22 @@ const UserRow = memo(function UserRow({
 							className={cn(
 								"relative",
 								/*
-								 * Eight lines of `text-body` at 1.55 is 8 x 21.7 = 174px (D2).
+								 * Eight lines of `text-body` at 1.55 is 8 x 21.7 = 174px (D2);
+								 * `USER_TURN_CLAMP_PX` is the same number, pinned equal by
+								 * `scripts/user-turn-clamp.test.mjs` (Tailwind needs the literal).
 								 *
-								 * The clamp is on the BLOCK, because a pasted stack trace is
-								 * still one user turn and would otherwise own the pane - and
-								 * the affordance below is rendered only when the clamp is
-								 * actually hiding something, so a turn that fits never grows a
-								 * control that reveals nothing.
+								 * UNCONDITIONAL while collapsed, never gated on a measurement:
+								 * the box paints at its settled height from the first frame. A
+								 * turn that fits is shorter than the cap, so the class changes
+								 * nothing for it. The clamp is on the turn's PROSE block (quote,
+								 * seal, text): a pasted stack trace is one turn and would
+								 * otherwise own the pane. Attachments and the control sit
+								 * outside it - the control must never be what the cap clips,
+								 * and a one-line turn with a screenshot is not a long turn.
+								 * The hidden text stays in the DOM, so selection, copy and
+								 * quoting reach all of it.
 								 */
-								!expanded && clamped ? "max-h-[174px] overflow-hidden" : "",
+								!expanded && "max-h-[174px] overflow-hidden",
 							)}
 						>
 							{/* The quote a quoted turn was sent with, rendered as the same
@@ -1451,112 +1478,113 @@ const UserRow = memo(function UserRow({
 								content={seal ? seal.request : remainingContent}
 								credentialCitations
 							/>
-							{clamped && (
-								/*
-								 * A 30px full-width row INSIDE the block, with no divider
-								 * (D2, the Raycast idiom): the clamp and its release are one
-								 * object, so the release sits on the block's own ground
-								 * rather than behind a rule between them.
-								 */
-								<button
-									type="button"
-									onClick={() => setExpanded((value) => !value)}
-									aria-expanded={expanded}
-									className={cn(
-										"mt-1 h-[30px] w-full text-center text-ink-muted text-meta",
-										"hover:text-ink",
-									)}
-								>
-									{expanded ? "Show less" : "Show more"}
-								</button>
-							)}
-							{(record.documents?.length ?? 0) > 0 && (
-								<div className={cn("mt-2 flex flex-col gap-1")}>
-									{record.documents?.map((document, index, documents) => {
-										/*
-										 * Judged by position and origin path as well as digest
-										 * (QA R5 Q2): an inline `.env` under 768 B has no digest,
-										 * and its card offered Open on the real file.
-										 */
-										const verdict = refusalVerdict(refusedAttachments, {
-											messageId: record.id,
-											kind: "document",
-											position: index,
-											count: documents.length,
-											digest: document.attachment,
-											path: document.path,
-										});
-										return (
-											<SentFileCard
-												key={document.id}
-												document={document}
-												remote={remote}
-												placementKnown={placementKnown}
-												sessionId={
-													scope &&
-													!scope.childId &&
-													canMaterialiseAttachment(capable, verdict)
-														? scope.sessionId
-														: null
-												}
-												refused={verdict === false}
-												withheld={verdict === "pending"}
-											/>
-										);
-									})}
-								</div>
-							)}
-							{pictures.length > 0 && (
-								<div className={cn("mt-2 flex flex-col gap-2")}>
-									{pictures.map((image, index) => (
-										/*
-										 * The picture's own handle when the wire carried one (an artifact's
-										 * `name`), else the per-message scheme. THE SCHEME KEEPS ITS
-										 * PER-MESSAGE SCOPE (UX round 1, U1): a conversation-wide counter
-										 * is not available to this render — rows mount and unmount with
-										 * the windowed transcript, so a number spanning it would RENUMBER
-										 * as the reader scrolls, and an unstable name is worse for a
-										 * screen reader than a repeated one. Within a message the
-										 * pictures are numbered; across messages the row grouping is the
-										 * context, and the picture's own handle discriminates wherever
-										 * one travelled with it.
-										 */
-										<CanonicalImage
-											key={image.id}
-											image={image}
-											scope={scope}
-											label={userImageLabel(image, index, pictures.length)}
-											/*
-											 * THIS MESSAGE is the group: the reader's own attachments are one
-											 * set, so a press walks the pictures of the turn it belongs
-											 * to and never the conversation's other screenshots.
-											 */
-											group={{
-												images: pictures,
-												index,
-												labelFor: userImageLabel,
-											}}
-											pathActions={userImagePathActions(
-												image,
-												scope,
-												conversationId,
-												remote || !placementKnown,
-												canMaterialiseAttachment(
-													capable,
-													refusalVerdict(refusedAttachments, {
-														messageId: record.id,
-														kind: "image",
-														position: index,
-														count: pictures.length,
-														digest: image.attachment,
-													}),
-												),
-											)}
-										/>
-									))}
-								</div>
-							)}
 						</div>
+						{overflows && (
+							/*
+							 * A 30px full-width row INSIDE the bubble, with no divider
+							 * (D2, the Raycast idiom): the clamp and its release are one
+							 * object, so the release sits on the block's own ground
+							 * rather than behind a rule between them. It follows the capped
+							 * box rather than living in it, so the cap cannot clip it.
+							 */
+							<button
+								type="button"
+								onClick={() => setExpanded((value) => !value)}
+								aria-expanded={expanded}
+								className={cn(
+									"mt-1 h-[30px] w-full text-center text-ink-muted text-meta",
+									"hover:text-ink",
+								)}
+							>
+								{expanded ? "Show less" : "Show more"}
+							</button>
+						)}
+						{(record.documents?.length ?? 0) > 0 && (
+							<div className={cn("mt-2 flex flex-col gap-1")}>
+								{record.documents?.map((document, index, documents) => {
+									/*
+									 * Judged by position and origin path as well as digest
+									 * (QA R5 Q2): an inline `.env` under 768 B has no digest,
+									 * and its card offered Open on the real file.
+									 */
+									const verdict = refusalVerdict(refusedAttachments, {
+										messageId: record.id,
+										kind: "document",
+										position: index,
+										count: documents.length,
+										digest: document.attachment,
+										path: document.path,
+									});
+									return (
+										<SentFileCard
+											key={document.id}
+											document={document}
+											remote={remote}
+											placementKnown={placementKnown}
+											sessionId={
+												scope &&
+												!scope.childId &&
+												canMaterialiseAttachment(capable, verdict)
+													? scope.sessionId
+													: null
+											}
+											refused={verdict === false}
+											withheld={verdict === "pending"}
+										/>
+									);
+								})}
+							</div>
+						)}
+						{pictures.length > 0 && (
+							<div className={cn("mt-2 flex flex-col gap-2")}>
+								{pictures.map((image, index) => (
+									/*
+									 * The picture's own handle when the wire carried one (an artifact's
+									 * `name`), else the per-message scheme. THE SCHEME KEEPS ITS
+									 * PER-MESSAGE SCOPE (UX round 1, U1): a conversation-wide counter
+									 * is not available to this render — rows mount and unmount with
+									 * the windowed transcript, so a number spanning it would RENUMBER
+									 * as the reader scrolls, and an unstable name is worse for a
+									 * screen reader than a repeated one. Within a message the
+									 * pictures are numbered; across messages the row grouping is the
+									 * context, and the picture's own handle discriminates wherever
+									 * one travelled with it.
+									 */
+									<CanonicalImage
+										key={image.id}
+										image={image}
+										scope={scope}
+										label={userImageLabel(image, index, pictures.length)}
+										/*
+										 * THIS MESSAGE is the group: the reader's own attachments are one
+										 * set, so a press walks the pictures of the turn it belongs
+										 * to and never the conversation's other screenshots.
+										 */
+										group={{
+											images: pictures,
+											index,
+											labelFor: userImageLabel,
+										}}
+										pathActions={userImagePathActions(
+											image,
+											scope,
+											conversationId,
+											remote || !placementKnown,
+											canMaterialiseAttachment(
+												capable,
+												refusalVerdict(refusedAttachments, {
+													messageId: record.id,
+													kind: "image",
+													position: index,
+													count: pictures.length,
+													digest: image.attachment,
+												}),
+											),
+										)}
+									/>
+								))}
+							</div>
+						)}
 					</div>
 					{/*
 					 * `!link.quoteAvailable` is the one-control rule: when the reader's
