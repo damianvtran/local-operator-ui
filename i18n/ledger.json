@@ -1719,8 +1719,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "3399e4015ace811013fb16d9f021016eaecf8ed700e6d34ee2c0d0029068832a",
-			"target_sha256": "bb141b4c3f53b0e8b0c0d657ebb16bcc42b083d2ab69e2c545e6233dea1b6d21",
+			"source_sha256": "4b13cadb9306d3040154d7f8caaf771a299d6603d206fecec4e9392d1dd249f6",
+			"target_sha256": "f7b7ee721ff704d2b3c1df15f9adf8c26c181ff54bca597ce8559d8a625604f3",
 			"translator": {
 				"agent": "coder",
 				"model": "radient/auto",
@@ -1728,21 +1728,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
+					"agent": "qa-tester",
 					"model": "radient/auto",
-					"date": "2026-10-29",
+					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "acd53e2cf056-r4-es",
+					"instance": "4ad01a6b10df-1466-union-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/acd53e2cf056-r4-es.json",
-					"receipt_sha256": "2e8466fb2fa602f6cd2ee49dc89149bff0a55e0e7b2e30014fee7dd6813846b2",
-					"scope": "ui.chat.asks: the 89 keys added in 930c8ec2d1, delta audit at the final head",
-					"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+					"receipt": "i18n/receipts/4ad01a6b10df-1466-union-es.json",
+					"receipt_sha256": "183bea506dcaacb6ef87cd5aef65b4530a55fa7869adc5578104034b9bbdee87",
+					"scope": "PR #1466 merged with main db81ff48a44 at d302f4aa33: independent union re-audit of the 2 branch keys (status.withdrawn, status.withdrawn_label) and the 2 keys main added (answer_options, recommended) onto the 26-key base. All 30 keys read; carried keys byte-identical to the side that authored them.",
+					"note": "The row binds the merged bytes, because both parents' whole-file hashes are stale by construction after a union. Receipt holds both hashes it audited."
 				}
 			],
 			"status": "audited",
@@ -1836,6 +1836,77 @@
 							},
 							"receipt": "i18n/receipts/41f2961e15d5.json",
 							"receipt_sha256": "c72d3d6f0d8a74ea595d698c3459730b7df21f4a270bbdf15cf7dd0c5ce18f97"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4b81cb96606b6bc647c5d3020b64346c5a3f48d757b8b2990ec47ec42c33c5ee",
+					"target_sha256": "b490c3e45c378410baef305c651261d01d3464e4e2f84a7241f3d21c53a894e2",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "8bb03406c9fd-1466-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/8bb03406c9fd-1466-es.json",
+							"receipt_sha256": "edad1d4ba2023b515c0bd41e1eaad35c5476f94a77722b46a690f3cf0ed54edd",
+							"scope": "PR #1466 delta audit of ui.chat.asks at 8f79f63fcb: new keys status.withdrawn + status.withdrawn_label; the other 26 values byte-identical to the superseded row."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3399e4015ace811013fb16d9f021016eaecf8ed700e6d34ee2c0d0029068832a",
+					"target_sha256": "bb141b4c3f53b0e8b0c0d657ebb16bcc42b083d2ab69e2c545e6233dea1b6d21",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "acd53e2cf056-r4-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/acd53e2cf056-r4-es.json",
+							"receipt_sha256": "2e8466fb2fa602f6cd2ee49dc89149bff0a55e0e7b2e30014fee7dd6813846b2",
+							"scope": "ui.chat.asks: the 89 keys added in 930c8ec2d1, delta audit at the final head",
+							"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+						}
+					],
+					"status": "audited",
+					"note": "main's pre-merge audit of ui.chat.asks, archived by the PR #1466 merge: it approved main's own delta, which the merged file keeps byte-for-byte beside this PR's two keys."
+				},
+				{
+					"source_sha256": "4b81cb96606b6bc647c5d3020b64346c5a3f48d757b8b2990ec47ec42c33c5ee",
+					"target_sha256": "b5867c678c7540ead654177adf2fcf2516b12b017691f126dd046dfc0c782f02",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "8bb03406c9fd-1466-r2-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/8bb03406c9fd-1466-r2-es.json",
+							"receipt_sha256": "1f4463b7a4f9c32b360f60cc44d980c80dc5d059335175692489dcba0b0c96b2",
+							"scope": "PR #1466 round-2 re-audit at 0944e1b5eb: status.withdrawn + withdrawn_label after the round-1 finding was fixed as recommended; other 26 values unchanged."
 						}
 					],
 					"status": "audited"
@@ -10183,8 +10254,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "3399e4015ace811013fb16d9f021016eaecf8ed700e6d34ee2c0d0029068832a",
-			"target_sha256": "a4a2c94653fa803259966ad1c1a37516dd6a23cfaceb1bfb70c57e526da93694",
+			"source_sha256": "4b13cadb9306d3040154d7f8caaf771a299d6603d206fecec4e9392d1dd249f6",
+			"target_sha256": "bc6445c67a68cecad1d41bdabfb1db9e6a86800ae9e16b588d72c9c0f83d4075",
 			"translator": {
 				"agent": "coder",
 				"model": "radient/auto",
@@ -10192,21 +10263,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
+					"agent": "qa-tester",
 					"model": "radient/auto",
-					"date": "2026-10-29",
-					"result": "clean-with-findings",
-					"instance": "e67567d1d626-r4-fr",
+					"date": "2026-10-30",
+					"result": "clean",
+					"instance": "4ad01a6b10df-1466-union-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/e67567d1d626-r4-fr.json",
-					"receipt_sha256": "6649136f08be868848f662a94ab8607c3756dbcac7239ac9e6bf8df7cbcd5e16",
-					"scope": "ui.chat.asks: the 89 keys added in 930c8ec2d1, delta audit at the final head",
-					"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+					"receipt": "i18n/receipts/4ad01a6b10df-1466-union-fr.json",
+					"receipt_sha256": "50162abae2a762ecd57bf52ed8505b501c118aa25a816111578442d0b52f2bdf",
+					"scope": "PR #1466 merged with main db81ff48a44 at d302f4aa33: independent union re-audit of the 2 branch keys (status.withdrawn, status.withdrawn_label) and the 2 keys main added (answer_options, recommended) onto the 26-key base. All 30 keys read; carried keys byte-identical to the side that authored them.",
+					"note": "The row binds the merged bytes, because both parents' whole-file hashes are stale by construction after a union. Receipt holds both hashes it audited."
 				}
 			],
 			"status": "audited",
@@ -10300,6 +10371,77 @@
 							},
 							"receipt": "i18n/receipts/a5485b421686.json",
 							"receipt_sha256": "b430a5f5354f5c620e53031881f6a036378e20c118a724b8645fefc0e77dab9e"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4b81cb96606b6bc647c5d3020b64346c5a3f48d757b8b2990ec47ec42c33c5ee",
+					"target_sha256": "fc177d47e8c5b19d7e4d52ea5a5df5e127fc9b508657ce05e0b653c0bef812a8",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "8bb03406c9fd-1466-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/8bb03406c9fd-1466-fr.json",
+							"receipt_sha256": "8772bc7eee484441dc9d1cf2915d289ad0ef490b66e5d8574517a03419a8997d",
+							"scope": "PR #1466 delta audit of ui.chat.asks at 8f79f63fcb: new keys status.withdrawn + status.withdrawn_label; the other 26 values byte-identical to the superseded row."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3399e4015ace811013fb16d9f021016eaecf8ed700e6d34ee2c0d0029068832a",
+					"target_sha256": "a4a2c94653fa803259966ad1c1a37516dd6a23cfaceb1bfb70c57e526da93694",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-29",
+							"result": "clean-with-findings",
+							"instance": "e67567d1d626-r4-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/e67567d1d626-r4-fr.json",
+							"receipt_sha256": "6649136f08be868848f662a94ab8607c3756dbcac7239ac9e6bf8df7cbcd5e16",
+							"scope": "ui.chat.asks: the 89 keys added in 930c8ec2d1, delta audit at the final head",
+							"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+						}
+					],
+					"status": "audited",
+					"note": "main's pre-merge audit of ui.chat.asks, archived by the PR #1466 merge: it approved main's own delta, which the merged file keeps byte-for-byte beside this PR's two keys."
+				},
+				{
+					"source_sha256": "4b81cb96606b6bc647c5d3020b64346c5a3f48d757b8b2990ec47ec42c33c5ee",
+					"target_sha256": "f7d6867103ce22e62079b2a8bac8bf199fd9af11505a3e13b65c52448502968b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "8bb03406c9fd-1466-r2-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/8bb03406c9fd-1466-r2-fr.json",
+							"receipt_sha256": "6e787af21fa6dec8d2639778ce905f3ea96bab18f79d19727125882fa609ed7b",
+							"scope": "PR #1466 round-2 re-audit at 0944e1b5eb: status.withdrawn + withdrawn_label after the round-1 finding was fixed as recommended; other 26 values unchanged."
 						}
 					],
 					"status": "audited"
@@ -19063,8 +19205,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "3399e4015ace811013fb16d9f021016eaecf8ed700e6d34ee2c0d0029068832a",
-			"target_sha256": "3406222412d3def699c106fefa7a57383af45effb00d66bd894f148db690224c",
+			"source_sha256": "4b13cadb9306d3040154d7f8caaf771a299d6603d206fecec4e9392d1dd249f6",
+			"target_sha256": "d0f300bb742fb23d910d58a7755cd56295a359bcf67a7f97133023449c1a585e",
 			"translator": {
 				"agent": "coder",
 				"model": "radient/auto",
@@ -19072,21 +19214,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
+					"agent": "qa-tester",
 					"model": "radient/auto",
-					"date": "2026-10-29",
+					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "740a6d12c8a5-r4-hi",
+					"instance": "4ad01a6b10df-1466-union-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/740a6d12c8a5-r4-hi.json",
-					"receipt_sha256": "0d49d1b581464c3c5eac0ef67a93984a788b6d051ceddbe30cc23f6a1a039ed5",
-					"scope": "ui.chat.asks: the 89 keys added in 930c8ec2d1, delta audit at the final head",
-					"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+					"receipt": "i18n/receipts/4ad01a6b10df-1466-union-hi.json",
+					"receipt_sha256": "8000c26b06097baf1111f2295f9909f2327d5963e18d52a0d3a1696899db6bdb",
+					"scope": "PR #1466 merged with main db81ff48a44 at d302f4aa33: independent union re-audit of the 2 branch keys (status.withdrawn, status.withdrawn_label) and the 2 keys main added (answer_options, recommended) onto the 26-key base. All 30 keys read; carried keys byte-identical to the side that authored them.",
+					"note": "The row binds the merged bytes, because both parents' whole-file hashes are stale by construction after a union. Receipt holds both hashes it audited."
 				}
 			],
 			"status": "audited",
@@ -19180,6 +19322,77 @@
 							},
 							"receipt": "i18n/receipts/a478f43b9cae.json",
 							"receipt_sha256": "c21214cfa6621207c118011f5c7390b6b668cfe2bf9ce3e70c5bac5074300d7f"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4b81cb96606b6bc647c5d3020b64346c5a3f48d757b8b2990ec47ec42c33c5ee",
+					"target_sha256": "78f9d5c7d65210797c704727b69d9fa963e43c6743071d6d911f09b49ccf354e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "8bb03406c9fd-1466-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/8bb03406c9fd-1466-hi.json",
+							"receipt_sha256": "04b0e265f823da10c7ce4b1d2a92f415b058e4128ffbadd14290cad8d22d44b8",
+							"scope": "PR #1466 delta audit of ui.chat.asks at 8f79f63fcb: new keys status.withdrawn + status.withdrawn_label; the other 26 values byte-identical to the superseded row."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3399e4015ace811013fb16d9f021016eaecf8ed700e6d34ee2c0d0029068832a",
+					"target_sha256": "3406222412d3def699c106fefa7a57383af45effb00d66bd894f148db690224c",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "740a6d12c8a5-r4-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/740a6d12c8a5-r4-hi.json",
+							"receipt_sha256": "0d49d1b581464c3c5eac0ef67a93984a788b6d051ceddbe30cc23f6a1a039ed5",
+							"scope": "ui.chat.asks: the 89 keys added in 930c8ec2d1, delta audit at the final head",
+							"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+						}
+					],
+					"status": "audited",
+					"note": "main's pre-merge audit of ui.chat.asks, archived by the PR #1466 merge: it approved main's own delta, which the merged file keeps byte-for-byte beside this PR's two keys."
+				},
+				{
+					"source_sha256": "4b81cb96606b6bc647c5d3020b64346c5a3f48d757b8b2990ec47ec42c33c5ee",
+					"target_sha256": "154adba6d497db44ca49bf5a22b6e6c485a35d529c410b127a92f8966ac63697",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "8bb03406c9fd-1466-r2-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/8bb03406c9fd-1466-r2-hi.json",
+							"receipt_sha256": "76c067d2c301732f892516e40699c9327ab02adb4a909bef8210a6a815e4f809",
+							"scope": "PR #1466 round-2 re-audit at 0944e1b5eb: status.withdrawn + withdrawn_label after the round-1 finding was fixed as recommended; other 26 values unchanged."
 						}
 					],
 					"status": "audited"
@@ -27661,8 +27874,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "3399e4015ace811013fb16d9f021016eaecf8ed700e6d34ee2c0d0029068832a",
-			"target_sha256": "3fad48d8d827a3a7a8eda38f8b5f8d7d3d8567e26e4fe6c878959443fc68f18c",
+			"source_sha256": "4b13cadb9306d3040154d7f8caaf771a299d6603d206fecec4e9392d1dd249f6",
+			"target_sha256": "0cfc0010397e012ca23c2d5ed89d7388b7aabaaed3eb7f987b3bb29e5ab519ca",
 			"translator": {
 				"agent": "coder",
 				"model": "radient/auto",
@@ -27670,21 +27883,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
+					"agent": "qa-tester",
 					"model": "radient/auto",
-					"date": "2026-10-29",
+					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "f684e610b106-r4-ru",
+					"instance": "4ad01a6b10df-1466-union-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f684e610b106-r4-ru.json",
-					"receipt_sha256": "9111b90ae562405349dce2bad2522025bc525182c4d0fd57979129ce27b7fb25",
-					"scope": "ui.chat.asks: the 89 keys added in 930c8ec2d1, delta audit at the final head",
-					"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+					"receipt": "i18n/receipts/4ad01a6b10df-1466-union-ru.json",
+					"receipt_sha256": "eedd66b2e5cb08461a12e847d4a2e3732f1f2bdd7bf0d012c80d2926fa1c79b6",
+					"scope": "PR #1466 merged with main db81ff48a44 at d302f4aa33: independent union re-audit of the 2 branch keys (status.withdrawn, status.withdrawn_label) and the 2 keys main added (answer_options, recommended) onto the 26-key base. All 30 keys read; carried keys byte-identical to the side that authored them.",
+					"note": "The row binds the merged bytes, because both parents' whole-file hashes are stale by construction after a union. Receipt holds both hashes it audited."
 				}
 			],
 			"status": "audited",
@@ -27778,6 +27991,54 @@
 							},
 							"receipt": "i18n/receipts/r2-44322c0b8b28.json",
 							"receipt_sha256": "9269b212100eb87dde8471aaf8c8c80211682ac6fb4178ec93c0d2ce959fc379"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3399e4015ace811013fb16d9f021016eaecf8ed700e6d34ee2c0d0029068832a",
+					"target_sha256": "3fad48d8d827a3a7a8eda38f8b5f8d7d3d8567e26e4fe6c878959443fc68f18c",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "f684e610b106-r4-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f684e610b106-r4-ru.json",
+							"receipt_sha256": "9111b90ae562405349dce2bad2522025bc525182c4d0fd57979129ce27b7fb25",
+							"scope": "ui.chat.asks: the 89 keys added in 930c8ec2d1, delta audit at the final head",
+							"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+						}
+					],
+					"status": "audited",
+					"note": "main's pre-merge audit of ui.chat.asks, archived by the PR #1466 merge: it approved main's own delta, which the merged file keeps byte-for-byte beside this PR's two keys."
+				},
+				{
+					"source_sha256": "4b81cb96606b6bc647c5d3020b64346c5a3f48d757b8b2990ec47ec42c33c5ee",
+					"target_sha256": "cc6f0495a5a000b74c63308a314c1bb25694847e34242af6c198486e870aca08",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "8bb03406c9fd-1466-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/8bb03406c9fd-1466-ru.json",
+							"receipt_sha256": "4454f8363420f099e49d8820e42f5724812b1cd1eb4e7da972fe04670f70e6b5",
+							"scope": "PR #1466 delta audit of ui.chat.asks at 8f79f63fcb: new keys status.withdrawn + status.withdrawn_label; the other 26 values byte-identical to the superseded row."
 						}
 					],
 					"status": "audited"
@@ -36209,8 +36470,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "3399e4015ace811013fb16d9f021016eaecf8ed700e6d34ee2c0d0029068832a",
-			"target_sha256": "254b710905af8647d4a577091f69fafdce469e9bfea178c507048f2bca78212c",
+			"source_sha256": "4b13cadb9306d3040154d7f8caaf771a299d6603d206fecec4e9392d1dd249f6",
+			"target_sha256": "6ae7fba36218bd37c0c6c23aafea28251b0cbf7513b191da8fdd47b5faf16f10",
 			"translator": {
 				"agent": "coder",
 				"model": "radient/auto",
@@ -36218,21 +36479,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-10-29",
+					"agent": "qa-tester",
+					"model": "radient/auto",
+					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "d2cc21c7d250-r4-ur",
+					"instance": "4ad01a6b10df-1466-union-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d2cc21c7d250-r4-ur.json",
-					"receipt_sha256": "de15eb15600b56e8737e0787a17e9d8e6d86a531d6bd729c8cfdb4250ccbc33b",
-					"scope": "ui.chat.asks: the 89 keys added in 930c8ec2d1, delta audit at the final head",
-					"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+					"receipt": "i18n/receipts/4ad01a6b10df-1466-union-ur.json",
+					"receipt_sha256": "297a4ffc41ba708163b90c4db354e133a2a3b610ed4d0df71e0b891424d1f12a",
+					"scope": "PR #1466 merged with main db81ff48a44 at d302f4aa33: independent union re-audit of the 2 branch keys (status.withdrawn, status.withdrawn_label) and the 2 keys main added (answer_options, recommended) onto the 26-key base. All 30 keys read; carried keys byte-identical to the side that authored them.",
+					"note": "The row binds the merged bytes, because both parents' whole-file hashes are stale by construction after a union. Receipt holds both hashes it audited."
 				}
 			],
 			"status": "audited",
@@ -36326,6 +36587,54 @@
 							},
 							"receipt": "i18n/receipts/2111e1255685.json",
 							"receipt_sha256": "e54050299987ad2cea7ac7ee268235838d406cbe0d43be108406cf2ec0996e2a"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3399e4015ace811013fb16d9f021016eaecf8ed700e6d34ee2c0d0029068832a",
+					"target_sha256": "254b710905af8647d4a577091f69fafdce469e9bfea178c507048f2bca78212c",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "d2cc21c7d250-r4-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d2cc21c7d250-r4-ur.json",
+							"receipt_sha256": "de15eb15600b56e8737e0787a17e9d8e6d86a531d6bd729c8cfdb4250ccbc33b",
+							"scope": "ui.chat.asks: the 89 keys added in 930c8ec2d1, delta audit at the final head",
+							"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+						}
+					],
+					"status": "audited",
+					"note": "main's pre-merge audit of ui.chat.asks, archived by the PR #1466 merge: it approved main's own delta, which the merged file keeps byte-for-byte beside this PR's two keys."
+				},
+				{
+					"source_sha256": "4b81cb96606b6bc647c5d3020b64346c5a3f48d757b8b2990ec47ec42c33c5ee",
+					"target_sha256": "612dfb9a06b8990cf18f2861d8c106729ab9bf0d07f82f259c48e38a10b5d9be",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "8bb03406c9fd-1466-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/8bb03406c9fd-1466-ur.json",
+							"receipt_sha256": "fd9753b4c0b6653d88b6a112c66093a53b18c24373464501fb96eb7dc47ea7e0",
+							"scope": "PR #1466 delta audit of ui.chat.asks at 8f79f63fcb: new keys status.withdrawn + status.withdrawn_label; the other 26 values byte-identical to the superseded row."
 						}
 					],
 					"status": "audited"
@@ -44682,8 +44991,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "3399e4015ace811013fb16d9f021016eaecf8ed700e6d34ee2c0d0029068832a",
-			"target_sha256": "45d8cda3307a0604a4325001c25af210775f28a90198b19b489dba37ae0f764f",
+			"source_sha256": "4b13cadb9306d3040154d7f8caaf771a299d6603d206fecec4e9392d1dd249f6",
+			"target_sha256": "3e0a26254dc19e31a55fac7e0865c79577331b69be6737801dd345a89ba56027",
 			"translator": {
 				"agent": "coder",
 				"model": "radient/auto",
@@ -44691,38 +45000,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
+					"agent": "qa-tester",
 					"model": "radient/auto",
-					"date": "2026-10-29",
+					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "1cb068fe5f90-r5-vi",
+					"instance": "4ad01a6b10df-1466-union-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/1cb068fe5f90-r5-vi.json",
-					"receipt_sha256": "722e606373163eb9828acbd56cfe3ce7da7d046860c77cddd39350f3e9574177",
-					"scope": "ui.chat.asks: the 89 keys added in 930c8ec2d1, delta audit at the final head",
-					"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
-				},
-				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-29",
-					"result": "clean",
-					"instance": "1cb068fe5f90-r6-vi",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/1cb068fe5f90-r6-vi.json",
-					"receipt_sha256": "07d6bd8e99e0977b8cebe934f13b8ab8c170073110b367228285e89ef6f18978",
-					"scope": "ui.chat.asks: the 89 keys added in 930c8ec2d1, delta audit at the final head",
-					"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+					"receipt": "i18n/receipts/4ad01a6b10df-1466-union-vi.json",
+					"receipt_sha256": "14e219d47e02b1c6f070af89a6aee603bfe1d7b2626fa6771fa8e982b01c25dd",
+					"scope": "PR #1466 merged with main db81ff48a44 at d302f4aa33: independent union re-audit of the 2 branch keys (status.withdrawn, status.withdrawn_label) and the 2 keys main added (answer_options, recommended) onto the 26-key base. All 30 keys read; carried keys byte-identical to the side that authored them.",
+					"note": "The row binds the merged bytes, because both parents' whole-file hashes are stale by construction after a union. Receipt holds both hashes it audited."
 				}
 			],
 			"status": "audited",
@@ -44816,6 +45108,71 @@
 							},
 							"receipt": "i18n/receipts/7165e9bc3822-chat-surfaces-r2.json",
 							"receipt_sha256": "3491037d28c85a3cc1d0bf489c8bb80627f7f860d738db8dcca1ec731784113f"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3399e4015ace811013fb16d9f021016eaecf8ed700e6d34ee2c0d0029068832a",
+					"target_sha256": "45d8cda3307a0604a4325001c25af210775f28a90198b19b489dba37ae0f764f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "1cb068fe5f90-r5-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1cb068fe5f90-r5-vi.json",
+							"receipt_sha256": "722e606373163eb9828acbd56cfe3ce7da7d046860c77cddd39350f3e9574177",
+							"scope": "ui.chat.asks: the 89 keys added in 930c8ec2d1, delta audit at the final head",
+							"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "1cb068fe5f90-r6-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1cb068fe5f90-r6-vi.json",
+							"receipt_sha256": "07d6bd8e99e0977b8cebe934f13b8ab8c170073110b367228285e89ef6f18978",
+							"scope": "ui.chat.asks: the 89 keys added in 930c8ec2d1, delta audit at the final head",
+							"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+						}
+					],
+					"status": "audited",
+					"note": "main's pre-merge audit of ui.chat.asks, archived by the PR #1466 merge: it approved main's own delta, which the merged file keeps byte-for-byte beside this PR's two keys."
+				},
+				{
+					"source_sha256": "4b81cb96606b6bc647c5d3020b64346c5a3f48d757b8b2990ec47ec42c33c5ee",
+					"target_sha256": "3393773c53e85552f67b515592c4d22a5e8093a540522d01806e059fda5904a5",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "8bb03406c9fd-1466-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/8bb03406c9fd-1466-vi.json",
+							"receipt_sha256": "04556d4eba320f45a23c503a3a0a7c88cc10b0b2c18a72d118db08004de53cc3",
+							"scope": "PR #1466 delta audit of ui.chat.asks at 8f79f63fcb: new keys status.withdrawn + status.withdrawn_label; the other 26 values byte-identical to the superseded row."
 						}
 					],
 					"status": "audited"
@@ -53852,8 +54209,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "3399e4015ace811013fb16d9f021016eaecf8ed700e6d34ee2c0d0029068832a",
-			"target_sha256": "1313edb4905ad5ed1512d7155fe577fbf15a35746e5dada59ca972ab237a4579",
+			"source_sha256": "4b13cadb9306d3040154d7f8caaf771a299d6603d206fecec4e9392d1dd249f6",
+			"target_sha256": "05acadb11ca1f9351eef9d5e5e0c26b03115c629e9408de9892546e7f560eb73",
 			"translator": {
 				"agent": "coder",
 				"model": "radient/auto",
@@ -53861,38 +54218,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
+					"agent": "qa-tester",
 					"model": "radient/auto",
-					"date": "2026-10-29",
+					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "f1a4a43284cd-r4-zh-cn",
+					"instance": "4ad01a6b10df-1466-union-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f1a4a43284cd-r4-zh-cn.json",
-					"receipt_sha256": "af91c8e57a905458dcc243241cba5c532da90a938aa9873c595b9bed5bb10734",
-					"scope": "ui.chat.asks: the 89 keys added in 930c8ec2d1, delta audit at the final head",
-					"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
-				},
-				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-29",
-					"result": "clean",
-					"instance": "f1a4a43284cd-r7-zh-cn",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/f1a4a43284cd-r7-zh-cn.json",
-					"receipt_sha256": "71554f9616f33c2f9aaf8423737f7db7a36e35cd6796281da6aeee5615dde51c",
-					"scope": "ui.chat.asks: the 89 keys added in 930c8ec2d1, delta audit at the final head",
-					"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+					"receipt": "i18n/receipts/4ad01a6b10df-1466-union-zh-cn.json",
+					"receipt_sha256": "256b2b2002605c1e7d9f8330165b871cf211b2920c4ce6662bccdc1d82e7f0d0",
+					"scope": "PR #1466 merged with main db81ff48a44 at d302f4aa33: independent union re-audit of the 2 branch keys (status.withdrawn, status.withdrawn_label) and the 2 keys main added (answer_options, recommended) onto the 26-key base. All 30 keys read; carried keys byte-identical to the side that authored them.",
+					"note": "The row binds the merged bytes, because both parents' whole-file hashes are stale by construction after a union. Receipt holds both hashes it audited."
 				}
 			],
 			"status": "audited",
@@ -53986,6 +54326,71 @@
 							},
 							"receipt": "i18n/receipts/a0562714a28f-r2.json",
 							"receipt_sha256": "90f8cb79b30c51cba9f8f66b83fb815574cf5ca76982c996e2711bb8d3afef9b"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3399e4015ace811013fb16d9f021016eaecf8ed700e6d34ee2c0d0029068832a",
+					"target_sha256": "1313edb4905ad5ed1512d7155fe577fbf15a35746e5dada59ca972ab237a4579",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "f1a4a43284cd-r4-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f1a4a43284cd-r4-zh-cn.json",
+							"receipt_sha256": "af91c8e57a905458dcc243241cba5c532da90a938aa9873c595b9bed5bb10734",
+							"scope": "ui.chat.asks: the 89 keys added in 930c8ec2d1, delta audit at the final head",
+							"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "f1a4a43284cd-r7-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f1a4a43284cd-r7-zh-cn.json",
+							"receipt_sha256": "71554f9616f33c2f9aaf8423737f7db7a36e35cd6796281da6aeee5615dde51c",
+							"scope": "ui.chat.asks: the 89 keys added in 930c8ec2d1, delta audit at the final head",
+							"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+						}
+					],
+					"status": "audited",
+					"note": "main's pre-merge audit of ui.chat.asks, archived by the PR #1466 merge: it approved main's own delta, which the merged file keeps byte-for-byte beside this PR's two keys."
+				},
+				{
+					"source_sha256": "4b81cb96606b6bc647c5d3020b64346c5a3f48d757b8b2990ec47ec42c33c5ee",
+					"target_sha256": "c0a606c86f2689638152e22e9d74852c5d1feba3f2a9f2e953f370f9d9deae4b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "8bb03406c9fd-1466-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/8bb03406c9fd-1466-zh-cn.json",
+							"receipt_sha256": "d8c9b39fe9fff21db970c0f847a423b9a6e1a513dd9c141309621f1fb7d13159",
+							"scope": "PR #1466 delta audit of ui.chat.asks at 8f79f63fcb: new keys status.withdrawn + status.withdrawn_label; the other 26 values byte-identical to the superseded row."
 						}
 					],
 					"status": "audited"

@@ -46,6 +46,10 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { isEntryPoint } from "./entry-point.mjs";
 import {
+	prepareAskRemediation,
+	runAskRemediationScene,
+} from "./notifications-ask-remediation-scene.mjs";
+import {
 	prepareDrawerRemediation,
 	runDrawerRemediationScene,
 } from "./notifications-drawer-scene.mjs";
@@ -719,7 +723,11 @@ async function main() {
 	let drawerFixture = null;
 	let cdp = null;
 	let nodeCdp = null;
+	let askFixture = null;
 	const receipt = {
+		sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], {
+			encoding: "utf8",
+		}).trim(),
 		coreRef: process.env.LOCAL_OPERATOR_CORE_REF,
 		scene: "notifications",
 		backend: base,
@@ -765,7 +773,26 @@ async function main() {
 		});
 
 		process.env.LOCAL_OPERATOR_DESKTOP_TOKEN = token;
-		const _context = api.prepareDriverContext({ apiUrl: base });
+		/*
+		 * The ask delta uses the same isolated backend and app. Its loopback adapter
+		 * controls only synthetic answer faults; all ordinary routes stay real.
+		 *
+		 * ITS `base` IS THE DRAWER PROXY, NOT CORE. Both lanes need their own adapter
+		 * in front of the ONE backend, and `launchApp` carries ONE apiUrl, so the two
+		 * proxies are chained rather than chosen between: app -> ask proxy -> drawer
+		 * proxy -> core. Each adapter intercepts only what it owns (the ask proxy, a
+		 * POST answer for its own synthetic ask; the drawer proxy, the read-list and
+		 * PATCH traffic for its own session and ids) and forwards every other request
+		 * unchanged, so neither lane sees the other's faults and both receipts stay
+		 * measured on the real core.
+		 */
+		askFixture = await prepareAskRemediation({
+			base: drawerFixture.apiUrl,
+			config,
+			token,
+			coreStore,
+		});
+		const _context = api.prepareDriverContext({ apiUrl: askFixture.apiUrl });
 		/*
 		 * NOT ARMED. The renderer dev driver refuses to arm in a "normal" window
 		 * (`resolveDevDriverArming`, dev-driver.ts:205-209), and this scene needs a
@@ -774,9 +801,20 @@ async function main() {
 		 * plus real dispatched input, and the receipt is read from the store - no
 		 * verb, no bridge, no capture helper.
 		 */
+		/*
+		 * THE APP MUST BE LAUNCHED AT THE OUTERMOST PROXY, NOT AT `base`. launchApp's
+		 * per-call apiUrl overrides prepareDriverContext's binding and rewrites the
+		 * scratch .env (renderer-driver.mjs launchApp), so `apiUrl: base` here would
+		 * send every answer straight to core: the ask proxy would intercept nothing
+		 * and core would receive the synthetic secret markers. The ask proxy is
+		 * outermost because it sits in front of the drawer proxy (see its prepare
+		 * above), and both are transparent for every route they do not own (SSE
+		 * included), so the foreground proofs below still run against the real core
+		 * through them - including the drawer lane's own read-state faults.
+		 */
 		const handle = await api.launchApp({
 			armed: false,
-			apiUrl: drawerFixture.apiUrl,
+			apiUrl: askFixture.apiUrl,
 			tag: "notifications-native",
 			logName: "notifications-native.log",
 			windowMode: "normal",
@@ -912,6 +950,21 @@ async function main() {
 		);
 		assert.ok(!isRead(raced), "the raced revision was read");
 		await screenshot(cdp, "notifications-native-after");
+		/*
+		 * BOTH REMEDIATION LANES RUN HERE, ASK FIRST. Each was authored against this
+		 * exact spot on its own lane and they are disjoint; the ask helper restores
+		 * locale, size and route before it returns, so the drawer lane below starts
+		 * from a clean view rather than from the ask scene's leftover one. #1471's
+		 * own note places the ask invocation immediately above its drawer helper.
+		 */
+		receipt.askRemediation = askFixture.receipt;
+		await runAskRemediationScene({
+			cdp,
+			nodeCdp,
+			fixture: askFixture,
+			screenshot,
+		});
+
 		// #1466's disjoint ask-remediation invocation belongs immediately above this.
 		await runDrawerRemediationScene({
 			cdp,
@@ -1041,6 +1094,7 @@ async function main() {
 		 * hook threw `ENOTEMPTY` - a cleanup error standing in place of the scene's
 		 * own failure.
 		 */
+		await askFixture?.close();
 		backend.kill("SIGTERM");
 		await exited(backend, 5_000);
 		if (backend.exitCode === null && backend.signalCode === null) {

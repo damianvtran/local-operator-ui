@@ -26,5 +26,7 @@
 	"ui.chat.asks.settled_heading": "已结束",
 	"ui.chat.asks.close_asks": "关闭请求面板",
 	"ui.chat.asks.all_asks": "全部请求",
-	"ui.chat.asks.conversation_asks": "此对话的请求"
+	"ui.chat.asks.conversation_asks": "此对话的请求",
+	"ui.chat.asks.status.withdrawn": "已撤回——智能体不再需要回答",
+	"ui.chat.asks.status.withdrawn_label": "已撤回"
 }

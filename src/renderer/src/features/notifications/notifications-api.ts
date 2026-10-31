@@ -90,7 +90,7 @@ export const notificationKeys = {
 	 * interval and every feed frame replaced a deep scroll with the newest page - the
 	 * operator was thrown back to the top and the pill grew with rows that were not
 	 * new. Facts refetch on the frame and on the interval; the window only moves when
-	 * the operator asks it to (back to top, explicit refresh, scroll to top).
+	 * the operator asks it to reveal newest (back to top or scroll to top).
 	 */
 	factsRoot: ["desktop", "notifications", "facts"] as const,
 	/** The per-conversation reads (the drawer, the flag lines). */
@@ -186,8 +186,7 @@ function useKeepSeenInWindow(
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `keyId` is the key's identity; the array is rebuilt every render.
 	useEffect(() => {
 		const factsItems = facts?.items;
-		if (!client || !atTopOwner || !factsItems || factsItems.length === 0)
-			return;
+		if (!client || !atTopOwner || !factsItems) return;
 		const data = client.getQueryData<{ pages?: unknown[] }>(queryKey);
 		if (!data || !Array.isArray(data.pages)) return;
 		const pages = prependSeenToWindow(
@@ -195,12 +194,26 @@ function useKeepSeenInWindow(
 			factsItems,
 			Boolean(facts.next_cursor),
 		);
-		if (pages === null) return;
+		/* Seen asks need the same membership memory as seen updates, otherwise
+		 * scrolling away relabels an ask already drawn at the head as new. The
+		 * facts object is stable between reads; avoid a cache-write render loop. */
+		const first = data.pages[0] as DesktopNotificationsList | undefined;
+		const waitingChanged = first && first.waiting !== facts.waiting;
+		if (pages === null && !waitingChanged) return;
 		if (pages === "reset") {
 			void client.resetQueries({ queryKey });
 			return;
 		}
-		client.setQueryData(queryKey, { ...data, pages });
+		const retained = pages ?? data.pages;
+		client.setQueryData(queryKey, {
+			...data,
+			pages: waitingChanged
+				? [
+						{ ...first, ...(retained[0] as object), waiting: facts.waiting },
+						...retained.slice(1),
+					]
+				: retained,
+		});
 	}, [client, keyId, atTopOwner, facts]);
 }
 
@@ -288,6 +301,9 @@ export function useNotificationsList(
 			facts.dataUpdatedAt as number,
 		),
 		newerCount: merged?.newerCount ?? 0,
+		/* Refresh facts without discarding the reader's cursor window. Only the
+		 * new-items chip is an intentional request to reveal page one. */
+		refresh: facts.refetch,
 		// Only an explicit page-one reset moves the viewport; pagination and facts
 		// updates keep the operator's deep scroll position.
 		windowResetAt,

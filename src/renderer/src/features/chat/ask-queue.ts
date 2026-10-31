@@ -60,6 +60,8 @@ import {
 	DesktopControlError,
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
+import { t } from "@shared/i18n";
+import { DESKTOP_REFUSAL_CODE } from "../../../../shared/desktop-contract";
 import type {
 	CanonicalFrontendState,
 	PendingAsk,
@@ -93,7 +95,13 @@ export type AskStatus =
 	| "timed_out"
 	| "late"
 	| "dismissed"
-	| "expired";
+	| "expired"
+	/*
+	 * The agent took the ask back itself (core `asks/store.py` STATUS_WITHDRAWN). Read
+	 * as unknown before (QA round 1, Q-2), it drew `Waiting on an answer` under Settled
+	 * - an open-sounding badge on a closed ask.
+	 */
+	| "withdrawn";
 
 /** Unknown statuses are their own case, never silently coerced into `open`. */
 export const isKnownAskStatus = (status: string): status is AskStatus =>
@@ -103,7 +111,8 @@ export const isKnownAskStatus = (status: string): status is AskStatus =>
 	status === "timed_out" ||
 	status === "late" ||
 	status === "dismissed" ||
-	status === "expired";
+	status === "expired" ||
+	status === "withdrawn";
 
 /**
  * The session's asks, or `null` when this backend does not publish them.
@@ -1211,6 +1220,104 @@ export type AskOutcome = {
 	 * sentence.
 	 */
 	refusedByOwner?: boolean;
+	/**
+	 * THE ACT THIS SURFACE SAW ACCEPTED, painted over a frame that has not caught up
+	 * (`askWithLocalSettle`). A surface whose rows come from a READ rather than the
+	 * live session stream - the Notifications detail pane, the fleet pane between its
+	 * POST and its refetch - otherwise kept drawing the ask `open`, with live options,
+	 * a countdown and `Send answer`, after the owner had accepted the answer: the
+	 * press looked like it did nothing (the Notifications pane bug this field fixes).
+	 *
+	 * It states only what the owner ACCEPTED, never more: an answer is recorded but
+	 * not delivered (`delivered: false`), so the card reads `Answered — delivering`
+	 * exactly as the session drawer's live frame does in the same window. It applies
+	 * only while the wire still says `open`; the moment a frame carries any settled
+	 * status, the wire wins.
+	 */
+	settled?: {
+		status: "answered" | "declined" | "dismissed";
+		/** Client epoch ms the owner accepted the act: the card's stamp until the wire's. */
+		at: number;
+		answers?: Record<string, string[]>;
+		reason?: AskDismissReason;
+	};
+	/**
+	 * Send the SAME act again, after a transport failure (`useAskOutcomes`). Present
+	 * only on a failure the press can recover from: an owner's verdict is final and
+	 * carries none, so the card never offers a Retry whose only outcome is the same
+	 * sentence.
+	 */
+	retry?: () => void;
+};
+
+/**
+ * The answer map a surface may PAINT for an ask it just answered.
+ *
+ * A secret question's cell in the map a surface SENDS is the value the user typed;
+ * the owner replaces it with the credential store's key name before it is ever
+ * recorded (`asks/queue.py::_guard_secret_cells` accepts nothing else). So a local
+ * record of the answer has to take the same shape the wire will: the key name, in
+ * the `[KEY]` form the settled card already draws for a wire row, spelled the way
+ * core's `_credential_key_shape` spells it (letters and digits kept, every other
+ * run folded to `_`, upper-cased). An empty cell (a skipped secret) stays empty.
+ */
+/** Core's key-shape separator run (`_credential_key_shape`): any non-alphanumeric. */
+const KEY_SEPARATOR = /[^A-Za-z0-9]+/;
+
+export const askPaintableAnswers = (
+	questions: readonly { id: string; secret?: boolean }[],
+	answers: Record<string, string[]>,
+): Record<string, string[]> => {
+	const secret = new Set(
+		questions.filter((question) => question.secret === true).map((q) => q.id),
+	);
+	const out: Record<string, string[]> = {};
+	for (const [id, cell] of Object.entries(answers)) {
+		if (!secret.has(id)) {
+			out[id] = [...cell];
+			continue;
+		}
+		const key = id.split(KEY_SEPARATOR).filter(Boolean).join("_").toUpperCase();
+		out[id] = cell.length === 0 ? [] : [`[${key}]`];
+	}
+	return out;
+};
+
+/**
+ * The ask as the owner has accepted it, when this surface knows more than the frame.
+ *
+ * Returns the frame's own object untouched unless the wire still reads `open` and a
+ * local `settled` record exists - so a frame that has caught up (or moved somewhere
+ * else, e.g. `expired`) is always what is drawn.
+ */
+export const askWithLocalSettle = (
+	ask: PendingAsk,
+	outcome: AskOutcome | undefined,
+): PendingAsk => {
+	const settled = outcome?.settled;
+	/*
+	 * Every status a door is still offered on, not only `open` (agent review round 1,
+	 * R1-2): a `timed_out` ask takes a late answer, decline or dismissal too, and its
+	 * card went stale exactly the way an open one did.
+	 */
+	if (settled === undefined || !OPEN_STATUSES.has(ask.status)) return ask;
+	if (settled.status === "dismissed")
+		return {
+			...ask,
+			status: "dismissed",
+			dismissed_at: settled.at,
+			...(settled.reason === undefined
+				? {}
+				: { dismissed_reason: settled.reason }),
+		};
+	return {
+		...ask,
+		status: settled.status,
+		answered_at: settled.at,
+		answered_by: { surface: "desktop" },
+		delivered: false,
+		...(settled.answers === undefined ? {} : { answers: settled.answers }),
+	};
 };
 
 const OPEN_STATUSES: ReadonlySet<string> = new Set(["open", "timed_out"]);
@@ -1427,7 +1534,17 @@ export const askQueueView = (
 			soonestExpiryMs: null,
 			head: null,
 		};
-	const rows = asks.map(presentAsk).sort(compareAsks);
+	/*
+	 * The local record corrects a frame that has not caught up with an act this surface
+	 * saw accepted (`askWithLocalSettle`). The wire's own `asks_open` predates that act
+	 * too, so every row the record moved out of `open` comes off it below.
+	 */
+	const settledLocally = asks.filter(
+		(ask) => askWithLocalSettle(ask, outcomes?.[ask.ask_id]) !== ask,
+	).length;
+	const rows = asks
+		.map((ask) => presentAsk(askWithLocalSettle(ask, outcomes?.[ask.ask_id])))
+		.sort(compareAsks);
 	const open = rows.filter((row) => row.open).length;
 	/*
 	 * The two halves are derived from the ROWS rather than the backend's tally,
@@ -1465,7 +1582,10 @@ export const askQueueView = (
 		 * The derived count is the fallback for a frame that carried rows but no
 		 * count, which is the older producer's shape.
 		 */
-		open: typeof frontend?.asks_open === "number" ? frontend.asks_open : open,
+		open:
+			typeof frontend?.asks_open === "number"
+				? Math.max(0, frontend.asks_open - settledLocally)
+				: open,
 		waiting,
 		movedOn,
 		delivering,
@@ -1518,6 +1638,10 @@ export const ASK_STATUS_COPY: Record<AskStatus | "unknown", string> = {
 	declined: "Declined — the agent was told",
 	dismissed: "Dismissed — no reply was sent",
 	expired: "Expired — this ask is too old to answer; ask the agent again",
+	/* Resolve on read, not module load: an open pane follows language changes. */
+	get withdrawn() {
+		return t("ui.chat.asks.status.withdrawn");
+	},
 	unknown: "Waiting on an answer",
 };
 
@@ -1554,19 +1678,20 @@ export const ASK_LATE_UNDELIVERED_TEXT = "Answered late — not yet delivered";
  * about the agent's day.
  */
 export const askStatusWord = (status: AskStatus | "unknown"): string => {
+	/* Localized punctuation is not an English delimiter: keep the compact label keyed. */
+	if (status === "withdrawn") return t("ui.chat.asks.status.withdrawn_label");
 	const copy = ASK_STATUS_COPY[status];
 	const cut = copy.indexOf(" — ");
 	return cut === -1 ? copy : copy.slice(0, cut);
 };
 
 /**
- * The ask panel's two halves: the cards a control can still act on, and the rows it
- * collapses to one line each behind their status badge.
- *
- * PENDING is `canAnswer || delivering`: an ask the user can answer, or an answer the
- * agent has not been handed yet, which is still the user's to change (design §10).
- * Everything else is SETTLED, and that includes a LAPSED ask (D11): it is read-only,
- * so it renders exactly as a declined one does - collapsed, opened only by the reader.
+ * The ask panel partitions unanswered decisions from recorded decisions, not from
+ * delivery work. An accepted answer is SETTLED for the user even while the agent
+ * has not received it; counting it as Pending makes a successful send look undone.
+ * `delivering` stays an independent fact: the panel keeps that card expanded, its
+ * delivery sentence and its legal Change answer door until actual delivery (§10).
+ * LAPSED asks are settled history too, except for the existing pointer-safety hold.
  *
  * `held` is the one exception: the ids this MOUNT has already shown as answerable. A
  * held ask that lapses stays in the pending half, in its own slot, until the next
@@ -1587,7 +1712,7 @@ export const askPanelHalves = (
 	held: ReadonlySet<string> = new Set(),
 ): { pending: AskPresentation[]; settled: AskPresentation[] } => {
 	const isPending = (row: AskPresentation) =>
-		row.canAnswer || row.delivering || (row.lapsed && held.has(row.ask.ask_id));
+		row.canAnswer || (row.lapsed && held.has(row.ask.ask_id));
 	return {
 		pending: rows.filter(isPending),
 		settled: rows
@@ -1617,6 +1742,11 @@ export const askStatusText = (ask: PendingAsk, nowMs: number): string => {
 	const presentation = presentAsk(ask);
 	if (presentation.status === "late" && presentation.delivering)
 		return ASK_LATE_UNDELIVERED_TEXT;
+	/* A local acknowledgement can stay expanded in its action slot after the
+	 * wire confirms delivery. The generic answered copy names the queue, so only
+	 * use it while delivery is actually pending; no new copy/second status owner. */
+	if (presentation.status === "answered" && !presentation.delivering)
+		return askStatusWord("answered");
 	const base = ASK_STATUS_COPY[presentation.status];
 	if (presentation.status !== "open") return base;
 	const expiry = askExpiryText(ask, nowMs);
@@ -2313,6 +2443,35 @@ export const askRefusalSentence = (error: unknown): string => {
  */
 export const askRefusalIsOwner = (error: unknown): boolean =>
 	askRefusalFallback(error) !== null;
+
+/**
+ * Whether a failed press earns a Retry, or whether the sentence is the whole answer.
+ *
+ * U2 (UX review round 2, MAJOR) measured the failure row pairing `plane_closed` - "the
+ * server does not accept this app's desktop controls" - with an ENABLED Retry. That is
+ * the dead control this panel refuses elsewhere: a pairing condition is the app's own
+ * business to re-establish, and pressing Retry re-sends into the same closed plane.
+ *
+ * THE PAIRING CODES, NOT EVERY REFUSAL CODE (this is where the finding's own suggested
+ * predicate, "no code at all", is too broad). `DESKTOP_REFUSAL_CODE` holds two kinds:
+ * `noCredential`, `refused` and `planeClosed` are PAIRING conditions, while
+ * `transportFailed` is explicitly not one - "main could not complete the request" is a
+ * refused socket or a reset, nothing was learned about the plane, and it is exactly the
+ * failure a second press repairs. Suppressing Retry on every code would take the one
+ * state that has a working next action and give it none.
+ *
+ * A PLAIN `Error` CARRIES NO CODE and stays retryable for the same reason: the
+ * renderer's own catch means the request never reached the backend.
+ */
+export const askFailureEarnsRetry = (error: unknown): boolean => {
+	if (askRefusalIsOwner(error)) return false;
+	const code =
+		typeof error === "object" && error !== null
+			? (error as { code?: unknown }).code
+			: undefined;
+	if (typeof code !== "string") return true;
+	return code === DESKTOP_REFUSAL_CODE.transportFailed;
+};
 
 /**
  * The `sessions.answer` body for a whole-ask answer, or `null` when the draft is

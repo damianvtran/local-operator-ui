@@ -564,7 +564,75 @@ const railNoticeExpect = (lit, kind, title) => ({
 	},
 });
 
+/*
+ * NO HORIZONTAL OVERFLOW IN THE NOTIFICATIONS DETAIL PANE (the overflow fix). The frame
+ * alone cannot prove "nothing is clipped", because the clip is exactly what hides it;
+ * so the shutter waits until the pane's scroller, its column, and every direct child
+ * report `scrollWidth <= clientWidth`, and the run refuses the frame otherwise.
+ */
+const noPaneOverflowExpect = {
+	expect: {
+		pollMs: 3000,
+		expression: `(() => {
+			const pane = document.querySelector("[data-notification-detail]");
+			if (!pane) return "the detail pane is not drawn";
+			if (!pane.querySelector(".lo-markdown, [data-lo-ask-row]")) return "the pane has no body yet";
+			const column = pane.parentElement;
+			const row = column.parentElement;
+			const limit = Math.min(row.getBoundingClientRect().right, window.innerWidth);
+			const boxes = [column, pane, ...pane.children];
+			/* BOTH readings: a column that GREW past its slot has scrollWidth == clientWidth
+			   and is caught only by its rect against the row and the viewport. */
+			const over = boxes.filter(
+				(box) =>
+					box.scrollWidth > box.clientWidth + 0.5 ||
+					box.getBoundingClientRect().right > limit + 0.5,
+			);
+			if (over.length > 0)
+				return "overflow: " + over.map((box) => (box.tagName + "." + String(box.className).split(" ").slice(0, 3).join(".")) + " sw=" + box.scrollWidth + " cw=" + box.clientWidth + " right=" + Math.round(box.getBoundingClientRect().right) + " limit=" + Math.round(limit)).join("; ");
+			return true;
+		})()`,
+		message:
+			"the detail pane and each direct child fit their width (scrollWidth <= clientWidth)",
+	},
+};
+
 export const STORIES = [
+	/*
+	 * The Notifications detail pane's ask card through each state of one press
+	 * (answered, declined, dismissed, sending, a transport failure with Retry,
+	 * delivered), over two near-identical asks in one conversation; and a body with
+	 * a 200-character unbroken token at three widths (the overflow fix). Each
+	 * play-driven state holds the shutter until its claim is on screen.
+	 */
+	["notifications-page--ask-pane-pending", 1280, 1100],
+	["notifications-page--ask-pane-sending", 1280, 1100],
+	["notifications-page--ask-pane-answered", 1280, 1100],
+	["notifications-page--ask-pane-secret-answered", 1280, 1100],
+	["notifications-page--ask-pane-delivered", 1280, 1100],
+	["notifications-page--ask-pane-declined", 1280, 1100],
+	["notifications-page--ask-pane-dismissed", 1280, 1100],
+	["notifications-page--ask-pane-error", 1280, 1100],
+	["notifications-page--long-body-wide", 1600, 900, noPaneOverflowExpect],
+	["notifications-page--long-body-1024", 1024, 900, noPaneOverflowExpect],
+	["notifications-page--long-body-narrow", 820, 900, noPaneOverflowExpect],
+	/* The same width probe over the ask states: the cards and the filter row. */
+	/* Translucency on: the rounded pane over the window glass (the polish half). */
+	[
+		"notifications-page--long-body-wide",
+		1600,
+		900,
+		{ glass: true, dir: "long-body-wide-glass" },
+	],
+	[
+		"notifications-page--ask-pane-delivered",
+		1024,
+		900,
+		{
+			...noPaneOverflowExpect,
+			dir: "ask-pane-delivered-1024",
+		},
+	],
 	/*
 	 * These three DECLARE their content height rather than the 900 the harness
 	 * defaults to, and the reason is a trap that cost real pixels: since the
@@ -14170,7 +14238,12 @@ const main = async () => {
 			cdp.events.length = 0;
 
 			await cdp.send("Page.navigate", {
-				url: `${ORIGIN}/iframe.html?id=${story}&viewMode=story&args=theme:${theme}`,
+				/*
+				 * `glass: true` on a row asks the preview for the window glass through its
+				 * own documented arg (`.storybook/preview.tsx`, `?args=glass:on`), so a
+				 * frame claiming "translucency on" is painted under it rather than flat.
+				 */
+				url: `${ORIGIN}/iframe.html?id=${story}&viewMode=story&args=theme:${theme}${options?.glass ? ";glass:on" : ""}`,
 			});
 			await sleep(900);
 
