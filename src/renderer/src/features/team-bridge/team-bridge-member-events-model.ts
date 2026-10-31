@@ -126,7 +126,17 @@ export function teamBridgeEventLines(
 	const lines: TeamBridgeEventLine[] = [];
 	const byGroup = new Map<string, TeamBridgeEventLine>();
 	for (const event of ordered) {
-		const kind = teamBridgeEventKind(event.kind);
+		/*
+		 * AN EVENT WITH NO TARGETS READS AS THE INERT LINE (agent review round 1,
+		 * R1-M2). Every naming template puts `{targets}` where a name belongs, so an
+		 * empty array rendered "Damian removed " - a sentence with a hole in it. The
+		 * contract says `targets` has at least one entry; an event that carries none
+		 * has no readable subject, which is exactly the case the unknown-kind line
+		 * exists for. Roll-up is unaffected: a rolled-up group is only built for a
+		 * readable kind, so `targets: []` always renders its own line.
+		 */
+		const named = event.targets.length > 0;
+		const kind = named ? teamBridgeEventKind(event.kind) : null;
 		const ownerAddedAgent =
 			kind === "joined" &&
 			event.implicit === true &&

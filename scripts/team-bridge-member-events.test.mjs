@@ -153,6 +153,57 @@ test("one malformed event is dropped; the page and the other events survive", ()
 	assert.equal(page.events.length, 1);
 });
 
+/*
+ * A NON-ARRAY CONTAINER MUST NOT BLANK THE PAGE (agent review round 1, R1-M1).
+ * Element-wise dropping protects the ELEMENTS; before this the container itself
+ * still failed the whole page, so one hub bug that sent `events: null` replaced
+ * the conversation with an error state. The contract says the field is omitted
+ * rather than null, which is exactly why the renderer must not bet the page on
+ * the hub keeping that promise.
+ */
+test("a non-array events container parses as absent instead of failing the page", () => {
+	for (const container of [null, {}, "x", 7, true]) {
+		const page = m.teamBridgeMessagePageSchema.parse({
+			messages: [message("a", 1)],
+			events: container,
+		});
+		assert.equal(
+			page.messages.length,
+			1,
+			`messages survive events=${container}`,
+		);
+		assert.equal(page.events, undefined, `events=${container} reads as absent`);
+	}
+});
+
+/*
+ * THE PARTY LABEL IS BOUNDED LIKE A MESSAGE SENDER'S (agent review round 1,
+ * R1-N3): the message wire caps `display_label` at 64, and an event label reaches
+ * the same DOM — the aria-label of a shortened line and the tooltip list. An
+ * over-long label costs that one name, never the line and never the page: the
+ * cap CATCHES rather than throwing, so the event still renders with the unknown
+ * placeholder where the name would be.
+ */
+test("an over-long event label is dropped to the unknown placeholder, not the page", () => {
+	const long = { ...BEN, display_label: "B".repeat(200) };
+	const page = m.teamBridgeMessagePageSchema.parse({
+		messages: [message("a", 1)],
+		events: [event({ targets: [long] })],
+	});
+	assert.equal(page.events.length, 1, "the event survives its long label");
+	assert.equal(page.events[0].targets[0].display_label, "");
+	assert.equal(
+		page.events[0].targets[0].account_id,
+		BEN.account_id,
+		"the identity survives; only the label is dropped",
+	);
+	const [line] = m.teamBridgeEventLines(page.events);
+	assert.equal(
+		m.teamBridgeEventSentences(line, label, "en").shown,
+		"Damian Tran invited Unknown person",
+	);
+});
+
 /* ----------------------------------------------------------- PLACEMENT */
 
 test("after_seq interleave: after message k, before k+1; 0 is leading", () => {
@@ -337,6 +388,33 @@ test("the target list is joined by the LOCALE's list format, not a hard-coded co
 	);
 });
 
+/*
+ * AN EVENT WITH NO TARGETS MUST NOT RENDER A DANGLING SENTENCE (agent review
+ * round 1, R1-M2). Every naming template puts `{targets}` where a name belongs,
+ * so `targets: []` — which the contract forbids but the element schema tolerates
+ * — rendered "Damian removed " in production lengths. Such an event carries no
+ * readable subject, so it reads as the inert generic line rather than as a
+ * sentence with a hole in it.
+ */
+test("an event with an empty targets array reads as the inert generic line", () => {
+	for (const kind of [
+		"invited",
+		"joined",
+		"left",
+		"removed",
+		"consented",
+		"declined",
+		"withdrawn",
+	]) {
+		const [line] = m.teamBridgeEventLines([event({ kind, targets: [] })]);
+		assert.equal(line.kind, null, `${kind} has no readable kind`);
+		assert.deepEqual(line.targets, []);
+		const { shown } = m.teamBridgeEventSentences(line, label, "en");
+		assert.equal(shown, "Membership changed", kind);
+		assert.doesNotMatch(shown, /\s$/, `${kind} leaves no trailing space`);
+	}
+});
+
 /* --------------------------------------------------------------- CARRY */
 
 test("carry: a poll re-including the boundary dedupes by id; the newer copy wins", () => {
@@ -414,6 +492,19 @@ test("an events-only page delta changes nothing any message model reads", () => 
 	assert.equal(creation.messages[0], undefined);
 });
 
+/*
+ * THE GUARD IS SOURCE-WIDE, ON COMMENT-STRIPPED TEXT (agent review round 1,
+ * R1-N1): `\bevents\b` catches a destructure (`const { events } = page`) and a
+ * computed key on a named object (`page["events"]`) that the first revision's
+ * `\.events\b` missed, and stripping comments keeps a doc comment that mentions
+ * the word from false-failing. The behavioural halves of this suite (render
+ * order, no `data-message-id`, `contentKey`/`newest` parity, zero arrivals) are
+ * still what holds the line; this scan only fails the build when one of these
+ * modules starts touching the field at all.
+ */
+const withoutComments = (source) =>
+	source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
 test("the unread, notify, arrival, viewing, thread-read and search models never read events", () => {
 	const dir = "src/renderer/src/features/team-bridge";
 	for (const file of [
@@ -428,12 +519,8 @@ test("the unread, notify, arrival, viewing, thread-read and search models never 
 		"team-bridge-owner-audit-model.ts",
 		"use-team-bridge-owner-audit.ts",
 	]) {
-		const source = readFileSync(`${dir}/${file}`, "utf8");
-		assert.doesNotMatch(
-			source,
-			/\bevents\s*[=:?]|\.events\b|TeamBridgeEvent\b/,
-			file,
-		);
+		const source = withoutComments(readFileSync(`${dir}/${file}`, "utf8"));
+		assert.doesNotMatch(source, /\bevents\b/, file);
 	}
 });
 

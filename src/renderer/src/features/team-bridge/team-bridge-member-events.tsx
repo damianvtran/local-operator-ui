@@ -143,8 +143,22 @@ export const TeamBridgeMemberEventLine: FC<{
 			aria-label={truncated ? full : undefined}
 			className={cn(
 				"min-w-0 truncate",
+				/*
+				 * THE UNDERLINE IS THE SENTENCE'S OWN INK (design round 1, D2). At
+				 * `decoration-hairline` the dotted rule measured 1.25:1 (light), 1.46:1
+				 * (dark), 1.53:1 (tokyo) - effectively invisible, so the one cue that
+				 * "and N others" expands rested on the words alone. Leaving the
+				 * decoration at `currentColor` (`text-ink-dim`, the sentence's role)
+				 * puts it at 5.36 / 6.24 / 6.86:1, which is also the shipped precedent
+				 * for this affordance (`integration-row.tsx`: quiet meta text +
+				 * Tooltip). One colour step, no new token.
+				 * No `outline-focus` utility: there is no `--color-focus` token, so the
+				 * class emitted nothing and the ring came from the global
+				 * `html :focus-visible` rule (design round 1, D5). The width and offset
+				 * below are what this line owns; the ring's COLOUR is the app's.
+				 */
 				truncated &&
-					"cursor-default rounded-sm underline decoration-hairline decoration-dotted underline-offset-2 focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2",
+					"cursor-default rounded-sm underline decoration-dotted underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2",
 			)}
 		>
 			{shown}

@@ -142,14 +142,16 @@ export const RolledUpInvite: Story = {
 	},
 };
 
+/** The full-list sentence a keyboard reader lands on (see `RolledUpInvite`). */
+const FULL_LIST_NAME =
+	/invited Ben Tran, Sana Ketabchi, Aida \(Sana Ketabchi\), and Milo Park/;
+
 /** Keyboard focus opens the full list (hover does the same with a pointer). */
 export const RolledUpTooltip: Story = {
 	...RolledUpInvite,
 	play: async ({ canvasElement }) => {
 		await userEvent.tab();
-		const line = within(canvasElement).getByLabelText(
-			/invited Ben Tran, Sana Ketabchi, Aida \(Sana Ketabchi\), and Milo Park/,
-		);
+		const line = within(canvasElement).getByLabelText(FULL_LIST_NAME);
 		await expect(line).toHaveFocus();
 	},
 };

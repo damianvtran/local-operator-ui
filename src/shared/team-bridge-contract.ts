@@ -325,8 +325,17 @@ export const teamBridgeEventPartySchema = z
 		kind: z.enum(["human", "agent"]),
 		account_id: z.string(),
 		endpoint_id: z.string().optional(),
-		/* "" for a deleted account: the renderer names it, never the wire. */
-		display_label: z.string(),
+		/*
+		 * "" for a deleted account: the renderer names it, never the wire.
+		 *
+		 * BOUNDED LIKE A MESSAGE SENDER'S (agent review round 1, R1-N3):
+		 * `teamBridgeMessage.sender.display_label` caps at 64, and this label reaches
+		 * the same DOM - the accessible name of a shortened line and the tooltip
+		 * list. The cap CATCHES to "" instead of throwing, so an over-long label
+		 * costs its name (rendered as the unknown placeholder) and never the event
+		 * line or the page.
+		 */
+		display_label: z.string().max(64).catch(""),
 	})
 	.passthrough();
 export type TeamBridgeEventParty = z.infer<typeof teamBridgeEventPartySchema>;
@@ -360,8 +369,28 @@ export const teamBridgeMessagePageSchema = z
 		messages: z.array(teamBridgeMessageSchema),
 		next_before_seq: z.number().int().nonnegative().optional(),
 		has_more: z.boolean().optional(),
-		events: teamBridgeEventsSchema.optional(),
-		/* The hub caps events per page (newest kept); absent means false. */
+		/*
+		 * `.catch(undefined)` IS THE POINT, not belt-and-braces (agent review round
+		 * 1, R1-M1). Element-wise dropping protects the ELEMENTS; without the catch a
+		 * non-array CONTAINER (`events: null`, `{}`, a string) failed the whole page,
+		 * and `listMessages` parses with `.parse`, so that throw replaced the
+		 * conversation with its error state. The contract says the field is omitted
+		 * rather than null - which is exactly why the renderer must not bet the
+		 * conversation on the hub keeping that promise.
+		 */
+		events: teamBridgeEventsSchema.optional().catch(undefined),
+		/*
+		 * PARSED, DELIBERATELY NOT RENDERED (agent review round 1, R1-M3). The hub
+		 * caps events per page (200, newest kept); if that cap ever bites, the
+		 * OLDEST membership lines of the page are absent. Reading it in the renderer
+		 * needs a page-level hint above the first event line, which is a
+		 * `team-bridge-page.tsx` seam other lanes hold this PR out of; and a hint is
+		 * new consent-adjacent copy that needs its own translation and audit round.
+		 * The field stays parsed so the shape is honest and so the hint is a small
+		 * change when the page lane can carry the flag. Nothing is hidden from the
+		 * reader that the conversation record depends on: current membership is the
+		 * members dialog's answer, not this line's.
+		 */
 		events_truncated: z.boolean().optional(),
 	})
 	.passthrough();
