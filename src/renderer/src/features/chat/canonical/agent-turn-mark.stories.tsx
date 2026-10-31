@@ -225,6 +225,12 @@ const Panel = ({
 					containerRef={containerRef}
 					isSmallView={false}
 					agentAvatar={agentAvatar}
+					/*
+					 * THE NAME THE IMAGE PRINTS: without it the frame renders
+					 * `alt=""` and the frame cannot show what a reader with a screen
+					 * reader hears (agent review round 2, R2-3 on #1518).
+					 */
+					agentName="coder"
 					status={"live" as CanonicalTranscriptStatus}
 					failure={null}
 					awaitingHydration={false}

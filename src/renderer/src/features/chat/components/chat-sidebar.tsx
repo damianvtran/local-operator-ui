@@ -58,7 +58,7 @@ import {
 import { useChatSearch } from "@shared/api/local-operator/session-search";
 import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
-import { Avatar, AvatarImage } from "@shared/components/ui/avatar";
+import { AgentAvatar, AvatarImage } from "@shared/components/ui/avatar";
 import { Button } from "@shared/components/ui/button";
 import { Checkbox } from "@shared/components/ui/checkbox";
 import {
@@ -923,10 +923,19 @@ const EntityMark: FC<{
 	const avatar = useAgentAvatar(agentId);
 	if (avatar === null) return <Glyph className="size-4 shrink-0" />;
 	return (
-		<Avatar className="size-4 shrink-0">
+		/*
+		 * THE RAIL'S PICTURE WEARS THE SAME EDGE AS THE ROSTER'S (design review
+		 * round 1, D1 on #1518). `AgentAvatar` is the one definition of the 1px
+		 * `border-control` edge and the `sunken` plate, on the circle's root.
+		 * Without it this 16px disc had no boundary at all - measured
+		 * `border-top-width: 0` against the roster's 1px - so a picture whose edge
+		 * matched the rail's ground was invisible, while the same picture in the
+		 * roster at least left four arcs.
+		 */
+		<AgentAvatar className="size-4 shrink-0">
 			{/* Decorative: the row prints the name right beside it. */}
 			<AvatarImage src={avatar} alt="" />
-		</Avatar>
+		</AgentAvatar>
 	);
 };
 

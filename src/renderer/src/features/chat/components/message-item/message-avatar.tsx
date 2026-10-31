@@ -18,13 +18,23 @@
  * glyph per turn would be exactly the repetition D11 removed. `src` is
  * therefore required, and every caller renders this only when it has one.
  *
- * `rounded-full` is one of the three places § 5 permits it, and the picture
- * keeps no edge: unlike the roster's disc (which sits inside a row STATE that
- * can land on its fill), this one sits on the transcript's ground and the image
- * is its own boundary.
+ * `rounded-full` is one of the three places § 5 permits it. THE EDGE IS THE
+ * SHARED ONE (design review round 1, D1 on #1518): the same 1px `border-control`
+ * boundary and `sunken` plate as the roster, the rail and the settings field,
+ * on the circle's owner (`AgentAvatar`). It used to draw none, on the argument
+ * that a picture is its own boundary - true only for pictures whose edge
+ * contrasts with the transcript's ground; a photo whose edge matches it became
+ * an invisible disc. The shared plate is the answer every other agent surface
+ * already gives.
+ *
+ * The DESIGNER HAS NOT YET SEEN THE 20PX MARK WITH THE EDGE RENDERED. The
+ * round-1 design pass could not produce a conversation in its rig, so the
+ * boundary and the 24px rhythm there were unjudged; this change keeps the 20px
+ * outer box and the `mb-1` line exactly, and the frame pass is what confirms
+ * the edge reads as quiet at this size.
  */
 
-import { Avatar, AvatarImage } from "@shared/components/ui";
+import { AgentAvatar, AvatarImage } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
 
@@ -54,7 +64,7 @@ export const MessageAvatar: FC<MessageAvatarProps> = ({
 		 * a block of its own. `flex` on the root is what keeps it a line rather
 		 * than an inline box that the first paragraph would wrap around.
 		 */
-		<Avatar className={cn("mb-1 size-5", className)}>
+		<AgentAvatar className={cn("mb-1 size-5", className)}>
 			{/*
 			 * `alt` NAMES THE SPEAKER, AND ONLY WHEN THERE IS A NAME (review round 1,
 			 * R-3). The old label was the fixed role word ("Assistant") and the comment
@@ -67,6 +77,6 @@ export const MessageAvatar: FC<MessageAvatarProps> = ({
 			 * (`alt=""`), which is the same answer the sidebar and roster give.
 			 */}
 			<AvatarImage src={src} alt={name ?? ""} loading="eager" />
-		</Avatar>
+		</AgentAvatar>
 	);
 };

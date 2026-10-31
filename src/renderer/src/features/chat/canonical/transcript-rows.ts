@@ -488,6 +488,29 @@ export function runsOf(rows: Row[]): TurnRun[] {
  * turn that is the agent itself — so both are fixed here: the loop stops at the
  * span's end, and only an assistant row or a non-quiet tool row may be elected.
  */
+/**
+ * Whether a SLOT draws the turn's mark.
+ *
+ * THE HEAD IS A ROW; THE MARK IS DRAWN AT A SLOT (review round 2, R2-1). A row
+ * list is not what the transcript paints: a collapsed bar hides a whole
+ * segment, a fold hides a run, and either can begin at a statement row (a
+ * notice, a peer delivery, a wake) with the elected head - the first row THAT
+ * TURN which is the agent's own voice - a later tool row inside it. Asking
+ * `heads.has(slot's first row)` therefore lost the mark for those turns while
+ * the head set was right. Containment is the rule: a slot draws the mark when
+ * ANY row it renders is the head, and the slot's first line is where it is
+ * drawn.
+ *
+ * ONE FUNCTION FOR BOTH READERS - the render pass and the DOM window's height
+ * estimate - so the signature cannot claim a mark the rows do not draw.
+ */
+export function slotCarriesTurnHead(
+	rows: readonly Row[],
+	heads: ReadonlySet<string>,
+): boolean {
+	return rows.some((row) => heads.has(row.record.id));
+}
+
 export function agentTurnHeads(rows: Row[]): Set<string> {
 	const heads = new Set<string>();
 	const renders = (row: Row | undefined) =>

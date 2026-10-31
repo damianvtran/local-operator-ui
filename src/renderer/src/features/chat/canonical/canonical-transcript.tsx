@@ -233,6 +233,7 @@ import {
 	type EntryDescriptor,
 	candidateSlots,
 	deferAggregateFormation,
+	entrySlotSignature,
 	estimateEntryHeight,
 } from "./transcript-dom-window";
 import { type SlotExtent, TranscriptEntrySlot } from "./transcript-entry-slot";
@@ -268,6 +269,7 @@ import {
 	ledgerName,
 	paintsSomething,
 	runsOf,
+	slotCarriesTurnHead,
 	splitFirstLine,
 } from "./transcript-rows";
 import {
@@ -6269,18 +6271,25 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		)
 			deferredFolds.add(group.id);
 	}
+	/*
+	 * THE ROWS A SLOT RENDERS, for the one rule that decides the mark. A bar
+	 * stands for the groups it hides, a run group for its rows, and a single-row
+	 * group for that row - the same partition `entryFacts` measures and the
+	 * render pass draws. Defined once here so the height estimate, the signature
+	 * and both draw sites read one answer.
+	 */
+	type ChatEntryOf = (typeof chatEntries)[number];
+	const entrySlotRows = (entry: ChatEntryOf): Row[] =>
+		entry.kind === "bar"
+			? entry.children.flatMap((child) =>
+					child.kind === "run" ? child.rows : [child.row],
+				)
+			: entry.group.kind === "run"
+				? entry.group.rows
+				: [entry.group.row];
 	const entryFacts = chatEntries.map((entry) => {
 		const group = entry.kind === "group" ? entry.group : null;
-		const entryRows =
-			entry.kind === "bar"
-				? entry.children.flatMap((child) =>
-						child.kind === "run" ? child.rows : [child.row],
-					)
-				: group?.kind === "run"
-					? group.rows
-					: group
-						? [group.row]
-						: [];
+		const entryRows = entrySlotRows(entry);
 		const first = entryRows[0];
 		const key =
 			entry.kind === "bar"
@@ -6361,16 +6370,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		 * so the signature cannot claim a mark the row does not draw.
 		 */
 		const marksHead =
-			Boolean(agentAvatar) &&
-			(entry.kind === "bar"
-				? turnHeads.has(entry.segment.firstId)
-				: group
-					? turnHeads.has(
-							group.kind === "row"
-								? group.row.record.id
-								: (group.rows[0]?.record.id ?? ""),
-						)
-					: false);
+			Boolean(agentAvatar) && slotCarriesTurnHead(entryRows, turnHeads);
 		const userExpanded =
 			first.record.kind === "user" &&
 			viewState.current.store.read(first.record.id);
@@ -6417,7 +6417,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		return {
 			key: slot.key,
 			recordIds: facts.flatMap((fact) => fact.ids),
-			signature: `${facts.map((fact) => `${fact.key}:${fact.ids.join(",")}:${fact.representation}:${fact.gap}:${fact.userExpanded}:${fact.media}:${fact.unsafe}:${fact.marksHead ? 1 : 0}:${fact.renderSignature}`).join("|")}:${isSmallView}`,
+			signature: entrySlotSignature(facts, isSmallView),
 			// Estimates are fixed for each entry regime; actual mounted boxes replace
 			// them before paint. They are not an asserted native measurement.
 			estimate: facts.reduce(
@@ -6769,7 +6769,8 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					 * groups rendered inside the bar never draw it, so opening the bar
 					 * does not add a second copy.
 					 */}
-					{turnHeads.has(entry.segment.firstId) && agentAvatar ? (
+					{slotCarriesTurnHead(entrySlotRows(entry), turnHeads) &&
+					agentAvatar ? (
 						<MessageAvatar src={agentAvatar} name={agentName} />
 					) : null}
 					<TurnSummary
@@ -6910,11 +6911,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				 * stands at is a head; a row group's content is that row, and a
 				 * run's is its first row (the one the fold unmounts).
 				 */
-				turnHeads.has(
-					entry.group.kind === "row"
-						? entry.group.row.record.id
-						: (entry.group.rows[0]?.record.id ?? ""),
-				),
+				slotCarriesTurnHead(entrySlotRows(entry), turnHeads),
 			)
 		);
 
