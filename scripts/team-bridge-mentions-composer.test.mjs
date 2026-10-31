@@ -24,6 +24,7 @@ const bundle = await build({
 			export {MentionSourceContext} from './src/renderer/src/features/team-bridge/mentions/mention-context';
 			export {stagedMentions} from './src/renderer/src/features/team-bridge/mentions/mention-outbox';
 			export {createRoot} from 'react-dom/client';
+			export {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 			export {act, createElement} from 'react';
 		`,
 		resolveDir: process.cwd(),
@@ -86,6 +87,16 @@ try {
 } finally {
 	await unlink(path);
 }
+
+/*
+ * The thread pane's mention rows now draw through `TeamBridgeAvatar`, which reads
+ * the private-avatar cache through React Query — the way the real app does, since
+ * `main.tsx` mounts the whole renderer under one `QueryClientProvider`. The host
+ * has to provide one too; without it the plate throws "No QueryClient set".
+ */
+const queryClient = new mod.QueryClient({
+	defaultOptions: { queries: { retry: false } },
+});
 
 const CONVERSATION = "bcv_mentions01";
 const MENTION_OTHER = /data-mention="other"[^>]*>@Ben Tran</;
@@ -182,25 +193,29 @@ async function mount({
 	const render = (rows) =>
 		root.render(
 			mod.createElement(
-				mod.MentionSourceContext.Provider,
-				{ value: sourceFor(rows) },
-				mod.createElement(mod.TeamBridgeThreadPaneView, {
-					root: rootMessage,
-					replies: [],
-					state: "ready",
-					accountId: "acct_self",
-					tenantId: "tnt_1",
-					conversationId: CONVERSATION,
-					labelFor: (s) => s.display_label,
-					onClose() {},
-					onRetry() {},
-					onSend: async (...args) => {
-						sent.push({
-							args,
-							mentions: mod.stagedMentions(CONVERSATION, args[0]),
-						});
-					},
-				}),
+				mod.QueryClientProvider,
+				{ client: queryClient },
+				mod.createElement(
+					mod.MentionSourceContext.Provider,
+					{ value: sourceFor(rows) },
+					mod.createElement(mod.TeamBridgeThreadPaneView, {
+						root: rootMessage,
+						replies: [],
+						state: "ready",
+						accountId: "acct_self",
+						tenantId: "tnt_1",
+						conversationId: CONVERSATION,
+						labelFor: (s) => s.display_label,
+						onClose() {},
+						onRetry() {},
+						onSend: async (...args) => {
+							sent.push({
+								args,
+								mentions: mod.stagedMentions(CONVERSATION, args[0]),
+							});
+						},
+					}),
+				),
 			),
 		);
 	await mod.act(async () => render(list));
