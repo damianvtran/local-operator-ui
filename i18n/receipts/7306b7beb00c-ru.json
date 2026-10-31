@@ -1,0 +1,99 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit, delta audit of the two #general / #humans header topics (PR #1534 round-1 remediation)",
+	"date": "2026-10-30",
+	"auditor": "reviewer",
+	"agent": "reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Session 7306b7beb00c ran as anthropic/claude-opus-5-5 (the model named in this session's system prompt); no fallback announced or observed.",
+	"session": "7306b7beb00c",
+	"instance": "7306b7beb00c-ru",
+	"audit_id": "teambridge-builtin-general-audit-7306b7beb00c-ru",
+	"status": "passed",
+	"result": "clean",
+	"locale": "ru",
+	"namespace": "ui.teamBridge",
+	"independence": "Independent auditor: session 7306b7beb00c (team radientdev, role reviewer, task 'ui #1534 i18n audit'). Did not translate these strings (translations authored in commits 00ceabc5eed/ddc8f44d5fd by the PR's implementer). No catalogue edited.",
+	"integration": {
+		"pr": "damianvtran/local-operator-ui#1534",
+		"branch": "feat/team-bridge-builtin-general",
+		"head_at_audit": "ddc8f44d5fd9882e2d9f5cd0226880283117cde6",
+		"worktree": "~/local-operator-ui/.worktrees/tb-builtin-general"
+	},
+	"scope": {
+		"primary": [
+			"ui.teamBridge.builtin.general_topic",
+			"ui.teamBridge.builtin.humans_topic"
+		],
+		"delta_verified": "git diff d62accf9db0..ddc8f44d5fd -- src/i18n/catalogues/ru/ui.teamBridge.json adds general_topic and changes humans_topic only. The d62accf9db0 bytes of this file and of en/ui.teamBridge.json hash to the ledger row's recorded target_sha256/source_sha256 (measured), so every other key is byte-identical to what the prior audits read.",
+		"keys_read_for_consistency": [
+			"ui.teamBridge.notify.mention",
+			"ui.teamBridge.builtin.agents_topic"
+		],
+		"call_site": "src/renderer/src/features/team-bridge/team-bridge-model.ts:1120-1128 (built-in channel header topic)",
+		"references": [
+			{
+				"path": "~/local-operator/i18n/glossary.md",
+				"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+			},
+			{
+				"path": "~/local-operator/i18n/style-guides/ru.md",
+				"sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+			}
+		]
+	},
+	"sha256": {
+		"ru": "2d530e3678bb0df44e05b63c1dd64698f33b19f51640a454920b8d6e6ed33beb",
+		"en": "4c8f38384f4f9807435381381001731804797c992bd85ccadb1080720ea50aba"
+	},
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "4c8f38384f4f9807435381381001731804797c992bd85ccadb1080720ea50aba"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ru/ui.teamBridge.json",
+			"sha256": "2d530e3678bb0df44e05b63c1dd64698f33b19f51640a454920b8d6e6ed33beb"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "df149780cea3e25fb4b8e0d327da0d0c0e9a2c6c90fccd2f43118fe3268f81ac"
+		}
+	},
+	"audited_values": {
+		"ui.teamBridge.builtin.general_topic": {
+			"en": "The whole organization: people and their agents. Agents respond only to mentions.",
+			"ru": "Вся организация: люди и их агенты. Агенты отвечают только на упоминания."
+		},
+		"ui.teamBridge.builtin.humans_topic": {
+			"en": "People only, no agents. Messages here notify every person.",
+			"ru": "Только люди, без агентов. Уведомления о сообщениях здесь получает каждый."
+		}
+	},
+	"fidelity": {
+		"ui.teamBridge.builtin.general_topic": "«Вся организация: люди и их агенты» = the whole organization: people and their agents; «Агенты отвечают только на упоминания» = agents respond only to mentions. агент per glossary; упоминания matches notify.mention «Упоминания».",
+		"ui.teamBridge.builtin.humans_topic": "«Только люди, без агентов» = only people, no agents; second sentence byte-identical to the previously audited value."
+	},
+	"mechanical_checks": {
+		"ui.teamBridge.builtin.general_topic": {
+			"placeholders": "none in en or target",
+			"nfc": true,
+			"invisible_or_bidi_controls": "none (scanned U+00A0, U+200B-U+200F, U+202A-U+202E)",
+			"em_or_en_dash": "none (context note forbids em dash)",
+			"code_points": 72,
+			"en_code_points": 81
+		},
+		"ui.teamBridge.builtin.humans_topic": {
+			"placeholders": "none in en or target",
+			"nfc": true,
+			"invisible_or_bidi_controls": "none (scanned U+00A0, U+200B-U+200F, U+202A-U+202E)",
+			"em_or_en_dash": "none (context note forbids em dash)",
+			"code_points": 73,
+			"en_code_points": 58
+		}
+	},
+	"findings": [],
+	"verdict": "clean: 0 blocker, 0 major, 0 minor, 0 nit",
+	"out_of_scope_note": "The English 'Agents respond only to mentions' omits the context note's thread-reply wake rule; translations faithfully follow the English. English copy is not this audit's scope.",
+	"audit_notes_not_execution_log": true
+}
