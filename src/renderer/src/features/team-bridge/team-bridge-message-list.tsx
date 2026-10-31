@@ -802,14 +802,26 @@ const MessageRowView: FC<MessageRowProps> = ({
 					 * 7.85:1 dark), which also survives a continuation row where the clock
 					 * only shows on hover. It returns to `ink` in one transition on confirm.
 					 */
+					/*
+					 * THE INK TRAVELS THROUGH `--md-ink`, NOT A `text-*` UTILITY (design
+					 * round 2, D3). `.lo-markdown { color: var(--md-ink, var(--lo-ink)) }`
+					 * in `markdown.css` is UNLAYERED, and Tailwind's utilities live in
+					 * `@layer utilities` - so an unlayered rule wins no matter what order the
+					 * two are in. `text-ink-muted` computed as full `--lo-ink` on a live
+					 * pending row (measured `rgb(56,58,66)`), which is why the state was
+					 * invisible. The value is driven on the row instead, scoped to it: the
+					 * stylesheet keeps styling every other markdown surface in the app.
+					 */
 					<TeamBridgeMarkdown
-						className={cn(
-							"team-bridge-message-body text-[14px] transition-colors duration-fast",
-							/* Pending only: a FAILED message is not in flight, and its state is
-							   already said in danger ink under the body. */
-							delivery?.status === "pending" ? "text-ink-muted" : "text-ink",
-						)}
+					<TeamBridgeMarkdown
+						className="team-bridge-message-body text-[14px]"
+						style={{
+							...(delivery?.status === "pending"
+								? { "--md-ink": "var(--lo-ink-muted)" }
+								: {}),
+						}}
 						mentions={mentionRuns}
+					>
 					>
 						{message.body}
 					</TeamBridgeMarkdown>

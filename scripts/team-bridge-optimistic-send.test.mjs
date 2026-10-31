@@ -101,6 +101,7 @@ const bundle = await build({
  export {TeamBridgePageView} from "./src/renderer/src/features/team-bridge/team-bridge-page";
  export {QueryClient, QueryClientProvider} from "@tanstack/react-query";
  export {usePendingSends, resetPendingSendsForTest} from "./src/renderer/src/features/team-bridge/team-bridge-pending-sends";
+ export {reconcileDraftAccount} from "./src/renderer/src/shared/store/team-bridge-draft-account";
  export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store";`,
 		resolveDir: process.cwd(),
 	},
@@ -820,6 +821,168 @@ test("a pending row announces that it is sending, and stops when confirmed", asy
 			app.element.querySelector('[data-row-key] [aria-live="polite"]'),
 			null,
 			"and the status leaves with the pending state",
+		);
+	} finally {
+		await app.close();
+	}
+});
+
+/*
+ * m1 - EDIT THEN SEND IS THE SAME ATTEMPT (review round 2).
+ *
+ * Edit takes a failed message out of the store and puts its words back in the box.
+ * Pressing Send with them unchanged is the reader retrying that message, not writing
+ * a new one - so it must keep the attempt's key. Minting a fresh one would post a
+ * second copy of anything the first request actually landed (answer lost), which is
+ * the duplicate this whole attempt record exists to prevent. Retry already kept it;
+ * this is the other door to the same message.
+ */
+test("Edit then Send with the text unchanged keeps the attempt's key", async () => {
+	localStorage.clear();
+	m.resetPendingSendsForTest();
+	const refs = [];
+	const app = await mountPage(
+		pageProps({
+			target: conversationTarget,
+			onSend: (_body, clientRef) => {
+				refs.push(clientRef);
+				if (refs.length === 1) throw new Error("response lost");
+				return undefined;
+			},
+		}),
+	);
+	try {
+		await typeBody(app.element, "did this land?");
+		await act(async () => sendButton(app.element).click());
+		await settle();
+		const [failed] = rows(app.element);
+		const edit = [...failed.querySelectorAll("button")].find(
+			(button) => button.textContent === "Edit",
+		);
+		await act(async () => edit.click());
+		await settle();
+		assert.equal(
+			app.element.querySelector("textarea")?.value,
+			"did this land?",
+			"Edit hands the words back",
+		);
+		await act(async () => sendButton(app.element).click());
+		await settle();
+		assert.equal(refs.length, 2, "the second press reached the wire");
+		assert.equal(
+			refs[1],
+			refs[0],
+			"the retried words keep their key, so a landed request is deduplicated",
+		);
+	} finally {
+		await app.close();
+	}
+});
+
+/*
+ * M3 - NOTHING UNSENT OUTLIVES THE ACCOUNT (review round 2's regression case).
+ *
+ * The drafts, the composer's rows and the send-attempt records all die with the
+ * account. The pending rows and the lanes are the operator's unsent words in the
+ * same sense - a failed row used to come back with a live Retry for whoever signed
+ * in next - and they register with the same fence. This drives the real reconciler
+ * the app calls and asserts both halves: the rows go, and a lane forgets the
+ * conversation it created, so the next draft cannot post into the previous one.
+ */
+test("signing out empties the pending rows and the lanes' remembered conversation", async () => {
+	localStorage.clear();
+	m.resetPendingSendsForTest();
+	const intos = [];
+	const target = {
+		type: "compose",
+		recipients: [
+			{ kind: "human", accountId: "acct_b", label: "Bea" },
+			{ kind: "human", accountId: "acct_c", label: "Cy" },
+		],
+	};
+	const app = await mountPage(
+		pageProps({
+			target,
+			onSend: (_body, _clientRef, _attachments, delivery) => {
+				intos.push(delivery?.into?.conversationId);
+				if (!delivery?.into)
+					delivery?.onCreated?.("bcv_after_signout", "org_page");
+				return Promise.resolve(undefined);
+			},
+		}),
+	);
+	try {
+		await typeBody(app.element, "before sign-out");
+		await act(async () => sendButton(app.element).click());
+		await settle();
+		assert.equal(
+			m.usePendingSends.getState().entries.length,
+			1,
+			"the row is held while the account is signed in",
+		);
+		await act(async () => {
+			m.reconcileDraftAccount(window.localStorage, { state: "signed_out" });
+		});
+		assert.equal(
+			m.usePendingSends.getState().entries.length,
+			0,
+			"the unsent row is dropped with the account",
+		);
+		await typeBody(app.element, "after sign-out");
+		await act(async () => sendButton(app.element).click());
+		await settle();
+		assert.deepEqual(
+			intos,
+			[undefined, undefined],
+			"and the lane forgot the conversation it created, so the next draft creates its own",
+		);
+	} finally {
+		await app.close();
+	}
+});
+
+/*
+ * D3 (design round 2) - THE PENDING INK MUST REACH THE PROSE BLOCK.
+ *
+ * `.lo-markdown { color: var(--md-ink, var(--lo-ink)) }` is unlayered, so a Tailwind
+ * `text-*` utility cannot colour a message body: the class was there and the pixels
+ * were not (measured `rgb(56,58,66)` on a pending row that asked for muted ink). The
+ * row now drives `--md-ink`, the property that actually wins, and only while pending.
+ *
+ * WHAT THIS CAN AND CANNOT SEE: this probe has no stylesheet (the bundle drops CSS),
+ * so it cannot read a computed colour - `scripts/evidence` and the PR's live capture
+ * carry that measurement. What it can prove is the mechanism the colour rides on, and
+ * that a confirmed row does not carry it.
+ */
+test("a pending row drives --md-ink and a confirmed one does not", async () => {
+	localStorage.clear();
+	m.resetPendingSendsForTest();
+	const gate = deferred();
+	const app = await mountPage(
+		pageProps({ target: conversationTarget, onSend: () => gate.promise }),
+	);
+	try {
+		await typeBody(app.element, "ink check");
+		await act(async () => sendButton(app.element).click());
+		const pendingBody = app.element.querySelector(
+			"[data-row-key] .lo-markdown",
+		);
+		assert.ok(pendingBody, "the pending row draws its prose block");
+		assert.equal(
+			pendingBody.style.getPropertyValue("--md-ink").trim(),
+			"var(--lo-ink-muted)",
+			"the pending ink arrives through the property the stylesheet reads",
+		);
+		gate.resolve(message({ id: "msg_ink", seq: 1, body: "ink check" }));
+		await settle();
+		const confirmedBody = app.element.querySelector(
+			"[data-row-key] .lo-markdown",
+		);
+		assert.ok(confirmedBody, "the confirmed row draws the same block");
+		assert.equal(
+			confirmedBody.style.getPropertyValue("--md-ink"),
+			"",
+			"and a confirmed row leaves the ink to the stylesheet",
 		);
 	} finally {
 		await app.close();

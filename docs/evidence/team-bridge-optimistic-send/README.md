@@ -59,3 +59,28 @@ focused frame from this session; the designer reported the same limitation in ro
 Nothing between the `li` and the scroll viewport clips, the actions line sits above the
 list's bottom padding, and the global ring (`2px accent at 2px offset`) is unchanged by
 this PR.
+
+## Round 2 remediation — the pending ink (D3), measured
+
+Design round 2 measured the pending body computing `rgb(56,58,66)` = `--lo-ink`
+despite carrying `text-ink-muted`: `.lo-markdown { color: var(--md-ink,
+var(--lo-ink)) }` is unlayered, so no `text-*` utility can reach it. The row now
+sets `--md-ink: var(--lo-ink-muted)` on the prose block while pending only.
+
+Computed colours read from the live row with the harness `styles` action
+(`[data-row-key] .lo-markdown`), Storybook `Team Bridge/Optimistic send →
+ChiefFirstMessagePending`:
+
+| theme | pending | confirmed |
+| --- | --- | --- |
+| `oneLight` | `color: rgb(67, 69, 79)` = `--lo-ink-muted` `#43454F` | `--lo-ink` `#383A42` |
+| default dark | `color: rgb(194, 188, 175)` = `--lo-ink-muted` `#c2bcaf` | `color: rgb(241, 238, 230)` = `--lo-ink` `#f1eee6` |
+
+The same page, before and after its answer: the body's computed colour changes from
+the muted token to the confirmed one, which is the difference round 2 found missing.
+
+**m4 (review round 2): a failed row is lost on reload.** `usePendingSends` is
+memory-only and `Edit`/Retry live on the row, so a reload after a failed send leaves
+neither the row nor its text. Deliberate and unchanged by this PR - the alternative
+(the durable journal) is what replayed spent `client_ref` keys, which is the bug
+#1512 and #1528 exist to fix.

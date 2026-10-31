@@ -718,12 +718,25 @@ test("repeated status reads for the same account after a switch erase nothing", 
 	const back = await mountPage(
 		pageProps({ target: conversation, onSend: failFirst }),
 	);
+	/*
+	 * THE UNFINISHED MESSAGE SURVIVES AS ITS ROW. A text send is optimistic, so the
+	 * failed attempt is the row the press drew - held outside the page, with its own
+	 * key - rather than text parked in the composer. What this case owns is unchanged:
+	 * status reads naming the same account revoke nothing, so the row and its key are
+	 * still there afterwards.
+	 */
+	const failed = back.element.querySelector('[data-delivery="failed"]');
+	assert.ok(failed, "the unsent message survives the status reads as its row");
 	assert.equal(
 		composerText(back.element),
-		"after the switch",
-		"the unsent text survives the status reads",
+		"",
+		"and the box holds no second copy",
 	);
-	await act(async () => sendButton(back.element).click());
+	await act(async () =>
+		[...failed.querySelectorAll("button")]
+			.find((button) => button.textContent === "Retry")
+			.click(),
+	);
 	await settle();
 	assert.deepEqual(refs.length, 2);
 	assert.equal(

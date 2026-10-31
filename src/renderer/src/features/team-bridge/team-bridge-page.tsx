@@ -1596,7 +1596,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			current !== undefined &&
 			(current.clientRef === clientKey || current.clientRef === row.clientRef);
 		if (!mine) return;
-		sendAttempts.delete(composerKey);
+		/*
+		 * A LANDED ATTEMPT RETIRES ITS KEY; A FAILED ONE KEEPS IT (review round 2, m1).
+		 * On the failure side the record's whole purpose is that the next attempt is the
+		 * SAME message: the row's Retry uses the row's own key, and Edit-then-Send comes
+		 * back through `submit`, where keeping the record is what makes those words a
+		 * retry rather than a new message. Retiring it there mints a second key and posts
+		 * a duplicate of anything the first request actually landed.
+		 */
+		if (rekeyed) sendAttempts.delete(composerKey);
 		if (
 			rekeyed &&
 			isDraftCurrent() &&
@@ -1762,10 +1770,21 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		const attemptRow = attempt?.localId
 			? pendingEntries.find((row) => row.localId === attempt.localId)
 			: undefined;
+		/*
+		 * A ROW THAT IS GONE IS ITSELF A RETRY (review round 2, m1). Edit takes a failed
+		 * message out of the store and puts its text back in the box; pressing Send
+		 * with that text unchanged used to look like a brand-new message and mint a new
+		 * key - so a request that had actually landed (answer lost) was posted a second
+		 * time and duplicated. An attempt whose row no longer exists cannot be in flight
+		 * or confirmed by THIS client, so the words it names are still its own: keep the
+		 * key. A row that exists must still be `failed` (round 1, B1).
+		 */
 		const retriesFailedAttempt = Boolean(
 			attempt &&
 				attempt.body === body &&
-				(!attempt.localId || attemptRow?.status === "failed"),
+				(!attempt.localId ||
+					attemptRow === undefined ||
+					attemptRow.status === "failed"),
 		);
 		/*
 		 * ONLY A LIVE FAILED ATTEMPT IS A RETRY. Its key is reused so an ambiguous failure
