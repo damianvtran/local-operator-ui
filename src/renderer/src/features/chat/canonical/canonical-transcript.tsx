@@ -124,6 +124,11 @@ import { TurnTimestamp } from "../components/message-item/turn-timestamp";
 import { ReplyPreview } from "../components/reply-preview";
 import { DiffBlock, TraceLine } from "../components/trace";
 import {
+	type BridgeLabelResolver,
+	type BridgeRowView,
+	bridgeRowView as composeBridgeRowView,
+} from "../components/trace/bridge-row-model";
+import {
 	hubIdentity,
 	isInternalReceipt,
 	peerHasDetail,
@@ -133,14 +138,15 @@ import {
 	wakeReceiptHeadline,
 } from "../components/trace/receipt-row-model";
 import {
+	BridgeDetail as BridgeDetailPane,
 	DETAIL_SECTION_MAX,
 	ToolDetail,
 } from "../components/trace/tool-detail";
 import { hasDetail } from "../components/trace/tool-detail-model";
 import { ToolRow as ToolLedgerRow } from "../components/trace/tool-row";
 import {
-	SEND_DELIVERY_NOTE,
 	type SendDeliveryState,
+	deliveryNote,
 	deliveryRowOutcome,
 	formatBytes,
 	formatDuration,
@@ -291,6 +297,7 @@ import {
 import { isFinalResponse, isQuietTurnCall } from "./turn-segments";
 import { useActiveCheckpoint } from "./use-active-checkpoint";
 import type { AttachmentScope } from "./use-attachment-url";
+import { useBridgeConversationNames } from "./use-bridge-conversation-names";
 import { useCheckpoints } from "./use-checkpoints";
 import { useCrossSessionVisibility } from "./use-cross-session-hidden";
 import { useLinkSubject } from "./use-link-subject";
@@ -2191,8 +2198,14 @@ function toolRecordSummary(
  * `null` for `delivered` and for every row with no stated delivery, so a
  * successful send's expansion is exactly the one it always was.
  */
-function DeliveryNote({ state }: { state: SendDeliveryState }) {
-	const note = SEND_DELIVERY_NOTE[state];
+function DeliveryNote({
+	state,
+	toolName = "",
+}: {
+	state: SendDeliveryState;
+	toolName?: string;
+}) {
+	const note = deliveryNote(state, toolName);
 	if (!note) return null;
 	return <span data-delivery-note={state}>{note}</span>;
 }
@@ -2216,6 +2229,61 @@ function DeliveryNote({ state }: { state: SendDeliveryState }) {
  * shows both the arguments and the intent states two facts where the TUI states
  * one per surface, and the two immediately start restating each other.
  */
+/**
+ * The Team Bridge view of a `bridge` record, or `null` for every other tool.
+ *
+ * A composing or queued row keeps the generic status words (`composing · 1.2
+ * KB`), exactly as every other tool: there are no arguments to name yet.
+ */
+function bridgeRowView(
+	record: Extract<TranscriptRecord, { kind: "tool" }>,
+	resolver: BridgeLabelResolver | null,
+): BridgeRowView | null {
+	if (record.toolName.trim().toLowerCase() !== "bridge") return null;
+	if (record.phase === "composing" || record.phase === "queued") return null;
+	if (record.neverSent === true || record.notRunReason) return null;
+	return composeBridgeRowView(
+		{
+			args: record.args,
+			details: record.bridge ?? null,
+			label: record.bridgeLabel ?? null,
+			output: record.output,
+			failed:
+				record.phase === "done" &&
+				isFailedResult(record.isError, record.delivery),
+		},
+		resolver,
+	);
+}
+
+/**
+ * A settled `bridge` row's expansion: the shared pane, with this row's
+ * delivery note (inbox-only, awaiting acceptance, unconfirmed) as its
+ * outcome sentence when the result stated one.
+ */
+function BridgeDetail({
+	record,
+	view,
+	isError,
+}: {
+	record: Extract<TranscriptRecord, { kind: "tool" }>;
+	view: BridgeRowView;
+	isError: boolean;
+}) {
+	const note = record.delivery
+		? deliveryNote(record.delivery, record.toolName)
+		: null;
+	return (
+		<BridgeDetailPane
+			view={view}
+			isError={isError}
+			note={
+				note ? <span data-delivery-note={record.delivery}>{note}</span> : null
+			}
+		/>
+	);
+}
+
 const ToolRow = memo(function ToolRow({
 	record,
 	isSmallView,
@@ -2251,6 +2319,13 @@ const ToolRow = memo(function ToolRow({
 	 * tool) means the ordinary row below, exactly as before.
 	 */
 	const flagged = useFlaggedItem(record.toolCallId);
+	/*
+	 * The Team Bridge cache's conversation names, for a `bridge` row whose call
+	 * addressed a conversation by id. Called for every row (hooks cannot be
+	 * conditional) and cheap when unused: one context read, and a resolver that
+	 * reads nothing until a bridge row asks.
+	 */
+	const resolveConversation = useBridgeConversationNames();
 	if (flagged !== null && record.toolName === "notify") {
 		return (
 			<MessageContainer isUser={false} isSmallView={isSmallView}>
@@ -2328,7 +2403,8 @@ const ToolRow = memo(function ToolRow({
 	 * time it reaches the record.
 	 */
 	const partial = deliveryRowOutcome(record.delivery) === "partial";
-	const summary = toolRecordSummary(record);
+	const bridge = bridgeRowView(record, resolveConversation);
+	const summary = bridge?.summary ?? toolRecordSummary(record);
 	// When the arguments taught us nothing, the summary is the tool's own name,
 	// which the row then drops as a stutter and the object column goes empty.
 	// A row that says nothing about its call is the scannability this port
@@ -2423,6 +2499,12 @@ const ToolRow = memo(function ToolRow({
 		</div>
 	) : isDiffBodyRow(record) ? (
 		<DiffBlock diff={record.diff} />
+	) : bridge && !running ? (
+		<BridgeDetail
+			record={record}
+			view={bridge}
+			isError={isFailedResult(record.isError, record.delivery)}
+		/>
 	) : hasDetail(record.args, record.output) ? (
 		<ToolDetail
 			args={record.args}
@@ -2449,7 +2531,9 @@ const ToolRow = memo(function ToolRow({
 			 * machine result stays below it (see `DeliveryNote`).
 			 */
 			note={
-				record.delivery ? <DeliveryNote state={record.delivery} /> : undefined
+				record.delivery ? (
+					<DeliveryNote state={record.delivery} toolName={record.toolName} />
+				) : undefined
 			}
 		/>
 	) : undefined;
@@ -2562,6 +2646,8 @@ const ToolRow = memo(function ToolRow({
 										: "success"
 				}
 				deliveryState={record.delivery}
+				settledVerb={bridge?.failedVerb ?? null}
+				failureWord={bridge?.failureWord ?? null}
 				durationS={record.durationS}
 				startedAt={record.startedAt}
 				added={record.added}

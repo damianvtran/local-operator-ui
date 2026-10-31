@@ -66,6 +66,8 @@
  * already carries as an outcome.
  */
 
+import { Disclosure } from "@shared/components/ui/disclosure";
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import {
 	type FC,
@@ -75,6 +77,8 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { TeamBridgeMarkdown } from "../../../team-bridge/team-bridge-markdown";
+import type { BridgeRowView } from "./bridge-row-model";
 import {
 	type DetailLine,
 	SUBPIXEL_TOLERANCE,
@@ -447,6 +451,117 @@ export const ToolDetail: FC<ToolDetailProps> = ({
 					/>
 				</div>
 			)}
+		</div>
+	);
+};
+
+/**
+ * A Team Bridge (`bridge`) call's expansion, in the reader's order.
+ *
+ * WHY NOT `ToolDetail`. The generic pane prints the arguments as `key: value`
+ * lines and then the result, which for a post is `op: channel_post`,
+ * `channel_id: bcv_…`, `body: …` and a one-line machine receipt. What the
+ * reader opened the row to learn is WHERE it went, WHAT was said and WHETHER
+ * it landed - so those lead, in that order:
+ *
+ * 1. the target headline (`Direct message to Ada`, `#release`);
+ * 2. the body, rendered as the Team Bridge page renders it
+ *    (`TeamBridgeMarkdown`: a teammate's markdown, with images inert as text);
+ * 3. the outcome sentence (`Posted at seq 42`; a refusal's code and error; or
+ *    the delivery note - inbox-only, awaiting acceptance, unconfirmed);
+ * 4. the machine fields and the raw result, behind a quiet `Details`
+ *    disclosure (the `TurnSummary` form: trailing chevron), so the ids a
+ *    developer needs are one click away and never the first thing a person
+ *    reads.
+ *
+ * Same ground and face rules as `ToolDetail` (§E5: `sunken`, no border; the
+ * reader's sentences in sans, the machine payload in mono).
+ */
+export const BridgeDetail: FC<{
+	view: BridgeRowView;
+	isError: boolean;
+	/** The delivery note, which outranks the plain outcome sentence. */
+	note?: ReactNode;
+}> = ({ view, isError, note = null }) => {
+	const outcome = note ?? view.outcome;
+	const hasInternals = view.internals.length > 0 || Boolean(view.raw);
+	return (
+		<div
+			className={cn(
+				"flex w-full flex-col gap-2 rounded-md bg-sunken p-3 font-sans text-body-sm",
+			)}
+			data-bridge-detail=""
+		>
+			{view.headline ? (
+				<div
+					className={cn("font-medium text-ink")}
+					data-detail-section="bridge-target"
+				>
+					{view.headline}
+				</div>
+			) : null}
+			{view.body ? (
+				<div
+					className={cn(SECTION_MAX, "overflow-auto text-ink")}
+					data-detail-section="bridge-body"
+				>
+					<TeamBridgeMarkdown>{view.body}</TeamBridgeMarkdown>
+				</div>
+			) : null}
+			{outcome ? (
+				<div
+					className={cn(
+						"whitespace-normal",
+						isError ? "text-danger" : "text-ink-muted",
+					)}
+					data-detail-section="bridge-outcome"
+				>
+					{outcome}
+				</div>
+			) : null}
+			{hasInternals ? (
+				<Disclosure
+					chevron="trailing"
+					/*
+					 * `Details` is the ONLY route to the ids, so its chevron is a
+					 * control's indicator, not trace chrome: the default `ink-disabled`
+					 * measured 2.43:1 light / 2.49:1 dark on `sunken`, under the 3:1
+					 * non-text floor (design round 1, D3). `ink-dim` is the label's own
+					 * ink (5.03:1 / 6.58:1) - the `chevronClassName` precedent the
+					 * settings and mesh disclosures already use.
+					 */
+					chevronClassName="text-ink-dim"
+					summary={
+						<span className={cn("text-ink-dim text-meta")}>
+							{t("ui.chat.canonical.tool_row.bridge.detail.details")}
+						</span>
+					}
+					triggerData={{ "data-detail-section": "bridge-details" }}
+				>
+					<div
+						className={cn(
+							SECTION_MAX,
+							"overflow-auto pt-1 font-mono text-mono-sm",
+						)}
+					>
+						{view.internals.map((line) => (
+							<DetailLineRow
+								key={line.key}
+								line={{ key: line.key, value: line.value, depth: 1 }}
+							/>
+						))}
+						{view.raw ? (
+							<pre
+								className={cn(
+									"mt-2 whitespace-pre-wrap break-words font-mono text-ink-dim",
+								)}
+							>
+								{view.raw}
+							</pre>
+						) : null}
+					</div>
+				</Disclosure>
+			) : null}
 		</div>
 	);
 };
