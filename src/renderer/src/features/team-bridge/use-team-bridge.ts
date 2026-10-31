@@ -245,9 +245,12 @@ export function teamBridgeMessagesQueryOptions(
 		/* Membership events ride the same page: carry the previous read's events
 		   forward and dedupe by id (`withCarriedTeamBridgeEvents`), so a poll
 		   whose window omits a line the reader already saw does not drop it.
-		   Messages are untouched. Moves into `teamBridgeMessagesQueryOptions`
-		   when that factory lands, so every cache writer dedupes the same way. */
-		queryFn: async ({ queryKey }) =>
+		   Messages are untouched. It lives in this shared factory so every cache
+		   writer - the timeline hook and the notification watcher's write-before-
+		   notify read alike - dedupes the same way. */
+		// Typed explicitly: a plain object returned from a factory has no
+		// `useQuery` call site to infer the context from.
+		queryFn: async ({ queryKey }: { queryKey: QueryKey }) =>
 			withCarriedTeamBridgeEvents(
 				client.getQueryData<TeamBridgeMessagePage>(queryKey),
 				await readForBridgeOwner(client, accountId, () =>

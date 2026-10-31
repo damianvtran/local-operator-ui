@@ -1572,9 +1572,19 @@ test("write before notify: IPC fires only once the timeline cache holds the mess
 		release = resolve;
 	});
 	const mounted = await mount();
-	// The reader visited this conversation earlier: a stale page is cached.
+	// The reader visited this conversation earlier: a stale page is cached. It
+	// carries a membership event line (#1539) the banner's fresh read omits.
 	const key = api.teamBridgeKeys.messages("bcv_w", "tnt_w", "acct_alice");
-	mounted.client.setQueryData(key, { messages: [stale] });
+	const joined = {
+		id: "bcev_seen",
+		event_seq: 1,
+		kind: "joined",
+		actor: { kind: "human", account_id: "acct_bob", display_label: "Bob" },
+		targets: [],
+		after_seq: 1,
+		at: "2026-10-30T14:02:11.123Z",
+	};
+	mounted.client.setQueryData(key, { messages: [stale], events: [joined] });
 	try {
 		await until(
 			() =>
@@ -1604,6 +1614,18 @@ test("write before notify: IPC fires only once the timeline cache holds the mess
 			page.messages.find((row) => row.id === "bcmsg_new").client_ref,
 			"cref_new",
 			"rows keep client_ref (optimistic-send matching)",
+		);
+		/*
+		 * ONE MERGE FOR EVERY CACHE WRITER. The banner's read goes through the same
+		 * `teamBridgeMessagesQueryOptions` as the timeline, so #1539's event carry
+		 * applies to it too: a fresh page that omits a line the reader already saw
+		 * must not wipe it from the timeline the click opens. A watcher that fetched
+		 * with its own queryFn would drop `bcev_seen` here.
+		 */
+		assert.deepEqual(
+			(page.events ?? []).map((line) => line.id),
+			["bcev_seen"],
+			"the banner's write keeps event lines already on the page",
 		);
 		const banner = mounted.notifications[0];
 		assert.equal(banner.conversationId, "bcv_w");
