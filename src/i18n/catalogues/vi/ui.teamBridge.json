@@ -236,6 +236,7 @@
 	"ui.teamBridge.reactions.toneDefault": "Tông màu da mặc định",
 	"ui.teamBridge.reactions.empty": "Không tìm thấy biểu tượng cảm xúc",
 	"ui.teamBridge.reactions.failed": "Không lưu được cảm xúc. Hãy thử lại.",
+	"ui.teamBridge.reactions.others": "{others, plural, other {# người khác}}",
 	"ui.teamBridge.reactions.category0": "Mặt cười và cảm xúc",
 	"ui.teamBridge.reactions.category1": "Người và cơ thể",
 	"ui.teamBridge.reactions.category2": "Động vật và thiên nhiên",

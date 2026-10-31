@@ -1597,6 +1597,15 @@
 		"placeholders": {},
 		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
 	},
+	"ui.teamBridge.reactions.others": {
+		"role": "list item in a reaction tooltip",
+		"tone": "neutral, sentence case",
+		"length": "1-2 words plus the number.",
+		"placeholders": {
+			"others": "how many more people reacted beyond the names shown; a positive integer"
+		},
+		"note": "The LAST item of a list of people who reacted to a Team Bridge message, shown when more people reacted than the three names the tooltip can show. The code joins it to the names with the locale's own list conjunction (Intl.ListFormat), so English reads \"Ada, Bea, Cleo, and 9 others\". Translate ONLY the noun phrase: do not include a word for 'and', and do not start with a capital unless the language requires it."
+	},
 	"ui.teamBridge.reactions.category0": {
 		"role": "reaction picker control or status",
 		"tone": "neutral, sentence case",
