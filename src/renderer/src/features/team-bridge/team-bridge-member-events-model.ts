@@ -179,6 +179,23 @@ export function teamBridgeEventLines(
 	return lines;
 }
 
+/**
+ * WHOSE AGENT IS IT (design round 1, D1). Consent is the agent's OWNER's act, so
+ * "Sana approved Aida (Sana Ketabchi) joining" named the same person twice and
+ * left the relation implicit. An owner form needs a predicate, not a guess: an
+ * agent party carries its OWNER's `account_id` and its own `endpoint_id`, so the
+ * actor owns the target exactly when every target is an agent on the actor's
+ * account. Anything else (a person target, a mixed group, an agent someone else
+ * owns) keeps the shipped sentence, which claims no relation it cannot prove.
+ */
+export function teamBridgeEventOwnerConsent(line: TeamBridgeEventLine): boolean {
+	if (line.targets.length === 0) return false;
+	return line.targets.every(
+		(target) =>
+			target.kind === "agent" && target.account_id === line.actor.account_id,
+	);
+}
+
 /** The anchor for the slot BEFORE the first message (`after_seq` below every row). */
 export const TEAM_BRIDGE_EVENTS_LEADING = "leading";
 

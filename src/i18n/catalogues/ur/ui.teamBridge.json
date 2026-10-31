@@ -292,6 +292,7 @@
 	"ui.teamBridge.events.left": "{targets} نے گفتگو چھوڑ دی",
 	"ui.teamBridge.events.removed": "{actor} نے {targets} کو ہٹا دیا",
 	"ui.teamBridge.events.consented": "{actor} نے {targets} کو شامل ہونے کی منظوری دی",
+	"ui.teamBridge.events.consented_owner": "{actor} نے اپنے ایجنٹ {targets} کو شامل ہونے کی منظوری دی",
 	"ui.teamBridge.events.declined_self": "{actor} نے دعوت سے انکار کر دیا",
 	"ui.teamBridge.events.declined": "{actor} نے {targets} کے لیے دعوت سے انکار کر دیا",
 	"ui.teamBridge.events.withdrawn": "{actor} نے {targets} کے لیے دعوت واپس لے لی",

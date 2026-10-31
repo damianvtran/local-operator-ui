@@ -9351,6 +9351,7 @@ export type MessageParams = {
 	"ui.teamBridge.drafts.storage_failed": undefined;
 	"ui.teamBridge.drafts.title": undefined;
 	"ui.teamBridge.events.consented": { actor: string; targets: string };
+	"ui.teamBridge.events.consented_owner": { actor: string; targets: string };
 	"ui.teamBridge.events.declined": { actor: string; targets: string };
 	"ui.teamBridge.events.declined_self": { actor: string };
 	"ui.teamBridge.events.invited": { actor: string; targets: string };

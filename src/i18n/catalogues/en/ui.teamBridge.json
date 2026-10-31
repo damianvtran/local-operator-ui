@@ -292,6 +292,7 @@
 	"ui.teamBridge.events.left": "{targets} left",
 	"ui.teamBridge.events.removed": "{actor} removed {targets}",
 	"ui.teamBridge.events.consented": "{actor} approved {targets} joining",
+	"ui.teamBridge.events.consented_owner": "{actor} approved their agent {targets} joining",
 	"ui.teamBridge.events.declined_self": "{actor} declined the invitation",
 	"ui.teamBridge.events.declined": "{actor} declined the invitation for {targets}",
 	"ui.teamBridge.events.withdrawn": "{actor} withdrew the invitation for {targets}",

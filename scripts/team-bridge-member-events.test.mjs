@@ -350,9 +350,16 @@ test("sentence: owner-implicit join reads 'added their agent'; other verbs", () 
 			event({ kind: "removed", targets: [BEN] }),
 			"Damian Tran removed Ben Tran",
 		],
+		/* D1: consent is the OWNER's act, so the sentence names the relation. */
 		[
 			event({ kind: "consented", actor: SANA, targets: [AIDA_SANA] }),
-			"Sana Ketabchi approved Aida (Sana Ketabchi) joining",
+			"Sana Ketabchi approved their agent Aida (Sana Ketabchi) joining",
+		],
+		/* A consent the actor does not own keeps the shipped arm - no invented
+		   relationship (design round 1, D1). */
+		[
+			event({ kind: "consented", actor: DAMIAN, targets: [AIDA_SANA] }),
+			"Damian Tran approved Aida (Sana Ketabchi) joining",
 		],
 		[
 			event({ kind: "declined", actor: SANA, targets: [SANA] }),

@@ -11,6 +11,7 @@ import {
 	TEAM_BRIDGE_EVENT_NAMES_SHOWN,
 	type TeamBridgeEventLine,
 	teamBridgeEventLines,
+	teamBridgeEventOwnerConsent,
 } from "./team-bridge-member-events-model";
 
 /**
@@ -73,7 +74,11 @@ function sentence(
 		case "removed":
 			return t("ui.teamBridge.events.removed", { actor, targets });
 		case "consented":
-			return t("ui.teamBridge.events.consented", { actor, targets });
+			/* The owner's own act names the relation; any other consent keeps the
+			   sentence that claims none (design round 1, D1). */
+			return teamBridgeEventOwnerConsent(line)
+				? t("ui.teamBridge.events.consented_owner", { actor, targets })
+				: t("ui.teamBridge.events.consented", { actor, targets });
 		case "declined":
 			return line.selfOnly
 				? t("ui.teamBridge.events.declined_self", { actor })

@@ -292,6 +292,7 @@
 	"ui.teamBridge.events.left": "{targets} đã rời cuộc trò chuyện",
 	"ui.teamBridge.events.removed": "{actor} đã xóa {targets} khỏi cuộc trò chuyện",
 	"ui.teamBridge.events.consented": "{actor} đã đồng ý cho {targets} tham gia",
+	"ui.teamBridge.events.consented_owner": "{actor} đã đồng ý cho tác nhân của mình là {targets} tham gia",
 	"ui.teamBridge.events.declined_self": "{actor} đã từ chối lời mời",
 	"ui.teamBridge.events.declined": "{actor} đã từ chối lời mời dành cho {targets}",
 	"ui.teamBridge.events.withdrawn": "{actor} đã rút lại lời mời dành cho {targets}",

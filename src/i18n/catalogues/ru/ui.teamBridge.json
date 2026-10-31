@@ -292,6 +292,7 @@
 	"ui.teamBridge.events.left": "Выход из разговора: {targets}",
 	"ui.teamBridge.events.removed": "{actor}: удаление из разговора — {targets}",
 	"ui.teamBridge.events.consented": "{actor}: одобрено присоединение — {targets}",
+	"ui.teamBridge.events.consented_owner": "{actor}: одобрено присоединение собственного агента — {targets}",
 	"ui.teamBridge.events.declined_self": "{actor}: приглашение отклонено",
 	"ui.teamBridge.events.declined": "{actor}: отклонение приглашения для {targets}",
 	"ui.teamBridge.events.withdrawn": "{actor}: отозвано приглашение — {targets}",
