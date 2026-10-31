@@ -1160,6 +1160,7 @@ const UserRow = memo(function UserRow({
 	const [expanded, setExpanded] = useTranscriptViewBoolean(record.id);
 	const [overflows, setOverflows] = useState(false);
 	const bodyRef = useRef<HTMLDivElement>(null);
+	const intrinsicBodyRef = useRef<HTMLDivElement>(null);
 	/*
 	 * The open-path decision, in the LAYOUT effect so the control is in the first
 	 * painted frame (a later answer lands the 34px control one frame late, the
@@ -1185,10 +1186,16 @@ const UserRow = memo(function UserRow({
 		const el = bodyRef.current;
 		if (el) setOverflows(overflowsUserTurnClamp(el.scrollHeight));
 	}, [remainingContent]);
-	/* Changes after mount: the one shared observer (`user-turn-clamp.ts`). */
+	/*
+	 * Observe intrinsic content, NOT the clipped viewport: at 174/175px the
+	 * control is absent, but later image/font growth leaves the viewport at
+	 * 174px and would deliver no resize. The uncapped flow-root includes child
+	 * margins in its height, so growth and shrink both invalidate the answer
+	 * without a text-prop change or polling on every streamed token.
+	 */
 	useEffect(() => {
-		const el = bodyRef.current;
-		return el ? observeUserTurnClamp(el, setOverflows) : undefined;
+		const content = intrinsicBodyRef.current;
+		return content ? observeUserTurnClamp(content, setOverflows) : undefined;
 	}, []);
 	return (
 		<MessageContainer isUser isSmallView={isSmallView}>
@@ -1310,174 +1317,185 @@ const UserRow = memo(function UserRow({
 								!expanded && "max-h-[174px] overflow-hidden",
 							)}
 						>
-							{/* The quote a quoted turn was sent with, rendered as the same
+							<div
+								ref={intrinsicBodyRef}
+								className="flow-root"
+								data-lo-user-turn-intrinsic
+							>
+								{/* The quote a quoted turn was sent with, rendered as the same
 							    recessed block the composer stages it in - the reader sees one
 							    idiom for "this is quoted" whether it is pending or sent. */}
-							{replies.length > 0 && <ReplyPreview replies={replies} />}
-							{/*
-							 * THE `$skill` SEAL. Without it this bubble IS the payload: the
-							 * header sentence, the `<skill>` tag, the whole SKILL.md body and
-							 * the request, painted at reading weight as though the reader had
-							 * typed them -- the defect the harness repo's
-							 * `docs/design/history-fold-convergence.md` row D8 records.
-							 * The typed line is the row; the instructions the model received
-							 * are one press away.
-							 *
-							 * A `Disclosure` rather than a fold of its own, because branding
-							 * § 7 allows exactly one expand/collapse idiom app-wide. Its
-							 * chevron slot is repainted `text-ink-dim`: the primitive's
-							 * `ink-disabled` is the one role exempt from every contrast floor,
-							 * while this chevron is the surface's only affordance rather than
-							 * chrome beside a trace row.
-							 */}
-							{seal && (
-								/*
-								 * `contents` rather than a box: this wrapper carries the anchor U2
-								 * scrolls to and must not add a flex item beside the bubble the
-								 * disclosure already sits in.
-								 */
-								<div ref={sealAnchor} className={cn("contents")}>
-									<Disclosure
-										className={cn("mb-1.5")}
-										/*
-										 * A NAMED group, because the chevron cannot inherit the trigger's
-										 * own `hover:text-ink-muted` - it pins its own ink - so the hover
-										 * step has to be keyed to the button (design round 1, D3). Named
-										 * rather than bare: an unnamed `group` here would re-key every
-										 * `group-hover:` inside this trigger to it.
-										 */
-										triggerClassName="group/seal"
-										chevronClassName="text-ink-dim group-hover/seal:text-ink-muted"
-										/*
-										 * The trigger's ACCESSIBLE NAME (UX round 1, U3): the summary
-										 * is a token and a purpose sentence, so a screen reader read
-										 * ~150 characters per pass and never said what the control
-										 * opens. The purpose stays visible, and in the `title` behind
-										 * the ellipsis, for sighted readers.
-										 */
-										triggerLabel={t("ui.chat.skill_invocation.trigger_label", {
-											token: seal.token,
-										})}
-										onOpenChange={(open) => {
-											if (open) holdSealTrigger();
-										}}
-										summary={
-											<span className={cn("flex min-w-0 items-center gap-1.5")}>
-												{/*
-												 * The composer's RESOLVED-skill ink, name for name
-												 * (`slash-highlight.ts`'s `RUN_INK`): the token a reader
-												 * sees on the row is the same object they saw in the box
-												 * they typed it in, so the two surfaces cannot drift into
-												 * two opinions about what a `$skill` looks like.
-												 *
-												 * THE CAPTION KEEPS A FLOOR (design round 1, D2): skill
-												 * names reach 64 characters, and a `shrink-0` name at
-												 * the narrowest window left the purpose showing one
-												 * letter and an ellipsis. Both sides ellipsize now
-												 * and the purpose holds 8rem, so a long name cannot
-												 * eat it.
-												 *
-												 * A FLOOR ON THE PURPOSE rather than a cap on the
-												 * name, and expressed in the spacing scale: a cap of
-												 * 60% of the row was this row's first spelling, and it
-												 * trips `tool-row.test.mjs`'s arbitrary-width guard -
-												 * which exists because an arbitrary cap in THIS file
-												 * is what once re-constrained a message column, and
-												 * which is right to be the one place that is
-												 * enumerated rather than described. A floor binds
-												 * only where the defect was measured.
-												 */}
+								{replies.length > 0 && <ReplyPreview replies={replies} />}
+								{/*
+								 * THE `$skill` SEAL. Without it this bubble IS the payload: the
+								 * header sentence, the `<skill>` tag, the whole SKILL.md body and
+								 * the request, painted at reading weight as though the reader had
+								 * typed them -- the defect the harness repo's
+								 * `docs/design/history-fold-convergence.md` row D8 records.
+								 * The typed line is the row; the instructions the model received
+								 * are one press away.
+								 *
+								 * A `Disclosure` rather than a fold of its own, because branding
+								 * § 7 allows exactly one expand/collapse idiom app-wide. Its
+								 * chevron slot is repainted `text-ink-dim`: the primitive's
+								 * `ink-disabled` is the one role exempt from every contrast floor,
+								 * while this chevron is the surface's only affordance rather than
+								 * chrome beside a trace row.
+								 */}
+								{seal && (
+									/*
+									 * `contents` rather than a box: this wrapper carries the anchor U2
+									 * scrolls to and must not add a flex item beside the bubble the
+									 * disclosure already sits in.
+									 */
+									<div ref={sealAnchor} className={cn("contents")}>
+										<Disclosure
+											className={cn("mb-1.5")}
+											/*
+											 * A NAMED group, because the chevron cannot inherit the trigger's
+											 * own `hover:text-ink-muted` - it pins its own ink - so the hover
+											 * step has to be keyed to the button (design round 1, D3). Named
+											 * rather than bare: an unnamed `group` here would re-key every
+											 * `group-hover:` inside this trigger to it.
+											 */
+											triggerClassName="group/seal"
+											chevronClassName="text-ink-dim group-hover/seal:text-ink-muted"
+											/*
+											 * The trigger's ACCESSIBLE NAME (UX round 1, U3): the summary
+											 * is a token and a purpose sentence, so a screen reader read
+											 * ~150 characters per pass and never said what the control
+											 * opens. The purpose stays visible, and in the `title` behind
+											 * the ellipsis, for sighted readers.
+											 */
+											triggerLabel={t(
+												"ui.chat.skill_invocation.trigger_label",
+												{
+													token: seal.token,
+												},
+											)}
+											onOpenChange={(open) => {
+												if (open) holdSealTrigger();
+											}}
+											summary={
 												<span
-													className={cn(
-														"min-w-0 shrink truncate text-token-command slash-run-bold",
-													)}
+													className={cn("flex min-w-0 items-center gap-1.5")}
 												>
-													{seal.token}
+													{/*
+													 * The composer's RESOLVED-skill ink, name for name
+													 * (`slash-highlight.ts`'s `RUN_INK`): the token a reader
+													 * sees on the row is the same object they saw in the box
+													 * they typed it in, so the two surfaces cannot drift into
+													 * two opinions about what a `$skill` looks like.
+													 *
+													 * THE CAPTION KEEPS A FLOOR (design round 1, D2): skill
+													 * names reach 64 characters, and a `shrink-0` name at
+													 * the narrowest window left the purpose showing one
+													 * letter and an ellipsis. Both sides ellipsize now
+													 * and the purpose holds 8rem, so a long name cannot
+													 * eat it.
+													 *
+													 * A FLOOR ON THE PURPOSE rather than a cap on the
+													 * name, and expressed in the spacing scale: a cap of
+													 * 60% of the row was this row's first spelling, and it
+													 * trips `tool-row.test.mjs`'s arbitrary-width guard -
+													 * which exists because an arbitrary cap in THIS file
+													 * is what once re-constrained a message column, and
+													 * which is right to be the one place that is
+													 * enumerated rather than described. A floor binds
+													 * only where the defect was measured.
+													 */}
+													<span
+														className={cn(
+															"min-w-0 shrink truncate text-token-command slash-run-bold",
+														)}
+													>
+														{seal.token}
+													</span>
+													{seal.purpose !== null && (
+														<>
+															<span
+																className={cn("shrink-0 text-ink-dim")}
+																aria-hidden="true"
+															>
+																·
+															</span>
+															{/*
+															 * ONE LINE, ELLIPSIZED, the whole sentence in the
+															 * native `title` rather than in a popper: this sits
+															 * inside every invocation row of a windowed
+															 * transcript, which is the cost `reply-preview.tsx`
+															 * records for the same choice one block away.
+															 */}
+															<span
+																className={cn(
+																	"min-w-32 flex-1 truncate text-ink-muted text-meta",
+																)}
+																title={seal.purpose}
+															>
+																{seal.purpose}
+															</span>
+														</>
+													)}
 												</span>
-												{seal.purpose !== null && (
-													<>
-														<span
-															className={cn("shrink-0 text-ink-dim")}
-															aria-hidden="true"
-														>
-															·
-														</span>
-														{/*
-														 * ONE LINE, ELLIPSIZED, the whole sentence in the
-														 * native `title` rather than in a popper: this sits
-														 * inside every invocation row of a windowed
-														 * transcript, which is the cost `reply-preview.tsx`
-														 * records for the same choice one block away.
-														 */}
-														<span
-															className={cn(
-																"min-w-32 flex-1 truncate text-ink-muted text-meta",
-															)}
-															title={seal.purpose}
-														>
-															{seal.purpose}
-														</span>
-													</>
-												)}
-											</span>
-										}
-									>
-										{/*
-										 * The same recessed ground the quoted turn above takes, and
-										 * the same reason: this block is not the reader's words but
-										 * text the app sent on their behalf, and the ground says so
-										 * without a rule between the two. `role="group"` + the
-										 * trigger's own label ties the panel to the control that
-										 * opened it (UX round 1, U3).
-										 */}
-										<div
-											/* biome-ignore lint/a11y/useSemanticElements: a `<fieldset>` is the semantic element for `group` and the wrong one here - there is no form, and its default box and margin would land inside a message bubble that is measured to the pixel. What the role buys is a LABELLING SCOPE, so the panel a press opened announces itself as the instructions the trigger named (the same trade `session-status-strip.tsx` and `mesh-canvas.tsx` record). */
-											role="group"
-											aria-label={instructionsLabel}
-											className={cn("rounded-sm bg-sunken p-2")}
+											}
 										>
-											<div className={cn("mb-1 text-ink-dim text-meta")}>
-												{instructionsLabel}
-											</div>
 											{/*
-											 * § 7's DETAIL-BLOCK CAP (design round 1, D1): a real
-											 * SKILL.md is 20-160 lines, and an uncapped block grew
-											 * until the row pushed itself - and the reader's own
-											 * request under it - out of the scroller. The cap is the
-											 * trace's own exported number rather than a second one
-											 * free to drift from it, and the block scrolls inside
-											 * itself.
+											 * The same recessed ground the quoted turn above takes, and
+											 * the same reason: this block is not the reader's words but
+											 * text the app sent on their behalf, and the ground says so
+											 * without a rule between the two. `role="group"` + the
+											 * trigger's own label ties the panel to the control that
+											 * opened it (UX round 1, U3).
 											 */}
 											<div
-												/*
-												 * The evidence rig's hook: `renderer-driver.mjs`'s
-												 * `--scene skill-seal` measures THIS element against § 7's
-												 * cap and reads its `scrollHeight` against its
-												 * `clientHeight`, which nothing else in the row can
-												 * answer.
-												 */
-												data-lo-skill-body
-												className={cn(DETAIL_SECTION_MAX, "overflow-auto")}
+												/* biome-ignore lint/a11y/useSemanticElements: a `<fieldset>` is the semantic element for `group` and the wrong one here - there is no form, and its default box and margin would land inside a message bubble that is measured to the pixel. What the role buys is a LABELLING SCOPE, so the panel a press opened announces itself as the instructions the trigger named (the same trade `session-status-strip.tsx` and `mesh-canvas.tsx` record). */
+												role="group"
+												aria-label={instructionsLabel}
+												className={cn("rounded-sm bg-sunken p-2")}
 											>
-												<MarkdownRenderer content={seal.body} />
+												<div className={cn("mb-1 text-ink-dim text-meta")}>
+													{instructionsLabel}
+												</div>
+												{/*
+												 * § 7's DETAIL-BLOCK CAP (design round 1, D1): a real
+												 * SKILL.md is 20-160 lines, and an uncapped block grew
+												 * until the row pushed itself - and the reader's own
+												 * request under it - out of the scroller. The cap is the
+												 * trace's own exported number rather than a second one
+												 * free to drift from it, and the block scrolls inside
+												 * itself.
+												 */}
+												<div
+													/*
+													 * The evidence rig's hook: `renderer-driver.mjs`'s
+													 * `--scene skill-seal` measures THIS element against § 7's
+													 * cap and reads its `scrollHeight` against its
+													 * `clientHeight`, which nothing else in the row can
+													 * answer.
+													 */
+													data-lo-skill-body
+													className={cn(DETAIL_SECTION_MAX, "overflow-auto")}
+												>
+													<MarkdownRenderer content={seal.body} />
+												</div>
 											</div>
-										</div>
-									</Disclosure>
-								</div>
-							)}
-							{/*
-							 * `credentialCitations`, and only on the user's own turn: this is the only
-							 * place in the transcript where a citation is the app's own words rather than
-							 * the agent's prose about one. A message sent with a pasted secret reads in the
-							 * reader's own voice, so the chip the composer showed must survive the send
-							 * (operator report, 2026-09-17: the citation arrived as a wall of technical
-							 * text). What the MODEL receives is unchanged — the sentence is still the
-							 * message's own text; only how it is drawn changes.
-							 */}
-							<MarkdownRenderer
-								content={seal ? seal.request : remainingContent}
-								credentialCitations
-							/>
+										</Disclosure>
+									</div>
+								)}
+								{/*
+								 * `credentialCitations`, and only on the user's own turn: this is the only
+								 * place in the transcript where a citation is the app's own words rather than
+								 * the agent's prose about one. A message sent with a pasted secret reads in the
+								 * reader's own voice, so the chip the composer showed must survive the send
+								 * (operator report, 2026-09-17: the citation arrived as a wall of technical
+								 * text). What the MODEL receives is unchanged — the sentence is still the
+								 * message's own text; only how it is drawn changes.
+								 */}
+								<MarkdownRenderer
+									content={seal ? seal.request : remainingContent}
+									credentialCitations
+								/>
+							</div>
 						</div>
 						{overflows && (
 							/*
