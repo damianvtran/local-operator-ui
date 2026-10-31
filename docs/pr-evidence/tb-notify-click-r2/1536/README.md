@@ -56,6 +56,7 @@ framebuffer values directly made the dark arrival band look 1.5 % stronger than 
 | 19 | `reduced-motion-static-band-dark` | the shipped reduced-motion branch (`animation: none`): pixel-identical to frame 01, 232/409 920 sampled pixels differ |
 | 20/21 | `hover-under-band-strip-*` | top: band alone. bottom: band over the hover tint — the A/B in one image |
 | 22/23 | `org-switcher-per-org-numbers-{dark,light}` | the gap round 1 left open: the switcher menu's per-org numbers in the nav-2 / rail-1 state — All organizations **2**, Acme **1**, Beta **1**, while the rail scoped to Acme can only draw 1 plus the muted row's quiet 2 |
+| 24 | `quiet-numeral-present-org-aggregate-one-dark` | the **D5 control**: same seed, same two mutes, only the opened conversation differs from frame 16 — Acme's un-muted aggregate is 1 here, so `Pat` keeps its quiet **2** |
 
 `measurements.json` holds every number with its method; `palette-sweep.txt` is the
 59-palette sweep over `themes.generated.css`.
