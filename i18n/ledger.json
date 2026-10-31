@@ -18372,8 +18372,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "da2c87f6caf8f238997861d850f575a3b3d8328c5d46abfffae4728ed41fb892",
-			"target_sha256": "dd90a0705cb5cf400ded64eae5a95b0018400694cf525bf07f86da132fbb0c19",
+			"source_sha256": "67ea94ac8ebbfb34b5ea71fc1c9c6f633994f2e2e0bf06da66137f85a596646a",
+			"target_sha256": "966fa23b074ff9f1bfa4bd1d67d3114f5e3ba7343f522d1e3d62672c93dc92d1",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -18381,21 +18381,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "anthropic/claude-opus-4-6 via radient/auto fallback (primary anthropic/claude-sonnet-5-5; quota failures forced openai/gpt-6-astra → kimi/k3.1-pro → radient/auto)",
-					"date": "2026-10-29",
-					"result": "clean",
-					"instance": "7e866ab4fe5f-ov2-hi",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "04a59c335e4f-bridge-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7e866ab4fe5f-ov2-hi.json",
-					"receipt_sha256": "0b22c5e9b3ecea3865bcc65514e5197b41aeb0a1c3f0b3158cffd216f26c8205",
-					"scope": "ui.chat.canonical: the 23 keys added in fbf78b5f67, delta audit at 58de30166d",
-					"note": "PR #1481 remediation: find overlay + image-gen control copy."
+					"receipt": "i18n/receipts/04a59c335e4f-bridge-hi.json",
+					"receipt_sha256": "0ccd1ea33ffa4738606064d1429e3235381e6bf8a8ae809e346449a0365fafa7",
+					"scope": "ui.chat.canonical re-audit at new source: 88 Team Bridge keys added in #1529 read in full; unchanged keys byte-identical to dd90a070 and spot-checked",
+					"note": "Team Bridge re-audit, PR #1529. hi-br-01 MINOR fixed: awaiting_acceptance स्वीकृति→स्वीकार (स्वीकृति = approval per glossary). Receipt i18n/receipts/04a59c335e4f-bridge-hi.json."
 				}
 			],
 			"status": "audited",
@@ -18529,6 +18529,30 @@
 							"receipt_sha256": "0d49d1b581464c3c5eac0ef67a93984a788b6d051ceddbe30cc23f6a1a039ed5",
 							"scope": "ui.chat.canonical: the 89 keys added in 930c8ec2d1, delta audit at the final head",
 							"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "da2c87f6caf8f238997861d850f575a3b3d8328c5d46abfffae4728ed41fb892",
+					"target_sha256": "dd90a0705cb5cf400ded64eae5a95b0018400694cf525bf07f86da132fbb0c19",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-4-6 via radient/auto fallback (primary anthropic/claude-sonnet-5-5; quota failures forced openai/gpt-6-astra → kimi/k3.1-pro → radient/auto)",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "7e866ab4fe5f-ov2-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7e866ab4fe5f-ov2-hi.json",
+							"receipt_sha256": "0b22c5e9b3ecea3865bcc65514e5197b41aeb0a1c3f0b3158cffd216f26c8205",
+							"scope": "ui.chat.canonical: the 23 keys added in fbf78b5f67, delta audit at 58de30166d",
+							"note": "PR #1481 remediation: find overlay + image-gen control copy."
 						}
 					],
 					"status": "audited"
