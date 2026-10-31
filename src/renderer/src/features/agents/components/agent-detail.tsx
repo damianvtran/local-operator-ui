@@ -86,6 +86,7 @@ import {
 	duplicateNameCandidates,
 	refusalCopy,
 } from "../utils/backend-copy";
+import { AgentAvatarField } from "./agent-avatar-field";
 import {
 	EditFooter,
 	FieldLabel,
@@ -1040,6 +1041,24 @@ export function AgentDetail({
 			>
 				{editing ? (
 					<>
+						{/*
+						 * THE PICTURE'S DOOR ON THIS PAGE (UX round 1, U1). The field existed only
+						 * on the legacy `/agents/<id>` page, which the command palette is the only
+						 * way to reach, so a user who opened the agent here had no visible way to
+						 * give it a picture. It sits first, beside the name it accompanies, and is
+						 * keyed by the agent for the reason `general-settings.tsx` gives: a reuse
+						 * across selections must not carry a refusal or a busy state with it.
+						 *
+						 * NO FIELD FOR A PROFILE WITHOUT AN ID: the picture is keyed by the
+						 * agent's own id (see `shared/store/agent-avatar-store.ts`), and a builtin
+						 * seed that was never installed has none to key on.
+						 */}
+						{profile.agent_id ? (
+							<AgentAvatarField
+								key={profile.agent_id}
+								agentId={profile.agent_id}
+							/>
+						) : null}
 						<EditSection
 							title={t("ui.agents.detail.section.when_to_use")}
 							description="One sentence the model reads to decide when this agent is the right one."

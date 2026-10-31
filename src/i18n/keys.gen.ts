@@ -2408,6 +2408,14 @@ export type MessageParams = {
 	"ui.agents.settings.general.error.empty_name": undefined;
 	"ui.agents.settings.general.id": undefined;
 	"ui.agents.settings.general.model": undefined;
+	"ui.agents.settings.general.profile_picture": undefined;
+	"ui.agents.settings.general.profile_picture_error_decode": undefined;
+	"ui.agents.settings.general.profile_picture_error_save": undefined;
+	"ui.agents.settings.general.profile_picture_error_size": { size: string };
+	"ui.agents.settings.general.profile_picture_error_type": undefined;
+	"ui.agents.settings.general.profile_picture_hint": undefined;
+	"ui.agents.settings.general.profile_picture_remove": undefined;
+	"ui.agents.settings.general.profile_picture_upload": undefined;
 	"ui.agents.settings.general.select_a_hosting_provider_first": undefined;
 	"ui.agents.settings.general.select_a_hosting_provider_first_and_then": undefined;
 	"ui.agents.settings.general.tags": undefined;
