@@ -23,7 +23,8 @@ import React, { act } from "react";
  *    Pure functions, asserted by name.
  *  - VIEW (`team-bridge-add-members.tsx`): the picker's own markup — People and
  *    Agents as separate groups, a non-enabled peer shown disabled with its
- *    reason, an existing member non-addable, the empty directory.
+ *    reason, current members filtered out of the invite list, the empty
+ *    directory.
  *  - INTERACTION: the same shipped component mounted in jsdom, driven the way a
  *    person drives it — tick several rows, press confirm, read what the caller
  *    was handed. This is the only layer that can prove "invite several in one
@@ -133,7 +134,7 @@ const bundled = await build({
 		contents: `
 			export { TeamBridgeAddMembersView } from "./src/renderer/src/features/team-bridge/team-bridge-add-members";
 			export { TeamBridgePageView } from "./src/renderer/src/features/team-bridge/team-bridge-page";
-			export { canInviteMembers, canRemoveMembers, currentMembers, memberCandidates } from "./src/renderer/src/features/team-bridge/team-bridge-members-model";
+			export { canInviteMembers, canRemoveMembers, currentMembers, groupByKind, matchesMemberQuery, memberCandidates } from "./src/renderer/src/features/team-bridge/team-bridge-members-model";
 		`,
 		resolveDir: ROOT,
 		sourcefile: "team-bridge-members.mjs",
@@ -223,16 +224,46 @@ after(() => {
 });
 
 /** The English copy these assertions read; the catalogue owns the strings. */
+/** The armed row's confirm button, exactly (not the icon's longer name). */
+const CONFIRM_REMOVE_BEN = /^Remove Ben Tran$/;
+const REMOVE_BEN_ICON =
+	'button[aria-label="Remove Ben Tran from conversation"]';
+
+/** Type into the picker's search the way React sees a person type. */
+async function typeQuery(body, value) {
+	const search = body.querySelector('input[type="text"]');
+	await act(async () => {
+		Object.getOwnPropertyDescriptor(
+			dom.window.HTMLInputElement.prototype,
+			"value",
+		).set.call(search, value);
+		search.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+	});
+}
+
+/** Escape as Radix hears it: a keydown that reaches the document. */
+async function pressEscape(body) {
+	await act(async () => {
+		(body.activeElement ?? body.body).dispatchEvent(
+			new dom.window.KeyboardEvent("keydown", {
+				key: "Escape",
+				code: "Escape",
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+}
+
 const COPY = {
 	people: "People",
-	agents: "Agents and chiefs of staff",
-	bridgeOff: "Team Bridge is not enabled for this person",
-	alreadyMember: "Already active or invited",
-	agentNotPermitted: "This conversation does not allow agents",
+	agents: "Agents",
+	bridgeOff: "Not on Team Bridge",
+	agentNotPermitted: "Not permitted",
 	emptyDirectory: "Nobody in this organization can be invited.",
 	mutationError: "The member change was not saved. Try again.",
-	confirmInvitations: /Send invitations/,
-	confirmSome: (n) => new RegExp(`Send ${n} invitation`),
+	confirmInvitations: /^Invite$/,
+	confirmSome: (n) => new RegExp(`^Invite ${n}$`),
 };
 
 const conversation = (overrides = {}) => ({
@@ -408,14 +439,19 @@ test("the roster keeps unreachable peers, disabled, instead of hiding them", () 
 		"a peer whose bridge is off is SHOWN with its reason, not dropped",
 	);
 	assert.equal(
-		byKey.get("human:acct_ben")?.disabledReason,
-		"already_member",
-		"an active member cannot be invited twice",
+		byKey.has("human:acct_ben"),
+		false,
+		"an active member is not offered again: the members column lists them",
 	);
 	assert.equal(
-		byKey.get("agent:acct_ben")?.disabledReason,
-		"already_member",
-		"an INVITED agent is already in the room",
+		byKey.has("agent:acct_ben"),
+		false,
+		"an INVITED agent is already in the room, so it is filtered out too",
+	);
+	assert.equal(
+		byKey.has("human:acct_self"),
+		false,
+		"the reader is a member, so their own person row is not offered",
 	);
 	assert.equal(
 		byKey.get("human:acct_sherman")?.disabledReason,
@@ -432,6 +468,128 @@ test("the roster keeps unreachable peers, disabled, instead of hiding them", () 
 		null,
 		"the reader's own chief of staff is offerable: a group is not a DM",
 	);
+});
+
+test("eligible candidates come first, A-Z, and ineligible ones sink, A-Z", () => {
+	const roster = [
+		...directory,
+		{
+			account_id: "acct_zed",
+			display_label: "Zed Ames",
+			role: "member",
+			bridge_enabled: true,
+			bridge_state: "active",
+		},
+		{
+			account_id: "acct_bea",
+			display_label: "bea Off",
+			role: "member",
+			bridge_enabled: false,
+			bridge_state: "none",
+		},
+		{
+			account_id: "acct_cal",
+			display_label: "Cal Brown",
+			role: "member",
+			bridge_enabled: true,
+			bridge_state: "active",
+		},
+	];
+	const { people } = view.groupByKind(
+		view.memberCandidates(
+			conversation(),
+			roster,
+			"acct_self",
+			chiefLabel,
+			"en",
+		),
+		(row) => row.recipient.kind,
+	);
+	assert.deepEqual(
+		people.map((row) => [row.recipient.label, row.disabledReason]),
+		[
+			["Cal Brown", null],
+			["Sherman Lee", null],
+			["Zed Ames", null],
+			["Ada Okafor", "bridge_unavailable"],
+			["bea Off", "bridge_unavailable"],
+		],
+		"case-insensitive A-Z within each block; the unreachable block is last",
+	);
+});
+
+test("current members: owner first, then A-Z, grouped people before agents", () => {
+	const rows = view.currentMembers(
+		conversation({
+			members: [
+				{
+					account_id: "acct_zed",
+					kind: "human",
+					display_label: "Zed Ames",
+					role: "member",
+					state: "active",
+				},
+				{
+					account_id: "acct_ben",
+					kind: "agent",
+					display_label: "Juno",
+					role: "member",
+					state: "active",
+				},
+				{
+					account_id: "acct_ada",
+					kind: "human",
+					display_label: "Ada Okafor",
+					role: "member",
+					state: "invited",
+				},
+				{
+					account_id: "acct_self",
+					kind: "human",
+					display_label: "Damian Tran",
+					role: "owner",
+					state: "active",
+				},
+				{
+					account_id: "acct_sherman",
+					kind: "agent",
+					display_label: "Orion",
+					role: "member",
+					state: "active",
+				},
+			],
+		}),
+		directory,
+		"acct_self",
+		chiefLabel,
+		true,
+		"en",
+	);
+	const { people, agents } = view.groupByKind(rows, (row) => row.member.kind);
+	assert.deepEqual(
+		people.map((row) => [row.label, row.self, row.removable]),
+		[
+			["Damian Tran", true, false],
+			["Ada Okafor", false, true],
+			["Zed Ames", false, true],
+		],
+		"the owner leads; the reader's own row is marked self and never removable",
+	);
+	assert.deepEqual(
+		agents.map((row) => [row.label, row.removable]),
+		[
+			["Juno (Ben Tran)", false],
+			["Orion (Sherman Lee)", false],
+		],
+		"agents sort A-Z in their own group and are never removable here",
+	);
+});
+
+test("the shared search is a trimmed, case-insensitive substring", () => {
+	assert.equal(view.matchesMemberQuery("Sherman Lee", "  lee "), true);
+	assert.equal(view.matchesMemberQuery("Sherman Lee", "SHER"), true);
+	assert.equal(view.matchesMemberQuery("Sherman Lee", "   "), true);
+	assert.equal(view.matchesMemberQuery("Sherman Lee", "ada"), false);
 });
 
 test("a departed or declined person can be invited again", () => {
@@ -557,13 +715,22 @@ async function mount(t, props = {}) {
 		onRemove: () => {},
 		...props,
 	};
+	// Every row now draws a `TeamBridgeAvatar`, whose photo cache lives in
+	// react-query; the app always mounts the picker under a provider.
+	const queryClient = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
 	const render = async (overrides = {}) =>
 		act(async () =>
 			root.render(
-				React.createElement(view.TeamBridgeAddMembersView, {
-					...base,
-					...overrides,
-				}),
+				React.createElement(
+					QueryClientProvider,
+					{ client: queryClient },
+					React.createElement(view.TeamBridgeAddMembersView, {
+						...base,
+						...overrides,
+					}),
+				),
 			),
 		);
 	await render();
@@ -582,8 +749,10 @@ async function mount(t, props = {}) {
  * role="checkbox"), not a raw input. Selecting by structure keeps these
  * helpers honest about the markup that actually ships.
  */
-const rows = (body) => [...body.querySelectorAll("fieldset > div")];
-const rowTitle = (row) => row.querySelector("span > span")?.textContent;
+const rows = (body) => [
+	...body.querySelectorAll("fieldset > div, [data-ineligible]"),
+];
+const rowTitle = (row) => row.querySelector("span.truncate")?.textContent;
 const rowFor = (body, name) => rows(body).find((row) => rowTitle(row) === name);
 const checkboxIn = (row) => row.querySelector('[role="checkbox"]');
 const buttonNamed = (body, pattern) =>
@@ -595,8 +764,12 @@ const buttonNamed = (body, pattern) =>
 
 test("the picker lists People and Agents as separate groups", async (t) => {
 	const { document: body } = await mount(t);
-	const headings = [...body.querySelectorAll("p")].filter((node) =>
-		[COPY.people, COPY.agents].includes(node.textContent.trim()),
+	// Both columns group People before Agents; this case reads the INVITE
+	// column's fieldsets (the members column has its own test in the model).
+	const headings = [...body.querySelectorAll("fieldset > p")].filter(
+		(node) =>
+			[COPY.people, COPY.agents].includes(node.textContent.trim()) &&
+			node.closest("section")?.querySelector('input[type="text"]'),
 	);
 	assert.deepEqual(
 		headings.map((node) => node.textContent.trim()),
@@ -627,23 +800,125 @@ test("a peer whose bridge is off renders disabled with the reason", async (t) =>
 	const { document: body } = await mount(t);
 	const row = rowFor(body, "Ada Okafor");
 	assert.ok(row, "the unreachable peer is visible, not hidden");
-	assert.equal(checkboxIn(row).disabled, true);
+	assert.equal(checkboxIn(row), null, "an ineligible row offers no checkbox");
+	assert.equal(row.getAttribute("aria-disabled"), "true");
+	assert.equal(
+		row.querySelector("button, input, [tabindex]"),
+		null,
+		"and holds no tab stop",
+	);
 	assert.ok(
 		row.textContent.includes(COPY.bridgeOff),
 		`the row states why (${COPY.bridgeOff})`,
 	);
+	assert.equal(
+		row.getAttribute("aria-label"),
+		`Ada Okafor, ${COPY.bridgeOff}`,
+		"the reason is part of the row's accessible name",
+	);
 });
 
-test("an existing member is shown as such and cannot be re-added", async (t) => {
+test("current members are filtered out of the invite list", async (t) => {
 	const { document: body } = await mount(t);
-	const row = rowFor(body, "Ben Tran");
-	assert.equal(checkboxIn(row).disabled, true);
-	assert.ok(row.textContent.includes(COPY.alreadyMember));
-	const agentRow = rowFor(body, "Juno (Ben Tran)");
-	assert.equal(checkboxIn(agentRow).disabled, true);
+	const inviteColumn = body
+		.querySelector('[aria-labelledby] input[type="text"]')
+		?.closest("section");
+	assert.ok(inviteColumn);
+	for (const name of ["Ben Tran", "Juno (Ben Tran)", "Damian Tran"])
+		assert.equal(
+			[...inviteColumn.querySelectorAll("span.truncate")].some(
+				(node) => node.textContent === name,
+			),
+			false,
+			`${name} is already in the room and is not offered again`,
+		);
+});
+
+test("search narrows both columns and explains a members-only match", async (t) => {
+	const { document: body } = await mount(t);
+	const search = body.querySelector('input[type="text"]');
+	const type = async (value) =>
+		act(async () => {
+			const setter = Object.getOwnPropertyDescriptor(
+				dom.window.HTMLInputElement.prototype,
+				"value",
+			).set;
+			setter.call(search, value);
+			search.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+		});
+	await type("ben");
 	assert.ok(
-		agentRow.textContent.includes(COPY.alreadyMember),
-		"an invited agent is in the room already, so it says so rather than re-offering",
+		body.body.textContent.includes(
+			"No one to invite matches “ben”. Current members aren’t listed here.",
+		),
+		"a query that only finds members says why nobody is offered",
+	);
+	assert.ok(body.body.textContent.includes("Ben Tran"), "Ben stays in members");
+	assert.equal(
+		body.body.textContent.includes("Damian Tran"),
+		false,
+		"the members column is narrowed by the same query",
+	);
+	await type("zzz");
+	assert.ok(
+		body.body.textContent.includes("No current members match your search."),
+	);
+	assert.ok(
+		body.body.textContent.includes("No people or agents match your search."),
+	);
+});
+
+test("removing a member asks first, names them, and Cancel returns focus", async (t) => {
+	const removed = [];
+	const { document: body } = await mount(t, {
+		onRemove: (id) => removed.push(id),
+	});
+	const removeButton = () =>
+		body.querySelector(
+			'button[aria-label="Remove Ben Tran from conversation"]',
+		);
+	assert.ok(removeButton(), "the removable row carries the icon action");
+	assert.equal(
+		body.querySelector(
+			'button[aria-label="Remove Damian Tran from conversation"]',
+		),
+		null,
+		"the reader's own row has none",
+	);
+	assert.equal(
+		body.querySelector(
+			'button[aria-label="Remove Juno (Ben Tran) from conversation"]',
+		),
+		null,
+		"an agent row has none: the DELETE route is human-keyed",
+	);
+	await act(async () => removeButton().click());
+	assert.deepEqual(removed, [], "the first press only arms the row");
+	assert.equal(
+		body.activeElement?.textContent,
+		"Cancel",
+		"arming puts the keyboard on the safe answer",
+	);
+	await act(async () => body.activeElement.click());
+	assert.equal(
+		body.activeElement,
+		removeButton(),
+		"Cancel returns focus to the icon that armed it",
+	);
+	await act(async () => removeButton().click());
+	await act(async () => buttonNamed(body, CONFIRM_REMOVE_BEN).click());
+	assert.deepEqual(removed, ["acct_ben"], "the confirm removes that member");
+});
+
+test("a removal in flight says so on its row", async (t) => {
+	const { document: body } = await mount(t, { pendingKey: "remove:acct_ben" });
+	assert.ok(body.body.textContent.includes("Removing…"));
+	assert.equal(
+		body.querySelector(
+			'button[aria-label="Remove Ben Tran from conversation"]',
+		),
+		null,
+		"the action is replaced by the status while the write settles",
 	);
 });
 
@@ -892,6 +1167,71 @@ test("a write in flight closes no door and takes no second press", async (t) => 
 	);
 });
 
+test("Escape on an armed row disarms it and keeps the dialog open", async (t) => {
+	const removed = [];
+	const closed = [];
+	const { document: body } = await mount(t, {
+		onRemove: (id) => removed.push(id),
+		onClose: () => closed.push(true),
+	});
+	await act(async () => body.querySelector(REMOVE_BEN_ICON).click());
+	assert.ok(buttonNamed(body, CONFIRM_REMOVE_BEN), "the row is armed");
+	await pressEscape(body);
+	assert.equal(
+		buttonNamed(body, CONFIRM_REMOVE_BEN),
+		undefined,
+		"Esc answers the row's question",
+	);
+	assert.deepEqual(closed, [], "and does not close the dialog");
+	assert.deepEqual(removed, [], "and removes nobody");
+	assert.equal(
+		body.activeElement,
+		body.querySelector(REMOVE_BEN_ICON),
+		"focus is back on the icon that armed the row",
+	);
+	/*
+	 * Focus on the icon opens its Tooltip, a Radix layer above the dialog, so
+	 * the next Esc dismisses the tooltip (Radix gives Esc to the topmost layer)
+	 * and the one after closes the dialog - the same order a browser shows.
+	 * The point here is that nothing stays armed to swallow an Esc.
+	 */
+	await pressEscape(body);
+	await pressEscape(body);
+	assert.deepEqual(closed, [true], "once unarmed, Esc reaches the dialog");
+});
+
+test("an armed row hidden by the search is disarmed, so one Esc closes", async (t) => {
+	const closed = [];
+	const { document: body } = await mount(t, {
+		onClose: () => closed.push(true),
+	});
+	await act(async () => body.querySelector(REMOVE_BEN_ICON).click());
+	await typeQuery(body, "damian");
+	await typeQuery(body, "");
+	assert.equal(
+		buttonNamed(body, CONFIRM_REMOVE_BEN),
+		undefined,
+		"Ben's row came back unarmed: hiding it cleared the question",
+	);
+	await typeQuery(body, "damian");
+	await act(async () => body.querySelector(REMOVE_BEN_ICON)?.click());
+	await pressEscape(body);
+	assert.deepEqual(closed, [true], "the first Esc closes the dialog");
+});
+
+test("a refused removal returns focus to that row's remove action", async (t) => {
+	const { document: body, render } = await mount(t);
+	await act(async () => body.querySelector(REMOVE_BEN_ICON).click());
+	await act(async () => buttonNamed(body, CONFIRM_REMOVE_BEN).click());
+	await render({ pendingKey: "remove:acct_ben" });
+	await render({ pendingKey: null, mutationError: true });
+	assert.equal(
+		body.activeElement,
+		body.querySelector(REMOVE_BEN_ICON),
+		"the reader can retry from where they were",
+	);
+});
+
 test("a read-only caller sees the roster but no way to add", async (t) => {
 	const { document: body } = await mount(t, {
 		canInvite: false,
@@ -906,5 +1246,10 @@ test("a read-only caller sees the roster but no way to add", async (t) => {
 		buttonNamed(body, COPY.confirmInvitations).disabled,
 		true,
 		"and the confirm is not a live action",
+	);
+	assert.equal(
+		body.querySelector('input[type="text"]').disabled,
+		false,
+		"the search stays usable: it also filters the current members",
 	);
 });

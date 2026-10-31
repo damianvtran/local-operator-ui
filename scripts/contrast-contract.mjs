@@ -740,6 +740,21 @@ const CONTROLS = [
 		ink: "danger",
 	},
 	{
+		/*
+		 * The members dialog's inline "Remove {name}" confirm: the outline `danger`
+		 * button (no fill of its own, so its fill IS the ground) on the dialog's
+		 * `elevated` ground. Design review round 1, D2 measured the same button on
+		 * `rowSelected` below both floors in the operator's tokyoNight (label
+		 * 4.23:1, edge 2.85:1) and in 6/12 themes, so the armed row stopped painting
+		 * that ground; this row keeps the ground it moved to measured, in all 59.
+		 */
+		name: "members dialog remove confirm (danger sm)",
+		on: ["elevated"],
+		fill: "elevated",
+		border: "dangerBorder",
+		ink: "danger",
+	},
+	{
 		name: "info callout",
 		on: ["canvas", "surface"],
 		fill: "infoWash",

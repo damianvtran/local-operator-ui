@@ -15,8 +15,9 @@
  * accordingly a bare panel at 617px with no chrome around it. It is now a SIDE
  * CANVAS (the design note's §2 decision), so the frames carry what that decision
  * bought: a 40px chrome bar with a scope line and a dismiss, a scroller the queue
- * can actually overflow into, and the family's own width (560px is the dock cap the
- * decorator pins). The minimized bar's stories left this file long ago — the
+ * can actually overflow into, and a width the drawer's own pane arithmetic draws
+ * (the decorator pins a mid-band 560px; the slot opens at 640 and offers
+ * 400..1200). The minimized bar's stories left this file long ago — the
  * affordance is an ITEM in the composer's status row, photographed beside the other
  * chips in `composer-status-row.stories.tsx`.
  *
@@ -170,10 +171,11 @@ const meta = {
 	},
 	/*
 	 * THE DRAWER'S OWN BOX, and the sizes are the family's rather than decorative: a
-	 * 560px column with a fixed height is what the pane docks at when the row can
-	 * afford it (`CANVAS_PANE_MAX_PX`), and the height is what makes the middle
-	 * region's scroller a fact a frame can show - the D1 defect was a panel with no
-	 * scroll owner, so a frame that gave it unlimited height could not show the fix.
+	 * 560px column with a fixed height is a row that leaves the pane 560 (the slot's
+	 * own band is 400..1200, opening at the 640 default), and the height is what
+	 * makes the middle region's scroller a fact a frame can show - the D1 defect was
+	 * a panel with no scroll owner, so a frame that gave it unlimited height could
+	 * not show the fix.
 	 */
 	decorators: [
 		(Story, context) => (
@@ -184,12 +186,13 @@ const meta = {
 			 * shown a narrower drawer than the family ever draws.
 			 *
 			 * THE WIDTH IS A PARAMETER since the 2026-10-04 fold (`drawerWidth`,
-			 * defaulting to the family's 560px cap). The full-text case has to be judged at
-			 * BOTH ends of the family's arithmetic, and the 400px floor is the end where a
-			 * wrapped question competes hardest with its own option rows: the `min(560,
-			 * row - 480)` rule bottoms out there (`CANVAS_PANE_MIN_PX`), so a frame at 560
-			 * alone cannot answer "does the card hold with real text". The inline style
-			 * rather than a `w-[560px]` class is what makes one decorator serve both.
+			 * defaulting to a mid-band 560). The full-text case has to be judged at BOTH
+			 * ends of the family's arithmetic, and the 400px floor is the end where a
+			 * wrapped question competes hardest with its own option rows: the
+			 * `min(RIGHT_SLOT_MAX_PX, row - 480)` rule bottoms out there
+			 * (`CANVAS_PANE_MIN_PX`), so a frame at 560 alone cannot answer "does the card
+			 * hold with real text". The inline style rather than a `w-[560px]` class is
+			 * what makes one decorator serve both.
 			 */
 			<div
 				className="flex h-[640px] flex-col bg-canvas"
@@ -713,10 +716,10 @@ export const RecommendedPassedOver: Story = {
  * drawer owns a scroller (`ask-drawer.tsx`: `min-h-0 flex-1 overflow-y-auto`), so
  * a tall card is a card the user scrolls, not a card that cuts a sentence.
  *
- * TWO WIDTHS, and both are the family's own: 560 is `CANVAS_PANE_MAX_PX` and 400
- * is `CANVAS_PANE_MIN_PX`. The floor is where the wrapped question competes
- * hardest with its option rows, and it is the one the design round asked to
- * check rather than assume.
+ * TWO WIDTHS, and both are inside the slot's band: 560 is a row that leaves the
+ * pane its old cap's width, and 400 is `CANVAS_PANE_MIN_PX`. The floor is where
+ * the wrapped question competes hardest with its option rows, and it is the one
+ * the design round asked to check rather than assume.
  */
 const LONG_QUESTION =
 	"The rollout window for the billing migration collides with the audit freeze, and the question is which of the two should move: if I move the migration the finance close slips a week and the reconciliation report has to be rebuilt on top of partially migrated rows, and if I move the freeze the auditors see a schema change mid-window — either way one of them needs a decision from you before Thursday, and I would rather not guess which one is cheaper.";
@@ -752,7 +755,7 @@ const LONG_TEXT_ASK: PendingAsk = ask({
 	],
 });
 
-/** Full text at the family's 560px cap: the question wraps, nothing elides. */
+/** Full text at 560, a mid-band width the card must hold: nothing elides. */
 export const FullTextAtWidth: Story = {
 	args: {
 		frontend: frontend([LONG_TEXT_ASK]),

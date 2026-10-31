@@ -6979,8 +6979,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "095e2c75afdab6c73f78840c5c9624c01639a43c2e713cef5bfdabcd1972c1ea",
-			"target_sha256": "88af32e9102f86d832fd1ce0431dfe312c975da0a6fc6b8138cbfc69e0ab2fe6",
+			"source_sha256": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f",
+			"target_sha256": "6919a2d7b2435b65195ffa65b030470bdbf8201225301224dbe53d90ff7c6741",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -6995,20 +6995,38 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-30",
-					"result": "clean",
-					"instance": "tb1489m3-es-2d47856c6ee9",
+					"result": "clean-with-findings",
+					"instance": "b5610aecd5f2-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/tb1489m3-es-2d47856c6ee9.json",
-					"receipt_sha256": "049171a9be8b36687b5a22fae6146af1d8f8c727645cebe6c47832c96ed7c9f2",
-					"scope": "Merge-delta RE-BIND after PR #1482 landed on origin/main: the same audited one-key delta (list.error_stale), re-bound to the merged catalogue that now carries both audited deltas; 283 keys = 282 branch U 282 main, zero values changed."
+					"receipt": "i18n/receipts/b5610aecd5f2-es.json",
+					"receipt_sha256": "fe0a5fdafbe0fea5a47623b6c08c3f5087401723e2f31cfa5078ef2b04df7a45",
+					"scope": "fix/team-bridge-members-dialog-polish delta (catalogue commit c7aefd761ed): 14 added ui.teamBridge.members.* keys audited linguistically, 11 removed keys confirmed removed with English; other values byte-identical to the base row (9d7c5fd911e).",
+					"note": "Members-dialog polish delta: 14 keys added, 11 retired. 1 nit(s), 0 blocker/major. invitation_note_v2 fidelity checked clause by clause. Record: i18n/audits/evidence/es/ui.teamBridge/teambridge-members-polish-audit-b5610aecd5f2-es/record.json"
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "e49c0ab64b49-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/e49c0ab64b49-es.json",
+					"receipt_sha256": "8418640f25ff42e30b5c61275476b50dace656988d0e548b761fd059df4280d5",
+					"scope": "Second audit: invitation_note_v2 (clause-by-clause) + quick pass invite_count, remove_label; head f1fd25bf339",
+					"note": "Second independent audit (consent copy). 0 blocker, 0 major, 0 minor, 1 nit; ids A2-ES-N1. Record: i18n/audits/evidence/es/ui.teamBridge/teambridge-members-polish-audit2-e49c0ab64b49-es/record.json"
 				}
 			],
 			"status": "audited",
@@ -7912,6 +7930,29 @@
 							"receipt": "i18n/receipts/tb1489m2-es-2d47856c6ee9.json",
 							"receipt_sha256": "addeab6d3956a441a3d1bb48ad4f84231721d0162a1d300e225de829774af3e9",
 							"scope": "Merged copy delta at the fold of origin/main 85971d8b44b5: the one key this branch adds to ui.teamBridge (list.error_stale); the rest of the namespace is inherited byte-identically from origin/main."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "095e2c75afdab6c73f78840c5c9624c01639a43c2e713cef5bfdabcd1972c1ea",
+					"target_sha256": "88af32e9102f86d832fd1ce0431dfe312c975da0a6fc6b8138cbfc69e0ab2fe6",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "tb1489m3-es-2d47856c6ee9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1489m3-es-2d47856c6ee9.json",
+							"receipt_sha256": "049171a9be8b36687b5a22fae6146af1d8f8c727645cebe6c47832c96ed7c9f2",
+							"scope": "Merge-delta RE-BIND after PR #1482 landed on origin/main: the same audited one-key delta (list.error_stale), re-bound to the merged catalogue that now carries both audited deltas; 283 keys = 282 branch U 282 main, zero values changed."
 						}
 					],
 					"status": "audited"
@@ -15406,8 +15447,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "095e2c75afdab6c73f78840c5c9624c01639a43c2e713cef5bfdabcd1972c1ea",
-			"target_sha256": "b592d272f401622c727a3062e3c069ee9b9357dcfd7eb5b122ffe6c467b8cd7b",
+			"source_sha256": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f",
+			"target_sha256": "b455c94115fd1cd10490a94d2537a41dad3889e65154e0b4f4397b3dde6f5626",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -15423,20 +15464,38 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-30",
-					"result": "clean",
-					"instance": "tb1489m3-fr-2d47856c6ee9",
+					"result": "clean-with-findings",
+					"instance": "b5610aecd5f2-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/tb1489m3-fr-2d47856c6ee9.json",
-					"receipt_sha256": "275a96cf61b3bd695f1ba7c3ea1a1c141e592cdc5cef4200b015e0fe129b22a3",
-					"scope": "Merge-delta RE-BIND after PR #1482 landed on origin/main: the same audited one-key delta (list.error_stale), re-bound to the merged catalogue that now carries both audited deltas; 283 keys = 282 branch U 282 main, zero values changed."
+					"receipt": "i18n/receipts/b5610aecd5f2-fr.json",
+					"receipt_sha256": "d1ba0d8d743f9a18f4dc6e3e10fa4dee9a431ea0462e6d6c230820e9559680e5",
+					"scope": "fix/team-bridge-members-dialog-polish delta (catalogue commit c7aefd761ed): 14 added ui.teamBridge.members.* keys audited linguistically, 11 removed keys confirmed removed with English; other values byte-identical to the base row (9d7c5fd911e).",
+					"note": "Members-dialog polish delta: 14 keys added, 11 retired. 1 nit(s), 0 blocker/major. invitation_note_v2 fidelity checked clause by clause. Record: i18n/audits/evidence/fr/ui.teamBridge/teambridge-members-polish-audit-b5610aecd5f2-fr/record.json"
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "e49c0ab64b49-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/e49c0ab64b49-fr.json",
+					"receipt_sha256": "95c940c4103607bb86c1dc55081f0590cf1b5ad7b982b03839d312ec11d468b2",
+					"scope": "Second audit: invitation_note_v2 (clause-by-clause) + quick pass invite_count, remove_label; head f1fd25bf339",
+					"note": "Second independent audit (consent copy). 0 blocker, 0 major, 0 minor, 1 nit; ids A2-FR-N1. Record: i18n/audits/evidence/fr/ui.teamBridge/teambridge-members-polish-audit2-e49c0ab64b49-fr/record.json"
 				}
 			],
 			"status": "audited",
@@ -16364,6 +16423,29 @@
 							"receipt": "i18n/receipts/tb1489m2-fr-2d47856c6ee9.json",
 							"receipt_sha256": "7c5c9c8c007f377631cb724512430def7bc056db1698fe01c764f3dd6069b180",
 							"scope": "Merged copy delta at the fold of origin/main 85971d8b44b5: the one key this branch adds to ui.teamBridge (list.error_stale); the rest of the namespace is inherited byte-identically from origin/main."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "095e2c75afdab6c73f78840c5c9624c01639a43c2e713cef5bfdabcd1972c1ea",
+					"target_sha256": "b592d272f401622c727a3062e3c069ee9b9357dcfd7eb5b122ffe6c467b8cd7b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "tb1489m3-fr-2d47856c6ee9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1489m3-fr-2d47856c6ee9.json",
+							"receipt_sha256": "275a96cf61b3bd695f1ba7c3ea1a1c141e592cdc5cef4200b015e0fe129b22a3",
+							"scope": "Merge-delta RE-BIND after PR #1482 landed on origin/main: the same audited one-key delta (list.error_stale), re-bound to the merged catalogue that now carries both audited deltas; 283 keys = 282 branch U 282 main, zero values changed."
 						}
 					],
 					"status": "audited"
@@ -23713,8 +23795,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "095e2c75afdab6c73f78840c5c9624c01639a43c2e713cef5bfdabcd1972c1ea",
-			"target_sha256": "732a776adb6cfa15cd495a7b8a0aeedd241d4c6a593a4f031d8b2bba5976b49b",
+			"source_sha256": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f",
+			"target_sha256": "6f968790b4e22d2590a99d802af0ffb786c822b8452828fc85644c938265cd1b",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -23729,20 +23811,38 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-30",
-					"result": "clean",
-					"instance": "tb1489m3-hi-2d47856c6ee9",
+					"result": "clean-with-findings",
+					"instance": "b5610aecd5f2-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/tb1489m3-hi-2d47856c6ee9.json",
-					"receipt_sha256": "c2f6741f829053eb558bf60e1c3d41d249dce9915b262b68f9cb48441354000e",
-					"scope": "Merge-delta RE-BIND after PR #1482 landed on origin/main: the same audited one-key delta (list.error_stale), re-bound to the merged catalogue that now carries both audited deltas; 283 keys = 282 branch U 282 main, zero values changed."
+					"receipt": "i18n/receipts/b5610aecd5f2-hi.json",
+					"receipt_sha256": "f240caab0b2f155fa6908854cc28668c6207391de336f398ebd87a1e3863beaa",
+					"scope": "fix/team-bridge-members-dialog-polish delta (catalogue commit c7aefd761ed): 14 added ui.teamBridge.members.* keys audited linguistically, 11 removed keys confirmed removed with English; other values byte-identical to the base row (9d7c5fd911e).",
+					"note": "Members-dialog polish delta: 14 keys added, 11 retired. 2 nit(s), 0 blocker/major. invitation_note_v2 fidelity checked clause by clause. Record: i18n/audits/evidence/hi/ui.teamBridge/teambridge-members-polish-audit-b5610aecd5f2-hi/record.json"
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "e49c0ab64b49-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/e49c0ab64b49-hi.json",
+					"receipt_sha256": "d3d67b7c2eaeda4b6d2d479851b318752eca58bfee802b43491f1b8ad3710201",
+					"scope": "Second audit: invitation_note_v2 (clause-by-clause) + quick pass invite_count, remove_label; head f1fd25bf339",
+					"note": "Second independent audit (consent copy). 0 blocker, 0 major, 0 minor, 1 nit; ids A2-HI-N1. Record: i18n/audits/evidence/hi/ui.teamBridge/teambridge-members-polish-audit2-e49c0ab64b49-hi/record.json"
 				}
 			],
 			"status": "audited",
@@ -24593,6 +24693,29 @@
 							"receipt": "i18n/receipts/tb1489m2-hi-2d47856c6ee9.json",
 							"receipt_sha256": "a21b89df093b3848e45edeb792f75c7d1bb009b3e69cbbc4fe22899137d57ce2",
 							"scope": "Merged copy delta at the fold of origin/main 85971d8b44b5: the one key this branch adds to ui.teamBridge (list.error_stale); the rest of the namespace is inherited byte-identically from origin/main."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "095e2c75afdab6c73f78840c5c9624c01639a43c2e713cef5bfdabcd1972c1ea",
+					"target_sha256": "732a776adb6cfa15cd495a7b8a0aeedd241d4c6a593a4f031d8b2bba5976b49b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "tb1489m3-hi-2d47856c6ee9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1489m3-hi-2d47856c6ee9.json",
+							"receipt_sha256": "c2f6741f829053eb558bf60e1c3d41d249dce9915b262b68f9cb48441354000e",
+							"scope": "Merge-delta RE-BIND after PR #1482 landed on origin/main: the same audited one-key delta (list.error_stale), re-bound to the merged catalogue that now carries both audited deltas; 283 keys = 282 branch U 282 main, zero values changed."
 						}
 					],
 					"status": "audited"
@@ -31741,8 +31864,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "095e2c75afdab6c73f78840c5c9624c01639a43c2e713cef5bfdabcd1972c1ea",
-			"target_sha256": "f4f43699a7dc78bc38fe69979a41861e27450c468b3d749dfe95243414458d05",
+			"source_sha256": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f",
+			"target_sha256": "d7c706a137f2f6d7734372442f8ee305c61373542a7bb7167329e2fb446270b8",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -31758,20 +31881,38 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-30",
 					"result": "clean-with-findings",
-					"instance": "tb1489m3-ru-2d47856c6ee9",
+					"instance": "c16fabd13d68-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/tb1489m3-ru-2d47856c6ee9.json",
-					"receipt_sha256": "5bcbb35cd541df576107294c72da4a1429440dc8d172acbd44fd57122c0ac9f6",
-					"scope": "Merge-delta RE-BIND after PR #1482 landed on origin/main: the same audited one-key delta (list.error_stale), re-bound to the merged catalogue that now carries both audited deltas; 283 keys = 282 branch U 282 main, zero values changed."
+					"receipt": "i18n/receipts/c16fabd13d68-ru.json",
+					"receipt_sha256": "8494b39a173e4447448e61d342b5b41321a33a9e8ac0b44ca41fa6ab85055ea9",
+					"scope": "Re-audit A (PR #1523 head d71058ce222): invitation_note_v2 A2-RU-M1 remediation + full-string fidelity; only ru delta since 90bb4c7d4e2",
+					"note": "Re-audit A of A2-RU-M1 fix (mute clause → «Без звука», = notify.mute). Full note fidelity OK. 0 blocker, 0 major, 0 minor, 1 nit; ids RA-RU-N1. Record: i18n/audits/evidence/ru/ui.teamBridge/teambridge-members-polish-reaudit-a-c16fabd13d68-ru/record.json"
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-30",
+					"result": "clean",
+					"instance": "d5ed40af1448-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d5ed40af1448-ru.json",
+					"receipt_sha256": "ad59a42d77642ec81408aa72ca26e3e9c3201d6538f98b622302fb38f9e8a135",
+					"scope": "Re-audit of A2-RU-M1 remediation at d71058ce222: invitation_note_v2 mute clause, nested-quote rule and whole-string fidelity; ru diff vs 90bb4c7d4e2 is that one line.",
+					"note": "Auditor B re-audit, A2-RU-M1 remediation: 0 blocker/major/minor/nit. Record: i18n/audits/evidence/ru/ui.teamBridge/teambridge-members-polish-reaudit-d5ed40af1448-ru/record.json"
 				}
 			],
 			"status": "audited",
@@ -32653,6 +32794,70 @@
 							"receipt": "i18n/receipts/tb1489m2-ru-2d47856c6ee9.json",
 							"receipt_sha256": "6daf14a82da6ead6570e33421c6d08e87b739149467169a9cbbdaadf33ae85be",
 							"scope": "Merged copy delta at the fold of origin/main 85971d8b44b5: the one key this branch adds to ui.teamBridge (list.error_stale); the rest of the namespace is inherited byte-identically from origin/main."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "095e2c75afdab6c73f78840c5c9624c01639a43c2e713cef5bfdabcd1972c1ea",
+					"target_sha256": "f4f43699a7dc78bc38fe69979a41861e27450c468b3d749dfe95243414458d05",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-30",
+							"result": "clean-with-findings",
+							"instance": "tb1489m3-ru-2d47856c6ee9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/tb1489m3-ru-2d47856c6ee9.json",
+							"receipt_sha256": "5bcbb35cd541df576107294c72da4a1429440dc8d172acbd44fd57122c0ac9f6",
+							"scope": "Merge-delta RE-BIND after PR #1482 landed on origin/main: the same audited one-key delta (list.error_stale), re-bound to the merged catalogue that now carries both audited deltas; 283 keys = 282 branch U 282 main, zero values changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f",
+					"target_sha256": "425881bf26885bbfde26462e002e78c276d353911049bb56f82c745120c21f02",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "b5610aecd5f2-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b5610aecd5f2-ru.json",
+							"receipt_sha256": "6053a36936037da94f23b1478be9d7dccac23e86298c39294ce3095e0e16637b",
+							"scope": "fix/team-bridge-members-dialog-polish delta (catalogue commit c7aefd761ed): 14 added ui.teamBridge.members.* keys audited linguistically, 11 removed keys confirmed removed with English; other values byte-identical to the base row (9d7c5fd911e).",
+							"note": "Members-dialog polish delta: 14 keys added, 11 retired. 0 nit(s), 0 blocker/major. invitation_note_v2 fidelity checked clause by clause. Record: i18n/audits/evidence/ru/ui.teamBridge/teambridge-members-polish-audit-b5610aecd5f2-ru/record.json"
+						},
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-30",
+							"result": "clean-with-findings",
+							"instance": "e49c0ab64b49-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/e49c0ab64b49-ru.json",
+							"receipt_sha256": "edc7191fe97ac1b6b1ec1d5e1c20eeb975cb2d96c93dd00f1c577bd2a73431fc",
+							"scope": "Second audit: invitation_note_v2 (clause-by-clause) + quick pass invite_count, remove_label; head f1fd25bf339",
+							"note": "Second independent audit (consent copy). 0 blocker, 0 major, 1 minor, 0 nit; ids A2-RU-M1. Record: i18n/audits/evidence/ru/ui.teamBridge/teambridge-members-polish-audit2-e49c0ab64b49-ru/record.json"
 						}
 					],
 					"status": "audited"
@@ -39860,8 +40065,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "095e2c75afdab6c73f78840c5c9624c01639a43c2e713cef5bfdabcd1972c1ea",
-			"target_sha256": "4a1c43f94ea9a18d0b0df0ff899fe369b53b7d15ccfa5e909876c7b12a4e7ab9",
+			"source_sha256": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f",
+			"target_sha256": "23eaca0383a55b889b3f68af111a97e7358eb1bc25b72932d112a0430b078e6c",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -39876,20 +40081,38 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-30",
-					"result": "clean",
-					"instance": "tb1489m3-ur-2d47856c6ee9",
+					"result": "clean-with-findings",
+					"instance": "b5610aecd5f2-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/tb1489m3-ur-2d47856c6ee9.json",
-					"receipt_sha256": "e99c41ac158569a44044ba654b0e69836274ba68016d7917504876decb27a808",
-					"scope": "Merge-delta RE-BIND after PR #1482 landed on origin/main: the same audited one-key delta (list.error_stale), re-bound to the merged catalogue that now carries both audited deltas; 283 keys = 282 branch U 282 main, zero values changed."
+					"receipt": "i18n/receipts/b5610aecd5f2-ur.json",
+					"receipt_sha256": "2ea0e6c92b9ed0407ac622c80d3d1159afa73a39c690433ed5b948a12908bf3c",
+					"scope": "fix/team-bridge-members-dialog-polish delta (catalogue commit c7aefd761ed): 14 added ui.teamBridge.members.* keys audited linguistically, 11 removed keys confirmed removed with English; other values byte-identical to the base row (9d7c5fd911e).",
+					"note": "Members-dialog polish delta: 14 keys added, 11 retired. 1 nit(s), 0 blocker/major. invitation_note_v2 fidelity checked clause by clause. Record: i18n/audits/evidence/ur/ui.teamBridge/teambridge-members-polish-audit-b5610aecd5f2-ur/record.json"
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "e49c0ab64b49-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/e49c0ab64b49-ur.json",
+					"receipt_sha256": "472b0ff07cc174a44f9961bd9294b4e55090ce7583cdc359f293eb8731612118",
+					"scope": "Second audit: invitation_note_v2 (clause-by-clause) + quick pass invite_count, remove_label; head f1fd25bf339",
+					"note": "Second independent audit (consent copy). 0 blocker, 0 major, 0 minor, 1 nit; ids A2-UR-N1. Record: i18n/audits/evidence/ur/ui.teamBridge/teambridge-members-polish-audit2-e49c0ab64b49-ur/record.json"
 				}
 			],
 			"status": "audited",
@@ -40740,6 +40963,29 @@
 							"receipt": "i18n/receipts/tb1489m2-ur-2d47856c6ee9.json",
 							"receipt_sha256": "f21af5ef36e9e17117a3dd89cdaa1b784bba61ee3d4d242a020d5a8169054ed0",
 							"scope": "Merged copy delta at the fold of origin/main 85971d8b44b5: the one key this branch adds to ui.teamBridge (list.error_stale); the rest of the namespace is inherited byte-identically from origin/main."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "095e2c75afdab6c73f78840c5c9624c01639a43c2e713cef5bfdabcd1972c1ea",
+					"target_sha256": "4a1c43f94ea9a18d0b0df0ff899fe369b53b7d15ccfa5e909876c7b12a4e7ab9",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "tb1489m3-ur-2d47856c6ee9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1489m3-ur-2d47856c6ee9.json",
+							"receipt_sha256": "e99c41ac158569a44044ba654b0e69836274ba68016d7917504876decb27a808",
+							"scope": "Merge-delta RE-BIND after PR #1482 landed on origin/main: the same audited one-key delta (list.error_stale), re-bound to the merged catalogue that now carries both audited deltas; 283 keys = 282 branch U 282 main, zero values changed."
 						}
 					],
 					"status": "audited"
@@ -48370,8 +48616,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "095e2c75afdab6c73f78840c5c9624c01639a43c2e713cef5bfdabcd1972c1ea",
-			"target_sha256": "387caea7c405c7d613ebabc137f8509f075b1f238c5fae243e25053609fd1a1e",
+			"source_sha256": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f",
+			"target_sha256": "d381190e0b5f86f7c1cc496376fb0885431c7c2c318360b4ca071ee8337b4f83",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -48386,20 +48632,38 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-30",
-					"result": "clean",
-					"instance": "tb1489m3-vi-2d47856c6ee9",
+					"result": "clean-with-findings",
+					"instance": "b5610aecd5f2-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/tb1489m3-vi-2d47856c6ee9.json",
-					"receipt_sha256": "11a84558f4c363203167ac372917fdd28016a481437d0356d7e9e672f85dff5b",
-					"scope": "Merge-delta RE-BIND after PR #1482 landed on origin/main: the same audited one-key delta (list.error_stale), re-bound to the merged catalogue that now carries both audited deltas; 283 keys = 282 branch U 282 main, zero values changed."
+					"receipt": "i18n/receipts/b5610aecd5f2-vi.json",
+					"receipt_sha256": "bbfe2956808c991a06eb67fe3c92e41f71485004df6ee7c94f6474be3c854b31",
+					"scope": "fix/team-bridge-members-dialog-polish delta (catalogue commit c7aefd761ed): 14 added ui.teamBridge.members.* keys audited linguistically, 11 removed keys confirmed removed with English; other values byte-identical to the base row (9d7c5fd911e).",
+					"note": "Members-dialog polish delta: 14 keys added, 11 retired. 2 nit(s), 0 blocker/major. invitation_note_v2 fidelity checked clause by clause. Record: i18n/audits/evidence/vi/ui.teamBridge/teambridge-members-polish-audit-b5610aecd5f2-vi/record.json"
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "e49c0ab64b49-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/e49c0ab64b49-vi.json",
+					"receipt_sha256": "048baf371e7bd71aacbd129291f0939c2ae06ee9e5a565f03aebcb58911738cd",
+					"scope": "Second audit: invitation_note_v2 (clause-by-clause) + quick pass invite_count, remove_label; head f1fd25bf339",
+					"note": "Second independent audit (consent copy). 0 blocker, 0 major, 0 minor, 1 nit; ids A2-VI-N1. Record: i18n/audits/evidence/vi/ui.teamBridge/teambridge-members-polish-audit2-e49c0ab64b49-vi/record.json"
 				}
 			],
 			"status": "audited",
@@ -49281,6 +49545,29 @@
 							"receipt": "i18n/receipts/tb1489m2-vi-2d47856c6ee9.json",
 							"receipt_sha256": "d8423d0d0054b4dca8c47bb3f6719322028ca1d66b421de4762d873aa8be5eb2",
 							"scope": "Merged copy delta at the fold of origin/main 85971d8b44b5: the one key this branch adds to ui.teamBridge (list.error_stale); the rest of the namespace is inherited byte-identically from origin/main."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "095e2c75afdab6c73f78840c5c9624c01639a43c2e713cef5bfdabcd1972c1ea",
+					"target_sha256": "387caea7c405c7d613ebabc137f8509f075b1f238c5fae243e25053609fd1a1e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "tb1489m3-vi-2d47856c6ee9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1489m3-vi-2d47856c6ee9.json",
+							"receipt_sha256": "11a84558f4c363203167ac372917fdd28016a481437d0356d7e9e672f85dff5b",
+							"scope": "Merge-delta RE-BIND after PR #1482 landed on origin/main: the same audited one-key delta (list.error_stale), re-bound to the merged catalogue that now carries both audited deltas; 283 keys = 282 branch U 282 main, zero values changed."
 						}
 					],
 					"status": "audited"
@@ -57482,8 +57769,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "095e2c75afdab6c73f78840c5c9624c01639a43c2e713cef5bfdabcd1972c1ea",
-			"target_sha256": "79e9c92e96baa369b026ea7eb5b7e069be985c4795c738118ba604403a23d71a",
+			"source_sha256": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f",
+			"target_sha256": "742aa661bfab0039a70fe87befb06407b268a8c75452f06f9ec4e6eb0d1f48cf",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -57498,20 +57785,38 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "tb1489m3-zh-cn-2d47856c6ee9",
+					"instance": "b5610aecd5f2-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tb1489m3-zh-cn-2d47856c6ee9.json",
-					"receipt_sha256": "3768588d8c0e6d83edcde0d040d823c705b0af010cae8365a4343ba9ebc95681",
-					"scope": "Merge-delta RE-BIND after PR #1482 landed on origin/main: the same audited one-key delta (list.error_stale), re-bound to the merged catalogue that now carries both audited deltas; 283 keys = 282 branch U 282 main, zero values changed."
+					"receipt": "i18n/receipts/b5610aecd5f2-zh-cn.json",
+					"receipt_sha256": "8257aa7d62fce424485bed9cade5b8f6bfa2be3b4e1241c90b5a9340e50b3ebd",
+					"scope": "fix/team-bridge-members-dialog-polish delta (catalogue commit c7aefd761ed): 14 added ui.teamBridge.members.* keys audited linguistically, 11 removed keys confirmed removed with English; other values byte-identical to the base row (9d7c5fd911e).",
+					"note": "Members-dialog polish delta: 14 keys added, 11 retired. 0 nit(s), 0 blocker/major. invitation_note_v2 fidelity checked clause by clause. Record: i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-members-polish-audit-b5610aecd5f2-zh-cn/record.json"
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-30",
+					"result": "clean",
+					"instance": "e49c0ab64b49-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/e49c0ab64b49-zh-cn.json",
+					"receipt_sha256": "ca7b5240104820b35371c70cc9b135a55aa5d146e43842462ae4823c9a70dd7b",
+					"scope": "Second audit: invitation_note_v2 (clause-by-clause) + quick pass invite_count, remove_label; head f1fd25bf339",
+					"note": "Second independent audit (consent copy). 0 blocker, 0 major, 0 minor, 0 nit; ids none. Record: i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-members-polish-audit2-e49c0ab64b49-zh-cn/record.json"
 				}
 			],
 			"status": "audited",
@@ -58415,6 +58720,29 @@
 							"receipt": "i18n/receipts/tb1489m2-zh-cn-2d47856c6ee9.json",
 							"receipt_sha256": "6425d6be1bf95dce1996a4c091c8400e459c01845841bff7b8451e581a759908",
 							"scope": "Merged copy delta at the fold of origin/main 85971d8b44b5: the one key this branch adds to ui.teamBridge (list.error_stale); the rest of the namespace is inherited byte-identically from origin/main."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "095e2c75afdab6c73f78840c5c9624c01639a43c2e713cef5bfdabcd1972c1ea",
+					"target_sha256": "79e9c92e96baa369b026ea7eb5b7e069be985c4795c738118ba604403a23d71a",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "tb1489m3-zh-cn-2d47856c6ee9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1489m3-zh-cn-2d47856c6ee9.json",
+							"receipt_sha256": "3768588d8c0e6d83edcde0d040d823c705b0af010cae8365a4343ba9ebc95681",
+							"scope": "Merge-delta RE-BIND after PR #1482 landed on origin/main: the same audited one-key delta (list.error_stale), re-bound to the merged catalogue that now carries both audited deltas; 283 keys = 282 branch U 282 main, zero values changed."
 						}
 					],
 					"status": "audited"

@@ -1,0 +1,51 @@
+{
+	"record_kind": "translation audit record (re-audit, auditor A of two)",
+	"locale": "ru",
+	"namespace": "ui.teamBridge",
+	"date": "2026-10-30",
+	"auditor": {
+		"agent": "translation-auditor",
+		"session": "c16fabd13d68",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Re-audit auditor A of two, running independently: session c16fabd13d68 (team lopdev, role translation-auditor, task ru-reaudit-a). Distinct from the translator/remediating coder and from prior auditor sessions b5610aecd5f2 and e49c0ab64b49 (the latter raised A2-RU-M1, whose remediation is audited here). No catalogue edited."
+	},
+	"paths": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "20a8960b411dbff3dc7a8b6e029a4a17091e95980bd1bab946445597aff3277f"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ru/ui.teamBridge.json",
+			"sha256": "d7c706a137f2f6d7734372442f8ee305c61373542a7bb7167329e2fb446270b8"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "abbf67496bc6fecdd4d5795e2fb6b15d4d6a1cefad59ba69b303656b88c8b4cd"
+		}
+	},
+	"receipt": {
+		"path": "i18n/receipts/c16fabd13d68-ru.json",
+		"sha256": "8494b39a173e4447448e61d342b5b41321a33a9e8ac0b44ca41fa6ab85055ea9"
+	},
+	"pr": "damianvtran/local-operator-ui#1523",
+	"head_at_audit": "d71058ce222f96b09168fb267af7e05ef5cf5a6b",
+	"remediates": {
+		"finding": "A2-RU-M1",
+		"raised_by_session": "e49c0ab64b49",
+		"prior_receipt": "i18n/receipts/e49c0ab64b49-ru.json",
+		"disposition": "resolved"
+	},
+	"findings": [
+		{
+			"severity": "nit",
+			"id": "RA-RU-N1",
+			"key": "ui.teamBridge.members.invitation_note_v2",
+			"current": "Владелец может ограничить его упоминаниями через @ или перевести его в режим «Без звука».",
+			"proposed": "Владелец может ограничить его упоминаниями через @ или перевести в режим «Без звука».",
+			"reason": "Both infinitives share the object «его»; repeating it in the second clause is grammatical but heavier than a native editor would write, and dropping it shortens the line. Non-gating."
+		}
+	],
+	"status": "clean-with-findings: 0 blocker, 0 major, 0 minor, 1 nit",
+	"ledger_effect": "ledger-assemble saw new ru target bytes, so it moved the prior auditors (b5610aecd5f2-ru, e49c0ab64b49-ru) to superseded and restarted the row from this audit. The second independent audit that high-visibility copy requires is auditor B's parallel re-audit.",
+	"notes_not_execution_log": "Linguistic judgements plus hashes; the assembler and check-i18n output are reported to the manager, not reproduced here."
+}
