@@ -34,7 +34,7 @@ globalThis.__canonicalRequest = async (request) => {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {isBlankTitle, resolveChatTitle, catalogueTitleUpdate, UNTITLED_CHAT} from "./src/renderer/src/features/chat/chat-title";',
+			'export { t } from "./src/i18n"; export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {isBlankTitle, resolveChatTitle, catalogueTitleUpdate, UNTITLED_CHAT_KEY} from "./src/renderer/src/features/chat/chat-title";',
 		resolveDir: process.cwd(),
 	},
 	/*
@@ -91,7 +91,8 @@ const {
 	isBlankTitle,
 	resolveChatTitle,
 	catalogueTitleUpdate,
-	UNTITLED_CHAT,
+	t,
+	UNTITLED_CHAT_KEY,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -167,12 +168,12 @@ test("a live title wins, so a rename still shows where it landed", () => {
 test("a conversation neither source can name is untitled", () => {
 	assert.equal(
 		resolveChatTitle({ liveTitle: "", catalogueTitle: "" }),
-		UNTITLED_CHAT,
+		t(UNTITLED_CHAT_KEY),
 	);
-	assert.equal(resolveChatTitle({}), UNTITLED_CHAT);
+	assert.equal(resolveChatTitle({}), t(UNTITLED_CHAT_KEY));
 	assert.equal(
 		resolveChatTitle({ liveTitle: null, catalogueTitle: undefined }),
-		UNTITLED_CHAT,
+		t(UNTITLED_CHAT_KEY),
 	);
 });
 
@@ -286,7 +287,7 @@ test("a row with no name at all gains none from an empty live title", () => {
 	assert.equal("title" in row, false);
 	assert.equal(
 		resolveChatTitle({ liveTitle: "", catalogueTitle: row.title }),
-		UNTITLED_CHAT,
+		t(UNTITLED_CHAT_KEY),
 	);
 });
 

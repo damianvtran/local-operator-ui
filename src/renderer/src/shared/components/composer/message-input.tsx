@@ -7798,7 +7798,10 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				(sendError?.message && NO_PROVIDER_NOTICE.test(sendError.message))
 					? [
 							{
-								label: "Connect a provider",
+								// The memo survives locale changes; resolve copy when displayed.
+								get label() {
+									return t("ui.chat.composer.connect_provider");
+								},
 								onClick: () => useConnectProviderStore.getState().openConnect(),
 							},
 						]

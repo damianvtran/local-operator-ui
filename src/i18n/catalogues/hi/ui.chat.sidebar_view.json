@@ -20,5 +20,8 @@
 	"ui.chat.sidebar_view.section.week": "इस हफ़्ते",
 	"ui.chat.sidebar_view.section.older": "पुराने",
 	"ui.chat.sidebar_view.section.agents": "एजेंट",
-	"ui.chat.sidebar_view.section.teams": "टीमें"
+	"ui.chat.sidebar_view.section.teams": "टीमें",
+	"ui.chat.sidebar_view.relative_short": "{unit, select, now {अभी} minute {{count, number, ::group-off} मि.} hour {{count, number, ::group-off} घं.} day {{count, number, ::group-off} दिन} week {{count, number, ::group-off} सप्ताह} year {{count, number, ::group-off} साल} other {अभी}}",
+	"ui.chat.sidebar_view.relative_created": "{unit, select, now {अभी-अभी बनी} minute {{count, plural, one {# मिनट पहले बनी} other {# मिनट पहले बनी}}} hour {{count, plural, one {# घंटे पहले बनी} other {# घंटे पहले बनी}}} day {{count, plural, one {# दिन पहले बनी} other {# दिन पहले बनी}}} week {{count, plural, one {# हफ़्ते पहले बनी} other {# हफ़्ते पहले बनी}}} year {{count, plural, one {# साल पहले बनी} other {# साल पहले बनी}}} other {अभी-अभी बनी}}",
+	"ui.chat.sidebar_view.relative_active": "{unit, select, now {अभी-अभी सक्रिय} minute {{count, plural, one {आख़िरी बार # मिनट पहले सक्रिय} other {आख़िरी बार # मिनट पहले सक्रिय}}} hour {{count, plural, one {आख़िरी बार # घंटे पहले सक्रिय} other {आख़िरी बार # घंटे पहले सक्रिय}}} day {{count, plural, one {आख़िरी बार # दिन पहले सक्रिय} other {आख़िरी बार # दिन पहले सक्रिय}}} week {{count, plural, one {आख़िरी बार # हफ़्ते पहले सक्रिय} other {आख़िरी बार # हफ़्ते पहले सक्रिय}}} year {{count, plural, one {आख़िरी बार # साल पहले सक्रिय} other {आख़िरी बार # साल पहले सक्रिय}}} other {अभी-अभी सक्रिय}}"
 }

@@ -1,0 +1,19 @@
+PASS
+BLOCKER=0 MAJOR=0 MINOR=0 NIT=0
+Agent: i18n-auditor; session: cbd8252fdd97; ACTUAL model: openai/gpt-6.1-sol; fallback: quota/provider failure from anthropic/claude-sonnet-5-5, with an intervening anthropic/claude-opus-5-5 switch notice; all substantive audit checks and judgements performed on openai/gpt-6.1-sol.
+relative_short: now/other = "0 min" (U+202F narrow no-break space), rich.cells.cell_len = 5; advisory budget = 6. Former "à l’instant" = 11 cells.
+
+Scope: exactly ui.chat.sidebar_view.relative_short, relative_created, relative_active in src/i18n/catalogues/fr/ui.chat.sidebar_view.json. No linguistic re-audit of the other 33 keys or any other locale.
+
+relative_short: "0 min" is acceptable native compact elapsed-time metadata, not a machine timestamp: it follows the same quantity + unit convention as "1 min" and "2 h", expressing an elapsed age below one minute. The sidebar context disambiguates the age; a clock timestamp would instead be a clock reading such as "00:00". "à l’instant" is also idiomatic and could be retained with a documented advisory-width exception, but it is not necessary to restore it and no better compact form is required. I have not treated six cells as a clipping threshold. The brief supplies the designer's rendered-fit conclusion; I did not independently render the UI.
+relative_created: the hour/many arm contains "d’heures", with the correct elision before the silent h and the style-guide U+2019 apostrophe. Executed French ICU formatting at count=1000000: "créée il y a 1 000 000 d’heures".
+relative_active: the year/many arm contains "d’ans", correctly elided before the vowel and using U+2019. Executed French ICU formatting at count=1000000: "dernière activité il y a 1 000 000 d’ans".
+
+Checks actually executed: node scripts/i18n/generate.mjs --check exited 0 and reported src/i18n/keys.gen.ts byte-identical to fresh generation. A separate scoped Node probe parsed English/French ICU with @formatjs/icu-messageformat-parser, compared placeholder names/types and select-arm sets, checked every nested French plural for one/many/other, and formatted the changed cases with intl-messageformat. All passed. Python loaded the JSON and measured the actual now literal using rich.cells.cell_len. No MT service used. No repository file modified.
+
+Input SHA-256:
+en src/i18n/catalogues/en/ui.chat.sidebar_view.json 0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e
+context src/i18n/catalogues/en/ui.chat.sidebar_view.context.json 0683c8236d899d43091742a5a097f2afddf22238e49c387b7116f281a9902ac8
+fr src/i18n/catalogues/fr/ui.chat.sidebar_view.json e8663cc922b4d6dd953f378c43a3224e8bd7ac83c54c88b34809ee8981f847ab
+
+This file is audit_notes_not_execution_log: command results above summarize actual tool output, not a retained raw execution log. Source guidance: core i18n/style-guides/fr.md and i18n/glossary.md; UI English source and matching context sidecar. Audit date: 2026-10-31. Independent fresh audit session; translator identity not provided in this scoped brief and not invented. No tracked evidence bundle or ledger write performed because this assignment explicitly makes the worktree read-only and requests these scratch outputs only; the requesting session must retain these outputs under the canonical tracked evidence root and integrate the ledger/receipts if required.

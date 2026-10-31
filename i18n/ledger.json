@@ -1515,8 +1515,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat",
-			"source_sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
-			"target_sha256": "b9b27923ee3fed6e9b4b91b4c6f4ebe77fb1d4b0ade1db3b9b4ad8a782e7b9be",
+			"source_sha256": "fee31965fc3e93d600333d686af34957fa6467bc3b2ba116b69a0ca5df369dcd",
+			"target_sha256": "28c131b06d65ed614d7a782b2c134e969048bb619935b595e0b6e427f9605531",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -1524,20 +1524,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-28",
-					"result": "clean-with-findings",
-					"instance": "union-es-20261028-4c367c3b6e41",
+					"agent": "i18n-auditor-es",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-31",
+					"result": "clean",
+					"instance": "afac94e81fb9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 2
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/union-es-20261028-4c367c3b6e41.json",
-					"receipt_sha256": "f18d15d6ecb48d17c31f3fe78b28518cbf64a3700076d58cdfd2355d65e7dfaa",
-					"scope": "DELTA + WHOLE-FILE union audit of one catalogue (src/i18n/catalogues/es/ui.chat.json, 142 keys) at c5e19ecec8. Delta: prove, by parsed-JSON and raw-line comparison, that the 18 wave-A keys equal the bytes receipt 949ac6eec574 read (80ee119bbd), the 9 wave-B keys equal the bytes receipt 8bbe685ce56d read (a5356ce91c = origin/main 1d631be71f), and the 115 base keys equal origin/main's and the pre-wave file (81f286ee5c); then read the union as one text for cross-wave term/register/punctuation consistency, placeholder and CLDR parity, real renders, typography, fit and terminology."
+					"receipt": "i18n/receipts/afac94e81fb9.json",
+					"receipt_sha256": "8d67ddde3ebb35d17d8ef1a3694bec675a11cac41723d249a76733f1cc042f4e",
+					"scope": "35 added renderer blind-spot keys",
+					"note": "Independent added-key audit; original verdict/findings retained under i18n/audits/evidence. Full namespace hashes bound by assembler; scope is 35 new keys, not a new audit of unchanged copy."
 				}
 			],
 			"status": "audited",
@@ -1661,6 +1662,29 @@
 							"receipt_sha256": "ae29c068108f4283eed63edd201ef7fec65ff90763c5fd70f2b04b9f94623baa",
 							"scope": "wave B delta 0559f7f7d8..a5356ce91c: all 62 wave-B keys re-read for es; 56 values byte-identical to the audited bytes, 6 es values + 1 en value changed and audited in full",
 							"note": "wave-B delta audit; 62-key scope; record i18n/audits/evidence/es/ui.chat/wave-b-delta-8bbe685ce56d/record.json; receipt sha ae29c068108f"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
+					"target_sha256": "b9b27923ee3fed6e9b4b91b4c6f4ebe77fb1d4b0ade1db3b9b4ad8a782e7b9be",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "union-es-20261028-4c367c3b6e41",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/union-es-20261028-4c367c3b6e41.json",
+							"receipt_sha256": "f18d15d6ecb48d17c31f3fe78b28518cbf64a3700076d58cdfd2355d65e7dfaa",
+							"scope": "DELTA + WHOLE-FILE union audit of one catalogue (src/i18n/catalogues/es/ui.chat.json, 142 keys) at c5e19ecec8. Delta: prove, by parsed-JSON and raw-line comparison, that the 18 wave-A keys equal the bytes receipt 949ac6eec574 read (80ee119bbd), the 9 wave-B keys equal the bytes receipt 8bbe685ce56d read (a5356ce91c = origin/main 1d631be71f), and the 115 base keys equal origin/main's and the pre-wave file (81f286ee5c); then read the union as one text for cross-wave term/register/punctuation consistency, placeholder and CLDR parity, real renders, typography, fit and terminology."
 						}
 					],
 					"status": "audited"
@@ -3179,8 +3203,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
-			"target_sha256": "dda0f249fd8adce165e4509310011101e632d16398993911444b4c118fedf8d3",
+			"source_sha256": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
+			"target_sha256": "6c7af96563ea50b54ea4c82d07751b45f431baeb26b37b3a9913d4927b049d87",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -3188,25 +3212,50 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
+					"agent": "i18n-auditor-es",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
+					"date": "2026-10-31",
 					"result": "clean",
-					"instance": "bf867ef95b69",
-					"receipt": "i18n/receipts/bf867ef95b69.json",
-					"receipt_sha256": "86b46ebfa009ea531acaffdf851dff6741db3829fc8667c2480ca923c32831ce",
-					"scope": "76dda0304bfa4b54ebd42cccd32bbd05841ca4a3..0b52d734f7220a58861d98855f2685f9074110d8; full independent source-copy audit",
-					"note": "Automatic fallback from anthropic/claude-sonnet-5-5 before audit; actual model openai/gpt-6.1-sol. Source-copy audit only; separate high-visibility second audit and rendered fit required.",
+					"instance": "afac94e81fb9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
-					}
+					},
+					"receipt": "i18n/receipts/afac94e81fb9.json",
+					"receipt_sha256": "8d67ddde3ebb35d17d8ef1a3694bec675a11cac41723d249a76733f1cc042f4e",
+					"scope": "35 added renderer blind-spot keys",
+					"note": "Independent added-key audit; original verdict/findings retained under i18n/audits/evidence. Full namespace hashes bound by assembler; scope is 35 new keys, not a new audit of unchanged copy."
 				}
 			],
 			"status": "audited",
-			"superseded": []
+			"superseded": [
+				{
+					"source_sha256": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
+					"target_sha256": "dda0f249fd8adce165e4509310011101e632d16398993911444b4c118fedf8d3",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "bf867ef95b69",
+							"receipt": "i18n/receipts/bf867ef95b69.json",
+							"receipt_sha256": "86b46ebfa009ea531acaffdf851dff6741db3829fc8667c2480ca923c32831ce",
+							"scope": "76dda0304bfa4b54ebd42cccd32bbd05841ca4a3..0b52d734f7220a58861d98855f2685f9074110d8; full independent source-copy audit",
+							"note": "Automatic fallback from anthropic/claude-sonnet-5-5 before audit; actual model openai/gpt-6.1-sol. Source-copy audit only; separate high-visibility second audit and rendered fit required.",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							}
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
@@ -9979,8 +10028,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat",
-			"source_sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
-			"target_sha256": "a0f70787c5faddb059246b07ed5266374945d6a2da0279ba5d0dae89efdcbe6d",
+			"source_sha256": "fee31965fc3e93d600333d686af34957fa6467bc3b2ba116b69a0ca5df369dcd",
+			"target_sha256": "aa5784f3dd5323c0cf56d0cbc1a44bbe63f76357ad932608a303044baccd3e60",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -9988,20 +10037,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-28",
+					"agent": "i18n-auditor-fr",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-31",
 					"result": "clean",
-					"instance": "union-chat-fr-b3efc4d36922",
+					"instance": "f784ef749360",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/union-chat-fr-b3efc4d36922.json",
-					"receipt_sha256": "4f4527c430afd20d8076e290565eb8d94a500e82d9c9ed8191c7f732c76f642d",
-					"scope": "Union delta audit of fr/ui.chat at c5e19ecec8, the merge of i18n-wave-a with main 1d631be71f (which carries wave B). The union has 142 keys: 115 base keys, 18 wave-A keys and 9 wave-B keys, pairwise disjoint. Delta proof: every one of the 27 wave values is byte-identical to the bytes its wave audit bound, and every base value is byte-identical to main pre-union (1d631be71f) and to the wave-A branch base (6216167f4464). On top of the per-wave verdicts this audit read the union as one file for cross-wave consistency: term collisions between the A keys and the B keys and the base copy, register/punctuation conventions, ICU placeholder parity and CLDR categories with a real intl-messageformat render of all 142 messages, NFC, bidi controls, backtick spans, English-fallback identity and width hints. Catalogue-level audit: no rendered frame, no browser, no native-speaker sign-off claimed."
+					"receipt": "i18n/receipts/f784ef749360.json",
+					"receipt_sha256": "d3f0e7a54dd02a08b4d036e461b5a8a9ae2738231c4149fdf1f6428e4b7d8bc2",
+					"scope": "35 added renderer blind-spot keys",
+					"note": "Independent added-key audit; original verdict/findings retained under i18n/audits/evidence. Full namespace hashes bound by assembler; scope is 35 new keys, not a new audit of unchanged copy."
 				}
 			],
 			"status": "audited",
@@ -10125,6 +10175,29 @@
 							"receipt_sha256": "4fb616ed186079246990ab445ec5da24cfa8abddda1937cb7310ac0cb373792c",
 							"scope": "Wave-B delta, fr: the changed fr values of this namespace were read in full against the English source, its context sidecar, the call sites, the glossary and the fr style guide; every other wave-B value in the namespace is byte-identical to the previously audited bytes (see the record's delta proof). Catalogue-level audit only.",
 							"note": "See i18n/audits/evidence/fr/ui.chat/waveb-fr-delta-20261027/record.json — 9 changed fr values re-read, 53 carried byte-identical, 0 blocker/major. Receipt and input hashes in the record."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
+					"target_sha256": "a0f70787c5faddb059246b07ed5266374945d6a2da0279ba5d0dae89efdcbe6d",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "union-chat-fr-b3efc4d36922",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/union-chat-fr-b3efc4d36922.json",
+							"receipt_sha256": "4f4527c430afd20d8076e290565eb8d94a500e82d9c9ed8191c7f732c76f642d",
+							"scope": "Union delta audit of fr/ui.chat at c5e19ecec8, the merge of i18n-wave-a with main 1d631be71f (which carries wave B). The union has 142 keys: 115 base keys, 18 wave-A keys and 9 wave-B keys, pairwise disjoint. Delta proof: every one of the 27 wave values is byte-identical to the bytes its wave audit bound, and every base value is byte-identical to main pre-union (1d631be71f) and to the wave-A branch base (6216167f4464). On top of the per-wave verdicts this audit read the union as one file for cross-wave consistency: term collisions between the A keys and the B keys and the base copy, register/punctuation conventions, ICU placeholder parity and CLDR categories with a real intl-messageformat render of all 142 messages, NFC, bidi controls, backtick spans, English-fallback identity and width hints. Catalogue-level audit: no rendered frame, no browser, no native-speaker sign-off claimed."
 						}
 					],
 					"status": "audited"
@@ -11714,8 +11787,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
-			"target_sha256": "f75ada877778f12898c37870f31e51e800fa102495a18fcf31c9307fcd0979cc",
+			"source_sha256": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
+			"target_sha256": "e8663cc922b4d6dd953f378c43a3224e8bd7ac83c54c88b34809ee8981f847ab",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -11723,25 +11796,50 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
+					"agent": "i18n-auditor-fr",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
-					"instance": "7c40d1c357cf",
+					"date": "2026-10-31",
 					"result": "clean",
+					"instance": "cbd8252fdd97",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7c40d1c357cf-round2.json",
-					"receipt_sha256": "bb0dd9cf343d3c859d940a5b6be5274972456cd386589af0535486a598dbec9e",
-					"scope": "Full round 1 76dda0304bfa4b54ebd42cccd32bbd05841ca4a3..6f04ff634be8863dbb3b7f13fe3352e666143d33; delta 6f04ff634be8863dbb3b7f13fe3352e666143d33..718219be27f3b17e605f2c2af35a20c0c19af88e; unchanged coverage retained",
-					"note": "Actual model openai/gpt-6.1-sol; automatic Anthropic quota fallback disclosed in receipt. F3/F4 remain nonblocking notes."
+					"receipt": "i18n/receipts/cbd8252fdd97.json",
+					"receipt_sha256": "61c8f928f80341cf459a63e9476d30b39a7a7f4ce8e7a1ae9463e90eca60cd83",
+					"scope": "Scoped post-fix re-audit of three changed keys",
+					"note": "FR-01/02/03 fixed; independent scoped post-fix re-audit of relative_short, relative_created, relative_active passed. Other French additions passed initial audit unchanged. Not a new full-namespace audit; no rendered sign-off for new labels."
 				}
 			],
 			"status": "audited",
-			"superseded": []
+			"superseded": [
+				{
+					"source_sha256": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
+					"target_sha256": "f75ada877778f12898c37870f31e51e800fa102495a18fcf31c9307fcd0979cc",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"instance": "7c40d1c357cf",
+							"result": "clean",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7c40d1c357cf-round2.json",
+							"receipt_sha256": "bb0dd9cf343d3c859d940a5b6be5274972456cd386589af0535486a598dbec9e",
+							"scope": "Full round 1 76dda0304bfa4b54ebd42cccd32bbd05841ca4a3..6f04ff634be8863dbb3b7f13fe3352e666143d33; delta 6f04ff634be8863dbb3b7f13fe3352e666143d33..718219be27f3b17e605f2c2af35a20c0c19af88e; unchanged coverage retained",
+							"note": "Actual model openai/gpt-6.1-sol; automatic Anthropic quota fallback disclosed in receipt. F3/F4 remain nonblocking notes."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
@@ -18858,8 +18956,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat",
-			"source_sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
-			"target_sha256": "917ad047d210bdeb028965e6b84b1f71dbc9fb325faa58c44d6205bf112136e3",
+			"source_sha256": "fee31965fc3e93d600333d686af34957fa6467bc3b2ba116b69a0ca5df369dcd",
+			"target_sha256": "e1fff70dd4cb10c02eba69141c91b8591c5b341562a9a7621977937d773f42aa",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -18867,21 +18965,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-28",
-					"result": "clean-with-findings",
-					"instance": "union-hi-20261028-d22645c370a9",
+					"agent": "i18n-auditor-hi",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-31",
+					"result": "clean",
+					"instance": "98feeac58b5b",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 3,
-						"nit": 3
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/union-hi-20261028-d22645c370a9.json",
-					"receipt_sha256": "d2d4feb47fceb3b9739e47ca00ce9d5f4040b62cb8071ff6db151dc618f02b1e",
-					"scope": "DELTA + WHOLE-FILE union audit of one catalogue (src/i18n/catalogues/hi/ui.chat.json, 142 keys) at c5e19ecec8. Delta: prove by parsed-JSON and raw-line comparison that the 18 wave-A keys equal the bytes receipt wa-hi-3acece16f468 read (a81c00cdda; byte-identical at 80ee119bbd), the 9 wave-B keys equal the bytes receipt 8f4aa3fba6ed read (a5356ce91c = origin/main 1d631be71f), and the 115 base keys equal origin/main's and the pre-wave file (6216167f44); then read the union as one text for cross-wave term/register/punctuation consistency, placeholder and CLDR parity, real renders, typography, fit and terminology.",
-					"note": "hi/ui.chat union: passed, 0 blocker/major, 3 minor/3 nit; 115 base + 18 wave A + 9 wave B bytes unchanged by parsed+raw-line proof at c5e19ecec8; record i18n/audits/evidence/hi/ui.chat/union-hi-20261028-d22645c370a9/record.json"
+					"receipt": "i18n/receipts/98feeac58b5b.json",
+					"receipt_sha256": "d760ed331118302b9789c5ca51aed37023b36f27e116f9c1a78c4cbf6d6bf52d",
+					"scope": "35 added renderer blind-spot keys",
+					"note": "Independent added-key audit; original verdict/findings retained under i18n/audits/evidence. Full namespace hashes bound by assembler; scope is 35 new keys, not a new audit of unchanged copy."
 				}
 			],
 			"status": "audited",
@@ -19005,6 +19103,30 @@
 							"receipt_sha256": "6f7340ba4885ef68f2bf75f04b4cc9e90cc3a3ea2b4e73b32ecfeabd173b5425",
 							"scope": "Wave B delta at a5356ce91c: the wave-B keys of ui.chat; two amended values re-audited, every other value byte-identical to 0559f7f7d8",
 							"note": "Delta audit at a5356ce91c; record: i18n/audits/evidence/hi/ui.chat/wave-b-delta-20261027/. 62-key wave-B scope, amended values re-audited, unchanged bytes proven identical to 0559f7f7d8."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
+					"target_sha256": "917ad047d210bdeb028965e6b84b1f71dbc9fb325faa58c44d6205bf112136e3",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "union-hi-20261028-d22645c370a9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/union-hi-20261028-d22645c370a9.json",
+							"receipt_sha256": "d2d4feb47fceb3b9739e47ca00ce9d5f4040b62cb8071ff6db151dc618f02b1e",
+							"scope": "DELTA + WHOLE-FILE union audit of one catalogue (src/i18n/catalogues/hi/ui.chat.json, 142 keys) at c5e19ecec8. Delta: prove by parsed-JSON and raw-line comparison that the 18 wave-A keys equal the bytes receipt wa-hi-3acece16f468 read (a81c00cdda; byte-identical at 80ee119bbd), the 9 wave-B keys equal the bytes receipt 8f4aa3fba6ed read (a5356ce91c = origin/main 1d631be71f), and the 115 base keys equal origin/main's and the pre-wave file (6216167f44); then read the union as one text for cross-wave term/register/punctuation consistency, placeholder and CLDR parity, real renders, typography, fit and terminology.",
+							"note": "hi/ui.chat union: passed, 0 blocker/major, 3 minor/3 nit; 115 base + 18 wave A + 9 wave B bytes unchanged by parsed+raw-line proof at c5e19ecec8; record i18n/audits/evidence/hi/ui.chat/union-hi-20261028-d22645c370a9/record.json"
 						}
 					],
 					"status": "audited"
@@ -20570,8 +20692,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
-			"target_sha256": "fcbc4336613474d15fbba5612d40839ab136b9829928d86c5a3298da64d25c23",
+			"source_sha256": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
+			"target_sha256": "7cc183f109dca3c916040ba544c1268eae4af42ec928abbe34eaa50ef37277aa",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -20579,25 +20701,50 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
+					"agent": "i18n-auditor-hi",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-19",
-					"result": "clean",
-					"instance": "4f53d9a1df52",
+					"date": "2026-10-31",
+					"result": "clean-with-findings",
+					"instance": "98feeac58b5b",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/4f53d9a1df52.json",
-					"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
-					"scope": "hi ui.chat.sidebar_view vs en source — round 1 independent full pass, 22 keys",
-					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+					"receipt": "i18n/receipts/98feeac58b5b.json",
+					"receipt_sha256": "d760ed331118302b9789c5ca51aed37023b36f27e116f9c1a78c4cbf6d6bf52d",
+					"scope": "35 added renderer blind-spot keys",
+					"note": "HI-01 accepted unchanged: 6-cell compact-time budget is advisory, not desktop clipping threshold. Designer rendered fr/ur sidebar at 260 CSS px: complete single-line times, titles ellipsize first, no collision. New labels not rendered: build predates branch."
 				}
 			],
 			"status": "audited",
-			"superseded": []
+			"superseded": [
+				{
+					"source_sha256": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
+					"target_sha256": "fcbc4336613474d15fbba5612d40839ab136b9829928d86c5a3298da64d25c23",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "4f53d9a1df52",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/4f53d9a1df52.json",
+							"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
+							"scope": "hi ui.chat.sidebar_view vs en source — round 1 independent full pass, 22 keys",
+							"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
@@ -27455,8 +27602,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat",
-			"source_sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
-			"target_sha256": "44a0ebe560ad94c5632f7c0f1d357f84ae0924913e05af11e2a368f37f597216",
+			"source_sha256": "fee31965fc3e93d600333d686af34957fa6467bc3b2ba116b69a0ca5df369dcd",
+			"target_sha256": "ca9932275ccb82eb441de0f73f3d03cda2e9cc27c4c67d181dbe6d166399f8ae",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -27465,20 +27612,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-28",
+					"agent": "i18n-auditor-ru",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-31",
 					"result": "clean",
-					"instance": "d98c0de792b7",
+					"instance": "7f5f82909017",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d98c0de792b7.json",
-					"receipt_sha256": "34ac69ec20902f4bb6d436e61f4b2f379b114580b5d97c2206823f3ac17dd8db",
-					"scope": "Union of src/i18n/catalogues/ru/ui.chat.json at c5e19ecec8 (merge of origin/main 1d631be71f carrying wave B): 142 keys = 115 base + the 18 wave-A keys audited at 80ee119bbd + the 9 wave-B keys audited at a5356ce91c. Parsed-JSON proof: all 18 wave-A values byte-identical to the wave-A audited bytes, all 9 wave-B values byte-identical to the wave-B audited bytes, all 124 pre-union origin/main values unchanged, the A and B key sets disjoint. Because the two waves were audited separately, this audit also read the union as one file: terms, register, template shape, punctuation and terminal stops across the A and B families and against the 115 precedents; placeholder/select parity and real IntlMessageFormat renders of all 142 values; ru plural categories for every plural; NFC, bidi and typography; width hints. Gates: generate --check, locale-parity, check-coverage, context-parity, check-duplicates, ledger-check (the expected 7 stale ui.chat rows), and the repository's own catalogue-union-parity tool."
+					"receipt": "i18n/receipts/7f5f82909017.json",
+					"receipt_sha256": "d75c23d399fbad57d4421ed3f2ea9c501deb5c7ccdd8db18cd31672da09e3e3d",
+					"scope": "35 added renderer blind-spot keys",
+					"note": "Independent added-key audit; original verdict/findings retained under i18n/audits/evidence. Full namespace hashes bound by assembler; scope is 35 new keys, not a new audit of unchanged copy."
 				}
 			],
 			"status": "audited",
@@ -27603,6 +27751,29 @@
 							"receipt_sha256": "cd29f991e8bb41ef60c5b233bcbdcd6e67d6bba96bd2bcda189e27364683d67b",
 							"scope": "wave B delta at a5356ce91c: every changed ru value audited; unchanged wave-B values proved byte-identical to the audited bytes at 0559f7f7d8",
 							"note": "0 blocker/major. See i18n/audits/evidence/ru/ui.chat/wave-b-delta-20261027/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
+					"target_sha256": "44a0ebe560ad94c5632f7c0f1d357f84ae0924913e05af11e2a368f37f597216",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-28",
+							"result": "clean",
+							"instance": "d98c0de792b7",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d98c0de792b7.json",
+							"receipt_sha256": "34ac69ec20902f4bb6d436e61f4b2f379b114580b5d97c2206823f3ac17dd8db",
+							"scope": "Union of src/i18n/catalogues/ru/ui.chat.json at c5e19ecec8 (merge of origin/main 1d631be71f carrying wave B): 142 keys = 115 base + the 18 wave-A keys audited at 80ee119bbd + the 9 wave-B keys audited at a5356ce91c. Parsed-JSON proof: all 18 wave-A values byte-identical to the wave-A audited bytes, all 9 wave-B values byte-identical to the wave-B audited bytes, all 124 pre-union origin/main values unchanged, the A and B key sets disjoint. Because the two waves were audited separately, this audit also read the union as one file: terms, register, template shape, punctuation and terminal stops across the A and B families and against the 115 precedents; placeholder/select parity and real IntlMessageFormat renders of all 142 values; ru plural categories for every plural; NFC, bidi and typography; width hints. Gates: generate --check, locale-parity, check-coverage, context-parity, check-duplicates, ledger-check (the expected 7 stale ui.chat rows), and the repository's own catalogue-union-parity tool."
 						}
 					],
 					"status": "audited"
@@ -29152,8 +29323,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
-			"target_sha256": "fd1cccb4defbb3d791b91be7392cbc6666b979b19ff21f5327ba3607fb1721b3",
+			"source_sha256": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
+			"target_sha256": "47ec799105b4e51f181a9862bed6ad3f8ecfb5f030e49135930618980da470ae",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -29162,25 +29333,50 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
+					"agent": "i18n-auditor-ru",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
+					"date": "2026-10-31",
 					"result": "clean",
-					"instance": "4c5ca9d6810d",
-					"receipt": "i18n/receipts/4c5ca9d6810d.json",
-					"receipt_sha256": "92f91f7b4425ae15ecf4a5f55f7ff776108095d483bd64163b782eb1c2da0269",
-					"scope": "Full independent copy audit, all keys at recorded source/target hashes",
+					"instance": "7f5f82909017",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"note": "Automatic fallback from anthropic/claude-sonnet-5-5 due to quota. Copy audit only; rendered and second high-visibility audit gates remain separate."
+					"receipt": "i18n/receipts/7f5f82909017.json",
+					"receipt_sha256": "d75c23d399fbad57d4421ed3f2ea9c501deb5c7ccdd8db18cd31672da09e3e3d",
+					"scope": "35 added renderer blind-spot keys",
+					"note": "Independent added-key audit; original verdict/findings retained under i18n/audits/evidence. Full namespace hashes bound by assembler; scope is 35 new keys, not a new audit of unchanged copy."
 				}
 			],
 			"status": "audited",
-			"superseded": []
+			"superseded": [
+				{
+					"source_sha256": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
+					"target_sha256": "fd1cccb4defbb3d791b91be7392cbc6666b979b19ff21f5327ba3607fb1721b3",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "4c5ca9d6810d",
+							"receipt": "i18n/receipts/4c5ca9d6810d.json",
+							"receipt_sha256": "92f91f7b4425ae15ecf4a5f55f7ff776108095d483bd64163b782eb1c2da0269",
+							"scope": "Full independent copy audit, all keys at recorded source/target hashes",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"note": "Automatic fallback from anthropic/claude-sonnet-5-5 due to quota. Copy audit only; rendered and second high-visibility audit gates remain separate."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
@@ -36005,8 +36201,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat",
-			"source_sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
-			"target_sha256": "e71815d9b12e38a2b327a551bd105b58937a613963119edae0db169dad1b7ea6",
+			"source_sha256": "fee31965fc3e93d600333d686af34957fa6467bc3b2ba116b69a0ca5df369dcd",
+			"target_sha256": "0c9f474f630e62df5c6132c213458ad59c32e3a638c60abdde21e570f01bcb26",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -36014,20 +36210,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-28",
-					"result": "clean-with-findings",
-					"instance": "union-ur-20261028-fc773f54ac28",
+					"agent": "i18n-auditor-ur",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-31",
+					"result": "clean",
+					"instance": "bb046f370680",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/union-ur-20261028-fc773f54ac28.json",
-					"receipt_sha256": "63e210f7ab50c606f924863f972b40a7073838a9cc35662681fa24f6f17ceb2a",
-					"scope": "DELTA + WHOLE-FILE union audit of one catalogue (src/i18n/catalogues/ur/ui.chat.json, 142 keys) at c5e19ecec8. Delta: prove, by parsed-JSON and raw-line comparison, that the 18 wave-A keys equal the bytes receipt 59ea19dc68ac read (80ee119bbd), the 9 wave-B keys equal the bytes receipt c89cee263ac2 read (a5356ce91c = origin/main 1d631be71f), and the 115 base keys equal origin/main's and the pre-wave file (81f286ee5c); then read the union as one text for cross-wave term/register/punctuation consistency, ICU placeholder and CLDR parity with real renders, Urdu typography, RTL/bidi reordering, fit and terminology."
+					"receipt": "i18n/receipts/bb046f370680.json",
+					"receipt_sha256": "6355c39f3f8e76d82c5e2c4ec727db90a5e1079d5fd97169fabbff1ac4597bb4",
+					"scope": "35 added renderer blind-spot keys",
+					"note": "Independent added-key audit; original verdict/findings retained under i18n/audits/evidence. Full namespace hashes bound by assembler; scope is 35 new keys, not a new audit of unchanged copy."
 				}
 			],
 			"status": "audited",
@@ -36151,6 +36348,29 @@
 							"receipt_sha256": "c46bfc1a6847d8fe54c85f7df5b8bb6116d6d9c543c4aa71665c209c72904cd8",
 							"scope": "wave-B delta at a5356ce91c: the namespace wave-B values, changed ones audited in full and the rest proved byte-identical to the audited bytes at 0559f7f7d8; ICU/placeholder parity, real formatter and FriBidi; catalogue-level, no rendered frame.",
 							"note": "No finding: 9 wave-B values, none changed (file byte-identical to the audited base). Record i18n/audits/evidence/ur/ui.chat/waveb-delta-20261027/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
+					"target_sha256": "e71815d9b12e38a2b327a551bd105b58937a613963119edae0db169dad1b7ea6",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "union-ur-20261028-fc773f54ac28",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/union-ur-20261028-fc773f54ac28.json",
+							"receipt_sha256": "63e210f7ab50c606f924863f972b40a7073838a9cc35662681fa24f6f17ceb2a",
+							"scope": "DELTA + WHOLE-FILE union audit of one catalogue (src/i18n/catalogues/ur/ui.chat.json, 142 keys) at c5e19ecec8. Delta: prove, by parsed-JSON and raw-line comparison, that the 18 wave-A keys equal the bytes receipt 59ea19dc68ac read (80ee119bbd), the 9 wave-B keys equal the bytes receipt c89cee263ac2 read (a5356ce91c = origin/main 1d631be71f), and the 115 base keys equal origin/main's and the pre-wave file (81f286ee5c); then read the union as one text for cross-wave term/register/punctuation consistency, ICU placeholder and CLDR parity with real renders, Urdu typography, RTL/bidi reordering, fit and terminology."
 						}
 					],
 					"status": "audited"
@@ -37719,8 +37939,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
-			"target_sha256": "e7137d8f828d94292494b19b8b7396dd1f899df5ba889f55c2ec421731ac9157",
+			"source_sha256": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
+			"target_sha256": "7e828649004b711f4eb19b9291c4cfe9ea2887fd8d1a2a0aa1ffd95254c7ca43",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -37728,25 +37948,50 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
+					"agent": "i18n-auditor-ur",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-19",
-					"result": "clean",
-					"instance": "102ffa6d185d",
+					"date": "2026-10-31",
+					"result": "clean-with-findings",
+					"instance": "bb046f370680",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/102ffa6d185d.json",
-					"receipt_sha256": "9cf5311d3e87ee9ff90304782aae6ea3a5535cb78213ad107f9f48c737df1d63",
-					"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
-					"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+					"receipt": "i18n/receipts/bb046f370680.json",
+					"receipt_sha256": "6355c39f3f8e76d82c5e2c4ec727db90a5e1079d5fd97169fabbff1ac4597bb4",
+					"scope": "35 added renderer blind-spot keys",
+					"note": "UR-M1 accepted unchanged: 6-cell budget advisory, not clipping threshold. Designer rendered fr/ur sidebar at 260 CSS px: complete single-line times, titles ellipsize first, no collision. New labels unverified: app build predates branch."
 				}
 			],
 			"status": "audited",
-			"superseded": []
+			"superseded": [
+				{
+					"source_sha256": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
+					"target_sha256": "e7137d8f828d94292494b19b8b7396dd1f899df5ba889f55c2ec421731ac9157",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "102ffa6d185d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/102ffa6d185d.json",
+							"receipt_sha256": "9cf5311d3e87ee9ff90304782aae6ea3a5535cb78213ad107f9f48c737df1d63",
+							"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
+							"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
@@ -44477,8 +44722,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat",
-			"source_sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
-			"target_sha256": "ea73edb23f1b3ba4b37541becb415f74cd1cb68898644da86470272605b6bb54",
+			"source_sha256": "fee31965fc3e93d600333d686af34957fa6467bc3b2ba116b69a0ca5df369dcd",
+			"target_sha256": "dc8ada40267172d33ac6499aaa2b3a295d4984ac8e91eba5a40dd840ff0f2059",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -44486,21 +44731,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-28",
-					"result": "clean-with-findings",
-					"instance": "union-vi-20261028-61bc743db02b",
+					"agent": "i18n-auditor-vi",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-31",
+					"result": "clean",
+					"instance": "69748efb2ac9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 2
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/union-vi-20261028-61bc743db02b.json",
-					"receipt_sha256": "bccc925fb428e15c89f63ddc650b8e92a86a9c8a6cee80bb0f871484ecd7f9a2",
-					"scope": "DELTA + WHOLE-FILE union audit of one catalogue (src/i18n/catalogues/vi/ui.chat.json, 142 keys) at c5e19ecec8. Delta: prove, by parsed-JSON and raw-line comparison, that the 18 wave-A keys equal the bytes receipt wave-a-vi-delta-eb62f05b28e1 read (80ee119bbd), the 9 wave-B keys equal the bytes receipt 70d334e903c9 read (a5356ce91c = origin/main 1d631be71f), and the 115 base keys equal origin/main's and the pre-wave file (81f286ee5c); then read the union as one text for cross-wave term/register/punctuation consistency, placeholder and CLDR parity, real renders, typography, fit and terminology.",
-					"note": "vi/ui.chat union: passed, 0 blocker/major, 1 minor + 2 nit; union = 115 base + 18 wave A + 9 wave B unchanged by parsed+raw-line proof at c5e19ecec8; record i18n/audits/evidence/vi/ui.chat/union-vi-20261028-61bc743db02b/record.json"
+					"receipt": "i18n/receipts/69748efb2ac9.json",
+					"receipt_sha256": "5b542192de8e2923bb903f4d6d9df2d74990c356933d707358dc2bf676201adb",
+					"scope": "35 added renderer blind-spot keys",
+					"note": "Independent added-key audit; original verdict/findings retained under i18n/audits/evidence. Full namespace hashes bound by assembler; scope is 35 new keys, not a new audit of unchanged copy."
 				}
 			],
 			"status": "audited",
@@ -44624,6 +44869,30 @@
 							"receipt_sha256": "d5147b5b277ea002b2e4051da96c6a0eb1ab1edb20b0b4b00dc96dc0fdf6cce1",
 							"scope": "wave B delta: all 62 wave-B keys at a5356ce91c (7 changed vi values audited, 55 proved byte-identical to 0559f7f7d8)",
 							"note": "Delta audit record: i18n/audits/evidence/vi/ui.chat/wave-b-delta-20261027/record.json. Changed values audited against EN+context+call site; unchanged bytes identical. Prior VI-WB findings resolved; no blocker/major."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
+					"target_sha256": "ea73edb23f1b3ba4b37541becb415f74cd1cb68898644da86470272605b6bb54",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "union-vi-20261028-61bc743db02b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/union-vi-20261028-61bc743db02b.json",
+							"receipt_sha256": "bccc925fb428e15c89f63ddc650b8e92a86a9c8a6cee80bb0f871484ecd7f9a2",
+							"scope": "DELTA + WHOLE-FILE union audit of one catalogue (src/i18n/catalogues/vi/ui.chat.json, 142 keys) at c5e19ecec8. Delta: prove, by parsed-JSON and raw-line comparison, that the 18 wave-A keys equal the bytes receipt wave-a-vi-delta-eb62f05b28e1 read (80ee119bbd), the 9 wave-B keys equal the bytes receipt 70d334e903c9 read (a5356ce91c = origin/main 1d631be71f), and the 115 base keys equal origin/main's and the pre-wave file (81f286ee5c); then read the union as one text for cross-wave term/register/punctuation consistency, placeholder and CLDR parity, real renders, typography, fit and terminology.",
+							"note": "vi/ui.chat union: passed, 0 blocker/major, 1 minor + 2 nit; union = 115 base + 18 wave A + 9 wave B unchanged by parsed+raw-line proof at c5e19ecec8; record i18n/audits/evidence/vi/ui.chat/union-vi-20261028-61bc743db02b/record.json"
 						}
 					],
 					"status": "audited"
@@ -46271,8 +46540,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
-			"target_sha256": "29332139e12d9e63a1800290d36d60c8b7f29b4769f5530bd3314ad4daef38ae",
+			"source_sha256": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
+			"target_sha256": "83acd2f23baf017f81cda4ece6c45a2d6933c3593f3990c233d9f83292ead7d6",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -46280,25 +46549,50 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
+					"agent": "i18n-auditor-vi",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
-					"result": "clean",
-					"instance": "6a1c5f8e3d29",
+					"date": "2026-10-31",
+					"result": "clean-with-findings",
+					"instance": "69748efb2ac9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6a1c5f8e3d29.json",
-					"receipt_sha256": "b89d416d59d13757353b742e959568d2ff0fd3f8ca34203ad18c4d69af997958",
-					"scope": "full namespace; post-remediation verification of round-1 native audit findings",
-					"note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+					"receipt": "i18n/receipts/69748efb2ac9.json",
+					"receipt_sha256": "5b542192de8e2923bb903f4d6d9df2d74990c356933d707358dc2bf676201adb",
+					"scope": "35 added renderer blind-spot keys",
+					"note": "VI-01 accepted unchanged: 6-cell budget advisory, not clipping threshold. Designer rendered fr/ur sidebar at 260 CSS px: complete single-line times, titles ellipsize first, no collision. New labels unverified: app build predates branch."
 				}
 			],
 			"status": "audited",
-			"superseded": []
+			"superseded": [
+				{
+					"source_sha256": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
+					"target_sha256": "29332139e12d9e63a1800290d36d60c8b7f29b4769f5530bd3314ad4daef38ae",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "6a1c5f8e3d29",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6a1c5f8e3d29.json",
+							"receipt_sha256": "b89d416d59d13757353b742e959568d2ff0fd3f8ca34203ad18c4d69af997958",
+							"scope": "full namespace; post-remediation verification of round-1 native audit findings",
+							"note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
@@ -53648,8 +53942,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat",
-			"source_sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
-			"target_sha256": "ff84b9261a33af1a59c6e90fcc031a9953896938c5c83494a23058c34cfb3f05",
+			"source_sha256": "fee31965fc3e93d600333d686af34957fa6467bc3b2ba116b69a0ca5df369dcd",
+			"target_sha256": "2abdd477df6c35ff153542156491a865d796aff70a0ede469bddf4933622cae7",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -53657,20 +53951,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-28",
-					"result": "clean-with-findings",
-					"instance": "union-ui-chat-zhcn-20261028-5f78447ee172",
+					"agent": "i18n-auditor-zh-CN",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-31",
+					"result": "clean",
+					"instance": "8ad4f86282d7",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/union-ui-chat-zhcn-20261028-5f78447ee172.json",
-					"receipt_sha256": "472aa11ef67b36fcc76c086b6da0fa3a1f147f252618b723def1f7d0ab874bb3",
-					"scope": "All 142 keys read for cross-wave consistency; the 27 wave values re-read in full against English, the en sidecar and the call sites; the 115 base values proven byte-identical to origin/main pre-union bytes and not re-litigated semantically (their own earlier audits cover them)."
+					"receipt": "i18n/receipts/8ad4f86282d7.json",
+					"receipt_sha256": "8d00e8381261601e1ff06c5afa72a98a89431ac58787f3462f31616e9cb79a49",
+					"scope": "35 added renderer blind-spot keys",
+					"note": "Independent added-key audit; original verdict/findings retained under i18n/audits/evidence. Full namespace hashes bound by assembler; scope is 35 new keys, not a new audit of unchanged copy."
 				}
 			],
 			"status": "audited",
@@ -53794,6 +54089,29 @@
 							"receipt_sha256": "c043021afcaf1512150ba2247483ac248f3fcc26983ae012750bbb29f10e3f1d",
 							"scope": "Wave B delta R2: 9 wave-B keys; 2 changed values (ZH-WB-2, ZH-WB-4) re-audited and resolved.",
 							"note": "Wave B delta R2 re-audit: 6 changed values re-audited, 56 proven byte-identical. Record: i18n/audits/evidence/zh-CN/ui.chat/wb-d2-9b3e2c165c87/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d3bc8ec097540b123500005e941093dbc73eaaa46fa1152643a04d51b6f259e4",
+					"target_sha256": "ff84b9261a33af1a59c6e90fcc031a9953896938c5c83494a23058c34cfb3f05",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-28",
+							"result": "clean-with-findings",
+							"instance": "union-ui-chat-zhcn-20261028-5f78447ee172",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/union-ui-chat-zhcn-20261028-5f78447ee172.json",
+							"receipt_sha256": "472aa11ef67b36fcc76c086b6da0fa3a1f147f252618b723def1f7d0ab874bb3",
+							"scope": "All 142 keys read for cross-wave consistency; the 27 wave values re-read in full against English, the en sidecar and the call sites; the 115 base values proven byte-identical to origin/main pre-union bytes and not re-litigated semantically (their own earlier audits cover them)."
 						}
 					],
 					"status": "audited"
@@ -55424,8 +55742,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
-			"target_sha256": "bfae15169232e85dc7d346da0c1906652b61d8716b2760910a5f315ba866a372",
+			"source_sha256": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
+			"target_sha256": "9ee1c2423c20d335e38211cfdaa23c02c57a0670541de4991cf3c563aeecd6f4",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -55433,25 +55751,50 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
+					"agent": "i18n-auditor-zh-CN",
 					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
+					"date": "2026-10-31",
 					"result": "clean",
-					"instance": "6b6868c6f100",
+					"instance": "8ad4f86282d7",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6b6868c6f100.json",
-					"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
-					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
-					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+					"receipt": "i18n/receipts/8ad4f86282d7.json",
+					"receipt_sha256": "8d00e8381261601e1ff06c5afa72a98a89431ac58787f3462f31616e9cb79a49",
+					"scope": "35 added renderer blind-spot keys",
+					"note": "Independent added-key audit; original verdict/findings retained under i18n/audits/evidence. Full namespace hashes bound by assembler; scope is 35 new keys, not a new audit of unchanged copy."
 				}
 			],
 			"status": "audited",
-			"superseded": []
+			"superseded": [
+				{
+					"source_sha256": "62f5807d9a6c90b84ea88d6665d18568b568f59b5e68f80f038f73fb502ef834",
+					"target_sha256": "bfae15169232e85dc7d346da0c1906652b61d8716b2760910a5f315ba866a372",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "6b6868c6f100",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6b6868c6f100.json",
+							"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
+							"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+							"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",

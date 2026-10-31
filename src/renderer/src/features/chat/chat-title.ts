@@ -54,7 +54,8 @@ import { t } from "@shared/i18n";
  * catalogue's own fallback are asserted to agree about it; the sidebar's copy
  * is left where it is (this change does not own that file's fallback).
  */
-export const UNTITLED_CHAT = "Untitled chat";
+// Share the existing fallback with the transcript; resolve it at call time.
+export const UNTITLED_CHAT_KEY = "ui.chat.canonical.untitled";
 
 /**
  * A title counts as unknown when it is absent or whitespace-only.
@@ -117,7 +118,7 @@ export function resolveChatTitle(input: {
 	 * no name, which is not this.
 	 */
 	if (draftKey) return draftTarget ?? t("ui.chat.header.new_chat");
-	return UNTITLED_CHAT;
+	return t(UNTITLED_CHAT_KEY);
 }
 
 /**

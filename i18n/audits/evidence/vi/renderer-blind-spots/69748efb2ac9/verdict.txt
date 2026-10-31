@@ -1,0 +1,77 @@
+PASS
+BLOCKER=0 MAJOR=0 MINOR=1 NIT=0
+Auditor: i18n-auditor (Vietnamese); session=69748efb2ac9; ACTUAL model=openai/gpt-6.1-sol. Fallback: primary anthropic/claude-sonnet-5-5 -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol, provider quota failures per model-switch notices; substantive audit performed on the actual final model.
+Compact time: ui.chat.sidebar_view.relative_short; declared maxCells=6 (explicitly advisory); rich.cells.cell_len: vừa xong=8, 1 phút=6, 59 phút=7, 23 giờ=6, 6 ngày=6, 52 tuần=7, 1 năm=5, 10 năm=6. MINOR VI-01; keep natural complete forms with this documented exception. Shorter conventional 59ph=4 exists for minutes, but enforcing abbreviations across all units would reduce clarity. These labels are row metadata, not section headings.
+
+Scope: independently reviewed every one of the 35 changed/new Vietnamese keys: ui.chat=32, ui.chat.sidebar_view=3. No translated catalogue or repository file edited. The section headings Teams/Agents were already on origin/main and are not among these 35 changes.
+Meaning, negative/error/recovery polarity, command-like accessible names, idiom/register, glossary, technical tokens, placeholders and NFC checked. No BLOCKER/MAJOR found. Existing glossary terms tác nhân con, mô hình, phiên, máy chủ remain consistent; Local Operator, URL, pull request, merge request, provider/model IDs stay intact.
+Execution: node --test scripts/i18n/locale-parity.test.mjs => exit 0, 44 tests passed, 0 failed (actual run). Additional direct @formatjs/icu-messageformat-parser comparison => 35 keys passed argument-name/type parity, valid ICU and NFC; Vietnamese plural categories from Intl.PluralRules = [other], all ten nested relative-time plural branches use other only. Source/target key sets match for both complete namespace files.
+Width: all 32 non-select message templates fit declared sidecar budgets when measured with rich.cells.cell_len. Runtime placeholder values are unbounded, so template widths are not a promise that arbitrary audio titles/provider/model IDs fit. Compact strings measured after actual intl-messageformat formatting, including numeric boundaries from relativeTimeValue. Days render 1..6, not 30; weeks render up to 52. Accessible relative_created/relative_active preserve creation/activity basis and complete units.
+Fit rationale: chat-sidebar.tsx:5130-5142 has a shrink-0 time span without time-label truncation; chat-list-sections.ts:277-303 explains title-space tradeoff and actual unit thresholds. No browser render was captured; pixels/actual narrow-sidebar clipping remain unverified. Advisory budget overflow alone does not establish a MAJOR visible defect.
+Read sources: core i18n/style-guides/vi.md; i18n/glossary.md; UI AGENTS.md i18n section; both English namespace catalogues and context sidecars; changed Vietnamese values; actual ICU/relative-time renderer paths. No translation service used.
+Repository ledger/evidence bundles not modified: this task explicitly mandates read-only repository access and the two scratch output files. This verdict is a current independent delta audit, not a historical ledger approval or the requested second independent auditor pass.
+
+Checked keys:
+ui.chat.audio.play
+ui.chat.audio.pause
+ui.chat.audio.play_label
+ui.chat.audio.pause_label
+ui.chat.audio.mute
+ui.chat.audio.unmute
+ui.chat.message_controls.copy
+ui.chat.message_controls.copied
+ui.chat.image_actions.save_as
+ui.chat.image_actions.copy_image
+ui.chat.image_actions.copy_image_url
+ui.chat.image_actions.open_in_browser
+ui.chat.image_actions.expand_image
+ui.chat.composer.connect_provider
+ui.chat.slot_notice.run_draft_title
+ui.chat.slot_notice.run_draft_detail
+ui.chat.slot_notice.run_reading_title
+ui.chat.slot_notice.run_unreadable_title
+ui.chat.slot_notice.run_unreadable_detail
+ui.chat.slot_notice.run_missing_detail
+ui.chat.slot_notice.code_draft_title
+ui.chat.slot_notice.code_draft_detail
+ui.chat.slot_notice.code_below_version_title
+ui.chat.slot_notice.code_below_version_detail
+ui.chat.slot_notice.code_checking_title
+ui.chat.slot_notice.code_load_lead
+ui.chat.slash_arguments.model_default_description
+ui.chat.slash_arguments.model_default_unavailable
+ui.chat.slash_arguments.model_default_click
+ui.chat.slash_arguments.model_default_required
+ui.chat.slash_arguments.refresh_description
+ui.chat.slash_arguments.refresh_detail
+ui.chat.sidebar_view.relative_short
+ui.chat.sidebar_view.relative_created
+ui.chat.sidebar_view.relative_active
+
+Input hashes:
+[
+  {
+    "path": "src/i18n/catalogues/en/ui.chat.json",
+    "sha256": "fee31965fc3e93d600333d686af34957fa6467bc3b2ba116b69a0ca5df369dcd"
+  },
+  {
+    "path": "src/i18n/catalogues/en/ui.chat.context.json",
+    "sha256": "0edd5927d13dc3d4b30832a351d1a876aab9a396f78ba794ef4f968592c30e7a"
+  },
+  {
+    "path": "src/i18n/catalogues/vi/ui.chat.json",
+    "sha256": "dc8ada40267172d33ac6499aaa2b3a295d4984ac8e91eba5a40dd840ff0f2059"
+  },
+  {
+    "path": "src/i18n/catalogues/en/ui.chat.sidebar_view.json",
+    "sha256": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e"
+  },
+  {
+    "path": "src/i18n/catalogues/en/ui.chat.sidebar_view.context.json",
+    "sha256": "0683c8236d899d43091742a5a097f2afddf22238e49c387b7116f281a9902ac8"
+  },
+  {
+    "path": "src/i18n/catalogues/vi/ui.chat.sidebar_view.json",
+    "sha256": "83acd2f23baf017f81cda4ece6c45a2d6933c3593f3990c233d9f83292ead7d6"
+  }
+]

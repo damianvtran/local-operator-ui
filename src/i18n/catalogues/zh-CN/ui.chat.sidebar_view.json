@@ -20,5 +20,8 @@
 	"ui.chat.sidebar_view.section.week": "本周",
 	"ui.chat.sidebar_view.section.older": "更早",
 	"ui.chat.sidebar_view.section.agents": "智能体",
-	"ui.chat.sidebar_view.section.teams": "团队"
+	"ui.chat.sidebar_view.section.teams": "团队",
+	"ui.chat.sidebar_view.relative_short": "{unit, select, now {刚刚} minute {{count, number, ::group-off}分} hour {{count, number, ::group-off}小时} day {{count, number, ::group-off}天} week {{count, number, ::group-off}周} year {{count, number, ::group-off}年} other {刚刚}}",
+	"ui.chat.sidebar_view.relative_created": "{unit, select, now {刚刚创建} minute {{count, plural, other {创建于#分钟前}}} hour {{count, plural, other {创建于#小时前}}} day {{count, plural, other {创建于#天前}}} week {{count, plural, other {创建于#周前}}} year {{count, plural, other {创建于#年前}}} other {刚刚创建}}",
+	"ui.chat.sidebar_view.relative_active": "{unit, select, now {刚刚活跃过} minute {{count, plural, other {上次活跃于#分钟前}}} hour {{count, plural, other {上次活跃于#小时前}}} day {{count, plural, other {上次活跃于#天前}}} week {{count, plural, other {上次活跃于#周前}}} year {{count, plural, other {上次活跃于#年前}}} other {刚刚活跃过}}"
 }

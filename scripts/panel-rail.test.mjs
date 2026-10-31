@@ -67,7 +67,7 @@ const bundle = await build({
 			export { useKeymapShortcuts } from "./src/renderer/src/shared/keymap/use-keymap-shortcuts";
 			export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { FLEET_ASKS_UNAVAILABLE_FRONTEND } from "./src/renderer/src/features/chat/fleet-asks";
-			export { runPaneNotice, codeReviewPaneNotice, RUN_NOTICE_DRAFT, RUN_NOTICE_READING, RUN_NOTICE_UNREADABLE, RUN_NOTICE_MISSING, CODE_NOTICE_DRAFT, CODE_NOTICE_BELOW_VERSION, CODE_NOTICE_CHECKING, CODE_NOTICE_LOAD_LEAD, SLOT_NOTICE_PROGRESS_DELAY_MS } from "./src/renderer/src/features/chat/right-slot-notices";
+			export { runPaneNotice, codeReviewPaneNotice, RUN_NOTICE_DRAFT, RUN_NOTICE_READING, RUN_NOTICE_UNREADABLE, RUN_NOTICE_MISSING, CODE_NOTICE_DRAFT, CODE_NOTICE_BELOW_VERSION, CODE_NOTICE_CHECKING, codeNoticeLoadLead, SLOT_NOTICE_PROGRESS_DELAY_MS } from "./src/renderer/src/features/chat/right-slot-notices";
 			export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
 			export { BACKEND_PAIRING_SENTENCE } from "./src/renderer/src/shared/api/local-operator/backend-error";
 			export * as fixtures from "./${RUN}/run-details.fixtures";
@@ -145,7 +145,7 @@ const {
 	CODE_NOTICE_DRAFT,
 	CODE_NOTICE_BELOW_VERSION,
 	CODE_NOTICE_CHECKING,
-	CODE_NOTICE_LOAD_LEAD,
+	codeNoticeLoadLead,
 	SLOT_NOTICE_PROGRESS_DELAY_MS,
 	DesktopControlError,
 	BACKEND_PAIRING_SENTENCE,
@@ -891,7 +891,7 @@ test("each pane that cannot act picks the notice for its reason (D1/D3)", () => 
 	}).notice;
 	assert.equal(outdated.kind, "code-unreadable");
 	assert.equal(outdated.tone, "unavailable");
-	assert.equal(outdated.title, CODE_NOTICE_LOAD_LEAD);
+	assert.equal(outdated.title, codeNoticeLoadLead());
 	assert.equal(
 		outdated.detail,
 		"The Local Operator server is older than this app expects. Update the server and try again.",
@@ -900,7 +900,7 @@ test("each pane that cannot act picks the notice for its reason (D1/D3)", () => 
 		state: "unknown",
 		loadError: new DesktopControlError(null, "no answer"),
 	}).notice;
-	assert.equal(unreachable.title, CODE_NOTICE_LOAD_LEAD);
+	assert.equal(unreachable.title, codeNoticeLoadLead());
 	assert.equal(
 		unreachable.detail,
 		"The Local Operator server is not answering.",
@@ -911,7 +911,7 @@ test("each pane that cannot act picks the notice for its reason (D1/D3)", () => 
 	}).notice;
 	assert.equal(unpaired.kind, "code-unpaired");
 	assert.equal(unpaired.tone, "unavailable");
-	assert.equal(unpaired.title, CODE_NOTICE_LOAD_LEAD);
+	assert.equal(unpaired.title, codeNoticeLoadLead());
 	assert.equal(unpaired.detail, BACKEND_PAIRING_SENTENCE["credential-refused"]);
 
 	const every = [

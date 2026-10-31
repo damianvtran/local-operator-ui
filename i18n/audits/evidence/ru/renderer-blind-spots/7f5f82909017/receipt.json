@@ -1,0 +1,35 @@
+{
+  "auditor": "i18n-auditor-ru",
+  "instance": "7f5f82909017",
+  "model": "openai/gpt-6.1-sol",
+  "status": "passed",
+  "date": "2026-10-31",
+  "provenance": {
+    "kind": "binding of independent verdict; not a new linguistic audit",
+    "verdict": "i18n/audits/evidence/ru/renderer-blind-spots/7f5f82909017/verdict.txt",
+    "verdict_sha256": "42e145b55230952e203f258a49ee543afad2b7dce2b113eefadf67d340aa609f",
+    "findings": "i18n/audits/evidence/ru/renderer-blind-spots/7f5f82909017/findings.jsonl",
+    "findings_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "fallback": "provider quota: anthropic/claude-sonnet-5-5 -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol",
+    "scope": "35 added keys (32 ui.chat, 3 ui.chat.sidebar_view); existing namespace audit retained as superseded history",
+    "hash_binding_note": "Auditor verdict omitted hashes. Binder derived hashes from unchanged audited worktree; not represented as hashes independently emitted by auditor."
+  },
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "sha256": {
+        "en": "fee31965fc3e93d600333d686af34957fa6467bc3b2ba116b69a0ca5df369dcd",
+        "ru": "ca9932275ccb82eb441de0f73f3d03cda2e9cc27c4c67d181dbe6d166399f8ae"
+      },
+      "findings": []
+    },
+    "ui.chat.sidebar_view": {
+      "status": "passed",
+      "sha256": {
+        "en": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
+        "ru": "47ec799105b4e51f181a9862bed6ad3f8ecfb5f030e49135930618980da470ae"
+      },
+      "findings": []
+    }
+  }
+}

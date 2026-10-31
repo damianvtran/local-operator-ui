@@ -20,5 +20,8 @@
 	"ui.chat.sidebar_view.section.week": "Tuần này",
 	"ui.chat.sidebar_view.section.older": "Cũ hơn",
 	"ui.chat.sidebar_view.section.agents": "Tác nhân",
-	"ui.chat.sidebar_view.section.teams": "Nhóm"
+	"ui.chat.sidebar_view.section.teams": "Nhóm",
+	"ui.chat.sidebar_view.relative_short": "{unit, select, now {vừa xong} minute {{count, number, ::group-off} phút} hour {{count, number, ::group-off} giờ} day {{count, number, ::group-off} ngày} week {{count, number, ::group-off} tuần} year {{count, number, ::group-off} năm} other {vừa xong}}",
+	"ui.chat.sidebar_view.relative_created": "{unit, select, now {vừa tạo xong} minute {{count, plural, other {tạo # phút trước}}} hour {{count, plural, other {tạo # giờ trước}}} day {{count, plural, other {tạo # ngày trước}}} week {{count, plural, other {tạo # tuần trước}}} year {{count, plural, other {tạo # năm trước}}} other {vừa tạo xong}}",
+	"ui.chat.sidebar_view.relative_active": "{unit, select, now {vừa hoạt động} minute {{count, plural, other {hoạt động gần nhất # phút trước}}} hour {{count, plural, other {hoạt động gần nhất # giờ trước}}} day {{count, plural, other {hoạt động gần nhất # ngày trước}}} week {{count, plural, other {hoạt động gần nhất # tuần trước}}} year {{count, plural, other {hoạt động gần nhất # năm trước}}} other {vừa hoạt động}}"
 }
