@@ -11,6 +11,7 @@
 // the settings rail moved on. Imported, not restated — a copy of a role is what
 // drifted twice (design rounds 3 and 4, D17/D19).
 import { rowCurrent } from "@features/chat/components/chat-sidebar";
+import { useAgentAvatar } from "@shared/agent-avatar/agent-avatar";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { AgentOptionsMenu } from "@shared/components/common/agent-options-menu";
@@ -39,7 +40,6 @@ import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { useAgentAvatar } from "@shared/store/agent-avatar-store";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { Bot } from "lucide-react";
@@ -135,12 +135,6 @@ export const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 }) => {
 	// Refresh translated copy without resetting the current selection or action.
 	useI18nLocale();
-	/*
-	 * Read inside the row rather than passed down: the store is keyed by agent id,
-	 * so this subscription repaints one row when its picture changes, and the
-	 * `memo` comparison above stays about the agent's identity instead of growing
-	 * a byte-comparing field.
-	 */
 	const avatar = useAgentAvatar(agent.id);
 	const description =
 		agent.description || t("ui.agents.navigation.sidebar.no_description");
@@ -162,49 +156,27 @@ export const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 					isSelected ? rowCurrent : "hover:bg-row-hover",
 				)}
 			>
+				{/*
+				 * THE PICTURE TAKES NO EDGE OF ITS OWN (design review round 1, D1).
+				 * The row's height is the two-line block beside this disc, and the
+				 * `size-8` root is what reserves it in both states, so a picture, a
+				 * missing picture and an undecodable one are the same 32px box. The
+				 * edge belongs to that root (`AgentAvatar`), because a border on the
+				 * square image is clipped by the circle and survives as four arcs.
+				 */}
 				<AgentAvatar className="size-8 shrink-0">
-					{/*
-					 * THE PICTURE TAKES NO EDGE OF ITS OWN (design review round 1, D1).
-					 * The row's height is the two-line block beside this disc, and the
-					 * `size-8` root is what reserves it in both states, so a picture, a
-					 * missing picture and an undecodable one are the same 32px box. The
-					 * edge belongs to that root (`AgentAvatar`), because a border on the
-					 * square image is clipped by the circle and survives as four arcs.
-					 */}
 					{avatar ? (
 						<AvatarImage src={avatar} alt="" className="lo-avatar-arrival" />
 					) : null}
 					{/*
-					 * THE AVATAR IS AN OBJECT INSIDE A ROW STATE, SO IT KEEPS ITS OWN EDGE.
-					 * The row above paints `rowCurrent` when this agent is the open one and
-					 * `hover:bg-row-hover` under the pointer, and the plate's ground is
-					 * `sunken` - a rung of the ladder, so on some palette the row's own state
-					 * lands on it. Measured on the shipped values: `sunken` against
-					 * `rowSelected` is inside the file's delta-E00 2.0 field floor on seven
-					 * palettes (`alucard` 0.44, `localOperatorLight` 1.19, `paper` 1.24, `sage`
-					 * 1.63, `rosePineDawn` 1.66, `catppuccinLatte` 1.73, `solarizedLight`
-					 * 1.78) and against `rowHover` on one (`iceberg` 1.86) - open an agent, or
-					 * point at one, and the disc is the row's own fill.
-					 *
-					 * No fill role escapes that, because a row state IS a step of the panel it
-					 * sits on - `elevated` against `rowHover` is byte-identical on `arcade` - so
-					 * the edge is the carrier, exactly as it is on the rail's account plate
-					 * (`./user-profile-sidebar.tsx`, which this reason is now shared with).
-					 * `border-control` is this system's role for an edge that IS the boundary of
-					 * a thing, and the two arms are a PAIR here rather than a flat 3:1: the edge
-					 * alone misses the non-text floor on 12 palettes against the selection
-					 * (`vaporwave` 2.77) and 5 against the hover (`catppuccinMocha` 2.92), where
-					 * the FILL carries it instead, and the fill alone misses the field floor on
-					 * the eight above, where the edge clears (4.66 `alucard` ... 3.02
-					 * `rosePineDawn` against the selection, 3.35 `iceberg` against the hover).
-					 * Neither arm clears the fleet by itself and no palette fails both, which is
-					 * what the pair in `scripts/contrast-contract.mjs` asserts per palette; the
-					 * class half - that this element still wears the edge, and that no new object
-					 * inside a row state is added without one - is in
-					 * `scripts/chat-sidebar-selection.test.mjs`.
-					 *
-					 * BOTH CLASSES LIVE ON THE ROOT NOW (design review round 1, D2): the fill
-					 * sits behind a transparent PNG too, and the fallback is just its glyph.
+					 * THE EDGE BELONGS TO THE ROOT, AND ONLY TO THE ROOT (agent review round
+					 * 1, m2). This fallback used to carry `border border-control bg-sunken` of
+					 * its own on top of `AgentAvatar`'s plate - so a row WITHOUT a picture drew
+					 * the root's 1px edge, a 30px content box, and then the fallback's own edge
+					 * at the inner boundary: a ~2px control ring, where every other mark in the
+					 * app (chat header, roster row, conversation row) has 1px. That is exactly
+					 * the border-on-the-child the D1 comment above the call site forbids; the
+					 * fallback's base already paints `bg-sunken`, so the plate reads the same.
 					 */}
 					<AvatarFallback>
 						<Bot size={16} aria-hidden={true} />

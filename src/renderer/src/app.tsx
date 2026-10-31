@@ -56,6 +56,7 @@ import { useDocumentDirection } from "@shared/i18n/use-document-direction";
 import { useKeymapShortcuts } from "@shared/keymap/use-keymap-shortcuts";
 import { t } from "../../i18n/messages";
 
+import { useAgentAvatarLayer } from "@shared/agent-avatar/agent-avatar";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
 import { LowCreditsDialog } from "@shared/components/common/low-credits-dialog";
@@ -370,6 +371,12 @@ const App: FC = () => {
 	 * while closed, and the ring has to be filling while it is.
 	 */
 	useConversationRecents();
+
+	/*
+	 * The agent pictures' layer: reads the avatar map once for the whole app so the
+	 * #1517 localStorage migration runs whichever page opens first (QA round 1, Q-2).
+	 */
+	useAgentAvatarLayer();
 
 	/*
 	 * The navigation gestures (issue #675): Cmd/Ctrl+[ and Cmd/Ctrl+] move the

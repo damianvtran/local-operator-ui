@@ -1,0 +1,74 @@
+{
+	"auditor": "reviewer",
+	"model": "radient/auto",
+	"model_disclosure": "Disclosed fallback: the session's primary model anthropic/claude-opus-5-5 was unavailable (provider quota) and the harness routed this run through openai/gpt-6-astra and kimi/k3.1-pro before settling on radient/auto; the audit was completed on radient/auto.",
+	"instance": "7d20c9116360-ru",
+	"locale": "ru",
+	"namespace": "ui.agents.avatar",
+	"date": "2026-10-30",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"sha256": {
+		"en": "35ac09523862b19fb4c5c942d57f42d2dd8007f926ead27b306febbc2c830847",
+		"ru": "76c5e4366fa04727e96d453e146f7cc264929d2d294c5f25b0ca388ff408488e"
+	},
+	"source_sha256": "35ac09523862b19fb4c5c942d57f42d2dd8007f926ead27b306febbc2c830847",
+	"target_sha256": "76c5e4366fa04727e96d453e146f7cc264929d2d294c5f25b0ca388ff408488e",
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 2,
+		"nit": 1
+	},
+	"findings": [
+		{
+			"id": "A-ru-unit",
+			"severity": "minor",
+			"key": "ui.agents.avatar.editor.error_size",
+			"keys": [
+				"ui.agents.avatar.editor.error_size",
+				"ui.agents.avatar.editor.hint"
+			],
+			"detail": "ru abbreviates the 10 MB ceiling as {size} МБ (error_size) and 10 МБ (hint). The shipped, audited sibling ui.agents.publication.payload_too_large.body_with_limit keeps the Latin unit in ru ({size} KiB), and #1517's ui.agents.settings error_size for this same ceiling reads {size} MB. One feature now abbreviates one unit two ways.",
+			"recommend": "Decide once: keep MB/KiB everywhere (matching the corpus), or localize МБ in ui.agents.settings and ui.agents.publication too. Do not leave the fork."
+		},
+		{
+			"id": "A-ru-surface",
+			"severity": "minor",
+			"key": "ui.agents.avatar.editor.preview_sidebar",
+			"keys": [
+				"ui.agents.avatar.editor.preview_sidebar",
+				"ui.agents.avatar.editor.previews"
+			],
+			"detail": "preview_sidebar names the conversation list «в списке бесед», but the ru sidebar surface calls itself «Чаты» (ui.chat.sidebar: 29 occurrences of чат, 0 of беседа). previews reads «В размерах, в которых изображение показывает приложение», whose object/subject order parses as \"the picture shows the app\"; the intended reading is \"at the sizes in which the app shows it\".",
+			"recommend": "«Предпросмотр в списке чатов» and «В тех размерах, в которых его показывает приложение»."
+		},
+		{
+			"id": "A-ru-zoom",
+			"severity": "nit",
+			"key": "ui.agents.avatar.editor.zoom_in",
+			"keys": [
+				"ui.agents.avatar.editor.zoom_in",
+				"ui.agents.avatar.editor.zoom_out"
+			],
+			"detail": "zoom_in/zoom_out use Приблизить/Отдалить. The dominant sibling form for the same control is Увеличить/Уменьшить (ui.chat.mermaid, ui.common.viewer, ui.library.preview, ui.shell.menubar); ui.projects.project_timeline uses Приблизить/Отдалить, so a precedent exists and this is recorded rather than required.",
+			"recommend": "Prefer Увеличить/Уменьшить, matching four of the five sibling surfaces."
+		}
+	],
+	"scope": "ui.agents.avatar (25 keys) — full-namespace read of ru against English, the core glossary and ru's style guide, on PR #1537 head 478b7889387. Whole-file hashes bound.",
+	"passed_checks": [
+		"key set identical to English (25/25)",
+		"ICU placeholder parity: {name}, {size}, {width}, {height}, {value} present and unaltered in every key that carries them",
+		"no ICU plural/select arms in this namespace; {size} is a whole-megabyte digit with no inflecting noun",
+		"no manual bidi control characters (RLM/LRM/FSI/PDI/LRI/RLI) in ur; Latin format names left to the render layer's isolation",
+		"format list JPEG/PNG/WebP/GIF matches AGENT_AVATAR_MIME_TYPES in src/renderer/src/shared/agent-avatar/avatar-image.ts",
+		"no key left in English except the es/fr loanword Zoom and the numeric {value}×",
+		"punctuation conventions per locale (ur ۔ ،, hi ।, zh-CN ，。、, fr ’)"
+	],
+	"limitations": [
+		"Browser and rendered-frame capture are not in this auditor's tool set: no screenshot, pseudo-localization or measured-overflow evidence is claimed.",
+		"Overflow was reasoned from the call sites, not measured: the editor's buttons are w-fit and the settings row wraps (flex-wrap), the preview labels are image aria-labels, and no truncate/whitespace-nowrap is applied anywhere in the avatar surfaces.",
+		"Agent semantic read; no native-speaker review."
+	],
+	"independence": "Auditor did not translate, write or edit any catalogue, context or key file; it formed its own read of the strings before opening the translator's commit message."
+}

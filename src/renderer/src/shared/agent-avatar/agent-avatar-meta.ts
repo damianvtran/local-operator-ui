@@ -1,0 +1,120 @@
+/**
+ * The address and the shape of one agent's stored picture - pure, no side
+ * effects and no app imports beyond a type.
+ *
+ * SPLIT OUT OF `agent-avatar.ts` SO A NODE TEST CAN READ IT. The seam imports
+ * the query client, the media relay and the sessions store to do its work, and
+ * none of those load outside the app; the two rules a reviewer most needs to
+ * see - the URL a picture is addressed by, and which records are usable at all -
+ * need none of it. `agent-avatar.ts` re-exports both, so every surface still has
+ * one import.
+ */
+
+import type { AgentAvatarMeta } from "@shared/api/local-operator/types";
+import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
+
+/** A content address: the 64-hex SHA-256 core publishes. */
+export const SHA256 = /^[0-9a-f]{64}$/;
+
+/** agent id -> its picture record, for every agent that has one. */
+export type AgentAvatarMap = Record<string, AgentAvatarMeta>;
+
+/**
+ * The contract's address for one picture: `/v1/agents/{id}/avatar?v=<sha>`.
+ *
+ * The `v` is the content address, so a changed picture is a different URL to
+ * every cache in the chain, and the same digest is the cache key the renderer
+ * files the fetched bytes under.
+ */
+export function agentAvatarPath(agentId: string, sha256: string): string {
+	return `/v1/agents/${encodeURIComponent(agentId)}/avatar?v=${sha256}`;
+}
+
+/**
+ * The record from one agent row, or null for anything that is not a usable one.
+ * Read as untrusted: an older backend sends no field, and a malformed digest
+ * would otherwise become a relay request main refuses on every render.
+ */
+export function avatarMetaOf(value: unknown): AgentAvatarMeta | null {
+	if (value === null || typeof value !== "object") return null;
+	const meta = value as Partial<AgentAvatarMeta>;
+	if (typeof meta.sha256 !== "string" || !SHA256.test(meta.sha256)) return null;
+	return {
+		sha256: meta.sha256,
+		mime: typeof meta.mime === "string" ? meta.mime : "image/png",
+		bytes: typeof meta.bytes === "number" ? meta.bytes : 0,
+		updated_at: typeof meta.updated_at === "string" ? meta.updated_at : "",
+	};
+}
+
+/**
+ * Whether a session row's agent picture is THIS MACHINE'S to change.
+ *
+ * ONE ANSWER FOR EVERY PLACEMENT OF THE PENCIL (agent review round 1, M2). The
+ * chat sidebar guarded `locality === "remote"` while the chat header passed
+ * `owned: true` unconditionally, so the same row could offer an edit in one
+ * place and withhold it in the other - and on a peer row the header's href
+ * carried a FOREIGN agent id into this machine's `/agents` page. The rule is
+ * the operator's: the pencil is never on someone else's agent.
+ *
+ * `agent_id` is required because it is the id the editor uploads against: a row
+ * that names no agent has no picture of its own to change, whatever its
+ * locality.
+ *
+ * REMOTE IS THE ONLY DISQUALIFIER, AND ABSENCE IS NOT ONE. `locality` is sent
+ * only on a listing that asked for peers (see `CanonicalSessionRow`), so a plain
+ * page's rows arrive with no claim at all - and those rows came from this
+ * machine's own catalogue, which is exactly what makes them ours to edit. A row
+ * that states `remote` belongs to another device, where this window cannot
+ * write.
+ */
+export function sessionPictureEditable(
+	row: Pick<CanonicalSessionRow, "agent_id" | "locality"> | null | undefined,
+): boolean {
+	if (!row?.agent_id) return false;
+	return row.locality !== "remote";
+}
+
+/**
+ * The agent a session row's picture belongs to, as every placement of the
+ * pencil names it - THE ONE READER OF A ROW'S AGENT IDENTITY (QA round 1, Q-1).
+ *
+ * The chat header used to be handed the CHAT TITLE as its agent name while the
+ * sidebar row read `binding.agent`, so the same row built two different editor
+ * hrefs and the header's pointed at a profile named after the conversation
+ * ("could not be read"). The mocks could not show it: their fixtures named the
+ * conversation after the agent. Both placements now take `{agentId, agentName}`
+ * from this function, so they cannot diverge again - the name is the BOUND
+ * AGENT's, never the title, and is what `agentPictureEditorHref` selects the
+ * Agents-page pane by.
+ *
+ * Null when the row names no agent or no picture: there is then nothing to
+ * draw. `agentName` is null when the row carries no bound agent name, and then
+ * `owned` is false whatever the locality - a door needs an address, and the
+ * conversation's title is not one. `owned` is otherwise the one
+ * `sessionPictureEditable` answer (a remote row is never editable here).
+ */
+export function sessionAvatarTarget(
+	row:
+		| (Pick<CanonicalSessionRow, "agent_id" | "locality" | "avatar_sha256"> & {
+				binding?: { agent?: string | null } | null;
+		  })
+		| null
+		| undefined,
+): {
+	agentId: string;
+	agentName: string | null;
+	sha256: string;
+	owned: boolean;
+} | null {
+	const agentId = row?.agent_id ?? null;
+	const sha256 = row?.avatar_sha256 ?? null;
+	if (!row || !agentId || !sha256) return null;
+	const agentName = row.binding?.agent || null;
+	return {
+		agentId,
+		agentName,
+		sha256,
+		owned: agentName !== null && sessionPictureEditable(row),
+	};
+}

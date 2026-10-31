@@ -43,6 +43,7 @@ import {
 	CHAT_MEASURE,
 } from "@features/chat/chat-measure";
 import { rowCurrent } from "@features/chat/components/chat-sidebar";
+import { AgentMark } from "@shared/agent-avatar/agent-mark";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
@@ -62,11 +63,6 @@ import {
 	AlertDescription,
 	AlertTitle,
 } from "@shared/components/ui/alert";
-import {
-	AgentAvatar,
-	AvatarFallback,
-	AvatarImage,
-} from "@shared/components/ui/avatar";
 import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
@@ -77,7 +73,6 @@ import { t } from "@shared/i18n";
 import type { MessageKey } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { useAgentAvatar } from "@shared/store/agent-avatar-store";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Bot, Plus, Search, Sparkles, Users } from "lucide-react";
 import {
@@ -264,6 +259,31 @@ export function AgentsPage() {
 		"skill_library",
 	);
 	const skillMode = wantsSkills && skillsOffered && !creating;
+	/*
+	 * THE PICTURE PENCIL'S DEEP LINK (`?edit=picture`, agent review round 1, M1).
+	 *
+	 * `AgentAvatarEditLink` navigates here with it, and `agent-avatar-field.tsx`
+	 * is the only thing that reads it - but the field exists only inside this
+	 * page's AGENT PANE and only while that pane is editing, so the link arrived
+	 * at a page that drew the pane in view mode: nothing mounted the editor,
+	 * nothing scrolled, nothing took focus, and the parameter was never dropped.
+	 * Every promise the link's own doc comments make was unkept.
+	 *
+	 * Read here beside the page's other parameters and handed to the pane as the
+	 * SEED of its edit state (`AgentDetail`'s `openPictureEditor`): the pane opens
+	 * editing, which mounts the field, which then scrolls itself into view, takes
+	 * focus and drops the parameter (its own one-shot contract).
+	 *
+	 * GATED ON THE SAME FACTS THE PANE IS: a selected name, not a create form,
+	 * not the skills or the team tab. The link only ever addresses an existing
+	 * agent profile, so a stray `edit` on any other surface must change nothing.
+	 */
+	const pictureEditRequested =
+		params.get("edit") === "picture" &&
+		Boolean(name) &&
+		!creating &&
+		!teamMode &&
+		!skillMode;
 	const catalogueEnabled = desktopFeatureEnabled(
 		capabilities.data,
 		teamMode ? "team_catalogue" : "profile_catalogue",
@@ -1474,6 +1494,7 @@ export function AgentsPage() {
 										teams={teams.data}
 										effortTiers={effortTiers}
 										askEnabled={run.enabled}
+										openPictureEditor={pictureEditRequested}
 										onDirtyChange={reportDirty}
 										belowHeader={hubPane(
 											"agent",
@@ -1808,43 +1829,22 @@ export function AskPaneCopy({ teamMode }: { teamMode: boolean }) {
 	);
 }
 
-/**
- * The roster row's mark, on the same box and fallback the chat sidebar's rows use.
- *
- * WHY A COMPONENT AND NOT A HOOK CALL IN THE MAP. `useAgentAvatar` is a hook and
- * the rows are built by `.map()` inside `Roster`'s render, so calling it there
- * would subscribe the whole list: one picture would repaint every row. Read
- * inside this component, the subscription is per row.
- *
- * THE BOX IS 16 PX, INSIDE LINE ONE, and both halves of that are deliberate. The
- * roster's height is set by its two text lines (`min-h-12`), so a mark that grew
- * a line would move every row on the page; a 16px box fits inside the name's own
- * line box. It is the size the chat sidebar's Agents rows draw, and the glyph is
- * that row's fallback, so the one list that names every agent and the list the
- * user reads beside it show the same mark. It also reserves its own width in
- * every agent row, so no name moves when a picture arrives.
- */
-const RosterMark = ({ agentId }: { agentId: string | null }) => {
-	const avatar = useAgentAvatar(agentId);
-	if (avatar === null) {
-		return <Bot aria-hidden="true" className="size-4 shrink-0 text-ink-dim" />;
-	}
-	return (
-		/*
-		 * THE FALLBACK IS NOT DECORATION HERE (review round 2, R2-4). A stored
-		 * value can pass the data-URL gate and still fail to decode, and Radix
-		 * renders the image arm only after a load: without a fallback that agent's
-		 * 16px slot is simply blank. The same Bot the sidebar's rows draw keeps the
-		 * mark legible, inside the same shared plate every agent surface wears.
-		 */
-		<AgentAvatar className="size-4 shrink-0">
-			<AvatarImage src={avatar} alt="" />
-			<AvatarFallback>
-				<Bot className="size-3" aria-hidden="true" />
-			</AvatarFallback>
-		</AgentAvatar>
-	);
-};
+const RosterMark = ({ agentId }: { agentId: string | null }) => (
+	/*
+	 * ONE MARK, ONE COMPONENT. `AgentMark` subscribes per row (it is rendered by
+	 * the map, so calling the hook here would subscribe the whole list to one
+	 * picture) and answers the roster's existing glyph when the agent has none -
+	 * which is why a row without a picture is the row it was before pictures.
+	 */
+	<AgentMark
+		agentId={agentId}
+		className="size-4"
+		fallback={
+			<Bot aria-hidden="true" className="size-4 shrink-0 text-ink-dim" />
+		}
+		glyph={<Bot className="size-3" aria-hidden="true" />}
+	/>
+);
 
 /**
  * The roster, as a list with roving focus.

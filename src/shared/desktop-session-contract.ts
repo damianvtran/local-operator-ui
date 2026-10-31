@@ -129,6 +129,18 @@ export type SessionCatalogueRow = {
 	 * inside it may be null.
 	 */
 	opened_by?: SessionOpenedBy | null;
+	/**
+	 * The local agent this conversation is bound to, by ID, and that agent's
+	 * picture digest (agent profile pictures contract, 2026-10-30).
+	 *
+	 * Carried ON THE ROW so the sidebar never fetches per row to learn whether a
+	 * picture exists: `avatar_sha256` null or absent means "draw the glyph", and
+	 * a value is the content address the renderer reads the bytes by. Both are
+	 * optional because a backend that predates the field omits them, which keeps
+	 * every row exactly as it rendered before.
+	 */
+	agent_id?: string | null;
+	avatar_sha256?: string | null;
 	attention?: CompletionAttention;
 	/**
 	 * The feed's stamp for `status`, when the backend served this row knows it.
@@ -2326,6 +2338,22 @@ export type DesktopFeedFrame =
 			 * on `changed_keys.includes("language")`.
 			 */
 			payload: { changed_keys: string[]; language: string };
+	  }
+	| {
+			epoch: string;
+			seq: number;
+			type: "agent.avatar.changed";
+			/*
+			 * A local agent's profile picture was written or cleared (agent profile
+			 * pictures contract, frozen 2026-10-30). Published AFTER core commits the
+			 * file and `agent.yml`, so a read on this frame sees the new state.
+			 * `sha256: null` is a removal. Machine-wide like `catalogue`: no session.
+			 *
+			 * A write from the CLI happens in another process and publishes nothing
+			 * here, so this frame is a fast path, not the authority: the agents and
+			 * sessions reads that carry `avatar.sha256` are.
+			 */
+			payload: { agent_id: string; sha256: string | null };
 	  }
 	| { epoch: string; seq: number; type: "heartbeat"; payload: { ts: number } }
 	| {
