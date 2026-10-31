@@ -77,7 +77,7 @@ export function ownerAuditChronology(
  * `TeamBridgeMessage`, the transcript was drawn by hand and drifted from every
  * channel and DM (no markdown, avatar, runs or day dividers). This is that
  * missing map, kept pure so it is tested without a DOM; what only an audit adds
- * (the verdict, the collapse, the attachment notes, thread replies) travels
+ * (the verdict, the null-body sentence, the attachment notes, thread replies) travels
  * separately through the list's `decorate` hook.
  *
  * WHAT IS DELIBERATELY NOT CARRIED OVER:
