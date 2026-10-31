@@ -98,6 +98,30 @@ test("the badge is the filled accent pill: accent fill, on-accent digit, no bord
 	assert.ok(!classes.includes("text-ink-dim"));
 });
 
+/*
+ * THE QUIET REGISTER (design review round 1, D1). A muted conversation's count
+ * is a TOTAL - shown so the reader can see it, excluded from the sidebar badge -
+ * so it wears the borderless, quiet numeral instead of the accent pill. The
+ * register is the component's, keyed on a semantic flag, so no host picks a
+ * variant; the cap and the zero rule stay the same mark.
+ */
+test("the quiet register draws the total numeral: elevated ground, ink-dim digit", () => {
+	const classes = classesOf(render({ count: 6, register: "quiet" }));
+	for (const cls of [
+		"bg-elevated",
+		"text-ink-dim",
+		"border-0",
+		"rounded-full",
+	]) {
+		assert.ok(classes.includes(cls), `missing ${cls}: ${classes.join(" ")}`);
+	}
+	assert.ok(!classes.includes("bg-accent"), "the accent fill must not leak in");
+	assert.ok(!classes.includes("text-on-accent"));
+	/* Same cap, same zero rule: the register changes the paint, not the count. */
+	assert.match(render({ count: 125, register: "quiet" }), />99\+</);
+	assert.equal(render({ count: 0, register: "quiet" }), "");
+});
+
 test("it caps at 99+ so three digits never clip, and spells smaller counts exactly", () => {
 	assert.equal(ATTENTION_BADGE_CAP, 99);
 	assert.match(render({ count: 7 }), />7</);
@@ -182,6 +206,32 @@ for (const [path, sites] of Object.entries(HOSTS)) {
 		);
 	});
 }
+
+/*
+ * WHICH register a Team Bridge row wears is the MODEL's answer (design review
+ * round 1, D1): `unreadRegister` is the same predicate the nav badge excludes
+ * muted rows with, so a row cannot be quiet while the badge counts it, or loud
+ * while the badge ignores it. The rendered invariant test calls that function;
+ * this pin keeps the host calling it too - otherwise a row could hand-write a
+ * register and the rendered test would keep passing on a stale agreement.
+ */
+test("every Team Bridge unread mark asks unreadRegister for its register", () => {
+	const src = code(
+		"src/renderer/src/features/team-bridge/team-bridge-rail.tsx",
+	);
+	assert.equal(
+		(src.match(/<Unread\b/g) ?? []).length,
+		3,
+		"channel, person and chief rows",
+	);
+	assert.equal(
+		(src.match(/unreadRegister\(/g) ?? []).length,
+		3,
+		"each row's register comes from the model",
+	);
+	/* No host spells a register itself. */
+	assert.doesNotMatch(src, /register=\{?["'`](quiet|attention)/);
+});
 
 test("the sidebar draws no <Badge> of its own at all", () => {
 	const src = code(

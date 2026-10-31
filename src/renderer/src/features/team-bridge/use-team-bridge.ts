@@ -96,6 +96,7 @@ import {
 import {
 	type TeamBridgeUnreadSnapshot,
 	applyTeamBridgeReadCursor,
+	cancelTeamBridgeUnreadReads,
 	restoreTeamBridgeUnreadSnapshot,
 } from "./team-bridge-unread-sync";
 export { teamBridgeKeys } from "./team-bridge-keys";
@@ -881,15 +882,35 @@ export function useMarkTeamBridgeRead(
 		onMutate: ({ input, target }) => {
 			if (!target.isCurrent() || !target.accountId || !target.tenantId)
 				return undefined;
+			/*
+			 * CANCEL FIRST, IN THIS SAME PASS (review round 1, m1). A read dispatched
+			 * before this click - the unread poll, a list refetch - answers with a
+			 * count computed before the clear and carries a later timestamp than the
+			 * patches below keep, so it would win the merge and bounce the row and
+			 * the badge back. Cancelling here means nothing is left in flight to
+			 * land on top of the patch.
+			 */
+			cancelTeamBridgeUnreadReads(client, target.accountId);
 			return applyTeamBridgeReadCursor(client, target.accountId, {
 				tenantId: target.tenantId,
 				conversationId: target.conversationId,
 				seq: input.seq,
 			});
 		},
-		onError: (_error, { target }, snapshot) => {
+		onError: async (_error, { target }, snapshot) => {
 			if (!target.isCurrent() || !snapshot) return;
 			restoreTeamBridgeUnreadSnapshot(client, snapshot);
+			/*
+			 * THEN ASK THE SERVER (review round 1, m2). A refusal means the cached
+			 * numbers were never ours to rewind: with no success invalidation, a
+			 * restored count could stand for up to the next poll. The refetch is the
+			 * one answer that cannot be stale.
+			 */
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.conversationsPrefix,
+			});
+			if (!target.isCurrent()) return;
+			await client.invalidateQueries({ queryKey: teamBridgeKeys.unreadPrefix });
 		},
 		onSuccess: async (_data, { target }) => {
 			if (!target.isCurrent()) return;

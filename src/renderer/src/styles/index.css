@@ -59,27 +59,64 @@
 }
 
 /* The message a Team Bridge notification click named: an accent wash on the row
- * that fades back to the row's own ground over ~1.5 s, so the eye finds the
- * message it was told about and is then left alone. `accent-wash` is the
- * theme's selection tint (no new colour); the row keeps its box, so nothing
- * moves. Reduced motion keeps the cue but drops the fade: the wash holds for
- * the same span and the class is removed by the page, which is a state change,
- * not motion. */
+ * that fades back to the row's own ground over 1.4 s, so the eye finds the
+ * message it was told about and is then left alone. 1400 ms is
+ * `JUMP_HIGHLIGHT_MS` (`shared/lib/jump-highlight.ts`), the chat surface's
+ * checkpoint landing flash: one cue, one time, and the page's clear timer reads
+ * the same constant (design review round 1, D4). The row keeps its box, so
+ * nothing moves.
+ *
+ * WHY THE WASH IS AN OVERLAY, NOT THE ROW'S OWN BACKGROUND (design round 1,
+ * D3). Painting `background-color` on the row meant the animated value won over
+ * the row's `hover:bg-row-hover` for the whole life of the class - including
+ * the tail after the fade had finished, because `both` holds the end keyframe -
+ * so the exact second a reader reached for the row its hover feedback was gone,
+ * and any future hover or selection styling on a message row would inherit the
+ * hole. The wash now lives on an `::after` band: the row is its own stacking
+ * context (`isolation`), the band sits at `z-index: -1` so it paints ABOVE the
+ * row's background (hover, current) and BELOW its content, and it takes no
+ * pointer events. The row's own tints keep working underneath - a hovered row
+ * under the band measures 1.349:1 dark / 1.270:1 light against the pane, so the
+ * hover is still visible while the arrival is on screen.
+ *
+ * WHY 12% ACCENT OVER THE GROUND, NOT THE FLAT `accent-wash` TOKEN (design
+ * round 1, D2). `accent-wash` on this pane measured 1.044:1 dark and 1.061:1
+ * light - fainter than the row hover tint (1.084:1) and the rail's selected row
+ * (1.127:1 / 1.135:1), so the mark the reader was TOLD about was drawn more
+ * quietly than one their pointer merely rested on. 12% of the accent role
+ * composited over the pane is 1.237:1 dark and 1.176:1 light: above the hover
+ * tint and above the selected row in both themes, so the hierarchy reads
+ * arrival > current > hover. It is a role, mixed at paint time - no new raw
+ * colour - and 12% is the ceiling: at 14% the 12 px muted glyph inside the row
+ * drops to 4.39:1 in the dark theme, under the 4.5:1 AA floor the round-1
+ * design evidence measured on this surface. Reduced motion keeps the cue but
+ * drops the fade: the band holds at full strength for the same span and the
+ * page removes the class, which is a state change, not motion. */
 @keyframes lo-team-bridge-target {
 	from {
-		background-color: var(--color-accent-wash);
+		opacity: 1;
 	}
 	to {
-		background-color: transparent;
+		opacity: 0;
 	}
 }
 .lo-team-bridge-target {
-	animation: lo-team-bridge-target 1500ms var(--ease-out-quart) both;
+	isolation: isolate;
+}
+.lo-team-bridge-target::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	/* Below the row's own content, above its own background. */
+	z-index: -1;
+	/* A ground, never a target: the row's menu and badges keep their hit area. */
+	pointer-events: none;
+	background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+	animation: lo-team-bridge-target 1400ms var(--ease-out-quart) both;
 }
 @media (prefers-reduced-motion: reduce) {
-	.lo-team-bridge-target {
+	.lo-team-bridge-target::after {
 		animation: none;
-		background-color: var(--color-accent-wash);
 	}
 }
 

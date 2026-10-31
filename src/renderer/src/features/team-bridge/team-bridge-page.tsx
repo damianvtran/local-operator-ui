@@ -16,6 +16,7 @@ import { ScrollArea } from "@shared/components/ui/scroll-area";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { formatRelativeTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { JUMP_HIGHLIGHT_MS } from "@shared/lib/jump-highlight";
 import { cn } from "@shared/lib/utils";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import {
@@ -3441,6 +3442,18 @@ type TeamBridgeMessageLink = {
 	fetched: boolean;
 };
 
+/**
+ * How long a `?message=` target may wait for its conversation to resolve before
+ * it is released (review round 1, m3). Both ordinary clearing conditions need
+ * progress - a different selection, or one completed re-read - so a click for a
+ * conversation this rail cannot resolve (archived, membership gone, deleted)
+ * would otherwise hold the link, and the carry, for the life of the page. It is
+ * a bound on the TARGET'S LIFE, not a timing for the highlight: one landing
+ * costs one request, so a few seconds covers every real click and only an
+ * unresolvable one ever reaches it.
+ */
+const MESSAGE_LINK_TIMEOUT_MS = 8_000;
+
 const TeamBridgeOwnedPage: FC<{
 	accountId?: string;
 	messageLinkCarry: { current: TeamBridgeMessageLink | null };
@@ -3471,17 +3484,28 @@ const TeamBridgeOwnedPage: FC<{
 	 * never looked for in a timeline that excludes replies by contract.
 	 */
 	const [messageLink, setMessageLinkState] =
-		useState<TeamBridgeMessageLink | null>(() =>
-			requestedMessage && requestedConversation && !requestedRoot
-				? {
-						conversationId: requestedConversation,
-						messageId: requestedMessage,
-						fetched: false,
-					}
-				: requestedConversation
-					? null
-					: messageLinkCarry.current,
-		);
+		useState<TeamBridgeMessageLink | null>(() => {
+			const seeded =
+				requestedMessage && requestedConversation && !requestedRoot
+					? {
+							conversationId: requestedConversation,
+							messageId: requestedMessage,
+							fetched: false,
+						}
+					: requestedConversation
+						? null
+						: messageLinkCarry.current;
+			/*
+			 * THE CARRY IS WRITTEN THROUGH ON EVERY BRANCH, the null ones included
+			 * (review round 1, m3). The carry is only ever read by a LATER owner's
+			 * initializer, so a branch that leaves it holding an older click's
+			 * target can re-seed a link this page has already decided against: a
+			 * fresh `?conversation=` with no message would otherwise resurrect the
+			 * previous click's highlight under the next account.
+			 */
+			messageLinkCarry.current = seeded;
+			return seeded;
+		});
 	// Every write goes through the carry too (see `TeamBridgePage`).
 	const setMessageLink = useCallback(
 		(
@@ -4236,7 +4260,7 @@ const TeamBridgeOwnedPage: FC<{
 	// The highlight is a moment, not a state: drop it once the fade has run.
 	useEffect(() => {
 		if (!linkedPresent) return;
-		const timer = setTimeout(() => setMessageLink(null), 1_600);
+		const timer = setTimeout(() => setMessageLink(null), JUMP_HIGHLIGHT_MS);
 		return () => clearTimeout(timer);
 	}, [linkedPresent, setMessageLink]);
 	// A link the reader navigated away from, or one that never appeared after
@@ -4249,6 +4273,20 @@ const TeamBridgeOwnedPage: FC<{
 		)
 			setMessageLink(null);
 	}, [messageLink, selected, linkedPresent, setMessageLink]);
+	/*
+	 * A LINKED CONVERSATION THAT NEVER RESOLVES IS RELEASED TOO (review round 1,
+	 * m3). The effect above can only clear on progress, and the fetch effect
+	 * returns early while nothing is selected, so a target whose conversation the
+	 * rail never resolves would sit in state - and in the carry - forever.
+	 */
+	useEffect(() => {
+		if (!messageLink) return;
+		const timer = setTimeout(
+			() => setMessageLink(null),
+			MESSAGE_LINK_TIMEOUT_MS,
+		);
+		return () => clearTimeout(timer);
+	}, [messageLink, setMessageLink]);
 
 	const draftKey = JSON.stringify([
 		accountId,

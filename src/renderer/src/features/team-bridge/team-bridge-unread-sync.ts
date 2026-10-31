@@ -37,7 +37,7 @@
  * NO NEW READS AND NO PARALLEL CACHE. Everything is derived from the existing
  * query entries; the writes below patch those same entries in place.
  */
-import type { QueryClient, QueryKey } from "@tanstack/react-query";
+import type { Query, QueryClient, QueryKey } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useRef, useSyncExternalStore } from "react";
 import type {
@@ -87,6 +87,36 @@ const EMPTY_VIEW: TeamBridgeUnreadView = {
 };
 
 /**
+ * The two cache families the view reads, collected once for one caller.
+ *
+ * WHY A COLLECTION STEP (review round 1, n4). `useSyncExternalStore` calls the
+ * snapshot on EVERY query-cache event in the app - not only Team Bridge's -
+ * once per subscriber (the nav badge and the page), and both the change
+ * signature and the view need the same two prefix scans of the whole cache.
+ * Collecting them once per call halves those scans per event and guarantees the
+ * signature and the view judged the same entries.
+ */
+type UnreadQueries = {
+	conversations: Query[];
+	unread: Query[];
+};
+
+function collectUnreadQueries(
+	client: QueryClient,
+	accountId: string,
+): UnreadQueries {
+	const cache = client.getQueryCache();
+	const owned = (prefix: QueryKey) =>
+		cache
+			.findAll({ queryKey: prefix })
+			.filter((query) => ownedBy(query.queryKey, accountId));
+	return {
+		conversations: owned(teamBridgeKeys.conversationsPrefix),
+		unread: owned(teamBridgeKeys.unreadPrefix),
+	};
+}
+
+/**
  * Build the view from the cache. Pure over `client` state; the hook below
  * memoises it on a signature so React sees a stable snapshot.
  */
@@ -95,6 +125,14 @@ export function teamBridgeUnreadView(
 	accountId: string | undefined,
 ): TeamBridgeUnreadView {
 	if (!accountId) return EMPTY_VIEW;
+	return unreadViewOf(collectUnreadQueries(client, accountId));
+}
+
+/**
+ * The view over a collection already in hand. `collectUnreadQueries` owns the
+ * ownership and archived filtering, so nothing here re-reads the cache.
+ */
+function unreadViewOf(queries: UnreadQueries): TeamBridgeUnreadView {
 	const rows = new Map<string, TeamBridgeUnreadEntry>();
 	const offer = (entry: TeamBridgeUnreadEntry) => {
 		const key = teamBridgeUnreadKey(entry.tenantId, entry.conversationId);
@@ -103,10 +141,7 @@ export function teamBridgeUnreadView(
 	};
 	/* Tenants whose EVERY open membership has a row (a tenant unread answer). */
 	const complete = new Set<string>();
-	for (const query of client
-		.getQueryCache()
-		.findAll({ queryKey: teamBridgeKeys.conversationsPrefix })) {
-		if (!ownedBy(query.queryKey, accountId)) continue;
+	for (const query of queries.conversations) {
 		// The archived half never carries unread (the server zeroes it) and the
 		// rail does not render it; reading it would only offer stale zeroes.
 		if (query.queryKey.includes("archived")) continue;
@@ -126,10 +161,7 @@ export function teamBridgeUnreadView(
 	}
 	let aggregate: TeamBridgeUnread | undefined;
 	let aggregateAt = 0;
-	for (const query of client
-		.getQueryCache()
-		.findAll({ queryKey: teamBridgeKeys.unreadPrefix })) {
-		if (!ownedBy(query.queryKey, accountId)) continue;
+	for (const query of queries.unread) {
 		const scope = query.queryKey[2];
 		const data = query.state.data as TeamBridgeUnread | undefined;
 		if (!data) continue;
@@ -229,19 +261,13 @@ function dataId(data: unknown): number {
 	return id;
 }
 
-function viewSignature(client: QueryClient, accountId: string | undefined) {
-	if (!accountId) return "";
+function viewSignature(accountId: string, queries: UnreadQueries): string {
 	const parts: string[] = [];
-	for (const prefix of [
-		teamBridgeKeys.conversationsPrefix,
-		teamBridgeKeys.unreadPrefix,
-	])
-		for (const query of client.getQueryCache().findAll({ queryKey: prefix }))
-			if (ownedBy(query.queryKey, accountId))
-				parts.push(
-					`${query.queryHash}@${query.state.dataUpdatedAt}:${dataId(query.state.data)}`,
-				);
-	return parts.join("|");
+	for (const query of [...queries.conversations, ...queries.unread])
+		parts.push(
+			`${query.queryHash}@${query.state.dataUpdatedAt}:${dataId(query.state.data)}`,
+		);
+	return `${accountId}#${parts.join("|")}`;
 }
 
 /** Subscribe to the shared view. Re-renders only when an input read changes. */
@@ -257,21 +283,41 @@ export function useTeamBridgeUnreadView(
 		[client],
 	);
 	const snapshot = useCallback(() => {
-		const signature = `${accountId ?? ""}#${viewSignature(client, accountId)}`;
+		/*
+		 * ONE cache event, ONE derivation (review round 1, n4). The signature and
+		 * the view are built from the SAME collection: the signature decides
+		 * whether the view must be rebuilt, and a second scan for the view would
+		 * double the cost of every cache event in the app for every subscriber.
+		 */
+		if (!accountId) return EMPTY_VIEW;
+		const queries = collectUnreadQueries(client, accountId);
+		const signature = viewSignature(accountId, queries);
 		if (memo.current?.signature !== signature)
-			memo.current = {
-				signature,
-				view: teamBridgeUnreadView(client, accountId),
-			};
+			memo.current = { signature, view: unreadViewOf(queries) };
 		return memo.current.view;
 	}, [client, accountId]);
 	return useSyncExternalStore(subscribe, snapshot, snapshot);
 }
 
+/**
+ * One entry a read-cursor patch replaced, for rollback.
+ *
+ * THE TIMESTAMP TRAVELS WITH THE VALUE (review round 1, m2). The merge above
+ * ranks values by `dataUpdatedAt`, so restoring a pre-read count with the
+ * CURRENT timestamp would make it the newest answer for that conversation while
+ * the server's own read (which landed in between) is discarded - a refused
+ * mark-read would then hold a wrong count until the next poll.
+ */
+export type TeamBridgeUnreadSnapshotEntry = {
+	key: QueryKey;
+	data: unknown;
+	/** The entry's `dataUpdatedAt` when the snapshot was taken. */
+	updatedAt: number;
+};
+
 /** Exact entries a read cursor patch touched, for rollback. */
-export type TeamBridgeUnreadSnapshot = ReadonlyArray<
-	readonly [QueryKey, unknown]
->;
+export type TeamBridgeUnreadSnapshot =
+	ReadonlyArray<TeamBridgeUnreadSnapshotEntry>;
 
 /*
  * Every patch below keeps the entry's own `dataUpdatedAt`: the merge above
@@ -289,6 +335,40 @@ function patchKeepingTime<T>(
 	client.setQueryData<T>(key, update(state.data), {
 		updatedAt: state.dataUpdatedAt,
 	});
+}
+
+/**
+ * Stop the reads that could still land an OLD count after the optimistic patch.
+ *
+ * WHAT THIS CLOSES (review round 1, m1). The patch writes every cache that
+ * renders the count, but a read dispatched BEFORE the click - the 30 s unread
+ * poll, whose answer also patches every list row, or any conversation-list
+ * refetch - answers with a count computed before the read was recorded, and its
+ * fresh `dataUpdatedAt` outranks the timestamps the patch deliberately keeps
+ * (`patchKeepingTime`). Row and badge would stay in agreement but both bounce
+ * 0 -> old -> 0 until the success invalidation landed. Cancelling first, in the
+ * same synchronous pass as the patch, removes that answer: a cancelled retryer
+ * rejects with `CancelledError`, so nothing lands.
+ *
+ * WHY ONLY ENTRIES THAT ALREADY HOLD DATA. A read with no data patched nothing,
+ * so it cannot bounce this patch - and cancelling it would strand an initial
+ * load: a cancelled query with no data has nothing to render and nothing
+ * re-dispatches it.
+ */
+export function cancelTeamBridgeUnreadReads(
+	client: QueryClient,
+	accountId: string,
+): void {
+	for (const prefix of [
+		teamBridgeKeys.unreadPrefix,
+		teamBridgeKeys.conversationsPrefix,
+	])
+		for (const query of client.getQueryCache().findAll({ queryKey: prefix })) {
+			if (!ownedBy(query.queryKey, accountId)) continue;
+			if (query.state.data === undefined) continue;
+			if (query.state.fetchStatus === "idle") continue;
+			query.cancel();
+		}
 }
 
 /**
@@ -361,9 +441,15 @@ export function applyTeamBridgeReadCursor(
 	const clears = before !== undefined && target.seq >= before.latestSeq;
 	if (!clears) return [];
 	const removed = before.muted ? 0 : before.unread;
-	const snapshot: Array<readonly [QueryKey, unknown]> = [];
-	const record = (key: QueryKey) =>
-		snapshot.push([key, client.getQueryData(key)] as const);
+	const snapshot: TeamBridgeUnreadSnapshotEntry[] = [];
+	const record = (key: QueryKey) => {
+		const state = client.getQueryState(key);
+		snapshot.push({
+			key,
+			data: state?.data,
+			updatedAt: state?.dataUpdatedAt ?? 0,
+		});
+	};
 	for (const query of client
 		.getQueryCache()
 		.findAll({ queryKey: teamBridgeKeys.conversationsPrefix })) {
@@ -434,8 +520,7 @@ export function restoreTeamBridgeUnreadSnapshot(
 	client: QueryClient,
 	snapshot: TeamBridgeUnreadSnapshot,
 ): void {
-	for (const [key, data] of snapshot) {
-		const at = client.getQueryState(key)?.dataUpdatedAt;
-		client.setQueryData(key, data, at ? { updatedAt: at } : undefined);
-	}
+	// BOTH halves go back: the value and the timestamp it was read at (m2).
+	for (const { key, data, updatedAt } of snapshot)
+		client.setQueryData(key, data, { updatedAt });
 }

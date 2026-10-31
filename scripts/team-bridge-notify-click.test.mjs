@@ -67,11 +67,22 @@ test("a click whose message is cached paints it, highlighted, with no history re
 		const first = app.frames.findIndex((frame) =>
 			frame.text.includes("Announced message body"),
 		);
-		assert.ok(first >= 0);
-		assert.ok(
-			app.frames.slice(first).length > 0 &&
-				!app.frames.some((frame) => frame.text.includes("Loading messages")),
-			"no loading state on a cached click",
+		assert.ok(first >= 0, "the clicked message rendered");
+		/*
+		 * WHAT THIS PROVES, AND WHY IT IS NOT `frame.slice(first).length > 0`
+		 * (agent review round 1, n2): that expression is true for ANY index
+		 * the line above accepts, so it asserted nothing. The distinction that
+		 * matters is whether the message was in the cache BEFORE the banner
+		 * pointed at it: a click whose id the timeline entry does not hold paints
+		 * the loading state (the sibling test below pins that shape) and only
+		 * then reads. A cached click may never paint it, at any point - so this
+		 * assertion fails on the notify-before-write ordering and passes only on
+		 * write-then-notify.
+		 */
+		assert.equal(
+			app.frames.some((frame) => frame.text.includes("Loading messages")),
+			false,
+			"no frame painted the loading state: the message was already cached",
 		);
 		const row = targetRow(app.host);
 		assert.equal(row.dataset.messageTarget, "true");

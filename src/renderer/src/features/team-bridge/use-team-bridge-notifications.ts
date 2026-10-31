@@ -82,6 +82,7 @@ import { t } from "@shared/i18n";
 import {
 	type InfiniteData,
 	type QueryClient,
+	isCancelledError,
 	useMutationState,
 	useQueries,
 	useQuery,
@@ -271,6 +272,47 @@ function mergeReplyIntoThreadCache(
 }
 
 /**
+ * The banner's own read of a conversation's newest page.
+ *
+ * WHY `fetchQuery`, AND WHAT "JOIN" MEANS HERE (agent review round 1, n1). It
+ * carries the reader itself, so an entry whose observer is long gone still
+ * refreshes, and a read already in flight for the same key is JOINED rather
+ * than cancelled - `Query.fetch` only cancels an in-flight fetch when the
+ * CALLER passes `cancelRefetch`, and `fetchQuery` never does.
+ *
+ * PASSING `cancelRefetch: false` EXPLICITLY IS NOT AVAILABLE, which is why this
+ * note is here instead of a flag: the property is not part of `FetchQueryOptions`
+ * in this version (tsc rejects it), and it would change nothing anyway - an
+ * absent `cancelRefetch` is already falsy in `Query.fetch`, so this call already
+ * joins. The round-1 suggestion assumed the flag was what made the join happen;
+ * it is the default, and the flag is unreachable from this API.
+ *
+ * THE EXPOSURE THAT IS REAL is the other direction: anyone else can cancel this
+ * read. `invalidateQueries`/`refetchQueries` for this key passes `cancelRefetch:
+ * true` and aborts the running fetch, which surfaces here as a rejected
+ * `CancelledError`, a banner degraded to metadata, and a click with no message
+ * to land on. That is why the call site retries once (see the catch below).
+ */
+function timelineReadOptions(
+	client: QueryClient,
+	conversationId: string,
+	tenantId: string,
+	accountId: string,
+) {
+	return {
+		...teamBridgeMessagesQueryOptions(
+			client,
+			conversationId,
+			tenantId,
+			accountId,
+		),
+		// The entry may hold a page fetched before this message existed; a
+		// fresher-looking stale page is the bug itself.
+		staleTime: 0,
+	};
+}
+
+/**
  * Compose and send one banner. Never throws, never logs.
  *
  * The newest message is read at notify time (see the module doc for why this
@@ -329,17 +371,20 @@ async function deliverTeamBridgeBanner(
 			 * WRITE BEFORE NOTIFY. The one read lands in the timeline's own cache
 			 * entry (same key, same reader as the page), so by the time the banner
 			 * can be clicked the page already holds the message it announces.
-			 * `staleTime: 0` because the entry may hold a page fetched before this
-			 * message existed; a fresher-looking stale page is the bug itself.
 			 */
-			const page = await client.fetchQuery({
-				...teamBridgeMessagesQueryOptions(
-					client,
-					candidate.conversationId,
-					candidate.tenantId,
-					selfAccountId,
-				),
-				staleTime: 0,
+			const read = () =>
+				client.fetchQuery(
+					timelineReadOptions(
+						client,
+						candidate.conversationId,
+						candidate.tenantId,
+						selfAccountId,
+					),
+				);
+			const page = await read().catch((error: unknown) => {
+				// Cancelled from outside: ask again, once (see the helper).
+				if (!isCancelledError(error)) throw error;
+				return read();
 			});
 			newest = page.messages.reduce<TeamBridgeMessage | undefined>(
 				(max, message) =>

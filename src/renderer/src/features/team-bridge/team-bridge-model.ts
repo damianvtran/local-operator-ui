@@ -142,6 +142,27 @@ export function showsMutedGlyph(
 }
 
 /**
+ * The register a conversation's unread count wears on its rail row.
+ *
+ * ONE SOURCE FOR A CLASSIFICATION, NOT A PROP (design review round 1, D1). The
+ * badge splits counts in two: an ACCENT mark for attention, the quiet numeral
+ * for a total. A muted conversation's count is a total - it stays on its row so
+ * the reader can see it, and it is deliberately kept out of the sidebar badge,
+ * because a mute is the reader saying "do not interrupt me" - so drawing it in
+ * the accent pill made the loudest mark on the rail the one the badge had been
+ * told not to count (two accent "1"s beside a nav 0). Muted therefore wears the
+ * quiet register; the mute glyph beside it says why.
+ *
+ * It lives here, beside the predicate the badge itself excludes muted rows
+ * with, so the row's mark and the badge's arithmetic cannot drift apart again.
+ */
+export function unreadRegister(
+	conversation: Pick<TeamBridgeConversation, "notify" | "muted">,
+): "attention" | "quiet" {
+	return showsMutedGlyph(conversation) ? "quiet" : "attention";
+}
+
+/**
  * The immediate Mute/Unmute item's next value.
  *
  * Unmute returns to `all`, Slack's behaviour: the item is a toggle, not a
@@ -460,15 +481,24 @@ export function conversationMembershipCounts(
 }
 
 /**
- * The badge'able total: unmuted unread, exactly the server's `total`.
+ * TEST-ONLY LEGACY: the pre-one-source badge number. DO NOT FEED A BADGE.
+ *
+ * This is the arithmetic the nav badge used before the shared unread view
+ * existed: the raw aggregate `total`, else a sum of whichever reads happened to
+ * answer. It is exactly the split that let a badge and a conversation row
+ * disagree about the same unread message (see `team-bridge-unread-sync.ts`), so
+ * every production caller moved to the merged view and the live badge reads
+ * that.
+ *
+ * It survives only because two suites still pin the OLD arithmetic against
+ * their fixtures (`team-bridge-model.test.mjs`, `team-bridge-scope.test.mjs`).
+ * `scripts/team-bridge-scope.test.mjs` also fails if ANY other production
+ * module mentions it, which is what stops this formula from sneaking back into
+ * a badge; deleting it is a follow-up once those fixtures move to the view.
  *
  * A muted conversation still shows its count on its own row (the user may want
  * to look), but it does not raise the sidebar badge — that is the one place a
  * mute has to be honoured, because the badge is what interrupts.
- *
- * The account aggregate carries no `conversations` rows (see the contract);
- * `total` is authoritative there. The row sum is only the race-safe fallback
- * for the tenant-scoped read.
  */
 export function badgeTotal(unread: {
 	total: number;

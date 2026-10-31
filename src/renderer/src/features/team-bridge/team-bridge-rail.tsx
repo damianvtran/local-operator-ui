@@ -37,6 +37,7 @@ import {
 	personDisplayLabel,
 	personRowState,
 	showsMutedGlyph,
+	unreadRegister,
 } from "./team-bridge-model";
 
 import {
@@ -164,14 +165,26 @@ const RAIL_CARD = {
  * The unread pill every channel, group, person and chief row shares: the
  * sidebar's shared accent `AttentionBadge` (operator, 2026-10-28), because an
  * unread conversation is a request for the reader's attention, not a total.
+ *
+ * A MUTED ROW IS THE EXCEPTION, and which register it wears is a MODEL fact,
+ * not a prop: `unreadRegister` (`team-bridge-model.ts`) answers from the same
+ * predicate that keeps a muted row out of the nav badge. The badge never counts
+ * a muted conversation - a mute means "do not interrupt me" - so drawing the
+ * out-of-badge count in the accent register put the loudest mark on the rail on
+ * the one number the product had been told not to count: two accent pills
+ * beside a nav 0, the disagreement this change set out to end, inverted (design
+ * review round 1, D1). The count stays visible, in the quiet numeral the repo
+ * reserves for totals, beside the bell-off glyph that says why it is quiet.
  */
-const Unread: FC<{ count: number; yieldsToMenu?: boolean }> = ({
-	count,
-	yieldsToMenu = false,
-}) =>
+const Unread: FC<{
+	count: number;
+	yieldsToMenu?: boolean;
+	register?: "attention" | "quiet";
+}> = ({ count, yieldsToMenu = false, register = "attention" }) =>
 	count > 0 ? (
 		<AttentionBadge
 			count={count}
+			register={register}
 			/*
 			 * ONE BADGE COLUMN (design round 1, D4). Person and chief rows used to
 			 * reserve `pr-8` for the hover "…", which pushed their counts 24px left
@@ -388,7 +401,11 @@ export const ConversationRailRow: FC<{
 						</span>
 					</span>
 				)}
-				<Unread count={unread} yieldsToMenu={Boolean(onArchive)} />
+				<Unread
+					count={unread}
+					yieldsToMenu={Boolean(onArchive)}
+					register={unreadRegister(conversation)}
+				/>
 			</button>
 			{onArchive && <ChannelRowMenu name={name} onArchive={onArchive} />}
 		</li>
@@ -633,7 +650,11 @@ export const PersonRailRow: FC<{
 							</span>
 						</span>
 					)}
-					<Unread count={unread} yieldsToMenu />
+					<Unread
+						count={unread}
+						yieldsToMenu
+						register={dm ? unreadRegister(dm) : "attention"}
+					/>
 				</button>
 			</TeamBridgeProfileCard>
 			{canStartGroup && (
@@ -720,7 +741,11 @@ export const ChiefRailRow: FC<{
 							</span>
 						</span>
 					)}
-					<Unread count={unread} yieldsToMenu />
+					<Unread
+						count={unread}
+						yieldsToMenu
+						register={dm ? unreadRegister(dm) : "attention"}
+					/>
 				</button>
 			</TeamBridgeProfileCard>
 			{!readOnly && (

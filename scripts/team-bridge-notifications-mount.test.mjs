@@ -30,7 +30,10 @@ const membershipsFixturePath = join(scratch, "memberships-fixture.mjs");
 const toastFixturePath = join(scratch, "toast-fixture.mjs");
 writeFileSync(
 	toastFixturePath,
-	"export const toasts = []; export const showInfoToast = (message) => { toasts.push(message); }; export const showErrorToast = () => {}; export const showSuccessToast = () => {};",
+	// The bundle also links the rail's profile-card edge, which imports the rest
+	// of the toast manager: stub the whole surface so the graph links (the suite
+	// asserts what the watcher toasts, not these helpers).
+	"export const toasts = []; export const showInfoToast = (message) => { toasts.push(message); }; export const showErrorToast = (message) => { toasts.push(message); }; export const showSuccessToast = () => {}; export const showWarningToast = () => {}; export const dismissToast = () => {};",
 );
 const mountPath = new URL(
 	`./_team-bridge-notifications-mount-${process.pid}.mjs`,
@@ -125,9 +128,11 @@ const bundled = await build({
 			export { toasts } from "@shared/utils/toast-manager";
 			export { useTeamBridgeNotificationOpen } from "./src/renderer/src/features/team-bridge/use-team-bridge-notification-open";
 			export { beginRadientAuthoritySignOut, beginRadientAuthorityTransition, settleRadientAuthority } from "./src/renderer/src/shared/hooks/radient-account-authority";
-			export { teamBridgeKeys, notifyMutationOptions, useMarkTeamBridgeRead } from "./src/renderer/src/features/team-bridge/use-team-bridge";
+			export { teamBridgeKeys, notifyMutationOptions, useMarkTeamBridgeRead, useTeamBridgeConversations, useTeamBridgeStatus } from "./src/renderer/src/features/team-bridge/use-team-bridge";
+			export { AttentionBadge } from "@shared/components/ui/attention-badge";
 			export { teamBridgeUnreadView, useTeamBridgeUnreadView, withSharedUnread } from "./src/renderer/src/features/team-bridge/team-bridge-unread-sync";
 			export { useTeamBridgeNavItem } from "./src/renderer/src/features/team-bridge/team-bridge-nav";
+			export { unreadRegister } from "./src/renderer/src/features/team-bridge/team-bridge-model";
 			export { fixture, TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
 		`,
 		resolveDir: process.cwd(),
@@ -136,6 +141,7 @@ const bundled = await build({
 	format: "esm",
 	platform: "node",
 	packages: "external",
+	jsx: "automatic",
 	write: false,
 	alias: {
 		"@shared/utils/toast-manager": toastFixturePath,
@@ -1709,7 +1715,13 @@ const railRow = (id, tenantId, kind, unread, extra = {}) => ({
 	...extra,
 });
 
-test("the nav badge equals the sum of what the rows show across every row kind and organization", async () => {
+/*
+ * The ARITHMETIC of the merge, across every row kind and organization. The
+ * rendered claim - that the nav badge a reader sees equals the accent marks the
+ * rows draw - is the test below (agent review round 1, n3: this one compares the
+ * view with itself, which cannot catch a merge hole).
+ */
+test("the view attributes every row kind and organization to one total", async () => {
 	/*
 	 * The rail's categories: channel, built-in channel, group, DM, a chief-of-
 	 * staff DM (an agent member), a conversation whose count is a thread reply
@@ -1835,6 +1847,141 @@ test("the nav badge equals the sum of what the rows show across every row kind a
 		organizations: [],
 	});
 	assert.equal(api.teamBridgeUnreadView(legacy, owner).total, 7);
+});
+
+/** Which attention marks a rendered subtree drew, by register. */
+const marksIn = (host) => {
+	const marks = [...host.querySelectorAll("[data-attention-register]")];
+	const of = (register) =>
+		marks
+			.filter((mark) => mark.dataset.attentionRegister === register)
+			.map((mark) => ({
+				count: Number(mark.textContent.replace("+", "")),
+				className: mark.className,
+			}));
+	return { accent: of("attention"), quiet: of("quiet") };
+};
+
+test("the rendered nav badge equals the rendered row marks, and a muted row's count is quiet", async () => {
+	/*
+	 * TWO RENDERED NUMBERS, NOT THE VIEW AGAINST ITSELF (agent review round 1,
+	 * n3). The arithmetic test above maps rows through the same view it compares
+	 * against, so a hole in the merge - or a category dropped from both sides -
+	 * still passes. Here the badge is the production nav hook's number drawn by
+	 * the shared `AttentionBadge`, and each row mark is drawn by that same shared
+	 * component from the ROW's own production derivation (`withSharedUnread` over
+	 * the conversation-list cache), so the two sides travel different code. The
+	 * registers come from `unreadRegister`, the model function the rail row uses
+	 * (`sidebar-attention-badge.test.mjs` pins that the row calls it), so this
+	 * test cannot disagree with the shipped row.
+	 *
+	 * The classification half is design round 1's D1: an ACCENT row count is
+	 * attention and sums to the nav badge; a muted row's count is a TOTAL, so it
+	 * renders in the quiet numeral, stays visible, and is excluded from the
+	 * badge. Before D1 both drew the accent pill, so a reader saw accent "1"s
+	 * beside a nav 0.
+	 */
+	resetFixture();
+	fixture.identity = "acct_alice";
+	const rows = [
+		railRow("bcv_ch", "tnt_a", "channel", 2),
+		railRow("bcv_dm", "tnt_a", "dm", 1),
+		{
+			...railRow("bcv_muted", "tnt_a", "channel", 5),
+			notify: "mute",
+			muted: true,
+		},
+	];
+	fixture.conversations = { conversations: rows };
+	const unreadRows = rows.map((row) => ({
+		conversation_id: row.id,
+		unread_count: row.unread_count,
+		last_read_seq: row.last_read_seq,
+		latest_seq: row.latest_seq,
+		muted: row.muted,
+	}));
+	// Three unmuted (2 + 1); the muted five stays on its row and out of the badge.
+	fixture.account = {
+		total: 3,
+		organizations: [
+			{ tenant_id: "tnt_a", tenant_name: "A", unread: 3, eligible: true },
+		],
+	};
+	fixture.tenants.tnt_a = { total: 8, conversations: unreadRows };
+	const Extra = () => {
+		const status = api.useTeamBridgeStatus(true);
+		const ready = status.data?.account_id === "acct_alice";
+		const list = api.useTeamBridgeConversations("all", ready, "acct_alice");
+		const nav = api.useTeamBridgeNavItem(true);
+		const view = api.useTeamBridgeUnreadView(ready ? "acct_alice" : undefined);
+		const rail = (list.data?.conversations ?? []).map((row) =>
+			api.withSharedUnread(row, view),
+		);
+		return React.createElement(
+			React.Fragment,
+			null,
+			React.createElement(api.AttentionBadge, {
+				count: nav?.attention ?? 0,
+				"data-testid": "nav-badge",
+			}),
+			React.createElement(
+				"ul",
+				{ "data-testid": "rows" },
+				rail.map((row) =>
+					React.createElement(
+						"li",
+						{ key: row.id, "data-conversation-id": row.id },
+						React.createElement(api.AttentionBadge, {
+							count: row.unread_count,
+							register: api.unreadRegister(row),
+						}),
+					),
+				),
+			),
+		);
+	};
+	const mounted = await mount({ Extra });
+	try {
+		const rowsHost = () => mounted.host.querySelector('[data-testid="rows"]');
+		await until(
+			() =>
+				mounted.host.querySelector('[data-testid="nav-badge"]')?.textContent ===
+					"3" && rowsHost().querySelectorAll("li").length === 3,
+			"nav badge 3 beside three rail rows",
+		);
+		const nav = Number(
+			mounted.host.querySelector('[data-testid="nav-badge"]').textContent,
+		);
+		const { accent, quiet } = marksIn(rowsHost());
+		assert.equal(
+			accent.reduce((total, mark) => total + mark.count, 0),
+			nav,
+			"the accent row counts are exactly the rendered nav badge",
+		);
+		assert.deepEqual(
+			accent.map((mark) => mark.count).sort((a, b) => a - b),
+			[1, 2],
+			"the two unmuted rows wear the accent register",
+		);
+		for (const mark of accent) {
+			assert.match(mark.className, /bg-accent/);
+			assert.match(mark.className, /text-on-accent/);
+		}
+		assert.deepEqual(
+			quiet.map((mark) => mark.count),
+			[5],
+			"the muted row's count is drawn, in the quiet register",
+		);
+		assert.match(quiet[0].className, /bg-elevated/);
+		assert.match(quiet[0].className, /text-ink-dim/);
+		assert.ok(
+			!accent.some((mark) => mark.count === 5),
+			"a muted count never takes the accent",
+		);
+		assert.equal(nav, 3, "the muted five is out of the badge");
+	} finally {
+		await mounted.teardown();
+	}
 });
 
 test("mark-read decrements the row and the nav badge in the same render, and rolls back on refusal", async () => {
