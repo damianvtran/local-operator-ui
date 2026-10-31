@@ -988,3 +988,95 @@ test("a pending row drives --md-ink and a confirmed one does not", async () => {
 		await app.close();
 	}
 });
+
+/*
+ * m2 (review round 3) - THE ATTEMPT RECORD FOLLOWS A RE-KEYED ROW.
+ *
+ * The 409 retry re-keys the ROW (PR #1512's rule) but used to leave the attempt
+ * record naming the burnt key. Then Edit, then Send re-derived that spent key from
+ * the record: the hub refused it, a THIRD key was minted, and the copy the retry had
+ * already landed came back as a duplicate. Sequence in this case: K1 conflicts, K2
+ * lands with its answer lost, Edit, Send - and the third send must wear K2, not K1
+ * and not a new K3.
+ */
+test("after a 409 retry, Edit then Send reuses the retried key, not the burnt one", async () => {
+	localStorage.clear();
+	m.resetPendingSendsForTest();
+	const refs = [];
+	const app = await mountPage(
+		pageProps({
+			target: conversationTarget,
+			onSend: async (_body, clientRef) => {
+				refs.push(clientRef);
+				if (refs.length === 1) throw conflict();
+				if (refs.length === 2) throw new Error("response lost");
+				return message({ id: "msg_late", seq: 1 });
+			},
+		}),
+	);
+	try {
+		await typeBody(app.element, "did this land?");
+		await act(async () => sendButton(app.element).click());
+		await settle();
+		assert.equal(refs.length, 2, "the conflict is retried once");
+		assert.notEqual(refs[1], refs[0], "the retry never reuses the burnt key");
+		const [failed] = rows(app.element);
+		const edit = [...failed.querySelectorAll("button")].find(
+			(button) => button.textContent === "Edit",
+		);
+		await act(async () => edit.click());
+		await settle();
+		await act(async () => sendButton(app.element).click());
+		await settle();
+		assert.equal(refs.length, 3, "the reader's third press reached the wire");
+		assert.equal(
+			refs[2],
+			refs[1],
+			"it re-sends the attempt's CURRENT key, so a landed retry is deduplicated",
+		);
+	} finally {
+		await app.close();
+	}
+});
+
+/*
+ * D7 (design round 3) - MARKDOWN'S OWN EMPHASIS TAKES THE PENDING INK.
+ *
+ * `markdown.css` pins `strong`, `code` and the headings to `--lo-ink`, so inside a
+ * pending body they stayed confirmed-looking and an all-bold message had no cue. The
+ * fix is a SCOPED rule that reads `--md-ink`, the property the pending row sets.
+ *
+ * WHAT THIS CASE CAN SEE: no stylesheet is applied in this probe, so it cannot compute
+ * a colour (the rendered check is the designer's live row). It can - and does - fail
+ * if the scoped rule is deleted or if it stops reading `--md-ink`, which is the half a
+ * rename or a "tidy-up" would silently break. The global rules in `markdown.css` are
+ * asserted untouched, because moving those would restyle the reasoning panel.
+ */
+test("the pending ink reaches strong/code/headings through a scoped rule only", async () => {
+	const { readFileSync } = await import("node:fs");
+	const shell = readFileSync("src/renderer/src/styles/index.css", "utf8");
+	const markdown = readFileSync(
+		"src/renderer/src/features/chat/components/markdown.css",
+		"utf8",
+	);
+	assert.match(
+		shell,
+		/\[data-delivery="pending"\][^{]*\.team-bridge-message-body[^{]*:is\([^)]*strong[^)]*code[^)]*h1/,
+		"a rule scoped to a pending row covers strong, code and the headings",
+	);
+	assert.match(
+		shell,
+		/\[data-delivery="pending"\][\s\S]{0,400}?color: var\(--md-ink/,
+		"and it reads --md-ink, the property the pending row sets",
+	);
+	assert.equal(
+		(markdown.match(/var\(--md-ink/g) ?? []).length,
+		1,
+		"markdown.css still reads --md-ink in ONE place (the prose rule), so the globals were not moved",
+	);
+	assert.match(
+		markdown,
+		/strong[^{]*\{[^}]*color: var\(--lo-ink\)/,
+		"and emphasis stays pinned to full ink for every other markdown surface",
+	);
+});

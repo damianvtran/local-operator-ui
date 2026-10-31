@@ -511,10 +511,6 @@ const MessageRow: FC<{
 	   change with delivery: an optimistic row and its server replacement must be one
 	   mounted subtree. A local row has no server id to react to, so its reactions are
 	   disabled rather than absent (absent would swap the component on reconcile). */
-	/* Keyed on the ROW identity, not the message id, and the component type does not
-	   change with delivery: an optimistic row and its server replacement must be one
-	   mounted subtree. A local row has no server id to react to, so its reactions are
-	   disabled rather than absent (absent would swap the component on reconcile). */
 	reactionContext && props.message.body !== null ? (
 		<ReactableMessageRow
 			key={`${reactionContext.accountId}:${rowKey ?? props.message.id}`}
@@ -813,15 +809,18 @@ const MessageRowView: FC<MessageRowProps> = ({
 					 * stylesheet keeps styling every other markdown surface in the app.
 					 */
 					<TeamBridgeMarkdown
-					<TeamBridgeMarkdown
-						className="team-bridge-message-body text-[14px]"
+						/* `transition-colors` is restored rather than the comment rewritten: the
+						   comment describes a settle, and no rule on `.lo-markdown` competes with a
+						   TRANSITION (only its `color` is unlayered). Design round 3 measured the
+						   step at 1.19:1 light / 1.63:1 dark - quiet enough that the settle must
+						   not read as motion, which is what a 150 ms colour fade gives. */
+						className="team-bridge-message-body text-[14px] transition-colors duration-fast"
 						style={{
 							...(delivery?.status === "pending"
 								? { "--md-ink": "var(--lo-ink-muted)" }
 								: {}),
 						}}
 						mentions={mentionRuns}
-					>
 					>
 						{message.body}
 					</TeamBridgeMarkdown>

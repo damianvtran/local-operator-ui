@@ -1660,6 +1660,17 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					if (!isClientRefConflict(error) || row.autoRetried) throw error;
 					clientRef = crypto.randomUUID();
 					patch({ clientRef, autoRetried: true });
+					/*
+					 * THE ATTEMPT RECORD MOVES WITH THE ROW (review round 3, m2). The row now
+					 * names the fresh key while the record still named the burnt one, so a
+					 * later Edit-then-Send re-derived the spent key from the record: the hub
+					 * refused it again, a THIRD key was minted, and the message the retry had
+					 * already landed came back as a duplicate. Only the record that is this
+					 * attempt's own is re-keyed - a newer press on the same draft keeps its own.
+					 */
+					const own = sendAttempts.get(composerKey);
+					if (own && own.clientRef === row.clientRef)
+						sendAttempts.set(composerKey, { ...own, clientRef });
 					result = await send(clientRef);
 				}
 				/*

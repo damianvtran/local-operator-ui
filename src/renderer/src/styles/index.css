@@ -161,6 +161,29 @@
 	}
 }
 
+/*
+ * THE PENDING INK REACHES MARKDOWN'S OWN EMPHASIS (design round 3, D7).
+ *
+ * `markdown.css` pins `strong`, `code` and the headings to `var(--lo-ink)` - full
+ * ink, on purpose, because a reasoning panel and a chat answer want emphasis to be
+ * emphasis. In a Team Bridge row that is sending, those elements were therefore the
+ * one part of the message that stayed confirmed-looking: an all-bold or all-code
+ * message had no pending cue at all, and bold stood out MORE while pending than
+ * after the hub took it.
+ *
+ * SCOPED ON PURPOSE. The rule reads `--md-ink`, which the pending row sets inline
+ * (`team-bridge-message-list.tsx`), so it follows that row's state and nothing else.
+ * Editing the rules in `markdown.css` instead would restyle every markdown surface
+ * in the app, the reasoning panel included - a decision well beyond a sending state.
+ * The attribute below is the row's own `data-delivery`, so the rule cannot reach an
+ * element outside a pending Team Bridge message.
+ */
+[data-delivery="pending"]
+	.team-bridge-message-body
+	:is(strong, b, em, code, pre, h1, h2, h3, h4, h5, h6) {
+	color: var(--md-ink, var(--lo-ink));
+}
+
 /* An avatar photo arriving over its initials (sidebar account row, design
  * review round 1, D5): the same opacity-only keyframe as the transcript, at
  * `--duration-fast` because the plate is 28px and the swap should read as
