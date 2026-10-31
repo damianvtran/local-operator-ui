@@ -3,18 +3,22 @@
 
 Only allowlisted structured evidence leaves a child. Raw stdout/stderr and Node
 report environment/command fields may contain credentials, so neither is stored.
-The supervisor's process group, not a name-pattern kill, bounds descendants too.
+Identity-owned descendants across detached groups, not a name-pattern kill,
+are the observation and cleanup boundary.
 """
 
 import argparse
+import ctypes
 import hashlib
 import json
 import os
 from pathlib import Path
 import signal
 import subprocess
+import sys
 import tempfile
 import time
+from unittest.mock import patch
 
 REFS = {
     "avatar": "2c0f276d0ead12e6b8664f550468b8217bbe506d",
@@ -88,32 +92,124 @@ def write_json(path, value):
     path.write_text(json.dumps(value, indent=2) + "\n")
 
 
-def members(pgid):
-    """Linux procfs is independent of a blocked ps subprocess; zombies are done."""
-    rows = []
-    for entry in Path('/proc').iterdir():
-        if not entry.name.isdigit():
-            continue
-        try:
-            text = (entry / 'stat').read_text()
-            fields = text[text.rfind(')') + 2:].split()
-            if int(fields[2]) != pgid or fields[0] == 'Z':
-                continue
-            rss = int(fields[21]) * os.sysconf('SC_PAGE_SIZE') // 1024
-            ticks = int(fields[11]) + int(fields[12])
-            rows.append({'pid': int(entry.name), 'ppid': int(fields[1]),
-                         'pgid': pgid, 'cpu_seconds': ticks / os.sysconf('SC_CLK_TCK'),
-                         'rss_kib': rss, 'node': (entry / 'comm').read_text().strip() == 'node'})
-        except (FileNotFoundError, ProcessLookupError, PermissionError):
-            continue
-    return rows
-
-
-def group_signal(pgid, sig):
+def process_row(pid, include_zombie=False):
+    """A PID alone is not ownership: start ticks distinguish recycled PIDs."""
+    entry = Path('/proc') / str(pid)
     try:
-        os.killpg(pgid, sig)
+        text = (entry / 'stat').read_text()
+        fields = text[text.rfind(')') + 2:].split()
+        if fields[0] == 'Z' and not include_zombie:
+            return None
+        return {'pid': pid, 'ppid': int(fields[1]), 'pgid': int(fields[2]),
+                'zombie': fields[0] == 'Z',
+                'start_id': int(fields[19]),
+                'cpu_seconds': (int(fields[11]) + int(fields[12])) / os.sysconf('SC_CLK_TCK'),
+                'rss_kib': int(fields[21]) * os.sysconf('SC_PAGE_SIZE') // 1024,
+                'node': (entry / 'comm').read_text().strip() == 'node'}
+    except (FileNotFoundError, ProcessLookupError, PermissionError):
+        return None
+
+
+def process_table():
+    return [row for entry in Path('/proc').iterdir() if entry.name.isdigit()
+            if (row := process_row(int(entry.name))) is not None]
+
+
+def signal_identity(row, sig):
+    """Pin the kernel process before rechecking identity; never kill by name/group.
+
+    Re-read AFTER pidfd_open: a PID reused between census and open cannot receive
+    the signal. The pinned descriptor closes the remaining check/signal race.
+    Linux support is mandatory; there is no unsafe bare-PID fallback.
+    """
+    try:
+        fd = os.pidfd_open(row['pid'])
     except ProcessLookupError:
-        pass
+        return False
+    try:
+        current = process_row(row['pid'])
+        if current and current['start_id'] == row['start_id']:
+            try:
+                signal.pidfd_send_signal(fd, sig)
+                return True
+            except ProcessLookupError:
+                pass
+    finally:
+        os.close(fd)
+    return False
+
+
+def subreaper(enable):
+    # A detached child can outlive/reparent away from its observed parent. Linux
+    # adoption keeps that tree reachable even if the parent dies between scans.
+    # Existing direct children are excluded separately, and the prior setting is
+    # restored after this one invocation. Darwin test adapters do not claim this.
+    if sys.platform != 'linux':
+        return None
+    libc = ctypes.CDLL(None, use_errno=True)
+    previous = ctypes.c_int()
+    if libc.prctl(37, ctypes.byref(previous), 0, 0, 0) != 0:
+        raise OSError(ctypes.get_errno(), 'PR_GET_CHILD_SUBREAPER')
+    if libc.prctl(36, int(enable), 0, 0, 0) != 0:
+        raise OSError(ctypes.get_errno(), 'PR_SET_CHILD_SUBREAPER')
+    return previous.value
+
+
+class OwnedTree:
+    """Retain ancestry ownership across setsid, reparenting and parent exit."""
+
+    def __init__(self, root_pid, baseline, adopt):
+        self.root_pid = root_pid
+        self.baseline = {(r['pid'], r['start_id']) for r in baseline}
+        self.adopt = adopt
+        self.known = {}
+        self.groups = set()
+        root = process_row(root_pid)
+        if root:
+            self.known[(root_pid, root['start_id'])] = root
+
+    def observe(self):
+        table = process_table()
+        live = {r['pid']: r for r in table}
+        changed = True
+        while changed:
+            changed = False
+            for row in table:
+                identity = (row['pid'], row['start_id'])
+                parent = live.get(row['ppid'])
+                parent_owned = parent and (parent['pid'], parent['start_id']) in self.known
+                adopted = (self.adopt and row['ppid'] == os.getpid()
+                           and identity not in self.baseline)
+                if identity not in self.known and (parent_owned or adopted):
+                    self.known[identity] = row
+                    changed = True
+        rows = [r for r in table if (r['pid'], r['start_id']) in self.known]
+        for row in rows:
+            self.known[(row['pid'], row['start_id'])] = row
+            self.groups.add(row['pgid'])
+        return rows
+
+    def signal(self, rows, sig):
+        for row in reversed(rows):
+            signal_identity(row, sig)
+
+    def reap(self):
+        if not self.adopt:
+            return
+        # Only our own identity-owned, adopted children; never waitpid(-1), which
+        # could consume the Popen root's status or an unrelated caller's child.
+        for pid, start in self.known:
+            if pid == self.root_pid:
+                continue
+            current = process_row(pid, include_zombie=True)
+            if not (current and current['start_id'] == start
+                    and current.get('zombie') and current['ppid'] == os.getpid()):
+                continue
+            # An unreaped zombie cannot recycle its PID before this wait.
+            try:
+                os.waitpid(pid, os.WNOHANG)
+            except ChildProcessError:
+                pass
 
 
 def supervise(command, cwd, output, seconds=LIMIT):
@@ -126,17 +222,41 @@ def supervise(command, cwd, output, seconds=LIMIT):
     env = {'PATH': os.environ['PATH'], 'HOME': str(home), 'CI': '1',
            'TERM': 'xterm-256color', 'LOCAL_OPERATOR_CONFIG_DIR': str(home / '.local-operator'),
            'PROBE_EVIDENCE': str(output), 'NODE_OPTIONS': f'--import={hook}'}
+    # Fail before launch if Linux cannot provide identity-safe signaling.
+    if sys.platform == 'linux' and not (
+            hasattr(os, 'pidfd_open') and hasattr(signal, 'pidfd_send_signal')):
+        raise RuntimeError('Linux pidfd support is required for safe ownership cleanup')
+    if sys.platform == 'linux':
+        # Attribute presence alone is not kernel/seccomp capability. Probe our
+        # own identity with signal zero BEFORE starting a child we must reap.
+        fd = os.pidfd_open(os.getpid())
+        try:
+            signal.pidfd_send_signal(fd, 0)
+        finally:
+            os.close(fd)
+    baseline = process_table()
+    previous_subreaper = subreaper(True)
     started = time.monotonic()
+    deadline = started + seconds
     # A nonblocking pipe drains even a deliberately noisy negative control without
     # keeping raw output on disk; only its byte count is retained below.
     read_fd, write_fd = os.pipe()
     os.set_blocking(read_fd, False)
-    proc = subprocess.Popen(command, cwd=cwd, env=env, start_new_session=True,
-                            stdout=write_fd, stderr=write_fd)
+    try:
+        proc = subprocess.Popen(command, cwd=cwd, env=env, start_new_session=True,
+                                stdout=write_fd, stderr=write_fd)
+    except BaseException:
+        os.close(read_fd)
+        os.close(write_fd)
+        if previous_subreaper is not None:
+            subreaper(previous_subreaper)
+        raise
     os.close(write_fd)
     pgid = proc.pid
+    tree = OwnedTree(proc.pid, baseline, previous_subreaper is not None)
     samples, total_bytes = [], 0
-    requested = terminated = timed_out = False
+    requested = terminated = killed = timed_out = False
+    report_requests, term_requests, kill_requests = set(), set(), set()
     last_sample = -2
     try:
         while True:
@@ -150,43 +270,73 @@ def supervise(command, cwd, output, seconds=LIMIT):
                     total_bytes += len(block)
                 except BlockingIOError:
                     break
-            rows = members(pgid)
+            rows = tree.observe()
+            tree.reap()
             if elapsed - last_sample >= 2 or not rows:
                 samples.append({'seconds': round(elapsed, 3), 'members': rows})
                 last_sample = elapsed
             rc = proc.poll()
             if rc is not None and not rows:
                 break
-            if elapsed >= seconds - 2 and not requested:
-                requested = True
-                samples.append({'seconds': round(elapsed, 3), 'pre_reap': rows})
+            # Snapshot and cleanup time belong INSIDE the original cap. Re-scan
+            # throughout teardown: a detached late child is still ours, not a
+            # new independent group to ignore. Never depend on the keeper doing
+            # our cleanup or on the outer coordinator's exit as proof of it.
+            if elapsed >= max(1, seconds - 4):
+                if not requested:
+                    requested = True
+                    samples.append({'seconds': round(elapsed, 3), 'pre_reap': rows})
                 for row in rows:
-                    if row['node'] and (output / f"node-{row['pid']}.jsonl").exists():
-                        # An unpreloaded Node has no observer signal handler;
-                        # USR2 would terminate it rather than capture evidence.
-                        try:
-                            if os.getpgid(row['pid']) == pgid:
-                                os.kill(row['pid'], signal.SIGUSR2)
-                        except ProcessLookupError:
-                            pass
-            if elapsed >= seconds - 1 and not terminated:
+                    identity = (row['pid'], row['start_id'])
+                    if (identity not in report_requests and row['node']
+                            and (output / f"node-{row['pid']}.jsonl").exists()):
+                        if signal_identity(row, signal.SIGUSR2):
+                            report_requests.add(identity)
+            if elapsed >= seconds - 2:
                 terminated = timed_out = True
-                group_signal(pgid, signal.SIGTERM)
-            if elapsed >= seconds:
+                for row in reversed(rows):
+                    identity = (row['pid'], row['start_id'])
+                    if identity not in term_requests:
+                        signal_identity(row, signal.SIGTERM)
+                        term_requests.add(identity)
+            if elapsed >= seconds - 1:
+                killed = timed_out = True
+                for row in reversed(rows):
+                    identity = (row['pid'], row['start_id'])
+                    if identity not in kill_requests:
+                        signal_identity(row, signal.SIGKILL)
+                        kill_requests.add(identity)
+            # Leave a small reserve for the final all-owned-groups census and
+            # serialization. There is deliberately no extra five-second wait.
+            if time.monotonic() >= deadline - 0.2:
                 timed_out = True
-                group_signal(pgid, signal.SIGKILL)
                 break
             time.sleep(0.025)
     finally:
-        group_signal(pgid, signal.SIGKILL)
-        proc.wait(timeout=5)
+        # Cleanup must still run if a census itself failed. Every cached row is
+        # revalidated through pidfd before signaling, never trusted as a PID.
+        tree.signal(list(tree.known.values()), signal.SIGKILL)
+        while proc.poll() is None and time.monotonic() < deadline - 0.1:
+            time.sleep(0.005)
+        tree.reap()
         os.close(read_fd)
-    survivors = members(pgid)
+        if previous_subreaper is not None:
+            subreaper(previous_subreaper)
+    survivors = tree.observe()
+    tree.reap()
+    owned_groups = sorted(tree.groups)
     result = {'status': 'timeout' if timed_out else 'completed',
               'exit_code': 124 if timed_out else proc.returncode,
               'seconds': round(time.monotonic() - started, 3),
               'pgid': pgid, 'discarded_output_bytes': total_bytes,
-              'survivors': survivors, 'samples': samples}
+              'survivors': survivors, 'samples': samples,
+              'owned_groups': owned_groups,
+              'owned_identities': list(tree.known.values()),
+              'report_requests': [{'pid': pid, 'start_id': start}
+                                  for pid, start in sorted(report_requests)],
+              'term_sent': terminated, 'kill_sent': killed}
+    if survivors:
+        result.update(status='cleanup-failure', exit_code=126)
     write_json(output / 'result.json', result)
     return result
 
@@ -232,10 +382,88 @@ function renderToStaticMarkup(...args) {
         subprocess.run(['node', '--check', str(path)], check=True, capture_output=True)
 
 
+def identity_controls(signal_fn=signal_identity):
+    """Synthetic PID reuse/ancestry negatives; no real external PID is signaled."""
+    def row(pid, parent, group, start=1):
+        return {'pid': pid, 'ppid': parent, 'pgid': group, 'start_id': start,
+                'cpu_seconds': 0, 'rss_kib': 1, 'node': True}
+    initial = [row(101, 99, 101), row(102, 101, 102), row(103, 102, 102),
+               row(104, 101, 104), row(900, 99, 900)]
+    with patch.dict(globals(), process_row=lambda pid: initial[0],
+                    process_table=lambda: initial):
+        tree = OwnedTree(101, [], False)
+        assert {r['pid'] for r in tree.observe()} == {101, 102, 103, 104}
+    # Parent exit/reparenting retains known identity; same PID with a new start
+    # identity in an unrelated tree must never be claimed or signaled.
+    later = [row(102, 1, 102), row(103, 999, 900, start=2), row(104, 1, 104)]
+    with patch.dict(globals(), process_table=lambda: later):
+        assert {r['pid'] for r in tree.observe()} == {102, 104}
+    fd = os.open(os.devnull, os.O_RDONLY)
+    with patch.object(os, 'pidfd_open', return_value=fd, create=True), \
+            patch.dict(globals(), process_row=lambda pid: later[1]), \
+            patch.object(signal, 'pidfd_send_signal', create=True) as send:
+        assert not signal_fn(initial[2], signal.SIGKILL)
+        send.assert_not_called()
+    fd = os.open(os.devnull, os.O_RDONLY)
+    with patch.object(os, 'pidfd_open', return_value=fd, create=True), \
+            patch.dict(globals(), process_row=lambda pid: initial[2]), \
+            patch.object(signal, 'pidfd_send_signal', create=True) as send:
+        assert signal_fn(initial[2], signal.SIGUSR2)
+        send.assert_called_once_with(fd, signal.SIGUSR2)
+    print('PASS detached ancestry / reparenting / recycled-PID refusal / pinned signal', flush=True)
+
+
+def coordinator_controls(output, roots):
+    """Run the real frozen topology, not a lookalike direct-child substitute."""
+    # Built-in-only runtime closure, including the URL-based preloader/keeper
+    # imports that a static `from` import walker alone would incorrectly omit.
+    files = ['run-desktop-tests', 'desktop-test-keeper', 'no-hardlink-write-preload',
+             'no-hardlink-write', 'desktop-test-concurrency', 'desktop-test-lane-bound',
+             'desktop-test-memory-guard', 'notifications-off', 'telemetry-off']
+    for source in roots:
+        sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=source, text=True).strip()
+        label = next((name for name, ref in REFS.items() if ref == sha), None)
+        if label is None:
+            raise RuntimeError('coordinator regression requires an immutable target ref')
+        root = output / f'coordinator-{label}'
+        (root / 'scripts').mkdir(parents=True)
+        hashes = {}
+        for name in files:
+            original = (source / 'scripts' / f'{name}.mjs').read_bytes()
+            (root / 'scripts' / f'{name}.mjs').write_bytes(original)
+            hashes[name] = hashlib.sha256(original).hexdigest()
+        fixture = root / 'scripts' / 'retained-probe.test.mjs'
+        fixture.write_text("import {test} from 'node:test'; import assert from 'node:assert/strict';\n"
+                           "test('retained assertion',()=>{assert.equal(1,1);"
+                           "globalThis.__probe('retained-worker');setInterval(()=>{},1000);});\n")
+        reporter = root / 'reporter.mjs'
+        reporter.write_text(REPORTER)
+        evidence = output / f'retained-{label}'
+        result = supervise(['node', 'scripts/run-desktop-tests.mjs', '--test-concurrency=1',
+                            f'--test-reporter={reporter}', str(fixture)], root, evidence, 8)
+        events = [json.loads(line) for path in evidence.glob('node-*.jsonl')
+                  for line in path.read_text().splitlines()]
+        workers = {e['pid'] for e in events if e['stage'] == 'retained-worker'}
+        reported = {e['pid'] for e in events if e['stage'] == 'pre-reap-report'}
+        sampled = {r['pid'] for sample in result['samples'] for r in sample.get('members', [])}
+        passed = sum(e['stage'] == 'test:pass' for e in events)
+        result.update(source_sha=sha, coordinator_sha256=hashes,
+                      retained_worker_pids=sorted(workers), passed_assertions=passed,
+                      worker_sampled=bool(workers and workers <= sampled),
+                      worker_reported=bool(workers and workers <= reported))
+        write_json(evidence / 'result.json', result)
+        assert result['status'] == 'timeout' and result['exit_code'] == 124
+        assert result['seconds'] <= 8 and not result['survivors']
+        assert workers and workers <= reported and workers <= sampled and passed > 0
+        assert len(result['owned_groups']) >= 3
+        print(f'PASS frozen {label} retained assertion: worker sampled/reported, all owned groups reaped', flush=True)
+
+
 def controls(output):
     if not Path('/proc/self/stat').exists():
         raise RuntimeError('probe requires Linux procfs; local macOS is syntax-only')
     output.mkdir(parents=True)
+    identity_controls()
     with tempfile.TemporaryDirectory(dir=output) as temp:
         root = Path(temp)
         child = root / 'child.mjs'
@@ -317,10 +545,15 @@ if __name__ == '__main__':
     parser.add_argument('--label', choices=REFS)
     parser.add_argument('--phase', choices=['single', 'trio'])
     parser.add_argument('--output', required=True, type=Path)
+    parser.add_argument('--coordinator-root', type=Path, action='append', default=[])
     args = parser.parse_args()
     args.output = args.output.resolve()
     if args.mode == 'self-test':
         controls(args.output)
+        if {subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
+                for root in args.coordinator_root} != set(REFS.values()):
+            parser.error('self-test requires both immutable --coordinator-root checkouts')
+        coordinator_controls(args.output, [root.resolve() for root in args.coordinator_root])
     else:
         if not all((args.root, args.label, args.phase)):
             parser.error('run requires root, label and phase')
