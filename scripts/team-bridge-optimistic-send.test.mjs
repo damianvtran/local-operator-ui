@@ -102,7 +102,8 @@ const bundle = await build({
  export {QueryClient, QueryClientProvider} from "@tanstack/react-query";
  export {usePendingSends, resetPendingSendsForTest} from "./src/renderer/src/features/team-bridge/team-bridge-pending-sends";
  export {reconcileDraftAccount} from "./src/renderer/src/shared/store/team-bridge-draft-account";
- export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store";`,
+ export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store";
+ export {TeamBridgeMessageList} from "./src/renderer/src/features/team-bridge/team-bridge-message-list";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -1078,5 +1079,122 @@ test("the pending ink reaches strong/code/headings through a scoped rule only", 
 		markdown,
 		/strong[^{]*\{[^}]*color: var\(--lo-ink\)/,
 		"and emphasis stays pinned to full ink for every other markdown surface",
+	);
+});
+
+/*
+ * M1 (review round 5) - A MEMBERSHIP EVENT NEVER ANCHORS ON A LOCAL ROW.
+ *
+ * #1539 draws "You invited Sana" after the server row named by its `after_seq`, and
+ * skips rows without a numeric seq because those are optimistic. THIS PR gives every
+ * unconfirmed row a numeric DISPLAY seq (`seq: send.serverRow?.seq ?? top`), so in a
+ * new conversation the first draft is seq 0 - equal to the creation event's
+ * `after_seq: 0` - and the line drew UNDER the draft, then jumped above it when the
+ * hub confirmed. A FAILED draft kept it underneath indefinitely.
+ *
+ * The list now computes anchors from server rows only. This case renders the real
+ * list through `presentationOf` with a numeric-seq local row, for pending and failed,
+ * new conversation and mid-conversation, and asserts the line's position does not move
+ * when the row confirms.
+ */
+test("a membership event never anchors on a local row, pending or failed", async () => {
+	const { renderToStaticMarkup } = await import("react-dom/server");
+	const h = React.createElement;
+	const event = (id, after_seq) => ({
+		id,
+		kind: "invited",
+		actor: { account_id: "acct_self", kind: "human", display_label: "Damian" },
+		targets: [
+			{ account_id: "acct_sana", kind: "human", display_label: "Sana" },
+		],
+		after_seq,
+		created_at: "2026-10-30T09:00:00Z",
+		request_id: `bcrq_${id}`,
+	});
+	const row = (id, seq) => ({
+		id,
+		conversation_id: "conv_new",
+		seq,
+		sender: { account_id: "acct_self", kind: "human", display_label: "Damian" },
+		body: "first words",
+		origin: "human",
+		created_at: "2026-10-30T09:01:00Z",
+	});
+	/* The order the reader sees: each marker in document order. */
+	const order = (markup) =>
+		[
+			...markup.matchAll(
+				/data-row-key="([^"]+)"|data-team-bridge-event="([^"]+)"/g,
+			),
+		].map((match) => match[1] ?? match[2]);
+	const draw = (messages, presentationOf, events) =>
+		renderToStaticMarkup(
+			h(
+				m.QueryClientProvider,
+				{ client: new m.QueryClient() },
+				h(m.TeamBridgeMessageList, {
+					messages,
+					labelFor: (who) => who.display_label ?? null,
+					profileFor: () => undefined,
+					canMessagePerson: () => false,
+					events,
+					arrivalsEnabled: false,
+					presentationOf,
+				}),
+			),
+		);
+	const localPresentation =
+		(id, status = "pending") =>
+		(message) =>
+			message.id === id
+				? { key: id, local: true, delivery: { status } }
+				: { key: message.id, local: false };
+
+	/* A - NEW CONVERSATION, first send still pending: the creation line leads. */
+	assert.deepEqual(
+		order(
+			draw([row("local_1", 0)], localPresentation("local_1"), [event("e1", 0)]),
+		),
+		["event:e1", "local_1"],
+		"the creation event leads and the draft follows it",
+	);
+	/* A' - THE SAME MESSAGE, now the hub's: the line must not have moved. */
+	assert.deepEqual(
+		order(draw([row("msg_1", 1)], () => ({ local: false }), [event("e1", 0)])),
+		["event:e1", "msg_1"],
+		"after the hub confirms, the line is above the row",
+	);
+
+	/* B - MID-CONVERSATION: an event whose anchor is above the draft stays there. */
+	assert.deepEqual(
+		order(
+			draw(
+				[row("m1", 1), row("m2", 2), row("local_3", 3)],
+				localPresentation("local_3"),
+				[event("e3", 3)],
+			),
+		),
+		["m1", "m2", "event:e3", "local_3"],
+	);
+	assert.deepEqual(
+		order(
+			draw(
+				[row("m1", 1), row("m2", 2), row("m4", 4)],
+				() => ({ local: false }),
+				[event("e3", 3)],
+			),
+		),
+		["m1", "m2", "event:e3", "m4"],
+		"the same relative place once the draft is the hub's",
+	);
+
+	/* C - A FAILED first send: the line never sits under a row that did not land. */
+	assert.deepEqual(
+		order(
+			draw([row("local_9", 0)], localPresentation("local_9", "failed"), [
+				event("e1", 0),
+			]),
+		),
+		["event:e1", "local_9"],
 	);
 });

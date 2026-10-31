@@ -327,7 +327,20 @@ export const TeamBridgeMessageList: FC<{
 		(party.kind === "agent"
 			? t("ui.teamBridge.sender.unknown_agent")
 			: t("ui.teamBridge.sender.unknown_person"));
-	const eventsAt = teamBridgeEventAnchors(messages, events);
+	/*
+	 * ANCHORS COME FROM SERVER ROWS ONLY (review round 5, M1). A local row carries a
+	 * NUMERIC DISPLAY seq so the thread can order it against the page, which defeats
+	 * `teamBridgeEventAnchors`' own guard (that guard reads "not a number" as
+	 * "optimistic"). In a new conversation the first draft's display seq is 0 - the
+	 * creation events' `after_seq` - so "You invited Sana" drew UNDER the draft and
+	 * jumped above it on confirm; a failed draft kept it underneath forever. The rows
+	 * reaching the anchor map are therefore the hub's, which is what its contract
+	 * always meant: an event belongs to history, never to a draft.
+	 */
+	const eventsAt = teamBridgeEventAnchors(
+		messages.filter((message) => !present(message).local),
+		events,
+	);
 	const eventSlot = (anchor: string) => {
 		const at = eventsAt.get(anchor);
 		return at ? (
