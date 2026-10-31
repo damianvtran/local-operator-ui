@@ -8342,6 +8342,30 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "e3ef1a80523f97cba4e445d97baa1548055d1cdd54537106889a0f48c30b230b",
+					"target_sha256": "2a89e08423abfdbd940e4c15aa2dee0fa1cac1aa151a1307af7add5fcd3aa228",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "87206376c1d7-rebase4-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/87206376c1d7-rebase4-es.json",
+							"receipt_sha256": "e1b0c5c734493c6cb51b984e8e94af1cc0c6f424a6ac60e0bc6fe5abbf232895",
+							"scope": "Fourth rebase onto origin/main f455cec6f69 (#1532): main bytes preserved, 13 ui.teamBridge.delivery.* keys re-audited against English",
+							"note": "Fourth-rebase re-audit (session 87206376c1d7): main-side bytes = origin/main f455cec6f69 (d2ccd70111ca-rebase4-es); 13 delivery.* re-read vs English. No value changed."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -17221,6 +17245,30 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "e3ef1a80523f97cba4e445d97baa1548055d1cdd54537106889a0f48c30b230b",
+					"target_sha256": "0a594db352dd7ccef853917313c0025632a867349d3efbefdd70e3601db3e9d1",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "87206376c1d7-rebase4-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/87206376c1d7-rebase4-fr.json",
+							"receipt_sha256": "cc116c682b57fff53c029b2ae40aa2ac9c74f840a8e386ae59f9f5f22f006d71",
+							"scope": "Fourth rebase onto origin/main f455cec6f69 (#1532): main bytes preserved, 13 ui.teamBridge.delivery.* keys re-audited against English",
+							"note": "Fourth-rebase re-audit (session 87206376c1d7): main-side bytes = origin/main f455cec6f69 (d2ccd70111ca-rebase4-fr); 13 delivery.* re-read vs English. No value changed."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -25860,6 +25908,30 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "e3ef1a80523f97cba4e445d97baa1548055d1cdd54537106889a0f48c30b230b",
+					"target_sha256": "c745141dd85873efd254ebde3deb7bcaad2d3b699a6eedd91ddd1e38b4228840",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "87206376c1d7-rebase4-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/87206376c1d7-rebase4-hi.json",
+							"receipt_sha256": "6a9567453c34d98cf3348f2882e6cf599f5bdbbff14898f0283f7828ee961628",
+							"scope": "Fourth rebase onto origin/main f455cec6f69 (#1532): main bytes preserved, 13 ui.teamBridge.delivery.* keys re-audited against English",
+							"note": "Fourth-rebase re-audit (session 87206376c1d7): main-side bytes = origin/main f455cec6f69 (d2ccd70111ca-rebase4-hi); 13 delivery.* re-read vs English. No value changed."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -34388,6 +34460,30 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "e3ef1a80523f97cba4e445d97baa1548055d1cdd54537106889a0f48c30b230b",
+					"target_sha256": "50ff644ea1c391ffe2210ccc7e4a02856c2d47d0966a32a6d15b101066cb7e9e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "87206376c1d7-rebase4-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/87206376c1d7-rebase4-ru.json",
+							"receipt_sha256": "a4f159f6c20450ca1f0dca3a2db2acba2ca1a30fea3fade24bdacf20c444b759",
+							"scope": "Fourth rebase onto origin/main f455cec6f69 (#1532): main bytes preserved, 13 ui.teamBridge.delivery.* keys re-audited against English",
+							"note": "Fourth-rebase re-audit (session 87206376c1d7): main-side bytes = origin/main f455cec6f69 (d2ccd70111ca-rebase4-ru); 13 delivery.* re-read vs English. No value changed."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -42882,6 +42978,30 @@
 							"receipt_sha256": "ff649f37e4fb56bd10c58dd87dd6f654e0b6b74d55d2212c68bc6b90768ddab7",
 							"scope": "Post-merge mechanical union round 4 (main 7492ec26bb8 into ui#1532 0e2fdf0): 14 mentions.* = ours, 300 others = main; merged bytes == ours, main touched no catalogue",
 							"note": "Union re-audit (session d2ccd70111ca); mentions.* = 171d0b58c96a-rebase3/0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase/171d0b58c96a-rebase3. No value changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "e3ef1a80523f97cba4e445d97baa1548055d1cdd54537106889a0f48c30b230b",
+					"target_sha256": "1d3cb4bff2be1fdfd10880f2c9c7c35135fc3411dd6946d37023d510bf8a6678",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "87206376c1d7-rebase4-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/87206376c1d7-rebase4-ur.json",
+							"receipt_sha256": "646e2e978a5a23f7f094c9743afad7e7a4430501f9136cfcf4e3f6de153a5881",
+							"scope": "Fourth rebase onto origin/main f455cec6f69 (#1532): main bytes preserved, 13 ui.teamBridge.delivery.* keys re-audited against English",
+							"note": "Fourth-rebase re-audit (session 87206376c1d7): main-side bytes = origin/main f455cec6f69 (d2ccd70111ca-rebase4-ur); 13 delivery.* re-read vs English. No value changed."
 						}
 					],
 					"status": "audited"
@@ -51833,6 +51953,30 @@
 							"receipt_sha256": "3b4400b9d32772d96a248abcac086fa5b635984dcd804555852f5685d09640d3",
 							"scope": "Post-merge mechanical union round 4 (main 7492ec26bb8 into ui#1532 0e2fdf0): 14 mentions.* = ours, 300 others = main; merged bytes == ours, main touched no catalogue",
 							"note": "Union re-audit (session d2ccd70111ca); mentions.* = 171d0b58c96a-rebase3/0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase/171d0b58c96a-rebase3. No value changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "e3ef1a80523f97cba4e445d97baa1548055d1cdd54537106889a0f48c30b230b",
+					"target_sha256": "ab2a9b0a243feabe140526c2de77f5ca7c1342a47a2b20810efd839a64ec9e1b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "87206376c1d7-rebase4-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/87206376c1d7-rebase4-vi.json",
+							"receipt_sha256": "433fddd60b09691e4b982e356e89b8512f653779b292952cc1085c5315023b36",
+							"scope": "Fourth rebase onto origin/main f455cec6f69 (#1532): main bytes preserved, 13 ui.teamBridge.delivery.* keys re-audited against English",
+							"note": "Fourth-rebase re-audit (session 87206376c1d7): main-side bytes = origin/main f455cec6f69 (d2ccd70111ca-rebase4-vi); 13 delivery.* re-read vs English. No value changed."
 						}
 					],
 					"status": "audited"
@@ -61377,6 +61521,30 @@
 							"receipt_sha256": "bab29f174bda3a681de9970cdef424cc93af16c5ce8783d47f6d404d0451a739",
 							"scope": "Post-merge mechanical union round 4 (main 7492ec26bb8 into ui#1532 0e2fdf0): 14 mentions.* = ours, 300 others = main; merged bytes == ours, main touched no catalogue",
 							"note": "Union re-audit (session d2ccd70111ca); mentions.* = 171d0b58c96a-rebase3/0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase/171d0b58c96a-rebase3. No value changed."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "e3ef1a80523f97cba4e445d97baa1548055d1cdd54537106889a0f48c30b230b",
+					"target_sha256": "4a8013a8631275c2f765cd4c4e8b717a072a20589137153a1b295dae07ba6b13",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "87206376c1d7-rebase4-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/87206376c1d7-rebase4-zh-cn.json",
+							"receipt_sha256": "13d5002612184140ff024867c04ec492a7ff1811b6b517d2039f45f9d7072438",
+							"scope": "Fourth rebase onto origin/main f455cec6f69 (#1532): main bytes preserved, 13 ui.teamBridge.delivery.* keys re-audited against English",
+							"note": "Fourth-rebase re-audit (session 87206376c1d7): main-side bytes = origin/main f455cec6f69 (d2ccd70111ca-rebase4-zh-cn); 13 delivery.* re-read vs English. Ten values: removed spaces around {agent} per zh-CN style guide."
 						}
 					],
 					"status": "audited"

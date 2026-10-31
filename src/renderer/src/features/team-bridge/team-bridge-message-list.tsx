@@ -839,7 +839,6 @@ const MessageRowView: FC<MessageRowProps> = ({
 						{message.body}
 					</TeamBridgeMarkdown>
 				)}
-<<<<<<< HEAD
 				{/* THE STATE IN WORDS, for a reader who cannot see the ink: the row is
 				    otherwise only quieter, and a screen reader announces status changes when
 				    they are live. One per unconfirmed row, not per message. */}
@@ -850,10 +849,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 							: t("ui.agents.config.state.sending")}
 					</p>
 				)}
-||||||| parent of fc391964b21 (feat(team-bridge): show per-recipient delivery state under sent messages)
-=======
 				<TeamBridgeDeliveryAnnotation message={message} />
->>>>>>> fc391964b21 (feat(team-bridge): show per-recipient delivery state under sent messages)
 				{/* Images come ONLY from the structured list, never from the body. */}
 				{(message.attachments?.length ?? 0) > 0 && (
 					<TeamBridgeMessageAttachments
