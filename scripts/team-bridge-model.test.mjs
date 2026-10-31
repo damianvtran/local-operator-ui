@@ -867,12 +867,13 @@ test("railSections: built-ins lead in fixed order; groups and DMs keep the calle
 		convo("d_1", "dm", []),
 		convo("c_humans", "channel", [], { builtin: "humans" }),
 		convo("c_future", "channel", [], { builtin: "unknown_future" }),
+		convo("c_general", "channel", [], { builtin: "general" }),
 		convo("g_2", "group", []),
 	];
 	const sections = model.railSections(rows);
 	assert.deepEqual(
 		sections.channels.map((row) => row.id),
-		["c_humans", "c_agents", "c_ops", "c_future"],
+		["c_general", "c_humans", "c_agents", "c_ops", "c_future"],
 	);
 	assert.deepEqual(
 		sections.groups.map((row) => row.id),
@@ -1229,4 +1230,207 @@ test("different drafts never share a remembered conversation", async () => {
 	await model.sendFirstMessage({ ...base, draftKey: "B" });
 	assert.equal(rig.calls.create, 2);
 	assert.equal(rig.remembered.has("A"), true);
+});
+
+/*
+ * #general (agent-server feat/bridge-builtin-general): the third built-in, the
+ * whole organization. It leads the rail, it is where the page lands, and the
+ * caller is a MEMBER of it, so it is never a preview.
+ */
+test("#general leads the built-ins; an older server without it keeps #humans first", () => {
+	const withGeneral = [
+		convo("c_ops", "channel", []),
+		convo("c_agents", "channel", [], { builtin: "agents" }),
+		convo("c_humans", "channel", [], { builtin: "humans" }),
+		convo("c_general", "channel", [], { builtin: "general" }),
+	];
+	assert.deepEqual(
+		model.railSections(withGeneral).channels.map((row) => row.id),
+		["c_general", "c_humans", "c_agents", "c_ops"],
+	);
+	const withoutGeneral = withGeneral.filter((row) => row.id !== "c_general");
+	assert.deepEqual(
+		model.railSections(withoutGeneral).channels.map((row) => row.id),
+		["c_humans", "c_agents", "c_ops"],
+	);
+});
+
+test("all organizations: every org's #general sorts first, in switcher order, each still captioned with its org", () => {
+	const orgs = [
+		{ tenantId: "tnt_a", name: "Minerva", role: "owner", unread: 0 },
+		{ tenantId: "tnt_b", name: "Northwind", role: "member", unread: 0 },
+		{ tenantId: "tnt_c", name: "Pergamon", role: "member", unread: 0 },
+	];
+	const at = (minute) => `2026-10-30T10:${String(minute).padStart(2, "0")}:00Z`;
+	const builtinRow = (tenant, builtin, minute) =>
+		convo(`${tenant}_${builtin}`, "channel", [], {
+			tenant_id: tenant,
+			builtin,
+			member: true,
+			discoverable: true,
+			last_message_at: at(minute),
+		});
+	// Activity order deliberately puts ordinary channels and other built-ins
+	// ABOVE the #general rows, so only the built-in sort can lift them.
+	const rows = [
+		convo("tnt_a_ops", "channel", [], {
+			tenant_id: "tnt_a",
+			last_message_at: at(59),
+		}),
+		builtinRow("tnt_b", "humans", 58),
+		builtinRow("tnt_a", "agents", 57),
+		builtinRow("tnt_c", "general", 30),
+		builtinRow("tnt_a", "general", 20),
+		builtinRow("tnt_b", "general", 10),
+		builtinRow("tnt_a", "humans", 5),
+		convo("tnt_c_dm", "dm", [], {
+			tenant_id: "tnt_c",
+			last_message_at: at(50),
+		}),
+	];
+	const visible = model.visibleConversationRows(
+		rows,
+		model.TEAM_BRIDGE_ALL_SCOPE,
+		orgs,
+	);
+	const switcher = orgs.map((org) => org.tenantId);
+	const channels = model.railSections(visible, switcher).channels;
+	assert.deepEqual(
+		channels.map((row) => row.id),
+		[
+			// Every #general first, in the SWITCHER's org order, not by activity
+			// (tnt_c's #general is the newest of the three)...
+			"tnt_a_general",
+			"tnt_b_general",
+			"tnt_c_general",
+			// ...then every #humans, every #agents, then ordinary channels.
+			"tnt_a_humans",
+			"tnt_b_humans",
+			"tnt_a_agents",
+			"tnt_a_ops",
+		],
+	);
+	assert.deepEqual(
+		channels
+			.slice(0, 3)
+			.map((row) => model.conversationOrganizationName(row, orgs)),
+		["Minerva", "Northwind", "Pergamon"],
+		"each #general row keeps the caption of its own organization",
+	);
+	assert.equal(
+		channels.some((row) => model.isPreviewConversation(row)),
+		false,
+		"a member's #general is never a preview",
+	);
+});
+
+/*
+ * DESIGN ROUND 1, D1: the merged view's built-ins must not swap orgs as traffic
+ * moves. Fails on a name-only sort, where the org order inside each built-in
+ * group was inherited from the activity order.
+ */
+test("all organizations: activity order never reorders the orgs inside a built-in group", () => {
+	const orgs = [
+		{ tenantId: "tnt_m", name: "Minerva", role: "owner", unread: 0 },
+		{ tenantId: "tnt_n", name: "Northwind", role: "member", unread: 0 },
+	];
+	const row = (tenant, builtin, iso) =>
+		convo(`${tenant}_${builtin}`, "channel", [], {
+			tenant_id: tenant,
+			builtin,
+			member: true,
+			discoverable: true,
+			last_message_at: iso,
+		});
+	const minervaBusier = [
+		row("tnt_m", "general", "2026-10-30T10:05:00Z"),
+		row("tnt_n", "general", "2026-10-30T10:01:00Z"),
+		row("tnt_m", "agents", "2026-10-30T10:04:00Z"),
+		row("tnt_n", "agents", "2026-10-30T10:02:00Z"),
+	];
+	// The same rows after Northwind's channels get newer traffic.
+	const northwindBusier = minervaBusier.map((r) => ({
+		...r,
+		last_message_at:
+			r.tenant_id === "tnt_n" ? "2026-10-30T11:00:00Z" : r.last_message_at,
+	}));
+	const switcher = orgs.map((org) => org.tenantId);
+	const order = (rows, organizationOrder) =>
+		model
+			.railSections(
+				model.visibleConversationRows(rows, model.TEAM_BRIDGE_ALL_SCOPE, orgs),
+				organizationOrder,
+			)
+			.channels.map((r) => r.id);
+	const expected = [
+		"tnt_m_general",
+		"tnt_n_general",
+		"tnt_m_agents",
+		"tnt_n_agents",
+	];
+	assert.deepEqual(order(minervaBusier, switcher), expected);
+	assert.deepEqual(
+		order(northwindBusier, switcher),
+		expected,
+		"Northwind's newer traffic must not lift its built-ins above Minerva's",
+	);
+	// The switcher order is the key, so a switcher that lists Northwind first wins.
+	assert.deepEqual(order(minervaBusier, ["tnt_n", "tnt_m"]), [
+		"tnt_n_general",
+		"tnt_m_general",
+		"tnt_n_agents",
+		"tnt_m_agents",
+	]);
+	// No switcher order yet (memberships still loading): tenant id, still stable.
+	assert.deepEqual(order(northwindBusier, []), expected);
+	// The landing agrees with the rail's top row whichever org is busier.
+	assert.equal(
+		model.defaultLandingConversation(
+			model.visibleConversationRows(
+				northwindBusier,
+				model.TEAM_BRIDGE_ALL_SCOPE,
+				orgs,
+			),
+			switcher,
+		)?.id,
+		"tnt_m_general",
+	);
+});
+
+test("the default landing is #general, then #humans, then the first row", () => {
+	const ops = convo("c_ops", "channel", []);
+	const humans = convo("c_humans", "channel", [], { builtin: "humans" });
+	const general = convo("c_general", "channel", [], { builtin: "general" });
+	assert.equal(
+		model.defaultLandingConversation([ops, humans, general])?.id,
+		"c_general",
+	);
+	assert.equal(model.defaultLandingConversation([ops, humans])?.id, "c_humans");
+	assert.equal(model.defaultLandingConversation([ops])?.id, "c_ops");
+	assert.equal(model.defaultLandingConversation([]), undefined);
+});
+
+test("#general is a member row, not a preview; the header explains each known built-in", () => {
+	const general = convo("c_general", "channel", [], {
+		builtin: "general",
+		discoverable: true,
+		member: true,
+	});
+	assert.equal(model.isPreviewConversation(general), false);
+	assert.equal(
+		model.builtinTopicKey("general"),
+		"ui.teamBridge.builtin.general_topic",
+	);
+	assert.equal(
+		model.builtinTopicKey("humans"),
+		"ui.teamBridge.builtin.humans_topic",
+	);
+	assert.equal(
+		model.builtinTopicKey("agents"),
+		"ui.teamBridge.builtin.agents_topic",
+	);
+	// A built-in this client does not know renders as an ordinary channel: no
+	// borrowed explanation.
+	assert.equal(model.builtinTopicKey("unknown_future"), null);
+	assert.equal(model.builtinTopicKey(undefined), null);
 });
