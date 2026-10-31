@@ -23,7 +23,11 @@ import {
 	ownerAuditTitle,
 	ownerAuditToBridgeMessage,
 } from "./team-bridge-owner-audit-model";
-import { ConversationKindIcon, RAIL_ROW } from "./team-bridge-rail";
+import {
+	ConversationKindIcon,
+	RAIL_ROW,
+	RailGroupHeader,
+} from "./team-bridge-rail";
 import { useTeamBridgeDirectory } from "./use-team-bridge";
 import {
 	useOwnerAuditConversations,
@@ -771,12 +775,24 @@ export function useOwnerAuditSurface({
 		rail: (beforeSelect) => (
 			<section className="mt-4" aria-label={t("ui.ownerAudit.title")}>
 				<OwnerAuditSectionHeader />
-				{organizations.map((organization) => (
+				{organizations.map((organization, index) => (
 					<div key={`${accountId}:${organization.tenantId}`}>
+						{/*
+						 * THE SHARED GROUP HEADER, not a hand-written `h3` (design round 1,
+						 * D5). This section is one of the three places the organization is
+						 * stated, so it must move with the other two when the treatment
+						 * changes - it just did, gaining D2's spacing above a non-first
+						 * group and D3's `title` for a truncated name. `inset="bare"` because
+						 * this section carries no `RailSection` inset of its own: its 12px
+						 * axis comes from `px-3`.
+						 */}
 						{organizations.length > 1 && (
-							<h3 className="px-3 py-1 text-xs text-ink-muted">
-								{organization.name}
-							</h3>
+							<RailGroupHeader
+								id={`team-bridge-audit-org-${organization.tenantId}`}
+								name={organization.name}
+								inset="bare"
+								first={index === 0}
+							/>
 						)}
 						<OwnerAuditRail
 							scope={{ accountId, tenantId: organization.tenantId }}
