@@ -1127,7 +1127,7 @@ test("a membership event never anchors on a local row, pending or failed", async
 				/data-row-key="([^"]+)"|data-team-bridge-event="([^"]+)"/g,
 			),
 		].map((match) => match[1] ?? match[2]);
-	const draw = (messages, presentationOf, events) =>
+	const draw = (messages, presentationOf, events, highlightId = null) =>
 		renderToStaticMarkup(
 			h(
 				m.QueryClientProvider,
@@ -1139,6 +1139,7 @@ test("a membership event never anchors on a local row, pending or failed", async
 					canMessagePerson: () => false,
 					events,
 					arrivalsEnabled: false,
+					highlightId,
 					presentationOf,
 				}),
 			),
@@ -1196,5 +1197,58 @@ test("a membership event never anchors on a local row, pending or failed", async
 			]),
 		),
 		["event:e1", "local_9"],
+	);
+});
+
+/*
+ * A PENDING ROW NEVER WEARS THE NOTIFICATION WASH (#1536, merge round 7).
+ *
+ * The wash marks "the message you were told about", and a notification names a STORED
+ * hub message. An optimistic row has not been stored yet, so a click naming the
+ * eventual server id must not light up the draft standing in for it - the row would
+ * flash as if the hub had confirmed, and flash again when the real row arrived.
+ * `highlighted` reads the stored id for exactly this reason; the row's own identity
+ * (`row.key`) is what `arriving` uses, because that must survive the replacement.
+ */
+test("a notification highlight never lands on a pending row", async () => {
+	const { renderToStaticMarkup } = await import("react-dom/server");
+	const h = React.createElement;
+	const row = {
+		id: "local_1",
+		conversation_id: "conv_new",
+		seq: 0,
+		sender: { account_id: "acct_self", kind: "human", display_label: "Damian" },
+		body: "hello",
+		origin: "human",
+		created_at: "2026-10-30T09:01:00Z",
+	};
+	const draw = (highlightId) =>
+		renderToStaticMarkup(
+			h(
+				m.QueryClientProvider,
+				{ client: new m.QueryClient() },
+				h(m.TeamBridgeMessageList, {
+					messages: [row],
+					labelFor: (who) => who.display_label ?? null,
+					profileFor: () => undefined,
+					canMessagePerson: () => false,
+					arrivalsEnabled: false,
+					highlightId,
+					presentationOf: (message) =>
+						message.id === "local_1"
+							? { key: "local_1", local: true, delivery: { status: "pending" } }
+							: { key: message.id, local: false },
+				}),
+			),
+		);
+	assert.equal(
+		draw("msg_eventual").includes("lo-team-bridge-target"),
+		false,
+		"a click naming the server-to-be id leaves the pending row alone",
+	);
+	assert.equal(
+		draw("local_1").includes("lo-team-bridge-target"),
+		true,
+		"the wash still works when the id really is this row's - the guard is not a mute",
 	);
 });
