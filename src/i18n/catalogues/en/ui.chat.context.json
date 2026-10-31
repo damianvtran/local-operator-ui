@@ -634,5 +634,204 @@
 		"length": "Two words plus an ellipsis.",
 		"note": "A temporary line, replaced by the generated title when it lands. The ellipsis is part of the source string; keep it as the locale's own ellipsis character.",
 		"placeholders": {}
+	},
+	"ui.chat.audio.play": {
+		"role": "accessible control name",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 40,
+		"placeholders": {}
+	},
+	"ui.chat.audio.pause": {
+		"role": "accessible control name",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 40,
+		"placeholders": {}
+	},
+	"ui.chat.audio.play_label": {
+		"role": "accessible control name",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 40,
+		"placeholders": {
+			"label": "User-provided audio title; do not translate."
+		}
+	},
+	"ui.chat.audio.pause_label": {
+		"role": "accessible control name",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 40,
+		"placeholders": {
+			"label": "User-provided audio title; do not translate."
+		}
+	},
+	"ui.chat.audio.mute": {
+		"role": "accessible control name",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 40,
+		"placeholders": {}
+	},
+	"ui.chat.audio.unmute": {
+		"role": "accessible control name",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 40,
+		"placeholders": {}
+	},
+	"ui.chat.message_controls.copy": {
+		"role": "accessible control name",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 40,
+		"placeholders": {}
+	},
+	"ui.chat.message_controls.copied": {
+		"role": "accessible control name",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 40,
+		"placeholders": {}
+	},
+	"ui.chat.image_actions.save_as": {
+		"role": "image action menu label",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 28,
+		"placeholders": {}
+	},
+	"ui.chat.image_actions.copy_image": {
+		"role": "image action menu label",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 28,
+		"placeholders": {}
+	},
+	"ui.chat.image_actions.copy_image_url": {
+		"role": "image action menu label",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 28,
+		"placeholders": {}
+	},
+	"ui.chat.image_actions.open_in_browser": {
+		"role": "image action menu label",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 28,
+		"placeholders": {}
+	},
+	"ui.chat.image_actions.expand_image": {
+		"role": "image action menu label",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 28,
+		"placeholders": {}
+	},
+	"ui.chat.composer.connect_provider": {
+		"role": "composer error recovery action",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 28,
+		"placeholders": {}
+	},
+	"ui.chat.slot_notice.run_draft_title": {
+		"role": "right-slot notice title",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 120,
+		"placeholders": {}
+	},
+	"ui.chat.slot_notice.run_draft_detail": {
+		"role": "right-slot notice detail",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 120,
+		"placeholders": {}
+	},
+	"ui.chat.slot_notice.run_reading_title": {
+		"role": "right-slot notice title",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 120,
+		"placeholders": {}
+	},
+	"ui.chat.slot_notice.run_unreadable_title": {
+		"role": "right-slot notice title",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 120,
+		"placeholders": {}
+	},
+	"ui.chat.slot_notice.run_unreadable_detail": {
+		"role": "right-slot notice detail",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 120,
+		"placeholders": {}
+	},
+	"ui.chat.slot_notice.run_missing_detail": {
+		"role": "right-slot notice detail",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 120,
+		"placeholders": {}
+	},
+	"ui.chat.slot_notice.code_draft_title": {
+		"role": "right-slot notice title",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 120,
+		"placeholders": {}
+	},
+	"ui.chat.slot_notice.code_draft_detail": {
+		"role": "right-slot notice detail",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 120,
+		"placeholders": {}
+	},
+	"ui.chat.slot_notice.code_below_version_title": {
+		"role": "right-slot notice title",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 120,
+		"placeholders": {}
+	},
+	"ui.chat.slot_notice.code_below_version_detail": {
+		"role": "right-slot notice detail",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 120,
+		"placeholders": {}
+	},
+	"ui.chat.slot_notice.code_checking_title": {
+		"role": "right-slot notice title",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 120,
+		"placeholders": {}
+	},
+	"ui.chat.slot_notice.code_load_lead": {
+		"role": "right-slot notice title",
+		"tone": "sentence case; preserve the existing action or factual wording",
+		"maxCells": 120,
+		"placeholders": {}
+	},
+	"ui.chat.slash_arguments.model_default_description": {
+		"role": "slash argument description or action help",
+		"tone": "sentence case; concise factual guidance",
+		"maxCells": 100,
+		"placeholders": {
+			"provider": "Provider identifier; preserve verbatim.",
+			"model": "Model identifier; preserve verbatim."
+		}
+	},
+	"ui.chat.slash_arguments.model_default_unavailable": {
+		"role": "slash argument description or action help",
+		"tone": "sentence case; concise factual guidance",
+		"maxCells": 100,
+		"placeholders": {}
+	},
+	"ui.chat.slash_arguments.model_default_click": {
+		"role": "slash argument description or action help",
+		"tone": "sentence case; concise factual guidance",
+		"maxCells": 100,
+		"placeholders": {}
+	},
+	"ui.chat.slash_arguments.model_default_required": {
+		"role": "slash argument description or action help",
+		"tone": "sentence case; concise factual guidance",
+		"maxCells": 100,
+		"placeholders": {}
+	},
+	"ui.chat.slash_arguments.refresh_description": {
+		"role": "slash argument description or action help",
+		"tone": "sentence case; concise factual guidance",
+		"maxCells": 100,
+		"placeholders": {}
+	},
+	"ui.chat.slash_arguments.refresh_detail": {
+		"role": "slash argument state detail",
+		"tone": "sentence case; concise factual guidance",
+		"maxCells": 100,
+		"placeholders": {}
 	}
 }
