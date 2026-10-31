@@ -213,7 +213,9 @@ class OwnedTree:
 
 
 def supervise(command, cwd, output, seconds=LIMIT):
-    """Return timeout distinctly; never force-exit a retained Node handle green."""
+    """Return timeout distinctly; budget the WHOLE call, including observation."""
+    started = time.monotonic()
+    deadline = started + seconds
     output.mkdir(parents=True)
     home = output / 'home'
     home.mkdir()
@@ -234,10 +236,41 @@ def supervise(command, cwd, output, seconds=LIMIT):
             signal.pidfd_send_signal(fd, 0)
         finally:
             os.close(fd)
+    before = time.monotonic()
     baseline = process_table()
+    baseline_cost = time.monotonic() - before
     previous_subreaper = subreaper(True)
-    started = time.monotonic()
-    deadline = started + seconds
+    # Observation and identity-safe signals are work, not free checks. Reserve
+    # time BEFORE the deadline rather than scheduling serial reads/signals in
+    # the final second. Short controls use the same policy as the 300s probe;
+    # Linux's cheap procfs path normally reserves six seconds, not 75% of 300s.
+    reserve = min(seconds * 0.75, max(6.0, baseline_cost * 12))
+    report_at = deadline - reserve
+    term_at = deadline - reserve * 0.8
+    kill_at = deadline - reserve * 0.55
+    costs = {'census_count': 1, 'census_total': baseline_cost,
+             'census_max': baseline_cost, 'signal_count': 0,
+             'signal_total': 0.0, 'signal_max': 0.0}
+
+    def send(row, sig):
+        before = time.monotonic()
+        try:
+            return signal_identity(row, sig)
+        finally:
+            duration = time.monotonic() - before
+            costs['signal_count'] += 1
+            costs['signal_total'] += duration
+            costs['signal_max'] = max(costs['signal_max'], duration)
+
+    def observe(tree):
+        before = time.monotonic()
+        try:
+            return tree.observe()
+        finally:
+            duration = time.monotonic() - before
+            costs['census_count'] += 1
+            costs['census_total'] += duration
+            costs['census_max'] = max(costs['census_max'], duration)
     # A nonblocking pipe drains even a deliberately noisy negative control without
     # keeping raw output on disk; only its byte count is retained below.
     read_fd, write_fd = os.pipe()
@@ -257,6 +290,7 @@ def supervise(command, cwd, output, seconds=LIMIT):
     samples, total_bytes = [], 0
     requested = terminated = killed = timed_out = False
     report_requests, term_requests, kill_requests = set(), set(), set()
+    last_rows = None
     last_sample = -2
     try:
         while True:
@@ -270,9 +304,11 @@ def supervise(command, cwd, output, seconds=LIMIT):
                     total_bytes += len(block)
                 except BlockingIOError:
                     break
-            rows = tree.observe()
+            rows = observe(tree)
+            last_rows = rows
             tree.reap()
-            if elapsed - last_sample >= 2 or not rows:
+            elapsed = time.monotonic() - started
+            if elapsed - last_sample >= 1 or not rows:
                 samples.append({'seconds': round(elapsed, 3), 'members': rows})
                 last_sample = elapsed
             rc = proc.poll()
@@ -282,7 +318,7 @@ def supervise(command, cwd, output, seconds=LIMIT):
             # throughout teardown: a detached late child is still ours, not a
             # new independent group to ignore. Never depend on the keeper doing
             # our cleanup or on the outer coordinator's exit as proof of it.
-            if elapsed >= max(1, seconds - 4):
+            if time.monotonic() >= report_at:
                 if not requested:
                     requested = True
                     samples.append({'seconds': round(elapsed, 3), 'pre_reap': rows})
@@ -290,21 +326,26 @@ def supervise(command, cwd, output, seconds=LIMIT):
                     identity = (row['pid'], row['start_id'])
                     if (identity not in report_requests and row['node']
                             and (output / f"node-{row['pid']}.jsonl").exists()):
-                        if signal_identity(row, signal.SIGUSR2):
+                        if send(row, signal.SIGUSR2):
                             report_requests.add(identity)
-            if elapsed >= seconds - 2:
+            term_sent_this_scan = False
+            if time.monotonic() >= term_at:
                 terminated = timed_out = True
                 for row in reversed(rows):
                     identity = (row['pid'], row['start_id'])
                     if identity not in term_requests:
-                        signal_identity(row, signal.SIGTERM)
+                        send(row, signal.SIGTERM)
                         term_requests.add(identity)
-            if elapsed >= seconds - 1:
+                        term_sent_this_scan = True
+            # TERM may have consumed the remaining grace period. Re-observe
+            # before KILL instead of serially revalidating already-dead rows;
+            # that same scan must discover children created by TERM handlers.
+            if time.monotonic() >= kill_at and not term_sent_this_scan:
                 killed = timed_out = True
                 for row in reversed(rows):
                     identity = (row['pid'], row['start_id'])
                     if identity not in kill_requests:
-                        signal_identity(row, signal.SIGKILL)
+                        send(row, signal.SIGKILL)
                         kill_requests.add(identity)
             # Leave a small reserve for the final all-owned-groups census and
             # serialization. There is deliberately no extra five-second wait.
@@ -315,14 +356,23 @@ def supervise(command, cwd, output, seconds=LIMIT):
     finally:
         # Cleanup must still run if a census itself failed. Every cached row is
         # revalidated through pidfd before signaling, never trusted as a PID.
-        tree.signal(list(tree.known.values()), signal.SIGKILL)
+        # A successful empty census already proves every owned group is gone:
+        # re-signaling all historical PIDs would serially revalidate dead PIDs
+        # and spend the cleanup reserve on work that cannot change the result.
+        cleanup_rows = last_rows if last_rows is not None else list(tree.known.values())
+        for row in reversed(cleanup_rows):
+            identity = (row['pid'], row['start_id'])
+            if identity not in kill_requests:
+                send(row, signal.SIGKILL)
         while proc.poll() is None and time.monotonic() < deadline - 0.1:
             time.sleep(0.005)
         tree.reap()
         os.close(read_fd)
         if previous_subreaper is not None:
             subreaper(previous_subreaper)
-    survivors = tree.observe()
+    # A fresh final census also catches adoption/fork races at the last scan;
+    # the reserve pays for it, rather than claiming an empty outer group is proof.
+    survivors = observe(tree)
     tree.reap()
     owned_groups = sorted(tree.groups)
     result = {'status': 'timeout' if timed_out else 'completed',
@@ -334,9 +384,13 @@ def supervise(command, cwd, output, seconds=LIMIT):
               'owned_identities': list(tree.known.values()),
               'report_requests': [{'pid': pid, 'start_id': start}
                                   for pid, start in sorted(report_requests)],
-              'term_sent': terminated, 'kill_sent': killed}
+              'term_sent': terminated, 'kill_sent': killed,
+              'deadline_seconds': seconds, 'cleanup_reserve': round(reserve, 3),
+              'operation_costs': {key: round(value, 6) for key, value in costs.items()}}
     if survivors:
         result.update(status='cleanup-failure', exit_code=126)
+    elif time.monotonic() >= deadline:
+        result.update(status='deadline-failure', exit_code=127)
     write_json(output / 'result.json', result)
     return result
 
@@ -413,6 +467,17 @@ def identity_controls(signal_fn=signal_identity):
     print('PASS detached ancestry / reparenting / recycled-PID refusal / pinned signal', flush=True)
 
 
+def control_run(command, root, output, seconds):
+    # Result timestamps alone can hide setup/final-serialization cost. The
+    # regression measures the whole public supervisor call from its caller.
+    before = time.monotonic()
+    result = supervise(command, root, output, seconds)
+    result['whole_call_seconds'] = round(time.monotonic() - before, 6)
+    write_json(output / 'result.json', result)
+    assert result['whole_call_seconds'] <= seconds, result['whole_call_seconds']
+    return result
+
+
 def coordinator_controls(output, roots):
     """Run the real frozen topology, not a lookalike direct-child substitute."""
     # Built-in-only runtime closure, including the URL-based preloader/keeper
@@ -439,7 +504,7 @@ def coordinator_controls(output, roots):
         reporter = root / 'reporter.mjs'
         reporter.write_text(REPORTER)
         evidence = output / f'retained-{label}'
-        result = supervise(['node', 'scripts/run-desktop-tests.mjs', '--test-concurrency=1',
+        result = control_run(['node', 'scripts/run-desktop-tests.mjs', '--test-concurrency=1',
                             f'--test-reporter={reporter}', str(fixture)], root, evidence, 8)
         events = [json.loads(line) for path in evidence.glob('node-*.jsonl')
                   for line in path.read_text().splitlines()]
@@ -470,14 +535,14 @@ def controls(output):
         child.write_text("import {spawn} from 'node:child_process';\n"
                          "spawn(process.execPath, ['-e', 'setInterval(()=>{},1000)'], {stdio:'ignore'});\n"
                          "setInterval(()=>process.stdout.write('x'.repeat(16384)),1);\n")
-        slow = supervise(['node', str(child)], root, output / 'slow-noisy', 4)
-        ok = supervise(['node', '-e', 'console.log("natural completion")'], root, output / 'natural', 4)
-        bad = supervise(['node', '-e', 'process.exitCode=7'], root, output / 'failure', 4)
+        slow = control_run(['node', str(child)], root, output / 'slow-noisy', 4)
+        ok = control_run(['node', '-e', 'console.log("natural completion")'], root, output / 'natural', 4)
+        bad = control_run(['node', '-e', 'process.exitCode=7'], root, output / 'failure', 4)
         snapshots = list((output / 'slow-noisy').glob('node-*.jsonl'))
         reports = [line for path in snapshots for line in path.read_text().splitlines()
                    if json.loads(line)['stage'] == 'pre-reap-report']
         assert slow['status'] == 'timeout' and slow['exit_code'] == 124
-        assert slow['seconds'] < 6 and slow['discarded_output_bytes'] > 65536
+        assert slow['whole_call_seconds'] <= 4 and slow['discarded_output_bytes'] > 65536
         assert not slow['survivors'] and len(reports) >= 2
         assert ok['status'] == 'completed' and ok['exit_code'] == 0
         assert bad['status'] == 'completed' and bad['exit_code'] == 7
@@ -487,14 +552,34 @@ def controls(output):
         case.write_text("import {test} from 'node:test';\n"
                         "globalThis.__probe('file-start', {file:'observer.test.mjs'});\n"
                         "test('control', () => {});\n")
-        observed = supervise(['node', '--test', f'--test-reporter={reporter}', str(case)],
+        observed = control_run(['node', '--test', f'--test-reporter={reporter}', str(case)],
                              root, output / 'reporter', 8)
         events = [json.loads(line) for path in (output / 'reporter').glob('node-*.jsonl')
                   for line in path.read_text().splitlines()]
         assert observed['exit_code'] == 0
         assert any(e['stage'] == 'test:pass' and e.get('file') == case.name for e in events)
         assert all('environmentVariables' not in str(e) for e in events + reports)
-        print('PASS bounded noisy descendant / pre-reap reports / natural exit / failure exit / reporter', flush=True)
+        # Same late-detached-child topology as independent round-2 QA: TERM
+        # creates a new process group, so stopping discovery at TERM is wrong.
+        late_code = (
+            "import {spawn} from 'node:child_process';"
+            "process.on('SIGTERM',()=>{globalThis.__probe('late-parent');"
+            "spawn(process.execPath,['-e',\"process.on('SIGTERM',()=>{});"
+            "globalThis.__probe('late-child');setInterval(()=>{},1000)\"],"
+            "{detached:true,stdio:'ignore'});});setInterval(()=>{},1000)"
+        )
+        late_output = output / 'late-cleanup'
+        late = control_run(['node', '--input-type=module', '-e', late_code],
+                           root, late_output, 8)
+        events = [json.loads(line) for path in late_output.glob('node-*.jsonl')
+                  for line in path.read_text().splitlines()]
+        children = {e['pid'] for e in events if e['stage'] == 'late-child'}
+        reported = {e['pid'] for e in events if e['stage'] == 'pre-reap-report'}
+        assert children and children <= reported
+        assert children <= {row['pid'] for row in late['owned_identities']}
+        assert late['exit_code'] == 124 and not late['survivors']
+        assert len(late['owned_groups']) >= 2
+        print('PASS whole-call bounds / noisy descendants / reporter / late detached child report and reap', flush=True)
 
 
 def run(root, label, phase, output):
