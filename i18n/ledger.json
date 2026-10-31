@@ -7004,8 +7004,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "872abba111887ee71c0f4f079bdb3747f564b93abc85639b13b43d864a9372cb",
-			"target_sha256": "77fe21b7056fc97098fbdc08b2421202c1afd5e154c49e955df137d670e679fa",
+			"source_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
+			"target_sha256": "559b5718f4a5c5edf4401ce299f2ad7b9ee63367c02be3d8a14ec2f97281f73b",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -7016,49 +7016,25 @@
 					"key": "ui.teamBridge.notify.unavailable",
 					"job": "job8d4e6d78c133",
 					"model": "not supplied"
-				},
-				"delta_source": {
-					"keys": "ui.teamBridge.mentions.* (13 keys)",
-					"agent": "coder",
-					"model": "anthropic/claude-opus-5-5",
-					"commit": "d97fab7df10",
-					"note": "Self-translated by the feature coder (lopdev); independently audited by session a72fc22aa8e8."
 				}
 			},
 			"auditors": [
 				{
-					"agent": "task",
+					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "4ad83913bb2a-es",
+					"instance": "b20548e9b2d9-rebase-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/4ad83913bb2a-es.json",
-					"receipt_sha256": "419e38e5dae90b2e07c914e6e3a9ff686a18fda10d7f3b25f947e115fa1af49a",
-					"scope": "PR #1532 round 2 delta: 4 changed/new mentions.* notice values + agent_secondary removal; other values byte-identical to superseded audits",
-					"note": "Independent round-2 delta audit; remediated in-audit, 0 residual. Record: i18n/audits/evidence/es/ui.teamBridge/teambridge-mentions-r2-audit-4ad83913bb2a-es/record.json"
-				},
-				{
-					"agent": "scout",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-30",
-					"result": "clean-with-findings",
-					"instance": "f61a774e19eb-es",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 1
-					},
-					"receipt": "i18n/receipts/f61a774e19eb-es.json",
-					"receipt_sha256": "f616983f9e0c3daa3914fa75488586fd03f2a203846158608492a20d097f6bee",
-					"scope": "Re-audit of round-2 in-audit remediation and the 4 changed/new mentions.* values (ui#1532)",
-					"note": "Independent scout re-audit (session f61a774e19eb); clean-with-findings. Receipt: i18n/receipts/f61a774e19eb-es.json"
+					"receipt": "i18n/receipts/b20548e9b2d9-rebase-es.json",
+					"receipt_sha256": "92343cbad55e53f510f5b6949f37f311d886a3052a965bdd35404faa93888a45",
+					"scope": "Post-rebase delta onto d62accf: ui.teamBridge.reactions.others only; rest byte-identical to main's audited bytes.",
+					"note": "Rebase re-audit by translation-auditor (session b20548e9b2d9); key value byte-identical to ffe897895c10 audit."
 				}
 			],
 			"status": "audited",
@@ -8031,42 +8007,42 @@
 					"status": "audited"
 				},
 				{
-					"source_sha256": "fca3039a46e3113acca89ca90f026f943f717ed2e531406497d46837cf972af5",
-					"target_sha256": "9d7730188b047e96b3e8cc9a7c4907d89021f9c1d5769f993d91ec919dfb11ad",
+					"source_sha256": "872abba111887ee71c0f4f079bdb3747f564b93abc85639b13b43d864a9372cb",
+					"target_sha256": "77fe21b7056fc97098fbdc08b2421202c1afd5e154c49e955df137d670e679fa",
 					"auditors": [
 						{
 							"agent": "task",
 							"model": "anthropic/claude-opus-5-5",
 							"date": "2026-10-30",
 							"result": "clean",
-							"instance": "a72fc22aa8e8-es",
+							"instance": "4ad83913bb2a-es",
 							"findings": {
 								"blocker": 0,
 								"major": 0,
 								"minor": 0,
 								"nit": 0
 							},
-							"receipt": "i18n/receipts/a72fc22aa8e8-es.json",
-							"receipt_sha256": "177c749b994a6ff6a06d1f1dc2057ac67bd6553b10e610bd19ef9eb54a07bec0",
-							"scope": "PR #1532 delta: 13 new ui.teamBridge.mentions.* keys; 285 prior values byte-identical to superseded audits",
-							"note": "Independent delta audit. 0 residual findings; 2 remediated in-audit (ids: TBM-ES-1,TBM-ES-2). Record: i18n/audits/evidence/es/ui.teamBridge/teambridge-mentions-audit-a72fc22aa8e8-es/record.json"
+							"receipt": "i18n/receipts/4ad83913bb2a-es.json",
+							"receipt_sha256": "419e38e5dae90b2e07c914e6e3a9ff686a18fda10d7f3b25f947e115fa1af49a",
+							"scope": "PR #1532 round 2 delta: 4 changed/new mentions.* notice values + agent_secondary removal; other values byte-identical to superseded audits",
+							"note": "Independent round-2 delta audit; remediated in-audit, 0 residual. Record: i18n/audits/evidence/es/ui.teamBridge/teambridge-mentions-r2-audit-4ad83913bb2a-es/record.json"
 						},
 						{
-							"agent": "translation-auditor",
+							"agent": "scout",
 							"model": "anthropic/claude-opus-5-5",
 							"date": "2026-10-30",
-							"result": "clean",
-							"instance": "93e37e001a89-es",
+							"result": "clean-with-findings",
+							"instance": "f61a774e19eb-es",
 							"findings": {
 								"blocker": 0,
 								"major": 0,
 								"minor": 0,
-								"nit": 0
+								"nit": 1
 							},
-							"receipt": "i18n/receipts/93e37e001a89-es.json",
-							"receipt_sha256": "7e5a2a8656c39d3d423758775d1ddcbed2bffd0898fb8602d2d9c0cff327faf6",
-							"scope": "Re-audit of the in-audit remediation by a72fc22aa8e8 on PR #1532 (changed mentions.* values only)",
-							"note": "Independent re-audit (session 93e37e001a89) of remediated values; 0 findings. Receipt: i18n/receipts/93e37e001a89-es.json"
+							"receipt": "i18n/receipts/f61a774e19eb-es.json",
+							"receipt_sha256": "f616983f9e0c3daa3914fa75488586fd03f2a203846158608492a20d097f6bee",
+							"scope": "Re-audit of round-2 in-audit remediation and the 4 changed/new mentions.* values (ui#1532)",
+							"note": "Independent scout re-audit (session f61a774e19eb); clean-with-findings. Receipt: i18n/receipts/f61a774e19eb-es.json"
 						}
 					],
 					"status": "audited"
@@ -15586,8 +15562,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "872abba111887ee71c0f4f079bdb3747f564b93abc85639b13b43d864a9372cb",
-			"target_sha256": "17af0aa71b7a5a00827c67733b568853b7358a395022d54e8cabe15af1b22d77",
+			"source_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
+			"target_sha256": "7b17e110450440c7c0d59ca5d10fdcd2b487d7f93e626df630f240e117a42047",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -15599,49 +15575,25 @@
 					"key": "ui.teamBridge.notify.unavailable",
 					"job": "job8d4e6d78c133",
 					"model": "not supplied"
-				},
-				"delta_source": {
-					"keys": "ui.teamBridge.mentions.* (13 keys)",
-					"agent": "coder",
-					"model": "anthropic/claude-opus-5-5",
-					"commit": "d97fab7df10",
-					"note": "Self-translated by the feature coder (lopdev); independently audited by session a72fc22aa8e8."
 				}
 			},
 			"auditors": [
 				{
-					"agent": "task",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-30",
-					"result": "clean",
-					"instance": "4ad83913bb2a-fr",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/4ad83913bb2a-fr.json",
-					"receipt_sha256": "f57c463ce856d4d8db0a76aedabc78d76e1d3d5f279d705a6f4f97a67e3ef2ee",
-					"scope": "PR #1532 round 2 delta: 4 changed/new mentions.* notice values + agent_secondary removal; other values byte-identical to superseded audits",
-					"note": "Independent round-2 delta audit; remediated in-audit, 0 residual. Record: i18n/audits/evidence/fr/ui.teamBridge/teambridge-mentions-r2-audit-4ad83913bb2a-fr/record.json"
-				},
-				{
-					"agent": "scout",
+					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-30",
 					"result": "clean-with-findings",
-					"instance": "f61a774e19eb-fr",
+					"instance": "b20548e9b2d9-rebase-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/f61a774e19eb-fr.json",
-					"receipt_sha256": "2985d59a9b2c24900c44824026b4077a53dc17382bfdc15e40815413ca6c902b",
-					"scope": "Re-audit of round-2 in-audit remediation and the 4 changed/new mentions.* values (ui#1532)",
-					"note": "Independent scout re-audit (session f61a774e19eb); clean-with-findings. Receipt: i18n/receipts/f61a774e19eb-fr.json"
+					"receipt": "i18n/receipts/b20548e9b2d9-rebase-fr.json",
+					"receipt_sha256": "6d782ec29fe5bac8f695ed3ee8a187097d766ca8b7a49a43a5b297d9e6fb5bcf",
+					"scope": "Post-rebase delta onto d62accf: ui.teamBridge.reactions.others only; rest byte-identical to main's audited bytes.",
+					"note": "Rebase re-audit by translation-auditor (session b20548e9b2d9); key value byte-identical to ffe897895c10 audit."
 				}
 			],
 			"status": "audited",
@@ -16638,42 +16590,42 @@
 					"status": "audited"
 				},
 				{
-					"source_sha256": "fca3039a46e3113acca89ca90f026f943f717ed2e531406497d46837cf972af5",
-					"target_sha256": "479846914f86ea5d3ebdb41336116d79fa42049aeb18d0ea1d0e96c905513d92",
+					"source_sha256": "872abba111887ee71c0f4f079bdb3747f564b93abc85639b13b43d864a9372cb",
+					"target_sha256": "17af0aa71b7a5a00827c67733b568853b7358a395022d54e8cabe15af1b22d77",
 					"auditors": [
 						{
 							"agent": "task",
 							"model": "anthropic/claude-opus-5-5",
 							"date": "2026-10-30",
 							"result": "clean",
-							"instance": "a72fc22aa8e8-fr",
+							"instance": "4ad83913bb2a-fr",
 							"findings": {
 								"blocker": 0,
 								"major": 0,
 								"minor": 0,
 								"nit": 0
 							},
-							"receipt": "i18n/receipts/a72fc22aa8e8-fr.json",
-							"receipt_sha256": "dc34e277fc3acc134f27bd32bf1190e524c95b6817a1d0dfc1e5b4334f9fd46b",
-							"scope": "PR #1532 delta: 13 new ui.teamBridge.mentions.* keys; 285 prior values byte-identical to superseded audits",
-							"note": "Independent delta audit. 0 residual findings; 3 remediated in-audit (ids: TBM-FR-1,TBM-FR-2,TBM-FR-3). Record: i18n/audits/evidence/fr/ui.teamBridge/teambridge-mentions-audit-a72fc22aa8e8-fr/record.json"
+							"receipt": "i18n/receipts/4ad83913bb2a-fr.json",
+							"receipt_sha256": "f57c463ce856d4d8db0a76aedabc78d76e1d3d5f279d705a6f4f97a67e3ef2ee",
+							"scope": "PR #1532 round 2 delta: 4 changed/new mentions.* notice values + agent_secondary removal; other values byte-identical to superseded audits",
+							"note": "Independent round-2 delta audit; remediated in-audit, 0 residual. Record: i18n/audits/evidence/fr/ui.teamBridge/teambridge-mentions-r2-audit-4ad83913bb2a-fr/record.json"
 						},
 						{
-							"agent": "translation-auditor",
+							"agent": "scout",
 							"model": "anthropic/claude-opus-5-5",
 							"date": "2026-10-30",
 							"result": "clean-with-findings",
-							"instance": "93e37e001a89-fr",
+							"instance": "f61a774e19eb-fr",
 							"findings": {
 								"blocker": 0,
 								"major": 0,
 								"minor": 0,
 								"nit": 1
 							},
-							"receipt": "i18n/receipts/93e37e001a89-fr.json",
-							"receipt_sha256": "a4be220fc83c57b04a3c8c13d30e24e7530cc0d39ab97a4a9a30636a482d3691",
-							"scope": "Re-audit of the in-audit remediation by a72fc22aa8e8 on PR #1532 (changed mentions.* values only)",
-							"note": "Independent re-audit (session 93e37e001a89) of remediated values; 1 nit RA2-FR-1 (sans notification vs sans notifier), non-gating. Receipt: i18n/receipts/93e37e001a89-fr.json"
+							"receipt": "i18n/receipts/f61a774e19eb-fr.json",
+							"receipt_sha256": "2985d59a9b2c24900c44824026b4077a53dc17382bfdc15e40815413ca6c902b",
+							"scope": "Re-audit of round-2 in-audit remediation and the 4 changed/new mentions.* values (ui#1532)",
+							"note": "Independent scout re-audit (session f61a774e19eb); clean-with-findings. Receipt: i18n/receipts/f61a774e19eb-fr.json"
 						}
 					],
 					"status": "audited"
@@ -24048,8 +24000,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "872abba111887ee71c0f4f079bdb3747f564b93abc85639b13b43d864a9372cb",
-			"target_sha256": "c5b8869b6e1f78f4100050c90a081b96c3deaca718ce474c89f6a9ff3f564fdd",
+			"source_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
+			"target_sha256": "d729a6f2655bdb72faba93daaaa925cc109b514336366c8fa39bf35528e57fae",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -24060,49 +24012,25 @@
 					"key": "ui.teamBridge.notify.unavailable",
 					"job": "job8d4e6d78c133",
 					"model": "not supplied"
-				},
-				"delta_source": {
-					"keys": "ui.teamBridge.mentions.* (13 keys)",
-					"agent": "coder",
-					"model": "anthropic/claude-opus-5-5",
-					"commit": "d97fab7df10",
-					"note": "Self-translated by the feature coder (lopdev); independently audited by session a72fc22aa8e8."
 				}
 			},
 			"auditors": [
 				{
-					"agent": "task",
+					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "4ad83913bb2a-hi",
+					"instance": "b20548e9b2d9-rebase-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/4ad83913bb2a-hi.json",
-					"receipt_sha256": "91a1473245ce59487a709cc4f61ac607758ff25c256a3392283600510bcc04e1",
-					"scope": "PR #1532 round 2 delta: 4 changed/new mentions.* notice values + agent_secondary removal; other values byte-identical to superseded audits",
-					"note": "Independent round-2 delta audit; remediated in-audit, 0 residual. Record: i18n/audits/evidence/hi/ui.teamBridge/teambridge-mentions-r2-audit-4ad83913bb2a-hi/record.json"
-				},
-				{
-					"agent": "scout",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-30",
-					"result": "clean",
-					"instance": "f61a774e19eb-hi",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/f61a774e19eb-hi.json",
-					"receipt_sha256": "5715f040ed4a281582d1e455db1157f368140e638e9d66a99305acead7bc3f28",
-					"scope": "Re-audit of round-2 in-audit remediation and the 4 changed/new mentions.* values (ui#1532)",
-					"note": "Independent scout re-audit (session f61a774e19eb); clean. Receipt: i18n/receipts/f61a774e19eb-hi.json"
+					"receipt": "i18n/receipts/b20548e9b2d9-rebase-hi.json",
+					"receipt_sha256": "f8709694dd4f4202ca31742ef7afec1c3f01891e326bb804e925d65136477db2",
+					"scope": "Post-rebase delta onto d62accf: ui.teamBridge.reactions.others only; rest byte-identical to main's audited bytes.",
+					"note": "Rebase re-audit by translation-auditor (session b20548e9b2d9); key value byte-identical to ffe897895c10 audit."
 				}
 			],
 			"status": "audited",
@@ -25022,25 +24950,42 @@
 					"status": "audited"
 				},
 				{
-					"source_sha256": "fca3039a46e3113acca89ca90f026f943f717ed2e531406497d46837cf972af5",
-					"target_sha256": "6ee6106298d95073e9968d865e6534f88a1fcdc1b4d59b150b3a3e7fad9f6cb0",
+					"source_sha256": "872abba111887ee71c0f4f079bdb3747f564b93abc85639b13b43d864a9372cb",
+					"target_sha256": "c5b8869b6e1f78f4100050c90a081b96c3deaca718ce474c89f6a9ff3f564fdd",
 					"auditors": [
 						{
 							"agent": "task",
 							"model": "anthropic/claude-opus-5-5",
 							"date": "2026-10-30",
 							"result": "clean",
-							"instance": "a72fc22aa8e8-hi",
+							"instance": "4ad83913bb2a-hi",
 							"findings": {
 								"blocker": 0,
 								"major": 0,
 								"minor": 0,
 								"nit": 0
 							},
-							"receipt": "i18n/receipts/a72fc22aa8e8-hi.json",
-							"receipt_sha256": "f2ca764b5bfb14d336d0da8f62c86e717c8b0cf1a51c37a0e0bda6b7241cca6d",
-							"scope": "PR #1532 delta: 13 new ui.teamBridge.mentions.* keys; 285 prior values byte-identical to superseded audits",
-							"note": "Independent delta audit. 0 residual findings; 0 remediated in-audit (ids: none). Record: i18n/audits/evidence/hi/ui.teamBridge/teambridge-mentions-audit-a72fc22aa8e8-hi/record.json"
+							"receipt": "i18n/receipts/4ad83913bb2a-hi.json",
+							"receipt_sha256": "91a1473245ce59487a709cc4f61ac607758ff25c256a3392283600510bcc04e1",
+							"scope": "PR #1532 round 2 delta: 4 changed/new mentions.* notice values + agent_secondary removal; other values byte-identical to superseded audits",
+							"note": "Independent round-2 delta audit; remediated in-audit, 0 residual. Record: i18n/audits/evidence/hi/ui.teamBridge/teambridge-mentions-r2-audit-4ad83913bb2a-hi/record.json"
+						},
+						{
+							"agent": "scout",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "f61a774e19eb-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f61a774e19eb-hi.json",
+							"receipt_sha256": "5715f040ed4a281582d1e455db1157f368140e638e9d66a99305acead7bc3f28",
+							"scope": "Re-audit of round-2 in-audit remediation and the 4 changed/new mentions.* values (ui#1532)",
+							"note": "Independent scout re-audit (session f61a774e19eb); clean. Receipt: i18n/receipts/f61a774e19eb-hi.json"
 						}
 					],
 					"status": "audited"
@@ -32214,8 +32159,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "872abba111887ee71c0f4f079bdb3747f564b93abc85639b13b43d864a9372cb",
-			"target_sha256": "01066b49186ea44b9f1ddfc2c774f1b1376ae83c60db305853ad89aa9a05c8c8",
+			"source_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
+			"target_sha256": "0e44323598a7f8bbef2fda08aa5d5a0f8361a1c80de8d46cfbd44c465650e7bf",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -32227,49 +32172,25 @@
 					"key": "ui.teamBridge.notify.unavailable",
 					"job": "job8d4e6d78c133",
 					"model": "not supplied"
-				},
-				"delta_source": {
-					"keys": "ui.teamBridge.mentions.* (13 keys)",
-					"agent": "coder",
-					"model": "anthropic/claude-opus-5-5",
-					"commit": "d97fab7df10",
-					"note": "Self-translated by the feature coder (lopdev); independently audited by session a72fc22aa8e8."
 				}
 			},
 			"auditors": [
 				{
-					"agent": "task",
+					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "4ad83913bb2a-ru",
+					"instance": "b20548e9b2d9-rebase-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/4ad83913bb2a-ru.json",
-					"receipt_sha256": "c4c2a7817ea9d66efa522952f9f18e84b837fad17399e4c9685c57f9f7fe1cf2",
-					"scope": "PR #1532 round 2 delta: 4 changed/new mentions.* notice values + agent_secondary removal; other values byte-identical to superseded audits",
-					"note": "Independent round-2 delta audit; remediated in-audit, 0 residual. Record: i18n/audits/evidence/ru/ui.teamBridge/teambridge-mentions-r2-audit-4ad83913bb2a-ru/record.json"
-				},
-				{
-					"agent": "scout",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-30",
-					"result": "clean",
-					"instance": "f61a774e19eb-ru",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/f61a774e19eb-ru.json",
-					"receipt_sha256": "2a6fd76b3c2cd1fdecb6f4021e20e657f54c07c8325783169079590e4470632e",
-					"scope": "Re-audit of round-2 in-audit remediation and the 4 changed/new mentions.* values (ui#1532)",
-					"note": "Independent scout re-audit (session f61a774e19eb); clean. Receipt: i18n/receipts/f61a774e19eb-ru.json"
+					"receipt": "i18n/receipts/b20548e9b2d9-rebase-ru.json",
+					"receipt_sha256": "7acab1eb47d7916ca0801435ff2199cd3e050414aeb90bf2c6e984ed03174a8b",
+					"scope": "Post-rebase delta onto d62accf: ui.teamBridge.reactions.others only; rest byte-identical to main's audited bytes.",
+					"note": "Rebase re-audit by translation-auditor (session b20548e9b2d9); key value byte-identical to ffe897895c10 audit."
 				}
 			],
 			"status": "audited",
@@ -33261,42 +33182,42 @@
 					"status": "audited"
 				},
 				{
-					"source_sha256": "fca3039a46e3113acca89ca90f026f943f717ed2e531406497d46837cf972af5",
-					"target_sha256": "6525ec279ad00152435dde140578e0c8359104d1acd756d2c717803bd3231e57",
+					"source_sha256": "872abba111887ee71c0f4f079bdb3747f564b93abc85639b13b43d864a9372cb",
+					"target_sha256": "01066b49186ea44b9f1ddfc2c774f1b1376ae83c60db305853ad89aa9a05c8c8",
 					"auditors": [
 						{
 							"agent": "task",
 							"model": "anthropic/claude-opus-5-5",
 							"date": "2026-10-30",
 							"result": "clean",
-							"instance": "a72fc22aa8e8-ru",
+							"instance": "4ad83913bb2a-ru",
 							"findings": {
 								"blocker": 0,
 								"major": 0,
 								"minor": 0,
 								"nit": 0
 							},
-							"receipt": "i18n/receipts/a72fc22aa8e8-ru.json",
-							"receipt_sha256": "13bf5c8b3e30c8c855ea391dfd360b52d32994b84061a636c39eba73f39e1919",
-							"scope": "PR #1532 delta: 13 new ui.teamBridge.mentions.* keys; 285 prior values byte-identical to superseded audits",
-							"note": "Independent delta audit. 0 residual findings; 2 remediated in-audit (ids: TBM-RU-1,TBM-RU-2). Record: i18n/audits/evidence/ru/ui.teamBridge/teambridge-mentions-audit-a72fc22aa8e8-ru/record.json"
+							"receipt": "i18n/receipts/4ad83913bb2a-ru.json",
+							"receipt_sha256": "c4c2a7817ea9d66efa522952f9f18e84b837fad17399e4c9685c57f9f7fe1cf2",
+							"scope": "PR #1532 round 2 delta: 4 changed/new mentions.* notice values + agent_secondary removal; other values byte-identical to superseded audits",
+							"note": "Independent round-2 delta audit; remediated in-audit, 0 residual. Record: i18n/audits/evidence/ru/ui.teamBridge/teambridge-mentions-r2-audit-4ad83913bb2a-ru/record.json"
 						},
 						{
-							"agent": "translation-auditor",
+							"agent": "scout",
 							"model": "anthropic/claude-opus-5-5",
 							"date": "2026-10-30",
 							"result": "clean",
-							"instance": "93e37e001a89-ru",
+							"instance": "f61a774e19eb-ru",
 							"findings": {
 								"blocker": 0,
 								"major": 0,
 								"minor": 0,
 								"nit": 0
 							},
-							"receipt": "i18n/receipts/93e37e001a89-ru.json",
-							"receipt_sha256": "b8785813b83ae9a0033ecfaf2d0580e676e530fcf3a8ca35a08b7bfcb99f4861",
-							"scope": "Re-audit of the in-audit remediation by a72fc22aa8e8 on PR #1532 (changed mentions.* values only)",
-							"note": "Independent re-audit (session 93e37e001a89) of remediated values; 0 findings. Receipt: i18n/receipts/93e37e001a89-ru.json"
+							"receipt": "i18n/receipts/f61a774e19eb-ru.json",
+							"receipt_sha256": "2a6fd76b3c2cd1fdecb6f4021e20e657f54c07c8325783169079590e4470632e",
+							"scope": "Re-audit of round-2 in-audit remediation and the 4 changed/new mentions.* values (ui#1532)",
+							"note": "Independent scout re-audit (session f61a774e19eb); clean. Receipt: i18n/receipts/f61a774e19eb-ru.json"
 						}
 					],
 					"status": "audited"
@@ -40529,8 +40450,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "872abba111887ee71c0f4f079bdb3747f564b93abc85639b13b43d864a9372cb",
-			"target_sha256": "8101f46cfa93bb86230112565b62946aab07932ad031cf1a27d9bbf4c078571f",
+			"source_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
+			"target_sha256": "eccfc6b4503ddc5929c1c136fa67e9fd65f2a7e6974a45aaa441adc0ed5ca7ce",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -40541,49 +40462,25 @@
 					"key": "ui.teamBridge.notify.unavailable",
 					"job": "job8d4e6d78c133",
 					"model": "not supplied"
-				},
-				"delta_source": {
-					"keys": "ui.teamBridge.mentions.* (13 keys)",
-					"agent": "coder",
-					"model": "anthropic/claude-opus-5-5",
-					"commit": "d97fab7df10",
-					"note": "Self-translated by the feature coder (lopdev); independently audited by session a72fc22aa8e8."
 				}
 			},
 			"auditors": [
 				{
-					"agent": "task",
+					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "4ad83913bb2a-ur",
+					"instance": "b20548e9b2d9-rebase-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/4ad83913bb2a-ur.json",
-					"receipt_sha256": "026a53fae0066db9a2d8ed089745302535e46c6fe2ef769c45cf6971ea98d571",
-					"scope": "PR #1532 round 2 delta: 4 changed/new mentions.* notice values + agent_secondary removal; other values byte-identical to superseded audits",
-					"note": "Independent round-2 delta audit; remediated in-audit, 0 residual. Record: i18n/audits/evidence/ur/ui.teamBridge/teambridge-mentions-r2-audit-4ad83913bb2a-ur/record.json"
-				},
-				{
-					"agent": "scout",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-30",
-					"result": "clean-with-findings",
-					"instance": "f61a774e19eb-ur",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 1
-					},
-					"receipt": "i18n/receipts/f61a774e19eb-ur.json",
-					"receipt_sha256": "71557c32ad6dd96f9b7a7b47e91c9575eb9cef3949f7bd0c6d1a7c1558e1df57",
-					"scope": "Re-audit of round-2 in-audit remediation and the 4 changed/new mentions.* values (ui#1532)",
-					"note": "Independent scout re-audit (session f61a774e19eb); clean-with-findings. Receipt: i18n/receipts/f61a774e19eb-ur.json"
+					"receipt": "i18n/receipts/b20548e9b2d9-rebase-ur.json",
+					"receipt_sha256": "41e455bf69453ff8e60ffa0a0d995a0b46467594971ba4e5bf8508c31ccfecdc",
+					"scope": "Post-rebase delta onto d62accf: ui.teamBridge.reactions.others only; rest byte-identical to main's audited bytes.",
+					"note": "Rebase re-audit by translation-auditor (session b20548e9b2d9); key value byte-identical to ffe897895c10 audit."
 				}
 			],
 			"status": "audited",
@@ -41503,25 +41400,42 @@
 					"status": "audited"
 				},
 				{
-					"source_sha256": "fca3039a46e3113acca89ca90f026f943f717ed2e531406497d46837cf972af5",
-					"target_sha256": "42ead9eff65e0ea89e99ce7c8dad68b3ecc67e3fe3590a3026759857d828e289",
+					"source_sha256": "872abba111887ee71c0f4f079bdb3747f564b93abc85639b13b43d864a9372cb",
+					"target_sha256": "8101f46cfa93bb86230112565b62946aab07932ad031cf1a27d9bbf4c078571f",
 					"auditors": [
 						{
 							"agent": "task",
 							"model": "anthropic/claude-opus-5-5",
 							"date": "2026-10-30",
 							"result": "clean",
-							"instance": "a72fc22aa8e8-ur",
+							"instance": "4ad83913bb2a-ur",
 							"findings": {
 								"blocker": 0,
 								"major": 0,
 								"minor": 0,
 								"nit": 0
 							},
-							"receipt": "i18n/receipts/a72fc22aa8e8-ur.json",
-							"receipt_sha256": "02b501062c046d189f79687318a5871eb927e7310671c8b064f2f1607a0b9286",
-							"scope": "PR #1532 delta: 13 new ui.teamBridge.mentions.* keys; 285 prior values byte-identical to superseded audits",
-							"note": "Independent delta audit. 0 residual findings; 0 remediated in-audit (ids: none). Record: i18n/audits/evidence/ur/ui.teamBridge/teambridge-mentions-audit-a72fc22aa8e8-ur/record.json"
+							"receipt": "i18n/receipts/4ad83913bb2a-ur.json",
+							"receipt_sha256": "026a53fae0066db9a2d8ed089745302535e46c6fe2ef769c45cf6971ea98d571",
+							"scope": "PR #1532 round 2 delta: 4 changed/new mentions.* notice values + agent_secondary removal; other values byte-identical to superseded audits",
+							"note": "Independent round-2 delta audit; remediated in-audit, 0 residual. Record: i18n/audits/evidence/ur/ui.teamBridge/teambridge-mentions-r2-audit-4ad83913bb2a-ur/record.json"
+						},
+						{
+							"agent": "scout",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-30",
+							"result": "clean-with-findings",
+							"instance": "f61a774e19eb-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/f61a774e19eb-ur.json",
+							"receipt_sha256": "71557c32ad6dd96f9b7a7b47e91c9575eb9cef3949f7bd0c6d1a7c1558e1df57",
+							"scope": "Re-audit of round-2 in-audit remediation and the 4 changed/new mentions.* values (ui#1532)",
+							"note": "Independent scout re-audit (session f61a774e19eb); clean-with-findings. Receipt: i18n/receipts/f61a774e19eb-ur.json"
 						}
 					],
 					"status": "audited"
@@ -49177,8 +49091,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "872abba111887ee71c0f4f079bdb3747f564b93abc85639b13b43d864a9372cb",
-			"target_sha256": "c888fd07f4bd280a8d992d75f290d1655ad1870f3ae59aed0a5e06f402f92892",
+			"source_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
+			"target_sha256": "cb04cebffbb9fa05956ba23143a3f30d7848c73b99482594764d6ad246b916c1",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -49189,49 +49103,25 @@
 					"key": "ui.teamBridge.notify.unavailable",
 					"job": "job8d4e6d78c133",
 					"model": "not supplied"
-				},
-				"delta_source": {
-					"keys": "ui.teamBridge.mentions.* (13 keys)",
-					"agent": "coder",
-					"model": "anthropic/claude-opus-5-5",
-					"commit": "d97fab7df10",
-					"note": "Self-translated by the feature coder (lopdev); independently audited by session a72fc22aa8e8."
 				}
 			},
 			"auditors": [
 				{
-					"agent": "task",
+					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "4ad83913bb2a-vi",
+					"instance": "b20548e9b2d9-rebase-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/4ad83913bb2a-vi.json",
-					"receipt_sha256": "9edccebe48118cdd5a8f664cda8e42e42b80caa1eca18380703a897c9daf932f",
-					"scope": "PR #1532 round 2 delta: 4 changed/new mentions.* notice values + agent_secondary removal; other values byte-identical to superseded audits",
-					"note": "Independent round-2 delta audit; remediated in-audit, 0 residual. Record: i18n/audits/evidence/vi/ui.teamBridge/teambridge-mentions-r2-audit-4ad83913bb2a-vi/record.json"
-				},
-				{
-					"agent": "scout",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-30",
-					"result": "clean-with-findings",
-					"instance": "f61a774e19eb-vi",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 1
-					},
-					"receipt": "i18n/receipts/f61a774e19eb-vi.json",
-					"receipt_sha256": "b7f176a8750b9cfe36c3b61ca5a0b2378dbb6ecaabb9fbf4bd8d17a724963239",
-					"scope": "Re-audit of round-2 in-audit remediation and the 4 changed/new mentions.* values (ui#1532)",
-					"note": "Independent scout re-audit (session f61a774e19eb); clean-with-findings. Receipt: i18n/receipts/f61a774e19eb-vi.json"
+					"receipt": "i18n/receipts/b20548e9b2d9-rebase-vi.json",
+					"receipt_sha256": "7941bd784834f472a67ee9d66f7fd95732371f930fd2232bfd555ee31f45a5a5",
+					"scope": "Post-rebase delta onto d62accf: ui.teamBridge.reactions.others only; rest byte-identical to main's audited bytes.",
+					"note": "Rebase re-audit by translation-auditor (session b20548e9b2d9); key value byte-identical to ffe897895c10 audit."
 				}
 			],
 			"status": "audited",
@@ -50182,25 +50072,42 @@
 					"status": "audited"
 				},
 				{
-					"source_sha256": "fca3039a46e3113acca89ca90f026f943f717ed2e531406497d46837cf972af5",
-					"target_sha256": "1e0d2f55b7ec9cb4751bf115853de68bcb0fea471e4db5fde7c0bc8ae8d23901",
+					"source_sha256": "872abba111887ee71c0f4f079bdb3747f564b93abc85639b13b43d864a9372cb",
+					"target_sha256": "c888fd07f4bd280a8d992d75f290d1655ad1870f3ae59aed0a5e06f402f92892",
 					"auditors": [
 						{
 							"agent": "task",
 							"model": "anthropic/claude-opus-5-5",
 							"date": "2026-10-30",
 							"result": "clean",
-							"instance": "a72fc22aa8e8-vi",
+							"instance": "4ad83913bb2a-vi",
 							"findings": {
 								"blocker": 0,
 								"major": 0,
 								"minor": 0,
 								"nit": 0
 							},
-							"receipt": "i18n/receipts/a72fc22aa8e8-vi.json",
-							"receipt_sha256": "9f83beae71277d350454d4dc0998ed0a019830e7e5fc9bcba920ed3cb86fada9",
-							"scope": "PR #1532 delta: 13 new ui.teamBridge.mentions.* keys; 285 prior values byte-identical to superseded audits",
-							"note": "Independent delta audit. 0 residual findings; 0 remediated in-audit (ids: none). Record: i18n/audits/evidence/vi/ui.teamBridge/teambridge-mentions-audit-a72fc22aa8e8-vi/record.json"
+							"receipt": "i18n/receipts/4ad83913bb2a-vi.json",
+							"receipt_sha256": "9edccebe48118cdd5a8f664cda8e42e42b80caa1eca18380703a897c9daf932f",
+							"scope": "PR #1532 round 2 delta: 4 changed/new mentions.* notice values + agent_secondary removal; other values byte-identical to superseded audits",
+							"note": "Independent round-2 delta audit; remediated in-audit, 0 residual. Record: i18n/audits/evidence/vi/ui.teamBridge/teambridge-mentions-r2-audit-4ad83913bb2a-vi/record.json"
+						},
+						{
+							"agent": "scout",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-30",
+							"result": "clean-with-findings",
+							"instance": "f61a774e19eb-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/f61a774e19eb-vi.json",
+							"receipt_sha256": "b7f176a8750b9cfe36c3b61ca5a0b2378dbb6ecaabb9fbf4bd8d17a724963239",
+							"scope": "Re-audit of round-2 in-audit remediation and the 4 changed/new mentions.* values (ui#1532)",
+							"note": "Independent scout re-audit (session f61a774e19eb); clean-with-findings. Receipt: i18n/receipts/f61a774e19eb-vi.json"
 						}
 					],
 					"status": "audited"
@@ -58427,8 +58334,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "872abba111887ee71c0f4f079bdb3747f564b93abc85639b13b43d864a9372cb",
-			"target_sha256": "947d4dfa87c9a77b828cd16ef924aae3f4354db7ce0a34863e205cc78b731095",
+			"source_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
+			"target_sha256": "6edc2ddfcb1c4deb129dca9d978cc04fe7cbbb7a157495c8f745ea7f0c7ddf67",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -58439,49 +58346,25 @@
 					"key": "ui.teamBridge.notify.unavailable",
 					"job": "job8d4e6d78c133",
 					"model": "not supplied"
-				},
-				"delta_source": {
-					"keys": "ui.teamBridge.mentions.* (13 keys)",
-					"agent": "coder",
-					"model": "anthropic/claude-opus-5-5",
-					"commit": "d97fab7df10",
-					"note": "Self-translated by the feature coder (lopdev); independently audited by session a72fc22aa8e8."
 				}
 			},
 			"auditors": [
 				{
-					"agent": "task",
+					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "4ad83913bb2a-zh-cn",
+					"instance": "b20548e9b2d9-rebase-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/4ad83913bb2a-zh-cn.json",
-					"receipt_sha256": "7e0b8e1876f79c2ab497744e7db1d576ba1f19d850596469feb119ca41f644f4",
-					"scope": "PR #1532 round 2 delta: 4 changed/new mentions.* notice values + agent_secondary removal; other values byte-identical to superseded audits",
-					"note": "Independent round-2 delta audit; remediated in-audit, 0 residual. Record: i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-mentions-r2-audit-4ad83913bb2a-zh-cn/record.json"
-				},
-				{
-					"agent": "scout",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-30",
-					"result": "clean",
-					"instance": "f61a774e19eb-zh-cn",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/f61a774e19eb-zh-cn.json",
-					"receipt_sha256": "eab55bc5131f7f26fae32037fba596cdd4969a7d238f2da04bd7bb961a40f8cc",
-					"scope": "Re-audit of round-2 in-audit remediation and the 4 changed/new mentions.* values (ui#1532)",
-					"note": "Independent scout re-audit (session f61a774e19eb); clean. Receipt: i18n/receipts/f61a774e19eb-zh-cn.json"
+					"receipt": "i18n/receipts/b20548e9b2d9-rebase-zh-cn.json",
+					"receipt_sha256": "05f412f06d432f55a99742faae20250de5e71aac03ccf5c8a2b784a2195c0849",
+					"scope": "Post-rebase delta onto d62accf: ui.teamBridge.reactions.others only; rest byte-identical to main's audited bytes.",
+					"note": "Rebase re-audit by translation-auditor (session b20548e9b2d9); key value byte-identical to ffe897895c10 audit."
 				}
 			],
 			"status": "audited",
@@ -59454,25 +59337,42 @@
 					"status": "audited"
 				},
 				{
-					"source_sha256": "fca3039a46e3113acca89ca90f026f943f717ed2e531406497d46837cf972af5",
-					"target_sha256": "35308214e425dab432d5f86751d2edc9c2de1bb9f8102b9d4fb45f38486b1f27",
+					"source_sha256": "872abba111887ee71c0f4f079bdb3747f564b93abc85639b13b43d864a9372cb",
+					"target_sha256": "947d4dfa87c9a77b828cd16ef924aae3f4354db7ce0a34863e205cc78b731095",
 					"auditors": [
 						{
 							"agent": "task",
 							"model": "anthropic/claude-opus-5-5",
 							"date": "2026-10-30",
 							"result": "clean",
-							"instance": "a72fc22aa8e8-zh-cn",
+							"instance": "4ad83913bb2a-zh-cn",
 							"findings": {
 								"blocker": 0,
 								"major": 0,
 								"minor": 0,
 								"nit": 0
 							},
-							"receipt": "i18n/receipts/a72fc22aa8e8-zh-cn.json",
-							"receipt_sha256": "26e2588438e3df5210c158ac8f2c9346041169d6e967b3d77e838e973eecb38d",
-							"scope": "PR #1532 delta: 13 new ui.teamBridge.mentions.* keys; 285 prior values byte-identical to superseded audits",
-							"note": "Independent delta audit. 0 residual findings; 0 remediated in-audit (ids: none). Record: i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-mentions-audit-a72fc22aa8e8-zh-cn/record.json"
+							"receipt": "i18n/receipts/4ad83913bb2a-zh-cn.json",
+							"receipt_sha256": "7e0b8e1876f79c2ab497744e7db1d576ba1f19d850596469feb119ca41f644f4",
+							"scope": "PR #1532 round 2 delta: 4 changed/new mentions.* notice values + agent_secondary removal; other values byte-identical to superseded audits",
+							"note": "Independent round-2 delta audit; remediated in-audit, 0 residual. Record: i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-mentions-r2-audit-4ad83913bb2a-zh-cn/record.json"
+						},
+						{
+							"agent": "scout",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "f61a774e19eb-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f61a774e19eb-zh-cn.json",
+							"receipt_sha256": "eab55bc5131f7f26fae32037fba596cdd4969a7d238f2da04bd7bb961a40f8cc",
+							"scope": "Re-audit of round-2 in-audit remediation and the 4 changed/new mentions.* values (ui#1532)",
+							"note": "Independent scout re-audit (session f61a774e19eb); clean. Receipt: i18n/receipts/f61a774e19eb-zh-cn.json"
 						}
 					],
 					"status": "audited"

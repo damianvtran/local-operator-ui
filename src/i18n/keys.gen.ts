@@ -9507,6 +9507,7 @@ export type MessageParams = {
 	"ui.teamBridge.reactions.failed": undefined;
 	"ui.teamBridge.reactions.frequent": undefined;
 	"ui.teamBridge.reactions.noResults": undefined;
+	"ui.teamBridge.reactions.others": { others: number };
 	"ui.teamBridge.reactions.search": undefined;
 	"ui.teamBridge.reactions.tone": undefined;
 	"ui.teamBridge.reactions.toneDefault": undefined;
