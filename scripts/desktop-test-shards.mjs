@@ -3,8 +3,9 @@
  * Capacity partitioning, not a runtime-balancing or memory-fault cure.
  *
  * The inventory is DERIVED from the tree by `desktop-test-inventory.mjs` (every
- * `.test.mjs` file under `scripts/`, recursively, minus its explained `EXEMPT` table), not read off
- * a hand-kept list in package.json; that module's header says why. Keep local
+ * `.test.mjs` file under `scripts/`, recursively, minus its explained `EXEMPT`
+ * table), not read off a hand-kept list in package.json; that module's header
+ * says why. Keep local
  * full-suite use unchanged; CI selects one deterministic partition and delegates
  * to the existing runner with argv, never a shell or a second test manifest.
  * Importing this module performs no test import, process launch or file writes.

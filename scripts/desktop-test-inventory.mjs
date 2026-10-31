@@ -55,6 +55,17 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const RUNNER = "scripts/run-desktop-tests.mjs";
 
 const TEST_FILE = /\.test\.mjs$/;
+
+/**
+ * The shortest exemption reason accepted, in characters after trimming.
+ *
+ * ONE rule, enforced only in `selectDesktopTests`, so the planner and the
+ * `test-inventory` gate cannot disagree (review round 1, R1-2: the gate wanted
+ * more than 20 characters while the planner took any non-empty string, so `"x"`
+ * passed one and failed the other). The stricter of the two survives: a reason
+ * has to say where the file runs, and a word cannot.
+ */
+export const MIN_EXEMPT_REASON = 21;
 const SAFE_PATH = /^(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_.-]+\.test\.mjs$/;
 
 /**
@@ -147,6 +158,10 @@ export function selectDesktopTests(paths, exempt = EXEMPT) {
 	for (const [file, reason] of Object.entries(exempt)) {
 		if (typeof reason !== "string" || !reason.trim())
 			throw new Error(`EXEMPT entry has no reason: ${file}`);
+		if (reason.trim().length < MIN_EXEMPT_REASON)
+			throw new Error(
+				`EXEMPT entry needs a real reason (at least ${MIN_EXEMPT_REASON} characters saying where it runs): ${file}`,
+			);
 		// A typo here would otherwise exempt nothing and say nothing.
 		if (!present.has(file))
 			throw new Error(`EXEMPT entry names no existing test file: ${file}`);

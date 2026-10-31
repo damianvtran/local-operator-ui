@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { test } from "node:test";
-import { EXEMPT, walkTestFiles } from "./desktop-test-inventory.mjs";
+import { EXEMPT } from "./desktop-test-inventory.mjs";
 import { inventory } from "./desktop-test-shards.mjs";
 
 /*
@@ -25,12 +25,31 @@ import { inventory } from "./desktop-test-shards.mjs";
  * must equal "every test file minus EXEMPT", exactly, and EXEMPT may not rot.
  * The walk is recursive on purpose: the old top-level-only `readdirSync` never
  * saw `scripts/i18n/`, which is how nine i18n suites ran in no CI step at all.
+ *
+ * INDEPENDENT MEANS SHARES NO CODE. `treeTestFiles` below must never import or
+ * call `walkTestFiles` (the planner's walk): with both sides on one function, a
+ * bug in it (a wrong file filter, a skipped dirent type) changes both lists the
+ * same way and cancels out. Review round 1, R1-1 proved it: a walk patched to
+ * skip `catalogue-*` dropped three nested suites and this gate stayed green.
+ * Node's own recursive `readdirSync` plus a plain suffix check is the second
+ * opinion; `lane-registration` cannot be it, since it only looks at the top
+ * level of `scripts/`. Reason-length rules are NOT checked here: the planner
+ * owns them (`MIN_EXEMPT_REASON`) and refuses a short one, which fails this
+ * gate through `inventory()` anyway (R1-2).
  */
+
+/** Every `scripts/**\/*.test.mjs`, by a route deliberately unlike the planner's. */
+function treeTestFiles() {
+	return readdirSync("scripts", { recursive: true })
+		.map((name) => `scripts/${name.split("\\").join("/")}`)
+		.filter((path) => path.endsWith(".test.mjs"))
+		.sort();
+}
 
 test("every scripts/**/*.test.mjs is run by test:desktop or exempt with a reason", () => {
 	const pkg = JSON.parse(readFileSync("package.json", "utf8"));
 	const listed = new Set(inventory(pkg.scripts["test:desktop"]));
-	const files = walkTestFiles(".");
+	const files = treeTestFiles();
 	assert.ok(
 		files.some((file) => file.startsWith("scripts/i18n/")),
 		"the walk must reach nested directories, or a whole subtree drops out unseen",
@@ -57,6 +76,4 @@ test("every scripts/**/*.test.mjs is run by test:desktop or exempt with a reason
 		[],
 		"an EXEMPT entry must name an existing test file",
 	);
-	for (const [file, reason] of Object.entries(EXEMPT))
-		assert.ok(reason.trim().length > 20, `${file} needs a real reason`);
 });

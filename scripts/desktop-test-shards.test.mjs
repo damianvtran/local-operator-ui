@@ -146,16 +146,26 @@ test("inventory rejects unsupported syntax instead of guessing shell semantics",
 test("EXEMPT is honoured exactly and a typo or reasonless entry fails closed", () => {
 	const paths = ["scripts/a.test.mjs", "scripts/b.test.mjs"];
 	assert.deepEqual(
-		selectDesktopTests(paths, { "scripts/b.test.mjs": "runs in its own step" }),
+		selectDesktopTests(paths, {
+			"scripts/b.test.mjs": "runs in its own CI step",
+		}),
 		["scripts/a.test.mjs"],
 	);
 	assert.throws(
-		() => selectDesktopTests(paths, { "scripts/bb.test.mjs": "typo" }),
+		() =>
+			selectDesktopTests(paths, {
+				"scripts/bb.test.mjs": "a typo'd path with a real-length reason",
+			}),
 		/names no existing test file/,
 	);
 	assert.throws(
 		() => selectDesktopTests(paths, { "scripts/b.test.mjs": " " }),
 		/no reason/,
+	);
+	// R1-2: the length floor lives here, not in the gate, so both agree.
+	assert.throws(
+		() => selectDesktopTests(paths, { "scripts/b.test.mjs": "x" }),
+		/needs a real reason/,
 	);
 });
 
