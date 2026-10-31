@@ -79,7 +79,7 @@
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.1": "Voyons rapidement une autre fonctionnalité puissante : la palette de commandes. Vous pouvez l’ouvrir partout dans l’application en appuyant sur ",
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.3": " sous Windows ou Linux. Cette fenêtre pratique s’ouvre depuis n’importe où dans l’application : elle vous donne accès à vos conversations, vos agents, les paramètres, les pages et les actions, et bien plus encore, le tout au clavier. Il est souvent plus rapide d’atteindre ainsi une section de l’application plutôt que de parcourir les menus. Saisissez un mot pour tout rechercher d’un coup, ou commencez par un préfixe pour cibler la recherche : ",
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.4": " pour les conversations, ",
-	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.5": " pour les agents et les équipes ",
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.5": " pour les agents et les équipes",
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.6": " pour les paramètres, et ",
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.7": " pour les commandes et les pages.",
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.2.1": "Besoin d’ouvrir une conversation rapidement ? Appuyez sur ",

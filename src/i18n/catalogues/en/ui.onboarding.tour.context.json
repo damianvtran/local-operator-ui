@@ -480,8 +480,8 @@
 		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
 	},
 	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.5": {
-		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 23 characters. No length cap; keep every fact.",
-		"note": "Paragraph 1 of the body in step 7 of 37 (\"Command palette\"). One fragment of a sentence interrupted by an inline keyboard-shortcut span rendered as <code>. Give it the separator its grammar needs: a space where the language separates words with spaces, so Latin key names are never glued to adjacent words; CJK may omit the space. Hindi and Urdu may move the verb into this fragment after the shortcut, keeping a space between the Latin key name and the surrounding words. The English value's leading/trailing space is structural, not copy; do not change the key name.",
+		"length": "Wrapping paragraph in a 500px-wide tour panel (about 60-70 characters per line); English is 21 characters. No length cap; keep every fact.",
+		"note": "Paragraph 1 of the body in step 7 of 37 (\"Command palette\"). One fragment of a sentence interrupted by an inline keyboard-shortcut span rendered as <code>. Give it the separator its grammar needs: a space where the language separates words with spaces, so Latin key names are never glued to adjacent words; CJK may omit the space. Hindi and Urdu may move the verb into this fragment after the shortcut, keeping a space between the Latin key name and the surrounding words. The English value's leading space is structural, not copy, and this fragment ends on its own last word: the punctuation after it is the <code> chip that follows, so it carries no separator of its own in any script. Do not change the key name.",
 		"role": "Body paragraph in tour step 7 of 37",
 		"tone": "Conversational second-person walkthrough prose, present tense; friendly and concrete."
 	},
