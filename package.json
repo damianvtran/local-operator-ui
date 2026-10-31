@@ -1,478 +1,478 @@
 {
-  "name": "local-operator-ui",
-  "version": "0.46.8",
-  "productName": "Local Operator",
-  "description": "User interface for AI agent assistants that run Python code safely on your device through an intuitive chat interface. Supports local and cloud LLM models with built-in security features.",
-  "main": "./out/main/index.js",
-  "bin": {
-    "local-operator-ui": "./bin/local-operator-ui.js"
-  },
-  "license": "MIT",
-  "author": {
-    "name": "Radient Inc.",
-    "email": "contact@radienthq.com",
-    "url": "https://github.com/radient-ml"
-  },
-  "contributors": [
-    {
-      "name": "Damian Tran",
-      "email": "damian@radienthq.com",
-      "url": "https://github.com/damianvtran"
-    }
-  ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/damianvtran/local-operator-ui.git"
-  },
-  "homepage": "https://github.com/damianvtran/local-operator-ui#readme",
-  "bugs": {
-    "url": "https://github.com/damianvtran/local-operator-ui/issues"
-  },
-  "keywords": [
-    "local-operator",
-    "radient",
-    "agent",
-    "ai",
-    "python",
-    "tool use",
-    "ui",
-    "electron",
-    "react"
-  ],
-  "files": [
-    "out",
-    "bin",
-    "LICENSE",
-    "README.md"
-  ],
-  "publishConfig": {
-    "access": "public"
-  },
-  "scripts": {
-    "start": "electron-vite preview",
-    "app:headless": "LOCAL_OPERATOR_NO_NOTIFICATIONS=1 LOCAL_OPERATOR_UI_TELEMETRY=off LOCAL_OPERATOR_UI_WINDOW_MODE=headless electron . --window-mode=headless",
-    "//app:headless": "The agent-driven launch, so it carries the notification kill switch (scripts/notifications-off.mjs) AND the telemetry switch (scripts/telemetry-off.mjs). `headless` silences this app's OWN banner and cannot reach the backend's: the app spawns a backend, and that backend's parked-gate announcement ends at `osascript` on macOS, whose banner lands in the operator's real Notification Center attributed to Script Editor. The telemetry switch matters because a run of this line boots the real app against the live PostHog project key its build carries, in BOTH processes - main constructs a client and the renderer mounts one - so an unswitched run is counted as a product user and recorded as a session replay. `pnpm start` and `pnpm dev` are a person's own app at their own screen and keep both their banners and their analytics.",
-    "//dev": "The `.env` loader is `dotenv-cli`, whose default is NOT to overwrite a variable that is already in the environment - and that non-override is load-bearing rather than incidental. `dev` used to be `npx dotenv-cli -e .env -- bash -c 'export $(grep -v '^#' .env | xargs) && electron-vite dev'`, added so a checkout's `.env` would beat variables a Cursor/vscode terminal injects; that inner re-export runs AFTER any prefix the caller put on the line, so `pnpm dev:headless` (whose whole guarantee is the launch-side switch) could be re-armed by a `.env` line reading LOCAL_OPERATOR_UI_TELEMETRY= (empty, which the app reads as unset, so telemetry stays ON with no off-line printed) or =on. The principle the telemetry and notification switches rest on is that a LAUNCH's environment outranks a FILE, so the clobbering re-export is gone rather than reordered: a variable the launch set now wins for every key, and the file still supplies the ones it did not. The editor-injection case loses that fight, deliberately - one rule for all keys is what makes the switches hold. Pinned by scripts/telemetry-spawn-sites.test.mjs, which runs this body against a scratch `.env` in all three shapes.",
-    "dev": "npx dotenv-cli -e .env -- electron-vite dev",
-    "//dev:headless": "The env var is the only channel this launch can carry a mode on. electron-vite dev spawns Electron itself from its OWN option parser and forwards nothing extra: measured, neither an appended argument nor its shipped ELECTRON_CLI_ARGS passthrough reaches the app's argv (the run reported the default 1380x900 when the passthrough asked for 1024x768). It does not need the flag: a second launch forwards the mode it resolved to the instance holding the lock (src/main/window-raise.ts), which is the channel this env var already feeds.",
-    "dev:headless": "LOCAL_OPERATOR_NO_NOTIFICATIONS=1 LOCAL_OPERATOR_UI_TELEMETRY=off LOCAL_OPERATOR_UI_WINDOW_MODE=headless pnpm dev",
-    "build": "electron-vite build",
-    "//prebuild": "The build compiles main/preload to V8 bytecode for the pinned Electron, so it needs a real node_modules/electron/dist before electron-vite runs. Since Electron 42 nothing fetches that during an install except our own postinstall, so this hook covers the trees that hook cannot reach (--ignore-scripts, or a dist/ removed by hand) and fails the build by name instead of letting it die inside the bytecode step with an ENOENT. build:npm needs no runtime: it deliberately emits plain JS (LOCAL_OPERATOR_UI_NO_BYTECODE=true).",
-    "prebuild": "node ./bin/ensure-electron.js",
-    "prebuild:npm": "rm -rf out/main out/preload",
-    "build:npm": "LOCAL_OPERATOR_UI_NO_BYTECODE=true electron-vite build",
-    "postbuild:npm": "chmod +x ./bin/local-operator-ui.js",
-    "postbuild": "chmod +x ./bin/local-operator-ui.js",
-    "postinstall": "node ./bin/postinstall.js",
-    "//prepare": "Wires this clone's pushes through the tracked .githooks/pre-push, so a worktree that would otherwise push ungated is either gated or refused loudly - git skips a hook file that is not there, in silence, which is exactly the state a fresh worktree is in. Not bin/postinstall.js, whose own contract is that it must never fail the install: a wiring that cannot be verified has to say so rather than report a success. Runs on `pnpm install` in a checkout and on a git-based install, and never for a published tarball's consumer, which has no repository to wire. pnpm hooks:install is the same thing by hand; pnpm hooks:check is the read-only form and a non-zero exit when pushes from this checkout are not gated. See scripts/hooks-install.mjs and docs/hooks.md.",
-    "//prepare:evidence-fold": "Wires the clone merge driver for docs/evidence/manifest.json, so `git merge` does not stop on a manifest a sibling lane also rewrote. It runs from `prepare` for the same reason the hooks wiring does: a fresh clone (and every worktree of it, since the config is the clone LOCAL one) would otherwise fold with the driver missing, and the failure that produces is a conflict nobody knows to expect. Same contract as the hooks wiring - it fails loudly by hand and never fails the install, where `postinstall` owns the opposite rule. pnpm evidence:fold:install and pnpm evidence:fold:check are the by-hand forms. The driver is not needed for the ordinary fold any more - with the retired tree stamps gone, a merge that only moved `src/` or `scripts/` does not touch this file at all - but it is still what resolves the 18-in-30 folds where two lanes genuinely both edited it.",
-    "prepare": "node scripts/hooks-install.mjs --tolerate-failure && node scripts/evidence-fold.mjs --install --tolerate-failure",
-    "//hooks:install": "Idempotent, and safe to run at any time: it repoints core.hooksPath at <common git dir>/lop-hooks, whose pre-push runs the gate THE CURRENT WORKTREE carries. The directory lives in the clone's shared git directory and the path is absolute because a relative core.hooksPath is resolved against the working directory and a path that does not resolve is skipped by git without a word - which is how a worktree pushed ungated while reporting no problem.",
-    "hooks:install": "node scripts/hooks-install.mjs",
-    "hooks:check": "node scripts/hooks-install.mjs --check",
-    "//evidence:fold": "Completes an evidence fold: resolves docs/evidence/manifest.json across a merge a FIELD at a time (not whole-file, and not per entry), re-derives the counts from the merged tree, runs the real guards over the result and stages it - so a fold is ONE commit that carries correct values instead of a merge plus a hand re-lay. Reads the three sides from GIT OBJECTS, so it works on a conflicted working file too. It never weakens a guard - every field the manifest still claims about its tree is written by this tool and then checked by the real guards - and a fold that moved only `src/` or `scripts/` now writes NOTHING (`the manifest already describes this tree`), because the `srcTree`/`scriptsTree` pair that used to change on every such merge is retired and is dropped from whichever side still carries it. pnpm evidence:fold:install wires the clone merge driver so `git merge` does not stop on a manifest conflict at all; pnpm evidence:fold:check is the read-only form and exits non-zero when it is not wired. See scripts/evidence-fold.mjs and the evidence discipline in AGENTS.md.",
-    "evidence:fold": "node scripts/evidence-fold.mjs",
-    "evidence:fold:install": "node scripts/evidence-fold.mjs --install",
-    "evidence:fold:check": "node scripts/evidence-fold.mjs --check",
-    "lint": "pnpm biome check src bin scripts/linux-sandbox.test.mjs",
-    "lint:fix": "pnpm biome check --write src bin scripts/linux-sandbox.test.mjs",
-    "//lint:scripts": "`pnpm lint` names the paths it checks by hand, so the whole of `scripts/` - the proof harnesses, evidence rigs and release gates - sat outside the lint and formatter contracts, and a formatter error rode into a merged pull request green. This gate runs the same `biome check` over the `scripts/` files a change touches against a base ref (`origin/main` locally, the merge commit's first parent in CI), so a violation cannot ride in with the diff that introduces it, while the tree's 106 pre-existing offenders are burnt down file by file rather than turned red at once. Widening `pnpm lint` to name `scripts/` outright is the follow-up once that backlog is gone; scripts/check-scripts-lint.mjs holds the measurements and the full rationale.",
-    "lint:scripts": "node scripts/check-scripts-lint.mjs",
-    "format": "pnpm biome format src",
-    "format:fix": "pnpm biome format --write src",
-    "prepack": "pnpm run build:npm",
-    "check-types:main": "tsc --noEmit -p tsconfig.node.json",
-    "check-types:renderer": "tsc --noEmit -p tsconfig.app.json",
-    "check-types": "pnpm run check-types:main && pnpm run check-types:renderer",
-    "check-changed": "node scripts/ci-scope.mjs --since \"$(git merge-base origin/main HEAD)\" --run",
-    "check-themes": "node scripts/generate-theme-css.mjs --check && node scripts/contrast-contract.mjs && node scripts/check-design-kit.mjs",
-    "test:session-cookies": "node scripts/session-cookie-electron.test.mjs",
-    "test:window-guards": "node scripts/window-guards-electron.test.mjs",
-    "test:window-glass": "node --test scripts/window-glass-cdp.test.mjs",
-    "test:tag-dialogs": "node scripts/run-desktop-tests.mjs scripts/chat-tag-dialogs-immediate.test.mjs",
-    "test:desktop": "node scripts/run-desktop-tests.mjs scripts/about-panel.test.mjs scripts/agent-class-toggle.test.mjs scripts/agent-hub-org-sharing.test.mjs scripts/agent-hub-public-teams.test.mjs scripts/agent-hub-queries.test.mjs scripts/agent-hub-skills-tab-count.test.mjs scripts/agent-hub-teams-tab-count.test.mjs scripts/agent-messages-busy.test.mjs scripts/agent-messages-dialog.test.mjs scripts/agent-messages-model.test.mjs scripts/agent-messages-settings.test.mjs scripts/agent-shell-spawn-env.test.mjs scripts/agents-composer-mount.test.mjs scripts/agents-config-probe-cadence.test.mjs scripts/agents-config-retry.test.mjs scripts/agents-config-summary.test.mjs scripts/agents-offer-dismiss.test.mjs scripts/agents-publication.test.mjs scripts/agents-source-and-recency-locale.test.mjs scripts/aida-rail-marks.test.mjs scripts/aida-sidebar.test.mjs scripts/analytics-channels.test.mjs scripts/analytics-rate-format.test.mjs scripts/analytics-session-table.test.mjs scripts/application-menu-labels.test.mjs scripts/approval-escape.test.mjs scripts/approvals-card-document.test.mjs scripts/approvals-overlay.test.mjs scripts/ask-composer-no-routing.test.mjs scripts/ask-dismiss-panel.test.mjs scripts/ask-dismiss.test.mjs scripts/ask-draft-swap.test.mjs scripts/ask-open-policy.test.mjs scripts/ask-open-render.test.mjs scripts/ask-options.test.mjs scripts/ask-other.test.mjs scripts/ask-queue.test.mjs scripts/ask-revise.test.mjs scripts/asks-app-regression.test.mjs scripts/at-mentions.test.mjs scripts/attachment-files.test.mjs scripts/attachment-live-row.test.mjs scripts/attachment-url.test.mjs scripts/attention-seen.test.mjs scripts/audio-engine.test.mjs scripts/audio-meter-stream.test.mjs scripts/audio-recording-levels.test.mjs scripts/authoring-refresh.test.mjs scripts/backend-error-surfaces.test.mjs scripts/backend-setting-combos.test.mjs scripts/backend-settings-collapse.test.mjs scripts/backend-settings-drafts.test.mjs scripts/backend-settings-tiers.test.mjs scripts/backend-spawn-address.test.mjs scripts/backend-version-drift.test.mjs scripts/browser-address-autocomplete.test.mjs scripts/browser-address-history.test.mjs scripts/browser-address-overlay.test.mjs scripts/browser-address-raises.test.mjs scripts/browser-approvals-dock-width.test.mjs scripts/browser-approvals-route.test.mjs scripts/browser-challenge-proof-passkey-servers.test.mjs scripts/browser-chord-renderer.test.mjs scripts/browser-chord.test.mjs scripts/browser-chrome-gaps.test.mjs scripts/browser-chrome-s4b-probe-rig.test.mjs scripts/browser-chrome.test.mjs scripts/browser-file-transfer-row.test.mjs scripts/browser-find-row.test.mjs scripts/browser-history-store.test.mjs scripts/browser-host.test.mjs scripts/browser-network-capture.test.mjs scripts/browser-page-controls.test.mjs scripts/browser-page-menu-focus.test.mjs scripts/browser-page-menu.test.mjs scripts/browser-queue-expiry.test.mjs scripts/browser-site-trigger.test.mjs scripts/browser-start-page.test.mjs scripts/browser-startup.test.mjs scripts/browser-tab-management.test.mjs scripts/browser-tab-actions-menu.test.mjs scripts/browser-tab-strip-focus.test.mjs scripts/browser-toolbar.test.mjs scripts/browser-url-autocomplete.test.mjs scripts/browser-view-policy-kinds.test.mjs scripts/btw-aside.test.mjs scripts/build-env-guard.test.mjs scripts/bundled-runtime-layout.test.mjs scripts/canonical-chat.test.mjs scripts/canonical-notice.test.mjs scripts/canvas-file-freshness.test.mjs scripts/canvas-goals.test.mjs scripts/canvas-tab-close.test.mjs scripts/capture-evidence.test.mjs scripts/chat-archive-press.test.mjs scripts/chat-archived.test.mjs scripts/chat-device-guidance.test.mjs scripts/chat-device-model.test.mjs scripts/chat-device-placement.test.mjs scripts/chat-image-expand.test.mjs scripts/chat-keyboard-regions.test.mjs scripts/chat-link-affordances.test.mjs scripts/chat-list-sections.test.mjs scripts/chat-pane-floors.test.mjs scripts/chat-remote.test.mjs scripts/chat-search.test.mjs scripts/chat-session-copy-id.test.mjs scripts/chat-session-status.test.mjs scripts/chat-session-subagents.test.mjs scripts/chat-sidebar-agents.test.mjs scripts/chat-sidebar-archive.test.mjs scripts/chat-sidebar-connection-voices.test.mjs scripts/chat-sidebar-drafts.test.mjs scripts/chat-sidebar-hover-intent.test.mjs scripts/chat-sidebar-layout.test.mjs scripts/chat-sidebar-pins.test.mjs scripts/chat-sidebar-row-menu.test.mjs scripts/chat-sidebar-scope-paging.test.mjs scripts/chat-sidebar-sections.test.mjs scripts/chat-sidebar-selection.test.mjs scripts/chat-sidebar-tags.test.mjs scripts/chat-sidebar-time-order.test.mjs scripts/chat-sidebar-view.test.mjs scripts/chat-status-strip.test.mjs scripts/chat-title.test.mjs scripts/check-build-env.test.mjs scripts/check-design-kit.test.mjs scripts/check-evidence-structure.test.mjs scripts/check-geometry-sources.test.mjs scripts/check-runtime-deps.test.mjs scripts/check-vendored.test.mjs scripts/checkpoint-model.test.mjs scripts/checkpoint-rail.test.mjs scripts/child-reader-foot-react.test.mjs scripts/child-transcript-paging.test.mjs scripts/chrome-keychain.test.mjs scripts/ci-log-guard.test.mjs scripts/ci-scope.test.mjs scripts/clear-search.test.mjs scripts/click-proof-expect.test.mjs scripts/code-review-delayed-flag.test.mjs scripts/code-review-model.test.mjs scripts/code-review-refresh-cue.test.mjs scripts/code-review-row-layout.test.mjs scripts/collapse-plan-per-pass.test.mjs scripts/compact-receipt.test.mjs scripts/completion-view-ack.test.mjs scripts/composer-file-drop.test.mjs scripts/composer-queued-send.test.mjs scripts/composer-readings.test.mjs scripts/composer-refusal.test.mjs scripts/composer-seeding.test.mjs scripts/composer-send-failure.test.mjs scripts/composer-suggestions.test.mjs scripts/composer-tabs.test.mjs scripts/composer-text-authority.test.mjs scripts/composer-tip-react.test.mjs scripts/condense-parity.test.mjs scripts/conflict-markers.test.mjs scripts/connectivity-banner-copy.test.mjs scripts/connectivity-banner-notice.test.mjs scripts/console-close.test.mjs scripts/console-host.test.mjs scripts/console-i18n-fit.test.mjs scripts/console-mirror.test.mjs scripts/console-pack.test.mjs scripts/console-pane-render.test.mjs scripts/console-pane.test.mjs scripts/context-readout-monotonic.test.mjs scripts/copy-button-copy-locale.test.mjs scripts/credential-capture.test.mjs scripts/credential-composer.test.mjs scripts/cross-session-visibility.test.mjs scripts/currency-math.test.mjs scripts/daemon-discovery.test.mjs scripts/daemon-health-state.test.mjs scripts/daemon-observation.test.mjs scripts/default-effort-options.test.mjs scripts/default-on-banner.test.mjs scripts/delivery-gate.test.mjs scripts/desktop-contract.test.mjs scripts/desktop-feed.test.mjs scripts/desktop-notifier.test.mjs scripts/desktop-proxy.test.mjs scripts/desktop-renderer-transport.test.mjs scripts/desktop-stream.test.mjs scripts/desktop-test-concurrency.test.mjs scripts/desktop-test-lane-bound.test.mjs scripts/desktop-test-memory-guard.test.mjs scripts/desktop-test-shards.test.mjs scripts/desktop-watch-lease.test.mjs scripts/dev-driver-attach.test.mjs scripts/dev-driver-gate.test.mjs scripts/dev-shortcuts.test.mjs scripts/directory-listing.test.mjs scripts/document-direction.test.mjs scripts/draft-selection.test.mjs scripts/draft-slash-identity.test.mjs scripts/draft-splash.test.mjs scripts/drafts-clear-on-send.test.mjs scripts/echo-delivery.test.mjs scripts/evidence-fold.test.mjs scripts/evidence-histogram-parity.test.mjs scripts/evidence-manifest.test.mjs scripts/evidence-run-guard.test.mjs scripts/evidence-sign-in-states.test.mjs scripts/evidence-tz.test.mjs scripts/external-open-refusal.test.mjs scripts/file-blob-url.test.mjs scripts/finder-files.test.mjs scripts/finder-reveal-scroll.test.mjs scripts/fleet-asks.test.mjs scripts/fold-open.test.mjs scripts/frontend-replace.test.mjs scripts/header-identity-menu.test.mjs scripts/header-identity-model.test.mjs scripts/held-claim-reach.test.mjs scripts/hold-escape-claim.test.mjs scripts/hotkey-registration.test.mjs scripts/hub-link-copy.test.mjs scripts/hub-link-view.test.mjs scripts/hub-links-scene.test.mjs scripts/hub-mutation-safety.test.mjs scripts/hub-skill-alias.test.mjs scripts/hub-skill-state.test.mjs scripts/hub-skills-capability.test.mjs scripts/hub-updates.test.mjs scripts/i18n-wave-b-keyed-copy.test.mjs scripts/i18n/absent-locale.test.mjs scripts/i18n/activation.test.mjs scripts/i18n/canvas-picker-review-remediation.test.mjs scripts/i18n/check-added-strings.test.mjs scripts/i18n/check-coverage.test.mjs scripts/i18n/check-strings.test.mjs scripts/i18n/context-parity.test.mjs scripts/i18n/es-activation.test.mjs scripts/i18n/format.test.mjs scripts/i18n/hi-activation.test.mjs scripts/i18n/ledger-assemble.test.mjs scripts/i18n/ledger-check.test.mjs scripts/i18n/locale-parity.test.mjs scripts/i18n/locale-reactivity.test.mjs scripts/i18n/ru-activation.test.mjs scripts/i18n/runtime.test.mjs scripts/i18n/surface-copy-reactivity.test.mjs scripts/i18n/table-pager-range.test.mjs scripts/i18n/typed-keys.test.mjs scripts/i18n/config-kind-word.test.mjs scripts/i18n/ur-activation.test.mjs scripts/i18n/vi-activation.test.mjs scripts/i18n/zh-CN-activation.test.mjs scripts/icon-identity.test.mjs scripts/image-actions.test.mjs scripts/image-gen-card.test.mjs scripts/image-preview-decode.test.mjs scripts/import-settings-section.test.mjs scripts/import-settings-view.test.mjs scripts/install-builtin-batch.test.mjs scripts/install-progress.test.mjs scripts/install-scripts-network.test.mjs scripts/integration-model.test.mjs scripts/interrupt-control.test.mjs scripts/interrupt-slot-hold-react.test.mjs scripts/job-cancel-panel.test.mjs scripts/job-controls.test.mjs scripts/journal-order-query.test.mjs scripts/keyboard-shortcuts-section.test.mjs scripts/keymap-chords.test.mjs scripts/keymap-dispatch.test.mjs scripts/keymap-persistence.test.mjs scripts/keymap-registry.test.mjs scripts/keymap-retention.test.mjs scripts/lane-leading.test.mjs scripts/lane-registration.test.mjs scripts/language-dialog.test.mjs scripts/language-live-updates.test.mjs scripts/launch-session.test.mjs scripts/launcher-watch.test.mjs scripts/library-card.test.mjs scripts/library-markdown.test.mjs scripts/library-model.test.mjs scripts/library-page.test.mjs scripts/library-pptx.test.mjs scripts/link-actions.test.mjs scripts/link-targets.test.mjs scripts/linux-sandbox.test.mjs scripts/live-seed-placement.test.mjs scripts/live-update-integrity.test.mjs scripts/loader-state-machine.test.mjs scripts/locale-direction.test.mjs scripts/logger-log-dir.test.mjs scripts/main-locale.test.mjs scripts/managed-python-transaction.test.mjs scripts/managed-python.test.mjs scripts/mark-all-read-control.test.mjs scripts/markdown-remend.test.mjs scripts/markdown-table-widths.test.mjs scripts/mcp-auth-complete-no-retry.test.mjs scripts/mcp-auth-surface.test.mjs scripts/mcp-catalog-parity.test.mjs scripts/mcp-catalog-transport.test.mjs scripts/mcp-failure-routing.test.mjs scripts/mcp-foreign-config-origin.test.mjs scripts/mcp-list-query.test.mjs scripts/mcp-target-resolution.test.mjs scripts/media-surface-floors.test.mjs scripts/mentioned-files.test.mjs scripts/merge-update-feed.test.mjs scripts/mesh-canvas-bench.test.mjs scripts/mesh-tab.test.mjs scripts/message-actions.test.mjs scripts/message-quote.test.mjs scripts/message-surface-floors.test.mjs scripts/mini-view-contract.test.mjs scripts/mini-view-dictation.test.mjs scripts/model-select-store.test.mjs scripts/model-setting-options.test.mjs scripts/monitor-cancel-dialog.test.mjs scripts/monitor-controls.test.mjs scripts/move-session.test.mjs scripts/navigation-gesture.test.mjs scripts/new-chat-row-evidence.test.mjs scripts/new-chat-row.test.mjs scripts/new-chat-shortcut.test.mjs scripts/no-hardlink-write.test.mjs scripts/no-websocket-plane.test.mjs scripts/notification-launch.test.mjs scripts/notification-lifetime.test.mjs scripts/notification-spawn-sites.test.mjs scripts/notifications-ask-remediation-scene.test.mjs scripts/notifications-detail-asks-card.test.mjs scripts/notifications-detail-asks-pane.test.mjs scripts/notifications-model.test.mjs scripts/notifications-off.test.mjs scripts/notifications-operations.test.mjs scripts/notifications-page-pill.test.mjs scripts/notifications-reel-observer.test.mjs scripts/older-history-slot.test.mjs scripts/onboarding-default-model.test.mjs scripts/onboarding-i18n-contract.test.mjs scripts/onboarding-search-step.test.mjs scripts/onboarding-step-block.test.mjs scripts/org-team-date-locale.test.mjs scripts/org-teams-summary.test.mjs scripts/overlay-drag-zones.test.mjs scripts/owned-serve-lifecycle.test.mjs scripts/pairing-card-copy.test.mjs scripts/palette-contract.test.mjs scripts/palette-focus.test.mjs scripts/palette-main-door.test.mjs scripts/palette-panel-request.test.mjs scripts/palette-recents.test.mjs scripts/palette-search.test.mjs scripts/palette-shortcut.test.mjs scripts/pane-slot-ground.test.mjs scripts/panel-chart-hover.test.mjs scripts/panel-chart-motion.test.mjs scripts/panel-info-credentials.test.mjs scripts/panel-info-fleet.test.mjs scripts/panel-info-session-age.test.mjs scripts/panel-presentation.test.mjs scripts/panel-rail.test.mjs scripts/panel-read-policy.test.mjs scripts/panel-top-inset.test.mjs scripts/passkey-notice.test.mjs scripts/path-utils.test.mjs scripts/peer-journal-source.test.mjs scripts/peer-source-unified.test.mjs scripts/peers-catalogue.test.mjs scripts/phone-access-block.test.mjs scripts/picker-default-checkbox.test.mjs scripts/picker-feedback.test.mjs scripts/picker-host-selection.test.mjs scripts/pre-push-gate.test.mjs scripts/preload-updater-surface.test.mjs scripts/preview-signed-urls.test.mjs scripts/project-update-assets.test.mjs scripts/project-view-perf.test.mjs scripts/projects-board-focus.test.mjs scripts/projects-card-click.test.mjs scripts/projects-entry-scroll.test.mjs scripts/projects-filters.test.mjs scripts/projects-force-done.test.mjs scripts/projects-i18n-locale.test.mjs scripts/projects-inline-edit.test.mjs scripts/projects-quick-send.test.mjs scripts/projects-request-update.test.mjs scripts/projects-search-index.test.mjs scripts/projects-search.test.mjs scripts/projects-sheet.test.mjs scripts/projects-sort.test.mjs scripts/projects-tab.test.mjs scripts/projects-time-window.test.mjs scripts/provider-catalog.test.mjs scripts/provider-chip-verdict.test.mjs scripts/provider-detail-remount.test.mjs scripts/provider-error-guidance.test.mjs scripts/provider-grid-error-copy.test.mjs scripts/provider-grid-pin.test.mjs scripts/provider-sign-in-flow.test.mjs scripts/provider-state.test.mjs scripts/provider-status.test.mjs scripts/prune-bundled-resources.test.mjs scripts/prune-python-seed.test.mjs scripts/ptt-keymap-binding.test.mjs scripts/python-bytecode-cache.test.mjs scripts/quota-notice.test.mjs scripts/radient-credits-guidance.test.mjs scripts/radient-session-issue.test.mjs scripts/radient-signout-authority.test.mjs scripts/radient-verify-callout.test.mjs scripts/receipt-fold-behaviour.test.mjs scripts/reconnect-page-gap.test.mjs scripts/relaunch-during-quit-proof.test.mjs scripts/reload-picker-close.test.mjs scripts/render-mac-entitlements.test.mjs scripts/renderer-driver-api.test.mjs scripts/resolve-package-union.test.mjs scripts/response-copy.test.mjs scripts/retention-duration.test.mjs scripts/reveal-record.test.mjs scripts/right-slot-memory.test.mjs scripts/right-slot-width.test.mjs scripts/row-state-floors.test.mjs scripts/rtl-layout.test.mjs scripts/run-child-reader.test.mjs scripts/run-desktop-tests.test.mjs scripts/run-detail-model.test.mjs scripts/run-detail-wake-label-locale.test.mjs scripts/run-panel-navigation.test.mjs scripts/scheduled-task-model.test.mjs scripts/scroll-region-to-top.test.mjs scripts/scrollbar-activity.test.mjs scripts/searchable-select.test.mjs scripts/secret-ask.test.mjs scripts/seed-label-gap.test.mjs scripts/seed-placement.test.mjs scripts/server-release-notes.test.mjs scripts/session-archive-delete.test.mjs scripts/session-asks.test.mjs scripts/session-cookies.test.mjs scripts/session-files-hook.test.mjs scripts/session-load-recovery.test.mjs scripts/session-load-sequence.test.mjs scripts/session-status-feed.test.mjs scripts/session-status-lifecycle.test.mjs scripts/session-status.test.mjs scripts/session-stream-token.test.mjs scripts/session-switch.test.mjs scripts/session-switcher.test.mjs scripts/settings-account-gate.test.mjs scripts/settings-language-row.test.mjs scripts/settings-search-annotations.test.mjs scripts/settings-search-index.test.mjs scripts/settings-search-jump.test.mjs scripts/settings-search-match.test.mjs scripts/settings-search-registry-jump.test.mjs scripts/settings-search.test.mjs scripts/settings-section-routes.test.mjs scripts/settings-time-to-error.test.mjs scripts/shared-composer.test.mjs scripts/shell-path.test.mjs scripts/sidebar-account-reconnect.test.mjs scripts/sidebar-catalogue-gate.test.mjs scripts/sidebar-attention-badge.test.mjs scripts/sidebar-destinations.test.mjs scripts/sidebar-focus-hold.test.mjs scripts/sidebar-own-avatar.test.mjs scripts/sidebar-pin-order.test.mjs scripts/sidebar-split.test.mjs scripts/sidebar-tag-auto.test.mjs scripts/sidebar-tag-drag.test.mjs scripts/sidebar-tag-picker.test.mjs scripts/skill-highlight.test.mjs scripts/skill-invocation.test.mjs scripts/skill-list.test.mjs scripts/skill-row.test.mjs scripts/skill-seal-behaviour.test.mjs scripts/skills-tab.test.mjs scripts/slash-contract.test.mjs scripts/slash-highlight.test.mjs scripts/slash-rank.test.mjs scripts/slash-row-format.test.mjs scripts/slash-submit.test.mjs scripts/slash-tags-popup.test.mjs scripts/slash-tags-reopen.test.mjs scripts/slash-tags.test.mjs scripts/slash-token.test.mjs scripts/soft-breaks.test.mjs scripts/sound-player.test.mjs scripts/sounds-fixture.test.mjs scripts/speech-clip.test.mjs scripts/speech-controls.test.mjs scripts/speech-selection.test.mjs scripts/speech-settings.test.mjs scripts/speech-store.test.mjs scripts/speech-target.test.mjs scripts/speech-user-copy.test.mjs scripts/spend-payment-basis.test.mjs scripts/stale-agent.test.mjs scripts/stale-caption.test.mjs scripts/stopped-row-measure.test.mjs scripts/storybook-query-fixture.test.mjs scripts/stream-order-live.test.mjs scripts/streaming-live-markdown.test.mjs scripts/streaming-markdown-parity.test.mjs scripts/stt-mic-gate-session.test.mjs scripts/subagent-pulse.test.mjs scripts/submit-latency.test.mjs scripts/suggestion-stack-react.test.mjs scripts/suggestion-stack.test.mjs scripts/supplement-collage.test.mjs scripts/supplement-disclosure.test.mjs scripts/supplement-file-actions.test.mjs scripts/supplement-image-grid.test.mjs scripts/supplement-model.test.mjs scripts/supplement-row.test.mjs scripts/team-bridge-archive-container.test.mjs scripts/team-bridge-archive.test.mjs scripts/team-bridge-arrival.test.mjs scripts/team-bridge-attachments.test.mjs scripts/team-bridge-auth-owner-mount.test.mjs scripts/team-bridge-avatar.test.mjs scripts/team-bridge-banner.test.mjs scripts/team-bridge-channels.test.mjs scripts/team-bridge-composer-ring.test.mjs scripts/team-bridge-directory.test.mjs scripts/team-bridge-drafts-scheduled.test.mjs scripts/team-bridge-invitations.test.mjs scripts/team-bridge-model.test.mjs scripts/team-bridge-notifications-mount.test.mjs scripts/team-bridge-notify.test.mjs scripts/team-bridge-rail-profile-card.test.mjs scripts/team-bridge-reactions-behaviour.test.mjs scripts/team-bridge-reactions.test.mjs scripts/team-bridge-receipt-contract.test.mjs scripts/team-bridge-row-layout-pin.test.mjs scripts/team-bridge-scope.test.mjs scripts/team-bridge-thread-gate.test.mjs scripts/team-bridge-threads.test.mjs scripts/team-initials.test.mjs scripts/team-member-overrides.test.mjs scripts/team-new-chat-stale-draft.test.mjs scripts/telemetry-launch.test.mjs scripts/telemetry-spawn-sites.test.mjs scripts/test-inventory.test.mjs scripts/theme-grid-navigation.test.mjs scripts/theme-inline.test.mjs scripts/theme-registry-exhaustiveness.test.mjs scripts/thread-search-contract.test.mjs scripts/thread-search-model.test.mjs scripts/thread-search-overlay.test.mjs scripts/titlebar-options.test.mjs scripts/toast-close-placement.test.mjs scripts/toast-lifetime.test.mjs scripts/tool-compose-lifecycle.test.mjs scripts/tool-row.test.mjs scripts/tooltip-browser-view.test.mjs scripts/trace-fold-behaviour.test.mjs scripts/trace-fold-model.test.mjs scripts/transcript-copy-affordances.test.mjs scripts/transcript-cursor-continuity.test.mjs scripts/transcript-deep-jump.test.mjs scripts/transcript-dom-window-hook.test.mjs scripts/transcript-dom-window.test.mjs scripts/transcript-fade.test.mjs scripts/transcript-focus-behaviour.test.mjs scripts/transcript-focus.test.mjs scripts/transcript-foot-slot.test.mjs scripts/transcript-journal-order.test.mjs scripts/transcript-loader.test.mjs scripts/transcript-paging-hook.test.mjs scripts/transcript-paging.test.mjs scripts/transcript-perflush-perf.test.mjs scripts/transcript-rail-refusal.test.mjs scripts/transcript-reducer.test.mjs scripts/transcript-strand-hold.test.mjs scripts/transcription-failure-copy.test.mjs scripts/transcription-transient-retry.test.mjs scripts/turn-answer-rail.test.mjs scripts/turn-collapse-behaviour.test.mjs scripts/turn-collapse-model.test.mjs scripts/turn-partition-predicate.test.mjs scripts/turn-segments.test.mjs scripts/turn-timestamp.test.mjs scripts/typed-row-call-sites.test.mjs scripts/undo-toasts.test.mjs scripts/update-affirmation.test.mjs scripts/update-fleet-drain.test.mjs scripts/update-global-guard.test.mjs scripts/update-global-install.test.mjs scripts/update-indicator-segments.test.mjs scripts/update-install-copy.test.mjs scripts/update-panel-copy.test.mjs scripts/update-robustness.test.mjs scripts/update-rollover.test.mjs scripts/update-shipit.test.mjs scripts/update-window-report.test.mjs scripts/usage-container.test.mjs scripts/usage-view.test.mjs scripts/use-active-checkpoint.test.mjs scripts/use-checkpoints.test.mjs scripts/use-ever-in-view.test.mjs scripts/use-thread-search.test.mjs scripts/verify-bundled-uv.test.mjs scripts/verify-macos-artifacts.test.mjs scripts/viewer-record.test.mjs scripts/wake-cancel-panel.test.mjs scripts/wake-controls.test.mjs scripts/warm-session.test.mjs scripts/waveform-model.test.mjs scripts/webauthn.test.mjs scripts/window-chrome.test.mjs scripts/window-glass-main.test.mjs scripts/window-glass-renderer.test.mjs scripts/window-glass.test.mjs scripts/window-guards.test.mjs scripts/window-mode.test.mjs scripts/working-line-clock.test.mjs scripts/i18n/catalogue-locale.test.mjs scripts/i18n/device-tag-activation.test.mjs scripts/language-dialog-applies-on-pick.test.mjs scripts/i18n/chat-header-sidebar-copy.test.mjs scripts/agents-remaining-literals.test.mjs scripts/user-attachments.test.mjs scripts/user-attachments-render.test.mjs scripts/browser-address-overlay-list-child.test.mjs scripts/storybook-cache-prune.test.mjs scripts/with-storybook.test.mjs scripts/hub-check-now-body.test.mjs scripts/hub-incoming-review.test.mjs scripts/hub-incoming-preview.test.mjs scripts/hub-link-policy-popover.test.mjs scripts/recording-shortcut.test.mjs scripts/start-recording-shortcut-row.test.mjs scripts/team-bridge-members.test.mjs scripts/drawer-updates-read.test.mjs scripts/hold-main-claimed-chord.test.mjs scripts/push-to-talk-shortcut-row.test.mjs scripts/team-bridge-instant-open.test.mjs scripts/team-bridge-owner-audit-model.test.mjs scripts/team-bridge-owner-audit-render.test.mjs scripts/team-bridge-client-ref.test.mjs scripts/team-bridge-owner-fence.test.mjs",
-    "check-evidence": "node scripts/check-evidence.mjs",
-    "check-evidence:parity": "node scripts/evidence-histogram-parity.mjs",
-    "check-edit-diffs": "node scripts/check-edit-diffs.mjs",
-    "check-runtime-deps": "node scripts/check-runtime-deps.mjs",
-    "check-fold-keys": "node scripts/check-fold-keys.mjs",
-    "//check-i18n": "The language policy in one command: generator freshness, the literal ratchet, the base-aware added-copy guard, the translation ledger, context parity, then manifest-backed coverage. Split because CI hands the added-copy and coverage halves their base refs; `pnpm check-i18n` runs all three locally with the base resolved to `origin/main`.",
-    "check-i18n": "pnpm check-i18n:catalogues && pnpm check-i18n:added-strings && pnpm check-i18n:coverage",
-    "//check-i18n:catalogues": "The five catalogue gates: `generate --check` (committed generated types match the English catalogues), `check-duplicates` (raw-text scan for a duplicate key a merge can create silently), `check-strings` (no untranslated literals), `ledger-check` (every shipped locale is audited and its hashes still match) and `context-parity` (sidecars agree with their catalogues).",
-    "check-i18n:catalogues": "node scripts/i18n/generate.mjs --check && node scripts/i18n/check-duplicates.mjs && node scripts/i18n/check-strings.mjs && node scripts/i18n/ledger-check.mjs && node scripts/i18n/context-parity.mjs",
-    "//check-i18n:added-strings": "The base-aware guard for copy shapes outside the original ratchet: object-literal properties, expression attributes, static template spans, conditionals and concatenations. It fails only on added lines and has no baseline; CI passes HEAD^1, the real base of the checked-out pull-request merge.",
-    "check-i18n:added-strings": "node scripts/i18n/check-added-strings.mjs",
-    "//check-i18n:coverage": "The manifest-backed coverage gate. CI runs it with `--allowance-base \"$(git rev-parse HEAD^1)\"` so the shrink-only allowance is compared against the pull request's base; locally it resolves `origin/main` on its own.",
-    "check-i18n:coverage": "node scripts/i18n/check-coverage.mjs",
-    "gen-themes": "node scripts/generate-theme-css.mjs",
-    "bundle-size": "node scripts/bundle-size.mjs",
-    "startup-closure": "node scripts/startup-closure.mjs",
-    "pack": "pnpm run build && electron-builder --dir",
-    "dist": "pnpm run build && electron-builder",
-    "dist:mac": "pnpm run build && electron-builder --mac --publish never",
-    "dist:win": "pnpm run build && electron-builder --win --publish never",
-    "dist:linux": "pnpm run build && electron-builder --linux --publish never",
-    "dist:all": "pnpm run build && electron-builder -mwl --publish never",
-    "release": "pnpm run build && electron-builder --publish always",
-    "generate-icons": "node scripts/generate-icons.js",
-    "notarize-dmg": "node scripts/notarize-artifacts.mjs",
-    "verify-macos-artifacts": "node scripts/verify-macos-artifacts.mjs",
-    "setup-python": "./scripts/setup-python-resource.sh",
-    "setup-python:win": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-python-resource.ps1",
-    "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build",
-    "app:driver": "node scripts/renderer-driver.mjs",
-    "app:driver:gate-check": "node scripts/renderer-driver.mjs --gate-check"
-  },
-  "dependencies": {
-    "@electron-toolkit/utils": "^4.0.0",
-    "@xterm/headless": "6.0.0",
-    "dotenv": "^16.5.0",
-    "electron-log": "^4.4.8",
-    "electron-updater": "^6.8.9",
-    "node-pty": "1.1.0",
-    "posthog-node": "^4.11.3",
-    "zod": "^3.24.2"
-  },
-  "//types-node-pin": "Declared in devDependencies and pinned exactly, rather than left to the peer that used to supply it. @electron-toolkit/tsconfig peers on `@types/node: *`, so a full re-resolution floats it to whatever major is current; a range here would re-float the same way. It matters because the renderer typecheck compiles against the lib level this package implies: 22.x carries the es2020 compatibility shims that declare `Array.prototype.at`, 24.x dropped them, and floating it surfaced two TS2550 errors in files nothing here touches. Declaring it makes that a reviewed line instead of a resolution accident.",
-  "//packaged-node-modules-exclusions": "The list above excludes Electron's own dependency tree from the packaged app, which electron-builder copies because `electron` is in optionalDependencies (the npm/npx channel needs it at install time). `@electron/get`, `@electron-internal/extract-zip` and their deps exist to download and unpack the Electron runtime during an INSTALL; a packaged app never runs them. Measured on a --dir artifact of 0.19.7: 8 packages outside the production closure, 7.0 MB of them unpacked into app.asar.unpacked and the rest inside a 26 MB app.asar (@types/node alone 2.4 MB). None is a module request anywhere in out/**, and the closure scripts/check-packaged-closure.mjs computes over the six declared runtime dependencies contains none of them. They are named rather than pattern-matched because electron-builder has no 'skip this dependency's tree' switch: a future Electron bump that adds a dependency needs this list re-derived from the same diff.",
-  "//electron-pin": "Two pins, one runtime, and they must move together. optionalDependencies.electron is what the npm/npx channel installs and what bin/local-operator-ui.js checks at launch; build.electronVersion is what electron-builder packages into the installers. electron-builder does NOT read optionalDependencies (findFromPackageMetadata inspects devDependencies then dependencies only), so without the explicit build.electronVersion it silently falls back to whatever electron happens to sit in node_modules, and a bump against a stale tree keeps building the old runtime. Bump both, or scripts/test-publish-workflow.mjs fails. dmg-builder and electron-builder-squirrel-windows are app-builder-lib's peers and the builder refuses to resolve when they disagree with it, so all three move as one version.",
-  "optionalDependencies": {
-    "electron": "44.3.0"
-  },
-  "devDependencies": {
-    "@babel/helpers": "^7.26.10",
-    "@babel/runtime": "^7.26.10",
-    "@biomejs/biome": "^1.9.4",
-    "@chromatic-com/storybook": "^3.2.5",
-    "@codemirror/language": "^6.11.1",
-    "@codemirror/search": "^6.5.6",
-    "@codemirror/state": "^6.5.2",
-    "@codemirror/view": "^6.37.1",
-    "@electron-toolkit/preload": "^3.0.1",
-    "@electron-toolkit/tsconfig": "^1.0.1",
-    "@electron/notarize": "^2.5.0",
-    "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.0",
-    "@formatjs/icu-messageformat-parser": "^3.5.21",
-    "@lezer/highlight": "^1.2.1",
-    "@mui/material": "^6.4.2",
-    "@mui/x-date-pickers": "^8.3.1",
-    "@storybook/addon-essentials": "^8.6.4",
-    "@storybook/addon-interactions": "^8.6.4",
-    "@storybook/blocks": "^8.6.4",
-    "@storybook/react": "^8.6.4",
-    "@storybook/react-vite": "^8.6.4",
-    "@storybook/test": "^8.6.4",
-    "@tailwindcss/vite": "4.3.3",
-    "@tanstack/react-query": "^5.67.1",
-    "@tanstack/react-query-devtools": "^5.67.1",
-    "@types/hast": "^3.0.4",
-    "@types/node": "22.14.1",
-    "@types/react": "18.3.18",
-    "@types/react-dom": "18.3.5",
-    "@types/react-syntax-highlighter": "^15.5.13",
-    "@types/xlsx": "^0.0.36",
-    "@uiw/codemirror-extensions-langs": "^4.23.10",
-    "@uiw/react-codemirror": "^4.23.10",
-    "@vitejs/plugin-react": "^4.3.4",
-    "@xterm/addon-unicode11": "0.9.0",
-    "@xterm/xterm": "6.0.0",
-    "ag-grid-community": "^33.3.2",
-    "ag-grid-react": "^33.3.2",
-    "class-variance-authority": "0.7.1",
-    "clsx": "2.1.1",
-    "date-fns": "^4.1.0",
-    "dmg-builder": "26.16.1",
-    "dotenv-cli": "^8.0.0",
-    "electron-builder": "^26.16.1",
-    "electron-builder-squirrel-windows": "26.16.1",
-    "electron-vite": "^3.0.0",
-    "esbuild": "^0.25.1",
-    "html-react-parser": "^5.2.2",
-    "icns-lib": "^1.0.1",
-    "intl-messageformat": "^12.1.3",
-    "jest": "^29.7.0",
-    "jsdom": "26.1.0",
-    "katex": "^0.16.21",
-    "lucide-react": "^0.507.0",
-    "mdast-util-math": "^3.0.0",
-    "mermaid": "^11.6.0",
-    "micromark-extension-math": "^3.1.0",
-    "posthog-js": "^1.235.0",
-    "radix-ui": "1.6.7",
-    "pptx-browser": "4.1.5",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-error-boundary": "^5.0.0",
-    "react-markdown": "^10.1.0",
-    "react-router-dom": "^6.16.0",
-    "react-shepherd": "^6.1.8",
-    "react-syntax-highlighter": "^15.6.1",
-    "recharts": "^2.15.3",
-    "rehype-katex": "^7.0.1",
-    "rehype-parse": "^9.0.1",
-    "rehype-remark": "^10.0.1",
-    "rehype-source-map": "^1.0.1",
-    "rehype-stringify": "^10.0.1",
-    "remark": "^15.0.1",
-    "remark-gfm": "^4.0.1",
-    "remark-math": "^6.0.0",
-    "remark-parse": "^11.0.0",
-    "remark-rehype": "^11.1.2",
-    "remark-stringify": "^11.0.0",
-    "sharp": "^0.33.2",
-    "shepherd.js": "^14.5.0",
-    "sonner": "^2.0.3",
-    "storybook": "^8.6.4",
-    "tailwind-merge": "3.6.0",
-    "tailwindcss": "4.3.3",
-    "tw-animate-css": "1.4.0",
-    "typescript": "^7.0.2",
-    "unified": "^11.0.5",
-    "unist-util-visit": "^5.0.0",
-    "uuid": "^11.1.0",
-    "vite": "^6.2.0",
-    "vite-tsconfig-paths": "^5.1.4",
-    "xlsx": "^0.18.5",
-    "yaml": "^2.7.0",
-    "zustand": "^5.0.3"
-  },
-  "peerDependencies": {
-    "react": ">=18.0.0",
-    "react-dom": ">=18.0.0"
-  },
-  "engines": {
-    "node": ">=22.13.1"
-  },
-  "build": {
-    "appId": "com.local-operator",
-    "electronVersion": "44.3.0",
-    "productName": "Local Operator",
-    "copyright": "Copyright © 2025 Radient Inc.",
-    "asar": {
-      "smartUnpack": false
-    },
-    "asarUnpack": [
-      "node_modules/node-pty/prebuilds/**/*",
-      "node_modules/node-pty/build/Release/**/*"
-    ],
-    "files": [
-      "out/**/*",
-      "bin/**/*",
-      "LICENSE",
-      "README.md",
-      "THIRD_PARTY_NOTICES.md",
-      "!node_modules/electron/**/*",
-      "!node_modules/@electron/get/**/*",
-      "!node_modules/@electron-internal/**/*",
-      "!node_modules/env-paths/**/*",
-      "!node_modules/progress/**/*",
-      "!node_modules/sumchecker/**/*",
-      "!node_modules/undici/**/*",
-      "!node_modules/undici-types/**/*",
-      "!node_modules/@types/node/**/*"
-    ],
-    "directories": {
-      "output": "dist",
-      "buildResources": "build"
-    },
-    "afterSign": "scripts/notarize.js",
-    "afterPack": "scripts/after-pack.mjs",
-    "mac": {
-      "icon": "build/icon.icns",
-      "extraResources": [
-        {
-          "from": "resources/python",
-          "to": "python-runtime-seed/x64",
-          "filter": [
-            "**/*"
-          ]
-        },
-        {
-          "from": "resources/python_aarch64",
-          "to": "python-runtime-seed/arm64",
-          "filter": [
-            "**/*"
-          ]
-        },
-        {
-          "from": "resources/uv",
-          "to": "uv/x64",
-          "filter": [
-            "**/*"
-          ]
-        },
-        {
-          "from": "resources/uv_aarch64",
-          "to": "uv/arm64",
-          "filter": [
-            "**/*"
-          ]
-        }
-      ],
-      "notarize": false,
-      "category": "public.app-category.developer-tools",
-      "hardenedRuntime": true,
-      "gatekeeperAssess": false,
-      "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist",
-      "target": [
-        {
-          "target": "dmg"
-        },
-        {
-          "target": "zip"
-        }
-      ],
-      "artifactName": "${name}-${version}-${arch}.${ext}"
-    },
-    "dmg": {
-      "sign": true,
-      "contents": [
-        {
-          "x": 130,
-          "y": 220
-        },
-        {
-          "x": 410,
-          "y": 220,
-          "type": "link",
-          "path": "/Applications"
-        }
-      ],
-      "window": {
-        "width": 540,
-        "height": 380
-      }
-    },
-    "win": {
-      "extraResources": [
-        {
-          "from": "resources/python",
-          "to": "python",
-          "filter": [
-            "**/*"
-          ]
-        },
-        {
-          "from": "resources/python_aarch64",
-          "to": "python_aarch64",
-          "filter": [
-            "**/*"
-          ]
-        },
-        {
-          "from": "resources/uv",
-          "to": "uv/x64",
-          "filter": [
-            "**/*"
-          ]
-        },
-        {
-          "from": "resources/uv_aarch64",
-          "to": "uv/arm64",
-          "filter": [
-            "**/*"
-          ]
-        }
-      ],
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ],
-      "artifactName": "${name}-setup-${version}-${arch}.${ext}",
-      "verifyUpdateCodeSignature": false
-    },
-    "nsis": {
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "deleteAppDataOnUninstall": true,
-      "displayLanguageSelector": true,
-      "multiLanguageInstaller": true
-    },
-    "linux": {
-      "extraResources": [
-        {
-          "from": "resources/python",
-          "to": "python",
-          "filter": [
-            "**/*"
-          ]
-        },
-        {
-          "from": "resources/python_aarch64",
-          "to": "python_aarch64",
-          "filter": [
-            "**/*"
-          ]
-        },
-        {
-          "from": "resources/uv",
-          "to": "uv/x64",
-          "filter": [
-            "**/*"
-          ]
-        },
-        {
-          "from": "resources/uv_aarch64",
-          "to": "uv/arm64",
-          "filter": [
-            "**/*"
-          ]
-        }
-      ],
-      "category": "ArtificialIntelligence",
-      "icon": "build/",
-      "target": [
-        {
-          "target": "deb",
-          "arch": "x64"
-        },
-        {
-          "target": "AppImage",
-          "arch": "x64"
-        },
-        {
-          "target": "rpm",
-          "arch": "x64"
-        }
-      ],
-      "artifactName": "${name}-${version}-${arch}.${ext}",
-      "desktop": {
-        "entry": {
-          "Name": "Local Operator",
-          "Comment": "AI Agent Assistants On Your Device",
-          "Categories": "ArtificialIntelligence"
-        }
-      }
-    },
-    "deb": {
-      "depends": [
-        "python3.12-full",
-        "python3.12-venv"
-      ]
-    },
-    "rpm": {
-      "depends": [
-        "python3.12-full",
-        "python3.12-venv"
-      ]
-    },
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "damianvtran",
-        "repo": "local-operator-ui",
-        "private": false,
-        "releaseType": "release"
-      }
-    ],
-    "generateUpdatesFilesForAllChannels": true
-  }
+	"name": "local-operator-ui",
+	"version": "0.46.8",
+	"productName": "Local Operator",
+	"description": "User interface for AI agent assistants that run Python code safely on your device through an intuitive chat interface. Supports local and cloud LLM models with built-in security features.",
+	"main": "./out/main/index.js",
+	"bin": {
+		"local-operator-ui": "./bin/local-operator-ui.js"
+	},
+	"license": "MIT",
+	"author": {
+		"name": "Radient Inc.",
+		"email": "contact@radienthq.com",
+		"url": "https://github.com/radient-ml"
+	},
+	"contributors": [
+		{
+			"name": "Damian Tran",
+			"email": "damian@radienthq.com",
+			"url": "https://github.com/damianvtran"
+		}
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/damianvtran/local-operator-ui.git"
+	},
+	"homepage": "https://github.com/damianvtran/local-operator-ui#readme",
+	"bugs": {
+		"url": "https://github.com/damianvtran/local-operator-ui/issues"
+	},
+	"keywords": [
+		"local-operator",
+		"radient",
+		"agent",
+		"ai",
+		"python",
+		"tool use",
+		"ui",
+		"electron",
+		"react"
+	],
+	"files": [
+		"out",
+		"bin",
+		"LICENSE",
+		"README.md"
+	],
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"start": "electron-vite preview",
+		"app:headless": "LOCAL_OPERATOR_NO_NOTIFICATIONS=1 LOCAL_OPERATOR_UI_TELEMETRY=off LOCAL_OPERATOR_UI_WINDOW_MODE=headless electron . --window-mode=headless",
+		"//app:headless": "The agent-driven launch, so it carries the notification kill switch (scripts/notifications-off.mjs) AND the telemetry switch (scripts/telemetry-off.mjs). `headless` silences this app's OWN banner and cannot reach the backend's: the app spawns a backend, and that backend's parked-gate announcement ends at `osascript` on macOS, whose banner lands in the operator's real Notification Center attributed to Script Editor. The telemetry switch matters because a run of this line boots the real app against the live PostHog project key its build carries, in BOTH processes - main constructs a client and the renderer mounts one - so an unswitched run is counted as a product user and recorded as a session replay. `pnpm start` and `pnpm dev` are a person's own app at their own screen and keep both their banners and their analytics.",
+		"//dev": "The `.env` loader is `dotenv-cli`, whose default is NOT to overwrite a variable that is already in the environment - and that non-override is load-bearing rather than incidental. `dev` used to be `npx dotenv-cli -e .env -- bash -c 'export $(grep -v '^#' .env | xargs) && electron-vite dev'`, added so a checkout's `.env` would beat variables a Cursor/vscode terminal injects; that inner re-export runs AFTER any prefix the caller put on the line, so `pnpm dev:headless` (whose whole guarantee is the launch-side switch) could be re-armed by a `.env` line reading LOCAL_OPERATOR_UI_TELEMETRY= (empty, which the app reads as unset, so telemetry stays ON with no off-line printed) or =on. The principle the telemetry and notification switches rest on is that a LAUNCH's environment outranks a FILE, so the clobbering re-export is gone rather than reordered: a variable the launch set now wins for every key, and the file still supplies the ones it did not. The editor-injection case loses that fight, deliberately - one rule for all keys is what makes the switches hold. Pinned by scripts/telemetry-spawn-sites.test.mjs, which runs this body against a scratch `.env` in all three shapes.",
+		"dev": "npx dotenv-cli -e .env -- electron-vite dev",
+		"//dev:headless": "The env var is the only channel this launch can carry a mode on. electron-vite dev spawns Electron itself from its OWN option parser and forwards nothing extra: measured, neither an appended argument nor its shipped ELECTRON_CLI_ARGS passthrough reaches the app's argv (the run reported the default 1380x900 when the passthrough asked for 1024x768). It does not need the flag: a second launch forwards the mode it resolved to the instance holding the lock (src/main/window-raise.ts), which is the channel this env var already feeds.",
+		"dev:headless": "LOCAL_OPERATOR_NO_NOTIFICATIONS=1 LOCAL_OPERATOR_UI_TELEMETRY=off LOCAL_OPERATOR_UI_WINDOW_MODE=headless pnpm dev",
+		"build": "electron-vite build",
+		"//prebuild": "The build compiles main/preload to V8 bytecode for the pinned Electron, so it needs a real node_modules/electron/dist before electron-vite runs. Since Electron 42 nothing fetches that during an install except our own postinstall, so this hook covers the trees that hook cannot reach (--ignore-scripts, or a dist/ removed by hand) and fails the build by name instead of letting it die inside the bytecode step with an ENOENT. build:npm needs no runtime: it deliberately emits plain JS (LOCAL_OPERATOR_UI_NO_BYTECODE=true).",
+		"prebuild": "node ./bin/ensure-electron.js",
+		"prebuild:npm": "rm -rf out/main out/preload",
+		"build:npm": "LOCAL_OPERATOR_UI_NO_BYTECODE=true electron-vite build",
+		"postbuild:npm": "chmod +x ./bin/local-operator-ui.js",
+		"postbuild": "chmod +x ./bin/local-operator-ui.js",
+		"postinstall": "node ./bin/postinstall.js",
+		"//prepare": "Wires this clone's pushes through the tracked .githooks/pre-push, so a worktree that would otherwise push ungated is either gated or refused loudly - git skips a hook file that is not there, in silence, which is exactly the state a fresh worktree is in. Not bin/postinstall.js, whose own contract is that it must never fail the install: a wiring that cannot be verified has to say so rather than report a success. Runs on `pnpm install` in a checkout and on a git-based install, and never for a published tarball's consumer, which has no repository to wire. pnpm hooks:install is the same thing by hand; pnpm hooks:check is the read-only form and a non-zero exit when pushes from this checkout are not gated. See scripts/hooks-install.mjs and docs/hooks.md.",
+		"//prepare:evidence-fold": "Wires the clone merge driver for docs/evidence/manifest.json, so `git merge` does not stop on a manifest a sibling lane also rewrote. It runs from `prepare` for the same reason the hooks wiring does: a fresh clone (and every worktree of it, since the config is the clone LOCAL one) would otherwise fold with the driver missing, and the failure that produces is a conflict nobody knows to expect. Same contract as the hooks wiring - it fails loudly by hand and never fails the install, where `postinstall` owns the opposite rule. pnpm evidence:fold:install and pnpm evidence:fold:check are the by-hand forms. The driver is not needed for the ordinary fold any more - with the retired tree stamps gone, a merge that only moved `src/` or `scripts/` does not touch this file at all - but it is still what resolves the 18-in-30 folds where two lanes genuinely both edited it.",
+		"prepare": "node scripts/hooks-install.mjs --tolerate-failure && node scripts/evidence-fold.mjs --install --tolerate-failure",
+		"//hooks:install": "Idempotent, and safe to run at any time: it repoints core.hooksPath at <common git dir>/lop-hooks, whose pre-push runs the gate THE CURRENT WORKTREE carries. The directory lives in the clone's shared git directory and the path is absolute because a relative core.hooksPath is resolved against the working directory and a path that does not resolve is skipped by git without a word - which is how a worktree pushed ungated while reporting no problem.",
+		"hooks:install": "node scripts/hooks-install.mjs",
+		"hooks:check": "node scripts/hooks-install.mjs --check",
+		"//evidence:fold": "Completes an evidence fold: resolves docs/evidence/manifest.json across a merge a FIELD at a time (not whole-file, and not per entry), re-derives the counts from the merged tree, runs the real guards over the result and stages it - so a fold is ONE commit that carries correct values instead of a merge plus a hand re-lay. Reads the three sides from GIT OBJECTS, so it works on a conflicted working file too. It never weakens a guard - every field the manifest still claims about its tree is written by this tool and then checked by the real guards - and a fold that moved only `src/` or `scripts/` now writes NOTHING (`the manifest already describes this tree`), because the `srcTree`/`scriptsTree` pair that used to change on every such merge is retired and is dropped from whichever side still carries it. pnpm evidence:fold:install wires the clone merge driver so `git merge` does not stop on a manifest conflict at all; pnpm evidence:fold:check is the read-only form and exits non-zero when it is not wired. See scripts/evidence-fold.mjs and the evidence discipline in AGENTS.md.",
+		"evidence:fold": "node scripts/evidence-fold.mjs",
+		"evidence:fold:install": "node scripts/evidence-fold.mjs --install",
+		"evidence:fold:check": "node scripts/evidence-fold.mjs --check",
+		"lint": "pnpm biome check src bin scripts/linux-sandbox.test.mjs",
+		"lint:fix": "pnpm biome check --write src bin scripts/linux-sandbox.test.mjs",
+		"//lint:scripts": "`pnpm lint` names the paths it checks by hand, so the whole of `scripts/` - the proof harnesses, evidence rigs and release gates - sat outside the lint and formatter contracts, and a formatter error rode into a merged pull request green. This gate runs the same `biome check` over the `scripts/` files a change touches against a base ref (`origin/main` locally, the merge commit's first parent in CI), so a violation cannot ride in with the diff that introduces it, while the tree's 106 pre-existing offenders are burnt down file by file rather than turned red at once. Widening `pnpm lint` to name `scripts/` outright is the follow-up once that backlog is gone; scripts/check-scripts-lint.mjs holds the measurements and the full rationale.",
+		"lint:scripts": "node scripts/check-scripts-lint.mjs",
+		"format": "pnpm biome format src",
+		"format:fix": "pnpm biome format --write src",
+		"prepack": "pnpm run build:npm",
+		"check-types:main": "tsc --noEmit -p tsconfig.node.json",
+		"check-types:renderer": "tsc --noEmit -p tsconfig.app.json",
+		"check-types": "pnpm run check-types:main && pnpm run check-types:renderer",
+		"check-changed": "node scripts/ci-scope.mjs --since \"$(git merge-base origin/main HEAD)\" --run",
+		"check-themes": "node scripts/generate-theme-css.mjs --check && node scripts/contrast-contract.mjs && node scripts/check-design-kit.mjs",
+		"test:session-cookies": "node scripts/session-cookie-electron.test.mjs",
+		"test:window-guards": "node scripts/window-guards-electron.test.mjs",
+		"test:window-glass": "node --test scripts/window-glass-cdp.test.mjs",
+		"test:tag-dialogs": "node scripts/run-desktop-tests.mjs scripts/chat-tag-dialogs-immediate.test.mjs",
+		"test:desktop": "node scripts/run-desktop-tests.mjs scripts/about-panel.test.mjs scripts/agent-class-toggle.test.mjs scripts/agent-hub-org-sharing.test.mjs scripts/agent-hub-public-teams.test.mjs scripts/agent-hub-queries.test.mjs scripts/agent-hub-skills-tab-count.test.mjs scripts/agent-hub-teams-tab-count.test.mjs scripts/agent-messages-busy.test.mjs scripts/agent-messages-dialog.test.mjs scripts/agent-messages-model.test.mjs scripts/agent-messages-settings.test.mjs scripts/agent-shell-spawn-env.test.mjs scripts/agents-composer-mount.test.mjs scripts/agents-config-probe-cadence.test.mjs scripts/agents-config-retry.test.mjs scripts/agents-config-summary.test.mjs scripts/agents-offer-dismiss.test.mjs scripts/agents-publication.test.mjs scripts/agents-source-and-recency-locale.test.mjs scripts/aida-rail-marks.test.mjs scripts/aida-sidebar.test.mjs scripts/analytics-channels.test.mjs scripts/analytics-rate-format.test.mjs scripts/analytics-session-table.test.mjs scripts/application-menu-labels.test.mjs scripts/approval-escape.test.mjs scripts/approvals-card-document.test.mjs scripts/approvals-overlay.test.mjs scripts/ask-composer-no-routing.test.mjs scripts/ask-dismiss-panel.test.mjs scripts/ask-dismiss.test.mjs scripts/ask-draft-swap.test.mjs scripts/ask-open-policy.test.mjs scripts/ask-open-render.test.mjs scripts/ask-options.test.mjs scripts/ask-other.test.mjs scripts/ask-queue.test.mjs scripts/ask-revise.test.mjs scripts/asks-app-regression.test.mjs scripts/at-mentions.test.mjs scripts/attachment-files.test.mjs scripts/attachment-live-row.test.mjs scripts/attachment-url.test.mjs scripts/attention-seen.test.mjs scripts/audio-engine.test.mjs scripts/audio-meter-stream.test.mjs scripts/audio-recording-levels.test.mjs scripts/authoring-refresh.test.mjs scripts/backend-error-surfaces.test.mjs scripts/backend-setting-combos.test.mjs scripts/backend-settings-collapse.test.mjs scripts/backend-settings-drafts.test.mjs scripts/backend-settings-tiers.test.mjs scripts/backend-spawn-address.test.mjs scripts/backend-version-drift.test.mjs scripts/browser-address-autocomplete.test.mjs scripts/browser-address-history.test.mjs scripts/browser-address-overlay.test.mjs scripts/browser-address-raises.test.mjs scripts/browser-approvals-dock-width.test.mjs scripts/browser-approvals-route.test.mjs scripts/browser-challenge-proof-passkey-servers.test.mjs scripts/browser-chord-renderer.test.mjs scripts/browser-chord.test.mjs scripts/browser-chrome-gaps.test.mjs scripts/browser-chrome-s4b-probe-rig.test.mjs scripts/browser-chrome.test.mjs scripts/browser-file-transfer-row.test.mjs scripts/browser-find-row.test.mjs scripts/browser-history-store.test.mjs scripts/browser-host.test.mjs scripts/browser-network-capture.test.mjs scripts/browser-page-controls.test.mjs scripts/browser-page-menu-focus.test.mjs scripts/browser-page-menu.test.mjs scripts/browser-queue-expiry.test.mjs scripts/browser-site-trigger.test.mjs scripts/browser-start-page.test.mjs scripts/browser-startup.test.mjs scripts/browser-tab-management.test.mjs scripts/browser-tab-actions-menu.test.mjs scripts/browser-tab-strip-focus.test.mjs scripts/browser-toolbar.test.mjs scripts/browser-url-autocomplete.test.mjs scripts/browser-view-policy-kinds.test.mjs scripts/btw-aside.test.mjs scripts/build-env-guard.test.mjs scripts/bundled-runtime-layout.test.mjs scripts/canonical-chat.test.mjs scripts/canonical-notice.test.mjs scripts/canvas-file-freshness.test.mjs scripts/canvas-goals.test.mjs scripts/canvas-tab-close.test.mjs scripts/capture-evidence.test.mjs scripts/chat-archive-press.test.mjs scripts/chat-archived.test.mjs scripts/chat-device-guidance.test.mjs scripts/chat-device-model.test.mjs scripts/chat-device-placement.test.mjs scripts/chat-image-expand.test.mjs scripts/chat-keyboard-regions.test.mjs scripts/chat-link-affordances.test.mjs scripts/chat-list-sections.test.mjs scripts/chat-pane-floors.test.mjs scripts/chat-remote.test.mjs scripts/chat-search.test.mjs scripts/chat-session-copy-id.test.mjs scripts/chat-session-status.test.mjs scripts/chat-session-subagents.test.mjs scripts/chat-sidebar-agents.test.mjs scripts/chat-sidebar-archive.test.mjs scripts/chat-sidebar-connection-voices.test.mjs scripts/chat-sidebar-drafts.test.mjs scripts/chat-sidebar-hover-intent.test.mjs scripts/chat-sidebar-layout.test.mjs scripts/chat-sidebar-pins.test.mjs scripts/chat-sidebar-row-menu.test.mjs scripts/chat-sidebar-scope-paging.test.mjs scripts/chat-sidebar-sections.test.mjs scripts/chat-sidebar-selection.test.mjs scripts/chat-sidebar-tags.test.mjs scripts/chat-sidebar-time-order.test.mjs scripts/chat-sidebar-view.test.mjs scripts/chat-status-strip.test.mjs scripts/chat-title.test.mjs scripts/check-build-env.test.mjs scripts/check-design-kit.test.mjs scripts/check-evidence-structure.test.mjs scripts/check-geometry-sources.test.mjs scripts/check-runtime-deps.test.mjs scripts/check-vendored.test.mjs scripts/checkpoint-model.test.mjs scripts/checkpoint-rail.test.mjs scripts/child-reader-foot-react.test.mjs scripts/child-transcript-paging.test.mjs scripts/chrome-keychain.test.mjs scripts/ci-log-guard.test.mjs scripts/ci-scope.test.mjs scripts/clear-search.test.mjs scripts/click-proof-expect.test.mjs scripts/code-review-delayed-flag.test.mjs scripts/code-review-model.test.mjs scripts/code-review-refresh-cue.test.mjs scripts/code-review-row-layout.test.mjs scripts/collapse-plan-per-pass.test.mjs scripts/compact-receipt.test.mjs scripts/completion-view-ack.test.mjs scripts/composer-file-drop.test.mjs scripts/composer-queued-send.test.mjs scripts/composer-readings.test.mjs scripts/composer-refusal.test.mjs scripts/composer-seeding.test.mjs scripts/composer-send-failure.test.mjs scripts/composer-suggestions.test.mjs scripts/composer-tabs.test.mjs scripts/composer-text-authority.test.mjs scripts/composer-tip-react.test.mjs scripts/condense-parity.test.mjs scripts/conflict-markers.test.mjs scripts/connectivity-banner-copy.test.mjs scripts/connectivity-banner-notice.test.mjs scripts/console-close.test.mjs scripts/console-host.test.mjs scripts/console-i18n-fit.test.mjs scripts/console-mirror.test.mjs scripts/console-pack.test.mjs scripts/console-pane-render.test.mjs scripts/console-pane.test.mjs scripts/context-readout-monotonic.test.mjs scripts/copy-button-copy-locale.test.mjs scripts/credential-capture.test.mjs scripts/credential-composer.test.mjs scripts/cross-session-visibility.test.mjs scripts/currency-math.test.mjs scripts/daemon-discovery.test.mjs scripts/daemon-health-state.test.mjs scripts/daemon-observation.test.mjs scripts/default-effort-options.test.mjs scripts/default-on-banner.test.mjs scripts/delivery-gate.test.mjs scripts/desktop-contract.test.mjs scripts/desktop-feed.test.mjs scripts/desktop-notifier.test.mjs scripts/desktop-proxy.test.mjs scripts/desktop-renderer-transport.test.mjs scripts/desktop-stream.test.mjs scripts/desktop-test-concurrency.test.mjs scripts/desktop-test-lane-bound.test.mjs scripts/desktop-test-memory-guard.test.mjs scripts/desktop-test-shards.test.mjs scripts/desktop-watch-lease.test.mjs scripts/dev-driver-attach.test.mjs scripts/dev-driver-gate.test.mjs scripts/dev-shortcuts.test.mjs scripts/directory-listing.test.mjs scripts/document-direction.test.mjs scripts/draft-selection.test.mjs scripts/draft-slash-identity.test.mjs scripts/draft-splash.test.mjs scripts/drafts-clear-on-send.test.mjs scripts/echo-delivery.test.mjs scripts/evidence-fold.test.mjs scripts/evidence-histogram-parity.test.mjs scripts/evidence-manifest.test.mjs scripts/evidence-run-guard.test.mjs scripts/evidence-sign-in-states.test.mjs scripts/evidence-tz.test.mjs scripts/external-open-refusal.test.mjs scripts/file-blob-url.test.mjs scripts/finder-files.test.mjs scripts/finder-reveal-scroll.test.mjs scripts/fleet-asks.test.mjs scripts/fold-open.test.mjs scripts/frontend-replace.test.mjs scripts/header-identity-menu.test.mjs scripts/header-identity-model.test.mjs scripts/held-claim-reach.test.mjs scripts/hold-escape-claim.test.mjs scripts/hotkey-registration.test.mjs scripts/hub-link-copy.test.mjs scripts/hub-link-view.test.mjs scripts/hub-links-scene.test.mjs scripts/hub-mutation-safety.test.mjs scripts/hub-skill-alias.test.mjs scripts/hub-skill-state.test.mjs scripts/hub-skills-capability.test.mjs scripts/hub-updates.test.mjs scripts/i18n-wave-b-keyed-copy.test.mjs scripts/i18n/absent-locale.test.mjs scripts/i18n/activation.test.mjs scripts/i18n/canvas-picker-review-remediation.test.mjs scripts/i18n/check-added-strings.test.mjs scripts/i18n/check-coverage.test.mjs scripts/i18n/check-strings.test.mjs scripts/i18n/context-parity.test.mjs scripts/i18n/es-activation.test.mjs scripts/i18n/format.test.mjs scripts/i18n/hi-activation.test.mjs scripts/i18n/ledger-assemble.test.mjs scripts/i18n/ledger-check.test.mjs scripts/i18n/locale-parity.test.mjs scripts/i18n/locale-reactivity.test.mjs scripts/i18n/ru-activation.test.mjs scripts/i18n/runtime.test.mjs scripts/i18n/surface-copy-reactivity.test.mjs scripts/i18n/table-pager-range.test.mjs scripts/i18n/typed-keys.test.mjs scripts/i18n/config-kind-word.test.mjs scripts/i18n/ur-activation.test.mjs scripts/i18n/vi-activation.test.mjs scripts/i18n/zh-CN-activation.test.mjs scripts/icon-identity.test.mjs scripts/image-actions.test.mjs scripts/image-gen-card.test.mjs scripts/image-preview-decode.test.mjs scripts/import-settings-section.test.mjs scripts/import-settings-view.test.mjs scripts/install-builtin-batch.test.mjs scripts/install-progress.test.mjs scripts/install-scripts-network.test.mjs scripts/integration-model.test.mjs scripts/interrupt-control.test.mjs scripts/interrupt-slot-hold-react.test.mjs scripts/job-cancel-panel.test.mjs scripts/job-controls.test.mjs scripts/journal-order-query.test.mjs scripts/keyboard-shortcuts-section.test.mjs scripts/keymap-chords.test.mjs scripts/keymap-dispatch.test.mjs scripts/keymap-persistence.test.mjs scripts/keymap-registry.test.mjs scripts/keymap-retention.test.mjs scripts/lane-leading.test.mjs scripts/lane-registration.test.mjs scripts/language-dialog.test.mjs scripts/language-live-updates.test.mjs scripts/launch-session.test.mjs scripts/launcher-watch.test.mjs scripts/library-card.test.mjs scripts/library-markdown.test.mjs scripts/library-model.test.mjs scripts/library-page.test.mjs scripts/library-pptx.test.mjs scripts/link-actions.test.mjs scripts/link-targets.test.mjs scripts/linux-sandbox.test.mjs scripts/live-seed-placement.test.mjs scripts/live-update-integrity.test.mjs scripts/loader-state-machine.test.mjs scripts/locale-direction.test.mjs scripts/logger-log-dir.test.mjs scripts/main-locale.test.mjs scripts/managed-python-transaction.test.mjs scripts/managed-python.test.mjs scripts/mark-all-read-control.test.mjs scripts/markdown-remend.test.mjs scripts/markdown-table-widths.test.mjs scripts/mcp-auth-complete-no-retry.test.mjs scripts/mcp-auth-surface.test.mjs scripts/mcp-catalog-parity.test.mjs scripts/mcp-catalog-transport.test.mjs scripts/mcp-failure-routing.test.mjs scripts/mcp-foreign-config-origin.test.mjs scripts/mcp-list-query.test.mjs scripts/mcp-target-resolution.test.mjs scripts/media-surface-floors.test.mjs scripts/mentioned-files.test.mjs scripts/merge-update-feed.test.mjs scripts/mesh-canvas-bench.test.mjs scripts/mesh-tab.test.mjs scripts/message-actions.test.mjs scripts/message-quote.test.mjs scripts/message-surface-floors.test.mjs scripts/mini-view-contract.test.mjs scripts/mini-view-dictation.test.mjs scripts/model-select-store.test.mjs scripts/model-setting-options.test.mjs scripts/monitor-cancel-dialog.test.mjs scripts/monitor-controls.test.mjs scripts/move-session.test.mjs scripts/navigation-gesture.test.mjs scripts/new-chat-row-evidence.test.mjs scripts/new-chat-row.test.mjs scripts/new-chat-shortcut.test.mjs scripts/no-hardlink-write.test.mjs scripts/no-websocket-plane.test.mjs scripts/notification-launch.test.mjs scripts/notification-lifetime.test.mjs scripts/notification-spawn-sites.test.mjs scripts/notifications-detail-asks-pane.test.mjs scripts/notifications-model.test.mjs scripts/notifications-off.test.mjs scripts/notifications-operations.test.mjs scripts/notifications-page-pill.test.mjs scripts/notifications-reel-observer.test.mjs scripts/older-history-slot.test.mjs scripts/onboarding-default-model.test.mjs scripts/onboarding-i18n-contract.test.mjs scripts/onboarding-search-step.test.mjs scripts/onboarding-step-block.test.mjs scripts/org-team-date-locale.test.mjs scripts/org-teams-summary.test.mjs scripts/overlay-drag-zones.test.mjs scripts/owned-serve-lifecycle.test.mjs scripts/pairing-card-copy.test.mjs scripts/palette-contract.test.mjs scripts/palette-focus.test.mjs scripts/palette-main-door.test.mjs scripts/palette-panel-request.test.mjs scripts/palette-recents.test.mjs scripts/palette-search.test.mjs scripts/palette-shortcut.test.mjs scripts/pane-slot-ground.test.mjs scripts/panel-chart-hover.test.mjs scripts/panel-chart-motion.test.mjs scripts/panel-info-credentials.test.mjs scripts/panel-info-fleet.test.mjs scripts/panel-info-session-age.test.mjs scripts/panel-presentation.test.mjs scripts/panel-rail.test.mjs scripts/panel-read-policy.test.mjs scripts/panel-top-inset.test.mjs scripts/passkey-notice.test.mjs scripts/path-utils.test.mjs scripts/peer-journal-source.test.mjs scripts/peer-source-unified.test.mjs scripts/peers-catalogue.test.mjs scripts/phone-access-block.test.mjs scripts/picker-default-checkbox.test.mjs scripts/picker-feedback.test.mjs scripts/picker-host-selection.test.mjs scripts/pre-push-gate.test.mjs scripts/preload-updater-surface.test.mjs scripts/preview-signed-urls.test.mjs scripts/project-update-assets.test.mjs scripts/project-view-perf.test.mjs scripts/projects-board-focus.test.mjs scripts/projects-card-click.test.mjs scripts/projects-entry-scroll.test.mjs scripts/projects-filters.test.mjs scripts/projects-force-done.test.mjs scripts/projects-i18n-locale.test.mjs scripts/projects-inline-edit.test.mjs scripts/projects-quick-send.test.mjs scripts/projects-request-update.test.mjs scripts/projects-search-index.test.mjs scripts/projects-search.test.mjs scripts/projects-sheet.test.mjs scripts/projects-sort.test.mjs scripts/projects-tab.test.mjs scripts/projects-time-window.test.mjs scripts/provider-catalog.test.mjs scripts/provider-chip-verdict.test.mjs scripts/provider-detail-remount.test.mjs scripts/provider-error-guidance.test.mjs scripts/provider-grid-error-copy.test.mjs scripts/provider-grid-pin.test.mjs scripts/provider-sign-in-flow.test.mjs scripts/provider-state.test.mjs scripts/provider-status.test.mjs scripts/prune-bundled-resources.test.mjs scripts/prune-python-seed.test.mjs scripts/ptt-keymap-binding.test.mjs scripts/python-bytecode-cache.test.mjs scripts/quota-notice.test.mjs scripts/radient-credits-guidance.test.mjs scripts/radient-session-issue.test.mjs scripts/radient-signout-authority.test.mjs scripts/radient-verify-callout.test.mjs scripts/receipt-fold-behaviour.test.mjs scripts/reconnect-page-gap.test.mjs scripts/relaunch-during-quit-proof.test.mjs scripts/reload-picker-close.test.mjs scripts/render-mac-entitlements.test.mjs scripts/renderer-driver-api.test.mjs scripts/resolve-package-union.test.mjs scripts/response-copy.test.mjs scripts/retention-duration.test.mjs scripts/reveal-record.test.mjs scripts/right-slot-memory.test.mjs scripts/right-slot-width.test.mjs scripts/row-state-floors.test.mjs scripts/rtl-layout.test.mjs scripts/run-child-reader.test.mjs scripts/run-desktop-tests.test.mjs scripts/run-detail-model.test.mjs scripts/run-detail-wake-label-locale.test.mjs scripts/run-panel-navigation.test.mjs scripts/scheduled-task-model.test.mjs scripts/scroll-region-to-top.test.mjs scripts/scrollbar-activity.test.mjs scripts/searchable-select.test.mjs scripts/secret-ask.test.mjs scripts/seed-label-gap.test.mjs scripts/seed-placement.test.mjs scripts/server-release-notes.test.mjs scripts/session-archive-delete.test.mjs scripts/session-asks.test.mjs scripts/session-cookies.test.mjs scripts/session-files-hook.test.mjs scripts/session-load-recovery.test.mjs scripts/session-load-sequence.test.mjs scripts/session-status-feed.test.mjs scripts/session-status-lifecycle.test.mjs scripts/session-status.test.mjs scripts/session-stream-token.test.mjs scripts/session-switch.test.mjs scripts/session-switcher.test.mjs scripts/settings-account-gate.test.mjs scripts/settings-language-row.test.mjs scripts/settings-search-annotations.test.mjs scripts/settings-search-index.test.mjs scripts/settings-search-jump.test.mjs scripts/settings-search-match.test.mjs scripts/settings-search-registry-jump.test.mjs scripts/settings-search.test.mjs scripts/settings-section-routes.test.mjs scripts/settings-time-to-error.test.mjs scripts/shared-composer.test.mjs scripts/shell-path.test.mjs scripts/sidebar-account-reconnect.test.mjs scripts/sidebar-catalogue-gate.test.mjs scripts/sidebar-attention-badge.test.mjs scripts/sidebar-destinations.test.mjs scripts/sidebar-focus-hold.test.mjs scripts/sidebar-own-avatar.test.mjs scripts/sidebar-pin-order.test.mjs scripts/sidebar-split.test.mjs scripts/sidebar-tag-auto.test.mjs scripts/sidebar-tag-drag.test.mjs scripts/sidebar-tag-picker.test.mjs scripts/skill-highlight.test.mjs scripts/skill-invocation.test.mjs scripts/skill-list.test.mjs scripts/skill-row.test.mjs scripts/skill-seal-behaviour.test.mjs scripts/skills-tab.test.mjs scripts/slash-contract.test.mjs scripts/slash-highlight.test.mjs scripts/slash-rank.test.mjs scripts/slash-row-format.test.mjs scripts/slash-submit.test.mjs scripts/slash-tags-popup.test.mjs scripts/slash-tags-reopen.test.mjs scripts/slash-tags.test.mjs scripts/slash-token.test.mjs scripts/soft-breaks.test.mjs scripts/sound-player.test.mjs scripts/sounds-fixture.test.mjs scripts/speech-clip.test.mjs scripts/speech-controls.test.mjs scripts/speech-selection.test.mjs scripts/speech-settings.test.mjs scripts/speech-store.test.mjs scripts/speech-target.test.mjs scripts/speech-user-copy.test.mjs scripts/spend-payment-basis.test.mjs scripts/stale-agent.test.mjs scripts/stale-caption.test.mjs scripts/stopped-row-measure.test.mjs scripts/storybook-query-fixture.test.mjs scripts/stream-order-live.test.mjs scripts/streaming-live-markdown.test.mjs scripts/streaming-markdown-parity.test.mjs scripts/stt-mic-gate-session.test.mjs scripts/subagent-pulse.test.mjs scripts/submit-latency.test.mjs scripts/suggestion-stack-react.test.mjs scripts/suggestion-stack.test.mjs scripts/supplement-collage.test.mjs scripts/supplement-disclosure.test.mjs scripts/supplement-file-actions.test.mjs scripts/supplement-image-grid.test.mjs scripts/supplement-model.test.mjs scripts/supplement-row.test.mjs scripts/team-bridge-archive-container.test.mjs scripts/team-bridge-archive.test.mjs scripts/team-bridge-arrival.test.mjs scripts/team-bridge-attachments.test.mjs scripts/team-bridge-auth-owner-mount.test.mjs scripts/team-bridge-avatar.test.mjs scripts/team-bridge-banner.test.mjs scripts/team-bridge-channels.test.mjs scripts/team-bridge-composer-ring.test.mjs scripts/team-bridge-directory.test.mjs scripts/team-bridge-drafts-scheduled.test.mjs scripts/team-bridge-invitations.test.mjs scripts/team-bridge-model.test.mjs scripts/team-bridge-notifications-mount.test.mjs scripts/team-bridge-notify.test.mjs scripts/team-bridge-rail-profile-card.test.mjs scripts/team-bridge-reactions-behaviour.test.mjs scripts/team-bridge-reactions.test.mjs scripts/team-bridge-receipt-contract.test.mjs scripts/team-bridge-row-layout-pin.test.mjs scripts/team-bridge-scope.test.mjs scripts/team-bridge-thread-gate.test.mjs scripts/team-bridge-threads.test.mjs scripts/team-initials.test.mjs scripts/team-member-overrides.test.mjs scripts/team-new-chat-stale-draft.test.mjs scripts/telemetry-launch.test.mjs scripts/telemetry-spawn-sites.test.mjs scripts/test-inventory.test.mjs scripts/theme-grid-navigation.test.mjs scripts/theme-inline.test.mjs scripts/theme-registry-exhaustiveness.test.mjs scripts/thread-search-contract.test.mjs scripts/thread-search-model.test.mjs scripts/thread-search-overlay.test.mjs scripts/titlebar-options.test.mjs scripts/toast-close-placement.test.mjs scripts/toast-lifetime.test.mjs scripts/tool-compose-lifecycle.test.mjs scripts/tool-row.test.mjs scripts/tooltip-browser-view.test.mjs scripts/trace-fold-behaviour.test.mjs scripts/trace-fold-model.test.mjs scripts/transcript-copy-affordances.test.mjs scripts/transcript-cursor-continuity.test.mjs scripts/transcript-deep-jump.test.mjs scripts/transcript-dom-window-hook.test.mjs scripts/transcript-dom-window.test.mjs scripts/transcript-fade.test.mjs scripts/transcript-focus-behaviour.test.mjs scripts/transcript-focus.test.mjs scripts/transcript-foot-slot.test.mjs scripts/transcript-journal-order.test.mjs scripts/transcript-loader.test.mjs scripts/transcript-paging-hook.test.mjs scripts/transcript-paging.test.mjs scripts/transcript-perflush-perf.test.mjs scripts/transcript-rail-refusal.test.mjs scripts/transcript-reducer.test.mjs scripts/transcript-strand-hold.test.mjs scripts/transcription-failure-copy.test.mjs scripts/transcription-transient-retry.test.mjs scripts/turn-answer-rail.test.mjs scripts/turn-collapse-behaviour.test.mjs scripts/turn-collapse-model.test.mjs scripts/turn-partition-predicate.test.mjs scripts/turn-segments.test.mjs scripts/turn-timestamp.test.mjs scripts/typed-row-call-sites.test.mjs scripts/undo-toasts.test.mjs scripts/update-affirmation.test.mjs scripts/update-fleet-drain.test.mjs scripts/update-global-guard.test.mjs scripts/update-global-install.test.mjs scripts/update-indicator-segments.test.mjs scripts/update-install-copy.test.mjs scripts/update-panel-copy.test.mjs scripts/update-robustness.test.mjs scripts/update-rollover.test.mjs scripts/update-shipit.test.mjs scripts/update-window-report.test.mjs scripts/usage-container.test.mjs scripts/usage-view.test.mjs scripts/use-active-checkpoint.test.mjs scripts/use-checkpoints.test.mjs scripts/use-ever-in-view.test.mjs scripts/use-thread-search.test.mjs scripts/verify-bundled-uv.test.mjs scripts/verify-macos-artifacts.test.mjs scripts/viewer-record.test.mjs scripts/wake-cancel-panel.test.mjs scripts/wake-controls.test.mjs scripts/warm-session.test.mjs scripts/waveform-model.test.mjs scripts/webauthn.test.mjs scripts/window-chrome.test.mjs scripts/window-glass-main.test.mjs scripts/window-glass-renderer.test.mjs scripts/window-glass.test.mjs scripts/window-guards.test.mjs scripts/window-mode.test.mjs scripts/working-line-clock.test.mjs scripts/i18n/catalogue-locale.test.mjs scripts/i18n/device-tag-activation.test.mjs scripts/language-dialog-applies-on-pick.test.mjs scripts/i18n/chat-header-sidebar-copy.test.mjs scripts/agents-remaining-literals.test.mjs scripts/user-attachments.test.mjs scripts/user-attachments-render.test.mjs scripts/browser-address-overlay-list-child.test.mjs scripts/storybook-cache-prune.test.mjs scripts/with-storybook.test.mjs scripts/hub-check-now-body.test.mjs scripts/hub-incoming-review.test.mjs scripts/hub-incoming-preview.test.mjs scripts/hub-link-policy-popover.test.mjs scripts/recording-shortcut.test.mjs scripts/start-recording-shortcut-row.test.mjs scripts/team-bridge-members.test.mjs scripts/drawer-updates-read.test.mjs scripts/hold-main-claimed-chord.test.mjs scripts/push-to-talk-shortcut-row.test.mjs scripts/team-bridge-instant-open.test.mjs scripts/team-bridge-owner-audit-model.test.mjs scripts/team-bridge-owner-audit-render.test.mjs scripts/team-bridge-client-ref.test.mjs scripts/team-bridge-owner-fence.test.mjs scripts/team-bridge-scope-preference.test.mjs scripts/team-bridge-union-actions.test.mjs scripts/team-bridge-org-rosters.test.mjs scripts/notifications-ask-remediation-scene.test.mjs scripts/notifications-detail-asks-card.test.mjs",
+		"check-evidence": "node scripts/check-evidence.mjs",
+		"check-evidence:parity": "node scripts/evidence-histogram-parity.mjs",
+		"check-edit-diffs": "node scripts/check-edit-diffs.mjs",
+		"check-runtime-deps": "node scripts/check-runtime-deps.mjs",
+		"check-fold-keys": "node scripts/check-fold-keys.mjs",
+		"//check-i18n": "The language policy in one command: generator freshness, the literal ratchet, the base-aware added-copy guard, the translation ledger, context parity, then manifest-backed coverage. Split because CI hands the added-copy and coverage halves their base refs; `pnpm check-i18n` runs all three locally with the base resolved to `origin/main`.",
+		"check-i18n": "pnpm check-i18n:catalogues && pnpm check-i18n:added-strings && pnpm check-i18n:coverage",
+		"//check-i18n:catalogues": "The five catalogue gates: `generate --check` (committed generated types match the English catalogues), `check-duplicates` (raw-text scan for a duplicate key a merge can create silently), `check-strings` (no untranslated literals), `ledger-check` (every shipped locale is audited and its hashes still match) and `context-parity` (sidecars agree with their catalogues).",
+		"check-i18n:catalogues": "node scripts/i18n/generate.mjs --check && node scripts/i18n/check-duplicates.mjs && node scripts/i18n/check-strings.mjs && node scripts/i18n/ledger-check.mjs && node scripts/i18n/context-parity.mjs",
+		"//check-i18n:added-strings": "The base-aware guard for copy shapes outside the original ratchet: object-literal properties, expression attributes, static template spans, conditionals and concatenations. It fails only on added lines and has no baseline; CI passes HEAD^1, the real base of the checked-out pull-request merge.",
+		"check-i18n:added-strings": "node scripts/i18n/check-added-strings.mjs",
+		"//check-i18n:coverage": "The manifest-backed coverage gate. CI runs it with `--allowance-base \"$(git rev-parse HEAD^1)\"` so the shrink-only allowance is compared against the pull request's base; locally it resolves `origin/main` on its own.",
+		"check-i18n:coverage": "node scripts/i18n/check-coverage.mjs",
+		"gen-themes": "node scripts/generate-theme-css.mjs",
+		"bundle-size": "node scripts/bundle-size.mjs",
+		"startup-closure": "node scripts/startup-closure.mjs",
+		"pack": "pnpm run build && electron-builder --dir",
+		"dist": "pnpm run build && electron-builder",
+		"dist:mac": "pnpm run build && electron-builder --mac --publish never",
+		"dist:win": "pnpm run build && electron-builder --win --publish never",
+		"dist:linux": "pnpm run build && electron-builder --linux --publish never",
+		"dist:all": "pnpm run build && electron-builder -mwl --publish never",
+		"release": "pnpm run build && electron-builder --publish always",
+		"generate-icons": "node scripts/generate-icons.js",
+		"notarize-dmg": "node scripts/notarize-artifacts.mjs",
+		"verify-macos-artifacts": "node scripts/verify-macos-artifacts.mjs",
+		"setup-python": "./scripts/setup-python-resource.sh",
+		"setup-python:win": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-python-resource.ps1",
+		"storybook": "storybook dev -p 6006",
+		"build-storybook": "storybook build",
+		"app:driver": "node scripts/renderer-driver.mjs",
+		"app:driver:gate-check": "node scripts/renderer-driver.mjs --gate-check"
+	},
+	"dependencies": {
+		"@electron-toolkit/utils": "^4.0.0",
+		"@xterm/headless": "6.0.0",
+		"dotenv": "^16.5.0",
+		"electron-log": "^4.4.8",
+		"electron-updater": "^6.8.9",
+		"node-pty": "1.1.0",
+		"posthog-node": "^4.11.3",
+		"zod": "^3.24.2"
+	},
+	"//types-node-pin": "Declared in devDependencies and pinned exactly, rather than left to the peer that used to supply it. @electron-toolkit/tsconfig peers on `@types/node: *`, so a full re-resolution floats it to whatever major is current; a range here would re-float the same way. It matters because the renderer typecheck compiles against the lib level this package implies: 22.x carries the es2020 compatibility shims that declare `Array.prototype.at`, 24.x dropped them, and floating it surfaced two TS2550 errors in files nothing here touches. Declaring it makes that a reviewed line instead of a resolution accident.",
+	"//packaged-node-modules-exclusions": "The list above excludes Electron's own dependency tree from the packaged app, which electron-builder copies because `electron` is in optionalDependencies (the npm/npx channel needs it at install time). `@electron/get`, `@electron-internal/extract-zip` and their deps exist to download and unpack the Electron runtime during an INSTALL; a packaged app never runs them. Measured on a --dir artifact of 0.19.7: 8 packages outside the production closure, 7.0 MB of them unpacked into app.asar.unpacked and the rest inside a 26 MB app.asar (@types/node alone 2.4 MB). None is a module request anywhere in out/**, and the closure scripts/check-packaged-closure.mjs computes over the six declared runtime dependencies contains none of them. They are named rather than pattern-matched because electron-builder has no 'skip this dependency's tree' switch: a future Electron bump that adds a dependency needs this list re-derived from the same diff.",
+	"//electron-pin": "Two pins, one runtime, and they must move together. optionalDependencies.electron is what the npm/npx channel installs and what bin/local-operator-ui.js checks at launch; build.electronVersion is what electron-builder packages into the installers. electron-builder does NOT read optionalDependencies (findFromPackageMetadata inspects devDependencies then dependencies only), so without the explicit build.electronVersion it silently falls back to whatever electron happens to sit in node_modules, and a bump against a stale tree keeps building the old runtime. Bump both, or scripts/test-publish-workflow.mjs fails. dmg-builder and electron-builder-squirrel-windows are app-builder-lib's peers and the builder refuses to resolve when they disagree with it, so all three move as one version.",
+	"optionalDependencies": {
+		"electron": "44.3.0"
+	},
+	"devDependencies": {
+		"@babel/helpers": "^7.26.10",
+		"@babel/runtime": "^7.26.10",
+		"@biomejs/biome": "^1.9.4",
+		"@chromatic-com/storybook": "^3.2.5",
+		"@codemirror/language": "^6.11.1",
+		"@codemirror/search": "^6.5.6",
+		"@codemirror/state": "^6.5.2",
+		"@codemirror/view": "^6.37.1",
+		"@electron-toolkit/preload": "^3.0.1",
+		"@electron-toolkit/tsconfig": "^1.0.1",
+		"@electron/notarize": "^2.5.0",
+		"@emotion/react": "^11.14.0",
+		"@emotion/styled": "^11.14.0",
+		"@formatjs/icu-messageformat-parser": "^3.5.21",
+		"@lezer/highlight": "^1.2.1",
+		"@mui/material": "^6.4.2",
+		"@mui/x-date-pickers": "^8.3.1",
+		"@storybook/addon-essentials": "^8.6.4",
+		"@storybook/addon-interactions": "^8.6.4",
+		"@storybook/blocks": "^8.6.4",
+		"@storybook/react": "^8.6.4",
+		"@storybook/react-vite": "^8.6.4",
+		"@storybook/test": "^8.6.4",
+		"@tailwindcss/vite": "4.3.3",
+		"@tanstack/react-query": "^5.67.1",
+		"@tanstack/react-query-devtools": "^5.67.1",
+		"@types/hast": "^3.0.4",
+		"@types/node": "22.14.1",
+		"@types/react": "18.3.18",
+		"@types/react-dom": "18.3.5",
+		"@types/react-syntax-highlighter": "^15.5.13",
+		"@types/xlsx": "^0.0.36",
+		"@uiw/codemirror-extensions-langs": "^4.23.10",
+		"@uiw/react-codemirror": "^4.23.10",
+		"@vitejs/plugin-react": "^4.3.4",
+		"@xterm/addon-unicode11": "0.9.0",
+		"@xterm/xterm": "6.0.0",
+		"ag-grid-community": "^33.3.2",
+		"ag-grid-react": "^33.3.2",
+		"class-variance-authority": "0.7.1",
+		"clsx": "2.1.1",
+		"date-fns": "^4.1.0",
+		"dmg-builder": "26.16.1",
+		"dotenv-cli": "^8.0.0",
+		"electron-builder": "^26.16.1",
+		"electron-builder-squirrel-windows": "26.16.1",
+		"electron-vite": "^3.0.0",
+		"esbuild": "^0.25.1",
+		"html-react-parser": "^5.2.2",
+		"icns-lib": "^1.0.1",
+		"intl-messageformat": "^12.1.3",
+		"jest": "^29.7.0",
+		"jsdom": "26.1.0",
+		"katex": "^0.16.21",
+		"lucide-react": "^0.507.0",
+		"mdast-util-math": "^3.0.0",
+		"mermaid": "^11.6.0",
+		"micromark-extension-math": "^3.1.0",
+		"posthog-js": "^1.235.0",
+		"radix-ui": "1.6.7",
+		"pptx-browser": "4.1.5",
+		"react": "^18.3.1",
+		"react-dom": "^18.3.1",
+		"react-error-boundary": "^5.0.0",
+		"react-markdown": "^10.1.0",
+		"react-router-dom": "^6.16.0",
+		"react-shepherd": "^6.1.8",
+		"react-syntax-highlighter": "^15.6.1",
+		"recharts": "^2.15.3",
+		"rehype-katex": "^7.0.1",
+		"rehype-parse": "^9.0.1",
+		"rehype-remark": "^10.0.1",
+		"rehype-source-map": "^1.0.1",
+		"rehype-stringify": "^10.0.1",
+		"remark": "^15.0.1",
+		"remark-gfm": "^4.0.1",
+		"remark-math": "^6.0.0",
+		"remark-parse": "^11.0.0",
+		"remark-rehype": "^11.1.2",
+		"remark-stringify": "^11.0.0",
+		"sharp": "^0.33.2",
+		"shepherd.js": "^14.5.0",
+		"sonner": "^2.0.3",
+		"storybook": "^8.6.4",
+		"tailwind-merge": "3.6.0",
+		"tailwindcss": "4.3.3",
+		"tw-animate-css": "1.4.0",
+		"typescript": "^7.0.2",
+		"unified": "^11.0.5",
+		"unist-util-visit": "^5.0.0",
+		"uuid": "^11.1.0",
+		"vite": "^6.2.0",
+		"vite-tsconfig-paths": "^5.1.4",
+		"xlsx": "^0.18.5",
+		"yaml": "^2.7.0",
+		"zustand": "^5.0.3"
+	},
+	"peerDependencies": {
+		"react": ">=18.0.0",
+		"react-dom": ">=18.0.0"
+	},
+	"engines": {
+		"node": ">=22.13.1"
+	},
+	"build": {
+		"appId": "com.local-operator",
+		"electronVersion": "44.3.0",
+		"productName": "Local Operator",
+		"copyright": "Copyright \u00a9 2025 Radient Inc.",
+		"asar": {
+			"smartUnpack": false
+		},
+		"asarUnpack": [
+			"node_modules/node-pty/prebuilds/**/*",
+			"node_modules/node-pty/build/Release/**/*"
+		],
+		"files": [
+			"out/**/*",
+			"bin/**/*",
+			"LICENSE",
+			"README.md",
+			"THIRD_PARTY_NOTICES.md",
+			"!node_modules/electron/**/*",
+			"!node_modules/@electron/get/**/*",
+			"!node_modules/@electron-internal/**/*",
+			"!node_modules/env-paths/**/*",
+			"!node_modules/progress/**/*",
+			"!node_modules/sumchecker/**/*",
+			"!node_modules/undici/**/*",
+			"!node_modules/undici-types/**/*",
+			"!node_modules/@types/node/**/*"
+		],
+		"directories": {
+			"output": "dist",
+			"buildResources": "build"
+		},
+		"afterSign": "scripts/notarize.js",
+		"afterPack": "scripts/after-pack.mjs",
+		"mac": {
+			"icon": "build/icon.icns",
+			"extraResources": [
+				{
+					"from": "resources/python",
+					"to": "python-runtime-seed/x64",
+					"filter": [
+						"**/*"
+					]
+				},
+				{
+					"from": "resources/python_aarch64",
+					"to": "python-runtime-seed/arm64",
+					"filter": [
+						"**/*"
+					]
+				},
+				{
+					"from": "resources/uv",
+					"to": "uv/x64",
+					"filter": [
+						"**/*"
+					]
+				},
+				{
+					"from": "resources/uv_aarch64",
+					"to": "uv/arm64",
+					"filter": [
+						"**/*"
+					]
+				}
+			],
+			"notarize": false,
+			"category": "public.app-category.developer-tools",
+			"hardenedRuntime": true,
+			"gatekeeperAssess": false,
+			"entitlements": "build/entitlements.mac.plist",
+			"entitlementsInherit": "build/entitlements.mac.plist",
+			"target": [
+				{
+					"target": "dmg"
+				},
+				{
+					"target": "zip"
+				}
+			],
+			"artifactName": "${name}-${version}-${arch}.${ext}"
+		},
+		"dmg": {
+			"sign": true,
+			"contents": [
+				{
+					"x": 130,
+					"y": 220
+				},
+				{
+					"x": 410,
+					"y": 220,
+					"type": "link",
+					"path": "/Applications"
+				}
+			],
+			"window": {
+				"width": 540,
+				"height": 380
+			}
+		},
+		"win": {
+			"extraResources": [
+				{
+					"from": "resources/python",
+					"to": "python",
+					"filter": [
+						"**/*"
+					]
+				},
+				{
+					"from": "resources/python_aarch64",
+					"to": "python_aarch64",
+					"filter": [
+						"**/*"
+					]
+				},
+				{
+					"from": "resources/uv",
+					"to": "uv/x64",
+					"filter": [
+						"**/*"
+					]
+				},
+				{
+					"from": "resources/uv_aarch64",
+					"to": "uv/arm64",
+					"filter": [
+						"**/*"
+					]
+				}
+			],
+			"target": [
+				{
+					"target": "nsis",
+					"arch": [
+						"x64",
+						"arm64"
+					]
+				}
+			],
+			"artifactName": "${name}-setup-${version}-${arch}.${ext}",
+			"verifyUpdateCodeSignature": false
+		},
+		"nsis": {
+			"createDesktopShortcut": true,
+			"createStartMenuShortcut": true,
+			"deleteAppDataOnUninstall": true,
+			"displayLanguageSelector": true,
+			"multiLanguageInstaller": true
+		},
+		"linux": {
+			"extraResources": [
+				{
+					"from": "resources/python",
+					"to": "python",
+					"filter": [
+						"**/*"
+					]
+				},
+				{
+					"from": "resources/python_aarch64",
+					"to": "python_aarch64",
+					"filter": [
+						"**/*"
+					]
+				},
+				{
+					"from": "resources/uv",
+					"to": "uv/x64",
+					"filter": [
+						"**/*"
+					]
+				},
+				{
+					"from": "resources/uv_aarch64",
+					"to": "uv/arm64",
+					"filter": [
+						"**/*"
+					]
+				}
+			],
+			"category": "ArtificialIntelligence",
+			"icon": "build/",
+			"target": [
+				{
+					"target": "deb",
+					"arch": "x64"
+				},
+				{
+					"target": "AppImage",
+					"arch": "x64"
+				},
+				{
+					"target": "rpm",
+					"arch": "x64"
+				}
+			],
+			"artifactName": "${name}-${version}-${arch}.${ext}",
+			"desktop": {
+				"entry": {
+					"Name": "Local Operator",
+					"Comment": "AI Agent Assistants On Your Device",
+					"Categories": "ArtificialIntelligence"
+				}
+			}
+		},
+		"deb": {
+			"depends": [
+				"python3.12-full",
+				"python3.12-venv"
+			]
+		},
+		"rpm": {
+			"depends": [
+				"python3.12-full",
+				"python3.12-venv"
+			]
+		},
+		"publish": [
+			{
+				"provider": "github",
+				"owner": "damianvtran",
+				"repo": "local-operator-ui",
+				"private": false,
+				"releaseType": "release"
+			}
+		],
+		"generateUpdatesFilesForAllChannels": true
+	}
 }

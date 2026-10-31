@@ -119,6 +119,35 @@ const ratio = (a, b) => {
 const HEX = /^#[0-9a-fA-F]{3,8}$/;
 const isHex = (v) => typeof v === "string" && HEX.test(v);
 
+/**
+ * A translucent colour over an opaque ground, as the flat hex the eye receives.
+ *
+ * The panel seam is `hairline` at an alpha, so the colour it actually paints is
+ * not a palette value and none of the assertions above can read it without this.
+ * Compositing is done in sRGB bytes, the same way the browser composites a
+ * background colour, rather than in Lab: the measurement is of the pixel that
+ * lands on screen.
+ */
+const over = (fg, bg, alpha) => {
+	const channels = (hex) => {
+		const body = hex.replace("#", "").trim();
+		const full =
+			body.length === 3
+				? body
+						.split("")
+						.map((c) => c + c)
+						.join("")
+				: body;
+		return [0, 2, 4].map((i) => Number.parseInt(full.slice(i, i + 2), 16));
+	};
+	const [r, g, b] = channels(fg);
+	const [R, G, B] = channels(bg);
+	const mix = (x, y) => Math.round(x * alpha + y * (1 - alpha));
+	return `#${[mix(r, R), mix(g, G), mix(b, B)]
+		.map((v) => v.toString(16).padStart(2, "0"))
+		.join("")}`;
+};
+
 /* ---- 3. loading the palettes ------------------------------------------- */
 
 /* Palette loading lives in palette-source.mjs so this gate and the CSS
@@ -2237,10 +2266,11 @@ const GRAPHICS = [
 		 * ring, which puts its outer edge against the PANE's ground: `elevated`
 		 * (the browser, console, run and asks slots) or `canvas` (when no pane is
 		 * open, the conversation column). Those two are listed so a palette whose
-		 * `accent` sits close to either fails here and not on screen. There is no
-		 * hairline left between the rail and the pane - the edge is the tone
-		 * step, and `scripts/pane-slot-ground.test.mjs` pins the rail root's
-		 * no-rule - so the bar's own 2px column is the whole mark at that edge.
+		 * `accent` sits close to either fails here and not on screen. A `PanelEdge`
+		 * seam sits between the rail and the pane again (2026-10-30), and the bar
+		 * paints above it (`before:z-25` over the seam's `z-20`), so the bar's outer
+		 * pixel is `accent` against the pane's ground - the pair listed here - and
+		 * not the seam's 75% blend (design review round 1, D2).
 		 */
 		name: "panel rail lit glyph and bar",
 		on: ["rowSelected", "rowHover", "surface", "elevated", "canvas"],
@@ -4779,6 +4809,38 @@ const INK_STEP_FLOOR = SYNTAX_COMMENT_FLOOR;
 const FIELD_SEPARATION_FLOOR = 2.0;
 const LINE_SEPARATION_FLOOR = 4.0;
 /*
+ * THE PANEL SEAM, and why it is measured with the FIELD floor on both sides.
+ *
+ * `shared/components/common/panel-edge.tsx` draws one 1px `hairline` at 75% on the
+ * edge where a full-height panel meets the plane beside it - the operator's
+ * 2026-10-30 report that neither sidebar has a readable edge in light themes.
+ *
+ * The seam is the EDGE OF A FIELD, not a rule across one. That is why it does not
+ * take `LINE_SEPARATION_FLOOR`: the mark the reader reads is the boundary, and the
+ * eye receives it as two stacked steps (panel to seam, seam to neighbour), each of
+ * which has to be perceptible on its own. The seam is also deliberately quieter
+ * than a section rule - that is what the alpha is for - while `hairline`'s own
+ * 4.0 against every ground is asserted separately above and is untouched by a
+ * composited copy at 75%. So both sides use `FIELD_SEPARATION_FLOOR` (2.0), the
+ * same floor the ladder's adjacent steps answer to.
+ *
+ * MEASURED over the 59 palettes at 75%: the tightest own-ground pair is 2.92
+ * (`ocean`, seam over `elevated`) and the tightest facing pair 2.29 (`gruvbox`'s
+ * rail against an open pane). 70% failed the facing floor (`gruvbox`, 1.96), and
+ * 75% is the lowest tenth that clears both. The alpha is pinned here, and the
+ * shipped class is read back from `panel-edge.tsx` after the palette loop: this
+ * file is the authority for the number, and the class must carry it (QA round 1,
+ * Q-3).
+ */
+const PANEL_SEAM_ALPHA = 0.75;
+
+/** The (drawn-on, faces) pair each panel seam can produce, per palette. */
+const SEAM_PAIRS = [
+	["surface", "canvas"],
+	["surface", "elevated"],
+	["elevated", "canvas"],
+];
+/*
  * THE REGION FLOOR, for two planes of the same kind meeting with no rule between
  * them. Declared separately from the two above for the reason the pair above is:
  * they move for different measurements, and a change to either is a change to one
@@ -6781,6 +6843,70 @@ for (const { id, palette: p } of palettes) {
 				`${id}: \`hairline\` on \`${ground}\` is ${r2(luminance)}:1 (max ${HAIRLINE_RATIO_CEILING}) — past this it is drawing a border, and the system already has one of those`,
 			);
 		}
+	}
+
+	/*
+	 * The panel seam, in both places it is drawn: `hairline` at
+	 * `PANEL_SEAM_ALPHA` over a `surface` panel (the sidebar and the rail) and over
+	 * an `elevated` pane. Each is measured against the ground it composites onto AND
+	 * against the plane it faces, because a seam invisible from either side is a
+	 * seam that only reads along part of its length.
+	 *
+	 * The three facing pairs are the shell's adjacencies: chrome beside the
+	 * conversation (`surface`/`canvas`), chrome beside an open pane
+	 * (`surface`/`elevated`), and a pane beside the conversation
+	 * (`elevated`/`canvas`). The second is the tightest in the shipped fleet because
+	 * the seam is composited on `surface` while it faces `elevated` - which is
+	 * exactly the pair a marker drawn on one side is easy to forget.
+	 */
+	for (const [ground, facing] of SEAM_PAIRS) {
+		if (!isHex(p.hairline) || !isHex(p[ground]) || !isHex(p[facing])) continue;
+		const seam = over(p.hairline, p[ground], PANEL_SEAM_ALPHA);
+		assertions++;
+		const fromGround = deltaE(seam, p[ground]);
+		if (fromGround < FIELD_SEPARATION_FLOOR) {
+			fail(
+				`${id}: the panel seam over \`${ground}\` is ΔE00 ${r2(fromGround)} from that ground (need ${FIELD_SEPARATION_FLOOR}) — the seam is half the boundary, and half a boundary the reader cannot see is a panel edge that disappears`,
+			);
+		}
+		assertions++;
+		const fromFacing = deltaE(seam, p[facing]);
+		if (fromFacing < FIELD_SEPARATION_FLOOR) {
+			fail(
+				`${id}: the panel seam over \`${ground}\` is ΔE00 ${r2(fromFacing)} from \`${facing}\` (need ${FIELD_SEPARATION_FLOOR}) — the seam has to read from the plane it faces as well as the one it sits on`,
+			);
+		}
+	}
+}
+
+/*
+ * THE ALPHA THE GATE MEASURES MUST BE THE ALPHA THE PRODUCT PAINTS (QA round 1,
+ * Q-3). `PANEL_SEAM_ALPHA` above is what every assertion in the palette loop used,
+ * but the shipped colour is the class string in `panel-edge.tsx`. While the two
+ * were separate literals, a class edit to `bg-hairline/40` left all of these
+ * assertions green (measured by QA: the full 187,924, no failure). Reading the
+ * class back here makes the gate measure the pixel that ships; exactly one
+ * `bg-hairline/<number>` in that file, carrying this percentage, or the gate
+ * fails.
+ */
+{
+	const source = readFileSync(
+		join(ROOT, "src/renderer/src/shared/components/common/panel-edge.tsx"),
+		"utf8",
+	);
+	const alphas = [...source.matchAll(/\bbg-hairline\/(\d+)\b/g)].map((m) =>
+		Number(m[1]),
+	);
+	assertions++;
+	const shipped = alphas.length === 1 ? alphas[0] : null;
+	if (shipped !== Math.round(PANEL_SEAM_ALPHA * 100)) {
+		fail(
+			`panel-edge.tsx paints ${
+				alphas.length === 0
+					? "no `bg-hairline/<alpha>` class"
+					: `\`bg-hairline/${alphas.join(", ")}\``
+			} but this gate measures \`PANEL_SEAM_ALPHA ${PANEL_SEAM_ALPHA}\` - the class that ships and the number every seam assertion used must be one value`,
+		);
 	}
 }
 

@@ -840,10 +840,14 @@ export const NavMoreStripCollapsed: Story = {
  * the `RunPanel`. STAND-IN: the conversation column, painted `bg-canvas` and
  * carrying the paragraph the committed canvas frames already carry.
  *
- * NO RULE IS DRAWN AT EITHER BOUNDARY. The rail has none in the app either
- * (`sidebar-navigation.tsx` states why the tonal step carries it), and the dock's
- * leading `hairline` is what this change removed; frames captured through a
- * harness that drew one showed a boundary the product no longer had (D1).
+ * ONE SEAM PER SHARED EDGE, AND IT IS THE PRODUCT'S. The rail mounts
+ * `PanelEdge` on its leading edge, and every pane mounts it through `PaneSlot`
+ * (`panel-edge.tsx`, 2026-10-30), so these frames show the same 1px seam the app
+ * paints. This paragraph used to say no rule was drawn - true of the `border-l
+ * border-hairline` it replaced, which began at y=32 and photographed as a
+ * boundary the product did not draw (design review round 1, D1). The seam is a
+ * child of the panel now, not a border on a wrapper, so the two cannot diverge
+ * again.
  */
 
 const DOCK_CONVERSATION_ID = "shell-dock-conversation";
