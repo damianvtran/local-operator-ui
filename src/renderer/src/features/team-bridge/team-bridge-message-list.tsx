@@ -247,6 +247,14 @@ export const TeamBridgeMessageList: FC<{
 	 * this). Absent = no event lines, byte for byte.
 	 */
 	events?: readonly TeamBridgeEvent[];
+	/**
+	 * The message a notification click named. Its row (the existing
+	 * `data-message-id` root) wears a brief accent wash that fades out; see
+	 * `.lo-team-bridge-target` for the motion and its reduced-motion form. The
+	 * scroll to it belongs to the timeline's owner, which also owns the
+	 * stick-to-bottom pin it has to override. The caller clears it after the fade.
+	 */
+	highlightId?: string | null;
 }> = ({
 	messages,
 	labelFor,
@@ -266,6 +274,7 @@ export const TeamBridgeMessageList: FC<{
 	arrivalsEnabled = true,
 	decorate,
 	events,
+	highlightId = null,
 }) => {
 	const locale = useI18nLocale();
 	const arriving = useArrivingRows(arrivalKey, messages, arrivalsEnabled);
@@ -336,6 +345,7 @@ export const TeamBridgeMessageList: FC<{
 							accountId={accountId}
 							density={density}
 							arriving={arriving.has(item.message)}
+							highlighted={highlightId === item.message.id}
 							onArrivalEnd={arriving.end}
 							decoration={decorate?.(item.message)}
 						/>
@@ -430,6 +440,7 @@ const MessageRow: FC<{
 	arriving?: boolean;
 	onArrivalEnd?: () => void;
 	decoration?: TeamBridgeRowDecoration;
+	highlighted?: boolean;
 }> = ({ reactionContext, ...props }) =>
 	reactionContext && props.message.body !== null ? (
 		<ReactableMessageRow
@@ -470,6 +481,7 @@ type MessageRowProps = {
 	arriving?: boolean;
 	onArrivalEnd?: () => void;
 	decoration?: TeamBridgeRowDecoration;
+	highlighted?: boolean;
 };
 
 const MessageRowView: FC<MessageRowProps> = ({
@@ -489,6 +501,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 	arriving = false,
 	onArrivalEnd,
 	decoration,
+	highlighted = false,
 }) => {
 	const summary = threadSummary(message);
 	/* One-level threads: only a timeline root can open a thread - and none can
@@ -556,12 +569,14 @@ const MessageRowView: FC<MessageRowProps> = ({
 	return (
 		<li
 			data-message-id={message.id}
+			data-message-target={highlighted || undefined}
 			onAnimationEnd={arriving ? onArrivalEnd : undefined}
 			className={cn(
 				"group/message relative flex w-full min-w-0 gap-3 px-5 transition-colors duration-fast ease-out-quart hover:bg-row-hover",
 				// Transform/opacity only: the row reserves its final layout box
 				// immediately, so arrival cannot move the scroll geometry.
 				arriving && "lo-team-bridge-arrival",
+				highlighted && "lo-team-bridge-target",
 				continuation ? "py-0.5" : "mt-2 pt-1.5 pb-0.5",
 			)}
 		>

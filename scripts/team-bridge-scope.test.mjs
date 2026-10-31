@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -452,6 +452,32 @@ test("every merged row still names exactly one tenant", () => {
 			["bcv_1", "tnt_1"],
 		],
 	);
+});
+
+/*
+ * `badgeTotal` IS TEST-ONLY (agent review round 1, m4). It is the
+ * pre-one-source formula: the badge now reads the merged view
+ * (`teamBridgeUnreadView`), so a production caller would be a second way to
+ * answer "what is the badge number", and the old split arithmetic is exactly
+ * what let the badge and a row disagree. The arithmetic itself is still pinned
+ * below for the deletion follow-up; this pin keeps it out of production.
+ *
+ * References are matched on COMMENT-STRIPPED source, so prose about the legacy
+ * helper (like this note) is not an offender, while an import, a call or a
+ * re-export is.
+ */
+test("no production module outside the model mentions badgeTotal", () => {
+	const MODEL = "src/renderer/src/features/team-bridge/team-bridge-model.ts";
+	const offenders = [];
+	for (const entry of readdirSync("src", { recursive: true })) {
+		const path = `src/${entry}`;
+		if (path === MODEL || !/\.(ts|tsx)$/.test(path)) continue;
+		const source = readFileSync(path, "utf8")
+			.replace(/\/\*[\s\S]*?\*\//g, "")
+			.replace(/^\s*\/\/.*$/gm, "");
+		if (/\bbadgeTotal\b/.test(source)) offenders.push(path);
+	}
+	assert.deepEqual(offenders, [], "badgeTotal must not reach production code");
 });
 
 test("the account aggregate's total is the badge without conversation rows", () => {

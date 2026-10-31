@@ -1,7 +1,8 @@
 import { t } from "@shared/i18n";
 import { MessagesSquare } from "lucide-react";
-import { TEAM_BRIDGE_ALL_SCOPE, badgeTotal } from "./team-bridge-model";
+import { TEAM_BRIDGE_ALL_SCOPE } from "./team-bridge-model";
 import { useTeamBridgeAccount } from "./team-bridge-owner";
+import { useTeamBridgeUnreadView } from "./team-bridge-unread-sync";
 import { useTeamBridgeStatus, useTeamBridgeUnread } from "./use-team-bridge";
 
 /**
@@ -16,7 +17,7 @@ import { useTeamBridgeStatus, useTeamBridgeUnread } from "./use-team-bridge";
  * source.
  *
  * THE BADGE IS THE OVERFLOW ROW'S, NOT A NEW ROW'S. `attention` is the unmuted
- * unread total (`badgeTotal`); the sidebar's own renderer draws it with the
+ * unread total (the shared view's `total`); the sidebar's own renderer draws it with the
  * `attention` badge primitive at the row's trailing edge, inside the 30px row,
  * so the More group's collapsed state shows the count without expanding the
  * group and without spending another row. The mark is deliberately the quiet
@@ -55,9 +56,16 @@ export function useTeamBridgeNavItem(
 	const unread = useTeamBridgeUnread(ready, TEAM_BRIDGE_ALL_SCOPE, {
 		accountId,
 	});
+	/*
+	 * THE SAME NUMBER THE RAIL SHOWS. The aggregate read above keeps the badge
+	 * polled; the count itself is the shared unread view, which merges that
+	 * aggregate with the per-conversation rows the rail renders, so the badge
+	 * cannot claim unread that no row shows (see `team-bridge-unread-sync.ts`).
+	 */
+	const view = useTeamBridgeUnreadView(ready ? accountId : undefined);
 	if (!enabled) return null;
 	// Disabled observers can still expose cached data: unresolved auth is zero.
-	const attention = ready && unread.data ? badgeTotal(unread.data) : 0;
+	const attention = ready && unread.data ? view.total : 0;
 	return {
 		icon: MessagesSquare,
 		label: t("ui.teamBridge.nav.label"),

@@ -16,6 +16,7 @@ import { ScrollArea } from "@shared/components/ui/scroll-area";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { formatRelativeTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { JUMP_HIGHLIGHT_MS } from "@shared/lib/jump-highlight";
 import { cn } from "@shared/lib/utils";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import {
@@ -39,6 +40,7 @@ import {
 import type { FC, ReactNode } from "react";
 import {
 	Fragment,
+	useCallback,
 	useEffect,
 	useId,
 	useLayoutEffect,
@@ -193,10 +195,15 @@ import {
 	type ThreadTarget,
 	threadTargetFromSearch,
 } from "./team-bridge-thread-read";
+import {
+	useTeamBridgeUnreadView,
+	withSharedUnread,
+} from "./team-bridge-unread-sync";
 import { useReportTeamBridgeViewing } from "./team-bridge-viewing";
 import { useStickToBottom } from "./use-stick-to-bottom";
 import {
 	teamBridgeKeys,
+	teamBridgeMessagesQueryOptions,
 	useAddTeamBridgeMembers,
 	useArchiveTeamBridgeConversation,
 	useArchivedTeamBridgeConversations,
@@ -550,6 +557,11 @@ export type TeamBridgePageViewProps = {
 	messages: TeamBridgeMessage[];
 	/** Membership events for the timeline only; see `TeamBridgeMessageList`. */
 	events?: readonly TeamBridgeEvent[];
+	/**
+	 * The message a notification click named, once `messages` holds it. The
+	 * timeline scrolls it to the centre and the row wears a brief highlight.
+	 */
+	highlightMessageId?: string | null;
 	/** The caller's active memberships, already joined with per-org counts. */
 	organizations: TeamBridgeOrganization[];
 	scope: TeamBridgeScope;
@@ -732,6 +744,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	target,
 	messages,
 	events,
+	highlightMessageId = null,
 	organizations,
 	scope,
 	totalUnread,
@@ -1379,6 +1392,27 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		resetKey: `${shown?.tenant_id ?? ""}:${shown?.id ?? ""}:${messageState}:${quickView ?? ""}`,
 		contentKey: `${messages.length}:${messages.at(-1)?.id ?? ""}`,
 	});
+	/*
+	 * A NOTIFICATION CLICK LANDS ON ITS MESSAGE. Declared AFTER the
+	 * stick-to-bottom hook on purpose: layout effects run in declaration order
+	 * within a component (and a child's before its parent's), so this is the
+	 * last scroll before paint and the pin cannot pull the reader back to the
+	 * bottom. `hold()` then unpins, so a resize re-pin or the next arrival does
+	 * not yank them off the message either - the same rule as a reader who
+	 * scrolled up by hand.
+	 */
+	useLayoutEffect(() => {
+		if (!highlightMessageId) return;
+		// Compared, not interpolated into a selector: the id came from a URL.
+		const row = Array.from(
+			timeline.rootRef.current?.querySelectorAll<HTMLElement>(
+				"[data-message-id]",
+			) ?? [],
+		).find((element) => element.dataset.messageId === highlightMessageId);
+		if (!row) return;
+		timeline.hold();
+		row.scrollIntoView?.({ block: "center" });
+	}, [highlightMessageId, timeline.hold, timeline.rootRef]);
 	/*
 	 * ONE AUTO-RETRY PER ATTEMPT, never one per reader gesture. A manual retry of an
 	 * attempt that already spent its automatic retry keeps the key that retry minted (so
@@ -2902,6 +2936,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 												: undefined
 										}
 										arrivalKey={timelineArrivalKey}
+										highlightId={highlightMessageId}
 										tenantId={shown?.tenant_id}
 										accountId={selfAccountId}
 										labelFor={(sender) =>
@@ -3402,6 +3437,14 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 			Map<string, { id: string; tenantId: string | undefined }>
 		>(),
 	);
+	/*
+	 * A notification click's message target outlives an owner remount below:
+	 * the route parameter is consumed on the first owned render, and an auth
+	 * settlement landing just after it would otherwise drop the target. It is
+	 * only an id pair - a conversation the next owner cannot read never
+	 * resolves under it, and it is cleared once handled.
+	 */
+	const messageLink = useRef<TeamBridgeMessageLink | null>(null);
 	// Remount immediately at the real auth transition, before stale TB status can
 	// render. Retain only original-owner data; never carry an A callback into B.
 	return (
@@ -3410,18 +3453,41 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 			accountId={account.accountId}
 			drafts={drafts.current}
 			receipts={receipts.current}
+			messageLinkCarry={messageLink}
 		/>
 	);
 };
 
+type TeamBridgeMessageLink = {
+	conversationId: string;
+	messageId: string;
+	fetched: boolean;
+};
+
+/**
+ * How long a `?message=` target may wait for its conversation to resolve before
+ * it is released (review round 1, m3). Both ordinary clearing conditions need
+ * progress - a different selection, or one completed re-read - so a click for a
+ * conversation this rail cannot resolve (archived, membership gone, deleted)
+ * would otherwise hold the link, and the carry, for the life of the page. It is
+ * a bound on the TARGET'S LIFE, not a timing for the highlight: one landing
+ * costs one request, so an ordinary click finishes well inside it. A click that
+ * does NOT finish inside it is released too - a first read slow enough to still
+ * be running at the bound, not only a conversation the rail can never resolve -
+ * which is the intended trade: a late highlight on a row the reader has moved on
+ * from is worse than none.
+ */
+const MESSAGE_LINK_TIMEOUT_MS = 8_000;
+
 const TeamBridgeOwnedPage: FC<{
 	accountId?: string;
+	messageLinkCarry: { current: TeamBridgeMessageLink | null };
 	drafts: Map<string, OwnedDraft>;
 	receipts: Map<
 		string,
 		Map<string, { id: string; tenantId: string | undefined }>
 	>;
-}> = ({ accountId, drafts, receipts }) => {
+}> = ({ accountId, drafts, receipts, messageLinkCarry }) => {
 	/* The feature's one cache reader: the opening snapshot below is read from it, and
 	   the writes that patch cached pages run through it. */
 	const client = useQueryClient();
@@ -3434,6 +3500,54 @@ const TeamBridgeOwnedPage: FC<{
 	const requestedConversation = searchParams.get("conversation");
 	const requestedTenant = searchParams.get("tenant");
 	const requestedRoot = searchParams.get("thread");
+	const requestedMessage = searchParams.get("message");
+	/*
+	 * THE MESSAGE A NOTIFICATION CLICK NAMED (`?message=`), held past the param
+	 * clear below until the timeline has landed on it. Timeline-only: a reply's
+	 * banner also names its thread, and the thread pane opens on that thread
+	 * (its cache was refreshed before the banner was raised), so a reply id is
+	 * never looked for in a timeline that excludes replies by contract.
+	 */
+	const [messageLink, setMessageLinkState] =
+		useState<TeamBridgeMessageLink | null>(() => {
+			const seeded =
+				requestedMessage && requestedConversation && !requestedRoot
+					? {
+							conversationId: requestedConversation,
+							messageId: requestedMessage,
+							fetched: false,
+						}
+					: requestedConversation
+						? null
+						: messageLinkCarry.current;
+			/*
+			 * THE CARRY IS WRITTEN THROUGH ON EVERY BRANCH, the null ones included
+			 * (review round 1, m3). The carry is only ever read by a LATER owner's
+			 * initializer, so a branch that leaves it holding an older click's
+			 * target can re-seed a link this page has already decided against: a
+			 * fresh `?conversation=` with no message would otherwise resurrect the
+			 * previous click's highlight under the next account.
+			 */
+			messageLinkCarry.current = seeded;
+			return seeded;
+		});
+	// Every write goes through the carry too (see `TeamBridgePage`).
+	const setMessageLink = useCallback(
+		(
+			next:
+				| TeamBridgeMessageLink
+				| null
+				| ((
+						current: TeamBridgeMessageLink | null,
+				  ) => TeamBridgeMessageLink | null),
+		) =>
+			setMessageLinkState((current) => {
+				const value = typeof next === "function" ? next(current) : next;
+				messageLinkCarry.current = value;
+				return value;
+			}),
+		[messageLinkCarry],
+	);
 	const [threadLink, setThreadLink] = useState<ThreadTarget | null>(() =>
 		/* THE HOLD: a `?thread=` deep link (a notification click, a shared link)
 		   must not become a thread target in this build. The conversation still
@@ -3528,6 +3642,13 @@ const TeamBridgeOwnedPage: FC<{
 	// account aggregate is the ONE unread read — the same cache entry the
 	// sidebar badge spends. Per-org counts are joined from that payload, never
 	// fetched per org.
+	/*
+	 * ONE UNREAD SOURCE (`team-bridge-unread-sync.ts`). Every row count, every
+	 * organization count and the All-organizations total read the same merged
+	 * view the nav badge reads, so a count the badge shows is on a row, and a
+	 * read clears both in the same render.
+	 */
+	const unreadView = useTeamBridgeUnreadView(selfAccountId);
 	const memberships = useMembershipsQuery({ enabled: readsEnabled });
 	const unread = useTeamBridgeUnread(readsEnabled, TEAM_BRIDGE_ALL_SCOPE, {
 		accountId,
@@ -3539,8 +3660,12 @@ const TeamBridgeOwnedPage: FC<{
 				memberships.memberships,
 				unread.data?.organizations,
 				hubTenants,
-			),
-		[memberships.memberships, unread.data, hubTenants],
+			).map((organization) => ({
+				...organization,
+				unread:
+					unreadView.byTenant.get(organization.tenantId) ?? organization.unread,
+			})),
+		[memberships.memberships, unread.data, hubTenants, unreadView],
 	);
 	const { pending: organizationsPending, failed: organizationsFailed } =
 		organizationsReadState(hubTenants, memberships);
@@ -3611,7 +3736,20 @@ const TeamBridgeOwnedPage: FC<{
 		() => snapshotForScope(openingRows ?? [], scope),
 		[openingRows, scope],
 	);
-	const conversations = list.data?.conversations ?? openingSnapshot;
+	/*
+	 * ...then every row takes the shared unread view, so a row and the nav badge
+	 * cannot disagree. The merge is applied to whatever this scope may paint,
+	 * AFTER the filter above: a row the scope does not own is never merged into
+	 * view (and `withSharedUnread` would otherwise hand it a count it has no
+	 * business showing).
+	 */
+	const conversations = useMemo(
+		() =>
+			(list.data?.conversations ?? openingSnapshot).map((row) =>
+				withSharedUnread(row, unreadView),
+			),
+		[list.data?.conversations, openingSnapshot, unreadView],
+	);
 	/*
 	 * PAINT BEFORE THE VERDICT (tb-instant-open, mechanism 2). The status answer
 	 * decides whether this surface exists for the account at all, so the gate used
@@ -3703,9 +3841,25 @@ const TeamBridgeOwnedPage: FC<{
 					)
 				: null,
 		);
+		setMessageLink(
+			requestedMessage && !requestedRoot
+				? {
+						conversationId: requestedConversation,
+						messageId: requestedMessage,
+						fetched: false,
+					}
+				: null,
+		);
 		setChannelFormOpen(false);
 		setSearchParams({}, { replace: true });
-	}, [requestedConversation, requestedTenant, requestedRoot, setSearchParams]);
+	}, [
+		requestedConversation,
+		requestedTenant,
+		requestedRoot,
+		requestedMessage,
+		setSearchParams,
+		setMessageLink,
+	]);
 
 	// A conversation id and a person both belong to one organization; a scope
 	// change clears the target so a stale thread is never shown under a new title.
@@ -4075,6 +4229,91 @@ const TeamBridgeOwnedPage: FC<{
 		markRead.mutate({ seq: newest });
 	}, [selected?.id, newest]);
 
+	/*
+	 * LAND ON THE CLICKED MESSAGE, NEVER ON A STALE PAGE. The watcher wrote the
+	 * message into this exact cache entry before raising the banner, so the
+	 * normal case paints it in the first frame with no request. If the entry
+	 * still lacks it (evicted, or a click from a banner older than this
+	 * document), the timeline shows its loading state rather than the stale
+	 * page, re-reads that one key once, and then shows whatever the server has:
+	 * a message deleted in between must not hold a spinner forever.
+	 */
+	const linkedConversation =
+		messageLink !== null && selected?.id === messageLink.conversationId;
+	const linkedPresent =
+		linkedConversation &&
+		(messages.data?.messages.some(
+			(message) => message.id === messageLink.messageId,
+		) ??
+			false);
+	const awaitingLinkedMessage =
+		linkedConversation && !linkedPresent && !messageLink.fetched;
+	useEffect(() => {
+		if (!messageLink || messageLink.fetched || !selected || !selfAccountId)
+			return;
+		if (selected.id !== messageLink.conversationId) return;
+		if (messages.isPending || linkedPresent) return;
+		let current = true;
+		void client
+			.fetchQuery({
+				...teamBridgeMessagesQueryOptions(
+					client,
+					selected.id,
+					selected.tenant_id,
+					selfAccountId,
+				),
+				staleTime: 0,
+			})
+			.catch(() => undefined)
+			.finally(() => {
+				if (current)
+					setMessageLink((link: TeamBridgeMessageLink | null) =>
+						link ? { ...link, fetched: true } : link,
+					);
+			});
+		return () => {
+			current = false;
+		};
+	}, [
+		messageLink,
+		selected,
+		selfAccountId,
+		messages.isPending,
+		linkedPresent,
+		client,
+		setMessageLink,
+	]);
+	// The highlight is a moment, not a state: drop it once the fade has run.
+	useEffect(() => {
+		if (!linkedPresent) return;
+		const timer = setTimeout(() => setMessageLink(null), JUMP_HIGHLIGHT_MS);
+		return () => clearTimeout(timer);
+	}, [linkedPresent, setMessageLink]);
+	// A link the reader navigated away from, or one that never appeared after
+	// its one re-read, is finished.
+	useEffect(() => {
+		if (!messageLink) return;
+		if (
+			(selected !== null && selected.id !== messageLink.conversationId) ||
+			(messageLink.fetched && !linkedPresent)
+		)
+			setMessageLink(null);
+	}, [messageLink, selected, linkedPresent, setMessageLink]);
+	/*
+	 * A LINKED CONVERSATION THAT NEVER RESOLVES IS RELEASED TOO (review round 1,
+	 * m3). The effect above can only clear on progress, and the fetch effect
+	 * returns early while nothing is selected, so a target whose conversation the
+	 * rail never resolves would sit in state - and in the carry - forever.
+	 */
+	useEffect(() => {
+		if (!messageLink) return;
+		const timer = setTimeout(
+			() => setMessageLink(null),
+			MESSAGE_LINK_TIMEOUT_MS,
+		);
+		return () => clearTimeout(timer);
+	}, [messageLink, setMessageLink]);
+
 	const draftKey = JSON.stringify([
 		accountId,
 		selected?.tenant_id ?? scope,
@@ -4111,7 +4350,7 @@ const TeamBridgeOwnedPage: FC<{
 				messageState={
 					selected === null
 						? "idle"
-						: messages.isPending
+						: messages.isPending || awaitingLinkedMessage
 							? "loading"
 							: messages.isError
 								? isNotAMemberRefusal(messages.error)
@@ -4123,9 +4362,10 @@ const TeamBridgeOwnedPage: FC<{
 				target={target}
 				messages={messages.data?.messages ?? []}
 				events={messages.data?.events}
+				highlightMessageId={linkedPresent ? messageLink?.messageId : null}
 				organizations={organizations}
 				scope={scope}
-				totalUnread={unread.data?.total ?? 0}
+				totalUnread={unread.data ? unreadView.total : 0}
 				refreshingRows={refreshingRows}
 				refreshingUnread={refreshingUnread}
 				membershipsLoading={organizationsPending}
