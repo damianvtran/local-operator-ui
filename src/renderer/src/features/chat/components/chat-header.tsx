@@ -312,6 +312,65 @@ type ChatHeaderProps = {
  */
 const PATH_CHIP_CHARS = 40;
 
+/**
+ * The header's picture and the pencil's door onto its editor.
+ *
+ * A COMPONENT RATHER THAN A CONDITIONAL INSIDE THE HEADER, because both things
+ * this decides come from hooks: presence (`useHasAgentPicture`, which reads the
+ * agents query) and the mark's own bytes. Mounted only when the header HAS an
+ * agent avatar, the hook surface is exactly what the mark already needed - a
+ * header for a draft, a Team Bridge identity or a backend that publishes no
+ * avatar still touches no query client.
+ *
+ * IS THERE A PICTURE TO SHOW - AND SO A PICTURE TO CHANGE (agent review round 1,
+ * m3)? The gate below used to be `agentAvatar` alone, which is the row's CLAIM
+ * (an agent id and a digest). A claim whose bytes do not resolve - a 404 from
+ * core, a file removed behind the row, a stale digest after a CLI write, a
+ * remote row (M2) - drew `AgentMark`'s `fallback`, which the header passes as
+ * `null`, and then wrapped that null in `AgentAvatarEditLink`: a bare 20px
+ * circle that revealed a pencil on hover with no picture in it. A door onto an
+ * empty plate.
+ *
+ * The header therefore asks the bytes rather than the row, and draws NOTHING
+ * when there are none - which is the same thing it draws for an agent with no
+ * picture at all, so the failed and the absent case cannot disagree. The hook
+ * retains the URL before `AgentMark` mounts, so the mark's own `peek` paints on
+ * its first frame rather than flashing an empty plate.
+ */
+const ChatHeaderAvatar: FC<{
+	agent: NonNullable<ChatHeaderProps["agentAvatar"]>;
+	agentName: string;
+}> = ({ agent, agentName }) => {
+	const present = useHasAgentPicture(agent.agentId, agent.sha256);
+	/*
+	 * NO PICTURE, NO PLATE, NO DOOR - and that covers the digest whose bytes do not
+	 * resolve, not just the agent that never had one. `AgentMark` renders the
+	 * caller's `fallback` in that case, which this header passes as `null` (the
+	 * title block never carried an agent glyph), so drawing the wrapper anyway
+	 * would leave a bare 20px circle with a pencil on hover - a door onto an empty
+	 * plate, and a tab stop that leads nowhere.
+	 */
+	if (!present) return null;
+	return (
+		<span className="me-1 flex shrink-0 items-center">
+			<AgentAvatarEditLink
+				agentName={agentName}
+				agentId={agent.agentId}
+				owned={agent.owned}
+				className="size-5"
+				pencilClassName="size-2.5"
+			>
+				<AgentMark
+					agentId={agent.agentId}
+					sha256={agent.sha256}
+					className="size-5"
+					fallback={null}
+				/>
+			</AgentAvatarEditLink>
+		</span>
+	);
+};
+
 export const ChatHeader: FC<ChatHeaderProps> = ({
 	agentName = "Local Operator",
 	agentAvatar = null,
@@ -346,26 +405,6 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	 */
 	// Labels follow locale changes without resetting editor/menu state or effects.
 	useI18nLocale();
-	/*
-	 * IS THERE A PICTURE TO SHOW - AND SO A PICTURE TO CHANGE (agent review round 1,
-	 * m3)? The gate below used to be `agentAvatar` alone, which is the row's CLAIM
-	 * (an agent id and a digest). A claim whose bytes do not resolve - a 404 from
-	 * core, a file removed behind the row, a stale digest after a CLI write, a
-	 * remote row (M2) - drew `AgentMark`'s `fallback`, which the header passes as
-	 * `null`, and then wrapped that null in `AgentAvatarEditLink`: a bare 20px
-	 * circle that revealed a pencil on hover with no picture in it. A door onto an
-	 * empty plate.
-	 *
-	 * The header therefore asks the bytes rather than the row, and draws NOTHING
-	 * when there are none - which is the same thing it draws for an agent with no
-	 * picture at all, so the failed and the absent case cannot disagree. The hook
-	 * retains the URL before `AgentMark` mounts, so the mark's own `peek` paints on
-	 * its first frame rather than flashing an empty plate.
-	 */
-	const agentPicturePresent = useHasAgentPicture(
-		agentAvatar?.agentId,
-		agentAvatar?.sha256,
-	);
 	const capabilities = useDesktopCapabilities();
 	const peerState = desktopFeatureState(capabilities.data, "peers");
 	const transferState = desktopFeatureState(
@@ -917,30 +956,16 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							 * 20px box - the same size the identity chips hold, which is what
 							 * keeps the baseline join and the one-line clip band unchanged.
 							 *
-							 * NOTHING WHEN THERE IS NO PICTURE: `AgentMark` renders the caller's
-							 * fallback, and here the fallback is `null` - the header's title
-							 * block never carried an agent glyph, so a conversation whose agent
-							 * has no picture keeps exactly the header main draws. The pencil
-							 * rides `AgentAvatarEditLink`, which draws nothing but the bare
-							 * picture for an agent the viewer does not own.
+							 * NOTHING WHEN THERE IS NO PICTURE, and nothing when the picture's
+							 * bytes do not resolve either: `ChatHeaderAvatar` asks the bytes
+							 * (agent review round 1, m3) and draws no plate, no pencil and no
+							 * tab stop for either, which keeps a conversation whose agent has
+							 * no picture exactly the header main draws. The pencil rides
+							 * `AgentAvatarEditLink`, which draws nothing but the bare picture
+							 * for an agent the viewer does not own.
 							 */}
-							{agentAvatar && agentPicturePresent ? (
-								<span className="me-1 flex shrink-0 items-center">
-									<AgentAvatarEditLink
-										agentName={agentName}
-										agentId={agentAvatar.agentId}
-										owned={agentAvatar.owned}
-										className="size-5"
-										pencilClassName="size-2.5"
-									>
-										<AgentMark
-											agentId={agentAvatar.agentId}
-											sha256={agentAvatar.sha256}
-											className="size-5"
-											fallback={null}
-										/>
-									</AgentAvatarEditLink>
-								</span>
+							{agentAvatar ? (
+								<ChatHeaderAvatar agent={agentAvatar} agentName={agentName} />
 							) : null}
 							<h2
 								ref={renameTitleRef}
