@@ -2,6 +2,7 @@ import {
 	useAidaDisplayName,
 	useAidaTarget,
 } from "@features/aida/use-aida-target";
+import { useAgentAvatar } from "@shared/agent-avatar/agent-avatar";
 import {
 	backendPaneSentence,
 	compatibilityBannerShown,
@@ -46,7 +47,6 @@ import {
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { useAgentAvatar } from "@shared/store/agent-avatar-store";
 import { useAsideStore } from "@shared/store/aside-store";
 import {
 	ANSWER_NOT_SENT_CODE,

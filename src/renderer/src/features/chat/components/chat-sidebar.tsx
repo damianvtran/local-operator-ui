@@ -20,6 +20,7 @@ import { tagHeaderAt, useChatTagDrag } from "@features/chat/use-chat-tag-drag";
  * device half rides the row itself (`chat-remote.ts`).
  */
 import { useMeshNetworks } from "@features/mesh/mesh-store";
+import { useAgentAvatar } from "@shared/agent-avatar/agent-avatar";
 import { compatibilityBannerShown } from "@shared/api/local-operator/backend-error";
 import {
 	isRemoteReceiptDeferral,
@@ -79,7 +80,6 @@ import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { useAgentAvatar } from "@shared/store/agent-avatar-store";
 import {
 	CATALOGUE_HEAD_PAGE,
 	type CanonicalSessionRow,
