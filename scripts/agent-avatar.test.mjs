@@ -233,9 +233,15 @@ const VIEWPORT = 288;
 
 test("the cover fit is the short side filling the square", () => {
 	// A landscape photo: the height is the short side, so it sets the scale.
-	assert.equal(coverScale({ width: 800, height: 600 }, VIEWPORT), VIEWPORT / 600);
+	assert.equal(
+		coverScale({ width: 800, height: 600 }, VIEWPORT),
+		VIEWPORT / 600,
+	);
 	// And the reverse for a portrait one.
-	assert.equal(coverScale({ width: 600, height: 800 }, VIEWPORT), VIEWPORT / 600);
+	assert.equal(
+		coverScale({ width: 600, height: 800 }, VIEWPORT),
+		VIEWPORT / 600,
+	);
 });
 
 test("the offset never leaves a gap in the square, at any zoom", () => {
@@ -305,9 +311,21 @@ test("zooming keeps the point under the centre where it was", () => {
 
 test("a zoom past the range is clamped, not applied", () => {
 	const image = { width: 800, height: 600 };
-	const tooFar = zoomAround(image, VIEWPORT, 1, 99, centredOffset(image, VIEWPORT));
+	const tooFar = zoomAround(
+		image,
+		VIEWPORT,
+		1,
+		99,
+		centredOffset(image, VIEWPORT),
+	);
 	assert.equal(tooFar.zoom, CROP_MAX_ZOOM);
-	const tooClose = zoomAround(image, VIEWPORT, 2, 0.01, centredOffset(image, VIEWPORT));
+	const tooClose = zoomAround(
+		image,
+		VIEWPORT,
+		2,
+		0.01,
+		centredOffset(image, VIEWPORT),
+	);
 	assert.equal(tooClose.zoom, CROP_MIN_ZOOM);
 });
 
