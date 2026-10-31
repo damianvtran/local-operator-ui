@@ -16,6 +16,7 @@ import { ScrollArea } from "@shared/components/ui/scroll-area";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { formatRelativeTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { JUMP_HIGHLIGHT_MS } from "@shared/lib/jump-highlight";
 import { cn } from "@shared/lib/utils";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import {
@@ -39,6 +40,7 @@ import {
 import type { FC, ReactNode } from "react";
 import {
 	Fragment,
+	useCallback,
 	useEffect,
 	useId,
 	useLayoutEffect,
@@ -52,12 +54,14 @@ import type {
 	TeamBridgeConversation,
 	TeamBridgeConversationList,
 	TeamBridgeDirectoryMember,
+	TeamBridgeEvent,
 	TeamBridgeMemberInput,
 	TeamBridgeMessage,
 	TeamBridgeNotify,
 } from "../../../../shared/team-bridge-contract";
 import { browserDraftStorage } from "../../shared/store/team-bridge-draft-account";
 import { rowCurrent } from "../chat/components/chat-sidebar";
+import { TeamBridgeMentionProvider } from "./mentions";
 import { TeamBridgeAddMembersView } from "./team-bridge-add-members";
 import {
 	TeamBridgeArchiveDialog,
@@ -105,6 +109,7 @@ import {
 	type TeamBridgeTarget,
 	archivedChannelRows,
 	asTeamBridgeTenantId,
+	builtinTopicKey,
 	canArchiveConversation,
 	canManageArchivedConversation,
 	chiefsOfStaff,
@@ -113,6 +118,7 @@ import {
 	conversationMembershipCounts,
 	conversationOrganizationName,
 	conversationTitle,
+	defaultLandingConversation,
 	directoryFailureKind,
 	dmWithAgent,
 	dmWithPerson,
@@ -124,6 +130,7 @@ import {
 	notifyFailureIsVisible,
 	organizationOptions,
 	organizationsReadState,
+	ownAgentMenuState,
 	participantLabel,
 	personDisplayLabel,
 	railSections,
@@ -149,6 +156,17 @@ import {
 	type OwnerAuditSlot,
 	useOwnerAuditSurface,
 } from "./team-bridge-owner-audit";
+import {
+	type PendingSend,
+	conversationLaneKey,
+	enqueueOnLane,
+	mergeOptimisticMessages,
+	nextPendingOrder,
+	pendingForView,
+	resolveLane,
+	serverRowOf,
+	usePendingSends,
+} from "./team-bridge-pending-sends";
 import {
 	TeamBridgeAvatar,
 	TeamBridgeProfileCard,
@@ -190,10 +208,16 @@ import {
 	type ThreadTarget,
 	threadTargetFromSearch,
 } from "./team-bridge-thread-read";
+import {
+	useTeamBridgeUnreadView,
+	withSharedUnread,
+} from "./team-bridge-unread-sync";
 import { useReportTeamBridgeViewing } from "./team-bridge-viewing";
 import { useStickToBottom } from "./use-stick-to-bottom";
 import {
+	refreshAfterSend,
 	teamBridgeKeys,
+	teamBridgeMessagesQueryOptions,
 	useAddTeamBridgeMembers,
 	useArchiveTeamBridgeConversation,
 	useArchivedTeamBridgeConversations,
@@ -204,6 +228,7 @@ import {
 	useMarkTeamBridgeRead,
 	useRemoveTeamBridgeMember,
 	useSendTeamBridgeMessage,
+	useSetTeamBridgeAgentNotify,
 	useSetTeamBridgeNotify,
 	useTeamBridgeConversations,
 	useTeamBridgeDirectories,
@@ -246,7 +271,16 @@ type SendRefusal =
  * fence that erases the draft journal and the composer rows: sign-out and account
  * switch drop every record.
  */
-type SendAttempt = { body: string; clientRef: string };
+type SendAttempt = {
+	body: string;
+	clientRef: string;
+	/**
+	 * The optimistic row this attempt drew, when it drew one. A picture send keeps
+	 * the awaited path and has no row; a text send does, and the row - not the body
+	 * comparison - is what decides whether a press is a retry (B1).
+	 */
+	localId?: string;
+};
 const sendAttempts = new Map<string, SendAttempt>();
 onDraftRevocation(() => sendAttempts.clear());
 
@@ -270,7 +304,7 @@ const STAGED_FAILURE_COPY = {
  * the work and close on the first outside click.
  *
  * THE RAIL IS SLACK'S (operator review, 2026-10-21): Channels (the built-in
- * #humans and #agents first), Groups, People and Chiefs of staff, each with a
+ * #general, #humans and #agents first), Groups, People and Chiefs of staff, each with a
  * header that stays when the section is empty. A person's row IS their DM, so
  * there is never a second "@ Ben" row; see `team-bridge-rail.tsx`.
  *
@@ -515,6 +549,17 @@ export function relative(iso: string, locale: string): string {
 	);
 }
 
+/**
+ * Where a background (optimistic) send goes, decided when it RUNS rather than when
+ * the view rendered: a message queued behind a first send posts into the
+ * conversation that send created (`into`), and the container reports a create the
+ * moment it lands (`onCreated`) so the view and the rail move before the post.
+ */
+export type TeamBridgeDelivery = {
+	into?: { conversationId: string; tenantId: string | undefined };
+	onCreated?: (conversationId: string, tenantId: string | undefined) => void;
+};
+
 type OwnedDraft = {
 	body: string;
 };
@@ -545,6 +590,13 @@ export type TeamBridgePageViewProps = {
 	 */
 	target: TeamBridgeTarget | null;
 	messages: TeamBridgeMessage[];
+	/** Membership events for the timeline only; see `TeamBridgeMessageList`. */
+	events?: readonly TeamBridgeEvent[];
+	/**
+	 * The message a notification click named, once `messages` holds it. The
+	 * timeline scrolls it to the centre and the row wears a brief highlight.
+	 */
+	highlightMessageId?: string | null;
 	/** The caller's active memberships, already joined with per-org counts. */
 	organizations: TeamBridgeOrganization[];
 	scope: TeamBridgeScope;
@@ -573,8 +625,12 @@ export type TeamBridgePageViewProps = {
 	joining?: boolean;
 	joinFailed?: boolean;
 	notifyFailed?: boolean;
+	/** The reader's own agent's wake-level write was refused (this conversation). */
+	agentNotifyFailed?: boolean;
 	onJoin?: () => void;
 	onNotifyChange?: (notify: TeamBridgeNotify) => void;
+	/** Sets the reader's own agent's wake level; absent, the control is not drawn. */
+	onAgentNotifyChange?: (notify: TeamBridgeNotify) => void;
 	/** Membership writes, passed the selected conversation at the point of use. */
 	onAddMembers?: (
 		conversation: TeamBridgeConversation,
@@ -623,6 +679,19 @@ export type TeamBridgePageViewProps = {
 	 * controls rather than an assumed one.
 	 */
 	reactionsCapabilityState?: DesktopFeatureState;
+	/**
+	 * The `team_bridge_send_mentions` capability answer. Only `enabled` puts
+	 * `mentions[]` on a send; any other answer keeps the readable `@Name` text
+	 * and sends no field an older backend would refuse.
+	 */
+	sendMentionsCapabilityState?: DesktopFeatureState;
+	/**
+	 * The `team_bridge_agent_notify` capability answer, computed by the
+	 * container. Anything but `enabled` hides the "Wake your agent for" group:
+	 * a runtime without the route would refuse every pick, and an error that
+	 * invites a retry nothing can satisfy is worse than no control (R1-3).
+	 */
+	agentNotifyCapabilityState?: DesktopFeatureState;
 	/** Story/test seed only: opens the header menu so its rows are visible. */
 	defaultMenuOpen?: boolean;
 	/** Story/test seed only: the page's real draft is user-owned state. */
@@ -680,6 +749,7 @@ export type TeamBridgePageViewProps = {
 				tenantId: string | undefined,
 			) => Promise<string[]>;
 		},
+		delivery?: TeamBridgeDelivery,
 	) => Promise<unknown> | undefined;
 	/*
 	 * The hub's image capability (`status.attachments`), or null/absent when it
@@ -726,6 +796,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	conversations,
 	target,
 	messages,
+	events,
+	highlightMessageId = null,
 	organizations,
 	scope,
 	totalUnread,
@@ -737,8 +809,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	joining = false,
 	joinFailed = false,
 	notifyFailed = false,
+	agentNotifyFailed = false,
 	onJoin,
 	onNotifyChange,
+	onAgentNotifyChange,
 	onAddMembers,
 	onRemoveMember,
 	memberMutationKey = null,
@@ -759,6 +833,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	initialDialog,
 	threadsCapabilityState = "unknown",
 	reactionsCapabilityState = "unknown",
+	sendMentionsCapabilityState = "unknown",
+	agentNotifyCapabilityState = "unknown",
 	defaultMenuOpen = false,
 	initialDraft = "",
 	draftJournal,
@@ -874,6 +950,21 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		draftTenant,
 		target ? draftTargetKey(target) : "",
 	);
+	/*
+	 * A LANE IS ONE DRAFT, NOT ONE KIND OF DRAFT (review round 1, B2).
+	 *
+	 * `draftTargetKey` answers `"compose"` for EVERY compose draft, so a lane keyed
+	 * by it remembered the first group it created and posted a later group's message
+	 * into it - the message went to people the author never addressed. The lane is
+	 * therefore the composer key (account, scope and target) PLUS the addressees, in
+	 * a stable order: the account keeps two accounts' drafts apart, and the recipient
+	 * list keeps two compose drafts apart.
+	 */
+	const laneIdentity = `${composerKey}|${
+		target?.type === "compose"
+			? target.recipients.map(recipientKey).sort().join(",")
+			: ""
+	}`;
 	const composerRow = useConversationInputStore(
 		(state) => state.inputByConversation[composerKey],
 	);
@@ -1028,7 +1119,16 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		() => listRows.filter((row) => row.status !== "archived"),
 		[listRows],
 	);
-	const sections = useMemo(() => railSections(sidebarRows), [sidebarRows]);
+	/* The switcher's org order: the built-ins' secondary sort key in the merged
+	   view (design round 1, D1), shared by the rail and the after-removal landing. */
+	const organizationOrder = useMemo(
+		() => organizations.map((row) => row.tenantId as string),
+		[organizations],
+	);
+	const sections = useMemo(
+		() => railSections(sidebarRows, organizationOrder),
+		[sidebarRows, organizationOrder],
+	);
 	/* Everything a selection may resolve against: the live list plus the archived view's rows. */
 	const selectable = useMemo(
 		() => selectableConversations(listRows, archivedConversations),
@@ -1210,6 +1310,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	// `selected` already resolves a one-recipient draft to its existing DM
 	// (`targetConversation`), so the view and the container agree on it.
 	const shown = selected;
+	const shownTopicKey = builtinTopicKey(shown?.builtin);
 	const membershipCounts = shown
 		? conversationMembershipCounts(shown)
 		: { active: 0, invited: 0 };
@@ -1359,10 +1460,117 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		() => () => teamBridgeSuspendArrivals(timelineArrivalKey),
 		[timelineArrivalKey],
 	);
+	/*
+	 * THE ROWS THIS VIEW DRAWS, AND THE ONES THIS CLIENT IS STILL CARRYING.
+	 *
+	 * The thread page stays the server's; the optimistic sends
+	 * (`team-bridge-pending-sends.ts`) are merged over it at render time, for the
+	 * account and the lane the reader is looking at - the person or chief target a
+	 * FIRST message is typed into, before any conversation exists for it. A poll, a
+	 * focus refetch or a paged read therefore cannot drop a row this client is
+	 * carrying: the cache never held it.
+	 */
+	const pendingEntries = usePendingSends((state) => state.entries);
+	/* One lane name per draft: the same string the send writes and a row is matched by
+	   (`laneIdentity`), never the coarser target kind. */
+	const viewLane = laneIdentity;
+	const targetedConversationId =
+		target?.type === "conversation" ? target.id : undefined;
+	const viewSends = useMemo(
+		() =>
+			pendingForView(pendingEntries, {
+				owner: selfAccountId,
+				lane: viewLane,
+				/*
+				 * THE CONVERSATION THIS PANE ADDRESSES, not only the one the list has
+				 * resolved. A group's create moves the target onto the new conversation
+				 * one round trip before the list carries it (`shown` is still null), and
+				 * matching on `shown` alone dropped the author's own row from the pane
+				 * they had just been moved into.
+				 */
+				conversationId: shown?.id ?? targetedConversationId,
+			}),
+		[
+			pendingEntries,
+			selfAccountId,
+			viewLane,
+			shown?.id,
+			targetedConversationId,
+		],
+	);
+	/* The author, as a message row names a sender: the roster resolves the label,
+	   so the optimistic row and its server replacement read identically. */
+	/*
+	 * THE AUTHOR'S OWN NAME, TAKEN FROM THE BEST SOURCE THAT HAS ONE.
+	 *
+	 * A server row names its sender in `display_label`: the hub stamps it when the
+	 * message is stored. An optimistic row has no hub to ask, so it carries what this
+	 * client knows - the organization's roster for the signed-in account first (the
+	 * same row `labelFor` resolves a peer through, so the author reads the same in
+	 * their own message as in the rail), then the name the shell holds. The account id
+	 * is the last resort, because a row tagged with somebody's id still reads as a
+	 * person; "" would read as "Unknown person" (operator report, 2026-10-30, caught
+	 * on the first frame of a first message).
+	 */
+	const selfSender = useMemo<TeamBridgeMessage["sender"] | null>(() => {
+		if (!selfAccountId) return null;
+		const mine = people.find((row) => row.account_id === selfAccountId);
+		const label = mine
+			? personDisplayLabel(mine)
+			: (selfName?.trim() ?? "") || selfAccountId;
+		return { account_id: selfAccountId, kind: "human", display_label: label };
+	}, [selfAccountId, selfName, people]);
+	const merged = useMemo(
+		() => mergeOptimisticMessages(messages, viewSends, selfSender, shown?.id),
+		[messages, viewSends, selfSender, shown?.id],
+	);
+	/*
+	 * A CONVERSATION THIS CLIENT JUST CREATED IS NOT "NOT OPEN TO YOU" (review round
+	 * 1, M2). The view moves onto the new group the moment its create answers, one
+	 * line before the list refetch that will contain it - so for one round trip the
+	 * target named a conversation the list did not have, and the thread said the
+	 * reader may not be a member of a room they had just made. The ids are kept for
+	 * the session: once the list carries the row the branch is moot anyway, and a
+	 * conversation that never arrives still draws the reader's own rows.
+	 */
+	const createdHere = useRef(new Set<string>());
+	const unlistedCreation =
+		target?.type === "conversation" &&
+		createdHere.current.has(target.id) &&
+		shown === null;
+	/** The highest seq the thread page holds: a fallback match must sit above it. */
+	const timelineTop = useMemo(
+		() => messages.reduce((max, row) => Math.max(max, row.seq), -1),
+		[messages],
+	);
 	const timeline = useStickToBottom({
 		resetKey: `${shown?.tenant_id ?? ""}:${shown?.id ?? ""}:${messageState}:${quickView ?? ""}`,
-		contentKey: `${messages.length}:${messages.at(-1)?.id ?? ""}`,
+		/* The DRAWN rows, not the server page: the author's own message is on screen
+	   before the page carries it, and pinning must count it as content or the row
+	   lands just below the fold of a view the press had already pinned. */
+		contentKey: `${merged.messages.length}:${merged.messages.at(-1)?.id ?? ""}`,
 	});
+	/*
+	 * A NOTIFICATION CLICK LANDS ON ITS MESSAGE. Declared AFTER the
+	 * stick-to-bottom hook on purpose: layout effects run in declaration order
+	 * within a component (and a child's before its parent's), so this is the
+	 * last scroll before paint and the pin cannot pull the reader back to the
+	 * bottom. `hold()` then unpins, so a resize re-pin or the next arrival does
+	 * not yank them off the message either - the same rule as a reader who
+	 * scrolled up by hand.
+	 */
+	useLayoutEffect(() => {
+		if (!highlightMessageId) return;
+		// Compared, not interpolated into a selector: the id came from a URL.
+		const row = Array.from(
+			timeline.rootRef.current?.querySelectorAll<HTMLElement>(
+				"[data-message-id]",
+			) ?? [],
+		).find((element) => element.dataset.messageId === highlightMessageId);
+		if (!row) return;
+		timeline.hold();
+		row.scrollIntoView?.({ block: "center" });
+	}, [highlightMessageId, timeline.hold, timeline.rootRef]);
 	/*
 	 * ONE AUTO-RETRY PER ATTEMPT, never one per reader gesture. A manual retry of an
 	 * attempt that already spent its automatic retry keeps the key that retry minted (so
@@ -1371,6 +1579,147 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	 * Reset when the message changes, because that is a different message.
 	 */
 	const autoRetried = useRef(false);
+	/*
+	 * SEND IN THE BACKGROUND, WITH THE ROW ALREADY ON SCREEN.
+	 *
+	 * One job per message, queued per lane (`enqueueOnLane`) so the hub numbers them
+	 * in press order however the network answers, and so a second message sent while
+	 * the first is still CREATING its conversation lands in that conversation rather
+	 * than creating another. Every transition writes back to the row: `pending` ->
+	 * `sent` with the stored message the hub answered with, or `failed`, which is the
+	 * row's own retry surface.
+	 */
+	/*
+	 * THE ATTEMPT IS OVER, WHICHEVER WAY IT ENDED.
+	 *
+	 * RETIRED BY IDENTITY, NEVER BY CURRENTNESS (PR #1532 review round 1, and the same
+	 * rule #1528 settled for the foreground path). The attempt record lives in a module
+	 * map that outlives this page; gating the delete on `isDraftCurrent()` would leave
+	 * a LANDED key behind for the next identical message to replay, and would let this
+	 * job delete a NEWER attempt that a later press put on the same draft. The key
+	 * check is what makes the delete this job's own.
+	 *
+	 * Only the draft's own key rotation needs the live page: it is an edit to a form
+	 * the reader may no longer be looking at.
+	 */
+	const settleAttempt = (
+		row: PendingSend,
+		clientKey: string,
+		rekeyed: boolean,
+	) => {
+		const current = sendAttempts.get(composerKey);
+		const mine =
+			current !== undefined &&
+			(current.clientRef === clientKey || current.clientRef === row.clientRef);
+		if (!mine) return;
+		/*
+		 * A LANDED ATTEMPT RETIRES ITS KEY; A FAILED ONE KEEPS IT (review round 2, m1).
+		 * On the failure side the record's whole purpose is that the next attempt is the
+		 * SAME message: the row's Retry uses the row's own key, and Edit-then-Send comes
+		 * back through `submit`, where keeping the record is what makes those words a
+		 * retry rather than a new message. Retiring it there mints a second key and posts
+		 * a duplicate of anything the first request actually landed.
+		 */
+		if (rekeyed) sendAttempts.delete(composerKey);
+		if (
+			rekeyed &&
+			isDraftCurrent() &&
+			draftState.current?.clientRef === clientKey
+		)
+			draftState.update({ clientRef: crypto.randomUUID() });
+	};
+	const deliverOptimistic = (row: PendingSend) => {
+		/*
+		 * ONE LANE KEY, COMPUTED ONCE (review round 1, m3). Two copies of this
+		 * expression is how a re-key diverges between the enqueue and the job.
+		 */
+		const laneKey = row.conversationId
+			? conversationLaneKey(row.conversationId)
+			: row.lane;
+		return enqueueOnLane(laneKey, async (lane) => {
+			const into = row.conversationId
+				? { conversationId: row.conversationId, tenantId: row.tenantId }
+				: lane.resolved;
+			const patch = (change: Partial<PendingSend>) =>
+				usePendingSends.getState().patch(row.localId, change);
+			const send = (clientRef: string) =>
+				onSend(row.body, clientRef, undefined, {
+					into,
+					/*
+					 * THE VIEW MOVES ONTO THE CONVERSATION AS SOON AS IT EXISTS. The row
+					 * was drawn in the lane the reader is looking at; the create answering
+					 * is what makes the same row reachable from the conversation's own
+					 * view and puts its rail row up, without waiting for the post.
+					 */
+					onCreated: (conversationId, tenantId) => {
+						resolveLane(laneKey, conversationLaneKey(conversationId), {
+							conversationId,
+							tenantId,
+						});
+						/* The list cannot know this id yet; the thread must not claim the
+							   reader may not be a member of their own new conversation (M2). */
+						createdHere.current.add(conversationId);
+						patch({ conversationId, tenantId });
+					},
+				});
+			let clientRef = row.clientRef;
+			let result: unknown;
+			try {
+				try {
+					result = await send(clientRef);
+				} catch (error) {
+					/*
+					 * A BURNT KEY IS RETRIED ONCE (PR #1512's rule, carried into the
+					 * background send). The row FOLLOWS the new key: leaving it on the
+					 * spent one would leave an orphan beside the retried message.
+					 */
+					if (!isClientRefConflict(error) || row.autoRetried) throw error;
+					clientRef = crypto.randomUUID();
+					patch({ clientRef, autoRetried: true });
+					/*
+					 * THE ATTEMPT RECORD MOVES WITH THE ROW (review round 3, m2). The row now
+					 * names the fresh key while the record still named the burnt one, so a
+					 * later Edit-then-Send re-derived the spent key from the record: the hub
+					 * refused it again, a THIRD key was minted, and the message the retry had
+					 * already landed came back as a duplicate. Only the record that is this
+					 * attempt's own is re-keyed - a newer press on the same draft keeps its own.
+					 */
+					const own = sendAttempts.get(composerKey);
+					if (own && own.clientRef === row.clientRef)
+						sendAttempts.set(composerKey, { ...own, clientRef });
+					result = await send(clientRef);
+				}
+				/*
+				 * THE HUB ANSWERS WITH THE STORED MESSAGE, and that is what the row
+				 * becomes: same list item, same place, now the server's. `client_ref` is
+				 * not on message rows (the hub stores it but never serialises it), so the
+				 * response id is the binding, with the page's own copy as the fallback.
+				 */
+				const serverRow = serverRowOf(result);
+				patch({
+					status: "sent",
+					serverId: serverRow?.id,
+					serverRow,
+					/* Only when the answer names it: `onCreated` already moved the row onto
+						   the conversation its draft CREATED, and overwriting that with the
+						   conversation the READER was looking at would send the row back to
+						   the wrong pane (and, for a group, to the wrong conversation). */
+					...(serverRow?.conversation_id
+						? { conversationId: serverRow.conversation_id }
+						: {}),
+				});
+				settleAttempt(row, clientRef, true);
+			} catch (error) {
+				/* THE ROW IS THE FAILURE SURFACE (operator ask): it stays where the
+					   message was typed, marked failed, with Retry on its own key and Edit
+					   to put the text back in the box. */
+				patch({ status: "failed" });
+				settleAttempt(row, clientRef, false);
+				if (isAttachmentNotFound(error)) setSendRefusal({ kind: "expired" });
+			}
+		});
+	};
+
 	/*
 	 * THE COMPOSER'S SEND, BOUND HERE.
 	 *
@@ -1431,6 +1780,40 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		 */
 		const attempt = sendAttempts.get(composerKey);
 		/*
+		 * A PRESS IS A RETRY ONLY WHEN ITS ROW SAYS IT FAILED (review round 1, B1).
+		 *
+		 * The body comparison alone was enough while a send was awaited (`writing`
+		 * fenced the second press out). Now the press returns at once, so typing the
+		 * same words again - "ok", "yes", "+1", the messages most likely to be sent
+		 * twice - found the attempt record still naming the IN-FLIGHT key and reused
+		 * it. The hub answers a spent key carrying the same body by replaying the
+		 * stored message, so the second press produced a 200 and no new row: the
+		 * swallowed send this whole attempt-record machinery exists to prevent.
+		 *
+		 * So a row this attempt drew has to be `failed` before its key may be reused,
+		 * and a picture send (no row, awaited, its text handed back) keeps the body
+		 * rule #1528 settled.
+		 */
+		const attemptRow = attempt?.localId
+			? pendingEntries.find((row) => row.localId === attempt.localId)
+			: undefined;
+		/*
+		 * A ROW THAT IS GONE IS ITSELF A RETRY (review round 2, m1). Edit takes a failed
+		 * message out of the store and puts its text back in the box; pressing Send
+		 * with that text unchanged used to look like a brand-new message and mint a new
+		 * key - so a request that had actually landed (answer lost) was posted a second
+		 * time and duplicated. An attempt whose row no longer exists cannot be in flight
+		 * or confirmed by THIS client, so the words it names are still its own: keep the
+		 * key. A row that exists must still be `failed` (round 1, B1).
+		 */
+		const retriesFailedAttempt = Boolean(
+			attempt &&
+				attempt.body === body &&
+				(!attempt.localId ||
+					attemptRow === undefined ||
+					attemptRow.status === "failed"),
+		);
+		/*
 		 * ONLY A LIVE FAILED ATTEMPT IS A RETRY. Its key is reused so an ambiguous failure
 		 * (request landed, answer lost) cannot post twice; every other send is a new
 		 * message and mints a new key.
@@ -1451,14 +1834,69 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		 * Signing out or switching account does, because the record is erased with the
 		 * drafts.
 		 */
-		const clientRef =
-			attempt && attempt.body === body
-				? attempt.clientRef
-				: crypto.randomUUID();
+		const clientRef = retriesFailedAttempt
+			? (attempt as SendAttempt).clientRef
+			: crypto.randomUUID();
 		// A new message starts with a clean slate; a retry of the same attempt keeps
 		// whatever the auto-retry below already spent on it.
 		if (attempt?.body !== body) autoRetried.current = false;
 		if (!draftState.update({ clientRef })) return false;
+		/*
+		 * THE PRESS PUTS THE MESSAGE ON SCREEN (operator ask, 2026-10-30: "make sure
+		 * that it optimistically sends messages and those appear instantly with no
+		 * delay and then that's reconciled on the server side once available
+		 * seamlessly"). This returns `true` WITHOUT awaiting the wire, so the box
+		 * clears in the same commit the row appears - which is the echo this
+		 * transcriptless host never had. The row and its request are handled by
+		 * `deliverOptimistic`; nothing waits for it.
+		 *
+		 * A picture keeps the old, awaited path: the upload must bind to a
+		 * conversation that may not exist yet, and a failed upload has to hand the
+		 * FILES back to the box, which an already-cleared composer cannot do.
+		 */
+		if (attachments.length === 0 && selfSender && target) {
+			const held = pendingEntries.find(
+				(row) =>
+					row.status === "failed" &&
+					row.clientRef === clientRef &&
+					row.owner === (selfAccountId ?? ""),
+			);
+			/* A press that retries a FAILED row is that row, not a second one: same
+			   key, same place, back to pending. */
+			const row: PendingSend = held
+				? { ...held, body, status: "pending" }
+				: {
+						localId: crypto.randomUUID(),
+						clientRef,
+						body,
+						createdAt: new Date().toISOString(),
+						order: nextPendingOrder(),
+						owner: selfAccountId ?? "",
+						lane: laneIdentity,
+						conversationId: selected?.id,
+						tenantId:
+							selected?.tenant_id ??
+							(draftTenant === TEAM_BRIDGE_ALL_SCOPE ? undefined : draftTenant),
+						baselineSeq: timelineTop,
+						status: "pending",
+					};
+			if (held)
+				usePendingSends.getState().patch(row.localId, { status: "pending" });
+			else usePendingSends.getState().add(row);
+			/*
+			 * THE ATTEMPT NAMES THE ROW IT DREW. `sendAttempts` is the one record of
+			 * "this draft has a send out" (#1528); the row id is what makes the next
+			 * press able to tell a retry of a FAILED message from a second press on a
+			 * message that is still in flight (B1).
+			 */
+			sendAttempts.set(composerKey, { body, clientRef, localId: row.localId });
+			timeline.pin();
+			void deliverOptimistic(row);
+			return true;
+		}
+		// ONE attempt, named in both stores: main's optimistic-row journal and
+		// this branch's durable row must carry the same `client_ref`, or a retry
+		// after a remount could post the message twice.
 		const entry = { body, clientRef };
 		sendAttempts.set(composerKey, entry);
 		// Fenced BEFORE the call: the upload inside it stages into a conversation
@@ -1798,7 +2236,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		</ul>
 	);
 
-	return (
+	const pageBody = (
 		<div
 			data-glass-region="canvas"
 			className="panel-flush @container/bridge relative flex min-h-0 flex-1 w-full overflow-hidden bg-canvas"
@@ -2660,6 +3098,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										<TeamBridgeConversationMenu
 											conversation={shown}
 											onNotifyChange={onNotifyChange}
+											ownAgent={
+												agentNotifyCapabilityState === "enabled"
+													? ownAgentMenuState(shown, selfAccountId)
+													: undefined
+											}
+											onAgentNotifyChange={onAgentNotifyChange}
 											onAddMembers={
 												onAddMembers && canInviteMembers(shown, selfAccountId)
 													? () => {
@@ -2688,6 +3132,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								{t("ui.teamBridge.notify.error")}
 							</p>
 						)}
+						{agentNotifyFailed && (
+							<p role="alert" className="px-5 pb-1 text-[12px] text-danger">
+								{t("ui.teamBridge.agentNotify.error")}
+							</p>
+						)}
 						{shown?.status === "archived" && (
 							<TeamBridgeArchivedBanner
 								conversation={shown}
@@ -2704,11 +3153,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								}}
 							/>
 						)}
-						{shown?.builtin && (
+						{shownTopicKey && (
 							<p className="px-5 pb-1 text-[12px] text-ink-dim">
-								{shown.builtin === "agents"
-									? t("ui.teamBridge.builtin.agents_topic")
-									: t("ui.teamBridge.builtin.humans_topic")}
+								{t(shownTopicKey)}
 							</p>
 						)}
 
@@ -2731,7 +3178,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									</p>
 								) : target?.type === "conversation" &&
 									shown === null &&
-									listState === "ready" ? (
+									listState === "ready" &&
+									!unlistedCreation ? (
 									/*
 									 * An addressed conversation id that is NOT in the caller's own list.
 									 * This is not an empty thread. The list only carries conversations the
@@ -2744,7 +3192,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									<p className="px-5 py-8 text-[13px] text-ink-muted">
 										{t("ui.teamBridge.thread.not_available")}
 									</p>
-								) : shown === null ? (
+								) : shown === null && merged.messages.length === 0 ? (
 									/*
 									 * No thread yet: an addressed, empty draft, introduced the way
 									 * Slack and Discord open an empty DM (design round 1, D5): a
@@ -2845,7 +3293,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											</>
 										)}
 									</div>
-								) : messageState === "loading" ? (
+								) : messageState === "loading" && merged.localCount === 0 ? (
 									<div className="flex items-center justify-center py-10">
 										<Spinner
 											size="sm"
@@ -2863,7 +3311,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									<p className="px-5 py-8 text-[13px] text-ink-muted">
 										{t("ui.teamBridge.archive.thread.forbidden")}
 									</p>
-								) : messages.length === 0 ? (
+								) : merged.messages.length === 0 ? (
 									<p className="mt-auto px-5 pb-4 text-[13px] text-ink-muted">
 										{/* Design round 1, D5: "Say hello" invites a post the line below
 										    refuses. An archived channel's empty state is a plain fact. */}
@@ -2873,7 +3321,63 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									</p>
 								) : (
 									<TeamBridgeMessageList
-										messages={messages}
+										messages={merged.messages}
+										events={events}
+										presentationOf={(message) => {
+											const local = merged.localOf(message);
+											/* A CONFIRMED row the page has not carried yet is drawn from
+											   the send response; it is the server's, so it keeps full ink
+											   and its real seq - only an unconfirmed row is "local". */
+											const unconfirmed =
+												local !== undefined &&
+												(local.status !== "sent" ||
+													local.serverRow === undefined);
+											return {
+												key: merged.keyOf(message),
+												local: unconfirmed,
+												delivery:
+													local && unconfirmed
+														? {
+																status:
+																	local.status === "failed"
+																		? "failed"
+																		: "pending",
+																/* RETRY IS THE ROW'S OWN KEY, re-sent as the same
+															   attempt: the hub dedupes a request that landed with
+															   its answer lost. EDIT puts the words back in the box
+															   and drops the row, which is the other thing a reader
+															   wants to do with a message that did not go. */
+																onRetry:
+																	local.status === "failed" && isDraftCurrent()
+																		? () => {
+																				usePendingSends
+																					.getState()
+																					.patch(local.localId, {
+																						status: "pending",
+																						autoRetried: local.autoRetried,
+																					});
+																				void deliverOptimistic(local);
+																			}
+																		: undefined,
+																onEdit:
+																	local.status === "failed" && isDraftCurrent()
+																		? () => {
+																				useConversationInputStore
+																					.getState()
+																					.returnPayload(composerKey, {
+																						text: local.body,
+																						attachments: [],
+																						replies: [],
+																					});
+																				usePendingSends
+																					.getState()
+																					.remove(local.localId);
+																			}
+																		: undefined,
+															}
+														: undefined,
+											};
+										}}
 										profileFor={(sender) =>
 											profileFor(sender, shown?.tenant_id ?? "")
 										}
@@ -2887,6 +3391,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 												: undefined
 										}
 										arrivalKey={timelineArrivalKey}
+										highlightId={highlightMessageId}
 										tenantId={shown?.tenant_id}
 										accountId={selfAccountId}
 										labelFor={(sender) =>
@@ -3211,7 +3716,13 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							   (else the previous one, else the default). Leaving the target on
 							   the archived id painted "Untitled conversation" over a dead composer. */
 							if (wasShown)
-								selectTarget(landingAfterRemoval(sidebarRows, subject.id));
+								selectTarget(
+									landingAfterRemoval(
+										sidebarRows,
+										subject.id,
+										organizationOrder,
+									),
+								);
 						}}
 					/>
 				) : (
@@ -3234,7 +3745,13 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									   return to the Archived channels view, where the reader came from and
 									   where the rest of the clean-up is. */
 									if (wasShown) {
-										onTarget(landingAfterRemoval(sidebarRows, subject.id));
+										onTarget(
+											landingAfterRemoval(
+												sidebarRows,
+												subject.id,
+												organizationOrder,
+											),
+										);
 										onOpenArchived?.();
 										openQuickView("archived");
 									}
@@ -3303,6 +3820,20 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				/>
 			)}
 		</div>
+	);
+	/* @-MENTIONS for both composers in this pane (channel and thread), from the
+	   cached directory and the open conversation (mentions/). Bound as a const
+	   above so mounting the provider does not re-indent the page. */
+	return (
+		<TeamBridgeMentionProvider
+			conversation={shown}
+			people={shown ? rosterFor(shown.tenant_id) : []}
+			selfAccountId={selfAccountId}
+			sendMentions={sendMentionsCapabilityState === "enabled"}
+			onAddMembers={onAddMembers}
+		>
+			{pageBody}
+		</TeamBridgeMentionProvider>
 	);
 };
 
@@ -3375,6 +3906,14 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 			Map<string, { id: string; tenantId: string | undefined }>
 		>(),
 	);
+	/*
+	 * A notification click's message target outlives an owner remount below:
+	 * the route parameter is consumed on the first owned render, and an auth
+	 * settlement landing just after it would otherwise drop the target. It is
+	 * only an id pair - a conversation the next owner cannot read never
+	 * resolves under it, and it is cleared once handled.
+	 */
+	const messageLink = useRef<TeamBridgeMessageLink | null>(null);
 	// Remount immediately at the real auth transition, before stale TB status can
 	// render. Retain only original-owner data; never carry an A callback into B.
 	return (
@@ -3383,18 +3922,41 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 			accountId={account.accountId}
 			drafts={drafts.current}
 			receipts={receipts.current}
+			messageLinkCarry={messageLink}
 		/>
 	);
 };
 
+type TeamBridgeMessageLink = {
+	conversationId: string;
+	messageId: string;
+	fetched: boolean;
+};
+
+/**
+ * How long a `?message=` target may wait for its conversation to resolve before
+ * it is released (review round 1, m3). Both ordinary clearing conditions need
+ * progress - a different selection, or one completed re-read - so a click for a
+ * conversation this rail cannot resolve (archived, membership gone, deleted)
+ * would otherwise hold the link, and the carry, for the life of the page. It is
+ * a bound on the TARGET'S LIFE, not a timing for the highlight: one landing
+ * costs one request, so an ordinary click finishes well inside it. A click that
+ * does NOT finish inside it is released too - a first read slow enough to still
+ * be running at the bound, not only a conversation the rail can never resolve -
+ * which is the intended trade: a late highlight on a row the reader has moved on
+ * from is worse than none.
+ */
+const MESSAGE_LINK_TIMEOUT_MS = 8_000;
+
 const TeamBridgeOwnedPage: FC<{
 	accountId?: string;
+	messageLinkCarry: { current: TeamBridgeMessageLink | null };
 	drafts: Map<string, OwnedDraft>;
 	receipts: Map<
 		string,
 		Map<string, { id: string; tenantId: string | undefined }>
 	>;
-}> = ({ accountId, drafts, receipts }) => {
+}> = ({ accountId, drafts, receipts, messageLinkCarry }) => {
 	/* The feature's one cache reader: the opening snapshot below is read from it, and
 	   the writes that patch cached pages run through it. */
 	const client = useQueryClient();
@@ -3407,6 +3969,54 @@ const TeamBridgeOwnedPage: FC<{
 	const requestedConversation = searchParams.get("conversation");
 	const requestedTenant = searchParams.get("tenant");
 	const requestedRoot = searchParams.get("thread");
+	const requestedMessage = searchParams.get("message");
+	/*
+	 * THE MESSAGE A NOTIFICATION CLICK NAMED (`?message=`), held past the param
+	 * clear below until the timeline has landed on it. Timeline-only: a reply's
+	 * banner also names its thread, and the thread pane opens on that thread
+	 * (its cache was refreshed before the banner was raised), so a reply id is
+	 * never looked for in a timeline that excludes replies by contract.
+	 */
+	const [messageLink, setMessageLinkState] =
+		useState<TeamBridgeMessageLink | null>(() => {
+			const seeded =
+				requestedMessage && requestedConversation && !requestedRoot
+					? {
+							conversationId: requestedConversation,
+							messageId: requestedMessage,
+							fetched: false,
+						}
+					: requestedConversation
+						? null
+						: messageLinkCarry.current;
+			/*
+			 * THE CARRY IS WRITTEN THROUGH ON EVERY BRANCH, the null ones included
+			 * (review round 1, m3). The carry is only ever read by a LATER owner's
+			 * initializer, so a branch that leaves it holding an older click's
+			 * target can re-seed a link this page has already decided against: a
+			 * fresh `?conversation=` with no message would otherwise resurrect the
+			 * previous click's highlight under the next account.
+			 */
+			messageLinkCarry.current = seeded;
+			return seeded;
+		});
+	// Every write goes through the carry too (see `TeamBridgePage`).
+	const setMessageLink = useCallback(
+		(
+			next:
+				| TeamBridgeMessageLink
+				| null
+				| ((
+						current: TeamBridgeMessageLink | null,
+				  ) => TeamBridgeMessageLink | null),
+		) =>
+			setMessageLinkState((current) => {
+				const value = typeof next === "function" ? next(current) : next;
+				messageLinkCarry.current = value;
+				return value;
+			}),
+		[messageLinkCarry],
+	);
 	const [threadLink, setThreadLink] = useState<ThreadTarget | null>(() =>
 		/* THE HOLD: a `?thread=` deep link (a notification click, a shared link)
 		   must not become a thread target in this build. The conversation still
@@ -3487,6 +4097,10 @@ const TeamBridgeOwnedPage: FC<{
 	const readOnly = status.data?.read_only === true || !ownerGuard;
 	const owner = useBridgeOwner(accountId);
 	const isCurrentOwner = () => owner.isCurrent() && ownerGuard;
+	/* The same fence minus "this page is still mounted": for the first-message post
+	   only, which must finish after the reader leaves (see `sendBody`). */
+	const isWriteAuthorityCurrent = () =>
+		owner.isAuthorityCurrent() && ownerGuard;
 	/*
 	 * THE THREAD CAPABILITY, ASKED AND THEN HELD. The key is read here so the
 	 * plumbing the feature returns on exists and is exercised; the build's own
@@ -3501,6 +4115,13 @@ const TeamBridgeOwnedPage: FC<{
 	// account aggregate is the ONE unread read — the same cache entry the
 	// sidebar badge spends. Per-org counts are joined from that payload, never
 	// fetched per org.
+	/*
+	 * ONE UNREAD SOURCE (`team-bridge-unread-sync.ts`). Every row count, every
+	 * organization count and the All-organizations total read the same merged
+	 * view the nav badge reads, so a count the badge shows is on a row, and a
+	 * read clears both in the same render.
+	 */
+	const unreadView = useTeamBridgeUnreadView(selfAccountId);
 	const memberships = useMembershipsQuery({ enabled: readsEnabled });
 	const unread = useTeamBridgeUnread(readsEnabled, TEAM_BRIDGE_ALL_SCOPE, {
 		accountId,
@@ -3512,8 +4133,12 @@ const TeamBridgeOwnedPage: FC<{
 				memberships.memberships,
 				unread.data?.organizations,
 				hubTenants,
-			),
-		[memberships.memberships, unread.data, hubTenants],
+			).map((organization) => ({
+				...organization,
+				unread:
+					unreadView.byTenant.get(organization.tenantId) ?? organization.unread,
+			})),
+		[memberships.memberships, unread.data, hubTenants, unreadView],
 	);
 	const { pending: organizationsPending, failed: organizationsFailed } =
 		organizationsReadState(hubTenants, memberships);
@@ -3584,7 +4209,20 @@ const TeamBridgeOwnedPage: FC<{
 		() => snapshotForScope(openingRows ?? [], scope),
 		[openingRows, scope],
 	);
-	const conversations = list.data?.conversations ?? openingSnapshot;
+	/*
+	 * ...then every row takes the shared unread view, so a row and the nav badge
+	 * cannot disagree. The merge is applied to whatever this scope may paint,
+	 * AFTER the filter above: a row the scope does not own is never merged into
+	 * view (and `withSharedUnread` would otherwise hand it a count it has no
+	 * business showing).
+	 */
+	const conversations = useMemo(
+		() =>
+			(list.data?.conversations ?? openingSnapshot).map((row) =>
+				withSharedUnread(row, unreadView),
+			),
+		[list.data?.conversations, openingSnapshot, unreadView],
+	);
 	/*
 	 * PAINT BEFORE THE VERDICT (tb-instant-open, mechanism 2). The status answer
 	 * decides whether this surface exists for the account at all, so the gate used
@@ -3676,9 +4314,25 @@ const TeamBridgeOwnedPage: FC<{
 					)
 				: null,
 		);
+		setMessageLink(
+			requestedMessage && !requestedRoot
+				? {
+						conversationId: requestedConversation,
+						messageId: requestedMessage,
+						fetched: false,
+					}
+				: null,
+		);
 		setChannelFormOpen(false);
 		setSearchParams({}, { replace: true });
-	}, [requestedConversation, requestedTenant, requestedRoot, setSearchParams]);
+	}, [
+		requestedConversation,
+		requestedTenant,
+		requestedRoot,
+		requestedMessage,
+		setSearchParams,
+		setMessageLink,
+	]);
 
 	// A conversation id and a person both belong to one organization; a scope
 	// change clears the target so a stale thread is never shown under a new title.
@@ -3735,12 +4389,13 @@ const TeamBridgeOwnedPage: FC<{
 			target === null &&
 			visibleConversations.length > 0
 		) {
-			const first =
-				visibleConversations.find((row) => row.builtin === "humans") ??
-				visibleConversations[0];
-			setTarget({ type: "conversation", id: first.id });
+			const first = defaultLandingConversation(
+				visibleConversations,
+				organizations.map((row) => row.tenantId),
+			);
+			if (first) setTarget({ type: "conversation", id: first.id });
 		}
-	}, [visibleConversations, target, ownerAudit?.active]);
+	}, [visibleConversations, organizations, target, ownerAudit?.active]);
 
 	/*
 	 * ARCHIVE / UNARCHIVE / DELETE. The archived read stays OFF until the
@@ -3802,6 +4457,10 @@ const TeamBridgeOwnedPage: FC<{
 		selected?.tenant_id,
 	);
 	const notify = useSetTeamBridgeNotify();
+	const agentNotify = useSetTeamBridgeAgentNotify(
+		selected?.id,
+		selected?.tenant_id,
+	);
 	const loadMoreArchived = useLoadMoreArchivedTeamBridgeConversations(
 		scope,
 		accountId,
@@ -3901,9 +4560,45 @@ const TeamBridgeOwnedPage: FC<{
 				tenantId: string | undefined,
 			) => Promise<string[]>;
 		},
+		delivery?: TeamBridgeDelivery,
 	) => {
 		if (!isCurrentOwner())
 			throw new Error("Team Bridge write authority changed");
+		/*
+		 * A QUEUED SEND NAMES ITS CONVERSATION. An optimistic send runs after the
+		 * render that queued it, sometimes after the conversation it belongs to was
+		 * created by the send in front of it; it posts there directly unless that is
+		 * the selected conversation, whose bound mutation is the ordinary path.
+		 */
+		const into = delivery?.into;
+		/*
+		 * A BACKGROUND SEND NEVER RIDES THE SELECTED CONVERSATION'S MUTATION. That
+		 * mutation belongs to the selection this view rendered with, and the row may
+		 * outlive it (a first message turns a person into a DM, a group draft into a
+		 * conversation). It also parks `send.isPending`, which disables the box: the
+		 * composer must stay usable while a row is in flight, otherwise a second
+		 * message could never be sent before the first came back.
+		 */
+		if (into && delivery) {
+			const message = await TeamBridgeApi.send(into.conversationId, {
+				clientRef,
+				body,
+				tenantId: into.tenantId,
+				expectedAccountId: requireBridgeWriteAccount(accountId),
+				attachmentIds: await sendAttachmentIds(
+					attachments,
+					into.conversationId,
+					into.tenantId,
+				),
+			});
+			await refreshAfterSend(
+				client,
+				into.conversationId,
+				into.tenantId,
+				isCurrentOwner,
+			);
+			return message;
+		}
 		if (selected !== null)
 			return send.mutateAsync({
 				clientRef,
@@ -3924,8 +4619,31 @@ const TeamBridgeOwnedPage: FC<{
 			.sort()
 			.join(",")}`;
 		const startedOn = target;
-		setCreating(true);
-		setFirstSendFailed(false);
+		/*
+		 * THE CREATE'S OWN "SENDING" CHROME IS FOR SENDS THAT WAIT. An optimistic send
+		 * already shows its row and keeps the box usable - a second message typed while
+		 * the first conversation is being created must reach that same conversation
+		 * (the lane queue), not sit behind a spinner.
+		 */
+		if (!delivery) {
+			setCreating(true);
+			setFirstSendFailed(false);
+		}
+		/* The stored message the post answers with: an optimistic row becomes it. */
+		let posted: unknown;
+		/*
+		 * MOVE TO A NEW GROUP AS SOON AS IT EXISTS, and only if the reader is STILL on
+		 * the draft that sent it. A person or chief target needs no move: the create's
+		 * own list refresh has already resolved the same target to the new DM.
+		 */
+		let moved = false;
+		const moveToCreated = (conversationId: string) => {
+			if (moved || !isCurrentOwner()) return;
+			moved = true;
+			if (startedOn?.type === "compose" && targetRef.current === startedOn) {
+				setTarget({ type: "conversation", id: conversationId });
+			}
+		};
 		try {
 			const { id: conversationId } = await sendFirstMessage({
 				draftKey,
@@ -3939,15 +4657,37 @@ const TeamBridgeOwnedPage: FC<{
 						id?: string;
 						tenant_id?: string;
 					}>,
+				// Only an optimistic send moves early: its message is already on screen,
+				// so the view can follow the conversation while the post is out. A
+				// non-optimistic send (attachments) keeps the move after its post.
+				onCreated: delivery
+					? (created) => {
+							delivery.onCreated?.(created.id, created.tenantId);
+							moveToCreated(created.id);
+							/* THE RAIL IS THE CREATE'S BUSINESS, not the post's (requirement 6):
+							   the row can appear as soon as the conversation exists. */
+							void list.refetch();
+						}
+					: undefined,
 				// Straight to the API rather than the selected conversation's
 				// mutation hook: that hook is bound to the conversation selected at
 				// RENDER time, which a just-created row is not yet. Held images are
 				// staged INTO the new conversation first; a failed upload throws so
 				// the message is never posted text-only behind the author's back.
+				/*
+				 * THE POST OUTLIVES THE PAGE; THE ACCOUNT FENCE DOES NOT BEND (QA Q1 on
+				 * #1531). A first message is created and then posted. Checking
+				 * `isCurrentOwner` here also asked "is this page still mounted", so a reader
+				 * who left Team Bridge while the create was in flight got a conversation
+				 * with nothing in it and a failed row on return. A send into an existing
+				 * conversation already finishes in the background; this one now does too.
+				 * An account switch or sign-out still refuses the post: that is the part
+				 * that keeps one account's words out of another's conversations.
+				 */
 				post: async (id, message) => {
-					if (!isCurrentOwner())
+					if (!isWriteAuthorityCurrent())
 						throw new Error("Team Bridge write authority changed");
-					return TeamBridgeApi.send(id, {
+					posted = await TeamBridgeApi.send(id, {
 						...message,
 						expectedAccountId: requireBridgeWriteAccount(accountId),
 						attachmentIds: await sendAttachmentIds(
@@ -3956,24 +4696,30 @@ const TeamBridgeOwnedPage: FC<{
 							message.tenantId,
 						),
 					});
+					return posted;
 				},
 			});
 			/*
-			 * Move to the new group only if the reader is STILL on the draft that
-			 * sent it. A person or chief target needs no move: once the list
-			 * refetches, the same target resolves to the new DM by itself.
+			 * A page that is gone has no view to move or refresh, but the post DID land:
+			 * answer with the stored message so the optimistic row settles as `sent`
+			 * rather than waiting on a refetch to claim it. Only an account change
+			 * answers nothing.
 			 */
-			if (!isCurrentOwner()) return;
-			if (startedOn?.type === "compose" && targetRef.current === startedOn) {
-				setTarget({ type: "conversation", id: conversationId });
-			}
+			if (!isCurrentOwner())
+				return isWriteAuthorityCurrent()
+					? (posted ?? { id: conversationId })
+					: undefined;
+			moveToCreated(conversationId);
 			await list.refetch();
-			return { id: conversationId };
+			/* The thread's own read: the optimistic row's server copy is reconciled by
+			   id from `posted`, and this refetch makes the page agree. */
+			await refreshAfterSend(client, conversationId, undefined, isCurrentOwner);
+			return posted ?? { id: conversationId };
 		} catch (error) {
 			if (isCurrentOwner()) setFirstSendFailed(true);
 			throw error;
 		} finally {
-			if (isCurrentOwner()) setCreating(false);
+			if (!delivery && isCurrentOwner()) setCreating(false);
 		}
 	};
 
@@ -4047,6 +4793,91 @@ const TeamBridgeOwnedPage: FC<{
 		markRead.mutate({ seq: newest });
 	}, [selected?.id, newest]);
 
+	/*
+	 * LAND ON THE CLICKED MESSAGE, NEVER ON A STALE PAGE. The watcher wrote the
+	 * message into this exact cache entry before raising the banner, so the
+	 * normal case paints it in the first frame with no request. If the entry
+	 * still lacks it (evicted, or a click from a banner older than this
+	 * document), the timeline shows its loading state rather than the stale
+	 * page, re-reads that one key once, and then shows whatever the server has:
+	 * a message deleted in between must not hold a spinner forever.
+	 */
+	const linkedConversation =
+		messageLink !== null && selected?.id === messageLink.conversationId;
+	const linkedPresent =
+		linkedConversation &&
+		(messages.data?.messages.some(
+			(message) => message.id === messageLink.messageId,
+		) ??
+			false);
+	const awaitingLinkedMessage =
+		linkedConversation && !linkedPresent && !messageLink.fetched;
+	useEffect(() => {
+		if (!messageLink || messageLink.fetched || !selected || !selfAccountId)
+			return;
+		if (selected.id !== messageLink.conversationId) return;
+		if (messages.isPending || linkedPresent) return;
+		let current = true;
+		void client
+			.fetchQuery({
+				...teamBridgeMessagesQueryOptions(
+					client,
+					selected.id,
+					selected.tenant_id,
+					selfAccountId,
+				),
+				staleTime: 0,
+			})
+			.catch(() => undefined)
+			.finally(() => {
+				if (current)
+					setMessageLink((link: TeamBridgeMessageLink | null) =>
+						link ? { ...link, fetched: true } : link,
+					);
+			});
+		return () => {
+			current = false;
+		};
+	}, [
+		messageLink,
+		selected,
+		selfAccountId,
+		messages.isPending,
+		linkedPresent,
+		client,
+		setMessageLink,
+	]);
+	// The highlight is a moment, not a state: drop it once the fade has run.
+	useEffect(() => {
+		if (!linkedPresent) return;
+		const timer = setTimeout(() => setMessageLink(null), JUMP_HIGHLIGHT_MS);
+		return () => clearTimeout(timer);
+	}, [linkedPresent, setMessageLink]);
+	// A link the reader navigated away from, or one that never appeared after
+	// its one re-read, is finished.
+	useEffect(() => {
+		if (!messageLink) return;
+		if (
+			(selected !== null && selected.id !== messageLink.conversationId) ||
+			(messageLink.fetched && !linkedPresent)
+		)
+			setMessageLink(null);
+	}, [messageLink, selected, linkedPresent, setMessageLink]);
+	/*
+	 * A LINKED CONVERSATION THAT NEVER RESOLVES IS RELEASED TOO (review round 1,
+	 * m3). The effect above can only clear on progress, and the fetch effect
+	 * returns early while nothing is selected, so a target whose conversation the
+	 * rail never resolves would sit in state - and in the carry - forever.
+	 */
+	useEffect(() => {
+		if (!messageLink) return;
+		const timer = setTimeout(
+			() => setMessageLink(null),
+			MESSAGE_LINK_TIMEOUT_MS,
+		);
+		return () => clearTimeout(timer);
+	}, [messageLink, setMessageLink]);
+
 	const draftKey = JSON.stringify([
 		accountId,
 		selected?.tenant_id ?? scope,
@@ -4070,6 +4901,14 @@ const TeamBridgeOwnedPage: FC<{
 					capabilities.data,
 					"team_bridge_reactions",
 				)}
+				sendMentionsCapabilityState={desktopFeatureState(
+					capabilities.data,
+					"team_bridge_send_mentions",
+				)}
+				agentNotifyCapabilityState={desktopFeatureState(
+					capabilities.data,
+					"team_bridge_agent_notify",
+				)}
 				onCloseThread={() => setThreadLink(null)}
 				listState={
 					list.isPending || (mergedView && organizationsPending)
@@ -4083,7 +4922,7 @@ const TeamBridgeOwnedPage: FC<{
 				messageState={
 					selected === null
 						? "idle"
-						: messages.isPending
+						: messages.isPending || awaitingLinkedMessage
 							? "loading"
 							: messages.isError
 								? isNotAMemberRefusal(messages.error)
@@ -4094,9 +4933,11 @@ const TeamBridgeOwnedPage: FC<{
 				conversations={conversations}
 				target={target}
 				messages={messages.data?.messages ?? []}
+				events={messages.data?.events}
+				highlightMessageId={linkedPresent ? messageLink?.messageId : null}
 				organizations={organizations}
 				scope={scope}
-				totalUnread={unread.data?.total ?? 0}
+				totalUnread={unread.data ? unreadView.total : 0}
 				refreshingRows={refreshingRows}
 				refreshingUnread={refreshingUnread}
 				membershipsLoading={organizationsPending}
@@ -4107,6 +4948,10 @@ const TeamBridgeOwnedPage: FC<{
 				joining={join.isPending}
 				joinFailed={join.isError}
 				notifyFailed={notifyFailureIsVisible(notify, selected?.id ?? null)}
+				agentNotifyFailed={notifyFailureIsVisible(
+					agentNotify,
+					selected?.id ?? null,
+				)}
 				onJoin={() => {
 					if (isCurrentOwner()) join.mutate();
 				}}
@@ -4179,6 +5024,14 @@ const TeamBridgeOwnedPage: FC<{
 						notify: next,
 					});
 				}}
+				onAgentNotifyChange={(next) => {
+					if (!isCurrentOwner() || selected === null) return;
+					agentNotify.mutate({
+						conversationId: selected.id,
+						tenantId: selected.tenant_id,
+						notify: next,
+					});
+				}}
 				onAddMembers={(conversation, members) => {
 					if (!isCurrentOwner() || !canInviteMembers(conversation, accountId))
 						return Promise.reject(
@@ -4214,7 +5067,8 @@ const TeamBridgeOwnedPage: FC<{
 					setThreadLink(null);
 					setChannelFormOpen(false);
 					/* `null` is a landing with nothing left to land on: the default-landing
-					   effect above then picks #humans (or the first row) once, as at load. */
+					   effect above then picks #general (or #humans, or the first row) once,
+					   as at load. */
 					setTarget(next);
 				}}
 				onSend={sendBody}

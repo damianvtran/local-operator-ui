@@ -1,0 +1,99 @@
+{
+	"record_kind": "translation audit record (round-2 independent delta audit, PR #1532 mention notice copy)",
+	"locale": "fr",
+	"namespace": "ui.teamBridge",
+	"date": "2026-10-30",
+	"auditor": {
+		"agent": "task",
+		"session": "4ad83913bb2a",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Independent auditor: session 4ad83913bb2a (team lopdev, role task, assignment 'i18n re-audit ui#1532'). The values were self-translated by the lopdev coder in 4a4ea10; this session did not author them."
+	},
+	"re_auditor": {
+		"agent": "scout",
+		"session": "f61a774e19eb",
+		"model": "anthropic/claude-opus-5-5",
+		"receipt": {
+			"path": "i18n/receipts/f61a774e19eb-fr.json",
+			"sha256": "2985d59a9b2c24900c44824026b4077a53dc17382bfdc15e40815413ca6c902b"
+		}
+	},
+	"translator": {
+		"agent": "coder",
+		"model": "anthropic/claude-opus-5-5",
+		"commit": "4a4ea100d67"
+	},
+	"paths": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "872abba111887ee71c0f4f079bdb3747f564b93abc85639b13b43d864a9372cb"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+			"sha256": "17af0aa71b7a5a00827c67733b568853b7358a395022d54e8cabe15af1b22d77"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "f6b472c8df1b84cc9611728de26d5fd8776dd36f3aec9f431f12f505ce1fed42"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/fr.md",
+			"sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+		},
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		}
+	},
+	"receipt": {
+		"path": "i18n/receipts/4ad83913bb2a-fr.json",
+		"sha256": "f57c463ce856d4d8db0a76aedabc78d76e1d3d5f279d705a6f4f97a67e3ef2ee"
+	},
+	"head_at_audit": "2b9c44c6ba3260ec4ed53a63baba8d0d5b5dee17",
+	"pr": "damianvtran/local-operator-ui#1532",
+	"keys": [
+		"ui.teamBridge.mentions.tag.not_member",
+		"ui.teamBridge.mentions.notice.not_member",
+		"ui.teamBridge.mentions.notice.pending",
+		"ui.teamBridge.mentions.notice.invited"
+	],
+	"removed_keys": [
+		"ui.teamBridge.mentions.agent_secondary"
+	],
+	"findings": {
+		"residual": {
+			"blocker": 0,
+			"major": 0,
+			"minor": 0,
+			"nit": 1
+		},
+		"remediated_in_audit": [
+			{
+				"id": "RTBM-FR-1",
+				"severity": "minor",
+				"key": "ui.teamBridge.mentions.notice.not_member",
+				"before": "{name} ne fait pas partie de cette conversation et ne sera donc pas notifié.",
+				"after": "{name} ne fait pas partie de cette conversation et ne recevra donc pas de notification."
+			},
+			{
+				"id": "RTBM-FR-2",
+				"severity": "minor",
+				"key": "ui.teamBridge.mentions.notice.pending",
+				"before": "{name} est invité mais n’a pas encore rejoint la conversation, il ne sera donc pas notifié.",
+				"after": "{name} a reçu une invitation mais n’a pas encore rejoint la conversation, et ne recevra donc pas de notification."
+			},
+			{
+				"id": "RTBM-FR-3",
+				"severity": "minor",
+				"key": "ui.teamBridge.mentions.notice.invited",
+				"before": "{name} a été invité. Il ne sera pas notifié tant qu’il n’aura pas rejoint la conversation.",
+				"after": "Invitation envoyée à {name}, qui ne recevra pas de notification avant d’avoir rejoint la conversation."
+			}
+		],
+		"residual_nits": [
+			"RA3-FR-1"
+		]
+	},
+	"status": "clean-with-findings",
+	"notes": "Audit notes, not an execution log. No rendered-frame claim."
+}

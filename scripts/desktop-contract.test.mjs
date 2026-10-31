@@ -3659,6 +3659,45 @@ test("team_bridge join adds the caller and notify rides the read route", () => {
 	);
 });
 
+test("team_bridge agent_notify: the owner's agent level is a PUT on the runtime's agent-notify route", () => {
+	/*
+	 * Wake-on-every-message: the runtime resolves the owner's agent endpoint, so
+	 * the body carries only the level and the owner receipt, never an endpoint id
+	 * or a read-cursor `seq`.
+	 */
+	const write = jobsCancelEndpoint(
+		jobsCancelSchema.parse({
+			op: "team_bridge.conversations.agent_notify",
+			expected_account_id: "acct_1",
+			conversation_id: "bcv_abc12345",
+			tenant_id: "tnt_2",
+			notify: "mute",
+		}),
+	);
+	assert.equal(write.method, "PUT");
+	assert.equal(
+		write.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/agent-notify",
+	);
+	assert.deepEqual(write.body, {
+		expected_account_id: "acct_1",
+		tenant_id: "tnt_2",
+		notify: "mute",
+	});
+	for (const bad of [
+		{ notify: "loud" },
+		{ notify: undefined },
+		{ notify: "all", endpoint_id: "ep_1" },
+	])
+		assert.throws(() =>
+			jobsCancelSchema.parse({
+				op: "team_bridge.conversations.agent_notify",
+				conversation_id: "bcv_abc12345",
+				...bad,
+			}),
+		);
+});
+
 test("team_bridge archive: the list takes a closed status and delete is a DELETE on the conversation", () => {
 	/*
 	 * Archive -> view archived -> permanent delete (agent-server radient-ml/agent-server#219,
@@ -3810,6 +3849,71 @@ test("team_bridge threads: replies maps to the replies route and send carries th
 		body: "hi",
 	});
 	assert.equal("thread_root_id" in plain.body, false);
+	/*
+	 * STRUCTURED @-MENTIONS (local-operator #3204's `MentionIn`). Forwarded
+	 * verbatim when present; ABSENT, not `[]`, when the composer has none, so a
+	 * backend without `team_bridge_send_mentions` sees the pre-mention body.
+	 */
+	assert.equal("mentions" in plain.body, false);
+	const mentioned = jobsCancelEndpoint(
+		jobsCancelSchema.parse({
+			op: "team_bridge.messages.send",
+			conversation_id: "bcv_abc12345",
+			client_ref: "ref-3",
+			body: "@Ben Tran @Aida (Ben Tran) look",
+			mentions: [
+				{ kind: "human", account_id: "acct_ben" },
+				{ kind: "agent", account_id: "acct_ben", endpoint_id: "bep_aida" },
+			],
+		}),
+	);
+	assert.deepEqual(mentioned.body.mentions, [
+		{ kind: "human", account_id: "acct_ben" },
+		{ kind: "agent", account_id: "acct_ben", endpoint_id: "bep_aida" },
+	]);
+	const emptyMentions = jobsCancelEndpoint(
+		jobsCancelSchema.parse({
+			op: "team_bridge.messages.send",
+			conversation_id: "bcv_abc12345",
+			client_ref: "ref-4",
+			body: "hi",
+			mentions: [],
+		}),
+	);
+	assert.equal("mentions" in emptyMentions.body, false);
+	// Duplicates and unknown row fields fail here, not as a remote 422.
+	assert.throws(
+		() =>
+			jobsCancelSchema.parse({
+				op: "team_bridge.messages.send",
+				conversation_id: "bcv_abc12345",
+				client_ref: "ref-5",
+				body: "hi",
+				mentions: [
+					{ kind: "human", account_id: "acct_ben" },
+					{ kind: "human", account_id: "acct_ben" },
+				],
+			}),
+		/Duplicate mention/,
+	);
+	assert.throws(() =>
+		jobsCancelSchema.parse({
+			op: "team_bridge.messages.send",
+			conversation_id: "bcv_abc12345",
+			client_ref: "ref-6",
+			body: "hi",
+			mentions: [{ kind: "human", account_id: "acct_ben", label: "Ben" }],
+		}),
+	);
+	assert.throws(() =>
+		jobsCancelSchema.parse({
+			op: "team_bridge.messages.send",
+			conversation_id: "bcv_abc12345",
+			client_ref: "ref-7",
+			body: "hi",
+			mentions: [{ kind: "channel", account_id: "acct_ben" }],
+		}),
+	);
 });
 
 test("a bulk Undo is admitted from a background window while real receipts stay gated", async () => {

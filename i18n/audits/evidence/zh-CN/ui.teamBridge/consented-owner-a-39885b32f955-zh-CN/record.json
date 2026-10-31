@@ -1,0 +1,217 @@
+{
+	"schema": 1,
+	"record_kind": "independent locale audit A - ui.teamBridge.events.consented_owner",
+	"date": "2026-10-30",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "radient/auto",
+	"session": "39885b32f955",
+	"instance": "39885b32f955-consentedowner-a-zh-cn",
+	"audit_id": "consented-owner-a-39885b32f955-zh-CN",
+	"locale": "zh-CN",
+	"namespace": "ui.teamBridge",
+	"head_at_audit": "9d19fc6d58e",
+	"status": "passed",
+	"result": "clean",
+	"hashes": {
+		"en_sha256": "4042a918bc64406c4c24ad5ea68fe3c3f3aaa7228917bc1678547cfb0c20285c",
+		"target_sha256": "88761fbda9d8de5c7c0253809149ebf3be68e62f42ce8a8a109a754f29ad2f1a"
+	},
+	"values": {
+		"en": "{actor} approved their agent {targets} joining",
+		"target": "{actor}已同意自己的智能体{targets}加入",
+		"sibling": "{actor}已同意{targets}加入",
+		"owner_added_agent": "{actor}添加了自己的智能体{targets}"
+	},
+	"renders": {
+		"at_one_target": "Sana Ketabchi已同意自己的智能体Aida (Sana Ketabchi)加入",
+		"sibling_at_two_targets": "Sana Ketabchi已同意Aida (Sana Ketabchi), Beau (Sana Ketabchi)加入",
+		"owner_added_at_one": "Sana Ketabchi添加了自己的智能体Aida (Sana Ketabchi)"
+	},
+	"icu": {
+		"nodeTypes": [
+			1,
+			0,
+			1,
+			0
+		],
+		"arguments": [
+			"actor",
+			"targets"
+		],
+		"siblingNodes": [
+			1,
+			0,
+			1,
+			0
+		],
+		"pluralOrSelect": false
+	},
+	"checks": {
+		"length": 27,
+		"placeholderOrder": [
+			"actor",
+			"targets"
+		],
+		"hasFinalPeriod": false,
+		"leadingSpace": false,
+		"trailingSpace": false,
+		"doubleSpace": false,
+		"nfc": true,
+		"bidiControls": 0,
+		"zwnjZwj": 0,
+		"nbsp": "[]",
+		"emDash": false
+	},
+	"sibling_length": 21,
+	"verdict": "clean",
+	"findings": [],
+	"source_findings": [
+		{
+			"id": "CO-A-SRC1",
+			"severity": "MINOR",
+			"key": "ui.teamBridge.events.consented_owner"
+		},
+		{
+			"id": "CO-A-SRC2",
+			"severity": "NIT",
+			"key": "ui.teamBridge.events.consented_owner"
+		},
+		{
+			"id": "CO-A-SRC3",
+			"severity": "MINOR",
+			"key": "ui.teamBridge.events.consented"
+		}
+	],
+	"cross_locale_answer": "REUSE OF owner_added_agent: right in all seven, because what transfers is the possessor phrase and each locale rebuilt the verb frame. en drops \"own\" in both lines (\"their agent\"), fr/es do the same (\"son agent\"/\"su agente\"), while zh (\"自己的\"), ru (\"собственного\"), ur (\"اپنے\"), hi (\"अपने\") and vi (\"của mình\") keep the emphatic own-word their sibling uses, so the pairs read in parallel inside each locale. hi/ur had to inflect the possessive to the oblique (अपना->अपने, اپنا->اپنے) for the کو postposition, and did. No locale copied a frame that does not fit \"approved ... joining\".",
+	"sidecar": {
+		"role": "timeline system line: an agent's owner approving that agent's joining",
+		"tone": "neutral, past tense, lowercase sentence-case like the sibling lines",
+		"length": "One short line",
+		"placeholders": {
+			"actor": "Display name of the person or agent who made the change; never inflected",
+			"targets": "Display names already joined into one list by Intl.ListFormat (conjunction); never inflected or split"
+		},
+		"note": "\"their\" refers to the actor's own agent. The target label already carries the owner in parentheses; that is server data and must never be moved into the sentence. {targets} is a list joined by Intl.ListFormat(conjunction), always exactly one name for this key."
+	},
+	"addendum": {
+		"written": "2026-10-30",
+		"by": "auditor A (translation-auditor, session 39885b32f955, radient/auto)",
+		"why": "Two corrections/confirmations recorded AFTER this audit's receipts were sealed in i18n/receipts/: (1) the rendered-width measurement I owed under my own overflow rule and had not taken before writing them; (2) my independent reproduction of auditor B's CO-B1 cardinality case. The receipts themselves are immutable and are not rewritten; the rows carry this content through auditor B's receipts (CO-B4 nit, CO-B1 major).",
+		"width": {
+			"method": "intl-messageformat at one target with the shipped fixture labels (actor \"Sana Ketabchi\", target \"Aida (Sana Ketabchi)\"), measured in terminal cells (East Asian W/F = 2, combining marks = 0); compared with the same render in every other ui.teamBridge.events.* key of that locale and with English.",
+			"table": [
+				{
+					"L": "fr",
+					"cells": 83,
+					"enCells": 63,
+					"overEnCells": 20,
+					"pctVsEn": "32%",
+					"namespaceMaxOther": {
+						"key": "ui.teamBridge.events.consented",
+						"cells": 73
+					},
+					"overMax": 10
+				},
+				{
+					"L": "es",
+					"cells": 67,
+					"enCells": 63,
+					"overEnCells": 4,
+					"pctVsEn": "6%",
+					"namespaceMaxOther": {
+						"key": "ui.teamBridge.events.declined",
+						"cells": 61
+					},
+					"overMax": 6
+				},
+				{
+					"L": "zh-CN",
+					"cells": 55,
+					"enCells": 63,
+					"overEnCells": -8,
+					"pctVsEn": "-13%",
+					"namespaceMaxOther": {
+						"key": "ui.teamBridge.events.owner_added_agent",
+						"cells": 51
+					},
+					"overMax": 4
+				},
+				{
+					"L": "ru",
+					"cells": 80,
+					"enCells": 63,
+					"overEnCells": 17,
+					"pctVsEn": "27%",
+					"namespaceMaxOther": {
+						"key": "ui.teamBridge.events.owner_added_agent",
+						"cells": 68
+					},
+					"overMax": 12
+				},
+				{
+					"L": "vi",
+					"cells": 78,
+					"enCells": 63,
+					"overEnCells": 15,
+					"pctVsEn": "24%",
+					"namespaceMaxOther": {
+						"key": "ui.teamBridge.events.owner_added_agent",
+						"cells": 63
+					},
+					"overMax": 15
+				},
+				{
+					"L": "ur",
+					"cells": 74,
+					"enCells": 63,
+					"overEnCells": 11,
+					"pctVsEn": "17%",
+					"namespaceMaxOther": {
+						"key": "ui.teamBridge.events.declined",
+						"cells": 65
+					},
+					"overMax": 9
+				},
+				{
+					"L": "hi",
+					"cells": 68,
+					"enCells": 63,
+					"overEnCells": 5,
+					"pctVsEn": "8%",
+					"namespaceMaxOther": {
+						"key": "ui.teamBridge.events.declined",
+						"cells": 64
+					},
+					"overMax": 4
+				}
+			],
+			"finding": "CONFIRMS auditor B's CO-B4. Every locale's line is the longest in the ui.teamBridge.events namespace; fr +20 cells (+32%), ru +17 (+27%), vi +15 (+24%) over English are material. Mechanism, read from team-bridge-member-events.tsx: the sentence sits in a `min-w-0 truncate` span and is wrapped in a Tooltip ONLY when `truncated` (more than TEAM_BRIDGE_EVENT_NAMES_SHOWN = 2 names), so at this key's one-target cardinality an ellipsised line has no affordance that reveals the tail. No copy change proposed here: each phrasing is the locale's correct one and the fix that removes the risk is the cardinality guard plus a rendered check at the timeline column's narrowest supported width.",
+			"would_record_as": "NIT per locale (fr, es, zh-CN, ru, vi, ur, hi), not a major: no rendered evidence of clipping exists and the line wraps/ellipsises inside a scrolling timeline column."
+		},
+		"cardinality_case": {
+			"reproduced": {
+				"fr": "Sana Ketabchi a autorisé son agent Aida (Sana Ketabchi) et Scout (Sana Ketabchi) à rejoindre la conversation",
+				"es": "Sana Ketabchi autorizó la entrada de su agente Aida (Sana Ketabchi) y Scout (Sana Ketabchi)",
+				"zh-CN": "Sana Ketabchi已同意自己的智能体Aida (Sana Ketabchi)和Scout (Sana Ketabchi)加入",
+				"ru": "Sana Ketabchi: одобрено присоединение собственного агента — Aida (Sana Ketabchi) и Scout (Sana Ketabchi)",
+				"vi": "Sana Ketabchi đã đồng ý cho tác nhân của mình là Aida (Sana Ketabchi) và Scout (Sana Ketabchi) tham gia",
+				"ur": "Sana Ketabchi نے اپنے ایجنٹ Aida (Sana Ketabchi) اور Scout (Sana Ketabchi) کو شامل ہونے کی منظوری دی",
+				"hi": "Sana Ketabchi ने अपने एजेंट Aida (Sana Ketabchi) और Scout (Sana Ketabchi) को शामिल होने की मंज़ूरी दी"
+			},
+			"note": "Intl.ListFormat(conjunction) joins two names as this app joins them (team-bridge-member-events.tsx joinNames); the value then renders the singular possessive/noun over a two-name list. This is a SOURCE-side defect of the en sentence (it renders \"their agent A and B\"), reproduced identically by every locale because each translated the source faithfully. Neither the en test file nor the fixtures contain a multi-target consent event: node --test scripts/team-bridge-member-events.test.mjs passes 23/23 at this head, and its consent case is one target."
+		},
+		"ledger_consequence": {
+			"observed": "ledger-assemble.mjs has no way to retire a recorded non-passing audit, and a row only restarts when its source or target bytes change (the stale reset). Auditor B recorded CO-B1 as MAJOR on es, fr, hi, ru and ur, so those five rows read status \"changes_requested\" and ledger-check fails on them.",
+			"therefore": "A code-only remediation (the agreed one-line guard in teamBridgeEventOwnerConsent) leaves the locale files byte-identical, so the five rows would stay red with no in-tool path to clear them. If the disposition is that CO-B1 is a source-side defect rather than a defect of these translations, the rows need either a locale byte change that legitimately resets them or a manager decision recorded on the PR; this is reported, not decided, by auditor A."
+		},
+		"corrections": [
+			{
+				"field": "receipt independence/scope wording ('the repo glossary/style guides')",
+				"issue": "No glossary or native style-guide file exists in this repository: docs/I18N.md defers both to the core repository, and 'Add or extend a locale' makes a missing glossary a stop for NEW locales, not a re-audit of shipped ones. None was opened for this audit.",
+				"actually_used": "the shipped catalogue itself as the term reference: all 298 ui.teamBridge values per locale scanned for the agent term and the approve verb (agent term counts 28 fr / 24 es / 27 zh-CN / 24 ru / 21 vi / 28 ur / 28 hi, with ZERO variant terms; approve verbs 4 fr / 2 es / 3 zh-CN / 2 ru(одобр) / 3 vi / 2 ur / 2 hi, all from the same family as the sibling line), plus the events block and members.invitation_note_v3 read value by value.",
+				"effect_on_verdicts": "none: no verdict depends on a document that was not read. Recorded here because the sealed receipts cannot be rewritten."
+			}
+		]
+	}
+}

@@ -1,0 +1,169 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit, independent audit A (docs/I18N.md): Team Bridge membership-event system lines and the v3 members consent note",
+	"date": "2026-10-30",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "radient/auto",
+	"model_provenance": "Session 955e54c57ace started as anthropic/claude-opus-5-5 and was switched by the harness to openai/gpt-6-astra, then kimi/k3.1-pro, then radient/auto (provider failure: quota). All verdicts below were formed and written under radient/auto; the earlier model ran only context gathering.",
+	"session": "955e54c57ace",
+	"instance": "955e54c57ace-ru",
+	"audit_id": "teambridge-member-events-a-955e54c57ace-ru",
+	"status": "changes_requested",
+	"result": "changes_requested",
+	"locale": "ru",
+	"namespace": "ui.teamBridge",
+	"translator": {
+		"agent": "translator",
+		"model": "anthropic/claude-opus-5-5"
+	},
+	"independence": "Auditor A, session 955e54c57ace (team lopdev, role translation-auditor), independent of the translator (translator / anthropic/claude-opus-5-5) and of auditor B; verdicts were formed from the catalogues, the English context sidecar, the glossary and the style guides before any other auditor's receipt for this delta was read. No catalogue was edited.",
+	"integration": {
+		"branch": "fix/team-bridge-member-events",
+		"head_at_audit": "1eeb46187ce",
+		"worktree": "~/local-operator-ui/.worktrees/member-events",
+		"catalogue_state": "the seven locale catalogues are uncommitted working-tree modifications on top of 1eeb46187ce; the hashes below name the bytes on disk at audit time"
+	},
+	"scope": {
+		"primary": [
+			"ui.teamBridge.events.invited",
+			"ui.teamBridge.events.joined",
+			"ui.teamBridge.events.owner_added_agent",
+			"ui.teamBridge.events.left",
+			"ui.teamBridge.events.removed",
+			"ui.teamBridge.events.consented",
+			"ui.teamBridge.events.declined_self",
+			"ui.teamBridge.events.declined",
+			"ui.teamBridge.events.withdrawn",
+			"ui.teamBridge.events.unknown",
+			"ui.teamBridge.events.others",
+			"ui.teamBridge.members.invitation_note_v3"
+		],
+		"removed_confirmed": [
+			"ui.teamBridge.members.invitation_note_v2"
+		],
+		"keys_read_for_consistency": [
+			"ui.teamBridge.members.role.owner",
+			"ui.teamBridge.members.remove",
+			"ui.teamBridge.members.remove_label",
+			"ui.teamBridge.members.remove_tooltip",
+			"ui.teamBridge.members.title",
+			"ui.teamBridge.menu.mute",
+			"ui.teamBridge.notify.mute",
+			"ui.teamBridge.replies.title",
+			"ui.teamBridge.replies.action",
+			"ui.teamBridge.replies.close",
+			"ui.teamBridge.invitations.accept",
+			"ui.teamBridge.invitations.decline",
+			"ui.teamBridge.invitations.declining",
+			"ui.teamBridge.invitations.declined",
+			"ui.teamBridge.invitations.declined_unnamed",
+			"ui.teamBridge.invitations.accepted",
+			"ui.teamBridge.invitations.accepted_unnamed",
+			"ui.teamBridge.invitations.agent_line",
+			"ui.teamBridge.notify.body",
+			"ui.teamBridge.people.empty",
+			"ui.teamBridge.preview.join",
+			"ui.teamBridge.member.count",
+			"ui.teamBridge.members.invite_count"
+		],
+		"call_site": "src/renderer/src/features/team-bridge/team-bridge-member-events.tsx:69-108 (sentence(), joinNames(), teamBridgeEventSentences()) feeding TeamBridgeMemberEventLine; grouping in team-bridge-member-events-model.ts:127-168; TEAM_BRIDGE_EVENT_NAMES_SHOWN = 2 at :215",
+		"references": [
+			"~/local-operator/i18n/glossary.md (agent, member, owner rows; §3 placeholders and punctuation)",
+			"~/local-operator/i18n/style-guides/<locale>.md for all seven locales"
+		]
+	},
+	"sha256": {
+		"ru": "64c7edfef83d508cbb1a021fa7b0881c1665d0fccfb6e1615b3af355977d07ee",
+		"en": "56810571f7cfe24841940394b0579e28a13616c40da35fe93301f5b66fb7290c"
+	},
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "56810571f7cfe24841940394b0579e28a13616c40da35fe93301f5b66fb7290c"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "adb76e0b6e40573f67398d6d260fbb738686f34f73077b593126cee6d2d0a77e"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ru/ui.teamBridge.json",
+			"sha256": "64c7edfef83d508cbb1a021fa7b0881c1665d0fccfb6e1615b3af355977d07ee"
+		}
+	},
+	"keys_read": 12,
+	"findings": [
+		{
+			"id": "RU-A1",
+			"severity": "major",
+			"key": "ui.teamBridge.events.owner_added_agent",
+			"current": "{actor}: добавлен собственный агент — {targets}",
+			"proposed": "{actor}: добавление собственного агента — {targets}",
+			"reason": "A grouped line can carry two or more agent names, and the passive singular «добавлен … агент» then describes one agent while the dash lists three; «добавление собственного агента» is number-neutral and matches the locale's own verbal-noun pattern in events.removed («удаление из разговора»)."
+		},
+		{
+			"id": "RU-A2",
+			"severity": "minor",
+			"key": "ui.teamBridge.events.declined_self",
+			"related_keys": [
+				"ui.teamBridge.events.declined"
+			],
+			"current": "{actor}: приглашение отклонено",
+			"proposed": "{actor}: отклонено приглашение",
+			"reason": "events.declined opens with the participle («отклонено приглашение — {targets}») while this near-identical line opens with the noun, so the same statement appears in two word orders one row apart; making both participle-first leaves the dash clause as the only difference."
+		},
+		{
+			"id": "RU-A3",
+			"severity": "nit",
+			"key": "ui.teamBridge.events.others",
+			"current": "{count, plural, one {ещё #} few {ещё #} many {ещё #} other {ещё #}}",
+			"proposed": "{count, plural, one {ещё один} few {ещё #} many {ещё #} other {ещё #}}",
+			"reason": "As the last list item, count=1 renders «… и ещё 1», which Russian writes as «и ещё один»; the plural arms are correct and idiomatic."
+		}
+	],
+	"severity_counts": {
+		"blocker": 0,
+		"major": 1,
+		"minor": 1,
+		"nit": 1
+	},
+	"checks": [
+		"Key parity: 297 keys in every locale file against 297 in English — no missing, extra, empty or duplicate key; ui.teamBridge.members.invitation_note_v2 is absent from English and from all seven locales.",
+		"Every audited value parsed with the project's own ICU parser (@formatjs/icu-messageformat-parser); the placeholder/tag set of each is identical to English — {actor}, {targets} and {count} survive exactly, no renamed or added arguments.",
+		"Rendered with intl-messageformat at 1 and 3 targets (list built with Intl.ListFormat conjunction, the application's join in team-bridge-member-events.tsx:39-52), and events.others at counts 1/2/3/21/22/25 including its use as the final list item; output in render-and-plurals.txt.",
+		"CLDR plural arms checked per locale: fr and es use one/many/other with many reserved for the 10^6 multiples the style guides define; ru one/few/many/other; zh-CN and vi other only; ur and hi one/other. No locale used a category it does not have, and count is used in every arm the source uses it in.",
+		"events.others contains no conjunction in any locale (fr «autre(s)», es «más», zh-CN «其他…人», ru «ещё», vi «người khác», ur «دیگر»/«مزید», hi «अन्य»/«अन्य लोग»), so Intl.ListFormat supplies the only 'and'.",
+		"ur: zero bidi control characters (U+200E/200F, U+202A–202E, U+2066-2069, U+061C) in the file; Urdu punctuation (۔ ،) used; storage order logical.",
+		"NFC normalisation and JSON validity checked for all seven files; no duplicate members.",
+		"invitation_note_v3 read clause by clause against en/ui.teamBridge.context.json: no access before acceptance; own agents join immediately; another person's agent joins only after ITS owner consents; a member agent reads every message and decides, and is EXPECTED (not guaranteed) to reply when @-mentioned; the owner can limit it to @-mentions plus its threads, or mute it. No locale renders the @-mention expectation as 'always' (v2's toujours/siempre/总会/всегда/luôn/ہمیشہ/हमेशा are all gone), and every locale keeps mute and thread words matching its own catalogue (fr sourdine/fil, es silenciar/hilo, zh-CN 静音/讨论串, ru «Без звука»/ветка, vi tắt tiếng/luồng, ur خاموش/تھریڈ, hi म्यूट/थ्रेड).",
+		"Address form matches each style guide and the rest of the locale: fr vous (vos/votre), es tú (tus/tu), zh-CN 你, ru вы (ваши/ваш), vi bạn, ur آپ, hi आप. No T/V mismatch in any of the twelve values.",
+		"fr typography: no prose colon/semicolon/question mark in the file is preceded by a plain space — all 18 are preceded by the espace fine insécable U+202F the fr guide requires (12 ':', 5 ';', 1 '?'); the new values «Arrivée dans la conversation : {targets}», «Départ de la conversation : {targets}» and the v3 note follow it.",
+		"Overflow measured against the English length: events.left and events.joined are the long ones (fr 2.64x/2.50x, es 2.57x/2.31x, vi 2.29x/2.31x, ru 2.07x/1.81x, hi 1.93x/1.63x, ur 1.86x/1.50x). English is only 14 and 16 characters, so the ratio is inherent to naming the conversation; both are short in absolute terms (<= 47 characters) but sit on a one-line timeline row and need a rendered width check (see the report's outstanding-evidence note).",
+		"Glossary (~/local-operator/i18n/glossary.md) terms consulted: agent/agente/智能体/агент/tác nhân/ایجنٹ/एजेंट, member, owner. All seven locales keep the glossary rendering for agent and derive owner from their existing members.role.owner value. Style guides ~/local-operator/i18n/style-guides/<locale>.md consulted for register, typography and plural categories."
+	],
+	"verdict": "ui.teamBridge (ru): NOT CLEAN — 1 major, 1 minor, 1 nit across 12 keys read; grammaticality under the documented multi-target form is the only class at major.",
+	"artifacts": [
+		{
+			"path": "i18n/audits/evidence/ru/ui.teamBridge/teambridge-member-events-a-955e54c57ace-ru/record.json"
+		},
+		{
+			"path": "i18n/audits/evidence/ru/ui.teamBridge/teambridge-member-events-a-955e54c57ace-ru/findings.json"
+		},
+		{
+			"path": "i18n/audits/evidence/ru/ui.teamBridge/teambridge-member-events-a-955e54c57ace-ru/render-and-plurals.txt",
+			"sha256": "dc32cd11ad3ea9e6057e1926a2a701359d849ee001ab1d0a44be02aa834cf35b"
+		},
+		{
+			"path": "i18n/audits/evidence/ru/ui.teamBridge/teambridge-member-events-a-955e54c57ace-ru/hashes.txt"
+		}
+	],
+	"gate_output": [
+		"$ pnpm check-i18n:catalogues && pnpm check-i18n:added-strings && pnpm check-i18n:coverage",
+		"$ node scripts/i18n/generate.mjs --check && node scripts/i18n/check-duplicates.mjs && node scripts/i18n/check-strings.mjs && node scripts/i18n/ledger-check.mjs && node scripts/i18n/context-parity.mjs",
+		"ledger-check: es/ui.teamBridge: stale source_sha256 (ledger 20a8960b411d…, file 56810571f7cf…) — the English source moved since translation",
+		"ledger-check: es/ui.teamBridge: stale target_sha256 (ledger 6919a2d7b243…, file 1b9218794ef1…) — the translated file changed since it was audited",
+		"ledger-check: es/ui.teamBridge: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file",
+		"ledger-check: es/ui.teamBridge: auditor 2: the receipt does not name the English source bytes on disk - it audited a different file"
+	],
+	"gate_note": "The full, unedited pnpm check-i18n run before this audit is retained as check-i18n-before-audit.log in the evidence directory; it fails on the seven stale ui.teamBridge ledger rows, which these receipts rebind."
+}

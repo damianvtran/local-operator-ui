@@ -2,13 +2,22 @@ import { formatDate, formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Bot, UserRound } from "lucide-react";
-import { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useState,
+} from "react";
 import type { FC, ReactNode } from "react";
 import type {
 	TeamBridgeDirectoryMember,
+	TeamBridgeEvent,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
+import { useMessageMentions } from "./mentions/use-message-mentions";
 import {
+	type TeamBridgeArrivalIdentity,
 	teamBridgeArrivalStreamKey,
 	teamBridgeLiveArrivals,
 	teamBridgeObserveArrivals,
@@ -18,6 +27,14 @@ import { TeamBridgeMessageAttachments } from "./team-bridge-attachments";
 import { EMOJI_ENTRIES } from "./team-bridge-emoji-model";
 import { warmEmojiProbeCache } from "./team-bridge-emoji-support";
 import { TeamBridgeMarkdown } from "./team-bridge-markdown";
+import {
+	type TeamBridgeEventLabel,
+	TeamBridgeMemberEvents,
+} from "./team-bridge-member-events";
+import {
+	TEAM_BRIDGE_EVENTS_LEADING,
+	teamBridgeEventAnchors,
+} from "./team-bridge-member-events-model";
 import { TeamBridgeMessageToolbar } from "./team-bridge-message-toolbar";
 import { type ThreadItem, threadItems } from "./team-bridge-model";
 import {
@@ -93,9 +110,9 @@ const ARRIVAL_CLEAR_MS = 600;
 
 function useArrivingRows(
 	key: string,
-	messages: readonly TeamBridgeMessage[],
+	messages: readonly TeamBridgeArrivalIdentity[],
 	enabled: boolean,
-): { has: (message: TeamBridgeMessage) => boolean; end: () => void } {
+): { has: (id: string) => boolean; end: () => void } {
 	const [held, setHeld] = useState<{ key: string; ids: ReadonlySet<string> }>(
 		() => ({ key, ids: new Set() }),
 	);
@@ -125,10 +142,7 @@ function useArrivingRows(
 		);
 		return () => clearTimeout(timer);
 	}, [key, ids]);
-	const has = useCallback(
-		(message: TeamBridgeMessage) => ids.has(message.id),
-		[ids],
-	);
+	const has = useCallback((id: string) => ids.has(id), [ids]);
 	const end = useCallback(() => {
 		setHeld((current) =>
 			current.ids.size === 0 ? current : { key: current.key, ids: new Set() },
@@ -194,6 +208,27 @@ export type TeamBridgeRowDecoration = {
 	after?: ReactNode;
 };
 
+/**
+ * How the page wants one row drawn when it is not simply the server's.
+ *
+ * `key` is the row's identity for React AND for the arrival journal: an optimistic
+ * send keeps its local id after its server row replaces it, so the replacement is
+ * the same list item - no remount, no second arrival motion, no flicker
+ * (`team-bridge-pending-sends.ts`). `local` marks a row this client drew: its seq
+ * is a display order, not the hub's, so it never raises the arrival watermark, and
+ * it has no server id to react to or reply on yet. `delivery` is the send's state
+ * while it is not confirmed.
+ */
+export type TeamBridgeRowPresentation = {
+	key: string;
+	local: boolean;
+	delivery?: {
+		status: "pending" | "failed";
+		onRetry?: () => void;
+		onEdit?: () => void;
+	};
+};
+
 export const TeamBridgeMessageList: FC<{
 	messages: readonly TeamBridgeMessage[];
 	labelFor: (sender: TeamBridgeMessage["sender"]) => string | null;
@@ -230,6 +265,24 @@ export const TeamBridgeMessageList: FC<{
 	decorate?: (
 		message: TeamBridgeMessage,
 	) => TeamBridgeRowDecoration | undefined;
+	/*
+	 * Membership events (invited / joined / left ...), drawn as quiet lines
+	 * between the rows by `after_seq`. A SIBLING SLOT, not a `decorate` field:
+	 * an event is not a property of the message it follows, and the owner-audit
+	 * and thread-pane callers must never receive it (they simply do not pass
+	 * this). Absent = no event lines, byte for byte.
+	 */
+	events?: readonly TeamBridgeEvent[];
+	/**
+	 * The message a notification click named. Its row (the existing
+	 * `data-message-id` root) wears a brief accent wash that fades out; see
+	 * `.lo-team-bridge-target` for the motion and its reduced-motion form. The
+	 * scroll to it belongs to the timeline's owner, which also owns the
+	 * stick-to-bottom pin it has to override. The caller clears it after the fade.
+	 */
+	highlightId?: string | null;
+	/** Optimistic rows: identity and delivery state (see `TeamBridgeRowPresentation`). */
+	presentationOf?: (message: TeamBridgeMessage) => TeamBridgeRowPresentation;
 }> = ({
 	messages,
 	labelFor,
@@ -248,10 +301,57 @@ export const TeamBridgeMessageList: FC<{
 	),
 	arrivalsEnabled = true,
 	decorate,
+	events,
+	highlightId = null,
+	presentationOf,
 }) => {
 	const locale = useI18nLocale();
-	const arriving = useArrivingRows(arrivalKey, messages, arrivalsEnabled);
+	const present = (message: TeamBridgeMessage): TeamBridgeRowPresentation =>
+		presentationOf?.(message) ?? { key: message.id, local: false };
+	/* The journal sees ROW identity. A local row offers no seq: its display order
+	   is not the hub's numbering and must not hide a peer's message at that seq. */
+	const identities = useMemo(
+		() =>
+			messages.map((message) => {
+				const row = presentationOf?.(message);
+				return row?.local
+					? { id: row.key }
+					: { id: row?.key ?? message.id, seq: message.seq };
+			}),
+		[messages, presentationOf],
+	);
+	const arriving = useArrivingRows(arrivalKey, identities, arrivalsEnabled);
 	const items = threadItems(messages, new Date());
+	const eventLabel: TeamBridgeEventLabel = (party) =>
+		labelFor(party) ??
+		(party.kind === "agent"
+			? t("ui.teamBridge.sender.unknown_agent")
+			: t("ui.teamBridge.sender.unknown_person"));
+	/*
+	 * ANCHORS COME FROM SERVER ROWS ONLY (review round 5, M1). A local row carries a
+	 * NUMERIC DISPLAY seq so the thread can order it against the page, which defeats
+	 * `teamBridgeEventAnchors`' own guard (that guard reads "not a number" as
+	 * "optimistic"). In a new conversation the first draft's display seq is 0 - the
+	 * creation events' `after_seq` - so "You invited Sana" drew UNDER the draft and
+	 * jumped above it on confirm; a failed draft kept it underneath forever. The rows
+	 * reaching the anchor map are therefore the hub's, which is what its contract
+	 * always meant: an event belongs to history, never to a draft.
+	 */
+	const eventsAt = teamBridgeEventAnchors(
+		messages.filter((message) => !present(message).local),
+		events,
+	);
+	const eventSlot = (anchor: string) => {
+		const at = eventsAt.get(anchor);
+		return at ? (
+			<TeamBridgeMemberEvents
+				key={`events:${anchor}`}
+				events={at}
+				labelFor={eventLabel}
+				locale={locale}
+			/>
+		) : null;
+	};
 	/* Warm the emoji font probe while the reader is reading, so opening the
 	   reaction picker is a cache lookup rather than canvas readbacks inside its
 	   click handler. GATED ON THE HOLD (agent review round 1, m1): while
@@ -277,34 +377,85 @@ export const TeamBridgeMessageList: FC<{
 		   Radix's content wrapper out as a block, not its default shrink-to-fit
 		   `display: table`; see their ScrollArea class names. */
 		<ol className="mt-auto flex w-full min-w-0 flex-col pt-4 pb-2">
-			{items.map((item) =>
-				item.type === "day" ? (
-					<DayDivider key={`day:${item.key}`} item={item} locale={locale} />
-				) : (
-					<MessageRow
-						key={item.message.id}
-						message={item.message}
-						continuation={item.continuation}
-						label={labelFor(item.message.sender)}
-						member={profileFor?.(item.message.sender)}
-						onMessagePerson={onMessagePerson}
-						canMessagePerson={canMessagePerson}
-						locale={locale}
-						reactionContext={reactionContext}
-						onReply={onReply}
-						forceToolbar={forceToolbar}
-						tenantId={tenantId}
-						accountId={accountId}
-						density={density}
-						arriving={arriving.has(item.message)}
-						onArrivalEnd={arriving.end}
-						decoration={decorate?.(item.message)}
-					/>
-				),
+			{eventSlot(TEAM_BRIDGE_EVENTS_LEADING)}
+			{withEventsAfterRows(
+				items,
+				eventSlot,
+				/*
+				 * ROW IDENTITY, NOT MESSAGE IDENTITY (the optimistic row). `present`
+				 * answers the row this message is drawn as: the server row's own id
+				 * until an optimistic sibling exists, then the local key that SURVIVES
+				 * the replacement, so reconciliation is a prop change on one mounted
+				 * subtree rather than an unmount. The event lines stay keyed by the
+				 * STORED message id (`withEventsAfterRows` reads `items`), because an
+				 * event belongs to the hub's history and never to a draft.
+				 */
+				items.map((item) => {
+					if (item.type === "day")
+						return (
+							<DayDivider key={`day:${item.key}`} item={item} locale={locale} />
+						);
+					const row = present(item.message);
+					return (
+						<MessageRow
+							key={row.key}
+							rowKey={row.key}
+							local={row.local}
+							delivery={row.delivery}
+							message={item.message}
+							continuation={item.continuation}
+							label={labelFor(item.message.sender)}
+							member={profileFor?.(item.message.sender)}
+							onMessagePerson={onMessagePerson}
+							canMessagePerson={canMessagePerson}
+							locale={locale}
+							reactionContext={reactionContext}
+							onReply={onReply}
+							forceToolbar={forceToolbar}
+							tenantId={tenantId}
+							accountId={accountId}
+							density={density}
+							/* TWO IDENTITIES, TWO QUESTIONS. `arriving` follows the ROW key, which
+							   survives an optimistic row's replacement; `highlighted` follows the
+							   STORED message id, because a notification names a hub message and a
+							   local row can never be one - so a pending row never wears the wash. */
+							arriving={arriving.has(row.key)}
+							highlighted={highlightId === item.message.id}
+							onArrivalEnd={arriving.end}
+							decoration={decorate?.(item.message)}
+						/>
+					);
+				}),
 			)}
 		</ol>
 	);
 };
+
+/*
+ * The row map's output with each message's event lines placed right after it.
+ *
+ * WHY A WRAPPER RATHER THAN A FRAGMENT IN THE MAP: the row map (and its React
+ * keys) is shared with other in-flight changes; leaving it byte-identical keeps
+ * every rebase textual. `rows[i]` is `items[i]`'s element by construction.
+ * Event slots key in their own `events:` namespace (each line inside keys as
+ * `event:<id>`), so they can never collide with a message or day key.
+ */
+function withEventsAfterRows(
+	items: readonly ThreadItem[],
+	slot: (anchor: string) => ReactNode,
+	rows: ReactNode[],
+): ReactNode[] {
+	const out: ReactNode[] = [];
+	rows.forEach((row, index) => {
+		out.push(row);
+		const item = items[index];
+		if (item?.type === "message") {
+			const after = slot(item.message.id);
+			if (after) out.push(after);
+		}
+	});
+	return out;
+}
 
 /*
  * A full-width hairline-free divider: the label sits in the middle of a
@@ -364,15 +515,31 @@ const MessageRow: FC<{
 	arriving?: boolean;
 	onArrivalEnd?: () => void;
 	decoration?: TeamBridgeRowDecoration;
-}> = ({ reactionContext, ...props }) =>
+	highlighted?: boolean;
+	rowKey?: string;
+	local?: boolean;
+	delivery?: TeamBridgeRowPresentation["delivery"];
+}> = ({ reactionContext, rowKey, local = false, ...props }) =>
+	/* Keyed on the ROW identity, not the message id, and the component type does not
+	   change with delivery: an optimistic row and its server replacement must be one
+	   mounted subtree. A local row has no server id to react to, so its reactions are
+	   disabled rather than absent (absent would swap the component on reconcile). */
 	reactionContext && props.message.body !== null ? (
 		<ReactableMessageRow
-			key={`${reactionContext.accountId}:${props.message.id}`}
-			reactionContext={reactionContext}
+			key={`${reactionContext.accountId}:${rowKey ?? props.message.id}`}
+			reactionContext={
+				local ? { ...reactionContext, disabled: true } : reactionContext
+			}
 			{...props}
+			rowKey={rowKey}
+			onReply={local ? undefined : props.onReply}
 		/>
 	) : (
-		<MessageRowView {...props} />
+		<MessageRowView
+			{...props}
+			rowKey={rowKey}
+			onReply={local ? undefined : props.onReply}
+		/>
 	);
 
 const ReactableMessageRow: FC<
@@ -404,6 +571,10 @@ type MessageRowProps = {
 	arriving?: boolean;
 	onArrivalEnd?: () => void;
 	decoration?: TeamBridgeRowDecoration;
+	highlighted?: boolean;
+	delivery?: TeamBridgeRowPresentation["delivery"];
+	/** The row's stable identity, which survives an optimistic row's replacement. */
+	rowKey?: string;
 };
 
 const MessageRowView: FC<MessageRowProps> = ({
@@ -423,8 +594,14 @@ const MessageRowView: FC<MessageRowProps> = ({
 	arriving = false,
 	onArrivalEnd,
 	decoration,
+	highlighted = false,
+	delivery,
+	rowKey,
 }) => {
 	const summary = threadSummary(message);
+	// @-mentions in the body: `message.mentions` when the hub sends it, else
+	// `@Name` matching (mentions/message-mentions.ts says why both).
+	const mentionRuns = useMessageMentions(message);
 	/* One-level threads: only a timeline root can open a thread - and none can
 	   while the thread surface is held. `canReply` is therefore the ONE term the
 	   toolbar button and the "N replies" summary both read, so the affordance
@@ -490,12 +667,16 @@ const MessageRowView: FC<MessageRowProps> = ({
 	return (
 		<li
 			data-message-id={message.id}
+			data-message-target={highlighted || undefined}
+			data-row-key={rowKey ?? message.id}
+			data-delivery={delivery?.status}
 			onAnimationEnd={arriving ? onArrivalEnd : undefined}
 			className={cn(
 				"group/message relative flex w-full min-w-0 gap-3 px-5 transition-colors duration-fast ease-out-quart hover:bg-row-hover",
 				// Transform/opacity only: the row reserves its final layout box
 				// immediately, so arrival cannot move the scroll geometry.
 				arriving && "lo-team-bridge-arrival",
+				highlighted && "lo-team-bridge-target",
 				continuation ? "py-0.5" : "mt-2 pt-1.5 pb-0.5",
 			)}
 		>
@@ -622,9 +803,50 @@ const MessageRowView: FC<MessageRowProps> = ({
 					((message.attachments?.length ?? 0) > 0 ||
 						decoration?.attachments !== undefined) ? null : (
 					/* An image-only message has an empty body: no empty prose block. */
-					<TeamBridgeMarkdown className="team-bridge-message-body text-[14px] text-ink">
+					/*
+					 * PENDING IS A COLOUR, NOT A FADE (design round 1, D3). The clock at
+					 * `opacity-50` measured 2.15:1 light / 2.52:1 dark - under the floor for
+					 * 11-12px text - and `docs/branding.md` says a state changes ink, never
+					 * opacity. The BODY carries it instead, in `ink-muted` (8.67:1 light,
+					 * 7.85:1 dark), which also survives a continuation row where the clock
+					 * only shows on hover. It returns to `ink` in one transition on confirm.
+					 */
+					/*
+					 * THE INK TRAVELS THROUGH `--md-ink`, NOT A `text-*` UTILITY (design
+					 * round 2, D3). `.lo-markdown { color: var(--md-ink, var(--lo-ink)) }`
+					 * in `markdown.css` is UNLAYERED, and Tailwind's utilities live in
+					 * `@layer utilities` - so an unlayered rule wins no matter what order the
+					 * two are in. `text-ink-muted` computed as full `--lo-ink` on a live
+					 * pending row (measured `rgb(56,58,66)`), which is why the state was
+					 * invisible. The value is driven on the row instead, scoped to it: the
+					 * stylesheet keeps styling every other markdown surface in the app.
+					 */
+					<TeamBridgeMarkdown
+						/* `transition-colors` is restored rather than the comment rewritten: the
+						   comment describes a settle, and no rule on `.lo-markdown` competes with a
+						   TRANSITION (only its `color` is unlayered). Design round 3 measured the
+						   step at 1.19:1 light / 1.63:1 dark - quiet enough that the settle must
+						   not read as motion, which is what a 150 ms colour fade gives. */
+						className="team-bridge-message-body text-[14px] transition-colors duration-fast"
+						style={{
+							...(delivery?.status === "pending"
+								? { "--md-ink": "var(--lo-ink-muted)" }
+								: {}),
+						}}
+						mentions={mentionRuns}
+					>
 						{message.body}
 					</TeamBridgeMarkdown>
+				)}
+				{/* THE STATE IN WORDS, for a reader who cannot see the ink: the row is
+				    otherwise only quieter, and a screen reader announces status changes when
+				    they are live. One per unconfirmed row, not per message. */}
+				{delivery && (
+					<p className="sr-only" aria-live="polite">
+						{delivery.status === "failed"
+							? t("ui.chat.canonical.send_failure.generic")
+							: t("ui.agents.config.state.sending")}
+					</p>
 				)}
 				{/* Images come ONLY from the structured list, never from the body. */}
 				{(message.attachments?.length ?? 0) > 0 && (
@@ -637,6 +859,43 @@ const MessageRowView: FC<MessageRowProps> = ({
 				)}
 				{decoration?.attachments}
 				{reactions && <TeamBridgeReactionChips state={reactions} />}
+				{/* A FAILED SEND STAYS WHERE IT WAS TYPED (operator ask: "the text must not
+				    vanish with no trace"). Retry re-sends under the SAME client_ref, so a
+				    request that landed with its answer lost is deduplicated by the hub;
+				    Edit puts the text back in the box and drops the row. The copy is the
+				    app's existing send-failure sentence and actions, not new strings. */}
+				{delivery?.status === "failed" && (
+					<div
+						role="alert"
+						data-delivery-failed=""
+						className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]"
+					>
+						<span className="text-danger">
+							{t("ui.chat.canonical.send_failure.generic")}
+						</span>
+						{delivery.onRetry && (
+							<button
+								type="button"
+								onClick={delivery.onRetry}
+								/* -mx-1 px-1 py-1: a 24px-tall target around a 12px glyph, with the
+								   ink where it was (design round 1, D4). These are the only recovery
+								   controls for a lost message. */
+								className="-mx-1 rounded-sm px-1 py-1 font-medium text-accent hover:bg-row-hover hover:underline"
+							>
+								{t("ui.common.actions.retry")}
+							</button>
+						)}
+						{delivery.onEdit && (
+							<button
+								type="button"
+								onClick={delivery.onEdit}
+								className="-mx-1 rounded-sm px-1 py-1 font-medium text-ink-muted hover:bg-row-hover hover:text-ink hover:underline"
+							>
+								{t("ui.chat.canonical.transcript.edit")}
+							</button>
+						)}
+					</div>
+				)}
 				{canReply && summary.count > 0 && (
 					<button
 						type="button"

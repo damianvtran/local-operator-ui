@@ -1253,3 +1253,9 @@ test("a read-only caller sees the roster but no way to add", async (t) => {
 		"the search stays usable: it also filters the current members",
 	);
 });
+
+test("#general, like every built-in, offers no invite and no remove", () => {
+	const general = conversation({ kind: "channel", builtin: "general" });
+	assert.equal(view.canInviteMembers(general, "acct_self"), false);
+	assert.equal(view.canRemoveMembers(general, "acct_self"), false);
+});

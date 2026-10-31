@@ -1,0 +1,40 @@
+{
+	"schema": 1,
+	"kind": "audit-amendment (second look)",
+	"audit_id": "teambridge-member-events-audit-b-502568f2aefe-zh-cn",
+	"date": "2026-10-30",
+	"auditor": "translation-auditor",
+	"model": "radient/radient-research/radient-ultra",
+	"session": "502568f2aefe",
+	"instance": "502568f2aefe-zh-cn",
+	"bound_receipt": {
+		"path": "i18n/receipts/502568f2aefe-zh-cn.json",
+		"sha256": "7860e26dc58cb6e92cb826c193a63c86b898f0923c123994bf902711850a705f",
+		"findings": {
+			"blocker": 0,
+			"major": 0,
+			"minor": 0,
+			"nit": 1
+		}
+	},
+	"why_an_amendment_and_not_a_new_receipt": "First-pass verdicts were written before any other auditor's receipt was read (receipts 502568f2aefe-* were created first). A second look afterwards added findings I had under-weighted and confirmed one I had missed: (1) the multi-name owner_added_agent number problem, which I had filed for vi only, applies to every locale whose grammar marks number on the agent noun or verb (fr, es, hi, ur, ru; zh-CN and vi are unaffected on number); (2) ur renders 'decline' as both انکار and مسترد inside one namespace; (3) hi/ur events.others has no head noun. Two proposals in the other auditor's report were rejected after checking the grammar: «A rejoint la conversation : {targets}» (the passe compose auxiliary must agree with its subject, so «A» is wrong for a three-name list - «ont rejoint» - reintroducing the very number problem it was meant to solve), and ru «ещё один» (the ru `one` arm also covers 21, 31, 101, so it would render «и ещё один» for 21 hidden names).",
+	"ledger_behaviour": "scripts/i18n/ledger-assemble.mjs refuses to replace an instance with different receipt bytes ('one run is one audit; a second audit needs its own instance'), and recording the same auditor under a second instance would misrepresent independence. The row therefore keeps the receipt above; this companion carries the auditor's final view. ledger.json was not hand-edited.",
+	"added_findings": [
+		{
+			"severity": "nit",
+			"id": "ZH-B2",
+			"key": "ui.teamBridge.members.invitation_note_v3",
+			"current": "其所有者可将其限制为仅响应@提及和它参与的讨论串，或将其静音。",
+			"proposed": "其所有者可将它限制在@提及和它参与的讨论串内，或将其静音。",
+			"reason": "The English limits the agent's SCOPE to @-mentions plus its threads; 「限制为仅响应」 narrows that to replying. Clauses 1-3 are faithful (「应当回复」 keeps the expectation, not a guarantee), so this is a nuance on consent copy rather than a meaning reversal.",
+			"disposition": "recorded, not blocking"
+		}
+	],
+	"final_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 2
+	},
+	"final_verdict": "clean-with-findings: 0 blocker, 0 major, 0 minor, 2 nit."
+}

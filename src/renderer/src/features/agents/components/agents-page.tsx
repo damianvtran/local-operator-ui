@@ -62,6 +62,11 @@ import {
 	AlertDescription,
 	AlertTitle,
 } from "@shared/components/ui/alert";
+import {
+	AgentAvatar,
+	AvatarFallback,
+	AvatarImage,
+} from "@shared/components/ui/avatar";
 import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
@@ -72,6 +77,7 @@ import { t } from "@shared/i18n";
 import type { MessageKey } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
+import { useAgentAvatar } from "@shared/store/agent-avatar-store";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Bot, Plus, Search, Sparkles, Users } from "lucide-react";
 import {
@@ -110,6 +116,7 @@ import {
 	skillComposerGate,
 } from "../skills-library-model";
 import { CLASS_LABEL, classOf } from "../utils/agent-class";
+import { agentDescriptionText } from "../utils/agent-description";
 import { AgentCreate, AgentDetail } from "./agent-detail";
 import {
 	DetailSkeleton,
@@ -1802,6 +1809,44 @@ export function AskPaneCopy({ teamMode }: { teamMode: boolean }) {
 }
 
 /**
+ * The roster row's mark, on the same box and fallback the chat sidebar's rows use.
+ *
+ * WHY A COMPONENT AND NOT A HOOK CALL IN THE MAP. `useAgentAvatar` is a hook and
+ * the rows are built by `.map()` inside `Roster`'s render, so calling it there
+ * would subscribe the whole list: one picture would repaint every row. Read
+ * inside this component, the subscription is per row.
+ *
+ * THE BOX IS 16 PX, INSIDE LINE ONE, and both halves of that are deliberate. The
+ * roster's height is set by its two text lines (`min-h-12`), so a mark that grew
+ * a line would move every row on the page; a 16px box fits inside the name's own
+ * line box. It is the size the chat sidebar's Agents rows draw, and the glyph is
+ * that row's fallback, so the one list that names every agent and the list the
+ * user reads beside it show the same mark. It also reserves its own width in
+ * every agent row, so no name moves when a picture arrives.
+ */
+const RosterMark = ({ agentId }: { agentId: string | null }) => {
+	const avatar = useAgentAvatar(agentId);
+	if (avatar === null) {
+		return <Bot aria-hidden="true" className="size-4 shrink-0 text-ink-dim" />;
+	}
+	return (
+		/*
+		 * THE FALLBACK IS NOT DECORATION HERE (review round 2, R2-4). A stored
+		 * value can pass the data-URL gate and still fail to decode, and Radix
+		 * renders the image arm only after a load: without a fallback that agent's
+		 * 16px slot is simply blank. The same Bot the sidebar's rows draw keeps the
+		 * mark legible, inside the same shared plate every agent surface wears.
+		 */
+		<AgentAvatar className="size-4 shrink-0">
+			<AvatarImage src={avatar} alt="" />
+			<AvatarFallback>
+				<Bot className="size-3" aria-hidden="true" />
+			</AvatarFallback>
+		</AgentAvatar>
+	);
+};
+
+/**
  * The roster, as a list with roving focus.
  *
  * WHY NOT A TREE OF TABS (U12). Every row used to be its own Tab stop and arrow
@@ -1868,6 +1913,14 @@ function Roster({
 			{rows.map((row) => {
 				const isProfile = "source" in row;
 				const mark = marked.get(`${teamMode ? "team" : "agent"}:${row.name}`);
+				/*
+				 * THE BLURB THE READER SEES, not the wire's always-English field: a
+				 * shipped agent prints the catalogue's sentence for its seed, and every
+				 * other row - uploaded, edited, a team - prints its own text untouched
+				 * (`agent-description.ts` states the rule). The tooltip and the line
+				 * below share this value so the two cannot word one row two ways.
+				 */
+				const blurb = isProfile ? agentDescriptionText(row) : row.description;
 				return (
 					<li key={row.name}>
 						<button
@@ -1887,11 +1940,7 @@ function Roster({
 							 * identifier reachable without giving the count its own line back,
 							 * which is what made rows 57 px.
 							 */
-							title={
-								row.description
-									? `${rowLabel(row)} - ${row.description}`
-									: rowLabel(row)
-							}
+							title={blurb ? `${rowLabel(row)} - ${blurb}` : rowLabel(row)}
 							className={cn(
 								"flex min-h-12 w-full flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-start hover:bg-row-hover",
 								/*
@@ -1929,6 +1978,7 @@ function Roster({
 							 * made row heights ragged (44 / 51 / 57 px) when a Badge wrapped.
 							 */}
 							<span className="flex w-full items-center gap-2">
+								{isProfile ? <RosterMark agentId={row.agent_id} /> : null}
 								<span className="min-w-0 truncate text-body-sm text-ink">
 									{rowLabel(row)}
 								</span>
@@ -1979,10 +2029,8 @@ function Roster({
 										<span className="text-ink-dim"> ·</span>
 									</span>
 								) : null}
-								{row.description ? (
-									<span className="min-w-0 flex-1 truncate">
-										{row.description}
-									</span>
+								{blurb ? (
+									<span className="min-w-0 flex-1 truncate">{blurb}</span>
 								) : (
 									/*
 									 * A ROW WITH NO DESCRIPTION SAYS SO (design review round 1 D4 =
@@ -2024,10 +2072,16 @@ function propsFilter(
 		 * for that. Either way the row they mean is the row that survives the
 		 * filter.
 		 */
+		/*
+		 * THE DESCRIPTION IS MATCHED AS IT IS PRINTED (agent-description.ts), not as
+		 * the wire spells it: on a French page the row shows the catalogue's French
+		 * sentence, so a reader who types a word from it must find it - the same rule
+		 * the skills filter already follows for its translated source word.
+		 */
 		return (
 			printName(row.name).toLowerCase().includes(needle) ||
 			row.name.toLowerCase().includes(needle) ||
-			(row.description ?? "").toLowerCase().includes(needle)
+			agentDescriptionText(row).toLowerCase().includes(needle)
 		);
 	});
 }

@@ -239,6 +239,18 @@ test("#agents is silent; #humans and ordinary channels are not", () => {
 		true,
 	);
 	assert.equal(policy.shouldNotifyTeamBridge(base, "acct_a"), true);
+	// #general is a people channel too: the reader's own preference decides.
+	assert.equal(
+		policy.shouldNotifyTeamBridge({ ...base, builtin: "general" }, "acct_a"),
+		true,
+	);
+	assert.equal(
+		policy.shouldNotifyTeamBridge(
+			{ ...base, builtin: "general", notify: "mention" },
+			"acct_a",
+		),
+		false,
+	);
 });
 
 test("agent-to-agent traffic the human is not a member of raises nothing", () => {

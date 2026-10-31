@@ -1,0 +1,233 @@
+{
+ "schema": 1,
+ "audit_kind": "translation-audit-remediation-confirmation",
+ "artifact_kind": "scoped-remediation-confirmation-of-a-committed-baseline-against-uncommitted-remediation-bytes",
+ "auditor": {
+  "agent": "translation-auditor (lopdev team)",
+  "instance": "de447a030b3b",
+  "model": "radient/auto"
+ },
+ "agent": "translation-auditor",
+ "instance": "de447a030b3b",
+ "session": "de447a030b3b",
+ "model": "radient/auto",
+ "model_fallback": "none",
+ "model_note": "The session reports the selector radient/auto (requested route). The upstream served model is not exposed by the harness and is not invented; no fallback model was used by this auditor.",
+ "date": "2026-10-25",
+ "locale": "ur",
+ "namespace": "ui.onboarding.tour",
+ "confirms": {
+  "path": "i18n/receipts/ur-onboarding-tour-second-audit-de447a030b3b.json",
+  "sha256": "e6b8c7d44fd97d0e52f8ca6026ee6c2d39e3f2348871e19e4e37593d242d143e",
+  "status": "changes_requested",
+  "findings_count": {
+   "blocker": 0,
+   "major": 1,
+   "minor": 9,
+   "nit": 3
+  }
+ },
+ "source_ref": "405e69c012654900f454fa4ca023100290369555",
+ "source_ref_note": "Repository HEAD at confirmation time, unchanged from the second audit. English and context are the same committed bytes; the target is the translators' uncommitted working-tree modification (git status: M), which this receipt does not commit.",
+ "target": {
+  "path": "src/i18n/catalogues/ur/ui.onboarding.tour.json",
+  "status": "modified (M) in working tree, uncommitted",
+  "baseline_sha256": "49089358f48ef8807c380736444e18569772e97e46105b727f7552a9088ed028",
+  "sha256": "75eebcf042bdcf233f7dbaf734c8e4ba5663993729bddf7cc649effd2f12e83e",
+  "bytes": 30383
+ },
+ "source_sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+ "target_sha256": "75eebcf042bdcf233f7dbaf734c8e4ba5663993729bddf7cc649effd2f12e83e",
+ "context_sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906",
+ "scope": "Scoped remediation confirmation only: the 17 values named by the 13 findings of the second audit (UR2-01..UR2-13), and nothing else. Unaffected keys were not re-audited; their byte-identity is proved by the inverse-replacement hash below.",
+ "resolved": [
+  {
+   "finding": "UR2-13",
+   "key": "ui.onboarding.tour.agent_capabilities.image.1.alt",
+   "disposition": "fixed",
+   "new_value": "ترتیب سے جڑے ایجنٹ کے کام کے تین مراحل",
+   "note": "«ایجنٹ کے کام کے تین مراحل» — the ezafe form reads correctly."
+  },
+  {
+   "finding": "UR2-03",
+   "key": "ui.onboarding.tour.agent_options.body.1",
+   "disposition": "fixed",
+   "new_value": "منتخب ایجنٹ کے اختیارات دیکھنے کے لیے یہاں کلک کریں، جیسے اس کی ترتیبات دیکھنا، اسے برآمد کرنا یا حذف کرنا۔",
+   "note": "menu action now برآمد, matching ui.agents.dialogs.menu.export."
+  },
+  {
+   "finding": "UR2-06",
+   "key": "ui.onboarding.tour.attachments.body.3",
+   "disposition": "fixed",
+   "new_value": "PNG، JPG اور PDF جیسی تصاویر براہ راست ماڈل کی کانٹیکسٹ ونڈو میں بھیجی جاتی ہیں، اس لیے ماڈل انہیں بغیر کوئی کوڈ چلائے سمجھ سکتا ہے۔ Excel، Word اور CSV جیسی دوسری فائلیں آپ کی ڈیوائس پر موجود فائل پاتھوں کے طور پر شامل کی جاتی ہیں تاکہ ماڈل کی توجہ کوڈ کے ذریعے ان پر کام کرنے پر مرکوز ہو۔ آپ دس لاکھ سطروں والی CSV جیسی بہت بڑی فائلیں بھی منسلک کر کے ایجنٹ سے کوڈ کے ذریعے ان پر کام کروا سکتے ہیں۔",
+   "note": "plural locative «ڈیوائس پر موجود فائل پاتھوں» for «file paths on your device»."
+  },
+  {
+   "finding": "UR2-05",
+   "key": "ui.onboarding.tour.chat_input.list.1.item.3",
+   "disposition": "fixed",
+   "new_value": "کوئی منسلکہ منتخب کریں اور پھر کہیں “اس دستاویز کا فرانسیسی میں ترجمہ کریں۔”",
+   "note": "the ۔ now sits inside the closing quote, as in the two sibling bullets and the English source."
+  },
+  {
+   "finding": "UR2-02",
+   "key": "ui.onboarding.tour.integrations_settings.body.1",
+   "disposition": "fixed",
+   "new_value": "Gmail، Calendar اور Drive جیسی اپنی Google سروسز منسلک کر کے اپنے ایجنٹس کی صلاحیتیں بڑھائیں۔ اس سے ایجنٹس آپ کی اجازت سے آپ کی معلومات تک رسائی اور ان کا انتظام کر سکتے ہیں۔",
+   "note": "services now سروسز, the app's rendering; سہولت remains this file's word for feature."
+  },
+  {
+   "finding": "UR2-02",
+   "key": "ui.onboarding.tour.integrations_settings.title",
+   "disposition": "fixed",
+   "new_value": "اپنی سروسز منسلک کریں",
+   "note": "services now سروسز, the app's rendering; سہولت remains this file's word for feature."
+  },
+  {
+   "finding": "UR2-04",
+   "key": "ui.onboarding.tour.modify_agent_prompt.body.1",
+   "disposition": "fixed",
+   "new_value": "یہ پرامپٹ آپ کو ایجنٹ کے بنیادی رویے کو اپنی مرضی کے مطابق بنانے دیتا ہے۔ اگرچہ زیادہ تر تبدیلیاں ایجنٹ سے بات کر کے کی جا سکتی ہیں (وہ سیکھی گئی باتیں اپنی نوٹ بک میں محفوظ کرتا ہے)، آپ یہاں ورک فلو کی مخصوص ہدایات دے سکتے ہیں جنہیں الگ سے مانا جائے گا۔",
+   "note": "workflow now ورک فلو, matching schedules_overview.body.3 in the same file."
+  },
+  {
+   "finding": "UR2-08",
+   "key": "ui.onboarding.tour.pre_command_palette_open_canvas.body.2.1",
+   "disposition": "fixed",
+   "new_value": "کسی گفتگو تک جلدی پہنچنا ہے؟ ",
+   "note": "idiomatic «کسی گفتگو تک جلدی پہنچنا ہے؟»; the structural trailing space is preserved so the ⌘K span still follows a space."
+  },
+  {
+   "finding": "UR2-01",
+   "key": "ui.onboarding.tour.schedules_overview.body.1",
+   "disposition": "fixed",
+   "new_value": "Local Operator کی ایک طاقتور سہولت یہ ہے کہ آپ ایجنٹس سے کہہ سکتے ہیں کہ وہ باقاعدگی سے خود کام انجام دیں۔ اس سے وہ محض جواب دینے والے ایجنٹ بوٹس سے ایسے پیش قدم ایجنٹس بن جاتے ہیں جو پس منظر میں خود آپ کی مدد کے لیے کام کرتے ہیں، بغیر یہ کہ آپ کو انہیں بار بار کام کرنے کو کہنا پڑے۔",
+   "note": "proactive now پیش قدم (locale term from ui.agents.refusals), matching the app and removing the collision with فعال = Active; grammar holds in all four strings."
+  },
+  {
+   "finding": "UR2-01",
+   "key": "ui.onboarding.tour.schedules_overview.title",
+   "disposition": "fixed",
+   "new_value": "شیڈول والے پیش قدم ایجنٹس",
+   "note": "proactive now پیش قدم (locale term from ui.agents.refusals), matching the app and removing the collision with فعال = Active; grammar holds in all four strings."
+  },
+  {
+   "finding": "UR2-07",
+   "key": "ui.onboarding.tour.upload_agent_hub_dialog.body.1",
+   "disposition": "fixed",
+   "new_value": "یہ ڈائیلاگ آپ کے ایجنٹ کی ہدایات کا مجموعہ کمیونٹی کے ساتھ شائع کرتا ہے۔ اشاعت کے لیے Radient اکاؤنٹ درکار ہے، جو بنانا مفت ہے اور ہر ایجنٹ پر کچھ خرچ نہیں آتا۔ تصدیق سے پہلے آپ تفصیلات کا جائزہ لے سکتے ہیں۔ شائع صرف وہی ہوتا ہے جو ایجنٹ کی وضاحت کرتا ہے — اس کا نام، تفصیل، ہدایات اور ٹولز کی فہرست؛ کوئی گفتگو، ایگزیکیوشن ہسٹری، یادداشت، منصوبہ یا مشین سے متعلق کنفیگریشن آپ کے کمپیوٹر سے باہر نہیں جاتی۔ جمع کرانے سے پہلے یقینی بنائیں کہ آپ کا ایجنٹ مطلوبہ معیار پر پورا اترتا ہے۔",
+   "note": "«ٹولز کی فہرست» for «tool surface»; no longer «ٹول کی سطح»."
+  },
+  {
+   "finding": "UR2-10",
+   "key": "ui.onboarding.tour.upload_agent_hub_dialog.title",
+   "disposition": "fixed",
+   "new_value": "ایجنٹ کو Agent Hub پر اپ لوڈ کریں",
+   "note": "title completed as an imperative: «ایجنٹ کو Agent Hub پر اپ لوڈ کریں»."
+  },
+  {
+   "finding": "UR2-01",
+   "key": "ui.onboarding.tour.welcome.body.1",
+   "disposition": "fixed",
+   "new_value": "Local Operator ایک AI ایجنٹس پلیٹ فارم ہے جو آپ کو پیش قدم AI ایجنٹس کی ایسی ٹیم بنانے دیتا ہے جو آپ کی مدد کرے اور آپ کے روزمرہ کام کا بوجھ کم کرنے میں معاون ہو۔",
+   "note": "proactive now پیش قدم (locale term from ui.agents.refusals), matching the app and removing the collision with فعال = Active; grammar holds in all four strings."
+  },
+  {
+   "finding": "UR2-12",
+   "key": "ui.onboarding.tour.welcome.body.2",
+   "disposition": "fixed",
+   "new_value": "یہ ایجنٹس سادہ چیٹ بوٹس سے مختلف ہیں کیونکہ یہ واقعی آپ کے کمپیوٹر پر آپ کے لیے کام کر سکتے ہیں، جیسے فائلیں بنانا، کوڈ اور تجزیات چلانا، تصاویر، ویڈیوز اور PDF میں ترمیم کرنا، آپ کا سسٹم منظم کرنا اور بہت کچھ۔",
+   "note": "«PDF» undeclined, per the style guide for kept-Latin acronyms."
+  },
+  {
+   "finding": "UR2-11",
+   "key": "ui.onboarding.tour.welcome.body.3",
+   "disposition": "fixed",
+   "new_value": "اس ٹور میں ہم یہ دیکھیں گے:",
+   "note": "«ٹور» now matches the word used by every other tour string (ٹور مکمل, ٹور بند کریں)."
+  },
+  {
+   "finding": "UR2-09",
+   "key": "ui.onboarding.tour.welcome.list.1.item.4",
+   "disposition": "fixed",
+   "new_value": "ایجنٹس کو حسبِ مرضی بنانا",
+   "note": "width reduced 34→25 chars (1.89x→1.39x of English); «حسبِ مرضی» is idiomatic and keeps the meaning."
+  },
+  {
+   "finding": "UR2-01",
+   "key": "ui.onboarding.tour.welcome.list.1.item.6",
+   "disposition": "fixed",
+   "new_value": "پیش قدم ایجنٹس کے لیے شیڈول",
+   "note": "proactive now پیش قدم (locale term from ui.agents.refusals), matching the app and removing the collision with فعال = Active; grammar holds in all four strings."
+  }
+ ],
+ "verification": {
+  "changed_keys": 17,
+  "expected_changed_keys": 17,
+  "extra_changed_keys": [],
+  "missing_expected_changes": [],
+  "key_set": {
+   "english": 123,
+   "context": 123,
+   "target": 123,
+   "key_order_equal_to_baseline": true,
+   "added": [],
+   "removed": []
+  },
+  "inverse_replacement": {
+   "method": "replace the 17 changed JSON member lines in the new file with the audited baseline lines, then hash",
+   "sha256": "49089358f48ef8807c380736444e18569772e97e46105b727f7552a9088ed028",
+   "equals_audited_baseline": true,
+   "target_unchanged_keys_proved_byte_identical": true
+  },
+  "placeholders_and_icu": "N/A and verified: the source is parameterless and no value in the file (changed or unchanged) contains { or }; CLDR categories are therefore not exercisable in this namespace.",
+  "structural_spaces": {
+   "touched_fragments": [
+    "ui.onboarding.tour.pre_command_palette_open_canvas.body.2.1"
+   ],
+   "leading_trailing_whitespace_equal_to_baseline": true,
+   "all_changed_values_whitespace_equal_to_baseline": true
+  },
+  "joined_render": {
+   "fragment": "کسی گفتگو تک جلدی پہنچنا ہے؟ ",
+   "render": "کسی گفتگو تک جلدی پہنچنا ہے؟ ⌘K میک پر اور Ctrl+K ونڈوز یا لینکس پر دبائیں، تو پیلیٹ کھلتے ہی آپ کی چیٹس تلاش کر رہا ہوگا، تاکہ آپ سیدھے کسی ایک پر پہنچ جائیں — …",
+   "chords": "⌘K / Ctrl+K supplied by the real keycap source (expedited door); joined text reads correctly and the space before the chord is preserved. Full second sentence uses ⌘⇧P / Ctrl+Shift+P unchanged.",
+   "render_note": "Truncated after the first 160 characters of the exact caller-order composition; the remainder is body.2.3 (unchanged) plus the second sentence's ⌘⇧P / Ctrl+Shift+P pair. No word is paraphrased in the quoted prefix."
+  },
+  "encoding": {
+   "utf8": true,
+   "bom": false,
+   "nfc_all_changed_values": true,
+   "control_or_format_chars_in_changed_values": "none",
+   "ascii_sentence_punctuation_in_changed_values": "none"
+  },
+  "width": {
+   "key": "ui.onboarding.tour.welcome.list.1.item.4",
+   "before_chars": 34,
+   "after_chars": 25,
+   "english_chars": 18,
+   "before_ratio": 1.89,
+   "after_ratio": 1.39,
+   "within_1_5x": true
+  },
+  "new_defects_found": 0
+ },
+ "checks": {
+  "only_claimed_changes_present": "PASS — exactly the 17 expected members differ; no extra or missing key; key order unchanged.",
+  "semantic_soundness": "PASS — each new value states what its English source says; no meaning, register or grammar regression was found in the 17 values (see resolved[].note).",
+  "unchanged_values": "PASS — inverse-replacement reconstruction is byte-identical to the audited baseline (49089358…).",
+  "no_new_defect": "PASS — no new terminology drift, calque, punctuation, spacing, encoding or bidi-control issue was introduced; the fixed terms now agree with the app's own ur labels.",
+  "limits": "String-level only: no browser, OS launch, build, test suite or install; no rendered, Nastaliq-shaping or mixed-direction pixel claim is made."
+ },
+ "status": "clean",
+ "result": "clean",
+ "findings": [],
+ "findings_by_severity": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 0
+ },
+ "verdict": "CONFIRMED CLEAN — all 17 claimed value changes are present and semantically sound; every other value in ui.onboarding.tour is byte-identical to the audited baseline by inverse-replacement hash; no new defect introduced. Scoped to the remediation delta (UR2-01..UR2-13); this is not a re-audit of unaffected keys and not a rendered or native sign-off.",
+ "limitations": "Scoped confirmation of uncommitted working-tree bytes at HEAD 405e69c; the receipt commits nothing. Rendered fit, Nastaliq shaping and mixed-direction isolation remain UNVERIFIED (no browser host). No other locale was read, verified or written by this auditor."
+}

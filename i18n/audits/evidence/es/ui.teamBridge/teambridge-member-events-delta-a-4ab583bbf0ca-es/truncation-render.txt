@@ -1,0 +1,13 @@
+===== es
+  events.others(3 hidden)      : 3 más
+  invited      shown (5 names, 3 hidden): Dana invitó a Ava, Ben y 3 más
+               full  (5 names)            : Dana invitó a Ava, Ben, Sana, Ravi y Cleo
+  joined       shown (5 names, 3 hidden): Entrada en la conversación: Ava, Ben y 3 más
+               full  (5 names)            : Entrada en la conversación: Ava, Ben, Sana, Ravi y Cleo
+  declined     shown (5 names, 3 hidden): Dana rechazó la invitación para Ava, Ben y 3 más
+               full  (5 names)            : Dana rechazó la invitación para Ava, Ben, Sana, Ravi y Cleo
+  withdrawn    shown (5 names, 3 hidden): Dana retiró la invitación para Ava, Ben y 3 más
+               full  (5 names)            : Dana retiró la invitación para Ava, Ben, Sana, Ravi y Cleo
+  declined_self                : Dana rechazó la invitación
+  owner_added_agent            : Dana añadió a su agente Ava
+  unknown                      : Cambio en los miembros

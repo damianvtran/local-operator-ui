@@ -294,6 +294,24 @@ export type DesktopFeature =
 	 * capability must never wake it up. See `team-bridge-reaction-gate.ts`.
 	 */
 	| "team_bridge_reactions"
+	/**
+	 * Structured `mentions[]` on a Team Bridge send (local-operator #3204).
+	 * Absent: the composer still inserts readable `@Name` text but sends no
+	 * `mentions`, because an older backend refuses the unknown field.
+	 */
+	| "team_bridge_send_mentions"
+	/**
+	 * The owner's own agent's per-conversation wake level: the conversation
+	 * menu's "Wake your agent for" group, writing
+	 * `PUT /v1/desktop/team-bridge/conversations/{id}/agent-notify`.
+	 *
+	 * ITS OWN KEY because a released runtime without that route answers every
+	 * pick with a 404, which the menu could only surface as "try again" when no
+	 * retry will ever succeed (review round 1, R1-3). Absent or below version,
+	 * the group is not drawn at all; local-operator advertises it in
+	 * `server/features.py` with the route.
+	 */
+	| "team_bridge_agent_notify"
 	| "auth"
 	| "settings"
 	| "commands"

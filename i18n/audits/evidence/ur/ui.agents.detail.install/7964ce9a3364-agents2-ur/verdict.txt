@@ -1,0 +1,2 @@
+PASS
+All 14 values keep their English claim, all 16 round-1 findings are fixed on the current bytes, and no BLOCKER or MAJOR remains — 0 BLOCKER, 0 MAJOR, 3 MINOR, 1 NIT (one MINOR introduced by the correction itself).

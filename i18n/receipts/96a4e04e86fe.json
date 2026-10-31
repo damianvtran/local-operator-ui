@@ -1,0 +1,156 @@
+{
+  "schema": 1,
+  "locale": "ru",
+  "namespace": "ui.onboarding.tour",
+  "date": "2026-10-25",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "audit_kind": "first-full-namespace",
+  "instance": "96a4e04e86fe",
+  "auditor": "translation-auditor (independent first audit of ru/ui.onboarding.tour, team lopdev)",
+  "model": "radient/auto",
+  "source": {
+    "commit": "b3dd694c1702e36239cb7da94d636a02318d13ad",
+    "worktree": ".worktrees/i18n-onboarding",
+    "en_path": "src/i18n/catalogues/en/ui.onboarding.tour.json",
+    "context_path": "src/i18n/catalogues/en/ui.onboarding.tour.context.json",
+    "context_coverage": "123/123 keys carry a sidecar entry; ui.onboarding.tour is NOT listed in i18n/context-allowance.json, so no key was translated blind"
+  },
+  "target": {
+    "path": "src/i18n/catalogues/ru/ui.onboarding.tour.json",
+    "state": "uncommitted untracked candidate in the i18n-onboarding worktree, supplied by independent translator job 8508ef4fc2ac; it is NOT part of, and is NOT claimed to belong to, source commit b3dd694c. This receipt binds the exact candidate bytes below.",
+    "bytes": 30061
+  },
+  "sha256": {
+    "en": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+    "context": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906",
+    "ru": "00f98928bd9ae394723e11cc661f75ab077d880820f4d0cdf297ea2b29ebb710"
+  },
+  "translator": {
+    "job": "8508ef4fc2ac",
+    "model": "radient/auto",
+    "agent": "not asserted by this auditor - the manager records the translator's agent name from that job; independence here is agent- and session-level, not model-level"
+  },
+  "keys_read": 123,
+  "scope": "Independent first audit of every value in ru/ui.onboarding.tour at the bound hashes, read as full English + sidecar context + ru side by side, plus the caller composition in tour-copy.ts/tour-steps.ts. No unchanged application code, no other namespace and no glossary redesign was reviewed.",
+  "findings": [
+    {
+      "id": "A1",
+      "severity": "minor",
+      "key": "ui.onboarding.tour.canvas_files_view.body.1",
+      "current": "Здесь можно просматривать и открывать файлы, созданные агентами или относящиеся к текущему разговору. Отсюда удобно быстро переходить к нужным файлам в рабочем пространстве холста и сразу открывать их.",
+      "english": "The Files view lets you browse and open files that your agents have created or that are relevant to your current conversation. Use this to quickly access, preview, and open files in the Canvas workspace.",
+      "proposed": "Здесь можно просматривать и открывать файлы, созданные агентами или относящиеся к текущему разговору. Отсюда удобно быстро открывать файлы в рабочем пространстве холста и просматривать их.",
+      "reason": "The second sentence lists only access and open; the source's third capability, \"preview\", has no counterpart, and the first sentence's «просматривать» already renders \"browse\", so preview is lost rather than merged."
+    },
+    {
+      "id": "A2",
+      "severity": "minor",
+      "key": "ui.onboarding.tour.schedules_overview.body.3",
+      "current": "Здесь можно просматривать, создавать и управлять всеми запланированными задачами в одном месте — чтобы упорядочить работу и не пропускать важные действия.",
+      "english": "Here, you can view, create, and manage all your scheduled tasks in one place to streamline your workflow and ensure important actions happen automatically.",
+      "proposed": "Здесь можно просматривать, создавать и управлять всеми запланированными задачами в одном месте — чтобы упорядочить работу и чтобы важные действия выполнялись автоматически.",
+      "reason": "\"ensure important actions happen automatically\" became «не пропускать важные действия» (so the user does not miss them), which swaps the feature's automatic-execution promise for an attention claim."
+    },
+    {
+      "id": "A3",
+      "severity": "minor",
+      "key": "ui.onboarding.tour.download_agent.title",
+      "current": "Загрузите агента",
+      "english": "Download an agent",
+      "proposed": "Скачайте агента",
+      "reason": "One ru verb «загрузить» now carries both directions in this tour: this Download step and upload_agent_hub_dialog.title «Загрузите агента в хаб» / upload_agent_hub.body.1 «загрузите его в Хаб агентов» (Upload). The locale already renders \"Download\" as «Скачать» (ui.library.menu.download, ui.library.preview.download); only ui.hub.skills.download uses «Загрузить». Direction is recoverable from «в хаб» in the upload steps but not from this title alone."
+    },
+    {
+      "id": "A4",
+      "severity": "nit",
+      "key": "ui.onboarding.tour.pre_command_palette_open_canvas.body.1.5",
+      "current": " для агентов и команд; ",
+      "english": " for agents and teams, ",
+      "proposed": " для агентов и команд, ",
+      "reason": "Joined in run order the enumeration reads «…: # для чатов, @ для агентов и команд; , для настроек и > для команд и страниц.» — two separators (comma, semicolon) inside one list whose last member is joined by «и»; a semicolon is only needed when a member itself contains commas."
+    },
+    {
+      "id": "A5",
+      "severity": "nit",
+      "key": "ui.onboarding.tour.chat_input.list.1.item.3",
+      "current": "«Прикрепите файл, а затем напишите: „Переведите этот документ на французский“.»",
+      "english": "Select an attachment and then \"translate this document to French.\"",
+      "proposed": "«Прикрепите файл, а затем — „Переведите этот документ на французский“.»",
+      "reason": "Recorded, not demanded: «напишите:» is an addition the source does not have and makes the third bullet a two-part instruction where the other two are bare quoted requests; the addition does clarify what the quote is for, so this is an optional consistency choice."
+    },
+    {
+      "id": "A6",
+      "severity": "nit",
+      "key": "ui.onboarding.tour.agent_naming_guidelines.body.1",
+      "current": "Дайте агенту понятное описательное имя, отражающее его назначение (например, «Организатор файлов» или «Веб-исследователь»).",
+      "english": "Give your agent a clear, descriptive name that reflects its purpose (e.g., \"File Organizer\" or \"Web Researcher\").",
+      "proposed": "Дайте агенту понятное и содержательное имя, отражающее его назначение (например, «Организатор файлов» или «Исследователь интернета»).",
+      "reason": "«описательное имя» and «Веб-исследователь» are word-for-word calques; «содержательное/говорящее имя» is what a native editor writes, and «Веб-исследователь» is not a Russian agent name a user would type."
+    },
+    {
+      "id": "A7",
+      "severity": "nit",
+      "key": "ui.onboarding.tour.schedules_overview.body.1",
+      "current": "Так агенты превращаются из реактивных ботов в проактивных помощников: они работают в фоне самостоятельно и поддерживают вас, и вам не нужно постоянно их просить.",
+      "english": "This turns them from reactive agent bots to proactive agents that work on their own in the background to support you without you needing to continually ask them to do things.",
+      "proposed": "Так агенты превращаются из реактивных ботов в проактивных агентов: они работают в фоне самостоятельно и поддерживают вас — и вам не нужно постоянно их просить.",
+      "reason": "Glossary drift: the English turns bots into agents, the ru turns them into «помощники» (helpers), so the term the glossary fixes (agent → агент) disappears from the sentence that defines the product's agents; the clause also carries two coordinating «и» in a row."
+    },
+    {
+      "id": "A8",
+      "severity": "nit",
+      "key": "ui.onboarding.tour.upload_agent_hub_dialog.body.1",
+      "current": "Для публикации нужна учётная запись Radient: её можно создать бесплатно, и она ничего не стоит за каждого агента. <…> ни разговоры, ни история выполнения, ни память, ни план, ни конфигурация конкретного компьютера не покидают ваше устройство.",
+      "english": "You need a Radient account to publish, which is free to create and costs nothing per agent. <…> no conversation, execution history, memory, plan or machine-specific configuration leaves your computer.",
+      "proposed": "Для публикации нужна учётная запись Radient: её можно создать бесплатно, и публикация каждого агента ничего не стоит. <…> ни конфигурация конкретного компьютера не покидает ваш компьютер.",
+      "reason": "«ничего не стоит за каждого агента» is not idiomatic (the per-item sense needs «публикация … ничего не стоит»), and the privacy promise ends on «устройство» where the source names the computer."
+    },
+    {
+      "id": "A9",
+      "severity": "nit",
+      "key": "ui.onboarding.tour.pre_command_palette_open_canvas.body.2.5",
+      "current": " в Windows или Linux открывают её на собственных командах и страницах приложения, если нужны именно они.",
+      "english": " on Windows or Linux opens it on the app's own commands and pages when that is what you are after.",
+      "proposed": " в Windows или Linux открывает её на собственных командах и страницах приложения, если нужны именно они.",
+      "reason": "The clause's subject is one key combination (⌘⇧P); the plural «открывают» treats it as several things, and the parallel clause just before it avoided the agreement entirely («палитра откроется»), so the two halves of one sentence handle the same construction differently."
+    }
+  ],
+  "mechanical": {
+    "key_parity": "123 keys en, 123 keys ru, 123 context entries; parsed key lists are identical AND in identical order (set and sequence both compared).",
+    "duplicate_keys": "none in either file - raw byte scan of quoted key members found 123 distinct members in en and 123 in ru (JSON.parse alone cannot see duplicates, so the scan was done on the bytes).",
+    "placeholders_and_icu": "namespace is parameterless END TO END: 0 '{' or '}' characters in any of the 123 en values and 0 in the ru values, no ICU plural/select, no %s, no <tag> markup, and none of the 123 keys appears with a parameter object in src/i18n/keys.gen.ts. NO PLURAL TEST WAS APPLIED because there is no plural message in this namespace to test; inventing one would prove nothing. Callers render these as plain strings through t(key) in tour-copy.ts.",
+    "fragment_spacing": "structural leading/trailing spaces compared key by key: every fragment that starts or ends with a space in English does so in ru, and no ru fragment adds or drops one (this is what keeps the <code> keycaps joined correctly).",
+    "shortcut_sentence_joined": "pre_command_palette_open_canvas.body.1 was rendered in actual run order with the real paletteDoorLabel() values (⌘P / Ctrl+P, #, @, ',', >) and body.2 with (⌘K / Ctrl+K, ⌘⇧P / Ctrl+Shift+P): ru reads «…нажав ⌘P на Mac и Ctrl+P в Windows или Linux…» and «Нажмите ⌘K … — палитра откроется уже с поиском по чатам…, а ⌘⇧P … открывают её…». Keycaps stay Latin, undeclined, and the ru connector « на Mac и » preserves the two spaces the run order relies on.",
+    "unicode": "both files NFC; no BOM; UTF-8; ru ends with a newline; no U+00A0/U+202F, no zero-width or bidi control characters (Cf/Cc scan), no double spaces inside ru values.",
+    "punctuation": "0 exclamation marks (ru guide forbids «!»), 0 \"...\" (ellipsis not needed here), 0 hyphen-as-dash, 32 em dashes all spaced ' — ', 17 «ёлочки» pairs balanced, 2 nested „лапки“ pairs closed, 0 straight double quotes, parentheses balanced 4/4.",
+    "register": "formal «вы» throughout: no ты/тебя/тебе/твой forms anywhere, no capitalised «Вы» mid-sentence, no added «Пожалуйста» where the source has none (the one «пожалуйста» in select_model.body.1 answers an explicit \"please\"), sentence case everywhere, no Title Case.",
+    "hidden_english": "every Latin run in the ru file was inventoried and checked one by one: Local Operator, Radient, Radient Pass, Radient Automatic, PDF/CSV/JPG/PNG, Excel/Word, HTML/iframe/Markdown/mermaid, Gmail/Google Drive/Календарь, GitHub Issues, Cmd/Ctrl+K, Mac, Windows/Linux are all keep-as-is tokens. No untranslated English sentence survives.",
+    "established_ui_terms_checked_against_the_app": "«Настройки агента» = ui.agents.dialogs.menu.settings (EN \"View agent settings\"); «Создать расписание» = ui.schedules.schedule_form_dialog.create_schedule; «Получить» = ui.onboarding.search.row.get_your (EN \"Get\"); «Поиск» = ui.shell.sidebar_navigation.search; «Хаб агентов» = ui.shell.sidebar_navigation.agent_hub; «Расписания» = ui.shell.sidebar_navigation.schedules; «Настройки» = ui.shell.sidebar_navigation.settings; «боковая панель» = ui.shell.sidebar_navigation.close_sidebar; the three heading keys translate \"Documents view / Files view / Variables view\" literally as «Просмотр документов / Просмотр файлов / Просмотр переменных», which matches the canvas tab nouns in ui.canvas.shell.* («Документы», «Переменные») without renaming a control. The tour names the controls the ru UI actually shows.",
+    "figures": "the two alt keys describe the wordless structural figures the code draws, not screenshots: welcome.image.1.alt (rail + two message bubbles + composer) and agent_capabilities.image.1.alt (three nodes joined by connectors). Both ru texts describe exactly that geometry and contain no «скриншот» or stale-pixel claim.",
+    "close_tour_label": "action.close «Закрыть обзор» reads as closing the walkthrough, not the app, and stays 13 characters against the 10-character source (1.3x, inside the sidecar's ~1.5x budget). It also matches the locale's own rendering of \"tour\" as «обзор» (ui.settings.tour.title «Обзор приложения», ui.settings.tour.action «Начать обзор»)."
+  },
+  "observations": [
+    "Canvas → «холст» in this namespace is consistent with the locale's dominant choice (23 of 25 ru keys that mention Canvas use «холст»), including the pane's own ru label. The two keys whose en context says Canvas stays untranslated already carry a recorded minor elsewhere (i18n/receipts/ru-bind-1f6d86a128e7.json); that is a pre-existing locale question, out of this audit's scope, and no new finding is raised here.",
+    "select_provider.body.1 quotes the mode as «Automatic» in Latin while two ru sidecars render the same mode as «Автоматически» (ui.common.models.model_select… and ui.agents.settings.general…, both «Рекомендуется: «Автоматически»»). Not raised against the tour: the picker's own option label appears to come from backend data (a Storybook fixture names it \"Automatic\"), so the tour may be the accurate one and those two keys the outliers. Flagged for the owners of those namespaces, not fixed here.",
+    "«провайдер» for \"hosting provider\" (select_provider.title, click_view_settings_from_chat.body.1, general_settings.body.1) matches the ru field label ui.common.models.hosting_select.hosting_provider «Провайдер», which is what the user sees; ui.agents.settings prose says «провайдера хостинга». Pre-existing app-side variance, out of scope.",
+    "«обзор» for tour/walkthrough is consistent across this namespace (welcome.body.3, agent_list.body.2, action.close, tour_complete.title) and with ui.settings.tour.*."
+  ],
+  "overflow_risk": {
+    "method": "character ratio and absolute length only - no rendered or pixel measurement was performed (see limitations)",
+    "at_or_over_1_5x": "ui.onboarding.tour.canvas_files_view.title «Просмотр файлов» (10 -> 15 characters, exactly 1.5x against the sidecar's ~1.5x heading budget) and ui.onboarding.tour.action.finish «Завершить» (6 -> 9, 1.5x).",
+    "longest_single_line_headings": "canvas_feature.title «Холст: ваше визуальное рабочее пространство» (43 characters, 1.30x), welcome.title «Добро пожаловать в Local Operator» (33, 1.32x), radient_account_settings.title «Учётная запись Radient» (22, 1.47x).",
+    "paragraphs": "no length cap in the sidecar; the three longest ru paragraphs are within ~1.05x of English (upload_agent_hub_dialog.body.1 501 vs 481).",
+    "action": "the two 1.5x one-line strings are the ones to check in a rendered pass; nothing here was measured on pixels."
+  },
+  "limitations": [
+    "No rendered or pixel validation: the resource hold ruled out builds, dev servers and browser launches. Overflow is a character-ratio risk list, not a measurement. Measured at audit time: vm.swapusage used 12568.9 MiB of 13312.0 MiB, so the high-swap half of the hold bound; df showed about 31 GiB free, so the <5 GiB disk half did not.",
+    "No native-speaker sign-off. This is an independent agent audit by a different agent and session from the translator, which is what docs/I18N.md and ledger-check require; it is not a human review.",
+    "The auditor ran on radient/auto - the same declared model alias as the translator job. Independence is agent- and session-level (translation-auditor session 96a4e04e86fe vs translator job 8508ef4fc2ac), not model-level; a cross-model audit would be stronger and is disclosed here rather than implied.",
+    "No pseudo-localization run and no pseudo-expansion of production copy; that was explicitly out of scope for this pass.",
+    "The candidate ru file is untracked and uncommitted. Source commit, en and context hashes describe committed bytes; the ru hash describes the candidate exactly as supplied. If the candidate changes, this receipt is stale and must not be reused.",
+    "The audit tool redacted one English token in its own output (the Noun in welcome.list.1.item.3, \"The canvas ⟨redacted⟩\"). It was not reconstructed; that key was judged from its sidecar note, the locale glossary's ru rendering of the term and the ru text itself.",
+    "Read-only `git status --porcelain` and `git rev-parse HEAD` were run twice (start and end) to confirm the worktree head b3dd694c and that the candidate is untracked. No branch, index, catalogue, ledger or generated-file operation was performed."
+  ],
+  "note": "0 blocker, 0 major, 3 minor (A1-A3), 6 nits (A4-A9). Verdict: pass with findings. Every one of the 123 values was read in English+context+ru; the four ledger-relevant mechanical classes (parity, placeholders/ICU, unicode, register) are clean."
+}

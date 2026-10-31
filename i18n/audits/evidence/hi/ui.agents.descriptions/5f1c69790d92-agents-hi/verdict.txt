@@ -1,0 +1,2 @@
+PASS
+14/14 hi values carry the English claim with no dropped or added meaning and no broken token; 4 MINOR (one wording, one orthography, one fit measurement) and 4 NIT recorded, 0 BLOCKER, 0 MAJOR.

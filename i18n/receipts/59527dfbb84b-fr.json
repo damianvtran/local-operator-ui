@@ -1,0 +1,138 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "model": "radient/auto (harness launch selector explicit_model; concrete routed upstream provider/model not exposed in this session transcript)",
+  "instance": "59527dfbb84b",
+  "locale": "fr",
+  "namespace": "ui.onboarding.tour",
+  "date": "2026-10-25",
+  "status": "changes_requested",
+  "independence": "Independent auditor: translation-auditor, a different agent run from the translator session 52d18db33cf5 (job 2660ff7c036b). Audited the frozen source and the uncommitted candidate from disk; did not edit the catalogue, source, ledger or generated files.",
+  "scope": {
+    "source_ref": "b3dd694c1702e36239cb7da94d636a02318d13ad",
+    "source_commit_contains_target": false,
+    "candidate": "uncommitted working-tree file src/i18n/catalogues/fr/ui.onboarding.tour.json; not present in any commit at the audited head",
+    "source_status": "committed at the frozen ref; worktree clean apart from the untracked target catalogues",
+    "keys_read": 123,
+    "keys_total": 123,
+    "context_entries_read": 123,
+    "namespaces": ["ui.onboarding.tour"]
+  },
+  "provenance": {
+    "translator_session": "52d18db33cf5",
+    "translator_job": "2660ff7c036b",
+    "translator_model": "launch-selector radient/auto per parent task receipt (selection: explicit_model); concrete routed provider/model unavailable: the translator reported it cannot see its own model in its transcript, so no exact upstream model is claimed",
+    "auditor_model": "radient/auto (harness launch selector; concrete routed upstream provider/model not available in transcript)",
+    "glossary": {
+      "path": "i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "i18n/style-guides/fr.md",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    }
+  },
+  "source_sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+  "context_sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906",
+  "target_sha256": "38cbe51d8ace1f257f91d4625408869eea1166838cb2f19c3207184a7b3304d4",
+  "target_bytes": 22838,
+  "findings": [
+    {
+      "severity": "major",
+      "id": "FR-TOUR-01",
+      "keys": [
+        "ui.onboarding.tour.agent_hub_view.title",
+        "ui.onboarding.tour.agent_list.body.2",
+        "ui.onboarding.tour.navigate_agent_hub.body.1",
+        "ui.onboarding.tour.upload_agent_hub.body.1",
+        "ui.onboarding.tour.welcome.list.1.item.5",
+        "ui.onboarding.tour.upload_agent_hub_dialog.title"
+      ],
+      "current": "L’Agent Hub / depuis l’Agent Hub / l’icône « Agent Hub » / sur l’Agent Hub / L’Agent Hub pour partager et collaborer / Publier un agent sur le hub",
+      "proposed": "Le Hub des agents / depuis le Hub des agents / l’icône « Hub des agents » / sur le Hub des agents / Le Hub des agents pour partager et collaborer / Publier un agent sur le hub (or « Hub des agents » consistently)",
+      "reason": "The step context requires the quoted label to match the control: the French sidebar and command palette label this destination « Hub des agents » (ui.shell.sidebar_navigation.agent_hub, ui.command_palette.use_palette_sources.agent_hub), and « Agent Hub » renders nowhere in the fr UI; the tour both quotes a label that does not exist and uses two spellings for one surface. Align the tour on « Hub des agents » (or reverse the locale decision and change the shell label — one term must win)."
+    },
+    {
+      "severity": "minor",
+      "id": "FR-TOUR-02",
+      "keys": ["ui.onboarding.tour.download_agent.body.1"],
+      "current": "cliquez sur le bouton « Obtenir »",
+      "proposed": "cliquez sur le bouton « Obtenir » once the hub Get control is keyed; today the rendered control still reads \"Get\"",
+      "reason": "The context requires the quoted control label to match the app, but the Agent Hub card still renders the hardcoded English \"Get\" (src/renderer/src/features/agent-hub/components/agent-card.tsx:413, aria-label \"Download …\"), so no « Obtenir » button exists in fr. Root cause is outside this namespace (unlocalized hub control), hence minor for this candidate; route the hub label to the owning namespace and keep the tour in step with it."
+    },
+    {
+      "severity": "minor",
+      "id": "FR-TOUR-03",
+      "keys": ["ui.onboarding.tour.navigate_agent_hub.body.1"],
+      "current": "dans la barre de navigation",
+      "proposed": "dans la barre latérale",
+      "reason": "The app region that holds this icon is named « barre latérale » throughout the fr shell (ui.shell.sidebar_navigation.close_sidebar/collapse_sidebar/expand_sidebar/show_in_sidebar), and the same tour calls it « barre latérale » in the command-palette step; « barre de navigation » is a new term for the same region and gives the user nothing to look for."
+    },
+    {
+      "severity": "minor",
+      "id": "FR-TOUR-04",
+      "keys": ["ui.onboarding.tour.create_new_agent.body.1"],
+      "current": "pour créer un tout nouvel agent de zéro",
+      "proposed": "pour créer un tout nouvel agent à partir de zéro",
+      "reason": "« créer de zéro » is a calque of \"from scratch\"; the idiomatic French is « à partir de zéro » or « de toutes pièces »."
+    },
+    {
+      "severity": "minor",
+      "id": "FR-TOUR-05",
+      "keys": ["ui.onboarding.tour.canvas_documents_view.body.3"],
+      "current": "surlignez le texte que votre agent doit améliorer",
+      "proposed": "surlignez le texte que vous voulez que votre agent améliore",
+      "reason": "The source is \"highlight any text that you want your agent to improve\": the definite « le texte » drops \"any\", and « doit améliorer » turns the user's wish into the agent's obligation."
+    },
+    {
+      "severity": "nit",
+      "id": "FR-TOUR-06",
+      "keys": ["ui.onboarding.tour.canvas_documents_view.body.4"],
+      "current": "en s’appuyant sur ses souvenirs et son contexte",
+      "proposed": "en s’appuyant sur sa mémoire et son contexte",
+      "reason": "The product term for the agent's stored memory is « mémoire » (ui.canvas.variables_viewer code memory, and this namespace's own « aucune mémoire »); « souvenirs » reads as human recollections and is the only occurrence."
+    },
+    {
+      "severity": "nit",
+      "id": "FR-TOUR-07",
+      "keys": ["ui.onboarding.tour.pre_command_palette_open_canvas.body.2.1"],
+      "current": "Pressé d’ouvrir une conversation ?",
+      "proposed": "Besoin d’ouvrir une conversation rapidement ?",
+      "reason": "The elliptical « Pressé » is an informal, masculine-only address inside an otherwise vous-register tour; a neutral formulation keeps the conversational tone without implying tu or a gender."
+    },
+    {
+      "severity": "nit",
+      "id": "FR-TOUR-08",
+      "keys": ["ui.onboarding.tour.select_model.body.1"],
+      "current": "un modèle que vous vous attendez à voir recommandé n’y figure pas",
+      "proposed": "un modèle que vous vous attendiez à voir recommandé n’y figure pas",
+      "reason": "Heavy double pronoun plus « à voir »; the imperfect reads more naturally and matches the hypothetical « si » clause."
+    },
+    {
+      "severity": "nit",
+      "id": "FR-TOUR-09",
+      "keys": ["ui.onboarding.tour.attachments.body.4"],
+      "current": "puis de demander à votre agent de le coder",
+      "proposed": "puis de demander à votre agent d’essayer de le coder",
+      "reason": "The source asks the agent to \"try to code it\"; dropping « essayer » removes the hedge that the English deliberately keeps."
+    }
+  ],
+  "notes": [
+    "INFO: the three quoted example prompts (chat_input.list.1.item.1/.2/.3) use tu imperatives (« Crée », « Cherche », « traduis ») while the tour addresses the reader with vous. The context classifies that quoted text as example user input, not product copy, so this is recorded as an observation, not a defect; item.3 does mix vous (« Sélectionnez ») and tu (« traduis ») in one string, which a native reviewer may still smooth.",
+    "Length risks (recorded separately, not findings): select_provider.title 23→36 characters (1.57x against the context's \"about 1.5x\" guidance; « Choisir un fournisseur d’hébergement » matches the established UI term, so keep unless rendered width fails); welcome.image.1.alt 60→96 (1.60x; accessible label, no cap stated); the command-palette fragment body.1.4 grows 12→25 (no cap; a fragment). All other headings and bullets stay within the stated 1.5x guidance.",
+    "Out of scope / not performed: no rendered-frame or native-speaker sign-off — the browser host is blocked in this session; this receipt is a text audit only and is not evidence of rendered fit."
+  ],
+  "carried_checks": {
+    "keys": "123 English keys and 123 fr keys; identical key order; no missing, extra or duplicate keys; 123 context entries, same keys",
+    "encoding": "UTF-8 without BOM, LF, tab indent, single trailing newline; target 22838 bytes as claimed",
+    "normalization": "all keys and values NFC; no bidi/format control characters",
+    "icu": "123/123 messages parse with @formatjs/icu-messageformat-parser on both sides; every message is literal-only with zero ICU argument nodes, matching the parameterless source; CLDR plural categories not applicable",
+    "placeholders": "no {placeholder}, %s or <tag> tokens in either side; none dropped or renamed",
+    "markup": "no HTML/markup characters in any value; rendering escapes are structural in tour-copy.ts",
+    "fragments": "the 10 command-palette fragments keep the source's exact leading/trailing whitespace in all cases; joined in the real run order from tour-copy.ts (⌘K/Ctrl+K on Mac/Windows-Linux, #, @, comma, > prefixes; ⌘O/Ctrl+O and ⌘P/Ctrl+P doors) the French sentences read correctly and the literal tokens stay byte-identical",
+    "typography": "54 U+202F narrow no-break spaces before : ; ! ? and inside « »; no plain-space punctuation, no straight apostrophes, no double spaces, no mojibake",
+    "register": "vous throughout the product copy (62 occurrences); no tu/ton/ta/tes/te pronouns",
+    "labels_checked": "« Voir les paramètres de l’agent » = ui.agents.dialogs.menu.settings; « Créer une planification » = ui.schedules.schedule_form_dialog.create_schedule; « Recommandé » = ui.common.models.model_select.recommended; « Automatique » = ui.common.models.model_select… tested label; « Rechercher » = ui.shell.sidebar_navigation.search; « Planifications » = ui.shell.sidebar_navigation.schedules; « + » control literal",
+    "glossary": "workspace → espace de travail; schedule → planification; agent → agent; tool → outil; prompt kept; model → modèle; team → équipe; job/task → tâche — all consistent"
+  }
+}

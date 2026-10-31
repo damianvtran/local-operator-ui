@@ -1,0 +1,23 @@
+# pnpm check-i18n — actual output, delta round auditor B (session 94934cc4a6fd), 2026-10-30 21:23:44 EDT
+# repo: /Users/damian/local-operator-ui/.worktrees/member-events  head: 1eeb46187ce
+# state: the seven locale catalogues are uncommitted working-tree modifications; this run is on those bytes.
+
+$ pnpm check-i18n:catalogues && pnpm check-i18n:added-strings && pnpm check-i18n:coverage
+$ node scripts/i18n/generate.mjs --check && node scripts/i18n/check-duplicates.mjs && node scripts/i18n/check-strings.mjs && node scripts/i18n/ledger-check.mjs && node scripts/i18n/context-parity.mjs
+/Users/damian/local-operator-ui/.worktrees/member-events/src/i18n/keys.gen.ts is byte-identical to a fresh generation.
+check-duplicates: ok — 988 file(s) scanned, 0 duplicate key(s)
+check-strings.mjs: ok — 1445 file(s) scanned, 0 literal(s) at or below the baseline
+ledger-check: es/ui.teamBridge: status is "changes_requested", not "audited" — an unaudited locale must not ship
+ledger-check: es/ui.teamBridge: auditor 1 result is "changes_requested", not a passing result (clean / clean-with-findings) - a failed or unrecorded audit cannot back an "audited" entry
+ledger-check: fr/ui.teamBridge: status is "changes_requested", not "audited" — an unaudited locale must not ship
+ledger-check: fr/ui.teamBridge: auditor 1 result is "changes_requested", not a passing result (clean / clean-with-findings) - a failed or unrecorded audit cannot back an "audited" entry
+ledger-check: hi/ui.teamBridge: status is "changes_requested", not "audited" — an unaudited locale must not ship
+ledger-check: hi/ui.teamBridge: auditor 1 result is "changes_requested", not a passing result (clean / clean-with-findings) - a failed or unrecorded audit cannot back an "audited" entry
+ledger-check: ur/ui.teamBridge: status is "changes_requested", not "audited" — an unaudited locale must not ship
+ledger-check: ur/ui.teamBridge: auditor 1 result is "changes_requested", not a passing result (clean / clean-with-findings) - a failed or unrecorded audit cannot back an "audited" entry
+ledger-check: ur/ui.teamBridge: auditor 2 result is "changes_requested", not a passing result (clean / clean-with-findings) - a failed or unrecorded audit cannot back an "audited" entry
+ledger-check: FAILED — 9 finding(s) across 770 ledger entr(ies)
+[ELIFECYCLE] Command failed with exit code 1.
+[ELIFECYCLE] Command failed with exit code 1.
+
+# exit code: 1 (ledger-check: 4 rows changes_requested)

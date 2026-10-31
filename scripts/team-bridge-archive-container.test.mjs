@@ -548,3 +548,66 @@ test("U3: the Archived view lists channels only, never an archived DM or group",
 		await app.close();
 	}
 });
+
+/*
+ * FIRST-LOAD LANDING, THROUGH THE REAL CONTAINER (code review round 1, m2). The
+ * model tests pin `defaultLandingConversation`; this pins the container effect
+ * that calls it, so a page that stopped landing, or landed on the busiest row,
+ * fails here. Activity order deliberately puts #general LAST, so only the
+ * built-in default can select it.
+ */
+test("m2: the first load lands on #general, not on the busiest channel", async () => {
+	const app = await mount({ lifecycle: [] });
+	try {
+		app.fixture.lifecycle = [
+			channel("bcv_ops", "ops", { last_message_at: "2026-10-24T12:00:00Z" }),
+			channel("bcv_humans", "humans", {
+				builtin: "humans",
+				last_message_at: "2026-10-24T11:00:00Z",
+			}),
+			channel("bcv_general", "general", {
+				builtin: "general",
+				last_message_at: "2026-10-24T10:00:00Z",
+			}),
+		];
+		await seeded(app);
+		await until(
+			() =>
+				app.host.querySelector(
+					'[data-conversation-id="bcv_general"][aria-current="page"]',
+				),
+			"landed on #general",
+		);
+		assert.equal(
+			app.host.querySelectorAll('[aria-current="page"][data-conversation-id]')
+				.length,
+			1,
+			"exactly one row is selected",
+		);
+	} finally {
+		await app.close();
+	}
+});
+
+test("m2: a server without #general lands the first load on #humans", async () => {
+	const app = await mount({ lifecycle: [] });
+	try {
+		app.fixture.lifecycle = [
+			channel("bcv_ops", "ops", { last_message_at: "2026-10-24T12:00:00Z" }),
+			channel("bcv_humans", "humans", {
+				builtin: "humans",
+				last_message_at: "2026-10-24T11:00:00Z",
+			}),
+		];
+		await seeded(app);
+		await until(
+			() =>
+				app.host.querySelector(
+					'[data-conversation-id="bcv_humans"][aria-current="page"]',
+				),
+			"landed on #humans",
+		);
+	} finally {
+		await app.close();
+	}
+});

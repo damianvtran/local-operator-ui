@@ -1,0 +1,215 @@
+{
+  "instance": "831557fc5ffe-agents-es",
+  "locale": "es",
+  "audit_date": "2026-10-30",
+  "scope": "Agents page: the 12 shipped agent card blurbs (ui.agents.descriptions) and the 2 install button labels (ui.agents.detail.install), audited as the bytes that go into src/i18n/catalogues/es/",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "831557fc5ffe",
+    "model": "radient/auto",
+    "actual_model_source": "fallback this run after provider-quota failures: anthropic/claude-sonnet-5-5 -> openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto",
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator (invoked by the delegating session)",
+    "session": "6113f5880f54",
+    "model": "not stated in translator.log; requests routed to api.radienthq.com",
+    "method": "LLM reasoning, no machine-translation service"
+  },
+  "source_commit": "604ffbce4625a2c0e4d737ab1e219f00fb3fb4d2",
+  "input_sha256": {
+    "en": [
+      {
+        "path": "src/i18n/catalogues/en/ui.agents.descriptions.json",
+        "sha256": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511"
+      },
+      {
+        "path": "src/i18n/catalogues/en/ui.agents.detail.install.json",
+        "sha256": "964c83098370d82d74df8c21d6f1f69e74a76f4ea73b3af7bc16ac06981fbcf0"
+      }
+    ],
+    "context": [
+      {
+        "path": "src/i18n/catalogues/en/ui.agents.descriptions.context.json",
+        "sha256": "6311128dc89d50d886f3066f9cea2c802482a7db9979d9c5cc4bd93cdd8a7398"
+      },
+      {
+        "path": "src/i18n/catalogues/en/ui.agents.detail.install.context.json",
+        "sha256": "f82578e4390f18d396fa229286d5395492618bd93ccbfa43d8d0dbe5a6530307"
+      }
+    ],
+    "es": [
+      {
+        "path": "src/i18n/catalogues/es/ui.agents.descriptions.json",
+        "sha256": "872645d79abd36365bcbac77910f6f328e4e06622412d6e62f2c3cd1b6e36576"
+      },
+      {
+        "path": "src/i18n/catalogues/es/ui.agents.detail.install.json",
+        "sha256": "bac5d4b4b168c52f3764d44ce83c56817f4d82233ff64785db8a9ff07c5156f2"
+      }
+    ]
+  },
+  "counts": {
+    "BLOCKER": 0,
+    "MAJOR": 0,
+    "MINOR": 3,
+    "NIT": 4
+  },
+  "verdict": "pass",
+  "namespaces": {
+    "ui.agents.descriptions": {
+      "status": "passed",
+      "keys_audited": 12,
+      "sha256": {
+        "en": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511",
+        "es": "872645d79abd36365bcbac77910f6f328e4e06622412d6e62f2c3cd1b6e36576"
+      },
+      "findings": [
+        {
+          "id": "M1",
+          "severity": "MINOR",
+          "key": "ui.agents.descriptions.architect",
+          "current": "…propone un diseño o una solución técnica con sus ventajas y desventajas…",
+          "problem": "English is 'a design or technical proposal' — a proposal to decide on. 'solución técnica' makes the agent produce a solution; the verb 'propone' carries the act but the deliverable's status drifts upward.",
+          "suggestion": "…propone un diseño o una propuesta técnica con sus ventajas y desventajas…"
+        },
+        {
+          "id": "M2",
+          "severity": "MINOR",
+          "key": "ui.agents.descriptions.coder",
+          "current": "Implementa de principio a fin una porción acotada de trabajo con el conjunto completo de herramientas y después informa de qué cambió y cómo se verificó.",
+          "problem": "'porción acotada de trabajo' renders the English metaphor 'slice' with a noun that reads as a portion of a whole (and of food); 'de principio a fin' splits the verb from its object; 'el conjunto completo de herramientas' is heavy for 'the full toolset' (the shipped es catalogue already says 'Todas las herramientas' for the same idea).",
+          "suggestion": "Implementa una parte acotada del trabajo de principio a fin con todas las herramientas e informa después de qué cambió y cómo se verificó."
+        },
+        {
+          "id": "M3",
+          "severity": "MINOR",
+          "key": "ui.agents.descriptions.tui_designer",
+          "current": "…densidad en pantallas pequeñas y fijas…",
+          "problem": "'small fixed viewports' became 'pantallas pequeñas y fijas': 'pantalla' is the display rather than the terminal's visible area, and the coordinated adjectives read as two kinds of screen instead of 'small windows of fixed size'.",
+          "suggestion": "…densidad en ventanas pequeñas de tamaño fijo…"
+        },
+        {
+          "id": "N1",
+          "severity": "NIT",
+          "key": "ui.agents.descriptions.copy_reviewer",
+          "current": "…sobre claridad, tono, respaldo de las afirmaciones y tics de IA…",
+          "problem": "'comprehension' (whether a reader understands) is rendered 'claridad' (whether it is clear) — adjacent but not the same criterion; 'comprensión' is the faithful term and reads naturally in this list.",
+          "suggestion": "…sobre comprensión, tono, respaldo de las afirmaciones y tics de IA…"
+        },
+        {
+          "id": "N2",
+          "severity": "NIT",
+          "key": "ui.agents.descriptions.librarian",
+          "current": "…aprende su vocabulario…",
+          "problem": "'su' can attach to the nearest antecedent 'el operador' as easily as to 'los recursos'; English 'their vocabulary' means the vocabulary of the assets the Library holds.",
+          "suggestion": "…aprende el vocabulario de esos recursos…"
+        },
+        {
+          "id": "N3",
+          "severity": "NIT",
+          "key": "ui.agents.descriptions.tui_designer",
+          "current": "…alternativas de color y unicode…",
+          "problem": "'fallbacks' means the substitute used when the terminal lacks truecolour or glyph coverage; 'alternativas' reads as alternative palettes/glyphs and loses the unavailable-then-substitute sense. 'Unicode' is also a proper noun.",
+          "suggestion": "…fallbacks de color y unicode… (keep the dev loanword) or '…colores y caracteres unicode de reserva…'"
+        },
+        {
+          "id": "N4",
+          "severity": "NIT",
+          "key": "ui.agents.descriptions.ux_reviewer",
+          "current": "…descubrimiento, respuesta del sistema, recuperación de errores…",
+          "problem": "As a bare list item 'descubrimiento' reads as discovery (the act) rather than discoverability (the quality being reviewed).",
+          "suggestion": "…facilidad de descubrimiento, respuesta del sistema, recuperación de errores…"
+        },
+        {
+          "severity": "INFO",
+          "key": "ui.agents.descriptions.ux_reviewer",
+          "note": "Length measured at 1.34x English (181 vs 135 chars), the largest in the group. Not raised: all five checklist items (discoverability, feedback, error recovery, keyboard paths, copy) must survive, and no shorter idiomatic Spanish wording drops none. Roster line truncates with an ellipsis, so the tail ('…informa de hallazgos con prefijo U') is what a narrow roster cuts."
+        },
+        {
+          "severity": "INFO",
+          "key": "(all)",
+          "note": "Every value is NFC, tab-indented, LF, single trailing newline, no BOM, no NBSP/CR/double space; key order equals English; 'Instalando…' uses U+2026."
+        },
+        {
+          "severity": "INFO",
+          "key": "(all)",
+          "note": "No es glossary or locale style sheet exists in this checkout (docs/i18n holds rendered evidence only), so terminology was checked against the shipped es catalogues: 'recurso' for asset (ui.library 17x, 'activo' 0x), 'hallazgos' (ui.code_review), 'el operador', 'la Biblioteca' capitalised, 'Herramientas', infinitive buttons ('Instalar ahora') and gerund progress ('Aún instalando'). All consistent."
+        },
+        {
+          "severity": "INFO",
+          "key": "(all)",
+          "note": "Safety claims survive verbatim: 'nunca modifica el código existente' (architect), 'nunca edita el código que revisa' (reviewer), 'sin editar el repositorio' (qa_tester), 'Investigación de solo lectura' + 'No cambia nada' (scout). No polarity, negation or permission weakening."
+        },
+        {
+          "severity": "INFO",
+          "key": "(all)",
+          "note": "The translator's English sidecar copies (agents-i18n/es/*.en.json) are content-identical to the shipped English files but not byte-identical (space vs tab indent). The hashes recorded here are of the shipped English files, which is what the ledger compares."
+        }
+      ]
+    },
+    "ui.agents.detail.install": {
+      "status": "passed",
+      "keys_audited": 2,
+      "sha256": {
+        "en": "964c83098370d82d74df8c21d6f1f69e74a76f4ea73b3af7bc16ac06981fbcf0",
+        "es": "bac5d4b4b168c52f3764d44ce83c56817f4d82233ff64785db8a9ff07c5156f2"
+      },
+      "findings": [
+        {
+          "severity": "INFO",
+          "key": "ui.agents.detail.install.action.install_to_edit",
+          "note": "'Instalar para editar' keeps the point of the button (English asks for more than a bare 'Install') and matches the shipped es voice: infinitive button labels ('Instalar ahora'), gerund progress ('Aún instalando'). 20 chars vs 15; no maxChars hint on the button, and much longer es buttons already ship."
+        },
+        {
+          "severity": "INFO",
+          "key": "ui.agents.detail.install.action.installing",
+          "note": "'Instalando…' is one word plus U+2026, same width class as English, so the row does not jump."
+        }
+      ]
+    }
+  },
+  "checks": {
+    "repo_validator": {
+      "command": "node --test scripts/i18n/locale-parity.test.mjs",
+      "where": "APFS-cloned fixture of src/i18n/catalogues with the two audited files at catalogues/es/",
+      "result": "44/44 pass (0 fail)",
+      "es_assertions": [
+        "ships at least one message",
+        "defines each key in at most one namespace file",
+        "carries EVERY key of each namespace file it ships",
+        "names only keys the English source defines",
+        "preserves every ICU placeholder from the English source",
+        "is not an English stub"
+      ]
+    },
+    "key_parity": {
+      "en_keys": 12,
+      "es_keys": 12,
+      "both_directions": "equal; 0 missing, 0 extra",
+      "key_order": "equals English"
+    },
+    "placeholders": {
+      "icu_arguments_in_source": 0,
+      "icu_arguments_in_target": 0,
+      "note": "no plurals/selects/markup in this group, so no CLDR categories apply"
+    },
+    "typography": {
+      "nfc": "all 12 values verified NFC",
+      "encoding": "UTF-8, no BOM",
+      "line_endings": "LF, tab indent, single trailing newline",
+      "whitespace": "no NBSP, CR or double space",
+      "ellipsis": "U+2026 in 'Instalando…'"
+    },
+    "identical_to_english": "none",
+    "terminology": "checked against the shipped es catalogues (106 files, 6755 values): recurso/hallazgo/operador/Biblioteca/Herramientas/infinitive buttons all consistent",
+    "rtl": "not applicable (es is ltr)",
+    "fit": "0 maxChars/maxCells hints for this group; roster truncates with an ellipsis; ratios 0.89–1.34 vs English (Spanish structural expansion), largest ux_reviewer 1.34"
+  },
+  "retention": {
+    "record_of_truth": "i18n/receipts/831557fc5ffe-agents-es.json (byte-identical copy of this file) plus i18n/audits/evidence/es/<namespace>/831557fc5ffe-es/record.json",
+    "audit_log": "i18n/audits/evidence/es/<namespace>/831557fc5ffe-es/audit.log (real command output, not notes)",
+    "target_bytes": "the es hashes above were taken from the translator's shipping files in the delegating session's scratchpad, which are the bytes to be copied verbatim to src/i18n/catalogues/es/; the audit ran the repo validator on hash-equal copies of exactly those bytes",
+    "pending_at_commit": "the files are not yet on disk under src/i18n/catalogues/es/; re-read them there before merge, since editing an audited namespace after its audit invalidates this record (ledger-check re-hashes)"
+  }
+}

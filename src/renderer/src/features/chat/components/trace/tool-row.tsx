@@ -56,18 +56,21 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type ReactNode, useEffect, useState } from "react";
 import {
+	AwaitingAcceptanceGlyph,
 	DeliveryUnconfirmedGlyph,
+	InboxOnlyGlyph,
 	InterruptedGlyph,
 	MailboxGlyph,
 	toolIcon,
 } from "./tool-glyphs";
 import {
-	SEND_DELIVERY_LABEL,
-	SEND_DELIVERY_TITLE,
-	SEND_DELIVERY_WORD,
 	type SendDeliveryState,
 	type ToolCategory,
+	deliveryLabel,
 	deliverySettledVerb,
+	deliveryShortWord,
+	deliveryTitle,
+	deliveryWord,
 	displayName,
 	formatDuration,
 	formatSettledDuration,
@@ -260,6 +263,15 @@ export type ToolRowProps = {
 	 * send instead of the generic `failed`. On any other outcome it is ignored.
 	 */
 	deliveryState?: SendDeliveryState | null;
+	/**
+	 * The settled verb the RESULT states, over the tool's own: Team Bridge's
+	 * `Couldn't post in` for a refused or failed call, where `Posted in …
+	 * refused` would be the row contradicting itself (the `Attempted` rule
+	 * `deliverySettledVerb` applies to `send`). `null` keeps the tool's verb.
+	 */
+	settledVerb?: string | null;
+	/** A failed row's own trailing word; see `StatusCluster`'s copy. */
+	failureWord?: string | null;
 	/**
 	 * Seconds. A settled row shows the tenth-of-a-second format under ten
 	 * seconds. `null` on a settled row is a replay whose duration the transcript
@@ -582,11 +594,21 @@ function useRunningElapsed(startedAt: number | null): number | null {
  * misalignment.
  */
 const StatusCluster = ({
+	toolName = "",
 	outcome,
 	deliveryState = null,
+	failureWord = null,
 	durationS,
 	startedAt,
 }: {
+	/** Picks the tool-specific delivery copy (`bridge` rewords `unconfirmed`). */
+	toolName?: string;
+	/**
+	 * A failed row's own trailing word, over the generic `failed`: Team Bridge's
+	 * `refused · not_member` / `failed · post_failed`, which name the cause the
+	 * reader acts on. Drawn in the same danger ink as the word it replaces.
+	 */
+	failureWord?: string | null;
 	outcome: ToolRowOutcome;
 	/**
 	 * How a `send` call's delivery ended, when the result stated it. Only the two
@@ -634,13 +656,11 @@ const StatusCluster = ({
 	 * danger for `failed`; every other failure keeps its own words (`failed`,
 	 * `never ran`) in the danger role.
 	 */
-	const deliveryWord = deliveryState
-		? SEND_DELIVERY_WORD[deliveryState]
-		: undefined;
+	const stateWord = deliveryWord(deliveryState, toolName);
 	const word = partial
-		? (deliveryWord ?? null)
+		? stateWord
 		: failedLike
-			? (deliveryWord ?? outcomeLabel(outcome))
+			? (stateWord ?? failureWord ?? outcomeLabel(outcome))
 			: null;
 	const wordInk = partial ? "text-warning" : "text-danger";
 	/*
@@ -682,10 +702,36 @@ const StatusCluster = ({
 	 * 38px the story's 48px inset would suggest (design round 3, D6: the frame's
 	 * row inset is 80px) - so they are unchanged.
 	 */
+	/*
+	 * THE THREE-STEP SHED for a state that has a SHORT word (Team Bridge's
+	 * `not posted` / `awaiting` / `unconfirmed`; design round 1, D1). The full
+	 * words are up to ~164px, so the one 19rem gate above let the caution take
+	 * 54% of a 414px pane (a ~334px row: the transcript insets it ~80px) and cut
+	 * the summary to `Sent to `. The caution now degrades BEFORE the summary,
+	 * from the same cluster sum the 19rem gate derives:
+	 * - full word (~164px) + mark + gaps + duration slot = ~238px; with ~90px of
+	 *   icon and verb the summary keeps 40% of the row from ~560px, so the full
+	 *   word starts at `40rem` (640px), margin for the longer locales;
+	 * - short word (~62px) -> cluster ~136px, so from `20rem` (320px) the
+	 *   summary keeps ~90px+ - the 414px pane's row (334px) lands here and reads
+	 *   `Sent to a teammate · Rel… not posted`;
+	 * - below 20rem only the MARK draws, with the spoken label beside it, which
+	 *   is the half that must never be colour-only (the gate's own fallback).
+	 * `send`'s states have no short word and keep the 19rem gate unchanged.
+	 */
+	const shortWord = partial ? deliveryShortWord(deliveryState, toolName) : null;
 	const wordClass = cn(
 		"font-medium text-meta",
 		wordInk,
-		partial && "hidden @[19rem]/toolrow:inline",
+		partial &&
+			(shortWord
+				? "hidden @[40rem]/toolrow:inline"
+				: "hidden @[19rem]/toolrow:inline"),
+	);
+	const shortWordClass = cn(
+		"font-medium text-meta",
+		wordInk,
+		"hidden @[20rem]/toolrow:inline @[40rem]/toolrow:hidden",
 	);
 	/*
 	 * The word the row STATES and the words it SPEAKS are not the same sentence for
@@ -696,12 +742,8 @@ const StatusCluster = ({
 	 * the same string (the failure words) the drawn text is already the announce-
 	 * ment and nothing is repeated - the rule the sr-only span below has always had.
 	 */
-	const spoken =
-		partial && deliveryState
-			? (SEND_DELIVERY_LABEL[deliveryState] ?? null)
-			: null;
-	const title =
-		partial && deliveryState ? SEND_DELIVERY_TITLE[deliveryState] : undefined;
+	const spoken = partial ? deliveryLabel(deliveryState, toolName) : null;
+	const title = partial ? deliveryTitle(deliveryState, toolName) : undefined;
 	/*
 	 * The outcome MARK: the interrupted slashed circle, or the partial state's own
 	 * shape. Its ink used to be hueless (`ink-dim`) because the word carried the
@@ -715,7 +757,11 @@ const StatusCluster = ({
 			? MailboxGlyph
 			: deliveryState === "unconfirmed"
 				? DeliveryUnconfirmedGlyph
-				: null
+				: deliveryState === "inbox_only"
+					? InboxOnlyGlyph
+					: deliveryState === "awaiting_acceptance"
+						? AwaitingAcceptanceGlyph
+						: null
 		: outcome === "interrupted"
 			? InterruptedGlyph
 			: null;
@@ -767,6 +813,16 @@ const StatusCluster = ({
 					aria-hidden={spoken ? true : undefined}
 				>
 					{word}
+				</span>
+			) : null}
+			{word && shortWord ? (
+				<span
+					className={shortWordClass}
+					title={title}
+					aria-hidden={spoken ? true : undefined}
+					data-status-word="short"
+				>
+					{shortWord}
 				</span>
 			) : null}
 			{/*
@@ -850,6 +906,8 @@ export const ToolRow = ({
 	summaryWrap = false,
 	outcome,
 	deliveryState = null,
+	settledVerb = null,
+	failureWord = null,
 	durationS,
 	startedAt = null,
 	added = 0,
@@ -894,7 +952,7 @@ export const ToolRow = ({
 		 * The one row whose settled verb its own result overrides (UX round 1, U8):
 		 * a `send` that provably delivered nothing must not open with `Sent`.
 		 */
-		deliverySettledVerb(deliveryState),
+		settledVerb ?? deliverySettledVerb(deliveryState),
 	);
 
 	const row = (
@@ -1054,8 +1112,10 @@ export const ToolRow = ({
 			</span>
 			<DiffCounters added={added} removed={removed} />
 			<StatusCluster
+				toolName={toolName}
 				outcome={outcome}
 				deliveryState={deliveryState}
+				failureWord={failureWord}
 				durationS={durationS}
 				startedAt={startedAt}
 			/>

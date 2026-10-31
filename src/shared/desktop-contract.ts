@@ -506,6 +506,34 @@ const teamBridgeAttachmentIds = z
 	.array(id)
 	.max(4)
 	.refine((ids) => new Set(ids).size === ids.length, "Duplicate attachment");
+/*
+ * STRUCTURED @-MENTIONS on a send: local-operator #3204's `MentionIn`,
+ * `{kind, account_id, endpoint_id?}`, max 50 and distinct (the backend 422s a
+ * duplicate). Strict so a stray field fails here, in the renderer's own
+ * request, rather than as a remote refusal of a message the reader typed.
+ * Sent only when the backend advertises `team_bridge_send_mentions`; absent
+ * otherwise, so an older backend sees the unchanged body.
+ */
+export const teamBridgeMentionsSchema = z
+	.array(
+		z
+			.object({
+				kind: z.enum(["human", "agent"]),
+				account_id: id,
+				endpoint_id: id.optional(),
+			})
+			.strict(),
+	)
+	.max(50)
+	.refine(
+		(rows) =>
+			new Set(
+				rows.map(
+					(row) => `${row.kind}:${row.account_id}:${row.endpoint_id ?? ""}`,
+				),
+			).size === rows.length,
+		"Duplicate mention",
+	);
 // Mirrors ScheduleUnit in the renderer's api/local-operator/types.ts and the
 // backend's ScheduleUnit enum. Enumerated rather than free text so the value
 // cannot become a path or query fragment on its way to the server.
@@ -3758,6 +3786,27 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			notify: z.enum(["all", "mention", "mute"]),
 		})
 		.strict(),
+	/*
+	 * The OWNER'S OWN AGENT'S wake level in one conversation — a different
+	 * member row from the reader's `notify` above. The hub wakes an agent member
+	 * on every message when its level is `all` (the default since the
+	 * wake-on-every-message change), on @-mentions of it plus replies in
+	 * threads it follows at `mention`, and never — @-mentions included — at
+	 * `mute`. Only the runtime knows which endpoint is the owner's agent, so
+	 * the renderer names the conversation and the level, never an endpoint id;
+	 * local-operator resolves the endpoint and calls the hub's endpoint-addressed
+	 * notify route. Owner-guarded like every Team Bridge write: a level chosen
+	 * under one account must not land under another.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.agent_notify"),
+			expected_account_id: id.optional(),
+			conversation_id: id,
+			tenant_id: id.optional(),
+			notify: z.enum(["all", "mention", "mute"]),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("team_bridge.conversations.members.add"),
@@ -3882,6 +3931,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			/* Reply in this root message's thread; the hub validates the root. */
 			thread_root_id: id.optional(),
 			attachment_ids: teamBridgeAttachmentIds.optional(),
+			mentions: teamBridgeMentionsSchema.optional(),
 		})
 		.strict(),
 	/*
@@ -9579,6 +9629,20 @@ export function desktopEndpoint(request: DesktopRequest): {
 					notify: request.notify,
 				},
 			};
+		case "team_bridge.conversations.agent_notify":
+			return {
+				/* local-operator's own route: it maps the conversation to the
+				   owner's agent endpoint, so no endpoint id crosses this boundary. */
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/agent-notify`,
+				method: "PUT",
+				body: {
+					...(request.expected_account_id
+						? { expected_account_id: request.expected_account_id }
+						: {}),
+					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
+					notify: request.notify,
+				},
+			};
 		case "team_bridge.conversations.members.add": {
 			/* The route's body IS the member array and `tenant_id` is a query
 			   parameter (ConversationMemberIn list + tenant_id query). Wrapping
@@ -9690,6 +9754,8 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.attachment_ids?.length
 						? { attachment_ids: request.attachment_ids }
 						: {}),
+					// Omitted (never `[]`) when empty: the pre-mention wire, byte for byte.
+					...(request.mentions?.length ? { mentions: request.mentions } : {}),
 				},
 			};
 		case "team_bridge.scheduled.list":

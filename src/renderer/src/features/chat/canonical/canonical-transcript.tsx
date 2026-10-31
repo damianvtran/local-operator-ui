@@ -119,10 +119,16 @@ import {
 	StreamingMarkdown,
 } from "../components/markdown-renderer";
 import type { ImagePathActions } from "../components/message-item/image-attachment";
+import { MessageAvatar } from "../components/message-item/message-avatar";
 import { MessageContainer } from "../components/message-item/message-container";
 import { TurnTimestamp } from "../components/message-item/turn-timestamp";
 import { ReplyPreview } from "../components/reply-preview";
 import { DiffBlock, TraceLine } from "../components/trace";
+import {
+	type BridgeLabelResolver,
+	type BridgeRowView,
+	bridgeRowView as composeBridgeRowView,
+} from "../components/trace/bridge-row-model";
 import {
 	hubIdentity,
 	isInternalReceipt,
@@ -133,14 +139,15 @@ import {
 	wakeReceiptHeadline,
 } from "../components/trace/receipt-row-model";
 import {
+	BridgeDetail as BridgeDetailPane,
 	DETAIL_SECTION_MAX,
 	ToolDetail,
 } from "../components/trace/tool-detail";
 import { hasDetail } from "../components/trace/tool-detail-model";
 import { ToolRow as ToolLedgerRow } from "../components/trace/tool-row";
 import {
-	SEND_DELIVERY_NOTE,
 	type SendDeliveryState,
+	deliveryNote,
 	deliveryRowOutcome,
 	formatBytes,
 	formatDuration,
@@ -226,6 +233,7 @@ import {
 	type EntryDescriptor,
 	candidateSlots,
 	deferAggregateFormation,
+	entrySlotSignature,
 	estimateEntryHeight,
 } from "./transcript-dom-window";
 import { type SlotExtent, TranscriptEntrySlot } from "./transcript-entry-slot";
@@ -256,10 +264,12 @@ import {
 import {
 	GAP,
 	type Row,
+	agentTurnHeads,
 	buildRows,
 	ledgerName,
 	paintsSomething,
 	runsOf,
+	slotCarriesTurnHead,
 	splitFirstLine,
 } from "./transcript-rows";
 import {
@@ -291,6 +301,7 @@ import {
 import { isFinalResponse, isQuietTurnCall } from "./turn-segments";
 import { useActiveCheckpoint } from "./use-active-checkpoint";
 import type { AttachmentScope } from "./use-attachment-url";
+import { useBridgeConversationNames } from "./use-bridge-conversation-names";
 import { useCheckpoints } from "./use-checkpoints";
 import { useCrossSessionVisibility } from "./use-cross-session-hidden";
 import { useLinkSubject } from "./use-link-subject";
@@ -376,6 +387,22 @@ export const dbgChatEntriesRebuilds = { count: 0 };
  * run unmounts its hidden rows in the same render that plans them.
  */
 const WINDOW_ALIGN_MAX_EXTRA = 300;
+
+/**
+ * The height the agent's turn-head picture adds to the entry it opens, in px.
+ *
+ * `message-avatar.tsx` draws `size-5` (20) plus `mb-1` (4). The DOM window's
+ * estimate needs it because an entry the window has not mounted has no measured
+ * box, and the mark is only there when the turn has a head and the pane has a
+ * picture (review round 1, R-5).
+ */
+const TURN_MARK_HEIGHT = 24;
+
+/**
+ * The head set for a pane with no picture: no mark is drawn, so there is nothing
+ * to elect, and the empty set is what keeps the D11 render byte-identical.
+ */
+const NO_TURN_HEADS: ReadonlySet<string> = new Set();
 
 /* (`ALIGN_WALK_MAX_PAGES`, the walk's bound, lives in `turn-collapse-model.ts`
  * beside the decision that spends it.) */
@@ -652,6 +679,30 @@ export type CanonicalTranscriptProps = {
 	openFrame?: OpenFrameFacts | null;
 	containerRef: RefObject<HTMLDivElement>;
 	isSmallView: boolean;
+
+	/**
+	 * The agent's picture for THIS conversation, or null when it has none.
+	 *
+	 * WHY IT IS A PROP AND NOT A STORE READ. The picture is keyed by an agent id,
+	 * and a conversation carries its agent's NAME and nothing else
+	 * (`SessionBinding`); the page is the one place that can join the two, holds
+	 * the `useAgentAvatar` subscription, and hands the transcript the URL. The
+	 * pane's rows stay a pure function of their props, so their memo still
+	 * compares a string.
+	 *
+	 * Omitted/nulled is every existing caller and every story: nothing new
+	 * renders, and the transcript is byte-for-byte the one D11 left.
+	 */
+	agentAvatar?: string | null;
+	/**
+	 * The speaking agent's NAME, beside the picture it belongs to.
+	 *
+	 * The image's accessible name is the agent's name, not the role word (review
+	 * round 1, R-3): the row already announces "Agent message", so a mark labelled
+	 * "Assistant" repeated the register and named nobody. Null means the page
+	 * could not resolve a name, and the mark is then decorative.
+	 */
+	agentName?: string | null;
 
 	status: CanonicalTranscriptStatus;
 	/** The published failure state: one product sentence and its action. */
@@ -2191,8 +2242,14 @@ function toolRecordSummary(
  * `null` for `delivered` and for every row with no stated delivery, so a
  * successful send's expansion is exactly the one it always was.
  */
-function DeliveryNote({ state }: { state: SendDeliveryState }) {
-	const note = SEND_DELIVERY_NOTE[state];
+function DeliveryNote({
+	state,
+	toolName = "",
+}: {
+	state: SendDeliveryState;
+	toolName?: string;
+}) {
+	const note = deliveryNote(state, toolName);
 	if (!note) return null;
 	return <span data-delivery-note={state}>{note}</span>;
 }
@@ -2216,6 +2273,61 @@ function DeliveryNote({ state }: { state: SendDeliveryState }) {
  * shows both the arguments and the intent states two facts where the TUI states
  * one per surface, and the two immediately start restating each other.
  */
+/**
+ * The Team Bridge view of a `bridge` record, or `null` for every other tool.
+ *
+ * A composing or queued row keeps the generic status words (`composing · 1.2
+ * KB`), exactly as every other tool: there are no arguments to name yet.
+ */
+function bridgeRowView(
+	record: Extract<TranscriptRecord, { kind: "tool" }>,
+	resolver: BridgeLabelResolver | null,
+): BridgeRowView | null {
+	if (record.toolName.trim().toLowerCase() !== "bridge") return null;
+	if (record.phase === "composing" || record.phase === "queued") return null;
+	if (record.neverSent === true || record.notRunReason) return null;
+	return composeBridgeRowView(
+		{
+			args: record.args,
+			details: record.bridge ?? null,
+			label: record.bridgeLabel ?? null,
+			output: record.output,
+			failed:
+				record.phase === "done" &&
+				isFailedResult(record.isError, record.delivery),
+		},
+		resolver,
+	);
+}
+
+/**
+ * A settled `bridge` row's expansion: the shared pane, with this row's
+ * delivery note (inbox-only, awaiting acceptance, unconfirmed) as its
+ * outcome sentence when the result stated one.
+ */
+function BridgeDetail({
+	record,
+	view,
+	isError,
+}: {
+	record: Extract<TranscriptRecord, { kind: "tool" }>;
+	view: BridgeRowView;
+	isError: boolean;
+}) {
+	const note = record.delivery
+		? deliveryNote(record.delivery, record.toolName)
+		: null;
+	return (
+		<BridgeDetailPane
+			view={view}
+			isError={isError}
+			note={
+				note ? <span data-delivery-note={record.delivery}>{note}</span> : null
+			}
+		/>
+	);
+}
+
 const ToolRow = memo(function ToolRow({
 	record,
 	isSmallView,
@@ -2251,6 +2363,13 @@ const ToolRow = memo(function ToolRow({
 	 * tool) means the ordinary row below, exactly as before.
 	 */
 	const flagged = useFlaggedItem(record.toolCallId);
+	/*
+	 * The Team Bridge cache's conversation names, for a `bridge` row whose call
+	 * addressed a conversation by id. Called for every row (hooks cannot be
+	 * conditional) and cheap when unused: one context read, and a resolver that
+	 * reads nothing until a bridge row asks.
+	 */
+	const resolveConversation = useBridgeConversationNames();
 	if (flagged !== null && record.toolName === "notify") {
 		return (
 			<MessageContainer isUser={false} isSmallView={isSmallView}>
@@ -2328,7 +2447,8 @@ const ToolRow = memo(function ToolRow({
 	 * time it reaches the record.
 	 */
 	const partial = deliveryRowOutcome(record.delivery) === "partial";
-	const summary = toolRecordSummary(record);
+	const bridge = bridgeRowView(record, resolveConversation);
+	const summary = bridge?.summary ?? toolRecordSummary(record);
 	// When the arguments taught us nothing, the summary is the tool's own name,
 	// which the row then drops as a stutter and the object column goes empty.
 	// A row that says nothing about its call is the scannability this port
@@ -2423,6 +2543,12 @@ const ToolRow = memo(function ToolRow({
 		</div>
 	) : isDiffBodyRow(record) ? (
 		<DiffBlock diff={record.diff} />
+	) : bridge && !running ? (
+		<BridgeDetail
+			record={record}
+			view={bridge}
+			isError={isFailedResult(record.isError, record.delivery)}
+		/>
 	) : hasDetail(record.args, record.output) ? (
 		<ToolDetail
 			args={record.args}
@@ -2449,7 +2575,9 @@ const ToolRow = memo(function ToolRow({
 			 * machine result stays below it (see `DeliveryNote`).
 			 */
 			note={
-				record.delivery ? <DeliveryNote state={record.delivery} /> : undefined
+				record.delivery ? (
+					<DeliveryNote state={record.delivery} toolName={record.toolName} />
+				) : undefined
 			}
 		/>
 	) : undefined;
@@ -2562,6 +2690,8 @@ const ToolRow = memo(function ToolRow({
 										: "success"
 				}
 				deliveryState={record.delivery}
+				settledVerb={bridge?.failedVerb ?? null}
+				failureWord={bridge?.failureWord ?? null}
 				durationS={record.durationS}
 				startedAt={record.startedAt}
 				added={record.added}
@@ -3270,6 +3400,9 @@ const TranscriptRow = memo(function TranscriptRow({
 	stopping = false,
 	settledSound = false,
 	supplementCondensed = false,
+	opensTurn = false,
+	agentAvatar = null,
+	agentName = null,
 	onInterruptTurn,
 }: {
 	row: Row;
@@ -3329,6 +3462,18 @@ const TranscriptRow = memo(function TranscriptRow({
 	 * for the one-line form (memo §2.8/§2.11, design D1).
 	 */
 	supplementCondensed?: boolean;
+	/**
+	 * This row is the one that opens an agent turn (`agentTurnHeads`), so the
+	 * agent's picture is drawn above it - once per turn, above the first line,
+	 * never beside it. Deliberately not a property of the row type: the head is
+	 * a fact of the turn the row sits in, and `agentTurnHeads` is its one
+	 * spelling (see `message-avatar.tsx` for why the mark is back at all).
+	 */
+	opensTurn?: boolean;
+	/** The picture to draw when `opensTurn`; null draws nothing (D11). */
+	agentAvatar?: string | null;
+	/** The speaker's name, for the picture's accessible name (R-3). */
+	agentName?: string | null;
 	/**
 	 * The pane's interrupt press (`CanonicalTranscriptProps.onInterruptTurn`),
 	 * for the card's Cancel. Undefined means no control, by rule.
@@ -3576,6 +3721,17 @@ const TranscriptRow = memo(function TranscriptRow({
 					entered.current && "lo-transcript-arrival",
 				)}
 			>
+				{/*
+				 * THE AGENT'S PICTURE, ONCE PER TURN AND ABOVE THE FIRST LINE (see
+				 * `message-avatar.tsx` for the operator request and the D11 constraints
+				 * it keeps). It is a SIBLING of `body` inside this gapped wrapper, not a
+				 * prefix inside it: a mark in the line's flow would narrow the measure of
+				 * every line in the row, which is the gutter D11 measured and deleted.
+				 * Same wrapper, so the 32px turn gap still sits above the mark.
+				 */}
+				{opensTurn && agentAvatar ? (
+					<MessageAvatar src={agentAvatar} name={agentName} />
+				) : null}
 				{body}
 			</div>
 		</TranscriptCopyMenu>
@@ -3675,6 +3831,8 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	openFrame,
 	containerRef,
 	isSmallView,
+	agentAvatar = null,
+	agentName = null,
 	status,
 	failure,
 	awaitingHydration,
@@ -3850,6 +4008,23 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		previousRows.current = next;
 		return next;
 	}, [shownRecords]);
+	/*
+	 * WHICH ROWS OPEN AN AGENT TURN, derived from the same list the render walk
+	 * consumes (`agentTurnHeads`, whose header carries the operator request and
+	 * the D11 constraints the mark keeps). Its own memo because it is a fact
+	 * about the LIST: `buildRows`' contract is one record's own frames, and a
+	 * per-record flag would be a second spelling of the partition `runsOf` owns.
+	 *
+	 * GATED ON THE PICTURE (review round 1, R-5). With no picture to draw, the set
+	 * is only ever asked `has` and always answers false - but computing it is a
+	 * full `walkTurns` pass over every row, and `rows` changes on every streamed
+	 * token. A picture-less agent is the common case and the one D11 left
+	 * untouched, so it pays nothing: the empty set is the same render.
+	 */
+	const turnHeads = useMemo(
+		() => (agentAvatar ? agentTurnHeads(rows) : NO_TURN_HEADS),
+		[rows, agentAvatar],
+	);
 	/*
 	 * WHICH STOPPED SOUND CALLS HAVE ALREADY SETTLED (design D7, UX U9).
 	 *
@@ -6096,18 +6271,25 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		)
 			deferredFolds.add(group.id);
 	}
+	/*
+	 * THE ROWS A SLOT RENDERS, for the one rule that decides the mark. A bar
+	 * stands for the groups it hides, a run group for its rows, and a single-row
+	 * group for that row - the same partition `entryFacts` measures and the
+	 * render pass draws. Defined once here so the height estimate, the signature
+	 * and both draw sites read one answer.
+	 */
+	type ChatEntryOf = (typeof chatEntries)[number];
+	const entrySlotRows = (entry: ChatEntryOf): Row[] =>
+		entry.kind === "bar"
+			? entry.children.flatMap((child) =>
+					child.kind === "run" ? child.rows : [child.row],
+				)
+			: entry.group.kind === "run"
+				? entry.group.rows
+				: [entry.group.row];
 	const entryFacts = chatEntries.map((entry) => {
 		const group = entry.kind === "group" ? entry.group : null;
-		const entryRows =
-			entry.kind === "bar"
-				? entry.children.flatMap((child) =>
-						child.kind === "run" ? child.rows : [child.row],
-					)
-				: group?.kind === "run"
-					? group.rows
-					: group
-						? [group.row]
-						: [];
+		const entryRows = entrySlotRows(entry);
 		const first = entryRows[0];
 		const key =
 			entry.kind === "bar"
@@ -6178,11 +6360,23 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 							)
 							.join("\n");
 		const bucket = domWindowRequested ? estimateBucket(first.record, text) : 0;
+		/*
+		 * WHETHER THIS ENTRY DRAWS THE MARK (review round 1, R-5). The DOM window's
+		 * estimate has no measured box for an entry it has not mounted, and the mark
+		 * is 24px the estimate did not know about: without this bit, setting or
+		 * removing a picture (or the profiles query resolving after first paint)
+		 * changed the height under an unchanged signature, and the cached estimate
+		 * kept the old number. Read from the same `turnHeads` the render consumes,
+		 * so the signature cannot claim a mark the row does not draw.
+		 */
+		const marksHead =
+			Boolean(agentAvatar) && slotCarriesTurnHead(entryRows, turnHeads);
 		const userExpanded =
 			first.record.kind === "user" &&
 			viewState.current.store.read(first.record.id);
 		return {
 			key,
+			marksHead,
 			renderSignature: entryRows
 				.map((row) => entryRecordRevision(row.record))
 				.join(","),
@@ -6223,7 +6417,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		return {
 			key: slot.key,
 			recordIds: facts.flatMap((fact) => fact.ids),
-			signature: `${facts.map((fact) => `${fact.key}:${fact.ids.join(",")}:${fact.representation}:${fact.gap}:${fact.userExpanded}:${fact.media}:${fact.unsafe}:${fact.renderSignature}`).join("|")}:${isSmallView}`,
+			signature: entrySlotSignature(facts, isSmallView),
 			// Estimates are fixed for each entry regime; actual mounted boxes replace
 			// them before paint. They are not an asserted native measurement.
 			estimate: facts.reduce(
@@ -6236,7 +6430,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 								fact.text,
 								{ first: 0, trace: 2, item: 12, turn: 32 }[fact.gap],
 								containerRef.current?.clientWidth || 810,
-							)),
+							) + (fact.marksHead ? TURN_MARK_HEIGHT : 0)),
 				0,
 			),
 			estimateKind: `${facts[0].type}:${facts[0].bucket}:${facts[0].open}:${facts[0].userExpanded}`,
@@ -6327,6 +6521,14 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		 * opens restores the block in the same commit. False for every other row.
 		 */
 		supplementCondensed = false,
+		/**
+		 * Whether this group's SLOT is the first line of an agent turn, and so
+		 * carries the agent's picture. The caller decides it from `turnHeads`, the
+		 * turn partition's own answer; a group nested under a bar or a fold passes
+		 * false, because those already draw the mark at the turn's head and a
+		 * second copy inside them would be the per-message repetition D11 deleted.
+		 */
+		opensTurn = false,
 	) => {
 		if (group.kind === "run" && deferredFolds.has(group.id))
 			return group.rows.map((row, index) => (
@@ -6355,6 +6557,9 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					answerRail={answerRail}
 					stopping={stopping === true}
 					settledSound={settledSoundRowIds.has(row.record.id)}
+					opensTurn={opensTurn && index === 0}
+					agentAvatar={agentAvatar}
+					agentName={agentName}
 					onInterruptTurn={onInterruptTurn}
 				/>
 			));
@@ -6377,6 +6582,17 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				markdown={copyMarkdownForGroup(group.summary)}
 			>
 				<div className={GAP[group.gap][isSmallView ? 1 : 0]}>
+					{/*
+					 * THE TURN'S HEAD, WHEN THE HEAD IS INSIDE THIS RUN. A folded run
+					 * unmounts the rows it holds, so the head row cannot draw the
+					 * agent's picture itself while the fold is closed - and this bar
+					 * is then the turn's first line. The rows inside never draw it
+					 * (`opensTurn` is not passed to them), so opening the fold does
+					 * not produce a second copy.
+					 */}
+					{opensTurn && agentAvatar ? (
+						<MessageAvatar src={agentAvatar} name={agentName} />
+					) : null}
 					<TraceFold
 						/*
 						 * The fold carries its first row's gap (a turn's 32px when
@@ -6518,6 +6734,9 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				stopping={stopping === true}
 				settledSound={settledSoundRowIds.has(group.row.record.id)}
 				supplementCondensed={supplementCondensed}
+				opensTurn={opensTurn}
+				agentAvatar={agentAvatar}
+				agentName={agentName}
 				onInterruptTurn={onInterruptTurn}
 			/>
 		);
@@ -6543,6 +6762,17 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				markdown={condenseSentence(entry.segment)}
 			>
 				<div className={GAP[entry.segment.gap][isSmallView ? 1 : 0]}>
+					{/*
+					 * THE TURN'S HEAD, WHEN THE TURN IS COLLAPSED TO THIS BAR. The bar
+					 * stands in the slot of the first row it hides (`anchorRecordId`), so
+					 * when that row is the turn's head the picture belongs here - and the
+					 * groups rendered inside the bar never draw it, so opening the bar
+					 * does not add a second copy.
+					 */}
+					{slotCarriesTurnHead(entrySlotRows(entry), turnHeads) &&
+					agentAvatar ? (
+						<MessageAvatar src={agentAvatar} name={agentName} />
+					) : null}
 					<TurnSummary
 						/*
 						 * Prefixed: the segment's key is a ROW ID (`runsOf`: the closing
@@ -6676,6 +6906,12 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					runIsCondensed(entry.supplementRun, openRuns, {
 						artifactOwner: entry.group.row.record.anchor,
 					}),
+				/*
+				 * The group's SLOT is the turn's head when the record its slot
+				 * stands at is a head; a row group's content is that row, and a
+				 * run's is its first row (the one the fold unmounts).
+				 */
+				slotCarriesTurnHead(entrySlotRows(entry), turnHeads),
 			)
 		);
 

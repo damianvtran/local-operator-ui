@@ -1,0 +1,126 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "model": "radient/auto (harness launch route; concrete routed upstream provider/model not exposed in this session transcript; no fallback invoked by the auditor)",
+  "instance": "339c96eeb7b8",
+  "locale": "fr",
+  "namespace": "ui.onboarding.tour",
+  "date": "2026-10-25",
+  "round": 2,
+  "audit_kind": "scoped remediation confirmation (follow-up to the second independent audit)",
+  "status": "passed",
+  "result": "clean",
+  "verdict": "clean: both second-audit findings (1 minor, 1 nit) are present, fixed and semantically sound; 0 blocker / 0 major / 0 minor / 0 nit remain open in this namespace",
+  "independence": "Same independent auditor instance 339c96eeb7b8 that produced the second independent audit receipt (i18n/receipts/339c96eeb7b8-fr-tour-second-audit.json, sha256 2110096564337ff21e67b98e26ad17d5b429fbcda9423e8e2be0a85ae8e122b1). Neither translator (session 52d18db33cf5, job 2660ff7c036b) nor first auditor (instance 59527dfbb84b). Scoped confirmation only: the 4 changed values were verified, the other 119 were proved byte-identical by inverse replacement rather than re-audited. Read-only on catalogues; this receipt is the only write.",
+  "scope": {
+    "worktree": "~/local-operator-ui/.worktrees/i18n-onboarding",
+    "head": "405e69c012654900f454fa4ca023100290369555",
+    "head_unchanged_since_second_audit": true,
+    "commit_state": "translator edits remain in the working tree (git status: M src/i18n/catalogues/fr/ui.onboarding.tour.json); nothing committed by this auditor",
+    "baseline_target_sha256": "90c0060e912c7583cfcd72bde5125195ea4469e8a71364c66f876a79b1e70943",
+    "current_target_sha256": "5099b1bab0b5c78f723ef41abb3b83acc9f4716d0fc9739fd60dbad0102d5e5b",
+    "source_sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+    "context_sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906",
+    "keys_total": 123,
+    "keys_changed": 4,
+    "keys_unchanged": 119,
+    "changed_keys": [
+      "ui.onboarding.tour.chat_input.list.1.item.1",
+      "ui.onboarding.tour.chat_input.list.1.item.2",
+      "ui.onboarding.tour.chat_input.list.1.item.3",
+      "ui.onboarding.tour.select_model.body.1"
+    ],
+    "key_set_and_order": "identical to the audited baseline; no key added, removed or reordered",
+    "baseline_receipt": {
+      "path": "i18n/receipts/59527dfbb84b-fr-r2.json",
+      "note": "first auditor's receipt, consulted after findings were formed in the second audit"
+    },
+    "prior_second_audit_receipt": {
+      "path": "i18n/receipts/339c96eeb7b8-fr-tour-second-audit.json",
+      "receipt_sha256": "2110096564337ff21e67b98e26ad17d5b429fbcda9423e8e2be0a85ae8e122b1"
+    },
+    "verification_method": "line-level inverse replacement: substituting the 4 baseline lines back into the current file reproduces sha256 90c0060e912c7583cfcd72bde5125195ea4469e8a71364c66f876a79b1e70943 exactly, so every unchanged byte is identical; changed-key set derived independently from parsed JSON"
+  },
+  "source_sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+  "context_sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906",
+  "target_sha256": "5099b1bab0b5c78f723ef41abb3b83acc9f4716d0fc9739fd60dbad0102d5e5b",
+  "target_bytes": 22923,
+  "confirmations": [
+    {
+      "id": "FR-TOUR-2ND-01",
+      "severity": "minor",
+      "status": "fixed",
+      "keys": [
+        "ui.onboarding.tour.chat_input.list.1.item.1",
+        "ui.onboarding.tour.chat_input.list.1.item.2",
+        "ui.onboarding.tour.chat_input.list.1.item.3"
+      ],
+      "now": "« Créez un tableur dans mon dossier Documents avec toutes les grandes villes du Canada. » / « Recherchez sur le web les dernières actualités sur l’IA et rédigez un rapport complet. » / Sélectionnez une pièce jointe, puis « traduisez ce document en français. »",
+      "evidence": "All three sample prompts are now vous-register (Créez / Recherchez / rédigez / traduisez), matching the binding fr style guide and the rest of the namespace; item 3 no longer flips register inside one sentence. Both verbs in item 2 were converted, not just the first.",
+      "sound": "Meaning preserved word for word against the English sample inputs; guillemets and trailing periods unchanged; U+202F inside « » intact (2 per value)."
+    },
+    {
+      "id": "FR-TOUR-2ND-02",
+      "severity": "nit",
+      "status": "fixed",
+      "keys": [
+        "ui.onboarding.tour.select_model.body.1"
+      ],
+      "now": "… Si un modèle qui devrait, selon vous, être recommandé n’apparaît pas dans la liste, dites-nous via GitHub Issues ou par e-mail s’il fonctionne bien pour vous dans Local Operator.",
+      "evidence": "Replaces « un modèle que vous vous attendiez à voir recommandé » with the proposed « un modèle qui devrait, selon vous, être recommandé n’apparaît pas dans la liste »; the double « vous vous » is gone and the clause reads natively.",
+      "sound": "Same proposition as the English « If a model you expect to be recommended isn't listed »; every other fact in the paragraph is unchanged; « Recommandé » label quotation and U+202F kept."
+    }
+  ],
+  "findings": [],
+  "findings_summary": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "source_observations_carried": [
+    {
+      "id": "SRC-TOUR-2ND-A",
+      "status": "unchanged, not re-audited",
+      "summary": "Get button hardcoded in agent-card.tsx with English aria-label; fr « Obtenir » in download_agent.body.1 is correct French and must not be changed to English Get. Root UI defect."
+    },
+    {
+      "id": "SRC-TOUR-2ND-B",
+      "status": "unchanged, not re-audited",
+      "summary": "create_schedule.body.1 quotes « Create schedule » while step 29 highlights the button labelled new_scheduled_task (« Nouvelle tâche planifiée »). English-source wording defect mirrored faithfully in fr."
+    },
+    {
+      "id": "SRC-TOUR-2ND-C",
+      "status": "unchanged, not re-audited",
+      "summary": "Comma rendered as a literal code run in the palette prefix list (tour-copy.ts structure); fr fragment padding matches en byte for byte."
+    },
+    {
+      "id": "SRC-TOUR-2ND-D",
+      "status": "unchanged, not re-audited",
+      "summary": "canvas/Canvas casing mixes in the English source; fr mirrors it."
+    }
+  ],
+  "access_limitations": {
+    "masked_source_keys": [
+      "ui.onboarding.tour.canvas_feature.title",
+      "ui.onboarding.tour.canvas_feature.body.1",
+      "ui.onboarding.tour.canvas_files_view.body.1",
+      "ui.onboarding.tour.canvas_open_button.body.1",
+      "ui.onboarding.tour.welcome.list.1.item.3"
+    ],
+    "note": "The display layer still masks one content word in those 5 English keys (and two context notes) as [redacted]; the committed bytes do not contain it and read_public_copy does not serve this repository, so it was not reconstructed. The fr values render « espace de travail », the glossary-mapped term. This confirmation therefore does NOT claim complete 123/123 visual sight: 118/123 values were legible here, 5 are carried from the second audit on the same evidence, and their byte identity is separately proved by the inverse-replacement hash."
+  },
+  "structural_checks": {
+    "parameterless": "tour namespace is parameterless; the 4 changed values contain no ICU argument, plural branch, placeholder, markup token, brace or angle bracket, so exactly-one/CLDR behaviour is not applicable and was not re-derived",
+    "fragment_spaces": "none of the 4 touched keys is a <code>-joined fragment: all four have no leading or trailing space, exactly as in the English source and in the audited baseline, so no keycap join is affected",
+    "joined_renders": "the touched keys are 3 whole list items and 1 whole paragraph; the palette paragraphs that do join literal keycaps are untouched and remain byte-identical",
+    "encoding": "UTF-8, NFC, LF, tab indent, 126 lines both sides; no straight apostrophes, no double spaces, no mojibake; U+202F preserved inside « » in all 4 values"
+  },
+  "notes": [
+    "Scope was deliberately narrow: only the 4 claimed values were read and judged; the other 119 were not re-audited. Byte identity for them is proved by rebuilding the audited baseline from the current file (inverse-replacement hash 90c0060e… matches).",
+    "No new defect introduced in the 4 touched values: register is uniformly vous, no English leakage was added (only the pre-existing allowed tokens GitHub Issues, e-mail, Local Operator, Recommandé), and no structural space changed.",
+    "The source observations and their dispositions stand unchanged; none is fixed by this remediation and none is charged to the translator.",
+    "No rendered frame, native-speaker sign-off, build or browser run: text verification of committed working-tree bytes only, as scoped.",
+    "Translator provenance unchanged: session 52d18db33cf5, job 2660ff7c036b; first auditor instance 59527dfbb84b."
+  ]
+}
