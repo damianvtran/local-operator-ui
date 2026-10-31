@@ -174,6 +174,198 @@ export function toggledMuteNotify(notify: TeamBridgeNotify): TeamBridgeNotify {
 	return notify === "mute" ? "all" : "mute";
 }
 
+/*
+ * THE READER'S OWN AGENT'S WAKE LEVEL (wake-on-every-message).
+ *
+ * The hub now wakes an active agent member on every message by default
+ * (`notify: all`) and lets the agent judge relevance; an @-mention still means
+ * a reply is expected. `mention` narrows it to @-mentions of the agent plus
+ * replies in threads it follows, and `mute` stops every wake, @-mentions
+ * included (agent-server wake contract, decided in review round 1). That is
+ * the AGENT member's row, not the reader's own banner register, so it has its
+ * own helpers: the two must never be read through each other.
+ */
+
+/** The three agent wake levels, in the menu's order (loudest first). */
+export const TEAM_BRIDGE_AGENT_NOTIFY_OPTIONS: ReadonlyArray<{
+	value: TeamBridgeNotify;
+	labelKey:
+		| "ui.teamBridge.agentNotify.all"
+		| "ui.teamBridge.agentNotify.mention"
+		| "ui.teamBridge.agentNotify.mute";
+}> = [
+	{ value: "all", labelKey: "ui.teamBridge.agentNotify.all" },
+	{ value: "mention", labelKey: "ui.teamBridge.agentNotify.mention" },
+	{ value: "mute", labelKey: "ui.teamBridge.agentNotify.mute" },
+];
+
+/**
+ * The reader's own agent's ACTIVE member row in this conversation, or null.
+ *
+ * Only an active agent is woken at all: an invited one is answered on the
+ * Invitations screen, and a left/removed one is not there to wake, so neither
+ * gets the control.
+ */
+export function ownActiveAgent(
+	conversation: Pick<TeamBridgeConversation, "members">,
+	selfAccountId: string | undefined,
+): TeamBridgeConversation["members"][number] | null {
+	if (!selfAccountId) return null;
+	return (
+		conversation.members.find(
+			(member) =>
+				member.kind === "agent" &&
+				member.account_id === selfAccountId &&
+				member.state === "active",
+		) ?? null
+	);
+}
+
+/**
+ * The level the server reports for that agent row, or null when it reports none.
+ *
+ * Null, not a guessed `all`: a hub from before this change STORED `mute` for
+ * agents and may not serialize the field, so guessing would check a row that
+ * is false. The menu then checks nothing.
+ *
+ * Where the value comes from: the hub projects the effective level onto the
+ * caller's OWN agent rows in every conversation view (list and get), and the
+ * agent-notify write's answer carries it too (`withServedOwnAgentNotify`).
+ */
+export function agentNotifyLevel(
+	agent: TeamBridgeConversation["members"][number],
+): TeamBridgeNotify | null {
+	const served = (agent as { notify?: unknown }).notify;
+	return served === "all" || served === "mention" || served === "mute"
+		? served
+		: null;
+}
+
+/**
+ * What the conversation menu needs to draw the "Wake your agent for" group: present
+ * only for an active own agent, carrying its served level (or null).
+ */
+export function ownAgentMenuState(
+	conversation: Pick<TeamBridgeConversation, "members">,
+	selfAccountId: string | undefined,
+): { notify: TeamBridgeNotify | null } | undefined {
+	const agent = ownActiveAgent(conversation, selfAccountId);
+	return agent ? { notify: agentNotifyLevel(agent) } : undefined;
+}
+
+/**
+ * Fold the agent-notify route's answer into a cached page.
+ *
+ * WHY: the hub's answer to the endpoint-addressed notify write is the
+ * conversation as seen by the AGENT's member key, which is the one view sure
+ * to carry the level just stored. A list refetch alone is only as good as the
+ * hub's list projection: if it ever omits the field again (an older hub, a
+ * rollback), the checked row would vanish the moment the write settles
+ * (review round 1, R1-1). So the served level from the answer is written into
+ * the cache, and the later refetch can only replace it with another served
+ * value, never with the optimistic guess.
+ *
+ * Only the agent's `notify` is taken from the answer. The rest of that view is
+ * rendered from the agent's perspective (its own `notify`/`muted`/unread are
+ * not the reader's), so replacing the whole row would overwrite the reader's
+ * banner register with the agent's. An answer without a recognised level
+ * changes nothing.
+ */
+export function withServedOwnAgentNotify(
+	page: TeamBridgeConversationList,
+	answer: Pick<TeamBridgeConversation, "id" | "tenant_id" | "members">,
+	selfAccountId: string,
+): TeamBridgeConversationList {
+	const agent = ownActiveAgent(answer, selfAccountId);
+	const served = agent ? agentNotifyLevel(agent) : null;
+	if (served === null) return page;
+	return withOwnAgentNotify(
+		page,
+		{ conversationId: answer.id, tenantId: answer.tenant_id },
+		selfAccountId,
+		served,
+	);
+}
+
+/**
+ * The optimistic patch for the reader's own agent's level: only that agent's
+ * active row in that one conversation moves; the reader's own `notify` and
+ * every other row are untouched.
+ */
+export function withOwnAgentNotify(
+	page: TeamBridgeConversationList,
+	target: { conversationId: string; tenantId: string },
+	selfAccountId: string,
+	notify: TeamBridgeNotify,
+): TeamBridgeConversationList {
+	return {
+		...page,
+		conversations: page.conversations.map((row) =>
+			row.id === target.conversationId && row.tenant_id === target.tenantId
+				? {
+						...row,
+						members: row.members.map((member) =>
+							member.kind === "agent" &&
+							member.account_id === selfAccountId &&
+							member.state === "active"
+								? { ...member, notify }
+								: member,
+						),
+					}
+				: row,
+		),
+	};
+}
+
+/**
+ * Undo ONE agent-level write without undoing a later one (review round 2, R2-1).
+ *
+ * WHY NOT A PAGE SNAPSHOT: TanStack's mutation scope orders `mutationFn` on the
+ * wire but runs every `onMutate` immediately, so a second pick B patches the
+ * cache while an earlier pick A is still in flight. Restoring A's whole-page
+ * snapshot on A's failure would put the pre-A level back over B's optimistic
+ * one. So the rollback is per row and conditional: the agent row returns to
+ * `previous` only while it still holds the value this write applied. A later
+ * pick, or a served value folded in since, has moved it, and that is left alone.
+ *
+ * `previous` null means the row carried no served level; the field is removed
+ * rather than replaced with a guess. Two picks of the SAME value are
+ * indistinguishable here; then the rollback applies and the later pick's own
+ * answer, or the settle-time refetch, restores the served level.
+ */
+export function withOwnAgentNotifyRolledBack(
+	page: TeamBridgeConversationList,
+	target: { conversationId: string; tenantId: string },
+	selfAccountId: string,
+	applied: TeamBridgeNotify,
+	previous: TeamBridgeNotify | null,
+): TeamBridgeConversationList {
+	return {
+		...page,
+		conversations: page.conversations.map((row) =>
+			row.id === target.conversationId && row.tenant_id === target.tenantId
+				? {
+						...row,
+						members: row.members.map((member) => {
+							if (
+								member.kind !== "agent" ||
+								member.account_id !== selfAccountId ||
+								member.state !== "active" ||
+								agentNotifyLevel(member) !== applied
+							)
+								return member;
+							if (previous !== null) return { ...member, notify: previous };
+							const { notify: _dropped, ...rest } = member as typeof member & {
+								notify?: unknown;
+							};
+							return rest;
+						}),
+					}
+				: row,
+		),
+	};
+}
+
 /** The three notification values, in the menu's order (loudest first). */
 export const TEAM_BRIDGE_NOTIFY_OPTIONS: ReadonlyArray<{
 	value: TeamBridgeNotify;
@@ -989,16 +1181,16 @@ export function personInitial(displayLabel: string): string {
  * - the hub's create-time admission skips a creator's own agent
  *   (`admitDirectAgent`: `agent.AccountID == creatorID`), so it stays
  *   `invited`;
- * - the owner's consent route would activate it, but leaves the agent's
- *   default `notify: mute`, and the hub's delivery rule
- *   (`BridgeConversationFeedRecipients`) wakes a muted agent only on a
- *   structured mention, which this composer never sends;
- * - lifting the mute is the endpoint-addressed notify route, which the runtime
- *   does not proxy, and auto-unmuting would break the default-mute rule.
+ * - the owner's consent route activates it, and since the wake-on-every-message
+ *   change the hub defaults an agent member to `notify: all`, so an active
+ *   agent is woken on every message (an @-mention means a reply is expected);
+ *   the owner can narrow that per conversation through the runtime's
+ *   `agent-notify` route (`team_bridge.conversations.agent_notify`);
+ * - but nothing on this create path consents for the creator, so the DM
+ *   would still open with the agent `invited` and its messages undelivered.
  * Offering the row would therefore create a conversation whose messages post
- * and are silently never delivered. Restore it only once the hub admits the
- * creator's own agent active with `notify: all` (or the UI can consent AND opt
- * it in through a supported route).
+ * and are silently never delivered. Restore it once the hub admits the
+ * creator's own agent active at create time (or this path consents for it).
  */
 export type TeamBridgeChiefOfStaff = {
 	person: TeamBridgeDirectoryMember;

@@ -9542,6 +9542,11 @@ export type MessageParams = {
 	"ui.teamBridge.archive.thread.forbidden": undefined;
 	"ui.teamBridge.archive.toast.archive_failed": { name: string };
 	"ui.teamBridge.actions.label": undefined;
+	"ui.teamBridge.agentNotify.all": undefined;
+	"ui.teamBridge.agentNotify.error": undefined;
+	"ui.teamBridge.agentNotify.label": undefined;
+	"ui.teamBridge.agentNotify.mention": undefined;
+	"ui.teamBridge.agentNotify.mute": undefined;
 	"ui.teamBridge.attachments.add": undefined;
 	"ui.teamBridge.attachments.error_account_changed": undefined;
 	"ui.teamBridge.attachments.error_invalid": undefined;
@@ -9621,6 +9626,7 @@ export type MessageParams = {
 	"ui.teamBridge.invitations.agent_fallback": undefined;
 	"ui.teamBridge.invitations.agent_line": { agent: string };
 	"ui.teamBridge.invitations.consent.bridge_agent_participation_v1": undefined;
+	"ui.teamBridge.invitations.consent.bridge_agent_participation_v2": undefined;
 	"ui.teamBridge.invitations.count": { count: number };
 	"ui.teamBridge.invitations.created_by": { name: string };
 	"ui.teamBridge.invitations.created_by_you": undefined;
