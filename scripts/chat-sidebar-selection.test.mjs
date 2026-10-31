@@ -2162,6 +2162,18 @@ const CARRIED_GROUNDS = {
 		file: "src/renderer/src/shared/components/ui/avatar.tsx",
 		anchor: "<AvatarPrimitive.Fallback",
 	},
+	/*
+	 * THE AGENT MARK'S PLATE (design review round 1, D1 + D2). The edge and the
+	 * `sunken` fill live on the CARD's own root - the one element whose radius is
+	 * the circle - so a call site with only a size override is still an object
+	 * over its row, and the sweep can see it. Without this entry the plate would
+	 * vanish from the inventory the moment the classes moved out of the call site.
+	 */
+	AgentAvatar: {
+		ground: "bg-sunken",
+		file: "src/renderer/src/shared/components/ui/avatar.tsx",
+		anchor: "export const AgentAvatar",
+	},
 	Switch: {
 		ground: "bg-sunken",
 		file: "src/renderer/src/shared/components/ui/switch.tsx",
@@ -2419,11 +2431,26 @@ const PLATES_INSIDE_ROW_STATES = [
 		fact: "bg-media-surface",
 	},
 	{
+		/* The plate is the ROOT now (design review round 1, D1): the 1px edge is
+		   on the circle's owner, so it is continuous rather than four arcs, and a
+		   transparent picture sits on the `sunken` fill behind it (D2). */
 		what: "the agents sidebar's avatar",
+		file: AGENTS_SIDEBAR,
+		element: "AgentAvatar",
+		ground: "bg-sunken",
+		edge: true,
+	},
+	{
+		/* The same object's fill arm. Its edge is the root's one pixel above it;
+		 * this entry records that the fallback still paints the mark\'s `sunken`
+		 * ground, so the pair (fill + edge) is read from the one element that owns
+		 * the circle rather than duplicated. */
+		what: "the agents sidebar's avatar fallback",
 		file: AGENTS_SIDEBAR,
 		element: "AvatarFallback",
 		ground: "bg-sunken",
-		edge: true,
+		edge: false,
+		fact: "bg-sunken",
 	},
 	{
 		what: "the schedules list's switch",

@@ -1,0 +1,26 @@
+[
+	{
+		"id": "HI-A1",
+		"severity": "major",
+		"key": "ui.teamBridge.events.owner_added_agent",
+		"current": "{actor} ने अपना एजेंट {targets} जोड़ा",
+		"proposed": "{actor} ने अपना एजेंट जोड़ा: {targets}",
+		"reason": "Hindi marks plural obligatorily, so with two or more names the singular «अपना एजेंट … जोड़ा» is ungrammatical («अपने एजेंट … जोड़े»); the colon keeps one grammatical string for a single name and for three."
+	},
+	{
+		"id": "HI-A2",
+		"severity": "nit",
+		"key": "ui.teamBridge.events.joined",
+		"current": "{targets} बातचीत में शामिल",
+		"proposed": "बातचीत में शामिल: {targets}",
+		"reason": "The line carries no finite verb while events.left does («छोड़ दी»), so it reads as a headline; the nominal form stays number-neutral, where «शामिल हुआ»/«शामिल हुए» would force a count."
+	},
+	{
+		"id": "HI-A3",
+		"severity": "nit",
+		"key": "ui.teamBridge.events.others",
+		"current": "{count, plural, one {# अन्य} other {# अन्य}}",
+		"proposed": "{count, plural, one {# अन्य व्यक्ति} other {# अन्य लोग}}",
+		"reason": "«2 अन्य» has no head noun; Hindi needs one counted noun («और 2 अन्य लोग»), and the two arms can then also agree in number."
+	}
+]

@@ -1,0 +1,15 @@
+[
+	{
+		"id": "UR-DB1",
+		"severity": "major",
+		"key": "ui.teamBridge.events.declined_self",
+		"related_keys": [
+			"ui.teamBridge.events.declined",
+			"ui.teamBridge.invitations.declined"
+		],
+		"current": "{actor} نے دعوت سے انکار کر دی",
+		"proposed": "{actor} نے دعوت سے انکار کر دیا",
+		"also_affects": "ui.teamBridge.events.declined → «{actor} نے {targets} کے لیے دعوت سے انکار کر دیا»",
+		"reason": "«انکار» is a masculine noun, so the ergative perfective agrees with it and needs «کر دیا»; «کر دی» is the feminine ending. The file is otherwise rigorous about exactly this agreement: «ہٹا دیا» (masc.), «منظوری دی» (fem. منظوری), «گفتگو چھوڑ دی» (fem. گفتگو), and invitations.declined in this same catalogue writes «انکار کر دیا گیا». Both delta lines keep the round-1 «دی», so the error is inherited rather than introduced - but the accepted finding that the delta claims to apply (round-1 UR-A2) proposed «کر دیا», and the applied variant dropped the alif, so the remediation is partial."
+	}
+]

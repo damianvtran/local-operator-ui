@@ -1,0 +1,6 @@
+en       56810571f7cfe24841940394b0579e28a13616c40da35fe93301f5b66fb7290c  src/i18n/catalogues/en/ui.teamBridge.json
+context  adb76e0b6e40573f67398d6d260fbb738686f34f73077b593126cee6d2d0a77e  src/i18n/catalogues/en/ui.teamBridge.context.json
+es   b6607de4a9c565de99c8d0b8c5a9fa65afb89e6f92d7fbcd71132f3435c6ba81  src/i18n/catalogues/es/ui.teamBridge.json
+
+prior round 1b9218794ef1f2acf9a509e19bc8d23fdd3ecbb746fdee3076329870c759d10a  (round 1 and round 2 receipts 955e54c57ace-es / 502568f2aefe-es / 4ab583bbf0ca-es)
+reverse-applied 1b9218794ef1f2acf9a509e19bc8d23fdd3ecbb746fdee3076329870c759d10a  matches=true

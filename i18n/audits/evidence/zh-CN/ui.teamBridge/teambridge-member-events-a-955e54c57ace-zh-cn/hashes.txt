@@ -1,0 +1,3 @@
+en  src/i18n/catalogues/en/ui.teamBridge.json 56810571f7cfe24841940394b0579e28a13616c40da35fe93301f5b66fb7290c
+zh-CN  src/i18n/catalogues/zh-CN/ui.teamBridge.json 07b867bd4bc129030d9417ae31fb989f5ec35b2fe07f60d636a772c541749307
+evidence render-and-plurals.txt f1d7418a3a78e64da229da4a99974d89bbd1d09d0f7570f6eb5a904bf59e351a

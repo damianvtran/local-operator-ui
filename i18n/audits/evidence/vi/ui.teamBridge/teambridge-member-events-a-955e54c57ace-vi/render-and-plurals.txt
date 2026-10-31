@@ -1,0 +1,65 @@
+locale vi
+---
+key:   ui.teamBridge.events.invited
+value: {actor} đã mời {targets}
+  1 target: Ana đã mời Ben
+  3 targets: Ana đã mời Ben, Sana và Ravi
+
+key:   ui.teamBridge.events.joined
+value: {targets} đã tham gia cuộc trò chuyện
+  1 target: Ben đã tham gia cuộc trò chuyện
+  3 targets: Ben, Sana và Ravi đã tham gia cuộc trò chuyện
+
+key:   ui.teamBridge.events.owner_added_agent
+value: {actor} đã thêm tác nhân {targets} của mình
+  1 target: Ana đã thêm tác nhân Ben của mình
+  3 targets: Ana đã thêm tác nhân Ben, Sana và Ravi của mình
+
+key:   ui.teamBridge.events.left
+value: {targets} đã rời cuộc trò chuyện
+  1 target: Ben đã rời cuộc trò chuyện
+  3 targets: Ben, Sana và Ravi đã rời cuộc trò chuyện
+
+key:   ui.teamBridge.events.removed
+value: {actor} đã xóa {targets} khỏi cuộc trò chuyện
+  1 target: Ana đã xóa Ben khỏi cuộc trò chuyện
+  3 targets: Ana đã xóa Ben, Sana và Ravi khỏi cuộc trò chuyện
+
+key:   ui.teamBridge.events.consented
+value: {actor} đã đồng ý cho {targets} tham gia
+  1 target: Ana đã đồng ý cho Ben tham gia
+  3 targets: Ana đã đồng ý cho Ben, Sana và Ravi tham gia
+
+key:   ui.teamBridge.events.declined_self
+value: {actor} đã từ chối lời mời
+  1 target: Ana đã từ chối lời mời
+  3 targets: Ana đã từ chối lời mời
+
+key:   ui.teamBridge.events.declined
+value: {actor} đã từ chối lời mời dành cho {targets}
+  1 target: Ana đã từ chối lời mời dành cho Ben
+  3 targets: Ana đã từ chối lời mời dành cho Ben, Sana và Ravi
+
+key:   ui.teamBridge.events.withdrawn
+value: {actor} đã rút lại lời mời dành cho {targets}
+  1 target: Ana đã rút lại lời mời dành cho Ben
+  3 targets: Ana đã rút lại lời mời dành cho Ben, Sana và Ravi
+
+key:   ui.teamBridge.events.unknown
+value: Danh sách thành viên đã thay đổi
+  rendered: Danh sách thành viên đã thay đổi
+
+key:   ui.teamBridge.events.others
+value: {count, plural, other {# người khác}}
+  count=1: 1 người khác
+  count=2: 2 người khác
+  count=3: 3 người khác
+  count=21: 21 người khác
+  count=22: 22 người khác
+  count=25: 25 người khác
+  as last list item: Ana đã mời Ben, Sana và 2 người khác
+
+key:   ui.teamBridge.members.invitation_note_v3
+value: Lời mời không cấp quyền truy cập cho đến khi được chấp nhận. Tác nhân của chính bạn tham gia ngay; tác nhân của người khác sẽ tham gia khi chủ sở hữu của tác nhân đó đồng ý. Tác nhân thành viên đọc mọi tin nhắn tại đây, tự quyết định có trả lời hay không và được kỳ vọng sẽ trả lời khi được nhắc đến bằng @. Chủ sở hữu có thể giới hạn tác nhân chỉ trong các lượt nhắc đến bằng @ và các luồng mà tác nhân tham gia, hoặc tắt tiếng tác nhân.
+  rendered: Lời mời không cấp quyền truy cập cho đến khi được chấp nhận. Tác nhân của chính bạn tham gia ngay; tác nhân của người khác sẽ tham gia khi chủ sở hữu của tác nhân đó đồng ý. Tác nhân thành viên đọc mọi tin nhắn tại đây, tự quyết định có trả lời hay không và được kỳ vọng sẽ trả lời khi được nhắc đến bằng @. Chủ sở hữu có thể giới hạn tác nhân chỉ trong các lượt nhắc đến bằng @ và các luồng mà tác nhân tham gia, hoặc tắt tiếng tác nhân.
+
