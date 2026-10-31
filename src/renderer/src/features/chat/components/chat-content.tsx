@@ -18,7 +18,7 @@ import {
 import { useNotificationDrawerTab } from "@features/notifications/drawer-tab-store";
 import { useNotificationsEnabled } from "@features/notifications/notifications-api";
 import { useProviderStatus } from "@features/providers/use-provider-status";
-import { sessionPictureEditable } from "@shared/agent-avatar/agent-avatar-meta";
+import { sessionAvatarTarget } from "@shared/agent-avatar/agent-avatar-meta";
 import {
 	desktopFeatureEnabled,
 	desktopFeatureState,
@@ -1145,24 +1145,38 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * from `locality` (a remote conversation's agent belongs to the device that
 		 * owns it, where this window cannot write) and a resolvable `agent_id`.
 		 */
-		const avatarAgentId = useCanonicalSessionsStore((state) =>
+		/*
+		 * PRIMITIVE SELECTORS, as the three it replaces were: a selector that returned
+		 * the row (or the target object) would re-render this large component on every
+		 * status tick of the row, where the picture's four inputs change rarely. Each
+		 * reads `sessionAvatarTarget` for ITS field, so the values still come from the
+		 * one reader the sidebar's pencil uses.
+		 *
+		 * THE AGENT IS THE ROW'S BOUND AGENT, NOT THE CHAT TITLE (QA round 1, Q-1).
+		 * `agentName` above is what the header SHOWS (the conversation's title); the
+		 * editor link needs the agent's own name, which the Agents page selects its
+		 * pane by, so the two placements build the same href by construction.
+		 */
+		const avatarTarget = (
+			state: ReturnType<typeof useCanonicalSessionsStore.getState>,
+		) =>
 			sessionId
-				? (state.sessions.find((row) => row.session_id === sessionId)
-						?.agent_id ?? null)
-				: null,
+				? sessionAvatarTarget(
+						state.sessions.find((row) => row.session_id === sessionId),
+					)
+				: null;
+		const avatarAgentId = useCanonicalSessionsStore(
+			(state) => avatarTarget(state)?.agentId ?? null,
 		);
-		const agentAvatarSha = useCanonicalSessionsStore((state) =>
-			sessionId
-				? (state.sessions.find((row) => row.session_id === sessionId)
-						?.avatar_sha256 ?? null)
-				: null,
+		const avatarAgentName = useCanonicalSessionsStore(
+			(state) => avatarTarget(state)?.agentName ?? null,
 		);
-		const agentAvatarOwned = useCanonicalSessionsStore((state) => {
-			if (!sessionId) return false;
-			return sessionPictureEditable(
-				state.sessions.find((row) => row.session_id === sessionId),
-			);
-		});
+		const agentAvatarSha = useCanonicalSessionsStore(
+			(state) => avatarTarget(state)?.sha256 ?? null,
+		);
+		const agentAvatarOwned = useCanonicalSessionsStore(
+			(state) => avatarTarget(state)?.owned ?? false,
+		);
 		/*
 		 * TWO PREDICATES, BECAUSE THE TWO CONSUMERS WANT DIFFERENT ONES (agent review
 		 * round 4, R4-2). The notice is about EXISTENCE and takes the catalogue's
@@ -2457,6 +2471,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								avatarAgentId && agentAvatarSha
 									? {
 											agentId: avatarAgentId,
+											agentName: avatarAgentName,
 											sha256: agentAvatarSha,
 											owned: agentAvatarOwned,
 										}

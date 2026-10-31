@@ -24,7 +24,7 @@
  */
 
 import { AgentAvatarEditLink } from "@shared/agent-avatar/agent-avatar-edit-link";
-import { sessionPictureEditable } from "@shared/agent-avatar/agent-avatar-meta";
+import { sessionAvatarTarget } from "@shared/agent-avatar/agent-avatar-meta";
 import { AgentMark } from "@shared/agent-avatar/agent-mark";
 import { AgentAvatar, AvatarFallback } from "@shared/components/ui/avatar";
 import { cn } from "@shared/lib/utils";
@@ -170,17 +170,16 @@ export function ChatSessionAvatarEdit({
 	row: CanonicalSessionRow;
 	className?: string;
 }) {
-	const agentId = row.agent_id ?? null;
-	const agentName = row.binding?.agent ?? null;
-	if (!agentId || !row.avatar_sha256 || !agentName) return null;
+	const target = sessionAvatarTarget(row);
 	/*
 	 * A REMOTE ROW MOUNTS NOTHING (agent review round 2, m-B). The link's unowned
 	 * arm draws a positioned 16px span over the mark; on top of the row's
 	 * non-positioned button that span would take the press on the mark, a dead
 	 * zone where the row button used to receive it. No door means no element.
+	 * A row with no bound agent name has no address for the door either.
 	 */
-	const owned = sessionPictureEditable(row);
-	if (!owned) return null;
+	if (!target?.owned || !target.agentName) return null;
+	const { agentId, agentName, owned } = target;
 	return (
 		<AgentAvatarEditLink
 			agentName={agentName}

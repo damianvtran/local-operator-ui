@@ -74,3 +74,47 @@ export function sessionPictureEditable(
 	if (!row?.agent_id) return false;
 	return row.locality !== "remote";
 }
+
+/**
+ * The agent a session row's picture belongs to, as every placement of the
+ * pencil names it - THE ONE READER OF A ROW'S AGENT IDENTITY (QA round 1, Q-1).
+ *
+ * The chat header used to be handed the CHAT TITLE as its agent name while the
+ * sidebar row read `binding.agent`, so the same row built two different editor
+ * hrefs and the header's pointed at a profile named after the conversation
+ * ("could not be read"). The mocks could not show it: their fixtures named the
+ * conversation after the agent. Both placements now take `{agentId, agentName}`
+ * from this function, so they cannot diverge again - the name is the BOUND
+ * AGENT's, never the title, and is what `agentPictureEditorHref` selects the
+ * Agents-page pane by.
+ *
+ * Null when the row names no agent or no picture: there is then nothing to
+ * draw. `agentName` is null when the row carries no bound agent name, and then
+ * `owned` is false whatever the locality - a door needs an address, and the
+ * conversation's title is not one. `owned` is otherwise the one
+ * `sessionPictureEditable` answer (a remote row is never editable here).
+ */
+export function sessionAvatarTarget(
+	row:
+		| (Pick<CanonicalSessionRow, "agent_id" | "locality" | "avatar_sha256"> & {
+				binding?: { agent?: string | null } | null;
+		  })
+		| null
+		| undefined,
+): {
+	agentId: string;
+	agentName: string | null;
+	sha256: string;
+	owned: boolean;
+} | null {
+	const agentId = row?.agent_id ?? null;
+	const sha256 = row?.avatar_sha256 ?? null;
+	if (!row || !agentId || !sha256) return null;
+	const agentName = row.binding?.agent || null;
+	return {
+		agentId,
+		agentName,
+		sha256,
+		owned: agentName !== null && sessionPictureEditable(row),
+	};
+}

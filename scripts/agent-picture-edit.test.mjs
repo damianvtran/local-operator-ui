@@ -40,6 +40,8 @@ const bundle = await build({
 			'export { ChatSessionAvatar, ChatSessionAvatarEdit } from "./src/renderer/src/features/chat/components/chat-session-avatar";',
 			'export { agentAvatarPath } from "./src/renderer/src/shared/agent-avatar/agent-avatar-meta";',
 			'export { publish, release } from "./src/renderer/src/shared/lib/blob-url-cache";',
+			'export { ChatHeader } from "./src/renderer/src/features/chat/components/chat-header";',
+			'export { sessionAvatarTarget } from "./src/renderer/src/shared/agent-avatar/agent-avatar-meta";',
 			'export { sessionPictureEditable } from "./src/renderer/src/shared/agent-avatar/agent-avatar-meta";',
 			'export { renderToStaticMarkup } from "react-dom/server";',
 			'export { createElement } from "react";',
@@ -112,6 +114,8 @@ const {
 	AgentDetail,
 	ChatSessionAvatar,
 	ChatSessionAvatarEdit,
+	ChatHeader,
+	sessionAvatarTarget,
 	agentAvatarPath,
 	publish,
 	release,
@@ -401,7 +405,14 @@ test("neither placement decides ownership for itself", async () => {
 	// quotes the literal it replaced, and a bare /owned: true/ matches that too.
 	assert.doesNotMatch(content, /^\s*owned: true,/m);
 	assert.match(content, /agentAvatarOwned = useCanonicalSessionsStore/);
-	assert.match(content, /sessionPictureEditable\(\s*state\.sessions\.find/);
+	// Ownership comes out of the shared reader, which calls the one predicate.
+	assert.match(content, /avatarTarget\(state\)\?\.owned/);
+	assert.match(content, /sessionAvatarTarget\(\s*state\.sessions\.find/);
+	const meta = await readFile(
+		"src/renderer/src/shared/agent-avatar/agent-avatar-meta.ts",
+		"utf8",
+	);
+	assert.match(meta, /sessionPictureEditable\(row\)/);
 
 	const sidebar = await readFile(
 		"src/renderer/src/features/chat/components/chat-session-avatar.tsx",
@@ -409,8 +420,102 @@ test("neither placement decides ownership for itself", async () => {
 	);
 	// The one answer is bound once, and both the early return (a remote row mounts
 	// nothing) and the link's `owned` read that binding.
-	assert.match(sidebar, /const owned = sessionPictureEditable\(row\);/);
-	assert.match(sidebar, /if \(!owned\) return null;/);
+	assert.match(sidebar, /const target = sessionAvatarTarget\(row\);/);
+	assert.match(
+		sidebar,
+		/if \(!target\?\.owned \|\| !target\.agentName\) return null;/,
+	);
 	assert.match(sidebar, /owned=\{owned\}/);
 	assert.doesNotMatch(sidebar, /^\s*owned=\{true\}/m);
+});
+
+/* ------------------------------------------- the header's placement (Q-1) --- */
+
+/*
+ * THE HEADER'S PENCIL ADDRESSES THE BOUND AGENT, NOT THE CHAT TITLE (QA round 1,
+ * Q-1). `chat-page` hands the header the conversation's TITLE as `agentName` (it
+ * is what the header shows), and the header used to feed that same string to the
+ * editor link, so the href read `name=<conversation title>` and the Agents page
+ * answered "could not be read". The mocks hid it because every fixture named the
+ * conversation after its agent. These cases give the title and the agent
+ * DIFFERENT names - the shape of nearly every real conversation - and render the
+ * shipped `ChatHeader`, with the picture's bytes published under the key the
+ * hook peeks so the mark (and so the door) draws on its first frame.
+ */
+const TITLE = "Hello from the mock provider";
+const hrefOf = (markup) =>
+	/href="#([^"]*edit=picture[^"]*)"/
+		.exec(markup)?.[1]
+		?.replaceAll("&amp;", "&");
+const withBytes = (r, fn) => {
+	const key = agentAvatarPath(r.agent_id, r.avatar_sha256);
+	publish(key, "blob:fixture-header");
+	try {
+		return fn();
+	} finally {
+		release(key);
+	}
+};
+const headerMarkup = (r) =>
+	render(
+		createElement(
+			MemoryRouter,
+			{ initialEntries: ["/"] },
+			createElement(ChatHeader, {
+				agentName: TITLE,
+				// Exactly what `chat-content` derives from the row: one reader, shared
+				// with the sidebar's pencil.
+				agentAvatar: sessionAvatarTarget(r),
+			}),
+		),
+	);
+
+test("the header's pencil carries the bound agent's name, not the chat title", () => {
+	const r = row({ binding: { agent: "Scout" } });
+	const href = withBytes(r, () => hrefOf(headerMarkup(r)));
+	assert.ok(href, "the header drew a pencil for an owned, pictured agent");
+	const params = new URLSearchParams(href.split("?")[1]);
+	assert.equal(params.get("name"), "Scout");
+	assert.equal(params.get("agent"), "agent-1");
+	assert.notEqual(params.get("name"), TITLE);
+	// The title is still what the header SHOWS; only the link's address moved.
+	assert.match(headerMarkup(r), new RegExp(TITLE));
+});
+
+test("the header and the sidebar row build the same href for one session", () => {
+	const r = row({ binding: { agent: "Scout" } });
+	const fromHeader = withBytes(r, () => hrefOf(headerMarkup(r)));
+	const fromRow = hrefOf(sidebarMarkup({ binding: { agent: "Scout" } }));
+	assert.ok(fromHeader && fromRow);
+	assert.equal(fromHeader, fromRow);
+});
+
+test("no bound agent name, or a remote agent, draws no pencil in the header", () => {
+	for (const over of [
+		{ binding: {} },
+		{ binding: undefined },
+		{ locality: "remote" },
+		{ agent_id: null },
+	]) {
+		const r = row({ binding: { agent: "Scout" }, ...over });
+		const markup = withBytes(row({}), () => headerMarkup(r));
+		assert.doesNotMatch(markup, /data-agent-avatar-edit/, JSON.stringify(over));
+		assert.doesNotMatch(markup, /edit=picture/, JSON.stringify(over));
+	}
+});
+
+test("the header takes its agent from the row's binding, never from the title", async () => {
+	const content = await readFile(
+		"src/renderer/src/features/chat/components/chat-content.tsx",
+		"utf8",
+	);
+	// The wiring a render cannot reach (`chat-content` needs a desktop transport):
+	// the header's avatar comes from the shared reader, and carries its name.
+	assert.match(content, /sessionAvatarTarget\(/);
+	assert.match(content, /agentName: avatarAgentName/);
+	const header = await readFile(
+		"src/renderer/src/features/chat/components/chat-header.tsx",
+		"utf8",
+	);
+	assert.doesNotMatch(header, /<ChatHeaderAvatar[^>]*agentName=/);
 });

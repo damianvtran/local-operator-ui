@@ -104,6 +104,18 @@ const AVATAR_MAP_PAGE = 500;
 let activeClient: QueryClient | null = null;
 const client = (): QueryClient => activeClient ?? queryClient;
 
+/**
+ * Every agent id the last map read LISTED, picture or not.
+ *
+ * The migration must tell "this backend has no such agent" (keep the entry)
+ * from "this agent exists and has no picture yet" (upload it). The map holds
+ * only agents WITH a picture, so on its own it cannot; the agents page's cached
+ * list used to supply the rest, which is the dependency Q-2 removed - with only
+ * the shell's layer mounted nothing else has listed the agents. Kept beside the
+ * read that produced it so the two cannot disagree.
+ */
+let listedAgentIds: ReadonlySet<string> = new Set();
+
 async function readAvatarMap(): Promise<AgentAvatarMap> {
 	const response = await desktopControlResponse({
 		op: "legacy.agents.list",
@@ -113,10 +125,13 @@ async function readAvatarMap(): Promise<AgentAvatarMap> {
 	if (!response.ok) throw new Error(`agents list ${response.status}`);
 	const body = (await response.json()) as CRUDResponse<AgentListResult>;
 	const map: AgentAvatarMap = {};
+	const listed = new Set<string>();
 	for (const agent of body.result?.agents ?? []) {
+		listed.add(agent.id);
 		const meta = avatarMetaOf(agent.avatar);
 		if (meta) map[agent.id] = meta;
 	}
+	listedAgentIds = listed;
 	return map;
 }
 
@@ -144,6 +159,26 @@ export function useAgentAvatarMap(enabled = true) {
 		if (data) void migrateLocalAvatars(data);
 	}, [data]);
 	return query;
+}
+
+/**
+ * The app's agent-avatar layer: mounted ONCE, by the shell (`app.tsx`), so the
+ * #1517 `localStorage` migration runs on every launch whichever page is open
+ * (QA round 1, Q-2).
+ *
+ * WHY THE SHELL AND NOT A SURFACE. The migration is triggered by the first map
+ * read (`useAgentAvatarMap`), but the chat header and the sidebar rows pass the
+ * session row's `avatar_sha256` as a hint, which turns that read OFF for them
+ * (`useAgentAvatar`: `enabled = ... && !hinted`). A person who upgraded and
+ * stayed in chat therefore kept a picture in `localStorage` that nothing drew
+ * and nothing uploaded until they happened to open the Agents page. The map is
+ * one shared query, so reading it here costs one list request per staleness
+ * window, not one per surface, and the migration's own rules (backend wins,
+ * unknown ids kept, failure retried next launch, upload once then clear) are
+ * unchanged - only WHEN it first runs moves.
+ */
+export function useAgentAvatarLayer(): void {
+	useAgentAvatarMap(true);
 }
 
 /** The record for one agent, or null when it has none (or none is known yet). */
@@ -350,6 +385,7 @@ let migration: Promise<void> | null = null;
 /** Test seam: forget that a migration ran in this document. */
 export function resetAgentAvatarMigrationForTests(): void {
 	migration = null;
+	listedAgentIds = new Set();
 }
 
 function readLegacyImages(): Record<string, string> {
@@ -424,6 +460,7 @@ export function migrateLocalAvatars(map: AgentAvatarMap): Promise<void> {
 			).map((agent) => agent.id),
 		);
 		for (const agentId of Object.keys(map)) known.add(agentId);
+		for (const agentId of listedAgentIds) known.add(agentId);
 		const remaining = { ...images };
 		for (const agentId of ids) {
 			if (map[agentId]) {

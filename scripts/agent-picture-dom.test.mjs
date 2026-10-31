@@ -29,6 +29,7 @@ const bundle = await build({
 		contents: [
 			'export { AgentDetail } from "./src/renderer/src/features/agents/components/agent-detail";',
 			'export { AgentAvatarCropper } from "./src/renderer/src/features/agents/components/agent-avatar-cropper";',
+			'export { useAgentAvatarLayer, resetAgentAvatarMigrationForTests, LEGACY_AVATAR_STORAGE_KEY } from "./src/renderer/src/shared/agent-avatar/agent-avatar";',
 			'export { setLocale } from "./src/renderer/src/shared/i18n";',
 			'export { createElement } from "react";',
 			'export { createRoot } from "react-dom/client";',
@@ -80,6 +81,9 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
 	AgentDetail,
 	AgentAvatarCropper,
+	useAgentAvatarLayer,
+	resetAgentAvatarMigrationForTests,
+	LEGACY_AVATAR_STORAGE_KEY,
 	setLocale,
 	createElement: h,
 	createRoot,
@@ -427,3 +431,89 @@ for (const locale of ["en", "fr", "ru", "es", "hi", "ur"]) {
 		assert.deepEqual(busy.hidden, [true, false]);
 	});
 }
+
+/* ------------------------------------- Q-2: the migration needs no page --- */
+
+/*
+ * THE #1517 MIGRATION RUNS FROM THE APP'S AVATAR LAYER, NOT FROM THE AGENTS PAGE
+ * (QA round 1, Q-2). It is triggered by the first avatar-map read, and the chat
+ * header and sidebar rows pass the session row's digest as a hint that switches
+ * that read off - so a person who stayed in chat never triggered it. Here only
+ * `useAgentAvatarLayer` is mounted (the hook `app.tsx` calls once); the Agents
+ * page, the editor and every hinted surface are NOT, which is what makes this
+ * fail on the old code: nothing mounted reads the map, so no PUT is ever made.
+ *
+ * The transport is the desktop bridge the renderer really calls: the agents list
+ * goes through `desktop.request` and the upload through `desktop.media`.
+ */
+const PNG_DATA_URL = `data:image/png;base64,${Buffer.from("fixture-bytes").toString("base64")}`;
+const SHA_ON_BACKEND = "f".repeat(64);
+
+test("the migration uploads a legacy picture with only the app layer mounted", async () => {
+	const puts = [];
+	window.api.desktop.request = async () => ({
+		status: 200,
+		body: {
+			result: {
+				agents: [
+					{ id: "agent-new" },
+					{ id: "agent-has", avatar: { sha256: SHA_ON_BACKEND } },
+				],
+			},
+		},
+	});
+	window.api.desktop.media = async (request) => {
+		puts.push(request);
+		return { status: 200, kind: "json", body: {} };
+	};
+	globalThis.localStorage = window.localStorage;
+	window.localStorage.setItem(
+		LEGACY_AVATAR_STORAGE_KEY,
+		JSON.stringify({
+			state: {
+				images: {
+					"agent-new": PNG_DATA_URL,
+					// The backend already has a picture: it wins, nothing is uploaded.
+					"agent-has": PNG_DATA_URL,
+					// Not in this backend's list: kept, never dropped.
+					"agent-unknown": PNG_DATA_URL,
+				},
+			},
+			version: 0,
+		}),
+	);
+	resetAgentAvatarMigrationForTests();
+	const Layer = () => {
+		useAgentAvatarLayer();
+		return null;
+	};
+	await mount(
+		h(
+			QueryClientProvider,
+			{
+				client: new QueryClient({
+					defaultOptions: { queries: { retry: false, gcTime: 0 } },
+				}),
+			},
+			h(Layer),
+		),
+	);
+	// The map read and the migration are async; let them settle.
+	for (let i = 0; i < 20 && puts.length < 1; i++) {
+		await act(async () => new Promise((resolve) => setTimeout(resolve, 10)));
+	}
+	await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+	assert.deepEqual(
+		puts.map((p) => [p.op, p.agentId]),
+		[["agent.avatar.put", "agent-new"]],
+		"exactly one upload: the agent the backend lacks",
+	);
+	const left = JSON.parse(
+		window.localStorage.getItem(LEGACY_AVATAR_STORAGE_KEY),
+	).state.images;
+	assert.deepEqual(
+		Object.keys(left),
+		["agent-unknown"],
+		"uploaded and backend-won entries are cleared, the unknown id is kept",
+	);
+});

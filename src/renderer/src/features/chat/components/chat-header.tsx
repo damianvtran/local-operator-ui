@@ -88,6 +88,12 @@ type ChatHeaderProps = {
 	 */
 	agentAvatar?: {
 		agentId: string;
+		/**
+		 * The BOUND AGENT's name - the editor link's address - never the chat
+		 * title this header shows (QA round 1, Q-1). Null when the row names no
+		 * bound agent; the picture still draws, but with no door (`owned` false).
+		 */
+		agentName: string | null;
 		sha256: string | null;
 		/** Whether the viewer owns the agent, i.e. whether the pencil appears. */
 		owned: boolean;
@@ -339,8 +345,7 @@ const PATH_CHIP_CHARS = 40;
  */
 const ChatHeaderAvatar: FC<{
 	agent: NonNullable<ChatHeaderProps["agentAvatar"]>;
-	agentName: string;
-}> = ({ agent, agentName }) => {
+}> = ({ agent }) => {
 	const present = useHasAgentPicture(agent.agentId, agent.sha256);
 	/*
 	 * NO PICTURE, NO PLATE, NO DOOR - and that covers the digest whose bytes do not
@@ -354,9 +359,9 @@ const ChatHeaderAvatar: FC<{
 	return (
 		<span className="me-1 flex shrink-0 items-center">
 			<AgentAvatarEditLink
-				agentName={agentName}
+				agentName={agent.agentName ?? ""}
 				agentId={agent.agentId}
-				owned={agent.owned}
+				owned={agent.owned && agent.agentName !== null}
 				className="size-5"
 				pencilClassName="size-2.5"
 			>
@@ -964,9 +969,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							 * `AgentAvatarEditLink`, which draws nothing but the bare picture
 							 * for an agent the viewer does not own.
 							 */}
-							{agentAvatar ? (
-								<ChatHeaderAvatar agent={agentAvatar} agentName={agentName} />
-							) : null}
+							{agentAvatar ? <ChatHeaderAvatar agent={agentAvatar} /> : null}
 							<h2
 								ref={renameTitleRef}
 								data-header-title=""
