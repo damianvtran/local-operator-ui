@@ -387,6 +387,43 @@ test("sentence: owner-implicit join reads 'added their agent'; other verbs", () 
 	}
 });
 
+/*
+ * THE OWNER ARM IS GUARDED BY FACTS THE SENTENCE DEPENDS ON (audit round B,
+ * CO-B1/CO-B2). Both cases below fall to the shipped arm, which names no
+ * relation and so cannot be wrong: a plural target list would be rendered by a
+ * singular sentence, and an agent actor consenting "their agent" would claim an
+ * agent consented to itself.
+ */
+test("consented: two agent targets in one line keep the shipped arm (CO-B1)", () => {
+	const [line] = m.teamBridgeEventLines([
+		event({
+			kind: "consented",
+			actor: SANA,
+			targets: [AIDA_SANA, { ...AIDA_SANA, endpoint_id: "bep_second" }],
+		}),
+	]);
+	assert.equal(m.teamBridgeEventOwnerConsent(line), false);
+	assert.equal(
+		m.teamBridgeEventSentences(line, label, "en").shown,
+		"Sana Ketabchi approved Aida (Sana Ketabchi) and Aida (Sana Ketabchi) joining",
+	);
+});
+
+test("consented: an agent-kind actor keeps the shipped arm (CO-B2)", () => {
+	const [line] = m.teamBridgeEventLines([
+		event({
+			kind: "consented",
+			actor: AIDA_SANA,
+			targets: [{ ...AIDA_SANA, display_label: "Scout (Sana Ketabchi)" }],
+		}),
+	]);
+	assert.equal(m.teamBridgeEventOwnerConsent(line), false);
+	assert.equal(
+		m.teamBridgeEventSentences(line, label, "en").shown,
+		"Aida (Sana Ketabchi) approved Scout (Sana Ketabchi) joining",
+	);
+});
+
 test("the target list is joined by the LOCALE's list format, not a hard-coded comma", () => {
 	const [line] = m.teamBridgeEventLines([event({ targets: [BEN, SANA] })]);
 	assert.match(

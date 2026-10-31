@@ -182,14 +182,31 @@ export function teamBridgeEventLines(
 /**
  * WHOSE AGENT IS IT (design round 1, D1). Consent is the agent's OWNER's act, so
  * "Sana approved Aida (Sana Ketabchi) joining" named the same person twice and
- * left the relation implicit. An owner form needs a predicate, not a guess: an
- * agent party carries its OWNER's `account_id` and its own `endpoint_id`, so the
- * actor owns the target exactly when every target is an agent on the actor's
- * account. Anything else (a person target, a mixed group, an agent someone else
- * owns) keeps the shipped sentence, which claims no relation it cannot prove.
+ * left the relation implicit.
+ *
+ * THREE CONDITIONS, EACH ONE A FACT THE SENTENCE DEPENDS ON (audit round B,
+ * CO-B1/CO-B2):
+ *  - EXACTLY ONE TARGET. The owner sentence is singular by construction ("their
+ *    agent X"), and one person owns at most one agent per organization - the
+ *    endpoint row is unique per `{tenant_id, account_id}`. A hub field that
+ *    carried two targets would otherwise render a singular sentence over a
+ *    plural list, so it falls to the shipped arm, which names no relation.
+ *  - THE ACTOR IS A HUMAN. Consent is the owner's own act and the route is
+ *    human-keyed. The one agent-actor writer is the create path that activates
+ *    an agent on its owner's behalf, and rendering "Aida (Sana) approved their
+ *    agent Scout (Sana) joining" would claim an agent consented to itself;
+ *    that case keeps the shipped sentence too.
+ *  - THE TARGET IS AN AGENT ON THE ACTOR'S ACCOUNT. An agent party carries its
+ *    OWNER's `account_id` and its own `endpoint_id`, so this is the ownership
+ *    test itself.
+ * Anything else keeps the shipped sentence, which claims no relation it cannot
+ * prove. Both fallbacks are tested by name.
  */
-export function teamBridgeEventOwnerConsent(line: TeamBridgeEventLine): boolean {
-	if (line.targets.length === 0) return false;
+export function teamBridgeEventOwnerConsent(
+	line: TeamBridgeEventLine,
+): boolean {
+	if (line.targets.length !== 1) return false;
+	if (line.actor.kind !== "human") return false;
 	return line.targets.every(
 		(target) =>
 			target.kind === "agent" && target.account_id === line.actor.account_id,
