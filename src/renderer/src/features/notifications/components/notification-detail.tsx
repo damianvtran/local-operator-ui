@@ -2,6 +2,7 @@ import {
 	answerQueuedAsk,
 	declineQueuedAsk,
 	dismissQueuedAsk,
+	reviseQueuedAsk,
 } from "@features/chat/ask-answer";
 import type { AskDismissReason, AskDraft } from "@features/chat/ask-queue";
 import { askQueueView } from "@features/chat/ask-queue";
@@ -84,7 +85,10 @@ export type NotificationDetailProps = {
 	onDismissSession: (sessionId: string, title: string) => void;
 	onCopyLink: (item: DesktopNotificationItem) => void;
 	onOpenProject: (key: string) => void;
-	onAsksSettled: () => void;
+	onAsksSettled: (
+		askId: string,
+		status: "answered" | "declined" | "dismissed",
+	) => void;
 	/** Focus the first live ask's answer field on mount (`A`, `E` on an ask). */
 	focusAnswer?: boolean;
 };
@@ -537,12 +541,15 @@ const DetailAsks: FC<{
 	sessionId: string;
 	asks: PendingAsk[];
 	nowMs: number;
-	onSettled: () => void;
+	onSettled: (
+		askId: string,
+		status: "answered" | "declined" | "dismissed",
+	) => void;
 }> = ({ sessionId, asks, nowMs, onSettled }) => {
 	const { client } = useOptionalQueryClient();
 	const { lock, outcomes, answering, run } = useAskOutcomes({
-		onAccepted: () => {
-			onSettled();
+		onAccepted: (act) => {
+			if (act.kind !== "changed") onSettled(act.askId, act.kind);
 			/*
 			 * NUDGE THE AGGREGATE, ONCE (agent review round 1, R1-3). The server's own
 			 * row - with `delivered`, which moves the card from `Answered — delivering`
@@ -592,6 +599,19 @@ const DetailAsks: FC<{
 					questions: ask.questions,
 					send: () =>
 						answerQueuedAsk(
+							{ taskId: ask.ask_id, answers, sessionId, lock },
+							(request) => desktopResult(request),
+						),
+				})
+			}
+			onRevise={(ask, answers) =>
+				run({
+					askId: ask.ask_id,
+					kind: "changed",
+					answers,
+					questions: ask.questions,
+					send: () =>
+						reviseQueuedAsk(
 							{ taskId: ask.ask_id, answers, sessionId, lock },
 							(request) => desktopResult(request),
 						),

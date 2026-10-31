@@ -1686,13 +1686,12 @@ export const askStatusWord = (status: AskStatus | "unknown"): string => {
 };
 
 /**
- * The ask panel's two halves: the cards a control can still act on, and the rows it
- * collapses to one line each behind their status badge.
- *
- * PENDING is `canAnswer || delivering`: an ask the user can answer, or an answer the
- * agent has not been handed yet, which is still the user's to change (design §10).
- * Everything else is SETTLED, and that includes a LAPSED ask (D11): it is read-only,
- * so it renders exactly as a declined one does - collapsed, opened only by the reader.
+ * The ask panel partitions unanswered decisions from recorded decisions, not from
+ * delivery work. An accepted answer is SETTLED for the user even while the agent
+ * has not received it; counting it as Pending makes a successful send look undone.
+ * `delivering` stays an independent fact: the panel keeps that card expanded, its
+ * delivery sentence and its legal Change answer door until actual delivery (§10).
+ * LAPSED asks are settled history too, except for the existing pointer-safety hold.
  *
  * `held` is the one exception: the ids this MOUNT has already shown as answerable. A
  * held ask that lapses stays in the pending half, in its own slot, until the next
@@ -1713,7 +1712,7 @@ export const askPanelHalves = (
 	held: ReadonlySet<string> = new Set(),
 ): { pending: AskPresentation[]; settled: AskPresentation[] } => {
 	const isPending = (row: AskPresentation) =>
-		row.canAnswer || row.delivering || (row.lapsed && held.has(row.ask.ask_id));
+		row.canAnswer || (row.lapsed && held.has(row.ask.ask_id));
 	return {
 		pending: rows.filter(isPending),
 		settled: rows

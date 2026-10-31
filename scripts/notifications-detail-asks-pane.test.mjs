@@ -131,6 +131,7 @@ const shims = {
 	requestAnimationFrame: (callback) => setTimeout(callback, 0),
 	cancelAnimationFrame: (id) => clearTimeout(id),
 	IS_REACT_ACT_ENVIRONMENT: true,
+	CSS: { escape: (value) => value },
 	ResizeObserver: NoopObserver,
 	IntersectionObserver: NoopObserver,
 	matchMedia: (query) => ({
@@ -265,6 +266,8 @@ const NOTE = {
  */
 async function mount({
 	openId,
+	notes = [NOTE],
+	wide = false,
 	surface = "pane",
 	answer = () => ({ status: 200 }),
 	/** Edit the seeded asks (a secret question, a timed-out ask, a withdrawn one). */
@@ -275,6 +278,12 @@ async function mount({
 	 */
 	holdAggregate = false,
 } = {}) {
+	const previousMatchMedia = window.matchMedia;
+	if (wide)
+		window.matchMedia = (query) => ({
+			...shims.matchMedia(query),
+			matches: query.includes("min-width: 1100px"),
+		});
 	const asks = [askRow("a-1111", QUESTION_A), askRow("a-2222", QUESTION_B)];
 	seed(asks);
 	let firstAggregate = null;
@@ -303,7 +312,7 @@ async function mount({
 							.map(itemFor);
 						const items =
 							request.source === "notify" || request.op === "notifications.list"
-								? [NOTE]
+								? notes
 								: [];
 						return {
 							status: 200,
@@ -490,6 +499,7 @@ async function mount({
 		/* The aggregate polls; a client left holding it keeps the file's event loop open. */
 		client.clear();
 		container.remove();
+		window.matchMedia = previousMatchMedia;
 	};
 	return {
 		container,
@@ -507,6 +517,80 @@ async function mount({
 		unmount,
 	};
 }
+test("reel preserves visible row offset across refresh, then follows the next user scroll", async () => {
+	const notes = Array.from({ length: 30 }, (_, i) => ({
+		...NOTE,
+		id: `n_fixture${i}`,
+		seq: 30 - i,
+	}));
+	const page = await mount({ openId: "not-selected", notes });
+	try {
+		await page.settle(() =>
+			Boolean(page.container.querySelector("[data-notifications-list]")),
+		);
+		const port = page.container.querySelector("[data-notifications-list]");
+		assert.ok(port);
+		let shift = 0;
+		port.getBoundingClientRect = () => ({ top: 0, bottom: 300, height: 300 });
+		const measureRows = () => {
+			[...port.querySelectorAll("[data-notification-row]")].forEach(
+				(row, i) => {
+					row.getBoundingClientRect = () => ({
+						top: i * 56 + shift - port.scrollTop,
+						bottom: (i + 1) * 56 + shift - port.scrollTop,
+						height: 56,
+					});
+				},
+			);
+		};
+		measureRows();
+		const scroll = async (top) => {
+			await act(async () => {
+				port.scrollTop = top;
+				port.dispatchEvent(new window.Event("scroll", { bubbles: true }));
+			});
+		};
+		const refresh = async (delta) => {
+			shift += delta;
+			await act(async () =>
+				page.client.setQueriesData(
+					{ queryKey: ["desktop", "notifications", "list"] },
+					(data) => {
+						if (!data?.pages) return data;
+						return {
+							...data,
+							pages: data.pages.map((p) => ({
+								...p,
+								items: p.items.map((row) => ({
+									...row,
+									revision: row.revision + 1,
+								})),
+							})),
+						};
+					},
+				),
+			);
+			await page.settle(() => port.scrollTop !== (delta === 80 ? 500 : 700));
+		};
+		await scroll(500);
+		await refresh(80);
+		assert.equal(
+			port.scrollTop,
+			580,
+			"refresh keeps the visible row at its previous offset",
+		);
+		await scroll(700);
+		await refresh(24);
+		assert.equal(
+			port.scrollTop,
+			724,
+			"the next user scroll replaces the old viewport anchor",
+		);
+	} finally {
+		await page.unmount();
+	}
+});
+
 const RX_7 = /\s+/;
 const RX_NO_ANSWER = /No answer given/;
 const BOUNDED = { timeout: 30_000 };
@@ -525,6 +609,36 @@ async function chooseFirstOption(page) {
 	const option = page.card("a-1111").querySelector("[data-ask-option]");
 	await page.press(option);
 }
+test(
+	"accepted drawer answer settles only its bound reel row before authoritative refresh",
+	BOUNDED,
+	async () => {
+		const page = await openOnA({ wide: true, holdAggregate: true });
+		try {
+			await chooseFirstOption(page);
+			await page.press(page.buttonIn(page.card("a-1111"), "Send answer"));
+			assert.ok(
+				await page.settle(() =>
+					page.container
+						.querySelector(`[data-notification-row="${ITEM_A}"]`)
+						?.textContent.includes("Answered"),
+				),
+			);
+			const answered = page.container.querySelector(
+				`[data-notification-row="${ITEM_A}"]`,
+			);
+			assert.ok(answered.textContent.includes("Answered"));
+			assert.ok(page.card("a-2222").textContent.includes("Queued"));
+			assert.ok(
+				page.container.querySelector(`[data-notification-row="${NOTE.id}"]`),
+			);
+			assert.equal(page.posts.length, 1);
+		} finally {
+			await page.unmount();
+		}
+	},
+);
+
 test(
 	"the detail column is width-bounded: min-w-0 and no overflow-x mask",
 	BOUNDED,

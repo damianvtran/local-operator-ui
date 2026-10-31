@@ -1882,9 +1882,9 @@ export const AskPanel = ({
 	 * so the history that used to cost a chevron to escape now costs a press, and
 	 * the counts are stated ON the controls rather than in a line of prose about them.
 	 *
-	 * THE MIDDLE HALF IS `canAnswer || delivering` (`askPanelHalves`): every row a
-	 * control can still act on. A §10 answer that is recorded but not yet delivered
-	 * belongs to it too - the panel draws it as a pending card. A timed-out ask does
+	 * PENDING COUNTS UNANSWERED DECISIONS (`askPanelHalves`), not delivery work.
+	 * A recorded answer belongs to Settled immediately; its still-expanded card
+	 * separately names delivery and preserves §10's Change answer. A timed-out ask does
 	 * not (D11), which is why the label is `Pending` and no longer
 	 * `Waiting or moved on` (design round 1 on #1116, D1).
 	 *
@@ -2586,7 +2586,12 @@ export const AskPanel = ({
 						</p>
 					) : null}
 					{(showPending ? shown.settled : settled).map((presentation) =>
-						collapsedRow(presentation),
+						/* Settled is the decision, not a claim of delivery. Keep the
+						 * delivery-aware card and legal revision door visible until
+						 * the authoritative delivered row makes it read-only history. */
+						presentation.delivering
+							? askRow(presentation)
+							: collapsedRow(presentation),
 					)}
 				</div>
 			) : null}

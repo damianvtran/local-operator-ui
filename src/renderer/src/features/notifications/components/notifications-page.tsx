@@ -77,6 +77,7 @@ import {
 	type KeyboardEvent,
 	useCallback,
 	useEffect,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -325,6 +326,13 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	 * refresh (design § 7.3, the Gmail/Linear rule): they do not vanish under
 	 * the cursor, and U stays reversible in place.
 	 */
+	/* Accepted answers are kept visible like confirmed reads until leaving the reel
+	 * or explicitly refreshing. The durable pending index removes settled asks, so merely refetching
+	 * makes the row vanish while its stale detail still says open. Store only the
+	 * bound notification's public status here, never submitted/secret answer cells. */
+	const [settledAskRows, setSettledAskRows] = useState<
+		Map<string, DesktopNotificationItem>
+	>(() => new Map());
 	const [stickyRead, setStickyRead] = useState<
 		Map<string, DesktopNotificationItem>
 	>(() => new Map());
@@ -340,6 +348,33 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	/** True while the list is scrolled to its top: fresh rows merge in, the pill hides. */
 	const [isAtTop, setIsAtTop] = useState(true);
 	const listRef = useRef<HTMLDivElement>(null);
+	const reelAnchor = useRef<{
+		port: HTMLDivElement;
+		scrollTop: number;
+		rows: { id: string; offset: number }[];
+	} | null>(null);
+	const captureReelAnchor = useCallback(() => {
+		const port = listRef.current;
+		if (!port) return;
+		const viewport = port.getBoundingClientRect();
+		reelAnchor.current = {
+			port,
+			scrollTop: port.scrollTop,
+			rows: [
+				...port.querySelectorAll<HTMLElement>("[data-notification-row]"),
+			].flatMap((row) => {
+				const rect = row.getBoundingClientRect();
+				return rect.bottom > viewport.top && rect.top < viewport.bottom
+					? [
+							{
+								id: row.dataset.notificationRow as string,
+								offset: rect.top - viewport.top,
+							},
+						]
+					: [];
+			}),
+		};
+	}, []);
 	const visibleReconciliationIds = useCallback(() => {
 		const port = listRef.current;
 		if (!port) return [];
@@ -427,6 +462,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 		 * scroll port's numeric offset. Move it with the new page-one window;
 		 * facts-only refreshes deliberately do not change this timestamp.
 		 */
+		reelAnchor.current = null;
 		if (listRef.current) listRef.current.scrollTop = 0;
 		setIsAtTop(true);
 	}, [list.windowResetAt]);
@@ -439,14 +475,25 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 			loaded?.items ?? [],
 			confirmedReadTokens.current,
 		);
-		if (readState !== "unread" || stickyRead.size === 0) return base;
-		const present = new Set(base.map((item) => item.id));
+		const settled = [...settledAskRows.values()];
+		const reconciled = [
+			...base.filter((item) => !settledAskRows.has(item.id)),
+			...settled,
+		];
+		if (readState !== "unread" || stickyRead.size === 0) return reconciled;
+		const present = new Set(reconciled.map((item) => item.id));
 		return [
-			...base,
+			...reconciled,
 			...[...stickyRead.values()].filter((item) => !present.has(item.id)),
 		];
-	}, [loaded, readState, stickyRead, confirmedReadVersion]);
-	const waiting = loaded?.waiting ?? [];
+	}, [loaded, readState, stickyRead, confirmedReadVersion, settledAskRows]);
+	const waiting = useMemo(
+		() =>
+			(loaded?.reelWaiting ?? loaded?.waiting ?? []).filter(
+				(item) => !settledAskRows.has(item.id),
+			),
+		[loaded, settledAskRows],
+	);
 	const filtered = useMemo(() => filterItems(items, filters), [items, filters]);
 	const filteredWaiting = useMemo(
 		() => filterItems(waiting, filters),
@@ -473,6 +520,32 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 		[filtered, filteredWaiting, grouping, nowMs],
 	);
 	const order = useMemo(() => rowOrder(groups), [groups]);
+	/* The reader owns this viewport, not selection, polling or a row's revision.
+	 * Native scroll anchoring may choose the focused/selected row above the reader;
+	 * preserve the first surviving VISIBLE row instead, before the browser paints.
+	 * Scroll events replace the snapshot synchronously, so a wheel, touch, keyboard
+	 * or scrollbar movement wins over a refresh already waiting to commit. Keeping
+	 * visible alternatives also makes read/dismiss/filter removal anchor its neighbor.
+	 * The top is intentionally exempt: there the reader has chosen the newest rows. */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: groups is the rendered row geometry's invalidation signal
+	useLayoutEffect(() => {
+		const port = listRef.current;
+		const saved = reelAnchor.current;
+		if (port && saved?.port === port && saved.scrollTop > 0) {
+			for (const anchor of saved.rows) {
+				const row = port.querySelector<HTMLElement>(
+					`[data-notification-row="${CSS.escape(anchor.id)}"]`,
+				);
+				if (!row) continue;
+				port.scrollTop +=
+					row.getBoundingClientRect().top -
+					port.getBoundingClientRect().top -
+					anchor.offset;
+				break;
+			}
+		}
+		captureReelAnchor();
+	}, [groups, captureReelAnchor]);
 	// Filters are applied to the retained scroll window. A sparse first page is
 	// not proof of an empty result: advance until a matching row exists, and fill
 	// a short viewport so scrolling can actually reach the remaining pages.
@@ -1425,12 +1498,15 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 		focusId && order.some((item) => item.id === focusId)
 			? focusId
 			: (order[0]?.id ?? null);
+	const keyboardFocusId = useRef<string | null>(null);
 	useEffect(() => {
 		if (!focusId) return;
 		const node = listRef.current?.querySelector<HTMLElement>(
 			`[data-notification-row="${CSS.escape(focusId)}"]`,
 		);
-		if (node && listRef.current?.contains(document.activeElement)) node.focus();
+		if (node && listRef.current?.contains(document.activeElement))
+			node.focus({ preventScroll: keyboardFocusId.current !== focusId });
+		keyboardFocusId.current = null;
 	}, [focusId]);
 
 	/* The keyboard map (design § 7.2). Single keys never fire in a text field. */
@@ -1447,6 +1523,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 				setSelected((selection) =>
 					rangeSelect(order, current.id, next.id, selection),
 				);
+			keyboardFocusId.current = next.id;
 			setFocusId(next.id);
 		};
 		const primary = event.metaKey || event.ctrlKey;
@@ -1649,6 +1726,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 									 * stopping 112 px short, two 56 px rows. At offset 0 the
 									 * browser does not anchor, so the rows land above nothing.
 									 */
+									reelAnchor.current = null;
 									listRef.current?.scrollTo({ top: 0 });
 									setIsAtTop(true);
 									list.resetToTop();
@@ -1669,7 +1747,8 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 							disabled={list.isFetching}
 							onClick={() => {
 								setStickyRead(new Map());
-								void list.resetToTop();
+								setSettledAskRows(new Map());
+								void list.refresh();
 							}}
 						>
 							<RefreshCw />
@@ -1823,6 +1902,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 								onKeyDown={onListKeyDown}
 								onScroll={(event) => {
 									const box = event.currentTarget;
+									captureReelAnchor();
 									setIsAtTop(box.scrollTop <= 24);
 									if (
 										list.hasNextPage &&
@@ -1831,7 +1911,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 									)
 										void list.fetchNextPage();
 								}}
-								className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pb-6 [scrollbar-gutter:stable]"
+								className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pb-6 [overflow-anchor:none] [scrollbar-gutter:stable]"
 								data-notifications-list=""
 							>
 								{groups.map((group) => (
@@ -1937,7 +2017,24 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 								 * (`waiting_count`), and this detail's own `asks` - the asks have
 								 * no query of their own here; the detail read carries them.
 								 */
-								onAsksSettled={() => {
+								onAsksSettled={(askId, status) => {
+									/* This detail intentionally shows conversation-wide asks. Bind the
+									 * accepted ask ID, not whichever Update happens to be selected. */
+									const id = `ask:${openItem.session.id}:${askId}`;
+									const row =
+										byId.get(id) ??
+										(detail.data?.item.id === id
+											? detail.data.item
+											: undefined);
+									if (row?.source === "ask" && row.ask) {
+										setSettledAskRows((current) =>
+											new Map(current).set(id, {
+												...row,
+												read: true,
+												ask: { ...row.ask, status },
+											}),
+										);
+									}
 									void client.invalidateQueries({
 										queryKey: notificationKeys.factsRoot,
 									});

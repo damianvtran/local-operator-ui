@@ -591,12 +591,24 @@ test(
 				"open",
 			);
 			assert.ok(page.buttonIn(page.card("a-2222"), "Send answer"));
-			/*
-			 * AN UNDELIVERED ANSWER IS STILL PENDING (design §10, `askPanelHalves`): the
-			 * drawer files it there too, and it moves to Settled once delivered - pinned by
-			 * the delivered test below.
-			 */
+			/* Acceptance settles the user's decision; delivery is a separate window.
+			 * Keep its explicit delivery sentence and legal Change answer affordance. */
 			assert.match(a, RX_4);
+			assert.deepEqual(page.filterText(), [
+				"All · 2",
+				"Pending · 1",
+				"Settled · 1",
+			]);
+			assert.ok(page.buttonIn(page.card("a-1111"), "Change answer"));
+			await page.press(page.buttonIn(page.card("a-1111"), "Change answer"));
+			await page.press(
+				page.card("a-1111").querySelectorAll("[data-ask-option]")[1],
+			);
+			await page.press(page.buttonIn(page.card("a-1111"), "Update answer"));
+			assert.ok(await page.settle(() => page.posts.length === 2));
+			assert.equal(page.posts[1].askId, "a-1111");
+			assert.equal(page.posts[1].revise, true);
+			assert.deepEqual(page.posts[1].answers, { q1: ["No rotation"] });
 			/* The item stays selected: the pane is still on ask A after the refetch 404s. */
 			await page.settle(() => false, 400);
 			assert.ok(page.pane(), "the detail pane stays open on the answered item");
