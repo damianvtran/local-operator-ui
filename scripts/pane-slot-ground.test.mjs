@@ -154,6 +154,12 @@ const HAS_SESSION = /const hasSession = Boolean\(sessionId\);/;
 const SESSION_ASKS_GATE =
 	/const sessionAsksOpen =\s*isAskDrawerOpen && askDrawerScope === "session" && Boolean\(sessionId\);/;
 const DRAWABLE_BODY = /const rightSlotPaneDrawable = \([\s\S]*?\n\};\n/;
+/* The asks drawer's content measure and the scroller it hangs inside (design review
+ * round 1, D1). The wrappers are read by shape rather than by position: the measure
+ * must be a CHILD of the scroller that keeps the pane's width, or the scrollbar
+ * ends up inside the constrained column and narrows it whenever the queue grows. */
+const DRAWER_SCROLLER = /"min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2"/;
+const DRAWER_MEASURE = /className=\{cn\("w-full max-w-\[720px\]"\)\}/;
 const DRAWABLE_ASK =
 	/if \(pane === "ask"\) \{\s*return \(\s*state\.askDrawerScope === "fleet" \|\|\s*\(state\.rightSlotRoute\.mounted && state\.rightSlotRoute\.session\)\s*\);\s*\}/;
 /* Every durable pane draws on a mounted route (the always-visible rail, D2): the
@@ -348,6 +354,36 @@ test("the panel rail paints the lane's final stop with no rule on its leading ed
 		rootClasses,
 		RAIL_GROUND,
 		"the rail root lost its ground: `surface` is the sidebar's rung and the lane's final stop (asserted just above)",
+	);
+});
+
+/*
+ * THE DRAWER'S CONTENT MEASURE (design review round 1, D1). The slot's one ceiling
+ * reaches 1200 with the one-band change, and until this measure existed the card
+ * filled it: 1176 wide around a 277px question run at a 1200 pane. The card is a
+ * decision, not a surface to scan, so the column stops at 720 - and the mount is
+ * checked, not just the constant, because a measure that drifted onto the scroller
+ * would look identical at the 640 default and only show up as a reflowing measure
+ * on a queue taller than the window.
+ */
+test("the asks drawer's content stops at one measure, inside a full-width scroller", () => {
+	const source = withoutComments(
+		read("src/renderer/src/features/chat/components/asks/ask-drawer.tsx"),
+	);
+	const scroller = DRAWER_SCROLLER.exec(source);
+	assert.ok(
+		scroller,
+		"the drawer's scroller lost the class this test reads; without it the pane has no column that owns the overflow",
+	);
+	const measure = DRAWER_MEASURE.exec(source);
+	assert.ok(
+		measure,
+		"the asks drawer has no content measure again: at a 1200 pane the card fills the band around a 277px question run",
+	);
+	assert.ok(
+		scroller.index < measure.index &&
+			!/max-w-/.test(source.slice(scroller.index, measure.index)),
+		"the measure moved onto the scroller (or above it): the scrollbar would then sit inside the constrained column and narrow the measure whenever the queue overflows",
 	);
 });
 

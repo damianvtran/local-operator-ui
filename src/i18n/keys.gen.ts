@@ -7211,7 +7211,6 @@ export type MessageParams = {
 	"ui.ownerAudit.more": undefined;
 	"ui.ownerAudit.not_screened": undefined;
 	"ui.ownerAudit.older": undefined;
-	"ui.ownerAudit.own": undefined;
 	"ui.ownerAudit.page_cutoff": undefined;
 	"ui.ownerAudit.read_only": undefined;
 	"ui.ownerAudit.refresh": undefined;
@@ -7219,7 +7218,6 @@ export type MessageParams = {
 	"ui.ownerAudit.removed": undefined;
 	"ui.ownerAudit.replies": undefined;
 	"ui.ownerAudit.retry": undefined;
-	"ui.ownerAudit.reveal": undefined;
 	"ui.ownerAudit.title": undefined;
 	"ui.ownerAudit.unknown_sender": undefined;
 	"ui.ownerAudit.unknown_status": undefined;
