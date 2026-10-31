@@ -260,6 +260,58 @@ after(() => {
 	dom.window.close();
 });
 
+/*
+ * THE SELECTOR ENGINE MUST ANSWER SHEPHERD'S TOP-LAYER PROBE IN ONE CALL.
+ *
+ * Every time the live-tour tests below position a step, Shepherd's bundled
+ * Floating UI asks `element.matches(":popover-open")` and `":modal"` of each
+ * ancestor (`isTopLayer`). jsdom answers through nwsapi, and nwsapi 2.2.27
+ * resolves `:modal` by calling the NATIVE `matches` it captured - which in jsdom
+ * is jsdom's own wrapper around nwsapi - so each probe re-enters itself until
+ * the stack overflows (measured: ~1.49 million nested calls, depth ~3,450, a
+ * swallowed RangeError, 1-6 s of synchronous CPU per probe). That turned this
+ * file's ~32 s run into one that never finished inside CI's 50-minute shard cap:
+ * every hop test took 10-100x its 500 ms wait, and whichever test was in flight
+ * when the job was killed reported "Promise resolution is still pending". No
+ * await in the suite was unsettled; the event loop was starved. nwsapi 2.2.28
+ * guards the re-entry (`matchingNative`), so the lockfile pins it.
+ *
+ * This counts calls rather than timing them, so it is deterministic on a loaded
+ * host, and it runs first: a regressed engine fails here in milliseconds and
+ * names the cause instead of hanging the shard.
+ */
+test("jsdom answers Shepherd's top-layer selectors without re-entering itself", () => {
+	const probe = document.createElement("div");
+	document.body.appendChild(probe);
+	const native = window.Element.prototype.matches;
+	let calls = 0;
+	window.Element.prototype.matches = function countedMatches(selector) {
+		calls += 1;
+		// Past this the engine is recursing; stop it instead of burning seconds.
+		if (calls > 50) throw new RangeError("matches re-entered itself");
+		return native.call(this, selector);
+	};
+	try {
+		for (const selector of [":popover-open", ":modal"]) {
+			calls = 0;
+			let answer;
+			try {
+				answer = probe.matches(selector);
+			} catch {
+				// Floating UI swallows this too; the call count is the verdict.
+			}
+			assert.ok(
+				calls <= 2,
+				`${selector} took ${calls} nested matches() calls - the selector engine is re-entering itself (nwsapi 2.2.27)`,
+			);
+			assert.equal(answer, false, `${selector} must be false for a plain div`);
+		}
+	} finally {
+		window.Element.prototype.matches = native;
+		probe.remove();
+	}
+});
+
 /* ---------------------------------------------------------------------------
  * 3. Source and catalogue shape.
  * ------------------------------------------------------------------------- */
