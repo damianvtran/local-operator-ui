@@ -72,6 +72,11 @@ export const MentionRowAvatar: FC<{ row: MentionCandidateRow }> = ({ row }) => {
 			<TeamBridgeAvatar
 				member={row.profile}
 				label={row.label}
+				/* The plate needs the KIND, not a name, to know whether it may draw
+				   a picture at all: an agent's directory row is its owner's, so
+				   resolving by account would show the owner's photo (the 2026-10-30
+				   defect). `row.kind` is the row's own identity. */
+				kind={row.kind}
 				size={28}
 				className="size-7 rounded-md text-meta"
 				fallback={row.kind === "agent" ? fallback : undefined}
