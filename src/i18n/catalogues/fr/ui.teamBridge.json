@@ -292,7 +292,6 @@
 	"ui.teamBridge.events.left": "Départ de la conversation : {targets}",
 	"ui.teamBridge.events.removed": "{actor} a retiré {targets}",
 	"ui.teamBridge.events.consented": "{actor} a autorisé {targets} à rejoindre la conversation",
-	"ui.teamBridge.events.consented_owner": "{actor} a autorisé son agent {targets} à rejoindre la conversation",
 	"ui.teamBridge.events.declined_self": "{actor} a refusé l’invitation",
 	"ui.teamBridge.events.declined": "{actor} a refusé l’invitation pour {targets}",
 	"ui.teamBridge.events.withdrawn": "{actor} a annulé l’invitation pour {targets}",

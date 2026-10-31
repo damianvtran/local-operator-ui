@@ -2173,16 +2173,6 @@
 		},
 		"note": "The owner gave consent for their agent to join this conversation. Reads 'X approved Y joining'."
 	},
-	"ui.teamBridge.events.consented_owner": {
-		"role": "timeline system line: an agent's owner approving that agent's joining",
-		"tone": "neutral, past tense, lowercase sentence-case like the sibling lines",
-		"length": "One short line",
-		"placeholders": {
-			"actor": "Display name of the person or agent who made the change; never inflected",
-			"targets": "Display names already joined into one list by Intl.ListFormat (conjunction); never inflected or split"
-		},
-		"note": "\"their\" refers to the actor's own agent. The target label already carries the owner in parentheses; that is server data and must never be moved into the sentence. {targets} is a list joined by Intl.ListFormat(conjunction), always exactly one name for this key."
-	},
 	"ui.teamBridge.events.declined_self": {
 		"role": "timeline system line: a person declined their own invitation",
 		"tone": "neutral, factual",

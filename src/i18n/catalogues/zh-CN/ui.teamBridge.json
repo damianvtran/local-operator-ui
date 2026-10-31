@@ -292,7 +292,6 @@
 	"ui.teamBridge.events.left": "{targets}已离开对话",
 	"ui.teamBridge.events.removed": "{actor}移除了{targets}",
 	"ui.teamBridge.events.consented": "{actor}已同意{targets}加入",
-	"ui.teamBridge.events.consented_owner": "{actor}已同意自己的智能体{targets}加入",
 	"ui.teamBridge.events.declined_self": "{actor}拒绝了邀请",
 	"ui.teamBridge.events.declined": "{actor}代{targets}拒绝了邀请",
 	"ui.teamBridge.events.withdrawn": "{actor}撤回了对{targets}的邀请",

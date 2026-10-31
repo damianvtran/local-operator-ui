@@ -350,16 +350,9 @@ test("sentence: owner-implicit join reads 'added their agent'; other verbs", () 
 			event({ kind: "removed", targets: [BEN] }),
 			"Damian Tran removed Ben Tran",
 		],
-		/* D1: consent is the OWNER's act, so the sentence names the relation. */
 		[
 			event({ kind: "consented", actor: SANA, targets: [AIDA_SANA] }),
-			"Sana Ketabchi approved their agent Aida (Sana Ketabchi) joining",
-		],
-		/* A consent the actor does not own keeps the shipped arm - no invented
-		   relationship (design round 1, D1). */
-		[
-			event({ kind: "consented", actor: DAMIAN, targets: [AIDA_SANA] }),
-			"Damian Tran approved Aida (Sana Ketabchi) joining",
+			"Sana Ketabchi approved Aida (Sana Ketabchi) joining",
 		],
 		[
 			event({ kind: "declined", actor: SANA, targets: [SANA] }),
@@ -385,43 +378,6 @@ test("sentence: owner-implicit join reads 'added their agent'; other verbs", () 
 		const [line] = m.teamBridgeEventLines([raw]);
 		assert.equal(m.teamBridgeEventSentences(line, label, "en").shown, expected);
 	}
-});
-
-/*
- * THE OWNER ARM IS GUARDED BY FACTS THE SENTENCE DEPENDS ON (audit round B,
- * CO-B1/CO-B2). Both cases below fall to the shipped arm, which names no
- * relation and so cannot be wrong: a plural target list would be rendered by a
- * singular sentence, and an agent actor consenting "their agent" would claim an
- * agent consented to itself.
- */
-test("consented: two agent targets in one line keep the shipped arm (CO-B1)", () => {
-	const [line] = m.teamBridgeEventLines([
-		event({
-			kind: "consented",
-			actor: SANA,
-			targets: [AIDA_SANA, { ...AIDA_SANA, endpoint_id: "bep_second" }],
-		}),
-	]);
-	assert.equal(m.teamBridgeEventOwnerConsent(line), false);
-	assert.equal(
-		m.teamBridgeEventSentences(line, label, "en").shown,
-		"Sana Ketabchi approved Aida (Sana Ketabchi) and Aida (Sana Ketabchi) joining",
-	);
-});
-
-test("consented: an agent-kind actor keeps the shipped arm (CO-B2)", () => {
-	const [line] = m.teamBridgeEventLines([
-		event({
-			kind: "consented",
-			actor: AIDA_SANA,
-			targets: [{ ...AIDA_SANA, display_label: "Scout (Sana Ketabchi)" }],
-		}),
-	]);
-	assert.equal(m.teamBridgeEventOwnerConsent(line), false);
-	assert.equal(
-		m.teamBridgeEventSentences(line, label, "en").shown,
-		"Aida (Sana Ketabchi) approved Scout (Sana Ketabchi) joining",
-	);
 });
 
 test("the target list is joined by the LOCALE's list format, not a hard-coded comma", () => {

@@ -1,0 +1,11 @@
+# mechanical checks - fr / ui.teamBridge.events.consented_owner @ 9d19fc6d58e
+value              : {actor} a autorisé son agent {targets} à rejoindre la conversation
+code points        : 66 (sibling 56)
+placeholders       : ["actor","targets"] (source ["actor","targets"])
+final period       : false   leading space: false   trailing space: false   double space: false
+NFC                : true
+bidi controls      : 0   ZWNJ/ZWJ: 0
+nbsp/narrow nbsp   : []   em dash: false
+ICU plural/select  : false   argument nodes: 2
+sha256 en          : 4042a918bc64406c4c24ad5ea68fe3c3f3aaa7228917bc1678547cfb0c20285c
+sha256 target      : d89496faf5d0e40b977a739219452285522ebf8148545928c680219d70c00726
