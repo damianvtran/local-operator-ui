@@ -298,5 +298,19 @@
 	"ui.teamBridge.events.declined": "{actor}: отклонение приглашения для {targets}",
 	"ui.teamBridge.events.withdrawn": "{actor}: отозвано приглашение — {targets}",
 	"ui.teamBridge.events.unknown": "Состав участников изменён",
-	"ui.teamBridge.events.others": "{count, plural, one {ещё #} few {ещё #} many {ещё #} other {ещё #}}"
+	"ui.teamBridge.events.others": "{count, plural, one {ещё #} few {ещё #} many {ещё #} other {ещё #}}",
+	"ui.teamBridge.mentions.listbox_label": "Люди и агенты для упоминания",
+	"ui.teamBridge.mentions.empty": "Нет совпадений для «{query}»",
+	"ui.teamBridge.mentions.section.member_human": "Люди в этом разговоре",
+	"ui.teamBridge.mentions.section.member_agent": "Агенты в этом разговоре",
+	"ui.teamBridge.mentions.section.org_human": "Другие люди",
+	"ui.teamBridge.mentions.section.org_agent": "Другие агенты",
+	"ui.teamBridge.mentions.tag.not_member": "не в этом разговоре",
+	"ui.teamBridge.mentions.tag.bridge_off": "Team Bridge отключён",
+	"ui.teamBridge.mentions.notice.not_member": "{name} не участвует в этом разговоре, поэтому уведомление не придёт.",
+	"ui.teamBridge.mentions.notice.invite_failed": "Не удалось пригласить: {name}. Можно упомянуть без уведомления.",
+	"ui.teamBridge.mentions.notice.invite": "Пригласить",
+	"ui.teamBridge.mentions.notice.silent": "Упомянуть без уведомления",
+	"ui.teamBridge.mentions.notice.pending": "Приглашение для {name} ещё не принято, поэтому уведомление не придёт.",
+	"ui.teamBridge.mentions.notice.invited": "Приглашение для {name} отправлено. Пока его не примут, уведомление не придёт."
 }

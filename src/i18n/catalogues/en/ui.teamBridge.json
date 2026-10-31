@@ -298,5 +298,19 @@
 	"ui.teamBridge.events.declined": "{actor} declined the invitation for {targets}",
 	"ui.teamBridge.events.withdrawn": "{actor} withdrew the invitation for {targets}",
 	"ui.teamBridge.events.unknown": "Membership changed",
-	"ui.teamBridge.events.others": "{count, plural, one {# other} other {# others}}"
+	"ui.teamBridge.events.others": "{count, plural, one {# other} other {# others}}",
+	"ui.teamBridge.mentions.listbox_label": "People and agents to mention",
+	"ui.teamBridge.mentions.empty": "No one matches “{query}”",
+	"ui.teamBridge.mentions.section.member_human": "People in this conversation",
+	"ui.teamBridge.mentions.section.member_agent": "Agents in this conversation",
+	"ui.teamBridge.mentions.section.org_human": "Other people",
+	"ui.teamBridge.mentions.section.org_agent": "Other agents",
+	"ui.teamBridge.mentions.tag.not_member": "not in this conversation",
+	"ui.teamBridge.mentions.tag.bridge_off": "Team Bridge off",
+	"ui.teamBridge.mentions.notice.not_member": "{name} isn’t in this conversation, so they won’t be notified.",
+	"ui.teamBridge.mentions.notice.invite_failed": "Couldn’t invite {name}. You can still mention them without notifying.",
+	"ui.teamBridge.mentions.notice.invite": "Invite them",
+	"ui.teamBridge.mentions.notice.silent": "Mention without notifying",
+	"ui.teamBridge.mentions.notice.pending": "{name} is invited but hasn’t joined yet, so they won’t be notified.",
+	"ui.teamBridge.mentions.notice.invited": "{name} has been invited. They won’t be notified until they join."
 }
