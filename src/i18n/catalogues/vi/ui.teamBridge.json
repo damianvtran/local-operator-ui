@@ -28,7 +28,7 @@
 	"ui.teamBridge.members.reason_short.agent_not_permitted": "Không được phép",
 	"ui.teamBridge.members.ineligible_label": "{name}, {reason}",
 	"ui.teamBridge.members.invite_count": "{count, plural, =0 {Mời} other {Mời {count}}}",
-	"ui.teamBridge.members.invitation_note_v2": "Lời mời không cấp quyền truy cập cho đến khi được chấp nhận. Tác nhân được mời sẽ tham gia khi chủ sở hữu đồng ý; sau đó tác nhân đọc mọi tin nhắn tại đây, tự quyết định có trả lời hay không và luôn trả lời khi được nhắc đến bằng @. Chủ sở hữu có thể giới hạn tác nhân chỉ trả lời khi được nhắc đến bằng @ hoặc tắt tiếng tác nhân.",
+	"ui.teamBridge.members.invitation_note_v3": "Lời mời không cấp quyền truy cập cho đến khi được chấp nhận. Tác nhân của chính bạn tham gia ngay; tác nhân của người khác sẽ tham gia khi chủ sở hữu của tác nhân đó đồng ý. Tác nhân thành viên đọc mọi tin nhắn tại đây, tự quyết định có trả lời hay không và được kỳ vọng sẽ trả lời khi được nhắc đến bằng @. Chủ sở hữu có thể giới hạn tác nhân chỉ trong các lượt nhắc đến bằng @ và các luồng mà tác nhân tham gia, hoặc tắt tiếng tác nhân.",
 	"ui.teamBridge.notify.unavailable": "Không thể mở thông báo này bằng tài khoản hiện tại nữa.",
 	"ui.teamBridge.chief.unnamed": "Chánh văn phòng của {person}",
 	"ui.teamBridge.page.title": "Team Bridge",
@@ -285,5 +285,16 @@
 	"ui.teamBridge.invitations.failed.sign_in": "Bạn đã đăng xuất. Hãy đăng nhập rồi thử lại.",
 	"ui.teamBridge.invitations.failed.unreachable": "Ứng dụng không kết nối được với Radient. Không có gì thay đổi. Hãy thử lại.",
 	"ui.teamBridge.invitations.read_only": "Tổ chức này ở chế độ chỉ đọc với bạn nên không thể trả lời lời mời tại đây.",
-	"ui.teamBridge.invitations.failed.unconfirmed": "Câu trả lời của bạn chưa được xác nhận. Hãy thử lại."
+	"ui.teamBridge.invitations.failed.unconfirmed": "Câu trả lời của bạn chưa được xác nhận. Hãy thử lại.",
+	"ui.teamBridge.events.invited": "{actor} đã mời {targets}",
+	"ui.teamBridge.events.joined": "{targets} đã tham gia",
+	"ui.teamBridge.events.owner_added_agent": "{actor} đã thêm tác nhân của mình là {targets}",
+	"ui.teamBridge.events.left": "{targets} đã rời cuộc trò chuyện",
+	"ui.teamBridge.events.removed": "{actor} đã xóa {targets} khỏi cuộc trò chuyện",
+	"ui.teamBridge.events.consented": "{actor} đã đồng ý cho {targets} tham gia",
+	"ui.teamBridge.events.declined_self": "{actor} đã từ chối lời mời",
+	"ui.teamBridge.events.declined": "{actor} đã từ chối lời mời dành cho {targets}",
+	"ui.teamBridge.events.withdrawn": "{actor} đã rút lại lời mời dành cho {targets}",
+	"ui.teamBridge.events.unknown": "Thành viên đã thay đổi",
+	"ui.teamBridge.events.others": "{count, plural, other {# người khác}}"
 }

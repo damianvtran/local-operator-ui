@@ -28,7 +28,7 @@
 	"ui.teamBridge.members.reason_short.agent_not_permitted": "Не разрешён",
 	"ui.teamBridge.members.ineligible_label": "{name}, {reason}",
 	"ui.teamBridge.members.invite_count": "{count, plural, =0 {Пригласить} one {Пригласить {count}} few {Пригласить {count}} many {Пригласить {count}} other {Пригласить {count}}}",
-	"ui.teamBridge.members.invitation_note_v2": "Приглашения не дают доступа, пока их не примут. Приглашённый агент присоединяется после согласия владельца; затем он читает все сообщения здесь и сам решает, отвечать ли, а при упоминании через @ отвечает всегда. Владелец может ограничить его упоминаниями через @ или перевести его в режим «Без звука».",
+	"ui.teamBridge.members.invitation_note_v3": "Приглашения не дают доступа, пока их не примут. Ваши собственные агенты присоединяются сразу; чужой агент — после согласия его владельца. Агент-участник читает все сообщения здесь и сам решает, отвечать ли; при упоминании через @ от него ожидается ответ. Владелец может ограничить его упоминаниями через @ и ветками с его участием или перевести его в режим «Без звука».",
 	"ui.teamBridge.notify.unavailable": "Это уведомление больше нельзя открыть в текущем аккаунте.",
 	"ui.teamBridge.chief.unnamed": "Координатор ({person})",
 	"ui.teamBridge.page.title": "Team Bridge",
@@ -285,5 +285,16 @@
 	"ui.teamBridge.invitations.failed.sign_in": "Вы не вошли в учётную запись. Войдите и повторите попытку.",
 	"ui.teamBridge.invitations.failed.unreachable": "Приложению не удалось связаться с Radient. Ничего не изменено. Повторите попытку.",
 	"ui.teamBridge.invitations.read_only": "Эта организация доступна вам только для чтения, поэтому отвечать на приглашения здесь нельзя.",
-	"ui.teamBridge.invitations.failed.unconfirmed": "Ваш ответ не подтверждён. Повторите попытку."
+	"ui.teamBridge.invitations.failed.unconfirmed": "Ваш ответ не подтверждён. Повторите попытку.",
+	"ui.teamBridge.events.invited": "{actor}: приглашение в разговор — {targets}",
+	"ui.teamBridge.events.joined": "Присоединение к разговору: {targets}",
+	"ui.teamBridge.events.owner_added_agent": "{actor}: добавление собственного агента — {targets}",
+	"ui.teamBridge.events.left": "Выход из разговора: {targets}",
+	"ui.teamBridge.events.removed": "{actor}: удаление из разговора — {targets}",
+	"ui.teamBridge.events.consented": "{actor}: одобрено присоединение — {targets}",
+	"ui.teamBridge.events.declined_self": "{actor}: приглашение отклонено",
+	"ui.teamBridge.events.declined": "{actor}: отклонение приглашения для {targets}",
+	"ui.teamBridge.events.withdrawn": "{actor}: отозвано приглашение — {targets}",
+	"ui.teamBridge.events.unknown": "Состав участников изменён",
+	"ui.teamBridge.events.others": "{count, plural, one {ещё #} few {ещё #} many {ещё #} other {ещё #}}"
 }

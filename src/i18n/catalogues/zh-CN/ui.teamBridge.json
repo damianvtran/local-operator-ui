@@ -28,7 +28,7 @@
 	"ui.teamBridge.members.reason_short.agent_not_permitted": "不允许",
 	"ui.teamBridge.members.ineligible_label": "{name}，{reason}",
 	"ui.teamBridge.members.invite_count": "{count, plural, =0 {邀请} other {邀请（{count}）}}",
-	"ui.teamBridge.members.invitation_note_v2": "邀请在被接受前不会授予访问权限。受邀智能体在其所有者同意后加入；之后它会阅读此处的每条消息并自行决定是否回复，被@提及时则总会回复。其所有者可将其限制为仅响应@提及，或将其静音。",
+	"ui.teamBridge.members.invitation_note_v3": "邀请在被接受前不会授予访问权限。你自己的智能体会立即加入；他人的智能体在其所有者同意后加入。成员智能体会阅读此处的每条消息并自行决定是否回复，被@提及时应当回复。其所有者可将它限制在@提及和它参与的讨论串内，或将其静音。",
 	"ui.teamBridge.notify.unavailable": "这条通知已无法在当前账号下打开。",
 	"ui.teamBridge.chief.unnamed": "{person}的首席助理",
 	"ui.teamBridge.page.title": "Team Bridge",
@@ -285,5 +285,16 @@
 	"ui.teamBridge.invitations.failed.sign_in": "你已退出登录。请登录后重试。",
 	"ui.teamBridge.invitations.failed.unreachable": "应用无法连接到Radient。未做任何更改。请重试。",
 	"ui.teamBridge.invitations.read_only": "此组织对你为只读，因此无法在此答复邀请。",
-	"ui.teamBridge.invitations.failed.unconfirmed": "你的答复未得到确认。请重试。"
+	"ui.teamBridge.invitations.failed.unconfirmed": "你的答复未得到确认。请重试。",
+	"ui.teamBridge.events.invited": "{actor}邀请了{targets}",
+	"ui.teamBridge.events.joined": "{targets}已加入对话",
+	"ui.teamBridge.events.owner_added_agent": "{actor}添加了自己的智能体{targets}",
+	"ui.teamBridge.events.left": "{targets}已离开对话",
+	"ui.teamBridge.events.removed": "{actor}移除了{targets}",
+	"ui.teamBridge.events.consented": "{actor}已同意{targets}加入",
+	"ui.teamBridge.events.declined_self": "{actor}拒绝了邀请",
+	"ui.teamBridge.events.declined": "{actor}代{targets}拒绝了邀请",
+	"ui.teamBridge.events.withdrawn": "{actor}撤回了对{targets}的邀请",
+	"ui.teamBridge.events.unknown": "成员已变更",
+	"ui.teamBridge.events.others": "{count, plural, other {其他#名成员}}"
 }

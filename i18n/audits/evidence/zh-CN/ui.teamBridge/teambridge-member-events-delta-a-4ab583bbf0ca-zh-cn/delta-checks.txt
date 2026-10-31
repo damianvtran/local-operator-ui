@@ -1,0 +1,38 @@
+locale   key                                   parse placeholders          ICU arms
+===== zh-CN (297 keys in namespace)
+    events.invited                 args=[actor,targets] plural=- 
+      1 target: Dana邀请了Ava
+      3 targets: Dana邀请了Ava、Ben和Cleo cells=22 (en 25)
+    events.joined                  args=[targets] plural=- 
+      1 target: Ava已加入对话
+      3 targets: Ava、Ben和Cleo已加入对话 cells=19 (en 16)
+    events.owner_added_agent       args=[actor,targets] plural=- 
+      1 target: Dana添加了自己的智能体Ava
+      3 targets: Dana添加了自己的智能体Ava、Ben和Cleo cells=34 (en 35)
+    events.left                    args=[targets] plural=- 
+      1 target: Ava已离开对话
+      3 targets: Ava、Ben和Cleo已离开对话 cells=19 (en 14)
+    events.removed                 args=[actor,targets] plural=- 
+      1 target: Dana移除了Ava
+      3 targets: Dana移除了Ava、Ben和Cleo cells=22 (en 25)
+    events.consented               args=[actor,targets] plural=- 
+      1 target: Dana已同意Ava加入
+      3 targets: Dana已同意Ava、Ben和Cleo加入 cells=26 (en 34)
+    events.declined_self           args=[actor] plural=- 
+      1 target: Dana拒绝了邀请
+      3 targets: Dana拒绝了邀请 cells=17 (en 31)
+  * events.declined                args=[actor,targets] plural=- 
+      1 target: Dana代Ava拒绝了邀请
+      3 targets: Dana代Ava、Ben和Cleo拒绝了邀请 cells=28 (en 45)
+    events.withdrawn               args=[actor,targets] plural=- 
+      1 target: Dana撤回了对Ava的邀请
+      3 targets: Dana撤回了对Ava、Ben和Cleo的邀请 cells=30 (en 45)
+    events.unknown                 args=[] plural=- 
+      1 target: 成员已变更
+      3 targets: 成员已变更 cells=10 (en 18)
+  * events.others                  args=[] plural=count:other !! POUND 1 vs en 2 
+      render: 1->其他1名成员  2->其他2名成员  3->其他3名成员  5->其他5名成员  11->其他11名成员  21->其他21名成员 cells=36 (en 47)
+  * members.invitation_note_v3     args=[] plural=- 
+      1 target: 邀请在被接受前不会授予访问权限。你自己的智能体会立即加入；他人的智能体在其所有者同意后加入。成员智能体会阅读此处的每条消息并自行决定是否回复，被@提及时应当回复。其所有者可将它限制在@提及和它参与的讨论串内，或将其静音。
+      3 targets: 邀请在被接受前不会授予访问权限。你自己的智能体会立即加入；他人的智能体在其所有者同意后加入。成员智能体会阅读此处的每条消息并自行决定是否回复，被@提及时应当回复。其所有者可将它限制在@提及和它参与的讨论串内，或将其静音。 cells=218 (en 310)
+  quote census (namespace): “=8 ”=8

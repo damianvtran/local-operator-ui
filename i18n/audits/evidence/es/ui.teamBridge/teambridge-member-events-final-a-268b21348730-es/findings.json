@@ -1,0 +1,12 @@
+[
+	{
+		"id": "FA-ES1",
+		"severity": "minor",
+		"key": "ui.teamBridge.attachments.failed_count",
+		"current": "{count, plural, one {No se puede enviar # imagen.} other {No se pueden enviar # imágenes.}}",
+		"proposed": "{count, plural, one {No se puede enviar # imagen.} many {No se pueden enviar # de imágenes.} other {No se pueden enviar # imágenes.}}",
+		"reason": "es.md «Plurals» binds one/many/other and this is the only one of this namespace's 16 es plurals with no `many` arm (the other 15 have it), so at CLDR `many` (exact multiples of 10⁶) ICU falls back to `other` and renders «No se pueden enviar 1.000.000 imágenes.» — Spanish needs «1.000.000 de imágenes», the same `de` the file already writes in schedule.conflict_images_added.",
+		"evidence": "render-and-plurals.txt: plural-category probe (count 1/2/3/1000000 vs a probe message carrying the arm)",
+		"disposition_note": "Recording it changes catalogue bytes and therefore re-stales this row; unreachable in practice (the per-message image cap is far below 10⁶), so deferring it to a later wave is a legitimate disposition."
+	}
+]

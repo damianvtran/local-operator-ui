@@ -1,0 +1,149 @@
+=== ICU skeleton comparison (repo parser @formatjs/icu-messageformat-parser) ===
+keys compared: 297 x 4 locales
+structural mismatches: 32
+es ui.teamBridge.members.invite_count:
+    en={count, plural, offset:0|=0: one:{count} other:{count}}
+    es={count, plural, offset:0|=0: many:{count} one:{count} other:{count}}
+es ui.teamBridge.nav.unread:
+    en={count, plural, offset:0|one:{count} other:{count}}
+    es={count, plural, offset:0|many:{count} one:{count} other:{count}}
+es ui.teamBridge.unread.count:
+    en={count, plural, offset:0|one:{count} other:{count}}
+    es={count, plural, offset:0|many:{count} one:{count} other:{count}}
+es ui.teamBridge.member.count:
+    en={count, plural, offset:0|one:{count} other:{count}}
+    es={count, plural, offset:0|many:{count} one:{count} other:{count}}
+es ui.teamBridge.member.active_count:
+    en={count, plural, offset:0|one:{count} other:{count}}
+    es={count, plural, offset:0|many:{count} one:{count} other:{count}}
+es ui.teamBridge.member.invited_count:
+    en={count, plural, offset:0|one:{count} other:{count}}
+    es={count, plural, offset:0|many:{count} one:{count} other:{count}}
+es ui.teamBridge.notify.count:
+    en={count, plural, offset:0|one: other:}
+    es={count, plural, offset:0|many: one: other:}
+es ui.teamBridge.notify.count_preview:
+    en={count, plural, offset:0|one:{preview} other:{preview}}
+    es={count, plural, offset:0|many:{preview} one:{preview} other:{preview}}
+es ui.teamBridge.schedule.conflict_images_added:
+    en={count, plural, offset:0|one: other:}
+    es={count, plural, offset:0|many: one: other:}
+es ui.teamBridge.schedule.conflict_images_removed:
+    en={count, plural, offset:0|one: other:}
+    es={count, plural, offset:0|many: one: other:}
+es ui.teamBridge.replies.count:
+    en={count, plural, offset:0|one: other:}
+    es={count, plural, offset:0|many: one: other:}
+es ui.teamBridge.attachments.in_message:
+    en={count, plural, offset:0|one: other:}
+    es={count, plural, offset:0|many: one: other:}
+es ui.teamBridge.attachments.limit:
+    en={max, plural, offset:0|one: other:}
+    es={max, plural, offset:0|many: one: other:}
+es ui.teamBridge.invitations.count:
+    en={count, plural, offset:0|one:{count} other:{count}}
+    es={count, plural, offset:0|many:{count} one:{count} other:{count}}
+es ui.teamBridge.events.others:
+    en={count, plural, offset:0|one: other:}
+    es={count, plural, offset:0|many: one: other:}
+fr ui.teamBridge.members.invite_count:
+    en={count, plural, offset:0|=0: one:{count} other:{count}}
+    fr={count, plural, offset:0|=0: many:{count} one:{count} other:{count}}
+fr ui.teamBridge.nav.unread:
+    en={count, plural, offset:0|one:{count} other:{count}}
+    fr={count, plural, offset:0|many:{count} one:{count} other:{count}}
+fr ui.teamBridge.unread.count:
+    en={count, plural, offset:0|one:{count} other:{count}}
+    fr={count, plural, offset:0|many:{count} one:{count} other:{count}}
+fr ui.teamBridge.member.count:
+    en={count, plural, offset:0|one:{count} other:{count}}
+    fr={count, plural, offset:0|many:{count} one:{count} other:{count}}
+fr ui.teamBridge.member.active_count:
+    en={count, plural, offset:0|one:{count} other:{count}}
+    fr={count, plural, offset:0|many:{count} one:{count} other:{count}}
+fr ui.teamBridge.member.invited_count:
+    en={count, plural, offset:0|one:{count} other:{count}}
+    fr={count, plural, offset:0|many:{count} one:{count} other:{count}}
+fr ui.teamBridge.notify.count:
+    en={count, plural, offset:0|one: other:}
+    fr={count, plural, offset:0|many: one: other:}
+fr ui.teamBridge.notify.count_preview:
+    en={count, plural, offset:0|one:{preview} other:{preview}}
+    fr={count, plural, offset:0|many:{preview} one:{preview} other:{preview}}
+fr ui.teamBridge.schedule.conflict_images_added:
+    en={count, plural, offset:0|one: other:}
+    fr={count, plural, offset:0|many: one: other:}
+fr ui.teamBridge.schedule.conflict_images_removed:
+    en={count, plural, offset:0|one: other:}
+    fr={count, plural, offset:0|many: one: other:}
+fr ui.teamBridge.replies.count:
+    en={count, plural, offset:0|one: other:}
+    fr={count, plural, offset:0|many: one: other:}
+fr ui.teamBridge.attachments.in_message:
+    en={count, plural, offset:0|one: other:}
+    fr={count, plural, offset:0|many: one: other:}
+fr ui.teamBridge.attachments.limit:
+    en={max, plural, offset:0|one: other:}
+    fr={max, plural, offset:0|many: one: other:}
+fr ui.teamBridge.invitations.count:
+    en={count, plural, offset:0|one:{count} other:{count}}
+    fr={count, plural, offset:0|many:{count} one:{count} other:{count}}
+fr ui.teamBridge.events.others:
+    en={count, plural, offset:0|one: other:}
+    fr={count, plural, offset:0|many: one: other:}
+hi ui.teamBridge.attachments.position:
+    en={index}{count}
+    hi={count}{index}
+hi ui.teamBridge.attachments.open:
+    en={index}{count}
+    hi={count}{index}
+
+CLDR plural categories per locale (cardinal, integers 1..200 + 1e6):
+  en: one, other
+  es: many, one, other
+  fr: many, one, other
+  hi: one, other
+  ur: one, other
+
+=== CLDR plural-arm completeness per key ===
+en: 16 plural keys; missing required category: none
+es: 16 plural keys; missing required category: [('attachments.failed_count', ['many', 'one', 'other'], ['many'])]
+fr: 16 plural keys; missing required category: [('attachments.failed_count', ['many', 'one', 'other'], ['many'])]
+hi: 16 plural keys; missing required category: none
+ur: 16 plural keys; missing required category: none
+
+=== term consistency: owner / chief of staff ===
+es
+   members.role.owner         Propietario
+   chief.unnamed              Jefe de gabinete de {person}
+   chief.fallback             Jefe de gabinete
+   section.chiefs             Jefes de gabinete
+   thread.intro_chief         Este es el comienzo de tu conversación con {name}, el agente jefe de gabinete de un miembro del 
+   members.invitation_note_v3 Las invitaciones no dan acceso hasta que se aceptan. Tus propios agentes se unen de inmediato; e
+fr
+   members.role.owner         Propriétaire
+   chief.unnamed              Cheffe de cabinet ({person})
+   chief.fallback             Cheffe de cabinet
+   section.chiefs             Chefs de cabinet
+   thread.intro_chief         Voici le début de votre conversation avec {name}, la cheffe de cabinet d’un membre de l’équipe. 
+   members.invitation_note_v3 Les invitations ne donnent accès qu’une fois acceptées. Vos propres agents rejoignent la convers
+hi
+   members.role.owner         स्वामी
+   chief.unnamed              {person} का चीफ़ ऑफ़ स्टाफ़
+   chief.fallback             चीफ़ ऑफ़ स्टाफ़
+   section.chiefs             चीफ़ ऑफ़ स्टाफ़
+   thread.intro_chief         {name} किसी टीम सदस्य का चीफ़ ऑफ़ स्टाफ़ एजेंट है, और उसके साथ आपकी बातचीत यहाँ से शुरू होती है।
+   members.invitation_note_v3 आमंत्रण स्वीकार होने तक पहुँच नहीं देते। आपके अपने एजेंट तुरंत जुड़ जाते हैं; किसी और का एजेंट अ
+ur
+   members.role.owner         مالک
+   chief.unnamed              {person} کا چیف آف اسٹاف
+   chief.fallback             چیف آف اسٹاف
+   section.chiefs             چیف آف اسٹاف
+   thread.intro_chief         یہ {name} کے ساتھ آپ کی گفتگو کا آغاز ہے، جو ٹیم کے ایک رکن کا چیف آف اسٹاف ایجنٹ ہے۔ یہ آپ کے پ
+   members.invitation_note_v3 دعوتیں قبول ہونے تک رسائی نہیں دیتیں۔ آپ کے اپنے ایجنٹ فوراً شامل ہو جاتے ہیں؛ کسی اور کا ایجنٹ 
+
+=== width: character growth against English (len(en)>=8) ===
+es: median 1.16x  max 2.57x  widest: events.left 2.57x, events.joined 2.31x, people.message 1.86x, menu.unmute 1.79x
+fr: median 1.23x  max 2.64x  widest: events.left 2.64x, events.joined 2.50x, invitations.accepting 2.10x, section.groups_none 2.00x
+hi: median 1.05x  max 2.40x  widest: invitations.declining 2.40x, invitations.accepting 2.30x, attachments.retry 2.23x, people.loading 1.93x
+ur: median 1.05x  max 2.08x  widest: attachments.retry 2.08x, schedule.confirm 2.07x, invitations.declining 2.00x, invitations.accepting 1.90x
