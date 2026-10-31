@@ -298,5 +298,19 @@
 	"ui.teamBridge.events.declined": "{actor} نے {targets} کے لیے دعوت سے انکار کر دیا",
 	"ui.teamBridge.events.withdrawn": "{actor} نے {targets} کے لیے دعوت واپس لے لی",
 	"ui.teamBridge.events.unknown": "ارکان میں تبدیلی ہوئی",
-	"ui.teamBridge.events.others": "{count, plural, one {مزید #} other {مزید #}}"
+	"ui.teamBridge.events.others": "{count, plural, one {مزید #} other {مزید #}}",
+	"ui.teamBridge.mentions.listbox_label": "ذکر کرنے کے لیے لوگ اور ایجنٹ",
+	"ui.teamBridge.mentions.empty": "“{query}” سے کوئی مماثلت نہیں",
+	"ui.teamBridge.mentions.section.member_human": "اس گفتگو میں لوگ",
+	"ui.teamBridge.mentions.section.member_agent": "اس گفتگو میں ایجنٹ",
+	"ui.teamBridge.mentions.section.org_human": "دوسرے لوگ",
+	"ui.teamBridge.mentions.section.org_agent": "دوسرے ایجنٹ",
+	"ui.teamBridge.mentions.tag.not_member": "اس گفتگو میں نہیں",
+	"ui.teamBridge.mentions.tag.bridge_off": "Team Bridge بند ہے",
+	"ui.teamBridge.mentions.notice.not_member": "{name} اس گفتگو میں شامل نہیں، اس لیے انہیں اطلاع نہیں ملے گی۔",
+	"ui.teamBridge.mentions.notice.invite_failed": "{name} کو مدعو نہیں کیا جا سکا۔ آپ پھر بھی اطلاع دیے بغیر ذکر کر سکتے ہیں۔",
+	"ui.teamBridge.mentions.notice.invite": "مدعو کریں",
+	"ui.teamBridge.mentions.notice.silent": "اطلاع دیے بغیر ذکر کریں",
+	"ui.teamBridge.mentions.notice.pending": "{name} کو مدعو کیا گیا ہے لیکن وہ ابھی شامل نہیں ہوئے، اس لیے انہیں اطلاع نہیں ملے گی۔",
+	"ui.teamBridge.mentions.notice.invited": "{name} کو مدعو کر دیا گیا۔ شامل ہونے تک انہیں اطلاع نہیں ملے گی۔"
 }
