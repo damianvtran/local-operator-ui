@@ -294,6 +294,12 @@ export type DesktopFeature =
 	 * capability must never wake it up. See `team-bridge-reaction-gate.ts`.
 	 */
 	| "team_bridge_reactions"
+	/**
+	 * Structured `mentions[]` on a Team Bridge send (local-operator #3204).
+	 * Absent: the composer still inserts readable `@Name` text but sends no
+	 * `mentions`, because an older backend refuses the unknown field.
+	 */
+	| "team_bridge_send_mentions"
 	| "auth"
 	| "settings"
 	| "commands"

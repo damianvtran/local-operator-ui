@@ -1,0 +1,93 @@
+{
+	"record_kind": "translation audit record (independent delta audit, PR #1532 mention copy)",
+	"locale": "fr",
+	"namespace": "ui.teamBridge",
+	"date": "2026-10-30",
+	"auditor": {
+		"agent": "task",
+		"session": "a72fc22aa8e8",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Independent auditor: session a72fc22aa8e8 (team lopdev, role task, assignment 'i18n audit ui#1532'). The translations were authored by the lopdev coder in commit d97fab7df10 (self-translated); this session did not author them. Prior ui.teamBridge auditors' rows are superseded, not reused."
+	},
+	"translator": {
+		"agent": "coder",
+		"model": "anthropic/claude-opus-5-5",
+		"commit": "d97fab7df10"
+	},
+	"paths": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "fca3039a46e3113acca89ca90f026f943f717ed2e531406497d46837cf972af5"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+			"sha256": "479846914f86ea5d3ebdb41336116d79fa42049aeb18d0ea1d0e96c905513d92"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "2df42931aef59c5be610d072d70731a1bd71500306235a501bed8fdc9640511a"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/fr.md",
+			"sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+		},
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		}
+	},
+	"receipt": {
+		"path": "i18n/receipts/a72fc22aa8e8-fr.json",
+		"sha256": "dc34e277fc3acc134f27bd32bf1190e524c95b6817a1d0dfc1e5b4334f9fd46b"
+	},
+	"head_at_audit": "b6b35c048dd48e825e4929ab8847f1bc60d779cf",
+	"pr": "damianvtran/local-operator-ui#1532",
+	"keys": [
+		"ui.teamBridge.mentions.listbox_label",
+		"ui.teamBridge.mentions.empty",
+		"ui.teamBridge.mentions.section.member_human",
+		"ui.teamBridge.mentions.section.member_agent",
+		"ui.teamBridge.mentions.section.org_human",
+		"ui.teamBridge.mentions.section.org_agent",
+		"ui.teamBridge.mentions.agent_secondary",
+		"ui.teamBridge.mentions.tag.not_member",
+		"ui.teamBridge.mentions.tag.bridge_off",
+		"ui.teamBridge.mentions.notice.not_member",
+		"ui.teamBridge.mentions.notice.invite_failed",
+		"ui.teamBridge.mentions.notice.invite",
+		"ui.teamBridge.mentions.notice.silent"
+	],
+	"findings": {
+		"residual": {
+			"blocker": 0,
+			"major": 0,
+			"minor": 0,
+			"nit": 0
+		},
+		"remediated_in_audit": [
+			{
+				"id": "TBM-FR-1",
+				"severity": "minor",
+				"key": "ui.teamBridge.mentions.empty",
+				"before": "Personne ne correspond à « {query} »",
+				"after": "Personne ne correspond à « {query} »"
+			},
+			{
+				"id": "TBM-FR-2",
+				"severity": "minor",
+				"key": "ui.teamBridge.mentions.agent_secondary",
+				"before": "chef de cabinet de {person}",
+				"after": "cheffe de cabinet de {person}"
+			},
+			{
+				"id": "TBM-FR-3",
+				"severity": "minor",
+				"key": "ui.teamBridge.mentions.notice.invite_failed",
+				"before": "Impossible d’inviter {name}. Vous pouvez quand même le mentionner sans le notifier.",
+				"after": "Impossible d’inviter {name}. Vous pouvez quand même mentionner {name} sans notification."
+			}
+		]
+	},
+	"status": "clean",
+	"notes": "Audit notes, not an execution log. Width judged in characters against the 22rem popover (truncating rows) and wrapping notice; no rendered-frame claim."
+}

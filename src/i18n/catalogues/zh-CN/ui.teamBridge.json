@@ -298,5 +298,19 @@
 	"ui.teamBridge.events.declined": "{actor}代{targets}拒绝了邀请",
 	"ui.teamBridge.events.withdrawn": "{actor}撤回了对{targets}的邀请",
 	"ui.teamBridge.events.unknown": "成员已变更",
-	"ui.teamBridge.events.others": "{count, plural, other {其他#名成员}}"
+	"ui.teamBridge.events.others": "{count, plural, other {其他#名成员}}",
+	"ui.teamBridge.mentions.listbox_label": "可提及的人员和智能体",
+	"ui.teamBridge.mentions.empty": "没有与“{query}”匹配的结果",
+	"ui.teamBridge.mentions.section.member_human": "此对话中的人员",
+	"ui.teamBridge.mentions.section.member_agent": "此对话中的智能体",
+	"ui.teamBridge.mentions.section.org_human": "其他人员",
+	"ui.teamBridge.mentions.section.org_agent": "其他智能体",
+	"ui.teamBridge.mentions.tag.not_member": "不在此对话中",
+	"ui.teamBridge.mentions.tag.bridge_off": "Team Bridge已关闭",
+	"ui.teamBridge.mentions.notice.not_member": "{name}不在此对话中，因此不会收到通知。",
+	"ui.teamBridge.mentions.notice.invite_failed": "无法邀请{name}。你仍可以提及对方但不通知。",
+	"ui.teamBridge.mentions.notice.invite": "邀请",
+	"ui.teamBridge.mentions.notice.silent": "提及但不通知",
+	"ui.teamBridge.mentions.notice.pending": "{name}已受邀但尚未加入，因此不会收到通知。",
+	"ui.teamBridge.mentions.notice.invited": "已邀请{name}。对方加入之前不会收到通知。"
 }

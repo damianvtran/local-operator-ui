@@ -506,6 +506,34 @@ const teamBridgeAttachmentIds = z
 	.array(id)
 	.max(4)
 	.refine((ids) => new Set(ids).size === ids.length, "Duplicate attachment");
+/*
+ * STRUCTURED @-MENTIONS on a send: local-operator #3204's `MentionIn`,
+ * `{kind, account_id, endpoint_id?}`, max 50 and distinct (the backend 422s a
+ * duplicate). Strict so a stray field fails here, in the renderer's own
+ * request, rather than as a remote refusal of a message the reader typed.
+ * Sent only when the backend advertises `team_bridge_send_mentions`; absent
+ * otherwise, so an older backend sees the unchanged body.
+ */
+export const teamBridgeMentionsSchema = z
+	.array(
+		z
+			.object({
+				kind: z.enum(["human", "agent"]),
+				account_id: id,
+				endpoint_id: id.optional(),
+			})
+			.strict(),
+	)
+	.max(50)
+	.refine(
+		(rows) =>
+			new Set(
+				rows.map(
+					(row) => `${row.kind}:${row.account_id}:${row.endpoint_id ?? ""}`,
+				),
+			).size === rows.length,
+		"Duplicate mention",
+	);
 // Mirrors ScheduleUnit in the renderer's api/local-operator/types.ts and the
 // backend's ScheduleUnit enum. Enumerated rather than free text so the value
 // cannot become a path or query fragment on its way to the server.
@@ -3882,6 +3910,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			/* Reply in this root message's thread; the hub validates the root. */
 			thread_root_id: id.optional(),
 			attachment_ids: teamBridgeAttachmentIds.optional(),
+			mentions: teamBridgeMentionsSchema.optional(),
 		})
 		.strict(),
 	/*
@@ -9690,6 +9719,8 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.attachment_ids?.length
 						? { attachment_ids: request.attachment_ids }
 						: {}),
+					// Omitted (never `[]`) when empty: the pre-mention wire, byte for byte.
+					...(request.mentions?.length ? { mentions: request.mentions } : {}),
 				},
 			};
 		case "team_bridge.scheduled.list":

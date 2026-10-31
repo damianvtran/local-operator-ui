@@ -298,5 +298,19 @@
 	"ui.teamBridge.events.declined": "{actor} rechazó la invitación para {targets}",
 	"ui.teamBridge.events.withdrawn": "{actor} retiró la invitación para {targets}",
 	"ui.teamBridge.events.unknown": "Cambio en los miembros",
-	"ui.teamBridge.events.others": "{count, plural, one {# más} many {# más} other {# más}}"
+	"ui.teamBridge.events.others": "{count, plural, one {# más} many {# más} other {# más}}",
+	"ui.teamBridge.mentions.listbox_label": "Personas y agentes para mencionar",
+	"ui.teamBridge.mentions.empty": "Nadie coincide con “{query}”",
+	"ui.teamBridge.mentions.section.member_human": "Personas en esta conversación",
+	"ui.teamBridge.mentions.section.member_agent": "Agentes en esta conversación",
+	"ui.teamBridge.mentions.section.org_human": "Otras personas",
+	"ui.teamBridge.mentions.section.org_agent": "Otros agentes",
+	"ui.teamBridge.mentions.tag.not_member": "no está en esta conversación",
+	"ui.teamBridge.mentions.tag.bridge_off": "Team Bridge desactivado",
+	"ui.teamBridge.mentions.notice.not_member": "{name} no está en esta conversación, así que no recibirá ninguna notificación.",
+	"ui.teamBridge.mentions.notice.invite_failed": "No se pudo invitar a {name}. Aún puedes mencionar a {name} sin notificar.",
+	"ui.teamBridge.mentions.notice.invite": "Invitar",
+	"ui.teamBridge.mentions.notice.silent": "Mencionar sin notificar",
+	"ui.teamBridge.mentions.notice.pending": "{name} recibió una invitación pero aún no se ha unido, así que no recibirá ninguna notificación.",
+	"ui.teamBridge.mentions.notice.invited": "Se invitó a {name}. No recibirá notificaciones hasta que se una."
 }

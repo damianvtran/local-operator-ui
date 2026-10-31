@@ -22,6 +22,8 @@ import type {
 	TeamBridgeAttachmentCapability,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
+import { MentionField, MentionNotice, useComposerMentions } from "./mentions";
+import { clearStagedMentions, stagedMentions } from "./mentions/mention-outbox";
 import { teamBridgeArrivalStreamKey } from "./team-bridge-arrival-model";
 import {
 	TeamBridgeAttachButton,
@@ -193,6 +195,14 @@ function TeamBridgeThreadPaneBody({
 		return observeDisplayedThreadReplies(pane.current, replies, onRead);
 	}, [replies, state, onRead]);
 	const [draft, setDraft] = useState("");
+	// @-mentions (mentions/): inert unless the page provides a mention source.
+	const replyField = useRef<HTMLTextAreaElement>(null);
+	const mentions = useComposerMentions({
+		draftKey: `thread|${conversationId ?? ""}|${root?.id ?? ""}`,
+		text: draft,
+		setText: setDraft,
+		fieldRef: replyField,
+	});
 	const [sending, setSending] = useState(false);
 	const [failed, setFailed] = useState(false);
 	const [imagesBlocked, setImagesBlocked] = useState(false);
@@ -254,6 +264,7 @@ function TeamBridgeThreadPaneBody({
 		setFailed(false);
 		setImagesBlocked(false);
 		scroll.pin();
+		mentions.stage(body);
 		try {
 			await onSend(body, entry.clientRef, ids);
 			pending.current = null;
@@ -396,6 +407,7 @@ function TeamBridgeThreadPaneBody({
 					)}
 					{/* A hub that cannot take images is already explained by the strip's
 					   unsupported note; this alert is only for error-marked chips (R2-02). */}
+					<MentionNotice mentions={mentions} />
 					{imagesBlocked && images.blocked && !images.unsupported && (
 						<p role="alert" className="pb-1 text-[12px] text-danger">
 							{t("ui.teamBridge.attachments.send_blocked")}
@@ -406,25 +418,34 @@ function TeamBridgeThreadPaneBody({
 						{...(state === "ready" ? attachmentPasteHandlers(images) : {})}
 					>
 						<TeamBridgeAttachmentStrip state={images} />
-						<textarea
-							rows={2}
-							aria-label={t("ui.teamBridge.replies.placeholder")}
-							placeholder={t("ui.teamBridge.replies.placeholder")}
-							value={draft}
-							disabled={state !== "ready"}
-							onChange={(e) => setDraft(e.target.value)}
-							onKeyDown={(e) => {
-								if (
-									e.key === "Enter" &&
-									!e.shiftKey &&
-									!e.nativeEvent.isComposing
-								) {
-									e.preventDefault();
-									void submit();
-								}
-							}}
-							className="block max-h-40 min-h-10 w-full resize-none bg-transparent px-3.5 pt-3 pb-1 text-[14px] text-ink outline-none placeholder:text-ink-dim"
-						/>
+						<MentionField
+							mentions={mentions}
+							fieldRef={replyField}
+							text={draft}
+						>
+							<textarea
+								ref={replyField}
+								rows={2}
+								aria-label={t("ui.teamBridge.replies.placeholder")}
+								placeholder={t("ui.teamBridge.replies.placeholder")}
+								value={draft}
+								disabled={state !== "ready"}
+								onChange={(e) => setDraft(e.target.value)}
+								{...mentions.bindField({
+									onKeyDown: (e) => {
+										if (
+											e.key === "Enter" &&
+											!e.shiftKey &&
+											!e.nativeEvent.isComposing
+										) {
+											e.preventDefault();
+											void submit();
+										}
+									},
+								})}
+								className="relative block max-h-40 min-h-10 w-full resize-none bg-transparent px-3.5 pt-3 pb-1 text-[14px] text-ink outline-none placeholder:text-ink-dim"
+							/>
+						</MentionField>
 						<div className="flex items-center gap-2 px-2 pb-2">
 							<span className="min-w-0 flex-1 ps-1.5 text-meta-sm text-ink-dim">
 								{t("ui.teamBridge.composer.hint")}
@@ -552,8 +573,11 @@ function TeamBridgeThreadPaneMount({
 				expectedAccountId: accountId,
 				threadRootId: rootId,
 				attachmentIds,
+				// The reply composer's @-mentions for exactly this text.
+				mentions: stagedMentions(conversationId, body),
 			}),
-		onSuccess: async () => {
+		onSuccess: async (_data, { body }) => {
+			clearStagedMentions(conversationId, body);
 			await Promise.all([
 				client.invalidateQueries({ queryKey: key }),
 				client.invalidateQueries({
