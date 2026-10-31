@@ -1,0 +1,12 @@
+# mechanical checks - hi / ui.teamBridge.events.consented_owner @ 14d0b6781ac9
+value              : {actor} ने अपने एजेंट {targets} को शामिल होने की मंज़ूरी दी
+graphemes          : 44 (sibling 36, event-family max 40 = events.declined)
+placeholders       : ["actor","targets"] (source ["actor","targets"])
+sentinel render    : ⟦A⟧ ने अपने एजेंट ⟦T⟧ को शामिल होने की मंज़ूरी दी
+sentinel counts    : actor 1, targets 1 (each must be 1)
+missing value      : actor -> MISSING_VALUE, targets -> MISSING_VALUE
+ICU node types     : [1,0]   plural/select: false
+leading/trailing   : false
+NFC                : true   bidi controls: 0   ZWNJ/ZWJ: 0
+sha256 en          : 4042a918bc64406c4c24ad5ea68fe3c3f3aaa7228917bc1678547cfb0c20285c
+sha256 target      : e81052d5c82f7e751360bea29e2c4e7545e8a2eca89535e8f4a0e2d7174cadfa

@@ -52,6 +52,7 @@ import type {
 	TeamBridgeConversation,
 	TeamBridgeConversationList,
 	TeamBridgeDirectoryMember,
+	TeamBridgeEvent,
 	TeamBridgeMemberInput,
 	TeamBridgeMessage,
 	TeamBridgeNotify,
@@ -546,6 +547,8 @@ export type TeamBridgePageViewProps = {
 	 */
 	target: TeamBridgeTarget | null;
 	messages: TeamBridgeMessage[];
+	/** Membership events for the timeline only; see `TeamBridgeMessageList`. */
+	events?: readonly TeamBridgeEvent[];
 	/** The caller's active memberships, already joined with per-org counts. */
 	organizations: TeamBridgeOrganization[];
 	scope: TeamBridgeScope;
@@ -733,6 +736,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	conversations,
 	target,
 	messages,
+	events,
 	organizations,
 	scope,
 	totalUnread,
@@ -2882,6 +2886,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								) : (
 									<TeamBridgeMessageList
 										messages={messages}
+										events={events}
 										profileFor={(sender) =>
 											profileFor(sender, shown?.tenant_id ?? "")
 										}
@@ -4120,6 +4125,7 @@ const TeamBridgeOwnedPage: FC<{
 				conversations={conversations}
 				target={target}
 				messages={messages.data?.messages ?? []}
+				events={messages.data?.events}
 				organizations={organizations}
 				scope={scope}
 				totalUnread={unread.data?.total ?? 0}

@@ -1,0 +1,38 @@
+{
+	"schema": 1,
+	"kind": "audit-amendment (second look)",
+	"audit_id": "teambridge-member-events-delta-b-94934cc4a6fd-hi",
+	"date": "2026-10-30",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "radient/auto",
+	"model_provenance": "Session 94934cc4a6fd started as anthropic/claude-opus-5-5 and was switched by the harness to openai/gpt-6-astra, kimi/k3.1-pro, then radient/auto on provider quota failures. All verdicts, including this amendment, were formed under radient/auto.",
+	"session": "94934cc4a6fd",
+	"instance": "94934cc4a6fd-hi",
+	"locale": "hi",
+	"namespace": "ui.teamBridge",
+	"bound_receipt": {
+		"path": "i18n/receipts/94934cc4a6fd-hi.json",
+		"findings": { "blocker": 0, "major": 0, "minor": 0, "nit": 0 },
+		"result": "clean"
+	},
+	"why_an_amendment_and_not_a_new_receipt": "The bound receipt was written and assembled before I read any other auditor's work; the assembler treats a receipt as immutable evidence and refuses to replace an instance with different bytes. Re-running the same audit under a second instance would also misrepresent independence. So the row keeps the receipt above and this companion carries my final view, exactly as the first round handled the same situation.",
+	"what_changed_my_mind": "My first pass judged the hi tail in isolation - «3 अन्य लोग» is correct Hindi on its own, so I recorded the value as clean. It is not read in isolation: src/renderer/src/features/team-bridge/team-bridge-member-events.tsx:96-104 splices the rendered tail as the LAST element of the {targets} list, and five of the eleven hi event lines put {targets} immediately before a postposition (invited/removed/consented «को», declined/withdrawn «के लिए»). Hindi requires the oblique form before a postposition, so the spliced noun must be «लोगों», not «लोग».",
+	"added_findings": [
+		{
+			"severity": "major",
+			"id": "HI-DB1",
+			"key": "ui.teamBridge.events.others",
+			"keys": ["ui.teamBridge.events.others"],
+			"current": "{count, plural, one {# अन्य व्यक्ति} other {# अन्य लोग}}",
+			"proposed": "revert to {count, plural, one {# अन्य} other {# अन्य}}",
+			"reason": "The invariant bare «अन्य» is the only tail that survives every position the list is spliced into; any head noun the tail gains must agree in case with a postposition it cannot see. Adding «व्यक्ति/लोग» therefore fixes the isolated string and breaks five call sites: the direct forms render «… और 3 अन्य लोग को आमंत्रित किया» and «… 3 अन्य लोग के लिए आमंत्रण अस्वीकार कर दिया», where Hindi needs «लोगों». Reverting restores «… 3 अन्य को आमंत्रित किया» / «… 3 अन्य के लिए …», which is grammatical because अन्य does not inflect.",
+			"evidence": "compose-hi.txt beside this record: the tail rendered through the repo's intl-messageformat and re-embedded in the actual sentence values at all seven hi positions, with the round-1 tail through the same positions for comparison.",
+			"disposition": "fix recommended (revert the tail, or restructure so the tail is never spliced into a case-governed position - a larger change than this delta)"
+		}
+	],
+	"independence": "Auditor B of the delta round (session 94934cc4a6fd), independent of the translator and of auditor A (session 4ab583bbf0ca). My first-pass verdict was formed and assembled before I read A's receipt. A raised the same class of finding on this key (HI-D1); I reached it here by rendering the composed sentence through the real call-site order, which is the check my first pass should have run. The convergence is corroboration, not copying: the mechanism above and the seven-position matrix are mine.",
+	"final_counts": { "blocker": 0, "major": 1, "minor": 0, "nit": 0 },
+	"final_verdict": "changes_requested: 0 blocker, 1 major, 0 minor, 0 nit on the hi delta value. The superseding receipt in the ledger records my first-pass `clean`; this companion is my final view on the same bytes.",
+	"ledger_behaviour": "No ledger row was re-assembled for this amendment and i18n/ledger.json was not hand-edited. The hi row already reads changes_requested because the other auditor's receipt carries a major on the same key, so the aggregate verdict is unchanged by this amendment."
+}

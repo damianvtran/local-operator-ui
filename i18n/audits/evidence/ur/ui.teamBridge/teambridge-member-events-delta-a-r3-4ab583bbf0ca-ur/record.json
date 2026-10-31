@@ -1,0 +1,116 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit, independent re-audit of an applied fix (round 3): UR-D1/UR-D2 declined light-verb agreement in ui.teamBridge",
+	"date": "2026-10-30",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "radient/auto",
+	"model_provenance": "Session 4ab583bbf0ca was started on anthropic/claude-opus-5-5 and switched by the harness on provider-quota failures to openai/gpt-6-astra, then kimi/k3.1-pro, then radient/auto. This fix verification and its verdict were produced under radient/auto.",
+	"session": "4ab583bbf0ca",
+	"instance": "4ab583bbf0ca-ur-r3",
+	"audit_id": "teambridge-member-events-delta-a-r3-4ab583bbf0ca-ur",
+	"round": {
+		"kind": "round 3 — verification of the applied fix for this audit's round-2 findings",
+		"head_at_audit": "1eeb46187ce",
+		"fixes": [
+			"UR-D1",
+			"UR-D2"
+		],
+		"prev_round_sha256": "a2e6c102ee41badf587ea1afc4d0ca3d911f0f97979f0be2c3c60881694018a7",
+		"prev_round_record": "i18n/audits/evidence/ur/ui.teamBridge/teambridge-member-events-delta-a-4ab583bbf0ca-ur",
+		"scope_rule": "Round 3 covers exactly the corrected values and the composition path they feed; the remaining audited values are byte-unchanged from the round-2 bytes."
+	},
+	"status": "passed",
+	"result": "clean",
+	"locale": "ur",
+	"namespace": "ui.teamBridge",
+	"translator": {
+		"agent": "translator",
+		"model": "anthropic/claude-opus-5-5"
+	},
+	"independence": "Auditor A of the delta round, session 4ab583bbf0ca, independent of the translator. The corrections were verified against the bytes on disk (hash chain to the round-2 delta bytes) and re-judged on their own merits, not accepted because they match this audit's proposal. No catalogue was edited.",
+	"integration": {
+		"branch": "fix/team-bridge-member-events",
+		"head_at_audit": "1eeb46187ce",
+		"worktree": "~/local-operator-ui/.worktrees/member-events",
+		"catalogue_state": "the seven locale catalogues remain uncommitted working-tree modifications on top of 1eeb46187ce"
+	},
+	"sha256": {
+		"ur": "046cb95c37eecd141da4a0c5e86ef271d45fd64b7dad6f6ae25f1622b00c2521",
+		"en": "56810571f7cfe24841940394b0579e28a13616c40da35fe93301f5b66fb7290c"
+	},
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "56810571f7cfe24841940394b0579e28a13616c40da35fe93301f5b66fb7290c"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "adb76e0b6e40573f67398d6d260fbb738686f34f73077b593126cee6d2d0a77e"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ur/ui.teamBridge.json",
+			"sha256": "046cb95c37eecd141da4a0c5e86ef271d45fd64b7dad6f6ae25f1622b00c2521"
+		}
+	},
+	"delta_verification": {
+		"method": "rebuilt the round-2 bytes from the round-1 file, re-applied the corrections in reverse on the file on disk, compared hashes and line diffs",
+		"round2_recorded_sha256": "a2e6c102ee41badf587ea1afc4d0ca3d911f0f97979f0be2c3c60881694018a7",
+		"reverse_applied_sha256": "a2e6c102ee41badf587ea1afc4d0ca3d911f0f97979f0be2c3c60881694018a7",
+		"matches": true,
+		"changed_lines": 2,
+		"conclusion": "only events.declined_self and events.declined moved; both now end «کر دیا»"
+	},
+	"keys_read": 12,
+	"findings": [],
+	"severity_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"checks": [
+		"Chain proof: the round-2 delta bytes were rebuilt from the round-1 file by re-applying the delta (byte-level line substitution, no JSON round-trip) and hashed to the round-2 recorded value; subtracting this round's corrections from the file on disk reproduces that same hash, and a line-by-line diff shows exactly the corrected lines — nothing else moved.",
+		"ICU: the corrected values parse with the project's own parser; arguments match English exactly ({actor} and {targets} where English has them), no renamed or added argument.",
+		"Renders at 1 and 3 targets plus the shortened-list composition (5 names, 3 hidden, events.others as the list's last element) — all grammatical and complete.",
+		"Encoding: NFC, zero bidi control characters, zero zero-width characters, zero combining marks (the render layer applies FSI/PDI; manual controls would double-apply).",
+		"The rest of the 12-key event/consent block is byte-unchanged from the round-2 bytes this audit already passed, so the round-2 verdict on those values stands; this round re-read the corrected keys and the composition path they feed.",
+		"This round audits catalogue text only: no rendered-frame, font-fallback, geometry or activation evidence, and no release approval."
+	],
+	"verdict": "ui.teamBridge (ur): CLEAN — 0 blocker, 0 major, 0 minor, 0 nit. UR-D1 and UR-D2 are resolved and the agreement class is now uniform across the namespace and the core ur corpus.",
+	"notes": [
+		"Resolved: UR-D1 and UR-D2. Both lines now end «انکار کر دیا», agreeing with the masculine noun انکار; the namespace's own invitations.declined / declined_unnamed use «انکار کر دیا گیا», and the core's remote_refusal_silent uses «انکار کر دیا».",
+		"Census after the fix: «انکار کر دیا» 4 in ui.teamBridge (2 event + 2 invitations), core ur 1; «انکار کر دی» (no alif) 0 in the namespace and 0 across the 1,921 core ur strings.",
+		"Renders read correctly at 1 and 3 targets and in the shortened-list composition («Dana نے Ava، Ben، اور مزید 3 کے لیے دعوت سے انکار کر دیا»); ICU parse ok, {actor}/{targets} intact, NFC, zero bidi/zero-width/combining marks."
+	],
+	"artifacts": [
+		{
+			"path": "i18n/audits/evidence/ur/ui.teamBridge/teambridge-member-events-delta-a-r3-4ab583bbf0ca-ur/record.json"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.teamBridge/teambridge-member-events-delta-a-r3-4ab583bbf0ca-ur/findings.json"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.teamBridge/teambridge-member-events-delta-a-r3-4ab583bbf0ca-ur/fix-chain-proof.txt"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.teamBridge/teambridge-member-events-delta-a-r3-4ab583bbf0ca-ur/fix-audit.txt"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.teamBridge/teambridge-member-events-delta-a-r3-4ab583bbf0ca-ur/bidi-nfc-scan.txt"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.teamBridge/teambridge-member-events-delta-a-r3-4ab583bbf0ca-ur/hashes.txt"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.teamBridge/teambridge-member-events-delta-a-r3-4ab583bbf0ca-ur/check-i18n-after-assembly.log"
+		}
+	],
+	"gate_output_after_assembly": [
+		"ledger-check: FAILED — 12 finding(s) across 770 ledger entr(ies)",
+		"[ELIFECYCLE] Command failed with exit code 1.",
+		"[ELIFECYCLE] Command failed with exit code 1."
+	],
+	"gate_result_after_assembly": "FAILED (not on this row)",
+	"gate_note_after_assembly": "Unedited `pnpm check-i18n` right after this row was assembled: ur/ui.teamBridge is audited and produces no finding. The 12 findings are es/fr, whose catalogues were edited by another agent at 21:25:32 (events.owner_added_agent colon form) AFTER this audit's round-2 assembly, so those two rows are stale until they get their own delta re-audit."
+}

@@ -811,7 +811,7 @@ export function TeamBridgeAddMembersView({
 				)}
 				<div className="mt-2 flex items-center justify-between gap-3 rounded-b-lg border-hairline border-t bg-surface px-6 py-4">
 					<p className="max-w-sm text-meta text-ink-muted">
-						{t("ui.teamBridge.members.invitation_note_v2")}
+						{t("ui.teamBridge.members.invitation_note_v3")}
 					</p>
 					<div className="flex shrink-0 gap-2">
 						<Button

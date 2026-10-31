@@ -1,0 +1,7 @@
+AUDITOR A — round 3 (fix verification), hi
+Auditor: translation-auditor  Session: 4ab583bbf0ca  Model: radient/auto
+
+1. Resolved: HI-D1, by the option this audit named — the tail is the invariant {count, plural, one {# अन्य} other {# अन्य}} again.
+2. Reason it settles the finding: the previous tail put the nominative plural लोग in front of «को»/«के लिए» in five event lines (real render: «… और 3 अन्य लोग के लिए …»). An invariant tail carries no inflection, so it cannot be wrongly inflected in any of the slots.
+3. Honest limit, recorded not re-raised: the shipped hi corpus does not settle whether a substantivised «अन्य» before a postposition should be «अन्यों» — census over 6,843 strings gives «अन्य»+postposition 0 and «अन्यों»+postposition 0, so there is no precedent either way and this audit does not manufacture one.
+4. Auditor B's round-1 nit for this key ("no head noun") is deliberately NOT re-applied: a nominal tail cannot serve the five postpositional slots without an oblique form ICU cannot switch on. Recorded here so the decision is not silent.

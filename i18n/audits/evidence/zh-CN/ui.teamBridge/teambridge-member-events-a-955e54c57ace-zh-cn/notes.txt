@@ -1,0 +1,15 @@
+AUDITOR A — conditions, caveats and divergence (notes, distinct from the execution logs beside them)
+
+Locale: zh-CN   Namespace: ui.teamBridge   Auditor: translation-auditor   Session: 955e54c57ace   Model: radient/auto
+(harness fallbacks experienced mid-session: anthropic/claude-opus-5-5 -> openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto; verdicts were formed and written under radient/auto)
+
+1. Reachability condition attached to the owner_added_agent finding
+   No owner_added_agent finding for this locale: the singular agent noun with a multi-name list renders grammatically here.
+   Kept for the record: zh-CN nouns are number-neutral, so 1 and 3 targets share one grammatical string.
+
+2. Divergence with the independent Audit B (session 502568f2aefe, radient/radient-research/radient-ultra)
+   Audit A formed its verdicts from the catalogues, the English context sidecar, the glossary and the style guides; Audit B's receipts were read only after A's receipts and records were written and assembled.
+   B recorded no major findings on this delta and graded events.joined minor in fr/es/ru; A graded events.joined minor in fr and nit in hi/ur, and raised no joined finding in es, zh-CN, ru or vi. Both verdicts stand on the ledger row; neither audit edited a catalogue.
+
+3. What this audit does NOT claim
+   Catalogue-level judgement only: no rendered-frame, font-fallback, geometry or activation evidence, and no release approval. The fr events.joined/events.left and every locale's events.left exceed the English length and need a rendered width check on the one-line timeline row.

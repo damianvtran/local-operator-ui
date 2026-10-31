@@ -1,0 +1,10 @@
+AUDITOR B (delta round) - NOTES, distinct from the execution logs beside them
+
+Locale zh-CN  Namespace ui.teamBridge  Session 94934cc4a6fd  Model radient/auto
+(harness fallbacks experienced: anthropic/claude-opus-5-5 -> openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto; every verdict written under radient/auto)
+
+1. Verdict: clean, 0 blocker / 0 major / 0 minor / 0 nit on the three delta values.
+2. The clause-4 rewrite reads better than the round-1 text: «限制在@提及和它参与的讨论串内» states the SCOPE the English limits, where «限制为仅响应…» made the second limit a thing to reply to. 讨论串 matches replies.title and 静音 matches notify.mute in this same file.
+3. events.declined: 代 is the right relation (the actor declines on the targets' behalf, typically an owner for their agent). With three names it reads «Ana代Ana、Ben和Sana拒绝了邀请» - no case or number problem in Chinese.
+4. events.others «其他#名成员» renders «其他2名成员», and as the spliced list tail «Ana、Ben和其他2名成员»: correct, and better than the round-1 «其他#人» because it uses the namespace's own term 成员.
+5. What this does not claim: catalogue-level judgement only. No rendered-frame, font or geometry evidence, and no release approval.

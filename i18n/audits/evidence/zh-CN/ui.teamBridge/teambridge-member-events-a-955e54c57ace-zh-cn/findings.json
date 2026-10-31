@@ -1,0 +1,18 @@
+[
+	{
+		"id": "ZH-A1",
+		"severity": "minor",
+		"key": "ui.teamBridge.events.declined",
+		"current": "{actor}拒绝了对{targets}的邀请",
+		"proposed": "{actor}代{targets}拒绝了邀请",
+		"reason": "「对…的邀请」is a prepositional calque of the English 'for' and leaves the on-behalf relation (the context: someone declined for others) implicit; 代 states it, and it stops the line from scanning like the sibling withdrawn 「撤回了对…的邀请」."
+	},
+	{
+		"id": "ZH-A2",
+		"severity": "minor",
+		"key": "ui.teamBridge.members.invitation_note_v3",
+		"current": "其所有者可将其限制为仅响应@提及和它参与的讨论串，或将其静音。",
+		"proposed": "其所有者可限制它只在@提及和它参与的讨论串中活动，或将其静音。",
+		"reason": "「仅响应@提及和它参与的讨论串」makes the second limit a thing to reply to; the English limits the agent's SCOPE to @-mentions plus its threads, which 「只在…中活动」states. Clauses 1–3 are faithful, including «应当回复» as an expectation rather than a guarantee."
+	}
+]
