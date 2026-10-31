@@ -88,19 +88,29 @@ export function TeamBridgeAvatar({
 			(fallback ?? personInitial(label))
 		);
 	/*
-	 * THE AGENT MARK THAT SURVIVES A PICTURE (design review round 1, D1/D2).
+	 * THE AGENT MARK THAT SURVIVES A PICTURE (design review rounds 1-2, D1/D2).
 	 * An agent's plate differs from a person's only by its CONTENTS, so the day
 	 * `useIdentityAvatar` can resolve an endpoint picture the plate becomes "a
 	 * picture" again and says nothing about kind — the visual half of
-	 * 2026-10-30's defect, with no glyph to carry it. The ring is drawn on an
-	 * overlay ABOVE the image (an inset outline on the plate itself would be
-	 * painted under the `<img>` child), so it is the one part of an agent plate
-	 * no picture can replace. One rule, stated here and nowhere else: an agent
-	 * is accent, and its glyph is accent everywhere — the pair this repo
-	 * already registered for agents (`bg-media-surface` + `text-accent`,
-	 * 4.23:1 light / 8.42:1 dark, above the 3:1 non-text floor), which is why
-	 * the rail's chief rows and the message row's directory-less agent plate
-	 * keep the ink they had (design round 1, D2: apply it, do not fork it).
+	 * 2026-10-30's defect, with no glyph to carry it. So the mark is a SHAPE
+	 * drawn above the contents: a notched corner in the plate's own accent.
+	 *
+	 * WHY NOT A RING, WHICH WAS THE FIRST ATTEMPT (design round 2, D1, MAJOR):
+	 * accent is this app's keyboard-focus colour (`styles/index.css`
+	 * `:focus-visible { outline: 2px solid var(--color-accent) }`), and every
+	 * message avatar is a button, so a ringed agent plate under focus wore two
+	 * identical green rings — the designer's frame measured both, and a focused
+	 * field one row away said "focus" in the same green. The perimeter channel
+	 * is therefore focus's, and an identity mark may not borrow it. A corner
+	 * notch is not a ring at any width, so it cannot be read as focus, and it
+	 * leaves the global focus rule untouched.
+	 *
+	 * WHY THE CORNER AND WHY THIS SIZE. It is drawn inside the plate box, last,
+	 * so it survives any picture the plate holds; `max(6px, 30%)` keeps it
+	 * legible at the smallest plate the app renders (20 px -> 6 px) without
+	 * swallowing a large one (64 px -> 19.2 px). The pair is accent on
+	 * `mediaSurface`, already floored by the palette rows and pinned with its
+	 * measured worst case by `scripts/contrast-contract.mjs`.
 	 */
 	return (
 		<span
@@ -119,7 +129,7 @@ export function TeamBridgeAvatar({
 			{kind === "agent" && (
 				<span
 					data-agent-mark=""
-					className="pointer-events-none absolute inset-0 rounded-[inherit] ring-1 ring-accent ring-inset"
+					className="pointer-events-none absolute right-0 bottom-0 size-[max(6px,30%)] bg-accent [clip-path:polygon(100%_100%,0_100%,100%_0)]"
 				/>
 			)}
 			{image && image !== failedImage ? (

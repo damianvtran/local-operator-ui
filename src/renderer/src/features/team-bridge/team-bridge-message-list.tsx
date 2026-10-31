@@ -651,7 +651,11 @@ const MessageRowView: FC<MessageRowProps> = ({
 					kind={agent ? "agent" : "human"}
 					label={label}
 					size={36}
-					className="size-9 rounded-md bg-media-surface text-ink-muted text-[14px]"
+					/* NO ink here: the plate owns it (`text-accent` for an agent,
+					   `text-ink-muted` for a person), and a host that restated the
+					   muted ink beat `text-accent` through tailwind-merge — one agent
+					   with two inks in one frame (agent review round 2, F4). */
+					className="size-9 rounded-md bg-media-surface text-[14px]"
 					fallback={
 						known === null ? (
 							<UserRound size={18} />

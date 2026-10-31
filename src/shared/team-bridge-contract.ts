@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ENDPOINT_AVATAR_URL } from "./identity-avatar";
 
 /**
  * The Team Bridge conversation wire shapes (docs/TEAM-BRIDGE-CONVERSATIONS.md).
@@ -493,9 +494,11 @@ export const teamBridgeDirectoryAgentSchema = z
 		avatar_url: z
 			.string()
 			.max(512)
-			.regex(
-				/^\/v1\/messaging\/endpoints\/[A-Za-z0-9_-]{1,128}\/avatar\?v=[0-9a-f]{16}$/,
-			)
+			/* THE RESOLVER'S OWN PATTERN, not a copy: two literals that drift turn a
+			   picture the hub does send into a silently missing one
+			   (`.catch(undefined)`) - round 1's F1 failure mode one layer up (round 2,
+			   F6). */
+			.regex(ENDPOINT_AVATAR_URL)
 			.optional()
 			.catch(undefined),
 	})

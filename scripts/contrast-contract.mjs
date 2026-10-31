@@ -2160,6 +2160,29 @@ const GRAPHICS = [
 	},
 	{
 		/*
+		 * THE AGENT MARK'S OWN BOUNDARY (design review round 2, D3). The plate
+		 * carries a corner notch in `accent` — the mark that survives a picture —
+		 * and nothing measured it: a `bg-accent` -> `bg-hairline` edit, or a plate
+		 * fill moved off `mediaSurface`, would have left every row green while the
+		 * mark flattened into the plate.
+		 *
+		 * The floor is the MEASURED worst case, not the 3:1 non-text floor it
+		 * clears with room: across the 59 palettes accent against `mediaSurface`
+		 * bottoms at 4.17:1 (`catppuccinLatte`), then 4.26 (`tokyoNightDay`,
+		 * `oneLight`), 4.27 (`githubLight`), 4.29 (`localOperatorLight`, 4.23 as
+		 * rendered); median 7.27, max 17.11. 4.0 is half a step below the worst so
+		 * a palette edit that eats the margin fails here rather than silently
+		 * becoming the smallest mark in the app. The class string itself is pinned
+		 * by the `data-agent-mark` call-site row below, and the glyph's ink stays
+		 * the row above.
+		 */
+		name: "team bridge agent mark (corner notch)",
+		on: ["mediaSurface"],
+		fg: "accent",
+		floor: 4.0,
+	},
+	{
+		/*
 		 * The completion mark on a follow-up turn bar (`turn-summary.tsx`'s
 		 * `CircleCheck`): `success` ink drawn straight on the transcript's canvas,
 		 * the pair the checkpoint rail already paints for `complete`.
@@ -3169,6 +3192,22 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/features/chat/components/at-mention-overlay.tsx",
 		must: 'MENTION_CHIP_ROLE = "rounded-sm bg-sunken"',
 		why: "the fill IS the chip's boundary - it takes no edge by design - so repainting it as the ground it sits on erases every mention in a sentence with no palette assertion able to see it",
+	},
+	{
+		/*
+		 * THE AGENT MARK'S CLASS STRING, at its call site (design review round 2,
+		 * D3). The palette row above measures accent against `mediaSurface`; only
+		 * this pin can see the edit that stops the plate painting it — swapping the
+		 * notch for `bg-hairline`, a ring on the perimeter (which is the app's
+		 * FOCUS channel and was round 2's D1 major), or dropping the element
+		 * altogether. It is the one part of an agent plate a future endpoint
+		 * picture cannot cover, so losing it silently re-opens the visual half of
+		 * 2026-10-30's defect with every ratio still green.
+		 */
+		what: "team bridge agent mark corner notch",
+		file: "src/renderer/src/features/team-bridge/team-bridge-profile-card.tsx",
+		must: "size-[max(6px,30%)] bg-accent [clip-path:polygon(100%_100%,0_100%,100%_0)]",
+		why: "the notch is the only agent signal that survives a picture; `data-agent-mark` plus the accent fill and the shape are what make it one, and no palette row can see a plate that stops drawing it",
 	},
 	{
 		/*
@@ -6163,10 +6202,13 @@ for (const { id, palette: p } of palettes) {
 		assertPair(id, p, row.fg, row.on, row.floor, row.name);
 	}
 
-	/* Graphic objects against the ground they are drawn on. */
+	/* Graphic objects against the ground they are drawn on. `floor` is per row
+	   where a row's own measured worst case is tighter than the 3:1 non-text
+	   floor: pinning it at 3.0 would let a token move that halves the margin
+	   still pass. */
 	for (const g of GRAPHICS) {
 		for (const ground of g.on) {
-			assertPair(id, p, g.fg, ground, FLOOR.nonText, g.name);
+			assertPair(id, p, g.fg, ground, g.floor ?? FLOOR.nonText, g.name);
 		}
 	}
 
