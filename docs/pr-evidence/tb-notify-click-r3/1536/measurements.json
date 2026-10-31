@@ -1,0 +1,200 @@
+{
+  "head": "8b5499f5e90",
+  "scope": "d0c452142aa..8b5499f5e90",
+  "method": "harness browser, one tab, 1280x720 CSS; P3->sRGB transform from round 2 (measure_frames.py); glyph-core ink = extreme-luminance mode inside the element's rect from the styles op",
+  "d5": {
+    "seed": "general muted 1, Pat DM muted 2, Pat's agent muted 3, Launch 1 unmuted (opened -> read), Beta 1",
+    "d0c452142aa": {
+      "nav": 1,
+      "rowSum": 0,
+      "rows": []
+    },
+    "8b5499f5e90": {
+      "nav": 1,
+      "rowSum": 6,
+      "rows": {
+        "general": 1,
+        "Pat": 2,
+        "Pat's agent": 3
+      },
+      "register": "quiet"
+    },
+    "control_agg1_8b5499f5e90": {
+      "nav": 2,
+      "rowSum": 4
+    }
+  },
+  "d6_pixels": {
+    "localOperatorDark": {
+      "ink": [
+        194,
+        188,
+        176
+      ],
+      "band": [
+        47,
+        58,
+        43
+      ],
+      "ratio": 6.311,
+      "band_vs_pane": 1.2446
+    },
+    "localOperatorLight": {
+      "ink": [
+        78,
+        73,
+        64
+      ],
+      "band": [
+        223,
+        229,
+        218
+      ],
+      "ratio": 6.958,
+      "band_vs_pane": 1.1768
+    },
+    "cyberpunk": {
+      "ink": [
+        188,
+        178,
+        207
+      ],
+      "band": [
+        65,
+        60,
+        52
+      ],
+      "ratio": 5.419,
+      "round2_ink_dim": 4.05
+    },
+    "obsidian": {
+      "ink": [
+        197,
+        197,
+        206
+      ],
+      "band": [
+        67,
+        67,
+        70
+      ],
+      "ratio": 5.752,
+      "round2_ink_dim": 4.13
+    },
+    "rosePine": {
+      "ink": [
+        200,
+        196,
+        223
+      ],
+      "band": [
+        72,
+        64,
+        80
+      ],
+      "ratio": 5.844,
+      "round2_ink_dim": 4.22
+    },
+    "nightfox": {
+      "ink": [
+        177,
+        178,
+        179
+      ],
+      "band": [
+        46,
+        61,
+        82
+      ],
+      "ratio": 5.189,
+      "token": 5.21
+    }
+  },
+  "d6_token_sweep_themes_generated_css": {
+    "themes": 59,
+    "ink_muted_on_band_floor": {
+      "nightfox": 5.21
+    },
+    "next": {
+      "cyberpunk": 5.47,
+      "monokai": 5.568
+    },
+    "ink_muted_below_4_5": 0,
+    "ink_dim_below_4_5": 10,
+    "body_ink_on_band_min": {
+      "ayuMirage": 6.495
+    },
+    "arrival_gt_hover": "59/59",
+    "arrival_gt_selected": "59/59",
+    "keyframed_ink_suggestion_worst": {
+      "theme": "nightfox",
+      "t": 0,
+      "ratio": 5.213
+    }
+  },
+  "contrast_contract_mjs": "exit 0 - 188279 assertions across 59 themes (includes new 5a)",
+  "hierarchy_pixels": {
+    "dark": {
+      "arrival": 1.2446,
+      "row_current": 1.127,
+      "hover": 1.088,
+      "band_over_hover": 1.3571
+    },
+    "light": {
+      "arrival": 1.1768,
+      "row_current": 1.1325,
+      "hover": 1.0837,
+      "band_over_hover": 1.2704
+    }
+  },
+  "d3": {
+    "hit_test_486_620": [
+      "avatar span",
+      "avatar button",
+      "div.w-9",
+      "li (washed row) at depth 4"
+    ],
+    "click": "avatar click opens profile card"
+  },
+  "d7_geometry_css_px": {
+    "row": "x164 w280 h30",
+    "bell": "x400-412",
+    "quiet_badge": "x420-436",
+    "menu_trigger": "x414-438 (opacity 0 at rest, 1 hovered; badge visibility hidden hovered)",
+    "gap_bell_to_menu": 2,
+    "viewports": [
+      "1280",
+      "900 (identical x)"
+    ],
+    "a11y_names": {
+      "channel": "general Muted 1 unread",
+      "person": "Message Pat",
+      "chief": "Message Pat's agent (Pat)"
+    }
+  },
+  "d9": {
+    "band_end_class_on": {
+      "ink": [
+        194,
+        188,
+        176
+      ],
+      "ratio": 7.855
+    },
+    "after_clear": {
+      "ink": [
+        166,
+        160,
+        146
+      ],
+      "ratio": 5.7
+    },
+    "ink_step_luminance_ratio": 1.378,
+    "transition_duration": "0s",
+    "clear_timer": "JUMP_HIGHLIGHT_MS (1400) in team-bridge-page.tsx:4261"
+  },
+  "gates": {
+    "token_audit": "team-bridge-rail.tsx + index.css: No anomalies found",
+    "contrast_pairs": "4 pairs, 0 below AA (6.31, 6.96, 5.38, 5.25)"
+  }
+}
