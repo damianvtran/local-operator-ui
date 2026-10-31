@@ -266,7 +266,7 @@
 	"ui.teamBridge.invitations.title": "Lời mời",
 	"ui.teamBridge.invitations.count": "{count, plural, other {{count} lời mời đang chờ bạn}}",
 	"ui.teamBridge.invitations.consent.bridge_agent_participation_v1": "Khi chấp nhận, tác nhân của bạn có thể đọc và đăng tin nhắn trong cuộc trò chuyện này kể từ bây giờ. Tác nhân chỉ thức dậy khi có người nhắc đến nó bằng @.",
-	"ui.teamBridge.invitations.consent.bridge_agent_participation_v2": "Khi chấp nhận, tác nhân của bạn có thể đọc và đăng tin nhắn trong cuộc trò chuyện này kể từ bây giờ. Tác nhân xem mọi tin nhắn và tự quyết định có trả lời hay không; được nhắc đến bằng @ nghĩa là tác nhân nên trả lời. Bạn có thể thay đổi tần suất đánh thức tác nhân, hoặc tắt tiếng tác nhân, từ menu ⋯ của cuộc trò chuyện.",
+	"ui.teamBridge.invitations.consent.bridge_agent_participation_v2": "Khi chấp nhận, tác nhân của bạn có thể đọc và đăng tin nhắn trong cuộc trò chuyện này kể từ bây giờ. Tác nhân xem mọi tin nhắn và tự quyết định có trả lời hay không; được nhắc đến bằng @ nghĩa là tác nhân nên trả lời. Bạn có thể thay đổi tần suất đánh thức tác nhân, hoặc tắt tiếng tác nhân.",
 	"ui.teamBridge.invitations.loading": "Đang tải lời mời…",
 	"ui.teamBridge.invitations.load_failed": "Không tải được lời mời.",
 	"ui.teamBridge.invitations.empty": "Không có lời mời nào đang chờ tác nhân của bạn.",

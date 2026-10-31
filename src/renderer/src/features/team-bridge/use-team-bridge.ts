@@ -63,11 +63,14 @@ import { withCarriedTeamBridgeEvents } from "./team-bridge-member-events-model";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeScope,
+	agentNotifyLevel,
 	isNotAMemberRefusal,
+	ownActiveAgent,
 	withAppendedPage,
 	withConversationStatus,
 	withNotificationPreference,
 	withOwnAgentNotify,
+	withOwnAgentNotifyRolledBack,
 	withServedOwnAgentNotify,
 	withoutConversation,
 } from "./team-bridge-model";
@@ -760,6 +763,16 @@ export function useSetTeamBridgeNotify(): UseMutationResult<
 	return useMutation(notifyMutationOptions(client, owner.isCurrent));
 }
 
+/**
+ * What an agent-level write needs to undo itself: the account it patched under
+ * and the level it replaced (null when the row carried none). Not page
+ * snapshots: see `withOwnAgentNotifyRolledBack`.
+ */
+export type TeamBridgeAgentNotifyMutationContext = {
+	self: string;
+	previous: TeamBridgeNotify | null;
+};
+
 /** One agent wake-level write: which conversation, in which org, and the level. */
 export type TeamBridgeAgentNotifyVariables = {
 	conversationId: string;
@@ -782,14 +795,16 @@ export type TeamBridgeAgentNotifyVariables = {
  * sure to carry the stored level, so the checked row survives even if a list
  * refetch came back without it.
  *
- * SERIALISED PER CONVERSATION (R1-4). Two quick picks A then B both snapshot
- * in `onMutate`; unscoped, B's snapshot holds A's optimistic value, and A
- * failing after B started rolls back over B. A mutation scope keyed by the
- * conversation makes the query client run B (including its `onMutate`) only
- * after A has settled, so every snapshot is a settled state and the wire order
- * is the order of the gestures. Different conversations still run in parallel.
- * Owner and tenant are in the id too, so a sign-out never chains one account's
- * write behind another's.
+ * WIRE ORDER PER CONVERSATION (R1-4, corrected in round 2 as R2-1). A
+ * mutation scope keyed by the conversation makes the query client send B only
+ * after A has settled, so the hub stores the picks in the order they were
+ * made. It orders `mutationFn` only: TanStack (5.73) awaits `onMutate` before
+ * the scope's `canRun` gate, so B's optimistic patch lands while A is still in
+ * flight. That is why a failure does not restore page snapshots. It undoes
+ * only its own row, and only while the row still holds its value
+ * (`withOwnAgentNotifyRolledBack`), so A failing never erases B. Different
+ * conversations still run in parallel. Owner and tenant are in the scope id
+ * too, so a sign-out never chains one account's write behind another's.
  *
  * The scope is fixed when the options are built, not per call (TanStack reads
  * `options.scope` from the mutation), hence the `target` parameter. The same
@@ -806,7 +821,7 @@ export function agentNotifyMutationOptions(
 	TeamBridgeConversation,
 	Error,
 	TeamBridgeAgentNotifyVariables,
-	TeamBridgeNotifyMutationContext
+	TeamBridgeAgentNotifyMutationContext
 > {
 	const { accountId } = observedRadientAuthority(client);
 	const current = () =>
@@ -857,14 +872,29 @@ export function agentNotifyMutationOptions(
 			const self = check();
 			await client.cancelQueries(owned);
 			check();
-			const snapshots =
-				client.getQueriesData<TeamBridgeConversationList>(owned);
+			// The level this write replaces, read from the first cached page that
+			// holds the row: every owned page carries the same served value.
+			let previous: TeamBridgeNotify | null = null;
+			for (const [, page] of client.getQueriesData<TeamBridgeConversationList>(
+				owned,
+			)) {
+				const row = page?.conversations.find(
+					(candidate) =>
+						candidate.id === variables.conversationId &&
+						candidate.tenant_id === variables.tenantId,
+				);
+				const agent = row ? ownActiveAgent(row, self) : null;
+				if (agent) {
+					previous = agentNotifyLevel(agent);
+					break;
+				}
+			}
 			client.setQueriesData<TeamBridgeConversationList>(owned, (page) =>
 				page === undefined
 					? page
 					: withOwnAgentNotify(page, variables, self, variables.notify),
 			);
-			return { snapshots };
+			return { self, previous };
 		},
 		onSuccess: (answer) => {
 			if (!current() || !accountId) return;
@@ -874,11 +904,19 @@ export function agentNotifyMutationOptions(
 					: withServedOwnAgentNotify(page, answer, accountId),
 			);
 		},
-		onError: (_error, _variables, context) => {
-			if (!current()) return;
-			for (const [key, data] of context?.snapshots ?? []) {
-				client.setQueryData(key, data);
-			}
+		onError: (_error, variables, context) => {
+			if (!current() || !context) return;
+			client.setQueriesData<TeamBridgeConversationList>(owned, (page) =>
+				page === undefined
+					? page
+					: withOwnAgentNotifyRolledBack(
+							page,
+							variables,
+							context.self,
+							variables.notify,
+							context.previous,
+						),
+			);
 		},
 		onSettled: async () => {
 			if (!current()) return;

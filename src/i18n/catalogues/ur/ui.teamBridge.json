@@ -266,7 +266,7 @@
 	"ui.teamBridge.invitations.title": "دعوتیں",
 	"ui.teamBridge.invitations.count": "{count, plural, one {{count} دعوت آپ کی منتظر ہے} other {{count} دعوتیں آپ کی منتظر ہیں}}",
 	"ui.teamBridge.invitations.consent.bridge_agent_participation_v1": "قبول کرنے پر آپ کا ایجنٹ اب سے اس گفتگو کو پڑھ سکے گا اور اس میں پیغامات پوسٹ کر سکے گا۔ یہ صرف تب جاگتا ہے جب کوئی @ کے ساتھ اس کا ذکر کرے۔",
-	"ui.teamBridge.invitations.consent.bridge_agent_participation_v2": "قبول کرنے پر آپ کا ایجنٹ اب سے اس گفتگو کو پڑھ سکے گا اور اس میں پیغامات پوسٹ کر سکے گا۔ یہ ہر پیغام دیکھتا ہے اور خود فیصلہ کرتا ہے کہ جواب دینا ہے یا نہیں؛ @ کے ساتھ ذکر کا مطلب ہے کہ اسے جواب دینا چاہیے۔ آپ گفتگو کے ⋯ مینو سے بدل سکتے ہیں کہ اسے کتنی بار جگایا جائے، یا اسے خاموش کر سکتے ہیں۔",
+	"ui.teamBridge.invitations.consent.bridge_agent_participation_v2": "قبول کرنے پر آپ کا ایجنٹ اب سے اس گفتگو کو پڑھ سکے گا اور اس میں پیغامات پوسٹ کر سکے گا۔ یہ ہر پیغام دیکھتا ہے اور خود فیصلہ کرتا ہے کہ جواب دینا ہے یا نہیں؛ @ کے ساتھ ذکر کا مطلب ہے کہ اسے جواب دینا چاہیے۔ آپ بدل سکتے ہیں کہ اسے کتنی بار جگایا جائے، یا اسے خاموش کر سکتے ہیں۔",
 	"ui.teamBridge.invitations.loading": "دعوتیں لوڈ ہو رہی ہیں…",
 	"ui.teamBridge.invitations.load_failed": "دعوتیں لوڈ نہیں ہو سکیں۔",
 	"ui.teamBridge.invitations.empty": "آپ کے ایجنٹ کے لیے کوئی دعوت منتظر نہیں۔",

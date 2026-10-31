@@ -266,7 +266,7 @@
 	"ui.teamBridge.invitations.title": "Invitaciones",
 	"ui.teamBridge.invitations.count": "{count, plural, one {{count} invitación te espera} many {{count} de invitaciones te esperan} other {{count} invitaciones te esperan}}",
 	"ui.teamBridge.invitations.consent.bridge_agent_participation_v1": "Al aceptar, tu agente podrá leer y publicar mensajes en esta conversación a partir de ahora. Solo se despierta cuando alguien lo menciona con @.",
-	"ui.teamBridge.invitations.consent.bridge_agent_participation_v2": "Al aceptar, tu agente podrá leer y publicar mensajes en esta conversación a partir de ahora. Verá todos los mensajes y decidirá si responder; una mención con @ indica que debe responder. Puedes cambiar con qué frecuencia se despierta, o silenciarlo, desde el menú ⋯ de la conversación.",
+	"ui.teamBridge.invitations.consent.bridge_agent_participation_v2": "Al aceptar, tu agente podrá leer y publicar mensajes en esta conversación a partir de ahora. Verá todos los mensajes y decidirá si responder; una mención con @ indica que debe responder. Puedes cambiar con qué frecuencia se despierta, o silenciarlo.",
 	"ui.teamBridge.invitations.loading": "Cargando invitaciones…",
 	"ui.teamBridge.invitations.load_failed": "No se pudieron cargar las invitaciones.",
 	"ui.teamBridge.invitations.empty": "No hay invitaciones pendientes para tu agente.",

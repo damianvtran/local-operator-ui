@@ -47,7 +47,7 @@ import {
  * YOUR AGENT. When the reader's own agent is an active member, a second radio
  * group sets how often THAT AGENT is woken here: every message (the hub's
  * default; the agent decides whether a reply is needed), @-mentions plus
- * replies in threads it follows, or never - not even for an @-mention. The
+ * replies in threads it follows, or never — not even for an @-mention. The
  * label is a sentence the rows complete ("Wake your agent for") so the group
  * cannot be scanned as a second copy of the reader's own preferences above it
  * (design round 1, D3). It is a separate group with its own label because it writes a

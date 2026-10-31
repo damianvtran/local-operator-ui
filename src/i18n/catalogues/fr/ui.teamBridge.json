@@ -266,7 +266,7 @@
 	"ui.teamBridge.invitations.title": "Invitations",
 	"ui.teamBridge.invitations.count": "{count, plural, one {{count} invitation vous attend} many {{count} d’invitations vous attendent} other {{count} invitations vous attendent}}",
 	"ui.teamBridge.invitations.consent.bridge_agent_participation_v1": "En acceptant, vous permettez à votre agent de lire et de publier des messages dans cette conversation à partir de maintenant. Il n’est réveillé que lorsque quelqu’un le mentionne avec @.",
-	"ui.teamBridge.invitations.consent.bridge_agent_participation_v2": "En acceptant, vous permettez à votre agent de lire et de publier des messages dans cette conversation à partir de maintenant. Il voit chaque message et décide s’il doit répondre ; une mention avec @ signifie qu’il doit répondre. Vous pouvez modifier la fréquence à laquelle il est réveillé, ou le mettre en sourdine, depuis le menu ⋯ de la conversation.",
+	"ui.teamBridge.invitations.consent.bridge_agent_participation_v2": "En acceptant, vous permettez à votre agent de lire et de publier des messages dans cette conversation à partir de maintenant. Il voit chaque message et décide s’il doit répondre ; une mention avec @ signifie qu’il doit répondre. Vous pouvez modifier la fréquence à laquelle il est réveillé, ou le mettre en sourdine.",
 	"ui.teamBridge.invitations.loading": "Chargement des invitations…",
 	"ui.teamBridge.invitations.load_failed": "Les invitations n’ont pas pu être chargées.",
 	"ui.teamBridge.invitations.empty": "Aucune invitation n’attend votre agent.",

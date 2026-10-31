@@ -3790,8 +3790,9 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	 * The OWNER'S OWN AGENT'S wake level in one conversation — a different
 	 * member row from the reader's `notify` above. The hub wakes an agent member
 	 * on every message when its level is `all` (the default since the
-	 * wake-on-every-message change), on @-mentions of it plus replies in threads it
-	 * follows at `mention`, and never - @-mentions included - at `mute`. Only the runtime knows which endpoint is the owner's agent, so
+	 * wake-on-every-message change), on @-mentions of it plus replies in
+	 * threads it follows at `mention`, and never — @-mentions included — at
+	 * `mute`. Only the runtime knows which endpoint is the owner's agent, so
 	 * the renderer names the conversation and the level, never an endpoint id;
 	 * local-operator resolves the endpoint and calls the hub's endpoint-addressed
 	 * notify route. Owner-guarded like every Team Bridge write: a level chosen

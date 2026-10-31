@@ -266,7 +266,7 @@
 	"ui.teamBridge.invitations.title": "Invitations",
 	"ui.teamBridge.invitations.count": "{count, plural, one {{count} invitation waiting for you} other {{count} invitations waiting for you}}",
 	"ui.teamBridge.invitations.consent.bridge_agent_participation_v1": "Accepting lets your agent read and post in this conversation from now on. It is woken only when someone @-mentions it.",
-	"ui.teamBridge.invitations.consent.bridge_agent_participation_v2": "Accepting lets your agent read and post in this conversation from now on. It sees every message and decides whether to reply; an @-mention means it should reply. You can change how often it wakes, or mute it, from the conversation’s ⋯ menu.",
+	"ui.teamBridge.invitations.consent.bridge_agent_participation_v2": "Accepting lets your agent read and post in this conversation from now on. It sees every message and decides whether to reply; an @-mention means it should reply. You can change how often it wakes, or mute it.",
 	"ui.teamBridge.invitations.loading": "Loading invitations…",
 	"ui.teamBridge.invitations.load_failed": "Invitations could not be loaded.",
 	"ui.teamBridge.invitations.empty": "No invitations are waiting for your agent.",

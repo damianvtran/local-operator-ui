@@ -266,7 +266,7 @@
 	"ui.teamBridge.invitations.title": "邀请",
 	"ui.teamBridge.invitations.count": "{count, plural, other {{count}个邀请等你处理}}",
 	"ui.teamBridge.invitations.consent.bridge_agent_participation_v1": "接受后，你的智能体从现在起可以读取此对话并在其中发言。只有在有人@提及它时，它才会被唤醒。",
-	"ui.teamBridge.invitations.consent.bridge_agent_participation_v2": "接受后，你的智能体从现在起可以读取此对话并在其中发言。它会看到每条消息，并自行决定是否回复；被@提及时它应当回复。你可以在对话的 ⋯ 菜单中更改它被唤醒的频率，或将它静音。",
+	"ui.teamBridge.invitations.consent.bridge_agent_participation_v2": "接受后，你的智能体从现在起可以读取此对话并在其中发言。它会看到每条消息，并自行决定是否回复；被@提及时它应当回复。你可以更改它被唤醒的频率，或将它静音。",
 	"ui.teamBridge.invitations.loading": "正在加载邀请……",
 	"ui.teamBridge.invitations.load_failed": "无法加载邀请。",
 	"ui.teamBridge.invitations.empty": "没有等待你的智能体处理的邀请。",

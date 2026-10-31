@@ -147,7 +147,7 @@ const CONSENT_V1 =
 	"Accepting lets your agent read and post in this conversation from now on. It is woken only when someone @-mentions it.";
 /* The v2 statement (wake-on-every-message), verbatim. Changing it needs a new version. */
 const CONSENT_V2 =
-	"Accepting lets your agent read and post in this conversation from now on. It sees every message and decides whether to reply; an @-mention means it should reply. You can change how often it wakes, or mute it, from the conversation’s ⋯ menu.";
+	"Accepting lets your agent read and post in this conversation from now on. It sees every message and decides whether to reply; an @-mention means it should reply. You can change how often it wakes, or mute it.";
 const human = (accountId, label, patch = {}) => ({
 	account_id: accountId,
 	kind: "human",
@@ -978,7 +978,7 @@ test("the agent-notify answer's served level is folded into the cache; no served
  * write naming a conversation other than the one the queue serves is refused
  * before any cache patch.
  */
-test("agent-notify writes are serialised per conversation", async () => {
+test("agent-notify writes keep wire order per conversation; onMutate is NOT serialised", async () => {
 	const client = new QueryClient();
 	client.setQueryData(["radient-user", "user"], { account: { id: SELF } });
 	const a = ui.agentNotifyMutationOptions(client, {
@@ -1001,8 +1001,10 @@ test("agent-notify writes are serialised per conversation", async () => {
 		a.onMutate({ conversationId: "bcv_2", tenantId: "tnt_1", notify: "mute" }),
 		/target changed/,
 	);
-	/* The query client really queues them: the second does not start until the
-	   first settles. */
+	/* The query client queues the WIRE calls: B's mutationFn waits for A to
+	   settle. It does not queue onMutate (R2-1): B's optimistic patch runs while A
+	   is still in flight, which is why the rollback is per row, not per page.
+	   The fakes carry an onMutate so this pins TanStack's real ordering. */
 	let release;
 	const order = [];
 	const gate = new Promise((resolve) => {
@@ -1010,6 +1012,9 @@ test("agent-notify writes are serialised per conversation", async () => {
 	});
 	const fake = (name, wait) => ({
 		scope: a.scope,
+		onMutate: async () => {
+			order.push(`${name}:onMutate`);
+		},
 		mutationFn: async () => {
 			order.push(`${name}:start`);
 			await wait;
@@ -1020,9 +1025,104 @@ test("agent-notify writes are serialised per conversation", async () => {
 	const first = cache.build(client, fake("A", gate)).execute();
 	const second = cache.build(client, fake("B", Promise.resolve())).execute();
 	await new Promise((resolve) => setTimeout(resolve, 10));
-	assert.deepEqual(order, ["A:start"]);
+	assert.deepEqual(order, ["A:onMutate", "B:onMutate", "A:start"]);
 	release();
 	await Promise.all([first, second]);
-	assert.deepEqual(order, ["A:start", "A:end", "B:start", "B:end"]);
+	assert.deepEqual(order, [
+		"A:onMutate",
+		"B:onMutate",
+		"A:start",
+		"A:end",
+		"B:start",
+		"B:end",
+	]);
 	client.clear();
+});
+
+/*
+ * R2-1: A FAILING EARLIER PICK NEVER ERASES A LATER ONE. The real options
+ * interleave as TanStack runs them (A.onMutate, B.onMutate, A fails), and the
+ * rollback must leave B's optimistic value; a failure with no later pick
+ * restores the served level, or removes the field when there was none.
+ */
+test("an agent-notify rollback undoes only its own value", async () => {
+	const seed = (agentPatch) => {
+		const client = new QueryClient({
+			defaultOptions: {
+				queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
+			},
+		});
+		client.setQueryData(["radient-user", "user"], { account: { id: SELF } });
+		client.setQueryData(ui.teamBridgeKeys.statusFor(SELF), {
+			account_id: SELF,
+			state: "ready",
+			local: { enabled: true },
+			read_only: false,
+		});
+		const keys = [
+			ui.teamBridgeKeys.conversations("tnt_1", SELF),
+			ui.teamBridgeKeys.conversations("all", SELF),
+		];
+		for (const key of keys)
+			client.setQueryData(key, {
+				conversations: [
+					conversation({
+						notify: "all",
+						muted: false,
+						members: [
+							human(SELF, "Damian"),
+							agent(SELF, "Robo Damian", "active", agentPatch),
+						],
+					}),
+				],
+				has_more: false,
+			});
+		const level = () =>
+			keys.map(
+				(key) =>
+					ui.ownAgentMenuState(client.getQueryData(key).conversations[0], SELF)
+						.notify,
+			);
+		const options = ui.agentNotifyMutationOptions(client, {
+			conversationId: "bcv_1",
+			tenantId: "tnt_1",
+		});
+		return { client, options, level };
+	};
+	const pick = (notify) => ({
+		conversationId: "bcv_1",
+		tenantId: "tnt_1",
+		notify,
+	});
+
+	// A then B patch; A fails: B's value stays on every cached page.
+	{
+		const { client, options, level } = seed({ notify: "all" });
+		const a = await options.onMutate(pick("mention"));
+		const b = await options.onMutate(pick("mute"));
+		assert.deepEqual(level(), ["mute", "mute"]);
+		options.onError(new Error("refused"), pick("mention"), a);
+		assert.deepEqual(level(), ["mute", "mute"]);
+		// B fails too: its own rollback restores what B replaced.
+		options.onError(new Error("refused"), pick("mute"), b);
+		assert.deepEqual(level(), ["mention", "mention"]);
+		client.clear();
+	}
+	// A lone failure restores the served level.
+	{
+		const { client, options, level } = seed({ notify: "all" });
+		const a = await options.onMutate(pick("mute"));
+		options.onError(new Error("refused"), pick("mute"), a);
+		assert.deepEqual(level(), ["all", "all"]);
+		client.clear();
+	}
+	// No served level before: the rollback removes the guess, checking nothing.
+	{
+		const { client, options, level } = seed({});
+		const a = await options.onMutate(pick("mention"));
+		assert.deepEqual(level(), ["mention", "mention"]);
+		options.onError(new Error("refused"), pick("mention"), a);
+		assert.deepEqual(level(), [null, null]);
+		client.clear();
+	}
 });

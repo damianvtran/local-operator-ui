@@ -317,6 +317,55 @@ export function withOwnAgentNotify(
 	};
 }
 
+/**
+ * Undo ONE agent-level write without undoing a later one (review round 2, R2-1).
+ *
+ * WHY NOT A PAGE SNAPSHOT: TanStack's mutation scope orders `mutationFn` on the
+ * wire but runs every `onMutate` immediately, so a second pick B patches the
+ * cache while an earlier pick A is still in flight. Restoring A's whole-page
+ * snapshot on A's failure would put the pre-A level back over B's optimistic
+ * one. So the rollback is per row and conditional: the agent row returns to
+ * `previous` only while it still holds the value this write applied. A later
+ * pick, or a served value folded in since, has moved it, and that is left alone.
+ *
+ * `previous` null means the row carried no served level; the field is removed
+ * rather than replaced with a guess. Two picks of the SAME value are
+ * indistinguishable here; then the rollback applies and the later pick's own
+ * answer, or the settle-time refetch, restores the served level.
+ */
+export function withOwnAgentNotifyRolledBack(
+	page: TeamBridgeConversationList,
+	target: { conversationId: string; tenantId: string },
+	selfAccountId: string,
+	applied: TeamBridgeNotify,
+	previous: TeamBridgeNotify | null,
+): TeamBridgeConversationList {
+	return {
+		...page,
+		conversations: page.conversations.map((row) =>
+			row.id === target.conversationId && row.tenant_id === target.tenantId
+				? {
+						...row,
+						members: row.members.map((member) => {
+							if (
+								member.kind !== "agent" ||
+								member.account_id !== selfAccountId ||
+								member.state !== "active" ||
+								agentNotifyLevel(member) !== applied
+							)
+								return member;
+							if (previous !== null) return { ...member, notify: previous };
+							const { notify: _dropped, ...rest } = member as typeof member & {
+								notify?: unknown;
+							};
+							return rest;
+						}),
+					}
+				: row,
+		),
+	};
+}
+
 /** The three notification values, in the menu's order (loudest first). */
 export const TEAM_BRIDGE_NOTIFY_OPTIONS: ReadonlyArray<{
 	value: TeamBridgeNotify;
