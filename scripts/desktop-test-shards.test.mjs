@@ -402,6 +402,34 @@ test("R1: observed guarded-runner count is persisted and independently required 
 	);
 });
 
+test("memory telemetry lane names cannot masquerade as runner count evidence", () => {
+	const p = expected();
+	const wanted = p.shards[0].length;
+	const valid = runnerLog(wanted);
+	// Job 124602544042 included composer-file-drop in its telemetry. The
+	// hyphen makes `file` a word-boundary match in the count candidate scan.
+	const telemetry = `desktop tests: memory telemetry ${JSON.stringify({
+		samples: 234,
+		pidPeaks: [
+			{ lane: "scripts/composer-file-drop.test.mjs", bytes: 1062969344 },
+		],
+		lanePeaks: [
+			{ lane: "scripts/concurrency-cap.test.mjs", bytes: 1492058112 },
+		],
+	})}\n`;
+	assert.equal(receipt(p, 0, valid + telemetry, 0, 1).runnerFileCount, wanted);
+	for (const bad of [
+		telemetry + log,
+		valid + telemetry + runnerLog(wanted),
+		`# desktop tests: ${wanted} files, concurrency 3\n${telemetry}${log}`,
+		`desktop tests: memory telemetry ${wanted} files, concurrency 3\n${log}`,
+		`${valid}${telemetry}desktop tests: many files, concurrency 3\n`,
+		`${valid}${telemetry}desktop tests: memory file count ${wanted}\n`,
+	]) {
+		assert.throws(() => receipt(p, 0, bad, 0, 1), /runner.*count/i);
+	}
+});
+
 test("R3/QP2: classifier-result by unit truth table cannot hide stale false output", () => {
 	for (const classifier of [
 		"success",

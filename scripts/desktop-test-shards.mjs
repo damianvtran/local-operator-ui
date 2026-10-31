@@ -169,8 +169,10 @@ export function observedRunnerFileCount(text) {
 		// warning lines. Only cardinality candidates belong to uniqueness.
 		// Keep malformed counts as candidates so they cannot hide beside a
 		// good count; nested TAP comments and indentation are not evidence.
+		// Telemetry's lane paths can contain words like "file" (file-drop),
+		// so exclude that producer's diagnostic record before scanning tokens.
 		return (
-			!/^desktop tests: (?:memory bound\b|per-lane bound\b|WARNING\b)/u.test(
+			!/^desktop tests: (?:memory (?:bound|telemetry)\b|per-lane bound\b|WARNING\b)/u.test(
 				line,
 			) &&
 			/^desktop tests:\s*(?:[+-]?\d|.*\b(?:files?|concurrency|cap)\b)/.test(
