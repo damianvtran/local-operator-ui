@@ -5,16 +5,34 @@ import { type ReactNode, useState } from "react";
 /** A legacy image URI is untrusted text, not an attachment or permission to load it.
  * Keep offsets into the original body: neither the DOM nor a second store needs a
  * copy of the payload, and inspection remains possible one bounded page at a time. */
-const IMAGE_DATA = /data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=]{64,}/gi;
+// A URI's content may include punctuation, parameters, percent escapes and
+// non-base64 bytes. Stop only at hard text delimiters: treating a parenthesis
+// or bracket as an end would expose the rest of a large payload. Never decode
+// it or let an attacker-controlled subtype become an unbounded label.
+const IMAGE_DATA = /data:image\/[^\s"'<>`]+/gi;
+const MIME_END = /[;,]/;
+const TRAILING_PROSE = /[)\]}.!?]{1,4}$/;
+const MAX_MIME_LENGTH = 80;
 const PAGE_SIZE = 2048;
 
 type Span = { start: number; end: number; mime: string };
 export function inlineImageSpans(body: string): Span[] {
-	return Array.from(body.matchAll(IMAGE_DATA), (match) => ({
-		start: match.index,
-		end: match.index + match[0].length,
-		mime: match[0].slice(5, match[0].indexOf(";")),
-	}));
+	return Array.from(body.matchAll(IMAGE_DATA))
+		.filter((match) => match[0].includes(",") || match[0].length > 64)
+		.map((match) => {
+			// Trailing closing punctuation often belongs to surrounding prose or
+			// Markdown, not the URI; leaving it in place preserves that context.
+			const token = match[0].replace(TRAILING_PROSE, "");
+			const end = token.search(MIME_END);
+			return {
+				start: match.index,
+				end: match.index + token.length,
+				mime: token.slice(
+					5,
+					Math.min(end < 0 ? token.length : end, 5 + MAX_MIME_LENGTH),
+				),
+			};
+		});
 }
 
 function Receipt({ body, span }: { body: string; span: Span }) {
@@ -44,9 +62,12 @@ function Receipt({ body, span }: { body: string; span: Span }) {
 							Math.min(span.end, span.start + (page + 1) * PAGE_SIZE),
 						)}
 					</pre>
-					<div className={cn("flex gap-2")}>
+					<div className={cn("flex items-center gap-2")}>
 						<button
 							type="button"
+							className={cn(
+								"min-h-6 rounded px-2 text-ink hover:bg-elevated focus-visible:outline focus-visible:outline-2 disabled:text-ink-dim disabled:hover:bg-transparent",
+							)}
 							disabled={page === 0}
 							onClick={() => setPage(page - 1)}
 						>
@@ -60,6 +81,9 @@ function Receipt({ body, span }: { body: string; span: Span }) {
 						</span>
 						<button
 							type="button"
+							className={cn(
+								"min-h-6 rounded px-2 text-ink hover:bg-elevated focus-visible:outline focus-visible:outline-2 disabled:text-ink-dim disabled:hover:bg-transparent",
+							)}
 							disabled={page + 1 >= pages}
 							onClick={() => setPage(page + 1)}
 						>

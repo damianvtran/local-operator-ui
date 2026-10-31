@@ -15,7 +15,7 @@ import type {
 	TeamBridgeEvent,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
-import { InlineDataBody, inlineImageSpans } from "./inline-data-receipt";
+import { InlineDataBody } from "./inline-data-receipt";
 import { useMessageMentions } from "./mentions/use-message-mentions";
 import {
 	type TeamBridgeArrivalIdentity,
@@ -838,11 +838,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 										? { "--md-ink": "var(--lo-ink-muted)" }
 										: {}),
 								}}
-								mentions={
-									inlineImageSpans(message.body ?? "").length
-										? undefined
-										: mentionRuns
-								}
+								mentions={mentionRuns}
 							>
 								{text}
 							</TeamBridgeMarkdown>

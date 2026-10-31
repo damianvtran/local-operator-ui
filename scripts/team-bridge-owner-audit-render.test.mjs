@@ -1991,7 +1991,33 @@ test("legacy image data stays bounded and inert until inspected", async () => {
 	await view.close();
 });
 
+test("parameterized and percent-encoded image URIs are bounded without swallowing prose", async () => {
+	const variants = [
+		`data:image/svg+xml;charset=utf-8;base64,${"A".repeat(9000)}%2F${"B".repeat(9000)}`,
+		`data:image/svg+xml;charset=utf-8,%3Csvg%3E${"C".repeat(18000)}%3C%2Fsvg%3E`,
+		`data:image/${"x".repeat(9000)};name=${"y".repeat(9000)},${"D".repeat(9000)}`,
+		`data:image/svg+xml,begin(embedded)${"E".repeat(18000)}.`,
+	];
+	for (const [index, data] of variants.entries()) {
+		const body = `Before data:image/png is a type.\n${data}\nAfter`;
+		const view = await renderView(
+			panel({ messages: [auditRow({ id: `variant_${index}`, body })] }),
+		);
+		const row = rowOf(view.host, `variant_${index}`);
+		assert.ok(row.textContent.includes("Before data:image/png is a type."));
+		assert.ok(row.textContent.includes("After"));
+		assert.ok(
+			row.textContent.length < 1000,
+			`variant ${index}: bounded default DOM`,
+		);
+		assert.equal(row.querySelectorAll("details").length, 1);
+		assert.equal(row.querySelector("img"), null);
+		await view.close();
+	}
+});
+
 test("unadmitted bodies disclose inert plaintext, never Markdown", async () => {
+	const unsafeBody = `${MARKDOWN_BODY}\n![tracker](https://example.invalid/tracker.png)\n<script>unsafe()</script>`;
 	const rows = [
 		["msg_rej_md", "rejected", "ui.ownerAudit.rejected"],
 		["msg_ns_md", "not_screened", "ui.ownerAudit.not_screened"],
@@ -2003,7 +2029,7 @@ test("unadmitted bodies disclose inert plaintext, never Markdown", async () => {
 				auditRow({
 					id,
 					seq: 70 + index,
-					body: MARKDOWN_BODY,
+					body: unsafeBody,
 					agent_delivery_status,
 				}),
 			),
@@ -2012,17 +2038,19 @@ test("unadmitted bodies disclose inert plaintext, never Markdown", async () => {
 	for (const [id, , copy] of rows) {
 		const row = rowOf(view.host, id);
 		assert.ok(row.textContent.includes(m.t(copy)));
-		assert.equal(row.textContent.includes(MARKDOWN_BODY), false);
+		assert.equal(row.textContent.includes(unsafeBody), false);
 		const details = row.querySelector("details");
 		assert.ok(details);
 		await act(async () => {
 			details.open = true;
 			details.dispatchEvent(new dom.window.Event("toggle"));
 		});
-		assert.ok(row.textContent.includes(MARKDOWN_BODY));
+		assert.ok(row.textContent.includes(unsafeBody));
 		assert.equal(row.querySelector("strong"), null);
 		assert.equal(row.querySelector("table"), null);
 		assert.equal(row.querySelector("img"), null);
+		assert.equal(row.querySelector("a"), null);
+		assert.equal(row.querySelector("script"), null);
 	}
 	await view.close();
 });

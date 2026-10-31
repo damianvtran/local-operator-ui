@@ -413,6 +413,23 @@ export const LegacyInlineImage: Story = {
 	},
 };
 
+/** Synthetic negative controls: unadmitted Markdown/remote image is inert,
+ * and a parameterized URI remains bounded at realistic large payload sizes. */
+export const UnsafeUnscreenedAndLargeData: Story = {
+	args: {
+		messages: [
+			{
+				...messages[0],
+				body: `Ordinary text before.\ndata:image/svg+xml;charset=utf-8;base64,${"A".repeat(200000)}%2F${"B".repeat(200000)}\nOrdinary text after.`,
+			},
+			{
+				...messages[2],
+				body: "**Unscreened text**\n![tracker](https://example.invalid/tracker.png)\n<script>unsafe()</script>",
+			},
+		],
+	},
+};
+
 /** Locale alone does not change Storybook's document direction; exercise the
  * same fixture under an explicit RTL ancestor to see bidirectional controls. */
 export const LegacyInlineImageRtl: Story = {
