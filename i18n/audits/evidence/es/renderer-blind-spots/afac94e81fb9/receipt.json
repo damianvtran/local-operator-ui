@@ -1,0 +1,34 @@
+{
+  "auditor": "i18n-auditor-es",
+  "instance": "afac94e81fb9",
+  "model": "openai/gpt-6.1-sol",
+  "status": "passed",
+  "date": "2026-10-31",
+  "provenance": {
+    "kind": "binding of independent verdict; not a new linguistic audit",
+    "verdict": "i18n/audits/evidence/es/renderer-blind-spots/afac94e81fb9/verdict.txt",
+    "verdict_sha256": "27a28ca7f0ff085523ef1e8dd941ec498dcebd9143c8435894077fb18c93fe52",
+    "findings": "i18n/audits/evidence/es/renderer-blind-spots/afac94e81fb9/findings.jsonl",
+    "findings_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "fallback": "provider quota: anthropic/claude-sonnet-5-5 -> anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol",
+    "scope": "35 added keys (32 ui.chat, 3 ui.chat.sidebar_view); existing namespace audit retained as superseded history"
+  },
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "sha256": {
+        "en": "fee31965fc3e93d600333d686af34957fa6467bc3b2ba116b69a0ca5df369dcd",
+        "es": "28c131b06d65ed614d7a782b2c134e969048bb619935b595e0b6e427f9605531"
+      },
+      "findings": []
+    },
+    "ui.chat.sidebar_view": {
+      "status": "passed",
+      "sha256": {
+        "en": "0873abf83115e1dd479213706a401258369f58a3d9606ebbc12610a64348512e",
+        "es": "6c7af96563ea50b54ea4c82d07751b45f431baeb26b37b3a9913d4927b049d87"
+      },
+      "findings": []
+    }
+  }
+}
