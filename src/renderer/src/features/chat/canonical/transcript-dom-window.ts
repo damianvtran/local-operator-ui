@@ -23,6 +23,48 @@ export type EntryDescriptor = {
 	estimateText?: string;
 };
 
+/**
+ * The facts one entry slot's signature states. Structural, so the transcript
+ * passes its own fact objects without a cast - and so a test can hand this
+ * function two facts that differ in ONE bit.
+ */
+export type SlotSignatureFact = {
+	key: string;
+	ids: readonly string[];
+	representation: string;
+	gap: string;
+	userExpanded: boolean;
+	media: boolean;
+	unsafe: boolean;
+	/** Whether this slot draws the turn's mark (24px the estimate adds). */
+	marksHead: boolean;
+	renderSignature: string;
+};
+
+/**
+ * The per-entry invalidation key: everything a cached HEIGHT depends on.
+ *
+ * WHY IT IS A FUNCTION AND NOT A TEMPLATE INSIDE THE COMPONENT (agent review
+ * round 2, R2-4 on #1518). The pins for the turn mark's height used to
+ * `assert.match` the component's source text, which proved the string existed,
+ * not that the signature MOVES when a picture arrives. Running this over two
+ * facts that differ only in `marksHead` is the property itself.
+ *
+ * `isSmallView` is part of the key because the same slot measures differently
+ * at the small breakpoint.
+ */
+export function entrySlotSignature(
+	facts: readonly SlotSignatureFact[],
+	isSmallView: boolean,
+): string {
+	return `${facts
+		.map(
+			(fact) =>
+				`${fact.key}:${fact.ids.join(",")}:${fact.representation}:${fact.gap}:${fact.userExpanded}:${fact.media}:${fact.unsafe}:${fact.marksHead ? 1 : 0}:${fact.renderSignature}`,
+		)
+		.join("|")}:${isSmallView}`;
+}
+
 /** O(n) batched rebuild, O(log n) lookup; modest model windows do not need a tree. */
 export function buildHeightIndex(
 	entries: readonly Pick<EntryDescriptor, "key" | "signature" | "estimate">[],

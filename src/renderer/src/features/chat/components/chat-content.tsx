@@ -228,6 +228,19 @@ type ChatContentProps = {
 	isOptionsSidebarOpen: boolean;
 	onCloseOptions: () => void;
 	agentId: string;
+	/**
+	 * The conversation agent's picture, or null when it has none; see
+	 * `CanonicalTranscriptProps.agentAvatar` for why the page resolves it and this
+	 * pane only forwards it.
+	 */
+	agentAvatar?: string | null;
+	/**
+	 * The speaking agent's name, beside its picture, for the transcript mark's
+	 * accessible name. NOT this pane's `agentName`, which is the conversation's
+	 * title (the archive dialog and the header read it): a team chat's speaker is
+	 * the team's manager, and a title is not a speaker.
+	 */
+	agentSpeakerName?: string | null;
 	messages: Message[];
 	isLoading: boolean;
 	isLoadingMessages: boolean;
@@ -883,6 +896,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		isOptionsSidebarOpen,
 		onCloseOptions,
 		agentId,
+		agentAvatar = null,
+		agentSpeakerName = null,
 		messages,
 		isLoading,
 		isLoadingMessages,
@@ -2627,6 +2642,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										frontend={canonical.view.frontend}
 										transcript={canonical.view.transcript}
 										openFrame={openFrameForPane}
+										agentAvatar={agentAvatar}
+										agentName={agentSpeakerName}
 										undelivered={undeliveredOnScreen}
 										/*
 										 * THE ONE DERIVATION, here too (agent review
