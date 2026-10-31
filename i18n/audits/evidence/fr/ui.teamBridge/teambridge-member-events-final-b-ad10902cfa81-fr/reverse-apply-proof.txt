@@ -1,0 +1,18 @@
+REVERSE-APPLY PROOF (executed with node, 2026-10-30)
+
+file: src/i18n/catalogues/fr/ui.teamBridge.json
+forward edit under test: "{actor} a ajouté son agent : {targets}"
+  was, before this round's correction: "{actor} a ajouté son agent {targets}"
+occurrences of the current value in the file: 1
+
+
+sha256(now on disk)        = 3c1497c8851344b60bfc303e84e267bafe700b7d759a12d60d79c6f443cd9f42
+sha256(reverse-applied)    = 6d0d606ffff81eef741293c9c238833176c1019f410f7d59bce5583eff66a20b
+sha256 expected (prior)    = 6d0d606ffff81eef741293c9c238833176c1019f410f7d59bce5583eff66a20b
+MATCH = true
+
+Reading: the reverse-applied bytes reproduce the previously audited file exactly, so the value-level edits between the two states are exactly the documented correction(s) and nothing else moved. Every other key in this 297-key namespace is byte-identical to the state prior receipts audited.
+
+codepoints of the current value:
+  ui.teamBridge.events.owner_added_agent = "{actor} a ajouté son agent : {targets}"
+  U+007B U+0061 U+0063 U+0074 U+006F U+0072 U+007D U+0020 U+0061 U+0020 U+0061 U+006A U+006F U+0075 U+0074 U+00E9 U+0020 U+0073 U+006F U+006E U+0020 U+0061 U+0067 U+0065 U+006E U+0074 U+202F U+003A U+0020 U+007B U+0074 U+0061 U+0072 U+0067 U+0065 U+0074 U+0073 U+007D

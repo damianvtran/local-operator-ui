@@ -8695,3 +8695,122 @@ test("late audio_settle_v1 receipt is retained despite its canonical empty detai
 		);
 	}
 });
+
+/*
+ * A Team Bridge (`bridge`) row carries its destination's NAME from the result
+ * (`bridgeLabel`) and the result's own fields (`bridge`), on both doors, so a
+ * reloaded transcript names the DM the live one named - and the budget-stripped
+ * replay of a live frame cannot blank it.
+ */
+test("a bridge row carries bridgeLabel and its facts on the live and durable paths", () => {
+	const details = {
+		ok: true,
+		state: "sent",
+		conversation_id: "bcv_9",
+		message_id: "bcmsg_1",
+		seq: 3,
+		destination_type: "conversation_dm",
+		content:
+			"direct message to Ada Lovelace in bcv_9: message bcmsg_1 at seq 3",
+	};
+	let live = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c-dm",
+			tool_name: "bridge",
+			args: { op: "dm", account_id: "acc_1", body: "hi" },
+		},
+		1,
+	);
+	live = applyEvent(
+		live,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-dm",
+			tool_name: "bridge",
+			result: { content: [{ type: "text", text: details.content }], details },
+			duration_s: 0.3,
+		},
+		2,
+	);
+	const liveRow = live.records.find((r) => r.kind === "tool");
+	assert.equal(liveRow.bridgeLabel, "Ada Lovelace");
+	assert.equal(liveRow.bridge.seq, 3);
+	// A replayed end frame whose details the live budget stripped keeps both.
+	const stripped = applyEvent(
+		live,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-dm",
+			tool_name: "bridge",
+			result: { content: [{ type: "text", text: details.content }] },
+			duration_s: 0.3,
+		},
+		3,
+	);
+	const kept = stripped.records.find((r) => r.kind === "tool");
+	assert.equal(kept.bridgeLabel, "Ada Lovelace");
+	assert.equal(kept.bridge, liveRow.bridge, "same object, no re-render");
+
+	const durable = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "t-dm",
+				ts: 2,
+				type: "message",
+				payload: {
+					role: "tool",
+					tool_call_id: "c-dm",
+					tool_name: "bridge",
+					content: [{ text: details.content, type: "text" }],
+					provider_payload: { duration_s: 0.3, details },
+				},
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	const durableRow = durable.records.find((r) => r.kind === "tool");
+	assert.equal(durableRow.bridgeLabel, "Ada Lovelace");
+	assert.equal(durableRow.bridge.destination_type, "conversation_dm");
+
+	// A pair-lane send's inbox-only acceptance is the amber state on both doors.
+	const inbox = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-send",
+			tool_name: "bridge",
+			result: {
+				content: [{ type: "text", text: "{}" }],
+				details: { ok: true, message_id: "m", destination_type: "peer_inbox" },
+			},
+			duration_s: 0.2,
+		},
+		4,
+	);
+	const inboxRow = inbox.records.find((r) => r.kind === "tool");
+	assert.equal(inboxRow.delivery, "inbox_only");
+	assert.equal(inboxRow.bridgeLabel, null);
+
+	// Every other tool stays exactly as it was: no bridge fields grow on it.
+	const other = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "c-read",
+			tool_name: "read",
+			result: {
+				content: [],
+				details: { conversation_label: "x", destination_type: "peer_inbox" },
+			},
+			duration_s: 0.1,
+		},
+		5,
+	);
+	const otherRow = other.records.find((r) => r.kind === "tool");
+	assert.equal(otherRow.bridgeLabel, null);
+	assert.equal(otherRow.bridge, null);
+	assert.equal(otherRow.delivery, null);
+});

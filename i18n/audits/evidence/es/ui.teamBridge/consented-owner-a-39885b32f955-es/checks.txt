@@ -1,0 +1,11 @@
+# mechanical checks - es / ui.teamBridge.events.consented_owner @ 9d19fc6d58e
+value              : {actor} autorizó la entrada de su agente {targets}
+code points        : 50 (sibling 40)
+placeholders       : ["actor","targets"] (source ["actor","targets"])
+final period       : false   leading space: false   trailing space: false   double space: false
+NFC                : true
+bidi controls      : 0   ZWNJ/ZWJ: 0
+nbsp/narrow nbsp   : []   em dash: false
+ICU plural/select  : false   argument nodes: 2
+sha256 en          : 4042a918bc64406c4c24ad5ea68fe3c3f3aaa7228917bc1678547cfb0c20285c
+sha256 target      : 58aa54285bb97b36d652cfb617c7911915b3d9d07b36867692a659002fa70382

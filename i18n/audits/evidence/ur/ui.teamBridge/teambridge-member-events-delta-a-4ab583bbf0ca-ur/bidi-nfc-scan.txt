@@ -1,0 +1,17 @@
+locale ur — bidi / zero-width / normalisation scan of the 12 audited keys
+(the 14 delta values are a subset; every value here is scanned, not only the changed ones)
+
+  events.invited                 NFC=yes bidi=none zero-width=none combining-marks=none
+  events.joined                  NFC=yes bidi=none zero-width=none combining-marks=none
+  events.owner_added_agent       NFC=yes bidi=none zero-width=none combining-marks=none
+  events.left                    NFC=yes bidi=none zero-width=none combining-marks=none
+  events.removed                 NFC=yes bidi=none zero-width=none combining-marks=none
+  events.consented               NFC=yes bidi=none zero-width=none combining-marks=none
+  events.declined_self           NFC=yes bidi=none zero-width=none combining-marks=none
+  events.declined                NFC=yes bidi=none zero-width=none combining-marks=none
+  events.withdrawn               NFC=yes bidi=none zero-width=none combining-marks=none
+  events.unknown                 NFC=yes bidi=none zero-width=none combining-marks=none
+  events.others                  NFC=yes bidi=none zero-width=none combining-marks=none
+  members.invitation_note_v3     NFC=yes bidi=none zero-width=none combining-marks=none
+
+Verdict: no bidi control, no zero-width, no combining-mark sequence, NFC throughout.

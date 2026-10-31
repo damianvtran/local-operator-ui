@@ -59,6 +59,7 @@ import {
 	withAgentInvitationAnswer,
 	withoutAgentInvitationAnswer,
 } from "./team-bridge-invitations-model";
+import { withCarriedTeamBridgeEvents } from "./team-bridge-member-events-model";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeScope,
@@ -224,9 +225,17 @@ export function useTeamBridgeMessages(
 			tenantId,
 			accountId ?? "unresolved-owner",
 		),
-		queryFn: () =>
-			readForBridgeOwner(client, accountId, () =>
-				TeamBridgeApi.listMessages(conversationId as string, { tenantId }),
+		/* Membership events ride the same page: carry the previous read's events
+		   forward and dedupe by id (`withCarriedTeamBridgeEvents`), so a poll
+		   whose window omits a line the reader already saw does not drop it.
+		   Messages are untouched. Moves into `teamBridgeMessagesQueryOptions`
+		   when that factory lands, so every cache writer dedupes the same way. */
+		queryFn: async ({ queryKey }) =>
+			withCarriedTeamBridgeEvents(
+				client.getQueryData<TeamBridgeMessagePage>(queryKey),
+				await readForBridgeOwner(client, accountId, () =>
+					TeamBridgeApi.listMessages(conversationId as string, { tenantId }),
+				),
 			),
 		enabled: enabled && Boolean(accountId) && Boolean(conversationId),
 		staleTime: 5_000,

@@ -1,0 +1,35 @@
+REVERSE-APPLY PROOF - zh-CN - namespace ui.teamBridge - auditor B session 94934cc4a6fd
+
+Method: take the working-tree bytes, swap each delta value back to its round-1 text as an exact
+JSON-string byte substitution, hash the result. The round-1 hash comes from the first-round audit
+record (i18n/receipts/955e54c57ace-zh-cn.json and 502568f2aefe-zh-cn.json), not from my own reconstruction.
+
+now      sha256 41bcf8f7cf9ec7547f61de55ee5a3d13e47d63a415655af982c14df3ca1fb590
+rebuilt  sha256 07b867bd4bc129030d9417ae31fb989f5ec35b2fe07f60d636a772c541749307
+recorded sha256 07b867bd4bc129030d9417ae31fb989f5ec35b2fe07f60d636a772c541749307
+MATCH: True
+
+edits reversed: 3
+
+  ui.teamBridge.events.declined
+    working tree : {actor}代{targets}拒绝了邀请
+    round 1      : {actor}拒绝了对{targets}的邀请
+    occurrences of the working-tree text in the file: 1
+
+  ui.teamBridge.events.others
+    working tree : {count, plural, other {其他#名成员}}
+    round 1      : {count, plural, other {其他#人}}
+    occurrences of the working-tree text in the file: 1
+
+  ui.teamBridge.members.invitation_note_v3
+    working tree : 其所有者可将它限制在@提及和它参与的讨论串内，或将其静音。
+    round 1      : 其所有者可将其限制为仅响应@提及和它参与的讨论串，或将其静音。
+    occurrences of the working-tree text in the file: 1
+
+Reading: a hash that reproduces the round-1 record means the file differs from round 1 ONLY at the
+values listed above - no other byte moved. All five files reproduce.
+
+Cross-check, not input: delta-round auditor A (session 4ab583bbf0ca) independently reconstructed the
+same pre-delta bytes; my rebuilt files are byte-identical to theirs except where my own first attempt
+used the abbreviated quote «其他#人» instead of the round-1 value «{count, plural, other {其他#人}}».
+That correction is why this proof is reproducible rather than a repeat of A's number.

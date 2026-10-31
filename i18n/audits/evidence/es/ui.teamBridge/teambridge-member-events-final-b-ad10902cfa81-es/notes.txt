@@ -1,0 +1,25 @@
+AUDITOR B, FINAL ROUND — judgement and caveats (notes, distinct from the execution logs beside them)
+
+Locale: es   Namespace: ui.teamBridge   Auditor: translation-auditor   Session: ad10902cfa81   Model: radient/auto
+(harness fallbacks this session: anthropic/claude-opus-5-5 -> openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto; all verification and every verdict here were produced under radient/auto)
+
+1. What this audit claims
+   The value-level edits between the last audited bytes and the bytes on disk are exactly the documented corrections, and nothing else moved (reverse-apply-proof.txt reproduces the prior sha256). The corrected values were re-read against English and its context sidecar, re-rendered through the app's own Intl.ListFormat join path at 1 and 3 targets and at counts 1/2/3/5/11/21, and the whole 297-key namespace was scanned for placeholders, CLDR arms, NFC, bidi controls, quote conventions, address form, terminology and case.
+   Verdict: es ui.teamBridge — clean-with-findings (0 blocker, 0 major, 1 minor, 0 nit).
+
+2. The correction, judged with the bytes in front of me
+   events.owner_added_agent now reads "{actor} añadió a su agente: {targets}". The colon makes the singular noun a label in front of a list, so the line is grammatical with one name and with three ("Dana añadió a su agente: Ada" / "...: Ada, Bo y Cy" — both rendered). Spanish takes no space before ':' (verified: U+003A then U+0020) and lowercase after it, per es.md. The singular noun is kept on the server evidence cited in the brief (unique {tenant_id, account_id} on bridge endpoints; auto-consent only when the caller owns the invited endpoint) — that schema is in the hosted hub, not in either checkout, so I could not re-derive it here; I did verify the UI can only merge same-request_id events of one kind and actor, and that every owner_invite story instance carries one target while the multi-target rolled-up story is kind "invited". The wording does not depend on that guarantee: the colon reads correctly at 1 and at 3.
+
+3. Recorded context not re-raised
+   events.joined / events.left in es stay nominal/verbless where the English is verbal. That shape was cleared on identical bytes by the previous independent audits (and FR-A2's passé-composé proposal is recorded as rejected), the timeline row is a status line, and the fr/hi/ur siblings use the same clipped register; only the width is flagged (ES-FB1). Re-opening the wording here would be churn on bytes nobody changed.
+   The 'many' arm policy is uneven across the namespace (measured in mechanical-checks.txt). Not raised as a finding: ICU falls back to 'other', the fallback renders correct Spanish/French at 10^6, and no reachable count in these surfaces is a multiple of 10^6. Recorded so a locale wave can settle it once.
+
+4. What this audit does NOT claim
+   Catalogue-level judgement only. No rendered-frame, font-fallback, geometry, activation or release evidence: the width flag needs a rendered check on the one-line timeline row at the real sidebar width, which this round did not capture.
+
+5. Independence
+   Auditor B of the final round, independent of the translator and of auditor A: the values, the six-postposition count, the renders and every verdict were formed from the English source, its context sidecar, the core glossary and the es style guide before any receipt for this round was read. No catalogue byte was edited by this audit; only scripts/i18n/ledger-assemble.mjs wrote the ledger row.
+
+6. Companion log and a corrected sentence
+   check-i18n.log in this directory is the executed output of `pnpm check-i18n` after the four final-round rows were assembled (exit 0). Like the earlier bundles in this namespace it is a companion file, not an entry in record.json's artifact list — the receipt's own bytes are bound by the ledger, so nothing was added to them after assembly.
+   record.json's `independence` sentence names "the six-postposition count" for every locale; that measurement is hi's (six of the eight {targets}-bearing event sentences put a postposition directly after {targets}). For es it is boilerplate leakage, not a claim: the measurements this locale's verdict rests on are the ones in mechanical-checks.txt and renders.txt here.

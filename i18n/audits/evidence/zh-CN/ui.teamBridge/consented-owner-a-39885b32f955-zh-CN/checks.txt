@@ -1,0 +1,11 @@
+# mechanical checks - zh-CN / ui.teamBridge.events.consented_owner @ 9d19fc6d58e
+value              : {actor}已同意自己的智能体{targets}加入
+code points        : 27 (sibling 21)
+placeholders       : ["actor","targets"] (source ["actor","targets"])
+final period       : false   leading space: false   trailing space: false   double space: false
+NFC                : true
+bidi controls      : 0   ZWNJ/ZWJ: 0
+nbsp/narrow nbsp   : []   em dash: false
+ICU plural/select  : false   argument nodes: 2
+sha256 en          : 4042a918bc64406c4c24ad5ea68fe3c3f3aaa7228917bc1678547cfb0c20285c
+sha256 target      : 88761fbda9d8de5c7c0253809149ebf3be68e62f42ce8a8a109a754f29ad2f1a
