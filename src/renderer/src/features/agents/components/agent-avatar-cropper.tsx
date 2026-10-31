@@ -418,7 +418,15 @@ export function AgentAvatarCropper({
 								size="icon-sm"
 								aria-label={t("ui.agents.avatar.editor.zoom_out")}
 								onClick={() => applyZoom(zoom - CROP_ZOOM_STEP)}
-								disabled={zoom <= CROP_MIN_ZOOM}
+								/*
+								 * LOCKED WHILE THE UPLOAD IS IN FLIGHT (design review round 1, D7).
+								 * The bytes being sent are the ones this frame produced at the moment
+								 * Save was pressed, so a re-frame mid-upload would leave the person
+								 * looking at a crop that is not the one being saved. The controls stay
+								 * rendered - they are where the next framing starts - but inert until
+								 * the answer lands.
+								 */
+								disabled={busy || zoom <= CROP_MIN_ZOOM}
 							>
 								<Minus aria-hidden="true" />
 							</Button>
@@ -429,6 +437,7 @@ export function AgentAvatarCropper({
 								step={0.01}
 								value={zoom}
 								onChange={(event) => applyZoom(Number(event.target.value))}
+								disabled={busy}
 								aria-label={t("ui.agents.avatar.editor.zoom")}
 								aria-valuetext={t("ui.agents.avatar.editor.zoom_value", {
 									value: zoom.toFixed(2),
@@ -450,7 +459,7 @@ export function AgentAvatarCropper({
 								size="icon-sm"
 								aria-label={t("ui.agents.avatar.editor.zoom_in")}
 								onClick={() => applyZoom(zoom + CROP_ZOOM_STEP)}
-								disabled={zoom >= CROP_MAX_ZOOM}
+								disabled={busy || zoom >= CROP_MAX_ZOOM}
 							>
 								<Plus aria-hidden="true" />
 							</Button>
@@ -467,6 +476,7 @@ export function AgentAvatarCropper({
 						variant="secondary"
 						size="sm"
 						onClick={recenter}
+						disabled={busy}
 						className="w-fit"
 					>
 						<RotateCcw aria-hidden="true" />
@@ -521,7 +531,13 @@ export function AgentAvatarCropper({
 					onClick={() => void save()}
 					aria-disabled={busy}
 					aria-busy={busy || undefined}
-					className="aria-disabled:text-ink-disabled!"
+					/*
+					 * ONE WIDTH ACROSS THE SAVE (design review round 1, D6). "Save picture"
+					 * and "Saving..." measure 86 and 62px, so the primary action contracted
+					 * 24px at the exact moment the person was watching it for a result, and
+					 * Cancel slid left with it. The pill holds its own width instead.
+					 */
+					className="min-w-[5.5rem] aria-disabled:text-ink-disabled!"
 					data-agent-avatar-save=""
 				>
 					{busy

@@ -37,11 +37,28 @@ import {
 } from "./chat-session-status";
 
 /**
- * Which treatment the row uses when the agent has a picture. `badge` is the
- * shipping proposal; `beside` keeps the full status cell next to the picture.
- * Flip this one constant to switch - nothing else in this file changes.
+ * Which treatment the row uses when the agent has a picture: `badge` puts a
+ * 10px status disc on the picture's corner, `beside` keeps the untouched 16px
+ * status cell next to it. Flip this one constant to switch - nothing else in
+ * this file changes.
+ *
+ * IT IS `beside`, ON MEASUREMENT, NOT PREFERENCE (design review round 1, D1).
+ * The badge was sized for a 24px mark, and this row's mark is 16px: on the
+ * rendered frames its 10px disc covered 7 of those 16 columns, and the ink that
+ * reached the eye inside it measured **2.24-2.40:1 in light and 2.90:1 in dark**
+ * for `done`/`failed` (best ink in the disc against its own `sunken` fill),
+ * against **5.92-6.66:1** for the same statuses on a row without a picture.
+ * WCAG 1.4.11 asks for 3:1 on exactly this kind of non-text state, and the
+ * operator's rule is that status must stay legible and must never hide behind
+ * the avatar - so a status only a pixel-sampler can read is a defect.
+ *
+ * The badge arm is kept, and kept switchable, because the treatment is right for
+ * a LARGER mark: at a 24px picture (what `SESSION_MARK_BOX` would need to be for
+ * the disc to cover under half the columns) the same ink reaches the ratios the
+ * no-picture rows already show. Revisit then; the baseline to beat is the table
+ * above, and the discriminating frame is `chat-row-statuses` in light and dark.
  */
-const AVATAR_STATUS_VARIANT: "badge" | "beside" = "badge";
+const AVATAR_STATUS_VARIANT: "badge" | "beside" = "beside";
 
 /** The box every arm of the leading slot occupies. */
 export const SESSION_MARK_BOX = "size-4";
@@ -126,6 +143,17 @@ export function ChatSessionAvatarEdit({
 			agentId={agentId}
 			owned={sessionPictureEditable(row)}
 			overlay={true}
+			/*
+			 * THE TARGET IS BIGGER THAN THE PICTURE (design review round 1, D4). The
+			 * anchor's box has to stay the mark's 16px - the scrim and the pencil are
+			 * inset to it, and a bigger box would paint a disc wider than the picture -
+			 * so the extra reach is a pseudo-element: `before:-inset-1` makes the
+			 * pointer's target 24x24 around the same 16px disc, which is WCAG 2.5.8's
+			 * minimum without moving the row by a pixel.
+			 */
+			linkProps={{
+				className: "before:absolute before:-inset-1 before:content-['']",
+			}}
 			className={cn(
 				SESSION_MARK_BOX,
 				"absolute start-1 top-1/2 -translate-y-1/2",

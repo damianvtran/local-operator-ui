@@ -274,9 +274,14 @@ export const AgentAvatarField: FC<AgentAvatarFieldProps> = ({
 						}}
 					>
 						<ImagePlus aria-hidden="true" />
+						{/* ONE VOCABULARY PER OBJECT (design review round 1, D5): this editor says
+						    "picture" everywhere - the field's label, Replace, Save, Recenter and
+						    the pencil's name - so Upload and Remove say it too, rather than
+						    borrowing the settings surface's "image" and leaving one glance with
+						    two names for one thing. */}
 						{hasPicture
 							? t("ui.agents.avatar.editor.replace")
-							: t("ui.agents.settings.general.profile_picture_upload")}
+							: t("ui.agents.avatar.editor.upload")}
 					</Button>
 					{hasPicture ? (
 						<Button
@@ -288,7 +293,7 @@ export const AgentAvatarField: FC<AgentAvatarFieldProps> = ({
 							onClick={() => void onRemove()}
 						>
 							<Trash2 aria-hidden="true" />
-							{t("ui.agents.settings.general.profile_picture_remove")}
+							{t("ui.agents.avatar.editor.remove")}
 						</Button>
 					) : null}
 				</fieldset>

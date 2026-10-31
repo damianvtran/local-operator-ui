@@ -29,7 +29,10 @@ import { TooltipProvider } from "@shared/components/ui";
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { type FC, useEffect, useMemo, useState } from "react";
-import { ChatSessionAvatar } from "../../chat/components/chat-session-avatar";
+import {
+	ChatSessionAvatar,
+	ChatSessionAvatarEdit,
+} from "../../chat/components/chat-session-avatar";
 import { AgentAvatarCropper } from "./agent-avatar-cropper";
 import { AgentAvatarField } from "./agent-avatar-field";
 import { AgentsSidebarItem } from "./agents-sidebar";
@@ -301,13 +304,30 @@ export const EditorCropSaveFailed: Story = {
 	},
 };
 
-/** The field with a picture: Replace and Remove beside it. */
-export const EditorWithPicture: Story = {
-	render: () => (
+/**
+ * The field with a picture: the picture itself, Replace and Remove beside it.
+ *
+ * THE STORY WAS THE BROKEN PART, NOT THE FIELD (design review round 1, D2). It
+ * mounted `AgentAvatarField` for an agent that HAS a picture but never called
+ * `useSeedPictures`, so `useAgentAvatar` - which reads the agents map - answered
+ * `null` and the field drew its EMPTY arm: the frame was pixel-identical to
+ * `EditorEmpty`, and the "uploaded" state the brief asks for had no evidence at
+ * all. The component was right; opening this agent in the app renders the
+ * picture, because the map carries its digest and the media stub below answers
+ * the bytes. Seeding the map is therefore what makes the state real - and this
+ * story now exercises the shipped fetch rather than the `pictureSrc` story seam.
+ */
+const FieldWithPicture: FC = () => {
+	useSeedPictures([CODER.id]);
+	return (
 		<div className="w-96 bg-surface p-6">
 			<AgentAvatarField agentId={CODER.id} />
 		</div>
-	),
+	);
+};
+
+export const EditorWithPicture: Story = {
+	render: () => <FieldWithPicture />,
 };
 
 /** The field before anything is picked - the state a new agent is in. */
@@ -420,8 +440,40 @@ const ChatRows: FC = () => {
 
 /**
  * The four states the row must keep legible, with a picture and without: the
- * badge-on-corner treatment against the untouched status cell.
+ * picture beside the untouched status cell (see `AVATAR_STATUS_VARIANT`).
  */
 export const ChatRowStatuses: Story = {
 	render: () => <ChatRows />,
+};
+
+/**
+ * THE ROW AND ITS PENCIL, in the real wrapper the sidebar uses.
+ *
+ * WHY THIS EXISTS (design review round 1, D3). `ChatRowStatuses` builds a
+ * stand-in row from the marks alone and mounts no `ChatSessionAvatarEdit`, so
+ * nothing on this branch framed the editor's door at hover or at keyboard focus -
+ * the state the whole feature adds, unphotographed. This mounts the shipped
+ * components inside the sidebar's own wrapper class string (`group/row relative`,
+ * which is what the overlay's hover reveal keys off), and the capture plans for
+ * it take the resting, hover and focus frames.
+ */
+const RowPencil: FC = () => {
+	useSeedPictures([CODER.id]);
+	const entry = useMemo(() => row("s-pencil", "complete", "Done", true), []);
+	return (
+		<div className="w-72 bg-surface p-2">
+			<div
+				data-avatar-row-pencil=""
+				className="group/row relative flex h-8 items-center gap-1 rounded-md px-1 text-body-sm"
+			>
+				<ChatSessionAvatar row={entry} nowSeconds={0} />
+				<span className="min-w-0 truncate text-ink">{CODER.name} · Done</span>
+				<ChatSessionAvatarEdit row={entry} />
+			</div>
+		</div>
+	);
+};
+
+export const ChatRowPencil: Story = {
+	render: () => <RowPencil />,
 };

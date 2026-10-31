@@ -1967,9 +1967,11 @@ export type MessageParams = {
 	"ui.agents.avatar.editor.preview_sidebar_caption": undefined;
 	"ui.agents.avatar.editor.previews": undefined;
 	"ui.agents.avatar.editor.recenter": undefined;
+	"ui.agents.avatar.editor.remove": undefined;
 	"ui.agents.avatar.editor.replace": undefined;
 	"ui.agents.avatar.editor.save": undefined;
 	"ui.agents.avatar.editor.saving": undefined;
+	"ui.agents.avatar.editor.upload": undefined;
 	"ui.agents.avatar.editor.zoom": undefined;
 	"ui.agents.avatar.editor.zoom_in": undefined;
 	"ui.agents.avatar.editor.zoom_out": undefined;

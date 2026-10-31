@@ -117,6 +117,12 @@
 		"role": "Button that returns the picture to its centred framing",
 		"tone": "Imperative"
 	},
+	"ui.agents.avatar.editor.remove": {
+		"length_hint": "Two or three words",
+		"note": "The ghost button that clears the agent's stored picture. Same object and same word as editor.upload - the two sit side by side and must read as one vocabulary.",
+		"role": "Ghost button beside the picture's actions",
+		"tone": "Action phrasing"
+	},
 	"ui.agents.avatar.editor.replace": {
 		"length_hint": "Two words",
 		"note": "Opens the file picker to choose a different picture.",
@@ -134,6 +140,12 @@
 		"note": "Use the locale's own ellipsis convention.",
 		"role": "Same button while the upload is in flight",
 		"tone": "Progress"
+	},
+	"ui.agents.avatar.editor.upload": {
+		"length_hint": "Two or three words",
+		"note": "The button that opens the file picker when the agent has no picture yet. The object is the agent's profile picture, so keep this locale's word for PICTURE (the one ui.agents.avatar.editor.save and edit_link already use), not a second word for 'image'.",
+		"role": "Secondary button beside the picture's placeholder",
+		"tone": "Action phrasing"
 	},
 	"ui.agents.avatar.editor.zoom": {
 		"length_hint": "One word",
