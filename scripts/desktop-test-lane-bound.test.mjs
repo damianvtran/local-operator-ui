@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 import {
 	LANE_BOUND_OVERRIDE_ENV,
 	_BLIND_TICKS_WARN,
@@ -57,6 +62,227 @@ const BOARD_FOCUS_LANE = /scripts\/projects-board-focus\.test\.mjs/;
 const TRIPPED_PID = /4242/;
 const STILL_LANDS = /still lands/;
 const ALREADY_GONE = /already gone/;
+
+// These are tiny real runner probes, not a suite replay. A direct side ledger
+// must remain readable while Node holds a later file's TAP behind an earlier
+// blocked file, including after a worker exits with a pipe-owning descendant.
+const runnerPath = fileURLToPath(
+	new URL("./run-desktop-tests.mjs", import.meta.url),
+);
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+async function until(predicate) {
+	const deadline = Date.now() + 15_000;
+	while (Date.now() < deadline) {
+		if (predicate()) return;
+		await pause(50);
+	}
+	assert.fail(
+		"diagnostic probe did not produce its expected evidence within 15s",
+	);
+}
+function diagnosticFixture(sources, extraEnv = {}) {
+	const dir = mkdtempSync(
+		join(process.env.LOCAL_OPERATOR_SCRATCHPAD ?? tmpdir(), "lane-diagnostic-"),
+	);
+	const home = join(dir, "home");
+	mkdirSync(home);
+	const ledger = join(dir, "lifecycle.jsonl");
+	const files = sources.map((source, i) => {
+		const file = join(dir, `${i}.test.mjs`);
+		writeFileSync(file, source);
+		return file;
+	});
+	const child = spawn(
+		process.execPath,
+		[runnerPath, "--test-reporter=tap", "--test-concurrency=2", ...files],
+		{
+			env: {
+				PATH: process.env.PATH,
+				HOME: home,
+				LOCAL_OPERATOR_CONFIG_DIR: join(home, ".local-operator"),
+				LOCAL_OPERATOR_SCRATCHPAD: dir,
+				CI: "1",
+				LOCAL_OPERATOR_UI_TEST_MEMORY_BUDGET_MB: "2000",
+				LOCAL_OPERATOR_UI_LANE_DIAGNOSTICS: ledger,
+				...extraEnv,
+			},
+			stdio: ["ignore", "pipe", "pipe"],
+		},
+	);
+	let stdout = "";
+	let stderr = "";
+	child.stdout.on("data", (chunk) => {
+		stdout += chunk;
+	});
+	child.stderr.on("data", (chunk) => {
+		stderr += chunk;
+	});
+	const done = new Promise((resolve) =>
+		child.on("close", (code, signal) => resolve({ code, signal })),
+	);
+	const events = () => {
+		try {
+			return readFileSync(ledger, "utf8")
+				.trim()
+				.split("\n")
+				.filter(Boolean)
+				.map((line) => JSON.parse(line));
+		} catch {
+			return [];
+		}
+	};
+	return {
+		child,
+		files,
+		done,
+		events,
+		stdout: () => stdout,
+		stderr: () => stderr,
+	};
+}
+const blockSource =
+	'import { test } from "node:test"; test("blocked-output", async () => new Promise(() => { setInterval(() => {}, 1000); }));';
+const normalSource =
+	'import { test } from "node:test"; test("normal-buffered-marker", () => {});';
+
+test("diagnostic identity reports installed modules from the test resolution path", async () => {
+	const script = fileURLToPath(
+		new URL("./desktop-test-lane-bound.mjs", import.meta.url),
+	);
+	const child = spawn(
+		process.execPath,
+		[script, "--identity", "scripts/onboarding-tour-i18n.test.mjs"],
+		{ stdio: ["ignore", "pipe", "pipe"] },
+	);
+	let output = "";
+	child.stdout.on("data", (chunk) => {
+		output += chunk;
+	});
+	const code = await new Promise((resolve) => child.on("close", resolve));
+	assert.equal(code, 0);
+	assert.ok(output.length > 0, "installed module identity must be printed");
+	const identity = JSON.parse(output);
+	assert.equal(identity.node, process.version);
+	assert.equal(identity.checkoutSha.length, 40);
+	assert.equal(identity.installedLockSha256.length, 64);
+	assert.equal(identity.checkoutLockSha256.length, 64);
+	assert.ok(identity.jsdom.path.includes("jsdom"));
+	assert.ok(identity.nwsapi.path.includes("nwsapi"));
+	assert.ok(identity.jsdom.version);
+	assert.ok(identity.nwsapi.version);
+});
+
+test("diagnostic normal completion retains exit zero and start/end identity", async () => {
+	const rig = diagnosticFixture([normalSource]);
+	try {
+		assert.deepEqual(await rig.done, { code: 0, signal: null });
+		const start = rig.events().find((e) => e.event === "worker-start");
+		const end = rig.events().find((e) => e.event === "worker-exit");
+		assert.equal(start.file, rig.files[0]);
+		assert.equal(end.pid, start.pid);
+		assert.equal(end.code, 0);
+		assert.ok(
+			rig.events().some((e) => e.event === "coordinator-exit" && e.code === 0),
+		);
+	} finally {
+		rig.child.kill("SIGTERM");
+		await rig.done;
+	}
+});
+
+test("diagnostic ledger exposes normal worker exit while its TAP is buffered", async () => {
+	const rig = diagnosticFixture([blockSource, normalSource]);
+	try {
+		await until(() =>
+			rig
+				.events()
+				.some((e) => e.event === "worker-exit" && e.file === rig.files[1]),
+		);
+		assert.ok(
+			rig
+				.events()
+				.some((e) => e.event === "worker-start" && e.file === rig.files[0]),
+		);
+		assert.equal(rig.stdout().includes("normal-buffered-marker"), false);
+		rig.child.kill("SIGTERM");
+		await rig.done;
+		const snapshot = rig
+			.events()
+			.find((e) => e.event === "group-snapshot" && e.reason === "SIGTERM");
+		assert.ok(snapshot?.rows.some((r) => r.file === rig.files[0]));
+	} finally {
+		rig.child.kill("SIGTERM");
+		await rig.done;
+	}
+});
+
+test("diagnostic watchdog names a blocked worker and preserves failure", async () => {
+	const rig = diagnosticFixture([blockSource], {
+		LOCAL_OPERATOR_UI_LANE_BOUND_MS: "1",
+	});
+	try {
+		const result = await rig.done;
+		assert.equal(result.code, 1);
+		const snapshot = rig
+			.events()
+			.find((e) => e.event === "group-snapshot" && e.reason === "lane-timeout");
+		assert.ok(snapshot?.rows.some((r) => r.file === rig.files[0]));
+		assert.ok(rig.stderr().includes("LANE BOUND EXCEEDED"));
+		assert.ok(rig.events().some((e) => e.event === "heartbeat"));
+	} finally {
+		rig.child.kill("SIGTERM");
+		await rig.done;
+	}
+});
+
+test("diagnostic snapshot finds descendant after worker exits retaining stdout", async () => {
+	const source =
+		'import { spawn } from "node:child_process"; import { test } from "node:test"; spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: ["ignore", 1, 2] }).unref(); test("parent-finished", () => {});';
+	const rig = diagnosticFixture([source]);
+	try {
+		await until(() => rig.events().some((e) => e.event === "worker-exit"));
+		await pause(250);
+		assert.equal(
+			rig.child.exitCode,
+			null,
+			"coordinator still waits for inherited pipe closure",
+		);
+		rig.child.kill("SIGTERM");
+		await rig.done;
+		const snapshot = rig
+			.events()
+			.find((e) => e.event === "group-snapshot" && e.reason === "SIGTERM");
+		const worker = rig.events().find((e) => e.event === "worker-start");
+		assert.ok(
+			snapshot?.rows.some(
+				(r) => r.pid !== worker.pid && r.pid !== snapshot.leaderPid,
+			),
+		);
+		assert.ok(
+			!snapshot.rows.some((r) => r.pid === worker.pid),
+			"worker is gone, not the remaining descendant",
+		);
+		if (process.platform === "linux") {
+			assert.ok(
+				snapshot.rows.some((r) =>
+					r.pipes?.some(
+						(p) =>
+							p.fd === 1 &&
+							(p.target.startsWith("pipe:[") ||
+								p.target.startsWith("socket:[")),
+					),
+				),
+			);
+		} else
+			assert.equal(
+				snapshot.pipeSupport,
+				"unavailable on this platform; no pipe-owner attribution",
+			);
+	} finally {
+		rig.child.kill("SIGTERM");
+		await rig.done;
+	}
+});
 const NOTHING_SIGNALLED = /nothing was signalled/;
 const CLAIMED_A_KILL = /killed pid/;
 

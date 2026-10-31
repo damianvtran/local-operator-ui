@@ -269,12 +269,15 @@ after(() => {
  * resolves `:modal` by calling the NATIVE `matches` it captured - which in jsdom
  * is jsdom's own wrapper around nwsapi - so each probe re-enters itself until
  * the stack overflows (measured: ~1.49 million nested calls, depth ~3,450, a
- * swallowed RangeError, 1-6 s of synchronous CPU per probe). That turned this
- * file's ~32 s run into one that never finished inside CI's 50-minute shard cap:
- * every hop test took 10-100x its 500 ms wait, and whichever test was in flight
- * when the job was killed reported "Promise resolution is still pending". No
- * await in the suite was unsettled; the event loop was starved. nwsapi 2.2.28
- * guards the re-entry (`matchingNative`), so the lockfile pins it.
+ * swallowed RangeError, 1-6 s of synchronous CPU per probe in one local sample).
+ * Local runs took 10-100x their sleep budgets and could hit a 240s bound with
+ * "Promise resolution is still pending"; the pass/cancelled counts vary with
+ * host load. This explains the measured local slowdown, not every CI timeout:
+ * a pinned CI shard still cancelled, and ordered TAP alone cannot identify the
+ * remaining worker or a descendant holding its output pipe. nwsapi 2.2.28 no
+ * longer falls back to `node.matches` (the decisive change under jsdom, where
+ * NATIVE_MATCHES is null), and also adds a `matchingNative` re-entry guard.
+ * The lockfile pins that version.
  *
  * This counts calls rather than timing them, so it is deterministic on a loaded
  * host, and it runs first: a regressed engine fails here in milliseconds and
@@ -302,7 +305,7 @@ test("jsdom answers Shepherd's top-layer selectors without re-entering itself", 
 			}
 			assert.ok(
 				calls <= 2,
-				`${selector} took ${calls} nested matches() calls - the selector engine is re-entering itself (nwsapi 2.2.27)`,
+				`${selector} took ${calls} nested matches() calls - the selector engine is re-entering itself`,
 			);
 			assert.equal(answer, false, `${selector} must be false for a plain div`);
 		}

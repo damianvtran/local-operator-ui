@@ -65,10 +65,182 @@
  *    killed file as a failure, and the runner forwards the child's status unchanged.
  */
 
-import { execFile } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import {
+	appendFileSync,
+	readFileSync,
+	readdirSync,
+	readlinkSync,
+	realpathSync,
+} from "node:fs";
+import { createRequire } from "node:module";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
+
+/** Opt-in append-only ledger, outside Node's ordered per-file TAP pipes. */
+export const LANE_DIAGNOSTICS_ENV = "LOCAL_OPERATOR_UI_LANE_DIAGNOSTICS";
+
+// A post-install fact, not the version merely requested by a lockfile. Resolve
+// nwsapi from jsdom's context, as the actual test does under pnpm's layout.
+if (
+	process.argv[1] &&
+	resolve(process.argv[1]) === fileURLToPath(import.meta.url) &&
+	process.argv[2] === "--identity"
+) {
+	const fromTest = createRequire(resolve(process.argv[3]));
+	const jsdomPath = fromTest.resolve("jsdom");
+	const fromJsdom = createRequire(jsdomPath);
+	const nwsapiPath = fromJsdom.resolve("nwsapi");
+	const hash = (path) =>
+		createHash("sha256").update(readFileSync(path)).digest("hex");
+	console.log(
+		JSON.stringify({
+			node: process.version,
+			test: process.argv[3],
+			checkoutSha: execFileSync("git", ["rev-parse", "HEAD"], {
+				encoding: "utf8",
+				timeout: 5000,
+			}).trim(),
+			checkoutLockSha256: hash("pnpm-lock.yaml"),
+			installedLockSha256: hash("node_modules/.pnpm/lock.yaml"),
+			jsdom: {
+				path: realpathSync(jsdomPath),
+				version: JSON.parse(
+					readFileSync(fromTest.resolve("jsdom/package.json"), "utf8"),
+				).version,
+			},
+			nwsapi: {
+				path: realpathSync(nwsapiPath),
+				version: JSON.parse(
+					readFileSync(fromJsdom.resolve("nwsapi/package.json"), "utf8"),
+				).version,
+			},
+		}),
+	);
+}
+export function writeLaneDiagnostic(path, event) {
+	if (!path) return;
+	try {
+		appendFileSync(
+			path,
+			`${JSON.stringify({ at: new Date().toISOString(), ...event })}\n`,
+		);
+	} catch {
+		// Diagnostics cannot turn a test failure into success, nor replace its exit
+		// status with a logging error. The parent announces missing diagnostics.
+		process.stderr.write("desktop tests: diagnostic ledger write failed\n");
+	}
+}
+
+// This same module is preloaded only when diagnostics are requested. A worker
+// writes synchronously to a side file: console/stderr inside node --test would
+// be buffered behind earlier files and hide precisely the evidence we need.
+const diagnosticWorkerEnv = `${LANE_DIAGNOSTICS_ENV}_WORKER_PID`;
+if (
+	process.env[LANE_DIAGNOSTICS_ENV] &&
+	process.env.NODE_TEST_CONTEXT === "child-v8" &&
+	!process.env[diagnosticWorkerEnv]
+) {
+	// Node preloads the file workers, not the --test coordinator. Forks that
+	// inherit both the preload and environment must not look like new workers.
+	process.env[diagnosticWorkerEnv] = String(process.pid);
+	const identity = {
+		pid: process.pid,
+		ppid: process.ppid,
+		file: process.argv[1],
+	};
+	writeLaneDiagnostic(process.env[LANE_DIAGNOSTICS_ENV], {
+		event: "worker-start",
+		...identity,
+	});
+	process.on("exit", (code) =>
+		writeLaneDiagnostic(process.env[LANE_DIAGNOSTICS_ENV], {
+			event: "worker-exit",
+			...identity,
+			code,
+		}),
+	);
+}
+
+/**
+ * Only the runner's group is emitted; never argv, environment or test bodies.
+ * Linux /proc pipe inode identities can correlate holders within this group;
+ * socket identities only name endpoints, not their peers. Neither proves who
+ * is blocking a read. Darwin has no equivalent portable API here:
+ * report that limit rather than guessing from names or invoking system-wide lsof.
+ * Caps bound both cost and log volume on a runaway process tree.
+ */
+export function snapshotLaneGroup(leaderPid, lanes, reason, path) {
+	if (!path) return;
+	try {
+		const table = execFileSync("ps", ["-axo", "pid=,ppid=,pgid=,command="], {
+			// Capture must finish before CI escalates termination to SIGKILL.
+			timeout: 2_000,
+			maxBuffer: 8 * 1024 * 1024,
+			encoding: "utf8",
+		});
+		const group = parseGroupTable(table).filter(
+			(row) => row.pgid === leaderPid,
+		);
+		const wanted = new Set(lanes);
+		const rows = group.slice(0, 64).map((row) => {
+			const file = row.command
+				.split(WHITESPACE)
+				.find((token) => wanted.has(token) && row.pid !== leaderPid);
+			const safe = {
+				pid: row.pid,
+				ppid: row.ppid,
+				pgid: row.pgid,
+				...(file ? { file } : {}),
+			};
+			if (process.platform === "linux") {
+				try {
+					const fds = readdirSync(`/proc/${row.pid}/fd`);
+					const pipes = [];
+					for (const fd of fds.slice(0, 256)) {
+						try {
+							const target = readlinkSync(`/proc/${row.pid}/fd/${fd}`);
+							if (
+								(target.startsWith("pipe:[") ||
+									target.startsWith("socket:[")) &&
+								pipes.length < 16
+							)
+								pipes.push({ fd: Number(fd), target });
+						} catch {
+							/* A descriptor can close during the read. */
+						}
+					}
+					safe.pipes = pipes;
+					safe.fdScanTruncated = fds.length > 256 || pipes.length === 16;
+				} catch {
+					safe.pipeRead = "unavailable (process gone or permission denied)";
+				}
+			}
+			return safe;
+		});
+		writeLaneDiagnostic(path, {
+			event: "group-snapshot",
+			reason,
+			leaderPid,
+			rows,
+			truncated: group.length > 64,
+			pipeSupport:
+				process.platform === "linux"
+					? "Linux /proc pipe/socket identities, scoped group only; socket peers unknown; ownership is not blockage proof"
+					: "unavailable on this platform; no pipe-owner attribution",
+		});
+	} catch {
+		writeLaneDiagnostic(path, {
+			event: "group-snapshot-unavailable",
+			reason,
+			leaderPid,
+		});
+	}
+}
 
 /** Milliseconds for one lane, or `off` (announced loudly) to bound none. */
 export const LANE_BOUND_OVERRIDE_ENV = "LOCAL_OPERATOR_UI_LANE_BOUND_MS";
@@ -309,6 +481,8 @@ export function createLaneBoundWatchdog({
 	now = () => Date.now(),
 	onTrip = () => {},
 	onBlind = () => {},
+	onSample = () => {},
+	onTimeout = () => {},
 	intervalMs = _TICK_INTERVAL_MS,
 	setTimer = setTimeout,
 	clearTimer = clearTimeout,
@@ -340,6 +514,7 @@ export function createLaneBoundWatchdog({
 		// has finished, so nothing may be signalled on its behalf by a tick that was
 		// mid-`ps` when the child exited.
 		if (stopped) return;
+		onSample(seen);
 
 		for (const lane of [...running.keys()]) {
 			if (!seen.has(lane)) running.delete(lane);
@@ -362,6 +537,7 @@ export function createLaneBoundWatchdog({
 			// carries the OUTCOME, and it is this process's own stderr, so the child's
 			// death cannot swallow it.
 			running.delete(lane);
+			onTimeout({ lane, pid });
 			const killed = kill(pid) === true;
 			onTrip({ lane, pid, elapsedMs, killed });
 		}

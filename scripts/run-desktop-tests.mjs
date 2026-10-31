@@ -67,10 +67,13 @@ import {
 	resolveDesktopTestConcurrency,
 } from "./desktop-test-concurrency.mjs";
 import {
+	LANE_DIAGNOSTICS_ENV,
 	createLaneBoundWatchdog,
 	formatLaneBoundLine,
 	formatLaneTripLine,
 	resolveLaneBound,
+	snapshotLaneGroup,
+	writeLaneDiagnostic,
 } from "./desktop-test-lane-bound.mjs";
 import {
 	BREACH_EXIT_CODE,
@@ -270,6 +273,15 @@ const childEnv = withTelemetryOff(
  * `detached` launches already carry. The child's stdin stays inherited; node's
  * test runner does not read it.
  */
+// Opt-in only: file processes append to the side ledger via this preload;
+// the existing lane sampler supplies independent heartbeats. Reporter ordering,
+// bounds, kills and exit arithmetic remain unchanged.
+const diagnosticPath = process.env[LANE_DIAGNOSTICS_ENV];
+if (diagnosticPath)
+	nodeArgs.unshift(
+		"--import",
+		fileURLToPath(new URL("./desktop-test-lane-bound.mjs", import.meta.url)),
+	);
 const child = spawn(process.execPath, nodeArgs, {
 	stdio: "inherit",
 	env: childEnv,
@@ -334,6 +346,37 @@ console.log(formatMemoryBudgetLine(memoryBudget));
 const laneBound = resolveLaneBound();
 console.log(formatLaneBoundLine(laneBound));
 let breached = false;
+const diagnosticSnapshot = (reason) =>
+	snapshotLaneGroup(child.pid, laneArgs, reason, diagnosticPath);
+let lastHeartbeat = 0;
+let diagnosticWorkers = new Map();
+const diagnosticSample = (seen) => {
+	if (!diagnosticPath) return;
+	for (const [file, identity] of diagnosticWorkers) {
+		if (seen.get(file)?.pid !== identity.pid)
+			writeLaneDiagnostic(diagnosticPath, {
+				event: "worker-disappeared",
+				file,
+				...identity,
+			});
+	}
+	diagnosticWorkers = new Map(seen);
+	if (Date.now() - lastHeartbeat < 30_000) return;
+	lastHeartbeat = Date.now();
+	const event = {
+		event: "heartbeat",
+		leaderPid: child.pid,
+		active: [...seen].map(([file, identity]) => ({ file, ...identity })),
+	};
+	writeLaneDiagnostic(diagnosticPath, event);
+	// Parent stderr is outside Node's per-file reporter pipes.
+	console.error(`desktop tests: diagnostic ${JSON.stringify(event)}`);
+};
+if (diagnosticPath)
+	writeLaneDiagnostic(diagnosticPath, {
+		event: "coordinator-start",
+		pid: child.pid,
+	});
 const watchdog =
 	memoryBudget.budgetMb === null || child.pid === undefined
 		? null
@@ -345,6 +388,7 @@ const watchdog =
 					// pre-kill re-read is still in flight, and must already read as a
 					// verdict rather than a signal death to re-raise.
 					breached = true;
+					diagnosticSnapshot("memory-timeout");
 				},
 				onBreach: (reading, outcome) => {
 					console.error(
@@ -378,6 +422,8 @@ const laneWatchdog =
 				leaderPid: child.pid,
 				lanes: laneArgs,
 				boundMs: laneBound.boundMs,
+				onSample: diagnosticSample,
+				onTimeout: () => diagnosticSnapshot("lane-timeout"),
 				onTrip: ({ lane, pid, elapsedMs, killed }) =>
 					console.error(
 						formatLaneTripLine({
@@ -404,6 +450,7 @@ laneWatchdog?.start();
 // watchdog's breach path walks out-of-group descendants.
 for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
 	process.on(signal, () => {
+		diagnosticSnapshot(signal);
 		if (child.exitCode === null && child.signalCode === null) {
 			try {
 				process.kill(-child.pid, signal);
@@ -415,6 +462,13 @@ for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
 }
 
 child.on("exit", (code, signal) => {
+	if (diagnosticPath)
+		writeLaneDiagnostic(diagnosticPath, {
+			event: "coordinator-exit",
+			pid: child.pid,
+			code,
+			signal,
+		});
 	watchdog?.stop();
 	laneWatchdog?.stop();
 	releaseKeeper();
