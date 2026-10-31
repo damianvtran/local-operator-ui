@@ -3659,6 +3659,45 @@ test("team_bridge join adds the caller and notify rides the read route", () => {
 	);
 });
 
+test("team_bridge agent_notify: the owner's agent level is a PUT on the runtime's agent-notify route", () => {
+	/*
+	 * Wake-on-every-message: the runtime resolves the owner's agent endpoint, so
+	 * the body carries only the level and the owner receipt, never an endpoint id
+	 * or a read-cursor `seq`.
+	 */
+	const write = jobsCancelEndpoint(
+		jobsCancelSchema.parse({
+			op: "team_bridge.conversations.agent_notify",
+			expected_account_id: "acct_1",
+			conversation_id: "bcv_abc12345",
+			tenant_id: "tnt_2",
+			notify: "mute",
+		}),
+	);
+	assert.equal(write.method, "PUT");
+	assert.equal(
+		write.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/agent-notify",
+	);
+	assert.deepEqual(write.body, {
+		expected_account_id: "acct_1",
+		tenant_id: "tnt_2",
+		notify: "mute",
+	});
+	for (const bad of [
+		{ notify: "loud" },
+		{ notify: undefined },
+		{ notify: "all", endpoint_id: "ep_1" },
+	])
+		assert.throws(() =>
+			jobsCancelSchema.parse({
+				op: "team_bridge.conversations.agent_notify",
+				conversation_id: "bcv_abc12345",
+				...bad,
+			}),
+		);
+});
+
 test("team_bridge archive: the list takes a closed status and delete is a DELETE on the conversation", () => {
 	/*
 	 * Archive -> view archived -> permanent delete (agent-server radient-ml/agent-server#219,

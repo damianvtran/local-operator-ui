@@ -1,0 +1,99 @@
+{
+	"audit_id": "1e0826e07912-agents2-fr",
+	"audit_date": "2026-10-30",
+	"date": "2026-10-30",
+	"locale": "fr",
+	"namespace": "ui.agents.descriptions",
+	"source_commit": "604ffbce4625a2c0e4d737ab1e219f00fb3fb4d2",
+	"translator": {
+		"agent": "i18n-translator"
+	},
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "1e0826e07912",
+		"model": "radient/auto",
+		"actual_model_source": "session-model-at-audit; the session's primary anthropic/claude-sonnet-5-5 failed on provider quota and fell back openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto before this audit ran",
+		"independent_from_translator_session": true,
+		"result": "clean-with-findings",
+		"receipt": "i18n/receipts/1e0826e07912-agents2-fr.json",
+		"receipt_sha256": "e729b3a9b755eb21ffcf906fd5781006906140fb998869f4d64db0d940e04455"
+	},
+	"key_count": 12,
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.agents.descriptions.json",
+			"sha256": "ec18513f0ebaa99be4c329a8ea5896631fd2b9e4f4d53febdc5c7acd049b5511"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.agents.descriptions.context.json",
+			"sha256": "6311128dc89d50d886f3066f9cea2c802482a7db9979d9c5cc4bd93cdd8a7398"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/fr/ui.agents.descriptions.json",
+			"sha256": "c97aa95926e4a6ddd1e07b9cedb0178b18fddcd940db3c06d5bd3f7cf1418f02"
+		}
+	},
+	"findings": [
+		{
+			"id": "NIT-1",
+			"severity": "NIT",
+			"keys": [
+				"ui.agents.descriptions.coder",
+				"ui.agents.descriptions.tui_designer"
+			],
+			"current": {
+				"ui.agents.descriptions.coder": "Réalise de bout en bout une tranche de travail délimitée avec l’ensemble des outils, puis rend compte des changements et de la façon dont ils ont été vérifiés.",
+				"ui.agents.descriptions.tui_designer": "Conception et revue d’interfaces en terminal : parcours pensés d’abord pour le clavier, densité dans de petites zones d’affichage fixes, replis pour la couleur et Unicode, géométrie mesurée ; signale des constats préfixés T."
+			},
+			"problem": "Length the remediation added: coder 159/121 = 1.31x and tui_designer 224/178 = 1.26x exceed the fr guide's recorded 15-25% band (group mean 1.195, up from round 1's 1.14; five of fourteen values now over 1.20). No layout is at risk — the roster line is `truncate` at 256 px with the full sentence in the row's title (agents-page.tsx:1988), the detail page wraps it in a ReadBlock, and install_to_edit is an auto-width secondary Button (agent-detail.tsx:914-921).",
+			"suggestion": "Optional, on a future touch: coder compresses to 'Réalise de bout en bout une tranche de travail délimitée avec tous les outils, puis rend compte des changements et de leur vérification.' (136 chars, 1.12x) at the cost of 'how it was verified' becoming 'their verification'. tui_designer has no compression that keeps both the viewport and Unicode nuance. No action required.",
+			"round1_relation": "new (consequence of the F4 and F7 fixes)"
+		},
+		{
+			"id": "NIT-2",
+			"severity": "NIT",
+			"keys": [
+				"ui.agents.descriptions.qa_tester"
+			],
+			"current": "Preuve d’exécution indépendante pour un changement : pré-vérifie le banc d’essai, parcourt les chemins réels et les cas négatifs, puis fournit une matrice QA ciblée sans modifier le dépôt.",
+			"problem": "'pré-vérifie' is a coinage and hyphenated: French forms pré- + verb solid (préinscrire, prévisualiser, préremplir, prévalider), and the settled phrasing is 'vérifie au préalable' / 'contrôle en amont'. The fix itself is right on meaning — the pre- sense round 1 asked for is present.",
+			"suggestion": "Leave as is; take 'vérifie au préalable' only if the line is touched for another reason (it costs 11 characters the card does not have to spare).",
+			"round1_relation": "new (introduced while fixing F6); meaning fix accepted"
+		}
+	],
+	"namespace_status": "passed",
+	"artifacts": [
+		{
+			"path": "i18n/receipts/1e0826e07912-agents2-fr.json",
+			"sha256": "e729b3a9b755eb21ffcf906fd5781006906140fb998869f4d64db0d940e04455"
+		},
+		{
+			"path": "i18n/audits/evidence/fr/ui.agents.descriptions/1e0826e07912-agents2-fr/record.json",
+			"sha256": "self (this file)"
+		},
+		{
+			"path": "i18n/audits/evidence/fr/ui.agents.descriptions/1e0826e07912-agents2-fr/receipt.json",
+			"sha256": "e729b3a9b755eb21ffcf906fd5781006906140fb998869f4d64db0d940e04455"
+		},
+		{
+			"path": "i18n/audits/evidence/fr/ui.agents.descriptions/1e0826e07912-agents2-fr/verdict.txt",
+			"sha256": "ab5c8ccf95ade548089838206e844378ce7518fc5f404c7b609d112652f393cd"
+		},
+		{
+			"path": "i18n/audits/evidence/fr/ui.agents.descriptions/1e0826e07912-agents2-fr/audit.log",
+			"sha256": "bcbd3df076d6e6d4eed63473f6b9c2e346532c84116aa49d340b267bff73cfbe"
+		},
+		{
+			"path": "i18n/audits/evidence/fr/ui.agents.descriptions/1e0826e07912-agents2-fr/findings.md",
+			"sha256": "44608b12681c82da215d6940bdd8ac7d0da45d5243a9041feec0b1616c2ed121"
+		},
+		{
+			"path": "i18n/audits/evidence/fr/ui.agents.descriptions/1e0826e07912-agents2-fr/auditor.log",
+			"sha256": "c01f0b620fe15baa8de33b651345b5d75bf1047850ca618b1b9fcdf73e454028"
+		}
+	],
+	"retention": {
+		"record_of_truth": "i18n/receipts/1e0826e07912-agents2-fr.json (byte-identical copy of the auditor's receipt)",
+		"note": "record.json restates the receipt; the copied logs are the auditor's own execution output, not notes."
+	}
+}

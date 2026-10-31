@@ -116,6 +116,7 @@ import {
 	skillComposerGate,
 } from "../skills-library-model";
 import { CLASS_LABEL, classOf } from "../utils/agent-class";
+import { agentDescriptionText } from "../utils/agent-description";
 import { AgentCreate, AgentDetail } from "./agent-detail";
 import {
 	DetailSkeleton,
@@ -1912,6 +1913,14 @@ function Roster({
 			{rows.map((row) => {
 				const isProfile = "source" in row;
 				const mark = marked.get(`${teamMode ? "team" : "agent"}:${row.name}`);
+				/*
+				 * THE BLURB THE READER SEES, not the wire's always-English field: a
+				 * shipped agent prints the catalogue's sentence for its seed, and every
+				 * other row - uploaded, edited, a team - prints its own text untouched
+				 * (`agent-description.ts` states the rule). The tooltip and the line
+				 * below share this value so the two cannot word one row two ways.
+				 */
+				const blurb = isProfile ? agentDescriptionText(row) : row.description;
 				return (
 					<li key={row.name}>
 						<button
@@ -1931,11 +1940,7 @@ function Roster({
 							 * identifier reachable without giving the count its own line back,
 							 * which is what made rows 57 px.
 							 */
-							title={
-								row.description
-									? `${rowLabel(row)} - ${row.description}`
-									: rowLabel(row)
-							}
+							title={blurb ? `${rowLabel(row)} - ${blurb}` : rowLabel(row)}
 							className={cn(
 								"flex min-h-12 w-full flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-start hover:bg-row-hover",
 								/*
@@ -2024,10 +2029,8 @@ function Roster({
 										<span className="text-ink-dim"> ·</span>
 									</span>
 								) : null}
-								{row.description ? (
-									<span className="min-w-0 flex-1 truncate">
-										{row.description}
-									</span>
+								{blurb ? (
+									<span className="min-w-0 flex-1 truncate">{blurb}</span>
 								) : (
 									/*
 									 * A ROW WITH NO DESCRIPTION SAYS SO (design review round 1 D4 =
@@ -2069,10 +2072,16 @@ function propsFilter(
 		 * for that. Either way the row they mean is the row that survives the
 		 * filter.
 		 */
+		/*
+		 * THE DESCRIPTION IS MATCHED AS IT IS PRINTED (agent-description.ts), not as
+		 * the wire spells it: on a French page the row shows the catalogue's French
+		 * sentence, so a reader who types a word from it must find it - the same rule
+		 * the skills filter already follows for its translated source word.
+		 */
 		return (
 			printName(row.name).toLowerCase().includes(needle) ||
 			row.name.toLowerCase().includes(needle) ||
-			(row.description ?? "").toLowerCase().includes(needle)
+			agentDescriptionText(row).toLowerCase().includes(needle)
 		);
 	});
 }

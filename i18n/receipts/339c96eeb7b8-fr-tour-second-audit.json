@@ -1,0 +1,126 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "model": "radient/auto (harness launch route; the concrete routed upstream provider/model is not exposed in this session transcript; no fallback invoked by the auditor)",
+  "instance": "339c96eeb7b8",
+  "locale": "fr",
+  "namespace": "ui.onboarding.tour",
+  "date": "2026-10-25",
+  "round": 2,
+  "audit_kind": "second independent high-visibility audit",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "clean-with-findings: 0 blocker, 0 major, 1 minor, 1 nit; every contract check passes on the committed bytes",
+  "independence": "Second, independent auditor run (session 339c96eeb7b8, translation-auditor role) that did not translate and did not write the first audit. Translator: LLM translator session 52d18db33cf5 (job 2660ff7c036b). First auditor: instance 59527dfbb84b (receipt i18n/receipts/59527dfbb84b-fr-r2.json, sha256 90c11dfe6c0a92103e42730ee1fc61de25e4478d1a4b3c38e7f05fbc45a2bcd9). Findings were formed from the English source, its context sidecars, the fr style guide, the core glossary, the tour renderer code and the committed target bytes before the first audit's dispositions were consulted. Read-only: no catalogue, context, ledger, generated, source or git write was performed; this receipt is the only write.",
+  "scope": {
+    "worktree": "~/local-operator-ui/.worktrees/i18n-onboarding",
+    "head": "405e69c012654900f454fa4ca023100290369555",
+    "head_clean": true,
+    "head_equals_origin": "git ls-remote origin refs/heads/feat/i18n-onboarding == 405e69c012654900f454fa4ca023100290369555",
+    "source_path": "src/i18n/catalogues/en/ui.onboarding.tour.json",
+    "context_path": "src/i18n/catalogues/en/ui.onboarding.tour.context.json",
+    "target_path": "src/i18n/catalogues/fr/ui.onboarding.tour.json",
+    "keys_read": 123,
+    "keys_total": 123,
+    "context_entries_read": 123,
+    "key_parity": "123 en keys, 123 fr keys, 123 context entries; identical key sets; no missing, extra or duplicate key",
+    "native_pass": "All 123 English values, all 123 context sidecars and all 123 French values were read value by value in this run (not inherited from the first audit)."
+  },
+  "source_sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+  "context_sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906",
+  "target_sha256": "90c0060e912c7583cfcd72bde5125195ea4469e8a71364c66f876a79b1e70943",
+  "target_bytes": 22902,
+  "findings": [
+    {
+      "id": "FR-TOUR-2ND-01",
+      "severity": "minor",
+      "status": "open",
+      "keys": [
+        "ui.onboarding.tour.chat_input.list.1.item.1",
+        "ui.onboarding.tour.chat_input.list.1.item.2",
+        "ui.onboarding.tour.chat_input.list.1.item.3"
+      ],
+      "current": "« Crée un tableur dans mon dossier Documents avec toutes les grandes villes du Canada. » / « Cherche sur le web les dernières actualités sur l’IA et rédige un rapport complet. » / Sélectionnez une pièce jointe, puis « traduis ce document en français. »",
+      "proposed": "« Créez un tableur dans mon dossier Documents avec toutes les grandes villes du Canada. » / « Recherchez sur le web les dernières actualités sur l’IA et rédigez un rapport complet. » / Sélectionnez une pièce jointe, puis « traduisez ce document en français. »",
+      "reason": "The fr style guide fixes the address as vous and rejects tu as over-familiar, the rest of this namespace addresses vous, and no other fr surface in the catalogue set uses tu imperatives (scanned all 8 fr catalogue files), so these three product-authored sample prompts are the only T/V mismatch; item 3 flips register inside one sentence (« Sélectionnez … puis « traduis … » »). If sample prompts are meant to model user speech rather than product voice, that decision belongs in the style guide instead of an undocumented exception."
+    },
+    {
+      "id": "FR-TOUR-2ND-02",
+      "severity": "nit",
+      "status": "open",
+      "keys": [
+        "ui.onboarding.tour.select_model.body.1"
+      ],
+      "current": "Si un modèle que vous vous attendiez à voir recommandé n’y figure pas, dites-nous via GitHub Issues ou par e-mail s’il fonctionne bien pour vous dans Local Operator.",
+      "proposed": "Si un modèle qui devrait, selon vous, être recommandé n’apparaît pas dans la liste, dites-nous via GitHub Issues ou par e-mail s’il fonctionne bien pour vous dans Local Operator.",
+      "reason": "Grammatical but heavy: the doubled « vous vous » plus a long-distance relative extraction reads translated; this wording is the round-1 fix for FR-TOUR-08, so it is raised as a polish nit only and does not gate."
+    }
+  ],
+  "findings_summary": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 1
+  },
+  "source_observations_carried": [
+    {
+      "id": "SRC-TOUR-2ND-A",
+      "classification": "root UI defect, not a translator charge",
+      "keys": [
+        "ui.onboarding.tour.download_agent.body.1"
+      ],
+      "observation": "The Agent Hub card's visible download label is the hardcoded English string Get (src/renderer/src/features/agent-hub/components/agent-card.tsx, the <Button ... data-tour-tag=\"agent-hub-download-button\"> body), with an also-English aria-label `Download ${displayName}`; no Get key exists in any of the 8 locale catalogues. The tour's « Obtenir » is the correct French of the source word and the first audit already deferred this as FR-TOUR-02; changing the French back to English would match the bug instead of fixing it. Fix belongs to agent-card copy, outside this namespace."
+    },
+    {
+      "id": "SRC-TOUR-2ND-B",
+      "classification": "root UI/source wording, not a translator charge",
+      "keys": [
+        "ui.onboarding.tour.create_schedule.body.1"
+      ],
+      "observation": "Tour step 29 highlights button[data-tour-tag=\"create-schedule-button\"] (src/renderer/src/features/schedules/components/schedules-page.tsx:372), whose label is ui.schedules.schedules_page.new_scheduled_task = « New scheduled task » / « Nouvelle tâche planifiée ». The tour copy instead quotes « Create schedule », which is ui.schedules.schedule_form_dialog.create_schedule — the dialog's own submit button, one step later. The mismatch is in the English source and therefore in every locale; the French faithfully translates the quoted English label. Not recorded by the first audit; carried here as a source issue."
+    },
+    {
+      "id": "SRC-TOUR-2ND-C",
+      "classification": "source structure, not a translator charge",
+      "keys": [
+        "ui.onboarding.tour.pre_command_palette_open_canvas.body.1.6",
+        "ui.onboarding.tour.pre_command_palette_open_canvas.body.1.7"
+      ],
+      "observation": "The palette prefix list renders the comma as a literal <code>,</code> run followed by the copy « pour les paramètres, et », so the joined line reads « , pour les paramètres » with the comma inside a code span. That join is chosen in tour-copy.ts (literal code runs), identical in English; the French fragment padding matches the English byte for byte, so the translation adds no defect."
+    },
+    {
+      "id": "SRC-TOUR-2ND-D",
+      "classification": "source casing nit, mirrored faithfully",
+      "keys": [
+        "ui.onboarding.tour.canvas_feature.title",
+        "ui.onboarding.tour.canvas_open_button.title"
+      ],
+      "observation": "English uses lowercase canvas in the step title (« The canvas: your visual … ») and « Open the canvas » but the capitalised product noun Canvas in body prose; the French mirrors exactly the same casing (title « Le canvas », body « le Canvas », « L’espace de travail Canvas »). Consistency would have to be settled on the English side first."
+    }
+  ],
+  "access_gaps": [
+    "In 5 English keys the display layer masks one content word as [redacted]: canvas_feature.title, canvas_feature.body.1, canvas_files_view.body.1, canvas_open_button.body.1, welcome.list.1.item.3 (and the same token inside two context notes). Tested by constructing the token at runtime: the committed en/context/fr bytes do not contain it, so this is a display-layer mask, not masked source. The sanctioned read_public_copy route refuses this repository (it serves only the core catalogue paths), so the token was not reconstructed. Cross-checked without reconstruction: core i18n/glossary.md line 51 maps exactly that term to fr « espace de travail », which is what all five French values render, so accuracy holds on the glossary evidence."
+  ],
+  "carried_checks": {
+    "keys": "123/123 values read on both sides; identical key sets and order",
+    "placeholders_icu": "0 of 123 English and 0 of 123 French values contain {…}, %s, ${…} or markup; every message is literal-only and the source is parameterless, so CLDR plural categories are genuinely not applicable (verified, not assumed)",
+    "joined_paragraphs": "All 11 command-palette fragments plus the connector keep the English leading/trailing space signature exactly (byte compare on 123 values: 0 mismatches), so the <code> keycap joins from paletteDoorLabel() re-assemble identically; keycaps themselves are literal code runs and correctly untranslated",
+    "typography": "20 colons, 4 semicolons, 1 question mark, 1 exclamation mark all preceded by U+202F; 14 « and 14 » all padded with U+202F; 0 straight apostrophes, 0 straight double quotes, 0 double spaces, 0 plain-space punctuation",
+    "encoding": "UTF-8 without BOM, whole file NFC, no bidi/format controls, no mojibake, LF endings; hash of the audited bytes equals the supplied fr target hash",
+    "rtl": "not applicable (fr is LTR); no direction-sensitive token present",
+    "figures": "both wordless figures (welcome, agent-capabilities) carry their alt keys and both French alts describe structure without starting with « Image de »",
+    "quoted_control_labels": "« Voir les paramètres de l’agent » == ui.agents.dialogs.menu.settings; « Rechercher » == ui.shell.sidebar_navigation.search; « Planifications » == ui.shell.sidebar_navigation.schedules; « Recommandé » == ui.common.models.model_select.recommended; « Automatique » matches the shipped fr rendering « Recommandé : Automatique »; « Hub des agents » == ui.shell.sidebar_navigation.agent_hub; « Nouvelle tâche planifiée » is the real target of the create-schedule step and is NOT what the tour quotes (see SRC-TOUR-2ND-B); « Get » has no catalogue key at all (see SRC-TOUR-2ND-A)",
+    "allowed_english": "Kept-English in the French text, each deliberate: Local Operator, Radient, Radient Pass, Radient Automatic, Canvas, Hub (in « Hub des agents »), GitHub Issues, PDF/PNG/JPG/CSV/HTML/Excel/Word/Markdown/Mermaid, iframe, web, e-mail, chatbots, bots, prompt(s) (glossary row: prompt → prompt for fr), Cmd/Ctrl+K",
+    "width": "heading ratios 0.87x-1.57x of English; the widest is select_provider.title 23→36 chars (« Choisir un fournisseur d’hébergement »), which is the shipped term for that control and fits the one-line heading budget in character terms; no pixel or rendered claim is made because the browser host is unavailable in this session",
+    "register": "vous throughout the product voice; the only tu forms are the three sample prompts in FR-TOUR-2ND-01",
+    "glossary_consistency": "Agent Hub → Hub des agents (6/6 occurrences); Schedules → Planifications; scheduled tasks → tâches planifiées; schedule → planification (style guide row); hosting provider → fournisseur d’hébergement; security agent → réviseur de sécurité (matches ui.agents.settings.security); workspace → espace de travail (glossary row 51); tool → outil; walkthrough → visite; no drift found",
+    "not_verified": "No rendered frame, no native-speaker sign-off, no compiled or runtime check: this is a text audit of the committed bytes, and the browser host is unavailable (no OS launch, no alternate browser, no build per the task contract)"
+  },
+  "notes": [
+    "Second independent pass: findings were derived from the source, context, style guide and renderer code first; the first audit's receipt (59527dfbb84b-fr-r2.json) was opened afterwards only to check dispositions, and its single carried minor FR-TOUR-02 is independently confirmed here as a source defect and re-expressed as SRC-TOUR-2ND-A.",
+    "The first audit's carried register check asserted « no tu/ton/ta/tes/te pronouns »; that wording misses tu imperatives, which is why FR-TOUR-2ND-01 is new in this pass rather than a repeat.",
+    "Namespace-versus-root split, stated plainly: nothing in this namespace needs a blocker or major fix; the three visible defects a French user can actually hit (English Get button, the tour naming a button that is not the one highlighted, the comma rendered as code) are all rooted in the English source or the components, and none of them is fixed by editing the French catalogue.",
+    "Round-1 fixes re-verified on these bytes: « Hub des agents » is used in all 6 places with no « Agent Hub » remainder; navigate_agent_hub.body.1 says « dans la barre latérale »; create_new_agent.body.1 no longer calques the English; canvas_documents_view.body.3/.4 read as reported; palette body.2.1 is vous-register.",
+    "Remediation hint for whoever owns the minor: the three sample prompts are one three-value edit; the nit is optional and should not open another round on its own."
+  ]
+}

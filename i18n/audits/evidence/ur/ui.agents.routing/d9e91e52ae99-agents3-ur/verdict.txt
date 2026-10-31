@@ -1,0 +1,2 @@
+PASS
+ur ui.agents.routing (12 keys, en d7903758 ur 134a3957): 0 BLOCKER, 0 MAJOR, 6 MINOR, 5 NIT - claim, register, glossary and RTL ordering hold; longest ratio 1.058 (librarian), total 0.949, nothing materially longer than English; the minors are two collocations (نام/ٹیگ بنانا, پڑھا جانا), one loan vs house word (یوزر), one house-term slip (کمنٹس), one tangled contrast clause (اس سے الگ کہ…), and one cross-family term divergence (AI-isms).

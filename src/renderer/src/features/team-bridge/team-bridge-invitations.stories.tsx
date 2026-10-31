@@ -100,3 +100,18 @@ export const AnsweredElsewhere: Story = {
 export const ReadOnly: Story = {
 	args: { invitations: [launch], readOnly: true },
 };
+/*
+ * Wake-on-every-message (participation v2): the consent statement one row
+ * shows, and both accepted outcomes, named and unnamed, side by side for the
+ * design round's before/after.
+ */
+export const ConsentV2: Story = { args: { invitations: [launch] } };
+export const Accepted: Story = {
+	args: {
+		invitations: [launch, ops],
+		rowStates: {
+			[launch.key]: { phase: "done", decision: "accept" },
+			[ops.key]: { phase: "done", decision: "accept" },
+		},
+	},
+};

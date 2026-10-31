@@ -654,8 +654,10 @@ export const TeamBridgeApi = {
 	 * can never take it for itself. `accountId` is the owner's account (the hub
 	 * refuses any other with `agent_not_permitted`), and the owner guard rides
 	 * along so a request started under one account cannot land under another.
-	 * The answer is the conversation's post-state; accepting changes only the
-	 * member's state, never its notification register, so it still joins muted.
+	 * The answer is the conversation's post-state; this request names only the
+	 * decision, never a notification level: the hub activates the agent at its
+	 * own default (`all` since wake-on-every-message), and the owner narrows it
+	 * afterwards through `setAgentNotify`.
 	 */
 	async answerAgentInvitation(input: {
 		conversationId: string;
@@ -697,5 +699,31 @@ export const TeamBridgeApi = {
 			notify,
 		});
 		return teamBridgeReadStateSchema.parse(answer);
+	},
+
+	/**
+	 * Set how often the OWNER'S OWN AGENT is woken in one conversation.
+	 *
+	 * Distinct from `setNotify`, which is the reader's own banner register: this
+	 * writes the agent member's level, which the hub reads to decide whether a
+	 * non-mention message wakes the agent at all (`all`), only an @-mention or a
+	 * reply in a thread it follows does (`mention`), or nothing does, not even
+	 * an @-mention (`mute`). The runtime resolves the owner's
+	 * agent endpoint, so the renderer never names one. The answer is the
+	 * conversation's post-state, whose agent row carries the effective level.
+	 */
+	async setAgentNotify(input: {
+		conversationId: string;
+		tenantId: string;
+		accountId: string;
+		notify: TeamBridgeNotify;
+	}): Promise<TeamBridgeConversation> {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.conversations.agent_notify",
+			...(await teamBridgeWriteOwner(input.accountId, input.tenantId)),
+			conversation_id: input.conversationId,
+			notify: input.notify,
+		});
+		return teamBridgeConversationSchema.parse(answer);
 	},
 };

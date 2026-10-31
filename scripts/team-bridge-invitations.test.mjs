@@ -59,8 +59,9 @@ const bundle = await build({
 			export { TeamBridgePageView } from "./src/renderer/src/features/team-bridge/team-bridge-page";
 			export * from "./src/renderer/src/features/team-bridge/team-bridge-invitations";
 			export * from "./src/renderer/src/features/team-bridge/team-bridge-invitations-model";
-			export { invitationAnswerMutationOptions, teamBridgeKeys } from "./src/renderer/src/features/team-bridge/use-team-bridge";
+			export { agentNotifyMutationOptions, invitationAnswerMutationOptions, teamBridgeKeys } from "./src/renderer/src/features/team-bridge/use-team-bridge";
 			export { TeamBridgeApi } from "./src/renderer/src/shared/api/local-operator/team-bridge-api";
+			export { ownAgentMenuState } from "./src/renderer/src/features/team-bridge/team-bridge-model";
 		`,
 		resolveDir: ROOT,
 		sourcefile: "team-bridge-invitations.mjs",
@@ -141,9 +142,12 @@ const { QueryClient } = await import("@tanstack/react-query");
 const ui = await import(modulePath.href);
 
 const SELF = "acct_self";
-/* The v1 participation statement, verbatim. Changing it needs a new version. */
+/* The v1 participation statement, verbatim: the record earlier consents agreed to. */
 const CONSENT_V1 =
 	"Accepting lets your agent read and post in this conversation from now on. It is woken only when someone @-mentions it.";
+/* The v2 statement (wake-on-every-message), verbatim. Changing it needs a new version. */
+const CONSENT_V2 =
+	"Accepting lets your agent read and post in this conversation from now on. It sees every message and decides whether to reply; an @-mention means it should reply. You can change how often it wakes, or mute it.";
 const human = (accountId, label, patch = {}) => ({
 	account_id: accountId,
 	kind: "human",
@@ -333,11 +337,14 @@ test("the view states the consent, the row, and each outcome honestly", () => {
 		empty.includes("No invitations are waiting for your agent."),
 		true,
 	);
-	// The consent statement renders, and points at no control the app lacks.
-	assert.equal(empty.includes(CONSENT_V1), true);
-	assert.equal(CONSENT_V1.includes("All"), false);
-	assert.equal(CONSENT_V1.includes("muted"), false);
-	assert.equal(CONSENT_V1.includes("read and post"), true);
+	// The v2 consent statement renders (v1 no longer does), and points only at
+	// controls the app has: the conversation ⋯ menu's "Wake your agent for" levels.
+	assert.equal(empty.includes(CONSENT_V2), true);
+	assert.equal(empty.includes(CONSENT_V1), false);
+	assert.equal(CONSENT_V2.includes("All"), false);
+	assert.equal(CONSENT_V2.includes("muted"), false);
+	assert.equal(CONSENT_V2.includes("read and post"), true);
+	assert.equal(CONSENT_V2.includes("sees every message"), true);
 
 	const one = renderView({ invitations: [invitation()] });
 	assert.equal(one.includes("launch-room"), true);
@@ -374,7 +381,7 @@ test("the view states the consent, the row, and each outcome honestly", () => {
 	});
 	assert.equal(
 		done.includes(
-			"Accepted. Robo Damian is woken only when someone @-mentions it.",
+			"Accepted. Robo Damian now sees every message here and replies when it’s relevant or @-mentioned. Change this from the conversation’s ⋯ menu.",
 		),
 		true,
 	);
@@ -401,7 +408,7 @@ test("the view states the consent, the row, and each outcome honestly", () => {
 	});
 	assert.equal(
 		unnamedAccepted.includes(
-			"Accepted. Your agent is woken only when someone @-mentions it.",
+			"Accepted. Your agent now sees every message here and replies when it’s relevant or @-mentioned. Change this from the conversation’s ⋯ menu.",
 		),
 		true,
 	);
@@ -525,20 +532,27 @@ test("the consent text is pinned to the participation version it is consent to",
 	/*
 	 * R1. Editing this English text without minting a new participation
 	 * version (and key) is exactly what this test must catch: the hub records
-	 * an accept as consent to `bridge_agent_participation_v1`.
+	 * an accept as consent to the version it names, now
+	 * `bridge_agent_participation_v2` (wake-on-every-message). v1's text stays
+	 * in the catalogue, unchanged, as the record of what earlier accepts agreed
+	 * to: a later edit to it would rewrite history, so it is pinned too.
 	 */
 	assert.equal(
 		ui.TEAM_BRIDGE_AGENT_PARTICIPATION_VERSION,
-		"bridge_agent_participation_v1",
+		"bridge_agent_participation_v2",
 	);
 	assert.equal(
 		ui.TEAM_BRIDGE_AGENT_PARTICIPATION_CONSENT_KEY,
-		"ui.teamBridge.invitations.consent.bridge_agent_participation_v1",
+		"ui.teamBridge.invitations.consent.bridge_agent_participation_v2",
 	);
 	const en = JSON.parse(
 		readFileSync(`${ROOT}/src/i18n/catalogues/en/ui.teamBridge.json`, "utf8"),
 	);
-	assert.equal(en[ui.TEAM_BRIDGE_AGENT_PARTICIPATION_CONSENT_KEY], CONSENT_V1);
+	assert.equal(en[ui.TEAM_BRIDGE_AGENT_PARTICIPATION_CONSENT_KEY], CONSENT_V2);
+	assert.equal(
+		en["ui.teamBridge.invitations.consent.bridge_agent_participation_v1"],
+		CONSENT_V1,
+	);
 	assert.equal("ui.teamBridge.invitations.consent" in en, false);
 });
 
@@ -682,7 +696,7 @@ test("the answer is sent as the owner, patched optimistically, and rolled back e
 	assert.equal(consent.tenant_id, "tnt_1");
 	assert.equal(consent.conversation_id, "bcv_1");
 	assert.equal(consent.decision, "accept");
-	assert.equal(consent.consent_version, "bridge_agent_participation_v1");
+	assert.equal(consent.consent_version, "bridge_agent_participation_v2");
 	assert.equal("notify" in consent, false);
 
 	const declined = ui.withAgentInvitationAnswer(
@@ -724,7 +738,7 @@ test("a runtime without the owner guard answers outdated, through the real trans
 		accountId: SELF,
 		tenantId: "tnt_1",
 		decision: "accept",
-		consentVersion: "bridge_agent_participation_v1",
+		consentVersion: "bridge_agent_participation_v2",
 	}).catch((caught) => caught);
 	assert.equal(error instanceof Error, true);
 	assert.equal(ui.invitationFailureKind(error), "runtime_outdated");
@@ -793,4 +807,322 @@ test("two interleaved refusals both roll back to invited (R3)", async () => {
 	assert.equal(stateOf("bcv_a"), "active");
 	assert.equal(stateOf("bcv_b"), "invited");
 	client.clear();
+});
+
+test("the agent's wake level is sent as the owner to agent-notify, patched optimistically, and rolled back", async () => {
+	/*
+	 * Wake-on-every-message: the owner narrows their OWN agent's level from the
+	 * conversation menu. The op names the conversation and level, never an
+	 * endpoint (the runtime resolves it), and carries the owner receipt.
+	 */
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	const row = conversation({
+		members: [
+			human("acct_ada", "Ada", { role: "owner" }),
+			human(SELF, "Damian"),
+			agent(SELF, "Robo Damian", "active", { notify: "all" }),
+		],
+	});
+	const page = { conversations: [row], has_more: false };
+	const orgKey = ui.teamBridgeKeys.conversations("tnt_1", SELF);
+	client.setQueryData(["radient-user", "user"], { account: { id: SELF } });
+	client.setQueryData(ui.teamBridgeKeys.statusFor(SELF), {
+		account_id: SELF,
+		state: "ready",
+		local: { enabled: true },
+		read_only: false,
+	});
+	client.setQueryData(orgKey, structuredClone(page));
+	const requests = [];
+	globalThis.window = {
+		api: {
+			desktop: {
+				request: async (request) => {
+					requests.push(request);
+					if (request.op === "capabilities")
+						return {
+							ok: true,
+							status: 200,
+							body: {
+								result: {
+									features: { team_bridge_conversation_owner_guard: 1 },
+								},
+							},
+						};
+					return { ok: true, status: 200, body: { result: row } };
+				},
+			},
+		},
+	};
+	const options = ui.agentNotifyMutationOptions(client, {
+		conversationId: "bcv_1",
+		tenantId: "tnt_1",
+	});
+	const variables = {
+		conversationId: "bcv_1",
+		tenantId: "tnt_1",
+		notify: "mention",
+	};
+	const context = await options.onMutate(variables);
+	const selfAgent = () =>
+		client
+			.getQueryData(orgKey)
+			.conversations[0].members.find(
+				(member) => member.kind === "agent" && member.account_id === SELF,
+			);
+	assert.equal(selfAgent().notify, "mention");
+	// The reader's own banner level is a different row and does not move.
+	assert.equal(client.getQueryData(orgKey).conversations[0].muted, false);
+
+	await options.mutationFn(variables);
+	const write = requests.find(
+		(request) => request.op === "team_bridge.conversations.agent_notify",
+	);
+	assert.deepEqual(write, {
+		op: "team_bridge.conversations.agent_notify",
+		expected_account_id: SELF,
+		tenant_id: "tnt_1",
+		conversation_id: "bcv_1",
+		notify: "mention",
+	});
+
+	options.onError(new Error("refused"), variables, context);
+	assert.deepEqual(client.getQueryData(orgKey), page);
+	client.clear();
+	globalThis.window = undefined;
+});
+
+/*
+ * R1-1: THE CHECKED ROW MUST SURVIVE A SETTLED WRITE ON HUB-SHAPED DATA.
+ *
+ * The hub projects `notify` onto the caller's own agent row; the write's answer
+ * carries it as well. Seeds below are what the hub serves: the list row and the
+ * answer differ only in whether that field is present, so the test proves the
+ * cache takes the SERVED value from the answer (not the optimistic guess), keeps
+ * the reader's own banner register, and checks nothing when the server names no
+ * level.
+ */
+test("the agent-notify answer's served level is folded into the cache; no served level checks nothing", async () => {
+	const listRow = (agentPatch) =>
+		conversation({
+			notify: "all",
+			muted: false,
+			members: [
+				human(SELF, "Damian"),
+				agent(SELF, "Robo Damian", "active", agentPatch),
+			],
+		});
+	const run = async ({ listed, answered, chosen }) => {
+		const client = new QueryClient({
+			defaultOptions: {
+				queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
+			},
+		});
+		const orgKey = ui.teamBridgeKeys.conversations("tnt_1", SELF);
+		client.setQueryData(["radient-user", "user"], { account: { id: SELF } });
+		client.setQueryData(ui.teamBridgeKeys.statusFor(SELF), {
+			account_id: SELF,
+			state: "ready",
+			local: { enabled: true },
+			read_only: false,
+		});
+		client.setQueryData(orgKey, {
+			conversations: [listRow(listed)],
+			has_more: false,
+		});
+		// The settle-time list re-read is a separate claim; the fold is under test.
+		client.invalidateQueries = async () => {};
+		const options = ui.agentNotifyMutationOptions(client, {
+			conversationId: "bcv_1",
+			tenantId: "tnt_1",
+		});
+		const variables = {
+			conversationId: "bcv_1",
+			tenantId: "tnt_1",
+			notify: chosen,
+		};
+		const context = await options.onMutate(variables);
+		// The answer is the AGENT's view: its own `notify`/`muted` are not the reader's.
+		const answer = {
+			...listRow(answered),
+			notify: "mute",
+			muted: true,
+		};
+		options.onSuccess(answer, variables, context);
+		await options.onSettled(answer, null, variables, context);
+		const cached = client.getQueryData(orgKey).conversations[0];
+		client.clear();
+		return cached;
+	};
+	// Served level in the answer: it lands, whatever the optimistic guess was.
+	const served = await run({
+		listed: { notify: "all" },
+		answered: { notify: "mention" },
+		chosen: "mute",
+	});
+	assert.deepEqual(ui.ownAgentMenuState(served, SELF), { notify: "mention" });
+	assert.equal(served.notify, "all");
+	assert.equal(served.muted, false);
+	// A hub row with no level on the agent: menu checks nothing before the write...
+	assert.deepEqual(ui.ownAgentMenuState(listRow({}), SELF), { notify: null });
+	// ...and an answer with no level leaves the optimistic pick, never invents one.
+	const unserved = await run({ listed: {}, answered: {}, chosen: "mention" });
+	assert.deepEqual(ui.ownAgentMenuState(unserved, SELF), { notify: "mention" });
+});
+
+/*
+ * R1-4: writes to ONE conversation are serialised by a scope keyed on owner,
+ * tenant and conversation; another conversation gets another queue, and a
+ * write naming a conversation other than the one the queue serves is refused
+ * before any cache patch.
+ */
+test("agent-notify writes keep wire order per conversation; onMutate is NOT serialised", async () => {
+	const client = new QueryClient();
+	client.setQueryData(["radient-user", "user"], { account: { id: SELF } });
+	const a = ui.agentNotifyMutationOptions(client, {
+		conversationId: "bcv_1",
+		tenantId: "tnt_1",
+	});
+	const again = ui.agentNotifyMutationOptions(client, {
+		conversationId: "bcv_1",
+		tenantId: "tnt_1",
+	});
+	const b = ui.agentNotifyMutationOptions(client, {
+		conversationId: "bcv_2",
+		tenantId: "tnt_1",
+	});
+	assert.equal(typeof a.scope?.id, "string");
+	assert.equal(a.scope.id, again.scope.id);
+	assert.notEqual(a.scope.id, b.scope.id);
+	assert.equal(a.scope.id.includes(SELF), true);
+	await assert.rejects(
+		a.onMutate({ conversationId: "bcv_2", tenantId: "tnt_1", notify: "mute" }),
+		/target changed/,
+	);
+	/* The query client queues the WIRE calls: B's mutationFn waits for A to
+	   settle. It does not queue onMutate (R2-1): B's optimistic patch runs while A
+	   is still in flight, which is why the rollback is per row, not per page.
+	   The fakes carry an onMutate so this pins TanStack's real ordering. */
+	let release;
+	const order = [];
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const fake = (name, wait) => ({
+		scope: a.scope,
+		onMutate: async () => {
+			order.push(`${name}:onMutate`);
+		},
+		mutationFn: async () => {
+			order.push(`${name}:start`);
+			await wait;
+			order.push(`${name}:end`);
+		},
+	});
+	const cache = client.getMutationCache();
+	const first = cache.build(client, fake("A", gate)).execute();
+	const second = cache.build(client, fake("B", Promise.resolve())).execute();
+	await new Promise((resolve) => setTimeout(resolve, 10));
+	assert.deepEqual(order, ["A:onMutate", "B:onMutate", "A:start"]);
+	release();
+	await Promise.all([first, second]);
+	assert.deepEqual(order, [
+		"A:onMutate",
+		"B:onMutate",
+		"A:start",
+		"A:end",
+		"B:start",
+		"B:end",
+	]);
+	client.clear();
+});
+
+/*
+ * R2-1: A FAILING EARLIER PICK NEVER ERASES A LATER ONE. The real options
+ * interleave as TanStack runs them (A.onMutate, B.onMutate, A fails), and the
+ * rollback must leave B's optimistic value; a failure with no later pick
+ * restores the served level, or removes the field when there was none.
+ */
+test("an agent-notify rollback undoes only its own value", async () => {
+	const seed = (agentPatch) => {
+		const client = new QueryClient({
+			defaultOptions: {
+				queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
+			},
+		});
+		client.setQueryData(["radient-user", "user"], { account: { id: SELF } });
+		client.setQueryData(ui.teamBridgeKeys.statusFor(SELF), {
+			account_id: SELF,
+			state: "ready",
+			local: { enabled: true },
+			read_only: false,
+		});
+		const keys = [
+			ui.teamBridgeKeys.conversations("tnt_1", SELF),
+			ui.teamBridgeKeys.conversations("all", SELF),
+		];
+		for (const key of keys)
+			client.setQueryData(key, {
+				conversations: [
+					conversation({
+						notify: "all",
+						muted: false,
+						members: [
+							human(SELF, "Damian"),
+							agent(SELF, "Robo Damian", "active", agentPatch),
+						],
+					}),
+				],
+				has_more: false,
+			});
+		const level = () =>
+			keys.map(
+				(key) =>
+					ui.ownAgentMenuState(client.getQueryData(key).conversations[0], SELF)
+						.notify,
+			);
+		const options = ui.agentNotifyMutationOptions(client, {
+			conversationId: "bcv_1",
+			tenantId: "tnt_1",
+		});
+		return { client, options, level };
+	};
+	const pick = (notify) => ({
+		conversationId: "bcv_1",
+		tenantId: "tnt_1",
+		notify,
+	});
+
+	// A then B patch; A fails: B's value stays on every cached page.
+	{
+		const { client, options, level } = seed({ notify: "all" });
+		const a = await options.onMutate(pick("mention"));
+		const b = await options.onMutate(pick("mute"));
+		assert.deepEqual(level(), ["mute", "mute"]);
+		options.onError(new Error("refused"), pick("mention"), a);
+		assert.deepEqual(level(), ["mute", "mute"]);
+		// B fails too: its own rollback restores what B replaced.
+		options.onError(new Error("refused"), pick("mute"), b);
+		assert.deepEqual(level(), ["mention", "mention"]);
+		client.clear();
+	}
+	// A lone failure restores the served level.
+	{
+		const { client, options, level } = seed({ notify: "all" });
+		const a = await options.onMutate(pick("mute"));
+		options.onError(new Error("refused"), pick("mute"), a);
+		assert.deepEqual(level(), ["all", "all"]);
+		client.clear();
+	}
+	// No served level before: the rollback removes the guess, checking nothing.
+	{
+		const { client, options, level } = seed({});
+		const a = await options.onMutate(pick("mention"));
+		assert.deepEqual(level(), ["mention", "mention"]);
+		options.onError(new Error("refused"), pick("mention"), a);
+		assert.deepEqual(level(), [null, null]);
+		client.clear();
+	}
 });

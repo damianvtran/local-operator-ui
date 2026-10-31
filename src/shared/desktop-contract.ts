@@ -3786,6 +3786,27 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			notify: z.enum(["all", "mention", "mute"]),
 		})
 		.strict(),
+	/*
+	 * The OWNER'S OWN AGENT'S wake level in one conversation — a different
+	 * member row from the reader's `notify` above. The hub wakes an agent member
+	 * on every message when its level is `all` (the default since the
+	 * wake-on-every-message change), on @-mentions of it plus replies in
+	 * threads it follows at `mention`, and never — @-mentions included — at
+	 * `mute`. Only the runtime knows which endpoint is the owner's agent, so
+	 * the renderer names the conversation and the level, never an endpoint id;
+	 * local-operator resolves the endpoint and calls the hub's endpoint-addressed
+	 * notify route. Owner-guarded like every Team Bridge write: a level chosen
+	 * under one account must not land under another.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.agent_notify"),
+			expected_account_id: id.optional(),
+			conversation_id: id,
+			tenant_id: id.optional(),
+			notify: z.enum(["all", "mention", "mute"]),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("team_bridge.conversations.members.add"),
@@ -9600,6 +9621,20 @@ export function desktopEndpoint(request: DesktopRequest): {
 				   this write cannot advance the cursor. */
 				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/read`,
 				method: "POST",
+				body: {
+					...(request.expected_account_id
+						? { expected_account_id: request.expected_account_id }
+						: {}),
+					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
+					notify: request.notify,
+				},
+			};
+		case "team_bridge.conversations.agent_notify":
+			return {
+				/* local-operator's own route: it maps the conversation to the
+				   owner's agent endpoint, so no endpoint id crosses this boundary. */
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/agent-notify`,
+				method: "PUT",
 				body: {
 					...(request.expected_account_id
 						? { expected_account_id: request.expected_account_id }

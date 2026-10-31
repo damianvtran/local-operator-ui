@@ -24,6 +24,8 @@
 import enUiAgentMessages from "./catalogues/en/ui.agentMessages.json";
 import enUiAgentMessagesSettings from "./catalogues/en/ui.agentMessages.settings.json";
 import enUiAgentsConfig from "./catalogues/en/ui.agents.config.json";
+import enUiAgentsDescriptions from "./catalogues/en/ui.agents.descriptions.json";
+import enUiAgentsDetailInstall from "./catalogues/en/ui.agents.detail.install.json";
 import enUiAgentsDetail from "./catalogues/en/ui.agents.detail.json";
 import enUiAgentsDialogs from "./catalogues/en/ui.agents.dialogs.json";
 import enUiAgents from "./catalogues/en/ui.agents.json";
@@ -32,6 +34,7 @@ import enUiAgentsNavigation from "./catalogues/en/ui.agents.navigation.json";
 import enUiAgentsPages from "./catalogues/en/ui.agents.pages.json";
 import enUiAgentsPublication from "./catalogues/en/ui.agents.publication.json";
 import enUiAgentsRefusals from "./catalogues/en/ui.agents.refusals.json";
+import enUiAgentsRouting from "./catalogues/en/ui.agents.routing.json";
 import enUiAgentsSettings from "./catalogues/en/ui.agents.settings.json";
 import enUiAgentsSkills from "./catalogues/en/ui.agents.skills.json";
 import enUiAgentsStarters from "./catalogues/en/ui.agents.starters.json";
@@ -104,6 +107,7 @@ import enUiNotificationsBulkUpdates from "./catalogues/en/ui.notifications.bulk_
 import enUiNotifications from "./catalogues/en/ui.notifications.json";
 import enUiNotificationsOperation from "./catalogues/en/ui.notifications.operation.json";
 import enUiOnboarding from "./catalogues/en/ui.onboarding.json";
+import enUiOnboardingTour from "./catalogues/en/ui.onboarding.tour.json";
 import enUiOwnerAudit from "./catalogues/en/ui.ownerAudit.json";
 import enUiPresence from "./catalogues/en/ui.presence.json";
 import enUiProjects from "./catalogues/en/ui.projects.json";
@@ -134,6 +138,8 @@ import enUiUpdatesPanel from "./catalogues/en/ui.updates.panel.json";
 import esUiAgentMessages from "./catalogues/es/ui.agentMessages.json";
 import esUiAgentMessagesSettings from "./catalogues/es/ui.agentMessages.settings.json";
 import esUiAgentsConfig from "./catalogues/es/ui.agents.config.json";
+import esUiAgentsDescriptions from "./catalogues/es/ui.agents.descriptions.json";
+import esUiAgentsDetailInstall from "./catalogues/es/ui.agents.detail.install.json";
 import esUiAgentsDetail from "./catalogues/es/ui.agents.detail.json";
 import esUiAgentsDialogs from "./catalogues/es/ui.agents.dialogs.json";
 import esUiAgents from "./catalogues/es/ui.agents.json";
@@ -142,6 +148,7 @@ import esUiAgentsNavigation from "./catalogues/es/ui.agents.navigation.json";
 import esUiAgentsPages from "./catalogues/es/ui.agents.pages.json";
 import esUiAgentsPublication from "./catalogues/es/ui.agents.publication.json";
 import esUiAgentsRefusals from "./catalogues/es/ui.agents.refusals.json";
+import esUiAgentsRouting from "./catalogues/es/ui.agents.routing.json";
 import esUiAgentsSettings from "./catalogues/es/ui.agents.settings.json";
 import esUiAgentsSkills from "./catalogues/es/ui.agents.skills.json";
 import esUiAgentsStarters from "./catalogues/es/ui.agents.starters.json";
@@ -214,6 +221,7 @@ import esUiNotificationsBulkUpdates from "./catalogues/es/ui.notifications.bulk_
 import esUiNotifications from "./catalogues/es/ui.notifications.json";
 import esUiNotificationsOperation from "./catalogues/es/ui.notifications.operation.json";
 import esUiOnboarding from "./catalogues/es/ui.onboarding.json";
+import esUiOnboardingTour from "./catalogues/es/ui.onboarding.tour.json";
 import esUiOwnerAudit from "./catalogues/es/ui.ownerAudit.json";
 import esUiPresence from "./catalogues/es/ui.presence.json";
 import esUiProjects from "./catalogues/es/ui.projects.json";
@@ -244,6 +252,8 @@ import esUiUpdatesPanel from "./catalogues/es/ui.updates.panel.json";
 import frUiAgentMessages from "./catalogues/fr/ui.agentMessages.json";
 import frUiAgentMessagesSettings from "./catalogues/fr/ui.agentMessages.settings.json";
 import frUiAgentsConfig from "./catalogues/fr/ui.agents.config.json";
+import frUiAgentsDescriptions from "./catalogues/fr/ui.agents.descriptions.json";
+import frUiAgentsDetailInstall from "./catalogues/fr/ui.agents.detail.install.json";
 import frUiAgentsDetail from "./catalogues/fr/ui.agents.detail.json";
 import frUiAgentsDialogs from "./catalogues/fr/ui.agents.dialogs.json";
 import frUiAgents from "./catalogues/fr/ui.agents.json";
@@ -252,6 +262,7 @@ import frUiAgentsNavigation from "./catalogues/fr/ui.agents.navigation.json";
 import frUiAgentsPages from "./catalogues/fr/ui.agents.pages.json";
 import frUiAgentsPublication from "./catalogues/fr/ui.agents.publication.json";
 import frUiAgentsRefusals from "./catalogues/fr/ui.agents.refusals.json";
+import frUiAgentsRouting from "./catalogues/fr/ui.agents.routing.json";
 import frUiAgentsSettings from "./catalogues/fr/ui.agents.settings.json";
 import frUiAgentsSkills from "./catalogues/fr/ui.agents.skills.json";
 import frUiAgentsStarters from "./catalogues/fr/ui.agents.starters.json";
@@ -324,6 +335,7 @@ import frUiNotificationsBulkUpdates from "./catalogues/fr/ui.notifications.bulk_
 import frUiNotifications from "./catalogues/fr/ui.notifications.json";
 import frUiNotificationsOperation from "./catalogues/fr/ui.notifications.operation.json";
 import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
+import frUiOnboardingTour from "./catalogues/fr/ui.onboarding.tour.json";
 import frUiOwnerAudit from "./catalogues/fr/ui.ownerAudit.json";
 import frUiPresence from "./catalogues/fr/ui.presence.json";
 import frUiProjects from "./catalogues/fr/ui.projects.json";
@@ -354,6 +366,8 @@ import frUiUpdatesPanel from "./catalogues/fr/ui.updates.panel.json";
 import hiUiAgentMessages from "./catalogues/hi/ui.agentMessages.json";
 import hiUiAgentMessagesSettings from "./catalogues/hi/ui.agentMessages.settings.json";
 import hiUiAgentsConfig from "./catalogues/hi/ui.agents.config.json";
+import hiUiAgentsDescriptions from "./catalogues/hi/ui.agents.descriptions.json";
+import hiUiAgentsDetailInstall from "./catalogues/hi/ui.agents.detail.install.json";
 import hiUiAgentsDetail from "./catalogues/hi/ui.agents.detail.json";
 import hiUiAgentsDialogs from "./catalogues/hi/ui.agents.dialogs.json";
 import hiUiAgents from "./catalogues/hi/ui.agents.json";
@@ -362,6 +376,7 @@ import hiUiAgentsNavigation from "./catalogues/hi/ui.agents.navigation.json";
 import hiUiAgentsPages from "./catalogues/hi/ui.agents.pages.json";
 import hiUiAgentsPublication from "./catalogues/hi/ui.agents.publication.json";
 import hiUiAgentsRefusals from "./catalogues/hi/ui.agents.refusals.json";
+import hiUiAgentsRouting from "./catalogues/hi/ui.agents.routing.json";
 import hiUiAgentsSettings from "./catalogues/hi/ui.agents.settings.json";
 import hiUiAgentsSkills from "./catalogues/hi/ui.agents.skills.json";
 import hiUiAgentsStarters from "./catalogues/hi/ui.agents.starters.json";
@@ -434,6 +449,7 @@ import hiUiNotificationsBulkUpdates from "./catalogues/hi/ui.notifications.bulk_
 import hiUiNotifications from "./catalogues/hi/ui.notifications.json";
 import hiUiNotificationsOperation from "./catalogues/hi/ui.notifications.operation.json";
 import hiUiOnboarding from "./catalogues/hi/ui.onboarding.json";
+import hiUiOnboardingTour from "./catalogues/hi/ui.onboarding.tour.json";
 import hiUiOwnerAudit from "./catalogues/hi/ui.ownerAudit.json";
 import hiUiPresence from "./catalogues/hi/ui.presence.json";
 import hiUiProjects from "./catalogues/hi/ui.projects.json";
@@ -464,6 +480,8 @@ import hiUiUpdatesPanel from "./catalogues/hi/ui.updates.panel.json";
 import ruUiAgentMessages from "./catalogues/ru/ui.agentMessages.json";
 import ruUiAgentMessagesSettings from "./catalogues/ru/ui.agentMessages.settings.json";
 import ruUiAgentsConfig from "./catalogues/ru/ui.agents.config.json";
+import ruUiAgentsDescriptions from "./catalogues/ru/ui.agents.descriptions.json";
+import ruUiAgentsDetailInstall from "./catalogues/ru/ui.agents.detail.install.json";
 import ruUiAgentsDetail from "./catalogues/ru/ui.agents.detail.json";
 import ruUiAgentsDialogs from "./catalogues/ru/ui.agents.dialogs.json";
 import ruUiAgents from "./catalogues/ru/ui.agents.json";
@@ -472,6 +490,7 @@ import ruUiAgentsNavigation from "./catalogues/ru/ui.agents.navigation.json";
 import ruUiAgentsPages from "./catalogues/ru/ui.agents.pages.json";
 import ruUiAgentsPublication from "./catalogues/ru/ui.agents.publication.json";
 import ruUiAgentsRefusals from "./catalogues/ru/ui.agents.refusals.json";
+import ruUiAgentsRouting from "./catalogues/ru/ui.agents.routing.json";
 import ruUiAgentsSettings from "./catalogues/ru/ui.agents.settings.json";
 import ruUiAgentsSkills from "./catalogues/ru/ui.agents.skills.json";
 import ruUiAgentsStarters from "./catalogues/ru/ui.agents.starters.json";
@@ -544,6 +563,7 @@ import ruUiNotificationsBulkUpdates from "./catalogues/ru/ui.notifications.bulk_
 import ruUiNotifications from "./catalogues/ru/ui.notifications.json";
 import ruUiNotificationsOperation from "./catalogues/ru/ui.notifications.operation.json";
 import ruUiOnboarding from "./catalogues/ru/ui.onboarding.json";
+import ruUiOnboardingTour from "./catalogues/ru/ui.onboarding.tour.json";
 import ruUiOwnerAudit from "./catalogues/ru/ui.ownerAudit.json";
 import ruUiPresence from "./catalogues/ru/ui.presence.json";
 import ruUiProjects from "./catalogues/ru/ui.projects.json";
@@ -574,6 +594,8 @@ import ruUiUpdatesPanel from "./catalogues/ru/ui.updates.panel.json";
 import urUiAgentMessages from "./catalogues/ur/ui.agentMessages.json";
 import urUiAgentMessagesSettings from "./catalogues/ur/ui.agentMessages.settings.json";
 import urUiAgentsConfig from "./catalogues/ur/ui.agents.config.json";
+import urUiAgentsDescriptions from "./catalogues/ur/ui.agents.descriptions.json";
+import urUiAgentsDetailInstall from "./catalogues/ur/ui.agents.detail.install.json";
 import urUiAgentsDetail from "./catalogues/ur/ui.agents.detail.json";
 import urUiAgentsDialogs from "./catalogues/ur/ui.agents.dialogs.json";
 import urUiAgents from "./catalogues/ur/ui.agents.json";
@@ -582,6 +604,7 @@ import urUiAgentsNavigation from "./catalogues/ur/ui.agents.navigation.json";
 import urUiAgentsPages from "./catalogues/ur/ui.agents.pages.json";
 import urUiAgentsPublication from "./catalogues/ur/ui.agents.publication.json";
 import urUiAgentsRefusals from "./catalogues/ur/ui.agents.refusals.json";
+import urUiAgentsRouting from "./catalogues/ur/ui.agents.routing.json";
 import urUiAgentsSettings from "./catalogues/ur/ui.agents.settings.json";
 import urUiAgentsSkills from "./catalogues/ur/ui.agents.skills.json";
 import urUiAgentsStarters from "./catalogues/ur/ui.agents.starters.json";
@@ -654,6 +677,7 @@ import urUiNotificationsBulkUpdates from "./catalogues/ur/ui.notifications.bulk_
 import urUiNotifications from "./catalogues/ur/ui.notifications.json";
 import urUiNotificationsOperation from "./catalogues/ur/ui.notifications.operation.json";
 import urUiOnboarding from "./catalogues/ur/ui.onboarding.json";
+import urUiOnboardingTour from "./catalogues/ur/ui.onboarding.tour.json";
 import urUiOwnerAudit from "./catalogues/ur/ui.ownerAudit.json";
 import urUiPresence from "./catalogues/ur/ui.presence.json";
 import urUiProjects from "./catalogues/ur/ui.projects.json";
@@ -684,6 +708,8 @@ import urUiUpdatesPanel from "./catalogues/ur/ui.updates.panel.json";
 import viUiAgentMessages from "./catalogues/vi/ui.agentMessages.json";
 import viUiAgentMessagesSettings from "./catalogues/vi/ui.agentMessages.settings.json";
 import viUiAgentsConfig from "./catalogues/vi/ui.agents.config.json";
+import viUiAgentsDescriptions from "./catalogues/vi/ui.agents.descriptions.json";
+import viUiAgentsDetailInstall from "./catalogues/vi/ui.agents.detail.install.json";
 import viUiAgentsDetail from "./catalogues/vi/ui.agents.detail.json";
 import viUiAgentsDialogs from "./catalogues/vi/ui.agents.dialogs.json";
 import viUiAgents from "./catalogues/vi/ui.agents.json";
@@ -692,6 +718,7 @@ import viUiAgentsNavigation from "./catalogues/vi/ui.agents.navigation.json";
 import viUiAgentsPages from "./catalogues/vi/ui.agents.pages.json";
 import viUiAgentsPublication from "./catalogues/vi/ui.agents.publication.json";
 import viUiAgentsRefusals from "./catalogues/vi/ui.agents.refusals.json";
+import viUiAgentsRouting from "./catalogues/vi/ui.agents.routing.json";
 import viUiAgentsSettings from "./catalogues/vi/ui.agents.settings.json";
 import viUiAgentsSkills from "./catalogues/vi/ui.agents.skills.json";
 import viUiAgentsStarters from "./catalogues/vi/ui.agents.starters.json";
@@ -764,6 +791,7 @@ import viUiNotificationsBulkUpdates from "./catalogues/vi/ui.notifications.bulk_
 import viUiNotifications from "./catalogues/vi/ui.notifications.json";
 import viUiNotificationsOperation from "./catalogues/vi/ui.notifications.operation.json";
 import viUiOnboarding from "./catalogues/vi/ui.onboarding.json";
+import viUiOnboardingTour from "./catalogues/vi/ui.onboarding.tour.json";
 import viUiOwnerAudit from "./catalogues/vi/ui.ownerAudit.json";
 import viUiPresence from "./catalogues/vi/ui.presence.json";
 import viUiProjects from "./catalogues/vi/ui.projects.json";
@@ -794,6 +822,8 @@ import viUiUpdatesPanel from "./catalogues/vi/ui.updates.panel.json";
 import zhCNUiAgentMessages from "./catalogues/zh-CN/ui.agentMessages.json";
 import zhCNUiAgentMessagesSettings from "./catalogues/zh-CN/ui.agentMessages.settings.json";
 import zhCNUiAgentsConfig from "./catalogues/zh-CN/ui.agents.config.json";
+import zhCNUiAgentsDescriptions from "./catalogues/zh-CN/ui.agents.descriptions.json";
+import zhCNUiAgentsDetailInstall from "./catalogues/zh-CN/ui.agents.detail.install.json";
 import zhCNUiAgentsDetail from "./catalogues/zh-CN/ui.agents.detail.json";
 import zhCNUiAgentsDialogs from "./catalogues/zh-CN/ui.agents.dialogs.json";
 import zhCNUiAgents from "./catalogues/zh-CN/ui.agents.json";
@@ -802,6 +832,7 @@ import zhCNUiAgentsNavigation from "./catalogues/zh-CN/ui.agents.navigation.json
 import zhCNUiAgentsPages from "./catalogues/zh-CN/ui.agents.pages.json";
 import zhCNUiAgentsPublication from "./catalogues/zh-CN/ui.agents.publication.json";
 import zhCNUiAgentsRefusals from "./catalogues/zh-CN/ui.agents.refusals.json";
+import zhCNUiAgentsRouting from "./catalogues/zh-CN/ui.agents.routing.json";
 import zhCNUiAgentsSettings from "./catalogues/zh-CN/ui.agents.settings.json";
 import zhCNUiAgentsSkills from "./catalogues/zh-CN/ui.agents.skills.json";
 import zhCNUiAgentsStarters from "./catalogues/zh-CN/ui.agents.starters.json";
@@ -874,6 +905,7 @@ import zhCNUiNotificationsBulkUpdates from "./catalogues/zh-CN/ui.notifications.
 import zhCNUiNotifications from "./catalogues/zh-CN/ui.notifications.json";
 import zhCNUiNotificationsOperation from "./catalogues/zh-CN/ui.notifications.operation.json";
 import zhCNUiOnboarding from "./catalogues/zh-CN/ui.onboarding.json";
+import zhCNUiOnboardingTour from "./catalogues/zh-CN/ui.onboarding.tour.json";
 import zhCNUiOwnerAudit from "./catalogues/zh-CN/ui.ownerAudit.json";
 import zhCNUiPresence from "./catalogues/zh-CN/ui.presence.json";
 import zhCNUiProjects from "./catalogues/zh-CN/ui.projects.json";
@@ -907,6 +939,8 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentMessages,
 	...enUiAgentMessagesSettings,
 	...enUiAgentsConfig,
+	...enUiAgentsDescriptions,
+	...enUiAgentsDetailInstall,
 	...enUiAgentsDetail,
 	...enUiAgentsDialogs,
 	...enUiAgents,
@@ -915,6 +949,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentsPages,
 	...enUiAgentsPublication,
 	...enUiAgentsRefusals,
+	...enUiAgentsRouting,
 	...enUiAgentsSettings,
 	...enUiAgentsSkills,
 	...enUiAgentsStarters,
@@ -987,6 +1022,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiNotifications,
 	...enUiNotificationsOperation,
 	...enUiOnboarding,
+	...enUiOnboardingTour,
 	...enUiOwnerAudit,
 	...enUiPresence,
 	...enUiProjects,
@@ -1025,6 +1061,8 @@ export const bundledCatalogues: Readonly<
 		...esUiAgentMessages,
 		...esUiAgentMessagesSettings,
 		...esUiAgentsConfig,
+		...esUiAgentsDescriptions,
+		...esUiAgentsDetailInstall,
 		...esUiAgentsDetail,
 		...esUiAgentsDialogs,
 		...esUiAgents,
@@ -1033,6 +1071,7 @@ export const bundledCatalogues: Readonly<
 		...esUiAgentsPages,
 		...esUiAgentsPublication,
 		...esUiAgentsRefusals,
+		...esUiAgentsRouting,
 		...esUiAgentsSettings,
 		...esUiAgentsSkills,
 		...esUiAgentsStarters,
@@ -1105,6 +1144,7 @@ export const bundledCatalogues: Readonly<
 		...esUiNotifications,
 		...esUiNotificationsOperation,
 		...esUiOnboarding,
+		...esUiOnboardingTour,
 		...esUiOwnerAudit,
 		...esUiPresence,
 		...esUiProjects,
@@ -1137,6 +1177,8 @@ export const bundledCatalogues: Readonly<
 		...frUiAgentMessages,
 		...frUiAgentMessagesSettings,
 		...frUiAgentsConfig,
+		...frUiAgentsDescriptions,
+		...frUiAgentsDetailInstall,
 		...frUiAgentsDetail,
 		...frUiAgentsDialogs,
 		...frUiAgents,
@@ -1145,6 +1187,7 @@ export const bundledCatalogues: Readonly<
 		...frUiAgentsPages,
 		...frUiAgentsPublication,
 		...frUiAgentsRefusals,
+		...frUiAgentsRouting,
 		...frUiAgentsSettings,
 		...frUiAgentsSkills,
 		...frUiAgentsStarters,
@@ -1217,6 +1260,7 @@ export const bundledCatalogues: Readonly<
 		...frUiNotifications,
 		...frUiNotificationsOperation,
 		...frUiOnboarding,
+		...frUiOnboardingTour,
 		...frUiOwnerAudit,
 		...frUiPresence,
 		...frUiProjects,
@@ -1249,6 +1293,8 @@ export const bundledCatalogues: Readonly<
 		...hiUiAgentMessages,
 		...hiUiAgentMessagesSettings,
 		...hiUiAgentsConfig,
+		...hiUiAgentsDescriptions,
+		...hiUiAgentsDetailInstall,
 		...hiUiAgentsDetail,
 		...hiUiAgentsDialogs,
 		...hiUiAgents,
@@ -1257,6 +1303,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiAgentsPages,
 		...hiUiAgentsPublication,
 		...hiUiAgentsRefusals,
+		...hiUiAgentsRouting,
 		...hiUiAgentsSettings,
 		...hiUiAgentsSkills,
 		...hiUiAgentsStarters,
@@ -1329,6 +1376,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiNotifications,
 		...hiUiNotificationsOperation,
 		...hiUiOnboarding,
+		...hiUiOnboardingTour,
 		...hiUiOwnerAudit,
 		...hiUiPresence,
 		...hiUiProjects,
@@ -1361,6 +1409,8 @@ export const bundledCatalogues: Readonly<
 		...ruUiAgentMessages,
 		...ruUiAgentMessagesSettings,
 		...ruUiAgentsConfig,
+		...ruUiAgentsDescriptions,
+		...ruUiAgentsDetailInstall,
 		...ruUiAgentsDetail,
 		...ruUiAgentsDialogs,
 		...ruUiAgents,
@@ -1369,6 +1419,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiAgentsPages,
 		...ruUiAgentsPublication,
 		...ruUiAgentsRefusals,
+		...ruUiAgentsRouting,
 		...ruUiAgentsSettings,
 		...ruUiAgentsSkills,
 		...ruUiAgentsStarters,
@@ -1441,6 +1492,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiNotifications,
 		...ruUiNotificationsOperation,
 		...ruUiOnboarding,
+		...ruUiOnboardingTour,
 		...ruUiOwnerAudit,
 		...ruUiPresence,
 		...ruUiProjects,
@@ -1473,6 +1525,8 @@ export const bundledCatalogues: Readonly<
 		...urUiAgentMessages,
 		...urUiAgentMessagesSettings,
 		...urUiAgentsConfig,
+		...urUiAgentsDescriptions,
+		...urUiAgentsDetailInstall,
 		...urUiAgentsDetail,
 		...urUiAgentsDialogs,
 		...urUiAgents,
@@ -1481,6 +1535,7 @@ export const bundledCatalogues: Readonly<
 		...urUiAgentsPages,
 		...urUiAgentsPublication,
 		...urUiAgentsRefusals,
+		...urUiAgentsRouting,
 		...urUiAgentsSettings,
 		...urUiAgentsSkills,
 		...urUiAgentsStarters,
@@ -1553,6 +1608,7 @@ export const bundledCatalogues: Readonly<
 		...urUiNotifications,
 		...urUiNotificationsOperation,
 		...urUiOnboarding,
+		...urUiOnboardingTour,
 		...urUiOwnerAudit,
 		...urUiPresence,
 		...urUiProjects,
@@ -1585,6 +1641,8 @@ export const bundledCatalogues: Readonly<
 		...viUiAgentMessages,
 		...viUiAgentMessagesSettings,
 		...viUiAgentsConfig,
+		...viUiAgentsDescriptions,
+		...viUiAgentsDetailInstall,
 		...viUiAgentsDetail,
 		...viUiAgentsDialogs,
 		...viUiAgents,
@@ -1593,6 +1651,7 @@ export const bundledCatalogues: Readonly<
 		...viUiAgentsPages,
 		...viUiAgentsPublication,
 		...viUiAgentsRefusals,
+		...viUiAgentsRouting,
 		...viUiAgentsSettings,
 		...viUiAgentsSkills,
 		...viUiAgentsStarters,
@@ -1665,6 +1724,7 @@ export const bundledCatalogues: Readonly<
 		...viUiNotifications,
 		...viUiNotificationsOperation,
 		...viUiOnboarding,
+		...viUiOnboardingTour,
 		...viUiOwnerAudit,
 		...viUiPresence,
 		...viUiProjects,
@@ -1697,6 +1757,8 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiAgentMessages,
 		...zhCNUiAgentMessagesSettings,
 		...zhCNUiAgentsConfig,
+		...zhCNUiAgentsDescriptions,
+		...zhCNUiAgentsDetailInstall,
 		...zhCNUiAgentsDetail,
 		...zhCNUiAgentsDialogs,
 		...zhCNUiAgents,
@@ -1705,6 +1767,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiAgentsPages,
 		...zhCNUiAgentsPublication,
 		...zhCNUiAgentsRefusals,
+		...zhCNUiAgentsRouting,
 		...zhCNUiAgentsSettings,
 		...zhCNUiAgentsSkills,
 		...zhCNUiAgentsStarters,
@@ -1777,6 +1840,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiNotifications,
 		...zhCNUiNotificationsOperation,
 		...zhCNUiOnboarding,
+		...zhCNUiOnboardingTour,
 		...zhCNUiOwnerAudit,
 		...zhCNUiPresence,
 		...zhCNUiProjects,
@@ -1971,6 +2035,20 @@ export type MessageParams = {
 	"ui.agents.config.summary.nothing_else": undefined;
 	"ui.agents.config.summary.updated": { name: string };
 	"ui.agents.config.summary.you_asked": { topic: string };
+	"ui.agents.descriptions.aida": undefined;
+	"ui.agents.descriptions.architect": undefined;
+	"ui.agents.descriptions.coder": undefined;
+	"ui.agents.descriptions.copy_reviewer": undefined;
+	"ui.agents.descriptions.designer": undefined;
+	"ui.agents.descriptions.librarian": undefined;
+	"ui.agents.descriptions.manager": undefined;
+	"ui.agents.descriptions.qa_tester": undefined;
+	"ui.agents.descriptions.reviewer": undefined;
+	"ui.agents.descriptions.scout": undefined;
+	"ui.agents.descriptions.tui_designer": undefined;
+	"ui.agents.descriptions.ux_reviewer": undefined;
+	"ui.agents.detail.install.action.install_to_edit": undefined;
+	"ui.agents.detail.install.action.installing": undefined;
 	"ui.agents.detail.action.ask_change": undefined;
 	"ui.agents.detail.action.discard_changes": undefined;
 	"ui.agents.detail.action.discard_question": undefined;
@@ -2286,6 +2364,18 @@ export type MessageParams = {
 	"ui.agents.refusals.name_taken": { name: string };
 	"ui.agents.refusals.team_name_bound": undefined;
 	"ui.agents.refusals.team_nesting": undefined;
+	"ui.agents.routing.aida": undefined;
+	"ui.agents.routing.architect": undefined;
+	"ui.agents.routing.coder": undefined;
+	"ui.agents.routing.copy_reviewer": undefined;
+	"ui.agents.routing.designer": undefined;
+	"ui.agents.routing.librarian": undefined;
+	"ui.agents.routing.manager": undefined;
+	"ui.agents.routing.qa_tester": undefined;
+	"ui.agents.routing.reviewer": undefined;
+	"ui.agents.routing.scout": undefined;
+	"ui.agents.routing.tui_designer": undefined;
+	"ui.agents.routing.ux_reviewer": undefined;
 	"ui.agents.settings.agent.no_agent_selected": undefined;
 	"ui.agents.settings.agent.select_an_agent_from_the_list_on": undefined;
 	"ui.agents.settings.chat.about_advanced_chat_settings": undefined;
@@ -7306,6 +7396,129 @@ export type MessageParams = {
 	"ui.onboarding.search.row.save_failed": undefined;
 	"ui.onboarding.search.row.saved": undefined;
 	"ui.onboarding.search.row.saving": { name: string };
+	"ui.onboarding.tour.action.back": undefined;
+	"ui.onboarding.tour.action.close": undefined;
+	"ui.onboarding.tour.action.finish": undefined;
+	"ui.onboarding.tour.action.next": undefined;
+	"ui.onboarding.tour.agent_capabilities.body.1": undefined;
+	"ui.onboarding.tour.agent_capabilities.body.2": undefined;
+	"ui.onboarding.tour.agent_capabilities.image.1.alt": undefined;
+	"ui.onboarding.tour.agent_capabilities.title": undefined;
+	"ui.onboarding.tour.agent_hub_view.body.1": undefined;
+	"ui.onboarding.tour.agent_hub_view.title": undefined;
+	"ui.onboarding.tour.agent_list.body.1": undefined;
+	"ui.onboarding.tour.agent_list.body.2": undefined;
+	"ui.onboarding.tour.agent_list.title": undefined;
+	"ui.onboarding.tour.agent_naming_guidelines.body.1": undefined;
+	"ui.onboarding.tour.agent_naming_guidelines.body.2": undefined;
+	"ui.onboarding.tour.agent_naming_guidelines.title": undefined;
+	"ui.onboarding.tour.agent_options.body.1": undefined;
+	"ui.onboarding.tour.agent_options.title": undefined;
+	"ui.onboarding.tour.appearance_settings.body.1": undefined;
+	"ui.onboarding.tour.appearance_settings.title": undefined;
+	"ui.onboarding.tour.application_updates_settings.body.1": undefined;
+	"ui.onboarding.tour.application_updates_settings.title": undefined;
+	"ui.onboarding.tour.attachments.body.1": undefined;
+	"ui.onboarding.tour.attachments.body.2": undefined;
+	"ui.onboarding.tour.attachments.body.3": undefined;
+	"ui.onboarding.tour.attachments.body.4": undefined;
+	"ui.onboarding.tour.attachments.title": undefined;
+	"ui.onboarding.tour.canvas_documents_view.body.1": undefined;
+	"ui.onboarding.tour.canvas_documents_view.body.2": undefined;
+	"ui.onboarding.tour.canvas_documents_view.body.3": undefined;
+	"ui.onboarding.tour.canvas_documents_view.body.4": undefined;
+	"ui.onboarding.tour.canvas_documents_view.title": undefined;
+	"ui.onboarding.tour.canvas_feature.body.1": undefined;
+	"ui.onboarding.tour.canvas_feature.body.2": undefined;
+	"ui.onboarding.tour.canvas_feature.title": undefined;
+	"ui.onboarding.tour.canvas_files_view.body.1": undefined;
+	"ui.onboarding.tour.canvas_files_view.title": undefined;
+	"ui.onboarding.tour.canvas_open_button.body.1": undefined;
+	"ui.onboarding.tour.canvas_open_button.title": undefined;
+	"ui.onboarding.tour.canvas_variables_view.body.1": undefined;
+	"ui.onboarding.tour.canvas_variables_view.body.2": undefined;
+	"ui.onboarding.tour.canvas_variables_view.title": undefined;
+	"ui.onboarding.tour.chat_input.body.1": undefined;
+	"ui.onboarding.tour.chat_input.body.2": undefined;
+	"ui.onboarding.tour.chat_input.body.3": undefined;
+	"ui.onboarding.tour.chat_input.list.1.item.1": undefined;
+	"ui.onboarding.tour.chat_input.list.1.item.2": undefined;
+	"ui.onboarding.tour.chat_input.list.1.item.3": undefined;
+	"ui.onboarding.tour.chat_input.title": undefined;
+	"ui.onboarding.tour.click_view_settings_from_chat.body.1": undefined;
+	"ui.onboarding.tour.click_view_settings_from_chat.title": undefined;
+	"ui.onboarding.tour.create_new_agent.body.1": undefined;
+	"ui.onboarding.tour.create_new_agent.title": undefined;
+	"ui.onboarding.tour.create_schedule.body.1": undefined;
+	"ui.onboarding.tour.create_schedule.body.2": undefined;
+	"ui.onboarding.tour.create_schedule.title": undefined;
+	"ui.onboarding.tour.create_schedule_dialog.body.1": undefined;
+	"ui.onboarding.tour.create_schedule_dialog.body.2": undefined;
+	"ui.onboarding.tour.create_schedule_dialog.body.3": undefined;
+	"ui.onboarding.tour.create_schedule_dialog.title": undefined;
+	"ui.onboarding.tour.download_agent.body.1": undefined;
+	"ui.onboarding.tour.download_agent.title": undefined;
+	"ui.onboarding.tour.general_settings.body.1": undefined;
+	"ui.onboarding.tour.general_settings.title": undefined;
+	"ui.onboarding.tour.integrations_settings.body.1": undefined;
+	"ui.onboarding.tour.integrations_settings.body.2": undefined;
+	"ui.onboarding.tour.integrations_settings.title": undefined;
+	"ui.onboarding.tour.modify_agent_prompt.body.1": undefined;
+	"ui.onboarding.tour.modify_agent_prompt.title": undefined;
+	"ui.onboarding.tour.modify_security_prompt.body.1": undefined;
+	"ui.onboarding.tour.modify_security_prompt.title": undefined;
+	"ui.onboarding.tour.navigate_agent_hub.body.1": undefined;
+	"ui.onboarding.tour.navigate_agent_hub.title": undefined;
+	"ui.onboarding.tour.navigate_schedules.body.1": undefined;
+	"ui.onboarding.tour.navigate_schedules.title": undefined;
+	"ui.onboarding.tour.navigate_settings.body.1": undefined;
+	"ui.onboarding.tour.navigate_settings.title": undefined;
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.1": undefined;
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.3": undefined;
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.4": undefined;
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.5": undefined;
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.6": undefined;
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.1.7": undefined;
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.2.1": undefined;
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.2.3": undefined;
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body.2.5": undefined;
+	"ui.onboarding.tour.pre_command_palette_open_canvas.connector.on_mac_and": undefined;
+	"ui.onboarding.tour.pre_command_palette_open_canvas.title": undefined;
+	"ui.onboarding.tour.radient_account_settings.body.1": undefined;
+	"ui.onboarding.tour.radient_account_settings.body.2": undefined;
+	"ui.onboarding.tour.radient_account_settings.title": undefined;
+	"ui.onboarding.tour.schedules_overview.body.1": undefined;
+	"ui.onboarding.tour.schedules_overview.body.2": undefined;
+	"ui.onboarding.tour.schedules_overview.body.3": undefined;
+	"ui.onboarding.tour.schedules_overview.title": undefined;
+	"ui.onboarding.tour.select_agent.body.1": undefined;
+	"ui.onboarding.tour.select_agent.title": undefined;
+	"ui.onboarding.tour.select_model.body.1": undefined;
+	"ui.onboarding.tour.select_model.title": undefined;
+	"ui.onboarding.tour.select_provider.body.1": undefined;
+	"ui.onboarding.tour.select_provider.title": undefined;
+	"ui.onboarding.tour.tour_complete.body.1": undefined;
+	"ui.onboarding.tour.tour_complete.title": undefined;
+	"ui.onboarding.tour.upload_agent_hub.body.1": undefined;
+	"ui.onboarding.tour.upload_agent_hub.title": undefined;
+	"ui.onboarding.tour.upload_agent_hub_dialog.body.1": undefined;
+	"ui.onboarding.tour.upload_agent_hub_dialog.title": undefined;
+	"ui.onboarding.tour.view_agent_settings.body.1": undefined;
+	"ui.onboarding.tour.view_agent_settings.body.2": undefined;
+	"ui.onboarding.tour.view_agent_settings.title": undefined;
+	"ui.onboarding.tour.welcome.body.1": undefined;
+	"ui.onboarding.tour.welcome.body.2": undefined;
+	"ui.onboarding.tour.welcome.body.3": undefined;
+	"ui.onboarding.tour.welcome.body.4": undefined;
+	"ui.onboarding.tour.welcome.image.1.alt": undefined;
+	"ui.onboarding.tour.welcome.list.1.item.1": undefined;
+	"ui.onboarding.tour.welcome.list.1.item.2": undefined;
+	"ui.onboarding.tour.welcome.list.1.item.3": undefined;
+	"ui.onboarding.tour.welcome.list.1.item.4": undefined;
+	"ui.onboarding.tour.welcome.list.1.item.5": undefined;
+	"ui.onboarding.tour.welcome.list.1.item.6": undefined;
+	"ui.onboarding.tour.welcome.list.1.item.7": undefined;
+	"ui.onboarding.tour.welcome.title": undefined;
 	"ui.ownerAudit.active": undefined;
 	"ui.ownerAudit.admitted": undefined;
 	"ui.ownerAudit.agent": undefined;
@@ -9405,6 +9618,11 @@ export type MessageParams = {
 	"ui.teamBridge.archive.thread.forbidden": undefined;
 	"ui.teamBridge.archive.toast.archive_failed": { name: string };
 	"ui.teamBridge.actions.label": undefined;
+	"ui.teamBridge.agentNotify.all": undefined;
+	"ui.teamBridge.agentNotify.error": undefined;
+	"ui.teamBridge.agentNotify.label": undefined;
+	"ui.teamBridge.agentNotify.mention": undefined;
+	"ui.teamBridge.agentNotify.mute": undefined;
 	"ui.teamBridge.attachments.add": undefined;
 	"ui.teamBridge.attachments.error_account_changed": undefined;
 	"ui.teamBridge.attachments.error_invalid": undefined;
@@ -9484,6 +9702,7 @@ export type MessageParams = {
 	"ui.teamBridge.invitations.agent_fallback": undefined;
 	"ui.teamBridge.invitations.agent_line": { agent: string };
 	"ui.teamBridge.invitations.consent.bridge_agent_participation_v1": undefined;
+	"ui.teamBridge.invitations.consent.bridge_agent_participation_v2": undefined;
 	"ui.teamBridge.invitations.count": { count: number };
 	"ui.teamBridge.invitations.created_by": { name: string };
 	"ui.teamBridge.invitations.created_by_you": undefined;
