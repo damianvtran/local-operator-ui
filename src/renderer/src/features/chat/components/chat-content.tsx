@@ -18,6 +18,7 @@ import {
 import { useNotificationDrawerTab } from "@features/notifications/drawer-tab-store";
 import { useNotificationsEnabled } from "@features/notifications/notifications-api";
 import { useProviderStatus } from "@features/providers/use-provider-status";
+import { sessionPictureEditable } from "@shared/agent-avatar/agent-avatar-meta";
 import {
 	desktopFeatureEnabled,
 	desktopFeatureState,
@@ -1132,13 +1133,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		);
 		/*
 		 * THIS CONVERSATION'S AGENT PICTURE, for the header's mark (agent profile
-		 * pictures, 2026-10-30). Two primitive reads rather than one row read: the
-		 * row object is stable, but subscribing to the whole catalogue here would
+		 * pictures, 2026-10-30). Primitive reads rather than one row read: the row
+		 * object is stable, but subscribing to the whole catalogue here would
 		 * repaint the header on every other conversation's status tick.
 		 *
-		 * `owned` is the row's own answer - a row this device lists is a local
-		 * agent, and a remote conversation's agent belongs to the device that owns
-		 * it, where this window cannot write.
+		 * OWNERSHIP IS THE ROW'S OWN ANSWER, through the one function the chat
+		 * sidebar's pencil also reads (agent review round 1, M2). This used to be a
+		 * literal `owned: true`, which offered an edit on a REMOTE row that the
+		 * sidebar withheld - and whose href carried another device's agent id into
+		 * this machine's `/agents` page. `sessionPictureEditable` answers it once,
+		 * from `locality` (a remote conversation's agent belongs to the device that
+		 * owns it, where this window cannot write) and a resolvable `agent_id`.
 		 */
 		const avatarAgentId = useCanonicalSessionsStore((state) =>
 			sessionId
@@ -1152,6 +1157,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						?.avatar_sha256 ?? null)
 				: null,
 		);
+		const agentAvatarOwned = useCanonicalSessionsStore((state) => {
+			if (!sessionId) return false;
+			return sessionPictureEditable(
+				state.sessions.find((row) => row.session_id === sessionId),
+			);
+		});
 		/*
 		 * TWO PREDICATES, BECAUSE THE TWO CONSUMERS WANT DIFFERENT ONES (agent review
 		 * round 4, R4-2). The notice is about EXISTENCE and takes the catalogue's
@@ -2447,7 +2458,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									? {
 											agentId: avatarAgentId,
 											sha256: agentAvatarSha,
-											owned: true,
+											owned: agentAvatarOwned,
 										}
 									: null
 							}

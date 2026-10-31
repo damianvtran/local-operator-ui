@@ -11,6 +11,7 @@
  */
 
 import type { AgentAvatarMeta } from "@shared/api/local-operator/types";
+import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 
 /** A content address: the 64-hex SHA-256 core publishes. */
 export const SHA256 = /^[0-9a-f]{64}$/;
@@ -44,4 +45,32 @@ export function avatarMetaOf(value: unknown): AgentAvatarMeta | null {
 		bytes: typeof meta.bytes === "number" ? meta.bytes : 0,
 		updated_at: typeof meta.updated_at === "string" ? meta.updated_at : "",
 	};
+}
+
+/**
+ * Whether a session row's agent picture is THIS MACHINE'S to change.
+ *
+ * ONE ANSWER FOR EVERY PLACEMENT OF THE PENCIL (agent review round 1, M2). The
+ * chat sidebar guarded `locality === "remote"` while the chat header passed
+ * `owned: true` unconditionally, so the same row could offer an edit in one
+ * place and withhold it in the other - and on a peer row the header's href
+ * carried a FOREIGN agent id into this machine's `/agents` page. The rule is
+ * the operator's: the pencil is never on someone else's agent.
+ *
+ * `agent_id` is required because it is the id the editor uploads against: a row
+ * that names no agent has no picture of its own to change, whatever its
+ * locality.
+ *
+ * REMOTE IS THE ONLY DISQUALIFIER, AND ABSENCE IS NOT ONE. `locality` is sent
+ * only on a listing that asked for peers (see `CanonicalSessionRow`), so a plain
+ * page's rows arrive with no claim at all - and those rows came from this
+ * machine's own catalogue, which is exactly what makes them ours to edit. A row
+ * that states `remote` belongs to another device, where this window cannot
+ * write.
+ */
+export function sessionPictureEditable(
+	row: Pick<CanonicalSessionRow, "agent_id" | "locality"> | null | undefined,
+): boolean {
+	if (!row?.agent_id) return false;
+	return row.locality !== "remote";
 }

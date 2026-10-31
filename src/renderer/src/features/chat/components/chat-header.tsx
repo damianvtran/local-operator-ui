@@ -1,5 +1,5 @@
 import { AgentAvatarEditLink } from "@shared/agent-avatar/agent-avatar-edit-link";
-import { AgentMark } from "@shared/agent-avatar/agent-mark";
+import { AgentMark, useHasAgentPicture } from "@shared/agent-avatar/agent-mark";
 import {
 	desktopFeatureState,
 	useDesktopCapabilities,
@@ -346,6 +346,26 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	 */
 	// Labels follow locale changes without resetting editor/menu state or effects.
 	useI18nLocale();
+	/*
+	 * IS THERE A PICTURE TO SHOW - AND SO A PICTURE TO CHANGE (agent review round 1,
+	 * m3)? The gate below used to be `agentAvatar` alone, which is the row's CLAIM
+	 * (an agent id and a digest). A claim whose bytes do not resolve - a 404 from
+	 * core, a file removed behind the row, a stale digest after a CLI write, a
+	 * remote row (M2) - drew `AgentMark`'s `fallback`, which the header passes as
+	 * `null`, and then wrapped that null in `AgentAvatarEditLink`: a bare 20px
+	 * circle that revealed a pencil on hover with no picture in it. A door onto an
+	 * empty plate.
+	 *
+	 * The header therefore asks the bytes rather than the row, and draws NOTHING
+	 * when there are none - which is the same thing it draws for an agent with no
+	 * picture at all, so the failed and the absent case cannot disagree. The hook
+	 * retains the URL before `AgentMark` mounts, so the mark's own `peek` paints on
+	 * its first frame rather than flashing an empty plate.
+	 */
+	const agentPicturePresent = useHasAgentPicture(
+		agentAvatar?.agentId,
+		agentAvatar?.sha256,
+	);
 	const capabilities = useDesktopCapabilities();
 	const peerState = desktopFeatureState(capabilities.data, "peers");
 	const transferState = desktopFeatureState(
@@ -904,7 +924,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							 * rides `AgentAvatarEditLink`, which draws nothing but the bare
 							 * picture for an agent the viewer does not own.
 							 */}
-							{agentAvatar ? (
+							{agentAvatar && agentPicturePresent ? (
 								<span className="me-1 flex shrink-0 items-center">
 									<AgentAvatarEditLink
 										agentName={agentName}

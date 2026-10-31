@@ -24,6 +24,7 @@
  */
 
 import { AgentAvatarEditLink } from "@shared/agent-avatar/agent-avatar-edit-link";
+import { sessionPictureEditable } from "@shared/agent-avatar/agent-avatar-meta";
 import { AgentMark } from "@shared/agent-avatar/agent-mark";
 import { cn } from "@shared/lib/utils";
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
@@ -98,9 +99,14 @@ export function ChatSessionAvatar({
  * IT SITS OUTSIDE THE ROW BUTTON, and it has to: interactive content inside a
  * `button` is invalid and swallows the press, so this is a SIBLING positioned
  * over the picture's box (`chat-sidebar.tsx` places it in the row's wrapper).
- * Absent on a remote conversation - its agent belongs to another device - and
- * absent on a row without a picture, where there is nothing to change and the
- * status cell owns the box.
+ * Absent on a human picture and on a row with no picture (nothing to change, and
+ * the row's status cell owns the box).
+ *
+ * WHETHER THE PENCIL IS DRAWN AT ALL IS NOT THIS FILE'S ANSWER. Ownership comes
+ * from `sessionPictureEditable(row)`, the same one function the chat header
+ * reads (agent review round 1, M2): a remote conversation's agent belongs to
+ * another device, and the wrapper draws the bare picture for an agent the
+ * viewer does not own - one implementation of "no pencil", in one place.
  *
  * `start-1` matches the row button's `px-1`, so the pencil lands on the mark.
  */
@@ -114,12 +120,11 @@ export function ChatSessionAvatarEdit({
 	const agentId = row.agent_id ?? null;
 	const agentName = row.binding?.agent ?? null;
 	if (!agentId || !row.avatar_sha256 || !agentName) return null;
-	if (row.locality === "remote") return null;
 	return (
 		<AgentAvatarEditLink
 			agentName={agentName}
 			agentId={agentId}
-			owned={true}
+			owned={sessionPictureEditable(row)}
 			overlay={true}
 			className={cn(
 				SESSION_MARK_BOX,

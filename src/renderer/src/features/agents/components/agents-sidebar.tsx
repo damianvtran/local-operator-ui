@@ -168,7 +168,17 @@ export const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 					{avatar ? (
 						<AvatarImage src={avatar} alt="" className="lo-avatar-arrival" />
 					) : null}
-					<AvatarFallback className="border border-control bg-sunken">
+					{/*
+					 * THE EDGE BELONGS TO THE ROOT, AND ONLY TO THE ROOT (agent review round
+					 * 1, m2). This fallback used to carry `border border-control bg-sunken` of
+					 * its own on top of `AgentAvatar`'s plate - so a row WITHOUT a picture drew
+					 * the root's 1px edge, a 30px content box, and then the fallback's own edge
+					 * at the inner boundary: a ~2px control ring, where every other mark in the
+					 * app (chat header, roster row, conversation row) has 1px. That is exactly
+					 * the border-on-the-child the D1 comment above the call site forbids; the
+					 * fallback's base already paints `bg-sunken`, so the plate reads the same.
+					 */}
+					<AvatarFallback>
 						<Bot size={16} aria-hidden={true} />
 					</AvatarFallback>
 				</AgentAvatar>

@@ -21,7 +21,7 @@
 	"ui.agents.avatar.editor.save": "तस्वीर सहेजें",
 	"ui.agents.avatar.editor.saving": "सहेजा जा रहा है…",
 	"ui.agents.avatar.editor.zoom": "ज़ूम",
-	"ui.agents.avatar.editor.zoom_in": "ज़ूम इन",
-	"ui.agents.avatar.editor.zoom_out": "ज़ूम आउट",
+	"ui.agents.avatar.editor.zoom_in": "ज़ूम बढ़ाएँ",
+	"ui.agents.avatar.editor.zoom_out": "ज़ूम घटाएँ",
 	"ui.agents.avatar.editor.zoom_value": "{value}×"
 }

@@ -58,8 +58,15 @@ const VIEWPORT = 288;
 /**
  * The sizes the app draws an agent's picture at, each with its surface's own
  * box, so the previews are the real thing rather than a generic thumbnail.
- * Keep in step with the surfaces: the chat header's mark (20px), the chat
- * sidebar row's (16px), the Agents roster's (16px) and the agents list's (32px).
+ *
+ * THE IDS ARE THE SURFACES' OWN, in the order a picture is met - but two of the
+ * names no longer say what their box is, and this note is the record (agent
+ * review round 1, n2): `header` is the chat header's mark (20px), `sidebar` is
+ * a conversation row's mark (16px), and `roster` is the AGENTS LIST sidebar's
+ * row disc (32px) - the id kept from the roster row it was measured for, while
+ * its copy and caption have named the surface it previews since, "Agents list".
+ * Renaming the id would rewrite three catalogue keys in eight locales to say
+ * what this paragraph says.
  */
 export const AGENT_AVATAR_PREVIEW_SIZES = [
 	{ id: "header", px: 20 },
@@ -362,10 +369,24 @@ export function AgentAvatarCropper({
 		>
 			<div className="flex flex-col gap-4 @md:flex-row @md:items-start">
 				<div className="flex flex-col gap-2">
+					{/*
+					 * A FOCUSABLE REGION, NOT A PICTURE (agent review round 1, n4). This was
+					 * `role="img"` - a leaf role a screen reader announces as a static
+					 * picture - on the one element that carries the pan/zoom keys, which told
+					 * a reader the widget could not be operated moments after the keyboard
+					 * operated it. `role="group"` names what it contains and leaves the keys
+					 * where they are (the same reading `mesh-canvas.tsx` states for the same
+					 * shape); the `aria-describedby` instructions stay the operating manual.
+					 *
+					 * The suppression is the rule's own shape, not a disagreement with it: the
+					 * canvas is interactive ONLY because this tab stop makes the keys
+					 * reachable, and the group role is what gives it a name.
+					 */}
+					{/* biome-ignore lint/a11y/noInteractiveElementToNoninteractiveRole: the tab stop exists so the pan/zoom keys are reachable (WCAG 2.1.1), and `role="group"` supplies the name a static `img` role would lie about - see the note above. */}
 					<canvas
 						ref={setViewport}
 						tabIndex={0}
-						role="img"
+						role="group"
 						aria-label={t("ui.agents.avatar.editor.crop_area")}
 						aria-describedby={instructionsId}
 						data-agent-avatar-crop=""

@@ -540,6 +540,7 @@ export function AgentDetail({
 	onAskAgent,
 	onDirtyChange,
 	belowHeader,
+	openPictureEditor = false,
 }: {
 	profile: ReusableProfile;
 	/**
@@ -553,6 +554,24 @@ export function AgentDetail({
 	onClassNotice: (copy: string | null) => void;
 	teams: readonly ReusableTeam[] | undefined;
 	effortTiers: readonly string[];
+	/**
+	 * Open the pane already in edit mode, on the `?edit=picture` deep link.
+	 *
+	 * WHY THE PANE HAS TO BE TOLD AND NOT LEFT TO THE FIELD (agent review round 1,
+	 * M1). The picture field (`agent-avatar-field.tsx`) is mounted only inside the
+	 * edit branch below, so it cannot be the thing that opens the edit - its own
+	 * reader of `?edit=picture` never runs while the pane draws view mode, and the
+	 * deep link the chat header's pencil ships was therefore a dead end. The page
+	 * reads the parameter and seeds this; the field then keeps doing the part only
+	 * it can do (scroll into view, take focus, drop the parameter).
+	 *
+	 * A SEED, NOT A CONTROLLED FLAG: it is read once, at mount, so the pane's own
+	 * Cancel/Edit controls keep owning `editing` afterwards. Gated on the profile
+	 * having an agent id - the field draws nothing without one, and `agent_id` is
+	 * what the editor uploads against - so a seed that could open nothing does not
+	 * put the pane into a form the link never meant.
+	 */
+	openPictureEditor?: boolean;
 	/** Whether the conversational path is available on this backend (scope B). */
 	askEnabled: boolean;
 	/** Reports an open edit with unsaved typing, so the page can hold the composer. */
@@ -573,7 +592,9 @@ export function AgentDetail({
 	belowHeader?: ReactNode;
 }) {
 	useI18nLocale();
-	const [editing, setEditing] = useState(false);
+	const [editing, setEditing] = useState(
+		openPictureEditor && Boolean(profile.agent_id),
+	);
 	const [base, setBase] = useState<Draft>(() => draftOf(profile));
 	const [draft, setDraft] = useState<Draft>(() => draftOf(profile));
 	const [pending, setPending] = useState(false);
@@ -1047,7 +1068,7 @@ export function AgentDetail({
 						 * across selections must not carry a refusal or a busy state with it.
 						 *
 						 * NO FIELD FOR A PROFILE WITHOUT AN ID: the picture is keyed by the
-						 * agent's own id (see `shared/store/agent-avatar-store.ts`), and a builtin
+						 * agent's own id (see `@shared/agent-avatar/agent-avatar`), and a builtin
 						 * seed that was never installed has none to key on.
 						 */}
 						{profile.agent_id ? (

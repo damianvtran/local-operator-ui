@@ -69,7 +69,11 @@ import {
 } from "./agent-avatar-meta";
 import { sanitizeAvatarImages } from "./avatar-image";
 
-export { agentAvatarPath, avatarMetaOf } from "./agent-avatar-meta";
+export {
+	agentAvatarPath,
+	avatarMetaOf,
+	sessionPictureEditable,
+} from "./agent-avatar-meta";
 export type { AgentAvatarMap } from "./agent-avatar-meta";
 
 /**
@@ -187,18 +191,35 @@ function useAvatarBytes(
 	sha256: string | null,
 ): string | null {
 	const key = agentId && sha256 ? agentAvatarPath(agentId, sha256) : null;
-	const [url, setUrl] = useState<string | null>(() => (key ? peek(key) : null));
+	/*
+	 * THE KEY TRAVELS WITH THE URL, so a render can tell a fresh answer from the
+	 * previous key's (agent review round 1, m1). `url` alone was seeded once by a
+	 * lazy initializer, so when `key` changed on a MOUNTED component the render
+	 * that preceded the effect returned the OLD key's URL - one painted frame of
+	 * the previous agent's face. Reachable in practice: the chat header's mark is
+	 * not keyed by session, so switching between two agents that both have
+	 * pictures re-renders this hook with a new agent id.
+	 *
+	 * With the key held beside it, the render below falls through to `peek(key)`
+	 * for a key it has no answer for: the new digest's warm bytes if they are
+	 * already cached, nothing otherwise - never the picture that was on screen a
+	 * moment ago. The effect then corrects it as before.
+	 */
+	const [drawn, setDrawn] = useState<{
+		key: string | null;
+		url: string | null;
+	}>(() => ({ key, url: key ? peek(key) : null }));
 	useEffect(() => {
 		if (!key || !agentId || !sha256) {
-			setUrl(null);
+			setDrawn({ key, url: null });
 			return;
 		}
 		const cached = retain(key);
 		if (cached) {
-			setUrl(cached);
+			setDrawn({ key, url: cached });
 			return () => release(key);
 		}
-		setUrl(null);
+		setDrawn({ key, url: null });
 		let cancelled = false;
 		let held = false;
 		void desktopMedia({ op: "agent.avatar", agentId, sha256 }, null)
@@ -207,7 +228,7 @@ function useAvatarBytes(
 				publish(key, createBlobUrl(result.data as BlobPart, result.mimeType));
 				const joined = retain(key);
 				held = joined !== null;
-				setUrl(joined);
+				setDrawn({ key, url: joined });
 			})
 			.catch(() => {
 				// A relay that rejected outright is the same answer as a 404: the glyph.
@@ -217,7 +238,9 @@ function useAvatarBytes(
 			if (held) release(key);
 		};
 	}, [key, agentId, sha256]);
-	return key ? url : null;
+	if (!key) return null;
+	if (drawn.key === key) return drawn.url;
+	return peek(key) ?? null;
 }
 
 /**

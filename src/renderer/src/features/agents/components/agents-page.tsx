@@ -258,6 +258,31 @@ export function AgentsPage() {
 		"skill_library",
 	);
 	const skillMode = wantsSkills && skillsOffered && !creating;
+	/*
+	 * THE PICTURE PENCIL'S DEEP LINK (`?edit=picture`, agent review round 1, M1).
+	 *
+	 * `AgentAvatarEditLink` navigates here with it, and `agent-avatar-field.tsx`
+	 * is the only thing that reads it - but the field exists only inside this
+	 * page's AGENT PANE and only while that pane is editing, so the link arrived
+	 * at a page that drew the pane in view mode: nothing mounted the editor,
+	 * nothing scrolled, nothing took focus, and the parameter was never dropped.
+	 * Every promise the link's own doc comments make was unkept.
+	 *
+	 * Read here beside the page's other parameters and handed to the pane as the
+	 * SEED of its edit state (`AgentDetail`'s `openPictureEditor`): the pane opens
+	 * editing, which mounts the field, which then scrolls itself into view, takes
+	 * focus and drops the parameter (its own one-shot contract).
+	 *
+	 * GATED ON THE SAME FACTS THE PANE IS: a selected name, not a create form,
+	 * not the skills or the team tab. The link only ever addresses an existing
+	 * agent profile, so a stray `edit` on any other surface must change nothing.
+	 */
+	const pictureEditRequested =
+		params.get("edit") === "picture" &&
+		Boolean(name) &&
+		!creating &&
+		!teamMode &&
+		!skillMode;
 	const catalogueEnabled = desktopFeatureEnabled(
 		capabilities.data,
 		teamMode ? "team_catalogue" : "profile_catalogue",
@@ -1468,6 +1493,7 @@ export function AgentsPage() {
 										teams={teams.data}
 										effortTiers={effortTiers}
 										askEnabled={run.enabled}
+										openPictureEditor={pictureEditRequested}
 										onDirtyChange={reportDirty}
 										belowHeader={hubPane(
 											"agent",

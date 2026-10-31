@@ -307,6 +307,35 @@ export function SubagentRunningMark({
  * picture) and a reader must hear the same words in both. `unread` is a LEVEL
  * the ink carries visually, so the name has to say it - and only where a mark
  * is actually drawn (`unreadMark`), never on a quiet row.
+ *
+ * THE SUFFIX HAS ONE OWNER, AND IT IS THIS FUNCTION (agent review round 1,
+ * R1-B1/R1-B2). It used to be appended here AND again in the `sr-only` span, so
+ * a complete unread row's name read "Complete, unread, unread" - which is what
+ * four cases in `scripts/chat-session-status.test.mjs` and the added-strings
+ * guard (the second literal) both failed on. Anything that renders this
+ * sentence therefore renders it WHOLE; no call site may add the level itself.
+ *
+ * Gated on `unreadMark`, not on `row.attention?.unseen`, and the gating is the
+ * contract rather than a preference: this module's own test asserts that an
+ * ACKNOWLEDGED row renders IDENTICALLY to an unacknowledged one for every code
+ * that draws NO mark, so an unconditional suffix changes what an acknowledged
+ * busy, wedged or gated row says - and a busy row claiming ", unread" is the
+ * reported defect in the one place the ink cannot show it.
+ *
+ * The marks are the predicate's three: `complete`, and the `error` and
+ * `interrupted` codes the runtime labels "Unseen error" / "Unseen interruption"
+ * and ranks as outstanding completions.
+ *
+ * THE TWO FAILURE CODES THEREFORE SAY "UNSEEN" TWICE - "Unseen error, unread" -
+ * and that redundancy is ACCEPTED rather than trimmed (design D4 and QA Q-2 both
+ * raised it). Gating the suffix on `unreadMark === "complete"` would be a
+ * SECOND rule about which codes carry the suffix, which is the two-derivations
+ * class this whole change removes: the suffix would become the check's property
+ * rather than the mark's, and a counted row's name would say nothing about the
+ * mark it draws. It is also the CLIENT's own statement of the level, where the
+ * "Unseen" in the label is the backend's word for it - which is what keeps the
+ * name true if that label is ever reworded for a code whose ink does not step
+ * between read and unseen.
  */
 export function statusSpokenText(
 	row: CanonicalSessionRow,
@@ -571,40 +600,7 @@ export function ChatSessionStatus({
 				 */
 				<Icon className={cn("size-4", ink)} aria-hidden="true" />
 			)}
-			<span className="sr-only">
-				{statusSpokenText(row, nowSeconds, mark)}
-				{/*
-				 * THE UNREAD SEMANTIC IS AN INK STEP, so on its own it tells a screen
-				 * reader nothing — the arrival is visible only to someone looking at
-				 * the glyph — and the name carries it in the cases the ink moves to a
-				 * state of its own (review round 3, R3-3).
-				 *
-				 * Gated on `unreadMark`, not on `row.attention?.unseen`, and the gating
-				 * is the contract rather than a preference: this module's own test
-				 * asserts that an ACKNOWLEDGED row renders IDENTICALLY to an
-				 * unacknowledged one for every code that draws NO mark, so an
-				 * unconditional suffix changes what an acknowledged busy, wedged or
-				 * gated row says — and a busy row claiming ", unread" is the reported
-				 * defect in the one place the ink cannot show it.
-				 *
-				 * The marks are the predicate's three: `complete`, and the `error` and
-				 * `interrupted` codes the runtime labels "Unseen error" / "Unseen
-				 * interruption" and ranks as outstanding completions.
-				 *
-				 * THE TWO FAILURE CODES THEREFORE SAY "UNSEEN" TWICE — "Unseen error,
-				 * unread" — and that redundancy is ACCEPTED rather than trimmed (design
-				 * D4 and QA Q-2 both raised it). Gating the suffix on `unreadMark ===
-				 * "complete"` would be a SECOND rule about which codes carry the
-				 * suffix, which is the two-derivations class this whole change removes:
-				 * the suffix would become the check's property rather than the mark's,
-				 * and a counted row's name would say nothing about the mark it draws.
-				 * It is also the CLIENT's own statement of the level, where the
-				 * "Unseen" in the label is the backend's word for it — which is what
-				 * keeps the name true if that label is ever reworded for a code whose
-				 * ink does not step between read and unseen.
-				 */}
-				{sessionStatusMark(row).unreadMark !== null ? ", unread" : ""}
-			</span>
+			<span className="sr-only">{statusSpokenText(row, nowSeconds, mark)}</span>
 		</span>
 	);
 }
