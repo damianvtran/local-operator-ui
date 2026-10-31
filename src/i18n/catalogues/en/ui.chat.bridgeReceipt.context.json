@@ -1,0 +1,17 @@
+{
+	"ui.chat.bridgeReceipt.received": {
+		"role": "Incoming Bridge receipt received",
+		"note": "Sender is trusted display metadata, never a routing ID or parsed envelope.",
+		"placeholders": {
+			"sender": "Display name of the sender, not an account ID."
+		}
+	},
+	"ui.chat.bridgeReceipt.unavailable": {
+		"role": "Incoming Bridge receipt unavailable",
+		"note": "Missing admitted body is unavailable; this does not imply moderation failure."
+	},
+	"ui.chat.bridgeReceipt.provenance": {
+		"role": "Incoming Bridge receipt provenance",
+		"note": "One subtle provenance label; never replaces model-context untrusted guidance."
+	}
+}

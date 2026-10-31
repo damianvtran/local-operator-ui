@@ -1,0 +1,5 @@
+{
+	"ui.chat.bridgeReceipt.received": "Reçu de {sender}",
+	"ui.chat.bridgeReceipt.unavailable": "Contenu du message indisponible.",
+	"ui.chat.bridgeReceipt.provenance": "Message externe · contenu non fiable"
+}

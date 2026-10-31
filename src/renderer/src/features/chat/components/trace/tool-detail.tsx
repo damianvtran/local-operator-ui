@@ -478,11 +478,16 @@ export const ToolDetail: FC<ToolDetailProps> = ({
  * reader's sentences in sans, the machine payload in mono).
  */
 export const BridgeDetail: FC<{
-	view: BridgeRowView;
+	view: Pick<
+		BridgeRowView,
+		"headline" | "body" | "outcome" | "internals" | "raw"
+	>;
 	isError: boolean;
+	/** Admitted incoming media uses the same pane without fabricating tool tokens. */
+	children?: ReactNode;
 	/** The delivery note, which outranks the plain outcome sentence. */
 	note?: ReactNode;
-}> = ({ view, isError, note = null }) => {
+}> = ({ view, isError, note = null, children }) => {
 	const outcome = note ?? view.outcome;
 	const hasInternals = view.internals.length > 0 || Boolean(view.raw);
 	return (
@@ -519,6 +524,7 @@ export const BridgeDetail: FC<{
 					{outcome}
 				</div>
 			) : null}
+			{children}
 			{hasInternals ? (
 				<Disclosure
 					chevron="trailing"

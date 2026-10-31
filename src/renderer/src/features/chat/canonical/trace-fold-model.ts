@@ -1161,7 +1161,10 @@ export const foldImages = (rows: readonly Row[]): TranscriptImage[] => {
 	for (const row of rows) {
 		if (
 			row.record.kind !== "tool" &&
-			!(row.record.kind === "custom" && row.record.customType === "hub_message")
+			!(
+				row.record.kind === "custom" &&
+				receiptFamilyOf(row.record) === "incoming"
+			)
 		)
 			continue;
 		for (const image of row.record.images ?? []) {
