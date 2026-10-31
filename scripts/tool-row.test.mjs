@@ -1116,8 +1116,14 @@ test("the app window's CSP admits the blob images the attachment path produces",
  */
 const rowsBundle = await build({
 	stdin: {
-		contents:
-			'export { buildRows, GAP, isTraceLike, ledgerName, paintsSomething, splitFirstLine } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
+		contents: [
+			'export { agentTurnHeads, buildRows, GAP, isTraceLike, ledgerName, paintsSomething, slotCarriesTurnHead, splitFirstLine } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
+			'export { collapsePlan } from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
+			'export { foldRuns, receiptFoldUnits } from "./src/renderer/src/features/chat/canonical/trace-fold-model";',
+			'export { isInternalReceipt } from "./src/renderer/src/features/chat/components/trace/receipt-row-model";',
+			'export { isQuietTurnCall } from "./src/renderer/src/features/chat/canonical/turn-segments";',
+			'export { entrySlotSignature } from "./src/renderer/src/features/chat/canonical/transcript-dom-window";',
+		].join("\n"),
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -1151,11 +1157,19 @@ await writeFile(rowsBundlePath, rowsBundle.outputFiles[0].text);
 const rowsLib = await import(pathToFileURL(rowsBundlePath).href);
 await unlink(rowsBundlePath).catch(() => undefined);
 const {
+	agentTurnHeads,
 	buildRows,
+	collapsePlan,
+	entrySlotSignature,
+	foldRuns,
 	GAP,
+	isInternalReceipt,
+	isQuietTurnCall,
 	isTraceLike,
 	ledgerName,
 	paintsSomething,
+	receiptFoldUnits,
+	slotCarriesTurnHead,
 	splitFirstLine,
 } = rowsLib;
 
@@ -1413,23 +1427,36 @@ test("an invisible record does not consume the avatar or a turn boundary", () =>
 		["u1", "t1"],
 	);
 	/*
-	 * D11 DELETES THE AVATAR AND ITS GUTTER, so there is no longer a flag to consume:
-	 * the assertion is that the row model carries none at all (a re-added flag would
-	 * be the avatar coming back through the model rather than through the markup) and
-	 * that the container which used to draw it renders neither a glyph nor the 40px
-	 * indent that justified it.
+	 * THE D11 PIN, REWRITTEN FOR THE OPERATOR'S AVATAR REQUEST (2026-10-30).
+	 *
+	 * D11 removed the avatar and the 40px gutter that existed to hold it; D11's
+	 * reasons are still the contract, and this test is where they stay pinned
+	 * now that the picture is back. The invariants, in D11's own terms:
+	 *
+	 *   1. NO GUTTER. The mark is a line of its own ABOVE the turn's first line,
+	 *      so no row's text measure changes. The container still imports no
+	 *      avatar and still carries no indent token, and the canvas is the only
+	 *      place the mark's box could ever narrow text.
+	 *   2. ONCE PER TURN, decided by the TURN PARTITION and not by a flag on the
+	 *      record: `showAvatar` stays deleted (a flag would be the per-message
+	 *      avatar coming back through the model), and the head set is
+	 *      `agentTurnHeads`'s answer.
+	 *   3. NO GLYPH WITHOUT A PICTURE: `MessageAvatar` requires `src`, so the
+	 *      Bot placeholder D11 deleted cannot return through it.
+	 *
+	 * Asked of the CODE, not the words: the container's own comment explains
+	 * what the `pl-10` indent used to cost, and a token check that read comments
+	 * would fail on the explanation of the deletion rather than on a
+	 * re-introduction.
 	 */
 	assert.ok(
 		!("showAvatar" in rows[1]),
-		"the row model carries no avatar flag (D11)",
+		"the row model carries no avatar flag (D11; the head is a turn fact)",
 	);
 	const container = readFileSync(
 		"src/renderer/src/features/chat/components/message-item/message-container.tsx",
 		"utf8",
 	);
-	// Asked of the CODE, not the words: this file's own comment explains what the
-	// `pl-10` indent used to cost, and a token check that read comments would fail
-	// on the explanation of the deletion rather than on a re-introduction.
 	assert.ok(
 		!/from "\.\/message-avatar"/.test(container),
 		"message-container.tsx imports no avatar (D11)",
@@ -1438,10 +1465,303 @@ test("an invisible record does not consume the avatar or a turn boundary", () =>
 		!/"pl-10"|AGENT_GUTTER/.test(container),
 		"message-container.tsx carries no 40px gutter (D11)",
 	);
+	const transcript = readFileSync(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"utf8",
+	);
+	/*
+	 * THE PLACEMENT PIN, READ AS CODE (review round 1, R-2). The previous version
+	 * looked for a padding class and `message-avatar` on ONE line, which can never
+	 * happen (that string only appears in the import), so wrapping `{body}` in
+	 * `pl-10` or the pair in `flex gap-2` stayed green at 91/91.
+	 *
+	 * What is asserted instead: the mark and `{body}` are siblings with nothing
+	 * but whitespace between them, and the element that directly holds them is
+	 * the row's own `GAP` wrapper carrying no flex/grid and no spacing token. A
+	 * gutter on the body fails the first assertion; a side-by-side pair fails the
+	 * second, because the container it introduces has to be one or the other.
+	 */
+	const code = transcript
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/\/\/[^\n]*/g, "");
+	assert.ok(
+		/\{opensTurn && agentAvatar \? \(?\s*<MessageAvatar src=\{agentAvatar\}(?: name=\{agentName\})? \/>\s*\)? : null\}\s*\{body\}/.test(
+			code,
+		),
+		"the mark is drawn above the row's body with nothing between them",
+	);
+	const markAt = code.indexOf("{opensTurn && agentAvatar ?");
+	assert.ok(markAt > 0, "the mark site is in the transcript");
+	const wrapper = code.slice(code.lastIndexOf("<div", markAt), markAt);
+	assert.ok(
+		/className=\{cn\(\s*GAP\[/.test(wrapper),
+		"the mark's parent is the row's gapped wrapper",
+	);
+	assert.ok(
+		!/\b(?:flex|grid|inline-flex)\b/.test(wrapper),
+		"the mark is not laid out beside the body (that is the gutter D11 deleted)",
+	);
+	assert.ok(
+		!/\b(?:p[lrsexy]?|m[lrsexy]?)-/.test(wrapper),
+		"no padding or margin token insets the row's text",
+	);
 	assert.equal(rows[1].gap, "turn", "a turn boundary still gets its air");
 	// The hierarchy the tightening must preserve: a turn boundary is strictly
 	// airier than an adjacent pair inside a run.
 	assert.notDeepEqual(GAP.turn, GAP.trace);
+});
+
+/* ------------------------------------------------- the agent's turn head */
+
+/*
+ * The operator asked for the agent's profile picture in the transcript
+ * (2026-10-30), and `agentTurnHeads` is where "once per turn, at its head"
+ * lives. The rule has three edges the frames cannot judge - a steer, an
+ * invisible row, and the top of the loaded history - so they are asserted here.
+ */
+const answer = (id, text = `answer ${id}`) => ({
+	kind: "assistant",
+	id,
+	ts: 1,
+	text,
+	streaming: false,
+	complete: true,
+	stopReason: "stop",
+	error: false,
+});
+
+const userTurn = (id, text = "go") => ({
+	kind: "user",
+	id,
+	ts: 1,
+	text,
+	images: [],
+});
+
+test("the agent's picture is drawn once per turn, at the turn's head", () => {
+	const rows = buildRows(
+		[
+			userTurn("u1"),
+			answer("a1"),
+			toolRecord("t1"),
+			answer("a2"),
+			userTurn("u2"),
+			answer("a3"),
+		],
+		[],
+	);
+	/*
+	 * One head per turn, and the head is the turn's FIRST agent row - not the
+	 * answer, and not every record. The second turn's head is its assistant row
+	 * even though the first turn also ended on one.
+	 */
+	assert.deepEqual([...agentTurnHeads(rows)], ["a1", "a3"]);
+});
+
+test("a steer does not open a second turn, so it earns no second mark", () => {
+	// A user message inside an OPEN turn is a steer (see `walkTurns`): the agent
+	// is still the same speaker, and the 32px `turn` gap already states the
+	// boundary. The mark is identity, so it stays on the turn's one head. The
+	// first answer is still STREAMING here on purpose - a settled answer closes
+	// the run, which would make the second message the next turn's opener.
+	const rows = buildRows(
+		[
+			userTurn("u1"),
+			{ ...answer("a1"), streaming: true },
+			userTurn("u2"),
+			answer("a2"),
+		],
+		[],
+	);
+	assert.deepEqual([...agentTurnHeads(rows)], ["a1"]);
+});
+
+test("an invisible row is never the head the picture lands on", () => {
+	// A quiet `no_reply` call is in the row list and is DROPPED at paint, so a
+	// mark on it would float over nothing. The head is the first row the reader
+	// actually sees.
+	const quiet = { ...toolRecord("q1"), toolName: "no_reply" };
+	const rows = buildRows([userTurn("u1"), quiet, answer("a1")], []);
+	assert.deepEqual([...agentTurnHeads(rows)], ["a1"]);
+});
+
+test("a turn whose opening user row is off the page does not get a mark", () => {
+	/*
+	 * The loaded history starts mid-turn. Anchoring the mark there would tie it
+	 * to the render window's leading edge - a mark that walks upward as pages
+	 * load - rather than to a turn boundary the reader can see, so a head-cut
+	 * run earns one only at the transcript's own first row (which is the case
+	 * below, and the reason the welcome turn is marked).
+	 */
+	const rows = buildRows([toolRecord("t1"), answer("a1")], []);
+	assert.deepEqual([...agentTurnHeads(rows)], ["t1"]);
+});
+
+/*
+ * THE REVIEWER'S REPROS (round 1, R-1), pinned. Before the fix the skip loop
+ * could walk past a turn's own end into the next turn's opening row, and any
+ * non-user row counted as the agent speaking, so the picture landed on the
+ * reader's message, on a harness statement, or on a receipt.
+ */
+const quietCall = (id) => ({ ...toolRecord(id), toolName: "no_reply" });
+const customRow = (id) => ({
+	kind: "custom",
+	id,
+	ts: 1,
+	customType: "mcp_unavailable",
+	text: "statement",
+	provider: null,
+	attribution: "system",
+});
+const peerRow = (id) => ({ kind: "peer", id, ts: 1, body: "hi", sender: {} });
+const noticeRecord = (id) => ({
+	kind: "notice",
+	id,
+	ts: 1,
+	text: "Cleared the conversation",
+	level: "info",
+});
+
+test("a quiet-close turn never hands its mark to the next turn's user row", () => {
+	// [user u1, quiet q1, user u2, assistant a2]: the first turn is only a quiet
+	// close, so it has no head at all - and u2 is the READER's message, which
+	// D11's text excludes ("User rows never had an avatar").
+	const rows = buildRows(
+		[userTurn("u1"), quietCall("q1"), userTurn("u2"), answer("a2")],
+		[],
+	);
+	assert.deepEqual([...agentTurnHeads(rows)], ["a2"]);
+});
+
+test("a quiet close inside a turn is skipped, and the next turn keeps its own head", () => {
+	const rows = buildRows(
+		[
+			answer("a1"),
+			userTurn("u2"),
+			quietCall("q2"),
+			userTurn("u3"),
+			answer("a3"),
+		],
+		[],
+	);
+	assert.deepEqual([...agentTurnHeads(rows)], ["a1", "a3"]);
+});
+
+test("a statement row is never the head the picture lands on", () => {
+	// A fresh conversation whose first row is a harness statement (the
+	// MCP-unavailable row is the live case) earned two marks: one on the
+	// statement and one on the answer.
+	const rows = buildRows([customRow("c1"), userTurn("u1"), answer("a1")], []);
+	assert.deepEqual([...agentTurnHeads(rows)], ["a1"]);
+});
+
+test("a notice inside a turn is not the agent's head", () => {
+	const rows = buildRows(
+		[userTurn("u1"), noticeRecord("n1"), answer("a1")],
+		[],
+	);
+	assert.deepEqual([...agentTurnHeads(rows)], ["a1"]);
+});
+
+test("a receipt or a quiet call before the answer is not the head", () => {
+	const rows = buildRows(
+		[userTurn("u1"), quietCall("q1"), peerRow("p1"), answer("a1")],
+		[],
+	);
+	assert.deepEqual([...agentTurnHeads(rows)], ["a1"]);
+});
+
+test("the head set is skipped without a picture, and the estimate knows its 24px", () => {
+	/*
+	 * Review round 1, R-5. Two halves, both wiring rather than geometry, so both
+	 * are read off the source the way the D11 pin above reads the container:
+	 *
+	 *   - `agentTurnHeads` is a full `walkTurns` pass and `rows` changes on every
+	 *     streamed token, so a pane with no picture must not run it at all;
+	 *   - the DOM window's per-entry `signature` is the invalidation key for a
+	 *     cached height (`use-transcript-dom-window.ts`), and the mark adds
+	 *     `mb-1 size-5` = 24px to the entry it opens, so an entry that draws one
+	 *     must say so in the signature AND in the estimate.
+	 */
+	const transcript = readFileSync(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"utf8",
+	);
+	assert.match(
+		transcript,
+		/agentAvatar \? agentTurnHeads\(rows\) : NO_TURN_HEADS/,
+		"a picture-less pane never walks the turn partition",
+	);
+	assert.match(
+		transcript,
+		/const TURN_MARK_HEIGHT = 24;/,
+		"the mark's height is one number (size-5 20 + mb-1 4)",
+	);
+	assert.match(
+		transcript,
+		/signature: entrySlotSignature\(facts, isSmallView\)/,
+		"the entry signature is produced by the function this file executes below",
+	);
+	assert.match(
+		transcript,
+		/fact\.marksHead \? TURN_MARK_HEIGHT : 0/,
+		"the estimate adds the mark's own height for an entry that draws it",
+	);
+});
+
+/*
+ * THE SIGNATURE'S HEAD BIT IS EXECUTED, NOT MATCHED (agent review round 2,
+ * R2-4). The old pin matched the template's source text; that proved a string
+ * existed, not that a picture arriving invalidates a cached height. These two
+ * facts differ in exactly one boolean, and the real function must move.
+ */
+test("the entry signature moves when a slot starts drawing the mark", () => {
+	const fact = {
+		key: "turn-summary:run-1",
+		ids: ["n1", "t1"],
+		representation: "aggregate",
+		gap: "turn",
+		userExpanded: false,
+		media: false,
+		unsafe: false,
+		marksHead: false,
+		renderSignature: "n1:1,t1:1",
+	};
+	const without = entrySlotSignature([fact], false);
+	const withMark = entrySlotSignature([{ ...fact, marksHead: true }], false);
+	assert.notEqual(
+		withMark,
+		without,
+		"an entry that starts drawing the mark must invalidate its cached height",
+	);
+	assert.equal(
+		entrySlotSignature([{ ...fact, marksHead: true }], false),
+		withMark,
+		"and the same facts produce the same signature",
+	);
+	assert.notEqual(
+		entrySlotSignature([{ ...fact, marksHead: true }], true),
+		withMark,
+		"the small-view breakpoint is part of the key",
+	);
+});
+
+test("a picture-less agent's transcript renders exactly what D11 left", () => {
+	// The mark is the ONLY new node, and it is gated on a picture: with none,
+	// `MessageAvatar` is never mounted (its `src` is required), so the no-picture
+	// case cannot drift into a placeholder by accident.
+	const mark = readFileSync(
+		"src/renderer/src/features/chat/components/message-item/message-avatar.tsx",
+		"utf8",
+	);
+	assert.ok(
+		/\tsrc: string;/.test(mark),
+		"the mark requires a picture; there is no glyph fallback (D11)",
+	);
+	assert.ok(
+		!/<Bot\b/.test(mark),
+		"the Bot placeholder D11 deleted has not come back",
+	);
 });
 
 test("a streaming record with no text yet paints nothing", () => {
@@ -3028,7 +3348,7 @@ test("a painted answer after the echo ends the wait, wherever it sits", () => {
 	});
 	// A notice is not the agent answering either — it is the app's own receipt
 	// sitting at the foot of the column.
-	assert.deepEqual(admitted([noticeRow("n1")]), {
+	assert.deepEqual(admitted([noticeRecord("n1")]), {
 		activity: ADMITTED_SEND_ACTIVITY,
 		phase: "thinking",
 	});
@@ -5985,4 +6305,337 @@ test("bridge round 2: the reaction headline drops the emoji; the refusal is not 
 	);
 	assert.equal(refused.raw, null);
 	assert.ok(refused.internals.some((l) => l.key === "error"));
+});
+
+/* ------------------------------------------------------------------ *
+ * WHERE THE MARK IS DRAWN (agent review round 2, R2-1 on #1518)
+ *
+ * The round-1 fix elected only the agent's own rows as the head. The draw
+ * sites still asked whether the slot's FIRST row was a head, and a bar or a
+ * fold can begin at a statement row (a notice, a peer receipt, a wake) with the
+ * elected head a later tool row inside it - so those turns drew nothing at all.
+ * The rule is containment: the slot that renders the head draws the mark. These
+ * pins run the REAL `foldRuns` and `collapsePlan` and ask the SAME function the
+ * component's render pass and its height estimate call.
+ * ------------------------------------------------------------------ */
+
+const wakeRow = (id) => ({ kind: "wake", id, ts: 1, text: "wake" });
+
+const foldOptions = () => ({
+	nameOf: (row) => ledgerName(row.record),
+	failedOf: () => false,
+	durationOf: () => 0.1,
+	isFoldable: (row) =>
+		row.record.kind === "tool" && !isQuietTurnCall(row.record),
+	isReceipt: (row) => isInternalReceipt(row.record),
+	receiptSummaryOf: (rows) => receiptFoldUnits(rows),
+});
+
+/**
+ * The render slots, built the way `canonical-transcript`'s entry walk builds
+ * them: a group whose rows all sit in one COLLAPSED segment moves inside that
+ * segment's bar; every other group stands in place. The rows are what decides
+ * the mark, so this reproduces the partition rather than the pixels.
+ */
+const turnSlots = (rows, live) => {
+	const plan = collapsePlan(rows, { live });
+	const groups = foldRuns(rows, foldOptions());
+	const segments = plan.runs.flatMap((run) => run.segments);
+	const segmentOf = new Map();
+	segments.forEach((segment, index) => {
+		for (const row of segment.rows) segmentOf.set(row.record.id, index);
+	});
+	const entries = [];
+	const children = new Map();
+	for (const group of groups) {
+		const groupRows = group.kind === "run" ? group.rows : [group.row];
+		const first = segmentOf.get(groupRows[0].record.id);
+		const index = groupRows.every(
+			(row) => segmentOf.get(row.record.id) === first,
+		)
+			? first
+			: undefined;
+		const segment = index === undefined ? undefined : segments[index];
+		if (segment?.collapsed) {
+			let held = children.get(index);
+			if (held === undefined) {
+				held = [];
+				children.set(index, held);
+				entries.push({ kind: "bar", segment, children: held });
+			}
+			held.push(group);
+			continue;
+		}
+		entries.push({ kind: "group", group });
+	}
+	return entries.map((entry) =>
+		entry.kind === "bar"
+			? {
+					kind: "bar",
+					anchor: entry.segment.firstId,
+					rows: entry.children.flatMap((child) =>
+						child.kind === "run" ? child.rows : [child.row],
+					),
+				}
+			: {
+					kind: entry.group.kind === "run" ? "fold" : "row",
+					anchor:
+						entry.group.kind === "run"
+							? entry.group.rows[0].record.id
+							: entry.group.row.record.id,
+					rows:
+						entry.group.kind === "run" ? entry.group.rows : [entry.group.row],
+				},
+	);
+};
+
+/*
+ * The row lists the round-1 fix regressed on, plus the three controls that
+ * already worked. Every one is a turn whose elected head is `t1`; what differs
+ * is whether the SLOT that renders it starts at `t1` or at a statement row.
+ */
+const MARK_SHAPES = [
+	{
+		name: "[u,n,t,a] notice then one call",
+		records: [
+			userTurn("u1"),
+			noticeRecord("n1"),
+			toolRecord("t1"),
+			answer("a1"),
+		],
+		drawnAt: "n1",
+	},
+	{
+		name: "[u,p,t,t,a] peer then two calls",
+		records: [
+			userTurn("u1"),
+			peerRow("p1"),
+			toolRecord("t1"),
+			toolRecord("t2"),
+			answer("a1"),
+		],
+		drawnAt: "p1",
+	},
+	{
+		name: "[u,p,t,t,t,a] peer then three calls",
+		rows: [
+			userTurn("u1"),
+			peerRow("p1"),
+			toolRecord("t1"),
+			toolRecord("t2"),
+			toolRecord("t3"),
+			answer("a1"),
+		],
+		drawnAt: "p1",
+	},
+	{
+		name: "[u,w,t,t,t,a] wake then three calls",
+		records: [
+			userTurn("u1"),
+			wakeRow("w1"),
+			toolRecord("t1"),
+			toolRecord("t2"),
+			toolRecord("t3"),
+			answer("a1"),
+		],
+		drawnAt: "w1",
+	},
+	{
+		name: "[u,t,t,t,a] three calls (control)",
+		records: [
+			userTurn("u1"),
+			toolRecord("t1"),
+			toolRecord("t2"),
+			toolRecord("t3"),
+			answer("a1"),
+		],
+		drawnAt: "t1",
+	},
+	{
+		name: "[u,n,t,t,t,a] notice then three calls (control)",
+		records: [
+			userTurn("u1"),
+			noticeRecord("n1"),
+			toolRecord("t1"),
+			toolRecord("t2"),
+			toolRecord("t3"),
+			answer("a1"),
+		],
+		drawnAt: "n1",
+	},
+	{
+		name: "[u,p,t,a] peer then one call (control)",
+		records: [userTurn("u1"), peerRow("p1"), toolRecord("t1"), answer("a1")],
+		drawnAt: "p1",
+	},
+];
+
+test("the mark is drawn at the slot that contains the head, settled and live", () => {
+	for (const shape of MARK_SHAPES) {
+		const records = shape.records ?? shape.rows;
+		for (const live of [false, true]) {
+			const rows = buildRows(records, []);
+			const heads = agentTurnHeads(rows);
+			assert.deepEqual([...heads], ["t1"], `${shape.name}: the elected head`);
+			const slots = turnSlots(rows, live);
+			const drawn = slots.filter((slot) =>
+				slotCarriesTurnHead(slot.rows, heads),
+			);
+			assert.equal(
+				drawn.length,
+				1,
+				`${shape.name} (live=${live}) must draw exactly one mark, drew ${JSON.stringify(
+					drawn.map((slot) => `${slot.kind}:${slot.anchor}`),
+				)}`,
+			);
+			assert.equal(
+				drawn[0].anchor,
+				shape.drawnAt,
+				`${shape.name} (live=${live}) draws the mark at the slot whose first line is \`${shape.drawnAt}\``,
+			);
+			assert.ok(
+				drawn[0].rows.some((row) => heads.has(row.record.id)),
+				`${shape.name}: the drawing slot contains the head row`,
+			);
+			/*
+			 * THE OLD RULE, run on the same partition: `heads.has(slot.firstRow)`.
+			 * Six of the seven shapes drew nothing under it (the round-1 code),
+			 * which is the regression this pin exists to keep fixed.
+			 */
+			const oldRule = slots.filter((slot) => heads.has(slot.anchor));
+			if (shape.drawnAt === "t1") {
+				assert.deepEqual(
+					oldRule.map((slot) => slot.anchor),
+					["t1"],
+					`${shape.name}: a slot that starts at the head still draws under the old rule`,
+				);
+			} else {
+				assert.deepEqual(
+					oldRule,
+					[],
+					`${shape.name}: the old first-row rule drew nothing here`,
+				);
+			}
+		}
+	}
+});
+
+/*
+ * THE LAYOUT CLASS A COMPONENT CAN ADD (agent review round 2, R2-2). The D11
+ * pin below asks the call site and its wrappers for no indent; this asks the
+ * MARK'S OWN component, because a `float-left` or an `absolute` inside
+ * `message-avatar.tsx` narrows or overlaps the prose without touching either.
+ * The scan reads the classes the component would RENDER, not its comments.
+ */
+test("the turn mark's own classes cannot narrow, float or absolutely place it", () => {
+	const mark = readFileSync(
+		"src/renderer/src/features/chat/components/message-item/message-avatar.tsx",
+		"utf8",
+	)
+		.replace(/\/\*[\s\S]*?\*\//g, (comment) => " ".repeat(comment.length))
+		.replace(/\/\/[^\n]*/g, (comment) => " ".repeat(comment.length));
+	const classStrings = [...mark.matchAll(/"([^"\n]*)"|`([^`\n]*)`/g)].map(
+		(match) => match[1] ?? match[2] ?? "",
+	);
+	const tokens = classStrings.flatMap((value) => value.split(/\s+/));
+	const FORBIDDEN =
+		/^(float(-|$)|absolute$|fixed$|sticky$|inset(-|$)|-?(left|right|top|bottom)-|(ms|me|ml|mr|ps|pe|pl|pr)-|p[xytrbl]?-\d)/;
+	const offences = tokens.filter((token) => token && FORBIDDEN.test(token));
+	assert.deepEqual(
+		offences,
+		[],
+		`the turn mark's class list carries a layout class (${JSON.stringify(
+			offences,
+		)}). The mark is a line of its own above the turn, never beside it: a float, an absolute offset or a gutter inside this component narrows the prose exactly as D11's 40px gutter did, and the call-site pin cannot see it`,
+	);
+	assert.ok(
+		tokens.includes("mb-1") && tokens.includes("size-5"),
+		"and the mark still states its own 20px box and 4px line",
+	);
+	/*
+	 * AND THE RAIL'S 16PX DISC WEARS THE SAME PLATE (design review round 1, D1
+	 * on #1518). Its row's class list is a variable, which the row-state sweep
+	 * cannot read (blind spot 2 there), so the call site is pinned where it is
+	 * written.
+	 */
+	const sidebar = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	const entityMark = sidebar.slice(
+		sidebar.indexOf("const EntityMark"),
+		sidebar.indexOf("const rowMenuClause"),
+	);
+	assert.match(
+		entityMark,
+		/<AgentAvatar className="size-4 shrink-0">/,
+		"the rail's picture uses the shared agent plate (AgentAvatar), not a bare Avatar",
+	);
+});
+
+/*
+ * THE MARK'S NAME (agent review round 2, R2-3 on #1518). `alt={name ?? ""}` was
+ * fixed by code and comment with nothing that fails if a caller stops passing
+ * the name. The chain is three hand-offs - the page's speaking agent, the
+ * content pane's prop, the transcript's two draw sites - and each one is asked
+ * here, plus the story that renders the frames.
+ */
+test("the mark is named by the speaking agent, through every hand-off", () => {
+	const avatar = readFileSync(
+		"src/renderer/src/features/chat/components/message-item/message-avatar.tsx",
+		"utf8",
+	);
+	assert.match(
+		avatar,
+		/alt=\{name \?\? ""\}/,
+		"the image's accessible name is the agent's name, and empty when there is none",
+	);
+	assert.ok(
+		!avatar.includes("ui.chat.transcript_copy.role.assistant"),
+		"the fixed role word has not come back as the image's name",
+	);
+
+	const transcript = readFileSync(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"utf8",
+	);
+	assert.equal(
+		(
+			transcript.match(
+				/<MessageAvatar src=\{agentAvatar\} name=\{agentName\} \/>/g,
+			) ?? []
+		).length,
+		3,
+		"all three draw sites (the open row, the fold header and the bar) hand the name to the mark",
+	);
+
+	const content = readFileSync(
+		"src/renderer/src/features/chat/components/chat-content.tsx",
+		"utf8",
+	);
+	assert.match(
+		content,
+		/agentName=\{agentSpeakerName\}/,
+		"the content pane hands the speaking agent's name to the transcript",
+	);
+
+	const page = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	);
+	assert.match(
+		page,
+		/agentSpeakerName=\{speakerAgent\}/,
+		"the page resolves the speaking agent into the content pane",
+	);
+
+	const story = readFileSync(
+		"src/renderer/src/features/chat/canonical/agent-turn-mark.stories.tsx",
+		"utf8",
+	);
+	assert.match(
+		story,
+		/agentName="coder"/,
+		'the story passes a name, so its frames render alt="coder" rather than alt=""',
+	);
 });

@@ -58,6 +58,7 @@ import {
 import { useChatSearch } from "@shared/api/local-operator/session-search";
 import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
+import { AgentAvatar, AvatarImage } from "@shared/components/ui/avatar";
 import { Button } from "@shared/components/ui/button";
 import { Checkbox } from "@shared/components/ui/checkbox";
 import {
@@ -78,6 +79,7 @@ import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
+import { useAgentAvatar } from "@shared/store/agent-avatar-store";
 import {
 	CATALOGUE_HEAD_PAGE,
 	type CanonicalSessionRow,
@@ -896,6 +898,45 @@ const RowMenuOwner: FC<{
 		[id, openMenuRowIdRef, setOpenMenuRowId, openedByKeyboard],
 	);
 	return null;
+};
+
+/**
+ * The mark on a row of the sidebar's Agents section: the agent's stored PICTURE
+ * when there is one, and the kind's glyph when there is not.
+ *
+ * WHY IT IS A COMPONENT. The picture is a store read (`useAgentAvatar`), and the
+ * row's body is a FUNCTION called during the sidebar's render rather than a
+ * component - a hook in there would be a hook inside a loop. One component per
+ * row keeps the subscription where React allows it, and keeps it per row, so a
+ * picture changed in Settings repaints this row and no other.
+ *
+ * WHY THE GLYPH IS STILL THE FALLBACK, unlike the transcript (where D11's answer
+ * for an agent with no picture is no mark at all): here the glyph is the row's
+ * KIND - `Users` for a team, `Bot` for an agent - and the name truncates, so the
+ * kind is the one thing that survives the ellipsis.
+ */
+const EntityMark: FC<{
+	/** The agent's id, or null for a team (which has no picture). */
+	agentId: string | null;
+	glyph: LucideIcon;
+}> = ({ agentId, glyph: Glyph }) => {
+	const avatar = useAgentAvatar(agentId);
+	if (avatar === null) return <Glyph className="size-4 shrink-0" />;
+	return (
+		/*
+		 * THE RAIL'S PICTURE WEARS THE SAME EDGE AS THE ROSTER'S (design review
+		 * round 1, D1 on #1518). `AgentAvatar` is the one definition of the 1px
+		 * `border-control` edge and the `sunken` plate, on the circle's root.
+		 * Without it this 16px disc had no boundary at all - measured
+		 * `border-top-width: 0` against the roster's 1px - so a picture whose edge
+		 * matched the rail's ground was invisible, while the same picture in the
+		 * roster at least left four arcs.
+		 */
+		<AgentAvatar className="size-4 shrink-0">
+			{/* Decorative: the row prints the name right beside it. */}
+			<AvatarImage src={avatar} alt="" />
+		</AgentAvatar>
+	);
 };
 
 /**
@@ -7021,7 +7062,10 @@ export function ChatSidebar({
 						})}
 						title={t("ui.chat.header.new_chat_with", { target: displayName })}
 					>
-						<Icon className="size-4 shrink-0" />
+						<EntityMark
+							agentId={kind === "agent" ? (localId ?? null) : null}
+							glyph={Icon}
+						/>
 						<span className="min-w-0 flex-1 truncate" title={nameTitle}>
 							{displayName}
 						</span>
