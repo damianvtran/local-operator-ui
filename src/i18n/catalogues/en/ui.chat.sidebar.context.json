@@ -453,5 +453,16 @@
 		"placeholders": {
 			"title": "the conversation's own title, inside typographic quotes"
 		}
+	},
+	"ui.chat.sidebar.agents.list_join": {
+		"role": "joiner for the agent-name list inside the built-in installation offer",
+		"tone": "neutral inline enumeration; preserve names verbatim, no sentence punctuation",
+		"length": "Two placeholders plus locale-appropriate separators and spaces.",
+		"note": "Receives two strings per call, not a count. pair joins exactly two names; middle joins a partial list and the next name in lists of three or more; other handles end, the final join in lists of three or more. English deliberately has no serial comma. Each arm owns the whole separator, including spaces: locales may use a different pair/final conjunction, serial comma, or ideographic separators. Zero names produce an empty list and one name is unchanged, with no joiner call. Keep select labels pair, middle and other unchanged.",
+		"placeholders": {
+			"position": "pair for a two-name list, middle for non-final joins, end (the other arm) for the final join of three or more names",
+			"head": "first name or the already joined preceding names; preserve verbatim",
+			"tail": "next agent display name; preserve verbatim"
+		}
 	}
 }

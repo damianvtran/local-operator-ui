@@ -58,5 +58,6 @@
 	"ui.chat.sidebar.row_menu.unarchive": "Unarchive conversation",
 	"ui.chat.sidebar.row_menu.unpin": "Unpin conversation",
 	"ui.chat.sidebar.pins.pin_label": "Pin “{title}”",
-	"ui.chat.sidebar.pins.unpin_label": "Unpin “{title}”"
+	"ui.chat.sidebar.pins.unpin_label": "Unpin “{title}”",
+	"ui.chat.sidebar.agents.list_join": "{position, select, pair {{head} and {tail}} middle {{head}, {tail}} other {{head} and {tail}}}"
 }

@@ -5015,6 +5015,11 @@ export type MessageParams = {
 	"ui.chat.sidebar.agents.dismiss_offer": undefined;
 	"ui.chat.sidebar.agents.empty": undefined;
 	"ui.chat.sidebar.agents.filter": undefined;
+	"ui.chat.sidebar.agents.list_join": {
+		position: string;
+		head: string;
+		tail: string;
+	};
 	"ui.chat.sidebar.agents.loading": undefined;
 	"ui.chat.sidebar.agents.no_match": undefined;
 	"ui.chat.sidebar.catalogue.total": { shown: number; total: number };
