@@ -157,6 +157,7 @@ const bundle = await build({
 			export { teamBridgeKeys } from "./src/renderer/src/features/team-bridge/team-bridge-keys";
 			export { t, formatDate, formatDateTime } from "./src/renderer/src/shared/i18n";
 			export { TeamBridgeMessageList } from "./src/renderer/src/features/team-bridge/team-bridge-message-list";
+			export { inlineImageSpans } from "./src/renderer/src/features/team-bridge/inline-data-receipt";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -330,7 +331,7 @@ const admitted = {
 	agent_verdict_at: "2026-10-23T10:58:01Z",
 };
 
-/* REJECTED: full text is served (it is the owner's audit) and read inline. */
+/* REJECTED: full text is served but requires explicit plaintext inspection. */
 const rejected = {
 	id: "msg_42",
 	conversation_id: direct.id,
@@ -882,16 +883,15 @@ test("panel: loading, error, empty history, populated", async () => {
 			hasMore: true,
 		}),
 	);
-	/* Rows are the shared list's (`li[data-message-id]`), not the bespoke
-	 * `<article>` the audit used to draw. Rejected text reads inline, which is
-	 * what the body loop below reads. */
+	/* Rows are the shared list's (`li[data-message-id]`); rejected text is
+	 * withheld while admitted and own bodies remain visible. */
 	assert.equal(
 		populated.host.querySelectorAll("li[data-message-id]").length,
 		4,
 	);
 	/* Newest-first from the server, oldest-first on screen: the caller's
 	 * chronology helper owns that, so this asserts the rows it is given. */
-	for (const body of [admitted.body, rejected.body, own.body]) {
+	for (const body of [admitted.body, own.body]) {
 		assert.ok(populated.text().includes(body));
 	}
 	assert.ok(populated.text().includes(m.t("ui.ownerAudit.older")));
@@ -918,7 +918,7 @@ test("a null body renders the unavailable text, never an empty string", async ()
 	await view.close();
 });
 
-test("unadmitted bodies read inline like every other message", async () => {
+test("unadmitted bodies are hidden and verdicts remain visible", async () => {
 	const view = await renderView(
 		panel({ messages: [admitted, rejected, unscreenedEmpty, own] }),
 	);
@@ -927,17 +927,19 @@ test("unadmitted bodies read inline like every other message", async () => {
 		articles.find((article) => (article.textContent ?? "").includes(needle));
 
 	const admittedRow = byText(admitted.body);
-	const rejectedRow = byText(rejected.body);
+	const rejectedRow = articles.find(
+		(row) => row.getAttribute("data-message-id") === rejected.id,
+	);
 	const emptyRow = byText(m.t("ui.ownerAudit.body_unavailable"));
 	const ownRow = byText(own.body);
 
-	/* No expand step on any row: the owner asked to read refused and unscreened
-	 * text without opening it. The verdict chip, not a disclosure, is what tells
-	 * them the agent refused or never saw it. */
-	assert.ok(rejectedRow, "the refused text is on screen without a press");
-	for (const row of [admittedRow, rejectedRow, emptyRow, ownRow]) {
-		assert.ok(row.querySelector("details") === null, "no disclosure");
-		assert.ok(row.querySelector("summary") === null, "no reveal summary");
+	assert.ok(
+		rejectedRow.querySelector("details"),
+		"rejected text requires disclosure",
+	);
+	assert.equal(rejectedRow.textContent.includes(rejected.body), false);
+	for (const row of [admittedRow, emptyRow, ownRow]) {
+		assert.equal(row.querySelector("details"), null);
 	}
 	assert.ok(
 		emptyRow.textContent.includes(m.t("ui.ownerAudit.body_unavailable")),
@@ -1964,7 +1966,225 @@ test("a null body is the audit's placeholder, not the member view's", async () =
 	await view.close();
 });
 
-test("unadmitted bodies are markdown inline, each under its verdict", async () => {
+test("legacy image data stays bounded and inert until inspected", async () => {
+	const data = `data:image/jpeg;base64,${"A".repeat(10000)}`;
+	const body = `Before\n[image 1/1: example.jpg]\n${data}\nAfter`;
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "legacy_image", body })] }),
+	);
+	const row = rowOf(view.host, "legacy_image");
+	assert.ok(row.textContent.includes("Before"));
+	assert.ok(row.textContent.includes("After"));
+	assert.ok(row.textContent.includes("image/jpeg"));
+	assert.equal(row.textContent.includes("A".repeat(64)), false);
+	assert.equal(row.querySelector("img"), null);
+	const details = row.querySelector("details");
+	await act(async () => {
+		details.open = true;
+		details.dispatchEvent(new dom.window.Event("toggle"));
+	});
+	assert.equal(row.querySelector("pre").textContent.length, 2048);
+	assert.ok(
+		row.querySelector("pre").textContent.startsWith("data:image/jpeg;base64,"),
+	);
+	await click(BUTTON_TEXT(row, m.t("ui.ownerAudit.next_chunk")));
+	assert.equal(row.querySelector("pre").textContent, "A".repeat(2048));
+	await view.close();
+});
+
+test("delimiter-heavy image data uses linearly bounded character checks", () => {
+	// Count the actual scanner's regex tests rather than timing a shared host.
+	// The former 257-character lookahead per delimiter exceeds this bound by
+	// orders of magnitude, so the test must fail if that loop is restored.
+	for (const [unit, count] of [
+		["]", 1000000],
+		["**", 50000],
+		[")", 100000],
+	]) {
+		const body = `data:image/svg+xml,%3Csvg%3E${unit.repeat(count)}\nAfter`;
+		const original = RegExp.prototype.test;
+		let checks = 0;
+		let spans;
+		try {
+			RegExp.prototype.test = function (value) {
+				checks++;
+				return original.call(this, value);
+			};
+			spans = m.inlineImageSpans(body);
+		} finally {
+			RegExp.prototype.test = original;
+		}
+		assert.equal(spans.length, 1);
+		// The scanner leaves at most the short, ambiguous suffix as prose.
+		assert.ok(spans[0].end >= body.indexOf("\n") - 260);
+		assert.ok(
+			checks <= 3 * body.length + 100,
+			`${unit}: ${checks} checks for ${body.length} characters`,
+		);
+	}
+});
+
+test("a million image data delimiters remain bounded in the rendered audit", async () => {
+	const body = `Before\ndata:image/svg+xml,%3Csvg%3E${"]".repeat(1000000)}\nAfter`;
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "million_delimiters", body })] }),
+	);
+	const row = rowOf(view.host, "million_delimiters");
+	assert.ok(row.textContent.includes("Before"));
+	assert.ok(row.textContent.includes("After"));
+	assert.ok(
+		row.textContent.length < 1000,
+		`rendered ${row.textContent.length} characters`,
+	);
+	assert.equal(row.querySelectorAll("details").length, 1);
+	assert.equal(row.querySelector("img"), null);
+	await view.close();
+});
+
+test("parameterized and percent-encoded image URIs are bounded without swallowing prose", async () => {
+	const variants = [
+		`data:image/svg+xml;charset=utf-8;base64,${"A".repeat(9000)}%2F${"B".repeat(9000)}`,
+		`data:image/svg+xml;charset=utf-8,%3Csvg%3E${"C".repeat(18000)}%3C%2Fsvg%3E`,
+		`data:image/${"x".repeat(9000)};name=${"y".repeat(9000)},${"D".repeat(9000)}`,
+		`data:image/svg+xml,begin(embedded)${"E".repeat(18000)}.`,
+		`data:image/svg+xml,%3Csvg%3E]${"F".repeat(10000)}`,
+		`data:image/svg+xml,%3Csvg%3E}${"G".repeat(10000)}`,
+		`data:image/svg+xml,%3Csvg%3E**${"H".repeat(10000)}`,
+	];
+	for (const [index, data] of variants.entries()) {
+		const body = `Before data:image/png is a type.\n${data}\nAfter`;
+		const view = await renderView(
+			panel({ messages: [auditRow({ id: `variant_${index}`, body })] }),
+		);
+		const row = rowOf(view.host, `variant_${index}`);
+		assert.ok(row.textContent.includes("Before data:image/png is a type."));
+		assert.ok(row.textContent.includes("After"));
+		assert.ok(
+			row.textContent.length < 1000,
+			`variant ${index}: bounded default DOM`,
+		);
+		assert.equal(row.querySelectorAll("details").length, 1);
+		assert.equal(row.querySelector("img"), null);
+		await view.close();
+	}
+});
+
+test("wrapped base64 is bounded while adjacent Markdown and prose survive", async () => {
+	const data = `data:image/png;base64,${"A".repeat(100)}\r\n${"B".repeat(10000)}`;
+	const body = `Before ${data})**important**\nordinary next line`;
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "wrapped_data", body })] }),
+	);
+	const row = rowOf(view.host, "wrapped_data");
+	assert.ok(row.textContent.includes("Before"));
+	assert.ok(row.textContent.includes("important"));
+	assert.ok(row.textContent.includes("ordinary next line"));
+	assert.ok(row.textContent.length < 1000);
+	assert.equal(row.textContent.includes("B".repeat(100)), false);
+	assert.equal(row.querySelector("strong")?.textContent, "important");
+	assert.equal(row.querySelectorAll("details").length, 2);
+	assert.ok(row.textContent.includes(m.t("ui.ownerAudit.inspect_body")));
+	await view.close();
+});
+
+test("a long wrapped token remains bounded before same-line prose", async () => {
+	const body = `data:image/png;base64,${"A".repeat(100)}\n${"B".repeat(10000)} ordinary prose`;
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "wrapped_prose", body })] }),
+	);
+	const row = rowOf(view.host, "wrapped_prose");
+	assert.ok(row.textContent.includes("ordinary prose"));
+	assert.ok(row.textContent.length < 1000);
+	await view.close();
+});
+
+test("many short encoded continuation lines are bounded", async () => {
+	const data = `data:image/png;base64,${"A".repeat(100)}\n${Array(400).fill("B".repeat(32)).join("\n")}`;
+	const view = await renderView(
+		panel({
+			messages: [
+				auditRow({
+					id: "short_wrap",
+					body: `${data}\nordinary prose survives`,
+				}),
+			],
+		}),
+	);
+	const row = rowOf(view.host, "short_wrap");
+	assert.ok(row.textContent.includes("ordinary prose survives"));
+	assert.ok(row.textContent.length < 1000);
+	assert.equal(row.textContent.includes("B".repeat(32)), false);
+	await view.close();
+});
+
+test("eight short alphabet-only prose lines remain visible", async () => {
+	const lines = [
+		"ordinary",
+		"neighbor",
+		"families",
+		"morningx",
+		"tomorrow",
+		"pleasant",
+		"research",
+		"complete",
+	];
+	const body = `data:image/png;base64,${"A".repeat(100)}\n${lines.join("\n")}`;
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "prose_lines", body })] }),
+	);
+	const row = rowOf(view.host, "prose_lines");
+	for (const line of lines) assert.ok(row.textContent.includes(line), line);
+	assert.equal(row.querySelectorAll("details").length, 1);
+	await view.close();
+});
+
+test("large ambiguous continuations disclose bounded plaintext, not an image", async () => {
+	const data = `data:image/png;base64,${"A".repeat(100)}\n${Array(400).fill("B".repeat(32)).join("\n")}`;
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "ambiguous_lines", body: data })] }),
+	);
+	const row = rowOf(view.host, "ambiguous_lines");
+	const details = row.querySelectorAll("details");
+	assert.equal(details.length, 2);
+	assert.equal(
+		details[1].querySelector("summary").textContent,
+		m.t("ui.ownerAudit.inspect_body"),
+	);
+	assert.equal(row.textContent.includes("B".repeat(32)), false);
+	await act(async () => {
+		details[1].open = true;
+		details[1].dispatchEvent(new dom.window.Event("toggle"));
+	});
+	assert.ok(
+		details[1].querySelector("pre").textContent.includes("B".repeat(32)),
+	);
+	assert.equal(details[1].querySelector("pre").textContent.length, 2048);
+	await view.close();
+});
+
+test("plain prose adjacent to a closing delimiter remains visible", async () => {
+	const body = `data:image/png;base64,${"A".repeat(10000)})plain prose`;
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "adjacent_plain", body })] }),
+	);
+	const row = rowOf(view.host, "adjacent_plain");
+	assert.ok(row.textContent.includes(")plain prose"));
+	assert.equal(row.textContent.includes("A".repeat(100)), false);
+	await view.close();
+});
+
+test("short encoded-looking next line remains ordinary prose", async () => {
+	const body = `data:image/png;base64,${"A".repeat(100)}\nordinary`;
+	const view = await renderView(
+		panel({ messages: [auditRow({ id: "short_line", body })] }),
+	);
+	const row = rowOf(view.host, "short_line");
+	assert.ok(row.textContent.includes("ordinary"));
+	await view.close();
+});
+
+test("unadmitted bodies disclose inert plaintext, never Markdown", async () => {
+	const unsafeBody = `${MARKDOWN_BODY}\n![tracker](https://example.invalid/tracker.png)\n<script>unsafe()</script>`;
 	const rows = [
 		["msg_rej_md", "rejected", "ui.ownerAudit.rejected"],
 		["msg_ns_md", "not_screened", "ui.ownerAudit.not_screened"],
@@ -1972,69 +2192,33 @@ test("unadmitted bodies are markdown inline, each under its verdict", async () =
 	];
 	const view = await renderView(
 		panel({
-			messages: [
-				...rows.map(([id, agent_delivery_status], index) =>
-					auditRow({
-						id,
-						seq: 70 + index,
-						body: MARKDOWN_BODY,
-						agent_delivery_status,
-					}),
-				),
-				/* The agent's own message: inline too, and carrying no chip. */
-				{ ...own, id: "msg_own_md", seq: 73, body: MARKDOWN_BODY },
-			],
+			messages: rows.map(([id, agent_delivery_status], index) =>
+				auditRow({
+					id,
+					seq: 70 + index,
+					body: unsafeBody,
+					agent_delivery_status,
+				}),
+			),
 		}),
 	);
 	for (const [id, , copy] of rows) {
 		const row = rowOf(view.host, id);
-		assert.ok(row, id);
-		assert.ok(row.querySelector("details") === null, `${id}: no disclosure`);
-		assert.ok(row.querySelector("summary") === null, `${id}: no summary`);
-		const body = row.querySelector(".team-bridge-message-body");
-		assert.ok(body, `${id}: the body renders without a press`);
-		assert.ok(body.querySelector("strong"), `${id}: markdown inline`);
-		assert.ok(body.querySelector("table"), `${id}: tables inline`);
-		assert.ok(row.textContent.includes(m.t(copy)), `${id}: keeps its verdict`);
+		assert.ok(row.textContent.includes(m.t(copy)));
+		assert.equal(row.textContent.includes(unsafeBody), false);
+		const details = row.querySelector("details");
+		assert.ok(details);
+		await act(async () => {
+			details.open = true;
+			details.dispatchEvent(new dom.window.Event("toggle"));
+		});
+		assert.ok(row.textContent.includes(unsafeBody));
+		assert.equal(row.querySelector("strong"), null);
+		assert.equal(row.querySelector("table"), null);
+		assert.equal(row.querySelector("img"), null);
+		assert.equal(row.querySelector("a"), null);
+		assert.equal(row.querySelector("script"), null);
 	}
-	const ownRow = rowOf(view.host, "msg_own_md");
-	assert.ok(ownRow.querySelector(".team-bridge-message-body strong"));
-	for (const [, , copy] of rows)
-		assert.equal(ownRow.textContent.includes(m.t(copy)), false, "own: no chip");
-	await view.close();
-});
-
-/*
- * The owner reads refused and unscreened text as plainly as admitted text: the
- * collapse, its chevron (design review round 1, D3) and the quoted inset that
- * marked opened text (D4/D10) are gone with it. The verdict chip is the one
- * difference, so an unadmitted body wears the SAME body treatment as an
- * admitted one — a lingering start rule would be a half-removed quote.
- */
-test("an unadmitted body wears the same body treatment as an admitted one", async () => {
-	const view = await renderView(
-		panel({
-			messages: [
-				auditRow({ id: "msg_ok", body: "Fine." }),
-				auditRow({
-					id: "msg_rej",
-					seq: 46,
-					body: "Refused text.",
-					agent_delivery_status: "rejected",
-				}),
-			],
-		}),
-	);
-	const bodyOf = (id) =>
-		rowOf(view.host, id).querySelector(".team-bridge-message-body");
-	const refused = bodyOf("msg_rej");
-	assert.ok(refused, "the refused body is on screen");
-	assert.ok(refused.closest("details") === null, "not inside a disclosure");
-	assert.equal(
-		refused.getAttribute("class"),
-		bodyOf("msg_ok").getAttribute("class"),
-		"no quoted inset: the chip, not the body, carries the verdict",
-	);
 	await view.close();
 });
 
@@ -2042,7 +2226,7 @@ test("an unadmitted body wears the same body treatment as an admitted one", asyn
  * Agent review round 1, R1-2. The wire allows `""` (`z.string().nullish()`); an
  * audit row with a blank body and nothing attached must say the text is
  * unavailable, as a null body does, never draw an empty prose block. It held
- * for the collapsed verdicts first; with the collapse gone it holds for every
+ * for the collapsed verdicts first; it continues to hold for every
  * audit row, the agent's own included.
  */
 test("a blank audit body is the unavailable placeholder, not an empty block", async () => {

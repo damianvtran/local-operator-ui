@@ -26,5 +26,10 @@
 	"ui.ownerAudit.window_unconfirmed": "La fin de cet audit est inconnue. L’appartenance de votre cheffe de cabinet à cette conversation n’a pas pu être confirmée.",
 	"ui.ownerAudit.disclosure": "Vous pouvez lire cet audit parce que vous êtes propriétaire de la cheffe de cabinet qu’il couvre. Les autres membres sont informés que les propriétaires d’agents peuvent auditer la conversation.",
 	"ui.ownerAudit.viewers_label": "Également lisible par",
-	"ui.ownerAudit.replies": "Lire les réponses du fil"
+	"ui.ownerAudit.replies": "Lire les réponses du fil",
+	"ui.ownerAudit.inspect_body": "Inspecter le texte du message",
+	"ui.ownerAudit.inline_image_receipt": "Données d’image intégrées · {mime} · {count} caractères",
+	"ui.ownerAudit.previous_chunk": "Précédent",
+	"ui.ownerAudit.next_chunk": "Suivant",
+	"ui.ownerAudit.chunk_number": "Partie {page} sur {count}"
 }

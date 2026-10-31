@@ -26,5 +26,10 @@
 	"ui.ownerAudit.window_unconfirmed": "The end of this audit is unknown. Your chief of staff’s membership in this conversation could not be confirmed.",
 	"ui.ownerAudit.disclosure": "You can read this audit because you own the chief of staff it covers. The other members are told that agent owners can audit the conversation.",
 	"ui.ownerAudit.viewers_label": "Also readable by",
-	"ui.ownerAudit.replies": "Read thread replies"
+	"ui.ownerAudit.replies": "Read thread replies",
+	"ui.ownerAudit.inspect_body": "Inspect message text",
+	"ui.ownerAudit.inline_image_receipt": "Inline image data · {mime} · {count} characters",
+	"ui.ownerAudit.previous_chunk": "Previous",
+	"ui.ownerAudit.next_chunk": "Next",
+	"ui.ownerAudit.chunk_number": "Part {page} of {count}"
 }

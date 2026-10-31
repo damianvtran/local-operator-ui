@@ -26,5 +26,10 @@
 	"ui.ownerAudit.window_unconfirmed": "Không rõ lịch sử kiểm tra này kết thúc ở đâu. Không thể xác nhận tư cách thành viên của chánh văn phòng của bạn trong cuộc trò chuyện này.",
 	"ui.ownerAudit.disclosure": "Bạn có thể đọc lịch sử kiểm tra này vì bạn sở hữu chánh văn phòng mà lịch sử này bao quát. Các thành viên khác được thông báo rằng chủ sở hữu tác nhân có thể kiểm tra cuộc trò chuyện.",
 	"ui.ownerAudit.viewers_label": "Cũng được đọc bởi",
-	"ui.ownerAudit.replies": "Đọc các câu trả lời trong luồng"
+	"ui.ownerAudit.replies": "Đọc các câu trả lời trong luồng",
+	"ui.ownerAudit.inspect_body": "Kiểm tra văn bản tin nhắn",
+	"ui.ownerAudit.inline_image_receipt": "Dữ liệu hình ảnh nội tuyến · {mime} · {count} ký tự",
+	"ui.ownerAudit.previous_chunk": "Trước",
+	"ui.ownerAudit.next_chunk": "Tiếp",
+	"ui.ownerAudit.chunk_number": "Phần {page} trên {count}"
 }

@@ -397,6 +397,88 @@ type Story = StoryObj<typeof meta>;
  * absent body, and the agent's own message. */
 export const Populated: Story = {};
 
+/** Synthetic legacy receipt, never bytes from a real operator message. */
+export const LegacyInlineImage: Story = {
+	args: {
+		messages: [
+			{
+				...messages[0],
+				body: `[image 1/1: example.jpg; jpeg 489x71; 7488 bytes]\ndata:image/jpeg;base64,${"A".repeat(10000)}`,
+			},
+			{
+				...messages[1],
+				body: `Forwarded message:\n[image 1/1: example.jpg; jpeg 489x71; 7488 bytes]\ndata:image/jpeg;base64,${"A".repeat(10000)}`,
+			},
+		],
+	},
+};
+
+/** Synthetic negative controls: unadmitted Markdown/remote image is inert,
+ * and a parameterized URI remains bounded at realistic large payload sizes. */
+export const UnsafeUnscreenedAndLargeData: Story = {
+	args: {
+		messages: [
+			{
+				...messages[0],
+				body: `Ordinary text before.\ndata:image/svg+xml;charset=utf-8;base64,${"A".repeat(200000)}%2F${"B".repeat(200000)}\nOrdinary text after.`,
+			},
+			{
+				...messages[2],
+				body: "**Unscreened text**\n![tracker](https://example.invalid/tracker.png)\n<script>unsafe()</script>",
+			},
+		],
+	},
+};
+
+/** Wrapped synthetic data and adjacent Markdown exercise the ambiguous boundary. */
+export const WrappedDataAndAdjacentProse: Story = {
+	args: {
+		messages: [
+			{
+				...messages[0],
+				body: `Before\ndata:image/png;base64,${"A".repeat(100)}\n${"B".repeat(10000)})**important**\nordinary next line`,
+			},
+		],
+	},
+};
+
+/** Synthetic ambiguous continuations stay inspectable without claiming image provenance. */
+export const AmbiguousImageData: Story = {
+	args: {
+		messages: [
+			{
+				...messages[0],
+				body: `Before\ndata:image/png;base64,${"A".repeat(100)}\n${Array(400).fill("B".repeat(32)).join("\n")}\nordinary prose survives`,
+			},
+			{
+				...messages[0],
+				id: "synthetic-prose",
+				seq: 42,
+				body: `data:image/png;base64,${"A".repeat(100)}\nordinary\nneighbor\nfamilies\nmorningx\ntomorrow\npleasant\nresearch\ncomplete`,
+			},
+			{
+				...messages[0],
+				id: "synthetic-svg",
+				seq: 43,
+				body: `data:image/svg+xml,%3Csvg%3E]${"F".repeat(10000)}\nAfter`,
+			},
+		],
+	},
+};
+
+/** Locale alone does not change Storybook's document direction; exercise the
+ * same fixture under an explicit RTL ancestor to see bidirectional controls. */
+export const LegacyInlineImageRtl: Story = {
+	...LegacyInlineImage,
+	decorators: [
+		(Story) => (
+			<div dir="rtl">
+				<Story />
+			</div>
+		),
+	],
+};
+
 /** Nothing to audit in this organization yet — and therefore no panel: the slot
  * only opens one for a row the reader has selected. */
 export const Empty: Story = {

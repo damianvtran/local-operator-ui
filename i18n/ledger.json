@@ -6041,8 +6041,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "4664abd43f241e7d8c3ef2b6635b1bc1e5227e7096217fdcb7eaf03d869895df",
-			"target_sha256": "7d021fc0a2c095d6fe0e43f69a4a23396349377fc6364a1ed7f802e5c5836d34",
+			"source_sha256": "345d5403a39bf3963e64e31965887b58185be091c47c3fe1e9ea471c2591c5c0",
+			"target_sha256": "4458f22020b195036418e5c17532b971034a691248dc7380781d4afc3684bc67",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -6051,19 +6051,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-30",
+					"model": "openai/gpt-6.1-terra",
+					"date": "2026-10-31",
 					"result": "clean",
-					"instance": "pr1533rm-es-7d021fc0",
+					"instance": "840dad30806b-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1533rm-es-7d021fc0.json",
-					"receipt_sha256": "bd8e60d784a61a8c99f2087c45ff3bca7005adaeb712573652818c86196016be",
-					"scope": "Removal-only delta (PR #1533): ui.ownerAudit.own and ui.ownerAudit.reveal deleted; 28 surviving values byte-identical to the prior audited bytes; key set equals English."
+					"receipt": "i18n/receipts/840dad30806b-es.json",
+					"receipt_sha256": "f5ecb5f518232995279f94c81e35d9de225c4ec6fca0487eb3891712da1bf077",
+					"scope": "Five new keys; prior translations carried forward from prior audit."
 				}
 			],
 			"status": "audited",
@@ -6087,6 +6087,29 @@
 							"receipt": "i18n/receipts/tb1482mg-es-6eeefd82.json",
 							"receipt_sha256": "8a176668e64835de7df2e71cec851473585fba062ddcfb075888f529ce4d202b",
 							"scope": "Merged copy delta: whole ui.ownerAudit namespace (30 keys), audited against en + context sidecar at whole-namespace scope, with this round's five copy fixes applied and re-audited."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4664abd43f241e7d8c3ef2b6635b1bc1e5227e7096217fdcb7eaf03d869895df",
+					"target_sha256": "7d021fc0a2c095d6fe0e43f69a4a23396349377fc6364a1ed7f802e5c5836d34",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "pr1533rm-es-7d021fc0",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1533rm-es-7d021fc0.json",
+							"receipt_sha256": "bd8e60d784a61a8c99f2087c45ff3bca7005adaeb712573652818c86196016be",
+							"scope": "Removal-only delta (PR #1533): ui.ownerAudit.own and ui.ownerAudit.reveal deleted; 28 surviving values byte-identical to the prior audited bytes; key set equals English."
 						}
 					],
 					"status": "audited"
@@ -14657,8 +14680,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "4664abd43f241e7d8c3ef2b6635b1bc1e5227e7096217fdcb7eaf03d869895df",
-			"target_sha256": "2e997fce087f2c73008da4af157ead2066e3ab499b699d2777ccc13c0a1d0dcc",
+			"source_sha256": "345d5403a39bf3963e64e31965887b58185be091c47c3fe1e9ea471c2591c5c0",
+			"target_sha256": "49c8085b5929786fb2805883306be7961f64b7fbd4e2eb701596065096debc8c",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -14667,19 +14690,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-30",
+					"model": "openai/gpt-6.1-terra",
+					"date": "2026-10-31",
 					"result": "clean",
-					"instance": "pr1533rm-fr-2e997fce",
+					"instance": "840dad30806b-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1533rm-fr-2e997fce.json",
-					"receipt_sha256": "a7c0c929cbfa4ac16bc0177e36813d76c5b464736dd9f69a7fc1ec1dd3ca7781",
-					"scope": "Removal-only delta (PR #1533): ui.ownerAudit.own and ui.ownerAudit.reveal deleted; 28 surviving values byte-identical to the prior audited bytes; key set equals English."
+					"receipt": "i18n/receipts/840dad30806b-fr.json",
+					"receipt_sha256": "d76d3299727c7039bf8a62ee0e17b3485e94af57ce0cd152bbb5af8baf585d2c",
+					"scope": "Five new keys; prior translations carried forward from prior audit."
 				}
 			],
 			"status": "audited",
@@ -14703,6 +14726,29 @@
 							"receipt": "i18n/receipts/tb1482mg-fr-6eeefd82.json",
 							"receipt_sha256": "23c39df62052433892e533b476128972913b3351c9eb35d5be6dcf9928bd9248",
 							"scope": "Merged copy delta: whole ui.ownerAudit namespace (30 keys), audited against en + context sidecar at whole-namespace scope, with this round's five copy fixes applied and re-audited."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4664abd43f241e7d8c3ef2b6635b1bc1e5227e7096217fdcb7eaf03d869895df",
+					"target_sha256": "2e997fce087f2c73008da4af157ead2066e3ab499b699d2777ccc13c0a1d0dcc",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "pr1533rm-fr-2e997fce",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1533rm-fr-2e997fce.json",
+							"receipt_sha256": "a7c0c929cbfa4ac16bc0177e36813d76c5b464736dd9f69a7fc1ec1dd3ca7781",
+							"scope": "Removal-only delta (PR #1533): ui.ownerAudit.own and ui.ownerAudit.reveal deleted; 28 surviving values byte-identical to the prior audited bytes; key set equals English."
 						}
 					],
 					"status": "audited"
@@ -23523,8 +23569,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "4664abd43f241e7d8c3ef2b6635b1bc1e5227e7096217fdcb7eaf03d869895df",
-			"target_sha256": "099355252faaf551ad43536d9ea00db3b79215e698486934ef5b8b3600caa602",
+			"source_sha256": "345d5403a39bf3963e64e31965887b58185be091c47c3fe1e9ea471c2591c5c0",
+			"target_sha256": "512a24b458b78ece911ba6bbb64c3b6e530b85247f48862a9cc36830a6a2dd6c",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -23533,19 +23579,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-30",
+					"model": "openai/gpt-6.1-terra",
+					"date": "2026-10-31",
 					"result": "clean",
-					"instance": "pr1533rm-hi-09935525",
+					"instance": "840dad30806b-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1533rm-hi-09935525.json",
-					"receipt_sha256": "82b8a3eeb29c72889d8792eb2b39e1f3ff4953fbe708485116054c78ebb392be",
-					"scope": "Removal-only delta (PR #1533): ui.ownerAudit.own and ui.ownerAudit.reveal deleted; 28 surviving values byte-identical to the prior audited bytes; key set equals English."
+					"receipt": "i18n/receipts/840dad30806b-hi.json",
+					"receipt_sha256": "8dda35557894a818e8c02c2a9cabd31d76a7ec702af6f5372f5c1c0d60b926b5",
+					"scope": "Five new keys; prior translations carried forward from prior audit."
 				}
 			],
 			"status": "audited",
@@ -23569,6 +23615,29 @@
 							"receipt": "i18n/receipts/tb1482mg-hi-6eeefd82.json",
 							"receipt_sha256": "ad9babbc42e991418727b27029c56eb89a1cf221083676ca7923af7d4c61856f",
 							"scope": "Merged copy delta: whole ui.ownerAudit namespace (30 keys), audited against en + context sidecar at whole-namespace scope, with this round's five copy fixes applied and re-audited."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4664abd43f241e7d8c3ef2b6635b1bc1e5227e7096217fdcb7eaf03d869895df",
+					"target_sha256": "099355252faaf551ad43536d9ea00db3b79215e698486934ef5b8b3600caa602",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "pr1533rm-hi-09935525",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1533rm-hi-09935525.json",
+							"receipt_sha256": "82b8a3eeb29c72889d8792eb2b39e1f3ff4953fbe708485116054c78ebb392be",
+							"scope": "Removal-only delta (PR #1533): ui.ownerAudit.own and ui.ownerAudit.reveal deleted; 28 surviving values byte-identical to the prior audited bytes; key set equals English."
 						}
 					],
 					"status": "audited"
@@ -32040,8 +32109,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "4664abd43f241e7d8c3ef2b6635b1bc1e5227e7096217fdcb7eaf03d869895df",
-			"target_sha256": "a9b2e4de55314eb4ffeb5ed84a607a9a0ba3fbb8ab4cce3a57aa909e0181a786",
+			"source_sha256": "345d5403a39bf3963e64e31965887b58185be091c47c3fe1e9ea471c2591c5c0",
+			"target_sha256": "cdbdb1fabba46c4de56c7fec24fdbad0c19a2b53572b6b0aefe76815d6a693d0",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -32050,19 +32119,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-30",
+					"model": "openai/gpt-6.1-terra",
+					"date": "2026-10-31",
 					"result": "clean",
-					"instance": "pr1533rm-ru-a9b2e4de",
+					"instance": "840dad30806b-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1533rm-ru-a9b2e4de.json",
-					"receipt_sha256": "269f75c4eedb4fe418c411697f9e42931f4502ba4f9e13285258a04038b5f121",
-					"scope": "Removal-only delta (PR #1533): ui.ownerAudit.own and ui.ownerAudit.reveal deleted; 28 surviving values byte-identical to the prior audited bytes; key set equals English."
+					"receipt": "i18n/receipts/840dad30806b-ru.json",
+					"receipt_sha256": "3f01c4f04c3079d05856f49082c9caae93b95cee78798d071f42dfa25bd2b594",
+					"scope": "Five new keys; prior translations carried forward from prior audit."
 				}
 			],
 			"status": "audited",
@@ -32086,6 +32155,29 @@
 							"receipt": "i18n/receipts/tb1482mg-ru-6eeefd82.json",
 							"receipt_sha256": "4053f1e8ca582bdcced56858fcb0a0fa33bb78e3ddf5827f496d6a3be6e6ed6b",
 							"scope": "Merged copy delta: whole ui.ownerAudit namespace (30 keys), audited against en + context sidecar at whole-namespace scope, with this round's five copy fixes applied and re-audited."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4664abd43f241e7d8c3ef2b6635b1bc1e5227e7096217fdcb7eaf03d869895df",
+					"target_sha256": "a9b2e4de55314eb4ffeb5ed84a607a9a0ba3fbb8ab4cce3a57aa909e0181a786",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "pr1533rm-ru-a9b2e4de",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1533rm-ru-a9b2e4de.json",
+							"receipt_sha256": "269f75c4eedb4fe418c411697f9e42931f4502ba4f9e13285258a04038b5f121",
+							"scope": "Removal-only delta (PR #1533): ui.ownerAudit.own and ui.ownerAudit.reveal deleted; 28 surviving values byte-identical to the prior audited bytes; key set equals English."
 						}
 					],
 					"status": "audited"
@@ -40634,8 +40726,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "4664abd43f241e7d8c3ef2b6635b1bc1e5227e7096217fdcb7eaf03d869895df",
-			"target_sha256": "98eef8c495b62df3ea5e6d01b9294ff06631f51c4b3bfb2e00cb015017d7f16c",
+			"source_sha256": "345d5403a39bf3963e64e31965887b58185be091c47c3fe1e9ea471c2591c5c0",
+			"target_sha256": "49589c949a299778d6174242340967f1b7e1c42b5f6fb147741017304716318a",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -40644,19 +40736,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-30",
+					"model": "openai/gpt-6.1-terra",
+					"date": "2026-10-31",
 					"result": "clean",
-					"instance": "pr1533rm-ur-98eef8c4",
+					"instance": "840dad30806b-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1533rm-ur-98eef8c4.json",
-					"receipt_sha256": "185ad92091e17745281264afe648a7f49fb977e3930eba772c6cc4506936c075",
-					"scope": "Removal-only delta (PR #1533): ui.ownerAudit.own and ui.ownerAudit.reveal deleted; 28 surviving values byte-identical to the prior audited bytes; key set equals English."
+					"receipt": "i18n/receipts/840dad30806b-ur.json",
+					"receipt_sha256": "6df127b96288ac861ad153a2ee7c9a20a9eeb246a2b5118d07aa76252234abea",
+					"scope": "Five new keys; prior translations carried forward from prior audit."
 				}
 			],
 			"status": "audited",
@@ -40680,6 +40772,29 @@
 							"receipt": "i18n/receipts/tb1482mg-ur-6eeefd82.json",
 							"receipt_sha256": "b1eb51a730f37af8af097c9d170c48dd2f1c22dbb6926c9dd7a116391058527a",
 							"scope": "Merged copy delta: whole ui.ownerAudit namespace (30 keys), audited against en + context sidecar at whole-namespace scope, with this round's five copy fixes applied and re-audited."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4664abd43f241e7d8c3ef2b6635b1bc1e5227e7096217fdcb7eaf03d869895df",
+					"target_sha256": "98eef8c495b62df3ea5e6d01b9294ff06631f51c4b3bfb2e00cb015017d7f16c",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "pr1533rm-ur-98eef8c4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1533rm-ur-98eef8c4.json",
+							"receipt_sha256": "185ad92091e17745281264afe648a7f49fb977e3930eba772c6cc4506936c075",
+							"scope": "Removal-only delta (PR #1533): ui.ownerAudit.own and ui.ownerAudit.reveal deleted; 28 surviving values byte-identical to the prior audited bytes; key set equals English."
 						}
 					],
 					"status": "audited"
@@ -49377,8 +49492,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "4664abd43f241e7d8c3ef2b6635b1bc1e5227e7096217fdcb7eaf03d869895df",
-			"target_sha256": "4c85ce2da95d41658a283bcea15eb59e26d9e8028028848a3ffcc525c681d5a5",
+			"source_sha256": "345d5403a39bf3963e64e31965887b58185be091c47c3fe1e9ea471c2591c5c0",
+			"target_sha256": "eff081e22bd02cae0f07c69d375c280813963a043a90a9767f2d69e8608317e6",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -49387,19 +49502,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-30",
+					"model": "openai/gpt-6.1-terra",
+					"date": "2026-10-31",
 					"result": "clean",
-					"instance": "pr1533rm-vi-4c85ce2d",
+					"instance": "840dad30806b-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1533rm-vi-4c85ce2d.json",
-					"receipt_sha256": "5443478789d3f812902d01e9d599c7b97601e3c5d5af0c63263be132ee4cbe5a",
-					"scope": "Removal-only delta (PR #1533): ui.ownerAudit.own and ui.ownerAudit.reveal deleted; 28 surviving values byte-identical to the prior audited bytes; key set equals English."
+					"receipt": "i18n/receipts/840dad30806b-vi.json",
+					"receipt_sha256": "a946f8ec2c6421796759dae61d893366aaee5408e285fea669bf9ab204551c8c",
+					"scope": "Five new keys; prior translations carried forward from prior audit."
 				}
 			],
 			"status": "audited",
@@ -49423,6 +49538,29 @@
 							"receipt": "i18n/receipts/tb1482mg-vi-6eeefd82.json",
 							"receipt_sha256": "c3c4e0920b7a756c6acd871f14505b2a39db8c81a6ac69e2066cdbd93cf31c35",
 							"scope": "Merged copy delta: whole ui.ownerAudit namespace (30 keys), audited against en + context sidecar at whole-namespace scope, with this round's five copy fixes applied and re-audited."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4664abd43f241e7d8c3ef2b6635b1bc1e5227e7096217fdcb7eaf03d869895df",
+					"target_sha256": "4c85ce2da95d41658a283bcea15eb59e26d9e8028028848a3ffcc525c681d5a5",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "pr1533rm-vi-4c85ce2d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1533rm-vi-4c85ce2d.json",
+							"receipt_sha256": "5443478789d3f812902d01e9d599c7b97601e3c5d5af0c63263be132ee4cbe5a",
+							"scope": "Removal-only delta (PR #1533): ui.ownerAudit.own and ui.ownerAudit.reveal deleted; 28 surviving values byte-identical to the prior audited bytes; key set equals English."
 						}
 					],
 					"status": "audited"
@@ -58731,8 +58869,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "4664abd43f241e7d8c3ef2b6635b1bc1e5227e7096217fdcb7eaf03d869895df",
-			"target_sha256": "cf6796406880c821003bc546f27c70b81c69205a8de48806c20e2d3459e7e8a1",
+			"source_sha256": "345d5403a39bf3963e64e31965887b58185be091c47c3fe1e9ea471c2591c5c0",
+			"target_sha256": "ca9bfc7155dcd338f6e41d826042f7171394b10cd3d3ffb7bd93a4959dd0dd16",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "radient/auto",
@@ -58741,19 +58879,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-30",
+					"model": "openai/gpt-6.1-terra",
+					"date": "2026-10-31",
 					"result": "clean",
-					"instance": "pr1533rm-zh-cn-cf679640",
+					"instance": "840dad30806b-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1533rm-zh-cn-cf679640.json",
-					"receipt_sha256": "dfeba6bfc5a5124e02f9084053a818ac48ce6fe14789e138d2a392d49e60ce8e",
-					"scope": "Removal-only delta (PR #1533): ui.ownerAudit.own and ui.ownerAudit.reveal deleted; 28 surviving values byte-identical to the prior audited bytes; key set equals English."
+					"receipt": "i18n/receipts/840dad30806b-zh-cn.json",
+					"receipt_sha256": "d638a457c9d8c09e1e5fe29ae7489eba9e873c5d47362d20f2bd120510d11e94",
+					"scope": "Five new keys; prior translations carried forward from prior audit."
 				}
 			],
 			"status": "audited",
@@ -58777,6 +58915,29 @@
 							"receipt": "i18n/receipts/tb1482mg-zh-cn-6eeefd82.json",
 							"receipt_sha256": "822159532f47d31e55a3cc3fd666eb9a2ccd3eeb19690f23c8b2c7078c4bb3b8",
 							"scope": "Merged copy delta: whole ui.ownerAudit namespace (30 keys), audited against en + context sidecar at whole-namespace scope, with this round's five copy fixes applied and re-audited."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4664abd43f241e7d8c3ef2b6635b1bc1e5227e7096217fdcb7eaf03d869895df",
+					"target_sha256": "cf6796406880c821003bc546f27c70b81c69205a8de48806c20e2d3459e7e8a1",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "pr1533rm-zh-cn-cf679640",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1533rm-zh-cn-cf679640.json",
+							"receipt_sha256": "dfeba6bfc5a5124e02f9084053a818ac48ce6fe14789e138d2a392d49e60ce8e",
+							"scope": "Removal-only delta (PR #1533): ui.ownerAudit.own and ui.ownerAudit.reveal deleted; 28 surviving values byte-identical to the prior audited bytes; key set equals English."
 						}
 					],
 					"status": "audited"

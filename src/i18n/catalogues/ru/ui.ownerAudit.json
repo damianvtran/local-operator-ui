@@ -26,5 +26,10 @@
 	"ui.ownerAudit.window_unconfirmed": "Конец периода проверки неизвестен. Участие вашего координатора в этом разговоре не подтверждено.",
 	"ui.ownerAudit.disclosure": "Вам доступен этот период проверки, потому что этот координатор принадлежит вам. Остальным участникам сообщают, что владельцы агентов могут проверять разговор.",
 	"ui.ownerAudit.viewers_label": "Также могут читать",
-	"ui.ownerAudit.replies": "Читать ответы в ветке"
+	"ui.ownerAudit.replies": "Читать ответы в ветке",
+	"ui.ownerAudit.inspect_body": "Просмотреть текст сообщения",
+	"ui.ownerAudit.inline_image_receipt": "Встроенные данные изображения · {mime} · символов: {count}",
+	"ui.ownerAudit.previous_chunk": "Назад",
+	"ui.ownerAudit.next_chunk": "Далее",
+	"ui.ownerAudit.chunk_number": "Часть {page} из {count}"
 }

@@ -26,5 +26,10 @@
 	"ui.ownerAudit.window_unconfirmed": "इस ऑडिट का अंत ज्ञात नहीं है। इस बातचीत में आपके चीफ़ ऑफ़ स्टाफ़ की सदस्यता की पुष्टि नहीं हो सकी।",
 	"ui.ownerAudit.disclosure": "आप यह ऑडिट देख सकते हैं क्योंकि जिस चीफ़ ऑफ़ स्टाफ़ का यह ऑडिट है, उसके मालिक आप हैं। बाकी सदस्यों को बताया जाता है कि एजेंट के मालिक बातचीत का ऑडिट कर सकते हैं।",
 	"ui.ownerAudit.viewers_label": "अन्य पाठक",
-	"ui.ownerAudit.replies": "थ्रेड के उत्तर पढ़ें"
+	"ui.ownerAudit.replies": "थ्रेड के उत्तर पढ़ें",
+	"ui.ownerAudit.inspect_body": "संदेश का पाठ जाँचें",
+	"ui.ownerAudit.inline_image_receipt": "इनलाइन छवि डेटा · {mime} · {count} वर्ण",
+	"ui.ownerAudit.previous_chunk": "पिछला",
+	"ui.ownerAudit.next_chunk": "अगला",
+	"ui.ownerAudit.chunk_number": "भाग {page} / {count}"
 }
