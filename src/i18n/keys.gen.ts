@@ -68,6 +68,7 @@ import enUiChatTagDialogs from "./catalogues/en/ui.chat.tag_dialogs.json";
 import enUiChatTags from "./catalogues/en/ui.chat.tags.json";
 import enUiChatThreadSearch from "./catalogues/en/ui.chat.thread_search.json";
 import enUiChatTranscriptCopy from "./catalogues/en/ui.chat.transcript_copy.json";
+import enUiChatUserTurn from "./catalogues/en/ui.chat.user_turn.json";
 import enUiCodeReview from "./catalogues/en/ui.code_review.json";
 import enUiCommandPalette from "./catalogues/en/ui.command_palette.json";
 import enUiCommonAccount from "./catalogues/en/ui.common.account.json";
@@ -182,6 +183,7 @@ import esUiChatTagDialogs from "./catalogues/es/ui.chat.tag_dialogs.json";
 import esUiChatTags from "./catalogues/es/ui.chat.tags.json";
 import esUiChatThreadSearch from "./catalogues/es/ui.chat.thread_search.json";
 import esUiChatTranscriptCopy from "./catalogues/es/ui.chat.transcript_copy.json";
+import esUiChatUserTurn from "./catalogues/es/ui.chat.user_turn.json";
 import esUiCodeReview from "./catalogues/es/ui.code_review.json";
 import esUiCommandPalette from "./catalogues/es/ui.command_palette.json";
 import esUiCommonAccount from "./catalogues/es/ui.common.account.json";
@@ -296,6 +298,7 @@ import frUiChatTagDialogs from "./catalogues/fr/ui.chat.tag_dialogs.json";
 import frUiChatTags from "./catalogues/fr/ui.chat.tags.json";
 import frUiChatThreadSearch from "./catalogues/fr/ui.chat.thread_search.json";
 import frUiChatTranscriptCopy from "./catalogues/fr/ui.chat.transcript_copy.json";
+import frUiChatUserTurn from "./catalogues/fr/ui.chat.user_turn.json";
 import frUiCodeReview from "./catalogues/fr/ui.code_review.json";
 import frUiCommandPalette from "./catalogues/fr/ui.command_palette.json";
 import frUiCommonAccount from "./catalogues/fr/ui.common.account.json";
@@ -410,6 +413,7 @@ import hiUiChatTagDialogs from "./catalogues/hi/ui.chat.tag_dialogs.json";
 import hiUiChatTags from "./catalogues/hi/ui.chat.tags.json";
 import hiUiChatThreadSearch from "./catalogues/hi/ui.chat.thread_search.json";
 import hiUiChatTranscriptCopy from "./catalogues/hi/ui.chat.transcript_copy.json";
+import hiUiChatUserTurn from "./catalogues/hi/ui.chat.user_turn.json";
 import hiUiCodeReview from "./catalogues/hi/ui.code_review.json";
 import hiUiCommandPalette from "./catalogues/hi/ui.command_palette.json";
 import hiUiCommonAccount from "./catalogues/hi/ui.common.account.json";
@@ -524,6 +528,7 @@ import ruUiChatTagDialogs from "./catalogues/ru/ui.chat.tag_dialogs.json";
 import ruUiChatTags from "./catalogues/ru/ui.chat.tags.json";
 import ruUiChatThreadSearch from "./catalogues/ru/ui.chat.thread_search.json";
 import ruUiChatTranscriptCopy from "./catalogues/ru/ui.chat.transcript_copy.json";
+import ruUiChatUserTurn from "./catalogues/ru/ui.chat.user_turn.json";
 import ruUiCodeReview from "./catalogues/ru/ui.code_review.json";
 import ruUiCommandPalette from "./catalogues/ru/ui.command_palette.json";
 import ruUiCommonAccount from "./catalogues/ru/ui.common.account.json";
@@ -638,6 +643,7 @@ import urUiChatTagDialogs from "./catalogues/ur/ui.chat.tag_dialogs.json";
 import urUiChatTags from "./catalogues/ur/ui.chat.tags.json";
 import urUiChatThreadSearch from "./catalogues/ur/ui.chat.thread_search.json";
 import urUiChatTranscriptCopy from "./catalogues/ur/ui.chat.transcript_copy.json";
+import urUiChatUserTurn from "./catalogues/ur/ui.chat.user_turn.json";
 import urUiCodeReview from "./catalogues/ur/ui.code_review.json";
 import urUiCommandPalette from "./catalogues/ur/ui.command_palette.json";
 import urUiCommonAccount from "./catalogues/ur/ui.common.account.json";
@@ -752,6 +758,7 @@ import viUiChatTagDialogs from "./catalogues/vi/ui.chat.tag_dialogs.json";
 import viUiChatTags from "./catalogues/vi/ui.chat.tags.json";
 import viUiChatThreadSearch from "./catalogues/vi/ui.chat.thread_search.json";
 import viUiChatTranscriptCopy from "./catalogues/vi/ui.chat.transcript_copy.json";
+import viUiChatUserTurn from "./catalogues/vi/ui.chat.user_turn.json";
 import viUiCodeReview from "./catalogues/vi/ui.code_review.json";
 import viUiCommandPalette from "./catalogues/vi/ui.command_palette.json";
 import viUiCommonAccount from "./catalogues/vi/ui.common.account.json";
@@ -866,6 +873,7 @@ import zhCNUiChatTagDialogs from "./catalogues/zh-CN/ui.chat.tag_dialogs.json";
 import zhCNUiChatTags from "./catalogues/zh-CN/ui.chat.tags.json";
 import zhCNUiChatThreadSearch from "./catalogues/zh-CN/ui.chat.thread_search.json";
 import zhCNUiChatTranscriptCopy from "./catalogues/zh-CN/ui.chat.transcript_copy.json";
+import zhCNUiChatUserTurn from "./catalogues/zh-CN/ui.chat.user_turn.json";
 import zhCNUiCodeReview from "./catalogues/zh-CN/ui.code_review.json";
 import zhCNUiCommandPalette from "./catalogues/zh-CN/ui.command_palette.json";
 import zhCNUiCommonAccount from "./catalogues/zh-CN/ui.common.account.json";
@@ -983,6 +991,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatTags,
 	...enUiChatThreadSearch,
 	...enUiChatTranscriptCopy,
+	...enUiChatUserTurn,
 	...enUiCodeReview,
 	...enUiCommandPalette,
 	...enUiCommonAccount,
@@ -1105,6 +1114,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatTags,
 		...esUiChatThreadSearch,
 		...esUiChatTranscriptCopy,
+		...esUiChatUserTurn,
 		...esUiCodeReview,
 		...esUiCommandPalette,
 		...esUiCommonAccount,
@@ -1221,6 +1231,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatTags,
 		...frUiChatThreadSearch,
 		...frUiChatTranscriptCopy,
+		...frUiChatUserTurn,
 		...frUiCodeReview,
 		...frUiCommandPalette,
 		...frUiCommonAccount,
@@ -1337,6 +1348,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChatTags,
 		...hiUiChatThreadSearch,
 		...hiUiChatTranscriptCopy,
+		...hiUiChatUserTurn,
 		...hiUiCodeReview,
 		...hiUiCommandPalette,
 		...hiUiCommonAccount,
@@ -1453,6 +1465,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChatTags,
 		...ruUiChatThreadSearch,
 		...ruUiChatTranscriptCopy,
+		...ruUiChatUserTurn,
 		...ruUiCodeReview,
 		...ruUiCommandPalette,
 		...ruUiCommonAccount,
@@ -1569,6 +1582,7 @@ export const bundledCatalogues: Readonly<
 		...urUiChatTags,
 		...urUiChatThreadSearch,
 		...urUiChatTranscriptCopy,
+		...urUiChatUserTurn,
 		...urUiCodeReview,
 		...urUiCommandPalette,
 		...urUiCommonAccount,
@@ -1685,6 +1699,7 @@ export const bundledCatalogues: Readonly<
 		...viUiChatTags,
 		...viUiChatThreadSearch,
 		...viUiChatTranscriptCopy,
+		...viUiChatUserTurn,
 		...viUiCodeReview,
 		...viUiCommandPalette,
 		...viUiCommonAccount,
@@ -1801,6 +1816,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatTags,
 		...zhCNUiChatThreadSearch,
 		...zhCNUiChatTranscriptCopy,
+		...zhCNUiChatUserTurn,
 		...zhCNUiCodeReview,
 		...zhCNUiCommandPalette,
 		...zhCNUiCommonAccount,
@@ -5209,6 +5225,8 @@ export type MessageParams = {
 	"ui.chat.transcript_copy.technical_details": undefined;
 	"ui.chat.transcript_copy.toast.copied_markdown": undefined;
 	"ui.chat.transcript_copy.toast.copied_selection": undefined;
+	"ui.chat.user_turn.show_less": undefined;
+	"ui.chat.user_turn.show_more": undefined;
 	"ui.code_review.activity.close": undefined;
 	"ui.code_review.activity.comment": undefined;
 	"ui.code_review.activity.edit": undefined;
