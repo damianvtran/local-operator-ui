@@ -588,6 +588,7 @@ export const PersonRailRow: FC<{
 				<TeamBridgeProfileCard
 					member={member}
 					label={label}
+					kind="human"
 					onMessage={onSelect}
 					canMessage={false}
 					{...RAIL_CARD}
@@ -623,6 +624,7 @@ export const PersonRailRow: FC<{
 				<TeamBridgeProfileCard
 					member={member}
 					label={label}
+					kind="human"
 					onMessage={onSelect}
 					canMessage={
 						!readOnly && state !== "unavailable" && state !== "unknown"
@@ -666,6 +668,7 @@ export const PersonRailRow: FC<{
 			<TeamBridgeProfileCard
 				member={member}
 				label={label}
+				kind="human"
 				onMessage={onSelect}
 				canMessage={
 					(Boolean(dm) || !readOnly) &&
@@ -756,7 +759,7 @@ export const ChiefRailRow: FC<{
 			<TeamBridgeProfileCard
 				member={chief.person}
 				label={label}
-				agentName={label}
+				kind="agent"
 				onMessage={onSelect}
 				canMessage={Boolean(dm) || !readOnly}
 				{...RAIL_CARD}

@@ -182,7 +182,22 @@ function bannerPlace(
  * and wait. `undefined` when the member cannot be described (e.g. an agent
  * banner for a member with no named agent).
  */
-function notificationSender(
+/**
+ * The identity a sender descriptor pictures. Exported so the KIND ARGUMENT is
+ * testable on its own: `parseTeamBridgeNotificationSender` also drops an agent's
+ * `avatar`, which means a test that only inspects the parsed descriptor passes
+ * even when this function hands the resolver the owner's kind (agent review
+ * round 1, F2 — the mutation `directoryIdentity(member, "human")` here is
+ * invisible to the descriptor assertions). One caller (`notificationSender`).
+ */
+export function senderIdentity(
+	member: TeamBridgeDirectoryMember,
+	kind: TeamBridgeNotificationSender["kind"],
+) {
+	return directoryIdentity(member, kind === "person_agent" ? "agent" : "human");
+}
+
+export function notificationSender(
 	member: TeamBridgeDirectoryMember,
 	kind: TeamBridgeNotificationSender["kind"],
 ): TeamBridgeNotificationSender | undefined {
@@ -190,9 +205,7 @@ function notificationSender(
 	// picture comes from the one identity resolver, which honours source=none
 	// and NEVER gives an agent its owner's photo: a `person_agent` banner is
 	// drawn as the agent glyph (core), not the owner's face (2026-10-30).
-	const resolved = resolveIdentityAvatar(
-		directoryIdentity(member, kind === "person_agent" ? "agent" : "human"),
-	).src;
+	const resolved = resolveIdentityAvatar(senderIdentity(member, kind)).src;
 	// Only an account photo has a banner relay today; an endpoint picture (the
 	// seam in `identity-avatar.ts`) needs its own closed route before it can
 	// ride here.

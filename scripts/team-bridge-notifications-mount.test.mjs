@@ -124,7 +124,8 @@ export function useMembershipsQuery() {
 const bundled = await build({
 	stdin: {
 		contents: `
-			export { useTeamBridgeNotifications } from "./src/renderer/src/features/team-bridge/use-team-bridge-notifications"; export { teamBridgeOpenPath } from "./src/shared/team-bridge-notify";
+			export { useTeamBridgeNotifications, notificationSender, senderIdentity } from "./src/renderer/src/features/team-bridge/use-team-bridge-notifications"; export { teamBridgeOpenPath } from "./src/shared/team-bridge-notify";
+			export { resolveIdentityAvatar } from "./src/shared/identity-avatar";
 			export { toasts } from "@shared/utils/toast-manager";
 			export { useTeamBridgeNotificationOpen } from "./src/renderer/src/features/team-bridge/use-team-bridge-notification-open";
 			export { beginRadientAuthoritySignOut, beginRadientAuthorityTransition, settleRadientAuthority } from "./src/renderer/src/shared/hooks/radient-account-authority";
@@ -2304,3 +2305,46 @@ for (const kind of ["agent", "human"]) {
 		}
 	});
 }
+
+/*
+ * THE KIND ARGUMENT IS PINNED ON ITS OWN (agent review round 1, F2). A
+ * descriptor-only test cannot see this: `parseTeamBridgeNotificationSender`
+ * drops `avatar` on a `person_agent` anyway, so passing the owner's kind here
+ * used to leave the banner assertions green. `senderIdentity` is the one place
+ * the descriptor's kind becomes the resolver's kind, and these are the two
+ * mutations that matter — dropping the mapping, and asking for the human.
+ */
+test("a person_agent sender resolves through the agent identity, never the owner's", () => {
+	const owner = "2fc3a222-9e22-4c85-8b94-0b11c81972f7";
+	const hash = "0123456789abcdef";
+	const row = {
+		account_id: owner,
+		display_label: "Damian Tran",
+		role: "owner",
+		bridge_enabled: true,
+		bridge_state: "active",
+		avatar_url: `/v1/accounts/${owner}/avatar?v=${hash}`,
+		profile: {
+			display_name: "Damian Tran",
+			avatar: { source: "uploaded", hash, updated_at: "2026-10-01" },
+		},
+		agent: { endpoint_id: "bep_aida", name: "Aida", state: "active" },
+	};
+	const agentIdentity = api.senderIdentity(row, "person_agent");
+	assert.equal(agentIdentity.kind, "agent");
+	assert.deepEqual(api.resolveIdentityAvatar(agentIdentity).src, null);
+	// The control: the same row as a person still resolves to their photo.
+	const humanIdentity = api.senderIdentity(row, "person");
+	assert.equal(humanIdentity.kind, "human");
+	assert.deepEqual(api.resolveIdentityAvatar(humanIdentity).src, {
+		type: "account",
+		accountId: owner,
+		hash,
+	});
+	// And the descriptor carries no photo for the agent, for the same reason.
+	assert.equal(api.notificationSender(row, "person_agent")?.avatar, undefined);
+	assert.deepEqual(api.notificationSender(row, "person")?.avatar, {
+		account_id: owner,
+		hash,
+	});
+});

@@ -638,7 +638,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 		<TeamBridgeProfileCard
 			member={member}
 			label={label}
-			agentName={agent ? label : undefined}
+			kind={agent ? "agent" : "human"}
 			onMessage={messagePerson}
 			canMessage={canMessage}
 		>
@@ -746,7 +746,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 							<TeamBridgeProfileCard
 								member={member}
 								label={label}
-								agentName={agent ? label : undefined}
+								kind={agent ? "agent" : "human"}
 								onMessage={messagePerson}
 								canMessage={canMessage}
 							>

@@ -3219,11 +3219,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 													<TeamBridgeProfileCard
 														member={draftPerson}
 														label={paneTitle ?? ""}
-														agentName={
-															target.type === "chief"
-																? (paneTitle ?? "")
-																: undefined
-														}
+														kind={target.type === "chief" ? "agent" : "human"}
 														onMessage={() => {}}
 														canMessage={false}
 													>

@@ -23,16 +23,28 @@
  * whose owner has a photo, or whose `avatar_url` names an account, resolves an
  * agent to an account picture.
  *
- * THE ENDPOINT SEAM (absent today). Agents cannot publish a picture yet. When
- * the hub adds one, it is expected on the directory's agent object as a
- * relative, hash-pinned `avatar_url` of the form
- * `/v1/endpoints/<endpoint_id>/avatar?v=<16 hex>`, the same shape and closure
- * as the account route. The resolver already parses that shape and refuses
- * one whose endpoint differs from the identity's, so the hub change has one
- * place to land. Fetching it needs a closed endpoint-avatar relay in main and
- * core that does not exist; until it does, `useIdentityAvatar` renders an
- * endpoint `src` as the glyph. That keeps today's behaviour honest rather than
- * guessing at a route.
+ * THE ENDPOINT SEAM (absent today, and WIDER THAN THIS FILE). Agents cannot
+ * publish a picture yet. When they can, the hub publishes it on the
+ * directory's agent object as a relative, hash-pinned `avatar_url` of the form
+ * `/v1/messaging/endpoints/<endpoint_id>/avatar?v=<16 hex>` — the route
+ * agent-server already serves (`BridgeEndpointAvatarPointer.AvatarURL`), the
+ * same shape and closure as the account route. This file parses that shape and
+ * refuses one whose endpoint differs from the identity's.
+ *
+ * LANDING IT IS NOT A ONE-LINE CHANGE, and this note exists so the next reader
+ * does not plan it as one:
+ *   1. the directory must send `agent.avatar_url` (validated at the boundary by
+ *      `teamBridgeDirectoryAgentSchema` in `team-bridge-contract.ts`);
+ *   2. an ENDPOINT-scoped byte relay must exist in main and core — today the
+ *      only one is account-scoped (`desktop-media.ts` `team_bridge.avatar` →
+ *      `TeamBridgeApi.avatarBytes`, keyed by `accountId` + `expectedAccountId`),
+ *      and `useIdentityAvatar` draws an endpoint `src` as the glyph because
+ *      there is nothing to fetch it with;
+ *   3. the notification sender parser drops any `avatar` on a `person_agent`
+ *      (`team-bridge-notify.ts`), so a banner needs an endpoint source admitted
+ *      there before an agent picture can reach an OS notification at all.
+ * Until all three land, an agent keeps the glyph — and it must never fall back
+ * to the owner's account picture in the meantime.
  *
  * Shared by the renderer (plates, profile card) and the notification sender
  * descriptor, so a desktop banner and a message row cannot disagree.
@@ -43,15 +55,27 @@ const ACCOUNT_ID = String.raw`(?:acc_[A-Za-z0-9_-]{1,64}|[A-Fa-f0-9]{8}-[A-Fa-f0
 /*
  * Endpoint ids on the wire are opaque but bounded (`id` in the contract is
  * 1-128 chars); keep the transport-safe subset only. Accepting escaped path
- * segments would widen a closed route.
+ * segments would widen a closed route. agent-server mints `bep_<hex>`, which
+ * this covers, and its own builder path-escapes the id — escaping is a no-op
+ * inside this charset, so a served URL always matches here.
  */
 const ENDPOINT_ID = String.raw`[A-Za-z0-9_-]{1,128}`;
 
 export const ACCOUNT_AVATAR_URL = new RegExp(
 	String.raw`^\/v1\/accounts\/(${ACCOUNT_ID})\/avatar\?v=([0-9a-f]{16})$`,
 );
+/*
+ * THE SERVED ROUTE, not a guess: agent-server publishes this exact shape from
+ * `BridgeEndpointAvatarPointer.AvatarURL`
+ * (`internal/models/bridge_endpoint_avatar.go`), and all three verbs live under
+ * `/v1/messaging/endpoints/:endpointid/avatar`
+ * (`internal/controllers/messaging_endpoint_avatars.go`). A resolver written
+ * against `/v1/endpoints/…` would parse nothing the hub ever sends, and the
+ * failure is silent — plates would keep the glyph forever while the tests stayed
+ * green against the same wrong fixture (agent review round 1, F1).
+ */
 export const ENDPOINT_AVATAR_URL = new RegExp(
-	String.raw`^\/v1\/endpoints\/(${ENDPOINT_ID})\/avatar\?v=([0-9a-f]{16})$`,
+	String.raw`^\/v1\/messaging\/endpoints\/(${ENDPOINT_ID})\/avatar\?v=([0-9a-f]{16})$`,
 );
 
 type AccountProfileAvatar = {

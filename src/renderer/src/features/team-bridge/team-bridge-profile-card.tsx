@@ -87,6 +87,21 @@ export function TeamBridgeAvatar({
 		) : (
 			(fallback ?? personInitial(label))
 		);
+	/*
+	 * THE AGENT MARK THAT SURVIVES A PICTURE (design review round 1, D1/D2).
+	 * An agent's plate differs from a person's only by its CONTENTS, so the day
+	 * `useIdentityAvatar` can resolve an endpoint picture the plate becomes "a
+	 * picture" again and says nothing about kind — the visual half of
+	 * 2026-10-30's defect, with no glyph to carry it. The ring is drawn on an
+	 * overlay ABOVE the image (an inset outline on the plate itself would be
+	 * painted under the `<img>` child), so it is the one part of an agent plate
+	 * no picture can replace. One rule, stated here and nowhere else: an agent
+	 * is accent, and its glyph is accent everywhere — the pair this repo
+	 * already registered for agents (`bg-media-surface` + `text-accent`,
+	 * 4.23:1 light / 8.42:1 dark, above the 3:1 non-text floor), which is why
+	 * the rail's chief rows and the message row's directory-less agent plate
+	 * keep the ink they had (design round 1, D2: apply it, do not fork it).
+	 */
 	return (
 		<span
 			aria-hidden="true"
@@ -95,11 +110,18 @@ export function TeamBridgeAvatar({
 			data-team-bridge-avatar=""
 			style={{ "--profile-avatar-size": `${size}px` } as CSSProperties}
 			className={cn(
-				"inline-flex size-[var(--profile-avatar-size)] shrink-0 items-center justify-center overflow-hidden rounded-md font-medium text-body-sm text-ink-muted",
+				"relative inline-flex size-[var(--profile-avatar-size)] shrink-0 items-center justify-center overflow-hidden rounded-md font-medium text-body-sm",
+				kind === "agent" ? "text-accent" : "text-ink-muted",
 				selected ? "bg-surface" : "bg-media-surface",
 				className,
 			)}
 		>
+			{kind === "agent" && (
+				<span
+					data-agent-mark=""
+					className="pointer-events-none absolute inset-0 rounded-[inherit] ring-1 ring-accent ring-inset"
+				/>
+			)}
 			{image && image !== failedImage ? (
 				<img
 					alt=""
@@ -141,7 +163,7 @@ export function TeamBridgeAvatar({
 export function TeamBridgeProfileCard({
 	member,
 	label,
-	agentName,
+	kind,
 	onMessage,
 	canMessage = true,
 	openDelayMs = 400,
@@ -152,7 +174,17 @@ export function TeamBridgeProfileCard({
 }: {
 	member: TeamBridgeDirectoryMember;
 	label: string;
-	agentName?: string;
+	/**
+	 * WHOSE CARD THIS IS, REQUIRED. An agent and its owner share one directory
+	 * row, so neither the row nor an optional name can say which of the two the
+	 * card pictures. This used to be inferred from an optional `agentName`
+	 * prop — a pure kind proxy with no other reader — which meant a surface
+	 * that pictured an agent and forgot the name fell
+	 * through to `kind="human"` and drew the OWNER'S PHOTO in the popover — the
+	 * reported defect, on the surface it was reported from (agent review round
+	 * 1, F3). Omission is now a type error, the same guarantee the plate has.
+	 */
+	kind: "human" | "agent";
 	onMessage: () => void;
 	canMessage?: boolean;
 	/** Pointer dwell on the anchor before the card opens. */
@@ -179,7 +211,7 @@ export function TeamBridgeProfileCard({
 	const hoveredSince = useRef<number | undefined>(undefined);
 	const fastArmed = useRef(false);
 	const focusContentOnOpen = useRef(false);
-	const isAgent = agentName !== undefined;
+	const isAgent = kind === "agent";
 	const displayName = isAgent ? label : member.profile?.display_name || label;
 
 	const clearTimer = () => {
@@ -421,7 +453,7 @@ export function TeamBridgeProfileCard({
 					<div className="flex items-start justify-between gap-3">
 						<TeamBridgeAvatar
 							member={member}
-							kind={isAgent ? "agent" : "human"}
+							kind={kind}
 							label={displayName}
 							size={64}
 						/>

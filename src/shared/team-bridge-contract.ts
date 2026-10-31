@@ -482,6 +482,22 @@ export const teamBridgeDirectoryAgentSchema = z
 		endpoint_id: id,
 		name: z.string().max(128),
 		state: z.string().min(1).max(32),
+		/*
+		 * THE ENDPOINT'S OWN PICTURE, validated where it enters the app rather
+		 * than handed to the resolver as `unknown`. Absent today: agent-server
+		 * serves the route but nothing publishes it on the directory yet, so
+		 * this is the seam `src/shared/identity-avatar.ts` parses. Optional and
+		 * `.catch(undefined)` — an older or newer hub must never cost a person
+		 * their agent row over a picture.
+		 */
+		avatar_url: z
+			.string()
+			.max(512)
+			.regex(
+				/^\/v1\/messaging\/endpoints\/[A-Za-z0-9_-]{1,128}\/avatar\?v=[0-9a-f]{16}$/,
+			)
+			.optional()
+			.catch(undefined),
 	})
 	.passthrough();
 export type TeamBridgeDirectoryAgent = z.infer<

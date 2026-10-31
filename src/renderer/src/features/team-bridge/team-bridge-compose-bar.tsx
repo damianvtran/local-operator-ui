@@ -90,9 +90,7 @@ export const TeamBridgeComposeBar: FC<{
 								<TeamBridgeProfileCard
 									member={member}
 									label={recipient.label}
-									agentName={
-										recipient.kind === "agent" ? recipient.label : undefined
-									}
+									kind={recipient.kind}
 									onMessage={() => {}}
 									canMessage={false}
 								>

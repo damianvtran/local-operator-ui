@@ -118,7 +118,11 @@ test("an agent identity never resolves to an account avatar, whatever the owner 
 });
 
 test("the endpoint seam: an agent's own picture resolves by endpoint, never another endpoint's", () => {
-	const own = `/v1/endpoints/ep_aida/avatar?v=${HASH}`;
+	// The LITERAL served route, not a string built from the constant: a test
+	// derived from the code it tests cannot catch a wrong route (round 1, F1).
+	// agent-server builds exactly this in
+	// `internal/models/bridge_endpoint_avatar.go` (`AvatarURL`).
+	const own = `/v1/messaging/endpoints/ep_aida/avatar?v=${HASH}`;
 	const row = { ...ownerRow, agent: { ...ownerRow.agent, avatar_url: own } };
 	assert.deepEqual(
 		m.resolveIdentityAvatar(m.directoryIdentity(row, "agent")).src,
@@ -132,12 +136,33 @@ test("the endpoint seam: an agent's own picture resolves by endpoint, never anot
 		m.resolveIdentityAvatar(m.directoryIdentity(row, "agent", "ep_other")).src,
 		null,
 	);
+	// The pre-fix shape this module was first written against. The hub never
+	// serves it; accepting it would let the resolver drift back unnoticed.
+	for (const stale of [
+		`/v1/endpoints/ep_aida/avatar?v=${HASH}`,
+		`/v1/agent/endpoints/ep_aida/avatar?v=${HASH}`,
+		`/v1/messaging/endpoint/ep_aida/avatar?v=${HASH}`,
+		`/v1/messaging/endpoints/ep_aida/avatar?v=${HASH.toUpperCase()}`,
+		"/v1/messaging/endpoints/ep_aida/avatar",
+	]) {
+		assert.equal(
+			m.resolveIdentityAvatar({
+				kind: "agent",
+				account_id: OWNER,
+				endpoint_id: "ep_aida",
+				avatar_url: stale,
+			}).src,
+			null,
+			`stale endpoint route accepted: ${stale}`,
+		);
+	}
 	assert.equal(
 		m.resolveIdentityAvatar({
 			kind: "agent",
 			account_id: OWNER,
 			endpoint_id: "ep_aida",
-			avatar_url: "/v1/endpoints/ep_aida%2F..%2Fx/avatar?v=0123456789abcdef",
+			avatar_url:
+				"/v1/messaging/endpoints/ep_aida%2F..%2Fx/avatar?v=0123456789abcdef",
 		}).src,
 		null,
 	);
