@@ -221,15 +221,26 @@ export function useBridgeOwner(accountId?: string) {
 			mounted.current = false;
 		};
 	}, []);
-	const isReadCurrent = () => {
+	/*
+	 * THE ACCOUNT HALF OF THE FENCE, WITHOUT THE MOUNT (QA Q1 on #1531). Same
+	 * account, same auth epoch, and the bridge status still ready and writable for
+	 * it: the security part, which an account switch or sign-out breaks. It omits
+	 * `mounted` on purpose, for the ONE caller that must outlive the page: a first
+	 * message's post, which has to land after the reader leaves Team Bridge just as
+	 * a send into an existing conversation does. Every other caller keeps
+	 * `isCurrent`, whose mount check stops a gone page from writing UI state.
+	 */
+	const isAccountCurrent = () => {
 		const current = observedRadientAuthority(client);
 		return (
-			mounted.current &&
 			Boolean(captured.accountId) &&
 			current.accountId === captured.accountId &&
 			current.epoch === captured.epoch
 		);
 	};
+	const isAuthorityCurrent = () =>
+		isAccountCurrent() && bridgeOwnerCurrent(client, captured.accountId);
+	const isReadCurrent = () => mounted.current && isAccountCurrent();
 	const isCurrent = () =>
 		isReadCurrent() && bridgeOwnerCurrent(client, captured.accountId);
 	const assertCurrent = () => {
@@ -239,6 +250,7 @@ export function useBridgeOwner(accountId?: string) {
 		accountId: captured.accountId,
 		isCurrent,
 		isReadCurrent,
+		isAuthorityCurrent,
 		assertCurrent,
 	};
 }

@@ -90,7 +90,8 @@ const bundle = await build({
  export {teamBridgeKeys} from './src/renderer/src/features/team-bridge/use-team-bridge';
  export {teamBridgeViewingConversation} from './src/renderer/src/features/team-bridge/team-bridge-viewing';
  export {QueryClient,QueryClientProvider} from '@tanstack/react-query';
- export {MemoryRouter} from 'react-router-dom';`,
+ export {MemoryRouter} from 'react-router-dom';
+ export {usePendingSends, resetPendingSendsForTest} from './src/renderer/src/features/team-bridge/team-bridge-pending-sends';`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -319,6 +320,15 @@ async function mount({
 		lifecycleCalls: [],
 		deleteFailure: null,
 		lifecycleFailure: null,
+		/* FIRST-SEND SCENARIO (QA Q1 on #1531). `created`, when an array, makes a
+		   create answer the conversation the request ASKED for (its kind and members)
+		   and keeps it, so the list carries it on the next read, as the hub does. The
+		   default (null) keeps the fixed `created-<generation>` answer older suites
+		   assert on. `away` renders the shell WITHOUT the page: leaving Team Bridge for
+		   another route unmounts the container while module state (lanes, pending
+		   rows) and the shared QueryClient live on. */
+		created: null,
+		away: false,
 	};
 	window.api = {
 		desktop: {
@@ -411,9 +421,14 @@ async function mount({
 							});
 						}
 						return reply({
-							conversations: fixture.empty
-								? []
-								: [{ ...conversation(), tenant_id: tenant }],
+							conversations: [
+								...(fixture.empty
+									? []
+									: [{ ...conversation(), tenant_id: tenant }]),
+								...(fixture.created ?? []).filter(
+									(row) => row.created_by === owner,
+								),
+							],
 						});
 					case "team_bridge.conversations.lifecycle": {
 						fixture.lifecycleCalls.push({
@@ -483,6 +498,25 @@ async function mount({
 						});
 					case "team_bridge.conversations.create":
 						if (fixture.createGate) await fixture.createGate.promise;
+						if (fixture.created) {
+							const row = {
+								...conversation(
+									`created-${generation}-${fixture.created.length + 1}`,
+								),
+								tenant_id: tenant,
+								kind: request.kind,
+								created_by: owner,
+								members: [
+									person(owner),
+									...request.members.map((member) => ({
+										...person(member.account_id),
+										...member,
+									})),
+								],
+							};
+							fixture.created.push(row);
+							return reply(row);
+						}
 						return reply({
 							...conversation(`created-${generation}`),
 							tenant_id: tenant,
@@ -503,6 +537,11 @@ async function mount({
 								client_ref: request.client_ref,
 							},
 						]);
+						/* The hub answers a send with the STORED message; the first-send
+						   scenario needs that shape (the optimistic row binds to it), the
+						   older suites keep the bare id they were written against. */
+						if (fixture.created)
+							return reply(fixture.messages.get(ownerKey)[0]);
 						return reply({ id: `msg_${owner}` });
 					case "team_bridge.read":
 						return reply({
@@ -573,7 +612,7 @@ async function mount({
 							React.Fragment,
 							null,
 							React.createElement(ui.AuthPrincipal),
-							React.createElement(ui.TeamBridgePage),
+							fixture.away ? null : React.createElement(ui.TeamBridgePage),
 						),
 					),
 				),
@@ -602,6 +641,16 @@ async function mount({
 				client.invalidateQueries({ queryKey: ui.teamBridgeKeys.status }),
 			);
 			await delay();
+		},
+		/* Leave Team Bridge (another route) and come back: the page unmounts and a
+		   fresh one mounts, exactly as the router does, with the shell kept. */
+		async leave() {
+			fixture.away = true;
+			await act(async () => render());
+		},
+		async back() {
+			fixture.away = false;
+			await act(async () => render());
 		},
 		async close() {
 			await act(async () => root.unmount());
