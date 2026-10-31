@@ -130,7 +130,7 @@ const bundled = await build({
 			export { beginRadientAuthoritySignOut, beginRadientAuthorityTransition, settleRadientAuthority } from "./src/renderer/src/shared/hooks/radient-account-authority";
 			export { teamBridgeKeys, notifyMutationOptions, useMarkTeamBridgeRead, useTeamBridgeConversations, useTeamBridgeStatus } from "./src/renderer/src/features/team-bridge/use-team-bridge";
 			export { AttentionBadge } from "@shared/components/ui/attention-badge";
-			export { teamBridgeUnreadView, useTeamBridgeUnreadView, withSharedUnread } from "./src/renderer/src/features/team-bridge/team-bridge-unread-sync";
+			export { cancelTeamBridgeUnreadReads, teamBridgeUnreadView, useTeamBridgeUnreadView, withSharedUnread } from "./src/renderer/src/features/team-bridge/team-bridge-unread-sync";
 			export { useTeamBridgeNavItem } from "./src/renderer/src/features/team-bridge/team-bridge-nav";
 			export { unreadRegister } from "./src/renderer/src/features/team-bridge/team-bridge-model";
 			export { fixture, TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
@@ -1982,6 +1982,60 @@ test("the rendered nav badge equals the rendered row marks, and a muted row's co
 	} finally {
 		await mounted.teardown();
 	}
+});
+
+test("cancelling a stale read leaves the conversation list successful, never errored", async () => {
+	/*
+	 * A CANCELLED READ IS NOT A FAILURE THE READER CAN ACT ON (quality review
+	 * round 3, Q3/m1). `query.cancel()` without options leaves the entry in an
+	 * error state in TanStack 5.73.3, so the cancel added in round 2 could flash
+	 * the rail's `error_stale` line and a Retry control over rows already on
+	 * screen. `cancel({ revert: true })` restores the state the fetch started
+	 * from; this pin is that the rows AND the status survive it.
+	 */
+	const client = new QueryClient();
+	const key = api.teamBridgeKeys.conversations("all", "acct_alice");
+	client.setQueryData(key, {
+		conversations: [railRow("bcv_cancel", "tnt_a", "channel", 2)],
+	});
+	let release;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const read = client
+		.fetchQuery({
+			queryKey: key,
+			queryFn: async () => {
+				await gate;
+				return { conversations: [] };
+			},
+			staleTime: 0,
+		})
+		.catch((error) => error);
+	for (let attempt = 0; attempt < 100; attempt += 1) {
+		if (client.getQueryState(key).fetchStatus === "fetching") break;
+		await new Promise((resolve) => setTimeout(resolve, 5));
+	}
+	assert.equal(
+		client.getQueryState(key).fetchStatus,
+		"fetching",
+		"a read is genuinely in flight",
+	);
+	api.cancelTeamBridgeUnreadReads(client, "acct_alice");
+	release();
+	assert.ok((await read) instanceof Error, "the cancelled read rejects");
+	const state = client.getQueryState(key);
+	assert.equal(state.fetchStatus, "idle");
+	assert.equal(
+		state.status,
+		"success",
+		"no error state, so no stale-error row",
+	);
+	assert.equal(
+		state.data.conversations.map((row) => row.id).join(),
+		"bcv_cancel",
+		"the rows on screen are the ones that were already there",
+	);
 });
 
 test("a muted row keeps its quiet count when the aggregate reports its organization at zero (A/B)", async () => {

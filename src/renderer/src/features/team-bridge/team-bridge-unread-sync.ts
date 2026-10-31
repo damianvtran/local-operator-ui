@@ -200,8 +200,12 @@ function unreadViewOf(queries: UnreadQueries): TeamBridgeUnreadView {
 	 * and a mute is the reader saying "do not interrupt me", so the muted
 	 * conversation is very often the only thing waiting. The row's own read stays
 	 * authoritative for it, and it cannot make the badge disagree, because the
-	 * aggregate never counted it: a stale muted count can only be wrong on its own
-	 * row, which that conversation's own list read refreshes.
+	 * aggregate never counted it. A stale muted count can only be wrong on its own
+	 * row, and it never reaches the badge - but it does LAST: in exactly this
+	 * state nothing polls that organization's rows (the watcher stops reading an
+	 * organization the aggregate reports at zero), so the row keeps the number it
+	 * has until the next window focus or a write to that conversation, not until
+	 * the next poll.
 	 */
 	for (const [key, entry] of rows)
 		if (
@@ -382,7 +386,16 @@ export function cancelTeamBridgeUnreadReads(
 			if (!ownedBy(query.queryKey, accountId)) continue;
 			if (query.state.data === undefined) continue;
 			if (query.state.fetchStatus === "idle") continue;
-			query.cancel();
+			/*
+			 * REVERT, not a bare cancel (quality review round 3, Q3/m1): TanStack
+			 * 5.73.3 leaves a cancelled query in an ERROR state unless it is told to
+			 * revert, so the rail would flash its `error_stale` line and a Retry
+			 * control over rows that are already on screen - a cancelled background
+			 * read is not a failure the reader can act on. `revert` restores the state
+			 * the fetch started from, which is the state (and status) the patch below
+			 * then edits.
+			 */
+			query.cancel({ revert: true });
 		}
 }
 

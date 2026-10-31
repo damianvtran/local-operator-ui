@@ -914,6 +914,8 @@ export function useMarkTeamBridgeRead(
 		},
 		onSuccess: async (_data, { target }) => {
 			if (!target.isCurrent()) return;
+			// Same guard as `onMutate`, so neither caller has to invent an owner.
+			if (!target.accountId) return;
 			/*
 			 * CANCEL AGAIN AT SETTLEMENT (agent review round 2, R2-m1). The
 			 * click-time cancel only covers reads dispatched BEFORE the click; a
@@ -923,7 +925,7 @@ export function useMarkTeamBridgeRead(
 			 * at the head of the success path closes that window, before the
 			 * invalidations below dispatch their own, post-clear reads.
 			 */
-			cancelTeamBridgeUnreadReads(client, target.accountId ?? "");
+			cancelTeamBridgeUnreadReads(client, target.accountId);
 			await client.invalidateQueries({
 				queryKey: teamBridgeKeys.conversationsPrefix,
 			});

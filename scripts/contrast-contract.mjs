@@ -7106,14 +7106,47 @@ for (const { id, palette: p } of palettes) {
  *    `rowSelected` past the band would fail here even though every one of its
  *    own pairs still cleared its floor.
  *
- * THE ALPHA MIRRORS THE STYLESHEET, and cannot be read from it: this file
- * measures palettes, not CSS. Changing the mix in `index.css` means changing
- * `ARRIVAL_BAND_ALPHA` here in the same commit, which is the same pairing
- * `docs/branding.md` records for every measured literal.
+ * THE ALPHA IS READ FROM THE STYLESHEET, NOT MIRRORED (agent review round 3,
+ * n1). A constant kept in step by a comment is a claim, not a gate: the mix could
+ * be retuned in `index.css` and this section would keep measuring last week's
+ * band. The rule below is parsed, and it FAILS CLOSED - an unreadable alpha means
+ * the band is unmeasured, which is the state this section exists to prevent.
+ * The lift rule is checked the same way, because the ink floor above is only true
+ * while the stylesheet actually lifts the washed row's dim utilities.
  */
-const ARRIVAL_BAND_ALPHA = 0.12;
+const ARRIVAL_ALPHA_SOURCE = readFileSync(
+	join(ROOT, "src/renderer/src/styles/index.css"),
+	"utf8",
+);
+const arrivalAlpha = () => {
+	const rule =
+		ARRIVAL_ALPHA_SOURCE.match(
+			/\.lo-team-bridge-target::after\s*\{[^}]*\}/,
+		)?.[0] ?? "";
+	const mix = rule.match(
+		/color-mix\(in srgb, var\(--color-accent\)\s+([\d.]+)%, transparent\)/,
+	);
+	if (!mix) {
+		fail(
+			"the arrival band's mix could not be read from `.lo-team-bridge-target::after` in `src/renderer/src/styles/index.css`, so the band is unmeasured — keep the rule readable (`color-mix(in srgb, var(--color-accent) N%, transparent)`) or teach this section its new spelling",
+		);
+		return null;
+	}
+	if (
+		!/\.lo-team-bridge-target \[class~="text-ink-dim"\]/.test(
+			ARRIVAL_ALPHA_SOURCE,
+		)
+	) {
+		fail(
+			'the washed row\'s ink lift is gone from `index.css` (`.lo-team-bridge-target [class~="text-ink-dim"]`), so `inkDim` would be read on the band at the floor below — restore the lift or re-measure this section',
+		);
+	}
+	return Number(mix[1]) / 100;
+};
+const ARRIVAL_BAND_ALPHA = arrivalAlpha();
 
 for (const { id, palette: p } of palettes) {
+	if (ARRIVAL_BAND_ALPHA === null) break;
 	const band = over(p.accent, p.surface, ARRIVAL_BAND_ALPHA);
 	for (const [role, floor, label] of [
 		["inkMuted", FLOOR.text, "washed row metadata ink"],

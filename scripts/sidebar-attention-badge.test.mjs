@@ -238,14 +238,26 @@ test("every Team Bridge unread mark asks unreadRegister for its register", () =>
 	 * three guarded call sites.
 	 */
 	assert.equal(
-		(src.match(/<MuteGlyph \/>/g) ?? []).length,
+		(src.match(/<MuteGlyph\b/g) ?? []).length,
 		3,
 		"channel, person and chief rows each draw the mute glyph",
 	);
 	assert.equal(
 		(src.match(/showsMutedGlyph\(/g) ?? []).length,
+		4,
+		// three row guards plus the accessible name that states the same fact
+		"one guard per row kind and one for the composed label",
+	);
+	/*
+	 * AND EVERY ONE OF THEM YIELDS ITS SLOT TO THE ROW'S MENU (quality review
+	 * round 3, Q3): on a muted row with no unread the bell is the row's last item,
+	 * so the hover "…" drew on top of it. At rest it is always visible; the yield
+	 * is the rule the count already follows, and only rows with a menu pass it.
+	 */
+	assert.equal(
+		(src.match(/<MuteGlyph yieldsToMenu=/g) ?? []).length,
 		3,
-		"one guard per row kind (the predicate itself lives in the model)",
+		"channel, person and chief rows pass the yield",
 	);
 });
 

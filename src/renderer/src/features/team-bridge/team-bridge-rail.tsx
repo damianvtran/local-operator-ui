@@ -210,15 +210,55 @@ const Unread: FC<{
  * register and the glyph state the same fact ("this count is a total, not a
  * request"), so they belong on the same row wherever that row can be muted.
  */
-const MuteGlyph: FC = () => (
+const MuteGlyph: FC<{ yieldsToMenu?: boolean }> = ({
+	yieldsToMenu = false,
+}) => (
 	<span
-		className="shrink-0 text-ink-dim"
+		className={cn(
+			"shrink-0 text-ink-dim",
+			/*
+			 * THE BELL YIELDS THE SLOT TO THE MENU TOO (quality review round 3, Q3).
+			 * On a muted row with no unread the glyph is the row's LAST item, so the
+			 * hover/focus "…" drew over it (bell 424-436 px against menu 414-438 px)
+			 * - one mark painted on another. It yields on the same trigger and to the
+			 * same rule the count already follows, and only on a row that has a menu;
+			 * at rest it is always visible.
+			 */
+			yieldsToMenu &&
+				"group-focus-within/row:invisible group-hover/row:invisible",
+		)}
 		title={t("ui.teamBridge.notify.muted")}
 	>
 		<BellOff size={12} aria-hidden="true" />
 		<span className="sr-only">{t("ui.teamBridge.notify.muted")}</span>
 	</span>
 );
+
+/**
+ * A person or chief row's accessible name: the action, then the two facts the
+ * inner text carries on a conversation row.
+ *
+ * WHY IT IS COMPOSED HERE (design review round 3, D10). These rows override the
+ * button's name with `people.message`, which SUPPRESSES everything inside it - so
+ * a screen reader heard "Message Pat" and lost both the mute state and the count
+ * that the visual row shows (the channel row reads "general Muted 1 unread" from
+ * its own inner text, with no override). The gate is the same: the count is only
+ * named when there is one, exactly like the badge that draws it.
+ */
+function personRowLabel(
+	name: string,
+	dm: TeamBridgeConversation | null,
+): string {
+	const muted = Boolean(dm && showsMutedGlyph(dm));
+	const unread = dm?.unread_count ?? 0;
+	return [
+		t("ui.teamBridge.people.message", { name }),
+		muted ? t("ui.teamBridge.notify.muted") : null,
+		unread > 0 ? t("ui.teamBridge.unread.count", { count: unread }) : null,
+	]
+		.filter((part) => part !== null)
+		.join(" ");
+}
 
 export const RailSection: FC<{
 	id: string;
@@ -400,7 +440,9 @@ export const ConversationRailRow: FC<{
 						{t("ui.teamBridge.preview.chip")}
 					</Badge>
 				)}
-				{showsMutedGlyph(conversation) && <MuteGlyph />}
+				{showsMutedGlyph(conversation) && (
+					<MuteGlyph yieldsToMenu={Boolean(onArchive)} />
+				)}
 				{hasDraft && (
 					<span
 						title={t("ui.teamBridge.drafts.indicator")}
@@ -633,7 +675,7 @@ export const PersonRailRow: FC<{
 					onClick={onSelect}
 					aria-current={selected ? "page" : undefined}
 					data-team-bridge-person={member.account_id}
-					aria-label={t("ui.teamBridge.people.message", { name: label })}
+					aria-label={personRowLabel(label, dm)}
 					className={cn(
 						RAIL_ROW,
 						selected
@@ -661,7 +703,9 @@ export const PersonRailRow: FC<{
 							</span>
 						</span>
 					)}
-					{Boolean(dm && showsMutedGlyph(dm)) && <MuteGlyph />}
+					{Boolean(dm && showsMutedGlyph(dm)) && (
+						<MuteGlyph yieldsToMenu={canStartGroup} />
+					)}
 					<Unread
 						count={unread}
 						yieldsToMenu
@@ -718,7 +762,7 @@ export const ChiefRailRow: FC<{
 					onClick={onSelect}
 					aria-current={selected ? "page" : undefined}
 					data-team-bridge-chief={chief.person.account_id}
-					aria-label={t("ui.teamBridge.people.message", { name: label })}
+					aria-label={personRowLabel(label, dm)}
 					className={cn(
 						RAIL_ROW,
 						selected
@@ -753,7 +797,9 @@ export const ChiefRailRow: FC<{
 							</span>
 						</span>
 					)}
-					{Boolean(dm && showsMutedGlyph(dm)) && <MuteGlyph />}
+					{Boolean(dm && showsMutedGlyph(dm)) && (
+						<MuteGlyph yieldsToMenu={!readOnly} />
+					)}
 					<Unread
 						count={unread}
 						yieldsToMenu

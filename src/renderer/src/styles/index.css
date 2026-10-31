@@ -132,9 +132,33 @@
  * nightfox). Scoped to the band's lifetime and to the dim utilities inside it,
  * so nothing else on the row changes and the lift ends with the class - the
  * same shape as the covered-pane hover translation further down this file.
+ *
+ * AND IT FADES BACK OVER THE BAND'S OWN 1400 ms (design review round 3, D9).
+ * Removing the class alone returned the ink in ONE frame (7.855:1 -> 5.700:1), so
+ * the end of the arrival was a visible snap in the row's smallest type. The
+ * keyframe lands the ink on its resting role exactly when the band's own
+ * animation lands on `opacity: 0` and the class is removed, so there is nothing
+ * left to snap: same time, same easing, one cue. The faded path stays at or above
+ * 5.213:1 across all fifty-nine palettes (design's sweep), so no frame of the
+ * fade is less legible than the resting row. Reduced motion drops the fade and
+ * keeps the static lift for the class's lifetime, like the band itself.
  */
+@keyframes lo-team-bridge-target-ink {
+	from {
+		color: var(--color-ink-muted);
+	}
+	to {
+		color: var(--color-ink-dim);
+	}
+}
 .lo-team-bridge-target [class~="text-ink-dim"] {
 	color: var(--color-ink-muted);
+	animation: lo-team-bridge-target-ink 1400ms var(--ease-out-quart) both;
+}
+@media (prefers-reduced-motion: reduce) {
+	.lo-team-bridge-target [class~="text-ink-dim"] {
+		animation: none;
+	}
 }
 
 /* An avatar photo arriving over its initials (sidebar account row, design
