@@ -10,7 +10,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import {
+	DESKTOP_COMMAND,
+	EXEMPT,
+	selectDesktopTests,
+	walkTestFiles,
+} from "./desktop-test-inventory.mjs";
+import {
 	SHARD_COUNT,
+	assertDesktopCommand,
 	inventory,
 	loadReceipts,
 	main,
@@ -33,7 +40,8 @@ const names = Array.from(
 	(_, i) =>
 		`scripts/${i % 11 === 0 ? "i18n/" : ""}case-${String(i).padStart(4, "0")}.test.mjs`,
 );
-const command = (files) =>
+// The pre-2026-10-31 literal form, kept only to prove it is now refused.
+const literal = (files) =>
 	`node scripts/run-desktop-tests.mjs ${files.join(" ")}`;
 const log =
 	"# tests 120\n# pass 119\n# fail 0\n# cancelled 0\n# skipped 1\n# todo 0\n";
@@ -41,25 +49,28 @@ function runnerLog(count, summary = log) {
 	return `desktop tests: ${count} ${count === 1 ? "file" : "files"}, concurrency 3 (max clamp 3)\n${summary}`;
 }
 
+// A real tree: nine desktop files plus every EXEMPT file, because the walk
+// refuses an exemption that names nothing (the typo guard) just as it would in
+// the repository.
 function fixture(fn) {
 	const root = mkdtempSync(join(tmpdir(), "desktop-shard-data-"));
 	try {
 		const files = names.slice(0, 9);
-		for (const file of files) {
+		for (const file of [...files, ...Object.keys(EXEMPT)]) {
 			mkdirSync(join(root, file, ".."), { recursive: true });
 			writeFileSync(join(root, file), "// data only\n");
 		}
 		writeFileSync(
 			join(root, "package.json"),
-			JSON.stringify({ scripts: { "test:desktop": command(files) } }),
+			JSON.stringify({ scripts: { "test:desktop": DESKTOP_COMMAND } }),
 		);
-		return fn(root, files);
+		return fn(root, [...files].sort());
 	} finally {
 		rmSync(root, { recursive: true, force: true });
 	}
 }
 function expected() {
-	const files = inventory(command(names));
+	const files = selectDesktopTests(names, {});
 	return {
 		schema: 1,
 		head: HEAD,
@@ -77,8 +88,8 @@ function rows(p) {
 	);
 }
 
-test("literal inventory includes nested names; count-balanced partition is complete, disjoint and permutation invariant", () => {
-	const files = inventory(command(names));
+test("derived inventory includes nested names; count-balanced partition is complete, disjoint and permutation invariant", () => {
+	const files = selectDesktopTests(names, {});
 	assert.equal(files.length, 542);
 	assert.ok(files.includes("scripts/i18n/case-0000.test.mjs"));
 	for (const count of [2, 3, SHARD_COUNT]) {
@@ -99,27 +110,67 @@ test("literal inventory includes nested names; count-balanced partition is compl
 });
 
 test("inventory rejects unsupported syntax instead of guessing shell semantics", () => {
+	// The command is a constant now; the old literal list (any branch that has
+	// not rebased past the derivation) is refused, not half-honoured.
 	for (const value of [
 		undefined,
 		"",
 		"pnpm test",
-		command([]),
-		command(["--flag"]),
-		command(["../x.test.mjs"]),
-		command(["scripts/../x.test.mjs"]),
-		command(["scripts/*.test.mjs"]),
-		command(['"scripts/x.test.mjs"']),
-		command(["scripts/x.test.mjs", "&&", "echo"]),
-		command(["scripts/x.test.mjs", "scripts/x.test.mjs"]),
+		literal(["scripts/x.test.mjs"]),
+		`${DESKTOP_COMMAND} scripts/x.test.mjs`,
+		`${DESKTOP_COMMAND} && echo`,
+	]) {
+		assert.throws(() => assertDesktopCommand(value), /Missing|Unsupported/);
+		assert.throws(() => inventory(value), /Missing|Unsupported/);
+	}
+	assert.doesNotThrow(() => assertDesktopCommand(DESKTOP_COMMAND));
+	for (const paths of [
+		["--flag"],
+		["../x.test.mjs"],
+		["scripts/../x.test.mjs"],
+		["scripts/*.test.mjs"],
+		['"scripts/x.test.mjs"'],
+		["src/x.test.mjs"],
+		["scripts/x.test.mjs", "scripts/x.test.mjs"],
+		[],
 	]) {
 		assert.throws(
-			() => inventory(value),
-			/Missing|Unsupported|Unsafe|Duplicate/,
+			() => selectDesktopTests(paths, {}),
+			/Unsafe|Duplicate|Empty/,
 		);
 	}
 	assert.throws(() => partition(names, 5), /count/);
 	assert.throws(() => partition([], 3), /Empty/);
 });
+
+test("EXEMPT is honoured exactly and a typo or reasonless entry fails closed", () => {
+	const paths = ["scripts/a.test.mjs", "scripts/b.test.mjs"];
+	assert.deepEqual(
+		selectDesktopTests(paths, { "scripts/b.test.mjs": "runs in its own step" }),
+		["scripts/a.test.mjs"],
+	);
+	assert.throws(
+		() => selectDesktopTests(paths, { "scripts/bb.test.mjs": "typo" }),
+		/names no existing test file/,
+	);
+	assert.throws(
+		() => selectDesktopTests(paths, { "scripts/b.test.mjs": " " }),
+		/no reason/,
+	);
+});
+
+test("the walk eagerly includes a new nested file and refuses a symlink under scripts/", () =>
+	fixture((root, files) => {
+		assert.deepEqual(inventory(DESKTOP_COMMAND, root), files);
+		mkdirSync(join(root, "scripts", "deep", "er"), { recursive: true });
+		writeFileSync(join(root, "scripts/deep/er/new.test.mjs"), "// new\n");
+		writeFileSync(join(root, "scripts/deep/helper.mjs"), "// not a test\n");
+		const grown = inventory(DESKTOP_COMMAND, root);
+		assert.deepEqual(grown, [...files, "scripts/deep/er/new.test.mjs"].sort());
+		assert.ok(walkTestFiles(root).length > grown.length, "walk keeps EXEMPT");
+		symlinkSync(join(root, files[0]), join(root, "scripts/alias.test.mjs"));
+		assert.throws(() => inventory(DESKTOP_COMMAND, root), /Symlink/);
+	}));
 
 test("metadata plan checks actual files and rejects missing files, symlinks and wrong head identity", () =>
 	fixture((root, files) => {
@@ -328,12 +379,30 @@ test("R2: actual exported metadata planner cannot create or verify execution rec
 		const packagePath = join(root, "exported-package.json");
 		writeFileSync(
 			packagePath,
-			JSON.stringify({ scripts: { "test:desktop": command(files) } }),
+			JSON.stringify({ scripts: { "test:desktop": DESKTOP_COMMAND } }),
 		);
 		const treePath = join(root, "exported-tree.txt");
+		const tree = [...files, ...Object.keys(EXEMPT)].map(
+			(file) => `100644 blob ${HEAD}\t${file}`,
+		);
 		writeFileSync(
 			treePath,
-			`${files.map((file) => `100644 blob ${HEAD}\t${file}`).join("\n")}\n`,
+			`${[`040000 tree ${HEAD}\tscripts/i18n`, ...tree, `100644 blob ${HEAD}\tsrc/x.test.mjs`].join("\n")}\n`,
+		);
+		// The tree export derives the same inventory the real walk does...
+		assert.deepEqual(
+			plan(root, HEAD, CHECKOUT, undefined, treePath).files,
+			files,
+		);
+		// ...and refuses a link under the test root the way the walk does.
+		const linked = join(root, "linked-tree.txt");
+		writeFileSync(
+			linked,
+			`${[...tree, `120000 blob ${HEAD}\tscripts/alias.test.mjs`].join("\n")}\n`,
+		);
+		assert.throws(
+			() => plan(root, HEAD, CHECKOUT, undefined, linked),
+			/unsafe in pinned Git tree/,
 		);
 		const actual = plan(root, HEAD, CHECKOUT);
 		const validRows = rows(actual);

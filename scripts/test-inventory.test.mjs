@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
+import { EXEMPT, walkTestFiles } from "./desktop-test-inventory.mjs";
 import { inventory } from "./desktop-test-shards.mjs";
 
 /*
@@ -13,69 +14,49 @@ import { inventory } from "./desktop-test-shards.mjs";
  * `test:desktop` is a hand-kept list: dropping a file from it leaves the
  * neighbouring suites green and the drop invisible.
  *
- * The rule: every test file under `scripts/` is either named in
- * `package.json`'s `test:desktop`, or named in `EXEMPT` below with the reason it
- * runs elsewhere (or nowhere, which is itself worth recording).
- */
-
-/**
- * Files that deliberately do not run in the desktop suite, and where they do run.
+ * The rule: every test file under `scripts/` (recursively) is either in the
+ * desktop inventory `pnpm test:desktop` and the CI shards run, or named in
+ * `EXEMPT` (`desktop-test-inventory.mjs`) with the reason it runs elsewhere (or
+ * nowhere, which is itself worth recording).
  *
- * Each reason names the command a reader can run to see it, or says plainly
- * that nothing runs it — which is the honest answer for ONE entry below
- * (`session-cookie-electron.test.mjs`), and a gap in the repository rather than
- * in this list. (Round 4, R4-4: this sentence said "the two at the end" while
- * exactly one entry carried that reason.)
+ * SINCE THE INVENTORY IS DERIVED (2026-10-31) the "dropped from a hand list"
+ * half cannot happen by construction, so this gate now pins the derivation
+ * against an INDEPENDENT walk instead of trusting it: the planner's inventory
+ * must equal "every test file minus EXEMPT", exactly, and EXEMPT may not rot.
+ * The walk is recursive on purpose: the old top-level-only `readdirSync` never
+ * saw `scripts/i18n/`, which is how nine i18n suites ran in no CI step at all.
  */
-const EXEMPT = {
-	"scripts/check-scripts-lint.test.mjs":
-		"`node --test scripts/check-scripts-lint.test.mjs`, its own CI step (ci.yml).",
-	"scripts/release-baseline.test.mjs":
-		"the release-gate suite in ci.yml, run as one node --test invocation.",
-	"scripts/upload-release.test.mjs":
-		"the release-gate step in ci.yml, its own node --test invocation: it drives the attach path against a stub upload endpoint, which the desktop suite has no fixture for.",
-	"scripts/release-candidate.test.mjs":
-		"same release-gate step as release-baseline.",
-	"scripts/entry-point.test.mjs": "same release-gate step as release-baseline.",
-	"scripts/require-report.test.mjs":
-		"same release-gate step as release-baseline.",
-	"scripts/mac-build-arch.test.mjs":
-		"the release-contracts step in ci.yml, its own node --test invocation: it is a contract over .github/workflows rather than over the app, and it reads them with electron-builder's js-yaml the way test-publish-workflow.mjs does.",
-	"scripts/appimage-update-info.test.mjs":
-		"the release-contracts step in ci.yml, its own node --test invocation: the ELF64 `.upd_info` patch/readback, the `.zsync` header checks and the `latest-linux.yml` entry check, over synthetic fixtures. The real download, `7z` and `zsyncmake` run in the linux build job itself, which no local suite can stand up.",
-	"scripts/window-guards-electron.test.mjs":
-		"`pnpm test:window-guards` - boots the REAL Electron (hidden window, own userData) against a hostile document; like the session-cookie suite it needs a display, so no CI step runs it.",
-	"scripts/window-glass-cdp.test.mjs":
-		"`pnpm test:window-glass` - boots the BUILT app headless and reads the glass's effective alpha back over CDP, so it needs `pnpm build` first (it skips with a stated reason when `out/` is absent) and, like the window-guards suite, a display on Linux; the pure decisions are in `window-glass.test.mjs`, which test:desktop does run.",
-	"scripts/session-cookie-electron.test.mjs":
-		"`pnpm test:session-cookies` — it boots the REAL Electron binary twice, which no CI step does today; a pre-existing gap, recorded rather than papered over.",
-	"scripts/chat-tag-dialogs-immediate.test.mjs":
-		"`pnpm test:tag-dialogs` — its own step in the Desktop Tests job (ci.yml), run BEFORE `pnpm test:desktop` so its process exits and releases memory first. It bundles the shipped renderer with esbuild and drives it in jsdom; inside the desktop lane its peak landed on the files already resident there and the process group was killed at 9.7 GB against the 7.8 GB budget (main's suite passes at 851aea1).",
-};
 
-test("every scripts/*.test.mjs is run by test:desktop or exempt with a reason", () => {
+test("every scripts/**/*.test.mjs is run by test:desktop or exempt with a reason", () => {
 	const pkg = JSON.parse(readFileSync("package.json", "utf8"));
 	const listed = new Set(inventory(pkg.scripts["test:desktop"]));
-	const files = readdirSync("scripts")
-		.filter((name) => name.endsWith(".test.mjs"))
-		.map((name) => `scripts/${name}`)
-		.sort();
+	const files = walkTestFiles(".");
+	assert.ok(
+		files.some((file) => file.startsWith("scripts/i18n/")),
+		"the walk must reach nested directories, or a whole subtree drops out unseen",
+	);
 	const missing = files.filter(
 		(file) => !listed.has(file) && !(file in EXEMPT),
 	);
 	assert.deepEqual(
 		missing,
 		[],
-		`a test file no CI step runs is a guard that cannot fail — add it to test:desktop or to EXEMPT with its reason:\n${missing.join("\n")}`,
+		`a test file no CI step runs is a guard that cannot fail — it must be in the desktop inventory or in EXEMPT with its reason:\n${missing.join("\n")}`,
 	);
+	// Exactly once: nothing exempt still runs, nothing outside the tree is run.
+	const extra = [...listed].filter(
+		(file) => !files.includes(file) || file in EXEMPT,
+	);
+	assert.deepEqual(extra, [], "the inventory runs an exempt or absent file");
+	assert.equal(listed.size, files.length - Object.keys(EXEMPT).length);
 	// The table may not rot either: an exemption for a file that no longer
-	// exists, or that is now listed, is a stale claim about where it runs.
-	const stale = Object.keys(EXEMPT).filter(
-		(file) => !files.includes(file) || listed.has(file),
-	);
+	// exists is a stale claim about where it runs (the planner also refuses it).
+	const stale = Object.keys(EXEMPT).filter((file) => !files.includes(file));
 	assert.deepEqual(
 		stale,
 		[],
-		"an EXEMPT entry must name an existing unlisted file",
+		"an EXEMPT entry must name an existing test file",
 	);
+	for (const [file, reason] of Object.entries(EXEMPT))
+		assert.ok(reason.trim().length > 20, `${file} needs a real reason`);
 });
