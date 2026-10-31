@@ -13,6 +13,7 @@ import { Spinner } from "@shared/components/common/spinner";
 import { AttentionBadge } from "@shared/components/ui/attention-badge";
 import { Button } from "@shared/components/ui/button";
 import { ScrollArea } from "@shared/components/ui/scroll-area";
+import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { formatRelativeTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -82,7 +83,10 @@ import {
 	sendAttachmentIds,
 } from "./team-bridge-attachments-model";
 import { TeamBridgeComposeBar } from "./team-bridge-compose-bar";
-import { TeamBridgeComposer } from "./team-bridge-composer";
+import {
+	TeamBridgeComposer,
+	type TeamBridgeComposerProps,
+} from "./team-bridge-composer";
 import { TeamBridgeConversationMenu } from "./team-bridge-conversation-menu";
 import { TeamBridgeCreateDialog } from "./team-bridge-create-dialog";
 import { TeamBridgeDefaultOnBanner } from "./team-bridge-default-on-banner";
@@ -757,6 +761,15 @@ export type TeamBridgePageViewProps = {
 	 * the "not supported" note instead of a chip.
 	 */
 	attachmentCapability?: TeamBridgeAttachmentCapability | null;
+	/*
+	 * The speech capability for the composer's microphone, read by the OWNED
+	 * page (`useRadientCredentialProbe`). It is threaded rather than read in the
+	 * composer for the reason the shared chat composer states on its own `recordingProbe`:
+	 * the probe is a react-query read, and this view is mounted without a
+	 * QueryClient by the desktop suites and the stories. Absent, the composer
+	 * fails closed (mic disabled, the neutral "could not be checked" reason).
+	 */
+	recordingProbe?: TeamBridgeComposerProps["recordingProbe"];
 	/** Open the channel form (Channels' "+" and its empty line). */
 	onSchedule?: (
 		body: string,
@@ -859,6 +872,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onSend,
 	onSchedule,
 	attachmentCapability: imageCapability = null,
+	recordingProbe,
 	onNewChannel,
 	onRetry,
 	onScopeChange,
@@ -3561,6 +3575,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										   fail-closed rule forbids, and a refused send names the
 										   capability instead (see `submit`). */
 										canAttach={Boolean(imageCapability)}
+										recordingProbe={recordingProbe}
 										disabled={
 											!canCompose ||
 											Boolean(heldAttempt) ||
@@ -4072,6 +4087,8 @@ const TeamBridgeOwnedPage: FC<{
 	const status = useTeamBridgeStatus();
 	const auth = useRadientAuth();
 	const capabilities = useDesktopCapabilities();
+	/* The composer's speech capability; see `recordingProbe` on the view's props. */
+	const recordingProbe = useRadientCredentialProbe();
 	const ownerGuard =
 		(capabilities.data?.features?.team_bridge_conversation_owner_guard ?? 0) >=
 		1;
@@ -5073,6 +5090,7 @@ const TeamBridgeOwnedPage: FC<{
 				}}
 				onSend={sendBody}
 				attachmentCapability={attachmentCapability(status.data)}
+				recordingProbe={recordingProbe}
 				onSchedule={
 					scope === TEAM_BRIDGE_ALL_SCOPE && !selected
 						? undefined

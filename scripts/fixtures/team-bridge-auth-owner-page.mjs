@@ -550,6 +550,13 @@ async function mount({
 							unread_count: 0,
 							muted: false,
 						});
+					/* The page reads the speech probe for its composer's microphone
+					   (`useRadientCredentialProbe`), whose connectivity gate reads the
+					   config's hosting provider. The catch-all's `{}` has no `values`,
+					   which the real backend always sends, so it is answered here with
+					   the shape `connectivity-banner-notice.test.mjs` stubs. */
+					case "config.get":
+						return reply({ values: { hosting: "local" } });
 					default:
 						return reply({});
 				}

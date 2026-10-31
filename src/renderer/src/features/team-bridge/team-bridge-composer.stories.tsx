@@ -12,6 +12,7 @@ import { fireEvent, within } from "@storybook/test";
 import "../chat/components/story-electron-shim";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { MentionSourceContext } from "./mentions/mention-context";
 import { TeamBridgeComposer } from "./team-bridge-composer";
 import {
 	type DictationTakeOutcome,
@@ -237,4 +238,45 @@ export const Transcribed: Story = {
 		await pressMic(canvasElement);
 		await confirmTake(canvasElement);
 	},
+};
+
+/*
+ * THE PRODUCTION SHAPE WITH @-MENTIONS LIVE. The page mounts this composer
+ * under a mention source, and only then does `MentionField` render its own
+ * `relative` wrapper around the field (inert, it renders nothing). So the
+ * stories above prove the bar without mentions, and this one proves the bar
+ * keeps its field-plus-controls shape, its full width and its growth WITH the
+ * wrapper and a highlighted pill in the draft - the arrangement the rebase onto
+ * the mention composer (#1524's mount) had to preserve.
+ */
+const MENTION_SOURCE = {
+	conversationId: CONVERSATION,
+	candidates: [
+		{
+			kind: "human" as const,
+			accountId: "acct_ben",
+			label: "Ben Tran",
+			member: true,
+			bridgeOff: false,
+		},
+	],
+	conversationKind: "group" as const,
+	sendMentions: true,
+	self: { accountId: "acct_me", label: "Damian Tran" },
+};
+
+export const WithMentions: Story = {
+	decorators: [
+		withDictation({ kind: "text", text: "" }),
+		(Story) => {
+			useEffect(() => {
+				seedDraft("@Ben Tran can you take the reindex?\nAfter the review.");
+			}, []);
+			return (
+				<MentionSourceContext.Provider value={MENTION_SOURCE}>
+					<Story />
+				</MentionSourceContext.Provider>
+			);
+		},
+	],
 };

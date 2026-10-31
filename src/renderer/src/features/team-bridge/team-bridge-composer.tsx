@@ -1,7 +1,6 @@
 import { AttachmentsPreview } from "@features/chat/components/attachments-preview";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
-import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import { useMessageInput } from "@shared/hooks/use-message-input";
 import { useRecordingShortcutLabel } from "@shared/hooks/use-recording-shortcut";
 import { resolvePushToTalkBinding } from "@shared/hooks/use-speech-to-text-manager";
@@ -72,6 +71,16 @@ const FIELD_LINE_PX = 20;
  */
 const FIELD_MAX_HEIGHT = 6 * FIELD_LINE_PX + 16;
 
+/**
+ * The absent `recordingProbe`, as `MessageInput`'s `EMPTY_RECORDING_PROBE`
+ * reads it: no answered capability, and the NEUTRAL block, because a host that
+ * passed no probe has no read behind the refusal to report.
+ */
+const NO_RECORDING_PROBE: {
+	canUseRadientSpeech: boolean;
+	speechBlock: RadientSpeechBlock;
+} = { canUseRadientSpeech: false, speechBlock: "could-not-check" };
+
 /** A stable empty array: a selector that returns a fresh `[]` re-renders forever. */
 const NO_ATTACHMENTS = [] as const;
 
@@ -129,14 +138,16 @@ export type TeamBridgeComposerProps = {
 	/** Id of the sentence that says why the box refuses input, when one is up. */
 	disabledReasonId?: string;
 	/**
-	 * The speech capability, when the HOST already holds it.
+	 * The speech capability, read by the HOST (the owned page) and passed in.
 	 *
 	 * `MessageInput` states the same seam for the same reason: the probe is a
-	 * react-query read of the account and the capability negotiation, and a
-	 * surface that already mounts it (or a story that must render a STATE rather
-	 * than a signed-out account) passes the answer in instead of making a
-	 * provider a mount requirement for every box. Absent, this composer reads the
-	 * live probe itself - the production path.
+	 * react-query read of the account and the capability negotiation, and the
+	 * page view this box mounts in is rendered WITHOUT a QueryClient by the
+	 * desktop suites and the stories. Reading it here made every such mount
+	 * throw "No QueryClient set" (the PR's first CI run: seven failures across
+	 * the channels, drafts and thread-gate suites). Absent, the box fails closed
+	 * exactly as `MessageInput` does: the mic is disabled with the neutral
+	 * "could not be checked" reason, never the sign-in sentence.
 	 */
 	recordingProbe?: {
 		canUseRadientSpeech: boolean;
@@ -335,8 +346,8 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 	 * the COMPOSER's writability, not a turn being idle: the Bridge writes
 	 * mid-turn, and dictation is a state of this box.
 	 */
-	const liveProbe = useRadientCredentialProbe();
-	const { canUseRadientSpeech, speechBlock } = recordingProbe ?? liveProbe;
+	const { canUseRadientSpeech, speechBlock } =
+		recordingProbe ?? NO_RECORDING_PROBE;
 	const canEnableRecordingFeature = canUseRadientSpeech;
 	const recordingUnavailableReason = speechUnavailableReason(
 		"recording",
