@@ -66,11 +66,17 @@ export function overflowsUserTurnClamp(scrollHeight: number): boolean {
  * extra forced layout re-saving them. Deciding in the layout effect keeps that
  * at 0 changed rows.
  *
- * Observing the capped box is enough: content crossing the cap in either
- * direction changes the box's own height (`min(content, 174)` collapsed,
- * `content` expanded), and a column narrowing is a size change. Content
- * changing while ALREADY over the cap leaves the box at 174px, and cannot
- * change the answer either.
+ * Observe the UNCAPPED intrinsic flow-root inside the viewport, never the
+ * viewport itself. At intrinsic heights 174 and 175px the predicate still says
+ * "fits" (including its 1px rounding slack), but the viewport is already 174px.
+ * An image decoding to 1200px at the same width then leaves that viewport's
+ * border box unchanged: no resize notification, and no Show more. Shrinking
+ * back to the boundary has the same blind spot. The flow-root's own border box
+ * follows intrinsic content in BOTH states, including child margins, so image
+ * decode, font/width changes and shrinkage notify without polling, Mutation-
+ * Observers or a measurement per token. Text-prop updates keep their existing
+ * first-commit layout-effect decision; the cap and slot/scroll machinery do not
+ * depend on this observer. Do not cap this observation target in CSS.
  */
 type Listener = (overflows: boolean) => void;
 const listeners = new WeakMap<Element, Listener>();

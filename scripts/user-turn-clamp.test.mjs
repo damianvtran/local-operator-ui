@@ -43,15 +43,18 @@ const { window } = bootstrapDOM;
  * column narrows.
  */
 const observers = new Map();
+const observedHeights = new Map();
 class FakeResizeObserver {
 	constructor(callback) {
 		this.callback = callback;
 	}
 	observe(element) {
 		observers.set(element, this.callback);
+		observedHeights.set(element, modeledBorderHeight(element));
 	}
 	unobserve(element) {
 		observers.delete(element);
+		observedHeights.delete(element);
 	}
 	disconnect() {}
 }
@@ -126,9 +129,33 @@ window.Element.prototype.scrollIntoView = function scrollIntoView() {};
 const LINE_PX = 21.7;
 const CAP_CLASS = "max-h-[174px]";
 let charsPerLine = 80;
+let intrinsicHeight = null;
 const reads = [];
 const contentHeight = (element) =>
+	intrinsicHeight ??
 	Math.ceil((element.textContent ?? "").length / charsPerLine) * LINE_PX;
+const modeledBorderHeight = (element) =>
+	element.classList.contains(CAP_CLASS)
+		? Math.min(contentHeight(element), 174)
+		: contentHeight(element);
+/*
+ * Deliver only REAL size changes in this explicit geometry model. Calling a
+ * callback on an unchanged capped box would hide R1's missing notification.
+ * Group by observer, just as the browser batches a notification delivery.
+ */
+const deliverSizeChanges = () => {
+	const batches = new Map();
+	for (const [element, callback] of observers) {
+		if (!element.isConnected) continue;
+		const height = modeledBorderHeight(element);
+		if (height === observedHeights.get(element)) continue;
+		observedHeights.set(element, height);
+		const entries = batches.get(callback) ?? [];
+		entries.push({ target: element });
+		batches.set(callback, entries);
+	}
+	for (const [callback, entries] of batches) callback(entries);
+};
 const inUserRow = (element) =>
 	Boolean(element.closest?.('[data-record-kind="user"]'));
 for (const [name, height] of [
@@ -232,6 +259,7 @@ const mount = async (t, records) => {
 		await act(async () => mounted.root?.unmount());
 		mounted.container.remove();
 		charsPerLine = 80;
+		intrinsicHeight = null;
 	});
 	const client = new QueryClient({
 		defaultOptions: { queries: { retry: false } },
@@ -344,18 +372,97 @@ test("a short turn and a turn exactly at the cap get no control", async (t) => {
 test("a turn that starts overflowing after mount gains the control from the shared observer", async (t) => {
 	const mounted = await mount(t, [user("u-six", linesOf(6))]);
 	assert.equal(mounted.toggle("u-six"), null);
-	const body = mounted.body("u-six");
-	const notify = observers.get(body);
-	assert.ok(notify, "the capped box is observed");
+	const intrinsic = mounted
+		.row("u-six")
+		.querySelector("[data-lo-user-turn-intrinsic]");
+	assert.ok(observers.has(intrinsic), "the uncapped content is observed");
 	charsPerLine = 40; // the column narrowed: six lines become twelve
 	await act(async () => {
-		notify([{ target: body }]);
+		deliverSizeChanges();
 	});
 	assert.ok(
 		mounted.toggle("u-six"),
 		"the control follows the box across the cap",
 	);
 });
+
+/*
+ * R1: hold text and width fixed while an asynchronous image/font changes only
+ * intrinsic height. At 174 AND 175 the observed clipped box would remain 174,
+ * so a model that invokes callbacks regardless of target size would falsely
+ * pass. `deliverSizeChanges` compares each observation target's actual modeled
+ * border height and sends nothing for an unchanged box. This is a geometry-
+ * model test of the shipped React wiring, NOT a native-renderer reproduction.
+ */
+for (const boundary of [174, 175]) {
+	test(`intrinsic ${boundary}px → 1200px and back invalidates without text/viewport changes`, async (t) => {
+		intrinsicHeight = boundary;
+		const mounted = await mount(t, [
+			user("u-intrinsic", "unchanged image-bearing prose"),
+		]);
+		const body = mounted.body("u-intrinsic");
+		const row = mounted.row("u-intrinsic");
+		const text = body.textContent;
+		assert.equal(mounted.toggle("u-intrinsic"), null);
+		assert.equal(modeledBorderHeight(body), 174);
+		intrinsicHeight = 1200;
+		await act(async () => deliverSizeChanges());
+		assert.equal(
+			modeledBorderHeight(body),
+			174,
+			"the collapsed viewport never resized",
+		);
+		assert.equal(
+			body.textContent,
+			text,
+			"no text-prop update requested remeasurement",
+		);
+		assert.equal(mounted.toggle("u-intrinsic")?.textContent, "Show more");
+
+		await mounted.press(mounted.toggle("u-intrinsic"));
+		assert.equal(modeledBorderHeight(body), 1200);
+		assert.equal(mounted.toggle("u-intrinsic")?.textContent, "Show less");
+		intrinsicHeight = boundary;
+		await act(async () => deliverSizeChanges());
+		assert.equal(
+			mounted.toggle("u-intrinsic"),
+			null,
+			"expanded shrink removes a redundant control",
+		);
+		intrinsicHeight = 1200;
+		await act(async () => deliverSizeChanges());
+		assert.equal(
+			mounted.toggle("u-intrinsic")?.textContent,
+			"Show less",
+			"growth retains expanded view state",
+		);
+		await mounted.press(mounted.toggle("u-intrinsic"));
+		intrinsicHeight = boundary;
+		await act(async () => deliverSizeChanges());
+		assert.equal(modeledBorderHeight(body), 174);
+		assert.equal(
+			mounted.toggle("u-intrinsic"),
+			null,
+			"collapsed shrink also removes the control",
+		);
+		const intrinsic = row.querySelector("[data-lo-user-turn-intrinsic]");
+		assert.ok(
+			observers.has(intrinsic),
+			"only uncapped intrinsic content owns this observation",
+		);
+		assert.equal(observers.has(body), false);
+		await act(async () => mounted.root.unmount());
+		mounted.root = null;
+		assert.equal(
+			observers.has(intrinsic),
+			false,
+			"unmount unobserves the exact intrinsic target",
+		);
+		assert.equal(observedHeights.has(intrinsic), false);
+		intrinsicHeight = 1200;
+		await act(async () => deliverSizeChanges());
+	});
+}
 
 test("a 10,000-character collapsed turn retains full selection and full-copy text", async (t) => {
 	const text = `${"x".repeat(9_991)} THE-TAIL`;
