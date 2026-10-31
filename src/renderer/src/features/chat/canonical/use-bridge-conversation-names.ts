@@ -23,6 +23,9 @@
  *   transcript bare (fixtures, some stories) just get `null`.
  * - Re-renders when the cache's conversation lists change, so a row painted
  *   before the page loaded picks the name up once it lands.
+ * - SSR-SAFE: `useSyncExternalStore` is given a server snapshot, because
+ *   `ToolRow` calls this hook for every tool row and a static render without
+ *   one throws for the whole transcript (`scripts/canonical-notice.test.mjs`).
  */
 import { observedRadientAuthority } from "@shared/hooks/radient-account-authority";
 import { type QueryClient, QueryClientContext } from "@tanstack/react-query";
@@ -86,16 +89,29 @@ export function useBridgeConversationNames(): BridgeLabelResolver | null {
 	 * snapshot must be one). The resolver itself reads the cache lazily, so this
 	 * only decides WHEN a new resolver - and so a row repaint - is due.
 	 */
-	const updated = useSyncExternalStore(subscribe, () =>
-		client
-			? client
-					.getQueryCache()
-					.findAll({ queryKey: PREFIX })
-					.reduce(
-						(latest, query) => Math.max(latest, query.state.dataUpdatedAt),
-						0,
-					)
-			: 0,
+	const serverSnapshot = useCallback(() => 0, []);
+	const updated = useSyncExternalStore(
+		subscribe,
+		() =>
+			client
+				? client
+						.getQueryCache()
+						.findAll({ queryKey: PREFIX })
+						.reduce(
+							(latest, query) => Math.max(latest, query.state.dataUpdatedAt),
+							0,
+						)
+				: 0,
+		/*
+		 * A THIRD argument is not optional in practice. `renderToStaticMarkup`
+		 * (the node suites, and any server-rendered host) throws `Missing
+		 * getServerSnapshot` without it — a hook that is fine in the app but takes
+		 * the transcript's whole render down under SSR, for EVERY tool row, not
+		 * just a `bridge` one. `0` is the honest server snapshot: there is no
+		 * client cache on the server, so no name is resolved there and the row
+		 * paints its kind word, which is the same answer an empty cache gives.
+		 */
+		serverSnapshot,
 	);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `updated` IS the cache-change signal the resolver reads through
 	return useMemo(() => bridgeConversationResolver(client), [client, updated]);
