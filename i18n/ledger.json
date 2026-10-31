@@ -1926,8 +1926,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "da2c87f6caf8f238997861d850f575a3b3d8328c5d46abfffae4728ed41fb892",
-			"target_sha256": "224cc318dd5e570f9a25684dd93c94054e01fbc3da996eaed6abbde89b52c807",
+			"source_sha256": "67ea94ac8ebbfb34b5ea71fc1c9c6f633994f2e2e0bf06da66137f85a596646a",
+			"target_sha256": "78e9ca1c9368d3b7f265efca6e2ed031bba5db75db1b6fc0db40a7b6a9e65f5a",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -1936,20 +1936,20 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-29",
-					"result": "clean",
-					"instance": "70336faff31a-ov2-es",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "fa2d7d148352-bridge-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 2,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/70336faff31a-ov2-es.json",
-					"receipt_sha256": "07802fd2bb652a48ffd2c5d442864b84fe7bf733a7d662f986a3cb9df661c964",
-					"scope": "ui.chat.canonical: the 23 keys added in fbf78b5f67, delta audit at 58de30166d",
-					"note": "PR #1481 remediation: find overlay + image-gen control copy."
+					"receipt": "i18n/receipts/fa2d7d148352-bridge-es.json",
+					"receipt_sha256": "f7c18077e0e03a30cc7ff19a04c5f5be1341543a872996d8a412a2508ed0dbf8",
+					"scope": "ui.chat.canonical es: 88 Team Bridge keys added since 70336faff31a-ov2-es read in full; 80 unchanged keys proven byte-identical and spot-checked",
+					"note": "PR #1529 Team Bridge tool row: 2 MINOR + 2 NIT fixed in these bytes (channel_thread verbs, inbox_only width, react participle, members =0); receipt i18n/receipts/fa2d7d148352-bridge-es.json"
 				}
 			],
 			"status": "audited",
@@ -2085,6 +2085,30 @@
 							"receipt_sha256": "2e8466fb2fa602f6cd2ee49dc89149bff0a55e0e7b2e30014fee7dd6813846b2",
 							"scope": "ui.chat.canonical: the 89 keys added in 930c8ec2d1, delta audit at the final head",
 							"note": "PR: final renderer copy wave. Delta audit scope; whole-file hashes bound."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "da2c87f6caf8f238997861d850f575a3b3d8328c5d46abfffae4728ed41fb892",
+					"target_sha256": "224cc318dd5e570f9a25684dd93c94054e01fbc3da996eaed6abbde89b52c807",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-29",
+							"result": "clean",
+							"instance": "70336faff31a-ov2-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/70336faff31a-ov2-es.json",
+							"receipt_sha256": "07802fd2bb652a48ffd2c5d442864b84fe7bf733a7d662f986a3cb9df661c964",
+							"scope": "ui.chat.canonical: the 23 keys added in fbf78b5f67, delta audit at 58de30166d",
+							"note": "PR #1481 remediation: find overlay + image-gen control copy."
 						}
 					],
 					"status": "audited"
