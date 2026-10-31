@@ -191,7 +191,10 @@ export function teamBridgeNotifyOwnerMatches(
 
 /** Identity is directory-derived, never an LLM notify argument. For an agent,
  * account_id/display_name name its HUMAN OWNER, not the recipient in owner.
- * Unknown versions/kinds degrade to today's title/icon without losing delivery. */
+ * Unknown versions/kinds degrade to today's title/icon without losing delivery.
+ * `avatar` is a PERSON's photo only: a `person_agent` never carries one, because
+ * the owner's face on an agent banner was the 2026-10-30 production defect
+ * (core draws the agent glyph instead; see `src/shared/identity-avatar.ts`). */
 export type TeamBridgeNotificationSender = {
 	v: 1;
 	kind: "person" | "person_agent";
@@ -226,6 +229,9 @@ export function parseTeamBridgeNotificationSender(
 	const ref = input.avatar as Record<string, unknown> | undefined;
 	// Bad OPTIONAL photo metadata must not suppress the valid message or name.
 	const avatar =
+		// Dropped, not trusted, for an agent: the parser is the shared gate both
+		// the renderer and main pass through, so no producer can reintroduce it.
+		input.kind === "person" &&
 		ref &&
 		typeof ref === "object" &&
 		ref.account_id === accountId &&

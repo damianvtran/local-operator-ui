@@ -3242,14 +3242,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 														>
 															<TeamBridgeAvatar
 																member={draftPerson}
+																kind={
+																	target.type === "chief" ? "agent" : "human"
+																}
 																label={paneTitle ?? ""}
 																size={56}
 																className="rounded-xl text-[22px]"
-																fallback={
-																	target.type === "chief" ? (
-																		<Bot size={26} />
-																	) : undefined
-																}
 															/>
 														</button>
 													</TeamBridgeProfileCard>

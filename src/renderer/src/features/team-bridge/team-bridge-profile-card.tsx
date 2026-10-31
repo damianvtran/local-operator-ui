@@ -7,7 +7,7 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@shared/components/ui/popover";
-import { useTeamBridgeAvatar } from "@shared/hooks/use-account-avatar";
+import { useIdentityAvatar } from "@shared/hooks/use-account-avatar";
 import { formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -25,11 +25,40 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { directoryIdentity } from "../../../../shared/identity-avatar";
 import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
 import { personDisplayLabel, personInitial } from "./team-bridge-model";
 
+/*
+ * The Bot glyph's size per plate, matching what each surface drew by hand
+ * before the glyph moved in here (20 -> 12 ... 64 -> 28), so moving it changes
+ * no pixel.
+ */
+function agentGlyphSize(plate: number): number {
+	if (plate <= 20) return 12;
+	if (plate <= 24) return 14;
+	if (plate <= 36) return 18;
+	if (plate <= 56) return 26;
+	return 28;
+}
+
+/**
+ * One Team Bridge identity's plate: photo, else placeholder.
+ *
+ * `kind` IS REQUIRED, AND THE AGENT GLYPH IS DECIDED HERE (2026-10-30). An
+ * agent and its owner share one directory row, so the plate cannot tell from
+ * `member` which of the two it shows. Before this, every surface passed its
+ * own `agent ? <Bot/> : …` fallback, and the owner's photo, fetched by the
+ * owner's account id, replaced it. That is how "Aida (Damian Tran)" wore
+ * Damian's face. The picture now comes only from `resolveIdentityAvatar`
+ * (`src/shared/identity-avatar.ts`), which never gives an agent an account
+ * photo, and the agent placeholder is always the Bot glyph. `fallback`
+ * customizes a PERSON's placeholder only, so no surface can opt an agent out.
+ */
 export function TeamBridgeAvatar({
 	member,
+	kind,
+	endpointId,
 	label,
 	size = 36,
 	className,
@@ -37,14 +66,27 @@ export function TeamBridgeAvatar({
 	selected = false,
 }: {
 	member: TeamBridgeDirectoryMember;
+	kind: "human" | "agent";
+	/** The agent's endpoint, when the surface knows it better than the row. */
+	endpointId?: string;
 	label: string;
 	size?: number;
 	className?: string;
+	/** A person's placeholder; ignored for an agent (always the Bot glyph). */
 	fallback?: ReactNode;
 	selected?: boolean;
 }) {
-	const image = useTeamBridgeAvatar(member, size <= 64 ? 64 : 256);
+	const image = useIdentityAvatar(
+		directoryIdentity(member, kind, endpointId),
+		size <= 64 ? 64 : 256,
+	);
 	const [failedImage, setFailedImage] = useState<string>();
+	const placeholder =
+		kind === "agent" ? (
+			<Bot size={agentGlyphSize(size)} />
+		) : (
+			(fallback ?? personInitial(label))
+		);
 	return (
 		<span
 			aria-hidden="true"
@@ -66,7 +108,7 @@ export function TeamBridgeAvatar({
 					onError={() => setFailedImage(image)}
 				/>
 			) : (
-				(fallback ?? personInitial(label))
+				placeholder
 			)}
 		</span>
 	);
@@ -379,9 +421,9 @@ export function TeamBridgeProfileCard({
 					<div className="flex items-start justify-between gap-3">
 						<TeamBridgeAvatar
 							member={member}
+							kind={isAgent ? "agent" : "human"}
 							label={displayName}
 							size={64}
-							fallback={isAgent ? <Bot size={28} /> : undefined}
 						/>
 						<PopoverClose asChild>
 							<Button

@@ -648,13 +648,12 @@ const MessageRowView: FC<MessageRowProps> = ({
 			>
 				<TeamBridgeAvatar
 					member={member}
+					kind={agent ? "agent" : "human"}
 					label={label}
 					size={36}
 					className="size-9 rounded-md bg-media-surface text-ink-muted text-[14px]"
 					fallback={
-						agent ? (
-							<Bot size={18} />
-						) : known === null ? (
+						known === null ? (
 							<UserRound size={18} />
 						) : (
 							known.trim().charAt(0).toUpperCase() || "?"

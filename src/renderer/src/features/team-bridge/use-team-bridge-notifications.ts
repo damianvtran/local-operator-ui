@@ -77,7 +77,6 @@ import {
 	radientAuthoritySnapshot,
 	subscribeRadientAuthority,
 } from "@shared/hooks/radient-account-authority";
-import { teamBridgeAvatarVersion } from "@shared/hooks/use-account-avatar";
 import { t } from "@shared/i18n";
 import {
 	type InfiniteData,
@@ -89,6 +88,10 @@ import {
 	useQueryClient,
 } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import {
+	directoryIdentity,
+	resolveIdentityAvatar,
+} from "../../../../shared/identity-avatar";
 import type {
 	TeamBridgeDirectoryMember,
 	TeamBridgeMessage,
@@ -183,12 +186,17 @@ function notificationSender(
 	member: TeamBridgeDirectoryMember,
 	kind: TeamBridgeNotificationSender["kind"],
 ): TeamBridgeNotificationSender | undefined {
-	// Directory identity, not a message's possibly stale composed label.
-	// Source=none wins even if an old avatar_url lingers in a response.
-	const photo =
-		member.profile?.avatar?.source === "none"
-			? null
-			: teamBridgeAvatarVersion(member);
+	// Directory identity, not a message's possibly stale composed label. The
+	// picture comes from the one identity resolver, which honours source=none
+	// and NEVER gives an agent its owner's photo: a `person_agent` banner is
+	// drawn as the agent glyph (core), not the owner's face (2026-10-30).
+	const resolved = resolveIdentityAvatar(
+		directoryIdentity(member, kind === "person_agent" ? "agent" : "human"),
+	).src;
+	// Only an account photo has a banner relay today; an endpoint picture (the
+	// seam in `identity-avatar.ts`) needs its own closed route before it can
+	// ride here.
+	const photo = resolved?.type === "account" ? resolved : null;
 	return parseTeamBridgeNotificationSender({
 		v: 1,
 		kind,

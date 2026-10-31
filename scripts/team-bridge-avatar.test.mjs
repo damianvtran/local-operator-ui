@@ -16,6 +16,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
 export * from './src/renderer/src/shared/hooks/use-account-avatar';
+export * from './src/shared/identity-avatar';
 export * from './src/renderer/src/shared/hooks/radient-account-authority';
 export {TeamBridgeApi} from './src/renderer/src/shared/api/local-operator/team-bridge-api';
 export {requestDesktopMediaOutcome} from './src/main/desktop-media';
@@ -54,7 +55,7 @@ function fixture() {
 	document.body.append(host);
 	const root = createRoot(host);
 	function Avatar({ value = member }) {
-		const url = m.useTeamBridgeAvatar(value, 64);
+		const url = m.useIdentityAvatar({ kind: "human", ...value }, 64);
 		return React.createElement("img", { src: url, "data-url": url });
 	}
 	const render = async (values) =>
@@ -141,11 +142,12 @@ test("avatar identity accepts canonical UUID and legacy IDs, never escaped path 
 		"acc_legacy-A_1",
 	]) {
 		assert.deepEqual(
-			m.teamBridgeAvatarVersion({
+			m.resolveIdentityAvatar({
+				kind: "human",
 				account_id: accountId,
 				avatar_url: `/v1/accounts/${accountId}/avatar?v=${hash}`,
-			}),
-			{ accountId, hash },
+			}).src,
+			{ type: "account", accountId, hash },
 		);
 	}
 	for (const encoded of [
@@ -161,10 +163,11 @@ test("avatar identity accepts canonical UUID and legacy IDs, never escaped path 
 		"acc%23legacy",
 	]) {
 		assert.equal(
-			m.teamBridgeAvatarVersion({
+			m.resolveIdentityAvatar({
+				kind: "human",
 				account_id: decodeURIComponent(encoded.replaceAll("+", " ")),
 				avatar_url: `/v1/accounts/${encoded}/avatar?v=${hash}`,
-			}),
+			}).src,
 			null,
 		);
 	}
