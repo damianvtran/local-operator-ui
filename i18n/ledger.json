@@ -62006,6 +62006,562 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.onboarding.tour",
+			"source_sha256": "6b1936e04b1cb48d8151dcc191dda23fffb45c8555162d1d5d37c600480c8792",
+			"target_sha256": "31e6bbadd6a87d96b08da03d298cd5357f482a74c013e8146b09a38f25ce44f7",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-25",
+				"job": "f94bee7a94de",
+				"note": "Receipt-recorded translator job. The delegating manager's original-job list names es27f96e2bff5f; that discrepancy is not resolved by editing provenance here."
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto",
+					"model_provenance": "radient/auto. Fallback, disclosed: the session started on anthropic/claude-opus-5-5, lost it to provider quota and moved openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto; this delta re-audit ran on radient/auto.",
+					"date": "2026-10-30",
+					"result": "clean",
+					"instance": "98d6ccb52026-tc1-delta",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/98d6ccb52026-tc1-delta-es.json",
+					"receipt_sha256": "4ac594881afa72b21802280ff3ff0b7b0a80a8a18f06ebaaa397abac6e6326f3",
+					"context_sha256": "fe6c1c0ff5717552c5fe320e22713d9ec1a8149f13c4246161220fe2585ade89",
+					"glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+					"style_guide_sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e",
+					"scope": "TC1 delta re-audit at 877225cb833: the comma-fragment value lost the space before the ',' chip in all eight catalogues and the en context width claim was corrected to 21. One key changed per file; nothing retranslated. Prior auditors superseded above."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+					"target_sha256": "01be2019914eac6288075ee34f988e6b4b04f6f20678c390305931255706b2af",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-25",
+							"result": "clean-with-findings",
+							"instance": "699cfe87308b-es-onboarding-tour",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 4
+							},
+							"receipt": "i18n/receipts/699cfe87308b-es-onboarding-tour.json",
+							"receipt_sha256": "b932fbe6b539a4141c193829fc427fe66c8882e4ac122f57e7ff5f750a7bc737",
+							"scope": "Full first independent audit of ui.onboarding.tour for es: 123 English/context/target values; text-only, rendered fit unverified.",
+							"note": "First independent audit only. The high-visibility second independent audit required by docs/I18N.md A4 is not performed; this row is not release eligibility. Auditor actual model is recorded from the receipt."
+						},
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-25",
+							"result": "clean-with-findings",
+							"instance": "7464d37a829a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 4,
+								"nit": 7
+							},
+							"receipt": "i18n/receipts/7464d37a829a.json",
+							"receipt_sha256": "92d8fa599d99f5dab4e9bdf1329fbd7fc309a90a98fd528b383b8b2d4cd4be23",
+							"scope": "Second independent audit of the unchanged final bytes. First audit 699cfe87308b-es-onboarding-tour remains on the row; two distinct instances now evidence the high-visibility rule. 4 minor/7 nit, no blocker or major.",
+							"note": "Second independent audit; high-visibility two-audit rule now evidenced. Remaining findings are non-blocking; rendered/native proof not claimed."
+						}
+					]
+				}
+			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.onboarding.tour",
+			"source_sha256": "6b1936e04b1cb48d8151dcc191dda23fffb45c8555162d1d5d37c600480c8792",
+			"target_sha256": "c6e65251271aac320f84bffe46552b8c793ea30f51158ea0e8e4492b4bc3a0cd",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-25",
+				"job": "2660ff7c036b",
+				"session": "52d18db33cf5"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto",
+					"model_provenance": "radient/auto. Fallback, disclosed: the session started on anthropic/claude-opus-5-5, lost it to provider quota and moved openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto; this delta re-audit ran on radient/auto.",
+					"date": "2026-10-30",
+					"result": "clean",
+					"instance": "98d6ccb52026-tc1-delta",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/98d6ccb52026-tc1-delta-fr.json",
+					"receipt_sha256": "853159dc3a812d030d08e7f995a52843f1e2aac0efa7b08732de75d7855cb905",
+					"context_sha256": "fe6c1c0ff5717552c5fe320e22713d9ec1a8149f13c4246161220fe2585ade89",
+					"glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+					"style_guide_sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226",
+					"scope": "TC1 delta re-audit at 877225cb833: the comma-fragment value lost the space before the ',' chip in all eight catalogues and the en context width claim was corrected to 21. One key changed per file; nothing retranslated. Prior auditors superseded above."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+					"target_sha256": "90c0060e912c7583cfcd72bde5125195ea4469e8a71364c66f876a79b1e70943",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto (harness launch route; concrete routed upstream provider/model not exposed in this session transcript; no fallback invoked by the auditor)",
+							"date": "2026-10-25",
+							"result": "clean-with-findings",
+							"instance": "59527dfbb84b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/59527dfbb84b.json",
+							"receipt_sha256": "90c11dfe6c0a92103e42730ee1fc61de25e4478d1a4b3c38e7f05fbc45a2bcd9",
+							"scope": "Round 2 pass on the final bytes: 12 remediated values, 111 unchanged retained byte-identically from round 1. Round 1 receipt i18n/receipts/59527dfbb84b-fr.json (sha256 d190c87856141e2a91364358112784f3798a421452b69a6118b0d5395215a922) requested changes and remains immutable evidence. First-independent-audit scope only; rendered fit unverified.",
+							"note": "First independent audit only. The high-visibility second independent audit required by docs/I18N.md A4 is not performed; this row is not release eligibility. Auditor actual model is recorded from the receipt."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+					"target_sha256": "5099b1bab0b5c78f723ef41abb3b83acc9f4716d0fc9739fd60dbad0102d5e5b",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto (harness launch route; concrete routed upstream provider/model not exposed in this session transcript; no fallback invoked by the auditor)",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "339c96eeb7b8",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/339c96eeb7b8.json",
+							"receipt_sha256": "358ba31ffa70d6c5b5e9a0896bad01a543a949f093d3146743ef2d7565e23f85",
+							"scope": "Second independent confirmation of the 4-byte remediated final file (vous forms and one nit). Earlier audits of prior bytes are superseded history, not current evidence. Clean: 0 blocker/major/minor/nit. FR masked-source access gap remains recorded in the evidence record.",
+							"note": "Second independent audit; high-visibility two-audit rule now evidenced. Remaining findings are non-blocking; rendered/native proof not claimed."
+						}
+					]
+				}
+			]
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.onboarding.tour",
+			"source_sha256": "6b1936e04b1cb48d8151dcc191dda23fffb45c8555162d1d5d37c600480c8792",
+			"target_sha256": "1fcda0bb62279c8cec5ea7511e59165471a41450182bd0a126c82b08109d39ba",
+			"translator": {
+				"agent": "translator",
+				"model": "radient/auto",
+				"date": "2026-10-25",
+				"job": "1a52ed60d4b5",
+				"session": "1a52ed60d4b5"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto",
+					"model_provenance": "radient/auto. Fallback, disclosed: the session started on anthropic/claude-opus-5-5, lost it to provider quota and moved openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto; this delta re-audit ran on radient/auto.",
+					"date": "2026-10-30",
+					"result": "clean",
+					"instance": "98d6ccb52026-tc1-delta",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/98d6ccb52026-tc1-delta-hi.json",
+					"receipt_sha256": "be61893e391fa9f42cc3edee7585483959108f1dc3342f6217918a3d9e7bbce0",
+					"context_sha256": "fe6c1c0ff5717552c5fe320e22713d9ec1a8149f13c4246161220fe2585ade89",
+					"glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+					"style_guide_sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+					"scope": "TC1 delta re-audit at 877225cb833: the comma-fragment value lost the space before the ',' chip in all eight catalogues and the en context width claim was corrected to 21. One key changed per file; nothing retranslated. Prior auditors superseded above."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+					"target_sha256": "cc19dcba2a867fb2e7a64266a3c53b4d5c82722919da9323532337488d82cfb7",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "hi-onboarding-tour-r2-cc19dcba2a86",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/hi-onboarding-tour-r2-cc19dcba2a86.json",
+							"receipt_sha256": "54921db331360122f64bbb810fbba8476bcca45589555192677eddbbfeb6e526",
+							"scope": "Round 2 delta pass on the final bytes: all 12 round-1 findings fixed, 19 changed keys and 104 unchanged retained byte-identically. Round 1 receipt i18n/receipts/hi-onboarding-tour-e38c1c237313.json remains immutable evidence. First-independent-audit scope only; rendered fit unverified.",
+							"note": "First independent audit only. The high-visibility second independent audit required by docs/I18N.md A4 is not performed; this row is not release eligibility. Auditor actual model is recorded from the receipt."
+						},
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-25",
+							"result": "clean-with-findings",
+							"instance": "hi-onboarding-tour-second-audit-18b1a47b6b83",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 5,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/hi-onboarding-tour-second-audit-18b1a47b6b83.json",
+							"receipt_sha256": "a489e5f7b2e021b04c40c55b70adf054583020b9b1e39b41a0fe978087125087",
+							"scope": "Second independent audit of the unchanged final bytes. First audit hi-onboarding-tour-r2-cc19dcba2a86 remains on the row; two distinct instances now evidence the high-visibility rule. 5 minor/3 nit.",
+							"note": "Second independent audit; high-visibility two-audit rule now evidenced. Remaining findings are non-blocking; rendered/native proof not claimed."
+						}
+					]
+				}
+			]
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.onboarding.tour",
+			"source_sha256": "6b1936e04b1cb48d8151dcc191dda23fffb45c8555162d1d5d37c600480c8792",
+			"target_sha256": "ccc944243285fb5b4cd53e24ef24f4154cf93d1d11a9349d3ce688b09dd97acc",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-25",
+				"job": "8508ef4fc2ac"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto",
+					"model_provenance": "radient/auto. Fallback, disclosed: the session started on anthropic/claude-opus-5-5, lost it to provider quota and moved openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto; this delta re-audit ran on radient/auto.",
+					"date": "2026-10-30",
+					"result": "clean",
+					"instance": "98d6ccb52026-tc1-delta",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/98d6ccb52026-tc1-delta-ru.json",
+					"receipt_sha256": "2ba1299d030203f9e35a5c1dc89511c39579da8b52ea8f12b555f9201a8c048f",
+					"context_sha256": "fe6c1c0ff5717552c5fe320e22713d9ec1a8149f13c4246161220fe2585ade89",
+					"glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+					"style_guide_sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+					"scope": "TC1 delta re-audit at 877225cb833: the comma-fragment value lost the space before the ',' chip in all eight catalogues and the en context width claim was corrected to 21. One key changed per file; nothing retranslated. Prior auditors superseded above."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+					"target_sha256": "00f98928bd9ae394723e11cc661f75ab077d880820f4d0cdf297ea2b29ebb710",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-25",
+							"result": "clean-with-findings",
+							"instance": "96a4e04e86fe",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 6
+							},
+							"receipt": "i18n/receipts/96a4e04e86fe.json",
+							"receipt_sha256": "b050b84db6e055b8defc647c588c11fe72dc44f179a3d03ca6357f8399c0b65c",
+							"scope": "Full first independent audit of ui.onboarding.tour for ru: 123 English/context/target values; text-only, rendered fit unverified.",
+							"note": "First independent audit only. The high-visibility second independent audit required by docs/I18N.md A4 is not performed; this row is not release eligibility. Auditor actual model is recorded from the receipt."
+						},
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-25",
+							"result": "clean-with-findings",
+							"instance": "cf459d9af371",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 4,
+								"nit": 7
+							},
+							"receipt": "i18n/receipts/cf459d9af371.json",
+							"receipt_sha256": "4c5a60c88ff7c4f315c3da8755461aba68a09187cbc914f4ed6828a6080a5bb4",
+							"scope": "Second independent audit of the unchanged final bytes. First audit 96a4e04e86fe remains on the row; two distinct instances now evidence the high-visibility rule. 4 minor/7 nit.",
+							"note": "Second independent audit; high-visibility two-audit rule now evidenced. Remaining findings are non-blocking; rendered/native proof not claimed."
+						}
+					]
+				}
+			]
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.onboarding.tour",
+			"source_sha256": "6b1936e04b1cb48d8151dcc191dda23fffb45c8555162d1d5d37c600480c8792",
+			"target_sha256": "fe858ca6c5ca1a373c141cbabccdab1d3f7d9777ca8cf75c098dc0cf972c9cc4",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-25",
+				"job": "03e8045ae218"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto",
+					"model_provenance": "radient/auto. Fallback, disclosed: the session started on anthropic/claude-opus-5-5, lost it to provider quota and moved openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto; this delta re-audit ran on radient/auto.",
+					"date": "2026-10-30",
+					"result": "clean",
+					"instance": "98d6ccb52026-tc1-delta",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/98d6ccb52026-tc1-delta-ur.json",
+					"receipt_sha256": "d35a84673798c6031f195e35d3511aaf858415623b82e85728c1f57f36659c27",
+					"context_sha256": "fe6c1c0ff5717552c5fe320e22713d9ec1a8149f13c4246161220fe2585ade89",
+					"glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+					"style_guide_sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60",
+					"scope": "TC1 delta re-audit at 877225cb833: the comma-fragment value lost the space before the ',' chip in all eight catalogues and the en context width claim was corrected to 21. One key changed per file; nothing retranslated. Prior auditors superseded above."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+					"target_sha256": "49089358f48ef8807c380736444e18569772e97e46105b727f7552a9088ed028",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-25",
+							"result": "clean-with-findings",
+							"instance": "c62009d5ecba",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 8,
+								"nit": 4
+							},
+							"receipt": "i18n/receipts/c62009d5ecba.json",
+							"receipt_sha256": "141274f656cac2590eb4abff1d743b6d1f8d6cbd317ba44e0a221089e9861c1e",
+							"scope": "Full first independent audit of ui.onboarding.tour for ur: 123 English/context/target values; text-only, rendered fit unverified.",
+							"note": "First independent audit only. The high-visibility second independent audit required by docs/I18N.md A4 is not performed; this row is not release eligibility. Auditor actual model is recorded from the receipt."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+					"target_sha256": "75eebcf042bdcf233f7dbaf734c8e4ba5663993729bddf7cc649effd2f12e83e",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-25",
+							"result": "clean",
+							"instance": "de447a030b3b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/de447a030b3b.json",
+							"receipt_sha256": "ef2088c051e243e35165aeea4ab7f699dea7379cbad91e0def50bc4487c9844a",
+							"scope": "Second independent confirmation of the 17-value remediation after the second audit changes_requested verdict. Prior audits are superseded history, not current evidence. Clean: 0 blocker/major/minor/nit.",
+							"note": "Second independent audit; high-visibility two-audit rule now evidenced. Remaining findings are non-blocking; rendered/native proof not claimed."
+						}
+					]
+				}
+			]
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.onboarding.tour",
+			"source_sha256": "6b1936e04b1cb48d8151dcc191dda23fffb45c8555162d1d5d37c600480c8792",
+			"target_sha256": "3e42711380c15975910ab93e9fd6340fd5643dffb324a9500b80834f1937609c",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-25",
+				"job": "1cec7f3afe8e"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto",
+					"model_provenance": "radient/auto. Fallback, disclosed: the session started on anthropic/claude-opus-5-5, lost it to provider quota and moved openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto; this delta re-audit ran on radient/auto.",
+					"date": "2026-10-30",
+					"result": "clean",
+					"instance": "98d6ccb52026-tc1-delta",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/98d6ccb52026-tc1-delta-vi.json",
+					"receipt_sha256": "ed75f3a94f30860330b7a888ca48b2f75e770cc6d57d51f345ef7f9ed8739c0a",
+					"context_sha256": "fe6c1c0ff5717552c5fe320e22713d9ec1a8149f13c4246161220fe2585ade89",
+					"glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+					"style_guide_sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888",
+					"scope": "TC1 delta re-audit at 877225cb833: the comma-fragment value lost the space before the ',' chip in all eight catalogues and the en context width claim was corrected to 21. One key changed per file; nothing retranslated. Prior auditors superseded above."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+					"target_sha256": "c39595f3122ab799a55cdb936e7640da756030f93f6152c9c6801919685cea55",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-25",
+							"result": "clean-with-findings",
+							"instance": "be8c92d95eae",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 4
+							},
+							"receipt": "i18n/receipts/be8c92d95eae.json",
+							"receipt_sha256": "adb1548bacc3a40fae025fe88fcf88ea1a7a058a0783cd933544a175131dddc9",
+							"scope": "Full first independent audit of ui.onboarding.tour for vi: 123 English/context/target values; text-only, rendered fit unverified.",
+							"note": "First independent audit only. The high-visibility second independent audit required by docs/I18N.md A4 is not performed; this row is not release eligibility. Auditor actual model is recorded from the receipt."
+						},
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-25",
+							"result": "clean-with-findings",
+							"instance": "2bad1ea1affc",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 9
+							},
+							"receipt": "i18n/receipts/2bad1ea1affc.json",
+							"receipt_sha256": "7f6777d302fb4e1bd086dc3e137399721280a83e05bf026276a1a8bd5683e649",
+							"scope": "Second independent audit of the unchanged final bytes. First audit be8c92d95eae remains on the row; two distinct instances now evidence the high-visibility rule. 2 minor/9 nit.",
+							"note": "Second independent audit; high-visibility two-audit rule now evidenced. Remaining findings are non-blocking; rendered/native proof not claimed."
+						}
+					]
+				}
+			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.onboarding.tour",
+			"source_sha256": "6b1936e04b1cb48d8151dcc191dda23fffb45c8555162d1d5d37c600480c8792",
+			"target_sha256": "a2036d8df368781cf8b9e560cf9296c5c56addaa679fabc970f5e54725e74f69",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "radient/auto",
+				"date": "2026-10-25",
+				"job": "641048ab14c2"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "radient/auto",
+					"model_provenance": "radient/auto. Fallback, disclosed: the session started on anthropic/claude-opus-5-5, lost it to provider quota and moved openai/gpt-6-astra -> kimi/k3.1-pro -> radient/auto; this delta re-audit ran on radient/auto.",
+					"date": "2026-10-30",
+					"result": "clean",
+					"instance": "98d6ccb52026-tc1-delta",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/98d6ccb52026-tc1-delta-zh-cn.json",
+					"receipt_sha256": "87779ba070f8e37d3b32a31f1c4acbc9c1378f94e5e8760cd761dfddd21b2767",
+					"context_sha256": "fe6c1c0ff5717552c5fe320e22713d9ec1a8149f13c4246161220fe2585ade89",
+					"glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+					"style_guide_sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+					"scope": "TC1 delta re-audit at 877225cb833: the comma-fragment value lost the space before the ',' chip in all eight catalogues and the en context width claim was corrected to 21. One key changed per file; nothing retranslated. Prior auditors superseded above."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+					"target_sha256": "d9f501fe2ea4c8a763e1718977b65a3e7d22f0f19760ffb16b80f43e2163c4ec",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-25",
+							"result": "clean-with-findings",
+							"instance": "8e3ddc335bf2-zh-onboarding-tour",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 6
+							},
+							"receipt": "i18n/receipts/8e3ddc335bf2-zh-onboarding-tour.json",
+							"receipt_sha256": "81abd05c8477e0c08fa09c48a8498963ca0c84dd6846eb51aa1c722295091060",
+							"scope": "Full first independent audit of ui.onboarding.tour for zh-CN: 123 English/context/target values; text-only, rendered fit unverified.",
+							"note": "First independent audit only. The high-visibility second independent audit required by docs/I18N.md A4 is not performed; this row is not release eligibility. Auditor actual model is recorded from the receipt."
+						},
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto (harness launch route exposed by this session; the concrete upstream provider/model is not exposed; no fallback was selected by the auditor)",
+							"date": "2026-10-25",
+							"result": "clean-with-findings",
+							"instance": "423f3dcdf741-zh-onboarding-tour-second",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 5,
+								"nit": 6
+							},
+							"receipt": "i18n/receipts/423f3dcdf741-zh-onboarding-tour-second.json",
+							"receipt_sha256": "09f57d3e65ec31535a59af7ed47bc2d56f277a2cce951d4110409c97d4719545",
+							"scope": "Second independent audit of the unchanged final bytes. First audit 8e3ddc335bf2-zh-onboarding-tour remains on the row; two distinct instances now evidence the high-visibility rule. 5 minor/6 nit.",
+							"note": "Second independent audit; high-visibility two-audit rule now evidenced. Remaining findings are non-blocking; rendered/native proof not claimed."
+						}
+					]
+				}
+			]
 		}
 	]
 }

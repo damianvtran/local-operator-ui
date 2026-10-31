@@ -1,0 +1,111 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "model": "radient/auto (harness launch route; concrete routed upstream provider/model not exposed in this session transcript; no fallback invoked by the auditor)",
+  "instance": "59527dfbb84b",
+  "locale": "fr",
+  "namespace": "ui.onboarding.tour",
+  "date": "2026-10-25",
+  "round": 2,
+  "status": "passed",
+  "result": "clean-with-findings",
+  "independence": "Independent auditor: translation-auditor, separate agent run from the translator session 52d18db33cf5 (job 2660ff7c036b). Read-only audit of the uncommitted candidate; no catalogue, source, ledger or generated-file edits.",
+  "scope": {
+    "source_ref": "b3dd694c1702e36239cb7da94d636a02318d13ad",
+    "source_commit_contains_target": false,
+    "candidate": "uncommitted working-tree file src/i18n/catalogues/fr/ui.onboarding.tour.json; not present in any commit at the audited head",
+    "remediation_range": {
+      "from_target_sha256": "38cbe51d8ace1f257f91d4625408869eea1166838cb2f19c3207184a7b3304d4",
+      "to_target_sha256": "90c0060e912c7583cfcd72bde5125195ea4469e8a71364c66f876a79b1e70943"
+    },
+    "keys_read": 123,
+    "keys_total": 123,
+    "changed_keys": 12,
+    "unchanged_keys": 111,
+    "unchanged_proof": "all 111 non-changed values are byte-identical to the values audited in round 1 (compared against the round-1 value snapshot of the same 123 keys); no other key was added, removed or reordered",
+    "context_entries_read": 123,
+    "prior_receipt": {
+      "path": "i18n/receipts/59527dfbb84b-fr.json",
+      "receipt_sha256": "d190c87856141e2a91364358112784f3798a421452b69a6118b0d5395215a922",
+      "unchanged": true
+    }
+  },
+  "source_sha256": "81fc4e3b70850e6961092aeb42a9cc12160fe1bd064d47cb28ce548618bcb976",
+  "context_sha256": "7131faf88213b943cfa7ee0b951a8e0d5fb512728b677c023beec11b677c0906",
+  "target_sha256": "90c0060e912c7583cfcd72bde5125195ea4469e8a71364c66f876a79b1e70943",
+  "target_bytes": 22902,
+  "remediation_verification": [
+    {
+      "id": "FR-TOUR-01",
+      "status": "fixed",
+      "evidence": "« Agent Hub » no longer occurs anywhere in the namespace; all six affected keys now use « Hub des agents »: title « Le Hub des agents »; « depuis le Hub des agents »; « Visitons le Hub des agents … l’icône « Hub des agents » »; « sur le Hub des agents »; « Publier sur le Hub des agents »; « Le Hub des agents pour partager et collaborer ». Matches the shipped fr control label ui.shell.sidebar_navigation.agent_hub."
+    },
+    {
+      "id": "FR-TOUR-03",
+      "status": "fixed",
+      "evidence": "navigate_agent_hub.body.1 now says « dans la barre latérale », matching the fr shell's region term (ui.shell.sidebar_navigation.close_sidebar etc.)."
+    },
+    {
+      "id": "FR-TOUR-04",
+      "status": "fixed",
+      "evidence": "create_new_agent.body.1 now reads « créer un tout nouvel agent à partir de zéro » (calque removed)."
+    },
+    {
+      "id": "FR-TOUR-05",
+      "status": "fixed",
+      "evidence": "canvas_documents_view.body.3 now reads « surlignez le texte que vous voulez que votre agent améliore », restoring both « any » and the user's wish from the source."
+    },
+    {
+      "id": "FR-TOUR-06",
+      "status": "fixed",
+      "evidence": "canvas_documents_view.body.4 now reads « en s’appuyant sur sa mémoire et son contexte », matching the product term « mémoire »."
+    },
+    {
+      "id": "FR-TOUR-07",
+      "status": "fixed",
+      "evidence": "palette body.2.1 now reads « Besoin d’ouvrir une conversation rapidement ? Appuyez sur  », vous-register and gender-neutral; the trailing structural space is preserved."
+    },
+    {
+      "id": "FR-TOUR-08",
+      "status": "fixed",
+      "evidence": "select_model.body.1 now reads « un modèle que vous vous attendiez à voir recommandé »."
+    },
+    {
+      "id": "FR-TOUR-09",
+      "status": "fixed",
+      "evidence": "attachments.body.4 now reads « … de demander à votre agent d’essayer de le coder »."
+    }
+  ],
+  "findings": [
+    {
+      "severity": "minor",
+      "id": "FR-TOUR-02",
+      "status": "deferred",
+      "classification": "source-dependent, not fixable in this catalogue",
+      "keys": [
+        "ui.onboarding.tour.download_agent.body.1"
+      ],
+      "current": "cliquez sur le bouton « Obtenir »",
+      "proposed": "Keep « Obtenir » in French. The defect is the hardcoded English control: localize the Agent Hub card's Get button (src/renderer/src/features/agent-hub/components/agent-card.tsx:413) to « Obtenir » in a separate hub-copy change; replacing the French tour text with English would not fix the rendered label and is rejected.",
+      "reason": "The quoted control label must match what the app renders; today the fr UI still renders « Get », so the tour names a French label users cannot see. The translation is correct French and the unresolved mismatch is owned by the untranslated source control, recorded here rather than waived or silently re-scoped."
+    }
+  ],
+  "notes": [
+    "Round-2 scope was the remediation delta and its direct neighbours only: the 12 changed values were read in full; the 111 unchanged values are retained on byte-identical evidence from round 1; the two command-palette paragraphs were re-joined in real tour-copy.ts run order because body.2.1 is in the delta.",
+    "Joined paragraph 2 reads: « Besoin d’ouvrir une conversation rapidement ? Appuyez sur ⌘O sur Mac et Ctrl+O sous Windows ou Linux : la palette s’ouvre déjà sur la recherche de vos conversations, pour y accéder directement — et ⌘P sur Mac et Ctrl+P sous Windows ou Linux l’ouvre sur les commandes et pages de l’application, si c’est ce que vous cherchez. Vous pouvez aussi cliquer sur Rechercher dans la barre latérale pour l’ouvrir. » Fragment padding and the literal shortcut tokens are unchanged.",
+    "Carried unresolved count: exactly one MINOR (FR-TOUR-02); no blocker and no major remains. FR-TOUR-02 is deferred as source-dependent, not waived: the still-hardcoded Get control is a real source defect outside this namespace.",
+    "Length risks from round 1 remain recorded, not findings: select_provider.title 23→36 (1.57x vs ~1.5x guidance; matches the established UI term), welcome.image.1.alt 60→96 (accessible label, no cap), palette fragment body.1.4 12→25 (no cap).",
+    "No rendered-frame or native-speaker sign-off: the browser host remains blocked in this session; this is a text audit of the final bytes only.",
+    "Translation provenance unchanged from round 1: translator session 52d18db33cf5, job 2660ff7c036b; launch-selector radient/auto per the parent task receipt (explicit_model); the translator could not see its own concrete routed model, so no exact upstream provider/model is claimed."
+  ],
+  "carried_checks": {
+    "keys": "123 English keys, 123 fr keys, identical order; no missing, extra or duplicate keys; 123 context entries with the same key set",
+    "encoding": "UTF-8 without BOM, LF endings, tab indent, single trailing newline; 22902 bytes; target hash matches the bytes audited here",
+    "normalization": "whole file NFC; no bidi or format control characters",
+    "icu": "123/123 messages on both sides parse with @formatjs/icu-messageformat-parser; every message is literal-only with zero ICU argument nodes (source parameterless); CLDR plural categories not applicable",
+    "placeholders_markup": "no {placeholder}, %s, <tag>, HTML characters or bare % in any fr value; nothing to drop or rename",
+    "typography": "no plain-space punctuation before : ; ! ?; U+202F used inside « »; no straight apostrophes, double spaces or mojibake",
+    "register": "vous throughout the product copy; no tu/ton/ta/tes/te pronouns",
+    "labels": "« Hub des agents » now matches ui.shell.sidebar_navigation.agent_hub; View agent settings, Create schedule, Recommandé, Automatique, Rechercher and Planifications remain matched as verified in round 1"
+  }
+}
