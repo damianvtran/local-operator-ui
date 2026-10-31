@@ -29,6 +29,7 @@
 	"ui.teamBridge.members.ineligible_label": "{name}, {reason}",
 	"ui.teamBridge.members.invite_count": "{count, plural, =0 {Inviter} one {Inviter {count}} many {Inviter {count}} other {Inviter {count}}}",
 	"ui.teamBridge.members.invitation_note_v2": "Les invitations ne donnent accès qu’une fois acceptées. Un agent invité rejoint la conversation dès que son propriétaire y consent ; il lit alors chaque message ici, décide s’il répond, et répond toujours quand on le mentionne avec @. Son propriétaire peut le limiter aux mentions avec @ ou le mettre en sourdine.",
+	"ui.teamBridge.members.invitation_note_v3": "Les invitations ne donnent accès qu’une fois acceptées. Vos propres agents rejoignent la conversation immédiatement ; l’agent d’une autre personne la rejoint dès que son propriétaire y consent. Un agent membre lit chaque message ici et décide s’il répond, et il est censé répondre quand on le mentionne avec @. Son propriétaire peut le limiter aux mentions avec @ et aux fils où il intervient, ou le mettre en sourdine.",
 	"ui.teamBridge.notify.unavailable": "Cette notification ne peut plus être ouverte avec ce compte.",
 	"ui.teamBridge.chief.unnamed": "Cheffe de cabinet ({person})",
 	"ui.teamBridge.page.title": "Team Bridge",
@@ -236,6 +237,7 @@
 	"ui.teamBridge.reactions.toneDefault": "Teint par défaut",
 	"ui.teamBridge.reactions.empty": "Aucun émoji trouvé",
 	"ui.teamBridge.reactions.failed": "La réaction n’a pas été enregistrée. Réessayez.",
+	"ui.teamBridge.reactions.others": "{others, plural, one {# autre} other {# autres}}",
 	"ui.teamBridge.reactions.category0": "Smileys et émotions",
 	"ui.teamBridge.reactions.category1": "Personnes et corps",
 	"ui.teamBridge.reactions.category2": "Animaux et nature",
@@ -284,5 +286,16 @@
 	"ui.teamBridge.invitations.failed.sign_in": "Vous êtes déconnecté. Connectez-vous, puis réessayez.",
 	"ui.teamBridge.invitations.failed.unreachable": "L’application n’a pas pu joindre Radient. Aucune modification n’a été effectuée. Réessayez.",
 	"ui.teamBridge.invitations.read_only": "Cette organisation est en lecture seule pour vous ; les invitations ne peuvent donc pas recevoir de réponse ici.",
-	"ui.teamBridge.invitations.failed.unconfirmed": "Votre réponse n’a pas été confirmée. Réessayez."
+	"ui.teamBridge.invitations.failed.unconfirmed": "Votre réponse n’a pas été confirmée. Réessayez.",
+	"ui.teamBridge.events.invited": "{actor} a invité {targets}",
+	"ui.teamBridge.events.joined": "Arrivée dans la conversation : {targets}",
+	"ui.teamBridge.events.owner_added_agent": "{actor} a ajouté son agent : {targets}",
+	"ui.teamBridge.events.left": "Départ de la conversation : {targets}",
+	"ui.teamBridge.events.removed": "{actor} a retiré {targets}",
+	"ui.teamBridge.events.consented": "{actor} a autorisé {targets} à rejoindre la conversation",
+	"ui.teamBridge.events.declined_self": "{actor} a refusé l’invitation",
+	"ui.teamBridge.events.declined": "{actor} a refusé l’invitation pour {targets}",
+	"ui.teamBridge.events.withdrawn": "{actor} a annulé l’invitation pour {targets}",
+	"ui.teamBridge.events.unknown": "Modification des membres",
+	"ui.teamBridge.events.others": "{count, plural, one {# autre} many {# d’autres} other {# autres}}"
 }

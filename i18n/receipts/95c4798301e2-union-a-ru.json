@@ -1,0 +1,180 @@
+{
+	"schema": 1,
+	"receipt_kind": "locale-audit (post-rebase union re-audit: 12 added keys)",
+	"date": "2026-10-30",
+	"auditor": "translation-auditor",
+	"agent": "translation-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_provenance": "Served model as announced by the harness for session 95c4798301e2 (anthropic/claude-opus-5-5); no fallback announced or observed.",
+	"model_fallback": {
+		"announced": false,
+		"observed": false
+	},
+	"status": "passed",
+	"result": "clean-with-findings",
+	"namespace": "ui.teamBridge",
+	"locale": "ru",
+	"audit_id": "teambridge-member-events-union-audit-95c4798301e2-union-a-ru",
+	"instance": "95c4798301e2-union-a-ru",
+	"session": "95c4798301e2",
+	"role": "union-reaudit-a (auditor A; verdicts formed before reading any other receipt)",
+	"integration": {
+		"branch": "fix/team-bridge-member-events",
+		"base": "3b369d6341c7eeed159c3bcbb1b1f4db759265d4",
+		"head": "599309fdd9946546fee3138904bdd1f31722623d",
+		"state": "local head, not pushed",
+		"worktree": "~/local-operator-ui/.worktrees/member-events"
+	},
+	"independence": "Independent auditor: lopdev translation-auditor, session 95c4798301e2; authored none of the audited strings; edited no catalogue or code; wrote only receipts/evidence and rows via ledger-assemble.mjs. Distinct from b20548e9b2d9 and any union auditor B.",
+	"sha256": {
+		"ru": "00427edaa47dbd8ae0e3573de3e5310a7c7326efe539e734e864637c347fe303",
+		"en": "124d9c3a342342fd4c67635e95210262f96d28c14260bdfac40ad70665936633"
+	},
+	"context_sha256": "47f525ae908445904c507ac9e1386fdaa8181c6a5a6aca8b9f46d22180eea523",
+	"scope": {
+		"delta_kind": "Rebase/union onto origin/main 3b369d6341c7eeed159c3bcbb1b1f4db759265d4: JSON key diff vs base = 12 added, 0 removed, 0 changed; every base key/value line present verbatim; 299 keys.",
+		"mechanical": "ru keys 299 base 287 added 12 removed 0 changed 0 NFC true baseLinesNotVerbatim 0",
+		"base_target_sha256": "0e44323598a7f8bbef2fda08aa5d5a0f8361a1c80de8d46cfbd44c465650e7bf",
+		"base_en_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
+		"base_bytes_audited_by": [
+			{
+				"instance": "b20548e9b2d9-rebase-ru",
+				"receipt": "i18n/receipts/b20548e9b2d9-rebase-ru.json",
+				"receipt_sha256": "7acab1eb47d7916ca0801435ff2199cd3e050414aeb90bf2c6e984ed03174a8b",
+				"receipt_names_base_target": true,
+				"receipt_names_base_en": true,
+				"ledger_row_at_base": "status audited; source/target sha256 equal the base bytes"
+			}
+		],
+		"keys_audited_linguistically": [
+			"ui.teamBridge.members.invitation_note_v3",
+			"ui.teamBridge.events.invited",
+			"ui.teamBridge.events.joined",
+			"ui.teamBridge.events.owner_added_agent",
+			"ui.teamBridge.events.left",
+			"ui.teamBridge.events.removed",
+			"ui.teamBridge.events.consented",
+			"ui.teamBridge.events.declined_self",
+			"ui.teamBridge.events.declined",
+			"ui.teamBridge.events.withdrawn",
+			"ui.teamBridge.events.unknown",
+			"ui.teamBridge.events.others"
+		],
+		"delta_values_byte_identical_to_pre_rebase_head": "6ec9e2372e51fcf9c1bd6f8ac66e9ec18c20caaa (all 12 true; recorded, not relied on: the 12 were re-read here)",
+		"not_audited": "The 287 base keys: byte-identical to the base row audited by the instance above (moved to superseded by the assembler)."
+	},
+	"audited": {
+		"ui.teamBridge.members.invitation_note_v3": {
+			"en": "Invitations don’t grant access until accepted. Your own agents join right away; someone else’s agent joins once its owner consents. A member agent reads every message here and decides whether to reply, and is expected to reply when @-mentioned. Its owner can limit it to @-mentions and its threads, or mute it.",
+			"translation": "Приглашения не дают доступа, пока их не примут. Ваши собственные агенты присоединяются сразу; чужой агент — после согласия его владельца. Агент-участник читает все сообщения здесь и сам решает, отвечать ли; при упоминании через @ от него ожидается ответ. Владелец может ограничить его упоминаниями через @ и ветками с его участием или перевести его в режим «Без звука»."
+		},
+		"ui.teamBridge.events.invited": {
+			"en": "{actor} invited {targets}",
+			"translation": "{actor}: приглашение в разговор — {targets}"
+		},
+		"ui.teamBridge.events.joined": {
+			"en": "{targets} joined",
+			"translation": "Присоединение к разговору: {targets}"
+		},
+		"ui.teamBridge.events.owner_added_agent": {
+			"en": "{actor} added their agent {targets}",
+			"translation": "{actor}: добавление собственного агента — {targets}"
+		},
+		"ui.teamBridge.events.left": {
+			"en": "{targets} left",
+			"translation": "Выход из разговора: {targets}"
+		},
+		"ui.teamBridge.events.removed": {
+			"en": "{actor} removed {targets}",
+			"translation": "{actor}: удаление из разговора — {targets}"
+		},
+		"ui.teamBridge.events.consented": {
+			"en": "{actor} approved {targets} joining",
+			"translation": "{actor}: одобрено присоединение — {targets}"
+		},
+		"ui.teamBridge.events.declined_self": {
+			"en": "{actor} declined the invitation",
+			"translation": "{actor}: приглашение отклонено"
+		},
+		"ui.teamBridge.events.declined": {
+			"en": "{actor} declined the invitation for {targets}",
+			"translation": "{actor}: отклонение приглашения для {targets}"
+		},
+		"ui.teamBridge.events.withdrawn": {
+			"en": "{actor} withdrew the invitation for {targets}",
+			"translation": "{actor}: отозвано приглашение — {targets}"
+		},
+		"ui.teamBridge.events.unknown": {
+			"en": "Membership changed",
+			"translation": "Состав участников изменён"
+		},
+		"ui.teamBridge.events.others": {
+			"en": "{count, plural, one {# other} other {# others}}",
+			"translation": "{count, plural, one {ещё #} few {ещё #} many {ещё #} other {ещё #}}"
+		}
+	},
+	"checks": {
+		"placeholders": "Placeholder name set per key equals en (actor/targets/count); no {/} leaks in any render.",
+		"icu": "events.others arms match Intl.PluralRules('ru') categories: ru arms one/few/many/other CLDR one/few/many/other",
+		"unicode": "NFC true; no bidi control characters (U+200E/F, U+202A-E, U+2066-9) in the 12 values.",
+		"typography": "«» quotes, em dash; lowercase вы mid-sentence per style guide.",
+		"rendered": [
+			"ru",
+			" 1 invited            Дамиан: приглашение в разговор — Бен",
+			" 1 joined             Присоединение к разговору: Бен",
+			" 1 owner_added_agent  Дамиан: добавление собственного агента — Бен",
+			" 1 left               Выход из разговора: Бен",
+			" 1 removed            Дамиан: удаление из разговора — Бен",
+			" 1 consented          Дамиан: одобрено присоединение — Бен",
+			" 1 declined_self      Дамиан: приглашение отклонено",
+			" 1 declined           Дамиан: отклонение приглашения для Бен",
+			" 1 withdrawn          Дамиан: отозвано приглашение — Бен",
+			" 1 unknown            Состав участников изменён",
+			" 3 invited            Дамиан: приглашение в разговор — Бен, Сана и Ола",
+			" 3 joined             Присоединение к разговору: Бен, Сана и Ола",
+			" 3 owner_added_agent  Дамиан: добавление собственного агента — Бен, Сана и Ола",
+			" 3 left               Выход из разговора: Бен, Сана и Ола",
+			" 3 removed            Дамиан: удаление из разговора — Бен, Сана и Ола",
+			" 3 consented          Дамиан: одобрено присоединение — Бен, Сана и Ола",
+			" 3 declined_self      Дамиан: приглашение отклонено",
+			" 3 declined           Дамиан: отклонение приглашения для Бен, Сана и Ола",
+			" 3 withdrawn          Дамиан: отозвано приглашение — Бен, Сана и Ола",
+			" 3 unknown            Состав участников изменён",
+			" others: 1→ещё 1 | 2→ещё 2 | 3→ещё 3 | 5→ещё 5 | 11→ещё 11 | 21→ещё 21",
+			" truncated: Дамиан: приглашение в разговор — Бен, Сана и ещё 2"
+		],
+		"rendered_command": "node $LOCAL_OPERATOR_SCRATCHPAD/union-a/render.mjs (repo node_modules intl-messageformat@12.1.3 + Intl.ListFormat long conjunction; targets at 1 and 3; others at 1/2/3/5/11/21; Node v24.22.1)"
+	},
+	"v3_consent_note": "Re-read against context's four constraints: (1) no access until accepted; (2) own agents immediate / another's after ITS owner consents; (3) reads all, decides, EXPECTED (not 'always') to reply on @-mention; (4) owner can restrict to @-mentions + its threads, or mute. ru: all four preserved; 'от него ожидается ответ' is an expectation; 'Без звука' matches notify.mute.",
+	"findings": [
+		{
+			"severity": "minor",
+			"id": "RU-A1",
+			"key": "ui.teamBridge.events.declined",
+			"current": "{actor}: отклонение приглашения для {targets}",
+			"proposed": "{actor}: отклонено приглашение — {targets}",
+			"detail": "The bare process noun 'отклонение' reads as an action label, not a completed fact, unlike its siblings declined_self ('приглашение отклонено') and withdrawn ('отозвано приглашение — '). It also puts the never-inflected {targets} after the preposition 'для', which needs the genitive: rendered 'для Бен' where Russian requires 'для Бена'. The proposed text mirrors withdrawn and keeps names in the nominative after the dash.",
+			"disposition": "recorded; not gating (minor)"
+		}
+	],
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+		},
+		"docs_I18N": {
+			"path": "docs/I18N.md",
+			"sha256": "9a4bde8d1c161286160be4a4ae1c7655615dbf39047052550b725a3da2eb00e2"
+		},
+		"ledger_assemble": {
+			"path": "scripts/i18n/ledger-assemble.mjs",
+			"sha256": "66ec03de791b515424b8d9a93094315111c179c149b35a5323d80c9c38644657"
+		}
+	},
+	"audit_notes_not_execution_log": "findings and linguistic judgement are auditor notes; checks.rendered is verbatim command output.",
+	"limitations": "No rendered app frame (timeline line or dialog footer); no native-speaker sign-off."
+}

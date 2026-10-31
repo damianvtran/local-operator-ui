@@ -1,0 +1,76 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor",
+ "role": "independent translation auditor (team lopdev, audit-es); did not translate these files; edited only the four findings below",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "session model as configured for this run (anthropic/claude-opus-5-5); no provider fallback observed in this session.",
+ "fallback": false,
+ "instance": "fa2d7d148352-bridge-es",
+ "locale": "es",
+ "namespace": "ui.chat.canonical",
+ "date": "2026-10-30",
+ "head": "0bcfff05defa3dd374c652c8677b50944670188f",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "independence": "Translators: round 1 an i18n-translator under radient/auto (provider fallback), delta round 2 under anthropic/claude-opus-5-5 (commits 9dcdb765c92, 74c36ebf9f9). This auditor (session fa2d7d148352) authored none of those catalogues.",
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "round 1 radient/auto (fallback); round 2 anthropic/claude-opus-5-5",
+  "note": "recorded from the task brief and the translation commits, not observed serving by this auditor"
+ },
+ "sha256": {
+  "es": "78e9ca1c9368d3b7f265efca6e2ed031bba5db75db1b6fc0db40a7b6a9e65f5a",
+  "en": "67ea94ac8ebbfb34b5ea71fc1c9c6f633994f2e2e0bf06da66137f85a596646a"
+ },
+ "context_sha256": "7ccd1b3894f3a6565186f1ef3f5b24e15699c8ecda6b1ff85a3768f784fb3979",
+ "previous_audited": {
+  "receipt": "i18n/receipts/70336faff31a-ov2-es.json",
+  "source_sha256": "da2c87f6caf8f238997861d850f575a3b3d8328c5d46abfffae4728ed41fb892",
+  "target_sha256": "224cc318dd5e570f9a25684dd93c94054e01fbc3da996eaed6abbde89b52c807",
+  "commit": "f6e5c3eb62e"
+ },
+ "findings": [
+  {
+   "id": "ES-U1",
+   "severity": "MINOR",
+   "status": "fixed",
+   "key": "ui.chat.canonical.tool_row.bridge.verb.channel_thread.settled",
+   "also_affects": [
+    "ui.chat.canonical.tool_row.bridge.verb.channel_thread.running (Leyendo en -> Leyendo el hilo en)",
+    "ui.chat.canonical.tool_row.bridge.verb.channel_thread.failed (No se pudo leer en -> No se pudo leer el hilo en)"
+   ],
+   "es_before": "Leído en",
+   "es_after": "Leído el hilo en",
+   "problem": "The three channel_thread verbs dropped 'thread' and rendered byte-identically to channel_history ('Leído en #general'), so a thread read was indistinguishable from a conversation read; the en context requires the verb to name what it read and the core wire.tool_rows.bridge copy carries the same fix."
+  },
+  {
+   "id": "ES-U2",
+   "severity": "MINOR",
+   "status": "fixed",
+   "key": "ui.chat.canonical.tool_row.bridge.delivery.inbox_only.word",
+   "es_before": "sin publicar en ninguna conversación",
+   "es_after": "sin publicar en conversaciones",
+   "problem": "Status word at the row's right edge ('Short'; drops whole at narrow widths): 36 cells for a 28-cell en source. Its core twin wire.tool_rows.bridge.outcome.inbox_only has maxCells 32 and exceeded it; both now read the same 30-cell phrase, keeping the 'not posted' hedge."
+  },
+  {
+   "id": "ES-U3",
+   "severity": "NIT",
+   "status": "fixed",
+   "key": "ui.chat.canonical.tool_row.bridge.verb.react.settled",
+   "es_before": "Reaccionado en",
+   "es_after": "Reacción añadida en",
+   "problem": "Absolute participle of the intransitive 'reaccionar' reads as a calque; 'Reacción añadida en' is the idiomatic row form and matches react_remove.settled 'Reacción quitada en' and the core expanded.reacted 'Reacción añadida.'."
+  },
+  {
+   "id": "ES-U4",
+   "severity": "NIT",
+   "status": "fixed",
+   "key": "ui.chat.canonical.tool_row.bridge.summary.members",
+   "es_before": "({count, plural, one {# miembro} many {# de miembros} other {# miembros}})",
+   "es_after": "({count, plural, =0 {sin miembros} one {# miembro} many {# de miembros} other {# miembros}})",
+   "problem": "The en source carries an =0 {no members} arm that the es copy dropped (rendering '(0 miembros)'), while the sibling summary.messages keeps its =0 'sin mensajes'; restored for parity and consistency."
+  }
+ ],
+ "scope": "ui.chat.canonical for es at the fixed bytes on top of head 0bcfff05defa: the 88 keys added since the last audited bytes (84 ui.chat.canonical.tool_row.bridge.* + 4 ui.chat.canonical.fold.bridge*) read in full against en, the context sidecar, i18n/glossary.md (core), the es style guide and the core wire.tool_rows.bridge es copy for the same concepts. The other 80 keys were proven byte-identical in both en and es to the bytes bound by 70336faff31a-ov2-es (f6e5c3eb62e: 0 changed, 0 removed, same order) and spot-checked, not re-audited.",
+ "notes": "Mechanical layer re-derived by this auditor at the fixed bytes: key set and order == en (168/168); JSON parse; @formatjs/icu-messageformat-parser accepts every message; argument names/types match en for all 168 keys; plural arms are exactly es Intl.PluralRules {one, many, other} plus explicit =0 where used; intl-messageformat renders all 112 bridge argument/count combinations at 0/1/2/5/21/1000000/1500000 with no lost sentinel ('1.000.000 de miembros', '1.500.000 miembros', 'sin mensajes', 'sin miembros'); ::group-off skeletons preserved on seq/count; NFC; no Cf/bidi characters. Cross-repo consistency: every bridge verb, outcome word, fallback noun and delivery sentence matches the core es wire.tool_rows.bridge copy after the shared fixes (claim -> reclamar, release -> liberar, take up -> recoger, DM fallback -> un mensaje directo, refused -> rechazado). fold.bridge plural keys judged as-is (pre-split fold plurals deferred by the brief). Recorded, not changed: 'Usó Team Bridge' preterite for unknown.settled (participle reads worse). NOT verified: native-speaker read, rendered fit in the desktop row."
+}

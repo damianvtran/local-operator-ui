@@ -1,0 +1,35 @@
+REVERSE-APPLY PROOF - ru - namespace ui.teamBridge - auditor B session 94934cc4a6fd
+
+Method: take the working-tree bytes, swap each delta value back to its round-1 text as an exact
+JSON-string byte substitution, hash the result. The round-1 hash comes from the first-round audit
+record (i18n/receipts/955e54c57ace-ru.json and 502568f2aefe-ru.json), not from my own reconstruction.
+
+now      sha256 5fd9ee8f8e16ef773e7fb14e73e404297ea4a647fac55499d386c0c4168923f6
+rebuilt  sha256 64c7edfef83d508cbb1a021fa7b0881c1665d0fccfb6e1615b3af355977d07ee
+recorded sha256 64c7edfef83d508cbb1a021fa7b0881c1665d0fccfb6e1615b3af355977d07ee
+MATCH: True
+
+edits reversed: 3
+
+  ui.teamBridge.events.joined
+    working tree : Присоединение к разговору: {targets}
+    round 1      : Теперь в разговоре: {targets}
+    occurrences of the working-tree text in the file: 1
+
+  ui.teamBridge.events.declined
+    working tree : {actor}: отклонение приглашения для {targets}
+    round 1      : {actor}: отклонено приглашение — {targets}
+    occurrences of the working-tree text in the file: 1
+
+  ui.teamBridge.events.owner_added_agent
+    working tree : {actor}: добавление собственного агента — {targets}
+    round 1      : {actor}: добавлен собственный агент — {targets}
+    occurrences of the working-tree text in the file: 1
+
+Reading: a hash that reproduces the round-1 record means the file differs from round 1 ONLY at the
+values listed above - no other byte moved. All five files reproduce.
+
+Cross-check, not input: delta-round auditor A (session 4ab583bbf0ca) independently reconstructed the
+same pre-delta bytes; my rebuilt files are byte-identical to theirs except where my own first attempt
+used the abbreviated quote «其他#人» instead of the round-1 value «{count, plural, other {其他#人}}».
+That correction is why this proof is reproducible rather than a repeat of A's number.

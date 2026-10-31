@@ -1,0 +1,13 @@
+===== vi
+  events.others(3 hidden)      : 3 người khác
+  invited      shown (5 names, 3 hidden): Dana đã mời Ava, Ben và 3 người khác
+               full  (5 names)            : Dana đã mời Ava, Ben, Sana, Ravi và Cleo
+  joined       shown (5 names, 3 hidden): Ava, Ben và 3 người khác đã tham gia
+               full  (5 names)            : Ava, Ben, Sana, Ravi và Cleo đã tham gia
+  declined     shown (5 names, 3 hidden): Dana đã từ chối lời mời dành cho Ava, Ben và 3 người khác
+               full  (5 names)            : Dana đã từ chối lời mời dành cho Ava, Ben, Sana, Ravi và Cleo
+  withdrawn    shown (5 names, 3 hidden): Dana đã rút lại lời mời dành cho Ava, Ben và 3 người khác
+               full  (5 names)            : Dana đã rút lại lời mời dành cho Ava, Ben, Sana, Ravi và Cleo
+  declined_self                : Dana đã từ chối lời mời
+  owner_added_agent            : Dana đã thêm tác nhân của mình là Ava
+  unknown                      : Thành viên đã thay đổi

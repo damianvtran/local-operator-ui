@@ -1,0 +1,11 @@
+# mechanical checks - ru / ui.teamBridge.events.consented_owner @ 9d19fc6d58e
+value              : {actor}: одобрено присоединение собственного агента — {targets}
+code points        : 63 (sibling 43)
+placeholders       : ["actor","targets"] (source ["actor","targets"])
+final period       : false   leading space: false   trailing space: false   double space: false
+NFC                : true
+bidi controls      : 0   ZWNJ/ZWJ: 0
+nbsp/narrow nbsp   : []   em dash: true
+ICU plural/select  : false   argument nodes: 2
+sha256 en          : 4042a918bc64406c4c24ad5ea68fe3c3f3aaa7228917bc1678547cfb0c20285c
+sha256 target      : b0ee5d947dfbc0c5bd0f4a57aef63dd6fcd9a63e2d53afa90389842dd3e03c2c

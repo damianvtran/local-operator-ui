@@ -1,0 +1,22 @@
+[
+	{
+		"id": "FR-A1",
+		"severity": "major",
+		"key": "ui.teamBridge.events.owner_added_agent",
+		"current": "{actor} a ajouté son agent {targets}",
+		"proposed": "{actor} a ajouté son agent : {targets}",
+		"reason": "The grouped line carries two or more agent names (RolledUpInvite story; grouping by request_id), so the singular \"son agent\" heads a plural list; the colon freezes the agreement on «agent» and stays grammatical for 1 and for 3. Insert U+00A0-free U+202F before the colon per fr.md. If several is the normal case, 'a ajouté ses agents : {targets}' is the plural-marked variant."
+	},
+	{
+		"id": "FR-A2",
+		"kind": "term",
+		"severity": "minor",
+		"key": "ui.teamBridge.events.joined",
+		"related_keys": [
+			"ui.teamBridge.events.left"
+		],
+		"current": "Arrivée dans la conversation : {targets}",
+		"proposed": "A rejoint la conversation : {targets}",
+		"reason": "Every other line in the same timeline is a verbal sentence (a ajouté / a retiré / a autorisé), and the singular nominal «Arrivée» heads a list that is usually plural; the number-neutral past participle keeps one grammatical string for a single name and for three. «Départ de la conversation» (events.left) is a mass noun and reads fine; align it to «A quitté la conversation» only if the participle is adopted."
+	}
+]

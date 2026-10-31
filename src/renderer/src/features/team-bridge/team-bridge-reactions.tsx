@@ -66,6 +66,13 @@ export function useTeamBridgeReactionState({
 	const held = !TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD;
 	const [rows, setRows] = useState(held ? EMPTY_REACTIONS : reactions);
 	const [pending, setPending] = useState(false);
+	/*
+	 * WHICH pill the in-flight write is about. `pending` alone drew a spinner in
+	 * EVERY pill (each one widening by the spinner's 14px) when only one emoji
+	 * was being written; the chips need the emoji to put the busy mark on the
+	 * pill the reader actually pressed (operator polish round, 2026-10-30).
+	 */
+	const [pendingEmoji, setPendingEmoji] = useState<string | null>(null);
 	const [error, setError] = useState(false);
 	const busy = useRef(false);
 	const record = useReactionPreferences((s) => s.record);
@@ -78,6 +85,7 @@ export function useTeamBridgeReactionState({
 		const active = !rows.some((r) => r.emoji === emoji && r.reacted_by_me);
 		busy.current = true;
 		setPending(true);
+		setPendingEmoji(emoji);
 		setError(false);
 		setRows(toggleReaction(rows, emoji));
 		try {
@@ -97,12 +105,14 @@ export function useTeamBridgeReactionState({
 		} finally {
 			busy.current = false;
 			setPending(false);
+			setPendingEmoji(null);
 		}
 	};
 	return {
 		accountId,
 		rows: held ? EMPTY_REACTIONS : rows,
 		pending: held ? false : pending,
+		pendingEmoji: held ? null : pendingEmoji,
 		error: held ? false : error,
 		disabled: disabled || held,
 		unavailable: held || disabled || pending,
@@ -192,8 +202,10 @@ function TeamBridgeReactionChipsBody({
 	const descriptionId = useId();
 	const locale = useI18nLocale();
 	const [open, setOpen] = useState(defaultOpen);
-	const { rows, error, pending, unavailable } = state;
+	const { rows, error, pending, pendingEmoji, unavailable } = state;
 	if (!rows.length && !error) return null;
+	const whoReacted = (reaction: TeamBridgeReaction) =>
+		reactorsLabel(reaction, locale);
 	return (
 		<div
 			className="mt-1 flex flex-wrap items-center gap-1"
@@ -201,16 +213,24 @@ function TeamBridgeReactionChipsBody({
 			data-reaction-layout="chips"
 		>
 			{rows.map((reaction, index) => (
+				/* The Tooltip is the ONE hover label: the native `title` this button
+				 * used to carry drew a second, OS-styled tooltip over it after the
+				 * native delay (operator polish round, 2026-10-30). */
+				/* `text-balance` (design round 1, D4): a three-name list plus "and
+				 * 9 others" wrapped at the tooltip's `max-w-64` with "9 others"
+				 * orphaned on its own line. Balancing in CSS keeps the label string
+				 * itself free of a no-break space a screen reader would also read. */
 				<Tooltip
 					key={reaction.emoji}
-					content={reaction.sample_labels.join(", ")}
+					content={whoReacted(reaction)}
+					className="text-balance"
 				>
 					<button
 						key={reaction.emoji}
 						type="button"
 						disabled={unavailable}
 						aria-pressed={reaction.reacted_by_me}
-						title={reaction.sample_labels.join(", ")}
+						data-reaction-pill=""
 						aria-label={`${EMOJI_NAMES.get(reaction.emoji) ?? reaction.emoji} ${new Intl.NumberFormat(locale).format(reaction.count)}`}
 						aria-describedby={
 							reaction.sample_labels.length
@@ -218,17 +238,61 @@ function TeamBridgeReactionChipsBody({
 								: undefined
 						}
 						onClick={() => void state.choose(reaction.emoji)}
+						/*
+						 * BORDERLESS PILLS (operator polish round, 2026-10-30): "remove the
+						 * border, subtly contrasted fill like the sidebar counts".
+						 *
+						 * OTHERS' REACTION wears the sidebar quiet count's fill, `elevated`
+						 * (`badgeVariants` `attentionQuiet`, the borderless count mark), so
+						 * the thread and the sidebar speak one count language. Its numeral
+						 * is `ink-muted` rather than the badge's `ink-dim` because here the
+						 * number is the content of a control, not metadata beside a label:
+						 * 5.95:1 worst over the fifty-nine palettes (nightfox). Like that
+						 * badge, the fill is a whisper, not a boundary: it merges with a
+						 * HOVERED row in one palette (arcade, ΔE00 0.00 on `row-hover`), where
+						 * the emoji and count carry the pill - the contract row "team bridge
+						 * reaction pill" pins the ink and declares the edge away for that
+						 * reason. Hover is a colour step to `sunken` (ΔE00 >= 6.07 off
+						 * `elevated` on every palette) with the ink stepping to `ink`; it
+						 * never lifts or scales.
+						 *
+						 * THE READER'S OWN REACTION is the brighter state: 26% `accent`
+						 * mixed over `surface`, with an `ink` count at medium weight. NOT
+						 * `accent-wash` (design review round 1, D1): that role sits at the
+						 * ground's depth, so it measured ΔE00 2.04 / 1.01:1 against the
+						 * others' `elevated` pill in tokyoNight - the operator's theme - and
+						 * was darker than it in 54 of 59 palettes. The mix is accent-tinted
+						 * AND clearly apart from every neighbour: ΔE00 >= 8.50 off
+						 * `elevated` (worst tokyoNight; 20% measured only 5.83, which is why
+						 * round 2 raised the share - D6), >= 7.73 off a hovered row,
+						 * `ink` >= 4.72:1 on it (ayuMirage). The count is `ink` rather than
+						 * `accent` because `accent` on a fill this tinted is 3.16:1. Hover
+						 * steps the fill DOWN to 20% - darker, the direction the others'
+						 * pills take to `sunken` (D5/D6), not brighter -- with `ink`
+						 * >= 5.44:1 on it, and it darkens in 41 of 59 palettes.
+						 * `surface` is the thread's ground; on the thread pane's `canvas`
+						 * the same fill is asserted apart too. All of it lives in
+						 * `REACTION_OWN_PILL` in `scripts/contrast-contract.mjs`, which
+						 * mixes the fill per palette as the browser does.
+						 *
+						 * FIXED HEIGHT, NOT `min-h`: `h-6` (24px, the WCAG 2.5.8 target
+						 * floor) on every pill and on the `+`, so a pill with a taller emoji
+						 * glyph, a fallback name or a busy mark cannot grow its row. Emoji
+						 * and count are `leading-none` so their line boxes are their glyph
+						 * size and `items-center` centres the glyphs rather than a 1.5
+						 * line-height box whose half-leading sat the emoji low.
+						 */
 						className={cn(
-							"inline-flex min-h-7 items-center gap-1 rounded-full border border-control px-2 text-[12px] disabled:text-ink-dim",
+							"inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2 text-[12px] leading-none transition-colors duration-fast ease-out-quart disabled:text-ink-dim",
 							reaction.reacted_by_me
-								? "bg-accent-wash text-accent"
-								: "bg-sunken text-ink-muted hover:bg-row-hover",
+								? "bg-[color-mix(in_srgb,var(--color-accent)_26%,var(--color-surface))] font-medium text-ink hover:bg-[color-mix(in_srgb,var(--color-accent)_20%,var(--color-surface))]"
+								: "bg-elevated text-ink-muted hover:bg-sunken hover:text-ink",
 						)}
 					>
 						<span
 							className={
 								canRenderEmoji(reaction.emoji)
-									? "text-[16px]"
+									? "text-[14px] leading-none"
 									: "max-w-40 truncate"
 							}
 						>
@@ -237,10 +301,29 @@ function TeamBridgeReactionChipsBody({
 								: (EMOJI_NAMES.get(reaction.emoji) ??
 									`U+${reaction.emoji.codePointAt(0)?.toString(16).toUpperCase()}`)}
 						</span>
-						{pending && <Spinner size="xs" />}
-						<span>{reaction.count}</span>
+						{/* THE BUSY MARK TAKES THE COUNT'S PLACE WITHOUT ITS ROOM: the
+						    spinner is absolutely centred over the count (whose glyphs go
+						    `invisible` but keep their box), so a press never changes the
+						    pill's width or height and the row cannot reflow under the
+						    pointer. Its 14px overhangs a one-digit count by ~3.5px each
+						    side, which the `gap-1` and `px-2` absorb. Only the pressed
+						    pill shows it. */}
+						<span className="relative inline-flex items-center tabular-nums">
+							<span
+								className={cn(
+									pending && pendingEmoji === reaction.emoji && "invisible",
+								)}
+							>
+								{new Intl.NumberFormat(locale).format(reaction.count)}
+							</span>
+							{pending && pendingEmoji === reaction.emoji && (
+								<span className="absolute inset-0 flex items-center justify-center">
+									<Spinner size="xs" />
+								</span>
+							)}
+						</span>
 						<span id={`${descriptionId}-${index}`} className="sr-only">
-							{reaction.sample_labels.join(", ")}
+							{whoReacted(reaction)}
 						</span>
 					</button>
 				</Tooltip>
@@ -255,35 +338,42 @@ function TeamBridgeReactionChipsBody({
 						type="button"
 						disabled={unavailable}
 						aria-label={t("ui.teamBridge.reactions.add")}
+						data-reaction-add=""
 						/*
-						 * BORDERLESS, SEPARATED BY VALUE - the sibling chips carry a
-						 * `border-control` edge (3.93:1 dark / 3.51:1 light) and this
-						 * control has no edge at all, so `sunken` alone left it at
-						 * 1.06:1 against `canvas` and reading as absent rather than
-						 * quiet (design round 1, D5). `media-surface` is the app's
-						 * borderless-tile role: it deepens AWAY from the ground, so it
-						 * clears `canvas`, `surface` and `row-hover` on all 59 palettes
-						 * (ΔE00 >= 4.0 off canvas, its contract floor), which is the
-						 * extent a control with no line has to own. The edge is
-						 * deliberately NOT drawn: borderless chrome is a standing
-						 * operator requirement, and a line here would be the next
-						 * complaint.
+						 * A GHOST AT REST, REVEALED WITH THE ROW (operator polish round,
+						 * 2026-10-30: "quieter and borderless"). The `media-surface` tile
+						 * this used to wear (design round 1, D5) read as a fourth pill
+						 * louder than the reactions themselves; now it is a transparent
+						 * `ink-dim` glyph at the pills' 24px height that takes the pills'
+						 * own `elevated` fill on hover - the same quiet-count ground, so a
+						 * hovered `+` reads as "a pill you could add".
 						 *
-						 * Hover matches the siblings in KIND - a colour step, never a
-						 * lift or a scale - and the fill step is deliberately small
-						 * (`sunken`, +1.96 L* dark / +1.85 light) so the fill never
-						 * travels to `row-hover`, where it would vanish into a hovered
-						 * row; the ink step to full `ink` carries the affordance.
-						 * Focus is the app's global `:where(:focus-visible)` outline,
-						 * the same one the sibling chips get, since both are plain
-						 * buttons.
+						 * THE REVEAL is the message toolbar's rule
+						 * (`team-bridge-message-toolbar.tsx`), keyed on the row's own
+						 * `group/message` (`team-bridge-message-list.tsx`) so this file
+						 * needs no prop from the row, and shaped like
+						 * `ACTION_ROW_REVEAL_CLASSES`: opacity only so revealing moves
+						 * nothing, pointer-inert while invisible so a hidden control never
+						 * takes a click, still in the tab order so `focus-within` reveals
+						 * it for a keyboard reader, and always shown under `hover:none`
+						 * where a hover can never arrive. While the picker is open it is
+						 * pinned visible: it is the popover's anchor and the focus return
+						 * target, and must not fade out from under the reader.
+						 * `focus-visible` is the backstop for a host with no message row.
+						 * Focus is the app's global `:where(:focus-visible)` outline.
 						 */
 						className={cn(
-							"inline-flex min-h-7 items-center gap-1 rounded-full bg-media-surface px-2 text-ink-muted",
-							"hover:bg-sunken hover:text-ink disabled:text-ink-dim",
+							/* `shrink-0` (design round 1, D3): a narrow column squeezed the
+							   `+` to 14x24, under the 24px target floor. */
+							"inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-transparent text-ink-dim",
+							"transition-[opacity,color,background-color] duration-fast ease-out-quart",
+							"hover:bg-elevated hover:text-ink disabled:text-ink-dim",
+							open
+								? "opacity-100"
+								: "pointer-events-none opacity-0 focus-visible:pointer-events-auto focus-visible:opacity-100 group-hover/message:pointer-events-auto group-hover/message:opacity-100 group-focus-within/message:pointer-events-auto group-focus-within/message:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100",
 						)}
 					>
-						<Plus size={14} />
+						<Plus size={14} aria-hidden="true" />
 					</button>
 				</TeamBridgeReactionPicker>
 			)}
@@ -294,6 +384,53 @@ function TeamBridgeReactionChipsBody({
 			)}
 		</div>
 	);
+}
+
+/**
+ * Who reacted, for a pill's tooltip and its screen-reader description.
+ *
+ * The contract caps `sample_labels` at three (`team-bridge-contract.ts`), so a
+ * pill with a count above the sample would otherwise name three people and
+ * imply that was everyone.
+ *
+ * THE JOIN IS `Intl.ListFormat`, NEVER A HARD-CODED ", ": each locale owns its
+ * separator (zh-CN "、", ur "،"). A complete list uses `narrow` conjunction,
+ * which reads "Damian Tran, Victor Tay" in en exactly as the operator asked.
+ * The overflow is ONE MORE LIST ITEM - a translated ICU plural, "{n} others" -
+ * joined by the `long` conjunction, so en reads "Ada, Bea, Cleo, and 9 others"
+ * and es "Ada, Bea, Cleo y 9 más": the locale's own "and" lands once, in the
+ * right place. Concatenating "and N others" onto a list some locales already
+ * close with their conjunction would say "and" twice.
+ */
+/*
+ * The renderer's TypeScript lib (`@electron-toolkit/tsconfig`'s web base) predates
+ * ES2021, so `Intl.ListFormat` is untyped there although Chromium has shipped it
+ * since 72. A narrow local type for the one constructor this file calls, rather
+ * than widening the whole renderer's `lib` in a pill-polish change.
+ */
+type ListFormatCtor = new (
+	locale: string,
+	options: { style: "long" | "narrow"; type: "conjunction" },
+) => { format: (items: readonly string[]) => string };
+const ListFormat = (Intl as unknown as { ListFormat: ListFormatCtor })
+	.ListFormat;
+
+function reactorsLabel(reaction: TeamBridgeReaction, locale: string): string {
+	const names = reaction.sample_labels;
+	const others = reaction.count - names.length;
+	/* No sampled name but a count (agent review round 1, R4): the tooltip
+	 * still says how many, rather than going silent. */
+	if (!names.length)
+		return others > 0 ? t("ui.teamBridge.reactions.others", { others }) : "";
+	if (others <= 0)
+		return new ListFormat(locale, {
+			style: "narrow",
+			type: "conjunction",
+		}).format(names);
+	return new ListFormat(locale, {
+		style: "long",
+		type: "conjunction",
+	}).format([...names, t("ui.teamBridge.reactions.others", { others })]);
 }
 
 /** Standalone chips for one message (stories and component tests): the state

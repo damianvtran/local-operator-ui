@@ -1,0 +1,24 @@
+MECHANICAL CHECKS (executed 2026-10-30 with the repository's own node_modules: intl-messageformat, @formatjs/icu-messageformat-parser)
+
+[keyset] ur: 297 keys, missing vs en 0, extra vs en 0, same key order true (en 297)
+[ast]    ur: argument-name/select/tag/exact-arm mismatches vs English: 1
+           ui.teamBridge.members.invite_count: plural arm =0 outside ur CLDR one,other
+[plural] ur: 16 plural keys; CLDR categories ["one","other"]
+[plural] ur: every plural key carries every ur CLDR category
+[nfc]    ur: values not in NFC: 0
+[bidi]   ur: values containing RLM/LRM/ALM/embedding/isolate/BOM/SHY: 0
+[quote]  ur: quote characters in the namespace: {"U+201C":7,"U+201D":7}
+[same]   ur: values identical to English (6), all placeholder-only or product-name strings: page.title, nav.label, notify.title, notify.channel, notify.subtitle, chief.label
+
+[width]  ur: length of each event key in code points, ratio to English (this locale's own script cell width is not measured here; a rendered check owns that):
+           events.invited           en  25  ur  32  x1.28
+           events.joined            en  16  ur  24  x1.50
+           events.owner_added_agent en  35  ur  40  x1.14
+           events.left              en  14  ur  26  x1.86
+           events.removed           en  25  ur  31  x1.24
+           events.consented         en  34  ur  46  x1.35
+           events.declined_self     en  31  ur  31  x1.00
+           events.declined          en  45  ur  48  x1.07
+           events.withdrawn         en  45  ur  43  x0.96
+           events.unknown           en  18  ur  21  x1.17
+           events.others            en  47  ur  44  x0.94

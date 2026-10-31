@@ -1,0 +1,9 @@
+AUDITOR B (delta round) - NOTES, distinct from the execution logs beside them
+
+Locale vi  Namespace ui.teamBridge  Session 94934cc4a6fd  Model radient/auto
+
+1. Verdict: clean-with-findings - 0 blocker, 0 major, 0 minor, 2 nit (VI-DB1 events.joined, VI-DB2 events.unknown).
+2. events.owner_added_agent is a clear improvement: «tác nhân của mình là {targets}» states the possession the English carries and keeps the singular agent noun the recorded context requires (Vietnamese does not mark the noun for number, so a multi-name list is not a grammar problem here).
+3. events.joined is correct and shorter, but its siblings name the object («đã rời cuộc trò chuyện», «xóa {targets} khỏi cuộc trò chuyện»), so the joined/left pair is uneven on adjacent rows. Nit, not a fault; restoring «cuộc trò chuyện» would restore the pair.
+4. events.unknown trades precision for brevity: «Thành viên đã thay đổi» reads as a change TO a member, where the round-1 «Danh sách thành viên đã thay đổi» read as the roster changing - closer to 'Membership changed', whose context note asks for a line that fits any membership change with no subject and no blame. «Tư cách thành viên đã thay đổi» is the precise form if the width allows.
+5. Vietnamese keeps one plural category (other), so the missing `one` arm in events.others is correct, not a gap.
