@@ -471,3 +471,92 @@ test("IME Enter does not confirm a microphone take or submit its draft", async (
 	assert.deepEqual(sent, [], "IME confirmation sends nothing");
 	await click(container.querySelector('button[aria-label="Cancel recording"]'));
 });
+
+// JSDOM has no layout: this checks the resize-trigger contract against
+// synthetic scrollHeight, not rendered wrapping. QA's real frames prove pixels.
+test("width-only resize remeasures, widens back, caps, and disconnects on unmount", async () => {
+	const originalObserver = globalThis.ResizeObserver;
+	const proto = dom.window.HTMLTextAreaElement.prototype;
+	const originalHeight = Object.getOwnPropertyDescriptor(proto, "scrollHeight");
+	const originalRect = proto.getBoundingClientRect;
+	let width = 1248;
+	let disconnected = false;
+	let callback;
+	let measures = 0;
+	const rect = () => ({ width });
+	proto.getBoundingClientRect = rect;
+	Object.defineProperty(proto, "scrollHeight", {
+		configurable: true,
+		get() {
+			measures++;
+			return width < 400 ? 156 : 56;
+		},
+	});
+	globalThis.ResizeObserver = class {
+		constructor(fn) {
+			callback = fn;
+		}
+		observe() {}
+		disconnect() {
+			disconnected = true;
+		}
+	};
+	try {
+		m.useConversationInputStore
+			.getState()
+			.setComposerText(CONVERSATION, "unchanged wrapping draft");
+		await mount({ kind: "text", text: "" });
+		const field = container.querySelector("textarea");
+		assert.equal(field.style.height, "56px");
+		assert.equal(
+			typeof callback,
+			"function",
+			"the actual textarea width must be observed",
+		);
+		width = 328;
+		await act(async () => {
+			callback([]);
+		});
+		assert.equal(field.style.height, "136px");
+		assert.equal(field.style.overflowY, "auto");
+		const count = measures;
+		await act(async () => {
+			callback([]);
+		});
+		assert.equal(
+			measures,
+			count,
+			"height-only observer notification must not feed back into measurement",
+		);
+		width = 1248;
+		await act(async () => {
+			callback([]);
+		});
+		assert.equal(field.style.height, "56px");
+		assert.equal(field.style.overflowY, "hidden");
+		assert.equal(
+			field.value,
+			"unchanged wrapping draft",
+			"no input event needed",
+		);
+		await act(async () => {
+			root.unmount();
+		});
+		root = undefined;
+		assert.equal(disconnected, true);
+		const finalCount = measures;
+		width = 328;
+		callback([]);
+		assert.equal(
+			measures,
+			finalCount,
+			"queued stale callbacks cannot measure after cleanup",
+		);
+	} finally {
+		globalThis.ResizeObserver = originalObserver;
+		proto.getBoundingClientRect = originalRect;
+		if (originalHeight)
+			Object.defineProperty(proto, "scrollHeight", originalHeight);
+		else Reflect.deleteProperty(proto, "scrollHeight");
+	}
+});

@@ -247,14 +247,38 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 		 * before this line existed, the first line was in view and the caret was
 		 * not.
 		 */
-		const held = field.scrollTop;
-		field.style.height = "auto";
-		// `scrollHeight` is an integer and the laid-out text is not, so a bare
-		// assignment can leave a sub-pixel overflow that clips the last line.
-		const needed = Math.ceil(field.scrollHeight);
-		field.style.height = `${Math.min(needed, FIELD_MAX_HEIGHT)}px`;
-		field.style.overflowY = needed > FIELD_MAX_HEIGHT ? "auto" : "hidden";
-		if (field.scrollTop !== held) field.scrollTop = held;
+		const measure = () => {
+			const held = field.scrollTop;
+			field.style.height = "auto";
+			// `scrollHeight` is an integer and the laid-out text is not, so a bare
+			// assignment can leave a sub-pixel overflow that clips the last line.
+			const needed = Math.ceil(field.scrollHeight);
+			field.style.height = `${Math.min(needed, FIELD_MAX_HEIGHT)}px`;
+			field.style.overflowY = needed > FIELD_MAX_HEIGHT ? "auto" : "hidden";
+			if (field.scrollTop !== held) field.scrollTop = held;
+		};
+		measure();
+		/*
+		 * Wrapping changes without an input event when the pane narrows. Observe
+		 * the field itself (also inside MentionField), but ignore height-only
+		 * deliveries caused by our own measurement to avoid a resize feedback loop.
+		 * A queued callback may outlive disconnect or a draft effect replacement.
+		 */
+		if (typeof ResizeObserver === "undefined") return;
+		let mounted = true;
+		let width = field.getBoundingClientRect().width;
+		const observer = new ResizeObserver(() => {
+			if (!mounted) return;
+			const nextWidth = field.getBoundingClientRect().width;
+			if (nextWidth === width) return;
+			width = nextWidth;
+			measure();
+		});
+		observer.observe(field);
+		return () => {
+			mounted = false;
+			observer.disconnect();
+		};
 	}, [inputValue]);
 
 	/*

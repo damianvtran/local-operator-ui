@@ -99,3 +99,55 @@ the intervening bar and observed in that bounded review; it does not change the
 requested field width, rounding, line arrangement, growth or dictation. Restoring
 a different button silhouette without fresh rendered evidence is outside this
 keyboard-only round. No claim of complete historical pixel fidelity is made.
+
+## QA round 3 — width-only reflow (2026-10-31)
+
+Q3 reproduced on the actual shipping composer: a wide two-line draft retained
+its explicit 56px field height after narrowing without input, even though
+`scrollHeight` had become 156px, with overflow hidden. The layout effect only
+reacted to text. The fix observes the actual textarea width and remeasures the
+same content with the existing cap/scroll-position logic. Height-only observer
+deliveries do not remeasure; effect cleanup disconnects and fences queued stale
+callbacks (including draft-effect replacement and unmount).
+
+### Real rendered before/after, not JSDOM geometry
+
+These three new frames were captured and actually inspected through the harness
+browser, 1280×720 DPR2, using QA's synthetic component host copied into the coder
+session's `q3-fixture/` scratch directory. It imports the shipping component and
+unmodified shipping CSS, explicitly scans the renderer tree for Tailwind rules,
+and uses existing dependencies only. A single Vite instance ran under isolated
+HOME/config and a constructed environment, 1536MiB Node heap / 2048MiB owned-PG
+bound / 600s timeout. No Storybook, app/native build or dependency installation.
+
+| Frame | Source and action | Actual field / scrollHeight / overflow |
+| --- | --- | --- |
+| `q3-before-narrow.png` | `5fbc63fbc60` composer control; width1248→328, draft unchanged | 56 / 156 / hidden (clipped) |
+| `q3-after-narrow.png` | working-tree Q3 fix; same width transition and unchanged draft | 136 / 196 / auto (cap with scroll) |
+| `q3-after-wide.png` | fixed source; widen back328→1248 without input | 56 / 56 / hidden (shrinks) |
+
+The draft is `Natural wrapping draft. ` repeated14. Its value was read back
+unchanged after each width transition. Narrow bar172/control row36/bottom gap16;
+wide bar92/control row36/bottom gap16. The after-narrow scrollHeight includes the
+narrower usable area once a scrollbar is enabled; it need not equal the clipped
+control's value. The host's top identity label is static and says
+`5fbc63fbc60 + uncommitted Q3 width observer` in all three frames: the BEFORE
+control temporarily loaded the exact HEAD composer via `git show HEAD:<path>`;
+the backed-up fixed source was restored immediately afterward and the narrow /
+wide transitions repeated successfully. That label is not a build receipt.
+Existing independent QA round-3 frames remain untouched in QA session
+`af7ff90a3035`'s scratch `composer-fixture/` directory. No claim that this callback
+fixture proves optimistic-send integration or hub delivery.
+
+### Focused RED/GREEN and cleanup
+
+The new synthetic ResizeObserver mechanism test fails RED on the old source
+(no width observer), then passes GREEN. It asserts width-only growth/capping,
+shrink-on-widen, unchanged text, no remeasure on height-only callbacks,
+observer disconnect and no stale callback work after unmount. JSDOM's synthetic
+scrollHeight is **not** rendered proof; the actual browser frames above are.
+Final targeted dictation cases: **10/10**, 1536MiB heap, 2048MiB PG, serial,
+`run_bounded.py --timeout 120 --memory-mb 2048 -- node --test --test-force-exit
+scripts/team-bridge-composer-dictation.cases.mjs`. The browser tab was closed,
+fixture process group77816 terminated, group and port61511 verified absent.
+Remaining native/media/hub and full visual-matrix limitations above still apply.
