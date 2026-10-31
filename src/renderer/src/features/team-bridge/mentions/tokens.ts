@@ -104,6 +104,11 @@ function sortTokens(tokens: MentionToken[]): MentionToken[] {
  * half-edited name is plain text again, never a pill pointing at the wrong
  * characters. A final spelling check drops any token whose range no longer
  * reads `@label` (belt and braces for ambiguous diffs).
+ *
+ * A native UNDO is the exception, and it is not this function's: an edit that
+ * RE-INSERTS text has no token left to re-expand, so the hook restores the map
+ * exactly from its own (text, map) snapshots when Chromium reports a
+ * `historyUndo`/`historyRedo` input (QA round 3, Q3-1).
  */
 export function rebaseTokens(
 	before: string,

@@ -83,6 +83,13 @@ export type MentionAutocomplete = {
 
 const NO_TOKENS: MentionToken[] = [];
 
+/**
+ * How many (text, token map) pairs an undo may reach back through. A draft's
+ * own pill-bearing history is short - a handful of picks and deletes - and the
+ * cap keeps a long editing session from growing it without bound.
+ */
+const PILL_HISTORY_LIMIT = 50;
+
 export function useMentionAutocomplete(input: {
 	draftKey: string;
 	text: string;
@@ -105,22 +112,58 @@ export function useMentionAutocomplete(input: {
 		stored ? rebaseTokens(stored.text, text, stored.tokens) : NO_TOKENS,
 	);
 	const lastText = useRef(text);
+	/*
+	 * THE PILL HISTORY: a bounded list of (text, token map) pairs, newest
+	 * last. Every other edit only ever SHRINKS the map (`rebaseTokens` drops a
+	 * token whose characters were touched), so a native UNDO that re-inserts
+	 * "@Bea" had no token to re-expand and an undo-then-send silently dropped
+	 * `mentions[]` (QA round 3, Q3-1). A history jump is the one edit whose
+	 * resulting map is known exactly: it is the map this text had before.
+	 */
+	const spanHistory = useRef<Array<{ text: string; tokens: MentionToken[] }>>(
+		[],
+	);
+	/*
+	 * Set to the TEXT an undo/redo produced, by the field's own `input`
+	 * listener. A text-carrying flag rather than a boolean, so a history event
+	 * that changed nothing cannot leak into the next ordinary keystroke: the
+	 * jump is consumed only by the change whose value is the one it announced.
+	 */
+	const historyJump = useRef<string | null>(null);
+	/** The map this text last had, newest first; undefined when never seen. */
+	const snapshotTokens = (value: string): MentionToken[] | undefined => {
+		for (let i = spanHistory.current.length - 1; i >= 0; i -= 1)
+			if (spanHistory.current[i].text === value)
+				return spanHistory.current[i].tokens;
+		return undefined;
+	};
 	const keyRef = useRef(draftKey);
 	if (keyRef.current !== draftKey) {
 		// A different draft: its own sidecar, never the previous draft's pills.
 		keyRef.current = draftKey;
 		lastText.current = text;
+		spanHistory.current = [];
+		historyJump.current = null;
 		const next = stored
 			? rebaseTokens(stored.text, text, stored.tokens)
 			: NO_TOKENS;
 		if (next !== tokens) setTokens(next);
 	} else if (lastText.current !== text) {
-		const next = rebaseTokens(lastText.current, text, tokens);
+		const jumped = historyJump.current === text;
+		historyJump.current = null;
+		const restored = jumped ? snapshotTokens(text) : undefined;
+		const next = restored ?? rebaseTokens(lastText.current, text, tokens);
 		lastText.current = text;
 		setTokens(next);
 	}
 	useEffect(() => {
 		writeStored(draftKey, text, tokens);
+		const history = spanHistory.current;
+		const newest = history.at(-1);
+		if (!newest || newest.text !== text || newest.tokens !== tokens) {
+			history.push({ text, tokens });
+			if (history.length > PILL_HISTORY_LIMIT) history.shift();
+		}
 	}, [draftKey, text, tokens, writeStored]);
 
 	const [caret, setCaret] = useState<number | null>(null);
@@ -219,8 +262,10 @@ export function useMentionAutocomplete(input: {
 	 * it lands on the undo stack and fires `input`, so the composer's own
 	 * `onChange` writes the text and `rebaseTokens` runs as for typing; the
 	 * token map is then replaced with the edit's own (which knows the new
-	 * token). It is deprecated but still the only API that edits a textarea
-	 * with undo in Chromium. Where it is unavailable or refuses (jsdom, a
+	 * token). The map comes back with the text on Undo through `spanHistory`
+	 * below, because a history jump is the one edit whose map is not derived
+	 * from the text (QA round 3, Q3-1). It is deprecated but still the only
+	 * API that edits a textarea with undo in Chromium. Where it is unavailable or refuses (jsdom, a
 	 * disabled field), the value is written directly and undo is lost for
 	 * that one edit - the text and tokens are correct either way.
 	 */
@@ -402,11 +447,26 @@ export function useMentionAutocomplete(input: {
 			composing.current = false;
 			syncCaret();
 		};
+		/*
+		 * THE FIELD'S OWN HISTORY, announced before React sees the change: this
+		 * listener sits on the field, so it runs in the target phase and ahead of
+		 * the delegated `onChange` that writes the text. Chromium reports both the
+		 * Edit menu's Undo and Cmd+Z as `historyUndo`/`historyRedo` on an `input`,
+		 * which is the only signal that separates them from typing (QA round 3,
+		 * Q3-1). `execCommand("undo")` fires the same event.
+		 */
+		const onInput = (event: Event) => {
+			const type = (event as InputEvent).inputType;
+			if (type !== "historyUndo" && type !== "historyRedo") return;
+			historyJump.current = field.value;
+		};
 		field.addEventListener("compositionstart", start);
 		field.addEventListener("compositionend", end);
+		field.addEventListener("input", onInput);
 		return () => {
 			field.removeEventListener("compositionstart", start);
 			field.removeEventListener("compositionend", end);
+			field.removeEventListener("input", onInput);
 		};
 	}, [fieldRef, enabled, syncCaret]);
 

@@ -214,6 +214,22 @@ async function mount({
 			field.dispatchEvent(new dom.window.Event("select", { bubbles: true }));
 		});
 	};
+	/* An `input` the way Chromium reports it, with its `inputType`. */
+	const input = async (value, inputType, caret = value.length) => {
+		await mod.act(async () => {
+			field.focus();
+			setValue.call(field, value);
+			field.setSelectionRange(caret, caret);
+			field.dispatchEvent(
+				new dom.window.InputEvent("input", {
+					bubbles: true,
+					inputType,
+					data: null,
+				}),
+			);
+			await new Promise((r) => setTimeout(r, 5));
+		});
+	};
 	const key = async (k, init = {}) => {
 		await mod.act(async () => {
 			field.dispatchEvent(
@@ -241,6 +257,7 @@ async function mount({
 		host,
 		field,
 		type,
+		input,
 		key,
 		options,
 		sent,
@@ -584,6 +601,78 @@ test("@ inside an email never opens", async () => {
 	try {
 		await ui.type("mail ben@min");
 		assert.equal(ui.field.getAttribute("aria-expanded"), "false");
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("undo restores the pill itself, not just its text (Q3-1)", async () => {
+	const ui = await mount();
+	try {
+		await ui.type("cc @ben");
+		await ui.key("Enter");
+		const withPill = ui.field.value;
+		assert.equal(withPill, "cc @Ben Tran ");
+		assert.ok(ui.host.querySelector('[data-mention-pill="notify"]'));
+
+		// The browser's own delete, then its own undo. jsdom has no execCommand
+		// and no undo stack, so both are injected exactly as Chromium reports
+		// them: an `input` carrying the resulting text and its `inputType`.
+		await ui.input("cc ", "deleteContentBackward");
+		assert.equal(ui.host.querySelector("[data-mention-pill]"), null);
+		await ui.input(withPill, "historyUndo");
+		assert.ok(
+			ui.host.querySelector('[data-mention-pill="notify"]'),
+			"undo brings the pill back, not plain text",
+		);
+		await ui.key("Enter");
+		assert.deepEqual(
+			ui.sent[0].mentions,
+			[{ kind: "human", account_id: "acct_ben" }],
+			"and the send still carries mentions[]",
+		);
+
+		// Redo puts back the plain text, with no token behind it.
+		await ui.input("cc ", "historyRedo");
+		assert.equal(
+			ui.host.querySelector("[data-mention-pill]"),
+			null,
+			"redo re-applies the delete",
+		);
+		await ui.key("Enter");
+		assert.equal(ui.sent[1].mentions, undefined);
+	} finally {
+		await ui.unmount();
+	}
+});
+
+test("undo past a paste that covered a pill restores the exact token map (Q3-1)", async () => {
+	const ui = await mount();
+	try {
+		await ui.type("@ben");
+		await ui.key("Enter");
+		await ui.type(`${ui.field.value}and @ai`);
+		await ui.key("Enter");
+		const both = ui.field.value;
+		assert.equal(
+			ui.host.querySelectorAll('[data-mention-pill="notify"]').length,
+			2,
+			"two pills",
+		);
+		// A paste over the lot leaves plain text and no tokens.
+		await ui.input("hello ", "insertFromPaste");
+		assert.equal(ui.host.querySelector("[data-mention-pill]"), null);
+		await ui.input(both, "historyUndo");
+		assert.equal(
+			ui.host.querySelectorAll('[data-mention-pill="notify"]').length,
+			2,
+			"undo restores both pills with their own identities",
+		);
+		await ui.key("Enter");
+		assert.deepEqual(ui.sent[0].mentions, [
+			{ kind: "human", account_id: "acct_ben" },
+			{ kind: "agent", account_id: "acct_ben", endpoint_id: "bep_aida" },
+		]);
 	} finally {
 		await ui.unmount();
 	}
