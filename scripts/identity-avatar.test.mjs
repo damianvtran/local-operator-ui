@@ -330,7 +330,11 @@ test("an agent with a hub avatar_url renders its own picture, by endpoint, under
 		assert.equal(accountReads.length, 0, "an agent read an account picture");
 		const img = host.querySelector("img");
 		assert.equal(img?.getAttribute("src"), "blob:test/1");
-		assert.equal(host.querySelector("svg.lucide-bot"), null);
+		assert.equal(
+			host.querySelector("svg.lucide-bot") === null,
+			true,
+			"glyph drawn",
+		);
 		// The mark is the plate's LAST child, after the picture, so it paints over it.
 		const plateEl = host.querySelector("[data-team-bridge-avatar]");
 		assert.equal(
@@ -377,6 +381,95 @@ test("an agent with a hub avatar_url renders its own picture, by endpoint, under
 		assert.equal(host.querySelector("img") === null, true, "picture drawn");
 		assert.ok(host.querySelector("svg.lucide-bot"));
 		assert.ok(host.querySelector("[data-agent-mark]"));
+	} finally {
+		await act(async () => root.unmount());
+		host.remove();
+		client.clear();
+	}
+});
+
+test("a plate mounted before the capabilities answer picks the picture up when it arrives, once", async () => {
+	/*
+	 * THE PRODUCTION ORDER (code review round 2, F5). A plate mounts on the first
+	 * paint; the capabilities poll answers later. A subscription filter that
+	 * misses the cache event, or a snapshot that never changes, leaves every
+	 * agent on a permanent glyph with a green suite — every other fixture in this
+	 * file seeds the answer BEFORE mount, so none of them can see it.
+	 *
+	 * Counts and booleans only: never an assertion on a DOM node (F4).
+	 */
+	const endpointReads = [];
+	m.TeamBridgeApi.endpointAvatarBytes = async (request) => {
+		endpointReads.push(request);
+		return { data: new Uint8Array([2]), mimeType: "image/png" };
+	};
+	URL.createObjectURL = (blob) => `blob:test/${blob.size}`;
+	URL.revokeObjectURL = () => {};
+	const client = new m.QueryClient();
+	client.setQueryData(m.radientUserKeys.user(), {
+		account: { id: "acc_viewer" },
+	});
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = createRoot(host);
+	const member = {
+		...ownerRow,
+		agent: {
+			...ownerRow.agent,
+			avatar_url: `/v1/messaging/endpoints/ep_aida/avatar?v=${HASH}`,
+		},
+	};
+	const answer = (features) =>
+		client.setQueryData(m.desktopKeys.capabilities, {
+			desktop_available: true,
+			features,
+		});
+	const flush = () =>
+		act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+	try {
+		await act(async () =>
+			root.render(
+				React.createElement(
+					m.QueryClientProvider,
+					{ client },
+					React.createElement(m.TeamBridgeAvatar, {
+						member,
+						kind: "agent",
+						label: "Aida (Damian Tran)",
+						size: 36,
+					}),
+				),
+			),
+		);
+		await flush();
+		assert.equal(endpointReads.length, 0, "read before any answer");
+		assert.equal(host.querySelector("img") === null, true, "picture drawn");
+
+		// An older core's answer, then the same answer again (every poll rewrites
+		// it): still nothing, and nothing per poll.
+		await act(async () => answer({}));
+		await flush();
+		assert.equal(endpointReads.length, 0, "an older core was asked");
+		await act(async () => answer({}));
+		assert.equal(endpointReads.length, 0, "a repeat answer read");
+
+		// The advertising answer: exactly one read, with no prop change.
+		await act(async () => answer({ team_bridge_endpoint_avatar: 1 }));
+		await flush();
+		assert.equal(endpointReads.length, 1, "the arriving answer did not read");
+		assert.equal(host.querySelector("img")?.getAttribute("src"), "blob:test/1");
+
+		// Three further identical polls are one answer, not four reads.
+		for (let poll = 0; poll < 3; poll += 1)
+			await act(async () => answer({ team_bridge_endpoint_avatar: 1 }));
+		await flush();
+		assert.equal(endpointReads.length, 1, "a repeated poll read again");
+
+		// Withdrawal: back to the glyph, and no further read.
+		await act(async () => answer({}));
+		await flush();
+		assert.equal(endpointReads.length, 1, "withdrawal read");
+		assert.equal(host.querySelector("img") === null, true, "picture drawn");
 	} finally {
 		await act(async () => root.unmount());
 		host.remove();
