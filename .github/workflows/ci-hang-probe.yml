@@ -1,0 +1,101 @@
+name: Bounded CI hang probe
+
+# A reviewed, tree-identical commit on this one diagnostic branch can activate
+# the native probe before this workflow exists on main. Ordinary PR/push refs
+# must never start it; this is not a release or a broad-CI bypass.
+on:
+  push:
+    branches:
+      - diag/ui-avatar-native-activate
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bounded-ci-hang-probe
+  cancel-in-progress: false
+
+jobs:
+  discriminate:
+    # Defense in depth for manual dispatch/forks as well as the push filter.
+    # There are no inputs: every activation uses the two immutable refs below.
+    if: >-
+      github.repository == 'damianvtran/local-operator-ui' &&
+      ((github.event_name == 'push' && github.ref == 'refs/heads/diag/ui-avatar-native-activate') ||
+       (github.event_name == 'workflow_dispatch' &&
+        (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/diag/ui-avatar-native-activate')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: probe
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 2c0f276d0ead12e6b8664f550468b8217bbe506d
+          path: avatar
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 47cf454be2efe3a0c30e27063d57845ae5ba7171
+          path: telemetry
+          persist-credentials: false
+      # Both immutable CI workflows pin 10.29.2 and lockfile v9; neither target
+      # declares packageManager. Keep provenance explicit rather than infer it.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: |
+            avatar/pnpm-lock.yaml
+            telemetry/pnpm-lock.yaml
+      - name: Record provenance and prove bounded observer
+        run: |
+          mkdir -p "$RUNNER_TEMP/hang-probe"
+          git -C probe rev-parse HEAD > "$RUNNER_TEMP/hang-probe/probe-revision.txt"
+          python3 probe/scripts/ci-hang-probe.py self-test --output "$RUNNER_TEMP/hang-probe/control" --coordinator-root avatar --coordinator-root telemetry
+      - name: Install avatar frozen dependencies
+        timeout-minutes: 5
+        working-directory: avatar
+        run: pnpm install --frozen-lockfile
+      - name: Install telemetry frozen dependencies
+        timeout-minutes: 5
+        working-directory: telemetry
+        run: pnpm install --frozen-lockfile
+      - name: Singles first on both immutable refs
+        shell: bash
+        run: |
+          set +e
+          python3 probe/scripts/ci-hang-probe.py run --root avatar --label avatar --phase single --output "$RUNNER_TEMP/hang-probe/avatar-single"
+          avatar=$?
+          python3 probe/scripts/ci-hang-probe.py run --root telemetry --label telemetry --phase single --output "$RUNNER_TEMP/hang-probe/telemetry-single"
+          telemetry=$?
+          # Preserve both actual failures; neither a timeout nor assertion error
+          # can unlock the concurrency arm. No retries, no full-suite fallback.
+          test "$avatar" -eq 0 && test "$telemetry" -eq 0
+      - name: Only after both singles finish cleanly, concurrency three
+        run: |
+          set +e
+          python3 probe/scripts/ci-hang-probe.py run --root avatar --label avatar --phase trio --output "$RUNNER_TEMP/hang-probe/avatar-trio"
+          avatar=$?
+          python3 probe/scripts/ci-hang-probe.py run --root telemetry --label telemetry --phase trio --output "$RUNNER_TEMP/hang-probe/telemetry-trio"
+          telemetry=$?
+          test "$avatar" -eq 0 && test "$telemetry" -eq 0
+      - name: Preserve bounded sanitized evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bounded-ci-hang-probe
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/hang-probe/probe-revision.txt
+            ${{ runner.temp }}/hang-probe/*/result.json
+            ${{ runner.temp }}/hang-probe/*/node-*.jsonl
+            ${{ runner.temp }}/hang-probe/control/*/result.json
+            ${{ runner.temp }}/hang-probe/control/*/node-*.jsonl
