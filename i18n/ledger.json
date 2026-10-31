@@ -7004,8 +7004,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
-			"target_sha256": "559b5718f4a5c5edf4401ce299f2ad7b9ee63367c02be3d8a14ec2f97281f73b",
+			"source_sha256": "124d9c3a342342fd4c67635e95210262f96d28c14260bdfac40ad70665936633",
+			"target_sha256": "23f73b7f7541c100a592e190e4058e764ee8a85fd3eb8de2fbb7286975ca9dd7",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -7024,17 +7024,33 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "b20548e9b2d9-rebase-es",
+					"instance": "95c4798301e2-union-a-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/b20548e9b2d9-rebase-es.json",
-					"receipt_sha256": "92343cbad55e53f510f5b6949f37f311d886a3052a965bdd35404faa93888a45",
-					"scope": "Post-rebase delta onto d62accf: ui.teamBridge.reactions.others only; rest byte-identical to main's audited bytes.",
-					"note": "Rebase re-audit by translation-auditor (session b20548e9b2d9); key value byte-identical to ffe897895c10 audit."
+					"receipt": "i18n/receipts/95c4798301e2-union-a-es.json",
+					"receipt_sha256": "f6dc049028031a7ad49bfabc35c185cf5d5b397b2a8f800e2b26c8b37adbe9ae",
+					"scope": "union re-audit A: 12 added keys (events.* x11 + members.invitation_note_v3) on 3b369d6341c union; 287 base keys byte-identical to b20548e9b2d9-rebase-es row"
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-30",
+					"result": "clean",
+					"instance": "2810e9866efc-union-b-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2810e9866efc-union-b-es.json",
+					"receipt_sha256": "9d8eb2daeb2540fce18da9f30a5a46d28a5c1835ec965106cc0006f9fbb43a62",
+					"scope": "Union onto 3b369d6: 12 added keys (events.* x11, members.invitation_note_v3) re-read; 287 others byte-identical to main's audited bytes.",
+					"note": "Auditor B union re-audit (translation-auditor, session 2810e9866efc). Record: i18n/audits/evidence/es/ui.teamBridge/teambridge-member-events-union-audit-2810e9866efc-union-b-es/record.json"
 				}
 			],
 			"status": "audited",
@@ -8002,6 +8018,30 @@
 							"receipt_sha256": "8418640f25ff42e30b5c61275476b50dace656988d0e548b761fd059df4280d5",
 							"scope": "Second audit: invitation_note_v2 (clause-by-clause) + quick pass invite_count, remove_label; head f1fd25bf339",
 							"note": "Second independent audit (consent copy). 0 blocker, 0 major, 0 minor, 1 nit; ids A2-ES-N1. Record: i18n/audits/evidence/es/ui.teamBridge/teambridge-members-polish-audit2-e49c0ab64b49-es/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
+					"target_sha256": "559b5718f4a5c5edf4401ce299f2ad7b9ee63367c02be3d8a14ec2f97281f73b",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "b20548e9b2d9-rebase-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b20548e9b2d9-rebase-es.json",
+							"receipt_sha256": "92343cbad55e53f510f5b6949f37f311d886a3052a965bdd35404faa93888a45",
+							"scope": "Post-rebase delta onto d62accf: ui.teamBridge.reactions.others only; rest byte-identical to main's audited bytes.",
+							"note": "Rebase re-audit by translation-auditor (session b20548e9b2d9); key value byte-identical to ffe897895c10 audit."
 						}
 					],
 					"status": "audited"
@@ -15521,8 +15561,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
-			"target_sha256": "7b17e110450440c7c0d59ca5d10fdcd2b487d7f93e626df630f240e117a42047",
+			"source_sha256": "124d9c3a342342fd4c67635e95210262f96d28c14260bdfac40ad70665936633",
+			"target_sha256": "e55e8a04a1dbe2e4b4b826c03ee420441c5f313e430071c884b85f74c40da80b",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -15541,18 +15581,34 @@
 					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-30",
-					"result": "clean-with-findings",
-					"instance": "b20548e9b2d9-rebase-fr",
+					"result": "clean",
+					"instance": "95c4798301e2-union-a-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/b20548e9b2d9-rebase-fr.json",
-					"receipt_sha256": "6d782ec29fe5bac8f695ed3ee8a187097d766ca8b7a49a43a5b297d9e6fb5bcf",
-					"scope": "Post-rebase delta onto d62accf: ui.teamBridge.reactions.others only; rest byte-identical to main's audited bytes.",
-					"note": "Rebase re-audit by translation-auditor (session b20548e9b2d9); key value byte-identical to ffe897895c10 audit."
+					"receipt": "i18n/receipts/95c4798301e2-union-a-fr.json",
+					"receipt_sha256": "8df6962a56b64839924542dfc232d0bf5750d7da87ddb9b95885fe160981690a",
+					"scope": "union re-audit A: 12 added keys (events.* x11 + members.invitation_note_v3) on 3b369d6341c union; 287 base keys byte-identical to b20548e9b2d9-rebase-fr row"
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-30",
+					"result": "clean",
+					"instance": "2810e9866efc-union-b-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2810e9866efc-union-b-fr.json",
+					"receipt_sha256": "45d543a55d3005df1fccaf68bbf4bf3488f29dfac1a61a76b0f97edc24303440",
+					"scope": "Union onto 3b369d6: 12 added keys (events.* x11, members.invitation_note_v3) re-read; 287 others byte-identical to main's audited bytes.",
+					"note": "Auditor B union re-audit (translation-auditor, session 2810e9866efc). Record: i18n/audits/evidence/fr/ui.teamBridge/teambridge-member-events-union-audit-2810e9866efc-union-b-fr/record.json"
 				}
 			],
 			"status": "audited",
@@ -16544,6 +16600,30 @@
 							"receipt_sha256": "95c940c4103607bb86c1dc55081f0590cf1b5ad7b982b03839d312ec11d468b2",
 							"scope": "Second audit: invitation_note_v2 (clause-by-clause) + quick pass invite_count, remove_label; head f1fd25bf339",
 							"note": "Second independent audit (consent copy). 0 blocker, 0 major, 0 minor, 1 nit; ids A2-FR-N1. Record: i18n/audits/evidence/fr/ui.teamBridge/teambridge-members-polish-audit2-e49c0ab64b49-fr/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
+					"target_sha256": "7b17e110450440c7c0d59ca5d10fdcd2b487d7f93e626df630f240e117a42047",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-30",
+							"result": "clean-with-findings",
+							"instance": "b20548e9b2d9-rebase-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/b20548e9b2d9-rebase-fr.json",
+							"receipt_sha256": "6d782ec29fe5bac8f695ed3ee8a187097d766ca8b7a49a43a5b297d9e6fb5bcf",
+							"scope": "Post-rebase delta onto d62accf: ui.teamBridge.reactions.others only; rest byte-identical to main's audited bytes.",
+							"note": "Rebase re-audit by translation-auditor (session b20548e9b2d9); key value byte-identical to ffe897895c10 audit."
 						}
 					],
 					"status": "audited"
@@ -23918,8 +23998,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
-			"target_sha256": "d729a6f2655bdb72faba93daaaa925cc109b514336366c8fa39bf35528e57fae",
+			"source_sha256": "124d9c3a342342fd4c67635e95210262f96d28c14260bdfac40ad70665936633",
+			"target_sha256": "fc36b76690eee91f8c3168a278b5caa4294e32e0bad1fa1a82091c4e46e689d2",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -23938,17 +24018,33 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "b20548e9b2d9-rebase-hi",
+					"instance": "95c4798301e2-union-a-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/b20548e9b2d9-rebase-hi.json",
-					"receipt_sha256": "f8709694dd4f4202ca31742ef7afec1c3f01891e326bb804e925d65136477db2",
-					"scope": "Post-rebase delta onto d62accf: ui.teamBridge.reactions.others only; rest byte-identical to main's audited bytes.",
-					"note": "Rebase re-audit by translation-auditor (session b20548e9b2d9); key value byte-identical to ffe897895c10 audit."
+					"receipt": "i18n/receipts/95c4798301e2-union-a-hi.json",
+					"receipt_sha256": "ce0814b2d0a8850838a9df81b191369a3f684fa313188f6dde38c8415c10cdb9",
+					"scope": "union re-audit A: 12 added keys (events.* x11 + members.invitation_note_v3) on 3b369d6341c union; 287 base keys byte-identical to b20548e9b2d9-rebase-hi row"
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "2810e9866efc-union-b-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/2810e9866efc-union-b-hi.json",
+					"receipt_sha256": "8fbae1b4374f5cb0438f069740d912a6b921427dafbced90b206c8c7fb6fa653",
+					"scope": "Union onto 3b369d6: 12 added keys (events.* x11, members.invitation_note_v3) re-read; 287 others byte-identical to main's audited bytes.",
+					"note": "Auditor B union re-audit (translation-auditor, session 2810e9866efc). Record: i18n/audits/evidence/hi/ui.teamBridge/teambridge-member-events-union-audit-2810e9866efc-union-b-hi/record.json"
 				}
 			],
 			"status": "audited",
@@ -24863,6 +24959,30 @@
 							"receipt_sha256": "d3d67b7c2eaeda4b6d2d479851b318752eca58bfee802b43491f1b8ad3710201",
 							"scope": "Second audit: invitation_note_v2 (clause-by-clause) + quick pass invite_count, remove_label; head f1fd25bf339",
 							"note": "Second independent audit (consent copy). 0 blocker, 0 major, 0 minor, 1 nit; ids A2-HI-N1. Record: i18n/audits/evidence/hi/ui.teamBridge/teambridge-members-polish-audit2-e49c0ab64b49-hi/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
+					"target_sha256": "d729a6f2655bdb72faba93daaaa925cc109b514336366c8fa39bf35528e57fae",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "b20548e9b2d9-rebase-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b20548e9b2d9-rebase-hi.json",
+							"receipt_sha256": "f8709694dd4f4202ca31742ef7afec1c3f01891e326bb804e925d65136477db2",
+							"scope": "Post-rebase delta onto d62accf: ui.teamBridge.reactions.others only; rest byte-identical to main's audited bytes.",
+							"note": "Rebase re-audit by translation-auditor (session b20548e9b2d9); key value byte-identical to ffe897895c10 audit."
 						}
 					],
 					"status": "audited"
@@ -32036,8 +32156,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
-			"target_sha256": "0e44323598a7f8bbef2fda08aa5d5a0f8361a1c80de8d46cfbd44c465650e7bf",
+			"source_sha256": "124d9c3a342342fd4c67635e95210262f96d28c14260bdfac40ad70665936633",
+			"target_sha256": "00427edaa47dbd8ae0e3573de3e5310a7c7326efe539e734e864637c347fe303",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -32056,18 +32176,34 @@
 					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "95c4798301e2-union-a-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/95c4798301e2-union-a-ru.json",
+					"receipt_sha256": "e4fd56fdfb5d9db9e771cd4b70df779b3a9bef5f694ca635aa3abddcc754d9a4",
+					"scope": "union re-audit A: 12 added keys (events.* x11 + members.invitation_note_v3) on 3b369d6341c union; 287 base keys byte-identical to b20548e9b2d9-rebase-ru row"
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "b20548e9b2d9-rebase-ru",
+					"instance": "2810e9866efc-union-b-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/b20548e9b2d9-rebase-ru.json",
-					"receipt_sha256": "7acab1eb47d7916ca0801435ff2199cd3e050414aeb90bf2c6e984ed03174a8b",
-					"scope": "Post-rebase delta onto d62accf: ui.teamBridge.reactions.others only; rest byte-identical to main's audited bytes.",
-					"note": "Rebase re-audit by translation-auditor (session b20548e9b2d9); key value byte-identical to ffe897895c10 audit."
+					"receipt": "i18n/receipts/2810e9866efc-union-b-ru.json",
+					"receipt_sha256": "5cf548308d17eeb9b2a86fb83089ec25d575c0f954acfa9316fe918f22b88018",
+					"scope": "Union onto 3b369d6: 12 added keys (events.* x11, members.invitation_note_v3) re-read; 287 others byte-identical to main's audited bytes.",
+					"note": "Auditor B union re-audit (translation-auditor, session 2810e9866efc). Record: i18n/audits/evidence/ru/ui.teamBridge/teambridge-member-events-union-audit-2810e9866efc-union-b-ru/record.json"
 				}
 			],
 			"status": "audited",
@@ -33054,6 +33190,30 @@
 							"receipt_sha256": "ad59a42d77642ec81408aa72ca26e3e9c3201d6538f98b622302fb38f9e8a135",
 							"scope": "Re-audit of A2-RU-M1 remediation at d71058ce222: invitation_note_v2 mute clause, nested-quote rule and whole-string fidelity; ru diff vs 90bb4c7d4e2 is that one line.",
 							"note": "Auditor B re-audit, A2-RU-M1 remediation: 0 blocker/major/minor/nit. Record: i18n/audits/evidence/ru/ui.teamBridge/teambridge-members-polish-reaudit-d5ed40af1448-ru/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
+					"target_sha256": "0e44323598a7f8bbef2fda08aa5d5a0f8361a1c80de8d46cfbd44c465650e7bf",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "b20548e9b2d9-rebase-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b20548e9b2d9-rebase-ru.json",
+							"receipt_sha256": "7acab1eb47d7916ca0801435ff2199cd3e050414aeb90bf2c6e984ed03174a8b",
+							"scope": "Post-rebase delta onto d62accf: ui.teamBridge.reactions.others only; rest byte-identical to main's audited bytes.",
+							"note": "Rebase re-audit by translation-auditor (session b20548e9b2d9); key value byte-identical to ffe897895c10 audit."
 						}
 					],
 					"status": "audited"
@@ -40286,8 +40446,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
-			"target_sha256": "eccfc6b4503ddc5929c1c136fa67e9fd65f2a7e6974a45aaa441adc0ed5ca7ce",
+			"source_sha256": "124d9c3a342342fd4c67635e95210262f96d28c14260bdfac40ad70665936633",
+			"target_sha256": "696c124f459c9f2cebcd8ede81a422beb3e4b0b235d183c8cabe7bf8b3d2503a",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -40306,17 +40466,33 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "b20548e9b2d9-rebase-ur",
+					"instance": "95c4798301e2-union-a-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/b20548e9b2d9-rebase-ur.json",
-					"receipt_sha256": "41e455bf69453ff8e60ffa0a0d995a0b46467594971ba4e5bf8508c31ccfecdc",
-					"scope": "Post-rebase delta onto d62accf: ui.teamBridge.reactions.others only; rest byte-identical to main's audited bytes.",
-					"note": "Rebase re-audit by translation-auditor (session b20548e9b2d9); key value byte-identical to ffe897895c10 audit."
+					"receipt": "i18n/receipts/95c4798301e2-union-a-ur.json",
+					"receipt_sha256": "2c912246a47818771723971e4646553d9fc1d02bc03b24fbdb856690ff8e6a01",
+					"scope": "union re-audit A: 12 added keys (events.* x11 + members.invitation_note_v3) on 3b369d6341c union; 287 base keys byte-identical to b20548e9b2d9-rebase-ur row"
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-30",
+					"result": "clean",
+					"instance": "2810e9866efc-union-b-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2810e9866efc-union-b-ur.json",
+					"receipt_sha256": "1d46f3476b2f9600d194be39b2342c83eed8d868fc89ed49bae03715cdc2e3f9",
+					"scope": "Union onto 3b369d6: 12 added keys (events.* x11, members.invitation_note_v3) re-read; 287 others byte-identical to main's audited bytes.",
+					"note": "Auditor B union re-audit (translation-auditor, session 2810e9866efc). Record: i18n/audits/evidence/ur/ui.teamBridge/teambridge-member-events-union-audit-2810e9866efc-union-b-ur/record.json"
 				}
 			],
 			"status": "audited",
@@ -41231,6 +41407,30 @@
 							"receipt_sha256": "472b0ff07cc174a44f9961bd9294b4e55090ce7583cdc359f293eb8731612118",
 							"scope": "Second audit: invitation_note_v2 (clause-by-clause) + quick pass invite_count, remove_label; head f1fd25bf339",
 							"note": "Second independent audit (consent copy). 0 blocker, 0 major, 0 minor, 1 nit; ids A2-UR-N1. Record: i18n/audits/evidence/ur/ui.teamBridge/teambridge-members-polish-audit2-e49c0ab64b49-ur/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
+					"target_sha256": "eccfc6b4503ddc5929c1c136fa67e9fd65f2a7e6974a45aaa441adc0ed5ca7ce",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "b20548e9b2d9-rebase-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b20548e9b2d9-rebase-ur.json",
+							"receipt_sha256": "41e455bf69453ff8e60ffa0a0d995a0b46467594971ba4e5bf8508c31ccfecdc",
+							"scope": "Post-rebase delta onto d62accf: ui.teamBridge.reactions.others only; rest byte-identical to main's audited bytes.",
+							"note": "Rebase re-audit by translation-auditor (session b20548e9b2d9); key value byte-identical to ffe897895c10 audit."
 						}
 					],
 					"status": "audited"
@@ -48886,8 +49086,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
-			"target_sha256": "cb04cebffbb9fa05956ba23143a3f30d7848c73b99482594764d6ad246b916c1",
+			"source_sha256": "124d9c3a342342fd4c67635e95210262f96d28c14260bdfac40ad70665936633",
+			"target_sha256": "9727d85b73139ab138f8b81939ca185d1054a43ce5e6714185560962bfee3c77",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -48906,17 +49106,33 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "b20548e9b2d9-rebase-vi",
+					"instance": "95c4798301e2-union-a-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/b20548e9b2d9-rebase-vi.json",
-					"receipt_sha256": "7941bd784834f472a67ee9d66f7fd95732371f930fd2232bfd555ee31f45a5a5",
-					"scope": "Post-rebase delta onto d62accf: ui.teamBridge.reactions.others only; rest byte-identical to main's audited bytes.",
-					"note": "Rebase re-audit by translation-auditor (session b20548e9b2d9); key value byte-identical to ffe897895c10 audit."
+					"receipt": "i18n/receipts/95c4798301e2-union-a-vi.json",
+					"receipt_sha256": "6fd67b2ef3b5a16555099aed7d282daf1d1299b3c3927c1485f996117d26630d",
+					"scope": "union re-audit A: 12 added keys (events.* x11 + members.invitation_note_v3) on 3b369d6341c union; 287 base keys byte-identical to b20548e9b2d9-rebase-vi row"
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-30",
+					"result": "clean-with-findings",
+					"instance": "2810e9866efc-union-b-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/2810e9866efc-union-b-vi.json",
+					"receipt_sha256": "a3d22baa6d0b69cac6578301a878d26427fcc635dec613dbd44cc9462a17377f",
+					"scope": "Union onto 3b369d6: 12 added keys (events.* x11, members.invitation_note_v3) re-read; 287 others byte-identical to main's audited bytes.",
+					"note": "Auditor B union re-audit (translation-auditor, session 2810e9866efc). Record: i18n/audits/evidence/vi/ui.teamBridge/teambridge-member-events-union-audit-2810e9866efc-union-b-vi/record.json"
 				}
 			],
 			"status": "audited",
@@ -49862,6 +50078,30 @@
 							"receipt_sha256": "048baf371e7bd71aacbd129291f0939c2ae06ee9e5a565f03aebcb58911738cd",
 							"scope": "Second audit: invitation_note_v2 (clause-by-clause) + quick pass invite_count, remove_label; head f1fd25bf339",
 							"note": "Second independent audit (consent copy). 0 blocker, 0 major, 0 minor, 1 nit; ids A2-VI-N1. Record: i18n/audits/evidence/vi/ui.teamBridge/teambridge-members-polish-audit2-e49c0ab64b49-vi/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
+					"target_sha256": "cb04cebffbb9fa05956ba23143a3f30d7848c73b99482594764d6ad246b916c1",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "b20548e9b2d9-rebase-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b20548e9b2d9-rebase-vi.json",
+							"receipt_sha256": "7941bd784834f472a67ee9d66f7fd95732371f930fd2232bfd555ee31f45a5a5",
+							"scope": "Post-rebase delta onto d62accf: ui.teamBridge.reactions.others only; rest byte-identical to main's audited bytes.",
+							"note": "Rebase re-audit by translation-auditor (session b20548e9b2d9); key value byte-identical to ffe897895c10 audit."
 						}
 					],
 					"status": "audited"
@@ -58088,8 +58328,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
-			"target_sha256": "6edc2ddfcb1c4deb129dca9d978cc04fe7cbbb7a157495c8f745ea7f0c7ddf67",
+			"source_sha256": "124d9c3a342342fd4c67635e95210262f96d28c14260bdfac40ad70665936633",
+			"target_sha256": "059b74bb008dd84e6f7376a4eb20e20f7d5521968ea1ad0c0a87ac17b884d569",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -58108,17 +58348,33 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-30",
 					"result": "clean",
-					"instance": "b20548e9b2d9-rebase-zh-cn",
+					"instance": "95c4798301e2-union-a-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/b20548e9b2d9-rebase-zh-cn.json",
-					"receipt_sha256": "05f412f06d432f55a99742faae20250de5e71aac03ccf5c8a2b784a2195c0849",
-					"scope": "Post-rebase delta onto d62accf: ui.teamBridge.reactions.others only; rest byte-identical to main's audited bytes.",
-					"note": "Rebase re-audit by translation-auditor (session b20548e9b2d9); key value byte-identical to ffe897895c10 audit."
+					"receipt": "i18n/receipts/95c4798301e2-union-a-zh-cn.json",
+					"receipt_sha256": "85fdc16d9b6c2daaf41bd65caa87e0f03d1094fac6d59ea77348f2e0da5e019a",
+					"scope": "union re-audit A: 12 added keys (events.* x11 + members.invitation_note_v3) on 3b369d6341c union; 287 base keys byte-identical to b20548e9b2d9-rebase-zh-cn row"
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-30",
+					"result": "clean",
+					"instance": "2810e9866efc-union-b-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2810e9866efc-union-b-zh-cn.json",
+					"receipt_sha256": "2e80eb575f737402e713ba905a95c253ba5b466626f87a0eec9f144ced3f3701",
+					"scope": "Union onto 3b369d6: 12 added keys (events.* x11, members.invitation_note_v3) re-read; 287 others byte-identical to main's audited bytes.",
+					"note": "Auditor B union re-audit (translation-auditor, session 2810e9866efc). Record: i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-member-events-union-audit-2810e9866efc-union-b-zh-cn/record.json"
 				}
 			],
 			"status": "audited",
@@ -59086,6 +59342,30 @@
 							"receipt_sha256": "ca7b5240104820b35371c70cc9b135a55aa5d146e43842462ae4823c9a70dd7b",
 							"scope": "Second audit: invitation_note_v2 (clause-by-clause) + quick pass invite_count, remove_label; head f1fd25bf339",
 							"note": "Second independent audit (consent copy). 0 blocker, 0 major, 0 minor, 0 nit; ids none. Record: i18n/audits/evidence/zh-CN/ui.teamBridge/teambridge-members-polish-audit2-e49c0ab64b49-zh-cn/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "fa61d01336edd0355d0ce7befde7957ec60457ade37a02b11c0b31eb3b2f3a96",
+					"target_sha256": "6edc2ddfcb1c4deb129dca9d978cc04fe7cbbb7a157495c8f745ea7f0c7ddf67",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-30",
+							"result": "clean",
+							"instance": "b20548e9b2d9-rebase-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b20548e9b2d9-rebase-zh-cn.json",
+							"receipt_sha256": "05f412f06d432f55a99742faae20250de5e71aac03ccf5c8a2b784a2195c0849",
+							"scope": "Post-rebase delta onto d62accf: ui.teamBridge.reactions.others only; rest byte-identical to main's audited bytes.",
+							"note": "Rebase re-audit by translation-auditor (session b20548e9b2d9); key value byte-identical to ffe897895c10 audit."
 						}
 					],
 					"status": "audited"

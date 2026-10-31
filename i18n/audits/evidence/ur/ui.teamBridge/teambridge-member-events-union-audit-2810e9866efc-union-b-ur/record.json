@@ -1,0 +1,75 @@
+{
+	"audit_id": "teambridge-member-events-union-audit-2810e9866efc-union-b-ur",
+	"date": "2026-10-30",
+	"locale": "ur",
+	"namespace": "ui.teamBridge",
+	"branch": "fix/team-bridge-member-events",
+	"source_commit": "local head 599309fdd9946546fee3138904bdd1f31722623d (not pushed), unioned onto 3b369d6341c7eeed159c3bcbb1b1f4db759265d4",
+	"auditors": [
+		{
+			"agent": "translation-auditor",
+			"model": "anthropic/claude-opus-5-5",
+			"session": "2810e9866efc",
+			"instance": "2810e9866efc-union-b-ur",
+			"date": "2026-10-30",
+			"result": "clean",
+			"findings": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"model_fallback": {
+				"announced": false,
+				"observed": false
+			}
+		}
+	],
+	"independence": "Auditor B (lopdev translation-auditor, session 2810e9866efc), independent of auditor A (95c4798301e2); authored none of the audited strings and none of A's receipts, formed every verdict before reading A's output; edited no catalogue or code; wrote only this receipt, its evidence bundle and the row via ledger-assemble.mjs.",
+	"files": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.json",
+			"sha256": "124d9c3a342342fd4c67635e95210262f96d28c14260bdfac40ad70665936633"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+			"sha256": "47f525ae908445904c507ac9e1386fdaa8181c6a5a6aca8b9f46d22180eea523"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/ur/ui.teamBridge.json",
+			"sha256": "696c124f459c9f2cebcd8ede81a422beb3e4b0b235d183c8cabe7bf8b3d2503a"
+		}
+	},
+	"receipt": {
+		"path": "i18n/receipts/2810e9866efc-union-b-ur.json",
+		"sha256": "1d46f3476b2f9600d194be39b2342c83eed8d868fc89ed49bae03715cdc2e3f9"
+	},
+	"findings": [
+		{
+			"severity": "INFO",
+			"id": "B-SRC1",
+			"key": "ui.teamBridge.events.owner_added_agent",
+			"current": "en: {actor} added their agent {targets}",
+			"proposed": "source-side: e.g. an ICU select/plural on the target count ('their agent'/'their agents'), then re-translate",
+			"reason": "The model merges owner_invite joins by request_id and an event may carry several targets, so the singular 'their agent' renders over a multi-name list in en ('Ada added their agent Ben, Sana, and 1 other') and is carried into es/fr/hi/ru/ur (singular possessive+noun); vi/zh-CN are number-neutral. Not a translation defect; not counted."
+		}
+	],
+	"artifacts": [
+		{
+			"path": "i18n/audits/evidence/ur/ui.teamBridge/teambridge-member-events-union-audit-2810e9866efc-union-b-ur/render.log",
+			"sha256": "130ae8750415fbd370561c6729f77d0b27b63e4bbfd4aa70330d41680bc61723"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.teamBridge/teambridge-member-events-union-audit-2810e9866efc-union-b-ur/union.log",
+			"sha256": "0c83341db9d5f91ab034a467a2c2befe38d05709f56aa64bd9d60a5a79eef152"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.teamBridge/teambridge-member-events-union-audit-2810e9866efc-union-b-ur/delta-prior.log",
+			"sha256": "3817d216fb455e5dab76f26531f5d1ebb2986d34bdc2b20417be180895abe2aa"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.teamBridge/teambridge-member-events-union-audit-2810e9866efc-union-b-ur/render.mjs.txt",
+			"sha256": "adb0f81fdca3d6584825231e3487c9540a8ef2e3ed161e3a4ae7224fe65a7671"
+		}
+	]
+}
