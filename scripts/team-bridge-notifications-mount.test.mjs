@@ -124,7 +124,8 @@ export function useMembershipsQuery() {
 const bundled = await build({
 	stdin: {
 		contents: `
-			export { useTeamBridgeNotifications } from "./src/renderer/src/features/team-bridge/use-team-bridge-notifications"; export { teamBridgeOpenPath } from "./src/shared/team-bridge-notify";
+			export { useTeamBridgeNotifications, notificationSender, senderIdentity } from "./src/renderer/src/features/team-bridge/use-team-bridge-notifications"; export { teamBridgeOpenPath } from "./src/shared/team-bridge-notify";
+			export { resolveIdentityAvatar } from "./src/shared/identity-avatar";
 			export { toasts } from "@shared/utils/toast-manager";
 			export { useTeamBridgeNotificationOpen } from "./src/renderer/src/features/team-bridge/use-team-bridge-notification-open";
 			export { beginRadientAuthoritySignOut, beginRadientAuthorityTransition, settleRadientAuthority } from "./src/renderer/src/shared/hooks/radient-account-authority";
@@ -2212,4 +2213,138 @@ test("mark-read decrements the row and the nav badge in the same render, and rol
 			await mounted.teardown();
 		}
 	}
+});
+
+/*
+ * AN AGENT'S BANNER NEVER CARRIES ITS OWNER'S PHOTO (2026-10-30). The owner
+ * has a real photo on the directory row; the agent rides on that row. The
+ * `person_agent` sender must reach IPC with no avatar reference, so main asks
+ * core for the glyph composite rather than the owner's face. The human control
+ * on the same row still carries the photo reference, so a pass is not just
+ * "photos never load".
+ */
+for (const kind of ["agent", "human"]) {
+	test(`banner sender for a ${kind} on a photographed owner row`, async () => {
+		resetFixture();
+		const owner = "2fc3a222-9e22-4c85-8b94-0b11c81972f7";
+		const hash = "0123456789abcdef";
+		const org = {
+			tenant_id: "tnt_agent",
+			tenant_name: "Agent Org",
+			unread: 0,
+			eligible: true,
+		};
+		fixture.account = { total: 0, organizations: [org] };
+		fixture.conversations = {
+			conversations: [conversation("bcv_agent", "tnt_agent")],
+		};
+		fixture.messages = {
+			messages: [
+				{
+					id: "bcmsg_agent",
+					seq: 1,
+					sender: {
+						account_id: owner,
+						kind,
+						display_label: kind === "agent" ? "Aida" : "Damian Tran",
+					},
+					body: "status update",
+					conversation_id: "bcv_agent",
+				},
+			],
+		};
+		fixture.directoryMembers = [
+			{
+				account_id: owner,
+				display_label: "Damian Tran",
+				role: "owner",
+				bridge_enabled: true,
+				bridge_state: "active",
+				avatar_url: `/v1/accounts/${owner}/avatar?v=${hash}`,
+				profile: {
+					display_name: "Damian Tran",
+					avatar: { source: "uploaded", hash, updated_at: "2026-10-01" },
+				},
+				agent: { endpoint_id: "ep_aida", name: "Aida", state: "active" },
+			},
+		];
+		const mounted = await mount();
+		mounted.client.setQueryData(
+			api.teamBridgeKeys.directory("tnt_agent", fixture.identity),
+			{ members: fixture.directoryMembers },
+		);
+		try {
+			await until(() => fixture.calls.unread.includes("account"), "seed reads");
+			await settle();
+			fixture.account = { total: 1, organizations: [{ ...org, unread: 1 }] };
+			fixture.tenants.tnt_agent = {
+				total: 1,
+				conversations: [{ ...notifyRow("bcv_agent", 1), unread_count: 1 }],
+			};
+			await act(async () =>
+				mounted.client.invalidateQueries({
+					queryKey: api.teamBridgeKeys.unreadPrefix,
+				}),
+			);
+			await until(() => mounted.notifications.length === 1, "the banner");
+			const sender = mounted.notifications[0].sender;
+			if (kind === "agent") {
+				assert.equal(sender.kind, "person_agent");
+				assert.equal(sender.agent_name, "Aida");
+				assert.equal(
+					sender.avatar,
+					undefined,
+					"an agent banner must not reference the owner's photo",
+				);
+			} else {
+				assert.equal(sender.kind, "person");
+				assert.deepEqual(sender.avatar, { account_id: owner, hash });
+			}
+		} finally {
+			await mounted.teardown();
+		}
+	});
+}
+
+/*
+ * THE KIND ARGUMENT IS PINNED ON ITS OWN (agent review round 1, F2). A
+ * descriptor-only test cannot see this: `parseTeamBridgeNotificationSender`
+ * drops `avatar` on a `person_agent` anyway, so passing the owner's kind here
+ * used to leave the banner assertions green. `senderIdentity` is the one place
+ * the descriptor's kind becomes the resolver's kind, and these are the two
+ * mutations that matter — dropping the mapping, and asking for the human.
+ */
+test("a person_agent sender resolves through the agent identity, never the owner's", () => {
+	const owner = "2fc3a222-9e22-4c85-8b94-0b11c81972f7";
+	const hash = "0123456789abcdef";
+	const row = {
+		account_id: owner,
+		display_label: "Damian Tran",
+		role: "owner",
+		bridge_enabled: true,
+		bridge_state: "active",
+		avatar_url: `/v1/accounts/${owner}/avatar?v=${hash}`,
+		profile: {
+			display_name: "Damian Tran",
+			avatar: { source: "uploaded", hash, updated_at: "2026-10-01" },
+		},
+		agent: { endpoint_id: "bep_aida", name: "Aida", state: "active" },
+	};
+	const agentIdentity = api.senderIdentity(row, "person_agent");
+	assert.equal(agentIdentity.kind, "agent");
+	assert.deepEqual(api.resolveIdentityAvatar(agentIdentity).src, null);
+	// The control: the same row as a person still resolves to their photo.
+	const humanIdentity = api.senderIdentity(row, "person");
+	assert.equal(humanIdentity.kind, "human");
+	assert.deepEqual(api.resolveIdentityAvatar(humanIdentity).src, {
+		type: "account",
+		accountId: owner,
+		hash,
+	});
+	// And the descriptor carries no photo for the agent, for the same reason.
+	assert.equal(api.notificationSender(row, "person_agent")?.avatar, undefined);
+	assert.deepEqual(api.notificationSender(row, "person")?.avatar, {
+		account_id: owner,
+		hash,
+	});
 });

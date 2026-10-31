@@ -1665,9 +1665,16 @@ test("sender kinds and owner-avatar equality fail safe without suppressing deliv
 			agent_name: "Aida",
 			avatar: { account_id: "acc_ben", hash: "0123456789abcdef" },
 		});
-		assert.equal(
-			limits.parseTeamBridgeNotifyRequest(request({ sender })).sender.kind,
-			kind,
+		const parsed = limits.parseTeamBridgeNotifyRequest(request({ sender }));
+		assert.equal(parsed.sender.kind, kind);
+		/* 2026-10-30: an agent never carries its owner's photo. The shared
+		   parser drops the reference, so no producer can put the owner's face
+		   on an agent banner; delivery and the name are unaffected. */
+		assert.deepEqual(
+			parsed.sender.avatar,
+			kind === "person"
+				? { account_id: "acc_ben", hash: "0123456789abcdef" }
+				: undefined,
 		);
 		sender.avatar.account_id = "acc_someone_else";
 		assert.equal(
@@ -2480,13 +2487,15 @@ test("M2 a warmed person composite never answers an agent banner", async () => {
 		"composite:photo/person/acc_ben/0123456789abcdef",
 	);
 	const before = core.calls.length;
+	// The renderer never attaches an avatar to an agent (2026-10-30), so the
+	// agent sender here is the shape that actually reaches main.
 	const agent = request({
-		sender: personSender({ kind: "person_agent", agent_name: "Aida", avatar }),
+		sender: personSender({ kind: "person_agent", agent_name: "Aida" }),
 	});
 	assert.equal(
 		await cache.read(agent, 250),
-		"composite:photo/person_agent/acc_ben/0123456789abcdef",
-		"the agent banner carries core's agent-marker composite",
+		"composite:initials/person_agent/acc_ben/BT",
+		"the agent banner carries core's agent composite, never the owner's photo",
 	);
 	assert.deepEqual(
 		core.calls.slice(before).map((input) => input.kind),
@@ -2504,7 +2513,7 @@ test("M2 a roster carrying a member's agent warms both variants", async () => {
 		tenantId: "tnt_1",
 		members: [
 			personSender({ avatar }),
-			personSender({ kind: "person_agent", agent_name: "Aida", avatar }),
+			personSender({ kind: "person_agent", agent_name: "Aida" }),
 		],
 	});
 	await settle();
@@ -2515,12 +2524,11 @@ test("M2 a roster carrying a member's agent warms both variants", async () => {
 				sender: personSender({
 					kind: "person_agent",
 					agent_name: "Aida",
-					avatar,
 				}),
 			}),
 			250,
 		),
-		"composite:photo/person_agent/acc_ben/0123456789abcdef",
+		"composite:initials/person_agent/acc_ben/BT",
 	);
 	assert.equal(
 		await cache.read(request({ sender: personSender({ avatar }) }), 250),

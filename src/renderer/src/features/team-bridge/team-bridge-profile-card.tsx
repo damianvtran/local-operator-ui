@@ -7,7 +7,7 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@shared/components/ui/popover";
-import { useTeamBridgeAvatar } from "@shared/hooks/use-account-avatar";
+import { useIdentityAvatar } from "@shared/hooks/use-account-avatar";
 import { formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -25,11 +25,54 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { directoryIdentity } from "../../../../shared/identity-avatar";
 import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
 import { personDisplayLabel, personInitial } from "./team-bridge-model";
 
+/*
+ * THE AGENT MARK'S SHAPE, in one string so the call-site pin has one thing to
+ * hold (design review round 3, D1/D2).
+ *
+ * A dog-ear in the plate's reading-END corner, drawn as a right triangle by
+ * `clip-path`. Logical (`end-0`, `rounded-ee-xs`) rather than physical, with
+ * the clip mirrored under `rtl:`: the app really does set `dir`
+ * (`shared/i18n/locale-direction.tsx`) and its corner affordances already use
+ * end-anchored utilities, so a mark pinned to the physical right would sit
+ * opposite every other one in Urdu.
+ */
+const AGENT_MARK_SHAPE =
+	"[clip-path:polygon(100%_100%,0_100%,100%_0)] rtl:[clip-path:polygon(0_100%,100%_100%,0_0)]";
+
+/*
+ * The Bot glyph's size per plate, matching what each surface drew by hand
+ * before the glyph moved in here (20 -> 12 ... 64 -> 28), so moving it changes
+ * no pixel.
+ */
+function agentGlyphSize(plate: number): number {
+	if (plate <= 20) return 12;
+	if (plate <= 24) return 14;
+	if (plate <= 36) return 18;
+	if (plate <= 56) return 26;
+	return 28;
+}
+
+/**
+ * One Team Bridge identity's plate: photo, else placeholder.
+ *
+ * `kind` IS REQUIRED, AND THE AGENT GLYPH IS DECIDED HERE (2026-10-30). An
+ * agent and its owner share one directory row, so the plate cannot tell from
+ * `member` which of the two it shows. Before this, every surface passed its
+ * own `agent ? <Bot/> : …` fallback, and the owner's photo, fetched by the
+ * owner's account id, replaced it. That is how "Aida (Damian Tran)" wore
+ * Damian's face. The picture now comes only from `resolveIdentityAvatar`
+ * (`src/shared/identity-avatar.ts`), which never gives an agent an account
+ * photo, and the agent placeholder is always the Bot glyph. `fallback`
+ * customizes a PERSON's placeholder only, so no surface can opt an agent out.
+ */
 export function TeamBridgeAvatar({
 	member,
+	kind,
+	endpointId,
 	label,
 	size = 36,
 	className,
@@ -37,14 +80,75 @@ export function TeamBridgeAvatar({
 	selected = false,
 }: {
 	member: TeamBridgeDirectoryMember;
+	kind: "human" | "agent";
+	/** The agent's endpoint, when the surface knows it better than the row. */
+	endpointId?: string;
 	label: string;
 	size?: number;
 	className?: string;
+	/** A person's placeholder; ignored for an agent (always the Bot glyph). */
 	fallback?: ReactNode;
 	selected?: boolean;
 }) {
-	const image = useTeamBridgeAvatar(member, size <= 64 ? 64 : 256);
+	const image = useIdentityAvatar(
+		directoryIdentity(member, kind, endpointId),
+		size <= 64 ? 64 : 256,
+	);
 	const [failedImage, setFailedImage] = useState<string>();
+	const placeholder =
+		kind === "agent" ? (
+			<Bot size={agentGlyphSize(size)} />
+		) : (
+			(fallback ?? personInitial(label))
+		);
+	/*
+	 * THE AGENT MARK THAT SURVIVES A PICTURE (design review rounds 1-3,
+	 * D1/D2/D4).
+	 *
+	 * An agent's plate differs from a person's only by its CONTENTS, so the day
+	 * `useIdentityAvatar` can resolve an endpoint picture the plate becomes "a
+	 * picture" again and says nothing about kind — the visual half of
+	 * 2026-10-30's defect, with no glyph to carry it. So the mark is a SHAPE
+	 * painted after the contents: a dog-ear in the plate's reading-end corner.
+	 *
+	 * WHY NOT A RING, WHICH WAS THE FIRST ATTEMPT (round 2, D1, MAJOR): accent
+	 * is this app's keyboard-focus colour (`styles/index.css`
+	 * `:focus-visible { outline: 2px solid var(--color-accent) }`), and every
+	 * message avatar is a button, so a ringed agent plate under focus wore two
+	 * identical green rings. The perimeter channel is focus's; an identity mark
+	 * may not borrow it. A corner dog-ear is not a ring at any width.
+	 *
+	 * WHY THE PLATE'S OWN CORNER IS SQUARED FOR AGENTS (round 3, D1, MAJOR):
+	 * the plate is `overflow-hidden` with a rounded corner, and that arc ate the
+	 * triangle's tip — the corner radius (10 px at `rounded-md`) is larger than
+	 * the notch's side at 24 px, so the mark measured a 5-7 % diagonal hairline
+	 * there and a 45 % crescent at 20 px, i.e. a rendering artefact rather than
+	 * a shape. `rounded-ee-xs` is declared AFTER the host `className` on
+	 * purpose: hosts pass `rounded-md` / `rounded-xl` / `rounded-[5px]`, and the
+	 * corner longhand has to outrank the shorthand for the tip to survive (the
+	 * designer's probe measured 78-94 % solid at every size with it). It also
+	 * gives agents a different silhouette from people at a glance.
+	 *
+	 * WHY THERE IS A KEYLINE BEHIND THE WEDGE (round 3, D2): over a picture the
+	 * accent wedge has no luminance separation from whatever happens to be under
+	 * it (2.8:1 light / 1.08:1 dark on the review's stub portrait), so today it
+	 * is only distinguishable by hue. The outer triangle is painted in the
+	 * plate's OWN fill and the accent wedge sits 1 px inside it, which leaves
+	 * accent always bounded by a known fill — the pair the contract measures.
+	 *
+	 * SIZES: `max(8px, 32%)` for the keyline triangle, the wedge 1 px inside it
+	 * — 8 px at the smallest plate the app mounts (20 px), 20.5 px at the
+	 * largest (64 px). The pair (accent on `mediaSurface` and on `surface` when
+	 * `selected`) is pinned by `scripts/contrast-contract.mjs`, and
+	 * `AGENT_MARK_SHAPE` itself by its `STRUCTURAL_CALL_SITES` row.
+	 *
+	 * THE BOTTOM-END SLOT IS THE MARK'S (round 3, D4). This app puts corner
+	 * badges at bottom-end (`hub-link-sidebar-mark.tsx`,
+	 * `sidebar-navigation.tsx`), and one mounted there would cover the dog-ear
+	 * and leave fragments of it peeking out. A future badge on an agent plate
+	 * goes at TOP-end, or as a row-level pill the way Owner is today — never
+	 * bottom-end.
+	 */
 	return (
 		<span
 			aria-hidden="true"
@@ -53,9 +157,13 @@ export function TeamBridgeAvatar({
 			data-team-bridge-avatar=""
 			style={{ "--profile-avatar-size": `${size}px` } as CSSProperties}
 			className={cn(
-				"inline-flex size-[var(--profile-avatar-size)] shrink-0 items-center justify-center overflow-hidden rounded-md font-medium text-body-sm text-ink-muted",
+				"relative inline-flex size-[var(--profile-avatar-size)] shrink-0 items-center justify-center overflow-hidden rounded-md font-medium text-body-sm",
+				kind === "agent" ? "text-accent" : "text-ink-muted",
 				selected ? "bg-surface" : "bg-media-surface",
 				className,
+				/* AFTER `className`: the host's radius shorthand must not clip the
+				   dog-ear's tip (round 3, D1). */
+				kind === "agent" && "rounded-ee-xs",
 			)}
 		>
 			{image && image !== failedImage ? (
@@ -66,7 +174,28 @@ export function TeamBridgeAvatar({
 					onError={() => setFailedImage(image)}
 				/>
 			) : (
-				(fallback ?? personInitial(label))
+				placeholder
+			)}
+			{/* LAST IN THE PLATE, so the mark paints over any picture the plate holds
+			   rather than relying on positioned-over-static paint order (round 3,
+			   F8): an `<img>` that later gains `relative` would cover it while the
+			   call-site pin stayed green. */}
+			{kind === "agent" && (
+				<span
+					data-agent-mark=""
+					className={cn(
+						"pointer-events-none absolute end-0 bottom-0 size-[max(8px,32%)]",
+						selected ? "bg-surface" : "bg-media-surface",
+						AGENT_MARK_SHAPE,
+					)}
+				>
+					<span
+						className={cn(
+							"absolute end-0 bottom-0 block size-[calc(100%-1px)] bg-accent",
+							AGENT_MARK_SHAPE,
+						)}
+					/>
+				</span>
 			)}
 		</span>
 	);
@@ -99,7 +228,7 @@ export function TeamBridgeAvatar({
 export function TeamBridgeProfileCard({
 	member,
 	label,
-	agentName,
+	kind,
 	onMessage,
 	canMessage = true,
 	openDelayMs = 400,
@@ -110,7 +239,17 @@ export function TeamBridgeProfileCard({
 }: {
 	member: TeamBridgeDirectoryMember;
 	label: string;
-	agentName?: string;
+	/**
+	 * WHOSE CARD THIS IS, REQUIRED. An agent and its owner share one directory
+	 * row, so neither the row nor an optional name can say which of the two the
+	 * card pictures. This used to be inferred from an optional `agentName`
+	 * prop — a pure kind proxy with no other reader — which meant a surface
+	 * that pictured an agent and forgot the name fell
+	 * through to `kind="human"` and drew the OWNER'S PHOTO in the popover — the
+	 * reported defect, on the surface it was reported from (agent review round
+	 * 1, F3). Omission is now a type error, the same guarantee the plate has.
+	 */
+	kind: "human" | "agent";
 	onMessage: () => void;
 	canMessage?: boolean;
 	/** Pointer dwell on the anchor before the card opens. */
@@ -137,7 +276,7 @@ export function TeamBridgeProfileCard({
 	const hoveredSince = useRef<number | undefined>(undefined);
 	const fastArmed = useRef(false);
 	const focusContentOnOpen = useRef(false);
-	const isAgent = agentName !== undefined;
+	const isAgent = kind === "agent";
 	const displayName = isAgent ? label : member.profile?.display_name || label;
 
 	const clearTimer = () => {
@@ -379,9 +518,9 @@ export function TeamBridgeProfileCard({
 					<div className="flex items-start justify-between gap-3">
 						<TeamBridgeAvatar
 							member={member}
+							kind={kind}
 							label={displayName}
 							size={64}
-							fallback={isAgent ? <Bot size={28} /> : undefined}
 						/>
 						<PopoverClose asChild>
 							<Button

@@ -14,7 +14,7 @@ import { Tooltip } from "@shared/components/ui/tooltip";
 import { formatNumber, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { Bot, Search, UserRoundX } from "lucide-react";
+import { Search, UserRoundX } from "lucide-react";
 import {
 	useCallback,
 	useEffect,
@@ -122,13 +122,12 @@ function MemberAvatar({
 	return (
 		<TeamBridgeAvatar
 			member={member}
+			/* The plate draws an agent as the Bot glyph and never as its owner's
+			   photo (see `TeamBridgeAvatar`); a person falls back to their initial. */
+			kind={kind}
 			label={label}
 			size={24}
 			className="size-6 rounded-md text-meta"
-			/* The message list's agent treatment: the owner's directory row with a
-			   Bot glyph as the fallback plate, so an agent reads as an agent in
-			   every Team Bridge surface. A person falls back to their initial. */
-			fallback={kind === "agent" ? <Bot size={14} /> : undefined}
 		/>
 	);
 }

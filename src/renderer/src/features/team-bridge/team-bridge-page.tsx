@@ -3219,11 +3219,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 													<TeamBridgeProfileCard
 														member={draftPerson}
 														label={paneTitle ?? ""}
-														agentName={
-															target.type === "chief"
-																? (paneTitle ?? "")
-																: undefined
-														}
+														kind={target.type === "chief" ? "agent" : "human"}
 														onMessage={() => {}}
 														canMessage={false}
 													>
@@ -3242,14 +3238,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 														>
 															<TeamBridgeAvatar
 																member={draftPerson}
+																kind={
+																	target.type === "chief" ? "agent" : "human"
+																}
 																label={paneTitle ?? ""}
 																size={56}
 																className="rounded-xl text-[22px]"
-																fallback={
-																	target.type === "chief" ? (
-																		<Bot size={26} />
-																	) : undefined
-																}
 															/>
 														</button>
 													</TeamBridgeProfileCard>

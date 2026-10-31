@@ -90,9 +90,7 @@ export const TeamBridgeComposeBar: FC<{
 								<TeamBridgeProfileCard
 									member={member}
 									label={recipient.label}
-									agentName={
-										recipient.kind === "agent" ? recipient.label : undefined
-									}
+									kind={recipient.kind}
 									onMessage={() => {}}
 									canMessage={false}
 								>
@@ -102,14 +100,15 @@ export const TeamBridgeComposeBar: FC<{
 									>
 										<TeamBridgeAvatar
 											member={member}
+											kind={recipient.kind}
+											endpointId={
+												recipient.kind === "agent"
+													? recipient.endpointId
+													: undefined
+											}
 											label={recipient.label}
 											size={20}
 											className="rounded-[5px] text-[10px]"
-											fallback={
-												recipient.kind === "agent" ? (
-													<Bot size={12} />
-												) : undefined
-											}
 										/>
 										{recipient.label}
 									</button>
@@ -231,12 +230,13 @@ export const TeamBridgeComposeBar: FC<{
 								{member ? (
 									<TeamBridgeAvatar
 										member={member}
+										kind={option.kind}
+										endpointId={
+											option.kind === "agent" ? option.endpointId : undefined
+										}
 										label={option.label}
 										size={20}
 										className="rounded-[5px] text-[10px]"
-										fallback={
-											option.kind === "agent" ? <Bot size={12} /> : undefined
-										}
 									/>
 								) : (
 									<span

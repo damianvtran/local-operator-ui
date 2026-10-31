@@ -1693,3 +1693,53 @@ test("profile Message selects the person/chief rail in one tenant and the exact 
 		);
 	}
 });
+
+/*
+ * THE AGENT'S OWN PICTURE AT THE BOUNDARY (agent review round 3, F7). F6 made
+ * the directory schema reuse the resolver's route, but nothing tested that the
+ * schema ACCEPTS what the hub serves: replacing the regex with a pattern that
+ * matches nothing passed every suite, because the other avatar_url cases here
+ * are account URLs and `identity-avatar.test.mjs` calls the resolver directly.
+ * With `.catch(undefined)` on the field, that failure mode is a silently
+ * missing picture, so the served route and the stale one are pinned together.
+ */
+test("the directory carries an agent's own picture only on the served endpoint route", () => {
+	const hash = "0123456789abcdef";
+	const withAgent = (avatar_url) => ({
+		members: [
+			{
+				...selfMember,
+				agent: {
+					endpoint_id: "bep_aida",
+					name: "Aida",
+					state: "active",
+					avatar_url,
+				},
+			},
+		],
+	});
+	// The literal route agent-server's `BridgeEndpointAvatarPointer.AvatarURL`
+	// builds (`/v1/messaging/endpoints/<id>/avatar?v=<hash>`), not a string
+	// derived from the constant under test.
+	const served = `/v1/messaging/endpoints/bep_aida/avatar?v=${hash}`;
+	assert.equal(
+		model.teamBridgeDirectorySchema.parse(withAgent(served)).members[0].agent
+			?.avatar_url,
+		served,
+	);
+	for (const stale of [
+		`/v1/endpoints/bep_aida/avatar?v=${hash}`,
+		`/v1/agent/endpoints/bep_aida/avatar?v=${hash}`,
+		`/v1/messaging/endpoint/bep_aida/avatar?v=${hash}`,
+		`/v1/messaging/endpoints/bep_aida/avatar?v=${hash.toUpperCase()}`,
+		"/v1/messaging/endpoints/bep_aida/avatar",
+		"https://evil.example/avatar",
+		42,
+	]) {
+		const parsed = model.teamBridgeDirectorySchema.parse(withAgent(stale));
+		// The row survives — a bad picture never costs a person their agent.
+		assert.equal(parsed.members.length, 1);
+		assert.equal(parsed.members[0].agent?.name, "Aida");
+		assert.equal(parsed.members[0].agent?.avatar_url, undefined);
+	}
+});

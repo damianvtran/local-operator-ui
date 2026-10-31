@@ -8,14 +8,19 @@ import {
 import { createBlobUrl, revokeBlobUrl } from "@shared/lib/blob-url-cache";
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
+import {
+	ACCOUNT_AVATAR_URL,
+	type AvatarIdentity,
+	resolveIdentityAvatar,
+} from "../../../../shared/identity-avatar";
 
 /*
  * MOVED FROM features/team-bridge (2026-10-26) when the sidebar's own account
  * row started showing the signed-in person's photo: one private-avatar path for
  * every surface, so there is one cache, one revocation rule and one fetch.
- * Behaviour is unchanged; `useTeamBridgeAvatar` is now a thin adapter over
- * `useAccountAvatar`, which takes the version (account + content hash) directly.
+ * Team Bridge plates reach it through `useIdentityAvatar`, which asks the one
+ * identity resolver which version (if any) an identity may show, then hands
+ * that version (account + content hash) to `useAccountAvatar`.
  *
  * Private avatar bytes cannot be loaded with <img src>: the bearer lives in
  * main, not the renderer. This cache holds the resulting object URLs only for
@@ -89,25 +94,37 @@ function makeRoom(store: Map<string, Entry>): boolean {
 	}
 	return false;
 }
-// Hub auth_service.go createAccount assigns uuid.NewString(); core's
-// team_bridge.types.is_account_id also admits legacy acc_[A-Za-z0-9_-]+.
-// Neither spelling needs URLQueryEscaper escapes. Do not decode aliases here:
-// accepting encoded slashes/dot segments would widen the closed transport
-// beyond actual account identifiers. Core remains the semantic ID validator.
-const AVATAR_PATTERN =
-	/^\/v1\/accounts\/((?:acc_[A-Za-z0-9_-]{1,64})|(?:[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}))\/avatar\?v=([0-9a-f]{16})$/;
+/*
+ * The account-avatar path shape lives with the identity resolver
+ * (`src/shared/identity-avatar.ts`), the one place that decides which picture
+ * an identity may show. This file only fetches the version it is handed.
+ */
+const AVATAR_PATTERN = ACCOUNT_AVATAR_URL;
 
-export function teamBridgeAvatarVersion(
-	member: TeamBridgeDirectoryMember | undefined,
-): { accountId: string; hash: string } | null {
-	if (!member?.avatar_url) return null;
-	const match = AVATAR_PATTERN.exec(member.avatar_url);
-	if (!match || match[1] !== member.account_id) return null;
-	// The URL and the profile hash are both supplied by the directory. Refuse a
-	// disagreement rather than displaying bytes under another version's key.
-	if (member.profile?.avatar && member.profile.avatar.hash !== match[2])
-		return null;
-	return { accountId: match[1], hash: match[2] };
+/**
+ * The picture for one Team Bridge identity, through the ONE resolver.
+ *
+ * Returns an object URL for a human's own account photo, or undefined, which
+ * the plate draws as the identity's placeholder: the Bot glyph for an agent,
+ * the initial for a person. An agent never yields an account photo here (see
+ * `resolveIdentityAvatar`). Its own endpoint picture is a documented seam with
+ * no relay yet, so it also renders as the glyph today.
+ */
+export function useIdentityAvatar(
+	identity: AvatarIdentity | undefined,
+	size: 64 | 256,
+): string | undefined {
+	const resolved = identity ? resolveIdentityAvatar(identity) : null;
+	const src = resolved?.src;
+	// Keyed on primitives: a directory refetch returns new objects every time,
+	// and the version is a dependency of the fetch effect.
+	const accountId = src?.type === "account" ? src.accountId : undefined;
+	const hash = src?.type === "account" ? src.hash : undefined;
+	const version = useMemo(
+		() => (accountId && hash ? { accountId, hash } : null),
+		[accountId, hash],
+	);
+	return useAccountAvatar(version, size);
 }
 
 /** One hash-pinned avatar: whose, and which content version. */
@@ -134,7 +151,7 @@ const AVATAR_HASH_PATTERN = /^[0-9a-f]{16}$/;
  * same read that settles this renderer's account authority, so the version and
  * the `expectedAccountId` fence come from one answer. An older hub (no profile)
  * yields null and the row keeps its initials. When `avatar_url` IS present it
- * must agree with the hash, the same refusal `teamBridgeAvatarVersion` applies to
+ * must agree with the hash, the same refusal `resolveIdentityAvatar` applies to
  * a directory row.
  */
 export function radientAccountAvatarVersion(
@@ -150,14 +167,6 @@ export function radientAccountAvatarVersion(
 		if (!match || match[1] !== id || match[2] !== avatar.hash) return null;
 	}
 	return { accountId: id, hash: avatar.hash };
-}
-
-export function useTeamBridgeAvatar(
-	member: TeamBridgeDirectoryMember | undefined,
-	size: 64 | 256,
-): string | undefined {
-	const version = useMemo(() => teamBridgeAvatarVersion(member), [member]);
-	return useAccountAvatar(version, size);
 }
 
 /**
