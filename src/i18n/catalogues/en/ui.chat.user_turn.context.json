@@ -1,0 +1,12 @@
+{
+	"ui.chat.user_turn.show_more": {
+		"role": "Button beneath the user message prose inside its bubble.",
+		"tone": "Short action label, sentence case, no punctuation.",
+		"note": "Expand the clipped long message to reveal all its existing text; does not load additional records."
+	},
+	"ui.chat.user_turn.show_less": {
+		"role": "Button beneath the user message prose inside its bubble.",
+		"tone": "Short action label, sentence case, no punctuation.",
+		"note": "Collapse the expanded message back to its 174px excerpt; never delete or hide the entire message."
+	}
+}
