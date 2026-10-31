@@ -7076,8 +7076,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "906b4ad78c98a497c0a8e9757936d8ce767aa2e72a03dfc439b58d2ae0ef3ffe",
-			"target_sha256": "80d0e215d770423ea8622e92a817b894dce9d0be96e5b3e98ec56b00c0dcb90f",
+			"source_sha256": "abbda676cb90f41321f22f732d2a5b8a6507cae441a73dc0b6399e26d12221cd",
+			"target_sha256": "4ae62738114ca2e359001d9d39abdbacb4b3e3fcbc3bb79a23c647b63f2a628f",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -7096,17 +7096,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-31",
 					"result": "clean",
-					"instance": "d2ccd70111ca-rebase4-es",
+					"instance": "28d10489945e-rebind-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d2ccd70111ca-rebase4-es.json",
-					"receipt_sha256": "6ecf99bc1ac9cc6db66e400700a06e799a4599221b472908b32acab0daeb5f81",
-					"scope": "Post-merge mechanical union round 4 (main 7492ec26bb8 into ui#1532 0e2fdf0): 14 mentions.* = ours, 300 others = main; merged bytes == ours, main touched no catalogue",
-					"note": "Union re-audit (session d2ccd70111ca); mentions.* = 171d0b58c96a-rebase3/0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase/171d0b58c96a-rebase3. No value changed."
+					"receipt": "i18n/receipts/28d10489945e-rebind-es.json",
+					"receipt_sha256": "5bd95cfdf62f5febd63b9942a29ff6798a62359f38bff94bffcb9f59c33ae7b2",
+					"scope": "PR #1522 re-bind after rebase onto main f455cec6: nine keys (agentNotify.* x5, consent v2, accepted[_unnamed], builtin.agents_topic) against English abbda676; byte-identical to round 4's audited bytes; other keys byte-identical to main. No string reworded.",
+					"note": "Re-binds ledger evidence to current main's English; copy unchanged. Receipt i18n/receipts/28d10489945e-rebind-es.json."
 				}
 			],
 			"status": "audited",
@@ -8315,6 +8315,30 @@
 							"receipt": "i18n/receipts/64e850ffd480-rebase-es.json",
 							"receipt_sha256": "eec7319df82977bee63de7e6f82dcf7c4b9a3447837dea90814a8163ab336540",
 							"scope": "Post-merge delta onto main 8fe807c157f: builtin.general_topic + builtin.humans_topic only; rest byte-identical to main's audited bytes."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "906b4ad78c98a497c0a8e9757936d8ce767aa2e72a03dfc439b58d2ae0ef3ffe",
+					"target_sha256": "80d0e215d770423ea8622e92a817b894dce9d0be96e5b3e98ec56b00c0dcb90f",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "d2ccd70111ca-rebase4-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d2ccd70111ca-rebase4-es.json",
+							"receipt_sha256": "6ecf99bc1ac9cc6db66e400700a06e799a4599221b472908b32acab0daeb5f81",
+							"scope": "Post-merge mechanical union round 4 (main 7492ec26bb8 into ui#1532 0e2fdf0): 14 mentions.* = ours, 300 others = main; merged bytes == ours, main touched no catalogue",
+							"note": "Union re-audit (session d2ccd70111ca); mentions.* = 171d0b58c96a-rebase3/0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase/171d0b58c96a-rebase3. No value changed."
 						}
 					],
 					"status": "audited"
@@ -15906,8 +15930,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "906b4ad78c98a497c0a8e9757936d8ce767aa2e72a03dfc439b58d2ae0ef3ffe",
-			"target_sha256": "6358693897aa36b3db128f170101963165f83f480630ef405a674ce310b0c4e6",
+			"source_sha256": "abbda676cb90f41321f22f732d2a5b8a6507cae441a73dc0b6399e26d12221cd",
+			"target_sha256": "d0425fd6cbd5f3b47503d3ca83f294495fbf977cab2fcb727146fa2ba88c9d72",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -15926,18 +15950,18 @@
 					"agent": "task",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-31",
-					"result": "clean",
-					"instance": "d2ccd70111ca-rebase4-fr",
+					"result": "clean-with-findings",
+					"instance": "28d10489945e-rebind-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/d2ccd70111ca-rebase4-fr.json",
-					"receipt_sha256": "e313f59b37a1e9ff07d9c404b488badcbd1b5c7bd188a70e6c5493a9f5bc111b",
-					"scope": "Post-merge mechanical union round 4 (main 7492ec26bb8 into ui#1532 0e2fdf0): 14 mentions.* = ours, 300 others = main; merged bytes == ours, main touched no catalogue",
-					"note": "Union re-audit (session d2ccd70111ca); mentions.* = 171d0b58c96a-rebase3/0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase/171d0b58c96a-rebase3. No value changed."
+					"receipt": "i18n/receipts/28d10489945e-rebind-fr.json",
+					"receipt_sha256": "d0fb079c70b171671eddb6aeee0916da2fbea04ae839a42d0e33bd0e3401016f",
+					"scope": "PR #1522 re-bind after rebase onto main f455cec6: nine keys (agentNotify.* x5, consent v2, accepted[_unnamed], builtin.agents_topic) against English abbda676; byte-identical to round 4's audited bytes; other keys byte-identical to main. No string reworded.",
+					"note": "Re-binds ledger evidence to current main's English; copy unchanged. Receipt i18n/receipts/28d10489945e-rebind-fr.json."
 				}
 			],
 			"status": "audited",
@@ -17170,6 +17194,30 @@
 							"receipt": "i18n/receipts/64e850ffd480-rebase-fr.json",
 							"receipt_sha256": "d968e1777d6e515513721f98bcbcff56de8de9b15f7b180fe84e30a5b3f5b15d",
 							"scope": "Post-merge delta onto main 8fe807c157f: builtin.general_topic + builtin.humans_topic only; rest byte-identical to main's audited bytes."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "906b4ad78c98a497c0a8e9757936d8ce767aa2e72a03dfc439b58d2ae0ef3ffe",
+					"target_sha256": "6358693897aa36b3db128f170101963165f83f480630ef405a674ce310b0c4e6",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "d2ccd70111ca-rebase4-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d2ccd70111ca-rebase4-fr.json",
+							"receipt_sha256": "e313f59b37a1e9ff07d9c404b488badcbd1b5c7bd188a70e6c5493a9f5bc111b",
+							"scope": "Post-merge mechanical union round 4 (main 7492ec26bb8 into ui#1532 0e2fdf0): 14 mentions.* = ours, 300 others = main; merged bytes == ours, main touched no catalogue",
+							"note": "Union re-audit (session d2ccd70111ca); mentions.* = 171d0b58c96a-rebase3/0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase/171d0b58c96a-rebase3. No value changed."
 						}
 					],
 					"status": "audited"
@@ -24616,8 +24664,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "906b4ad78c98a497c0a8e9757936d8ce767aa2e72a03dfc439b58d2ae0ef3ffe",
-			"target_sha256": "abad641d29fbe0f5fba5157b4c365db30cdec63357add3969fec04080e321a56",
+			"source_sha256": "abbda676cb90f41321f22f732d2a5b8a6507cae441a73dc0b6399e26d12221cd",
+			"target_sha256": "b778f2aa039daea68c1258f537f63fcd14d68fd4d405cbb2a7ee3ed673c389ff",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -24636,17 +24684,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-31",
 					"result": "clean",
-					"instance": "d2ccd70111ca-rebase4-hi",
+					"instance": "28d10489945e-rebind-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d2ccd70111ca-rebase4-hi.json",
-					"receipt_sha256": "e57e77cca1a512c705aa9791b3f5cc5daad48e1b4964d281db82cba17d6a52dd",
-					"scope": "Post-merge mechanical union round 4 (main 7492ec26bb8 into ui#1532 0e2fdf0): 14 mentions.* = ours, 300 others = main; merged bytes == ours, main touched no catalogue",
-					"note": "Union re-audit (session d2ccd70111ca); mentions.* = 171d0b58c96a-rebase3/0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase/171d0b58c96a-rebase3. No value changed."
+					"receipt": "i18n/receipts/28d10489945e-rebind-hi.json",
+					"receipt_sha256": "6120eb142a92425ebc87772a3971ff4db5ee1b4d2f9542a1ceaa27cf414795bc",
+					"scope": "PR #1522 re-bind after rebase onto main f455cec6: nine keys (agentNotify.* x5, consent v2, accepted[_unnamed], builtin.agents_topic) against English abbda676; byte-identical to round 4's audited bytes; other keys byte-identical to main. No string reworded.",
+					"note": "Re-binds ledger evidence to current main's English; copy unchanged. Receipt i18n/receipts/28d10489945e-rebind-hi.json."
 				}
 			],
 			"status": "audited",
@@ -25785,6 +25833,30 @@
 							"receipt": "i18n/receipts/64e850ffd480-rebase-hi.json",
 							"receipt_sha256": "15066228c23050f61cd9b88f63ae309c973648955c62d901b883ba672b5b2308",
 							"scope": "Post-merge delta onto main 8fe807c157f: builtin.general_topic + builtin.humans_topic only; rest byte-identical to main's audited bytes."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "906b4ad78c98a497c0a8e9757936d8ce767aa2e72a03dfc439b58d2ae0ef3ffe",
+					"target_sha256": "abad641d29fbe0f5fba5157b4c365db30cdec63357add3969fec04080e321a56",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "d2ccd70111ca-rebase4-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d2ccd70111ca-rebase4-hi.json",
+							"receipt_sha256": "e57e77cca1a512c705aa9791b3f5cc5daad48e1b4964d281db82cba17d6a52dd",
+							"scope": "Post-merge mechanical union round 4 (main 7492ec26bb8 into ui#1532 0e2fdf0): 14 mentions.* = ours, 300 others = main; merged bytes == ours, main touched no catalogue",
+							"note": "Union re-audit (session d2ccd70111ca); mentions.* = 171d0b58c96a-rebase3/0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase/171d0b58c96a-rebase3. No value changed."
 						}
 					],
 					"status": "audited"
@@ -33030,8 +33102,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "906b4ad78c98a497c0a8e9757936d8ce767aa2e72a03dfc439b58d2ae0ef3ffe",
-			"target_sha256": "766b6b25f11ecc38f5276cbc861db23bea93e04c285a718c60c98a9a012f563d",
+			"source_sha256": "abbda676cb90f41321f22f732d2a5b8a6507cae441a73dc0b6399e26d12221cd",
+			"target_sha256": "b611278edeb413545ff8853a4e6cca644a39f3a71fec6e5beeef2c1203172381",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -33051,17 +33123,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-31",
 					"result": "clean",
-					"instance": "d2ccd70111ca-rebase4-ru",
+					"instance": "28d10489945e-rebind-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d2ccd70111ca-rebase4-ru.json",
-					"receipt_sha256": "30cf6ced1209a30742b2c7ecdeee7494ec3d1adfbce43fa400cc227a83e8e5e5",
-					"scope": "Post-merge mechanical union round 4 (main 7492ec26bb8 into ui#1532 0e2fdf0): 14 mentions.* = ours, 300 others = main; merged bytes == ours, main touched no catalogue",
-					"note": "Union re-audit (session d2ccd70111ca); mentions.* = 171d0b58c96a-rebase3/0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase/171d0b58c96a-rebase3. No value changed."
+					"receipt": "i18n/receipts/28d10489945e-rebind-ru.json",
+					"receipt_sha256": "1ee4320954de14739def9d4ddd6198db3b2f874fcd0999488a102baba75173bc",
+					"scope": "PR #1522 re-bind after rebase onto main f455cec6: nine keys (agentNotify.* x5, consent v2, accepted[_unnamed], builtin.agents_topic) against English abbda676; byte-identical to round 4's audited bytes; other keys byte-identical to main. No string reworded.",
+					"note": "Re-binds ledger evidence to current main's English; copy unchanged. Receipt i18n/receipts/28d10489945e-rebind-ru.json."
 				}
 			],
 			"status": "audited",
@@ -34289,6 +34361,30 @@
 							"receipt": "i18n/receipts/64e850ffd480-rebase-ru.json",
 							"receipt_sha256": "43fba946cf7a239812b91d06da9f2dcf8502b1e23333cfe104a1e7bba3cbc7ae",
 							"scope": "Post-merge delta onto main 8fe807c157f: builtin.general_topic + builtin.humans_topic only; rest byte-identical to main's audited bytes."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "906b4ad78c98a497c0a8e9757936d8ce767aa2e72a03dfc439b58d2ae0ef3ffe",
+					"target_sha256": "766b6b25f11ecc38f5276cbc861db23bea93e04c285a718c60c98a9a012f563d",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "d2ccd70111ca-rebase4-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d2ccd70111ca-rebase4-ru.json",
+							"receipt_sha256": "30cf6ced1209a30742b2c7ecdeee7494ec3d1adfbce43fa400cc227a83e8e5e5",
+							"scope": "Post-merge mechanical union round 4 (main 7492ec26bb8 into ui#1532 0e2fdf0): 14 mentions.* = ours, 300 others = main; merged bytes == ours, main touched no catalogue",
+							"note": "Union re-audit (session d2ccd70111ca); mentions.* = 171d0b58c96a-rebase3/0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase/171d0b58c96a-rebase3. No value changed."
 						}
 					],
 					"status": "audited"
@@ -41593,8 +41689,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "906b4ad78c98a497c0a8e9757936d8ce767aa2e72a03dfc439b58d2ae0ef3ffe",
-			"target_sha256": "6960c821870cf1dbb2154540a0f26966afe33d97da294066e9bab212c08f49e6",
+			"source_sha256": "abbda676cb90f41321f22f732d2a5b8a6507cae441a73dc0b6399e26d12221cd",
+			"target_sha256": "2853c4d28da108190dc780db7ce9eb1d9ac59a78fc1f235e95fec23a7004de98",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -41613,17 +41709,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-31",
 					"result": "clean",
-					"instance": "d2ccd70111ca-rebase4-ur",
+					"instance": "28d10489945e-rebind-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d2ccd70111ca-rebase4-ur.json",
-					"receipt_sha256": "ff649f37e4fb56bd10c58dd87dd6f654e0b6b74d55d2212c68bc6b90768ddab7",
-					"scope": "Post-merge mechanical union round 4 (main 7492ec26bb8 into ui#1532 0e2fdf0): 14 mentions.* = ours, 300 others = main; merged bytes == ours, main touched no catalogue",
-					"note": "Union re-audit (session d2ccd70111ca); mentions.* = 171d0b58c96a-rebase3/0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase/171d0b58c96a-rebase3. No value changed."
+					"receipt": "i18n/receipts/28d10489945e-rebind-ur.json",
+					"receipt_sha256": "23e8f57673a8e2bfec8021e84ade967d1366e4a74a50c667ba4541396f346d3e",
+					"scope": "PR #1522 re-bind after rebase onto main f455cec6: nine keys (agentNotify.* x5, consent v2, accepted[_unnamed], builtin.agents_topic) against English abbda676; byte-identical to round 4's audited bytes; other keys byte-identical to main. No string reworded.",
+					"note": "Re-binds ledger evidence to current main's English; copy unchanged. Receipt i18n/receipts/28d10489945e-rebind-ur.json."
 				}
 			],
 			"status": "audited",
@@ -42762,6 +42858,30 @@
 							"receipt": "i18n/receipts/64e850ffd480-rebase-ur.json",
 							"receipt_sha256": "8a1c2c63156492280dd8b33575aeab893d6058d2ce340c88810424fc175cd53f",
 							"scope": "Post-merge delta onto main 8fe807c157f: builtin.general_topic + builtin.humans_topic only; rest byte-identical to main's audited bytes."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "906b4ad78c98a497c0a8e9757936d8ce767aa2e72a03dfc439b58d2ae0ef3ffe",
+					"target_sha256": "6960c821870cf1dbb2154540a0f26966afe33d97da294066e9bab212c08f49e6",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "d2ccd70111ca-rebase4-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d2ccd70111ca-rebase4-ur.json",
+							"receipt_sha256": "ff649f37e4fb56bd10c58dd87dd6f654e0b6b74d55d2212c68bc6b90768ddab7",
+							"scope": "Post-merge mechanical union round 4 (main 7492ec26bb8 into ui#1532 0e2fdf0): 14 mentions.* = ours, 300 others = main; merged bytes == ours, main touched no catalogue",
+							"note": "Union re-audit (session d2ccd70111ca); mentions.* = 171d0b58c96a-rebase3/0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase/171d0b58c96a-rebase3. No value changed."
 						}
 					],
 					"status": "audited"
@@ -50489,8 +50609,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "906b4ad78c98a497c0a8e9757936d8ce767aa2e72a03dfc439b58d2ae0ef3ffe",
-			"target_sha256": "178814205a900edd940b81ba8f0411d19b3d874d6ba6a7f8fa634fa39d0834a5",
+			"source_sha256": "abbda676cb90f41321f22f732d2a5b8a6507cae441a73dc0b6399e26d12221cd",
+			"target_sha256": "2e5b0038374cbf5cdec5c149dbb1153b4332defa0f4aa9aa1118f153c9adce2f",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -50508,18 +50628,18 @@
 					"agent": "task",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-31",
-					"result": "clean",
-					"instance": "d2ccd70111ca-rebase4-vi",
+					"result": "clean-with-findings",
+					"instance": "28d10489945e-rebind-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/d2ccd70111ca-rebase4-vi.json",
-					"receipt_sha256": "3b4400b9d32772d96a248abcac086fa5b635984dcd804555852f5685d09640d3",
-					"scope": "Post-merge mechanical union round 4 (main 7492ec26bb8 into ui#1532 0e2fdf0): 14 mentions.* = ours, 300 others = main; merged bytes == ours, main touched no catalogue",
-					"note": "Union re-audit (session d2ccd70111ca); mentions.* = 171d0b58c96a-rebase3/0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase/171d0b58c96a-rebase3. No value changed."
+					"receipt": "i18n/receipts/28d10489945e-rebind-vi.json",
+					"receipt_sha256": "02253dc2194cb0b5dcdadd4a678fbeda041b3545b3c029bf4242762c2998ccac",
+					"scope": "PR #1522 re-bind after rebase onto main f455cec6: nine keys (agentNotify.* x5, consent v2, accepted[_unnamed], builtin.agents_topic) against English abbda676; byte-identical to round 4's audited bytes; other keys byte-identical to main. No string reworded.",
+					"note": "Re-binds ledger evidence to current main's English; copy unchanged. Receipt i18n/receipts/28d10489945e-rebind-vi.json."
 				}
 			],
 			"status": "audited",
@@ -51689,6 +51809,30 @@
 							"receipt": "i18n/receipts/64e850ffd480-rebase-vi.json",
 							"receipt_sha256": "07e018ca0e1bf930f05f815c3811f37f41f1470b65e0a956ce89ce50c84c61fe",
 							"scope": "Post-merge delta onto main 8fe807c157f: builtin.general_topic + builtin.humans_topic only; rest byte-identical to main's audited bytes."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "906b4ad78c98a497c0a8e9757936d8ce767aa2e72a03dfc439b58d2ae0ef3ffe",
+					"target_sha256": "178814205a900edd940b81ba8f0411d19b3d874d6ba6a7f8fa634fa39d0834a5",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "d2ccd70111ca-rebase4-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d2ccd70111ca-rebase4-vi.json",
+							"receipt_sha256": "3b4400b9d32772d96a248abcac086fa5b635984dcd804555852f5685d09640d3",
+							"scope": "Post-merge mechanical union round 4 (main 7492ec26bb8 into ui#1532 0e2fdf0): 14 mentions.* = ours, 300 others = main; merged bytes == ours, main touched no catalogue",
+							"note": "Union re-audit (session d2ccd70111ca); mentions.* = 171d0b58c96a-rebase3/0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase/171d0b58c96a-rebase3. No value changed."
 						}
 					],
 					"status": "audited"
@@ -59987,8 +60131,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "906b4ad78c98a497c0a8e9757936d8ce767aa2e72a03dfc439b58d2ae0ef3ffe",
-			"target_sha256": "c9f150b173d21c021e5232b929341d8a18b5dc5f1919a2c1092c8c5cf78f9e8c",
+			"source_sha256": "abbda676cb90f41321f22f732d2a5b8a6507cae441a73dc0b6399e26d12221cd",
+			"target_sha256": "12f53488c3f64a75ba8050a3367557dda244946979745279dda5c3c053a2cb26",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -60006,18 +60150,18 @@
 					"agent": "task",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-31",
-					"result": "clean",
-					"instance": "d2ccd70111ca-rebase4-zh-cn",
+					"result": "clean-with-findings",
+					"instance": "28d10489945e-rebind-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/d2ccd70111ca-rebase4-zh-cn.json",
-					"receipt_sha256": "bab29f174bda3a681de9970cdef424cc93af16c5ce8783d47f6d404d0451a739",
-					"scope": "Post-merge mechanical union round 4 (main 7492ec26bb8 into ui#1532 0e2fdf0): 14 mentions.* = ours, 300 others = main; merged bytes == ours, main touched no catalogue",
-					"note": "Union re-audit (session d2ccd70111ca); mentions.* = 171d0b58c96a-rebase3/0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase/171d0b58c96a-rebase3. No value changed."
+					"receipt": "i18n/receipts/28d10489945e-rebind-zh-cn.json",
+					"receipt_sha256": "9115eeceb276259e63db7ef8cc13ad919dcd28bd7621c87d7d13a8b5a31f3e00",
+					"scope": "PR #1522 re-bind after rebase onto main f455cec6: nine keys (agentNotify.* x5, consent v2, accepted[_unnamed], builtin.agents_topic) against English abbda676; byte-identical to round 4's audited bytes; other keys byte-identical to main. No string reworded.",
+					"note": "Re-binds ledger evidence to current main's English; copy unchanged. Receipt i18n/receipts/28d10489945e-rebind-zh-cn.json."
 				}
 			],
 			"status": "audited",
@@ -61209,6 +61353,30 @@
 							"receipt": "i18n/receipts/64e850ffd480-rebase-zh-cn.json",
 							"receipt_sha256": "ffe5a64e79b6413e5be6ea308eb4447a63da7c62f302d0564862939fa162f821",
 							"scope": "Post-merge delta onto main 8fe807c157f: builtin.general_topic + builtin.humans_topic only; rest byte-identical to main's audited bytes."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "906b4ad78c98a497c0a8e9757936d8ce767aa2e72a03dfc439b58d2ae0ef3ffe",
+					"target_sha256": "c9f150b173d21c021e5232b929341d8a18b5dc5f1919a2c1092c8c5cf78f9e8c",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-31",
+							"result": "clean",
+							"instance": "d2ccd70111ca-rebase4-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d2ccd70111ca-rebase4-zh-cn.json",
+							"receipt_sha256": "bab29f174bda3a681de9970cdef424cc93af16c5ce8783d47f6d404d0451a739",
+							"scope": "Post-merge mechanical union round 4 (main 7492ec26bb8 into ui#1532 0e2fdf0): 14 mentions.* = ours, 300 others = main; merged bytes == ours, main touched no catalogue",
+							"note": "Union re-audit (session d2ccd70111ca); mentions.* = 171d0b58c96a-rebase3/0b49d8d07426-rebase2/98545305d697-rebase/4ad83913bb2a, others = 64e850ffd480-rebase/171d0b58c96a-rebase3. No value changed."
 						}
 					],
 					"status": "audited"
