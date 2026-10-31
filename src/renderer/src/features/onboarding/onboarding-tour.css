@@ -107,12 +107,21 @@
  * (`640 + 2 x (340 + 8)` in `tour/tour-steps.ts`), so the arrow bridges the
  * gutter exactly rather than poking into either card.
  *
- * WHY A PHYSICAL MARGIN PER PLACEMENT. Floating UI positions the panel with an
- * inline `left`/`top`, so a margin on the side the panel grows AWAY from adds to
- * that coordinate (`left + 8`); a symmetric padding would push it INTO the
- * palette instead. The mirrored case is not a second mechanism: `attachSide` in
- * `tour/tour-steps.ts` is what makes an RTL window ask for the `left` placement,
- * and this rule follows it.
+ * WHY A PHYSICAL MARGIN PER PLACEMENT, AND WHY ONE OF THEM IS NEGATIVE.
+ * Floating UI positions the panel with an inline `left`/`top` and nothing else,
+ * so a margin only moves the box when it is on the side the panel grows away
+ * from: `margin-left: 8` adds to that `left` (`left + 8`), which is the gutter
+ * on the LTR, right-placement side. The mirrored case cannot use
+ * `margin-right` - the box's left edge is already pinned, so the declaration
+ * computes and moves nothing, leaving the RTL pairing flush (panel right edge
+ * 370 against palette left edge 370, measured on the built app, design round 5
+ * D10) with the arrow sitting over the palette's scrollbar. A NEGATIVE
+ * `margin-left` is the one margin that still applies: it pulls the panel 8 px
+ * away from the palette on its right, which is the gutter the LTR case gets
+ * from a positive one. The two rules are therefore the same decision read from
+ * the two sides, not two mechanisms - `attachSide` in `tour/tour-steps.ts` is
+ * what makes an RTL window ask for the `left` placement, and this pair follows
+ * it.
  *
  * WHY THE SCROLLER MOVES. The height cap and `overflow-y` belong to the panel
  * today (`overflow: visible` above would otherwise let a tall step run off the
@@ -130,8 +139,13 @@
 	margin-left: 8px;
 }
 
+/*
+ * The RTL half. `margin-right` here would be inert: the panel is pinned by its
+ * `left`, so only a negative `margin-left` opens the gutter, and it opens it on
+ * the panel's right - the side that faces the palette in this placement.
+ */
 .shepherd-element.tour-beside-palette[data-popper-placement="left"] {
-	margin-right: 8px;
+	margin-left: -8px;
 }
 
 .shepherd-element .shepherd-content {
